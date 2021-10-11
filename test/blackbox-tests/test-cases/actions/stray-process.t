@@ -23,16 +23,10 @@ Shows what happens when Dune tries to kill an action that has sub-processes.
   waiting for inotify sync
   waited for inotify sync
 
-Both processes should have terminated gracefully as sub_process.exe
-correctly handles SIGTERM:
+Both processes terminated gracefully as sub_process.exe correctly
+handles SIGTERM:
 
   $ if test -f $BEACON_FILE.parent; then echo "ok"; else echo "fail"; fi
-  fail
+  ok
   $ if test -f $BEACON_FILE.child; then echo "ok"; else echo "fail"; fi
-  fail
-
-The sub-process is still running, which is bad:
-
-  $ rm -f $BEACON_FILE
-  $ with_timeout dune_cmd wait-for-file-to-appear $BEACON_FILE
-
+  ok

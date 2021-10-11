@@ -165,6 +165,8 @@ module Event : sig
     | Fs_event of Dune_file_watcher.Fs_memo_event.t
     | Invalidation of Memo.Invalidation.t
 
+  type custom = ..
+
   type t =
     | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
@@ -174,6 +176,7 @@ module Event : sig
     | Worker_task of Fiber.fill
     | Yield of unit Fiber.Ivar.t
     | Timer of Fiber.fill
+    | Custom of custom
 
   module Queue : sig
     type t
@@ -215,6 +218,8 @@ module Event : sig
 
     val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
 
+    val send_custom : t -> custom -> unit
+
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
   with type event := t
@@ -223,6 +228,8 @@ end = struct
     | Sync
     | Fs_event of Dune_file_watcher.Fs_memo_event.t
     | Invalidation of Memo.Invalidation.t
+
+  type custom = ..
 
   type t =
     | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
@@ -233,6 +240,7 @@ end = struct
     | Worker_task of Fiber.fill
     | Yield of unit Fiber.Ivar.t
     | Timer of Fiber.fill
+    | Custom of custom
 
   module Invalidation_event = struct
     type t =
@@ -254,6 +262,7 @@ end = struct
       ; mutable pending_worker_tasks : int
       ; worker_tasks_completed : Fiber.fill Queue.t
       ; timers : Fiber.fill Queue.t
+      ; custom_events : custom Queue.t
       ; stats : Dune_stats.t option
       ; mutable got_event : bool
       ; mutable yield : unit Fiber.Ivar.t option
@@ -270,6 +279,7 @@ end = struct
       let pending_jobs = 0 in
       let pending_worker_tasks = 0 in
       let timers = Queue.create () in
+      let custom_events = Queue.create () in
       { jobs_completed
       ; file_watcher_tasks
       ; invalidation_events
@@ -280,6 +290,7 @@ end = struct
       ; pending_jobs
       ; worker_tasks_completed
       ; pending_worker_tasks
+      ; custom_events
       ; stats
       ; got_event = false
       ; yield = None
@@ -328,6 +339,8 @@ end = struct
       val yield : t
 
       val timers : t
+
+      val custom_events : t
 
       val chain : t list -> t
 
@@ -394,6 +407,9 @@ end = struct
       let timers q =
         Option.map (Queue.pop q.timers) ~f:(fun timer -> Timer timer)
 
+      let custom_events q =
+        Option.map (Queue.pop q.custom_events) ~f:(fun x -> Custom x)
+
       let chain list q = List.find_map list ~f:(fun f -> f q)
     end
 
@@ -419,6 +435,7 @@ end = struct
                  ; jobs_completed
                  ; yield
                  ; timers
+                 ; custom_events
                  ]))
             q
         with
@@ -461,6 +478,8 @@ end = struct
     let send_timers_completed q timers =
       add_event q (fun q ->
           Nonempty_list.to_list timers |> List.iter ~f:(Queue.push q.timers))
+
+    let send_custom q x = add_event q (fun q -> Queue.push q.custom_events x)
 
     let pending_jobs q = q.pending_jobs
 
@@ -876,32 +895,6 @@ let wait_for_process t pid =
 
 let global = ref None
 
-let got_signal signal =
-  if !Log.verbose then
-    match (signal : Shutdown_reason.t) with
-    | Shutdown -> Log.info [ Pp.textf "Shutting down." ]
-    | Signal signal ->
-      Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
-
-let filesystem_watcher_terminated () =
-  Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ]
-
-type saw_signal =
-  | Ok
-  | Got_signal
-
-let kill_and_wait_for_all_processes t =
-  Process_watcher.killall t.process_watcher Sys.sigkill;
-  let saw_signal = ref Ok in
-  while Event.Queue.pending_jobs t.events > 0 do
-    match Event.Queue.next t.events with
-    | Shutdown signal ->
-      got_signal signal;
-      saw_signal := Got_signal
-    | _ -> ()
-  done;
-  !saw_signal
-
 let prepare (config : Config.t) ~(handler : Handler.t) =
   let events = Event.Queue.create config.stats in
   (* We return the scheduler in chunks to resolve the dependency cycle
@@ -946,7 +939,7 @@ end = struct
     | Already_reported
     | Exn of Exn_with_backtrace.t
 
-  exception Abort of run_error
+  exception Abort of { signal_to_send_to_sub_processes : Signal.t }
 
   let handle_invalidation_events events =
     let handle_event event =
@@ -1002,7 +995,7 @@ end = struct
         | Building ->
           t.handler t.config Build_interrupted;
           t.status <- Restarting_build invalidation;
-          Process_watcher.killall t.process_watcher Sys.sigkill;
+          Process_watcher.killall t.process_watcher Sys.sigterm;
           iter t
         | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)
         | Waiting_for_inotify_sync (prev_invalidation, ivar) ->
@@ -1020,14 +1013,59 @@ end = struct
     | Worker_task fill ->
       fill
     | File_system_watcher_terminated ->
-      filesystem_watcher_terminated ();
-      raise (Abort Already_reported)
-    | Shutdown signal ->
-      got_signal signal;
-      raise (Abort Already_reported)
+      Log.info [ Pp.textf "Filesystem watcher terminated, exiting." ];
+      raise (Abort { signal_to_send_to_sub_processes = Term })
+    | Shutdown reason ->
+      Log.info
+        [ (match reason with
+          | Shutdown -> Pp.textf "Got shutting request, exiting."
+          | Signal signal ->
+            Pp.textf "Got signal %s, exiting." (Signal.name signal))
+        ];
+      raise
+        (Abort
+           { signal_to_send_to_sub_processes =
+               (match reason with
+               | Shutdown -> Term
+               | Signal signal -> signal)
+           })
     | Yield ivar -> Fill (ivar, ())
+    | Custom _ -> assert false
 
-  let run t f : _ result =
+  type Event.custom += Timeout
+
+  let cleanup_sub_processes t signal =
+    Process_watcher.killall t.process_watcher (Signal.to_int signal);
+    let finished = ref false in
+    Thread.spawn (fun () ->
+        while not !finished do
+          Unix.sleep 2;
+          Event_queue.send_custom t.events Timeout
+        done);
+    while Event.Queue.pending_jobs t.events > 0 do
+      let still_waiting () =
+        Console.print
+          [ Pp.textf "Still waiting for %d processes to terminate..."
+              (Event.Queue.pending_jobs t.events)
+          ]
+      in
+      match Event.Queue.next t.events with
+      | Shutdown reason ->
+        Log.info
+          [ (match reason with
+            | Shutdown -> Pp.textf "Got shutdown request, already exiting."
+            | Signal signal ->
+              Pp.textf "Got signal %s, already exiting." (Signal.name signal))
+          ];
+        (* Don't wait another 2s to tell the user what's happening if they keep
+           trying to kill Dune. *)
+        still_waiting ()
+      | Custom Timeout -> still_waiting ()
+      | _ -> ()
+    done;
+    finished := true
+
+  let run_and_cleanup t f : _ result =
     let fiber =
       set t (fun () ->
           Fiber.map_reduce_errors
@@ -1038,20 +1076,24 @@ end = struct
               Fiber.return ()))
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
-    | Ok res ->
+    | res -> (
       assert (Event.Queue.pending_jobs t.events = 0);
       assert (Event.Queue.pending_worker_tasks t.events = 0);
-      Ok res
-    | Error () -> Error Already_reported
-    | exception Abort err -> Error err
-    | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
-
-  let run_and_cleanup t f =
-    let res = run t f in
-    Console.Status_line.clear ();
-    match kill_and_wait_for_all_processes t with
-    | Got_signal -> Error Already_reported
-    | Ok -> res
+      Console.Status_line.clear ();
+      match res with
+      | Ok _ as res -> res
+      | Error () -> Error Already_reported)
+    | exception exn ->
+      let err, signal_to_send_to_sub_processes =
+        match exn with
+        | Abort { signal_to_send_to_sub_processes } ->
+          (Already_reported, signal_to_send_to_sub_processes)
+        | exn -> (Exn (Exn_with_backtrace.capture exn), Term)
+      in
+      Console.Status_line.clear ();
+      if Event.Queue.pending_jobs t.events > 0 then
+        cleanup_sub_processes t signal_to_send_to_sub_processes;
+      Error err
 end
 
 module Worker = struct
@@ -1216,6 +1258,22 @@ module Run = struct
 
   exception Shutdown_requested
 
+  let stop_file_watcher watcher =
+    match Dune_file_watcher.shutdown watcher with
+    | `No_op -> ()
+    | `Kill pid -> (
+      Unix.kill (Pid.to_int pid) Sys.sigterm;
+      match snd (Unix.waitpid [] (Pid.to_int pid)) with
+      | WEXITED 0 -> ()
+      | WSTOPPED _ -> assert false
+      | WEXITED n ->
+        User_warning.emit
+          [ Pp.textf "File watcher process exited with code %d" n ]
+      | WSIGNALED n ->
+        User_warning.emit
+          [ Pp.textf "File watcher process got signal %s" (Stdune.Signal.name n)
+          ])
+
   let go config ?timeout ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
     let events, prepare = prepare config ~handler:on_event in
@@ -1265,12 +1323,7 @@ module Run = struct
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
-    Option.iter file_watcher ~f:(fun watcher ->
-        match Dune_file_watcher.shutdown watcher with
-        | `Kill pid -> ignore (wait_for_process t pid : _ Fiber.t)
-        | `Thunk f -> f ()
-        | `No_op -> ());
-    ignore (kill_and_wait_for_all_processes t : saw_signal);
+    Option.iter file_watcher ~f:stop_file_watcher;
     if Lazy.is_val t.alarm_clock then
       Alarm_clock.close (Lazy.force t.alarm_clock);
     match result with
@@ -1297,7 +1350,7 @@ let wait_for_process_with_timeout t pid ~timeout =
           let+ res = Alarm_clock.await sleep in
           if res = `Finished && Process_watcher.is_running t.process_watcher pid
           then
-            Unix.kill (Pid.to_int pid) Sys.sigkill)
+            Unix.kill (Pid.to_int pid) Sys.sigterm)
         (fun () ->
           let+ res = wait_for_process t pid in
           Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;

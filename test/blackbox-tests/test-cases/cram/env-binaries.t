@@ -23,8 +23,7 @@ First we test case where the cram stanza is one level below
   $ mkdir tests
   $ cat >tests/run.t <<EOF
   >   $ helper
-  >   helper: command not found
-  >   [127]
+  >   Helper launched successfully
   > EOF
   $ printf "%s\n" $test_stanza > tests/dune
   $ printf "%s\n" $env_stanza > dune
@@ -39,11 +38,3 @@ env stanza:
   $ rm -r tests/
 
   $ dune runtest
-  File "run.t", line 1, characters 0-0:
-  Error: Files _build/default/run.t and _build/default/run.t.corrected differ.
-  [1]
-  $ dune promote
-  Promoting _build/default/run.t.corrected to run.t.
-  $ cat run.t
-    $ helper
-    Helper launched successfully

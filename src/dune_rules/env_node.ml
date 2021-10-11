@@ -77,17 +77,14 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         | Some x -> Memo.Build.return x)
   in
   let local_binaries =
-    inherited ~field:local_binaries ~root:[] (fun binaries ->
-        let+ expanded =
-          Memo.Build.sequential_map config.binaries
-            ~f:
-              (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
-                   let* expander_for_artifacts =
-                     Memo.Lazy.force expander_for_artifacts
-                   in
-                   Expander.No_deps.expand_str expander_for_artifacts template))
-        in
-        binaries @ expanded)
+    Memo.lazy_ (fun () ->
+        Memo.Build.sequential_map config.binaries
+          ~f:
+            (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
+                 let* expander_for_artifacts =
+                   Memo.Lazy.force expander_for_artifacts
+                 in
+                 Expander.No_deps.expand_str expander_for_artifacts template)))
   in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->

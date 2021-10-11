@@ -2,7 +2,7 @@ Unreleased
 ----------
 
 - Fix interpretation of `binaries` defined in the `env stanza`. Binaries
-  defined in `x/dune` wouldn't be visible in `x/*/**/dune. (#4975,
+  defined in `x/dune` wouldn't be visible in `x/*/**/dune. (#4975, fixes #4976,
   @Leonidas-from-XIV, @rgrinberg)
 
 - Do not list private libraries in package listings (#4945, fixes #4799,

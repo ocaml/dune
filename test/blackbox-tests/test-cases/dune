@@ -132,3 +132,8 @@
   (enabled_if
    (<> "macosx" %{ocaml-config:system}))
   (deps helpers.sh)))
+
+(subdir
+ actions
+ (cram
+  (deps ../watching/helpers.sh bin/sub_process.exe)))

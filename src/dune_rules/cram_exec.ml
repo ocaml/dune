@@ -113,37 +113,17 @@ let translate_path_for_sh =
 let quote_for_sh fn =
   (* we lose some portability as [$'] isn't posix. This is why we prefer single
      quotes when possible *)
-  let has_single_quote = ref false in
-  (* minimum chars for [$'']*)
-  let posix_quote_len = ref 3 in
-  String.iter fn ~f:(function
-    | '\'' ->
-      posix_quote_len := !posix_quote_len + 2;
-      has_single_quote := true
-    | '\\' -> posix_quote_len := !posix_quote_len + 2
-    | _ -> incr posix_quote_len);
-  match !has_single_quote with
+  match String.exists fn ~f:(fun c -> c = '\'') with
   | false -> "'" ^ fn ^ "'"
   | true ->
-    let len = !posix_quote_len in
-    let res = Bytes.create len in
-    Bytes.set res 0 '$';
-    Bytes.set res 1 '\'';
-    Bytes.set res (len - 1) '\'';
-    let i = ref 2 in
+    let buf = Buffer.create (String.length fn + 4) in
+    Buffer.add_string buf "$'";
     String.iter fn ~f:(function
-      | '\'' ->
-        Bytes.set res !i '\\';
-        Bytes.set res (!i + 1) '\'';
-        i := !i + 2
-      | '\\' ->
-        Bytes.set res !i '\\';
-        Bytes.set res (!i + 1) '\\';
-        i := !i + 2
-      | c ->
-        Bytes.set res !i c;
-        incr i);
-    Bytes.to_string res
+      | '\'' -> Buffer.add_string buf "\\'"
+      | '\\' -> Buffer.add_string buf "\\\\"
+      | c -> Buffer.add_char buf c);
+    Buffer.add_char buf '\'';
+    Buffer.contents buf
 
 let cram_stanzas lexbuf =
   let rec loop acc =

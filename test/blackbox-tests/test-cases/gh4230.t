@@ -9,8 +9,6 @@ Syntax error inside a cram command
   > EOF
 
   $ dune runtest --auto-promote 2>&1 | sed -E -e 's/.+\.sh:/$SUBTEST.sh:/' -e 's/cd.*\&\&.*.sh/cd $DIR \&\& $SUBTEST.sh/'
-            sh (internal)
-  $SUBTEST.sh: line 1: `foo-bar': not a valid identifier
   File "t1.t", line 1, characters 0-0:
   Error: Files _build/default/t1.t and _build/default/t1.t.corrected differ.
   Promoting _build/default/t1.t.corrected to t1.t.

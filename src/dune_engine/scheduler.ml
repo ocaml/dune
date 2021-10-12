@@ -1258,22 +1258,6 @@ module Run = struct
 
   exception Shutdown_requested
 
-  let stop_file_watcher watcher =
-    match Dune_file_watcher.shutdown watcher with
-    | `No_op -> ()
-    | `Kill pid -> (
-      Unix.kill (Pid.to_int pid) Sys.sigterm;
-      match snd (Unix.waitpid [] (Pid.to_int pid)) with
-      | WEXITED 0 -> ()
-      | WSTOPPED _ -> assert false
-      | WEXITED n ->
-        User_warning.emit
-          [ Pp.textf "File watcher process exited with code %d" n ]
-      | WSIGNALED n ->
-        User_warning.emit
-          [ Pp.textf "File watcher process got signal %s" (Stdune.Signal.name n)
-          ])
-
   let go config ?timeout ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
     let events, prepare = prepare config ~handler:on_event in
@@ -1323,7 +1307,7 @@ module Run = struct
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
-    Option.iter file_watcher ~f:stop_file_watcher;
+    Option.iter file_watcher ~f:Dune_file_watcher.shutdown;
     if Lazy.is_val t.alarm_clock then
       Alarm_clock.close (Lazy.force t.alarm_clock);
     match result with

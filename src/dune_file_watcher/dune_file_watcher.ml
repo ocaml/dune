@@ -166,13 +166,22 @@ end
 
 let shutdown t =
   match t.kind with
-  | Fswatch { pid; _ } -> `Kill pid
-  | Inotify _ -> `No_op
+  | Inotify _ -> ()
   | Fsevents fsevents ->
-    `Thunk
-      (fun () ->
-        List.iter [ Fsevents.stop; Fsevents.break; Fsevents.destroy ]
-          ~f:(fun f -> f fsevents))
+    List.iter [ Fsevents.stop; Fsevents.break; Fsevents.destroy ] ~f:(fun f ->
+        f fsevents)
+  | Fswatch { pid; _ } -> (
+    Unix.kill (Pid.to_int pid) Sys.sigterm;
+    match snd (Unix.waitpid [] (Pid.to_int pid)) with
+    | WEXITED 0 -> ()
+    | WSTOPPED _ -> assert false
+    | WEXITED n ->
+      User_warning.emit
+        [ Pp.textf "File watcher process exited with code %d" n ]
+    | WSIGNALED n ->
+      User_warning.emit
+        [ Pp.textf "File watcher process got signal %s" (Stdune.Signal.name n) ]
+    )
 
 let buffer_capacity = 65536
 

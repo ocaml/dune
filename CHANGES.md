@@ -219,7 +219,7 @@ Unreleased
 - Kill jobs with `SIGTERM` rather than `SIGKILL` so they have a chance
   to cleanup, in particular kill their own children. If Dune receives
   a `SIGINT` or `SIGQUIT` signal, this signal is forwarded to
-  sub-processes (#...., @jeremiedimino)
+  sub-processes (#4985, @jeremiedimino)
 
 2.9.1 (07/09/2021)
 ------------------

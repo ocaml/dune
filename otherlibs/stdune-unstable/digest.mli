@@ -51,14 +51,14 @@ end
 
 (** Digest a path taking into account its [Stats_for_digest].
 
-    - If the path is a regular file, the resulting digest includes the file's
-      content as well as the its executable permissions bit.
+    - If it's a regular file, the resulting digest includes the file's content
+      as well as the its executable permissions bit.
 
-    - If the path is a directory, the function attempts to do something sensible
-      by digesting [Stats_for_digest] (except for the [st_kind] field since it's
+    - If it's a directory, the function attempts to do something sensible by
+      digesting [Stats_for_digest] (except for the [st_kind] field since it's
       known to be [S_DIR] in this case).
 
-    - Otherwise, the function returns [None]. *)
+    - Otherwise, the function returns [Unexpected_kind]. *)
 val path_with_stats : Path.t -> Stats_for_digest.t -> Path_digest_result.t
 
 (** Like [path_with_stats] but raises on any non-[Ok] result. *)

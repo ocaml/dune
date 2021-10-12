@@ -100,7 +100,7 @@ let delete_very_recent_entries () =
   | Lt -> ()
   | Eq
   | Gt ->
-    Path.Table.filteri_inplace cache.table ~f:(fun ~key:fn ~data ->
+    Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
         match Float.compare data.stats.mtime now with
         | Lt -> true
         | Gt
@@ -110,7 +110,7 @@ let delete_very_recent_entries () =
               [ Pp.textf
                   "Dropping cached digest for %s because it has exactly the \
                    same mtime as the file system clock."
-                  (Path.to_string_maybe_quoted fn)
+                  (Path.to_string_maybe_quoted path)
               ];
           false)
 
@@ -135,21 +135,21 @@ let invalidate_cached_timestamps () =
 let set_max_timestamp cache (stat : Unix.stats) =
   cache.max_timestamp <- Float.max cache.max_timestamp stat.st_mtime
 
-let set_with_stat fn digest stat =
+let set_with_stat path digest stat =
   let cache = Lazy.force cache in
   needs_dumping := true;
   set_max_timestamp cache stat;
-  Path.Table.set cache.table fn
+  Path.Table.set cache.table path
     { digest
     ; stats = Reduced_stats.of_unix_stats stat
     ; stats_checked = cache.checked_key
     }
 
-let set fn digest =
+let set path digest =
   (* the caller of [set] ensures that the files exist *)
-  let fn = Path.build fn in
-  let stat = Path.Untracked.stat_exn fn in
-  set_with_stat fn digest stat
+  let path = Path.build path in
+  let stat = Path.Untracked.stat_exn path in
+  set_with_stat path digest stat
 
 module Refresh_result = struct
   type t =
@@ -188,12 +188,15 @@ module Refresh_result = struct
       ()
 end
 
-let refresh stats fn =
+let refresh stats path =
   let result =
-    Digest.path_with_stats fn (Digest.Stats_for_digest.of_unix_stats stats)
+    (* CR-someday amokhov: Note that by the time we reach this point, [stats]
+       may become stale due to concurrent processes modifying the [path]. It's
+       unclear how to fix this race. *)
+    Digest.path_with_stats path (Digest.Stats_for_digest.of_unix_stats stats)
     |> Refresh_result.of_digest_result
   in
-  Refresh_result.iter result ~f:(fun digest -> set_with_stat fn digest stats);
+  Refresh_result.iter result ~f:(fun digest -> set_with_stat path digest stats);
   result
 
 let handle_fs_errors f =
@@ -203,13 +206,13 @@ let handle_fs_errors f =
     Refresh_result.Error exn
 
 (* Here we make only one [stat] call on the happy path. *)
-let refresh_without_removing_write_permissions fn =
+let refresh_without_removing_write_permissions path =
   handle_fs_errors (fun () ->
-      match Path.Untracked.stat_exn fn with
-      | stats -> refresh stats fn
+      match Path.Untracked.stat_exn path with
+      | stats -> refresh stats path
       | exception Unix.Unix_error (ENOENT, _, _) -> (
         (* Test if this is a broken symlink for better error messages. *)
-        match Path.Untracked.lstat_exn with
+        match Path.Untracked.lstat_exn path with
         | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
         | _stats_so_must_be_a_symlink -> Error Refresh_result.broken_symlink))
 
@@ -218,9 +221,9 @@ let refresh_without_removing_write_permissions fn =
    be outside of the build directory and not under out control. It seems like it
    should be possible to avoid paying for two system calls ([lstat] and [stat])
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
-let refresh_and_remove_write_permissions fn =
+let refresh_and_remove_write_permissions path =
   handle_fs_errors (fun () ->
-      match Path.Untracked.lstat_exn fn with
+      match Path.Untracked.lstat_exn path with
       | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
       | stats ->
         let stats =
@@ -228,35 +231,35 @@ let refresh_and_remove_write_permissions fn =
              about stranger kinds like [S_SOCK]? *)
           match stats.st_kind with
           | S_LNK -> (
-            try Path.Untracked.stat_exn fn with
+            try Path.Untracked.stat_exn path with
             | Unix.Unix_error (ENOENT, _, _) ->
               raise Refresh_result.broken_symlink)
           | S_REG ->
             let perm =
               Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
             in
-            Path.chmod ~mode:perm fn;
+            Path.chmod ~mode:perm path;
             { stats with st_perm = perm }
           | _ -> stats
         in
-        refresh stats fn)
+        refresh stats path)
 
-let refresh fn ~remove_write_permissions =
-  let fn = Path.build fn in
+let refresh path ~remove_write_permissions =
+  let path = Path.build path in
   match remove_write_permissions with
-  | false -> refresh_without_removing_write_permissions fn
-  | true -> refresh_and_remove_write_permissions fn
+  | false -> refresh_without_removing_write_permissions path
+  | true -> refresh_and_remove_write_permissions path
 
-let peek_file fn =
+let peek_file path =
   let cache = Lazy.force cache in
-  match Path.Table.find cache.table fn with
+  match Path.Table.find cache.table path with
   | None -> None
   | Some x ->
     Some
       (if x.stats_checked = cache.checked_key then
         x.digest
       else
-        let stats = Path.Untracked.stat_exn fn in
+        let stats = Path.Untracked.stat_exn path in
         let reduced_stats = Reduced_stats.of_unix_stats stats in
         match Reduced_stats.compare x.stats reduced_stats with
         | Eq ->
@@ -271,13 +274,13 @@ let peek_file fn =
         | Gt
         | Lt ->
           let digest =
-            Digest.path_with_stats_exn fn
+            Digest.path_with_stats_exn path
               (Digest.Stats_for_digest.of_unix_stats stats)
           in
           if !Clflags.debug_digests then
             Console.print
               [ Pp.textf "Re-digested file %s because its stats changed:"
-                  (Path.to_string_maybe_quoted fn)
+                  (Path.to_string_maybe_quoted path)
               ; Dyn.pp
                   (Dyn.Record
                      [ ("old_digest", Digest.to_dyn x.digest)
@@ -293,19 +296,19 @@ let peek_file fn =
           x.stats_checked <- cache.checked_key;
           digest)
 
-let peek_or_refresh_file fn =
-  match peek_file fn with
+let peek_or_refresh_file path =
+  match peek_file path with
   | Some digest -> digest
   | None ->
-    refresh_without_removing_write_permissions fn |> Refresh_result.digest_exn
+    refresh_without_removing_write_permissions path |> Refresh_result.digest_exn
 
-let build_file fn = peek_or_refresh_file (Path.build fn)
+let build_file path = peek_or_refresh_file (Path.build path)
 
-let remove fn =
-  let fn = Path.build fn in
+let remove path =
+  let path = Path.build path in
   let cache = Lazy.force cache in
   needs_dumping := true;
-  Path.Table.remove cache.table fn
+  Path.Table.remove cache.table path
 
 module Untracked = struct
   let source_or_external_file = peek_or_refresh_file

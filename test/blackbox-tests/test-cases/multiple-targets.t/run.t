@@ -7,7 +7,7 @@
   > (rule
   >   (targets a b)
   >   (action (with-stdout-to %{targets} (echo "hola"))))
-  > 
+  >
   > EOF
 
   $ dune build a

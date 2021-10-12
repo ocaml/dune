@@ -148,9 +148,9 @@ let path_with_stats_exn path (stats : Stats_for_digest.t) =
   | Ok digest -> digest
   | Not_found -> failwith "[path_with_stats_exn]: Path does not exist"
   | Unexpected_kind ->
-    Format.sprintf "[path_with_stats_exn]: Unexpected path kind %s"
+    Printf.sprintf "[path_with_stats_exn]: Unexpected path kind %s"
       (Dune_filesystem_stubs.File_kind.to_string stats.st_kind)
   | Error other_error ->
     failwith
-      (Format.sprintf "[path_with_stats_exn]: %s"
+      (Printf.sprintf "[path_with_stats_exn]: %s"
          (Unix.error_message other_error))

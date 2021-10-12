@@ -159,8 +159,9 @@ module Refresh_result = struct
 
   let unexpected_kind st_kind =
     Sys_error
-      (sprintf "Unexpected file kind %S"
-         (Dune_filesystem_stubs.File_kind.to_string st_kind))
+      (sprintf "Unexpected file kind %S (%s)"
+         (Dune_filesystem_stubs.File_kind.to_string st_kind)
+         (Dune_filesystem_stubs.File_kind.to_string_hum st_kind))
 
   let unix_error error = Sys_error (Unix.error_message error)
 
@@ -192,6 +193,9 @@ let digest_path_with_stats path stats =
   | Error error -> Error (Refresh_result.unix_error error)
 
 let refresh stats path =
+  (* Note that by the time we reach this point, [stats] may become stale due to
+     concurrent processes modifying the [path], so this function can actually
+     return [No_such_file] even if the caller managed to obtain the [stats]. *)
   let result = digest_path_with_stats path stats in
   Refresh_result.iter result ~f:(fun digest -> set_with_stat path digest stats);
   result
@@ -271,9 +275,6 @@ let peek_file path =
         | Gt
         | Lt ->
           let digest =
-            (* CR-someday amokhov: Note that by the time we reach this point,
-               [stats] may become stale due to concurrent processes modifying
-               the [path]. It's unclear how to fix this race. *)
             digest_path_with_stats path stats |> Refresh_result.digest_exn
           in
           if !Clflags.debug_digests then

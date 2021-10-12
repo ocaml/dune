@@ -16,7 +16,16 @@ module File_kind = struct
     | S_LNK -> "S_LNK"
     | S_FIFO -> "S_FIFO"
     | S_SOCK -> "S_SOCK"
-    
+
+  let to_string_hum = function
+    | S_REG -> "regular file"
+    | S_DIR -> "directory"
+    | S_CHR -> "character device"
+    | S_BLK -> "block device"
+    | S_LNK -> "symbolic link"
+    | S_FIFO -> "named pipe"
+    | S_SOCK -> "socket"
+
   module Option = struct
     [@@@warning "-37"]
 

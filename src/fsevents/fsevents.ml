@@ -1,5 +1,84 @@
 open Stdune
 
+external available : unit -> bool = "dune_fsevents_available"
+
+module State : sig
+  type 'a t
+
+  val create : 'a -> 'a t
+
+  type 'a ref
+
+  val get : 'a ref -> 'a
+
+  val set : 'a ref -> 'a -> unit
+
+  val critical_section : 'a t -> ('a ref -> 'b) -> 'b
+end = struct
+  type 'a t =
+    { mutex : Mutex.t
+    ; mutable data : 'a
+    }
+
+  type 'a ref = 'a t
+
+  let set t a = t.data <- a
+
+  let get t = t.data
+
+  let create data = { mutex = Mutex.create (); data }
+
+  let critical_section (type a) (t : a t) f =
+    Mutex.lock t.mutex;
+    Fun.protect (fun () -> f t) ~finally:(fun () -> Mutex.unlock t.mutex)
+end
+
+module RunLoop = struct
+  module Raw = struct
+    type t
+
+    external in_current_thread : unit -> t = "dune_fsevents_runloop_current"
+
+    (* After this function terminates, the reference to [t] is no longer
+       valid *)
+    external run_current_thread : t -> unit = "dune_fsevents_runloop_run"
+
+    external stop : t -> unit = "dune_fsevents_runloop_stop"
+  end
+
+  type state =
+    | Idle of Raw.t
+    | Running of Raw.t
+    | Stopped
+
+  type t = state State.t
+
+  let in_current_thread () = State.create (Idle (Raw.in_current_thread ()))
+
+  let stop (t : t) =
+    State.critical_section t (fun t ->
+        match State.get t with
+        | Running raw ->
+          State.set t Stopped;
+          Raw.stop raw
+        | Stopped -> ()
+        | Idle _ -> Code_error.raise "RunLoop.stop: not started" [])
+
+  let run_current_thread t =
+    let w =
+      State.critical_section t (fun t ->
+          match State.get t with
+          | Stopped -> Code_error.raise "RunLoop.run_current_thread: stopped" []
+          | Running _ ->
+            Code_error.raise "RunLoop.run_current_thread: running" []
+          | Idle w ->
+            State.set t (Running w);
+            w)
+    in
+    try Ok (Raw.run_current_thread w) with
+    | exn -> Error exn
+end
+
 module Event = struct
   module Id = struct
     type t
@@ -144,48 +223,89 @@ module Event = struct
       ]
 end
 
-type t
+module Raw = struct
+  type t
 
-external available : unit -> bool = "dune_fsevents_available"
+  external stop : t -> unit = "dune_fsevents_stop"
 
-external stop : t -> unit = "dune_fsevents_stop"
+  external start : t -> RunLoop.Raw.t -> unit = "dune_fsevents_start"
 
-external start : t -> unit = "dune_fsevents_start"
+  external create : string list -> float -> (Event.t list -> unit) -> t
+    = "dune_fsevents_create"
 
-external loop : t -> unit = "dune_fsevents_loop"
+  external set_exclusion_paths : t -> string list -> unit
+    = "dune_fsevents_set_exclusion_paths"
 
-let loop t =
-  match loop t with
-  | exception exn -> Error exn
-  | () -> Ok ()
+  external flush_sync : t -> unit = "dune_fsevents_flush_sync"
 
-external break : t -> unit = "dune_fsevents_break"
+  (* external flush_async : t -> Event.Id.t = "dune_fsevents_flush_async" *)
+end
 
-external flush_sync : t -> unit = "dune_fsevents_flush_sync"
+type state =
+  | Idle of Raw.t
+  | Start of Raw.t * RunLoop.t
+  | Stop of RunLoop.t
 
-external destroy : t -> unit = "dune_fsevents_destroy"
+type t = state State.t
 
-external dune_fsevents_create :
-  string list -> float -> (t -> Event.t list -> unit) -> t
-  = "dune_fsevents_create"
+let stop t =
+  State.critical_section t (fun t ->
+      match State.get t with
+      | Idle _ -> Code_error.raise "Fsevents.stop: idle" []
+      | Stop _ -> ()
+      | Start (raw, rl) ->
+        State.set t (Stop rl);
+        Raw.stop raw)
+
+let start t (rl : RunLoop.t) =
+  State.critical_section t (fun t ->
+      match State.get t with
+      | Stop _ -> Code_error.raise "Fsevents.start: stop" []
+      | Start _ -> Code_error.raise "Fsevents.start: start" []
+      | Idle r ->
+        State.critical_section rl (fun rl' ->
+            match State.get rl' with
+            | Stopped -> Code_error.raise "Fsevents.start: runloop stopped" []
+            | Idle rl'
+            | Running rl' ->
+              State.set t (Start (r, rl));
+              Raw.start r rl'))
+
+let runloop t =
+  State.critical_section t (fun t ->
+      match State.get t with
+      | Idle _ -> None
+      | Start (_, rl)
+      | Stop rl ->
+        Some rl)
+
+let flush_sync t =
+  let t =
+    State.critical_section t (fun t ->
+        match State.get t with
+        | Idle _ -> Code_error.raise "Fsevents.flush_sync: idle" []
+        | Stop _ -> Code_error.raise "Fsevents.flush_sync: stop" []
+        | Start (r, _) -> r)
+  in
+  Raw.flush_sync t
 
 let create ~paths ~latency ~f =
   (match paths with
   | [] -> Code_error.raise "Fsevents.create: paths empty" []
   | _ -> ());
-  dune_fsevents_create paths latency f
-
-(* external flush_async : t -> Event.Id.t = "dune_fsevents_flush_async" *)
-
-external set_exclusion_paths : t -> string list -> unit
-  = "dune_fsevents_set_exclusion_paths"
+  State.create (Idle (Raw.create paths latency f))
 
 let set_exclusion_paths t ~paths =
   if List.length paths > 8 then
     Code_error.raise
       "Fsevents.set_exclusion_paths: 8 directories should be enough for anybody"
       [ ("paths", Dyn.Encoder.(list string) paths) ];
-  set_exclusion_paths t paths
+  State.critical_section t (fun t ->
+      match State.get t with
+      | Stop _ -> Code_error.raise "Fsevents.set_exclusion_paths: stop" []
+      | Idle r
+      | Start (r, _) ->
+        Raw.set_exclusion_paths r paths)
 
 (* let flush_async t = *)
 (*   let res = flush_async t in *)

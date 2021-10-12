@@ -1030,7 +1030,10 @@ end = struct
                | Signal signal -> signal)
            })
     | Yield ivar -> Fill (ivar, ())
-    | Custom _ -> assert false
+    | Custom _ ->
+      (* At the moment there are no custom events. We only have one in
+         [cleanup_sub_processes] bellow. *)
+      assert false
 
   type Event.custom += Timeout
 

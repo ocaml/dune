@@ -147,56 +147,105 @@ let set_with_stat fn digest stat =
 
 let set fn digest =
   (* the caller of [set] ensures that the files exist *)
+  let fn = Path.build fn in
   let stat = Path.Untracked.stat_exn fn in
   set_with_stat fn digest stat
-
-let refresh_exn stats fn =
-  let digest = Digest.file_with_stats fn stats in
-  set_with_stat fn digest stats;
-  digest
-
-let refresh_internal_exn fn =
-  let stats = Path.Untracked.stat_exn fn in
-  refresh_exn stats fn
 
 module Refresh_result = struct
   type t =
     | Ok of Digest.t
     | No_such_file
     | Error of exn
+
+  let unexpected_kind = Sys_error "Could not digest a file of unexpected kind"
+
+  let file_does_not_exist =
+    Sys_error "Could not digest a file that does not exist"
+
+  let unix_error error =
+    Sys_error
+      (sprintf "Could not digest a file due to a Unix error %s"
+         (Unix.error_message error))
+
+  let broken_symlink = Sys_error "Could not digest a broken symlink"
+
+  let of_digest_result = function
+    | Digest.Path_digest_result.Ok digest -> Ok digest
+    | Not_found -> No_such_file
+    | Unexpected_kind -> Error unexpected_kind
+    | Error error -> Error (unix_error error)
+
+  let digest_exn = function
+    | Ok digest -> digest
+    | No_such_file -> raise file_does_not_exist
+    | Error exn -> raise exn
+
+  let iter t ~f =
+    match t with
+    | Ok t -> f t
+    | No_such_file
+    | Error _ ->
+      ()
 end
 
-let catch_fs_errors f =
+let refresh stats fn =
+  let result =
+    Digest.path_with_stats fn (Digest.Stats_for_digest.of_unix_stats stats)
+    |> Refresh_result.of_digest_result
+  in
+  Refresh_result.iter result ~f:(fun digest -> set_with_stat fn digest stats);
+  result
+
+let handle_fs_errors f =
   match f () with
+  | result -> result
   | exception ((Unix.Unix_error _ | Sys_error _) as exn) ->
     Refresh_result.Error exn
-  | res -> res
 
-let refresh fn ~remove_write_permissions : Refresh_result.t =
-  let fn = Path.build fn in
-  catch_fs_errors (fun () ->
+(* Here we make only one [stat] call on the happy path. *)
+let refresh_without_removing_write_permissions fn =
+  handle_fs_errors (fun () ->
+      match Path.Untracked.stat_exn fn with
+      | stats -> refresh stats fn
+      | exception Unix.Unix_error (ENOENT, _, _) -> (
+        (* Test if this is a broken symlink for better error messages. *)
+        match Path.Untracked.lstat_exn with
+        | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
+        | _stats_so_must_be_a_symlink -> Error Refresh_result.broken_symlink))
+
+(* CR-someday amokhov: We do [lstat] followed by [stat] only because we do not
+   want to remove write permissions from the symbolic link's target, which may
+   be outside of the build directory and not under out control. It seems like it
+   should be possible to avoid paying for two system calls ([lstat] and [stat])
+   here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
+let refresh_and_remove_write_permissions fn =
+  handle_fs_errors (fun () ->
       match Path.Untracked.lstat_exn fn with
-      | exception Unix.Unix_error (ENOENT, _, _) -> Refresh_result.No_such_file
+      | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
       | stats ->
         let stats =
+          (* CR-someday amokhov: Shall we raise if [stats.st_kind = S_DIR]? What
+             about stranger kinds like [S_SOCK]? *)
           match stats.st_kind with
-          | Unix.S_LNK -> (
+          | S_LNK -> (
             try Path.Untracked.stat_exn fn with
             | Unix.Unix_error (ENOENT, _, _) ->
-              raise (Sys_error "Broken symlink"))
-          | Unix.S_REG -> (
-            match remove_write_permissions with
-            | false -> stats
-            | true ->
-              let perm =
-                Path.Permissions.remove ~mode:Path.Permissions.write
-                  stats.st_perm
-              in
-              Path.chmod ~mode:perm fn;
-              { stats with st_perm = perm })
+              raise Refresh_result.broken_symlink)
+          | S_REG ->
+            let perm =
+              Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
+            in
+            Path.chmod ~mode:perm fn;
+            { stats with st_perm = perm }
           | _ -> stats
         in
-        Refresh_result.Ok (refresh_exn stats fn))
+        refresh stats fn)
+
+let refresh fn ~remove_write_permissions =
+  let fn = Path.build fn in
+  match remove_write_permissions with
+  | false -> refresh_without_removing_write_permissions fn
+  | true -> refresh_and_remove_write_permissions fn
 
 let peek_file fn =
   let cache = Lazy.force cache in
@@ -221,7 +270,10 @@ let peek_file fn =
           x.digest
         | Gt
         | Lt ->
-          let digest = Digest.file_with_stats fn stats in
+          let digest =
+            Digest.path_with_stats_exn fn
+              (Digest.Stats_for_digest.of_unix_stats stats)
+          in
           if !Clflags.debug_digests then
             Console.print
               [ Pp.textf "Re-digested file %s because its stats changed:"
@@ -243,14 +295,18 @@ let peek_file fn =
 
 let peek_or_refresh_file fn =
   match peek_file fn with
-  | None -> refresh_internal_exn fn
-  | Some v -> v
-
-let source_or_external_file = peek_or_refresh_file
+  | Some digest -> digest
+  | None ->
+    refresh_without_removing_write_permissions fn |> Refresh_result.digest_exn
 
 let build_file fn = peek_or_refresh_file (Path.build fn)
 
 let remove fn =
+  let fn = Path.build fn in
   let cache = Lazy.force cache in
   needs_dumping := true;
   Path.Table.remove cache.table fn
+
+module Untracked = struct
+  let source_or_external_file = peek_or_refresh_file
+end

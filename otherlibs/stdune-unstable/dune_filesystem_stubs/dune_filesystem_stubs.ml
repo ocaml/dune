@@ -8,6 +8,15 @@ module File_kind = struct
     | S_FIFO
     | S_SOCK
 
+  let to_string = function
+    | S_REG -> "S_REG"
+    | S_DIR -> "S_DIR"
+    | S_CHR -> "S_CHR"
+    | S_BLK -> "S_BLK"
+    | S_LNK -> "S_LNK"
+    | S_FIFO -> "S_FIFO"
+    | S_SOCK -> "S_SOCK"
+    
   module Option = struct
     [@@@warning "-37"]
 

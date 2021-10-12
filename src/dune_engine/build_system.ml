@@ -1507,7 +1507,7 @@ end = struct
     in
     let update_cached_digests ~targets_and_digests =
       List.iter targets_and_digests ~f:(fun (target, digest) ->
-          Cached_digest.set (Path.build target) digest)
+          Cached_digest.set target digest)
     in
     match
       Path.Build.Set.to_list_map targets ~f:Dune_cache.Local.Target.create
@@ -1762,7 +1762,7 @@ end = struct
             (* Step I. Remove stale targets both from the digest table and from
                the build directory. *)
             Path.Build.Set.iter targets ~f:(fun target ->
-                Cached_digest.remove (Path.build target);
+                Cached_digest.remove target;
                 Path.Build.unlink_no_err target);
             (* Step II. Try to restore artifacts from the shared cache if the
                following conditions are met.

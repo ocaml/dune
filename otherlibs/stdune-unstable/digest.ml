@@ -79,16 +79,78 @@ let file_with_executable_bit ~executable path =
   let content_digest = file path in
   string_and_bool ~digest_hex:content_digest ~bool:executable
 
-let file_with_stats path (stats : Unix.stats) =
+(* It's useful to require only a subset of fields here because the caller can
+   then memoize only the fields that really matter. *)
+module Stats_for_digest = struct
+  type t =
+    { st_kind : Unix.file_kind
+    ; st_perm : Unix.file_perm
+    ; st_size : int
+    ; st_mtime : float
+    ; st_ctime : float
+    }
+
+  let of_unix_stats (stats : Unix.stats) =
+    { st_kind = stats.st_kind
+    ; st_perm = stats.st_perm
+    ; st_size = stats.st_size
+    ; st_mtime = stats.st_mtime
+    ; st_ctime = stats.st_ctime
+    }
+end
+
+module Path_digest_result = struct
+  type nonrec t =
+    | Ok of t
+    | Not_found
+    | Unexpected_kind
+    | Error of Unix.error
+
+  let equal x y =
+    match (x, y) with
+    | Ok x, Ok y -> D.equal x y
+    | Ok _, _
+    | _, Ok _ ->
+      false
+    | Not_found, Not_found -> true
+    | Not_found, _
+    | _, Not_found ->
+      false
+    | Unexpected_kind, Unexpected_kind -> true
+    | Unexpected_kind, _
+    | _, Unexpected_kind ->
+      false
+    | Error x, Error y -> Unix_error.equal x y
+end
+
+let path_with_stats path (stats : Stats_for_digest.t) : Path_digest_result.t =
   match stats.st_kind with
+  | S_REG -> (
+    let executable = stats.st_perm land 0o100 <> 0 in
+    match file_with_executable_bit ~executable path with
+    | digest -> Ok digest
+    | exception Unix.Unix_error (ENOENT, _, _) -> Not_found
+    | exception Unix.Unix_error (other_error, _, _) -> Error other_error)
   | S_DIR ->
-    generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime)
+    (* CR-someday amokhov: The current digesting scheme has collisions for files
+       and directories. It's unclear if this is actually a problem. If it turns
+       out to be a problem, we should include [st_kind] into both digests. *)
+    Ok (generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime))
   | S_BLK
   | S_CHR
   | S_LNK
   | S_FIFO
   | S_SOCK ->
-    failwith "Unexpected file kind"
-  | S_REG ->
-    let executable = stats.st_perm land 0o100 <> 0 in
-    file_with_executable_bit ~executable path
+    Unexpected_kind
+
+let path_with_stats_exn path (stats : Stats_for_digest.t) =
+  match path_with_stats path stats with
+  | Ok digest -> digest
+  | Not_found -> failwith "[path_with_stats_exn]: Path does not exist"
+  | Unexpected_kind ->
+    Format.sprintf "[path_with_stats_exn]: Unexpected path kind %s"
+      (Dune_filesystem_stubs.File_kind.to_string stats.st_kind)
+  | Error other_error ->
+    failwith
+      (Format.sprintf "[path_with_stats_exn]: %s"
+         (Unix.error_message other_error))

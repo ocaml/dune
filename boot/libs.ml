@@ -5,9 +5,9 @@ let external_libraries = [ "unix"; "threads.posix" ]
 let local_libraries =
   [ ("vendor/pp/src", Some "Pp", false, None)
   ; ("otherlibs/dyn", Some "Dyn", false, None)
-  ; ("vendor/csexp/src", Some "Csexp", false, None)
   ; ("otherlibs/stdune-unstable/dune_filesystem_stubs",
     Some "Dune_filesystem_stubs", false, None)
+  ; ("vendor/csexp/src", Some "Csexp", false, None)
   ; ("otherlibs/stdune-unstable", Some "Stdune", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)

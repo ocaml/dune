@@ -42,9 +42,9 @@ end
 module Path_digest_result : sig
   type nonrec t =
     | Ok of t
-    | Not_found  (** Path does not exist *)
     | Unexpected_kind  (** Not a regular file or a directory *)
     | Error of Unix.error
+        (** For example, [ENOENT] means the path doesn't exist. *)
 
   val equal : t -> t -> bool
 end
@@ -58,11 +58,13 @@ end
       digesting [Stats_for_digest] (except for the [st_kind] field since it's
       known to be [S_DIR] in this case).
 
-    - Otherwise, the function returns [Unexpected_kind]. *)
-val path_with_stats : Path.t -> Stats_for_digest.t -> Path_digest_result.t
+    - Otherwise, the function returns [Unexpected_kind].
 
-(** Like [path_with_stats] but raises on any non-[Ok] result. *)
-val path_with_stats_exn : Path.t -> Stats_for_digest.t -> t
+    Note that this interface is prone to races: the provided [Stats_for_digest]
+    may get stale, so [path_with_stats] may return [Error ENOENT] even though
+    you've just successfully run [Path.stat] on it. The call sites are expected
+    to gracefully handle such races. *)
+val path_with_stats : Path.t -> Stats_for_digest.t -> Path_digest_result.t
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)

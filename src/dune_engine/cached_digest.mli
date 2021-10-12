@@ -14,7 +14,7 @@ module Refresh_result : sig
   type t =
     | Ok of Digest.t
     | No_such_file
-    | Error of exn
+    | Error of exn  (** Can't be [Unix.ENOENT]. *)
 end
 
 (** Same as [build_file], but forces the digest of the file to be re-computed.

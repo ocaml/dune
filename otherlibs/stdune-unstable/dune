@@ -8,7 +8,7 @@
   csexp
   (re_export dyn)
   (re_export pp)
-  dune_filesystem_stubs)
+  (re_export dune_filesystem_stubs))
  (foreign_stubs
   (language c)
   (names fcntl_stubs wait3_stubs)))

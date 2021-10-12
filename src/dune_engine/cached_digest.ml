@@ -157,23 +157,17 @@ module Refresh_result = struct
     | No_such_file
     | Error of exn
 
-  let unexpected_kind = Sys_error "Could not digest a file of unexpected kind"
+  let unexpected_kind st_kind =
+    Sys_error
+      (sprintf "Unexpected file kind %S"
+         (Dune_filesystem_stubs.File_kind.to_string st_kind))
+
+  let unix_error error = Sys_error (Unix.error_message error)
+
+  let broken_symlink = Sys_error "Broken symlink"
 
   let file_does_not_exist =
     Sys_error "Could not digest a file that does not exist"
-
-  let unix_error error =
-    Sys_error
-      (sprintf "Could not digest a file due to a Unix error %s"
-         (Unix.error_message error))
-
-  let broken_symlink = Sys_error "Could not digest a broken symlink"
-
-  let of_digest_result = function
-    | Digest.Path_digest_result.Ok digest -> Ok digest
-    | Not_found -> No_such_file
-    | Unexpected_kind -> Error unexpected_kind
-    | Error error -> Error (unix_error error)
 
   let digest_exn = function
     | Ok digest -> digest
@@ -188,18 +182,21 @@ module Refresh_result = struct
       ()
 end
 
-let refresh stats path =
-  let result =
-    (* CR-someday amokhov: Note that by the time we reach this point, [stats]
-       may become stale due to concurrent processes modifying the [path]. It's
-       unclear how to fix this race. *)
+let digest_path_with_stats path stats =
+  match
     Digest.path_with_stats path (Digest.Stats_for_digest.of_unix_stats stats)
-    |> Refresh_result.of_digest_result
-  in
+  with
+  | Ok digest -> Refresh_result.Ok digest
+  | Unexpected_kind -> Error (Refresh_result.unexpected_kind stats.st_kind)
+  | Error ENOENT -> No_such_file
+  | Error error -> Error (Refresh_result.unix_error error)
+
+let refresh stats path =
+  let result = digest_path_with_stats path stats in
   Refresh_result.iter result ~f:(fun digest -> set_with_stat path digest stats);
   result
 
-let handle_fs_errors f =
+let catch_fs_errors f =
   match f () with
   | result -> result
   | exception ((Unix.Unix_error _ | Sys_error _) as exn) ->
@@ -207,7 +204,7 @@ let handle_fs_errors f =
 
 (* Here we make only one [stat] call on the happy path. *)
 let refresh_without_removing_write_permissions path =
-  handle_fs_errors (fun () ->
+  catch_fs_errors (fun () ->
       match Path.Untracked.stat_exn path with
       | stats -> refresh stats path
       | exception Unix.Unix_error (ENOENT, _, _) -> (
@@ -222,7 +219,7 @@ let refresh_without_removing_write_permissions path =
    should be possible to avoid paying for two system calls ([lstat] and [stat])
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
 let refresh_and_remove_write_permissions path =
-  handle_fs_errors (fun () ->
+  catch_fs_errors (fun () ->
       match Path.Untracked.lstat_exn path with
       | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
       | stats ->
@@ -274,8 +271,10 @@ let peek_file path =
         | Gt
         | Lt ->
           let digest =
-            Digest.path_with_stats_exn path
-              (Digest.Stats_for_digest.of_unix_stats stats)
+            (* CR-someday amokhov: Note that by the time we reach this point,
+               [stats] may become stale due to concurrent processes modifying
+               the [path]. It's unclear how to fix this race. *)
+            digest_path_with_stats path stats |> Refresh_result.digest_exn
           in
           if !Clflags.debug_digests then
             Console.print

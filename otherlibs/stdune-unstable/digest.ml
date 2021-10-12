@@ -102,7 +102,6 @@ end
 module Path_digest_result = struct
   type nonrec t =
     | Ok of t
-    | Not_found
     | Unexpected_kind
     | Error of Unix.error
 
@@ -111,10 +110,6 @@ module Path_digest_result = struct
     | Ok x, Ok y -> D.equal x y
     | Ok _, _
     | _, Ok _ ->
-      false
-    | Not_found, Not_found -> true
-    | Not_found, _
-    | _, Not_found ->
       false
     | Unexpected_kind, Unexpected_kind -> true
     | Unexpected_kind, _
@@ -129,8 +124,7 @@ let path_with_stats path (stats : Stats_for_digest.t) : Path_digest_result.t =
     let executable = stats.st_perm land 0o100 <> 0 in
     match file_with_executable_bit ~executable path with
     | digest -> Ok digest
-    | exception Unix.Unix_error (ENOENT, _, _) -> Not_found
-    | exception Unix.Unix_error (other_error, _, _) -> Error other_error)
+    | exception Unix.Unix_error (error, _, _) -> Error error)
   | S_DIR ->
     (* CR-someday amokhov: The current digesting scheme has collisions for files
        and directories. It's unclear if this is actually a problem. If it turns
@@ -142,15 +136,3 @@ let path_with_stats path (stats : Stats_for_digest.t) : Path_digest_result.t =
   | S_FIFO
   | S_SOCK ->
     Unexpected_kind
-
-let path_with_stats_exn path (stats : Stats_for_digest.t) =
-  match path_with_stats path stats with
-  | Ok digest -> digest
-  | Not_found -> failwith "[path_with_stats_exn]: Path does not exist"
-  | Unexpected_kind ->
-    Printf.sprintf "[path_with_stats_exn]: Unexpected path kind %s"
-      (Dune_filesystem_stubs.File_kind.to_string stats.st_kind)
-  | Error other_error ->
-    failwith
-      (Printf.sprintf "[path_with_stats_exn]: %s"
-         (Unix.error_message other_error))

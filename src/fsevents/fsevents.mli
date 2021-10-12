@@ -4,6 +4,16 @@
 
 val available : unit -> bool
 
+module RunLoop : sig
+  type t
+
+  val in_current_thread : unit -> t
+
+  val run_current_thread : t -> (unit, exn) result
+
+  val stop : t -> unit
+end
+
 module Event : sig
   module Id : sig
     (** monotonically increasing id *)
@@ -55,25 +65,17 @@ type t
 
 (** [create ~paths ~latency ~f] create a new watcher watching [paths], with
     debouncing based on [latency]. [f] is called for every new event *)
-val create :
-  paths:string list -> latency:float -> f:(t -> Event.t list -> unit) -> t
+val create : paths:string list -> latency:float -> f:(Event.t list -> unit) -> t
 
 (** [start t] will start listening for fsevents. Note that the callback will not
     be called until [loop t] is called. *)
-val start : t -> unit
+val start : t -> RunLoop.t -> unit
+
+val runloop : t -> RunLoop.t option
 
 (** [stop t] stop listening to events. Note that this will not make [loop]
     return until [break] is called. *)
 val stop : t -> unit
-
-(** [loop t] start the event loop and execute the callback for the fsevents. *)
-val loop : t -> (unit, exn) result
-
-(** [break t] stop the event loop. This will make [loop t] terminate. *)
-val break : t -> unit
-
-(** [destroy t] cleanup the resources held by [t] *)
-val destroy : t -> unit
 
 (** [flush_sync t] flush all pending events that might be held up by debouncing.
     this function blocks until the final invocation of the callback for all

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- In watch mode, use fsevents instead of fswatch on OSX (#4937, #4990, fixes
+  #4896 @rgrinberg)
+
 - Report cycles between virtual libraries and their implementation (#5050,
   fixes #2896, @rgrinberg)
 

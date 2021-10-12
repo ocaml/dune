@@ -20,28 +20,6 @@ let decompose_inotify_event (event : Inotify_lib.Event.t) =
 
 let inotify_event_paths event = List.map ~f:fst (decompose_inotify_event event)
 
-type kind =
-  | Fswatch of
-      { pid : Pid.t
-      ; wait_for_watches_established : unit -> unit
-      }
-  | Fsevents of Fsevents.t
-  | Inotify of Inotify_lib.t
-
-type t =
-  { kind : kind
-        (* CR-someday amokhov: The way we handle "ignored files" using this
-           mutable table is fragile and also wrong. We use [ignored_files] for
-           the [(mode promote)] feature: if a file is promoted, we call
-           [ignore_next_file_change_event] so that the upcoming file-change
-           event does not invalidate the current build. However, instead of
-           ignoring the events, we should merely postpone them and restart the
-           build to take the promoted files into account if need be. *)
-        (* The [ignored_files] table should be accessed in the scheduler
-           thread. *)
-  ; ignored_files : (string, unit) Table.t
-  }
-
 module Fs_memo_event = struct
   type kind =
     | Created
@@ -79,6 +57,115 @@ module Event = struct
     | Sync
     | Watcher_terminated
 end
+
+module Scheduler = struct
+  type t =
+    { spawn_thread : (unit -> unit) -> unit
+    ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
+    }
+end
+
+module Watch_trie : sig
+  (** Specialized trie for fsevent watches *)
+  type 'a t
+
+  val empty : 'a t
+
+  val to_list : 'a t -> (Path.External.t * 'a) list
+
+  type 'a add =
+    | Under_existing_node
+    | Inserted of
+        { new_t : 'a t
+        ; removed : (Path.External.t * 'a) list
+        }
+
+  val add : 'a t -> Path.External.t -> 'a Lazy.t -> 'a add
+end = struct
+  (* the invariant is that a node can contain either a value or branches, but
+     not both *)
+  type 'a t =
+    | Leaf of Path.External.t * 'a
+    | Branch of 'a t String.Map.t
+
+  type 'a add =
+    | Under_existing_node
+    | Inserted of
+        { new_t : 'a t
+        ; removed : (Path.External.t * 'a) list
+        }
+
+  let empty = Branch String.Map.empty
+
+  let to_list t =
+    let rec loop t acc =
+      match t with
+      | Leaf (k, v) -> (k, v) :: acc
+      | Branch m -> String.Map.fold m ~init:acc ~f:loop
+    in
+    loop t []
+
+  let rec path p a = function
+    | [] -> Leaf (p, a)
+    | x :: xs -> Branch (String.Map.singleton x (path p a xs))
+
+  let add t key v =
+    (* wrong in general, but this is only needed for fsevents *)
+    let comps =
+      match String.split ~on:'/' (Path.External.to_string key) with
+      | "" :: comps -> comps
+      | _ ->
+        (* fsevents gives us only absolute paths *)
+        assert false
+    in
+    let rec add comps t =
+      match (comps, t) with
+      | _, Leaf (_, _) -> Under_existing_node
+      | [], Branch _ ->
+        Inserted { new_t = Leaf (key, Lazy.force v); removed = to_list t }
+      | x :: xs, Branch m -> (
+        match String.Map.find m x with
+        | None ->
+          Inserted
+            { new_t = Branch (String.Map.set m x (path key (Lazy.force v) xs))
+            ; removed = []
+            }
+        | Some m' -> (
+          match add xs m' with
+          | Under_existing_node -> Under_existing_node
+          | Inserted i ->
+            Inserted { i with new_t = Branch (String.Map.set m x i.new_t) }))
+    in
+    add comps t
+end
+
+type kind =
+  | Fswatch of
+      { pid : Pid.t
+      ; wait_for_watches_established : unit -> unit
+      }
+  | Fsevents of
+      { mutable external_ : Fsevents.t Watch_trie.t
+      ; runloop : Fsevents.RunLoop.t
+      ; scheduler : Scheduler.t
+      ; source : Fsevents.t
+      ; sync : Fsevents.t
+      }
+  | Inotify of Inotify_lib.t
+
+type t =
+  { kind : kind
+        (* CR-someday amokhov: The way we handle "ignored files" using this
+           mutable table is fragile and also wrong. We use [ignored_files] for
+           the [(mode promote)] feature: if a file is promoted, we call
+           [ignore_next_file_change_event] so that the upcoming file-change
+           event does not invalidate the current build. However, instead of
+           ignoring the events, we should merely postpone them and restart the
+           build to take the promoted files into account if need be. *)
+        (* The [ignored_files] table should be accessed in the scheduler
+           thread. *)
+  ; ignored_files : (string, unit) Table.t
+  }
 
 let exclude_patterns =
   [ {|/_opam|}
@@ -157,13 +244,6 @@ let process_inotify_event ~ignored_files
         ])
     | Queue_overflow -> [ Event.Queue_overflow ]
 
-module Scheduler = struct
-  type t =
-    { spawn_thread : (unit -> unit) -> unit
-    ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
-    }
-end
-
 let shutdown t =
   match t.kind with
   | Fswatch { pid; _ } -> `Kill pid
@@ -171,8 +251,11 @@ let shutdown t =
   | Fsevents fsevents ->
     `Thunk
       (fun () ->
-        List.iter [ Fsevents.stop; Fsevents.break; Fsevents.destroy ]
-          ~f:(fun f -> f fsevents))
+        Fsevents.stop fsevents.source;
+        Fsevents.stop fsevents.sync;
+        Watch_trie.to_list fsevents.external_
+        |> List.iter ~f:(fun (_, fs) -> Fsevents.stop fs);
+        Fsevents.RunLoop.stop fsevents.runloop)
 
 let buffer_capacity = 65536
 
@@ -216,13 +299,16 @@ module Buffer = struct
          List.rev !lines)
 end
 
-let special_file_for_inotify_sync =
-  let path = lazy (Path.Build.relative Path.Build.root "dune-inotify-sync") in
+let special_file_for_fs_sync =
+  let path =
+    lazy
+      (let dir = Path.Build.relative Path.Build.root ".sync" in
+       Path.Build.relative dir "token")
+  in
   fun () -> Lazy.force path
 
 let special_file_for_inotify_sync_absolute =
-  lazy
-    (Path.to_absolute_filename (Path.build (special_file_for_inotify_sync ())))
+  lazy (Path.to_absolute_filename (Path.build (special_file_for_fs_sync ())))
 
 let is_special_file_for_inotify_sync (path : Path.t) =
   match path with
@@ -231,7 +317,7 @@ let is_special_file_for_inotify_sync (path : Path.t) =
     String.equal (Path.to_string path)
       (Lazy.force special_file_for_inotify_sync_absolute)
   | In_build_dir build_path ->
-    Path.Build.( = ) build_path (special_file_for_inotify_sync ())
+    Path.Build.( = ) build_path (special_file_for_fs_sync ())
 
 let command ~root ~backend =
   let exclude_paths =
@@ -246,7 +332,7 @@ let command ~root ~backend =
   in
   let root = Path.to_string root in
   let inotify_special_path =
-    Path.Build.to_string (special_file_for_inotify_sync ())
+    Path.Build.to_string (special_file_for_fs_sync ())
   in
   match backend with
   | `Fswatch fswatch ->
@@ -298,10 +384,12 @@ let select_watcher_backend () =
     fswatch_backend ()
 
 let emit_sync () =
-  Io.write_file (Path.build (special_file_for_inotify_sync ())) "z"
+  let path = Path.build (special_file_for_fs_sync ()) in
+  Io.write_file path "z"
 
 let prepare_sync () =
-  Path.mkdir_p (Path.parent_exn (Path.build (special_file_for_inotify_sync ())));
+  let dir = Path.parent_exn (Path.build (special_file_for_fs_sync ())) in
+  Path.mkdir_p dir;
   emit_sync ()
 
 let spawn_external_watcher ~root ~backend =
@@ -317,7 +405,7 @@ let spawn_external_watcher ~root ~backend =
   ((r_stdout, parse_line, wait), pid)
 
 let create_inotifylib_watcher ~ignored_files ~(scheduler : Scheduler.t) =
-  let special_file_for_inotify_sync = special_file_for_inotify_sync () in
+  let special_file_for_inotify_sync = special_file_for_fs_sync () in
   Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
     ~send_emit_events_job_to_scheduler:(fun f ->
@@ -418,61 +506,106 @@ let create_inotifylib ~scheduler =
   let ignored_files = Table.create (module String) 64 in
   let inotify = create_inotifylib_watcher ~ignored_files ~scheduler in
   Inotify_lib.add inotify
-    (Path.to_string (Path.build (special_file_for_inotify_sync ())));
+    (Path.to_string (Path.build (special_file_for_fs_sync ())));
   { kind = Inotify inotify; ignored_files }
 
-let create_fsevents ~(scheduler : Scheduler.t) =
-  let ignored_files = Table.create (module String) 64 in
+let fsevents_callback (scheduler : Scheduler.t) ~f events =
+  scheduler.thread_safe_send_emit_events_job (fun () ->
+      List.filter_map events ~f:(fun event ->
+          let path =
+            Fsevents.Event.path event |> Path.of_string
+            |> Path.Expert.try_localize_external
+          in
+          f event path))
+
+let fsevents ?exclusion_paths ~paths scheduler f =
+  let paths = List.map paths ~f:Path.to_absolute_filename in
   let fsevents =
-    let paths = [ Path.to_string Path.root ] in
-    Fsevents.create ~paths ~latency:0.2 ~f:(fun _ events ->
-        scheduler.thread_safe_send_emit_events_job (fun () ->
-            List.filter_map events ~f:(fun event ->
-                let path =
-                  Fsevents.Event.path event |> Path.of_string
-                  |> Path.Expert.try_localize_external
-                in
-                let action = Fsevents.Event.action event in
-                if is_special_file_for_inotify_sync path then
-                  match action with
-                  | Unknown
-                  | Create
-                  | Modify ->
-                    Some Event.Sync
-                  | Remove -> None
-                else if Path.is_in_build_dir path then
-                  (* we cannot ignore the build dir by setting the exclusion
-                     path because we'd miss the sync events *)
-                  None
-                else
-                  let kind =
-                    match action with
-                    | Unknown -> Fs_memo_event.Unknown
-                    | Create -> Created
-                    | Remove -> Deleted
-                    | Modify ->
-                      if Fsevents.Event.kind event = File then
-                        File_changed
-                      else
-                        Unknown
-                  in
-                  Some (Event.Fs_memo_event { Fs_memo_event.kind; path }))))
+    Fsevents.create ~latency:0.2 ~paths ~f:(fsevents_callback scheduler ~f)
   in
+  Option.iter exclusion_paths ~f:(fun paths ->
+      Fsevents.set_exclusion_paths fsevents ~paths);
+  fsevents
+
+let fsevents_standard_event event ~ignored_files path =
+  let string_path = Fsevents.Event.path event in
+  if Table.mem ignored_files string_path then (
+    Table.remove ignored_files string_path;
+    None
+  ) else
+    let action = Fsevents.Event.action event in
+    let kind =
+      match action with
+      | Unknown -> Fs_memo_event.Unknown
+      | Create -> Created
+      | Remove -> Deleted
+      | Modify ->
+        if Fsevents.Event.kind event = File then
+          File_changed
+        else
+          Unknown
+    in
+    Some (Event.Fs_memo_event { Fs_memo_event.kind; path })
+
+let create_fsevents ~(scheduler : Scheduler.t) =
+  prepare_sync ();
+  let ignored_files = Table.create (module String) 64 in
+  let sync =
+    fsevents scheduler
+      ~paths:
+        [ special_file_for_fs_sync () |> Path.Build.parent_exn |> Path.build ]
+      (fun event path ->
+        let action = Fsevents.Event.action event in
+        if is_special_file_for_inotify_sync path then
+          match action with
+          | Unknown
+          | Create
+          | Modify ->
+            Some Event.Sync
+          | Remove -> None
+        else
+          None)
+  in
+  let source =
+    let paths = [ Path.root ] in
+    let exclusion_paths =
+      Path.(build Build.root)
+      :: ([ "_esy"; "_opam"; ".git"; ".hg" ]
+         |> List.rev_map ~f:(fun base ->
+                let path = Path.relative (Path.source Path.Source.root) base in
+                path))
+      |> List.rev_map ~f:Path.to_absolute_filename
+    in
+    fsevents scheduler ~exclusion_paths ~paths
+      (fsevents_standard_event ~ignored_files)
+  in
+  let cv = Condition.create () in
+  let runloop_ref = ref None in
+  let mutex = Mutex.create () in
   scheduler.spawn_thread (fun () ->
-      Fsevents.start fsevents;
-      match Fsevents.loop fsevents with
+      let runloop = Fsevents.RunLoop.in_current_thread () in
+      Mutex.lock mutex;
+      runloop_ref := Some runloop;
+      Condition.signal cv;
+      Mutex.unlock mutex;
+      Fsevents.start source runloop;
+      Fsevents.start sync runloop;
+      match Fsevents.RunLoop.run_current_thread runloop with
       | Ok () -> ()
       | Error exn ->
         Code_error.raise "fsevents callback raised" [ ("exn", Exn.to_dyn exn) ]);
-  Fsevents.set_exclusion_paths fsevents
-    ~paths:
-      ((* For now, we don't ignore the build directroy because we want to
-          receive events from the special event sync event *)
-       [ "_esy"; "_opam"; ".git"; ".hg" ]
-      |> List.rev_map ~f:(fun base ->
-             let path = Path.relative (Path.source Path.Source.root) base in
-             Path.to_absolute_filename path));
-  { kind = Fsevents fsevents; ignored_files }
+  let external_ = Watch_trie.empty in
+  let runloop =
+    Mutex.lock mutex;
+    while !runloop_ref = None do
+      Condition.wait cv mutex
+    done;
+    Mutex.unlock mutex;
+    Option.value_exn !runloop_ref
+  in
+  { kind = Fsevents { scheduler; sync; source; external_; runloop }
+  ; ignored_files
+  }
 
 let create_external ~root ~debounce_interval ~scheduler ~backend =
   match debounce_interval with
@@ -501,13 +634,51 @@ let wait_for_initial_watches_established_blocking t =
 
 let add_watch t path =
   match t.kind with
-  | Fsevents _
+  | Fsevents f -> (
+    match path with
+    | Path.In_source_tree _ -> (* already watched by source watcher *) Ok ()
+    | In_build_dir _ ->
+      Code_error.raise "attempted to watch a directory in build" []
+    | External ext -> (
+      let ext =
+        let rec loop p =
+          if Path.is_directory (Path.external_ p) then
+            Some ext
+          else
+            match Path.External.parent p with
+            | None ->
+              User_warning.emit
+                [ Pp.textf "Refusing to watch %s" (Path.External.to_string ext)
+                ];
+              None
+            | Some ext -> loop ext
+        in
+        loop ext
+      in
+      match ext with
+      | None -> Ok ()
+      | Some ext -> (
+        let watch =
+          lazy
+            (fsevents f.scheduler ~paths:[ path ]
+               (fsevents_standard_event ~ignored_files:t.ignored_files))
+        in
+        match Watch_trie.add f.external_ ext watch with
+        | Watch_trie.Under_existing_node -> Ok ()
+        | Inserted { new_t; removed } ->
+          let watch = Lazy.force watch in
+          Fsevents.start watch f.runloop;
+          List.iter removed ~f:(fun (_, fs) -> Fsevents.stop fs);
+          f.external_ <- new_t;
+          Ok ())))
   | Fswatch _ ->
     (* Here we assume that the path is already being watched because the coarse
        file watchers are expected to watch all the source files from the
        start *)
-    ()
-  | Inotify inotify -> Inotify_lib.add inotify (Path.to_string path)
+    Ok ()
+  | Inotify inotify -> (
+    try Ok (Inotify_lib.add inotify (Path.to_string path)) with
+    | Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
 
 let ignore_next_file_change_event t path =
   assert (Path.is_in_source_tree path);

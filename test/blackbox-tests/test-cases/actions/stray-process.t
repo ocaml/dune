@@ -17,22 +17,21 @@ Shows what happens when Dune tries to kill an action that has sub-processes.
   $ start_dune
   $ build x >/dev/null 2>&1 &
 
+sub_process.exe spawns a sub-process that creates $BEACON_FILE. We
+wait for the beacon to be notified that the sub-process has started:
+
   $ with_timeout dune_cmd wait-for-file-to-appear $BEACON_FILE
+  $ CHILD_PID=`cat $BEACON_FILE`
+
+Now we stop Dune, which should normally kill all sub-processes:
 
   $ stop_dune
   waiting for inotify sync
   waited for inotify sync
 
-Both processes should have terminated gracefully as sub_process.exe
-correctly handles SIGTERM:
-
-  $ if test -f $BEACON_FILE.parent; then echo "ok"; else echo "fail"; fi
-  fail
-  $ if test -f $BEACON_FILE.child; then echo "ok"; else echo "fail"; fi
-  fail
-
-The sub-process is still running, which is bad:
-
-  $ rm -f $BEACON_FILE
-  $ with_timeout dune_cmd wait-for-file-to-appear $BEACON_FILE
-
+  $ if kill -s 0 $CHILD_PID; then
+  >   echo "FAILURE: child is still running"
+  > else
+  >   echo "SUCCESS: child has exited"
+  > fi
+  FAILURE: child is still running

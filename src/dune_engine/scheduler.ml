@@ -1265,11 +1265,7 @@ module Run = struct
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
-    Option.iter file_watcher ~f:(fun watcher ->
-        match Dune_file_watcher.shutdown watcher with
-        | `Kill pid -> ignore (wait_for_process t pid : _ Fiber.t)
-        | `Thunk f -> f ()
-        | `No_op -> ());
+    Option.iter file_watcher ~f:Dune_file_watcher.shutdown;
     ignore (kill_and_wait_for_all_processes t : saw_signal);
     if Lazy.is_val t.alarm_clock then
       Alarm_clock.close (Lazy.force t.alarm_clock);

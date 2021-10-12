@@ -7,14 +7,13 @@ let
 in pkgs.mkShell {
   # standard dependencies fetched from nixpkgs. essentially everything outside
   # of opam
-  buildInputs = (with pkgs; [
+  buildInputs = (with pkgs; ([
     coreutils
     # we prefer tools from outside our opam build plan to minimize conflicts
     ocamlformat_0_19_0
     ocamlPackages.ocaml-lsp
     git
     mercurial # for tests
-    (if stdenv.isDarwin then fswatch else inotify-tools)
     opam
     nodejs-14_x
     patdiff
@@ -27,7 +26,8 @@ in pkgs.mkShell {
     python38Packages.sphinx_rtd_theme
     # opam dependencies. the versions for these are solved for in
     # nix/opam-selection.nix
-  ]) ++ (with local.opam; [
+  ] ++ (if stdenv.isDarwin then [fswatch] else [])))
+  ++ (with local.opam; [
     lwt
     bisect_ppx
     cinaps
@@ -46,5 +46,4 @@ in pkgs.mkShell {
     result
     utop
   ]) ++ [ local.coq-core ];
-
 }

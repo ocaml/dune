@@ -10,6 +10,10 @@ module Dune : sig
 
   val where : t -> Where.t
 
+  val to_dyn : t -> Dyn.t
+
+  val compare : t -> t -> int
+
   val root : t -> string
 
   val pid : t -> int

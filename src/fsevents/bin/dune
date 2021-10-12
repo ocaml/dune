@@ -1,0 +1,5 @@
+;; a little binary to test out our fsevents bindings
+
+(executable
+ (name dune_fsevents)
+ (libraries threads.posix dyn fsevents))

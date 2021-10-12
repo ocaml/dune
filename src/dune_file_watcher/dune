@@ -2,6 +2,7 @@
  (name dune_file_watcher)
  (libraries
   spawn
+  fsevents
   unix
   stdune
   threads.posix

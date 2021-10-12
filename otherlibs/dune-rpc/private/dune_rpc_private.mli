@@ -156,6 +156,8 @@ module Path : sig
   val absolute : string -> t
 
   val relative : t -> string -> t
+
+  val to_string_absolute : t -> string
 end
 
 module Diagnostic : sig
@@ -327,6 +329,8 @@ module Procedures : sig
       (Path.t * [ `Contents of string ], string) Decl.Request.t
 
     val promote : (Path.t, unit) Decl.Request.t
+
+    val build_dir : (unit, Path.t) Decl.Request.t
   end
 
   module Server_side : sig
@@ -421,6 +425,8 @@ module Public : sig
     val format_dune_file : (Path.t * [ `Contents of string ], string) t
 
     val promote : (Path.t, unit) t
+
+    val build_dir : (unit, Path.t) t
   end
 
   module Notification : sig

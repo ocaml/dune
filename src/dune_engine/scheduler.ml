@@ -1268,6 +1268,7 @@ module Run = struct
     Option.iter file_watcher ~f:(fun watcher ->
         match Dune_file_watcher.shutdown watcher with
         | `Kill pid -> ignore (wait_for_process t pid : _ Fiber.t)
+        | `Thunk f -> f ()
         | `No_op -> ());
     ignore (kill_and_wait_for_all_processes t : saw_signal);
     if Lazy.is_val t.alarm_clock then

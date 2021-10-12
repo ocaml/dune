@@ -21,3 +21,6 @@ val ocamlc_i :
 
 val build_all :
   Compilation_context.t -> dep_graphs:Dep_graph.Ml_kind.t -> unit Memo.Build.t
+
+val with_empty_intf :
+  sctx:Super_context.t -> dir:Path.Build.t -> Module.t -> Module.t Memo.Build.t

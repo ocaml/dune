@@ -1,6 +1,18 @@
 Unreleased
 ----------
 
+- Fix interpretation of `binaries` defined in the `env stanza`. Binaries
+  defined in `x/dune` wouldn't be visible in `x/*/**/dune. (#4975, fixes #4976,
+  @Leonidas-from-XIV, @rgrinberg)
+
+- Do not list private libraries in package listings (#4945, fixes #4799,
+  @rgrinberg)
+
+- Allow spaces in cram test paths (#4980, fixes #4162, @rgrinberg)
+
+- Improve error handling of misbehaving cram scripts. (#4981, fix #4230,
+  @rgrinberg)
+
 - Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
   when this field was present (#4942, fix #4946, @rgrinberg)
 
@@ -200,6 +212,9 @@ Unreleased
 
 - Dune no longer reads installed META files for libraries distributed with the
   compiler, instead using its own internal database. (#4946, @nojb)
+
+- Add support for `(empty_module_interface_if_absent)` in executable and library
+  stanzas. (#4955, @nojb)
 
 2.9.1 (07/09/2021)
 ------------------

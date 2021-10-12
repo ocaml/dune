@@ -34,6 +34,7 @@ let local_libraries =
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/thread_worker", Some "Thread_worker", false, None)
   ; ("src/ocamlc_loc", Some "Ocamlc_loc", false, None)
+  ; ("src/fsevents", Some "Fsevents", false, None)
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)
   ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false,
     None)
@@ -47,4 +48,13 @@ let local_libraries =
     Some "Build_info_data")
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
+  ]
+
+let link_flags =
+  [ ("macosx",
+    [ "-cclib"
+    ; "-framework Foundation"
+    ; "-cclib"
+    ; "-framework CoreServices"
+    ])
   ]

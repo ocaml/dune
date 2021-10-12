@@ -42,6 +42,7 @@ module Buildable : sig
     { loc : Loc.t
     ; modules : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
+    ; empty_module_interface_if_absent : bool
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list

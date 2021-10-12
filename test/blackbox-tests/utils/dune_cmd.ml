@@ -300,6 +300,25 @@ module Find_by_contents = struct
   let () = register name of_args run
 end
 
+module Wait_for_file_to_appear = struct
+  type t = { file : Path.t }
+
+  let name = "wait-for-file-to-appear"
+
+  let of_args = function
+    | [ file ] ->
+      let file = Path.of_filename_relative_to_initial_cwd file in
+      { file }
+    | _ -> raise (Arg.Bad (sprintf "1 argument must be provided"))
+
+  let run { file } =
+    while not (Path.exists file) do
+      Unix.sleepf 0.01
+    done
+
+  let () = register name of_args run
+end
+
 let () =
   let name, args =
     match Array.to_list Sys.argv with

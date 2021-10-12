@@ -12,6 +12,8 @@ module Public : sig
     (Path.t * [ `Contents of string ], string) Decl.Request.t
 
   val promote : (Path.t, unit) Decl.Request.t
+
+  val build_dir : (unit, Path.t) Decl.Request.t
 end
 
 module Server_side : sig

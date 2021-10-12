@@ -87,6 +87,12 @@ module Session = struct
       | Uninitialized -> assert false
       | Initialized s -> t.state <- Initialized { s with closed = true }
 
+    let closed t =
+      match t.state with
+      | Uninitialized ->
+        Code_error.raise "closed: called on uninitialized session" []
+      | Initialized { closed; _ } -> closed
+
     let id t = t.id
 
     let send t packets = t.send packets
@@ -132,6 +138,8 @@ module Session = struct
   let close t = Stage1.close t.base
 
   let request_close t = Stage1.request_close t.base
+
+  let closed t = Stage1.closed t.base
 
   let compare x y = Stage1.compare x.base y.base
 
@@ -261,6 +269,64 @@ module H = struct
     let* () = Session.Stage1.send session (Some [ Notification call ]) in
     Session.Stage1.send session None
 
+  let dispatch_notification (type a) (t : a t) stats (session : a Session.t)
+      meth_ n () =
+    let kind = Notification in
+    Event.emit
+      (Message { kind; meth_; stage = Start })
+      stats (Session.id session);
+    let+ result = V.Handler.handle_notification t.handler session n in
+    let () =
+      match result with
+      | Error e ->
+        Code_error.raise "received badly-versioned notification"
+          [ ( "notification"
+            , Dyn.Record
+                [ ("method_", Dyn.String n.method_)
+                ; ("params", Sexp.to_dyn n.params)
+                ] )
+          ; ("description", Response.Error.to_dyn e)
+          ]
+      | Ok r -> r
+    in
+    Event.emit
+      (Message { kind; meth_; stage = Stop })
+      stats (Session.id session)
+
+  let dispatch_request (type a) (t : a t) stats (session : a Session.t) meth_ r
+      id () =
+    let kind = Request id in
+    Event.emit
+      (Message { kind; meth_; stage = Start })
+      stats (Session.id session);
+    let* response =
+      let+ result =
+        Fiber.collect_errors (fun () ->
+            V.Handler.handle_request t.handler session (id, r))
+      in
+      match result with
+      | Ok r -> r
+      | Error [ { Exn_with_backtrace.exn = Response.Error.E e; backtrace = _ } ]
+        ->
+        Error e
+      | Error xs ->
+        let payload =
+          Sexp.List
+            (List.map xs ~f:(fun x ->
+                 Exn_with_backtrace.to_dyn x |> Sexp.of_dyn))
+        in
+        Error
+          (Response.Error.create ~kind:Code_error ~message:"server error"
+             ~payload ())
+    in
+    Event.emit
+      (Message { kind; meth_; stage = Stop })
+      stats (Session.id session);
+    if Session.closed session then
+      Fiber.return ()
+    else
+      Session.send session (Some [ Response (id, response) ])
+
   let run_session (type a) (t : a t) stats (session : a Session.t) =
     let open Fiber.O in
     let* () =
@@ -274,59 +340,11 @@ module H = struct
           in
           match message with
           | Notification n ->
-            let kind = Notification in
-            Event.emit
-              (Message { kind; meth_; stage = Start })
-              stats (Session.id session);
-            let+ result = V.Handler.handle_notification t.handler session n in
-            let () =
-              match result with
-              | Error e ->
-                Code_error.raise "received badly-versioned notification"
-                  [ ( "notification"
-                    , Dyn.Record
-                        [ ("method_", Dyn.String n.method_)
-                        ; ("params", Sexp.to_dyn n.params)
-                        ] )
-                  ; ("description", Response.Error.to_dyn e)
-                  ]
-              | Ok r -> r
-            in
-            Event.emit
-              (Message { kind; meth_; stage = Stop })
-              stats (Session.id session)
+            Fiber.Pool.task session.base.pool
+              ~f:(dispatch_notification t stats session meth_ n)
           | Request (id, r) ->
-            let kind = Request id in
-            Event.emit
-              (Message { kind; meth_; stage = Start })
-              stats (Session.id session);
-            let* response =
-              let+ result =
-                Fiber.collect_errors (fun () ->
-                    V.Handler.handle_request t.handler session (id, r))
-              in
-              match result with
-              | Ok r -> r
-              | Error
-                  [ { Exn_with_backtrace.exn = Response.Error.E e
-                    ; backtrace = _
-                    }
-                  ] ->
-                Error e
-              | Error xs ->
-                let payload =
-                  Sexp.List
-                    (List.map xs ~f:(fun x ->
-                         Exn_with_backtrace.to_dyn x |> Sexp.of_dyn))
-                in
-                Error
-                  (Response.Error.create ~kind:Code_error
-                     ~message:"server error" ~payload ())
-            in
-            Event.emit
-              (Message { kind; meth_; stage = Stop })
-              stats (Session.id session);
-            Session.send session (Some [ Response (id, response) ]))
+            Fiber.Pool.task session.base.pool
+              ~f:(dispatch_request t stats session meth_ r id))
     in
     let* () = Session.request_close session in
     let+ () = t.base.on_terminate session in
@@ -383,7 +401,7 @@ module H = struct
         | Error e -> session.send (Some [ Response (id, Error e) ])
         | Ok init ->
           let protocol_ver = Initialize.Request.protocol_version init in
-          if protocol_ver != Protocol.latest_version then
+          if protocol_ver <> Protocol.latest_version then
             abort session
               ~message:"The server and client use incompatible protocols."
           else

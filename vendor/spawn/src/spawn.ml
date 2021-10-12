@@ -75,6 +75,21 @@ module Env : Env = (val if Sys.win32 then
                         else
                           (module Env_unix) : Env)
 
+module Pgid = struct
+  type t = int
+
+  let new_process_group = 0
+
+  let of_pid = function
+    | 0 ->
+      raise (Invalid_argument "bad pid: 0 (hint: use [Pgid.new_process_group])")
+    | t ->
+      if t < 0 then
+        raise (Invalid_argument ("bad pid: " ^ string_of_int t))
+      else
+        t
+end
+
 external spawn_unix :
      env:Env.t option
   -> cwd:Working_dir.t
@@ -84,6 +99,7 @@ external spawn_unix :
   -> stdout:Unix.file_descr
   -> stderr:Unix.file_descr
   -> use_vfork:bool
+  -> setpgid:int option
   -> int = "spawn_unix_byte" "spawn_unix"
 
 external spawn_windows :
@@ -96,7 +112,8 @@ external spawn_windows :
   -> stderr:Unix.file_descr
   -> int = "spawn_windows_byte" "spawn_windows"
 
-let spawn_windows ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork:_ =
+let spawn_windows ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork:_
+    ~setpgid:_ =
   let cwd =
     match (cwd : Working_dir.t) with
     | Path p -> Some p
@@ -120,7 +137,7 @@ let no_null s =
 
 let spawn ?env ?(cwd = Working_dir.Inherit) ~prog ~argv ?(stdin = Unix.stdin)
     ?(stdout = Unix.stdout) ?(stderr = Unix.stderr)
-    ?(unix_backend = Unix_backend.default) () =
+    ?(unix_backend = Unix_backend.default) ?setpgid () =
   (match cwd with
   | Path s -> no_null s
   | Fd _
@@ -139,25 +156,13 @@ let spawn ?env ?(cwd = Working_dir.Inherit) ~prog ~argv ?(stdin = Unix.stdin)
     | Vfork -> true
     | Fork -> false
   in
-  backend ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork
+  backend ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid
 
 external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "spawn_pipe"
 
 let safe_pipe =
-  if Sys.win32 then (
+  if Sys.win32 then
     fun () ->
-  (* CR-someday jdimino: fix race conditions on Windows *)
-  let fdr, fdw = Unix.pipe () in
-  match
-    Unix.set_close_on_exec fdr;
-    Unix.set_close_on_exec fdw
-  with
-  | () -> (fdr, fdw)
-  | exception exn ->
-    (try Unix.close fdr with
-    | _ -> ());
-    (try Unix.close fdw with
-    | _ -> ());
-    raise exn
-  ) else
+  Unix.pipe ~cloexec:true ()
+  else
     safe_pipe

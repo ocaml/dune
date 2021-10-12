@@ -31,6 +31,21 @@ module Env : sig
   val of_list : string list -> t
 end
 
+(** Process group IDs *)
+module Pgid : sig
+  (** Representation of the second parameter to [setpgid]. If a value of this
+      type is provided to [spawn], the child will immediately set its pgid
+      accordingly. *)
+  type t
+
+  (** Sets the child's pgid to the same as its process id. Equivalent to calling
+      [setpgid(0, 0)]. *)
+  val new_process_group : t
+
+  (** Raises [Invalid_arg] if the value is not strictly positive. *)
+  val of_pid : int -> t
+end
+
 (** Spawn a sub-command and return its PID. This function is low-level and
     should be used to build higher-level APIs.
 
@@ -73,6 +88,12 @@ end
     input, output and error output of the sub-process. When not specified, they
     default to the ones from the calling process.
 
+    {b Process groups}
+
+    If [setpgid] is provided, the child will immediately call [setpgid(0,pid)],
+    where [pid] is a [pid_t] determined from the [Pgid.t] given (see that
+    module). This parameter has no effect on Windows platforms.
+
     {b Signals}
 
     On Unix, the sub-process will have all its signals unblocked.
@@ -91,6 +112,7 @@ val spawn :
   -> ?stdout:Unix.file_descr
   -> ?stderr:Unix.file_descr
   -> ?unix_backend:Unix_backend.t (* default: [Unix_backend.default] *)
+  -> ?setpgid:Pgid.t
   -> unit
   -> int
 

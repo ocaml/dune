@@ -607,6 +607,24 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 
+let init_sandbox =
+  let init =
+    lazy
+      (let dir = Path.build sandbox_dir in
+       Path.mkdir_p (Path.relative dir ".hg");
+       (* We create an empty [.git] file to prevent git from escaping the
+          sandbox. It will choke on this empty .git and report an error about
+          its format being invalid. *)
+       Io.write_file (Path.relative dir ".git") "";
+       (* We create a [.hg/requires] file to prevent hg from escaping the
+          sandbox. It will complain that "Escaping the Dune sandbox" is an
+          unkown feature. *)
+       Io.write_file
+         (Path.relative dir ".hg/requires")
+         "Escaping the Dune sandbox")
+  in
+  fun () -> Lazy.force init
+
 let rec with_locks t mutexes ~f =
   match mutexes with
   | [] -> f ()
@@ -1446,6 +1464,7 @@ end = struct
       match sandbox with
       | None -> (None, action)
       | Some (sandbox_dir, sandbox_mode) ->
+        init_sandbox ();
         Path.rm_rf (Path.build sandbox_dir);
         let sandboxed path : Path.Build.t =
           Path.Build.append_local sandbox_dir (Path.Build.local path)

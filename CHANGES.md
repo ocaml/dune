@@ -218,6 +218,10 @@ Unreleased
 
 - Add support for `%{bin-available:...}` (#4995, @jeremiedimino)
 
+- Make sure running `git` or `hg` in a sandboxed action, such as a
+  cram test cannot escape the sandbox and pick up some random git or
+  mercurial repository on the file system (#4996, @jeremiedimino)
+
 2.9.1 (07/09/2021)
 ------------------
 

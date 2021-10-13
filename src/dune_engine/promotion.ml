@@ -129,33 +129,23 @@ type files_to_promote =
 
 let do_promote db files_to_promote =
   let by_targets = group_by_targets db in
-  let potential_build_contexts =
-    match Path.Untracked.readdir_unsorted_with_kinds Path.build_dir with
-    | exception _ -> []
-    | Error _ -> []
-    | Ok files ->
-      List.filter_map files ~f:(function
-        | fn, Unix.S_DIR ->
-          if fn = "" || fn.[0] = '.' || fn = "install" then
-            None
-          else
-            Some (Path.(relative build_dir) fn)
-        | _ -> None)
-  in
-  let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in
   let promote_one dst srcs =
     match srcs with
     | [] -> assert false
     | (src, staging) :: others ->
-      (* We remove the files from the digest cache to force a rehash on the next
-         run. We do this because on OSX [mtime] is not precise enough and if a
-         file is modified and promoted quickly, it will look like it hasn't
-         changed even though it might have.
+      (* We used to remove promoted files from the digest cache, to force Dune
+         to redigest them on the next run. We did this because on OSX [mtime] is
+         not precise enough and if a file is modified and promoted quickly, it
+         looked like it hadn't changed even though it might have.
 
-         aalekseyev: this is probably unnecessary now, depending on when
-         [do_promote] runs (before or after [invalidate_cached_timestamps]) *)
-      List.iter dirs_to_clear_from_cache ~f:(fun dir ->
-          Cached_digest.remove (Path.append_source dir dst));
+         aalekseyev: This is probably unnecessary now, depending on when
+         [do_promote] runs (before or after [invalidate_cached_timestamps]).
+
+         amokhov: I removed this logic. In the current state of the world, files
+         in the build directory should be redigested automatically (plus we do
+         not promote into the build directory anyway), and source digests should
+         be correctly invalidated via [fs_memo]. If that doesn't happen, we
+         should fix [fs_memo] instead of manually resetting the caches here. *)
       File.promote { src; staging; dst };
       List.iter others ~f:(fun (path, _staging) ->
           Console.print

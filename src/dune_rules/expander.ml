@@ -564,6 +564,13 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                let open Memo.Build.O in
                let+ available = Lib.DB.available (Scope.libs t.scope) lib in
                available |> string_of_bool |> string))
+      | Bin_available ->
+        Need_full_expander
+          (fun t ->
+            Without
+              (let open Memo.Build.O in
+              let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
+              b |> string_of_bool |> string))
       | Read ->
         let path = relative ~source dir s in
         Direct

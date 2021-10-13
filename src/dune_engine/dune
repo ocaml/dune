@@ -31,6 +31,7 @@
   spawn
   ocamlc_loc
   dune_file_watcher
+  dune_filesystem_stubs
   ocaml_inotify
   async_inotify_for_dune)
  (synopsis "Internal Dune library, do not use!"))

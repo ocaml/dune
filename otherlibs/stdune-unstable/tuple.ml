@@ -21,4 +21,6 @@ module T3 = struct
   let to_dyn = Dyn.Encoder.triple
 
   let hash f g h (a, b, c) = Hashtbl.hash (f a, g b, h c)
+
+  let equal f g h (a1, b1, c1) (a2, b2, c2) = f a1 a2 && g b1 b2 && h c1 c2
 end

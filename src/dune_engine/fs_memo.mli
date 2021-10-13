@@ -20,7 +20,7 @@ val path_stat : Path.t -> (Unix.stats, Unix.error) result Memo.Build.t
 
 (** Digest the contents of a source or external file and declare a dependency on
     it. *)
-val file_digest : Path.t -> Digest.t Memo.Build.t
+val file_digest : Path.t -> Cached_digest.Digest_result.t Memo.Build.t
 
 (** Like [Io.Untracked.with_lexbuf_from_file] but declares a dependency on the
     path. *)

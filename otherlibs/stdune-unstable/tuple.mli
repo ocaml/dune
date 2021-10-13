@@ -25,4 +25,12 @@ module T3 : sig
     ('a -> Dyn.t) -> ('b -> Dyn.t) -> ('c -> Dyn.t) -> ('a, 'b, 'c) t -> Dyn.t
 
   val hash : ('a -> int) -> ('b -> int) -> ('c -> int) -> ('a, 'b, 'c) t -> int
+
+  val equal :
+       ('a -> 'a -> bool)
+    -> ('b -> 'b -> bool)
+    -> ('c -> 'c -> bool)
+    -> ('a, 'b, 'c) t
+    -> ('a, 'b, 'c) t
+    -> bool
 end

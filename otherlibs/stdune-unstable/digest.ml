@@ -103,7 +103,7 @@ module Path_digest_result = struct
   type nonrec t =
     | Ok of t
     | Unexpected_kind
-    | Error of Unix.error
+    | Unix_error of (Unix.error * string * string)
 
   let equal x y =
     match (x, y) with
@@ -115,7 +115,8 @@ module Path_digest_result = struct
     | Unexpected_kind, _
     | _, Unexpected_kind ->
       false
-    | Error x, Error y -> Unix_error.equal x y
+    | Unix_error x, Unix_error y ->
+      Tuple.T3.equal Unix_error.equal String.equal String.equal x y
 end
 
 let path_with_stats path (stats : Stats_for_digest.t) : Path_digest_result.t =
@@ -124,7 +125,8 @@ let path_with_stats path (stats : Stats_for_digest.t) : Path_digest_result.t =
     let executable = stats.st_perm land 0o100 <> 0 in
     match file_with_executable_bit ~executable path with
     | digest -> Ok digest
-    | exception Unix.Unix_error (error, _, _) -> Error error)
+    | exception Unix.Unix_error (error, syscall, arg) ->
+      Unix_error (error, syscall, arg))
   | S_DIR ->
     (* CR-someday amokhov: The current digesting scheme has collisions for files
        and directories. It's unclear if this is actually a problem. If it turns

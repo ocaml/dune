@@ -15,8 +15,10 @@ Check that actions don't have access to the outter hg repository.
   Promoting _build/default/test.t.corrected to test.t.
   [1]
 
-The inner call to hg shouldn't be able to access the outter git repo:
+The inner call to hg shouldn't be able to access the outer hg repo:
 
   $ cat test.t
     $ hg root
-    $TESTCASE_ROOT/hg
+    abort: repository requires features unknown to this Mercurial: Escaping the Dune sandbox!
+    (see https://mercurial-scm.org/wiki/MissingRequirement for more information)
+    [255]

@@ -19,4 +19,5 @@ The inner call to git shouldn't be able to access the outer git repo:
 
   $ cat test.t
     $ git rev-parse --show-toplevel
-    $TESTCASE_ROOT/git
+    fatal: invalid gitfile format: $TESTCASE_ROOT/git/_build/.sandbox/.git
+    [128]

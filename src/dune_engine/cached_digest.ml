@@ -260,6 +260,7 @@ let peek_file path =
       (if x.stats_checked = cache.checked_key then
         x.digest
       else
+        (* The [stat_exn] below follows symlinks. *)
         let stats = Path.Untracked.stat_exn path in
         let reduced_stats = Reduced_stats.of_unix_stats stats in
         match Reduced_stats.compare x.stats reduced_stats with

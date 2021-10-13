@@ -15,7 +15,7 @@ Check that actions don't have access to the outter git repository.
   Promoting _build/default/test.t.corrected to test.t.
   [1]
 
-The inner call to git shouldn't be able to access the outter git repo:
+The inner call to git shouldn't be able to access the outer git repo:
 
   $ cat test.t
     $ git rev-parse --show-toplevel

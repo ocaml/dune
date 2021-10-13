@@ -386,8 +386,6 @@ val set_of_source_paths : Source.Set.t -> Set.t
 
 val set_of_build_paths_list : Build.t list -> Set.t
 
-val string_of_file_kind : Unix.file_kind -> string
-
 (** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
     [newpath], moving it between directories if needed. If [newpath] already
     exists, its contents will be replaced with those of [oldpath]. *)

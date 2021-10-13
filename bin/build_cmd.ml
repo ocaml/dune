@@ -34,6 +34,13 @@ let run_build_system ~common ~request =
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
+      (* CR-someday amokhov: Currently we invalidate cached timestamps on every
+         incremental rebuild. This conservative approach helps us to work around
+         some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
+         find a way to avoid doing this. In fact, this may be unnecessary even
+         for the initial build if we assume that the user does not modify files
+         in the [_build] directory. For now, it's unclear if optimising this is
+         worth the effort. *)
       Cached_digest.invalidate_cached_timestamps ();
       let* setup = Import.Main.setup () in
       let request =

@@ -7,6 +7,10 @@ module File_kind : sig
     | S_LNK
     | S_FIFO
     | S_SOCK
+
+  val to_string : t -> string
+
+  val to_string_hum : t -> string
 end
 
 (** [read_directory_with_kinds] is similar to [Sys.readdir], while additionally

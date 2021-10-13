@@ -137,3 +137,9 @@
  actions
  (cram
   (deps ../watching/helpers.sh bin/sub_process.exe)))
+
+(subdir
+ cram
+ (cram
+  (applies_to hg-access)
+  (enabled_if %{bin-available:hg})))

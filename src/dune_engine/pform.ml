@@ -137,6 +137,7 @@ module Macro = struct
         ; lib_private : bool
         }
     | Lib_available
+    | Bin_available
     | Version
     | Read
     | Read_strings
@@ -165,6 +166,9 @@ module Macro = struct
     | Lib_available, Lib_available -> Eq
     | Lib_available, _ -> Lt
     | _, Lib_available -> Gt
+    | Bin_available, Bin_available -> Eq
+    | Bin_available, _ -> Lt
+    | _, Bin_available -> Gt
     | Version, Version -> Eq
     | Version, _ -> Lt
     | _, Version -> Gt
@@ -200,6 +204,7 @@ module Macro = struct
             [ ("lib_exec", bool lib_exec); ("lib_private", bool lib_private) ]
         ]
     | Lib_available -> string "Lib_available"
+    | Bin_available -> string "Bin_available"
     | Version -> string "Version"
     | Read -> string "Read"
     | Read_strings -> string "Read_strings"
@@ -302,6 +307,7 @@ let encode_to_latest_dune_lang_version t =
       | Lib { lib_exec = false; lib_private = true } -> Some "lib-private"
       | Lib { lib_exec = true; lib_private = true } -> Some "libexec-private"
       | Lib_available -> Some "lib-available"
+      | Bin_available -> Some "bin-available"
       | Version -> Some "version"
       | Read -> Some "read"
       | Read_strings -> Some "read-strings"
@@ -388,6 +394,7 @@ module Env = struct
            , since ~version:(2, 1)
                (Macro.Lib { lib_exec = true; lib_private = true }) )
          ; ("lib-available", macro Lib_available)
+         ; ("bin-available", since ~version:(3, 0) Macro.Bin_available)
          ; ("version", macro Version)
          ; ("read", macro Read)
          ; ("read-lines", macro Read_lines)

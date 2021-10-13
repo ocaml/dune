@@ -263,13 +263,13 @@ consider the following example:
 
     (rule
      (targets x)
-     (enabled_if %{read:blah-is-present})
+     (enabled_if %{read:y})
      (action ...)
 
     (rule
-     (with-stdout-to blah-is-present (...)))
+     (with-stdout-to y (...)))
 
-When Dune loads and interpret this file, it must decide whether the
+When Dune loads and interprets this file, it must decide whether the
 first rule is enabled. To do that it must evaluate ``%{read:y}``. To
 evaluate ``%{read:y}``, it must build ``y``. To build ``y``, it must
 figure out the build rule that produces ``y``. To do that, it must
@@ -286,13 +286,13 @@ to a different directory, preferably a standalone one. You can use the
 
     (rule
      (targets x)
-     (enabled_if %{read:blah-is-present/b})
+     (enabled_if %{read:dir-for-y/y})
      (action ...)
 
     (subdir
-     blah-is-present
+     dir-for-y
      (rule
-      (with-stdout-to b (...))))
+      (with-stdout-to y (...))))
 
 #. Expansion of lists
 

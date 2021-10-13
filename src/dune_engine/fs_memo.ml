@@ -137,7 +137,8 @@ let path_stat = declaring_dependency ~f:Path.Untracked.stat
    instead. For now, we keep it here because it seems nice to group all tracked
    file system access functions in one place, and exposing an uncached version
    of [file_digest] seems error-prone. We may need to rethink this decision. *)
-let file_digest = declaring_dependency ~f:Cached_digest.source_or_external_file
+let file_digest =
+  declaring_dependency ~f:Cached_digest.Untracked.source_or_external_file
 
 let with_lexbuf_from_file path ~f =
   declaring_dependency path ~f:(fun path ->

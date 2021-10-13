@@ -77,6 +77,7 @@ module Macro : sig
         ; lib_private : bool
         }
     | Lib_available
+    | Bin_available
     | Version
     | Read
     | Read_strings

@@ -25,6 +25,18 @@ module Bin = struct
             (let context = t.context.name in
              Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ()))
 
+  let binary_available t name =
+    if not (Filename.is_relative name) then
+      let p = Path.of_filename_relative_to_initial_cwd name in
+      Fs_memo.path_exists p
+    else
+      match String.Map.find t.local_bins name with
+      | Some _ -> Memo.Build.return true
+      | None -> (
+        t.context.which name >>| function
+        | Some _ -> true
+        | None -> false)
+
   let add_binaries t ~dir l =
     let local_bins =
       List.fold_left l ~init:t.local_bins ~f:(fun acc fb ->

@@ -216,6 +216,8 @@ Unreleased
 - Add support for `(empty_module_interface_if_absent)` in executable and library
   stanzas. (#4955, @nojb)
 
+- Add support for `%{bin-available:...}` (#4995, @jeremiedimino)
+
 2.9.1 (07/09/2021)
 ------------------
 

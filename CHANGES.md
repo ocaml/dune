@@ -222,6 +222,9 @@ Unreleased
   cram test cannot escape the sandbox and pick up some random git or
   mercurial repository on the file system (#4996, @jeremiedimino)
 
+- Allow `%{read:...}` in more places such as `(enabled_if ...)`
+  (#4994, @jeremiedimino)
+
 2.9.1 (07/09/2021)
 ------------------
 

@@ -130,10 +130,6 @@ val contents : Path.t -> string t
     of the file at [path] as a list of lines. *)
 val lines_of : Path.t -> string list t
 
-(** [strings path] is like [lines_of path] except each line is unescaped using
-    the OCaml conventions. *)
-val strings : Path.t -> string list t
-
 (** Load an S-expression from a file *)
 val read_sexp : Path.t -> Dune_lang.Ast.t t
 

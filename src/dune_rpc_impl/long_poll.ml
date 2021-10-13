@@ -39,13 +39,15 @@ module Instance = struct
       assert false
     | None ->
       T.waiters :=
-        Poll_map.add_exn !T.waiters poller (No_active_request (T.Spec.empty ()));
+        Poll_map.add_exn !T.waiters poller
+          (No_active_request (T.Spec.no_change ()));
       Fiber.return (Some (T.Spec.current ()))
     | Some (No_active_request s) -> (
       match T.Spec.on_rest_request poller s with
       | `Respond r ->
         T.waiters :=
-          Poll_map.set !T.waiters poller (No_active_request (T.Spec.empty ()));
+          Poll_map.set !T.waiters poller
+            (No_active_request (T.Spec.no_change ()));
         Fiber.return (Some r)
       | `Delay ->
         let ivar = Fiber.Ivar.create () in
@@ -63,7 +65,7 @@ module Instance = struct
             |> Option.map ~f:(fun s -> No_active_request s)
           | Waiting ivar ->
             to_notify := ivar :: !to_notify;
-            Some (No_active_request (T.Spec.empty ())));
+            Some (No_active_request (T.Spec.no_change ())));
     match !to_notify with
     | [] -> Fiber.return ()
     | to_notify ->
@@ -117,7 +119,7 @@ module Progress = struct
         let remaining = Build_system.Progress.remaining p in
         In_progress { complete; remaining })
 
-  let empty () = No_change
+  let no_change () = No_change
 
   let on_rest_request _poller = function
     | No_change -> `Delay
@@ -179,7 +181,7 @@ module Diagnostic = struct
     |> List.map ~f:(fun e ->
            Diagnostic.Event.Add (Diagnostics.diagnostic_of_error e))
 
-  let empty () = Pending_diagnostics.empty
+  let no_change () = Pending_diagnostics.empty
 
   let on_rest_request _poller pd =
     if Pending_diagnostics.is_empty pd then

@@ -13,8 +13,8 @@ module type S = sig
       state. *)
   val current : unit -> response
 
-  (** No more updates to send *)
-  val empty : unit -> state
+  (** No update from the build system since last request *)
+  val no_change : unit -> state
 
   (** Subsequent request by a long poller. May be delayed until the next update *)
   val on_rest_request :

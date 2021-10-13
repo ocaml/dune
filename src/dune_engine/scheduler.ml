@@ -470,6 +470,33 @@ end
 
 module Event_queue = Event.Queue
 
+let kill_process_group pid signal =
+  match Sys.win32 with
+  | false -> (
+    (* Send to the entire process group so that any child processes created by
+       the job are also terminated.
+
+       Here we could consider sending a signal to the job process directly in
+       addition to sending it to the process group. This is what GNU [timeout]
+       does, for example.
+
+       The upside would be that we deliver the signal to that process even if it
+       changes its process group. This upside is small because moving between
+       the process groups is a very unusual thing to do (creation of a new
+       process group is not a problem for us, unlike for [timeout]).
+
+       The downside is that it's more complicated, but also that by sending the
+       signal twice we're greatly increasing the existing race condition where
+       we call [wait] in parallel with [kill]. *)
+    try Unix.kill (-Pid.to_int pid) signal with
+    | Unix.Unix_error _ -> ())
+  | true -> (
+    (* Process groups are not supported on Windows (or even if they are, [spawn]
+       does not know how to use them), so we're only sending the signal to the
+       job itself. *)
+    try Unix.kill (Pid.to_int pid) signal with
+    | Unix.Unix_error _ -> ())
+
 module Process_watcher : sig
   (** Initialize the process watcher thread. *)
   type t
@@ -550,9 +577,7 @@ end = struct
 
   let killall t signal =
     Mutex.lock t.mutex;
-    Process_table.iter t ~f:(fun job ->
-        try Unix.kill (Pid.to_int job.pid) signal with
-        | Unix.Unix_error _ -> ());
+    Process_table.iter t ~f:(fun job -> kill_process_group job.pid signal);
     Mutex.unlock t.mutex
 
   exception Finished of Proc.Process_info.t
@@ -1289,7 +1314,7 @@ let inject_memo_invalidation invalidation =
   Event.Queue.send_invalidation_event t.events invalidation;
   Fiber.return ()
 
-let wait_for_process_with_timeout t pid ~timeout =
+let wait_for_process_with_timeout t pid ~timeout ~is_process_group_leader =
   Fiber.of_thunk (fun () ->
       let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
       Fiber.fork_and_join_unit
@@ -1297,17 +1322,21 @@ let wait_for_process_with_timeout t pid ~timeout =
           let+ res = Alarm_clock.await sleep in
           if res = `Finished && Process_watcher.is_running t.process_watcher pid
           then
-            Unix.kill (Pid.to_int pid) Sys.sigkill)
+            if is_process_group_leader then
+              kill_process_group pid Sys.sigkill
+            else
+              Unix.kill (Pid.to_int pid) Sys.sigkill)
         (fun () ->
           let+ res = wait_for_process t pid in
           Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
           res))
 
-let wait_for_process ?timeout pid =
+let wait_for_process ?timeout ?(is_process_group_leader = false) pid =
   let* t = t () in
   match timeout with
   | None -> wait_for_process t pid
-  | Some timeout -> wait_for_process_with_timeout t pid ~timeout
+  | Some timeout ->
+    wait_for_process_with_timeout t pid ~timeout ~is_process_group_leader
 
 let sleep duration =
   let* t = t () in

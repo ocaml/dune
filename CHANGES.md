@@ -222,6 +222,9 @@ Unreleased
   cram test cannot escape the sandbox and pick up some random git or
   mercurial repository on the file system (#4996, @jeremiedimino)
 
+- Run each action in its own process group so that we don't leave
+  stray processes behind when killing actions (#4998, @jeremiedimino)
+
 2.9.1 (07/09/2021)
 ------------------
 

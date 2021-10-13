@@ -120,8 +120,14 @@ val t : unit -> t Fiber.t
     available and then calls [f]. *)
 val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
-(** Wait for the following process to terminate *)
-val wait_for_process : ?timeout:float -> Pid.t -> Proc.Process_info.t Fiber.t
+(** Wait for the following process to terminate. If [is_process_group_leader] is
+    true, kill the entire process group instead of just the process in case of
+    timeout. *)
+val wait_for_process :
+     ?timeout:float
+  -> ?is_process_group_leader:bool
+  -> Pid.t
+  -> Proc.Process_info.t Fiber.t
 
 val yield_if_there_are_pending_events : unit -> unit Fiber.t
 

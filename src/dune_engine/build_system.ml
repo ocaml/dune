@@ -518,12 +518,10 @@ let () =
       Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
 let compute_target_digests targets =
-  match
-    List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
-        (target, Cached_digest.build_file target))
-  with
-  | l -> Some l
-  | exception (Unix.Unix_error _ | Sys_error _) -> None
+  Option.List.traverse (Path.Build.Set.to_list targets) ~f:(fun target ->
+      Cached_digest.build_file target
+      |> Cached_digest.Digest_result.to_option
+      |> Option.map ~f:(fun digest -> (target, digest)))
 
 let compute_target_digests_or_raise_error exec_params ~loc targets =
   let remove_write_permissions =
@@ -544,10 +542,48 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
   let good, missing, errors =
     Path.Build.Set.fold targets ~init:([], [], [])
       ~f:(fun target (good, missing, errors) ->
+        let expected_syscall_path = Path.to_string (Path.build target) in
         match Cached_digest.refresh ~remove_write_permissions target with
         | Ok digest -> ((target, digest) :: good, missing, errors)
         | No_such_file -> (good, target :: missing, errors)
-        | Error exn -> (good, missing, (target, exn) :: errors))
+        | Broken_symlink ->
+          let error = [ Pp.verbatim "Broken symlink" ] in
+          (good, missing, (target, error) :: errors)
+        | Unexpected_kind file_kind ->
+          let error =
+            [ Pp.verbatim
+                (sprintf "Unexpected file kind %S (%s)"
+                   (Dune_filesystem_stubs.File_kind.to_string file_kind)
+                   (Dune_filesystem_stubs.File_kind.to_string_hum file_kind))
+            ]
+          in
+          (good, missing, (target, error) :: errors)
+        | Unix_error (error, syscall, path) ->
+          let error =
+            [ (if String.equal expected_syscall_path path then
+                Pp.verbatim syscall
+              else
+                Pp.concat
+                  [ Pp.verbatim syscall
+                  ; Pp.verbatim " "
+                  ; Pp.verbatim (String.maybe_quoted path)
+                  ])
+            ; Pp.text (Unix.error_message error)
+            ]
+          in
+          (good, missing, (target, error) :: errors)
+        | Error exn ->
+          let error =
+            match exn with
+            | Sys_error msg ->
+              [ Pp.verbatim
+                  (String.drop_prefix_if_exists
+                     ~prefix:(expected_syscall_path ^ ": ")
+                     msg)
+              ]
+            | exn -> [ Pp.verbatim (Printexc.to_string exn) ]
+          in
+          (good, missing, (target, error) :: errors))
   in
   match (missing, errors) with
   | [], [] -> List.rev good
@@ -564,31 +600,9 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
       | [] -> []
       | _ ->
         [ Pp.textf "Error trying to read targets after a rule was run:"
-        ; Pp.enumerate (List.rev errors) ~f:(fun (path, exn) ->
-              let path = Path.build path in
-              let expected_syscall_path = Path.to_string path in
+        ; Pp.enumerate (List.rev errors) ~f:(fun (target, error) ->
               Pp.concat ~sep:(Pp.verbatim ": ")
-                (pp_path path
-                ::
-                (match exn with
-                | Unix.Unix_error (error, syscall, p) ->
-                  [ (if String.equal expected_syscall_path p then
-                      Pp.verbatim syscall
-                    else
-                      Pp.concat
-                        [ Pp.verbatim syscall
-                        ; Pp.verbatim " "
-                        ; Pp.verbatim (String.maybe_quoted p)
-                        ])
-                  ; Pp.text (Unix.error_message error)
-                  ]
-                | Sys_error msg ->
-                  [ Pp.verbatim
-                      (String.drop_prefix_if_exists
-                         ~prefix:(expected_syscall_path ^ ": ")
-                         msg)
-                  ]
-                | exn -> [ Pp.verbatim (Printexc.to_string exn) ])))
+                (pp_path (Path.build target) :: error))
         ])
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
@@ -694,11 +708,14 @@ let no_rule_found t ~loc fn =
 (* +-------------------- Adding rules to the system --------------------+ *)
 
 let source_file_digest path =
-  Fs_memo.path_exists path >>= function
-  | true ->
-    let+ d = Fs_memo.file_digest path in
-    d
-  | false ->
+  Fs_memo.file_digest path >>= function
+  | Ok digest -> Memo.Build.return digest
+  | No_such_file
+  | Broken_symlink
+  | Unexpected_kind _
+  | Unix_error _
+  | Error _ ->
+    (* CR-someday amokhov: Give a more informative error. *)
     let+ loc = Rule_fn.loc () in
     User_error.raise ?loc
       [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
@@ -1507,7 +1524,7 @@ end = struct
     in
     let update_cached_digests ~targets_and_digests =
       List.iter targets_and_digests ~f:(fun (target, digest) ->
-          Cached_digest.set (Path.build target) digest)
+          Cached_digest.set target digest)
     in
     match
       Path.Build.Set.to_list_map targets ~f:Dune_cache.Local.Target.create
@@ -1762,7 +1779,7 @@ end = struct
             (* Step I. Remove stale targets both from the digest table and from
                the build directory. *)
             Path.Build.Set.iter targets ~f:(fun target ->
-                Cached_digest.remove (Path.build target);
+                Cached_digest.remove target;
                 Path.Build.unlink_no_err target);
             (* Step II. Try to restore artifacts from the shared cache if the
                following conditions are met.
@@ -1922,14 +1939,25 @@ end = struct
                       (let open Memo.Build.O in
                       Fs_memo.path_exists in_source_tree >>= function
                       | false -> Memo.Build.return false
-                      | true ->
-                        let in_build_dir_digest =
+                      | true -> (
+                        match
                           Cached_digest.build_file path
-                        in
-                        let+ in_source_tree_digest =
+                          |> Cached_digest.Digest_result.to_option
+                        with
+                        | None ->
+                          (* CR-someday amokhov: We couldn't digest the target
+                             so something happened to it. Right now, we skip the
+                             promotion in this case, but we could perhaps delete
+                             the corresponding path in the source tree. *)
+                          Memo.Build.return true
+                        | Some in_build_dir_digest -> (
                           Fs_memo.file_digest in_source_tree
-                        in
-                        Digest.equal in_build_dir_digest in_source_tree_digest)
+                          >>| Cached_digest.Digest_result.to_option
+                          >>| function
+                          | None -> false
+                          | Some in_source_tree_digest ->
+                            Digest.equal in_build_dir_digest
+                              in_source_tree_digest)))
                   in
                   if is_up_to_date then
                     Fiber.return ()

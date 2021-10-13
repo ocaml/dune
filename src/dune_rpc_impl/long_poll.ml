@@ -40,13 +40,14 @@ module Instance = struct
     | None ->
       T.waiters :=
         Poll_map.add_exn !T.waiters poller
-          (No_active_request (T.Spec.init_state ()));
+          (No_active_request (T.Spec.no_change ()));
       Fiber.return (Some (T.Spec.current ()))
     | Some (No_active_request s) -> (
       match T.Spec.on_rest_request poller s with
       | `Respond r ->
         T.waiters :=
-          Poll_map.set !T.waiters poller (No_active_request (T.Spec.reset ()));
+          Poll_map.set !T.waiters poller
+            (No_active_request (T.Spec.no_change ()));
         Fiber.return (Some r)
       | `Delay ->
         let ivar = Fiber.Ivar.create () in
@@ -64,7 +65,7 @@ module Instance = struct
             |> Option.map ~f:(fun s -> No_active_request s)
           | Waiting ivar ->
             to_notify := ivar :: !to_notify;
-            Some (No_active_request (T.Spec.init_state ())));
+            Some (No_active_request (T.Spec.no_change ())));
     match !to_notify with
     | [] -> Fiber.return ()
     | to_notify ->
@@ -99,50 +100,30 @@ module Progress = struct
 
   type state =
     | Next_update of Progress.t
-    | Already_seen
+    | No_change
 
   type response = Progress.t
 
   type update = Progress.t
 
-  (* Certain progress states are expected to be "transient", i.e., a new update
-     is expected to come soon. In those cases, it's okay to [`Delay] any new
-     polls until that update arrives. However, the build system will also spend
-     a lot of time on certain "final states" (namely, Failure and Success), and
-     [`Delay]ing those will cause any new polls to hang until a new build is
-     started. *)
-  let is_transient : Progress.t -> bool = function
-    | Progress.Waiting
-    | Interrupted
-    | In_progress _ ->
-      true
-    | Success
-    | Failed ->
-      false
-
   let current () : Progress.t =
-    let p = Build_system.get_current_progress () in
-    match Build_system.Progress.is_determined p with
-    | false -> Waiting
-    | true ->
-      let complete = Build_system.Progress.complete p in
-      let remaining = Build_system.Progress.remaining p in
-      In_progress { complete; remaining }
-
-  let init_state () =
     match Build_system.last_event () with
-    | Some evt -> Next_update (progress_of_build_event evt)
-    | None -> Next_update (current ())
+    | Some ((Finish | Fail | Interrupt) as evt) -> progress_of_build_event evt
+    | Some Start
+    | None -> (
+      let p = Build_system.get_current_progress () in
+      match Build_system.Progress.is_determined p with
+      | false -> Waiting
+      | true ->
+        let complete = Build_system.Progress.complete p in
+        let remaining = Build_system.Progress.remaining p in
+        In_progress { complete; remaining })
 
-  let reset _ = Already_seen
+  let no_change () = No_change
 
   let on_rest_request _poller = function
-    | Already_seen -> `Delay
-    | Next_update last_event ->
-      if is_transient last_event then
-        `Delay
-      else
-        `Respond last_event
+    | No_change -> `Delay
+    | Next_update last_event -> `Respond last_event
 
   let on_update_inactive evt _ = Some (Next_update evt)
 
@@ -200,9 +181,7 @@ module Diagnostic = struct
     |> List.map ~f:(fun e ->
            Diagnostic.Event.Add (Diagnostics.diagnostic_of_error e))
 
-  let init_state () = Pending_diagnostics.empty
-
-  let reset () = init_state ()
+  let no_change () = Pending_diagnostics.empty
 
   let on_rest_request _poller pd =
     if Pending_diagnostics.is_empty pd then

@@ -9,22 +9,23 @@ module Source_tree_map_reduce =
     end))
 
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
-   and track all files in specified directories as [Hidden_deps] dependencies. *)
+   and track all files in specified directories as [Hidden_deps]
+   dependencies. *)
 let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
   let scope = Expander.scope expander in
   let lib_dir loc lib_name =
-    let open Resolve.O in
+    let open Resolve.Build.O in
     let+ lib = Lib.DB.resolve (Scope.libs scope) (loc, lib_name) in
     Lib_info.src_dir (Lib.info lib)
   in
   Command.Args.S
     (List.map stubs.include_dirs ~f:(fun include_dir ->
-         Resolve.args
-           (let open Resolve.O in
+         Resolve.Build.args
+           (let open Resolve.Build.O in
            let+ loc, include_dir =
              match (include_dir : Foreign.Stubs.Include_dir.t) with
              | Dir dir ->
-               Resolve.return
+               Resolve.Build.return
                  (String_with_vars.loc dir, Expander.expand_path expander dir)
              | Lib (loc, lib_name) ->
                let+ lib_dir = lib_dir loc lib_name in
@@ -37,7 +38,8 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                match Path.extract_build_context_dir include_dir with
                | None ->
                  (* This branch corresponds to an external directory. The
-                    current implementation tracks its contents NON-recursively. *)
+                    current implementation tracks its contents
+                    NON-recursively. *)
                  (* TODO: Track the contents recursively. One way to implement
                     this is to change [Build_system.Loaded.Non_build] so that it
                     contains not only files but also directories and traverse

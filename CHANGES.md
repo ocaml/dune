@@ -1,6 +1,38 @@
 Unreleased
 ----------
 
+- Fix interpretation of `binaries` defined in the `env stanza`. Binaries
+  defined in `x/dune` wouldn't be visible in `x/*/**/dune. (#4975, fixes #4976,
+  @Leonidas-from-XIV, @rgrinberg)
+
+- Do not list private libraries in package listings (#4945, fixes #4799,
+  @rgrinberg)
+
+- Allow spaces in cram test paths (#4980, fixes #4162, @rgrinberg)
+
+- Improve error handling of misbehaving cram scripts. (#4981, fix #4230,
+  @rgrinberg)
+
+- Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
+  when this field was present (#4942, fix #4946, @rgrinberg)
+
+- Add the `enabled_if` field to `inline_tests` within the `library` stanza.
+  This allows us to disable executing the inline tests while still allowing for
+  compilation (#4939, @rgrinberg)
+
+- Generate a `dune-project` when initializing projects with `dune init proj ...`
+  (#4881, closes #4367, @shonfeder)
+
+- Allow spaces in the directory argument of the `subdir` stanza (#4943, fixes
+  #4907, @rgrinberg)
+
+- Add a `%{toolchain}` expansion variable (#4899, fixes #3949, @rgrinberg)
+
+- Include dependencies of executables when creating toplevels (either `dune
+  top` or `dune utop`) (#4882, fixes #4872, @Gopiancode)
+
+- Fixes `opam` META file requires entry for private libs (#4841, fixes #4839, @toots)
+
 - Fixes `dune exec` not adding .exe on Windows (#4371, fixes #3322, @MisterDA)
 
 - Allow multiple cinaps stanzas in the same directory (#4460, @rgrinberg)
@@ -159,17 +191,54 @@ Unreleased
   field and the possibility to statically link `libraries` in the test
   executable. (#3956, fixes #3955)
 
-- Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
-  (#4811, fixes #4809, @nojb)
-
 - Improve lookup of optional or disabled binaries. Previously, we'd treat every
   executable with missing libraries as optional. Now, we treat make sure to
   look at the library's optional or enabled_if status (#4786).
 
-2.9.1 (unreleased)
+- Always use 7 char hash prefix in build info version (#4857, @jberdine, fixes
+  #4855)
+
+- Allow to explicitly disable/enable the use of `dune subst` by adding a
+  new `(subst <disable|enable>)` stanza to the `dune-project` file.
+  (#4864, @kit-ty-kate)
+
+- Simplify the way `dune` discovers the root of the workspace. It now
+  stops at the first `dune-workspace` file it encounters, and fails if
+  it finds neither a `dune-workspace` nor a `dune-project` file
+  (#4921, fixes #4459, @jeremiedimino)
+
+- No longer reference deprecated Toploop functions when using dune files in
+  OCaml syntax. (#4834, fixes #4830, @nojb)
+
+- Dune no longer reads installed META files for libraries distributed with the
+  compiler, instead using its own internal database. (#4946, @nojb)
+
+- Add support for `(empty_module_interface_if_absent)` in executable and library
+  stanzas. (#4955, @nojb)
+
+- Add support for `%{bin-available:...}` (#4995, @jeremiedimino)
+
+- Make sure running `git` or `hg` in a sandboxed action, such as a
+  cram test cannot escape the sandbox and pick up some random git or
+  mercurial repository on the file system (#4996, @jeremiedimino)
+
+- Run each action in its own process group so that we don't leave
+  stray processes behind when killing actions (#4998, @jeremiedimino)
+
+2.9.1 (07/09/2021)
 ------------------
 
 - Don't use `subst --root` in Opam files (#4806, @MisterDA)
+
+- Fix compilation on Haiku (#4885, @Sylvain78)
+
+- Allow depending on `ocamldoc` library when `ocamlfind` is not installed.
+  (#4811, fixes #4809, @nojb)
+
+- Fix `(enabled_if ...)` for installed libraries (#4824, fixes #4821, @dra27)
+
+- Create more future-proof opam files using `--promote-install-files=false`
+  (#4860, @bobot)
 
 2.9.0 (29/06/2021)
 ------------------
@@ -205,9 +274,9 @@ Unreleased
   the rework of the Coq "native" compilation system (#4760, @ejgallego)
 
 - Fix a bug where instrumentation flags would be added even if the
-  instrumentatation was disabled (@nojb, #4770)
+  instrumentation was disabled (@nojb, #4770)
 
-- Fix #4682: option `-p` takes now precedence on environement variable
+- Fix #4682: option `-p` takes now precedence on environment variable
   `DUNE_PROFILE` (#4730, #4774, @bobot, reported by @dra27 #4632)
 
 - Fix installation with opam of package with dune sites. The `.install` file is
@@ -468,7 +537,7 @@ Unreleased
 - Formatting of dune files is now done in the executing dune process instead of
   in a separate process. (#3536, @nojb)
 
-- Add a `--debug-artifact-substution` flag to help debug problem with
+- Add a `--debug-artifact-substitution` flag to help debug problem with
   version not being captured by `dune-build-info` (#3589,
   @jeremiedimino)
 
@@ -615,7 +684,7 @@ Unreleased
 - [coq] Support for theory dependencies and compositional builds using
   new field `(theories ...)` (#2053, @ejgallego, @rgrinberg)
 
-- From now on, each version of a syntax extension must be explicitely tied to a
+- From now on, each version of a syntax extension must be explicitly tied to a
   minimum version of the dune language. Inconsistent versions in a
   `dune-project` will trigger a warning for version <=2.4 and an error for
   versions >2.4 of the dune language. (#3270, fixes #2957, @voodoos)
@@ -893,7 +962,7 @@ Unreleased
 - Define (paths ...) fields in (context ...) definitions in order to set or
   extend any PATH-like variable in the context environment. (#2426, @nojb)
 
-- The `diff` action will always normalize newlines before diffing. Perviousy, it
+- The `diff` action will always normalize newlines before diffing. Previously, it
   would not do this normalization for rules defined in jbuild files. (#2457,
   @rgrinberg)
 
@@ -1009,13 +1078,13 @@ Unreleased
 - Add (deprecated_package_names) field to (package) declaration in
   dune-project. The names declared here can be used in the (old_public_name)
   field of (deprecated_library_name) stanza. These names are interpreted as
-  library names (not prefixed by a package name) and appropiate redirections are
-  setup in their META files. This feaure is meant to migrate old libraries which
+  library names (not prefixed by a package name) and appropriate redirections are
+  setup in their META files. This feature is meant to migrate old libraries which
   do not follow Dune's convention of prefixing libraries with the package
   name. (#2696, @nojb)
 
 - The fields `license`, `authors`, `maintainers`, `source`, `bug_reports`,
-  `homepage`, and `documentation` of `dune-project` can now be overriden on a
+  `homepage`, and `documentation` of `dune-project` can now be overridden on a
   per-package basis. (#2774, @nojb)
 
 - Change the default `modes` field of executables to `(mode exe)`. If
@@ -1060,7 +1129,7 @@ Unreleased
 1.11.2 (20/08/2019)
 -------------------
 
-- Remove the optimisation of passing `-nodynlink` for executalbes when
+- Remove the optimisation of passing `-nodynlink` for executables when
   not necessary. It seems to be breaking things (see #2527, @diml)
 
 - Fix invalid library names in `dune-package` files. Only public names should
@@ -1135,7 +1204,7 @@ Unreleased
   @TheLortex, review by @rgrinberg)
 
 - Add a variable `%{ignoring_promoted_rules}` that is `true` when
-  `--ingore-promoted-rules` is passed on the command line and false
+  `--ignore-promoted-rules` is passed on the command line and false
   otherwise (#2382, @diml)
 
 - Fix a bug in `future_syntax` where the characters `@` and `&` were
@@ -1155,7 +1224,7 @@ Unreleased
 - Fix coloring of error messages from the compiler (@diml, #2384)
 
 - Add warning `66` to default set of warnings starting for dune projects with
-  language verison >= `1.11` (@rgrinberg, @diml, fixes #2299)
+  language version >= `1.11` (@rgrinberg, @diml, fixes #2299)
 
 - Add (dialect ...) stanza
   (@nojb, #2404)
@@ -2105,7 +2174,7 @@ Unreleased
 - Add a `Configurator.V1.Flags` module that improves the flag reading/writing
   API (#840, @avsm)
 
-- Add a `tests` stanza that simlpified defining regular and expect tests
+- Add a `tests` stanza that simplified defining regular and expect tests
   (#822, @rgrinberg)
 
 - Change the `subst` subcommand to lookup the project name from the
@@ -2832,7 +2901,7 @@ Unreleased
 - Added support for aliases (#7, @rgrinberg)
 
 - Added support for compiling against multiple opam switch
-  simultaneously by writing a `jbuild-worspace` file
+  simultaneously by writing a `jbuild-workspace` file
 
 - Added support for OCaml 4.02.3
 

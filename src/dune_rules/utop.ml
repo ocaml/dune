@@ -52,52 +52,94 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
         match Super_context.stanzas_in sctx ~dir with
         | None -> Memo.Build.return Libs_and_ppxs.empty
         | Some (d : _ Dir_with_dune.t) ->
-          Memo.Build.return
-          @@ List.fold_left d.data ~init:Libs_and_ppxs.empty
-               ~f:(fun (acc, pps) -> function
-               | Dune_file.Library l -> (
-                 match
-                   Option.map
-                     (Lib.DB.resolve_when_exists db
-                        (l.buildable.loc, Dune_file.Library.best_name l))
-                     ~f:Resolve.peek
-                 with
-                 | None
-                 | Some (Error ()) ->
-                   (acc, pps)
-                   (* library is defined but outside our scope or is disabled *)
-                 | Some (Ok lib) ->
-                   (* still need to make sure that it's not coming from an
-                      external source *)
-                   let info = Lib.info lib in
-                   let src_dir = Lib_info.src_dir info in
-                   (* Only select libraries that are not implementations.
-                      Implementations are selected using the default
-                      implementation feature. *)
-                   let not_impl = Option.is_none (Lib_info.implements info) in
-                   if
-                     not_impl
-                     && Path.is_descendant ~of_:(Path.build dir) src_dir
-                   then
-                     match Lib_info.kind info with
-                     | Lib_kind.Ppx_rewriter _
-                     | Ppx_deriver _ ->
-                       ( Appendable_list.( @ )
-                           (Appendable_list.singleton lib)
-                           acc
-                       , Appendable_list.( @ )
-                           (Appendable_list.singleton
-                              (Lib_info.loc info, Lib_info.name info))
-                           pps )
-                     | Normal ->
-                       ( Appendable_list.( @ )
-                           (Appendable_list.singleton lib)
-                           acc
-                       , pps )
-                   else
-                     (acc, pps)
-                   (* external lib with a name matching our private name *))
-               | _ -> (acc, pps)))
+          Memo.Build.List.fold_left d.data ~init:Libs_and_ppxs.empty
+            ~f:(fun (acc, pps) -> function
+            | Dune_file.Library l -> (
+              let+ lib =
+                let open Memo.Build.O in
+                let+ resolve =
+                  Lib.DB.resolve_when_exists db
+                    (l.buildable.loc, Dune_file.Library.best_name l)
+                in
+                Option.map resolve ~f:Resolve.peek
+                (* external lib with a name matching our private name *)
+              in
+              match lib with
+              | None
+              | Some (Error ()) ->
+                (acc, pps)
+                (* library is defined but outside our scope or is disabled *)
+              | Some (Ok lib) ->
+                (* still need to make sure that it's not coming from an external
+                   source *)
+                let info = Lib.info lib in
+                let src_dir = Lib_info.src_dir info in
+                (* Only select libraries that are not implementations.
+                   Implementations are selected using the default implementation
+                   feature. *)
+                let not_impl = Option.is_none (Lib_info.implements info) in
+                if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
+                then
+                  match Lib_info.kind info with
+                  | Lib_kind.Ppx_rewriter _
+                  | Ppx_deriver _ ->
+                    ( Appendable_list.( @ ) (Appendable_list.singleton lib) acc
+                    , Appendable_list.( @ )
+                        (Appendable_list.singleton
+                           (Lib_info.loc info, Lib_info.name info))
+                        pps )
+                  | Normal ->
+                    ( Appendable_list.( @ ) (Appendable_list.singleton lib) acc
+                    , pps )
+                else
+                  (acc, pps))
+            | Dune_file.Executables exes -> (
+              let* libs =
+                let open Memo.Build.O in
+                let* compile_info =
+                  let project = Scope.project d.scope in
+                  let dune_version = Dune_project.dune_version project in
+                  let+ pps =
+                    Resolve.Build.read_memo_build
+                      (Preprocess.Per_module.with_instrumentation
+                         exes.buildable.preprocess
+                         ~instrumentation_backend:
+                           (Lib.DB.instrumentation_backend (Scope.libs d.scope)))
+                    >>| Preprocess.Per_module.pps
+                  in
+                  Lib.DB.resolve_user_written_deps_for_exes db exes.names
+                    exes.buildable.libraries ~pps ~dune_version
+                    ~allow_overlaps:
+                      exes.buildable.allow_overlapping_dependencies
+                    ~forbidden_libraries:exes.forbidden_libraries
+                in
+                let+ available = Lib.Compile.direct_requires compile_info in
+                Resolve.peek available
+              in
+              match libs with
+              | Error () -> Memo.Build.return (acc, pps)
+              | Ok libs ->
+                Memo.Build.List.fold_left libs ~init:(acc, pps)
+                  ~f:(fun (acc, pps) lib ->
+                    let info = Lib.info lib in
+                    match Lib_info.kind info with
+                    | Lib_kind.Ppx_rewriter _
+                    | Ppx_deriver _ ->
+                      Memo.Build.return
+                        ( Appendable_list.( @ )
+                            (Appendable_list.singleton lib)
+                            acc
+                        , Appendable_list.( @ )
+                            (Appendable_list.singleton
+                               (Lib_info.loc info, Lib_info.name info))
+                            pps )
+                    | Normal ->
+                      Memo.Build.return
+                        ( Appendable_list.( @ )
+                            (Appendable_list.singleton lib)
+                            acc
+                        , pps )))
+            | _ -> Memo.Build.return (acc, pps)))
     >>| fun (libs, pps) ->
     (Appendable_list.to_list libs, Appendable_list.to_list pps)
 
@@ -126,7 +168,7 @@ let setup sctx ~dir =
   let loc = Toplevel.Source.loc source in
   let* modules = Toplevel.Source.modules source preprocessing in
   let requires =
-    let open Resolve.O in
+    let open Resolve.Build.O in
     (loc, Lib_name.of_string "utop")
     |> Lib.DB.resolve db
     >>| (fun utop -> utop :: libs)
@@ -141,9 +183,9 @@ let setup sctx ~dir =
       [ "-w"; "-24" ]
   in
   let cctx =
+    let requires_link = Memo.lazy_ (fun () -> requires) in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-      ~modules ~opaque:(Explicit false)
-      ~requires_link:(lazy requires)
+      ~modules ~opaque:(Explicit false) ~requires_link
       ~requires_compile:requires ~flags ~js_of_ocaml:None ~package:None
       ~preprocessing
   in

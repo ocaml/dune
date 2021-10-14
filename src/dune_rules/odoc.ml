@@ -237,14 +237,11 @@ let odoc_include_flags ctx pkg requires =
     (let open Resolve.O in
     let+ libs = requires in
     let paths =
-      libs
-      |> List.fold_left
-           ~f:(fun paths lib ->
-             match Lib.Local.of_lib lib with
-             | None -> paths
-             | Some lib ->
-               Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
-           ~init:Path.Set.empty
+      List.fold_left libs ~init:Path.Set.empty ~f:(fun paths lib ->
+          match Lib.Local.of_lib lib with
+          | None -> paths
+          | Some lib ->
+            Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
     in
     let paths =
       match pkg with
@@ -281,26 +278,26 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
                    [ Action.Remove_tree to_remove
                    ; Action.Mkdir (Path.build odoc_file.html_dir)
                    ]))
-           ::
-           Command.run
-             ~dir:(Path.build (Paths.html_root ctx))
-             odoc
-             [ A "html"
-             ; odoc_base_flags
-             ; odoc_include_flags ctx pkg requires
-             ; A "-o"
-             ; Path (Path.build (Paths.html_root ctx))
-             ; Dep (Path.build odoc_file.odoc_input)
-             ; Hidden_targets [ odoc_file.html_file ]
-             ]
-           :: dummy))
+          :: Command.run
+               ~dir:(Path.build (Paths.html_root ctx))
+               odoc
+               [ A "html"
+               ; odoc_base_flags
+               ; odoc_include_flags ctx pkg requires
+               ; A "-o"
+               ; Path (Path.build (Paths.html_root ctx))
+               ; Dep (Path.build odoc_file.odoc_input)
+               ; Hidden_targets [ odoc_file.html_file ]
+               ]
+          :: dummy))
 
 let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
-  let lib =
+  let open Memo.Build.O in
+  let* lib =
     let scope = Compilation_context.scope cctx in
     Library.best_name library
     |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-    |> Option.value_exn
+    >>| Option.value_exn
   in
   let local_lib = Lib.Local.of_lib_exn lib in
   (* Using the proper package name doesn't actually work since odoc assumes that
@@ -308,7 +305,7 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let pkg_or_lnu = pkg_or_lnu lib in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
-  let requires = Compilation_context.requires_compile cctx in
+  let* requires = Compilation_context.requires_compile cctx in
   let info = Lib.info lib in
   let package = Lib_info.package info in
   let odoc_include_flags =
@@ -324,7 +321,6 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
         in
         compiled :: acc)
   in
-  let open Memo.Build.O in
   let* modules_and_odoc_files =
     Memo.Build.all_concurrently modules_and_odoc_files
   in
@@ -358,8 +354,8 @@ let setup_toplevel_index_rule sctx =
              | Some v -> sp {| <span class="version">%s</span>|} v
            in
            Some (sp "<li>%s%s</li>" link version_suffix))
+    |> String.concat ~sep:"\n      "
   in
-  let list_items = String.concat ~sep:"\n      " list_items in
   let html =
     sp
       {|<!DOCTYPE html>
@@ -552,7 +548,7 @@ let setup_pkg_html_rules_def =
     ~input:(module Input)
     ~implicit_output:Rules.implicit_output
     (fun (sctx, pkg, (libs : Lib.Local.t list)) ->
-      let requires =
+      let* requires =
         let libs = (libs :> Lib.t list) in
         Lib.closure libs ~linking:false
       in
@@ -587,14 +583,12 @@ let setup_package_aliases sctx (pkg : Package.t) =
     let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
-  Rules.Produce.Alias.add_deps alias
-    (Action_builder.deps
-       (Dep.html_alias ctx (Pkg name)
-        ::
-        (libs_of_pkg sctx ~pkg:name
-        |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
-       |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
-       ))
+  Dep.html_alias ctx (Pkg name)
+  :: (libs_of_pkg sctx ~pkg:name
+     |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
+  |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
+  |> Action_builder.deps
+  |> Rules.Produce.Alias.add_deps alias
 
 let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
@@ -605,7 +599,12 @@ let entry_modules_by_lib sctx lib =
   >>| Modules.entry_modules
 
 let entry_modules sctx ~pkg =
-  let l = libs_of_pkg sctx ~pkg in
+  let l =
+    libs_of_pkg sctx ~pkg
+    |> List.filter ~f:(fun lib ->
+           Lib.Local.info lib |> Lib_info.status |> Lib_info.Status.is_private
+           |> not)
+  in
   let+ l =
     Memo.Build.parallel_map l ~f:(fun l ->
         let+ m = entry_modules_by_lib sctx l in
@@ -667,9 +666,8 @@ let setup_package_odoc_rules_def =
         if String.Map.mem mlds "index" then
           Memo.Build.return mlds
         else
-          let entry_modules = entry_modules ~pkg in
           let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
-          let* entry_modules = entry_modules sctx in
+          let* entry_modules = entry_modules sctx ~pkg in
           let+ () =
             add_rule sctx
               (Action_builder.write_file gen_mld
@@ -697,23 +695,25 @@ let global_rules sctx =
         (* setup @doc to build the correct html for the package *)
         setup_package_aliases sctx pkg)
   in
+  let* action =
+    Memo.Build.List.concat_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->
+        Memo.Build.List.filter_map w.data ~f:(function
+          | Dune_file.Library (l : Dune_file.Library.t) -> (
+            match l.visibility with
+            | Public _ -> Memo.Build.return None
+            | Private _ ->
+              let scope = SC.find_scope_by_dir sctx w.ctx_dir in
+              Library.best_name l
+              |> Lib.DB.find_even_when_hidden (Scope.libs scope)
+              >>| fun lib ->
+              Option.value_exn lib |> Lib.Local.of_lib_exn |> Option.some)
+          | _ -> Memo.Build.return None))
+    >>| Dune_engine.Dep.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
+            Lib lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias)
+  in
   Rules.Produce.Alias.add_deps
     (Alias.private_doc ~dir:ctx.build_dir)
-    (Action_builder.deps
-       (stanzas
-       |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
-              List.filter_map w.data ~f:(function
-                | Dune_file.Library (l : Dune_file.Library.t) -> (
-                  match l.visibility with
-                  | Public _ -> None
-                  | Private _ ->
-                    let scope = SC.find_scope_by_dir sctx w.ctx_dir in
-                    Library.best_name l
-                    |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-                    |> Option.value_exn |> Lib.Local.of_lib_exn |> Option.some)
-                | _ -> None))
-       |> Dune_engine.Dep.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
-              Lib lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias)))
+    (Action_builder.deps action)
 
 let gen_rules sctx ~dir:_ rest =
   match rest with
@@ -728,7 +728,8 @@ let gen_rules sctx ~dir:_ rest =
   | "_odoc" :: "lib" :: lib :: _ -> (
     let lib, lib_db = Scope_key.of_string sctx lib in
     (* diml: why isn't [None] some kind of error here? *)
-    match Lib.DB.find lib_db lib with
+    let* lib = Lib.DB.find lib_db lib in
+    match lib with
     | None -> Memo.Build.return ()
     | Some lib ->
       (* TODO instead of this hack, call memoized function that generates the
@@ -745,10 +746,9 @@ let gen_rules sctx ~dir:_ rest =
       setup_pkg_html_rules sctx ~pkg ~libs:pkg_libs
     in
     (* jeremiedimino: why isn't [None] some kind of error here? *)
-    let lib =
-      let open Option.O in
-      let* lib = Lib.DB.find lib_db lib in
-      Lib.Local.of_lib lib
+    let* lib =
+      let+ lib = Lib.DB.find lib_db lib in
+      Option.bind ~f:Lib.Local.of_lib lib
     in
     let+ () =
       match lib with
@@ -756,8 +756,8 @@ let gen_rules sctx ~dir:_ rest =
       | Some lib -> (
         match Lib_info.package (Lib.Local.info lib) with
         | None ->
-          setup_lib_html_rules sctx lib
-            ~requires:(Lib.closure ~linking:false [ Lib.Local.to_lib lib ])
+          let* requires = Lib.closure ~linking:false [ Lib.Local.to_lib lib ] in
+          setup_lib_html_rules sctx lib ~requires
         | Some pkg -> setup_pkg_html_rules pkg)
     and+ () =
       match

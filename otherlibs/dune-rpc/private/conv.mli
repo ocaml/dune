@@ -22,12 +22,17 @@ val list : ('a, values) t -> ('a list, values) t
 
 val pair : ('a, values) t -> ('b, values) t -> ('a * 'b, values) t
 
+val option : ('a, values) t -> ('a option, values) t
+
 val triple :
   ('a, values) t -> ('b, values) t -> ('c, values) t -> ('a * 'b * 'c, values) t
 
 val enum : (string * 'a) list -> ('a, values) t
 
 val iso : ('a, 'k) t -> ('a -> 'b) -> ('b -> 'a) -> ('b, 'k) t
+
+val iso_result :
+  ('a, 'k) t -> ('a -> ('b, exn) result) -> ('b -> 'a) -> ('b, 'k) t
 
 val version : ?until:int * int -> ('a, 'k) t -> since:int * int -> ('a, 'k) t
 

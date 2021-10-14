@@ -373,16 +373,17 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     Lib.DB.instrumentation_backend (Scope.libs scope)
   in
   let* preprocess =
-    Resolve.read_memo_build
+    Resolve.Build.read_memo_build
       (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
          ~instrumentation_backend)
   in
   let* instrumentation_deps =
-    Resolve.read_memo_build
+    Resolve.Build.read_memo_build
       (Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
          ~instrumentation_backend)
   in
-  (* Preprocess before adding the alias module as it doesn't need preprocessing *)
+  (* Preprocess before adding the alias module as it doesn't need
+     preprocessing *)
   let* pp =
     Preprocessing.make sctx ~dir ~scope ~preprocess ~expander
       ~preprocessor_deps:lib.buildable.preprocessor_deps ~instrumentation_deps
@@ -390,7 +391,13 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       ~lib_name:(Some (snd lib.name))
   in
   let+ modules =
-    Modules.map_user_written source_modules ~f:(Pp_spec.pp_module pp)
+    let add_empty_intf = lib.buildable.empty_module_interface_if_absent in
+    Modules.map_user_written source_modules ~f:(fun m ->
+        let* m = Pp_spec.pp_module pp m in
+        if add_empty_intf && not (Module.has m ~ml_kind:Intf) then
+          Module_compilation.with_empty_intf ~sctx ~dir m
+        else
+          Memo.Build.return m)
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -407,7 +414,6 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ~compile_info ~dep_graphs =
-  (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let source_modules =
     Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
   in
@@ -418,7 +424,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
-  let requires_compile = Compilation_context.requires_compile cctx in
+  let* requires_compile = Compilation_context.requires_compile cctx in
   let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
   let* () =
     Memo.Build.Option.iter vimpl
@@ -450,7 +456,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       ; compile_info
       }
   and+ preprocess =
-    Resolve.read_memo_build
+    Resolve.Build.read_memo_build
       (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
@@ -463,7 +469,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       () )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
-  let compile_info =
+  let* compile_info =
     Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
       ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   in

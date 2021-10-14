@@ -45,6 +45,11 @@ module Pps = struct
     ; staged : bool
     }
 
+  let equal f t { loc; pps; flags; staged } =
+    Loc.equal t.loc loc && List.equal f t.pps pps
+    && List.equal String_with_vars.equal_no_loc t.flags flags
+    && Bool.equal t.staged staged
+
   let compare_no_locs compare_pps
       { loc = _; pps = pps1; flags = flags1; staged = s1 }
       { loc = _; pps = pps2; flags = flags2; staged = s2 } =
@@ -64,6 +69,15 @@ type 'a t =
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
+let equal f x y =
+  match (x, y) with
+  | No_preprocessing, No_preprocessing -> true
+  | Action (x, y), Action (x', y') ->
+    Tuple.T2.equal Loc.equal Action_dune_lang.equal (x, y) (x', y')
+  | Pps x, Pps y -> Pps.equal f x y
+  | Future_syntax x, Future_syntax y -> Loc.equal x y
+  | _, _ -> false
+
 let map t ~f =
   match t with
   | Pps t -> Pps { t with pps = List.map t.pps ~f }
@@ -80,24 +94,25 @@ let filter_map t ~f =
   | (No_preprocessing | Action _ | Future_syntax _) as t -> t
 
 let filter_map_resolve t ~f =
-  let open Resolve.O in
+  let open Resolve.Build.O in
   match t with
   | Pps t ->
-    let+ pps = Resolve.List.filter_map t.pps ~f in
+    let+ pps = Resolve.Build.List.filter_map t.pps ~f in
     let pps, flags = List.split pps in
     if pps = [] then
       No_preprocessing
     else
       Pps { t with pps; flags = t.flags @ List.flatten flags }
-  | (No_preprocessing | Action _ | Future_syntax _) as t -> Resolve.return t
+  | (No_preprocessing | Action _ | Future_syntax _) as t ->
+    Resolve.Build.return t
 
 let fold_resolve t ~init ~f =
   match t with
-  | Pps t -> Resolve.List.fold_left t.pps ~init ~f
+  | Pps t -> Resolve.Build.List.fold_left t.pps ~init ~f
   | No_preprocessing
   | Action _
   | Future_syntax _ ->
-    Resolve.return init
+    Resolve.Build.return init
 
 module Without_instrumentation = struct
   type t = Loc.t * Lib_name.t
@@ -113,6 +128,8 @@ module With_instrumentation = struct
         ; deps : Dep_conf.t list
         ; flags : String_with_vars.t list
         }
+
+  let equal (x : t) (y : t) = Poly.equal x y
 end
 
 let decode =
@@ -206,6 +223,8 @@ module Per_module = struct
 
   type 'a t = 'a preprocess Per_module.t
 
+  let equal f x y = Per_module.equal (equal f) x y
+
   let decode = Per_module.decode decode ~default:No_preprocessing
 
   let no_preprocessing () = Per_module.for_all No_preprocessing
@@ -264,9 +283,9 @@ module Per_module = struct
   let with_instrumentation t ~instrumentation_backend =
     let f = function
       | With_instrumentation.Ordinary libname ->
-        Resolve.return (Some (libname, []))
+        Resolve.Build.return (Some (libname, []))
       | With_instrumentation.Instrumentation_backend { libname; flags; _ } ->
-        Resolve.map
+        Resolve.Build.map
           ~f:(fun backend ->
             match backend with
             | None -> None
@@ -276,9 +295,9 @@ module Per_module = struct
     Per_module.map_resolve t ~f:(filter_map_resolve ~f)
 
   let instrumentation_deps t ~instrumentation_backend =
-    let open Resolve.O in
+    let open Resolve.Build.O in
     let f = function
-      | With_instrumentation.Ordinary _ -> Resolve.return []
+      | With_instrumentation.Ordinary _ -> Resolve.Build.return []
       | With_instrumentation.Instrumentation_backend
           { libname; deps; flags = _ } -> (
         instrumentation_backend libname >>| function

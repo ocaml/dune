@@ -1279,15 +1279,6 @@ let set_of_source_paths set =
 let set_of_build_paths_list =
   List.fold_left ~init:Set.empty ~f:(fun acc e -> Set.add acc (build e))
 
-let string_of_file_kind = function
-  | Unix.S_REG -> "regular file"
-  | Unix.S_DIR -> "directory"
-  | Unix.S_CHR -> "character device"
-  | Unix.S_BLK -> "block device"
-  | Unix.S_LNK -> "symbolic link"
-  | Unix.S_FIFO -> "named pipe"
-  | Unix.S_SOCK -> "socket"
-
 let rename old_path new_path =
   Sys.rename (to_string old_path) (to_string new_path)
 
@@ -1295,3 +1286,35 @@ let chmod t ~mode = Unix.chmod (to_string t) mode
 
 let follow_symlink path =
   Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string
+
+module Expert = struct
+  let drop_absolute_prefix ~prefix p =
+    match String.drop_prefix ~prefix:(Kind.to_absolute_filename prefix) p with
+    | None -> None
+    | Some "" -> Some Local.root
+    | Some p ->
+      Some
+        (Local.of_string
+           (if is_dir_sep p.[0] then
+             String.drop p 1
+           else
+             p))
+
+  let try_localize_external ext =
+    let p = External.to_string ext in
+    match Fdecl.get Build.build_dir with
+    | External s -> (
+      match drop_absolute_prefix ~prefix:(Kind.External s) p with
+      | Some s -> Some (in_build_dir s)
+      | None ->
+        drop_absolute_prefix ~prefix:(Kind.In_source_dir Local.root) p
+        |> Option.map ~f:in_source_tree)
+    | In_source_dir _ ->
+      drop_absolute_prefix ~prefix:(Kind.In_source_dir Local.root) p
+      |> Option.map ~f:make_local_path
+
+  let try_localize_external t =
+    match t with
+    | External e -> Option.value ~default:t (try_localize_external e)
+    | _ -> t
+end

@@ -55,7 +55,7 @@ struct
     match find t key with
     | None -> set t key data
     | Some _ ->
-      Code_error.raise "Hastbl.add_exn: key already exists"
+      Code_error.raise "Hashtbl.add_exn: key already exists"
         [ ("key", H.to_dyn key) ]
 
   let add t key data =
@@ -70,7 +70,8 @@ struct
   let to_dyn f t =
     Dyn.Map
       (foldi t ~init:[] ~f:(fun key data acc -> (H.to_dyn key, f data) :: acc)
-      |> List.sort ~compare:(fun (k, _) (k', _) -> Dyn.compare k k'))
+      |> List.sort ~compare:(fun (k, _) (k', _) ->
+             Ordering.of_int (Dyn.compare k k')))
 
   let filteri_inplace t ~f =
     (* Surely there's a more performant way of writing this. (e.g. using

@@ -37,7 +37,14 @@ let filteri l ~f =
   in
   filteri l 0
 
-let concat_map l ~f = concat (map l ~f)
+let concat_map t ~f =
+  let rec aux f acc = function
+    | [] -> rev acc
+    | x :: l ->
+      let xs = f x in
+      aux f (rev_append xs acc) l
+  in
+  aux f [] t
 
 let rec rev_map_append l1 l2 ~f =
   match l1 with
@@ -229,3 +236,11 @@ let split_while xs ~f =
     | t -> (rev acc, t)
   in
   loop [] xs
+
+let truncate ~max_length xs =
+  let rec loop acc length = function
+    | [] -> `Not_truncated (rev acc)
+    | _ :: _ when length >= max_length -> `Truncated (rev acc)
+    | hd :: tl -> loop (hd :: acc) (length + 1) tl
+  in
+  loop [] 0 xs

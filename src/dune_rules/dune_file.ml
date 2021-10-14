@@ -152,6 +152,7 @@ module Buildable = struct
     { loc : Loc.t
     ; modules : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
+    ; empty_module_interface_if_absent : bool
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
@@ -269,6 +270,9 @@ module Buildable = struct
     and+ root_module =
       field_o "root_module"
         (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> Module_name.decode_loc)
+    and+ empty_module_interface_if_absent =
+      field_b "empty_module_interface_if_absent"
+        ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
     in
     let preprocess =
       let init =
@@ -341,6 +345,7 @@ module Buildable = struct
     ; lint
     ; modules
     ; modules_without_implementation
+    ; empty_module_interface_if_absent
     ; foreign_stubs
     ; foreign_archives
     ; libraries
@@ -1156,8 +1161,8 @@ module Executables = struct
                            to be a valid module name or add a \"name\" field \
                            with a valid module name."
                       ]
-                      ~hints:
-                        (Module_name.valid_format_doc :: user_message.hints)))
+                      ~hints:(Module_name.valid_format_doc :: user_message.hints)
+                  ))
           else
             User_error.raise ~loc
               [ Pp.textf "%s field may not be omitted before dune version %s"

@@ -444,7 +444,7 @@ let%expect_test "previously_evaluated_cell" =
     | None -> Memo.Invalidation.empty
     | Some cell ->
       printf "Invalidating %s...\n" name;
-      Cell.invalidate cell
+      Cell.invalidate ~reason:Test cell
   in
   print_previously_evaluated_cell "x";
   print_previously_evaluated_cell "y";
@@ -496,7 +496,7 @@ let%expect_test "previously_evaluated_cell" =
     previously_evaluated_cell x = [x]
     previously_evaluated_cell y = [y]
   |}];
-  Memo.reset Memo.Invalidation.clear_caches;
+  Memo.reset (Memo.Invalidation.clear_caches ~reason:Test);
   (* Both switch back to unevaluated after clearing all memoization caches. *)
   print_previously_evaluated_cell "x";
   print_previously_evaluated_cell "y";
@@ -1341,7 +1341,8 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
   evaluate_and_print summit 0;
   evaluate_and_print summit 2;
   print_perf_counters ();
-  (* In the second run, we don't recompute [base] three times as we did before. *)
+  (* In the second run, we don't recompute [base] three times as we did
+     before. *)
   [%expect
     {|
     Started evaluating summit
@@ -1365,7 +1366,8 @@ let%expect_test "Nested nodes with cutoff are recomputed optimally" =
   |}]
 
 (* In addition to its direct purpose, this test also: (i) demonstrates what
-   happens in the presence of non-determinism; and (ii) tests cell invalidation. *)
+   happens in the presence of non-determinism; and (ii) tests cell
+   invalidation. *)
 let%expect_test "Test that there are no phantom dependencies" =
   let counter = ref 0 in
   let const_8 =
@@ -1409,7 +1411,7 @@ let%expect_test "Test that there are no phantom dependencies" =
   evaluate_and_print summit 0;
   (* No recomputation is needed since the [cell] is up to date. *)
   [%expect {| f 0 = Ok 8 |}];
-  Memo.reset (Memo.Cell.invalidate cell);
+  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
   evaluate_and_print summit 0;
   (* Note that we no longer depend on the [cell]. *)
   [%expect
@@ -1418,7 +1420,7 @@ let%expect_test "Test that there are no phantom dependencies" =
     *** middle does not depend on base ***
     Evaluated summit: 0
     f 0 = Ok 0 |}];
-  Memo.reset (Memo.Cell.invalidate cell);
+  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
   evaluate_and_print summit 0;
   (* Nothing is recomputed, since the result no longer depends on the cell. In
      the past, the cell remained as a "phantom dependency", which caused
@@ -1818,7 +1820,7 @@ let%expect_test "Test that there are no spurious cycles" =
     Memo graph: 0/2 restored/computed nodes, 1 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  Memo.reset (Memo.Cell.invalidate (Memo.cell task_b 0));
+  Memo.reset (Memo.Cell.invalidate ~reason:Test (Memo.cell task_b 0));
   evaluate_and_print task_a 0;
   (* Note that here task B blows up with a cycle error when trying to restore
      its result from the cache. A doesn't need it and terminates correctly. *)
@@ -1886,7 +1888,7 @@ let%expect_test "Test Memo.clear_cache" =
     Memo graph: 0/4 restored/computed nodes, 2 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  let invalidation = Memo.Invalidation.invalidate_cache add_one in
+  let invalidation = Memo.Invalidation.invalidate_cache ~reason:Test add_one in
   Memo.reset invalidation;
   evaluate_and_print add_one 1;
   evaluate_and_print add_one 2;

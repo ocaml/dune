@@ -49,7 +49,7 @@ module Execution_context : sig
   (* Add [n] references to the current execution context *)
   val add_refs : int -> unit
 
-  (* Decrese the reference count of the current execution context *)
+  (* Decrease the reference count of the current execution context *)
   val deref : unit -> unit
 
   (* [wait_errors f] executes [f ()] inside a new execution contexts. Returns a
@@ -389,6 +389,13 @@ let parallel_iter_set (type a s)
   | 1 -> f (Option.value_exn (S.min_elt t)) k
   | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f k
 
+let record_metrics t ~tag =
+  of_thunk (fun () ->
+      let timer = Metrics.Timer.start tag in
+      let+ res = t in
+      Metrics.Timer.stop timer;
+      res)
+
 module Make_map_traversals (Map : Map.S) = struct
   let parallel_iter t ~f k =
     match Map.cardinal t with
@@ -560,7 +567,8 @@ module Mvar = struct
     }
 
   (* Invariant enforced on mvars. We don't actually call this function, but we
-     keep it here for documentation and to help understand the implementation: *)
+     keep it here for documentation and to help understand the
+     implementation: *)
   let _invariant t =
     match t.value with
     | None -> Queue.is_empty t.writers

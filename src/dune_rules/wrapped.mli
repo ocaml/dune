@@ -1,9 +1,10 @@
 open! Dune_engine
-open Stdune
 
 type t =
   | Simple of bool
   | Yes_with_transition of string
+
+val equal : t -> t -> bool
 
 include Dune_lang.Conv.S with type t := t
 

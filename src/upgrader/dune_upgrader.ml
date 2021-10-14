@@ -111,7 +111,7 @@ module Common = struct
     (sexps, comments)
 
   (* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path] and all
-     the files in includes, recursiverly *)
+     the files in includes, recursively *)
   let scan_included_files path =
     let files = ref Path.Source.Map.empty in
     let rec iter path =
@@ -385,8 +385,9 @@ let upgrade () =
     if !v1_updates && not last then (
       (* Run the upgrader again to update new v1 projects to v2 No more than one
          additional upgrade should be needed *)
-      (* We reset memoization tables as a simple way to refresh the Source_tree *)
-      Memo.reset Memo.Invalidation.clear_caches;
+      (* We reset memoization tables as a simple way to refresh the
+         Source_tree *)
+      Memo.reset (Memo.Invalidation.clear_caches ~reason:Upgrade);
       aux true
     ) else if !v2_updates then (
       Console.print

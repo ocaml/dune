@@ -100,6 +100,8 @@ type t =
   | Re_export of (Loc.t * Lib_name.t)
   | Select of Select.t
 
+let equal = Poly.equal
+
 let to_dyn =
   let open Dyn.Encoder in
   function

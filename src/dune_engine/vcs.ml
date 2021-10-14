@@ -5,13 +5,13 @@ module Kind = struct
     | Git
     | Hg
 
-  let filenames = [ (".git", Git); (".hg", Hg) ]
-
-  let of_filename = List.assoc filenames
-
   let of_dir_contents files =
-    List.find_map filenames ~f:(fun (fname, kind) ->
-        Option.some_if (String.Set.mem files fname) kind)
+    if String.Set.mem files ".git" then
+      Some Git
+    else if String.Set.mem files ".hg" then
+      Some Hg
+    else
+      None
 
   let to_dyn t =
     Dyn.Variant
@@ -116,7 +116,8 @@ let make_fun name ~git ~hg =
 let describe =
   Staged.unstage
   @@ make_fun "vcs-describe"
-       ~git:(fun t -> run_git t [ "describe"; "--always"; "--dirty" ])
+       ~git:(fun t ->
+         run_git t [ "describe"; "--always"; "--dirty"; "--abbrev=7" ])
        ~hg:(fun x ->
          let open Fiber.O in
          let+ res = hg_describe x in

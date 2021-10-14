@@ -47,8 +47,8 @@ module Digest = Digest
 module Fdecl = Fdecl
 module Unit = Unit
 module Monad = Monad
+module State = State
 module Monoid = Monoid
-module Dyn = Dyn
 module Float = Float
 module Tuple = Tuple
 module Poly = Poly
@@ -69,6 +69,7 @@ module Temp = Temp
 module Queue = Queue
 module Caller_id = Caller_id
 module Metrics = Metrics
+module Dune_filesystem_stubs = Dune_filesystem_stubs
 
 module type Applicative = Applicative_intf.S
 

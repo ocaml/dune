@@ -1,40 +1,53 @@
 open Stdune
 open Import
 
-let run_build_system ~common ~(request : unit Action_builder.t) () =
-  let build_started = Unix.gettimeofday () in
-  Fiber.finalize
-    (fun () ->
-      Build_system.run (fun () ->
-          let open Memo.Build.O in
-          let+ (), _facts = Action_builder.run request Eager in
-          ()))
-    ~finally:(fun () ->
+let with_metrics ~common f =
+  let start_time = Unix.gettimeofday () in
+  Fiber.finalize f ~finally:(fun () ->
+      let duration = Unix.gettimeofday () -. start_time in
       (if Common.print_metrics common then
         let gc_stat = Gc.quick_stat () in
         Console.print_user_message
           (User_message.make
-             [ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
-             ; Pp.textf "(%.2fs total, %.2fs digests, %.1fM heap words)"
-                 (Unix.gettimeofday () -. build_started)
-                 (Metrics.Timer.read_seconds Digest.generic_timer)
-                 (float_of_int gc_stat.heap_words /. 1_000_000.)
-             ]));
+             ([ Pp.textf "%s" (Memo.Perf_counters.report_for_current_run ())
+              ; Pp.textf "(%.2fs total, %.1fM heap words)" duration
+                  (float_of_int gc_stat.heap_words /. 1_000_000.)
+              ; Pp.text "Timers:"
+              ]
+             @ List.map
+                 ~f:
+                   (fun (timer, { Metrics.Timer.Measure.cumulative_time; count })
+                        ->
+                   Pp.textf "%s - time spent = %.2fs, count = %d" timer
+                     cumulative_time count)
+                 (String.Map.to_list (Metrics.Timer.aggregated_timers ())))));
       Fiber.return ())
 
-let setup () = Import.Main.setup ()
-
 let run_build_system ~common ~request =
+  let run ~(request : unit Action_builder.t) =
+    with_metrics ~common (fun () ->
+        Build_system.run (fun () ->
+            let open Memo.Build.O in
+            let+ (), _facts = Action_builder.run request Eager in
+            ()))
+  in
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
+      (* CR-someday amokhov: Currently we invalidate cached timestamps on every
+         incremental rebuild. This conservative approach helps us to work around
+         some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
+         find a way to avoid doing this. In fact, this may be unnecessary even
+         for the initial build if we assume that the user does not modify files
+         in the [_build] directory. For now, it's unclear if optimising this is
+         worth the effort. *)
       Cached_digest.invalidate_cached_timestamps ();
-      let* setup = setup () in
+      let* setup = Import.Main.setup () in
       let request =
         Action_builder.bind (Action_builder.memo_build setup) ~f:(fun setup ->
             request setup)
       in
-      run_build_system ~common ~request ())
+      run ~request)
     ~finally:(fun () ->
       Hooks.End_of_build.run ();
       Fiber.return ())

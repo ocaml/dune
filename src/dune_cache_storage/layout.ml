@@ -1,8 +1,9 @@
 open Stdune
 
 let default_root_dir () =
+  let cache_dir = Xdg.cache_dir (Lazy.force Dune_util.xdg) in
   Path.L.relative
-    (Path.of_filename_relative_to_initial_cwd Xdg.cache_dir)
+    (Path.of_filename_relative_to_initial_cwd cache_dir)
     [ "dune"; "db" ]
 
 let root_dir =

@@ -1,0 +1,3 @@
+(executable
+ (name sub_process)
+ (libraries unix))

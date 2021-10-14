@@ -26,7 +26,8 @@ end = struct
 
        Note: if we find a way to reliably invalidate this function, its output
        should continue to have no cutoff because the callers might depend not
-       just on the existence of a directory but on its *continuous* existence. *)
+       just on the existence of a directory but on its *continuous*
+       existence. *)
     Memo.create "mkdir_p"
       ~input:(module Path.Build)
       (fun p ->
@@ -207,9 +208,9 @@ end = struct
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
-      Console.Status_line.set_live_temporarily
-        (fun () -> Some (Pp.hbox (Pp.text "Saving build trace db...")))
-        (fun () -> P.dump file (Lazy.force t))
+      Console.Status_line.with_overlay
+        (Live (fun () -> Pp.hbox (Pp.text "Saving build trace db...")))
+        ~f:(fun () -> P.dump file (Lazy.force t))
     )
 
   (* CR-someday amokhov: If this happens to be executed after we've cleared the
@@ -291,7 +292,7 @@ module Error = struct
     ; id : Id.t
     }
 
-  let id t = Id.to_int t.id
+  let id t = t.id
 
   let extract_dir annot =
     Process.With_directory_annot.check annot
@@ -517,12 +518,10 @@ let () =
       Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
 let compute_target_digests targets =
-  match
-    List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
-        (target, Cached_digest.build_file target))
-  with
-  | l -> Some l
-  | exception (Unix.Unix_error _ | Sys_error _) -> None
+  Option.List.traverse (Path.Build.Set.to_list targets) ~f:(fun target ->
+      Cached_digest.build_file target
+      |> Cached_digest.Digest_result.to_option
+      |> Option.map ~f:(fun digest -> (target, digest)))
 
 let compute_target_digests_or_raise_error exec_params ~loc targets =
   let remove_write_permissions =
@@ -532,7 +531,8 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
        cache will remove write permission because of hardlink sharing anyway, so
        always removing them enables to catch mistakes earlier. *)
     (* FIXME: searching the dune version for each single target seems way
-       suboptimal. This information could probably be stored in rules directly. *)
+       suboptimal. This information could probably be stored in rules
+       directly. *)
     if Path.Build.Set.is_empty targets then
       false
     else
@@ -542,10 +542,48 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
   let good, missing, errors =
     Path.Build.Set.fold targets ~init:([], [], [])
       ~f:(fun target (good, missing, errors) ->
+        let expected_syscall_path = Path.to_string (Path.build target) in
         match Cached_digest.refresh ~remove_write_permissions target with
         | Ok digest -> ((target, digest) :: good, missing, errors)
         | No_such_file -> (good, target :: missing, errors)
-        | Error exn -> (good, missing, (target, exn) :: errors))
+        | Broken_symlink ->
+          let error = [ Pp.verbatim "Broken symlink" ] in
+          (good, missing, (target, error) :: errors)
+        | Unexpected_kind file_kind ->
+          let error =
+            [ Pp.verbatim
+                (sprintf "Unexpected file kind %S (%s)"
+                   (Dune_filesystem_stubs.File_kind.to_string file_kind)
+                   (Dune_filesystem_stubs.File_kind.to_string_hum file_kind))
+            ]
+          in
+          (good, missing, (target, error) :: errors)
+        | Unix_error (error, syscall, path) ->
+          let error =
+            [ (if String.equal expected_syscall_path path then
+                Pp.verbatim syscall
+              else
+                Pp.concat
+                  [ Pp.verbatim syscall
+                  ; Pp.verbatim " "
+                  ; Pp.verbatim (String.maybe_quoted path)
+                  ])
+            ; Pp.text (Unix.error_message error)
+            ]
+          in
+          (good, missing, (target, error) :: errors)
+        | Error exn ->
+          let error =
+            match exn with
+            | Sys_error msg ->
+              [ Pp.verbatim
+                  (String.drop_prefix_if_exists
+                     ~prefix:(expected_syscall_path ^ ": ")
+                     msg)
+              ]
+            | exn -> [ Pp.verbatim (Printexc.to_string exn) ]
+          in
+          (good, missing, (target, error) :: errors))
   in
   match (missing, errors) with
   | [], [] -> List.rev good
@@ -562,34 +600,30 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
       | [] -> []
       | _ ->
         [ Pp.textf "Error trying to read targets after a rule was run:"
-        ; Pp.enumerate (List.rev errors) ~f:(fun (path, exn) ->
-              let path = Path.build path in
-              let expected_syscall_path = Path.to_string path in
+        ; Pp.enumerate (List.rev errors) ~f:(fun (target, error) ->
               Pp.concat ~sep:(Pp.verbatim ": ")
-                (pp_path path
-                 ::
-                 (match exn with
-                 | Unix.Unix_error (error, syscall, p) ->
-                   [ (if String.equal expected_syscall_path p then
-                       Pp.verbatim syscall
-                     else
-                       Pp.concat
-                         [ Pp.verbatim syscall
-                         ; Pp.verbatim " "
-                         ; Pp.verbatim (String.maybe_quoted p)
-                         ])
-                   ; Pp.text (Unix.error_message error)
-                   ]
-                 | Sys_error msg ->
-                   [ Pp.verbatim
-                       (String.drop_prefix_if_exists
-                          ~prefix:(expected_syscall_path ^ ": ")
-                          msg)
-                   ]
-                 | exn -> [ Pp.verbatim (Printexc.to_string exn) ])))
+                (pp_path (Path.build target) :: error))
         ])
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
+
+let init_sandbox =
+  let init =
+    lazy
+      (let dir = Path.build sandbox_dir in
+       Path.mkdir_p (Path.relative dir ".hg");
+       (* We create an empty [.git] file to prevent git from escaping the
+          sandbox. It will choke on this empty .git and report an error about
+          its format being invalid. *)
+       Io.write_file (Path.relative dir ".git") "";
+       (* We create a [.hg/requires] file to prevent hg from escaping the
+          sandbox. It will complain that "Escaping the Dune sandbox" is an
+          unkown feature. *)
+       Io.write_file
+         (Path.relative dir ".hg/requires")
+         "Escaping the Dune sandbox")
+  in
+  fun () -> Lazy.force init
 
 let rec with_locks t mutexes ~f =
   match mutexes with
@@ -692,11 +726,14 @@ let no_rule_found t ~loc fn =
 (* +-------------------- Adding rules to the system --------------------+ *)
 
 let source_file_digest path =
-  Fs_memo.path_exists path >>= function
-  | true ->
-    let+ d = Fs_memo.file_digest path in
-    d
-  | false ->
+  Fs_memo.file_digest path >>= function
+  | Ok digest -> Memo.Build.return digest
+  | No_such_file
+  | Broken_symlink
+  | Unexpected_kind _
+  | Unix_error _
+  | Error _ ->
+    (* CR-someday amokhov: Give a more informative error. *)
     let+ loc = Rule_fn.loc () in
     User_error.raise ?loc
       [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
@@ -821,29 +858,29 @@ end = struct
         | Ignore_source_files ->
           true
         | Fallback ->
-          let source_files_for_targtes =
+          let source_files_for_targets =
             (* All targets are in [dir] and we know it correspond to a directory
                of a build context since there are source files to copy, so this
                call can't fail. *)
             Path.Build.Set.to_list rule.targets
             |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
           in
-          if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy
+          if Path.Source.Set.is_subset source_files_for_targets ~of_:to_copy
           then
             (* All targets are present *)
             false
           else if
             Path.Source.Set.is_empty
-              (Path.Source.Set.inter source_files_for_targtes to_copy)
+              (Path.Source.Set.inter source_files_for_targets to_copy)
           then
             (* No target is present *)
             true
           else
             let absent_targets =
-              Path.Source.Set.diff source_files_for_targtes to_copy
+              Path.Source.Set.diff source_files_for_targets to_copy
             in
             let present_targets =
-              Path.Source.Set.diff source_files_for_targtes absent_targets
+              Path.Source.Set.diff source_files_for_targets absent_targets
             in
             User_error.raise ~loc:(Rule.loc rule)
               [ Pp.text
@@ -916,7 +953,7 @@ end = struct
     (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
        the [Source_files_to_ignore] that means the rule that ordered its
        promotion is no more valid. This would happen when upgrading to Dune 2.8
-       from ealier version without and building uncleaned projects. We delete
+       from earlier version without and building uncleaned projects. We delete
        these leftover files here. *)
     let merlin_file = ".merlin" in
     let source_dir = Path.Build.drop_build_context_exn dir in
@@ -1089,7 +1126,8 @@ end = struct
       | Unrestricted ->
         (* In this case the parent isn't going to be able to create any
            generated granddescendant directories. (rules that attempt to do so
-           may run into the [allowed_by_parent] check or will be simply ignored) *)
+           may run into the [allowed_by_parent] check or will be simply
+           ignored) *)
         Memo.Build.return Dir_set.empty
       | Restricted restriction -> Memo.Lazy.force restriction
     in
@@ -1250,7 +1288,8 @@ end = struct
   let build_dep : Dep.t -> Dep.Fact.t Memo.Build.t = function
     | Alias a ->
       let+ digests = build_alias a in
-      (* Fact: alias [a] expand to the set of files with their digest [digests] *)
+      (* Fact: alias [a] expand to the set of files with their digest
+         [digests] *)
       Dep.Fact.alias a digests
     | File f ->
       let+ digest = build_file f in
@@ -1264,7 +1303,8 @@ end = struct
     | Universe
     | Env _
     | Sandbox_config _ ->
-      (* Facts about these dependencies are constructed in [Dep.Facts.digest]. *)
+      (* Facts about these dependencies are constructed in
+         [Dep.Facts.digest]. *)
       Memo.Build.return Dep.Fact.nothing
 
   let build_deps deps =
@@ -1366,7 +1406,7 @@ end = struct
         Dune_stats.emit stats event)
 
   (** A type isomorphic to Result, but without the negative connotations
-      assotiated with the word Error. *)
+      associated with the word Error. *)
   module Cache_result = struct
     type ('hit, 'miss) t =
       | Hit of 'hit
@@ -1424,6 +1464,7 @@ end = struct
       match sandbox with
       | None -> (None, action)
       | Some (sandbox_dir, sandbox_mode) ->
+        init_sandbox ();
         Path.rm_rf (Path.build sandbox_dir);
         let sandboxed path : Path.Build.t =
           Path.Build.append_local sandbox_dir (Path.Build.local path)
@@ -1502,7 +1543,7 @@ end = struct
     in
     let update_cached_digests ~targets_and_digests =
       List.iter targets_and_digests ~f:(fun (target, digest) ->
-          Cached_digest.set (Path.build target) digest)
+          Cached_digest.set target digest)
     in
     match
       Path.Build.Set.to_list_map targets ~f:Dune_cache.Local.Target.create
@@ -1613,7 +1654,7 @@ end = struct
        compute action execution parameters, we have no use for the action and
        might as well fail early, skipping unnecessary dependencies. The function
        [Source_tree.execution_parameters_of_dir] is memoized, and the result is
-       not expected to change often, so we do not sacrifise too much performance
+       not expected to change often, so we do not sacrifice too much performance
        here by executing it sequentially. *)
     let* action, deps = Action_builder.run action Eager in
     let wrap_fiber f =
@@ -1757,7 +1798,7 @@ end = struct
             (* Step I. Remove stale targets both from the digest table and from
                the build directory. *)
             Path.Build.Set.iter targets ~f:(fun target ->
-                Cached_digest.remove (Path.build target);
+                Cached_digest.remove target;
                 Path.Build.unlink_no_err target);
             (* Step II. Try to restore artifacts from the shared cache if the
                following conditions are met.
@@ -1822,7 +1863,7 @@ end = struct
                 let* targets_and_digests =
                   (* Step IV. Store results to the shared cache and if that step
                      fails, post-process targets by removing write permissions
-                     and computing their digets. *)
+                     and computing their digests. *)
                   match t.cache_config with
                   | Enabled { storage_mode = mode; reproducibility_check = _ }
                     when can_go_in_shared_cache -> (
@@ -1831,7 +1872,7 @@ end = struct
                         ~action:action.action
                     in
                     match targets_and_digests with
-                    | Some targets_and_digets -> targets_and_digets
+                    | Some targets_and_digests -> targets_and_digests
                     | None ->
                       compute_target_digests_or_raise_error execution_parameters
                         ~loc targets)
@@ -1917,14 +1958,25 @@ end = struct
                       (let open Memo.Build.O in
                       Fs_memo.path_exists in_source_tree >>= function
                       | false -> Memo.Build.return false
-                      | true ->
-                        let in_build_dir_digest =
+                      | true -> (
+                        match
                           Cached_digest.build_file path
-                        in
-                        let+ in_source_tree_digest =
+                          |> Cached_digest.Digest_result.to_option
+                        with
+                        | None ->
+                          (* CR-someday amokhov: We couldn't digest the target
+                             so something happened to it. Right now, we skip the
+                             promotion in this case, but we could perhaps delete
+                             the corresponding path in the source tree. *)
+                          Memo.Build.return true
+                        | Some in_build_dir_digest -> (
                           Fs_memo.file_digest in_source_tree
-                        in
-                        Digest.equal in_build_dir_digest in_source_tree_digest)
+                          >>| Cached_digest.Digest_result.to_option
+                          >>| function
+                          | None -> false
+                          | Some in_source_tree_digest ->
+                            Digest.equal in_build_dir_digest
+                              in_source_tree_digest)))
                   in
                   if is_up_to_date then
                     Fiber.return ()
@@ -2031,7 +2083,7 @@ end = struct
       execute_action_generic_stage2_impl
 
   let execute_action_generic ~observing_facts act ~capture_stdout =
-    (* We memoize the execution of anonymous actions, both via the persisetent
+    (* We memoize the execution of anonymous actions, both via the persistent
        mechanism for not re-running build rules between invocations of [dune
        build] and via [Memo]. The former is done by producing a normal build
        rule on the fly for the anonymous action.
@@ -2333,35 +2385,25 @@ let run f =
   in
   let f () =
     let* () = Handler.report_build_event t.handler Start in
-    let build_end_status_reported = ref false in
     let* res =
       Fiber.collect_errors (fun () ->
-          Memo.Build.run_with_error_handler (f ())
-            ~handle_error_no_raise:(fun exn ->
-              let* () = report_early_exn exn in
-              if !build_end_status_reported then
-                Fiber.return ()
-              else (
-                build_end_status_reported := true;
-                Handler.report_build_event t.handler
-                  (if caused_by_cancellation exn then
-                    Interrupt
-                  else
-                    Fail)
-              )))
+          Memo.Build.run_with_error_handler f
+            ~handle_error_no_raise:report_early_exn)
     in
     match res with
     | Ok res ->
-      let+ () =
-        if !build_end_status_reported then
-          Fiber.return ()
-        else
-          Handler.report_build_event t.handler Finish
-      in
+      let+ () = Handler.report_build_event t.handler Finish in
       Ok res
     | Error exns ->
       handle_final_exns exns;
-      Fiber.return (Error `Already_reported)
+      let final_status =
+        if List.exists exns ~f:caused_by_cancellation then
+          Handler.Interrupt
+        else
+          Fail
+      in
+      let+ () = Handler.report_build_event t.handler final_status in
+      Error `Already_reported
   in
   Fiber.Mutex.with_lock t.build_mutex f
 
@@ -2436,6 +2478,13 @@ module Progress = struct
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
     }
+
+  let complete t = t.number_of_rules_executed
+
+  let remaining t = t.number_of_rules_discovered - t.number_of_rules_executed
+
+  let is_determined { number_of_rules_discovered; number_of_rules_executed } =
+    number_of_rules_discovered <> 0 || number_of_rules_executed <> 0
 end
 
 let get_current_progress () =

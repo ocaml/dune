@@ -46,7 +46,7 @@ let string_in_ocaml_syntax str =
   (* CR-someday aalekseyev: should use the method from
      [Dune_lang.prepare_formatter] so that the formatter can fit multiple lines
      on one line. *)
-  match String_split.split ~on:'\n' str with
+  match String.split_on_char ~sep:'\n' str with
   | [] -> assert false
   | first :: rest -> (
     match unsnoc rest with
@@ -56,9 +56,8 @@ let string_in_ocaml_syntax str =
         (Pp.concat ~sep:Pp.newline
            (List.map ~f:Pp.verbatim
               (("\"" ^ String.escaped first ^ "\\n\\")
-               ::
-               List.map middle ~f:(fun s ->
-                   escape_protect_first_space s ^ "\\n\\")
+               :: List.map middle ~f:(fun s ->
+                      escape_protect_first_space s ^ "\\n\\")
               @ [ escape_protect_first_space last ^ "\"" ]))))
 
 let pp_sequence start stop x ~f =
@@ -154,17 +153,15 @@ module Encoder = struct
 
   let record r = Record r
 
-  let unknown _ = String "<unknown>"
-
-  let opaque _ = String "<opaque>"
+  let opaque _ = Opaque
 
   let constr s args = Variant (s, args)
 end
 
-let opaque = String "<opaque>"
+let opaque = Opaque
 
 type dyn = t
 
 let hash = Stdlib.Hashtbl.hash
 
-let compare x y = Ordering.of_int (compare x y)
+let compare x y = compare x y

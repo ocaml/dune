@@ -14,6 +14,8 @@ module Bin : sig
     -> string
     -> Action.Prog.t Memo.Build.t
 
+  val binary_available : t -> string -> bool Memo.Build.t
+
   val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 end
 
@@ -26,7 +28,7 @@ module Public_libs : sig
   (** [file_of_lib t ~from ~lib ~file] returns the path to a file in the
       directory of the given library. *)
   val file_of_lib :
-    t -> loc:Loc.t -> lib:Lib_name.t -> file:string -> Path.t Resolve.t
+    t -> loc:Loc.t -> lib:Lib_name.t -> file:string -> Path.t Resolve.Build.t
 end
 
 type t = private

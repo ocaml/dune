@@ -56,7 +56,7 @@ However, we'll demonstrate that this check isn't applicable to executables:
   > Foo.Bar.run ();;
   > EOF
 
-Although we get slightly different behavior if warpping is on or off:
+Although we get slightly different behavior if wrapping is on or off:
 
   $ cat >dune-project <<EOF
   > (lang dune 2.8)

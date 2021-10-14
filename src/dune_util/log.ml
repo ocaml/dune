@@ -5,6 +5,7 @@ module File = struct
     | Default
     | No_log_file
     | This of Path.t
+    | Out_channel of out_channel
 end
 
 type real =
@@ -21,6 +22,7 @@ let init ?(file = File.Default) () =
   let oc =
     match file with
     | No_log_file -> None
+    | Out_channel s -> Some s
     | This path -> Some (Io.open_out path)
     | Default ->
       Path.ensure_build_dir_exists ();

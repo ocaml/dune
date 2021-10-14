@@ -6,7 +6,7 @@ by Dune:
   > (executables_implicit_empty_intf true)
   > EOF
 
-We rewrite the xarning to ensure tests behave the same on 4.11 and 4.12
+We rewrite the warning to ensure tests behave the same on 4.11 and 4.12
   $ dune build ./bin/executable.exe 2>&1 |
   > sed -e 's,(warn.*32.*),(warning 32),g'
   File "bin/executable.ml", line 1, characters 4-10:

@@ -70,7 +70,7 @@ module Matches_existing_query = struct
 end
 
 (* Store [metadata] corresponding to a given [rule_or_action_digest] to the
-   cache using the supplied [to_sexp] serialiser. If the cache already contains
+   cache using the supplied [to_sexp] serializer. If the cache already contains
    an entry for the hash, we use [matches_existing_entry] to check that the
    given [content] matches the previously stored one. If this is not the case,
    we return [Will_not_store_due_to_non_determinism]. *)

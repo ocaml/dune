@@ -13,8 +13,6 @@
     execution, we can skip a bunch of work by not trying to re-execute all the
     rules. *)
 
-open Stdune
-
 type t
 
 val equal : t -> t -> bool

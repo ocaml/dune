@@ -33,7 +33,7 @@ end
 
 (* [make_relative_to_root p] will check that [Path.root] is a prefix of the
    absolute path [p] and remove it if that is the case. Under Windows and Cygwin
-   environement both paths are lowarcased before the comparison *)
+   environment both paths are lowarcased before the comparison *)
 let make_relative_to_root p =
   let prefix = Path.(to_absolute_filename root) in
   let p = Path.(to_absolute_filename p) in
@@ -54,7 +54,8 @@ let to_local file_path =
   (* This ensure the path is absolute. If not it is prefixed with
      [Path.initial_cwd] *)
   let abs_file_path = Path.of_filename_relative_to_initial_cwd file_path in
-  (* Then we make the path relative to [Path.root] (and not [Path.initial_cwd]) *)
+  (* Then we make the path relative to [Path.root] (and not
+     [Path.initial_cwd]) *)
   match make_relative_to_root abs_file_path with
   | Some path -> (
     try

@@ -2,27 +2,58 @@ let enabled = ref false
 
 let enable () = enabled := true
 
-module Reset = Monoid.Endofunction.Left (Unit)
-
-let reset = ref Reset.empty
-
 module Timer = struct
-  type t = float ref
+  module Measure = struct
+    type t =
+      { cumulative_time : float
+      ; count : int
+      }
+  end
 
-  let create () =
-    let timer = ref 0. in
-    reset := Reset.combine !reset (fun () -> timer := 0.);
-    timer
+  type t =
+    { start_time : float
+    ; tag : string
+    ; mutable stopped : bool
+    }
 
-  let read_seconds t = !t
+  let aggregate = ref String.Map.empty
 
-  let record t ~f =
+  let aggregated_timers () = !aggregate
+
+  let update_aggregate { start_time; tag; stopped } =
+    if not stopped then
+      aggregate :=
+        String.Map.update !aggregate tag ~f:(function
+          | Some { Measure.cumulative_time; count } ->
+            Some
+              { Measure.cumulative_time =
+                  cumulative_time +. (Unix.gettimeofday () -. start_time)
+              ; count = count + 1
+              }
+          | None ->
+            Some
+              { Measure.cumulative_time = Unix.gettimeofday () -. start_time
+              ; count = 1
+              })
+
+  let start tag = { start_time = Unix.gettimeofday (); tag; stopped = false }
+
+  let stop t =
+    match !enabled with
+    | false ->
+      Code_error.raise "Tried to stop a previously stopped timer"
+        [ ("tag", String t.tag) ]
+    | true ->
+      update_aggregate t;
+      t.stopped <- true
+
+  let record tag ~f =
     match !enabled with
     | false -> f ()
     | true ->
-      let start = Unix.gettimeofday () in
+      let start_time = Unix.gettimeofday () in
       Exn.protect ~f ~finally:(fun () ->
-          t := !t +. (Unix.gettimeofday () -. start))
+          update_aggregate { tag; start_time; stopped = false })
 end
 
-let reset () = !reset ()
+let reset () = Timer.aggregate := String.Map.empty

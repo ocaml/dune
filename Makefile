@@ -23,8 +23,8 @@ mdx \
 menhir \
 "merlin>=3.4.0" \
 ocamlfind \
-ocamlformat.0.18.0 \
-"odoc>=1.5.0" \
+ocamlformat.0.19.0 \
+"odoc>=2.0.0" \
 "ppx_expect>=v0.14" \
 ppx_inline_test \
 ppxlib \
@@ -151,4 +151,4 @@ dune-release:
 # see nix/default.nix for details
 .PHONY: nix/opam-selection.nix
 nix/opam-selection.nix: Makefile
-	nix-shell -A resolve default.nix
+	nix-shell -A resolve ./

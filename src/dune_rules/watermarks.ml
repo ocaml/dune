@@ -265,7 +265,7 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     ; ("VERSION_NUM", make_version version_num)
     ; ( "VCS_COMMIT_ID"
       , match commit with
-        | None -> Error "repositroy does not contain any commits"
+        | None -> Error "repository does not contain any commits"
         | Some s -> Ok s )
     ; ( "PKG_MAINTAINER"
       , make_separated "maintainer" ", " @@ Package.Info.maintainers info )
@@ -310,6 +310,19 @@ let subst vcs =
           [ Pp.text "dune subst must be executed from the root of the project."
           ]
   in
+  (match Dune_project.subst_config dune_project.project with
+  | Dune_engine.Subst_config.Disabled ->
+    User_error.raise
+      [ Pp.text
+          "dune subst has been disabled in this project. Any use of it is \
+           forbidden."
+      ]
+      ~hints:
+        [ Pp.text
+            "If you wish to re-enable it, change to (subst enabled) in the \
+             dune-project file."
+        ]
+  | Dune_engine.Subst_config.Enabled -> ());
   let info =
     let loc, name =
       match dune_project.name with

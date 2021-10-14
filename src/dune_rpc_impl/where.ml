@@ -14,35 +14,33 @@ module Where =
       end
     end)
     (struct
-      let getenv = Env.get Env.initial
-
-      let is_win32 () = Sys.win32
-
-      let read_file f = Io.String_path.read_file f
-
-      let readlink s =
-        match Unix.readlink s with
-        | s -> Some s
-        | exception Unix.Unix_error (Unix.EINVAL, _, _) -> None
+      let read_file f = Ok (Io.String_path.read_file f)
 
       let analyze_path s =
         match (Unix.stat s).st_kind with
-        | Unix.S_SOCK -> `Unix_socket
-        | S_REG -> `Normal_file
+        | Unix.S_SOCK -> Ok `Unix_socket
+        | S_REG -> Ok `Normal_file
         | _
         | (exception Unix.Unix_error (Unix.ENOENT, _, _)) ->
-          `Other
+          Ok `Other
+        | exception (Unix.Unix_error _ as e) -> Error e
     end)
 
-let root =
+let build_dir =
   lazy
-    (Path.reach
-       (Path.build Path.Build.root)
-       ~from:(Path.external_ Path.External.initial_cwd))
+    (let build_dir = Path.Build.to_string Path.Build.root in
+     match String.drop_prefix build_dir ~prefix:(Sys.getcwd () ^ "/") with
+     | None -> build_dir
+     | Some s -> Filename.concat "." s)
 
-let get () = Where.get ~build_dir:(Lazy.force root)
+let get () =
+  let env = Env.get Env.initial in
+  match Where.get ~env ~build_dir:(Lazy.force build_dir) with
+  | Ok s -> s
+  | Error exn ->
+    User_error.raise [ Pp.text "Unable to find dune rpc address"; Exn.pp exn ]
 
-let default () = Where.default ~build_dir:(Lazy.force root)
+let default () = Where.default ~build_dir:(Lazy.force build_dir) ()
 
 let to_socket = function
   | `Unix p -> Unix.ADDR_UNIX p

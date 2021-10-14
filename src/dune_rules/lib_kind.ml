@@ -58,6 +58,8 @@ type t =
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
 
+let equal = Poly.equal
+
 let to_dyn x =
   let open Dyn.Encoder in
   match x with
@@ -82,8 +84,7 @@ let encode t =
     match t with
     | Normal -> Dune_lang.atom "normal"
     | Ppx_deriver x -> List (Dune_lang.atom "ppx_deriver" :: Ppx_args.encode x)
-    | Ppx_rewriter x ->
-      List (Dune_lang.atom "ppx_rewriter" :: Ppx_args.encode x)
+    | Ppx_rewriter x -> List (Dune_lang.atom "ppx_rewriter" :: Ppx_args.encode x)
   with
   | List [ x ] -> x
   | x -> x

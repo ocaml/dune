@@ -25,6 +25,8 @@ module External = struct
     ; public_cmi_dir : Path.t option
     }
 
+  let equal : t -> t -> bool = Poly.equal
+
   let make ~dir ~has_private_modules ~private_lib =
     let private_dir =
       if has_private_modules then
@@ -112,6 +114,8 @@ module Local = struct
     ; private_lib : bool
     }
 
+  let equal : t -> t -> bool = Poly.equal
+
   let to_dyn { dir; obj_dir; native_dir; byte_dir; public_cmi_dir; private_lib }
       =
     let open Dyn.Encoder in
@@ -185,6 +189,13 @@ type _ t =
   | External : External.t -> Path.t t
   | Local : Local.t -> Path.Build.t t
   | Local_as_path : Local.t -> Path.t t
+
+let equal (type a) (x : a t) (y : a t) =
+  match (x, y) with
+  | External x, External y -> External.equal x y
+  | Local x, Local y -> Local.equal x y
+  | Local_as_path x, Local_as_path y -> Local.equal x y
+  | _, _ -> false
 
 let of_local : Path.Build.t t -> Path.t t =
  fun t ->

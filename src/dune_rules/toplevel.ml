@@ -104,7 +104,7 @@ let setup_module_rules t =
   let main_ml =
     let open Action_builder.O in
     Action_builder.write_file_dyn path
-      (let* libs = Resolve.read requires_compile in
+      (let* libs = Resolve.Build.read requires_compile in
        let include_dirs =
          Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
        in
@@ -169,7 +169,7 @@ module Stanza = struct
       Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
         [ (source.loc, source.name) ]
         (Lib_dep.Direct (source.loc, compiler_libs)
-         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))
+        :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))
         ~pps ~dune_version ~allow_overlaps:false
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in

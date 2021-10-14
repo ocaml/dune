@@ -50,6 +50,9 @@ val try_with : (unit -> 'a) -> 'a option
 
 module List : sig
   val all : 'a option list -> 'a list option
+
+  (** Like [all (List.map t ~f)] but short-circuits on the first [None]. *)
+  val traverse : 'a list -> f:('a -> 'b option) -> 'b list option
 end
 
 val merge : 'a t -> 'a t -> f:('a -> 'a -> 'a) -> 'a t

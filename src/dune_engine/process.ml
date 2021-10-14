@@ -271,10 +271,9 @@ module Fancy = struct
     | [] -> []
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
-      ::
-      Pp.tag
-        (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
-        (Pp.verbatim (String.quote_for_shell fn))
+      :: Pp.tag
+           (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
+           (Pp.verbatim (String.quote_for_shell fn))
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
 
@@ -667,7 +666,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       in
       let event_common, started_at, pid =
         (* Output.fd might create the file with Unix.openfile. We need to make
-           sure to call it before doing the chdir as the path might be relative. *)
+           sure to call it before doing the chdir as the path might be
+           relative. *)
         let stdout = Io.fd stdout_to in
         let stderr = Io.fd stderr_to in
         let stdin = Io.fd stdin_from in
@@ -681,6 +681,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           let now = Unix.gettimeofday () in
           ( now
           , Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+              ~setpgid:Spawn.Pgid.new_process_group
               ~cwd:
                 (match dir with
                 | None -> Inherit
@@ -697,7 +698,9 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       in
       Io.release stdout_to;
       Io.release stderr_to;
-      let+ process_info = Scheduler.wait_for_process pid in
+      let+ process_info =
+        Scheduler.wait_for_process pid ~is_process_group_leader:true
+      in
       let times =
         { Proc.Times.elapsed_time = process_info.end_time -. started_at
         ; resource_usage = process_info.resource_usage

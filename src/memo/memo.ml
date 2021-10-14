@@ -66,6 +66,8 @@ module Build0 = struct
   end
 
   module List = struct
+    include Monad.List (Fiber)
+
     let map = parallel_map
 
     let concat_map l ~f = map l ~f >>| List.concat
@@ -328,13 +330,6 @@ module Value = struct
     | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
 end
 
-module Dag : Dag.S with type value := Dep_node_without_state.packed =
-  Dag.Make
-    (struct
-      type t = Dep_node_without_state.packed
-    end)
-    ()
-
 module Cache_lookup = struct
   (* Looking up a value cached in a previous run can fail in three possible
      ways:
@@ -364,6 +359,39 @@ module Cache_lookup = struct
   end
 end
 
+module Dag : Dag.S with type value := Dep_node_without_state.packed =
+  Dag.Make
+    (struct
+      type t = Dep_node_without_state.packed
+    end)
+    ()
+
+(* This is similar to [type t = Dag.node Lazy.t] but avoids creating a closure
+   with a [dep_node]; the latter is available when we need to [force] a [t]. *)
+module Lazy_dag_node = struct
+  type t = Dag.node option ref
+
+  let create () = ref None
+
+  let force t ~(dep_node : _ Dep_node_without_state.t) =
+    match !t with
+    | Some (({ data = T dep_node_passed_first; _ } : Dag.node) as dag_node) ->
+      (* CR-someday amokhov: It would be great to restructure the code to rule
+         out the potential inconsistency between [dep_node]s passed to
+         [force]. *)
+      assert (Id.equal dep_node.id dep_node_passed_first.id);
+      dag_node
+    | None ->
+      let (dag_node : Dag.node) =
+        if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
+        { info = Dag.create_node_info ()
+        ; data = Dep_node_without_state.T dep_node
+        }
+      in
+      t := Some dag_node;
+      dag_node
+end
+
 (* A "computation" is represented by an [ivar], filled when the computation is
    finished, and a [dag_node], used for cycle detection before getting blocked
    on reading the [ivar]. When a run completes, all computations are garbage
@@ -371,8 +399,11 @@ end
 module Computation0 = struct
   type 'a t =
     { ivar : 'a Fiber.Ivar.t
-    ; dag_node : Dag.node Lazy.t
+    ; dag_node : Lazy_dag_node.t
     }
+
+  let create () =
+    { ivar = Fiber.Ivar.create (); dag_node = Lazy_dag_node.create () }
 end
 
 (* Checking dependencies of a node can lead to one of these outcomes:
@@ -442,7 +473,8 @@ module M = struct
            wasted since [f 0] does depend on it.
 
            Another important reason to list [deps] according to a linearisation
-           of the dependency order is to eliminate spurious dependency cycles. *)
+           of the dependency order is to eliminate spurious dependency
+           cycles. *)
         mutable deps : Deps.t
       }
   end =
@@ -521,8 +553,8 @@ module M = struct
       can invalidate a node by setting its state to [Out_of_date]. *)
   and State : sig
     type 'a t =
-      | Out_of_date of { old_value : 'a Cached_value.t option }
       | Cached_value of 'a Cached_value.t
+      | Out_of_date of { old_value : 'a Cached_value.t option }
       | Restoring of
           { restore_from_cache :
               'a Cached_value.t Cache_lookup.Result.t Computation0.t
@@ -575,14 +607,14 @@ module Stack_frame_with_state : sig
 
   (* Create a new stack frame related to restoring or computing a [dep_node]. *)
   val create :
-       dag_node:Dag.node Lazy.t
+       dag_node:Lazy_dag_node.t
     -> phase
     -> dep_node:_ Dep_node_without_state.t
     -> t
 
   val dep_node : t -> Dep_node_without_state.packed
 
-  val dag_node : t -> Dag.node Lazy.t
+  val dag_node : t -> Dag.node
 
   (* This function accumulates dependencies of frames in the [Compute] phase.
      Calling it in the [Restore_from_cache] frame raises an exception. *)
@@ -600,7 +632,7 @@ end = struct
 
   type ('i, 'o) unpacked =
     { dep_node : ('i, 'o) Dep_node_without_state.t
-    ; dag_node : Dag.node Lazy.t
+    ; dag_node : Lazy_dag_node.t
     ; (* This [children_added_to_dag] table serves dual purpose:
 
          (1) guarantee that we never add the same edge twice to the cycle
@@ -622,7 +654,8 @@ end = struct
          we are accumulating dependencies only during the [Compute] phase. We
          can drop it if we find a way to statically guarantee this property. *)
       phase : phase
-    ; (* [deps_rev] are accumulated only when [phase = Compute], see [add_dep]. *)
+    ; (* [deps_rev] are accumulated only when [phase = Compute], see
+         [add_dep]. *)
       mutable deps_rev : Dep_node.packed list
     }
 
@@ -641,7 +674,7 @@ end = struct
 
   let dep_node (T t) = Dep_node_without_state.T t.dep_node
 
-  let dag_node (T t) = t.dag_node
+  let dag_node (T t) = Lazy_dag_node.force t.dag_node ~dep_node:t.dep_node
 
   let add_dep (T t) ~dep_node =
     match t.phase with
@@ -700,9 +733,7 @@ module Call_stack = struct
              traversal. We might as well stop here and save time. *)
           Ok ()
         | false -> (
-          let caller_dag_node =
-            Lazy.force (Stack_frame_with_state.dag_node frame)
-          in
+          let caller_dag_node = Stack_frame_with_state.dag_node frame in
           match Dag.add_assuming_missing caller_dag_node dag_node with
           | exception Dag.Cycle cycle ->
             Error (List.map cycle ~f:(fun dag_node -> dag_node.Dag.data))
@@ -720,7 +751,7 @@ module Call_stack = struct
               Ok ())))
     in
     if !Counters.enabled then incr Counters.paths_in_cycle_detection_graph;
-    add_path_impl stack (Lazy.force dag_node)
+    add_path_impl stack dag_node
 
   (* Add a dependency on the [dep_node] from the caller, if there is one. *)
   let add_dep_from_caller =
@@ -801,18 +832,6 @@ end
 module Computation = struct
   include Computation0
 
-  let create ~dep_node =
-    let ivar = Fiber.Ivar.create () in
-    let dag_node =
-      lazy
-        (if !Counters.enabled then incr Counters.nodes_in_cycle_detection_graph;
-         ({ info = Dag.create_node_info ()
-          ; data = Dep_node_without_state.T dep_node
-          }
-           : Dag.node))
-    in
-    { ivar; dag_node }
-
   (* Each computation should be forced exactly once. Not forcing it will lead to
      a deadlock. Forcing it twice will lead to [Fiber.Ivar.fill] raising. *)
   let force { ivar; dag_node } ~phase ~dep_node fiber =
@@ -825,10 +844,11 @@ module Computation = struct
     let+ () = Fiber.Ivar.fill ivar result in
     result
 
-  let read_but_first_check_for_cycles { ivar; dag_node } =
+  let read_but_first_check_for_cycles { ivar; dag_node } ~dep_node =
     Fiber.Ivar.peek ivar >>= function
     | Some res -> Fiber.return (Ok res)
     | None -> (
+      let dag_node = Lazy_dag_node.force dag_node ~dep_node in
       Call_stack.add_path_to ~dag_node >>= function
       | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
       | Error _ as cycle_error -> Fiber.return cycle_error)
@@ -1101,7 +1121,8 @@ end = struct
     match cached_value.value with
     | Cancelled _dependency_cycle ->
       (* Dependencies of cancelled computations are not accurate (in fact, they
-         are set to [Deps.empty]), so we can't use [deps_changed] in this case. *)
+         are set to [Deps.empty]), so we can't use [deps_changed] in this
+         case. *)
       Fiber.return
         (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
     | Error { reproducible = false; _ } ->
@@ -1141,7 +1162,8 @@ end = struct
               match dep.has_cutoff with
               | false ->
                 (* If [dep] has no cutoff, it is sufficient to check whether it
-                   is up to date. If not, we must recompute the [cached_value]. *)
+                   is up to date. If not, we must recompute the
+                   [cached_value]. *)
                 Fiber.return Changed_or_not.Changed
               | true -> (
                 (* If [dep] has a cutoff predicate, it is not sufficient to
@@ -1204,7 +1226,7 @@ end = struct
         -> cached_value:'o Cached_value.t
         -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun ~dep_node ~cached_value ->
-    let computation = Computation.create ~dep_node:dep_node.without_state in
+    let computation = Computation.create () in
     dep_node.state <- Restoring { restore_from_cache = computation };
     Computation.force computation ~phase:Restore_from_cache
       ~dep_node:dep_node.without_state (fun _stack_frame ->
@@ -1225,7 +1247,7 @@ end = struct
         -> old_value:'o Cached_value.t option
         -> 'o Cached_value.t Fiber.t =
    fun ~dep_node ~old_value ->
-    let computation = Computation.create ~dep_node:dep_node.without_state in
+    let computation = Computation.create () in
     dep_node.state <- Computing { old_value; compute = computation };
     Computation.force computation ~phase:Compute
       ~dep_node:dep_node.without_state (fun stack_frame ->
@@ -1243,24 +1265,29 @@ end = struct
         ('i, 'o) Dep_node.t -> 'o Cached_value.t Cache_lookup.Result.t Fiber.t =
    fun dep_node ->
     match dep_node.state with
-    | Out_of_date { old_value } ->
-      Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
     | Cached_value cached_value ->
+      (* CR-someday amokhov: The happy path here is excruciatingly slow: read
+         [dep_node.state], get [cached_value] via an indirection, jump through
+         another hoop [cached_value.last_validated_at] and then, finally, make
+         the [Run.is_current] check. We should try to find a shortcut. *)
       if Run.is_current cached_value.last_validated_at then
         Fiber.return (Cache_lookup.Result.Ok cached_value)
       else
         start_restoring ~dep_node ~cached_value
     | Restoring { restore_from_cache } -> (
       Computation.read_but_first_check_for_cycles restore_from_cache
+        ~dep_node:dep_node.without_state
       >>| function
       | Ok res -> res
       | Error dependency_cycle ->
         Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
+    | Out_of_date { old_value }
     | Computing { old_value; _ } ->
       Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
 
   (* This function assumes that restoring the value from cache failed, which
-     means we can only be in two possible states: [Out_of_date] or [Computing]. *)
+     means we can only be in two possible states: [Out_of_date] or
+     [Computing]. *)
   and consider_and_compute_without_adding_dep :
         'i 'o.
         ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
@@ -1273,7 +1300,9 @@ end = struct
     | Out_of_date { old_value } ->
       start_computing ~dep_node ~old_value >>| Result.ok
     | Computing { compute; _ } -> (
-      Computation.read_but_first_check_for_cycles compute >>| function
+      Computation.read_but_first_check_for_cycles compute
+        ~dep_node:dep_node.without_state
+      >>| function
       | Ok _ as result -> result
       | Error dependency_cycle as result ->
         dep_node.state <-
@@ -1315,18 +1344,39 @@ let get_call_stack = Call_stack.get_call_stack_without_state
 module Invalidation = struct
   type ('i, 'o) memo = ('i, 'o) t
 
-  module Leaf = struct
+  (* This is currently used only for informing the user about the reason for
+     restarting a build. *)
+  module Reason = struct
+    (* CR-someday amokhov: Add other reasons, e.g. a watched environment
+       variable changed. *)
     type t =
-      | Invalidate_node : _ Dep_node.t -> t
-      | Clear_cache : ('input, ('input, 'output) Dep_node.t) Store.t -> t
+      | Unknown
+      | Path_changed of Path.t
+      | Event_queue_overflow
+      | Upgrade
+      | Test
+
+    let to_string_hum = function
+      | Unknown -> None
+      | Path_changed path -> Some (Path.to_string path ^ " changed")
+      | Event_queue_overflow ->
+        Some "Event queue overflow; full rebuild required"
+      | Upgrade -> Some "Dune upgrader initiated a full rebuild"
+      | Test -> Some "Rebuild initiated by an internal testsuite"
+  end
+
+  module Leaf = struct
+    type kind =
+      | Invalidate_node : _ Dep_node.t -> kind
+      | Clear_cache : ('input, ('input, 'output) Dep_node.t) Store.t -> kind
       | Clear_caches
 
-    let to_dyn (t : t) =
-      match t with
-      | Invalidate_node node ->
-        Stack_frame_without_state.to_dyn (T node.without_state)
-      | Clear_cache _ -> Dyn.Variant ("Clear_cache", [ Dyn.Opaque ])
-      | Clear_caches -> Dyn.Variant ("Clear_caches", [])
+    type t =
+      { kind : kind
+      ; reason : Reason.t
+      }
+
+    let to_string_hum { reason; _ } = Reason.to_string_hum reason
   end
 
   module T = struct
@@ -1350,8 +1400,9 @@ module Invalidation = struct
 
   include (Monoid.Make (T) : Monoid.S with type t := t)
 
-  let execute_leaf = function
-    | Leaf.Invalidate_node node -> invalidate_dep_node node
+  let execute_leaf { Leaf.kind; _ } =
+    match kind with
+    | Invalidate_node dep_node -> invalidate_dep_node dep_node
     | Clear_cache store -> invalidate_store store
     | Clear_caches -> Caches.clear ()
 
@@ -1380,7 +1431,33 @@ module Invalidation = struct
 
   let to_list t = to_list_x_xs t [] []
 
-  let to_dyn t = Dyn.List (List.map (to_list t) ~f:Leaf.to_dyn)
+  let details_hum ?(max_elements = 5) t =
+    assert (max_elements > 0);
+    let details =
+      List.filter_map ~f:Leaf.to_string_hum (to_list t)
+      |> String.Set.of_list |> String.Set.to_list
+    in
+    (* CR-someday amokhov: Right now we just take first [max_elements] elements
+       from the sorted list, but we could prioritise some reasons over others,
+       e.g. if there is a global reset because of [Event_queue_overflow], it may
+       be better to ensure that this reason is included. *)
+    match List.truncate ~max_length:max_elements details with
+    | `Not_truncated details when List.length details = 0 ->
+      [ "Restarting for an unknown reason, please report it as a bug" ]
+    | `Not_truncated details -> details
+    | `Truncated truncated_details -> (
+      let extra_message =
+        let remaining_details = List.length details - max_elements in
+        let plural =
+          match remaining_details > 1 with
+          | true -> "s"
+          | false -> ""
+        in
+        sprintf " (plus %d more change%s)" remaining_details plural
+      in
+      match List.destruct_last truncated_details with
+      | None -> assert false
+      | Some (all_but_last, last) -> all_but_last @ [ last ^ extra_message ])
 
   let execute x = execute x []
 
@@ -1388,11 +1465,13 @@ module Invalidation = struct
     | Empty -> true
     | _ -> false
 
-  let clear_caches = Leaf Clear_caches
+  let clear_caches ~reason = Leaf { kind = Clear_caches; reason }
 
-  let invalidate_cache { cache; _ } = Leaf (Clear_cache cache)
+  let invalidate_cache ~reason { cache; _ } =
+    Leaf { kind = Clear_cache cache; reason }
 
-  let invalidate_node (node : _ Dep_node.t) = Leaf (Invalidate_node node)
+  let invalidate_node ~reason (dep_node : _ Dep_node.t) =
+    Leaf { kind = Invalidate_node dep_node; reason }
 end
 
 module Current_run = struct
@@ -1402,7 +1481,8 @@ module Current_run = struct
 
   let exec () = exec memo ()
 
-  let invalidate () = Invalidation.invalidate_node (dep_node memo ())
+  let invalidate ~reason =
+    Invalidation.invalidate_node ~reason (dep_node memo ())
 end
 
 let current_run () = Current_run.exec ()
@@ -1420,7 +1500,7 @@ module Build = struct
 
   let run_with_error_handler t ~handle_error_no_raise =
     Error_handler.with_error_handler handle_error_no_raise (fun () ->
-        let* res = report_and_collect_errors (fun () -> t) in
+        let* res = report_and_collect_errors t in
         match res with
         | Ok ok -> Fiber.return ok
         | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) ->
@@ -1433,8 +1513,9 @@ module Build = struct
        and non-toplevel [run] would be better. *)
     match is_top_level with
     | true ->
-      run_with_error_handler t ~handle_error_no_raise:(fun _exn ->
-          Fiber.return ())
+      run_with_error_handler
+        (fun () -> t)
+        ~handle_error_no_raise:(fun _exn -> Fiber.return ())
     | false -> t
 end
 
@@ -1547,20 +1628,12 @@ struct
   let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
 end
 
-let incremental_mode_enabled =
-  ref
-    (match Sys.getenv_opt "DUNE_WATCHING_MODE_INCREMENTAL" with
-    | Some "true" -> true
-    | Some "false"
-    | None ->
-      false
-    | Some _ ->
-      User_error.raise
-        [ Pp.text "Invalid value of DUNE_WATCHING_MODE_INCREMENTAL" ])
-
 let reset invalidation =
+  (* We rely on [invalidation] to list the actual reasons for the reset, which
+     justifies the [~reason:Unknown] below. *)
+  let invalidate_current_run = Current_run.invalidate ~reason:Unknown in
   Invalidation.execute
-    (Invalidation.combine invalidation (Current_run.invalidate ()));
+    (Invalidation.combine invalidation invalidate_current_run);
   Run.restart ();
   Counters.reset ()
 
@@ -1638,17 +1711,14 @@ module Run = struct
 end
 
 (* By placing this definition at the end of the file we prevent Merlin from
-   using [build] instead of [Fiber.t] when showing types throughout this file. *)
+   using [build] instead of [Fiber.t] when showing types throughout this
+   file. *)
 type 'a build = 'a Fiber.t
 
 module type Build = sig
-  include Monad
+  include Monad.S
 
-  module List : sig
-    val map : 'a list -> f:('a -> 'b t) -> 'b list t
-
-    val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-  end
+  module List : Monad.List with type 'a t := 'a t
 
   val memo_build : 'a build -> 'a t
 end

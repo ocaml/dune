@@ -20,21 +20,21 @@ Unknown variable:
   $ test <<EOF
   > (alias
   >  (name default)
-  >  (deps %{unknwon}))
+  >  (deps %{unknown}))
   > EOF
   
   *** Behavior with Dune 2.8 ***
   File "dune", line 3, characters 7-17:
-  3 |  (deps %{unknwon}))
+  3 |  (deps %{unknown}))
              ^^^^^^^^^^
-  Error: Unknown variable %{unknwon}
+  Error: Unknown variable %{unknown}
   exit code: 1
   
   *** Behavior with Dune 3.0 ***
   File "dune", line 3, characters 7-17:
-  3 |  (deps %{unknwon}))
+  3 |  (deps %{unknown}))
              ^^^^^^^^^^
-  Error: Unknown variable %{unknwon}
+  Error: Unknown variable %{unknown}
   exit code: 1
 
 Unknown variable that we don't need to resolve:
@@ -42,7 +42,7 @@ Unknown variable that we don't need to resolve:
   $ test <<EOF
   > (alias
   >  (name other)
-  >  (deps %{unknwon}))
+  >  (deps %{unknown}))
   > EOF
   
   *** Behavior with Dune 2.8 ***
@@ -50,9 +50,9 @@ Unknown variable that we don't need to resolve:
   
   *** Behavior with Dune 3.0 ***
   File "dune", line 3, characters 7-17:
-  3 |  (deps %{unknwon}))
+  3 |  (deps %{unknown}))
              ^^^^^^^^^^
-  Error: Unknown variable %{unknwon}
+  Error: Unknown variable %{unknown}
   exit code: 1
 
 Specific variable used at the wrong place:

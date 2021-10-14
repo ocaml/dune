@@ -4,7 +4,7 @@
 
 let opam = pkgs.callPackage ./nix { inherit opam2nix; };
 
-in pkgs.stdenv.mkDerivation rec {
+in (pkgs.stdenv.mkDerivation rec {
   name = "dune";
 
   src = if shell then
@@ -29,4 +29,4 @@ in pkgs.stdenv.mkDerivation rec {
 
   installFlags =
     [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
-}
+}) // { resolve = opam.resolve; }

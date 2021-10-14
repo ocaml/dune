@@ -18,6 +18,8 @@ type t =
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
 
-val to_dyn : t Stdune.Dyn.Encoder.t
+val to_dyn : t Dyn.Encoder.t
+
+val equal : t -> t -> bool
 
 include Dune_lang.Conv.S with type t := t

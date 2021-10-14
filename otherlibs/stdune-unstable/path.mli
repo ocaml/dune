@@ -70,6 +70,18 @@ module Local : sig
   val explode : t -> string list
 end
 
+module External : sig
+  include Path_intf.S
+
+  val initial_cwd : t
+
+  val cwd : unit -> t
+
+  val relative : t -> string -> t
+
+  val mkdir_p : ?perms:int -> t -> unit
+end
+
 (** In the source section of the current workspace. *)
 module Source : sig
   type w
@@ -99,18 +111,6 @@ module Source : sig
   val descendant : t -> of_:t -> t option
 
   val to_local : t -> Local.t
-end
-
-module External : sig
-  include Path_intf.S
-
-  val initial_cwd : t
-
-  val cwd : unit -> t
-
-  val relative : t -> string -> t
-
-  val mkdir_p : ?perms:int -> t -> unit
 end
 
 module Permissions : sig
@@ -386,8 +386,6 @@ val set_of_source_paths : Source.Set.t -> Set.t
 
 val set_of_build_paths_list : Build.t list -> Set.t
 
-val string_of_file_kind : Unix.file_kind -> string
-
 (** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
     [newpath], moving it between directories if needed. If [newpath] already
     exists, its contents will be replaced with those of [oldpath]. *)
@@ -399,3 +397,11 @@ val chmod : t -> mode:int -> unit
 
 (** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result
+
+module Expert : sig
+  (** Attempt to convert external paths to source/build paths. Don't use this
+      function unless strictly necessary. It's not completely reliable and we
+      only use it out of necessity to work with file watchers that insist on
+      spitting absolute paths *)
+  val try_localize_external : t -> t
+end

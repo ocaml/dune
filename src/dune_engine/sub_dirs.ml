@@ -313,7 +313,7 @@ let decode_includes ~context =
     let* loc = loc in
     let* name, path =
       plain_string (fun ~loc s ->
-          (Atom (loc, Dune_lang.Atom.of_string s), s :: path))
+          (Dune_lang.Ast.atom_or_quoted_string loc s, s :: path))
     in
     let+ nodes = fields (decode ~context ~path ~inside_include) in
     let required_version = (2, 7) in

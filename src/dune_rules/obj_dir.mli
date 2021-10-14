@@ -14,8 +14,8 @@
 
     In the rest of this API, "local" and "external" have their usual Dune
     meaning: "local" is for libraries or executables that are local to the
-    current worksapce and "extenal" for libraries that are part of the installed
-    world.
+    current workspace and "external" for libraries that are part of the
+    installed world.
 
     For local libraries, the path are reported as [Path.Build.t] values given
     that they are all inside the build directory. For external libraries the
@@ -31,6 +31,8 @@ open! Import
 type 'path t
 
 val of_local : Path.Build.t t -> Path.t t
+
+val equal : 'a t -> 'a t -> bool
 
 (** The source_root directory *)
 val dir : 'path t -> 'path

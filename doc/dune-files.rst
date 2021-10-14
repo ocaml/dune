@@ -2,6 +2,8 @@
 Stanza reference
 ****************
 
+.. _dune-project:
+
 dune-project
 ============
 
@@ -54,6 +56,18 @@ Sets the version of the project:
 .. code:: scheme
 
     (version <version>)
+
+cram
+----
+
+Enable or disable cram-style tests for the project. See :ref:`cram-tests` for
+details.
+
+.. code:: scheme
+
+   (cram <status>)
+
+Where status is either ``enabled`` or ``disabled``.
 
 .. _implicit_transitive_deps:
 
@@ -228,6 +242,26 @@ where ``<setting>`` is one of:
 - ``(enabled_for <languages>)`` can be used to restrict the languages that are
   considered for formatting.
 
+.. _subst:
+
+subst
+----------
+
+Starting in dune 3.0, :ref:`dune-subst` can be explicitly disabled or enabled.
+By default it is enabled.
+controlled by using
+
+.. code:: scheme
+
+    (subst <setting>)
+
+where ``<setting>`` is one of:
+
+- ``disabled``, meaning that any call of `dune subst` in this project is
+  forbidden and will result in an error.
+
+- ``enabled``, allowing substitutions explicitly. This is the default.
+
 .. _generate_opam_files:
 
 generate_opam_files
@@ -364,6 +398,8 @@ The feature must be enabled explicitly by adding the following field to
 Note that ``dune`` continues to be accepted even after enabling this option, but
 if a file named ``dune-file`` is found in a directory, it will take precedence
 over ``dune``.
+
+.. _dune-files:
 
 dune
 ====
@@ -590,10 +626,17 @@ to use the :ref:`include_subdirs` stanza.
   is useful whenever a library is shadowed by a local module. The library may
   then still be accessible via this root module
 
+<<<<<<< HEAD
 - ``(ctypes <ctypes stanza>)`` instructs dune to use ctypes stubgen to process
   your type and function descriptions for binding system libraries, vendored
   libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
   reference.
+=======
+- ``(empty_module_interface_if_absent)`` causes the generation of empty
+  interfaces for every module that does not have an interface file already.
+  Useful when modules are used solely for their side-effects. This field is
+  available since the 3.0 version of the dune language.
+>>>>>>> master
 
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with
@@ -660,6 +703,8 @@ The ``old_public_name`` can also be one of the names declared in the
 library whose name is not prefixed by the package name. Such a library cannot be
 defined in Dune, but other build systems allow it and this feature is meant to
 help migration from those systems.
+
+.. _executable:
 
 executable
 ----------
@@ -795,7 +840,12 @@ files for executables. See `executables_implicit_empty_intf`_.
 - ``(ctypes <ctypes stanza>)`` instructs dune to use ctypes stubgen to process
   your type and function descriptions for binding system libraries, vendored
   libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
-  reference.
+  reference. This field is available since the 3.0 version of the dune language.
+
+- ``(empty_module_interface_if_absent)`` causes the generation of empty
+  interfaces for every module that does not have an interface file already.
+  Useful when modules are used solely for their side-effects. This field is
+  available since the 3.0 version of the dune language.
 
 Linking modes
 ~~~~~~~~~~~~~
@@ -1896,13 +1946,13 @@ Where ``<optional-fields>`` are:
 - ``(libraries <libraries>)`` are libraries that should be
   statically linked in the MDX test executable.
 
-- ``(enabled_if <blang expression>)``  is the same as the 
+- ``(enabled_if <blang expression>)``  is the same as the
   corresponding field of `library`_.
 
 - ``(package <package>)`` specifies which package to attach
   this stanza to (similarly to when ``(package)`` is attached to a ``(rule)``
   stanza. When  ``-p`` is passed, ``(mdx)`` stanzas with an other package will
-  be ignored. Note that this is feature is completely separate from 
+  be ignored. Note that this is feature is completely separate from
   ``(packages)``, which specifies some dependencies.
 
 Upgrading from version 0.1
@@ -1910,7 +1960,7 @@ Upgrading from version 0.1
 
 - The 0.2 version of the stanza requires at least mdx 1.9.0. If you encounter
   an error such as, ``ocaml-mdx: unknown command `dune-gen'``, then you
-  should upgrade mdx.  
+  should upgrade mdx.
 
 - The field ``(packages <packages>)`` is deprecated in version 0.2. You can
   use package items in the generic ``deps`` field instead:
@@ -1933,7 +1983,7 @@ present, and which libraries it will load.
 
    (plugin
     (name <name>)
-    (libraries <libaries>)
+    (libraries <libraries>)
     (site (<package> <site name>))
     (<optional-fields>))
 

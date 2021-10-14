@@ -6,7 +6,7 @@
     of [Makefile.config]. *)
 type t
 
-val to_dyn : t Stdune.Dyn.Encoder.t
+val to_dyn : t Dyn.Encoder.t
 
 module Prog_and_args : sig
   type t =
@@ -54,7 +54,7 @@ module Ccomp_type : sig
     | Msvc
     | Other of string
 
-  val to_dyn : t -> Stdune.Dyn.t
+  val to_dyn : t -> Dyn.t
 
   val to_string : t -> string
 end
@@ -182,7 +182,7 @@ module Value : sig
 
   val to_string : t -> string
 
-  val to_dyn : t Stdune.Dyn.Encoder.t
+  val to_dyn : t Dyn.Encoder.t
 end
 
 val to_list : t -> (string * Value.t) list

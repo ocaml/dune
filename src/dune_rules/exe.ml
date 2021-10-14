@@ -248,8 +248,10 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ~dep_graphs
               match Linkage.is_plugin linkage with
               | false -> Memo.Build.return link_time_code_gen
               | true ->
-                Link_time_code_gen.handle_special_libs
-                  (CC.for_plugin_executable cctx ~embed_in_plugin_libraries)
+                let cc =
+                  CC.for_plugin_executable cctx ~embed_in_plugin_libraries
+                in
+                Link_time_code_gen.handle_special_libs cc
             in
             link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
               ~promote ?link_args ?o_files))

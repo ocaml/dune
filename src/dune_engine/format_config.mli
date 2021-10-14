@@ -37,4 +37,6 @@ val to_dyn : t -> Dyn.t
 val field :
   since:Dune_lang.Syntax.Version.t -> t option Dune_lang.Decoder.fields_parser
 
+val encode_opt : t -> Dune_lang.t option
+
 val equal : t -> t -> bool

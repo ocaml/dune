@@ -156,7 +156,7 @@ module Digest_result = struct
     | Ok of Digest.t
     | No_such_file
     | Broken_symlink
-    | Unexpected_kind of Dune_filesystem_stubs.File_kind.t
+    | Unexpected_kind of File_kind.t
     | Unix_error of (Unix.error * string * string)
     | Error of exn
 

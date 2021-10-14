@@ -6,8 +6,8 @@ module Digest_result : sig
     | Ok of Digest.t
     | No_such_file
     | Broken_symlink
-    | Unexpected_kind of Dune_filesystem_stubs.File_kind.t
-    | Unix_error of (Unix.error * string * string)  (** Can't be [ENOENT]. *)
+    | Unexpected_kind of File_kind.t
+    | Unix_error of Unix_error.Detailed.t  (** Can't be [ENOENT]. *)
     | Error of exn
 
   val to_option : t -> Digest.t option

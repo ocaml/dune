@@ -43,7 +43,7 @@ module Path_digest_result : sig
   type nonrec t =
     | Ok of t
     | Unexpected_kind  (** Not a regular file or a directory *)
-    | Unix_error of (Unix.error * string * string)
+    | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
         (** A [Unix.Unix_error] exception. For example, [(ENOENT, _, _)] means
             the path doesn't exist. *)
 

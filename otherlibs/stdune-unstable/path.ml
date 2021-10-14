@@ -1249,17 +1249,11 @@ let local_part = function
 
 let stat_exn t = Unix.stat (to_string t)
 
-let stat t =
-  match stat_exn t with
-  | exception Unix.Unix_error (error, _, _) -> Error error
-  | stats -> Ok stats
+let stat t = Dune_filesystem_stubs.Unix_error.Detailed.catch stat_exn t
 
 let lstat_exn t = Unix.lstat (to_string t)
 
-let lstat t =
-  match lstat_exn t with
-  | exception Unix.Unix_error (error, _, _) -> Error error
-  | stats -> Ok stats
+let lstat t = Dune_filesystem_stubs.Unix_error.Detailed.catch lstat_exn t
 
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 

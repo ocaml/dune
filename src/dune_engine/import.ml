@@ -10,7 +10,7 @@ module Dune_rpc = Dune_rpc_private
 module Config = Dune_util.Config
 
 module Path = struct
-  include Path
+  include Path 
 
   module Untracked = struct
     let exists = exists

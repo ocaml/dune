@@ -9,6 +9,7 @@ enough for a few hg commands such as "hg root" to succeed:
 
   $ mkdir .hg
   $ hg root
+  $TESTCASE_ROOT/hg
 
   $ echo '(lang dune 3.0)' > dune-project
   $ cat >test.t <<"EOF"
@@ -26,6 +27,6 @@ The inner call to hg shouldn't be able to access the outer hg repo:
 
   $ cat test.t
     $ hg root
-    abort: repository requires features unknown to this Mercurial: Escaping the Dune sandbox!
+    abort: repository requires features unknown to this Mercurial: Escaping the Dune sandbox
     (see https://mercurial-scm.org/wiki/MissingRequirement for more information)
     [255]

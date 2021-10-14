@@ -79,8 +79,6 @@ let file_with_executable_bit ~executable path =
   let content_digest = file path in
   string_and_bool ~digest_hex:content_digest ~bool:executable
 
-(* It's useful to require only a subset of fields here because the caller can
-   then memoize only the fields that really matter. *)
 module Stats_for_digest = struct
   type t =
     { st_kind : Unix.file_kind

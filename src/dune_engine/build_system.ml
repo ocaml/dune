@@ -426,7 +426,9 @@ let get_dir_triage t ~dir =
          (Non_build
             (match Path.readdir_unsorted dir with
             | Error (Unix.ENOENT, _, _) -> Path.Set.empty
-            | Error (e, _, _) ->
+            | Error (e, _syscall, _arg) ->
+              (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+                 debugging. *)
               User_warning.emit
                 [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
                 ; Pp.textf "Reason: %s" (Unix.error_message e)

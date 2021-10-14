@@ -162,7 +162,9 @@ end = struct
 
   let of_source_path_impl path =
     Fs_memo.dir_contents_unsorted (Path.source path) >>= function
-    | Error ((unix_error, _, _) as detailed_unix_error) ->
+    | Error ((unix_error, _syscall, _arg) as detailed_unix_error) ->
+      (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+         debugging. *)
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
             (Path.Source.to_string_maybe_quoted path)
@@ -547,7 +549,10 @@ end = struct
     let* readdir =
       Readdir.of_source_path path >>| function
       | Ok dir -> dir
-      | Error (e, _, _) -> error_unable_to_load ~path e
+      | Error (e, _syscall, _arg) ->
+        (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+           debugging. *)
+        error_unable_to_load ~path e
     in
     let project =
       match

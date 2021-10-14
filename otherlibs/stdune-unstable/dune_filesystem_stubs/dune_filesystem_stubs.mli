@@ -6,20 +6,21 @@ module Unix_error : sig
 
   val equal : t -> t -> bool
 
-  (** A Unix error along with the corresponding syscall and argument, as thrown
-      in Unix exceptions. *)
+  (** A Unix error along with the corresponding system call and argument, as
+      thrown in Unix exceptions. *)
   module Detailed : sig
     type nonrec t = t * string * string
 
     val create : Unix.error -> syscall:string -> arg:string -> t
 
-    (** Apply a function to an argument, catching a detailed unix error. *)
+    (** Apply a function to an argument, catching a detailed Unix error. *)
     val catch : ('a -> 'b) -> 'a -> ('b, t) result
 
     val equal : t -> t -> bool
   end
 end
 
+(** Auxiliary functions for working with Unix file kinds. *)
 module File_kind : sig
   type t = Unix.file_kind =
     | S_REG

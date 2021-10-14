@@ -2,7 +2,14 @@ Check that actions don't have access to the outter hg repository.
 
   $ mkdir hg
   $ cd hg
-  $ hg init -q
+
+We can't call "hg init" because "hg init" reads the fake .hg created
+by Dune and fails. Thankfully, creating an empty .hg directory is
+enough for a few hg commands such as "hg root" to succeed:
+
+  $ mkdir .hg
+  $ hg root
+
   $ echo '(lang dune 3.0)' > dune-project
   $ cat >test.t <<"EOF"
   >   $ hg root

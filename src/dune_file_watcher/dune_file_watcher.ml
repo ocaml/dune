@@ -509,17 +509,6 @@ let add_watch t path =
     ()
   | Inotify inotify -> Inotify_lib.add inotify (Path.to_string path)
 
-module For_tests = struct
-  let pid t =
-    match t.kind with
-    | Fswatch c -> c.pid
-    | _ -> failwith "pid unavailable"
-
-  let suspend t = Unix.kill (Pid.to_int (pid t)) Sys.sigstop
-
-  let resume t = Unix.kill (Pid.to_int (pid t)) Sys.sigcont
-end
-
 let ignore_next_file_change_event t path =
   assert (Path.is_in_source_tree path);
   Table.set t.ignored_files (Path.to_absolute_filename path) ()

@@ -7,9 +7,9 @@
  (name dune_file_watcher_tests_macos)
  (modules dune_file_watcher_tests_macos)
  (inline_tests
+  (enabled_if false)
   (deps
    (sandbox always)))
- (enabled_if false)
  (libraries
   dune_file_watcher
   dune_file_watcher_tests_lib
@@ -29,10 +29,10 @@
  (name dune_file_watcher_tests_linux)
  (modules dune_file_watcher_tests_linux)
  (inline_tests
+  (enabled_if
+   (= %{system} linux))
   (deps
    (sandbox always)))
- (enabled_if
-  (= %{system} linux))
  (libraries
   dune_file_watcher
   dune_file_watcher_tests_lib

@@ -7,7 +7,8 @@
  (name dune_file_watcher_tests_macos)
  (modules dune_file_watcher_tests_macos)
  (inline_tests
-  (enabled_if (= %{system} macosx))
+  (enabled_if
+   (= %{system} macosx))
   (deps
    (sandbox always)))
  (libraries

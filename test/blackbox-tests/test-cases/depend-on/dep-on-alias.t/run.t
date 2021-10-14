@@ -4,6 +4,7 @@
 
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
+  > (expand_aliases_in_sandbox)
   > EOF
   $ echo old-contents > x
   $ cat >dune <<EOF
@@ -50,7 +51,10 @@ expanded when creating the sandbox:
   9 | )
           bash alias b (exit 1)
   running b: cat: x: No such file or directory
-  $ echo '(lang dune 3.0)' > dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.0)
+  > (expand_aliases_in_sandbox)
+  > EOF
 
 Now test that including an alias into another alias includes its expansion:
   $ cat >dune <<EOF

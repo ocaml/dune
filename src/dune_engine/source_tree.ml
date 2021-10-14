@@ -117,7 +117,8 @@ module Readdir : sig
 
   val filter_files : t -> Dune_project.t -> t Memo.Build.t
 
-  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t Memo.Build.t
+  val of_source_path :
+    Path.Source.t -> (t, Unix_error.Detailed.t) Result.t Memo.Build.t
 end = struct
   type t =
     { path : Path.Source.t
@@ -161,7 +162,9 @@ end = struct
 
   let of_source_path_impl path =
     Fs_memo.dir_contents_unsorted (Path.source path) >>= function
-    | Error unix_error ->
+    | Error ((unix_error, _syscall, _arg) as detailed_unix_error) ->
+      (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+         debugging. *)
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
             (Path.Source.to_string_maybe_quoted path)
@@ -174,7 +177,7 @@ end = struct
                   Dune_file.fname))
         ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
         ];
-      Memo.Build.return (Error unix_error)
+      Memo.Build.return (Error detailed_unix_error)
     | Ok unsorted_contents ->
       let+ files, dirs =
         Memo.Build.parallel_map unsorted_contents ~f:(fun (fn, kind) ->
@@ -217,7 +220,7 @@ end = struct
   let of_source_path_memo =
     Memo.create "readdir-of-source-path"
       ~input:(module Path.Source)
-      ~cutoff:(Result.equal equal Unix_error.equal)
+      ~cutoff:(Result.equal equal Unix_error.Detailed.equal)
       of_source_path_impl
 
   let of_source_path = Memo.exec of_source_path_memo
@@ -546,7 +549,10 @@ end = struct
     let* readdir =
       Readdir.of_source_path path >>| function
       | Ok dir -> dir
-      | Error e -> error_unable_to_load ~path e
+      | Error (e, _syscall, _arg) ->
+        (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+           debugging. *)
+        error_unable_to_load ~path e
     in
     let project =
       match
@@ -561,7 +567,7 @@ end = struct
     let* dirs_visited =
       File.of_source_path path >>| function
       | Ok file -> Dirs_visited.singleton path file
-      | Error e -> error_unable_to_load ~path e
+      | Error (e, _, _) -> error_unable_to_load ~path e
     in
     let+ contents, visited =
       contents readdir ~dirs_visited ~project ~dir_status

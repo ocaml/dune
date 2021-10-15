@@ -44,10 +44,11 @@ end = struct
   let setup () =
     let open Fiber.O in
     let* scheduler = Scheduler.t () in
-    Console.Status_line.set_live (fun () ->
-        let progression = Build_system.get_current_progress () in
-        Some
-          (Pp.verbatim
+    Console.Status_line.set
+      (Live
+         (fun () ->
+           let progression = Build_system.get_current_progress () in
+           Pp.verbatim
              (sprintf "Done: %u/%u (jobs: %u)"
                 progression.number_of_rules_executed
                 progression.number_of_rules_discovered
@@ -58,26 +59,30 @@ end
 module Scheduler = struct
   include Dune_engine.Scheduler
 
-  let maybe_clear_screen (dune_config : Dune_config.t) =
+  let maybe_clear_screen ~details_hum (dune_config : Dune_config.t) =
     match dune_config.terminal_persistence with
     | Clear_on_rebuild -> Console.reset ()
     | Preserve ->
       Console.print_user_message
         (User_message.make
-           [ Pp.nop
-           ; Pp.tag User_message.Style.Success
-               (Pp.verbatim "********** NEW BUILD **********")
-           ; Pp.nop
-           ])
+           (List.map details_hum ~f:(fun reason_hum ->
+                Pp.tag User_message.Style.Details (Pp.verbatim reason_hum))
+           @ [ Pp.nop
+             ; Pp.tag User_message.Style.Success
+                 (Pp.verbatim "********** NEW BUILD **********")
+             ; Pp.nop
+             ]))
 
   let on_event dune_config _config = function
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
-    | Scheduler.Run.Event.Source_files_changed -> maybe_clear_screen dune_config
+    | Source_files_changed { details_hum } ->
+      maybe_clear_screen ~details_hum dune_config
     | Build_interrupted ->
-      Console.Status_line.set_live (fun () ->
-          let progression = Build_system.get_current_progress () in
-          Some
-            (Pp.seq
+      Console.Status_line.set
+        (Live
+           (fun () ->
+             let progression = Build_system.get_current_progress () in
+             Pp.seq
                (Pp.tag User_message.Style.Error
                   (Pp.verbatim "Source files changed"))
                (Pp.verbatim
@@ -90,8 +95,8 @@ module Scheduler = struct
         | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
         | Failure -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
       in
-      Console.Status_line.set_constant
-        (Some
+      Console.Status_line.set
+        (Constant
            (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 
   let go ~(common : Common.t) ~config:dune_config f =

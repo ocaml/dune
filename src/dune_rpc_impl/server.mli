@@ -1,6 +1,6 @@
 type t
 
-val create : unit -> t
+val create : root:string -> t
 
 val config : t -> Run.Config.t
 

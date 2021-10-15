@@ -42,9 +42,27 @@ module Version = struct
     pair int int
 end
 
+module Method_name = struct
+  type t = string
+
+  let sexp : t Conv.value = Conv.string
+
+  module Map = String.Map
+  module Table = String.Table
+end
+
+module Method_version = struct
+  type t = int
+
+  let sexp = Conv.int
+
+  module Set = Int.Set
+  module Map = Int.Map
+end
+
 module Call = struct
   type t =
-    { method_ : string
+    { method_ : Method_name.t
     ; params : Sexp.t
     }
 
@@ -58,7 +76,7 @@ module Call = struct
     let open Conv in
     let to_ (method_, params) = { method_; params } in
     let from { method_; params } = (method_, params) in
-    let method_ = field "method" (required string) in
+    let method_ = field "method" (required Method_name.sexp) in
     let params = field "params" (required sexp) in
     iso (both method_ params) to_ from
 end
@@ -72,14 +90,12 @@ module Response = struct
     type kind =
       | Invalid_request
       | Code_error
-      | Version_error
 
     let dyn_of_kind =
       let open Dyn.Encoder in
       function
       | Invalid_request -> constr "Invalid_request" []
       | Code_error -> constr "Code_error" []
-      | Version_error -> constr "Version_error" []
 
     type t =
       { payload : Sexp.t option
@@ -106,7 +122,8 @@ module Response = struct
       | Parse_error { payload; message } ->
         { message; payload = make_payload payload; kind = Invalid_request }
       | Version_error { payload; message; since = _; until = _ } ->
-        { message; payload = make_payload payload; kind = Version_error }
+        (* cwong: Should we even still include this? *)
+        { message; payload = make_payload payload; kind = Code_error }
 
     let sexp =
       let open Conv in
@@ -118,7 +135,6 @@ module Response = struct
              (enum
                 [ ("Invalid_request", Invalid_request)
                 ; ("Code_error", Code_error)
-                ; ("Version_error", Version_error)
                 ]))
       in
       record
@@ -160,33 +176,55 @@ module Response = struct
   let to_dyn = Result.to_dyn Sexp.to_dyn Error.to_dyn
 end
 
+module Protocol = struct
+  type t = int
+
+  let latest_version = 0
+
+  let sexp = Conv.int
+end
+
 module Initialize = struct
   module Request = struct
     type t =
-      { version : int * int
+      { dune_version : Version.t
+      ; protocol_version : Protocol.t
       ; id : Id.t
       }
 
-    let version t = t.version
+    let dune_version t = t.dune_version
+
+    let protocol_version t = t.protocol_version
 
     let id t = t.id
 
-    let create ~id = { version = Version.latest; id }
+    let create ~id =
+      let dune_version = Version.latest in
+      let protocol_version = Protocol.latest_version in
+      { dune_version; protocol_version; id }
+
+    let method_name = "initialize"
 
     let sexp =
       let open Conv in
-      let version = field "version" (required Version.sexp) in
+      let dune_version = field "dune_version" (required Version.sexp) in
+      let protocol_version =
+        field "protocol_version" (required Protocol.sexp)
+      in
       let id = Id.required_field in
-      let to_ (version, id) = { version; id } in
-      let from { version; id } = (version, id) in
-      record (iso (both version id) to_ from)
+      let to_ (dune_version, protocol_version, id) =
+        { dune_version; protocol_version; id }
+      in
+      let from { dune_version; protocol_version; id } =
+        (dune_version, protocol_version, id)
+      in
+      record (iso (three dune_version protocol_version id) to_ from)
 
     let of_call { Call.method_; params } ~version =
-      match method_ with
-      | "initialize" ->
+      if String.equal method_ method_name then
         Conv.of_sexp sexp ~version params
         |> Result.map_error ~f:Response.Error.of_conv
-      | _ ->
+      else
         let message = "initialize request expected" in
         Error (Response.Error.create ~message ~kind:Invalid_request ())
 
@@ -202,7 +240,53 @@ module Initialize = struct
 
     let create () = ()
 
-    let to_response () = Conv.to_sexp sexp ()
+    let to_response t = Conv.to_sexp sexp t
+  end
+end
+
+module Version_negotiation = struct
+  module Request = struct
+    type t = Menu of (string * int list) list
+
+    let method_name = "version_menu"
+
+    let create menu = Menu menu
+
+    let sexp =
+      Conv.(
+        iso
+          (list (pair string (list int)))
+          (fun x -> Menu x)
+          (function
+            | Menu x -> x))
+
+    let to_call t =
+      let params = Conv.to_sexp sexp t in
+      { Call.method_ = method_name; params }
+
+    let of_call { Call.method_; params } ~version =
+      if String.equal method_ method_name then
+        Conv.of_sexp sexp ~version params
+        |> Result.map_error ~f:Response.Error.of_conv
+      else
+        let message = "version negotiation request expected" in
+        Error (Response.Error.create ~message ~kind:Invalid_request ())
+  end
+
+  module Response = struct
+    type t = Selected of (string * int) list
+
+    let sexp =
+      Conv.(
+        iso
+          (list (pair string int))
+          (fun x -> Selected x)
+          (function
+            | Selected x -> x))
+
+    let create x = Selected x
+
+    let to_response t = Conv.to_sexp sexp t
   end
 end
 
@@ -297,18 +381,157 @@ module Packet = struct
 end
 
 module Decl = struct
-  type ('req, 'resp) request =
-    { method_ : string
-    ; req : 'req Conv.value
-    ; resp : 'resp Conv.value
+  type 'gen t =
+    { method_ : Method_name.t
+    ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
     }
 
-  type 'req notification =
-    { method_ : string
-    ; req : 'req Conv.value
-    }
+  module Generation = struct
+    type ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv =
+      { req : 'wire_req Conv.value
+      ; resp : 'wire_resp Conv.value
+      ; upgrade_req : 'wire_req -> 'real_req
+      ; downgrade_req : 'real_req -> 'wire_req
+      ; upgrade_resp : 'wire_resp -> 'real_resp
+      ; downgrade_resp : 'real_resp -> 'wire_resp
+      }
 
-  let notification ~method_ req = { method_; req }
+    type (_, _) t =
+      | T :
+          ('wire_req, 'wire_resp, 'real_req, 'real_resp) conv
+          -> ('real_req, 'real_resp) t
+  end
 
-  let request ~method_ req resp = { method_; req; resp }
+  module Request = struct
+    type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
+
+    let make_gen ~req ~resp ~upgrade_req ~downgrade_req ~upgrade_resp
+        ~downgrade_resp ~version =
+      ( version
+      , Generation.T
+          { req
+          ; resp
+          ; upgrade_req
+          ; downgrade_req
+          ; upgrade_resp
+          ; downgrade_resp
+          } )
+
+    let make_current_gen ~req ~resp ~version =
+      let id x = x in
+      make_gen ~req ~resp ~upgrade_req:id ~downgrade_req:id ~upgrade_resp:id
+        ~downgrade_resp:id ~version
+
+    let gen_to_dyn _ = Dyn.String "<generation>"
+
+    type ('req, 'resp) witness = ('req, 'resp) Generation.t t
+
+    type nonrec ('req, 'resp) t =
+      { decl : ('req, 'resp) witness
+      ; generations : ('req, 'resp) gen list
+      }
+
+    let make ~method_ ~generations =
+      { generations
+      ; decl =
+          { method_
+          ; key =
+              Stdune.Univ_map.Key.create ~name:method_
+                (Int.Map.to_dyn gen_to_dyn)
+          }
+      }
+
+    let witness t = t.decl
+  end
+
+  module Notification = struct
+    type 'payload gen = Method_version.t * ('payload, unit) Generation.t
+
+    let make_gen (type a b) ~(conv : a Conv.value) ~(upgrade : a -> b)
+        ~(downgrade : b -> a) ~version : b gen =
+      let id x = x in
+      ( version
+      , Generation.T
+          { req = conv
+          ; resp = Conv.unit
+          ; upgrade_req = upgrade
+          ; downgrade_req = downgrade
+          ; upgrade_resp = id
+          ; downgrade_resp = id
+          } )
+
+    let make_current_gen (type a) ~(conv : a Conv.value) ~version : a gen =
+      let id x = x in
+      make_gen ~conv ~upgrade:id ~downgrade:id ~version
+
+    let gen_to_dyn _ = Dyn.String "<generation>"
+
+    type 'payload witness = ('payload, unit) Generation.t t
+
+    type nonrec 'payload t =
+      { decl : 'payload witness
+      ; generations : 'payload gen list
+      }
+
+    let make ~method_ ~generations =
+      { generations
+      ; decl =
+          { method_
+          ; key =
+              Stdune.Univ_map.Key.create ~name:method_
+                (Int.Map.to_dyn gen_to_dyn)
+          }
+      }
+
+    let witness t = t.decl
+  end
+
+  type ('a, 'b) request = ('a, 'b) Request.t
+
+  type 'a notification = 'a Notification.t
+end
+
+module type Fiber = sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+
+  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
+
+  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
+
+  module O : sig
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  end
+
+  module Ivar : sig
+    type 'a fiber
+
+    type 'a t
+
+    val create : unit -> 'a t
+
+    val read : 'a t -> 'a fiber
+
+    val fill : 'a t -> 'a -> unit fiber
+  end
+  with type 'a fiber := 'a t
+end
+
+module type Sys = sig
+  type 'a fiber
+
+  val getenv : string -> string option
+
+  val is_win32 : unit -> bool
+
+  val read_file : string -> string fiber
+
+  val readlink : string -> string option fiber
+
+  val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
 end

@@ -5,10 +5,6 @@ let () = Printexc.record_backtrace true
 (* Test that all strings of length <= 3 such that [Dune_lang.Atom.is_valid s]
    are recognized as atoms by the parser *)
 
-type syntax =
-  | Dune
-  | Jbuild
-
 let () =
   for len = 0 to 3 do
     let s = Bytes.create len in

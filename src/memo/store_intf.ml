@@ -1,5 +1,3 @@
-open Stdune
-
 module type Input = sig
   type t
 

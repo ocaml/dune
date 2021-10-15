@@ -97,6 +97,16 @@ module List = struct
       | Some x :: xs -> loop (x :: acc) xs
     in
     fun xs -> loop [] xs
+
+  let traverse xs ~f =
+    let rec loop acc = function
+      | [] -> Some (List.rev acc)
+      | x :: xs -> (
+        match f x with
+        | None -> None
+        | Some x -> loop (x :: acc) xs)
+    in
+    loop [] xs
 end
 
 let hash f = function

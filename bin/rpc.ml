@@ -22,13 +22,19 @@ let client_term common f =
 let interpret_kind = function
   | Dune_rpc_private.Response.Error.Invalid_request -> "Invalid_request"
   | Code_error -> "Code_error"
-  | Version_error -> "Version_error"
 
 let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
   User_error.raise
     [ Pp.text "Server returned error: "
     ; Pp.textf "%s (error kind: %s)" e.message (interpret_kind e.kind)
     ]
+
+let request_exn client witness n =
+  let open Fiber.O in
+  let* decl = Dune_rpc_impl.Client.Versioned.prepare_request client witness in
+  match decl with
+  | Error e -> raise (Dune_rpc_private.Version_error.E e)
+  | Ok decl -> Dune_rpc_impl.Client.request client decl n
 
 let retry_loop once =
   let open Fiber.O in
@@ -123,27 +129,48 @@ let report_error error =
   Printf.printf "Error: %s\n%!"
     (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
 
+let witness = Dune_rpc_private.Decl.Request.witness
+
 module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
     client_term common @@ fun common ->
     let where = wait_for_server common in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
-    printfn "ID's of connected clients (include this one):";
+    printfn "Connected clients (including this one):\n";
     Dune_rpc_impl.Run.client where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          Dune_rpc_impl.Client.request session Dune_rpc_impl.Decl.status ()
+          request_exn session (witness Dune_rpc_impl.Decl.status) ()
         in
         match response with
         | Error error -> report_error error
         | Ok { clients } ->
-          List.iter clients ~f:(fun client ->
-              let sexp = Dune_rpc.Conv.to_sexp Dune_rpc.Id.sexp client in
-              Sexp.to_string sexp |> print_endline))
+          List.iter clients ~f:(fun (client, menu) ->
+              let id =
+                let sexp = Dune_rpc.Conv.to_sexp Dune_rpc.Id.sexp client in
+                Sexp.to_string sexp
+              in
+              let message =
+                match (menu : Dune_rpc_impl.Decl.Status.Menu.t) with
+                | Uninitialized ->
+                  User_message.make
+                    [ Pp.textf "Client [%s], conducting version negotiation" id
+                    ]
+                | Menu menu ->
+                  User_message.make
+                    [ Pp.box ~indent:2
+                        (Pp.concat ~sep:Pp.newline
+                           (Pp.textf
+                              "Client [%s] with the following RPC versions:" id
+                           :: List.map menu ~f:(fun (method_, version) ->
+                                  Pp.textf "%s: %d" method_ version)))
+                    ]
+              in
+              User_message.print message))
 
   let info =
     let doc = "show active connections" in
@@ -167,7 +194,7 @@ module Build = struct
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          Dune_rpc_impl.Client.request session Dune_rpc_impl.Decl.build targets
+          request_exn session (witness Dune_rpc_impl.Decl.build) targets
         in
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->
@@ -188,9 +215,7 @@ end
 module Ping = struct
   let send_ping cli =
     let open Fiber.O in
-    let+ response =
-      Dune_rpc_impl.Client.request cli Dune_rpc_private.Public.Request.ping ()
-    in
+    let+ response = request_exn cli Dune_rpc_private.Public.Request.ping () in
     match response with
     | Ok () ->
       User_message.print

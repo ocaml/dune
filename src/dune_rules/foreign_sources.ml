@@ -124,23 +124,64 @@ let check_no_qualified (loc, include_subdirs) =
 
 let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
     ~(lib_config : Lib_config.t) =
-  let libs, exes =
-    List.filter_partition_map d.data ~f:(fun stanza ->
-        match (stanza : Stanza.t) with
-        | Library lib ->
-          let all = eval_foreign_stubs d lib.buildable.foreign_stubs ~sources in
-          Left (Left (lib, all))
-        | Foreign_library library ->
-          let all = eval_foreign_stubs d [ library.stubs ] ~sources in
-          Left (Right (library.archive_name, (library.archive_name_loc, all)))
-        | Executables exes ->
-          let all =
-            eval_foreign_stubs d exes.buildable.foreign_stubs ~sources
-          in
-          Right (exes, all)
-        | _ -> Skip)
+  let libs, foreign_libs, exes =
+    let libs, foreign_libs, exes =
+      List.fold_left d.data ~init:([], [], [])
+        ~f:(fun ((libs, foreign_libs, exes) as acc) stanza ->
+          match (stanza : Stanza.t) with
+          | Library lib ->
+            let all =
+              eval_foreign_stubs d lib.buildable.foreign_stubs ~sources
+            in
+            ((lib, all) :: libs, foreign_libs, exes)
+          | Foreign_library library ->
+            let all = eval_foreign_stubs d [ library.stubs ] ~sources in
+            ( libs
+            , (library.archive_name, (library.archive_name_loc, all))
+              :: foreign_libs
+            , exes )
+          | Executables exe
+          | Tests { exes = exe; _ } ->
+            let all =
+              eval_foreign_stubs d exe.buildable.foreign_stubs ~sources
+            in
+            (libs, foreign_libs, (exe, all) :: exes)
+          | _ -> acc)
+    in
+    List.(rev libs, rev foreign_libs, rev exes)
   in
-  let libs, foreign_libs = List.partition_map libs ~f:Fun.id in
+  let () =
+    let objects =
+      List.concat
+        [ List.map libs ~f:snd
+        ; List.map foreign_libs ~f:(fun (_, (_, sources)) -> sources)
+        ; List.map exes ~f:snd
+        ]
+      |> List.concat_map ~f:(fun sources ->
+             String.Map.to_list_map sources ~f:(fun _ (loc, source) ->
+                 (Foreign.Source.object_name source ^ lib_config.ext_obj, loc)))
+    in
+    match String.Map.of_list objects with
+    | Ok _ -> ()
+    | Error (path, loc, another_loc) ->
+      User_error.raise ~loc
+        [ Pp.textf
+            "Multiple definitions for the same object file %S. See another \
+             definition at %s."
+            path
+            (Loc.to_file_colon_line another_loc)
+        ]
+        ~hints:
+          [ Pp.text
+              "You can avoid the name clash by renaming one of the objects, or \
+               by placing it into a different directory."
+          ]
+  in
+  (* TODO: Make this more type-safe by switching to non-empty lists. *)
+  let executables =
+    String.Map.of_list_map_exn exes ~f:(fun (exes, m) ->
+        (snd (List.hd exes.names), m))
+  in
   let libraries =
     match
       Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
@@ -172,39 +213,6 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
               (Loc.to_file_colon_line loc1)
           ])
     |> Foreign.Archive.Name.Map.map ~f:snd
-  in
-  (* TODO: Make this more type-safe by switching to non-empty lists. *)
-  let executables =
-    String.Map.of_list_map_exn exes ~f:(fun (exes, m) ->
-        (snd (List.hd exes.names), m))
-  in
-  let () =
-    let objects =
-      List.concat
-        [ List.map libs ~f:snd
-        ; List.map foreign_libs ~f:(fun (_, (_, sources)) -> sources)
-        ; List.map exes ~f:snd
-        ]
-      |> List.concat_map ~f:(fun sources ->
-             String.Map.values sources
-             |> List.map ~f:(fun (loc, source) ->
-                    (Foreign.Source.object_name source ^ lib_config.ext_obj, loc)))
-    in
-    match String.Map.of_list objects with
-    | Ok _ -> ()
-    | Error (path, loc, another_loc) ->
-      User_error.raise ~loc
-        [ Pp.textf
-            "Multiple definitions for the same object file %S. See another \
-             definition at %s."
-            path
-            (Loc.to_file_colon_line another_loc)
-        ]
-        ~hints:
-          [ Pp.text
-              "You can avoid the name clash by renaming one of the objects, or \
-               by placing it into a different directory."
-          ]
   in
   { libraries; archives; executables }
 

@@ -76,8 +76,7 @@ include Sub_system.Register_end_point (struct
   module Mode_conf = Inline_tests_info.Mode_conf
   module Info = Inline_tests_info.Tests
 
-  let gen_rules c ~(info : Info.t) ~backends =
-    let open Memo.Build.O in
+  let gen_rules c ~expander ~(info : Info.t) ~backends =
     let { Sub_system.Library_compilation_context.super_context = sctx
         ; dir
         ; stanza = lib
@@ -104,8 +103,8 @@ include Sub_system.Register_end_point (struct
       let src_dir = Path.build inline_test_dir in
       Module.generated ~src_dir name
     in
+    let open Memo.Build.O in
     let modules = Modules.singleton_exe main_module in
-    let* expander = Super_context.expander sctx ~dir in
     let runner_libs =
       let open Resolve.Build.O in
       let* libs =
@@ -258,6 +257,20 @@ include Sub_system.Register_end_point (struct
                       (Path.Build.extend_basename
                          (Path.as_in_build_dir_exn fn)
                          ~suffix:".corrected")))))
+
+  let gen_rules c ~(info : Info.t) ~backends =
+    let open Memo.Build.O in
+    let { dir; Sub_system.Library_compilation_context.super_context = sctx; _ }
+        =
+      c
+    in
+    let* expander = Super_context.expander sctx ~dir in
+    let* enabled_if = Expander.eval_blang expander info.enabled_if in
+    if enabled_if then
+      gen_rules c ~expander ~info ~backends
+    else
+      let alias = Alias.runtest ~dir in
+      Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:(Some info.loc)
 end)
 
 let linkme = ()

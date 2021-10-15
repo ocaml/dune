@@ -1,6 +1,31 @@
 Unreleased
 ----------
 
+- Fix interpretation of `binaries` defined in the `env stanza`. Binaries
+  defined in `x/dune` wouldn't be visible in `x/*/**/dune. (#4975, fixes #4976,
+  @Leonidas-from-XIV, @rgrinberg)
+
+- Do not list private libraries in package listings (#4945, fixes #4799,
+  @rgrinberg)
+
+- Allow spaces in cram test paths (#4980, fixes #4162, @rgrinberg)
+
+- Improve error handling of misbehaving cram scripts. (#4981, fix #4230,
+  @rgrinberg)
+
+- Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
+  when this field was present (#4942, fix #4946, @rgrinberg)
+
+- Add the `enabled_if` field to `inline_tests` within the `library` stanza.
+  This allows us to disable executing the inline tests while still allowing for
+  compilation (#4939, @rgrinberg)
+
+- Generate a `dune-project` when initializing projects with `dune init proj ...`
+  (#4881, closes #4367, @shonfeder)
+
+- Allow spaces in the directory argument of the `subdir` stanza (#4943, fixes
+  #4907, @rgrinberg)
+
 - Add a `%{toolchain}` expansion variable (#4899, fixes #3949, @rgrinberg)
 
 - Include dependencies of executables when creating toplevels (either `dune
@@ -176,6 +201,29 @@ Unreleased
 - Allow to explicitly disable/enable the use of `dune subst` by adding a
   new `(subst <disable|enable>)` stanza to the `dune-project` file.
   (#4864, @kit-ty-kate)
+
+- Simplify the way `dune` discovers the root of the workspace. It now
+  stops at the first `dune-workspace` file it encounters, and fails if
+  it finds neither a `dune-workspace` nor a `dune-project` file
+  (#4921, fixes #4459, @jeremiedimino)
+
+- No longer reference deprecated Toploop functions when using dune files in
+  OCaml syntax. (#4834, fixes #4830, @nojb)
+
+- Dune no longer reads installed META files for libraries distributed with the
+  compiler, instead using its own internal database. (#4946, @nojb)
+
+- Add support for `(empty_module_interface_if_absent)` in executable and library
+  stanzas. (#4955, @nojb)
+
+- Add support for `%{bin-available:...}` (#4995, @jeremiedimino)
+
+- Make sure running `git` or `hg` in a sandboxed action, such as a
+  cram test cannot escape the sandbox and pick up some random git or
+  mercurial repository on the file system (#4996, @jeremiedimino)
+
+- Run each action in its own process group so that we don't leave
+  stray processes behind when killing actions (#4998, @jeremiedimino)
 
 2.9.1 (07/09/2021)
 ------------------

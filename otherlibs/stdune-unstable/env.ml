@@ -71,6 +71,8 @@ let of_unix arr =
 
 let initial = make (of_unix (Unix.environment ()))
 
+let of_unix u = make (of_unix u)
+
 let add t ~var ~value = make (Map.set t.vars var value)
 
 let remove t ~var = make (Map.remove t.vars var)

@@ -1,7 +1,5 @@
 open! Stdune
 
-let stanza = Io.read_all stdin
-
 let cwd () = Path.external_ (Path.External.cwd ())
 
 let chdir dir = Unix.chdir (Path.to_absolute_filename dir)

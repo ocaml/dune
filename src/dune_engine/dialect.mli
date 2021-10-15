@@ -24,6 +24,8 @@ val name : t -> string
 
 val to_dyn : t -> Dyn.t
 
+val encode : t Dune_lang.Encoder.t
+
 val decode : t Dune_lang.Decoder.t
 
 val extension : t -> Ml_kind.t -> string

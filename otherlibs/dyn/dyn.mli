@@ -1,3 +1,5 @@
+(** Dyn stands for "dynamic values". The Dyn.t type is a representation of OCaml
+    values such that they can be processed without knowing their type. *)
 type t =
   | Opaque
   | Unit
@@ -48,8 +50,6 @@ module Encoder : sig
 
   val record : (string * dyn) list -> dyn
 
-  val unknown : _ t
-
   val opaque : _ t
 
   val constr : string -> dyn list -> dyn
@@ -60,7 +60,7 @@ val pp : t -> _ Pp.t
 
 val opaque : t
 
-val compare : t -> t -> Ordering.t
+val compare : t -> t -> int
 
 val hash : t -> int
 

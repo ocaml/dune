@@ -49,7 +49,6 @@ module V1 : sig
       type kind =
         | Invalid_request
         | Code_error
-        | Version_error
 
       type t
 
@@ -87,6 +86,8 @@ module V1 : sig
     val absolute : string -> t
 
     val relative : t -> string -> t
+
+    val to_string_absolute : t -> string
   end
 
   module Target : sig
@@ -192,6 +193,19 @@ module V1 : sig
     val message : t -> string
   end
 
+  (** A [Version_error] is returned on the client-side when a request or
+      notification is determined to be invalid due to version negotiation (no
+      known method or no common version). *)
+  module Version_error : sig
+    type t
+
+    val payload : t -> Csexp.t option
+
+    val message : t -> string
+
+    exception E of t
+  end
+
   module Notification : sig
     type 'a t
 
@@ -213,6 +227,8 @@ module V1 : sig
 
     (** Promote a file. *)
     val promote : (Path.t, unit) t
+
+    val build_dir : (unit, Path.t) t
   end
 
   module Client : sig
@@ -233,9 +249,44 @@ module V1 : sig
           -> ?abort:(Message.t -> unit fiber)
                (** If [abort] is called, the server has terminated the
                    connection due to a protocol error. This should never be
-                   called unless there's a bug. *)
+                   called unless there's a server side bug. *)
           -> unit
           -> t
+      end
+
+      (** Individual RPC procedures are versioned beyond the larger API version.
+          At session startup, the server and client exchange version information
+          for each method ("negotiation"), setting on a common version for each
+          (if possible) to produce a "version menu".
+
+          To initiate a method, then, that method must be looked up in the
+          version menu to determine the correct protocol for this session. This
+          module stages this pattern to share the lookup for all calls to the
+          same procedure.
+
+          For lower-level design details, see [doc/dev/rpc-versioning.md] in the
+          main dune repository. *)
+      module Versioned : sig
+        type 'a notification
+
+        type ('a, 'b) request
+
+        (** [prepare_request client r] checks the request [r] against the
+            negotiated version menu, giving a versioned request as a result.
+
+            This function does not initiate any communication with the server.
+            However, as this function must check the version menu, it cannot
+            complete until after version negotiation, and so returns a [fiber]. *)
+        val prepare_request :
+             t
+          -> ('a, 'b) Request.t
+          -> (('a, 'b) request, Version_error.t) result fiber
+
+        (** See [prepare_request]. *)
+        val prepare_notification :
+             t
+          -> 'a Notification.t
+          -> ('a notification, Version_error.t) result fiber
       end
 
       (** [request ?id client decl req] send a request [req] specified by [decl]
@@ -243,11 +294,11 @@ module V1 : sig
       val request :
            ?id:Id.t
         -> t
-        -> ('a, 'b) Request.t
+        -> ('a, 'b) Versioned.request
         -> 'a
         -> ('b, Response.Error.t) result fiber
 
-      val notification : t -> 'a Notification.t -> 'a -> unit fiber
+      val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
 
       (** [disconnected client] produces a fiber that only becomes determined
           when the session is ended from the server side (such as if the build
@@ -270,7 +321,8 @@ module V1 : sig
       end
 
       (** [poll client sub] Initialize a polling loop for [sub] *)
-      val poll : ?id:Id.t -> t -> 'a Sub.t -> 'a Stream.t
+      val poll :
+        ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
       module Batch : sig
         type t
@@ -282,11 +334,11 @@ module V1 : sig
         val request :
              ?id:Id.t
           -> t
-          -> ('a, 'b) Request.t
+          -> ('a, 'b) Versioned.request
           -> 'a
           -> ('b, Response.Error.t) result fiber
 
-        val notification : t -> 'a Notification.t -> 'a -> unit
+        val notification : t -> 'a Versioned.notification -> 'a -> unit
 
         val submit : t -> unit fiber
       end
@@ -353,12 +405,19 @@ module V1 : sig
       | `Ip of [ `Host of string ] * [ `Port of int ]
       ]
 
+    type error = Invalid_where of string
+
+    exception E of error
+
     module type S = sig
       type 'a fiber
 
-      val get : build_dir:string -> t option fiber
+      val get :
+           env:(string -> string option)
+        -> build_dir:string
+        -> (t option, exn) result fiber
 
-      val default : build_dir:string -> t
+      val default : ?win32:bool -> build_dir:string -> unit -> t
     end
 
     module Make (Fiber : sig
@@ -371,17 +430,71 @@ module V1 : sig
 
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
-    end) (Sys : sig
-      val getenv : string -> string option
-
-      val is_win32 : unit -> bool
-
-      val read_file : string -> string Fiber.t
-
-      val readlink : string -> string option Fiber.t
+    end) (IO : sig
+      val read_file : string -> (string, exn) result Fiber.t
 
       val analyze_path :
-        string -> [ `Unix_socket | `Normal_file | `Other ] Fiber.t
+        string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
     end) : S with type 'a fiber := 'a Fiber.t
+  end
+
+  module Registry : sig
+    module Dune : sig
+      type t
+
+      val to_dyn : t -> Dyn.t
+
+      val compare : t -> t -> int
+
+      val where : t -> Where.t
+
+      val root : t -> string
+    end
+
+    module Config : sig
+      type t
+
+      val create : Xdg.t -> t
+
+      val watch_dir : t -> string
+    end
+
+    type t
+
+    val create : Config.t -> t
+
+    val current : t -> Dune.t list
+
+    module Refresh : sig
+      type t
+
+      val added : t -> Dune.t list
+
+      val removed : t -> Dune.t list
+
+      val errored : t -> (string * exn) list
+    end
+
+    module Poll (Fiber : sig
+      type 'a t
+
+      val return : 'a -> 'a t
+
+      val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+
+      module O : sig
+        val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+
+        val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+      end
+    end) (IO : sig
+      val scandir : string -> (string list, exn) result Fiber.t
+
+      val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
+
+      val read_file : string -> (string, exn) result Fiber.t
+    end) : sig
+      val poll : t -> (Refresh.t, exn) result Fiber.t
+    end
   end
 end

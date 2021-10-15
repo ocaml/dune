@@ -7,14 +7,22 @@ val enable : unit -> unit
 val reset : unit -> unit
 
 module Timer : sig
+  module Measure : sig
+    type t =
+      { cumulative_time : float
+      ; count : int
+      }
+  end
+
   type t
 
-  (* Create a timer initialised to 0 and hooked to the global [reset]. *)
-  val create : unit -> t
+  val start : string -> t
 
-  val read_seconds : t -> float
+  val stop : t -> unit
 
   (** If metrics are enabled, increment the timer by the amount of seconds
       elapsed during the execution of [f]. *)
-  val record : t -> f:(unit -> 'a) -> 'a
+  val record : string -> f:(unit -> 'a) -> 'a
+
+  val aggregated_timers : unit -> Measure.t String.Map.t
 end

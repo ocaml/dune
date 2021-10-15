@@ -185,9 +185,7 @@ type conf =
 
 let interpret ~dir ~project ~(dune_file : Source_tree.Dune_file.t) =
   let file = Source_tree.Dune_file.path dune_file in
-  let static =
-    Source_tree.Dune_file.get_static_sexp_and_possibly_destroy dune_file
-  in
+  let static = Source_tree.Dune_file.get_static_sexp dune_file in
   match Source_tree.Dune_file.kind dune_file with
   | Ocaml_script ->
     Dune_files.Script { script = { dir; project; file }; from_parent = static }

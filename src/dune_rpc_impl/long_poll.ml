@@ -1,6 +1,6 @@
 open! Stdune
 open Dune_rpc_server
-module Dune_rpc = Dune_rpc_private
+open Import
 module Poll_comparable = Comparable.Make (Poller)
 module Poll_map = Poll_comparable.Map
 
@@ -40,14 +40,14 @@ module Instance = struct
     | None ->
       T.waiters :=
         Poll_map.add_exn !T.waiters poller
-          (No_active_request (T.Spec.init_state ()));
+          (No_active_request (T.Spec.no_change ()));
       Fiber.return (Some (T.Spec.current ()))
     | Some (No_active_request s) -> (
       match T.Spec.on_rest_request poller s with
       | `Respond r ->
         T.waiters :=
           Poll_map.set !T.waiters poller
-            (No_active_request (T.Spec.init_state ()));
+            (No_active_request (T.Spec.no_change ()));
         Fiber.return (Some r)
       | `Delay ->
         let ivar = Fiber.Ivar.create () in
@@ -65,7 +65,7 @@ module Instance = struct
             |> Option.map ~f:(fun s -> No_active_request s)
           | Waiting ivar ->
             to_notify := ivar :: !to_notify;
-            Some (No_active_request (T.Spec.init_state ())));
+            Some (No_active_request (T.Spec.no_change ())));
     match !to_notify with
     | [] -> Fiber.return ()
     | to_notify ->
@@ -98,26 +98,34 @@ module Build_system = Dune_engine.Build_system
 module Progress = struct
   module Progress = Dune_rpc.Progress
 
-  type state = unit
+  type state =
+    | Next_update of Progress.t
+    | No_change
 
   type response = Progress.t
 
   type update = Progress.t
 
-  let init_state () = ()
-
   let current () : Progress.t =
-    let p = Build_system.get_current_progress () in
-    match Build_system.Progress.is_determined p with
-    | false -> Waiting
-    | true ->
-      let complete = Build_system.Progress.complete p in
-      let remaining = Build_system.Progress.remaining p in
-      In_progress { complete; remaining }
+    match Build_system.last_event () with
+    | Some ((Finish | Fail | Interrupt) as evt) -> progress_of_build_event evt
+    | Some Start
+    | None -> (
+      let p = Build_system.get_current_progress () in
+      match Build_system.Progress.is_determined p with
+      | false -> Waiting
+      | true ->
+        let complete = Build_system.Progress.complete p in
+        let remaining = Build_system.Progress.remaining p in
+        In_progress { complete; remaining })
 
-  let on_rest_request _poller () = `Delay
+  let no_change () = No_change
 
-  let on_update_inactive _ () = None
+  let on_rest_request _poller = function
+    | No_change -> `Delay
+    | Next_update last_event -> `Respond last_event
+
+  let on_update_inactive evt _ = Some (Next_update evt)
 
   let on_update_waiting u = u
 end
@@ -173,7 +181,7 @@ module Diagnostic = struct
     |> List.map ~f:(fun e ->
            Diagnostic.Event.Add (Diagnostics.diagnostic_of_error e))
 
-  let init_state () = Pending_diagnostics.empty
+  let no_change () = Pending_diagnostics.empty
 
   let on_rest_request _poller pd =
     if Pending_diagnostics.is_empty pd then

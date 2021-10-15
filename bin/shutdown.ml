@@ -1,9 +1,16 @@
 open! Stdune
 open Import
+module Client = Dune_rpc_impl.Client
 
 let send_shutdown cli =
-  Dune_rpc_impl.Client.notification cli
-    Dune_rpc_private.Public.Notification.shutdown ()
+  let open Fiber.O in
+  let* decl =
+    Client.Versioned.prepare_notification cli
+      Dune_rpc_private.Public.Notification.shutdown
+  in
+  match decl with
+  | Ok decl -> Dune_rpc_impl.Client.notification cli decl ()
+  | Error e -> raise (Dune_rpc_private.Version_error.E e)
 
 let exec common =
   let where = Rpc.wait_for_server common in

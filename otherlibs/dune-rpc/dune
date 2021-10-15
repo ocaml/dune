@@ -5,4 +5,5 @@
  (libraries
   stdune
   csexp
+  xdg
   (re_export dune_rpc_private)))

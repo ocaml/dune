@@ -182,7 +182,7 @@ module Init_context = struct
           ~infer_from_opam_files:true ~dir_status:Normal
       with
       | Some p -> p
-      | None -> Dune_project.anonymous ~dir:Path.Source.root
+      | None -> Dune_project.anonymous ~dir:Path.Source.root ()
     in
     let dir =
       match path with
@@ -229,8 +229,6 @@ module Component = struct
         type t =
           | Exec
           | Lib
-
-        (* TODO(shonfeder) Add custom templates *)
 
         let of_string = function
           | "executable" -> Some Exec
@@ -308,6 +306,7 @@ module Component = struct
            @ optional_field ~f:pps options.pps)
     end
 
+    (* Make CST representation of a stanza for the given `kind` *)
     let make kind common_options fields =
       (* Form the AST *)
       List ((atom kind :: fields) @ Field.common common_options)
@@ -347,12 +346,35 @@ module Component = struct
       make "library" common (public_name @ inline_tests)
 
     let test common (() : Options.Test.t) = make "test" common []
+
+    (* A list of CSTs for dune-project file content *)
+    let dune_project ?(opam_file_gen = true) dir (common : Options.Common.t) =
+      let package = Package.default (Atom.to_string common.name) dir in
+      let packages =
+        Package.Name.Map.singleton (Package.name package) package
+      in
+      let info = Package.Info.example in
+      Dune_project.anonymous ~dir ~packages ~info ()
+      |> Dune_project.set_dialects Dialect.DB.empty
+      |> Dune_project.set_generate_opam_files opam_file_gen
+      |> Dune_project.encode
+      |> List.map ~f:(fun exp ->
+             exp |> Dune_lang.Ast.add_loc ~loc:Loc.none |> Cst.concrete)
+      |> fun cst ->
+      List.append cst
+        [ Cst.Comment
+            ( Loc.none
+            , [ " See the complete stanza docs at \
+                 https://dune.readthedocs.io/en/stable/dune-files.html#dune-project"
+              ] )
+        ]
   end
 
   (* TODO Support for merging in changes to an existing stanza *)
   let add_stanza_to_dune_file ~(project : Dune_project.t) ~dir stanza =
     File.load_dune_file ~path:dir |> File.Stanza.add project stanza
 
+  (* Functions to make the various components, represented as lists of files *)
   module Make = struct
     let bin ({ context; common; options } : Options.Executable.t Options.t) =
       let dir = context.dir in
@@ -391,6 +413,20 @@ module Component = struct
       in
       let files = [ test_dune; test_ml ] in
       [ { dir; files } ]
+
+    let dune_project_file dir
+        ({ context; common; options } : Options.Project.t Options.t) =
+      let opam_file_gen =
+        match options.pkg with
+        | Opam -> true
+        | Esy -> false
+      in
+      let content =
+        Stanza_cst.dune_project ~opam_file_gen
+          Path.(as_in_source_tree_exn context.dir)
+          common
+      in
+      File.Dune { path = dir; content; name = "dune-project" }
 
     let proj_exec dir
         ({ context; common; options } : Options.Project.t Options.t) =
@@ -454,7 +490,7 @@ module Component = struct
           (Loc.none, Dune_lang.Atom.to_string common.name)
       in
       let proj_target =
-        let files =
+        let package_files =
           match (pkg : Options.Project.Pkg.t) with
           | Opam ->
             let opam_file = Package.file ~dir ~name in
@@ -464,7 +500,7 @@ module Component = struct
             ]
           | Esy -> [ File.make_text dir "package.json" "" ]
         in
-        { dir; files }
+        { dir; files = dune_project_file dir opts :: package_files }
       in
       let component_targets =
         match (template : Options.Project.Template.t) with

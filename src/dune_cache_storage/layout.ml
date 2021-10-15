@@ -1,8 +1,9 @@
 open Stdune
 
 let default_root_dir () =
+  let cache_dir = Xdg.cache_dir (Lazy.force Dune_util.xdg) in
   Path.L.relative
-    (Path.of_filename_relative_to_initial_cwd Xdg.cache_dir)
+    (Path.of_filename_relative_to_initial_cwd cache_dir)
     [ "dune"; "db" ]
 
 let root_dir =
@@ -44,8 +45,10 @@ let list_entries ~storage =
   in
   match Path.readdir_unsorted storage >>= Result.List.concat_map ~f:entries with
   | Ok res -> res
-  | Error ENOENT -> []
-  | Error e -> User_error.raise [ Pp.text (Unix.error_message e) ]
+  | Error (ENOENT, _, _) -> []
+  | Error (e, _syscall, _arg) ->
+    (* CR-someday amokhov: Print [_syscall] and [_arg] too to help debugging. *)
+    User_error.raise [ Pp.text (Unix.error_message e) ]
 
 module Versioned = struct
   let metadata_storage_dir t = root_dir / "meta" / Version.Metadata.to_string t

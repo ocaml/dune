@@ -202,6 +202,8 @@ In addition, ``(action ...)`` fields support the following special variables:
   %{bin:program} ...)`` and ``(run program ...)`` behave in the same
   way. ``%{bin:...}`` is only necessary when you are using ``(bash
   ...)`` or ``(system ...)``
+- ``bin-available:<program>`` expands to ``true`` or ``false`` depending
+  on whether ``<program>`` is available or not.
 - ``lib:<public-library-name>:<file>`` expands to the installation path of
   the file ``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local

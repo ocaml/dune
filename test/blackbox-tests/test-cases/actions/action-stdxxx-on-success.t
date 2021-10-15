@@ -1,7 +1,7 @@
 Test for --action-stdxxx-on-success
 ====================================
 
-  $ export BUILD_PATH_PREFIX_MAP="sh=$(which sh):$BUILD_PATH_PREFIX_MAP"
+  $ export BUILD_PATH_PREFIX_MAP="sh=$(command -v sh):$BUILD_PATH_PREFIX_MAP"
 
   $ echo '(lang dune 3.0)' > dune-project
 

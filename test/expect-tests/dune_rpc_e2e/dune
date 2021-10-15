@@ -1,10 +1,6 @@
 (library
  (name dune_rpc_e2e)
- (inline_tests
-  (deps
-   (package dune)))
- (enabled_if
-  (= %{system} linux))
+ (modules dune_rpc_e2e)
  (libraries
   dune_rpc_private
   dune_util
@@ -15,6 +11,55 @@
   dune_engine
   dune_rpc_impl
   csexp_rpc
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(library
+ (name dune_rpc_diagnostics)
+ (modules dune_rpc_diagnostics)
+ (inline_tests
+  (deps
+   (package dune)))
+ (enabled_if
+  (= %{system} linux))
+ (libraries
+  fiber
+  stdune
+  dune_rpc_e2e
+  dune_rpc_private
+  dune_rpc_impl
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(library
+ (name dune_rpc_registry_test)
+ (modules dune_rpc_registry_test)
+ (inline_tests
+  (deps
+   (package dune)))
+ (libraries
+  dune_rpc_private
+  dune_rpc_e2e
+  dune_engine
+  dune_filesystem_stubs
+  spawn
+  stdune
+  fiber
+  xdg
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

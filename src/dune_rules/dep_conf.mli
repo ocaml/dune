@@ -1,6 +1,4 @@
 open! Dune_engine
-open! Stdune
-open Import
 
 type t =
   | File of String_with_vars.t

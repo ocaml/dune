@@ -121,6 +121,33 @@ for the syntax of this file.
 The ``Entering Directory`` message can be suppressed with the
 ``--no-print-directory`` command line option (as in GNU make).
 
+This message can be suppressed with the ``--no-print-directory``
+command line option (as in GNU make).
+
+Dune requires at least one ``dune-workspace`` file or ``dune-project``
+file to operate. This file may appear in the current or a parent
+directory. It's used to mark the root of the current workspace;
+however, ``dune-workspace`` and ``dune-project`` files are treated
+slightly differently. Since there can be only a single workspace
+active at a given time, Dune stops its search for the root at the
+first ``dune-workspace`` file it encounters. On the other hand, Dune
+projects are composable, and there can be multiple projects in a
+single workspace. For this reason, when Dune finds a ``dune-project``
+file it will continue searching in parent directories, in case this
+project is part of a bigger workspace.
+
+A ``dune-workspace`` file is also a configuration file. Dune will read
+it unless the ``--workspace`` command line option is used.  See the
+section :ref:`dune-workspace` for the syntax of this file. The scope
+of ``dune-project`` files is wider than the scope ``dune-workspace``
+files. For instance, a ``dune-project`` file may specify the name of
+the project which is a universal property of the project, while a
+``dune-workspace`` file may specify an Opam switch name which is valid
+only on a given machine. For this reason, it is common and recommended
+to commit ``dune-project`` files in repositories, while it is less
+common to commit ``dune-workspace`` files.
+
+
 Current Directory
 -----------------
 

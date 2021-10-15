@@ -153,8 +153,6 @@ let init ?log_file c =
   in
   Dune_config.init config;
   Dune_util.Log.init () ?file:log_file;
-  Dune_engine.Source_tree.init
-    ~ancestor_vcs:(Memo.Build.return c.root.ancestor_vcs);
   Dune_engine.Execution_parameters.init
     (let open Memo.Build.O in
     let+ w = Dune_rules.Workspace.workspace () in
@@ -947,7 +945,7 @@ let term =
   let root = Workspace_root.create ~specified_by_user:root in
   let rpc =
     match watch with
-    | Yes _ -> Some (Dune_rpc_impl.Server.create ())
+    | Yes _ -> Some (Dune_rpc_impl.Server.create ~root:root.dir)
     | No -> None
   in
   let stats =

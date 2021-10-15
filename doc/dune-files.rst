@@ -2,6 +2,8 @@
 Stanza Reference
 ****************
 
+.. _dune-project:
+
 dune-project
 ============
 
@@ -54,6 +56,18 @@ Sets the version of the project:
 .. code:: scheme
 
     (version <version>)
+
+cram
+----
+
+Enable or disable cram-style tests for the project. See :ref:`cram-tests` for
+details.
+
+.. code:: scheme
+
+   (cram <status>)
+
+Where status is either ``enabled`` or ``disabled``.
 
 .. _implicit_transitive_deps:
 
@@ -365,6 +379,8 @@ Note that ``dune`` continues to be accepted even after enabling this option, but
 if a file named ``dune-file`` is found in a directory, it will take precedence
 over ``dune``.
 
+.. _dune-files:
+
 dune
 ====
 
@@ -440,7 +456,6 @@ to use the :ref:`include_subdirs` stanza.
   
 =======
   The Findlib name for this library will be ``<package>.__private__.<name>``;
->>>>>>> 2fd1178ae20a2d945953400e521d43b02a0f69e6
   however, the library's interface will be hidden from consumers outside the
   project.
 
@@ -592,6 +607,11 @@ to use the :ref:`include_subdirs` stanza.
   is useful whenever a library is shadowed by a local module. The library may
   then still be accessible via this root module
 
+- ``(empty_module_interface_if_absent)`` causes the generation of empty
+  interfaces for every module that does not have an interface file already.
+  Useful when modules are used solely for their side-effects. This field is
+  available since the 3.0 version of the dune language.
+
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with
 :ref:`configurator` by
@@ -657,6 +677,8 @@ The ``old_public_name`` can also be one of the names declared in the
 library whose name is not prefixed by the package name. Such a library cannot be
 defined in Dune, but other build systems allow it. This feature is meant to
 help migration from those systems.
+
+.. _executable:
 
 executable
 ----------
@@ -790,7 +812,12 @@ files for executables. See `executables_implicit_empty_intf`_.
   plugin modules.
 
 Linking Modes
-~~~~~~~~~~~~~
+=============
+
+``(empty_module_interface_if_absent)`` causes the generation of empty
+  interfaces for every module that does not have an interface file already.
+  Useful when modules are used solely for their side-effects. This field is
+  available since the 3.0 version of the Dune language.
 
 The ``modes`` field allows selecting which linking modes will be used
 to link executables. Each mode is a pair ``(<compilation-mode>

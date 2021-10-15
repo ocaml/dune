@@ -120,9 +120,14 @@ module Info : sig
 
   val maintainers : t -> string list option
 
+  (** example package info (used for project initialization ) *)
+  val example : t
+
   val empty : t
 
   val to_dyn : t Dyn.Encoder.t
+
+  val encode_fields : t -> Dune_lang.t list
 
   val decode :
        ?since:Dune_lang.Syntax.Version.t
@@ -156,7 +161,7 @@ val dir : t -> Path.Source.t
 
 val file : dir:Path.t -> name:Name.t -> Path.t
 
-val encode : t Dune_lang.Encoder.t
+val encode : Name.t -> t Dune_lang.Encoder.t
 
 val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 
@@ -171,6 +176,9 @@ val to_dyn : t -> Dyn.t
 val hash : t -> int
 
 val is_opam_file : Path.t -> bool
+
+(** Construct a default package (e.g., for project initialization) *)
+val default : string -> Path.Source.t -> t
 
 (** Construct a package description from an opam file. *)
 val load_opam_file : Path.Source.t -> Name.t -> t

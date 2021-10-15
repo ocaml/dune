@@ -34,3 +34,6 @@ val singleton : 'a Key.t -> 'a -> t
 val superpose : t -> t -> t
 
 val to_dyn : t -> Dyn.t
+
+(** [to_dyns m] is an assoc list pairing keys to (representations of) values *)
+val to_dyns : t -> (string * Dyn.t) list

@@ -6,6 +6,8 @@ type t =
   | Simple of bool
   | Yes_with_transition of string
 
+let equal = Poly.equal
+
 let decode =
   sum
     [ ("true", return (Simple true))

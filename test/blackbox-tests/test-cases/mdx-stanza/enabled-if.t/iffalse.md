@@ -1,3 +1,3 @@
 ```ocaml
-# print_endline "run in iffalse"
+# print_endline "run in iffalse";;
 ```

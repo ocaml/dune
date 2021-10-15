@@ -1,4 +1,4 @@
-# paramaterised derivation with dependencies injected (callPackage style)
+# parameterized derivation with dependencies injected (callPackage style)
 
 # We generate nix derivations corresponding to the opam packages from
 # opam-repository that we are interested in. We do this by passing the desired

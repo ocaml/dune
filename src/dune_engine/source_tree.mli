@@ -14,10 +14,7 @@ module Dune_file : sig
 
   type t
 
-  (** We release the memory taken by s-exps as soon as it is used, unless
-      [kind = Ocaml_script]. In which case that optimization is incorrect as we
-      need to re-parse in every context. *)
-  val get_static_sexp_and_possibly_destroy : t -> Dune_lang.Ast.t list
+  val get_static_sexp : t -> Dune_lang.Ast.t list
 
   val kind : t -> kind
 
@@ -57,8 +54,6 @@ module Dir : sig
 
   val sub_dir_names : t -> String.Set.t
 
-  val vcs : t -> Vcs.t option
-
   val status : t -> Sub_dirs.Status.t
 
   (** Return the contents of the dune (or jbuild) file in this directory *)
@@ -69,10 +64,6 @@ module Dir : sig
 
   val to_dyn : t -> Dyn.t
 end
-
-(** Initialise the default vcs. If there is no vcs at the root of the workspace,
-    then this is the vcs that will be used for the root. *)
-val init : ancestor_vcs:Vcs.t option Memo.Build.t -> unit
 
 val root : unit -> Dir.t Memo.Build.t
 

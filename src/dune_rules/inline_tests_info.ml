@@ -94,6 +94,7 @@ module Tests = struct
     ; executable : Ocaml_flags.Spec.t
     ; backend : (Loc.t * Lib_name.t) option
     ; libraries : (Loc.t * Lib_name.t) list
+    ; enabled_if : Blang.t
     }
 
   type Sub_system_info.t += T of t
@@ -122,8 +123,12 @@ module Tests = struct
          field "modes"
            (Dune_lang.Syntax.since syntax (1, 11) >>> Mode_conf.Set.decode)
            ~default:Mode_conf.Set.default
+       and+ enabled_if =
+         Enabled_if.decode ~allowed_vars:Any ~is_error:true
+           ~since:(Some (3, 0))
+           ()
        in
-       { loc; deps; flags; executable; backend; libraries; modes })
+       { loc; deps; flags; executable; backend; libraries; modes; enabled_if })
 
   (* We don't use this at the moment, but we could implement it for debugging
      purposes *)

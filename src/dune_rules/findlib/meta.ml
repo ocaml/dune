@@ -74,6 +74,10 @@ module Simplified = struct
     ; subs : t list
     }
 
+  let equal = Poly.equal
+
+  let hash = Poly.hash
+
   let rec to_dyn { name; vars; subs } =
     let open Dyn.Encoder in
     record
@@ -116,9 +120,14 @@ let rec complexify t =
 
 let parse_entries lb = Parse.entries lb 0 []
 
-let load p ~name =
+let of_lex lex ~name =
   let name = Option.map name ~f:Lib_name.of_package_name in
-  { name; entries = Io.with_lexbuf_from_file p ~f:parse_entries } |> simplify
+  let entries = parse_entries lex in
+  simplify { name; entries }
+
+let load p ~name = Fs_memo.with_lexbuf_from_file p ~f:(of_lex ~name)
+
+let of_string s ~name = of_lex (Lexing.from_string s) ~name
 
 let rule var predicates action value = Rule { var; predicates; action; value }
 
@@ -154,7 +163,7 @@ let main_modules names =
   |> String.concat ~sep:" " |> rule "main_modules" [] Set
 
 let builtins ~stdlib_dir ~version:ocaml_version =
-  let version = version "[distributed with Ocaml]" in
+  let version = version "[distributed with OCaml]" in
   let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext deps
       =
     let archive_name =
@@ -229,27 +238,31 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   in
   let dynlink = simple "dynlink" [] ~dir:"+" in
   let bytes = dummy "bytes" in
-  let result = dummy "result" in
   let uchar = dummy "uchar" in
   let seq = dummy "seq" in
   let threads =
     { name = Some (Lib_name.of_string "threads")
     ; entries =
-        [ version
-        ; main_modules [ "thread" ]
-        ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
-        ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
-        ; directory "+"
-        ; rule "type_of_threads" [] Set "posix"
-        ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
-        ; rule "error"
-            [ Neg "mt_vm"; Neg "mt_posix" ]
-            Set "Missing -thread or -vmthread switch"
-        ; Package
-            (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
-        ; Package
-            (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
-        ]
+        ([ version
+         ; main_modules [ "thread" ]
+         ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
+         ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
+         ; directory "+"
+         ; rule "type_of_threads" [] Set "posix"
+         ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
+         ; rule "error"
+             [ Neg "mt_vm"; Neg "mt_posix" ]
+             Set "Missing -thread or -vmthread switch"
+         ; Package
+             (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
+         ]
+        @
+        if Ocaml_version.has_vmthreads ocaml_version then
+          [ Package
+              (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
+          ]
+        else
+          [])
     }
   in
   let num =
@@ -278,12 +291,6 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       ; bytes
       ; ocamldoc
       ]
-    in
-    let base =
-      if Ocaml_version.pervasives_includes_result ocaml_version then
-        result :: base
-      else
-        base
     in
     let base =
       if Ocaml_version.stdlib_includes_uchar ocaml_version then

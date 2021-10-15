@@ -62,7 +62,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+        uses: ocaml/setup-ocaml@v1
         with:
           ocaml-version: ${{ matrix.ocaml-version }}
 
@@ -90,10 +90,6 @@ jobs:
 
       # Ensure Dune can build itself
       - run: opam exec -- ./dune.exe build -p dune --profile dune-bootstrap
-
-      - name: install inotify-tools
-        run: sudo apt-get install inotify-tools
-        if: env.OS == 'ubuntu-latest'
 
       - name: run test suite
         run: opam exec -- ocaml .github/workflows/ci.ml test

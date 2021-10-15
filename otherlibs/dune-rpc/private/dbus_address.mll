@@ -118,7 +118,7 @@ and unescape = parse
     | [ '0'-'9' 'a'-'f' 'A'-'F' ] [ '0'-'9' 'a'-'f' 'A'-'F' ] as str
         { hex_decode str }
     | ""
-        { failwith "two hexdigits expected after '%'" }
+        { fail lexbuf "two hexdigits expected after '%%'" }
 
 {
   let of_string str =

@@ -8,7 +8,7 @@ module Trimming_result : sig
 end
 
 (** Trim the cache by removing a set of unused files so that the total freed
-    space is greater or equal to the specificed [goal], in bytes. A cached file
+    space is greater or equal to the specified [goal], in bytes. A cached file
     is "unused" if there are no hard links to it from build directories.
 
     Unused files are removed in the order of last access, i.e. we first remove

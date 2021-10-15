@@ -44,6 +44,7 @@ module Var : sig
     | Test
     | Corrected_suffix
     | Inline_tests
+    | Toolchain
 
   val compare : t -> t -> Ordering.t
 
@@ -76,6 +77,7 @@ module Macro : sig
         ; lib_private : bool
         }
     | Lib_available
+    | Bin_available
     | Version
     | Read
     | Read_strings

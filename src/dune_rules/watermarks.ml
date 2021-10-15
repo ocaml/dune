@@ -265,7 +265,7 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     ; ("VERSION_NUM", make_version version_num)
     ; ( "VCS_COMMIT_ID"
       , match commit with
-        | None -> Error "repositroy does not contain any commits"
+        | None -> Error "repository does not contain any commits"
         | Some s -> Ok s )
     ; ( "PKG_MAINTAINER"
       , make_separated "maintainer" ", " @@ Package.Info.maintainers info )

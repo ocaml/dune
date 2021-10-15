@@ -80,6 +80,8 @@ module Dict : sig
 
     val encode : t -> Dune_lang.t list
 
+    val equal : t -> t -> bool
+
     val all : t
 
     val is_empty : t -> bool

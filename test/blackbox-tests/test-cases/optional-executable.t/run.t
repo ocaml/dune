@@ -90,7 +90,7 @@ of its dependencies were optional.
 
   $ cd ..
 
-When an optional binray is absent, the parent binary should be present. This is
+When an optional binary is absent, the parent binary should be present. This is
 consistent with how libraries work. #4786 notes that this sort of shadowing is
 present even if the binary is not optional.
 

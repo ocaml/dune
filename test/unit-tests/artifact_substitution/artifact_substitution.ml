@@ -54,7 +54,7 @@ let () =
 (* {2 Test harness}
 
    The test harness implements a slower but much simpler version of the
-   substution algorithm and compare the result for various inputs between the
+   substitution algorithm and compare the result for various inputs between the
    simpler implementation and the real one. *)
 
 let simple_subst =

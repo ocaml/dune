@@ -298,7 +298,7 @@ let check_fdo_support has_native ocfg ~name =
          experimental and will be removed when ocamlfdo is fully integrated into
          the toolchain. When using a dev version of ocamlopt that does not
          support the required options, fdo builds will fail because the compiler
-         won't recongnize the options. Normals builds won't be affected. *) )
+         won't recognize the options. Normals builds won't be affected. *) )
   else if not (Ocaml_version.supports_split_at_emit version) then
     if not (Ocaml_version.supports_function_sections version) then
       err ()
@@ -350,10 +350,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       match findlib_toolchain with
       | None -> Memo.Build.return None
       | Some toolchain ->
-        let+ path = Memo.Lazy.force findlib_config_path in
+        let* path = Memo.Lazy.force findlib_config_path in
         let toolchain = Context_name.to_string toolchain in
         let context = Context_name.to_string name in
-        Some (Findlib.Config.load path ~toolchain ~context)
+        let+ config = Findlib.Config.load path ~toolchain ~context in
+        Some config
     in
     let get_tool_using_findlib_config prog =
       match

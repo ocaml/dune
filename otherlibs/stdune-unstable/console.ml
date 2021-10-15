@@ -128,14 +128,25 @@ let reset () =
   M.reset ()
 
 module Status_line = struct
-  type t = User_message.Style.t Pp.t option
+  type t =
+    | Live of (unit -> User_message.Style.t Pp.t)
+    | Constant of User_message.Style.t Pp.t
 
-  let status_line = ref (Fun.const None)
+  module Id = Id.Make ()
+
+  let toplevel = Id.gen ()
+
+  let stack = ref []
 
   let refresh () =
-    match !status_line () with
-    | None -> set_status_line None
-    | Some pp ->
+    match !stack with
+    | [] -> set_status_line None
+    | (_id, t) :: _ ->
+      let pp =
+        match t with
+        | Live f -> f ()
+        | Constant x -> x
+      in
       (* Always put the status line inside a horizontal box to force the
          [Format] module to prefer a single line. In particular, it seems that
          [Format.pp_print_text] split the line before the last word, unless it
@@ -145,21 +156,32 @@ module Status_line = struct
          See https://github.com/ocaml/dune/issues/2779 *)
       set_status_line (Some (Pp.hbox pp))
 
-  let set_live f =
-    status_line := f;
+  let set t =
+    stack := [ (toplevel, t) ];
+    (match t with
+    | Live _ -> ()
+    | Constant pp -> print_if_no_status_line pp);
     refresh ()
 
-  let set_constant msg =
-    (status_line := fun () -> msg);
-    (match msg with
-    | None -> ()
-    | Some msg -> print_if_no_status_line msg);
+  let clear () =
+    stack := [];
     refresh ()
 
-  let set_live_temporarily x f =
-    let old = !status_line in
-    set_live x;
-    Exn.protect ~finally:(fun () -> set_live old) ~f
+  type overlay = Id.t
+
+  let add_overlay t =
+    let id = Id.gen () in
+    stack := (id, t) :: !stack;
+    refresh ();
+    id
+
+  let remove_overlay id =
+    stack := List.filter !stack ~f:(fun (id', _) -> not (Id.equal id id'));
+    refresh ()
+
+  let with_overlay t ~f =
+    let id = add_overlay t in
+    Exn.protect ~f ~finally:(fun () -> remove_overlay id)
 end
 
 let () = User_warning.set_reporter print_user_message

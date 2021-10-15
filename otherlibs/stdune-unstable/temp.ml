@@ -6,10 +6,22 @@ let prng = lazy (Random.State.make_self_init ())
 
 let try_paths n ~dir ~prefix ~suffix ~f =
   assert (n > 0);
+  let prefix =
+    if prefix = "" then
+      ""
+    else
+      prefix ^ "_"
+  in
+  let suffix =
+    if suffix = "" then
+      ""
+    else
+      "_" ^ suffix
+  in
   let rec loop n =
     let path =
       let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
-      Path.relative dir (Printf.sprintf "%s_%06x_%s" prefix rnd suffix)
+      Path.relative dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
     in
     match f path with
     | Ok res -> res

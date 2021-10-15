@@ -21,6 +21,7 @@ module Result = Result
 module Option = Option
 module Table = Table
 module Set = Set
+module Ordering = Ordering
 module Io = Io
 module Loc = Loc
 module Fdecl = Fdecl

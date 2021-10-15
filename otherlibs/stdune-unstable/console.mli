@@ -47,24 +47,39 @@ include Backend.S
 val print : User_message.Style.t Pp.t list -> unit
 
 module Status_line : sig
-  (** This module allows to buffer status updates so that they don't slow down
-      the application *)
+  (** Status line management *)
 
   (** The current status line *)
-  type t = User_message.Style.t Pp.t option
+  type t =
+    | Live of (unit -> User_message.Style.t Pp.t)
+        (** A "live" value that's updated continuously, such as a progress
+            indicator. This message is not shown when a "dumb" terminal backend
+            is in use. *)
+    | Constant of User_message.Style.t Pp.t
+        (** A fixed value. Unlike with [Live], this text is printed even if a
+            dumb console backend is in use. *)
 
-  (** Change the status line generator to a "live" value that's updated
-      continuously, such as a progress indicator. This message is not shown when
-      a "dumb" terminal backend is in use. *)
-  val set_live : (unit -> t) -> unit
+  val set : t -> unit
 
-  (** Set the status line to a fixed value. Unlike with [set_live], this text is
-      printed even if a dumb console backend is in use. *)
-  val set_constant : t -> unit
+  (** Clear the current status line *)
+  val clear : unit -> unit
 
-  (** [set_live_temporarily status f] sets the status line to a given live value
-      for the duration of [f] and then reverts to the old value. *)
-  val set_live_temporarily : (unit -> t) -> (unit -> 'a) -> 'a
+  type overlay
+
+  (** Add an overlay on top of the current status line. [set] and [clear] remove
+      any active overlay. *)
+  val add_overlay : t -> overlay
+
+  (** Remove an overlay if it is still active. Do nothing otherwise. *)
+  val remove_overlay : overlay -> unit
+
+  (** [with_overlay t ~f] is the same as:
+
+      {[
+        let id = add_overlay t in
+        Exn.protect f ~finally:(fun () -> remove_overlay id)
+      ]} *)
+  val with_overlay : t -> f:(unit -> 'a) -> 'a
 
   val refresh : unit -> unit
 end

@@ -564,8 +564,7 @@ the doc dependencies:
       name
       "-j"
       jobs
-      "--promote-install-files"
-      "false"
+      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}

@@ -193,7 +193,7 @@ module Fact = struct
     | File _, _ -> Lt
     | _, File _ -> Gt
     | File_selector (d1, f1), File_selector (d2, f2) -> (
-      match Dyn.compare d1 d2 with
+      match Ordering.of_int (Dyn.compare d1 d2) with
       | Eq -> Files.compare f1 f2
       | ne -> ne)
     | File_selector _, _ -> Lt

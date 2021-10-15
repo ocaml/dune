@@ -10,12 +10,23 @@ let def name dyn =
 let rule sctx compile (exes : Dune_file.Executables.t) () =
   let* locals, externals =
     let+ libs =
-      Resolve.read_memo_build (Lazy.force (Lib.Compile.requires_link compile))
+      Resolve.Build.read_memo_build
+        (Memo.Lazy.force (Lib.Compile.requires_link compile))
     in
     List.partition_map libs ~f:(fun lib ->
         match Lib.Local.of_lib lib with
         | Some x -> Left x
         | None -> Right lib)
+  in
+  let link_flags =
+    (* additional link flags keyed by the platform *)
+    [ ( "macosx"
+      , [ "-cclib"
+        ; "-framework Foundation"
+        ; "-cclib"
+        ; "-framework CoreServices"
+        ] )
+    ]
   in
   let+ locals =
     Memo.Build.parallel_map locals ~f:(fun x ->
@@ -56,6 +67,10 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
                  (List.map externals ~f:(fun x -> Lib.name x |> Lib_name.to_dyn)))
           ; Pp.nop
           ; def "local_libraries" (List locals)
+          ; Pp.nop
+          ; def "link_flags"
+              (let open Dyn.Encoder in
+              list (pair string (list string)) link_flags)
           ]))
 
 let gen_rules sctx (exes : Dune_file.Executables.t) ~dir compile =

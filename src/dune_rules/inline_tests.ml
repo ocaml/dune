@@ -11,7 +11,7 @@ module Backend = struct
     type t =
       { info : Info.t
       ; lib : Lib.t
-      ; runner_libraries : Lib.t list Resolve.t
+      ; runner_libraries : Lib.t list Resolve.Build.t
       ; extends : t list Resolve.t
       }
 
@@ -34,26 +34,27 @@ module Backend = struct
       let+ extends =
         Memo.Build.parallel_map info.extends ~f:(fun ((loc, name) as x) ->
             Resolve.Build.bind (resolve x) ~f:(fun lib ->
-                get ~loc lib >>| function
+                get ~loc lib >>= function
                 | None ->
-                  Resolve.fail
+                  Resolve.Build.fail
                     (User_error.make ~loc
                        [ Pp.textf "%S is not an %s" (Lib_name.to_string name)
                            (desc ~plural:false)
                        ])
-                | Some t -> Resolve.return t))
+                | Some t -> Resolve.Build.return t))
         >>| Resolve.List.map ~f:Fun.id
       in
       { info
       ; lib
-      ; runner_libraries = Resolve.List.map info.runner_libraries ~f:resolve
+      ; runner_libraries =
+          Resolve.Build.List.map info.runner_libraries ~f:resolve
       ; extends
       }
 
     let public_info t =
-      let open Resolve.O in
+      let open Resolve.Build.O in
       let+ runner_libraries = t.runner_libraries
-      and+ extends = t.extends in
+      and+ extends = Memo.Build.return t.extends in
       { Info.loc = t.info.loc
       ; flags = t.info.flags
       ; generate_runner = t.info.generate_runner
@@ -75,8 +76,7 @@ include Sub_system.Register_end_point (struct
   module Mode_conf = Inline_tests_info.Mode_conf
   module Info = Inline_tests_info.Tests
 
-  let gen_rules c ~(info : Info.t) ~backends =
-    let open Memo.Build.O in
+  let gen_rules c ~expander ~(info : Info.t) ~backends =
     let { Sub_system.Library_compilation_context.super_context = sctx
         ; dir
         ; stanza = lib
@@ -103,19 +103,20 @@ include Sub_system.Register_end_point (struct
       let src_dir = Path.build inline_test_dir in
       Module.generated ~src_dir name
     in
+    let open Memo.Build.O in
     let modules = Modules.singleton_exe main_module in
-    let* expander = Super_context.expander sctx ~dir in
     let runner_libs =
-      let open Resolve.O in
+      let open Resolve.Build.O in
       let* libs =
-        Resolve.List.concat_map backends ~f:(fun (backend : Backend.t) ->
+        Resolve.Build.List.concat_map backends ~f:(fun (backend : Backend.t) ->
             backend.runner_libraries)
       in
       let* lib =
         Lib.DB.resolve (Scope.libs scope) (loc, Dune_file.Library.best_name lib)
       in
       let* more_libs =
-        Resolve.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
+        Resolve.Build.List.map info.libraries
+          ~f:(Lib.DB.resolve (Scope.libs scope))
       in
       Lib.closure ~linking:true ((lib :: libs) @ more_libs)
     in
@@ -155,7 +156,7 @@ include Sub_system.Register_end_point (struct
       let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
-        ~requires_link:(lazy runner_libs)
+        ~requires_link:(Memo.lazy_ (fun () -> runner_libs))
         ~flags ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~package
     in
     let linkages =
@@ -256,6 +257,20 @@ include Sub_system.Register_end_point (struct
                       (Path.Build.extend_basename
                          (Path.as_in_build_dir_exn fn)
                          ~suffix:".corrected")))))
+
+  let gen_rules c ~(info : Info.t) ~backends =
+    let open Memo.Build.O in
+    let { dir; Sub_system.Library_compilation_context.super_context = sctx; _ }
+        =
+      c
+    in
+    let* expander = Super_context.expander sctx ~dir in
+    let* enabled_if = Expander.eval_blang expander info.enabled_if in
+    if enabled_if then
+      gen_rules c ~expander ~info ~backends
+    else
+      let alias = Alias.runtest ~dir in
+      Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:(Some info.loc)
 end)
 
 let linkme = ()

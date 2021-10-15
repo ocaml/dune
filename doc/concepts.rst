@@ -202,6 +202,8 @@ In addition, ``(action ...)`` fields support the following special variables:
   %{bin:program} ...)`` and ``(run program ...)`` behave in the same
   way. ``%{bin:...}`` is only necessary when you are using ``(bash
   ...)`` or ``(system ...)``
+- ``bin-available:<program>`` expands to ``true`` or ``false`` depending
+  on whether ``<program>`` is available or not.
 - ``lib:<public-library-name>:<file>`` expands to the installation path of
   the file ``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local
@@ -872,9 +874,9 @@ This is controlled by:
 Locks
 =====
 
-Given two rules that are independent, dune will assume that there
-associated action can be run concurrently. Two rules are considered
-independent if none of them depend on the other, either directly or
+Given two rules that are independent, dune will assume that their
+associated actions can be run concurrently. Two rules are considered
+independent if neither of them depend on the other, either directly or
 through a chain of dependencies. This basic assumption allows dune to
 parallelize the build.
 

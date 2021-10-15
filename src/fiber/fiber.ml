@@ -49,7 +49,7 @@ module Execution_context : sig
   (* Add [n] references to the current execution context *)
   val add_refs : int -> unit
 
-  (* Decrese the reference count of the current execution context *)
+  (* Decrease the reference count of the current execution context *)
   val deref : unit -> unit
 
   (* [wait_errors f] executes [f ()] inside a new execution contexts. Returns a
@@ -388,6 +388,13 @@ let parallel_iter_set (type a s)
   | 0 -> k ()
   | 1 -> f (Option.value_exn (S.min_elt t)) k
   | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f k
+
+let record_metrics t ~tag =
+  of_thunk (fun () ->
+      let timer = Metrics.Timer.start tag in
+      let+ res = t in
+      Metrics.Timer.stop timer;
+      res)
 
 module Make_map_traversals (Map : Map.S) = struct
   let parallel_iter t ~f k =

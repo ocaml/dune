@@ -1,3 +1,5 @@
+.. _writing-tests:
+
 *************************
 Writing and running tests
 *************************
@@ -467,7 +469,9 @@ This provides a nice way of dealing with the usual *write code*,
 Note that if available, the diffing is done using the patdiff_ tool,
 which displays nicer looking diffs that the standard ``diff``
 tool. You can change that by passing ``--diff-command CMD`` to
-dune.
+Dune.
+
+.. _cram-tests:
 
 Cram Tests
 ==========
@@ -673,6 +677,13 @@ the standard BUILD_PATH_PREFIX_MAP_ environment variable. For example:
    $ export BUILD_PATH_PREFIX_MAP="HOME=$HOME:$BUILD_PATH_PREFIX_MAP"
    $ echo $HOME
    $HOME
+
+Note: Unlike dune's version of cram, the original specification for cram
+supports regular expression and glob filtering for matching output. We chose
+not to implement this feature because it breaks the test, diff, accept cycle.
+With regex or glob matching, the output must now be manually inspected and
+possibly updated. We consider the postprocessing approach described here as
+superior and will not introduce output matchers.
 
 .. _ppx_inline_test:       https://github.com/janestreet/ppx_inline_test
 .. _ppx_expect:            https://github.com/janestreet/ppx_expect

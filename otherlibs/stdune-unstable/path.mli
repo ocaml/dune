@@ -70,6 +70,18 @@ module Local : sig
   val explode : t -> string list
 end
 
+module External : sig
+  include Path_intf.S
+
+  val initial_cwd : t
+
+  val cwd : unit -> t
+
+  val relative : t -> string -> t
+
+  val mkdir_p : ?perms:int -> t -> unit
+end
+
 (** In the source section of the current workspace. *)
 module Source : sig
   type w
@@ -99,18 +111,6 @@ module Source : sig
   val descendant : t -> of_:t -> t option
 
   val to_local : t -> Local.t
-end
-
-module External : sig
-  include Path_intf.S
-
-  val initial_cwd : t
-
-  val cwd : unit -> t
-
-  val relative : t -> string -> t
-
-  val mkdir_p : ?perms:int -> t -> unit
 end
 
 module Permissions : sig
@@ -313,10 +313,14 @@ val insert_after_build_dir_exn : t -> string -> t
 
 val exists : t -> bool
 
-val readdir_unsorted : t -> (string list, Unix.error) Result.t
+val readdir_unsorted :
+  t -> (string list, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
 
 val readdir_unsorted_with_kinds :
-  t -> ((string * Unix.file_kind) list, Unix.error) Result.t
+     t
+  -> ( (string * Unix.file_kind) list
+     , Dune_filesystem_stubs.Unix_error.Detailed.t )
+     Result.t
 
 val is_dir_sep : char -> bool
 
@@ -372,11 +376,13 @@ end
     of [/a/b] is [./a/b]. *)
 val local_part : t -> Local.t
 
-val stat : t -> (Unix.stats, Unix.error) Result.t
+val stat :
+  t -> (Unix.stats, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
 
 val stat_exn : t -> Unix.stats
 
-val lstat : t -> (Unix.stats, Unix.error) Result.t
+val lstat :
+  t -> (Unix.stats, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
 
 val lstat_exn : t -> Unix.stats
 
@@ -385,8 +391,6 @@ val lstat_exn : t -> Unix.stats
 val set_of_source_paths : Source.Set.t -> Set.t
 
 val set_of_build_paths_list : Build.t list -> Set.t
-
-val string_of_file_kind : Unix.file_kind -> string
 
 (** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
     [newpath], moving it between directories if needed. If [newpath] already
@@ -399,3 +403,11 @@ val chmod : t -> mode:int -> unit
 
 (** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result
+
+module Expert : sig
+  (** Attempt to convert external paths to source/build paths. Don't use this
+      function unless strictly necessary. It's not completely reliable and we
+      only use it out of necessity to work with file watchers that insist on
+      spitting absolute paths *)
+  val try_localize_external : t -> t
+end

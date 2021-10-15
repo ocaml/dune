@@ -45,6 +45,7 @@ module Tests : sig
     ; executable : Ocaml_flags.Spec.t
     ; backend : (Loc.t * Lib_name.t) option
     ; libraries : (Loc.t * Lib_name.t) list
+    ; enabled_if : Blang.t
     }
 
   val backends : t -> (Loc.t * Lib_name.t) list option

@@ -51,10 +51,6 @@ fields:
   > (lang dune 3.0)
   > (context (blah))
   > EOF
-  $ cat >dune-project<<EOF
-  > (lang dune 3.0)
-  > (package (name foo))
-  > EOF
 
   $ dune init project foo
   Success: initialized project component named foo

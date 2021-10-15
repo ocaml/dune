@@ -1,6 +1,6 @@
 We can attach cram tests to packages
 
-This sub dir is needed because we are runnning cram inside and cram, and we
+This sub dir is needed because we are running cram inside and cram, and we
 don't want our own test file to be visible.
   $ mkdir subdir
   $ cd subdir

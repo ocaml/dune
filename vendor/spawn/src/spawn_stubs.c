@@ -208,6 +208,8 @@ struct spawn_info {
   char *prog;
   char **argv;
   int std_fds[3];
+  int set_pgid;
+  pid_t pgid;
 };
 
 static void subprocess(int failure_fd, struct spawn_info *info)
@@ -215,6 +217,13 @@ static void subprocess(int failure_fd, struct spawn_info *info)
   int i, fd, tmp_fds[3];
   struct sigaction sa;
   sigset_t sigset;
+
+  if (info->set_pgid) {
+    if (setpgid(0, info->pgid) == -1) {
+      subprocess_failure(failure_fd, "setpgid", NOTHING);
+      return;
+    }
+  }
 
   /* Restore all signals to their default behavior before unblocking
      them, to avoid invoking handlers from the parent */
@@ -349,7 +358,8 @@ CAMLprim value spawn_unix(value v_env,
                           value v_stdin,
                           value v_stdout,
                           value v_stderr,
-                          value v_use_vfork)
+                          value v_use_vfork,
+                          value v_setpgid)
 {
   CAMLparam4(v_env, v_cwd, v_prog, v_argv);
   pid_t ret;
@@ -394,6 +404,10 @@ CAMLprim value spawn_unix(value v_env,
   info.env =
     Is_block(v_env) ?
     alloc_string_vect(Field(v_env, 0)) : copy_c_string_array(environ);
+  info.set_pgid = Is_block(v_setpgid);
+  info.pgid =
+    Is_block(v_setpgid) ?
+    Long_val(Field(v_setpgid, 0)) : 0;
 
   caml_enter_blocking_section();
   enter_safe_pipe_section();
@@ -508,7 +522,8 @@ CAMLprim value spawn_unix(value v_env,
                           value v_stdin,
                           value v_stdout,
                           value v_stderr,
-                          value v_use_vfork)
+                          value v_use_vfork,
+                          value v_setpgid)
 {
   (void)v_env;
   (void)v_cwd;
@@ -518,6 +533,7 @@ CAMLprim value spawn_unix(value v_env,
   (void)v_stdout;
   (void)v_stderr;
   (void)v_use_vfork;
+  (void)v_setpgid;
   unix_error(ENOSYS, "spawn_unix", Nothing);
 }
 
@@ -598,7 +614,8 @@ CAMLprim value spawn_unix_byte(value * argv)
                     argv[4],
                     argv[5],
                     argv[6],
-                    argv[7]);
+                    argv[7],
+                    argv[8]);
 }
 
 CAMLprim value spawn_windows_byte(value * argv)

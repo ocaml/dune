@@ -313,10 +313,14 @@ val insert_after_build_dir_exn : t -> string -> t
 
 val exists : t -> bool
 
-val readdir_unsorted : t -> (string list, Unix.error) Result.t
+val readdir_unsorted :
+  t -> (string list, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
 
 val readdir_unsorted_with_kinds :
-  t -> ((string * Unix.file_kind) list, Unix.error) Result.t
+     t
+  -> ( (string * Unix.file_kind) list
+     , Dune_filesystem_stubs.Unix_error.Detailed.t )
+     Result.t
 
 val is_dir_sep : char -> bool
 
@@ -372,11 +376,13 @@ end
     of [/a/b] is [./a/b]. *)
 val local_part : t -> Local.t
 
-val stat : t -> (Unix.stats, Unix.error) Result.t
+val stat :
+  t -> (Unix.stats, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
 
 val stat_exn : t -> Unix.stats
 
-val lstat : t -> (Unix.stats, Unix.error) Result.t
+val lstat :
+  t -> (Unix.stats, Dune_filesystem_stubs.Unix_error.Detailed.t) Result.t
 
 val lstat_exn : t -> Unix.stats
 

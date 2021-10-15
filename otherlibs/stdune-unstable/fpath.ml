@@ -97,8 +97,8 @@ type clear_dir_result =
 
 let rec clear_dir dir =
   match Dune_filesystem_stubs.read_directory_with_kinds dir with
-  | Error ENOENT -> Directory_does_not_exist
-  | Error error ->
+  | Error (ENOENT, _, _) -> Directory_does_not_exist
+  | Error (error, _, _) ->
     raise
       (Unix.Unix_error
          (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))

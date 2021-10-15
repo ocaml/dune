@@ -425,11 +425,13 @@ let get_dir_triage t ~dir =
     @@ Dir_triage.Known
          (Non_build
             (match Path.readdir_unsorted dir with
-            | Error Unix.ENOENT -> Path.Set.empty
-            | Error m ->
+            | Error (Unix.ENOENT, _, _) -> Path.Set.empty
+            | Error (e, _syscall, _arg) ->
+              (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+                 debugging. *)
               User_warning.emit
                 [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-                ; Pp.textf "Reason: %s" (Unix.error_message m)
+                ; Pp.textf "Reason: %s" (Unix.error_message e)
                 ];
               Path.Set.empty
             | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
@@ -553,8 +555,8 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
           let error =
             [ Pp.verbatim
                 (sprintf "Unexpected file kind %S (%s)"
-                   (Dune_filesystem_stubs.File_kind.to_string file_kind)
-                   (Dune_filesystem_stubs.File_kind.to_string_hum file_kind))
+                   (File_kind.to_string file_kind)
+                   (File_kind.to_string_hum file_kind))
             ]
           in
           (good, missing, (target, error) :: errors)

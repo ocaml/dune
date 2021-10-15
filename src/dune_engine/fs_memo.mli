@@ -16,7 +16,8 @@ val init : dune_file_watcher:Dune_file_watcher.t option -> Memo.Invalidation.t
 val path_exists : Path.t -> bool Memo.Build.t
 
 (** Call [Path.stat] on a path and declare a dependency on it. *)
-val path_stat : Path.t -> (Unix.stats, Unix.error) result Memo.Build.t
+val path_stat :
+  Path.t -> (Unix.stats, Unix_error.Detailed.t) result Memo.Build.t
 
 (** Digest the contents of a source or external file and declare a dependency on
     it. *)
@@ -40,7 +41,8 @@ val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.Build.t
 (** List the contents of a source or external directory and declare a dependency
     on it. The result is unsorted and includes both name and kind of each entry. *)
 val dir_contents_unsorted :
-  Path.t -> ((string * Unix.file_kind) list, Unix.error) result Memo.Build.t
+     Path.t
+  -> ((string * Unix.file_kind) list, Unix_error.Detailed.t) result Memo.Build.t
 
 (** Handle file system event. *)
 val handle_fs_event : Dune_file_watcher.Fs_memo_event.t -> Memo.Invalidation.t

@@ -626,17 +626,15 @@ to use the :ref:`include_subdirs` stanza.
   is useful whenever a library is shadowed by a local module. The library may
   then still be accessible via this root module
 
-<<<<<<< HEAD
 - ``(ctypes <ctypes stanza>)`` instructs dune to use ctypes stubgen to process
   your type and function descriptions for binding system libraries, vendored
   libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
-  reference.
-=======
+  reference. This field is available since the 3.0 version of the dune language.
+
 - ``(empty_module_interface_if_absent)`` causes the generation of empty
   interfaces for every module that does not have an interface file already.
   Useful when modules are used solely for their side-effects. This field is
   available since the 3.0 version of the dune language.
->>>>>>> master
 
 Note that when binding C libraries, dune doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with

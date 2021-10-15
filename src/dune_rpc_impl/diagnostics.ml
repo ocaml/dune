@@ -30,6 +30,9 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
   let message, related, dir = Build_system.Error.info m in
+  let dir =
+    Option.map dir ~f:Path.drop_optional_build_context_maybe_sandboxed
+  in
   let make_loc loc =
     match dir with
     | None -> loc
@@ -65,12 +68,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   ; loc
   ; promotion
   ; related
-  ; directory =
-      Option.map
-        ~f:(fun p ->
-          Path.to_absolute_filename
-            (Path.drop_optional_build_context_maybe_sandboxed p))
-        dir
+  ; directory = Option.map dir ~f:Path.to_absolute_filename
   }
 
 let diagnostic_event_of_error_event (e : Build_system.Handler.error) :

@@ -54,7 +54,6 @@ module Tuple = Tuple
 module Poly = Poly
 module Code_error = Code_error
 module User_error = User_error
-module Unix_error = Unix_error
 module User_message = User_message
 module User_warning = User_warning
 module Lexbuf = Lexbuf
@@ -69,6 +68,8 @@ module Temp = Temp
 module Queue = Queue
 module Caller_id = Caller_id
 module Metrics = Metrics
+module Unix_error = Dune_filesystem_stubs.Unix_error
+module File_kind = Dune_filesystem_stubs.File_kind
 module Dune_filesystem_stubs = Dune_filesystem_stubs
 
 module type Applicative = Applicative_intf.S

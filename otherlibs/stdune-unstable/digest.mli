@@ -26,7 +26,10 @@ val to_string_raw : t -> string
 
 val generic : 'a -> t
 
-(** The subset of fields of [Unix.stats] user by this module. *)
+(** The subset of fields of [Unix.stats] used by this module.
+
+    By requiring only a subset of fields here, we allow the caller to memoize
+    only the fields that really matter. *)
 module Stats_for_digest : sig
   type t =
     { st_kind : Unix.file_kind
@@ -43,9 +46,8 @@ module Path_digest_result : sig
   type nonrec t =
     | Ok of t
     | Unexpected_kind  (** Not a regular file or a directory *)
-    | Unix_error of (Unix.error * string * string)
-        (** A [Unix.Unix_error] exception. For example, [(ENOENT, _, _)] means
-            the path doesn't exist. *)
+    | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+        (** A Unix error, e.g., [(ENOENT, _, _)] if the path doesn't exist. *)
 
   val equal : t -> t -> bool
 end

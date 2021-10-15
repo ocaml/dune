@@ -408,7 +408,7 @@ end = struct
               Ok (List.map ~f:Module_name.of_string modules)
             | [] -> (
               match dir_contents with
-              | Error e ->
+              | Error (e, _, _) ->
                 Error
                   (User_error.E
                      ( User_message.make
@@ -638,8 +638,8 @@ let root_packages (db : DB.t) =
   let+ pkgs =
     Memo.Build.List.concat_map db.paths ~f:(fun dir ->
         Fs_memo.dir_contents_unsorted dir >>= function
-        | Error ENOENT -> Memo.Build.return []
-        | Error unix_error ->
+        | Error (ENOENT, _, _) -> Memo.Build.return []
+        | Error (unix_error, _, _) ->
           User_error.raise
             [ Pp.textf "Unable to read directory %s for findlib package"
                 (Path.to_string_maybe_quoted dir)

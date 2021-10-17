@@ -40,6 +40,7 @@ let
     "ppxlib"
     "result"
     "utop"
+    "ctypes"
     "${coq}/coq-core.opam"
   ]);
 

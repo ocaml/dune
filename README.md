@@ -4,7 +4,7 @@ Dune - A Composable Build System
 Dune is a build system designed for OCaml/Reason projects only. It
 focuses on providing the user with a consistent experience and takes
 care of most low-level details of OCaml compilations. It's merely necessary 
-to provide a description of your project, and dune will
+to provide a description of your project, and Dune will
 do the rest.
 
 It implements a scheme that's inspired from the one used inside Jane
@@ -44,7 +44,7 @@ Overview
 Dune reads project metadata from `dune` files, which are either
 static files in a simple S-expression syntax or OCaml scripts. It uses
 this information to setup build rules, generate configuration files
-for development tools such as [merlin][merlin], handle installation,
+for development tools such as [Merlin][merlin], handle installation,
 etc.
 
 Dune itself is fast, has very low overhead, and supports parallel
@@ -71,7 +71,7 @@ This make simultaneous development on multiple packages trivial.
 ### Gracefully Handles Multi-Package Repositories
 
 Dune knows how to handle repositories containing several
-packages. When building via [opam][opam], it is able to correctly use
+packages. When building via [Opam][opam], it is able to correctly use
 libraries that were previously installed, even if they are already
 present in the source tree.
 
@@ -90,7 +90,7 @@ without hassle.
 
 In particular, this makes it easy to handle [cross-compilation](https://dune.readthedocs.io/en/latest/cross-compilation.html).
 
-This feature requires [opam][opam].
+This feature requires [Opam][opam].
 
 Requirements
 ------------
@@ -101,13 +101,13 @@ projects using OCaml 4.02.3 or greater.
 Installation
 ------------
 
-We recommended installing Dune via the [opam package manager][opam]:
+We recommended installing Dune via the [Opam package manager][opam]:
 
 ```sh
 $ opam install dune
 ```
 
-If you are new to opam, make sure to run `eval $(opam config env)` to
+If you are new to Opam, make sure to run `eval $(opam config env)` to
 make `dune` available in your `PATH`. The `dune` binary is self-contained 
 and relocatable, so you can safely copy it somewhere else to
 make it permanently available.
@@ -153,6 +153,6 @@ Status
 ------
 
 Dune is fairly stable and used by the majority of packages on
-opam. Note that dune retains backward compatibility with Jbuilder, and
+Opam. Note that dune retains backward compatibility with Jbuilder, and
 in particular, existing Jbuilder projects will continue to be buildable
 with Dune.

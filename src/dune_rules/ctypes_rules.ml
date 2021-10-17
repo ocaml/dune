@@ -52,7 +52,8 @@ open! Stdune
 
    This implementation is not, however, a naive translation of the boilerplate
    above. This module uses dune internal features to simplify the stub
-   generation. As a result, there are no intermediate libraries (or packages). *)
+   generation. As a result, there are no intermediate libraries (or
+   packages). *)
 
 module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
@@ -132,9 +133,9 @@ module Stanza_util = struct
 
   let non_installable_modules ctypes =
     type_gen_script_module ctypes
-    ::
-    List.map ctypes.Ctypes.function_description ~f:(fun function_description ->
-        function_gen_script_module ctypes function_description)
+    :: List.map ctypes.Ctypes.function_description
+         ~f:(fun function_description ->
+           function_gen_script_module ctypes function_description)
 
   let generated_ml_and_c_files ctypes =
     let ml_files =
@@ -324,10 +325,9 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
     |> Super_context.resolve_program ~loc:None ~dir sctx
   in
   let include_args =
-    (* XXX: need glob dependency *)
     let ocaml_where = Path.to_string ctx.Context.stdlib_dir in
     (* XXX: need glob dependency *)
-    let open Resolve.O in
+    let open Resolve.Build.O in
     let+ ctypes_include_dirs =
       let+ lib =
         let ctypes = Lib_name.of_string "ctypes" in
@@ -376,7 +376,7 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
     in
     let action =
       let open Action_builder.O in
-      let* include_args = Resolve.read include_args in
+      let* include_args = Resolve.Build.read include_args in
       Action_builder.deps deps
       >>> Action_builder.map cflags_args ~f:(fun cflags_args ->
               let source_files = List.map source_files ~f:absolute_path_hack in
@@ -391,7 +391,8 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
   in
   Super_context.add_rule sctx ~dir build
 
-let cctx_with_substitutions ?(libraries = []) ~modules ~dir ~loc ~scope ~cctx =
+let cctx_with_substitutions ?(libraries = []) ~modules ~dir ~loc ~scope ~cctx ()
+    =
   let compile_info =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
@@ -422,7 +423,7 @@ let exe_build_and_link ?libraries ?(modules = []) ~scope ~loc ~dir ~cctx program
     =
   let cctx =
     cctx_with_substitutions ?libraries ~loc ~scope ~dir ~cctx
-      ~modules:(program :: modules)
+      ~modules:(program :: modules) ()
   in
   let program = program_of_module_and_dir ~dir program in
   Exe.build_and_link ~program ~linkages:[ Exe.Linkage.native ] ~promote:None

@@ -174,6 +174,9 @@ Unreleased
 - Make Dune display the progress indicator in all output modes except quiet
   (#4618, @aalekseyev)
 
+- Report accurate process timing information in trace mode (enabled with
+  `--trace-file`) (#4517, @rgrinberg)
+
 - Do not log `live_words` and `free_words` in trace file. This allows using
   `Gc.quick_stat` which does not scan the heap. (#4643, @emillon)
 

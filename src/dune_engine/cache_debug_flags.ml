@@ -4,6 +4,6 @@
     print an explanation of why lookup failed. *)
 type t =
   { shared_cache : bool
-  ; workspace_local_cache : bool 
+  ; workspace_local_cache : bool
   ; fs_cache : bool
   }

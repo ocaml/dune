@@ -204,7 +204,10 @@ module Run (P : PARAMS) = struct
         (Compilation_context.preprocessing cctx)
         name mock_module ~lint:false
     in
-    let cctx = Compilation_context.without_bin_annot cctx in
+    let cctx =
+      Compilation_context.set_sandbox cctx Sandbox_config.needs_sandboxing
+      |> Compilation_context.without_bin_annot
+    in
     let* deps = Dep_rules.for_module cctx mock_module in
     let* () =
       Module_compilation.ocamlc_i ~deps cctx mock_module

@@ -79,6 +79,8 @@ val js_of_ocaml : t -> Dune_file.Js_of_ocaml.t option
 
 val sandbox : t -> Sandbox_config.t
 
+val set_sandbox : t -> Sandbox_config.t -> t
+
 val package : t -> Package.t option
 
 val vimpl : t -> Vimpl.t option

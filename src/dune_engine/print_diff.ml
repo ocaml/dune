@@ -2,10 +2,11 @@ open! Stdune
 open Import
 open Fiber.O
 
-let resolve_link ~dir path file =
+(* [git diff] doesn't like symlink arguments *)
+let resolve_link_for_git path =
   match Path.follow_symlink path with
-  | Ok p -> Path.reach ~from:dir p
-  | Error Not_a_symlink -> file
+  | Ok p -> p
+  | Error Not_a_symlink -> path
   | Error Max_depth_exceeded ->
     User_error.raise
       [ Pp.textf "Unable to resolve symlink %s. Max recursion depth exceeded"
@@ -26,7 +27,8 @@ let print ?(skip_trailing_cr = Sys.win32) annot path1 path2 =
     | _ -> (Path.root, path1, path2)
   in
   let loc = Loc.in_file file1 in
-  let run_process ?(purpose = Process.Internal_job (Some loc, [])) prog args =
+  let run_process ?(dir = dir) ?(purpose = Process.Internal_job (Some loc, []))
+      prog args =
     Process.run ~dir ~env:Env.initial Strict prog args ~purpose
   in
   let file1, file2 = Path.(to_string file1, to_string file2) in
@@ -38,19 +40,28 @@ let print ?(skip_trailing_cr = Sys.win32) annot path1 path2 =
       ]
   in
   let normal_diff () =
-    let path, args, skip_trailing_cr_arg, files =
+    let dir, path, args, skip_trailing_cr_arg, files =
       let which prog = Bin.which ~path:(Env.path Env.initial) prog in
       match which "git" with
       | Some path ->
-        ( path
+        let dir =
+          (* We can't run [git] from [dir] as [dir] might be inside a sandbox
+             and sandboxes have fake [.git] files to stop [git] from escaping
+             the sandbox. If we did, the bellow git command would fail saying it
+             can run this fake [.git] file. *)
+          Path.root
+        in
+        ( dir
+        , path
         , [ "--no-pager"; "diff"; "--no-index"; "--color=always"; "-u" ]
         , "--ignore-cr-at-eol"
         , List.map
-            ~f:(fun (path, file) -> resolve_link ~dir path file)
-            [ (path1, file1); (path2, file2) ] )
+            ~f:(fun path -> resolve_link_for_git path |> Path.reach ~from:dir)
+            [ path1; path2 ] )
       | None -> (
         match which "diff" with
-        | Some path -> (path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
+        | Some path ->
+          (dir, path, [ "-u" ], "--strip-trailing-cr", [ file1; file2 ])
         | None -> fallback ())
     in
     let args =
@@ -60,7 +71,7 @@ let print ?(skip_trailing_cr = Sys.win32) annot path1 path2 =
         args
     in
     let args = args @ files in
-    let* () = run_process path args in
+    let* () = run_process ~dir path args in
     fallback ()
   in
   match !Clflags.diff_command with

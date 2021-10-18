@@ -87,7 +87,7 @@ let update_all : Path.t -> Fs_cache.Update_result.t =
     [ update Fs_cache.Untracked.path_exists
     ; update Fs_cache.Untracked.path_stat
     ; update Fs_cache.Untracked.path_digest
-    ; update Fs_cache.Untracked.dir_contents_unsorted
+    ; update Fs_cache.Untracked.dir_contents
     ]
 
 (* CR-someday amokhov: We use the same Memo table [memo] for tracking different
@@ -162,8 +162,8 @@ let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
    of [path_digest] seems error-prone. We may need to rethink this decision. *)
 let path_digest = declaring_dependency ~f:Fs_cache.(read Untracked.path_digest)
 
-let dir_contents_unsorted =
-  declaring_dependency ~f:Fs_cache.(read Untracked.dir_contents_unsorted)
+let dir_contents =
+  declaring_dependency ~f:Fs_cache.(read Untracked.dir_contents)
 
 (* CR-someday amokhov: For now, we do not cache the result of this operation
    because the result's type depends on [f]. There are only two call sites of

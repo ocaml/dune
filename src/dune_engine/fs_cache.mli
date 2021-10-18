@@ -48,10 +48,11 @@ module Reduced_stats : sig
   val equal : t -> t -> bool
 end
 
-(* CR-someday amokhov: Shall we sort the list to avoid rebuilds due to the
-   non-deterministic order of directory listings? *)
-module Dir_contents_unsorted : sig
-  type t = (string * Dune_filesystem_stubs.File_kind.t) list
+module Dir_contents : sig
+  type t
+
+  (** The sorted list of file names with kinds. *)
+  val to_list : t -> (string * Dune_filesystem_stubs.File_kind.t) list
 
   val equal : t -> t -> bool
 end
@@ -68,8 +69,7 @@ module Untracked : sig
 
   val path_digest : Cached_digest.Digest_result.t t
 
-  val dir_contents_unsorted :
-    (Dir_contents_unsorted.t, Unix_error.Detailed.t) result t
+  val dir_contents : (Dir_contents.t, Unix_error.Detailed.t) result t
 end
 
 module Debug : sig

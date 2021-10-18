@@ -28,11 +28,10 @@ val path_digest : Path.t -> Cached_digest.Digest_result.t Memo.Build.t
     path. *)
 val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.Build.t
 
-(** List the contents of a source or external directory and declare a dependency
-    on it. The result is unsorted and includes both name and kind of each entry. *)
-val dir_contents_unsorted :
-     Path.t
-  -> ((string * Unix.file_kind) list, Unix_error.Detailed.t) result Memo.Build.t
+(** Read the contents of a source or external directory and declare a dependency
+    on it. *)
+val dir_contents :
+  Path.t -> (Fs_cache.Dir_contents.t, Unix_error.Detailed.t) result Memo.Build.t
 
 (** Handle file system event. *)
 val handle_fs_event : Dune_file_watcher.Fs_memo_event.t -> Memo.Invalidation.t

@@ -83,8 +83,25 @@ module Reduced_stats = struct
     && Dune_filesystem_stubs.File_kind.equal x.st_kind y.st_kind
 end
 
-module Dir_contents_unsorted = struct
+module Dir_contents : sig
+  type t
+
+  val of_list : (string * Dune_filesystem_stubs.File_kind.t) list -> t
+
+  val to_list : t -> (string * Dune_filesystem_stubs.File_kind.t) list
+
+  val equal : t -> t -> bool
+end = struct
+  (* CR-someday amokhov: Using a [String.Map] instead of a list would be better
+     since we'll not need to worry about the invariant that the list is sorted
+     and doesn't contain any duplicate file names. Using maps will likely be
+     more costly, so we need to do some benchmarking before switching. *)
   type t = (string * Dune_filesystem_stubs.File_kind.t) list
+
+  let to_list t = t
+
+  (* The names must be unique, so we don't care about comparing file kinds. *)
+  let of_list = List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
 
   let equal =
     List.equal
@@ -111,11 +128,12 @@ module Untracked = struct
     create "path_digest" ~sample ~update_hook
       ~equal:Cached_digest.Digest_result.equal
 
-  let dir_contents_unsorted =
-    create "dir_contents_unsorted"
-      ~sample:Path.Untracked.readdir_unsorted_with_kinds
-      ~equal:
-        (Result.equal Dir_contents_unsorted.equal Unix_error.Detailed.equal)
+  let dir_contents =
+    create "dir_contents"
+      ~sample:(fun path ->
+        Path.Untracked.readdir_unsorted_with_kinds path
+        |> Result.map ~f:Dir_contents.of_list)
+      ~equal:(Result.equal Dir_contents.equal Unix_error.Detailed.equal)
 end
 
 module Debug = struct

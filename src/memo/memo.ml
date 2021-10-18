@@ -1431,7 +1431,7 @@ module Invalidation = struct
 
   let to_list t = to_list_x_xs t [] []
 
-  let details_hum ?(max_elements = 5) t =
+  let details_hum ?(max_elements = 1) t =
     assert (max_elements > 0);
     let details =
       List.filter_map ~f:Leaf.to_string_hum (to_list t)
@@ -1453,7 +1453,7 @@ module Invalidation = struct
           | true -> "s"
           | false -> ""
         in
-        sprintf " (plus %d more change%s)" remaining_details plural
+        sprintf ", and %d more change%s" remaining_details plural
       in
       match List.destruct_last truncated_details with
       | None -> assert false

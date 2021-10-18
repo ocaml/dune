@@ -214,7 +214,7 @@ module Invalidation : sig
   val invalidate_cache : reason:Reason.t -> _ memo -> t
 
   (** A list of human-readable strings explaining the reasons for invalidation.
-      The list is truncated to [max_elements] elements, with [max_elements = 5]
+      The list is truncated to [max_elements] elements, with [max_elements = 1]
       by default. Raises if [max_elements <= 0]. *)
   val details_hum : ?max_elements:int -> t -> string list
 end

@@ -165,6 +165,27 @@ compilation. Explicit JS targets declared like this will be attached to the
 Starting with Dune 2.0, this behaviour is the default, and there is no way to
 disable it.
 
+expand_aliases_in_sandbox
+-------------------------
+
+When a sandboxed action depends on a alias, copy the expansion of the
+alias inside the sandbox. For instance, in the following example:
+
+.. code:: scheme
+
+    (alias
+     (name foo)
+     (deps ../x))
+
+    (cram
+     (deps (alias foo)))
+
+File `x` will be visible inside the cram test if and only if this
+option is enabled. This option is a better default in general, however
+it currently causes cram tests to run noticeably slower. So it is
+disabled by default until the performance issue with cram test is
+fixed.
+
 .. _dialect:
 
 dialect

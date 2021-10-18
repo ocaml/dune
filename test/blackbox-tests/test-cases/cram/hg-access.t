@@ -13,7 +13,7 @@ enough for a few hg commands such as "hg root" to succeed:
 
   $ echo '(lang dune 3.0)' > dune-project
   $ cat >test.t <<"EOF"
-  >   $ hg root
+  >   $ hg root 2>&1 | sed 's/!$//'
   > EOF
 
   $ dune runtest --auto-promote
@@ -26,7 +26,6 @@ enough for a few hg commands such as "hg root" to succeed:
 The inner call to hg shouldn't be able to access the outer hg repo:
 
   $ cat test.t
-    $ hg root
+    $ hg root 2>&1 | sed 's/!$//'
     abort: repository requires features unknown to this Mercurial: Escaping the Dune sandbox
     (see https://mercurial-scm.org/wiki/MissingRequirement for more information)
-    [255]

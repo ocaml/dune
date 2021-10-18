@@ -1487,9 +1487,7 @@ end = struct
               Path.mkdir_p (Path.build (sandboxed path)));
         Path.mkdir_p (Path.build (sandboxed dir));
         let deps =
-          if
-            Execution_parameters.should_expand_aliases_when_sandboxing
-              execution_parameters
+          if Execution_parameters.expand_aliases_in_sandbox execution_parameters
           then
             Dep.Facts.paths deps
           else

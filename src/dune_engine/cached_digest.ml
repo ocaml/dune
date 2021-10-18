@@ -340,7 +340,7 @@ module Untracked = struct
     | None -> ()
     | Some entry ->
       (* Make [stats_checked] unequal to [cache.checked_key] so that [peek_file]
-         is forced to recompute the [mtime]. *)
+         is forced to re-[stat] the [path]. *)
       let entry = { entry with stats_checked = cache.checked_key - 1 } in
       Path.Table.set cache.table path entry
 end

@@ -661,7 +661,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Evaluated after_yes_cutoff: 2
     Evaluated summit with offset 0: 4
     f 0 = Ok 4
-    Memo graph: 0/7 restored/computed nodes, 7 traversed edges
+    Memo graph: 0/6 restored/computed nodes, 7 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();

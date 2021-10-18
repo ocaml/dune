@@ -160,6 +160,36 @@ module Digest_result = struct
     | Unix_error of (Unix.error * string * string)
     | Error of exn
 
+  let equal x y =
+    match (x, y) with
+    | Ok x, Ok y -> Digest.equal x y
+    | Ok _, _
+    | _, Ok _ ->
+      false
+    | No_such_file, No_such_file -> true
+    | No_such_file, _
+    | _, No_such_file ->
+      false
+    | Broken_symlink, Broken_symlink -> true
+    | Broken_symlink, _
+    | _, Broken_symlink ->
+      false
+    | Unexpected_kind x, Unexpected_kind y ->
+      Dune_filesystem_stubs.File_kind.equal x y
+    | Unexpected_kind _, _
+    | _, Unexpected_kind _ ->
+      false
+    | Unix_error x, Unix_error y ->
+      Tuple.T3.equal Unix_error.equal String.equal String.equal x y
+    | Unix_error _, _
+    | _, Unix_error _ ->
+      false
+    | Error x, Error y ->
+      (* Falling back to polymorphic equality check seems OK for this rare case.
+         We could also just return [false] but that would break the reflexivity
+         of the equality check, which doesn't seem nice. *)
+      x = y
+
   let to_option = function
     | Ok t -> Some t
     | No_such_file
@@ -303,4 +333,14 @@ let remove path =
 
 module Untracked = struct
   let source_or_external_file = peek_or_refresh_file
+
+  let invalidate_cached_timestamp path =
+    let cache = Lazy.force cache in
+    match Path.Table.find cache.table path with
+    | None -> ()
+    | Some entry ->
+      (* Make [stats_checked] unequal to [cache.checked_key] so that [peek_file]
+         is forced to re-[stat] the [path]. *)
+      let entry = { entry with stats_checked = cache.checked_key - 1 } in
+      Path.Table.set cache.table path entry
 end

@@ -69,10 +69,39 @@ let memo =
       watch_path_using_ref path;
       Memo.Build.return ())
 
+module Update_all = Monoid.Function (Path) (Fs_cache.Update_result)
+
+let update_all : Path.t -> Fs_cache.Update_result.t =
+  let update t path =
+    let result = Fs_cache.update t path in
+    if !Clflags.debug_fs_cache then
+      Console.print_user_message
+        (User_message.make
+           [ Pp.textf "Updating %s cache for %S: %s" (Fs_cache.Debug.name t)
+               (Path.to_string path)
+               (Dyn.to_string (Fs_cache.Update_result.to_dyn result))
+           ]);
+    result
+  in
+  Update_all.reduce
+    [ update Fs_cache.Untracked.path_exists
+    ; update Fs_cache.Untracked.path_stat
+    ; update Fs_cache.Untracked.path_digest
+    ; update Fs_cache.Untracked.dir_contents
+    ]
+
+(* CR-someday amokhov: We use the same Memo table [memo] for tracking different
+   file-system operations. This saves us some memory, but leads to recomputing
+   more memoized functions than necessary. We could create a separate Memo table
+   for each [Fs_cache] operation, or even better use [Fs_cache] tables in Memo
+   directory, perhaps via [Memo.create_with_store]. *)
 let invalidate_path path =
-  match Memo.Expert.previously_evaluated_cell memo path with
-  | None -> Memo.Invalidation.empty
-  | Some cell -> Memo.Cell.invalidate ~reason:(Path_changed path) cell
+  match update_all path with
+  | Skipped
+  | Updated { changed = false } ->
+    Memo.Invalidation.empty
+  | Updated { changed = true } ->
+    Memo.Cell.invalidate (Memo.cell memo path) ~reason:(Path_changed path)
 
 let init ~dune_file_watcher =
   match !t_ref with
@@ -121,31 +150,32 @@ let declaring_dependency path ~f =
   let+ () = depend path in
   f path
 
-(* Assuming our file system watcher is any good, this and all subsequent
-   untracked calls are safe. *)
-let path_exists = declaring_dependency ~f:Path.Untracked.exists
+let path_exists = declaring_dependency ~f:Fs_cache.(read Untracked.path_exists)
 
-(* CR-someday amokhov: Some call sites of [path_stat] care only about one field,
-   such as [st_kind], and most of the file system events leave it as is. It may
-   be useful to introduce a more precise variant of this function that will be
-   invalidated less frequently. *)
-let path_stat = declaring_dependency ~f:Path.Untracked.stat
+let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
 
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right
    here. One could argue that caching is a higher-level concept compared to file
    watching, and we should expose this function from the [Cached_digest] module
    instead. For now, we keep it here because it seems nice to group all tracked
    file system access functions in one place, and exposing an uncached version
-   of [file_digest] seems error-prone. We may need to rethink this decision. *)
-let file_digest =
-  declaring_dependency ~f:Cached_digest.Untracked.source_or_external_file
+   of [path_digest] seems error-prone. We may need to rethink this decision. *)
+let path_digest = declaring_dependency ~f:Fs_cache.(read Untracked.path_digest)
 
+let dir_contents =
+  declaring_dependency ~f:Fs_cache.(read Untracked.dir_contents)
+
+(* CR-someday amokhov: For now, we do not cache the result of this operation
+   because the result's type depends on [f]. There are only two call sites of
+   this function, so perhaps we could just replace this more general function
+   with two simpler one that can be cached independently. *)
 let with_lexbuf_from_file path ~f =
   declaring_dependency path ~f:(fun path ->
+      (* This is a bit of a hack. By reading [path_digest], we cause the [path]
+         to be recorded in the [Fs_cache.Untracked.path_digest], so the build
+         will be restarted if the digest changes. *)
+      ignore Fs_cache.(read Untracked.path_digest path);
       Io.Untracked.with_lexbuf_from_file path ~f)
-
-let dir_contents_unsorted =
-  declaring_dependency ~f:Path.Untracked.readdir_unsorted_with_kinds
 
 (* When a file or directory is created or deleted, we need to also invalidate
    the parent directory, so that the [dir_contents] queries are re-executed. *)
@@ -161,13 +191,14 @@ let invalidate_path_and_its_parent path =
 
    - Don't invalidate [path_exists] queries on [File_changed] events.
 
-   - If a [path_exists] query currently returns [true] and we receive a
-   corresponding [File_deleted] event, we can change the query's result to
-   [false] without rerunning the [Path.exists] function (and vice versa).
+   - If [path_exists] currently returns [true] and we receive a corresponding
+   [Deleted] event, we can change the result to [false] without rerunning the
+   [Path.exists] function. Similarly for the case where [path_exists] is [false]
+   and we receive a corresponding [Created] event.
 
-   - Similarly, the result of [dir_contents] queries can be updated without
-   calling [Path.readdir_unsorted_with_kinds]: we know which file or directory
-   should be added to or removed from the result. *)
+   - Finally, the result of [dir_contents] queries can be updated without
+   calling [Path.Untracked.readdir_unsorted_with_kinds]: we know which file or
+   directory should be added to or removed from the result. *)
 let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t) :
     Memo.Invalidation.t =
   match kind with

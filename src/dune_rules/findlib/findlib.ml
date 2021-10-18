@@ -362,7 +362,7 @@ end = struct
         let virtual_ = None in
         let default_implementation = None in
         let wrapped = None in
-        let+ dir_contents = Fs_memo.dir_contents_unsorted t.dir in
+        let+ dir_contents = Fs_memo.dir_contents t.dir in
         let foreign_archives, native_archives =
           (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
              be foreign archives, and all other files with the extension
@@ -382,24 +382,21 @@ end = struct
 
                But it seems to be too invasive *)
             ([], [])
-          | Ok res ->
-            let foreign_archives, native_archives =
-              List.rev_filter_partition_map res ~f:(fun (f, _) ->
-                  let ext = Filename.extension f in
-                  if ext = lib_config.ext_lib then
-                    let file = Path.relative t.dir f in
-                    if
-                      String.is_prefix f
-                        ~prefix:Foreign.Archive.Name.lib_file_prefix
-                    then
-                      Left file
-                    else
-                      Right file
+          | Ok dir_contents ->
+            let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+            List.rev_filter_partition_map dir_contents ~f:(fun (f, _) ->
+                let ext = Filename.extension f in
+                if ext = lib_config.ext_lib then
+                  let file = Path.relative t.dir f in
+                  if
+                    String.is_prefix f
+                      ~prefix:Foreign.Archive.Name.lib_file_prefix
+                  then
+                    Left file
                   else
-                    Skip)
-            in
-            let sort = List.sort ~compare:Path.compare in
-            (sort foreign_archives, sort native_archives)
+                    Right file
+                else
+                  Skip)
         in
         let entry_modules =
           Lib_info.Source.External
@@ -418,9 +415,10 @@ end = struct
                          ; Pp.textf "error: %s" (Unix.error_message e)
                          ]
                      , [] ))
-              | Ok files ->
+              | Ok dir_contents ->
+                let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
                 let ext = Cm_kind.ext Cmi in
-                Result.List.filter_map files ~f:(fun (fname, _) ->
+                Result.List.filter_map dir_contents ~f:(fun (fname, _) ->
                     match Filename.check_suffix fname ext with
                     | false -> Ok None
                     | true -> (
@@ -637,7 +635,7 @@ let find t name =
 let root_packages (db : DB.t) =
   let+ pkgs =
     Memo.Build.List.concat_map db.paths ~f:(fun dir ->
-        Fs_memo.dir_contents_unsorted dir >>= function
+        Fs_memo.dir_contents dir >>= function
         | Error (ENOENT, _, _) -> Memo.Build.return []
         | Error (unix_error, _, _) ->
           User_error.raise
@@ -645,8 +643,9 @@ let root_packages (db : DB.t) =
                 (Path.to_string_maybe_quoted dir)
             ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
             ]
-        | Ok listing ->
-          Memo.Build.List.filter_map listing ~f:(fun (name, _) ->
+        | Ok dir_contents ->
+          let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+          Memo.Build.List.filter_map dir_contents ~f:(fun (name, _) ->
               let+ exists =
                 Fs_memo.path_exists (Path.relative dir (name ^ "/" ^ meta_fn))
               in

@@ -23,7 +23,8 @@ module File = struct
 
   let dummy = { ino = 0; dev = 0 }
 
-  let of_stats (st : Unix.stats) = { ino = st.st_ino; dev = st.st_dev }
+  let of_stats (st : Fs_cache.Reduced_stats.t) =
+    { ino = st.st_ino; dev = st.st_dev }
 
   module Map = Map.Make (T)
 
@@ -161,7 +162,7 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path_impl path =
-    Fs_memo.dir_contents_unsorted (Path.source path) >>= function
+    Fs_memo.dir_contents (Path.source path) >>= function
     | Error ((unix_error, _syscall, _arg) as detailed_unix_error) ->
       (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
          debugging. *)
@@ -178,9 +179,10 @@ end = struct
         ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
         ];
       Memo.Build.return (Error detailed_unix_error)
-    | Ok unsorted_contents ->
+    | Ok dir_contents ->
+      let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
       let+ files, dirs =
-        Memo.Build.parallel_map unsorted_contents ~f:(fun (fn, kind) ->
+        Memo.Build.parallel_map dir_contents ~f:(fun (fn, kind) ->
             let path = Path.Source.relative path fn in
             if Path.Source.is_in_build_dir path then
               Memo.Build.return List.Skip
@@ -207,13 +209,7 @@ end = struct
                 Left fn)
         >>| List.filter_partition_map ~f:Fun.id
       in
-      { path
-      ; files = String.Set.of_list files
-      ; dirs =
-          List.sort dirs ~compare:(fun (a, _, _) (b, _, _) ->
-              String.compare a b)
-      }
-      |> Result.ok
+      { path; files = String.Set.of_list files; dirs } |> Result.ok
 
   (* Having a cutoff here speeds up incremental rebuilds quite a bit when a
      directory contents is invalidated but the result stays the same. *)

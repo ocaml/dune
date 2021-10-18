@@ -12,6 +12,8 @@ let debug_artifact_substitution = ref false
 
 let debug_digests = ref false
 
+let debug_fs_cache = ref false
+
 let wait_for_filesystem_clock = ref false
 
 let capture_outputs = ref true

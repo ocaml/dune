@@ -607,6 +607,11 @@ to use the :ref:`include_subdirs` stanza.
   is useful whenever a library is shadowed by a local module. The library may
   then still be accessible via this root module
 
+- ``(ctypes <ctypes stanza>)`` instructs dune to use ctypes stubgen to process
+  your type and function descriptions for binding system libraries, vendored
+  libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
+  reference. This field is available since the 3.0 version of the dune language.
+
 - ``(empty_module_interface_if_absent)`` causes the generation of empty
   interfaces for every module that does not have an interface file already.
   Useful when modules are used solely for their side-effects. This field is
@@ -811,13 +816,18 @@ files for executables. See `executables_implicit_empty_intf`_.
   flag if some of the libraries listed here are not referenced from any of the
   plugin modules.
 
-Linking Modes
-=============
+- ``(ctypes <ctypes stanza>)`` instructs dune to use ctypes stubgen to process
+  your type and function descriptions for binding system libraries, vendored
+  libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
+  reference. This field is available since the 3.0 version of the dune language.
 
-``(empty_module_interface_if_absent)`` causes the generation of empty
+- ``(empty_module_interface_if_absent)`` causes the generation of empty
   interfaces for every module that does not have an interface file already.
   Useful when modules are used solely for their side-effects. This field is
   available since the 3.0 version of the Dune language.
+
+Linking Modes
+=============
 
 The ``modes`` field allows selecting which linking modes will be used
 to link executables. Each mode is a pair ``(<compilation-mode>
@@ -1916,21 +1926,21 @@ Where ``<optional-fields>`` are:
 - ``(libraries <libraries>)`` are libraries that should be
   statically linked in the MDX test executable.
 
-- ``(enabled_if <blang expression>)``  is the same as the 
-  corresponding field of `library`_.
+- ``(enabled_if <blang expression>)``  is the same as the corresponding field
+  of `library`_.
 
-- ``(package <package>)`` specifies which package to attach
-  this stanza to (similarly to when ``(package)`` is attached to a ``(rule)``
-  stanza). When  ``-p`` is passed, ``(mdx)`` stanzas with another package will
-  be ignored. Note that this feature is completely separate from 
-  ``(packages)``, which specifies some dependencies.
+- ``(package <package>)`` specifies which package to attach this stanza to
+  (similarly to when ``(package)`` is attached to a ``(rule)`` stanza). When
+  ``-p`` is passed, ``(mdx)`` stanzas with another package will be ignored.
+  Note that this feature is completely separate from ``(packages)``, which
+  specifies some dependencies.
 
 Upgrading from Version 0.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - The 0.2 version of the stanza requires at least MDX 1.9.0. If you encounter
-  an error such as, ``ocaml-mdx: unknown command `dune-gen'``, then you
-  should upgrade MDX.  
+  an error such as, ``ocaml-mdx: unknown command `dune-gen'``, then you should
+  upgrade MDX.  
 
 - The field ``(packages <packages>)`` is deprecated in version 0.2. You can
   use package items in the generic ``deps`` field instead:

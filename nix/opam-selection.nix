@@ -163,6 +163,26 @@ in
       };
       version = "v0.14.1";
     };
+    bigarray-compat = 
+    {
+      opamInputs = 
+      {
+        dune = selection.dune;
+        ocaml = selection.ocaml;
+      };
+      opamSrc = repoPath (repos.opam-repository.src) 
+      {
+        hash = "sha256:0mcg8csmd60ph17vam1s8xjsl9kp6k77i3mnkbxy0jvkn49m4a0k";
+        package = "packages/bigarray-compat/bigarray-compat.1.0.0";
+      };
+      pname = "bigarray-compat";
+      src = pkgs.fetchurl 
+      {
+        sha256 = "1bpmmnxb1yx72aqlbdaqfl18rgz1cq9cf6cqvnfl88mz5dfr4x0d";
+        url = "https://github.com/mirage/bigarray-compat/archive/v1.0.0.tar.gz";
+      };
+      version = "1.0.0";
+    };
     bin_prot = 
     {
       opamInputs = 
@@ -481,6 +501,30 @@ in
       };
       version = "1.5.1";
     };
+    ctypes = 
+    {
+      opamInputs = 
+      {
+        bigarray-compat = selection.bigarray-compat;
+        ctypes-foreign = selection.ctypes-foreign or null;
+        integers = selection.integers;
+        mirage-xen = selection.mirage-xen or null;
+        ocaml = selection.ocaml;
+        ocamlfind = selection.ocamlfind;
+      };
+      opamSrc = repoPath (repos.opam-repository.src) 
+      {
+        hash = "sha256:0cwxwp4bj0yyyg8pwd8v8v6x0gvjniwih922q6cglpc04n9w98py";
+        package = "packages/ctypes/ctypes.0.19.1";
+      };
+      pname = "ctypes";
+      src = pkgs.fetchurl 
+      {
+        sha256 = "05q6xrl09g515njfx3cdb497460jy6x60fjbz8iz9ajg7x1y591f";
+        url = "https://github.com/ocamllabs/ocaml-ctypes/archive/0.19.1.tar.gz";
+      };
+      version = "0.19.1";
+    };
     dot-merlin-reader = 
     {
       opamInputs = 
@@ -636,6 +680,26 @@ in
         url = "https://erratique.ch/software/fpath/releases/fpath-0.7.3.tbz";
       };
       version = "0.7.3";
+    };
+    integers = 
+    {
+      opamInputs = 
+      {
+        dune = selection.dune;
+        ocaml = selection.ocaml;
+      };
+      opamSrc = repoPath (repos.opam-repository.src) 
+      {
+        hash = "sha256:1n15jqsbgd9xp7xn68sb52m4jdw66l6rlnsza67nw0r164i2nj00";
+        package = "packages/integers/integers.0.5.1";
+      };
+      pname = "integers";
+      src = pkgs.fetchurl 
+      {
+        sha256 = "1f1nkgpqjnavyw5vqlgrgsqaqdgzp0xngs4hx97dn7glraccw27n";
+        url = "https://github.com/ocamllabs/ocaml-integers/archive/0.5.1.tar.gz";
+      };
+      version = "0.5.1";
     };
     jane-street-headers = 
     {

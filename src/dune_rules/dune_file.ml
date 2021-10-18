@@ -162,6 +162,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; ctypes : Ctypes_stanza.t option
     ; root_module : (Loc.t * Module_name.t) option
     }
 
@@ -186,6 +187,7 @@ module Buildable = struct
         Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
     in
     let+ loc = loc
+    and+ project = Dune_project.get_exn ()
     and+ preprocess, preprocessor_deps = preprocess_fields
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ foreign_stubs =
@@ -227,6 +229,10 @@ module Buildable = struct
     and+ allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
+    and+ ctypes =
+      field_o "ctypes"
+        (Dune_lang.Syntax.since Ctypes_stanza.syntax (0, 1)
+        >>> Ctypes_stanza.decode)
     and+ loc_instrumentation, instrumentation =
       located
         (multi_field "instrumentation"
@@ -284,6 +290,29 @@ module Buildable = struct
       |> add_stubs C ~loc:c_names_loc ~names:c_names ~flags:c_flags
       |> add_stubs Cxx ~loc:cxx_names_loc ~names:cxx_names ~flags:cxx_flags
     in
+    let libraries =
+      let ctypes_libraries =
+        if Option.is_none ctypes then
+          []
+        else
+          Ctypes_stubs.libraries_needed_for_ctypes ~loc:Loc.none
+      in
+      libraries @ ctypes_libraries
+    in
+    let foreign_stubs =
+      match ctypes with
+      | None -> foreign_stubs
+      | Some (ctypes : Ctypes_stanza.t) ->
+        let init = foreign_stubs in
+        List.fold_left ctypes.function_description ~init
+          ~f:(fun foreign_stubs fd ->
+            Ctypes_stubs.add ~loc
+              ~parsing_context:(Dune_project.parsing_context project)
+              ~external_library_name:ctypes.external_library_name
+              ~functor_:fd.Ctypes_stanza.Function_description.functor_
+              ~instance:fd.Ctypes_stanza.Function_description.instance
+              ~add_stubs ~foreign_stubs)
+    in
     let foreign_archives = Option.value ~default:[] foreign_archives in
     let foreign_archives =
       if
@@ -323,6 +352,7 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
+    ; ctypes
     ; root_module
     }
 
@@ -438,11 +468,13 @@ module Mode_conf = struct
   end
 
   module Set = struct
+    type mode_conf = t
+
     type nonrec t = Kind.t option Map.t
 
     let empty : t = Map.make_one None
 
-    let of_list (input : (T.t * Kind.t) list) : t =
+    let of_list (input : (mode_conf * Kind.t) list) : t =
       List.fold_left ~init:empty input ~f:(fun acc (key, kind) ->
           Map.update acc key ~f:(function
             | None -> Some kind
@@ -1361,6 +1393,7 @@ module Executables = struct
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t
+    ; dune_version : Dune_lang.Syntax.Version.t
     }
 
   let bootstrap_info_extension =
@@ -1485,6 +1518,7 @@ module Executables = struct
       ; forbidden_libraries
       ; bootstrap_info
       ; enabled_if
+      ; dune_version
       }
 
   let single, multi =
@@ -1811,7 +1845,8 @@ module Tests = struct
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        in
        String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
-         (let+ buildable = Buildable.decode Executable
+         (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+          let+ buildable = Buildable.decode Executable
           and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
           and+ names = names
           and+ package = field_o "package" Stanza_common.Pkg.decode
@@ -1846,6 +1881,7 @@ module Tests = struct
               ; forbidden_libraries
               ; bootstrap_info = None
               ; enabled_if
+              ; dune_version
               }
           ; locks
           ; package

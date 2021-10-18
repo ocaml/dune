@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Experimental support for ctypes stubs (#3905, fixes #135, @mbacarella)
+
 - Fix interpretation of `binaries` defined in the `env stanza`. Binaries
   defined in `x/dune` wouldn't be visible in `x/*/**/dune. (#4975, fixes #4976,
   @Leonidas-from-XIV, @rgrinberg)

@@ -28,6 +28,7 @@ ocamlformat.0.19.0 \
 ppx_inline_test \
 ppxlib \
 result \
+ctypes \
 "utop>=2.6.0"
 
 # Dependencies recommended for developing dune locally,

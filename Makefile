@@ -13,7 +13,7 @@ lwt \
 bisect_ppx \
 cinaps \
 coq-native \
-"coq>=8.12.1" \
+"coq>=8.14.0" \
 core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \

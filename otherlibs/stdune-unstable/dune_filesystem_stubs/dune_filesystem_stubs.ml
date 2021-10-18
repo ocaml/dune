@@ -322,7 +322,7 @@ module File_kind = struct
     | S_LNK -> "symbolic link"
     | S_FIFO -> "named pipe"
     | S_SOCK -> "socket"
-    
+
   let equal x y =
     match (x, y) with
     | S_REG, S_REG -> true

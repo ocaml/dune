@@ -230,6 +230,8 @@ Unreleased
 - Run each action in its own process group so that we don't leave
   stray processes behind when killing actions (#4998, @jeremiedimino)
 
+- Add an option `expand_aliases_in_sandbox` (#...., @jeremiedimino)
+
 2.9.1 (07/09/2021)
 ------------------
 

@@ -159,6 +159,7 @@ type t =
   ; subst_config : Subst_config.t option
   ; strict_package_deps : bool
   ; cram : bool
+  ; expand_aliases_in_sandbox : bool
   }
 
 let equal = ( == )
@@ -222,6 +223,7 @@ let to_dyn
     ; subst_config
     ; strict_package_deps
     ; cram
+    ; expand_aliases_in_sandbox
     } =
   let open Dyn.Encoder in
   record
@@ -248,6 +250,7 @@ let to_dyn
     ; ("subst_config", option Subst_config.to_dyn subst_config)
     ; ("strict_package_deps", bool strict_package_deps)
     ; ("cram", bool cram)
+    ; ("expand_aliases_in_sandbox", bool expand_aliases_in_sandbox)
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
@@ -467,6 +470,8 @@ let accept_alternative_dune_file_name_default ~(lang : Lang.Instance.t) =
 
 let cram_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
 
+let expand_aliases_in_sandbox_default ~lang:_ = false
+
 let use_standard_c_and_cxx_flags_default ~(lang : Lang.Instance.t) =
   if lang.version >= (3, 0) then
     Some true
@@ -514,6 +519,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   let explicit_js_mode = explicit_js_mode_default ~lang in
   let strict_package_deps = strict_package_deps_default ~lang in
   let cram = cram_default ~lang in
+  let expand_aliases_in_sandbox = expand_aliases_in_sandbox_default ~lang in
   let root = dir in
   let file_key = File_key.make ~root ~name in
   { name
@@ -539,6 +545,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; subst_config = None
   ; strict_package_deps
   ; cram
+  ; expand_aliases_in_sandbox
   }
 
 module Toggle = struct
@@ -614,6 +621,7 @@ let encode : t -> Dune_lang.t list =
      ; file_key = _
      ; project_file = _
      ; root = _
+     ; expand_aliases_in_sandbox
      } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -662,6 +670,8 @@ let encode : t -> Dune_lang.t list =
           None
         else
           Some (constr "cram" Toggle.encode (Toggle.of_bool cram)))
+      ; flag "expand_aliases_in_sandbox" expand_aliases_in_sandbox
+          expand_aliases_in_sandbox_default
       ]
   in
   let lang_stanza =
@@ -767,6 +777,9 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         and+ cram =
           Toggle.field "cram"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 7))
+        and+ expand_aliases_in_sandbox =
+          field_o_b "expand_aliases_in_sandbox"
+            ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
         in
         let packages =
           if List.is_empty packages then
@@ -898,6 +911,10 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
           | None -> cram_default ~lang
           | Some t -> Toggle.enabled t
         in
+        let expand_aliases_in_sandbox =
+          Option.value expand_aliases_in_sandbox
+            ~default:(expand_aliases_in_sandbox_default ~lang)
+        in
         let root = dir in
         let file_key = File_key.make ~name ~root in
         let dialects =
@@ -946,6 +963,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; subst_config
         ; strict_package_deps
         ; cram
+        ; expand_aliases_in_sandbox
         }))
 
 let load_dune_project ~dir opam_packages ~dir_status =
@@ -1001,4 +1019,7 @@ let cram t = t.cram
 let info t = t.info
 
 let update_execution_parameters t ep =
-  Execution_parameters.set_dune_version t.dune_version ep
+  ep
+  |> Execution_parameters.set_dune_version t.dune_version
+  |> Execution_parameters.set_expand_aliases_in_sandbox
+       t.expand_aliases_in_sandbox

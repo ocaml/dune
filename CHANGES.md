@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Sandbox infer rules for menhir. Fixes possible "inconsistent assumptions"
+  errors (#5015, @rgrinberg)
+
 - Experimental support for ctypes stubs (#3905, fixes #135, @mbacarella)
 
 - Fix interpretation of `binaries` defined in the `env stanza`. Binaries

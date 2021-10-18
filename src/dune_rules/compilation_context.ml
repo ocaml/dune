@@ -104,6 +104,8 @@ let js_of_ocaml t = t.js_of_ocaml
 
 let sandbox t = t.sandbox
 
+let set_sandbox t sandbox = { t with sandbox }
+
 let package t = t.package
 
 let vimpl t = t.vimpl

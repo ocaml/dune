@@ -11,7 +11,7 @@ let%expect_test _ =
   in
   let events_buffer = ref [] in
   let watcher =
-    Dune_file_watcher.create_external ~debounce_interval:None
+    Dune_file_watcher.create_default
       ~scheduler:
         { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
         ; thread_safe_send_emit_events_job =
@@ -21,7 +21,6 @@ let%expect_test _ =
               events_buffer := !events_buffer @ events;
               Mutex.unlock mutex)
         }
-      ~root:Path.root
   in
   let try_to_get_events () =
     critical_section ~f:(fun () ->
@@ -40,20 +39,27 @@ let%expect_test _ =
   Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 1;
-  [%expect {| Timed out waiting for more events: expected 1, saw 0 |}];
+  [%expect
+    {|
+    { path = In_source_tree "."; kind = "Created" }
+    { path = In_source_tree "x"; kind = "Unknown" }
+    Got more events than expected: expected 1, saw 2 |}];
   Unix.rename "x" "y";
   print_events 0;
   [%expect {|
 |}];
-  Dune_file_watcher.For_tests.suspend watcher;
   let (_ : _) = Fpath.mkdir_p "d/w" in
   Stdio.Out_channel.write_all "d/w/x" ~data:"x";
-  Dune_file_watcher.For_tests.resume watcher;
   print_events 0;
-  [%expect {|
-|}];
+  [%expect {||}];
   Stdio.Out_channel.write_all "d/w/y" ~data:"y";
   print_events 1;
-  [%expect {|
-  Timed out waiting for more events: expected 1, saw 0
-|}]
+  [%expect
+    {|
+    { path = In_source_tree "x"; kind = "Unknown" }
+    { path = In_source_tree "y"; kind = "Unknown" }
+    { path = In_source_tree "d"; kind = "Created" }
+    { path = In_source_tree "d/w"; kind = "Created" }
+    { path = In_source_tree "d/w/x"; kind = "Unknown" }
+    { path = In_source_tree "d/w/y"; kind = "Unknown" }
+    Got more events than expected: expected 1, saw 6 |}]

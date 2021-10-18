@@ -1,10 +1,10 @@
 (library
  (name fsevents_tests)
  (inline_tests
+  (enabled_if
+   (= %{system} macosx))
   (deps
    (sandbox always)))
- (enabled_if
-  (= %{system} macosx))
  (libraries
   fsevents
   stdune

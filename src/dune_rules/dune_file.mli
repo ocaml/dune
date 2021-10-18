@@ -52,6 +52,7 @@ module Buildable : sig
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; ctypes : Ctypes_stanza.t option
     ; root_module : (Loc.t * Module_name.t) option
     }
 
@@ -72,6 +73,12 @@ module Public_lib : sig
 
   (** Package it is part of *)
   val package : t -> Package.t
+
+  val make :
+       allow_deprecated_names:bool
+    -> Dune_project.t
+    -> Loc.t * Lib_name.t
+    -> (t, User_message.t) result
 end
 
 module Mode_conf : sig
@@ -101,7 +108,11 @@ module Mode_conf : sig
   end
 
   module Set : sig
+    type mode_conf = t
+
     type nonrec t = Kind.t option Map.t
+
+    val of_list : (mode_conf * Kind.t) list -> t
 
     val decode : t Dune_lang.Decoder.t
 
@@ -254,6 +265,7 @@ module Executables : sig
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t
+    ; dune_version : Dune_lang.Syntax.Version.t
     }
 
   (** Check if the executables have any foreign stubs or archives. *)

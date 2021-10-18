@@ -45,5 +45,6 @@ in pkgs.mkShell {
     ppxlib
     result
     utop
+    ctypes
   ]) ++ [ local.coq-core ];
 }

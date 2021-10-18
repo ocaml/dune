@@ -299,7 +299,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         print_line "Deleting empty directory %s"
           (Path.to_string_maybe_quoted dir);
         print_unix_error (fun () -> Path.rmdir dir)
-      | Error e ->
+      | Error (e, _, _) ->
         User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
       | _ -> ()
 

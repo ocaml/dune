@@ -75,6 +75,14 @@
   (enabled_if
    (<> %{ocaml_version} 4.02.3))))
 
+(subdir
+ ctypes
+ (cram
+  (enabled_if
+   (= ${ocaml-config:system} linux))
+  (deps
+   (package ctypes))))
+
 (cram
  (applies_to output-obj)
  (enabled_if

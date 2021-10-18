@@ -728,17 +728,24 @@ let no_rule_found t ~loc fn =
 (* +-------------------- Adding rules to the system --------------------+ *)
 
 let source_file_digest path =
-  Fs_memo.file_digest path >>= function
-  | Ok digest -> Memo.Build.return digest
-  | No_such_file
-  | Broken_symlink
-  | Unexpected_kind _
-  | Unix_error _
-  | Error _ ->
-    (* CR-someday amokhov: Give a more informative error. *)
+  let report_user_error details =
     let+ loc = Rule_fn.loc () in
     User_error.raise ?loc
-      [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+      ([ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+      @ details)
+  in
+  Fs_memo.path_digest path >>= function
+  | Ok digest -> Memo.Build.return digest
+  | No_such_file -> report_user_error []
+  | Broken_symlink -> report_user_error [ Pp.text "Broken symlink" ]
+  | Unexpected_kind st_kind ->
+    report_user_error
+      [ Pp.textf "This is neither a regular file nor a directory (%s)"
+          (Dune_filesystem_stubs.File_kind.to_string st_kind)
+      ]
+  | Unix_error (error, _, _) ->
+    report_user_error [ Pp.textf "%s" (Unix.error_message error) ]
+  | Error exn -> report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
 
 let eval_source_file :
     type a. a Action_builder.eval_mode -> Path.t -> a Memo.Build.t =
@@ -1956,9 +1963,11 @@ end = struct
                   let* is_up_to_date =
                     Memo.Build.run
                       (let open Memo.Build.O in
-                      Fs_memo.path_exists in_source_tree >>= function
-                      | false -> Memo.Build.return false
-                      | true -> (
+                      Fs_memo.path_digest in_source_tree
+                      >>| Cached_digest.Digest_result.to_option
+                      >>| function
+                      | None -> false
+                      | Some in_source_tree_digest -> (
                         match
                           Cached_digest.build_file path
                           |> Cached_digest.Digest_result.to_option
@@ -1968,15 +1977,10 @@ end = struct
                              so something happened to it. Right now, we skip the
                              promotion in this case, but we could perhaps delete
                              the corresponding path in the source tree. *)
-                          Memo.Build.return true
-                        | Some in_build_dir_digest -> (
-                          Fs_memo.file_digest in_source_tree
-                          >>| Cached_digest.Digest_result.to_option
-                          >>| function
-                          | None -> false
-                          | Some in_source_tree_digest ->
-                            Digest.equal in_build_dir_digest
-                              in_source_tree_digest)))
+                          true
+                        | Some in_build_dir_digest ->
+                          Digest.equal in_build_dir_digest in_source_tree_digest
+                        ))
                   in
                   if is_up_to_date then
                     Fiber.return ()

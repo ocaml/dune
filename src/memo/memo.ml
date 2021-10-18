@@ -1547,10 +1547,6 @@ end
 
 let cell = dep_node
 
-module Expert = struct
-  let previously_evaluated_cell t input = Store.find t.cache input
-end
-
 module Implicit_output = Implicit_output
 
 let lazy_cell ?cutoff ?name ?human_readable_description f =

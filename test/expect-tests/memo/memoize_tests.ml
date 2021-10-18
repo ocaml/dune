@@ -421,91 +421,6 @@ let%expect_test "fib linked list" =
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]
 
-let%expect_test "previously_evaluated_cell" =
-  let f x =
-    printf "Evaluating %s...\n" x;
-    Memo.Build.return ("[" ^ x ^ "]")
-  in
-  let memo =
-    Memo.create "boxed" ~input:(module String) ~cutoff:String.equal f
-  in
-  let evaluate_and_print name =
-    let cell = Memo.cell memo name in
-    printf "%s = %s\n" name (run (Cell.read cell))
-  in
-  let print_previously_evaluated_cell name =
-    match Memo.Expert.previously_evaluated_cell memo name with
-    | None -> printf "previously_evaluated_cell %s = None\n" name
-    | Some cell ->
-      printf "previously_evaluated_cell %s = %s\n" name (run (Cell.read cell))
-  in
-  let invalidate_if_evaluated name =
-    match Memo.Expert.previously_evaluated_cell memo name with
-    | None -> Memo.Invalidation.empty
-    | Some cell ->
-      printf "Invalidating %s...\n" name;
-      Cell.invalidate ~reason:Test cell
-  in
-  print_previously_evaluated_cell "x";
-  print_previously_evaluated_cell "y";
-  (* Cells are initially unevaluated. *)
-  [%expect
-    {|
-    previously_evaluated_cell x = None
-    previously_evaluated_cell y = None
-  |}];
-  evaluate_and_print "x";
-  print_previously_evaluated_cell "x";
-  print_previously_evaluated_cell "y";
-  (* Only x is evaluated. *)
-  [%expect
-    {|
-    Evaluating x...
-    x = [x]
-    previously_evaluated_cell x = [x]
-    previously_evaluated_cell y = None
-  |}];
-  Memo.reset
-    (Memo.Invalidation.combine
-       (invalidate_if_evaluated "x")
-       (invalidate_if_evaluated "y"));
-  (* Only x got invalidated. *)
-  [%expect {|
-    Invalidating x...
-  |}];
-  evaluate_and_print "x";
-  evaluate_and_print "y";
-  print_previously_evaluated_cell "x";
-  print_previously_evaluated_cell "y";
-  (* Both are evaluated (x is re-evaluated because it was invalidated). *)
-  [%expect
-    {|
-    Evaluating x...
-    x = [x]
-    Evaluating y...
-    y = [y]
-    previously_evaluated_cell x = [x]
-    previously_evaluated_cell y = [y]
-  |}];
-  Memo.reset Memo.Invalidation.empty;
-  print_previously_evaluated_cell "x";
-  print_previously_evaluated_cell "y";
-  (* Both are still evaluated after incrementing the current run. *)
-  [%expect
-    {|
-    previously_evaluated_cell x = [x]
-    previously_evaluated_cell y = [y]
-  |}];
-  Memo.reset (Memo.Invalidation.clear_caches ~reason:Test);
-  (* Both switch back to unevaluated after clearing all memoization caches. *)
-  print_previously_evaluated_cell "x";
-  print_previously_evaluated_cell "y";
-  [%expect
-    {|
-    previously_evaluated_cell x = None
-    previously_evaluated_cell y = None
-    |}]
-
 module Function = struct
   type 'a input =
     | I : int Type_eq.Id.t * int -> int input
@@ -746,7 +661,7 @@ let%expect_test "diamond with non-uniform cutoff structure" =
     Evaluated after_yes_cutoff: 2
     Evaluated summit with offset 0: 4
     f 0 = Ok 4
-    Memo graph: 0/7 restored/computed nodes, 7 traversed edges
+    Memo graph: 0/6 restored/computed nodes, 7 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
   Memo.Perf_counters.reset ();

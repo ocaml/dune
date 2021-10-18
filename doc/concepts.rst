@@ -545,6 +545,8 @@ Dependencies in ``dune`` files can be specified using one of the following:
   ``(alias src/runtest)``, ``(alias src/foo/bar/runtest)``, ...
 - ``(glob_files <glob>)``: depend on all files matched by ``<glob>``, see the
   :ref:`glob <glob>` for details
+- ``(glob_files_rec <glob>)``: is the recursive version of
+``(glob_files <glob>)``. See the :ref:`glob <glob>` for details
 - ``(source_tree <dir>)``: depend on all source files in the subtree with root
   ``<dir>``
 
@@ -607,8 +609,9 @@ You can use globs to declare dependencies on a set of files. Note that globs
 will match files that exist in the source tree as well as buildable targets, so
 for instance you can depend on ``*.cmi``.
 
-Currently dune only supports globbing files in a single directory. And in
-particular the glob is interpreted as follows:
+Dune supports globbing files in a single directory via ``(glob_files
+...)`` and in all sub-directories recursively via ``(glob_files_rec
+...)``. The glob is interpreted as follows:
 
 - anything before the last ``/`` is taken as a literal path
 - anything after the last ``/``, or everything if the glob contains no ``/``, is

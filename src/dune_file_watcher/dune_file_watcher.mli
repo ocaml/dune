@@ -73,6 +73,3 @@ val wait_for_initial_watches_established_blocking : t -> unit
 val emit_sync : unit -> unit
 
 val add_watch : t -> Path.t -> unit
-
-(** Ignore the ne next file change event about this file. *)
-val ignore_next_file_change_event : t -> Path.t -> unit

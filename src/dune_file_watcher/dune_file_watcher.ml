@@ -20,27 +20,13 @@ let decompose_inotify_event (event : Inotify_lib.Event.t) =
 
 let inotify_event_paths event = List.map ~f:fst (decompose_inotify_event event)
 
-type kind =
+type t =
   | Fswatch of
       { pid : Pid.t
       ; wait_for_watches_established : unit -> unit
       }
   | Fsevents of Fsevents.t
   | Inotify of Inotify_lib.t
-
-type t =
-  { kind : kind
-        (* CR-someday amokhov: The way we handle "ignored files" using this
-           mutable table is fragile and also wrong. We use [ignored_files] for
-           the [(mode promote)] feature: if a file is promoted, we call
-           [ignore_next_file_change_event] so that the upcoming file-change
-           event does not invalidate the current build. However, instead of
-           ignoring the events, we should merely postpone them and restart the
-           build to take the promoted files into account if need be. *)
-        (* The [ignored_files] table should be accessed in the scheduler
-           thread. *)
-  ; ignored_files : (string, unit) Table.t
-  }
 
 module Fs_memo_event = struct
   type kind =
@@ -164,8 +150,7 @@ module Scheduler = struct
     }
 end
 
-let shutdown t =
-  match t.kind with
+let shutdown = function
   | Fswatch { pid; _ } -> `Kill pid
   | Inotify _ -> `No_op
   | Fsevents fsevents ->
@@ -333,7 +318,6 @@ let create_inotifylib_watcher ~ignored_files ~(scheduler : Scheduler.t) =
     ~log_error:(fun error -> Console.print [ Pp.text error ])
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
-  let ignored_files = Table.create (module String) 64 in
   let (pipe, parse_line, wait), pid = spawn_external_watcher ~root ~backend in
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
@@ -355,21 +339,15 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
                   if is_special_file_for_inotify_sync path then
                     [ Event.Sync ]
                   else
-                    let abs_path = Path.to_absolute_filename path in
-                    if Table.mem ignored_files abs_path then (
-                      (* only use ignored record once *)
-                      Table.remove ignored_files abs_path;
-                      []
-                    ) else
-                      [ Fs_memo_event
-                          (Fs_memo_event.create ~kind:File_changed ~path)
-                      ])
+                    [ Fs_memo_event
+                        (Fs_memo_event.create ~kind:File_changed ~path)
+                    ])
       in
       scheduler.thread_safe_send_emit_events_job job
     done
   in
   scheduler.spawn_thread (fun () -> worker_thread pipe);
-  { kind = Fswatch { pid; wait_for_watches_established = wait }; ignored_files }
+  Fswatch { pid; wait_for_watches_established = wait }
 
 let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   let jobs = ref [] in
@@ -419,10 +397,9 @@ let create_inotifylib ~scheduler =
   let inotify = create_inotifylib_watcher ~ignored_files ~scheduler in
   Inotify_lib.add inotify
     (Path.to_string (Path.build (special_file_for_inotify_sync ())));
-  { kind = Inotify inotify; ignored_files }
+  Inotify inotify
 
 let create_fsevents ~(scheduler : Scheduler.t) =
-  let ignored_files = Table.create (module String) 64 in
   let fsevents =
     let paths = [ Path.to_string Path.root ] in
     Fsevents.create ~paths ~latency:0.2 ~f:(fun _ events ->
@@ -472,7 +449,7 @@ let create_fsevents ~(scheduler : Scheduler.t) =
       |> List.rev_map ~f:(fun base ->
              let path = Path.relative (Path.source Path.Source.root) base in
              Path.to_absolute_filename path));
-  { kind = Fsevents fsevents; ignored_files }
+  Fsevents fsevents
 
 let create_external ~root ~debounce_interval ~scheduler ~backend =
   match debounce_interval with
@@ -490,8 +467,7 @@ let create_default ~scheduler =
   | `Fsevents -> create_fsevents ~scheduler
   | `Inotify_lib -> create_inotifylib ~scheduler
 
-let wait_for_initial_watches_established_blocking t =
-  match t.kind with
+let wait_for_initial_watches_established_blocking = function
   | Fswatch c -> c.wait_for_watches_established ()
   | Fsevents _
   | Inotify _ ->
@@ -500,7 +476,7 @@ let wait_for_initial_watches_established_blocking t =
     ()
 
 let add_watch t path =
-  match t.kind with
+  match t with
   | Fsevents _
   | Fswatch _ ->
     (* Here we assume that the path is already being watched because the coarse
@@ -508,7 +484,3 @@ let add_watch t path =
        start *)
     ()
   | Inotify inotify -> Inotify_lib.add inotify (Path.to_string path)
-
-let ignore_next_file_change_event t path =
-  assert (Path.is_in_source_tree path);
-  Table.set t.ignored_files (Path.to_absolute_filename path) ()

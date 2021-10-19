@@ -1987,7 +1987,6 @@ end = struct
                   else (
                     if lifetime = Until_clean then
                       Promoted_to_delete.add in_source_tree;
-                    let* () = Scheduler.ignore_for_watch in_source_tree in
                     (* The file in the build directory might be read-only if it
                        comes from the shared cache. However, we want the file in
                        the source tree to be writable by the user, so we

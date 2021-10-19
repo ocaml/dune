@@ -1,0 +1,12 @@
+(cram
+ (applies_to :whole_subtree)
+ (deps
+  %{bin:make}
+  %{bin:cc}
+  %{bin:ar}
+  %{bin:gcc}
+  (package ctypes)))
+
+(cram
+ (applies_to exe-pkg_config-multiple-fd exe-pkg_config)
+ (deps %{bin:pkg-config}))

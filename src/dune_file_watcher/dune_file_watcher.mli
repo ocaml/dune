@@ -72,12 +72,6 @@ val wait_for_initial_watches_established_blocking : t -> unit
     far. *)
 val emit_sync : unit -> unit
 
-module For_tests : sig
-  val suspend : t -> unit
-
-  val resume : t -> unit
-end
-
 val add_watch : t -> Path.t -> unit
 
 (** Ignore the ne next file change event about this file. *)

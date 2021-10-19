@@ -13,7 +13,7 @@ lwt \
 bisect_ppx \
 cinaps \
 coq-native \
-"coq>=8.12.1" \
+"coq>=8.14.0" \
 core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
@@ -28,6 +28,7 @@ ocamlformat.0.19.0 \
 ppx_inline_test \
 ppxlib \
 result \
+ctypes \
 "utop>=2.6.0"
 
 # Dependencies recommended for developing dune locally,

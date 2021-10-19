@@ -2,10 +2,18 @@ Check that actions don't have access to the outter hg repository.
 
   $ mkdir hg
   $ cd hg
-  $ hg init -q
+
+We can't call "hg init" because "hg init" reads the fake .hg created
+by Dune and fails. Thankfully, creating an empty .hg directory is
+enough for a few hg commands such as "hg root" to succeed:
+
+  $ mkdir .hg
+  $ hg root
+  $TESTCASE_ROOT/hg
+
   $ echo '(lang dune 3.0)' > dune-project
   $ cat >test.t <<"EOF"
-  >   $ hg root
+  >   $ hg root 2>&1 | sed 's/!$//'
   > EOF
 
   $ dune runtest --auto-promote
@@ -18,7 +26,6 @@ Check that actions don't have access to the outter hg repository.
 The inner call to hg shouldn't be able to access the outer hg repo:
 
   $ cat test.t
-    $ hg root
-    abort: repository requires features unknown to this Mercurial: Escaping the Dune sandbox!
+    $ hg root 2>&1 | sed 's/!$//'
+    abort: repository requires features unknown to this Mercurial: Escaping the Dune sandbox
     (see https://mercurial-scm.org/wiki/MissingRequirement for more information)
-    [255]

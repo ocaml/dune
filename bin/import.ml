@@ -63,15 +63,16 @@ module Scheduler = struct
     match dune_config.terminal_persistence with
     | Clear_on_rebuild -> Console.reset ()
     | Preserve ->
+      let message =
+        sprintf "********** NEW BUILD (%s) **********"
+          (String.concat ~sep:", " details_hum)
+      in
       Console.print_user_message
         (User_message.make
-           (List.map details_hum ~f:(fun reason_hum ->
-                Pp.tag User_message.Style.Details (Pp.verbatim reason_hum))
-           @ [ Pp.nop
-             ; Pp.tag User_message.Style.Success
-                 (Pp.verbatim "********** NEW BUILD **********")
-             ; Pp.nop
-             ]))
+           [ Pp.nop
+           ; Pp.tag User_message.Style.Success (Pp.verbatim message)
+           ; Pp.nop
+           ])
 
   let on_event dune_config _config = function
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()

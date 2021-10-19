@@ -1,28 +1,28 @@
 module type S = sig
-  (** type of internal state we keep per poller *)
+  (** The type of internal state we keep per poller. The mental model should be
+      that this represents the diff between the client's state and [current ()]. *)
   type state
 
-  (** type of response the long polling request expects *)
+  (** Type of response the long polling request expects *)
   type response
 
-  (** the type of updates we push down to pollers *)
+  (** The type of updates produced by the build system *)
   type update
 
+  (** The current state of the build system. Used to initialize the client
+      state. *)
   val current : unit -> response
 
-  (** initialize a new state for a waiting client *)
-  val init_state : unit -> state
+  (** No update from the build system since last request *)
+  val no_change : unit -> state
 
-  (** called after the state is used to produce a response *)
-  val reset : unit -> state
-
-  (** subsequent request by a long poller. may be delayed until the next update *)
+  (** Subsequent request by a long poller. May be delayed until the next update *)
   val on_rest_request :
     Dune_rpc_server.Poller.t -> state -> [ `Delay | `Respond of response ]
 
-  (** an update for a poller without an active request *)
+  (** An update for a poller without an active request *)
   val on_update_inactive : update -> state -> state option
 
-  (** an update for all pollers that are waiting for a response *)
+  (** An update for all pollers that are waiting for a response *)
   val on_update_waiting : update -> response
 end

@@ -180,6 +180,7 @@ let init ?log_file c =
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
   Clflags.debug_digests := c.debug_digests;
+  Clflags.debug_fs_cache := c.cache_debug_flags.fs_cache;
   Clflags.wait_for_filesystem_clock := c.wait_for_filesystem_clock;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
@@ -655,12 +656,16 @@ module Cache_debug_flags = Dune_engine.Cache_debug_flags
 
 let cache_debug_flags_term : Cache_debug_flags.t Term.t =
   let initial =
-    { Cache_debug_flags.shared_cache = false; workspace_local_cache = false }
+    { Cache_debug_flags.shared_cache = false
+    ; workspace_local_cache = false
+    ; fs_cache = false
+    }
   in
   let all_layers =
     [ ("shared", fun r -> { r with Cache_debug_flags.shared_cache = true })
     ; ( "workspace-local"
       , fun r -> { r with Cache_debug_flags.workspace_local_cache = true } )
+    ; ("fs", fun r -> { r with Cache_debug_flags.fs_cache = true })
     ]
   in
   let no_layers = ([], fun x -> x) in

@@ -23,7 +23,8 @@ module File = struct
 
   let dummy = { ino = 0; dev = 0 }
 
-  let of_stats (st : Unix.stats) = { ino = st.st_ino; dev = st.st_dev }
+  let of_stats (st : Fs_cache.Reduced_stats.t) =
+    { ino = st.st_ino; dev = st.st_dev }
 
   module Map = Map.Make (T)
 
@@ -117,7 +118,8 @@ module Readdir : sig
 
   val filter_files : t -> Dune_project.t -> t Memo.Build.t
 
-  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t Memo.Build.t
+  val of_source_path :
+    Path.Source.t -> (t, Unix_error.Detailed.t) Result.t Memo.Build.t
 end = struct
   type t =
     { path : Path.Source.t
@@ -160,8 +162,10 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path_impl path =
-    Fs_memo.dir_contents_unsorted (Path.source path) >>= function
-    | Error unix_error ->
+    Fs_memo.dir_contents (Path.source path) >>= function
+    | Error ((unix_error, _syscall, _arg) as detailed_unix_error) ->
+      (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+         debugging. *)
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
             (Path.Source.to_string_maybe_quoted path)
@@ -174,10 +178,11 @@ end = struct
                   Dune_file.fname))
         ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
         ];
-      Memo.Build.return (Error unix_error)
-    | Ok unsorted_contents ->
+      Memo.Build.return (Error detailed_unix_error)
+    | Ok dir_contents ->
+      let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
       let+ files, dirs =
-        Memo.Build.parallel_map unsorted_contents ~f:(fun (fn, kind) ->
+        Memo.Build.parallel_map dir_contents ~f:(fun (fn, kind) ->
             let path = Path.Source.relative path fn in
             if Path.Source.is_in_build_dir path then
               Memo.Build.return List.Skip
@@ -204,20 +209,14 @@ end = struct
                 Left fn)
         >>| List.filter_partition_map ~f:Fun.id
       in
-      { path
-      ; files = String.Set.of_list files
-      ; dirs =
-          List.sort dirs ~compare:(fun (a, _, _) (b, _, _) ->
-              String.compare a b)
-      }
-      |> Result.ok
+      { path; files = String.Set.of_list files; dirs } |> Result.ok
 
   (* Having a cutoff here speeds up incremental rebuilds quite a bit when a
      directory contents is invalidated but the result stays the same. *)
   let of_source_path_memo =
     Memo.create "readdir-of-source-path"
       ~input:(module Path.Source)
-      ~cutoff:(Result.equal equal Unix_error.equal)
+      ~cutoff:(Result.equal equal Unix_error.Detailed.equal)
       of_source_path_impl
 
   let of_source_path = Memo.exec of_source_path_memo
@@ -546,7 +545,10 @@ end = struct
     let* readdir =
       Readdir.of_source_path path >>| function
       | Ok dir -> dir
-      | Error e -> error_unable_to_load ~path e
+      | Error (e, _syscall, _arg) ->
+        (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+           debugging. *)
+        error_unable_to_load ~path e
     in
     let project =
       match
@@ -561,7 +563,7 @@ end = struct
     let* dirs_visited =
       File.of_source_path path >>| function
       | Ok file -> Dirs_visited.singleton path file
-      | Error e -> error_unable_to_load ~path e
+      | Error (e, _, _) -> error_unable_to_load ~path e
     in
     let+ contents, visited =
       contents readdir ~dirs_visited ~project ~dir_status

@@ -50,6 +50,8 @@ val set_action_stdout_on_success : Action_output_on_success.t -> t -> t
 
 val set_action_stderr_on_success : Action_output_on_success.t -> t -> t
 
+val set_expand_aliases_in_sandbox : bool -> t -> t
+
 (** As configured by [init] *)
 val default : t Memo.Build.t
 
@@ -59,7 +61,7 @@ val dune_version : t -> Dune_lang.Syntax.Version.t
 
 val should_remove_write_permissions_on_generated_files : t -> bool
 
-val should_expand_aliases_when_sandboxing : t -> bool
+val expand_aliases_in_sandbox : t -> bool
 
 val action_stdout_on_success : t -> Action_output_on_success.t
 

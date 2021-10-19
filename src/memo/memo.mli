@@ -214,7 +214,7 @@ module Invalidation : sig
   val invalidate_cache : reason:Reason.t -> _ memo -> t
 
   (** A list of human-readable strings explaining the reasons for invalidation.
-      The list is truncated to [max_elements] elements, with [max_elements = 5]
+      The list is truncated to [max_elements] elements, with [max_elements = 1]
       by default. Raises if [max_elements <= 0]. *)
   val details_hum : ?max_elements:int -> t -> string list
 end
@@ -480,19 +480,6 @@ module Perf_counters : sig
   (** Reset the counters to zero. You typically don't need to call this function
       directly (as counters are reset on every run) but it's useful for tests. *)
   val reset : unit -> unit
-end
-
-module Expert : sig
-  (** Like [cell] but returns [Nothing] if the given memoized function has never
-      been evaluated on the specified input. We use [previously_evaluated_cell]
-      to skip unnecessary rebuilds when receiving file system events for files
-      that we don't care about.
-
-      Note that this function is monotonic: its result can change from [Nothing]
-      to [Some cell] as new cells get evaluated. However, calling [reset] clears
-      all memoization tables, and therefore resets [previously_evaluated_cell]
-      to [Nothing] as well. *)
-  val previously_evaluated_cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t option
 end
 
 module For_tests : sig

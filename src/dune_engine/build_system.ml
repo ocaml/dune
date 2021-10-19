@@ -425,11 +425,13 @@ let get_dir_triage t ~dir =
     @@ Dir_triage.Known
          (Non_build
             (match Path.readdir_unsorted dir with
-            | Error Unix.ENOENT -> Path.Set.empty
-            | Error m ->
+            | Error (Unix.ENOENT, _, _) -> Path.Set.empty
+            | Error (e, _syscall, _arg) ->
+              (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
+                 debugging. *)
               User_warning.emit
                 [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-                ; Pp.textf "Reason: %s" (Unix.error_message m)
+                ; Pp.textf "Reason: %s" (Unix.error_message e)
                 ];
               Path.Set.empty
             | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
@@ -553,8 +555,8 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
           let error =
             [ Pp.verbatim
                 (sprintf "Unexpected file kind %S (%s)"
-                   (Dune_filesystem_stubs.File_kind.to_string file_kind)
-                   (Dune_filesystem_stubs.File_kind.to_string_hum file_kind))
+                   (File_kind.to_string file_kind)
+                   (File_kind.to_string_hum file_kind))
             ]
           in
           (good, missing, (target, error) :: errors)
@@ -726,17 +728,24 @@ let no_rule_found t ~loc fn =
 (* +-------------------- Adding rules to the system --------------------+ *)
 
 let source_file_digest path =
-  Fs_memo.file_digest path >>= function
-  | Ok digest -> Memo.Build.return digest
-  | No_such_file
-  | Broken_symlink
-  | Unexpected_kind _
-  | Unix_error _
-  | Error _ ->
-    (* CR-someday amokhov: Give a more informative error. *)
+  let report_user_error details =
     let+ loc = Rule_fn.loc () in
     User_error.raise ?loc
-      [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+      ([ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+      @ details)
+  in
+  Fs_memo.path_digest path >>= function
+  | Ok digest -> Memo.Build.return digest
+  | No_such_file -> report_user_error []
+  | Broken_symlink -> report_user_error [ Pp.text "Broken symlink" ]
+  | Unexpected_kind st_kind ->
+    report_user_error
+      [ Pp.textf "This is neither a regular file nor a directory (%s)"
+          (Dune_filesystem_stubs.File_kind.to_string st_kind)
+      ]
+  | Unix_error (error, _, _) ->
+    report_user_error [ Pp.textf "%s" (Unix.error_message error) ]
+  | Error exn -> report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
 
 let eval_source_file :
     type a. a Action_builder.eval_mode -> Path.t -> a Memo.Build.t =
@@ -1485,9 +1494,7 @@ end = struct
               Path.mkdir_p (Path.build (sandboxed path)));
         Path.mkdir_p (Path.build (sandboxed dir));
         let deps =
-          if
-            Execution_parameters.should_expand_aliases_when_sandboxing
-              execution_parameters
+          if Execution_parameters.expand_aliases_in_sandbox execution_parameters
           then
             Dep.Facts.paths deps
           else
@@ -1956,9 +1963,11 @@ end = struct
                   let* is_up_to_date =
                     Memo.Build.run
                       (let open Memo.Build.O in
-                      Fs_memo.path_exists in_source_tree >>= function
-                      | false -> Memo.Build.return false
-                      | true -> (
+                      Fs_memo.path_digest in_source_tree
+                      >>| Cached_digest.Digest_result.to_option
+                      >>| function
+                      | None -> false
+                      | Some in_source_tree_digest -> (
                         match
                           Cached_digest.build_file path
                           |> Cached_digest.Digest_result.to_option
@@ -1968,15 +1977,10 @@ end = struct
                              so something happened to it. Right now, we skip the
                              promotion in this case, but we could perhaps delete
                              the corresponding path in the source tree. *)
-                          Memo.Build.return true
-                        | Some in_build_dir_digest -> (
-                          Fs_memo.file_digest in_source_tree
-                          >>| Cached_digest.Digest_result.to_option
-                          >>| function
-                          | None -> false
-                          | Some in_source_tree_digest ->
-                            Digest.equal in_build_dir_digest
-                              in_source_tree_digest)))
+                          true
+                        | Some in_build_dir_digest ->
+                          Digest.equal in_build_dir_digest in_source_tree_digest
+                        ))
                   in
                   if is_up_to_date then
                     Fiber.return ()

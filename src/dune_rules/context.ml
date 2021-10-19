@@ -33,6 +33,24 @@ module Env_nodes = struct
       (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
 end
 
+module Bin = struct
+  include Bin
+
+  let exists fn =
+    let+ stat = Fs_memo.path_stat fn in
+    match stat with
+    | Error _
+    | Ok { st_kind = S_DIR; _ } ->
+      None
+    | Ok _ -> Some fn
+
+  let which ~path prog =
+    let prog = add_exe prog in
+    Memo.Build.List.find_map path ~f:(fun dir ->
+        let fn = Path.relative dir prog in
+        exists fn)
+end
+
 module Program = struct
   module Name = String
 
@@ -42,18 +60,19 @@ module Program = struct
   let best_path dir program =
     let exe_path program =
       let fn = Path.relative dir (program ^ Bin.exe) in
-      Option.some_if (Bin.exists fn) fn
+      Bin.exists fn
     in
     if List.mem programs_for_which_we_prefer_opt_ext program ~equal:String.equal
     then
-      match exe_path (program ^ ".opt") with
+      let* path = exe_path (program ^ ".opt") in
+      match path with
       | None -> exe_path program
-      | Some _ as path -> path
+      | Some _ as path -> Memo.Build.return path
     else
       exe_path program
 
   let which ~path program =
-    List.find_map path ~f:(fun dir -> best_path dir program)
+    Memo.Build.List.find_map path ~f:(fun dir -> best_path dir program)
 end
 
 type t =
@@ -145,7 +164,7 @@ module Opam : sig
 end = struct
   let opam =
     Memo.Lazy.create (fun () ->
-        match Bin.which ~path:(Env.path Env.initial) "opam" with
+        Bin.which ~path:(Env.path Env.initial) "opam" >>= function
         | None -> Utils.program_not_found "opam" ~loc:None
         | Some opam -> (
           let+ version =
@@ -321,8 +340,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     Memo.create
       (sprintf "which-memo-for-%s" (Context_name.to_string name))
       ~input:(module Program.Name)
-      ~cutoff:(Option.equal Path.equal)
-      (fun p -> Memo.Build.return (Program.which ~path p))
+      ~cutoff:(Option.equal Path.equal) (Program.which ~path)
   in
   let which = Memo.exec which_memo in
   let which_exn x =
@@ -384,10 +402,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let dir = Path.parent_exn ocamlc in
     let get_ocaml_tool prog =
-      get_tool_using_findlib_config prog >>| function
-      | Some x -> Ok x
+      get_tool_using_findlib_config prog >>= function
+      | Some x -> Memo.Build.return (Ok x)
       | None -> (
-        match Program.best_path dir prog with
+        Program.best_path dir prog >>| function
         | Some p -> Ok p
         | None ->
           let hint =

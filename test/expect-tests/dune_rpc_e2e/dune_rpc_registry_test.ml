@@ -13,7 +13,8 @@ module Poll_active =
         Fiber.return
           (match Dune_filesystem_stubs.read_directory dir with
           | Ok s -> Ok s
-          | Error e -> Error (Failure (dir ^ ": " ^ Unix.error_message e)))
+          | Error (e, _, _) ->
+            Error (Failure (dir ^ ": " ^ Unix.error_message e)))
 
       let stat s =
         Fiber.return

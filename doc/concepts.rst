@@ -269,15 +269,15 @@ consider the following example:
     (rule
      (with-stdout-to y (...)))
 
-When Dune loads and interprets this file, it must decide whether the
-first rule is enabled. To do that it must evaluate ``%{read:y}``. To
+When Dune loads and interprets this file, it decides whether the
+first rule is enabled by evaluating ``%{read:y}``. To
 evaluate ``%{read:y}``, it must build ``y``. To build ``y``, it must
-figure out the build rule that produces ``y``. To do that, it must
-load and evaluate the above ``dune`` file. You can see how this
+figure out the build rule that produces ``y``, and in order to do that, it must
+first load and evaluate the above ``dune`` file. You can see how this
 creates a cycle.
 
 Some cycles might be more complex. In any case, when you see such an
-error the easiest thing to do is to move the file that is being read
+error, the easiest thing to do is move the file that's being read
 to a different directory, preferably a standalone one. You can use the
 :ref:`subdir` stanza to keep the logic self-contained in the same
 ``dune`` file:

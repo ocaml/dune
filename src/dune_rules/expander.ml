@@ -266,6 +266,23 @@ let[@inline never] invalid_use_of_target_variable t
         ~field:multiplicity ~variable:var_multiplicity;
       assert false)
 
+let expand_read_macro ~dir ~source s ~read ~pack =
+  let path = relative ~source dir s in
+  let read =
+    let open Memo.Build.O in
+    let+ x = Build_system.read_file path ~f:read in
+    pack x
+  in
+  Need_full_expander
+    (fun t ->
+      if Dune_project.dune_version (Scope.project t.scope) >= (3, 0) then
+        Without read
+      else
+        (* To prevent it from working in certain position before Dune 3.0. It'd
+           be nice if we could invite the user to upgrade to (lang dune 3.0),
+           but this is a bigger refactoring. *)
+        With (Action_builder.memo_build read))
+
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     (pform : Pform.t) : expansion_result =
   match Pform.Map.find bindings pform with
@@ -571,18 +588,23 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
               (let open Memo.Build.O in
               let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
               b |> string_of_bool |> string))
-      | Read ->
-        let path = relative ~source dir s in
-        Direct
-          (With (Action_builder.map (Action_builder.contents path) ~f:string))
+      | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
       | Read_lines ->
-        let path = relative ~source dir s in
-        Direct
-          (With (Action_builder.map (Action_builder.lines_of path) ~f:strings))
+        expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
       | Read_strings ->
-        let path = relative ~source dir s in
-        Direct
-          (With (Action_builder.map (Action_builder.strings path) ~f:strings))))
+        expand_read_macro ~dir ~source s ~read:Io.lines_of_file
+          ~pack:(fun lines ->
+            strings
+              (List.map lines ~f:(fun line ->
+                   match Scanf.unescaped line with
+                   | Error () ->
+                     User_error.raise
+                       ~loc:(Loc.in_file (relative ~source dir s))
+                       [ Pp.textf
+                           "This file must be a list of lines escaped using \
+                            OCaml's conventions"
+                       ]
+                   | Ok s -> s)))))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =

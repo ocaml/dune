@@ -1707,6 +1707,8 @@ run this toplevel with:
 of `library`_. Currently, ``action`` and ``future_syntax`` are not supported
 in the toplevel.
 
+.. _subdir:
+
 subdir
 ------
 

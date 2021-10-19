@@ -24,5 +24,5 @@ This test tries a single function description stanza.
   > Cflags: -I$PWD/stubgen/libexample
   > EOF
 
-  $ LD_LIBRARY_PATH="$PWD/stubgen/libexample" PKG_CONFIG_PATH="$PWD:$PKG_CONFIG_PATH" dune exec ./example.exe
+  $ DYLD_LIBRARY_PATH="$PWD/stubgen/libexample" LD_LIBRARY_PATH="$PWD/stubgen/libexample" PKG_CONFIG_PATH="$PWD:$PKG_CONFIG_PATH" dune exec ./example.exe
   4

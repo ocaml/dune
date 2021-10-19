@@ -24,5 +24,5 @@ This test also tests multiple function description modules.
   > Cflags: -I$PWD/libexample
   > EOF
 
-  $ LD_LIBRARY_PATH="$PWD/libexample" PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$PWD" dune exec ./example.exe
+  $ DYLD_LIBRARY_PATH="$PWD/libexample" LD_LIBRARY_PATH="$PWD/libexample" PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$PWD" dune exec ./example.exe
   6

@@ -78,8 +78,6 @@
 (subdir
  ctypes
  (cram
-  (enabled_if
-   (= ${ocaml-config:system} linux))
   (deps
    (package ctypes))))
 

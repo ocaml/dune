@@ -227,6 +227,9 @@ Unreleased
   cram test cannot escape the sandbox and pick up some random git or
   mercurial repository on the file system (#4996, @jeremiedimino)
 
+- Allow `%{read:...}` in more places such as `(enabled_if ...)`
+  (#4994, @jeremiedimino)
+
 - Run each action in its own process group so that we don't leave
   stray processes behind when killing actions (#4998, @jeremiedimino)
 

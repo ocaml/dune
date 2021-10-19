@@ -95,21 +95,6 @@ let lines_of p =
           (x, Dep.Map.empty))
     }
 
-let strings p =
-  let f x =
-    match Scanf.unescaped x with
-    | Error () ->
-      User_error.raise
-        [ Pp.textf "Unable to parse %s" (Path.to_string_maybe_quoted p)
-        ; Pp.textf
-            "This file must be a list of lines escaped using OCaml's \
-             conventions"
-        ]
-    | Ok s -> s
-  in
-  let+ l = lines_of p in
-  List.map l ~f
-
 let read_sexp p =
   let+ s = contents p in
   Dune_lang.Parser.parse_string s ~fname:(Path.to_string p) ~mode:Single

@@ -215,9 +215,6 @@ Unreleased
   it finds neither a `dune-workspace` nor a `dune-project` file
   (#4921, fixes #4459, @jeremiedimino)
 
-- No longer reference deprecated Toploop functions when using dune files in
-  OCaml syntax. (#4834, fixes #4830, @nojb)
-
 - Dune no longer reads installed META files for libraries distributed with the
   compiler, instead using its own internal database. (#4946, @nojb)
 
@@ -237,6 +234,12 @@ Unreleased
   stray processes behind when killing actions (#4998, @jeremiedimino)
 
 - Add an option `expand_aliases_in_sandbox` (#5003, @jeremiedimino)
+
+2.9.2 (unreleased)
+------------------
+
+- No longer reference deprecated Toploop functions when using dune files in
+  OCaml syntax. (#4834, fixes #4830, @nojb)
 
 2.9.1 (07/09/2021)
 ------------------

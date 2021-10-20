@@ -235,6 +235,9 @@ Unreleased
 
 - Add an option `expand_aliases_in_sandbox` (#5003, @jeremiedimino)
 
+- Allow to cancel the initial scan via Control+C (#4460, fixes #4364
+  @jeremiedimino)
+
 2.9.2 (unreleased)
 ------------------
 

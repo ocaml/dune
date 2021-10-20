@@ -5,6 +5,8 @@ the ctypes instrumentation and description language to generate bindings for
 it.
 
 This is the version that builds into a library.
-
+  $ LIBEX=$(realpath "$PWD/../libexample")
+  $ TARGET=./stubgen/vendor
+  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
   $ dune exec ./example.exe
   4

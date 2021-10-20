@@ -7,5 +7,8 @@ it.
 This is the version that builds into a library and tests multiple function
 description modules.
 
+  $ LIBEX=$(realpath "$PWD/../libexample")
+  $ TARGET=./stubgen/vendor
+  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
   $ dune exec ./example.exe
   6

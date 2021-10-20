@@ -1,0 +1,19 @@
+(rule
+ (deps
+  (:c example.c)
+  example.h)
+ (target example.o)
+ (action
+  (run cc -c -fPIC -o %{target} %{c})))
+
+(rule
+ (deps example.o)
+ (target libexample.a)
+ (action
+  (run ar rcs %{target} %{deps})))
+
+(rule
+ (deps example.o)
+ (target libexample.so)
+ (action
+  (run cc -shared -o %{target} %{deps})))

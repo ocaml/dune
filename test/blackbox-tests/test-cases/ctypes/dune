@@ -1,9 +1,12 @@
 (cram
  (applies_to :whole_subtree)
  (deps
-  %{bin:make}
-  %{bin:cc}
-  %{bin:ar}
+  libexample/libexample.a
+  libexample/libexample.so
+  libexample/example.h
+  libexample/libexample.pc
+  %{bin:install}
+  %{bin:awk}
   (package ctypes)))
 
 (cram

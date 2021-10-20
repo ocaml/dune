@@ -7,22 +7,11 @@ run the executable that tests the library through the cstubs.
 
 This test also tests multiple function description modules.
 
-  $ cd libexample
-  $ make -s -f Makefile.unix
-  $ cd ..
+  $ LIBEX=$(realpath "$PWD/../libexample")
 
-  $ cat >libexample.pc <<EOF
-  > prefix=$PWD/libexample
-  > exec_prefix=$PWD/libexample
-  > libdir=$PWD/libexample
-  > includedir=$PWD/libexample
-  > Name: libexample
-  > Description: An example library for testing dune ctypes
-  > Requires:
-  > Version: 1.00.00
-  > Libs: -L$PWD/libexample -lexample
-  > Cflags: -I$PWD/libexample
-  > EOF
+This silly looking hack is to make sure the .pc file points to the sandbox. We
+cannot set ${prefix} to be interpreted relative to the .pc itself ufortunately
+  $ awk "BEGIN{print \"prefix=$LIBEX\"} {print}" $LIBEX/libexample.pc > libexample.pc
 
-  $ DYLD_LIBRARY_PATH="$PWD/libexample" LD_LIBRARY_PATH="$PWD/libexample" PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$PWD" dune exec ./example.exe
+  $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$PWD" dune exec ./example.exe
   6

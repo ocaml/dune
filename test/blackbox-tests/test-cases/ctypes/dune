@@ -4,7 +4,6 @@
   %{bin:make}
   %{bin:cc}
   %{bin:ar}
-  %{bin:gcc}
   (package ctypes)))
 
 (cram

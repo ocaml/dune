@@ -86,20 +86,15 @@ let add t path =
 let process_raw_events t events =
   let watch_table = t.watch_table in
   let ev_kinds =
-    List.filter_map events ~f:(fun (watch, ev_kinds, trans_id, fn) ->
+    List.concat_map events ~f:(fun (watch, ev_kinds, trans_id, fn) ->
         if
           Inotify.int_of_watch watch = -1
           (* queue overflow event is always reported on watch -1 *)
         then
-          let maybe_overflow =
-            List.filter_map ev_kinds ~f:(fun ev ->
-                match ev with
-                | Inotify.Q_overflow -> Some (ev, trans_id, "<overflow>")
-                | _ -> None)
-          in
-          match maybe_overflow with
-          | [] -> None
-          | _ :: _ -> Some maybe_overflow
+          List.filter_map ev_kinds ~f:(fun ev ->
+              match ev with
+              | Inotify.Q_overflow -> Some (ev, trans_id, "<overflow>")
+              | _ -> None)
         else
           match Watch_table.find watch_table watch with
           | None ->
@@ -108,15 +103,14 @@ let process_raw_events t events =
                  (Inotify.int_of_watch watch)
                  (String.concat ~sep:", "
                     (List.map ev_kinds ~f:Inotify.string_of_event_kind)));
-            None
+            []
           | Some path ->
             let fn =
               match fn with
               | None -> path
               | Some fn -> path ^/ fn
             in
-            Some (List.map ev_kinds ~f:(fun ev -> (ev, trans_id, fn))))
-    |> List.concat
+            List.map ev_kinds ~f:(fun ev -> (ev, trans_id, fn)))
   in
   let pending_mv, actions =
     List.fold_left ev_kinds ~init:(None, [])

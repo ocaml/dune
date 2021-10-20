@@ -9,5 +9,8 @@ This is the version that builds into an executable.
 This test is identical to exe-vendored.t except it uses preamble instead of
 include to require the example.h header.
 
+  $ LIBEX=$(realpath "$PWD/../libexample")
+  $ TARGET=./vendor
+  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
   $ dune exec ./example.exe
   4

@@ -9,5 +9,8 @@ This is the version that builds into an executable.
 This test is identical to exe-vendored.t except it overrides the
 generated_types stanza field.
 
+  $ LIBEX=$(realpath "$PWD/../libexample")
+  $ TARGET=./vendor
+  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
   $ dune exec ./example.exe
   4

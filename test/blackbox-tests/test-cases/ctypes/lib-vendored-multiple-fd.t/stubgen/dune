@@ -4,7 +4,6 @@
   (action
     (no-infer
       (progn
-        (chdir vendor (run make -s -f Makefile.unix))
         (copy vendor/libexample.a libexample.a)
         (copy vendor/libexample%{ext_dll} dllexample%{ext_dll})))))
 

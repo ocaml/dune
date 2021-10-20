@@ -227,7 +227,7 @@ of a (rule).
 The following (failing) test shows that the variables cannot yet be used in the (deps)
 field of a (rule).
 
-TODO30: this test is no longer failing. It should fail because
+This test is no longer failing. It should fail because
 %{cmo:...} wasn't allowed in the deps field in (lang dune <3.0).
 
   $ mkdir deps-fail

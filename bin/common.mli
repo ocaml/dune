@@ -42,6 +42,8 @@ val footer : Cmdliner.Manpage.block
 
 val term : t Cmdliner.Term.t
 
+val term_with_default_root_is_cwd : t Cmdliner.Term.t
+
 (** Set whether Dune should print the "Entering directory '<dir>'" message *)
 val set_print_directory : t -> bool -> t
 

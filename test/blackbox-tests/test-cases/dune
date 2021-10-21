@@ -143,3 +143,8 @@
  (cram
   (applies_to hg-access)
   (enabled_if %{bin-available:hg})))
+
+(cram
+ (applies_to patch-back-source-tree)
+ (enabled_if
+  (<> %{system} macosx)))

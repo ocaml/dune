@@ -46,6 +46,7 @@ module Mode = struct
     | Fallback
     | Promote of Promote.t
     | Ignore_source_files
+    | Patch_back_source_tree
 end
 
 module Id = Id.Make ()
@@ -90,6 +91,13 @@ let add_sandbox_config :
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ?(info = Info.Internal) ~targets action =
+  let sandbox =
+    match mode with
+    | Patch_back_source_tree ->
+      Sandbox_config.inter sandbox
+        (Sandbox_mode.Set.singleton Sandbox_mode.copy)
+    | _ -> sandbox
+  in
   let action =
     let open Memo.Build.O in
     Action_builder.memoize "Rule.make"
@@ -149,5 +157,6 @@ module Anonymous_action = struct
     ; loc : Loc.t option
     ; dir : Path.Build.t
     ; alias : Alias.Name.t option
+    ; patch_back_source_tree : bool
     }
 end

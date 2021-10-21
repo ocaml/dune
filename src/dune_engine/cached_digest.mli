@@ -45,3 +45,15 @@ val remove : Path.Build.t -> unit
 (** Invalidate all cached [stat] values. This causes all subsequent calls to
     [build_file] or [source_or_external_file] to incur additional [stat] calls. *)
 val invalidate_cached_timestamps : unit -> unit
+
+(** The reduced set of file stats this module inspects to decide whether a file
+    changed or not *)
+module Reduced_stats : sig
+  type t
+
+  val to_dyn : t -> Dyn.t
+
+  val of_unix_stats : Unix.stats -> t
+
+  val compare : t -> t -> Ordering.t
+end

@@ -148,7 +148,7 @@ module Produce = struct
             Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
         }
 
-    let add_action t ~context ~loc action =
+    let add_action t ~context ~loc ~patch_back_source_tree action =
       let action =
         let open Action_builder.O in
         let+ action = action in
@@ -157,6 +157,7 @@ module Produce = struct
         ; loc
         ; dir = Alias.dir t
         ; alias = Some (Alias.name t)
+        ; patch_back_source_tree
         }
       in
       alias t

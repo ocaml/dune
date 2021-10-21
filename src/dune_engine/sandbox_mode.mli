@@ -42,6 +42,8 @@ module Set : sig
 
   type t = bool Dict.t
 
+  val singleton : key -> t
+
   val equal : t -> t -> bool
 
   val compare : t -> t -> Ordering.t

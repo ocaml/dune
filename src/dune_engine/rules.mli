@@ -73,19 +73,21 @@ module Produce : sig
   module Alias : sig
     type t = Alias.t
 
-    (** [add_deps store alias deps] arrange things so that all the dependencies
+    (** [add_deps alias ?loc deps] arrange things so that all the dependencies
         registered by [deps] are considered as a part of alias expansion of
         [alias]. *)
     val add_deps :
       t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.Build.t
 
-    (** [add_action store alias ~stamp action] arrange things so that [action]
-        is executed as part of the build of alias [alias]. [stamp] is any
-        S-expression that is unique and persistent S-expression. *)
+    (** [add_action alias ~context ~loc ?patch_back_source_tree
+       action]
+        arrange things so that [action] is executed as part of the build of
+        alias [alias]. *)
     val add_action :
          t
       -> context:Build_context.t
       -> loc:Loc.t option
+      -> patch_back_source_tree:bool
       -> Action.Full.t Action_builder.t
       -> unit Memo.Build.t
   end

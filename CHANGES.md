@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow users to specify dynamic dependencies in rules. For example `(deps
+  %{read:foo.gen})` (#4662, fixes #4089, @jeremiedimino)
+
 - Sandbox infer rules for menhir. Fixes possible "inconsistent assumptions"
   errors (#5015, @rgrinberg)
 

@@ -1455,6 +1455,63 @@ end = struct
     | Not_found_in_cache -> Miss Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
 
+  module Sandbox = struct
+    let create_dirs ~deps ~chdirs ~dir ~sandboxed =
+      Path.Set.iter
+        (Path.Set.add
+           (Path.Set.union (Dep.Facts.dirs deps) chdirs)
+           (Path.build dir))
+        ~f:(fun path ->
+          match Path.as_in_build_dir path with
+          | None ->
+            (* This [path] is not in the build directory, so we do not need to
+               create it. If it comes from [deps], it must exist already. If it
+               comes from [chdirs], we'll ensure that it exists in the call to
+               [Fs.mkdir_p_or_assert_existence] below. *)
+            ()
+          | Some path ->
+            (* There is no point in using the memoized version [Fs.mkdir_p]
+               since these directories are not shared between actions. *)
+            Path.mkdir_p (Path.build (sandboxed path)))
+
+    let link_function ~(mode : Sandbox_mode.some) =
+      let win32_error mode =
+        let mode = Sandbox_mode.to_string (Some mode) in
+        Code_error.raise
+          (sprintf
+             "Don't have %ss on win32, but [%s] sandboxing mode was selected. \
+              To use emulation via copy, the [copy] sandboxing mode should be \
+              selected."
+             mode mode)
+          []
+      in
+      Staged.stage
+        (match mode with
+        | Symlink -> (
+          match Sys.win32 with
+          | true -> win32_error mode
+          | false -> fun src dst -> Io.portable_symlink ~src ~dst)
+        | Copy -> fun src dst -> Io.copy_file ~src ~dst ()
+        | Hardlink -> (
+          match Sys.win32 with
+          | true -> win32_error mode
+          | false -> fun src dst -> Io.portable_hardlink ~src ~dst))
+
+    let link_deps ~sandboxed ~mode ~deps =
+      let link = Staged.unstage (link_function ~mode) in
+      Path.Map.iteri deps ~f:(fun path _ ->
+          match Path.as_in_build_dir path with
+          | None ->
+            (* This can actually raise if we try to sandbox the "copy from
+               source dir" rules. There is no reason to do that though. *)
+            if Path.is_in_source_tree path then
+              Code_error.raise
+                "Action depends on source tree. All actions should depend on \
+                 the copies in build directory instead"
+                [ ("path", Path.to_dyn path) ]
+          | Some p -> link path (Path.build (sandboxed p)))
+  end
+
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
       ~dir ~targets =
@@ -1478,21 +1535,7 @@ end = struct
         let sandboxed path : Path.Build.t =
           Path.Build.append_local sandbox_dir (Path.Build.local path)
         in
-        Path.Set.iter
-          (Path.Set.union (Dep.Facts.dirs deps) chdirs)
-          ~f:(fun path ->
-            match Path.as_in_build_dir path with
-            | None ->
-              (* This [path] is not in the build directory, so we do not need to
-                 create it. If it comes from [deps], it must exist already. If
-                 it comes from [chdirs], we'll ensure that it exists in the call
-                 to [Fs.mkdir_p_or_assert_existence] below. *)
-              ()
-            | Some path ->
-              (* There is no point in using the memoized version [Fs.mkdir_p]
-                 since these directories are not shared between actions. *)
-              Path.mkdir_p (Path.build (sandboxed path)));
-        Path.mkdir_p (Path.build (sandboxed dir));
+        Sandbox.create_dirs ~deps ~chdirs ~dir ~sandboxed;
         let deps =
           if Execution_parameters.expand_aliases_in_sandbox execution_parameters
           then
@@ -1500,8 +1543,8 @@ end = struct
           else
             Dep.Facts.paths_without_expanding_aliases deps
         in
-        ( Some sandboxed
-        , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps )
+        Sandbox.link_deps ~sandboxed ~mode:sandbox_mode ~deps;
+        (Some sandboxed, Action.sandbox action ~sandboxed)
     in
     let* () =
       Fiber.parallel_iter_set

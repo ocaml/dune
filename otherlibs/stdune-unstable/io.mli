@@ -17,3 +17,9 @@ val read_all : in_channel -> string
 include Io_intf.S with type path = Path.t
 
 module String_path : Io_intf.S with type path = string
+
+(** Symlink with fallback to copy on systems that don't support it. *)
+val portable_symlink : src:Path.t -> dst:Path.t -> unit
+
+(** Hardlink with fallback to copy on systems that don't support it. *)
+val portable_hardlink : src:Path.t -> dst:Path.t -> unit

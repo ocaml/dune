@@ -300,3 +300,48 @@ module String_path = Make (struct
 
   let to_string x = x
 end)
+
+let portable_symlink ~src ~dst =
+  if Stdlib.Sys.win32 then
+    copy_file ~src ~dst ()
+  else
+    let src =
+      match Path.parent dst with
+      | None -> Path.to_string src
+      | Some from -> Path.reach ~from src
+    in
+    let dst = Path.to_string dst in
+    match Unix.readlink dst with
+    | target ->
+      if target <> src then (
+        (* @@DRA Win32 remove read-only attribute needed when symlinking
+           enabled *)
+        Unix.unlink dst;
+        Unix.symlink src dst
+      )
+    | exception _ -> Unix.symlink src dst
+
+let portable_hardlink ~src ~dst =
+  (* CR-someday amokhov: Instead of always falling back to copying, we could
+     detect if hardlinking works on Windows and if yes, use it. We do this in
+     the Dune cache implementation, so we can share some code. *)
+  match Stdlib.Sys.win32 with
+  | true -> copy_file ~src ~dst ()
+  | false -> (
+    let rec follow_symlinks name =
+      match Unix.readlink name with
+      | link_name ->
+        let name = Filename.concat (Filename.dirname name) link_name in
+        follow_symlinks name
+      | exception Unix.Unix_error (Unix.EINVAL, _, _) -> name
+    in
+    let src = follow_symlinks (Path.to_string src) in
+    let dst = Path.to_string dst in
+    try Unix.link src dst with
+    | Unix.Unix_error (Unix.EEXIST, _, _) ->
+      (* CR-someday amokhov: Investigate why we need to occasionally clear the
+         destination (we also do this in the symlink case above). Perhaps, the
+         list of dependencies may have duplicates? If yes, it may be better to
+         filter out the duplicates first. *)
+      Unix.unlink dst;
+      Unix.link src dst)

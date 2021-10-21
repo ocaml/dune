@@ -1469,9 +1469,16 @@ end = struct
           (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
     let chdirs = Action.chdirs action in
-    let sandboxed, action =
+    let* sandboxed, action =
       match sandbox with
-      | None -> (None, action)
+      | None ->
+        let+ () =
+          Fiber.parallel_iter_set
+            (module Path.Set)
+            chdirs
+            ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_assert_existence ~loc p))
+        in
+        (None, action)
       | Some (sandbox_dir, sandbox_mode) ->
         init_sandbox ();
         Path.rm_rf (Path.build sandbox_dir);
@@ -1500,14 +1507,9 @@ end = struct
           else
             Dep.Facts.paths_without_expanding_aliases deps
         in
-        ( Some sandboxed
-        , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps )
-    in
-    let* () =
-      Fiber.parallel_iter_set
-        (module Path.Set)
-        chdirs
-        ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_assert_existence ~loc p))
+        Fiber.return
+          ( Some sandboxed
+          , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps )
     in
     let build_deps deps = Memo.Build.run (build_deps deps) in
     let root =

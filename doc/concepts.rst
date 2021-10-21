@@ -419,67 +419,67 @@ For instance:
     (libraries (re_export foo)))
 
 This states that this library explicitly re-exports the interface of
-``foo``.  Concretely, when something depends on ``bar`` it will also
+``foo``.  Concretely, when something depends on ``bar``, it will also
 be able to see ``foo`` independently of whether :ref:`implicit
 transitive dependencies<implicit_transitive_deps>` are allowed or
 not. When they are allowed, which is the default, all transitive
-dependencies are visible whether they are marked as re-exported or
+dependencies are visible, whether they are marked as re-exported or
 not.
 
 .. _preprocessing-spec:
 
-Preprocessing specification
+PreprocessingSspecification
 ===========================
 
 Dune accepts three kinds of preprocessing:
 
-- ``no_preprocessing``, meaning that files are given as it to the compiler, this
-  is the default
-- ``(action <action>)`` to preprocess files using the given action
-- ``(pps <ppx-rewriters-and-flags>)`` to preprocess files using the given list
-  of ppx rewriters
+- ``no_preprocessing`` means that files are given as-is to the compiler, which
+  is the default.
+- ``(action <action>)`` is used to preprocess files using the given action.
+- ``(pps <ppx-rewriters-and-flags>)`` used to preprocess files using the given list
+  of PPX rewriters.
 - ``(staged_pps <ppx-rewriters-and-flags>)`` is similar to ``(pps ...)``
-  but behave slightly differently and is needed for certain ppx rewriters
-  (see below for details)
+  but behave slightly differently. It's needed for certain PPX rewriters
+  (see below for details).
 - ``future_syntax`` is a special value that brings some of the newer
   OCaml syntaxes to older compilers. See :ref:`Future syntax
-  <future-syntax>` for more details
+  <future-syntax>` for more details.
 
 Dune normally assumes that the compilation pipeline is sequenced as
-follow:
+follows:
 
 - code generation (including preprocessing)
 - dependency analysis
 - compilation
 
-Dune uses this fact to optimize the pipeline and in particular share
+Dune uses this fact to optimize the pipeline and, in particular, share
 the result of code generation and preprocessing between the dependency
 analysis and compilation phases. However, some specific code
 generators or preprocessors require feedback from the compilation
-phase. As a result they must be applied in stages as follows:
+phase. As a result, they must be applied in stages as follows:
 
 - first stage of code generation
 - dependency analysis
 - second step of code generation in parallel with compilation
 
-This is the case for ppx rewriters using the OCaml typer for
-instance. When using such ppx rewriters, you must use ``staged_pps``
+This is the case for PPX rewriters using the OCaml type, for
+instance. When using such PPX rewriters, you must use ``staged_pps``
 instead of ``pps`` in order to force Dune to use the second pipeline,
 which is slower but necessary in this case.
 
 .. _preprocessing-actions:
 
-Preprocessing with actions
+Preprocessing with Actions
 --------------------------
 
 ``<action>`` uses the same DSL as described in the `User actions`_
 section, and for the same reason given in that section, it will be
-executed from the root of the current build context. It is expected to
-be an action that reads the file given as only dependency named
+executed from the root of the current build context. It's expected to
+be an action that reads the file given as a dependency named
 ``input-file`` and outputs the preprocessed file on its standard output.
 
 More precisely, ``(preprocess (action <action>))`` acts as if
-you had setup a rule for every file of the form:
+you had set up a rule for every file of the form:
 
    .. code:: lisp
 
@@ -492,12 +492,12 @@ you had setup a rule for every file of the form:
 The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
 ``(system "<command> %{input-file}")``.
 
-Preprocessing with ppx rewriters
+Preprocessing with PPX Rewriters
 --------------------------------
 
 ``<ppx-rewriters-and-flags>`` is expected to be a sequence where each
 element is either a command line flag if starting with a ``-`` or the
-name of a library.  If you want to pass command line flags that do not
+name of a library.  If you want to pass command line flags that don't
 start with a ``-``, you can separate library names from flags using
 ``--``. So for instance from the following ``preprocess`` field:
 
@@ -505,23 +505,23 @@ start with a ``-``, you can separate library names from flags using
 
        (preprocess (pps ppx1 -foo ppx2 -- -bar 42))
 
-The list of libraries will be ``ppx1`` and ``ppx2`` and the command line
+The list of libraries will be ``ppx1`` and ``ppx2``, and the command line
 arguments will be: ``-foo -bar 42``.
 
-Libraries listed here should be libraries implementing an OCaml AST rewriter and
+Libraries listed here should be ones implementing an OCaml AST rewriter and
 registering themselves using the `ocaml-migrate-parsetree.driver API
 <https://github.com/let-def/ocaml-migrate-parsetree>`__.
 
 Dune will build a single executable by linking all these libraries and their
-dependencies. Note that it is important that all these libraries are linked with
+dependencies together. Note that it is important that all these libraries are linked with
 ``-linkall``. Dune automatically uses ``-linkall`` when the ``(kind ...)``
 field is set to ``ppx_rewriter`` or ``ppx_deriver``.
 
-Per module preprocessing specification
+Per Module Preprocessing Specification
 --------------------------------------
 
-By default a preprocessing specification will apply to all modules in the
-library/set of executables. It is possible to select the preprocessing on a
+By default, a preprocessing specification applies to all modules in the
+library/set of executables. It's possible to select the preprocessing on a
 module-by-module basis by using the following syntax:
 
  .. code:: scheme
@@ -531,8 +531,8 @@ module-by-module basis by using the following syntax:
                  (<spec2> <module-list2>)
                  ...))
 
-Where ``<spec1>``, ``<spec2>``, ... are preprocessing specifications
-and ``<module-list1>``, ``<module-list2>``, ... are list of module
+Where ``<spec1>``, ``<spec2>``, etc. are preprocessing specifications
+and ``<module-list1>``, ``<module-list2>``, etc., are list of module
 names.
 
 For instance:
@@ -545,7 +545,7 @@ For instance:
 
 .. _future-syntax:
 
-Future syntax
+Future Syntax
 -------------
 
 The ``future_syntax`` preprocessing specification is equivalent to
@@ -555,26 +555,26 @@ backports some of the newer syntax elements. This allows you to use some of
 the new OCaml features while keeping compatibility with older
 compilers.
 
-One example of supported syntax is the custom let-syntax that was
-introduced in 4.08, allowing the user to define custom let operators.
+One example of supported syntax is the custom ``let-syntax`` that was
+introduced in 4.08, allowing the user to define custom ``let`` operators.
 
 Note that this feature is implemented by the third-party
 `ocaml-syntax-shims project
 <https://github.com/ocaml-ppx/ocaml-syntax-shims>`_, so if you use
-this feature you must also declare a dependency on this package.
+this feature, you must also declare a dependency on this package.
 
 .. _preprocessor-deps:
 
-Preprocessor dependencies
+Preprocessor Dependencies
 -------------------------
 
 If your preprocessor needs extra dependencies you should use the
-``preprocessor_deps`` field available in the ``library``, ``executable`` and
+``preprocessor_deps`` field available in the ``library``, ``executable``, and
 ``executables`` stanzas.
 
 .. _deps-field:
 
-Dependency specification
+Dependency Specification
 ========================
 
 Dependencies in ``dune`` files can be specified using one of the following:
@@ -583,37 +583,37 @@ Dependencies in ``dune`` files can be specified using one of the following:
 
 - ``(:name <dependencies>)`` will bind the list of dependencies to the
   ``name`` variable. This variable will be available as ``%{name}`` in actions.
-- ``(file <filename>)`` or simply ``<filename>``: depend on this file
-- ``(alias <alias-name>)``: depend on the construction of this alias, for
-  instance: ``(alias src/runtest)``
-- ``(alias_rec <alias-name>)``: depend on the construction of this
+- ``(file <filename>)``, or simply ``<filename>``, depend on this file.
+- ``(alias <alias-name>)`` depends on the construction of this alias. For
+  instance: ``(alias src/runtest)``.
+- ``(alias_rec <alias-name>)`` depends on the construction of this
   alias recursively in all children directories wherever it is
   defined. For instance: ``(alias_rec src/runtest)`` might depend on
-  ``(alias src/runtest)``, ``(alias src/foo/bar/runtest)``, ...
-- ``(glob_files <glob>)``: depend on all files matched by ``<glob>``, see the
-  :ref:`glob <glob>` for details
-- ``(glob_files_rec <glob>)``: is the recursive version of
-``(glob_files <glob>)``. See the :ref:`glob <glob>` for details
-- ``(source_tree <dir>)``: depend on all source files in the subtree with root
-  ``<dir>``
+  ``(alias src/runtest)``, ``(alias src/foo/bar/runtest)``, etc.
+- ``(glob_files <glob>)`` depends on all files matched by ``<glob>``. See the
+  :ref:`glob <glob>` for details.
+- ``(glob_files_rec <glob>)``is the recursive version of
+``(glob_files <glob>)``. See the :ref:`glob <glob>` for details.
+- ``(source_tree <dir>)`` depends on all source files in the subtree with root
+  ``<dir>``.
 
-- ``(universe)``: depend on everything in the universe. This is for
-  cases where dependencies are too hard to specify. Note that dune
+- ``(universe)``depends on everything in the universe. This is for
+  cases where dependencies are too hard to specify. Note that Dune
   will not be able to cache the result of actions that depend on the
   universe. In any case, this is only for dependencies in the
-  installed world, you must still specify all dependencies that come
+  installed world. You must still specify all dependencies that come
   from the workspace.
-- ``(package <pkg>)`` depend on all files installed by ``<package>``, as well
+- ``(package <pkg>)`` depends on all files installed by ``<package>``, as well
   as on the transitive package dependencies of ``<package>``. This can be used
-  to test a command against the files that will be installed
-- ``(env_var <var>)``: depend on the value of the environment variable ``<var>``.
+  to test a command against the files that will be installed.
+- ``(env_var <var>)`` depends on the value of the environment variable ``<var>``.
   If this variable becomes set, becomes unset, or changes value, the target
   will be rebuilt.
-- ``(sandbox <config>)``: require a particular sandboxing configuration.
+- ``(sandbox <config>)`` requires a particular sandboxing configuration.
   ``<config>`` can be one (or many) of:
 
-  - ``always``: the action requires a clean environment.
-  - ``none``: the action must run in the build directory.
+  - ``always``: the action requires a clean environment
+  - ``none``: the action must run in the build directory
   - ``preserve_file_kind``: the action needs the files it reads to look
     like normal files (so dune won't use symlinks for sandboxing)
 
@@ -622,9 +622,9 @@ In all these cases, the argument supports :ref:`variables`.
 Named Dependencies
 ------------------
 
-dune allows a user to organize dependency lists by naming them. The user is
+Dune allows a user to organize dependency lists by naming them. The user is
 allowed to assign a group of dependencies a name that can later be referred to
-in actions (like the ``%{deps}``, ``%{target}`` and ``%{targets}`` built in variables).
+in actions (like the ``%{deps}``, ``%{target}``, and ``%{targets}`` built in variables).
 
 One instance where this is useful is for naming globs. Here's an
 example of an imaginary bundle command:
@@ -641,10 +641,10 @@ example of an imaginary bundle command:
     (action
      (run %{bin:bundle} index.html -css %{css} -js %{js} -img %{img} -o %{target})))
 
-Note that such named dependency list can also include unnamed
+Note that a named dependency list can also include unnamed
 dependencies (like ``index.html`` in the example above). Also, such
-user defined names will shadow built in variables. So
-``(:workspace_root x)`` will shadow the built in ``%{workspace_root}``
+user defined names will shadow build in variables, so
+``(:workspace_root x)`` will shadow the built-in ``%{workspace_root}``
 variable.
 
 .. _glob:
@@ -666,24 +666,24 @@ Dune supports globbing files in a single directory via ``(glob_files
 
 The glob syntax is interpreted as follows:
 
-- ``\<char>`` matches exactly ``<char>``, even if it is a special character
-  (``*``, ``?``, ...)
-- ``*`` matches any sequence of characters, except if it comes first in which
-  case it matches any character that is not ``.`` followed by anything
+- ``\<char>`` matches exactly ``<char>``, even if it's a special character
+  (``*``, ``?``, ...).
+- ``*`` matches any sequence of characters, except if it comes first, in which
+  case it matches any character that is not ``.`` followed by anything.
 - ``**`` matches any character that is not ``.`` followed by anything, except if
-  it comes first in which case it matches anything
-- ``?`` matches any single character
-- ``[<set>]`` matches any character that is part of ``<set>``
-- ``[!<set>]`` matches any character that is not part of ``<set>``
+  it comes first, in which case it matches anything.
+- ``?`` matches any single character.
+- ``[<set>]`` matches any character that is part of ``<set>``.
+- ``[!<set>]`` matches any character that is not part of ``<set>``.
 - ``{<glob1>,<glob2>,...,<globn>}`` matches any string that is matched by one of
-  ``<glob1>``, ``<glob2>``, ...
+  ``<glob1>``, ``<glob2>``, etc.
 
 .. _ocaml-flags:
 
-OCaml flags
+OCaml Flags
 ===========
 
-In ``library``, ``executable``, ``executables`` and ``env`` stanzas,
+In ``library``, ``executable``, ``executables``, and ``env`` stanzas,
 you can specify OCaml compilation flags using the following fields:
 
 - ``(flags <flags>)`` to specify flags passed to both ``ocamlc`` and
@@ -695,7 +695,7 @@ For all these fields, ``<flags>`` is specified in the `Ordered set language`_.
 These fields all support ``(:include ...)`` forms.
 
 The default value for ``(flags ...)`` is taken from the environment,
-as a result it is recommended to write ``(flags ...)`` fields as
+as a result it's recommended to write ``(flags ...)`` fields as
 follows:
 
 .. code:: scheme
@@ -704,23 +704,23 @@ follows:
 
 .. _user-actions:
 
-User actions
+User Actions
 ============
 
 ``(action ...)`` fields describe user actions.
 
 User actions are always run from the same subdirectory of the current build
-context as the dune file they are defined in. So for instance an action defined
+context as the ``dune`` file they are defined in, so for instance, an action defined
 in ``src/foo/dune`` will be run from ``$build/<context>/src/foo``.
 
-The argument of ``(action ...)`` fields is a small DSL that is interpreted by
-dune directly and doesn't require an external shell. All atoms in the DSL
+The argument of ``(action ...)`` fields is a small DSL that's interpreted by
+Dune directly and doesn't require an external shell. All atoms in the DSL
 support :ref:`variables`. Moreover, you don't need to specify dependencies
-explicitly for the special ``%{<kind>:...}`` forms, these are recognized and
-automatically handled by dune.
+explicitly for the special ``%{<kind>:...}`` forms; these are recognized and
+automatically handled by Dune.
 
 The DSL is currently quite limited, so if you want to do something complicated
-it is recommended to write a small OCaml program and use the DSL to invoke it.
+it's recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
 scripts or :ref:`configurator` for configuration related tasks. You can also
 use :ref:`dune-action-plugin` to express program dependencies directly in the

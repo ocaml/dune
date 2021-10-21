@@ -607,8 +607,6 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
                 (pp_path (Path.build target) :: error))
         ])
 
-let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
-
 let rec with_locks t mutexes ~f =
   match mutexes with
   | [] -> f ()
@@ -1353,18 +1351,6 @@ end = struct
 
   let start_rule t _rule = t.rule_total <- t.rule_total + 1
 
-  (* Same as [rename] except that if the source doesn't exist we delete the
-     destination *)
-  let rename_optional_file ~src ~dst =
-    let src = Path.Build.to_string src in
-    let dst = Path.Build.to_string dst in
-    match Unix.rename src dst with
-    | () -> ()
-    | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) -> (
-      match Unix.unlink dst with
-      | exception Unix.Unix_error (ENOENT, _, _) -> ()
-      | () -> ())
-
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
   let rule_digest_version = 7
@@ -1437,81 +1423,6 @@ end = struct
     | Not_found_in_cache -> Miss Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
 
-  module Sandbox = struct
-    let init =
-      let init =
-        lazy
-          (let dir = Path.build sandbox_dir in
-           Path.mkdir_p (Path.relative dir ".hg");
-           (* We create an empty [.git] file to prevent git from escaping the
-              sandbox. It will choke on this empty .git and report an error
-              about its format being invalid. *)
-           Io.write_file (Path.relative dir ".git") "";
-           (* We create a [.hg/requires] file to prevent hg from escaping the
-              sandbox. It will complain that "Escaping the Dune sandbox" is an
-              unkown feature. *)
-           Io.write_file
-             (Path.relative dir ".hg/requires")
-             "Escaping the Dune sandbox")
-      in
-      fun () -> Lazy.force init
-
-    let create_dirs ~deps ~chdirs ~dir ~sandboxed =
-      Path.Set.iter
-        (Path.Set.add
-           (Path.Set.union (Dep.Facts.dirs deps) chdirs)
-           (Path.build dir))
-        ~f:(fun path ->
-          match Path.as_in_build_dir path with
-          | None ->
-            (* This [path] is not in the build directory, so we do not need to
-               create it. If it comes from [deps], it must exist already. If it
-               comes from [chdirs], we'll ensure that it exists in the call to
-               [Fs.mkdir_p_or_assert_existence] below. *)
-            ()
-          | Some path ->
-            (* There is no point in using the memoized version [Fs.mkdir_p]
-               since these directories are not shared between actions. *)
-            Path.mkdir_p (Path.build (sandboxed path)))
-
-    let link_function ~(mode : Sandbox_mode.some) =
-      let win32_error mode =
-        let mode = Sandbox_mode.to_string (Some mode) in
-        Code_error.raise
-          (sprintf
-             "Don't have %ss on win32, but [%s] sandboxing mode was selected. \
-              To use emulation via copy, the [copy] sandboxing mode should be \
-              selected."
-             mode mode)
-          []
-      in
-      Staged.stage
-        (match mode with
-        | Symlink -> (
-          match Sys.win32 with
-          | true -> win32_error mode
-          | false -> fun src dst -> Io.portable_symlink ~src ~dst)
-        | Copy -> fun src dst -> Io.copy_file ~src ~dst ()
-        | Hardlink -> (
-          match Sys.win32 with
-          | true -> win32_error mode
-          | false -> fun src dst -> Io.portable_hardlink ~src ~dst))
-
-    let link_deps ~sandboxed ~mode ~deps =
-      let link = Staged.unstage (link_function ~mode) in
-      Path.Map.iteri deps ~f:(fun path _ ->
-          match Path.as_in_build_dir path with
-          | None ->
-            (* This can actually raise if we try to sandbox the "copy from
-               source dir" rules. There is no reason to do that though. *)
-            if Path.is_in_source_tree path then
-              Code_error.raise
-                "Action depends on source tree. All actions should depend on \
-                 the copies in build directory instead"
-                [ ("path", Path.to_dyn path) ]
-          | Some p -> link path (Path.build (sandboxed p)))
-  end
-
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
       ~dir ~targets =
@@ -1520,31 +1431,18 @@ end = struct
       action
     in
     pending_targets := Path.Build.Set.union targets !pending_targets;
+    let chdirs = Action.chdirs action in
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
-          let sandbox_suffix = rule_digest |> Digest.to_string in
-          (Path.Build.relative sandbox_dir sandbox_suffix, mode))
+          Sandbox.create ~mode ~deps ~rule_dir:dir ~chdirs ~rule_digest
+            ~expand_aliases:
+              (Execution_parameters.expand_aliases_in_sandbox
+                 execution_parameters))
     in
-    let chdirs = Action.chdirs action in
-    let sandboxed, action =
+    let action =
       match sandbox with
-      | None -> (None, action)
-      | Some (sandbox_dir, sandbox_mode) ->
-        Sandbox.init ();
-        Path.rm_rf (Path.build sandbox_dir);
-        let sandboxed path : Path.Build.t =
-          Path.Build.append_local sandbox_dir (Path.Build.local path)
-        in
-        Sandbox.create_dirs ~deps ~chdirs ~dir ~sandboxed;
-        let deps =
-          if Execution_parameters.expand_aliases_in_sandbox execution_parameters
-          then
-            Dep.Facts.paths deps
-          else
-            Dep.Facts.paths_without_expanding_aliases deps
-        in
-        Sandbox.link_deps ~sandboxed ~mode:sandbox_mode ~deps;
-        (Some sandboxed, Action.sandbox action ~sandboxed)
+      | None -> action
+      | Some sandbox -> Action.sandbox action sandbox
     in
     let* () =
       Fiber.parallel_iter_set
@@ -1554,26 +1452,26 @@ end = struct
     in
     let build_deps deps = Memo.Build.run (build_deps deps) in
     let root =
-      (match context with
+      match context with
       | None -> Path.Build.root
-      | Some context -> context.build_dir)
-      |> Option.value sandboxed ~default:Fun.id
-      |> Path.build
+      | Some context -> context.build_dir
+    in
+    let root =
+      Path.build
+        (match sandbox with
+        | None -> root
+        | Some sandbox -> Sandbox.map_path sandbox root)
     in
     let+ exec_result =
       with_locks t locks ~f:(fun () ->
-          let copy_files_from_sandbox sandboxed =
-            Path.Build.Set.iter targets ~f:(fun target ->
-                rename_optional_file ~src:(sandboxed target) ~dst:target)
-          in
           let+ exec_result =
             Action_exec.exec ~root ~context ~env ~targets ~rule_loc:loc
               ~build_deps ~execution_parameters action
           in
-          Option.iter sandboxed ~f:copy_files_from_sandbox;
+          Option.iter sandbox ~f:(Sandbox.move_targets_to_build_dir ~targets);
           exec_result)
     in
-    Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
+    Option.iter sandbox ~f:Sandbox.destroy;
     (* All went well, these targets are no longer pending *)
     pending_targets := Path.Build.Set.diff !pending_targets targets;
     exec_result

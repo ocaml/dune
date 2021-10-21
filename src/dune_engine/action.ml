@@ -201,17 +201,17 @@ let rec is_dynamic = function
   | Format_dune_file _ ->
     false
 
-let maybe_sandbox_path f p =
+let maybe_sandbox_path sandbox p =
   match Path.as_in_build_dir p with
   | None -> p
-  | Some p -> Path.build (f p)
+  | Some p -> Path.build (Sandbox.map_path sandbox p)
 
-let sandbox t ~sandboxed : t =
+let sandbox t sandbox : t =
   map t ~dir:Path.root
     ~f_string:(fun ~dir:_ x -> x)
-    ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandboxed p)
-    ~f_target:(fun ~dir:_ -> sandboxed)
-    ~f_program:(fun ~dir:_ -> Result.map ~f:(maybe_sandbox_path sandboxed))
+    ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandbox p)
+    ~f_target:(fun ~dir:_ p -> Sandbox.map_path sandbox p)
+    ~f_program:(fun ~dir:_ p -> Result.map p ~f:(maybe_sandbox_path sandbox))
 
 type is_useful =
   | Clearly_not

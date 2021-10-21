@@ -78,10 +78,6 @@ end
 
 include Action_ast.Make (Prog) (Dpath) (Dpath.Build) (String_with_sexp) (Ast)
 
-type path = Path.t
-
-type target = Path.Build.t
-
 type string = String.t
 
 module For_shell = struct
@@ -205,60 +201,17 @@ let rec is_dynamic = function
   | Format_dune_file _ ->
     false
 
-let prepare_managed_paths ~link ~sandboxed deps =
-  let steps =
-    Path.Map.foldi deps ~init:[] ~f:(fun path _ acc ->
-        match Path.as_in_build_dir path with
-        | None ->
-          (* This can actually raise if we try to sandbox the "copy from source
-             dir" rules. There is no reason to do that though. *)
-          if Path.is_in_source_tree path then
-            Code_error.raise
-              "Action depends on source tree. All actions should depend on the \
-               copies in build directory instead"
-              [ ("path", Path.to_dyn path) ];
-          acc
-        | Some p -> link path (sandboxed p) :: acc)
-  in
-  Progn steps
-
-let link_function ~(mode : Sandbox_mode.some) : path -> target -> t =
-  let win32_error mode =
-    let mode = Sandbox_mode.to_string (Some mode) in
-    Code_error.raise
-      (sprintf
-         "Don't have %ss on win32, but [%s] sandboxing mode was selected. To \
-          use emulation via copy, the [copy] sandboxing mode should be \
-          selected."
-         mode mode)
-      []
-  in
-  match mode with
-  | Symlink -> (
-    match Sys.win32 with
-    | true -> win32_error mode
-    | false -> fun a b -> Symlink (a, b))
-  | Copy -> fun a b -> Copy (a, b)
-  | Hardlink -> (
-    match Sys.win32 with
-    | true -> win32_error mode
-    | false -> fun a b -> Hardlink (a, b))
-
-let maybe_sandbox_path f p =
+let maybe_sandbox_path sandbox p =
   match Path.as_in_build_dir p with
   | None -> p
-  | Some p -> Path.build (f p)
+  | Some p -> Path.build (Sandbox.map_path sandbox p)
 
-let sandbox t ~sandboxed ~mode ~deps : t =
-  let link = link_function ~mode in
-  Progn
-    [ prepare_managed_paths ~sandboxed ~link deps
-    ; map t ~dir:Path.root
-        ~f_string:(fun ~dir:_ x -> x)
-        ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandboxed p)
-        ~f_target:(fun ~dir:_ -> sandboxed)
-        ~f_program:(fun ~dir:_ -> Result.map ~f:(maybe_sandbox_path sandboxed))
-    ]
+let sandbox t sandbox : t =
+  map t ~dir:Path.root
+    ~f_string:(fun ~dir:_ x -> x)
+    ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandbox p)
+    ~f_target:(fun ~dir:_ p -> Sandbox.map_path sandbox p)
+    ~f_program:(fun ~dir:_ p -> Result.map p ~f:(maybe_sandbox_path sandbox))
 
 type is_useful =
   | Clearly_not

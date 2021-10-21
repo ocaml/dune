@@ -709,7 +709,7 @@ All available cache layers: %s.|}
   in
   value initial
 
-let term =
+let term ~default_root_is_cwd =
   let docs = copts_sect in
   let+ config_from_command_line = shared_with_config_file
   and+ debug_dep_path =
@@ -947,7 +947,10 @@ let term =
              deterministic order.")
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
-  let root = Workspace_root.create ~specified_by_user:root in
+  let root =
+    Workspace_root.create ~default_is_cwd:default_root_is_cwd
+      ~specified_by_user:root
+  in
   let rpc =
     match watch with
     | Yes _ -> Some (Dune_rpc_impl.Server.create ~root:root.dir)
@@ -1004,8 +1007,12 @@ let term =
 
 let set_rpc t rpc = { t with rpc = Some rpc }
 
+let term_with_default_root_is_cwd =
+  let+ t, orig_args = Term.with_used_args (term ~default_root_is_cwd:true) in
+  { t with orig_args }
+
 let term =
-  let+ t, orig_args = Term.with_used_args term in
+  let+ t, orig_args = Term.with_used_args (term ~default_root_is_cwd:false) in
   { t with orig_args }
 
 let config_from_config_file = Options_implied_by_dash_p.config_term

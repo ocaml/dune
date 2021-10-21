@@ -62,15 +62,22 @@ let find () =
   in
   loop 0 ~to_cwd:[] cwd ~candidate:None
 
-let create ~specified_by_user =
+let create ~default_is_cwd ~specified_by_user =
   match
     match specified_by_user with
     | Some dn -> Some { Candidate.kind = Explicit; dir = dn; to_cwd = [] }
-    | None ->
+    | None -> (
+      let cwd = { Candidate.kind = Cwd; dir = "."; to_cwd = [] } in
       if Dune_util.Config.inside_dune then
-        Some { kind = Cwd; dir = "."; to_cwd = [] }
+        Some cwd
       else
-        find ()
+        match find () with
+        | Some s -> Some s
+        | None ->
+          if default_is_cwd then
+            Some cwd
+          else
+            None)
   with
   | Some { Candidate.dir; to_cwd; kind } ->
     { kind

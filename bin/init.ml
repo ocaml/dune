@@ -143,7 +143,7 @@ let man =
 let info = Term.info "init" ~doc ~man
 
 let term =
-  let+ common_term = Common.term
+  let+ common_term = Common.term_with_default_root_is_cwd
   and+ kind =
     (* TODO(shonfeder): Replace with nested subcommand once we have support for
        that *)

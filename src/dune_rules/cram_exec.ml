@@ -135,6 +135,12 @@ let cram_stanzas lexbuf =
 
 let run_expect_test file ~f =
   let file_contents = Io.read_file ~binary:false file in
+  (* Nasty hack so that the user doesn't observe the test file while running the
+     test.
+
+     Eventually, we should just have a way to read the source from outside the
+     sandbox. *)
+  Path.unlink_no_err file;
   let open Fiber.O in
   let+ expected =
     let lexbuf =
@@ -144,6 +150,8 @@ let run_expect_test file ~f =
   in
   let corrected_file = Path.extend_basename file ~suffix:".corrected" in
   if file_contents <> expected then
+    (* we only need to restore the test file so the diff doesn't fail *)
+    let () = Io.write_file file file_contents in
     Io.write_file ~binary:false corrected_file expected
   else if Path.exists corrected_file then
     Path.rm_rf corrected_file

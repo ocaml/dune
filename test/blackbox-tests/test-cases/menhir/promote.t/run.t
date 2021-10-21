@@ -14,4 +14,3 @@ Check what is being generated exactly:
   parser.ml
   parser.mli
   parser.mly
-  run.t

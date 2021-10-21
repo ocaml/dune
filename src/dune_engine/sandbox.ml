@@ -95,6 +95,8 @@ let create ~mode ~deps ~rule_dir ~chdirs ~rule_digest ~expand_aliases =
     else
       Dep.Facts.paths_without_expanding_aliases deps
   in
+  (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
+     targets produced dynamically will be unavailable. *)
   link_deps t ~mode ~deps;
   t
 

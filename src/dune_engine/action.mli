@@ -89,7 +89,7 @@ val empty : t
 val is_dynamic : t -> bool
 
 (** Re-root all the paths in the action to their sandbox version *)
-val sandbox : t -> sandboxed:(Path.Build.t -> Path.Build.t) -> t
+val sandbox : t -> sandbox_dir:Path.Build.t -> t
 
 type is_useful =
   | Clearly_not

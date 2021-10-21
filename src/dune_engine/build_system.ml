@@ -1456,7 +1456,7 @@ end = struct
     | Error exn -> Miss (Error (Printexc.to_string exn))
 
   module Sandbox = struct
-    let create_dirs ~deps ~chdirs ~dir ~sandboxed =
+    let create_dirs ~deps ~chdirs ~dir ~sandbox_dir =
       Path.Set.iter
         (Path.Set.add
            (Path.Set.union (Dep.Facts.dirs deps) chdirs)
@@ -1472,7 +1472,7 @@ end = struct
           | Some path ->
             (* There is no point in using the memoized version [Fs.mkdir_p]
                since these directories are not shared between actions. *)
-            Path.mkdir_p (Path.build (sandboxed path)))
+            Path.mkdir_p (Path.build (Path.Build.append sandbox_dir path)))
 
     let link_function ~(mode : Sandbox_mode.some) =
       let win32_error mode =
@@ -1497,7 +1497,7 @@ end = struct
           | true -> win32_error mode
           | false -> fun src dst -> Io.portable_hardlink ~src ~dst))
 
-    let link_deps ~sandboxed ~mode ~deps =
+    let link_deps ~sandbox_dir ~mode ~deps =
       let link = Staged.unstage (link_function ~mode) in
       Path.Map.iteri deps ~f:(fun path _ ->
           match Path.as_in_build_dir path with
@@ -1509,7 +1509,7 @@ end = struct
                 "Action depends on source tree. All actions should depend on \
                  the copies in build directory instead"
                 [ ("path", Path.to_dyn path) ]
-          | Some p -> link path (Path.build (sandboxed p)))
+          | Some p -> link path (Path.build (Path.Build.append sandbox_dir p)))
   end
 
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
@@ -1526,16 +1526,18 @@ end = struct
           (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
     let chdirs = Action.chdirs action in
-    let sandboxed, action =
+    let root =
+      match context with
+      | None -> Path.Build.root
+      | Some context -> context.build_dir
+    in
+    let root, action =
       match sandbox with
-      | None -> (None, action)
+      | None -> (root, action)
       | Some (sandbox_dir, sandbox_mode) ->
         init_sandbox ();
         Path.rm_rf (Path.build sandbox_dir);
-        let sandboxed path : Path.Build.t =
-          Path.Build.append_local sandbox_dir (Path.Build.local path)
-        in
-        Sandbox.create_dirs ~deps ~chdirs ~dir ~sandboxed;
+        Sandbox.create_dirs ~deps ~chdirs ~dir ~sandbox_dir;
         let deps =
           if Execution_parameters.expand_aliases_in_sandbox execution_parameters
           then
@@ -1543,8 +1545,9 @@ end = struct
           else
             Dep.Facts.paths_without_expanding_aliases deps
         in
-        Sandbox.link_deps ~sandboxed ~mode:sandbox_mode ~deps;
-        (Some sandboxed, Action.sandbox action ~sandboxed)
+        Sandbox.link_deps ~sandbox_dir ~mode:sandbox_mode ~deps;
+        let root = Path.Build.append sandbox_dir root in
+        (root, Action.sandbox action ~sandbox_dir)
     in
     let* () =
       Fiber.parallel_iter_set
@@ -1553,24 +1556,20 @@ end = struct
         ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_assert_existence ~loc p))
     in
     let build_deps deps = Memo.Build.run (build_deps deps) in
-    let root =
-      (match context with
-      | None -> Path.Build.root
-      | Some context -> context.build_dir)
-      |> Option.value sandboxed ~default:Fun.id
-      |> Path.build
-    in
     let+ exec_result =
       with_locks t locks ~f:(fun () ->
-          let copy_files_from_sandbox sandboxed =
+          let copy_files_from_sandbox ~sandbox_dir =
             Path.Build.Set.iter targets ~f:(fun target ->
-                rename_optional_file ~src:(sandboxed target) ~dst:target)
+                rename_optional_file
+                  ~src:(Path.Build.append sandbox_dir target)
+                  ~dst:target)
           in
           let+ exec_result =
-            Action_exec.exec ~root ~context ~env ~targets ~rule_loc:loc
-              ~build_deps ~execution_parameters action
+            Action_exec.exec ~root:(Path.build root) ~context ~env ~targets
+              ~rule_loc:loc ~build_deps ~execution_parameters action
           in
-          Option.iter sandboxed ~f:copy_files_from_sandbox;
+          Option.iter sandbox ~f:(fun (sandbox_dir, _) ->
+              copy_files_from_sandbox ~sandbox_dir);
           exec_result)
     in
     Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));

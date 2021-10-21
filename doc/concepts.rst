@@ -1,5 +1,5 @@
 ****************
-General concepts
+General Concepts
 ****************
 
 .. _scopes:
@@ -8,64 +8,63 @@ Scopes
 ======
 
 Any directory containing at least one ``<package>.opam`` file defines
-a scope. This scope is the sub-tree starting from this directory,
-excluding any other scopes rooted in sub-directories.
+a scope. This scope is the subtree starting from this directory,
+excluding any other scopes rooted in subdirectories.
 
 Typically, any given project will define a single scope. Libraries and
-executables that are not meant to be installed will be visible inside
+executables that aren't meant to be installed will be visible inside
 this scope only.
 
-Because scopes are exclusive, if you wish to include the dependencies
-of the project you are currently working on into your workspace, you
-may copy them in a ``vendor`` directory, or any other name of your
-choice. Dune will look for them there rather than in the installed
-world and there will be no overlap between the various scopes.
+Because scopes are exclusive, if you wish to include your current project's 
+dependencies in your workspace, you can copy them in a ``vendor`` directory, 
+or any name of your choice. Dune will look for them there rather than in the installed
+world, and there will be no overlap between the various scopes.
 
 .. _ordered-set-language:
 
-Ordered set language
+Ordered Set Language
 ====================
 
-A few fields take as argument an ordered set and can be specified using a small
+A few fields take an ordered set as argument and can be specified using a small
 DSL.
 
-This DSL is interpreted by dune into an ordered set of strings using the
+This DSL is interpreted by Dune into an ordered set of strings using the
 following rules:
 
-- ``:standard`` denotes the standard value of the field when it is absent
+- ``:standard`` denotes the standard value of the field when it's absent
 - an atom not starting with a ``:`` is a singleton containing only this atom
 - a list of sets is the concatenation of its inner sets
 - ``(<sets1> \ <sets2>)`` is the set composed of elements of ``<sets1>`` that do
   not appear in ``<sets2>``
 
 In addition, some fields support the inclusion of an external file using the
-syntax ``(:include <filename>)``. This is useful for instance when you need to
+syntax ``(:include <filename>)``. For instance, this is useful when you need to
 run a script to figure out some compilation flags. ``<filename>`` is expected to
 contain a single S-expression and cannot contain ``(:include ...)`` forms.
 
 Note that inside an ordered set, the first element of a list cannot be
-an atom except if it starts with `-` or `:`. The reason for this is
-that we are planning to add simple programmatic features in the
-futures so that one may write:
+an atom except if it starts with ``-`` or ``:``. The reason for this is
+that we're planning to add simple programmatic features in the
+future so that one may write:
 
 .. code::
 
    (flags (if (>= %{ocaml_version} 4.06) ...))
 
-This restriction will allow to add this feature without introducing a
+This restriction will allow you to add this feature without introducing 
 breaking changes. If you want to write a list where the first element
-doesn't start by `-`, you can simply quote it: ``("x" y z)``.
+doesn't start with ``-``, you can simply quote it: ``("x" y z)``.
 
-Most fields using the ordered set language also support :ref:`variables`.
+Most fields using the ordered set language also support :ref:`variables`. 
 Variables are expanded after the set language is interpreted.
 
 .. _blang:
 
-Boolean language
+Boolean Language
 ================
 
-The boolean language allows the user to define simple boolean expressions that
-dune can evaluate. Here's a semi formal specification of the language:
+The Boolean language allows the user to define simple Boolean expressions that
+Dune can evaluate. Here's a semi-formal specification of the language:
 
 .. code::
 
@@ -77,11 +76,12 @@ dune can evaluate. Here's a semi formal specification of the language:
          | <template>
 
 After an expression is evaluated, it must be exactly the string ``true`` or
-``false`` to be considered as a boolean. Any other value will be treated as an
+``false`` to be considered as a Boolean. Any other value will be treated as an
 error.
 
-Here's a simple example of a condition that expresses running on OSX and having
-an flambda compiler with the help of variable expansion:
+Below is a simple example of a condition expressing that the build 
+has a flambda compiler, with the help of variable expansion, and is 
+targeting OSX:
 
 .. code:: lisp
 
@@ -89,12 +89,12 @@ an flambda compiler with the help of variable expansion:
 
 .. _predicate-lang:
 
-Predicate language
+Predicate Language
 ==================
 
 The predicate language allows the user to define simple predicates
-(boolean-valued functions) that dune can evaluate. Here is a semi formal
-specification of the language:
+(Boolean-valued functions) that Dune can evaluate. Here is a semi-formal
+specification of the predicate language:
 
 .. code::
 
@@ -115,7 +115,7 @@ corresponds to a literal integer.
 Variables
 =========
 
-Some fields can contains variables that are expanded by dune.
+Some fields can contains variables that are expanded by Dune.
 The syntax of variables is as follows:
 
 .. code::
@@ -134,111 +134,112 @@ string.
 Dune supports the following variables:
 
 - ``project_root`` is the root of the current project. It is typically the root
-  of your project and as long as you have a ``dune-project`` file there,
-  ``project_root`` is independent of the workspace configuration
+  of your project, and as long as you have a ``dune-project`` file there,
+  ``project_root`` is independent of the workspace configuration.
 - ``workspace_root`` is the root of the current workspace. Note that
-  the value of ``workspace_root`` is not constant and depends on
-  whether your project is vendored or not
+  the value of ``workspace_root`` isn't constant and depends on
+  whether your project is vendored or not.
 -  ``CC`` is the C compiler command line (list made of the compiler
-   name followed by its flags) that will be used to compile foreign code. For more details about its content see :ref:`this section <flags-flow>`.
+   name followed by its flags) that will be used to compile foreign code. 
+   For more details about its content, please see :ref:`this section <flags-flow>`.
 -  ``CXX`` is the C++ compiler command line being used in the
-   current build context
--  ``ocaml_bin`` is the path where ``ocamlc`` lives
--  ``ocaml`` is the ``ocaml`` binary
--  ``ocamlc`` is the ``ocamlc`` binary
--  ``ocamlopt`` is the ``ocamlopt`` binary
+   current build context.
+-  ``ocaml_bin`` is the path where ``ocamlc`` lives.
+-  ``ocaml`` is the ``ocaml`` binary.
+-  ``ocamlc`` is the ``ocamlc`` binary.
+-  ``ocamlopt`` is the ``ocamlopt`` binary.
 -  ``ocaml_version`` is the version of the compiler used in the
-   current build context
--  ``ocaml_where`` is the output of ``ocamlc -where``
--  ``arch_sixtyfour`` is ``true`` if using a compiler targeting a
-   64 bit architecture and ``false`` otherwise
--  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows
--  ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
-   are the file extension used for various artifacts
+   current build context.
+-  ``ocaml_where`` is the output of ``ocamlc -where``.
+-  ``arch_sixtyfour`` is ``true`` if using a compiler that targets a
+   64-bit architecture and ``false`` otherwise.
+-  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows.
+-  ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll``, and ``ext_exe``
+   are the file extensions used for various artifacts.
 - ``ext_plugin`` is ``.cmxs`` if ``natdynlink`` is supported and
   ``.cma`` otherwise.
-- ``ocaml-config:v`` for every variable ``v`` in the output of
-  ``ocamlc -config``. Note that dune processes the output
+- ``ocaml-config:v`` is for every variable ``v`` in the output of
+  ``ocamlc -config``. Note that Dune processes the output
   of ``ocamlc -config`` in order to make it a bit more stable across
   versions, so the exact set of variables accessible this way might
   not be exactly the same as what you can see in the output of
-  ``ocamlc -config``. In particular, variables added in new versions
-  of OCaml needs to be registered in dune before they can be used
-- ``profile`` the profile selected via ``--profile``
-- ``context_name`` the name of the context (``default`` or defined in the
+  ``ocamlc -config``. In particular, variables added in new OCaml versions
+  need to be registered in Dune before they can be used.
+- ``profile`` is the profile selected via ``--profile``.
+- ``context_name`` is the name of the context (``default``, or defined in the
   workspace file)
 - ``os_type`` is the type of the OS the build is targeting. This is
-  the same as ``ocaml-config:os_type``
+  the same as ``ocaml-config:os_type``.
 - ``architecture`` is the type of the architecture the build is targeting. This
-  is the same as ``ocaml-config:architecture``
+  is the same as ``ocaml-config:architecture``.
 - ``model`` is the type of the CPU the build is targeting. This is
-  the same as ``ocaml-config:model``
+  the same as ``ocaml-config:model``.
 - ``system`` is the name of the OS the build is targeting. This is the same as
-  ``ocaml-config:system``
+  ``ocaml-config:system``.
 - ``ignoring_promoted_rule`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
-  ``false`` otherwise
+  ``false`` otherwise.
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
-- ``env:<var>=<default``, which expands to the value of the environment
+- ``env:<var>=<default`` expands to the value of the environment
   variable ``<var>``, or ``<default>`` if it does not exist.
   For example, ``%{env:BIN=/usr/bin}``.
-  Available since dune 1.4.0.
+  Available since Dune 1.4.0.
 
 In addition, ``(action ...)`` fields support the following special variables:
 
-- ``target`` expands to the one target
-- ``targets`` expands to the list of target
-- ``deps`` expands to the list of dependencies
-- ``^`` expands to the list of dependencies, separated by spaces
+- ``target`` expands to the one target.
+- ``targets`` expands to the list of target.
+- ``deps`` expands to the list of dependencies.
+- ``^`` expands to the list of dependencies, separated by spaces.
 - ``dep:<path>`` expands to ``<path>`` (and adds ``<path>`` as a dependency of
-  the action)
+  the action).
 - ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
-  which case it will expand to ``<path>`` from the host build context
-- ``bin:<program>`` expands to a path to ``program``. If ``program``
-  is installed by a package in the workspace (see :ref:`install` stanzas),
+  which case it will expand to ``<path>`` from the host build context.
+- ``bin:<program>`` expands ``<path>`` to ``program``. If ``program``
+  is installed by a workspace package (see :ref:`install` stanzas),
   the locally built binary will be used, otherwise it will be searched
-  in the ``PATH`` of the current build context. Note that ``(run
+  in the ``<path>`` of the current build context. Note that ``(run
   %{bin:program} ...)`` and ``(run program ...)`` behave in the same
   way. ``%{bin:...}`` is only necessary when you are using ``(bash
-  ...)`` or ``(system ...)``
-- ``bin-available:<program>`` expands to ``true`` or ``false`` depending
+  ...)`` or ``(system ...)``.
+- ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
-- ``lib:<public-library-name>:<file>`` expands to the installation path of
-  the file ``<file>`` in the library ``<public-library-name>``. If
+- ``lib:<public-library-name>:<file>`` expands to the file's installation path 
+``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local
   file will be used, otherwise the one from the installed world will be used.
-- ``lib-private:<library-name>:<file>`` expands to the build path of the file
+- ``lib-private:<library-name>:<file>`` expands to the file's build path 
   ``<file>`` in the library ``<library-name>``. Both public and private library
   names are allowed as long as they refer to libraries within the same project.
-- ``libexec:<public-library-name>:<file>`` is the same as ``lib:...`` except
+- ``libexec:<public-library-name>:<file>`` is the same as ``lib:...``, except
   when cross-compiling, in which case it will expand to the file from the host
   build context.
 - ``libexec-private:<library-name>:<file>`` is the same as ``lib-private:...``
   except when cross-compiling, in which case it will expand to the file from the
   host build context.
 - ``lib-available:<library-name>`` expands to ``true`` or ``false`` depending on
-  whether the library is available or not. A library is available iff at least
+  whether the library is available or not. A library is available if at least
   one of the following conditions holds:
 
-  -  it is part the installed worlds
-  -  it is available locally and is not optional
-  -  it is available locally and all its library dependencies are
-     available
+  -  It's part the installed worlds.
+  -  It's available locally and is not optional.
+  -  It's available locally, and all its library dependencies are
+     available.
 
 - ``version:<package>`` expands to the version of the given
   package. Packages defined in the current scope have priority over the
-  public packages. Public packages that do not install any libraries
-  will not be detected. How dune determines the version
-  of a package is described :ref:`here <package-version>`
-- ``read:<path>`` expands to the contents of the given file
+  public packages. Public packages that don't install any libraries
+  will not be detected. How Dune determines the version
+  of a package is described :ref:`here <package-version>`.
+- ``read:<path>`` expands to the contents of the given file.
 - ``read-lines:<path>`` expands to the list of lines in the given
-  file
+  file.
 - ``read-strings:<path>`` expands to the list of lines in the given
-  file, unescaped using OCaml lexical convention
+  file, unescaped using OCaml lexical convention.
 
 The ``%{<kind>:...}`` forms are what allows you to write custom rules that work
-transparently whether things are installed or not.
+transparently, whether things are installed or not.
 
 Note that aliases are ignored by ``%{deps}``
 
@@ -294,25 +295,26 @@ to a different directory, preferably a standalone one. You can use the
      (rule
       (with-stdout-to y (...))))
 
-#. Expansion of lists
+Expansion of Lists
+------------------
 
-Forms that expands to list of items, such as ``%{cc}``, ``%{deps}``,
-``%{targets}`` or ``%{read-lines:...}``, are suitable to be used in, say,
-``(run <prog> <arguments>)``.  For instance in:
+Forms that expand to a list of items, such as ``%{cc}``, ``%{deps}``,
+``%{targets}``, or ``%{read-lines:...}``, are suitable to be used in
+``(run <prog> <arguments>)``. For instance in:
 
 .. code:: lisp
 
     (run foo %{deps})
 
-if there are two dependencies ``a`` and ``b``, the produced command
+If there are two dependencies, ``a`` and ``b``, the produced command
 will be equivalent to the shell command:
 
 .. code:: shell
 
     $ foo "a" "b"
 
-If you want the two dependencies to be passed as a single argument,
-you have to quote the variable as in:
+If you want both dependencies to be passed as a single argument,
+you must quote the variable:
 
 .. code:: scheme
 
@@ -324,9 +326,9 @@ which is equivalent to the following shell command:
 
     $ foo "a b"
 
-(the items of the list are concatenated with space).
-Note that, since ``%{deps}`` is a list of items, the first one may be
-used as a program name, for instance:
+(The items of the list are concatenated with space.)
+Please note: since ``%{deps}`` is a list of items, the first one may be
+used as a program name. For instance:
 
 .. code:: lisp
 
@@ -346,32 +348,32 @@ Here is another example:
 
 .. _library-deps:
 
-Library dependencies
+Library Dependencies
 ====================
 
-Dependencies on libraries are specified using ``(libraries ...)`` fields in
+Library dependencies are specified using ``(libraries ...)`` fields in
 ``library`` and ``executables`` stanzas.
 
-For libraries defined in the current scope, you can use either the real name or
+For libraries defined in the current scope, you can either use the real name or
 the public name. For libraries that are part of the installed world, or for
 libraries that are part of the current workspace but in another scope, you need
 to use the public name. For instance: ``(libraries base re)``.
 
-When resolving libraries, libraries that are part of the workspace are always
+When resolving libraries, ones that are part of the workspace are always
 preferred to ones that are part of the installed world.
 
 .. _alternative-deps:
 
-Alternative dependencies
+Alternative Dependencies
 ------------------------
 
-In addition to direct dependencies you can specify alternative dependencies.
-This is described in the :ref:`Alternative dependencies <alternative-deps>`
-section
+In addition to direct dependencies, you can specify alternative dependencies.
+This is described in the :ref:`Alternative Dependencies <alternative-deps>`
+section.
 
-It is sometimes the case that one wants to not depend on a specific library, but
-instead on whatever is already installed. For instance to use a different
-backend depending on the target.
+Sometimes, one doesn't want to depend on a specific library but rather 
+on whatever is already installed, e.g., to use a different
+backend, depending on the target.
 
 Dune allows this by using a ``(select ... from ...)`` form inside the list
 of library dependencies.

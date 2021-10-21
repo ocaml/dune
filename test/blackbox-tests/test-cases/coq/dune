@@ -10,4 +10,6 @@
 
 (cram
  (applies_to :whole_subtree)
- (alias all-coq-tests))
+ (alias all-coq-tests)
+ (enabled_if
+   %{bin-available:coqc}))

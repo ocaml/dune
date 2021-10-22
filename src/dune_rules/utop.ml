@@ -52,11 +52,12 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
         match Super_context.stanzas_in sctx ~dir with
         | None -> Memo.Build.return Libs_and_ppxs.empty
         | Some (d : _ Dir_with_dune.t) ->
-          Memo.Build.List.fold_left d.data ~init:Libs_and_ppxs.empty
+          let open Memo.Build.O in
+          let* data = Memo.Lazy.force d.data in
+          Memo.Build.List.fold_left data ~init:Libs_and_ppxs.empty
             ~f:(fun (acc, pps) -> function
             | Dune_file.Library l -> (
               let+ lib =
-                let open Memo.Build.O in
                 let+ resolve =
                   Lib.DB.resolve_when_exists db
                     (l.buildable.loc, Dune_file.Library.best_name l)

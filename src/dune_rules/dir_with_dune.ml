@@ -13,6 +13,11 @@ let data t = t.data
 
 let map t ~f = { t with data = f t.data }
 
+let lazy_force { src_dir; ctx_dir; data; scope; dune_version } =
+  let open Memo.Build.O in
+  let+ data = Memo.Lazy.force data in
+  { src_dir; ctx_dir; data; scope; dune_version }
+
 module Deep_fold (M : Monad.S) = struct
   let rec deep_fold l ~init ~f =
     match l with

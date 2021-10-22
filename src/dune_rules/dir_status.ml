@@ -67,7 +67,8 @@ let check_no_module_consumer stanzas =
 
 module DB = struct
   type nonrec t =
-    { stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
+    { stanzas_per_dir :
+        Dune_file.Stanzas.t Memo.Lazy.t Dir_with_dune.t Path.Build.Map.t
     ; fn : (Path.Build.t, t) Memo.t
     }
 
@@ -108,6 +109,7 @@ module DB = struct
             Is_component_of_a_group_but_not_the_root
               { stanzas = None; group_root })
       | Some d -> (
+        let* d = Dir_with_dune.lazy_force d in
         match get_include_subdirs d.data with
         | Some (loc, Include mode) ->
           Memo.Build.return (T.Group_root (st_dir, (loc, mode), d))

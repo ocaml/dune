@@ -14,6 +14,8 @@ val data : 'data t -> 'data
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
+val lazy_force : 'a Memo.Lazy.t t -> 'a t Memo.Build.t
+
 (** [deep_fold dwd ~init ~f] fold the most inner elements but still gives the
     corresponding directory information corresponding as first argument *)
 val deep_fold :

@@ -314,7 +314,9 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
   and* tests = Source_tree.Dir.cram_tests source_dir in
   let* () = Cram_rules.rules ~sctx ~expander ~dir tests in
   match Super_context.stanzas_in sctx ~dir with
-  | Some d -> gen_rules sctx dir_contents cctxs expander d
+  | Some d ->
+    let* d = Dir_with_dune.lazy_force d in
+    gen_rules sctx dir_contents cctxs expander d
   | None ->
     let+ () =
       define_all_alias ~dir ~js_targets:[]

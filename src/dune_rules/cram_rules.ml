@@ -93,27 +93,29 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
           Alias_rules.add sctx ~alias ~loc cram))
 
 let rules ~sctx ~expander ~dir tests =
-  let stanzas =
+  let open Memo.Build.O in
+  let* stanzas =
     let stanzas dir ~f =
       match Super_context.stanzas_in sctx ~dir with
-      | None -> []
-      | Some (d : Stanza.t list Dir_with_dune.t) ->
-        List.filter_map d.data ~f:(function
+      | None -> Memo.Build.return []
+      | Some (d : Stanza.t list Memo.Lazy.t Dir_with_dune.t) ->
+        let+ data = Memo.Lazy.force d.data in
+        List.filter_map data ~f:(function
           | Dune_file.Cram c -> Option.some_if (f c) (dir, c)
           | _ -> None)
     in
     let rec collect_whole_subtree acc dir =
-      let acc =
+      let* crams =
         stanzas dir ~f:(fun (s : Cram_stanza.t) -> s.applies_to = Whole_subtree)
-        :: acc
       in
+      let acc = crams :: acc in
       match Path.Build.parent dir with
-      | None -> List.concat acc
+      | None -> Memo.Build.return (List.concat acc)
       | Some dir -> collect_whole_subtree acc dir
     in
-    let acc = stanzas dir ~f:(fun _ -> true) in
+    let* acc = stanzas dir ~f:(fun _ -> true) in
     match Path.Build.parent dir with
-    | None -> acc
+    | None -> Memo.Build.return acc
     | Some dir -> collect_whole_subtree [ acc ] dir
   in
   Memo.Build.parallel_iter tests ~f:(fun test ->
@@ -122,7 +124,6 @@ let rules ~sctx ~expander ~dir tests =
         | Ok test -> Cram_test.name test
         | Error (Source_tree.Dir.Missing_run_t test) -> Cram_test.name test
       in
-      let open Memo.Build.O in
       let* effective =
         let init =
           let alias =

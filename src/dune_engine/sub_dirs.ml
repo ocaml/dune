@@ -326,15 +326,29 @@ let decode_includes ~context =
     let* includes =
       multi_field "include"
         (let* loc = loc
+         and+ generated_include_authorized =
+           Dune_lang.Syntax.available Include_stanza.syntax (0, 1)
          and+ fn = relative_file in
          let fn =
            List.fold_left
              ~f:(fun fn dir -> Filename.concat dir fn)
              ~init:fn path
          in
-         let sexps, context = Include_stanza.load_sexps ~context (loc, fn) in
-         let* () = set_input sexps in
-         fields (decode ~context ~path ~inside_include:true))
+         match
+           Include_stanza.load_sexps ~context ~generated_include_authorized
+             (loc, fn)
+         with
+         | Some (sexps, context) ->
+           let* () = set_input sexps in
+           fields (decode ~context ~path ~inside_include:true)
+         | None ->
+           return
+             [ List
+                 ( loc
+                 , [ Atom (Loc.none, Dune_lang.Atom.of_string "include")
+                   ; Atom (Loc.none, Dune_lang.Atom.of_string fn)
+                   ] )
+             ])
     in
     let+ subdirs = multi_field "subdir" (subdir ~context ~path ~inside_include)
     and+ sexps = leftover_fields in

@@ -402,3 +402,16 @@ let since ?(fatal = true) t ver =
     | loc, what ->
       User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
       return ()
+
+let available t ver =
+  let open Version.Infix in
+  let* current_ver = get t.key in
+  match current_ver with
+  | Some (Active current_ver) ->
+    if current_ver >= ver then
+      return true
+    else
+      return false
+  | Some (Inactive _)
+  | None ->
+    return false

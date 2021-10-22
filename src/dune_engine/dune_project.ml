@@ -1010,7 +1010,8 @@ let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
 let () =
   let open Dune_lang.Decoder in
   Extension.register_simple Action_plugin.syntax (return []);
-  Extension.register_simple Section.dune_site_syntax (return [])
+  Extension.register_simple Section.dune_site_syntax (return []);
+  Extension.register_simple Include_stanza.syntax (return [])
 
 let strict_package_deps t = t.strict_package_deps
 

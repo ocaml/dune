@@ -1,5 +1,10 @@
 open Import
 
+let syntax =
+  Dune_lang.Syntax.create ~name:"generated_include" ~experimental:true
+    ~desc:"experimental feature for allowing to include generated dune file"
+    [ ((0, 1), `Since (3, 0)) ]
+
 type 'path context =
   { current_file : 'path
   ; include_stack : (Loc.t * 'path) list
@@ -31,26 +36,33 @@ let error ~to_string_maybe_quoted { current_file = file; include_stack } =
                   (Pp.textf "included from %s" (line_loc x)))))
     ]
 
-let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
+let load_sexps ~context:{ current_file; include_stack }
+    ~generated_include_authorized (loc, fn) =
   let include_stack = (loc, current_file) :: include_stack in
   let dir = Path.Source.parent_exn current_file in
   let current_file = Path.Source.relative dir fn in
   if not (Path.Untracked.exists (Path.source current_file)) then
-    User_error.raise ~loc
-      [ Pp.textf "File %s doesn't exist in source tree."
-          (Path.Source.to_string_maybe_quoted current_file)
-      ];
-  if
-    List.exists include_stack ~f:(fun (_, f) ->
-        Path.Source.equal f current_file)
-  then
-    error ~to_string_maybe_quoted:Path.Source.to_string_maybe_quoted
-      { current_file; include_stack };
-  let sexps = Dune_lang.Parser.load (Path.source current_file) ~mode:Many in
-  (sexps, { current_file; include_stack })
+    if generated_include_authorized then
+      None
+    else
+      User_error.raise ~loc
+        [ Pp.textf "File %s doesn't exist in source tree."
+            (Path.Source.to_string_maybe_quoted current_file)
+        ]
+  else (
+    if
+      List.exists include_stack ~f:(fun (_, f) ->
+          Path.Source.equal f current_file)
+    then
+      error ~to_string_maybe_quoted:Path.Source.to_string_maybe_quoted
+        { current_file; include_stack };
+    let sexps = Dune_lang.Parser.load (Path.source current_file) ~mode:Many in
+    Some (sexps, { current_file; include_stack })
+  )
 
-let get_include_path_generated ~context:{ current_file; include_stack } (loc, fn)
-    =
+let load_sexps_generated
+    ~(read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.Build.t)
+    ~context:{ current_file; include_stack } (loc, fn) =
   let include_stack = (loc, current_file) :: include_stack in
   let dir = Path.Build.parent_exn current_file in
   let current_file = Path.Build.relative dir fn in
@@ -59,20 +71,16 @@ let get_include_path_generated ~context:{ current_file; include_stack } (loc, fn
   then
     error ~to_string_maybe_quoted:Path.Build.to_string_maybe_quoted
       { current_file; include_stack };
-  { current_file; include_stack }
-
-let load_sexps_generated ~context =
-  let sexps =
-    Dune_lang.Parser.load (Path.build context.current_file) ~mode:Many
+  let context = { current_file; include_stack } in
+  let source_file =
+    Path.source @@ Path.Build.drop_build_context_exn context.current_file
   in
-  sexps
-
-let load_sexps_source ~loc ~context =
-  let source_file = Path.Build.drop_build_context_exn context.current_file in
-  if not (Path.Untracked.exists (Path.source source_file)) then
-    User_error.raise ~loc
-      [ Pp.textf "File %s doesn't exist in source tree."
-          (Path.Source.to_string_maybe_quoted source_file)
-      ];
-  let sexps = Dune_lang.Parser.load (Path.source source_file) ~mode:Many in
-  sexps
+  let path =
+    if Path.Untracked.exists source_file then
+      source_file
+    else
+      Path.build context.current_file
+  in
+  let open Memo.Build.O in
+  let+ sexp = read_file path ~f:(Dune_lang.Parser.load ~mode:Many) in
+  (sexp, context)

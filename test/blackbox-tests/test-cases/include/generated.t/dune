@@ -1,0 +1,2 @@
+(rule
+  (action (with-stdout-to sub.inc (echo "(rule (alias print) (action (echo \"done in sub \n\")))(include sub/include_dune_file)"))))

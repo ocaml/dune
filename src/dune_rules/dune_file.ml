@@ -2228,7 +2228,9 @@ module Stanzas = struct
 
   let execs exe = [ Executables exe ]
 
-  type Stanza.t += Include of Loc.t * string
+  type Stanza.t +=
+    | Include of Loc.t * string
+    | Include_generated of Loc.t * string
 
   type constructors = (string * Stanza.t list Dune_lang.Decoder.t) list
 
@@ -2273,6 +2275,11 @@ module Stanzas = struct
       , let+ loc = loc
         and+ fn = relative_file in
         [ Include (loc, fn) ] )
+    ; ( "include_generated"
+      , let+ loc = loc
+        and+ fn = relative_file
+        and+ () = Dune_lang.Syntax.since Stanza.syntax (3, 0) in
+        [ Include_generated (loc, fn) ] )
     ; ( "documentation"
       , let+ d = Documentation.decode in
         [ Documentation d ] )
@@ -2358,11 +2365,70 @@ module Stanzas = struct
            parse_file_includes ~stanza_parser ~context sexps
          | stanza -> [ stanza ])
 
+  let rec parse_file_includes_generated ~stanza_parser ~context stanzas =
+    let open Memo.Build.O in
+    let+ stanzas =
+      Memo.Build.parallel_map stanzas ~f:(function
+        | Include (loc, fn) ->
+          let context =
+            Include_stanza.get_include_path_generated ~context (loc, fn)
+          in
+          let sexps = Include_stanza.load_sexps_source ~context ~loc in
+          let stanzas = List.concat_map ~f:(parse stanza_parser) sexps in
+          parse_file_includes_generated ~stanza_parser ~context stanzas
+        | Include_generated (loc, fn) ->
+          let context =
+            Include_stanza.get_include_path_generated ~context (loc, fn)
+          in
+          let* sexps =
+            Build_system.read_file
+              (Path.build (Include_stanza.get_current_file context))
+              ~f:(fun _ -> Include_stanza.load_sexps_generated ~context)
+          in
+          let stanzas = List.concat_map ~f:(parse stanza_parser) sexps in
+          List.iter stanzas ~f:(function
+            | Library _
+            | Library_redirect _
+            | Deprecated_library_name _ ->
+              User_error.raise ~loc
+                [ Pp.text
+                    "The 'include_generated' stanza can't include library \
+                     related stanzas"
+                ]
+            | _ ->
+              (* other stanzas could fail but since it is experimental it is
+                 kept open *)
+              ());
+          parse_file_includes_generated ~stanza_parser ~context stanzas
+        | stanza -> Memo.Build.return [ stanza ])
+    in
+    List.concat stanzas
+
   let parse ~file (project : Dune_project.t) sexps =
     let stanza_parser = parser project in
     let stanzas =
       let context = Include_stanza.in_file file in
       parse_file_includes ~stanza_parser ~context sexps
+    in
+    let (_ : bool) =
+      List.fold_left stanzas ~init:false ~f:(fun env stanza ->
+          match stanza with
+          | Dune_env.T e ->
+            if env then
+              User_error.raise ~loc:e.loc
+                [ Pp.text "The 'env' stanza cannot appear more than once" ]
+            else
+              true
+          | _ -> env)
+    in
+    stanzas
+
+  let parse_generated ~file (project : Dune_project.t) sexps =
+    let open Memo.Build.O in
+    let stanza_parser = parser project in
+    let+ stanzas =
+      let context = Include_stanza.in_file file in
+      parse_file_includes_generated ~stanza_parser ~context sexps
     in
     let (_ : bool) =
       List.fold_left stanzas ~init:false ~f:(fun env stanza ->
@@ -2395,6 +2461,7 @@ type t =
   { dir : Path.Source.t
   ; project : Dune_project.t
   ; stanzas : Stanzas.t
+  ; file : Path.Source.t
   }
 
 let parse sexps ~dir ~file ~project =
@@ -2409,7 +2476,25 @@ let parse sexps ~dir ~file ~project =
     else
       stanzas
   in
-  { dir; project; stanzas }
+  { dir; project; stanzas; file }
+
+let parse_generated ~context { dir; project; stanzas; file } =
+  let open Memo.Build.O in
+  let file_build =
+    Path.Build.append_source (Context.build_context context).build_dir file
+  in
+  let+ stanzas = Stanzas.parse_generated ~file:file_build project stanzas in
+  let stanzas =
+    if !Clflags.ignore_promoted_rules then
+      List.filter stanzas ~f:(function
+        | Rule { mode = Rule.Mode.Promote { only = None; _ }; _ }
+        | Menhir.T { mode = Rule.Mode.Promote { only = None; _ }; _ } ->
+          false
+        | _ -> true)
+    else
+      stanzas
+  in
+  { dir; project; stanzas; file }
 
 let rec fold_stanzas l ~init ~f =
   match l with

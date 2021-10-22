@@ -1,0 +1,12 @@
+(rule (alias print) (action (echo "include in generated include in sub\n")))
+
+(executable
+        (name test)
+        (modules test)
+)
+
+(rule (alias print)
+  (action (run ./test.exe))
+)
+
+(copy_files# ../*.ml)

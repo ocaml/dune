@@ -448,6 +448,7 @@ type t =
   { dir : Path.Source.t
   ; project : Dune_project.t
   ; stanzas : Stanzas.t
+  ; file : Path.Source.t
   }
 
 (** [parse ~file ~dir project stanza_exprs] is a list of [Stanza.t]s derived
@@ -463,6 +464,8 @@ val parse :
   -> file:Path.Source.t
   -> project:Dune_project.t
   -> t
+
+val parse_generated : context:Context.t -> t -> t Memo.Build.t
 
 val fold_stanzas :
   t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc

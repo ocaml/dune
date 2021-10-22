@@ -592,7 +592,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   in
   let stanzas =
     List.map stanzas ~f:(fun dune_file ->
-        let { Dune_file.dir; project; stanzas } = dune_file in
+        let { Dune_file.dir; project; stanzas; file = _ } = dune_file in
         let ctx_dir = Path.Build.append_source context.build_dir dir in
         let dune_version = Dune_project.dune_version project in
         ( { Dir_with_dune.src_dir = dir
@@ -607,7 +607,8 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     Path.Build.Map.of_list_map_exn stanzas ~f:(fun (dir, dune_file) ->
         let data =
           Memo.lazy_ ~name:"stanzas_per_dir" (fun () ->
-              Memo.Build.return dune_file.stanzas)
+              let+ dune_file = Dune_file.parse_generated ~context dune_file in
+              dune_file.stanzas)
         in
         ( dir.Dir_with_dune.ctx_dir
         , { Dir_with_dune.src_dir = dir.src_dir

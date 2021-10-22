@@ -761,44 +761,44 @@ The following constructions are available:
 - ``(system <cmd>)`` to execute a command using the system shell: ``sh`` on Unix
   and ``cmd`` on Windows
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
-  not very portable
+  not very portable.
 - ``(diff <file1> <file2>)`` is similar to ``(run diff <file1>
   <file2>)`` but is better and allows promotion.  See `Diffing and
-  promotion`_ for more details
+  promotion`_ for more details.
 - ``(diff? <file1> <file2>)`` is similar to ``(diff <file1>
   <file2>)`` except that ``<file2>`` should be produced by a part of the
   same action rather than be a dependency, is optional and will
   be consumed by ``diff?``.
 - ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1>
   <file2>)`` but allows promotion.  See `Diffing and promotion`_ for
-  more details
+  more details.
 - ``(no-infer <DSL>)`` to perform an action without inference of dependencies
   and targets. This is useful if you are generating dependencies in a way
   that Dune doesn't know about, for instance by calling an external build system.
 - ``(pipe-<outputs> <DSL> <DSL> <DSL>...)`` to execute several actions (at least two)
   in sequence, filtering the ``<outputs>`` of the first command through the other
   command, piping the standard output of each one into the input of the next.
-  This action is available since dune 2.7.
+  This action is available since Dune 2.7.
 
-As mentioned ``copy#`` inserts a line directive at the beginning of
+As mentioned, ``copy#`` inserts a line directive at the beginning of
 the destination file. More precisely, it inserts the following line:
 
 .. code:: ocaml
 
     # 1 "<source file name>"
 
-Most languages recognize such lines and update their current location,
-in order to report errors in the original file rather than the
-copy. This is important as the copy exists only under the ``_build``
-directory and in order for editors to jump to errors when parsing the
+Most languages recognize such lines and update their current location 
+to report errors in the original file rather than the
+copy. This is important beause the copy exists only under the ``_build``
+directory, and in order for editors to jump to errors when parsing the
 output of the build system, errors must point to files that exist in
-the source tree. In the beta versions of dune, ``copy#`` was
-called ``copy-and-add-line-directive``. However, most of time one
+the source tree. In the beta versions of Dune, ``copy#`` was
+called ``copy-and-add-line-directive``. However, most of time, one
 wants this behavior rather than a bare copy, so it was renamed to
 something shorter.
 
 Note: expansion of the special ``%{<kind>:...}`` is done relative to the current
-working directory of the part of the DSL being executed. So for instance if you
+working directory of the DSL being executed. So for instance, if you
 have this action in a ``src/foo/dune``:
 
 .. code:: lisp
@@ -834,8 +834,8 @@ is an error in the generated ``blah.ml`` file it will be reported as:
     File "blah.ml", line 42, characters 5-10:
     Error: ...
 
-Which can be a problem as you editor might think that ``blah.ml`` is at the root
-of your project. What you should write instead is:
+Which can be a problem, as you editor might think that ``blah.ml`` is at the root
+of your project. Instead, this is a better way to write it:
 
 ::
 
@@ -850,28 +850,28 @@ Sandboxing
 ==========
 
 The user actions that run external commands (``run``, ``bash``, ``system``)
-are opaque to dune, so dune has to rely on manual specification of dependencies
+are opaque to Dune, so Dune has to rely on manual specification of dependencies
 and targets. One problem with manual specification is that it's error-prone.
-It's often hard to know in advance what files the command will read.
-And knowing a correct set of dependencies is very important for build
+It's often hard to know in advance what files the command will read, 
+and knowing a correct set of dependencies is very important for build
 reproducibility and incremental build correctness.
 
-To help with this problem dune supports sandboxing.
+To help with this problem Dune supports sandboxing.
 An idealized view of sandboxing is that it runs the action in an environment
 where it can't access anything except for its declared dependencies.
 
-In practice we have to make compromises and have some trade-offs between
-simplicity, information leakage, performance and portability.
+In practice, we have to make compromises and have some trade-offs between
+simplicity, information leakage, performance, and portability.
 
 The way sandboxing is currently implemented is that for each sandboxed action
 we build a separate directory tree (sandbox directory) that mirrors the build
 directory, filtering it to only contain the files that were declared as
-dependencies. Then we run the action in that directory, and then we copy
+dependencies. We run the action in that directory, and then we copy
 the targets back to the build directory.
 
-You can configure dune to use sandboxing modes ``symlink``, ``hardlink`` or
+You can configure Dune to use sandboxing modes ``symlink``, ``hardlink`` or
 ``copy``, which determines how the individual files are populated (they will be
-symlinked, hardlinked or copied into the sandbox directory).
+symlinked, hardlinked, or copied into the sandbox directory).
 
 This approach is very simple and portable, but that comes with
 certain limitations:
@@ -879,22 +879,22 @@ certain limitations:
 - The actions in the sandbox can use absolute paths to refer to anywhere outside
   the sandbox. This means that only dependencies on relative paths in the build
   tree can be enforced/detected by sandboxing.
-- The sandboxed actions still run with full permissions of dune itself so
+- The sandboxed actions still run with full permissions of Dune itself so
   sandboxing is not a security feature. It won't prevent network access either.
 - We don't erase the environment variables of the sandboxed
   commands. This is something we want to change.
 - Performance impact is usually small, but it can get noticeable for
   fast actions with very large sets of dependencies.
 
-Per-action sandboxing configuration
+Per-action Sandboxing Configuration
 -----------------------------------
 
 Some actions may rely on sandboxing to work correctly.
-For example an action may need the input directory to contain nothing
+For example, an action may need the input directory to contain nothing
 except the input files, or the action might create temporary files that
 break other build actions.
 
-Some other actions may refuse to work with sandboxing, for example
+Some other actions may refuse to work with Sandboxing. Cor example,
 if they rely on absolute path to the build directory staying fixed,
 or if they deliberately use some files without declaring dependencies
 (this is usually a very bad idea, by the way).
@@ -906,7 +906,7 @@ Things like this can be described using the "sandbox" field in the dependency
 specification language (see :ref:`deps-field`).
 
 
-Global sandboxing configuration
+Global Sandboxing Configuration
 -------------------------------
 
 Dune always respects per-action sandboxing specification.
@@ -924,15 +924,15 @@ This is controlled by:
 Locks
 =====
 
-Given two rules that are independent, dune will assume that their
+Given two rules that are independent, Dune will assume that their
 associated actions can be run concurrently. Two rules are considered
 independent if neither of them depend on the other, either directly or
-through a chain of dependencies. This basic assumption allows dune to
+through a chain of dependencies. This basic assumption allows Dune to
 parallelize the build.
 
 However, it is sometimes the case that two independent rules cannot be
 executed concurrently. For instance this can happen for more
-complicated tests. In order to prevent dune from running the
+complicated tests. In order to prevent Dune from running the
 actions at the same time, you can specify that both actions take the
 same lock:
 
@@ -970,42 +970,42 @@ simply use an absolute filename:
      (locks  /tcp-port/1042)
      (action (run test.exe %{deps})))
 
-Diffing and promotion
+Diffing and Promotion
 =====================
 
 ``(diff <file1> <file2>)`` is very similar to ``(run diff <file1>
 <file2>)``. In particular it behaves in the same way:
 
-- when ``<file1>`` and ``<file2>`` are equal, it does nothing
-- when they are not, the differences are shown and the action fails
+- When ``<file1>`` and ``<file2>`` are equal, it does nothing.
+- When they are not, the differences are shown and the action fails.
 
 However, it is different for the following reason:
 
-- the exact command used to diff files can be configured via the
-  ``--diff-command`` command line argument. Note that it is only
+- The exact command used for diff files can be configured via the
+  ``--diff-command`` command line argument. Note that it's only
   called when the files are not byte equals
 
-- by default, it will use ``patdiff`` if it is installed. ``patdiff``
+- By default, it will use ``patdiff`` if it is installed. ``patdiff``
   is a better diffing program. You can install it via opam with:
 
   .. code:: sh
 
      $ opam install patdiff
 
-- on Windows, both ``(diff a b)`` and ``(diff? a b)`` normalize
-  end-of-line characters before comparing the files
+- On Windows, both ``(diff a b)`` and ``(diff? a b)`` normalize
+  end-of-line characters before comparing the files.
 
-- since ``(diff a b)`` is a builtin action, dune knows that ``a``
-  and ``b`` are needed and so you don't need to specify them
-  explicitly as dependencies
+- Since ``(diff a b)`` is a built-in action, Dune knows that ``a``
+  and ``b`` are needed, so you don't need to specify them
+  explicitly as dependencies.
 
-- you can use ``(diff? a b)`` after a command that might or might not
-  produce ``b``. For cases where commands optionally produce a
+- You can use ``(diff? a b)`` after a command that might or might not
+  produce ``b``, for cases where commands optionally produce a
   *corrected* file
 
-- if ``<file1>`` doesn't exists it will compare with the empty file
+- If ``<file1>`` doesn't exist, it will compare with the empty file.
 
-- it allows promotion. See below
+- It allows promotion. See below.
 
 Note that ``(cmp a b)`` does no end-of-line normalization and doesn't
 print a diff when the files differ. ``cmp`` is meant to be used with

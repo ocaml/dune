@@ -1,16 +1,23 @@
 open! Stdune
 open Dune_engine
 
+type phase =
+  | Compile
+  | Link
+
 type ccomp_type =
   | Gcc
   | Msvc
   | Clang
   | Other of string
 
-let base_cxx_flags = function
-  | Gcc -> [ "-x"; "c++"; "-lstdc++"; "-shared-libgcc" ]
-  | Clang -> [ "-x"; "c++" ]
-  | Msvc -> [ "/TP" ]
+let base_cxx_flags ~for_ cc =
+  match (cc, for_) with
+  | Gcc, Compile -> [ "-x"; "c++" ]
+  | Gcc, Link -> [ "-lstdc++"; "-shared-libgcc" ]
+  | Clang, Compile -> [ "-x"; "c++" ]
+  | Clang, Link -> [ "-lc++" ]
+  | Msvc, Compile -> [ "/TP" ]
   | _ -> []
 
 let preprocessed_filename = "ccomp"
@@ -38,8 +45,8 @@ let check_warn = function
       ]
   | _ -> ()
 
-let get_flags dir =
+let get_flags ~for_ dir =
   let open Action_builder.O in
   let+ ccomp_type = ccomp_type dir in
   check_warn ccomp_type;
-  base_cxx_flags ccomp_type
+  base_cxx_flags ~for_ ccomp_type

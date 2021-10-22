@@ -394,7 +394,7 @@ Select forms are specified as follows:
 - ``!<library-name>``, which will evaluate to true if ``<library-name>`` is not
   available in the workspace or in the installed world
 
-When evaluating a select form, dune will create ``<target-filename>`` by
+When evaluating a select form, Dune will create ``<target-filename>`` by
 copying the file given by the first ``(<literals> -> <filename>)`` case where
 all the literals evaluate to true. It is an error if none of the clauses are
 selectable. You can add a fallback by adding a clause of the form ``(->
@@ -419,7 +419,7 @@ For instance:
     (libraries (re_export foo)))
 
 This states that this library explicitly re-exports the interface of
-``foo``.  Concretely, when something depends on ``bar``, it will also
+``foo``. Concretely, when something depends on ``bar``, it will also
 be able to see ``foo`` independently of whether :ref:`implicit
 transitive dependencies<implicit_transitive_deps>` are allowed or
 not. When they are allowed, which is the default, all transitive
@@ -497,7 +497,7 @@ Preprocessing with PPX Rewriters
 
 ``<ppx-rewriters-and-flags>`` is expected to be a sequence where each
 element is either a command line flag if starting with a ``-`` or the
-name of a library.  If you want to pass command line flags that don't
+name of a library. If you want to pass command line flags that don't
 start with a ``-``, you can separate library names from flags using
 ``--``. So for instance from the following ``preprocess`` field:
 
@@ -615,7 +615,7 @@ Dependencies in ``dune`` files can be specified using one of the following:
   - ``always``: the action requires a clean environment
   - ``none``: the action must run in the build directory
   - ``preserve_file_kind``: the action needs the files it reads to look
-    like normal files (so dune won't use symlinks for sandboxing)
+    like normal files (so Dune won't use symlinks for sandboxing)
 
 In all these cases, the argument supports :ref:`variables`.
 
@@ -747,7 +747,7 @@ The following constructions are available:
   values, and is specified using the :ref:`predicate-lang`. ``<DSL>`` can only
   contain nested occurrences of ``run``, ``bash``, ``system``, ``chdir``,
   ``setenv``, ``ignore-<outputs>``, ``with-stdin-from`` and
-  ``with-<outputs>-to``. This action is available since dune 2.0.
+  ``with-<outputs>-to``. This action is available since Dune 2.0.
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
@@ -763,14 +763,14 @@ The following constructions are available:
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
   not very portable.
 - ``(diff <file1> <file2>)`` is similar to ``(run diff <file1>
-  <file2>)`` but is better and allows promotion.  See `Diffing and
+  <file2>)`` but is better and allows promotion. See `Diffing and
   promotion`_ for more details.
 - ``(diff? <file1> <file2>)`` is similar to ``(diff <file1>
   <file2>)`` except that ``<file2>`` should be produced by a part of the
   same action rather than be a dependency, is optional and will
   be consumed by ``diff?``.
 - ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1>
-  <file2>)`` but allows promotion.  See `Diffing and promotion`_ for
+  <file2>)`` but allows promotion. See `Diffing and promotion`_ for
   more details.
 - ``(no-infer <DSL>)`` to perform an action without inference of dependencies
   and targets. This is useful if you are generating dependencies in a way
@@ -810,7 +810,7 @@ tools, they often use the filename given on the command line in error messages.
 As a result, if you execute the command from the original directory, it will
 only see the basename.
 
-To understand why this is important, let's consider this dune file living in
+To understand why this is important, let's consider this Dune file living in
 ``src/foo``:
 
 ::
@@ -986,7 +986,7 @@ However, it is different for the following reason:
   called when the files are not byte equals
 
 - By default, it will use ``patdiff`` if it is installed. ``patdiff``
-  is a better diffing program. You can install it via opam with:
+  is a better diffing program. You can install it via Opam with:
 
   .. code:: sh
 
@@ -1015,11 +1015,11 @@ Promotion
 ---------
 
 Whenever an action ``(diff <file1> <file2>)`` or ``(diff?  <file1>
-<file2>)`` fails because the two files are different, dune allows
+<file2>)`` fails because the two files are different, Dune allows
 you to promote ``<file2>`` as ``<file1>`` if ``<file1>`` is a source
 file and ``<file2>`` is a generated file.
 
-More precisely, let's consider the following dune file:
+More precisely, let's consider the following Dune file:
 
 .. code:: scheme
 
@@ -1033,34 +1033,34 @@ More precisely, let's consider the following dune file:
 Where ``data.expected`` is a file committed in the source
 repository. You can use the following workflow to update your test:
 
-- update the code of your test
-- run ``dune runtest``. The diff action will fail and a diff will
-  be printed
-- check the diff to make sure it is what you expect
-- run ``dune promote``. This will copy the generated ``data.out``
-  file to ``data.expected`` directly in the source tree
+- Update the code of your test.
+- Run ``dune runtest``. The diff action will fail and a diff will
+  be printed.
+- Check the diff to make sure it's what you expect.
+- Run ``dune promote``. This will copy the generated ``data.out``
+  file to ``data.expected`` directly in the source tree.
 
-You can also use ``dune runtest --auto-promote`` which will
+You can also use ``dune runtest --auto-promote``, which will
 automatically do the promotion.
 
-Package specification
+Package Specification
 =====================
 
 Installation is the process of copying freshly built libraries,
-binaries and other files from the build directory to the system.  Dune
-offers two way of doing this: via opam or directly via the ``install``
-command.  In particular, the installation model implemented by Dune
-was copied from opam. Opam is the standard OCaml package manager.
+binaries, and other files from the build directory to the system. Dune
+offers two ways of doing this: via Opam or directly via the ``install``
+command. In particular, the installation model implemented by Dune
+was copied from Opam. Opam is the standard OCaml package manager.
 
-In both cases, Dune only know how to install whole packages.  A
-package being a collection of executables, libraries and other files.
-In this section, we will describe how to define a package, how to
-"attach" various elements to it and how to proceed with installing it
+In both cases, Dune only know how to install whole packages. A
+package being a collection of executables, libraries, and other files.
+In this section, we'll describe how to define a package, how to
+"attach" various elements to it, and how to proceed with installing it
 on the system.
 
 .. _declaring-a-package:
 
-Declaring a package
+Declaring a Package
 -------------------
 
 To declare a package, simply add a ``package`` stanza to your
@@ -1079,54 +1079,54 @@ Once you have done this, Dune will know about the package named
 ``mypackage`` and you will be able to attach various elements to it.
 The ``package`` stanza accepts more fields, such as dependencies.
 
-Note that package names are in a global namespace so the name you choose must
-be universally unique.  In particular, package managers never allow to
+Note that package names are in a global namespace, so the name you choose must
+be universally unique. In particular, package managers never allow to
 release two packages with the same name.
 
 .. TODO: describe this more in details
 
 In older projects using Dune, packages were defined by manually writing a file
-called ``<package-name>.opam`` at the root of the project. However, it is not
-recommended to use this method in new projects as we expect to deprecate it in
+called ``<package-name>.opam`` at the root of the project. However, it's not
+recommended to use this method in new projects, as we expect to deprecate it in
 the future. The right way to define a package is with a ``package`` stanza in
 the ``dune-project`` file.
 
-See :ref:`opam-generation` for instructions on configuring dune to automatically
+See :ref:`opam-generation` for instructions on configuring Dune to automatically
 generate ``.opam`` files based on the ``package`` stanzas.
 
-Attaching elements to a package
+Attaching Elements to a Package
 -------------------------------
 
 Attaching an element to a package means declaring to Dune that this
-element is part of the said package.  The method to attach an element
-to a package depends on the kind of the element.  In this sub-section
+element is part of the said package. The method to attach an element
+to a package depends on the kind of the element. In this sub-section,
 we will go through the various kinds of elements and describe how to
 attach each of them to a package.
 
 In the rest of this section, ``<prefix>`` refers to the directory in
-which the user chooses to install packages.  When installing via opam,
-it is opam who sets this directory.  When calling ``dune install``,
+which the user chooses to install packages. When installing via Opam,
+it's Opam that sets this directory. When calling ``dune install``,
 the installation directory is either guessed or can be manually
-specified by the user.  This is described more in detail in the last
+specified by the user. This is described more in detail in the last
 section of this page.
 
-Sites of a package
+Sites of a Package
 ------------------
 
 When packages need additional resources outside their binary, their location
 could be hard to find. Moreover some packages could add resources to another
 package, for example in the case of plugins. These location are called sites in
-dune. One package can define them. During execution one site corresponds to a
-list of directories. They are like layers, the first directories have an higher
+Dune. One package can define them. During execution, one site corresponds to a
+list of directories. They are like layers, and the first directories have a higher
 priority. Examples and precisions are available at :ref:`sites`.
 
 
 Libraries
 ^^^^^^^^^
 
-In order to attach a library to a package all you need to do is add a
-``public_name`` field to your library.  This is the name that external
-users of your libraries must use in order to refer to it.  Dune
+In order to attach a library to a package, merely add a
+``public_name`` field to your library. This is the name that external
+users of your libraries must use in order to refer to it. Dune
 requires that the public name of a library is either the name of the
 package it is part of or start with the package name followed by a dot
 character.
@@ -1140,28 +1140,27 @@ For instance:
     (public_name mypackage.mylib))
 
 After you have added a public name to a library, Dune will know to
-install it as part of the package it is attached to.  Dune installs
+install it as part of the package it is attached to. Dune installs
 the library files in a directory ``<prefix>/lib/<package-name>``.
 
 If the library name contains dots, the full directory in which the
-library files are installed is ``lib/<comp1>/<comp2/.../<compn>``
+library files are installed is ``lib/<comp1>/<comp2/.../<compn>``,
 where ``<comp1>``, ``<comp2>``, ... ``<compn>`` are the dot separated
-component of the public library name.  By definition, ``<comp1>`` is
+component of the public library name. By definition, ``<comp1>`` is
 always the package name.
 
 Executables
 ^^^^^^^^^^^
 
 Similarly to libraries, to attach an executable to a package simply
-add a ``public_name`` field to your ``executable`` stanza, or a
-``public_names`` field for ``executables`` stanzas.  The name that
-goes in there is the name under which the executables will be
-available through the ``PATH`` once installed, i.e. the name users
-will need to type in there shell to execute the program.  Because Dune
-cannot guess which package an executable is part of from its public
-name, you also need to add a ``package`` field unless the project
-contains a single package, in which case the executable will be
-attached to this package.
+add a ``public_name`` field to your ``executable`` stanza or a
+``public_names`` field for ``executables`` stanzas. Designate this 
+name to match the available executables through the installed ``PATH`` 
+(i.e., the name users must type in their shell to execute 
+the program), because Dune cannot guess an executable's relevant package
+from its public name. It's also necessary to add a ``package`` field 
+unless the project contains a single package, in which case the executable 
+will be attached to this package.
 
 For instance:
 
@@ -1181,16 +1180,16 @@ to type the following in their shell:
 
 to execute the program.
 
-Other files
+Other Files
 ^^^^^^^^^^^
 
-For all other kinds of elements, you need to attach them manually via
+For all other kinds of elements, you must attach them manually via
 an :ref:`install` stanza.
 
 
 .. _foreign-sources-and-archives:
 
-Foreign sources and archives
+Foreign Sources and Archives
 ============================
 
 Dune provides basic support for including foreign source files as well
@@ -1199,7 +1198,7 @@ as archives of foreign object files into OCaml projects via the
 
 .. _foreign-stubs:
 
-Foreign stubs
+Foreign Stubs
 -------------
 
 You can specify foreign sources using the ``foreign_stubs`` field of the
@@ -1213,11 +1212,11 @@ You can specify foreign sources using the ``foreign_stubs`` field of the
      (foreign_stubs (language cxx) (names src3) (flags -O2)))
 
 Here we declare an OCaml library ``lib``, which contains two C sources
-``src1`` and ``src2``, and one C++ source ``src3`` that needs to be
+``src1`` and ``src2``, and one C++ source, ``src3``, which need to be
 compiled with ``-O2``. These source files will be compiled and packaged
 with the library, along with the link-time flags to be used when
 linking the final executables. When matching ``names`` to source files,
-Dune treats ``*.c`` files as C sources, and ``*.cpp``, ``*.cc`` and
+Dune treats ``*.c`` files as C sources, and ``*.cpp``, ``*.cc``, and
 ``*.cxx`` files as C++ sources.
 
 Here is a complete list of supported subfields:
@@ -1225,9 +1224,9 @@ Here is a complete list of supported subfields:
 - ``language`` specifies the source language, where ``c`` means C and
   ``cxx`` means C++. In future, more languages may be supported.
 - ``names`` specifies the *names* of source files. When specifying a source
-  file, you should omit the extension and any relative parts of the path;
-  Dune will scan all library directories, finding all matching files and
-  raising an error if multiple source files map to the same object name.
+  file, omit the extension and any relative parts of the path;
+  Dune will scan all library directories to find all matching files and
+  raise an error if multiple source files map to the same object name.
   If you need to have multiple object files with the same name, you can
   package them into different :ref:`foreign-archives` via the
   ``foreign_archives`` field. This field uses the :ref:`ordered-set-language`
@@ -1237,17 +1236,17 @@ Here is a complete list of supported subfields:
   using the :ref:`ordered-set-language`, where the ``:standard`` value comes
   from the environment settings ``c_flags`` and ``cxx_flags``, respectively.
   Note that, for C stubs, Dune unconditionally adds the flags present in the
-  fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` of the OCaml config to the
+  OCaml config fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` to the
   compiler command line. This behavior can be disabled since Dune 2.8 via the
   ``dune-project`` option :ref:`always-add-cflags`.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
-  via the ``-I`` flag. You can use :ref:`variables` in this field, and
+  via the ``-I`` flag. You can use :ref:`variables` in this field and
   refer to a library source directory using the ``(lib library-name)`` syntax.
   For example, ``(include_dirs dir1 (lib lib1) (lib lib2) dir2)`` specifies
   the directory ``dir1``, the source directories of ``lib1`` and ``lib2``,
   and the directory ``dir2``, in this order. The contents of included
-  directories is tracked recursively, e.g. if you use ``(include_dir dir)``
-  and have headers ``dir/base.h`` and ``dir/lib/lib.h`` then they both will
+  directories are tracked recursively, e.g., if you use ``(include_dir dir)``
+  and have headers ``dir/base.h`` and ``dir/lib/lib.h``, they both will
   be tracked as dependencies.
 - ``extra_deps`` specifies any other dependencies that should be tracked.
   This is useful when dealing with ``#include`` statements that escape into
@@ -1256,7 +1255,7 @@ Here is a complete list of supported subfields:
 
 .. _foreign-archives:
 
-Foreign archives
+Foreign Archives
 ----------------
 
 You can also specify archives of separately compiled foreign object files
@@ -1276,7 +1275,7 @@ Here, in addition to :ref:`foreign-stubs`, we also specify foreign archives
 ``arch1`` and ``arch2``, where the latter is stored in a subdirectory
 ``some/dir``.
 
-You can build a foreign archive manually, e.g. using a custom ``rule`` as
+You can build a foreign archive manually, e.g., using a custom ``rule`` as
 described in :ref:`foreign-sandboxing`, or ask Dune to build it via the
 ``foreign_library`` stanza:
 
@@ -1289,7 +1288,7 @@ described in :ref:`foreign-sandboxing`, or ask Dune to build it via the
      (include_dir headers))
 
 This asks Dune to compile C source files ``src4`` and ``src5`` with
-headers tracked in the ``headers`` directory, and put the resulting
+headers tracked in the ``headers`` directory and put the resulting
 object files into an archive ``arch1``, whose full name is typically
 ``libarch1.a`` for static linking and ``dllarch1.so`` for dynamic
 linking.

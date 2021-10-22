@@ -88,15 +88,8 @@ val empty : t
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
 
-(** Return a sandboxed version of an action. It takes care of preparing deps in
-    the sandbox, but it does not copy the targets back out. It's the
-    responsibility of the caller to do that. *)
-val sandbox :
-     t
-  -> sandboxed:(Path.Build.t -> Path.Build.t)
-  -> mode:Sandbox_mode.some
-  -> deps:_ Path.Map.t
-  -> t
+(** Re-root all the paths in the action to their sandbox version *)
+val sandbox : t -> Sandbox.t -> t
 
 type is_useful =
   | Clearly_not

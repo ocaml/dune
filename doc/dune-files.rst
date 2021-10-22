@@ -1439,8 +1439,8 @@ include
 -------
 
 The ``include`` stanza allows including the contents of another file in the
-current ``dune`` file. Currently, the included file cannot be generated and must be
-present in the source tree. This feature is intended for use in conjunction
+current ``dune`` file. Currently the file must be present in the source tree,
+except experimentally see below. The feature is intended for use in conjunction
 with promotion, when parts of a ``dune`` file are to be generated.
 
 For instance:
@@ -1461,6 +1461,11 @@ With this ``dune`` file, running Dune as follows will replace the
 .. code:: shell
 
     $ dune build @runtest --auto-promote
+
+When the experimental feature is activated ``(using generated_include 0.1)`` in
+the dune project, file generated with a rule can be used. However the rule must
+be in another directory and some stanza would not work as expected when included
+through a generated include (for example library stanza).
 
 .. _tests-stanza:
 

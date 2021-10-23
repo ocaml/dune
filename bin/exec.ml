@@ -72,10 +72,12 @@ let term =
       let not_found () =
         let open Memo.Build.O in
         let+ hints =
+          (* CR-someday amokhov: Currently we do not provide hints for directory
+             targets but it would be nice to do that. *)
           (* Good candidates for the "./x.exe" instead of "x.exe" error are
              executables present in the current directory *)
           let+ candidates =
-            Build_system.targets_of ~dir:(Path.build dir)
+            Build_system.file_targets_of ~dir:(Path.build dir)
             >>| Path.Set.to_list
             >>| List.filter ~f:(fun p -> Path.extension p = ".exe")
             >>| List.map ~f:(fun p -> "./" ^ Path.basename p)

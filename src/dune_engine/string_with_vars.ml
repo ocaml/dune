@@ -312,6 +312,14 @@ let text_only t =
   | [ Text s ] -> Some s
   | _ -> None
 
+let last_text_part t =
+  List.filter_map t.parts ~f:(function
+    | Text s -> Some s
+    | Error _
+    | Pform _ ->
+      None)
+  |> List.last
+
 let has_pforms t = Option.is_none (text_only t)
 
 let encode t =

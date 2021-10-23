@@ -1,9 +1,10 @@
 open! Stdune
 open! Import
 
-(* CR-someday amokhov: Add directory targets. *)
+(** A set of targets of a build rule.
 
-(** A set of file targets of a build rule. *)
+    A rule can produce a set of files whose names are known upfront, as well as
+    a set of "opaque" directories whose contents is initially unknown. *)
 type t
 
 (** The empty set of targets. Note that rules are not allowed to have the empty
@@ -26,6 +27,9 @@ module Files : sig
   val create : Path.Build.Set.t -> t
 end
 
+(** A set of file and directory targets. *)
+val create : files:Path.Build.Set.t -> dirs:Path.Build.Set.t -> t
+
 module Validation_result : sig
   type t =
     | Valid of { parent_dir : Path.Build.t }
@@ -37,20 +41,32 @@ end
     same parent dir. *)
 val validate : t -> Validation_result.t
 
-(** The "head" target, i.e. the lexicographically first target file if [t] is
-    non-empty. *)
+(** The "head" target if [t] is non-empty. If [t] contains at least one file,
+    then it's the lexicographically first target file. Otherwise, it's the
+    lexicographically first target directory. *)
 val head : t -> Path.Build.t option
 
 (** Like [head] but raises a code error if the set of targets is empty. *)
 val head_exn : t -> Path.Build.t
 
-val files : t -> Path.Build.Set.t
+val to_list_map :
+     t
+  -> file:(Path.Build.t -> 'a)
+  -> dir:(Path.Build.t -> 'b)
+  -> 'a list * 'b list
 
-val to_list_map : t -> file:(Path.Build.t -> 'a) -> 'a list
+val iter :
+  t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
 
-val fold : t -> init:'a -> file:(Path.Build.t -> 'a -> 'a) -> 'a
+val map : t -> f:(files:Path.Build.Set.t -> dirs:Path.Build.Set.t -> 'a) -> 'a
 
-val iter : t -> file:(Path.Build.t -> unit) -> unit
+(** File targets are traversed before directory targets. *)
+val fold :
+     t
+  -> init:'a
+  -> file:(Path.Build.t -> 'a -> 'a)
+  -> dir:(Path.Build.t -> 'a -> 'a)
+  -> 'a
 
 val to_dyn : t -> Dyn.t
 

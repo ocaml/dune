@@ -23,6 +23,14 @@ module Multiplicity = struct
     | Multiple, One -> error "targets" "target"
 end
 
+(* CR-someday amokhov: Add more interesting tags, for example, to allow the user
+   to specify file patterns like "*.ml" for directory targets. *)
+module Tag = struct
+  type t =
+    | None
+    | Star
+end
+
 module Static = struct
   type 'path t =
     { targets : 'path list
@@ -56,3 +64,17 @@ let field =
   let open Dune_lang.Decoder in
   fields_mutually_exclusive ~default:Infer
     [ ("targets", decode_static); ("target", decode_one_static) ]
+
+let has_target_directory = function
+  | Infer -> false
+  | Static { targets; _ } ->
+    List.exists targets ~f:(fun target ->
+        match String_with_vars.last_text_part target with
+        | None -> false
+        | Some part -> Option.is_some (String.drop_suffix ~suffix:"/*" part))
+
+let untag = function
+  | Infer -> Infer
+  | Static { targets; multiplicity } ->
+    let targets = List.map targets ~f:fst in
+    Static { targets; multiplicity }

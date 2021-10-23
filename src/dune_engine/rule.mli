@@ -4,6 +4,7 @@ open! Stdune
 open! Import
 module Action_builder := Action_builder0
 
+(** Information about the provenance of a build rule. *)
 module Info : sig
   type t =
     | From_dune_file of Loc.t

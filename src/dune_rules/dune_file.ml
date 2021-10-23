@@ -1626,9 +1626,22 @@ module Rule = struct
     ; package = None
     }
 
+  let directory_targets_extension =
+    let syntax =
+      Dune_lang.Syntax.create ~name:"directory-targets"
+        ~desc:"experimental support for directory targets"
+        [ ((0, 1), `Since (3, 0)) ]
+    in
+    Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
+
   let long_form =
     let* deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
+    in
+    let* project = Dune_project.get_exn () in
+    let disallow_directory_targets =
+      Option.is_none
+        (Dune_project.find_extension_args project directory_targets_extension)
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
@@ -1659,6 +1672,13 @@ module Rule = struct
          field_o "alias"
            (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
        in
+       if
+         disallow_directory_targets && Targets_spec.has_target_directory targets
+       then
+         User_error.raise ~loc
+           [ Pp.text
+               "Directory targets require the 'directory-targets' extension"
+           ];
        { targets; deps; action; mode; locks; loc; enabled_if; alias; package })
 
   let decode =

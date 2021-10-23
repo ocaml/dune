@@ -90,8 +90,8 @@ let add_sandbox_config :
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ?(info = Info.Internal) ~targets action =
-  let open Memo.Build.O in
   let action =
+    let open Memo.Build.O in
     Action_builder.memoize "Rule.make"
       (Action_builder.of_thunk
          { f =
@@ -101,36 +101,36 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
                (action, deps))
          })
   in
-  let dir =
-    match Targets.validate targets with
-    | Valid { parent_dir } -> parent_dir
-    | No_targets -> (
-      match info with
-      | From_dune_file loc ->
-        User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
-      | _ -> Code_error.raise "Build_interpret.Rule.make: no targets" [])
-    | Inconsistent_parent_dir -> (
-      match info with
-      | Internal
-      | Source_file_copy _ ->
-        Code_error.raise "rule has targets in different directories"
-          [ ("targets", Targets.to_dyn targets) ]
-      | From_dune_file loc ->
-        User_error.raise ~loc
-          [ Pp.text "Rule has targets in different directories.\nTargets:"
-          ; Targets.pp targets
-          ])
-  in
-  let loc =
+  match Targets.validate targets with
+  | No_targets -> (
     match info with
-    | From_dune_file loc -> loc
-    | Internal ->
-      Loc.in_file
-        (Path.drop_optional_build_context
-           (Path.build (Path.Build.relative dir "_unknown_")))
-    | Source_file_copy p -> Loc.in_file (Path.source p)
-  in
-  { id = Id.gen (); targets; context; action; mode; info; loc; dir }
+    | From_dune_file loc ->
+      User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
+    | Internal
+    | Source_file_copy _ ->
+      Code_error.raise "Rule.Targets: An internal rule with no targets" [])
+  | Inconsistent_parent_dir -> (
+    match info with
+    | From_dune_file loc ->
+      User_error.raise ~loc
+        [ Pp.text "Rule has targets in different directories.\nTargets:"
+        ; Targets.pp targets
+        ]
+    | Internal
+    | Source_file_copy _ ->
+      Code_error.raise "Rule has targets in different directories"
+        [ ("targets", Targets.to_dyn targets) ])
+  | Valid { parent_dir = dir } ->
+    let loc =
+      match info with
+      | From_dune_file loc -> loc
+      | Internal ->
+        Loc.in_file
+          (Path.drop_optional_build_context
+             (Path.build (Path.Build.relative dir "_unknown_")))
+      | Source_file_copy p -> Loc.in_file (Path.source p)
+    in
+    { id = Id.gen (); targets; context; action; mode; info; loc; dir }
 
 let set_action t action =
   let action = Action_builder.memoize "Rule.set_action" action in

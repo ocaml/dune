@@ -23,22 +23,23 @@ let check_filename =
     User_error.raise ~loc:error_loc
       [ Pp.textf "%s does not denote a file in the current directory" s ]
   in
-  fun ~error_loc ~dir fn ->
-    match fn with
+  fun ~error_loc ~dir -> function
     | Value.String ("." | "..") ->
       User_error.raise ~loc:error_loc
         [ Pp.text "'.' and '..' are not valid filenames" ]
     | String s ->
+      let s, tag =
+        match String.drop_suffix s ~suffix:"/*" with
+        | None -> (s, Targets_spec.Tag.None)
+        | Some s -> (s, Star)
+      in
       if Filename.dirname s <> Filename.current_dir_name then
         not_in_dir ~error_loc s;
-      Path.Build.relative ~error_loc dir s
-    | Path p ->
-      if
-        Option.compare Path.compare (Path.parent p) (Some (Path.build dir))
-        <> Eq
-      then
-        not_in_dir ~error_loc (Path.to_string p);
-      Path.as_in_build_dir_exn p
+      (Path.Build.relative ~error_loc dir s, tag)
+    | Path p -> (
+      match Option.equal Path.equal (Path.parent p) (Some (Path.build dir)) with
+      | true -> (Path.as_in_build_dir_exn p, Targets_spec.Tag.None)
+      | false -> not_in_dir ~error_loc (Path.to_string p))
     | Dir p -> not_in_dir ~error_loc (Path.to_string p)
 
 type rule_kind =
@@ -51,7 +52,7 @@ let rule_kind ~(rule : Rule.t)
   match rule.alias with
   | None -> No_alias
   | Some alias -> (
-    match action.targets |> Targets.head with
+    match Targets.head action.targets with
     | None -> Alias_only alias
     | Some target -> Alias_with_targets (alias, target))
 
@@ -101,14 +102,17 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
     match rule_kind ~rule ~action with
-    | No_alias -> add_user_rule sctx ~dir ~rule ~action ~expander
+    | No_alias ->
+      let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
+      targets
     | Alias_with_targets (alias, alias_target) ->
       let* () =
         let alias = Alias.make alias ~dir in
         Rules.Produce.Alias.add_deps alias
           (Action_builder.path (Path.build alias_target))
       in
-      add_user_rule sctx ~dir ~rule ~action ~expander
+      let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
+      targets
     | Alias_only name ->
       let alias = Alias.make ~dir name in
       let* locks = interpret_locks ~expander rule.locks in

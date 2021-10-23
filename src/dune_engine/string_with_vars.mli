@@ -54,6 +54,9 @@ val has_pforms : t -> bool
 (** If [t] contains no variable, returns the contents of [t]. *)
 val text_only : t -> string option
 
+(** The last text part of [t], if any. *)
+val last_text_part : t -> string option
+
 module Mode : sig
   (** How many values expansion of a template must produce.
 

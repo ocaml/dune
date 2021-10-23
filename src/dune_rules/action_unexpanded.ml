@@ -88,7 +88,7 @@ end = struct
   type deps = Path.Set.t Action_builder.t
 
   type collector =
-    { targets : Path.Build.Set.t
+    { file_targets : Path.Build.Set.t  (** We only infer file targets *)
     ; deps : deps
     ; deps_if_exist : deps
     }
@@ -126,19 +126,22 @@ end = struct
 
   let run t ~expander =
     let deps = Action_builder.return Path.Set.empty in
-    let acc = { targets = Path.Build.Set.empty; deps; deps_if_exist = deps } in
+    let acc =
+      { file_targets = Path.Build.Set.empty; deps; deps_if_exist = deps }
+    in
     let env = { expander; infer = true; dir = Expander.dir expander } in
     Memo.Build.map (t env acc) ~f:(fun (b, acc) ->
-        let { targets; deps; deps_if_exist } = acc in
+        let { file_targets; deps; deps_if_exist } = acc in
         (* A file can be inferred as both a dependency and a target, for
            instance:
 
            {[ (progn (copy a b) (copy b c)) ]} *)
         let remove_targets =
-          let targets =
-            Path.Build.Set.to_list targets |> Path.Set.of_list_map ~f:Path.build
+          let file_targets =
+            Path.Build.Set.to_list file_targets
+            |> Path.Set.of_list_map ~f:Path.build
           in
-          fun deps -> Path.Set.diff deps targets
+          fun deps -> Path.Set.diff deps file_targets
         in
         let deps = deps >>| remove_targets in
         let deps_if_exist = deps_if_exist >>| remove_targets in
@@ -149,7 +152,8 @@ end = struct
               >>> Action_builder.if_file_exists f ~then_:(Action_builder.path f)
                     ~else_:(Action_builder.return ()))
         in
-        Action_builder.with_targets_set ~targets
+        Action_builder.with_targets
+          ~targets:(Targets.Files.create file_targets)
           (let+ () = deps >>= Action_builder.path_set
            and+ () = deps_if_exist >>= action_builder_path_set_if_exist
            and+ res = b in
@@ -310,7 +314,8 @@ end = struct
       else
         let+! p = Expander.No_deps.expand_path env sw in
         let p = as_in_build_dir p ~what ~loc:(loc sw) in
-        (Action_builder.return p, { acc with targets = f acc.targets p })
+        ( Action_builder.return p
+        , { acc with file_targets = f acc.file_targets p } )
 
     let consume_file =
       add_or_remove_target ~what:"File" ~f:Path.Build.Set.remove
@@ -481,8 +486,6 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     let+ script = E.dep script in
     O.Cram script
 
-let pp_path_build target = Pp.text (Dpath.describe_path (Path.build target))
-
 let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in
   let deps_builder, expander =
@@ -494,13 +497,13 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
   let* { Action_builder.With_targets.build; targets } =
     Action_builder.memo_build (Action_expander.run (expand t) ~expander)
   in
-  if not (Path.Build.Set.is_empty targets) then
+  if not (Targets.is_empty targets) then
     User_error.raise ~loc
       [ Pp.textf
           "%s must not have targets, however I inferred that these files will \
            be created by this action:"
           (String.capitalize what)
-      ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:pp_path_build
+      ; Targets.pp targets
       ];
   let+ () = deps_builder
   and+ action = build in
@@ -514,7 +517,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     Dep_conf_eval.named ~expander deps_written_by_user
   in
   let expander =
-    match (targets_written_by_user : _ Targets.t) with
+    match (targets_written_by_user : _ Targets_spec.t) with
     | Infer -> expander
     | Static { targets; multiplicity } ->
       Expander.add_bindings_full expander
@@ -535,18 +538,19 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     Action_expander.run (expand t) ~expander
   in
   let targets =
-    match (targets_written_by_user : _ Targets.t) with
+    match (targets_written_by_user : _ Targets_spec.t) with
     | Infer -> targets
-    | Static { targets = targets'; multiplicity = _ } ->
-      Path.Build.Set.union targets (Path.Build.Set.of_list targets')
+    | Static { targets = targets_written_by_user; multiplicity = _ } ->
+      Targets.combine targets
+        (Targets.Files.create (Path.Build.Set.of_list targets_written_by_user))
   in
-  Path.Build.Set.iter targets ~f:(fun target ->
+  Targets.iter targets ~file:(fun target ->
       if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
         User_error.raise ~loc
           [ Pp.text
               "This action has targets in a different directory than the \
                current one, this is not allowed by dune at the moment:"
-          ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:pp_path_build
+          ; Targets.pp targets
           ]);
   let build =
     let+ () = deps_builder
@@ -554,7 +558,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     let dir = Path.build (Expander.dir expander) in
     Action.Chdir (dir, action)
   in
-  Action_builder.with_targets_set ~targets build
+  Action_builder.with_targets ~targets build
 
 (* We re-export [Action_dune_lang] in the end to avoid polluting the inferred
    types in this module with all the various t's *)

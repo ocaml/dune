@@ -71,7 +71,7 @@ type done_or_more_deps =
   | Need_more_deps of (DAP.Dependency.Set.t * Dynamic_dep.Set.t)
 
 type exec_context =
-  { targets : Path.Build.Set.t
+  { targets : Targets.t
   ; context : Build_context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
@@ -127,8 +127,7 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       let to_relative path =
         path |> Stdune.Path.build |> Stdune.Path.reach ~from:eenv.working_dir
       in
-      Stdune.Path.Build.Set.to_list ectx.targets
-      |> String.Set.of_list_map ~f:to_relative
+      Targets.to_list_map ectx.targets ~file:to_relative |> String.Set.of_list
     in
     DAP.Run_arguments.
       { prepared_dependencies = eenv.prepared_dependencies; targets }

@@ -10,7 +10,7 @@ module Expanding_what = struct
   type t =
     | Nothing_special
     | Deps_like_field
-    | User_action of Path.Build.t Targets.t
+    | User_action of Path.Build.t Targets_spec.t
     | User_action_without_targets of { what : string }
 end
 
@@ -262,7 +262,7 @@ let[@inline never] invalid_use_of_target_variable t
         ]
     | Static { targets = _; multiplicity } ->
       assert (multiplicity <> var_multiplicity);
-      Targets.Multiplicity.check_variable_matches_field ~loc:source.loc
+      Targets_spec.Multiplicity.check_variable_matches_field ~loc:source.loc
         ~field:multiplicity ~variable:var_multiplicity;
       assert false)
 

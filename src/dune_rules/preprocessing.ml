@@ -504,7 +504,7 @@ let action_for_pp_with_target ~loc ~expander ~action ~src ~target =
   let action = action_for_pp ~loc ~expander ~action ~src in
   Action_builder.With_targets.map
     ~f:(Action.with_stdout_to target)
-    (Action_builder.with_targets ~targets:[ target ] action)
+    (Action_builder.with_file_targets ~file_targets:[ target ] action)
 
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)
@@ -666,7 +666,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                   (promote_correction_with_target ~suffix:corrected_suffix
                      (Path.as_in_build_dir_exn
                         (Option.value_exn (Module.file m ~ml_kind)))
-                     (Action_builder.with_targets ~targets:[ dst ]
+                     (Action_builder.with_file_targets ~file_targets:[ dst ]
                         (let open Action_builder.O in
                         preprocessor_deps
                         >>> let* exe, flags, args = driver_and_flags in

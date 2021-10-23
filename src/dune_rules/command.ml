@@ -76,7 +76,7 @@ let rec expand :
     Action_builder.With_targets.map (expand ~dir (S ts)) ~f:(fun x ->
         [ String.concat ~sep x ])
   | Target fn ->
-    Action_builder.with_targets ~targets:[ fn ]
+    Action_builder.with_file_targets ~file_targets:[ fn ]
       (Action_builder.return [ Path.reach (Path.build fn) ~from:dir ])
   | Dyn dyn ->
     Action_builder.with_no_targets
@@ -86,12 +86,13 @@ let rec expand :
     Action_builder.with_no_targets
       (Action_builder.map (Action_builder.deps deps) ~f:(fun () -> []))
   | Hidden_targets fns ->
-    Action_builder.with_targets ~targets:fns (Action_builder.return [])
+    Action_builder.with_file_targets ~file_targets:fns
+      (Action_builder.return [])
   | Expand f -> Action_builder.with_no_targets (f ~dir)
 
 and expand_no_targets ~dir (t : without_targets t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in
-  assert (Path.Build.Set.is_empty targets);
+  assert (Targets.is_empty targets);
   build
 
 let dep_prog = function
@@ -99,7 +100,7 @@ let dep_prog = function
   | Error _ -> Action_builder.return ()
 
 let run ~dir ?stdout_to prog args =
-  Action_builder.With_targets.add ~targets:(Option.to_list stdout_to)
+  Action_builder.With_targets.add ~file_targets:(Option.to_list stdout_to)
     (let open Action_builder.With_targets.O in
     let+ () = Action_builder.with_no_targets (dep_prog prog)
     and+ args = expand ~dir (S args) in

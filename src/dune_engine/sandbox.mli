@@ -21,6 +21,6 @@ val create :
 
 (** Move the targets created by the action from the sandbox to the build
     directory. *)
-val move_targets_to_build_dir : t -> targets:Path.Build.Set.t -> unit
+val move_targets_to_build_dir : t -> targets:Targets.t -> unit
 
 val destroy : t -> unit

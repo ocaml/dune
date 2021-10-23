@@ -10,14 +10,14 @@ module With_targets : sig
 
   type nonrec 'a t =
     { build : 'a t
-    ; targets : Path.Build.Set.t
+    ; targets : Targets.t
     }
 
   val map_build : 'a t -> f:('a build -> 'b build) -> 'b t
 
   val return : 'a -> 'a t
 
-  val add : 'a t -> targets:Path.Build.t list -> 'a t
+  val add : 'a t -> file_targets:Path.Build.t list -> 'a t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
@@ -42,12 +42,13 @@ module With_targets : sig
 end
 with type 'a build := 'a t
 
-(** Add a set of targets to an action builder, turning a target-less
-    [Action_builder.t] into [Action_builder.With_targets.t]. *)
-val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
+(** Add targets to an action builder, turning a target-less [Action_builder.t]
+    into [Action_builder.With_targets.t]. *)
+val with_targets : 'a t -> targets:Targets.t -> 'a With_targets.t
 
-(** [with_targets_set] is like [with_targets] but [targets] is a set *)
-val with_targets_set : 'a t -> targets:Path.Build.Set.t -> 'a With_targets.t
+(** Like [with_targets] but specifies a list of file targets. *)
+val with_file_targets :
+  'a t -> file_targets:Path.Build.t list -> 'a With_targets.t
 
 (** Create a value of [With_targets.t] with the empty set of targets. *)
 val with_no_targets : 'a t -> 'a With_targets.t

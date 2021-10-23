@@ -113,7 +113,7 @@ let rename_optional_file ~src ~dst =
     | () -> ())
 
 let move_targets_to_build_dir t ~targets =
-  Path.Build.Set.iter targets ~f:(fun target ->
+  Targets.iter targets ~file:(fun target ->
       rename_optional_file ~src:(map_path t target) ~dst:target)
 
 let destroy t = Path.rm_rf (Path.build t.dir)

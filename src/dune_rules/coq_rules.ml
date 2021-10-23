@@ -585,5 +585,5 @@ let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
   in
   let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule coq_module in
-  let coqc = Action_builder.With_targets.add coqc ~targets:ml_targets in
+  let coqc = Action_builder.With_targets.add coqc ~file_targets:ml_targets in
   [ coqdep; coqc ]

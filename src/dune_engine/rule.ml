@@ -54,7 +54,7 @@ module T = struct
   type t =
     { id : Id.t
     ; context : Build_context.t option
-    ; targets : Path.Build.Set.t
+    ; targets : Targets.t
     ; action : Action.Full.t Action_builder.t
     ; mode : Mode.t
     ; info : Info.t
@@ -102,30 +102,24 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
          })
   in
   let dir =
-    match Path.Build.Set.choose targets with
-    | None -> (
+    match Targets.validate targets with
+    | Valid { parent_dir } -> parent_dir
+    | No_targets -> (
       match info with
       | From_dune_file loc ->
         User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
       | _ -> Code_error.raise "Build_interpret.Rule.make: no targets" [])
-    | Some x ->
-      let dir = Path.Build.parent_exn x in
-      (if
-       Path.Build.Set.exists targets ~f:(fun path ->
-           Path.Build.( <> ) (Path.Build.parent_exn path) dir)
-      then
-        match info with
-        | Internal
-        | Source_file_copy _ ->
-          Code_error.raise "rule has targets in different directories"
-            [ ("targets", Path.Build.Set.to_dyn targets) ]
-        | From_dune_file loc ->
-          User_error.raise ~loc
-            [ Pp.text "Rule has targets in different directories.\nTargets:"
-            ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun p ->
-                  Pp.verbatim (Path.to_string_maybe_quoted (Path.build p)))
-            ]);
-      dir
+    | Inconsistent_parent_dir -> (
+      match info with
+      | Internal
+      | Source_file_copy _ ->
+        Code_error.raise "rule has targets in different directories"
+          [ ("targets", Targets.to_dyn targets) ]
+      | From_dune_file loc ->
+        User_error.raise ~loc
+          [ Pp.text "Rule has targets in different directories.\nTargets:"
+          ; Targets.pp targets
+          ])
   in
   let loc =
     match info with

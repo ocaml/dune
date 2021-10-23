@@ -268,7 +268,7 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
-    (Action_builder.With_targets.add ~targets:[ output ]
+    (Action_builder.With_targets.add ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
        Action_builder.with_no_targets cm_deps
        >>> Action_builder.With_targets.map

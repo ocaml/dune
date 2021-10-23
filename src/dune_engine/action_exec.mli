@@ -30,7 +30,7 @@ end
 (** [root] should be the root of the current build context, or the root of the
     sandbox if the action is sandboxed. *)
 val exec :
-     targets:Path.Build.Set.t
+     targets:Targets.t
   -> root:Path.t
   -> context:Build_context.t option
   -> env:Env.t

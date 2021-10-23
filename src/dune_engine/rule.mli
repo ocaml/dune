@@ -59,7 +59,7 @@ end
 type t = private
   { id : Id.t
   ; context : Build_context.t option
-  ; targets : Path.Build.Set.t
+  ; targets : Targets.t
   ; action : Action.Full.t Action_builder.t
   ; mode : Mode.t
   ; info : Info.t
@@ -80,7 +80,7 @@ val make :
   -> ?mode:Mode.t
   -> context:Build_context.t option
   -> ?info:Info.t
-  -> targets:Path.Build.Set.t
+  -> targets:Targets.t
   -> Action.Full.t Action_builder.t
   -> t
 

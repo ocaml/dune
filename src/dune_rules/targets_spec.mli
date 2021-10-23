@@ -1,4 +1,4 @@
-(** Defines target behavior for rules. *)
+(** Specification of targets. *)
 open! Dune_engine
 
 open Import
@@ -25,5 +25,5 @@ type 'a t =
   | Static of 'a Static.t
   | Infer
 
-(** target or targets with field with the correct multiplicity *)
+(** [target] or [targets] field with the correct multiplicity. *)
 val field : String_with_vars.t t Dune_lang.Decoder.fields_parser

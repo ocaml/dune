@@ -40,6 +40,12 @@ module Annot = struct
 
     let to_dyn = Unit.to_dyn
   end)
+
+  module Needs_stack_trace = Make (struct
+    type payload = unit
+
+    let to_dyn = Unit.to_dyn
+  end)
 end
 
 exception E of User_message.t * Annot.t list
@@ -58,12 +64,16 @@ let is_loc_none loc =
   | None -> true
   | Some loc -> loc = Loc0.none
 
-let has_embed_location annots =
+let has_embedded_location annots =
   List.exists annots ~f:(fun annot ->
       Annot.Has_embedded_location.check annot (fun () -> true) (fun () -> false))
 
 let has_location (msg : User_message.t) annots =
-  (not (is_loc_none msg.loc)) || has_embed_location annots
+  (not (is_loc_none msg.loc)) || has_embedded_location annots
+
+let needs_stack_trace annots =
+  List.exists annots ~f:(fun annot ->
+      Annot.Needs_stack_trace.check annot (fun () -> true) (fun () -> false))
 
 let () =
   Printexc.register_printer (function

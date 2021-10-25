@@ -7,6 +7,8 @@ module Name : sig
 
   val of_string : string -> t
 
+  val equal : t -> t -> bool
+
   val parse_string_exn : Loc.t * string -> t
 
   val to_string : t -> string
@@ -37,6 +39,8 @@ val hash : t -> int
 val compare : t -> t -> Ordering.t
 
 val make : Name.t -> dir:Path.Build.t -> t
+
+val register_as_standard : Name.t -> unit
 
 (** The following always holds: [make (name t) ~dir:(dir t) = t] *)
 val name : t -> Name.t

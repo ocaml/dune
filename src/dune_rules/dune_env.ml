@@ -79,6 +79,7 @@ module Stanza = struct
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
     ; odoc : Odoc.t
+    ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
     ; coq : Ordered_set_lang.Unexpanded.t
     ; format_config : Format_config.t option
     }
@@ -91,6 +92,7 @@ module Stanza = struct
       ; inline_tests
       ; menhir_flags
       ; odoc
+      ; js_of_ocaml
       ; coq
       ; format_config
       } t =
@@ -104,6 +106,7 @@ module Stanza = struct
     && Odoc.equal odoc t.odoc
     && Ordered_set_lang.Unexpanded.equal coq t.coq
     && Option.equal Format_config.equal format_config t.format_config
+    && Js_of_ocaml.Env.equal js_of_ocaml t.js_of_ocaml
 
   let hash_config = Hashtbl.hash
 
@@ -116,6 +119,7 @@ module Stanza = struct
     ; inline_tests = None
     ; menhir_flags = Ordered_set_lang.Unexpanded.standard
     ; odoc = Odoc.empty
+    ; js_of_ocaml = Js_of_ocaml.Env.empty
     ; coq = Ordered_set_lang.Unexpanded.standard
     ; format_config = None
     }
@@ -164,6 +168,10 @@ module Stanza = struct
     field "odoc" ~default:Odoc.empty
       (Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> Odoc.decode)
 
+  let js_of_ocaml_field =
+    field "js_of_ocaml" ~default:Js_of_ocaml.Env.empty
+      (Dune_lang.Syntax.since Stanza.syntax (3, 0) >>> Js_of_ocaml.Env.decode)
+
   let coq_flags = Ordered_set_lang.Unexpanded.field "flags"
 
   let coq_field =
@@ -181,6 +189,7 @@ module Stanza = struct
     and+ inline_tests = inline_tests_field
     and+ menhir_flags = menhir_flags ~since:(Some (2, 1))
     and+ odoc = odoc_field
+    and+ js_of_ocaml = js_of_ocaml_field
     and+ coq = coq_field
     and+ format_config = Format_config.field ~since:(2, 8) in
     { flags
@@ -190,6 +199,7 @@ module Stanza = struct
     ; inline_tests
     ; menhir_flags
     ; odoc
+    ; js_of_ocaml
     ; coq
     ; format_config
     }

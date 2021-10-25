@@ -160,6 +160,10 @@ let make_standard name =
   Table.add_exn standard_aliases name ();
   make name
 
+let register_as_standard name =
+  let (_ : (unit, _) result) = Table.add standard_aliases name () in
+  ()
+
 let default = make_standard Name.default
 
 let runtest = make_standard Name.runtest

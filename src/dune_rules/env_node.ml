@@ -23,6 +23,7 @@ type t =
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Action_builder.t Memo.Lazy.t
   ; odoc : Odoc.t Memo.Lazy.t
+  ; js_of_ocaml : string list Action_builder.t Js_of_ocaml.Env.t Memo.Lazy.t
   ; coq : Coq.t Action_builder.t Memo.Lazy.t
   ; format_config : Format_config.t Memo.Lazy.t
   }
@@ -40,6 +41,8 @@ let external_env t = Memo.Lazy.force t.external_env
 let bin_artifacts t = Memo.Lazy.force t.bin_artifacts
 
 let inline_tests t = Memo.Lazy.force t.inline_tests
+
+let js_of_ocaml t = Memo.Lazy.force t.js_of_ocaml
 
 let menhir_flags t =
   Memo.Lazy.force t.menhir_flags |> Action_builder.memo_build_join
@@ -125,6 +128,28 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           else
             Disabled)
   in
+  let js_of_ocaml =
+    inherited
+      ~field:(fun t -> js_of_ocaml t)
+      ~root:Js_of_ocaml.Env.(map ~f:Action_builder.return (default ~profile))
+      (fun (jsoo : _ Action_builder.t Js_of_ocaml.Env.t) ->
+        let local = config.js_of_ocaml in
+        let+ expander = Memo.Lazy.force expander in
+        let expander = Expander.set_dir expander ~dir in
+        let pick ~first ~second =
+          match first with
+          | None -> second
+          | Some _ as x -> x
+        in
+        { Js_of_ocaml.Env.compilation_mode =
+            pick ~first:local.compilation_mode ~second:jsoo.compilation_mode
+        ; runtest_alias =
+            pick ~first:local.runtest_alias ~second:jsoo.runtest_alias
+        ; flags =
+            Js_of_ocaml.Flags.make ~spec:local.flags ~default:jsoo.flags
+              ~eval:(Expander.expand_and_eval_set expander)
+        })
+  in
   let foreign_flags lang =
     let field t =
       Memo.Build.return (Foreign_language.Dict.get t.foreign_flags lang)
@@ -187,6 +212,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   ; bin_artifacts
   ; local_binaries
   ; inline_tests
+  ; js_of_ocaml
   ; menhir_flags
   ; odoc
   ; coq

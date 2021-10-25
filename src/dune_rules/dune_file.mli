@@ -10,15 +10,6 @@ module Lint : sig
   val no_lint : t
 end
 
-module Js_of_ocaml : sig
-  type t =
-    { flags : Ordered_set_lang.Unexpanded.t
-    ; javascript_files : string list
-    }
-
-  val default : t
-end
-
 type for_ =
   | Executable
   | Library of Wrapped.t option
@@ -50,7 +41,7 @@ module Buildable : sig
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Lint.t
     ; flags : Ocaml_flags.Spec.t
-    ; js_of_ocaml : Js_of_ocaml.t
+    ; js_of_ocaml : Js_of_ocaml.In_buildable.t
     ; allow_overlapping_dependencies : bool
     ; ctypes : Ctypes_stanza.t option
     ; root_module : (Loc.t * Module_name.t) option

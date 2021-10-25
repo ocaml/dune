@@ -27,24 +27,6 @@ module Lint = struct
   let no_lint = default
 end
 
-module Js_of_ocaml = struct
-  type t =
-    { flags : Ordered_set_lang.Unexpanded.t
-    ; javascript_files : string list
-    }
-
-  let decode =
-    fields
-      (let+ flags = Ordered_set_lang.Unexpanded.field "flags"
-       and+ javascript_files =
-         field "javascript_files" (repeat string) ~default:[]
-       in
-       { flags; javascript_files })
-
-  let default =
-    { flags = Ordered_set_lang.Unexpanded.standard; javascript_files = [] }
-end
-
 type for_ =
   | Executable
   | Library of Wrapped.t option
@@ -160,7 +142,7 @@ module Buildable = struct
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
     ; flags : Ocaml_flags.Spec.t
-    ; js_of_ocaml : Js_of_ocaml.t
+    ; js_of_ocaml : Js_of_ocaml.In_buildable.t
     ; allow_overlapping_dependencies : bool
     ; ctypes : Ctypes_stanza.t option
     ; root_module : (Loc.t * Module_name.t) option
@@ -225,7 +207,8 @@ module Buildable = struct
     and+ libraries = field "libraries" (Lib_deps.decode for_) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
-      field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
+      field "js_of_ocaml" Js_of_ocaml.In_buildable.decode
+        ~default:Js_of_ocaml.In_buildable.default
     and+ allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax

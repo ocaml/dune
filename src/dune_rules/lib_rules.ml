@@ -354,12 +354,10 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
               (Path.Build.basename src)
             |> Path.Build.extend_basename ~suffix:".js"
           in
-          Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target
+          Jsoo_rules.build_cm cctx ~in_buildable:js_of_ocaml ~src ~target
         in
-        Memo.Build.Option.iter action_with_targets
-          ~f:(fun action_with_targets ->
-            action_with_targets
-            >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc))
+        action_with_targets
+        >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
   in
   Memo.Build.when_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.native)

@@ -66,7 +66,7 @@ type t =
   ; preprocessing : Pp_spec.t
   ; opaque : bool
   ; stdlib : Ocaml_stdlib.t option
-  ; js_of_ocaml : Dune_file.Js_of_ocaml.t option
+  ; js_of_ocaml : Js_of_ocaml.In_buildable.t option
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; vimpl : Vimpl.t option

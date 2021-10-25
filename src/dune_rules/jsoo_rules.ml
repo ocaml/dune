@@ -4,24 +4,6 @@ open Import
 open! No_io
 module SC = Super_context
 
-let dev_mode sctx = Profile.is_dev (Super_context.context sctx).profile
-
-let separate_compilation_enabled = dev_mode
-
-let pretty sctx =
-  if dev_mode sctx then
-    [ "--pretty" ]
-  else
-    []
-
-let sourcemap sctx =
-  if dev_mode sctx then
-    [ "--source-map-inline" ]
-  else
-    []
-
-let standard sctx = pretty sctx @ sourcemap sctx
-
 let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 
 let in_build_dir ~ctx args =
@@ -35,15 +17,21 @@ type sub_command =
   | Link
   | Build_runtime
 
-let js_of_ocaml_rule sctx ~sub_command ~dir ~flags ~spec ~target =
+let js_of_ocaml_rule sctx ~sub_command ~dir ~(flags : _ Js_of_ocaml.Flags.t)
+    ~spec ~target =
   let open Memo.Build.O in
-  let+ jsoo = jsoo ~dir sctx in
+  let+ jsoo = jsoo ~dir sctx
+  and+ flags = Super_context.js_of_ocaml_flags sctx ~dir flags in
   Command.run ~dir:(Path.build dir) jsoo
     [ (match sub_command with
       | Compile -> S []
       | Link -> A "link"
       | Build_runtime -> A "build-runtime")
-    ; flags
+    ; Command.Args.dyn
+        (match sub_command with
+        | Compile -> flags.compile
+        | Link -> flags.link
+        | Build_runtime -> flags.build_runtime)
     ; A "-o"
     ; Target target
     ; spec
@@ -60,11 +48,10 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
       ; Deps javascript_files
       ]
   in
+  let dir = Compilation_context.dir cc in
   js_of_ocaml_rule
     (Compilation_context.super_context cc)
-    ~sub_command:Build_runtime
-    ~dir:(Compilation_context.dir cc)
-    ~flags ~target ~spec
+    ~sub_command:Build_runtime ~dir ~flags ~target ~spec
 
 let exe_rule cc ~javascript_files ~src ~target ~flags =
   let dir = Compilation_context.dir cc in
@@ -96,7 +83,7 @@ let jsoo_archives ~ctx lib =
              ; Path.basename archive ^ ".js"
              ]))
 
-let link_rule cc ~runtime ~target cm =
+let link_rule cc ~runtime ~target cm ~flags =
   let sctx = Compilation_context.super_context cc in
   let ctx = Compilation_context.context cc in
   let dir = Compilation_context.dir cc in
@@ -124,75 +111,62 @@ let link_rule cc ~runtime ~target cm =
     in
     Command.Args.S [ Dep (Path.build runtime); Dyn get_all; Dep std_exit ]
   in
-  let flags = Command.Args.As (sourcemap sctx) in
   js_of_ocaml_rule sctx ~sub_command:Link ~dir ~spec ~target ~flags
 
-let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
-  let sctx = Compilation_context.super_context cctx in
-  let dir = Compilation_context.dir cctx in
-  let expander = Compilation_context.expander cctx in
-  if separate_compilation_enabled sctx then
-    let spec = Command.Args.Dep (Path.build src) in
-    let flags =
-      Expander.expand_and_eval_set expander js_of_ocaml.flags
-        ~standard:(Action_builder.return (standard sctx))
-    in
-    Some
-      (js_of_ocaml_rule sctx ~sub_command:Compile ~dir
-         ~flags:(Command.Args.dyn flags) ~spec ~target)
-  else
-    None
+let build_cm cc ~in_buildable ~src ~target =
+  let sctx = Compilation_context.super_context cc in
+  let dir = Compilation_context.dir cc in
+  let spec = Command.Args.Dep (Path.build src) in
+  let flags = in_buildable.Js_of_ocaml.In_buildable.flags in
+  js_of_ocaml_rule sctx ~sub_command:Compile ~dir ~flags ~spec ~target
 
 let setup_separate_compilation_rules sctx components =
-  Memo.Build.when_ (separate_compilation_enabled sctx) (fun () ->
-      match components with
-      | []
-      | _ :: _ :: _ ->
-        Memo.Build.return ()
-      | [ pkg ] -> (
-        let pkg = Lib_name.parse_string_exn (Loc.none, pkg) in
-        let ctx = SC.context sctx in
-        let open Memo.Build.O in
-        Lib.DB.find (SC.installed_libs sctx) pkg >>= function
-        | None -> Memo.Build.return ()
-        | Some pkg ->
-          let info = Lib.info pkg in
-          let lib_name = Lib_name.to_string (Lib.name pkg) in
-          let archives =
-            let archives = (Lib_info.archives info).byte in
-            (* Special case for the stdlib because it is not referenced in the
-               META *)
-            match lib_name with
-            | "stdlib" ->
-              let archive =
-                let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
-                Path.relative stdlib_dir
-              in
-              archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
-            | _ -> archives
+  match components with
+  | []
+  | _ :: _ :: _ ->
+    Memo.Build.return ()
+  | [ pkg ] -> (
+    let pkg = Lib_name.parse_string_exn (Loc.none, pkg) in
+    let ctx = SC.context sctx in
+    let open Memo.Build.O in
+    Lib.DB.find (SC.installed_libs sctx) pkg >>= function
+    | None -> Memo.Build.return ()
+    | Some pkg ->
+      let info = Lib.info pkg in
+      let lib_name = Lib_name.to_string (Lib.name pkg) in
+      let archives =
+        let archives = (Lib_info.archives info).byte in
+        (* Special case for the stdlib because it is not referenced in the
+           META *)
+        match lib_name with
+        | "stdlib" ->
+          let archive =
+            let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
+            Path.relative stdlib_dir
           in
-          Memo.Build.parallel_iter archives ~f:(fun fn ->
-              let name = Path.basename fn in
-              let target =
-                in_build_dir ~ctx [ lib_name; sprintf "%s.js" name ]
-              in
-              let spec =
-                let src_dir = Lib_info.src_dir info in
-                let src = Path.relative src_dir name in
-                Command.Args.Dep src
-              in
-              let dir = in_build_dir ~ctx [ lib_name ] in
-              let open Memo.Build.O in
-              let* action_with_targets =
-                js_of_ocaml_rule sctx ~sub_command:Compile ~dir
-                  ~flags:(As (standard sctx))
-                  ~spec ~target
-              in
-              SC.add_rule sctx ~dir action_with_targets)))
+          archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
+        | _ -> archives
+      in
 
-let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Action_builder.t) ~flags
+      Memo.Build.parallel_iter archives ~f:(fun fn ->
+          let name = Path.basename fn in
+          let target = in_build_dir ~ctx [ lib_name; sprintf "%s.js" name ] in
+          let spec =
+            let src_dir = Lib_info.src_dir info in
+            let src = Path.relative src_dir name in
+            Command.Args.Dep src
+          in
+          let dir = in_build_dir ~ctx [ lib_name ] in
+          let open Memo.Build.O in
+          let* action_with_targets =
+            js_of_ocaml_rule sctx ~sub_command:Compile ~dir
+              ~flags:Js_of_ocaml.Flags.standard ~spec ~target
+          in
+          SC.add_rule sctx ~dir action_with_targets))
+
+let build_exe cc ~in_buildable ~src ~(cm : Path.t list Action_builder.t)
     ~promote =
-  let { Dune_file.Js_of_ocaml.javascript_files; _ } = js_of_ocaml in
+  let { Js_of_ocaml.In_buildable.javascript_files; flags } = in_buildable in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let javascript_files =
@@ -207,13 +181,15 @@ let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Action_builder.t) ~flags
     | Some p -> Promote p
   in
   let open Memo.Build.O in
-  if separate_compilation_enabled sctx then
+  let* cmode = Super_context.js_of_ocaml_compilation_mode sctx ~dir in
+  match (cmode : Js_of_ocaml.Compilation_mode.t) with
+  | Separate_compilation ->
     standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime
       ~flags
     >>= SC.add_rule sctx ~dir
-    >>> link_rule cc ~runtime:standalone_runtime ~target cm
+    >>> link_rule cc ~runtime:standalone_runtime ~target cm ~flags
     >>= SC.add_rule sctx ~dir ~mode
-  else
+  | Whole_program ->
     exe_rule cc ~javascript_files ~src ~target ~flags
     >>= SC.add_rule sctx ~dir ~mode
 

@@ -230,7 +230,16 @@ include Sub_system.Register_end_point (struct
             None
           | Javascript -> Some Jsoo_rules.runner
         in
-        SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
+        let* runtest_alias =
+          match mode with
+          | Native
+          | Best
+          | Byte ->
+            Memo.Build.return Alias.Name.runtest
+          | Javascript -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
+        in
+        SC.add_alias_action sctx ~dir ~loc:(Some info.loc)
+          (Alias.make ~dir runtest_alias)
           (let exe =
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in

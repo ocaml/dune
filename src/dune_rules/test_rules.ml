@@ -72,9 +72,16 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
               in
               Pform.Map.singleton test_pform [ Value.Path test_exe_path ]
             in
+            let* runtest_alias =
+              match runtest_mode with
+              | `js -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
+              | `exe
+              | `bc ->
+                Memo.Build.return Alias.Name.runtest
+            in
             let add_alias ~loc ~action ~locks =
               let alias =
-                { Dune_file.Alias_conf.name = Alias.Name.runtest
+                { Dune_file.Alias_conf.name = runtest_alias
                 ; locks
                 ; package = t.package
                 ; deps =

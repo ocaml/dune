@@ -66,6 +66,18 @@ val internal_lib_names : t -> Lib_name.Set.t
 val ocaml_flags :
   t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t Memo.Build.t
 
+val js_of_ocaml_runtest_alias :
+  t -> dir:Path.Build.t -> Alias.Name.t Memo.Build.t
+
+val js_of_ocaml_compilation_mode :
+  t -> dir:Path.Build.t -> Js_of_ocaml.Compilation_mode.t Memo.Build.t
+
+val js_of_ocaml_flags :
+     t
+  -> dir:Path.Build.t
+  -> Js_of_ocaml.Flags.Spec.t
+  -> string list Action_builder.t Js_of_ocaml.Flags.t Memo.Build.t
+
 val foreign_flags :
      t
   -> dir:Path.Build.t

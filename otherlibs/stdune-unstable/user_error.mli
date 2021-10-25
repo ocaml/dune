@@ -19,6 +19,9 @@ module Annot : sig
 
   (** The message has a location embed in the text. *)
   module Has_embedded_location : S with type payload = unit
+
+  (** The message needs a stack trace for clarity. *)
+  module Needs_stack_trace : S with type payload = unit
 end
 
 (** User errors are errors that users need to fix themselves in order to make
@@ -48,10 +51,12 @@ val make :
 (** The "Error:" prefix *)
 val prefix : User_message.Style.t Pp.t
 
-(** Returns [true] if the message has an explicit location or one embed in the
-    text. *)
+(** Returns [true] if the message has an explicit location or one embedded in
+    the text. *)
 val has_location : User_message.t -> Annot.t list -> bool
 
-(** Returns [true] if the following list of annotations contains
-    [Annot.Has_embedded_location]. *)
-val has_embed_location : Annot.t list -> bool
+(** Returns [true] if the list contains [Annot.Has_embedded_location]. *)
+val has_embedded_location : Annot.t list -> bool
+
+(** Returns [true] if the list contains [Annot.Needs_stack_trace]. *)
+val needs_stack_trace : Annot.t list -> bool

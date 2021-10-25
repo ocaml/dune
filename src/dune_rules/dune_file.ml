@@ -1639,14 +1639,14 @@ module Rule = struct
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
     in
     let* project = Dune_project.get_exn () in
-    let disallow_directory_targets =
-      Option.is_none
+    let allow_directory_targets =
+      Option.is_some
         (Dune_project.find_extension_args project directory_targets_extension)
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
        and+ action = field "action" (located Action_dune_lang.decode)
-       and+ targets = Targets_spec.field
+       and+ targets = Targets_spec.field ~allow_directory_targets
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ () =
          let+ fallback =
@@ -1672,13 +1672,6 @@ module Rule = struct
          field_o "alias"
            (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
        in
-       if
-         disallow_directory_targets && Targets_spec.has_target_directory targets
-       then
-         User_error.raise ~loc
-           [ Pp.text
-               "Directory targets require the 'directory-targets' extension"
-           ];
        { targets; deps; action; mode; locks; loc; enabled_if; alias; package })
 
   let decode =
@@ -1726,7 +1719,9 @@ module Rule = struct
                can't because this is might get parsed with old dune syntax where
                [multiplicity = One] is not supported. *)
             Static
-              { targets = [ S.make_text loc dst ]; multiplicity = Multiple }
+              { targets = [ (S.make_text loc dst, File) ]
+              ; multiplicity = Multiple
+              }
         ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
         ; action =
             ( loc
@@ -1754,7 +1749,8 @@ module Rule = struct
         { targets =
             Static
               { targets =
-                  List.map ~f:(S.make_text loc) [ name ^ ".ml"; name ^ ".mli" ]
+                  List.map [ name ^ ".ml"; name ^ ".mli" ] ~f:(fun target ->
+                      (S.make_text loc target, Targets_spec.Kind.File))
               ; multiplicity = Multiple
               }
         ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))

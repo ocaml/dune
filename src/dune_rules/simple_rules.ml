@@ -28,17 +28,12 @@ let check_filename =
       User_error.raise ~loc:error_loc
         [ Pp.text "'.' and '..' are not valid filenames" ]
     | String s ->
-      let s, tag =
-        match String.drop_suffix s ~suffix:"/*" with
-        | None -> (s, Targets_spec.Tag.None)
-        | Some s -> (s, Star)
-      in
       if Filename.dirname s <> Filename.current_dir_name then
         not_in_dir ~error_loc s;
-      (Path.Build.relative ~error_loc dir s, tag)
+      Path.Build.relative ~error_loc dir s
     | Path p -> (
       match Option.equal Path.equal (Path.parent p) (Some (Path.build dir)) with
-      | true -> (Path.as_in_build_dir_exn p, Targets_spec.Tag.None)
+      | true -> Path.as_in_build_dir_exn p
       | false -> not_in_dir ~error_loc (Path.to_string p))
     | Dir p -> not_in_dir ~error_loc (Path.to_string p)
 
@@ -81,14 +76,15 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | Infer -> Memo.Build.return Targets_spec.Infer
       | Static { targets; multiplicity } ->
         let+ targets =
-          Memo.Build.List.concat_map targets ~f:(fun target ->
+          Memo.Build.List.concat_map targets ~f:(fun (target, kind) ->
               let error_loc = String_with_vars.loc target in
               (match multiplicity with
               | One ->
                 let+ x = Expander.No_deps.expand expander ~mode:Single target in
                 [ x ]
               | Multiple -> Expander.No_deps.expand expander ~mode:Many target)
-              >>| List.map ~f:(check_filename ~dir ~error_loc))
+              >>| List.map ~f:(fun value ->
+                      (check_filename ~dir ~error_loc value, kind)))
         in
         Targets_spec.Static { multiplicity; targets }
     in

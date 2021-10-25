@@ -8,15 +8,14 @@ Directory targets require an extension.
 
   $ cat > dune <<EOF
   > (rule
-  >   (targets output/*)
+  >   (targets (dir output))
   >   (action (bash "true")))
   > EOF
 
   $ dune build output/x
-  File "dune", line 1, characters 0-52:
-  1 | (rule
-  2 |   (targets output/*)
-  3 |   (action (bash "true")))
+  File "dune", line 2, characters 16-22:
+  2 |   (targets (dir output))
+                      ^^^^^^
   Error: Directory targets require the 'directory-targets' extension
   [1]
 
@@ -28,9 +27,9 @@ Directory targets require an extension.
 Directory targets are not allowed for non-sandboxed rules.
 
   $ dune build output/x
-  File "dune", line 1, characters 0-52:
+  File "dune", line 1, characters 0-56:
   1 | (rule
-  2 |   (targets output/*)
+  2 |   (targets (dir output))
   3 |   (action (bash "true")))
   Error: Rules with directory targets must be sandboxed
   [1]
@@ -40,15 +39,15 @@ Ensure directory targets are produced.
   $ cat > dune <<EOF
   > (rule
   >   (deps (sandbox always))
-  >   (targets output/*)
+  >   (targets (dir output))
   >   (action (bash "true")))
   > EOF
 
   $ dune build output/x
-  File "dune", line 1, characters 0-78:
+  File "dune", line 1, characters 0-82:
   1 | (rule
   2 |   (deps (sandbox always))
-  3 |   (targets output/*)
+  3 |   (targets (dir output))
   4 |   (action (bash "true")))
   Error: Rule failed to produce directory "output"
   [1]
@@ -58,15 +57,15 @@ Error message when the matching directory target doesn't contain a requested pat
   $ cat > dune <<EOF
   > (rule
   >   (deps (sandbox always))
-  >   (targets output/*)
+  >   (targets (dir output))
   >   (action (bash "mkdir output")))
   > EOF
 
   $ dune build output/x
-  File "dune", line 1, characters 0-86:
+  File "dune", line 1, characters 0-90:
   1 | (rule
   2 |   (deps (sandbox always))
-  3 |   (targets output/*)
+  3 |   (targets (dir output))
   4 |   (action (bash "mkdir output")))
   Error: This rule defines a directory target "output" that matches the
   requested path "output/x" but the rule's action didn't produce it
@@ -77,7 +76,7 @@ Build directory target from the command line.
   $ cat > dune <<EOF
   > (rule
   >   (deps (sandbox always))
-  >   (targets output/*)
+  >   (targets (dir output))
   >   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
   > EOF
 
@@ -92,7 +91,7 @@ Requesting the directory target directly works too.
   $ cat > dune <<EOF
   > (rule
   >   (deps src_x (sandbox always))
-  >   (targets output/*)
+  >   (targets (dir output))
   >   (action (bash "mkdir output; cat src_x > output/x; echo y > output/y")))
   > EOF
 
@@ -118,19 +117,9 @@ Hints for directory targets.
   Hint: did you mean output?
   [1]
 
-Print rules.
+Print rules: currently works only with Makefiles.
 
-  $ dune rules output
-  ((deps
-    ((File (In_build_dir _build/default/src_x))
-     (Sandbox_config ((disallow none)))
-     (Sandbox_config ())))
-   (targets ((In_build_dir _build/default/output/*)))
-   (context default)
-   (action
-    (chdir
-     _build/default
-     (bash "mkdir output; cat src_x > output/x; echo y > output/y"))))
+# CR-someday amokhov: Add support for printing Dune rules.
 
   $ dune rules -m output | tr '\t' ' ' | head -n -1
   _build/default/output: _build/default/src_x
@@ -140,20 +129,24 @@ Print rules.
    bash -e -u -o pipefail -c \
      'mkdir output; cat src_x > output/x; echo y > output/y'
 
+  $ dune rules output
+  Error: Printing rules with directory targets is currently not supported
+  [1]
+
 Error when requesting a missing subdirectory of a directory target.
 
   $ cat > dune <<EOF
   > (rule
   >   (deps (sandbox always))
-  >   (targets output/*)
+  >   (targets (dir output))
   >   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
   > EOF
 
   $ dune build output/subdir
-  File "dune", line 1, characters 0-124:
+  File "dune", line 1, characters 0-128:
   1 | (rule
   2 |   (deps (sandbox always))
-  3 |   (targets output/*)
+  3 |   (targets (dir output))
   4 |   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
   Error: This rule defines a directory target "output" that matches the
   requested path "output/subdir" but the rule's action didn't produce it
@@ -165,8 +158,11 @@ directory target.
   $ cat > dune <<EOF
   > (rule
   >   (deps (sandbox always))
-  >   (targets output/*)
-  >   (action (bash "mkdir -p output/subdir; echo a > output/a; echo b > output/subdir/b")))
+  >   (targets (dir output))
+  >   (action (bash "\| mkdir -p output/subdir;
+  >                 "\| echo a > output/a;
+  >                 "\| echo b > output/subdir/b
+  > )))
   > (rule
   >   (deps output/subdir/c)
   >   (target main)
@@ -174,11 +170,14 @@ directory target.
   > EOF
 
   $ dune build main
-  File "dune", line 1, characters 0-141:
+  File "dune", line 1, characters 0-188:
   1 | (rule
   2 |   (deps (sandbox always))
-  3 |   (targets output/*)
-  4 |   (action (bash "mkdir -p output/subdir; echo a > output/a; echo b > output/subdir/b")))
+  3 |   (targets (dir output))
+  4 |   (action (bash "\| mkdir -p output/subdir;
+  5 |                 "\| echo a > output/a;
+  6 |                 "\| echo b > output/subdir/b
+  7 | )))
   Error: This rule defines a directory target "output" that matches the
   requested path "output/subdir/c" but the rule's action didn't produce it
   -> required by _build/default/main
@@ -189,8 +188,11 @@ Depend on a file from a directory target.
   $ cat > dune <<EOF
   > (rule
   >   (deps (sandbox always))
-  >   (targets output/*)
-  >   (action (bash "mkdir -p output/subdir; echo a > output/a; echo b > output/subdir/b")))
+  >   (targets (dir output))
+  >   (action (bash "\| mkdir -p output/subdir;
+  >                 "\| echo a > output/a;
+  >                 "\| echo b > output/subdir/b
+  > )))
   > (rule
   >   (deps output/subdir/b)
   >   (target main)
@@ -211,8 +213,12 @@ Interaction of globs and directory targets.
   $ cat > dune <<EOF
   > (rule
   >   (deps (sandbox always))
-  >   (targets output/*)
-  >   (action (bash "mkdir -p output/subdir; echo a > output/a; echo b > output/b; echo c > output/subdir/c")))
+  >   (targets (dir output))
+  >   (action (bash "\| mkdir -p output/subdir;
+  >                 "\| echo a > output/a;
+  >                 "\| echo b > output/b;
+  >                 "\| echo c > output/subdir/c
+  > )))
   > (rule
   >   (deps (glob_files output/*))
   >   (target level1)
@@ -258,11 +264,19 @@ the early cutoff optimisation and is also more reliable.
 The [src_c] dependency is unused in the rule's action but we use it to force the
 rule to rerun when needed.
 
+# CR-someday amokhov: Right now we accept simply "output" as a dependency
+# specification, which is inconsistent with the target specification. This
+# should be fixed, i.e. we should require "(dir output)" instead.
+
   $ cat > dune <<EOF
   > (rule
   >   (deps src_a src_b src_c (sandbox always))
-  >   (targets output/*)
-  >   (action (bash "echo running; mkdir -p output/subdir; cat src_a > output/a; cat src_b > output/subdir/b")))
+  >   (targets (dir output))
+  >   (action (bash "\| echo running;
+  >                 "\| mkdir -p output/subdir;
+  >                 "\| cat src_a > output/a;
+  >                 "\| cat src_b > output/subdir/b
+  > )))
   > (rule
   >   (deps output)
   >   (target contents)
@@ -331,8 +345,12 @@ Check that Dune clears stale files from directory targets.
   $ cat > dune <<EOF
   > (rule
   >   (deps src_a src_b src_c (sandbox always))
-  >   (targets output/*)
-  >   (action (bash "echo running; mkdir -p output/subdir; cat src_a > output/new-a; cat src_b > output/subdir/b")))
+  >   (targets (dir output))
+  >   (action (bash "\| echo running;
+  >                 "\| mkdir -p output/subdir;
+  >                 "\| cat src_a > output/new-a;
+  >                 "\| cat src_b > output/subdir/b
+  > )))
   > (rule
   >   (deps output)
   >   (target contents)
@@ -356,15 +374,15 @@ Directory target whose name conflicts with an internal directory used by Dune.
   $ cat > dune <<EOF
   > (rule
   >   (deps (sandbox always))
-  >   (targets .dune/*)
+  >   (targets (dir .dune))
   >   (action (bash "mkdir .dune; echo hello > .dune/hello")))
   > EOF
 
   $ dune build .dune/hello
-  File "dune", line 1, characters 0-110:
+  File "dune", line 1, characters 0-114:
   1 | (rule
   2 |   (deps (sandbox always))
-  3 |   (targets .dune/*)
+  3 |   (targets (dir .dune))
   4 |   (action (bash "mkdir .dune; echo hello > .dune/hello")))
   Error: This rule defines a directory target ".dune" whose name conflicts with
   an internal directory used by Dune. Please use a different name.

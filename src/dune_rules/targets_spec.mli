@@ -11,32 +11,27 @@ module Multiplicity : sig
   val check_variable_matches_field : loc:Loc.t -> field:t -> variable:t -> unit
 end
 
-(** Tags are used to distinguish file and directory targets. Specifically, a
-    directory target is specified by adding "/*" at the end. *)
-module Tag : sig
+module Kind : sig
   type t =
-    | None
-    | Star  (** Ends with "/*", i.e. "output/*" *)
+    | File
+    | Directory
 end
 
 module Static : sig
   type 'path t =
-    { targets : 'path list  (** Here ['path] may be tagged with [Tag.t]. *)
+    { targets : ('path * Kind.t) list
     ; multiplicity : Multiplicity.t
     }
 end
 
-(** Static targets are listed by the user while [Infer] denotes that dune must
-    discover all the targets. In the [Static] case, dune still implicitly adds
+(** Static targets are listed by the user while [Infer] denotes that Dune must
+    discover all the targets. In the [Static] case, Dune still implicitly adds
     the list of inferred targets. *)
 type 'a t =
   | Static of 'a Static.t
   | Infer
 
 (** [target] or [targets] field with the correct multiplicity. *)
-val field : String_with_vars.t t Dune_lang.Decoder.fields_parser
-
-(** Contains a directory target. *)
-val has_target_directory : String_with_vars.t t -> bool
-
-val untag : ('a * Tag.t) t -> 'a t
+val field :
+     allow_directory_targets:bool
+  -> String_with_vars.t t Dune_lang.Decoder.fields_parser

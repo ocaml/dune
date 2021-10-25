@@ -516,11 +516,8 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
   let deps_builder, expander =
     Dep_conf_eval.named ~expander deps_written_by_user
   in
-  let untagged_targets_written_by_user =
-    Targets_spec.untag targets_written_by_user
-  in
   let expander =
-    match (untagged_targets_written_by_user : _ Targets_spec.t) with
+    match (targets_written_by_user : _ Targets_spec.t) with
     | Infer -> expander
     | Static { targets; multiplicity } ->
       Expander.add_bindings_full expander
@@ -532,11 +529,13 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
                 | Multiple -> Targets))
              (Expander.Deps.Without
                 (Memo.Build.return
-                   (Value.L.paths (List.map targets ~f:Path.build)))))
+                   (Value.L.paths
+                      (List.map targets
+                         ~f:(fun (target, (_ : Targets_spec.Kind.t)) ->
+                           Path.build target))))))
   in
   let expander =
-    Expander.set_expanding_what expander
-      (User_action untagged_targets_written_by_user)
+    Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
   let+! { Action_builder.With_targets.build; targets } =
     Action_expander.run (expand t) ~expander
@@ -546,7 +545,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     | Infer -> targets
     | Static { targets = targets_written_by_user; multiplicity = _ } ->
       let files, dirs =
-        List.partition_map targets_written_by_user ~f:(fun (path, tag) ->
+        List.partition_map targets_written_by_user ~f:(fun (path, kind) ->
             if Path.Build.(parent_exn path <> targets_dir) then
               User_error.raise ~loc
                 [ Pp.text
@@ -554,9 +553,9 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
                      current one, this is not allowed by dune at the moment:"
                 ; Targets.pp targets
                 ];
-            match tag with
-            | None -> Left path
-            | Star -> Right path)
+            match kind with
+            | File -> Left path
+            | Directory -> Right path)
       in
       let files = Path.Build.Set.of_list files in
       let dirs = Path.Build.Set.of_list dirs in

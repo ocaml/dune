@@ -185,8 +185,8 @@ module With_targets = struct
     | xs ->
       let build, targets =
         List.fold_left xs ~init:([], Targets.empty)
-          ~f:(fun (acc_build, acc_targets) x ->
-            (x.build :: acc_build, Targets.combine acc_targets x.targets))
+          ~f:(fun (builds, targets) x ->
+            (x.build :: builds, Targets.combine x.targets targets))
       in
       { build = all (List.rev build); targets }
 

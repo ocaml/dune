@@ -115,22 +115,35 @@ let rename_optional_file ~src ~dst =
 (* Recursively move regular files from [src] to [dst] and return the set of
    moved files. *)
 let rename_dir_recursively ~loc ~src_dir ~dst_dir =
-  let rec loop ~src ~dst ~dst_parent =
-    (match Fpath.mkdir dst with
+  let rec loop ~src_dir ~dst_dir =
+    (match Fpath.mkdir (Path.Build.to_string dst_dir) with
     | Created -> ()
-    | Already_exists -> (* CR-someday amokhov: Should we clear it? *) ()
+    | Already_exists ->
+      User_error.raise ~loc
+        ~annots:[ User_error.Annot.Needs_stack_trace.make () ]
+        [ Pp.textf
+            "This rule defines a directory target %S whose name conflicts with \
+             an internal directory used by Dune. Please use a different name."
+            (Path.Build.drop_build_context_exn dst_dir
+            |> Path.Source.to_string_maybe_quoted)
+        ]
     | Missing_parent_directory -> assert false);
-    match Dune_filesystem_stubs.read_directory_with_kinds src with
+    match
+      Dune_filesystem_stubs.read_directory_with_kinds
+        (Path.Build.to_string src_dir)
+    with
     | Ok files ->
       List.concat_map files ~f:(fun (file, kind) ->
-          let src = Filename.concat src file in
-          let dst = Filename.concat dst file in
           match (kind : Dune_filesystem_stubs.File_kind.t) with
           | S_REG ->
-            Unix.rename src dst;
-            [ Path.Build.relative dst_parent file ]
+            let src = Path.Build.relative src_dir file in
+            let dst = Path.Build.relative dst_dir file in
+            Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
+            [ dst ]
           | S_DIR ->
-            loop ~src ~dst ~dst_parent:(Path.Build.relative dst_parent file)
+            loop
+              ~src_dir:(Path.Build.relative src_dir file)
+              ~dst_dir:(Path.Build.relative dst_dir file)
           | _ ->
             User_error.raise ~loc
               [ Pp.textf "Rule produced a file with unrecognised kind %S"
@@ -139,31 +152,27 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
     | Error (ENOENT, _, _) ->
       User_error.raise ~loc
         [ Pp.textf "Rule failed to produce directory %S"
-            (Path.of_string src
-           |> Path.drop_optional_build_context_maybe_sandboxed
-           |> Path.to_string_maybe_quoted)
+            (Path.Build.drop_build_context_maybe_sandboxed_exn src_dir
+            |> Path.Source.to_string_maybe_quoted)
         ]
     | Error (unix_error, _, _) ->
       User_error.raise ~loc
         [ Pp.textf "Rule produced unreadable directory %S"
-            (Path.of_string src
-           |> Path.drop_optional_build_context_maybe_sandboxed
-           |> Path.to_string_maybe_quoted)
+            (Path.Build.drop_build_context_maybe_sandboxed_exn src_dir
+            |> Path.Source.to_string_maybe_quoted)
         ; Pp.verbatim (Unix.error_message unix_error)
         ]
   in
-  loop
-    ~src:(Path.Build.to_string src_dir)
-    ~dst:(Path.Build.to_string dst_dir)
-    ~dst_parent:dst_dir
-  |> Path.Build.Set.of_list
+  loop ~src_dir ~dst_dir |> Path.Build.Set.of_list
 
 let move_targets_to_build_dir t ~loc ~targets =
-  Targets.to_list_map targets
-    ~file:(fun target ->
-      rename_optional_file ~src:(map_path t target) ~dst:target)
-    ~dir:(fun target ->
-      rename_dir_recursively ~loc ~src_dir:(map_path t target) ~dst_dir:target)
-  |> snd |> Path.Build.Set.union_all
+  let (_file_targets_renamed : unit list), files_moved_in_directory_targets =
+    Targets.to_list_map targets
+      ~file:(fun target ->
+        rename_optional_file ~src:(map_path t target) ~dst:target)
+      ~dir:(fun target ->
+        rename_dir_recursively ~loc ~src_dir:(map_path t target) ~dst_dir:target)
+  in
+  Path.Build.Set.union_all files_moved_in_directory_targets
 
 let destroy t = Path.rm_rf (Path.build t.dir)

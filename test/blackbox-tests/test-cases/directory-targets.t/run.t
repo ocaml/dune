@@ -315,3 +315,48 @@ and the second one because of the lack of early cutoff.
   running
           bash contents
   running
+
+Check that Dune clears stale files from directory targets.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps src_a src_b src_c (sandbox always))
+  >   (targets output/*)
+  >   (action (bash "echo running; mkdir -p output/subdir; cat src_a > output/new-a; cat src_b > output/subdir/b")))
+  > (rule
+  >   (deps output)
+  >   (target contents)
+  >   (action (bash "echo running; echo 'new-a:' > contents; cat output/new-a >> contents; echo 'b:' >> contents; cat output/subdir/b >> contents")))
+  > EOF
+
+  $ dune build contents
+          bash output
+  running
+          bash contents
+  running
+
+Note that the stale "output/a" file got removed.
+
+  $ ls _build/default/output | sort
+  new-a
+  subdir
+
+Directory target whose name conflicts with an internal directory used by Dune.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets .dune/*)
+  >   (action (bash "mkdir .dune; echo hello > .dune/hello")))
+  > EOF
+
+  $ dune build .dune/hello
+  File "dune", line 1, characters 0-110:
+  1 | (rule
+  2 |   (deps (sandbox always))
+  3 |   (targets .dune/*)
+  4 |   (action (bash "mkdir .dune; echo hello > .dune/hello")))
+  Error: This rule defines a directory target ".dune" whose name conflicts with
+  an internal directory used by Dune. Please use a different name.
+  -> required by _build/default/.dune/hello
+  [1]

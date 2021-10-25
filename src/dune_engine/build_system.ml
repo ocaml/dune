@@ -1543,7 +1543,7 @@ end = struct
 
   module Exec_result = struct
     type t =
-      { paths_in_directory_targets : Path.Build.Set.t
+      { files_in_directory_targets : Path.Build.Set.t
       ; action_exec_result : Action_exec.Exec_result.t
       }
   end
@@ -1601,13 +1601,13 @@ end = struct
             Action_exec.exec ~root ~context ~env ~targets ~rule_loc:loc
               ~build_deps ~execution_parameters action
           in
-          let paths_in_directory_targets =
+          let files_in_directory_targets =
             match sandbox with
             | None -> Path.Build.Set.empty
             | Some sandbox ->
               Sandbox.move_targets_to_build_dir sandbox ~loc ~targets
           in
-          { Exec_result.paths_in_directory_targets; action_exec_result })
+          { Exec_result.files_in_directory_targets; action_exec_result })
     in
     Option.iter sandbox ~f:Sandbox.destroy;
     (* All went well, these targets are no longer pending *)
@@ -1977,7 +1977,7 @@ end = struct
                   | _ ->
                     let targets =
                       Path.Build.Set.union file_targets
-                        exec_result.paths_in_directory_targets
+                        exec_result.files_in_directory_targets
                     in
                     Fiber.return
                       (compute_target_digests_or_raise_error

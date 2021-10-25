@@ -172,10 +172,3 @@ understood by dune language."))
   pp
   csexp)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
-
-(package
- (name dune-bench)
- (synopsis "Dune's benchmarking suite")
- (depends
-  (ocaml (>= 4.08.0)))
- (description "Dune's private benchmarking suite"))

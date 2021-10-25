@@ -1,0 +1,3 @@
+(tests
+  (names a b)
+  (modes js))

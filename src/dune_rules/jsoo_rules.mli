@@ -24,3 +24,5 @@ val setup_separate_compilation_rules :
   Super_context.t -> string list -> unit Memo.Build.t
 
 val standard : Super_context.t -> string list
+
+val runner : string

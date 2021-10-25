@@ -216,3 +216,5 @@ let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Action_builder.t) ~flags
   else
     exe_rule cc ~javascript_files ~src ~target ~flags
     >>= SC.add_rule sctx ~dir ~mode
+
+let runner = "node"

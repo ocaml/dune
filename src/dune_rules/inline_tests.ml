@@ -228,7 +228,7 @@ include Sub_system.Register_end_point (struct
           | Best
           | Byte ->
             None
-          | Javascript -> Some "node"
+          | Javascript -> Some Jsoo_rules.runner
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
           (let exe =

@@ -1373,7 +1373,11 @@ module Executables = struct
         else
           singleton exe Loc.none
 
-      let default_for_tests = byte_and_exe
+      let default_for_tests ~version =
+        if version < (3, 0) then
+          byte_and_exe
+        else
+          singleton exe Loc.none
 
       let best_install_mode t = List.find ~f:(mem t) installable_modes
     end
@@ -1946,7 +1950,9 @@ module Tests = struct
             field "locks" (repeat String_with_vars.decode) ~default:[]
           and+ modes =
             field "modes" Executables.Link_mode.Map.decode
-              ~default:Executables.Link_mode.Map.default_for_tests
+              ~default:
+                (Executables.Link_mode.Map.default_for_tests
+                   ~version:dune_version)
           and+ enabled_if =
             Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
           and+ action =

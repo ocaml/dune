@@ -19,13 +19,22 @@ where vlib is a virtual library, and impl implements this library.
   $ cat >impl/dune <<EOF
   > (library (name impl) (implements vlib) (libraries lib))
   > EOF
+  $ dune build @all
+  File "impl/dune", line 1, characters 0-55:
+  1 | (library (name impl) (implements vlib) (libraries lib))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Virtual library "vlib" is used by a dependency of "impl". This is not
+  allowed.
+  [1]
 
 The implementation impl was built, but it's not usable:
 
   $ echo 'Vlib.run ()' > foo.ml
   $ echo "(executable (name foo) (libraries impl))" > dune
   $ dune exec ./foo.exe
-  File "_none_", line 1:
-  Error: No implementations provided for the following modules:
-           Vlib referenced from lib/lib.cmxa(Lib)
+  File "impl/dune", line 1, characters 0-55:
+  1 | (library (name impl) (implements vlib) (libraries lib))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Virtual library "vlib" is used by a dependency of "impl". This is not
+  allowed.
   [1]

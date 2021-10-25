@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Report cycles between virtual libraries and their implementation (#5050,
+  fixes #2896, @rgrinberg)
+
 - Allow users to specify dynamic dependencies in rules. For example `(deps
   %{read:foo.gen})` (#4662, fixes #4089, @jeremiedimino)
 

@@ -1,7 +1,5 @@
 (executable
  (name bench)
- (public_name dune_bench)
- (package dune-bench)
  (libraries dune_stats chrome_trace stdune fiber dune_engine dune_util))
 
 (rule

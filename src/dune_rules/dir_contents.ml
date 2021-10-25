@@ -146,7 +146,8 @@ end = struct
             let+ targets = Simple_rules.user_rule sctx rule ~dir ~expander in
             (* CR-someday amokhov: Do not ignore directory targets. *)
             let file_target_names, _ignored_dir_targets =
-              Targets.to_list_map targets ~file:Path.Build.basename ~dir:ignore
+              Targets.partition_map targets ~file:Path.Build.basename
+                ~dir:ignore
             in
             file_target_names
           | Copy_files def ->

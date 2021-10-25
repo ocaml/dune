@@ -128,7 +128,7 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
         path |> Stdune.Path.build |> Stdune.Path.reach ~from:eenv.working_dir
       in
       let file_targets, (_dir_targets_not_allowed : Nothing.t list) =
-        Targets.to_list_map ectx.targets ~file:to_relative
+        Targets.partition_map ectx.targets ~file:to_relative
           ~dir:(fun _dir_target ->
             User_error.raise ~loc:ectx.rule_loc
               [ Pp.text

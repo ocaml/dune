@@ -533,7 +533,7 @@ let () =
 
 let compute_target_digests targets =
   let file_targets, (_ignored_dir_targets : unit list) =
-    Targets.to_list_map targets ~file:Fun.id ~dir:ignore
+    Targets.partition_map targets ~file:Fun.id ~dir:ignore
   in
   Option.List.traverse file_targets ~f:(fun target ->
       Cached_digest.build_file target
@@ -801,7 +801,7 @@ end = struct
     let file_targets, directory_targets =
       List.map rules ~f:(fun rule ->
           assert (Path.Build.( = ) dir rule.Rule.dir);
-          Targets.to_list_map rule.targets
+          Targets.partition_map rule.targets
             ~file:(fun target ->
               if String.Set.mem source_dirs (Path.Build.basename target) then
                 report_rule_src_dir_conflict dir target rule
@@ -903,7 +903,7 @@ end = struct
                of a build context since there are source files to copy, so this
                call can't fail. *)
             let file_targets, (_dir_targets_not_allowed : Nothing.t list) =
-              Targets.to_list_map rule.targets
+              Targets.partition_map rule.targets
                 ~file:Path.Build.drop_build_context_exn ~dir:(fun dir ->
                   Code_error.raise
                     "Unexpected directory target in a Fallback rule"
@@ -1473,7 +1473,7 @@ end = struct
       ~execution_parameters =
     let { Action.Full.action; env; locks; can_go_in_shared_cache } = action in
     let file_targets, dir_targets =
-      Targets.to_list_map rule.targets ~file:Path.Build.to_string
+      Targets.partition_map rule.targets ~file:Path.Build.to_string
         ~dir:Path.Build.to_string
     in
     let trace =
@@ -2296,13 +2296,20 @@ end = struct
       | None -> (
         match Cached_digest.build_file path with
         | Ok digest -> digest (* Must be a directory target *)
-        | _ ->
+        | No_such_file
+        | Broken_symlink
+        | Unexpected_kind _
+        | Unix_error _
+        | Error _ ->
+          (* CR-someday amokhov: The most important reason we end up here is
+             [No_such_file]. I think some of the outcomes above are impossible
+             but some others will benefit from a better error. To be refined. *)
           let target =
             Path.Build.drop_build_context_exn path
             |> Path.Source.to_string_maybe_quoted
           in
           let _matching_files, matching_dirs =
-            Targets.to_list_map rule.targets ~file:ignore ~dir:(fun dir ->
+            Targets.partition_map rule.targets ~file:ignore ~dir:(fun dir ->
                 match Path.Build.is_descendant path ~of_:dir with
                 | true -> [ dir ]
                 | false -> [])

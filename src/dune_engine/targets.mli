@@ -49,7 +49,7 @@ val head : t -> Path.Build.t option
 (** Like [head] but raises a code error if the set of targets is empty. *)
 val head_exn : t -> Path.Build.t
 
-val to_list_map :
+val partition_map :
      t
   -> file:(Path.Build.t -> 'a)
   -> dir:(Path.Build.t -> 'b)

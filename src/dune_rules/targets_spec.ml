@@ -23,8 +23,8 @@ module Multiplicity = struct
     | Multiple, One -> error "targets" "target"
 end
 
-(* CR-someday amokhov: Add more interesting tags, for example, to allow the user
-   to specify file patterns like "*.ml" for directory targets. *)
+(* CR-someday amokhov: Add more interesting kinds, for example, to allow the
+   user to specify file patterns like "*.ml" for directory targets. *)
 module Kind = struct
   type t =
     | File

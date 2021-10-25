@@ -320,7 +320,7 @@ module Fancy = struct
       in
       let target_names, contexts =
         let file_targets, directory_targets =
-          Targets.to_list_map targets ~file:Fun.id ~dir:Fun.id
+          Targets.partition_map targets ~file:Fun.id ~dir:Fun.id
         in
         split_paths [] Context_name.Set.empty (file_targets @ directory_targets)
       in

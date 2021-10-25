@@ -56,7 +56,7 @@ let pp { files; dirs } =
 let exists { files; dirs } ~f =
   Path.Build.Set.exists files ~f || Path.Build.Set.exists dirs ~f
 
-let to_list_map { files; dirs } ~file ~dir =
+let partition_map { files; dirs } ~file ~dir =
   ( Path.Build.Set.to_list_map files ~f:file
   , Path.Build.Set.to_list_map dirs ~f:dir )
 

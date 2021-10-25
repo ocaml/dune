@@ -167,7 +167,7 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
 
 let move_targets_to_build_dir t ~loc ~targets =
   let (_file_targets_renamed : unit list), files_moved_in_directory_targets =
-    Targets.to_list_map targets
+    Targets.partition_map targets
       ~file:(fun target ->
         rename_optional_file ~src:(map_path t target) ~dst:target)
       ~dir:(fun target ->

@@ -149,6 +149,16 @@ Error when requesting a missing subdirectory of a directory target.
   >   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
   > EOF
 
+  $ dune build output/subdir
+  File "dune", line 1, characters 0-124:
+  1 | (rule
+  2 |   (deps (sandbox always))
+  3 |   (targets output/*)
+  4 |   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
+  Error: This rule defines a directory target "output" that matches the
+  requested path "output/subdir" but the rule's action didn't produce it
+  [1]
+
 Error message when depending on a file that isn't produced by the matching
 directory target.
 
@@ -238,7 +248,7 @@ Again, %{deps} currently expands to "output/subdir" instead of "output/subdir/c"
 Depending on a directory target directly (rather than on individual files) works
 too. Note that this can be achieved in two ways:
 
-(1) By depending on the recursively computed digest the directory's contents;
+(1) By depending on the recursively computed digest of the directory's contents;
 
 (2) By depending on the mtime of the directory.
 

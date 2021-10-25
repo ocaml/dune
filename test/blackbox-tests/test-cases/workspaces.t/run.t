@@ -50,6 +50,9 @@ Workspaces also allow you to set the env for a context:
   (cxx_flags ())
   (menhir_flags ())
   (coq_flags (-q))
+  (js_of_ocaml_flags ())
+  (js_of_ocaml_build_runtime_flags ())
+  (js_of_ocaml_link_flags ())
 
   $ dune build --root multiple-merlin-contexts 
   Entering directory 'multiple-merlin-contexts'

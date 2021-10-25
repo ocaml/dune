@@ -34,7 +34,7 @@ val create :
   -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
   -> ?stdlib:Ocaml_stdlib.t
-  -> js_of_ocaml:Dune_file.Js_of_ocaml.t option
+  -> js_of_ocaml:Js_of_ocaml.In_buildable.t option
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
@@ -75,7 +75,7 @@ val opaque : t -> bool
 
 val stdlib : t -> Ocaml_stdlib.t option
 
-val js_of_ocaml : t -> Dune_file.Js_of_ocaml.t option
+val js_of_ocaml : t -> Js_of_ocaml.In_buildable.t option
 
 val sandbox : t -> Sandbox_config.t
 

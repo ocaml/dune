@@ -241,17 +241,15 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
   | None -> Memo.Build.return ()
   | Some src ->
     Compilation_context.js_of_ocaml cctx
-    |> Memo.Build.Option.iter ~f:(fun js_of_ocaml ->
+    |> Memo.Build.Option.iter ~f:(fun in_buildable ->
            (* Build *.cmo.js *)
            let sctx = CC.super_context cctx in
            let dir = CC.dir cctx in
            let target = Path.Build.extend_basename src ~suffix:".js" in
            let action_with_targets =
-             Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target
+             Jsoo_rules.build_cm cctx ~in_buildable ~src ~target
            in
-           Memo.Build.Option.iter action_with_targets
-             ~f:(fun action_with_targets ->
-               action_with_targets >>= SC.add_rule sctx ~dir))
+           action_with_targets >>= SC.add_rule sctx ~dir)
 
 let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let sctx = CC.super_context cctx in

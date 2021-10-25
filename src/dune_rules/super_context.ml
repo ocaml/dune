@@ -365,6 +365,28 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   | true -> Ocaml_flags.with_vendored_warnings flags
   | false -> flags
 
+let js_of_ocaml_runtest_alias t ~dir =
+  let+ js_of_ocaml = get_node t.env_tree ~dir >>= Env_node.js_of_ocaml in
+  match js_of_ocaml.runtest_alias with
+  | None -> Alias.Name.runtest
+  | Some a -> a
+
+let js_of_ocaml_compilation_mode t ~dir =
+  let+ js_of_ocaml = get_node t.env_tree ~dir >>= Env_node.js_of_ocaml in
+  match js_of_ocaml.compilation_mode with
+  | None ->
+    if Profile.is_dev t.context.profile then
+      Js_of_ocaml.Compilation_mode.Separate_compilation
+    else
+      Whole_program
+  | Some m -> m
+
+let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
+  let+ expander = Env_tree.expander t.env_tree ~dir
+  and+ js_of_ocaml = get_node t.env_tree ~dir >>= Env_node.js_of_ocaml in
+  Js_of_ocaml.Flags.make ~spec ~default:js_of_ocaml.flags
+    ~eval:(Expander.expand_and_eval_set expander)
+
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g t.context in
   let default =
@@ -402,6 +424,7 @@ let dump_env t ~dir =
   let foreign_flags = get_node t ~dir >>| Env_node.foreign_flags in
   let menhir_flags = get_node t ~dir >>| Env_node.menhir_flags in
   let coq_flags = get_node t ~dir >>= Env_node.coq in
+  let js_of_ocaml = get_node t ~dir >>= Env_node.js_of_ocaml in
   let open Action_builder.O in
   let+ o_dump =
     let* ocaml_flags = Action_builder.memo_build ocaml_flags in
@@ -421,8 +444,11 @@ let dump_env t ~dir =
     let+ flags = Action_builder.memo_build_join coq_flags in
     [ ("coq_flags", flags) ]
     |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
+  and+ jsoo_dump =
+    let* jsoo = Action_builder.memo_build js_of_ocaml in
+    Js_of_ocaml.Flags.dump jsoo.flags
   in
-  List.concat [ o_dump; c_dump; menhir_dump; coq_dump ]
+  List.concat [ o_dump; c_dump; menhir_dump; coq_dump; jsoo_dump ]
 
 let resolve_program t ~dir ?hint ~loc bin =
   let t = t.env_tree in

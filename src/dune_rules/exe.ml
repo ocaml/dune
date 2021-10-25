@@ -208,19 +208,13 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
     action_with_targets
 
 let link_js ~name ~cm_files ~promote cctx =
-  let sctx = CC.super_context cctx in
-  let expander = CC.expander cctx in
-  let js_of_ocaml =
-    CC.js_of_ocaml cctx |> Option.value ~default:Dune_file.Js_of_ocaml.default
+  let in_buildable =
+    CC.js_of_ocaml cctx
+    |> Option.value ~default:Js_of_ocaml.In_buildable.default
   in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
-  let flags =
-    Expander.expand_and_eval_set expander js_of_ocaml.flags
-      ~standard:(Action_builder.return (Jsoo_rules.standard sctx))
-  in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:Mode.Byte in
-  Jsoo_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms
-    ~flags:(Command.Args.dyn flags) ~promote
+  Jsoo_rules.build_exe cctx ~in_buildable ~src ~cm:top_sorted_cms ~promote
 
 let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
     ~dep_graphs ~programs ~linkages ~promote cctx =

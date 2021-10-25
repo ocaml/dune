@@ -48,7 +48,7 @@ module Expanding_what : sig
   type t =
     | Nothing_special
     | Deps_like_field
-    | User_action of Path.Build.t Targets.t
+    | User_action of Path.Build.t Targets_spec.t
     | User_action_without_targets of { what : string }
         (** [what] describe what the action is. It should be a plural and is
             inserted in a sentence as follow: "<what> are not allowed to have

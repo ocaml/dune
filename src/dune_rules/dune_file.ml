@@ -1564,7 +1564,7 @@ module Rule = struct
   end
 
   type t =
-    { targets : String_with_vars.t Targets.t
+    { targets : String_with_vars.t Targets_spec.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
@@ -1633,7 +1633,7 @@ module Rule = struct
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
        and+ action = field "action" (located Action_dune_lang.decode)
-       and+ targets = Targets.field
+       and+ targets = Targets_spec.field
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ () =
          let+ fallback =

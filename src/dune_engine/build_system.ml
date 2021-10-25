@@ -520,7 +520,8 @@ let () =
       Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
 let compute_target_digests targets =
-  Option.List.traverse (Path.Build.Set.to_list targets) ~f:(fun target ->
+  Option.List.traverse (Targets.to_list_map targets ~file:Fun.id)
+    ~f:(fun target ->
       Cached_digest.build_file target
       |> Cached_digest.Digest_result.to_option
       |> Option.map ~f:(fun digest -> (target, digest)))
@@ -535,15 +536,15 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
     (* FIXME: searching the dune version for each single target seems way
        suboptimal. This information could probably be stored in rules
        directly. *)
-    if Path.Build.Set.is_empty targets then
+    if Targets.is_empty targets then
       false
     else
       Execution_parameters.should_remove_write_permissions_on_generated_files
         exec_params
   in
   let good, missing, errors =
-    Path.Build.Set.fold targets ~init:([], [], [])
-      ~f:(fun target (good, missing, errors) ->
+    Targets.fold targets ~init:([], [], [])
+      ~file:(fun target (good, missing, errors) ->
         let expected_syscall_path = Path.to_string (Path.build target) in
         match Cached_digest.refresh ~remove_write_permissions target with
         | Ok digest -> ((target, digest) :: good, missing, errors)
@@ -773,13 +774,13 @@ end = struct
            we try to sandbox this. *)
           ~sandbox:Sandbox_config.no_sandboxing ~context:None
           ~info:(Source_file_copy path)
-          ~targets:(Path.Build.Set.singleton ctx_path)
+          ~targets:(Targets.File.create ctx_path)
           build)
 
   let compile_rules ~dir ~source_dirs rules =
     List.concat_map rules ~f:(fun rule ->
         assert (Path.Build.( = ) dir rule.Rule.dir);
-        Path.Build.Set.to_list_map rule.targets ~f:(fun target ->
+        Targets.to_list_map rule.targets ~file:(fun target ->
             if String.Set.mem source_dirs (Path.Build.basename target) then
               report_rule_src_dir_conflict dir target rule
             else
@@ -851,8 +852,9 @@ end = struct
             (* All targets are in [dir] and we know it correspond to a directory
                of a build context since there are source files to copy, so this
                call can't fail. *)
-            Path.Build.Set.to_list rule.targets
-            |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
+            Targets.to_list_map rule.targets
+              ~file:Path.Build.drop_build_context_exn
+            |> Path.Source.Set.of_list
           in
           if Path.Source.Set.is_subset source_files_for_targets ~of_:to_copy
           then
@@ -1020,10 +1022,10 @@ end = struct
           match mode with
           | Promote { only = None; _ }
           | Ignore_source_files ->
-            Path.Build.Set.union targets acc_ignored
+            Path.Build.Set.union (Targets.files targets) acc_ignored
           | Promote { only = Some pred; _ } ->
             let to_ignore =
-              Path.Build.Set.filter targets ~f:(fun target ->
+              Path.Build.Set.filter (Targets.files targets) ~f:(fun target ->
                   Predicate_lang.Glob.exec pred
                     (Path.reach (Path.build target) ~from:(Path.build dir))
                     ~standard:Predicate_lang.any)
@@ -1361,7 +1363,7 @@ end = struct
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , Dep.Facts.digest deps ~sandbox_mode ~env
-      , Path.Build.Set.to_list_map rule.targets ~f:Path.Build.to_string
+      , Targets.to_list_map rule.targets ~file:Path.Build.to_string
       , Option.map rule.context ~f:(fun c -> Context_name.to_string c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
@@ -1430,7 +1432,8 @@ end = struct
     let { Action.Full.action; env; locks; can_go_in_shared_cache = _ } =
       action
     in
-    pending_targets := Path.Build.Set.union targets !pending_targets;
+    let file_targets = Targets.files targets in
+    pending_targets := Path.Build.Set.union file_targets !pending_targets;
     let chdirs = Action.chdirs action in
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
@@ -1473,7 +1476,7 @@ end = struct
     in
     Option.iter sandbox ~f:Sandbox.destroy;
     (* All went well, these targets are no longer pending *)
-    pending_targets := Path.Build.Set.diff !pending_targets targets;
+    pending_targets := Path.Build.Set.diff !pending_targets file_targets;
     exec_result
 
   let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~targets =
@@ -1494,7 +1497,7 @@ end = struct
           Cached_digest.set target digest)
     in
     match
-      Path.Build.Set.to_list_map targets ~f:Dune_cache.Local.Target.create
+      Targets.to_list_map targets ~file:Dune_cache.Local.Target.create
       |> Option.List.all
     with
     | None -> Fiber.return None
@@ -1590,7 +1593,7 @@ end = struct
       rule
     in
     start_rule t rule;
-    let head_target = Path.Build.Set.choose_exn targets in
+    let head_target = Targets.head_exn targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target dir with
       | Regular (With_context (_, dir))
@@ -1745,7 +1748,7 @@ end = struct
               ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
             (* Step I. Remove stale targets both from the digest table and from
                the build directory. *)
-            Path.Build.Set.iter targets ~f:(fun target ->
+            Targets.iter targets ~file:(fun target ->
                 Cached_digest.remove target;
                 Path.Build.unlink_no_err target);
             (* Step II. Try to restore artifacts from the shared cache if the
@@ -1855,20 +1858,22 @@ end = struct
           | Promote { lifetime; into; only }, (Some Automatically | None) ->
             Fiber.parallel_iter_set
               (module Path.Build.Set)
-              targets
-              ~f:(fun path ->
+              (Targets.files targets)
+              ~f:(fun target ->
                 let consider_for_promotion =
                   match only with
                   | None -> true
                   | Some pred ->
                     Predicate_lang.Glob.exec pred
-                      (Path.reach (Path.build path) ~from:(Path.build dir))
+                      (Path.reach (Path.build target) ~from:(Path.build dir))
                       ~standard:Predicate_lang.any
                 in
                 match consider_for_promotion with
                 | false -> Fiber.return ()
                 | true ->
-                  let in_source_tree = Path.Build.drop_build_context_exn path in
+                  let in_source_tree =
+                    Path.Build.drop_build_context_exn target
+                  in
                   let in_source_tree =
                     match into with
                     | None -> in_source_tree
@@ -1910,7 +1915,7 @@ end = struct
                       | None -> false
                       | Some in_source_tree_digest -> (
                         match
-                          Cached_digest.build_file path
+                          Cached_digest.build_file target
                           |> Cached_digest.Digest_result.to_option
                         with
                         | None ->
@@ -1935,7 +1940,7 @@ end = struct
                        explicitly set the user writable bit. *)
                     let chmod n = n lor 0o200 in
                     Path.unlink_no_err (Path.source dst);
-                    t.promote_source ~src:path ~dst ~chmod context
+                    t.promote_source ~src:target ~dst ~chmod context
                   ))
         in
         t.rule_done <- t.rule_done + 1;
@@ -2005,7 +2010,7 @@ end = struct
           (match loc with
           | Some loc -> From_dune_file loc
           | None -> Internal)
-        ~targets:(Path.Build.Set.singleton target)
+        ~targets:(Targets.File.create target)
         (Action_builder.of_thunk
            { f =
                (fun mode ->

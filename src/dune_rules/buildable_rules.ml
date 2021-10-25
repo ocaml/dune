@@ -8,7 +8,7 @@ let gen_select_rules t ~dir compile_info =
           let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
           let dst = Path.Build.relative dir dst_fn in
           Super_context.add_rule t ~dir
-            (Action_builder.with_targets ~targets:[ dst ]
+            (Action_builder.with_file_targets ~file_targets:[ dst ]
                (let open Action_builder.O in
                let* src_fn = Resolve.read src_fn in
                let src = Path.build (Path.Build.relative dir src_fn) in

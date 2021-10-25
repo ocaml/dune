@@ -25,6 +25,7 @@ module Colors = Dune_rules.Colors
 module Dune_project = Dune_engine.Dune_project
 module Workspace = Dune_rules.Workspace
 module Cached_digest = Dune_engine.Cached_digest
+module Targets = Dune_engine.Targets
 module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private

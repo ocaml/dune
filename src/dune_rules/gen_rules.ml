@@ -272,7 +272,7 @@ let gen_rules sctx dir_contents cctxs expander
             | None ->
               (* This happens often when passing a [-p ...] option that hides a
                  library *)
-              let targets =
+              let file_targets =
                 List.map (Menhir_rules.targets m)
                   ~f:(Path.Build.relative ctx_dir)
               in
@@ -286,7 +286,7 @@ let gen_rules sctx dir_contents cctxs expander
                                 files produced by this stanza are part of."
                            ])
                    }
-                |> Action_builder.with_targets ~targets)
+                |> Action_builder.with_file_targets ~file_targets)
             | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir))
         | Coq_stanza.Theory.T m -> (
           Expander.eval_blang expander m.enabled_if >>= function

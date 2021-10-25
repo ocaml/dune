@@ -122,7 +122,7 @@ val add_rule_get_targets :
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> Action.t Action_builder.With_targets.t
-  -> Path.Build.Set.t Memo.Build.t
+  -> Targets.t Memo.Build.t
 
 val add_rules :
      t

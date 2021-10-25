@@ -38,7 +38,7 @@ let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
     "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}@,@,"
     (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
          Format.pp_print_string ppf (Path.to_string p)))
-    (List.map ~f:Path.build (Path.Build.Set.to_list rule.targets))
+    (Targets.to_list_map rule.targets ~file:Path.build)
     (fun ppf ->
       Path.Set.iter rule.expanded_deps ~f:(fun dep ->
           Format.fprintf ppf "@ %s" (Path.to_string dep)))
@@ -55,7 +55,7 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
          [ [ ("deps", Dep.Set.encode rule.deps)
            ; ( "targets"
              , paths
-                 (Path.Build.Set.to_list rule.targets
+                 (Targets.to_list_map rule.targets ~file:Fun.id
                  |> Path.set_of_build_paths_list) )
            ]
          ; (match rule.context with

@@ -51,7 +51,7 @@ let rule_kind ~(rule : Rule.t)
   match rule.alias with
   | None -> No_alias
   | Some alias -> (
-    match action.targets |> Path.Build.Set.choose with
+    match action.targets |> Targets.head with
     | None -> Alias_only alias
     | Some target -> Alias_with_targets (alias, target))
 
@@ -69,15 +69,15 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   Expander.eval_blang expander rule.enabled_if >>= function
   | false -> (
     match rule.alias with
-    | None -> Memo.Build.return Path.Build.Set.empty
+    | None -> Memo.Build.return Targets.empty
     | Some name ->
       let alias = Alias.make ~dir name in
       let+ () = Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) in
-      Path.Build.Set.empty)
+      Targets.empty)
   | true -> (
     let* targets =
       match rule.targets with
-      | Infer -> Memo.Build.return Targets.Infer
+      | Infer -> Memo.Build.return Targets_spec.Infer
       | Static { targets; multiplicity } ->
         let+ targets =
           Memo.Build.List.concat_map targets ~f:(fun target ->
@@ -89,7 +89,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
               | Multiple -> Expander.No_deps.expand expander ~mode:Many target)
               >>| List.map ~f:(check_filename ~dir ~error_loc))
         in
-        Targets.Static { multiplicity; targets }
+        Targets_spec.Static { multiplicity; targets }
     in
     let expander =
       match extra_bindings with
@@ -115,7 +115,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       let+ () =
         Alias_rules.add sctx ~alias ~loc:(Some rule.loc) action.build ~locks
       in
-      Path.Build.Set.empty)
+      Targets.empty)
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.files in

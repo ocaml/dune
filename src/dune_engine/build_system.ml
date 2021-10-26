@@ -1025,6 +1025,7 @@ end = struct
     in
     source_files_to_ignore
 
+  (* Returns only [Loaded.Build] variant. *)
   let load_dir_step2_exn t ~dir =
     let context_name, sub_dir =
       match Dpath.analyse_path dir with
@@ -1325,6 +1326,8 @@ module type Rec = sig
 
   val build_file : Path.t -> Digest.t Memo.Build.t
 
+  val build_dir : Path.t -> (Digest.t * Digest.t Path.Build.Map.t) Memo.Build.t
+
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
 
   val eval_deps :
@@ -1348,21 +1351,24 @@ module type Rec = sig
 end
 
 let is_target file =
-  let parent_dir = Path.parent_exn file in
-  let* file_targets = file_targets_of ~dir:parent_dir in
-  match Path.Set.mem file_targets file with
-  | true -> Memo.Build.return true
-  | false ->
-    let rec loop dir =
-      match Path.parent dir with
-      | None -> Memo.Build.return false
-      | Some parent_dir -> (
-        let* directory_targets = directory_targets_of ~dir:parent_dir in
-        match Path.Set.mem directory_targets dir with
-        | true -> Memo.Build.return true
-        | false -> loop parent_dir)
-    in
-    loop file
+  match Path.is_in_build_dir file with
+  | false -> Memo.Build.return false
+  | true -> (
+    let parent_dir = Path.parent_exn file in
+    let* file_targets = file_targets_of ~dir:parent_dir in
+    match Path.Set.mem file_targets file with
+    | true -> Memo.Build.return true
+    | false ->
+      let rec loop dir =
+        match Path.parent dir with
+        | None -> Memo.Build.return false
+        | Some parent_dir -> (
+          let* directory_targets = directory_targets_of ~dir:parent_dir in
+          match Path.Set.mem directory_targets dir with
+          | true -> Memo.Build.return true
+          | false -> loop parent_dir)
+      in
+      loop file)
 
 (* Separation between [Used_recursively] and [Exported] is necessary because at
    least one module in the recursive module group must be pure (i.e. only expose
@@ -1377,7 +1383,9 @@ and Exported : sig
   (* The below two definitions are useless, but if we remove them we get an
      "Undefined_recursive_module" exception. *)
 
-  val build_file_memo : (Path.t, Digest.t) Memo.t [@@warning "-32"]
+  val build_file_memo :
+    (Path.t, Import.Digest.t * Import.Digest.t Path.Build.Map.t option) Memo.t
+    [@@warning "-32"]
 
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.t [@@warning "-32"]
 
@@ -1391,8 +1399,7 @@ end = struct
   let build_dep : Dep.t -> Dep.Fact.t Memo.Build.t = function
     | Alias a ->
       let+ digests = build_alias a in
-      (* Fact: alias [a] expand to the set of files with their digest
-         [digests] *)
+      (* Fact: alias [a] expands to the set of file-digest pairs [digests] *)
       Dep.Fact.alias a digests
     | File f ->
       let+ digest = build_file f in
@@ -1400,8 +1407,8 @@ end = struct
       Dep.Fact.file f digest
     | File_selector g ->
       let+ digests = Pred.build g in
-      (* Fact: file selector [g] expands to the set of files with their digest
-         [digests] *)
+      (* Fact: file selector [g] expands to the set of file- and (possibly)
+         dir-digest pairs [digests] *)
       Dep.Fact.file_selector g digests
     | Universe
     | Env _
@@ -1763,7 +1770,6 @@ end = struct
     in
     wrap_fiber (fun () ->
         let open Fiber.O in
-        let build_deps deps = Memo.Build.run (build_deps deps) in
         report_evaluated_rule t;
         let* () = Memo.Build.run (Fs.mkdir_p dir) in
         let is_action_dynamic = Action.is_dynamic action.action in
@@ -1868,7 +1874,7 @@ end = struct
                 | [] -> Fiber.return (Cache_result.Hit targets_and_digests)
                 | (deps, old_digest) :: rest ->
                   let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
-                  let* deps = build_deps deps in
+                  let* deps = Memo.Build.run (build_deps deps) in
                   let new_digest =
                     Dep.Facts.digest deps ~sandbox_mode ~env:action.env
                   in
@@ -2287,7 +2293,7 @@ end = struct
   let build_file_impl path =
     let t = t () in
     get_rule_or_source t path >>= function
-    | Source digest -> Memo.Build.return digest
+    | Source digest -> Memo.Build.return (digest, None)
     | Rule (path, rule) -> (
       let+ { deps = _; targets } =
         Memo.push_stack_frame
@@ -2296,10 +2302,10 @@ end = struct
             Pp.text (Path.to_string_maybe_quoted (Path.build path)))
       in
       match Path.Build.Map.find targets path with
-      | Some digest -> digest
+      | Some digest -> (digest, None)
       | None -> (
         match Cached_digest.build_file path with
-        | Ok digest -> digest (* Must be a directory target *)
+        | Ok digest -> (digest, Some targets) (* Must be a directory target *)
         | No_such_file
         | Broken_symlink
         | Unexpected_kind _
@@ -2369,37 +2375,51 @@ end = struct
 
   module Pred = struct
     let build_impl g =
-      let* paths = Pred.eval g in
-      let+ files =
-        Memo.Build.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
-            let+ d = build_file p in
-            (p, d))
-      in
-      Dep.Fact.Files.make (Path.Map.of_list_exn files)
+      let dir = File_selector.dir g in
+      is_target dir >>= function
+      | false ->
+        let* paths = Pred.eval g in
+        let+ files =
+          Memo.Build.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
+              let+ d = build_file p in
+              (p, d))
+        in
+        Dep.Fact.Files.make
+          ~files:(Path.Map.of_list_exn files)
+          ~dirs:Path.Map.empty
+      | true ->
+        let+ digest, path_map = build_dir dir in
+        let files =
+          Path.Build.Map.foldi path_map ~init:Path.Map.empty
+            ~f:(fun path digest acc ->
+              let parent = Path.Build.parent_exn path |> Path.build in
+              let path = Path.build path in
+              match Path.equal parent dir && File_selector.test g path with
+              | true -> Path.Map.add_exn acc path digest
+              | false -> acc)
+        in
+        let dirs = Path.Map.singleton dir digest in
+        Dep.Fact.Files.make ~files ~dirs
 
     let eval_impl g =
       let dir = File_selector.dir g in
-      load_dir ~dir >>= function
-      | Non_build targets ->
-        Memo.Build.return (Path.Set.filter targets ~f:(File_selector.test g))
-      | Build { rules_here; _ } -> (
+      load_dir ~dir >>| function
+      | Non_build targets -> Path.Set.filter targets ~f:(File_selector.test g)
+      | Build { rules_here; _ } ->
         let only_generated_files = File_selector.only_generated_files g in
-        let file_targets =
-          Path.Build.Map.foldi ~init:[] rules_here.by_file_targets
-            ~f:(fun s { Rule.info; _ } acc ->
-              match info with
-              | Rule.Info.Source_file_copy _ when only_generated_files -> acc
-              | _ ->
-                let s = Path.build s in
-                if File_selector.test g s then
-                  s :: acc
-                else
-                  acc)
-          |> Path.Set.of_list
-        in
-        is_target dir >>| function
-        | true -> Path.Set.add file_targets dir
-        | false -> file_targets)
+        (* We look only at [by_file_targets] because [File_selector] does not
+           match directories. *)
+        Path.Build.Map.foldi ~init:[] rules_here.by_file_targets
+          ~f:(fun s { Rule.info; _ } acc ->
+            match info with
+            | Rule.Info.Source_file_copy _ when only_generated_files -> acc
+            | _ ->
+              let s = Path.build s in
+              if File_selector.test g s then
+                s :: acc
+              else
+                acc)
+        |> Path.Set.of_list
 
     let eval_memo =
       Memo.create "eval-pred"
@@ -2416,11 +2436,21 @@ end = struct
   end
 
   let build_file_memo =
-    Memo.create "build-file"
-      ~input:(module Path)
-      ~cutoff:Digest.equal build_file_impl
+    let cutoff =
+      Tuple.T2.equal Digest.equal
+        (Option.equal (Path.Build.Map.equal ~equal:Digest.equal))
+    in
+    Memo.create "build-file" ~input:(module Path) ~cutoff build_file_impl
 
-  let build_file = Memo.exec build_file_memo
+  let build_file path = Memo.exec build_file_memo path >>| fst
+
+  let build_dir path =
+    let+ digest, path_map = Memo.exec build_file_memo path in
+    match path_map with
+    | Some path_map -> (digest, path_map)
+    | None ->
+      Code_error.raise "build_dir called on a file target"
+        [ ("path", Path.to_dyn path) ]
 
   let build_alias_memo =
     Memo.create "build-alias"

@@ -215,12 +215,14 @@ Interaction of globs and directory targets.
   >   (deps (sandbox always))
   >   (targets (dir output))
   >   (action (bash "\| mkdir -p output/subdir;
-  >                 "\| echo a > output/a;
-  >                 "\| echo b > output/b;
-  >                 "\| echo c > output/subdir/c
+  >                 "\| echo a > output/a.txt;
+  >                 "\| echo b > output/b.txt;
+  >                 "\| echo c > output/c;
+  >                 "\| echo d > output/subdir/d.txt;
+  >                 "\| echo e > output/subdir/e
   > )))
   > (rule
-  >   (deps (glob_files output/*))
+  >   (deps (glob_files output/*.txt))
   >   (target level1)
   >   (action (bash "echo %{deps}; ls output > level1")))
   > (rule
@@ -229,27 +231,30 @@ Interaction of globs and directory targets.
   >   (action (bash "echo %{deps}; ls output/subdir > level2")))
   > EOF
 
-Note that %{deps} currently expands only to the statically known paths, which is
-just the "output" directory and doesn't include the contained generated files.
+Note: %{deps} expands to the set of generated files that match the glob [*.txt],
+however, the action currently has access to all of the paths, along with any of
+the subdirectories included into the directory target.
 
-# CR-someday amokhov: Improve this so that %{deps} includes generated files.
+# CR-someday amokhov: Remove the files that action didn't depend on.
 
   $ dune build level1
           bash level1
-  output
+  output/a.txt output/b.txt
 
   $ cat _build/default/level1
-  a
-  b
+  a.txt
+  b.txt
+  c
   subdir
 
-Again, %{deps} currently expands to "output/subdir" instead of "output/subdir/c"
+Depending on a glob in a subdirectory of a directory target works too.
 
   $ dune build level2
           bash level2
-  output/subdir
+  output/subdir/d.txt output/subdir/e
   $ cat _build/default/level2
-  c
+  d.txt
+  e
 
 Depending on a directory target directly (rather than on individual files) works
 too. Note that this can be achieved in two ways:

@@ -24,7 +24,7 @@ module Static : sig
     }
 end
 
-(** Static targets are listed by the user while [Infer] denotes that Dune must
+(** [Static] targets are listed by the user while [Infer] denotes that Dune must
     discover all the targets. In the [Static] case, Dune still implicitly adds
     the list of inferred targets. *)
 type 'a t =

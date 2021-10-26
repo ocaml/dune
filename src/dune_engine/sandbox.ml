@@ -30,7 +30,8 @@ let map_path t p = Path.Build.append t.dir p
 let create_dirs t ~deps ~chdirs ~rule_dir =
   Path.Set.iter
     (Path.Set.add
-       (Path.Set.union (Dep.Facts.dirs deps) chdirs)
+       (Path.Set.union_all
+          [ chdirs; Dep.Facts.parent_dirs deps; Dep.Facts.dirs deps ])
        (Path.build rule_dir))
     ~f:(fun path ->
       match Path.as_in_build_dir path with
@@ -70,7 +71,7 @@ let link_function ~(mode : Sandbox_mode.some) =
 
 let link_deps t ~mode ~deps =
   let link = Staged.unstage (link_function ~mode) in
-  Path.Map.iteri deps ~f:(fun path _ ->
+  Path.Map.iteri deps ~f:(fun path (_ : Digest.t) ->
       match Path.as_in_build_dir path with
       | None ->
         (* This can actually raise if we try to sandbox the "copy from source
@@ -78,7 +79,7 @@ let link_deps t ~mode ~deps =
         if Path.is_in_source_tree path then
           Code_error.raise
             "Action depends on source tree. All actions should depend on the \
-             copies in build directory instead"
+             copies in the build directory instead."
             [ ("path", Path.to_dyn path) ]
       | Some p -> link path (Path.build (map_path t p)))
 

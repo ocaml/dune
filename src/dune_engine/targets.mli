@@ -35,10 +35,10 @@ module Validation_result : sig
     | Valid of { parent_dir : Path.Build.t }
     | No_targets
     | Inconsistent_parent_dir
+    | File_and_directory_target_with_the_same_name of Path.Build.t
 end
 
-(** Ensure that the set of targets is non-empty and that all targets have the
-    same parent dir. *)
+(** Ensure that the set of targets is well-formed. *)
 val validate : t -> Validation_result.t
 
 (** The "head" target if [t] is non-empty. If [t] contains at least one file,

@@ -2,8 +2,10 @@
 
 (** This module describes the method used to sandbox actions. Choices include:
 
-    - not sandboxing - sandboxing by symlinking dependencies - sandboxing by
-      copying dependencies *)
+    - not sandboxing
+    - sandboxing by symlinking dependencies
+    - sandboxing by copying dependencies
+    - sandboxing by hardlinking dependencies *)
 
 open! Stdune
 
@@ -49,6 +51,8 @@ module Set : sig
   val mem : t -> key -> bool
 
   val inter : t -> t -> t
+
+  val to_dyn : t -> Dyn.t
 end
 
 val all : t list

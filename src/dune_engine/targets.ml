@@ -51,7 +51,7 @@ let to_dyn { files; dirs } =
 let pp { files; dirs } =
   Pp.enumerate
     (Path.Build.Set.to_list files @ Path.Build.Set.to_list dirs)
-    ~f:(fun target -> Pp.text (Dpath.describe_path (Path.build target)))
+    ~f:(fun target -> Pp.text (Dpath.describe_target target))
 
 let exists { files; dirs } ~f =
   Path.Build.Set.exists files ~f || Path.Build.Set.exists dirs ~f
@@ -75,15 +75,19 @@ module Validation_result = struct
     | Valid of { parent_dir : Path.Build.t }
     | No_targets
     | Inconsistent_parent_dir
+    | File_and_directory_target_with_the_same_name of Path.Build.t
 end
 
 let validate t =
   match is_empty t with
   | true -> Validation_result.No_targets
   | false -> (
-    let parent_dir = Path.Build.parent_exn (head_exn t) in
-    match
-      exists t ~f:(fun path -> Path.Build.(parent_exn path <> parent_dir))
-    with
-    | true -> Inconsistent_parent_dir
-    | false -> Valid { parent_dir })
+    match Path.Build.Set.inter t.files t.dirs |> Path.Build.Set.choose with
+    | Some path -> File_and_directory_target_with_the_same_name path
+    | None -> (
+      let parent_dir = Path.Build.parent_exn (head_exn t) in
+      match
+        exists t ~f:(fun path -> Path.Build.(parent_exn path <> parent_dir))
+      with
+      | true -> Inconsistent_parent_dir
+      | false -> Valid { parent_dir }))

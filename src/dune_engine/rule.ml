@@ -101,28 +101,27 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
                (action, deps))
          })
   in
+  let report_error ?(extra_pp = []) message =
+    match info with
+    | From_dune_file loc ->
+      let pp = [ Pp.text message ] @ extra_pp in
+      User_error.raise ~loc pp
+    | Internal
+    | Source_file_copy _ ->
+      Code_error.raise message
+        [ ("info", Info.to_dyn info); ("targets", Targets.to_dyn targets) ]
+  in
   let dir =
     match Targets.validate targets with
     | Valid { parent_dir } -> parent_dir
-    | No_targets -> (
-      match info with
-      | From_dune_file loc ->
-        User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
-      | Internal
-      | Source_file_copy _ ->
-        Code_error.raise "Rule.Targets: An internal rule with no targets" [])
-    | Inconsistent_parent_dir -> (
-      match info with
-      | From_dune_file loc ->
-        User_error.raise ~loc
-          [ Pp.text "Rule has targets in different directories.\nTargets:"
-          ; Targets.pp targets
-          ]
-      | Internal
-      | Source_file_copy _ ->
-        Code_error.raise
-          "Rule.Targets: An internal rule has targets in different directories"
-          [ ("targets", Targets.to_dyn targets) ])
+    | No_targets -> report_error "Rule has no targets specified"
+    | Inconsistent_parent_dir ->
+      report_error "Rule has targets in different directories."
+        ~extra_pp:[ Pp.text "Targets:"; Targets.pp targets ]
+    | File_and_directory_target_with_the_same_name path ->
+      report_error
+        (sprintf "%S is declared as both a file and a directory target."
+           (Dpath.describe_target path))
   in
   let loc =
     match info with

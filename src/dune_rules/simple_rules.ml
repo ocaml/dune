@@ -18,15 +18,20 @@ end
 let interpret_locks ~expander =
   Memo.Build.List.map ~f:(Expander.No_deps.expand_path expander)
 
-let check_filename =
+let check_filename ~kind =
   let not_in_dir ~error_loc s =
     User_error.raise ~loc:error_loc
-      [ Pp.textf "%s does not denote a file in the current directory" s ]
+      [ (match kind with
+        | Targets_spec.Kind.File ->
+          Pp.textf "%S does not denote a file in the current directory." s
+        | Directory ->
+          Pp.textf "Directory targets must have exactly one path component.")
+      ]
   in
   fun ~error_loc ~dir -> function
     | Value.String ("." | "..") ->
       User_error.raise ~loc:error_loc
-        [ Pp.text "'.' and '..' are not valid filenames" ]
+        [ Pp.text "'.' and '..' are not valid targets" ]
     | String s ->
       if Filename.dirname s <> Filename.current_dir_name then
         not_in_dir ~error_loc s;
@@ -84,7 +89,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
                 [ x ]
               | Multiple -> Expander.No_deps.expand expander ~mode:Many target)
               >>| List.map ~f:(fun value ->
-                      (check_filename ~dir ~error_loc value, kind)))
+                      (check_filename ~kind ~dir ~error_loc value, kind)))
         in
         Targets_spec.Static { multiplicity; targets }
     in

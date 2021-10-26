@@ -1571,9 +1571,13 @@ end = struct
     let action =
       match sandbox with
       | None ->
+        (* CR-someday amokhov: It may be possible to support directory targets
+           without sandboxing. We just need to make sure we clean up all stale
+           directory targets before running the rule and then we can discover
+           all created files right in the build directory. *)
         if has_directory_targets then
           User_error.raise ~loc
-            [ Pp.text "Rules with directory targets must be sandboxed" ];
+            [ Pp.text "Rules with directory targets must be sandboxed." ];
         action
       | Some sandbox -> Action.sandbox action sandbox
     in

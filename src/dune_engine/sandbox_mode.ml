@@ -86,6 +86,14 @@ module Set = struct
     ; symlink = x.symlink && y.symlink
     ; hardlink = x.hardlink && y.hardlink
     }
+
+  let to_dyn (t : t) =
+    Dyn.Record
+      [ ("none", Dyn.Bool t.none)
+      ; ("copy", Dyn.Bool t.copy)
+      ; ("symlink", Dyn.Bool t.symlink)
+      ; ("hardlink", Dyn.Bool t.hardlink)
+      ]
 end
 
 (* these should be listed in the default order of preference *)

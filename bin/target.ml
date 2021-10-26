@@ -21,6 +21,14 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
   assert (Path.is_managed path);
   let open Memo.Build.O in
   let sub_dir = Option.value ~default:path (Path.parent path) in
+  (* CR-someday amokhov: There are two issues with the code below.
+
+     (1) We first get *all* targets but then filter out only those that are
+     defined in the [sub_dir]. It would be better to just get the targets for
+     the [sub_dir] directly (the API supports this).
+
+     (2) We currently provide the same hint for all targets. It would be nice to
+     indicate whether a hint corresponds to a file or to a directory target. *)
   let+ candidates = Build_system.all_targets () >>| Path.Build.Set.to_list in
   let candidates =
     if Path.is_in_build_dir path then

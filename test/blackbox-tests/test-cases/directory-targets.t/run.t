@@ -31,7 +31,7 @@ Directory targets are not allowed for non-sandboxed rules.
   1 | (rule
   2 |   (targets (dir output))
   3 |   (action (bash "true")))
-  Error: Rules with directory targets must be sandboxed
+  Error: Rules with directory targets must be sandboxed.
   [1]
 
 Ensure directory targets are produced.
@@ -387,4 +387,38 @@ Directory target whose name conflicts with an internal directory used by Dune.
   Error: This rule defines a directory target ".dune" whose name conflicts with
   an internal directory used by Dune. Please use a different name.
   -> required by _build/default/.dune/hello
+  [1]
+
+Multi-component target directories are not allowed.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets (dir output/subdir))
+  >   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
+  > EOF
+
+  $ dune build output/x
+  File "dune", line 3, characters 16-29:
+  3 |   (targets (dir output/subdir))
+                      ^^^^^^^^^^^^^
+  Error: Directory targets must have exactly one path component.
+  [1]
+
+File and directory target with the same name.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets output (dir output))
+  >   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
+  > EOF
+
+  $ dune build output/x
+  File "dune", line 1, characters 0-135:
+  1 | (rule
+  2 |   (deps (sandbox always))
+  3 |   (targets output (dir output))
+  4 |   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
+  Error: "output" is declared as both a file and a directory target.
   [1]

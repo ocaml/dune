@@ -60,9 +60,18 @@ module Make (D : Desc) = struct
           match really_input_string ic (String.length magic) with
           | exception End_of_file -> None
           | s ->
-            if s = magic then
-              Some (Marshal.from_channel ic : D.t)
-            else
+            if s = magic then (
+              match (Marshal.from_channel ic : D.t) with
+              | exception Failure f ->
+                Log.info_user_message
+                  (User_message.make
+                     [ Pp.tag User_message.Style.Warning
+                         (Pp.textf "Failed to load corrupted file %s: %s"
+                            (Path.to_string file) f)
+                     ]);
+                None
+              | d -> Some d
+            ) else
               None)
     else
       None

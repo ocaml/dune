@@ -60,7 +60,7 @@ module Make (D : Desc) = struct
           match really_input_string ic (String.length magic) with
           | exception End_of_file -> None
           | s ->
-            if s = magic then (
+            if s = magic then
               match (Marshal.from_channel ic : D.t) with
               | exception Failure f ->
                 Log.info_user_message
@@ -71,7 +71,7 @@ module Make (D : Desc) = struct
                      ]);
                 None
               | d -> Some d
-            ) else
+            else
               None)
     else
       None

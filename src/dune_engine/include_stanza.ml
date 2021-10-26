@@ -36,13 +36,13 @@ let error ~to_string_maybe_quoted { current_file = file; include_stack } =
                   (Pp.textf "included from %s" (line_loc x)))))
     ]
 
-let load_sexps ~context:{ current_file; include_stack }
-    ~generated_include_authorized (loc, fn) =
+let load_sexps ~context:{ current_file; include_stack } ~generation_authorized
+    (loc, fn) =
   let include_stack = (loc, current_file) :: include_stack in
   let dir = Path.Source.parent_exn current_file in
   let current_file = Path.Source.relative dir fn in
   if not (Path.Untracked.exists (Path.source current_file)) then
-    if generated_include_authorized then
+    if generation_authorized then
       None
     else
       User_error.raise ~loc

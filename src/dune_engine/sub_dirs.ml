@@ -326,7 +326,7 @@ let decode_includes ~context =
     let* includes =
       multi_field "include"
         (let* loc = loc
-         and+ generated_include_authorized =
+         and+ generation_authorized =
            Dune_lang.Syntax.available Include_stanza.syntax (0, 1)
          and+ fn = relative_file in
          let fn =
@@ -335,8 +335,7 @@ let decode_includes ~context =
              ~init:fn path
          in
          match
-           Include_stanza.load_sexps ~context ~generated_include_authorized
-             (loc, fn)
+           Include_stanza.load_sexps ~context ~generation_authorized (loc, fn)
          with
          | Some (sexps, context) ->
            let* () = set_input sexps in

@@ -2,7 +2,7 @@ Unreleased
 ----------
 
 - Add experimental include of generated file in dune files (#5009, fixes
-  #3901, @bobot)
+  #3901, @bobot, review by @rgrinberg)
 
 - Fix installation of implementations of virtual libraries (#5150, fix #3636,
   @rgrinberg)

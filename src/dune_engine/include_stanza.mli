@@ -9,7 +9,7 @@ val in_file : 'path -> 'path context
 (** Return None if the include can't be yet processed (generated include) *)
 val load_sexps :
      context:Path.Source.t context
-  -> generated_include_authorized:bool
+  -> generation_authorized:bool
   -> Loc.t * string
   -> (Dune_lang.Ast.t list * Path.Source.t context) option
 

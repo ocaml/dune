@@ -2228,7 +2228,12 @@ module Stanzas = struct
 
   let execs exe = [ Executables exe ]
 
-  type Stanza.t += Include of Loc.t * string * bool
+  type Stanza.t +=
+    | Include of
+        { loc : Loc.t
+        ; relative : string
+        ; generation_authorized : bool
+        }
 
   type constructors = (string * Stanza.t list Dune_lang.Decoder.t) list
 
@@ -2271,10 +2276,10 @@ module Stanzas = struct
         [ Copy_files { x with add_line_directive = true } ] )
     ; ( "include"
       , let+ loc = loc
-        and+ generated_include_authorized =
+        and+ generation_authorized =
           Dune_lang.Syntax.available Include_stanza.syntax (0, 1)
-        and+ fn = relative_file in
-        [ Include (loc, fn, generated_include_authorized) ] )
+        and+ relative = relative_file in
+        [ Include { loc; relative; generation_authorized } ] )
     ; ( "documentation"
       , let+ d = Documentation.decode in
         [ Documentation d ] )
@@ -2355,10 +2360,10 @@ module Stanzas = struct
   let rec parse_file_includes ~stanza_parser ~context sexps =
     List.concat_map sexps ~f:(parse stanza_parser)
     |> List.concat_map ~f:(function
-         | Include (loc, fn, generated_include_authorized) as stanza -> (
+         | Include { loc; relative; generation_authorized } as stanza -> (
            match
-             Include_stanza.load_sexps ~context ~generated_include_authorized
-               (loc, fn)
+             Include_stanza.load_sexps ~context ~generation_authorized
+               (loc, relative)
            with
            | Some (sexps, context) ->
              parse_file_includes ~stanza_parser ~context sexps
@@ -2369,10 +2374,10 @@ module Stanzas = struct
     let open Memo.Build.O in
     let+ stanzas =
       Memo.Build.parallel_map stanzas ~f:(function
-        | Include (loc, fn, _) ->
+        | Include { loc; relative; generation_authorized = _ } ->
           let* sexps, context =
             Include_stanza.load_sexps_generated
-              ~read_file:Build_system.read_file ~context (loc, fn)
+              ~read_file:Build_system.read_file ~context (loc, relative)
           in
           let stanzas = List.concat_map ~f:(parse stanza_parser) sexps in
           List.iter stanzas ~f:(function

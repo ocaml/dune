@@ -188,24 +188,24 @@ Dune Rules
 Creating Rules
 --------------
 
-A dune rule consists of 3 components:
+A Dune rule consists of 3 components:
 
-- Dependencies that the rule may read when executed (files, aliases, ..)
-  This is described by ``'a Action_builder.t`` values
+- *Dependencies* that the rule may read when executed (files, aliases, etc.).
+  This is described by ``'a Action_builder.t`` values.
 
-- Targets the rule produces (files)
-  Targets, in addition to dependencies is described by ``'a Action_builder.With_targets.t'``
+- *Targets* that the rule produces (files and/or directories).
+  This is described by ``'a Action_builder.With_targets.t'`` values.
 
-- Action that dune must execute (external programs, redirects, etc.)
-  Actions are represented by ``Action.t``
+- *Action* that Dune must execute (external programs, redirects, etc.).
+  Actions are represented by ``Action.t`` values.
 
-Combined, one needs to produce a ``Action.t Action_builder.With_targets.t`` value to
-create a rule. The rule may then be added by ``Super_context.add_rule``, or a
-related function.
+Combined, one needs to produce an ``Action.t Action_builder.With_targets.t``
+value to create a rule. The rule may then be added by
+``Super_context.add_rule``, or a related function.
 
 To make this maximally convenient, there's a ``Command`` module to make it
-easier to create actions that run external commands and describe their targets &
-dependencies simultaneously.
+easier to create actions that run external commands and describe their targets
+and dependencies simultaneously.
 
 Loading Rules
 -------------

@@ -986,10 +986,18 @@ or exactly one filename (if defined with ``target``). Note that at this time,
 Dune officially only supports user rules with targets in the current directory.
 However, starting from Dune 3.0, we provide an experimental support for
 *directory targets*, where an action can produce a whole tree of build
-artifacts. To specify a directory target, you can use the ``<dirname>/*``
-syntax, i.e., a directory name followed by a forward slash and a star. To
-enable this experimental feature, add ``(using directory-targets 0.1)`` to
-your ``dune-project`` file.
+artifacts. To specify a directory target, you can use the ``(dir <dirname>)``
+syntax. For example, the following stanza describes a rule with a file
+target ``foo`` and a directory target ``bar``.
+
+.. code:: scheme
+
+    (rule
+     (targets foo (dir bar))
+     (action  <action>))
+
+To enable this experimental feature, add ``(using directory-targets 0.1)``
+to your ``dune-project`` file.
 
 
 ``<action>`` is what you run to produce the targets from the dependencies.

@@ -449,19 +449,6 @@ module Stanzas : sig
       [ast] according to the syntax given by [kind] in the context of the
       [project] *)
   val of_ast : Dune_project.t -> Dune_lang.Ast.t -> Stanza.t list
-
-  (** [parse ~file ~kind project stanza_exprs] is a list of [Stanza.t]s derived
-      from decoding the [stanza_exprs] from [Dune_lang.Ast.t]s to [Stanza.t]s.
-
-      [file] is used to check for illegal recursive file inclusions and to
-      anchor file includes given as relative paths.
-
-      The stanzas are parsed in the context of the dune [project].
-
-      The syntax [kind] determines whether the expected syntax is the
-      depreciated jbuilder syntax or the version of Dune syntax specified by the
-      current [project]. *)
-  val parse : file:Path.Source.t -> Dune_project.t -> Dune_lang.Ast.t list -> t
 end
 
 (** A fully evaluated dune file *)

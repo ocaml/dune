@@ -121,7 +121,7 @@ Print rules: currently works only with Makefiles.
 
 # CR-someday amokhov: Add support for printing Dune rules.
 
-  $ dune rules -m output | tr '\t' ' ' | head -n -1
+  $ dune rules -m output | tr '\t' ' '
   _build/default/output: _build/default/src_x
    mkdir -p _build/default; \
    mkdir -p _build/default; \
@@ -322,6 +322,7 @@ mtime changes when the rule reruns. We can delete this when switching to (1).
 There is no early cutoff on directory targets at the moment. Ideally, we should
 skip the second action since the produced directory has the same contents.
 
+  $ dune_cmd wait-for-fs-clock-to-advance
   $ echo new-cc > src_c
   $ dune build contents
           bash output
@@ -338,6 +339,7 @@ There is no shared cache support for directory targets at the moment. Note that
 we rerun both actions: the first one because there is no shared cache support
 and the second one because of the lack of early cutoff.
 
+  $ dune_cmd wait-for-fs-clock-to-advance
   $ rm _build/default/output/a
   $ dune build contents
           bash output

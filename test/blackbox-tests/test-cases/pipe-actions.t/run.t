@@ -44,7 +44,6 @@ The makefile version of pipe actions uses actual pipes:
   $ cat >dune <<EOF
   > (executables
   >  (public_names a b c))
-  > 
   > (rule
   >  (alias pipe)
   >  (action
@@ -60,13 +59,12 @@ The makefile version of pipe actions uses actual pipes:
   	cd _build/default; \
   	../install/default/bin/a  2>&1 |  \
   	  ../install/default/bin/b | ../install/default/bin/c  &> target
-  
+
   $ cat >dune <<EOF
   > (executable
   >  (public_name apl) (name append_to_line) (modules append_to_line))
   > (executable
   >  (public_name echo-outputs) (name echo_outputs) (modules echo_outputs))
-  > 
   > (rule
   >  (action
   >   (with-stderr-to target-stdout.stderr

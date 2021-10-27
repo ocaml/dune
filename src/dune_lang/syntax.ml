@@ -32,7 +32,8 @@ module Version = struct
       match Scanf.sscanf s "%u.%u%s" (fun a b s -> ((a, b), s)) with
       | Ok (v, "") -> v
       | Ok (((a, b) as v), s) ->
-        User_warning.emit ~loc
+        let is_error = v >= (3, 0) in
+        User_warning.emit ~loc ~is_error
           [ Pp.textf "The %S part is ignored here." s
           ; Pp.textf "This version is parsed as just %d.%d." a b
           ];

@@ -5,10 +5,10 @@
 set -e
 
 # TEST_REPO=https://github.com/avsm/platform
-# TEST_COMMIT=01a6b7e01d0082c44553692648aad3d81820dfa2
+# TEST_COMMIT=b254e3c6b60f3c0c09dfdcde92eb1abdc267fa1c
 
 TEST_REPO=https://github.com/ocaml/dune
-TEST_COMMIT=dedd7039d65e0d801706a1d9c12e895f4b5fcdc3
+TEST_COMMIT=002edc11f4e0a57f11d5226cb2497c8b406027b5
 
 dune() {
   TIMEFORMAT=$'real %Rs\nuser %Us\nsys  %Ss\n'; time ../_build/default/bin/main.exe "$@" --root=. > /dev/null

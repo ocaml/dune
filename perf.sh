@@ -42,10 +42,10 @@ run_test() {
   rm -rf _build
 
   echo "Running full build..."
-  dune build @install 2>> $1
+  dune build --cache=disabled @install 2>> $1
 
   echo "Running zero build..."
-  dune build @install 2>> $1
+  dune build --cache=disabled @install 2>> $1
 
   cd ..
 }

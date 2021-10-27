@@ -40,7 +40,7 @@ let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
         Path.Build.Set.union files dirs)
   in
   Format.fprintf ppf
-    "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}@,@,"
+    "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}\n"
     (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
          Format.pp_print_string ppf (Path.to_string p)))
     (List.map ~f:Path.build (Path.Build.Set.to_list targets))

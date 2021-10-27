@@ -121,7 +121,7 @@ Print rules: currently works only with Makefiles.
 
 # CR-someday amokhov: Add support for printing Dune rules.
 
-  $ dune rules -m output | tr '\t' ' ' | head -n -1
+  $ dune rules -m output | tr '\t' ' '
   _build/default/output: _build/default/src_x
    mkdir -p _build/default; \
    mkdir -p _build/default; \

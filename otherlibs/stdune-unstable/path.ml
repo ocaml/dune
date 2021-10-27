@@ -690,7 +690,8 @@ module Build = struct
     match extract_build_context_dir_maybe_sandboxed t with
     | Some (_, t) -> t
     | None ->
-      Code_error.raise "Path.Build.drop_build_context_maybe_sandboxed_exn" [ ("t", to_dyn t) ]
+      Code_error.raise "Path.Build.drop_build_context_maybe_sandboxed_exn"
+        [ ("t", to_dyn t) ]
 
   let build_dir = Fdecl.create Kind.to_dyn
 

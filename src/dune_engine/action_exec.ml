@@ -71,7 +71,7 @@ type done_or_more_deps =
   | Need_more_deps of (DAP.Dependency.Set.t * Dynamic_dep.Set.t)
 
 type exec_context =
-  { targets : Path.Build.Set.t
+  { targets : Targets.t
   ; context : Build_context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
@@ -127,8 +127,15 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       let to_relative path =
         path |> Stdune.Path.build |> Stdune.Path.reach ~from:eenv.working_dir
       in
-      Stdune.Path.Build.Set.to_list ectx.targets
-      |> String.Set.of_list_map ~f:to_relative
+      let file_targets, (_dir_targets_not_allowed : Nothing.t list) =
+        Targets.partition_map ectx.targets ~file:to_relative
+          ~dir:(fun _dir_target ->
+            User_error.raise ~loc:ectx.rule_loc
+              [ Pp.text
+                  "Directory targets are not compatible with dynamic actions"
+              ])
+      in
+      String.Set.of_list file_targets
     in
     DAP.Run_arguments.
       { prepared_dependencies = eenv.prepared_dependencies; targets }

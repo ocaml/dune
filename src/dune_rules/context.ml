@@ -887,8 +887,7 @@ let gen_configurator_rules t =
   let* () =
     let fn = configurator_v1 t in
     Rules.Produce.rule
-      (Rule.make ~context:None
-         ~targets:(Path.Build.Set.singleton fn)
+      (Rule.make ~context:None ~targets:(Targets.File.create fn)
          (let open Action_builder.O in
          let+ () = Action_builder.return () in
          { Action.Full.action =
@@ -909,8 +908,7 @@ let gen_configurator_rules t =
   in
   let fn = configurator_v2 t in
   Rules.Produce.rule
-    (Rule.make ~context:None
-       ~targets:(Path.Build.Set.singleton fn)
+    (Rule.make ~context:None ~targets:(Targets.File.create fn)
        (let open Action_builder.O in
        let+ () = Action_builder.return () in
        { Action.Full.action =

@@ -135,8 +135,8 @@ val eval_pred : File_selector.t -> Path.Set.t Memo.Build.t
 (** Same as [eval_pred] but also build the resulting set of files. *)
 val build_pred : File_selector.t -> Dep.Fact.Files.t Memo.Build.t
 
-(** Returns the set of targets in the given directory. *)
-val targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
+(** Returns the set of file targets in the given directory. *)
+val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
 
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> unit Memo.Build.t

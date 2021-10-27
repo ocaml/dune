@@ -301,7 +301,7 @@ end
 
 module Rule : sig
   type t =
-    { targets : String_with_vars.t Targets.t
+    { targets : String_with_vars.t Targets_spec.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t

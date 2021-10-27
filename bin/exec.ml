@@ -73,9 +73,12 @@ let term =
         let open Memo.Build.O in
         let+ hints =
           (* Good candidates for the "./x.exe" instead of "x.exe" error are
-             executables present in the current directory *)
+             executables present in the current directory. Note: we do not check
+             directory targets here; even if they do indeed include a matching
+             executable, they would be located in a subdirectory of [dir], so
+             it's unclear if that's what the user wanted. *)
           let+ candidates =
-            Build_system.targets_of ~dir:(Path.build dir)
+            Build_system.file_targets_of ~dir:(Path.build dir)
             >>| Path.Set.to_list
             >>| List.filter ~f:(fun p -> Path.extension p = ".exe")
             >>| List.map ~f:(fun p -> "./" ^ Path.basename p)

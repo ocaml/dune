@@ -328,6 +328,29 @@ end
 (** Introduces a dependency on the current build run. *)
 val current_run : unit -> Run.t Build.t
 
+module Cell : sig
+  type ('i, 'o) t
+
+  val input : ('i, _) t -> 'i
+
+  val read : (_, 'o) t -> 'o Build.t
+
+  (** Mark this cell as invalid, forcing recomputation of this value. The
+      consumers may be recomputed or not, depending on early cutoff. *)
+  val invalidate : reason:Invalidation.Reason.t -> _ t -> Invalidation.t
+end
+
+(** Create a "memoization cell" that focuses on a single input/output pair of a
+    memoized function. *)
+val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
+
+val lazy_cell :
+     ?cutoff:('a -> 'a -> bool)
+  -> ?name:string
+  -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a Build.t)
+  -> (unit, 'a) Cell.t
+
 module Lazy : sig
   type 'a t
 
@@ -343,6 +366,17 @@ module Lazy : sig
   val force : 'a t -> 'a Build.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  module Expert : sig
+    (** Like [Lazy.create] but returns the underlying Memo [Cell], which can be
+        useful for testing and debugging. *)
+    val create :
+         ?cutoff:('a -> 'a -> bool)
+      -> ?name:string
+      -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+      -> (unit -> 'a Build.t)
+      -> (unit, 'a) Cell.t * 'a t
+  end
 end
 
 val lazy_ :
@@ -392,29 +426,6 @@ module With_implicit_output : sig
 
   val exec : ('i, 'o) t -> 'i -> 'o Build.t
 end
-
-module Cell : sig
-  type ('i, 'o) t
-
-  val input : ('i, _) t -> 'i
-
-  val read : (_, 'o) t -> 'o Build.t
-
-  (** Mark this cell as invalid, forcing recomputation of this value. The
-      consumers may be recomputed or not, depending on early cutoff. *)
-  val invalidate : reason:Invalidation.Reason.t -> _ t -> Invalidation.t
-end
-
-(** Create a "memoization cell" that focuses on a single input/output pair of a
-    memoized function. *)
-val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
-
-val lazy_cell :
-     ?cutoff:('a -> 'a -> bool)
-  -> ?name:string
-  -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
-  -> (unit -> 'a Build.t)
-  -> (unit, 'a) Cell.t
 
 (** Memoization of polymorphic functions ['a input -> 'a output Build.t]. The
     provided [id] function must be injective, i.e. there must be a one-to-one

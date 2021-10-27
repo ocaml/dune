@@ -1555,10 +1555,6 @@ let lazy_cell ?cutoff ?name ?human_readable_description f =
   in
   make_dep_node ~spec ~input:()
 
-let lazy_ ?cutoff ?name ?human_readable_description f =
-  let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
-  fun () -> Cell.read cell
-
 let push_stack_frame ~human_readable_description f =
   Cell.read (lazy_cell ~human_readable_description f)
 
@@ -1567,12 +1563,24 @@ module Lazy = struct
 
   let of_val a () = Fiber.return a
 
-  let create = lazy_
+  module Expert = struct
+    let create ?cutoff ?name ?human_readable_description f =
+      let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
+      (cell, fun () -> Cell.read cell)
+  end
+
+  let create ?cutoff ?name ?human_readable_description f =
+    let (_ : (unit, 'a) Cell.t), t =
+      Expert.create ?cutoff ?name ?human_readable_description f
+    in
+    t
 
   let force f = f ()
 
   let map t ~f = create (fun () -> Fiber.map ~f (t ()))
 end
+
+let lazy_ = Lazy.create
 
 module Poly (Function : sig
   type 'a input

@@ -4,6 +4,7 @@ open! Stdune
 open! Import
 module Action_builder := Action_builder0
 
+(** Information about the provenance of a build rule. *)
 module Info : sig
   type t =
     | From_dune_file of Loc.t
@@ -59,7 +60,7 @@ end
 type t = private
   { id : Id.t
   ; context : Build_context.t option
-  ; targets : Path.Build.Set.t
+  ; targets : Targets.t
   ; action : Action.Full.t Action_builder.t
   ; mode : Mode.t
   ; info : Info.t
@@ -75,12 +76,14 @@ val hash : t -> int
 
 val to_dyn : t -> Dyn.t
 
+(** [make] raises an error if the set of [targets] is not well-formed. See the
+    [Targets.Validation_result] data type for the list of possible problems. *)
 val make :
      ?sandbox:Sandbox_config.t
   -> ?mode:Mode.t
   -> context:Build_context.t option
   -> ?info:Info.t
-  -> targets:Path.Build.Set.t
+  -> targets:Targets.t
   -> Action.Full.t Action_builder.t
   -> t
 

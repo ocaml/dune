@@ -156,6 +156,8 @@ module Build : sig
 
   val drop_build_context_exn : t -> Source.t
 
+  val drop_build_context_maybe_sandboxed_exn : t -> Source.t
+
   (** [Source.t] here is a lie in some cases: consider when the context name
       happens to be ["install"] or [".alias"]. *)
   val extract_build_context : t -> (string * Source.t) option

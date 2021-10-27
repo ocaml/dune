@@ -31,7 +31,7 @@ val expand :
   -> loc:Loc.t
   -> deps:Dep_conf.t Bindings.t
   -> targets_dir:Path.Build.t
-  -> targets:Path.Build.t Targets.t
+  -> targets:Path.Build.t Targets_spec.t
   -> expander:Expander.t
   -> Action.t Action_builder.With_targets.t Memo.Build.t
 

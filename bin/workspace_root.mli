@@ -16,4 +16,4 @@ type t =
   ; kind : Kind.t
   }
 
-val create : specified_by_user:string option -> t
+val create : default_is_cwd:bool -> specified_by_user:string option -> t

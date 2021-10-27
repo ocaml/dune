@@ -386,8 +386,8 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
               in
               Action.run exe args)
     in
-    Action_builder.with_targets action
-      ~targets:[ Path.Build.relative dir output ]
+    Action_builder.with_file_targets action
+      ~file_targets:[ Path.Build.relative dir output ]
   in
   Super_context.add_rule sctx ~dir build
 

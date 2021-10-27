@@ -131,44 +131,42 @@ let source_tree ~dir =
     }
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
-   multiple sources by calling [Path.Build.Set.union] and hence occasionally
-   duplicate declarations of the very same target go unnoticed. I think such
-   redeclarations are not erroneous but are merely redundant; it seems that it
-   would be better to rule them out completely.
-
-   Another improvement is to cache [Path.Build.Set.to_list targets] which is
-   currently performed multiple times on the very same
-   [Action_builder.With_targets.t]. *)
+   multiple sources by calling [Targets.combine], which performs set union and
+   hence duplicate declarations of the very same target can go unnoticed. I
+   think such redeclarations are not erroneous but are merely redundant; perhaps
+   we should detect and disallow them. *)
 module With_targets = struct
   type nonrec 'a t =
     { build : 'a t
-    ; targets : Path.Build.Set.t
+    ; targets : Targets.t
     }
 
   let map_build t ~f = { t with build = f t.build }
 
-  let return x = { build = return x; targets = Path.Build.Set.empty }
+  let return x = { build = return x; targets = Targets.empty }
 
-  let add t ~targets =
+  let add t ~file_targets =
     { build = t.build
-    ; targets = Path.Build.Set.union t.targets (Path.Build.Set.of_list targets)
+    ; targets =
+        Targets.combine t.targets
+          (Targets.Files.create (Path.Build.Set.of_list file_targets))
     }
 
   let map { build; targets } ~f = { build = map build ~f; targets }
 
   let map2 x y ~f =
     { build = map2 x.build y.build ~f
-    ; targets = Path.Build.Set.union x.targets y.targets
+    ; targets = Targets.combine x.targets y.targets
     }
 
   let both x y =
     { build = both x.build y.build
-    ; targets = Path.Build.Set.union x.targets y.targets
+    ; targets = Targets.combine x.targets y.targets
     }
 
   let seq x y =
     { build = x.build >>> y.build
-    ; targets = Path.Build.Set.union x.targets y.targets
+    ; targets = Targets.combine x.targets y.targets
     }
 
   module O = struct
@@ -186,48 +184,53 @@ module With_targets = struct
     | [] -> return []
     | xs ->
       let build, targets =
-        List.fold_left xs ~init:([], Path.Build.Set.empty)
-          ~f:(fun (xs, set) x ->
-            (x.build :: xs, Path.Build.Set.union set x.targets))
+        List.fold_left xs ~init:([], Targets.empty)
+          ~f:(fun (builds, targets) x ->
+            (x.build :: builds, Targets.combine x.targets targets))
       in
       { build = all (List.rev build); targets }
 
   let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
-    add ~targets:[ fn ]
+    add ~file_targets:[ fn ]
       (let+ s = s in
        Action.Write_file (fn, perm, s))
 
   let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
 
-let with_targets build ~targets : _ With_targets.t =
-  { build; targets = Path.Build.Set.of_list targets }
+let with_targets build ~targets : _ With_targets.t = { build; targets }
 
-let with_targets_set build ~targets : _ With_targets.t = { build; targets }
+let with_file_targets build ~file_targets : _ With_targets.t =
+  { build
+  ; targets = Targets.Files.create (Path.Build.Set.of_list file_targets)
+  }
 
 let with_no_targets build : _ With_targets.t =
-  { build; targets = Path.Build.Set.empty }
+  { build; targets = Targets.empty }
 
 let write_file ?(perm = Action.File_perm.Normal) fn s =
-  with_targets ~targets:[ fn ] (return (Action.Write_file (fn, perm, s)))
+  with_file_targets ~file_targets:[ fn ]
+    (return (Action.Write_file (fn, perm, s)))
 
 let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
-  with_targets ~targets:[ fn ]
+  with_file_targets ~file_targets:[ fn ]
     (let+ s = s in
      Action.Write_file (fn, perm, s))
 
 let copy ~src ~dst =
-  with_targets ~targets:[ dst ] (path src >>> return (Action.Copy (src, dst)))
+  with_file_targets ~file_targets:[ dst ]
+    (path src >>> return (Action.Copy (src, dst)))
 
 let copy_and_add_line_directive ~src ~dst =
-  with_targets ~targets:[ dst ]
+  with_file_targets ~file_targets:[ dst ]
     (path src >>> return (Action.Copy_and_add_line_directive (src, dst)))
 
 let symlink ~src ~dst =
-  with_targets ~targets:[ dst ] (path src >>> return (Action.Symlink (src, dst)))
+  with_file_targets ~file_targets:[ dst ]
+    (path src >>> return (Action.Symlink (src, dst)))
 
 let create_file ?(perm = Action.File_perm.Normal) fn =
-  with_targets ~targets:[ fn ]
+  with_file_targets ~file_targets:[ fn ]
     (return (Action.Redirect_out (Stdout, fn, perm, Action.empty)))
 
 let progn ts =

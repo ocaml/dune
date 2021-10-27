@@ -34,11 +34,16 @@ let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
       ; Action.for_shell rule.action
       ]
   in
+  (* Makefiles seem to allow directory targets, so we include them. *)
+  let targets =
+    Dune_engine.Targets.map rule.targets ~f:(fun ~files ~dirs ->
+        Path.Build.Set.union files dirs)
+  in
   Format.fprintf ppf
-    "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}@,@,"
+    "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}\n"
     (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
          Format.pp_print_string ppf (Path.to_string p)))
-    (List.map ~f:Path.build (Path.Build.Set.to_list rule.targets))
+    (List.map ~f:Path.build (Path.Build.Set.to_list targets))
     (fun ppf ->
       Path.Set.iter rule.expanded_deps ~f:(fun dep ->
           Format.fprintf ppf "@ %s" (Path.to_string dep)))
@@ -49,13 +54,24 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
     Action.for_shell action |> Action.For_shell.encode
   in
   let paths ps = Dune_lang.Encoder.list Dpath.encode (Path.Set.to_list ps) in
+  let file_targets =
+    Dune_engine.Targets.map rule.targets ~f:(fun ~files ~dirs ->
+        if not (Path.Build.Set.is_empty dirs) then
+          User_error.raise
+            [ Pp.text
+                "Printing rules with directory targets is currently not \
+                 supported"
+            ];
+
+        files)
+  in
   let sexp =
     Dune_lang.Encoder.record
       (List.concat
          [ [ ("deps", Dep.Set.encode rule.deps)
            ; ( "targets"
              , paths
-                 (Path.Build.Set.to_list rule.targets
+                 (Path.Build.Set.to_list file_targets
                  |> Path.set_of_build_paths_list) )
            ]
          ; (match rule.context with

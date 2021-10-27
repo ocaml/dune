@@ -54,7 +54,7 @@ module T = struct
   type t =
     { id : Id.t
     ; context : Build_context.t option
-    ; targets : Path.Build.Set.t
+    ; targets : Targets.t
     ; action : Action.Full.t Action_builder.t
     ; mode : Mode.t
     ; info : Info.t
@@ -90,8 +90,8 @@ let add_sandbox_config :
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ?(info = Info.Internal) ~targets action =
-  let open Memo.Build.O in
   let action =
+    let open Memo.Build.O in
     Action_builder.memoize "Rule.make"
       (Action_builder.of_thunk
          { f =
@@ -101,31 +101,27 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
                (action, deps))
          })
   in
+  let report_error ?(extra_pp = []) message =
+    match info with
+    | From_dune_file loc ->
+      let pp = [ Pp.text message ] @ extra_pp in
+      User_error.raise ~loc pp
+    | Internal
+    | Source_file_copy _ ->
+      Code_error.raise message
+        [ ("info", Info.to_dyn info); ("targets", Targets.to_dyn targets) ]
+  in
   let dir =
-    match Path.Build.Set.choose targets with
-    | None -> (
-      match info with
-      | From_dune_file loc ->
-        User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
-      | _ -> Code_error.raise "Build_interpret.Rule.make: no targets" [])
-    | Some x ->
-      let dir = Path.Build.parent_exn x in
-      (if
-       Path.Build.Set.exists targets ~f:(fun path ->
-           Path.Build.( <> ) (Path.Build.parent_exn path) dir)
-      then
-        match info with
-        | Internal
-        | Source_file_copy _ ->
-          Code_error.raise "rule has targets in different directories"
-            [ ("targets", Path.Build.Set.to_dyn targets) ]
-        | From_dune_file loc ->
-          User_error.raise ~loc
-            [ Pp.text "Rule has targets in different directories.\nTargets:"
-            ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun p ->
-                  Pp.verbatim (Path.to_string_maybe_quoted (Path.build p)))
-            ]);
-      dir
+    match Targets.validate targets with
+    | Valid { parent_dir } -> parent_dir
+    | No_targets -> report_error "Rule has no targets specified"
+    | Inconsistent_parent_dir ->
+      report_error "Rule has targets in different directories."
+        ~extra_pp:[ Pp.text "Targets:"; Targets.pp targets ]
+    | File_and_directory_target_with_the_same_name path ->
+      report_error
+        (sprintf "%S is declared as both a file and a directory target."
+           (Dpath.describe_target path))
   in
   let loc =
     match info with

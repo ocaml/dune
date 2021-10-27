@@ -37,7 +37,7 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
       match Path.Source.basename file with
       | "dune" when Format_config.includes config Dune ->
         Option.some
-        @@ Action_builder.with_targets ~targets:[ output ]
+        @@ Action_builder.with_file_targets ~file_targets:[ output ]
         @@
         let open Action_builder.O in
         let+ () = Action_builder.path input in

@@ -10,6 +10,7 @@ type error =
   { responsible : who_is_responsible_for_the_error
   ; msg : User_message.t
   ; has_embedded_location : bool
+  ; needs_stack_trace : bool
   }
 
 let code_error ~loc ~dyn_without_loc =
@@ -25,6 +26,7 @@ let code_error ~loc ~dyn_without_loc =
         ; Pp.box ~indent:2 (Pp.verbatim "  " ++ Dyn.pp dyn_without_loc)
         ]
   ; has_embedded_location = false
+  ; needs_stack_trace = false
   }
 
 let get_error_from_exn = function
@@ -59,10 +61,12 @@ let get_error_from_exn = function
             ; Pp.chain cycle ~f:(fun p -> p)
             ]
       ; has_embedded_location = false
+      ; needs_stack_trace = false
       })
   | User_error.E (msg, annots) ->
-    let has_embedded_location = User_error.has_embed_location annots in
-    { responsible = User; msg; has_embedded_location }
+    let has_embedded_location = User_error.has_embedded_location annots in
+    let needs_stack_trace = User_error.needs_stack_trace annots in
+    { responsible = User; msg; has_embedded_location; needs_stack_trace }
   | Code_error.E e ->
     code_error ~loc:e.loc ~dyn_without_loc:(Code_error.to_dyn_without_loc e)
   | Unix.Unix_error (err, func, fname) ->
@@ -71,11 +75,13 @@ let get_error_from_exn = function
         User_error.make
           [ Pp.textf "%s: %s: %s" func fname (Unix.error_message err) ]
     ; has_embedded_location = false
+    ; needs_stack_trace = false
     }
   | Sys_error msg ->
     { responsible = User
     ; msg = User_error.make [ Pp.text msg ]
     ; has_embedded_location = false
+    ; needs_stack_trace = false
     }
   | exn ->
     let open Pp.O in
@@ -96,6 +102,7 @@ let get_error_from_exn = function
     { responsible = Developer
     ; msg = User_message.make ?loc [ pp ]
     ; has_embedded_location = Option.is_some loc
+    ; needs_stack_trace = false
     }
 
 let i_must_not_crash =
@@ -143,7 +150,9 @@ let report { Exn_with_backtrace.exn; backtrace } =
   match exn with
   | Already_reported -> ()
   | _ ->
-    let { responsible; msg; has_embedded_location } = get_error_from_exn exn in
+    let { responsible; msg; has_embedded_location; needs_stack_trace } =
+      get_error_from_exn exn
+    in
     let msg =
       if msg.loc = Some Loc.none then
         { msg with loc = None }
@@ -163,7 +172,7 @@ let report { Exn_with_backtrace.exn; backtrace } =
              ~f:(fun line -> Pp.box ~indent:2 (Pp.text line)))
     in
     let memo_stack =
-      if !print_memo_stacks then
+      if !print_memo_stacks || needs_stack_trace then
         memo_stack
       else
         match msg.loc with

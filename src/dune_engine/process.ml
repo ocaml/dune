@@ -155,7 +155,7 @@ end
 
 type purpose =
   | Internal_job of Loc.t option * User_error.Annot.t list
-  | Build_job of Loc.t option * User_error.Annot.t list * Path.Build.Set.t
+  | Build_job of Loc.t option * User_error.Annot.t list * Targets.t
 
 let loc_and_annots_of_purpose = function
   | Internal_job (loc, annots) -> (loc, annots)
@@ -318,9 +318,11 @@ module Fancy = struct
               ("(internal)" :: targets_acc)
               (add_ctx ctx ctxs_acc) rest)
       in
-      let targets = Path.Build.Set.to_list targets in
       let target_names, contexts =
-        split_paths [] Context_name.Set.empty targets
+        let file_targets, directory_targets =
+          Targets.partition_map targets ~file:Fun.id ~dir:Fun.id
+        in
+        split_paths [] Context_name.Set.empty (file_targets @ directory_targets)
       in
       let targets =
         List.map target_names ~f:Filename.split_extension_after_dot

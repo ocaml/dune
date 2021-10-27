@@ -149,7 +149,7 @@ include Sub_system.Register_end_point (struct
            in
            Action.with_stdout_to target (Action.progn actions)
          in
-         Action_builder.With_targets.add ~targets:[ target ] action)
+         Action_builder.With_targets.add ~file_targets:[ target ] action)
     and* cctx =
       let package = Dune_file.Library.package lib in
       let+ ocaml_flags = Super_context.ocaml_flags sctx ~dir info.executable in

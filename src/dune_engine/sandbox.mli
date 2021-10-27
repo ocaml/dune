@@ -20,7 +20,8 @@ val create :
   -> t
 
 (** Move the targets created by the action from the sandbox to the build
-    directory. *)
-val move_targets_to_build_dir : t -> targets:Targets.t -> unit
+    directory. Returns the set of files discovered in directory targets. *)
+val move_targets_to_build_dir :
+  t -> loc:Loc.t -> targets:Targets.t -> Path.Build.Set.t
 
 val destroy : t -> unit

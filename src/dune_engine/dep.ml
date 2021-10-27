@@ -1,6 +1,8 @@
 open Stdune
 open Memo.Build.O
 
+(* CR-someday amokhov: We probably want to add a new variant [Dir] to provide
+   first-class support for depending on directory targets. *)
 module T = struct
   type t =
     | Env of Env.Var.t
@@ -100,19 +102,24 @@ module Map = struct
 end
 
 module Fact = struct
+  (* CR-someday amokhov: Find a better name, perhaps, [Files_and_dirs]? *)
   module Files = struct
     type t =
       { files : Digest.t Path.Map.t
-      ; dirs : Path.Set.t
+      ; dirs : Digest.t Path.Map.t (* Only for file selectors for now *)
+      ; parent_dirs : Path.Set.t
       ; digest : Digest.t
       }
 
-    let to_dyn { files; dirs; digest } =
+    let to_dyn { files; dirs; parent_dirs; digest } =
       Dyn.Record
         [ ("files", Path.Map.to_dyn Digest.to_dyn files)
-        ; ("dirs", Path.Set.to_dyn dirs)
+        ; ("dirs", Path.Map.to_dyn Digest.to_dyn dirs)
+        ; ("parent_dirs", Path.Set.to_dyn parent_dirs)
         ; ("digest", Digest.to_dyn digest)
         ]
+
+    let is_empty t = Path.Map.is_empty t.files && Path.Map.is_empty t.dirs
 
     let compare a b = Digest.compare a.digest b.digest
 
@@ -120,29 +127,36 @@ module Fact = struct
 
     let paths t = t.files
 
-    let make files =
+    let make ~files ~dirs =
+      let parent_dirs =
+        let f path (_ : Digest.t) acc =
+          Path.Set.add acc (Path.parent_exn path)
+        in
+        let init = Path.Map.foldi files ~init:Path.Set.empty ~f in
+        Path.Map.foldi files ~init ~f
+      in
       { files
-      ; dirs =
-          Path.Map.foldi files ~init:Path.Set.empty ~f:(fun fn _ acc ->
-              Path.Set.add acc (Path.parent_exn fn))
+      ; dirs
+      ; parent_dirs
       ; digest =
           Digest.generic
-            (Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d)))
+            (Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d))
+            @ Path.Map.to_list_map dirs ~f:(fun p d -> (Path.to_string p, d)))
       }
 
-    let empty = lazy (make Path.Map.empty)
+    let empty = lazy (make ~files:Path.Map.empty ~dirs:Path.Map.empty)
 
     let group ts files =
       let ts =
         if Path.Map.is_empty files then
           ts
         else
-          make files :: ts
+          make ~files ~dirs:Path.Map.empty :: ts
       in
       (* Sort and de-dup so that the result is resilient to code changes *)
       let ts =
         List.filter_map ts ~f:(fun t ->
-            if Path.Map.is_empty t.files then
+            if is_empty t then
               None
             else
               Some (t.digest, t))
@@ -160,7 +174,12 @@ module Fact = struct
                     Some d1))
         ; dirs =
             List.fold_left l ~init:t.dirs ~f:(fun acc t ->
-                Path.Set.union t.dirs acc)
+                Path.Map.union t.dirs acc ~f:(fun _ d1 d2 ->
+                    assert (Digest.equal d1 d2);
+                    Some d1))
+        ; parent_dirs =
+            List.fold_left l ~init:t.parent_dirs ~f:(fun acc t ->
+                Path.Set.union t.parent_dirs acc)
         ; digest = Digest.generic (List.map ts ~f:(fun t -> t.digest))
         }
   end
@@ -170,6 +189,21 @@ module Fact = struct
     | File of Path.t * Digest.t
     | File_selector of Dyn.t * Files.t
     | Alias of Files.t
+
+  let to_dyn = function
+    | Nothing -> Dyn.Variant ("Nothing", [])
+    | File (path, digest) ->
+      Dyn.Variant
+        ( "File"
+        , [ Dyn.Record
+              [ ("path", Path.to_dyn path); ("digest", Digest.to_dyn digest) ]
+          ] )
+    | File_selector (dyn, files) ->
+      Dyn.Variant
+        ( "File_selector"
+        , [ Dyn.Record [ ("dyn", dyn); ("files", Files.to_dyn files) ] ] )
+    | Alias files ->
+      Dyn.Variant ("Alias", [ Dyn.Record [ ("files", Files.to_dyn files) ] ])
 
   module Stable_for_digest = struct
     type file = string * Digest.t
@@ -228,6 +262,8 @@ module Facts = struct
 
   let union_all xs = List.fold_left xs ~init:Map.empty ~f:union
 
+  let to_dyn = Map.to_dyn Fact.to_dyn
+
   let paths t =
     Map.fold t ~init:Path.Map.empty ~f:(fun fact acc ->
         match (fact : Fact.t) with
@@ -263,11 +299,21 @@ module Facts = struct
   let dirs t =
     Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
         match (fact : Fact.t) with
+        | Nothing
+        | File _ ->
+          acc
+        | File_selector (_, ps)
+        | Alias ps ->
+          Path.Set.union acc (Path.Map.keys ps.dirs |> Path.Set.of_list))
+
+  let parent_dirs t =
+    Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
+        match (fact : Fact.t) with
         | Nothing -> acc
         | File (p, _) -> Path.Set.add acc (Path.parent_exn p)
         | File_selector (_, ps)
         | Alias ps ->
-          Path.Set.union acc ps.dirs)
+          Path.Set.union acc ps.parent_dirs)
 
   let digest t ~sandbox_mode ~env =
     let facts =

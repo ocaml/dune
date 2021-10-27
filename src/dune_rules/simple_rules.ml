@@ -18,27 +18,28 @@ end
 let interpret_locks ~expander =
   Memo.Build.List.map ~f:(Expander.No_deps.expand_path expander)
 
-let check_filename =
+let check_filename ~kind =
   let not_in_dir ~error_loc s =
     User_error.raise ~loc:error_loc
-      [ Pp.textf "%s does not denote a file in the current directory" s ]
+      [ (match kind with
+        | Targets_spec.Kind.File ->
+          Pp.textf "%S does not denote a file in the current directory." s
+        | Directory ->
+          Pp.textf "Directory targets must have exactly one path component.")
+      ]
   in
-  fun ~error_loc ~dir fn ->
-    match fn with
+  fun ~error_loc ~dir -> function
     | Value.String ("." | "..") ->
       User_error.raise ~loc:error_loc
-        [ Pp.text "'.' and '..' are not valid filenames" ]
+        [ Pp.text "'.' and '..' are not valid targets" ]
     | String s ->
       if Filename.dirname s <> Filename.current_dir_name then
         not_in_dir ~error_loc s;
       Path.Build.relative ~error_loc dir s
-    | Path p ->
-      if
-        Option.compare Path.compare (Path.parent p) (Some (Path.build dir))
-        <> Eq
-      then
-        not_in_dir ~error_loc (Path.to_string p);
-      Path.as_in_build_dir_exn p
+    | Path p -> (
+      match Option.equal Path.equal (Path.parent p) (Some (Path.build dir)) with
+      | true -> Path.as_in_build_dir_exn p
+      | false -> not_in_dir ~error_loc (Path.to_string p))
     | Dir p -> not_in_dir ~error_loc (Path.to_string p)
 
 type rule_kind =
@@ -51,7 +52,7 @@ let rule_kind ~(rule : Rule.t)
   match rule.alias with
   | None -> No_alias
   | Some alias -> (
-    match action.targets |> Targets.head with
+    match Targets.head action.targets with
     | None -> Alias_only alias
     | Some target -> Alias_with_targets (alias, target))
 
@@ -80,14 +81,15 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | Infer -> Memo.Build.return Targets_spec.Infer
       | Static { targets; multiplicity } ->
         let+ targets =
-          Memo.Build.List.concat_map targets ~f:(fun target ->
+          Memo.Build.List.concat_map targets ~f:(fun (target, kind) ->
               let error_loc = String_with_vars.loc target in
               (match multiplicity with
               | One ->
                 let+ x = Expander.No_deps.expand expander ~mode:Single target in
                 [ x ]
               | Multiple -> Expander.No_deps.expand expander ~mode:Many target)
-              >>| List.map ~f:(check_filename ~dir ~error_loc))
+              >>| List.map ~f:(fun value ->
+                      (check_filename ~kind ~dir ~error_loc value, kind)))
         in
         Targets_spec.Static { multiplicity; targets }
     in
@@ -101,14 +103,17 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
     match rule_kind ~rule ~action with
-    | No_alias -> add_user_rule sctx ~dir ~rule ~action ~expander
+    | No_alias ->
+      let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
+      targets
     | Alias_with_targets (alias, alias_target) ->
       let* () =
         let alias = Alias.make alias ~dir in
         Rules.Produce.Alias.add_deps alias
           (Action_builder.path (Path.build alias_target))
       in
-      add_user_rule sctx ~dir ~rule ~action ~expander
+      let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
+      targets
     | Alias_only name ->
       let alias = Alias.make ~dir name in
       let* locks = interpret_locks ~expander rule.locks in

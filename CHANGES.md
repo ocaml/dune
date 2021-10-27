@@ -241,6 +241,9 @@ Unreleased
 - Allow to cancel the initial scan via Control+C (#4460, fixes #4364
   @jeremiedimino)
 
+- Add experimental support for directory targets (#3316, #5025, Andrey Mokhov),
+  enabled via `(using directory-targets 0.1)` in `dune-project`.
+
 2.9.2 (unreleased)
 ------------------
 

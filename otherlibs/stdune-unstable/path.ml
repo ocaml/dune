@@ -686,6 +686,13 @@ module Build = struct
     | None ->
       Code_error.raise "Path.Build.drop_build_context_exn" [ ("t", to_dyn t) ]
 
+  let drop_build_context_maybe_sandboxed_exn t =
+    match extract_build_context_dir_maybe_sandboxed t with
+    | Some (_, t) -> t
+    | None ->
+      Code_error.raise "Path.Build.drop_build_context_maybe_sandboxed_exn"
+        [ ("t", to_dyn t) ]
+
   let build_dir = Fdecl.create Kind.to_dyn
 
   let build_dir_prefix = Fdecl.create Dyn.Encoder.opaque

@@ -119,10 +119,20 @@ end
 let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
 
 module Loaded = struct
+  type rules_here =
+    { by_file_targets : Rule.t Path.Build.Map.t
+    ; by_directory_targets : Rule.t Path.Build.Map.t
+    }
+
+  let no_rules_here =
+    { by_file_targets = Path.Build.Map.empty
+    ; by_directory_targets = Path.Build.Map.empty
+    }
+
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_produced : Rules.t
-    ; rules_here : Rule.t Path.Build.Map.t
+    ; rules_here : rules_here
     ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
     }
 
@@ -134,7 +144,7 @@ module Loaded = struct
     Build
       { allowed_subdirs
       ; rules_produced = Rules.empty
-      ; rules_here = Path.Build.Map.empty
+      ; rules_here = no_rules_here
       ; aliases = Alias.Name.Map.empty
       }
 end
@@ -507,6 +517,8 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
         ]
       | _ -> [])
 
+(* CR-someday amokhov: Clean up pending directory targets too? *)
+
 (* This contains the targets of the actions that are being executed. On exit, we
    need to delete them as they might contain garbage. *)
 let pending_targets = ref Path.Build.Set.empty
@@ -520,13 +532,15 @@ let () =
       Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
 let compute_target_digests targets =
-  Option.List.traverse (Targets.to_list_map targets ~file:Fun.id)
-    ~f:(fun target ->
+  let file_targets, (_ignored_dir_targets : unit list) =
+    Targets.partition_map targets ~file:Fun.id ~dir:ignore
+  in
+  Option.List.traverse file_targets ~f:(fun target ->
       Cached_digest.build_file target
       |> Cached_digest.Digest_result.to_option
       |> Option.map ~f:(fun digest -> (target, digest)))
 
-let compute_target_digests_or_raise_error exec_params ~loc targets =
+let compute_target_digests_or_raise_error exec_params ~loc file_targets =
   let remove_write_permissions =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should not
@@ -536,57 +550,58 @@ let compute_target_digests_or_raise_error exec_params ~loc targets =
     (* FIXME: searching the dune version for each single target seems way
        suboptimal. This information could probably be stored in rules
        directly. *)
-    if Targets.is_empty targets then
+    if Path.Build.Set.is_empty file_targets then
       false
     else
       Execution_parameters.should_remove_write_permissions_on_generated_files
         exec_params
   in
   let good, missing, errors =
-    Targets.fold targets ~init:([], [], [])
-      ~file:(fun target (good, missing, errors) ->
-        let expected_syscall_path = Path.to_string (Path.build target) in
-        match Cached_digest.refresh ~remove_write_permissions target with
-        | Ok digest -> ((target, digest) :: good, missing, errors)
-        | No_such_file -> (good, target :: missing, errors)
-        | Broken_symlink ->
-          let error = [ Pp.verbatim "Broken symlink" ] in
-          (good, missing, (target, error) :: errors)
-        | Unexpected_kind file_kind ->
-          let error =
+    let process_target target (good, missing, errors) =
+      let expected_syscall_path = Path.to_string (Path.build target) in
+      match Cached_digest.refresh ~remove_write_permissions target with
+      | Ok digest -> ((target, digest) :: good, missing, errors)
+      | No_such_file -> (good, target :: missing, errors)
+      | Broken_symlink ->
+        let error = [ Pp.verbatim "Broken symlink" ] in
+        (good, missing, (target, error) :: errors)
+      | Unexpected_kind file_kind ->
+        let error =
+          [ Pp.verbatim
+              (sprintf "Unexpected file kind %S (%s)"
+                 (File_kind.to_string file_kind)
+                 (File_kind.to_string_hum file_kind))
+          ]
+        in
+        (good, missing, (target, error) :: errors)
+      | Unix_error (error, syscall, path) ->
+        let error =
+          [ (if String.equal expected_syscall_path path then
+              Pp.verbatim syscall
+            else
+              Pp.concat
+                [ Pp.verbatim syscall
+                ; Pp.verbatim " "
+                ; Pp.verbatim (String.maybe_quoted path)
+                ])
+          ; Pp.text (Unix.error_message error)
+          ]
+        in
+        (good, missing, (target, error) :: errors)
+      | Error exn ->
+        let error =
+          match exn with
+          | Sys_error msg ->
             [ Pp.verbatim
-                (sprintf "Unexpected file kind %S (%s)"
-                   (File_kind.to_string file_kind)
-                   (File_kind.to_string_hum file_kind))
+                (String.drop_prefix_if_exists
+                   ~prefix:(expected_syscall_path ^ ": ")
+                   msg)
             ]
-          in
-          (good, missing, (target, error) :: errors)
-        | Unix_error (error, syscall, path) ->
-          let error =
-            [ (if String.equal expected_syscall_path path then
-                Pp.verbatim syscall
-              else
-                Pp.concat
-                  [ Pp.verbatim syscall
-                  ; Pp.verbatim " "
-                  ; Pp.verbatim (String.maybe_quoted path)
-                  ])
-            ; Pp.text (Unix.error_message error)
-            ]
-          in
-          (good, missing, (target, error) :: errors)
-        | Error exn ->
-          let error =
-            match exn with
-            | Sys_error msg ->
-              [ Pp.verbatim
-                  (String.drop_prefix_if_exists
-                     ~prefix:(expected_syscall_path ^ ": ")
-                     msg)
-              ]
-            | exn -> [ Pp.verbatim (Printexc.to_string exn) ]
-          in
-          (good, missing, (target, error) :: errors))
+          | exn -> [ Pp.verbatim (Printexc.to_string exn) ]
+        in
+        (good, missing, (target, error) :: errors)
+    in
+    Path.Build.Set.fold file_targets ~init:([], [], []) ~f:process_target
   in
   match (missing, errors) with
   | [], [] -> List.rev good
@@ -623,7 +638,10 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
   | Ok files ->
     List.iter files ~f:(fun (fn, kind) ->
         let path = Path.Build.relative dir fn in
-        let path_is_a_target = Path.Build.Map.mem rules_here path in
+        let path_is_a_target =
+          (* CR-someday amokhov: Also check directory targets. *)
+          Path.Build.Map.mem rules_here.Loaded.by_file_targets path
+        in
         if not path_is_a_target then
           match kind with
           | Unix.S_DIR -> (
@@ -742,7 +760,9 @@ module rec Load_rules : sig
 
   val file_exists : Path.t -> bool Memo.Build.t
 
-  val targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
+  val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
+
+  val directory_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
 
   val lookup_alias :
        Alias.t
@@ -778,14 +798,29 @@ end = struct
           build)
 
   let compile_rules ~dir ~source_dirs rules =
-    List.concat_map rules ~f:(fun rule ->
-        assert (Path.Build.( = ) dir rule.Rule.dir);
-        Targets.to_list_map rule.targets ~file:(fun target ->
-            if String.Set.mem source_dirs (Path.Build.basename target) then
-              report_rule_src_dir_conflict dir target rule
-            else
-              (target, rule)))
-    |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
+    let file_targets, directory_targets =
+      List.map rules ~f:(fun rule ->
+          assert (Path.Build.( = ) dir rule.Rule.dir);
+          Targets.partition_map rule.targets
+            ~file:(fun target ->
+              if String.Set.mem source_dirs (Path.Build.basename target) then
+                report_rule_src_dir_conflict dir target rule
+              else
+                (target, rule))
+            ~dir:(fun target -> (target, rule)))
+      |> List.unzip
+    in
+    (* CR-someday amokhov: Report rule conflicts for all targets rather than
+       doing it separately for files and directories. *)
+    let by_file_targets =
+      List.concat file_targets
+      |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
+    in
+    let by_directory_targets =
+      List.concat directory_targets
+      |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
+    in
+    { Loaded.by_file_targets; by_directory_targets }
 
   (* Here we are doing a O(log |S|) lookup in a set S of files in the build
      directory [dir]. We could memoize these lookups, but it doesn't seem to be
@@ -801,13 +836,28 @@ end = struct
     | Build { rules_here; _ } -> (
       match Path.as_in_build_dir fn with
       | None -> false
-      | Some fn -> Path.Build.Map.mem rules_here fn)
+      | Some fn -> (
+        match Path.Build.Map.mem rules_here.by_file_targets fn with
+        | true -> true
+        | false -> (
+          match Path.Build.parent fn with
+          | None -> false
+          | Some dir -> Path.Build.Map.mem rules_here.by_directory_targets dir))
+      )
 
-  let targets_of ~dir =
+  let file_targets_of ~dir =
     load_dir ~dir >>| function
-    | Non_build targets -> targets
+    | Non_build file_targets -> file_targets
     | Build { rules_here; _ } ->
-      Path.Build.Map.keys rules_here |> Path.Set.of_list_map ~f:Path.build
+      Path.Build.Map.keys rules_here.by_file_targets
+      |> Path.Set.of_list_map ~f:Path.build
+
+  let directory_targets_of ~dir =
+    load_dir ~dir >>| function
+    | Non_build _file_targets -> Path.Set.empty
+    | Build { rules_here; _ } ->
+      Path.Build.Map.keys rules_here.by_directory_targets
+      |> Path.Set.of_list_map ~f:Path.build
 
   let lookup_alias alias =
     load_dir ~dir:(Path.build (Alias.dir alias)) >>| function
@@ -852,9 +902,14 @@ end = struct
             (* All targets are in [dir] and we know it correspond to a directory
                of a build context since there are source files to copy, so this
                call can't fail. *)
-            Targets.to_list_map rule.targets
-              ~file:Path.Build.drop_build_context_exn
-            |> Path.Source.Set.of_list
+            let file_targets, (_dir_targets_not_allowed : Nothing.t list) =
+              Targets.partition_map rule.targets
+                ~file:Path.Build.drop_build_context_exn ~dir:(fun dir ->
+                  Code_error.raise
+                    "Unexpected directory target in a Fallback rule"
+                    [ ("dir", Dyn.String (Path.Build.to_string dir)) ])
+            in
+            Path.Source.Set.of_list file_targets
           in
           if Path.Source.Set.is_subset source_files_for_targets ~of_:to_copy
           then
@@ -970,6 +1025,7 @@ end = struct
     in
     source_files_to_ignore
 
+  (* Returns only [Loaded.Build] variant. *)
   let load_dir_step2_exn t ~dir =
     let context_name, sub_dir =
       match Dpath.analyse_path dir with
@@ -1018,20 +1074,38 @@ end = struct
        copied *)
     let source_files_to_ignore =
       List.fold_left rules ~init:Path.Build.Set.empty
-        ~f:(fun acc_ignored { Rule.targets; mode; _ } ->
+        ~f:(fun acc_ignored { Rule.targets; mode; loc; _ } ->
+          (* CR-someday amokhov: Remove this limitation. *)
+          let directory_targets_not_supported ~dirs =
+            if not (Path.Build.Set.is_empty dirs) then
+              User_error.raise ~loc
+                [ Pp.text "Directory targets are not supported for this mode" ]
+          in
           match mode with
           | Promote { only = None; _ }
           | Ignore_source_files ->
-            Path.Build.Set.union (Targets.files targets) acc_ignored
+            let file_targets =
+              Targets.map targets ~f:(fun ~files ~dirs ->
+                  directory_targets_not_supported ~dirs;
+                  files)
+            in
+            Path.Build.Set.union file_targets acc_ignored
           | Promote { only = Some pred; _ } ->
+            let file_targets =
+              Targets.map targets ~f:(fun ~files ~dirs ->
+                  directory_targets_not_supported ~dirs;
+                  files)
+            in
             let to_ignore =
-              Path.Build.Set.filter (Targets.files targets) ~f:(fun target ->
+              Path.Build.Set.filter file_targets ~f:(fun target ->
                   Predicate_lang.Glob.exec pred
                     (Path.reach (Path.build target) ~from:(Path.build dir))
                     ~standard:Predicate_lang.any)
             in
             Path.Build.Set.union to_ignore acc_ignored
-          | _ -> acc_ignored)
+          | Standard
+          | Fallback ->
+            acc_ignored)
     in
     let source_files_to_ignore =
       Path.Build.Set.to_list source_files_to_ignore
@@ -1159,32 +1233,52 @@ open Load_rules
 
 let load_dir_and_get_buildable_targets ~dir =
   load_dir ~dir >>| function
-  | Non_build _ -> Path.Build.Map.empty
+  | Non_build _ -> Loaded.no_rules_here
   | Build { rules_here; _ } -> rules_here
-
-let get_rule fn =
-  match Path.as_in_build_dir fn with
-  | None -> Memo.Build.return None
-  | Some fn -> (
-    let dir = Path.Build.parent_exn fn in
-    load_dir ~dir:(Path.build dir) >>| function
-    | Non_build _ -> assert false
-    | Build { rules_here; _ } -> Path.Build.Map.find rules_here fn)
 
 type rule_or_source =
   | Source of Digest.t
   | Rule of Path.Build.t * Rule.t
+
+let get_rule_for_directory_target path =
+  let rec loop dir =
+    match Path.Build.parent dir with
+    | None -> Memo.Build.return None
+    | Some parent_dir -> (
+      let* rules =
+        load_dir_and_get_buildable_targets ~dir:(Path.build parent_dir)
+      in
+      match Path.Build.Map.find rules.by_directory_targets dir with
+      | None -> loop parent_dir
+      | Some _ as rule -> Memo.Build.return rule)
+  in
+  loop path
+
+let get_rule path =
+  match Path.as_in_build_dir path with
+  | None -> Memo.Build.return None
+  | Some path -> (
+    let dir = Path.Build.parent_exn path in
+    load_dir ~dir:(Path.build dir) >>= function
+    | Non_build _ -> assert false
+    | Build { rules_here; _ } -> (
+      match Path.Build.Map.find rules_here.by_file_targets path with
+      | Some _ as rule -> Memo.Build.return rule
+      | None -> get_rule_for_directory_target path))
 
 let get_rule_or_source t path =
   let dir = Path.parent_exn path in
   if Path.is_strict_descendant_of_build_dir dir then
     let* rules = load_dir_and_get_buildable_targets ~dir in
     let path = Path.as_in_build_dir_exn path in
-    match Path.Build.Map.find rules path with
+    match Path.Build.Map.find rules.by_file_targets path with
     | Some rule -> Memo.Build.return (Rule (path, rule))
-    | None ->
-      let* loc = Rule_fn.loc () in
-      no_rule_found t ~loc path
+    | None -> (
+      get_rule_for_directory_target path >>= function
+      | Some rule -> Memo.Build.return (Rule (path, rule))
+      | None ->
+        let* loc = Rule_fn.loc () in
+        no_rule_found t ~loc path)
   else
     let+ d = source_file_digest path in
     Source d
@@ -1206,7 +1300,9 @@ let all_targets t =
           >>| function
           | Non_build _ -> Path.Build.Set.empty
           | Build { rules_here; _ } ->
-            Path.Build.Set.of_list (Path.Build.Map.keys rules_here)))
+            Path.Build.Set.of_list
+              (Path.Build.Map.keys rules_here.by_file_targets
+              @ Path.Build.Map.keys rules_here.by_directory_targets)))
   >>| Path.Build.Set.union_all
 
 let get_alias_definition alias =
@@ -1230,6 +1326,8 @@ module type Rec = sig
 
   val build_file : Path.t -> Digest.t Memo.Build.t
 
+  val build_dir : Path.t -> (Digest.t * Digest.t Path.Build.Map.t) Memo.Build.t
+
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
 
   val eval_deps :
@@ -1252,6 +1350,26 @@ module type Rec = sig
   end
 end
 
+let is_target file =
+  match Path.is_in_build_dir file with
+  | false -> Memo.Build.return false
+  | true -> (
+    let parent_dir = Path.parent_exn file in
+    let* file_targets = file_targets_of ~dir:parent_dir in
+    match Path.Set.mem file_targets file with
+    | true -> Memo.Build.return true
+    | false ->
+      let rec loop dir =
+        match Path.parent dir with
+        | None -> Memo.Build.return false
+        | Some parent_dir -> (
+          let* directory_targets = directory_targets_of ~dir:parent_dir in
+          match Path.Set.mem directory_targets dir with
+          | true -> Memo.Build.return true
+          | false -> loop parent_dir)
+      in
+      loop file)
+
 (* Separation between [Used_recursively] and [Exported] is necessary because at
    least one module in the recursive module group must be pure (i.e. only expose
    functions). *)
@@ -1265,7 +1383,9 @@ and Exported : sig
   (* The below two definitions are useless, but if we remove them we get an
      "Undefined_recursive_module" exception. *)
 
-  val build_file_memo : (Path.t, Digest.t) Memo.t [@@warning "-32"]
+  val build_file_memo :
+    (Path.t, Import.Digest.t * Import.Digest.t Path.Build.Map.t option) Memo.t
+    [@@warning "-32"]
 
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.t [@@warning "-32"]
 
@@ -1279,8 +1399,7 @@ end = struct
   let build_dep : Dep.t -> Dep.Fact.t Memo.Build.t = function
     | Alias a ->
       let+ digests = build_alias a in
-      (* Fact: alias [a] expand to the set of files with their digest
-         [digests] *)
+      (* Fact: alias [a] expands to the set of file-digest pairs [digests] *)
       Dep.Fact.alias a digests
     | File f ->
       let+ digest = build_file f in
@@ -1288,8 +1407,8 @@ end = struct
       Dep.Fact.file f digest
     | File_selector g ->
       let+ digests = Pred.build g in
-      (* Fact: file selector [g] expands to the set of files with their digest
-         [digests] *)
+      (* Fact: file selector [g] expands to the set of file- and (possibly)
+         dir-digest pairs [digests] *)
       Dep.Fact.file_selector g digests
     | Universe
     | Env _
@@ -1360,10 +1479,14 @@ end = struct
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
     let { Action.Full.action; env; locks; can_go_in_shared_cache } = action in
+    let file_targets, dir_targets =
+      Targets.partition_map rule.targets ~file:Path.Build.to_string
+        ~dir:Path.Build.to_string
+    in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , Dep.Facts.digest deps ~sandbox_mode ~env
-      , Targets.to_list_map rule.targets ~file:Path.Build.to_string
+      , file_targets @ dir_targets
       , Option.map rule.context ~f:(fun c -> Context_name.to_string c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
@@ -1425,14 +1548,24 @@ end = struct
     | Not_found_in_cache -> Miss Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
 
+  module Exec_result = struct
+    type t =
+      { files_in_directory_targets : Path.Build.Set.t
+      ; action_exec_result : Action_exec.Exec_result.t
+      }
+  end
+
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
       ~dir ~targets =
     let open Fiber.O in
+    let file_targets, has_directory_targets =
+      Targets.map targets ~f:(fun ~files ~dirs ->
+          (files, not (Path.Build.Set.is_empty dirs)))
+    in
     let { Action.Full.action; env; locks; can_go_in_shared_cache = _ } =
       action
     in
-    let file_targets = Targets.files targets in
     pending_targets := Path.Build.Set.union file_targets !pending_targets;
     let chdirs = Action.chdirs action in
     let sandbox =
@@ -1444,7 +1577,15 @@ end = struct
     in
     let action =
       match sandbox with
-      | None -> action
+      | None ->
+        (* CR-someday amokhov: It may be possible to support directory targets
+           without sandboxing. We just need to make sure we clean up all stale
+           directory targets before running the rule and then we can discover
+           all created files right in the build directory. *)
+        if has_directory_targets then
+          User_error.raise ~loc
+            [ Pp.text "Rules with directory targets must be sandboxed." ];
+        action
       | Some sandbox -> Action.sandbox action sandbox
     in
     let* () =
@@ -1467,19 +1608,24 @@ end = struct
     in
     let+ exec_result =
       with_locks t locks ~f:(fun () ->
-          let+ exec_result =
+          let+ action_exec_result =
             Action_exec.exec ~root ~context ~env ~targets ~rule_loc:loc
               ~build_deps ~execution_parameters action
           in
-          Option.iter sandbox ~f:(Sandbox.move_targets_to_build_dir ~targets);
-          exec_result)
+          let files_in_directory_targets =
+            match sandbox with
+            | None -> Path.Build.Set.empty
+            | Some sandbox ->
+              Sandbox.move_targets_to_build_dir sandbox ~loc ~targets
+          in
+          { Exec_result.files_in_directory_targets; action_exec_result })
     in
     Option.iter sandbox ~f:Sandbox.destroy;
     (* All went well, these targets are no longer pending *)
     pending_targets := Path.Build.Set.diff !pending_targets file_targets;
     exec_result
 
-  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~targets =
+  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets =
     let open Fiber.O in
     let hex = Digest.to_string rule_digest in
     let pp_error msg =
@@ -1497,7 +1643,7 @@ end = struct
           Cached_digest.set target digest)
     in
     match
-      Targets.to_list_map targets ~file:Dune_cache.Local.Target.create
+      Path.Build.Set.to_list_map file_targets ~f:Dune_cache.Local.Target.create
       |> Option.List.all
     with
     | None -> Fiber.return None
@@ -1624,7 +1770,6 @@ end = struct
     in
     wrap_fiber (fun () ->
         let open Fiber.O in
-        let build_deps deps = Memo.Build.run (build_deps deps) in
         report_evaluated_rule t;
         let* () = Memo.Build.run (Fs.mkdir_p dir) in
         let is_action_dynamic = Action.is_dynamic action.action in
@@ -1729,7 +1874,7 @@ end = struct
                 | [] -> Fiber.return (Cache_result.Hit targets_and_digests)
                 | (deps, old_digest) :: rest ->
                   let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
-                  let* deps = build_deps deps in
+                  let* deps = Memo.Build.run (build_deps deps) in
                   let new_digest =
                     Dep.Facts.digest deps ~sandbox_mode ~env:action.env
                   in
@@ -1748,7 +1893,13 @@ end = struct
               ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
             (* Step I. Remove stale targets both from the digest table and from
                the build directory. *)
-            Targets.iter targets ~file:(fun target ->
+            let file_targets =
+              Targets.map targets ~f:(fun ~files ~dirs ->
+                  (* CR-someday amokhov: Don't ignore directory targets *)
+                  ignore dirs;
+                  files)
+            in
+            Path.Build.Set.iter file_targets ~f:(fun target ->
                 Cached_digest.remove target;
                 Path.Build.unlink_no_err target);
             (* Step II. Try to restore artifacts from the shared cache if the
@@ -1815,25 +1966,35 @@ end = struct
                   (* Step IV. Store results to the shared cache and if that step
                      fails, post-process targets by removing write permissions
                      and computing their digests. *)
+                  let file_targets, dir_targets =
+                    Targets.map targets ~f:(fun ~files ~dirs -> (files, dirs))
+                  in
                   match t.cache_config with
                   | Enabled { storage_mode = mode; reproducibility_check = _ }
-                    when can_go_in_shared_cache -> (
+                    when can_go_in_shared_cache
+                         (* CR-someday amokhov: Add support for caching rules
+                            with directory targets. *)
+                         && Path.Build.Set.is_empty dir_targets -> (
                     let+ targets_and_digests =
-                      try_to_store_to_shared_cache ~mode ~rule_digest ~targets
-                        ~action:action.action
+                      try_to_store_to_shared_cache ~mode ~rule_digest
+                        ~file_targets ~action:action.action
                     in
                     match targets_and_digests with
                     | Some targets_and_digests -> targets_and_digests
                     | None ->
                       compute_target_digests_or_raise_error execution_parameters
-                        ~loc targets)
+                        ~loc file_targets)
                   | _ ->
+                    let targets =
+                      Path.Build.Set.union file_targets
+                        exec_result.files_in_directory_targets
+                    in
                     Fiber.return
                       (compute_target_digests_or_raise_error
                          execution_parameters ~loc targets)
                 in
                 let dynamic_deps_stages =
-                  List.map exec_result.dynamic_deps_stages
+                  List.map exec_result.action_exec_result.dynamic_deps_stages
                     ~f:(fun (deps, fact_map) ->
                       ( deps
                       , Dep.Facts.digest fact_map ~sandbox_mode ~env:action.env
@@ -1856,9 +2017,15 @@ end = struct
           | Promote _, Some Never ->
             Fiber.return ()
           | Promote { lifetime; into; only }, (Some Automatically | None) ->
+            (* CR-someday amokhov: Don't ignore directory targets. *)
+            let file_targets =
+              Targets.map targets ~f:(fun ~files ~dirs ->
+                  ignore dirs;
+                  files)
+            in
             Fiber.parallel_iter_set
               (module Path.Build.Set)
-              (Targets.files targets)
+              file_targets
               ~f:(fun target ->
                 let consider_for_promotion =
                   match only with
@@ -2126,15 +2293,54 @@ end = struct
   let build_file_impl path =
     let t = t () in
     get_rule_or_source t path >>= function
-    | Source digest -> Memo.Build.return digest
-    | Rule (path, rule) ->
+    | Source digest -> Memo.Build.return (digest, None)
+    | Rule (path, rule) -> (
       let+ { deps = _; targets } =
         Memo.push_stack_frame
           (fun () -> execute_rule rule)
           ~human_readable_description:(fun () ->
             Pp.text (Path.to_string_maybe_quoted (Path.build path)))
       in
-      Path.Build.Map.find_exn targets path
+      match Path.Build.Map.find targets path with
+      | Some digest -> (digest, None)
+      | None -> (
+        match Cached_digest.build_file path with
+        | Ok digest -> (digest, Some targets) (* Must be a directory target *)
+        | No_such_file
+        | Broken_symlink
+        | Unexpected_kind _
+        | Unix_error _
+        | Error _ ->
+          (* CR-someday amokhov: The most important reason we end up here is
+             [No_such_file]. I think some of the outcomes above are impossible
+             but some others will benefit from a better error. To be refined. *)
+          let target =
+            Path.Build.drop_build_context_exn path
+            |> Path.Source.to_string_maybe_quoted
+          in
+          let _matching_files, matching_dirs =
+            Targets.partition_map rule.targets ~file:ignore ~dir:(fun dir ->
+                match Path.Build.is_descendant path ~of_:dir with
+                | true -> [ dir ]
+                | false -> [])
+          in
+          let matching_target =
+            match List.concat matching_dirs with
+            | [ dir ] ->
+              Path.Build.drop_build_context_exn dir
+              |> Path.Source.to_string_maybe_quoted
+            | []
+            | _ :: _ ->
+              Code_error.raise "Multiple matching directory targets"
+                [ ("targets", Targets.to_dyn rule.targets) ]
+          in
+          User_error.raise ~loc:rule.loc
+            ~annots:[ User_error.Annot.Needs_stack_trace.make () ]
+            [ Pp.textf
+                "This rule defines a directory target %S that matches the \
+                 requested path %S but the rule's action didn't produce it"
+                matching_target target
+            ]))
 
   let dep_on_anonymous_action (x : Rule.Anonymous_action.t Action_builder.t) :
       _ Action_builder.t =
@@ -2169,13 +2375,31 @@ end = struct
 
   module Pred = struct
     let build_impl g =
-      let* paths = Pred.eval g in
-      let+ files =
-        Memo.Build.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
-            let+ d = build_file p in
-            (p, d))
-      in
-      Dep.Fact.Files.make (Path.Map.of_list_exn files)
+      let dir = File_selector.dir g in
+      is_target dir >>= function
+      | false ->
+        let* paths = Pred.eval g in
+        let+ files =
+          Memo.Build.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
+              let+ d = build_file p in
+              (p, d))
+        in
+        Dep.Fact.Files.make
+          ~files:(Path.Map.of_list_exn files)
+          ~dirs:Path.Map.empty
+      | true ->
+        let+ digest, path_map = build_dir dir in
+        let files =
+          Path.Build.Map.foldi path_map ~init:Path.Map.empty
+            ~f:(fun path digest acc ->
+              let parent = Path.Build.parent_exn path |> Path.build in
+              let path = Path.build path in
+              match Path.equal parent dir && File_selector.test g path with
+              | true -> Path.Map.add_exn acc path digest
+              | false -> acc)
+        in
+        let dirs = Path.Map.singleton dir digest in
+        Dep.Fact.Files.make ~files ~dirs
 
     let eval_impl g =
       let dir = File_selector.dir g in
@@ -2183,7 +2407,9 @@ end = struct
       | Non_build targets -> Path.Set.filter targets ~f:(File_selector.test g)
       | Build { rules_here; _ } ->
         let only_generated_files = File_selector.only_generated_files g in
-        Path.Build.Map.foldi ~init:[] rules_here
+        (* We look only at [by_file_targets] because [File_selector] does not
+           match directories. *)
+        Path.Build.Map.foldi ~init:[] rules_here.by_file_targets
           ~f:(fun s { Rule.info; _ } acc ->
             match info with
             | Rule.Info.Source_file_copy _ when only_generated_files -> acc
@@ -2210,11 +2436,21 @@ end = struct
   end
 
   let build_file_memo =
-    Memo.create "build-file"
-      ~input:(module Path)
-      ~cutoff:Digest.equal build_file_impl
+    let cutoff =
+      Tuple.T2.equal Digest.equal
+        (Option.equal (Path.Build.Map.equal ~equal:Digest.equal))
+    in
+    Memo.create "build-file" ~input:(module Path) ~cutoff build_file_impl
 
-  let build_file = Memo.exec build_file_memo
+  let build_file path = Memo.exec build_file_memo path >>| fst
+
+  let build_dir path =
+    let+ digest, path_map = Memo.exec build_file_memo path in
+    match path_map with
+    | Some path_map -> (digest, path_map)
+    | None ->
+      Code_error.raise "build_dir called on a file target"
+        [ ("path", Path.to_dyn path) ]
 
   let build_alias_memo =
     Memo.create "build-alias"
@@ -2376,10 +2612,6 @@ let file_exists = file_exists
 
 let alias_exists = Load_rules.alias_exists
 
-let is_target file =
-  let+ targets = targets_of ~dir:(Path.parent_exn file) in
-  Path.Set.mem targets file
-
 let execute_action = execute_action
 
 let execute_action_stdout = execute_action_stdout
@@ -2443,7 +2675,7 @@ let get_current_progress () =
   ; number_of_rules_discovered = t.rule_total
   }
 
-let targets_of = targets_of
+let file_targets_of = file_targets_of
 
 let all_targets () = all_targets (t ())
 

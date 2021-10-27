@@ -1626,14 +1626,27 @@ module Rule = struct
     ; package = None
     }
 
+  let directory_targets_extension =
+    let syntax =
+      Dune_lang.Syntax.create ~name:"directory-targets"
+        ~desc:"experimental support for directory targets"
+        [ ((0, 1), `Since (3, 0)) ]
+    in
+    Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
+
   let long_form =
     let* deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
     in
+    let* project = Dune_project.get_exn () in
+    let allow_directory_targets =
+      Option.is_some
+        (Dune_project.find_extension_args project directory_targets_extension)
+    in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
        and+ action = field "action" (located Action_dune_lang.decode)
-       and+ targets = Targets_spec.field
+       and+ targets = Targets_spec.field ~allow_directory_targets
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ () =
          let+ fallback =
@@ -1706,7 +1719,9 @@ module Rule = struct
                can't because this is might get parsed with old dune syntax where
                [multiplicity = One] is not supported. *)
             Static
-              { targets = [ S.make_text loc dst ]; multiplicity = Multiple }
+              { targets = [ (S.make_text loc dst, File) ]
+              ; multiplicity = Multiple
+              }
         ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
         ; action =
             ( loc
@@ -1734,7 +1749,8 @@ module Rule = struct
         { targets =
             Static
               { targets =
-                  List.map ~f:(S.make_text loc) [ name ^ ".ml"; name ^ ".mli" ]
+                  List.map [ name ^ ".ml"; name ^ ".mli" ] ~f:(fun target ->
+                      (S.make_text loc target, Targets_spec.Kind.File))
               ; multiplicity = Multiple
               }
         ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))

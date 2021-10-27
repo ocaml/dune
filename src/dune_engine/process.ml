@@ -318,9 +318,11 @@ module Fancy = struct
               ("(internal)" :: targets_acc)
               (add_ctx ctx ctxs_acc) rest)
       in
-      let file_targets = Targets.to_list_map targets ~file:Fun.id in
       let target_names, contexts =
-        split_paths [] Context_name.Set.empty file_targets
+        let file_targets, directory_targets =
+          Targets.partition_map targets ~file:Fun.id ~dir:Fun.id
+        in
+        split_paths [] Context_name.Set.empty (file_targets @ directory_targets)
       in
       let targets =
         List.map target_names ~f:Filename.split_extension_after_dot

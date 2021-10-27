@@ -54,11 +54,13 @@ module Fact : sig
 
   val file : Path.t -> Digest.t -> t
 
+  val to_dyn : t -> Dyn.t
+
   module Files : sig
     (** A group of files for which we cache the digest of the whole group. *)
     type t
 
-    val make : Digest.t Path.Map.t -> t
+    val make : files:Digest.t Path.Map.t -> dirs:Digest.t Path.Map.t -> t
 
     val to_dyn : t -> Dyn.t
 
@@ -66,10 +68,10 @@ module Fact : sig
 
     val compare : t -> t -> Ordering.t
 
-    (** Return all the paths in this file group *)
+    (** Return all file paths in this file group. *)
     val paths : t -> Digest.t Path.Map.t
 
-    (** Create a new [t] from a list of [t] and a list of files *)
+    (** Create a new [t] from a list of [t] and a list of files. *)
     val group : t list -> Digest.t Path.Map.t -> t
   end
 
@@ -81,9 +83,8 @@ module Fact : sig
 end
 
 module Facts : sig
-  (* There is an invariant that is not currently enforced: the value correspond
-     to the key. For instance we can't have [Map.find (File f) = File_selector
-     _] *)
+  (* There is an invariant that is not currently enforced: values correspond to
+     keys. For example, we can't have [Map.find (File f) = File_selector _]. *)
   type t = Fact.t Map.t
 
   val empty : t
@@ -92,7 +93,7 @@ module Facts : sig
 
   val union_all : t list -> t
 
-  (** Return all the paths, expanding aliases *)
+  (** Return all file paths, expanding aliases. *)
   val paths : t -> Digest.t Path.Map.t
 
   val paths_without_expanding_aliases : t -> Digest.t Path.Map.t
@@ -102,9 +103,15 @@ module Facts : sig
       original [Files.t]. *)
   val group_paths_as_fact_files : t list -> Fact.Files.t
 
+  (** Dependencies on directory targets. *)
   val dirs : t -> Path.Set.t
 
+  (** Parent directories of all dependencies. *)
+  val parent_dirs : t -> Path.Set.t
+
   val digest : t -> sandbox_mode:Sandbox_mode.t -> env:Env.t -> Digest.t
+
+  val to_dyn : t -> Dyn.t
 end
 
 module Set : sig

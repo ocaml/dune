@@ -127,7 +127,15 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       let to_relative path =
         path |> Stdune.Path.build |> Stdune.Path.reach ~from:eenv.working_dir
       in
-      Targets.to_list_map ectx.targets ~file:to_relative |> String.Set.of_list
+      let file_targets, (_dir_targets_not_allowed : Nothing.t list) =
+        Targets.partition_map ectx.targets ~file:to_relative
+          ~dir:(fun _dir_target ->
+            User_error.raise ~loc:ectx.rule_loc
+              [ Pp.text
+                  "Directory targets are not compatible with dynamic actions"
+              ])
+      in
+      String.Set.of_list file_targets
     in
     DAP.Run_arguments.
       { prepared_dependencies = eenv.prepared_dependencies; targets }

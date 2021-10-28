@@ -1797,7 +1797,7 @@ end = struct
 
                {v (rule (alias runtest) (targets x) (action ...)) v}
 
-               These will be treated as [Normal_rule], and the bellow match
+               These will be treated as [Normal_rule], and the below match
                means that [--force] will have no effect on them. Is that what we
                want?
 

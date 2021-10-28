@@ -57,7 +57,7 @@ val text_only : t -> string option
 module Mode : sig
   (** How many values expansion of a template must produce.
 
-      The caller always knows which of the contexts bellow it requires,
+      The caller always knows which of the contexts below it requires,
       therefore it can specify this to the expansion functions. This allows us
       to return a precise result type from the expansion, and do some validation
       to make sure we aren't expanding into multiple values in cases where it's

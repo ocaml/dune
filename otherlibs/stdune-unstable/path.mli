@@ -137,7 +137,7 @@ module Build : sig
 
   val append_local : t -> Local.t -> t
 
-  (** [append x y] is [append_local x (local y] *)
+  (** [append x y] is [append_local x (local y)] *)
   val append : t -> t -> t
 
   module L : sig

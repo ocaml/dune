@@ -325,7 +325,7 @@ module Facts = struct
           | Universe -> acc
           | Sandbox_config config ->
             assert (Sandbox_config.mem config sandbox_mode);
-            (* recorded globally for the whole dep set, see bellow *)
+            (* recorded globally for the whole dep set, see below *)
             acc
           | File _
           | File_selector _

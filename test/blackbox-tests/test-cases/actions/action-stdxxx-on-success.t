@@ -127,7 +127,7 @@ re-execute actions whose outcome is not affected by the change:
             sh alias default
   b.stderr
 
-You can observe in the bellow call that both actions are being
+You can observe in the below call that both actions are being
 re-executed:
 
   $ dune build

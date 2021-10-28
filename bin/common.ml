@@ -2,6 +2,7 @@ open Stdune
 module Config = Dune_util.Config
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
+module Graph = Dune_graph.Graph
 module Package = Dune_engine.Package
 module Profile = Dune_rules.Profile
 module Term = Cmdliner.Term
@@ -39,6 +40,9 @@ type t =
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : Dune_engine.Watch_mode_config.t
   ; print_metrics : bool
+  ; dump_memo_graph_file : string option
+  ; dump_memo_graph_format : Graph.File_format.t
+  ; dump_memo_graph_with_timing : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
@@ -56,6 +60,12 @@ let root t = t.root
 let watch t = t.watch
 
 let print_metrics t = t.print_metrics
+
+let dump_memo_graph_file t = t.dump_memo_graph_file
+
+let dump_memo_graph_format t = t.dump_memo_graph_format
+
+let dump_memo_graph_with_timing t = t.dump_memo_graph_with_timing
 
 let file_watcher t = t.file_watcher
 
@@ -831,6 +841,31 @@ let term ~default_root_is_cwd =
       value & flag
       & info [ "print-metrics" ] ~docs
           ~doc:"Print out various performance metrics after every build")
+  and+ dump_memo_graph_file =
+    Arg.(
+      value
+      & opt (some string) None
+      & info [ "dump-memo-graph" ] ~docs ~docv:"FILE"
+          ~doc:
+            "Dumps the dependency graph to a file after the build is complete")
+  and+ dump_memo_graph_format =
+    Arg.(
+      value & opt graph_format Gexf
+      & info
+          [ "dump-memo-graph-format" ]
+          ~docs ~docv:"FORMAT"
+          ~doc:"File format to be used when dumping dependency graph")
+  and+ dump_memo_graph_with_timing =
+    Arg.(
+      value & flag
+      & info
+          [ "dump-memo-graph-with-timing" ]
+          ~docs
+          ~doc:
+            "With $(b,--dump-memo-graph), will re-run each cached node in the \
+             Memo graph after building and include the runtime in the output. \
+             Since all nodes contain a cached value, this will measure just \
+             the runtime of each node")
   and+ { Options_implied_by_dash_p.root
        ; only_packages
        ; ignore_promoted_rules
@@ -988,6 +1023,9 @@ let term ~default_root_is_cwd =
   ; default_target
   ; watch
   ; print_metrics
+  ; dump_memo_graph_file
+  ; dump_memo_graph_format
+  ; dump_memo_graph_with_timing
   ; stats_trace_file
   ; always_show_command_line
   ; promote_install_files

@@ -351,6 +351,13 @@ val lazy_cell :
   -> (unit -> 'a Build.t)
   -> (unit, 'a) Cell.t
 
+(** Returns the cached dependency graph discoverable from the specified node *)
+val dump_cached_graph :
+     ?on_not_cached:[ `Ignore | `Raise ]
+  -> ?time_nodes:bool
+  -> ('i, 'o) Cell.t
+  -> Dune_graph.Graph.t Fiber.t
+
 module Lazy : sig
   type 'a t
 

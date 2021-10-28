@@ -1,5 +1,6 @@
 open! Stdune
 open Fiber.O
+module Graph = Dune_graph.Graph
 
 module Debug = struct
   let track_locations_of_lazy_values = ref false
@@ -1338,6 +1339,47 @@ end = struct
 end
 
 let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
+
+let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
+  let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =
+    let src_id = Id.to_int dep_node.without_state.id in
+    match get_cached_value_in_current_run dep_node with
+    | Some cached ->
+      let* attributes =
+        if time_nodes then
+          let start = Unix.gettimeofday () in
+          (* CR-someday cmoseley: We could record errors here and include them
+             as part of the graph. *)
+          let+ (_ : (_, Collect_errors_monoid.t) result) =
+            report_and_collect_errors (fun () ->
+                dep_node.without_state.spec.f dep_node.without_state.input)
+          in
+          let runtime = Unix.gettimeofday () -. start in
+          String.Map.of_list_exn [ ("runtime", Graph.Attribute.Float runtime) ]
+        else
+          Fiber.return String.Map.empty
+      in
+      let graph =
+        Graph.add_node graph ~id:src_id ?label:dep_node.without_state.spec.name
+          ~attributes
+      in
+      List.fold_left (Deps.to_list cached.deps) ~init:(Fiber.return graph)
+        ~f:(fun graph (Dep_node.T dst_node as packed) ->
+          let* graph = graph in
+          let dst_id = Id.to_int dst_node.without_state.id in
+          let graph = Graph.add_edge graph ~src_id ~dst_id in
+          if Graph.has_node graph ~id:dst_id then
+            Fiber.return graph
+          else
+            collect_graph packed graph)
+    | None -> (
+      match on_not_cached with
+      | `Raise -> failwith "Memo graph contains uncached nodes"
+      | `Ignore -> Fiber.return graph)
+  in
+  Error_handler.with_error_handler
+    (fun (_ : Exn_with_backtrace.t) -> Fiber.return ())
+    (fun () -> collect_graph (Dep_node.T cell) Graph.empty)
 
 let get_call_stack = Call_stack.get_call_stack_without_state
 

@@ -9,6 +9,7 @@ let local_libraries =
     Some "Dune_filesystem_stubs", false, None)
   ; ("vendor/csexp/src", Some "Csexp", false, None)
   ; ("otherlibs/stdune-unstable", Some "Stdune", false, None)
+  ; ("src/dune_graph", Some "Dune_graph", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)

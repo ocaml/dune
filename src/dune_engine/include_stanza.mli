@@ -18,6 +18,7 @@ val load_sexps_generated :
        (   Path.t
         -> f:(Path.t -> Dune_lang.Ast.t list)
         -> Dune_lang.Ast.t list Memo.Build.t)
+  -> file_exists:(Path.Source.t -> bool Memo.Build.t)
   -> context:Path.Build.t context
   -> Loc.t * string
   -> (Dune_lang.Ast.t list * Path.Build.t context) Memo.Build.t

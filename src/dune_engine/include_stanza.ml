@@ -62,6 +62,7 @@ let load_sexps ~context:{ current_file; include_stack } ~generation_authorized
 
 let load_sexps_generated
     ~(read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.Build.t)
+    ~(file_exists : Path.Source.t -> bool Memo.Build.t)
     ~context:{ current_file; include_stack } (loc, fn) =
   let include_stack = (loc, current_file) :: include_stack in
   let dir = Path.Build.parent_exn current_file in
@@ -72,15 +73,14 @@ let load_sexps_generated
     error ~to_string_maybe_quoted:Path.Build.to_string_maybe_quoted
       { current_file; include_stack };
   let context = { current_file; include_stack } in
-  let source_file =
-    Path.source @@ Path.Build.drop_build_context_exn context.current_file
-  in
-  let path =
-    if Path.Untracked.exists source_file then
-      source_file
+  let open Memo.Build.O in
+  let* path =
+    let source_path = Path.Build.drop_build_context_exn context.current_file in
+    let+ exists = file_exists source_path in
+    if exists then
+      Path.source source_path
     else
       Path.build context.current_file
   in
-  let open Memo.Build.O in
   let+ sexp = read_file path ~f:(Dune_lang.Parser.load ~mode:Many) in
   (sexp, context)

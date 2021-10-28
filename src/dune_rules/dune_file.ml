@@ -2377,6 +2377,7 @@ module Stanzas = struct
         | Include { loc; relative; generation_authorized = _ } ->
           let* sexps, context =
             Include_stanza.load_sexps_generated
+              ~file_exists:Source_tree.file_exists
               ~read_file:Build_system.read_file ~context (loc, relative)
           in
           let stanzas = List.concat_map ~f:(parse stanza_parser) sexps in

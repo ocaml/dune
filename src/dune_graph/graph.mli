@@ -55,7 +55,7 @@ val has_node : t -> id:int -> bool
 (** Serializes this graph to a file using the given format *)
 val serialize : t -> path:Path.t -> format:File_format.t -> unit
 
-(** Prints this graph to stdout using a standard file format *)
+(** Prints this graph to stdout using the given file format *)
 val print : t -> format:File_format.t -> unit
 
 module For_tests : sig

@@ -149,12 +149,6 @@ module Loaded = struct
       }
 end
 
-module Dir_triage = struct
-  type t =
-    | Known of Loaded.t
-    | Need_step2
-end
-
 (* Stores information needed to determine if rule need to be reexecuted. *)
 module Trace_db : sig
   module Entry : sig
@@ -292,6 +286,16 @@ module Context_or_install = struct
   let to_dyn = function
     | Install ctx -> Dyn.List [ Dyn.String "install"; Context_name.to_dyn ctx ]
     | Context s -> Context_name.to_dyn s
+end
+
+module Dir_triage = struct
+  type t =
+    | Known of Loaded.t
+    | Need_step2 of
+        { dir : Path.Build.t
+        ; context_or_install : Context_or_install.t
+        ; sub_dir : Path.Source.t
+        }
 end
 
 module Error = struct
@@ -471,9 +475,18 @@ let get_dir_triage t ~dir =
   | Build (Invalid _) ->
     Memo.Build.return
     @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
-  | Build (Install (With_context _))
-  | Build (Regular (With_context _)) ->
-    Memo.Build.return @@ Dir_triage.Need_step2
+  | Build (Install (With_context (context_name, sub_dir))) ->
+    (* In this branch, [dir] is in the build directory. *)
+    let dir = Path.as_in_build_dir_exn dir in
+    let context_or_install = Context_or_install.Install context_name in
+    Memo.Build.return
+      (Dir_triage.Need_step2 { dir; context_or_install; sub_dir })
+  | Build (Regular (With_context (context_name, sub_dir))) ->
+    (* In this branch, [dir] is in the build directory. *)
+    let dir = Path.as_in_build_dir_exn dir in
+    let context_or_install = Context_or_install.Context context_name in
+    Memo.Build.return
+      (Dir_triage.Need_step2 { dir; context_or_install; sub_dir })
 
 let describe_rule (rule : Rule.t) =
   match rule.info with
@@ -1025,30 +1038,16 @@ end = struct
     in
     source_files_to_ignore
 
-  (* Returns only [Loaded.Build] variant. *)
-  let load_dir_step2_exn t ~dir =
-    let context_name, sub_dir =
-      match Dpath.analyse_path dir with
-      | Build (Install (ctx, path)) -> (Context_or_install.Install ctx, path)
-      | Build (Regular (ctx, path)) -> (Context_or_install.Context ctx, path)
-      | Build (Alias _)
-      | Build (Anonymous_action _)
-      | Build (Other _)
-      | Source _
-      | External _ ->
-        Code_error.raise "[load_dir_step2_exn] was called on a strange path"
-          [ ("path", Path.to_dyn dir) ]
-    in
-    (* the above check makes this safe *)
-    let dir = Path.as_in_build_dir_exn dir in
+  let load_dir_step2_exn t ~dir ~context_or_install ~sub_dir =
     let sub_dir_components = Path.Source.explode sub_dir in
     (* Load all the rules *)
     let (module RG : Rule_generator) = t.rule_generator in
     let* extra_subdirs_to_keep, rules_produced =
-      RG.gen_rules context_name ~dir sub_dir_components >>| function
+      RG.gen_rules context_or_install ~dir sub_dir_components >>| function
       | None ->
         Code_error.raise "[gen_rules] did not specify rules for the context"
-          [ ("context_name", Context_or_install.to_dyn context_name) ]
+          [ ("context_or_install", Context_or_install.to_dyn context_or_install)
+          ]
       | Some x -> x
     and* global_rules = Memo.Lazy.force RG.global_rules in
     let rules =
@@ -1060,13 +1059,13 @@ end = struct
     let collected = Rules.Dir_rules.consume rules in
     let rules = collected.rules in
     let* aliases =
-      match context_name with
+      match context_or_install with
       | Context _ -> compute_alias_expansions t ~collected ~dir
       | Install _ ->
         (* There are no aliases in the [_build/install] directory *)
         Memo.Build.return Alias.Name.Map.empty
     and* source_tree_dir =
-      match context_name with
+      match context_or_install with
       | Install _ -> Memo.Build.return None
       | Context _ -> Source_tree.find_dir sub_dir
     in
@@ -1116,7 +1115,7 @@ end = struct
     in
     (* Take into account the source files *)
     let to_copy, source_dirs =
-      match context_name with
+      match context_or_install with
       | Install _ -> (None, String.Set.empty)
       | Context context_name ->
         let files, subdirs =
@@ -1156,7 +1155,7 @@ end = struct
     in
     let rules_here = compile_rules ~dir ~source_dirs rules in
     let* allowed_by_parent =
-      match (context_name, sub_dir_components) with
+      match (context_or_install, sub_dir_components) with
       | Context _, [ ".dune" ] ->
         (* GROSS HACK: this is to avoid a cycle as the rules for all directories
            force the generation of ".dune/configurator". We need a better way to
@@ -1211,17 +1210,18 @@ end = struct
            (Path.Build.local dir))
       ~subdirs_to_keep;
     Memo.Build.return
-      (Loaded.Build
-         { allowed_subdirs = descendants_to_keep
-         ; rules_produced
-         ; rules_here
-         ; aliases
-         })
+      { Loaded.allowed_subdirs = descendants_to_keep
+      ; rules_produced
+      ; rules_here
+      ; aliases
+      }
 
   let load_dir_impl t ~dir : Loaded.t Memo.Build.t =
     get_dir_triage t ~dir >>= function
     | Known l -> Memo.Build.return l
-    | Need_step2 -> load_dir_step2_exn t ~dir
+    | Need_step2 { dir; context_or_install; sub_dir } ->
+      let+ build = load_dir_step2_exn t ~dir ~context_or_install ~sub_dir in
+      Loaded.Build build
 
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in

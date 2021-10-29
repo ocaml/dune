@@ -732,6 +732,7 @@ module Handler = struct
     type t =
       | Tick
       | Source_files_changed of { details_hum : string list }
+      | Skipped_restart
       | Build_interrupted
       | Build_finish of build_result
   end
@@ -1007,8 +1008,20 @@ end = struct
           | (Sync : Event.build_input_change) -> true
           | _ -> false)
       in
+      (* CR-someday cmoseley: This can probably be simplified now that we pass
+         empty invalidations on, but the logic of have_sync isn't clear to me *)
       match Memo.Invalidation.is_empty invalidation && not have_sync with
-      | true -> iter t (* Ignore the event *)
+      | true -> (
+        match t.status with
+        (* CR-someday cmoseley: This works for what we want (to see a skipped
+           restart due to eager cutoff in RPC clients), however it feels a bit
+           odd, in that we are restarting the build system for the sole purpose
+           of sending instant Start and Finish messages *)
+
+        (* We still send the invalidation to surface to users and RPC clients
+           that we saw a change, but are ignoring it *)
+        | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)
+        | _ -> iter t)
       | false -> (
         match t.status with
         | Shutting_down -> iter t
@@ -1135,7 +1148,11 @@ module Run = struct
 
   let poll_iter t step =
     (match t.status with
-    | Standing_by invalidations -> Memo.reset invalidations
+    | Standing_by invalidations ->
+      if Memo.Invalidation.is_empty invalidations then
+        Memo.Perf_counters.reset ()
+      else
+        Memo.reset invalidations
     | _ ->
       Code_error.raise "[poll_iter]: expected the build status [Standing_by]" []);
     t.status <- Building;
@@ -1195,8 +1212,11 @@ module Run = struct
             t.status <- Waiting_for_file_changes ivar;
             let* invalidations = Fiber.Ivar.read ivar in
             t.status <- Standing_by invalidations;
-            let details_hum = Memo.Invalidation.details_hum invalidations in
-            t.handler t.config (Source_files_changed { details_hum });
+            (if Memo.Invalidation.is_empty invalidations then
+              t.handler t.config Skipped_restart
+            else
+              let details_hum = Memo.Invalidation.details_hum invalidations in
+              t.handler t.config (Source_files_changed { details_hum }));
             Fiber.return Proceed
         in
         Fiber.return (step, handle_outcome))

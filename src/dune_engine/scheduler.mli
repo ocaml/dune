@@ -44,6 +44,7 @@ module Run : sig
     type t =
       | Tick
       | Source_files_changed of { details_hum : string list }
+      | Skipped_restart
       | Build_interrupted
       | Build_finish of build_result
   end

@@ -80,6 +80,7 @@ module Scheduler = struct
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
     | Source_files_changed { details_hum } ->
       maybe_clear_screen ~details_hum dune_config
+    | Skipped_restart -> ()
     | Build_interrupted ->
       Console.Status_line.set
         (Live

@@ -160,6 +160,29 @@ let promote ~dir ~targets ~promote ~promote_source =
         | true ->
           fun src -> Path.Source.relative into_dir (Path.Build.basename src)))
   in
+  let create_parent_directory_if_needed ~dst_path =
+    let user_error msg =
+      User_error.raise
+        [ Pp.textf "Cannot promote %S." (Path.to_string dst_path); msg ]
+        ~annots:
+          (User_message.Annots.singleton User_message.Annots.needs_stack_trace
+             ())
+    in
+    let dir = Path.parent_exn dst_path in
+    (* It is OK to use an untracked version here since below we will subscribe
+       to [dst]'s digest, so Dune will notice relevant changes to its parent
+       directory (e.g., its deletion). Furthermore, if we used a tracked version
+       here, the [Path.mkdir_p] below would generate an unnecessary event. *)
+    match Fs_cache.(read Untracked.path_stat) dir with
+    | Ok { st_kind; _ } when st_kind = S_DIR -> ()
+    | Error (ENOENT, _, _) -> Path.mkdir_p dir
+    | Ok _exists_but_not_a_directory ->
+      user_error
+        (Pp.textf "Reason: %S is not a directory." (Path.to_string dir))
+    | Error unix_error ->
+      user_error
+        (Pp.textf "Reason: %s." (Unix_error.Detailed.to_string unix_error))
+  in
   Fiber.sequential_iter files_to_promote ~f:(fun src ->
       match selected_for_promotion src with
       | false -> Fiber.return ()
@@ -169,6 +192,10 @@ let promote ~dir ~targets ~promote ~promote_source =
           [ Pp.textf "Promoting %S to %S" (Path.Build.to_string src)
               (Path.Source.to_string dst)
           ];
+        (* We know that [dir] exists but if [dst] comes from a directory target,
+           we may need to create some additional subdirectories. *)
+        let dst_path = Path.source dst in
+        create_parent_directory_if_needed ~dst_path;
         (match promote.lifetime with
         | Until_clean -> To_delete.add dst
         | Unlimited -> ());
@@ -178,8 +205,7 @@ let promote ~dir ~targets ~promote ~promote_source =
         let chmod n = n lor 0o200 in
         let* () = promote_source ~chmod ~src ~dst in
         let+ dst_digest_result =
-          Memo.Build.run
-            (Fs_memo.path_digest ~force_update:true (Path.source dst))
+          Memo.Build.run (Fs_memo.path_digest ~force_update:true dst_path)
         in
         match Cached_digest.Digest_result.to_option dst_digest_result with
         | Some dst_digest ->

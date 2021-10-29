@@ -29,6 +29,7 @@ module Targets = Dune_engine.Targets
 module Profile = Dune_rules.Profile
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
+module Graph = Dune_graph.Graph
 include Common.Let_syntax
 
 let in_group (t, info) = (Term.Group.Term t, info)

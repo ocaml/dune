@@ -24,12 +24,9 @@ let with_metrics ~common f =
       Fiber.return ())
 
 let run_build_system ~common ~request =
-  let run ~(request : unit Action_builder.t) =
+  let run ~(toplevel : unit Memo.Lazy.t) =
     with_metrics ~common (fun () ->
-        Build_system.run (fun () ->
-            let open Memo.Build.O in
-            let+ (), _facts = Action_builder.run request Eager in
-            ()))
+        Build_system.run (fun () -> Memo.Lazy.force toplevel))
   in
   let open Fiber.O in
   Fiber.finalize
@@ -47,7 +44,35 @@ let run_build_system ~common ~request =
         Action_builder.bind (Action_builder.memo_build setup) ~f:(fun setup ->
             request setup)
       in
-      run ~request)
+      (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
+         time the build system is rerun? *)
+      (* This top-level node is used for traversing the whole Memo graph. *)
+      let toplevel_cell, toplevel =
+        Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
+            let open Memo.Build.O in
+            let+ (), (_ : Dep.Fact.t Dep.Map.t) =
+              Action_builder.run request Eager
+            in
+            ())
+      in
+      let* res = run ~toplevel in
+      let+ () =
+        match Common.dump_memo_graph_file common with
+        | None -> Fiber.return ()
+        | Some file ->
+          let path = Path.of_filename_relative_to_initial_cwd file in
+          let+ graph =
+            Memo.dump_cached_graph
+              ~time_nodes:(Common.dump_memo_graph_with_timing common)
+              toplevel_cell
+          in
+          Graph.serialize graph ~path
+            ~format:(Common.dump_memo_graph_format common)
+        (* CR-someday cmoseley: It would be nice to use Persistent to dump a
+           copy of the graph's internal representation here, so it could be used
+           without needing to re-run the build*)
+      in
+      res)
     ~finally:(fun () ->
       Hooks.End_of_build.run ();
       Fiber.return ())

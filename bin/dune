@@ -8,6 +8,7 @@
   unix
   dune_cache
   dune_cache_storage
+  dune_graph
   dune_rules
   dune_engine
   dune_util

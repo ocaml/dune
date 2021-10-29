@@ -130,6 +130,8 @@ end = struct
   let mkdir_p ?perms path =
     ignore (Fpath.mkdir_p ?perms (to_string path) : Fpath.mkdir_p_result)
 
+  let unlink_no_err t = Fpath.unlink_no_err (to_string t)
+
   let extension t = Filename.extension (to_string t)
 
   let split_extension t =
@@ -247,6 +249,8 @@ end = struct
       match String.rindex_from t (String.length t - 1) '/' with
       | None -> Some root
       | Some i -> Some (make (String.take t i))
+
+  let unlink_no_err t = Fpath.unlink_no_err (to_string t)
 
   let basename t =
     if is_root t then

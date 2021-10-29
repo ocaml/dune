@@ -52,6 +52,8 @@ module type S = sig
   val parent_exn : t -> t
 
   val parent : t -> t option
+
+  val unlink_no_err : t -> unit
 end
 
 (** [Unspecified.w] is a type-level placeholder of an unspecified path. (see
@@ -136,4 +138,6 @@ module type Local_gen = sig
   module L : sig
     val relative : ?error_loc:Loc0.t -> 'w t -> string list -> 'w t
   end
+
+  val unlink_no_err : 'w t -> unit
 end

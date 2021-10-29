@@ -36,6 +36,7 @@ module Dpath = Dpath
 module Rules = Rules
 module Rule = Rule
 module Targets = Targets
+module Target_promotion = Target_promotion
 module Build_context = Build_context
 module Build_system = Build_system
 module Cram_test = Cram_test

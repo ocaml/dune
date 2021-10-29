@@ -47,83 +47,6 @@ end = struct
           [ Pp.textf "%S does not exist" (Path.to_string_maybe_quoted path) ])
 end
 
-(* [Promoted_to_delete] is used mostly to implement [dune clean]. It is an
-   imperfect heuristic, in particular it can go wrong if:
-
-   - the user deletes .to-delete-in-source-tree file
-
-   - the user edits a previously promoted file with the intention of keeping it
-   in the source tree, or creates a new file with the same name *)
-module Promoted_to_delete : sig
-  val add : Path.Source.t -> unit
-
-  val remove : Path.Source.t -> unit
-
-  val mem : Path.Source.t -> bool
-
-  val get_db : unit -> Path.Set.t
-end = struct
-  module P = Dune_util.Persistent.Make (struct
-    (* CR-someday amokhov: This should really be a [Path.Source.Set.t] but
-       changing it now would require bumping the [version]. Should we do it? *)
-    type t = Path.Set.t
-
-    let name = "PROMOTED-TO-DELETE"
-
-    let version = 1
-
-    let to_dyn = Path.Set.to_dyn
-  end)
-
-  let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
-
-  (* [db] is used to accumulate promoted files from rules. *)
-  let db = lazy (ref (Option.value ~default:Path.Set.empty (P.load fn)))
-
-  let get_db () = !(Lazy.force db)
-
-  let set_db new_db = Lazy.force db := new_db
-
-  let needs_dumping = ref false
-
-  let modify_db f =
-    match f (get_db ()) with
-    | None -> ()
-    | Some new_db ->
-      set_db new_db;
-      needs_dumping := true
-
-  let add p =
-    let p = Path.source p in
-    modify_db (fun db ->
-        if Path.Set.mem db p then
-          None
-        else
-          Some (Path.Set.add db p))
-
-  let remove p =
-    let p = Path.source p in
-    modify_db (fun db ->
-        if Path.Set.mem db p then
-          Some (Path.Set.remove db p)
-        else
-          None)
-
-  let dump () =
-    if !needs_dumping && Path.build_dir_exists () then (
-      needs_dumping := false;
-      get_db () |> P.dump fn
-    )
-
-  let mem p =
-    let p = Path.source p in
-    Path.Set.mem !(Lazy.force db) p
-
-  let () = Hooks.End_of_build.always dump
-end
-
-let files_in_source_tree_to_delete () = Promoted_to_delete.get_db ()
-
 module Loaded = struct
   type rules_here =
     { by_file_targets : Rule.t Path.Build.Map.t
@@ -1010,39 +933,6 @@ end = struct
         ~subdir:(Path.Build.basename dir)
   end
 
-  (* TODO: Delete this step after users of dune <2.8 are sufficiently rare. This
-     step is sketchy because it's using the [Promoted_to_delete] database and
-     that can get out of date (see a comment on [Promoted_to_delete]), so we
-     should not widen the scope of it too much. *)
-  let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
-    (* If a [.merlin] file is present in the [Promoted_to_delete] set but not in
-       the [Source_files_to_ignore] that means the rule that ordered its
-       promotion is no more valid. This would happen when upgrading to Dune 2.8
-       from earlier version without and building uncleaned projects. We delete
-       these leftover files here. *)
-    let merlin_file = ".merlin" in
-    let source_dir = Path.Build.drop_build_context_exn dir in
-    let merlin_in_src = Path.Source.(relative source_dir merlin_file) in
-    let source_files_to_ignore =
-      if
-        Promoted_to_delete.mem merlin_in_src
-        && not (Path.Source.Set.mem source_files_to_ignore merlin_in_src)
-      then (
-        Log.info
-          [ Pp.textf "Deleting left-over Merlin file %s.\n"
-              (Path.Source.to_string merlin_in_src)
-          ];
-        (* We remove the file from the promoted database *)
-        Promoted_to_delete.remove merlin_in_src;
-        Path.Source.unlink_no_err merlin_in_src;
-        (* We need to keep ignoring the .merlin file for that build or Dune will
-           attempt to copy it and fail because it has been deleted *)
-        Path.Source.Set.add source_files_to_ignore merlin_in_src
-      ) else
-        source_files_to_ignore
-    in
-    source_files_to_ignore
-
   let load_dir_step2_exn t ~dir ~context_or_install ~sub_dir =
     let sub_dir_components = Path.Source.explode sub_dir in
     (* Load all the rules *)
@@ -1116,7 +1006,7 @@ end = struct
       |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
     in
     let source_files_to_ignore =
-      delete_stale_dot_merlin_file ~dir ~source_files_to_ignore
+      Target_promotion.delete_stale_dot_merlin_file ~dir ~source_files_to_ignore
     in
     (* Take into account the source files *)
     let to_copy, source_dirs =
@@ -2022,10 +1912,7 @@ end = struct
             Fiber.return ()
           | Promote promote, (Some Automatically | None) ->
             Target_promotion.promote ~dir ~targets ~promote
-              ~promote_source:(fun ~src ~dst ~chmod ->
-                if promote.lifetime = Until_clean then
-                  Promoted_to_delete.add dst;
-                t.promote_source ~src ~dst ~chmod context)
+              ~promote_source:(fun ~chmod -> t.promote_source ~chmod context)
         in
         t.rule_done <- t.rule_done + 1;
         let+ () =

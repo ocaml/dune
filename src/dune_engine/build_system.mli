@@ -189,10 +189,6 @@ val get_alias_definition :
 (** List of all buildable targets. *)
 val all_targets : unit -> Path.Build.Set.t Memo.Build.t
 
-(** The set of files that were created in the source tree and need to be
-    deleted. *)
-val files_in_source_tree_to_delete : unit -> Path.Set.t
-
 (** {2 Running a build} *)
 
 val run :

@@ -47,7 +47,7 @@ let print ?(skip_trailing_cr = Sys.win32) annot path1 path2 =
         let dir =
           (* We can't run [git] from [dir] as [dir] might be inside a sandbox
              and sandboxes have fake [.git] files to stop [git] from escaping
-             the sandbox. If we did, the bellow git command would fail saying it
+             the sandbox. If we did, the below git command would fail saying it
              can run this fake [.git] file. *)
           Path.root
         in
@@ -115,7 +115,7 @@ let print ?(skip_trailing_cr = Sys.win32) annot path1 path2 =
                   the output, so the [process] module won't recognise that the
                   output has a location.
 
-                  For this reason, we manually pass the bellow annotation. *)
+                  For this reason, we manually pass the below annotation. *)
                  Internal_job
                  ( Some loc
                  , [ annot; User_error.Annot.Has_embedded_location.make () ] ))

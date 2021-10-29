@@ -57,11 +57,11 @@ val text_only : t -> string option
 module Mode : sig
   (** How many values expansion of a template must produce.
 
-      The caller always knows which of the contexts bellow it requires,
-      therefore it can specify this to the expansion functions. This allows us
-      to return a precise result type from the expansion, and do some validation
-      to make sure we aren't expanding into multiple values in cases where it's
-      not allowed. *)
+      The caller always knows which of the contexts below it requires, therefore
+      it can specify this to the expansion functions. This allows us to return a
+      precise result type from the expansion, and do some validation to make
+      sure we aren't expanding into multiple values in cases where it's not
+      allowed. *)
   type _ t =
     | Single : Value.t t  (** Expansion must produce a single value *)
     | Many : Value.t list t  (** Expansion may produce any number of values *)

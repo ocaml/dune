@@ -524,7 +524,7 @@ let%expect_test "writing multiple values" =
      Fiber.fork_and_join_unit (fun () -> produce 3) consume);
   (* Writing to a mvar only blocks if the mvar is full. Similarly, reading from
      a mvar only blocks if the mvar is empty. This is why [write] and [read]
-     operations in the output bellow are grouped two by two. *)
+     operations in the output below are grouped two by two. *)
   [%expect
     {|
     writing 3

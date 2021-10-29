@@ -55,15 +55,17 @@ end
    - the user edits a previously promoted file with the intention of keeping it
    in the source tree, or creates a new file with the same name *)
 module Promoted_to_delete : sig
-  val add : Path.t -> unit
+  val add : Path.Source.t -> unit
 
-  val remove : Path.t -> unit
+  val remove : Path.Source.t -> unit
 
-  val mem : Path.t -> bool
+  val mem : Path.Source.t -> bool
 
   val get_db : unit -> Path.Set.t
 end = struct
   module P = Dune_util.Persistent.Make (struct
+    (* CR-someday amokhov: This should really be a [Path.Source.Set.t] but
+       changing it now would require bumping the [version]. Should we do it? *)
     type t = Path.Set.t
 
     let name = "PROMOTED-TO-DELETE"
@@ -92,6 +94,7 @@ end = struct
       needs_dumping := true
 
   let add p =
+    let p = Path.source p in
     modify_db (fun db ->
         if Path.Set.mem db p then
           None
@@ -99,6 +102,7 @@ end = struct
           Some (Path.Set.add db p))
 
   let remove p =
+    let p = Path.source p in
     modify_db (fun db ->
         if Path.Set.mem db p then
           Some (Path.Set.remove db p)
@@ -111,7 +115,9 @@ end = struct
       get_db () |> P.dump fn
     )
 
-  let mem p = Path.Set.mem !(Lazy.force db) p
+  let mem p =
+    let p = Path.source p in
+    Path.Set.mem !(Lazy.force db) p
 
   let () = Hooks.End_of_build.always dump
 end
@@ -542,7 +548,7 @@ let () =
   Hooks.End_of_build.always (fun () ->
       let fns = !pending_targets in
       pending_targets := Path.Build.Set.empty;
-      Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
+      Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
 
 let compute_target_digests targets =
   let file_targets, (_ignored_dir_targets : unit list) =
@@ -1019,17 +1025,16 @@ end = struct
     let merlin_in_src = Path.Source.(relative source_dir merlin_file) in
     let source_files_to_ignore =
       if
-        Promoted_to_delete.mem (Path.source merlin_in_src)
+        Promoted_to_delete.mem merlin_in_src
         && not (Path.Source.Set.mem source_files_to_ignore merlin_in_src)
       then (
-        let path = Path.source merlin_in_src in
         Log.info
           [ Pp.textf "Deleting left-over Merlin file %s.\n"
-              (Path.to_string path)
+              (Path.Source.to_string merlin_in_src)
           ];
         (* We remove the file from the promoted database *)
-        Promoted_to_delete.remove path;
-        Path.unlink_no_err path;
+        Promoted_to_delete.remove merlin_in_src;
+        Path.Source.unlink_no_err merlin_in_src;
         (* We need to keep ignoring the .merlin file for that build or Dune will
            attempt to copy it and fail because it has been deleted *)
         Path.Source.Set.add source_files_to_ignore merlin_in_src
@@ -2015,99 +2020,12 @@ end = struct
           | (Standard | Fallback | Ignore_source_files), _
           | Promote _, Some Never ->
             Fiber.return ()
-          | Promote { lifetime; into; only }, (Some Automatically | None) ->
-            (* CR-someday amokhov: Don't ignore directory targets. *)
-            let file_targets =
-              Targets.map targets ~f:(fun ~files ~dirs ->
-                  ignore dirs;
-                  files)
-            in
-            Fiber.parallel_iter_set
-              (module Path.Build.Set)
-              file_targets
-              ~f:(fun target ->
-                let consider_for_promotion =
-                  match only with
-                  | None -> true
-                  | Some pred ->
-                    Predicate_lang.Glob.exec pred
-                      (Path.reach (Path.build target) ~from:(Path.build dir))
-                      ~standard:Predicate_lang.any
-                in
-                match consider_for_promotion with
-                | false -> Fiber.return ()
-                | true ->
-                  let in_source_tree =
-                    Path.Build.drop_build_context_exn target
-                  in
-                  let in_source_tree =
-                    match into with
-                    | None -> in_source_tree
-                    | Some { loc; dir } ->
-                      Path.Source.relative
-                        (Path.Source.relative
-                           (Path.Source.parent_exn in_source_tree)
-                           dir ~error_loc:loc)
-                        (Path.Source.basename in_source_tree)
-                  in
-                  let* () =
-                    let dir = Path.Source.parent_exn in_source_tree in
-                    Memo.Build.run (Source_tree.find_dir dir) >>| function
-                    | Some _ -> ()
-                    | None ->
-                      let loc =
-                        match into with
-                        | Some into -> into.loc
-                        | None ->
-                          Code_error.raise
-                            "promoting into directory that does not exist"
-                            [ ( "in_source_tree"
-                              , Path.Source.to_dyn in_source_tree )
-                            ]
-                      in
-                      User_error.raise ~loc
-                        [ Pp.textf "directory %S does not exist"
-                            (Path.Source.to_string_maybe_quoted dir)
-                        ]
-                  in
-                  let dst = in_source_tree in
-                  let in_source_tree = Path.source in_source_tree in
-                  let* is_up_to_date =
-                    Memo.Build.run
-                      (let open Memo.Build.O in
-                      Fs_memo.path_digest in_source_tree
-                      >>| Cached_digest.Digest_result.to_option
-                      >>| function
-                      | None -> false
-                      | Some in_source_tree_digest -> (
-                        match
-                          Cached_digest.build_file target
-                          |> Cached_digest.Digest_result.to_option
-                        with
-                        | None ->
-                          (* CR-someday amokhov: We couldn't digest the target
-                             so something happened to it. Right now, we skip the
-                             promotion in this case, but we could perhaps delete
-                             the corresponding path in the source tree. *)
-                          true
-                        | Some in_build_dir_digest ->
-                          Digest.equal in_build_dir_digest in_source_tree_digest
-                        ))
-                  in
-                  if is_up_to_date then
-                    Fiber.return ()
-                  else (
-                    if lifetime = Until_clean then
-                      Promoted_to_delete.add in_source_tree;
-                    let* () = Scheduler.ignore_for_watch in_source_tree in
-                    (* The file in the build directory might be read-only if it
-                       comes from the shared cache. However, we want the file in
-                       the source tree to be writable by the user, so we
-                       explicitly set the user writable bit. *)
-                    let chmod n = n lor 0o200 in
-                    Path.unlink_no_err (Path.source dst);
-                    t.promote_source ~src:target ~dst ~chmod context
-                  ))
+          | Promote promote, (Some Automatically | None) ->
+            Target_promotion.promote ~dir ~targets ~promote
+              ~promote_source:(fun ~src ~dst ~chmod ->
+                if promote.lifetime = Until_clean then
+                  Promoted_to_delete.add dst;
+                t.promote_source ~src ~dst ~chmod context)
         in
         t.rule_done <- t.rule_done + 1;
         let+ () =

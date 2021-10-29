@@ -62,7 +62,7 @@ module File = struct
     db := { src; staging = Some staging; dst = source_file } :: !db
 
   let do_promote ~correction_file ~dst =
-    Path.unlink_no_err (Path.source dst);
+    Path.Source.unlink_no_err dst;
     let chmod perms = perms lor 0o200 in
     Io.copy_file ~chmod
       ~src:(Path.build correction_file)

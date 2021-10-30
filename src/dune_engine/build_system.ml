@@ -1911,7 +1911,7 @@ end = struct
           | Promote _, Some Never ->
             Fiber.return ()
           | Promote promote, (Some Automatically | None) ->
-            Target_promotion.promote ~dir ~targets ~promote
+            Target_promotion.promote ~dir ~targets_and_digests ~promote
               ~promote_source:(fun ~chmod -> t.promote_source ~chmod context)
         in
         t.rule_done <- t.rule_done + 1;

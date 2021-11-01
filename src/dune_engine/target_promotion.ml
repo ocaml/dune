@@ -103,91 +103,86 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
   in
   source_files_to_ignore
 
-let promote ~dir ~targets ~promote ~promote_source =
-  let open Fiber.O in
-  let { Rule.Promote.lifetime; only; into; _ } = promote in
-  (* CR-someday amokhov: Don't ignore directory targets. *)
-  let file_targets =
-    Targets.map targets ~f:(fun ~files ~dirs ->
-        ignore dirs;
-        files)
+let promote ~dir ~targets_and_digests ~promote ~promote_source =
+  let selected_for_promotion =
+    match promote.Rule.Promote.only with
+    | None -> fun (_ : Path.Build.t) -> true
+    | Some pred ->
+      fun target ->
+        Predicate_lang.Glob.exec pred ~standard:Predicate_lang.any
+          (Path.reach ~from:(Path.build dir) (Path.build target))
   in
-  Fiber.parallel_iter_set
-    (module Path.Build.Set)
-    file_targets
-    ~f:(fun target ->
-      let consider_for_promotion =
-        match only with
-        | None -> true
-        | Some pred ->
-          Predicate_lang.Glob.exec pred
-            (Path.reach (Path.build target) ~from:(Path.build dir))
-            ~standard:Predicate_lang.any
+  let relocate =
+    match promote.into with
+    | None -> Fun.id
+    | Some { loc; dir } ->
+      fun target_in_source_tree ->
+        Path.Source.relative
+          (Path.Source.relative
+             (Path.Source.parent_exn target_in_source_tree)
+             dir ~error_loc:loc)
+          (Path.Source.basename target_in_source_tree)
+  in
+  let open Fiber.O in
+  (* CR-someday amokhov: When promoting directory targets, we might want to
+     create the destination directory instead of reporting an error. Maybe we
+     should just always do that? After all, if the user says "promote results
+     into this directory, please", they might expect Dune to create it too. *)
+  let ensure_the_destination_directory_exists ~dst =
+    let dir = Path.Source.parent_exn dst in
+    Memo.Build.run (Source_tree.find_dir dir) >>| function
+    | Some (_ : Source_tree.Dir.t) -> ()
+    | None ->
+      let loc =
+        match promote.into with
+        | Some into -> into.loc
+        | None ->
+          (* CR-someday amokhov: It's not entirely clear why this is a code
+             error. If the user deletes the source directory (along with the
+             corresponding [dune] file), we are going to hit this branch, and
+             presumably this isn't Dune's fault. *)
+          Code_error.raise
+            "Promoting into a directory that does not exist. Perhaps, the user \
+             deleted it while Dune was running?"
+            [ ("dst", Path.Source.to_dyn dst) ]
       in
-      match consider_for_promotion with
+      User_error.raise ~loc
+        [ Pp.textf "directory %S does not exist"
+            (Path.Source.to_string_maybe_quoted dir)
+        ]
+  in
+  (* CR-someday amokhov: Here we use a tracked operation to compute the digest
+     of the destination file. However, later we may replace the destination with
+     a new content, hence triggering a rebuild. To avoid that, right now we are
+     using [Scheduler.ignore_for_watch], whose implementation is pretty hacky. A
+     better solution would be to temporarily disable file-tracking here and only
+     re-enable it after the promotion is complete. *)
+  let destination_is_up_to_date ~target_digest ~dst =
+    let open Memo.Build.O in
+    Memo.Build.run
+      (Fs_memo.path_digest dst >>| Cached_digest.Digest_result.to_option
+       >>| function
+       | None -> false
+       | Some dst_digest -> Digest.equal target_digest dst_digest)
+  in
+  Fiber.parallel_iter targets_and_digests ~f:(fun (target, target_digest) ->
+      match selected_for_promotion target with
       | false -> Fiber.return ()
-      | true ->
-        let in_source_tree = Path.Build.drop_build_context_exn target in
-        let in_source_tree =
-          match into with
-          | None -> in_source_tree
-          | Some { loc; dir } ->
-            Path.Source.relative
-              (Path.Source.relative
-                 (Path.Source.parent_exn in_source_tree)
-                 dir ~error_loc:loc)
-              (Path.Source.basename in_source_tree)
-        in
-        let* () =
-          let dir = Path.Source.parent_exn in_source_tree in
-          Memo.Build.run (Source_tree.find_dir dir) >>| function
-          | Some _ -> ()
-          | None ->
-            let loc =
-              match into with
-              | Some into -> into.loc
-              | None ->
-                Code_error.raise "promoting into directory that does not exist"
-                  [ ("in_source_tree", Path.Source.to_dyn in_source_tree) ]
-            in
-            User_error.raise ~loc
-              [ Pp.textf "directory %S does not exist"
-                  (Path.Source.to_string_maybe_quoted dir)
-              ]
-        in
-        let dst = in_source_tree in
-        let in_source_tree = Path.source in_source_tree in
-        let* is_up_to_date =
-          Memo.Build.run
-            (let open Memo.Build.O in
-            Fs_memo.path_digest in_source_tree
-            >>| Cached_digest.Digest_result.to_option
-            >>| function
-            | None -> false
-            | Some in_source_tree_digest -> (
-              match
-                Cached_digest.build_file target
-                |> Cached_digest.Digest_result.to_option
-              with
-              | None ->
-                (* CR-someday amokhov: We couldn't digest the target so
-                   something happened to it. Right now, we skip the promotion in
-                   this case, but we could perhaps delete the corresponding path
-                   in the source tree. *)
-                true
-              | Some in_build_dir_digest ->
-                Digest.equal in_build_dir_digest in_source_tree_digest))
-        in
-        if is_up_to_date then
-          Fiber.return ()
-        else (
-          if lifetime = Until_clean then To_delete.add dst;
-          let* () = Scheduler.ignore_for_watch in_source_tree in
+      | true -> (
+        let dst = relocate (Path.Build.drop_build_context_exn target) in
+        let* () = ensure_the_destination_directory_exists ~dst in
+        let dst_path = Path.source dst in
+        destination_is_up_to_date ~target_digest ~dst:dst_path >>= function
+        | true -> Fiber.return ()
+        | false ->
+          (match promote.lifetime with
+          | Until_clean -> To_delete.add dst
+          | Unlimited -> ());
+          let* () = Scheduler.ignore_for_watch dst_path in
           (* The file in the build directory might be read-only if it comes from
              the shared cache. However, we want the file in the source tree to
              be writable by the user, so we explicitly set the user writable
              bit. *)
           let chmod n = n lor 0o200 in
           Path.Source.unlink_no_err dst;
-          promote_source ~chmod ~src:target ~dst
-        ))
+          promote_source ~chmod ~src:target ~dst))

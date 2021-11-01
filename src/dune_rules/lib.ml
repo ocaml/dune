@@ -187,16 +187,6 @@ module Error = struct
           ]
       , [] )
 
-  let vlib_in_closure ~loc ~impl ~vlib =
-    let impl = Lib_info.name impl in
-    let vlib = Lib_info.name vlib in
-    User_error.make ~loc
-      [ Pp.textf
-          "Virtual library %S is used by a dependency of %S. This is not \
-           allowed."
-          (Lib_name.to_string vlib) (Lib_name.to_string impl)
-      ]
-
   let only_ppx_deps_allowed ~loc dep =
     let name = Lib_info.name dep in
     make ~loc
@@ -322,9 +312,6 @@ module T = struct
     ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
     ; modules : Modules.t Memo.Lazy.t option
     ; src_dirs : Path.Set.t Memo.Lazy.t
-    ; (* all the virtual libraries in the closure. we need this to avoid
-         introducing impl -> lib -> vlib cycles. *)
-      vlib_closure : t Id.Map.t Resolve.t
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
@@ -1129,15 +1116,6 @@ end = struct
       |> resolve_deps_and_add_runtime_deps db ~private_deps ~dune_version ~pps
       |> Memo.Build.map ~f:Resolve.return
     in
-    let vlib_closure_parents =
-      let open Resolve.O in
-      let* resolved = resolved in
-      let* requires = resolved.requires in
-      Resolve.List.fold_left ~init:Id.Map.empty requires
-        ~f:(fun acc (lib : lib) ->
-          let+ vlib_closure = lib.vlib_closure in
-          Id.Map.superpose acc vlib_closure)
-    in
     let* implements =
       match Lib_info.implements info with
       | None -> Memo.Build.return None
@@ -1152,29 +1130,28 @@ end = struct
         in
         Memo.Build.map res ~f:Option.some
     in
-    let requires =
-      let open Resolve.O in
+    let* requires =
+      let requires =
+        let open Resolve.O in
+        let* resolved = resolved in
+        resolved.requires
+      in
       match implements with
-      | None -> resolved >>= fun r -> r.requires
+      | None -> Memo.Build.return requires
       | Some vlib ->
-        let* vlib = vlib in
-        let* vlib_closure_parents = vlib_closure_parents in
-        if Id.Map.mem vlib_closure_parents vlib.unique_id then
-          let loc = Lib_info.loc info in
-          Error.vlib_in_closure ~loc ~impl:info ~vlib:vlib.info |> Resolve.fail
-        else
-          let* resolved = resolved in
-          let+ requires = resolved.requires in
-          List.filter requires ~f:(fun lib -> not (equal lib vlib))
-    in
-    let vlib_closure =
-      let open Resolve.O in
-      let* vlib_closure_parents = vlib_closure_parents in
-      let+ requires = requires in
-      List.fold_left requires ~init:vlib_closure_parents ~f:(fun acc lib ->
-          match Lib_info.virtual_ lib.info with
-          | None -> acc
-          | Some _ -> Id.Map.set acc lib.unique_id lib)
+        let open Resolve.Build.O in
+        let* (_ : lib list) =
+          let* vlib = Memo.Build.return vlib in
+          let* requires_for_closure_check =
+            Memo.Build.return
+              (let open Resolve.O in
+              let+ requires = requires in
+              List.filter requires ~f:(fun lib -> not (equal lib vlib)))
+          in
+          linking_closure_with_overlap_checks None requires_for_closure_check
+            ~forbidden_libraries:(Map.singleton vlib Loc.none)
+        in
+        Memo.Build.return requires
     in
     let resolve_impl impl_name =
       let open Resolve.Build.O in
@@ -1298,7 +1275,6 @@ end = struct
               ~f:(fun name info ->
                 Memo.Lazy.create (fun () ->
                     Sub_system.instantiate name info (Lazy.force t) ~resolve))
-        ; vlib_closure
         })
     in
     let t = Lazy.force t in

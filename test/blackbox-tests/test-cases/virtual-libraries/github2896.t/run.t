@@ -20,11 +20,12 @@ where vlib is a virtual library, and impl implements this library.
   > (library (name impl) (implements vlib) (libraries lib))
   > EOF
   $ dune build @all
-  File "impl/dune", line 1, characters 0-55:
-  1 | (library (name impl) (implements vlib) (libraries lib))
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Virtual library "vlib" is used by a dependency of "impl". This is not
-  allowed.
+  Error: Library "vlib" was pulled in.
+  -> required by library "lib" in _build/default/lib
+  -> required by library "impl" in _build/default/impl
+  -> required by _build/default/impl/.impl.objs/byte/vlib.cmo
+  -> required by _build/default/impl/impl.cma
+  -> required by alias impl/all
   [1]
 
 The implementation impl was built, but it's not usable:
@@ -32,9 +33,9 @@ The implementation impl was built, but it's not usable:
   $ echo 'Vlib.run ()' > foo.ml
   $ echo "(executable (name foo) (libraries impl))" > dune
   $ dune exec ./foo.exe
-  File "impl/dune", line 1, characters 0-55:
-  1 | (library (name impl) (implements vlib) (libraries lib))
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Virtual library "vlib" is used by a dependency of "impl". This is not
-  allowed.
+  Error: Library "vlib" was pulled in.
+  -> required by library "lib" in _build/default/lib
+  -> required by library "impl" in _build/default/impl
+  -> required by executable foo in dune:1
+  -> required by _build/default/foo.exe
   [1]

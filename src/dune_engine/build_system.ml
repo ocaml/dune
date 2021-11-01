@@ -243,7 +243,9 @@ module Error = struct
       (fun () -> None)
 
   let extract_promote annot =
-    Promotion.Annot.check annot (fun promote -> Some promote) (fun () -> None)
+    Diff_promotion.Annot.check annot
+      (fun promote -> Some promote)
+      (fun () -> None)
 
   let promotion t =
     let e =
@@ -2361,7 +2363,7 @@ let handle_final_exns exns =
 
 let run f =
   let open Fiber.O in
-  Hooks.End_of_build.once Promotion.finalize;
+  Hooks.End_of_build.once Diff_promotion.finalize;
   let t = t () in
   let old_errors = t.errors in
   t.errors <- [];

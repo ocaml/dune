@@ -639,8 +639,10 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
              let dst =
                Path.Local.(to_string (relative dst_dir plugin_file_basename))
              in
-             let entry = Install.Entry.make Section.Lib_root ~dst plugin_file in
-             (* TODO this [loc] should come from [s.buildable.libraries] *)
+             let entry =
+               (* TODO this [loc] should come from [s.buildable.libraries] *)
+               Install.Entry.make Section.Lib_root ~dst ~kind:`File plugin_file
+             in
              Install.Entry.Sourced.create ~loc entry)
     else []
   in
@@ -678,6 +680,7 @@ let install_rules ~sctx ~dir s =
     let make_entry (orig_file : Path.Build.t) (dst_file : string) =
       let entry =
         Install.Entry.make Section.Lib_root ~dst:(to_dst dst_file) orig_file
+          ~kind:`File
       in
       Install.Entry.Sourced.create ~loc entry
     in

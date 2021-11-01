@@ -146,6 +146,8 @@ module Unix_error = struct
   module Detailed = struct
     type nonrec t = t * string * string
 
+    let raise (e, x, y) = raise (Unix.Unix_error (e, x, y))
+
     let create error ~syscall ~arg = (error, syscall, arg)
 
     let catch f x =

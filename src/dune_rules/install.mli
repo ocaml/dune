@@ -6,6 +6,8 @@ module Dst : sig
 
   val to_string : t -> string
 
+  val concat_all : t -> string list -> t
+
   include Dune_lang.Conv.S with type t := t
 
   val to_dyn : t -> Dyn.t
@@ -91,6 +93,7 @@ end
 module Entry : sig
   type 'src t = private
     { src : 'src
+    ; kind : [ `File | `Directory ]
     ; dst : Dst.t
     ; section : Section.t
     }
@@ -116,7 +119,12 @@ module Entry : sig
     -> section:Section.t
     -> Dst.t
 
-  val make : Section.t -> ?dst:string -> Path.Build.t -> Path.Build.t t
+  val make :
+       Section.t
+    -> ?dst:string
+    -> kind:[ `File | `Directory ]
+    -> Path.Build.t
+    -> Path.Build.t t
 
   val make_with_site :
        Section_with_site.t
@@ -125,10 +133,13 @@ module Entry : sig
         -> pkg:Dune_engine.Package.Name.t
         -> site:Dune_engine.Section.Site.t
         -> Section.t Memo.t)
+    -> kind:[ `File | `Directory ]
     -> Path.Build.t
     -> Path.Build.t t Memo.t
 
   val set_src : _ t -> 'src -> 'src t
+
+  val map_dst : 'a t -> f:(Dst.t -> Dst.t) -> 'a t
 
   val relative_installed_path : _ t -> paths:Section.Paths.t -> Path.t
 

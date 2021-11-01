@@ -238,7 +238,6 @@ the subdirectories included into the directory target.
 # CR-someday amokhov: Remove the files that action didn't depend on.
 
   $ dune build level1
-          bash level1
   output/a.txt output/b.txt
 
   $ cat _build/default/level1
@@ -250,7 +249,6 @@ the subdirectories included into the directory target.
 Depending on a glob in a subdirectory of a directory target works too.
 
   $ dune build level2
-          bash level2
   output/subdir/d.txt output/subdir/e
   $ cat _build/default/level2
   d.txt
@@ -292,9 +290,7 @@ rule to rerun when needed.
   $ echo b > src_b
   $ echo c > src_c
   $ dune build contents
-          bash output
   running
-          bash contents
   running
   $ cat _build/default/contents
   a:
@@ -309,9 +305,7 @@ mtime changes when the rule reruns. We can delete this when switching to (1).
   $ echo new-b > src_b
 
   $ dune build contents
-          bash output
   running
-          bash contents
   running
   $ cat _build/default/contents
   a:
@@ -325,9 +319,7 @@ skip the second action since the produced directory has the same contents.
   $ dune_cmd wait-for-fs-clock-to-advance
   $ echo new-cc > src_c
   $ dune build contents
-          bash output
   running
-          bash contents
   running
   $ cat _build/default/contents
   a:
@@ -342,9 +334,7 @@ and the second one because of the lack of early cutoff.
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm _build/default/output/a
   $ dune build contents
-          bash output
   running
-          bash contents
   running
 
 Check that Dune clears stale files from directory targets.
@@ -365,9 +355,7 @@ Check that Dune clears stale files from directory targets.
   > EOF
 
   $ dune build contents
-          bash output
   running
-          bash contents
   running
 
 Note that the stale "output/a" file got removed.

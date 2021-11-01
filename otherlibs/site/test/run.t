@@ -358,7 +358,6 @@ Test compiling an external plugin
   run c: registered:e,b.
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH dune build @runtest
-             c alias e/runtest
   run a
   a: $TESTCASE_ROOT/_build/install/default/share/a/data
   run c: a linked registered:.

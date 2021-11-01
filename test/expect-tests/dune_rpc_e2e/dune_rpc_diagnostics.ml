@@ -417,7 +417,6 @@ let%expect_test "error from user rule" =
     stderr:
     waiting for inotify sync
     waited for inotify sync
-            bash foo
     foobar
     File "dune", line 1, characters 0-49:
     1 | (rule (target foo) (action (bash "echo foobar")))

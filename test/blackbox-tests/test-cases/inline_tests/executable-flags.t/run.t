@@ -6,7 +6,6 @@ to be successful.
 
   $ dune runtest valid_options --root ./test-project
   Entering directory 'test-project'
-  inline_test_runner_valid_option_test alias valid_options/runtest
   backend_foo
 
 Lastly, we pass an invalid option to flags field expecting compilation

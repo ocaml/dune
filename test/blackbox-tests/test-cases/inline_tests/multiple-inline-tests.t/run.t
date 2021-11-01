@@ -27,7 +27,5 @@ Create a dummy backend and two libraries with inline_tests
 try to run them:
 
   $ env -u OCAMLRUNPARAM dune runtest
-  inline_test_runner_foo_simple1 alias runtest
   test
-  inline_test_runner_foo_simple2 alias runtest
   test

@@ -23,18 +23,15 @@
   > )
   > EOF
   $ dune build @b
-          bash alias b
   running b: old-contents
   $ dune build @b
   $ echo new-contents > x
   $ dune build @b
-          bash alias b
   running b: new-contents
 ^ dune does re-run the action when a dependency declared 
 via an alias changes.
 And the path does appear in the sandbox:
   $ dune build @b --sandbox copy 2>&1 | grep -v 'cd _build/.sandbox'
-          bash alias b
   running b: new-contents
 
 However, this is only since 3.0, before that aliases where not
@@ -49,7 +46,6 @@ expanded when creating the sandbox:
   7 |   (deps (alias a))
   8 |   (action (bash "echo -n \"running b: \"; cat x"))
   9 | )
-          bash alias b (exit 1)
   running b: cat: x: No such file or directory
   $ cat >dune-project <<EOF
   > (lang dune 3.0)
@@ -79,14 +75,11 @@ Now test that including an alias into another alias includes its expansion:
   $ rm -r _build
   $ echo old-contents > x
   $ dune build @b
-          bash alias b
   running b: old-contents
   $ dune build @b
   $ echo new-contents > x
   $ dune build @b
-          bash alias b
   running b: new-contents
 The path still does appear in the sandbox:
   $ dune build @b --sandbox copy 2>&1 | grep -v 'cd _build/.sandbox'
-          bash alias b
   running b: new-contents

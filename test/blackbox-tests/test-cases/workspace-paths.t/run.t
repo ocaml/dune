@@ -5,7 +5,6 @@ is prohibited.
   $ chmod u+w bin/hello.exe
 
   $ dune build
-         hello alias default
   Hello: $TESTCASE_ROOT/a:/c
 
   $ mkdir sub

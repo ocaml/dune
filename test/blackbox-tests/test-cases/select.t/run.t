@@ -15,7 +15,6 @@
   > EOF
 
   $ dune runtest
-          main alias runtest
   bar has unix
   foo has no fake
 
@@ -36,6 +35,5 @@
   > EOF
 
   $ dune runtest
-          main alias runtest
   bar has unix
   foo has no fake

@@ -5,7 +5,6 @@
 
   $ dune build --root target @cat_dir
   Entering directory 'target'
-       cat_dir alias cat_dir
   bar:
   bar contents
   

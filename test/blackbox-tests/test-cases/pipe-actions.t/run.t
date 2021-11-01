@@ -33,7 +33,6 @@ You need to set the language to 2.7 or higher for it to work:
   > EOF
 
   $ dune build @pipe
-            tr alias pipe
   x
   y
   z

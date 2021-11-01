@@ -90,7 +90,6 @@
   39 |              (with-stdout-to out2.txt
   40 |               (run ./exit.exe 1))))))))
           exit out2.txt (exit 1)
-  (cd _build/default && ./exit.exe 1) < _build/default/input > _build/default/out2.txt
   [1]
 
   $ cat >> dune <<EOF

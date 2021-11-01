@@ -18,5 +18,4 @@
   $ cp ./bin/foo.exe ./
 
   $ dune runtest
-           foo alias runtest
   Directory listing: [some_file1; some_file2]

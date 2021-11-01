@@ -1,5 +1,4 @@
   $ dune build ./w_omp_driver.exe
-           ppx w_omp_driver.pp.ml
   -arg: omp
 
 This test is broken because ppx_driver doesn't support migrate custom arguments

@@ -7,7 +7,6 @@ Aliases should not be resolved in vendored sub directories
 
   $ dune runtest --root duniverse
   Entering directory 'duniverse'
-          test alias tests/runtest
   Hello from main lib!
 
 When compiling vendored code, all warnings should be disabled

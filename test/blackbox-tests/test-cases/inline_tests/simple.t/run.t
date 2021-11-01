@@ -27,8 +27,6 @@
   File "dune", line 9, characters 1-40:
   9 |  (inline_tests (backend backend_simple)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  inline_test_runner_foo_simple alias runtest (exit 2)
-  (cd _build/default && .foo_simple.inline-tests/inline_test_runner_foo_simple.exe)
   Fatal error: exception File ".foo_simple.inline-tests/inline_test_runner_foo_simple.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 
@@ -43,7 +41,5 @@ The expected behavior for the following three tests is to output nothing: the te
   File "dune", line 9, characters 1-40:
   9 |  (inline_tests (backend backend_simple)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  inline_test_runner_foo_simple alias runtest (exit 2)
-  (cd _build/default && .foo_simple.inline-tests/inline_test_runner_foo_simple.exe)
   Fatal error: exception File ".foo_simple.inline-tests/inline_test_runner_foo_simple.ml-gen", line 1, characters 40-46: Assertion failed
   [1]

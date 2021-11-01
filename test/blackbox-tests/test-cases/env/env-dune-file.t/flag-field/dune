@@ -11,5 +11,5 @@
  (name default)
  (action
   (progn
-   (echo "var visible from dune: %{env:DUNE_FOO=absent}")
+   (echo "var visible from dune: %{env:DUNE_FOO=absent}\n")
    (run ./foo.exe))))

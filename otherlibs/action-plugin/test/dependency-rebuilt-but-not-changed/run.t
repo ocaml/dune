@@ -25,7 +25,6 @@ they were forced to rebuild.
 
   $ dune runtest
   Building some_file!
-           foo alias runtest
   Hello from some_file!
 
   $ dune runtest

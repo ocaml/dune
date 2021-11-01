@@ -4,7 +4,6 @@ externally installed.
 First we build and use the backend locally:
 
   $ dune runtest dune-file
-  inline_test_runner_foo_tests alias dune-file/runtest
   414243
 
 Then we install the backend and check that the "inline_tests.backend"
@@ -28,5 +27,4 @@ package:
 
   $ export OCAMLPATH=$PWD/_install/lib; dune runtest --root dune-file-user
   Entering directory 'dune-file-user'
-  inline_test_runner_foo_tests alias runtest
   414243

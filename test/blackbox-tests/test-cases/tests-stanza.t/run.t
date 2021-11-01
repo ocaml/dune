@@ -1,13 +1,10 @@
   $ dune runtest --root singular
   Entering directory 'singular'
-      singular alias runtest
   singular test
 
   $ dune runtest --root plural
   Entering directory 'plural'
-  regular_test alias runtest
   regular test
-  regular_test2 alias runtest
   regular test2
   $ dune runtest --root generated
   Entering directory 'generated'

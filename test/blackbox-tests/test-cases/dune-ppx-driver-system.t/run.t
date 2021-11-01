@@ -67,7 +67,6 @@ Test the argument syntax
 
   $ dune build --root driver-tests test_ppx_args.cma
   Entering directory 'driver-tests'
-           ppx test_ppx_args.pp.ml
   .ppx/454728df5270ab91f8a5af6b5e860eb0/ppx.exe
   -arg1
   -arg2
@@ -97,7 +96,6 @@ Test that going through the -ppx option of the compiler works
 
   $ dune build --root driver-tests test_ppx_staged.cma
   Entering directory 'driver-tests'
-        ocamlc .test_ppx_staged.objs/byte/test_ppx_staged.{cmi,cmo,cmt}
   tool name: ocamlc
   args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"
 
@@ -107,7 +105,6 @@ Test using installed drivers
   Entering directory 'driver'
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
   Entering directory 'use-external-driver'
-           ppx driveruser.pp.ml
   .ppx/35d69311d5da258d073875db2b34f33b/ppx.exe
   -arg1
   -arg2
@@ -129,7 +126,6 @@ Test using installed drivers
 
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root replaces driveruser.cma
   Entering directory 'replaces'
-           ppx driveruser.pp.ml
   replacesdriver
   .ppx/886937db0da323b743b4366c6d3a795f/ppx.exe
   -arg1
@@ -154,7 +150,6 @@ Test using installed drivers
   Entering directory 'driver-replaces'
   $ OCAMLPATH=driver/_build/install/default/lib:driver-replaces/_build/install/default/lib dune build --root replaces-external driveruser.cma
   Entering directory 'replaces-external'
-           ppx driveruser.pp.ml
   replacesdriver
   .ppx/886937db0da323b743b4366c6d3a795f/ppx.exe
   -arg1

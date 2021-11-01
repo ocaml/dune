@@ -26,7 +26,7 @@ module Error : sig
 
   val info : t -> User_message.t * User_message.t list * Path.t option
 
-  val promotion : t -> Promotion.Annot.t option
+  val promotion : t -> Diff_promotion.Annot.t option
 
   val id : t -> Id.t
 end

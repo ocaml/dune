@@ -23,7 +23,7 @@ let command =
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE")
     in
     let _config = Common.init common in
-    Promotion.promote_files_registered_in_last_run
+    Diff_promotion.promote_files_registered_in_last_run
       (match files with
       | [] -> All
       | _ ->

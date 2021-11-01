@@ -305,11 +305,11 @@ let rec exec t ~ectx ~eenv =
         Fiber.finalize
           (fun () ->
             let annot =
-              Promotion.Annot.make
-                { Promotion.Annot.in_source = source_file
+              Diff_promotion.Annot.make
+                { Diff_promotion.Annot.in_source = source_file
                 ; in_build =
                     (if optional && in_source_or_target then
-                      Promotion.File.in_staging_area source_file
+                      Diff_promotion.File.in_staging_area source_file
                     else
                       file2)
                 }
@@ -332,10 +332,11 @@ let rec exec t ~ectx ~eenv =
                 in_source_or_target
                 && not (is_copied_from_source_tree (Path.build file2))
               then
-                Promotion.File.register_dep ~source_file ~correction_file:file2
+                Diff_promotion.File.register_dep ~source_file
+                  ~correction_file:file2
             | true ->
               if in_source_or_target then
-                Promotion.File.register_intermediate ~source_file
+                Diff_promotion.File.register_intermediate ~source_file
                   ~correction_file:file2
               else
                 remove_intermediate_file ());

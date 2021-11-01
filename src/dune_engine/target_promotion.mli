@@ -1,4 +1,6 @@
-(** Promoting rule targets to the source tree. *)
+(** Promoting rule targets to the source tree.
+
+    See [Diff_promotion] for the logic related to promoting [diff]s. *)
 
 open! Stdune
 

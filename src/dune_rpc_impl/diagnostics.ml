@@ -12,7 +12,6 @@ module Dep_conf = Dune_rules.Dep_conf
 module Source_tree = Dune_engine.Source_tree
 module Build_system = Dune_engine.Build_system
 module Dune_project = Dune_engine.Dune_project
-module Promotion = Dune_engine.Promotion
 
 let absolutize_paths ~dir (loc : Loc.t) =
   let make_path name =

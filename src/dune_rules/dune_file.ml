@@ -937,20 +937,34 @@ module Install_conf = struct
   type t =
     { section : Install.Section_with_site.t
     ; files : File_binding.Unexpanded.t list
+    ; dirs : File_binding.Unexpanded.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
 
   let decode =
     fields
-      (let+ section = field "section" Install.Section_with_site.decode
-       and+ files = field "files" File_binding.Unexpanded.L.decode
+      (let+ loc = loc
+       and+ section = field "section" Install.Section_with_site.decode
+       and+ files = field_o "files" File_binding.Unexpanded.L.decode
+       and+ dirs =
+         field_o "dirs"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 5)
+           >>> File_binding.Unexpanded.L.decode)
        and+ package = Stanza_common.Pkg.field ~stanza:"install"
        and+ enabled_if =
          let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
          Enabled_if.decode ~allowed_vars ~since:(Some (2, 6)) ()
        in
-       { section; files; package; enabled_if })
+       let files, dirs =
+         match (files, dirs) with
+         | None, None ->
+           User_error.raise ~loc [ Pp.textf "dirs or files must be set" ]
+         | _, _ ->
+           (Option.value files ~default:[], Option.value dirs ~default:[])
+       in
+
+       { section; dirs; files; package; enabled_if })
 end
 
 module Promote = struct
@@ -1145,7 +1159,12 @@ module Executables = struct
                       ~dst:(locp, pub)))
             |> List.filter_opt
           in
-          { Install_conf.section = Section Bin; files; package; enabled_if })
+          { Install_conf.section = Section Bin
+          ; files
+          ; dirs = []
+          ; package
+          ; enabled_if
+          })
   end
 
   module Link_mode = struct

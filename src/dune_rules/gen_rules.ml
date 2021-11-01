@@ -201,14 +201,15 @@ let define_all_alias ~dir ~project ~js_targets =
 let gen_rules sctx dir_contents cctxs expander
     { Dune_file.dir = src_dir; stanzas; project } ~dir:ctx_dir =
   let files_to_install
-      { Install_conf.section = _; files; package = _; enabled_if = _ } =
-    Memo.List.map files ~f:(fun fb ->
-        File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
-          ~f:(Expander.No_deps.expand_str expander)
-        >>| Path.build)
-    >>= fun files ->
+      { Install_conf.section = _; files; package = _; enabled_if = _; dirs } =
+    let* files_and_dirs =
+      Memo.List.map (files @ dirs) ~f:(fun fb ->
+          File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
+            ~f:(Expander.No_deps.expand_str expander)
+          >>| Path.build)
+    in
     Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
-      (Action_builder.paths files)
+      (Action_builder.paths files_and_dirs)
   in
   let* { For_stanza.merlin = merlins
        ; cctx = cctxs
@@ -459,9 +460,10 @@ let gen_rules ctx_or_install ~dir components =
   | Install ctx ->
     with_context ctx ~f:(fun sctx ->
         let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
+        let directory_targets = Rules.directory_targets rules in
         Build_config.Rules
           { build_dir_only_sub_dirs = subdirs
-          ; directory_targets = Path.Build.Map.empty
+          ; directory_targets
           ; rules = Memo.return rules
           })
   | Context ctx ->

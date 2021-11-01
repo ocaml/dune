@@ -168,6 +168,8 @@ val copy : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 
 val symlink : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 
+val symlink_dir : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
+
 val create_file :
   ?perm:Action.File_perm.t -> Path.Build.t -> Action.Full.t With_targets.t
 

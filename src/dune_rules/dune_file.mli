@@ -206,6 +206,7 @@ module Install_conf : sig
   type t =
     { section : Install.Section_with_site.t
     ; files : File_binding.Unexpanded.t list
+    ; dirs : File_binding.Unexpanded.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }

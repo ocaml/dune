@@ -240,6 +240,13 @@ let symlink ~src ~dst =
   with_file_targets ~file_targets:[ dst ]
     (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
 
+let symlink_dir ~src ~dst =
+  with_targets
+    ~targets:
+      (Targets.create ~files:Path.Build.Set.empty
+         ~dirs:(Path.Build.Set.singleton dst))
+    (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
+
 let create_file ?(perm = Action.File_perm.Normal) fn =
   with_file_targets ~file_targets:[ fn ]
     (return

@@ -9,6 +9,8 @@ module Dst : sig
 
   val to_string : t -> string
 
+  val concat_all : t -> string list -> t
+
   val add_prefix : string -> t -> t
 
   val to_install_file :
@@ -30,6 +32,8 @@ end = struct
   type t = string
 
   let to_string t = t
+
+  let concat_all t suffixes = List.fold_left suffixes ~init:t ~f:Filename.concat
 
   let add_prefix p t = Filename.concat p t
 
@@ -247,9 +251,12 @@ end
 module Entry = struct
   type 'src t =
     { src : 'src
+    ; kind : [ `File | `Directory ]
     ; dst : Dst.t
     ; section : Section.t
     }
+
+  let map_dst t ~f = { t with dst = f t.dst }
 
   module Sourced = struct
     type source =
@@ -270,11 +277,12 @@ module Entry = struct
       }
   end
 
-  let compare compare_src { src; dst; section } t =
+  let compare compare_src { src; dst; section; kind } t =
     let open Ordering.O in
     let= () = Section.compare section t.section in
     let= () = Dst.compare dst t.dst in
-    compare_src src t.src
+    let= () = compare_src src t.src in
+    Poly.compare kind t.kind
 
   let adjust_dst_gen =
     let error (source_pform : Dune_lang.Template.Pform.t) =
@@ -329,13 +337,14 @@ module Entry = struct
       ~src_suffix:(Full (Path.to_string (Path.build src)))
       ~dst ~section
 
-  let make section ?dst src =
+  let make section ?dst ~kind src =
     let dst = adjust_dst' ~src ~dst ~section in
-    { src; dst; section }
+    { src; dst; section; kind }
 
-  let make_with_site section ?dst get_section src =
+  let make_with_site (section : Section_with_site.t) ?dst get_section ~kind src
+      =
     match section with
-    | Section_with_site.Section section -> Memo.return (make section ?dst src)
+    | Section section -> Memo.return (make section ?dst ~kind src)
     | Site { pkg; site; loc } ->
       let open Memo.O in
       let+ section = get_section ~loc ~pkg ~site in
@@ -364,7 +373,7 @@ module Entry = struct
         | Man
         | Misc -> (section, dst)
       in
-      { src; dst; section }
+      { src; dst; section; kind }
 
   let set_src t src = { t with src }
 
@@ -387,6 +396,7 @@ module Entry = struct
     { src
     ; section
     ; dst = Dst.of_install_file ~section ~src_basename:(Path.basename src) dst
+    ; kind = `File
     }
 end
 

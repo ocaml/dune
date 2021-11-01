@@ -17,6 +17,9 @@
 - Allow rules producing directory targets to be not sandboxed (#6056,
   @rgrinberg)
 
+- Introduce a `dirs` field in the `install` stanza to install entire
+  directories (#5097, fixes #5059, @rgrinberg)
+
 3.4.1 (26-07-2022)
 ------------------
 

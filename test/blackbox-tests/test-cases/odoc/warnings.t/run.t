@@ -1,3 +1,5 @@
+  $ export BUILD_PATH_PREFIX_MAP=odoc=`command -v odoc`
+
 As configured in the `dune` file at the root, this should be an error:
 
   $ dune build --only-packages=foo_doc @doc
@@ -25,9 +27,9 @@ These packages are in a nested env, the option is disabled, should success with 
 In release mode, no error:
 
   $ dune build -p foo_doc,foo_lib @doc
-  (cd _build/default/_doc/_odoc/pkg/foo_doc && /home/dim/.opam/4.12.0/bin/odoc compile --pkg foo_doc -o page-foo.odoc ../../../../foo_doc/foo.mld)
+  (cd _build/default/_doc/_odoc/pkg/foo_doc && odoc compile --pkg foo_doc -o page-foo.odoc ../../../../foo_doc/foo.mld)
   File "../../../../foo_doc/foo.mld", line 4, characters 0-0:
   End of text is not allowed in '[...]' (code).
-  (cd _build/default/foo_lib/.foo.objs/byte && /home/dim/.opam/4.12.0/bin/odoc compile -I . -I ../../../_doc/_odoc/pkg/foo_lib --pkg foo_lib -o foo.odoc foo.cmti)
+  (cd _build/default/foo_lib/.foo.objs/byte && odoc compile -I . -I ../../../_doc/_odoc/pkg/foo_lib --pkg foo_lib -o foo.odoc foo.cmti)
   File "foo_lib/foo.mli", line 1, characters 7-7:
   End of text is not allowed in '[...]' (code).

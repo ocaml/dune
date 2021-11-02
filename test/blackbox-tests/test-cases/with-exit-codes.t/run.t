@@ -25,7 +25,6 @@
   6 |  (alias a)
   7 |  (action (with-accepted-exit-codes 0 (run ./exit.exe 1))))
           exit alias a (exit 1)
-  (cd _build/default && ./exit.exe 1)
   [1]
 
   $ cat >> dune <<EOF
@@ -55,7 +54,6 @@
   15 |  (alias d)
   16 |  (action (with-accepted-exit-codes (or 4 5 6) (run ./exit.exe 7))))
           exit alias d (exit 7)
-  (cd _build/default && ./exit.exe 7)
   [1]
 
   $ cat >> dune <<EOF

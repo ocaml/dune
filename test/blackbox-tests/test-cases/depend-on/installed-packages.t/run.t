@@ -35,7 +35,6 @@
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
-           cat alias runtest
   Miaou
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
@@ -60,7 +59,6 @@
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
-           cat alias runtest
   Ouaf
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest

@@ -11,7 +11,6 @@ in an appropriate error message.
 Basic sample selecting implementation according to default library.
   $ dune build --root default-impl
   Entering directory 'default-impl'
-           bar alias default
   hi from lib.default
 
 Check that default implementation data is installed in the dune package file.
@@ -106,5 +105,4 @@ First we create an external library and implementation
 Then we make sure that it works fine.
   $ env OCAMLPATH=external/lib/_build/install/default/lib dune build --root external/exe --debug-dependency-path
   Entering directory 'external/exe'
-           bar alias default
   hey

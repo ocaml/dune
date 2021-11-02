@@ -52,11 +52,9 @@ failing before it had a chance to start thinking about building `z`.
   File "dune", line 10, characters 0-42:
   10 | (rule (with-stdout-to y (run ./fail.exe)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-          fail y (exit 1)
-  (cd _build/default && ./fail.exe) > _build/default/y
+  Command exited with code 1.
   File "dune", line 11, characters 0-42:
   11 | (rule (with-stdout-to z (run ./fail.exe)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-          fail z (exit 1)
-  (cd _build/default && ./fail.exe) > _build/default/z
+  Command exited with code 1.
   [1]

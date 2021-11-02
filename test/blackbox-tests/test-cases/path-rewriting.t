@@ -9,12 +9,10 @@ rewrite the current working directory:
   > EOF
 
   $ dune build
-            sh x
   /workspace_root
 
 It works with sandboxing as well:
 
   $ dune clean
   $ dune build --sandbox copy
-            sh x
   /workspace_root

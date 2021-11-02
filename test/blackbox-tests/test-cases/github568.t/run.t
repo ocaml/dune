@@ -1,3 +1,3 @@
   $ dune runtest -p lib1 --debug-dependency-path
-         test1 alias runtest
+  (cd _build/default && ./test1.exe)
   running test 1

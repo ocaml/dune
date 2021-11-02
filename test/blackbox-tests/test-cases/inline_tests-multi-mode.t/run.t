@@ -29,7 +29,5 @@ Reproduction case for #3347
   $ touch test.ml
 
   $ dune runtest
-  inline_test_runner_test alias runtest
   Test byte
-  inline_test_runner_test alias runtest
   Test native

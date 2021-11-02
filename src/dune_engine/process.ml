@@ -209,6 +209,14 @@ let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
   in
   prefix ^ s ^ suffix
 
+module Exit_status = struct
+  type error =
+    | Failed of int
+    | Signaled of string
+
+  type t = (int, error) result
+end
+
 module Fancy = struct
   let split_prog s =
     let len = String.length s in
@@ -240,6 +248,10 @@ module Fancy = struct
       let after = String.drop s prog_end in
       let prog = String.sub s ~pos:prog_start ~len:(prog_end - prog_start) in
       (before, prog, after)
+
+  let short_prog_name_of_prog s =
+    let _, s, _ = split_prog s in
+    s
 
   let color_combos =
     let open Ansi_color.Style in
@@ -285,7 +297,20 @@ module Fancy = struct
       command_line_enclosers ~dir ~stdout_to ~stderr_to ~stdin_from
     in
     Pp.verbatim prefix ++ pp ++ Pp.verbatim suffix
+end
 
+(* Implemt the rendering for [--display short] *)
+module Short_display : sig
+  val pp_ok : prog:string -> purpose:purpose -> User_message.Style.t Pp.t
+
+  val pp_error :
+       prog:string
+    -> purpose:purpose
+    -> has_unexpected_stdout:bool
+    -> has_unexpected_stderr:bool
+    -> error:Exit_status.error
+    -> User_message.Style.t Pp.t
+end = struct
   let pp_purpose = function
     | Internal_job _ -> Pp.verbatim "(internal)"
     | Build_job (_, _, targets) -> (
@@ -345,6 +370,36 @@ module Fancy = struct
              ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:(fun ctx ->
                     Pp.verbatim (Context_name.to_string ctx))
              ++ Pp.char ']'))
+
+  let progname_and_purpose ~tag ~prog ~purpose =
+    let open Pp.O in
+    let progname = sprintf "%12s" (Fancy.short_prog_name_of_prog prog) in
+    Pp.tag tag (Pp.verbatim progname) ++ Pp.char ' ' ++ pp_purpose purpose
+
+  let pp_ok = progname_and_purpose ~tag:Ok
+
+  let pp_error ~prog ~purpose ~has_unexpected_stdout ~has_unexpected_stderr
+      ~(error : Exit_status.error) =
+    let open Pp.O in
+    let msg =
+      match error with
+      | Signaled signame -> sprintf "(got signal %s)" signame
+      | Failed n -> (
+        let unexpected_outputs =
+          List.filter_map
+            [ (has_unexpected_stdout, "stdout")
+            ; (has_unexpected_stderr, "stderr")
+            ] ~f:(fun (b, name) -> Option.some_if b name)
+        in
+        match (n, unexpected_outputs) with
+        | 0, _ :: _ ->
+          sprintf "(had unexpected output on %s)"
+            (String.enumerate_and unexpected_outputs)
+        | _ -> sprintf "(exit %d)" n)
+    in
+    progname_and_purpose ~prog ~tag:Error ~purpose
+    ++ Pp.char ' '
+    ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
 end
 
 let gen_id =
@@ -361,14 +416,10 @@ let pp_id id =
   let open Pp.O in
   Pp.char '[' ++ Pp.tag User_message.Style.Id (Pp.textf "%d" id) ++ Pp.char ']'
 
-module Exit_status : sig
-  type error =
-    | Failed of int
-    | Signaled of string
+module Handle_exit_status : sig
+  open Exit_status
 
-  type t = (int, error) result
-
-  val handle_verbose :
+  val verbose :
        ('a, error) result
     -> id:int
     -> purpose:purpose
@@ -377,7 +428,7 @@ module Exit_status : sig
     -> dir:With_directory_annot.payload option
     -> 'a
 
-  val handle_non_verbose :
+  val non_verbose :
        ('a, error) result
     -> verbosity:Scheduler.Config.Display.verbosity
     -> purpose:purpose
@@ -389,11 +440,7 @@ module Exit_status : sig
     -> has_unexpected_stderr:bool
     -> 'a
 end = struct
-  type error =
-    | Failed of int
-    | Signaled of string
-
-  type t = (int, error) result
+  open Exit_status
 
   type output =
     | No_output
@@ -403,9 +450,9 @@ end = struct
         ; has_embedded_location : bool
         }
 
-  let has_embedded_location = function
-    | No_output -> false
-    | Has_output t -> t.has_embedded_location
+  let pp_output = function
+    | No_output -> []
+    | Has_output t -> [ t.with_color ]
 
   let parse_output = function
     | "" -> No_output
@@ -420,38 +467,33 @@ end = struct
       in
       Has_output { with_color; without_color; has_embedded_location }
 
-  (* In this module, we don't need the "Error: " prefix given that it is already
-     included in the error message from the command. *)
-  let fail ~output ~purpose ~dir paragraphs =
-    let paragraphs : User_message.Style.t Pp.t list =
-      match output with
-      | No_output -> paragraphs
-      | Has_output output -> paragraphs @ [ output.with_color ]
-    in
-    let dir =
-      match dir with
-      | None -> Path.of_string (Sys.getcwd ())
-      | Some dir -> dir
-    in
+  let get_loc_and_annots ~dir ~purpose ~output =
     let loc, annots = loc_and_annots_of_purpose purpose in
+    let dir = Option.value dir ~default:Path.root in
     let annots = With_directory_annot.make dir :: annots in
     let annots =
-      if has_embedded_location output then
-        let annots = User_error.Annot.Has_embedded_location.make () :: annots in
-        match
-          match output with
-          | No_output -> None
-          | Has_output output ->
-            Compound_user_error.parse_output ~dir output.without_color
-        with
-        | None -> annots
-        | Some annot -> annot :: annots
-      else
-        annots
+      match output with
+      | No_output -> annots
+      | Has_output output ->
+        if output.has_embedded_location then
+          let annots =
+            User_error.Annot.Has_embedded_location.make () :: annots
+          in
+          match Compound_user_error.parse_output ~dir output.without_color with
+          | None -> annots
+          | Some annot -> annot :: annots
+        else
+          annots
     in
+    (loc, annots)
+
+  let fail ~loc ~annots paragraphs =
+    (* We don't use [User_error.make] as it would add the "Error: " prefix. We
+       don't need this prefix as it is already included in the output of the
+       command. *)
     raise (User_error.E (User_message.make ?loc paragraphs, annots))
 
-  let handle_verbose t ~id ~purpose ~output ~command_line ~dir =
+  let verbose t ~id ~purpose ~output ~command_line ~dir =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -472,86 +514,70 @@ end = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" signame
       in
-      fail ~output ~purpose ~dir
-        [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
-          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
-        ; Pp.tag User_message.Style.Prompt (Pp.char '$')
-          ++ Pp.char ' ' ++ command_line
-        ]
+      let loc, annots = get_loc_and_annots ~dir ~purpose ~output in
+      fail ~loc ~annots
+        (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
+         ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
+        :: Pp.tag User_message.Style.Prompt (Pp.char '$')
+           ++ Pp.char ' ' ++ command_line
+        :: pp_output output)
 
-  let handle_non_verbose t ~verbosity ~purpose ~output ~prog ~command_line ~dir
-      ~has_unexpected_stdout ~has_unexpected_stderr =
-    let open Pp.O in
+  let non_verbose t ~(verbosity : Scheduler.Config.Display.verbosity) ~purpose
+      ~output ~prog ~command_line ~dir ~has_unexpected_stdout
+      ~has_unexpected_stderr =
     let output = parse_output output in
-    let has_embedded_location = has_embedded_location output in
     let show_command =
-      let show_full_command_on_error =
-        !Clflags.always_show_command_line
-        || (* We want to show command lines in the CI, but not when running
-              inside dune. Otherwise tests would yield different result whether
-              they are executed locally or in the CI. *)
-        (Config.inside_ci && not Config.inside_dune)
-      in
-      show_full_command_on_error || not has_embedded_location
+      !Clflags.always_show_command_line
+      || (* We want to show command lines in the CI, but not when running inside
+            dune. Otherwise tests would yield different result whether they are
+            executed locally or in the CI. *)
+      (Config.inside_ci && not Config.inside_dune)
     in
-    let _, progname, _ = Fancy.split_prog prog in
-    let progname_and_purpose tag =
-      let progname = sprintf "%12s" progname in
-      Pp.tag tag (Pp.verbatim progname)
-      ++ Pp.char ' ' ++ Fancy.pp_purpose purpose
+    let add_command_line paragraphs =
+      if show_command then
+        Pp.tag User_message.Style.Details (Pp.verbatim command_line)
+        :: paragraphs
+      else
+        paragraphs
     in
     match t with
     | Ok n ->
-      (if
-       (match output with
-       | No_output -> false
-       | Has_output _ -> true)
-       || (match verbosity with
-          | Scheduler.Config.Display.Short -> true
-          | Quiet -> false
-          | Verbose -> assert false)
-          &&
-          match purpose with
-          | Internal_job _ -> false
-          | Build_job _ -> true
-      then
-        let output =
-          match output with
-          | No_output -> []
-          | Has_output output -> [ output.with_color ]
-        in
-        Console.print_user_message
-          (User_message.make
-             (if show_command then
-               progname_and_purpose Ok :: output
-             else
-               output)));
-      n
-    | Error err ->
-      let msg =
-        match err with
-        | Signaled signame -> sprintf "(got signal %s)" signame
-        | Failed n ->
-          if show_command then
-            let unexpected_outputs =
-              List.filter_map
-                [ (has_unexpected_stdout, "stdout")
-                ; (has_unexpected_stderr, "stderr")
-                ] ~f:(fun (b, name) -> Option.some_if b name)
-            in
-            match (n, unexpected_outputs) with
-            | 0, _ :: _ ->
-              sprintf "(had unexpected output on %s)"
-                (String.enumerate_and unexpected_outputs)
-            | _ -> sprintf "(exit %d)" n
-          else
-            fail ~output ~purpose ~dir []
+      let paragraphs =
+        match output with
+        | No_output -> []
+        | Has_output output -> add_command_line [ output.with_color ]
       in
-      fail ~output ~purpose ~dir
-        [ progname_and_purpose Error ++ Pp.char ' '
-          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
-        ; Pp.tag User_message.Style.Details (Pp.verbatim command_line)
-        ]
+      let paragraphs =
+        match (verbosity, purpose, output) with
+        | Short, Build_job _, _
+        | Short, Internal_job _, Has_output _ ->
+          Short_display.pp_ok ~prog ~purpose :: paragraphs
+        | _ -> paragraphs
+      in
+      if not (List.is_empty paragraphs) then
+        Console.print_user_message (User_message.make paragraphs);
+      n
+    | Error error ->
+      let loc, annots = get_loc_and_annots ~dir ~purpose ~output in
+      let paragraphs =
+        match verbosity with
+        | Short ->
+          Short_display.pp_error ~prog ~purpose ~error ~has_unexpected_stdout
+            ~has_unexpected_stderr
+          :: add_command_line (pp_output output)
+        | _ ->
+          add_command_line
+            (match output with
+            | Has_output output -> [ output.with_color ]
+            | No_output -> (
+              (* If the command has no output, we need to say something.
+                 Otherwise it's not clear what's going on. *)
+              match error with
+              | Failed n -> [ Pp.textf "Command exited with code %d." n ]
+              | Signaled signame ->
+                [ Pp.textf "Command got signal %s." signame ]))
+      in
+      fail ~loc ~annots paragraphs
 end
 
 let report_process_start stats ~id ~prog ~args ~now =
@@ -778,10 +804,10 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         match (display.verbosity, exit_status', output) with
         | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
         | Verbose, _, _ ->
-          Exit_status.handle_verbose exit_status' ~id ~purpose ~dir
+          Handle_exit_status.verbose exit_status' ~id ~purpose ~dir
             ~command_line:fancy_command_line ~output
         | _ ->
-          Exit_status.handle_non_verbose exit_status' ~prog:prog_str ~dir
+          Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
             ~command_line ~output ~purpose ~verbosity:display.verbosity
             ~has_unexpected_stdout ~has_unexpected_stderr
       in

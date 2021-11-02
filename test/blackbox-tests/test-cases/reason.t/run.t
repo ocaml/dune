@@ -3,7 +3,6 @@ Tests for reason
 Build and run a reason binary:
 
   $ dune build @runtest
-          rbin alias runtest
   Cppome
   hello world
   Bar

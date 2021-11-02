@@ -19,8 +19,6 @@ The cinaps actions should be attached to the runtest alias:
 
   $ dune runtest --diff-command diff 2>&1 | sed -E 's/[^ ]+sh/\$sh/'
   File "test.ml", line 1, characters 0-0:
-            sh (internal) (exit 1)
-  (cd _build/default && $sh -c 'diff test.ml test.ml.cinaps-corrected')
   1a2
   > hello
 
@@ -28,8 +26,6 @@ but also to the cinaps alias:
 
   $ dune build @cinaps --diff-command diff 2>&1 | sed -E 's/[^ ]+sh/\$sh/'
   File "test.ml", line 1, characters 0-0:
-            sh (internal) (exit 1)
-  (cd _build/default && $sh -c 'diff test.ml test.ml.cinaps-corrected')
   1a2
   > hello
 

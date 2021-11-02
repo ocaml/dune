@@ -25,7 +25,6 @@ Leave a/b2/c empty to make sure we don't choke on empty dirs.
   $ touch foo/a/b3/x.other
 
   $ dune build @x
-          bash alias x
   foo/a/b1/c/x.txt
   foo/a/b1/c/y.txt
   foo/a/b3/x.txt
@@ -35,7 +34,7 @@ Leave a/b2/c empty to make sure we don't choke on empty dirs.
   $ find . -name \*.txt | dune_cmd count-lines
   10
   $ dune build @x --force 2>&1 | dune_cmd count-lines
-  6
+  5
 
 Check that generated files are taken into account
 -------------------------------------------------

@@ -3,7 +3,6 @@ Simple test with a multi dir exe
 
   $ dune build --root test1
   Entering directory 'test1'
-           foo alias default
   Hello, world!
 
 Test that include_subdirs stop the recursion
@@ -11,7 +10,6 @@ Test that include_subdirs stop the recursion
 
   $ dune build --root test2
   Entering directory 'test2'
-          main alias default
   Hello, world!
 
 Test with C stubs in sub-directories

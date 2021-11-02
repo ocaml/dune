@@ -1,6 +1,5 @@
   $ dune build --root accessible-via-public
   Entering directory 'accessible-via-public'
-        runfoo alias default
   private module bar
 
   $ dune build --root inaccessible-in-deps 2>&1

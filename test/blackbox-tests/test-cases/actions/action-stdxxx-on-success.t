@@ -22,9 +22,7 @@ Test for --action-stdxxx-on-success
 By default, stdout and stderr are always printed:
 
   $ dune build
-            sh alias default
   Hello, world!
-            sh alias default
   Something went wrong!
 
 swallow tests
@@ -44,27 +42,21 @@ printing the output of the action that had a non-empty output.
 
   $ dune clean
   $ dune build --action-stdout-on-success=must-be-empty
-            sh alias default
   Something went wrong!
   File "dune", line 1, characters 0-65:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'")))
-            sh alias default (had unexpected output on stdout)
-  (cd _build/default && sh -c 'echo '\''Hello, world!'\''')
   Hello, world!
   [1]
 
   $ dune clean
   $ dune build --action-stderr-on-success=must-be-empty
-            sh alias default
   Hello, world!
   File "dune", line 5, characters 0-77:
   5 | (rule
   6 |  (alias default)
   7 |  (action (system "echo 'Something went wrong!' >&2")))
-            sh alias default (had unexpected output on stderr)
-  (cd _build/default && sh -c 'echo '\''Something went wrong!'\'' >&2')
   Something went wrong!
   [1]
 
@@ -78,8 +70,6 @@ Same but with output on both stdout and stderr:
    9 | (rule
   10 |  (alias both-stdout-and-stderr-output)
   11 |  (action (system "echo stdout; echo stderr >&2")))
-            sh alias both-stdout-and-stderr-output (had unexpected output on stdout and stderr)
-  (cd _build/default && sh -c 'echo stdout; echo stderr >&2')
   stdout
   stderr
   [1]
@@ -102,9 +92,7 @@ it, actions that printed something to stdout or stderr are
 re-executed:
 
   $ dune build
-            sh alias default
   Hello, world!
-            sh alias default
   Something went wrong!
 
 However, we currently re-execute too much. In particular, we
@@ -122,19 +110,15 @@ re-execute actions whose outcome is not affected by the change:
 
   $ dune clean
   $ dune build --action-stdout-on-success=swallow
-            sh alias default
   a.stderr
-            sh alias default
   b.stderr
 
 You can observe in the below call that both actions are being
 re-executed:
 
   $ dune build
-            sh alias default
   a.stdout
   a.stderr
-            sh alias default
   b.stderr
 
 However, re-executing the second action was not necessary given that
@@ -160,8 +144,6 @@ In case of errors, we print everything no matter what.
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'; exit 1")))
-            sh alias default (exit 1)
-  (cd _build/default && sh -c 'echo '\''Hello, world!'\''; exit 1')
   Hello, world!
   [1]
 
@@ -171,8 +153,6 @@ In case of errors, we print everything no matter what.
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'; exit 1")))
-            sh alias default (exit 1)
-  (cd _build/default && sh -c 'echo '\''Hello, world!'\''; exit 1')
   Hello, world!
   [1]
 
@@ -182,8 +162,6 @@ In case of errors, we print everything no matter what.
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'; exit 1")))
-            sh alias default (exit 1)
-  (cd _build/default && sh -c 'echo '\''Hello, world!'\''; exit 1')
   Hello, world!
   [1]
 
@@ -210,8 +188,6 @@ first command but not the second:
   4 |   (progn
   5 |    (system "echo 1")
   6 |    (system "echo 2; exit 1"))))
-            sh alias default (exit 1)
-  (cd _build/default && sh -c 'echo 2; exit 1')
   2
   [1]
 
@@ -236,8 +212,6 @@ better if we stop at the end of the whole action.
   4 |   (progn
   5 |    (system "echo 1")
   6 |    (system "echo 2"))))
-            sh alias default (had unexpected output on stdout)
-  (cd _build/default && sh -c 'echo 1')
   1
   [1]
 

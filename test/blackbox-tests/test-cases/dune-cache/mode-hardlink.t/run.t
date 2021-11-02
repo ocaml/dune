@@ -108,18 +108,14 @@ Test that the cache stores all historical build results.
   > EOF
   $ cp dune-v1 dune
   $ dune build --config-file=config t2
-          bash t1
   running
-          bash t2
   running
   $ cat _build/default/t2
   v1
   v1
   $ cp dune-v2 dune
   $ dune build --config-file=config t2
-          bash t1
   running
-          bash t2
   running
   $ cat _build/default/t2
   v2

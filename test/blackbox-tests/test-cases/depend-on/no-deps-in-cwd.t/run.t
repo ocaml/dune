@@ -16,7 +16,6 @@ and dune makes sure that the directory exists inside the sandbox.
   > )
   > EOF
   $ dune build @a --sandbox=copy
-          bash alias a/a
   contents
 
   $ cat >dune <<EOF
@@ -27,5 +26,4 @@ and dune makes sure that the directory exists inside the sandbox.
   > )
   > EOF
   $ dune build @root --sandbox=copy
-          bash alias root
   contents

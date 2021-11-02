@@ -16,7 +16,7 @@ module Dep_conf = Dune_rules.Dep_conf
 module Source_tree = Dune_engine.Source_tree
 module Build_system = Dune_engine.Build_system
 module Dune_project = Dune_engine.Dune_project
-module Promotion = Dune_engine.Promotion
+module Diff_promotion = Dune_engine.Diff_promotion
 module Build_outcome = Decl.Build_outcome
 module Status = Decl.Status
 
@@ -275,7 +275,8 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let () =
     let f _ path =
       let files = source_path_of_string path in
-      Promotion.promote_files_registered_in_last_run (These ([ files ], ignore));
+      Diff_promotion.promote_files_registered_in_last_run
+        (These ([ files ], ignore));
       Fiber.return ()
     in
     Handler.implement_request rpc Procedures.Public.promote f

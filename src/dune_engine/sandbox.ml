@@ -147,6 +147,13 @@ let create ~mode ~patch_back_source_tree ~rule_loc ~deps ~rule_dir ~chdirs
             "(mode patch-back-source-tree) is only supported on Linux at the \
              moment."
         ];
+    (* We expect this call to [snapshot t] to return the same set of files as
+       [deps], given that's exactly what we just copied in the sandbox. So in
+       theory, we could iterate over [deps] rather than scan the file system.
+       However, the code is simpler if we just call [snapshot t] before and
+       after running the action. Given that [patch_back_source_tree] is a dodgy
+       feature that we hope to get rid of in the long run, we favor code
+       simplicity over performance. *)
     { t with snapshot = Some (snapshot t) }
   ) else
     t

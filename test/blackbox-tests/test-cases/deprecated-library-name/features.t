@@ -95,6 +95,7 @@ that wasn't found:
   1 | (executable (name prog) (libraries a))
                                          ^
   Error: Library "a" not found.
+  -> required by _build/default/c/prog.exe
   [1]
 
 Test that we can migrate top-level libraries

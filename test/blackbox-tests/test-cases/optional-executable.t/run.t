@@ -26,6 +26,8 @@ Test optional executable
   3 |  (libraries does-not-exist)
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
+  -> required by _build/default/x.exe
+  -> required by alias all
   [1]
 
   $ dune build @run-x
@@ -33,6 +35,9 @@ Test optional executable
   3 |  (libraries does-not-exist)
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
+  -> required by _build/default/x.exe
+  -> required by %{exe:x.exe} at dune:8
+  -> required by alias run-x in dune:6
   [1]
 
 Reproduction case for a bug in dune < 2.4 where all executables where
@@ -51,6 +56,10 @@ The following command should fail because the executable is not optional:
   3 |  (libraries does-not-exist))
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
+  -> required by _build/default/x.exe
+  -> required by _build/install/default/bin/x
+  -> required by _build/default/x.install
+  -> required by alias install
   [1]
 
 A strange behavior discovered in #4786. Dune would ignore an executable if any
@@ -130,6 +139,10 @@ present even if the binary is not optional.
   3 |  (libraries doesnotexistatall)
                   ^^^^^^^^^^^^^^^^^
   Error: Library "doesnotexistatall" not found.
+  -> required by _build/default/exe/bar.exe
+  -> required by _build/install/default/bin/dunetestbar
+  -> required by %{bin:dunetestbar} at dune:3
+  -> required by alias run-x in dune:1
   [1]
 
 Optional on the executable should be respected:

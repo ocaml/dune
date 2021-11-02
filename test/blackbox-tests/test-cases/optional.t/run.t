@@ -46,4 +46,9 @@ The following command should fail because the executable is not optional:
   4 |  (libraries lib_that_doesn't_exist))
                   ^^^^^^^^^^^^^^^^^^^^^^
   Error: Library "lib_that_doesn't_exist" not found.
+  -> required by library "foo" in _build/default
+  -> required by _build/default/META.foo
+  -> required by _build/install/default/lib/foo/META
+  -> required by _build/default/foo.install
+  -> required by alias install
   [1]

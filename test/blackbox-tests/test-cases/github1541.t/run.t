@@ -10,6 +10,8 @@ for libraries:
   1 | (rule (with-stdout-to dummy (echo "%{lib:fakelib:bar.ml}")))
                                          ^^^^^^^^^^^^^^^^^^^^^
   Error: Library "fakelib" not found.
+  -> required by %{lib:fakelib:bar.ml} at dune:1
+  -> required by _build/default/dummy
   [1]
 
 for binaries:
@@ -31,6 +33,8 @@ for libraries in the deps field:
   1 | (rule (deps %{lib:fakelib:bar.ml}) (target dummy) (action (with-stdout-to %{target} (echo foo))))
                   ^^^^^^^^^^^^^^^^^^^^^
   Error: Library "fakelib" not found.
+  -> required by %{lib:fakelib:bar.ml} at dune:1
+  -> required by _build/default/dummy
   [1]
 
 for binaries in the deps field:

@@ -92,7 +92,9 @@ module Error = struct
      consider the library that triggered the error. *)
 
   let make ?loc ?hints paragraphs =
-    Resolve.Build.fail (User_error.make ?loc ?hints paragraphs)
+    Resolve.Build.fail
+      (User_error.make ?loc ?hints paragraphs
+         ~annots:[ User_message.Annot.Needs_stack_trace.make () ])
 
   let pp_lib info =
     let name = Lib_info.name info in
@@ -1193,7 +1195,7 @@ end = struct
                          [ Pp.textf
                              "default implementation belongs to package %s \
                               while virtual library belongs to package %s. \
-                              This is impossible\n"
+                              This is impossible."
                              (Package.Name.to_string p)
                              (Package.Name.to_string p')
                          ])))

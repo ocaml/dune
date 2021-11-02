@@ -768,6 +768,9 @@ Testsuite for the (foreign_library ...) stanza.
   4 |  (include_dirs (lib answer) (lib unknown_lib))
                                        ^^^^^^^^^^^
   Error: Library "unknown_lib" not found.
+  -> required by _build/default/some/dir/src.o
+  -> required by _build/default/some/dir/libclib.a
+  -> required by _build/default/some/dir/main.exe
   [1]
 
 ----------------------------------------------------------------------------------

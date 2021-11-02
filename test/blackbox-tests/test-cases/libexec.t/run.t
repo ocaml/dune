@@ -313,4 +313,10 @@ But will fail when we release it, as it will need to run with -p:
   5 |  (with-stdout-to lib2.ml (echo "let _ = {|%{libexec-private:lib1:lib1.ml}|}")))
                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Library "lib1" not found.
+  -> required by %{libexec-private:lib1:lib1.ml} at lib2/dune:5
+  -> required by _build/target/lib2/lib2.ml
+  -> required by _build/install/target/lib/public_lib2/lib2.ml
+  -> required by _build/target/public_lib2.install
+  -> required by alias install (context target)
+  -> required by alias target (context target) in dune:5
   [1]

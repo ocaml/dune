@@ -10,4 +10,5 @@ This one is disabled (version too low)
                    ^^^^^^^^^^
   Error: Library "futurecaml" in _build/default is hidden (unsatisfied
   'enabled_if').
+  -> required by _build/default/main2.exe
   [1]

@@ -130,3 +130,28 @@ Interaction with explicit sandboxing
   Error: This rule forbids all sandboxing modes (but it also requires
   sandboxing)
   [1]
+
+Selecting an explicit sandbox mode via the command line doesn't affect
+the rule:
+
+  $ cat >dune<<EOF
+  > (rule
+  >  (mode patch-back-source-tree)
+  >  (alias default)
+  >  (action (system "echo 'Hello, world!' > x")))
+  > EOF
+
+  $ test_with ()
+  > {
+  >   rm -f x
+  >   dune clean
+  >   dune build --sandbox $1
+  >   cat x
+  > }
+
+  $ test_with copy
+  Hello, world!
+  $ test_with hardlink
+  Hello, world!
+  $ test_with symlink
+  Hello, world!

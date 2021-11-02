@@ -94,6 +94,11 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
   let sandbox =
     match mode with
     | Patch_back_source_tree ->
+      (* If the user specifies (sandbox none), then we get a slightly confusing
+         error message. We could detect this case at parsing time and produce a
+         better error message. It's a bit awkard to implement this check at the
+         moment as the sandbox config is specified in the dependencies, but we
+         plan to change that in the future. *)
       Sandbox_config.inter sandbox
         (Sandbox_mode.Set.singleton Sandbox_mode.copy)
     | _ -> sandbox

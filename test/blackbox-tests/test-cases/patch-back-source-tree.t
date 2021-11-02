@@ -166,7 +166,7 @@ If a source file is read-only, the action sees it as writable:
   >  (mode patch-back-source-tree)
   >  (alias default)
   >  (deps x)
-  >  (action (system "if test -w x; then echo writable; else echo non-writable; fi")))
+  >  (action (system "if test -w x; then echo writable; else echo non-writable; fi; echo blah > x")))
   > EOF
 
   $ echo xx > x
@@ -179,6 +179,8 @@ If a source file is read-only, the action sees it as writable:
             sh alias default
   writable
 
+And as the action modified `x`, its permissions have now changed
+inside the source tree:
 
-
-
+  $ if test -w x; then echo writable; else echo non-writable; fi
+  writable

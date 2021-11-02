@@ -18,3 +18,5 @@ _perf
 dune.exe
 Makefile.dev
 src/dune/setup.ml
+
+.DS_Store

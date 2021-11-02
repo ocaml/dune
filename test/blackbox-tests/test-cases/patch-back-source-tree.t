@@ -108,3 +108,25 @@ Directories are created if needed
   $ dune build
   $ cat z/z
   Hello, world!
+
+Interaction with explicit sandboxing
+------------------------------------
+
+  $ cat >dune<<EOF
+  > (rule
+  >  (mode patch-back-source-tree)
+  >  (deps (sandbox none))
+  >  (alias default)
+  >  (action (system "echo 'Hello, world!'")))
+  > EOF
+
+  $ dune build
+  File "dune", line 1, characters 0-119:
+  1 | (rule
+  2 |  (mode patch-back-source-tree)
+  3 |  (deps (sandbox none))
+  4 |  (alias default)
+  5 |  (action (system "echo 'Hello, world!'")))
+  Error: This rule forbids all sandboxing modes (but it also requires
+  sandboxing)
+  [1]

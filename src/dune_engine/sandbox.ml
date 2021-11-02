@@ -102,6 +102,8 @@ let link_deps t ~mode ~patch_back_source_tree ~deps =
       | Some p -> link path (Path.build (map_path t p)))
 
 let snapshot t =
+  (* CR-someday jeremiedimino: we do this kind of traversal in other places.
+     Might be worth trying to factorise the code. *)
   let rec walk dir acc =
     match Path.Untracked.readdir_unsorted dir with
     | Error (err, func, arg) -> raise (Unix.Unix_error (err, func, arg))
@@ -232,25 +234,17 @@ let apply_changes_to_source_tree t ~old_snapshot =
     let in_source_tree = in_source_tree p in
     Path.unlink_no_err in_source_tree
   in
-  let (_ : _ Path.Map.t) =
-    Path.Map.merge old_snapshot new_snapshot ~f:(fun p before after ->
-        match (before, after) with
-        | None, None -> assert false
-        | None, Some _ ->
-          copy_file p;
-          None
-        | Some _, None ->
-          delete_file p;
-          None
-        | Some before, Some after -> (
-          match Cached_digest.Reduced_stats.compare before after with
-          | Eq -> None
-          | Lt
-          | Gt ->
-            copy_file p;
-            None))
-  in
-  ()
+  Path.Map.iter2 old_snapshot new_snapshot ~f:(fun p before after ->
+      match (before, after) with
+      | None, None -> assert false
+      | None, Some _ -> copy_file p
+      | Some _, None -> delete_file p
+      | Some before, Some after -> (
+        match Cached_digest.Reduced_stats.compare before after with
+        | Eq -> ()
+        | Lt
+        | Gt ->
+          copy_file p))
 
 let move_targets_to_build_dir t ~loc ~targets =
   Option.iter t.snapshot ~f:(fun old_snapshot ->

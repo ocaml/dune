@@ -2,7 +2,7 @@
 
 open Import
 
-module With_directory_annot : User_message.Annot.S with type payload = Path.t
+val with_directory_annot : Path.t User_message.Annots.Key.t
 
 (** How to handle sub-process failures *)
 type ('a, 'b) failure_mode =
@@ -55,8 +55,8 @@ end
 (** Why a Fiber.t was run. The location and annotations will be attached to
     error messages. *)
 type purpose =
-  | Internal_job of Loc.t option * User_message.Annot.t list
-  | Build_job of Loc.t option * User_message.Annot.t list * Targets.t
+  | Internal_job of Loc.t option * User_message.Annots.t
+  | Build_job of Loc.t option * User_message.Annots.t * Targets.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)

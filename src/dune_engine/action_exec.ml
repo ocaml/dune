@@ -304,8 +304,8 @@ let rec exec t ~ectx ~eenv =
         in
         Fiber.finalize
           (fun () ->
-            let annot =
-              Diff_promotion.Annot.make
+            let annots =
+              User_message.Annots.singleton Diff_promotion.Annot.annot
                 { Diff_promotion.Annot.in_source = source_file
                 ; in_build =
                     (if optional && in_source_or_target then
@@ -315,13 +315,13 @@ let rec exec t ~ectx ~eenv =
                 }
             in
             if mode = Binary then
-              User_error.raise ~annots:[ annot ]
+              User_error.raise ~annots
                 [ Pp.textf "Files %s and %s differ."
                     (Path.to_string_maybe_quoted file1)
                     (Path.to_string_maybe_quoted (Path.build file2))
                 ]
             else
-              Print_diff.print annot file1 (Path.build file2)
+              Print_diff.print annots file1 (Path.build file2)
                 ~skip_trailing_cr:(mode = Text && Sys.win32))
           ~finally:(fun () ->
             (match optional with
@@ -504,7 +504,7 @@ let extend_build_path_prefix_map env how map =
 
 let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
     ~execution_parameters t =
-  let purpose = Process.Build_job (None, [], targets) in
+  let purpose = Process.Build_job (None, User_message.Annots.empty, targets) in
   let env =
     extend_build_path_prefix_map env `New_rules_have_precedence
       [ Some

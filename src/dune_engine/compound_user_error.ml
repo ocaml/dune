@@ -25,23 +25,18 @@ end = struct
     { main; related }
 end
 
-module Annot = struct
-  include T
+include T
 
-  type payload = t
+let to_dyn { main; related } =
+  let open Dyn.Encoder in
+  record
+    [ ("main", string (User_message.to_string main))
+    ; ("related", (list string) (List.map related ~f:User_message.to_string))
+    ]
 
-  let to_dyn { main; related } =
-    let open Dyn.Encoder in
-    record
-      [ ("main", string (User_message.to_string main))
-      ; ("related", (list string) (List.map related ~f:User_message.to_string))
-      ]
-end
+let annot = User_message.Annots.Key.create ~name:"compound-user-error" to_dyn
 
-include Annot
-include User_message.Annot.Make (Annot)
-
-let make ~main ~related = make (create ~main ~related)
+let make ~main ~related = create ~main ~related
 
 let make_loc ~dir { Ocamlc_loc.path; chars; line } : Loc.t =
   let pos_fname =

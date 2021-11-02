@@ -28,7 +28,7 @@ module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
       type t = unit
     end
 
-    module Annot = struct
+    module Annots = struct
       type t = unit
     end
   end

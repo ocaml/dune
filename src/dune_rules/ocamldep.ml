@@ -76,17 +76,20 @@ let deps_of ~cctx ~ml_kind unit =
   let open Memo.Build.O in
   let* () =
     SC.add_rule sctx ~dir
-      (let flags =
-         Option.value (Module.pp_flags unit) ~default:(Action_builder.return [])
-       in
-       Command.run context.ocamldep
-         ~dir:(Path.build context.build_dir)
-         [ A "-modules"
-         ; Command.Args.dyn flags
-         ; Command.Ml_kind.flag ml_kind
-         ; Dep (Module.File.path source)
-         ]
-         ~stdout_to:ocamldep_output)
+      (let open Action_builder.With_targets.O in
+      let flags, sandbox =
+        Option.value (Module.pp_flags unit)
+          ~default:(Action_builder.return [], Sandbox_config.default)
+      in
+      Command.run context.ocamldep
+        ~dir:(Path.build context.build_dir)
+        [ A "-modules"
+        ; Command.Args.dyn flags
+        ; Command.Ml_kind.flag ml_kind
+        ; Dep (Module.File.path source)
+        ]
+        ~stdout_to:ocamldep_output
+      >>| Action.Full.add_sandbox sandbox)
   in
   let build_paths dependencies =
     let dependency_file_path m =

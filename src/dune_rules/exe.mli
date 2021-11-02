@@ -45,6 +45,7 @@ val link_many :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
+  -> ?sandbox:Sandbox_config.t
   -> dep_graphs:Dep_graph.t Import.Ml_kind.Dict.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
@@ -56,6 +57,7 @@ val build_and_link :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
+  -> ?sandbox:Sandbox_config.t
   -> program:Program.t
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
@@ -66,6 +68,7 @@ val build_and_link_many :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
+  -> ?sandbox:Sandbox_config.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option

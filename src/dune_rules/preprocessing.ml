@@ -318,9 +318,8 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     Module.file ~ml_kind:Impl module_
     |> Option.value_exn |> Path.as_in_build_dir_exn
   in
-  let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
   let* () =
-    add_rule ~sandbox:Sandbox_config.default
+    SC.add_rule sctx ~dir
       (Action_builder.write_file_dyn ml_source
          (Resolve.read
             (let open Resolve.O in
@@ -601,9 +600,11 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
         Preprocess.remove_future_syntax ~for_:Compiler pp
           (Super_context.context sctx).version)
   in
-  let preprocessor_deps =
+  let preprocessor_deps, sandbox =
     Dep_conf_eval.unnamed preprocessor_deps ~expander
-    |> Action_builder.memoize "preprocessor deps"
+  in
+  let preprocessor_deps =
+    Action_builder.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
     Staged.unstage (lint_module sctx ~dir ~expander ~lint ~lib_name ~scope)
@@ -630,7 +631,9 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                 in
                 SC.add_rule sctx ~loc ~dir
                   (let open Action_builder.With_targets.O in
-                  Action_builder.with_no_targets preprocessor_deps >>> action))
+                  Action_builder.with_no_targets preprocessor_deps
+                  >>> action
+                  >>| Action.Full.add_sandbox sandbox))
             >>= setup_dialect_rules sctx ~dir ~expander
           in
           let+ () =
@@ -661,8 +664,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
               Memo.Build.when_ lint (fun () -> lint_module ~ast ~source:m)
             in
             pped_module ast ~f:(fun ml_kind src dst ->
-                SC.add_rule ~sandbox:Sandbox_config.no_special_requirements sctx
-                  ~loc ~dir
+                SC.add_rule sctx ~loc ~dir
                   (promote_correction_with_target ~suffix:corrected_suffix
                      (Path.as_in_build_dir_exn
                         (Option.value_exn (Module.file m ~ml_kind)))
@@ -681,7 +683,8 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                               ; Command.Ml_kind.ppx_driver_flag ml_kind
                               ; Dep (Path.build src)
                               ; As flags
-                              ]))))
+                              ]
+                            >>| Action.Full.add_sandbox sandbox))))
         else
           let dash_ppx_flag =
             Action_builder.memoize "ppx command"
@@ -711,7 +714,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                in
                [ "-ppx"; command ])
           in
-          let pp = Some dash_ppx_flag in
+          let pp = Some (dash_ppx_flag, sandbox) in
           fun m ~lint ->
             let open Memo.Build.O in
             let* ast = setup_dialect_rules sctx ~dir ~expander m in

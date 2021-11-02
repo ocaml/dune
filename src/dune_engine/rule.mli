@@ -93,8 +93,7 @@ val to_dyn : t -> Dyn.t
 (** [make] raises an error if the set of [targets] is not well-formed. See the
     [Targets.Validation_result] data type for the list of possible problems. *)
 val make :
-     ?sandbox:Sandbox_config.t
-  -> ?mode:Mode.t
+     ?mode:Mode.t
   -> context:Build_context.t option
   -> ?info:Info.t
   -> targets:Targets.t

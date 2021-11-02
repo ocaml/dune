@@ -488,7 +488,7 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
 
 let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in
-  let deps_builder, expander =
+  let deps_builder, expander, sandbox =
     Dep_conf_eval.named ~expander deps_written_by_user
   in
   let expander =
@@ -508,12 +508,12 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
   let+ () = deps_builder
   and+ action = build in
   let dir = Path.build (Expander.dir expander) in
-  Action.Full.make (Action.Chdir (dir, action))
+  Action.Full.make (Action.Chdir (dir, action)) ~sandbox
 
 let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander =
   let open Action_builder.O in
-  let deps_builder, expander =
+  let deps_builder, expander, sandbox =
     Dep_conf_eval.named ~expander deps_written_by_user
   in
   let expander =
@@ -565,7 +565,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     let+ () = deps_builder
     and+ action = build in
     let dir = Path.build (Expander.dir expander) in
-    Action.Full.make (Action.Chdir (dir, action))
+    Action.Full.make (Action.Chdir (dir, action)) ~sandbox
   in
   Action_builder.with_targets ~targets build
 

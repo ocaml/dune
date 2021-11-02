@@ -79,41 +79,9 @@ include T
 module O = Comparable.Make (T)
 module Set = O.Set
 
-let add_sandbox_config :
-    type a.
-    a Action_builder.eval_mode -> Sandbox_config.t -> a Dep.Map.t -> a Dep.Map.t
-    =
- fun mode sandbox map ->
-  let dep = Dep.sandbox_config sandbox in
-  match mode with
-  | Lazy -> Dep.Set.add map dep
-  | Eager -> Dep.Map.set map dep Dep.Fact.nothing
-
-let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
-    ?(info = Info.Internal) ~targets action =
-  let sandbox =
-    match mode with
-    | Patch_back_source_tree ->
-      (* If the user specifies (sandbox none), then we get a slightly confusing
-         error message. We could detect this case at parsing time and produce a
-         better error message. It's a bit awkard to implement this check at the
-         moment as the sandbox config is specified in the dependencies, but we
-         plan to change that in the future. *)
-      Sandbox_config.inter sandbox
-        (Sandbox_mode.Set.singleton Sandbox_mode.copy)
-    | _ -> sandbox
-  in
-  let action =
-    let open Memo.Build.O in
-    Action_builder.memoize "Rule.make"
-      (Action_builder.of_thunk
-         { f =
-             (fun mode ->
-               let+ action, deps = Action_builder.run action mode in
-               let deps = add_sandbox_config mode sandbox deps in
-               (action, deps))
-         })
-  in
+let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
+    action =
+  let action = Action_builder.memoize "Rule.make" action in
   let report_error ?(extra_pp = []) message =
     match info with
     | From_dune_file loc ->

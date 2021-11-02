@@ -106,7 +106,6 @@ val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
 
 val add_rule :
      t
-  -> ?sandbox:Sandbox_config.t
   -> ?mode:Rule.Mode.t
   -> ?loc:Loc.t
   -> dir:Path.Build.t
@@ -115,7 +114,6 @@ val add_rule :
 
 val add_rule_get_targets :
      t
-  -> ?sandbox:Sandbox_config.t
   -> ?mode:Rule.Mode.t
   -> ?loc:Loc.t
   -> dir:Path.Build.t
@@ -124,7 +122,6 @@ val add_rule_get_targets :
 
 val add_rules :
      t
-  -> ?sandbox:Sandbox_config.t
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t list
   -> unit Memo.Build.t

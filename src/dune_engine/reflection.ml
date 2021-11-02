@@ -51,8 +51,7 @@ end = struct
         | File_selector g -> Build_system.eval_pred g
         | Alias a -> Expand.alias a
         | Env _
-        | Universe
-        | Sandbox_config _ ->
+        | Universe ->
           Memo.Build.return Path.Set.empty)
     >>| Path.Set.union_all
 end

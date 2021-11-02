@@ -10,7 +10,6 @@ module T = struct
     | Alias of Alias.t
     | File_selector of File_selector.t
     | Universe
-    | Sandbox_config of Sandbox_config.t
 
   module Stable_for_digest = struct
     type t =
@@ -22,7 +21,6 @@ module T = struct
           }
       | File_selector of Dyn.t
       | Universe
-      | Sandbox_config of Sandbox_config.t
   end
 
   let env e = Env e
@@ -34,8 +32,6 @@ module T = struct
   let universe = Universe
 
   let file_selector g = File_selector g
-
-  let sandbox_config config = Sandbox_config config
 
   let compare x y =
     match (x, y) with
@@ -52,30 +48,15 @@ module T = struct
     | File_selector _, _ -> Lt
     | _, File_selector _ -> Gt
     | Universe, Universe -> Ordering.Eq
-    | Universe, _ -> Lt
-    | _, Universe -> Gt
-    | Sandbox_config x, Sandbox_config y -> Sandbox_config.compare x y
 
   let encode t =
     let open Dune_lang.Encoder in
-    let sandbox_config (config : Sandbox_config.t) =
-      list
-        (fun x -> x)
-        (List.filter_map Sandbox_mode.all ~f:(fun mode ->
-             if not (Sandbox_config.mem config mode) then
-               Some
-                 (pair string string ("disallow", Sandbox_mode.to_string mode))
-             else
-               None))
-    in
     match t with
     | File_selector g -> pair string File_selector.encode ("glob", g)
     | Env e -> pair string string ("Env", e)
     | File f -> pair string Dpath.encode ("File", f)
     | Alias a -> pair string Alias.encode ("Alias", a)
     | Universe -> string "Universe"
-    | Sandbox_config config ->
-      pair string sandbox_config ("Sandbox_config", config)
 
   let to_dyn t = Dyn.String (Dune_lang.to_string (encode t))
 end
@@ -86,17 +67,6 @@ module O = Comparable.Make (T)
 module Map = struct
   include O.Map
   include Memo.Build.Make_map_traversals (O.Map)
-
-  let sandbox_config t =
-    foldi t ~init:Sandbox_config.no_special_requirements ~f:(fun x _ acc ->
-        match x with
-        | File_selector _
-        | Env _
-        | File _
-        | Alias _
-        | Universe ->
-          acc
-        | Sandbox_config config -> Sandbox_config.inter acc config)
 
   let has_universe t = mem t Universe
 end
@@ -315,7 +285,7 @@ module Facts = struct
         | Alias ps ->
           Path.Set.union acc ps.parent_dirs)
 
-  let digest t ~sandbox_mode ~env =
+  let digest t ~env =
     let facts =
       let file (p, d) = (Path.to_string p, d) in
       Map.foldi t ~init:[]
@@ -323,10 +293,6 @@ module Facts = struct
           match dep with
           | Env var -> Env (var, Env.get env var) :: acc
           | Universe -> acc
-          | Sandbox_config config ->
-            assert (Sandbox_config.mem config sandbox_mode);
-            (* recorded globally for the whole dep set, see below *)
-            acc
           | File _
           | File_selector _
           | Alias _ -> (
@@ -336,7 +302,7 @@ module Facts = struct
             | File_selector (id, ps) -> File_selector (id, ps.digest) :: acc
             | Alias ps -> Alias ps.digest :: acc))
     in
-    Digest.generic (sandbox_mode, facts)
+    Digest.generic facts
 end
 
 module Set = struct
@@ -432,7 +398,6 @@ module Set = struct
         match dep with
         | Env var -> Env var :: acc
         | Universe -> Universe :: acc
-        | Sandbox_config config -> Sandbox_config config :: acc
         | File p -> File (Path.to_string p) :: acc
         | File_selector fs -> File_selector (File_selector.to_dyn fs) :: acc
         | Alias a ->

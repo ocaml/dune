@@ -227,7 +227,8 @@ include Sub_system.Register_end_point (struct
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in
            let open Action_builder.O in
-           let+ () = Dep_conf_eval.unnamed info.deps ~expander
+           let deps, sandbox = Dep_conf_eval.unnamed info.deps ~expander in
+           let+ () = deps
            and+ () = Action_builder.paths source_files
            and+ () = Action_builder.path exe
            and+ action =
@@ -251,7 +252,7 @@ include Sub_system.Register_end_point (struct
                | Ok p -> Action_builder.path p >>> Action_builder.return action)
            in
            let run_tests = Action.chdir (Path.build dir) action in
-           Action.Full.make
+           Action.Full.make ~sandbox
            @@ Action.progn
                 (run_tests
                 :: List.map source_files ~f:(fun fn ->

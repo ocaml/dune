@@ -76,7 +76,6 @@ Non-modified dependencies are not promoted
   > EOF
 
   $ dune build
-            sh alias default
   Hello, world!
   $ if ! test -f x; then echo ok; fi
   ok
@@ -176,7 +175,6 @@ If a source file is read-only, the action sees it as writable:
   non-writable
 
   $ dune build
-            sh alias default
   writable
 
 And as the action modified `x`, its permissions have now changed

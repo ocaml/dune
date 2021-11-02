@@ -155,3 +155,30 @@ the rule:
   Hello, world!
   $ test_with symlink
   Hello, world!
+
+Interaction with files writable status
+--------------------------------------
+
+If a source file is read-only, the action sees it as writable:
+
+  $ cat >dune<<EOF
+  > (rule
+  >  (mode patch-back-source-tree)
+  >  (alias default)
+  >  (deps x)
+  >  (action (system "if test -w x; then echo writable; else echo non-writable; fi")))
+  > EOF
+
+  $ echo xx > x
+  $ chmod -w x
+
+  $ if test -w x; then echo writable; else echo non-writable; fi
+  non-writable
+
+  $ dune build
+            sh alias default
+  writable
+
+
+
+

@@ -416,19 +416,30 @@ let pp_id id =
   let open Pp.O in
   Pp.char '[' ++ Pp.tag User_message.Style.Id (Pp.textf "%d" id) ++ Pp.char ']'
 
-module Handle_exit_status
-    (*: sig open Exit_status
+module Handle_exit_status : sig
+  open Exit_status
 
-      val verbose : ('a, error) result -> id:int -> purpose:purpose ->
-      output:string -> command_line:User_message.Style.t Pp.t ->
-      dir:With_directory_annot.payload option -> 'a
+  val verbose :
+       ('a, error) result
+    -> id:int
+    -> purpose:purpose
+    -> output:string
+    -> command_line:User_message.Style.t Pp.t
+    -> dir:With_directory_annot.payload option
+    -> 'a
 
-      val non_verbose : ('a, error) result ->
-      verbosity:Scheduler.Config.Display.verbosity -> purpose:purpose ->
-      output:string -> prog:string -> command_line:string ->
-      dir:With_directory_annot.payload option -> has_unexpected_stdout:bool ->
-      has_unexpected_stderr:bool -> 'a end*) =
-struct
+  val non_verbose :
+       ('a, error) result
+    -> verbosity:Scheduler.Config.Display.verbosity
+    -> purpose:purpose
+    -> output:string
+    -> prog:string
+    -> command_line:string
+    -> dir:With_directory_annot.payload option
+    -> has_unexpected_stdout:bool
+    -> has_unexpected_stderr:bool
+    -> 'a
+end = struct
   open Exit_status
 
   type output =

@@ -376,7 +376,7 @@ module Dir0 = struct
 end
 
 let ancestor_vcs =
-  Memo.lazy_ (fun () ->
+  Memo.lazy_ ~name:"ancestor_vcs" (fun () ->
       if Config.inside_dune then
         Memo.Build.return None
       else

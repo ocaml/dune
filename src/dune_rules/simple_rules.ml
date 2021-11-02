@@ -6,9 +6,10 @@ module SC = Super_context
 open Memo.Build.O
 
 module Alias_rules = struct
-  let add sctx ~alias ~loc ~locks build =
+  let add sctx ~alias ~loc ~locks ?patch_back_source_tree build =
     let dir = Alias.dir alias in
-    SC.add_alias_action sctx alias ~dir ~loc ~locks build
+    SC.add_alias_action sctx alias ~dir ~loc ~locks ?patch_back_source_tree
+      build
 
   let add_empty sctx ~loc ~alias =
     let action = Action_builder.return Action.empty in
@@ -117,8 +118,14 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     | Alias_only name ->
       let alias = Alias.make ~dir name in
       let* locks = interpret_locks ~expander rule.locks in
+      let patch_back_source_tree =
+        match rule.mode with
+        | Patch_back_source_tree -> true
+        | _ -> false
+      in
       let+ () =
         Alias_rules.add sctx ~alias ~loc:(Some rule.loc) action.build ~locks
+          ~patch_back_source_tree
       in
       Targets.empty)
 

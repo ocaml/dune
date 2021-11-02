@@ -12,6 +12,8 @@ val map_path : t -> Path.Build.t -> Path.Build.t
 (** Create a new sandbox and copy or link dependencies inside it. *)
 val create :
      mode:Sandbox_mode.some
+  -> patch_back_source_tree:bool
+  -> rule_loc:Loc.t
   -> deps:Dep.Facts.t
   -> rule_dir:Path.Build.t
   -> chdirs:Path.Set.t

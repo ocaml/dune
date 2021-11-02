@@ -928,7 +928,7 @@ let memo =
         (let ctx = Super_context.context sctx in
          let context_name = ctx.name in
          let rules =
-           Memo.lazy_ (fun () ->
+           Memo.lazy_ ~name:"install-rules-and-pkg-entries-rules" (fun () ->
                Rules.collect_unit (fun () ->
                    let* () = install_rules sctx pkg in
                    install_alias ctx pkg))

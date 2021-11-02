@@ -163,7 +163,7 @@ module Opam : sig
   val opam_binary_exn : unit -> Path.t Memo.Build.t
 end = struct
   let opam =
-    Memo.Lazy.create (fun () ->
+    Memo.Lazy.create ~name:"context-opam" (fun () ->
         Bin.which ~path:(Env.path Env.initial) "opam" >>= function
         | None -> Utils.program_not_found "opam" ~loc:None
         | Some opam -> (

@@ -69,14 +69,16 @@ module Set = struct
 
   let compare = Dict.compare Bool.compare
 
+  let of_func = Dict.of_func
+
+  let singleton k = of_func (equal k)
+
   let equal a b =
     match compare a b with
     | Eq -> true
     | Lt
     | Gt ->
       false
-
-  let of_func = Dict.of_func
 
   let mem = Dict.get
 

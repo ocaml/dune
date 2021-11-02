@@ -23,4 +23,6 @@ Test the `forbidden_libraries` feature
   Error: Library "a" was pulled in.
   -> required by library "b" in _build/default
   -> required by library "c" in _build/default
+  -> required by executable main in dune:5
+  -> required by _build/default/main.exe
   [1]

@@ -34,6 +34,7 @@ dune >= 2.8
   18 |  (libraries bar))
                    ^^^
   Error: Library "bar" in _build/default is hidden (unsatisfied 'enabled_if').
+  -> required by _build/default/bar_exe.exe
   [1]
 
 + The actual context

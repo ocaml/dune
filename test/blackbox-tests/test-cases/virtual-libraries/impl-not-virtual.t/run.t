@@ -5,4 +5,5 @@ appropriate error message.
   3 |  (implements lib))
                    ^^^
   Error: Library "lib" is not virtual. It cannot be implemented by "impl".
+  -> required by alias default in dune:1
   [1]

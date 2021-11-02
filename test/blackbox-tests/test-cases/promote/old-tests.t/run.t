@@ -108,14 +108,14 @@ Only "only1" should be promoted in the source tree:
   $ ls -1 only*
   only1
 
-Test that Dune restores only1 if it's deleted from the source tree
+Dune restores only1 if it's deleted from the source tree
 
   $ rm only1
   $ dune build only2
   $ ls -1 only*
   only1
 
-Test that Dune restores only1 if it's modified in the source tree
+Dune restores only1 if it's modified in the source tree
 
   $ cat only1
   0

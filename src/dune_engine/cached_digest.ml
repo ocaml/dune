@@ -1,7 +1,5 @@
 open Import
 
-(* The reduced set of file stats this module inspects to decide whether a file
-   changed or not *)
 module Reduced_stats = struct
   type t =
     { mtime : float

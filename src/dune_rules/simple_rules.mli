@@ -11,6 +11,7 @@ module Alias_rules : sig
     -> alias:Alias.t
     -> loc:Loc.t option
     -> locks:Path.t list
+    -> ?patch_back_source_tree:bool
     -> Action.t Action_builder.t
     -> unit Memo.Build.t
 

@@ -369,7 +369,7 @@ let get_dir_triage t ~dir =
     Memo.Build.return
     @@ Dir_triage.Known
          (Non_build
-            (match Path.readdir_unsorted dir with
+            (match Path.Untracked.readdir_unsorted dir with
             | Error (Unix.ENOENT, _, _) -> Path.Set.empty
             | Error (e, _syscall, _arg) ->
               (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
@@ -839,7 +839,8 @@ end = struct
         match rule.mode with
         | Standard
         | Promote _
-        | Ignore_source_files ->
+        | Ignore_source_files
+        | Patch_back_source_tree ->
           true
         | Fallback ->
           let source_files_for_targets =
@@ -1000,7 +1001,8 @@ end = struct
             in
             Path.Build.Set.union to_ignore acc_ignored
           | Standard
-          | Fallback ->
+          | Fallback
+          | Patch_back_source_tree ->
             acc_ignored)
     in
     let source_files_to_ignore =
@@ -1454,7 +1456,7 @@ end = struct
 
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
-      ~dir ~targets =
+      ~dir ~targets ~(rule_mode : Rule.Mode.t) =
     let open Fiber.O in
     let file_targets, has_directory_targets =
       Targets.map targets ~f:(fun ~files ~dirs ->
@@ -1467,7 +1469,12 @@ end = struct
     let chdirs = Action.chdirs action in
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
-          Sandbox.create ~mode ~deps ~rule_dir:dir ~chdirs ~rule_digest
+          Sandbox.create ~mode ~deps
+            ~patch_back_source_tree:
+              (match rule_mode with
+              | Patch_back_source_tree -> true
+              | _ -> false)
+            ~rule_dir:dir ~rule_loc:loc ~chdirs ~rule_digest
             ~expand_aliases:
               (Execution_parameters.expand_aliases_in_sandbox
                  execution_parameters))
@@ -1651,6 +1658,13 @@ end = struct
        not expected to change often, so we do not sacrifice too much performance
        here by executing it sequentially. *)
     let* action, deps = Action_builder.run action Eager in
+    let action =
+      (* Rules that patch back the source tree cannot go in the shared cache *)
+      match (mode, action.can_go_in_shared_cache) with
+      | Patch_back_source_tree, true ->
+        { action with can_go_in_shared_cache = false }
+      | _ -> action
+    in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
         (if Loc.is_none loc then
@@ -1857,6 +1871,7 @@ end = struct
                 let* exec_result =
                   execute_action_for_rule t ~rule_digest ~action ~deps ~loc
                     ~context ~execution_parameters ~sandbox_mode ~dir ~targets
+                    ~rule_mode:mode
                 in
                 let* targets_and_digests =
                   (* Step IV. Store results to the shared cache and if that step
@@ -1909,7 +1924,9 @@ end = struct
         in
         let* () =
           match (mode, !Clflags.promote) with
-          | (Standard | Fallback | Ignore_source_files), _
+          | ( ( Standard | Fallback | Ignore_source_files
+              | Patch_back_source_tree )
+            , _ )
           | Promote _, Some Never ->
             Fiber.return ()
           | Promote promote, (Some Automatically | None) ->
@@ -1974,8 +1991,13 @@ end = struct
       }
     in
     let rule =
-      let { Rule.Anonymous_action.context; action = _; loc; dir = _; alias = _ }
-          =
+      let { Rule.Anonymous_action.context
+          ; action = _
+          ; loc
+          ; dir = _
+          ; alias = _
+          ; patch_back_source_tree
+          } =
         act
       in
       Rule.make ~context
@@ -1984,6 +2006,11 @@ end = struct
           | Some loc -> From_dune_file loc
           | None -> Internal)
         ~targets:(Targets.File.create target)
+        ~mode:
+          (if patch_back_source_tree then
+            Patch_back_source_tree
+          else
+            Standard)
         (Action_builder.of_thunk
            { f =
                (fun mode ->
@@ -2005,7 +2032,8 @@ end = struct
       ~input:(module Anonymous_action)
       execute_action_generic_stage2_impl
 
-  let execute_action_generic ~observing_facts act ~capture_stdout =
+  let execute_action_generic ~observing_facts (act : Rule.Anonymous_action.t)
+      ~capture_stdout =
     (* We memoize the execution of anonymous actions, both via the persistent
        mechanism for not re-running build rules between invocations of [dune
        build] and via [Memo]. The former is done by producing a normal build
@@ -2031,12 +2059,21 @@ end = struct
     (* Shadow [observing_facts] to make sure we don't use it again. *)
     let observing_facts = () in
     ignore observing_facts;
+    let act =
+      (* Actions that patch back the source tree cannot go in the shared
+         cache *)
+      if act.patch_back_source_tree && act.action.can_go_in_shared_cache then
+        { act with action = { act.action with can_go_in_shared_cache = false } }
+      else
+        act
+    in
     let digest =
       let { Rule.Anonymous_action.context
           ; action = { action; env; locks; can_go_in_shared_cache }
           ; loc
           ; dir
           ; alias
+          ; patch_back_source_tree
           } =
         act
       in
@@ -2068,7 +2105,8 @@ end = struct
         , dir
         , alias
         , capture_stdout
-        , can_go_in_shared_cache )
+        , can_go_in_shared_cache
+        , patch_back_source_tree )
     in
     (* It might seem superfluous to memoize the execution here, given that a
        given anonymous action will typically only appear once during a given

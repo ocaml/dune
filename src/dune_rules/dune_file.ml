@@ -1540,6 +1540,15 @@ module Rule = struct
   module Mode = struct
     include Rule.Mode
 
+    let patch_back_from_source_tree_syntax =
+      Dune_lang.Syntax.create ~experimental:true ~name:"patch-back-source-tree"
+        ~desc:"experimental support for (mode patch-back-source-tree)"
+        [ ((0, 1), `Since (3, 0)) ]
+
+    let () =
+      Dune_project.Extension.register_simple patch_back_from_source_tree_syntax
+        (Dune_lang.Decoder.return [])
+
     let decode =
       let promote_into lifetime =
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
@@ -1558,6 +1567,11 @@ module Rule = struct
                  { lifetime = Until_clean; into = None; only = None }) )
         ; ("promote-into", promote_into Unlimited)
         ; ("promote-until-clean-into", promote_into Until_clean)
+        ; ( "patch-back-source-tree"
+          , let+ () =
+              Dune_lang.Syntax.since patch_back_from_source_tree_syntax (0, 1)
+            in
+            Rule.Mode.Patch_back_source_tree )
         ]
 
     let field = field "mode" decode ~default:Rule.Mode.Standard

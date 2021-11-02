@@ -45,6 +45,8 @@ module type S = sig
 
   val iteri : 'a t -> f:(key -> 'a -> unit) -> unit
 
+  val iter2 : 'a t -> 'b t -> f:(key -> 'a option -> 'b option -> unit) -> unit
+
   val fold : 'a t -> init:'b -> f:('a -> 'b -> 'b) -> 'b
 
   val foldi : 'a t -> init:'b -> f:(key -> 'a -> 'b -> 'b) -> 'b

@@ -15,6 +15,8 @@ module Path = struct
   module Untracked = struct
     let exists = exists
 
+    let readdir_unsorted = readdir_unsorted
+
     let readdir_unsorted_with_kinds = readdir_unsorted_with_kinds
 
     let stat = stat
@@ -38,6 +40,8 @@ module Path = struct
   let lstat = `Use_fs_memo_lstat_instead
 
   let lstat_exn = `Use_fs_memo_lstat_instead
+
+  let readdir_unsorted = `Use_fs_memo_dir_contents_instead
 
   let readdir_unsorted_with_kinds = `Use_fs_memo_dir_contents_instead
 end

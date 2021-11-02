@@ -6,7 +6,7 @@ module Event = Chrome_trace.Event
 module Timestamp = Event.Timestamp
 module Action_output_on_success = Execution_parameters.Action_output_on_success
 
-module With_directory_annot = User_error.Annot.Make (struct
+module With_directory_annot = User_message.Annot.Make (struct
   type payload = Path.t
 
   let to_dyn = Path.to_dyn
@@ -154,8 +154,8 @@ module Io = struct
 end
 
 type purpose =
-  | Internal_job of Loc.t option * User_error.Annot.t list
-  | Build_job of Loc.t option * User_error.Annot.t list * Targets.t
+  | Internal_job of Loc.t option * User_message.Annot.t list
+  | Build_job of Loc.t option * User_message.Annot.t list * Targets.t
 
 let loc_and_annots_of_purpose = function
   | Internal_job (loc, annots) -> (loc, annots)
@@ -477,7 +477,7 @@ end = struct
       | Has_output output ->
         if output.has_embedded_location then
           let annots =
-            User_error.Annot.Has_embedded_location.make () :: annots
+            User_message.Annot.Has_embedded_location.make () :: annots
           in
           match Compound_user_error.parse_output ~dir output.without_color with
           | None -> annots
@@ -491,7 +491,7 @@ end = struct
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
-    raise (User_error.E (User_message.make ?loc paragraphs, annots))
+    raise (User_error.E (User_message.make ?loc ~annots paragraphs))
 
   let verbose t ~id ~purpose ~output ~command_line ~dir =
     let open Pp.O in

@@ -354,7 +354,7 @@ let subst vcs =
     let version = Dune_project.dune_version dune_project.project in
     let ok_exn = function
       | Ok s -> s
-      | Error e -> raise (User_error.E (e, []))
+      | Error e -> raise (User_error.E e)
     in
     if version >= (3, 0) then
       metadata_from_dune_project ()

@@ -254,7 +254,7 @@ module Error = struct
       | e -> e
     in
     match e with
-    | User_error.E (_, annots) -> List.find_map annots ~f:extract_promote
+    | User_error.E msg -> List.find_map msg.annots ~f:extract_promote
     | _ -> None
 
   let extract_compound_error annot =
@@ -267,9 +267,9 @@ module Error = struct
       | e -> e
     in
     match e with
-    | User_error.E (msg, annots) -> (
-      let dir = List.find_map annots ~f:extract_dir in
-      match List.find_map annots ~f:extract_compound_error with
+    | User_error.E msg -> (
+      let dir = List.find_map msg.annots ~f:extract_dir in
+      match List.find_map msg.annots ~f:extract_compound_error with
       | None -> (msg, [], dir)
       | Some { main; related } -> (main, related, dir))
     | e ->
@@ -1672,11 +1672,9 @@ end = struct
         else
           Fiber.with_error_handler f ~on_error:(fun exn ->
               match exn.exn with
-              | User_error.E (msg, annots)
-                when not (User_error.has_location msg annots) ->
+              | User_error.E msg when not (User_message.has_location msg) ->
                 let msg = { msg with loc = Some loc } in
-                Exn_with_backtrace.reraise
-                  { exn with exn = User_error.E (msg, annots) }
+                Exn_with_backtrace.reraise { exn with exn = User_error.E msg }
               | _ -> Exn_with_backtrace.reraise exn))
     in
     wrap_fiber (fun () ->
@@ -2179,7 +2177,7 @@ end = struct
                 [ ("targets", Targets.to_dyn rule.targets) ]
           in
           User_error.raise ~loc:rule.loc
-            ~annots:[ User_error.Annot.Needs_stack_trace.make () ]
+            ~annots:[ User_message.Annot.Needs_stack_trace.make () ]
             [ Pp.textf
                 "This rule defines a directory target %S that matches the \
                  requested path %S but the rule's action didn't produce it"

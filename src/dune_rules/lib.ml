@@ -179,13 +179,12 @@ module Error = struct
   let private_deps_not_allowed ~loc private_dep =
     let name = Lib_info.name private_dep in
     User_error.E
-      ( User_error.make ~loc
-          [ Pp.textf
-              "Library %S is private, it cannot be a dependency of a public \
-               library. You need to give %S a public name."
-              (Lib_name.to_string name) (Lib_name.to_string name)
-          ]
-      , [] )
+      (User_error.make ~loc
+         [ Pp.textf
+             "Library %S is private, it cannot be a dependency of a public \
+              library. You need to give %S a public name."
+             (Lib_name.to_string name) (Lib_name.to_string name)
+         ])
 
   let only_ppx_deps_allowed ~loc dep =
     let name = Lib_info.name dep in

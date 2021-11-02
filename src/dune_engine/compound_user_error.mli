@@ -9,9 +9,9 @@ type t = private
   ; related : User_message.t list
   }
 
-include User_error.Annot.S with type payload := t
+include User_message.Annot.S with type payload := t
 
 val make :
-  main:User_message.t -> related:User_message.t list -> User_error.Annot.t
+  main:User_message.t -> related:User_message.t list -> User_message.Annot.t
 
-val parse_output : dir:Path.t -> string -> User_error.Annot.t option
+val parse_output : dir:Path.t -> string -> User_message.Annot.t option

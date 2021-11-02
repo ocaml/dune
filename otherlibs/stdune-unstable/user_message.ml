@@ -13,6 +13,58 @@ module Style = struct
     | Ansi_styles of Ansi_color.Style.t list
 end
 
+module Annot = struct
+  type t = ..
+
+  let format = ref (fun _ -> assert false)
+
+  let pp t = !format t
+
+  module type S = sig
+    type payload
+
+    val make : payload -> t
+
+    val check : t -> (payload -> 'a) -> (unit -> 'a) -> 'a
+  end
+
+  module Make (M : sig
+    type payload
+
+    val to_dyn : payload -> Dyn.t
+  end) : S with type payload = M.payload = struct
+    type payload = M.payload
+
+    type t += A of M.payload
+
+    let make t = A t
+
+    let check t on_match on_failure =
+      match t with
+      | A t -> on_match t
+      | _ -> on_failure ()
+
+    let () =
+      let f = function
+        | A t -> Dyn.pp (M.to_dyn t)
+        | other -> !format other
+      in
+      format := f
+  end
+
+  module Has_embedded_location = Make (struct
+    type payload = unit
+
+    let to_dyn = Unit.to_dyn
+  end)
+
+  module Needs_stack_trace = Make (struct
+    type payload = unit
+
+    let to_dyn = Unit.to_dyn
+  end)
+end
+
 module Print_config = struct
   type t = Style.t -> Ansi_color.Style.t list
 
@@ -36,18 +88,19 @@ type t =
   { loc : Loc0.t option
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
+  ; annots : Annot.t list
   }
 
-let make ?loc ?prefix ?(hints = []) paragraphs =
+let make ?loc ?prefix ?(hints = []) ?(annots = []) paragraphs =
   let paragraphs =
     match (prefix, paragraphs) with
     | None, l -> l
     | Some p, [] -> [ p ]
     | Some p, x :: l -> Pp.concat ~sep:Pp.space [ p; x ] :: l
   in
-  { loc; hints; paragraphs }
+  { loc; hints; paragraphs; annots }
 
-let pp { loc; paragraphs; hints } =
+let pp { loc; paragraphs; hints; annots = _ } =
   let open Pp.O in
   let paragraphs =
     match hints with
@@ -120,3 +173,18 @@ let to_string t =
   Format.asprintf "%a" Pp.to_fmt (pp { t with loc = None })
   |> String.drop_prefix ~prefix:"Error: "
   |> Option.value_exn |> String.trim
+
+let is_loc_none loc =
+  match loc with
+  | None -> true
+  | Some loc -> loc = Loc0.none
+
+let has_embedded_location msg =
+  List.exists msg.annots ~f:(fun annot ->
+      Annot.Has_embedded_location.check annot (fun () -> true) (fun () -> false))
+
+let has_location msg = (not (is_loc_none msg.loc)) || has_embedded_location msg
+
+let needs_stack_trace msg =
+  List.exists msg.annots ~f:(fun annot ->
+      Annot.Needs_stack_trace.check annot (fun () -> true) (fun () -> false))

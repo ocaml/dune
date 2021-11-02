@@ -22,7 +22,7 @@ module Annot = struct
     ; in_build : Path.Build.t
     }
 
-  include User_error.Annot.Make (Promote_annot)
+  include User_message.Annot.Make (Promote_annot)
 end
 
 module File = struct

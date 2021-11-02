@@ -9,7 +9,7 @@ module Annot : sig
     ; in_build : Path.Build.t
     }
 
-  include User_error.Annot.S with type payload := t
+  include User_message.Annot.S with type payload := t
 end
 
 module File : sig

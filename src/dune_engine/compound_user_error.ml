@@ -39,7 +39,7 @@ module Annot = struct
 end
 
 include Annot
-include User_error.Annot.Make (Annot)
+include User_message.Annot.Make (Annot)
 
 let make ~main ~related = make (create ~main ~related)
 

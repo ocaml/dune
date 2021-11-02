@@ -23,17 +23,17 @@ module Make (Stdune : sig
     module Style : sig
       type t
     end
-  end
 
-  module User_error : sig
     module Annot : sig
       type t
     end
+  end
 
+  module User_error : sig
     val raise :
          ?loc:Loc.t
       -> ?hints:User_message.Style.t Pp.t list
-      -> ?annots:Annot.t list
+      -> ?annots:User_message.Annot.t list
       -> User_message.Style.t Pp.t list
       -> _
   end

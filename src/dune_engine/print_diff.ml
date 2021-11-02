@@ -118,7 +118,8 @@ let print ?(skip_trailing_cr = Sys.win32) annot path1 path2 =
                   For this reason, we manually pass the below annotation. *)
                  Internal_job
                  ( Some loc
-                 , [ annot; User_error.Annot.Has_embedded_location.make () ] ))
+                 , [ annot; User_message.Annot.Has_embedded_location.make () ]
+                 ))
         in
         (* Use "diff" if "patdiff" reported no differences *)
         normal_diff ())

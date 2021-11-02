@@ -548,7 +548,7 @@ struct
                   ; Exn_with_backtrace.pp exn
                   ]
               in
-              let e = { exn with exn = User_error.E (msg, []) } in
+              let e = { exn with exn = User_error.E msg } in
               Dune_util.Report_error.report e;
               Fiber.return ())
         in

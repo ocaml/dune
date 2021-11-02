@@ -63,9 +63,9 @@ let get_error_from_exn = function
       ; has_embedded_location = false
       ; needs_stack_trace = false
       })
-  | User_error.E (msg, annots) ->
-    let has_embedded_location = User_error.has_embedded_location annots in
-    let needs_stack_trace = User_error.needs_stack_trace annots in
+  | User_error.E msg ->
+    let has_embedded_location = User_message.has_embedded_location msg in
+    let needs_stack_trace = User_message.needs_stack_trace msg in
     { responsible = User; msg; has_embedded_location; needs_stack_trace }
   | Code_error.E e ->
     code_error ~loc:e.loc ~dyn_without_loc:(Code_error.to_dyn_without_loc e)

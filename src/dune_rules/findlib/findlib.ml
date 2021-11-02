@@ -408,13 +408,12 @@ end = struct
               | Error (e, _, _) ->
                 Error
                   (User_error.E
-                     ( User_message.make
-                         [ Pp.textf "Unable to get entry modules of %s in %s. "
-                             (Lib_name.to_string t.name)
-                             (Path.to_string src_dir)
-                         ; Pp.textf "error: %s" (Unix.error_message e)
-                         ]
-                     , [] ))
+                     (User_message.make
+                        [ Pp.textf "Unable to get entry modules of %s in %s. "
+                            (Lib_name.to_string t.name)
+                            (Path.to_string src_dir)
+                        ; Pp.textf "error: %s" (Unix.error_message e)
+                        ]))
               | Ok dir_contents ->
                 let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
                 let ext = Cm_kind.ext Cmi in
@@ -435,7 +434,7 @@ end = struct
                             (Loc.in_dir src_dir, name)
                         with
                         | Ok s -> Ok (Some s)
-                        | Error e -> Error (User_error.E (e, []))))))
+                        | Error e -> Error (User_error.E e)))))
         in
         Lib_info.create ~path_kind:External ~loc ~name:t.name ~kind ~status
           ~src_dir ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name

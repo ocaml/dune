@@ -70,7 +70,7 @@ let args t =
     let open Action_builder.O in
     Command.Args.Dyn (read t >>| fun _ -> assert false)
 
-let fail msg = Error { exn = User_error.E (msg, []); stack_frames = [] }
+let fail msg = Error { exn = User_error.E msg; stack_frames = [] }
 
 let peek t = Result.map_error t ~f:ignore
 

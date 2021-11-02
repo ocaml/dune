@@ -30,7 +30,7 @@ let of_sexp =
 
 let%expect_test _ =
   (try ignore (parse of_sexp Univ_map.empty (Lazy.force sexp) : int) with
-  | User_error.E (msg, _) -> User_message.print { msg with loc = None });
+  | User_error.E msg -> User_message.print { msg with loc = None });
   [%expect {|
 Error: Field "foo" is present too many times
 |}]
@@ -57,7 +57,7 @@ let parse s =
         (Dune_lang.Parser.parse_string ~fname:"" ~mode:Many s
         |> List.map ~f:Dune_lang.Ast.remove_locs)
     with
-    | User_error.E (msg, _) -> Error (string_of_user_error msg)
+    | User_error.E msg -> Error (string_of_user_error msg)
     | e -> Error (Printexc.to_string e)
   in
   print_dyn
@@ -254,7 +254,7 @@ let test syntax sexp =
           Round_trip_success
         else
           Did_not_round_trip sexp'
-      | exception User_error.E (msg, _) ->
+      | exception User_error.E msg ->
         Did_not_parse_back (string_of_user_error msg) )
   in
   let open Dyn.Encoder in

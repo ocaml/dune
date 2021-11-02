@@ -44,12 +44,12 @@ end = struct
     { by_child =
         String.Map.union x.by_child y.by_child ~f:(fun _key data1 data2 ->
             Some
-              (Memo.Lazy.create (fun () ->
+              (Memo.Lazy.create ~name:"scheme-union" (fun () ->
                    let+ x = Memo.Lazy.force data1
                    and+ y = Memo.Lazy.force data2 in
                    union ~union_rules x y)))
     ; rules_here =
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~name:"union-rules-here" (fun () ->
             let+ x = Memo.Lazy.force x.rules_here
             and+ y = Memo.Lazy.force y.rules_here in
             Option.merge x y ~f:union_rules)
@@ -59,7 +59,7 @@ end = struct
       _ t Memo.Build.t =
     let rules_here =
       if Dir_set.here dirs then
-        Memo.Lazy.create (fun () ->
+        Memo.Lazy.create ~name:"restrict-rules-here" (fun () ->
             let* t = Memo.Lazy.force t in
             Memo.Lazy.force t.rules_here)
       else
@@ -73,13 +73,15 @@ end = struct
            committed to supporting this case though, anyway. *)
         let+ t = Memo.Lazy.force t in
         String.Map.mapi t.by_child ~f:(fun dir v ->
-            Memo.lazy_ (fun () -> restrict (Dir_set.descend dirs dir) v))
+            Memo.lazy_ ~name:"restrict-by-child-default" (fun () ->
+                restrict (Dir_set.descend dirs dir) v))
       | false ->
         Memo.Build.return
           (String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
-               Memo.lazy_ (fun () ->
+               Memo.lazy_ ~name:"restrict-by-child-non-default-outer" (fun () ->
                    restrict v
-                     (Memo.lazy_ (fun () ->
+                     (Memo.lazy_ ~name:"restrict-by-child-non-default-inner"
+                        (fun () ->
                           let* t = Memo.Lazy.force t in
                           descend t dir)))))
     in
@@ -134,7 +136,9 @@ let evaluate ~union_rules =
           [ ("inner", Dir_set.to_dyn paths); ("outer", Dir_set.to_dyn env) ]
       else
         let paths = Dir_set.inter paths env in
-        Evaluated.restrict paths (Memo.lazy_ (fun () -> loop ~env:paths rules))
+        Evaluated.restrict paths
+          (Memo.lazy_ ~name:"evaluate-restrict" (fun () ->
+               loop ~env:paths rules))
     | Finite rules ->
       let violations =
         List.filter (Path.Build.Map.keys rules) ~f:(fun p ->

@@ -1100,6 +1100,21 @@ end = struct
       | Public (_, _) -> From_same_project
     in
     let resolve name = resolve_dep db name ~private_deps in
+    let* resolved =
+      let open Resolve.Build.O in
+      let* pps =
+        let instrumentation_backend =
+          instrumentation_backend db.instrument_with resolve
+        in
+        Lib_info.preprocess info
+        |> Preprocess.Per_module.with_instrumentation ~instrumentation_backend
+        >>| Preprocess.Per_module.pps
+      in
+      let dune_version = Lib_info.dune_version info in
+      Lib_info.requires info
+      |> resolve_deps_and_add_runtime_deps db ~private_deps ~dune_version ~pps
+      |> Memo.Build.map ~f:Resolve.return
+    in
     let* implements =
       match Lib_info.implements info with
       | None -> Memo.Build.return None
@@ -1113,6 +1128,29 @@ end = struct
           | Some _ -> Resolve.Build.return vlib
         in
         Memo.Build.map res ~f:Option.some
+    in
+    let* requires =
+      let requires =
+        let open Resolve.O in
+        let* resolved = resolved in
+        resolved.requires
+      in
+      match implements with
+      | None -> Memo.Build.return requires
+      | Some vlib ->
+        let open Resolve.Build.O in
+        let* (_ : lib list) =
+          let* vlib = Memo.Build.return vlib in
+          let* requires_for_closure_check =
+            Memo.Build.return
+              (let open Resolve.O in
+              let+ requires = requires in
+              List.filter requires ~f:(fun lib -> not (equal lib vlib)))
+          in
+          linking_closure_with_overlap_checks None requires_for_closure_check
+            ~forbidden_libraries:(Map.singleton vlib Loc.none)
+        in
+        Memo.Build.return requires
     in
     let resolve_impl impl_name =
       let open Resolve.Build.O in
@@ -1160,25 +1198,10 @@ end = struct
                              (Package.Name.to_string p')
                          ])))
     in
-    let* resolved =
-      let open Resolve.Build.O in
-      let* pps =
-        let instrumentation_backend =
-          instrumentation_backend db.instrument_with resolve
-        in
-        Lib_info.preprocess info
-        |> Preprocess.Per_module.with_instrumentation ~instrumentation_backend
-        >>| Preprocess.Per_module.pps
-      in
-      let dune_version = Lib_info.dune_version info in
-      Lib_info.requires info
-      |> resolve_deps_and_add_runtime_deps db ~private_deps ~dune_version ~pps
-      |> Memo.Build.map ~f:Resolve.return
-    in
     let* requires =
       Memo.Build.return
         (let open Resolve.O in
-        let* requires = resolved >>= fun r -> r.requires in
+        let* requires = requires in
         match implements with
         | None -> Resolve.return requires
         | Some impl ->

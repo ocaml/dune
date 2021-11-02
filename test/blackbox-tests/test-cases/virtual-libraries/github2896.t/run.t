@@ -19,13 +19,23 @@ where vlib is a virtual library, and impl implements this library.
   $ cat >impl/dune <<EOF
   > (library (name impl) (implements vlib) (libraries lib))
   > EOF
+  $ dune build @all
+  Error: Library "vlib" was pulled in.
+  -> required by library "lib" in _build/default/lib
+  -> required by library "impl" in _build/default/impl
+  -> required by _build/default/impl/.impl.objs/byte/vlib.cmo
+  -> required by _build/default/impl/impl.cma
+  -> required by alias impl/all
+  [1]
 
 The implementation impl was built, but it's not usable:
 
   $ echo 'Vlib.run ()' > foo.ml
   $ echo "(executable (name foo) (libraries impl))" > dune
   $ dune exec ./foo.exe
-  File "_none_", line 1:
-  Error: No implementations provided for the following modules:
-           Vlib referenced from lib/lib.cmxa(Lib)
+  Error: Library "vlib" was pulled in.
+  -> required by library "lib" in _build/default/lib
+  -> required by library "impl" in _build/default/impl
+  -> required by executable foo in dune:1
+  -> required by _build/default/foo.exe
   [1]

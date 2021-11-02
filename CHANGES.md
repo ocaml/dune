@@ -4,6 +4,9 @@ Unreleased
 - In watch mode, use fsevents instead of fswatch on OSX (#4937, #4990, fixes
   #4896 @rgrinberg)
 
+- Remove `inotifywait` watch mode backend on Linux. We now use the inotify API
+  exclusively (#4941, @rgrinberg)
+
 - Report cycles between virtual libraries and their implementation (#5050,
   fixes #2896, @rgrinberg)
 

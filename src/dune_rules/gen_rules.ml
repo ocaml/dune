@@ -417,7 +417,7 @@ let gen_rules ~sctx ~dir components =
     gen_rules ~sctx ~dir components
 
 let global_rules =
-  Memo.lazy_ (fun () ->
+  Memo.lazy_ ~name:"global-rules" (fun () ->
       Rules.collect_unit (fun () ->
           let* sctxs = Memo.Lazy.force Super_context.all in
           Memo.Build.parallel_iter

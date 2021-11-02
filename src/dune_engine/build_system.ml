@@ -924,7 +924,7 @@ end = struct
         Unrestricted
       else
         Restricted
-          (Memo.Lazy.create (fun () ->
+          (Memo.Lazy.create ~name:"allowed_dirs" (fun () ->
                load_dir ~dir:(Path.build dir) >>| function
                | Non_build _ -> Dir_set.just_the_root
                | Build { allowed_subdirs; _ } ->
@@ -2470,7 +2470,7 @@ let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 let init ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ~sandboxing_preference ~rule_generator ~handler ~implicit_default_alias =
   let contexts =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"Build_system.init" (fun () ->
         let+ contexts = Memo.Lazy.force contexts in
         Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
             (c.Build_context.name, c)))

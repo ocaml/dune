@@ -732,7 +732,3 @@ let add_watch t path =
   | Inotify inotify -> (
     try Ok (Inotify_lib.add inotify (Path.to_string path)) with
     | Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
-
-let ignore_next_file_change_event t path =
-  assert (Path.is_in_source_tree path);
-  Table.set t.ignored_files (Path.to_absolute_filename path) ()

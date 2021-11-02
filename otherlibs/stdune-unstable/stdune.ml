@@ -68,9 +68,28 @@ module Temp = Temp
 module Queue = Queue
 module Caller_id = Caller_id
 module Metrics = Metrics
-module Unix_error = Dune_filesystem_stubs.Unix_error
-module File_kind = Dune_filesystem_stubs.File_kind
 module Dune_filesystem_stubs = Dune_filesystem_stubs
+
+module Unix_error = struct
+  include Dune_filesystem_stubs.Unix_error
+
+  module Detailed = struct
+    include Dune_filesystem_stubs.Unix_error.Detailed
+
+    let to_dyn (error, syscall, arg) =
+      Dyn.Record
+        [ ("error", String (Unix.error_message error))
+        ; ("syscall", String syscall)
+        ; ("arg", String arg)
+        ]
+  end
+end
+
+module File_kind = struct
+  include Dune_filesystem_stubs.File_kind
+
+  let to_dyn t = Dyn.String (to_string t)
+end
 
 module type Applicative = Applicative_intf.S
 

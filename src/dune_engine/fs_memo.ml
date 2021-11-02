@@ -36,7 +36,7 @@ let watch_path dune_file_watcher path =
   | Error `Does_not_exist -> (
     (* If we're at the root of the workspace (or the unix root) then we can't
        get ENOENT because dune can't start without a workspace and unix root
-       always exists, so this [_exn] can't raise (except if the user delets the
+       always exists, so this [_exn] can't raise (except if the user deletes the
        workspace dir under our feet, in which case all bets are off). *)
     let containing_dir = Path.parent_exn path in
     (* If the file is absent, we need to wait for it to be created by watching

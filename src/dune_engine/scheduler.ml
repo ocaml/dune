@@ -874,14 +874,6 @@ let yield_if_there_are_pending_events () =
 let () =
   Memo.yield_if_there_are_pending_events := yield_if_there_are_pending_events
 
-let ignore_for_watch path =
-  let+ t = t () in
-  match t.file_watcher with
-  | None -> ()
-  | Some file_watcher ->
-    assert (Path.is_in_source_tree path);
-    Dune_file_watcher.ignore_next_file_change_event file_watcher path
-
 exception Build_cancelled
 
 let with_job_slot f =

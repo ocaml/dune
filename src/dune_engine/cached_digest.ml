@@ -155,7 +155,7 @@ module Digest_result = struct
     | No_such_file
     | Broken_symlink
     | Unexpected_kind of File_kind.t
-    | Unix_error of (Unix.error * string * string)
+    | Unix_error of Unix_error.Detailed.t
     | Error of exn
 
   let equal x y =
@@ -172,8 +172,7 @@ module Digest_result = struct
     | Broken_symlink, _
     | _, Broken_symlink ->
       false
-    | Unexpected_kind x, Unexpected_kind y ->
-      Dune_filesystem_stubs.File_kind.equal x y
+    | Unexpected_kind x, Unexpected_kind y -> File_kind.equal x y
     | Unexpected_kind _, _
     | _, Unexpected_kind _ ->
       false
@@ -198,6 +197,16 @@ module Digest_result = struct
       None
 
   let iter t ~f = Option.iter (to_option t) ~f
+
+  let to_dyn = function
+    | Ok digest -> Dyn.Variant ("Ok", [ Digest.to_dyn digest ])
+    | No_such_file -> Variant ("No_such_file", [])
+    | Broken_symlink -> Variant ("Broken_symlink", [])
+    | Unexpected_kind kind ->
+      Variant ("Unexpected_kind", [ File_kind.to_dyn kind ])
+    | Unix_error error ->
+      Variant ("Unix_error", [ Unix_error.Detailed.to_dyn error ])
+    | Error exn -> Variant ("Error", [ String (Printexc.to_string exn) ])
 end
 
 let digest_path_with_stats path stats =

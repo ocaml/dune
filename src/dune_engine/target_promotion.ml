@@ -151,38 +151,58 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
             (Path.Source.to_string_maybe_quoted dir)
         ]
   in
-  (* CR-someday amokhov: Here we use a tracked operation to compute the digest
-     of the destination file. However, later we may replace the destination with
-     a new content, hence triggering a rebuild. To avoid that, right now we are
-     using [Scheduler.ignore_for_watch], whose implementation is pretty hacky. A
-     better solution would be to temporarily disable file-tracking here and only
-     re-enable it after the promotion is complete. *)
+  (* Here we use an untracked operation to compute the digest of the destination
+     file because we are about to overwrite it. After the promotion is complete
+     we will perform a tracked operation to "subscribe" to future changes. *)
   let destination_is_up_to_date ~target_digest ~dst =
-    let open Memo.Build.O in
-    Memo.Build.run
-      (Fs_memo.path_digest dst >>| Cached_digest.Digest_result.to_option
-       >>| function
-       | None -> false
-       | Some dst_digest -> Digest.equal target_digest dst_digest)
+    match
+      Cached_digest.Untracked.source_or_external_file dst
+      |> Cached_digest.Digest_result.to_option
+    with
+    | Some dst_digest -> Digest.equal target_digest dst_digest
+    | None -> false
   in
   Fiber.parallel_iter targets_and_digests ~f:(fun (target, target_digest) ->
       match selected_for_promotion target with
       | false -> Fiber.return ()
-      | true -> (
+      | true ->
         let dst = relocate (Path.Build.drop_build_context_exn target) in
-        let* () = ensure_the_destination_directory_exists ~dst in
         let dst_path = Path.source dst in
-        destination_is_up_to_date ~target_digest ~dst:dst_path >>= function
-        | true -> Fiber.return ()
-        | false ->
-          (match promote.lifetime with
-          | Until_clean -> To_delete.add dst
-          | Unlimited -> ());
-          let* () = Scheduler.ignore_for_watch dst_path in
-          (* The file in the build directory might be read-only if it comes from
-             the shared cache. However, we want the file in the source tree to
-             be writable by the user, so we explicitly set the user writable
-             bit. *)
-          let chmod n = n lor 0o200 in
-          Path.Source.unlink_no_err dst;
-          promote_source ~chmod ~src:target ~dst))
+        let* () = ensure_the_destination_directory_exists ~dst in
+        let* () =
+          match destination_is_up_to_date ~target_digest ~dst:dst_path with
+          | true -> Fiber.return ()
+          | false ->
+            Log.info
+              [ Pp.textf "Promoting %S to %S"
+                  (Path.Build.to_string target)
+                  (Path.to_string dst_path)
+              ];
+            (match promote.lifetime with
+            | Until_clean -> To_delete.add dst
+            | Unlimited -> ());
+            (* The file in the build directory might be read-only if it comes
+               from the shared cache. However, we want the file in the source
+               tree to be writable by the user, so we explicitly set the user
+               writable bit. *)
+            let chmod n = n lor 0o200 in
+            Path.Source.unlink_no_err dst;
+            promote_source ~chmod ~src:target ~dst
+        in
+        (* Now we subscribe to the destination's digest. *)
+        let+ (dst_digest : Cached_digest.Digest_result.t) =
+          Memo.Build.run (Fs_memo.path_digest dst_path)
+        in
+        (* It may be tempting to assert here that [dst_digest = target_digest],
+           since that is the goal of the promotion. However, [dst_digest] here
+           is likely to be stale -- it will take some time for the changes we
+           made to the file system to be reflected in [Fs_memo.path_digest]'s
+           output. This also means that we will re-execute this function when
+           the changes are finally detected; [destination_is_up_to_date] will
+           return [true], so this second promotion will be a no-op.
+
+           Ideally, we want a mechanism to tell [Fs_memo.path_digest] that we
+           are making a change to the digest and so we don't want this function
+           to be invalidated by the coming change. Alas, we don't have a way to
+           do that at the moment. *)
+        ignore dst_digest)

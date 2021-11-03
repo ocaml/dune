@@ -356,7 +356,13 @@ end = struct
             Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> (x.dir, x))
         }
 
-  let memo0 = Memo.create "dir-contents-get0" ~input:(module Key) get0_impl
+  let memo0 =
+    Memo.create "dir-contents-get0"
+      ~input:(module Key)
+      ~human_readable_description:(fun (_, dir) ->
+        Pp.textf "Computing directory contents of %s"
+          (Path.to_string_maybe_quoted (Path.build dir)))
+      get0_impl
 
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir) >>= function

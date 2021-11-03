@@ -922,13 +922,20 @@ let memo =
   in
   Memo.create
     ~input:(module Sctx_and_package)
+    ~human_readable_description:(fun (_, pkg) ->
+      Pp.textf "Computing installable artifacts for package %s"
+        (Package.Name.to_string (Package.name pkg)))
     "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
       Memo.Build.return
         (let ctx = Super_context.context sctx in
          let context_name = ctx.name in
          let rules =
-           Memo.lazy_ ~name:"install-rules-and-pkg-entries-rules" (fun () ->
+           Memo.lazy_ ~name:"install-rules-and-pkg-entries-rules"
+             ~human_readable_description:(fun () ->
+               Pp.textf "Computing rules for package %s"
+                 (Package.Name.to_string (Package.name pkg)))
+             (fun () ->
                Rules.collect_unit (fun () ->
                    let* () = install_rules sctx pkg in
                    install_alias ctx pkg))

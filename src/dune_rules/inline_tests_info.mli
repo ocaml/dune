@@ -42,7 +42,8 @@ module Tests : sig
     ; deps : Dep_conf.t list
     ; modes : Mode_conf.Set.t
     ; flags : Ordered_set_lang.Unexpanded.t
-    ; executable : Ocaml_flags.Spec.t
+    ; executable_ocaml_flags : Ocaml_flags.Spec.t
+    ; executable_link_flags : Ordered_set_lang.Unexpanded.t
     ; backend : (Loc.t * Lib_name.t) option
     ; libraries : (Loc.t * Lib_name.t) list
     ; enabled_if : Blang.t

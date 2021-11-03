@@ -153,7 +153,9 @@ include Sub_system.Register_end_point (struct
          Action_builder.With_targets.add ~file_targets:[ target ] action)
     and* cctx =
       let package = Dune_file.Library.package lib in
-      let+ ocaml_flags = Super_context.ocaml_flags sctx ~dir info.executable in
+      let+ ocaml_flags =
+        Super_context.ocaml_flags sctx ~dir info.executable_ocaml_flags
+      in
       let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
@@ -175,11 +177,17 @@ include Sub_system.Register_end_point (struct
           | Javascript -> Exe.Linkage.js)
     in
     let* () =
+      let link_args =
+        let open Action_builder.O in
+        let+ link_args_info =
+          Expander.expand_and_eval_set expander info.executable_link_flags
+            ~standard:(Action_builder.return [ "-linkall" ])
+        in
+        Command.Args.As link_args_info
+      in
       Exe.build_and_link cctx
         ~program:{ name; main_module_name = Module.name main_module; loc }
-        ~linkages
-        ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
-        ~promote:None
+        ~linkages ~link_args ~promote:None
     in
     let flags =
       let flags =

@@ -5,7 +5,7 @@ First we create an external library
   Entering directory 'vlib'
 
 Then we make sure that we can implement it
-  $ env OCAMLPATH=vlib/_build/install/default/lib dune build --root impl --debug-dependency-path
+  $ env OCAMLPATH=vlib/_build/install/default/lib dune build @default @install --root impl
   Entering directory 'impl'
   bar from vlib
   Foo.run implemented
@@ -25,3 +25,29 @@ Implement external virtual libraries with private modules
   $ env OCAMLPATH=vlib/_build/install/default/lib dune build --root impl-private-module --debug-dependency-path
   Entering directory 'impl-private-module'
   Name: implement virtual module. Magic number: 42
+
+Now we test the following use case:
+- A virtual library and its implementation are installed
+- We are able to use the implementation as an external dependency in a project
+Currently, dune's behavior is broken in this situation. The virtual library's
+modules remain hidden.
+  $ export OCAMLPATH=$PWD/vlib/_build/install/default/lib:$PWD/impl/_build/install/default/lib
+  $ mkdir use-external-impl && cd use-external-impl
+  $ cat >dune-project <<EOF
+  > (lang dune 3.0)
+  > EOF
+  $ cat >dune <<EOF
+  > (executable
+  >  (name blah)
+  >  (libraries dune-vlib.impl))
+  > EOF
+  $ cat >blah.ml <<EOF
+  > Vlib.Foo.run ()
+  > EOF
+  $ dune exec ./blah.exe
+  File "blah.ml", line 1, characters 0-12:
+  1 | Vlib.Foo.run ()
+      ^^^^^^^^^^^^
+  Error: Unbound module Vlib
+  [1]
+  $ cd ..

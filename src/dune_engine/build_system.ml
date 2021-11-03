@@ -2235,6 +2235,11 @@ end = struct
 
     let eval_memo =
       Memo.create "eval-pred"
+        ~human_readable_description:(fun glob ->
+          Pp.concat
+            [ Pp.textf "evaluating predicate in directory %s"
+                (Path.to_string_maybe_quoted (File_selector.dir glob))
+            ])
         ~input:(module File_selector)
         ~cutoff:Path.Set.equal eval_impl
 

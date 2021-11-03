@@ -91,7 +91,8 @@ module Tests = struct
     ; deps : Dep_conf.t list
     ; modes : Mode_conf.Set.t
     ; flags : Ordered_set_lang.Unexpanded.t
-    ; executable : Ocaml_flags.Spec.t
+    ; executable_ocaml_flags : Ocaml_flags.Spec.t
+    ; executable_link_flags : Ordered_set_lang.Unexpanded.t
     ; backend : (Loc.t * Lib_name.t) option
     ; libraries : (Loc.t * Lib_name.t) list
     ; enabled_if : Blang.t
@@ -112,10 +113,18 @@ module Tests = struct
       (let+ loc = loc
        and+ deps = field "deps" (repeat Dep_conf.decode) ~default:[]
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-       and+ executable =
-         field "executable" ~default:Ocaml_flags.Spec.standard
+       and+ executable_ocaml_flags, executable_link_flags =
+         field "executable"
+           ~default:
+             (Ocaml_flags.Spec.standard, Ordered_set_lang.Unexpanded.standard)
            (Dune_lang.Syntax.since Stanza.syntax (2, 8)
-           >>> fields Ocaml_flags.Spec.decode)
+           >>> fields
+                 (let+ ocaml_flags = Ocaml_flags.Spec.decode
+                  and+ link_flags =
+                    Ordered_set_lang.Unexpanded.field "link_flags"
+                      ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+                  in
+                  (ocaml_flags, link_flags)))
        and+ backend = field_o "backend" (located Lib_name.decode)
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
@@ -128,7 +137,16 @@ module Tests = struct
            ~since:(Some (3, 0))
            ()
        in
-       { loc; deps; flags; executable; backend; libraries; modes; enabled_if })
+       { loc
+       ; deps
+       ; flags
+       ; executable_ocaml_flags
+       ; executable_link_flags
+       ; backend
+       ; libraries
+       ; modes
+       ; enabled_if
+       })
 
   (* We don't use this at the moment, but we could implement it for debugging
      purposes *)

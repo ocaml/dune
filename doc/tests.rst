@@ -308,6 +308,26 @@ such libraries using a ``libraries`` field, such as:
      (backend qtest)
      (libraries bar)))
 
+Changing the flags of the linking step of the test runner
+---------------------------------------------------------
+
+You can use the ``link_flags`` field to change the linker flags
+passed to ``ocamlopt`` when building the test runner. By default the
+linking flags are ``-linkall`` and you probably want to keep
+``-linkall`` as one of the new list of flags unless you know what you
+are doing to force the linker to load your test module as the test
+runner itself does not depend on anything itself. This field supports
+``(:include ...)`` forms.
+
+.. code:: ocaml
+
+   (library
+    (name foo)
+    (inline_tests
+     (executable
+      (link_flags -linkall -noautolink -cclib -Wl,-Bstatic -cclib -lm)))
+    (preprocess (pps ppx_expect)))
+
 Defining your own inline test backend
 -------------------------------------
 

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Add `link_flags` field to the `executable` field of `inline_tests` (#5088,
+  fix #1530, @jvillard)
+
 - In watch mode, use fsevents instead of fswatch on OSX (#4937, #4990, fixes
   #4896 @rgrinberg)
 

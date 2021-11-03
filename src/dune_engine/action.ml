@@ -263,10 +263,43 @@ let is_useful_to_distribute = is_useful_to true false
 let is_useful_to_memoize = is_useful_to true true
 
 module Full = struct
-  type nonrec t =
-    { action : t
-    ; env : Env.t
-    ; locks : Path.t list
-    ; can_go_in_shared_cache : bool
-    }
+  module T = struct
+    type nonrec t =
+      { action : t
+      ; env : Env.t
+      ; locks : Path.t list
+      ; can_go_in_shared_cache : bool
+      }
+
+    let empty =
+      { action = Progn []
+      ; env = Env.empty
+      ; locks = []
+      ; can_go_in_shared_cache = true
+      }
+
+    let combine { action; env; locks; can_go_in_shared_cache } x =
+      let action =
+        match (action, x.action) with
+        | Progn [], x
+        | x, Progn [] ->
+          x
+        | a, b -> Progn [ a; b ]
+      in
+      { action
+      ; env = Env.extend_env env x.env
+      ; locks = locks @ x.locks
+      ; can_go_in_shared_cache =
+          can_go_in_shared_cache && x.can_go_in_shared_cache
+      }
+  end
+
+  include Monoid.Make (T)
+  include T
+
+  let make ?(env = Env.empty) ?(locks = []) ?(can_go_in_shared_cache = true)
+      action =
+    { action; env; locks; can_go_in_shared_cache }
+
+  let map t ~f = { t with action = f t.action }
 end

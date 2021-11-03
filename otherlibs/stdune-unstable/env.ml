@@ -77,7 +77,11 @@ let add t ~var ~value = make (Map.set t.vars var value)
 
 let remove t ~var = make (Map.remove t.vars var)
 
-let extend t ~vars = make (Map.superpose t.vars vars)
+let extend t ~vars =
+  if Map.is_empty vars then
+    t
+  else
+    make (Map.superpose t.vars vars)
 
 let extend_env x y = extend x ~vars:y.vars
 

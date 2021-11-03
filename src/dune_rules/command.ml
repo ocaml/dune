@@ -110,13 +110,13 @@ let run ~dir ?stdout_to prog args =
       | None -> action
       | Some path -> Action.with_stdout_to path action
     in
-    Action.chdir dir action)
+    Action.Full.make (Action.chdir dir action))
 
 let run' ~dir prog args =
   let open Action_builder.O in
   let+ () = dep_prog prog
   and+ args = expand_no_targets ~dir (S args) in
-  Action.chdir dir (Action.run prog args)
+  Action.Full.make (Action.chdir dir (Action.run prog args))
 
 let quote_args =
   let rec loop quote = function

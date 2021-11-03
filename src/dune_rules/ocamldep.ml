@@ -123,7 +123,10 @@ let deps_of ~cctx ~ml_kind unit =
        in
        Action.Merge_files_into (sources, extras, all_deps_file))
   in
-  let+ () = SC.add_rule sctx ~dir action in
+  let+ () =
+    SC.add_rule sctx ~dir
+      (Action_builder.With_targets.map ~f:Action.Full.make action)
+  in
   let all_deps_file = Path.build all_deps_file in
   Action_builder.memoize
     (Path.to_string all_deps_file)

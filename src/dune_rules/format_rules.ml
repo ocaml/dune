@@ -4,9 +4,9 @@ open Import
 let add_diff sctx loc alias ~dir ~input ~output =
   let open Action_builder.O in
   let action = Action.Chdir (Path.build dir, Action.diff input output) in
-  Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
+  Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc)
     (Action_builder.paths [ input; Path.build output ]
-    >>> Action_builder.return action)
+    >>> Action_builder.return (Action.Full.make action))
 
 let rec subdirs_until_root dir =
   match Path.parent dir with
@@ -41,7 +41,7 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
         @@
         let open Action_builder.O in
         let+ () = Action_builder.path input in
-        Action.format_dune_file ~version input output
+        Action.Full.make (Action.format_dune_file ~version input output)
       | _ ->
         let ext = Path.Source.extension file in
         let open Option.O in

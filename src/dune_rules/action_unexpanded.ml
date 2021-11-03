@@ -508,7 +508,7 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
   let+ () = deps_builder
   and+ action = build in
   let dir = Path.build (Expander.dir expander) in
-  Action.Chdir (dir, action)
+  Action.Full.make (Action.Chdir (dir, action))
 
 let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander =
@@ -565,7 +565,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     let+ () = deps_builder
     and+ action = build in
     let dir = Path.build (Expander.dir expander) in
-    Action.Chdir (dir, action)
+    Action.Full.make (Action.Chdir (dir, action))
   in
   Action_builder.with_targets ~targets build
 

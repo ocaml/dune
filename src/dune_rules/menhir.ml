@@ -112,12 +112,12 @@ module Run (P : PARAMS) = struct
   (* [menhir args] generates a Menhir command line (a build action). *)
 
   let menhir (args : 'a args) :
-      Action.t Action_builder.With_targets.t Memo.Build.t =
+      Action.Full.t Action_builder.With_targets.t Memo.Build.t =
     Memo.Build.map menhir_binary ~f:(fun prog ->
         Command.run ~dir:(Path.build build_dir) prog args)
 
   let rule ?(mode = stanza.mode) :
-      Action.t Action_builder.With_targets.t -> unit Memo.Build.t =
+      Action.Full.t Action_builder.With_targets.t -> unit Memo.Build.t =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags = Super_context.menhir_flags sctx ~dir ~expander ~flags

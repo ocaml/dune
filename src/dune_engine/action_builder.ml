@@ -172,6 +172,8 @@ module With_targets = struct
   module O = struct
     let ( >>> ) = seq
 
+    let ( >>| ) t f = map t ~f
+
     let ( and+ ) = both
 
     let ( let+ ) a f = map ~f a
@@ -193,7 +195,7 @@ module With_targets = struct
   let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
     add ~file_targets:[ fn ]
       (let+ s = s in
-       Action.Write_file (fn, perm, s))
+       Action.Full.make (Action.Write_file (fn, perm, s)))
 
   let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
@@ -210,33 +212,40 @@ let with_no_targets build : _ With_targets.t =
 
 let write_file ?(perm = Action.File_perm.Normal) fn s =
   with_file_targets ~file_targets:[ fn ]
-    (return (Action.Write_file (fn, perm, s)))
+    (return (Action.Full.make (Action.Write_file (fn, perm, s))))
 
 let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
   with_file_targets ~file_targets:[ fn ]
     (let+ s = s in
-     Action.Write_file (fn, perm, s))
+     Action.Full.make (Action.Write_file (fn, perm, s)))
+
+let with_stdout_to ?(perm = Action.File_perm.Normal) fn t =
+  with_targets ~targets:(Targets.File.create fn)
+    (let+ (act : Action.Full.t) = t in
+     { act with action = Action.with_stdout_to ~perm fn act.action })
 
 let copy ~src ~dst =
   with_file_targets ~file_targets:[ dst ]
-    (path src >>> return (Action.Copy (src, dst)))
+    (path src >>> return (Action.Full.make (Action.Copy (src, dst))))
 
 let copy_and_add_line_directive ~src ~dst =
   with_file_targets ~file_targets:[ dst ]
-    (path src >>> return (Action.Copy_and_add_line_directive (src, dst)))
+    (path src
+    >>> return
+          (Action.Full.make (Action.Copy_and_add_line_directive (src, dst))))
 
 let symlink ~src ~dst =
   with_file_targets ~file_targets:[ dst ]
-    (path src >>> return (Action.Symlink (src, dst)))
+    (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
 
 let create_file ?(perm = Action.File_perm.Normal) fn =
   with_file_targets ~file_targets:[ fn ]
-    (return (Action.Redirect_out (Stdout, fn, perm, Action.empty)))
+    (return
+       (Action.Full.make (Action.Redirect_out (Stdout, fn, perm, Action.empty))))
 
 let progn ts =
   let open With_targets.O in
-  let+ actions = With_targets.all ts in
-  Action.Progn actions
+  With_targets.all ts >>| Action.Full.reduce
 
 let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
 

@@ -5,7 +5,7 @@ module type S = Monoid_intf.S
 (** This functor extends the basic definition of a monoid by adding a convenient
     operator synonym [( @ ) = combine], as well as derived functions [reduce]
     and [map_reduce]. *)
-module Make (M : Basic) : S with type t = M.t
+module Make (M : Basic) : S with type t := M.t
 [@@inlined always]
 
 (** The monoid you get with [empty = false] and [combine = ( || )]. *)

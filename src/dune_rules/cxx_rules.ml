@@ -40,6 +40,6 @@ let rules ~sctx ~dir =
     let+ run_preprocessor =
       Command.run ~dir:(Path.build dir) ~stdout_to:file prog args
     in
-    Action.progn [ write_test_file; run_preprocessor ]
+    Action.Full.reduce [ Action.Full.make write_test_file; run_preprocessor ]
   in
   Super_context.add_rule sctx ~dir action

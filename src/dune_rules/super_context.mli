@@ -108,27 +108,25 @@ val add_rule :
      t
   -> ?sandbox:Sandbox_config.t
   -> ?mode:Rule.Mode.t
-  -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> Action.t Action_builder.With_targets.t
+  -> Action.Full.t Action_builder.With_targets.t
   -> unit Memo.Build.t
 
 val add_rule_get_targets :
      t
   -> ?sandbox:Sandbox_config.t
   -> ?mode:Rule.Mode.t
-  -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> Action.t Action_builder.With_targets.t
+  -> Action.Full.t Action_builder.With_targets.t
   -> Targets.t Memo.Build.t
 
 val add_rules :
      t
   -> ?sandbox:Sandbox_config.t
   -> dir:Path.Build.t
-  -> Action.t Action_builder.With_targets.t list
+  -> Action.Full.t Action_builder.With_targets.t list
   -> unit Memo.Build.t
 
 val add_alias_action :
@@ -136,9 +134,8 @@ val add_alias_action :
   -> Alias.t
   -> dir:Path.Build.t
   -> loc:Loc.t option
-  -> ?locks:Path.t list
   -> ?patch_back_source_tree:bool
-  -> Action.t Action_builder.t
+  -> Action.Full.t Action_builder.t
   -> unit Memo.Build.t
 
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in

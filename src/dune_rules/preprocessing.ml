@@ -472,10 +472,11 @@ let workspace_root_var =
 let promote_correction fn build ~suffix =
   let open Action_builder.O in
   let+ act = build in
-  Action.progn
+  Action.Full.reduce
     [ act
-    ; Action.diff ~optional:true (Path.build fn)
-        (Path.Build.extend_basename fn ~suffix)
+    ; Action.Full.make
+        (Action.diff ~optional:true (Path.build fn)
+           (Path.Build.extend_basename fn ~suffix))
     ]
 
 let promote_correction_with_target fn build ~suffix =
@@ -483,8 +484,9 @@ let promote_correction_with_target fn build ~suffix =
     [ build
     ; Action_builder.with_no_targets
         (Action_builder.return
-           (Action.diff ~optional:true (Path.build fn)
-              (Path.Build.extend_basename fn ~suffix)))
+           (Action.Full.make
+              (Action.diff ~optional:true (Path.build fn)
+                 (Path.Build.extend_basename fn ~suffix))))
     ]
 
 let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
@@ -502,9 +504,7 @@ let action_for_pp ~loc ~expander ~action ~src =
 
 let action_for_pp_with_target ~loc ~expander ~action ~src ~target =
   let action = action_for_pp ~loc ~expander ~action ~src in
-  Action_builder.With_targets.map
-    ~f:(Action.with_stdout_to target)
-    (Action_builder.with_file_targets ~file_targets:[ target ] action)
+  Action_builder.with_stdout_to target action
 
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)

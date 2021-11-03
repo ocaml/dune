@@ -389,7 +389,8 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
     Action_builder.with_file_targets action
       ~file_targets:[ Path.Build.relative dir output ]
   in
-  Super_context.add_rule sctx ~dir build
+  Super_context.add_rule sctx ~dir
+    (Action_builder.With_targets.map ~f:Action.Full.make build)
 
 let cctx_with_substitutions ?(libraries = []) ~modules ~dir ~loc ~scope ~cctx ()
     =

@@ -128,12 +128,14 @@ let gen_rules sctx t ~dir ~scope =
     let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
     let+ () = Action_builder.path cinaps_exe in
-    A.chdir (Path.build dir)
-      (A.progn
-         (A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
-         :: List.map cinapsed_files ~f:(fun fn ->
-                A.diff ~optional:true (Path.build fn)
-                  (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))))
+    Action.Full.make
+    @@ A.chdir (Path.build dir)
+         (A.progn
+            (A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
+            :: List.map cinapsed_files ~f:(fun fn ->
+                   A.diff ~optional:true (Path.build fn)
+                     (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))
+            ))
   in
   let cinaps_alias = alias ~dir in
   let* () =

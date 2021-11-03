@@ -293,11 +293,12 @@ module Unprocessed = struct
             in
             Some Processed.{ flag = "-pp"; args }
         in
-        Action_builder.map action ~f:(function
-          | Run (exe, args) -> pp_of_action exe args
-          | Chdir (_, Run (exe, args)) -> pp_of_action exe args
-          | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
-          | _ -> None))
+        Action_builder.map action ~f:(fun act ->
+            match act.action with
+            | Run (exe, args) -> pp_of_action exe args
+            | Chdir (_, Run (exe, args)) -> pp_of_action exe args
+            | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
+            | _ -> None))
     | _ -> Action_builder.return None
 
   let pp_flags sctx ~expander libname preprocess :

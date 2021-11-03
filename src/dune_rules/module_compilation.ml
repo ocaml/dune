@@ -271,20 +271,19 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
     (Action_builder.With_targets.add ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
        Action_builder.with_no_targets cm_deps
-       >>> Action_builder.With_targets.map
-             ~f:(Action.with_stdout_to output)
-             (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
-                [ Command.Args.dyn ocaml_flags
-                ; A "-I"
-                ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-                ; Command.Args.as_any (Cm_kind.Dict.get (CC.includes cctx) Cmo)
-                ; opens modules m
-                ; As flags
-                ; A "-short-paths"
-                ; A "-i"
-                ; Command.Ml_kind.flag Impl
-                ; Dep src
-                ])))
+       >>> Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
+             ~stdout_to:output
+             [ Command.Args.dyn ocaml_flags
+             ; A "-I"
+             ; Path (Path.build (Obj_dir.byte_dir obj_dir))
+             ; Command.Args.as_any (Cm_kind.Dict.get (CC.includes cctx) Cmo)
+             ; opens modules m
+             ; As flags
+             ; A "-short-paths"
+             ; A "-i"
+             ; Command.Ml_kind.flag Impl
+             ; Dep src
+             ]))
 
 (* The alias module is an implementation detail to support wrapping library
    modules under a single toplevel name. Since OCaml doesn't have proper support

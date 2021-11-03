@@ -51,7 +51,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
     Memo.Build.parallel_iter aliases ~f:(fun alias ->
-        Alias_rules.add sctx ~alias ~loc ~locks:[] (missing_run_t test))
+        Alias_rules.add sctx ~alias ~loc (missing_run_t test))
   | Ok test -> (
     match enabled with
     | false ->
@@ -73,6 +73,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
               }
           ]
       in
+      let locks = Path.Set.to_list spec.locks in
       let cram =
         let open Action_builder.O in
         let+ () = Action_builder.path (Path.build script)
@@ -87,11 +88,10 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
           Action_builder.dep
             (Dep.sandbox_config Sandbox_config.needs_sandboxing)
         in
-        action
+        Action.Full.make action ~locks
       in
-      let locks = Path.Set.to_list spec.locks in
       Memo.Build.parallel_iter aliases ~f:(fun alias ->
-          Alias_rules.add sctx ~alias ~loc cram ~locks))
+          Alias_rules.add sctx ~alias ~loc cram))
 
 let rules ~sctx ~expander ~dir tests =
   let stanzas =

@@ -389,8 +389,8 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
 
 module Module_rule = struct
   type t =
-    { coqdep : Action.t Action_builder.With_targets.t
-    ; coqc : Action.t Action_builder.With_targets.t
+    { coqdep : Action.Full.t Action_builder.With_targets.t
+    ; coqc : Action.Full.t Action_builder.With_targets.t
     }
 end
 

@@ -10,9 +10,8 @@ module Alias_rules : sig
        Super_context.t
     -> alias:Alias.t
     -> loc:Loc.t option
-    -> locks:Path.t list
     -> ?patch_back_source_tree:bool
-    -> Action.t Action_builder.t
+    -> Action.Full.t Action_builder.t
     -> unit Memo.Build.t
 
   val add_empty :

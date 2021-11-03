@@ -65,6 +65,8 @@ include
     with type string := string
     with type t := t
 
+include Monoid with type t := t
+
 module For_shell : sig
   include
     Action_intf.Ast
@@ -117,11 +119,24 @@ val is_useful_to_distribute : t -> is_useful
 val is_useful_to_memoize : t -> is_useful
 
 module Full : sig
+  type action := t
+
   (** A full action with its environment and list of locks *)
-  type nonrec t =
-    { action : t
+  type t =
+    { action : action
     ; env : Env.t
     ; locks : Path.t list
     ; can_go_in_shared_cache : bool
     }
+
+  val make :
+       ?env:Env.t (** default [Env.empty] *)
+    -> ?locks:Path.t list (** default [\[\]] *)
+    -> ?can_go_in_shared_cache:bool (** default [true] *)
+    -> action
+    -> t
+
+  val map : t -> f:(action -> action) -> t
+
+  include Monoid with type t := t
 end

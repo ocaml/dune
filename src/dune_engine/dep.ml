@@ -342,13 +342,17 @@ end
 module Set = struct
   include O.Map
 
-  module T = Monoid.Make (struct
+  module T = struct
     type t = unit Map.t
 
-    let empty = empty
+    include Monoid.Make (struct
+      type nonrec t = t
 
-    let combine = union ~f:(fun _ () () -> Some ())
-  end)
+      let empty = empty
+
+      let combine = union ~f:(fun _ () () -> Some ())
+    end)
+  end
 
   include T
 

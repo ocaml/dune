@@ -6,4 +6,4 @@
  (foreign_stubs
   (language c)
   (names fsevents_stubs))
- (libraries dyn stdune))
+ (libraries dyn threads.posix stdune))

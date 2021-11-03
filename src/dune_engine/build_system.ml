@@ -715,19 +715,15 @@ end = struct
                 (fun mode ->
                   let path = Path.source path in
                   let+ fact = eval_source_file mode path in
-                  ( { Action.Full.action = Action.copy path ctx_path
-                    ; env = Env.empty
-                    ; locks = []
-                    ; can_go_in_shared_cache = true
-                    }
+                  ( Action.Full.make
+                      (Action.copy path ctx_path)
+                      (* There's an [assert false] in [prepare_managed_paths]
+                         that blows up if we try to sandbox this. *)
+                      ~sandbox:Sandbox_config.no_sandboxing
                   , Dep.Map.singleton (Dep.file path) fact ))
             }
         in
-        Rule.make
-        (* There's an [assert false] in [prepare_managed_paths] that blows up if
-           we try to sandbox this. *)
-          ~sandbox:Sandbox_config.no_sandboxing ~context:None
-          ~info:(Source_file_copy path)
+        Rule.make ~context:None ~info:(Source_file_copy path)
           ~targets:(Targets.File.create ctx_path)
           build)
 
@@ -829,8 +825,7 @@ end = struct
         match rule.mode with
         | Standard
         | Promote _
-        | Ignore_source_files
-        | Patch_back_source_tree ->
+        | Ignore_source_files ->
           true
         | Fallback ->
           let source_files_for_targets =
@@ -991,8 +986,7 @@ end = struct
             in
             Path.Build.Set.union to_ignore acc_ignored
           | Standard
-          | Fallback
-          | Patch_back_source_tree ->
+          | Fallback ->
             acc_ignored)
     in
     let source_files_to_ignore =
@@ -1300,8 +1294,7 @@ end = struct
          dir-digest pairs [digests] *)
       Dep.Fact.file_selector g digests
     | Universe
-    | Env _
-    | Sandbox_config _ ->
+    | Env _ ->
       (* Facts about these dependencies are constructed in
          [Dep.Facts.digest]. *)
       Memo.Build.return Dep.Fact.nothing
@@ -1363,25 +1356,35 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 7
+  let rule_digest_version = 9
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
-    let { Action.Full.action; env; locks; can_go_in_shared_cache } = action in
+    let { Action.Full.action
+        ; env
+        ; locks
+        ; can_go_in_shared_cache
+        ; sandbox = _ (* already taken into account in [sandbox_mode] *)
+        ; patch_back_source_tree
+        } =
+      action
+    in
     let file_targets, dir_targets =
       Targets.partition_map rule.targets ~file:Path.Build.to_string
         ~dir:Path.Build.to_string
     in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
-      , Dep.Facts.digest deps ~sandbox_mode ~env
+      , sandbox_mode
+      , Dep.Facts.digest deps ~env
       , file_targets @ dir_targets
       , Option.map rule.context ~f:(fun c -> Context_name.to_string c.name)
       , Action.for_shell action
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
       , Execution_parameters.action_stdout_on_success execution_parameters
-      , Execution_parameters.action_stderr_on_success execution_parameters )
+      , Execution_parameters.action_stderr_on_success execution_parameters
+      , patch_back_source_tree )
     in
     Digest.generic trace
 
@@ -1446,25 +1449,27 @@ end = struct
 
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
-      ~dir ~targets ~(rule_mode : Rule.Mode.t) =
+      ~dir ~targets =
     let open Fiber.O in
     let file_targets, has_directory_targets =
       Targets.map targets ~f:(fun ~files ~dirs ->
           (files, not (Path.Build.Set.is_empty dirs)))
     in
-    let { Action.Full.action; env; locks; can_go_in_shared_cache = _ } =
+    let { Action.Full.action
+        ; env
+        ; locks
+        ; can_go_in_shared_cache = _
+        ; sandbox = _
+        ; patch_back_source_tree
+        } =
       action
     in
     pending_targets := Path.Build.Set.union file_targets !pending_targets;
     let chdirs = Action.chdirs action in
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
-          Sandbox.create ~mode ~deps
-            ~patch_back_source_tree:
-              (match rule_mode with
-              | Patch_back_source_tree -> true
-              | _ -> false)
-            ~rule_dir:dir ~rule_loc:loc ~chdirs ~rule_digest
+          Sandbox.create ~mode ~deps ~patch_back_source_tree ~rule_dir:dir
+            ~rule_loc:loc ~chdirs ~rule_digest
             ~expand_aliases:
               (Execution_parameters.expand_aliases_in_sandbox
                  execution_parameters))
@@ -1590,12 +1595,13 @@ end = struct
         | `Always_rerun -> "not trying to use the cache"
         | `Dynamic_deps_changed -> "dynamic dependencies changed"
       in
-      Log.info
-        [ Pp.hbox
-            (Pp.textf "Workspace-local cache miss: %s: %s\n"
-               (Path.Build.to_string head_target)
-               reason)
-        ]
+      Console.print_user_message
+        (User_message.make
+           [ Pp.hbox
+               (Pp.textf "Workspace-local cache miss: %s: %s"
+                  (Path.Build.to_string head_target)
+                  reason)
+           ])
 
   let report_shared_cache_miss ~(cache_debug_flags : Cache_debug_flags.t)
       ~rule_digest ~head_target (reason : Shared_cache_miss_reason.t) =
@@ -1620,12 +1626,13 @@ end = struct
           "rerunning for reproducibility check"
         | Not_found_in_cache -> "not found in cache"
       in
-      Log.info
-        [ Pp.hbox
-            (Pp.textf "Shared cache miss %s: %s\n"
-               (shared_cache_key_string_for_log ~rule_digest ~head_target)
-               reason)
-        ]
+      Console.print_user_message
+        (User_message.make
+           [ Pp.hbox
+               (Pp.textf "Shared cache miss %s: %s"
+                  (shared_cache_key_string_for_log ~rule_digest ~head_target)
+                  reason)
+           ])
 
   let execute_rule_impl ~rule_kind rule =
     let t = t () in
@@ -1648,13 +1655,6 @@ end = struct
        not expected to change often, so we do not sacrifice too much performance
        here by executing it sequentially. *)
     let* action, deps = Action_builder.run action Eager in
-    let action =
-      (* Rules that patch back the source tree cannot go in the shared cache *)
-      match (mode, action.can_go_in_shared_cache) with
-      | Patch_back_source_tree, true ->
-        { action with can_go_in_shared_cache = false }
-      | _ -> action
-    in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
         (if Loc.is_none loc then
@@ -1675,8 +1675,7 @@ end = struct
         let sandbox_mode =
           match Action.is_useful_to_sandbox action.action with
           | Clearly_not ->
-            let config = Dep.Map.sandbox_config deps in
-            if Sandbox_config.mem config Sandbox_mode.none then
+            if Sandbox_config.mem action.sandbox Sandbox_mode.none then
               Sandbox_mode.none
             else
               User_error.raise ~loc
@@ -1686,8 +1685,7 @@ end = struct
                      require sandboxing."
                 ]
           | Maybe ->
-            select_sandbox_mode ~loc
-              (Dep.Map.sandbox_config deps)
+            select_sandbox_mode ~loc action.sandbox
               ~sandboxing_preference:t.sandboxing_preference
         in
         let always_rerun =
@@ -1773,9 +1771,7 @@ end = struct
                 | (deps, old_digest) :: rest ->
                   let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
                   let* deps = Memo.Build.run (build_deps deps) in
-                  let new_digest =
-                    Dep.Facts.digest deps ~sandbox_mode ~env:action.env
-                  in
+                  let new_digest = Dep.Facts.digest deps ~env:action.env in
                   if old_digest = new_digest then
                     loop rest
                   else
@@ -1859,7 +1855,6 @@ end = struct
                 let* exec_result =
                   execute_action_for_rule t ~rule_digest ~action ~deps ~loc
                     ~context ~execution_parameters ~sandbox_mode ~dir ~targets
-                    ~rule_mode:mode
                 in
                 let* targets_and_digests =
                   (* Step IV. Store results to the shared cache and if that step
@@ -1895,9 +1890,7 @@ end = struct
                 let dynamic_deps_stages =
                   List.map exec_result.action_exec_result.dynamic_deps_stages
                     ~f:(fun (deps, fact_map) ->
-                      ( deps
-                      , Dep.Facts.digest fact_map ~sandbox_mode ~env:action.env
-                      ))
+                      (deps, Dep.Facts.digest fact_map ~env:action.env))
                 in
                 let targets_digest =
                   digest_of_target_digests targets_and_digests
@@ -1912,9 +1905,7 @@ end = struct
         in
         let* () =
           match (mode, !Clflags.promote) with
-          | ( ( Standard | Fallback | Ignore_source_files
-              | Patch_back_source_tree )
-            , _ )
+          | (Standard | Fallback | Ignore_source_files), _
           | Promote _, Some Never ->
             Fiber.return ()
           | Promote promote, (Some Automatically | None) ->
@@ -1969,23 +1960,15 @@ end = struct
       Path.Build.relative dir basename
     in
     let action =
-      { act.action with
-        action =
-          (if capture_stdout then
-            Action.with_stdout_to target act.action.action
+      Action.Full.map act.action ~f:(fun action ->
+          if capture_stdout then
+            Action.with_stdout_to target action
           else
-            Action.progn
-              [ act.action.action; Action.with_stdout_to target Action.empty ])
-      }
+            Action.progn [ action; Action.with_stdout_to target Action.empty ])
     in
     let rule =
-      let { Rule.Anonymous_action.context
-          ; action = _
-          ; loc
-          ; dir = _
-          ; alias = _
-          ; patch_back_source_tree
-          } =
+      let { Rule.Anonymous_action.context; action = _; loc; dir = _; alias = _ }
+          =
         act
       in
       Rule.make ~context
@@ -1994,11 +1977,7 @@ end = struct
           | Some loc -> From_dune_file loc
           | None -> Internal)
         ~targets:(Targets.File.create target)
-        ~mode:
-          (if patch_back_source_tree then
-            Patch_back_source_tree
-          else
-            Standard)
+        ~mode:Standard
         (Action_builder.of_thunk
            { f =
                (fun mode ->
@@ -2047,21 +2026,19 @@ end = struct
     (* Shadow [observing_facts] to make sure we don't use it again. *)
     let observing_facts = () in
     ignore observing_facts;
-    let act =
-      (* Actions that patch back the source tree cannot go in the shared
-         cache *)
-      if act.patch_back_source_tree && act.action.can_go_in_shared_cache then
-        { act with action = { act.action with can_go_in_shared_cache = false } }
-      else
-        act
-    in
     let digest =
       let { Rule.Anonymous_action.context
-          ; action = { action; env; locks; can_go_in_shared_cache }
+          ; action =
+              { action
+              ; env
+              ; locks
+              ; can_go_in_shared_cache
+              ; sandbox
+              ; patch_back_source_tree
+              }
           ; loc
           ; dir
           ; alias
-          ; patch_back_source_tree
           } =
         act
       in
@@ -2094,7 +2071,8 @@ end = struct
         , alias
         , capture_stdout
         , can_go_in_shared_cache
-        , patch_back_source_tree )
+        , patch_back_source_tree
+        , sandbox )
     in
     (* It might seem superfluous to memoize the execution here, given that a
        given anonymous action will typically only appear once during a given

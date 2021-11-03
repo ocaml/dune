@@ -147,7 +147,8 @@ include Sub_system.Register_end_point (struct
                            Action_unexpanded.expand_no_targets action ~loc
                              ~expander ~deps:[] ~what:"inline test generators"))))
            in
-           Action.with_stdout_to target (Action.progn actions)
+           Action.Full.reduce actions
+           |> Action.Full.map ~f:(Action.with_stdout_to target)
          in
          Action_builder.With_targets.add ~file_targets:[ target ] action)
     and* cctx =
@@ -226,7 +227,8 @@ include Sub_system.Register_end_point (struct
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in
            let open Action_builder.O in
-           let+ () = Dep_conf_eval.unnamed info.deps ~expander
+           let deps, sandbox = Dep_conf_eval.unnamed info.deps ~expander in
+           let+ () = deps
            and+ () = Action_builder.paths source_files
            and+ () = Action_builder.path exe
            and+ action =
@@ -250,13 +252,14 @@ include Sub_system.Register_end_point (struct
                | Ok p -> Action_builder.path p >>> Action_builder.return action)
            in
            let run_tests = Action.chdir (Path.build dir) action in
-           Action.progn
-             (run_tests
-             :: List.map source_files ~f:(fun fn ->
-                    Action.diff ~optional:true fn
-                      (Path.Build.extend_basename
-                         (Path.as_in_build_dir_exn fn)
-                         ~suffix:".corrected")))))
+           Action.Full.make ~sandbox
+           @@ Action.progn
+                (run_tests
+                :: List.map source_files ~f:(fun fn ->
+                       Action.diff ~optional:true fn
+                         (Path.Build.extend_basename
+                            (Path.as_in_build_dir_exn fn)
+                            ~suffix:".corrected")))))
 
   let gen_rules c ~(info : Info.t) ~backends =
     let open Memo.Build.O in

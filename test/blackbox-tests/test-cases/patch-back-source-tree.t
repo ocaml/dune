@@ -126,8 +126,8 @@ Interaction with explicit sandboxing
   3 |  (deps (sandbox none))
   4 |  (alias default)
   5 |  (action (system "echo 'Hello, world!'")))
-  Error: This rule forbids all sandboxing modes (but it also requires
-  sandboxing)
+  Error: Rules with (mode patch-back-source-tree) cannot have an explicit
+  sandbox configuration has it is implied by (mode patch-back-source-tree).
   [1]
 
 Selecting an explicit sandbox mode via the command line doesn't affect

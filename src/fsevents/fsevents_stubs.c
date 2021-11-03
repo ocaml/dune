@@ -9,12 +9,51 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 
+typedef struct dune_runloop {
+  CFRunLoopRef runloop;
+  value v_exn;
+} dune_runloop;
+
 typedef struct dune_fsevents_t {
-  CFRunLoopRef runLoop;
+  dune_runloop *runloop;
   value v_callback;
   FSEventStreamRef stream;
   value v_exn;
 } dune_fsevents_t;
+
+CAMLprim value dune_fsevents_runloop_current(value v_unit) {
+  CAMLparam1(v_unit);
+  dune_runloop *rl;
+  rl = caml_stat_alloc(sizeof(dune_runloop));
+  rl->runloop = CFRunLoopGetCurrent();
+  rl->v_exn = Val_unit;
+  caml_register_global_root(&rl->v_exn);
+  CAMLreturn(caml_copy_nativeint((intnat)rl));
+}
+
+CAMLprim value dune_fsevents_runloop_run(value v_runloop) {
+  CAMLparam1(v_runloop);
+  CAMLlocal1(v_exn);
+  dune_runloop *runloop = (dune_runloop *)Nativeint_val(v_runloop);
+  caml_release_runtime_system();
+  CFRunLoopRun();
+  caml_acquire_runtime_system();
+  caml_remove_global_root(&runloop->v_exn);
+  v_exn = runloop->v_exn;
+  caml_stat_free(runloop);
+  if (v_exn != Val_unit)
+    caml_raise(v_exn);
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value dune_fsevents_runloop_stop(value v_runloop) {
+  CAMLparam1(v_runloop);
+  dune_runloop *runloop = (dune_runloop *)Nativeint_val(v_runloop);
+  caml_release_runtime_system();
+  CFRunLoopStop(runloop->runloop);
+  caml_acquire_runtime_system();
+  CAMLreturn(Val_unit);
+}
 
 static FSEventStreamEventFlags interesting_flags =
     kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved |
@@ -66,13 +105,10 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
     Store_field(v_events_x, 1, v_events_xs);
     v_events_xs = v_events_x;
   }
-  // TODO what happens if this function raises?
-  v_res = caml_callback2_exn(t->v_callback, caml_copy_nativeint((intnat)t), v_events_xs);
+  v_res = caml_callback_exn(t->v_callback, v_events_xs);
   if (Is_exception_result(v_res)) {
-    t->v_exn = Extract_exception(v_res);
-    FSEventStreamStop(t->stream);
-    FSEventStreamInvalidate(t->stream);
-    CFRunLoopStop(t->runLoop);
+    t->runloop->v_exn = Extract_exception(v_res);
+    CFRunLoopStop(t->runloop->runloop);
   }
   CAMLdrop;
   caml_release_runtime_system();
@@ -120,10 +156,8 @@ CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
       flags);
   CFRelease(paths);
   caml_register_global_root(&t->v_callback);
-  caml_register_global_root(&t->v_exn);
   t->v_callback = v_callback;
   t->stream = stream;
-  t->v_exn = Val_unit;
 
   CAMLreturn(caml_copy_nativeint((intnat)t));
 }
@@ -143,37 +177,17 @@ CAMLprim value dune_fsevents_set_exclusion_paths(value v_t, value v_paths) {
   CAMLreturn(Val_unit);
 }
 
-CAMLprim value dune_fsevents_start(value v_t) {
-  CAMLparam1(v_t);
+CAMLprim value dune_fsevents_start(value v_t, value v_runloop) {
+  CAMLparam2(v_t, v_runloop);
   dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
-  CFRunLoopRef runLoop = CFRunLoopGetCurrent();
-  t->runLoop = runLoop;
-  FSEventStreamScheduleWithRunLoop(t->stream, runLoop, kCFRunLoopDefaultMode);
+  dune_runloop *runloop = (dune_runloop *)Nativeint_val(v_runloop);
+  t->runloop = runloop;
+  FSEventStreamScheduleWithRunLoop(t->stream, runloop->runloop,
+                                   kCFRunLoopDefaultMode);
   bool res = FSEventStreamStart(t->stream);
   if (!res) {
+    /* the docs say this is impossible anyway */
     caml_failwith("Fsevents.start: failed to start");
-  }
-  CAMLreturn(Val_unit);
-}
-
-CAMLprim value dune_fsevents_destroy(value v_t) {
-  CAMLparam1(v_t);
-  dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
-  FSEventStreamRelease(t->stream);
-  caml_remove_global_root(&t->v_callback);
-  caml_remove_global_root(&t->v_exn);
-  caml_stat_free(t);
-  CAMLreturn(Val_unit);
-}
-
-CAMLprim value dune_fsevents_loop(value v_t) {
-  CAMLparam1(v_t);
-  dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
-  caml_release_runtime_system();
-  CFRunLoopRun();
-  caml_acquire_runtime_system();
-  if(t->v_exn != Val_unit) {
-    caml_raise(t->v_exn);
   }
   CAMLreturn(Val_unit);
 }
@@ -182,15 +196,29 @@ CAMLprim value dune_fsevents_stop(value v_t) {
   CAMLparam1(v_t);
   dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
   FSEventStreamStop(t->stream);
+  FSEventStreamInvalidate(t->stream);
+  FSEventStreamRelease(t->stream);
+  caml_remove_global_root(&t->v_callback);
+  caml_stat_free(t);
   CAMLreturn(Val_unit);
 }
 
-CAMLprim value dune_fsevents_break(value v_t) {
+static inline value Val_some(value v) {
+  CAMLparam1(v);
+  CAMLlocal1(some);
+  some = caml_alloc_small(1, 0);
+  Field(some, 0) = v;
+  CAMLreturn(some);
+}
+
+CAMLprim value dune_fsevents_runloop_get(value v_t) {
   CAMLparam1(v_t);
   dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
-  FSEventStreamInvalidate(t->stream);
-  CFRunLoopStop(t->runLoop);
-  CAMLreturn(Val_unit);
+  if (t->runloop == NULL) {
+    CAMLreturn(Val_int(0));
+  } else {
+    CAMLreturn(Val_some(caml_copy_nativeint((intnat)t->runloop)));
+  }
 }
 
 CAMLprim value dune_fsevents_flush_async(value v_t) {
@@ -347,6 +375,16 @@ CAMLprim value dune_fsevents_break(value v_t) {
 }
 
 CAMLprim value dune_fsevents_loop(value v_t) {
+  caml_failwith("fsevents is only available on macos");
+}
+
+CAMLprim value dune_fsevents_runloop_current(value v_unit) {
+  caml_failwith("fsevents is only available on macos");
+}
+CAMLprim value dune_fsevents_runloop_run(value v_unit) {
+  caml_failwith("fsevents is only available on macos");
+}
+CAMLprim value dune_fsevents_runloop_stop(value v_runloop) {
   caml_failwith("fsevents is only available on macos");
 }
 

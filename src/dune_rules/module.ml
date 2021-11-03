@@ -123,7 +123,7 @@ end
 type t =
   { source : Source.t
   ; obj_name : Module_name.Unique.t
-  ; pp : string list Action_builder.t option
+  ; pp : (string list Action_builder.t * Sandbox_config.t) option
   ; visibility : Visibility.t
   ; kind : Kind.t
   }

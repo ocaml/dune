@@ -13,9 +13,13 @@ let start_filename = ".dune_fsevents_start"
 
 let end_filename = ".dune_fsevents_end"
 
-let emit_start () = Io.String_path.write_file start_filename ""
+let emit_start dir =
+  ignore (Fpath.mkdir_p dir);
+  Io.String_path.write_file (Filename.concat dir start_filename) ""
 
-let emit_end () = Io.String_path.write_file end_filename ""
+let emit_end dir =
+  ignore (Fpath.mkdir_p dir);
+  Io.String_path.write_file (Filename.concat dir end_filename) ""
 
 let test f =
   let cv = Condition.create () in
@@ -68,10 +72,11 @@ let print_event ~cwd e =
   in
   printfn "> %s" (Dyn.to_string dyn)
 
-let make_callback ~f =
+let make_callback t ~f =
   (* hack to skip the first event if it's creating the temp dir *)
   let state = ref `Looking_start in
-  fun t events ->
+  fun events ->
+    let t = Option.value_exn !t in
     let is_marker event filename =
       Event.kind event = File
       && Filename.basename (Event.path event) = filename
@@ -80,7 +85,7 @@ let make_callback ~f =
     let stop =
       lazy
         (Fsevents.stop t;
-         Fsevents.break t)
+         Fsevents.RunLoop.stop (Option.value_exn (Fsevents.runloop t)))
     in
     let events =
       List.fold_left events ~init:[] ~f:(fun acc event ->
@@ -101,50 +106,72 @@ let make_callback ~f =
     | [] -> ()
     | _ -> f events
 
-let fsevents ?on_event ~cwd ~paths () =
-  let on_event =
-    match on_event with
-    | None -> print_event ~cwd
-    | Some s -> s
-  in
-  Fsevents.create ~paths
-    ~f:(make_callback ~f:(List.iter ~f:on_event))
-    ~latency:0.
+type test_config =
+  { on_events : Event.t list -> unit
+  ; exclusion_paths : string list
+  ; dir : string
+  }
 
-let test_with_operations ?on_event ?exclusion_paths f =
+let default_test_config cwd =
+  { on_events = List.iter ~f:(print_event ~cwd)
+  ; dir = cwd
+  ; exclusion_paths = []
+  }
+
+let test_with_multiple_fsevents ~setup ~test:f =
   test (fun finish ->
       let cwd = Sys.getcwd () in
-      let t = fsevents ?on_event ~paths:[ cwd ] ~cwd () in
-      (match exclusion_paths with
-      | None -> ()
-      | Some f ->
-        let paths = f cwd in
-        Fsevents.set_exclusion_paths t ~paths);
-      Fsevents.start t;
+      let configs = setup ~cwd (default_test_config cwd) in
+      let fsevents =
+        List.map configs ~f:(fun config ->
+            let t = ref None in
+            let res =
+              Fsevents.create ~paths:[ config.dir ] ~latency:0.0
+                ~f:(make_callback t ~f:config.on_events)
+            in
+            t := Some res;
+            res)
+      in
+      let runloop = Fsevents.RunLoop.in_current_thread () in
+      List.iter fsevents ~f:(fun f -> Fsevents.start f runloop);
       let (_ : Thread.t) =
         Thread.create
           (fun () ->
-            emit_start ();
+            List.iter configs ~f:(fun config -> emit_start config.dir);
             f ();
-            emit_end ())
+            List.iter configs ~f:(fun config -> emit_end config.dir))
           ()
       in
-      (match Fsevents.loop t with
+      (match Fsevents.RunLoop.run_current_thread runloop with
       | Error Exit -> print_endline "[EXIT]"
       | Error _ -> assert false
       | Ok () -> ());
-      Fsevents.destroy t;
+      List.iter fsevents ~f:Fsevents.stop;
       finish ())
+
+let test_with_operations ?on_event ?exclusion_paths f =
+  test_with_multiple_fsevents ~test:f ~setup:(fun ~cwd config ->
+      let config =
+        match exclusion_paths with
+        | None -> config
+        | Some f -> { config with exclusion_paths = f cwd }
+      in
+      [ (match on_event with
+        | None -> config
+        | Some on_event -> { config with on_events = List.iter ~f:on_event })
+      ])
 
 let%expect_test "file create event" =
   test_with_operations (fun () -> Io.String_path.write_file "./file" "foobar");
   [%expect
-    {| > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
+    {|
+      > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
 
 let%expect_test "dir create event" =
   test_with_operations (fun () -> ignore (Fpath.mkdir "./blahblah"));
   [%expect
-    {| > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/blahblah" } |}]
+    {|
+      > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/blahblah" } |}]
 
 let%expect_test "move file" =
   test_with_operations (fun () ->
@@ -179,10 +206,30 @@ let%expect_test "set exclusion paths" =
   (* absolute paths work *)
   run Filename.concat;
   [%expect
-    {| > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" } |}];
+    {|
+      > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" }
+      > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" } |}];
   (* but relative paths do not *)
   run (fun _ name -> name);
   [%expect
     {|
     > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" }
     > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" } |}]
+
+let%expect_test "multiple fsevents" =
+  test_with_multiple_fsevents
+    ~setup:(fun ~cwd config ->
+      let create path =
+        let dir = Filename.concat cwd path in
+        ignore (Fpath.mkdir dir);
+        { config with dir }
+      in
+      [ create "foo"; create "bar" ])
+    ~test:(fun () ->
+      Io.String_path.write_file "foo/file" "";
+      Io.String_path.write_file "bar/file" "";
+      Io.String_path.write_file "xxx" "" (* this one is ignored *));
+  [%expect
+    {|
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" }
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" } |}]

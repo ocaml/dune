@@ -1540,39 +1540,57 @@ module Rule = struct
   module Mode = struct
     include Rule.Mode
 
-    let patch_back_from_source_tree_syntax =
-      Dune_lang.Syntax.create ~experimental:true ~name:"patch-back-source-tree"
-        ~desc:"experimental support for (mode patch-back-source-tree)"
-        [ ((0, 1), `Since (3, 0)) ]
-
-    let () =
-      Dune_project.Extension.register_simple patch_back_from_source_tree_syntax
-        (Dune_lang.Decoder.return [])
-
-    let decode =
+    let mode_decoders =
       let promote_into lifetime =
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
         and+ into = Promote.into_decode in
         Rule.Mode.Promote { lifetime; into = Some into; only = None }
       in
-      sum
-        [ ("standard", return Rule.Mode.Standard)
-        ; ("fallback", return Rule.Mode.Fallback)
-        ; ( "promote"
-          , let+ p = Promote.decode in
-            Rule.Mode.Promote p )
-        ; ( "promote-until-clean"
-          , return
-              (Rule.Mode.Promote
-                 { lifetime = Until_clean; into = None; only = None }) )
-        ; ("promote-into", promote_into Unlimited)
-        ; ("promote-until-clean-into", promote_into Until_clean)
-        ; ( "patch-back-source-tree"
-          , let+ () =
-              Dune_lang.Syntax.since patch_back_from_source_tree_syntax (0, 1)
-            in
-            Rule.Mode.Patch_back_source_tree )
-        ]
+      [ ("standard", return Rule.Mode.Standard)
+      ; ("fallback", return Rule.Mode.Fallback)
+      ; ( "promote"
+        , let+ p = Promote.decode in
+          Rule.Mode.Promote p )
+      ; ( "promote-until-clean"
+        , return
+            (Rule.Mode.Promote
+               { lifetime = Until_clean; into = None; only = None }) )
+      ; ("promote-into", promote_into Unlimited)
+      ; ("promote-until-clean-into", promote_into Until_clean)
+      ]
+
+    module Extended = struct
+      type t =
+        | Normal of Rule.Mode.t
+        | Patch_back_source_tree
+
+      let patch_back_from_source_tree_syntax =
+        Dune_lang.Syntax.create ~experimental:true
+          ~name:"patch-back-source-tree"
+          ~desc:"experimental support for (mode patch-back-source-tree)"
+          [ ((0, 1), `Since (3, 0)) ]
+
+      let () =
+        Dune_project.Extension.register_simple
+          patch_back_from_source_tree_syntax
+          (Dune_lang.Decoder.return [])
+
+      let decode =
+        sum
+          (( "patch-back-source-tree"
+           , let+ () =
+               Dune_lang.Syntax.since patch_back_from_source_tree_syntax (0, 1)
+             in
+             Patch_back_source_tree )
+          :: List.map mode_decoders ~f:(fun (name, dec) ->
+                 ( name
+                 , let+ x = dec in
+                   Normal x )))
+
+      let field = field "mode" decode ~default:(Normal Standard)
+    end
+
+    let decode = sum mode_decoders
 
     let field = field "mode" decode ~default:Rule.Mode.Standard
   end
@@ -1582,6 +1600,7 @@ module Rule = struct
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
+    ; patch_back_source_tree : bool
     ; locks : String_with_vars.t list
     ; loc : Loc.t
     ; enabled_if : Blang.t
@@ -1633,6 +1652,7 @@ module Rule = struct
     ; deps = Bindings.empty
     ; action = (loc, action)
     ; mode = Standard
+    ; patch_back_source_tree = false
     ; locks = []
     ; loc
     ; enabled_if = Blang.true_
@@ -1675,7 +1695,7 @@ module Rule = struct
             to provide a nice error message for people switching from jbuilder
             to dune. *)
          assert (not fallback)
-       and+ mode = field "mode" Mode.decode ~default:Mode.Standard
+       and+ mode = Mode.Extended.field
        and+ enabled_if =
          Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
        and+ package =
@@ -1686,7 +1706,34 @@ module Rule = struct
          field_o "alias"
            (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
        in
-       { targets; deps; action; mode; locks; loc; enabled_if; alias; package })
+       let mode, patch_back_source_tree =
+         match mode with
+         | Normal mode -> (mode, false)
+         | Patch_back_source_tree ->
+           if
+             List.exists (Bindings.to_list deps) ~f:(function
+               | Dep_conf.Sandbox_config _ -> true
+               | _ -> false)
+           then
+             User_error.raise ~loc
+               [ Pp.text
+                   "Rules with (mode patch-back-source-tree) cannot have an \
+                    explicit sandbox configuration has it is implied by (mode \
+                    patch-back-source-tree)."
+               ];
+           (Standard, true)
+       in
+       { targets
+       ; deps
+       ; action
+       ; mode
+       ; locks
+       ; loc
+       ; enabled_if
+       ; alias
+       ; package
+       ; patch_back_source_tree
+       })
 
   let decode =
     peek_exn >>= function
@@ -1749,6 +1796,7 @@ module Rule = struct
                       ; S.virt_pform __POS__ (Var Deps)
                       ] ) ) )
         ; mode
+        ; patch_back_source_tree = false
         ; locks = []
         ; loc
         ; enabled_if
@@ -1776,6 +1824,7 @@ module Rule = struct
                     ( S.virt_text __POS__ "ocamlyacc"
                     , [ S.virt_pform __POS__ (Var Deps) ] ) ) )
         ; mode
+        ; patch_back_source_tree = false
         ; locks = []
         ; loc
         ; enabled_if

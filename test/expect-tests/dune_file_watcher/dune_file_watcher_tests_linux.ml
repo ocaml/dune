@@ -36,7 +36,9 @@ let%expect_test _ =
               | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
-  Dune_file_watcher.add_watch watcher (Path.of_string ".");
+  (match Dune_file_watcher.add_watch watcher (Path.of_string ".") with
+  | Error _ -> assert false
+  | Ok () -> ());
   Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 2;
@@ -54,7 +56,9 @@ let%expect_test _ =
     { path = In_source_tree "y"; kind = "Created" }
 |}];
   let (_ : _) = Fpath.mkdir_p "d/w" in
-  Dune_file_watcher.add_watch watcher (Path.of_string "d/w");
+  (match Dune_file_watcher.add_watch watcher (Path.of_string "d/w") with
+  | Error _ -> assert false
+  | Ok () -> ());
   Stdio.Out_channel.write_all "d/w/x" ~data:"x";
   print_events 3;
   [%expect

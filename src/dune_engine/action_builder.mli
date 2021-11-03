@@ -24,7 +24,7 @@ module With_targets : sig
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
   val write_file_dyn :
-    ?perm:Action.File_perm.t -> Path.Build.t -> string t -> Action.t t
+    ?perm:Action.File_perm.t -> Path.Build.t -> string t -> Action.Full.t t
 
   val all : 'a t list -> 'a list t
 
@@ -34,6 +34,8 @@ module With_targets : sig
 
   module O : sig
     val ( >>> ) : unit t -> 'a t -> 'a t
+
+    val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
 
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
@@ -144,26 +146,35 @@ val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
 (** Create a file with the given contents. *)
 val write_file :
-  ?perm:Action.File_perm.t -> Path.Build.t -> string -> Action.t With_targets.t
+     ?perm:Action.File_perm.t
+  -> Path.Build.t
+  -> string
+  -> Action.Full.t With_targets.t
 
 val write_file_dyn :
      ?perm:Action.File_perm.t
   -> Path.Build.t
   -> string t
-  -> Action.t With_targets.t
+  -> Action.Full.t With_targets.t
 
-val copy : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
+val with_stdout_to :
+     ?perm:Action.File_perm.t
+  -> Path.Build.t
+  -> Action.Full.t t
+  -> Action.Full.t With_targets.t
+
+val copy : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 
 val copy_and_add_line_directive :
-  src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
+  src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 
-val symlink : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
+val symlink : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 
 val create_file :
-  ?perm:Action.File_perm.t -> Path.Build.t -> Action.t With_targets.t
+  ?perm:Action.File_perm.t -> Path.Build.t -> Action.Full.t With_targets.t
 
 (** Merge a list of actions accumulating the sets of their targets. *)
-val progn : Action.t With_targets.t list -> Action.t With_targets.t
+val progn : Action.Full.t With_targets.t list -> Action.Full.t With_targets.t
 
 (** A version of [dyn_memo_build] that makes it convenient to declare dynamic
     action dependencies. *)

@@ -1,8 +1,18 @@
 Unreleased
 ----------
 
+- In watch mode, use fsevents instead of fswatch on OSX (#4937, #4990, fixes
+  #4896 @rgrinberg)
+
+- Remove `inotifywait` watch mode backend on Linux. We now use the inotify API
+  exclusively (#4941, @rgrinberg)
+
 - Report cycles between virtual libraries and their implementation (#5050,
   fixes #2896, @rgrinberg)
+
+- Warn when lang versions have an ignored suffix. `(lang dune 2.3.4)` or `(lang
+  dune 2.3suffix)` were silently parsed as `2.3` and we know suggest to remove
+  the prefix. (#5040, @emillon)
 
 - Allow users to specify dynamic dependencies in rules. For example `(deps
   %{read:foo.gen})` (#4662, fixes #4089, @jeremiedimino)

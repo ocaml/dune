@@ -94,7 +94,9 @@ module Error = struct
   let make ?loc ?hints paragraphs =
     Resolve.Build.fail
       (User_error.make ?loc ?hints paragraphs
-         ~annots:[ User_message.Annot.Needs_stack_trace.make () ])
+         ~annots:
+           (User_message.Annots.singleton User_message.Annots.needs_stack_trace
+              ()))
 
   let pp_lib info =
     let name = Lib_info.name info in

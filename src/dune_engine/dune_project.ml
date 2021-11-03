@@ -808,10 +808,10 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
                   User_message.make ~loc [ Pp.textf "package named %s" name ]
                 in
                 let related = [ message loc1; message loc2 ] in
-                [ Compound_user_error.make
-                    ~main:(User_message.make main_message)
-                    ~related
-                ]
+                User_message.Annots.singleton Compound_user_error.annot
+                  (Compound_user_error.make
+                     ~main:(User_message.make main_message)
+                     ~related)
               in
               User_error.raise ~annots
                 (main_message

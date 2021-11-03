@@ -237,16 +237,6 @@ module Error = struct
 
   let id t = t.id
 
-  let extract_dir annot =
-    Process.With_directory_annot.check annot
-      (fun dir -> Some dir)
-      (fun () -> None)
-
-  let extract_promote annot =
-    Diff_promotion.Annot.check annot
-      (fun promote -> Some promote)
-      (fun () -> None)
-
   let promotion t =
     let e =
       match t.exn.exn with
@@ -254,11 +244,9 @@ module Error = struct
       | e -> e
     in
     match e with
-    | User_error.E msg -> List.find_map msg.annots ~f:extract_promote
+    | User_error.E msg ->
+      User_message.Annots.find msg.annots Diff_promotion.Annot.annot
     | _ -> None
-
-  let extract_compound_error annot =
-    Compound_user_error.check annot Option.some (fun () -> None)
 
   let info (t : t) =
     let e =
@@ -268,8 +256,10 @@ module Error = struct
     in
     match e with
     | User_error.E msg -> (
-      let dir = List.find_map msg.annots ~f:extract_dir in
-      match List.find_map msg.annots ~f:extract_compound_error with
+      let dir =
+        User_message.Annots.find msg.annots Process.with_directory_annot
+      in
+      match User_message.Annots.find msg.annots Compound_user_error.annot with
       | None -> (msg, [], dir)
       | Some { main; related } -> (main, related, dir))
     | e ->
@@ -2155,7 +2145,9 @@ end = struct
                 [ ("targets", Targets.to_dyn rule.targets) ]
           in
           User_error.raise ~loc:rule.loc
-            ~annots:[ User_message.Annot.Needs_stack_trace.make () ]
+            ~annots:
+              (User_message.Annots.singleton
+                 User_message.Annots.needs_stack_trace ())
             [ Pp.textf
                 "This rule defines a directory target %S that matches the \
                  requested path %S but the rule's action didn't produce it"

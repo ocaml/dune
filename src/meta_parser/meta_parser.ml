@@ -24,7 +24,7 @@ module Make (Stdune : sig
       type t
     end
 
-    module Annot : sig
+    module Annots : sig
       type t
     end
   end
@@ -33,7 +33,7 @@ module Make (Stdune : sig
     val raise :
          ?loc:Loc.t
       -> ?hints:User_message.Style.t Pp.t list
-      -> ?annots:User_message.Annot.t list
+      -> ?annots:User_message.Annots.t
       -> User_message.Style.t Pp.t list
       -> _
   end

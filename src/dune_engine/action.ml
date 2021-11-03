@@ -337,7 +337,9 @@ module Full = struct
       let can_go_in_shared_cache = false in
       (* Rules that patch back the source tree must be sandboxed in copy
          mode. *)
-      let sandbox = Sandbox_mode.Set.singleton (Some Copy) in
+      let sandbox =
+        Sandbox_config.inter t.sandbox (Sandbox_mode.Set.singleton (Some Copy))
+      in
       { t with can_go_in_shared_cache; sandbox }
 
   let make ?(env = Env.empty) ?(locks = []) ?(can_go_in_shared_cache = true)

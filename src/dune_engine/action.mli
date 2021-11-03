@@ -65,6 +65,8 @@ include
     with type string := string
     with type t := t
 
+include Monoid with type t := t
+
 module For_shell : sig
   include
     Action_intf.Ast

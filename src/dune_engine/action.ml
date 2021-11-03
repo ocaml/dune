@@ -78,6 +78,20 @@ end
 
 include Action_ast.Make (Prog) (Dpath) (Dpath.Build) (String_with_sexp) (Ast)
 
+include Monoid.Make (struct
+  type nonrec t = t
+
+  let empty = Progn []
+
+  let combine a b =
+    match (a, b) with
+    | Progn [], x
+    | x, Progn [] ->
+      x
+    | Progn xs, Progn ys -> Progn (xs @ ys)
+    | x, y -> Progn [ x; y ]
+end)
+
 type string = String.t
 
 module For_shell = struct
@@ -279,14 +293,7 @@ module Full = struct
       }
 
     let combine { action; env; locks; can_go_in_shared_cache } x =
-      let action =
-        match (action, x.action) with
-        | Progn [], x
-        | x, Progn [] ->
-          x
-        | a, b -> Progn [ a; b ]
-      in
-      { action
+      { action = combine action x.action
       ; env = Env.extend_env env x.env
       ; locks = locks @ x.locks
       ; can_go_in_shared_cache =
@@ -294,8 +301,8 @@ module Full = struct
       }
   end
 
-  include Monoid.Make (T)
   include T
+  include Monoid.Make (T)
 
   let make ?(env = Env.empty) ?(locks = []) ?(can_go_in_shared_cache = true)
       action =

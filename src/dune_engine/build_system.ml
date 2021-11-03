@@ -1600,12 +1600,13 @@ end = struct
         | `Always_rerun -> "not trying to use the cache"
         | `Dynamic_deps_changed -> "dynamic dependencies changed"
       in
-      Log.info
-        [ Pp.hbox
-            (Pp.textf "Workspace-local cache miss: %s: %s\n"
-               (Path.Build.to_string head_target)
-               reason)
-        ]
+      Console.print_user_message
+        (User_message.make
+           [ Pp.hbox
+               (Pp.textf "Workspace-local cache miss: %s: %s"
+                  (Path.Build.to_string head_target)
+                  reason)
+           ])
 
   let report_shared_cache_miss ~(cache_debug_flags : Cache_debug_flags.t)
       ~rule_digest ~head_target (reason : Shared_cache_miss_reason.t) =
@@ -1630,12 +1631,13 @@ end = struct
           "rerunning for reproducibility check"
         | Not_found_in_cache -> "not found in cache"
       in
-      Log.info
-        [ Pp.hbox
-            (Pp.textf "Shared cache miss %s: %s\n"
-               (shared_cache_key_string_for_log ~rule_digest ~head_target)
-               reason)
-        ]
+      Console.print_user_message
+        (User_message.make
+           [ Pp.hbox
+               (Pp.textf "Shared cache miss %s: %s"
+                  (shared_cache_key_string_for_log ~rule_digest ~head_target)
+                  reason)
+           ])
 
   let execute_rule_impl ~rule_kind rule =
     let t = t () in

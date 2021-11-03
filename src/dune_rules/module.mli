@@ -56,7 +56,7 @@ val name : t -> Module_name.t
 
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 
-val pp_flags : t -> string list Action_builder.t option
+val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option
 
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
 
@@ -75,7 +75,7 @@ val add_file : t -> Ml_kind.t -> File.t -> t
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 (** Set preprocessing flags *)
-val set_pp : t -> string list Action_builder.t option -> t
+val set_pp : t -> (string list Action_builder.t * Sandbox_config.t) option -> t
 
 val wrapped_compat : t -> t
 

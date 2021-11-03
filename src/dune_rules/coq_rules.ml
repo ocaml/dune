@@ -381,11 +381,10 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   let open Action_builder.With_targets.O in
   (* The way we handle the transitive dependencies of .vo files is not safe for
      sandboxing *)
-  Action_builder.with_no_targets
-    (Action_builder.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
-  >>>
+  let sandbox = Sandbox_config.no_sandboxing in
   let coq_flags = Context.coq_flags cctx in
   Context.coqc cctx (Command.Args.dyn coq_flags :: file_flags)
+  >>| Action.Full.add_sandbox sandbox
 
 module Module_rule = struct
   type t =

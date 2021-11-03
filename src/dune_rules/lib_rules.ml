@@ -123,33 +123,35 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
   let build ~custom ~sandbox targets =
-    Super_context.add_rule sctx ~sandbox ~dir ~loc
-      (let cclibs_args =
-         Expander.expand_and_eval_set expander c_library_flags
-           ~standard:(Action_builder.return [])
-       in
-       let ctx = Super_context.context sctx in
-       Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
-         [ A "-g"
-         ; (if custom then
-             A "-custom"
-           else
-             Command.Args.empty)
-         ; A "-o"
-         ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name))
-         ; Deps o_files
-         ; Dyn
-             (* The [c_library_flags] is needed only for the [dynamic_target]
-                case, but we pass them unconditionally for simplicity. *)
-             (Action_builder.map cclibs_args ~f:(fun cclibs ->
-                  (* https://github.com/ocaml/dune/issues/119 *)
-                  match ctx.lib_config.ccomp_type with
-                  | Msvc ->
-                    let cclibs = msvc_hack_cclibs cclibs in
-                    Command.quote_args "-ldopt" cclibs
-                  | Other _ -> As cclibs))
-         ; Hidden_targets targets
-         ])
+    Super_context.add_rule sctx ~dir ~loc
+      (let open Action_builder.With_targets.O in
+      let cclibs_args =
+        Expander.expand_and_eval_set expander c_library_flags
+          ~standard:(Action_builder.return [])
+      in
+      let ctx = Super_context.context sctx in
+      Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
+        [ A "-g"
+        ; (if custom then
+            A "-custom"
+          else
+            Command.Args.empty)
+        ; A "-o"
+        ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name))
+        ; Deps o_files
+        ; Dyn
+            (* The [c_library_flags] is needed only for the [dynamic_target]
+               case, but we pass them unconditionally for simplicity. *)
+            (Action_builder.map cclibs_args ~f:(fun cclibs ->
+                 (* https://github.com/ocaml/dune/issues/119 *)
+                 match ctx.lib_config.ccomp_type with
+                 | Msvc ->
+                   let cclibs = msvc_hack_cclibs cclibs in
+                   Command.quote_args "-ldopt" cclibs
+                 | Other _ -> As cclibs))
+        ; Hidden_targets targets
+        ]
+      >>| Action.Full.add_sandbox sandbox)
   in
   let dynamic_target =
     Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll

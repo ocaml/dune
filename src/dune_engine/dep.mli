@@ -6,7 +6,6 @@ type t = private
   | Alias of Alias.t
   | File_selector of File_selector.t
   | Universe
-  | Sandbox_config of Sandbox_config.t
 
 val file : Path.t -> t
 
@@ -18,16 +17,12 @@ val file_selector : File_selector.t -> t
 
 val alias : Alias.t -> t
 
-val sandbox_config : Sandbox_config.t -> t
-
 val compare : t -> t -> Ordering.t
 
 module Map : sig
   type dep := t
 
   include Map.S with type key := t
-
-  val sandbox_config : _ t -> Sandbox_config.t
 
   val has_universe : _ t -> bool
 
@@ -109,7 +104,7 @@ module Facts : sig
   (** Parent directories of all dependencies. *)
   val parent_dirs : t -> Path.Set.t
 
-  val digest : t -> sandbox_mode:Sandbox_mode.t -> env:Env.t -> Digest.t
+  val digest : t -> env:Env.t -> Digest.t
 
   val to_dyn : t -> Dyn.t
 end

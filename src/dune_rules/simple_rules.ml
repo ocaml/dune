@@ -67,13 +67,7 @@ let add_user_rule sctx ~dir ~(rule : Rule.t)
     ~(action : _ Action_builder.With_targets.t) ~expander =
   let* build = interpret_and_add_locks ~expander rule.locks action.build in
   let action = { action with Action_builder.With_targets.build } in
-  SC.add_rule_get_targets
-    sctx
-    (* user rules may have extra requirements, in which case they will be
-       specified as a part of rule.deps, which will be correctly taken care of
-       by the action builder *)
-    ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
-    ~loc:rule.loc action
+  SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc action
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   Expander.eval_blang expander rule.enabled_if >>= function
@@ -107,10 +101,11 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | None -> expander
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
-    let* action =
+    let action =
       Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
         ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
+    let* action = action in
     match rule_kind ~rule ~action with
     | No_alias ->
       let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
@@ -233,11 +228,15 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   | true -> (
     match alias_conf.action with
     | None ->
-      let builder, _expander = Dep_conf_eval.named ~expander alias_conf.deps in
+      let builder, _expander, _sandbox =
+        Dep_conf_eval.named ~expander alias_conf.deps
+      in
       Rules.Produce.Alias.add_deps alias ?loc builder
     | Some (action_loc, action) ->
       let action =
-        let builder, expander = Dep_conf_eval.named ~expander alias_conf.deps in
+        let builder, expander, sandbox =
+          Dep_conf_eval.named ~expander alias_conf.deps
+        in
         let open Action_builder.O in
         let+ () = builder
         and+ action =
@@ -249,7 +248,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
           Action_unexpanded.expand_no_targets action ~loc:action_loc ~expander
             ~deps:alias_conf.deps ~what:"aliases"
         in
-        action
+        { action with sandbox = Sandbox_config.inter sandbox action.sandbox }
       in
       let* action = interpret_and_add_locks ~expander alias_conf.locks action in
       Alias_rules.add sctx ~loc action ~alias)

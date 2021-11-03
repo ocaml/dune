@@ -133,7 +133,7 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
 
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
     ~promote ?(link_args = Action_builder.return Command.Args.empty)
-    ?(o_files = []) cctx =
+    ?(o_files = []) ?(sandbox = Sandbox_config.default) cctx =
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
@@ -198,6 +198,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
           ; fdo_linker_script_flags
           ; Dyn link_args
           ]
+    >>| Action.Full.add_sandbox sandbox
   in
   SC.add_rule sctx ~loc ~dir
     ~mode:
@@ -221,8 +222,8 @@ let link_js ~name ~cm_files ~promote cctx =
   Jsoo_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms
     ~flags:(Command.Args.dyn flags) ~promote
 
-let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ~dep_graphs
-    ~programs ~linkages ~promote cctx =
+let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
+    ~dep_graphs ~programs ~linkages ~promote cctx =
   let dep_graphs : Dep_graph.t Ml_kind.Dict.t = dep_graphs in
   let open Memo.Build.O in
   let modules = Compilation_context.modules cctx in
@@ -254,20 +255,20 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ~dep_graphs
                 Link_time_code_gen.handle_special_libs cc
             in
             link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
-              ~promote ?link_args ?o_files))
+              ~promote ?link_args ?o_files ?sandbox))
 
-let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ~programs
-    ~linkages ~promote cctx =
+let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
+    ~programs ~linkages ~promote cctx =
   let open Memo.Build.O in
   let modules = Compilation_context.modules cctx in
   let* dep_graphs = Dep_rules.rules cctx ~modules in
   let* () = Module_compilation.build_all cctx ~dep_graphs in
-  link_many ?link_args ?o_files ?embed_in_plugin_libraries ~dep_graphs ~programs
-    ~linkages ~promote cctx
+  link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox ~dep_graphs
+    ~programs ~linkages ~promote cctx
 
-let build_and_link ?link_args ?o_files ?embed_in_plugin_libraries ~program
-    ~linkages ~promote cctx =
-  build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries
+let build_and_link ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
+    ~program ~linkages ~promote cctx =
+  build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
     ~programs:[ program ] ~linkages ~promote cctx
 
 let exe_path cctx ~(program : Program.t) ~linkage =

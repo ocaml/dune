@@ -160,21 +160,21 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     | Other _ -> [ A "-o"; Target dst ]
   in
   let+ () =
-    Super_context.add_rule sctx ~loc
-      ~dir
-        (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
-           No such file or directory #include "foo.cxx". (These errors happen
-           only when compiling c files.) *)
-      ~sandbox:Sandbox_config.no_sandboxing
-      (let src = Path.build (Foreign.Source.path src) in
-       (* We have to execute the rule in the library directory as the .o is
-          produced in the current directory *)
-       Command.run ~dir:(Path.build dir) c_compiler
-         ([ Command.Args.dyn with_user_and_std_flags
-          ; S [ A "-I"; Path ctx.stdlib_dir ]
-          ; include_flags
-          ]
-         @ output_param @ [ A "-c"; Dep src ]))
+    Super_context.add_rule sctx ~loc ~dir
+      (let open Action_builder.With_targets.O in
+      let src = Path.build (Foreign.Source.path src) in
+      (* We have to execute the rule in the library directory as the .o is
+         produced in the current directory *)
+      Command.run ~dir:(Path.build dir) c_compiler
+        ([ Command.Args.dyn with_user_and_std_flags
+         ; S [ A "-I"; Path ctx.stdlib_dir ]
+         ; include_flags
+         ]
+        @ output_param @ [ A "-c"; Dep src ])
+      (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
+         No such file or directory #include "foo.cxx". (These errors happen only
+         when compiling c files.) *)
+      >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
   in
   dst
 
@@ -210,10 +210,14 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
       let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
       let stubs = src.Foreign.Source.stubs in
       let extra_flags = include_dir_flags ~expander ~dir src.stubs in
+      let extra_deps, sandbox =
+        Dep_conf_eval.unnamed stubs.extra_deps ~expander
+      in
+      (* We don't sandbox the C compiler, see comment in [build_file] about
+         this. *)
+      ignore sandbox;
       let extra_deps =
-        let open Action_builder.O in
-        let+ () = Dep_conf_eval.unnamed stubs.extra_deps ~expander in
-        Command.Args.empty
+        Action_builder.map extra_deps ~f:(fun () -> Command.Args.empty)
       in
       let include_flags =
         Command.Args.S [ includes; extra_flags; Dyn extra_deps ]

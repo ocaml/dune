@@ -147,15 +147,16 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
       Command.Args.empty
   in
   let dir = ctx.build_dir in
-  let flags =
+  let flags, sandbox =
     let flags = Ocaml_flags.get (CC.flags cctx) mode in
     match Module.pp_flags m with
-    | None -> flags
-    | Some pp ->
-      let open Action_builder.O in
-      let+ flags = flags
-      and+ pp_flags = pp in
-      flags @ pp_flags
+    | None -> (flags, sandbox)
+    | Some (pp, sandbox') ->
+      ( (let open Action_builder.O in
+        let+ flags = flags
+        and+ pp_flags = pp in
+        flags @ pp_flags)
+      , Sandbox_config.inter sandbox sandbox' )
   in
   let output =
     match phase with
@@ -179,7 +180,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     |> List.concat_map ~f:(fun p ->
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
-  SC.add_rule sctx ~sandbox ~dir
+  SC.add_rule sctx ~dir
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)
     >>> Action_builder.with_no_targets other_cm_files
@@ -205,7 +206,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
           ; Command.Ml_kind.flag ml_kind
           ; Dep src
           ; Hidden_targets other_targets
-          ]))
+          ]
+    >>| Action.Full.add_sandbox sandbox))
   |> Memo.Build.Option.iter ~f:Fun.id
 
 let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
@@ -267,7 +269,7 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   in
   let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
-  SC.add_rule sctx ~sandbox ~dir
+  SC.add_rule sctx ~dir
     (Action_builder.With_targets.add ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
        Action_builder.with_no_targets cm_deps
@@ -283,7 +285,8 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
              ; A "-i"
              ; Command.Ml_kind.flag Impl
              ; Dep src
-             ]))
+             ]
+       >>| Action.Full.add_sandbox sandbox))
 
 (* The alias module is an implementation detail to support wrapping library
    modules under a single toplevel name. Since OCaml doesn't have proper support

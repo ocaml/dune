@@ -904,6 +904,7 @@ let gen_configurator_rules t =
          ; env = Env.empty
          ; locks = []
          ; can_go_in_shared_cache = true
+         ; sandbox = Sandbox_config.no_special_requirements
          }))
   in
   let fn = configurator_v2 t in
@@ -927,6 +928,7 @@ let gen_configurator_rules t =
        ; env = Env.empty
        ; locks = []
        ; can_go_in_shared_cache = true
+       ; sandbox = Sandbox_config.no_special_requirements
        }))
 
 let force_configurator_files =

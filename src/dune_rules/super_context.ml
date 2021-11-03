@@ -328,24 +328,23 @@ let extend_action t ~dir build =
   let env = Env.extend_env env act.env in
   { act with env; action }
 
-let make_rule t ?sandbox ?mode ?loc ~dir
-    { Action_builder.With_targets.build; targets } =
+let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
-  Rule.make ?sandbox ?mode ~info:(Rule.Info.of_loc_opt loc)
+  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some (Context.build_context t.context))
     ~targets build
 
-let add_rule t ?sandbox ?mode ?loc ~dir build =
-  let rule = make_rule t ?sandbox ?mode ?loc ~dir build in
+let add_rule t ?mode ?loc ~dir build =
+  let rule = make_rule t ?mode ?loc ~dir build in
   Rules.Produce.rule rule
 
-let add_rule_get_targets t ?sandbox ?mode ?loc ~dir build =
-  let rule = make_rule t ?sandbox ?mode ?loc ~dir build in
+let add_rule_get_targets t ?mode ?loc ~dir build =
+  let rule = make_rule t ?mode ?loc ~dir build in
   let+ () = Rules.Produce.rule rule in
   rule.targets
 
-let add_rules t ?sandbox ~dir builds =
-  Memo.Build.parallel_iter builds ~f:(add_rule t ?sandbox ~dir)
+let add_rules t ~dir builds =
+  Memo.Build.parallel_iter builds ~f:(add_rule t ~dir)
 
 let add_alias_action t alias ~dir ~loc ?(patch_back_source_tree = false) action
     =

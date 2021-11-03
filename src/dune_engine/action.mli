@@ -129,7 +129,7 @@ module Full : sig
     ; can_go_in_shared_cache : bool
     ; sandbox : Sandbox_config.t
     ; patch_back_source_tree : bool
-          (** Apply all the changes that happend in the sandbox to the source
+          (** Apply all the changes that happened in the sandbox to the source
               tree. This includes:
 
               - applying changes to source files that were dependencies

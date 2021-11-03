@@ -320,13 +320,10 @@ let extend_action t ~dir build =
       (let open Memo.Build.O in
       get_node t.env_tree ~dir >>= Env_node.external_env)
   in
-  let action : Action.t =
-    match act.action with
-    | Chdir _ -> act.action
-    | _ -> Chdir (Path.build t.context.build_dir, act.action)
-  in
-  let env = Env.extend_env env act.env in
-  { act with env; action }
+  act |> Action.Full.add_env env
+  |> Action.Full.map ~f:(function
+       | Chdir _ as a -> a
+       | a -> Chdir (Path.build t.context.build_dir, a))
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
@@ -346,12 +343,11 @@ let add_rule_get_targets t ?mode ?loc ~dir build =
 let add_rules t ~dir builds =
   Memo.Build.parallel_iter builds ~f:(add_rule t ~dir)
 
-let add_alias_action t alias ~dir ~loc ?(patch_back_source_tree = false) action
-    =
+let add_alias_action t alias ~dir ~loc action =
   let build = extend_action t action ~dir in
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context t.context)
-    alias ~loc ~patch_back_source_tree build
+    alias ~loc build
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with

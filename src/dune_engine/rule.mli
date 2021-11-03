@@ -45,20 +45,6 @@ module Mode : sig
         (** Just ignore the source files entirely. This is for cases where the
             targets are promoted only in a specific context, such as for
             .install files. *)
-    | Patch_back_source_tree
-        (** Apply all the changes that happend in the sandbox to the source
-            tree. This includes:
-
-            - applying changes to source files that were dependencies
-            - deleting source files that were dependencies and were deleted in
-              the sandbox
-            - promoting all targets
-            - promoting all files that were created and not declared as
-              dependencies or targets
-
-            This is a dirty setting, but it is necessary to port projects to
-            Dune that don't use a separate directory and have rules that go and
-            create/modify random files. *)
 end
 
 module Id : sig
@@ -120,6 +106,5 @@ module Anonymous_action : sig
           (** Directory the action is attached to. This is the directory where
               the outcome of the action will be cached. *)
     ; alias : Alias.Name.t option  (** For better error messages *)
-    ; patch_back_source_tree : bool
     }
 end

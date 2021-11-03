@@ -305,6 +305,7 @@ module Rule : sig
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
+    ; patch_back_source_tree : bool
     ; locks : String_with_vars.t list
     ; loc : Loc.t
     ; enabled_if : Blang.t

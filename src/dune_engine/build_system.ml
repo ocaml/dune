@@ -725,14 +725,11 @@ end = struct
                 (fun mode ->
                   let path = Path.source path in
                   let+ fact = eval_source_file mode path in
-                  ( { Action.Full.action = Action.copy path ctx_path
-                    ; env = Env.empty
-                    ; locks = []
-                    ; can_go_in_shared_cache = true
-                    ; (* There's an [assert false] in [prepare_managed_paths]
+                  ( Action.Full.make
+                      (Action.copy path ctx_path)
+                      (* There's an [assert false] in [prepare_managed_paths]
                          that blows up if we try to sandbox this. *)
-                      sandbox = Sandbox_config.no_sandboxing
-                    }
+                      ~sandbox:Sandbox_config.no_sandboxing
                   , Dep.Map.singleton (Dep.file path) fact ))
             }
         in
@@ -838,8 +835,7 @@ end = struct
         match rule.mode with
         | Standard
         | Promote _
-        | Ignore_source_files
-        | Patch_back_source_tree ->
+        | Ignore_source_files ->
           true
         | Fallback ->
           let source_files_for_targets =
@@ -1000,8 +996,7 @@ end = struct
             in
             Path.Build.Set.union to_ignore acc_ignored
           | Standard
-          | Fallback
-          | Patch_back_source_tree ->
+          | Fallback ->
             acc_ignored)
     in
     let source_files_to_ignore =
@@ -1371,7 +1366,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 8
+  let rule_digest_version = 9
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
@@ -1380,6 +1375,7 @@ end = struct
         ; locks
         ; can_go_in_shared_cache
         ; sandbox = _ (* already taken into account in [sandbox_mode] *)
+        ; patch_back_source_tree
         } =
       action
     in
@@ -1397,7 +1393,8 @@ end = struct
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
       , Execution_parameters.action_stdout_on_success execution_parameters
-      , Execution_parameters.action_stderr_on_success execution_parameters )
+      , Execution_parameters.action_stderr_on_success execution_parameters
+      , patch_back_source_tree )
     in
     Digest.generic trace
 
@@ -1462,7 +1459,7 @@ end = struct
 
   let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
-      ~dir ~targets ~(rule_mode : Rule.Mode.t) =
+      ~dir ~targets =
     let open Fiber.O in
     let file_targets, has_directory_targets =
       Targets.map targets ~f:(fun ~files ~dirs ->
@@ -1473,6 +1470,7 @@ end = struct
         ; locks
         ; can_go_in_shared_cache = _
         ; sandbox = _
+        ; patch_back_source_tree
         } =
       action
     in
@@ -1480,12 +1478,8 @@ end = struct
     let chdirs = Action.chdirs action in
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
-          Sandbox.create ~mode ~deps
-            ~patch_back_source_tree:
-              (match rule_mode with
-              | Patch_back_source_tree -> true
-              | _ -> false)
-            ~rule_dir:dir ~rule_loc:loc ~chdirs ~rule_digest
+          Sandbox.create ~mode ~deps ~patch_back_source_tree ~rule_dir:dir
+            ~rule_loc:loc ~chdirs ~rule_digest
             ~expand_aliases:
               (Execution_parameters.expand_aliases_in_sandbox
                  execution_parameters))
@@ -1650,22 +1644,6 @@ end = struct
                   reason)
            ])
 
-  let adapt_action_for_patch_back_source_tree (action : Action.Full.t) =
-    (* Rules that patch back the source tree cannot go in the shared cache *)
-    let can_go_in_shared_cache = false in
-    (* Rules that patch back the source tree must be sandboxed in copy mode.
-
-       If the user specifies (sandbox none), then we get a slightly confusing
-       error message. We could detect this case at parsing time and produce a
-       better error message. It's a bit awkard to implement this check at the
-       moment as the sandbox config is specified in the dependencies, but we
-       plan to change that in the future. *)
-    let sandbox =
-      Sandbox_config.inter action.sandbox
-        (Sandbox_mode.Set.singleton Sandbox_mode.copy)
-    in
-    { action with can_go_in_shared_cache; sandbox }
-
   let execute_rule_impl ~rule_kind rule =
     let t = t () in
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
@@ -1687,11 +1665,6 @@ end = struct
        not expected to change often, so we do not sacrifice too much performance
        here by executing it sequentially. *)
     let* action, deps = Action_builder.run action Eager in
-    let action =
-      match mode with
-      | Patch_back_source_tree -> adapt_action_for_patch_back_source_tree action
-      | _ -> action
-    in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
         (if Loc.is_none loc then
@@ -1892,7 +1865,6 @@ end = struct
                 let* exec_result =
                   execute_action_for_rule t ~rule_digest ~action ~deps ~loc
                     ~context ~execution_parameters ~sandbox_mode ~dir ~targets
-                    ~rule_mode:mode
                 in
                 let* targets_and_digests =
                   (* Step IV. Store results to the shared cache and if that step
@@ -1943,9 +1915,7 @@ end = struct
         in
         let* () =
           match (mode, !Clflags.promote) with
-          | ( ( Standard | Fallback | Ignore_source_files
-              | Patch_back_source_tree )
-            , _ )
+          | (Standard | Fallback | Ignore_source_files), _
           | Promote _, Some Never ->
             Fiber.return ()
           | Promote promote, (Some Automatically | None) ->
@@ -2000,23 +1970,15 @@ end = struct
       Path.Build.relative dir basename
     in
     let action =
-      { act.action with
-        action =
-          (if capture_stdout then
-            Action.with_stdout_to target act.action.action
+      Action.Full.map act.action ~f:(fun action ->
+          if capture_stdout then
+            Action.with_stdout_to target action
           else
-            Action.progn
-              [ act.action.action; Action.with_stdout_to target Action.empty ])
-      }
+            Action.progn [ action; Action.with_stdout_to target Action.empty ])
     in
     let rule =
-      let { Rule.Anonymous_action.context
-          ; action = _
-          ; loc
-          ; dir = _
-          ; alias = _
-          ; patch_back_source_tree
-          } =
+      let { Rule.Anonymous_action.context; action = _; loc; dir = _; alias = _ }
+          =
         act
       in
       Rule.make ~context
@@ -2025,11 +1987,7 @@ end = struct
           | Some loc -> From_dune_file loc
           | None -> Internal)
         ~targets:(Targets.File.create target)
-        ~mode:
-          (if patch_back_source_tree then
-            Patch_back_source_tree
-          else
-            Standard)
+        ~mode:Standard
         (Action_builder.of_thunk
            { f =
                (fun mode ->
@@ -2078,21 +2036,19 @@ end = struct
     (* Shadow [observing_facts] to make sure we don't use it again. *)
     let observing_facts = () in
     ignore observing_facts;
-    let act =
-      (* Actions that patch back the source tree cannot go in the shared cache
-         and must be sandboxed *)
-      if act.patch_back_source_tree then
-        { act with action = adapt_action_for_patch_back_source_tree act.action }
-      else
-        act
-    in
     let digest =
       let { Rule.Anonymous_action.context
-          ; action = { action; env; locks; can_go_in_shared_cache; sandbox }
+          ; action =
+              { action
+              ; env
+              ; locks
+              ; can_go_in_shared_cache
+              ; sandbox
+              ; patch_back_source_tree
+              }
           ; loc
           ; dir
           ; alias
-          ; patch_back_source_tree
           } =
         act
       in

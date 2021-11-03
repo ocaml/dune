@@ -10,7 +10,6 @@ module Alias_rules : sig
        Super_context.t
     -> alias:Alias.t
     -> loc:Loc.t option
-    -> ?patch_back_source_tree:bool
     -> Action.Full.t Action_builder.t
     -> unit Memo.Build.t
 

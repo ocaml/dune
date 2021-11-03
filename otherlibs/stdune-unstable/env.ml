@@ -83,7 +83,11 @@ let extend t ~vars =
   else
     make (Map.superpose t.vars vars)
 
-let extend_env x y = extend x ~vars:y.vars
+let extend_env x y =
+  if Map.is_empty x.vars then
+    y
+  else
+    extend x ~vars:y.vars
 
 let to_dyn t =
   let open Dyn.Encoder in

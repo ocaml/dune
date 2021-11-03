@@ -278,12 +278,24 @@ let is_useful_to_memoize = is_useful_to true true
 
 module Full = struct
   module T = struct
+    (* Invariant: if [patch_back_source_tree] then:
+
+       - [sandbox] is [Sandbox_mode.Set.singleton (Some Copy)] or
+       [Sandbox_mode.Set.empty]. The latter would cause Dune to crash as there
+       would be no sandboxing mode selectable, but it shouldn't happen as we
+       forbid to specify a sandbox configuration when using [(mode
+       patch-back-source-tree)]. Allowing [Sandbox_mode.Set.empty] in the
+       invariant makes it easier to preserve the invariant in the various
+       functions bellow.
+
+       - [can_go_in_shared_cache] is [true]. *)
     type nonrec t =
       { action : t
       ; env : Env.t
       ; locks : Path.t list
       ; can_go_in_shared_cache : bool
       ; sandbox : Sandbox_config.t
+      ; patch_back_source_tree : bool
       }
 
     let empty =
@@ -292,26 +304,61 @@ module Full = struct
       ; locks = []
       ; can_go_in_shared_cache = true
       ; sandbox = Sandbox_config.default
+      ; patch_back_source_tree = false
       }
 
-    let combine { action; env; locks; can_go_in_shared_cache; sandbox } x =
+    let combine
+        { action
+        ; env
+        ; locks
+        ; can_go_in_shared_cache
+        ; sandbox
+        ; patch_back_source_tree
+        } x =
       { action = combine action x.action
       ; env = Env.extend_env env x.env
       ; locks = locks @ x.locks
       ; can_go_in_shared_cache =
           can_go_in_shared_cache && x.can_go_in_shared_cache
       ; sandbox = Sandbox_config.inter sandbox x.sandbox
+      ; patch_back_source_tree =
+          patch_back_source_tree || x.patch_back_source_tree
       }
   end
 
   include T
   include Monoid.Make (T)
 
+  let adapt_action_for_patch_back_source_tree t =
+    if not t.patch_back_source_tree then
+      t
+    else
+      (* Rules that patch back the source tree cannot go in the shared cache *)
+      let can_go_in_shared_cache = false in
+      (* Rules that patch back the source tree must be sandboxed in copy
+         mode. *)
+      let sandbox =
+        Sandbox_config.inter t.sandbox (Sandbox_mode.Set.singleton (Some Copy))
+      in
+      { t with can_go_in_shared_cache; sandbox }
+
   let make ?(env = Env.empty) ?(locks = []) ?(can_go_in_shared_cache = true)
-      ?(sandbox = Sandbox_config.default) action =
-    { action; env; locks; can_go_in_shared_cache; sandbox }
+      ?(sandbox = Sandbox_config.default) ?(patch_back_source_tree = false)
+      action =
+    let t =
+      { action
+      ; env
+      ; locks
+      ; can_go_in_shared_cache
+      ; sandbox
+      ; patch_back_source_tree
+      }
+    in
+    adapt_action_for_patch_back_source_tree t
 
   let map t ~f = { t with action = f t.action }
+
+  let add_env e t = { t with env = Env.extend_env t.env e }
 
   let add_locks l t = { t with locks = t.locks @ l }
 
@@ -319,4 +366,8 @@ module Full = struct
     { t with can_go_in_shared_cache = t.can_go_in_shared_cache && b }
 
   let add_sandbox s t = { t with sandbox = Sandbox_config.inter t.sandbox s }
+
+  let add_patch_back_source_tree x t =
+    adapt_action_for_patch_back_source_tree
+      { t with patch_back_source_tree = t.patch_back_source_tree || x }
 end

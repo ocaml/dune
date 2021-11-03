@@ -46,7 +46,6 @@ module Mode = struct
     | Fallback
     | Promote of Promote.t
     | Ignore_source_files
-    | Patch_back_source_tree
 end
 
 module Id = Id.Make ()
@@ -130,6 +129,5 @@ module Anonymous_action = struct
     ; loc : Loc.t option
     ; dir : Path.Build.t
     ; alias : Alias.Name.t option
-    ; patch_back_source_tree : bool
     }
 end

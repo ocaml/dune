@@ -79,15 +79,12 @@ module Produce : sig
     val add_deps :
       t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.Build.t
 
-    (** [add_action alias ~context ~loc ?patch_back_source_tree
-       action]
-        arrange things so that [action] is executed as part of the build of
-        alias [alias]. *)
+    (** [add_action alias ~context ~loc action] arrange things so that [action]
+        is executed as part of the build of alias [alias]. *)
     val add_action :
          t
       -> context:Build_context.t
       -> loc:Loc.t option
-      -> patch_back_source_tree:bool
       -> Action.Full.t Action_builder.t
       -> unit Memo.Build.t
   end

@@ -6,9 +6,9 @@ module SC = Super_context
 open Memo.Build.O
 
 module Alias_rules = struct
-  let add sctx ~alias ~loc ?patch_back_source_tree build =
+  let add sctx ~alias ~loc build =
     let dir = Alias.dir alias in
-    SC.add_alias_action sctx alias ~dir ~loc ?patch_back_source_tree build
+    SC.add_alias_action sctx alias ~dir ~loc build
 
   let add_empty sctx ~loc ~alias =
     let action = Action_builder.return (Action.Full.make Action.empty) in
@@ -60,8 +60,7 @@ let interpret_and_add_locks ~expander locks action =
   | [] -> action
   | _ ->
     let open Action_builder.O in
-    let+ (act : Action.Full.t) = action in
-    { act with locks }
+    action >>| Action.Full.add_locks locks
 
 let add_user_rule sctx ~dir ~(rule : Rule.t)
     ~(action : _ Action_builder.With_targets.t) ~expander =
@@ -106,6 +105,13 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
     let* action = action in
+    let action =
+      if rule.patch_back_source_tree then
+        Action_builder.With_targets.map action
+          ~f:(Action.Full.add_patch_back_source_tree true)
+      else
+        action
+    in
     match rule_kind ~rule ~action with
     | No_alias ->
       let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
@@ -121,15 +127,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     | Alias_only name ->
       let alias = Alias.make ~dir name in
       let* action = interpret_and_add_locks ~expander rule.locks action.build in
-      let patch_back_source_tree =
-        match rule.mode with
-        | Patch_back_source_tree -> true
-        | _ -> false
-      in
-      let+ () =
-        Alias_rules.add sctx ~alias ~loc:(Some rule.loc) action
-          ~patch_back_source_tree
-      in
+      let+ () = Alias_rules.add sctx ~alias ~loc:(Some rule.loc) action in
       Targets.empty)
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
@@ -247,8 +245,9 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
           in
           Action_unexpanded.expand_no_targets action ~loc:action_loc ~expander
             ~deps:alias_conf.deps ~what:"aliases"
+          >>| Action.Full.add_sandbox sandbox
         in
-        { action with sandbox = Sandbox_config.inter sandbox action.sandbox }
+        action
       in
       let* action = interpret_and_add_locks ~expander alias_conf.locks action in
       Alias_rules.add sctx ~loc action ~alias)

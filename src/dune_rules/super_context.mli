@@ -131,7 +131,6 @@ val add_alias_action :
   -> Alias.t
   -> dir:Path.Build.t
   -> loc:Loc.t option
-  -> ?patch_back_source_tree:bool
   -> Action.Full.t Action_builder.t
   -> unit Memo.Build.t
 

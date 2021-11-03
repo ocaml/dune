@@ -86,9 +86,10 @@ let update_all : Path.t -> Fs_cache.Update_result.t =
     if !Clflags.debug_fs_cache then
       Console.print_user_message
         (User_message.make
-           [ Pp.textf "Updating %s cache for %S: %s" (Fs_cache.Debug.name t)
-               (Path.to_string path)
-               (Dyn.to_string (Fs_cache.Update_result.to_dyn result))
+           [ Pp.hbox
+               (Pp.textf "Updating %s cache for %S: %s" (Fs_cache.Debug.name t)
+                  (Path.to_string path)
+                  (Dyn.to_string (Fs_cache.Update_result.to_dyn result)))
            ]);
     result
   in

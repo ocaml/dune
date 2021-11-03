@@ -220,8 +220,7 @@ let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
      Action.Full.make (Action.Write_file (fn, perm, s)))
 
 let with_stdout_to ?(perm = Action.File_perm.Normal) fn t =
-  with_targets
-    ~targets:(Targets.Files.create (Path.Build.Set.singleton fn))
+  with_targets ~targets:(Targets.File.create fn)
     (let+ (act : Action.Full.t) = t in
      { act with action = Action.with_stdout_to ~perm fn act.action })
 

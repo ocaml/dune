@@ -29,8 +29,15 @@ module Version = struct
     let open Decoder in
     raw >>| function
     | Atom (loc, A s) -> (
-      match Scanf.sscanf s "%u.%u" (fun a b -> (a, b)) with
-      | Ok s -> s
+      match Scanf.sscanf s "%u.%u%s" (fun a b s -> ((a, b), s)) with
+      | Ok (v, "") -> v
+      | Ok (((a, b) as v), s) ->
+        let is_error = v >= (3, 0) in
+        User_warning.emit ~loc ~is_error
+          [ Pp.textf "The %S part is ignored here." s
+          ; Pp.textf "This version is parsed as just %d.%d." a b
+          ];
+        v
       | Error () ->
         User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ])
     | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "Atom expected" ]

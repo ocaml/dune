@@ -167,23 +167,6 @@ type t =
   ; ignored_files : (string, unit) Table.t
   }
 
-let exclude_patterns =
-  [ {|/_opam|}
-  ; {|/_esy|}
-  ; {|/\..+|}
-  ; {|~$|}
-  ; {|/#[^#]*#$|}
-  ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
-  ]
-
-module Re = Dune_re
-
-let exclude_regex =
-  Re.compile
-    (Re.alt (List.map exclude_patterns ~f:(fun pattern -> Re.Posix.re pattern)))
-
-let should_exclude path = Re.execp exclude_regex path
-
 (* [process_inotify_event] needs to run in the scheduler thread because it
    accesses [t.ignored_files]. *)
 let process_inotify_event ~ignored_files
@@ -210,10 +193,6 @@ let process_inotify_event ~ignored_files
           true
         ) else
           false)
-    || List.for_all all_paths ~f:(fun (path, _event) ->
-           let path = Path.of_string path in
-           let abs_path = Path.to_string path in
-           should_exclude abs_path)
   in
   if should_ignore then
     []
@@ -321,14 +300,9 @@ let is_special_file_for_inotify_sync (path : Path.t) =
 
 let command ~root ~backend =
   let exclude_paths =
-    (* These paths should already exist on the filesystem when the watches are
-       initially set up, otherwise the @<path> has no effect for inotifywait. If
-       the file is deleted and re-created then "exclusion" is lost. This is why
-       we're not including "_opam" and "_esy" in this list, in case they are
-       created when dune is already running. *)
     (* these paths are used as patterns for fswatch, so they better not contain
        any regex-special characters *)
-    [ "_build" ]
+    [ "_build"; "_opam"; "_esy" ]
   in
   let root = Path.to_string root in
   let inotify_special_path =
@@ -340,9 +314,7 @@ let command ~root ~backend =
        not reliable (at least on Linux), so don't try to use it, instead act on
        all events. *)
     let excludes =
-      List.concat_map
-        (exclude_patterns @ List.map exclude_paths ~f:(fun p -> "/" ^ p))
-        ~f:(fun x -> [ "--exclude"; x ])
+      List.concat_map exclude_paths ~f:(fun p -> [ "--exclude"; "/" ^ p ])
     in
     ( fswatch
     , [ "-r"

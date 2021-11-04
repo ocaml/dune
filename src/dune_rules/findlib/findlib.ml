@@ -362,7 +362,9 @@ end = struct
         let virtual_ = None in
         let default_implementation = None in
         let wrapped = None in
-        let+ dir_contents = Fs_memo.dir_contents t.dir in
+        let+ dir_contents =
+          Fs_memo.dir_contents_without_temporary_editor_files t.dir
+        in
         let foreign_archives, native_archives =
           (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
              be foreign archives, and all other files with the extension
@@ -634,7 +636,7 @@ let find t name =
 let root_packages (db : DB.t) =
   let+ pkgs =
     Memo.Build.List.concat_map db.paths ~f:(fun dir ->
-        Fs_memo.dir_contents dir >>= function
+        Fs_memo.dir_contents_without_temporary_editor_files dir >>= function
         | Error (ENOENT, _, _) -> Memo.Build.return []
         | Error (unix_error, _, _) ->
           User_error.raise

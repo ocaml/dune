@@ -44,7 +44,7 @@ val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.Build.t
     is stale and is about to be invalidated by an incoming file-system event. By
     not using the cache in this situation, it's possible to avoid unnecessary
     restarts. *)
-val dir_contents :
+val dir_contents_without_temporary_editor_files :
      ?force_update:bool
   -> Path.t
   -> (Fs_cache.Dir_contents.t, Unix_error.Detailed.t) result Memo.Build.t

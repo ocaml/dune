@@ -96,7 +96,7 @@ let update_all : Path.t -> Fs_cache.Update_result.t =
   Update_all.reduce
     [ update Fs_cache.Untracked.path_stat
     ; update Fs_cache.Untracked.path_digest
-    ; update Fs_cache.Untracked.dir_contents
+    ; update Fs_cache.Untracked.dir_contents_without_temporary_editor_files
     ]
 
 (* CR-someday amokhov: We use the same Memo table [memo] for tracking different
@@ -215,9 +215,12 @@ let path_digest ?(force_update = false) path =
   );
   declaring_dependency path ~f:Fs_cache.(read Untracked.path_digest)
 
-let dir_contents ?(force_update = false) path =
-  if force_update then Fs_cache.evict Fs_cache.Untracked.dir_contents path;
-  declaring_dependency path ~f:Fs_cache.(read Untracked.dir_contents)
+let dir_contents_without_temporary_editor_files ?(force_update = false) path =
+  if force_update then
+    Fs_cache.evict
+      Fs_cache.Untracked.dir_contents_without_temporary_editor_files path;
+  declaring_dependency path
+    ~f:Fs_cache.(read Untracked.dir_contents_without_temporary_editor_files)
 
 (* CR-someday amokhov: For now, we do not cache the result of this operation
    because the result's type depends on [f]. There are only two call sites of
@@ -232,7 +235,8 @@ let with_lexbuf_from_file path ~f =
       Io.Untracked.with_lexbuf_from_file path ~f)
 
 (* When a file or directory is created or deleted, we need to also invalidate
-   the parent directory, so that the [dir_contents] queries are re-executed. *)
+   the parent directory, so that the
+   [dir_contents_without_temporary_editor_files] queries are re-executed. *)
 let invalidate_path_and_its_parent path =
   Memo.Invalidation.combine (invalidate_path path)
     (match Path.parent path with
@@ -250,9 +254,10 @@ let invalidate_path_and_its_parent path =
    [Path.exists] function. Similarly for the case where [path_exists] is [false]
    and we receive a corresponding [Created] event.
 
-   - Finally, the result of [dir_contents] queries can be updated without
-   calling [Path.Untracked.readdir_unsorted_with_kinds]: we know which file or
-   directory should be added to or removed from the result. *)
+   - Finally, the result of [dir_contents_without_temporary_editor_files]
+   queries can be updated without calling
+   [Path.Untracked.readdir_unsorted_with_kinds]: we know which file or directory
+   should be added to or removed from the result. *)
 let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t) :
     Memo.Invalidation.t =
   match kind with

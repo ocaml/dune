@@ -119,11 +119,32 @@ module Untracked = struct
     create "path_digest" ~sample ~update_hook
       ~equal:Cached_digest.Digest_result.equal
 
-  let dir_contents =
-    create "dir_contents"
+  let is_temporary_editor_file (fn, _kind) =
+    match fn with
+    (* File created by all implementations of vim. See
+       https://github.com/neovim/neovim/issues/3460 *)
+    | "4913" -> true
+    | _ ->
+      let len = String.length fn in
+      (len >= 1 && fn.[len - 1] = '~')
+      || len >= 2
+         && ((fn.[0] = '#' && fn.[len - 1] = '#')
+            || (* Files starting with ".#" can be created by Emacs and also Dune
+                  itself. *)
+            (fn.[0] = '.' && fn.[1] = '#'))
+      || len >= 4
+         && fn.[len - 4] = '.'
+         && fn.[len - 3] = 's'
+         && fn.[len - 2] = 'w'
+         && fn.[len - 3] = 'p'
+
+  let dir_contents_without_temporary_editor_files =
+    create "dir_contents_without_temporary_editor_files"
       ~sample:(fun path ->
         Path.Untracked.readdir_unsorted_with_kinds path
-        |> Result.map ~f:Dir_contents.of_list)
+        |> Result.map ~f:(fun l ->
+               Dir_contents.of_list
+                 (List.filter l ~f:(fun f -> not (is_temporary_editor_file f)))))
       ~equal:(Result.equal Dir_contents.equal Unix_error.Detailed.equal)
 end
 

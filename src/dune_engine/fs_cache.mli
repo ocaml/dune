@@ -72,7 +72,11 @@ module Untracked : sig
 
   val path_digest : Cached_digest.Digest_result.t t
 
-  val dir_contents : (Dir_contents.t, Unix_error.Detailed.t) result t
+  (** The directory listing with temporary files created by well known editors
+      such as emacs or vim filtered out. This include files named [xx~], [#xx],
+      [4913] (a vim oddity), ... *)
+  val dir_contents_without_temporary_editor_files :
+    (Dir_contents.t, Unix_error.Detailed.t) result t
 end
 
 module Debug : sig

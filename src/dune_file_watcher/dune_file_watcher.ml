@@ -143,52 +143,24 @@ type t =
         (* Pending fs sync operations indexed by the special sync filename. *)
   }
 
-let exclude_patterns =
-  [ {|^_opam|}
-  ; {|/_opam|}
-  ; {|^_esy|}
-  ; {|/_esy|}
-  ; {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
-  ; {|/\.#.*|}
-  ; {|~$|}
-  ; {|^#[^#]*#$|}
-  ; {|/#[^#]*#$|}
-  ; {|^4913$|} (* https://github.com/neovim/neovim/issues/3460 *)
-  ; {|/4913$|}
-  ]
-
-module Re = Dune_re
-
-let exclude_regex =
-  Re.compile
-    (Re.alt (List.map exclude_patterns ~f:(fun pattern -> Re.Posix.re pattern)))
-
-let should_exclude path = Re.execp exclude_regex path
-
-module For_tests = struct
-  let should_exclude = should_exclude
-end
-
 let process_inotify_event (event : Async_inotify_for_dune.Async_inotify.Event.t)
     : Event.t list =
-  let create_event_unless_excluded ~kind ~path =
-    match should_exclude path with
-    | true -> []
-    | false ->
-      let path = Path.of_string path in
-      [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ]
+  let create_event ~kind ~path =
+    let path = Path.of_string path in
+    Event.Fs_memo_event (Fs_memo_event.create ~kind ~path)
   in
   match event with
-  | Created path -> create_event_unless_excluded ~kind:Created ~path
-  | Unlinked path -> create_event_unless_excluded ~kind:Deleted ~path
-  | Modified path -> create_event_unless_excluded ~kind:File_changed ~path
+  | Created path -> [ create_event ~kind:Created ~path ]
+  | Unlinked path -> [ create_event ~kind:Deleted ~path ]
+  | Modified path -> [ create_event ~kind:File_changed ~path ]
   | Moved move -> (
     match move with
-    | Away path -> create_event_unless_excluded ~kind:Deleted ~path
-    | Into path -> create_event_unless_excluded ~kind:Created ~path
+    | Away path -> [ create_event ~kind:Deleted ~path ]
+    | Into path -> [ create_event ~kind:Created ~path ]
     | Move (from, to_) ->
-      create_event_unless_excluded ~kind:Deleted ~path:from
-      @ create_event_unless_excluded ~kind:Created ~path:to_)
+      [ create_event ~kind:Deleted ~path:from
+      ; create_event ~kind:Created ~path:to_
+      ])
   | Queue_overflow -> [ Queue_overflow ]
 
 let shutdown t =
@@ -275,14 +247,9 @@ let consume_sync_event table path =
 
 let command ~root ~backend =
   let exclude_paths =
-    (* These paths should already exist on the filesystem when the watches are
-       initially set up, otherwise the @<path> has no effect for inotifywait. If
-       the file is deleted and re-created then "exclusion" is lost. This is why
-       we're not including "_opam" and "_esy" in this list, in case they are
-       created when dune is already running. *)
     (* these paths are used as patterns for fswatch, so they better not contain
        any regex-special characters *)
-    [ "_build" ]
+    [ "_build"; "_opam"; "_esy" ]
   in
   let root = Path.to_string root in
   let inotify_special_path = Lazy.force special_dir_for_fs_sync in
@@ -292,9 +259,7 @@ let command ~root ~backend =
        not reliable (at least on Linux), so don't try to use it, instead act on
        all events. *)
     let excludes =
-      List.concat_map
-        (exclude_patterns @ List.map exclude_paths ~f:(fun p -> "/" ^ p))
-        ~f:(fun x -> [ "--exclude"; x ])
+      List.concat_map exclude_paths ~f:(fun p -> [ "--exclude"; "/" ^ p ])
     in
     ( fswatch
     , [ "-r"

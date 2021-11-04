@@ -229,7 +229,9 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
     (* We use a tracked version to subscribe to the correct directory listing.
        In this way, if a user manually creates a file inside a directory target,
        this function will rerun and remove it. *)
-    Memo.Build.run (Fs_memo.dir_contents ~force_update:true dst_dir)
+    Memo.Build.run
+      (Fs_memo.dir_contents_without_temporary_editor_files ~force_update:true
+         dst_dir)
     >>| function
     | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
     | Ok dir_contents ->

@@ -174,7 +174,7 @@ Now test file-system events generated during target promotion.
 Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 
   $ cat .#debug-output | grep dune-workspace
-  Updating dir_contents cache for "dune-workspace": Skipped
+  Updating dir_contents_without_temporary_editor_files cache for "dune-workspace": Skipped
   Updating path_digest cache for "dune-workspace": Skipped
   Updating path_stat cache for "dune-workspace": Updated { changed = false }
 
@@ -185,7 +185,16 @@ to "bye" but Dune subscribed to it *after* making the promotion, precisely to
 avoid unnecessarily restarting after receiving the event that it caused itself.
 
   $ cat .#debug-output | grep promoted
-  Updating dir_contents cache for "promoted": Skipped
+  Updating dir_contents_without_temporary_editor_files cache for ".#promoted.dune-temp": Skipped
+  Updating path_digest cache for ".#promoted.dune-temp": Skipped
+  Updating path_stat cache for ".#promoted.dune-temp": Skipped
+  Updating dir_contents_without_temporary_editor_files cache for ".#promoted.dune-temp": Skipped
+  Updating path_digest cache for ".#promoted.dune-temp": Skipped
+  Updating path_stat cache for ".#promoted.dune-temp": Skipped
+  Updating dir_contents_without_temporary_editor_files cache for ".#promoted.dune-temp": Skipped
+  Updating path_digest cache for ".#promoted.dune-temp": Skipped
+  Updating path_stat cache for ".#promoted.dune-temp": Skipped
+  Updating dir_contents_without_temporary_editor_files cache for "promoted": Skipped
   Updating path_digest cache for "promoted": Updated { changed = false }
   Updating path_stat cache for "promoted": Skipped
 
@@ -195,6 +204,15 @@ of [path_stat] that matter to Dune didn't change either (the [mtime] field did
 change but [fs_memo] does not provide a way to subscribe to it).
 
   $ cat .#debug-output | grep '"."'
-  Updating dir_contents cache for ".": Updated { changed = false }
+  Updating dir_contents_without_temporary_editor_files cache for ".": Updated { changed = false }
+  Updating path_digest cache for ".": Skipped
+  Updating path_stat cache for ".": Updated { changed = false }
+  Updating dir_contents_without_temporary_editor_files cache for ".": Updated { changed = false }
+  Updating path_digest cache for ".": Skipped
+  Updating path_stat cache for ".": Updated { changed = false }
+  Updating dir_contents_without_temporary_editor_files cache for ".": Updated { changed = false }
+  Updating path_digest cache for ".": Skipped
+  Updating path_stat cache for ".": Updated { changed = false }
+  Updating dir_contents_without_temporary_editor_files cache for ".": Updated { changed = false }
   Updating path_digest cache for ".": Skipped
   Updating path_stat cache for ".": Updated { changed = false }

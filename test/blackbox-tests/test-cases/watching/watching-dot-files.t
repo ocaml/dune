@@ -32,7 +32,7 @@ Test what happens in watch mode when we depend on dot files
   waited for inotify sync
   Success, waiting for filesystem changes...
 
-Same but in a sub-directory (the exclude regexp is sensitive to that):
+Same but in a sub-directory (the exclude regexp used to be sensitive to that):
 
   $ mkdir test
   $ mv dune test/dune

@@ -2,6 +2,7 @@ This test demonstrates a bug when there's a package with a meta template and a
 custom version:
 
   $ git init -q
+  $ touch foo
   $ git add .
   $ git commit -qm _
   $ git tag -a 1.0 -m 1.0

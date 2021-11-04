@@ -3,4 +3,3 @@ dune install should not write anything to _build/
   $ dune install --prefix _install
   $ ls .
   dune-project
-  github3857.t

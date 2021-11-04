@@ -486,6 +486,7 @@ module Link_params = struct
     let+ hidden_deps =
       match mode with
       | Byte -> Memo.Build.return dll_files
+      | Byte_for_jsoo -> Memo.Build.return []
       | Byte_with_stubs_statically_linked_in -> Memo.Build.return lib_files
       | Native ->
         let+ native_archives =
@@ -502,6 +503,7 @@ module Link_params = struct
       let files =
         match mode with
         | Byte -> dll_files
+        | Byte_for_jsoo -> []
         | Byte_with_stubs_statically_linked_in
         | Native ->
           lib_files
@@ -528,6 +530,7 @@ module Link_params = struct
           Path.relative (Lib_info.src_dir t.info) (Module_name.uncapitalize m)
         in
         match mode with
+        | Byte_for_jsoo
         | Byte
         | Byte_with_stubs_statically_linked_in ->
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden_deps
@@ -693,6 +696,7 @@ module Lib_and_module = struct
                                ])
                         ]
                       | Byte
+                      | Byte_for_jsoo
                       | Byte_with_stubs_statically_linked_in ->
                         [])))))
          in

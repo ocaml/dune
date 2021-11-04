@@ -14,10 +14,10 @@ end
 module Linkage : sig
   type t
 
-  val equal : t -> t -> bool
-
   (** Byte compilation, extension [.bc] *)
   val byte : t
+
+  val byte_for_jsoo : t
 
   (** Native compilation, extension [.exe] *)
   val native : t
@@ -30,6 +30,12 @@ module Linkage : sig
 
   (** Javascript compilation, extension [.bc.js] *)
   val js : t
+
+  val is_native : t -> bool
+
+  val is_js : t -> bool
+
+  val is_byte : t -> bool
 
   val of_user_config :
     Context.t -> loc:Loc.t -> Dune_file.Executables.Link_mode.t -> t

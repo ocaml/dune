@@ -1061,17 +1061,6 @@ this behavior using the ``mode`` field. The following modes are available:
     <dune-subdirs>`, specified using the :ref:`predicate-lang`. This feature
     has been available since Dune 1.10.
 
-- ``promote-until-clean`` is the same as ``(promote (until-clean))``.
-- ``(promote-into <dir>)`` is the same as ``(promote (into <dir>))``.
-- ``(promote-until-clean-into <dir>)`` is the same as ``(promote
-  (until-clean) (into <dir>))``.
-
-The ``(promote <options>)`` form has only been available since Dune
-1.10. Before Dune 1.10, you needed to use one of the ``promote-...``
-forms. The ``promote-...`` forms should disappear in Dune 2.0, so
-using the more generic ``(promote <options>)`` form is preferred
-for new projects.
-
 There are two use cases for ``promote`` rules. The first one is when the
 generated code is easier to review than the generator, so it's easier
 to commit the generated code and review it. The second is to cut down

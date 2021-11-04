@@ -128,11 +128,26 @@ module Untracked = struct
     create "path_digest" ~sample ~update_hook
       ~equal:Cached_digest.Digest_result.equal
 
-  let dir_contents =
-    create "dir_contents"
+  let is_temporary_editor_file (fn, kind) =
+    match kind with
+    | Unix.S_REG
+    | Unix.S_LNK ->
+      String.equal fn "4913"
+      (* File created by all implementations of vim. See
+         https://github.com/neovim/neovim/issues/3460 *)
+      || String.is_prefix fn ~prefix:".#"
+      || String.is_prefix fn ~prefix:"#"
+      || String.is_suffix fn ~suffix:".swp"
+      || String.is_suffix fn ~suffix:"~"
+    | _ -> false
+
+  let dir_contents_without_temporary_editor_files =
+    create "dir_contents_without_temporary_editor_files"
       ~sample:(fun path ->
         Path.Untracked.readdir_unsorted_with_kinds path
-        |> Result.map ~f:Dir_contents.of_list)
+        |> Result.map ~f:(fun l ->
+               Dir_contents.of_list
+                 (List.filter l ~f:(fun f -> not (is_temporary_editor_file f)))))
       ~equal:(Result.equal Dir_contents.equal Unix_error.Detailed.equal)
 end
 

@@ -30,7 +30,7 @@ val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.Build.t
 
 (** Read the contents of a source or external directory and declare a dependency
     on it. *)
-val dir_contents :
+val dir_contents_without_temporary_editor_files :
   Path.t -> (Fs_cache.Dir_contents.t, Unix_error.Detailed.t) result Memo.Build.t
 
 (** Handle file system event. *)

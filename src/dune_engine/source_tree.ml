@@ -99,13 +99,7 @@ module Dune_file = struct
     { path = file; kind; plain }
 end
 
-let filter_source_files =
-  let is_temp_file fn =
-    String.is_prefix fn ~prefix:".#"
-    || String.is_suffix fn ~suffix:".swp"
-    || String.is_suffix fn ~suffix:"~"
-  in
-  ref (fun _ -> Memo.Build.return (fun _dir fn -> not (is_temp_file fn)))
+let filter_source_files = ref (fun _ -> Memo.Build.return (fun _ _ -> true))
 
 module Readdir : sig
   type t = private
@@ -162,7 +156,8 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path_impl path =
-    Fs_memo.dir_contents (Path.source path) >>= function
+    Fs_memo.dir_contents_without_temporary_editor_files (Path.source path)
+    >>= function
     | Error ((unix_error, _syscall, _arg) as detailed_unix_error) ->
       (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
          debugging. *)

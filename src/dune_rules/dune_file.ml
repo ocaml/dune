@@ -1541,22 +1541,35 @@ module Rule = struct
     include Rule.Mode
 
     let mode_decoders =
-      let promote_into lifetime =
-        let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
-        and+ into = Promote.into_decode in
-        Rule.Mode.Promote { lifetime; into = Some into; only = None }
-      in
       [ ("standard", return Rule.Mode.Standard)
       ; ("fallback", return Rule.Mode.Fallback)
       ; ( "promote"
         , let+ p = Promote.decode in
           Rule.Mode.Promote p )
       ; ( "promote-until-clean"
-        , return
-            (Rule.Mode.Promote
-               { lifetime = Until_clean; into = None; only = None }) )
-      ; ("promote-into", promote_into Unlimited)
-      ; ("promote-until-clean-into", promote_into Until_clean)
+        , let+ () =
+            Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
+              ~extra_info:"Use the (promote (until-clean)) syntax instead."
+          in
+          Rule.Mode.Promote { lifetime = Until_clean; into = None; only = None }
+        )
+      ; ( "promote-into"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
+          and+ () =
+            Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
+              ~extra_info:"Use the (promote (into <dir>)) syntax instead."
+          and+ into = Promote.into_decode in
+          Rule.Mode.Promote
+            { lifetime = Unlimited; into = Some into; only = None } )
+      ; ( "promote-until-clean-into"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
+          and+ () =
+            Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
+              ~extra_info:
+                "Use the (promote (until-clean) (into <dir>)) syntax instead."
+          and+ into = Promote.into_decode in
+          Rule.Mode.Promote
+            { lifetime = Until_clean; into = Some into; only = None } )
       ]
 
     module Extended = struct

@@ -257,6 +257,9 @@ Unreleased
 - Add experimental support for directory targets (#3316, #5025, Andrey Mokhov),
   enabled via `(using directory-targets 0.1)` in `dune-project`.
 
+- Delete old `promote-into`, `promote-until-clean` and `promote-until-clean-into`
+  syntax (#5091, Andrey Mokhov).
+
 2.9.2 (unreleased)
 ------------------
 

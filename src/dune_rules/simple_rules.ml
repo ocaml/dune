@@ -232,22 +232,13 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       Rules.Produce.Alias.add_deps alias ?loc builder
     | Some (action_loc, action) ->
       let action =
-        let builder, expander, sandbox =
-          Dep_conf_eval.named ~expander alias_conf.deps
+        let expander =
+          match extra_bindings with
+          | None -> expander
+          | Some bindings -> Expander.add_bindings expander ~bindings
         in
-        let open Action_builder.O in
-        let+ () = builder
-        and+ action =
-          let expander =
-            match extra_bindings with
-            | None -> expander
-            | Some bindings -> Expander.add_bindings expander ~bindings
-          in
-          Action_unexpanded.expand_no_targets action ~loc:action_loc ~expander
-            ~deps:alias_conf.deps ~what:"aliases"
-          >>| Action.Full.add_sandbox sandbox
-        in
-        action
+        Action_unexpanded.expand_no_targets action ~loc:action_loc ~expander
+          ~deps:alias_conf.deps ~what:"aliases"
       in
       let* action = interpret_and_add_locks ~expander alias_conf.locks action in
       Alias_rules.add sctx ~loc action ~alias)

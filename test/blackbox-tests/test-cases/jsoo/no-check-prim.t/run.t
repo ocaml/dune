@@ -41,12 +41,9 @@ Compilation using jsoo
       ocamlopt lib/.x.objs/native/x.{cmx,o}
         ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}
+        ocamlc bin/technologic.bc-for-jsoo
       ocamlopt lib/x.cmxs
-        ocamlc bin/technologic.bc-for-jsoo (exit 2)
-  File "_none_", line 1:
-  Error: Error while linking bin/.technologic.eobjs/byte/technologic.cmo:
-         The external function `jsPrint' is not available
-  [1]
+   js_of_ocaml bin/technologic.bc.js
   $ node ./_build/default/bin/technologic.bc.js
   buy it
   use it
@@ -69,6 +66,7 @@ Compilation using jsoo
         ocamlc lib/x.cma
         ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}
+   js_of_ocaml bin/technologic.bc.js
       ocamlopt lib/x.cmxs
   $ dune build --display short bin/technologic.bc.js @install --profile release
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
@@ -81,14 +79,5 @@ Compilation using jsoo
       ocamlopt lib/.x.objs/native/x.{cmx,o}
         ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}
+   js_of_ocaml bin/technologic.bc.js
       ocamlopt lib/x.cmxs
-        ocamlc bin/technologic.bc-for-jsoo (exit 2)
-  File "_none_", line 1:
-  Error: Error while linking bin/.technologic.eobjs/byte/technologic.cmo:
-         The external function `jsPrint' is not available
-  [1]
-  $ dune exe bin/technologic.bc-for-jsoo
-  File "_none_", line 1:
-  Error: Error while linking bin/.technologic.eobjs/byte/technologic.cmo:
-         The external function `jsPrint' is not available
-  [1]

@@ -1,0 +1,11 @@
+(executable
+ (name main)
+ (public_name main)
+ (modes js byte)
+ (modules main)
+ (package main)
+ (libraries dune-build-info))
+
+(install
+ (section bin)
+ (files main.bc.js))

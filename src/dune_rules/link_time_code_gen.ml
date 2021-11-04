@@ -161,11 +161,10 @@ let build_info_code cctx ~libs ~api_version =
         in
         (Lib.name lib, v))
   in
-  let context = CC.context cctx in
-  let ocaml_version = Ocaml_version.of_ocaml_config context.ocaml_config in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   pr buf "let eval s =";
+  pr buf "  let s = Bytes.unsafe_to_string (Bytes.unsafe_of_string s) in";
   pr buf "  let len = String.length s in";
   pr buf "  if s.[0] = '=' then";
   pr buf "    let colon_pos = String.index_from s 1 ':' in";
@@ -178,12 +177,7 @@ let build_info_code cctx ~libs ~api_version =
   pr buf "    None";
   pr buf "[@@inline never]";
   pr buf "";
-  let fmt_eval : _ format6 =
-    if Ocaml_version.has_sys_opaque_identity ocaml_version then
-      "let %s = eval (Sys.opaque_identity %S)"
-    else
-      "let %s = eval %S"
-  in
+  let fmt_eval : _ format6 = "let %s = eval %S" in
   Path.Source.Map.iteri !placeholders ~f:(fun path var ->
       pr buf fmt_eval var
         (Artifact_substitution.encode ~min_len:64 (Vcs_describe path)));

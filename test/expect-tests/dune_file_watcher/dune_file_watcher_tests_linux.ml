@@ -5,10 +5,6 @@ let%expect_test _ = init ()
 
 let%expect_test _ =
   let mutex = Mutex.create () in
-  let critical_section ~f =
-    Mutex.lock mutex;
-    Exn.protect ~f ~finally:(fun () -> Mutex.unlock mutex)
-  in
   let events_buffer = ref [] in
   let watcher =
     Dune_file_watcher.create_default
@@ -16,14 +12,13 @@ let%expect_test _ =
         { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
         ; thread_safe_send_emit_events_job =
             (fun job ->
-              Mutex.lock mutex;
-              let events = job () in
-              events_buffer := !events_buffer @ events;
-              Mutex.unlock mutex)
+              critical_section mutex ~f:(fun () ->
+                  let events = job () in
+                  events_buffer := !events_buffer @ events))
         }
   in
   let try_to_get_events () =
-    critical_section ~f:(fun () ->
+    critical_section mutex ~f:(fun () ->
         match !events_buffer with
         | [] -> None
         | list ->

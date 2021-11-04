@@ -3,6 +3,10 @@ let printf = Printf.printf
 open Base
 open Stdune
 
+let critical_section mutex ~f =
+  Mutex.lock mutex;
+  Exn.protect ~f ~finally:(fun () -> Mutex.unlock mutex)
+
 let init () =
   let tmp_dir = Stdlib.Filename.concat (Unix.getcwd ()) "working-dir" in
   let () =

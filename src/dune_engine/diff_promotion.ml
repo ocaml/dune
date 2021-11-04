@@ -2,8 +2,8 @@ open Import
 
 let staging_area = Path.Build.relative Path.Build.root ".promotion-staging"
 
-module Promote_annot = struct
-  type payload =
+module Annot = struct
+  type t =
     { in_source : Path.Source.t
     ; in_build : Path.Build.t
     }
@@ -14,15 +14,8 @@ module Promote_annot = struct
       [ ("in_source", Path.Source.to_dyn in_source)
       ; ("in_build", Path.Build.to_dyn in_build)
       ]
-end
 
-module Annot = struct
-  type t = Promote_annot.payload =
-    { in_source : Path.Source.t
-    ; in_build : Path.Build.t
-    }
-
-  include User_message.Annot.Make (Promote_annot)
+  let annot = User_message.Annots.Key.create ~name:"promote" to_dyn
 end
 
 module File = struct

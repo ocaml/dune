@@ -274,10 +274,11 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
     >>> Action_builder.progn
           (Action_builder.with_no_targets
              (Action_builder.return
-                (Action.Progn
-                   [ Action.Remove_tree to_remove
-                   ; Action.Mkdir (Path.build odoc_file.html_dir)
-                   ]))
+                (Action.Full.make
+                   (Action.Progn
+                      [ Action.Remove_tree to_remove
+                      ; Action.Mkdir (Path.build odoc_file.html_dir)
+                      ])))
           :: Command.run
                ~dir:(Path.build (Paths.html_root ctx))
                odoc

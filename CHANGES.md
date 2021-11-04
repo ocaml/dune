@@ -10,6 +10,10 @@ Unreleased
 - Report cycles between virtual libraries and their implementation (#5050,
   fixes #2896, @rgrinberg)
 
+- Warn when lang versions have an ignored suffix. `(lang dune 2.3.4)` or `(lang
+  dune 2.3suffix)` were silently parsed as `2.3` and we know suggest to remove
+  the prefix. (#5040, @emillon)
+
 - Allow users to specify dynamic dependencies in rules. For example `(deps
   %{read:foo.gen})` (#4662, fixes #4089, @jeremiedimino)
 
@@ -252,6 +256,9 @@ Unreleased
 
 - Add experimental support for directory targets (#3316, #5025, Andrey Mokhov),
   enabled via `(using directory-targets 0.1)` in `dune-project`.
+
+- Delete old `promote-into`, `promote-until-clean` and `promote-until-clean-into`
+  syntax (#5091, Andrey Mokhov).
 
 2.9.2 (unreleased)
 ------------------

@@ -173,11 +173,11 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let+ () =
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
+    let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
     let link_args =
       let standard = Action_builder.return [] in
       let open Action_builder.O in
       let link_flags =
-        let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
         link_deps
         >>> Expander.expand_and_eval_set expander exes.link_flags ~standard
       in
@@ -213,7 +213,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     match buildable.Buildable.ctypes with
     | None ->
       Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
-        ~promote:exes.promote ~embed_in_plugin_libraries
+        ~promote:exes.promote ~embed_in_plugin_libraries ~sandbox
     | Some _ctypes ->
       (* Ctypes stubgen builds utility .exe files that need to share modules
          with this compilation context. To support that, we extract the one-time
@@ -230,7 +230,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       in
       let* () = Module_compilation.build_all cctx ~dep_graphs in
       Exe.link_many ~programs ~dep_graphs ~linkages ~link_args ~o_files
-        ~promote:exes.promote ~embed_in_plugin_libraries cctx
+        ~promote:exes.promote ~embed_in_plugin_libraries cctx ~sandbox
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

@@ -312,46 +312,42 @@ let get_node t = Env_tree.get_node t
 
 open Memo.Build.O
 
-let make_full_action t ~dir ~locks build =
+let extend_action t ~dir build =
   let open Action_builder.O in
-  let+ (action : Action.t) = build
+  let+ (act : Action.Full.t) = build
   and+ env =
     Action_builder.memo_build
       (let open Memo.Build.O in
       get_node t.env_tree ~dir >>= Env_node.external_env)
   in
-  let action =
-    match action with
-    | Chdir _ -> action
-    | _ -> Chdir (Path.build t.context.build_dir, action)
-  in
-  { Action.Full.action; env; locks; can_go_in_shared_cache = true }
+  act |> Action.Full.add_env env
+  |> Action.Full.map ~f:(function
+       | Chdir _ as a -> a
+       | a -> Chdir (Path.build t.context.build_dir, a))
 
-let make_rule t ?sandbox ?mode ?(locks = []) ?loc ~dir
-    { Action_builder.With_targets.build; targets } =
-  let build = make_full_action t build ~locks ~dir in
-  Rule.make ?sandbox ?mode ~info:(Rule.Info.of_loc_opt loc)
+let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
+  let build = extend_action t build ~dir in
+  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some (Context.build_context t.context))
     ~targets build
 
-let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
-  let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
+let add_rule t ?mode ?loc ~dir build =
+  let rule = make_rule t ?mode ?loc ~dir build in
   Rules.Produce.rule rule
 
-let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
-  let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
+let add_rule_get_targets t ?mode ?loc ~dir build =
+  let rule = make_rule t ?mode ?loc ~dir build in
   let+ () = Rules.Produce.rule rule in
   rule.targets
 
-let add_rules t ?sandbox ~dir builds =
-  Memo.Build.parallel_iter builds ~f:(add_rule t ?sandbox ~dir)
+let add_rules t ~dir builds =
+  Memo.Build.parallel_iter builds ~f:(add_rule t ~dir)
 
-let add_alias_action t alias ~dir ~loc ?(locks = [])
-    ?(patch_back_source_tree = false) action =
-  let build = make_full_action t action ~locks ~dir in
+let add_alias_action t alias ~dir ~loc action =
+  let build = extend_action t action ~dir in
   Rules.Produce.Alias.add_action
     ~context:(Context.build_context t.context)
-    alias ~loc ~patch_back_source_tree build
+    alias ~loc build
 
 let build_dir_is_vendored build_dir =
   match Path.Build.drop_build_context build_dir with

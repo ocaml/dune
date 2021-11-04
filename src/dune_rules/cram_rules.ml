@@ -9,6 +9,7 @@ type effective =
   { loc : Loc.t
   ; alias : Alias.Name.Set.t
   ; deps : unit Action_builder.t list
+  ; sandbox : Sandbox_config.t
   ; enabled_if : Blang.t list
   ; locks : Path.Set.t
   ; packages : Package.Name.Set.t
@@ -20,6 +21,7 @@ let empty_effective =
   ; enabled_if = [ Blang.true_ ]
   ; locks = Path.Set.empty
   ; deps = []
+  ; sandbox = Sandbox_config.needs_sandboxing
   ; packages = Package.Name.Set.empty
   }
 
@@ -51,7 +53,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
     Memo.Build.parallel_iter aliases ~f:(fun alias ->
-        Alias_rules.add sctx ~alias ~loc ~locks:[] (missing_run_t test))
+        Alias_rules.add sctx ~alias ~loc (missing_run_t test))
   | Ok test -> (
     match enabled with
     | false ->
@@ -73,6 +75,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
               }
           ]
       in
+      let locks = Path.Set.to_list spec.locks in
       let cram =
         let open Action_builder.O in
         let+ () = Action_builder.path (Path.build script)
@@ -83,15 +86,11 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
           | Dir { dir; file = _ } ->
             let dir = Path.build (Path.Build.append_source prefix_with dir) in
             Action_builder.source_tree ~dir
-        and+ () =
-          Action_builder.dep
-            (Dep.sandbox_config Sandbox_config.needs_sandboxing)
         in
-        action
+        Action.Full.make action ~locks ~sandbox:spec.sandbox
       in
-      let locks = Path.Set.to_list spec.locks in
       Memo.Build.parallel_iter aliases ~f:(fun alias ->
-          Alias_rules.add sctx ~alias ~loc cram ~locks))
+          Alias_rules.add sctx ~alias ~loc cram))
 
 let rules ~sctx ~expander ~dir tests =
   let stanzas =
@@ -144,15 +143,15 @@ let rules ~sctx ~expander ~dir tests =
             | false -> acc
             | true ->
               let* acc = acc in
-              let* deps =
+              let* deps, sandbox =
                 match spec.deps with
-                | None -> Memo.Build.return acc.deps
+                | None -> Memo.Build.return (acc.deps, acc.sandbox)
                 | Some deps ->
-                  let+ (deps : unit Action_builder.t) =
+                  let+ (deps : unit Action_builder.t), _, sandbox =
                     let+ expander = Super_context.expander sctx ~dir in
-                    fst (Dep_conf_eval.named ~expander deps)
+                    Dep_conf_eval.named ~expander deps
                   in
-                  deps :: acc.deps
+                  (deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox)
               in
               let enabled_if = spec.enabled_if :: acc.enabled_if in
               let alias =
@@ -174,7 +173,7 @@ let rules ~sctx ~expander ~dir tests =
                     >>| Path.relative (Path.build dir))
                 >>| Path.Set.of_list >>| Path.Set.union acc.locks
               in
-              { acc with enabled_if; locks; deps; alias; packages })
+              { acc with enabled_if; locks; deps; alias; packages; sandbox })
       in
       let test_rule () = test_rule ~sctx ~expander ~dir effective test in
       Only_packages.get () >>= function

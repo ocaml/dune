@@ -178,7 +178,9 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
     | Created -> ()
     | Already_exists ->
       User_error.raise ~loc
-        ~annots:[ User_message.Annot.Needs_stack_trace.make () ]
+        ~annots:
+          (User_message.Annots.singleton User_message.Annots.needs_stack_trace
+             ())
         [ Pp.textf
             "This rule defines a directory target %S whose name conflicts with \
              an internal directory used by Dune. Please use a different name."

@@ -85,14 +85,14 @@ val run :
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
   -> Args.any Args.t list
-  -> Action.t Action_builder.With_targets.t
+  -> Action.Full.t Action_builder.With_targets.t
 
 (** Same as [run], but for actions that don't produce targets *)
 val run' :
      dir:Path.t
   -> Action.Prog.t
   -> Args.without_targets Args.t list
-  -> Action.t Action_builder.t
+  -> Action.Full.t Action_builder.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ Args.t

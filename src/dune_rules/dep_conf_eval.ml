@@ -169,20 +169,24 @@ let dep expander = function
       (let* var = Expander.expand_str expander var_sw in
        let+ () = Action_builder.env_var var in
        [])
-  | Sandbox_config sandbox_config ->
-    Other
-      (let+ () = Action_builder.dep (Dep.sandbox_config sandbox_config) in
-       [])
+  | Sandbox_config _ -> Other (Action_builder.return [])
 
 let prepare_expander expander =
   Expander.set_expanding_what expander Deps_like_field
 
+let add_sandbox_config acc (dep : Dep_conf.t) =
+  match dep with
+  | Sandbox_config cfg -> Sandbox_config.inter acc cfg
+  | _ -> acc
+
 let unnamed ~expander l =
   let expander = prepare_expander expander in
-  List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
-      let+ () = acc
-      and+ _x = to_action_builder (dep expander x) in
-      ())
+  ( List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
+        let+ () = acc
+        and+ _x = to_action_builder (dep expander x) in
+        ())
+  , List.fold_left l ~init:Sandbox_config.no_special_requirements
+      ~f:add_sandbox_config )
 
 let named ~expander l =
   let builders, bindings =
@@ -239,4 +243,10 @@ let named ~expander l =
   in
   let expander = Expander.add_bindings_full expander ~bindings in
   let builder = Action_builder.ignore builder in
-  (builder, expander)
+  ( builder
+  , expander
+  , Bindings.fold l ~init:Sandbox_config.no_special_requirements
+      ~f:(fun one acc ->
+        match one with
+        | Unnamed dep -> add_sandbox_config acc dep
+        | Named (_, l) -> List.fold_left l ~init:acc ~f:add_sandbox_config) )

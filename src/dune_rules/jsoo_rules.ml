@@ -172,9 +172,9 @@ let build_exe cc ~in_buildable ~src ~(cm : Path.t list Action_builder.t)
   let javascript_files =
     List.map javascript_files ~f:(Path.relative (Path.build dir))
   in
-  let mk_target ext = Path.Build.extend_basename src ~suffix:ext in
-  let target = mk_target ".js" in
-  let standalone_runtime = mk_target ".runtime.js" in
+  let mk_target ext = Path.Build.set_extension src ~ext in
+  let target = mk_target ".bc.js" in
+  let standalone_runtime = mk_target ".bc.runtime.js" in
   let mode : Rule.Mode.t =
     match promote with
     | None -> Standard

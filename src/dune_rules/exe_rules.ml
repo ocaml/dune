@@ -12,26 +12,27 @@ let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
   let l =
     let has_native = Result.is_ok ctx.ocamlopt in
     let modes =
-      let add_if_not_already_present modes mode loc =
-        match L.Map.add exes.modes mode loc with
-        | Ok modes -> modes
-        | Error _ -> modes
-      in
-      match L.Map.find exes.modes L.js with
-      | Some loc -> add_if_not_already_present exes.modes L.byte loc
-      | None -> (
-        if explicit_js_mode then
-          exes.modes
-        else
-          match L.Map.find exes.modes L.byte with
-          | Some loc -> add_if_not_already_present exes.modes L.js loc
-          | None -> exes.modes)
+      L.Map.to_list exes.modes
+      |> List.map ~f:(fun (mode, loc) ->
+             Exe.Linkage.of_user_config ctx ~loc mode)
     in
-    L.Map.to_list modes
-    |> List.filter_map ~f:(fun ((mode : L.t), loc) ->
-           match (has_native, mode) with
-           | false, Other { mode = Native; _ } -> None
-           | _ -> Some (Exe.Linkage.of_user_config ctx ~loc mode))
+    let modes =
+      if not has_native then
+        List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
+      else
+        modes
+    in
+    let modes =
+      if L.Map.mem exes.modes L.js then
+        Exe.Linkage.byte_for_jsoo :: modes
+      else if explicit_js_mode then
+        modes
+      else if L.Map.mem exes.modes L.byte then
+        Exe.Linkage.js :: Exe.Linkage.byte_for_jsoo :: modes
+      else
+        modes
+    in
+    modes
   in
   (* If bytecode was requested but not native or best version, add custom
      linking *)
@@ -72,7 +73,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
       else
         "stubs"
     in
-    if List.mem linkages Exe.Linkage.byte ~equal:Exe.Linkage.equal then
+    if List.exists linkages ~f:Exe.Linkage.is_byte then
       User_error.raise ~loc:exes.buildable.loc
         [ Pp.textf "Pure bytecode executables cannot contain foreign %s." what ]
         ~hints:
@@ -152,9 +153,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let js_of_ocaml =
       let js_of_ocaml = exes.buildable.js_of_ocaml in
       if explicit_js_mode then
-        Option.some_if
-          (List.mem linkages Exe.Linkage.js ~equal:Exe.Linkage.equal)
-          js_of_ocaml
+        Option.some_if (List.exists linkages ~f:Exe.Linkage.is_js) js_of_ocaml
       else
         Some js_of_ocaml
     in

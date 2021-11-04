@@ -6,6 +6,7 @@
         ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
       ocamlopt .foo.eobjs/native/foo.{cmx,o}
         ocamlc foo.bc
+        ocamlc foo.bc-for-jsoo
       ocamlopt foo.exe
 
 @all builds private libs

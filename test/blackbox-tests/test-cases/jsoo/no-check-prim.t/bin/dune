@@ -1,0 +1,6 @@
+(executables
+ (names technologic)
+ (libraries js_of_ocaml x)
+ (js_of_ocaml
+   (flags (:standard))
+   (javascript_files runtime.js)))

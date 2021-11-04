@@ -331,9 +331,6 @@ let command ~root ~backend =
     [ "_build" ]
   in
   let root = Path.to_string root in
-  let inotify_special_path =
-    Path.Build.to_string (special_file_for_fs_sync ())
-  in
   match backend with
   | `Fswatch fswatch ->
     (* On all other platforms, try to use fswatch. fswatch's event filtering is
@@ -347,11 +344,6 @@ let command ~root ~backend =
     ( fswatch
     , [ "-r"
       ; root
-      ; (* If [inotify_special_path] is not passed here, then the [--exclude
-           _build] makes fswatch not descend into [_build], which means it never
-           even discovers that [inotify_special_path] exists. This is despite
-           the fact that [--include] appears before. *)
-        inotify_special_path
       ; "--event"
       ; "Created"
       ; "--event"
@@ -359,7 +351,6 @@ let command ~root ~backend =
       ; "--event"
       ; "Removed"
       ]
-      @ [ "--include"; inotify_special_path ]
       @ excludes
     , fun s -> Ok s )
 
@@ -393,7 +384,6 @@ let prepare_sync () =
   emit_sync ()
 
 let spawn_external_watcher ~root ~backend =
-  prepare_sync ();
   let prog, args, parse_line = command ~root ~backend in
   let prog = Path.to_absolute_filename prog in
   let argv = prog :: args in

@@ -83,27 +83,37 @@ let jsoo_archives ~ctx lib =
              ; Path.basename archive ^ ".js"
              ]))
 
-let link_rule cc ~runtime ~target cm ~flags =
+let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
+  let open Memo.Build.O in
   let sctx = Compilation_context.super_context cc in
   let ctx = Compilation_context.context cc in
   let dir = Compilation_context.dir cc in
   let requires = Compilation_context.requires_link cc in
+  let special_units =
+    Action_builder.memo_build
+      (let+ pre = link_time_code_gen in
+       List.concat_map pre ~f:(function
+         | `Mod path -> [ Path.extend_basename ~suffix:".js" path ]
+         | `Lib _ -> []))
+  in
   let get_all =
-    Action_builder.map cm ~f:(fun cm ->
+    Action_builder.map (Action_builder.both cm special_units)
+      ~f:(fun (cm, special_units) ->
         Resolve.Build.args
           (let open Resolve.Build.O in
           let+ libs = requires in
           let all_libs = List.concat_map libs ~f:(jsoo_archives ~ctx) in
           (* Special case for the stdlib because it is not referenced in the
              META *)
-          let all_libs =
+          let stdlib =
             Path.build (in_build_dir ~ctx [ "stdlib"; "stdlib.cma.js" ])
-            :: all_libs
           in
           let all_other_modules =
             List.map cm ~f:(Path.extend_basename ~suffix:".js")
           in
-          Command.Args.Deps (List.concat [ all_libs; all_other_modules ])))
+          Command.Args.Deps
+            (List.concat
+               [ [ stdlib ]; special_units; all_libs; all_other_modules ])))
   in
   let spec =
     let std_exit =
@@ -165,7 +175,7 @@ let setup_separate_compilation_rules sctx components =
           SC.add_rule sctx ~dir action_with_targets))
 
 let build_exe cc ~in_buildable ~src ~(cm : Path.t list Action_builder.t)
-    ~promote =
+    ~promote ~link_time_code_gen =
   let { Js_of_ocaml.In_buildable.javascript_files; flags } = in_buildable in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
@@ -188,6 +198,7 @@ let build_exe cc ~in_buildable ~src ~(cm : Path.t list Action_builder.t)
       ~flags
     >>= SC.add_rule sctx ~dir
     >>> link_rule cc ~runtime:standalone_runtime ~target cm ~flags
+          ~link_time_code_gen
     >>= SC.add_rule sctx ~dir ~mode
   | Whole_program ->
     exe_rule cc ~javascript_files ~src ~target ~flags

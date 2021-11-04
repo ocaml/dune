@@ -212,7 +212,6 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   let modules = Modules.singleton_exe module_ in
   { cctx with
     opaque
-  ; js_of_ocaml = None
   ; flags = Ocaml_flags.empty
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires

@@ -17,6 +17,7 @@ val build_exe :
   -> src:Path.Build.t
   -> cm:Path.t list Action_builder.t
   -> promote:Rule.Promote.t option
+  -> link_time_code_gen:[ `Mod of Path.t | `Lib of Lib.t ] list Memo.Build.t
   -> unit Memo.Build.t
 
 val setup_separate_compilation_rules :

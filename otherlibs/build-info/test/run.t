@@ -94,6 +94,7 @@ Check what the generated build info module looks like:
   $ cat _build/default/c/.c.eobjs/build_info_data.ml-gen \
   >   | sed 's/"dune-build-info".*/"dune-build-info", Some "XXX"/'
   let eval s =
+    let s = Bytes.unsafe_to_string (Bytes.unsafe_of_string s) in
     let len = String.length s in
     if s.[0] = '=' then
       let colon_pos = String.index_from s 1 ':' in
@@ -106,9 +107,9 @@ Check what the generated build info module looks like:
       None
   [@@inline never]
   
-  let p1 = eval (Sys.opaque_identity "%%DUNE_PLACEHOLDER:64:vcs-describe:1:a%%%%%%%%%%%%%%%%%%%%%%%%%%")
-  let p2 = eval (Sys.opaque_identity "%%DUNE_PLACEHOLDER:64:vcs-describe:1:b%%%%%%%%%%%%%%%%%%%%%%%%%%")
-  let p0 = eval (Sys.opaque_identity "%%DUNE_PLACEHOLDER:64:vcs-describe:1:c%%%%%%%%%%%%%%%%%%%%%%%%%%")
+  let p1 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:a%%%%%%%%%%%%%%%%%%%%%%%%%%"
+  let p2 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:b%%%%%%%%%%%%%%%%%%%%%%%%%%"
+  let p0 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:c%%%%%%%%%%%%%%%%%%%%%%%%%%"
   
   let version = p0
   

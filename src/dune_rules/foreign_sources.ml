@@ -206,7 +206,8 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
           let related =
             [ User_message.make ~loc:loc1 [ Pp.text "Name already used here" ] ]
           in
-          [ Compound_user_error.make ~main ~related ]
+          User_message.Annots.singleton Compound_user_error.annot
+            (Compound_user_error.make ~main ~related)
         in
         User_error.raise ~annots ~loc:loc2
           [ Pp.textf "%s; the name has already been taken in %s." main_message

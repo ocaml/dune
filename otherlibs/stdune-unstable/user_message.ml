@@ -13,56 +13,13 @@ module Style = struct
     | Ansi_styles of Ansi_color.Style.t list
 end
 
-module Annot = struct
-  type t = ..
+module Annots = struct
+  include Univ_map.Make ()
 
-  let format = ref (fun _ -> assert false)
+  let has_embedded_location =
+    Key.create ~name:"has-embedded-location" Unit.to_dyn
 
-  let pp t = !format t
-
-  module type S = sig
-    type payload
-
-    val make : payload -> t
-
-    val check : t -> (payload -> 'a) -> (unit -> 'a) -> 'a
-  end
-
-  module Make (M : sig
-    type payload
-
-    val to_dyn : payload -> Dyn.t
-  end) : S with type payload = M.payload = struct
-    type payload = M.payload
-
-    type t += A of M.payload
-
-    let make t = A t
-
-    let check t on_match on_failure =
-      match t with
-      | A t -> on_match t
-      | _ -> on_failure ()
-
-    let () =
-      let f = function
-        | A t -> Dyn.pp (M.to_dyn t)
-        | other -> !format other
-      in
-      format := f
-  end
-
-  module Has_embedded_location = Make (struct
-    type payload = unit
-
-    let to_dyn = Unit.to_dyn
-  end)
-
-  module Needs_stack_trace = Make (struct
-    type payload = unit
-
-    let to_dyn = Unit.to_dyn
-  end)
+  let needs_stack_trace = Key.create ~name:"needs-stack-trace" Unit.to_dyn
 end
 
 module Print_config = struct
@@ -88,10 +45,10 @@ type t =
   { loc : Loc0.t option
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
-  ; annots : Annot.t list
+  ; annots : Annots.t
   }
 
-let make ?loc ?prefix ?(hints = []) ?(annots = []) paragraphs =
+let make ?loc ?prefix ?(hints = []) ?(annots = Annots.empty) paragraphs =
   let paragraphs =
     match (prefix, paragraphs) with
     | None, l -> l
@@ -180,11 +137,8 @@ let is_loc_none loc =
   | Some loc -> loc = Loc0.none
 
 let has_embedded_location msg =
-  List.exists msg.annots ~f:(fun annot ->
-      Annot.Has_embedded_location.check annot (fun () -> true) (fun () -> false))
+  Annots.mem msg.annots Annots.has_embedded_location
 
 let has_location msg = (not (is_loc_none msg.loc)) || has_embedded_location msg
 
-let needs_stack_trace msg =
-  List.exists msg.annots ~f:(fun annot ->
-      Annot.Needs_stack_trace.check annot (fun () -> true) (fun () -> false))
+let needs_stack_trace msg = Annots.mem msg.annots Annots.needs_stack_trace

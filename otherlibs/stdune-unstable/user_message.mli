@@ -22,30 +22,14 @@ module Style : sig
     | Ansi_styles of Ansi_color.Style.t list
 end
 
-module Annot : sig
-  type t
-
-  module type S = sig
-    type payload
-
-    val make : payload -> t
-
-    val check : t -> (payload -> 'a) -> (unit -> 'a) -> 'a
-  end
-
-  module Make (M : sig
-    type payload
-
-    val to_dyn : payload -> Dyn.t
-  end) : S with type payload = M.payload
+module Annots : sig
+  include Univ_map.S
 
   (** The message has a location embed in the text. *)
-  module Has_embedded_location : S with type payload = unit
+  val has_embedded_location : unit Key.t
 
   (** The message needs a stack trace for clarity. *)
-  module Needs_stack_trace : S with type payload = unit
-
-  val pp : t -> Style.t Pp.t
+  val needs_stack_trace : unit Key.t
 end
 
 (** A user message.contents composed of an optional file location and a list of
@@ -64,7 +48,7 @@ type t =
   { loc : Loc0.t option
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
-  ; annots : Annot.t list
+  ; annots : Annots.t
   }
 
 val pp : t -> Style.t Pp.t
@@ -86,7 +70,7 @@ val make :
      ?loc:Loc0.t
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
-  -> ?annots:Annot.t list
+  -> ?annots:Annots.t
   -> Style.t Pp.t list
   -> t
 

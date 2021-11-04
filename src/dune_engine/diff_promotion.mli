@@ -9,7 +9,7 @@ module Annot : sig
     ; in_build : Path.Build.t
     }
 
-  include User_message.Annot.S with type payload := t
+  val annot : t User_message.Annots.Key.t
 end
 
 module File : sig

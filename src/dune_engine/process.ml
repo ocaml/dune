@@ -6,11 +6,8 @@ module Event = Chrome_trace.Event
 module Timestamp = Event.Timestamp
 module Action_output_on_success = Execution_parameters.Action_output_on_success
 
-module With_directory_annot = User_message.Annot.Make (struct
-  type payload = Path.t
-
-  let to_dyn = Path.to_dyn
-end)
+let with_directory_annot =
+  User_message.Annots.Key.create ~name:"with-directory" Path.to_dyn
 
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
@@ -154,8 +151,8 @@ module Io = struct
 end
 
 type purpose =
-  | Internal_job of Loc.t option * User_message.Annot.t list
-  | Build_job of Loc.t option * User_message.Annot.t list * Targets.t
+  | Internal_job of Loc.t option * User_message.Annots.t
+  | Build_job of Loc.t option * User_message.Annots.t * Targets.t
 
 let loc_and_annots_of_purpose = function
   | Internal_job (loc, annots) -> (loc, annots)
@@ -425,7 +422,7 @@ module Handle_exit_status : sig
     -> purpose:purpose
     -> output:string
     -> command_line:User_message.Style.t Pp.t
-    -> dir:With_directory_annot.payload option
+    -> dir:Path.t option
     -> 'a
 
   val non_verbose :
@@ -435,7 +432,7 @@ module Handle_exit_status : sig
     -> output:string
     -> prog:string
     -> command_line:string
-    -> dir:With_directory_annot.payload option
+    -> dir:Path.t option
     -> has_unexpected_stdout:bool
     -> has_unexpected_stderr:bool
     -> 'a
@@ -470,18 +467,19 @@ end = struct
   let get_loc_and_annots ~dir ~purpose ~output =
     let loc, annots = loc_and_annots_of_purpose purpose in
     let dir = Option.value dir ~default:Path.root in
-    let annots = With_directory_annot.make dir :: annots in
+    let annots = User_message.Annots.set annots with_directory_annot dir in
     let annots =
       match output with
       | No_output -> annots
       | Has_output output ->
         if output.has_embedded_location then
           let annots =
-            User_message.Annot.Has_embedded_location.make () :: annots
+            User_message.Annots.set annots
+              User_message.Annots.has_embedded_location ()
           in
           match Compound_user_error.parse_output ~dir output.without_color with
           | None -> annots
-          | Some annot -> annot :: annots
+          | Some e -> User_message.Annots.set annots Compound_user_error.annot e
         else
           annots
     in
@@ -814,7 +812,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       (res, times))
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job (None, [])) fail_mode prog args =
+    ?(purpose = Internal_job (None, User_message.Annots.empty)) fail_mode prog
+    args =
   let+ run =
     run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose fail_mode
       prog args
@@ -823,13 +822,14 @@ let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env
   map_result fail_mode run ~f:ignore
 
 let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job (None, [])) prog args =
+    ?(purpose = Internal_job (None, User_message.Annots.empty)) prog args =
   run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose Strict prog
     args
   >>| snd
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job (None, [])) fail_mode prog args ~f =
+    ?(purpose = Internal_job (None, User_message.Annots.empty)) fail_mode prog
+    args ~f =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
     run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
@@ -849,7 +849,8 @@ let run_capture_zero_separated =
   run_capture_gen ~f:Stdune.Io.zero_strings_of_file
 
 let run_capture_line ?dir ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job (None, [])) fail_mode prog args =
+    ?(purpose = Internal_job (None, User_message.Annots.empty)) fail_mode prog
+    args =
   run_capture_gen ?dir ?stderr_to ?stdin_from ?env ~purpose fail_mode prog args
     ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with

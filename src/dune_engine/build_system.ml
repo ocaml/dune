@@ -278,6 +278,11 @@ module type Rule_generator = sig
 end
 
 module Handler = struct
+  (* CR-someday amokhov: The name [Interrupt] is not precise, because the build
+     is restarted, not, e.g. interrupted with Ctrl-C. Similarly, we have other
+     imprecise names, like [Cancelled_due_to_file_changes] in [Scheduler] where
+     the build is not just cancelled, it's restarted. We should make the naming
+     more consistent. *)
   type event =
     | Start
     | Finish

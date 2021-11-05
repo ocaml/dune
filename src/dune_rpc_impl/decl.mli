@@ -5,6 +5,7 @@ open Dune_rpc_private
 module Build_outcome : sig
   type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
     | Success
+    | Restart of { details_hum : string list }
     | Failure
 
   val sexp : (t, Conv.values) Conv.t

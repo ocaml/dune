@@ -7,7 +7,7 @@ let%expect_test _ =
   let mutex = Mutex.create () in
   let events_buffer = ref [] in
   let watcher =
-    Dune_file_watcher.create_default
+    Dune_file_watcher.create_default ~fsevents_debounce:0.
       ~scheduler:
         { spawn_thread = (fun f -> ignore (Thread.create f () : Thread.t))
         ; thread_safe_send_emit_events_job =
@@ -16,6 +16,7 @@ let%expect_test _ =
                   let events = job () in
                   events_buffer := !events_buffer @ events))
         }
+      ()
   in
   let try_to_get_events () =
     critical_section mutex ~f:(fun () ->

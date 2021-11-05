@@ -1276,7 +1276,8 @@ module Run = struct
                { spawn_thread = Thread.spawn
                ; thread_safe_send_emit_events_job =
                    (fun job -> Event_queue.send_file_watcher_task events job)
-               })
+               }
+             ())
     in
     let t = prepare ~file_watcher in
     let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in

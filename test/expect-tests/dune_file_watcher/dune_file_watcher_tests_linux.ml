@@ -21,6 +21,7 @@ let%expect_test _ =
               events_buffer := !events_buffer @ events;
               Mutex.unlock mutex)
         }
+      ()
   in
   let try_to_get_events () =
     critical_section ~f:(fun () ->

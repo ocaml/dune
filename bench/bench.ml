@@ -15,29 +15,36 @@ module Output = struct
 
   type bench =
     { name : string
-    ; metrics : (string * [ measurement | `List of measurement list ]) list
+    ; metrics :
+        (string * [ measurement | `List of measurement list ] * string) list
     }
 
   let json_of_bench { name; metrics } : Json.t =
     let metrics =
-      List.map metrics ~f:(fun (name, value) ->
+      List.map metrics ~f:(fun (name, value, units) ->
           let value =
             match value with
             | `Int i -> `Int i
             | `Float f -> `Float f
             | `List xs -> `List (xs :> Json.t list)
           in
-          (name, value))
+          `Assoc
+            [ ("name", `String name)
+            ; ("value", value)
+            ; ("units", `String units)
+            ])
     in
-    `Assoc [ ("name", `String name); ("metrics", `Assoc metrics) ]
+    `Assoc [ ("name", `String name); ("metrics", `List metrics) ]
 
   type t =
     { config : (string * Json.t) list
+    ; version : int
     ; results : bench list
     }
 
-  let to_json { config; results } : Json.t =
+  let to_json { config; version; results } : Json.t =
     let assoc = [ ("results", `List (List.map results ~f:json_of_bench)) ] in
+    let assoc = ("version", `Int version) :: assoc in
     let assoc =
       match config with
       | [] -> assoc
@@ -136,11 +143,14 @@ let () =
     stat.st_size
   in
   let results =
-    [ { Output.name = "clean_build"; metrics = [ ("time", `Float clean) ] }
-    ; { Output.name = "zero_build"; metrics = [ ("time", `List zero) ] }
-    ; { Output.name = "dune_size"; metrics = [ ("size", `Int size) ] }
+    [ { Output.name = "clean_build"
+      ; metrics = [ ("time", `Float clean, "secs") ]
+      }
+    ; { Output.name = "zero_build"; metrics = [ ("time", `List zero, "secs") ] }
+    ; { Output.name = "dune_size"; metrics = [ ("size", `Int size, "bytes") ] }
     ]
   in
-  let output = { Output.config = []; results } in
+  let version = 2 in
+  let output = { Output.config = []; version; results } in
   print_string (Json.to_string (Output.to_json output));
   flush stdout

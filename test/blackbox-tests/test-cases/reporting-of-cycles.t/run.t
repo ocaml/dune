@@ -81,7 +81,7 @@ This is a reproduction case from issue #4345
   $ dune build --root .
   Error: Dependency cycle between:
      Computing rules for package lib
-  -> evaluating predicate in directory _build/default
+  -> Evaluating predicate in directory _build/default
   -> Computing directory contents of _build/default/lib
   -> Computing rules for package lib
   [1]

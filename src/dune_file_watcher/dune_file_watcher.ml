@@ -170,7 +170,7 @@ type t =
 let exclude_patterns =
   [ {|/_opam|}
   ; {|/_esy|}
-  ; {|/\..+|}
+  ; {|/\.#.*|}
   ; {|~$|}
   ; {|/#[^#]*#$|}
   ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)

@@ -4,7 +4,7 @@ developed at [Jane Street][js] and is now maintained by Jane Street,
 community.
 
 Contributions to Dune are welcome and should be submitted via GitHub
-pull requests against the `master` branch. Dune is distributed under
+pull requests against the `main` branch. Dune is distributed under
 the MIT license and contributors are required to sign their work in
 order to certify that they have the right to submit it under this
 license. See the following section for more details.

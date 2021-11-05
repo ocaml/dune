@@ -65,8 +65,8 @@ Dune supports two modes of compilation
   separately and then linked together. This mode is useful during development as
   it builds more quickly.
 
-The separate compilation mode will be selected when the build profile is
-``dev``, which is the default. There is currently no other way to control this
-behaviour.
+The separate compilation mode will be selected when the build profile
+is ``dev``, which is the default. It can also be explicitly sepcified
+in an env stanza. See :ref:`dune-env` for more information.
 
 .. _js_of_ocaml: http://ocsigen.org/js_of_ocaml/

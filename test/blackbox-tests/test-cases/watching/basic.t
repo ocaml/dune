@@ -1,27 +1,6 @@
-  $ DUNE_RUNNING=0
+Basic tests for the file-watching mode.
 
-  $ start_dune () {
-  >  ((dune build "$@" --passive-watch-mode > dune-output 2>&1) || (echo exit $? >> dune-output)) &
-  >   DUNE_PID=$!;
-  >   DUNE_RUNNING=1;
-  > }
-
-  $ timeout="$(command -v timeout || echo gtimeout)"
-
-  $ with_timeout () {
-  >   $timeout 2 "$@"
-  >   exit_code=$?
-  >   if [ "$exit_code" = 124 ]
-  >   then
-  >     printf "Timed out"
-  >   else
-  >     return "$exit_code"
-  >   fi
-  > }
-
-  $ build () {
-  >   with_timeout dune rpc build --wait "$@"
-  > }
+  $ . ./helpers.sh
 
 ----------------------------------------------------------------------------------
 * Compile a simple rule

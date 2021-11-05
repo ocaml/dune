@@ -133,4 +133,3 @@ Include stanzas within subdir stanzas
   Error: invalid sub-directory path "/absolute/path/to/bar"
   Hint: sub-directory path must be relative
   [1]
-

@@ -73,7 +73,7 @@ module Run : sig
   module Build_outcome_for_rpc : sig
     type t =
       | Success
-      | Restart
+      | Restart of { details_hum : string list }
       | Failure
   end
 

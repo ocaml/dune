@@ -20,7 +20,7 @@ Bad rule! You are not supposed to modify the source tree. No ice-cream for you!
 The build restarts because a new source file has been created.
 
   $ build result
-  Restart
+  Restart (. changed)
 
   $ cat new-source.txt
 

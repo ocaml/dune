@@ -1238,6 +1238,7 @@ module Run = struct
   module Build_outcome_for_rpc = struct
     type t =
       | Success
+      | Restart
       | Failure
   end
 
@@ -1250,8 +1251,8 @@ module Run = struct
             Fiber.Ivar.fill response_ivar
               (match res with
               | Finished (Ok _) -> Build_outcome_for_rpc.Success
+              | Cancelled_due_to_file_changes _ -> Restart
               | Finished (Error _)
-              | Cancelled_due_to_file_changes _
               | Shutdown ->
                 Build_outcome_for_rpc.Failure)
           in

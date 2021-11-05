@@ -17,19 +17,14 @@ Bad rule! You are not supposed to modify the source tree. No ice-cream for you!
   $ touch old-source.txt
   $ start_dune
 
-This failure is not really a failure but is merely a re-triggering of the build
-because a new source file has been created. This is confusing: we should really
-send "Interrupted" or something like this via Dune RPC in this case.
-
-# CR-someday amokhov: Change Dune RPC to send "Interrupted" instead of "Failure"
-# when the current build is re-triggered.
+The build restarts because a new source file has been created.
 
   $ build result
-  Failure
+  Restart
 
   $ cat new-source.txt
 
-So, we try again and it works.
+So, we come back for the result once again and now get it.
 
   $ build result
   Success
@@ -42,7 +37,7 @@ Some notes explaining what's going on below:
 
 * The first time the rule is executed, it sees no *.txt files.
 
-* The build is re-triggered because dir_contents for "." changed.
+* The build is restarted because dir_contents for "." changed.
 
 * The second time the rule sees new-source.txt because Dune copied it to the
 | build directory.

@@ -5,9 +5,12 @@ open Dune_rpc_private
 module Build_outcome = struct
   type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
     | Success
+    | Restart
     | Failure
 
-  let sexp = Conv.enum [ ("Success", Success); ("Failure", Failure) ]
+  let sexp =
+    Conv.enum
+      [ ("Success", Success); ("Restart", Restart); ("Failure", Failure) ]
 end
 
 module Status = struct

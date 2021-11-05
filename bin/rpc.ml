@@ -199,8 +199,9 @@ module Build = struct
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->
           report_error error
-        | Ok Failure -> print_endline "Failure"
-        | Ok Success -> print_endline "Success")
+        | Ok Success -> print_endline "Success"
+        | Ok Restart -> print_endline "Restart"
+        | Ok Failure -> print_endline "Failure")
 
   let info =
     let doc =

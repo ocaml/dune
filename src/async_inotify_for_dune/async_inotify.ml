@@ -1,18 +1,19 @@
 open Stdune
-open Poly
 
-(* We don't make calls to [Inotify] functions ([add_watch], [rm_watch]) in a
-   separate thread because:
+(** We don't make calls to [Inotify] functions ([add_watch], [rm_watch]) in a
+    separate thread because:
 
-   - we don't think they can block for a while - Inotify doesn't release the
-   OCaml lock anyway - it avoids racing with the select loop below, by
-   preventing adding a watch and seeing an event about it before having filled
-   the hashtable (not that we have observed this particular race). *)
+    - we don't think they can block for a while
+    - Inotify doesn't release the OCaml lock anyway
+    - it avoids racing with the select loop below, by preventing adding a watch
+      and seeing an event about it before having filled the hashtable (not that
+      we have observed this particular race). *)
 
 module External_deps = struct
   module Unix = Unix
-  module String_table = String.Table
-  module Filename = Filename
+  module Table = Table
+
+  let ( ^/ ) = Filename.concat
 end
 
 open External_deps
@@ -58,13 +59,11 @@ module Inotify_watch = struct
   let to_dyn t = Int.to_dyn (Inotify.int_of_watch t)
 end
 
-module Watch_table = Hashtbl.Make (Inotify_watch)
-
 type t =
   { fd : Unix.file_descr
   ; log_error : string -> unit
-  ; watch_table : string Watch_table.t
-  ; path_table : Inotify.watch String_table.t
+  ; watch_table : (Inotify_watch.t, string) Table.t
+  ; path_table : (string, Inotify.watch) Table.t
   ; send_emit_events_job_to_scheduler : (unit -> Event.t list) -> unit
   ; select_events : Inotify.selector list
   }
@@ -76,12 +75,11 @@ type modify_event_selector =
   | `Closed_writable_fd
   ]
 
-let ( ^/ ) = Filename.concat
-
 let add t path =
   let watch = Inotify.add_watch t.fd path t.select_events in
-  Watch_table.set t.watch_table watch path;
-  String_table.set t.path_table path watch
+  (* XXX why are we just overwriting existing watches? *)
+  Table.set t.watch_table watch path;
+  Table.set t.path_table path watch
 
 let process_raw_events t events =
   let watch_table = t.watch_table in
@@ -96,7 +94,7 @@ let process_raw_events t events =
               | Inotify.Q_overflow -> Some (ev, trans_id, "<overflow>")
               | _ -> None)
         else
-          match Watch_table.find watch_table watch with
+          match Table.find watch_table watch with
           | None ->
             t.log_error
               (Printf.sprintf "Events for an unknown watch (%d) [%s]\n"
@@ -114,15 +112,16 @@ let process_raw_events t events =
   in
   let pending_mv, actions =
     List.fold_left ev_kinds ~init:(None, [])
-      ~f:(fun (pending_mv, actions) (kind, trans_id, fn) ->
+      ~f:(fun (pending_mv, actions) ((kind : Inotify.event_kind), trans_id, fn)
+         ->
         let add_pending lst =
           match pending_mv with
           | None -> lst
           | Some (_, fn) -> Moved (Away fn) :: lst
         in
         match kind with
-        | Inotify.Moved_from -> (Some (trans_id, fn), add_pending actions)
-        | Inotify.Moved_to -> (
+        | Moved_from -> (Some (trans_id, fn), add_pending actions)
+        | Moved_to -> (
           match pending_mv with
           | None -> (None, Moved (Into fn) :: actions)
           | Some (m_trans_id, m_fn) ->
@@ -130,21 +129,21 @@ let process_raw_events t events =
               (None, Moved (Move (m_fn, fn)) :: actions)
             else
               (None, Moved (Away m_fn) :: Moved (Into fn) :: actions))
-        | Inotify.Move_self -> (Some (trans_id, fn), add_pending actions)
-        | Inotify.Create -> (None, Created fn :: add_pending actions)
-        | Inotify.Delete -> (None, Unlinked fn :: add_pending actions)
-        | Inotify.Modify
-        | Inotify.Close_write ->
+        | Move_self -> (Some (trans_id, fn), add_pending actions)
+        | Create -> (None, Created fn :: add_pending actions)
+        | Delete -> (None, Unlinked fn :: add_pending actions)
+        | Modify
+        | Close_write ->
           (None, Modified fn :: add_pending actions)
-        | Inotify.Q_overflow -> (None, Queue_overflow :: add_pending actions)
-        | Inotify.Delete_self -> (None, add_pending actions)
-        | Inotify.Access
-        | Inotify.Attrib
-        | Inotify.Open
-        | Inotify.Ignored
-        | Inotify.Isdir
-        | Inotify.Unmount
-        | Inotify.Close_nowrite ->
+        | Q_overflow -> (None, Queue_overflow :: add_pending actions)
+        | Delete_self -> (None, add_pending actions)
+        | Access
+        | Attrib
+        | Open
+        | Ignored
+        | Isdir
+        | Unmount
+        | Close_nowrite ->
           (None, add_pending actions))
   in
   List.rev
@@ -154,25 +153,22 @@ let process_raw_events t events =
 
 let pump_events t ~spawn_thread =
   let fd = t.fd in
-  let () =
-    spawn_thread (fun () ->
-        while true do
-          match
-            UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.)
-          with
-          | _, _, _ ->
-            let events = Inotify.read fd in
-            t.send_emit_events_job_to_scheduler (fun () ->
-                process_raw_events t events)
-          | exception Unix.Unix_error (EINTR, _, _) -> ()
-        done)
-  in
-  ()
+  spawn_thread (fun () ->
+      while true do
+        match
+          UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.)
+        with
+        | _, _, _ ->
+          let events = Inotify.read fd in
+          t.send_emit_events_job_to_scheduler (fun () ->
+              process_raw_events t events)
+        | exception Unix.Unix_error (EINTR, _, _) -> ()
+      done)
 
 let create ~spawn_thread ~modify_event_selector ~log_error
     ~send_emit_events_job_to_scheduler =
   let fd = Inotify.create () in
-  let watch_table = Watch_table.create 10 in
+  let watch_table = Table.create (module Inotify_watch) 10 in
   let modify_selector : Inotify.selector =
     match modify_event_selector with
     | `Any_change -> S_Modify
@@ -181,7 +177,7 @@ let create ~spawn_thread ~modify_event_selector ~log_error
   let t =
     { fd
     ; watch_table
-    ; path_table = String_table.create 10
+    ; path_table = Table.create (module String) 10
     ; select_events =
         [ S_Create
         ; S_Delete

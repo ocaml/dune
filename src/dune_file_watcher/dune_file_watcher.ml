@@ -150,6 +150,7 @@ type kind =
       ; scheduler : Scheduler.t
       ; source : Fsevents.t
       ; sync : Fsevents.t
+      ; latency : float
       }
   | Inotify of Inotify_lib.t
 
@@ -518,10 +519,10 @@ let fsevents_callback (scheduler : Scheduler.t) ~f events =
           in
           f event path))
 
-let fsevents ?exclusion_paths ~paths scheduler f =
+let fsevents ?exclusion_paths ~latency ~paths scheduler f =
   let paths = List.map paths ~f:Path.to_absolute_filename in
   let fsevents =
-    Fsevents.create ~latency:0.2 ~paths ~f:(fsevents_callback scheduler ~f)
+    Fsevents.create ~latency ~paths ~f:(fsevents_callback scheduler ~f)
   in
   Option.iter exclusion_paths ~f:(fun paths ->
       Fsevents.set_exclusion_paths fsevents ~paths);
@@ -547,11 +548,11 @@ let fsevents_standard_event event ~ignored_files path =
     in
     Some (Event.Fs_memo_event { Fs_memo_event.kind; path })
 
-let create_fsevents ~(scheduler : Scheduler.t) =
+let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
   prepare_sync ();
   let ignored_files = Table.create (module String) 64 in
   let sync =
-    fsevents scheduler
+    fsevents ~latency scheduler
       ~paths:
         [ special_file_for_fs_sync () |> Path.Build.parent_exn |> Path.build ]
       (fun event path ->
@@ -576,7 +577,7 @@ let create_fsevents ~(scheduler : Scheduler.t) =
                 path))
       |> List.rev_map ~f:Path.to_absolute_filename
     in
-    fsevents scheduler ~exclusion_paths ~paths
+    fsevents ~latency scheduler ~exclusion_paths ~paths
       (fsevents_standard_event ~ignored_files)
   in
   let cv = Condition.create () in
@@ -603,7 +604,7 @@ let create_fsevents ~(scheduler : Scheduler.t) =
     Mutex.unlock mutex;
     Option.value_exn !runloop_ref
   in
-  { kind = Fsevents { scheduler; sync; source; external_; runloop }
+  { kind = Fsevents { latency; scheduler; sync; source; external_; runloop }
   ; ignored_files
   }
 
@@ -615,12 +616,12 @@ let create_external ~root ~debounce_interval ~scheduler ~backend =
       ~create:(create_no_buffering ~root)
       ~backend
 
-let create_default ~scheduler =
+let create_default ?fsevents_debounce ~scheduler () =
   match select_watcher_backend () with
   | `Fswatch _ as backend ->
     create_external ~scheduler ~root:Path.root
       ~debounce_interval:(Some 0.5 (* seconds *)) ~backend
-  | `Fsevents -> create_fsevents ~scheduler
+  | `Fsevents -> create_fsevents ?latency:fsevents_debounce ~scheduler ()
   | `Inotify_lib -> create_inotifylib ~scheduler
 
 let wait_for_initial_watches_established_blocking t =
@@ -660,7 +661,7 @@ let add_watch t path =
       | Some ext -> (
         let watch =
           lazy
-            (fsevents f.scheduler ~paths:[ path ]
+            (fsevents ~latency:f.latency f.scheduler ~paths:[ path ]
                (fsevents_standard_event ~ignored_files:t.ignored_files))
         in
         match Watch_trie.add f.external_ ext watch with

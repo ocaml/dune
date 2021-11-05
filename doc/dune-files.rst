@@ -663,7 +663,13 @@ options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 
 ``<js_of_ocaml-options>`` are all optional:
 
-- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``. This field
+- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml compile``. This field
+  supports ``(:include ...)`` forms
+
+- ``(build_runtime_flags <flags>)`` to specify flags passed to ``js_of_ocaml build-runtime``. This field
+  supports ``(:include ...)`` forms
+
+- ``(link_flags <flags>)`` to specify flags passed to ``js_of_ocaml link``. This field
   supports ``(:include ...)`` forms
 
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
@@ -1523,6 +1529,17 @@ Fields supported in ``<settings>`` are:
   executed and under which ``dune exec`` runs.
 
 - ``(menhir_flags <flags>))`` specifies flags for Menhir stanzas.
+
+- ``(js_of_ocaml (flags <flags>)(build_runtime <flags>)(link_flags <flags>))``
+  to specify js_of_ocaml flags. see `jsoo-field`_ for more details.
+
+- ``(js_of_ocaml (compilation_mode <mode>))``, where ``<mode>`` is
+  either ``whole_program`` or ``separate``. This field controls
+  whether to use separate compilation or not.
+
+- ``(js_of_ocaml (runtest_alias <alias-name>))`` is used to specify
+  the alias under which `inline_tests`_ and tests (`tests-stanza`_)
+  run for the `js` mode.
 
 - ``(binaries <binaries>)``, where ``<binaries>`` is a list of entries
   of the form ``(<filepath> as <name>)``. ``(<filepath> as <name>)``

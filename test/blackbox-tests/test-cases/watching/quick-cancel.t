@@ -28,8 +28,21 @@ This makes it easy to make sure that the dune won't finish before we're able to 
 
   $ echo 0-unstable > x
 
-  $ ((x=0; while [ ! -f _build/build-finished ]; do x=$((x+1)); echo "$x-unstable" > z; mv z x; sleep 0.01; done) & build y; touch _build/build-finished; wait)
-  Restart (. changed)
+Below we hide the Restart outcome because the reason is non-deterministic. We
+can see "Restart (. changed)" or "Restart (. changed, and 1 more change)"
+depending on how quickly Dune reacts to the first change.
+
+  $ ((x=0;
+  >   while [ ! -f _build/build-finished ];
+  >     do
+  >       x=$((x+1));
+  >       echo "$x-unstable" > z;
+  >       mv z x;
+  >       sleep 0.01;
+  >     done
+  >  ) & build y; touch _build/build-finished; wait
+  > ) | grep Restart | dune_cmd count-lines
+  1
 
   $ echo new-contents2 > x
 

@@ -78,10 +78,12 @@ type modify_event_selector =
   ]
 
 let add t path =
-  let watch = Inotify.add_watch t.fd path t.select_events in
-  (* XXX why are we just overwriting existing watches? *)
-  Table.set t.watch_table watch path;
-  Table.set t.path_table path watch
+  if Table.mem t.path_table path then
+    `Already_added
+  else
+    let watch = Inotify.add_watch t.fd path t.select_events in
+    Table.add_exn t.path_table path watch;
+    `Ok
 
 let process_raw_events t events =
   let watch_table = t.watch_table in

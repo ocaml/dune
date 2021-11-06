@@ -506,8 +506,13 @@ let create_inotifylib ~scheduler =
   prepare_sync ();
   let ignored_files = Table.create (module String) 64 in
   let inotify = create_inotifylib_watcher ~ignored_files ~scheduler in
-  Inotify_lib.add inotify
-    (Path.to_string (Path.build (special_file_for_fs_sync ())));
+  (match
+     Inotify_lib.add inotify
+       (Path.Build.to_string (special_file_for_fs_sync ()))
+   with
+  | `Ok
+  | `Already_added ->
+    ());
   { kind = Inotify inotify; ignored_files }
 
 let fsevents_callback (scheduler : Scheduler.t) ~f events =
@@ -678,8 +683,11 @@ let add_watch t path =
        start *)
     Ok ()
   | Inotify inotify -> (
-    try Ok (Inotify_lib.add inotify (Path.to_string path)) with
-    | Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
+    match Inotify_lib.add inotify (Path.to_string path) with
+    | `Ok
+    | `Already_added ->
+      Ok ()
+    | exception Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
 
 let ignore_next_file_change_event t path =
   assert (Path.is_in_source_tree path);

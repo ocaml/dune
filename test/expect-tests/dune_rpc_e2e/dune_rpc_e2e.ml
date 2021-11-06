@@ -139,7 +139,9 @@ let dune_build client what =
     printfn "Build %s %s" what
       (match res with
       | Success -> "succeeded"
-      | Failure -> "failed")
+      | Failure -> "failed"
+      | Restart { details_hum } ->
+        "restarted " ^ String.concat ~sep:" " details_hum)
 
 let with_dune_watch ?env f =
   let root_dir = "." in

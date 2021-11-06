@@ -17,7 +17,7 @@ let emit_start dir =
   ignore (Fpath.mkdir_p dir);
   Io.String_path.write_file (Filename.concat dir start_filename) ""
 
-let emit_end dir =
+let emit_stop dir =
   ignore (Fpath.mkdir_p dir);
   Io.String_path.write_file (Filename.concat dir end_filename) ""
 
@@ -72,39 +72,36 @@ let print_event ~cwd e =
   in
   printfn "> %s" (Dyn.to_string dyn)
 
-let make_callback t ~f =
+let make_callback sync ~f =
   (* hack to skip the first event if it's creating the temp dir *)
   let state = ref `Looking_start in
   fun events ->
-    let t = Option.value_exn !t in
     let is_marker event filename =
       Event.kind event = File
       && Filename.basename (Event.path event) = filename
       && Event.action event = Create
     in
-    let stop =
-      lazy
-        (Fsevents.stop t;
-         Fsevents.RunLoop.stop (Option.value_exn (Fsevents.runloop t)))
-    in
     let events =
       List.fold_left events ~init:[] ~f:(fun acc event ->
           match !state with
           | `Looking_start ->
-            if is_marker event start_filename then state := `Keep;
+            if is_marker event start_filename then (
+              state := `Keep;
+              sync#start
+            );
             acc
           | `Finish -> acc
           | `Keep ->
             if is_marker event end_filename then (
               state := `Finish;
-              Lazy.force stop;
+              sync#stop;
               acc
             ) else
               event :: acc)
     in
     match events with
     | [] -> ()
-    | _ -> f events
+    | _ -> f (List.rev events)
 
 type test_config =
   { on_events : Event.t list -> unit
@@ -121,25 +118,62 @@ let default_test_config cwd =
 let test_with_multiple_fsevents ~setup ~test:f =
   test (fun finish ->
       let cwd = Sys.getcwd () in
+      let make_sync t config =
+        object
+          val mutable started = false
+
+          val mutable stopped = false
+
+          method started = started
+
+          method stopped = stopped
+
+          method start = started <- true
+
+          method stop =
+            stopped <- true;
+            Fsevents.stop (Option.value_exn !t)
+
+          method emit_start = if not started then emit_start config.dir
+
+          method emit_stop = if not stopped then emit_stop config.dir
+        end
+      in
       let configs = setup ~cwd (default_test_config cwd) in
-      let fsevents =
+      let fsevents, syncs =
         List.map configs ~f:(fun config ->
             let t = ref None in
+            let sync = make_sync t config in
             let res =
               Fsevents.create ~paths:[ config.dir ] ~latency:0.0
-                ~f:(make_callback t ~f:config.on_events)
+                ~f:(make_callback sync ~f:config.on_events)
             in
             t := Some res;
-            res)
+            (res, sync))
+        |> List.unzip
       in
       let runloop = Fsevents.RunLoop.in_current_thread () in
       List.iter fsevents ~f:(fun f -> Fsevents.start f runloop);
       let (t : Thread.t) =
         Thread.create
           (fun () ->
-            List.iter configs ~f:(fun config -> emit_start config.dir);
+            let rec await ~emit ~continue = function
+              | [] -> ()
+              | xs ->
+                List.iter xs ~f:emit;
+                Unix.sleepf 0.2;
+                await ~emit ~continue (List.filter xs ~f:continue)
+            in
+            await
+              ~emit:(fun sync -> sync#emit_start)
+              ~continue:(fun sync -> not sync#started)
+              syncs;
             f ();
-            List.iter configs ~f:(fun config -> emit_end config.dir))
+            await
+              ~emit:(fun sync -> sync#emit_stop)
+              ~continue:(fun sync -> not sync#stopped)
+              syncs;
+            Fsevents.RunLoop.stop runloop)
           ()
       in
       (match Fsevents.RunLoop.run_current_thread runloop with
@@ -147,7 +181,6 @@ let test_with_multiple_fsevents ~setup ~test:f =
       | Error _ -> assert false
       | Ok () -> ());
       Thread.join t;
-      List.iter fsevents ~f:Fsevents.stop;
       finish ())
 
 let test_with_operations ?on_event ?exclusion_paths f =
@@ -166,13 +199,13 @@ let%expect_test "file create event" =
   test_with_operations (fun () -> Io.String_path.write_file "./file" "foobar");
   [%expect
     {|
-      > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
+    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
 
 let%expect_test "dir create event" =
   test_with_operations (fun () -> ignore (Fpath.mkdir "./blahblah"));
   [%expect
     {|
-      > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/blahblah" } |}]
+    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/blahblah" } |}]
 
 let%expect_test "move file" =
   test_with_operations (fun () ->
@@ -180,8 +213,9 @@ let%expect_test "move file" =
       Unix.rename "old" "new");
   [%expect
     {|
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/new" }
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/old" } |}]
+    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/old" }
+    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/old" }
+    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/new" } |}]
 
 let%expect_test "raise inside callback" =
   test_with_operations
@@ -208,14 +242,14 @@ let%expect_test "set exclusion paths" =
   run Filename.concat;
   [%expect
     {|
-      > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" }
-      > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" } |}];
+    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" }
+    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" } |}];
   (* but relative paths do not *)
   run (fun _ name -> name);
   [%expect
     {|
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" }
-    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" } |}]
+    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" }
+    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" } |}]
 
 let%expect_test "multiple fsevents" =
   test_with_multiple_fsevents

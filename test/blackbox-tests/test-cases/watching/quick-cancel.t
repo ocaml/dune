@@ -29,7 +29,7 @@ This makes it easy to make sure that the dune won't finish before we're able to 
   $ echo 0-unstable > x
 
   $ ((x=0; while [ ! -f _build/build-finished ]; do x=$((x+1)); echo "$x-unstable" > z; mv z x; sleep 0.01; done) & build y; touch _build/build-finished; wait)
-  Failure
+  Restart (. changed)
 
   $ echo new-contents2 > x
 
@@ -47,4 +47,3 @@ This makes it easy to make sure that the dune won't finish before we're able to 
   waiting for inotify sync
   waited for inotify sync
   Success, waiting for filesystem changes...
-

@@ -134,7 +134,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
       in
       let runloop = Fsevents.RunLoop.in_current_thread () in
       List.iter fsevents ~f:(fun f -> Fsevents.start f runloop);
-      let (_ : Thread.t) =
+      let (t : Thread.t) =
         Thread.create
           (fun () ->
             List.iter configs ~f:(fun config -> emit_start config.dir);
@@ -146,6 +146,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
       | Error Exit -> print_endline "[EXIT]"
       | Error _ -> assert false
       | Ok () -> ());
+      Thread.join t;
       List.iter fsevents ~f:Fsevents.stop;
       finish ())
 

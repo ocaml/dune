@@ -117,7 +117,7 @@ location.
      (function_description
       (concurrency unlocked)
       (instance Function)
-      (functor Function_descriptio))
+      (functor Function_description))
      (generated_types Types_generated)
      (generated_entry_point C)))
 
@@ -250,6 +250,12 @@ descriptions by referencing them as the module specified in optional
 - ``(generated_entry_point <module-name>)`` is the name of a generated module
   that your instantiated ``Types`` and ``Function`` modules will instantiated
   under. We suggest calling it ``C``.
+
+- Headers can be added to the generated C files:
+   - ``(headers (include "include1" "include2" ...))`` adds ``#include
+     <include1>``, ``#include <include2>``. It uses the :ref:`ordered-set-language`.
+   - ``(headers (preamble <preamble>)`` adds directly the preamble. Variables
+     can be used in ``<preamble>`` such as ``%{read: }``.
 
 ``<optional-function-description-fields>`` are:
 

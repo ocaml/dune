@@ -52,21 +52,21 @@ end
 
 module Headers = struct
   type t =
-    | Include of string list
-    | Preamble of string
+    | Include of Ordered_set_lang.Unexpanded.t
+    | Preamble of String_with_vars.t
 
   let decode =
     let include_ =
-      let+ s = repeat string in
+      let+ s = Ordered_set_lang.Unexpanded.decode in
       Include s
     in
     let preamble =
-      let+ p = string in
+      let+ p = String_with_vars.decode in
       Preamble p
     in
     sum [ ("include", include_); ("preamble", preamble) ]
 
-  let default = Include []
+  let default = Include Ordered_set_lang.Unexpanded.standard
 end
 
 module Type_description = struct

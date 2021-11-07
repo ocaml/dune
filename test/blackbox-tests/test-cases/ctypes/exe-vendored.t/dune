@@ -16,7 +16,7 @@
     (build_flags_resolver
       (vendored
         (c_flags "-Ivendor")))
-    (headers (include "example.h"))
+    (headers (include (:include includes.sexp)))
     (type_description
       (instance Types)
       (functor Type_description))
@@ -24,3 +24,7 @@
       (instance Functions)
       (functor Function_description))
     (generated_entry_point C)))
+
+(rule
+ (action (with-stdout-to includes.sexp (echo "example.h")))
+  )

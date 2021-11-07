@@ -24,8 +24,8 @@ end
 
 module Headers : sig
   type t =
-    | Include of string list
-    | Preamble of string
+    | Include of Ordered_set_lang.Unexpanded.t
+    | Preamble of String_with_vars.t
 end
 
 module Type_description : sig

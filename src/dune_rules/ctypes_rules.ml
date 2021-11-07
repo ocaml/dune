@@ -242,24 +242,34 @@ let write_discover_script ~filename ~sctx ~dir ~external_library_name
   Super_context.add_rule ~loc:Loc.none sctx ~dir
     (Action_builder.write_file path script)
 
-let gen_headers headers buf =
+let gen_headers ~expander headers buf =
+  let open Action_builder.O in
   let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
   match headers with
   | Ctypes.Headers.Include lst ->
+    let+ lst =
+      Expander.expand_and_eval_set expander lst
+        ~standard:(Action_builder.return [])
+    in
     List.iter lst ~f:(fun h -> pr buf "  print_endline \"#include <%s>\";" h)
-  | Preamble s -> pr buf "  print_endline %S;" s
+  | Preamble s ->
+    let+ s = Expander.expand_str expander s in
+    pr buf "  print_endline %S;" s
 
-let type_gen_gen ~headers ~type_description_functor =
+let type_gen_gen ~expander ~headers ~type_description_functor =
+  let open Action_builder.O in
   let buf = Buffer.create 1024 in
   let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
   pr buf "let () =";
-  gen_headers headers buf;
+  let+ () = gen_headers ~expander headers buf in
   pr buf "  Cstubs_structs.write_c Format.std_formatter";
   pr buf "    (module %s.Types)"
     (Module_name.to_string type_description_functor);
   Buffer.contents buf
 
-let function_gen_gen ~concurrency ~headers ~function_description_functor =
+let function_gen_gen ~expander ~concurrency ~headers
+    ~function_description_functor =
+  let open Action_builder.O in
   let module_name = Module_name.to_string function_description_functor in
   let concurrency =
     match concurrency with
@@ -278,27 +288,36 @@ let function_gen_gen ~concurrency ~headers ~function_description_functor =
   pr buf "    Cstubs.write_ml ~concurrency Format.std_formatter ~prefix";
   pr buf "      (module %s.Functions)" module_name;
   pr buf "  | \"c\" ->";
-  gen_headers headers buf;
+  let+ () = gen_headers ~expander headers buf in
   pr buf "    Cstubs.write_c ~concurrency Format.std_formatter ~prefix";
   pr buf "      (module %s.Functions)" module_name;
   pr buf "  | s -> failwith (\"unknown functions \"^s)";
   Buffer.contents buf
 
+let add_rule_gen ~sctx ~dir ~filename f =
+  let path = Path.Build.relative dir filename in
+  let script =
+    let open Action_builder.O in
+    let* expander =
+      Action_builder.memo_build @@ Super_context.expander sctx ~dir
+    in
+    f ~expander
+  in
+  let action =
+    Action_builder.With_targets.write_file_dyn path
+      (Action_builder.with_no_targets script)
+  in
+  Super_context.add_rule ~loc:Loc.none sctx ~dir action
+
 let write_type_gen_script ~headers ~dir ~filename ~sctx
     ~type_description_functor =
-  let path = Path.Build.relative dir filename in
-  let script = type_gen_gen ~headers ~type_description_functor in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir
-    (Action_builder.write_file path script)
+  add_rule_gen ~dir ~filename ~sctx
+    (type_gen_gen ~headers ~type_description_functor)
 
 let write_function_gen_script ~headers ~sctx ~dir ~name
     ~function_description_functor ~concurrency =
-  let path = Path.Build.relative dir (name ^ ".ml") in
-  let script =
-    function_gen_gen ~concurrency ~headers ~function_description_functor
-  in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir
-    (Action_builder.write_file path script)
+  add_rule_gen ~dir ~filename:(name ^ ".ml") ~sctx
+    (function_gen_gen ~concurrency ~headers ~function_description_functor)
 
 let rule ?(deps = []) ?stdout_to ?(args = []) ?(targets = []) ~exe ~sctx ~dir ()
     =

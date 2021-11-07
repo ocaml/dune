@@ -16,7 +16,7 @@
     (build_flags_resolver
       (vendored
         (c_flags "-Ivendor")))
-    (headers (preamble "#include <example.h>"))
+    (headers (preamble "#include %{read:preamble.sexp}"))
     (type_description
       (instance Types)
       (functor Type_description))
@@ -24,3 +24,8 @@
       (instance Functions)
       (functor Function_description))
     (generated_entry_point C)))
+
+
+(rule
+ (action (with-stdout-to preamble.sexp (echo "<example.h>")))
+  )

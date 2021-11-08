@@ -75,20 +75,14 @@ let link_function ~(mode : Sandbox_mode.some) =
     | Hardlink -> (
       match Sys.win32 with
       | true -> win32_error mode
-      | false -> fun src dst -> Io.portable_hardlink ~src ~dst))
-
-let copy_and_make_writable src dst =
-  Io.copy_file ~src ~dst ~chmod:(fun n -> n lor 0o200) ()
-
-let link_deps t ~mode ~patch_back_source_tree ~deps =
-  let link =
-    if patch_back_source_tree then
+      | false -> fun src dst -> Io.portable_hardlink ~src ~dst)
+    | Patch_back_source_tree ->
       (* We need to let the action modify its dependencies, so we copy
          dependencies and make them writable. *)
-      copy_and_make_writable
-    else
-      Staged.unstage (link_function ~mode)
-  in
+      fun src dst -> Io.copy_file ~src ~dst ~chmod:(fun n -> n lor 0o200) ())
+
+let link_deps t ~mode ~deps =
+  let link = Staged.unstage (link_function ~mode) in
   Path.Map.iteri deps ~f:(fun path (_ : Digest.t) ->
       match Path.as_in_build_dir path with
       | None ->
@@ -120,8 +114,8 @@ let snapshot t =
   in
   walk (Path.build t.dir) Path.Map.empty
 
-let create ~mode ~patch_back_source_tree ~rule_loc ~deps ~rule_dir ~chdirs
-    ~rule_digest ~expand_aliases =
+let create ~mode ~rule_loc ~deps ~rule_dir ~chdirs ~rule_digest ~expand_aliases
+    =
   init ();
   let sandbox_suffix = rule_digest |> Digest.to_string in
   let sandbox_dir = Path.Build.relative sandbox_dir sandbox_suffix in
@@ -136,8 +130,9 @@ let create ~mode ~patch_back_source_tree ~rule_loc ~deps ~rule_dir ~chdirs
   in
   (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
      targets produced dynamically will be unavailable. *)
-  link_deps t ~mode ~patch_back_source_tree ~deps;
-  if patch_back_source_tree then (
+  link_deps t ~mode ~deps;
+  match mode with
+  | Patch_back_source_tree ->
     (* Only supported on Linux because we rely on the mtime changing to detect
        when a file changes. This doesn't work on OSX for instance as the file
        system granularity is 1s, which is too coarse. *)
@@ -155,8 +150,7 @@ let create ~mode ~patch_back_source_tree ~rule_loc ~deps ~rule_dir ~chdirs
        feature that we hope to get rid of in the long run, we favor code
        simplicity over performance. *)
     { t with snapshot = Some (snapshot t) }
-  ) else
-    t
+  | _ -> t
 
 (* Same as [rename] except that if the source doesn't exist we delete the
    destination *)

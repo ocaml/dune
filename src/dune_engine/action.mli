@@ -128,20 +128,6 @@ module Full : sig
     ; locks : Path.t list
     ; can_go_in_shared_cache : bool
     ; sandbox : Sandbox_config.t
-    ; patch_back_source_tree : bool
-          (** Apply all the changes that happened in the sandbox to the source
-              tree. This includes:
-
-              - applying changes to source files that were dependencies
-              - deleting source files that were dependencies and were deleted in
-                the sandbox
-              - promoting all targets
-              - promoting all files that were created and not declared as
-                dependencies or targets
-
-              This is a dirty setting, but it is necessary to port projects to
-              Dune that don't use a separate directory and have rules that go
-              and create/modify random files. *)
     }
 
   val make :
@@ -149,7 +135,6 @@ module Full : sig
     -> ?locks:Path.t list (** default [\[\]] *)
     -> ?can_go_in_shared_cache:bool (** default [true] *)
     -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.default] *)
-    -> ?patch_back_source_tree:bool (** default [false] *)
     -> action
     -> t
 
@@ -167,8 +152,6 @@ module Full : sig
   val add_sandbox : Sandbox_config.t -> t -> t
 
   val add_can_go_in_shared_cache : bool -> t -> t
-
-  val add_patch_back_source_tree : bool -> t -> t
 
   include Monoid with type t := t
 end

@@ -107,8 +107,19 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let* action = action in
     let action =
       if rule.patch_back_source_tree then
-        Action_builder.With_targets.map action
-          ~f:(Action.Full.add_patch_back_source_tree true)
+        Action_builder.With_targets.map action ~f:(fun action ->
+            (* Here we expect that [action.sandbox] is [Sandbox_config.default]
+               because the parsing of [rule] stanzas forbids having both a
+               sandboxing setting in [deps] and a [patch_back_source_tree] field
+               at the same time.
+
+               If we didn't have this restriction and [action.sandbox] was
+               something that didn't permit [Some Patch_back_source_tree], Dune
+               would crash in a way that would be difficult for the user to
+               understand. *)
+            Action.Full.add_sandbox
+              (Sandbox_mode.Set.singleton (Some Patch_back_source_tree))
+              action)
       else
         action
     in

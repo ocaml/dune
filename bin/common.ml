@@ -549,7 +549,9 @@ let shared_with_config_file =
           ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|})
   and+ sandboxing_preference =
     let arg =
-      simple_arg_conv ~of_string:Dune_engine.Sandbox_mode.of_string
+      simple_arg_conv
+        ~of_string:
+          Dune_engine.Sandbox_mode.of_string_except_patch_back_source_tree
         ~to_string:Dune_engine.Sandbox_mode.to_string
     in
     Arg.(
@@ -566,7 +568,8 @@ let shared_with_config_file =
                 certain sandboxing mode, so they will ignore this setting. The \
                 allowed values are: %s."
                (String.concat ~sep:", "
-                  (List.map Dune_engine.Sandbox_mode.all
+                  (List.map
+                     Dune_engine.Sandbox_mode.all_except_patch_back_source_tree
                      ~f:Dune_engine.Sandbox_mode.to_string))))
   and+ terminal_persistence =
     let modes = Dune_config.Terminal_persistence.all in

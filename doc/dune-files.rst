@@ -854,7 +854,7 @@ files for executables. See `executables_implicit_empty_intf`_.
   available since the 3.0 version of the Dune language.
 
 Linking Modes
--------------
+~~~~~~~~~~~~~
 
 The ``modes`` field allows selecting which linking modes will be used
 to link executables. Each mode is a pair ``(<compilation-mode>

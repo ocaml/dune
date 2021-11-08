@@ -14,6 +14,8 @@ module External_deps = struct
   module Table = Table
 
   let ( ^/ ) = Filename.concat
+
+  let sprintf = Printf.sprintf
 end
 
 open External_deps
@@ -34,16 +36,16 @@ module Event = struct
 
   let move_to_string m =
     match m with
-    | Away s -> Printf.sprintf "%s -> Unknown" s
-    | Into s -> Printf.sprintf "Unknown -> %s" s
-    | Move (f, t) -> Printf.sprintf "%s -> %s" f t
+    | Away s -> sprintf "%s -> Unknown" s
+    | Into s -> sprintf "Unknown -> %s" s
+    | Move (f, t) -> sprintf "%s -> %s" f t
 
   let to_string t =
     match t with
-    | Created s -> Printf.sprintf "created %s" s
-    | Unlinked s -> Printf.sprintf "unlinked %s" s
-    | Moved mv -> Printf.sprintf "moved %s" (move_to_string mv)
-    | Modified s -> Printf.sprintf "modified %s" s
+    | Created s -> sprintf "created %s" s
+    | Unlinked s -> sprintf "unlinked %s" s
+    | Moved mv -> sprintf "moved %s" (move_to_string mv)
+    | Modified s -> sprintf "modified %s" s
     | Queue_overflow -> "queue overflow"
 end
 
@@ -97,7 +99,7 @@ let process_raw_events t events =
           match Table.find watch_table watch with
           | None ->
             t.log_error
-              (Printf.sprintf "Events for an unknown watch (%d) [%s]\n"
+              (sprintf "Events for an unknown watch (%d) [%s]\n"
                  (Inotify.int_of_watch watch)
                  (String.concat ~sep:", "
                     (List.map ev_kinds ~f:Inotify.string_of_event_kind)));

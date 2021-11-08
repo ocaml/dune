@@ -14,8 +14,8 @@ Shows what happens when Dune tries to kill an action that has sub-processes.
 
   $ export BEACON_FILE=$PWD/test-started
 
-  $ start_dune
-  $ build x >/dev/null 2>&1 &
+  $ start_dune x
+  $ dune_wait >/dev/null 2>&1 &
 
 sub_process.exe spawns a sub-process that creates $BEACON_FILE. We
 wait for the beacon to be notified that the sub-process has started:
@@ -26,8 +26,6 @@ wait for the beacon to be notified that the sub-process has started:
 Now we stop Dune, which should normally kill all sub-processes:
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
 
   $ if kill -s 0 $CHILD_PID 2> /dev/null; then
   >   echo "FAILURE: child is still running"

@@ -65,16 +65,25 @@ module Scheduler = struct
     match dune_config.terminal_persistence with
     | Clear_on_rebuild -> Console.reset ()
     | Preserve ->
-      let message =
-        sprintf "********** NEW BUILD (%s) **********"
-          (String.concat ~sep:", " details_hum)
-      in
-      Console.print_user_message
-        (User_message.make
-           [ Pp.nop
-           ; Pp.tag User_message.Style.Success (Pp.verbatim message)
-           ; Pp.nop
-           ])
+      if Dune_util.Config.inside_dune then
+        (* Don't print this when running inside Dune because:
+
+           - it is quite verbose
+
+           - [details_hum] is not reproducible since at the point we get here we
+           might not have accumulated all the FS changes produced by the test *)
+        ()
+      else
+        let message =
+          sprintf "********** NEW BUILD (%s) **********"
+            (String.concat ~sep:", " details_hum)
+        in
+        Console.print_user_message
+          (User_message.make
+             [ Pp.nop
+             ; Pp.tag User_message.Style.Success (Pp.verbatim message)
+             ; Pp.nop
+             ])
 
   let on_event dune_config _config = function
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
@@ -93,37 +102,53 @@ module Scheduler = struct
                   (sprintf ", restarting current build... (%u/%u)"
                      progression.number_of_rules_executed
                      progression.number_of_rules_discovered))))
-    | Build_finish build_result ->
-      let message =
-        match build_result with
-        | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
-        | Failure -> Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
-      in
-      Console.Status_line.set
-        (Constant
-           (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config = Dune_config.for_scheduler dune_config None stats in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
-  let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
-      ~config:dune_config run =
+  let go_watch_mode ~(common : Common.t) ~config:dune_config run =
+    let open Fiber.O in
     let stats = Common.stats common in
     let rpc_where = Some (Dune_rpc_impl.Where.default ()) in
     let config = Dune_config.for_scheduler dune_config rpc_where stats in
     let file_watcher = Common.file_watcher common in
-    let run =
-      match Common.rpc common with
-      | None -> run
-      | Some rpc ->
-        fun () ->
-          Fiber.fork_and_join_unit
-            (fun () ->
-              let rpc_config = Dune_rpc_impl.Server.config rpc in
-              Dune_rpc_impl.Run.run rpc_config config.stats)
-            run
+    let rpc = Option.value_exn (Common.rpc common) in
+    let rec loop () =
+      let* () = Dune_rpc_impl.Server.acknowledge_build_starting rpc in
+      Scheduler.Run.poll_iter ~f:run >>= function
+      | Shutdown -> Fiber.return ()
+      | Finished res ->
+        let build_outcome : Dune_rpc_impl.Decl.Build_outcome.t =
+          match res with
+          | Error `Already_reported -> Failure
+          | Ok () -> Success
+        in
+        let message =
+          match build_outcome with
+          | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
+          | Failure ->
+            Pp.tag User_message.Style.Error (Pp.verbatim "Had errors")
+        in
+        Console.Status_line.set
+          (Constant
+             (Pp.seq message
+                (Pp.verbatim ", waiting for filesystem changes...")));
+        let* () =
+          Dune_rpc_impl.Server.acknowledge_build_finished rpc build_outcome
+        in
+        let* () = Scheduler.Run.wait_for_file_change () in
+        loop ()
+    in
+    let run () =
+      Fiber.fork_and_join_unit
+        (fun () ->
+          let rpc_config = Dune_rpc_impl.Server.config rpc in
+          Dune_rpc_impl.Run.run rpc_config config.stats)
+        (fun () ->
+          Memo.Perf_counters.reset ();
+          loop ())
     in
     Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end

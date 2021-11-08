@@ -115,10 +115,10 @@ let client ?handler p init ~f =
   let* c = Connect.csexp_client p in
   let* session = Csexp_rpc.Client.connect_exn c in
   Client.connect_with_menu ?handler
-    ~private_menu:[ Request Decl.build; Request Decl.status ]
+    ~private_menu:[ Request Decl.wait; Request Decl.status ]
     session init ~f
 
 let client_with_session ?handler init ~session ~f =
   Client.connect_with_menu ?handler
-    ~private_menu:[ Request Decl.build; Request Decl.status ]
+    ~private_menu:[ Request Decl.wait; Request Decl.status ]
     session init ~f

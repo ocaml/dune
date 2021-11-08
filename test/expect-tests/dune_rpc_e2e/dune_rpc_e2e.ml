@@ -63,7 +63,7 @@ let run_client ?handler f =
   in
   Client.connect_with_menu ?handler chan initialize
     ~private_menu:
-      [ Request Dune_rpc_impl.Decl.build; Request Dune_rpc_impl.Decl.status ]
+      [ Request Dune_rpc_impl.Decl.wait; Request Dune_rpc_impl.Decl.status ]
     ~f:(fun client ->
       Fiber.finalize
         (fun () -> f client)
@@ -119,34 +119,32 @@ let run ?env ~prog ~argv () =
   , read_lines stdout_i
   , read_lines stderr_i )
 
-let run_server ?env ~root_dir () =
+let run_server ?env ~root_dir targets =
   run ?env ~prog:(Lazy.force dune_prog)
-    ~argv:[ "build"; "--passive-watch-mode"; "--root"; root_dir ]
+    ~argv:("build" :: "--watch" :: "--root" :: root_dir :: targets)
     ()
 
-let dune_build client what =
-  printfn "Building %s" what;
+let dune_wait client =
+  printfn "Waiting";
   let+ res =
     request_exn client
-      (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.build)
-      [ what ]
+      (Dune_rpc.Decl.Request.witness Dune_rpc_impl.Decl.wait)
+      ()
   in
   match res with
   | Error e ->
-    Format.eprintf "Error building %s:@.%s@." what
+    Format.eprintf "Error:@.%s@."
       (Dyn.to_string (Dune_rpc.Response.Error.to_dyn e))
   | Ok res ->
-    printfn "Build %s %s" what
+    printfn "Build %s"
       (match res with
       | Success -> "succeeded"
-      | Failure -> "failed"
-      | Restart { details_hum } ->
-        "restarted " ^ String.concat ~sep:" " details_hum)
+      | Failure -> "failed")
 
-let with_dune_watch ?env f =
+let with_dune_watch ?env targets f =
   let root_dir = "." in
   let pid, run_server, server_stdout, server_stderr =
-    run_server ?env ~root_dir ()
+    run_server ?env ~root_dir targets
   in
   let+ res, (stdout, stderr) =
     Fiber.fork_and_join

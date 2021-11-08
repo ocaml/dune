@@ -37,16 +37,11 @@ end
 
 module Run : sig
   module Event : sig
-    type build_result =
-      | Success
-      | Failure
-
     type t =
       | Tick
       | Source_files_changed of { details_hum : string list }
       | Skipped_restart
       | Build_interrupted
-      | Build_finish of build_result
   end
 
   type file_watcher =
@@ -60,31 +55,20 @@ module Run : sig
 
   exception Build_cancelled
 
-  type step = (unit, [ `Already_reported ]) Result.t Fiber.t
-
-  (** [poll once] runs [once] in a loop.
-
-      If any source files change in the middle of iteration, it gets canceled.
-
-      If [shutdown] is called, the current build will be canceled and new builds
-      will not start. *)
-  val poll : step -> unit Fiber.t
-
-  module Build_outcome_for_rpc : sig
-    type t =
-      | Success
-      | Restart of { details_hum : string list }
-      | Failure
+  module Poll_iter_outcome : sig
+    type 'a t =
+      | Shutdown
+      | Finished of 'a
   end
 
-  (** [poll_passive] is similar to [poll], but it can be used to drive the
-      polling loop explicitly instead of starting new iterations automatically.
+  (** [poll_iter f] runs [f]. If any source file changes during the execution of
+      [f ()], cancel it and restart.
 
-      The fiber [get_build_request] is run at the beginning of every iteration
-      to wait for the build signal. *)
-  val poll_passive :
-       get_build_request:(step * Build_outcome_for_rpc.t Fiber.Ivar.t) Fiber.t
-    -> unit Fiber.t
+      Return [Shutdown] if [shutdown] before [f ()] completes. *)
+  val poll_iter : f:(unit -> 'a Fiber.t) -> 'a Poll_iter_outcome.t Fiber.t
+
+  (** Wait for a file to change. *)
+  val wait_for_file_change : unit -> unit Fiber.t
 
   val go :
        Config.t
@@ -152,3 +136,7 @@ val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
     wake up at a rate of once per 0.1 seconds. So [duration] should be at least
     this long. *)
 val sleep : float -> unit Fiber.t
+
+(** Wait until all file system changes that happened so far have been reported
+    to the current process. *)
+val sync_fs_events : unit -> unit Fiber.t

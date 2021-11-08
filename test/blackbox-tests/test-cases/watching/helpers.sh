@@ -1,7 +1,7 @@
 DUNE_RUNNING=0
 
 start_dune () {
-    ((dune build "$@" --passive-watch-mode > dune-output 2>&1) || (echo exit $? >> dune-output)) &
+    ((dune build --watch "$@" > dune-output 2>&1) || (echo exit $? >> dune-output)) &
     DUNE_PID=$!;
     DUNE_RUNNING=1;
 }
@@ -24,6 +24,6 @@ stop_dune () {
     cat dune-output
 }
 
-build () {
-    with_timeout dune rpc build --wait "$@"
+dune_wait () {
+    with_timeout dune rpc wait --wait "$@"
 }

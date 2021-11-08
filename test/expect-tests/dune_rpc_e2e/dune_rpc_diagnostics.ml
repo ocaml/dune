@@ -10,20 +10,18 @@ module Response = Dune_rpc.Response
 
 let%expect_test "turn on and shutdown" =
   let test () =
-    with_dune_watch (fun _pid ->
+    with_dune_watch [ "." ] (fun _pid ->
         run_client (fun client ->
-            let+ () = dune_build client "." in
+            let+ () = dune_wait client in
             printfn "shutting down"))
   in
   run test;
   [%expect
     {|
-    Building .
-    Build . succeeded
+    Waiting
+    Build succeeded
     shutting down
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     Success, waiting for filesystem changes... |}]
 
 let files =
@@ -90,14 +88,11 @@ let on_diagnostic_event diagnostics =
         let e = map_event e sanitize in
         printfn "%s" (Dyn.to_string (Diagnostic.Event.to_dyn e)))
 
-let setup_diagnostics f =
-  let exec _pid =
-    run_client (fun client ->
-        (* First we test for regular errors *)
-        files [ ("dune-project", "(lang dune 3.0)") ];
-        f client)
-  in
-  run (fun () -> with_dune_watch exec)
+let setup_diagnostics setup targets f =
+  run (fun () ->
+      files (("dune-project", "(lang dune 3.0)") :: setup);
+      with_dune_watch targets @@ fun _pid ->
+      run_client @@ fun client -> f client)
 
 let poll_exn client decl =
   let+ poll = Client.poll client decl in
@@ -112,27 +107,24 @@ let print_diagnostics poll =
   | Some diag -> on_diagnostic_event diag
 
 let diagnostic_with_build setup target =
-  let exec _pid =
-    run_client (fun client ->
-        (* First we test for regular errors *)
-        files (("dune-project", "(lang dune 3.0)") :: setup);
-        let* () = dune_build client target in
-        let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
-        let* () = print_diagnostics poll in
-        Client.Stream.cancel poll)
-  in
-  run (fun () -> with_dune_watch exec)
+  run (fun () ->
+      files (("dune-project", "(lang dune 3.0)") :: setup);
+      with_dune_watch [ target ] @@ fun _pid ->
+      run_client @@ fun client ->
+      (* First we test for regular errors *)
+      let* () = dune_wait client in
+      let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+      let* () = print_diagnostics poll in
+      Client.Stream.cancel poll)
 
 let%expect_test "error in dune file" =
   diagnostic_with_build [ ("dune", "(library (name foo))") ] "foo.cma";
   [%expect
     {|
-    Building foo.cma
-    Build foo.cma succeeded
+    Waiting
+    Build succeeded
     <no diagnostics>
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     Success, waiting for filesystem changes... |}]
 
 let%expect_test "related error" =
@@ -144,8 +136,8 @@ let%expect_test "related error" =
     "foo.cma";
   [%expect
     {|
-    Building foo.cma
-    Build foo.cma failed
+    Waiting
+    Build failed
     [ "Add"
     ; [ [ "directory"; "$CWD" ]
       ; [ "id"; "0" ]
@@ -223,8 +215,6 @@ let%expect_test "related error" =
       ]
     ]
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "foo.ml", line 1:
     Error: The implementation foo.ml
            does not match the interface .foo.objs/byte/foo.cmi:
@@ -246,8 +236,8 @@ let%expect_test "promotion" =
     "(alias foo)";
   [%expect
     {|
-    Building (alias foo)
-    Build (alias foo) failed
+    Waiting
+    Build failed
     [ "Add"
     ; [ [ "id"; "0" ]
       ; [ "loc"
@@ -285,8 +275,6 @@ let%expect_test "promotion" =
       ]
     ]
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "x", line 1, characters 0-0:
     Error: Files _build/default/x and _build/default/x.gen differ.
     Had errors, waiting for filesystem changes... |}]
@@ -308,8 +296,8 @@ let%expect_test "optional promotion" =
     "(alias foo)";
   [%expect
     {|
-    Building (alias foo)
-    Build (alias foo) failed
+    Waiting
+    Build failed
     FAILURE: promotion file $CWD/_build/default/output.actual does not exist
     [ "Add"
     ; [ [ "id"; "0" ]
@@ -348,8 +336,6 @@ let%expect_test "optional promotion" =
       ]
     ]
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "output.expected", line 1, characters 0-0:
     Error: Files _build/default/output.expected and _build/default/output.actual
     differ.
@@ -363,12 +349,10 @@ let%expect_test "warning detection" =
     "./foo.exe";
   [%expect
     {|
-    Building ./foo.exe
-    Build ./foo.exe succeeded
+    Waiting
+    Build succeeded
     <no diagnostics>
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "foo.ml", line 1, characters 13-14:
     1 | let () = let x = 10 in ()
                      ^
@@ -381,8 +365,8 @@ let%expect_test "error from user rule" =
     "./foo";
   [%expect
     {|
-    Building ./foo
-    Build ./foo failed
+    Waiting
+    Build failed
     [ "Add"
     ; [ [ "id"; "0" ]
       ; [ "loc"
@@ -415,8 +399,6 @@ let%expect_test "error from user rule" =
       ]
     ]
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     foobar
     File "dune", line 1, characters 0-49:
     1 | (rule (target foo) (action (bash "echo foobar")))
@@ -426,16 +408,15 @@ let%expect_test "error from user rule" =
     Had errors, waiting for filesystem changes... |}]
 
 let%expect_test "create and fix error" =
-  setup_diagnostics (fun client ->
-      files
-        [ ("dune", "(executable (name foo))")
-        ; ("foo.ml", "let () = print_endline 123")
-        ];
+  setup_diagnostics
+    [ ("dune", "(executable (name foo))")
+    ; ("foo.ml", "let () = print_endline 123")
+    ] [ "./foo.exe" ] (fun client ->
       let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
-      let* () = dune_build client "./foo.exe" in
+      let* () = dune_wait client in
       [%expect {|
-        Building ./foo.exe
-        Build ./foo.exe failed |}];
+        Waiting
+        Build failed |}];
       let* () = print_diagnostics poll in
       [%expect
         {|
@@ -473,11 +454,10 @@ let%expect_test "create and fix error" =
           ]
         ] |}];
       files [ ("foo.ml", "let () = print_endline \"foo\"") ];
-      let* () = dune_build client "./foo.exe" in
-      [%expect
-        {|
-        Building ./foo.exe
-        Build ./foo.exe succeeded |}];
+      let* () = dune_wait client in
+      [%expect {|
+        Waiting
+        Build succeeded |}];
       let+ () = print_diagnostics poll in
       [%expect
         {|
@@ -517,16 +497,12 @@ let%expect_test "create and fix error" =
   [%expect
     {|
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "foo.ml", line 1, characters 23-26:
     1 | let () = print_endline 123
                                ^^^
     Error: This expression has type int but an expression was expected of type
              string
     Had errors, waiting for filesystem changes...
-    waiting for inotify sync
-    waited for inotify sync
     Success, waiting for filesystem changes... |}]
 
 let request_exn client req n =
@@ -536,26 +512,27 @@ let request_exn client req n =
   | Error e -> raise (Dune_rpc.Version_error.E e)
 
 let%expect_test "formatting dune files" =
-  let exec _pid =
-    run_client (fun client ->
-        (* First we test for regular errors *)
-        files [ ("dune-project", "(lang dune 3.0)") ];
-        let unformatted = "(\nlibrary (name foo\n))" in
-        printfn "Unformatted:\n%s" unformatted;
-        let run uri what =
-          let+ res =
-            request_exn client Request.format_dune_file
-              (uri, `Contents unformatted)
-          in
-          match res with
-          | Ok s -> printfn "Formatted (%s):\n%s" what s
-          | Error e ->
-            Format.eprintf "Error formatting:@.%s@."
-              (Dyn.to_string (Response.Error.to_dyn e))
+  run (fun () ->
+      files [ ("dune-project", "(lang dune 3.0)") ];
+      with_dune_watch [ "dune-project" ] @@ fun _pid ->
+      run_client @@ fun client ->
+      (* First we test for regular errors *)
+      let unformatted = "(\nlibrary (name foo\n))" in
+      printfn "Unformatted:\n%s" unformatted;
+      let run uri what =
+        let+ res =
+          request_exn client Request.format_dune_file
+            (uri, `Contents unformatted)
         in
-        let* () = run Dune_rpc.Path.(relative dune_root "dune") "relative" in
-        [%expect
-          {|
+        match res with
+        | Ok s -> printfn "Formatted (%s):\n%s" what s
+        | Error e ->
+          Format.eprintf "Error formatting:@.%s@."
+            (Dyn.to_string (Response.Error.to_dyn e))
+      in
+      let* () = run Dune_rpc.Path.(relative dune_root "dune") "relative" in
+      [%expect
+        {|
           Unformatted:
           (
           library (name foo
@@ -563,67 +540,68 @@ let%expect_test "formatting dune files" =
           Formatted (relative):
           (library
            (name foo)) |}];
-        let+ () =
-          run
-            (Dune_rpc.Path.absolute (Filename.concat (Sys.getcwd ()) "dune"))
-            "absolute"
-        in
-        [%expect
-          {|
+      let+ () =
+        run
+          (Dune_rpc.Path.absolute (Filename.concat (Sys.getcwd ()) "dune"))
+          "absolute"
+      in
+      [%expect
+        {|
           Formatted (absolute):
           (library
-           (name foo)) |}])
-  in
-  run (fun () -> with_dune_watch exec);
-  [%expect {| |}]
+           (name foo)) |}]);
+  [%expect {|
+    stderr:
+    Success, waiting for filesystem changes... |}]
 
 let%expect_test "promoting dune files" =
-  let exec _pid =
-    run_client (fun client ->
-        (* First we test for regular errors *)
-        let fname = "x" in
-        let promoted = "x.gen" in
-        files
-          [ ("dune-project", "(lang dune 3.0)")
-          ; ("x", "titi")
-          ; ( "dune"
-            , sprintf
-                {|
+  run (fun () ->
+      let fname = "x" in
+      let promoted = "x.gen" in
+      files
+        [ ("dune-project", "(lang dune 3.0)")
+        ; ("x", "titi")
+        ; ( "dune"
+          , sprintf
+              {|
 (rule (alias foo) (action (diff %s %s)))
 (rule (with-stdout-to %s (echo "toto")))
 |}
-                fname promoted promoted )
-          ];
-        let* () = dune_build client "(alias foo)" in
-        [%expect
-          {|
-          Building (alias foo)
-          Build (alias foo) failed |}];
-        print_endline "attempting to promote";
-        let+ res =
-          request_exn client Request.promote
-            Dune_rpc.Path.(relative dune_root fname)
-        in
-        (match res with
-        | Ok () ->
-          let contents = Io.String_path.read_file fname in
-          printfn "promoted file contents:\n%s" contents
-        | Error e ->
-          Format.eprintf "Error formatting:@.%s@."
-            (Dyn.to_string (Dune_rpc.Response.Error.to_dyn e)));
-        [%expect
-          {|
+              fname promoted promoted )
+        ];
+      with_dune_watch [ "@@foo" ] @@ fun _pid ->
+      run_client @@ fun client ->
+      (* First we test for regular errors *)
+      let* () = dune_wait client in
+      [%expect {|
+          Waiting
+          Build failed |}];
+      print_endline "attempting to promote";
+      let* res =
+        request_exn client Request.promote
+          Dune_rpc.Path.(relative dune_root fname)
+      in
+      (match res with
+      | Ok () ->
+        let contents = Io.String_path.read_file fname in
+        printfn "promoted file contents:\n%s" contents
+      | Error e ->
+        Format.eprintf "Error formatting:@.%s@."
+          (Dyn.to_string (Dune_rpc.Response.Error.to_dyn e)));
+      [%expect
+        {|
           attempting to promote
           promoted file contents:
-          toto |}])
-  in
-  run (fun () -> with_dune_watch exec);
+          toto |}];
+      let+ () = dune_wait client in
+      [%expect {|
+          Waiting
+          Build succeeded |}]);
   [%expect
     {|
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "x", line 1, characters 0-0:
     Error: Files _build/default/x and _build/default/x.gen differ.
     Had errors, waiting for filesystem changes...
-    Promoting _build/default/x.gen to x. |}]
+    Promoting _build/default/x.gen to x.
+    Success, waiting for filesystem changes... |}]

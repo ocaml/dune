@@ -3,23 +3,17 @@ open Dune_rpc_private
 (* Internal RPC requests *)
 
 module Build_outcome = struct
-  type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
+  type t =
     | Success
-    | Restart of { details_hum : string list }
     | Failure
 
   let sexp =
     let open Conv in
     let success = constr "Success" unit (fun () -> Success) in
-    let restart =
-      constr "Restart" (list string) (fun details_hum ->
-          Restart { details_hum })
-    in
     let failure = constr "Failure" unit (fun () -> Failure) in
-    let variants = [ econstr success; econstr restart; econstr failure ] in
+    let variants = [ econstr success; econstr failure ] in
     sum variants (function
       | Success -> case () success
-      | Restart { details_hum } -> case details_hum restart
       | Failure -> case () failure)
 end
 
@@ -52,14 +46,14 @@ module Status = struct
   let decl = Decl.Request.make ~method_:"status" ~generations:[ v1 ]
 end
 
-module Build = struct
+module Wait = struct
   let v1 =
-    Decl.Request.make_current_gen ~req:(Conv.list Conv.string)
-      ~resp:Build_outcome.sexp ~version:1
+    Decl.Request.make_current_gen ~req:Conv.unit ~resp:Build_outcome.sexp
+      ~version:1
 
-  let decl = Decl.Request.make ~method_:"build" ~generations:[ v1 ]
+  let decl = Decl.Request.make ~method_:"wait" ~generations:[ v1 ]
 end
 
-let build = Build.decl
+let wait = Wait.decl
 
 let status = Status.decl

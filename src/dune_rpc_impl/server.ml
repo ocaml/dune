@@ -20,15 +20,6 @@ module Diff_promotion = Dune_engine.Diff_promotion
 module Build_outcome = Decl.Build_outcome
 module Status = Decl.Status
 
-type pending_build_action =
-  | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
-
-(* TODO un-copy-paste from dune/bin/arg.ml *)
-let dep_parser =
-  let open Dune_engine in
-  Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
-    Dep_conf.decode
-
 module Client = struct
   type t = { mutable next_id : int }
 
@@ -75,59 +66,14 @@ module Clients = struct
   let to_list_map = Session.Id.Map.to_list_map
 end
 
-(** Primitive unbounded FIFO channel. Reads are blocking. Writes are not
-    blocking. At most one read is allowed at a time. *)
-module Job_queue : sig
-  type 'a t
-
-  (** Remove the element from the internal queue without waiting for the next
-      element. *)
-  val pop_internal : 'a t -> 'a option
-
-  val create : unit -> 'a t
-
-  val read : 'a t -> 'a Fiber.t
-
-  val write : 'a t -> 'a -> unit Fiber.t
-end = struct
-  (* invariant: if reader is Some then queue is empty *)
-  type 'a t =
-    { queue : 'a Queue.t
-    ; mutable reader : 'a Fiber.Ivar.t option
-    }
-
-  let create () = { queue = Queue.create (); reader = None }
-
-  let pop_internal t = Queue.pop t.queue
-
-  let read t =
-    Fiber.of_thunk (fun () ->
-        match t.reader with
-        | Some _ ->
-          Code_error.raise "multiple concurrent reads of build job queue" []
-        | None -> (
-          match Queue.pop t.queue with
-          | None ->
-            let ivar = Fiber.Ivar.create () in
-            t.reader <- Some ivar;
-            Fiber.Ivar.read ivar
-          | Some v -> Fiber.return v))
-
-  let write t elem =
-    Fiber.of_thunk (fun () ->
-        match t.reader with
-        | Some ivar ->
-          t.reader <- None;
-          Fiber.Ivar.fill ivar elem
-        | None ->
-          Queue.push t.queue elem;
-          Fiber.return ())
-end
+type build_status =
+  | Building of Build_outcome.t Fiber.Ivar.t
+  | Waiting_for_file_changes of { last_build_outcome : Build_outcome.t }
 
 type t =
   { config : Run.Config.t
-  ; pending_build_jobs :
-      (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
+  ; mutable pending_waits : Build_outcome.t Fiber.Ivar.t list
+  ; mutable build_status : build_status
   ; build_handler : Build_system.Handler.t
   ; pool : Fiber.Pool.t
   ; long_poll : Long_poll.t
@@ -135,6 +81,28 @@ type t =
   }
 
 let build_handler t = t.build_handler
+
+let wait t =
+  (* Acknowledge all the FS changes so far *)
+  let* () = Dune_engine.Scheduler.sync_fs_events () in
+  match t.build_status with
+  | Waiting_for_file_changes { last_build_outcome } ->
+    Fiber.return last_build_outcome
+  | Building ivar -> Fiber.Ivar.read ivar
+
+let acknowledge_build_starting t =
+  match t.build_status with
+  | Building _ -> assert false
+  | Waiting_for_file_changes _ ->
+    t.build_status <- Building (Fiber.Ivar.create ());
+    Fiber.return ()
+
+let acknowledge_build_finished t outcome =
+  match t.build_status with
+  | Waiting_for_file_changes _ -> assert false
+  | Building ivar ->
+    t.build_status <- Waiting_for_file_changes { last_build_outcome = outcome };
+    Fiber.Ivar.fill ivar outcome
 
 let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
@@ -160,39 +128,37 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return)
   in
   let () =
-    let build _ targets =
+    let wait _ () =
+      let t = Fdecl.get t in
       let ivar = Fiber.Ivar.create () in
-      let targets =
-        List.map targets ~f:(fun s ->
-            Dune_lang.Decoder.parse dep_parser
-              (Univ_map.set Univ_map.empty
-                 Dune_engine.String_with_vars.decoding_env_key
-                 (* CR-someday aalekseyev: hardcoding the version here is not
-                    ideal, but it will do for now since this command is not
-                    stable and we're only using it in tests. *)
-                 (Dune_engine.Pform.Env.initial (3, 0)))
-              (Dune_lang.Parser.parse_string ~fname:"dune rpc"
-                 ~mode:Dune_lang.Parser.Mode.Single s))
-      in
-      let* () =
-        Job_queue.write (Fdecl.get t).pending_build_jobs (targets, ivar)
-      in
-      Fiber.Ivar.read ivar
+      t.pending_waits <- ivar :: t.pending_waits;
+      Fiber.fork_and_join_unit
+        (fun () ->
+          let* res = wait t in
+          Fiber.Ivar.peek ivar >>= function
+          | Some _ ->
+            (* The request wal cancelled because of a shutdown *)
+            Fiber.return ()
+          | None -> Fiber.Ivar.fill ivar res)
+        (fun () ->
+          let+ res = Fiber.Ivar.read ivar in
+          t.pending_waits <-
+            List.filter t.pending_waits ~f:(fun i -> not (i == ivar));
+          res)
     in
-    Handler.implement_request rpc Decl.build build
+    Handler.implement_request rpc Decl.wait wait
   in
   let () =
-    let rec cancel_pending_jobs () =
-      match Job_queue.pop_internal (Fdecl.get t).pending_build_jobs with
-      | None -> Fiber.return ()
-      | Some (_, job) ->
-        let* () = Fiber.Ivar.fill job Build_outcome.Failure in
-        cancel_pending_jobs ()
+    let cancel_pending_waits t =
+      Fiber.sequential_iter t.pending_waits ~f:(fun ivar ->
+          Fiber.Ivar.fill ivar Failure)
     in
     let shutdown _ () =
       let t = Fdecl.get t in
       let terminate_sessions () =
-        Fiber.fork_and_join_unit cancel_pending_jobs (fun () ->
+        Fiber.fork_and_join_unit
+          (fun () -> cancel_pending_waits t)
+          (fun () ->
             Fiber.parallel_iter (Clients.to_list t.clients)
               ~f:(fun (_, entry) -> Session.Stage1.request_close entry.session))
       in
@@ -313,7 +279,6 @@ let build_event t (event : Build_system.Handler.event) =
 
 let create ~root =
   let t = Fdecl.create Dyn.Encoder.opaque in
-  let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let config = Run.Config.Server { handler; backlog = 10; pool; root } in
@@ -324,7 +289,8 @@ let create ~root =
   let long_poll = Long_poll.create () in
   let res =
     { config
-    ; pending_build_jobs
+    ; pending_waits = []
+    ; build_status = Waiting_for_file_changes { last_build_outcome = Success }
     ; clients = Clients.empty
     ; build_handler
     ; pool
@@ -335,7 +301,3 @@ let create ~root =
   res
 
 let config t = t.config
-
-let pending_build_action t =
-  Job_queue.read t.pending_build_jobs
-  |> Fiber.map ~f:(fun (targets, ivar) -> Build (targets, ivar))

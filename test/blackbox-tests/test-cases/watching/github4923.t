@@ -17,28 +17,24 @@ a file in watch mode.
   > EOF
   $ echo 'print_endline "Hello, world!"' > x.ml
 
-  $ start_dune
+  $ start_dune x.exe
 
-  $ build x.exe
+  $ dune_wait
   Success
   $ _build/default/x.exe
   Hello, world!
 
 In the past, adding a new file while Dune was running in watching mode
 was corrupting Dune's internal state. For instance, here it no longer
-knew how to build x.exe. This is now fixed.
+knew how to dune_wait. This is now fixed.
 
   $ touch b/blah
 
-  $ build x.exe
+  $ dune_wait
   Success
   $ _build/default/x.exe
   Hello, world!
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

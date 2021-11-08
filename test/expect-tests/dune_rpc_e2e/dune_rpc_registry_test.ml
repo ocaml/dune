@@ -84,7 +84,7 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
         ("XDG_RUNTIME_DIR=" ^ xdg_runtime_dir)
         :: Array.to_list (Unix.environment ())
       in
-      with_dune_watch ~env (fun pid ->
+      with_dune_watch ~env [ "." ] (fun pid ->
           let+ res =
             try_ ~times:5 ~delay:0.2 ~f:(fun () ->
                 let+ refresh = Poll_active.poll poll in
@@ -124,5 +124,7 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
   run case;
   [%expect
     {|
-    $PATH/dune build --passive-watch-mode --root . returned 1
+    $PATH/dune build --watch --root . . returned 1
+    stderr:
+    Success, waiting for filesystem changes...
     [PASS] found . at unix:path=%24CWD/_build/.rpc/dune |}]

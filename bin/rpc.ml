@@ -179,38 +179,37 @@ module Status = struct
   let term = (Term.Group.Term term, info)
 end
 
-module Build = struct
+module Wait = struct
   let term =
-    let name_ = Arg.info [] ~docv:"TARGET" in
     let+ (common : Common.t) = Common.term
-    and+ wait = wait_term
-    and+ targets = Arg.(value & pos_all string [] name_) in
+    and+ wait = wait_term in
     client_term common @@ fun common ->
     let open Fiber.O in
     let* _client, session = establish_client_session ~common ~wait in
     Dune_rpc_impl.Run.client_with_session ~session
       (Dune_rpc.Initialize.Request.create
-         ~id:(Dune_rpc.Id.make (Sexp.Atom "build")))
+         ~id:(Dune_rpc.Id.make (Sexp.Atom "wait")))
       ~f:(fun session ->
         let open Fiber.O in
         let+ response =
-          request_exn session (witness Dune_rpc_impl.Decl.build) targets
+          request_exn session (witness Dune_rpc_impl.Decl.wait) ()
         in
         match response with
         | Error (error : Dune_rpc_private.Response.Error.t) ->
           report_error error
         | Ok Success -> print_endline "Success"
-        | Ok (Restart { details_hum }) ->
-          print_endline
-            (sprintf "Restart (%s)" (String.concat ~sep:", " details_hum))
         | Ok Failure -> print_endline "Failure")
 
   let info =
-    let doc =
-      "build a given target (requires dune to be running in passive watching \
-       mode)"
+    let doc = "wait until the current build finishes" in
+    let man =
+      [ `S "DESCRIPTION"
+      ; `P
+          "Wait for Dune to acknowledge all pending file system events and \
+           then wait for the build to finish. Print the outcome of the build."
+      ]
     in
-    Term.info "build" ~doc
+    Term.info "wait" ~doc ~man
 
   let term = (Term.Group.Term term, info)
 end
@@ -255,4 +254,4 @@ let info =
   Term.info "rpc" ~doc ~man
 
 let group =
-  (Term.Group.Group [ Init.term; Status.term; Build.term; Ping.term ], info)
+  (Term.Group.Group [ Init.term; Status.term; Wait.term; Ping.term ], info)

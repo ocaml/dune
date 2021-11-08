@@ -6,7 +6,6 @@ val config : t -> Run.Config.t
 
 val build_handler : t -> Dune_engine.Build_system.Handler.t
 
-type pending_build_action =
-  | Build of Dune_rules.Dep_conf.t list * Decl.Build_outcome.t Fiber.Ivar.t
+val acknowledge_build_starting : t -> unit Fiber.t
 
-val pending_build_action : t -> pending_build_action Fiber.t
+val acknowledge_build_finished : t -> Decl.Build_outcome.t -> unit Fiber.t

@@ -17,9 +17,9 @@ file-watching mode.
 
   $ echo 'print_endline Lib.message' > x.ml
 
-  $ start_dune
+  $ start_dune x.exe
 
-  $ build x.exe
+  $ dune_wait
   Success
   $ _build/default/x.exe
   Hello, World
@@ -31,32 +31,26 @@ Now let's make [lib/a.ml] depend on [lib/b.ml]. It doesn't work!
   > let hello = "Hello"
   > EOF
 
-  $ build x.exe
+  $ dune_wait
   Failure
 
 Let's try a manual restart.
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   File "_none_", line 1:
   Error: No implementations provided for the following modules:
            Lib__B referenced from lib/lib.cmxa(Lib__A)
   Had errors, waiting for filesystem changes...
 
-  $ start_dune
+  $ start_dune x.exe
 
 It works now!
 
-  $ build x.exe
+  $ dune_wait
   Success
 
 We're done.
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

@@ -16,9 +16,9 @@ Test target promotion in file-watching mode.
   > EOF
   $ echo hi > original
 
-  $ start_dune
+  $ start_dune result
 
-  $ build result
+  $ dune_wait
   Success
   $ cat promoted
   hi
@@ -29,7 +29,7 @@ Test target promotion in file-watching mode.
 Now change the [original] and rebuild.
 
   $ echo bye > original
-  $ build result
+  $ dune_wait
   Success
   $ cat promoted
   bye
@@ -40,7 +40,7 @@ Now change the [original] and rebuild.
 Now try deleting the promoted file.
 
   $ rm promoted
-  $ build result
+  $ dune_wait
   Success
   $ cat promoted
   bye
@@ -51,7 +51,7 @@ Now try deleting the promoted file.
 Now try replacing its content.
 
   $ echo hi > promoted
-  $ build result
+  $ dune_wait
   Success
   $ cat promoted
   bye
@@ -78,7 +78,7 @@ conflict, as we do in the batch build mode -- see [dep-on-promoted-target.t].
   > EOF
   $ echo hi > promoted
 
-  $ build result
+  $ dune_wait
   Success
   $ cat promoted
   hi
@@ -91,18 +91,8 @@ conflict, as we do in the batch build mode -- see [dep-on-promoted-target.t].
 We're done.
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

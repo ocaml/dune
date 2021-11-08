@@ -11,9 +11,9 @@ Test rules that copy source files in file-watching mode.
   > EOF
   $ echo a > a.txt
 
-  $ start_dune
+  $ start_dune summary
 
-  $ build summary
+  $ dune_wait
   Success
   $ cat _build/default/summary
   a
@@ -21,7 +21,7 @@ Test rules that copy source files in file-watching mode.
 Add [b.txt] manually. Dune notices this.
 
   $ echo b > b.txt
-  $ build summary
+  $ dune_wait
   Success
   $ cat _build/default/summary
   a
@@ -41,7 +41,7 @@ consequence of using a glob in this directory, which forces all *.txt rules.
   >   (action (write-file %{target} c)))
   > EOF
 
-  $ build summary
+  $ dune_wait
   Success
   $ cat _build/default/summary
   a
@@ -59,32 +59,27 @@ Now demonstrate a bug: Dune fails to notice that [d.txt] appears via promotion.
   >   (mode (promote (into ..)))
   >   (action (write-file %{target} d)))
   > EOF
-  $ build summary subdir/d.txt
+  $ dune_wait
   Success
   $ cat _build/default/summary
   a
   b
   c
 
-Note that [d.txt] is here but [c.txt] isn't (it's not promoted).
+Note that neither [c.txt] nor [d.txt] are there. [c.txt] isn't (it's
+not promoted), so that's normal. However, [d.txt] is promoted from
+"subdir" into the current directory so it should be there but Dune
+doesn't realise it:
 
   $ ls *.txt
   a.txt
   b.txt
-  d.txt
 
 We're done.
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
+  Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...

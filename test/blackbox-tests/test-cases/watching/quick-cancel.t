@@ -19,9 +19,9 @@ build
 The rule above makes the test hang if it sees an "unstable" state of the file.
 This makes it easy to make sure that the dune won't finish before we're able to cancel the build.
 
-  $ start_dune
+  $ start_dune y
 
-  $ build y
+  $ dune_wait
   Success
   $ cat _build/default/y
   original-contents
@@ -40,23 +40,17 @@ depending on how quickly Dune reacts to the first change.
   >       mv z x;
   >       sleep 0.01;
   >     done
-  >  ) & build y; touch _build/build-finished; wait
+  >  ) & dune_wait; touch _build/build-finished; wait
   > ) | grep Restart | dune_cmd count-lines
-  1
+  0
 
   $ echo new-contents2 > x
 
-  $ build y
+  $ dune_wait
   Success
   $ cat _build/default/y
   new-contents2
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

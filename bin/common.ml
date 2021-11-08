@@ -38,7 +38,7 @@ type t =
     orig_args : string list
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
-  ; watch : Dune_engine.Watch_mode_config.t
+  ; watch : bool
   ; print_metrics : bool
   ; dump_memo_graph_file : string option
   ; dump_memo_graph_format : Graph.File_format.t
@@ -196,7 +196,6 @@ let init ?log_file c =
   Clflags.diff_command := c.diff_command;
   Clflags.promote := c.promote;
   Clflags.force := c.force;
-  Clflags.watch := c.watch;
   Clflags.no_print_directory := c.no_print_directory;
   Clflags.store_orig_src_dir := c.store_orig_src_dir;
   Clflags.promote_install_files := c.promote_install_files;
@@ -809,36 +808,12 @@ let term ~default_root_is_cwd =
             "Force actions associated to aliases to be re-executed even\n\
             \                   if their dependencies haven't changed.")
   and+ watch =
-    let+ res =
-      one_of
-        (let+ watch =
-           Arg.(
-             value & flag
-             & info [ "watch"; "w" ]
-                 ~doc:
-                   "Instead of terminating build after completion, wait \
-                    continuously for file changes.")
-         in
-         if watch then
-           Some Dune_engine.Watch_mode_config.Eager
-         else
-           None)
-        (let+ watch =
-           Arg.(
-             value & flag
-             & info [ "passive-watch-mode" ]
-                 ~doc:
-                   "Similar to [--watch], but only start a build when \
-                    instructed externally by an RPC.")
-         in
-         if watch then
-           Some Dune_engine.Watch_mode_config.Passive
-         else
-           None)
-    in
-    match res with
-    | None -> Dune_engine.Watch_mode_config.No
-    | Some mode -> Dune_engine.Watch_mode_config.Yes mode
+    Arg.(
+      value & flag
+      & info [ "watch"; "w" ]
+          ~doc:
+            "Instead of terminating build after completion, wait continuously \
+             for file changes.")
   and+ print_metrics =
     Arg.(
       value & flag
@@ -990,9 +965,10 @@ let term ~default_root_is_cwd =
       ~specified_by_user:root
   in
   let rpc =
-    match watch with
-    | Yes _ -> Some (Dune_rpc_impl.Server.create ~root:root.dir)
-    | No -> None
+    if watch then
+      Some (Dune_rpc_impl.Server.create ~root:root.dir)
+    else
+      None
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->

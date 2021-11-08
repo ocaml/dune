@@ -15,18 +15,24 @@ Bad rule! You are not supposed to modify the source tree. No ice-cream for you!
   > EOF
 
   $ touch old-source.txt
-  $ start_dune
+  $ start_dune result
 
 The build restarts because a new source file has been created at the root.
 
-  $ build result
-  Restart (. changed)
+  $ dune_wait
+  Success
 
   $ cat new-source.txt
 
+The fact that new-source.txt appears bellow show that the build
+restarted and observed the file:
+
+  $ cat _build/default/result
+  new-source.txt old-source.txt
+
 So, we come back for the result once again and now get it.
 
-  $ build result
+  $ dune_wait
   Success
 
 The second time the rule sees new-source.txt because Dune copied it to the
@@ -40,8 +46,4 @@ same, i.e. the empty file.
 
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

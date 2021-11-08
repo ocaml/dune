@@ -10,26 +10,22 @@ Test what happens in watch mode when we depend on dot files
   >  (action (system "cat .x > y")))
   > EOF
 
-  $ start_dune
+  $ start_dune y
 
   $ echo 1 > .x
-  $ build y
+  $ dune_wait
   Success
   $ cat _build/default/y
   1
 
   $ echo 2 > .x
-  $ build y
+  $ dune_wait
   Success
   $ cat _build/default/y
   2
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
 
 Same but in a sub-directory (the exclude regexp used to be sensitive to that):
@@ -37,25 +33,21 @@ Same but in a sub-directory (the exclude regexp used to be sensitive to that):
   $ mkdir test
   $ mv dune test/dune
 
-  $ start_dune
+  $ start_dune test/y
 
   $ echo 1 > test/.x
-  $ build test/y
+  $ dune_wait
   Success
   $ cat _build/default/test/y
   1
 
   $ echo 2 > test/.x
-  $ build test/y
+  $ dune_wait
   Success
   $ cat _build/default/test/y
   2
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
 

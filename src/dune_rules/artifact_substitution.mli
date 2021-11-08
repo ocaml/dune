@@ -65,6 +65,19 @@ val copy_file :
   -> unit
   -> unit Fiber.t
 
+module Atomic : sig
+  (** Like [copy_file] but the copy is first created in a temporary directory
+      (inside [_build] by default) and then atomically moved to [dst]. *)
+  val copy_file :
+       conf:conf
+    -> ?temp_dir:Path.t
+    -> ?chmod:(int -> int)
+    -> src:Path.t
+    -> dst:Path.t
+    -> unit
+    -> unit Fiber.t
+end
+
 (** Generic version of [copy_file]. Rather than filenames, it takes an input and
     output functions. Their semantic must match the ones of the [input] and
     [output] functions from the OCaml standard library.

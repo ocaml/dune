@@ -45,7 +45,7 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
     let conf = Artifact_substitution.conf_of_context ctx in
     let src = Path.build src in
     let dst = Path.source dst in
-    Artifact_substitution.copy_file ?chmod ~src ~dst ~conf ()
+    Artifact_substitution.Atomic.copy_file ?chmod ~src ~dst ~conf ()
   in
   Build_system.init ~stats ~sandboxing_preference ~promote_source
     ~contexts:

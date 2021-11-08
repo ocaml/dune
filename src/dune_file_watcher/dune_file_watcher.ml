@@ -173,7 +173,7 @@ let exclude_patterns =
   ; {|/_opam|}
   ; {|^_esy|}
   ; {|/_esy|}
-  ; {|^\.#.*|}
+  ; {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
   ; {|/\.#.*|}
   ; {|~$|}
   ; {|^#[^#]*#$|}

@@ -56,7 +56,9 @@ val encode : ?min_len:int -> t -> string
 (** [decode s] returns the value [t] such that [encode t = s]. *)
 val decode : string -> t option
 
-(** Copy a file, performing all required substitutions *)
+(** Copy a file, performing all required substitutions. The operation is atomic,
+    i.e., the contents is first copied to a temporary file in the same directory
+    and then atomically renamed to [dst]. *)
 val copy_file :
      conf:conf
   -> ?chmod:(int -> int)
@@ -64,19 +66,6 @@ val copy_file :
   -> dst:Path.t
   -> unit
   -> unit Fiber.t
-
-module Atomic : sig
-  (** Like [copy_file] but the copy is first created in a temporary directory
-      (inside [_build] by default) and then atomically moved to [dst]. *)
-  val copy_file :
-       conf:conf
-    -> ?temp_dir:Path.t
-    -> ?chmod:(int -> int)
-    -> src:Path.t
-    -> dst:Path.t
-    -> unit
-    -> unit Fiber.t
-end
 
 (** Generic version of [copy_file]. Rather than filenames, it takes an input and
     output functions. Their semantic must match the ones of the [input] and

@@ -562,7 +562,7 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
 let copy ~conf ~input_file ~input ~output =
   parse ~input ~mode:(Copy { conf; input_file; output })
 
-let copy_file ~conf ?chmod ~src ~dst () =
+let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
   let open Fiber.O in
   let* ic, oc = Fiber.return (Io.setup_copy ?chmod ~src ~dst ()) in
   Fiber.finalize
@@ -571,31 +571,24 @@ let copy_file ~conf ?chmod ~src ~dst () =
       Fiber.return ())
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
 
-module Atomic = struct
-  let temp_dir =
-    (* This needs to be lazy because [Path.Build.root] is set at runtime. Also
-       note that we place [dir] into the build directory because we'd like to
-       ensure that it lives on the same partition. *)
-    lazy
-      (let dir =
-         Path.Build.relative Path.Build.root ".artifact-substitution"
-         |> Path.build
-       in
-       Path.mkdir_p dir;
-       dir)
-
-  let copy_file ~conf ?(temp_dir = Lazy.force temp_dir) ?chmod ~src ~dst () =
-    (* We use [with_temp_dir] instead of [with_temp_file] because [copy_file]
-       takes care of creating the file itself, with an appropriate [chmod]. *)
-    Fiber_util.Temp.with_temp_dir ~parent_dir:temp_dir ~prefix:"dune"
-      ~suffix:"artifact" ~f:(function
-      | Ok temp_dir ->
-        let temp_file = Path.relative temp_dir (Path.basename dst) in
-        let open Fiber.O in
-        let+ () = copy_file ~conf ?chmod ~src ~dst:temp_file () in
-        Path.rename temp_file dst
-      | Error exn -> raise exn)
-end
+let copy_file ~conf ?chmod ~src ~dst () =
+  (* We create a temporary file in the same directory to ensure it's on the same
+     partition as [dst] (otherwise, [Path.rename temp_file dst] won't work). The
+     prefix ".#" is used because Dune ignores such files and so creating this
+     file will not trigger a rebuild. *)
+  let temp_file =
+    let dst_dir = Path.parent_exn dst in
+    let dst_name = Path.basename dst in
+    Path.relative dst_dir (sprintf ".#%s.dune-temp" dst_name)
+  in
+  Fiber.finalize
+    (fun () ->
+      let open Fiber.O in
+      let+ () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
+      Path.rename temp_file dst)
+    ~finally:(fun () ->
+      Path.unlink_no_err temp_file;
+      Fiber.return ())
 
 let test_file ~src () =
   let open Fiber.O in

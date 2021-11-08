@@ -1361,7 +1361,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 9
+  let rule_digest_version = 10
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
@@ -1370,7 +1370,6 @@ end = struct
         ; locks
         ; can_go_in_shared_cache
         ; sandbox = _ (* already taken into account in [sandbox_mode] *)
-        ; patch_back_source_tree
         } =
       action
     in
@@ -1388,8 +1387,7 @@ end = struct
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
       , Execution_parameters.action_stdout_on_success execution_parameters
-      , Execution_parameters.action_stderr_on_success execution_parameters
-      , patch_back_source_tree )
+      , Execution_parameters.action_stderr_on_success execution_parameters )
     in
     Digest.generic trace
 
@@ -1465,7 +1463,6 @@ end = struct
         ; locks
         ; can_go_in_shared_cache = _
         ; sandbox = _
-        ; patch_back_source_tree
         } =
       action
     in
@@ -1473,8 +1470,8 @@ end = struct
     let chdirs = Action.chdirs action in
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
-          Sandbox.create ~mode ~deps ~patch_back_source_tree ~rule_dir:dir
-            ~rule_loc:loc ~chdirs ~rule_digest
+          Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~chdirs
+            ~rule_digest
             ~expand_aliases:
               (Execution_parameters.expand_aliases_in_sandbox
                  execution_parameters))
@@ -1723,9 +1720,15 @@ end = struct
         in
         let can_go_in_shared_cache =
           action.can_go_in_shared_cache
-          && not
-               (always_rerun || is_action_dynamic
-               || Action.is_useful_to_memoize action.action = Clearly_not)
+          && (not
+                (always_rerun || is_action_dynamic
+                || Action.is_useful_to_memoize action.action = Clearly_not))
+          &&
+          match sandbox_mode with
+          | Some Patch_back_source_tree ->
+            (* Action in this mode cannot go in the shared cache *)
+            false
+          | _ -> true
         in
         (* We don't need to digest target names here, as these are already part
            of the rule digest. *)
@@ -2033,14 +2036,7 @@ end = struct
     ignore observing_facts;
     let digest =
       let { Rule.Anonymous_action.context
-          ; action =
-              { action
-              ; env
-              ; locks
-              ; can_go_in_shared_cache
-              ; sandbox
-              ; patch_back_source_tree
-              }
+          ; action = { action; env; locks; can_go_in_shared_cache; sandbox }
           ; loc
           ; dir
           ; alias
@@ -2076,7 +2072,6 @@ end = struct
         , alias
         , capture_stdout
         , can_go_in_shared_cache
-        , patch_back_source_tree
         , sandbox )
     in
     (* It might seem superfluous to memoize the execution here, given that a

@@ -4,6 +4,7 @@ type some =
   | Symlink
   | Copy
   | Hardlink
+  | Patch_back_source_tree
 
 let compare_some a b =
   match (a, b) with
@@ -14,6 +15,9 @@ let compare_some a b =
   | Copy, _ -> Lt
   | _, Copy -> Gt
   | Hardlink, Hardlink -> Eq
+  | Hardlink, _ -> Lt
+  | _, Hardlink -> Gt
+  | Patch_back_source_tree, Patch_back_source_tree -> Eq
 
 type t = some option
 
@@ -34,32 +38,41 @@ module Dict = struct
     ; symlink : 'a
     ; copy : 'a
     ; hardlink : 'a
+    ; patch_back_source_tree : 'a
     }
 
-  let compare compare x y =
-    let compare_k a b k =
-      match compare a b with
+  let compare compare { none; symlink; copy; hardlink; patch_back_source_tree }
+      t =
+    let ( let= ) ordering k =
+      match ordering with
       | Eq -> k ()
-      | Lt -> Lt
-      | Gt -> Gt
+      | Lt
+      | Gt ->
+        ordering
     in
-    compare_k x.none y.none (fun () ->
-        compare_k x.symlink y.symlink (fun () ->
-            compare_k x.copy y.copy (fun () -> compare x.hardlink y.hardlink)))
+    let= () = compare none t.none in
+    let= () = compare symlink t.symlink in
+    let= () = compare copy t.copy in
+    let= () = compare hardlink t.hardlink in
+    let= () = compare patch_back_source_tree t.patch_back_source_tree in
+    Eq
 
   let of_func (f : key -> _) =
     { none = f None
     ; symlink = f (Some Symlink)
     ; copy = f (Some Copy)
     ; hardlink = f (Some Hardlink)
+    ; patch_back_source_tree = f (Some Patch_back_source_tree)
     }
 
-  let get { none; symlink; copy; hardlink } (key : key) =
+  let get { none; symlink; copy; hardlink; patch_back_source_tree } (key : key)
+      =
     match key with
     | None -> none
     | Some Copy -> copy
     | Some Symlink -> symlink
     | Some Hardlink -> hardlink
+    | Some Patch_back_source_tree -> patch_back_source_tree
 end
 
 module Set = struct
@@ -87,19 +100,25 @@ module Set = struct
     ; copy = x.copy && y.copy
     ; symlink = x.symlink && y.symlink
     ; hardlink = x.hardlink && y.hardlink
+    ; patch_back_source_tree =
+        x.patch_back_source_tree && y.patch_back_source_tree
     }
 
-  let to_dyn (t : t) =
+  let to_dyn { Dict.none; copy; symlink; hardlink; patch_back_source_tree } =
     Dyn.Record
-      [ ("none", Dyn.Bool t.none)
-      ; ("copy", Dyn.Bool t.copy)
-      ; ("symlink", Dyn.Bool t.symlink)
-      ; ("hardlink", Dyn.Bool t.hardlink)
+      [ ("none", Bool none)
+      ; ("copy", Bool copy)
+      ; ("symlink", Bool symlink)
+      ; ("hardlink", Bool hardlink)
+      ; ("patch_back_source_tree", Bool patch_back_source_tree)
       ]
 end
 
 (* these should be listed in the default order of preference *)
-let all = [ None; Some Symlink; Some Copy; Some Hardlink ]
+let all_except_patch_back_source_tree =
+  [ None; Some Symlink; Some Copy; Some Hardlink ]
+
+let all = all_except_patch_back_source_tree @ [ Some Patch_back_source_tree ]
 
 let none = None
 
@@ -113,7 +132,7 @@ let error =
   Error
     "invalid sandboxing mode, must be 'none', 'symlink', 'copy' or 'hardlink'"
 
-let of_string = function
+let of_string_except_patch_back_source_tree = function
   | "none" -> Ok None
   | "symlink" -> Ok (Some Symlink)
   | "copy" -> Ok (Some Copy)
@@ -125,9 +144,11 @@ let to_string = function
   | Some Symlink -> "symlink"
   | Some Copy -> "copy"
   | Some Hardlink -> "hardlink"
+  | Some Patch_back_source_tree -> "patch_back_source_tree"
 
 let to_dyn =
   Dyn.Encoder.option (function
-    | Symlink -> Dyn.Variant ("Symlink", [])
-    | Copy -> Dyn.Variant ("Copy", [])
-    | Hardlink -> Dyn.Variant ("Hardlink", []))
+    | Symlink -> Variant ("Symlink", [])
+    | Copy -> Variant ("Copy", [])
+    | Hardlink -> Variant ("Hardlink", [])
+    | Patch_back_source_tree -> Variant ("Patch_back_source_tree", []))

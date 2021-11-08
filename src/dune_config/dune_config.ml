@@ -78,7 +78,7 @@ module Sandboxing_preference = struct
   let decode =
     repeat
       (plain_string (fun ~loc s ->
-           match Sandbox_mode.of_string s with
+           match Sandbox_mode.of_string_except_patch_back_source_tree s with
            | Error m -> User_error.raise ~loc [ Pp.text m ]
            | Ok s -> s))
 end

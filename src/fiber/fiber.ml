@@ -914,11 +914,3 @@ let run t ~iter =
   EC.run t ~iter:(fun () ->
       let (Fill (ivar, v)) = iter () in
       Ivar.fill ivar v)
-
-(* If/when the [fiber] library stops depending on Stdune, we'll need to move
-   this logic into a separate library, e.g. [fiber_util]. *)
-module Temp = Temp.Monad (struct
-  type nonrec 'a t = 'a t
-
-  let protect ~f ~finally = finalize f ~finally:(fun () -> finally () |> return)
-end)

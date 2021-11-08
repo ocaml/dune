@@ -387,20 +387,3 @@ type fill = Fill : 'a Ivar.t * 'a -> fill
     the scheduler, it should block waiting for an event and return an ivar to
     fill. *)
 val run : 'a t -> iter:(unit -> fill) -> 'a
-
-(** [Temp.Monad] instantiated to the Fiber monad. *)
-module Temp : sig
-  val with_temp_file :
-       dir:Path.t
-    -> prefix:string
-    -> suffix:string
-    -> f:(Path.t Or_exn.t -> 'a t)
-    -> 'a t
-
-  val with_temp_dir :
-       parent_dir:Path.t
-    -> prefix:string
-    -> suffix:string
-    -> f:(Path.t Or_exn.t -> 'a t)
-    -> 'a t
-end

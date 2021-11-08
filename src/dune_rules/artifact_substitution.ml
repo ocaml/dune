@@ -587,7 +587,7 @@ module Atomic = struct
   let copy_file ~conf ?(temp_dir = Lazy.force temp_dir) ?chmod ~src ~dst () =
     (* We use [with_temp_dir] instead of [with_temp_file] because [copy_file]
        takes care of creating the file itself, with an appropriate [chmod]. *)
-    Fiber.Temp.with_temp_dir ~parent_dir:temp_dir ~prefix:"dune"
+    Fiber_util.Temp.with_temp_dir ~parent_dir:temp_dir ~prefix:"dune"
       ~suffix:"artifact" ~f:(function
       | Ok temp_dir ->
         let temp_file = Path.relative temp_dir (Path.basename dst) in

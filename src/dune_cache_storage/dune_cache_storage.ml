@@ -303,7 +303,7 @@ module Metadata = struct
 end
 
 let with_temp_file ?(prefix = "dune") ~suffix f =
-  Fiber.Temp.with_temp_file ~dir:Layout.temp_dir ~prefix ~suffix ~f
+  Fiber_util.Temp.with_temp_file ~dir:Layout.temp_dir ~prefix ~suffix ~f
 
 let with_temp_dir ?(prefix = "dune") ~suffix f =
-  Fiber.Temp.with_temp_dir ~parent_dir:Layout.temp_dir ~prefix ~suffix ~f
+  Fiber_util.Temp.with_temp_dir ~parent_dir:Layout.temp_dir ~prefix ~suffix ~f

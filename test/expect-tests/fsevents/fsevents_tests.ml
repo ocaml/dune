@@ -214,7 +214,6 @@ let%expect_test "move file" =
   [%expect
     {|
     > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/old" }
-    > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/old" }
     > { action = "Unknown"; kind = "File"; path = "$TESTCASE_ROOT/new" } |}]
 
 let%expect_test "raise inside callback" =
@@ -266,5 +265,5 @@ let%expect_test "multiple fsevents" =
       Io.String_path.write_file "xxx" "" (* this one is ignored *));
   [%expect
     {|
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" }
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" } |}]
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" }
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" } |}]

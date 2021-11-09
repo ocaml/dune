@@ -128,16 +128,14 @@ let copy = Some Copy
 
 let hardlink = Some Hardlink
 
-let error =
-  Error
-    "invalid sandboxing mode, must be 'none', 'symlink', 'copy' or 'hardlink'"
-
-let of_string_except_patch_back_source_tree = function
-  | "none" -> Ok None
-  | "symlink" -> Ok (Some Symlink)
-  | "copy" -> Ok (Some Copy)
-  | "hardlink" -> Ok (Some Hardlink)
-  | _ -> error
+let decode =
+  let open Dune_lang.Decoder in
+  enum
+    [ ("none", None)
+    ; ("symlink", Some Symlink)
+    ; ("copy", Some Copy)
+    ; ("hardlink", Some Hardlink)
+    ]
 
 let to_string = function
   | None -> "none"

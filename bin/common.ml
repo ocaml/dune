@@ -527,11 +527,6 @@ let display_term =
             {|Control the display mode of Dune.
          See $(b,dune-config\(5\)) for more details.|})
 
-let simple_arg_conv ~to_string ~of_string =
-  Arg.conv
-    ( (fun s -> Result.map_error (of_string s) ~f:(fun s -> `Msg s))
-    , fun pp x -> Format.pp_print_string pp (to_string x) )
-
 let shared_with_config_file =
   let docs = copts_sect in
   let+ concurrency =
@@ -548,15 +543,13 @@ let shared_with_config_file =
       & info [ "j" ] ~docs ~docv:"JOBS"
           ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|})
   and+ sandboxing_preference =
-    let arg =
-      simple_arg_conv
-        ~of_string:
-          Dune_engine.Sandbox_mode.of_string_except_patch_back_source_tree
-        ~to_string:Dune_engine.Sandbox_mode.to_string
+    let all =
+      List.map Dune_engine.Sandbox_mode.all_except_patch_back_source_tree
+        ~f:(fun s -> (Dune_engine.Sandbox_mode.to_string s, s))
     in
     Arg.(
       value
-      & opt (some arg) None
+      & opt (some (enum all)) None
       & info [ "sandbox" ]
           ~env:
             (Arg.env_var

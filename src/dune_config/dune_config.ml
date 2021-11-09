@@ -19,23 +19,12 @@ module Terminal_persistence = struct
 
   let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
 
-  let of_string = function
-    | "preserve" -> Ok Preserve
-    | "clear-on-rebuild" -> Ok Clear_on_rebuild
-    | _ ->
-      Error
-        "invalid terminal-persistence value, must be 'preserve' or \
-         'clear-on-rebuild'"
-
   let to_dyn = function
     | Preserve -> Dyn.Variant ("Preserve", [])
     | Clear_on_rebuild -> Dyn.Variant ("Clear_on_rebuild", [])
 
   let decode =
-    plain_string (fun ~loc s ->
-        match of_string s with
-        | Error m -> User_error.raise ~loc [ Pp.text m ]
-        | Ok s -> s)
+    enum [ ("perserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
 end
 
 module Concurrency = struct
@@ -75,12 +64,7 @@ end
 module Sandboxing_preference = struct
   type t = Sandbox_mode.t list
 
-  let decode =
-    repeat
-      (plain_string (fun ~loc s ->
-           match Sandbox_mode.of_string_except_patch_back_source_tree s with
-           | Error m -> User_error.raise ~loc [ Pp.text m ]
-           | Ok s -> s))
+  let decode = repeat Sandbox_mode.decode
 end
 
 module Cache = struct

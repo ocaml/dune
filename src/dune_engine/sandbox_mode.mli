@@ -90,8 +90,7 @@ val copy : t
 
 val hardlink : t
 
-(** Same comment as for [all_except_patch_back_source_tree] *)
-val of_string_except_patch_back_source_tree : string -> (t, string) Result.t
+val decode : t Dune_lang.Decoder.t
 
 val to_string : t -> string
 

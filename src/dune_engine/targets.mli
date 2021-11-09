@@ -60,6 +60,8 @@ val iter :
 
 val map : t -> f:(files:Path.Build.Set.t -> dirs:Path.Build.Set.t -> 'a) -> 'a
 
+val remove_file : t -> Path.Build.t -> t
+
 (** File targets are traversed before directory targets. *)
 val fold :
      t

@@ -1450,7 +1450,20 @@ end = struct
       }
   end
 
-  let execute_action_for_rule t ~rule_digest ~action ~deps ~loc
+  type rule_kind =
+    | Normal_rule
+    | Anonymous_action of
+        { stamp_file : Path.Build.t
+        ; capture_stdout : bool
+        ; attached_to_alias : bool
+        }
+
+  let targets_without_stamp_file targets = function
+    | Normal_rule -> targets
+    | Anonymous_action { stamp_file; _ } ->
+      Targets.remove_file targets stamp_file
+
+  let execute_action_for_rule t ~rule_kind ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
       ~dir ~targets =
     let open Fiber.O in
@@ -1489,6 +1502,19 @@ end = struct
         action
       | Some sandbox -> Action.sandbox action sandbox
     in
+    let action =
+      (* We must add the creation of the stamp file after sandboxing it, as
+         otherwise the stamp file would end up inside the sandbox. This is
+         especially a problem for the [Patch_back_source_tree] sandboxing
+         mode. *)
+      match rule_kind with
+      | Normal_rule -> action
+      | Anonymous_action { stamp_file; capture_stdout; _ } ->
+        if capture_stdout then
+          Action.with_stdout_to stamp_file action
+        else
+          Action.progn [ action; Action.write_file stamp_file "" ]
+    in
     let* () =
       Fiber.parallel_iter_set
         (module Path.Set)
@@ -1517,6 +1543,9 @@ end = struct
             match sandbox with
             | None -> Path.Build.Set.empty
             | Some sandbox ->
+              (* The stamp file for anonymous actions is always created outside
+                 the sandbox, so we can't move it. *)
+              let targets = targets_without_stamp_file targets rule_kind in
               Sandbox.move_targets_to_build_dir sandbox ~loc ~targets
           in
           { Exec_result.files_in_directory_targets; action_exec_result })
@@ -1575,11 +1604,6 @@ end = struct
         Log.info [ pp_error (Sexp.to_string sexp) ];
         User_warning.emit [ pp_error (Sexp.to_string sexp) ];
         None)
-
-  type rule_kind =
-    | Normal_rule
-    | Anonymous_action
-    | Anonymous_action_attached_to_alias
 
   let report_workspace_local_cache_miss
       ~(cache_debug_flags : Cache_debug_flags.t) ~head_target reason =
@@ -1706,10 +1730,8 @@ end = struct
 
                So it seems to me that such rules should be re-executed. TBC *)
             match rule_kind with
-            | Normal_rule
-            | Anonymous_action ->
-              false
-            | Anonymous_action_attached_to_alias -> true
+            | Normal_rule -> false
+            | Anonymous_action a -> a.attached_to_alias
           in
           let force_rerun = !Clflags.force && is_test in
           force_rerun || Dep.Map.has_universe deps
@@ -1861,8 +1883,9 @@ end = struct
                   ~rule_digest ~head_target shared_cache_miss_reason;
                 (* Step III. Execute the build action. *)
                 let* exec_result =
-                  execute_action_for_rule t ~rule_digest ~action ~deps ~loc
-                    ~context ~execution_parameters ~sandbox_mode ~dir ~targets
+                  execute_action_for_rule t ~rule_kind ~rule_digest ~action
+                    ~deps ~loc ~context ~execution_parameters ~sandbox_mode ~dir
+                    ~targets
                 in
                 let* targets_and_digests =
                   (* Step IV. Store results to the shared cache and if that step
@@ -1967,13 +1990,6 @@ end = struct
       in
       Path.Build.relative dir basename
     in
-    let action =
-      Action.Full.map act.action ~f:(fun action ->
-          if capture_stdout then
-            Action.with_stdout_to target action
-          else
-            Action.progn [ action; Action.with_stdout_to target Action.empty ])
-    in
     let rule =
       let { Rule.Anonymous_action.context; action = _; loc; dir = _; alias = _ }
           =
@@ -1990,15 +2006,17 @@ end = struct
            { f =
                (fun mode ->
                  let+ deps = eval_deps mode deps in
-                 (action, deps))
+                 (act.action, deps))
            })
     in
     let+ { deps = _; targets = _ } =
       execute_rule_impl rule
         ~rule_kind:
-          (match act.alias with
-          | None -> Anonymous_action
-          | Some _ -> Anonymous_action_attached_to_alias)
+          (Anonymous_action
+             { attached_to_alias = Option.is_some act.alias
+             ; capture_stdout
+             ; stamp_file = target
+             })
     in
     target
 

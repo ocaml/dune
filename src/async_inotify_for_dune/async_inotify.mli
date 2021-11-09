@@ -68,4 +68,4 @@ val create :
     so when it returns the kernel has already acknowledged that the watch was
     set up. This may, in fact, block, but it's not safe to run this function in
     a separate thread. *)
-val add : t -> string -> [ `Ok | `Already_added ]
+val add : t -> string -> unit

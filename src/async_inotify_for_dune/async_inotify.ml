@@ -78,12 +78,11 @@ type modify_event_selector =
   ]
 
 let add t path =
-  if Table.mem t.path_table path then
-    `Already_added
-  else
-    let watch = Inotify.add_watch t.fd path t.select_events in
-    Table.add_exn t.path_table path watch;
-    `Ok
+  (match Table.find t.path_table path with
+  | None -> ()
+  | Some watch -> Inotify.rm_watch t.fd watch);
+  let watch = Inotify.add_watch t.fd path t.select_events in
+  Table.set t.path_table path watch
 
 let process_raw_events t events =
   let watch_table = t.watch_table in

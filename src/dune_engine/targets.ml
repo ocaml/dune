@@ -70,6 +70,8 @@ let fold { files; dirs } ~init ~file ~dir =
   let init = Path.Build.Set.fold files ~init ~f:file in
   Path.Build.Set.fold dirs ~init ~f:dir
 
+let remove_file t file = { t with files = Path.Build.Set.remove t.files file }
+
 module Validation_result = struct
   type t =
     | Valid of { parent_dir : Path.Build.t }

@@ -186,8 +186,8 @@ inside the source tree:
 Reproduction case for copying the action stamp file
 ---------------------------------------------------
 
-At the moment, there is a bug causing the internal action stamp file
-to be produced in the sandbox and copied back:
+There used to be a bug causing the internal action stamp file to be
+produced in the sandbox and copied back:
 
   $ cat >dune<<EOF
   > (rule
@@ -204,8 +204,8 @@ This is the internal stamp file:
   $ ls _build/.actions/default/blah*
   _build/.actions/default/blah-3209c92f18c7050c580114796b6023bd
 
-And it ends up copied in the source tree:
+And we check that it isn't copied in the soure tree:
 
-  $ ls default/blah*
-  default/blah-3209c92f18c7050c580114796b6023bd
+  $ if [ -d default ]; then echo "Failure"; else echo "Success"; fi
+  Success
 

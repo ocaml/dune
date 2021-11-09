@@ -21,6 +21,10 @@ end
 
 let create ~files ~dirs = { files; dirs }
 
+let files t = t.files
+
+let dirs t = t.dirs
+
 let empty = { files = Path.Build.Set.empty; dirs = Path.Build.Set.empty }
 
 let combine x y =
@@ -69,8 +73,6 @@ let map { files; dirs } ~f = f ~files ~dirs
 let fold { files; dirs } ~init ~file ~dir =
   let init = Path.Build.Set.fold files ~init ~f:file in
   Path.Build.Set.fold dirs ~init ~f:dir
-
-let remove_file t file = { t with files = Path.Build.Set.remove t.files file }
 
 module Validation_result = struct
   type t =

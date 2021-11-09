@@ -44,6 +44,3 @@ Test with a build directory that doesn't start with _
   $ touch pkg.opam
   $ dune build --build-dir build pkg.opam
   $ dune build --build-dir build
-  Warning: The package pkg does not have any user defined stanzas attached to
-  it. If this is intentional, add (allow_empty) to the package definition in
-  the dune-project file

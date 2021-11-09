@@ -13,8 +13,8 @@ Test optional executable
   > EOF
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > (package (name x) (allow_empty))
+  > (lang dune 2.0)
+  > (package (name x))
   > EOF
 
   $ touch x.ml
@@ -57,6 +57,7 @@ The following command should fail because the executable is not optional:
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
   -> required by _build/default/x.exe
+  -> required by _build/install/default/bin/x
   -> required by _build/default/x.install
   -> required by alias install
   [1]

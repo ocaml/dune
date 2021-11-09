@@ -2,9 +2,9 @@ Various tests for optional libraries
 ------------------------------------
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.0)
+  > (lang dune 1.2)
   > (name foo)
-  > (package (name foo) (allow_empty))
+  > (package (name foo))
   > EOF
 
   $ cat >dune <<EOF
@@ -48,6 +48,7 @@ The following command should fail because the executable is not optional:
   Error: Library "lib_that_doesn't_exist" not found.
   -> required by library "foo" in _build/default
   -> required by _build/default/META.foo
+  -> required by _build/install/default/lib/foo/META
   -> required by _build/default/foo.install
   -> required by alias install
   [1]

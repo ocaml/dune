@@ -644,6 +644,12 @@ let decode ~dir =
      and+ allow_empty =
        field_b "allow_empty"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+     and+ lang_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+     let allow_empty =
+       if lang_version < (3, 0) then
+         true
+       else
+         allow_empty
      in
      let id = { Id.name; dir } in
      { id
@@ -790,7 +796,7 @@ let load_opam_file file name =
   ; tags = Option.value (get_many "tags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
-  ; allow_empty = false
+  ; allow_empty = true
   }
 
 let equal = Poly.equal

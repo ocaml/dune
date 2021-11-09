@@ -4,9 +4,9 @@ findlib name, and are only available to libraries and executables in the same
 package.
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > (package (name foo) (allow_empty))
-  > (package (name bar) (allow_empty))
+  > (lang dune 2.8)
+  > (package (name foo))
+  > (package (name bar))
   > EOF
 
 First, we define a private library:

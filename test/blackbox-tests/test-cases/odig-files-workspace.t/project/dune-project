@@ -1,5 +1,4 @@
-(lang dune 3.0)
+(lang dune 1.10)
 
 (package
- (name foobar)
- (allow_empty))
+ (name foobar))

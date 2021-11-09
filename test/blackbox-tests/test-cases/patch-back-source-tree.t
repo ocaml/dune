@@ -182,3 +182,30 @@ inside the source tree:
 
   $ if test -w x; then echo writable; else echo non-writable; fi
   writable
+
+Reproduction case for copying the action stamp file
+---------------------------------------------------
+
+At the moment, there is a bug causing the internal action stamp file
+to be produced in the sandbox and copied back:
+
+  $ cat >dune<<EOF
+  > (rule
+  >  (mode patch-back-source-tree)
+  >  (alias blah)
+  >  (action (system "echo 'Hello, world!'")))
+  > EOF
+
+  $ dune build @blah
+  Hello, world!
+
+This is the internal stamp file:
+
+  $ ls _build/.actions/default/blah*
+  _build/.actions/default/blah-3209c92f18c7050c580114796b6023bd
+
+And it ends up copied in the source tree:
+
+  $ ls default/blah*
+  default/blah-3209c92f18c7050c580114796b6023bd
+

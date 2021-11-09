@@ -249,16 +249,14 @@ let apply_changes_to_source_tree t ~old_snapshot =
         | Gt ->
           copy_file p))
 
-let move_targets_to_build_dir t ~loc ~targets =
+let move_targets_to_build_dir t ~loc ~files ~dirs =
   Option.iter t.snapshot ~f:(fun old_snapshot ->
       apply_changes_to_source_tree t ~old_snapshot);
-  let (_file_targets_renamed : unit list), files_moved_in_directory_targets =
-    Targets.partition_map targets
-      ~file:(fun target ->
-        rename_optional_file ~src:(map_path t target) ~dst:target)
-      ~dir:(fun target ->
-        rename_dir_recursively ~loc ~src_dir:(map_path t target) ~dst_dir:target)
-  in
-  Path.Build.Set.union_all files_moved_in_directory_targets
+  Path.Build.Set.iter files ~f:(fun target ->
+      rename_optional_file ~src:(map_path t target) ~dst:target);
+  Path.Build.Set.fold dirs ~init:Path.Build.Set.empty ~f:(fun target acc ->
+      Path.Build.Set.union acc
+        (rename_dir_recursively ~loc ~src_dir:(map_path t target)
+           ~dst_dir:target))
 
 let destroy t = Path.rm_rf (Path.build t.dir)

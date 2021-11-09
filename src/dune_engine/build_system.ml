@@ -1458,10 +1458,10 @@ end = struct
         ; attached_to_alias : bool
         }
 
-  let targets_without_stamp_file targets = function
-    | Normal_rule -> targets
+  let remove_stamp_file files = function
+    | Normal_rule -> files
     | Anonymous_action { stamp_file; _ } ->
-      Targets.remove_file targets stamp_file
+      Path.Build.Set.remove files stamp_file
 
   let execute_action_for_rule t ~rule_kind ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
@@ -1545,8 +1545,9 @@ end = struct
             | Some sandbox ->
               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)
-              let targets = targets_without_stamp_file targets rule_kind in
-              Sandbox.move_targets_to_build_dir sandbox ~loc ~targets
+              let files = remove_stamp_file (Targets.files targets) rule_kind in
+              Sandbox.move_targets_to_build_dir sandbox ~loc ~files
+                ~dirs:(Targets.dirs targets)
           in
           { Exec_result.files_in_directory_targets; action_exec_result })
     in

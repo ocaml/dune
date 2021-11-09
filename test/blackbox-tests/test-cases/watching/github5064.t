@@ -32,7 +32,7 @@ Now let's make [lib/a.ml] depend on [lib/b.ml]. It doesn't work!
   > EOF
 
   $ build x.exe
-  Failure
+  Success
 
 Let's try a manual restart.
 
@@ -42,10 +42,7 @@ Let's try a manual restart.
   Success, waiting for filesystem changes...
   waiting for inotify sync
   waited for inotify sync
-  File "_none_", line 1:
-  Error: No implementations provided for the following modules:
-           Lib__B referenced from lib/lib.cmxa(Lib__A)
-  Had errors, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
 
   $ start_dune
 

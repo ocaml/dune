@@ -645,12 +645,7 @@ let decode ~dir =
        field_b "allow_empty"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
      and+ lang_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-     let allow_empty =
-       if lang_version < (3, 0) then
-         true
-       else
-         allow_empty
-     in
+     let allow_empty = lang_version < (3, 0) || allow_empty in
      let id = { Id.name; dir } in
      { id
      ; loc

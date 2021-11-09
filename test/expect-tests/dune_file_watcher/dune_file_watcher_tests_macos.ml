@@ -35,21 +35,24 @@ let%expect_test _ =
   Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 3;
-  [%expect{|
+  [%expect
+    {|
     { path = In_source_tree "x"; kind = "Unknown" }
     Timed out waiting for more events: expected 3, saw 1 |}];
   Unix.rename "x" "y";
   print_events 2;
-  [%expect{|
+  [%expect
+    {|
     { path = In_source_tree "x"; kind = "Unknown" }
     { path = In_source_tree "y"; kind = "Unknown" } |}];
   let (_ : _) = Fpath.mkdir_p "d/w" in
   Stdio.Out_channel.write_all "d/w/x" ~data:"x";
   print_events 3;
-  [%expect{|
+  [%expect
+    {|
     { path = In_source_tree "d"; kind = "Created" }
     { path = In_source_tree "d/w"; kind = "Created" }
     { path = In_source_tree "d/w/x"; kind = "Unknown" } |}];
   Stdio.Out_channel.write_all "d/w/y" ~data:"y";
   print_events 1;
-  [%expect{| { path = In_source_tree "d/w/y"; kind = "Unknown" } |}]
+  [%expect {| { path = In_source_tree "d/w/y"; kind = "Unknown" } |}]

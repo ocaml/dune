@@ -303,7 +303,7 @@ end = struct
                   ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
                   Section.Doc mld
               in
-              { Install.Entry.Sourced.entry; source = User Loc.none })
+              Install.Entry.Sourced.create ~loc:d.loc entry)
         | Dune_file.Plugin t -> Plugin_rules.install_rules ~sctx ~dir t
         | _ -> Memo.Build.return []
       in

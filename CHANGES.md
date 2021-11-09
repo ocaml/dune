@@ -1,6 +1,24 @@
 Unreleased
 ----------
 
+- Run tests in all modes defined. Previously, jsoo was excluded. (@hhugo,
+  #5049, fix #4951)
+
+- Allow to configure the alias to run the jsoo tests (@hhugo, #5049, #4999)
+
+- Set jsoo compilation flags in the `env` stanza (@hhugo, #5049, #1613)
+
+- Allow to configure jsoo separate compilation in the `env` stanza. Previously,
+  it was hard coded to always be enabled in the `dev` profile. (@hhugo, #5049,
+  fix #970)
+
+- Fix build-info version in jsoo executables (@hhugo, #5049, fix #4444)
+
+- Pass `-no-check-prims` when building bytecode for jsoo (@hhugo, #5049, #4027)
+
+- Fix jsoo builds when dynamically linked foreign archives are disabled
+  (@hhugo, #5049)
+
 - Warn on empty packages for projects < 3.0 and disallow them starting from 3.0
   Empty packages may be re-enabled by adding the `(allow_empty)` to the package
   stanza in the dune-project file. (#4867, fix #2882, @kit-ty-kate, @rgrinberg)

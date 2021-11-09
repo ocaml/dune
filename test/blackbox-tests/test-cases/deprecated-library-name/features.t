@@ -7,8 +7,8 @@ Test that deprecated library names are supported in a given workspace
   $ for i in a b c; do
   >   mkdir $i
   >   cat >$i/dune-project <<EOF
-  > (lang dune 3.0)
-  > (package (name $i) (allow_empty))
+  > (lang dune 2.0)
+  > (package (name $i))
   > EOF
   > done
 
@@ -203,9 +203,6 @@ Checks that we can migrate top-level libraries across packages.
   > EOF
 
   $ (cd d && dune build --root . @install)
-  Warning: The package p does not have any user defined stanzas attached to it.
-  If this is intentional, add (allow_empty) to the package definition in the
-  dune-project file
 
   $ dune_cmd cat d/_build/install/default/lib/top1/META
   requires = "q.bar"
@@ -225,9 +222,6 @@ old public name:
   > EOF
 
   $ (cd d && dune build --root . @all)
-  Warning: The package p does not have any user defined stanzas attached to it.
-  If this is intentional, add (allow_empty) to the package definition in the
-  dune-project file
 
   $ dune_cmd cat d/_build/install/default/lib/top2/META
   requires = "q.top2"
@@ -403,6 +397,3 @@ across projects.
   > EOF
 
   $ (cd d/p && dune build --root . @all)
-  Warning: The package b does not have any user defined stanzas attached to it.
-  If this is intentional, add (allow_empty) to the package definition in the
-  dune-project file

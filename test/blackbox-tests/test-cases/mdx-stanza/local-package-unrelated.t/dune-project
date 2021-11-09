@@ -1,12 +1,4 @@
-(lang dune 3.0)
+(lang dune 2.4)
 (name pkg)
-
-(package
- (name pkg)
- (allow_empty))
-
-(package
- (name unrelated-package)
- (allow_empty))
 
 (using mdx 0.1)

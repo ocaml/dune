@@ -1,5 +1,1 @@
-(lang dune 3.0)
-
-(package
- (name stub)
- (allow_empty))
+(lang dune 1.0)

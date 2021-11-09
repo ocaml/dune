@@ -1,5 +1,1 @@
-(lang dune 3.0)
-
-(package
- (name eif)
- (allow_empty))
+(lang dune 2.3)

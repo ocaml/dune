@@ -42,8 +42,6 @@ module RunLoop = struct
     (* After this function terminates, the reference to [t] is no longer
        valid *)
     external run_current_thread : t -> unit = "dune_fsevents_runloop_run"
-
-    external stop : t -> unit = "dune_fsevents_runloop_stop"
   end
 
   type state =
@@ -58,9 +56,7 @@ module RunLoop = struct
   let stop (t : t) =
     State.critical_section t (fun t ->
         match State.get t with
-        | Running raw ->
-          State.set t Stopped;
-          Raw.stop raw
+        | Running _ -> State.set t Stopped
         | Stopped -> ()
         | Idle _ -> Code_error.raise "RunLoop.stop: not started" [])
 

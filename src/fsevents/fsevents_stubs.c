@@ -1,5 +1,6 @@
 #include <caml/alloc.h>
 #include <caml/callback.h>
+#include <caml/custom.h>
 #include <caml/fail.h>
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
@@ -21,6 +22,19 @@ typedef struct dune_fsevents_t {
   value v_exn;
 } dune_fsevents_t;
 
+#define Runloop_val(v) (*((dune_runloop **)Data_custom_val(v)))
+
+void dune_fsevents_runloop_finalize(value v_runloop) {
+  dune_runloop *runloop = Runloop_val(v_runloop);
+  caml_stat_free(runloop);
+}
+
+static struct custom_operations dune_fsevents_runloop_ops = {
+    "dune.fsevents.runloop",    dune_fsevents_runloop_finalize,
+    custom_compare_default,     custom_hash_default,
+    custom_serialize_default,   custom_deserialize_default,
+    custom_compare_ext_default, custom_fixed_length_default};
+
 CAMLprim value dune_fsevents_runloop_current(value v_unit) {
   CAMLparam1(v_unit);
   dune_runloop *rl;
@@ -28,28 +42,23 @@ CAMLprim value dune_fsevents_runloop_current(value v_unit) {
   rl->runloop = CFRunLoopGetCurrent();
   rl->v_exn = Val_unit;
   caml_register_global_root(&rl->v_exn);
-  CAMLreturn(caml_copy_nativeint((intnat)rl));
+  value v_runloop = caml_alloc_custom(&dune_fsevents_runloop_ops,
+                                      sizeof(dune_runloop *), 0, 1);
+  Runloop_val(v_runloop) = rl;
+  CAMLreturn(v_runloop);
 }
 
 CAMLprim value dune_fsevents_runloop_run(value v_runloop) {
   CAMLparam1(v_runloop);
   CAMLlocal1(v_exn);
-  dune_runloop *runloop = (dune_runloop *)Nativeint_val(v_runloop);
+  dune_runloop *runloop = Runloop_val(v_runloop);
   caml_release_runtime_system();
   CFRunLoopRun();
   caml_acquire_runtime_system();
   caml_remove_global_root(&runloop->v_exn);
   v_exn = runloop->v_exn;
-  caml_stat_free(runloop);
   if (v_exn != Val_unit)
     caml_raise(v_exn);
-  CAMLreturn(Val_unit);
-}
-
-CAMLprim value dune_fsevents_runloop_stop(value v_runloop) {
-  CAMLparam1(v_runloop);
-  dune_runloop *runloop = (dune_runloop *)Nativeint_val(v_runloop);
-  CFRunLoopStop(runloop->runloop);
   CAMLreturn(Val_unit);
 }
 
@@ -178,7 +187,7 @@ CAMLprim value dune_fsevents_set_exclusion_paths(value v_t, value v_paths) {
 CAMLprim value dune_fsevents_start(value v_t, value v_runloop) {
   CAMLparam2(v_t, v_runloop);
   dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
-  dune_runloop *runloop = (dune_runloop *)Nativeint_val(v_runloop);
+  dune_runloop *runloop = Runloop_val(v_runloop);
   t->runloop = runloop;
   FSEventStreamScheduleWithRunLoop(t->stream, runloop->runloop,
                                    kCFRunLoopDefaultMode);
@@ -382,10 +391,6 @@ CAMLprim value dune_fsevents_runloop_current(value v_unit) {
 CAMLprim value dune_fsevents_runloop_run(value v_unit) {
   caml_failwith("fsevents is only available on macos");
 }
-CAMLprim value dune_fsevents_runloop_stop(value v_runloop) {
-  caml_failwith("fsevents is only available on macos");
-}
-
 CAMLprim value dune_fsevents_available(value unit) {
   CAMLparam1(unit);
   CAMLreturn(Val_false);

@@ -196,7 +196,6 @@ let init ?log_file c =
   Clflags.diff_command := c.diff_command;
   Clflags.promote := c.promote;
   Clflags.force := c.force;
-  Clflags.watch := c.watch;
   Clflags.no_print_directory := c.no_print_directory;
   Clflags.store_orig_src_dir := c.store_orig_src_dir;
   Clflags.promote_install_files := c.promote_install_files;

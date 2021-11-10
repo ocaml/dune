@@ -3,9 +3,8 @@ open Dune_rpc_private
 (* Internal RPC requests *)
 
 module Build_outcome : sig
-  type t = Dune_engine.Scheduler.Run.Build_outcome_for_rpc.t =
+  type t = Dune_engine.Scheduler.Run.Build_outcome.t =
     | Success
-    | Restart of { details_hum : string list }
     | Failure
 
   val sexp : (t, Conv.values) Conv.t

@@ -62,19 +62,22 @@ module Scheduler = struct
   include Dune_engine.Scheduler
 
   let maybe_clear_screen ~details_hum (dune_config : Dune_config.t) =
-    match dune_config.terminal_persistence with
-    | Clear_on_rebuild -> Console.reset ()
-    | Preserve ->
-      let message =
-        sprintf "********** NEW BUILD (%s) **********"
-          (String.concat ~sep:", " details_hum)
-      in
-      Console.print_user_message
-        (User_message.make
-           [ Pp.nop
-           ; Pp.tag User_message.Style.Success (Pp.verbatim message)
-           ; Pp.nop
-           ])
+    match Dune_util.Config.inside_dune with
+    | true -> (* Don't print anything here to make tests less verbose *) ()
+    | false -> (
+      match dune_config.terminal_persistence with
+      | Clear_on_rebuild -> Console.reset ()
+      | Preserve ->
+        let message =
+          sprintf "********** NEW BUILD (%s) **********"
+            (String.concat ~sep:", " details_hum)
+        in
+        Console.print_user_message
+          (User_message.make
+             [ Pp.nop
+             ; Pp.tag User_message.Style.Success (Pp.verbatim message)
+             ; Pp.nop
+             ]))
 
   let on_event dune_config _config = function
     | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()

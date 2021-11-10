@@ -36,16 +36,18 @@ module Config : sig
 end
 
 module Run : sig
-  module Event : sig
-    type build_result =
+  module Build_outcome : sig
+    type t =
       | Success
       | Failure
+  end
 
+  module Event : sig
     type t =
       | Tick
       | Source_files_changed of { details_hum : string list }
       | Build_interrupted
-      | Build_finish of build_result
+      | Build_finish of Build_outcome.t
   end
 
   type file_watcher =
@@ -69,20 +71,13 @@ module Run : sig
       will not start. *)
   val poll : step -> unit Fiber.t
 
-  module Build_outcome_for_rpc : sig
-    type t =
-      | Success
-      | Restart of { details_hum : string list }
-      | Failure
-  end
-
   (** [poll_passive] is similar to [poll], but it can be used to drive the
       polling loop explicitly instead of starting new iterations automatically.
 
       The fiber [get_build_request] is run at the beginning of every iteration
       to wait for the build signal. *)
   val poll_passive :
-       get_build_request:(step * Build_outcome_for_rpc.t Fiber.Ivar.t) Fiber.t
+       get_build_request:(step * Build_outcome.t Fiber.Ivar.t) Fiber.t
     -> unit Fiber.t
 
   val go :

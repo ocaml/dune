@@ -172,8 +172,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
             await
               ~emit:(fun sync -> sync#emit_stop)
               ~continue:(fun sync -> not sync#stopped)
-              syncs;
-            Fsevents.RunLoop.stop runloop)
+              syncs)
           ()
       in
       (match Fsevents.RunLoop.run_current_thread runloop with

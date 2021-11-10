@@ -10,8 +10,6 @@ module RunLoop : sig
   val in_current_thread : unit -> t
 
   val run_current_thread : t -> (unit, exn) result
-
-  val stop : t -> unit
 end
 
 module Event : sig

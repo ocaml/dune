@@ -265,8 +265,7 @@ let shutdown t =
         Fsevents.stop fsevents.source;
         Fsevents.stop fsevents.sync;
         Watch_trie.to_list fsevents.external_
-        |> List.iter ~f:(fun (_, fs) -> Fsevents.stop fs);
-        Fsevents.RunLoop.stop fsevents.runloop)
+        |> List.iter ~f:(fun (_, fs) -> Fsevents.stop fs))
 
 let buffer_capacity = 65536
 

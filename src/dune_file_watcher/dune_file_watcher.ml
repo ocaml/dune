@@ -185,6 +185,10 @@ let exclude_regex =
 
 let should_exclude path = Re.execp exclude_regex path
 
+module For_tests = struct
+  let should_exclude = should_exclude
+end
+
 (* [process_inotify_event] needs to run in the scheduler thread because it
    accesses [t.ignored_files]. *)
 let process_inotify_event ~ignored_files

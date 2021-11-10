@@ -152,3 +152,7 @@ val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
     wake up at a rate of once per 0.1 seconds. So [duration] should be at least
     this long. *)
 val sleep : float -> unit Fiber.t
+
+(** Wait until all file system changes that happened so far have been
+    acknowledged by the scheduler. *)
+val flush_file_watcher : unit -> unit Fiber.t

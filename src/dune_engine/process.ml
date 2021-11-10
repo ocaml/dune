@@ -152,7 +152,7 @@ end
 
 type purpose =
   | Internal_job of Loc.t option * User_message.Annots.t
-  | Build_job of Loc.t option * User_message.Annots.t * Targets.t
+  | Build_job of Loc.t option * User_message.Annots.t * Targets.Validated.t
 
 let loc_and_annots_of_purpose = function
   | Internal_job (loc, annots) -> (loc, annots)
@@ -341,9 +341,8 @@ end = struct
               (add_ctx ctx ctxs_acc) rest)
       in
       let target_names, contexts =
-        let file_targets, directory_targets =
-          Targets.partition_map targets ~file:Fun.id ~dir:Fun.id
-        in
+        let file_targets = Path.Build.Set.to_list targets.files in
+        let directory_targets = Path.Build.Set.to_list targets.dirs in
         split_paths [] Context_name.Set.empty (file_targets @ directory_targets)
       in
       let targets =

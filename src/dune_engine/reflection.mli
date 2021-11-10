@@ -9,7 +9,7 @@ module Rule : sig
     ; (* [expanded_deps] skips over non-file dependencies, such as: environment
          variables, universe, glob listings, sandbox requirements *)
       expanded_deps : Path.Set.t
-    ; targets : Targets.t
+    ; targets : Targets.Validated.t
     ; context : Build_context.t option
     ; action : Action.t
     }

@@ -8,7 +8,7 @@ module Rule = struct
     ; dir : Path.Build.t
     ; deps : Dep.Set.t
     ; expanded_deps : Path.Set.t
-    ; targets : Targets.t
+    ; targets : Targets.Validated.t
     ; context : Build_context.t option
     ; action : Action.t
     }
@@ -101,5 +101,5 @@ let eval ~recursive ~request =
       ; Pp.chain cycle ~f:(fun rule ->
             Pp.verbatim
               (Path.to_string_maybe_quoted
-                 (Path.build (Targets.head_exn rule.targets))))
+                 (Path.build (Targets.Validated.head rule.targets))))
       ]

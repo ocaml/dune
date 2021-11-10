@@ -21,10 +21,6 @@ end
 
 let create ~files ~dirs = { files; dirs }
 
-let files t = t.files
-
-let dirs t = t.dirs
-
 let empty = { files = Path.Build.Set.empty; dirs = Path.Build.Set.empty }
 
 let combine x y =
@@ -60,23 +56,23 @@ let pp { files; dirs } =
 let exists { files; dirs } ~f =
   Path.Build.Set.exists files ~f || Path.Build.Set.exists dirs ~f
 
-let partition_map { files; dirs } ~file ~dir =
-  ( Path.Build.Set.to_list_map files ~f:file
-  , Path.Build.Set.to_list_map dirs ~f:dir )
+module Validated = struct
+  type nonrec t = t =
+    { files : Path.Build.Set.t
+    ; dirs : Path.Build.Set.t
+    }
 
-let iter { files; dirs } ~file ~dir =
-  Path.Build.Set.iter files ~f:file;
-  Path.Build.Set.iter dirs ~f:dir
+  let to_dyn = to_dyn
 
-let map { files; dirs } ~f = f ~files ~dirs
-
-let fold { files; dirs } ~init ~file ~dir =
-  let init = Path.Build.Set.fold files ~init ~f:file in
-  Path.Build.Set.fold dirs ~init ~f:dir
+  let head = head_exn
+end
 
 module Validation_result = struct
   type t =
-    | Valid of { parent_dir : Path.Build.t }
+    | Valid of
+        { parent_dir : Path.Build.t
+        ; targets : Validated.t
+        }
     | No_targets
     | Inconsistent_parent_dir
     | File_and_directory_target_with_the_same_name of Path.Build.t
@@ -94,4 +90,4 @@ let validate t =
         exists t ~f:(fun path -> Path.Build.(parent_exn path <> parent_dir))
       with
       | true -> Inconsistent_parent_dir
-      | false -> Valid { parent_dir }))
+      | false -> Valid { parent_dir; targets = t }))

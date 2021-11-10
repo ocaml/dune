@@ -470,10 +470,9 @@ let () =
       pending_targets := Path.Build.Set.empty;
       Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
 
-let compute_target_digests targets =
-  let file_targets, (_ignored_dir_targets : unit list) =
-    Targets.partition_map targets ~file:Fun.id ~dir:ignore
-  in
+let compute_target_digests (targets : Targets.Validated.t) =
+  (* CR-someday amokhov: Do not ignore directory targets. *)
+  let file_targets = Path.Build.Set.to_list targets.files in
   Option.List.traverse file_targets ~f:(fun target ->
       Cached_digest.build_file target
       |> Cached_digest.Digest_result.to_option
@@ -736,13 +735,14 @@ end = struct
     let file_targets, directory_targets =
       List.map rules ~f:(fun rule ->
           assert (Path.Build.( = ) dir rule.Rule.dir);
-          Targets.partition_map rule.targets
-            ~file:(fun target ->
-              if String.Set.mem source_dirs (Path.Build.basename target) then
-                report_rule_src_dir_conflict dir target rule
-              else
-                (target, rule))
-            ~dir:(fun target -> (target, rule)))
+          ( Path.Build.Set.to_list_map rule.targets.files ~f:(fun target ->
+                if String.Set.mem source_dirs (Path.Build.basename target) then
+                  report_rule_src_dir_conflict dir target rule
+                else
+                  (target, rule))
+          , Path.Build.Set.to_list_map rule.targets.dirs ~f:(fun target ->
+                (* CR-someday amokhov: Check there is no matching source dir. *)
+                (target, rule)) ))
       |> List.unzip
     in
     (* CR-someday amokhov: Report rule conflicts for all targets rather than
@@ -834,17 +834,15 @@ end = struct
           true
         | Fallback ->
           let source_files_for_targets =
-            (* All targets are in [dir] and we know it correspond to a directory
-               of a build context since there are source files to copy, so this
-               call can't fail. *)
-            let file_targets, (_dir_targets_not_allowed : Nothing.t list) =
-              Targets.partition_map rule.targets
-                ~file:Path.Build.drop_build_context_exn ~dir:(fun dir ->
-                  Code_error.raise
-                    "Unexpected directory target in a Fallback rule"
-                    [ ("dir", Dyn.String (Path.Build.to_string dir)) ])
-            in
-            Path.Source.Set.of_list file_targets
+            if not (Path.Build.Set.is_empty rule.targets.dirs) then
+              Code_error.raise "Unexpected directory target in a Fallback rule"
+                [ ("targets", Targets.Validated.to_dyn rule.targets) ];
+            Path.Build.Set.to_list_map
+              rule.targets.files
+              (* All targets are in a directory of a build context since there
+                 are source files to copy, so this call can't fail. *)
+              ~f:Path.Build.drop_build_context_exn
+            |> Path.Source.Set.of_list
           in
           if Path.Source.Set.is_subset source_files_for_targets ~of_:to_copy
           then
@@ -963,28 +961,20 @@ end = struct
       List.fold_left rules ~init:Path.Build.Set.empty
         ~f:(fun acc_ignored { Rule.targets; mode; loc; _ } ->
           (* CR-someday amokhov: Remove this limitation. *)
-          let directory_targets_not_supported ~dirs =
-            if not (Path.Build.Set.is_empty dirs) then
+          let directory_targets_not_supported ~targets =
+            if not (Path.Build.Set.is_empty targets.Targets.Validated.dirs) then
               User_error.raise ~loc
                 [ Pp.text "Directory targets are not supported for this mode" ]
           in
           match mode with
           | Promote { only = None; _ }
           | Ignore_source_files ->
-            let file_targets =
-              Targets.map targets ~f:(fun ~files ~dirs ->
-                  directory_targets_not_supported ~dirs;
-                  files)
-            in
-            Path.Build.Set.union file_targets acc_ignored
+            directory_targets_not_supported ~targets;
+            Path.Build.Set.union targets.files acc_ignored
           | Promote { only = Some pred; _ } ->
-            let file_targets =
-              Targets.map targets ~f:(fun ~files ~dirs ->
-                  directory_targets_not_supported ~dirs;
-                  files)
-            in
+            directory_targets_not_supported ~targets;
             let to_ignore =
-              Path.Build.Set.filter file_targets ~f:(fun target ->
+              Path.Build.Set.filter targets.files ~f:(fun target ->
                   Predicate_lang.Glob.exec pred
                     (Path.reach (Path.build target) ~from:(Path.build dir))
                     ~standard:Predicate_lang.any)
@@ -1373,9 +1363,11 @@ end = struct
         } =
       action
     in
-    let file_targets, dir_targets =
-      Targets.partition_map rule.targets ~file:Path.Build.to_string
-        ~dir:Path.Build.to_string
+    let file_targets =
+      Path.Build.Set.to_list_map rule.targets.files ~f:Path.Build.to_string
+    in
+    let dir_targets =
+      Path.Build.Set.to_list_map rule.targets.dirs ~f:Path.Build.to_string
     in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
@@ -1465,12 +1457,8 @@ end = struct
 
   let execute_action_for_rule t ~rule_kind ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
-      ~dir ~targets =
+      ~dir ~(targets : Targets.Validated.t) =
     let open Fiber.O in
-    let file_targets, has_directory_targets =
-      Targets.map targets ~f:(fun ~files ~dirs ->
-          (files, not (Path.Build.Set.is_empty dirs)))
-    in
     let { Action.Full.action
         ; env
         ; locks
@@ -1479,7 +1467,7 @@ end = struct
         } =
       action
     in
-    pending_targets := Path.Build.Set.union file_targets !pending_targets;
+    pending_targets := Path.Build.Set.union targets.files !pending_targets;
     let chdirs = Action.chdirs action in
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
@@ -1496,7 +1484,7 @@ end = struct
            without sandboxing. We just need to make sure we clean up all stale
            directory targets before running the rule and then we can discover
            all created files right in the build directory. *)
-        if has_directory_targets then
+        if not (Path.Build.Set.is_empty targets.dirs) then
           User_error.raise ~loc
             [ Pp.text "Rules with directory targets must be sandboxed." ];
         action
@@ -1545,15 +1533,15 @@ end = struct
             | Some sandbox ->
               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)
-              let files = remove_stamp_file (Targets.files targets) rule_kind in
+              let files = remove_stamp_file targets.files rule_kind in
               Sandbox.move_targets_to_build_dir sandbox ~loc ~files
-                ~dirs:(Targets.dirs targets)
+                ~dirs:targets.dirs
           in
           { Exec_result.files_in_directory_targets; action_exec_result })
     in
     Option.iter sandbox ~f:Sandbox.destroy;
     (* All went well, these targets are no longer pending *)
-    pending_targets := Path.Build.Set.diff !pending_targets file_targets;
+    pending_targets := Path.Build.Set.diff !pending_targets targets.files;
     exec_result
 
   let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets =
@@ -1667,7 +1655,7 @@ end = struct
       rule
     in
     start_rule t rule;
-    let head_target = Targets.head_exn targets in
+    let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target dir with
       | Regular (With_context (_, dir))
@@ -1818,13 +1806,8 @@ end = struct
               ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
             (* Step I. Remove stale targets both from the digest table and from
                the build directory. *)
-            let file_targets =
-              Targets.map targets ~f:(fun ~files ~dirs ->
-                  (* CR-someday amokhov: Don't ignore directory targets *)
-                  ignore dirs;
-                  files)
-            in
-            Path.Build.Set.iter file_targets ~f:(fun target ->
+            (* CR-someday amokhov: Don't ignore directory targets. *)
+            Path.Build.Set.iter targets.files ~f:(fun target ->
                 Cached_digest.remove target;
                 Path.Build.unlink_no_err target);
             (* Step II. Try to restore artifacts from the shared cache if the
@@ -1892,27 +1875,24 @@ end = struct
                   (* Step IV. Store results to the shared cache and if that step
                      fails, post-process targets by removing write permissions
                      and computing their digests. *)
-                  let file_targets, dir_targets =
-                    Targets.map targets ~f:(fun ~files ~dirs -> (files, dirs))
-                  in
                   match t.cache_config with
                   | Enabled { storage_mode = mode; reproducibility_check = _ }
                     when can_go_in_shared_cache
                          (* CR-someday amokhov: Add support for caching rules
                             with directory targets. *)
-                         && Path.Build.Set.is_empty dir_targets -> (
+                         && Path.Build.Set.is_empty targets.dirs -> (
                     let+ targets_and_digests =
                       try_to_store_to_shared_cache ~mode ~rule_digest
-                        ~file_targets ~action:action.action
+                        ~file_targets:targets.files ~action:action.action
                     in
                     match targets_and_digests with
                     | Some targets_and_digests -> targets_and_digests
                     | None ->
                       compute_target_digests_or_raise_error execution_parameters
-                        ~loc file_targets)
+                        ~loc targets.files)
                   | _ ->
                     let targets =
-                      Path.Build.Set.union file_targets
+                      Path.Build.Set.union targets.files
                         exec_result.files_in_directory_targets
                     in
                     Fiber.return
@@ -2147,21 +2127,22 @@ end = struct
             Path.Build.drop_build_context_exn path
             |> Path.Source.to_string_maybe_quoted
           in
-          let _matching_files, matching_dirs =
-            Targets.partition_map rule.targets ~file:ignore ~dir:(fun dir ->
+          let matching_dirs =
+            Path.Build.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
                 match Path.Build.is_descendant path ~of_:dir with
                 | true -> [ dir ]
                 | false -> [])
+            |> List.concat
           in
           let matching_target =
-            match List.concat matching_dirs with
+            match matching_dirs with
             | [ dir ] ->
               Path.Build.drop_build_context_exn dir
               |> Path.Source.to_string_maybe_quoted
             | []
             | _ :: _ ->
               Code_error.raise "Multiple matching directory targets"
-                [ ("targets", Targets.to_dyn rule.targets) ]
+                [ ("targets", Targets.Validated.to_dyn rule.targets) ]
           in
           User_error.raise ~loc:rule.loc
             ~annots:

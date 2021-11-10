@@ -117,9 +117,8 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                 ; package = t.package
                 }
               in
-
               add_alias ~loc ~action:(Diff diff) ~locks:t.locks
-              >>> let+ (_ignored_targets : Targets.t) =
+              >>> let+ (_ignored_targets : Targets.Validated.t option) =
                     Simple_rules.user_rule sctx rule ~extra_bindings ~dir
                       ~expander
                   in

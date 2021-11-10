@@ -31,7 +31,8 @@ module Dir_rules = struct
   let data_to_dyn = function
     | Rule rule ->
       Dyn.Variant
-        ("Rule", [ Record [ ("targets", Targets.to_dyn rule.targets) ] ])
+        ( "Rule"
+        , [ Record [ ("targets", Targets.Validated.to_dyn rule.targets) ] ] )
     | Alias alias ->
       Dyn.Variant
         ("Alias", [ Record [ ("name", Alias.Name.to_dyn alias.name) ] ])

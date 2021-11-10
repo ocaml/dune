@@ -20,14 +20,14 @@ module Alias_rules : sig
     -> unit Memo.Build.t
 end
 
-(** Interpret a [(rule ...)] stanza and return the targets it produces. *)
+(** Interpret a [(rule ...)] stanza and return the targets it produces, if any. *)
 val user_rule :
      Super_context.t
   -> ?extra_bindings:Value.t list Pform.Map.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Rule.t
-  -> Targets.t Memo.Build.t
+  -> Targets.Validated.t option Memo.Build.t
 
 (** Interpret a [(copy_files ...)] stanza and return the targets it produces. *)
 val copy_files :

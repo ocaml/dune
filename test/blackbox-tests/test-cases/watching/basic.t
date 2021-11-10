@@ -59,17 +59,9 @@ Basic tests for the file-watching mode.
 
   $ with_timeout dune shutdown
   $ cat dune-output
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   File "dune", line 1, characters 0-57:
   1 | (rule
   2 |  (target y)
@@ -77,8 +69,6 @@ Basic tests for the file-watching mode.
   4 |  (action (bash "cat x > y")))
   Error: No rule found for x
   Had errors, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   File "dune", line 1, characters 0-57:
   1 | (rule
   2 |  (target y)
@@ -86,6 +76,4 @@ Basic tests for the file-watching mode.
   4 |  (action (bash "cat x > y")))
   Error: No rule found for x
   Had errors, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

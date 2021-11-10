@@ -11,6 +11,7 @@ Bad rule! You are not supposed to modify the source tree. No ice-cream for you!
   >   (target result)
   >   (action (bash "\| echo %{deps} > result
   >                 "\| touch ../../new-source.txt
+  >                 "\| sleep 0.01
   > )))
   > EOF
 
@@ -39,9 +40,7 @@ same, i.e. the empty file.
   $ cat _build/default/new-source.txt
 
 
+We are done.
+
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

@@ -302,15 +302,8 @@ module Metadata = struct
   let restore = restore ~metadata_path:Layout.metadata_path
 end
 
-module Temp = Temp.Monad (struct
-  type nonrec 'a t = 'a Fiber.t
-
-  let protect ~f ~finally =
-    Fiber.finalize f ~finally:(fun () -> finally () |> Fiber.return)
-end)
-
 let with_temp_file ?(prefix = "dune") ~suffix f =
-  Temp.with_temp_file ~dir:Layout.temp_dir ~prefix ~suffix ~f
+  Fiber_util.Temp.with_temp_file ~dir:Layout.temp_dir ~prefix ~suffix ~f
 
 let with_temp_dir ?(prefix = "dune") ~suffix f =
-  Temp.with_temp_dir ~parent_dir:Layout.temp_dir ~prefix ~suffix ~f
+  Fiber_util.Temp.with_temp_dir ~parent_dir:Layout.temp_dir ~prefix ~suffix ~f

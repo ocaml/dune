@@ -52,11 +52,5 @@ depending on how quickly Dune reacts to the first change.
   new-contents2
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

@@ -90,6 +90,11 @@ let temp_in_dir ?perms what ~dir ~prefix ~suffix =
 
 let create ?perms what ~prefix ~suffix =
   let dir =
+    (* CR-someday amokhov: There are two issues with this: (i) we run this code
+       every time we create a temporary file, which seems unnecessary; (ii) the
+       resulting [dir] may end up being on a different partition, which could be
+       a problem if we are using temporary files for atomic file operations.
+       Perhaps, we should use something like [_build/.temp] instead? *)
     Filename.get_temp_dir_name () |> Path.of_filename_relative_to_initial_cwd
   in
   temp_in_dir ?perms what ~dir ~prefix ~suffix

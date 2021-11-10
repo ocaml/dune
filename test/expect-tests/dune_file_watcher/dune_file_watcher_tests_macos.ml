@@ -26,7 +26,7 @@ let%expect_test _ =
           events_buffer := [];
           Some
             (List.map list ~f:(function
-              | Dune_file_watcher.Event.Sync -> assert false
+              | Dune_file_watcher.Event.Sync _ -> assert false
               | Queue_overflow -> assert false
               | Fs_memo_event e -> e
               | Watcher_terminated -> assert false)))

@@ -38,11 +38,13 @@ module Fs_memo_event : sig
   val to_dyn : t -> Dyn.t
 end
 
+module Sync_id : Id.S
+
 module Event : sig
   type t =
     | Fs_memo_event of Fs_memo_event.t
     | Queue_overflow
-    | Sync
+    | Sync of Sync_id.t
     | Watcher_terminated
 end
 
@@ -71,7 +73,7 @@ val wait_for_initial_watches_established_blocking : t -> unit
 (** Cause a [Sync] event to be propagated through the notification subsystem to
     attempt to make sure that we've processed all the events that happened so
     far. *)
-val emit_sync : unit -> unit
+val emit_sync : t -> Sync_id.t
 
 val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result
 

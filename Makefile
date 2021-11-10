@@ -110,9 +110,10 @@ distclean: clean
 doc:
 	sphinx-build doc doc/_build
 
+# livedoc-deps: you may need to [pip3 install sphinx-autobuild] and [pip3 install sphinx-rtd-theme]
 livedoc:
 	cd doc && sphinx-autobuild . _build \
-	  -p 8888 -q  --host $(shell hostname) -r '\.#.*'
+	  --port 8888 -q  --host $(shell hostname) --re-ignore '\.#.*'
 
 update-jbuilds: $(BIN)
 	$(BIN) build @doc/runtest --auto-promote

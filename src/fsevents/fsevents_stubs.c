@@ -49,9 +49,7 @@ CAMLprim value dune_fsevents_runloop_run(value v_runloop) {
 CAMLprim value dune_fsevents_runloop_stop(value v_runloop) {
   CAMLparam1(v_runloop);
   dune_runloop *runloop = (dune_runloop *)Nativeint_val(v_runloop);
-  caml_release_runtime_system();
   CFRunLoopStop(runloop->runloop);
-  caml_acquire_runtime_system();
   CAMLreturn(Val_unit);
 }
 

@@ -722,10 +722,6 @@ type status =
   | (* Waiting for file changes to start a new a build *)
       Waiting_for_file_changes of
       Memo.Invalidation.t Fiber.Ivar.t
-  | (* Waiting for the propagation of inotify events to finish before starting a
-       build. *)
-      Waiting_for_inotify_sync of
-      Dune_file_watcher.Sync_id.t * Memo.Invalidation.t * unit Fiber.Ivar.t
   | (* Running a build *)
       Building
   | (* Cancellation requested. Build jobs are immediately rejected in this
@@ -852,6 +848,7 @@ type t =
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
   ; file_watcher : Dune_file_watcher.t option
+  ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
@@ -891,7 +888,6 @@ let with_job_slot f =
       raise (Memo.Non_reproducible Build_cancelled)
     | Building -> ()
     | Waiting_for_file_changes _
-    | Waiting_for_inotify_sync _
     | Standing_by _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
          tasks here. *)
@@ -966,6 +962,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
         ; config
         ; handler
         ; file_watcher
+        ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
         ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
         }
       in
@@ -1011,12 +1008,11 @@ end = struct
       Event.Queue.send_file_watcher_events t.events events;
       iter t
     | File_system_sync id -> (
-      match t.status with
-      | Waiting_for_inotify_sync (id', invalidation, ivar)
-        when Dune_file_watcher.Sync_id.equal id id' ->
-        t.status <- Standing_by invalidation;
-        Fill (ivar, ())
-      | _ -> iter t)
+      match Dune_file_watcher.Sync_id.Table.find t.fs_syncs id with
+      | None -> iter t
+      | Some ivar ->
+        Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
+        Fill (ivar, ()))
     | Build_inputs_changed events -> (
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
@@ -1053,13 +1049,7 @@ end = struct
           t.status <- Restarting_build invalidation;
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
-        | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)
-        | Waiting_for_inotify_sync (id, prev_invalidation, ivar) ->
-          let invalidation =
-            Memo.Invalidation.combine prev_invalidation invalidation
-          in
-          t.status <- Waiting_for_inotify_sync (id, invalidation, ivar);
-          iter t))
+        | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)))
     | Timer fill
     | Worker_task fill ->
       fill
@@ -1135,6 +1125,15 @@ module Worker = struct
     | Error (`Exn e) -> Exn_with_backtrace.reraise e
 end
 
+let flush_file_watcher t =
+  match t.file_watcher with
+  | None -> Fiber.return ()
+  | Some file_watcher ->
+    let ivar = Fiber.Ivar.create () in
+    let id = Dune_file_watcher.emit_sync file_watcher in
+    Dune_file_watcher.Sync_id.Table.set t.fs_syncs id ivar;
+    Fiber.Ivar.read ivar
+
 module Run = struct
   exception Build_cancelled = Build_cancelled
 
@@ -1165,7 +1164,6 @@ module Run = struct
     let+ res = step in
     match t.status with
     | Waiting_for_file_changes _
-    | Waiting_for_inotify_sync _
     | Standing_by _ ->
       (* We just finished a build, so there's no way this was set *)
       assert false
@@ -1227,18 +1225,6 @@ module Run = struct
         in
         Fiber.return (step, handle_outcome))
 
-  let wait_for_inotify_sync t sync_id =
-    let ivar = Fiber.Ivar.create () in
-    match t.status with
-    | Standing_by invalidation ->
-      t.status <- Waiting_for_inotify_sync (sync_id, invalidation, ivar);
-      Fiber.Ivar.read ivar
-    | _ -> assert false
-
-  let do_inotify_sync t =
-    let id = Dune_file_watcher.emit_sync (Option.value_exn t.file_watcher) in
-    wait_for_inotify_sync t id
-
   module Build_outcome_for_rpc = struct
     type t =
       | Success
@@ -1249,7 +1235,7 @@ module Run = struct
   let poll_passive ~get_build_request =
     poll_gen ~get_build_request:(fun t ->
         let* request, response_ivar = get_build_request in
-        let+ () = do_inotify_sync t in
+        let+ () = flush_file_watcher t in
         let handle_outcome (res : Build_outcome.t) =
           let+ () =
             Fiber.Ivar.fill response_ivar
@@ -1374,3 +1360,7 @@ let sleep duration =
   | `Cancelled ->
     (* cancellation mechanism isn't exposed to the user *)
     assert false
+
+let flush_file_watcher () =
+  let* t = t () in
+  flush_file_watcher t

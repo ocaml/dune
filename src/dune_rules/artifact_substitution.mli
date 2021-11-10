@@ -56,7 +56,9 @@ val encode : ?min_len:int -> t -> string
 (** [decode s] returns the value [t] such that [encode t = s]. *)
 val decode : string -> t option
 
-(** Copy a file, performing all required substitutions *)
+(** Copy a file, performing all required substitutions. The operation is atomic,
+    i.e., the contents is first copied to a temporary file in the same directory
+    and then atomically renamed to [dst]. *)
 val copy_file :
      conf:conf
   -> ?chmod:(int -> int)

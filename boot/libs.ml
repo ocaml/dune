@@ -17,6 +17,7 @@ let local_libraries =
   ; ("src/memo", Some "Memo", false, None)
   ; ("otherlibs/xdg", Some "Xdg", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
+  ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
   ; ("src/dune_cache", Some "Dune_cache", false, None)
   ; ("vendor/re/src", Some "Dune_re", false, None)

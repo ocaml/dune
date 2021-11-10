@@ -1,6 +1,32 @@
 open Stdune
 module Event = Fsevents.Event
 
+module Logger : sig
+  type t
+
+  val create : unit -> t
+
+  val printfn : t -> ('a, unit, string, unit) format4 -> 'a
+
+  val flush : t -> unit
+end = struct
+  type t = { messages : string Queue.t }
+
+  let create () = { messages = Queue.create () }
+
+  let printfn t fmt = Printf.ksprintf (fun s -> Queue.push t.messages s) fmt
+
+  let flush t =
+    let rec loop () =
+      match Queue.pop t.messages with
+      | None -> ()
+      | Some s ->
+        print_endline s;
+        loop ()
+    in
+    loop ()
+end
+
 let timeout_thread ~wait f =
   let spawn () =
     Thread.delay wait;
@@ -56,7 +82,7 @@ let test f =
   done;
   Mutex.unlock mutex
 
-let print_event ~cwd e =
+let print_event ~logger ~cwd e =
   let dyn =
     let open Dyn.Encoder in
     record
@@ -70,7 +96,7 @@ let print_event ~cwd e =
              | Some p -> "$TESTCASE_ROOT" ^ p) )
       ]
   in
-  printfn "> %s" (Dyn.to_string dyn)
+  Logger.printfn logger "> %s" (Dyn.to_string dyn)
 
 let make_callback sync ~f =
   (* hack to skip the first event if it's creating the temp dir *)
@@ -107,12 +133,15 @@ type test_config =
   { on_events : Event.t list -> unit
   ; exclusion_paths : string list
   ; dir : string
+  ; logger : Logger.t
   }
 
 let default_test_config cwd =
-  { on_events = List.iter ~f:(print_event ~cwd)
+  let logger = Logger.create () in
+  { on_events = List.iter ~f:(print_event ~logger ~cwd)
   ; dir = cwd
   ; exclusion_paths = []
+  ; logger
   }
 
 let test_with_multiple_fsevents ~setup ~test:f =
@@ -180,6 +209,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
       | Error _ -> assert false
       | Ok () -> ());
       Thread.join t;
+      List.iter configs ~f:(fun c -> Logger.flush c.logger);
       finish ())
 
 let test_with_operations ?on_event ?exclusion_paths f =
@@ -264,5 +294,5 @@ let%expect_test "multiple fsevents" =
       Io.String_path.write_file "xxx" "" (* this one is ignored *));
   [%expect
     {|
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" }
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" } |}]
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" }
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" } |}]

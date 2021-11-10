@@ -37,8 +37,9 @@ let%expect_test _ =
   print_events 3;
   [%expect
     {|
-    { path = In_source_tree "x"; kind = "Unknown" }
-    Timed out waiting for more events: expected 3, saw 1 |}];
+    { path = In_source_tree "."; kind = "Created" }
+    { path = In_build_dir "."; kind = "Created" }
+    { path = In_source_tree "x"; kind = "Unknown" } |}];
   Unix.rename "x" "y";
   print_events 2;
   [%expect

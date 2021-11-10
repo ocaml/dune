@@ -48,3 +48,19 @@
   spawn)
  (preprocess
   (pps ppx_expect)))
+
+(library
+ (name dune_file_watcher_tests_patterns)
+ (modules dune_file_watcher_tests_patterns)
+ (inline_tests
+  (deps
+   (sandbox always)))
+ (libraries
+  base
+  dune_file_watcher
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

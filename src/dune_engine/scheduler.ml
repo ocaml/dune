@@ -719,6 +719,11 @@ type status =
       Standing_by of
       { invalidation : Memo.Invalidation.t
       ; saw_insignificant_changes : bool
+            (* Whether we saw build input changes that are insignificant for the
+               build. We need to track this because we still want to start a new
+               build in this case, even if we know it's going to be a no-op. We
+               do that so that RPC clients can observe that Dune reacted to the
+               change. *)
       }
   | (* Running a build *)
       Building

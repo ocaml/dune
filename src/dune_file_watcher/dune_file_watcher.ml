@@ -169,12 +169,17 @@ type t =
   }
 
 let exclude_patterns =
-  [ {|/_opam|}
+  [ {|^_opam|}
+  ; {|/_opam|}
+  ; {|^_esy|}
   ; {|/_esy|}
+  ; {|^\.#.*|}
   ; {|/\.#.*|}
   ; {|~$|}
+  ; {|^#[^#]*#$|}
   ; {|/#[^#]*#$|}
-  ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
+  ; {|^4913$|} (* https://github.com/neovim/neovim/issues/3460 *)
+  ; {|/4913$|}
   ]
 
 module Re = Dune_re

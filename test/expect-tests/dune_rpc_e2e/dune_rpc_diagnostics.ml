@@ -22,8 +22,6 @@ let%expect_test "turn on and shutdown" =
     Build . succeeded
     shutting down
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     Success, waiting for filesystem changes... |}]
 
 let files =
@@ -131,8 +129,6 @@ let%expect_test "error in dune file" =
     Build foo.cma succeeded
     <no diagnostics>
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     Success, waiting for filesystem changes... |}]
 
 let%expect_test "related error" =
@@ -223,8 +219,6 @@ let%expect_test "related error" =
       ]
     ]
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "foo.ml", line 1:
     Error: The implementation foo.ml
            does not match the interface .foo.objs/byte/foo.cmi:
@@ -285,8 +279,6 @@ let%expect_test "promotion" =
       ]
     ]
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "x", line 1, characters 0-0:
     Error: Files _build/default/x and _build/default/x.gen differ.
     Had errors, waiting for filesystem changes... |}]
@@ -348,8 +340,6 @@ let%expect_test "optional promotion" =
       ]
     ]
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "output.expected", line 1, characters 0-0:
     Error: Files _build/default/output.expected and _build/default/output.actual
     differ.
@@ -367,8 +357,6 @@ let%expect_test "warning detection" =
     Build ./foo.exe succeeded
     <no diagnostics>
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "foo.ml", line 1, characters 13-14:
     1 | let () = let x = 10 in ()
                      ^
@@ -415,8 +403,6 @@ let%expect_test "error from user rule" =
       ]
     ]
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     foobar
     File "dune", line 1, characters 0-49:
     1 | (rule (target foo) (action (bash "echo foobar")))
@@ -517,16 +503,12 @@ let%expect_test "create and fix error" =
   [%expect
     {|
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "foo.ml", line 1, characters 23-26:
     1 | let () = print_endline 123
                                ^^^
     Error: This expression has type int but an expression was expected of type
              string
     Had errors, waiting for filesystem changes...
-    waiting for inotify sync
-    waited for inotify sync
     Success, waiting for filesystem changes... |}]
 
 let request_exn client req n =
@@ -621,8 +603,6 @@ let%expect_test "promoting dune files" =
   [%expect
     {|
     stderr:
-    waiting for inotify sync
-    waited for inotify sync
     File "x", line 1, characters 0-0:
     Error: Files _build/default/x and _build/default/x.gen differ.
     Had errors, waiting for filesystem changes...

@@ -1,0 +1,21 @@
+(library
+ (name inotify_tests)
+ (inline_tests
+  (enabled_if
+   (= %{system} linux))
+  (deps
+   (sandbox always)))
+ (libraries
+  async_inotify_for_dune
+  threads
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  stdune
+  ppx_inline_test.config
+  threads.posix
+  stdio
+  spawn)
+ (preprocess
+  (pps ppx_expect)))

@@ -30,6 +30,10 @@ end
 (** A set of file and directory targets. *)
 val create : files:Path.Build.Set.t -> dirs:Path.Build.Set.t -> t
 
+val files : t -> Path.Build.Set.t
+
+val dirs : t -> Path.Build.Set.t
+
 module Validation_result : sig
   type t =
     | Valid of { parent_dir : Path.Build.t }
@@ -59,8 +63,6 @@ val iter :
   t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
 
 val map : t -> f:(files:Path.Build.Set.t -> dirs:Path.Build.Set.t -> 'a) -> 'a
-
-val remove_file : t -> Path.Build.t -> t
 
 (** File targets are traversed before directory targets. *)
 val fold :

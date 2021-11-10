@@ -169,12 +169,17 @@ type t =
   }
 
 let exclude_patterns =
-  [ {|/_opam|}
+  [ {|^_opam|}
+  ; {|/_opam|}
+  ; {|^_esy|}
   ; {|/_esy|}
+  ; {|^\.#.*|}
   ; {|/\.#.*|}
   ; {|~$|}
+  ; {|^#[^#]*#$|}
   ; {|/#[^#]*#$|}
-  ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
+  ; {|^4913$|} (* https://github.com/neovim/neovim/issues/3460 *)
+  ; {|/4913$|}
   ]
 
 module Re = Dune_re
@@ -184,6 +189,10 @@ let exclude_regex =
     (Re.alt (List.map exclude_patterns ~f:(fun pattern -> Re.Posix.re pattern)))
 
 let should_exclude path = Re.execp exclude_regex path
+
+module For_tests = struct
+  let should_exclude = should_exclude
+end
 
 (* [process_inotify_event] needs to run in the scheduler thread because it
    accesses [t.ignored_files]. *)

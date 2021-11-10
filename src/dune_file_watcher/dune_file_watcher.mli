@@ -77,3 +77,7 @@ val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result
 
 (** Ignore the ne next file change event about this file. *)
 val ignore_next_file_change_event : t -> Path.t -> unit
+
+module For_tests : sig
+  val should_exclude : string -> bool
+end

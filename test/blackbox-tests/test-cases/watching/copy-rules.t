@@ -76,15 +76,7 @@ Note that [d.txt] is here but [c.txt] isn't (it's not promoted).
 We're done.
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

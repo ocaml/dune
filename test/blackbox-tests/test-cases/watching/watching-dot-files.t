@@ -25,11 +25,7 @@ Test what happens in watch mode when we depend on dot files
   2
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
 
 Same but in a sub-directory (the exclude regexp used to be sensitive to that):
@@ -52,10 +48,6 @@ Same but in a sub-directory (the exclude regexp used to be sensitive to that):
   2
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
 

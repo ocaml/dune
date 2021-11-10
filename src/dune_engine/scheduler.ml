@@ -714,14 +714,17 @@ end = struct
 end
 
 type status =
-  | (* Ready to start the next build. Waiting for a signal from the user, the
-       test harness, or the polling loop. The payload is the collection of
-       filesystem events. *)
+  | (* We are not doing a build. Just accumulating invalidations until the next
+       build starts. *)
       Standing_by of
-      Memo.Invalidation.t
-  | (* Waiting for file changes to start a new a build *)
-      Waiting_for_file_changes of
-      Memo.Invalidation.t Fiber.Ivar.t
+      { invalidation : Memo.Invalidation.t
+      ; saw_insignificant_changes : bool
+            (* Whether we saw build input changes that are insignificant for the
+               build. We need to track this because we still want to start a new
+               build in this case, even if we know it's going to be a no-op. We
+               do that so that RPC clients can observe that Dune reacted to the
+               change. *)
+      }
   | (* Running a build *)
       Building
   | (* Cancellation requested. Build jobs are immediately rejected in this
@@ -740,7 +743,6 @@ module Handler = struct
     type t =
       | Tick
       | Source_files_changed of { details_hum : string list }
-      | Skipped_restart
       | Build_interrupted
       | Build_finish of build_result
   end
@@ -849,6 +851,7 @@ type t =
   ; process_watcher : Process_watcher.t
   ; file_watcher : Dune_file_watcher.t option
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
+  ; mutable wait_for_build_input_change : unit Fiber.Ivar.t option
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
@@ -887,7 +890,6 @@ let with_job_slot f =
     | Shutting_down ->
       raise (Memo.Non_reproducible Build_cancelled)
     | Building -> ()
-    | Waiting_for_file_changes _
     | Standing_by _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
          tasks here. *)
@@ -963,6 +965,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
         ; handler
         ; file_watcher
         ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
+        ; wait_for_build_input_change = None
         ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
         }
       in
@@ -1017,39 +1020,34 @@ end = struct
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
       in
-      match Memo.Invalidation.is_empty invalidation with
-      | true -> (
+      (if not (Memo.Invalidation.is_empty invalidation) then (
         match t.status with
-        (* CR-someday cmoseley: This works for what we want (to see a skipped
-           restart due to eager cutoff in RPC clients), however it feels a bit
-           odd, in that we are restarting the build system for the sole purpose
-           of sending instant Start and Finish messages *)
-
-        (* We still send the invalidation to surface to users and RPC clients
-           that we saw a change, but are ignoring it *)
-        | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)
-        | _ -> iter t)
-      | false -> (
-        match t.status with
-        | Shutting_down -> iter t
+        | Shutting_down -> ()
         | Restarting_build prev_invalidation ->
           t.status <-
             Restarting_build
-              (Memo.Invalidation.combine prev_invalidation invalidation);
-          (* We're already cancelling build, so file change events don't
-             matter *)
-          iter t
-        | Standing_by prev_invalidation ->
+              (Memo.Invalidation.combine prev_invalidation invalidation)
+        | Standing_by prev ->
           t.status <-
             Standing_by
-              (Memo.Invalidation.combine prev_invalidation invalidation);
-          iter t
+              { prev with
+                invalidation =
+                  Memo.Invalidation.combine prev.invalidation invalidation
+              }
         | Building ->
           t.handler t.config Build_interrupted;
           t.status <- Restarting_build invalidation;
-          Process_watcher.killall t.process_watcher Sys.sigkill;
-          iter t
-        | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)))
+          Process_watcher.killall t.process_watcher Sys.sigkill
+      ) else
+        match t.status with
+        | Standing_by prev ->
+          t.status <- Standing_by { prev with saw_insignificant_changes = true }
+        | _ -> ());
+      match t.wait_for_build_input_change with
+      | None -> iter t
+      | Some ivar ->
+        t.wait_for_build_input_change <- None;
+        Fill (ivar, ()))
     | Timer fill
     | Worker_task fill ->
       fill
@@ -1134,6 +1132,23 @@ let flush_file_watcher t =
     Dune_file_watcher.Sync_id.Table.set t.fs_syncs id ivar;
     Fiber.Ivar.read ivar
 
+let wait_for_build_input_change t =
+  match t.wait_for_build_input_change with
+  | Some ivar -> Fiber.Ivar.read ivar
+  | None -> (
+    match t.status with
+    | Standing_by { invalidation; saw_insignificant_changes }
+      when (not (Memo.Invalidation.is_empty invalidation))
+           || saw_insignificant_changes ->
+      Fiber.return ()
+    | Restarting_build _ -> Fiber.return ()
+    | Standing_by _
+    | Building
+    | Shutting_down ->
+      let ivar = Fiber.Ivar.create () in
+      t.wait_for_build_input_change <- Some ivar;
+      Fiber.Ivar.read ivar)
+
 module Run = struct
   exception Build_cancelled = Build_cancelled
 
@@ -1153,24 +1168,24 @@ module Run = struct
 
   let poll_iter t step =
     (match t.status with
-    | Standing_by invalidations ->
-      if Memo.Invalidation.is_empty invalidations then
+    | Standing_by { invalidation; _ } ->
+      if Memo.Invalidation.is_empty invalidation then
         Memo.Perf_counters.reset ()
       else
-        Memo.reset invalidations
+        Memo.reset invalidation
     | _ ->
       Code_error.raise "[poll_iter]: expected the build status [Standing_by]" []);
     t.status <- Building;
     let+ res = step in
     match t.status with
-    | Waiting_for_file_changes _
     | Standing_by _ ->
       (* We just finished a build, so there's no way this was set *)
       assert false
     | Shutting_down -> Build_outcome.Shutdown
-    | Restarting_build invalidations ->
-      t.status <- Standing_by invalidations;
-      let details_hum = Memo.Invalidation.details_hum invalidations in
+    | Restarting_build invalidation ->
+      t.status <-
+        Standing_by { invalidation; saw_insignificant_changes = false };
+      let details_hum = Memo.Invalidation.details_hum invalidation in
       Build_outcome.Cancelled_due_to_file_changes { details_hum }
     | Building ->
       let build_result : Handler.Event.build_result =
@@ -1179,7 +1194,11 @@ module Run = struct
         | Ok _ -> Success
       in
       t.handler t.config (Build_finish build_result);
-      t.status <- Standing_by Memo.Invalidation.empty;
+      t.status <-
+        Standing_by
+          { invalidation = Memo.Invalidation.empty
+          ; saw_insignificant_changes = false
+          };
       Build_outcome.Finished res
 
   type handle_outcome_result =
@@ -1191,7 +1210,12 @@ module Run = struct
   let poll_gen ~get_build_request =
     let* t = t () in
     (match t.status with
-    | Building -> t.status <- Standing_by Memo.Invalidation.empty
+    | Building ->
+      t.status <-
+        Standing_by
+          { invalidation = Memo.Invalidation.empty
+          ; saw_insignificant_changes = false
+          }
     | _ -> assert false);
     let rec loop () =
       let* (build_request : step), handle_outcome = get_build_request t in
@@ -1211,17 +1235,18 @@ module Run = struct
           | Cancelled_due_to_file_changes { details_hum } ->
             t.handler t.config (Source_files_changed { details_hum });
             Fiber.return Proceed
-          | Finished _res ->
-            let ivar = Fiber.Ivar.create () in
-            t.status <- Waiting_for_file_changes ivar;
-            let* invalidations = Fiber.Ivar.read ivar in
-            t.status <- Standing_by invalidations;
-            (if Memo.Invalidation.is_empty invalidations then
-              t.handler t.config Skipped_restart
-            else
-              let details_hum = Memo.Invalidation.details_hum invalidations in
-              t.handler t.config (Source_files_changed { details_hum }));
-            Fiber.return Proceed
+          | Finished _res -> (
+            let* () = wait_for_build_input_change t in
+            match t.status with
+            | Shutting_down -> Fiber.return Shutdown
+            | Building
+            | Restarting_build _ ->
+              assert false
+            | Standing_by { invalidation; saw_insignificant_changes = _ } ->
+              (if not (Memo.Invalidation.is_empty invalidation) then
+                let details_hum = Memo.Invalidation.details_hum invalidation in
+                t.handler t.config (Source_files_changed { details_hum }));
+              Fiber.return Proceed)
         in
         Fiber.return (step, handle_outcome))
 
@@ -1364,3 +1389,7 @@ let sleep duration =
 let flush_file_watcher () =
   let* t = t () in
   flush_file_watcher t
+
+let wait_for_build_input_change () =
+  let* t = t () in
+  wait_for_build_input_change t

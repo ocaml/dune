@@ -44,7 +44,6 @@ module Run : sig
     type t =
       | Tick
       | Source_files_changed of { details_hum : string list }
-      | Skipped_restart
       | Build_interrupted
       | Build_finish of build_result
   end
@@ -156,3 +155,11 @@ val sleep : float -> unit Fiber.t
 (** Wait until all file system changes that happened so far have been
     acknowledged by the scheduler. *)
 val flush_file_watcher : unit -> unit Fiber.t
+
+(** Wait for a build input to change. If a build input change was seen but
+    hasn't been handled yet, return immediately.
+
+    Return even for build input change that are not significant, so that RPC
+    clients may observe that Dune reacted to a file change. This is needed for
+    benchmarking the watch mode of Dune. *)
+val wait_for_build_input_change : unit -> unit Fiber.t

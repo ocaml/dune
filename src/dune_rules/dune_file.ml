@@ -2399,12 +2399,7 @@ module Stanzas = struct
     in
     List.concat stanzas
 
-  let parse ~file (project : Dune_project.t) sexps =
-    let stanza_parser = parser project in
-    let stanzas =
-      let context = Include_stanza.in_file file in
-      parse_file_includes ~stanza_parser ~context sexps
-    in
+  let check_env_stanzas stanzas =
     let (_ : bool) =
       List.fold_left stanzas ~init:false ~f:(fun env stanza ->
           match stanza with
@@ -2416,6 +2411,15 @@ module Stanzas = struct
               true
           | _ -> env)
     in
+    ()
+
+  let parse ~file (project : Dune_project.t) sexps =
+    let stanza_parser = parser project in
+    let stanzas =
+      let context = Include_stanza.in_file file in
+      parse_file_includes ~stanza_parser ~context sexps
+    in
+    check_env_stanzas stanzas;
     stanzas
 
   let parse_generated ~file (project : Dune_project.t) sexps =
@@ -2425,17 +2429,7 @@ module Stanzas = struct
       let context = Include_stanza.in_file file in
       parse_file_includes_generated ~stanza_parser ~context sexps
     in
-    let (_ : bool) =
-      List.fold_left stanzas ~init:false ~f:(fun env stanza ->
-          match stanza with
-          | Dune_env.T e ->
-            if env then
-              User_error.raise ~loc:e.loc
-                [ Pp.text "The 'env' stanza cannot appear more than once" ]
-            else
-              true
-          | _ -> env)
-    in
+    check_env_stanzas stanzas;
     stanzas
 end
 

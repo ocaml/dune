@@ -37,11 +37,7 @@ Now let's make [lib/a.ml] depend on [lib/b.ml]. It doesn't work!
 Let's try a manual restart.
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
 
   $ start_dune
@@ -54,6 +50,4 @@ It works now!
 We're done.
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

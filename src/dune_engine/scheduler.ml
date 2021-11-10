@@ -161,13 +161,13 @@ end
 (** The event queue *)
 module Event : sig
   type build_input_change =
-    | Sync
     | Fs_event of Dune_file_watcher.Fs_memo_event.t
     | Invalidation of Memo.Invalidation.t
 
   type t =
     | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
+    | File_system_sync
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
@@ -220,13 +220,13 @@ module Event : sig
   with type event := t
 end = struct
   type build_input_change =
-    | Sync
     | Fs_event of Dune_file_watcher.Fs_memo_event.t
     | Invalidation of Memo.Invalidation.t
 
   type t =
     | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
+    | File_system_sync
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
@@ -352,28 +352,40 @@ end = struct
       let invalidation q =
         match q.invalidation_events with
         | [] -> None
-        | events -> (
-          q.invalidation_events <- [];
-          let terminated = ref false in
-          let events =
-            List.concat_map events ~f:(function
-              | Filesystem_event Sync -> [ (Sync : build_input_change) ]
-              | Invalidation invalidation ->
-                [ (Invalidation invalidation : build_input_change) ]
+        | events ->
+          let rec process_events acc = function
+            | [] ->
+              q.invalidation_events <- [];
+              Option.map
+                (Nonempty_list.of_list (List.rev acc))
+                ~f:(fun build_input_changes ->
+                  Build_inputs_changed build_input_changes)
+            | event :: events -> (
+              match (event : Invalidation_event.t) with
               | Filesystem_event Watcher_terminated ->
-                terminated := true;
-                []
-              | Filesystem_event (Fs_memo_event event) -> [ Fs_event event ]
+                q.invalidation_events <- [];
+                Some File_system_watcher_terminated
+              | Filesystem_event Sync -> (
+                match Nonempty_list.of_list (List.rev acc) with
+                | None ->
+                  q.invalidation_events <- events;
+                  Some File_system_sync
+                | Some build_input_changes ->
+                  q.invalidation_events <- event :: events;
+                  Some (Build_inputs_changed build_input_changes))
+              | Filesystem_event (Fs_memo_event event) ->
+                process_events (Fs_event event :: acc) events
               | Filesystem_event Queue_overflow ->
-                [ Invalidation
-                    (Memo.Invalidation.clear_caches ~reason:Event_queue_overflow)
-                ])
+                process_events
+                  (Invalidation
+                     (Memo.Invalidation.clear_caches
+                        ~reason:Event_queue_overflow)
+                  :: acc)
+                  events
+              | Invalidation invalidation ->
+                process_events (Invalidation invalidation :: acc) events)
           in
-          match !terminated with
-          | true -> Some File_system_watcher_terminated
-          | false ->
-            Option.map (Nonempty_list.of_list events) ~f:(fun events ->
-                Build_inputs_changed events))
+          process_events [] events
 
       let jobs_completed q =
         Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
@@ -979,7 +991,6 @@ end = struct
       match (event : Event.build_input_change) with
       | Invalidation invalidation -> invalidation
       | Fs_event event -> Fs_memo.handle_fs_event event
-      | Sync -> Memo.Invalidation.empty
     in
     let events = Nonempty_list.to_list events in
     List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
@@ -999,18 +1010,17 @@ end = struct
       let events = job () in
       Event.Queue.send_file_watcher_events t.events events;
       iter t
+    | File_system_sync -> (
+      match t.status with
+      | Waiting_for_inotify_sync (invalidation, ivar) ->
+        t.status <- Standing_by invalidation;
+        Fill (ivar, ())
+      | _ -> iter t)
     | Build_inputs_changed events -> (
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
       in
-      let have_sync =
-        List.exists (Nonempty_list.to_list events) ~f:(function
-          | (Sync : Event.build_input_change) -> true
-          | _ -> false)
-      in
-      (* CR-someday cmoseley: This can probably be simplified now that we pass
-         empty invalidations on, but the logic of have_sync isn't clear to me *)
-      match Memo.Invalidation.is_empty invalidation && not have_sync with
+      match Memo.Invalidation.is_empty invalidation with
       | true -> (
         match t.status with
         (* CR-someday cmoseley: This works for what we want (to see a skipped
@@ -1047,13 +1057,8 @@ end = struct
           let invalidation =
             Memo.Invalidation.combine prev_invalidation invalidation
           in
-          if have_sync then (
-            t.status <- Standing_by invalidation;
-            Fill (ivar, ())
-          ) else (
-            t.status <- Waiting_for_inotify_sync (invalidation, ivar);
-            iter t
-          )))
+          t.status <- Waiting_for_inotify_sync (invalidation, ivar);
+          iter t))
     | Timer fill
     | Worker_task fill ->
       fill

@@ -50,11 +50,13 @@ module Fs_memo_event = struct
     { path; kind }
 end
 
+module Sync_id = Id.Make ()
+
 module Event = struct
   type t =
     | Fs_memo_event of Fs_memo_event.t
     | Queue_overflow
-    | Sync
+    | Sync of Sync_id.t
     | Watcher_terminated
 end
 
@@ -166,6 +168,8 @@ type t =
         (* The [ignored_files] table should be accessed in the scheduler
            thread. *)
   ; ignored_files : (string, unit) Table.t
+  ; sync_table : (string, Sync_id.t) Table.t
+        (* Pending fs sync operations indexed by the special sync filename. *)
   }
 
 let exclude_patterns =
@@ -306,25 +310,33 @@ module Buffer = struct
          List.rev !lines)
 end
 
-let special_file_for_fs_sync =
-  let path =
-    lazy
-      (let dir = Path.Build.relative Path.Build.root ".sync" in
-       Path.Build.relative dir "token")
-  in
-  fun () -> Lazy.force path
+let special_dir_for_fs_sync =
+  lazy
+    (Path.Build.relative Path.Build.root ".sync" |> Path.build |> Path.to_string)
 
-let special_file_for_inotify_sync_absolute =
-  lazy (Path.to_absolute_filename (Path.build (special_file_for_fs_sync ())))
+let emit_sync t =
+  let id = Sync_id.gen () in
+  let fn = id |> Sync_id.to_int |> string_of_int in
+  let path = Filename.concat (Lazy.force special_dir_for_fs_sync) fn in
+  Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC ] 0o666);
+  Table.set t.sync_table fn id;
+  id
 
-let is_special_file_for_inotify_sync (path : Path.t) =
-  match path with
-  | In_source_tree _ -> false
-  | External _ ->
-    String.equal (Path.to_string path)
-      (Lazy.force special_file_for_inotify_sync_absolute)
-  | In_build_dir build_path ->
-    Path.Build.( = ) build_path (special_file_for_fs_sync ())
+let is_special_file_for_fs_sync ~path_as_reported_by_file_watcher =
+  (* We use string matching here and that's fine because we match on the path
+     reported by the file watcher backend which will always report the same
+     string that was used to setup the watch. *)
+  Filename.dirname path_as_reported_by_file_watcher
+  = Lazy.force special_dir_for_fs_sync
+
+let consume_sync_event table path =
+  let basename = Filename.basename path in
+  match Table.find table basename with
+  | None -> None
+  | Some id ->
+    Fpath.unlink_no_err path;
+    Table.remove table basename;
+    Some id
 
 let command ~root ~backend =
   let exclude_paths =
@@ -338,9 +350,7 @@ let command ~root ~backend =
     [ "_build" ]
   in
   let root = Path.to_string root in
-  let inotify_special_path =
-    Path.Build.to_string (special_file_for_fs_sync ())
-  in
+  let inotify_special_path = Lazy.force special_dir_for_fs_sync in
   match backend with
   | `Fswatch fswatch ->
     (* On all other platforms, try to use fswatch. fswatch's event filtering is
@@ -390,14 +400,15 @@ let select_watcher_backend () =
   else
     fswatch_backend ()
 
-let emit_sync () =
-  let path = Path.build (special_file_for_fs_sync ()) in
-  Io.write_file path "z"
-
 let prepare_sync () =
-  let dir = Path.parent_exn (Path.build (special_file_for_fs_sync ())) in
-  Path.mkdir_p dir;
-  emit_sync ()
+  let dir = Lazy.force special_dir_for_fs_sync in
+  match Fpath.clear_dir dir with
+  | Cleared -> ()
+  | Directory_does_not_exist -> (
+    match Fpath.mkdir_p dir with
+    | Already_exists
+    | Created ->
+      ())
 
 let spawn_external_watcher ~root ~backend =
   prepare_sync ();
@@ -411,24 +422,38 @@ let spawn_external_watcher ~root ~backend =
   Option.iter stderr ~f:Unix.close;
   ((r_stdout, parse_line, wait), pid)
 
-let create_inotifylib_watcher ~ignored_files ~(scheduler : Scheduler.t) =
-  let special_file_for_inotify_sync = special_file_for_fs_sync () in
+let create_inotifylib_watcher ~sync_table ~ignored_files
+    ~(scheduler : Scheduler.t) =
   Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
     ~send_emit_events_job_to_scheduler:(fun f ->
       scheduler.thread_safe_send_emit_events_job (fun () ->
           let events = f () in
           List.concat_map events ~f:(fun event ->
-              match (event : Inotify_lib.Event.t) with
-              | Modified path
-                when Path.equal (Path.of_string path)
-                       (Path.build special_file_for_inotify_sync) ->
-                [ Event.Sync ]
-              | event -> process_inotify_event ~ignored_files event)))
+              let is_fs_sync_event_generated_by_dune =
+                match (event : Inotify_lib.Event.t) with
+                | Modified path
+                | Created path
+                | Unlinked path ->
+                  Option.some_if
+                    (is_special_file_for_fs_sync
+                       ~path_as_reported_by_file_watcher:path)
+                    path
+                | Moved _
+                | Queue_overflow ->
+                  None
+              in
+              match is_fs_sync_event_generated_by_dune with
+              | None -> process_inotify_event ~ignored_files event
+              | Some path -> (
+                match consume_sync_event sync_table path with
+                | None -> []
+                | Some id -> [ Event.Sync id ]))))
     ~log_error:(fun error -> Console.print [ Pp.text error ])
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
   let ignored_files = Table.create (module String) 64 in
+  let sync_table = Table.create (module String) 64 in
   let (pipe, parse_line, wait), pid = spawn_external_watcher ~root ~backend in
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
@@ -444,12 +469,17 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
                 match parse_line line with
                 | Error s -> failwith s
                 | Ok path_s ->
-                  let path =
-                    Path.Expert.try_localize_external (Path.of_string path_s)
-                  in
-                  if is_special_file_for_inotify_sync path then
-                    [ Event.Sync ]
+                  if
+                    is_special_file_for_fs_sync
+                      ~path_as_reported_by_file_watcher:path_s
+                  then
+                    match consume_sync_event sync_table path_s with
+                    | None -> []
+                    | Some id -> [ Event.Sync id ]
                   else
+                    let path =
+                      Path.Expert.try_localize_external (Path.of_string path_s)
+                    in
                     let abs_path = Path.to_absolute_filename path in
                     if Table.mem ignored_files abs_path then (
                       (* only use ignored record once *)
@@ -464,7 +494,10 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
     done
   in
   scheduler.spawn_thread (fun () -> worker_thread pipe);
-  { kind = Fswatch { pid; wait_for_watches_established = wait }; ignored_files }
+  { kind = Fswatch { pid; wait_for_watches_established = wait }
+  ; ignored_files
+  ; sync_table
+  }
 
 let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   let jobs = ref [] in
@@ -511,19 +544,24 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
 let create_inotifylib ~scheduler =
   prepare_sync ();
   let ignored_files = Table.create (module String) 64 in
-  let inotify = create_inotifylib_watcher ~ignored_files ~scheduler in
-  Inotify_lib.add inotify
-    (Path.to_string (Path.build (special_file_for_fs_sync ())));
-  { kind = Inotify inotify; ignored_files }
+  let sync_table = Table.create (module String) 64 in
+  let inotify =
+    create_inotifylib_watcher ~sync_table ~ignored_files ~scheduler
+  in
+  Inotify_lib.add inotify (Lazy.force special_dir_for_fs_sync);
+  { kind = Inotify inotify; ignored_files; sync_table }
+
+let fsevents_callback_gen (scheduler : Scheduler.t) ~f events =
+  scheduler.thread_safe_send_emit_events_job (fun () ->
+      List.filter_map events ~f)
 
 let fsevents_callback (scheduler : Scheduler.t) ~f events =
-  scheduler.thread_safe_send_emit_events_job (fun () ->
-      List.filter_map events ~f:(fun event ->
-          let path =
-            Fsevents.Event.path event |> Path.of_string
-            |> Path.Expert.try_localize_external
-          in
-          f event path))
+  fsevents_callback_gen scheduler events ~f:(fun event ->
+      let path =
+        Fsevents.Event.path event |> Path.of_string
+        |> Path.Expert.try_localize_external
+      in
+      f event path)
 
 let fsevents ?exclusion_paths ~latency ~paths scheduler f =
   let paths = List.map paths ~f:Path.to_absolute_filename in
@@ -557,21 +595,29 @@ let fsevents_standard_event event ~ignored_files path =
 let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
   prepare_sync ();
   let ignored_files = Table.create (module String) 64 in
+  let sync_table = Table.create (module String) 64 in
   let sync =
-    fsevents ~latency scheduler
-      ~paths:
-        [ special_file_for_fs_sync () |> Path.Build.parent_exn |> Path.build ]
-      (fun event path ->
-        let action = Fsevents.Event.action event in
-        if is_special_file_for_inotify_sync path then
-          match action with
-          | Unknown
-          | Create
-          | Modify ->
-            Some Event.Sync
-          | Remove -> None
-        else
-          None)
+    (* We don't use the [fsevents] function here as we want to match on the
+       original file path *)
+    Fsevents.create ~latency
+      ~paths:[ Lazy.force special_dir_for_fs_sync ]
+      ~f:
+        (fsevents_callback_gen scheduler ~f:(fun event ->
+             let path = Fsevents.Event.path event in
+             if
+               not
+                 (is_special_file_for_fs_sync
+                    ~path_as_reported_by_file_watcher:path)
+             then
+               None
+             else
+               match Fsevents.Event.action event with
+               | Remove -> None
+               | Unknown
+               | Create
+               | Modify ->
+                 Option.map (consume_sync_event sync_table path) ~f:(fun id ->
+                     Event.Sync id)))
   in
   let source =
     let paths = [ Path.root ] in
@@ -612,6 +658,7 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
   in
   { kind = Fsevents { latency; scheduler; sync; source; external_; runloop }
   ; ignored_files
+  ; sync_table
   }
 
 let create_external ~root ~debounce_interval ~scheduler ~backend =

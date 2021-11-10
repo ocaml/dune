@@ -167,7 +167,7 @@ module Event : sig
   type t =
     | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
-    | File_system_sync
+    | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
@@ -226,7 +226,7 @@ end = struct
   type t =
     | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
-    | File_system_sync
+    | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
@@ -365,11 +365,11 @@ end = struct
               | Filesystem_event Watcher_terminated ->
                 q.invalidation_events <- [];
                 Some File_system_watcher_terminated
-              | Filesystem_event Sync -> (
+              | Filesystem_event (Sync id) -> (
                 match Nonempty_list.of_list (List.rev acc) with
                 | None ->
                   q.invalidation_events <- events;
-                  Some File_system_sync
+                  Some (File_system_sync id)
                 | Some build_input_changes ->
                   q.invalidation_events <- event :: events;
                   Some (Build_inputs_changed build_input_changes))
@@ -725,7 +725,7 @@ type status =
   | (* Waiting for the propagation of inotify events to finish before starting a
        build. *)
       Waiting_for_inotify_sync of
-      Memo.Invalidation.t * unit Fiber.Ivar.t
+      Dune_file_watcher.Sync_id.t * Memo.Invalidation.t * unit Fiber.Ivar.t
   | (* Running a build *)
       Building
   | (* Cancellation requested. Build jobs are immediately rejected in this
@@ -1010,9 +1010,10 @@ end = struct
       let events = job () in
       Event.Queue.send_file_watcher_events t.events events;
       iter t
-    | File_system_sync -> (
+    | File_system_sync id -> (
       match t.status with
-      | Waiting_for_inotify_sync (invalidation, ivar) ->
+      | Waiting_for_inotify_sync (id', invalidation, ivar)
+        when Dune_file_watcher.Sync_id.equal id id' ->
         t.status <- Standing_by invalidation;
         Fill (ivar, ())
       | _ -> iter t)
@@ -1053,11 +1054,11 @@ end = struct
           Process_watcher.killall t.process_watcher Sys.sigkill;
           iter t
         | Waiting_for_file_changes ivar -> Fill (ivar, invalidation)
-        | Waiting_for_inotify_sync (prev_invalidation, ivar) ->
+        | Waiting_for_inotify_sync (id, prev_invalidation, ivar) ->
           let invalidation =
             Memo.Invalidation.combine prev_invalidation invalidation
           in
-          t.status <- Waiting_for_inotify_sync (invalidation, ivar);
+          t.status <- Waiting_for_inotify_sync (id, invalidation, ivar);
           iter t))
     | Timer fill
     | Worker_task fill ->
@@ -1226,17 +1227,17 @@ module Run = struct
         in
         Fiber.return (step, handle_outcome))
 
-  let wait_for_inotify_sync t =
+  let wait_for_inotify_sync t sync_id =
     let ivar = Fiber.Ivar.create () in
     match t.status with
     | Standing_by invalidation ->
-      t.status <- Waiting_for_inotify_sync (invalidation, ivar);
+      t.status <- Waiting_for_inotify_sync (sync_id, invalidation, ivar);
       Fiber.Ivar.read ivar
     | _ -> assert false
 
   let do_inotify_sync t =
-    Dune_file_watcher.emit_sync ();
-    wait_for_inotify_sync t
+    let id = Dune_file_watcher.emit_sync (Option.value_exn t.file_watcher) in
+    wait_for_inotify_sync t id
 
   module Build_outcome_for_rpc = struct
     type t =

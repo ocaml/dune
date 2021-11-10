@@ -1231,9 +1231,7 @@ module Run = struct
 
   let do_inotify_sync t =
     Dune_file_watcher.emit_sync ();
-    Console.print [ Pp.text "waiting for inotify sync" ];
-    let+ () = wait_for_inotify_sync t in
-    Console.print [ Pp.text "waited for inotify sync" ]
+    wait_for_inotify_sync t
 
   module Build_outcome_for_rpc = struct
     type t =

@@ -91,18 +91,8 @@ conflict, as we do in the batch build mode -- see [dep-on-promoted-target.t].
 We're done.
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

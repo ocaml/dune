@@ -36,9 +36,5 @@ knew how to build x.exe. This is now fixed.
   Hello, world!
 
   $ stop_dune
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...
-  waiting for inotify sync
-  waited for inotify sync
   Success, waiting for filesystem changes...

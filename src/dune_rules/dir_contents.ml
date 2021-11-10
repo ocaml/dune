@@ -142,14 +142,12 @@ end = struct
           | Coq_stanza.Extraction.T s ->
             Memo.Build.return (Coq_stanza.Extraction.ml_target_fnames s)
           | Menhir.T menhir -> Memo.Build.return (Menhir_rules.targets menhir)
-          | Rule rule ->
-            let+ targets = Simple_rules.user_rule sctx rule ~dir ~expander in
-            (* CR-someday amokhov: Do not ignore directory targets. *)
-            let file_target_names, _ignored_dir_targets =
-              Targets.partition_map targets ~file:Path.Build.basename
-                ~dir:ignore
-            in
-            file_target_names
+          | Rule rule -> (
+            Simple_rules.user_rule sctx rule ~dir ~expander >>| function
+            | None -> []
+            | Some targets ->
+              (* CR-someday amokhov: Do not ignore directory targets. *)
+              Path.Build.Set.to_list_map targets.files ~f:Path.Build.basename)
           | Copy_files def ->
             let+ ps =
               Simple_rules.copy_files sctx def ~src_dir ~dir ~expander

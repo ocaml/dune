@@ -54,7 +54,7 @@ module T = struct
   type t =
     { id : Id.t
     ; context : Build_context.t option
-    ; targets : Targets.t
+    ; targets : Targets.Validated.t
     ; action : Action.Full.t Action_builder.t
     ; mode : Mode.t
     ; info : Info.t
@@ -91,9 +91,11 @@ let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
       Code_error.raise message
         [ ("info", Info.to_dyn info); ("targets", Targets.to_dyn targets) ]
   in
-  let dir =
+  (* CR-someday amokhov: Since [dir] and [targets] are produced together and are
+     logically related, we could make [dir] a field of [Targets.Validated.t]. *)
+  let dir, targets =
     match Targets.validate targets with
-    | Valid { parent_dir } -> parent_dir
+    | Valid { parent_dir; targets } -> (parent_dir, targets)
     | No_targets -> report_error "Rule has no targets specified"
     | Inconsistent_parent_dir ->
       report_error "Rule has targets in different directories."

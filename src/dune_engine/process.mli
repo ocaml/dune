@@ -56,7 +56,7 @@ end
     error messages. *)
 type purpose =
   | Internal_job of Loc.t option * User_message.Annots.t
-  | Build_job of Loc.t option * User_message.Annots.t * Targets.t
+  | Build_job of Loc.t option * User_message.Annots.t * Targets.Validated.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)

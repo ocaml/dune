@@ -60,7 +60,7 @@ end
 type t = private
   { id : Id.t
   ; context : Build_context.t option
-  ; targets : Targets.t
+  ; targets : Targets.Validated.t
   ; action : Action.Full.t Action_builder.t
   ; mode : Mode.t
   ; info : Info.t

@@ -2381,19 +2381,6 @@ module Stanzas = struct
               ~read_file:Build_system.read_file ~context (loc, relative)
           in
           let stanzas = List.concat_map ~f:(parse stanza_parser) sexps in
-          List.iter stanzas ~f:(function
-            | Library _
-            | Library_redirect _
-            | Deprecated_library_name _ ->
-              User_error.raise ~loc
-                [ Pp.text
-                    "The 'include_generated' stanza can't include library \
-                     related stanzas"
-                ]
-            | _ ->
-              (* other stanzas could fail but since it is experimental it is
-                 kept open *)
-              ());
           parse_file_includes_generated ~stanza_parser ~context stanzas
         | stanza -> Memo.Build.return [ stanza ])
     in

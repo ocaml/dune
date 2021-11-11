@@ -65,4 +65,10 @@ let%expect_test _ =
     {|
   { path = In_source_tree "d/w/y"; kind = "Created" }
   { path = In_source_tree "d/w/y"; kind = "File_changed" }
+|}];
+  Dune_file_watcher.add_watch watcher (Path.of_string "e/1/2");
+  let (_ : _) = Fpath.mkdir_p "e/1" in
+  Stdio.Out_channel.write_all "e/1/2" ~data:"z";
+  print_events 3;
+  [%expect {|
 |}]

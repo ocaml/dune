@@ -94,7 +94,7 @@ which you can dive deeper into Dune's capabilities:
   the files in that directory. For details on dune files, see :ref:`dune-files`.
 
 Initializing a Library
---------------------------
+----------------------
 
 To initialize a project for an OCaml library, run the following (replacing
 ``project_name`` with the name of your project):
@@ -147,7 +147,7 @@ All of the subcomponents generated are the same as those described in
 Building a Hello World Program
 ==============================
 
-Since OCaml is a compiled language, first create a ``dune`` file in Nano, Vim,
+Since OCaml is a compiled language, first create a ``dune`` file in Nano, Vim, 
 or your preferred text editor. Declare the ``hello_world`` executable by including following stanza 
 (shown below). Name this initial file ``dune`` and save it in a directory of your choice. 
 
@@ -198,6 +198,7 @@ Building a Hello World Program Using Lwt
 ========================================
 
 Lwt is a concurrent library in OCaml. 
+
 In a directory of your choice, write this ``dune`` file:
 
 .. code:: scheme
@@ -253,7 +254,6 @@ The executable will be built as ``_build/default/hello_world.exe``
 
 Defining a Library Using Lwt and ``ocaml-re``
 =============================================
-
 
 Write this ``dune`` file:
 
@@ -339,7 +339,6 @@ declare the dependency to this file via:
     (preprocessor_deps config.h)
 
 Using the ``.cppo.ml`` Style Like the ``ocamlbuild`` Plugin
------------------------------------------------------------
 
 Write this in your ``dune`` file:
 
@@ -370,7 +369,7 @@ this ``dune`` file:
      (c_library_flags (-lblah)))
 
 Defining a Library with C Stubs using ``pkg-config``
-====================================================
+==================================================
 
 Same context as before, but using ``pkg-config`` to query the
 compilation and link flags. Write this ``dune`` file:

@@ -448,8 +448,8 @@ The following sections describe the available stanzas and their meanings.
 jbuild_version
 --------------
 
-Deprecated. This stanza is no longer used and will be removed in the
-future.
+Deprecated. This `jbuild_version` stanza is no longer used and will be removed
+in the future.
 
 .. _library:
 
@@ -1590,7 +1590,7 @@ Fields supported in ``<settings>`` are:
 .. _dune-subdirs:
 
 dirs (Since 1.6)
--------------------
+----------------
 
 The ``dirs`` stanza allows specifying the subdirectories Dune will
 include in a build. The syntax is based on Dune's :ref:`predicate-lang` and allows

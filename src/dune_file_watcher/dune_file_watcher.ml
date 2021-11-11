@@ -141,6 +141,12 @@ end = struct
     add comps t
 end
 
+type inotify =
+  { inotify : Inotify_lib.t
+  ; awaiting_creation : (Path.t, unit) Table.t
+  ; mutex : Mutex.t
+  }
+
 type kind =
   | Fswatch of
       { pid : Pid.t
@@ -154,7 +160,7 @@ type kind =
       ; sync : Fsevents.t
       ; latency : float
       }
-  | Inotify of Inotify_lib.t
+  | Inotify of inotify
 
 type t =
   { kind : kind
@@ -200,8 +206,9 @@ end
 
 (* [process_inotify_event] needs to run in the scheduler thread because it
    accesses [t.ignored_files]. *)
-let process_inotify_event ~ignored_files
+let process_inotify_event ~inotify ~ignored_files
     (event : Async_inotify_for_dune.Async_inotify.Event.t) : Event.t list =
+  let inotify = Fdecl.get inotify in
   let should_ignore =
     let all_paths = decompose_inotify_event event in
     List.exists all_paths ~f:(fun (path, event) ->
@@ -232,6 +239,12 @@ let process_inotify_event ~ignored_files
     match event with
     | Created path ->
       let path = Path.of_string path in
+      if Table.mem inotify.awaiting_creation path then (
+        Mutex.lock inotify.mutex;
+        Inotify_lib.add inotify.inotify (Path.to_string path);
+        Table.remove inotify.awaiting_creation path;
+        Mutex.unlock inotify.mutex
+      );
       [ Fs_memo_event (Fs_memo_event.create ~kind:Created ~path) ]
     | Unlinked path ->
       let path = Path.of_string path in
@@ -421,7 +434,7 @@ let spawn_external_watcher ~root ~backend =
   Option.iter stderr ~f:Unix.close;
   ((r_stdout, parse_line, wait), pid)
 
-let create_inotifylib_watcher ~sync_table ~ignored_files
+let create_inotifylib_watcher ~inotify ~sync_table ~ignored_files
     ~(scheduler : Scheduler.t) =
   Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
@@ -443,7 +456,7 @@ let create_inotifylib_watcher ~sync_table ~ignored_files
                   None
               in
               match is_fs_sync_event_generated_by_dune with
-              | None -> process_inotify_event ~ignored_files event
+              | None -> process_inotify_event ~inotify ~ignored_files event
               | Some path -> (
                 match consume_sync_event sync_table path with
                 | None -> []
@@ -544,11 +557,18 @@ let create_inotifylib ~scheduler =
   prepare_sync ();
   let ignored_files = Table.create (module String) 64 in
   let sync_table = Table.create (module String) 64 in
+  let inotify_decl = Fdecl.create Dyn.Encoder.opaque in
   let inotify =
-    create_inotifylib_watcher ~sync_table ~ignored_files ~scheduler
+    create_inotifylib_watcher ~inotify:inotify_decl ~sync_table ~ignored_files
+      ~scheduler
   in
+  Fdecl.set inotify_decl
+    { inotify
+    ; awaiting_creation = Table.create (module Path) 16
+    ; mutex = Mutex.create ()
+    };
   Inotify_lib.add inotify (Lazy.force special_dir_for_fs_sync);
-  { kind = Inotify inotify; ignored_files; sync_table }
+  { kind = Inotify (Fdecl.get inotify_decl); sync_table; ignored_files }
 
 let fsevents_callback_gen (scheduler : Scheduler.t) ~f events =
   scheduler.thread_safe_send_emit_events_job (fun () ->
@@ -689,7 +709,7 @@ let add_watch t path =
   match t.kind with
   | Fsevents f -> (
     match path with
-    | Path.In_source_tree _ -> (* already watched by source watcher *) Ok ()
+    | Path.In_source_tree _ -> (* already watched by source watcher *) ()
     | In_build_dir _ ->
       Code_error.raise "attempted to watch a directory in build" []
     | External ext -> (
@@ -709,7 +729,7 @@ let add_watch t path =
         loop ext
       in
       match ext with
-      | None -> Ok ()
+      | None -> ()
       | Some ext -> (
         let watch =
           lazy
@@ -717,21 +737,33 @@ let add_watch t path =
                (fsevents_standard_event ~ignored_files:t.ignored_files))
         in
         match Watch_trie.add f.external_ ext watch with
-        | Watch_trie.Under_existing_node -> Ok ()
+        | Watch_trie.Under_existing_node -> ()
         | Inserted { new_t; removed } ->
           let watch = Lazy.force watch in
           Fsevents.start watch f.runloop;
           List.iter removed ~f:(fun (_, fs) -> Fsevents.stop fs);
-          f.external_ <- new_t;
-          Ok ())))
+          f.external_ <- new_t)))
   | Fswatch _ ->
     (* Here we assume that the path is already being watched because the coarse
        file watchers are expected to watch all the source files from the
        start *)
-    Ok ()
-  | Inotify inotify -> (
-    try Ok (Inotify_lib.add inotify (Path.to_string path)) with
-    | Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
+    ()
+  | Inotify { inotify; awaiting_creation; mutex } ->
+    Mutex.lock mutex;
+    let rec loop p =
+      match Inotify_lib.add inotify (Path.to_string p) with
+      | () -> ()
+      | exception Unix.Unix_error (ENOENT, _, _) -> (
+        let (_ : (_, _) result) = Table.add awaiting_creation p () in
+        match Path.parent p with
+        | None ->
+          User_warning.emit
+            [ Pp.textf "Refusing to watch %s" (Path.to_string_maybe_quoted path)
+            ]
+        | Some p -> loop p)
+    in
+    loop path;
+    Mutex.unlock mutex
 
 let ignore_next_file_change_event t path =
   assert (Path.is_in_source_tree path);

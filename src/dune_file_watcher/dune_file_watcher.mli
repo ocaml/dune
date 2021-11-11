@@ -75,7 +75,7 @@ val wait_for_initial_watches_established_blocking : t -> unit
     far. *)
 val emit_sync : t -> Sync_id.t
 
-val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result
+val add_watch : t -> Path.t -> unit
 
 (** Ignore the ne next file change event about this file. *)
 val ignore_next_file_change_event : t -> Path.t -> unit

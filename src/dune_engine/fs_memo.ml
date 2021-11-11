@@ -31,29 +31,7 @@ let t_ref = ref (Initialization_state.Uninitialized [])
    root is not sufficient to receive events for creation of "root/a/b/c/d".
    (however, subscribing to "root/a/b/c" is sufficient for that) *)
 let watch_path dune_file_watcher path =
-  match Dune_file_watcher.add_watch dune_file_watcher path with
-  | Ok () -> ()
-  | Error `Does_not_exist -> (
-    (* If we're at the root of the workspace (or the unix root) then we can't
-       get ENOENT because dune can't start without a workspace and unix root
-       always exists, so this [_exn] can't raise (except if the user delets the
-       workspace dir under our feet, in which case all bets are off). *)
-    let containing_dir = Path.parent_exn path in
-    (* If the file is absent, we need to wait for it to be created by watching
-       the parent. We still try to add a watch for the file itself after that
-       succeeds, in case the file was created already before we started watching
-       its parent. *)
-    (match Dune_file_watcher.add_watch dune_file_watcher containing_dir with
-    | Ok () -> ()
-    | Error `Does_not_exist ->
-      Log.info
-        [ Pp.textf "attempted to add watch to non-existant directory %s"
-            (Path.to_string containing_dir)
-        ]);
-    match Dune_file_watcher.add_watch dune_file_watcher path with
-    | Error `Does_not_exist
-    | Ok () ->
-      ())
+  Dune_file_watcher.add_watch dune_file_watcher path
 
 let watch_path_using_ref path =
   match !t_ref with

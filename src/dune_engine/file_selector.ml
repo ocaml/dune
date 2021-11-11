@@ -21,11 +21,10 @@ let create ~dir ?(only_generated_files = false) predicate =
   { dir; predicate; only_generated_files }
 
 let to_dyn { dir; predicate; only_generated_files } =
-  let open Dyn in
-  Record
+  Dyn.Record
     [ ("dir", Path.to_dyn dir)
     ; ("predicate", Predicate.to_dyn predicate)
-    ; ("only_generated_files", Encoder.bool only_generated_files)
+    ; ("only_generated_files", Bool only_generated_files)
     ]
 
 let encode { dir; predicate; only_generated_files } =

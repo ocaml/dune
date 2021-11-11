@@ -121,10 +121,10 @@ module Artifact = struct
     @ List.map ~f:(fun mode -> Lib mode) Mode.all
 
   let to_dyn a =
-    let open Dyn.Encoder in
+    let open Dyn in
     match a with
-    | Mod cm_kind -> constr "Mod" [ Cm_kind.to_dyn cm_kind ]
-    | Lib mode -> constr "Lib" [ Mode.to_dyn mode ]
+    | Mod cm_kind -> variant "Mod" [ Cm_kind.to_dyn cm_kind ]
+    | Lib mode -> variant "Lib" [ Mode.to_dyn mode ]
 end
 
 module Macro = struct
@@ -193,13 +193,13 @@ module Macro = struct
     | Artifact x, Artifact y -> Artifact.compare x y
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
     | Exe -> string "Exe"
     | Dep -> string "Dep"
     | Bin -> string "Bin"
     | Lib { lib_private; lib_exec } ->
-      constr "Lib"
+      variant "Lib"
         [ record
             [ ("lib_exec", bool lib_exec); ("lib_private", bool lib_private) ]
         ]
@@ -212,7 +212,7 @@ module Macro = struct
     | Path_no_dep -> string "Path_no_dep"
     | Ocaml_config -> string "Ocaml_config"
     | Env -> string "Env"
-    | Artifact ext -> constr "Artifact" [ Artifact.to_dyn ext ]
+    | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
 end
 
 module T = struct
@@ -221,7 +221,7 @@ module T = struct
     | Macro of Macro.t * string
 
   let to_dyn e =
-    let open Dyn.Encoder in
+    let open Dyn in
     match e with
     | Var v -> pair string Var.to_dyn ("Var", v)
     | Macro (m, s) -> triple string Macro.to_dyn string ("Macro", m, s)
@@ -346,12 +346,12 @@ module With_versioning_info = struct
   let since ~version v = Since (v, version)
 
   let to_dyn f =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
-    | No_info x -> constr "No_info" [ f x ]
-    | Since (x, v) -> constr "Since" [ f x; Dune_lang.Syntax.Version.to_dyn v ]
+    | No_info x -> variant "No_info" [ f x ]
+    | Since (x, v) -> variant "Since" [ f x; Dune_lang.Syntax.Version.to_dyn v ]
     | Deleted_in (x, v, repl) ->
-      constr "Deleted_in"
+      variant "Deleted_in"
         [ f x
         ; Dune_lang.Syntax.Version.to_dyn v
         ; List
@@ -359,7 +359,7 @@ module With_versioning_info = struct
                  Dyn.String (Format.asprintf "%a" Pp.to_fmt pp)))
         ]
     | Renamed_in (x, v, s) ->
-      constr "Renamed_in" [ f x; Dune_lang.Syntax.Version.to_dyn v; string s ]
+      variant "Renamed_in" [ f x; Dune_lang.Syntax.Version.to_dyn v; string s ]
 end
 
 open With_versioning_info
@@ -544,7 +544,7 @@ module Env = struct
       Macro (unsafe_parse_without_checking_version t.macros pform, payload)
 
   let to_dyn { syntax_version; vars; macros } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("syntax_version", Dune_lang.Syntax.Version.to_dyn syntax_version)
       ; ("vars", String.Map.to_dyn (to_dyn Var.to_dyn) vars)

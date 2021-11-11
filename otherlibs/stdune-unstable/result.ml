@@ -140,5 +140,5 @@ module Option = struct
 end
 
 let to_dyn ok err = function
-  | Ok e -> Dyn.Encoder.constr "Ok" [ ok e ]
-  | Error e -> Dyn.Encoder.constr "Error" [ err e ]
+  | Ok e -> Dyn.variant "Ok" [ ok e ]
+  | Error e -> Dyn.variant "Error" [ err e ]

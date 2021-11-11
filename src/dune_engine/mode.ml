@@ -22,9 +22,7 @@ let to_string = choose "byte" "native"
 
 let encode t = Dune_lang.Encoder.string (to_string t)
 
-let to_dyn t =
-  let open Dyn.Encoder in
-  constr (to_string t) []
+let to_dyn t = Dyn.variant (to_string t) []
 
 let compiled_unit_ext = choose (Cm_kind.ext Cmo) (Cm_kind.ext Cmx)
 
@@ -57,7 +55,7 @@ module Dict = struct
   let for_all { byte; native } ~f = f byte && f native
 
   let to_dyn to_dyn { byte; native } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("byte", to_dyn byte); ("native", to_dyn native) ]
 
   let get t = function
@@ -86,7 +84,7 @@ module Dict = struct
     let equal = equal Bool.equal
 
     let to_dyn { byte; native } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record [ ("byte", bool byte); ("native", bool native) ]
 
     let all = { byte = true; native = true }

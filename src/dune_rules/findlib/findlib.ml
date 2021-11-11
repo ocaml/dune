@@ -17,7 +17,7 @@ module Rule = struct
     }
 
   let to_dyn { preds_required; preds_forbidden; value } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("preds_required", Ps.to_dyn preds_required)
       ; ("preds_forbidden", Ps.to_dyn preds_forbidden)
@@ -57,7 +57,7 @@ module Rules = struct
     }
 
   let to_dyn { set_rules; add_rules } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("set_rules", list Rule.to_dyn set_rules)
       ; ("add_rules", list Rule.to_dyn add_rules)
@@ -111,7 +111,7 @@ module Config = struct
     }
 
   let to_dyn { vars; preds } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("vars", String.Map.to_dyn Rules.to_dyn vars)
       ; ("preds", Ps.to_dyn preds)
@@ -147,11 +147,11 @@ module Unavailable_reason = struct
     | Invalid_dune_package of exn
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
-    | Not_found -> constr "Not_found" []
+    | Not_found -> variant "Not_found" []
     | Invalid_dune_package why ->
-      constr "Invalid_dune_package" [ Exn.to_dyn why ]
+      variant "Invalid_dune_package" [ Exn.to_dyn why ]
 end
 
 let builtin_for_dune : Dune_package.t =
@@ -602,7 +602,7 @@ let memo =
   let module Input = struct
     type t = DB.t * Package.Name.t
 
-    let to_dyn = Dyn.Encoder.opaque
+    let to_dyn = Dyn.opaque
 
     let hash = Tuple.T2.hash DB.hash Package.Name.hash
 

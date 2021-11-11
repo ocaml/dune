@@ -305,7 +305,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
            point *)
     Resolve.push_stack_frame ~human_readable_description:(fun () ->
         Dyn.pp
-          (List [ String "pps"; Dyn.Encoder.(list Lib_name.to_dyn) pp_names ]))
+          (List [ String "pps"; Dyn.(list Lib_name.to_dyn) pp_names ]))
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once and for all
      at the point where the driver is defined. *)

@@ -46,10 +46,10 @@ end = struct
     let equal a b = Ordering.is_eq (compare a b)
 
     let to_dyn =
-      let open Dyn.Encoder in
+      let open Dyn in
       function
-      | Named n -> constr "Named" [ string n ]
-      | Anonymous p -> constr "Anonymous" [ Path.Source.to_dyn p ]
+      | Named n -> variant "Named" [ string n ]
+      | Anonymous p -> variant "Anonymous" [ Path.Source.to_dyn p ]
   end
 
   include T
@@ -225,7 +225,7 @@ let to_dyn
     ; cram
     ; expand_aliases_in_sandbox
     } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("name", Name.to_dyn name)
     ; ("root", Path.Source.to_dyn root)
@@ -301,7 +301,7 @@ module Extension = struct
     let name = Dune_lang.Syntax.name syntax in
     if Table.mem extensions name then
       Code_error.raise "Dune_project.Extension.register: already registered"
-        [ ("name", Dyn.Encoder.string name) ];
+        [ ("name", Dyn.string name) ];
     let key = Univ_map.Key.create ~name arg_to_dyn in
     let ext = { syntax; stanzas; key } in
     Table.add_exn extensions name (Extension (Packed ext));

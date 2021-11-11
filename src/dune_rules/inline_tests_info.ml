@@ -62,7 +62,7 @@ module Mode_conf = struct
 
     let compare (a : t) b = Poly.compare a b
 
-    let to_dyn _ = Dyn.opaque
+    let to_dyn = Dyn.opaque
   end
 
   include T

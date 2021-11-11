@@ -9,7 +9,7 @@ module Var = struct
       else
         String.compare
 
-    let to_dyn = Dyn.Encoder.string
+    let to_dyn = Dyn.string
   end
 
   let temp_dir =
@@ -90,7 +90,7 @@ let extend_env x y =
     extend x ~vars:y.vars
 
 let to_dyn t =
-  let open Dyn.Encoder in
+  let open Dyn in
   Map.to_dyn string t.vars
 
 let diff x y =

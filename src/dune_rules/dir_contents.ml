@@ -73,7 +73,7 @@ let mlds t (doc : Documentation.t) =
     Code_error.raise "Dir_contents.mlds"
       [ ("doc", Loc.to_dyn_hum doc.loc)
       ; ( "available"
-        , Dyn.Encoder.(list Loc.to_dyn_hum)
+        , Dyn.(list Loc.to_dyn_hum)
             (List.map map ~f:(fun (d, _) -> d.Documentation.loc)) )
       ]
 

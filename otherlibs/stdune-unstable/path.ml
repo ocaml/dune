@@ -699,7 +699,7 @@ module Build = struct
 
   let build_dir = Fdecl.create Kind.to_dyn
 
-  let build_dir_prefix = Fdecl.create Dyn.Encoder.opaque
+  let build_dir_prefix = Fdecl.create Dyn.opaque
 
   let set_build_dir (new_build_dir : Kind.t) =
     let new_build_dir_prefix =
@@ -862,11 +862,11 @@ let parse_string_exn ~loc s =
 let of_string s = parse_string_exn ~loc:Loc0.none s
 
 let to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | In_build_dir s -> constr "In_build_dir" [ Local.to_dyn s ]
-  | In_source_tree s -> constr "In_source_tree" [ Local.to_dyn s ]
-  | External s -> constr "External" [ External.to_dyn s ]
+  | In_build_dir s -> variant "In_build_dir" [ Local.to_dyn s ]
+  | In_source_tree s -> variant "In_source_tree" [ Local.to_dyn s ]
+  | External s -> variant "External" [ External.to_dyn s ]
 
 let of_filename_relative_to_initial_cwd fn =
   external_

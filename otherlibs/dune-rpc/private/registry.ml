@@ -29,7 +29,7 @@ module Dune = struct
         | Eq -> Where.compare t.where where)
 
     let to_dyn { root; pid; where } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("root", string root)
         ; ("pid", int pid)
@@ -77,7 +77,7 @@ module Dune = struct
       | E (Csexp { position; message }) ->
         Some
           (Dyn.to_string
-             (let open Dyn.Encoder in
+             (let open Dyn in
              record [ ("message", string message); ("position", int position) ]))
       | _ -> None)
 

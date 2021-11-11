@@ -9,7 +9,7 @@ module Ppx_args = struct
       }
 
     let to_dyn x =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("name", string x.name); ("value", String_with_vars.to_dyn x.value) ]
 
@@ -37,7 +37,7 @@ module Ppx_args = struct
   let empty = { cookies = [] }
 
   let to_dyn { cookies } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("cookies", list Cookie.to_dyn cookies) ]
 
   let decode =
@@ -61,11 +61,11 @@ type t =
 let equal = Poly.equal
 
 let to_dyn x =
-  let open Dyn.Encoder in
+  let open Dyn in
   match x with
-  | Normal -> constr "Normal" []
-  | Ppx_deriver args -> constr "Ppx_deriver" [ Ppx_args.to_dyn args ]
-  | Ppx_rewriter args -> constr "Ppx_rewriter" [ Ppx_args.to_dyn args ]
+  | Normal -> variant "Normal" []
+  | Ppx_deriver args -> variant "Ppx_deriver" [ Ppx_args.to_dyn args ]
+  | Ppx_rewriter args -> variant "Ppx_rewriter" [ Ppx_args.to_dyn args ]
 
 let decode =
   let open Dune_lang.Decoder in

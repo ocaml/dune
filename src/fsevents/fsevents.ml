@@ -142,7 +142,7 @@ module Event = struct
         ; item_is_last_hardlink
         ; item_cloned
         } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("must_scan_subdirs", bool must_scan_subdirs)
         ; ("user_dropped", bool user_dropped)
@@ -173,7 +173,7 @@ module Event = struct
   external raw : Int32.t -> Raw.t = "dune_fsevents_raw"
 
   let to_dyn_raw t =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("flags", Raw.to_dyn (raw t.flags)); ("path", string t.path) ]
 
   let id t = t.id
@@ -186,7 +186,7 @@ module Event = struct
     | Dir_and_descendants
 
   let dyn_of_kind kind =
-    Dyn.Encoder.string
+    Dyn.string
       (match kind with
       | Dir -> "Dir"
       | File -> "File"
@@ -207,7 +207,7 @@ module Event = struct
   let action t = action t.flags
 
   let dyn_of_action a =
-    Dyn.Encoder.string
+    Dyn.string
       (match a with
       | Create -> "Create"
       | Remove -> "Remove"
@@ -215,7 +215,7 @@ module Event = struct
       | Unknown -> "Unknown")
 
   let to_dyn t =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("action", dyn_of_action (action t))
       ; ("kind", dyn_of_kind (kind t))
@@ -299,7 +299,7 @@ let set_exclusion_paths t ~paths =
   if List.length paths > 8 then
     Code_error.raise
       "Fsevents.set_exclusion_paths: 8 directories should be enough for anybody"
-      [ ("paths", Dyn.Encoder.(list string) paths) ];
+      [ ("paths", Dyn.(list string) paths) ];
   State.critical_section t (fun t ->
       match State.get t with
       | Stop _ -> Code_error.raise "Fsevents.set_exclusion_paths: stop" []

@@ -17,7 +17,7 @@ module File = struct
   let make dialect path = { dialect; path }
 
   let to_dyn { path; dialect } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("path", Path.to_dyn path); ("dialect", Dialect.to_dyn dialect) ]
 end
 
@@ -40,7 +40,7 @@ module Kind = struct
     | Wrapped_compat -> "wrapped_compat"
     | Root -> "root"
 
-  let to_dyn t = Dyn.Encoder.string (to_string t)
+  let to_dyn t = Dyn.string (to_string t)
 
   let encode t = Dune_lang.Encoder.string (to_string t)
 
@@ -76,7 +76,7 @@ module Source = struct
     }
 
   let to_dyn { name; files } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("name", Module_name.to_dyn name)
       ; ("files", Ml_kind.Dict.to_dyn (option File.to_dyn) files)
@@ -150,7 +150,7 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   | (Alias | Impl_vmodule | Wrapped_compat), Some _, Some _
   | (Intf_only | Virtual), Some _, _
   | (Intf_only | Virtual), _, None ->
-    let open Dyn.Encoder in
+    let open Dyn in
     Code_error.raise "Module.make: invalid kind, impl, intf combination"
       [ ("name", Module_name.to_dyn source.name)
       ; ("kind", Kind.to_dyn kind)
@@ -203,11 +203,10 @@ let src_dir t = Source.src_dir t.source
 let set_pp t pp = { t with pp }
 
 let to_dyn { source; obj_name; pp; visibility; kind } =
-  let open Dyn.Encoder in
-  record
+  Dyn.record
     [ ("source", Source.to_dyn source)
     ; ("obj_name", Module_name.Unique.to_dyn obj_name)
-    ; ("pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp))
+    ; ("pp", Dyn.(option string) (Option.map ~f:(fun _ -> "has pp") pp))
     ; ("visibility", Visibility.to_dyn visibility)
     ; ("kind", Kind.to_dyn kind)
     ]

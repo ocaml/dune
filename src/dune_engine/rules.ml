@@ -37,7 +37,7 @@ module Dir_rules = struct
       Dyn.Variant
         ("Alias", [ Record [ ("name", Alias.Name.to_dyn alias.name) ] ])
 
-  let to_dyn t = Dyn.Encoder.(list data_to_dyn) (Id.Map.values t)
+  let to_dyn t = Dyn.(list data_to_dyn) (Id.Map.values t)
 
   type ready =
     { rules : Rule.t list

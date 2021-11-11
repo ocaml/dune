@@ -16,10 +16,10 @@ module Inherited = struct
       false
 
   let to_dyn f x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | This x -> constr "This" [ f x ]
-    | From (_, name) -> constr "From" [ Lib_name.to_dyn name ]
+    | This x -> variant "This" [ f x ]
+    | From (_, name) -> variant "From" [ Lib_name.to_dyn name ]
 end
 
 module Main_module_name = struct
@@ -27,7 +27,7 @@ module Main_module_name = struct
 
   let equal = Inherited.equal (Option.equal Module_name.equal)
 
-  let to_dyn x = Inherited.to_dyn (Dyn.Encoder.option Module_name.to_dyn) x
+  let to_dyn x = Inherited.to_dyn (Dyn.option Module_name.to_dyn) x
 end
 
 type _ path =
@@ -56,7 +56,7 @@ module Special_builtin_support = struct
     type api_version = V1
 
     let api_version_to_dyn = function
-      | V1 -> Dyn.Encoder.constr "V1" []
+      | V1 -> Dyn.variant "V1" []
 
     let supported_api_versions = [ (1, V1) ]
 
@@ -66,7 +66,7 @@ module Special_builtin_support = struct
       }
 
     let to_dyn { data_module; api_version } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("data_module", Module_name.to_dyn data_module)
         ; ("api_version", api_version_to_dyn api_version)
@@ -93,14 +93,14 @@ module Special_builtin_support = struct
     type api_version = V1
 
     let api_version_to_dyn = function
-      | V1 -> Dyn.Encoder.constr "V1" []
+      | V1 -> Dyn.variant "V1" []
 
     let supported_api_versions = [ (1, V1) ]
 
     type t = { api_version : api_version }
 
     let to_dyn { api_version } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record [ ("api_version", api_version_to_dyn api_version) ]
 
     let decode =
@@ -125,7 +125,7 @@ module Special_builtin_support = struct
       }
 
     let to_dyn { data_module; plugins } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("data_module", Module_name.to_dyn data_module)
         ; ("plugins", bool plugins)
@@ -155,12 +155,12 @@ module Special_builtin_support = struct
   let equal (x : t) (y : t) = Poly.equal x y
 
   let to_dyn x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | Findlib_dynload -> constr "Findlib_dynload" []
-    | Build_info info -> constr "Build_info" [ Build_info.to_dyn info ]
-    | Configurator info -> constr "Configurator" [ Configurator.to_dyn info ]
-    | Dune_site info -> constr "Dune_site" [ Dune_site.to_dyn info ]
+    | Findlib_dynload -> variant "Findlib_dynload" []
+    | Build_info info -> variant "Build_info" [ Build_info.to_dyn info ]
+    | Configurator info -> variant "Configurator" [ Configurator.to_dyn info ]
+    | Dune_site info -> variant "Dune_site" [ Dune_site.to_dyn info ]
 
   let decode =
     let open Dune_lang.Decoder in
@@ -209,14 +209,14 @@ module Status = struct
     | _, _ -> false
 
   let to_dyn x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | Installed_private -> constr "Installed_private" []
-    | Installed -> constr "Installed" []
+    | Installed_private -> variant "Installed_private" []
+    | Installed -> variant "Installed" []
     | Public (project, package) ->
-      constr "Public" [ Dune_project.to_dyn project; Package.to_dyn package ]
+      variant "Public" [ Dune_project.to_dyn project; Package.to_dyn package ]
     | Private (proj, package) ->
-      constr "Private"
+      variant "Private"
         [ Dune_project.to_dyn proj; option Package.to_dyn package ]
 
   let is_private = function
@@ -250,10 +250,10 @@ module Source = struct
       false
 
   let to_dyn f x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | Local -> constr "Local" []
-    | External x -> constr "External" [ f x ]
+    | Local -> variant "Local" []
+    | External x -> variant "External" [ f x ]
 
   let map t ~f =
     match t with
@@ -270,12 +270,12 @@ module Enabled_status = struct
   let equal (x : t) (y : t) = Poly.equal x y
 
   let to_dyn x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | Normal -> constr "Normal" []
-    | Optional -> constr "Optional" []
+    | Normal -> variant "Normal" []
+    | Optional -> variant "Optional" []
     | Disabled_because_of_enabled_if ->
-      constr "Disabled_because_of_enabled_if" []
+      variant "Disabled_because_of_enabled_if" []
 end
 
 type 'path native_archives =
@@ -289,10 +289,10 @@ let equal_native_archives f x y =
   | _, _ -> false
 
 let dyn_of_native_archives path =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Needs_module_info f -> constr "Needs_module_info" [ path f ]
-  | Files files -> constr "Files" [ (list path) files ]
+  | Needs_module_info f -> variant "Needs_module_info" [ path f ]
+  | Files files -> variant "Files" [ (list path) files ]
 
 (** {1 Lib_info_invariants}
 
@@ -664,7 +664,7 @@ let to_dyn path
     ; instrumentation_backend
     ; entry_modules
     } =
-  let open Dyn.Encoder in
+  let open Dyn in
   let snd f (_, x) = f x in
   record
     [ ("loc", Loc.to_dyn_hum loc)
@@ -689,7 +689,7 @@ let to_dyn path
     ; ("enabled", Enabled_status.to_dyn enabled)
     ; ("virtual_deps", list (snd Lib_name.to_dyn) virtual_deps)
     ; ("dune_version", option Dune_lang.Syntax.Version.to_dyn dune_version)
-    ; ("sub_systems", Sub_system_name.Map.to_dyn Dyn.Encoder.opaque sub_systems)
+    ; ("sub_systems", Sub_system_name.Map.to_dyn Dyn.opaque sub_systems)
     ; ("virtual_", option (Source.to_dyn Modules.to_dyn) virtual_)
     ; ( "entry_modules"
       , Source.to_dyn (Or_exn.to_dyn (list Module_name.to_dyn)) entry_modules )

@@ -25,7 +25,7 @@ module Status = struct
       | Normal -> normal
 
     let to_dyn f { data_only; vendored; normal } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("data_only", f data_only)
         ; ("vendored", f vendored)

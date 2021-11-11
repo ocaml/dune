@@ -23,5 +23,5 @@ let get t =
 
 let to_dyn t =
   match t.state with
-  | Unset -> Dyn.Encoder.constr "Unset" []
-  | Set a -> Dyn.Encoder.constr "Set" [ t.to_dyn a ]
+  | Unset -> Dyn.variant "Unset" []
+  | Set a -> Dyn.variant "Set" [ t.to_dyn a ]

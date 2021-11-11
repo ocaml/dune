@@ -77,7 +77,7 @@ end = struct
 
   let encode = Dune_lang.Encoder.string
 
-  let to_dyn = Dyn.Encoder.string
+  let to_dyn = Dyn.string
 end
 
 module Section_with_site = struct
@@ -92,11 +92,11 @@ module Section_with_site = struct
   (* let compare : t -> t -> Ordering.t = Poly.compare *)
 
   let to_dyn x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | Section s -> constr "Section" [ Section.to_dyn s ]
+    | Section s -> variant "Section" [ Section.to_dyn s ]
     | Site { pkg; site; loc = _ } ->
-      constr "Section" [ Package.Name.to_dyn pkg; Section.Site.to_dyn site ]
+      variant "Section" [ Package.Name.to_dyn pkg; Section.Site.to_dyn site ]
 
   let to_string = function
     | Section s -> Section.to_string s

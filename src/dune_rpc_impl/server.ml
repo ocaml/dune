@@ -35,7 +35,7 @@ module Client = struct
   let create () = { next_id = 0 }
 
   let to_dyn { next_id = _ } =
-    let open Dyn.Encoder in
+    let open Dyn in
     opaque ()
 end
 
@@ -312,7 +312,7 @@ let build_event t (event : Build_system.Handler.event) =
       Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
 
 let create ~root =
-  let t = Fdecl.create Dyn.Encoder.opaque in
+  let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in

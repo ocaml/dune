@@ -259,9 +259,9 @@ module Client = struct
           let dyn =
             match error with
             | Invalid_session e ->
-              Dyn.Encoder.constr "Invalid_session" [ Conv.dyn_of_error e ]
+              Dyn.variant "Invalid_session" [ Conv.dyn_of_error e ]
             | Server_aborted e ->
-              Dyn.Encoder.constr "Server_aborted"
+              Dyn.variant "Server_aborted"
                 [ Sexp.to_dyn (Message.to_sexp_unversioned e) ]
           in
           Some (Dyn.to_string dyn)

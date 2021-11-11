@@ -25,7 +25,7 @@ end = struct
          let invalid_template stage =
            Code_error.raise
              "Jbuild_plugin.replace_in_template: invalid template"
-             [ ("stage", Dyn.Encoder.string stage) ]
+             [ ("stage", Dyn.string stage) ]
          in
          let rec parse1 = function
            | `Text s :: xs -> parse2 s xs

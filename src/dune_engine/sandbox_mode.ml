@@ -145,7 +145,7 @@ let to_string = function
   | Some Patch_back_source_tree -> "patch_back_source_tree"
 
 let to_dyn =
-  Dyn.Encoder.option (function
+  Dyn.option (function
     | Symlink -> Variant ("Symlink", [])
     | Copy -> Variant ("Copy", [])
     | Hardlink -> Variant ("Hardlink", [])

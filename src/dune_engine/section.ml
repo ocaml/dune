@@ -5,8 +5,8 @@ let compare : t -> t -> Ordering.t = Poly.compare
 
 let to_dyn x =
   let s = Dune_section.to_string x in
-  let open Dyn.Encoder in
-  constr (String.uppercase_ascii s) []
+  let open Dyn in
+  variant (String.uppercase_ascii s) []
 
 module Key = struct
   type nonrec t = t

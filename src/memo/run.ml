@@ -4,7 +4,7 @@ type t = int
 
 let compare = Int.compare
 
-let to_dyn = Dyn.Encoder.int
+let to_dyn = Dyn.int
 
 let current = ref 0
 

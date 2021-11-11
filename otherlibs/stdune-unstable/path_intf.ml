@@ -32,7 +32,7 @@ module type S = sig
   module Set : sig
     include Set.S with type elt = t
 
-    val to_dyn : t Dyn.Encoder.t
+    val to_dyn : t Dyn.builder
 
     val of_listing : dir:elt -> filenames:string list -> t
   end
@@ -101,7 +101,7 @@ module type Local_gen = sig
     module Set : sig
       include Set.S with type elt = Root.w t
 
-      val to_dyn : t Dyn.Encoder.t
+      val to_dyn : t Dyn.builder
 
       val of_listing : dir:elt -> filenames:string list -> t
     end

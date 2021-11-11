@@ -172,10 +172,10 @@ let rec is_subset t ~of_ =
     && String.Map.is_subset x.exceptions ~of_:y.exceptions ~f:is_subset
 
 let rec to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Empty -> constr "Empty" []
-  | Universal -> constr "Universal" []
+  | Empty -> variant "Empty" []
+  | Universal -> variant "Universal" []
   | Nontrivial { here; default; exceptions } ->
     let open Dyn in
     List

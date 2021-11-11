@@ -224,8 +224,8 @@ let read_exit_codes_and_prefix_maps file =
         | Some s -> s
         | None ->
           Code_error.raise "invalid metadata file"
-            [ ("entries", Dyn.Encoder.string s)
-            ; ("exit_code", Dyn.Encoder.string exit_code)
+            [ ("entries", Dyn.string s)
+            ; ("exit_code", Dyn.string exit_code)
             ]
       in
       loop ({ exit_code; build_path_prefix_map } :: acc) entries
@@ -233,7 +233,7 @@ let read_exit_codes_and_prefix_maps file =
     | [] ->
       List.rev acc
     | [ _ ] ->
-      Code_error.raise "odd number of elements" [ ("s", Dyn.Encoder.string s) ]
+      Code_error.raise "odd number of elements" [ ("s", Dyn.string s) ]
   in
   loop [] (String.split ~on:'\000' s)
 

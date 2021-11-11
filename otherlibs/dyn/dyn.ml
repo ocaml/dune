@@ -7,7 +7,9 @@ type t =
   | Opaque
   | Unit
   | Int of int
+  | Int32 of int32
   | Int64 of int64
+  | Nativeint of nativeint
   | Bool of bool
   | String of string
   | Bytes of bytes
@@ -82,7 +84,9 @@ let rec pp =
   | Opaque -> Pp.verbatim "<opaque>"
   | Unit -> Pp.verbatim "()"
   | Int i -> Pp.verbatim (string_of_int i)
+  | Int32 i -> Pp.verbatim (Int32.to_string i)
   | Int64 i -> Pp.verbatim (Int64.to_string i)
+  | Nativeint i -> Pp.verbatim (Nativeint.to_string i)
   | Bool b -> Pp.verbatim (string_of_bool b)
   | String s -> string_in_ocaml_syntax s
   | Bytes b -> string_in_ocaml_syntax (Bytes.to_string b)
@@ -118,50 +122,48 @@ let rec pp =
 
 let to_string t = Format.asprintf "%a" Pp.to_fmt (pp t)
 
-module Encoder = struct
-  type dyn = t
+type 'a builder = 'a -> t
 
-  type 'a t = 'a -> dyn
+let unit () = Unit
 
-  let unit () = Unit
+let char x = Char x
 
-  let char x = Char x
+let string x = String x
 
-  let string x = String x
+let int x = Int x
 
-  let int x = Int x
+let int32 x = Int32 x
 
-  let int64 x = Int64 x
+let int64 x = Int64 x
 
-  let float x = Float x
+let nativeint x = Nativeint x
 
-  let bool x = Bool x
+let float x = Float x
 
-  let pair f g (x, y) = Tuple [ f x; g y ]
+let bool x = Bool x
 
-  let triple f g h (x, y, z) = Tuple [ f x; g y; h z ]
+let pair f g (x, y) = Tuple [ f x; g y ]
 
-  let list f l = List (List.map ~f l)
+let triple f g h (x, y, z) = Tuple [ f x; g y; h z ]
 
-  let array f a = Array (Array.map ~f a)
+let list f l = List (List.map ~f l)
 
-  let option f x =
-    Option
-      (match x with
-      | None -> None
-      | Some x -> Some (f x))
+let array f a = Array (Array.map ~f a)
 
-  let record r = Record r
+let option f x =
+  Option
+    (match x with
+    | None -> None
+    | Some x -> Some (f x))
 
-  let opaque _ = Opaque
+let record r = Record r
 
-  let constr s args = Variant (s, args)
-end
+let opaque _ = Opaque
 
-let opaque = Opaque
-
-type dyn = t
+let variant s args = Variant (s, args)
 
 let hash = Stdlib.Hashtbl.hash
 
 let compare x y = compare x y
+
+let equal x y = x = y

@@ -96,7 +96,7 @@ module Source_kind : sig
     | Host of Host.t
     | Url of string
 
-  val to_dyn : t Dyn.Encoder.t
+  val to_dyn : t Dyn.builder
 
   val to_string : t -> string
 
@@ -125,7 +125,7 @@ module Info : sig
 
   val empty : t
 
-  val to_dyn : t Dyn.Encoder.t
+  val to_dyn : t Dyn.builder
 
   val encode_fields : t -> Dune_lang.t list
 

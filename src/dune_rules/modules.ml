@@ -56,7 +56,7 @@ module Stdlib = struct
        { modules; main_module_name; exit_module; unwrapped })
 
   let to_dyn { modules; unwrapped; exit_module; main_module_name } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("modules", Module.Name_map.to_dyn modules)
       ; ("unwrapped", Module_name.Set.to_dyn unwrapped)
@@ -303,7 +303,7 @@ module Wrapped = struct
 
   let to_dyn
       { modules; wrapped_compat; alias_module; main_module_name; wrapped } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("modules", Module.Name_map.to_dyn modules)
       ; ("wrapped_compat", Module.Name_map.to_dyn wrapped_compat)
@@ -474,16 +474,16 @@ let decode ~version ~src_dir ~implements =
       ]
 
 let rec to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Singleton m -> constr "Singleton" [ Module.to_dyn m ]
-  | Unwrapped m -> constr "Unwrapped" [ Module.Name_map.to_dyn m ]
-  | Wrapped w -> constr "Wrapped" [ Wrapped.to_dyn w ]
-  | Stdlib s -> constr "Stdlib" [ Stdlib.to_dyn s ]
-  | Impl impl -> constr "Impl" [ dyn_of_impl impl ]
+  | Singleton m -> variant "Singleton" [ Module.to_dyn m ]
+  | Unwrapped m -> variant "Unwrapped" [ Module.Name_map.to_dyn m ]
+  | Wrapped w -> variant "Wrapped" [ Wrapped.to_dyn w ]
+  | Stdlib s -> variant "Stdlib" [ Stdlib.to_dyn s ]
+  | Impl impl -> variant "Impl" [ dyn_of_impl impl ]
 
 and dyn_of_impl { impl; vlib } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record [ ("impl", to_dyn impl); ("vlib", to_dyn vlib) ]
 
 let rec lib_interface = function

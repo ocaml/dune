@@ -30,7 +30,7 @@ let empty = []
 let singleton x = [ Unnamed x ]
 
 let to_dyn dyn_of_a bindings =
-  let open Dyn.Encoder in
+  let open Dyn in
   Dyn.List
     (List.map bindings ~f:(function
       | Unnamed a -> dyn_of_a a

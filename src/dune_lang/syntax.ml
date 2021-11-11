@@ -10,7 +10,7 @@ module Version = struct
       | Eq -> Int.compare minor_a minor_b
 
     let to_dyn t =
-      let open Dyn.Encoder in
+      let open Dyn in
       pair int int t
   end
 
@@ -159,7 +159,7 @@ and key =
       }
 
 let to_dyn { name; desc; key = _; supported_versions; experimental } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("name", string name)
     ; ("desc", string desc)
@@ -176,7 +176,7 @@ module Key = struct
         }
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
     | Active v -> Version.to_dyn v
     | Inactive { lang; dune_lang_ver } ->
@@ -359,7 +359,7 @@ let get_exn t =
   | None ->
     let+ context = get_all in
     Code_error.raise "Syntax identifier is unset"
-      [ ("name", Dyn.Encoder.string t.name)
+      [ ("name", Dyn.string t.name)
       ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
       ; ("context", Univ_map.to_dyn context)
       ]

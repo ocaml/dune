@@ -10,7 +10,7 @@ module File = struct
       }
 
     let to_dyn { ino; dev } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record [ ("ino", Int.to_dyn ino); ("dev", Int.to_dyn dev) ]
 
     let compare a b =
@@ -139,7 +139,7 @@ end = struct
   let empty path = { path; files = String.Set.empty; dirs = [] }
 
   let _to_dyn { path; files; dirs } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("path", Path.Source.to_dyn path)
       ; ("files", String.Set.to_dyn files)
@@ -322,7 +322,7 @@ module Dir0 = struct
       ]
 
   and dyn_of_sub_dir { sub_dir_status; sub_dir_as_t; virtual_ } =
-    let open Dyn.Encoder in
+    let open Dyn in
     let path = Memo.Cell.input sub_dir_as_t in
     record
       [ ("status", Sub_dirs.Status.to_dyn sub_dir_status)
@@ -331,12 +331,12 @@ module Dir0 = struct
       ]
 
   and dyn_of_contents { files; sub_dirs; dune_file } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("files", String.Set.to_dyn files)
       ; ("sub_dirs", String.Map.to_dyn dyn_of_sub_dir sub_dirs)
-      ; ("dune_file", Dyn.Encoder.(option opaque dune_file))
-      ; ("project", Dyn.opaque)
+      ; ("dune_file", Dyn.(option opaque dune_file))
+      ; ("project", Opaque)
       ]
 
   module Contents = struct

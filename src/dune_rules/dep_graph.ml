@@ -16,7 +16,7 @@ let deps_of t (m : Module.t) =
     Code_error.raise "Ocamldep.Dep_graph.deps_of"
       [ ("dir", Path.Build.to_dyn t.dir)
       ; ( "modules"
-        , Dyn.Encoder.(list Module_name.Unique.to_dyn)
+        , Dyn.(list Module_name.Unique.to_dyn)
             (Module.Obj_map.keys t.per_module |> List.map ~f:Module.obj_name) )
       ; ("m", Module.to_dyn m)
       ]

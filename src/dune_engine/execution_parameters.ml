@@ -92,7 +92,7 @@ let action_stdout_on_success t = t.action_stdout_on_success
 
 let action_stderr_on_success t = t.action_stderr_on_success
 
-let default = Fdecl.create Dyn.Encoder.opaque
+let default = Fdecl.create Dyn.opaque
 
 let init t = Fdecl.set default t
 

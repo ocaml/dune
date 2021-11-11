@@ -20,7 +20,7 @@ module Op = struct
     | _, _ -> false
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
     | Eq -> string "Eq"
     | Gt -> string "Gt"
@@ -60,14 +60,14 @@ let rec eval t ~dir ~f =
     Op.eval op (Value.L.compare_vals ~dir x y)
 
 let rec to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Const b -> constr "Const" [ bool b ]
-  | Expr e -> constr "Expr" [ String_with_vars.to_dyn e ]
-  | And t -> constr "And" (List.map ~f:to_dyn t)
-  | Or t -> constr "Or" (List.map ~f:to_dyn t)
+  | Const b -> variant "Const" [ bool b ]
+  | Expr e -> variant "Expr" [ String_with_vars.to_dyn e ]
+  | And t -> variant "And" (List.map ~f:to_dyn t)
+  | Or t -> variant "Or" (List.map ~f:to_dyn t)
   | Compare (o, s1, s2) ->
-    constr "Compare"
+    variant "Compare"
       [ Op.to_dyn o; String_with_vars.to_dyn s1; String_with_vars.to_dyn s2 ]
 
 let ops =

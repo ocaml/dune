@@ -36,4 +36,4 @@ module Deprecated : sig
   val prepare_formatter : Format.formatter -> unit
 end
 
-val to_dyn : t Dyn.Encoder.t
+val to_dyn : t Dyn.builder

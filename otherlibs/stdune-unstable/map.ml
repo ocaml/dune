@@ -170,7 +170,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
     | None ->
       Code_error.raise "Map.find_exn: failed to find key"
         [ ("key", Key.to_dyn key)
-        ; ("keys", Dyn.Encoder.list Key.to_dyn (keys t))
+        ; ("keys", Dyn.list Key.to_dyn (keys t))
         ]
 
   let min_binding = min_binding_opt

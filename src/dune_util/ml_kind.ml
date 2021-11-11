@@ -51,6 +51,6 @@ module Dict = struct
     f Intf t.intf
 
   let to_dyn f { impl; intf } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("impl", f impl); ("intf", f intf) ]
 end

@@ -48,8 +48,8 @@ module Source = struct
   let pp_ml t ~include_dirs =
     let open Pp.O in
     let include_dirs =
-      Dyn.Encoder.list
-        (fun d -> Dyn.Encoder.string (Path.to_absolute_filename d))
+      Dyn.list
+        (fun d -> Dyn.string (Path.to_absolute_filename d))
         include_dirs
     in
     Pp.vbox ~indent:2
@@ -80,7 +80,7 @@ let pp_flags t =
         ~scope pps
     in
     let ppx =
-      Dyn.Encoder.list Dyn.Encoder.string
+      Dyn.list Dyn.string
         [ Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
           |> String.concat ~sep:" "
         ]

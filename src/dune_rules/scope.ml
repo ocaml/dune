@@ -246,7 +246,7 @@ module DB = struct
   let create ~projects_by_package ~context ~installed_libs ~modules_of_lib
       ~projects stanzas coq_stanzas =
     let open Memo.Build.O in
-    let t = Fdecl.create Dyn.Encoder.opaque in
+    let t = Fdecl.create Dyn.opaque in
     let public_libs =
       let lib_config = Context.lib_config context in
       public_libs t ~installed_libs ~lib_config ~projects_by_package

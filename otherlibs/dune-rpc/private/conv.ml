@@ -20,7 +20,7 @@ type error =
       }
 
 let dyn_of_error =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
   | Version_error { message; payload; until; since } ->
     record
@@ -282,7 +282,7 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
       with
       | Some v -> Atom v
       | None ->
-        let open Dyn.Encoder in
+        let open Dyn in
         Code_error.raise "enum does not include this value"
           [ ("valid values", list (fun (x, _) -> string x) choices) ])
   in

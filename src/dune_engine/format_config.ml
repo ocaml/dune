@@ -24,10 +24,10 @@ module Language = struct
       | Dialect s1, Dialect s2 -> String.compare s1 s2
 
     let to_dyn =
-      let open Dyn.Encoder in
+      let open Dyn in
       function
-      | Dialect name -> constr "dialect" [ string name ]
-      | Dune -> constr "dune" []
+      | Dialect name -> variant "dialect" [ string name ]
+      | Dune -> variant "dune" []
   end
 
   module Map = Map.Make (Key)
@@ -55,9 +55,9 @@ module Enabled_for = struct
     | All
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
-    | Only l -> constr "only" [ Language.Set.to_dyn l ]
+    | Only l -> variant "only" [ Language.Set.to_dyn l ]
     | All -> string "all"
 
   let includes t =
@@ -96,7 +96,7 @@ type t = Enabled_for.t generic_t
 let includes t lang = Enabled_for.includes t.enabled_for lang
 
 let to_dyn { enabled_for; loc = _ } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record [ ("enabled_for", Enabled_for.to_dyn enabled_for) ]
 
 let dparse_args =

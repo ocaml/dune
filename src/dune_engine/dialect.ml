@@ -28,7 +28,7 @@ module File_kind = struct
            ])
 
   let to_dyn { kind; extension; preprocess; format } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("kind", Ml_kind.to_dyn kind)
       ; ("extension", string extension)
@@ -49,7 +49,7 @@ type t =
 let name t = t.name
 
 let to_dyn { name; file_kinds } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("name", string name)
     ; ("file_kinds", Ml_kind.Dict.to_dyn File_kind.to_dyn file_kinds)

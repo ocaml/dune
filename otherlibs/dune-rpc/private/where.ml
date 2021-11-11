@@ -60,11 +60,11 @@ let to_dbus : t -> Dbus_address.t = function
     { name = "tcp"; args = [ ("host", host); ("port", port) ] }
 
 let to_dyn : t -> Dyn.t =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | `Unix s -> constr "Unix" [ string s ]
+  | `Unix s -> variant "Unix" [ string s ]
   | `Ip (`Host host, `Port port) ->
-    constr "Ip" [ constr "Host" [ string host ]; constr "Port" [ int port ] ]
+    variant "Ip" [ variant "Host" [ string host ]; variant "Port" [ int port ] ]
 
 let to_string t = Dbus_address.to_string (to_dbus t)
 

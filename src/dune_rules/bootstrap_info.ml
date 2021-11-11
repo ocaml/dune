@@ -45,12 +45,12 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
         in
         Dyn.Tuple
           [ Path.Source.to_dyn (Path.Build.drop_build_context_exn dir)
-          ; Dyn.Encoder.option Module_name.to_dyn
+          ; Dyn.option Module_name.to_dyn
               (match Lib_info.main_module_name info with
               | From _ -> None
               | This x -> x)
           ; Dyn.Bool is_multi_dir
-          ; Dyn.Encoder.option Module_name.to_dyn special_builtin_support
+          ; Dyn.option Module_name.to_dyn special_builtin_support
           ])
   in
   Format.asprintf "%a@." Pp.to_fmt
@@ -69,7 +69,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           ; def "local_libraries" (List locals)
           ; Pp.nop
           ; def "link_flags"
-              (let open Dyn.Encoder in
+              (let open Dyn in
               list (pair string (list string)) link_flags)
           ]))
 

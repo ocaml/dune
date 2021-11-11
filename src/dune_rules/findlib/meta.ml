@@ -8,20 +8,18 @@ end)
 
 include Meta_parser
 
-let dyn_of_action =
-  let open Dyn.Encoder in
-  function
-  | Set -> constr "Set" []
-  | Add -> constr "Add" []
+let dyn_of_action = function
+  | Set -> Dyn.variant "Set" []
+  | Add -> Dyn.variant "Add" []
 
 let dyn_of_predicate =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Pos s -> constr "Pos" [ String s ]
-  | Neg s -> constr "Neg" [ String s ]
+  | Pos s -> variant "Pos" [ String s ]
+  | Neg s -> variant "Neg" [ String s ]
 
 let dyn_of_rule { var; predicates; action; value } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("var", string var)
     ; ("predicates", list dyn_of_predicate predicates)
@@ -30,14 +28,14 @@ let dyn_of_rule { var; predicates; action; value } =
     ]
 
 let rec dyn_of_entry (entry : entry) =
-  let open Dyn.Encoder in
+  let open Dyn in
   match entry with
-  | Comment c -> constr "Comment" [ string c ]
-  | Rule r -> constr "Rule" [ dyn_of_rule r ]
-  | Package p -> constr "Package" [ to_dyn p ]
+  | Comment c -> variant "Comment" [ string c ]
+  | Rule r -> variant "Rule" [ dyn_of_rule r ]
+  | Package p -> variant "Package" [ to_dyn p ]
 
 and to_dyn { name; entries } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("name", option Lib_name.to_dyn name)
     ; ("entries", list dyn_of_entry entries)
@@ -61,7 +59,7 @@ module Simplified = struct
       }
 
     let to_dyn { set_rules; add_rules } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("set_rules", list dyn_of_rule set_rules)
         ; ("add_rules", list dyn_of_rule add_rules)
@@ -79,7 +77,7 @@ module Simplified = struct
   let hash = Poly.hash
 
   let rec to_dyn { name; vars; subs } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("name", option Lib_name.to_dyn name)
       ; ("vars", String.Map.to_dyn Rules.to_dyn vars)

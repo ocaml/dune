@@ -103,8 +103,8 @@ end = struct
       Dyn.Record
         [ ("rule_digest", Digest.to_dyn rule_digest)
         ; ( "dynamic_deps_stages"
-          , Dyn.Encoder.list
-              (Dyn.Encoder.pair Action_exec.Dynamic_dep.Set.to_dyn Digest.to_dyn)
+          , Dyn.list
+              (Dyn.pair Action_exec.Dynamic_dep.Set.to_dyn Digest.to_dyn)
               dynamic_deps_stages )
         ; ("targets_digest", Digest.to_dyn targets_digest)
         ]
@@ -202,7 +202,7 @@ end
 type extra_sub_directories_to_keep = Subdir_set.t
 
 module Rule_fn = struct
-  let loc_decl = Fdecl.create Dyn.Encoder.opaque
+  let loc_decl = Fdecl.create Dyn.opaque
 
   let loc () = Fdecl.get loc_decl ()
 end
@@ -341,7 +341,7 @@ type t =
       Path.Build.t -> unit Action_builder.t option Memo.Build.t
   }
 
-let t = Fdecl.create Dyn.Encoder.opaque
+let t = Fdecl.create Dyn.opaque
 
 let set x = Fdecl.set t x
 
@@ -1952,7 +1952,7 @@ end = struct
     let to_dyn t : Dyn.t =
       Record
         [ ("digest", Digest.to_dyn t.digest)
-        ; ("loc", Dyn.Encoder.option Loc.to_dyn t.action.loc)
+        ; ("loc", Dyn.option Loc.to_dyn t.action.loc)
         ]
   end
 

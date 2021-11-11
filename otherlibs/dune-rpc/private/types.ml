@@ -67,7 +67,7 @@ module Call = struct
     }
 
   let to_dyn { method_; params } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("method_", String method_); ("params", Sexp.to_dyn params) ]
 
   let create ?(params = Sexp.List []) ~method_ () = { method_; params }
@@ -92,10 +92,10 @@ module Response = struct
       | Code_error
 
     let dyn_of_kind =
-      let open Dyn.Encoder in
+      let open Dyn in
       function
-      | Invalid_request -> constr "Invalid_request" []
-      | Code_error -> constr "Code_error" []
+      | Invalid_request -> variant "Invalid_request" []
+      | Code_error -> variant "Code_error" []
 
     type t =
       { payload : Sexp.t option
@@ -143,7 +143,7 @@ module Response = struct
            (fun { payload; message; kind } -> (payload, message, kind)))
 
     let to_dyn { payload; message; kind } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("payload", option Sexp.to_dyn payload)
         ; ("message", string message)
@@ -152,8 +152,7 @@ module Response = struct
 
     let () =
       Printexc.register_printer (function
-        | E e ->
-          Some (Dyn.to_string (Dyn.Encoder.constr "Response.E" [ to_dyn e ]))
+        | E e -> Some (Dyn.to_string (Dyn.variant "Response.E" [ to_dyn e ]))
         | _ -> None)
   end
 
@@ -314,11 +313,11 @@ module Persistent = struct
       | Close_connection
 
     let to_dyn =
-      let open Dyn.Encoder in
+      let open Dyn in
       function
-      | New_connection -> constr "New_connection" []
-      | Close_connection -> constr "Close_connection" []
-      | Packet sexp -> constr "Packet" [ Sexp.to_dyn sexp ]
+      | New_connection -> variant "New_connection" []
+      | Close_connection -> variant "Close_connection" []
+      | Packet sexp -> variant "Packet" [ Sexp.to_dyn sexp ]
 
     let sexp =
       let open Conv in

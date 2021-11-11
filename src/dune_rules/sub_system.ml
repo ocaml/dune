@@ -26,7 +26,7 @@ module Register_backend (M : Backend) = struct
   include Comparable.Make (struct
     type t = M.t
 
-    let to_dyn _ = Dyn.opaque
+    let to_dyn = Dyn.opaque
 
     let compare a b =
       Lib.Id.compare (Lib.unique_id (M.lib a)) (Lib.unique_id (M.lib b))

@@ -100,9 +100,9 @@ module Session = struct
     let compare x y = Id.compare x.id y.id
 
     let dyn_of_state f =
-      let open Dyn.Encoder in
+      let open Dyn in
       function
-      | Uninitialized -> constr "Uninitialized" []
+      | Uninitialized -> variant "Uninitialized" []
       | Initialized { init; state; closed } ->
         let record =
           record
@@ -111,11 +111,11 @@ module Session = struct
             ; ("closed", bool closed)
             ]
         in
-        constr "Initialized" [ record ]
+        variant "Initialized" [ record ]
 
     let to_dyn f { id; state; queries = _; send = _; on_upgrade = _; pool = _ }
         =
-      let open Dyn.Encoder in
+      let open Dyn in
       record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
 
     let register_upgrade_callback t f = t.on_upgrade <- Some f

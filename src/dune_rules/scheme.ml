@@ -150,7 +150,7 @@ let evaluate ~union_rules =
         Code_error.raise
           "Scheme attempted to generate rules in a directory it promised not \
            to touch"
-          [ ("directories", (Dyn.Encoder.list Path.Build.to_dyn) violations) ]);
+          [ ("directories", (Dyn.list Path.Build.to_dyn) violations) ]);
       Memo.Build.return (Evaluated.finite ~union_rules rules)
     | Thunk f -> f () >>= loop ~env
   in

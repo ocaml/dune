@@ -164,23 +164,20 @@ end = struct
               []
           in
           let cm_dir = cm_dir m in
-          let other_cm_files =
-            let open Cm_kind in
-            [ if_ true (Cmi, cm_file Cmi)
-            ; if_ native (Cmx, cm_file Cmx)
-            ; if_ (byte && virtual_library) (Cmo, cm_file Cmo)
-            ; if_
-                (native && virtual_library)
-                (Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
-            ; List.filter_map Ml_kind.all ~f:(fun ml_kind ->
-                  let open Option.O in
-                  let+ cmt = Obj_dir.Module.cmt_file obj_dir m ~ml_kind in
-                  (Cmi, cmt))
-            ]
-            |> List.concat
-            |> List.map ~f:(fun (cm_kind, f) -> (cm_dir cm_kind, f))
-          in
-          other_cm_files)
+          let open Cm_kind in
+          [ if_ true (Cmi, cm_file Cmi)
+          ; if_ native (Cmx, cm_file Cmx)
+          ; if_ (byte && virtual_library) (Cmo, cm_file Cmo)
+          ; if_
+              (native && virtual_library)
+              (Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
+          ; List.filter_map Ml_kind.all ~f:(fun ml_kind ->
+                let open Option.O in
+                let+ cmt = Obj_dir.Module.cmt_file obj_dir m ~ml_kind in
+                (Cmi, cmt))
+          ]
+          |> List.concat
+          |> List.map ~f:(fun (cm_kind, f) -> (cm_dir cm_kind, f)))
     in
     let* lib_files, dll_files =
       let+ lib_files = lib_files ~dir ~dir_contents ~lib_config info in
@@ -189,10 +186,8 @@ end = struct
     in
     let+ execs = lib_ppxs sctx ~scope ~lib in
     let install_c_headers =
-      List.map
-        ~f:(fun base ->
+      List.map lib.install_c_headers ~f:(fun base ->
           Path.Build.relative dir (base ^ Foreign_language.header_extension))
-        lib.install_c_headers
     in
     List.concat
       [ sources
@@ -235,12 +230,11 @@ end = struct
                 Scope.project scope |> Dune_project.dune_version
               in
               let+ pps =
-                Resolve.Build.read_memo_build
-                  (Preprocess.Per_module.with_instrumentation
-                     exes.buildable.preprocess
-                     ~instrumentation_backend:
-                       (Lib.DB.instrumentation_backend (Scope.libs scope)))
-                >>| Preprocess.Per_module.pps
+                Preprocess.Per_module.with_instrumentation
+                  exes.buildable.preprocess
+                  ~instrumentation_backend:
+                    (Lib.DB.instrumentation_backend (Scope.libs scope))
+                |> Resolve.Build.read_memo_build >>| Preprocess.Per_module.pps
               in
               Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
                 exes.names exes.buildable.libraries ~pps ~dune_version

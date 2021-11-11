@@ -25,10 +25,10 @@ let%expect_test _ =
         | list ->
           events_buffer := [];
           Some
-            (List.map list ~f:(function
-              | Dune_file_watcher.Event.Sync _ -> assert false
+            (List.filter_map list ~f:(function
+              | Dune_file_watcher.Event.Sync _ -> None
               | Queue_overflow -> assert false
-              | Fs_memo_event e -> e
+              | Fs_memo_event e -> Some e
               | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in

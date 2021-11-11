@@ -263,6 +263,26 @@ where ``<setting>`` is one of:
 - ``(enabled_for <languages>)`` can be used to restrict the languages that are
   considered for formatting.
 
+.. _subst:
+
+subst
+-----
+
+Starting in Dune 3.0, :ref:`dune-subst` can be explicitly disabled or enabled.
+By default it is enabled and controlled by using:
+
+.. code:: scheme
+
+    (subst <setting>)
+
+where ``<setting>`` is one of:
+
+- ``disabled``, meaning that any call of `dune subst` in this project is
+  forbidden and will result in an error.
+
+- ``enabled``, allowing substitutions explicitly. This is the default.
+
+
 .. _generate_opam_files:
 
 generate_opam_files

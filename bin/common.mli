@@ -16,7 +16,7 @@ val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t
 
 val dump_memo_graph_with_timing : t -> bool
 
-val watch : t -> Dune_engine.Watch_mode_config.t
+val watch : t -> Watch_mode_config.t
 
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 

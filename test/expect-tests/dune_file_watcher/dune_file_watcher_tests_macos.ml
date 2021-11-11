@@ -25,10 +25,10 @@ let%expect_test _ =
         | list ->
           events_buffer := [];
           Some
-            (List.map list ~f:(function
-              | Dune_file_watcher.Event.Sync _ -> assert false
+            (List.filter_map list ~f:(function
+              | Dune_file_watcher.Event.Sync _ -> None
               | Queue_overflow -> assert false
-              | Fs_memo_event e -> e
+              | Fs_memo_event e -> Some e
               | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
@@ -37,8 +37,9 @@ let%expect_test _ =
   print_events 3;
   [%expect
     {|
-    { path = In_source_tree "x"; kind = "Unknown" }
-    Timed out waiting for more events: expected 3, saw 1 |}];
+    { path = In_source_tree "."; kind = "Created" }
+    { path = In_build_dir "."; kind = "Created" }
+    { path = In_source_tree "x"; kind = "Unknown" } |}];
   Unix.rename "x" "y";
   print_events 2;
   [%expect

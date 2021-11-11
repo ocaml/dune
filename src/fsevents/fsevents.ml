@@ -75,8 +75,12 @@ module RunLoop = struct
             State.set t (Running w);
             w)
     in
-    try Ok (Raw.run_current_thread w) with
-    | exn -> Error exn
+    let res =
+      try Ok (Raw.run_current_thread w) with
+      | exn -> Error exn
+    in
+    stop t;
+    res
 end
 
 module Event = struct

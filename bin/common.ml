@@ -38,7 +38,7 @@ type t =
     orig_args : string list
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
-  ; watch : Dune_engine.Watch_mode_config.t
+  ; watch : Watch_mode_config.t
   ; print_metrics : bool
   ; dump_memo_graph_file : string option
   ; dump_memo_graph_format : Graph.File_format.t
@@ -196,7 +196,6 @@ let init ?log_file c =
   Clflags.diff_command := c.diff_command;
   Clflags.promote := c.promote;
   Clflags.force := c.force;
-  Clflags.watch := c.watch;
   Clflags.no_print_directory := c.no_print_directory;
   Clflags.store_orig_src_dir := c.store_orig_src_dir;
   Clflags.promote_install_files := c.promote_install_files;
@@ -813,7 +812,7 @@ let term ~default_root_is_cwd =
                     continuously for file changes.")
          in
          if watch then
-           Some Dune_engine.Watch_mode_config.Eager
+           Some Watch_mode_config.Eager
          else
            None)
         (let+ watch =
@@ -825,13 +824,13 @@ let term ~default_root_is_cwd =
                     instructed externally by an RPC.")
          in
          if watch then
-           Some Dune_engine.Watch_mode_config.Passive
+           Some Watch_mode_config.Passive
          else
            None)
     in
     match res with
-    | None -> Dune_engine.Watch_mode_config.No
-    | Some mode -> Dune_engine.Watch_mode_config.Yes mode
+    | None -> Watch_mode_config.No
+    | Some mode -> Watch_mode_config.Yes mode
   and+ print_metrics =
     Arg.(
       value & flag

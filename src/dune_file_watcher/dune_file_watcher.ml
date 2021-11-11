@@ -122,6 +122,12 @@ end = struct
     add comps t
 end
 
+type inotify =
+  { inotify : Inotify_lib.t
+  ; awaiting_creation : (Path.t, unit) Table.t
+  ; mutex : Mutex.t
+  }
+
 type kind =
   | Fswatch of
       { pid : Pid.t
@@ -135,7 +141,7 @@ type kind =
       ; sync : Fsevents.t
       ; latency : float
       }
-  | Inotify of Inotify_lib.t
+  | Inotify of inotify
 
 type t =
   { kind : kind
@@ -169,14 +175,27 @@ module For_tests = struct
   let should_exclude = should_exclude
 end
 
-let process_inotify_event (event : Async_inotify_for_dune.Async_inotify.Event.t)
-    : Event.t list =
+let process_inotify_event ~inotify
+    (event : Async_inotify_for_dune.Async_inotify.Event.t) :
+    Event.t list * Path.t list =
   let create_event_unless_excluded ~kind ~path =
     match should_exclude path with
-    | true -> []
+    | true -> ([], [])
     | false ->
       let path = Path.of_string path in
-      [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ]
+      let inotify = Fdecl.get inotify in
+      Mutex.lock inotify.mutex;
+      let to_scan =
+        match Table.mem inotify.awaiting_creation path with
+        | false -> None
+        | true ->
+          Inotify_lib.add inotify.inotify (Path.to_string path);
+          Table.remove inotify.awaiting_creation path;
+          Some path
+      in
+      Mutex.unlock inotify.mutex;
+      ( [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ]
+      , Option.to_list to_scan )
   in
   match event with
   | Created path -> create_event_unless_excluded ~kind:Created ~path
@@ -187,9 +206,14 @@ let process_inotify_event (event : Async_inotify_for_dune.Async_inotify.Event.t)
     | Away path -> create_event_unless_excluded ~kind:Deleted ~path
     | Into path -> create_event_unless_excluded ~kind:Created ~path
     | Move (from, to_) ->
-      create_event_unless_excluded ~kind:Deleted ~path:from
-      @ create_event_unless_excluded ~kind:Created ~path:to_)
-  | Queue_overflow -> [ Queue_overflow ]
+      let events, to_scan =
+        create_event_unless_excluded ~kind:Deleted ~path:from
+      in
+      let events', to_scan' =
+        create_event_unless_excluded ~kind:Created ~path:to_
+      in
+      (events @ events', to_scan @ to_scan'))
+  | Queue_overflow -> ([ Queue_overflow ], [])
 
 let shutdown t =
   match t.kind with
@@ -375,9 +399,10 @@ let spawn_external_watcher ~root ~backend =
   Option.iter stderr ~f:Unix.close;
   ((r_stdout, parse_line, wait), pid)
 
-let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) =
+let create_inotifylib_watcher ~inotify ~sync_table ~(scheduler : Scheduler.t) =
   Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
+    ~log_error:(fun error -> Console.print [ Pp.text error ])
     ~send_emit_events_job_to_scheduler:(fun f ->
       scheduler.thread_safe_send_emit_events_job (fun () ->
           let events = f () in
@@ -392,12 +417,29 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) =
                 | Moved _ | Queue_overflow -> None
               in
               match is_fs_sync_event_generated_by_dune with
-              | None -> process_inotify_event event
+              | None ->
+                let scan_dirs dirs =
+                  List.concat_map dirs ~f:(fun dir ->
+                      match Path.readdir_unsorted dir with
+                      | Error _ -> []
+                      | Ok contents ->
+                        List.map contents ~f:(fun fname ->
+                            let path = Path.relative dir fname in
+                            Inotify_lib.Event.Created (Path.to_string path)))
+                in
+                let rec loop acc = function
+                  | [] -> acc
+                  | event :: events ->
+                    let processed, to_scan =
+                      process_inotify_event ~inotify event
+                    in
+                    loop (acc @ processed) (events @ scan_dirs to_scan)
+                in
+                loop [] [ event ]
               | Some path -> (
                 match Fs_sync.consume_event sync_table path with
                 | None -> []
                 | Some id -> [ Event.Sync id ]))))
-    ~log_error:(fun error -> Console.print [ Pp.text error ])
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
   let sync_table = Table.create (module String) 64 in
@@ -481,9 +523,17 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
 let create_inotifylib ~scheduler =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
-  let inotify = create_inotifylib_watcher ~sync_table ~scheduler in
+  let inotify_decl = Fdecl.create Dyn.opaque in
+  let inotify =
+    create_inotifylib_watcher ~inotify:inotify_decl ~sync_table ~scheduler
+  in
+  Fdecl.set inotify_decl
+    { inotify
+    ; awaiting_creation = Table.create (module Path) 16
+    ; mutex = Mutex.create ()
+    };
   Inotify_lib.add inotify (Lazy.force Fs_sync.special_dir);
-  { kind = Inotify inotify; sync_table }
+  { kind = Inotify (Fdecl.get inotify_decl); sync_table }
 
 let fsevents_callback (scheduler : Scheduler.t) ~f events =
   scheduler.thread_safe_send_emit_events_job (fun () ->
@@ -622,27 +672,41 @@ let add_watch t path =
       in
       match ext with
       | None -> Ok ()
-      | Some ext -> (
+      | Some ext ->
         let watch =
           lazy
             (fsevents ~latency:f.latency f.scheduler ~paths:[ path ]
                fsevents_standard_event)
         in
-        match Watch_trie.add f.external_ ext watch with
-        | Watch_trie.Under_existing_node -> Ok ()
+        (match Watch_trie.add f.external_ ext watch with
+        | Watch_trie.Under_existing_node -> ()
         | Inserted { new_t; removed } ->
           let watch = Lazy.force watch in
           Fsevents.start watch f.runloop;
           List.iter removed ~f:(fun (_, fs) -> Fsevents.stop fs);
-          f.external_ <- new_t;
-          Ok ())))
+          f.external_ <- new_t);
+        Ok ()))
   | Fswatch _ ->
     (* Here we assume that the path is already being watched because the coarse
        file watchers are expected to watch all the source files from the
        start *)
     Ok ()
-  | Inotify inotify -> (
-    try Ok (Inotify_lib.add inotify (Path.to_string path))
-    with Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
+  | Inotify { inotify; awaiting_creation; mutex } ->
+    Mutex.lock mutex;
+    let rec loop p =
+      match Inotify_lib.add inotify (Path.to_string p) with
+      | () -> ()
+      | exception Unix.Unix_error (ENOENT, _, _) -> (
+        let (_ : (_, _) result) = Table.add awaiting_creation p () in
+        match Path.parent p with
+        | None ->
+          User_warning.emit
+            [ Pp.textf "Refusing to watch %s" (Path.to_string_maybe_quoted path)
+            ]
+        | Some p -> loop p)
+    in
+    loop path;
+    Mutex.unlock mutex;
+    Ok ()
 
 let emit_sync = Fs_sync.emit

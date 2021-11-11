@@ -128,7 +128,7 @@ $ ./dune.exe install dune
 ```
 
 The first command builds the `dune.exe` binary. The second builds the
-additional files installed by dune, such as the *man* pages, and
+additional files installed by Dune, such as the *man* pages, and
 the last simply installs all of that on the system.
 
 **Please note**: unless you ran the optional `./configure` script, you can
@@ -153,6 +153,6 @@ Status
 ------
 
 Dune is fairly stable and used by the majority of packages on
-Opam. Note that dune retains backward compatibility with Jbuilder, and
+Opam. Note that Dune retains backward compatibility with Jbuilder, and
 in particular, existing Jbuilder projects will continue to be buildable
 with Dune.

@@ -13,11 +13,19 @@ build
   > (rule
   >  (target y)
   >  (deps x)
-  >  (action (bash "if [[ \"$(cat x)\" == *-unstable ]]; then sleep 1000; exit 1; else cat x > y; fi")))
+  >  (action (bash "\> if [[ "$(cat x)" == unstable ]]; then
+  >                "\>   touch ../../go-ahead
+  >                "\>   sleep 1000
+  >                "\>   exit 1
+  >                "\> else
+  >                "\>   cat x > y
+  >                "\> fi
+  > )))
   > EOF
 
-The rule above makes the test hang if it sees an "unstable" state of the file.
-This makes it easy to make sure that the dune won't finish before we're able to cancel the build.
+The rule above makes the test hang if it sees an "unstable" state of
+the file.  This makes it easy to make sure that the dune won't finish
+before we're able to cancel the build.
 
   $ start_dune
 
@@ -26,30 +34,13 @@ This makes it easy to make sure that the dune won't finish before we're able to 
   $ cat _build/default/y
   original-contents
 
-  $ echo 0-unstable > x
+  $ echo unstable > x
 
-Below we hide the Restart outcome because the reason is non-deterministic. We
-can see "Restart (. changed)" or "Restart (. changed, and 1 more change)"
-depending on how quickly Dune reacts to the first change.
-
-  $ ((x=0;
-  >   while [ ! -f _build/build-finished ];
-  >     do
-  >       x=$((x+1));
-  >       echo "$x-unstable" > z;
-  >       mv z x;
-  >       sleep 0.01;
-  >     done
-  >  ) & build y; touch _build/build-finished; wait
-  > ) | grep Restart | dune_cmd count-lines
-  1
-
-  $ echo new-contents2 > x
-
-  $ build y
+  $ (dune_cmd wait-for-file-to-appear go-ahead; echo new-contents > x) & build y
   Success
+
   $ cat _build/default/y
-  new-contents2
+  new-contents
 
   $ stop_dune
   Success, waiting for filesystem changes...

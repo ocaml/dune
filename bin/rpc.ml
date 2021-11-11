@@ -200,9 +200,6 @@ module Build = struct
         | Error (error : Dune_rpc_private.Response.Error.t) ->
           report_error error
         | Ok Success -> print_endline "Success"
-        | Ok (Restart { details_hum }) ->
-          print_endline
-            (sprintf "Restart (%s)" (String.concat ~sep:", " details_hum))
         | Ok Failure -> print_endline "Failure")
 
   let info =

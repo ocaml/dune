@@ -734,17 +734,19 @@ type status =
   | (* Shut down requested. No new new builds will start *)
       Shutting_down
 
+module Build_outcome = struct
+  type t =
+    | Success
+    | Failure
+end
+
 module Handler = struct
   module Event = struct
-    type build_result =
-      | Success
-      | Failure
-
     type t =
       | Tick
       | Source_files_changed of { details_hum : string list }
       | Build_interrupted
-      | Build_finish of build_result
+      | Build_finish of Build_outcome.t
   end
 
   type t = Config.t -> Event.t -> unit
@@ -1156,125 +1158,102 @@ module Run = struct
     | Automatic
     | No_watcher
 
+  module Build_outcome = Build_outcome
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
-  module Build_outcome = struct
-    type t =
-      | Shutdown
-      | Cancelled_due_to_file_changes of { details_hum : string list }
-      | Finished of (unit, [ `Already_reported ]) Result.t
-  end
-
-  let poll_iter t step =
-    (match t.status with
-    | Standing_by { invalidation; _ } ->
-      if Memo.Invalidation.is_empty invalidation then
-        Memo.Perf_counters.reset ()
-      else
-        Memo.reset invalidation
-    | _ ->
-      Code_error.raise "[poll_iter]: expected the build status [Standing_by]" []);
-    t.status <- Building;
-    let+ res = step in
+  let rec poll_iter t step ~flush ~invalidation =
+    (if Memo.Invalidation.is_empty invalidation then
+      Memo.Perf_counters.reset ()
+    else
+      let details_hum = Memo.Invalidation.details_hum invalidation in
+      t.handler t.config (Source_files_changed { details_hum });
+      Memo.reset invalidation);
+    let* res = step in
+    let* () =
+      match flush with
+      | false -> Fiber.return ()
+      | true -> flush_file_watcher t
+    in
     match t.status with
     | Standing_by _ ->
       (* We just finished a build, so there's no way this was set *)
       assert false
-    | Shutting_down -> Build_outcome.Shutdown
+    | Shutting_down ->
+      (* [iter] will eventually blow up when it sees the [Shutdown] event, so no
+         need to bother doing anything complicated here. *)
+      Fiber.never
     | Restarting_build invalidation ->
-      t.status <-
-        Standing_by { invalidation; saw_insignificant_changes = false };
-      let details_hum = Memo.Invalidation.details_hum invalidation in
-      Build_outcome.Cancelled_due_to_file_changes { details_hum }
+      t.status <- Building;
+      poll_iter t step ~flush ~invalidation
     | Building ->
-      let build_result : Handler.Event.build_result =
+      let res : Build_outcome.t =
         match res with
         | Error `Already_reported -> Failure
-        | Ok _ -> Success
+        | Ok () -> Success
       in
-      t.handler t.config (Build_finish build_result);
       t.status <-
         Standing_by
           { invalidation = Memo.Invalidation.empty
           ; saw_insignificant_changes = false
           };
-      Build_outcome.Finished res
+      t.handler t.config (Build_finish res);
+      Fiber.return res
 
-  type handle_outcome_result =
-    | Shutdown
-    | Proceed
+  let poll_iter t step ~flush =
+    match t.status with
+    | Shutting_down -> Fiber.never
+    | Building
+    | Restarting_build _ ->
+      assert false
+    | Standing_by { invalidation; _ } ->
+      t.status <- Building;
+      poll_iter t step ~flush ~invalidation
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
 
-  let poll_gen ~get_build_request =
-    let* t = t () in
-    (match t.status with
-    | Building ->
-      t.status <-
-        Standing_by
-          { invalidation = Memo.Invalidation.empty
-          ; saw_insignificant_changes = false
-          }
-    | _ -> assert false);
+  let poll_init () =
+    let+ t = t () in
+    assert (t.status = Building);
+    t.status <-
+      Standing_by
+        { invalidation = Memo.Invalidation.empty
+        ; saw_insignificant_changes = false
+        };
+    t
+
+  let poll step =
+    let* t = poll_init () in
     let rec loop () =
-      let* (build_request : step), handle_outcome = get_build_request t in
-      let* res = poll_iter t build_request in
-      let* next = handle_outcome res in
-      match next with
-      | Shutdown -> Fiber.return ()
-      | Proceed -> loop ()
+      let* _res = poll_iter t step ~flush:false in
+      let* () = wait_for_build_input_change t in
+      loop ()
     in
     loop ()
 
-  let poll step =
-    poll_gen ~get_build_request:(fun (t : t) ->
-        let handle_outcome (outcome : Build_outcome.t) =
-          match outcome with
-          | Shutdown -> Fiber.return Shutdown
-          | Cancelled_due_to_file_changes { details_hum } ->
-            t.handler t.config (Source_files_changed { details_hum });
-            Fiber.return Proceed
-          | Finished _res -> (
-            let* () = wait_for_build_input_change t in
-            match t.status with
-            | Shutting_down -> Fiber.return Shutdown
-            | Building
-            | Restarting_build _ ->
-              assert false
-            | Standing_by { invalidation; saw_insignificant_changes = _ } ->
-              (if not (Memo.Invalidation.is_empty invalidation) then
-                let details_hum = Memo.Invalidation.details_hum invalidation in
-                t.handler t.config (Source_files_changed { details_hum }));
-              Fiber.return Proceed)
-        in
-        Fiber.return (step, handle_outcome))
-
-  module Build_outcome_for_rpc = struct
-    type t =
-      | Success
-      | Restart of { details_hum : string list }
-      | Failure
-  end
-
   let poll_passive ~get_build_request =
-    poll_gen ~get_build_request:(fun t ->
-        let* request, response_ivar = get_build_request in
-        let+ () = flush_file_watcher t in
-        let handle_outcome (res : Build_outcome.t) =
-          let+ () =
-            Fiber.Ivar.fill response_ivar
-              (match res with
-              | Finished (Ok _) -> Build_outcome_for_rpc.Success
-              | Cancelled_due_to_file_changes { details_hum } ->
-                Restart { details_hum }
-              | Finished (Error _)
-              | Shutdown ->
-                Build_outcome_for_rpc.Failure)
-          in
-          Proceed
-        in
-        (request, handle_outcome))
+    let* t = poll_init () in
+    let rec loop () =
+      let* step, response_ivar = get_build_request in
+      (* Flush before to make the build reproducible. The passive watch mode is
+         designed for tests and We want to observe all the change made by the
+         test before starting the build. *)
+      let* () = flush_file_watcher t in
+      (* Pass [flush:true] to make sure we reach a fix point if the build
+         interrupts itself. Without that, a file change cause by the build
+         itself might be picked up before or after the build finishes, which
+         makes the behavior racy and not good for tests.
+
+         This [flush:true] makes the previous [flush_file_watcher] less useful,
+         however we keep it because without it we might start the build without
+         having observed all the changes made by the current test. Such an
+         intermediate state might result in a build error, which would make the
+         test racy.*)
+      let* res = poll_iter t step ~flush:true in
+      let* () = Fiber.Ivar.fill response_ivar res in
+      loop ()
+    in
+    loop ()
 
   exception Shutdown_requested
 

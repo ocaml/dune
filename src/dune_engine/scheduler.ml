@@ -450,7 +450,7 @@ end = struct
 
     let send_invalidation_events q events =
       add_event q (fun q ->
-          q.invalidation_events <- List.rev_append events q.invalidation_events)
+          q.invalidation_events <- q.invalidation_events @ events)
 
     let send_file_watcher_events q files =
       send_invalidation_events q

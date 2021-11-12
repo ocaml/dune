@@ -38,7 +38,7 @@ consequence of using a glob in this directory, which forces all *.txt rules.
   >   (action (bash "cat %{deps} > %{target}")))
   > (rule
   >   (target c.txt)
-  >   (action (write-file %{target} c)))
+  >   (action (write-file %{target} "c\n")))
   > EOF
 
   $ build summary
@@ -48,16 +48,14 @@ consequence of using a glob in this directory, which forces all *.txt rules.
   b
   c
 
-Now demonstrate a bug: Dune fails to notice that [d.txt] appears via promotion.
-
-# CR-someday amokhov: Fix this test.
+Dune notices that [d.txt] appears via promotion.
 
   $ mkdir subdir
   $ cat > subdir/dune <<EOF
   > (rule
   >   (target d.txt)
   >   (mode (promote (into ..)))
-  >   (action (write-file %{target} d)))
+  >   (action (write-file %{target} "d\n")))
   > EOF
   $ build summary subdir/d.txt
   Success
@@ -65,6 +63,7 @@ Now demonstrate a bug: Dune fails to notice that [d.txt] appears via promotion.
   a
   b
   c
+  d
 
 Note that [d.txt] is here but [c.txt] isn't (it's not promoted).
 

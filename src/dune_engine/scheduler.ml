@@ -450,7 +450,7 @@ end = struct
 
     let send_invalidation_events q events =
       add_event q (fun q ->
-          q.invalidation_events <- List.rev_append events q.invalidation_events)
+          q.invalidation_events <- q.invalidation_events @ events)
 
     let send_file_watcher_events q files =
       send_invalidation_events q
@@ -873,14 +873,6 @@ let yield_if_there_are_pending_events () =
 
 let () =
   Memo.yield_if_there_are_pending_events := yield_if_there_are_pending_events
-
-let ignore_for_watch path =
-  let+ t = t () in
-  match t.file_watcher with
-  | None -> ()
-  | Some file_watcher ->
-    assert (Path.is_in_source_tree path);
-    Dune_file_watcher.ignore_next_file_change_event file_watcher path
 
 exception Build_cancelled
 

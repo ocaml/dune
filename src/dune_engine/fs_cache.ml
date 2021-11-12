@@ -24,6 +24,8 @@ let read { sample; cache; _ } path =
     Path.Table.add_exn cache path result;
     result
 
+let evict { cache; _ } path = Path.Table.remove cache path
+
 module Update_result = struct
   type t =
     | Skipped (* No need to update a given entry because it has no readers *)

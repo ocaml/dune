@@ -36,7 +36,7 @@ let watch_path dune_file_watcher path =
   | Error `Does_not_exist -> (
     (* If we're at the root of the workspace (or the unix root) then we can't
        get ENOENT because dune can't start without a workspace and unix root
-       always exists, so this [_exn] can't raise (except if the user delets the
+       always exists, so this [_exn] can't raise (except if the user deletes the
        workspace dir under our feet, in which case all bets are off). *)
     let containing_dir = Path.parent_exn path in
     (* If the file is absent, we need to wait for it to be created by watching
@@ -170,7 +170,12 @@ let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
    instead. For now, we keep it here because it seems nice to group all tracked
    file system access functions in one place, and exposing an uncached version
    of [path_digest] seems error-prone. We may need to rethink this decision. *)
-let path_digest = declaring_dependency ~f:Fs_cache.(read Untracked.path_digest)
+let path_digest ?(force_update = false) path =
+  if force_update then (
+    Cached_digest.Untracked.invalidate_cached_timestamp path;
+    Fs_cache.evict Fs_cache.Untracked.path_digest path
+  );
+  declaring_dependency path ~f:Fs_cache.(read Untracked.path_digest)
 
 let dir_contents =
   declaring_dependency ~f:Fs_cache.(read Untracked.dir_contents)

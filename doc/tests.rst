@@ -127,6 +127,7 @@ in `qtest`'s own `dune` file.
 
 Inline Expectation Tests
 ------------------------
+
 Inline expectation tests are a special case of inline tests where written OCaml code 
 prints something followed by what you expect this code to print. 
 For instance, using ppx_expect_:
@@ -145,9 +146,9 @@ output. You then get a new file that you can compare to the original
 source file. Expectation tests are a neat way to write tests as the
 following test elements are clearly identified:
 
-- the code of the test
-- the test expectation
-- the test outcome
+- The code of the test
+- The test expectation
+- The test outcome
 
 You can have a look at `this blog post
 <https://blog.janestreet.com/testing-with-expectations/>`_ to find out
@@ -187,6 +188,11 @@ the suggested correction. For instance:
    +  [%expect{| 120 |}]
 
 In order to accept the correction, simply run:
+
+.. code:: bash
+
+   $ dune promote
+
 You can also make Dune automatically accept the correction after
 running the tests by typing:
 

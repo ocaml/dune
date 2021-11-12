@@ -34,7 +34,7 @@ module Poll : sig
 
     val make : string -> t
 
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
   end
 
   val make : Name.t -> (Id.t, 'a option) Decl.Request.gen list -> 'a t

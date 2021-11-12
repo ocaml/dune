@@ -23,4 +23,7 @@
  (copy dune-private-libs.opam.template dyn.opam.template))
 
 (rule
+ (copy dune-private-libs.opam.template ordering.opam.template))
+
+(rule
  (copy dune-private-libs.opam.template dune-rpc-lwt.opam.template))

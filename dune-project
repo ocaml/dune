@@ -155,8 +155,16 @@ understood by dune language."))
  (synopsis "Dynamic type")
  (depends
   (ocaml (>= 4.08.0))
+  ordering
   pp)
  (description "Dynamic type"))
+
+(package
+ (name ordering)
+ (synopsis "Element ordering")
+ (depends
+  (ocaml (>= 4.08.0)))
+ (description "Element ordering"))
 
 (package
  (name xdg)
@@ -169,6 +177,7 @@ understood by dune language."))
  (depends
   (ocaml (>= 4.08.0))
   dyn
+  ordering
   pp
   csexp)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

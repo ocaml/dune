@@ -21,12 +21,6 @@ let to_string = function
   | Eq -> "="
   | Gt -> ">"
 
-let neq = function
-  | Eq -> false
-  | Lt
-  | Gt ->
-    true
-
 let is_eq = function
   | Eq -> true
   | Lt

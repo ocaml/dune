@@ -179,7 +179,7 @@ module Diagnostic = struct
   module Id = struct
     type t = int
 
-    let compare (a : t) (b : t) = Stdlib.compare a b
+    let compare (a : t) (b : t) = Stdune.Int.compare a b
 
     let hash (t : t) = Hashtbl.hash t
 

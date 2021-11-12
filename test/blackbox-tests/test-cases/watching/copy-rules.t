@@ -55,7 +55,7 @@ Dune notices that [d.txt] appears via promotion.
   > (rule
   >   (target d.txt)
   >   (mode (promote (into ..)))
-  >   (action (write-file %{target} "d\n")))
+  >   (action (bash "echo d > %{target}; sleep 0.01")))
   > EOF
   $ build summary subdir/d.txt
   Success

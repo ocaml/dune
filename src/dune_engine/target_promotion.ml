@@ -157,61 +157,39 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
             (Path.to_string_maybe_quoted dir)
         ]
   in
-  (* Here we use an untracked operation to compute the digest of the destination
-     file. We do that to avoid unnecessary retriggering of the build. Later on,
-     after the promotion is complete, we call [Fs_memo.path_digest] to subscribe
-     to the correct result of promotion. *)
-  let destination_is_up_to_date ~target_digest ~dst_path =
-    match
-      Cached_digest.Untracked.source_or_external_file dst_path
-      |> Cached_digest.Digest_result.to_option
-    with
-    | None -> false
-    | Some dst_digest -> Digest.equal target_digest dst_digest
-  in
-  Fiber.parallel_iter targets_and_digests ~f:(fun (target, target_digest) ->
+  Fiber.parallel_iter targets_and_digests ~f:(fun (target, _target_digest) ->
       match selected_for_promotion target with
       | false -> Fiber.return ()
       | true -> (
         let dst = relocate (Path.Build.drop_build_context_exn target) in
         let dst_path = Path.source dst in
         let* () = ensure_the_destination_directory_exists ~dst_path in
-        let* () =
-          match destination_is_up_to_date ~target_digest ~dst_path with
-          | true -> Fiber.return ()
-          | false ->
-            Log.info
-              [ Pp.textf "Promoting %S to %S"
-                  (Path.Build.to_string target)
-                  (Path.to_string dst_path)
-              ];
-            (match promote.lifetime with
-            | Until_clean -> To_delete.add dst
-            | Unlimited -> ());
-            (* The file in the build directory might be read-only if it comes
-               from the shared cache. However, we want the file in the source
-               tree to be writable by the user, so we explicitly set the user
-               writable bit. *)
-            let chmod n = n lor 0o200 in
-            promote_source ~chmod ~src:target ~dst
-        in
-        let+ dst_digest =
+        Log.info
+          [ Pp.textf "Promoting %S to %S"
+              (Path.Build.to_string target)
+              (Path.to_string dst_path)
+          ];
+        (match promote.lifetime with
+        | Until_clean -> To_delete.add dst
+        | Unlimited -> ());
+        (* The file in the build directory might be read-only if it comes from
+           the shared cache. However, we want the file in the source tree to be
+           writable by the user, so we explicitly set the user writable bit. *)
+        let chmod n = n lor 0o200 in
+        let* () = promote_source ~chmod ~src:target ~dst in
+        let+ dst_digest_result =
           Memo.Build.run (Fs_memo.path_digest ~force_update:true dst_path)
         in
-        match Cached_digest.Digest_result.to_option dst_digest with
+        match Cached_digest.Digest_result.to_option dst_digest_result with
         | Some dst_digest ->
-          (* CR-someday: We'd like to assert [target_digest = dst_digest] here
-             but it turns out this is not necessarily true, because artifact
-             substitution can change the contents of promoted files. This means
-             that the above [destination_is_up_to_date] logic is broken. To fix
-             it, we should compute [target_digest] after doing the substitution,
-             which we leave for a future PR. *)
+          (* It's tempting to assert [target_digest = dst_digest] here but it
+             turns out this is not necessarily true: artifact substitution can
+             change the contents of promoted files. *)
           ignore dst_digest
         | None ->
           Code_error.raise
-            (sprintf "Unexpected digest of promoted file %S"
+            (sprintf "Counld not compute digest of promoted file %S"
                (Path.to_string dst_path))
-            [ ("in build directory", Digest.to_dyn target_digest)
-            ; ( "in source directory"
-              , Cached_digest.Digest_result.to_dyn dst_digest )
+            [ ( "dst_digest_result"
+              , Cached_digest.Digest_result.to_dyn dst_digest_result )
             ]))

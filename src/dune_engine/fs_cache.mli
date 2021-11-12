@@ -13,6 +13,9 @@ type 'a t
     then return it. *)
 val read : 'a t -> Path.t -> 'a
 
+(** Evict an entry from the cache. *)
+val evict : 'a t -> Path.t -> unit
+
 (** Result of updating a cache entry. *)
 module Update_result : sig
   type t =

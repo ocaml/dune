@@ -170,7 +170,12 @@ let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
    instead. For now, we keep it here because it seems nice to group all tracked
    file system access functions in one place, and exposing an uncached version
    of [path_digest] seems error-prone. We may need to rethink this decision. *)
-let path_digest = declaring_dependency ~f:Fs_cache.(read Untracked.path_digest)
+let path_digest ?(force_update = false) path =
+  if force_update then (
+    Cached_digest.Untracked.invalidate_cached_timestamp path;
+    Fs_cache.evict Fs_cache.Untracked.path_digest path
+  );
+  declaring_dependency path ~f:Fs_cache.(read Untracked.path_digest)
 
 let dir_contents =
   declaring_dependency ~f:Fs_cache.(read Untracked.dir_contents)

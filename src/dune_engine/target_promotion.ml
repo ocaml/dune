@@ -108,7 +108,7 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
    this with our current infrastructure. One way to improve the situation is to
    somehow batch file promotions. Another approach is to make restarts really
    cheap, so that we don't care any more, for example, by introducing reverse
-   dependencies in Memo. *)
+   dependencies in Memo (and/or by having smarter cancellations). *)
 let promote ~dir ~targets_and_digests ~promote ~promote_source =
   let selected_for_promotion =
     match promote.Rule.Promote.only with
@@ -134,11 +134,11 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
      create the destination directory instead of reporting an error. Maybe we
      should just always do that? After all, if the user says "promote results
      into this directory, please", they might expect Dune to create it too. *)
-  let ensure_the_destination_directory_exists ~dst =
-    let dir = Path.Source.parent_exn dst in
-    Memo.Build.run (Source_tree.find_dir dir) >>| function
-    | Some (_ : Source_tree.Dir.t) -> ()
-    | None ->
+  let ensure_the_destination_directory_exists ~dst_path =
+    let dir = Path.parent_exn dst_path in
+    Memo.Build.run (Fs_memo.path_exists dir) >>| function
+    | true -> ()
+    | false ->
       let loc =
         match promote.into with
         | Some into -> into.loc
@@ -150,54 +150,68 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
           Code_error.raise
             "Promoting into a directory that does not exist. Perhaps, the user \
              deleted it while Dune was running?"
-            [ ("dst", Path.Source.to_dyn dst) ]
+            [ ("dst_path", Path.to_dyn dst_path) ]
       in
       User_error.raise ~loc
         [ Pp.textf "directory %S does not exist"
-            (Path.Source.to_string_maybe_quoted dir)
+            (Path.to_string_maybe_quoted dir)
         ]
   in
-  (* CR-someday amokhov: Here we use a tracked operation to compute the digest
-     of the destination file [dst]. However, later we may overwrite [dst], hence
-     triggering a rebuild. To avoid that, we used to ignore the next file system
-     event for [dst] but that was wrong because other functions may depend on
-     [dst]'s content and existence.
-
-     What we really want is to tell [Fs_memo] that this function is about to
-     change this file's digest and it doesn't need to be recomputed in the next
-     run (but other functions should be!). This is not possible with the current
-     API, and therefore we will execute this function twice: first, when doing
-     the original promotion, and second, when [Fs_memo.path_digest] returns the
-     new digest. It would be nice to find a way to avoid that. *)
-  let destination_is_up_to_date ~target_digest ~dst =
-    let open Memo.Build.O in
-    Memo.Build.run
-      (Fs_memo.path_digest (Path.source dst)
-       >>| Cached_digest.Digest_result.to_option
-       >>| function
-       | None -> false
-       | Some dst_digest -> Digest.equal target_digest dst_digest)
+  (* Here we use an untracked operation to compute the digest of the destination
+     file. We do that to avoid unnecessary retriggering of the build. Later on,
+     after the promotion is complete, we call [Fs_memo.path_digest] to subscribe
+     to the correct result of promotion. *)
+  let destination_is_up_to_date ~target_digest ~dst_path =
+    match
+      Cached_digest.Untracked.source_or_external_file dst_path
+      |> Cached_digest.Digest_result.to_option
+    with
+    | None -> false
+    | Some dst_digest -> Digest.equal target_digest dst_digest
   in
   Fiber.parallel_iter targets_and_digests ~f:(fun (target, target_digest) ->
       match selected_for_promotion target with
       | false -> Fiber.return ()
       | true -> (
         let dst = relocate (Path.Build.drop_build_context_exn target) in
-        let* () = ensure_the_destination_directory_exists ~dst in
-        destination_is_up_to_date ~target_digest ~dst >>= function
-        | true -> Fiber.return ()
-        | false ->
-          Log.info
-            [ Pp.textf "Promoting %S to %S"
-                (Path.Build.to_string target)
-                (Path.Source.to_string dst)
-            ];
-          (match promote.lifetime with
-          | Until_clean -> To_delete.add dst
-          | Unlimited -> ());
-          (* The file in the build directory might be read-only if it comes from
-             the shared cache. However, we want the file in the source tree to
-             be writable by the user, so we explicitly set the user writable
-             bit. *)
-          let chmod n = n lor 0o200 in
-          promote_source ~chmod ~src:target ~dst))
+        let dst_path = Path.source dst in
+        let* () = ensure_the_destination_directory_exists ~dst_path in
+        let* () =
+          match destination_is_up_to_date ~target_digest ~dst_path with
+          | true -> Fiber.return ()
+          | false ->
+            Log.info
+              [ Pp.textf "Promoting %S to %S"
+                  (Path.Build.to_string target)
+                  (Path.to_string dst_path)
+              ];
+            (match promote.lifetime with
+            | Until_clean -> To_delete.add dst
+            | Unlimited -> ());
+            (* The file in the build directory might be read-only if it comes
+               from the shared cache. However, we want the file in the source
+               tree to be writable by the user, so we explicitly set the user
+               writable bit. *)
+            let chmod n = n lor 0o200 in
+            promote_source ~chmod ~src:target ~dst
+        in
+        let+ dst_digest =
+          Memo.Build.run (Fs_memo.path_digest ~force_update:true dst_path)
+        in
+        match Cached_digest.Digest_result.to_option dst_digest with
+        | Some dst_digest ->
+          (* CR-someday: We'd like to assert [target_digest = dst_digest] here
+             but it turns out this is not necessarily true, because artifact
+             substitution can change the contents of promoted files. This means
+             that the above [destination_is_up_to_date] logic is broken. To fix
+             it, we should compute [target_digest] after doing the substitution,
+             which we leave for a future PR. *)
+          ignore dst_digest
+        | None ->
+          Code_error.raise
+            (sprintf "Unexpected digest of promoted file %S"
+               (Path.to_string dst_path))
+            [ ("in build directory", Digest.to_dyn target_digest)
+            ; ( "in source directory"
+              , Cached_digest.Digest_result.to_dyn dst_digest )
+            ]))

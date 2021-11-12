@@ -130,8 +130,27 @@ val yield_if_there_are_pending_events : unit -> unit Fiber.t
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 
-(** Immediately abort any on-going [Run.go], making it raise
-    [Run.Shutdown_requested]. *)
+(** Abort any on-going [Run.go], making it raise [Run.Shutdown_requested].
+
+    To understand the exact effect of [shutdown], one needs to understand how
+    fibers make progress. Fibers typically make progress by "waves". Each fiber
+    runs for as long as it can until it can no longer make progress on its own.
+    Typically, because it needs to wait for an external event.
+
+    When no more fiber can progress, the scheduler waits for an external event.
+    When it receives one event, it wakes up the corresponding [Fiber.Ivar.t] which
+    triggers another wave of progress happens.
+
+    When [shutdown] is called, the current wave of progress will continue its
+    course until no more fiber can progress on its own. Then the scheduler will
+    do a bit cleanup, such as killing with [SIGKILL] all running external
+    processes and will then raise [Run.Shutdown_requested].
+
+    Fibers that are suspended on a call such as [wait_for_process] or
+    [wait_for_build_input_change] by the time [shutdown] is called will
+    effectively never restart. If a fiber calls [wait_for_process] or any other
+    function from this module that needs an external event to make progress, it
+    will get suspended and will never restart. *)
 val shutdown : unit -> unit Fiber.t
 
 val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t

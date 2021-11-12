@@ -164,6 +164,6 @@ let variant s args = Variant (s, args)
 
 let hash = Stdlib.Hashtbl.hash
 
-let compare x y = compare x y
+let compare x y = Ordering.of_int (compare x y)
 
 let equal x y = x = y

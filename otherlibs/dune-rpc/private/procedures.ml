@@ -96,7 +96,7 @@ module Poll = struct
 
     let make t = t
 
-    let compare = Stdlib.String.compare
+    let compare = Stdune.String.compare
   end
 
   type 'a t =

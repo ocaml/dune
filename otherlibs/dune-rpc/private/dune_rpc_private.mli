@@ -179,7 +179,7 @@ module Diagnostic : sig
   module Id : sig
     type t
 
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
 
     val hash : t -> int
 
@@ -351,7 +351,7 @@ module Procedures : sig
 
       val make : string -> t
 
-      val compare : t -> t -> int
+      val compare : t -> t -> Ordering.t
     end
 
     val name : 'a t -> Name.t
@@ -376,7 +376,7 @@ module Sub : sig
   module Id : sig
     type t
 
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
   end
 
   val id : 'a t -> Id.t

@@ -138,7 +138,7 @@ val running_jobs_count : t -> int
     Typically, because it needs to wait for an external event.
 
     When no more fiber can progress, the scheduler waits for an external event.
-    When it receive one event, it wakeups the corresponding [Fiber.Ivar.t] which
+    When it receives one event, it wakes up the corresponding [Fiber.Ivar.t] which
     triggers another wave of progress happens.
 
     When [shutdown] is called, the current wave of progress will continue its

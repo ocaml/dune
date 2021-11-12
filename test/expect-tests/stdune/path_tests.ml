@@ -16,8 +16,7 @@ let of_filename_relative_to_initial_cwd s =
 let descendant p ~of_ =
   Dyn.option Path.to_dyn (Path.descendant p ~of_) |> print_dyn
 
-let is_descendant p ~of_ =
-  Dyn.bool (Path.is_descendant p ~of_) |> print_dyn
+let is_descendant p ~of_ = Dyn.bool (Path.is_descendant p ~of_) |> print_dyn
 
 let explode s =
   let open Dyn in
@@ -372,8 +371,7 @@ true
 |}]
 
 let%expect_test _ =
-  Path.is_strict_descendant_of_build_dir Path.build_dir
-  |> Dyn.bool |> print_dyn;
+  Path.is_strict_descendant_of_build_dir Path.build_dir |> Dyn.bool |> print_dyn;
   [%expect {|
 false
 |}]

@@ -239,8 +239,7 @@ end = struct
       let hash (env, root, switch) = Hashtbl.hash (Env.hash env, root, switch)
 
       let to_dyn (env, root, switch) =
-        Dyn.Tuple
-          [ Env.to_dyn env; Dyn.(option string root); String switch ]
+        Dyn.Tuple [ Env.to_dyn env; Dyn.(option string root); String switch ]
     end in
     let memo = Memo.create "opam-env" ~input:(module Input) impl in
     fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)

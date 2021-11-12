@@ -38,9 +38,7 @@ Error: Field "foo" is present too many times
 let of_sexp : int list t = enter (fields (multi_field "foo" int))
 
 let%expect_test _ =
-  parse of_sexp Univ_map.empty (Lazy.force sexp)
-  |> Dyn.(list int)
-  |> print_dyn;
+  parse of_sexp Univ_map.empty (Lazy.force sexp) |> Dyn.(list int) |> print_dyn;
   [%expect {|
 [ 1; 2 ]
 |}]
@@ -60,8 +58,7 @@ let parse s =
     | User_error.E msg -> Error (string_of_user_error msg)
     | e -> Error (Printexc.to_string e)
   in
-  print_dyn
-    (Result.to_dyn (Dyn.list Dune_lang.to_dyn) Dyn.string res)
+  print_dyn (Result.to_dyn (Dyn.list Dune_lang.to_dyn) Dyn.string res)
 
 let%expect_test _ =
   parse {| # ## x##y x||y a#b|c#d copy# |};

@@ -7,9 +7,7 @@ module Make (S : Stringlike_intf.S_base) = struct
     match S.of_string_opt s with
     | Some s -> s
     | None ->
-      Code_error.raise
-        ("Invalid " ^ S.module_ ^ ".t")
-        [ ("s", Dyn.string s) ]
+      Code_error.raise ("Invalid " ^ S.module_ ^ ".t") [ ("s", Dyn.string s) ]
 
   let error_message s = Printf.sprintf "%S is an invalid %s." s S.description
 

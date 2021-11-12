@@ -48,8 +48,7 @@ module Crawl = struct
             (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
         in
         let cmt ml_kind =
-          Dyn.option dyn_path
-            (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+          Dyn.option dyn_path (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
         in
         Dyn.record
           [ ("name", Module_name.to_dyn (Module.name m))
@@ -85,8 +84,7 @@ module Crawl = struct
                           ~f:(fun (_, name) -> Dyn.String name)
                           exes.names) )
                  ; ( "requires"
-                   , Dyn.(list string) (List.map ~f:uid_of_library libs)
-                   )
+                   , Dyn.(list string) (List.map ~f:uid_of_library libs) )
                  ; ("modules", List modules_)
                  ; ("include_dirs", Dyn.list dyn_path include_dirs)
                  ]

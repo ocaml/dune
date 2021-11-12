@@ -182,6 +182,7 @@ the suggested correction. For instance:
    +src/fact.ml.corrected
    File "src/fact.ml", line 5, characters 0-1:
    let rec fact n = if n = 1 then 1 else n * fact (n - 1)
+
    let%expect_test _ =
      print_int (fact 5);
    -  [%expect]
@@ -286,7 +287,7 @@ You can specify such flags by using ``flags`` field. For instance:
      (executable
       (flags (-foo bar))))
      (preprocess (pps ppx_expect))))
- 
+
 The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
 
 Using Additional Libraries in the Test Runner
@@ -353,6 +354,7 @@ These three parameters can be specified inside the
    (extends          (<backends>))
 
 For instance:
+
 ``<action>`` follows the :ref:`user-actions` specification. It
 describes an action that should be executed in the library's directory 
 using this backend for their tests. It's expected that the
@@ -400,6 +402,7 @@ In this example, we put tests in comments of the form:
 The backend for such a framework looks like this:
 
 .. code:: lisp
+
    (library
     (name simple_tests)
     (inline_tests.backend
@@ -631,6 +634,7 @@ The ``cram`` stanza accepts the following fields:
 - ``deps`` - dependencies of the test
 - ``(package <package-name>)`` - attach the tests selected by this stanza to the
 specified package
+
 A single test may be configured by more than one ``cram`` stanza. In such cases,
 the values from all applicable ``cram`` stanzas are merged together to get the
 final values for all the fields.
@@ -672,6 +676,7 @@ recommend sanitising such outputs using pipes. For example, we can scrub the
 OCaml magic number using ``sed`` as follows:
 
 .. code:: bash
+
    $ ocamlc -config | grep "cmi_magic_number:" | sed 's/Caml.*/$SPECIAL_CODE/'
    cmi_magic_number: $SPECIAL_CODE
 
@@ -680,6 +685,7 @@ default list of paths is:
 
 - The ``PWD`` of the test will be replaced by ``$TESTCASE_ROOT``
 - The temporary directory for the current script will be replaced by ``$TMPDIR``
+
 To add additional paths to this sanitation mechanism, it's sufficient to modify
 the standard BUILD_PATH_PREFIX_MAP_ environment variable. For example:
 

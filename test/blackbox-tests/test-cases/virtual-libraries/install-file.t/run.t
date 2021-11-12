@@ -22,6 +22,8 @@ Install files for implementations and virtual libs have all the artifacts:
     "_build/install/default/lib/impl/impl.cma"
     "_build/install/default/lib/impl/impl.cmxa"
     "_build/install/default/lib/impl/opam"
+    "_build/install/default/lib/impl/vlib.cmi"
+    "_build/install/default/lib/impl/vlib.cmx"
     "_build/install/default/lib/impl/vlib__Foo.cmi"
     "_build/install/default/lib/impl/vlib__Foo.cmt"
     "_build/install/default/lib/impl/vlib__Foo.cmx"

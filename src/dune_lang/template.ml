@@ -30,7 +30,7 @@ module Pform = struct
     | Some p -> before ^ name ^ ":" ^ p ^ after
 
   let to_dyn { loc = _; name; payload } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("name", string name); ("payload", option string payload) ]
 
   let with_name t ~name = { t with name }
@@ -156,11 +156,11 @@ let remove_locs t =
   }
 
 let dyn_of_part =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Text s -> constr "Text" [ string s ]
-  | Pform v -> constr "Pform" [ Pform.to_dyn v ]
+  | Text s -> variant "Text" [ string s ]
+  | Pform v -> variant "Pform" [ Pform.to_dyn v ]
 
 let to_dyn { quoted; parts; loc = _ } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record [ ("quoted", bool quoted); ("parts", list dyn_of_part parts) ]

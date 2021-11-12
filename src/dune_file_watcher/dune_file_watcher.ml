@@ -28,7 +28,7 @@ module Fs_memo_event = struct
     | Unknown  (** Treated conservatively as any possible event. *)
 
   let dyn_of_kind kind =
-    Dyn.Encoder.string
+    Dyn.string
       (match kind with
       | Created -> "Created"
       | Deleted -> "Deleted"
@@ -41,7 +41,7 @@ module Fs_memo_event = struct
     }
 
   let to_dyn { path; kind } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("path", Path.to_dyn path); ("kind", dyn_of_kind kind) ]
 
   let create ~kind ~path =

@@ -88,7 +88,7 @@ let%expect_test _ =
   |}]
 
 let print_deps memo input =
-  let open Dyn.Encoder in
+  let open Dyn in
   Memo.For_tests.get_deps memo input
   |> option (list (pair (option string) (fun x -> x)))
   |> print_dyn
@@ -136,7 +136,7 @@ let dump_stack v =
   Memo.Build.return v
 
 let mcompcycle =
-  let mcompcycle = Fdecl.create Dyn.Encoder.opaque in
+  let mcompcycle = Fdecl.create Dyn.opaque in
   let compcycle x =
     let* x = Memo.Build.return x >>= dump_stack in
     counter := !counter + 1;
@@ -161,11 +161,11 @@ let%expect_test _ =
     print (Pp.textf "%d" !counter);
     !stack
     |> List.map ~f:(fun st ->
-           let open Dyn.Encoder in
+           let open Dyn in
            pair (option string)
              (fun x -> x)
              (Stack_frame.name st, Stack_frame.input st))
-    |> Dyn.Encoder.list (fun x -> x)
+    |> Dyn.list (fun x -> x)
     |> print_dyn;
     [%expect
       {|
@@ -181,7 +181,7 @@ let%expect_test _ =
     |}]
 
 let mfib =
-  let mfib = Fdecl.create Dyn.Encoder.opaque in
+  let mfib = Fdecl.create Dyn.opaque in
   let compfib x =
     let mfib = Memo.exec (Fdecl.get mfib) in
     counter := !counter + 1;
@@ -266,7 +266,7 @@ struct
        Memo.Build.return (x, y))
 
   let deps () =
-    let open Dyn.Encoder in
+    let open Dyn in
     let conv = option (list (pair (option string) (fun x -> x))) in
     pair conv conv
       (For_tests.get_deps f1_def "foo", For_tests.get_deps f2_def "foo")
@@ -281,7 +281,7 @@ module Builtin_lazy = Test_lazy (struct
 end)
 
 let%expect_test _ =
-  Builtin_lazy.run () |> Dyn.Encoder.(pair string string) |> print_dyn;
+  Builtin_lazy.run () |> Dyn.(pair string string) |> print_dyn;
   [%expect {|
     ("f1: lazy: foo", "f2: lazy: foo")
   |}]
@@ -309,7 +309,7 @@ module Memo_lazy = Test_lazy (struct
 end)
 
 let%expect_test _ =
-  Memo_lazy.run () |> Dyn.Encoder.(pair string string) |> print_dyn;
+  Memo_lazy.run () |> Dyn.(pair string string) |> print_dyn;
   [%expect {|
     ("f1: lazy: foo", "f2: lazy: foo")
   |}]
@@ -367,7 +367,7 @@ let%expect_test "fib linked list" =
       }
   end in
   let force cell : Element.t Memo.Build.t = Memo.Cell.read cell in
-  let memo_fdecl = Fdecl.create Dyn.Encoder.opaque in
+  let memo_fdecl = Fdecl.create Dyn.opaque in
   let compute_element x =
     let memo = Fdecl.get memo_fdecl in
     printf "computing %d\n" x;
@@ -520,7 +520,7 @@ let print_result arg res =
                     exn
                   | _ -> exn)))
   in
-  let open Dyn.Encoder in
+  let open Dyn in
   Format.printf "f %d = %a@." arg Pp.to_fmt
     (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
 
@@ -1453,13 +1453,13 @@ let print_exns f =
       Error (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> e.exn))
     | exception exn -> Error [ exn ]
   in
-  let open Dyn.Encoder in
+  let open Dyn in
   Format.printf "%a@." Pp.to_fmt
     (Dyn.pp (Result.to_dyn unit (list Exn.to_dyn) res))
 
 let%expect_test "error handling with diamonds" =
   Printexc.record_backtrace true;
-  let f_impl = Fdecl.create Dyn.Encoder.opaque in
+  let f_impl = Fdecl.create Dyn.opaque in
   let f =
     int_fn_create "error-diamond: f" ~cutoff:Unit.equal (fun x ->
         Fdecl.get f_impl x)
@@ -1491,7 +1491,7 @@ let%expect_test "error handling with diamonds" =
 
 let%expect_test "error handling and duplicate exceptions" =
   Printexc.record_backtrace true;
-  let f_impl = Fdecl.create Dyn.Encoder.opaque in
+  let f_impl = Fdecl.create Dyn.opaque in
   let f =
     int_fn_create "test8: duplicate-exception: f" ~cutoff:Unit.equal (fun x ->
         Fdecl.get f_impl x)

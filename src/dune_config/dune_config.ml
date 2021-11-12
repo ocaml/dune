@@ -111,7 +111,7 @@ module Cache = struct
       | None -> "auto"
       | Some mode -> Dune_cache_storage.Mode.to_string mode
 
-    let to_dyn = Dyn.Encoder.option Dune_cache_storage.Mode.to_dyn
+    let to_dyn = Dyn.option Dune_cache_storage.Mode.to_dyn
   end
 end
 
@@ -182,13 +182,13 @@ struct
       ; action_stdout_on_success
       ; action_stderr_on_success
       } =
-    Dyn.Encoder.record
+    Dyn.record
       [ ("display", field Scheduler.Config.Display.to_dyn display)
       ; ("concurrency", field Concurrency.to_dyn concurrency)
       ; ( "terminal_persistence"
         , field Terminal_persistence.to_dyn terminal_persistence )
       ; ( "sandboxing_preference"
-        , field (Dyn.Encoder.list Sandbox_mode.to_dyn) sandboxing_preference )
+        , field (Dyn.list Sandbox_mode.to_dyn) sandboxing_preference )
       ; ("cache_enabled", field Cache.Enabled.to_dyn cache_enabled)
       ; ( "cache_reproducibility_check"
         , field Dune_cache.Config.Reproducibility_check.to_dyn
@@ -236,7 +236,7 @@ module Partial = struct
     Make_to_dyn
       (M)
       (struct
-        let field f = Dyn.Encoder.option f
+        let field f = Dyn.option f
       end)
 end
 

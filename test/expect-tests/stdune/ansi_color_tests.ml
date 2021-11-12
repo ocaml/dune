@@ -1,24 +1,25 @@
 open Stdune
 
 let dyn_of_pp tag pp =
-  let open Dyn.Encoder in
-  let rec conv = function
-    | Pp.Ast.Nop -> constr "Nop" []
-    | Seq (x, y) -> constr "Seq" [ conv x; conv y ]
-    | Concat (x, y) -> constr "Concat" [ conv x; list conv y ]
-    | Box (i, x) -> constr "Box" [ int i; conv x ]
-    | Vbox (i, x) -> constr "Vbox" [ int i; conv x ]
-    | Hbox x -> constr "Hbox" [ conv x ]
-    | Hvbox (i, x) -> constr "Hvbox" [ int i; conv x ]
-    | Hovbox (i, x) -> constr "Hovbox" [ int i; conv x ]
-    | Verbatim s -> constr "Verbatim" [ string s ]
-    | Char c -> constr "Char" [ char c ]
+  let rec conv =
+    let open Dyn in
+    function
+    | Pp.Ast.Nop -> variant "Nop" []
+    | Seq (x, y) -> variant "Seq" [ conv x; conv y ]
+    | Concat (x, y) -> variant "Concat" [ conv x; list conv y ]
+    | Box (i, x) -> variant "Box" [ int i; conv x ]
+    | Vbox (i, x) -> variant "Vbox" [ int i; conv x ]
+    | Hbox x -> variant "Hbox" [ conv x ]
+    | Hvbox (i, x) -> variant "Hvbox" [ int i; conv x ]
+    | Hovbox (i, x) -> variant "Hovbox" [ int i; conv x ]
+    | Verbatim s -> variant "Verbatim" [ string s ]
+    | Char c -> variant "Char" [ char c ]
     | Break (x, y) ->
       let f = triple string int string in
-      constr "Break" [ f x; f y ]
-    | Newline -> constr "Newline" []
-    | Tag (ta, t) -> constr "Tag" [ tag ta; conv t ]
-    | Text s -> constr "Text" [ string s ]
+      variant "Break" [ f x; f y ]
+    | Newline -> variant "Newline" []
+    | Tag (ta, t) -> variant "Tag" [ tag ta; conv t ]
+    | Text s -> variant "Text" [ string s ]
   in
   conv
     (match Pp.to_ast pp with
@@ -46,7 +47,7 @@ let%expect_test "reproduce #2664" =
     {|
     Original : "\027[34m1\027[39m\027[34m2\027[39m\027[34m3\027[39m\027[34m4\027[39m\027[34m5\027[39m\027[34m6\027[39m\027[34m7\027[39m\027[34m8\027[39m\027[34m9\027[39m\027[34m10\027[39m\027[34m11\027[39m\027[34m12\027[39m\027[34m13\027[39m\027[34m14\027[39m\027[34m15\027[39m\027[34m16\027[39m\027[34m17\027[39m\027[34m18\027[39m\027[34m19\027[39m\027[34m20\027[39m"
     From PP  : "\027[34m1\027[0m\027[34m2\027[0m\027[34m3\027[0m\027[34m4\027[0m\027[34m5\027[0m\027[34m6\027[0m\027[34m7\027[0m\027[34m8\027[0m\027[34m9\027[0m\027[34m10\027[0m\027[34m11\027[0m\027[34m12\027[0m\027[34m13\027[0m\027[34m14\027[0m\027[34m15\027[0m\027[34m16\027[0m\027[34m17\027[0m\027[34m18\027[0m\027[34m19\027[0m\027[34m20\027[0m" |}];
-  let pp = dyn_of_pp (Dyn.Encoder.list Ansi_color.Style.to_dyn) pp |> Dyn.pp in
+  let pp = dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn) pp |> Dyn.pp in
   Format.printf "%a@.%!" Pp.to_fmt pp;
   [%expect
     {|

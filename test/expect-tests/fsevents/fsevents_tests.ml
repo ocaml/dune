@@ -84,7 +84,7 @@ let test f =
 
 let print_event ~logger ~cwd e =
   let dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("action", Event.dyn_of_action (Event.action e))
       ; ("kind", Event.dyn_of_kind (Event.kind e))

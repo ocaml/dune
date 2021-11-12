@@ -75,8 +75,7 @@ end = struct
   let of_string s =
     match of_string_opt s with
     | Some s -> s
-    | None ->
-      Code_error.raise "invalid alias name" [ ("s", Dyn.Encoder.string s) ]
+    | None -> Code_error.raise "invalid alias name" [ ("s", Dyn.string s) ]
 
   let to_string s = s
 

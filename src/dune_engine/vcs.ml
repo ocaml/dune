@@ -30,8 +30,7 @@ module T = struct
     }
 
   let to_dyn { root; kind } =
-    Dyn.Encoder.record
-      [ ("root", Path.to_dyn root); ("kind", Kind.to_dyn kind) ]
+    Dyn.record [ ("root", Path.to_dyn root); ("kind", Kind.to_dyn kind) ]
 
   let equal { root = ra; kind = ka } { root = rb; kind = kb } =
     Path.equal ra rb && Kind.equal ka kb

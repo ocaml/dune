@@ -38,10 +38,10 @@ module Dynamic_dep = struct
         Tuple.T2.compare Path.compare Glob.compare (dir1, glob1) (dir2, glob2)
 
     let to_dyn =
-      let open Dyn.Encoder in
+      let open Dyn in
       function
-      | File fn -> constr "File" [ Path.to_dyn fn ]
-      | Glob (dir, glob) -> constr "Glob" [ Path.to_dyn dir; Glob.to_dyn glob ]
+      | File fn -> variant "File" [ Path.to_dyn fn ]
+      | Glob (dir, glob) -> variant "Glob" [ Path.to_dyn dir; Glob.to_dyn glob ]
   end
 
   include T

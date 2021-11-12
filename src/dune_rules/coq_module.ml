@@ -83,7 +83,7 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
   @ native_objs
 
 let to_dyn { source; prefix; name } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("source", Path.Build.to_dyn source)
     ; ("prefix", list string prefix)

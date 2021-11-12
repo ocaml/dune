@@ -33,7 +33,7 @@ module Prog = struct
     let raise t = raise (User_error.E (user_message t))
 
     let to_dyn { context; program; hint; loc = _ } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("context", Context_name.to_dyn context)
         ; ("program", string program)

@@ -38,9 +38,7 @@ Error: Field "foo" is present too many times
 let of_sexp : int list t = enter (fields (multi_field "foo" int))
 
 let%expect_test _ =
-  parse of_sexp Univ_map.empty (Lazy.force sexp)
-  |> Dyn.Encoder.(list int)
-  |> print_dyn;
+  parse of_sexp Univ_map.empty (Lazy.force sexp) |> Dyn.(list int) |> print_dyn;
   [%expect {|
 [ 1; 2 ]
 |}]
@@ -60,8 +58,7 @@ let parse s =
     | User_error.E msg -> Error (string_of_user_error msg)
     | e -> Error (Printexc.to_string e)
   in
-  print_dyn
-    (Result.to_dyn (Dyn.Encoder.list Dune_lang.to_dyn) Dyn.Encoder.string res)
+  print_dyn (Result.to_dyn (Dyn.list Dune_lang.to_dyn) Dyn.string res)
 
 let%expect_test _ =
   parse {| # ## x##y x||y a#b|c#d copy# |};
@@ -218,9 +215,9 @@ type syntax =
 type sexp = S of syntax * Dune_lang.t
 
 let dyn_of_sexp (S (syntax, dlang)) =
-  let open Dyn.Encoder in
-  constr "S"
-    [ Dyn.Encoder.pair
+  let open Dyn in
+  variant "S"
+    [ Dyn.pair
         (function
           | Dune -> Variant ("Dune", [])
           | Jbuild -> Variant ("Jbuild", []))
@@ -235,11 +232,11 @@ type round_trip_result =
   | Did_not_parse_back of string
 
 let dyn_of_round_trip_result =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Round_trip_success -> constr "Round_trip_success" []
-  | Did_not_round_trip s -> constr "Did_not_round_trip" [ Dune_lang.to_dyn s ]
-  | Did_not_parse_back s -> constr "Did_not_parse_back" [ string s ]
+  | Round_trip_success -> variant "Round_trip_success" []
+  | Did_not_round_trip s -> variant "Did_not_round_trip" [ Dune_lang.to_dyn s ]
+  | Did_not_parse_back s -> variant "Did_not_parse_back" [ string s ]
 
 let test syntax sexp =
   let res =
@@ -257,7 +254,7 @@ let test syntax sexp =
       | exception User_error.E msg ->
         Did_not_parse_back (string_of_user_error msg) )
   in
-  let open Dyn.Encoder in
+  let open Dyn in
   pair dyn_of_sexp dyn_of_round_trip_result res |> print_dyn
 
 let%expect_test _ =
@@ -316,7 +313,7 @@ world
 (x ; comment inside list
  y)
 |})
-  |> Dyn.Encoder.list Dune_lang.Cst.to_dyn
+  |> Dyn.list Dune_lang.Cst.to_dyn
   |> print_dyn;
   [%expect
     {|

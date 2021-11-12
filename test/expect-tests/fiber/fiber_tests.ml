@@ -1,6 +1,6 @@
 open Stdune
 open Fiber.O
-open Dyn.Encoder
+open Dyn
 open Dune_tests_common
 
 let printf = Printf.printf

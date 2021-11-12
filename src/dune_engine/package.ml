@@ -69,7 +69,7 @@ module Id = struct
       | s -> s
 
     let to_dyn { dir; name } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record [ ("name", Name.to_dyn name); ("dir", Path.Source.to_dyn dir) ]
   end
 
@@ -109,7 +109,7 @@ module Dependency = struct
       [ ("=", Eq); (">=", Gte); ("<=", Lte); (">", Gt); ("<", Lt); ("<>", Neq) ]
 
     let to_dyn =
-      let open Dyn.Encoder in
+      let open Dyn in
       function
       | Eq -> string "Eq"
       | Gt -> string "Gt"
@@ -217,14 +217,14 @@ module Dependency = struct
           | _ -> sum (ops @ logops))
 
     let rec to_dyn =
-      let open Dyn.Encoder in
+      let open Dyn in
       function
-      | Bvar v -> constr "Bvar" [ Var.to_dyn v ]
-      | Uop (b, x) -> constr "Uop" [ Op.to_dyn b; Var.to_dyn x ]
+      | Bvar v -> variant "Bvar" [ Var.to_dyn v ]
+      | Uop (b, x) -> variant "Uop" [ Op.to_dyn b; Var.to_dyn x ]
       | Bop (b, x, y) ->
-        constr "Bop" [ Op.to_dyn b; Var.to_dyn x; Var.to_dyn y ]
-      | And t -> constr "And" (List.map ~f:to_dyn t)
-      | Or t -> constr "Or" (List.map ~f:to_dyn t)
+        variant "Bop" [ Op.to_dyn b; Var.to_dyn x; Var.to_dyn y ]
+      | And t -> variant "And" (List.map ~f:to_dyn t)
+      | Or t -> variant "Or" (List.map ~f:to_dyn t)
   end
 
   type t =
@@ -281,7 +281,7 @@ module Dependency = struct
       | Some c -> Option (nopos, pkg, [ c ])
 
   let to_dyn { name; constraint_ } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("name", Name.to_dyn name)
       ; ("constr", Dyn.Option (Option.map ~f:Constraint.to_dyn constraint_))
@@ -306,10 +306,10 @@ module Source_kind = struct
       ; kind : kind
       }
 
-    let dyn_of_kind kind = kind |> to_string |> Dyn.Encoder.string
+    let dyn_of_kind kind = kind |> to_string |> Dyn.string
 
     let to_dyn { user; repo; kind } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("kind", dyn_of_kind kind)
         ; ("user", string user)
@@ -372,10 +372,10 @@ module Source_kind = struct
     | Url of string
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
-    | Host h -> constr "Host" [ Host.to_dyn h ]
-    | Url url -> constr "Url" [ string url ]
+    | Host h -> variant "Host" [ Host.to_dyn h ]
+    | Url url -> variant "Url" [ string url ]
 
   let to_string = function
     | Host h -> Host.to_string h
@@ -460,7 +460,7 @@ module Info = struct
       ; documentation
       ; maintainers
       } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("source", (option Source_kind.to_dyn) source)
       ; ("license", (option string) license)
@@ -679,7 +679,7 @@ let to_dyn
     ; sites
     ; allow_empty
     } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("id", Id.to_dyn id)
     ; ("synopsis", option string synopsis)

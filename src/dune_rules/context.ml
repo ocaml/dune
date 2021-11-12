@@ -16,9 +16,9 @@ module Kind = struct
     | Opam of Opam.t
 
   let to_dyn : t -> Dyn.t = function
-    | Default -> Dyn.Encoder.string "default"
+    | Default -> Dyn.string "default"
     | Opam o ->
-      Dyn.Encoder.(
+      Dyn.(
         record [ ("root", option string o.root); ("switch", string o.switch) ])
 end
 
@@ -117,7 +117,7 @@ let hash t = Context_name.hash t.name
 let build_context t = t.build_context
 
 let to_dyn t : Dyn.t =
-  let open Dyn.Encoder in
+  let open Dyn in
   let path = Path.to_dyn in
   record
     [ ("name", Context_name.to_dyn t.name)
@@ -239,8 +239,7 @@ end = struct
       let hash (env, root, switch) = Hashtbl.hash (Env.hash env, root, switch)
 
       let to_dyn (env, root, switch) =
-        Dyn.Tuple
-          [ Env.to_dyn env; Dyn.Encoder.(option string root); String switch ]
+        Dyn.Tuple [ Env.to_dyn env; Dyn.(option string root); String switch ]
     end in
     let memo = Memo.create "opam-env" ~input:(module Input) impl in
     fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)

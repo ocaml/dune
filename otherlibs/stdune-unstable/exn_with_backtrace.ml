@@ -32,7 +32,7 @@ let map { exn; backtrace } ~f = { exn = f exn; backtrace }
 let map_and_reraise t ~f = reraise (map ~f t)
 
 let to_dyn { exn; backtrace } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("exn", string (Printexc.to_string exn))
     ; ("backtrace", string (Printexc.raw_backtrace_to_string backtrace))

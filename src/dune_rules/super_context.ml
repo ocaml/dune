@@ -572,7 +572,7 @@ let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
              (name, project)))
   |> Package.Name.Map.of_list_exn
 
-let modules_of_lib = Fdecl.create Dyn.Encoder.opaque
+let modules_of_lib = Fdecl.create Dyn.opaque
 
 let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
@@ -580,7 +580,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let installed_libs =
     Lib.DB.create_from_findlib context.findlib ~lib_config ~projects_by_package
   in
-  let modules_of_lib_for_scope = Fdecl.create Dyn.Encoder.opaque in
+  let modules_of_lib_for_scope = Fdecl.create Dyn.opaque in
   let* scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~projects_by_package ~context
       ~installed_libs ~modules_of_lib:modules_of_lib_for_scope stanzas

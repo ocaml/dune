@@ -103,7 +103,7 @@ module Make () = struct
   let superpose = Int.Map.superpose
 
   let to_dyn (t : t) =
-    let open Dyn.Encoder in
+    let open Dyn in
     Dyn.Map
       (Int.Map.values t
       |> List.map ~f:(fun (Binding.T (key, v)) ->

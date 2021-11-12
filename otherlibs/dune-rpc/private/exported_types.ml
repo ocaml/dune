@@ -79,7 +79,7 @@ module Path = struct
   let absolute abs =
     if Filename.is_relative abs then
       Code_error.raise "Path.absolute: accepts only absolute paths"
-        [ ("abs", Dyn.Encoder.string abs) ];
+        [ ("abs", Dyn.string abs) ];
     abs
 
   let relative = Filename.concat
@@ -116,7 +116,7 @@ module Diagnostic = struct
     let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
     let char = constr "Char" char (fun c -> Char c) in
     let newline = constr "Newline" unit (fun () -> Newline) in
-    let t_fdecl = Fdecl.create Dyn.Encoder.opaque in
+    let t_fdecl = Fdecl.create Dyn.opaque in
     let t = fdecl t_fdecl in
     let text = constr "Text" string (fun s -> Text s) in
     let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in

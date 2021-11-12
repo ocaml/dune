@@ -86,7 +86,7 @@ module Make (R : Settings) () = struct
 
     let equal x y = compare x y = Ordering.Eq
 
-    let to_dyn = Dyn.Encoder.int
+    let to_dyn = Dyn.int
   end
 
   include T

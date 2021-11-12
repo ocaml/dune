@@ -22,7 +22,7 @@ module Name = struct
       | Eq -> String.compare a b
       | ne -> ne
 
-    let to_dyn = Dyn.Encoder.string
+    let to_dyn = Dyn.string
   end
 
   include T

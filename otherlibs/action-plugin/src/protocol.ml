@@ -49,7 +49,7 @@ module Dependency = struct
         | Eq -> String.compare glob1 glob2
         | not_eq -> not_eq)
 
-    let to_dyn _ = Dyn.opaque
+    let to_dyn = Dyn.opaque
   end
 
   include T

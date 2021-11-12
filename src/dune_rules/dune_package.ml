@@ -212,7 +212,7 @@ module Lib = struct
   let info dp = dp.info
 
   let to_dyn { info; modules; main_module_name } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("info", Lib_info.to_dyn Path.to_dyn info)
       ; ("modules", option Modules.to_dyn modules)
@@ -244,7 +244,7 @@ module Deprecated_library_name = struct
       ]
 
   let to_dyn { loc = _; old_public_name; new_public_name } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("old_public_name", Lib_name.to_dyn old_public_name)
       ; ("new_public_name", Lib_name.to_dyn new_public_name)
@@ -286,12 +286,12 @@ module Entry = struct
     ]
 
   let to_dyn x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | Library lib -> constr "Library" [ Lib.to_dyn lib ]
+    | Library lib -> variant "Library" [ Lib.to_dyn lib ]
     | Deprecated_library_name lib ->
-      constr "Deprecated_library_name" [ Deprecated_library_name.to_dyn lib ]
-    | Hidden_library lib -> constr "Hidden_library" [ Lib.to_dyn lib ]
+      variant "Deprecated_library_name" [ Deprecated_library_name.to_dyn lib ]
+    | Hidden_library lib -> variant "Hidden_library" [ Lib.to_dyn lib ]
 end
 
 type t =
@@ -400,7 +400,7 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
   prepend_version ~dune_version (List.concat [ sexp; entries ])
 
 let to_dyn { entries; name; version; dir; sections; sites; files } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("entries", list Entry.to_dyn (Lib_name.Map.values entries))
     ; ("name", Package.Name.to_dyn name)
@@ -446,8 +446,8 @@ module Or_meta = struct
       t
 
   let to_dyn x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | Use_meta -> constr "Use_meta" []
-    | Dune_package t -> constr "Dune_package" [ to_dyn t ]
+    | Use_meta -> variant "Use_meta" []
+    | Dune_package t -> variant "Dune_package" [ to_dyn t ]
 end

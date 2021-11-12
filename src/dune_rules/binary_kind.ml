@@ -28,9 +28,7 @@ let to_string = function
   | Plugin -> "plugin"
   | Js -> "js"
 
-let to_dyn t =
-  let open Dyn.Encoder in
-  constr (to_string t) []
+let to_dyn t = Dyn.variant (to_string t) []
 
 let encode t = Dune_lang.atom (to_string t)
 

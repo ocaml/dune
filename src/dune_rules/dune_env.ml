@@ -144,7 +144,7 @@ module Stanza = struct
   let hash { loc = _; rules } =
     List.hash (Tuple.T2.hash hash_pattern hash_config) rules
 
-  let to_dyn = Dyn.Encoder.opaque
+  let to_dyn = Dyn.opaque
 
   let equal { loc = _; rules } t =
     List.equal (Tuple.T2.equal equal_pattern equal_config) rules t.rules

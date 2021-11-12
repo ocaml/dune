@@ -15,12 +15,10 @@ let compare x y =
   | _, Dir _ -> Gt
   | Path x, Path y -> Path.compare x y
 
-let to_dyn =
-  let open Dyn.Encoder in
-  function
-  | String s -> constr "string" [ string s ]
-  | Path p -> constr "path" [ Path.to_dyn p ]
-  | Dir p -> constr "dir" [ Path.to_dyn p ]
+let to_dyn = function
+  | String s -> Dyn.variant "string" [ String s ]
+  | Path p -> Dyn.variant "path" [ Path.to_dyn p ]
+  | Dir p -> Dyn.variant "dir" [ Path.to_dyn p ]
 
 let string_of_path ~dir p = Path.reach ~from:dir p
 

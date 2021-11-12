@@ -19,7 +19,7 @@ module Value = struct
     | Prog_and_args of Prog_and_args.t
 
   let to_dyn : t -> Dyn.t =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
     | Bool x -> Bool x
     | Int x -> Int x
@@ -58,10 +58,10 @@ module Ccomp_type = struct
     | Other of string
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
-    | Msvc -> constr "Msvc" []
-    | Other s -> constr "Other" [ string s ]
+    | Msvc -> variant "Msvc" []
+    | Other s -> variant "Other" [ string s ]
 
   let of_string = function
     | "msvc" -> Msvc

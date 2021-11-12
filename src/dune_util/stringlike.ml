@@ -7,9 +7,7 @@ module Make (S : Stringlike_intf.S_base) = struct
     match S.of_string_opt s with
     | Some s -> s
     | None ->
-      Code_error.raise
-        ("Invalid " ^ S.module_ ^ ".t")
-        [ ("s", Dyn.Encoder.string s) ]
+      Code_error.raise ("Invalid " ^ S.module_ ^ ".t") [ ("s", Dyn.string s) ]
 
   let error_message s = Printf.sprintf "%S is an invalid %s." s S.description
 
@@ -56,5 +54,5 @@ module Make (S : Stringlike_intf.S_base) = struct
 
   let encode t = Dune_lang.Encoder.(string (to_string t))
 
-  let to_dyn t = Dyn.Encoder.string (to_string t)
+  let to_dyn t = Dyn.string (to_string t)
 end

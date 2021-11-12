@@ -8,13 +8,13 @@ type t =
   | Comment of Loc.t * string list
 
 let rec to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Atom (_, a) -> constr "Atom" [ Atom.to_dyn a ]
-  | Quoted_string (_, s) -> constr "Quoted_string" [ string s ]
-  | Template t -> constr "Template" [ Template.to_dyn t ]
-  | List (_, l) -> constr "List" [ list to_dyn l ]
-  | Comment (_, c) -> constr "Comment" [ Dyn.Encoder.(list string) c ]
+  | Atom (_, a) -> variant "Atom" [ Atom.to_dyn a ]
+  | Quoted_string (_, s) -> variant "Quoted_string" [ string s ]
+  | Template t -> variant "Template" [ Template.to_dyn t ]
+  | List (_, l) -> variant "List" [ list to_dyn l ]
+  | Comment (_, c) -> variant "Comment" [ Dyn.(list string) c ]
 
 let loc
     ( Atom (loc, _)

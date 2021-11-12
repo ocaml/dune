@@ -187,7 +187,7 @@ module Cycle_error = struct
 
   let get t = t
 
-  let to_dyn = Dyn.Encoder.list Stack_frame_without_state.to_dyn
+  let to_dyn = Dyn.list Stack_frame_without_state.to_dyn
 end
 
 module Error = struct
@@ -245,10 +245,10 @@ module Error = struct
       | _ -> { exn; rev_stack = [ stack_frame ] })
 
   let to_dyn t =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("exn", Exn.to_dyn t.exn)
-      ; ("stack", Dyn.Encoder.list Stack_frame_without_state.to_dyn (stack t))
+      ; ("stack", Dyn.list Stack_frame_without_state.to_dyn (stack t))
       ]
 end
 
@@ -260,13 +260,13 @@ exception Non_reproducible of exn
 let () =
   Printexc.register_printer (fun exn ->
       let dyn =
-        let open Dyn.Encoder in
+        let open Dyn in
         match exn with
-        | Error.E err -> Some (constr "Memo.Error.E" [ Error.to_dyn err ])
+        | Error.E err -> Some (variant "Memo.Error.E" [ Error.to_dyn err ])
         | Cycle_error.E frames ->
-          Some (constr "Cycle_error.E" [ Cycle_error.to_dyn frames ])
+          Some (variant "Cycle_error.E" [ Cycle_error.to_dyn frames ])
         | Non_reproducible exn ->
-          Some (constr "Memo.Non_reproducible" [ Exn.to_dyn exn ])
+          Some (variant "Memo.Non_reproducible" [ Exn.to_dyn exn ])
         | _ -> None
       in
       Option.map dyn ~f:Dyn.to_string)
@@ -889,7 +889,7 @@ end = struct
              Memo invariants and causing more confusing exceptions, but
              hopefully this code_error will be a hint. *)
           Code_error.raise "Memo error handler raised an exception"
-            [ ("exns", Dyn.Encoder.list Exn_with_backtrace.to_dyn e) ])
+            [ ("exns", Dyn.list Exn_with_backtrace.to_dyn e) ])
 
   let deduplicate_errors f =
     let reported = ref Exn_set.empty in

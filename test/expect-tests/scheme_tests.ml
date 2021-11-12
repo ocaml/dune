@@ -128,9 +128,7 @@ let print_rules scheme ~dir =
     Code_error.raise
       "Naive [collect_rules_simple] gives result inconsistent with \
        [Scheme.evaluate]"
-      [ ("res1", Dyn.Encoder.(list string) res1)
-      ; ("res2", Dyn.Encoder.(list string) res2)
-      ]
+      [ ("res1", Dyn.(list string) res1); ("res2", Dyn.(list string) res2) ]
   else
     let print_log log =
       let log =

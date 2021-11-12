@@ -38,7 +38,7 @@ module Register (M : S) : sig end = struct
     match Sub_system_name.Table.get all name with
     | Some _ ->
       Code_error.raise "Sub_system_info.register: already registered"
-        [ ("name", Dyn.Encoder.string (Sub_system_name.to_string name)) ]
+        [ ("name", Dyn.string (Sub_system_name.to_string name)) ]
     | None -> (
       Sub_system_name.Table.set all ~key:name ~data:(Some (module M : S));
       let p = !record_parser in

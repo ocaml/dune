@@ -417,9 +417,7 @@ module Mode_conf = struct
     | Native -> "native"
     | Best -> "best"
 
-  let to_dyn t =
-    let open Dyn.Encoder in
-    constr (to_string t) []
+  let to_dyn t = Dyn.variant (to_string t) []
 
   let encode t = Dune_lang.atom (to_string t)
 
@@ -1218,7 +1216,7 @@ module Executables = struct
           | Eq -> Poly.compare a.kind b.kind
           | ne -> ne)
 
-      let to_dyn _ = Dyn.opaque
+      let to_dyn = Dyn.opaque
     end
 
     include T
@@ -1280,7 +1278,7 @@ module Executables = struct
       match t with
       | Byte_complete -> Dyn.Variant ("Byte_complete", [])
       | Other { mode; kind } ->
-        let open Dyn.Encoder in
+        let open Dyn in
         Variant
           ( "Other"
           , [ record
@@ -1389,7 +1387,7 @@ module Executables = struct
         ~desc:"private extension to handle Dune bootstrap"
         [ ((0, 1), `Since (2, 0)) ]
     in
-    Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
+    Dune_project.Extension.register syntax (return ((), [])) Dyn.unit
 
   let common =
     let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
@@ -1666,7 +1664,7 @@ module Rule = struct
         ~desc:"experimental support for directory targets"
         [ ((0, 1), `Since (3, 0)) ]
     in
-    Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
+    Dune_project.Extension.register syntax (return ((), [])) Dyn.unit
 
   let long_form =
     let* deps =

@@ -465,7 +465,7 @@ module Var = struct
 
   let unset var f k = EC.set_vars (Univ_map.remove (EC.vars ()) var) f () k
 
-  let create () = create ~name:"var" (fun _ -> Dyn.Encoder.string "var")
+  let create () = create ~name:"var" (fun _ -> Dyn.string "var")
 end
 
 (* This function violates the invariant that every fiber either returns a value

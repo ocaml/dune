@@ -188,7 +188,7 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
           ignore dst_digest
         | None ->
           Code_error.raise
-            (sprintf "Counld not compute digest of promoted file %S"
+            (sprintf "Could not compute digest of promoted file %S"
                (Path.to_string dst_path))
             [ ( "dst_digest_result"
               , Cached_digest.Digest_result.to_dyn dst_digest_result )

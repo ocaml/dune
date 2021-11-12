@@ -21,6 +21,7 @@ We distinguish three kinds of tests:
 
 * Cram tests - expect tests written in Cram_ style.
 
+
 Running Tests
 =============
 
@@ -50,6 +51,7 @@ exec`` to run the test executable (for the sake of this example,
 
 dune exec project/tests/myTest.exe
 
+
 Running Tests in a Directory
 ----------------------------
 
@@ -58,6 +60,7 @@ instance, ``dune runtest test`` will only run the tests from the ``test``
 directory and any subdirectory of ``test`` recursively.
 
 .. _inline_tests:
+
 
 Inline Tests
 ============
@@ -204,6 +207,7 @@ running the tests by typing:
 Finally, some editor integration can make the editor do the
 promotion, which in turn makes the workflow even smoother.
 
+
 Running a Subset of the Test Suite
 ----------------------------------
 	
@@ -214,6 +218,7 @@ You may also run a group of tests located under a directory with:
    dune runtest mylib/tests
 
 The above command will run all tests defined in tests and its subdirectories.
+
 
 Running Tests in Bytecode or JavaScript
 ---------------------------------------
@@ -239,6 +244,7 @@ For instance:
     (inline_tests (modes byte best js))
     (preprocess (pps ppx_expect)))
 
+
 Specifying Inline Test Dependencies
 -----------------------------------
 
@@ -252,6 +258,7 @@ a ``deps`` field the ``inline_tests`` field. The argument of this
     (name foo)
     (inline_tests (deps data.txt))
     (preprocess (pps ppx_expect)))
+
 
 Passing Special Arguments to the Test Runner
 --------------------------------------------
@@ -269,6 +276,7 @@ as:
     (preprocess (pps ppx_expect)))
 
 The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
+
 
 Passing Special Arguments to the Test Executable
 ------------------------------------------------
@@ -290,6 +298,7 @@ You can specify such flags by using ``flags`` field. For instance:
 
 The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
 
+
 Using Additional Libraries in the Test Runner
 ---------------------------------------------
 
@@ -305,6 +314,7 @@ such libraries using a ``libraries`` field, such as:
     (inline_tests
      (backend qtest)
      (libraries bar)))
+
 
 Changing the Flags of the Linking Step of the Test Runner
 ---------------------------------------------------------
@@ -325,6 +335,7 @@ runner doesn't depend on anything itself. This field supports
      (executable
       (link_flags -linkall -noautolink -cclib -Wl,-Bstatic -cclib -lm)))
     (preprocess (pps ppx_expect)))
+
 
 Defining Your Own Inline Test Backend
 -------------------------------------
@@ -390,6 +401,7 @@ concatenated. The order in which they are concatenated is unspecified;
 however, if a backend ``b`` extends a backend ``a``, then ``a`` will
 always come before ``b``.
 
+
 Example of Backend
 ~~~~~~~~~~~~~~~~~~
 
@@ -413,6 +425,7 @@ simple_tests)))`` wherever you want to write such tests. Note that
 this is only an example. We don't recommend using ``sed`` in your
 build, as this would cause portability problems.
 
+
 Custom Tests
 ============
 
@@ -435,6 +448,7 @@ define multiple tests and their aliases at once:
 .. code:: scheme
 
    (tests (names test1 test2))
+
 
 Diffing the Result
 ------------------
@@ -491,6 +505,7 @@ Dune.
 
 .. _cram-tests:
 
+
 Cram Tests
 ==========
 
@@ -503,6 +518,7 @@ older versions, it must be manually enabled in the ``dune-project`` file:
 
    (lang dune 2.7)
    (cram enable)
+
 
 File Tests
 ----------
@@ -559,6 +575,7 @@ For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
 The above example uses the doc syntax, piping the subsequent lines to
 ``cat``. This is convenient for creating small test artifacts.
 
+
 Directory Tests
 ---------------
 
@@ -589,6 +606,7 @@ access their contents in the test script ``run.t``:
    4
    $ wc -l $(ls bar) | awk '{ print $1 }'
    1231
+
 
 Test Options
 ------------
@@ -639,6 +657,7 @@ A single test may be configured by more than one ``cram`` stanza. In such cases,
 the values from all applicable ``cram`` stanzas are merged together to get the
 final values for all the fields.
 
+
 Testing an OCaml Program
 ------------------------
 
@@ -658,6 +677,7 @@ To use this binary in the Cram test, we should depend on the binary in the test:
 	(cram
     (deps %{bin:wc}))
 
+
 Sandboxing
 ----------
 
@@ -667,6 +687,7 @@ sandboxed. To respect sandboxing, every test should specify dependency on any
 artifact that might rely on using the ``deps`` field.
 
 See :ref:`dune-action-plugin` for details about the sandboxing mechanism.
+
 
 Test Output Sanitation
 ----------------------

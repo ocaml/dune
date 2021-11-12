@@ -21,8 +21,8 @@ val path_stat :
   -> (Fs_cache.Reduced_stats.t, Unix_error.Detailed.t) result Memo.Build.t
 
 (** Digest the contents of a source or external path and declare a dependency on
-    it. When [force_update = true], evict the path from all file-system caches
-    and force the recomputation of the digest. This can be useful if Dune made a
+    it. When [force_update = true], evict the path from all digest caches and
+    force the recomputation of the digest. This can be useful if Dune made a
     change to the path and therefore knows that the cached digest is stale and
     is about to be invalidated by an incoming file-system event. By not using
     the cache in this situation, it's possible to avoid unnecessary restarts. *)

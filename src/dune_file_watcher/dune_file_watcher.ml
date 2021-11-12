@@ -188,8 +188,6 @@ module For_tests = struct
   let should_exclude = should_exclude
 end
 
-(* CR-someday amokhov: This function runs on the scheduler thread because it
-   used to access the [ignored_files] table. Can we simplify this now? *)
 let process_inotify_event (event : Async_inotify_for_dune.Async_inotify.Event.t)
     : Event.t list =
   let should_ignore =
@@ -425,8 +423,7 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
   let worker_thread pipe =
     let buffer = Buffer.create ~capacity:buffer_capacity in
     while true do
-      (* CR-someday amokhov: This job runs on the scheduler thread because it
-         used to access the [ignored_files] table. Can we simplify this now? *)
+      (* This job runs on the scheduler thread because it uses [sync_table]. *)
       let job =
         match Buffer.read_lines buffer pipe with
         | `End_of_file _remaining -> fun () -> [ Event.Watcher_terminated ]

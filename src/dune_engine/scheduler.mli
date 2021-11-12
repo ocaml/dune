@@ -130,8 +130,8 @@ val yield_if_there_are_pending_events : unit -> unit Fiber.t
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 
-(** Start the shutdown sequence. Among other things, it causes Dune to cancel
-    the current build and stop accepting RPC clients. *)
+(** Immediately abort any on-going [Run.go], making it raise
+    [Run.Shutdown_requested]. *)
 val shutdown : unit -> unit Fiber.t
 
 val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t

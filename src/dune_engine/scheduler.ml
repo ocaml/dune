@@ -731,8 +731,6 @@ type status =
        state *)
       Restarting_build of
       Memo.Invalidation.t
-  | (* Shut down requested. No new new builds will start *)
-      Shutting_down
 
 module Build_outcome = struct
   type t =
@@ -880,9 +878,7 @@ let with_job_slot f =
   let* t = t () in
   let raise_if_cancelled () =
     match t.status with
-    | Restarting_build _
-    | Shutting_down ->
-      raise (Memo.Non_reproducible Build_cancelled)
+    | Restarting_build _ -> raise (Memo.Non_reproducible Build_cancelled)
     | Building -> ()
     | Standing_by _ ->
       (* At this stage, we're not running a build, so we shouldn't be running
@@ -969,6 +965,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
 module Run_once : sig
   type run_error =
     | Already_reported
+    | Shutdown_requested
     | Exn of Exn_with_backtrace.t
 
   (** Run the build and clean up after it (kill any stray processes etc). *)
@@ -976,6 +973,7 @@ module Run_once : sig
 end = struct
   type run_error =
     | Already_reported
+    | Shutdown_requested
     | Exn of Exn_with_backtrace.t
 
   exception Abort of run_error
@@ -1016,7 +1014,6 @@ end = struct
       in
       (if not (Memo.Invalidation.is_empty invalidation) then (
         match t.status with
-        | Shutting_down -> ()
         | Restarting_build prev_invalidation ->
           t.status <-
             Restarting_build
@@ -1048,10 +1045,12 @@ end = struct
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
-    | Shutdown signal ->
-      got_signal signal;
-      raise (Abort Already_reported)
     | Yield ivar -> Fill (ivar, ())
+    | Shutdown signal -> (
+      got_signal signal;
+      match signal with
+      | Shutdown -> raise (Abort Shutdown_requested)
+      | _ -> raise (Abort Already_reported))
 
   let run t f : _ result =
     let fiber =
@@ -1137,8 +1136,7 @@ let wait_for_build_input_change t =
       Fiber.return ()
     | Restarting_build _ -> Fiber.return ()
     | Standing_by _
-    | Building
-    | Shutting_down ->
+    | Building ->
       let ivar = Fiber.Ivar.create () in
       t.wait_for_build_input_change <- Some ivar;
       Fiber.Ivar.read ivar)
@@ -1166,10 +1164,6 @@ module Run = struct
     | Standing_by _ ->
       (* We just finished a build, so there's no way this was set *)
       assert false
-    | Shutting_down ->
-      (* [iter] will eventually blow up when it sees the [Shutdown] event, so no
-         need to bother doing anything complicated here. *)
-      Fiber.never
     | Restarting_build invalidation ->
       t.status <- Building;
       poll_iter t step ~invalidation
@@ -1189,7 +1183,6 @@ module Run = struct
 
   let poll_iter t step =
     match t.status with
-    | Shutting_down -> Fiber.never
     | Building
     | Restarting_build _ ->
       assert false
@@ -1288,14 +1281,9 @@ module Run = struct
       in
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
+      | Error Shutdown_requested -> Error (Shutdown_requested, None)
       | Error Already_reported ->
-        let exn =
-          if t.status = Shutting_down then
-            Shutdown_requested
-          else
-            Dune_util.Report_error.Already_reported
-        in
-        Error (exn, None)
+        Error (Dune_util.Report_error.Already_reported, None)
       | Error (Exn exn_with_bt) ->
         Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
@@ -1315,7 +1303,6 @@ end
 
 let shutdown () =
   let+ t = t () in
-  t.status <- Shutting_down;
   Event.Queue.send_signal t.events Shutdown
 
 let inject_memo_invalidation invalidation =

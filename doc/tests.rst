@@ -255,6 +255,7 @@ Under the hood, a test executable is built by Dune. Depending on
 the backend used, this runner might take useful command line
 arguments. You can specify such flags by using a ``flags`` field, such
 as:
+
 .. code:: ocaml
 
    (library
@@ -271,6 +272,7 @@ To control how the test executable is built, it’s possible to customize a subs
 of compilation options for an executable using the ``executable`` field. Dune
 gives you this ability by simply specifying command line arguments as flags.
 You can specify such flags by using ``flags`` field. For instance:
+
 .. code:: ocaml
 
    (library
@@ -387,10 +389,12 @@ Example of Backend
 
 In this example, we put tests in comments of the form:
 
-	.. code:: ocaml
+.. code:: ocaml
 
    (*TEST: assert (fact 5 = 120) *)
+
 The backend for such a framework looks like this:
+
 .. code:: lisp
    (library
     (name simple_tests)
@@ -435,8 +439,10 @@ it's more integrated in Dune, especially with the ``promote``
 command. For instance, let's consider this test:
 
 .. code:: scheme
-	(rule
-    (with-stdout-to tests.output (run ./tests.exe)))
+
+   (rule
+   (with-stdout-to tests.output (run ./tests.exe)))
+
    (rule
     (alias runtest)
     (action (diff tests.expected test.output)))
@@ -488,7 +494,7 @@ older versions, it must be manually enabled in the ``dune-project`` file:
 
 .. code:: scheme
 
-	   (lang dune 2.7)
+	(lang dune 2.7)
    (cram enable)
 
 File Tests
@@ -508,14 +514,17 @@ This simple example demonstrates two components of Cram tests:
   in the shell and the output is diffed against the output below. In this
   example, there's no output yet.
 
-	To run the test and promote the results:
+To run the test and promote the results:
 
 .. code:: bash
 
    $ dune runtest
    $ dune promote
+
 We now see the output of the command:
+
 .. code:: bash
+
    Simplest possible cram test
      $ echo "testing"
      testing
@@ -534,6 +543,7 @@ For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
      > bar
 	  > baz
      > EOF
+
    After creating the fixture, we want to verify that ``wc`` gives us the right
    result:
      $ wc -l foo | awk '{ print $1 }'
@@ -594,7 +604,7 @@ This introduces a dependency on ``foo.exe`` on all Cram tests in this directory.
 To apply the stanza to a particular test, it's possible to use ``applies_to``
 field:
 
-	.. code:: scheme
+.. code:: scheme
 
    (cram
     (applies_to * \ foo bar)

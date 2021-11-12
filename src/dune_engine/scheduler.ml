@@ -450,7 +450,7 @@ end = struct
 
     let send_invalidation_events q events =
       add_event q (fun q ->
-          q.invalidation_events <- List.rev_append events q.invalidation_events)
+          q.invalidation_events <- q.invalidation_events @ events)
 
     let send_file_watcher_events q files =
       send_invalidation_events q
@@ -872,14 +872,6 @@ let yield_if_there_are_pending_events () =
 let () =
   Memo.yield_if_there_are_pending_events := yield_if_there_are_pending_events
 
-let ignore_for_watch path =
-  let+ t = t () in
-  match t.file_watcher with
-  | None -> ()
-  | Some file_watcher ->
-    assert (Path.is_in_source_tree path);
-    Dune_file_watcher.ignore_next_file_change_event file_watcher path
-
 exception Build_cancelled
 
 let with_job_slot f =
@@ -1160,7 +1152,7 @@ module Run = struct
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
-  let rec poll_iter t step ~flush ~invalidation =
+  let rec poll_iter t step ~invalidation =
     (if Memo.Invalidation.is_empty invalidation then
       Memo.Perf_counters.reset ()
     else
@@ -1168,18 +1160,13 @@ module Run = struct
       t.handler t.config (Source_files_changed { details_hum });
       Memo.reset invalidation);
     let* res = step in
-    let* () =
-      match flush with
-      | false -> Fiber.return ()
-      | true -> flush_file_watcher t
-    in
     match t.status with
     | Standing_by _ ->
       (* We just finished a build, so there's no way this was set *)
       assert false
     | Restarting_build invalidation ->
       t.status <- Building;
-      poll_iter t step ~flush ~invalidation
+      poll_iter t step ~invalidation
     | Building ->
       let res : Build_outcome.t =
         match res with
@@ -1194,14 +1181,14 @@ module Run = struct
       t.handler t.config (Build_finish res);
       Fiber.return res
 
-  let poll_iter t step ~flush =
+  let poll_iter t step =
     match t.status with
     | Building
     | Restarting_build _ ->
       assert false
     | Standing_by { invalidation; _ } ->
       t.status <- Building;
-      poll_iter t step ~flush ~invalidation
+      poll_iter t step ~invalidation
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
 
@@ -1218,7 +1205,7 @@ module Run = struct
   let poll step =
     let* t = poll_init () in
     let rec loop () =
-      let* _res = poll_iter t step ~flush:false in
+      let* _res = poll_iter t step in
       let* () = wait_for_build_input_change t in
       loop ()
     in
@@ -1232,17 +1219,22 @@ module Run = struct
          designed for tests and We want to observe all the change made by the
          test before starting the build. *)
       let* () = flush_file_watcher t in
-      (* Pass [flush:true] to make sure we reach a fix point if the build
-         interrupts itself. Without that, a file change cause by the build
-         itself might be picked up before or after the build finishes, which
-         makes the behavior racy and not good for tests.
+      let step =
+        let* res = step in
+        (* Flush after the build to make sure we reach a fix point if the build
+           interrupts itself. Without that, a file change caused by the build
+           itself might be picked up before or after the build finishes, which
+           makes the behavior racy and not good for tests.
 
-         This [flush:true] makes the previous [flush_file_watcher] less useful,
-         however we keep it because without it we might start the build without
-         having observed all the changes made by the current test. Such an
-         intermediate state might result in a build error, which would make the
-         test racy.*)
-      let* res = poll_iter t step ~flush:true in
+           Flushing here makes the previous [flush_file_watcher] less useful,
+           however we keep it because without it we might start the build
+           without having observed all the changes made by the current test.
+           Such an intermediate state might result in a build error, which would
+           make the test racy.*)
+        let+ () = flush_file_watcher t in
+        res
+      in
+      let* res = poll_iter t step in
       let* () = Fiber.Ivar.fill response_ivar res in
       loop ()
     in

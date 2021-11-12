@@ -2,6 +2,11 @@ open Stdune
 open Async_inotify_for_dune
 open Printf
 
+let ( / ) a b =
+  match a with
+  | "." -> b
+  | _ -> Filename.concat a b
+
 let create_file fn = Io.String_path.write_file fn ""
 
 let mkdir fn = Unix.mkdir fn 0o777
@@ -9,16 +14,6 @@ let mkdir fn = Unix.mkdir fn 0o777
 let rm = Sys.remove
 
 let rmdir = Unix.rmdir
-
-(* Run a function in a sub-directory *)
-let in_sub_dir =
-  let n = ref 0 in
-  fun f ->
-    incr n;
-    let dir = sprintf "test%d" !n in
-    mkdir dir;
-    Sys.chdir dir;
-    Exn.protect ~finally:(fun () -> Sys.chdir "..") ~f
 
 let string_of_event ev =
   let s = Async_inotify.Event.to_string ev in
@@ -48,12 +43,13 @@ let remove_dot_slash_from_event : Async_inotify.Event.t -> Async_inotify.Event.t
       | Move (a, b) -> Move (remove_dot_slash a, remove_dot_slash b))
   | Queue_overflow -> Queue_overflow
 
-let setup_inotify () =
-  (* File used to end the the test: when we receive an event about this file, we
-     consider the test as finished. *)
-  let end_of_test_file = "END_OF_TEST" in
-  (try Sys.remove end_of_test_file with
-  | _ -> ());
+let watch, collect_events =
+  (* File used to mark the beginning and end of tests. *)
+  let cwd = Sys.getcwd () in
+  let beginning_of_test_file = cwd / "BEGINNING_OF_TEST" in
+  let end_of_test_file = cwd / "END_OF_TEST" in
+  create_file beginning_of_test_file;
+  create_file end_of_test_file;
   let events = Queue.create () in
   let mutex = Mutex.create () in
   let cond = Condition.create () in
@@ -67,6 +63,9 @@ let setup_inotify () =
         Condition.signal cond;
         Mutex.unlock mutex)
   in
+  let watch fn = Async_inotify.add inotify fn in
+  watch beginning_of_test_file;
+  watch end_of_test_file;
   let next_events () =
     Mutex.lock mutex;
     while Queue.is_empty events do
@@ -80,31 +79,48 @@ let setup_inotify () =
     | [] ->
       let events = next_events () in
       collect_events acc events
-    | Async_inotify.Event.(Created fn | Modified fn) :: _
-      when remove_dot_slash fn = end_of_test_file ->
+    | Async_inotify.Event.Modified fn :: events when fn = end_of_test_file ->
+      if not (List.is_empty events) then (
+        printf "***** Leftover events after end of test marker event *****\n";
+        print_events events
+      );
       List.rev acc
     | ev :: events -> collect_events (ev :: acc) events
   in
   let collect_events () =
-    (* Generate the end of test marker event: *)
+    (* Mark the beginning of the current test *)
     create_file end_of_test_file;
-    Async_inotify.add inotify end_of_test_file;
-    create_file end_of_test_file;
-    collect_events [] []
+    let events =
+      match next_events () with
+      | [] -> assert false
+      | Async_inotify.Event.Modified fn :: events
+        when fn = beginning_of_test_file ->
+        collect_events [] events
+      | events ->
+        printf "***** First event is not the beginning of test marker *****\n";
+        collect_events [] events
+    in
+    (* Mark the beginning of the next test *)
+    create_file beginning_of_test_file;
+    events
   in
-  let watch fn = Async_inotify.add inotify fn in
+  create_file beginning_of_test_file;
   (watch, collect_events)
 
-let ( / ) a b =
-  match a with
-  | "." -> b
-  | _ -> Filename.concat a b
+(* Run a function in a sub-directory *)
+let in_sub_dir =
+  let n = ref 0 in
+  fun f ->
+    incr n;
+    let dir = sprintf "test%d" !n in
+    mkdir dir;
+    Sys.chdir dir;
+    Exn.protect ~finally:(fun () -> Sys.chdir "..") ~f
 
 let%expect_test "Simple test" =
   in_sub_dir @@ fun () ->
   let fn = "file" in
   create_file fn;
-  let watch, collect_events = setup_inotify () in
   watch fn;
   create_file fn;
   print_events (collect_events ());
@@ -183,7 +199,6 @@ let gen_changes files =
 
 let setup1 ~depth ~files_per_dir ~sub_dirs_per_dir =
   let files = gen_tree ~depth ~files_per_dir ~sub_dirs_per_dir in
-  let watch, collect_events = setup_inotify () in
   List.iter files ~f:(fun (_kind, fn) -> watch fn);
   (files, collect_events)
 
@@ -309,7 +324,6 @@ let%expect_test "Check that FS events are reported chronologically 2" =
   in_sub_dir @@ fun () ->
   mkdir "a";
   mkdir "b";
-  let watch, collect_events = setup_inotify () in
   watch "a";
   watch "b";
   let expected_events = Queue.create () in
@@ -334,3 +348,69 @@ let%expect_test "Check that FS events are reported chronologically 2" =
     modified  b/x
     created   a/y
     modified  a/y |}]
+
+let run cmd =
+  match
+    snd
+      (Unix.waitpid []
+         (Unix.create_process (List.hd cmd) (Array.of_list cmd) Unix.stdin
+            Unix.stdout Unix.stderr))
+  with
+  | WEXITED 0 -> ()
+  | _ -> assert false
+
+(* Check that ordering is respected when the changes are made by an external
+   process. Which is the assumption we are making for the fs sync mechanism of
+   the file watcher. *)
+let%expect_test "Check that FS events are reported chronologically 3" =
+  in_sub_dir @@ fun () ->
+  mkdir "_build";
+  mkdir "_build/.sync";
+  watch ".";
+  watch "_build/.sync";
+  let actions =
+    [ `Me; `Ext; `Me; `Ext; `Ext ]
+    |> List.mapi ~f:(fun i who -> (string_of_int i, who))
+  in
+  let actions = actions @ [ ("_build/.sync/1", `Me) ] in
+  let do_actions () =
+    List.iter actions ~f:(fun (fn, who) ->
+        match who with
+        | `Me -> create_file fn
+        | `Ext -> run [ "touch"; fn ])
+  in
+  do_actions ();
+  let expected_events =
+    List.concat_map actions ~f:(fun (fn, _who) ->
+        [ Async_inotify.Event.Created fn; Modified fn ])
+  in
+  check_events ~expected_events ~real_events:(collect_events ());
+  [%expect
+    {|
+    Success
+
+    created   0
+    modified  0
+    created   1
+    modified  1
+    created   2
+    modified  2
+    created   3
+    modified  3
+    created   4
+    modified  4
+    created   _build/.sync/1
+    modified  _build/.sync/1 |}];
+  (* Repeat the operation multiple times *)
+  for _ = 0 to 100 do
+    List.iter actions ~f:(fun (fn, _) -> rm fn);
+    ignore (collect_events () : _ list);
+    do_actions ();
+    let real_events =
+      collect_events () |> List.map ~f:remove_dot_slash_from_event
+    in
+    if expected_events <> real_events then (
+      print_endline "--------------------";
+      check_events ~real_events ~expected_events
+    )
+  done

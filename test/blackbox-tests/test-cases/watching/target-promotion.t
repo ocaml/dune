@@ -59,11 +59,8 @@ Now try replacing its content.
   bye
   bye
 
-Now replace the content and switch the mode to standard. Note that this case is
-currently not handled correctly: instead of succeeding, we should report a rule
-conflict, as we do in the batch build mode -- see [dep-on-promoted-target.t].
-
-# CR-someday amokhov: Fix this test.
+Now switch the mode to standard. Dune reports an error about multiple rules for
+[_build/default/promoted], as expected (see the error at the end of the test).
 
   $ cat > dune <<EOF
   > (rule
@@ -76,23 +73,76 @@ conflict, as we do in the batch build mode -- see [dep-on-promoted-target.t].
   >   (target result)
   >   (action (bash "cat promoted promoted > result")))
   > EOF
-  $ echo hi > promoted
 
+  $ build result
+  Failure
+
+We use the hint and it starts to work.
+
+  $ rm -f promoted
   $ build result
   Success
   $ cat promoted
-  hi
+  cat: promoted: No such file or directory
+  [1]
   $ cat _build/default/promoted
   bye
   $ cat _build/default/result
   bye
   bye
 
+Now use [fallback] to override the rule that generates [promoted].
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (mode fallback)
+  >   (deps original)
+  >   (target promoted)
+  >   (action (copy %{deps} %{target})))
+  > (rule
+  >   (deps promoted)
+  >   (target result)
+  >   (action (bash "cat promoted promoted > result")))
+  > EOF
+
+At first, we don't have the source, so the rule is used.
+
+  $ build result
+  Success
+  $ cat promoted
+  cat: promoted: No such file or directory
+  [1]
+  $ cat _build/default/promoted
+  bye
+  $ cat _build/default/result
+  bye
+  bye
+
+Now we create the source file and it overrides the rule.
+
+  $ echo hi > promoted
+  $ build result
+  Success
+  $ cat promoted
+  hi
+  $ cat _build/default/promoted
+  hi
+  $ cat _build/default/result
+  hi
+  hi
+
 We're done.
 
   $ stop_dune
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
+  Error: Multiple rules generated for _build/default/promoted:
+  - file present in source tree
+  - dune:1
+  Hint: rm -f promoted
+  Had errors, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...

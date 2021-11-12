@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix installation of implementations of virtual libraries (#5150, fix #3636,
+  @rgrinberg)
+
 - Run tests in all modes defined. Previously, jsoo was excluded. (@hhugo,
   #5049, fix #4951)
 

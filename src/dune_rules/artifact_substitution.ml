@@ -585,7 +585,17 @@ let copy_file ~conf ?chmod ~src ~dst () =
     (fun () ->
       let open Fiber.O in
       let+ () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
-      Path.rename temp_file dst)
+      let up_to_date =
+        Path.exists dst
+        &&
+        let temp_file_digest = Digest.file temp_file in
+        let dst_digest = Digest.file dst in
+        Digest.equal temp_file_digest dst_digest
+      in
+      (* This is just an optimisation: skip the renaming if the destination
+         exists and has the right digest. The optimisation is useful to avoid
+         unnecessary retriggering of Dune and other file-watching systems. *)
+      if not up_to_date then Path.rename temp_file dst)
     ~finally:(fun () ->
       Path.unlink_no_err temp_file;
       Fiber.return ())

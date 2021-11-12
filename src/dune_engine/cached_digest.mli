@@ -13,6 +13,8 @@ module Digest_result : sig
   val equal : t -> t -> bool
 
   val to_option : t -> Digest.t option
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** Digest the contents of a build artifact. *)

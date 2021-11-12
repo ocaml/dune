@@ -57,6 +57,8 @@ val fold_user_written : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 val map_user_written :
   t -> f:(Module.t -> Module.t Memo.Build.t) -> t Memo.Build.t
 
+val map : t -> f:(Module.t -> Module.t) -> t
+
 val fold_user_available : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 
 (** Returns all the compatibility modules. *)
@@ -111,6 +113,13 @@ val is_empty : t -> bool
 val as_singleton : t -> Module.t option
 
 val source_dirs : t -> Path.Set.t
+
+type split_by_lib =
+  { vlib : Module.t list
+  ; impl : Module.t list
+  }
+
+val split_by_lib : t -> split_by_lib
 
 (** [has_impl t] is true if there's at least one implementation in [t]*)
 val has_impl : t -> bool

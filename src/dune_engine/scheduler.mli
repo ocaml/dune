@@ -127,12 +127,6 @@ val wait_for_process :
 
 val yield_if_there_are_pending_events : unit -> unit Fiber.t
 
-(** Make the scheduler ignore next change to a certain file in watch mode.
-
-    This is used with promoted files that are copied back to the source tree
-    after generation *)
-val ignore_for_watch : Path.t -> unit Fiber.t
-
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 

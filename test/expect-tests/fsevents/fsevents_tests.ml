@@ -127,31 +127,28 @@ let make_callback sync ~f =
     in
     match events with
     | [] -> ()
-    | _ -> f (List.rev events)
+    | _ -> List.rev events |> List.iter ~f:(f ~logger:sync#logger)
 
 type test_config =
-  { on_events : Event.t list -> unit
+  { on_event : logger:Logger.t -> Event.t -> unit
   ; exclusion_paths : string list
   ; dir : string
-  ; logger : Logger.t
   }
 
 let default_test_config cwd =
-  let logger = Logger.create () in
-  { on_events = List.iter ~f:(print_event ~logger ~cwd)
-  ; dir = cwd
-  ; exclusion_paths = []
-  ; logger
-  }
+  { on_event = print_event ~cwd; dir = cwd; exclusion_paths = [] }
 
 let test_with_multiple_fsevents ~setup ~test:f =
   test (fun finish ->
       let cwd = Sys.getcwd () in
       let make_sync t config =
+        let logger = Logger.create () in
         object
           val mutable started = false
 
           val mutable stopped = false
+
+          method logger = logger
 
           method started = started
 
@@ -175,7 +172,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
             let sync = make_sync t config in
             let res =
               Fsevents.create ~paths:[ config.dir ] ~latency:0.0
-                ~f:(make_callback sync ~f:config.on_events)
+                ~f:(make_callback sync ~f:config.on_event)
             in
             t := Some res;
             (res, sync))
@@ -209,7 +206,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
       | Error _ -> assert false
       | Ok () -> ());
       Thread.join t;
-      List.iter configs ~f:(fun c -> Logger.flush c.logger);
+      List.iter syncs ~f:(fun c -> Logger.flush c#logger);
       finish ())
 
 let test_with_operations ?on_event ?exclusion_paths f =
@@ -221,7 +218,7 @@ let test_with_operations ?on_event ?exclusion_paths f =
       in
       [ (match on_event with
         | None -> config
-        | Some on_event -> { config with on_events = List.iter ~f:on_event })
+        | Some on_event -> { config with on_event })
       ])
 
 let%expect_test "file create event" =
@@ -247,15 +244,15 @@ let%expect_test "move file" =
 
 let%expect_test "raise inside callback" =
   test_with_operations
-    ~on_event:(fun _ ->
-      print_endline "exiting.";
+    ~on_event:(fun ~logger _ ->
+      Logger.printfn logger "exiting.";
       raise Exit)
     (fun () ->
       Io.String_path.write_file "old" "foobar";
       Io.String_path.write_file "old" "foobar");
   [%expect {|
-    exiting.
-    [EXIT] |}]
+    [EXIT]
+    exiting. |}]
 
 let%expect_test "set exclusion paths" =
   let run paths =

@@ -1524,8 +1524,8 @@ end = struct
     let+ exec_result =
       with_locks t locks ~f:(fun () ->
           let+ action_exec_result =
-            Action_exec.exec ~root ~context ~env ~targets ~rule_loc:loc
-              ~build_deps ~execution_parameters action
+            Action_exec.exec ~root ~context ~env ~targets:(Some targets)
+              ~rule_loc:loc ~build_deps ~execution_parameters action
           in
           let files_in_directory_targets =
             match sandbox with

@@ -77,7 +77,13 @@ type modify_event_selector =
   | `Closed_writable_fd
   ]
 
+let debug =
+  match Sys.getenv "DUNE_DEBUG_BLAH" with
+  | exception Not_found -> false
+  | _ -> true
+
 let add t path =
+  if debug then Console.print [ Pp.textf "XXX: watching %S" path ];
   let watch = Inotify.add_watch t.fd path t.select_events in
   (* XXX why are we just overwriting existing watches? *)
   Table.set t.watch_table watch path;
@@ -87,6 +93,11 @@ let process_raw_events t events =
   let watch_table = t.watch_table in
   let ev_kinds =
     List.concat_map events ~f:(fun (watch, ev_kinds, trans_id, fn) ->
+        if debug then
+          Console.print
+            [ Pp.textf "XXX: raw inotify event: %s"
+                (Inotify.string_of_event (watch, ev_kinds, trans_id, fn))
+            ];
         if
           Inotify.int_of_watch watch = -1
           (* queue overflow event is always reported on watch -1 *)
@@ -148,10 +159,16 @@ let process_raw_events t events =
         | Close_nowrite ->
           (None, add_pending actions))
   in
-  List.rev
-    (match pending_mv with
-    | None -> actions
-    | Some (_, fn) -> Moved (Away fn) :: actions)
+  let l =
+    List.rev
+      (match pending_mv with
+      | None -> actions
+      | Some (_, fn) -> Moved (Away fn) :: actions)
+  in
+  if debug then
+    List.iter l ~f:(fun ev ->
+        Console.print [ Pp.textf "XXX: inotify event: %s" (Event.to_string ev) ]);
+  l
 
 let pump_events t ~spawn_thread =
   let fd = t.fd in

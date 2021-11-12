@@ -49,7 +49,7 @@ exec`` to run the test executable (for the sake of this example,
 
 .. code:: bash
 
-    dune exec project/tests/myTest.exe
+   dune exec project/tests/myTest.exe
 
 
 Running Tests in a Directory

@@ -1,5 +1,7 @@
 Shows what happens when Dune tries to kill an action that has sub-processes.
 
+  $ export DUNE_DEBUG_BLAH=1
+
   $ . ../watching/helpers.sh
   $ export PATH=$PWD/bin:$PATH
 
@@ -49,6 +51,13 @@ wait for the beacon to be notified that the sub-process has started:
 Now we stop Dune, which should normally kill all sub-processes:
 
   $ stop_dune
+  XXX: received sync: 0
+  XXX: got fs event:
+  { path = In_source_tree "test-started"; kind = "File_changed" }
+  XXX: got fs event: { path = In_source_tree "test-started"; kind = "Created" }
+  XXX: received sync: 1
+  XXX: got fs event:
+  { path = In_source_tree "test-started"; kind = "File_changed" }
 
   $ if kill -s 0 $CHILD_PID 2> /dev/null; then
   >   echo "FAILURE: child is still running"

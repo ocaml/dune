@@ -998,6 +998,11 @@ end = struct
     List.fold_left events ~init:Memo.Invalidation.empty ~f:(fun acc event ->
         Memo.Invalidation.combine acc (handle_event event))
 
+  let debug =
+    match Sys.getenv "DUNE_DEBUG_BLAH" with
+    | exception Not_found -> false
+    | _ -> true
+
   (** This function is the heart of the scheduler. It makes progress in
       executing fibers by doing the following:
 
@@ -1014,11 +1019,36 @@ end = struct
       iter t
     | File_system_sync id -> (
       match Dune_file_watcher.Sync_id.Table.find t.fs_syncs id with
-      | None -> iter t
+      | None ->
+        if debug then
+          Console.print
+            [ Pp.textf "XXX: received unknown sync: %d"
+                (Dune_file_watcher.Sync_id.to_int id)
+            ];
+        iter t
       | Some ivar ->
+        if debug then
+          Console.print
+            [ Pp.textf "XXX: received sync: %d"
+                (Dune_file_watcher.Sync_id.to_int id)
+            ];
         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
         Fill (ivar, ()))
     | Build_inputs_changed events -> (
+      if debug then
+        List.iter (Nonempty_list.to_list events) ~f:(function
+          | Event.Invalidation invalidation ->
+            Console.print
+              [ Pp.textf "XXX: got invalidation: %s"
+                  (Memo.Invalidation.details_hum invalidation
+                  |> String.concat ~sep:", ")
+              ]
+          | Fs_event event ->
+            let open Pp.O in
+            Console.print
+              [ Pp.text "XXX: got fs event: "
+                ++ Dyn.pp (Dune_file_watcher.Fs_memo_event.to_dyn event)
+              ]);
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
       in

@@ -1,5 +1,6 @@
 Modify an input file during the build so that Dune interrupts the build once.
 
+  $ export DUNE_DEBUG_BLAH=1
   $ . ./helpers.sh
 
 Bad rule! You are not supposed to modify the source tree. No ice-cream for you!
@@ -33,4 +34,15 @@ i.e. the empty file.
   I'm seeing: new-source.txt old-source.txt
 
   $ stop_dune
+  XXX: received sync: 0
+  XXX: got fs event:
+  { path = In_source_tree "new-source.txt"; kind = "File_changed" }
+  XXX: got fs event:
+  { path = In_source_tree "new-source.txt"; kind = "Created" }
+  XXX: received sync: 1
+  XXX: got fs event:
+  { path = In_source_tree "new-source.txt"; kind = "File_changed" }
+  XXX: got fs event:
+  { path = In_source_tree "new-source.txt"; kind = "File_changed" }
+  XXX: received sync: 2
   Success, waiting for filesystem changes...

@@ -229,7 +229,7 @@ field. Available modes are:
   if native compilation is not available
 - ``js`` for running tests in JavaScript using Node.js
 
-	For instance:
+For instance:
 
 .. code:: ocaml
 
@@ -244,8 +244,6 @@ Specifying Inline Test Dependencies
 If your tests are reading files, you must tell Dune by adding
 a ``deps`` field the ``inline_tests`` field. The argument of this
 ``deps`` field follows the usual :ref:`deps-field`. For instance:
-	
-   For instance:
 
 .. code:: ocaml
 
@@ -338,7 +336,7 @@ empty library with your chosen backend's name.
 
 In order to define a library as an inline tests backend, simply add an
 ``inline_tests.backend`` field to the library stanza. An inline tests
-	backend is specified by three parameters:
+backend is specified by three parameters:
 
 1. How to create the test runner
 2. How to build the test runner
@@ -472,7 +470,7 @@ This provides a nice way of dealing with the usual *write code*,
 
 .. code:: bash
 
-	$ dune runtest
+$ dune runtest
    [...]
    -tests.expected
    +tests.output
@@ -500,7 +498,7 @@ older versions, it must be manually enabled in the ``dune-project`` file:
 
 .. code:: scheme
 
-	(lang dune 2.7)
+   (lang dune 2.7)
    (cram enable)
 
 File Tests
@@ -653,7 +651,7 @@ To use this binary in the Cram test, we should depend on the binary in the test:
 
 .. code:: scheme
 
-	   (cram
+	(cram
     (deps %{bin:wc}))
 
 Sandboxing

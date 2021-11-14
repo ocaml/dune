@@ -27,24 +27,24 @@ wait for the beacon to be notified that the sub-process has started:
   Creating $TESTCASE_ROOT/test/test-started...
   Done.
 
-  $ find
+  $ find | sort
   .
   ./_build
-  ./_build/default
-  ./_build/default/.dune
-  ./_build/default/.dune/configurator.v2
-  ./_build/default/.dune/configurator
   ./_build/.actions
   ./_build/.actions/default
-  ./_build/log
   ./_build/.filesystem-clock
   ./_build/.rpc
   ./_build/.rpc/dune
   ./_build/.sync
-  ./test-started
-  ./dune-output
+  ./_build/default
+  ./_build/default/.dune
+  ./_build/default/.dune/configurator
+  ./_build/default/.dune/configurator.v2
+  ./_build/log
   ./dune
+  ./dune-output
   ./dune-project
+  ./test-started
 
 Now we stop Dune, which should normally kill all sub-processes:
 

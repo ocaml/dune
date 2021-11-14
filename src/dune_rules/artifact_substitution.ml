@@ -604,7 +604,7 @@ let test_file ~src () =
   let open Fiber.O in
   let* ic = Fiber.return (Io.open_in src) in
   Fiber.finalize
-    ~finally:(fun b ->
+    ~finally:(fun () ->
       Io.close_in ic;
-      Fiber.return b)
+      Fiber.return ())
     (fun () -> parse ~input:(input ic) ~mode:Test)

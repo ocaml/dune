@@ -8,7 +8,7 @@
   $ dune build @install
   $ mkdir install docdir
   $ dune install --dry-run --prefix ./install --docdir ./docdir 2>&1 | grep docdir
-  Removing (if it exists) docdir/foo/docfile
+  Removing (if it exists, even if it is an empty directory) docdir/foo/docfile
   Installing docdir/foo/docfile
   Creating directory docdir/foo
   Copying _build/install/default/doc/foo/docfile to docdir/foo/docfile (executable: false)

@@ -153,7 +153,17 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
       user_error
         [ Pp.textf "Directory %S does not exist." (Path.to_string dir) ]
     | true -> (
-      match Path.is_directory dir with
+      (* CR-someday amokhov: We use an untracked version here for two reasons:
+
+         - We don't have an efficient implementation of [Fs_memo.is_directory],
+         and using [Fs_memo.path_stat] would lead to unnecessary restarts when
+         the directory's [mtime] changes. We should provide an alternative to
+         [Fs_memo.path_stat] for extracting everything except for [mtime].
+
+         - Using untracked version here is mostly fine. The only potential issue
+         is that Dune won't notice if the user turns a file into a directory
+         while still somehow not triggering [Fs_memo.path_exists]. *)
+      match Path.Untracked.is_directory dir with
       | true -> ()
       | false ->
         user_error [ Pp.textf "%S is not a directory." (Path.to_string dir) ])

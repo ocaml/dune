@@ -15,6 +15,10 @@ module Path = struct
   module Untracked = struct
     let exists = exists
 
+    let is_directory = is_directory
+
+    let is_directory_with_error = is_directory_with_error
+
     let readdir_unsorted = readdir_unsorted
 
     let readdir_unsorted_with_kinds = readdir_unsorted_with_kinds
@@ -31,19 +35,23 @@ module Path = struct
   (* Encourage using [Fs_memo] equivalents if possible. The untracked versions
      are still available in the [Path.Untracked] module. *)
 
-  let exists = `Use_fs_memo_file_exists_instead
+  let exists = `Use_fs_memo_or_untracked_module_instead
 
-  let stat = `Use_fs_memo_stat_instead
+  let is_directory = `Use_fs_memo_or_untracked_module_instead
 
-  let stat_exn = `Use_fs_memo_stat_instead
+  let is_directory_with_error = `Use_fs_memo_or_untracked_module_instead
 
-  let lstat = `Use_fs_memo_lstat_instead
+  let stat = `Use_fs_memo_or_untracked_module_instead
 
-  let lstat_exn = `Use_fs_memo_lstat_instead
+  let stat_exn = `Use_fs_memo_or_untracked_module_instead
 
-  let readdir_unsorted = `Use_fs_memo_dir_contents_instead
+  let lstat = `Use_fs_memo_or_untracked_module_instead
 
-  let readdir_unsorted_with_kinds = `Use_fs_memo_dir_contents_instead
+  let lstat_exn = `Use_fs_memo_or_untracked_module_instead
+
+  let readdir_unsorted = `Use_fs_memo_or_untracked_module_instead
+
+  let readdir_unsorted_with_kinds = `Use_fs_memo_or_untracked_module_instead
 end
 
 module Io = struct
@@ -56,7 +64,7 @@ module Io = struct
   (* Encourage using [Fs_memo] equivalents if possible. The untracked versions
      are still available in the [Io.Untracked] module. *)
 
-  let with_lexbuf_from_file = `Use_fs_memo_with_lexbuf_from_file
+  let with_lexbuf_from_file = `Use_fs_memo_or_untracked_module_instead
 end
 
 (* To make bug reports usable *)

@@ -150,7 +150,8 @@ Reproduction case for #3069
   File "dune", line 3, characters 22-25:
   3 |  (mode (promote (into dir))))
                             ^^^
-  Error: directory "dir" does not exist
+  Error: Directory "dir" does not exist.
+  -> required by _build/default/x
   [1]
 
 Now test the case where dir exists but is a file
@@ -158,6 +159,9 @@ Now test the case where dir exists but is a file
   $ touch dir
 
   $ dune build ./x
-  Error: dir/.#x.dune-temp: Not a directory
+  File "dune", line 3, characters 22-25:
+  3 |  (mode (promote (into dir))))
+                            ^^^
+  Error: "dir" is not a directory.
   -> required by _build/default/x
   [1]

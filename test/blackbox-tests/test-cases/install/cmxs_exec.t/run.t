@@ -31,7 +31,8 @@
 
   $ test -x prefix/lib/foo/foo.cmxs
 
-Test the error message if a destination is an empty directory instead of a file.
+Test that we can cope with the situation where a destination is an empty
+directory instead of a file.
 
   $ rm -rf prefix
 

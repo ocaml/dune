@@ -628,7 +628,10 @@ let rec naive_stream_parallel_iter (t : _ Fiber.Stream.In.t) ~f =
   | None -> Fiber.return ()
   | Some x ->
     Fiber.fork_and_join_unit
-      (fun () -> f x)
+      (fun () ->
+        (* without this [yield], our attempt to leak memory is defeated by an
+           optimization in [fork_and_join_unit]*)
+        Scheduler.yield () >>= fun () -> f x)
       (fun () -> naive_stream_parallel_iter t ~f)
 
 let%expect_test "Stream.parallel_iter doesn't leak" =
@@ -685,9 +688,10 @@ let%expect_test "Stream.parallel_iter doesn't leak" =
   in
   let data_points = [ 1; 10; 100; 1000 ] in
   let rec pair_wise_check ~f = function
-    | [] -> true
-    | [ _ ] -> assert false
-    | x :: y :: xs -> f x y && pair_wise_check ~f xs
+    | []
+    | [ _ ] ->
+      true
+    | x :: y :: xs -> f x y && pair_wise_check ~f (y :: xs)
   in
   let test ~pred ~iter_function =
     let results = List.map data_points ~f:(test ~iter_function) in
@@ -697,9 +701,9 @@ let%expect_test "Stream.parallel_iter doesn't leak" =
   (* Check that the number of live words keeps on increasing because we are
      leaking memory: *)
   test ~pred:( < ) ~iter_function:naive_stream_parallel_iter;
-  [%expect {| [ 62; 125; 755; 7055 ] |}];
+  [%expect {| [ 52; 115; 745; 7045 ] |}];
   test ~pred:( = ) ~iter_function:Fiber.Stream.In.parallel_iter;
-  [%expect {| [ 57; 57; 57; 57 ] |}]
+  [%expect {| [ 43; 43; 43; 43 ] |}]
 
 let sorted_failures v =
   Result.map_error v

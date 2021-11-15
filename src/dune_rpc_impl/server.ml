@@ -182,6 +182,10 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Decl.build build
   in
   let () =
+    Handler.implement_request rpc Decl.flush_file_watcher (fun _ () ->
+        Dune_engine.Scheduler.flush_file_watcher ())
+  in
+  let () =
     let rec cancel_pending_jobs () =
       match Job_queue.pop_internal (Fdecl.get t).pending_build_jobs with
       | None -> Fiber.return ()

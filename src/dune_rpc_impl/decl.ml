@@ -54,6 +54,15 @@ module Build = struct
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1 ]
 end
 
+module Flush_file_watcher = struct
+  let v1 =
+    Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.unit ~version:1
+
+  let decl = Decl.Request.make ~method_:"flush-file-watcher" ~generations:[ v1 ]
+end
+
 let build = Build.decl
 
 let status = Status.decl
+
+let flush_file_watcher = Flush_file_watcher.decl

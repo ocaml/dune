@@ -27,3 +27,5 @@ end
 val build : (string list, Build_outcome.t) Decl.Request.t
 
 val status : (unit, Status.t) Decl.Request.t
+
+val flush_file_watcher : (unit, unit) Decl.Request.t

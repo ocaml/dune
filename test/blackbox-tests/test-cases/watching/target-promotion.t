@@ -196,8 +196,8 @@ Show how Dune processes events for the . directory.
   Updating dir_contents cache for ".": Updated { changed = false }
   Updating path_digest cache for ".": Skipped
   Updating path_stat cache for ".": Updated { changed = true }
-  Updating path_exists cache for ".": Updated { changed = false }
+  Updating path_exists cache for ".": Skipped
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating path_digest cache for ".": Skipped
   Updating path_stat cache for ".": Updated { changed = true }
-  Updating path_exists cache for ".": Updated { changed = false }
+  Updating path_exists cache for ".": Skipped

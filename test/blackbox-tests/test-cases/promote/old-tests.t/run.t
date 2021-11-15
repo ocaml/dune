@@ -150,7 +150,7 @@ Reproduction case for #3069
   File "dune", line 3, characters 22-25:
   3 |  (mode (promote (into dir))))
                             ^^^
-  Error: Directory "dir" does not exist.
+  Error: Directory "dir" does not exist. Please create it manually.
   -> required by _build/default/x
   [1]
 

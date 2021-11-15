@@ -109,7 +109,7 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
    somehow batch file promotions. Another approach is to make restarts really
    cheap, so that we don't care any more, for example, by introducing reverse
    dependencies in Memo (and/or by having smarter cancellations). *)
-let promote ~dir ~targets_and_digests ~promote ~promote_source =
+let promote ~dir ~files_to_promote ~promote ~promote_source =
   let selected_for_promotion =
     match promote.Rule.Promote.only with
     | None -> fun (_ : Path.Build.t) -> true
@@ -118,67 +118,55 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
         Predicate_lang.Glob.exec pred ~standard:Predicate_lang.any
           (Path.reach ~from:(Path.build dir) (Path.build target))
   in
-  let relocate =
-    match promote.into with
-    | None -> Fun.id
-    | Some { loc; dir } ->
-      fun target_in_source_tree ->
-        Path.Source.relative
-          (Path.Source.relative
-             (Path.Source.parent_exn target_in_source_tree)
-             dir ~error_loc:loc)
-          (Path.Source.basename target_in_source_tree)
-  in
   let open Fiber.O in
-  (* CR-someday amokhov: When promoting directory targets, we might want to
-     create the destination directory instead of reporting an error. Maybe we
-     should just always do that? After all, if the user says "promote results
-     into this directory, please", they might expect Dune to create it too. *)
-  let ensure_the_destination_directory_exists ~dst_path =
-    let dir = Path.parent_exn dst_path in
-    let user_error msgs =
-      let loc =
-        match promote.into with
-        | Some into -> Some into.loc
-        | None -> None
+  let* relocate =
+    match promote.into with
+    | None -> Fiber.return Path.Build.drop_build_context_exn
+    | Some { loc; dir = into_dir } -> (
+      let into_dir =
+        Path.Source.relative
+          (Path.Build.drop_build_context_exn dir)
+          into_dir ~error_loc:loc
       in
-      User_error.raise ?loc
-        ~annots:
-          (User_message.Annots.singleton User_message.Annots.needs_stack_trace
-             ())
-        msgs
-    in
-    Memo.Build.run (Fs_memo.path_exists dir) >>| function
-    | false ->
-      user_error
-        [ Pp.textf "Directory %S does not exist." (Path.to_string dir) ]
-    | true -> (
-      (* CR-someday amokhov: We use an untracked version here for two reasons:
-
-         - We don't have an efficient implementation of [Fs_memo.is_directory],
-         and using [Fs_memo.path_stat] would lead to unnecessary restarts when
-         the directory's [mtime] changes. We should provide an alternative to
-         [Fs_memo.path_stat] for extracting everything except for [mtime].
-
-         - Using untracked version here is mostly fine. The only potential issue
-         is that Dune won't notice if the user turns a file into a directory
-         while still somehow not triggering [Fs_memo.path_exists]. *)
-      match Path.Untracked.is_directory dir with
-      | true -> ()
+      let user_error =
+        User_error.raise ~loc
+          ~annots:
+            (User_message.Annots.singleton User_message.Annots.needs_stack_trace
+               ())
+      in
+      Memo.Build.run (Fs_memo.path_exists (Path.source into_dir)) >>| function
       | false ->
-        user_error [ Pp.textf "%S is not a directory." (Path.to_string dir) ])
+        user_error
+          [ Pp.textf "Directory %S does not exist. Please create it manually."
+              (Path.Source.to_string into_dir)
+          ]
+      | true -> (
+        (* CR-someday amokhov: We use an untracked version here for two reasons:
+
+           - We don't have [Fs_memo.is_directory], and using [Fs_memo.path_stat]
+           would lead to unnecessary restarts when the directory's [mtime]
+           changes. We should provide an alternative to [Fs_memo.path_stat] for
+           extracting everything except for [mtime].
+
+           - Using untracked version here is mostly fine. The only potential
+           issue is that Dune won't notice if the user turns a file into a
+           directory while somehow not triggering [Fs_memo.path_exists]. *)
+        match Path.Untracked.is_directory (Path.source into_dir) with
+        | false ->
+          user_error
+            [ Pp.textf "%S is not a directory." (Path.Source.to_string into_dir)
+            ]
+        | true ->
+          fun src -> Path.Source.relative into_dir (Path.Build.basename src)))
   in
-  Fiber.parallel_iter targets_and_digests ~f:(fun (target, _target_digest) ->
-      match selected_for_promotion target with
+  Fiber.sequential_iter files_to_promote ~f:(fun src ->
+      match selected_for_promotion src with
       | false -> Fiber.return ()
       | true -> (
-        let dst = relocate (Path.Build.drop_build_context_exn target) in
-        let dst_path = Path.source dst in
-        let* () = ensure_the_destination_directory_exists ~dst_path in
+        let dst = relocate src in
         Log.info
-          [ Pp.textf "Promoting %S to %S"
-              (Path.Build.to_string target)
-              (Path.to_string dst_path)
+          [ Pp.textf "Promoting %S to %S" (Path.Build.to_string src)
+              (Path.Source.to_string dst)
           ];
         (match promote.lifetime with
         | Until_clean -> To_delete.add dst
@@ -187,20 +175,21 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
            the shared cache. However, we want the file in the source tree to be
            writable by the user, so we explicitly set the user writable bit. *)
         let chmod n = n lor 0o200 in
-        let* () = promote_source ~chmod ~src:target ~dst in
+        let* () = promote_source ~chmod ~src ~dst in
         let+ dst_digest_result =
-          Memo.Build.run (Fs_memo.path_digest ~force_update:true dst_path)
+          Memo.Build.run
+            (Fs_memo.path_digest ~force_update:true (Path.source dst))
         in
         match Cached_digest.Digest_result.to_option dst_digest_result with
         | Some dst_digest ->
-          (* It's tempting to assert [target_digest = dst_digest] here but it
-             turns out this is not necessarily true: artifact substitution can
-             change the contents of promoted files. *)
+          (* It's tempting to assert [src_digest = dst_digest] here but it turns
+             out this is not necessarily true: artifact substitution can change
+             the contents of promoted files. *)
           ignore dst_digest
         | None ->
           Code_error.raise
             (sprintf "Could not compute digest of promoted file %S"
-               (Path.to_string dst_path))
+               (Path.Source.to_string dst))
             [ ( "dst_digest_result"
               , Cached_digest.Digest_result.to_dyn dst_digest_result )
             ]))

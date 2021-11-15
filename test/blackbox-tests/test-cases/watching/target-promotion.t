@@ -167,7 +167,7 @@ Now test file-system events generated during target promotion.
 
   $ stop_dune > debug-output
 
-Show that we ignore the initial dune-workspace event (injected by Dune).
+Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 
   $ cat debug-output | grep dune-workspace
   Updating dir_contents cache for "dune-workspace": Skipped
@@ -175,15 +175,10 @@ Show that we ignore the initial dune-workspace event (injected by Dune).
   Updating path_stat cache for "dune-workspace": Skipped
   Updating path_exists cache for "dune-workspace": Updated { changed = false }
 
-Show that Dune processes events for both .#promoted.dune-temp and promoted.
-
-# CR amokhov: We shouldn't see events for .#promoted.dune-temp here.
+Show that Dune ignores "promoted" events. Events for ".#promoted.dune-temp" are
+filtered out by Dune's file watcher and don't show up here.
 
   $ cat debug-output | grep promoted
-  Updating dir_contents cache for ".#promoted.dune-temp": Skipped
-  Updating path_digest cache for ".#promoted.dune-temp": Skipped
-  Updating path_stat cache for ".#promoted.dune-temp": Skipped
-  Updating path_exists cache for ".#promoted.dune-temp": Skipped
   Updating dir_contents cache for "promoted": Skipped
   Updating path_digest cache for "promoted": Updated { changed = false }
   Updating path_stat cache for "promoted": Skipped
@@ -201,10 +196,6 @@ Show how Dune processes events for the . directory.
   Updating dir_contents cache for ".": Updated { changed = false }
   Updating path_digest cache for ".": Skipped
   Updating path_stat cache for ".": Updated { changed = true }
-  Updating path_exists cache for ".": Updated { changed = false }
-  Updating dir_contents cache for ".": Updated { changed = false }
-  Updating path_digest cache for ".": Skipped
-  Updating path_stat cache for ".": Updated { changed = false }
   Updating path_exists cache for ".": Updated { changed = false }
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating path_digest cache for ".": Skipped

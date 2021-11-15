@@ -136,26 +136,37 @@ let promote ~dir ~targets_and_digests ~promote ~promote_source =
      into this directory, please", they might expect Dune to create it too. *)
   let ensure_the_destination_directory_exists ~dst_path =
     let dir = Path.parent_exn dst_path in
-    Memo.Build.run (Fs_memo.path_exists dir) >>| function
-    | true -> ()
-    | false ->
+    let user_error msgs =
       let loc =
         match promote.into with
-        | Some into -> into.loc
-        | None ->
-          (* CR-someday amokhov: It's not entirely clear why this is a code
-             error. If the user deletes the source directory (along with the
-             corresponding [dune] file), we are going to hit this branch, and
-             presumably this isn't Dune's fault. *)
-          Code_error.raise
-            "Promoting into a directory that does not exist. Perhaps, the user \
-             deleted it while Dune was running?"
-            [ ("dst_path", Path.to_dyn dst_path) ]
+        | Some into -> Some into.loc
+        | None -> None
       in
-      User_error.raise ~loc
-        [ Pp.textf "directory %S does not exist"
-            (Path.to_string_maybe_quoted dir)
-        ]
+      User_error.raise ?loc
+        ~annots:
+          (User_message.Annots.singleton User_message.Annots.needs_stack_trace
+             ())
+        msgs
+    in
+    Memo.Build.run (Fs_memo.path_exists dir) >>| function
+    | false ->
+      user_error
+        [ Pp.textf "Directory %S does not exist." (Path.to_string dir) ]
+    | true -> (
+      (* CR-someday amokhov: We use an untracked version here for two reasons:
+
+         - We don't have an efficient implementation of [Fs_memo.is_directory],
+         and using [Fs_memo.path_stat] would lead to unnecessary restarts when
+         the directory's [mtime] changes. We should provide an alternative to
+         [Fs_memo.path_stat] for extracting everything except for [mtime].
+
+         - Using untracked version here is mostly fine. The only potential issue
+         is that Dune won't notice if the user turns a file into a directory
+         while still somehow not triggering [Fs_memo.path_exists]. *)
+      match Path.Untracked.is_directory dir with
+      | true -> ()
+      | false ->
+        user_error [ Pp.textf "%S is not a directory." (Path.to_string dir) ])
   in
   Fiber.parallel_iter targets_and_digests ~f:(fun (target, _target_digest) ->
       match selected_for_promotion target with

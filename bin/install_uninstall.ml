@@ -99,9 +99,9 @@ module type File_operations = sig
 
   val mkdir_p : Path.t -> unit
 
-  val remove_if_exists : Path.t -> unit
+  val remove_file_if_exists : Path.t -> unit
 
-  val remove_dir_if_empty : Path.t -> unit
+  val remove_dir_if_exists_and_empty : Path.t -> unit
 end
 
 module type Workspace = sig
@@ -119,10 +119,10 @@ module File_ops_dry_run : File_operations = struct
   let mkdir_p path =
     print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
 
-  let remove_if_exists path =
+  let remove_file_if_exists path =
     print_line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
 
-  let remove_dir_if_empty path =
+  let remove_dir_if_exists_and_empty path =
     print_line "Removing directory (if empty) %s"
       (Path.to_string_maybe_quoted path)
 end
@@ -286,13 +286,13 @@ module File_ops_real (W : Workspace) : File_operations = struct
           Dune_rules.Artifact_substitution.copy ~conf ~input_file:src
             ~input:(input ic) ~output:(output oc))
 
-  let remove_if_exists dst =
+  let remove_file_if_exists dst =
     if Path.exists dst then (
       print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
       print_unix_error (fun () -> Path.unlink dst)
     )
 
-  let remove_dir_if_empty dir =
+  let remove_dir_if_exists_and_empty dir =
     if Path.exists dir then
       match Path.readdir_unsorted dir with
       | Ok [] ->
@@ -301,9 +301,26 @@ module File_ops_real (W : Workspace) : File_operations = struct
         print_unix_error (fun () -> Path.rmdir dir)
       | Error (e, _, _) ->
         User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
-      | _ -> ()
+      | _ ->
+        User_error.raise
+          [ Pp.textf "Please delete non-empty directory %s manually."
+              (Path.to_string_maybe_quoted dir)
+          ]
 
-  let mkdir_p p = Path.mkdir_p p
+  let mkdir_p p =
+    (* CR-someday amokhov: We should really change [Path.mkdir_p dir] to fail if
+       it turns out that [dir] exists and is not a directory. Even better, make
+       [Path.mkdir_p] return an explicit variant to deal with. *)
+    match Fpath.mkdir_p (Path.to_string p) with
+    | Created -> ()
+    | Already_exists -> (
+      match Path.is_directory p with
+      | true -> ()
+      | false ->
+        User_error.raise
+          [ Pp.textf "Please delete file %s manually."
+              (Path.to_string_maybe_quoted p)
+          ])
 end
 
 module Sections = struct
@@ -604,7 +621,11 @@ let install_uninstall ~what =
                           in
                           if copy then
                             let* () =
-                              Ops.remove_if_exists dst;
+                              (match Path.is_directory dst with
+                              | true -> Ops.remove_dir_if_exists_and_empty dst
+                              | false
+                              | (exception _) ->
+                                Ops.remove_file_if_exists dst);
                               print_line "%s %s" msg
                                 (Path.to_string_maybe_quoted dst);
                               Ops.mkdir_p dir;
@@ -618,7 +639,7 @@ let install_uninstall ~what =
                           else
                             Fiber.return entry
                         | Uninstall ->
-                          Ops.remove_if_exists dst;
+                          Ops.remove_file_if_exists dst;
                           files_deleted_in := Path.Set.add !files_deleted_in dir;
                           Fiber.return entry)
                   in
@@ -631,7 +652,7 @@ let install_uninstall ~what =
         (* This [List.rev] is to ensure we process children directories before
            their parents *)
         |> List.rev
-        |> List.iter ~f:Ops.remove_dir_if_empty)
+        |> List.iter ~f:Ops.remove_dir_if_exists_and_empty)
   in
   (term, Cmdliner.Term.info (cmd_what what) ~doc ~man:Common.help_secs)
 

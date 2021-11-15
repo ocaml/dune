@@ -144,11 +144,24 @@ Reproduction case for #3069
   $ cat >dune <<EOF
   > (rule
   >  (action (with-stdout-to x (echo bar)))
-  >  (mode (promote (into does-not-exist))))
+  >  (mode (promote (into dir))))
   > EOF
   $ dune build ./x
-  File "dune", line 3, characters 22-36:
-  3 |  (mode (promote (into does-not-exist))))
-                            ^^^^^^^^^^^^^^
-  Error: directory "does-not-exist" does not exist
+  File "dune", line 3, characters 22-25:
+  3 |  (mode (promote (into dir))))
+                            ^^^
+  Error: Directory "dir" does not exist.
+  -> required by _build/default/x
+  [1]
+
+Now test the case where dir exists but is a file
+
+  $ touch dir
+
+  $ dune build ./x
+  File "dune", line 3, characters 22-25:
+  3 |  (mode (promote (into dir))))
+                            ^^^
+  Error: "dir" is not a directory.
+  -> required by _build/default/x
   [1]

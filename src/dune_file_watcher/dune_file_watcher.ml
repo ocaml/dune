@@ -1,25 +1,6 @@
 open! Stdune
 module Inotify_lib = Async_inotify_for_dune.Async_inotify
 
-type path_event =
-  | Created
-  | Moved_into
-  | Unlinked
-  | Moved_away
-  | Modified
-
-let decompose_inotify_event (event : Inotify_lib.Event.t) =
-  match event with
-  | Created path -> [ (path, Created) ]
-  | Unlinked path -> [ (path, Unlinked) ]
-  | Modified path -> [ (path, Modified) ]
-  | Moved (Away path) -> [ (path, Moved_away) ]
-  | Moved (Into path) -> [ (path, Moved_into) ]
-  | Moved (Move (from, to_)) -> [ (from, Moved_away); (to_, Moved_into) ]
-  | Queue_overflow -> []
-
-let inotify_event_paths event = List.map ~f:fst (decompose_inotify_event event)
-
 module Fs_memo_event = struct
   type kind =
     | Created

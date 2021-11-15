@@ -3,8 +3,6 @@ module Inotify_lib := Async_inotify_for_dune.Async_inotify
 
 type t
 
-val inotify_event_paths : Inotify_lib.Event.t -> string list
-
 module Fs_memo_event : sig
   (* Here are some idealized assumptions the Fs_memo module in dune_engine makes
      about events:

@@ -6,7 +6,7 @@ open! Stdune
 
 val promote :
      dir:Path.Build.t
-  -> targets_and_digests:(Path.Build.t * Digest.t) list
+  -> files_to_promote:Path.Build.t list
   -> promote:Rule.Promote.t
   -> promote_source:
        (   chmod:(int -> int)

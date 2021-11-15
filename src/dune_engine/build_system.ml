@@ -1921,7 +1921,10 @@ end = struct
           | Promote _, Some Never ->
             Fiber.return ()
           | Promote promote, (Some Automatically | None) ->
-            Target_promotion.promote ~dir ~targets_and_digests ~promote
+            (* Note that [files_to_promote] includes both [targets.files] and
+               all files discovered inside directory targets. *)
+            let files_to_promote = List.map targets_and_digests ~f:fst in
+            Target_promotion.promote ~dir ~files_to_promote ~promote
               ~promote_source:(fun ~chmod -> t.promote_source ~chmod context)
         in
         t.rule_done <- t.rule_done + 1;

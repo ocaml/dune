@@ -1,25 +1,6 @@
 open! Stdune
 module Inotify_lib = Async_inotify_for_dune.Async_inotify
 
-type path_event =
-  | Created
-  | Moved_into
-  | Unlinked
-  | Moved_away
-  | Modified
-
-let decompose_inotify_event (event : Inotify_lib.Event.t) =
-  match event with
-  | Created path -> [ (path, Created) ]
-  | Unlinked path -> [ (path, Unlinked) ]
-  | Modified path -> [ (path, Modified) ]
-  | Moved (Away path) -> [ (path, Moved_away) ]
-  | Moved (Into path) -> [ (path, Moved_into) ]
-  | Moved (Move (from, to_)) -> [ (from, Moved_away); (to_, Moved_into) ]
-  | Queue_overflow -> []
-
-let inotify_event_paths event = List.map ~f:fst (decompose_inotify_event event)
-
 module Fs_memo_event = struct
   type kind =
     | Created
@@ -190,38 +171,25 @@ end
 
 let process_inotify_event (event : Async_inotify_for_dune.Async_inotify.Event.t)
     : Event.t list =
-  let should_ignore =
-    let all_paths = decompose_inotify_event event in
-    List.for_all all_paths ~f:(fun (path, _event) -> should_exclude path)
+  let create_event_unless_excluded ~kind ~path =
+    match should_exclude path with
+    | true -> []
+    | false ->
+      let path = Path.of_string path in
+      [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ]
   in
-  if should_ignore then
-    []
-  else
-    match event with
-    | Created path ->
-      let path = Path.of_string path in
-      [ Fs_memo_event (Fs_memo_event.create ~kind:Created ~path) ]
-    | Unlinked path ->
-      let path = Path.of_string path in
-      [ Fs_memo_event (Fs_memo_event.create ~kind:Deleted ~path) ]
-    | Modified path ->
-      let path = Path.of_string path in
-      [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ]
-    | Moved move -> (
-      match move with
-      | Away path ->
-        let path = Path.of_string path in
-        [ Fs_memo_event (Fs_memo_event.create ~kind:Deleted ~path) ]
-      | Into path ->
-        let path = Path.of_string path in
-        [ Fs_memo_event (Fs_memo_event.create ~kind:Created ~path) ]
-      | Move (from, to_) ->
-        let from = Path.of_string from in
-        let to_ = Path.of_string to_ in
-        [ Fs_memo_event (Fs_memo_event.create ~kind:Deleted ~path:from)
-        ; Fs_memo_event (Fs_memo_event.create ~kind:Created ~path:to_)
-        ])
-    | Queue_overflow -> [ Event.Queue_overflow ]
+  match event with
+  | Created path -> create_event_unless_excluded ~kind:Created ~path
+  | Unlinked path -> create_event_unless_excluded ~kind:Deleted ~path
+  | Modified path -> create_event_unless_excluded ~kind:File_changed ~path
+  | Moved move -> (
+    match move with
+    | Away path -> create_event_unless_excluded ~kind:Deleted ~path
+    | Into path -> create_event_unless_excluded ~kind:Created ~path
+    | Move (from, to_) ->
+      create_event_unless_excluded ~kind:Deleted ~path:from
+      @ create_event_unless_excluded ~kind:Created ~path:to_)
+  | Queue_overflow -> [ Queue_overflow ]
 
 let shutdown t =
   match t.kind with

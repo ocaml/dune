@@ -244,16 +244,3 @@ let truncate ~max_length xs =
     | hd :: tl -> loop (hd :: acc) (length + 1) tl
   in
   loop [] 0 xs
-
-let fold_result :
-    type a b e. a t -> init:b -> f:(b -> a -> (b, e) result) -> (b, e) result =
- fun t ~init ~f ->
-  let exception Early_return of (b, e) result in
-  match
-    fold_left t ~init ~f:(fun acc x ->
-        match f acc x with
-        | Ok result -> result
-        | Error _ as error -> raise (Early_return error))
-  with
-  | result -> Ok result
-  | exception Early_return error -> error

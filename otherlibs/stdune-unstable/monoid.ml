@@ -27,7 +27,7 @@ module Exists = struct
 
   let map_reduce ~f list =
     match
-      List.fold_result list ~init:() ~f:(fun () a ->
+      Result.List.fold_left list ~init:() ~f:(fun () a ->
           if f a then
             Error ()
           else
@@ -50,7 +50,7 @@ module Forall = struct
 
   let map_reduce ~f list =
     match
-      List.fold_result list ~init:() ~f:(fun () a ->
+      Result.List.fold_left list ~init:() ~f:(fun () a ->
           if f a then
             Ok ()
           else
@@ -77,7 +77,7 @@ module Ordering = struct
 
   let map_reduce ~f list =
     match
-      List.fold_result list ~init:() ~f:(fun () a ->
+      Result.List.fold_left list ~init:() ~f:(fun () a ->
           match (f a : Ordering.t) with
           | Eq -> Ok ()
           | (Lt | Gt) as result -> Error result)

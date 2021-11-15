@@ -95,7 +95,3 @@ val split_while : 'a t -> f:('a -> bool) -> 'a t * 'a t
 
 val truncate :
   max_length:int -> 'a t -> [> `Not_truncated of 'a t | `Truncated of 'a t ]
-
-(** A short-circuiting version of [fold_left], stopping at the first [Error]. *)
-val fold_result :
-  'a t -> init:'b -> f:('b -> 'a -> ('b, 'e) result) -> ('b, 'e) result

@@ -8,11 +8,23 @@ module type S = Monoid_intf.S
 module Make (M : Basic) : S with type t := M.t
 [@@inlined always]
 
-(** The monoid you get with [empty = false] and [combine = ( || )]. *)
+(** The monoid you get with [empty = false] and [combine = ( || )]. Note that
+    [reduce] and [map_reduce] are short-circuiting. *)
 module Exists : S with type t = bool
 
-(** The monoid you get with [empty = true] and [combine = ( && )]. *)
+(** The monoid you get with [empty = true] and [combine = ( && )]. Note that
+    [reduce] and [map_reduce] are short-circuiting. *)
 module Forall : S with type t = bool
+
+(** The lexicographical ordering monoid with [empty = Eq] and [combine] defined
+    as follows:
+
+    - combine Lt _ = Lt
+    - combine Eq x = x
+    - combine Gt _ = Gt
+
+    Note that [reduce] and [map_reduce] are short-circuiting. *)
+module Ordering : S with type t = Ordering.t
 
 (** The string concatenation monoid with [empty = ""] and [combine = ( ^ )]. *)
 module String : S with type t = string

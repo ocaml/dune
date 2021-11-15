@@ -16,21 +16,77 @@ module Make (M : Basic) : Monoid_intf.S with type t = M.t = struct
 end
 [@@inlined always]
 
-module Exists = Make (struct
-  type t = bool
+module Exists = struct
+  include Make (struct
+    type t = bool
 
-  let empty = false
+    let empty = false
 
-  let combine = ( || )
-end)
+    let combine = ( || )
+  end)
 
-module Forall = Make (struct
-  type t = bool
+  let map_reduce ~f list =
+    match
+      List.fold_result list ~init:() ~f:(fun () a ->
+          if f a then
+            Error ()
+          else
+            Ok ())
+    with
+    | Ok () -> false
+    | Error () -> true
 
-  let empty = true
+  let reduce = map_reduce ~f:Fun.id
+end
 
-  let combine = ( && )
-end)
+module Forall = struct
+  include Make (struct
+    type t = bool
+
+    let empty = true
+
+    let combine = ( && )
+  end)
+
+  let map_reduce ~f list =
+    match
+      List.fold_result list ~init:() ~f:(fun () a ->
+          if f a then
+            Ok ()
+          else
+            Error ())
+    with
+    | Ok () -> true
+    | Error () -> false
+
+  let reduce = map_reduce ~f:Fun.id
+end
+
+module Ordering = struct
+  include Make (struct
+    include Ordering
+
+    let empty = Eq
+
+    let combine x y =
+      match x with
+      | Lt -> Lt
+      | Eq -> y
+      | Gt -> Gt
+  end)
+
+  let map_reduce ~f list =
+    match
+      List.fold_result list ~init:() ~f:(fun () a ->
+          match (f a : Ordering.t) with
+          | Eq -> Ok ()
+          | (Lt | Gt) as result -> Error result)
+    with
+    | Ok () -> Ordering.Eq
+    | Error result -> result
+
+  let reduce = map_reduce ~f:Fun.id
+end
 
 module String = Make (struct
   type t = string

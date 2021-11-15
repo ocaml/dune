@@ -15,12 +15,11 @@ module Reduced_stats = struct
     { mtime = stats.st_mtime; size = stats.st_size; perm = stats.st_perm }
 
   let compare a b =
-    match Float.compare a.mtime b.mtime with
-    | (Lt | Gt) as x -> x
-    | Eq -> (
-      match Int.compare a.size b.size with
-      | (Lt | Gt) as x -> x
-      | Eq -> Int.compare a.perm b.perm)
+    Monoid.Ordering.reduce
+      [ Float.compare a.mtime b.mtime
+      ; Int.compare a.size b.size
+      ; Int.compare a.perm b.perm
+      ]
 end
 
 type file =

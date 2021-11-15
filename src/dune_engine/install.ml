@@ -228,12 +228,12 @@ module Entry = struct
   end
 
   let compare compare_src x y =
-    match Section.compare x.section y.section with
-    | (Lt | Gt) as c -> c
-    | Eq -> (
-      match Dst.compare x.dst y.dst with
-      | (Lt | Gt) as c -> c
-      | Eq -> compare_src x.src y.src)
+    Monoid.Ordering.map_reduce
+      ~f:(fun compare -> compare ())
+      [ (fun () -> Section.compare x.section y.section)
+      ; (fun () -> Dst.compare x.dst y.dst)
+      ; (fun () -> compare_src x.src y.src)
+      ]
 
   let adjust_dst_gen =
     let error (source_pform : Dune_lang.Template.Pform.t) =

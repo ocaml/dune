@@ -53,14 +53,13 @@ module Pps = struct
   let compare_no_locs compare_pps
       { loc = _; pps = pps1; flags = flags1; staged = s1 }
       { loc = _; pps = pps2; flags = flags2; staged = s2 } =
-    match Bool.compare s1 s2 with
-    | (Lt | Gt) as t -> t
-    | Eq -> (
-      match
-        List.compare flags1 flags2 ~compare:String_with_vars.compare_no_loc
-      with
-      | (Lt | Gt) as t -> t
-      | Eq -> List.compare pps1 pps2 ~compare:compare_pps)
+    Monoid.Ordering.map_reduce
+      ~f:(fun compare -> compare ())
+      [ (fun () -> Bool.compare s1 s2)
+      ; (fun () ->
+          List.compare flags1 flags2 ~compare:String_with_vars.compare_no_loc)
+      ; (fun () -> List.compare pps1 pps2 ~compare:compare_pps)
+      ]
 end
 
 type 'a t =

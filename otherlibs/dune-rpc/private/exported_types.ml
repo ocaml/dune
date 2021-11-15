@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Loc = struct
   include Loc
@@ -109,9 +109,9 @@ module Diagnostic = struct
       iso (record (both in_build in_source)) to_ from
   end
 
-  let sexp_pp : (unit Stdune.Pp.t, Conv.values) Conv.t =
+  let sexp_pp : (unit Pp.t, Conv.values) Conv.t =
     let open Conv in
-    let open Stdune.Pp.Ast in
+    let open Pp.Ast in
     let nop = constr "Nop" unit (fun () -> Nop) in
     let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
     let char = constr "Char" char (fun c -> Char c) in
@@ -179,7 +179,7 @@ module Diagnostic = struct
   module Id = struct
     type t = int
 
-    let compare (a : t) (b : t) = Stdune.Int.compare a b
+    let compare (a : t) (b : t) = Int.compare a b
 
     let hash (t : t) = Hashtbl.hash t
 
@@ -210,7 +210,7 @@ module Diagnostic = struct
   type t =
     { targets : Target.t list
     ; id : Id.t
-    ; message : unit Stdune.Pp.t
+    ; message : unit Pp.t
     ; loc : Loc.t option
     ; severity : severity option
     ; promotion : Promotion.t list

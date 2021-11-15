@@ -136,7 +136,7 @@ understood by dune language."))
 
 (package
  (name dune-rpc)
- (depends csexp dyn xdg (stdune-unstable (= :version)) (pp (>= 1.1.0)))
+ (depends csexp ordering dyn xdg (stdune-unstable (= :version)) (pp (>= 1.1.0)))
  (synopsis "Communicate with dune using rpc")
  (description "Library to connect and control a running dune instance"))
 

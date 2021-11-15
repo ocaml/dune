@@ -146,3 +146,67 @@ We're done.
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
+
+Now test file-system events generated during target promotion.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (mode promote)
+  >   (deps original)
+  >   (target promoted)
+  >   (action (copy %{deps} %{target})))
+  > (rule
+  >   (deps promoted)
+  >   (target result)
+  >   (action (bash "cat promoted promoted > result")))
+  > EOF
+
+  $ start_dune --debug-cache=fs
+  $ build result
+  Success
+
+  $ stop_dune > debug-output
+
+Show that we ignore the initial dune-workspace event (injected by Dune).
+
+  $ cat debug-output | grep dune-workspace
+  Updating dir_contents cache for "dune-workspace": Skipped
+  Updating path_digest cache for "dune-workspace": Skipped
+  Updating path_stat cache for "dune-workspace": Skipped
+  Updating path_exists cache for "dune-workspace": Updated { changed = false }
+
+Show that Dune processes events for both .#promoted.dune-temp and promoted.
+
+# CR amokhov: We shouldn't see events for .#promoted.dune-temp here.
+
+  $ cat debug-output | grep promoted
+  Updating dir_contents cache for ".#promoted.dune-temp": Skipped
+  Updating path_digest cache for ".#promoted.dune-temp": Skipped
+  Updating path_stat cache for ".#promoted.dune-temp": Skipped
+  Updating path_exists cache for ".#promoted.dune-temp": Skipped
+  Updating dir_contents cache for "promoted": Skipped
+  Updating path_digest cache for "promoted": Updated { changed = false }
+  Updating path_stat cache for "promoted": Skipped
+  Updating path_exists cache for "promoted": Skipped
+
+Show how Dune processes events for the . directory.
+
+# CR-someday amokhov: We see two events where [path_stat] changed but nothing
+# else did: specifically, the directory still exists and its content is unchanged.
+# We believe the [path_stat]'s changes are due to the [mtimes] field, which can
+# change, for example, because of creation of a temporary file. We should remove
+# [mtimes] from [Fs_cache.Reduced_stats] to avoid such unnecessary retriggering.
+
+  $ cat debug-output | grep '"."'
+  Updating dir_contents cache for ".": Updated { changed = false }
+  Updating path_digest cache for ".": Skipped
+  Updating path_stat cache for ".": Updated { changed = true }
+  Updating path_exists cache for ".": Updated { changed = false }
+  Updating dir_contents cache for ".": Updated { changed = false }
+  Updating path_digest cache for ".": Skipped
+  Updating path_stat cache for ".": Updated { changed = false }
+  Updating path_exists cache for ".": Updated { changed = false }
+  Updating dir_contents cache for ".": Updated { changed = true }
+  Updating path_digest cache for ".": Skipped
+  Updating path_stat cache for ".": Updated { changed = true }
+  Updating path_exists cache for ".": Updated { changed = false }

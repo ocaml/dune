@@ -99,7 +99,7 @@ module type File_operations = sig
 
   val mkdir_p : Path.t -> unit
 
-  val remove_file_if_exists : ?even_if_it_is_empty_dir:bool -> Path.t -> unit
+  val remove_file_if_exists : Path.t -> unit
 
   val remove_dir_if_exists_and_empty : Path.t -> unit
 end
@@ -119,13 +119,8 @@ module File_ops_dry_run : File_operations = struct
   let mkdir_p path =
     print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
 
-  let remove_file_if_exists ?(even_if_it_is_empty_dir = false) path =
-    let msg =
-      match even_if_it_is_empty_dir with
-      | false -> "Removing (if it exists)"
-      | true -> "Removing (if it exists, even if it is an empty directory)"
-    in
-    print_line "%s %s" msg (Path.to_string_maybe_quoted path)
+  let remove_file_if_exists path =
+    print_line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
 
   let remove_dir_if_exists_and_empty path =
     print_line "Removing directory (if empty) %s"
@@ -291,6 +286,12 @@ module File_ops_real (W : Workspace) : File_operations = struct
           Dune_rules.Artifact_substitution.copy ~conf ~input_file:src
             ~input:(input ic) ~output:(output oc))
 
+  let remove_file_if_exists dst =
+    if Path.exists dst then (
+      print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
+      print_unix_error (fun () -> Path.unlink dst)
+    )
+
   let remove_dir_if_exists_and_empty dir =
     if Path.exists dir then
       match Path.readdir_unsorted dir with
@@ -305,17 +306,6 @@ module File_ops_real (W : Workspace) : File_operations = struct
           [ Pp.textf "Please delete non-empty directory %s manually."
               (Path.to_string_maybe_quoted dir)
           ]
-
-  let remove_file_if_exists ?(even_if_it_is_empty_dir = false) dst =
-    if Path.exists dst then
-      print_unix_error (fun () ->
-          match Path.unlink dst with
-          | exception Unix.Unix_error (EISDIR, _, _)
-            when even_if_it_is_empty_dir ->
-            remove_dir_if_exists_and_empty dst
-          | ()
-          | (exception _) ->
-            print_line "Deleting %s" (Path.to_string_maybe_quoted dst))
 
   let mkdir_p p =
     (* CR-someday amokhov: We should really change [Path.mkdir_p dir] to fail if
@@ -631,8 +621,11 @@ let install_uninstall ~what =
                           in
                           if copy then
                             let* () =
-                              Ops.remove_file_if_exists
-                                ~even_if_it_is_empty_dir:true dst;
+                              (match Path.is_directory dst with
+                              | true -> Ops.remove_dir_if_exists_and_empty dst
+                              | false
+                              | (exception _) ->
+                                Ops.remove_file_if_exists dst);
                               print_line "%s %s" msg
                                 (Path.to_string_maybe_quoted dst);
                               Ops.mkdir_p dir;

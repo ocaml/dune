@@ -20,13 +20,11 @@ module Dune = struct
       ; where : Where.t
       }
 
-    let compare t { root; pid; where } : Stdune.Ordering.t =
-      match Int.compare t.pid pid with
-      | (Lt | Gt) as s -> s
-      | Eq -> (
-        match String.compare t.root root with
-        | (Lt | Gt) as s -> s
-        | Eq -> Where.compare t.where where)
+    let compare t { root; pid; where } : Ordering.t =
+      let open Ordering.O in
+      let= () = Int.compare t.pid pid in
+      let= () = String.compare t.root root in
+      Where.compare t.where where
 
     let to_dyn { root; pid; where } =
       let open Dyn in

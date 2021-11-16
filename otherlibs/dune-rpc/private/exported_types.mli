@@ -125,7 +125,7 @@ module Diagnostic : sig
 end
 
 module Progress : sig
-  type t =
+  type status =
     | Waiting
     | In_progress of
         { complete : int
@@ -135,7 +135,14 @@ module Progress : sig
     | Interrupted
     | Success
 
-  val sexp : (t, Conv.values) Conv.t
+  type t =
+    { build_number : int
+    ; status : status
+    }
+
+  val sexp_v1 : (t, Conv.values) Conv.t
+
+  val sexp_v2 : (t, Conv.values) Conv.t
 end
 
 module Message : sig

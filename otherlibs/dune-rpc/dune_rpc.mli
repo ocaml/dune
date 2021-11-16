@@ -170,7 +170,7 @@ module V1 : sig
   end
 
   module Progress : sig
-    type t =
+    type status =
       | Waiting
       | In_progress of
           { complete : int
@@ -179,6 +179,12 @@ module V1 : sig
       | Failed
       | Interrupted
       | Success
+
+    type t =
+      { build_number : int
+            (** Build numbers start at 0. So the first build has number [0]. *)
+      ; status : status
+      }
   end
 
   module Sub : sig

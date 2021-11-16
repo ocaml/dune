@@ -124,8 +124,13 @@ module Poll = struct
 
     let v1 =
       Decl.Request.make_current_gen ~req:Id.sexp
-        ~resp:(Conv.option Progress.sexp)
+        ~resp:(Conv.option Progress.sexp_v1)
         ~version:1
+
+    let v2 =
+      Decl.Request.make_current_gen ~req:Id.sexp
+        ~resp:(Conv.option Progress.sexp_v2)
+        ~version:2
   end
 
   module Diagnostic = struct
@@ -139,7 +144,7 @@ module Poll = struct
 
   let progress =
     let open Progress in
-    make name [ v1 ]
+    make name [ v1; v2 ]
 
   let diagnostic =
     let open Diagnostic in

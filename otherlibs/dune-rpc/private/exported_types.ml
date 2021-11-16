@@ -282,7 +282,7 @@ module Diagnostic = struct
 end
 
 module Progress = struct
-  type t =
+  type status =
     | Waiting
     | In_progress of
         { complete : int
@@ -292,7 +292,12 @@ module Progress = struct
     | Interrupted
     | Success
 
-  let sexp =
+  type t =
+    { build_number : int
+    ; status : status
+    }
+
+  let sexp_status =
     let open Conv in
     let waiting = constr "waiting" unit (fun () -> Waiting) in
     let failed = constr "failed" unit (fun () -> Failed) in
@@ -318,6 +323,19 @@ module Progress = struct
       | Success -> case () success
     in
     sum constrs serialize
+
+  let sexp_v1 =
+    let from { build_number = _; status } = status in
+    let to_ status = { build_number = 0; status } in
+    Conv.iso sexp_status to_ from
+
+  let sexp_v2 =
+    let open Conv in
+    let from { build_number; status } = (build_number, status) in
+    let to_ (build_number, status) = { build_number; status } in
+    let build_number = field "build_number" (required int) in
+    let status = field "status" (required sexp_status) in
+    iso (record (both build_number status)) to_ from
 end
 
 module Message = struct

@@ -236,7 +236,7 @@ module Diagnostic : sig
 end
 
 module Progress : sig
-  type t =
+  type status =
     | Waiting
     | In_progress of
         { complete : int
@@ -245,6 +245,11 @@ module Progress : sig
     | Failed
     | Interrupted
     | Success
+
+  type t =
+    { build_number : int
+    ; status : status
+    }
 end
 
 module Message : sig

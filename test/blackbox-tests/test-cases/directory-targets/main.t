@@ -86,6 +86,13 @@ Build directory target from the command line.
   $ cat _build/default/output/y
   y
 
+Test that workspace-local cache works for directory targets.
+
+# CR-someday amokhov: Actually, it doesn't work at the moment. We should fix it.
+
+  $ dune build output/x --debug-cache=workspace-local
+  Workspace-local cache miss: _build/default/output: target changed in build dir
+
 Requesting the directory target directly works too.
 
   $ cat > dune <<EOF

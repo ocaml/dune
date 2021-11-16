@@ -456,18 +456,17 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
         ]
       | _ -> [])
 
-(* CR-someday amokhov: Clean up pending directory targets too? *)
-
-(* This contains the targets of the actions that are being executed. On exit, we
-   need to delete them as they might contain garbage. *)
-let pending_targets = ref Path.Build.Set.empty
+(* All file targets of non-sandboxed actions that are currently being executed.
+   On exit, we need to delete them as they might contain garbage. There is no
+   [pending_dir_targets] since actions with directory targets are sandboxed. *)
+let pending_file_targets = ref Path.Build.Set.empty
 
 let () = Hooks.End_of_build.always Metrics.reset
 
 let () =
   Hooks.End_of_build.always (fun () ->
-      let fns = !pending_targets in
-      pending_targets := Path.Build.Set.empty;
+      let fns = !pending_file_targets in
+      pending_file_targets := Path.Build.Set.empty;
       Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
 
 let compute_target_digests (targets : Targets.Validated.t) =
@@ -1467,15 +1466,22 @@ end = struct
         } =
       action
     in
-    pending_targets := Path.Build.Set.union targets.files !pending_targets;
     let chdirs = Action.chdirs action in
     let sandbox =
-      Option.map sandbox_mode ~f:(fun mode ->
-          Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~chdirs
-            ~rule_digest
-            ~expand_aliases:
-              (Execution_parameters.expand_aliases_in_sandbox
-                 execution_parameters))
+      match sandbox_mode with
+      | Some mode ->
+        Some
+          (Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~chdirs
+             ~rule_digest
+             ~expand_aliases:
+               (Execution_parameters.expand_aliases_in_sandbox
+                  execution_parameters))
+      | None ->
+        (* If the action is not sandboxed, we use [pending_file_targets] to
+           clean up the build directory if the action is interrupted. *)
+        pending_file_targets :=
+          Path.Build.Set.union targets.files !pending_file_targets;
+        None
     in
     let action =
       match sandbox with
@@ -1539,9 +1545,12 @@ end = struct
           in
           { Exec_result.files_in_directory_targets; action_exec_result })
     in
-    Option.iter sandbox ~f:Sandbox.destroy;
-    (* All went well, these targets are no longer pending *)
-    pending_targets := Path.Build.Set.diff !pending_targets targets.files;
+    (match sandbox with
+    | Some sandbox -> Sandbox.destroy sandbox
+    | None ->
+      (* All went well, these targets are no longer pending. *)
+      pending_file_targets :=
+        Path.Build.Set.diff !pending_file_targets targets.files);
     exec_result
 
   let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets =

@@ -1,3 +1,9 @@
+[@@@alert
+unstable
+  "The Dune_rpc_lwt API is not stabilized yet and might break without notice."]
+
+[@@@alert "-unstable"]
+
 module V1 : sig
   open Dune_rpc.V1
 

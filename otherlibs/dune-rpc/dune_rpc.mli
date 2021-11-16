@@ -32,6 +32,10 @@
 
 (* TODO make records private *)
 
+[@@@alert
+unstable
+  "The Dune_rpc API is not stabilized yet and might break without notice."]
+
 module V1 : sig
   module Id : sig
     (** Id's for requests, responses, sessions.

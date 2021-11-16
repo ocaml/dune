@@ -1,3 +1,5 @@
+[@@@alert "-unstable"]
+
 open Dune_rpc.V1
 open Lwt.Syntax
 

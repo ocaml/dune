@@ -56,7 +56,7 @@ end
 
 module Flush_file_watcher = struct
   let v1 =
-    Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.unit ~version:1
+    Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.int ~version:1
 
   let decl = Decl.Request.make ~method_:"flush-file-watcher" ~generations:[ v1 ]
 end

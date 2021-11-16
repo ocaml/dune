@@ -883,6 +883,7 @@ type t =
   ; file_watcher : Dune_file_watcher.t option
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
   ; wait_for_build_input_change : unit Fiber.Ivar.t option ref
+  ; number_of_breakages : int ref
   ; cancellation : Fiber_util.Cancellation.t
   }
 
@@ -1001,6 +1002,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
              be an [option]. We use a dummy cancellation rather than an option
              to keep the code simpler. *)
           Fiber_util.Cancellation.create ()
+      ; number_of_breakages = 0
       } )
 
 module Run_once : sig
@@ -1057,6 +1059,11 @@ end = struct
         if Memo.Invalidation.is_empty invalidation then
           match !(t.status) with
           | Standing_by prev ->
+            if
+              Memo.Invalidation.is_empty prev.invalidation
+              && not prev.saw_insignificant_changes
+            then
+              t.number_of_breakages <- t.number_of_breakages + 1;
             t.status :=
               Standing_by { prev with saw_insignificant_changes = true };
             []
@@ -1069,6 +1076,11 @@ end = struct
                 (Memo.Invalidation.combine prev_invalidation invalidation);
             []
           | Standing_by prev ->
+            if
+              Memo.Invalidation.is_empty prev.invalidation
+              && not prev.saw_insignificant_changes
+            then
+              t.number_of_breakages <- t.number_of_breakages + 1;
             t.status :=
               Standing_by
                 { prev with
@@ -1079,6 +1091,7 @@ end = struct
           | Building cancellation ->
             t.handler t.config Build_interrupted;
             t.status := Restarting_build invalidation;
+            t.number_of_breakages <- t.number_of_breakages + 1;
             Fiber_util.Cancellation.fire' cancellation
       in
       match !(t.wait_for_build_input_change) with
@@ -1402,3 +1415,7 @@ let flush_file_watcher () =
 let wait_for_build_input_change () =
   let* t = t () in
   wait_for_build_input_change t
+
+let number_of_breakages () =
+  let+ t = t () in
+  t.number_of_breakages

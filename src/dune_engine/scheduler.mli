@@ -168,6 +168,24 @@ val sleep : float -> unit Fiber.t
     acknowledged by the scheduler. *)
 val flush_file_watcher : unit -> unit Fiber.t
 
+(** Number of times some event caused the build to be invalidated. This happens
+    whem:
+
+    - Dune is waiting for a file to change and receive a file change event that
+      invalidate the last build. At the moment, any FS event is counted as a
+      breakage, even if it doesn't invalidate the last build. We plan to change
+      this however.
+
+    - Dune is building and receives a FS event that invalidate the current build
+
+    During the restarting phase, i.e. between the time Dune receives the first
+    invalidating FS event and the time it actually starts a new build, any
+    subsequent FS change does not count as an additional restart. This ensures
+    that this number and the number of builds performed by [Build_system] are
+    synchronised. One can compare this number to the number of builds reported
+    by [Build_system] to determine if the build is fully caught up. *)
+val number_of_breakages : unit -> int Fiber.t
+
 (** Wait for a build input to change. If a build input change was seen but
     hasn't been handled yet, return immediately.
 

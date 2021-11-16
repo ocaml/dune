@@ -28,4 +28,6 @@ val build : (string list, Build_outcome.t) Decl.Request.t
 
 val status : (unit, Status.t) Decl.Request.t
 
-val flush_file_watcher : (unit, unit) Decl.Request.t
+(** Flush the file watcher queue and returns the number of breakages observed so
+    far, as defined by [Scheduler.number_of_breakages]. *)
+val flush_file_watcher : (unit, int) Decl.Request.t

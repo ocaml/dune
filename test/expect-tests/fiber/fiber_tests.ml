@@ -939,3 +939,70 @@ let%expect_test "all_concurrently_unit" =
     print: 1
     successfully caught error
     multi element list |}]
+
+let%expect_test "cancel_test1" =
+  let cancel = Fiber_util.Cancellation.create () in
+  Scheduler.run
+    (Fiber_util.Cancellation.set cancel (fun () ->
+         let* x = Fiber_util.Cancellation.cancelled in
+         printf "%B\n" x;
+         let* () = Fiber_util.Cancellation.fire cancel in
+         let* x = Fiber_util.Cancellation.cancelled in
+         printf "%B\n" x;
+         Fiber.return ()));
+  [%expect {|
+    false
+    true |}]
+
+let%expect_test "cancel_test2" =
+  let cancel = Fiber_util.Cancellation.create () in
+  let ivar1 = Fiber.Ivar.create () in
+  let ivar2 = Fiber.Ivar.create () in
+  let (), what =
+    Scheduler.run
+      (Fiber_util.Cancellation.set cancel (fun () ->
+           Fiber_util.Cancellation.with_handler
+             (fun () ->
+               let* () = Fiber.Ivar.fill ivar1 () in
+               let* () = Fiber_util.Cancellation.fire cancel in
+               Fiber.Ivar.read ivar2)
+             ~on_cancellation:(fun () -> Fiber.Ivar.fill ivar2 ())))
+  in
+  print_endline
+    (match what with
+    | Cancelled () -> "PASS"
+    | Not_cancelled -> "FAIL");
+  [%expect {|
+    PASS |}]
+
+let%expect_test "cancel_test3" =
+  let cancel = Fiber_util.Cancellation.create () in
+  let (), what =
+    Scheduler.run
+      (Fiber_util.Cancellation.set cancel (fun () ->
+           Fiber_util.Cancellation.with_handler
+             (fun () -> Fiber.return ())
+             ~on_cancellation:(fun () -> assert false)))
+  in
+  print_endline
+    (match what with
+    | Cancelled () -> "FAIL"
+    | Not_cancelled -> "PASS");
+  [%expect {|
+    PASS |}]
+
+let%expect_test "cancel_test4" =
+  let cancel = Fiber_util.Cancellation.create () in
+  let (), what =
+    Scheduler.run
+      (let* () = Fiber_util.Cancellation.fire cancel in
+       Fiber_util.Cancellation.set cancel (fun () ->
+           Fiber_util.Cancellation.with_handler
+             (fun () -> Fiber.return ())
+             ~on_cancellation:(fun () -> Fiber.return ())))
+  in
+  print_endline
+    (match what with
+    | Cancelled () -> "PASS"
+    | Not_cancelled -> "FAIL");
+  [%expect {| PASS |}]

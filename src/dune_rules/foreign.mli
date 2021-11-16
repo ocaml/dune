@@ -166,6 +166,8 @@ module Sources : sig
   val object_files :
     t -> dir:Path.Build.t -> ext_obj:string -> Path.Build.t list
 
+  val has_cxx_sources : t -> bool
+
   (** A map from object names to lists of possible language/path combinations. *)
   module Unresolved : sig
     type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t

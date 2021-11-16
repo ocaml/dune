@@ -29,15 +29,15 @@ module type S = sig
 
   val extend_basename : t -> suffix:string -> t
 
+  module Map : Map.S with type key = t
+
   module Set : sig
-    include Set.S with type elt = t
+    include Set.S with type elt = t and type 'a map = 'a Map.t
 
     val to_dyn : t Dyn.builder
 
     val of_listing : dir:elt -> filenames:string list -> t
   end
-
-  module Map : Map.S with type key = t
 
   module Table : Hashtbl.S with type key = t
 
@@ -98,15 +98,15 @@ module type Local_gen = sig
   module Fix_root (Root : sig
     type w
   end) : sig
+    module Map : Map.S with type key = Root.w t
+
     module Set : sig
-      include Set.S with type elt = Root.w t
+      include Set.S with type elt = Root.w t and type 'a map = 'a Map.t
 
       val to_dyn : t Dyn.builder
 
       val of_listing : dir:elt -> filenames:string list -> t
     end
-
-    module Map : Map.S with type key = Root.w t
 
     module Table : Hashtbl.S with type key = Root.w t
   end

@@ -98,7 +98,7 @@ module Make (R : Settings) () = struct
     let make l = List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
   end
 
-  module Map = Map.Make (T)
+  module Map = O.Map
 end
 
 module No_interning (R : Settings) () = struct

@@ -109,7 +109,8 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
    somehow batch file promotions. Another approach is to make restarts really
    cheap, so that we don't care any more, for example, by introducing reverse
    dependencies in Memo (and/or by having smarter cancellations). *)
-let promote ~dir ~files_to_promote ~promote ~promote_source =
+let promote ~dir ~targets ~promote ~promote_source =
+  let files_to_promote = Path.Build.Map.keys targets.Targets.Produced.files in
   let selected_for_promotion =
     match promote.Rule.Promote.only with
     | None -> fun (_ : Path.Build.t) -> true

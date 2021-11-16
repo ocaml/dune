@@ -470,7 +470,8 @@ let () =
       Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
 
 let compute_target_digests (targets : Targets.Validated.t) =
-  (* CR-someday amokhov: Do not ignore directory targets. *)
+  (* CR-someday amokhov: The workspace-local cache currently does not work for
+     directory targets because we ignore [targets.dirs] here. *)
   let file_targets = Path.Build.Set.to_list targets.files in
   Option.List.traverse file_targets ~f:(fun target ->
       Cached_digest.build_file target

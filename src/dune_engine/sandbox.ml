@@ -251,7 +251,7 @@ let apply_changes_to_source_tree t ~old_snapshot =
           copy_file p))
 
 let move_targets_to_build_dir t ~loc ~should_be_skipped
-    ~(targets : Targets.Validated.t) : _ Targets.Produced.t =
+    ~(targets : Targets.Validated.t) : unit Targets.Produced.t =
   Option.iter t.snapshot ~f:(fun old_snapshot ->
       apply_changes_to_source_tree t ~old_snapshot);
   Path.Build.Set.iter targets.files ~f:(fun target ->

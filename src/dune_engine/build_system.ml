@@ -479,8 +479,8 @@ let compute_target_digests (targets : Targets.Validated.t) :
   Targets.Produced.with_digests targets ~f:(fun target ->
       Cached_digest.build_file target |> Cached_digest.Digest_result.to_option)
 
-let compute_target_digests_or_raise_error exec_params ~loc
-    ~(targets : unit Targets.Produced.t) : Digest.t Targets.Produced.t =
+let compute_target_digests_or_raise_error exec_params ~loc ~produced_targets :
+    Digest.t Targets.Produced.t =
   let compute_digest =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should not
@@ -497,7 +497,7 @@ let compute_target_digests_or_raise_error exec_params ~loc
     Cached_digest.refresh ~remove_write_permissions
   in
   match
-    Targets.Produced.with_digests targets ~f:(fun target ->
+    Targets.Produced.with_digests produced_targets ~f:(fun target ->
         compute_digest target |> Cached_digest.Digest_result.to_option)
   with
   | Some result -> result
@@ -547,14 +547,14 @@ let compute_target_digests_or_raise_error exec_params ~loc
           in
           (missing, (target, error) :: errors)
       in
-      Path.Build.Map.foldi (Targets.Produced.all_files targets) ~init:([], [])
-        ~f:(fun target () -> process_target target)
+      Path.Build.Map.foldi (Targets.Produced.all_files produced_targets)
+        ~init:([], []) ~f:(fun target () -> process_target target)
     in
     match (missing, errors) with
     | [], [] ->
       Code_error.raise
         "compute_target_digests_or_raise_error: spurious target digest failure"
-        [ ("targets", Targets.Produced.to_dyn targets) ]
+        [ ("targets", Targets.Produced.to_dyn produced_targets) ]
     | missing, errors ->
       User_error.raise ~loc
         ((match missing with
@@ -1569,6 +1569,9 @@ end = struct
         Path.Build.Set.diff !pending_file_targets targets.files);
     exec_result
 
+  (* If this function fails to store the rule to the shared cache, it returns
+     [None] because we don't want this to be a catastrophic error. We simply log
+     this incident and continue without saving the rule to the shared cache. *)
   let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets :
       Digest.t Targets.Produced.t option Fiber.t =
     let open Fiber.O in
@@ -1727,7 +1730,7 @@ end = struct
   (* Check if the shared cache contains results for a rule and decide whether to
      use these results or rerun the rule for a reproducibility check. *)
   let lookup_shared_cache t ~rule_digest ~targets ~target_dir :
-      (Digest.t Targets.Produced.t, _) Cache_result.t =
+      (Digest.t Targets.Produced.t, Shared_cache_miss_reason.t) Cache_result.t =
     match t.cache_config with
     | Disabled -> Miss Shared_cache_miss_reason.Cache_disabled
     | Enabled { storage_mode = mode; reproducibility_check } -> (
@@ -1762,11 +1765,11 @@ end = struct
       | Some produced_targets_with_digests -> produced_targets_with_digests
       | None ->
         compute_target_digests_or_raise_error execution_parameters ~loc
-          ~targets:produced_targets)
+          ~produced_targets)
     | _ ->
       Fiber.return
         (compute_target_digests_or_raise_error execution_parameters ~loc
-           ~targets:produced_targets)
+           ~produced_targets)
 
   let promote_targets t ~rule_mode ~dir ~targets ~context =
     match (rule_mode, !Clflags.promote) with
@@ -1872,13 +1875,14 @@ end = struct
           | _ -> true
         in
         (* Step I. Check if the workspace-local cache is up to date. *)
-        let* produced_targets =
+        let* (produced_targets :
+               (Digest.t Targets.Produced.t, _) Cache_result.t) =
           match always_rerun with
           | true -> Fiber.return (Cache_result.Miss `Always_rerun)
           | false ->
             lookup_workspace_local_cache ~rule_digest ~targets ~env:action.env
         in
-        let* produced_targets =
+        let* (produced_targets : Digest.t Targets.Produced.t) =
           match produced_targets with
           | Hit x -> Fiber.return x
           | Miss miss_reason ->
@@ -1892,7 +1896,7 @@ end = struct
                 Path.Build.unlink_no_err target);
             (* Step III. Try to restore artifacts from the shared cache. *)
             let produced_targets_from_cache :
-                (_, Shared_cache_miss_reason.t) Cache_result.t =
+                (Digest.t Targets.Produced.t, _) Cache_result.t =
               match can_go_in_shared_cache with
               | false -> Miss Shared_cache_miss_reason.Can't_go_in_shared_cache
               | true ->

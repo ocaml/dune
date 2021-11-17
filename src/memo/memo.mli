@@ -517,5 +517,6 @@ end
 
     - yield if there are external events that have priority over the current
       memo computation
-    - raise if the current computation was cancelled so that Memo can avoid unnecessary work *)
+    - raise if the current computation was cancelled so that Memo can avoid
+      unnecessary work *)
 val check_point : unit Fiber.t ref

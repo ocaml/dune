@@ -45,8 +45,9 @@ module Cancellation : sig
     | Cancelled of 'a
     | Not_cancelled
 
-  (** [with_handler t ~on_cancellation f] runs [f ()] with a cancellation handler. If
-      [t] is fired during the execution of [f], then [on_cancellation] is called.
+  (** [with_handler t ~on_cancellation f] runs [f ()] with a cancellation
+      handler. If [t] is fired during the execution of [f], then
+      [on_cancellation] is called.
 
       The aim of [on_cancellation] is to somehow cut short the execution of [f].
       A typical example is a function running an external command.

@@ -844,6 +844,14 @@ let install_rules sctx (package : Package.t) =
           ; Package.Name.Set.to_list missing_deps
             |> Pp.enumerate ~f:(fun name ->
                    Pp.text (Package.Name.to_string name))
+          ; (if Dune_project.implicit_transitive_deps dune_project then
+              Pp.text
+                "Recursive dependencies could be present since implicit \
+                 transitive dependencies are added when compiling. This could \
+                 be avoided by adding `(implicit_transitive_deps false)` in \
+                 the dune-project."
+            else
+              Pp.nop)
           ]
   in
   let* () =

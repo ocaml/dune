@@ -74,6 +74,9 @@
   Error: Package loud_cat is missing the following package dependencies
   - cat
   - story
+  Recursive dependencies could be present since implicit transitive
+  dependencies are added when compiling. This could be avoided by adding
+  `(implicit_transitive_deps false)` in the dune-project.
   -> required by _build/default/loud_cat.install
   -> required by alias install
   [1]
@@ -88,6 +91,9 @@
   Entering directory 'b'
   Error: Package loud_cat is missing the following package dependencies
   - story
+  Recursive dependencies could be present since implicit transitive
+  dependencies are added when compiling. This could be avoided by adding
+  `(implicit_transitive_deps false)` in the dune-project.
   -> required by _build/default/loud_cat.install
   -> required by alias install
   [1]
@@ -97,6 +103,16 @@
   $ cat >b/dune-project <<EOF
   > (lang dune 3.0)
   > (package (name loud_cat) (depends cat story))
+  > EOF
+
+  $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @install
+  Entering directory 'b'
+
+# Without implicit transitive deps
+  $ cat >b/dune-project <<EOF
+  > (lang dune 3.0)
+  > (implicit_transitive_deps false)
+  > (package (name loud_cat) (depends cat))
   > EOF
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @install

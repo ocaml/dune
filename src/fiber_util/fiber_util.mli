@@ -38,32 +38,26 @@ module Cancellation : sig
       [Fiber.run]. *)
   val fire' : t -> Fiber.fill list
 
-  (** [set t f] sets the current cancellation to [t] while running [f ()]. *)
-  val set : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
-
-  (** Return whether the current cancellation has been fired. Return [false] if
-      the current fiber doesn't have a cancellation set. *)
-  val cancelled : bool Fiber.t
+  (** Return whether the given cancellation has been fired. *)
+  val fired : t -> bool
 
   type 'a outcome =
     | Cancelled of 'a
     | Not_cancelled
 
-  (** [with_handler ~on_cancel f] runs [f ()] with a cancellation handler. If
-      the current cancellation is fired during the execution of [f], then
-      [on_cancellation] is called.
+  (** [with_handler t ~on_cancellation f] runs [f ()] with a cancellation handler. If
+      [t] is fired during the execution of [f], then [on_cancellation] is called.
 
       The aim of [on_cancellation] is to somehow cut short the execution of [f].
       A typical example is a function running an external command.
       [on_cancellation] might send a [KILL] signal to the command to abort its
       execution.
 
-      If [f ()] finished before the cancellation is fired, then
-      [on_cancellation] will never be invoked.
-
-      If the current fiber has no cancellation, this just executes [f ()]. *)
+      If [f ()] finished before [t] is fired, then [on_cancellation] will never
+      be invoked. *)
   val with_handler :
-       (unit -> 'a Fiber.t)
+       t
+    -> (unit -> 'a Fiber.t)
     -> on_cancellation:(unit -> 'b Fiber.t)
     -> ('a * 'b outcome) Fiber.t
 end

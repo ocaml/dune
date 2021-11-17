@@ -29,8 +29,6 @@ module Cancellation = struct
 
   type t = { mutable state : State.t }
 
-  let key = Fiber.Var.create ()
-
   let create () = { state = Not_cancelled { handlers = End_of_handlers } }
 
   let rec invoke_handlers = function
@@ -59,61 +57,48 @@ module Cancellation = struct
       t.state <- Cancelled;
       fills_of_handlers [] handlers
 
-  let set t fiber = Fiber.Var.set key t fiber
+  let fired t =
+    match t.state with
+    | Cancelled -> true
+    | Not_cancelled _ -> false
 
-  let cancelled =
-    Fiber.Var.get key >>| function
-    | None -> false
-    | Some t -> (
-      match t.state with
-      | Cancelled -> true
-      | Not_cancelled _ -> false)
-
-  let with_handler f ~on_cancellation =
-    Fiber.Var.get key >>= function
-    | None ->
-      let+ x = f () in
-      (x, Not_cancelled)
-    | Some t -> (
-      match t.state with
-      | Cancelled ->
-        let+ x, y = Fiber.fork_and_join f on_cancellation in
-        (x, Cancelled y)
-      | Not_cancelled h ->
-        let ivar = Fiber.Ivar.create () in
-        let node =
-          Handler { ivar; next = h.handlers; prev = End_of_handlers }
-        in
-        (match h.handlers with
-        | End_of_handlers -> ()
-        | Handler first -> first.prev <- node);
-        h.handlers <- node;
-        Fiber.fork_and_join
-          (fun () ->
-            let* y = f () in
-            match t.state with
-            | Cancelled -> Fiber.return y
-            | Not_cancelled h -> (
-              match node with
-              | End_of_handlers ->
-                (* We could avoid this [assert false] with GADT sorcery given
-                   that we created [node] just above and we know for sure it is
-                   the [Handler _] case, but it's not worth the code
-                   complexity. *)
-                assert false
-              | Handler node ->
-                (match node.prev with
-                | End_of_handlers -> h.handlers <- node.next
-                | Handler prev -> prev.next <- node.next);
-                (match node.next with
-                | End_of_handlers -> ()
-                | Handler next -> next.prev <- node.prev);
-                let+ () = Fiber.Ivar.fill ivar Not_cancelled in
-                y))
-          (fun () ->
-            Fiber.Ivar.read ivar >>= function
-            | Cancelled () ->
-              let+ x = on_cancellation () in
-              Cancelled x
-            | Not_cancelled -> Fiber.return Not_cancelled))
+  let with_handler t f ~on_cancellation =
+    match t.state with
+    | Cancelled ->
+      let+ x, y = Fiber.fork_and_join f on_cancellation in
+      (x, Cancelled y)
+    | Not_cancelled h ->
+      let ivar = Fiber.Ivar.create () in
+      let node = Handler { ivar; next = h.handlers; prev = End_of_handlers } in
+      (match h.handlers with
+      | End_of_handlers -> ()
+      | Handler first -> first.prev <- node);
+      h.handlers <- node;
+      Fiber.fork_and_join
+        (fun () ->
+          let* y = f () in
+          match t.state with
+          | Cancelled -> Fiber.return y
+          | Not_cancelled h -> (
+            match node with
+            | End_of_handlers ->
+              (* We could avoid this [assert false] with GADT sorcery given that
+                 we created [node] just above and we know for sure it is the
+                 [Handler _] case, but it's not worth the code complexity. *)
+              assert false
+            | Handler node ->
+              (match node.prev with
+              | End_of_handlers -> h.handlers <- node.next
+              | Handler prev -> prev.next <- node.next);
+              (match node.next with
+              | End_of_handlers -> ()
+              | Handler next -> next.prev <- node.prev);
+              let+ () = Fiber.Ivar.fill ivar Not_cancelled in
+              y))
+        (fun () ->
+          Fiber.Ivar.read ivar >>= function
+          | Cancelled () ->
+            let+ x = on_cancellation () in
+            Cancelled x
+          | Not_cancelled -> Fiber.return Not_cancelled)
 end

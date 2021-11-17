@@ -726,7 +726,7 @@ type status =
                change. *)
       }
   | (* Running a build *)
-      Building
+      Building of Fiber_util.Cancellation.t
   | (* Cancellation requested. Build jobs are immediately rejected in this
        state *)
       Restarting_build of
@@ -841,17 +841,41 @@ end = struct
     Mutex.unlock t.mutex
 end
 
+(** All fields of [t] must be immutable. This is because we re-create [t]
+    everytime we start a new build to locally set the [cancellation] field.
+    However, all instances of [t] must share all other fields, in particular the
+    references such as [status].
+
+    Another option would be to split [t] in two records such as:
+
+    {[
+      type shared = { blah : blah }
+
+      type t =
+        { shared : shared
+        ; cancellation : Fiber_util.Cancellation.t
+        }
+    ]}
+
+    However, this style is more heavy. What is more, it means that every access
+    to shared fields of [t] is now slower.
+
+    With the current approach setting the cancellation is slower as it requires
+    copying almost all fields of [t]. However this happens only once per build
+    and a build is a much heavier operation than copying this record, so it's
+    fine. *)
 type t =
   { config : Config.t
   ; alarm_clock : Alarm_clock.t Lazy.t
-  ; mutable status : status
+  ; status : status ref
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
   ; file_watcher : Dune_file_watcher.t option
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
-  ; mutable wait_for_build_input_change : unit Fiber.Ivar.t option
+  ; wait_for_build_input_change : unit Fiber.Ivar.t option ref
+  ; cancellation : Fiber_util.Cancellation.t
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
@@ -869,38 +893,46 @@ let yield_if_there_are_pending_events () =
   | None -> Fiber.return ()
   | Some t -> Event.Queue.yield_if_there_are_pending_events t.events
 
-let () =
-  Memo.yield_if_there_are_pending_events := yield_if_there_are_pending_events
-
 exception Build_cancelled
+
+let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
+
+let check_cancelled t =
+  if Fiber_util.Cancellation.fired t.cancellation then cancelled ()
+
+let abort_if_build_was_cancelled = t_opt () >>| Option.iter ~f:check_cancelled
+
+let check_point =
+  t_opt () >>= function
+  | None -> Fiber.return ()
+  | Some t ->
+    check_cancelled t;
+    Event.Queue.yield_if_there_are_pending_events t.events
+
+let () = Memo.check_point := check_point
 
 let with_job_slot f =
   let* t = t () in
-  let raise_if_cancelled () =
-    match t.status with
-    | Restarting_build _ -> raise (Memo.Non_reproducible Build_cancelled)
-    | Building -> ()
-    | Standing_by _ ->
-      (* At this stage, we're not running a build, so we shouldn't be running
-         tasks here. *)
-      assert false
-  in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
-      raise_if_cancelled ();
-      Fiber.collect_errors (fun () -> f t.config) >>= function
-      | Ok res -> Fiber.return res
-      | Error exns ->
-        raise_if_cancelled ();
-        Fiber.reraise_all exns)
+      check_cancelled t;
+      f t.config)
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
 let wait_for_process t pid =
-  let ivar = Fiber.Ivar.create () in
-  Process_watcher.register_job t.process_watcher { pid; ivar };
-  Fiber.Ivar.read ivar
-
-let global = ref None
+  let+ res, outcome =
+    Fiber_util.Cancellation.with_handler t.cancellation
+      ~on_cancellation:(fun () ->
+        Process_watcher.killall t.process_watcher Sys.sigkill;
+        Fiber.return ())
+      (fun () ->
+        let ivar = Fiber.Ivar.create () in
+        Process_watcher.register_job t.process_watcher { pid; ivar };
+        Fiber.Ivar.read ivar)
+  in
+  match outcome with
+  | Cancelled () -> cancelled ()
+  | Not_cancelled -> res
 
 let got_signal signal =
   if !Log.verbose then
@@ -939,28 +971,29 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
          blocked in all threads. *)
       Signal_watcher.init events;
       let process_watcher = Process_watcher.init events in
-      let t =
-        { status =
-            (* Slightly weird initialization happening here: for polling mode we
-               initialize in "Building" state, immediately switch to Standing_by
-               and then back to "Building". It would make more sense to start in
-               "Stand_by" from the start. We can't "just" switch the initial
-               value here because then the non-polling mode would run in
-               "Standing_by" mode, which is even weirder. *)
-            Building
-        ; job_throttle = Fiber.Throttle.create config.concurrency
-        ; process_watcher
-        ; events
-        ; config
-        ; handler
-        ; file_watcher
-        ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
-        ; wait_for_build_input_change = None
-        ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
-        }
-      in
-      global := Some t;
-      t )
+      { status =
+          (* Slightly weird initialization happening here: for polling mode we
+             initialize in "Building" state, immediately switch to Standing_by
+             and then back to "Building". It would make more sense to start in
+             "Stand_by" from the start. We can't "just" switch the initial value
+             here because then the non-polling mode would run in "Standing_by"
+             mode, which is even weirder. *)
+          ref (Building (Fiber_util.Cancellation.create ()))
+      ; job_throttle = Fiber.Throttle.create config.concurrency
+      ; process_watcher
+      ; events
+      ; config
+      ; handler
+      ; file_watcher
+      ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
+      ; wait_for_build_input_change = ref None
+      ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
+      ; cancellation =
+          (* This cancellation will never be fired, so this field could instead
+             be an [option]. We use a dummy cancellation rather than an option
+             to keep the code simpler. *)
+          Fiber_util.Cancellation.create ()
+      } )
 
 module Run_once : sig
   type run_error =
@@ -1012,33 +1045,42 @@ end = struct
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
       in
-      (if not (Memo.Invalidation.is_empty invalidation) then (
-        match t.status with
-        | Restarting_build prev_invalidation ->
-          t.status <-
-            Restarting_build
-              (Memo.Invalidation.combine prev_invalidation invalidation)
-        | Standing_by prev ->
-          t.status <-
-            Standing_by
-              { prev with
-                invalidation =
-                  Memo.Invalidation.combine prev.invalidation invalidation
-              }
-        | Building ->
-          t.handler t.config Build_interrupted;
-          t.status <- Restarting_build invalidation;
-          Process_watcher.killall t.process_watcher Sys.sigkill
-      ) else
-        match t.status with
-        | Standing_by prev ->
-          t.status <- Standing_by { prev with saw_insignificant_changes = true }
-        | _ -> ());
-      match t.wait_for_build_input_change with
-      | None -> iter t
+      let fills =
+        if not (Memo.Invalidation.is_empty invalidation) then (
+          match !(t.status) with
+          | Restarting_build prev_invalidation ->
+            t.status :=
+              Restarting_build
+                (Memo.Invalidation.combine prev_invalidation invalidation);
+            []
+          | Standing_by prev ->
+            t.status :=
+              Standing_by
+                { prev with
+                  invalidation =
+                    Memo.Invalidation.combine prev.invalidation invalidation
+                };
+            []
+          | Building cancellation ->
+            t.handler t.config Build_interrupted;
+            t.status := Restarting_build invalidation;
+            Fiber_util.Cancellation.fire' cancellation
+        ) else
+          match !(t.status) with
+          | Standing_by prev ->
+            t.status :=
+              Standing_by { prev with saw_insignificant_changes = true };
+            []
+          | _ -> []
+      in
+      match !(t.wait_for_build_input_change) with
+      | None -> (
+        match Nonempty_list.of_list fills with
+        | None -> iter t
+        | Some fills -> fills)
       | Some ivar ->
-        t.wait_for_build_input_change <- None;
-        [ Fill (ivar, ()) ])
+        t.wait_for_build_input_change := None;
+        Fill (ivar, ()) :: fills)
     | Timer fill
     | Worker_task fill ->
       [ fill ]
@@ -1126,19 +1168,19 @@ let flush_file_watcher t =
     Fiber.Ivar.read ivar
 
 let wait_for_build_input_change t =
-  match t.wait_for_build_input_change with
+  match !(t.wait_for_build_input_change) with
   | Some ivar -> Fiber.Ivar.read ivar
   | None -> (
-    match t.status with
+    match !(t.status) with
     | Standing_by { invalidation; saw_insignificant_changes }
       when (not (Memo.Invalidation.is_empty invalidation))
            || saw_insignificant_changes ->
       Fiber.return ()
     | Restarting_build _ -> Fiber.return ()
     | Standing_by _
-    | Building ->
+    | Building _ ->
       let ivar = Fiber.Ivar.create () in
-      t.wait_for_build_input_change <- Some ivar;
+      t.wait_for_build_input_change := Some ivar;
       Fiber.Ivar.read ivar)
 
 module Run = struct
@@ -1153,27 +1195,27 @@ module Run = struct
   module Event = Handler.Event
 
   let rec poll_iter t step ~invalidation =
+    let cancellation = Fiber_util.Cancellation.create () in
+    t.status := Building cancellation;
     (if Memo.Invalidation.is_empty invalidation then
       Memo.Perf_counters.reset ()
     else
       let details_hum = Memo.Invalidation.details_hum invalidation in
       t.handler t.config (Source_files_changed { details_hum });
       Memo.reset invalidation);
-    let* res = step in
-    match t.status with
+    let* res = set { t with cancellation } (fun () -> step) in
+    match !(t.status) with
     | Standing_by _ ->
       (* We just finished a build, so there's no way this was set *)
       assert false
-    | Restarting_build invalidation ->
-      t.status <- Building;
-      poll_iter t step ~invalidation
-    | Building ->
+    | Restarting_build invalidation -> poll_iter t step ~invalidation
+    | Building _ ->
       let res : Build_outcome.t =
         match res with
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
-      t.status <-
+      t.status :=
         Standing_by
           { invalidation = Memo.Invalidation.empty
           ; saw_insignificant_changes = false
@@ -1182,20 +1224,21 @@ module Run = struct
       Fiber.return res
 
   let poll_iter t step =
-    match t.status with
-    | Building
+    match !(t.status) with
+    | Building _
     | Restarting_build _ ->
       assert false
-    | Standing_by { invalidation; _ } ->
-      t.status <- Building;
-      poll_iter t step ~invalidation
+    | Standing_by { invalidation; _ } -> poll_iter t step ~invalidation
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
 
   let poll_init () =
     let+ t = t () in
-    assert (t.status = Building);
-    t.status <-
+    assert (
+      match !(t.status) with
+      | Building _ -> true
+      | _ -> false);
+    t.status :=
       Standing_by
         { invalidation = Memo.Invalidation.empty
         ; saw_insignificant_changes = false

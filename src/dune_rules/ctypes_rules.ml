@@ -174,64 +174,63 @@ let modules_of_list ~dir ~modules =
   Modules.exe_unwrapped name_map
 (* Modules.exe_wrapped ~src_dir:dir ~modules:name_map *)
 
+let pp_write_file path pp =
+  Action_builder.write_file path @@ Format.asprintf "%a" Pp.to_fmt pp
+
+let verbatimf fmt =
+  Printf.ksprintf (fun s -> Pp.concat [ Pp.verbatim s; Pp.newline ]) fmt
+
 let write_c_types_includer_module ~sctx ~dir ~filename ~type_description_functor
     ~c_generated_types_module =
   let path = Path.Build.relative dir filename in
   let contents =
-    let buf = Buffer.create 1024 in
-    let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
-    pr buf "include %s.Types (%s)"
+    verbatimf "include %s.Types (%s)"
       (Module_name.to_string type_description_functor)
-      (Module_name.to_string c_generated_types_module);
-    Buffer.contents buf
+      (Module_name.to_string c_generated_types_module)
   in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir
-    (Action_builder.write_file path contents)
+  Super_context.add_rule ~loc:Loc.none sctx ~dir (pp_write_file path contents)
 
 let write_entry_point_module ~ctypes ~sctx ~dir ~filename
     ~type_description_instance ~function_description ~c_types_includer_module =
   let path = Path.Build.relative dir filename in
   let contents =
-    let buf = Buffer.create 1024 in
-    let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
-    pr buf "module %s = %s"
-      (Module_name.to_string type_description_instance)
-      (Module_name.to_string c_types_includer_module);
-    List.iter function_description ~f:(fun fd ->
-        let c_generated_functions_module =
-          Stanza_util.c_generated_functions_module ctypes fd
-        in
-        pr buf "module %s = %s.Functions (%s)"
-          (fd.Ctypes.Function_description.instance |> Module_name.to_string)
-          (fd.Ctypes.Function_description.functor_ |> Module_name.to_string)
-          (Module_name.to_string c_generated_functions_module));
-    Buffer.contents buf
+    Pp.concat
+      [ verbatimf "module %s = %s"
+          (Module_name.to_string type_description_instance)
+          (Module_name.to_string c_types_includer_module)
+      ; Pp.concat_map function_description ~f:(fun fd ->
+            let c_generated_functions_module =
+              Stanza_util.c_generated_functions_module ctypes fd
+            in
+            verbatimf "module %s = %s.Functions (%s)"
+              (fd.Ctypes.Function_description.instance |> Module_name.to_string)
+              (fd.Ctypes.Function_description.functor_ |> Module_name.to_string)
+              (Module_name.to_string c_generated_functions_module))
+      ]
   in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir
-    (Action_builder.write_file path contents)
+  Super_context.add_rule ~loc:Loc.none sctx ~dir (pp_write_file path contents)
 
 let discover_gen ~external_library_name:lib ~cflags_sexp ~c_library_flags_sexp =
-  let buf = Buffer.create 1024 in
-  let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
-  pr buf "module C = Configurator.V1";
-  pr buf "let () =";
-  pr buf "  C.main ~name:\"%s\" (fun c ->" lib;
-  pr buf "    let default : C.Pkg_config.package_conf =";
-  pr buf "      { libs   = [\"-l%s\"];" lib;
-  pr buf "        cflags = [\"-I/usr/include\"] }";
-  pr buf "    in";
-  pr buf "    let conf =";
-  pr buf "      match C.Pkg_config.get c with";
-  pr buf "      | None -> default";
-  pr buf "      | Some pc ->";
-  pr buf "        match C.Pkg_config.query pc ~package:\"%s\" with" lib;
-  pr buf "        | None -> default";
-  pr buf "        | Some deps -> deps";
-  pr buf "    in";
-  pr buf "    C.Flags.write_sexp \"%s\" conf.cflags;" cflags_sexp;
-  pr buf "    C.Flags.write_sexp \"%s\" conf.libs;" c_library_flags_sexp;
-  pr buf "  )";
-  Buffer.contents buf
+  Pp.concat
+    [ verbatimf "module C = Configurator.V1"
+    ; verbatimf "let () ="
+    ; verbatimf "  C.main ~name:\"%s\" (fun c ->" lib
+    ; verbatimf "    let default : C.Pkg_config.package_conf ="
+    ; verbatimf "      { libs   = [\"-l%s\"];" lib
+    ; verbatimf "        cflags = [\"-I/usr/include\"] }"
+    ; verbatimf "    in"
+    ; verbatimf "    let conf ="
+    ; verbatimf "      match C.Pkg_config.get c with"
+    ; verbatimf "      | None -> default"
+    ; verbatimf "      | Some pc ->"
+    ; verbatimf "        match C.Pkg_config.query pc ~package:\"%s\" with" lib
+    ; verbatimf "        | None -> default"
+    ; verbatimf "        | Some deps -> deps"
+    ; verbatimf "    in"
+    ; verbatimf "    C.Flags.write_sexp \"%s\" conf.cflags;" cflags_sexp
+    ; verbatimf "    C.Flags.write_sexp \"%s\" conf.libs;" c_library_flags_sexp
+    ; verbatimf "  )"
+    ]
 
 let write_discover_script ~filename ~sctx ~dir ~external_library_name
     ~cflags_sexp ~c_library_flags_sexp =
@@ -239,33 +238,32 @@ let write_discover_script ~filename ~sctx ~dir ~external_library_name
   let script =
     discover_gen ~external_library_name ~cflags_sexp ~c_library_flags_sexp
   in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir
-    (Action_builder.write_file path script)
+  Super_context.add_rule ~loc:Loc.none sctx ~dir (pp_write_file path script)
 
-let gen_headers ~expander headers buf =
+let gen_headers ~expander headers =
   let open Action_builder.O in
-  let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
   match headers with
   | Ctypes.Headers.Include lst ->
     let+ lst =
       Expander.expand_and_eval_set expander lst
         ~standard:(Action_builder.return [])
     in
-    List.iter lst ~f:(fun h -> pr buf "  print_endline \"#include <%s>\";" h)
+    Pp.concat_map lst ~f:(fun h ->
+        verbatimf "  print_endline \"#include <%s>\";" h)
   | Preamble s ->
     let+ s = Expander.expand_str expander s in
-    pr buf "  print_endline %S;" s
+    verbatimf "  print_endline %S;" s
 
 let type_gen_gen ~expander ~headers ~type_description_functor =
   let open Action_builder.O in
-  let buf = Buffer.create 1024 in
-  let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
-  pr buf "let () =";
-  let+ () = gen_headers ~expander headers buf in
-  pr buf "  Cstubs_structs.write_c Format.std_formatter";
-  pr buf "    (module %s.Types)"
-    (Module_name.to_string type_description_functor);
-  Buffer.contents buf
+  let+ headers = gen_headers ~expander headers in
+  Pp.concat
+    [ verbatimf "let () ="
+    ; headers
+    ; verbatimf "  Cstubs_structs.write_c Format.std_formatter"
+    ; verbatimf "    (module %s.Types)"
+        (Module_name.to_string type_description_functor)
+    ]
 
 let function_gen_gen ~expander ~concurrency ~headers
     ~function_description_functor =
@@ -278,21 +276,21 @@ let function_gen_gen ~expander ~concurrency ~headers
     | Lwt_jobs -> "Cstubs.lwt_jobs"
     | Lwt_preemptive -> "Cstubs.lwt_preemptive"
   in
-  let buf = Buffer.create 1024 in
-  let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n") in
-  pr buf "let () =";
-  pr buf "  let concurrency = %s in" concurrency;
-  pr buf "  let prefix = Sys.argv.(2) in";
-  pr buf "  match Sys.argv.(1) with";
-  pr buf "  | \"ml\" ->";
-  pr buf "    Cstubs.write_ml ~concurrency Format.std_formatter ~prefix";
-  pr buf "      (module %s.Functions)" module_name;
-  pr buf "  | \"c\" ->";
-  let+ () = gen_headers ~expander headers buf in
-  pr buf "    Cstubs.write_c ~concurrency Format.std_formatter ~prefix";
-  pr buf "      (module %s.Functions)" module_name;
-  pr buf "  | s -> failwith (\"unknown functions \"^s)";
-  Buffer.contents buf
+  let+ headers = gen_headers ~expander headers in
+  Pp.concat
+    [ verbatimf "let () ="
+    ; verbatimf "  let concurrency = %s in" concurrency
+    ; verbatimf "  let prefix = Sys.argv.(2) in"
+    ; verbatimf "  match Sys.argv.(1) with"
+    ; verbatimf "  | \"ml\" ->"
+    ; verbatimf "    Cstubs.write_ml ~concurrency Format.std_formatter ~prefix"
+    ; verbatimf "      (module %s.Functions)" module_name
+    ; verbatimf "  | \"c\" ->"
+    ; headers
+    ; verbatimf "    Cstubs.write_c ~concurrency Format.std_formatter ~prefix"
+    ; verbatimf "      (module %s.Functions)" module_name
+    ; verbatimf "  | s -> failwith (\"unknown functions \"^s)"
+    ]
 
 let add_rule_gen ~sctx ~dir ~filename f =
   let path = Path.Build.relative dir filename in
@@ -301,7 +299,8 @@ let add_rule_gen ~sctx ~dir ~filename f =
     let* expander =
       Action_builder.memo_build @@ Super_context.expander sctx ~dir
     in
-    f ~expander
+    let+ pp = f ~expander in
+    Format.asprintf "%a" Pp.to_fmt pp
   in
   let action =
     Action_builder.With_targets.write_file_dyn path

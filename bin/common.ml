@@ -179,6 +179,10 @@ let init ?log_file c =
         ; reproducibility_check = config.cache_reproducibility_check
         }
   in
+  Dune_util.Log.info
+    [ Pp.textf "Shared cache: %s"
+        (Dune_config.Cache.Enabled.to_string config.cache_enabled)
+    ];
   Dune_rules.Main.init ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference ~cache_config
     ~cache_debug_flags:c.cache_debug_flags

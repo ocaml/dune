@@ -34,6 +34,10 @@ module Cancellation : sig
       [fire] is idempotent, so calling [fire t] more than once has no effect. *)
   val fire : t -> unit Fiber.t
 
+  (** Version of [fire] that is suitable to call from the [iter] callback of
+      [Fiber.run]. *)
+  val fire' : t -> Fiber.fill list
+
   (** [set t f] sets the current cancellation to [t] while running [f ()]. *)
   val set : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 

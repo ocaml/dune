@@ -47,6 +47,18 @@ module Cancellation = struct
           t.state <- Cancelled;
           invoke_handlers handlers)
 
+  let rec fills_of_handlers acc = function
+    | Handler { ivar; next; prev = _ } ->
+      fills_of_handlers (Fiber.Fill (ivar, Cancelled ()) :: acc) next
+    | End_of_handlers -> List.rev acc
+
+  let fire' t =
+    match t.state with
+    | Cancelled -> []
+    | Not_cancelled { handlers } ->
+      t.state <- Cancelled;
+      fills_of_handlers [] handlers
+
   let set t fiber = Fiber.Var.set key t fiber
 
   let cancelled =

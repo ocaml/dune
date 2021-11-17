@@ -27,4 +27,4 @@ let run (t : t) fiber =
       | None -> raise Never
       | Some (Job (job, ivar)) ->
         let v = job () in
-        Fiber.Fill (ivar, v))
+        [ Fiber.Fill (ivar, v) ])

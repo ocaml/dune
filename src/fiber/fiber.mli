@@ -381,6 +381,6 @@ with type 'a fiber := 'a t
 type fill = Fill : 'a Ivar.t * 'a -> fill
 
 (** [run t ~iter] runs a fiber until it terminates. [iter] is used to implement
-    the scheduler, it should block waiting for an event and return an ivar to
-    fill. *)
-val run : 'a t -> iter:(unit -> fill) -> 'a
+    the scheduler, it should block waiting for an event and return at least one
+    ivar to fill. *)
+val run : 'a t -> iter:(unit -> fill Nonempty_list.t) -> 'a

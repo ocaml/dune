@@ -66,7 +66,7 @@ module Execution_context : sig
 
   val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
 
-  val run : 'a t -> iter:(unit -> unit t) -> 'a
+  val run : 'a t -> iter:(unit -> unit) -> 'a
 
   val reraise_all : Exn_with_backtrace.t list -> unit
 end = struct
@@ -222,7 +222,7 @@ end = struct
           match !result with
           | Some res -> res
           | None ->
-            iter () ignore;
+            iter ();
             run_jobs t.jobs;
             (* We restore the current execution context so that [iter] always
                observe the same execution context. *)
@@ -539,13 +539,16 @@ module Ivar = struct
 
   let create () = { state = Empty (Queue.create ()) }
 
-  let fill t x k =
+  let fill_internal t x =
     match t.state with
     | Full _ -> failwith "Fiber.Ivar.fill"
     | Empty q ->
       t.state <- Full x;
-      Queue.iter q ~f:(fun k -> K.enqueue k x);
-      k ()
+      Queue.iter q ~f:(fun k -> K.enqueue k x)
+
+  let fill t x k =
+    fill_internal t x;
+    k ()
 
   let read t k =
     match t.state with
@@ -912,5 +915,6 @@ type fill = Fill : 'a Ivar.t * 'a -> fill
 
 let run t ~iter =
   EC.run t ~iter:(fun () ->
-      let (Fill (ivar, v)) = iter () in
-      Ivar.fill ivar v)
+      let fills = iter () in
+      List.iter (Nonempty_list.to_list fills) ~f:(fun (Fill (ivar, v)) ->
+          Ivar.fill_internal ivar v))

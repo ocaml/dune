@@ -994,10 +994,10 @@ end = struct
       - notifying completed jobs
       - starting cancellations
       - terminating the scheduler on signals *)
-  let rec iter (t : t) =
+  let rec iter (t : t) : Fiber.fill Nonempty_list.t =
     t.handler t.config Tick;
     match Event.Queue.next t.events with
-    | Job_completed (job, proc_info) -> Fiber.Fill (job.ivar, proc_info)
+    | Job_completed (job, proc_info) -> [ Fill (job.ivar, proc_info) ]
     | File_watcher_task job ->
       let events = job () in
       Event.Queue.send_file_watcher_events t.events events;
@@ -1007,7 +1007,7 @@ end = struct
       | None -> iter t
       | Some ivar ->
         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
-        Fill (ivar, ()))
+        [ Fill (ivar, ()) ])
     | Build_inputs_changed events -> (
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
@@ -1038,14 +1038,14 @@ end = struct
       | None -> iter t
       | Some ivar ->
         t.wait_for_build_input_change <- None;
-        Fill (ivar, ()))
+        [ Fill (ivar, ()) ])
     | Timer fill
     | Worker_task fill ->
-      fill
+      [ fill ]
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
-    | Yield ivar -> Fill (ivar, ())
+    | Yield ivar -> [ Fill (ivar, ()) ]
     | Shutdown signal -> (
       got_signal signal;
       match signal with

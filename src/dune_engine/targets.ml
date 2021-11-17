@@ -169,7 +169,7 @@ module Produced = struct
     let f path () =
       match f path with
       | Some digest -> digest
-      | None -> raise Short_circuit
+      | None -> raise_notrace Short_circuit
     in
     try
       let (files : Digest.t Path.Build.Map.t) = Path.Build.Map.mapi files ~f in

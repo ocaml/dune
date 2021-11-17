@@ -124,7 +124,7 @@ end
 
 (** Variables local to a fiber *)
 module Var : sig
-  type 'a fiber = 'a t
+  type 'a fiber := 'a t
 
   type 'a t
 
@@ -147,7 +147,6 @@ module Var : sig
 
   val unset : 'a t -> (unit -> 'b fiber) -> 'b fiber
 end
-with type 'a fiber := 'a t
 
 (** {1 Error handling} *)
 
@@ -228,7 +227,7 @@ end
 with type 'a fiber := 'a t
 
 module Mutex : sig
-  type 'a fiber = 'a t
+  type 'a fiber := 'a t
 
   type t
 
@@ -236,12 +235,11 @@ module Mutex : sig
 
   val with_lock : t -> (unit -> 'a fiber) -> 'a fiber
 end
-with type 'a fiber := 'a t
 
 module Throttle : sig
   (** Limit the number of jobs *)
 
-  type 'a fiber = 'a t
+  type 'a fiber := 'a t
 
   type t
 
@@ -260,7 +258,6 @@ module Throttle : sig
   (** Return the number of jobs currently running *)
   val running : t -> int
 end
-with type 'a fiber := 'a t
 
 val repeat_while : f:('a -> 'a option t) -> init:'a -> unit t
 

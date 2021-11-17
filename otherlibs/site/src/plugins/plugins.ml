@@ -7,6 +7,16 @@ let readdir dirs =
        (fun dir -> Array.to_list (Sys.readdir dir))
        (List.filter Sys.file_exists dirs))
 
+let rec lookup dirs file =
+  match dirs with
+  | [] -> None
+  | dir :: dirs ->
+    let file' = Filename.concat dir file in
+    if Sys.file_exists file' then
+      Some file'
+    else
+      lookup dirs file
+
 module type S = sig
   val paths : string list
 
@@ -57,9 +67,25 @@ let rec get_plugin plugins requires entries =
     get_plugin plugins (value :: requires) entries
   | Rule _ :: entries -> get_plugin plugins requires entries
 
+exception Thread_library_required_by_plugin_but_not_required_by_main_executable
+
 exception Library_not_found of string
 
-exception Thread_library_required_by_plugin_but_not_required_by_main_executable
+exception Plugin_not_found of string list * string
+
+let () =
+  Printexc.register_printer (function
+    | Thread_library_required_by_plugin_but_not_required_by_main_executable ->
+      Some
+        (Format.asprintf "%a" Format.pp_print_text
+           "It is not possible to dynamically link a plugin which uses the \
+            thread library with an executable not already linked with the \
+            thread library.")
+    | Plugin_not_found (paths, name) ->
+      Some
+        (Format.sprintf "The plugin is %s absent in the paths [%s]" name
+           (String.concat ";" paths))
+    | _ -> None)
 
 let rec find_library ~suffix directory meta =
   let rec find_directory directory = function
@@ -212,7 +238,15 @@ let load_gen ~load_requires dirs name =
 let rec load_requires name =
   load_gen ~load_requires (Lazy.force Helpers.ocamlpath) name
 
-let load_plugin plugin_paths name = load_gen ~load_requires plugin_paths name
+let load_plugin plugin_paths name =
+  match lookup plugin_paths (Filename.concat name meta_fn) with
+  | None -> raise (Plugin_not_found (plugin_paths, name))
+  | Some meta_file ->
+    let meta = load meta_file ~pkg:name in
+    let plugins, requires = get_plugin [] [] meta.Meta_parser.entries in
+    assert (plugins = []);
+    let requires = split_all requires in
+    List.iter load_requires requires
 
 module Make (X : sig
   val paths : string list

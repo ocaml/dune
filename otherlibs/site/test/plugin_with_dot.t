@@ -69,16 +69,9 @@ Build everything
 ----------------
 
   $ dune build
-  File "c/dune", line 11, characters 0-95:
-  11 | (rule
-  12 |  (targets out.log)
-  13 |  (deps (package c))
-  14 |  (action (with-stdout-to out.log (run %{bin:c}))))
-  Fatal error: exception Dune_site_plugins__Plugins.Library_not_found("c-plugins-b.b")
-  [1]
 
 Test with dune exec
 --------------------------------
   $ dune exec -- c/c.exe
-  Fatal error: exception Dune_site_plugins__Plugins.Library_not_found("c-plugins-b.b")
-  [2]
+  run b
+  run c: registered:b.

@@ -1046,7 +1046,14 @@ end = struct
         (handle_invalidation_events events : Memo.Invalidation.t)
       in
       let fills =
-        if not (Memo.Invalidation.is_empty invalidation) then (
+        if Memo.Invalidation.is_empty invalidation then
+          match !(t.status) with
+          | Standing_by prev ->
+            t.status :=
+              Standing_by { prev with saw_insignificant_changes = true };
+            []
+          | _ -> []
+        else
           match !(t.status) with
           | Restarting_build prev_invalidation ->
             t.status :=
@@ -1065,13 +1072,6 @@ end = struct
             t.handler t.config Build_interrupted;
             t.status := Restarting_build invalidation;
             Fiber_util.Cancellation.fire' cancellation
-        ) else
-          match !(t.status) with
-          | Standing_by prev ->
-            t.status :=
-              Standing_by { prev with saw_insignificant_changes = true };
-            []
-          | _ -> []
       in
       match !(t.wait_for_build_input_change) with
       | None -> (

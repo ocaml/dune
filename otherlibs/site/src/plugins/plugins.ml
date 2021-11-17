@@ -69,7 +69,7 @@ let rec get_plugin plugins requires entries =
 
 exception Thread_library_required_by_plugin_but_not_required_by_main_executable
 
-exception Library_not_found of string
+exception Library_not_found of string list * string
 
 exception Plugin_not_found of string list * string
 
@@ -83,11 +83,15 @@ let () =
             thread library.")
     | Plugin_not_found (paths, name) ->
       Some
-        (Format.sprintf "The plugin is %s absent in the paths [%s]" name
+        (Format.sprintf "The plugin %S can't be found in the paths [%s]" name
+           (String.concat ";" paths))
+    | Library_not_found (paths, name) ->
+      Some
+        (Format.sprintf "The library %S can't be found in the paths [%s]" name
            (String.concat ";" paths))
     | _ -> None)
 
-let rec find_library ~suffix directory meta =
+let rec find_library ~dirs ~suffix directory meta =
   let rec find_directory directory = function
     | [] -> directory
     | Meta_parser.Rule
@@ -103,10 +107,10 @@ let rec find_library ~suffix directory meta =
   | pkg :: suffix ->
     let directory = find_directory directory meta in
     let rec aux pkg = function
-      | [] -> raise (Library_not_found pkg)
+      | [] -> raise (Library_not_found (dirs, pkg))
       | Meta_parser.Package { name = Some name; entries } :: _
         when String.equal name pkg ->
-        find_library ~suffix directory entries
+        find_library ~dirs ~suffix directory entries
       | _ :: entries -> aux pkg entries
     in
     aux pkg meta
@@ -140,8 +144,10 @@ let extract_comma_space_separated_words s =
 
 let split_all l = List.concat (List.map extract_comma_space_separated_words l)
 
-let find_plugin ~dir ~suffix meta =
-  let directory, meta = find_library ~suffix None meta.Meta_parser.entries in
+let find_plugin ~dirs ~dir ~suffix meta =
+  let directory, meta =
+    find_library ~dirs ~suffix None meta.Meta_parser.entries
+  in
   let plugins, requires = get_plugin [] [] meta in
   let directory =
     match directory with
@@ -192,24 +198,25 @@ let lookup_and_load_one_dir ~dir ~pkg =
     else
       None
 
-let split name =
+let split ~dirs name =
   match String.split_on_char '.' name with
-  | [] -> raise (Library_not_found name)
+  | [] -> raise (Library_not_found (dirs, name))
   | pkg :: rest -> (pkg, rest)
 
 let lookup_and_summarize dirs name =
-  let pkg, suffix = split name in
+  let pkg, suffix = split ~dirs name in
   let rec loop dirs =
     match dirs with
     | [] -> (
       List.assoc_opt pkg Data.builtin_library |> function
-      | None -> raise (Library_not_found name)
-      | Some meta -> find_plugin ~dir:(Lazy.force Helpers.stdlib) ~suffix meta)
+      | None -> raise (Library_not_found (dirs, name))
+      | Some meta ->
+        find_plugin ~dirs ~dir:(Lazy.force Helpers.stdlib) ~suffix meta)
     | dir :: dirs -> (
       let dir = Filename.concat dir pkg in
       match lookup_and_load_one_dir ~dir ~pkg with
       | None -> loop dirs
-      | Some p -> find_plugin ~dir ~suffix p)
+      | Some p -> find_plugin ~dirs ~dir ~suffix p)
   in
   loop dirs
 

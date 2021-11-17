@@ -49,7 +49,7 @@
   > (rule
   >  (targets out.log)
   >  (deps (package c))
-  >  (action (with-stdout-to out.log (run %{bin:c}))))
+  >  (action (with-stdout-to out.log (run %{bin:c} "c-plugins-b.b"))))
   > EOF
 
   $ cat >c/c_register.ml <<EOF
@@ -57,7 +57,7 @@
   > EOF
 
   $ cat >c/c.ml <<EOF
-  > let () = Sites.Plugins.Plugins.load "c-plugins-b.b"
+  > let () = Sites.Plugins.Plugins.load Sys.argv.(1)
   > let () = Printf.printf "run c: registered:%s.\n%!" (String.concat "," !C_register.registered)
   > EOF
 
@@ -72,6 +72,20 @@ Build everything
 
 Test with dune exec
 --------------------------------
-  $ dune exec -- c/c.exe
+  $ dune exec -- c/c.exe "c-plugins-b.b"
   run b
   run c: registered:b.
+
+Test error messages
+--------------------------------
+  $ dune exec -- c/c.exe "inexistent"
+  Fatal error: exception The plugin "inexistent" can't be found in the paths [$TESTCASE_ROOT/_build/install/default/lib/c/plugins]
+  [2]
+
+  $ cat >c/c.ml <<EOF
+  > let () = Dune_site_plugins.V1.load Sys.argv.(1)
+  > EOF
+
+  $ dune exec -- c/c.exe "inexistent"
+  Fatal error: exception The library "inexistent" can't be found in the paths []
+  [2]

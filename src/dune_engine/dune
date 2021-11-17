@@ -7,6 +7,7 @@
   stdune
   dyn
   fiber
+  fiber_util
   incremental_cycles
   dag
   memo

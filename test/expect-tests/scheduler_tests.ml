@@ -76,4 +76,4 @@ let%expect_test "cancelling a build: effect on other fibers" =
             | Ok () -> "PASS: we can still run things outside the build"
             | Error _ -> "FAIL: other fiber got cancelled");
           Scheduler.shutdown ()));
-  [%expect {| FAIL: other fiber got cancelled |}]
+  [%expect {| PASS: we can still run things outside the build |}]

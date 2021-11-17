@@ -513,4 +513,9 @@ module For_tests : sig
   val clear_memoization_caches : unit -> unit
 end
 
-val yield_if_there_are_pending_events : (unit -> unit Fiber.t) ref
+(** A check point. This fiber should be used to:
+
+    - yield if there are external events that have priority over the current
+      memo computation
+    - raise if the current computation was cancelled so that Memo can avoid unnecessary work *)
+val check_point : unit Fiber.t ref

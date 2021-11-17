@@ -127,6 +127,10 @@ val wait_for_process :
 
 val yield_if_there_are_pending_events : unit -> unit Fiber.t
 
+(** If the current build was cancelled, raise
+    [Memo.Non_reproducible Run.Build_cancelled]. *)
+val abort_if_build_was_cancelled : unit Fiber.t
+
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 

@@ -1109,7 +1109,7 @@ let report_and_collect_errors f =
       ({ exns = Exn_set.singleton exn; reproducible } : Collect_errors_monoid.t))
     f
 
-let yield_if_there_are_pending_events = ref Fiber.return
+let check_point = ref (Fiber.return ())
 
 module Exec : sig
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
@@ -1203,7 +1203,7 @@ end = struct
         -> stack_frame:Stack_frame_with_state.t
         -> 'o Cached_value.t Fiber.t =
    fun ~dep_node ~old_value ~stack_frame ->
-    let* () = !yield_if_there_are_pending_events () in
+    let* () = !check_point in
     let+ res =
       report_and_collect_errors (fun () ->
           dep_node.without_state.spec.f dep_node.without_state.input)

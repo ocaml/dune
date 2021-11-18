@@ -40,3 +40,10 @@ let max f x y =
   | Gt ->
     x
   | Lt -> y
+
+module O = struct
+  let ( let= ) t f =
+    match t with
+    | (Lt | Gt) as result -> result
+    | Eq -> f ()
+end

@@ -405,7 +405,15 @@ module Mode_conf = struct
       | Native
       | Best
 
-    let compare (a : t) b = Poly.compare a b
+    let compare x y =
+      match (x, y) with
+      | Byte, Byte -> Eq
+      | Byte, _ -> Lt
+      | _, Byte -> Gt
+      | Native, Native -> Eq
+      | Native, _ -> Lt
+      | _, Native -> Gt
+      | Best, Best -> Eq
   end
 
   include T
@@ -1211,10 +1219,10 @@ module Executables = struct
         | Byte_complete, Byte_complete -> Eq
         | Byte_complete, _ -> Lt
         | _, Byte_complete -> Gt
-        | Other a, Other b -> (
-          match Poly.compare a.mode b.mode with
-          | Eq -> Poly.compare a.kind b.kind
-          | ne -> ne)
+        | Other { mode; kind }, Other t ->
+          let open Ordering.O in
+          let= () = Mode_conf.compare mode t.mode in
+          Binary_kind.compare kind t.kind
 
       let to_dyn = Dyn.opaque
     end

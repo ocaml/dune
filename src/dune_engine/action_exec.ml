@@ -35,7 +35,9 @@ module Dynamic_dep = struct
       | File _, _ -> Lt
       | _, File _ -> Gt
       | Glob (dir1, glob1), Glob (dir2, glob2) ->
-        Tuple.T2.compare Path.compare Glob.compare (dir1, glob1) (dir2, glob2)
+        let open Ordering.O in
+        let= () = Path.compare dir1 dir2 in
+        Glob.compare glob1 glob2
 
     let to_dyn =
       let open Dyn in

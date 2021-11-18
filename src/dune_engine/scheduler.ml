@@ -81,7 +81,15 @@ module Signal = struct
     | Quit -> Variant ("Quit", [])
     | Term -> Variant ("Term", [])
 
-  let compare : t -> t -> Ordering.t = Poly.compare
+  let compare x y =
+    match (x, y) with
+    | Int, Int -> Eq
+    | Int, _ -> Lt
+    | _, Int -> Gt
+    | Quit, Quit -> Eq
+    | Quit, _ -> Lt
+    | _, Quit -> Gt
+    | Term, Term -> Eq
 
   include Comparable.Make (struct
     type nonrec t = t

@@ -270,10 +270,10 @@ end = struct
       ; name : Lib_name.t
       }
 
-    let compare t { path; name } =
-      match Lib_name.compare t.name name with
-      | Eq -> Path.compare t.path path
-      | e -> e
+    let compare { path; name } t =
+      let open Ordering.O in
+      let= () = Lib_name.compare name t.name in
+      Path.compare path t.path
 
     let to_dyn { path; name } =
       let open Dyn in

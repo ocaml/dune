@@ -299,6 +299,8 @@ Unreleased
 2.9.2 (unreleased)
 ------------------
 
+- Fix post-processing of dune-package (fix #4389, @strub)
+
 - No longer reference deprecated Toploop functions when using dune files in
   OCaml syntax. (#4834, fixes #4830, @nojb)
 

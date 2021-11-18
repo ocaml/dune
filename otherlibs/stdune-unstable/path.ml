@@ -51,47 +51,32 @@ module External : sig
 
   val as_local : t -> string
 end = struct
-  module T =
-    Interned.No_interning
-      (struct
-        let initial_size = 512
+  module Table = String.Table
 
-        let resize_policy = Interned.Greedy
+  type t = string
 
-        let order = Interned.Natural
-      end)
-      ()
+  let to_string t = t
 
-  module Table = Hashtbl.Make (T)
+  let equal = String.equal
 
-  type t = T.t
+  let hash = String.hash
 
-  let to_string = T.to_string
+  let compare = String.compare
 
-  let make = T.make
-
-  let equal = T.equal
-
-  let hash = T.hash
-
-  let compare = T.compare
-
-  let as_string x ~f = to_string x |> f |> make
-
-  let extend_basename t ~suffix = as_string t ~f:(fun t -> t ^ suffix)
+  let extend_basename t ~suffix = t ^ suffix
 
   let of_string t =
     if Filename.is_relative t then
       Code_error.raise "Path.External.of_string: relative path given"
         [ ("t", String t) ];
-    make t
+    t
 
   let parse_string_exn ~loc t =
     if Filename.is_relative t then
       User_error.raise ~loc [ Pp.textf "path %s is not absolute" t ];
-    make t
+    t
 
-  let to_dyn t = Dyn.String (to_string t)
+  let to_dyn t = Dyn.String t
 
   (* let rec cd_dot_dot t = match Unix.readlink t with | exception _ ->
      Filename.dirname t | t -> cd_dot_dot t
@@ -105,9 +90,9 @@ end = struct
   let relative x y =
     match y with
     | "." -> x
-    | _ -> make (Filename.concat (to_string x) y)
+    | _ -> Filename.concat x y
 
-  let basename t = Filename.basename (to_string t)
+  let basename t = Filename.basename t
 
   let root = of_string "/"
 
@@ -119,7 +104,7 @@ end = struct
     if is_root t then
       None
     else
-      Some (as_string t ~f:Filename.dirname)
+      Some (Filename.dirname t)
 
   let parent_exn t =
     match parent t with
@@ -128,26 +113,26 @@ end = struct
     | Some p -> p
 
   let mkdir_p ?perms path =
-    ignore (Fpath.mkdir_p ?perms (to_string path) : Fpath.mkdir_p_result)
+    ignore (Fpath.mkdir_p ?perms path : Fpath.mkdir_p_result)
 
-  let unlink_no_err t = Fpath.unlink_no_err (to_string t)
+  let unlink_no_err t = Fpath.unlink_no_err t
 
-  let extension t = Filename.extension (to_string t)
+  let extension t = Filename.extension t
 
   let split_extension t =
-    let s, ext = Filename.split_extension (to_string t) in
-    (make s, ext)
+    let s, ext = Filename.split_extension t in
+    (s, ext)
 
   let set_extension t ~ext =
     let base, _ = split_extension t in
-    to_string base ^ ext |> make
+    base ^ ext
 
-  let cwd () = make (Sys.getcwd ())
+  let cwd () = Sys.getcwd ()
 
-  let initial_cwd = make Fpath.initial_cwd
+  let initial_cwd = Fpath.initial_cwd
 
   let as_local t =
-    let s = to_string t in
+    let s = t in
     "." ^ s
 
   include (
@@ -166,10 +151,10 @@ end = struct
     else
       String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
 
-  module Map = T.Map
+  module Map = String.Map
 
   module Set = struct
-    include T.Set
+    include String.Set
 
     let of_listing ~dir ~filenames =
       of_list_map filenames ~f:(fun f -> relative dir f)
@@ -197,30 +182,17 @@ module Local_gen : sig
 end = struct
   (* either "." for root, or a '/' separated list of components other that ".",
      ".." and not containing '/'. *)
-  module T =
-    Interned.No_interning
-      (struct
-        let initial_size = 512
+  type _ t = string
 
-        let resize_policy = Interned.Greedy
+  module Table = String.Table
 
-        let order = Interned.Natural
-      end)
-      ()
+  let to_string t = t
 
-  module Table = Hashtbl.Make (T)
+  let hash = String.hash
 
-  type _ t = T.t
+  let compare = String.compare
 
-  let to_string = T.to_string
-
-  let make = T.make
-
-  let hash = T.hash
-
-  let compare = T.compare
-
-  let root = make "."
+  let root = "."
 
   let is_root t = Ordering.is_eq (compare t root)
 
@@ -237,7 +209,6 @@ end = struct
       if is_root t then
         []
       else
-        let t = to_string t in
         let len = String.length t in
         loop t [] len len
 
@@ -245,24 +216,22 @@ end = struct
     if is_root t then
       None
     else
-      let t = to_string t in
       match String.rindex_from t (String.length t - 1) '/' with
       | None -> Some root
-      | Some i -> Some (make (String.take t i))
+      | Some i -> Some (String.take t i)
 
-  let unlink_no_err t = Fpath.unlink_no_err (to_string t)
+  let unlink_no_err t = Fpath.unlink_no_err t
 
   let basename t =
     if is_root t then
       Code_error.raise "Path.Local.basename called on the root" []
     else
-      let t = to_string t in
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with
       | None -> t
       | Some i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
-  let to_dyn t = Dyn.String (to_string t)
+  let to_dyn t = Dyn.String t
 
   module L = struct
     let relative_result t components =
@@ -279,9 +248,9 @@ end = struct
             | Some parent -> loop parent rest)
         | fn :: rest ->
           if is_root t then
-            loop (make fn) rest
+            loop fn rest
           else
-            loop (make (to_string t ^ "/" ^ fn)) rest
+            loop (t ^ "/" ^ fn) rest
       in
       loop t components
 
@@ -292,7 +261,7 @@ end = struct
         User_error.raise ?loc:error_loc
           [ Pp.textf "path outside the workspace: %s from %s"
               (String.concat ~sep:"/" components)
-              (to_string t)
+              t
           ]
   end
 
@@ -304,7 +273,7 @@ end = struct
     | Result.Ok t -> t
     | Error () ->
       User_error.raise ?loc:error_loc
-        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
+        [ Pp.textf "path outside the workspace: %s from %s" path t ]
 
   (* Check whether a path is in canonical form: no '.' or '..' components, no
      repeated '/' components, no backslashes '\\' (on Windows only), and not
@@ -355,7 +324,7 @@ end = struct
     | ""
     | "." ->
       root
-    | _ when is_canonicalized s -> make s
+    | _ when is_canonicalized s -> s
     | _ -> relative root s ~error_loc:loc
 
   let of_string s = parse_string_exn ~loc:Loc0.none s
@@ -364,7 +333,7 @@ end = struct
     match (is_root a, is_root b) with
     | true, _ -> b
     | _, true -> a
-    | _, _ -> make (to_string a ^ "/" ^ to_string b)
+    | _, _ -> a ^ "/" ^ b
 
   let descendant t ~of_ =
     if is_root of_ then
@@ -372,21 +341,17 @@ end = struct
     else if t = of_ then
       Some root
     else
-      let t = to_string t in
-      let of_ = to_string of_ in
       let of_len = String.length of_ in
       let t_len = String.length t in
       if t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_
       then
-        Some (make (String.drop t (of_len + 1)))
+        Some (String.drop t (of_len + 1))
       else
         None
 
   let is_descendant t ~of_ =
     is_root of_ || t = of_
     ||
-    let t = to_string t in
-    let of_ = to_string of_ in
     let of_len = String.length of_ in
     let t_len = String.length t in
     t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_
@@ -402,21 +367,19 @@ end = struct
     in
     loop (to_list t) (to_list from)
 
-  let extend_basename t ~suffix = make (to_string t ^ suffix)
+  let extend_basename t ~suffix = t ^ suffix
 
-  let extension t = Filename.extension (to_string t)
+  let extension t = Filename.extension t
 
   let split_extension t =
-    let s, ext = Filename.split_extension (to_string t) in
-    (make s, ext)
+    let s, ext = Filename.split_extension t in
+    (s, ext)
 
   let set_extension t ~ext =
     let base, _ = split_extension t in
-    to_string base ^ ext |> make
+    base ^ ext
 
   module Prefix = struct
-    let make_path = make
-
     type _ t =
       { len : int
       ; path : string
@@ -426,16 +389,14 @@ end = struct
     let make p =
       if is_root p then
         Code_error.raise "Path.Local.Prefix.make" [ ("path", to_dyn p) ];
-      let p = to_string p in
       { len = String.length p; path = p; path_slash = p ^ "/" }
 
     let drop t p =
-      let p = to_string p in
       let len = String.length p in
       if len = t.len && p = t.path then
         Some root
       else
-        String.drop_prefix p ~prefix:t.path_slash |> Option.map ~f:make_path
+        String.drop_prefix p ~prefix:t.path_slash
 
     let invalid = { len = -1; path = "/"; path_slash = "/" }
   end
@@ -444,7 +405,6 @@ end = struct
     if is_root t then
       None
     else
-      let t = to_string t in
       match String.lsplit2 t ~on:'/' with
       | None -> Some (t, root)
       | Some (before, after) -> Some (before, after |> of_string)
@@ -453,9 +413,9 @@ end = struct
     if is_root p then
       []
     else
-      String.split (to_string p) ~on:'/'
+      String.split p ~on:'/'
 
-  let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
+  let to_string_maybe_quoted t = String.maybe_quoted t
 
   let parent_exn t =
     match parent t with
@@ -470,10 +430,10 @@ end = struct
     type _w = Root.w
 
     module Table = Table
-    module Map = T.Map
+    module Map = String.Map
 
     module Set = struct
-      include T.Set
+      include String.Set
 
       let of_listing ~dir ~filenames =
         of_list_map filenames ~f:(fun f -> relative dir f)

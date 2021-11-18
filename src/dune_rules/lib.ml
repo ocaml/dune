@@ -738,7 +738,7 @@ module Sub_system = struct
 
   (* This mutable table is safe under the assumption that subsystems are
      registered at the top level, which is currently true. *)
-  let all = Sub_system_name.Table.create ~default_value:None
+  let all = Sub_system_name.Table.create 16
 
   module Register (M : S) = struct
     let get lib =
@@ -759,13 +759,12 @@ module Sub_system = struct
 
         let get = get
       end in
-      Sub_system_name.Table.set all ~key:M.Info.name
-        ~data:(Some (module M : S'))
+      Sub_system_name.Table.set all M.Info.name (module M : S')
   end
 
   let instantiate name info lib ~resolve =
     let open Memo.Build.O in
-    let impl = Option.value_exn (Sub_system_name.Table.get all name) in
+    let impl = Sub_system_name.Table.find_exn all name in
     let (module M : S') = impl in
     match info with
     | M.Info.T info ->

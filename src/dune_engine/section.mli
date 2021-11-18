@@ -43,7 +43,7 @@ val should_set_executable_bit : t -> bool
 module Site : sig
   type t
 
-  include Interned_intf.S with type t := t
+  include Comparable_intf.S with type Key.t := t
 
   include Dune_lang.Conv.S with type t := t
 

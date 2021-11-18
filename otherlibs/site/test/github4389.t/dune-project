@@ -1,0 +1,6 @@
+(lang dune 2.9)
+(using dune_site 0.1)
+
+(package
+  (name github4389)
+  (sites (share github4389)))

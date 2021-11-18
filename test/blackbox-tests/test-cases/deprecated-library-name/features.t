@@ -59,7 +59,7 @@ tests that the "old_public_name" field is evaluated lazily
   (name a)
   (sections
    (lib
-    $TESTCASE_ROOT/a/_build/install/default/lib/a))
+    $TESTCASE_ROOT/a/../_install/lib/a))
   (files (lib (META dune-package)))
   (deprecated_library_name (old_public_name a) (new_public_name b))
 

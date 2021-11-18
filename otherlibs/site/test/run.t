@@ -176,8 +176,6 @@ Test with an opam like installation
   [1]
 
   $ dune install -p a --create-install-files a 2>&1 | sed -e "/^Copying/d"
-  File "_build/install/default/lib/a/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
 
   $ grep "_destdir" a/a.install -c
   7
@@ -194,19 +192,11 @@ Test with a normal installation
 --------------------------------
 
   $ dune install --prefix _install 2>&1 | sed -e "/^Installing/d"
-  File "_build/install/default/lib/a/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
-  File "_build/install/default/lib/b/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
-  File "_build/install/default/lib/c/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
-  File "_build/install/default/lib/d/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
 
 Once installed, we have the sites information:
 
   $ grep share/a _install/lib/a/dune-package
-    $TESTCASE_ROOT/_build/install/default/share/a))
+    $TESTCASE_ROOT/_install/share/a))
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/c
   run a
@@ -224,14 +214,6 @@ Test with a relocatable installation
 --------------------------------
 
   $ dune install --prefix _install_relocatable --relocatable 2>&1 | sed -e "/^Installing/d"
-  File "_build/install/default/lib/a/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
-  File "_build/install/default/lib/b/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
-  File "_build/install/default/lib/c/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
-  File "_build/install/default/lib/d/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
 
 Once installed, we have the sites information:
 
@@ -372,8 +354,6 @@ Test compiling an external plugin
 
   $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune install --root=e --prefix $(pwd)/_install 2>&1 | sed -e "/^Installing/d"
   Entering directory 'e'
-  File "_build/install/default/lib/e/dune-package", line 1, characters 0-0:
-  Warning: Failed to parse file, not adding version and locations information.
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/c
   run a

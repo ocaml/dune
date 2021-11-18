@@ -1203,9 +1203,9 @@ end = struct
         -> stack_frame:Stack_frame_with_state.t
         -> 'o Cached_value.t Fiber.t =
    fun ~dep_node ~old_value ~stack_frame ->
-    let* () = !check_point in
     let+ res =
       report_and_collect_errors (fun () ->
+          let* () = !check_point in
           dep_node.without_state.spec.f dep_node.without_state.input)
     in
     let value =

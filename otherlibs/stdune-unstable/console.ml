@@ -115,6 +115,8 @@ let print_user_message msg =
 
 let print paragraphs = print_user_message (User_message.make paragraphs)
 
+let printf fmt = Printf.ksprintf (fun msg -> print [ Pp.verbatim msg ]) fmt
+
 let set_status_line line =
   let (module M : Backend.S) = !Backend.main in
   M.set_status_line line

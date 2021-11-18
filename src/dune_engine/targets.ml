@@ -163,9 +163,9 @@ module Produced = struct
     in
     Digest.generic (List.concat all_digests)
 
-  (* This can be generalised to a more polymorphic [f] if needed. *)
+  exception Short_circuit
+
   let with_digests { files; dirs } ~(f : Path.Build.t -> Digest.t option) =
-    let exception Short_circuit in
     let f path () =
       match f path with
       | Some digest -> digest

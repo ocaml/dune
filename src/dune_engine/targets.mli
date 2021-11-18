@@ -92,6 +92,11 @@ module Produced : sig
   (** Aggregate all content digests. *)
   val digest : Digest.t t -> Digest.t
 
+  (* We could generalise [with_digests] to [mapi] with a more polymorphic [f]
+     but that complicates the existing call sites that would need to deal with
+     an extra () argument. *)
+
+  (** Tag each produced file with a digest. *)
   val with_digests :
     unit t -> f:(Path.Build.t -> Digest.t option) -> Digest.t t option
 

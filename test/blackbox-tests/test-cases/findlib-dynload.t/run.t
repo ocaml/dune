@@ -73,9 +73,9 @@
   Findlib.record_package Findlib.Record_core "threads.posix";;
   Findlib.record_package Findlib.Record_core "unix";;
   let preds =
-    [ "ppx_driver"
-    ; "mt"
+    [ "mt"
     ; "mt_posix"
+    ; "ppx_driver"
     ]
   in
   let preds =

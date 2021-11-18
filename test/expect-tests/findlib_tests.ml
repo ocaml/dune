@@ -102,7 +102,7 @@ let%expect_test _ =
         map
           { "FOO_BAR" :
               { set_rules =
-                  [ { preds_required = set { 6; 7 }
+                  [ { preds_required = set { "env"; "tlc" }
                     ; preds_forbidden = set {}
                     ; value = "my variable"
                     }
@@ -110,7 +110,7 @@ let%expect_test _ =
               ; add_rules = []
               }
           }
-    ; preds = set { 6 }
+    ; preds = set { "tlc" }
     } |}];
   print_dyn (Env.to_dyn (Findlib.Config.env conf));
   [%expect {| map { "FOO_BAR" : "my variable" } |}]

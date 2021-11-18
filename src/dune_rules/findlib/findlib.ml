@@ -37,8 +37,8 @@ module Rule = struct
         | Pos x -> Left x
         | Neg x -> Right x)
     in
-    { preds_required = Ps.make preds_required
-    ; preds_forbidden = Ps.make preds_forbidden
+    { preds_required = Ps.of_list_map preds_required ~f:P.make
+    ; preds_forbidden = Ps.of_list_map preds_forbidden ~f:P.make
     ; value = rule.value
     }
 end
@@ -130,7 +130,7 @@ module Config = struct
         ];
     let+ meta = Meta.load ~name:None conf_file in
     { vars = String.Map.map meta.vars ~f:Rules.of_meta_rules
-    ; preds = Ps.make [ toolchain ]
+    ; preds = Ps.of_list [ P.make toolchain ]
     }
 
   let get { vars; preds } var = Vars.get vars var preds

@@ -296,22 +296,25 @@ module Handler = struct
   type t =
     { error : error list -> unit Fiber.t
     ; build_progress : complete:int -> remaining:int -> unit Fiber.t
-    ; build_event : event -> unit Fiber.t
+    ; build_event : build_number:int -> event -> unit Fiber.t
     }
 
   let report_progress t ~rule_done ~rule_total =
     t.build_progress ~complete:rule_done ~remaining:(rule_total - rule_done)
 
-  let last_event : event option ref = ref None
+  let last_event : (int * event) option ref = ref None
+
+  let build_number = ref (-1)
 
   let report_build_event t evt =
-    last_event := Some evt;
-    t.build_event evt
+    let build_number = !build_number in
+    last_event := Some (build_number, evt);
+    t.build_event ~build_number evt
 
   let do_nothing =
     { error = (fun _ -> Fiber.return ())
     ; build_progress = (fun ~complete:_ ~remaining:_ -> Fiber.return ())
-    ; build_event = (fun _ -> Fiber.return ())
+    ; build_event = (fun ~build_number:_ _ -> Fiber.return ())
     }
 
   let create ~error ~build_progress ~build_event =
@@ -2422,6 +2425,7 @@ let run f =
       t.handler.error (List.map old_errors ~f:(fun x -> Handler.Remove x))
   in
   let f () =
+    incr Handler.build_number;
     let* () = Handler.report_build_event t.handler Start in
     let* res =
       Fiber.collect_errors (fun () ->

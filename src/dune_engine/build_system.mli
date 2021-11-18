@@ -102,7 +102,8 @@ module Handler : sig
        error:(error list -> unit Fiber.t) (** Callback for build [error] *)
     -> build_progress:(complete:int -> remaining:int -> unit Fiber.t)
          (** Callback whenever there's build progress to report *)
-    -> build_event:(event -> unit Fiber.t) (** Called for every [event] *)
+    -> build_event:(build_number:int -> event -> unit Fiber.t)
+         (** Called for every [event] *)
     -> t
 end
 
@@ -215,4 +216,4 @@ end
 val get_current_progress : unit -> Progress.t
 
 (** Returns the last event reported to the handler *)
-val last_event : unit -> Handler.event option
+val last_event : unit -> (int * Handler.event) option

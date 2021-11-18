@@ -108,16 +108,24 @@ module Progress = struct
 
   let current () : Progress.t =
     match Build_system.last_event () with
-    | Some ((Finish | Fail | Interrupt) as evt) -> progress_of_build_event evt
-    | Some Start
-    | None -> (
-      let p = Build_system.get_current_progress () in
-      match Build_system.Progress.is_determined p with
-      | false -> Waiting
-      | true ->
-        let complete = Build_system.Progress.complete p in
-        let remaining = Build_system.Progress.remaining p in
-        In_progress { complete; remaining })
+    | None -> { build_number = 0; status = Waiting }
+    | Some (build_number, event) ->
+      { build_number
+      ; status =
+          (match event with
+          | Finish
+          | Fail
+          | Interrupt ->
+            progress_of_build_event event
+          | Start -> (
+            let p = Build_system.get_current_progress () in
+            match Build_system.Progress.is_determined p with
+            | false -> Waiting
+            | true ->
+              let complete = Build_system.Progress.complete p in
+              let remaining = Build_system.Progress.remaining p in
+              In_progress { complete; remaining }))
+      }
 
   let no_change () = No_change
 

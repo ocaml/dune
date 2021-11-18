@@ -1002,7 +1002,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
              be an [option]. We use a dummy cancellation rather than an option
              to keep the code simpler. *)
           Fiber_util.Cancellation.create ()
-      ; number_of_breakages = 0
+      ; number_of_breakages = ref 0
       } )
 
 module Run_once : sig
@@ -1063,7 +1063,7 @@ end = struct
               Memo.Invalidation.is_empty prev.invalidation
               && not prev.saw_insignificant_changes
             then
-              t.number_of_breakages <- t.number_of_breakages + 1;
+              incr t.number_of_breakages;
             t.status :=
               Standing_by { prev with saw_insignificant_changes = true };
             []
@@ -1080,7 +1080,7 @@ end = struct
               Memo.Invalidation.is_empty prev.invalidation
               && not prev.saw_insignificant_changes
             then
-              t.number_of_breakages <- t.number_of_breakages + 1;
+              incr t.number_of_breakages;
             t.status :=
               Standing_by
                 { prev with
@@ -1091,7 +1091,7 @@ end = struct
           | Building cancellation ->
             t.handler t.config Build_interrupted;
             t.status := Restarting_build invalidation;
-            t.number_of_breakages <- t.number_of_breakages + 1;
+            incr t.number_of_breakages;
             Fiber_util.Cancellation.fire' cancellation
       in
       match !(t.wait_for_build_input_change) with
@@ -1418,4 +1418,4 @@ let wait_for_build_input_change () =
 
 let number_of_breakages () =
   let+ t = t () in
-  t.number_of_breakages
+  !(t.number_of_breakages)

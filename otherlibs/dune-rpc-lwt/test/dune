@@ -6,6 +6,7 @@
  (foreign_stubs
   (language c)
   (names realpath_stubs))
+ (flags :standard -alert -unstable)
  (libraries
   dune_rpc
   csexp_rpc

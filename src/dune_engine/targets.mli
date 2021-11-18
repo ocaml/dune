@@ -63,3 +63,38 @@ val head : t -> Path.Build.t option
 val to_dyn : t -> Dyn.t
 
 val pp : t -> _ Pp.t
+
+(** The set of targets produced by an action. Each target may be tagged with a
+    payload, for example, the target's digest. *)
+module Produced : sig
+  type 'a t = private
+    { files : 'a Path.Build.Map.t
+    ; dirs : 'a String.Map.t Path.Build.Map.t
+    }
+
+  (** Returns the given [targets : Validated.t]. Raises a code error if
+      [on_dir_target = `Raise] and [targets.dir] is non-empty. *)
+  val of_validated_files :
+    Validated.t -> on_dir_target:[< `Ignore | `Raise ] -> unit t
+
+  (** Populates only the [files] field, leaving [dirs] empty. Raises a code
+      error if the list contains duplicates. *)
+  val of_file_list_exn : (Path.Build.t * Digest.t) list -> Digest.t t
+
+  (** Add a list of discovered directory-filename pairs to [Validated.t]. Raises
+      a code error on an unexpected directory. *)
+  val expand_validated_exn :
+    Validated.t -> (Path.Build.t * string) list -> unit t
+
+  (** Union of [t.files] and all files in [t.dirs]. *)
+  val all_files : 'a t -> 'a Path.Build.Map.t
+
+  (** Aggregate all content digests. *)
+  val digest : Digest.t t -> Digest.t
+
+  module Option : sig
+    val mapi : 'a t -> f:(Path.Build.t -> 'a -> 'b option) -> 'b t option
+  end
+
+  val to_dyn : _ t -> Dyn.t
+end

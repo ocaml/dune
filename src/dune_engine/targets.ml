@@ -91,3 +91,108 @@ let validate t =
       with
       | true -> Inconsistent_parent_dir
       | false -> Valid { parent_dir; targets = t }))
+
+module Produced = struct
+  (* CR-someday amokhov: A hierarchical representation of the produced file
+     trees may be better. It would allow for hierarchical traversals and reduce
+     the number of internal invariants. *)
+  type 'a t =
+    { files : 'a Path.Build.Map.t
+    ; dirs : 'a String.Map.t Path.Build.Map.t
+    }
+
+  let of_validated_files (validated : Validated.t) ~on_dir_target =
+    (if not (Path.Build.Set.is_empty validated.dirs) then
+      match on_dir_target with
+      | `Raise ->
+        Code_error.raise
+          "Targets.Produced.of_validated_files: Non-empty set of directory \
+           targets."
+          [ ("validated", Validated.to_dyn validated) ]
+      | `Ignore -> ());
+    let files =
+      Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ())
+    in
+    { files; dirs = Path.Build.Map.empty }
+
+  let of_file_list_exn list =
+    { files = Path.Build.Map.of_list_exn list; dirs = Path.Build.Map.empty }
+
+  let expand_validated_exn (validated : Validated.t) dir_filename_pairs =
+    let files =
+      Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ())
+    in
+    let dirs =
+      Path.Build.Map.of_list_multi dir_filename_pairs
+      |> Path.Build.Map.map
+           ~f:(String.Map.of_list_map_exn ~f:(fun file -> (file, ())))
+    in
+    let is_unexpected dir =
+      not
+        (Path.Build.Set.exists validated.dirs ~f:(fun validated_dir ->
+             Path.Build.is_descendant dir ~of_:validated_dir))
+    in
+    List.iter (Path.Build.Map.keys dirs) ~f:(fun dir ->
+        if is_unexpected dir then
+          Code_error.raise
+            "Targets.Produced.expand_validated_exn: Unexpected directory."
+            [ ("validated", Validated.to_dyn validated)
+            ; ("dir", Path.Build.to_dyn dir)
+            ]);
+    { files; dirs }
+
+  let all_files { files; dirs } =
+    let disallow_duplicates file _payload1 _payload2 =
+      Code_error.raise
+        (sprintf "Targets.Produced.all_files: duplicate file %S"
+           (Path.Build.to_string file))
+        [ ("files", Path.Build.Map.to_dyn Dyn.opaque files)
+        ; ("dirs", Path.Build.Map.to_dyn (String.Map.to_dyn Dyn.opaque) dirs)
+        ]
+    in
+    let files_in_dirs =
+      Path.Build.Map.foldi dirs ~init:Path.Build.Map.empty
+        ~f:(fun dir filenames ->
+          let paths =
+            Path.Build.Map.of_list_exn
+              (String.Map.to_list_map filenames ~f:(fun filename payload ->
+                   (Path.Build.relative dir filename, payload)))
+          in
+          Path.Build.Map.union paths ~f:disallow_duplicates)
+    in
+    Path.Build.Map.union ~f:disallow_duplicates files files_in_dirs
+
+  let digest { files; dirs } =
+    let all_digests =
+      Path.Build.Map.values files
+      :: Path.Build.Map.to_list_map dirs ~f:(fun _ -> String.Map.values)
+    in
+    Digest.generic (List.concat all_digests)
+
+  module Option = struct
+    exception Short_circuit
+
+    let mapi { files; dirs } ~(f : Path.Build.t -> 'a -> 'b option) =
+      let f path a =
+        match f path a with
+        | Some b -> b
+        | None -> raise_notrace Short_circuit
+      in
+      try
+        let files = Path.Build.Map.mapi files ~f in
+        let dirs =
+          Path.Build.Map.mapi dirs ~f:(fun dir ->
+              String.Map.mapi ~f:(fun filename ->
+                  f (Path.Build.relative dir filename)))
+        in
+        Some { files; dirs }
+      with
+      | Short_circuit -> None
+  end
+
+  let to_dyn { files; dirs } =
+    Dyn.record
+      [ ("files", Path.Build.Map.to_dyn Dyn.opaque files)
+      ; ("dirs", Path.Build.Map.to_dyn (String.Map.to_dyn Dyn.opaque) dirs)
+      ]
+end

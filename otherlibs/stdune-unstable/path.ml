@@ -166,14 +166,14 @@ end = struct
     else
       String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
 
+  module Map = T.Map
+
   module Set = struct
     include T.Set
 
     let of_listing ~dir ~filenames =
       of_list_map filenames ~f:(fun f -> relative dir f)
   end
-
-  module Map = T.Map
 end
 
 module Unspecified = Path_intf.Unspecified
@@ -469,15 +469,15 @@ end = struct
   struct
     type _w = Root.w
 
+    module Table = Table
+    module Map = T.Map
+
     module Set = struct
       include T.Set
 
       let of_listing ~dir ~filenames =
         of_list_map filenames ~f:(fun f -> relative dir f)
     end
-
-    module Map = T.Map
-    module Table = Table
   end
 end
 
@@ -805,8 +805,6 @@ let is_root = function
   | In_build_dir _
   | External _ ->
     false
-
-module Map = Map.Make (T)
 
 let kind = function
   | In_build_dir p -> Kind.append_local (Fdecl.get Build.build_dir) p
@@ -1232,6 +1230,7 @@ let set_extension t ~ext =
   | In_source_tree t -> in_source_tree (Local.set_extension t ~ext)
 
 module O = Comparable.Make (T)
+module Map = O.Map
 
 module Set = struct
   include O.Set

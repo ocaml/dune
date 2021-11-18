@@ -1,0 +1,9 @@
+(executable
+ (name main)
+ (public_name main)
+ (promote (until-clean))
+ (libraries dune-build-info dune-site))
+
+(generate_sites_module
+ (module SitesModule)
+ (sites github4389))

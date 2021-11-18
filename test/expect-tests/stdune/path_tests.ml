@@ -14,25 +14,24 @@ let of_filename_relative_to_initial_cwd s =
   Path.of_filename_relative_to_initial_cwd s |> Path.to_dyn |> print_dyn
 
 let descendant p ~of_ =
-  Dyn.Encoder.option Path.to_dyn (Path.descendant p ~of_) |> print_dyn
+  Dyn.option Path.to_dyn (Path.descendant p ~of_) |> print_dyn
 
-let is_descendant p ~of_ =
-  Dyn.Encoder.bool (Path.is_descendant p ~of_) |> print_dyn
+let is_descendant p ~of_ = Dyn.bool (Path.is_descendant p ~of_) |> print_dyn
 
 let explode s =
-  let open Dyn.Encoder in
+  let open Dyn in
   let exploded = Path.explode (Path.of_string s) in
   option (list string) exploded |> print_dyn
 
 let reach p ~from =
   let p = Path.of_string p in
   let from = Path.of_string from in
-  let open Dyn.Encoder in
+  let open Dyn in
   let reach = Path.reach p ~from in
   string reach |> print_dyn
 
 let reach_for_running p ~from =
-  Path.reach_for_running p ~from |> Dyn.Encoder.string |> print_dyn
+  Path.reach_for_running p ~from |> Dyn.string |> print_dyn
 
 let relative p s = Path.to_dyn (Path.relative p s) |> print_dyn
 
@@ -42,7 +41,7 @@ let insert_after_build_dir_exn p s =
 let append_source x y = Path.append_source x y |> Path.to_dyn |> print_dyn
 
 let drop_build_context p =
-  let open Dyn.Encoder in
+  let open Dyn in
   Path.drop_build_context p |> option Path.Source.to_dyn |> print_dyn
 
 let local_part p = Path.local_part p |> Path.Local.to_dyn |> print_dyn
@@ -288,7 +287,7 @@ External "/absolute/path"
 |}]
 
 let%expect_test _ =
-  Path.is_managed (e "relative/path") |> Dyn.Encoder.bool |> print_dyn;
+  Path.is_managed (e "relative/path") |> Dyn.bool |> print_dyn;
   [%expect {|
 false
 |}]
@@ -334,7 +333,7 @@ External "/root/foo"
 
 let%expect_test _ =
   Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
-  |> Dyn.Encoder.unit |> print_dyn;
+  |> Dyn.unit |> print_dyn;
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
@@ -366,21 +365,20 @@ None
 |}]
 
 let%expect_test _ =
-  Path.is_in_build_dir Path.build_dir |> Dyn.Encoder.bool |> print_dyn;
+  Path.is_in_build_dir Path.build_dir |> Dyn.bool |> print_dyn;
   [%expect {|
 true
 |}]
 
 let%expect_test _ =
-  Path.is_strict_descendant_of_build_dir Path.build_dir
-  |> Dyn.Encoder.bool |> print_dyn;
+  Path.is_strict_descendant_of_build_dir Path.build_dir |> Dyn.bool |> print_dyn;
   [%expect {|
 false
 |}]
 
 let%expect_test _ =
   Path.reach_for_running Path.build_dir ~from:Path.root
-  |> Dyn.Encoder.string |> print_dyn;
+  |> Dyn.string |> print_dyn;
   [%expect {|
 "./_build"
 |}]
@@ -439,7 +437,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   Path.Build.extract_first_component Path.Build.root
-  |> Dyn.Encoder.(option (pair string Local.to_dyn))
+  |> Dyn.(option (pair string Local.to_dyn))
   |> print_dyn;
   [%expect {|
 None

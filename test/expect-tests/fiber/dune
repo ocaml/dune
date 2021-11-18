@@ -5,6 +5,7 @@
   dune_tests_common
   stdune
   fiber
+  fiber_util
   test_scheduler
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

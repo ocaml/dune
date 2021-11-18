@@ -11,10 +11,10 @@ module Pform = struct
 
   let name { name; _ } = name
 
-  let compare_no_loc v1 v2 =
-    match String.compare v1.name v2.name with
-    | (Ordering.Lt | Gt) as a -> a
-    | Eq -> Option.compare String.compare v1.payload v2.payload
+  let compare_no_loc { name; payload; loc = _ } t =
+    let open Ordering.O in
+    let= () = String.compare name t.name in
+    Option.compare String.compare payload t.payload
 
   let full_name t =
     match t.payload with
@@ -30,7 +30,7 @@ module Pform = struct
     | Some p -> before ^ name ^ ":" ^ p ^ after
 
   let to_dyn { loc = _; name; payload } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("name", string name); ("payload", option string payload) ]
 
   let with_name t ~name = { t with name }
@@ -64,10 +64,10 @@ let compare_part p1 p2 =
   | Text _, Pform _ -> Ordering.Lt
   | Pform _, Text _ -> Ordering.Gt
 
-let compare_no_loc t1 t2 =
-  match List.compare ~compare:compare_part t1.parts t2.parts with
-  | (Ordering.Lt | Gt) as a -> a
-  | Eq -> Bool.compare t1.quoted t2.quoted
+let compare_no_loc { quoted; parts; loc = _ } t =
+  let open Ordering.O in
+  let= () = List.compare ~compare:compare_part parts t.parts in
+  Bool.compare quoted t.quoted
 
 module Pp : sig
   val to_string : t -> string
@@ -156,11 +156,11 @@ let remove_locs t =
   }
 
 let dyn_of_part =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Text s -> constr "Text" [ string s ]
-  | Pform v -> constr "Pform" [ Pform.to_dyn v ]
+  | Text s -> variant "Text" [ string s ]
+  | Pform v -> variant "Pform" [ Pform.to_dyn v ]
 
 let to_dyn { quoted; parts; loc = _ } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record [ ("quoted", bool quoted); ("parts", list dyn_of_part parts) ]

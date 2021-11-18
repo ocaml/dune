@@ -28,9 +28,9 @@ module Dict = struct
     }
 
   let compare f { impl; intf } t =
-    match f impl t.impl with
-    | (Gt | Lt) as x -> x
-    | Eq -> f intf t.intf
+    let open Ordering.O in
+    let= () = f impl t.impl in
+    f intf t.intf
 
   let get t = function
     | Impl -> t.impl
@@ -51,6 +51,6 @@ module Dict = struct
     f Intf t.intf
 
   let to_dyn f { impl; intf } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record [ ("impl", f impl); ("intf", f intf) ]
 end

@@ -28,7 +28,7 @@ let encode : t Dune_lang.Encoder.t =
 
 let pp x = Pp.text (to_string x)
 
-let to_dyn = Dyn.Encoder.(list string)
+let to_dyn = Dyn.(list string)
 
 module Rep = struct
   type nonrec t = t

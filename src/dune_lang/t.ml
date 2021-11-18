@@ -122,9 +122,9 @@ module Deprecated = struct
 end
 
 let rec to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
   | Atom (A a) -> string a
   | List s -> List (List.map s ~f:to_dyn)
   | Quoted_string s -> string s
-  | Template t -> constr "template" [ string (Template.to_string t) ]
+  | Template t -> variant "template" [ string (Template.to_string t) ]

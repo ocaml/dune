@@ -12,7 +12,7 @@ module Dune : sig
 
   val to_dyn : t -> Dyn.t
 
-  val compare : t -> t -> int
+  val compare : t -> t -> Ordering.t
 
   val root : t -> string
 

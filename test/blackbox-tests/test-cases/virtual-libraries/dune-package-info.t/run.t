@@ -14,6 +14,8 @@ Include variants and implementation information in dune-package
      impl/impl$ext_lib
      impl/impl.cma
      impl/impl.cmxa
+     impl/vlib.cmi
+     impl/vlib.cmx
      impl/vlib__Vmod.cmi
      impl/vlib__Vmod.cmt
      impl/vlib__Vmod.cmx

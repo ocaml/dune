@@ -1,5 +1,5 @@
 open! Stdune
-open Dyn.Encoder
+open Dyn
 open Dune_tests_common
 
 let () = init ()

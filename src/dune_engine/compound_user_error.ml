@@ -28,7 +28,7 @@ end
 include T
 
 let to_dyn { main; related } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("main", string (User_message.to_string main))
     ; ("related", (list string) (List.map related ~f:User_message.to_string))

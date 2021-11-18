@@ -5,8 +5,7 @@ type 'a t =
   ; f : 'a -> bool
   }
 
-let compare x y =
-  Ordering.of_int (Dyn.compare (Lazy.force x.id) (Lazy.force y.id))
+let compare x y = Dyn.compare (Lazy.force x.id) (Lazy.force y.id)
 
 let equal x y = compare x y = Ordering.Eq
 

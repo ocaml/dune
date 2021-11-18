@@ -45,9 +45,6 @@ modules remain hidden.
   > Vlib.Foo.run ()
   > EOF
   $ dune exec ./blah.exe
-  File "blah.ml", line 1, characters 0-12:
-  1 | Vlib.Foo.run ()
-      ^^^^^^^^^^^^
-  Error: Unbound module Vlib
-  [1]
+  bar from vlib
+  Foo.run implemented
   $ cd ..

@@ -14,7 +14,7 @@ type real =
   ; ppf : Format.formatter
   }
 
-let t = Fdecl.create Dyn.Encoder.opaque
+let t = Fdecl.create Dyn.opaque
 
 let verbose = ref false
 

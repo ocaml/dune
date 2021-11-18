@@ -5,8 +5,8 @@ let dev_files =
   let exts = [ Ml_kind.cmt_ext Impl; Ml_kind.cmt_ext Intf; Cm_kind.ext Cmi ] in
   let id =
     lazy
-      (let open Dyn.Encoder in
-      constr "dev_files" (List.map ~f:string exts))
+      (let open Dyn in
+      variant "dev_files" (List.map ~f:string exts))
   in
   Predicate.create ~id ~f:(fun p ->
       let ext = Filename.extension p in

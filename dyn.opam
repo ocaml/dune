@@ -11,6 +11,7 @@ bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
   "dune" {>= "3.0"}
   "ocaml" {>= "4.08.0"}
+  "ordering"
   "pp"
   "odoc" {with-doc}
 ]

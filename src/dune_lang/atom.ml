@@ -3,8 +3,8 @@ open Stdune
 type t = A of string [@@unboxed]
 
 let to_dyn (A s) =
-  let open Dyn.Encoder in
-  constr "A" [ string s ]
+  let open Dyn in
+  variant "A" [ string s ]
 
 let equal (A a) (A b) = String.equal a b
 

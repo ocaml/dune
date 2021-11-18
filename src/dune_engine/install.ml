@@ -77,7 +77,7 @@ end = struct
 
   let encode = Dune_lang.Encoder.string
 
-  let to_dyn = Dyn.Encoder.string
+  let to_dyn = Dyn.string
 end
 
 module Section_with_site = struct
@@ -89,14 +89,12 @@ module Section_with_site = struct
         ; loc : Loc.t
         }
 
-  (* let compare : t -> t -> Ordering.t = Poly.compare *)
-
   let to_dyn x =
-    let open Dyn.Encoder in
+    let open Dyn in
     match x with
-    | Section s -> constr "Section" [ Section.to_dyn s ]
+    | Section s -> variant "Section" [ Section.to_dyn s ]
     | Site { pkg; site; loc = _ } ->
-      constr "Section" [ Package.Name.to_dyn pkg; Section.Site.to_dyn site ]
+      variant "Section" [ Package.Name.to_dyn pkg; Section.Site.to_dyn site ]
 
   let to_string = function
     | Section s -> Section.to_string s
@@ -227,13 +225,11 @@ module Entry = struct
       }
   end
 
-  let compare compare_src x y =
-    match Section.compare x.section y.section with
-    | (Lt | Gt) as c -> c
-    | Eq -> (
-      match Dst.compare x.dst y.dst with
-      | (Lt | Gt) as c -> c
-      | Eq -> compare_src x.src y.src)
+  let compare compare_src { src; dst; section } t =
+    let open Ordering.O in
+    let= () = Section.compare section t.section in
+    let= () = Dst.compare dst t.dst in
+    compare_src src t.src
 
   let adjust_dst_gen =
     let error (source_pform : Dune_lang.Template.Pform.t) =

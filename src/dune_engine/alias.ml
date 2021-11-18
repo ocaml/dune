@@ -75,8 +75,7 @@ end = struct
   let of_string s =
     match of_string_opt s with
     | Some s -> s
-    | None ->
-      Code_error.raise "invalid alias name" [ ("s", Dyn.Encoder.string s) ]
+    | None -> Code_error.raise "invalid alias name" [ ("s", Dyn.string s) ]
 
   let to_string s = s
 
@@ -132,10 +131,10 @@ end
 
 include T
 
-let compare x y =
-  match Name.compare x.name y.name with
-  | (Lt | Gt) as x -> x
-  | Eq -> Path.Build.compare x.dir y.dir
+let compare { dir; name } t =
+  let open Ordering.O in
+  let= () = Name.compare name t.name in
+  Path.Build.compare dir t.dir
 
 let equal x y = compare x y = Eq
 

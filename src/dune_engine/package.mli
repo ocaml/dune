@@ -9,7 +9,13 @@ module Name : sig
 
   val version_fn : t -> string
 
-  include Interned_intf.S with type t := t
+  val compare : t -> t -> Ordering.t
+
+  val equal : t -> t -> bool
+
+  val hash : t -> int
+
+  include Comparable_intf.S with type Key.t := t
 
   include Dune_lang.Conv.S with type t := t
 
@@ -96,7 +102,7 @@ module Source_kind : sig
     | Host of Host.t
     | Url of string
 
-  val to_dyn : t Dyn.Encoder.t
+  val to_dyn : t Dyn.builder
 
   val to_string : t -> string
 
@@ -125,7 +131,7 @@ module Info : sig
 
   val empty : t
 
-  val to_dyn : t Dyn.Encoder.t
+  val to_dyn : t Dyn.builder
 
   val encode_fields : t -> Dune_lang.t list
 

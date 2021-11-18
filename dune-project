@@ -136,7 +136,7 @@ understood by dune language."))
 
 (package
  (name dune-rpc)
- (depends csexp dyn xdg (stdune-unstable (= :version)) (pp (>= 1.1.0)))
+ (depends csexp ordering dyn xdg (stdune-unstable (= :version)) (pp (>= 1.1.0)))
  (synopsis "Communicate with dune using rpc")
  (description "Library to connect and control a running dune instance"))
 
@@ -155,8 +155,16 @@ understood by dune language."))
  (synopsis "Dynamic type")
  (depends
   (ocaml (>= 4.08.0))
+  ordering
   pp)
  (description "Dynamic type"))
+
+(package
+ (name ordering)
+ (synopsis "Element ordering")
+ (depends
+  (ocaml (>= 4.08.0)))
+ (description "Element ordering"))
 
 (package
  (name xdg)
@@ -169,6 +177,7 @@ understood by dune language."))
  (depends
   (ocaml (>= 4.08.0))
   dyn
+  ordering
   pp
   csexp)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

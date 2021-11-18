@@ -21,12 +21,6 @@ let to_string = function
   | Eq -> "="
   | Gt -> ">"
 
-let neq = function
-  | Eq -> false
-  | Lt
-  | Gt ->
-    true
-
 let is_eq = function
   | Eq -> true
   | Lt
@@ -46,3 +40,10 @@ let max f x y =
   | Gt ->
     x
   | Lt -> y
+
+module O = struct
+  let ( let= ) t f =
+    match t with
+    | (Lt | Gt) as result -> result
+    | Eq -> f ()
+end

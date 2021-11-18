@@ -45,7 +45,7 @@ module External = struct
   let public_cmi_dir t = Option.value ~default:t.public_dir t.public_cmi_dir
 
   let to_dyn { public_dir; private_dir; public_cmi_dir } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("public_dir", Path.to_dyn public_dir)
       ; ("private_dir", option Path.to_dyn private_dir)
@@ -118,7 +118,7 @@ module Local = struct
 
   let to_dyn { dir; obj_dir; native_dir; byte_dir; public_cmi_dir; private_lib }
       =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("dir", Path.Build.to_dyn dir)
       ; ("obj_dir", Path.Build.to_dyn obj_dir)
@@ -243,11 +243,11 @@ let dir = get_path ~l:Local.dir ~e:External.dir
 let obj_dir = get_path ~l:Local.obj_dir ~e:External.obj_dir
 
 let to_dyn (type path) (t : path t) =
-  let open Dyn.Encoder in
+  let open Dyn in
   match t with
-  | Local e -> constr "Local" [ Local.to_dyn e ]
-  | Local_as_path e -> constr "Local_as_path" [ Local.to_dyn e ]
-  | External e -> constr "External" [ External.to_dyn e ]
+  | Local e -> variant "Local" [ Local.to_dyn e ]
+  | Local_as_path e -> variant "Local_as_path" [ Local.to_dyn e ]
+  | External e -> variant "External" [ External.to_dyn e ]
 
 let convert_to_external (t : Path.Build.t t) ~dir =
   match t with

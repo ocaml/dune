@@ -44,14 +44,13 @@ module Crawl = struct
   let modules ~obj_dir =
     Modules.fold_no_vlib ~init:[] ~f:(fun m acc ->
         let source ml_kind =
-          Dyn.Encoder.option dyn_path
+          Dyn.option dyn_path
             (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
         in
         let cmt ml_kind =
-          Dyn.Encoder.option dyn_path
-            (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+          Dyn.option dyn_path (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
         in
-        Dyn.Encoder.record
+        Dyn.record
           [ ("name", Module_name.to_dyn (Module.name m))
           ; ("impl", source Impl)
           ; ("intf", source Intf)
@@ -78,17 +77,16 @@ module Crawl = struct
       Some
         (Dyn.Variant
            ( "executables"
-           , [ Dyn.Encoder.record
+           , [ Dyn.record
                  [ ( "names"
                    , List
                        (List.map
                           ~f:(fun (_, name) -> Dyn.String name)
                           exes.names) )
                  ; ( "requires"
-                   , Dyn.Encoder.(list string) (List.map ~f:uid_of_library libs)
-                   )
+                   , Dyn.(list string) (List.map ~f:uid_of_library libs) )
                  ; ("modules", List modules_)
-                 ; ("include_dirs", Dyn.Encoder.list dyn_path include_dirs)
+                 ; ("include_dirs", Dyn.list dyn_path include_dirs)
                  ]
              ] ))
 
@@ -112,10 +110,10 @@ module Crawl = struct
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
       Some
-        (let open Dyn.Encoder in
+        (let open Dyn in
         Dyn.Variant
           ( "library"
-          , [ Dyn.Encoder.record
+          , [ Dyn.record
                 [ ("name", Lib_name.to_dyn name)
                 ; ("uid", String (uid_of_library lib))
                 ; ("local", Bool (Lib.is_local lib))

@@ -83,5 +83,5 @@ val copy :
 (** Produce the string that would replace the placeholder with the given value .*)
 val encode_replacement : len:int -> repl:string -> string
 
-(** test if a file is in the given file *)
+(** Test if a file contains a substitution placeholder. *)
 val test_file : src:Path.t -> unit -> bool Fiber.t

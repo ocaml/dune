@@ -9,7 +9,7 @@ module Annot = struct
     }
 
   let to_dyn { in_source; in_build } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("in_source", Path.Source.to_dyn in_source)
       ; ("in_build", Path.Build.to_dyn in_build)
@@ -28,7 +28,7 @@ module File = struct
   let in_staging_area source = Path.Build.append_source staging_area source
 
   let to_dyn { src; staging; dst } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("src", Path.Build.to_dyn src)
       ; ("staging", option Path.Build.to_dyn staging)
@@ -96,7 +96,7 @@ module P = Persistent.Make (struct
 
   let version = 2
 
-  let to_dyn = Dyn.Encoder.list File.to_dyn
+  let to_dyn = Dyn.list File.to_dyn
 end)
 
 let db_file = Path.relative Path.build_dir ".to-promote"

@@ -200,8 +200,8 @@ let define_all_alias ~dir ~scope ~js_targets =
     let pred =
       let id =
         lazy
-          (let open Dyn.Encoder in
-          constr "exclude"
+          (let open Dyn in
+          variant "exclude"
             (List.map ~f:(fun p -> Path.Build.to_dyn p) js_targets))
       in
       List.iter js_targets ~f:(fun js_target ->

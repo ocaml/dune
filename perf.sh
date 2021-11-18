@@ -4,14 +4,19 @@
 
 set -e
 
+TEST_REPO=https://github.com/ocaml-dune/dune-bench
+TEST_COMMIT=b6bfaf2974ec8ee1eea92c4316ec37b9966322e3
+
+# Some alternative benchmarks:
+
+# TEST_REPO=https://github.com/ocaml/dune
+# TEST_COMMIT=002edc11f4e0a57f11d5226cb2497c8b406027b5
+
 # TEST_REPO=https://github.com/avsm/platform
 # TEST_COMMIT=b254e3c6b60f3c0c09dfdcde92eb1abdc267fa1c
 
-TEST_REPO=https://github.com/ocaml/dune
-TEST_COMMIT=002edc11f4e0a57f11d5226cb2497c8b406027b5
-
 dune() {
-  TIMEFORMAT=$'real %Rs\nuser %Us\nsys  %Ss\n'; time ../_build/default/bin/main.exe "$@" --root=. > /dev/null
+  TIMEFORMAT=$'real %Rs\nuser %Us\nsys  %Ss\n'; time ../_build/default/bin/main.exe "$@" > /dev/null 2>&1
 }
 
 setup_test() {
@@ -42,10 +47,10 @@ run_test() {
   rm -rf _build
 
   echo "Running full build..."
-  dune build --cache=disabled @install 2>> $1
+  dune build --release --cache=disabled 2>> $1
 
   echo "Running zero build..."
-  dune build --cache=disabled @install 2>> $1
+  dune build --release --cache=disabled 2>> $1
 
   cd ..
 }
@@ -70,14 +75,16 @@ echo "==============" >> _perf/current
 echo "Testing the current branch ($CURRENT_BRANCH)"
 run_test current
 
-echo "Main branch" >> _perf/main
-echo "===========" >> _perf/main
+echo " Main branch " >> _perf/main
+echo "=============" >> _perf/main
 git checkout main
 echo "Testing main"
 run_test main
 
 git checkout $CURRENT_BRANCH
 
+echo ""
+echo "Summary for building $TEST_REPO:"
 echo ""
 
 paste -d ' ' <(pad 10 < _perf/rows) <(pad 14 < _perf/current) _perf/main

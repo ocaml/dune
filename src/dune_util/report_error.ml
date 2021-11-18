@@ -42,9 +42,7 @@ let get_error_from_exn = function
         ~dyn_without_loc:
           (Dyn.Tuple
              [ String "internal dependency cycle"
-             ; Record
-                 [ ("frames", Dyn.Encoder.(list Memo.Stack_frame.to_dyn) frames)
-                 ]
+             ; Record [ ("frames", Dyn.(list Memo.Stack_frame.to_dyn) frames) ]
              ])
     | Some last ->
       let first = List.hd cycle in

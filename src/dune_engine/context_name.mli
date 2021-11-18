@@ -18,9 +18,7 @@ include Stringlike_intf.S with type t := t
 
 module Infix : Comparator.OPS with type t = t
 
-module Map : Map.S with type key = t
-
-module Set : Set.S with type elt = t
+include Comparable_intf.S with type Key.t := t
 
 module Top_closure :
   Top_closure_intf.S with type key := t and type 'a monad := 'a Monad.Id.t

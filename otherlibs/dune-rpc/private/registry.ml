@@ -20,16 +20,14 @@ module Dune = struct
       ; where : Where.t
       }
 
-    let compare t { root; pid; where } : Stdune.Ordering.t =
-      match Int.compare t.pid pid with
-      | (Lt | Gt) as s -> s
-      | Eq -> (
-        match String.compare t.root root with
-        | (Lt | Gt) as s -> s
-        | Eq -> Where.compare t.where where)
+    let compare t { root; pid; where } =
+      let open Ordering.O in
+      let= () = Int.compare t.pid pid in
+      let= () = String.compare t.root root in
+      Where.compare t.where where
 
     let to_dyn { root; pid; where } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("root", string root)
         ; ("pid", int pid)
@@ -40,8 +38,6 @@ module Dune = struct
   include T
   module C = Comparable.Make (T)
   module Set = C.Set
-
-  let compare x y = Ordering.to_int (compare x y)
 
   let create ~where ~root ~pid = { where; root; pid }
 
@@ -77,7 +73,7 @@ module Dune = struct
       | E (Csexp { position; message }) ->
         Some
           (Dyn.to_string
-             (let open Dyn.Encoder in
+             (let open Dyn in
              record [ ("message", string message); ("position", int position) ]))
       | _ -> None)
 

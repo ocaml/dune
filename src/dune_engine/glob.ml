@@ -12,7 +12,7 @@ let equal x y = String.equal (to_string x) (to_string y)
 
 let hash t = String.hash (to_string t)
 
-let to_dyn t = Dyn.Encoder.string (to_string t)
+let to_dyn t = Dyn.string (to_string t)
 
 let of_string_exn loc repr =
   match of_string_result repr with
@@ -30,9 +30,5 @@ let decode =
 let filter t = List.filter ~f:(test t)
 
 let to_pred t =
-  let id =
-    lazy
-      (let open Dyn.Encoder in
-      constr "Glob" [ string (to_string t) ])
-  in
+  let id = lazy (Dyn.variant "Glob" [ String (to_string t) ]) in
   Predicate.create ~id ~f:(test t)

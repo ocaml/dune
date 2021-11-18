@@ -183,7 +183,7 @@ module Session = struct
       | None -> Fiber.return ()
       | Some sexps ->
         Code_error.raise "attempting to write to a closed channel"
-          [ ("sexp", Dyn.Encoder.(list Sexp.to_dyn) sexps) ])
+          [ ("sexp", Dyn.(list Sexp.to_dyn) sexps) ])
     | Open { writer; out_channel; socket; _ } -> (
       match sexps with
       | None ->

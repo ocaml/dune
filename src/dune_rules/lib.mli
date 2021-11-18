@@ -171,7 +171,7 @@ module DB : sig
 
     val found : Lib_info.external_ -> t
 
-    val to_dyn : t Dyn.Encoder.t
+    val to_dyn : t Dyn.builder
 
     val redirect : db option -> Loc.t * Lib_name.t -> t
   end

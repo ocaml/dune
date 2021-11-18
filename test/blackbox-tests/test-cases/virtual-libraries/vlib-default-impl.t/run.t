@@ -35,6 +35,8 @@ Check that default implementation data is installed in the dune package file.
      a$ext_obj
      a__X.cmi
      a__X.cmti
+     default-impl/a.cmi
+     default-impl/a.cmx
      default-impl/a__X.cmi
      default-impl/a__X.cmt
      default-impl/a__X.cmx

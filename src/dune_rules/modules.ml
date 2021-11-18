@@ -56,7 +56,7 @@ module Stdlib = struct
        { modules; main_module_name; exit_module; unwrapped })
 
   let to_dyn { modules; unwrapped; exit_module; main_module_name } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("modules", Module.Name_map.to_dyn modules)
       ; ("unwrapped", Module_name.Set.to_dyn unwrapped)
@@ -303,7 +303,7 @@ module Wrapped = struct
 
   let to_dyn
       { modules; wrapped_compat; alias_module; main_module_name; wrapped } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("modules", Module.Name_map.to_dyn modules)
       ; ("wrapped_compat", Module.Name_map.to_dyn wrapped_compat)
@@ -474,16 +474,16 @@ let decode ~version ~src_dir ~implements =
       ]
 
 let rec to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Singleton m -> constr "Singleton" [ Module.to_dyn m ]
-  | Unwrapped m -> constr "Unwrapped" [ Module.Name_map.to_dyn m ]
-  | Wrapped w -> constr "Wrapped" [ Wrapped.to_dyn w ]
-  | Stdlib s -> constr "Stdlib" [ Stdlib.to_dyn s ]
-  | Impl impl -> constr "Impl" [ dyn_of_impl impl ]
+  | Singleton m -> variant "Singleton" [ Module.to_dyn m ]
+  | Unwrapped m -> variant "Unwrapped" [ Module.Name_map.to_dyn m ]
+  | Wrapped w -> variant "Wrapped" [ Wrapped.to_dyn w ]
+  | Stdlib s -> variant "Stdlib" [ Stdlib.to_dyn s ]
+  | Impl impl -> variant "Impl" [ dyn_of_impl impl ]
 
 and dyn_of_impl { impl; vlib } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record [ ("impl", to_dyn impl); ("vlib", to_dyn vlib) ]
 
 let rec lib_interface = function
@@ -617,6 +617,29 @@ let rec fold_no_vlib t ~init ~f =
   | Unwrapped m -> Module_name.Map.fold m ~f ~init
   | Wrapped w -> Wrapped.fold w ~init ~f
   | Impl { vlib = _; impl } -> fold_no_vlib impl ~f ~init
+
+let rec map t ~f =
+  match t with
+  | Stdlib w -> Stdlib (Stdlib.map w ~f)
+  | Singleton m -> Singleton (f m)
+  | Unwrapped m -> Unwrapped (Module_name.Map.map m ~f)
+  | Wrapped w -> Wrapped (Wrapped.map w ~f)
+  | Impl { vlib; impl } -> Impl { vlib = map vlib ~f; impl = map impl ~f }
+
+type split_by_lib =
+  { vlib : Module.t list
+  ; impl : Module.t list
+  }
+
+let split_by_lib t =
+  let f m acc = m :: acc in
+  let init = [] in
+  match t with
+  | Impl { vlib; impl } ->
+    let vlib = fold_no_vlib vlib ~init ~f in
+    let impl = fold_no_vlib impl ~init ~f in
+    { vlib; impl }
+  | _ -> { impl = fold_no_vlib t ~init ~f; vlib = [] }
 
 let compat_for_exn t m =
   match t with

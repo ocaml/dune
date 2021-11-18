@@ -43,13 +43,12 @@ module Dependency = struct
       | Directory x, Directory y -> String.compare x y
       | Directory _, _ -> Lt
       | _, Directory _ -> Gt
-      | Glob { path = path1; glob = glob1 }, Glob { path = path2; glob = glob2 }
-        -> (
-        match String.compare path1 path2 with
-        | Eq -> String.compare glob1 glob2
-        | not_eq -> not_eq)
+      | Glob { path; glob }, Glob t ->
+        let open Ordering.O in
+        let= () = String.compare path t.path in
+        String.compare glob t.glob
 
-    let to_dyn _ = Dyn.opaque
+    let to_dyn = Dyn.opaque
   end
 
   include T

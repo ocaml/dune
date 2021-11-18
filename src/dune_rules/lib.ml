@@ -270,13 +270,13 @@ end = struct
       ; name : Lib_name.t
       }
 
-    let compare t { path; name } =
-      match Lib_name.compare t.name name with
-      | Eq -> Path.compare t.path path
-      | e -> e
+    let compare { path; name } t =
+      let open Ordering.O in
+      let= () = Lib_name.compare name t.name in
+      Path.compare path t.path
 
     let to_dyn { path; name } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record [ ("path", Path.to_dyn path); ("name", Lib_name.to_dyn name) ]
   end
 
@@ -340,7 +340,7 @@ module Hidden = struct
     { lib; path; reason }
 
   let to_dyn to_dyn { lib; path; reason } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("lib", to_dyn lib)
       ; ("path", Path.to_dyn path)
@@ -364,13 +364,13 @@ module Status = struct
     | Invalid of exn
 
   let to_dyn t =
-    let open Dyn.Encoder in
+    let open Dyn in
     match t with
-    | Invalid e -> constr "Invalid" [ Exn.to_dyn e ]
-    | Not_found -> constr "Not_found" []
+    | Invalid e -> variant "Invalid" [ Exn.to_dyn e ]
+    | Not_found -> variant "Not_found" []
     | Hidden { lib = _; path; reason } ->
-      constr "Hidden" [ Path.to_dyn path; string reason ]
-    | Found t -> constr "Found" [ to_dyn t ]
+      variant "Hidden" [ Path.to_dyn path; string reason ]
+    | Found t -> variant "Found" [ to_dyn t ]
 end
 
 type db =
@@ -738,7 +738,7 @@ module Sub_system = struct
 
   (* This mutable table is safe under the assumption that subsystems are
      registered at the top level, which is currently true. *)
-  let all = Sub_system_name.Table.create ~default_value:None
+  let all = Sub_system_name.Table.create 16
 
   module Register (M : S) = struct
     let get lib =
@@ -759,13 +759,12 @@ module Sub_system = struct
 
         let get = get
       end in
-      Sub_system_name.Table.set all ~key:M.Info.name
-        ~data:(Some (module M : S'))
+      Sub_system_name.Table.set all M.Info.name (module M : S')
   end
 
   let instantiate name info lib ~resolve =
     let open Memo.Build.O in
-    let impl = Option.value_exn (Sub_system_name.Table.get all name) in
+    let impl = Sub_system_name.Table.find_exn all name in
     let (module M : S') = impl in
     match info with
     | M.Info.T info ->
@@ -1313,7 +1312,7 @@ end = struct
     let module Input = struct
       type t = db * Lib_name.t * Path.t Lib_info.t * string option
 
-      let to_dyn = Dyn.Encoder.opaque
+      let to_dyn = Dyn.opaque
 
       let hash x = Poly.hash x
 
@@ -1921,14 +1920,14 @@ module DB = struct
     let redirect db lib = Redirect (db, lib)
 
     let to_dyn x =
-      let open Dyn.Encoder in
+      let open Dyn in
       match x with
-      | Not_found -> constr "Not_found" []
-      | Invalid e -> constr "Invalid" [ Exn.to_dyn e ]
-      | Found lib -> constr "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
+      | Not_found -> variant "Not_found" []
+      | Invalid e -> variant "Invalid" [ Exn.to_dyn e ]
+      | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden h ->
-        constr "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
-      | Redirect (_, (_, name)) -> constr "Redirect" [ Lib_name.to_dyn name ]
+        variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
+      | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
   end
 
   type t = db
@@ -1949,7 +1948,7 @@ module DB = struct
   let create_from_findlib ~lib_config ~projects_by_package findlib =
     create () ~parent:None ~lib_config ~projects_by_package
       ~modules_of_lib:
-        (let t = Fdecl.create Dyn.Encoder.opaque in
+        (let t = Fdecl.create Dyn.opaque in
          Fdecl.set t (fun ~dir ~name ->
              Code_error.raise "external libraries need no modules"
                [ ("dir", Path.Build.to_dyn dir)

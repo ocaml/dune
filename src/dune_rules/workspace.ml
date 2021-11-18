@@ -59,7 +59,7 @@ module Context = struct
       ; merlin : bool
       }
 
-    let to_dyn = Dyn.Encoder.opaque
+    let to_dyn = Dyn.opaque
 
     let equal
         { loc = _
@@ -187,7 +187,7 @@ module Context = struct
       }
 
     let to_dyn { base; switch; root } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("base", Common.to_dyn base)
         ; ("switch", string switch)
@@ -259,10 +259,10 @@ module Context = struct
   let hash = Hashtbl.hash
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
-    | Default d -> constr "Default" [ Default.to_dyn d ]
-    | Opam o -> constr "Opam" [ Opam.to_dyn o ]
+    | Default d -> variant "Default" [ Default.to_dyn d ]
+    | Opam o -> variant "Opam" [ Opam.to_dyn o ]
 
   let equal x y =
     match (x, y) with
@@ -345,7 +345,7 @@ type t =
   }
 
 let to_dyn { merlin_context; contexts; env; config } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("merlin_context", option Context_name.to_dyn merlin_context)
     ; ("contexts", list Context.to_dyn contexts)
@@ -390,7 +390,7 @@ module Clflags = struct
       ; config_from_command_line
       ; config_from_config_file
       } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("x", option Context_name.to_dyn x)
       ; ("profile", option Profile.to_dyn profile)

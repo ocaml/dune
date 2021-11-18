@@ -42,9 +42,7 @@ let compare x y = Ordering.of_int (D.compare x y)
 
 let to_string = D.to_hex
 
-let to_dyn s =
-  let open Dyn.Encoder in
-  constr "digest" [ string (to_string s) ]
+let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
 
 let from_hex s =
   match D.from_hex s with

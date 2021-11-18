@@ -52,7 +52,7 @@ struct
       let name = Syntax.name syntax in
       if Table.mem langs name then
         Code_error.raise "Versioned_file.Lang.register: already registered"
-          [ ("name", Dyn.Encoder.string name) ];
+          [ ("name", Dyn.string name) ];
       Table.add_exn langs name { syntax; data }
 
     let parse first_line : Instance.t =

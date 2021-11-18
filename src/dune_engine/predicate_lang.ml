@@ -94,13 +94,13 @@ let rec encode f =
   | Inter xs -> constr "and" (list (encode f)) xs
 
 let rec to_dyn f =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
   | Element a -> f a
-  | Compl a -> constr "compl" [ to_dyn f a ]
+  | Compl a -> variant "compl" [ to_dyn f a ]
   | Standard -> string ":standard"
-  | Union xs -> constr "or" (List.map ~f:(to_dyn f) xs)
-  | Inter xs -> constr "and" (List.map ~f:(to_dyn f) xs)
+  | Union xs -> variant "or" (List.map ~f:(to_dyn f) xs)
+  | Inter xs -> variant "and" (List.map ~f:(to_dyn f) xs)
 
 let rec exec t ~standard elem =
   match (t : _ t) with
@@ -115,7 +115,7 @@ module Glob = struct
 
   type nonrec t = glob t
 
-  let to_dyn t = to_dyn (fun _ -> Dyn.Encoder.string "opaque") t
+  let to_dyn t = to_dyn (fun _ -> Dyn.string "opaque") t
 
   let decode : t Dune_lang.Decoder.t =
     let open Dune_lang.Decoder in

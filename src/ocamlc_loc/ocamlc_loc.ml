@@ -6,7 +6,7 @@ type warning =
   }
 
 let dyn_of_warning { code; name } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record [ ("code", int code); ("name", string name) ]
 
 type severity =
@@ -34,17 +34,17 @@ type report =
   }
 
 let dyn_of_severity =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Error -> constr "Error" []
-  | Warning w -> constr "Warning" [ option dyn_of_warning w ]
+  | Error -> variant "Error" []
+  | Warning w -> variant "Warning" [ option dyn_of_warning w ]
 
 let dyn_of_message =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Raw s -> constr "Raw" [ string s ]
+  | Raw s -> variant "Raw" [ string s ]
   | Structured { file_excerpt; message; severity } ->
-    constr "Structured"
+    variant "Structured"
       [ record
           [ ("file_excerpt", (option string) file_excerpt)
           ; ("message", string message)
@@ -53,18 +53,18 @@ let dyn_of_message =
       ]
 
 let dyn_of_loc { path; line; chars } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("path", string path)
     ; ( "line"
       , match line with
-        | `Single i -> constr "Single" [ int i ]
-        | `Range (i, j) -> constr "Range" [ int i; int j ] )
+        | `Single i -> variant "Single" [ int i ]
+        | `Range (i, j) -> variant "Range" [ int i; int j ] )
     ; ("chars", option (pair int int) chars)
     ]
 
 let dyn_of_report { loc; message; related } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("loc", dyn_of_loc loc)
     ; ("message", dyn_of_message message)

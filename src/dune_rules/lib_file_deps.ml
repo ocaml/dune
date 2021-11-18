@@ -27,8 +27,8 @@ module Group = struct
           (* we cannot use globs because of bootstrapping. *)
           let id =
             lazy
-              (let open Dyn.Encoder in
-              constr "Lib_file_deps" [ string ext ])
+              (let open Dyn in
+              variant "Lib_file_deps" [ string ext ])
           in
           let pred =
             Predicate.create ~id ~f:(fun p ->

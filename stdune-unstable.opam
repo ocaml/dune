@@ -13,6 +13,7 @@ depends: [
   "dune" {>= "3.0"}
   "ocaml" {>= "4.08.0"}
   "dyn"
+  "ordering"
   "pp"
   "csexp"
   "odoc" {with-doc}

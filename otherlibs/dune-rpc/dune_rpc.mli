@@ -116,7 +116,7 @@ module V1 : sig
     module Id : sig
       type t
 
-      val compare : t -> t -> int
+      val compare : t -> t -> Ordering.t
 
       val hash : t -> int
 
@@ -444,7 +444,7 @@ module V1 : sig
 
       val to_dyn : t -> Dyn.t
 
-      val compare : t -> t -> int
+      val compare : t -> t -> Ordering.t
 
       val where : t -> Where.t
 

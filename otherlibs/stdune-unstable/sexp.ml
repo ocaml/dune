@@ -41,7 +41,9 @@ let rec of_dyn : Dyn.t -> t = function
   | Opaque -> Atom "<opaque>"
   | Unit -> List []
   | Int i -> Atom (string_of_int i)
+  | Int32 i -> Atom (Int32.to_string i)
   | Int64 i -> Atom (Int64.to_string i)
+  | Nativeint i -> Atom (Nativeint.to_string i)
   | Bool b -> Atom (string_of_bool b)
   | String s -> Atom s
   | Bytes s -> Atom (Bytes.to_string s)

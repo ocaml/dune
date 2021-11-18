@@ -1,7 +1,7 @@
 module Style = struct
   type t = string
 
-  let to_dyn s = Dyn.Encoder.string s
+  let to_dyn s = Dyn.string s
 
   let fg_black = "30"
 

@@ -3,8 +3,6 @@ module Inotify_lib := Async_inotify_for_dune.Async_inotify
 
 type t
 
-val inotify_event_paths : Inotify_lib.Event.t -> string list
-
 module Fs_memo_event : sig
   (* Here are some idealized assumptions the Fs_memo module in dune_engine makes
      about events:
@@ -76,9 +74,6 @@ val wait_for_initial_watches_established_blocking : t -> unit
 val emit_sync : t -> Sync_id.t
 
 val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result
-
-(** Ignore the ne next file change event about this file. *)
-val ignore_next_file_change_event : t -> Path.t -> unit
 
 module For_tests : sig
   val should_exclude : string -> bool

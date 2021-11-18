@@ -103,8 +103,8 @@ end = struct
       Dyn.Record
         [ ("rule_digest", Digest.to_dyn rule_digest)
         ; ( "dynamic_deps_stages"
-          , Dyn.Encoder.list
-              (Dyn.Encoder.pair Action_exec.Dynamic_dep.Set.to_dyn Digest.to_dyn)
+          , Dyn.list
+              (Dyn.pair Action_exec.Dynamic_dep.Set.to_dyn Digest.to_dyn)
               dynamic_deps_stages )
         ; ("targets_digest", Digest.to_dyn targets_digest)
         ]
@@ -202,7 +202,7 @@ end
 type extra_sub_directories_to_keep = Subdir_set.t
 
 module Rule_fn = struct
-  let loc_decl = Fdecl.create Dyn.Encoder.opaque
+  let loc_decl = Fdecl.create Dyn.opaque
 
   let loc () = Fdecl.get loc_decl ()
 end
@@ -341,7 +341,7 @@ type t =
       Path.Build.t -> unit Action_builder.t option Memo.Build.t
   }
 
-let t = Fdecl.create Dyn.Encoder.opaque
+let t = Fdecl.create Dyn.opaque
 
 let set x = Fdecl.set t x
 
@@ -456,30 +456,32 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
         ]
       | _ -> [])
 
-(* CR-someday amokhov: Clean up pending directory targets too? *)
-
-(* This contains the targets of the actions that are being executed. On exit, we
-   need to delete them as they might contain garbage. *)
-let pending_targets = ref Path.Build.Set.empty
+(* All file targets of non-sandboxed actions that are currently being executed.
+   On exit, we need to delete them as they might contain garbage. There is no
+   [pending_dir_targets] since actions with directory targets are sandboxed. *)
+let pending_file_targets = ref Path.Build.Set.empty
 
 let () = Hooks.End_of_build.always Metrics.reset
 
 let () =
   Hooks.End_of_build.always (fun () ->
-      let fns = !pending_targets in
-      pending_targets := Path.Build.Set.empty;
+      let fns = !pending_file_targets in
+      pending_file_targets := Path.Build.Set.empty;
       Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
 
-let compute_target_digests (targets : Targets.Validated.t) =
-  (* CR-someday amokhov: Do not ignore directory targets. *)
-  let file_targets = Path.Build.Set.to_list targets.files in
-  Option.List.traverse file_targets ~f:(fun target ->
-      Cached_digest.build_file target
-      |> Cached_digest.Digest_result.to_option
-      |> Option.map ~f:(fun digest -> (target, digest)))
+let compute_target_digests (targets : Targets.Validated.t) :
+    Digest.t Targets.Produced.t option =
+  (* CR-someday amokhov: The workspace-local cache currently does not work for
+     directory targets because we ignore [targets.dirs] here. *)
+  let targets =
+    Targets.Produced.of_validated_files targets ~on_dir_target:`Ignore
+  in
+  Targets.Produced.Option.mapi targets ~f:(fun target () ->
+      Cached_digest.build_file target |> Cached_digest.Digest_result.to_option)
 
-let compute_target_digests_or_raise_error exec_params ~loc file_targets =
-  let remove_write_permissions =
+let compute_target_digests_or_raise_error exec_params ~loc ~produced_targets :
+    Digest.t Targets.Produced.t =
+  let compute_digest =
     (* Remove write permissions on targets. A first theoretical reason is that
        the build process should be a computational graph and targets should not
        change state once built. A very practical reason is that enabling the
@@ -488,78 +490,88 @@ let compute_target_digests_or_raise_error exec_params ~loc file_targets =
     (* FIXME: searching the dune version for each single target seems way
        suboptimal. This information could probably be stored in rules
        directly. *)
-    if Path.Build.Set.is_empty file_targets then
-      false
-    else
+    let remove_write_permissions =
       Execution_parameters.should_remove_write_permissions_on_generated_files
         exec_params
-  in
-  let good, missing, errors =
-    let process_target target (good, missing, errors) =
-      let expected_syscall_path = Path.to_string (Path.build target) in
-      match Cached_digest.refresh ~remove_write_permissions target with
-      | Ok digest -> ((target, digest) :: good, missing, errors)
-      | No_such_file -> (good, target :: missing, errors)
-      | Broken_symlink ->
-        let error = [ Pp.verbatim "Broken symlink" ] in
-        (good, missing, (target, error) :: errors)
-      | Unexpected_kind file_kind ->
-        let error =
-          [ Pp.verbatim
-              (sprintf "Unexpected file kind %S (%s)"
-                 (File_kind.to_string file_kind)
-                 (File_kind.to_string_hum file_kind))
-          ]
-        in
-        (good, missing, (target, error) :: errors)
-      | Unix_error (error, syscall, path) ->
-        let error =
-          [ (if String.equal expected_syscall_path path then
-              Pp.verbatim syscall
-            else
-              Pp.concat
-                [ Pp.verbatim syscall
-                ; Pp.verbatim " "
-                ; Pp.verbatim (String.maybe_quoted path)
-                ])
-          ; Pp.text (Unix.error_message error)
-          ]
-        in
-        (good, missing, (target, error) :: errors)
-      | Error exn ->
-        let error =
-          match exn with
-          | Sys_error msg ->
-            [ Pp.verbatim
-                (String.drop_prefix_if_exists
-                   ~prefix:(expected_syscall_path ^ ": ")
-                   msg)
-            ]
-          | exn -> [ Pp.verbatim (Printexc.to_string exn) ]
-        in
-        (good, missing, (target, error) :: errors)
     in
-    Path.Build.Set.fold file_targets ~init:([], [], []) ~f:process_target
+    Cached_digest.refresh ~remove_write_permissions
   in
-  match (missing, errors) with
-  | [], [] -> List.rev good
-  | missing, errors ->
-    User_error.raise ~loc
-      ((match missing with
-       | [] -> []
-       | _ ->
-         [ Pp.textf "Rule failed to generate the following targets:"
-         ; pp_paths (Path.Set.of_list (List.map ~f:Path.build missing))
-         ])
-      @
-      match errors with
-      | [] -> []
-      | _ ->
-        [ Pp.textf "Error trying to read targets after a rule was run:"
-        ; Pp.enumerate (List.rev errors) ~f:(fun (target, error) ->
-              Pp.concat ~sep:(Pp.verbatim ": ")
-                (pp_path (Path.build target) :: error))
-        ])
+  match
+    Targets.Produced.Option.mapi produced_targets ~f:(fun target () ->
+        compute_digest target |> Cached_digest.Digest_result.to_option)
+  with
+  | Some result -> result
+  | None -> (
+    let missing, errors =
+      let process_target target (missing, errors) =
+        let expected_syscall_path = Path.to_string (Path.build target) in
+        match compute_digest target with
+        | Ok (_ : Digest.t) -> (missing, errors)
+        | No_such_file -> (target :: missing, errors)
+        | Broken_symlink ->
+          let error = [ Pp.verbatim "Broken symlink" ] in
+          (missing, (target, error) :: errors)
+        | Unexpected_kind file_kind ->
+          let error =
+            [ Pp.verbatim
+                (sprintf "Unexpected file kind %S (%s)"
+                   (File_kind.to_string file_kind)
+                   (File_kind.to_string_hum file_kind))
+            ]
+          in
+          (missing, (target, error) :: errors)
+        | Unix_error (error, syscall, path) ->
+          let error =
+            [ (if String.equal expected_syscall_path path then
+                Pp.verbatim syscall
+              else
+                Pp.concat
+                  [ Pp.verbatim syscall
+                  ; Pp.verbatim " "
+                  ; Pp.verbatim (String.maybe_quoted path)
+                  ])
+            ; Pp.text (Unix.error_message error)
+            ]
+          in
+          (missing, (target, error) :: errors)
+        | Error exn ->
+          let error =
+            match exn with
+            | Sys_error msg ->
+              [ Pp.verbatim
+                  (String.drop_prefix_if_exists
+                     ~prefix:(expected_syscall_path ^ ": ")
+                     msg)
+              ]
+            | exn -> [ Pp.verbatim (Printexc.to_string exn) ]
+          in
+          (missing, (target, error) :: errors)
+      in
+      Path.Build.Map.foldi (Targets.Produced.all_files produced_targets)
+        ~init:([], []) ~f:(fun target () -> process_target target)
+    in
+    match (missing, errors) with
+    | [], [] ->
+      Code_error.raise
+        "compute_target_digests_or_raise_error: spurious target digest failure"
+        [ ("targets", Targets.Produced.to_dyn produced_targets) ]
+    | missing, errors ->
+      User_error.raise ~loc
+        ((match missing with
+         | [] -> []
+         | _ ->
+           [ Pp.textf "Rule failed to generate the following targets:"
+           ; pp_paths (Path.Set.of_list (List.map ~f:Path.build missing))
+           ])
+        @
+        match errors with
+        | [] -> []
+        | _ ->
+          [ Pp.textf "Error trying to read targets after a rule was run:"
+          ; Pp.enumerate (List.rev errors) ~f:(fun (target, error) ->
+                Pp.concat ~sep:(Pp.verbatim ": ")
+                  (pp_path (Path.build target) :: error))
+          ]))
 
 let rec with_locks t mutexes ~f =
   match mutexes with
@@ -1420,8 +1432,8 @@ end = struct
      to restore artifacts from the shared cache, we should send a download
      request for [rule_digest] to the cloud. *)
   let try_to_restore_from_shared_cache ~debug_shared_cache ~mode ~rule_digest
-      ~head_target ~target_dir : (_, Shared_cache_miss_reason.t) Cache_result.t
-      =
+      ~head_target ~target_dir :
+      (Digest.t Targets.Produced.t, Shared_cache_miss_reason.t) Cache_result.t =
     let key () = shared_cache_key_string_for_log ~rule_digest ~head_target in
     match Dune_cache.Local.restore_artifacts ~mode ~rule_digest ~target_dir with
     | Restored res ->
@@ -1431,13 +1443,13 @@ end = struct
          directory appeared *)
       if debug_shared_cache then
         Log.info [ Pp.textf "cache restore success %s" (key ()) ];
-      Hit res
+      Hit (Targets.Produced.of_file_list_exn res)
     | Not_found_in_cache -> Miss Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
 
   module Exec_result = struct
     type t =
-      { files_in_directory_targets : Path.Build.Set.t
+      { produced_targets : unit Targets.Produced.t
       ; action_exec_result : Action_exec.Exec_result.t
       }
   end
@@ -1450,14 +1462,9 @@ end = struct
         ; attached_to_alias : bool
         }
 
-  let remove_stamp_file files = function
-    | Normal_rule -> files
-    | Anonymous_action { stamp_file; _ } ->
-      Path.Build.Set.remove files stamp_file
-
   let execute_action_for_rule t ~rule_kind ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
-      ~dir ~(targets : Targets.Validated.t) =
+      ~dir ~(targets : Targets.Validated.t) : Exec_result.t Fiber.t =
     let open Fiber.O in
     let { Action.Full.action
         ; env
@@ -1467,15 +1474,22 @@ end = struct
         } =
       action
     in
-    pending_targets := Path.Build.Set.union targets.files !pending_targets;
     let chdirs = Action.chdirs action in
     let sandbox =
-      Option.map sandbox_mode ~f:(fun mode ->
-          Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~chdirs
-            ~rule_digest
-            ~expand_aliases:
-              (Execution_parameters.expand_aliases_in_sandbox
-                 execution_parameters))
+      match sandbox_mode with
+      | Some mode ->
+        Some
+          (Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~chdirs
+             ~rule_digest
+             ~expand_aliases:
+               (Execution_parameters.expand_aliases_in_sandbox
+                  execution_parameters))
+      | None ->
+        (* If the action is not sandboxed, we use [pending_file_targets] to
+           clean up the build directory if the action is interrupted. *)
+        pending_file_targets :=
+          Path.Build.Set.union targets.files !pending_file_targets;
+        None
     in
     let action =
       match sandbox with
@@ -1524,27 +1538,42 @@ end = struct
     let+ exec_result =
       with_locks t locks ~f:(fun () ->
           let+ action_exec_result =
-            Action_exec.exec ~root ~context ~env ~targets ~rule_loc:loc
-              ~build_deps ~execution_parameters action
+            Action_exec.exec ~root ~context ~env ~targets:(Some targets)
+              ~rule_loc:loc ~build_deps ~execution_parameters action
           in
-          let files_in_directory_targets =
+          let produced_targets =
             match sandbox with
-            | None -> Path.Build.Set.empty
+            | None ->
+              (* Directory targets are not allowed for non-sandboxed actions, so
+                 the call below should not raise. *)
+              Targets.Produced.of_validated_files targets ~on_dir_target:`Raise
             | Some sandbox ->
               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)
-              let files = remove_stamp_file targets.files rule_kind in
-              Sandbox.move_targets_to_build_dir sandbox ~loc ~files
-                ~dirs:targets.dirs
+              let should_be_skipped =
+                match rule_kind with
+                | Normal_rule -> fun (_ : Path.Build.t) -> false
+                | Anonymous_action { stamp_file; _ } ->
+                  Path.Build.equal stamp_file
+              in
+              Sandbox.move_targets_to_build_dir sandbox ~loc ~should_be_skipped
+                ~targets
           in
-          { Exec_result.files_in_directory_targets; action_exec_result })
+          { Exec_result.produced_targets; action_exec_result })
     in
-    Option.iter sandbox ~f:Sandbox.destroy;
-    (* All went well, these targets are no longer pending *)
-    pending_targets := Path.Build.Set.diff !pending_targets targets.files;
+    (match sandbox with
+    | Some sandbox -> Sandbox.destroy sandbox
+    | None ->
+      (* All went well, these targets are no longer pending. *)
+      pending_file_targets :=
+        Path.Build.Set.diff !pending_file_targets targets.files);
     exec_result
 
-  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets =
+  (* If this function fails to store the rule to the shared cache, it returns
+     [None] because we don't want this to be a catastrophic error. We simply log
+     this incident and continue without saving the rule to the shared cache. *)
+  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets :
+      Digest.t Targets.Produced.t option Fiber.t =
     let open Fiber.O in
     let hex = Digest.to_string rule_digest in
     let pp_error msg =
@@ -1559,10 +1588,12 @@ end = struct
     in
     let update_cached_digests ~targets_and_digests =
       List.iter targets_and_digests ~f:(fun (target, digest) ->
-          Cached_digest.set target digest)
+          Cached_digest.set target digest);
+      Some (Targets.Produced.of_file_list_exn targets_and_digests)
     in
     match
-      Path.Build.Set.to_list_map file_targets ~f:Dune_cache.Local.Target.create
+      Path.Build.Map.to_list_map file_targets ~f:(fun target () ->
+          Dune_cache.Local.Target.create target)
       |> Option.List.all
     with
     | None -> Fiber.return None
@@ -1579,12 +1610,10 @@ end = struct
         (* CR-someday amokhov: Here and in the case below we can inform the
            cloud daemon that a new cache entry can be uploaded to the cloud. *)
         Log.info [ Pp.textf "cache store success [%s]" hex ];
-        update_cached_digests ~targets_and_digests;
-        Some targets_and_digests
+        update_cached_digests ~targets_and_digests
       | Already_present targets_and_digests ->
         Log.info [ Pp.textf "cache store skipped [%s]: already present" hex ];
-        update_cached_digests ~targets_and_digests;
-        Some targets_and_digests
+        update_cached_digests ~targets_and_digests
       | Error exn ->
         Log.info [ pp_error (Printexc.to_string exn) ];
         None
@@ -1648,6 +1677,108 @@ end = struct
                   (shared_cache_key_string_for_log ~rule_digest ~head_target)
                   reason)
            ])
+
+  (* Check if the workspace-local cache contains up-to-date results for a rule
+     using the information stored in [Trace_db]. *)
+  let lookup_workspace_local_cache ~rule_digest ~targets ~env :
+      (Digest.t Targets.Produced.t, _) Cache_result.t Fiber.t =
+    (* [prev_trace] will be [None] if [head_target] was never built before. *)
+    let head_target = Targets.Validated.head targets in
+    let prev_trace = Trace_db.get (Path.build head_target) in
+    let prev_trace_with_produced_targets =
+      match prev_trace with
+      | None -> Cache_result.Miss `No_previous_record
+      | Some prev_trace -> (
+        match Digest.equal prev_trace.rule_digest rule_digest with
+        | false ->
+          Cache_result.Miss
+            (`Rule_changed (prev_trace.rule_digest, rule_digest))
+        | true -> (
+          (* [compute_target_digests] returns [None] if not all targets are
+             available in the workspace-local cache. *)
+          match compute_target_digests targets with
+          | None -> Cache_result.Miss `Targets_missing
+          | Some produced_targets -> (
+            match
+              Digest.equal prev_trace.targets_digest
+                (Targets.Produced.digest produced_targets)
+            with
+            | true -> Hit (prev_trace, produced_targets)
+            | false -> Cache_result.Miss `Targets_changed)))
+    in
+    match prev_trace_with_produced_targets with
+    | Cache_result.Miss reason -> Fiber.return (Cache_result.Miss reason)
+    | Hit (prev_trace, produced_targets) ->
+      (* CR-someday aalekseyev: If there's a change at one of the last stages,
+         we still re-run all the previous stages, which is a bit of a waste. We
+         could remember what stage needs re-running and only re-run that (and
+         later stages). *)
+      let rec loop stages =
+        match stages with
+        | [] -> Fiber.return (Cache_result.Hit produced_targets)
+        | (deps, old_digest) :: rest -> (
+          let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
+          let open Fiber.O in
+          let* deps = Memo.Build.run (build_deps deps) in
+          let new_digest = Dep.Facts.digest deps ~env in
+          match Digest.equal old_digest new_digest with
+          | true -> loop rest
+          | false -> Fiber.return (Cache_result.Miss `Dynamic_deps_changed))
+      in
+      loop prev_trace.dynamic_deps_stages
+
+  (* Check if the shared cache contains results for a rule and decide whether to
+     use these results or rerun the rule for a reproducibility check. *)
+  let lookup_shared_cache t ~rule_digest ~targets ~target_dir :
+      (Digest.t Targets.Produced.t, Shared_cache_miss_reason.t) Cache_result.t =
+    match t.cache_config with
+    | Disabled -> Miss Shared_cache_miss_reason.Cache_disabled
+    | Enabled { storage_mode = mode; reproducibility_check } -> (
+      match
+        Dune_cache.Config.Reproducibility_check.sample reproducibility_check
+      with
+      | true ->
+        (* CR-someday amokhov: Here we re-execute the rule, as in Jenga. To make
+           [check_probability] more meaningful, we could first make sure that
+           the shared cache actually does contain an entry for [rule_digest]. *)
+        Cache_result.Miss
+          Shared_cache_miss_reason.Rerunning_for_reproducibility_check
+      | false ->
+        try_to_restore_from_shared_cache
+          ~debug_shared_cache:t.cache_debug_flags.shared_cache ~mode
+          ~head_target:(Targets.Validated.head targets)
+          ~rule_digest ~target_dir)
+
+  let examine_targets_and_update_shared_cache t ~loc ~can_go_in_shared_cache
+      ~rule_digest ~execution_parameters ~action ~exec_result :
+      Digest.t Targets.Produced.t Fiber.t =
+    let produced_targets = exec_result.Exec_result.produced_targets in
+    match t.cache_config with
+    | Enabled { storage_mode = mode; reproducibility_check = _ }
+      when can_go_in_shared_cache -> (
+      let open Fiber.O in
+      let+ produced_targets_with_digests =
+        try_to_store_to_shared_cache ~mode ~rule_digest
+          ~file_targets:produced_targets.files ~action
+      in
+      match produced_targets_with_digests with
+      | Some produced_targets_with_digests -> produced_targets_with_digests
+      | None ->
+        compute_target_digests_or_raise_error execution_parameters ~loc
+          ~produced_targets)
+    | _ ->
+      Fiber.return
+        (compute_target_digests_or_raise_error execution_parameters ~loc
+           ~produced_targets)
+
+  let promote_targets t ~rule_mode ~dir ~targets ~context =
+    match (rule_mode, !Clflags.promote) with
+    | (Rule.Mode.Standard | Fallback | Ignore_source_files), _
+    | Promote _, Some Never ->
+      Fiber.return ()
+    | Promote promote, (Some Automatically | None) ->
+      Target_promotion.promote ~dir ~targets ~promote
+        ~promote_source:(fun ~chmod -> t.promote_source ~chmod context)
 
   let execute_rule_impl ~rule_kind rule =
     let t = t () in
@@ -1729,8 +1860,10 @@ end = struct
           compute_rule_digest rule ~deps ~action ~sandbox_mode
             ~execution_parameters
         in
+        (* CR-someday amokhov: Add support for rules with directory targets. *)
         let can_go_in_shared_cache =
           action.can_go_in_shared_cache
+          && Path.Build.Set.is_empty targets.dirs
           && (not
                 (always_rerun || is_action_dynamic
                 || Action.is_useful_to_memoize action.action = Clearly_not))
@@ -1741,201 +1874,103 @@ end = struct
             false
           | _ -> true
         in
-        (* We don't need to digest target names here, as these are already part
-           of the rule digest. *)
-        let digest_of_target_digests l = Digest.generic (List.map l ~f:snd) in
-        (* Here we determine if we need to execute the action based on
-           information stored in [Trace_db]. If we need to, then
-           [targets_and_digests] will be [None], otherwise it will be [Some l]
-           where [l] is the list of targets and their digests. *)
-        let* (targets_and_digests :
-               ((Path.Build.t * Digest.t) list, _) Cache_result.t) =
-          if always_rerun then
-            Fiber.return (Cache_result.Miss `Always_rerun)
-          else
-            (* [prev_trace] will be [None] if rule is run for the first time. *)
-            let prev_trace = Trace_db.get (Path.build head_target) in
-            let prev_trace_with_targets_and_digests =
-              match prev_trace with
-              | None -> Cache_result.Miss `No_previous_record
-              | Some prev_trace -> (
-                if prev_trace.rule_digest <> rule_digest then
-                  Cache_result.Miss
-                    (`Rule_changed (prev_trace.rule_digest, rule_digest))
-                else
-                  (* [targets_and_digests] will be [None] if not all targets
-                     were built. *)
-                  match compute_target_digests targets with
-                  | None -> Cache_result.Miss `Targets_missing
-                  | Some targets_and_digests ->
-                    if
-                      Digest.equal prev_trace.targets_digest
-                        (digest_of_target_digests targets_and_digests)
-                    then
-                      Hit (prev_trace, targets_and_digests)
-                    else
-                      Cache_result.Miss `Targets_changed)
-            in
-            match prev_trace_with_targets_and_digests with
-            | Cache_result.Miss reason ->
-              Fiber.return (Cache_result.Miss reason)
-            | Hit (prev_trace, targets_and_digests) ->
-              (* CR-someday aalekseyev: If there's a change at one of the last
-                 stages, we still re-run all the previous stages, which is a bit
-                 of a waste. We could remember what stage needs re-running and
-                 only re-run that (and later stages). *)
-              let rec loop stages =
-                match stages with
-                | [] -> Fiber.return (Cache_result.Hit targets_and_digests)
-                | (deps, old_digest) :: rest ->
-                  let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
-                  let* deps = Memo.Build.run (build_deps deps) in
-                  let new_digest = Dep.Facts.digest deps ~env:action.env in
-                  if old_digest = new_digest then
-                    loop rest
-                  else
-                    Fiber.return (Cache_result.Miss `Dynamic_deps_changed)
-              in
-              loop prev_trace.dynamic_deps_stages
+        (* Step I. Check if the workspace-local cache is up to date. *)
+        let* (produced_targets :
+               (Digest.t Targets.Produced.t, _) Cache_result.t) =
+          match always_rerun with
+          | true -> Fiber.return (Cache_result.Miss `Always_rerun)
+          | false ->
+            lookup_workspace_local_cache ~rule_digest ~targets ~env:action.env
         in
-        let* targets_and_digests =
-          match targets_and_digests with
+        let* (produced_targets : Digest.t Targets.Produced.t) =
+          match produced_targets with
           | Hit x -> Fiber.return x
           | Miss miss_reason ->
             report_workspace_local_cache_miss
               ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
-            (* Step I. Remove stale targets both from the digest table and from
+            (* Step II. Remove stale targets both from the digest table and from
                the build directory. *)
             (* CR-someday amokhov: Don't ignore directory targets. *)
             Path.Build.Set.iter targets.files ~f:(fun target ->
                 Cached_digest.remove target;
                 Path.Build.unlink_no_err target);
-            (* Step II. Try to restore artifacts from the shared cache if the
-               following conditions are met.
-
-               1. The rule can be cached, i.e. [can_go_in_shared_cache] is
-               [true].
-
-               2. The shared cache is [Enabled].
-
-               3. The rule is not selected for a reproducibility check. *)
-            let targets_and_digests_from_cache :
-                (_, Shared_cache_miss_reason.t) Cache_result.t =
-              match (can_go_in_shared_cache, t.cache_config) with
-              | false, _ ->
-                Miss Shared_cache_miss_reason.Can't_go_in_shared_cache
-              | _, Disabled -> Miss Shared_cache_miss_reason.Cache_disabled
-              | true, Enabled { storage_mode = mode; reproducibility_check }
-                -> (
-                match
-                  Dune_cache.Config.Reproducibility_check.sample
-                    reproducibility_check
-                with
-                | true ->
-                  (* CR-someday amokhov: Here we re-execute the rule, as in
-                     Jenga. To make [check_probability] more meaningful, we
-                     could first make sure that the shared cache actually does
-                     contain an entry for [rule_digest]. *)
-                  Cache_result.Miss
-                    Shared_cache_miss_reason.Rerunning_for_reproducibility_check
-                | false ->
-                  try_to_restore_from_shared_cache
-                    ~debug_shared_cache:t.cache_debug_flags.shared_cache ~mode
-                    ~rule_digest ~head_target ~target_dir:rule.dir)
+            (* Step III. Try to restore artifacts from the shared cache. *)
+            let produced_targets_from_cache :
+                (Digest.t Targets.Produced.t, _) Cache_result.t =
+              match can_go_in_shared_cache with
+              | false -> Miss Shared_cache_miss_reason.Can't_go_in_shared_cache
+              | true ->
+                lookup_shared_cache t ~rule_digest ~targets ~target_dir:rule.dir
             in
-            let* targets_and_digests, trace_db_entry =
-              match targets_and_digests_from_cache with
-              | Hit targets_and_digests ->
-                Fiber.return
-                  ( targets_and_digests
-                  , ({ rule_digest
-                     ; dynamic_deps_stages =
-                         (* Rules with dynamic deps can't be stored to the
-                            shared-cache (see the [is_action_dynamic] check
-                            above), so we know this is not a dynamic action, so
-                            returning an empty list is correct. The lack of
-                            information to fill in [dynamic_deps_stages] here is
-                            precisely the reason why we don't store dynamic
-                            actions in the shared cache. *)
-                         []
-                     ; targets_digest =
-                         digest_of_target_digests targets_and_digests
-                     }
-                      : Trace_db.Entry.t) )
+            let* produced_targets, dynamic_deps_stages =
+              match produced_targets_from_cache with
+              | Hit produced_targets ->
+                (* Rules with dynamic deps can't be stored to the shared cache
+                   (see the [is_action_dynamic] check above), so we know this is
+                   not a dynamic action, so returning an empty list is correct.
+                   The lack of information to fill in [dynamic_deps_stages] here
+                   is precisely the reason why we don't store dynamic actions in
+                   the shared cache. *)
+                let dynamic_deps_stages = [] in
+                Fiber.return (produced_targets, dynamic_deps_stages)
               | Miss shared_cache_miss_reason ->
                 report_shared_cache_miss ~cache_debug_flags:t.cache_debug_flags
                   ~rule_digest ~head_target shared_cache_miss_reason;
-                (* Step III. Execute the build action. *)
+                (* Step IV. Execute the build action. *)
                 let* exec_result =
                   execute_action_for_rule t ~rule_kind ~rule_digest ~action
                     ~deps ~loc ~context ~execution_parameters ~sandbox_mode ~dir
                     ~targets
                 in
-                let* targets_and_digests =
-                  (* Step IV. Store results to the shared cache and if that step
-                     fails, post-process targets by removing write permissions
-                     and computing their digests. *)
-                  match t.cache_config with
-                  | Enabled { storage_mode = mode; reproducibility_check = _ }
-                    when can_go_in_shared_cache
-                         (* CR-someday amokhov: Add support for caching rules
-                            with directory targets. *)
-                         && Path.Build.Set.is_empty targets.dirs -> (
-                    let+ targets_and_digests =
-                      try_to_store_to_shared_cache ~mode ~rule_digest
-                        ~file_targets:targets.files ~action:action.action
-                    in
-                    match targets_and_digests with
-                    | Some targets_and_digests -> targets_and_digests
-                    | None ->
-                      compute_target_digests_or_raise_error execution_parameters
-                        ~loc targets.files)
-                  | _ ->
-                    let targets =
-                      Path.Build.Set.union targets.files
-                        exec_result.files_in_directory_targets
-                    in
-                    Fiber.return
-                      (compute_target_digests_or_raise_error
-                         execution_parameters ~loc targets)
+                (* Step V. Examine produced targets:
+
+                   - Check that action produced all expected targets;
+
+                   - Compute their digests;
+
+                   - Remove write permissions;
+
+                   - Store results to the shared cache if needed. *)
+                let* produced_targets =
+                  examine_targets_and_update_shared_cache t ~loc
+                    ~can_go_in_shared_cache ~rule_digest ~execution_parameters
+                    ~exec_result ~action:action.action
                 in
                 let dynamic_deps_stages =
                   List.map exec_result.action_exec_result.dynamic_deps_stages
                     ~f:(fun (deps, fact_map) ->
                       (deps, Dep.Facts.digest fact_map ~env:action.env))
                 in
-                let targets_digest =
-                  digest_of_target_digests targets_and_digests
-                in
-                Fiber.return
-                  ( targets_and_digests
-                  , ({ rule_digest; dynamic_deps_stages; targets_digest }
-                      : Trace_db.Entry.t) )
+                Fiber.return (produced_targets, dynamic_deps_stages)
+            in
+            let trace_db_entry =
+              { Trace_db.Entry.rule_digest
+              ; dynamic_deps_stages
+              ; targets_digest =
+                  (* We do not include target names here, as they are already
+                     included into the rule digest. *)
+                  Targets.Produced.digest produced_targets
+              }
             in
             Trace_db.set (Path.build head_target) trace_db_entry;
-            Fiber.return targets_and_digests
+            Fiber.return produced_targets
         in
         let* () =
-          match (mode, !Clflags.promote) with
-          | (Standard | Fallback | Ignore_source_files), _
-          | Promote _, Some Never ->
-            Fiber.return ()
-          | Promote promote, (Some Automatically | None) ->
-            Target_promotion.promote ~dir ~targets_and_digests ~promote
-              ~promote_source:(fun ~chmod -> t.promote_source ~chmod context)
+          promote_targets t ~rule_mode:mode ~dir ~targets:produced_targets
+            ~context
         in
         t.rule_done <- t.rule_done + 1;
         let+ () =
           Handler.report_progress t.handler ~rule_done:t.rule_done
             ~rule_total:t.rule_total
         in
-        targets_and_digests)
-    (* jeremidimino: we need to include the dependencies discovered while
+        produced_targets)
+    (* jeremidimino: We need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
-       the presence of dynamic actions *)
+       the presence of dynamic actions. *)
     >>|
-    fun targets_and_digests ->
-    { deps; targets = Path.Build.Map.of_list_exn targets_and_digests }
+    fun produced_targets ->
+    { deps; targets = Targets.Produced.all_files produced_targets }
 
   module Anonymous_action = struct
     type t =
@@ -1952,7 +1987,7 @@ end = struct
     let to_dyn t : Dyn.t =
       Record
         [ ("digest", Digest.to_dyn t.digest)
-        ; ("loc", Dyn.Encoder.option Loc.to_dyn t.action.loc)
+        ; ("loc", Dyn.option Loc.to_dyn t.action.loc)
         ]
   end
 

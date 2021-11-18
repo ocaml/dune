@@ -43,19 +43,12 @@ module Dict = struct
 
   let compare compare { none; symlink; copy; hardlink; patch_back_source_tree }
       t =
-    let ( let= ) ordering k =
-      match ordering with
-      | Eq -> k ()
-      | Lt
-      | Gt ->
-        ordering
-    in
+    let open Ordering.O in
     let= () = compare none t.none in
     let= () = compare symlink t.symlink in
     let= () = compare copy t.copy in
     let= () = compare hardlink t.hardlink in
-    let= () = compare patch_back_source_tree t.patch_back_source_tree in
-    Eq
+    compare patch_back_source_tree t.patch_back_source_tree
 
   let of_func (f : key -> _) =
     { none = f None
@@ -145,7 +138,7 @@ let to_string = function
   | Some Patch_back_source_tree -> "patch_back_source_tree"
 
 let to_dyn =
-  Dyn.Encoder.option (function
+  Dyn.option (function
     | Symlink -> Variant ("Symlink", [])
     | Copy -> Variant ("Copy", [])
     | Hardlink -> Variant ("Hardlink", [])

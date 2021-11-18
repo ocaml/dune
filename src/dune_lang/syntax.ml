@@ -5,12 +5,12 @@ module Version = struct
     type t = int * int
 
     let compare (major_a, minor_a) (major_b, minor_b) =
-      match Int.compare major_a major_b with
-      | (Gt | Lt) as ne -> ne
-      | Eq -> Int.compare minor_a minor_b
+      let open Ordering.O in
+      let= () = Int.compare major_a major_b in
+      Int.compare minor_a minor_b
 
     let to_dyn t =
-      let open Dyn.Encoder in
+      let open Dyn in
       pair int int t
   end
 
@@ -47,19 +47,9 @@ module Version = struct
     let open Int.Infix in
     parser_major = data_major && parser_minor >= data_minor
 
-  let min a b =
-    match compare a b with
-    | Lt
-    | Eq ->
-      a
-    | Gt -> b
+  let min = Ordering.min compare
 
-  let max a b =
-    match compare a b with
-    | Lt
-    | Eq ->
-      b
-    | Gt -> a
+  let max = Ordering.max compare
 end
 
 module Supported_versions = struct
@@ -159,7 +149,7 @@ and key =
       }
 
 let to_dyn { name; desc; key = _; supported_versions; experimental } =
-  let open Dyn.Encoder in
+  let open Dyn in
   record
     [ ("name", string name)
     ; ("desc", string desc)
@@ -176,7 +166,7 @@ module Key = struct
         }
 
   let to_dyn =
-    let open Dyn.Encoder in
+    let open Dyn in
     function
     | Active v -> Version.to_dyn v
     | Inactive { lang; dune_lang_ver } ->
@@ -359,7 +349,7 @@ let get_exn t =
   | None ->
     let+ context = get_all in
     Code_error.raise "Syntax identifier is unset"
-      [ ("name", Dyn.Encoder.string t.name)
+      [ ("name", Dyn.string t.name)
       ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
       ; ("context", Univ_map.to_dyn context)
       ]

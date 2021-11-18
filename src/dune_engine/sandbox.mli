@@ -20,13 +20,15 @@ val create :
   -> expand_aliases:bool
   -> t
 
-(** Move the targets created by the action from the sandbox to the build
-    directory. Returns the set of files discovered in directory targets. *)
+(** Move all targets created by the action from the sandbox to the build
+    directory, skipping the files for which [should_be_skipped] returns [true].
+
+    Expands [targets] with the set of files discovered in directory targets. *)
 val move_targets_to_build_dir :
      t
   -> loc:Loc.t
-  -> files:Path.Build.Set.t
-  -> dirs:Path.Build.Set.t
-  -> Path.Build.Set.t
+  -> should_be_skipped:(Path.Build.t -> bool)
+  -> targets:Targets.Validated.t
+  -> unit Targets.Produced.t
 
 val destroy : t -> unit

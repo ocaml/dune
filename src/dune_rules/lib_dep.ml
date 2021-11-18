@@ -65,7 +65,7 @@ module Select = struct
            loop Lib_name.Set.empty Lib_name.Set.empty preds)
 
     let to_dyn { required; forbidden; file } =
-      let open Dyn.Encoder in
+      let open Dyn in
       record
         [ ("required", Lib_name.Set.to_dyn required)
         ; ("forbidden", Lib_name.Set.to_dyn forbidden)
@@ -80,7 +80,7 @@ module Select = struct
     }
 
   let to_dyn { result_fn; choices; loc = _ } =
-    let open Dyn.Encoder in
+    let open Dyn in
     record
       [ ("result_fn", string result_fn)
       ; ("choices", list Choice.to_dyn choices)
@@ -103,11 +103,11 @@ type t =
 let equal = Poly.equal
 
 let to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
   | Direct (_, name) -> Lib_name.to_dyn name
-  | Re_export (_, name) -> constr "re_export" [ Lib_name.to_dyn name ]
-  | Select s -> constr "select" [ Select.to_dyn s ]
+  | Re_export (_, name) -> variant "re_export" [ Lib_name.to_dyn name ]
+  | Select s -> variant "select" [ Select.to_dyn s ]
 
 let direct x = Direct x
 

@@ -20,7 +20,7 @@ val to_list : 'a t -> 'a list
 
 val singleton : 'a -> 'a t
 
-val to_dyn : 'a Dyn.Encoder.t -> 'a t Dyn.Encoder.t
+val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 
 val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
 

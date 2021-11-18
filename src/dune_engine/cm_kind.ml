@@ -37,8 +37,8 @@ module Dict = struct
 end
 
 let to_dyn =
-  let open Dyn.Encoder in
+  let open Dyn in
   function
-  | Cmi -> constr "cmi" []
-  | Cmo -> constr "cmo" []
-  | Cmx -> constr "cmx" []
+  | Cmi -> variant "cmi" []
+  | Cmo -> variant "cmo" []
+  | Cmx -> variant "cmx" []

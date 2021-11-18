@@ -6,7 +6,6 @@ module Sexp = Sexp
 module String = String
 module List = List
 module Either = Either
-module Dyn = Dyn
 module Int = Int
 module Poly = Poly
 module Code_error = Code_error

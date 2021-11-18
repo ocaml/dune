@@ -9,6 +9,8 @@ Unreleased
 
 - Use the stag format API to be compatible with OCaml 5.0 (#5351, @emillon).
 
+- Fix post-processing of dune-package (fix #4389, @strub)
+
 2.9.1 (07/09/2021)
 ------------------
 

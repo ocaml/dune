@@ -396,6 +396,13 @@ let record_metrics t ~tag =
       Metrics.Timer.stop timer;
       res)
 
+let rec sequential_iter_seq (seq : _ Seq.t) ~f =
+  match seq () with
+  | Nil -> return ()
+  | Cons (x, seq) ->
+    let* () = f x in
+    sequential_iter_seq seq ~f
+
 module Make_map_traversals (Map : Map.S) = struct
   let parallel_iter t ~f k =
     match Map.cardinal t with

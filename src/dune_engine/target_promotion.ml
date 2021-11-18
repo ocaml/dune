@@ -187,7 +187,8 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
      some additional subdirectories in [targets.dirs]. *)
   Path.Build.Map.iteri targets.dirs ~f:(fun dir (_filenames : _ String.Map.t) ->
       create_directory_if_needed ~dir);
-  Targets.Produced.Fiber.sequential_iteri targets ~f:(fun src _payload ->
+  Fiber.sequential_iter_seq (Targets.Produced.to_seq targets)
+    ~f:(fun (src, _payload) ->
       match selected_for_promotion src with
       | false -> Fiber.return ()
       | true -> (

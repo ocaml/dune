@@ -190,17 +190,15 @@ module Produced = struct
       | Short_circuit -> None
   end
 
-  module Fiber = struct
-    let sequential_iteri t ~f =
-      let open Fiber.O in
-      let acc =
-        Path.Build.Map.foldi t.files ~init:(Fiber.return ())
-          ~f:(fun file payload acc -> acc >>> f file payload)
-      in
-      Path.Build.Map.foldi t.dirs ~init:acc ~f:(fun dir filenames acc ->
-          String.Map.foldi filenames ~init:acc ~f:(fun filename payload acc ->
-              acc >>> f (Path.Build.relative dir filename) payload))
-  end
+  let to_seq t =
+    Seq.append
+      (Path.Build.Map.to_seq t.files)
+      (Seq.concat
+         (Path.Build.Map.to_seq t.dirs
+         |> Seq.map ~f:(fun (dir, filenames) ->
+                String.Map.to_seq filenames
+                |> Seq.map ~f:(fun (filename, payload) ->
+                       (Path.Build.relative dir filename, payload)))))
 
   let to_dyn { files; dirs } =
     Dyn.record

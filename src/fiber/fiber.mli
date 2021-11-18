@@ -105,6 +105,8 @@ val parallel_iter_set :
   -> f:('a -> unit t)
   -> unit t
 
+val sequential_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
+
 (** Returns a fiber which wraps the given fiber with calls to
     Metrics.Timer.start/stop.
 

@@ -136,6 +136,8 @@ module type S = sig
 
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
+  val to_seq : 'a t -> (key * 'a) Seq.t
+
   module Multi : sig
     type nonrec 'a t = 'a list t
 

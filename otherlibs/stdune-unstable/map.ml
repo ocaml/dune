@@ -259,4 +259,6 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let to_dyn f t =
     Dyn.Map (to_list t |> List.map ~f:(fun (k, v) -> (Key.to_dyn k, f v)))
+
+  let to_seq = to_seq
 end

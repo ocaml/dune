@@ -197,10 +197,10 @@ module Ivar : sig
 
   (** Fill the ivar with the following value. This can only be called once for a
       given ivar. *)
-  val fill : 'a t -> 'a -> unit fiber
+  val fill : 'a t -> 'a -> unit
 
   (** Return [Some x] is [fill t x] has been called previously. *)
-  val peek : 'a t -> 'a option fiber
+  val peek : 'a t -> 'a option
 end
 with type 'a fiber := 'a t
 
@@ -356,7 +356,7 @@ module Pool : sig
   val create : unit -> t
 
   (** [running pool] returns whether it's possible to submit tasks to [pool] *)
-  val running : t -> bool fiber
+  val running : t -> bool
 
   (** [task pool ~f] submit [f] to be done in [pool]. Errors raised [pool] will
       not be raised in the current fiber, but inside the [Pool.run] fiber.
@@ -380,9 +380,7 @@ with type 'a fiber := 'a t
 
 (** {1 Running fibers} *)
 
-type fill = Fill : 'a Ivar.t * 'a -> fill
-
 (** [run t ~iter] runs a fiber until it terminates. [iter] is used to implement
-    the scheduler, it should block waiting for an event and return at least one
-    ivar to fill. *)
-val run : 'a t -> iter:(unit -> fill Nonempty_list.t) -> 'a
+    the scheduler, it should block waiting for an event and fill some ivars to
+    allow fibers to make progress. *)
+val run : 'a t -> iter:(unit -> unit) -> 'a

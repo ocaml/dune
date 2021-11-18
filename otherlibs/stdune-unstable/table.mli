@@ -54,6 +54,8 @@ val remove : ('k, _) t -> 'k -> unit
 
 val iter : (_, 'v) t -> f:('v -> unit) -> unit
 
+val iteri : ('k, 'v) t -> f:('k -> 'v -> unit) -> unit
+
 val filteri_inplace : ('a, 'b) t -> f:(key:'a -> data:'b -> bool) -> unit
 
 val length : (_, _) t -> int

@@ -382,7 +382,7 @@ module V1 : sig
 
         val read : 'a t -> 'a fiber
 
-        val fill : 'a t -> 'a -> unit fiber
+        val fill : 'a t -> 'a -> unit
       end
       with type 'a fiber := 'a t
     end) (Chan : sig

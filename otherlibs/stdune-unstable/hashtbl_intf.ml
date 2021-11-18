@@ -15,6 +15,8 @@ module type S = sig
 
   val iter : 'a t -> f:('a -> unit) -> unit
 
+  val iteri : 'a t -> f:(key -> 'a -> unit) -> unit
+
   val set : 'a t -> key -> 'a -> unit
 
   val add_exn : 'a t -> key -> 'a -> unit

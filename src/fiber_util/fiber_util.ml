@@ -33,29 +33,16 @@ module Cancellation = struct
 
   let rec invoke_handlers = function
     | Handler { ivar; next; prev = _ } ->
-      let* () = Fiber.Ivar.fill ivar (Cancelled ()) in
+      Fiber.Ivar.fill ivar (Cancelled ());
       invoke_handlers next
-    | End_of_handlers -> Fiber.return ()
+    | End_of_handlers -> ()
 
   let fire t =
-    Fiber.of_thunk (fun () ->
-        match t.state with
-        | Cancelled -> Fiber.return ()
-        | Not_cancelled { handlers } ->
-          t.state <- Cancelled;
-          invoke_handlers handlers)
-
-  let rec fills_of_handlers acc = function
-    | Handler { ivar; next; prev = _ } ->
-      fills_of_handlers (Fiber.Fill (ivar, Cancelled ()) :: acc) next
-    | End_of_handlers -> List.rev acc
-
-  let fire' t =
     match t.state with
-    | Cancelled -> []
+    | Cancelled -> ()
     | Not_cancelled { handlers } ->
       t.state <- Cancelled;
-      fills_of_handlers [] handlers
+      invoke_handlers handlers
 
   let fired t =
     match t.state with
@@ -93,8 +80,8 @@ module Cancellation = struct
               (match node.next with
               | End_of_handlers -> ()
               | Handler next -> next.prev <- node.prev);
-              let+ () = Fiber.Ivar.fill ivar Not_cancelled in
-              y))
+              Fiber.Ivar.fill ivar Not_cancelled;
+              Fiber.return y))
         (fun () ->
           Fiber.Ivar.read ivar >>= function
           | Cancelled () ->

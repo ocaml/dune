@@ -27,7 +27,8 @@ let%expect_test "cancelling a build" =
       Fiber.fork_and_join_unit
         (fun () ->
           Scheduler.Run.poll
-            (let* () = Fiber.Ivar.fill build_started () in
+            (let* () = Fiber.return () in
+             Fiber.Ivar.fill build_started ();
              let* () = Fiber.Ivar.read build_cancelled in
              let* res =
                Fiber.collect_errors (fun () ->
@@ -46,7 +47,7 @@ let%expect_test "cancelling a build" =
               (Memo.Cell.invalidate cell ~reason:Unknown)
           in
           (* Wait for the scheduler to acknowledge the change *)
-          let* () = Scheduler.wait_for_build_input_change () in
+          let+ () = Scheduler.wait_for_build_input_change () in
           Fiber.Ivar.fill build_cancelled ()));
   [%expect {| PASS: build was cancelled |}]
 
@@ -58,7 +59,8 @@ let%expect_test "cancelling a build: effect on other fibers" =
       Fiber.fork_and_join_unit
         (fun () ->
           Scheduler.Run.poll
-            (let* () = Fiber.Ivar.fill build_started () in
+            (let* () = Fiber.return () in
+             Fiber.Ivar.fill build_started ();
              Fiber.never))
         (fun () ->
           let* () = Fiber.Ivar.read build_started in

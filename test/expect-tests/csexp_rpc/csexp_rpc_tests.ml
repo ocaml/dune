@@ -6,7 +6,7 @@ module Scheduler = Dune_engine.Scheduler
 let () = Dune_tests_common.init ()
 
 type event =
-  | Fill of Fiber.fill
+  | Fill : 'a Fiber.Ivar.t * 'a -> event
   | Abort
 
 let server where = Server.create where ~backlog:10

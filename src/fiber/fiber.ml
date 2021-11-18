@@ -505,27 +505,22 @@ module Ivar = struct
 
   let create () = { state = Empty (Queue.create ()) }
 
-  let fill_internal t x =
+  let fill t x =
     match t.state with
     | Full _ -> failwith "Fiber.Ivar.fill"
     | Empty q ->
       t.state <- Full x;
       Queue.iter q ~f:(fun k -> K.enqueue k x)
 
-  let fill t x _ctx k =
-    fill_internal t x;
-    k ()
-
   let read t ctx k =
     match t.state with
     | Full x -> k x
     | Empty q -> Queue.push q (K.create ctx k)
 
-  let peek t _ctx k =
-    k
-      (match t.state with
-      | Full x -> Some x
-      | Empty _ -> None)
+  let peek t =
+    match t.state with
+    | Full x -> Some x
+    | Empty _ -> None
 end
 
 module Mvar = struct
@@ -627,7 +622,7 @@ module Throttle = struct
       | None -> return ()
       | Some ivar ->
         t.running <- t.running + 1;
-        let* () = Ivar.fill ivar () in
+        Ivar.fill ivar ();
         restart t
 
   let resize t n =
@@ -847,10 +842,10 @@ module Pool = struct
     ; mutable status : status
     }
 
-  let running t _ctx k =
+  let running t =
     match t.status with
-    | Open -> k true
-    | Closed -> k false
+    | Open -> true
+    | Closed -> false
 
   let create () = { mvar = Mvar.create (); status = Open }
 
@@ -877,11 +872,4 @@ module Pool = struct
   let run t = stream t |> Stream.In.parallel_iter ~f:(fun task -> task ())
 end
 
-type fill = Fill : 'a Ivar.t * 'a -> fill
-
-let execute_fill (Fill (ivar, v)) = Ivar.fill_internal ivar v
-
-let run t ~iter =
-  EC.run t ~iter:(fun () ->
-      let fills = iter () in
-      List.iter (Nonempty_list.to_list fills) ~f:execute_fill)
+let run t ~iter = EC.run t ~iter

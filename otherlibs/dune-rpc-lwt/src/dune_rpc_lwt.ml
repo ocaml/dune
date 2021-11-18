@@ -26,9 +26,7 @@ module V1 = struct
 
       let create () = Lwt.task ()
 
-      let fill (_, u) x =
-        Lwt.wakeup u x;
-        Lwt.return_unit
+      let fill (_, u) x = Lwt.wakeup u x
 
       let read (x, _) = x
     end

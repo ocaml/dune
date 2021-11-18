@@ -111,13 +111,17 @@ let%expect_test "execution context of ivars" =
   let run_when_filled () =
     let var = Fiber.Var.create () in
     Fiber.Var.set var 42 (fun () ->
-        let* peek = Fiber.Ivar.peek ivar in
+        let peek = Fiber.Ivar.peek ivar in
         assert (peek = None);
         let* () = Fiber.Ivar.read ivar in
         let+ value = Fiber.Var.get_exn var in
         Printf.printf "var value %d\n" value)
   in
-  let run = Fiber.fork_and_join_unit run_when_filled (Fiber.Ivar.fill ivar) in
+  let run =
+    Fiber.fork_and_join_unit run_when_filled (fun () ->
+        Fiber.Ivar.fill ivar ();
+        Fiber.return ())
+  in
   test unit run;
   [%expect {|
     var value 42
@@ -151,8 +155,8 @@ let%expect_test "fill returns a fiber that executes before waiters are awoken" =
     Fiber.fork_and_join_unit (waiter 1) (waiter 2)
   in
   let run () =
-    let* () = Scheduler.yield () in
-    let+ () = Fiber.Ivar.fill ivar () in
+    let+ () = Scheduler.yield () in
+    Fiber.Ivar.fill ivar ();
     Printf.printf "ivar filled\n"
   in
   test unit (Fiber.fork_and_join_unit waiters run);
@@ -863,7 +867,7 @@ let%expect_test "stack usage with consecutive Ivar.fill" =
     else
       let next = Fiber.Ivar.create () in
       let fiber =
-        let* () = Fiber.Ivar.read prev in
+        let+ () = Fiber.Ivar.read prev in
         Fiber.Ivar.fill next ()
       in
       loop (fiber :: acc) next (n - 1)
@@ -876,7 +880,11 @@ let%expect_test "stack usage with consecutive Ivar.fill" =
       let init = stack_size () in
       let+ () = Fiber.Ivar.read final in
       stack_size () - init
-    and* () = Fiber.Ivar.fill first () in
+    and* () =
+      Fiber.of_thunk (fun () ->
+          Fiber.Ivar.fill first ();
+          Fiber.return ())
+    in
     Fiber.return n
   in
   let n0 = Scheduler.run (stack_usage 0) in
@@ -944,7 +952,7 @@ let%expect_test "cancel_test1" =
   let cancel = Fiber_util.Cancellation.create () in
   Scheduler.run
     (printf "%B\n" (Fiber_util.Cancellation.fired cancel);
-     let* () = Fiber_util.Cancellation.fire cancel in
+     Fiber_util.Cancellation.fire cancel;
      printf "%B\n" (Fiber_util.Cancellation.fired cancel);
      Fiber.return ());
   [%expect {|
@@ -959,10 +967,12 @@ let%expect_test "cancel_test2" =
     Scheduler.run
       (Fiber_util.Cancellation.with_handler cancel
          (fun () ->
-           let* () = Fiber.Ivar.fill ivar1 () in
-           let* () = Fiber_util.Cancellation.fire cancel in
+           Fiber.Ivar.fill ivar1 ();
+           Fiber_util.Cancellation.fire cancel;
            Fiber.Ivar.read ivar2)
-         ~on_cancellation:(fun () -> Fiber.Ivar.fill ivar2 ()))
+         ~on_cancellation:(fun () ->
+           Fiber.Ivar.fill ivar2 ();
+           Fiber.return ()))
   in
   print_endline
     (match what with
@@ -990,7 +1000,8 @@ let%expect_test "cancel_test4" =
   let cancel = Fiber_util.Cancellation.create () in
   let (), what =
     Scheduler.run
-      (let* () = Fiber_util.Cancellation.fire cancel in
+      (let* () = Fiber.return () in
+       Fiber_util.Cancellation.fire cancel;
        Fiber_util.Cancellation.with_handler cancel
          (fun () -> Fiber.return ())
          ~on_cancellation:(fun () -> Fiber.return ()))

@@ -97,6 +97,9 @@ let remove (type input output) ((module T) : (input, output) t) k =
 let iter (type input output) ((module T) : (input, output) t) ~f =
   T.H.iter T.value ~f
 
+let iteri (type input output) ((module T) : (input, output) t) ~f =
+  T.H.iteri T.value ~f
+
 let filteri_inplace (type input output) ((module T) : (input, output) t) ~f =
   T.H.filteri_inplace T.value ~f
 

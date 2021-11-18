@@ -32,11 +32,7 @@ module Cancellation : sig
   (** Activate a cancellation.
 
       [fire] is idempotent, so calling [fire t] more than once has no effect. *)
-  val fire : t -> unit Fiber.t
-
-  (** Version of [fire] that is suitable to call from the [iter] callback of
-      [Fiber.run]. *)
-  val fire' : t -> Fiber.fill list
+  val fire : t -> unit
 
   (** Return whether the given cancellation has been fired. *)
   val fired : t -> bool

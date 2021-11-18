@@ -172,6 +172,8 @@ module Event : sig
     | Fs_event of Dune_file_watcher.Fs_memo_event.t
     | Invalidation of Memo.Invalidation.t
 
+  type fill = Fill : 'a Fiber.Ivar.t * 'a -> fill
+
   type t =
     | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
@@ -179,9 +181,9 @@ module Event : sig
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
-    | Worker_task of Fiber.fill
+    | Worker_task of fill
     | Yield of unit Fiber.Ivar.t
-    | Timer of Fiber.fill
+    | Timer of fill
 
   module Queue : sig
     type t
@@ -203,7 +205,7 @@ module Event : sig
     (** Number of jobs for which the status hasn't been reported yet .*)
     val pending_jobs : t -> int
 
-    val send_worker_task_completed : t -> Fiber.fill -> unit
+    val send_worker_task_completed : t -> fill -> unit
 
     val register_worker_task_started : t -> unit
 
@@ -221,7 +223,7 @@ module Event : sig
 
     val send_signal : t -> Shutdown_reason.t -> unit
 
-    val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
+    val send_timers_completed : t -> fill Nonempty_list.t -> unit
 
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
@@ -231,6 +233,8 @@ end = struct
     | Fs_event of Dune_file_watcher.Fs_memo_event.t
     | Invalidation of Memo.Invalidation.t
 
+  type fill = Fill : 'a Fiber.Ivar.t * 'a -> fill
+
   type t =
     | File_watcher_task of (unit -> Dune_file_watcher.Event.t list)
     | Build_inputs_changed of build_input_change Nonempty_list.t
@@ -238,9 +242,9 @@ end = struct
     | File_system_watcher_terminated
     | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
-    | Worker_task of Fiber.fill
+    | Worker_task of fill
     | Yield of unit Fiber.Ivar.t
-    | Timer of Fiber.fill
+    | Timer of fill
 
   module Invalidation_event = struct
     type t =
@@ -260,8 +264,8 @@ end = struct
       ; cond : Condition.t
       ; mutable pending_jobs : int
       ; mutable pending_worker_tasks : int
-      ; worker_tasks_completed : Fiber.fill Queue.t
-      ; timers : Fiber.fill Queue.t
+      ; worker_tasks_completed : fill Queue.t
+      ; timers : fill Queue.t
       ; stats : Dune_stats.t option
       ; mutable got_event : bool
       ; mutable yield : unit Fiber.Ivar.t option
@@ -795,8 +799,7 @@ end = struct
           not eq);
     Mutex.unlock t.mutex;
     if !found then
-      Event.Queue.send_timers_completed t.events
-        [ Fiber.Fill (alarm, `Cancelled) ]
+      Event.Queue.send_timers_completed t.events [ Fill (alarm, `Cancelled) ]
 
   let polling_loop t () =
     let rec loop () =
@@ -807,7 +810,7 @@ end = struct
         let expired, active =
           List.partition_map t.alarms ~f:(fun (expiration, ivar) ->
               if now > expiration then
-                Left (Fiber.Fill (ivar, `Finished))
+                Left (Event.Fill (ivar, `Finished))
               else
                 Right (expiration, ivar))
         in
@@ -1035,67 +1038,57 @@ end = struct
       - notifying completed jobs
       - starting cancellations
       - terminating the scheduler on signals *)
-  let rec iter (t : t) : Fiber.fill Nonempty_list.t =
+  let iter (t : t) =
     t.handler t.config Tick;
     match Event.Queue.next t.events with
-    | Job_completed (job, proc_info) -> [ Fill (job.ivar, proc_info) ]
+    | Job_completed (job, proc_info) -> Fiber.Ivar.fill job.ivar proc_info
     | File_watcher_task job ->
       let events = job () in
-      Event.Queue.send_file_watcher_events t.events events;
-      iter t
+      Event.Queue.send_file_watcher_events t.events events
     | File_system_sync id -> (
       match Dune_file_watcher.Sync_id.Table.find t.fs_syncs id with
-      | None -> iter t
+      | None -> ()
       | Some ivar ->
         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
-        [ Fill (ivar, ()) ])
+        Fiber.Ivar.fill ivar ())
     | Build_inputs_changed events -> (
       let invalidation =
         (handle_invalidation_events events : Memo.Invalidation.t)
       in
-      let fills =
-        if Memo.Invalidation.is_empty invalidation then
-          match !(t.status) with
-          | Standing_by prev ->
-            t.status :=
-              Standing_by { prev with saw_insignificant_changes = true };
-            []
-          | _ -> []
-        else
-          match !(t.status) with
-          | Restarting_build prev_invalidation ->
-            t.status :=
-              Restarting_build
-                (Memo.Invalidation.combine prev_invalidation invalidation);
-            []
-          | Standing_by prev ->
-            t.status :=
-              Standing_by
-                { prev with
-                  invalidation =
-                    Memo.Invalidation.combine prev.invalidation invalidation
-                };
-            []
-          | Building cancellation ->
-            t.handler t.config Build_interrupted;
-            t.status := Restarting_build invalidation;
-            Fiber_util.Cancellation.fire' cancellation
-      in
+      (if Memo.Invalidation.is_empty invalidation then
+        match !(t.status) with
+        | Standing_by prev ->
+          t.status := Standing_by { prev with saw_insignificant_changes = true };
+          ()
+        | _ -> ()
+      else
+        match !(t.status) with
+        | Restarting_build prev_invalidation ->
+          t.status :=
+            Restarting_build
+              (Memo.Invalidation.combine prev_invalidation invalidation)
+        | Standing_by prev ->
+          t.status :=
+            Standing_by
+              { prev with
+                invalidation =
+                  Memo.Invalidation.combine prev.invalidation invalidation
+              }
+        | Building cancellation ->
+          t.handler t.config Build_interrupted;
+          t.status := Restarting_build invalidation;
+          Fiber_util.Cancellation.fire cancellation);
       match !(t.wait_for_build_input_change) with
-      | None -> (
-        match Nonempty_list.of_list fills with
-        | None -> iter t
-        | Some fills -> fills)
+      | None -> ()
       | Some ivar ->
         t.wait_for_build_input_change := None;
-        Fill (ivar, ()) :: fills)
-    | Timer fill
-    | Worker_task fill ->
-      [ fill ]
+        Fiber.Ivar.fill ivar ())
+    | Timer (Fill (ivar, v)) -> Fiber.Ivar.fill ivar v
+    | Worker_task (Fill (ivar, v)) -> Fiber.Ivar.fill ivar v
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
-    | Yield ivar -> [ Fill (ivar, ()) ]
+    | Yield ivar -> Fiber.Ivar.fill ivar ()
     | Shutdown signal -> (
       got_signal signal;
       match signal with
@@ -1146,7 +1139,7 @@ module Worker = struct
     let ivar = Fiber.Ivar.create () in
     let f () =
       let res = Exn_with_backtrace.try_with f in
-      Event.Queue.send_worker_task_completed t.events (Fiber.Fill (ivar, res))
+      Event.Queue.send_worker_task_completed t.events (Fill (ivar, res))
     in
     match Thread_worker.add_work t.worker ~f with
     | Error `Stopped -> Fiber.return (Error `Stopped)
@@ -1286,7 +1279,7 @@ module Run = struct
         res
       in
       let* res = poll_iter t step in
-      let* () = Fiber.Ivar.fill response_ivar res in
+      Fiber.Ivar.fill response_ivar res;
       loop ()
     in
     loop ()

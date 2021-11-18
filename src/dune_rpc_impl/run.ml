@@ -7,7 +7,6 @@ module Config = struct
     | Client
     | Server of
         { handler : Dune_rpc_server.t
-        ; pool : Fiber.Pool.t
         ; backlog : int
         ; root : string
         }
@@ -18,7 +17,6 @@ type t =
   | Server of
       { server : Csexp_rpc.Server.t
       ; handler : Dune_rpc_server.t
-      ; pool : Fiber.Pool.t
       ; where : Dune_rpc_private.Where.t
       ; stats : Dune_stats.t option
       ; root : string
@@ -31,10 +29,10 @@ module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 let of_config config stats =
   match config with
   | Config.Client -> Client
-  | Config.Server { handler; backlog; pool; root } ->
+  | Config.Server { handler; backlog; root } ->
     let where = Where.default () in
     let server = Csexp_rpc.Server.create (Where.to_socket where) ~backlog in
-    Server { server; handler; where; stats; pool; root }
+    Server { server; handler; where; stats; root }
 
 let run config stats =
   let t = of_config config stats in
@@ -58,41 +56,36 @@ let run config stats =
         Fiber.finalize
           (with_print_errors (fun () ->
                let open Fiber.O in
-               Fiber.fork_and_join_unit
-                 (fun () ->
-                   let* sessions = Csexp_rpc.Server.serve t.server in
-                   let () =
-                     let (`Caller_should_write { Registry.File.path; contents })
-                         =
-                       let registry_config =
-                         Registry.Config.create (Lazy.force Dune_util.xdg)
-                       in
-                       let dune =
-                         let pid = Unix.getpid () in
-                         let where =
-                           match t.where with
-                           | `Ip (host, port) -> `Ip (host, port)
-                           | `Unix a ->
-                             `Unix
-                               (if Filename.is_relative a then
-                                 Filename.concat (Sys.getcwd ()) a
-                               else
-                                 a)
-                         in
-                         Registry.Dune.create ~where ~root:t.root ~pid
-                       in
-                       Registry.Config.register registry_config dune
-                     in
-                     let (_ : Fpath.mkdir_p_result) =
-                       Fpath.mkdir_p (Filename.dirname path)
-                     in
-                     Io.String_path.write_file path contents;
-                     cleanup_registry := Some path;
-                     at_exit run_cleanup_registry
+               let* sessions = Csexp_rpc.Server.serve t.server in
+               let () =
+                 let (`Caller_should_write { Registry.File.path; contents }) =
+                   let registry_config =
+                     Registry.Config.create (Lazy.force Dune_util.xdg)
                    in
-                   let* () = Server.serve sessions t.stats t.handler in
-                   Fiber.Pool.stop t.pool)
-                 (fun () -> Fiber.Pool.run t.pool)))
+                   let dune =
+                     let pid = Unix.getpid () in
+                     let where =
+                       match t.where with
+                       | `Ip (host, port) -> `Ip (host, port)
+                       | `Unix a ->
+                         `Unix
+                           (if Filename.is_relative a then
+                             Filename.concat (Sys.getcwd ()) a
+                           else
+                             a)
+                     in
+                     Registry.Dune.create ~where ~root:t.root ~pid
+                   in
+                   Registry.Config.register registry_config dune
+                 in
+                 let (_ : Fpath.mkdir_p_result) =
+                   Fpath.mkdir_p (Filename.dirname path)
+                 in
+                 Io.String_path.write_file path contents;
+                 cleanup_registry := Some path;
+                 at_exit run_cleanup_registry
+               in
+               Server.serve sessions t.stats t.handler))
           ~finally:(fun () ->
             run_cleanup_registry ();
             Fiber.return ()))

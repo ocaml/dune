@@ -189,7 +189,7 @@ module Client = struct
 
       val read : 'a t -> 'a fiber
 
-      val fill : 'a t -> 'a -> unit fiber
+      val fill : 'a t -> 'a -> unit
     end
     with type 'a fiber := 'a t
   end) (Chan : sig
@@ -215,12 +215,12 @@ module Client = struct
       let of_chan c =
         let disconnected = Fiber.Ivar.create () in
         let read () =
-          let* result = Chan.read c in
+          let+ result = Chan.read c in
           match result with
           | None ->
-            let+ () = Fiber.Ivar.fill disconnected () in
+            Fiber.Ivar.fill disconnected ();
             None
-          | _ -> Fiber.return result
+          | _ -> result
         in
         { read
         ; write = (fun s -> Chan.write c s)
@@ -289,31 +289,18 @@ module Client = struct
       | false -> Fiber.return ()
       | true ->
         t.running <- false;
-        let ivars = ref [] in
-        Table.filteri_inplace t.requests ~f:(fun ~key:id ~data:ivar ->
-            ivars := (id, ivar) :: !ivars;
-            false);
-        let ivars () =
-          Fiber.return
-            (match !ivars with
-            | [] -> None
-            | x :: xs ->
-              ivars := xs;
-              Some x)
-        in
-        Fiber.fork_and_join_unit
-          (fun () -> Chan.write t.chan None)
-          (fun () ->
-            Fiber.parallel_iter ivars ~f:(fun (id, ivar) ->
-                let error =
-                  let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
-                  Response.Error.create ~kind:Code_error ~payload
-                    ~message:
-                      "connection terminated. this request will never receive \
-                       a response"
-                    ()
-                in
-                Fiber.Ivar.fill ivar (Error error)))
+        Table.iteri t.requests ~f:(fun id ivar ->
+            let error =
+              let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
+              Response.Error.create ~kind:Code_error ~payload
+                ~message:
+                  "connection terminated. this request will never receive a \
+                   response"
+                ()
+            in
+            Fiber.Ivar.fill ivar (Error error));
+        Table.clear t.requests;
+        Chan.write t.chan None
 
     let terminate_with_error t message info =
       Fiber.fork_and_join_unit
@@ -558,7 +545,8 @@ module Client = struct
             match Table.find t.requests id with
             | Some ivar ->
               Table.remove t.requests id;
-              Fiber.Ivar.fill ivar response
+              Fiber.Ivar.fill ivar response;
+              Fiber.return ()
             | None ->
               terminate_with_error t "unexpected response"
                 [ ("id", Id.to_dyn id); ("response", Response.to_dyn response) ]
@@ -702,7 +690,7 @@ module Client = struct
               ~menu
           in
           client.handler_initialized <- true;
-          let* () = Fiber.Ivar.fill handler_var handler in
+          Fiber.Ivar.fill handler_var handler;
           Fiber.finalize
             (fun () -> f client)
             ~finally:(fun () -> Chan.write chan None)

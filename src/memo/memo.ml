@@ -842,11 +842,11 @@ module Computation = struct
          to let the latter get the discovered dependencies [deps_rev]. *)
       Call_stack.push_frame frame (fun () -> fiber frame)
     in
-    let+ () = Fiber.Ivar.fill ivar result in
-    result
+    Fiber.Ivar.fill ivar result;
+    Fiber.return result
 
   let read_but_first_check_for_cycles { ivar; dag_node } ~dep_node =
-    Fiber.Ivar.peek ivar >>= function
+    match Fiber.Ivar.peek ivar with
     | Some res -> Fiber.return (Ok res)
     | None -> (
       let dag_node = Lazy_dag_node.force dag_node ~dep_node in

@@ -83,6 +83,8 @@ struct
         | true -> ());
     List.iter !to_delete ~f:(fun k -> remove t k)
 
+  let iteri t ~f = iter t ~f:(fun ~key ~data -> f key data)
+
   let iter t ~f = iter t ~f:(fun ~key:_ ~data -> f data)
 end
 

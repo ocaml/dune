@@ -19,13 +19,13 @@ module Instance = struct
     (module S with type Spec.response = 'r and type Spec.update = 'u)
 
   let finish_waiter = function
-    | No_active_request _ -> Fiber.return ()
+    | No_active_request _ -> ()
     | Waiting a -> Fiber.Ivar.fill a None
 
   let client_cancel (type r u) (t : (r, u) t) poller =
     let module T = (val t) in
     match Poll_map.find !T.waiters poller with
-    | None -> Fiber.return ()
+    | None -> ()
     | Some w ->
       T.waiters := Poll_map.remove !T.waiters poller;
       finish_waiter w
@@ -67,11 +67,10 @@ module Instance = struct
             to_notify := ivar :: !to_notify;
             Some (No_active_request (T.Spec.no_change ())));
     match !to_notify with
-    | [] -> Fiber.return ()
+    | [] -> ()
     | to_notify ->
       let r = T.Spec.on_update_waiting u in
-      Fiber.parallel_iter to_notify ~f:(fun ivar ->
-          Fiber.Ivar.fill ivar (Some r))
+      List.iter to_notify ~f:(fun ivar -> Fiber.Ivar.fill ivar (Some r))
 
   let disconnect_session (type u r) (t : (r, u) t) session =
     let module T = (val t) in
@@ -90,7 +89,7 @@ module Instance = struct
             | None, Some _
             | None, None ->
               assert false);
-    Poll_map.values cancel |> Fiber.parallel_iter ~f:finish_waiter
+    Poll_map.values cancel |> List.iter ~f:finish_waiter
 end
 
 module Build_system = Dune_engine.Build_system
@@ -221,6 +220,5 @@ let create () : t =
   { diagnostic = (module D); progress = (module P) }
 
 let disconnect_session { diagnostic; progress } session =
-  Fiber.fork_and_join_unit
-    (fun () -> Instance.disconnect_session diagnostic session)
-    (fun () -> Instance.disconnect_session progress session)
+  Instance.disconnect_session diagnostic session;
+  Instance.disconnect_session progress session

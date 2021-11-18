@@ -88,7 +88,7 @@ module Job_queue : sig
 
   val read : 'a t -> 'a Fiber.t
 
-  val write : 'a t -> 'a -> unit Fiber.t
+  val write : 'a t -> 'a -> unit
 end = struct
   (* invariant: if reader is Some then queue is empty *)
   type 'a t =
@@ -114,14 +114,11 @@ end = struct
           | Some v -> Fiber.return v))
 
   let write t elem =
-    Fiber.of_thunk (fun () ->
-        match t.reader with
-        | Some ivar ->
-          t.reader <- None;
-          Fiber.Ivar.fill ivar elem
-        | None ->
-          Queue.push t.queue elem;
-          Fiber.return ())
+    match t.reader with
+    | Some ivar ->
+      t.reader <- None;
+      Fiber.Ivar.fill ivar elem
+    | None -> Queue.push t.queue elem
 end
 
 type t =
@@ -129,7 +126,6 @@ type t =
   ; pending_build_jobs :
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; build_handler : Build_system.Handler.t
-  ; pool : Fiber.Pool.t
   ; long_poll : Long_poll.t
   ; mutable clients : Clients.t
   }
@@ -146,7 +142,8 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_terminate session =
     let t = Fdecl.get t in
     t.clients <- Clients.remove_session t.clients session;
-    Long_poll.disconnect_session t.long_poll session
+    Long_poll.disconnect_session t.long_poll session;
+    Fiber.return ()
   in
   let rpc =
     Handler.create ~on_terminate ~on_init
@@ -174,9 +171,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
               (Dune_lang.Parser.parse_string ~fname:"dune rpc"
                  ~mode:Dune_lang.Parser.Mode.Single s))
       in
-      let* () =
-        Job_queue.write (Fdecl.get t).pending_build_jobs (targets, ivar)
-      in
+      Job_queue.write (Fdecl.get t).pending_build_jobs (targets, ivar);
       Fiber.Ivar.read ivar
     in
     Handler.implement_request rpc Decl.build build
@@ -186,7 +181,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       match Job_queue.pop_internal (Fdecl.get t).pending_build_jobs with
       | None -> Fiber.return ()
       | Some (_, job) ->
-        let* () = Fiber.Ivar.fill job Build_outcome.Failure in
+        Fiber.Ivar.fill job Build_outcome.Failure;
         cancel_pending_jobs ()
     in
     let shutdown _ () =
@@ -207,7 +202,8 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     Handler.implement_poll rpc Procedures.Poll.progress
       ~on_cancel:(fun _session poller ->
         let p = Long_poll.progress (Fdecl.get t).long_poll in
-        Long_poll.Instance.client_cancel p poller)
+        Long_poll.Instance.client_cancel p poller;
+        Fiber.return ())
       ~on_poll:(fun _session poller ->
         let p = Long_poll.progress (Fdecl.get t).long_poll in
         Long_poll.Instance.poll p poller)
@@ -216,7 +212,8 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     Handler.implement_poll rpc Procedures.Poll.diagnostic
       ~on_cancel:(fun _session poller ->
         let p = Long_poll.diagnostic (Fdecl.get t).long_poll in
-        Long_poll.Instance.client_cancel p poller)
+        Long_poll.Instance.client_cancel p poller;
+        Fiber.return ())
       ~on_poll:(fun _session poller ->
         let p = Long_poll.diagnostic (Fdecl.get t).long_poll in
         Long_poll.Instance.poll p poller)
@@ -287,36 +284,28 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   rpc
 
-let task t f =
-  let* running = Fiber.Pool.running t.pool in
-  if running then
-    Fiber.Pool.task t.pool ~f
-  else
-    Fiber.return ()
-
 let error t errors =
   let t = Fdecl.get t in
-  task t (fun () ->
-      Long_poll.Instance.update (Long_poll.diagnostic t.long_poll) errors)
+  Long_poll.Instance.update (Long_poll.diagnostic t.long_poll) errors;
+  Fiber.return ()
 
 let build_progress t ~complete ~remaining =
   let t = Fdecl.get t in
-  task t (fun () ->
-      let progress = Progress.In_progress { complete; remaining } in
-      Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
+  let progress = Progress.In_progress { complete; remaining } in
+  Long_poll.Instance.update (Long_poll.progress t.long_poll) progress;
+  Fiber.return ()
 
 let build_event t (event : Build_system.Handler.event) =
   let t = Fdecl.get t in
   let progress = progress_of_build_event event in
-  task t (fun () ->
-      Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
+  Long_poll.Instance.update (Long_poll.progress t.long_poll) progress;
+  Fiber.return ()
 
 let create ~root =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t) in
-  let pool = Fiber.Pool.create () in
-  let config = Run.Config.Server { handler; backlog = 10; pool; root } in
+  let config = Run.Config.Server { handler; backlog = 10; root } in
   let build_handler =
     Build_system.Handler.create ~error:(error t)
       ~build_progress:(build_progress t) ~build_event:(build_event t)
@@ -327,7 +316,6 @@ let create ~root =
     ; pending_build_jobs
     ; clients = Clients.empty
     ; build_handler
-    ; pool
     ; long_poll
     }
   in

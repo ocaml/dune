@@ -11,6 +11,8 @@ type t =
   | Plugin
   | Js
 
+val compare : t -> t -> Ordering.t
+
 include Dune_lang.Conv.S with type t := t
 
 val all : t list

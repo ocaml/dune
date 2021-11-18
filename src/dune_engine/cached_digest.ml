@@ -14,13 +14,11 @@ module Reduced_stats = struct
   let of_unix_stats (stats : Unix.stats) =
     { mtime = stats.st_mtime; size = stats.st_size; perm = stats.st_perm }
 
-  let compare a b =
-    match Float.compare a.mtime b.mtime with
-    | (Lt | Gt) as x -> x
-    | Eq -> (
-      match Int.compare a.size b.size with
-      | (Lt | Gt) as x -> x
-      | Eq -> Int.compare a.perm b.perm)
+  let compare { mtime; size; perm } t =
+    let open Ordering.O in
+    let= () = Float.compare mtime t.mtime in
+    let= () = Int.compare size t.size in
+    Int.compare perm t.perm
 end
 
 type file =

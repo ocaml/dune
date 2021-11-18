@@ -20,7 +20,7 @@ module Dune = struct
       ; where : Where.t
       }
 
-    let compare t { root; pid; where } : Ordering.t =
+    let compare t { root; pid; where } =
       let open Ordering.O in
       let= () = Int.compare t.pid pid in
       let= () = String.compare t.root root in
@@ -38,8 +38,6 @@ module Dune = struct
   include T
   module C = Comparable.Make (T)
   module Set = C.Set
-
-  let compare x y = compare x y
 
   let create ~where ~root ~pid = { where; root; pid }
 

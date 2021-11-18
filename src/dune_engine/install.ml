@@ -89,8 +89,6 @@ module Section_with_site = struct
         ; loc : Loc.t
         }
 
-  (* let compare : t -> t -> Ordering.t = Poly.compare *)
-
   let to_dyn x =
     let open Dyn in
     match x with
@@ -227,13 +225,11 @@ module Entry = struct
       }
   end
 
-  let compare compare_src x y =
-    match Section.compare x.section y.section with
-    | (Lt | Gt) as c -> c
-    | Eq -> (
-      match Dst.compare x.dst y.dst with
-      | (Lt | Gt) as c -> c
-      | Eq -> compare_src x.src y.src)
+  let compare compare_src { src; dst; section } t =
+    let open Ordering.O in
+    let= () = Section.compare section t.section in
+    let= () = Dst.compare dst t.dst in
+    compare_src src t.src
 
   let adjust_dst_gen =
     let error (source_pform : Dune_lang.Template.Pform.t) =

@@ -158,9 +158,10 @@ module Macro = struct
     | Bin, Bin -> Eq
     | Bin, _ -> Lt
     | _, Bin -> Gt
-    | Lib { lib_exec; lib_private }, Lib y ->
-      Tuple.T2.compare Bool.compare Bool.compare (lib_exec, lib_private)
-        (y.lib_exec, y.lib_private)
+    | Lib { lib_exec; lib_private }, Lib t ->
+      let open Ordering.O in
+      let= () = Bool.compare lib_exec t.lib_exec in
+      Bool.compare lib_private t.lib_private
     | Lib _, _ -> Lt
     | _, Lib _ -> Gt
     | Lib_available, Lib_available -> Eq
@@ -232,7 +233,9 @@ module T = struct
     | Var _, _ -> Lt
     | _, Var _ -> Gt
     | Macro (m1, s1), Macro (m2, s2) ->
-      Tuple.T2.compare Macro.compare String.compare (m1, s1) (m2, s2)
+      let open Ordering.O in
+      let= () = Macro.compare m1 m2 in
+      String.compare s1 s2
 end
 
 include T

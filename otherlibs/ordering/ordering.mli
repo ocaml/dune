@@ -41,6 +41,10 @@ module O : sig
             Eq
       v}
 
-      to chain three comparisons instead of the usual triply nested [match]. *)
+      to chain three comparisons instead of the usual triply nested [match].
+
+      Note that the resulting code can be up to 2x slower than nested [match]ing
+      due to extra allocations that we are unable to eliminate (as of Nov 2021),
+      so you should use [let=] only where appropriate. *)
   val ( let= ) : t -> (unit -> t) -> t
 end

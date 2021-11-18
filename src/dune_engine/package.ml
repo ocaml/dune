@@ -63,10 +63,10 @@ module Id = struct
       ; dir : Path.Source.t
       }
 
-    let compare { dir; name } pkg =
-      match Name.compare pkg.name name with
-      | Eq -> Path.Source.compare dir pkg.dir
-      | s -> s
+    let compare { name; dir } pkg =
+      let open Ordering.O in
+      let= () = Name.compare name pkg.name in
+      Path.Source.compare dir pkg.dir
 
     let to_dyn { dir; name } =
       let open Dyn in

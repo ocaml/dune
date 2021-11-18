@@ -13,10 +13,10 @@ module File = struct
       let open Dyn in
       record [ ("ino", Int.to_dyn ino); ("dev", Int.to_dyn dev) ]
 
-    let compare a b =
-      match Int.compare a.ino b.ino with
-      | Eq -> Int.compare a.dev b.dev
-      | ne -> ne
+    let compare { ino; dev } t =
+      let open Ordering.O in
+      let= () = Int.compare ino t.ino in
+      Int.compare dev t.dev
   end
 
   include T

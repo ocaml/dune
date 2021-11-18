@@ -108,8 +108,9 @@ module File_ops_real (W : Workspace) : File_operations = struct
   let get_vcs p = Dune_engine.File_tree.nearest_vcs p
 
   type load_special_file_result =
-    | No_version_needed
-    | Need_version of (Format.formatter -> version:string -> unit)
+    { need_version : bool
+    ; callback : ?version:string -> Format.formatter -> unit
+    }
 
   let copy_special_file ~src ~package ~ic ~oc ~f =
     let plain_copy () =
@@ -117,7 +118,30 @@ module File_ops_real (W : Workspace) : File_operations = struct
       Io.copy_channels ic oc;
       Fiber.return ()
     in
+
     match f ic with
+    | Some { need_version; callback } ->
+      let open Fiber.O in
+      let+ version =
+        if need_version then
+          match
+            let open Option.O in
+            let* package =
+              Package.Name.Map.find workspace.conf.packages package
+            in
+            Package.dir package |> get_vcs
+          with
+          | None -> Fiber.return None
+          | Some vcs ->
+            let+ vcs = Dune_engine.Vcs.describe vcs in
+            Some vcs
+        else
+          Fiber.return None
+      in
+      let ppf = Format.formatter_of_out_channel oc in
+      callback ppf ?version;
+      Format.pp_print_flush ppf ()
+    | None -> plain_copy ()
     | exception _ ->
       User_warning.emit ~loc:(Loc.in_file src)
         [ Pp.text
@@ -125,20 +149,6 @@ module File_ops_real (W : Workspace) : File_operations = struct
              information."
         ];
       plain_copy ()
-    | No_version_needed -> plain_copy ()
-    | Need_version print -> (
-      match
-        let open Option.O in
-        let* package = Package.Name.Map.find workspace.conf.packages package in
-        Package.dir package |> get_vcs
-      with
-      | None -> plain_copy ()
-      | Some vcs ->
-        let open Fiber.O in
-        let+ version = Dune_engine.Vcs.describe vcs in
-        let ppf = Format.formatter_of_out_channel oc in
-        print ppf ~version;
-        Format.pp_print_flush ppf ())
 
   let process_meta ic =
     let lb = Lexing.from_channel ic in
@@ -156,15 +166,15 @@ module File_ops_real (W : Workspace) : File_operations = struct
       | Exit -> true
     in
     if not need_more_versions then
-      No_version_needed
+      None
     else
-      Need_version
-        (fun ppf ~version ->
-          let meta =
-            Dune_rules.Meta.add_versions meta ~get_version:(fun _ ->
-                Some version)
-          in
-          Pp.to_fmt ppf (Dune_rules.Meta.pp meta.entries))
+      let callback ?version ppf =
+        let meta =
+          Dune_rules.Meta.add_versions meta ~get_version:(fun _ -> version)
+        in
+        Pp.to_fmt ppf (Dune_rules.Meta.pp meta.entries)
+      in
+      Some { need_version = true; callback }
 
   let replace_sites
       ~(get_location : Dune_engine.Section.t -> Package.Name.t -> Stdune.Path.t)
@@ -177,9 +187,9 @@ module File_ops_real (W : Workspace) : File_operations = struct
     | None -> dp
     | Some name ->
       List.map dp ~f:(function
-        | Dune_lang.List ((Atom (A "sites") as sexp_sites) :: sites) ->
-          let sites =
-            List.map sites ~f:(function
+        | Dune_lang.List ((Atom (A "sections") as sexp_sections) :: sections) ->
+          let sections =
+            List.map sections ~f:(function
               | Dune_lang.List [ (Atom (A section) as section_sexp); _ ] ->
                 let path =
                   get_location
@@ -190,7 +200,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
                 pair sexp string (section_sexp, Path.to_absolute_filename path)
               | _ -> assert false)
           in
-          Dune_lang.List (sexp_sites :: sites)
+          Dune_lang.List (sexp_sections :: sections)
         | x -> x)
 
   let process_dune_package ~get_location ic =
@@ -202,35 +212,38 @@ module File_ops_real (W : Workspace) : File_operations = struct
     (* replace sites with external path in the file *)
     let dp = replace_sites ~get_location dp in
     (* replace version if needed in the file *)
-    if
-      List.exists dp ~f:(function
-        | Dune_lang.List (Atom (A "version") :: _)
-        | Dune_lang.List [ Atom (A "use_meta"); Atom (A "true") ]
-        | Dune_lang.List [ Atom (A "use_meta") ] ->
-          true
-        | _ -> false)
-    then
-      No_version_needed
-    else
-      Need_version
-        (fun ppf ~version ->
+    let need_version =
+      not
+        (List.exists dp ~f:(function
+          | Dune_lang.List (Atom (A "version") :: _)
+          | Dune_lang.List [ Atom (A "use_meta"); Atom (A "true") ]
+          | Dune_lang.List [ Atom (A "use_meta") ] ->
+            true
+          | _ -> false))
+    in
+    let callback ?version ppf =
+      let dp =
+        match version with
+        | Some version -> (
           let version =
             Dune_lang.List
               [ Dune_lang.atom "version"
               ; Dune_lang.atom_or_quoted_string version
               ]
           in
-          let dp =
-            match dp with
-            | lang :: name :: rest -> lang :: name :: version :: rest
-            | [ lang ] -> [ lang; version ]
-            | [] -> [ version ]
-          in
-          Format.pp_open_vbox ppf 0;
-          List.iter dp ~f:(fun x ->
-              Dune_lang.Deprecated.pp ppf x;
-              Format.pp_print_cut ppf ());
-          Format.pp_close_box ppf ())
+          match dp with
+          | lang :: name :: rest -> lang :: name :: version :: rest
+          | [ lang ] -> [ lang; version ]
+          | [] -> [ version ])
+        | _ -> dp
+      in
+      Format.pp_open_vbox ppf 0;
+      List.iter dp ~f:(fun x ->
+          Dune_lang.Deprecated.pp ppf x;
+          Format.pp_print_cut ppf ());
+      Format.pp_close_box ppf ()
+    in
+    Some { need_version; callback }
 
   let copy_file ~src ~dst ~executable ~special_file ~package
       ~(conf : Dune_rules.Artifact_substitution.conf) =

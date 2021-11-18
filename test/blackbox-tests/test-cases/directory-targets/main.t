@@ -469,7 +469,7 @@ Test error message if a destination directory is taken up by a file.
    8 |                 "\| echo c > dir/c;
    9 |                 "\| echo d > dir/subdir/d
   10 | )))
-  Error: Cannot promote "dir/subdir/d".
+  Error: Cannot promote files to "dir/subdir".
   Reason: "dir/subdir" is not a directory.
   -> required by _build/default/a
   [1]

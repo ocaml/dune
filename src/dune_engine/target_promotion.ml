@@ -109,8 +109,7 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
    somehow batch file promotions. Another approach is to make restarts really
    cheap, so that we don't care any more, for example, by introducing reverse
    dependencies in Memo (and/or by having smarter cancellations). *)
-let promote ~dir ~targets ~promote ~promote_source =
-  let files_to_promote = Path.Build.Map.keys targets.Targets.Produced.files in
+let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
   let selected_for_promotion =
     match promote.Rule.Promote.only with
     | None -> fun (_ : Path.Build.t) -> true
@@ -160,19 +159,20 @@ let promote ~dir ~targets ~promote ~promote_source =
         | true ->
           fun src -> Path.Source.relative into_dir (Path.Build.basename src)))
   in
-  let create_parent_directory_if_needed ~dst_path =
+  let create_directory_if_needed ~(dir : Path.Build.t) =
+    let dir = relocate dir |> Path.source in
     let user_error msg =
       User_error.raise
-        [ Pp.textf "Cannot promote %S." (Path.to_string dst_path); msg ]
+        [ Pp.textf "Cannot promote files to %S." (Path.to_string dir); msg ]
         ~annots:
           (User_message.Annots.singleton User_message.Annots.needs_stack_trace
              ())
     in
-    let dir = Path.parent_exn dst_path in
-    (* It is OK to use an untracked version here since below we will subscribe
-       to [dst]'s digest, so Dune will notice relevant changes to its parent
-       directory (e.g., its deletion). Furthermore, if we used a tracked version
-       here, the [Path.mkdir_p] below would generate an unnecessary event. *)
+    (* It is OK to use [Untracked.path_stat] on [dir] here because below we will
+       use [Fs_memo.path_digest] to subscribe to digests of files in [dir], so
+       Dune will watch for relevant changes to [dir], such as its deletion.
+       Furthermore, if we used a tracked version here, [Path.mkdir_p] below
+       would generate an unnecessary file-system event. *)
     match Fs_cache.(read Untracked.path_stat) dir with
     | Ok { st_kind; _ } when st_kind = S_DIR -> ()
     | Error (ENOENT, _, _) -> Path.mkdir_p dir
@@ -183,7 +183,11 @@ let promote ~dir ~targets ~promote ~promote_source =
       user_error
         (Pp.textf "Reason: %s." (Unix_error.Detailed.to_string unix_error))
   in
-  Fiber.sequential_iter files_to_promote ~f:(fun src ->
+  (* Here we know that the promotion directory exists but we may need to create
+     some additional subdirectories in [targets.dirs]. *)
+  Path.Build.Map.iteri targets.dirs ~f:(fun dir (_filenames : _ String.Map.t) ->
+      create_directory_if_needed ~dir);
+  Targets.Produced.Fiber.sequential_iteri targets ~f:(fun src _payload ->
       match selected_for_promotion src with
       | false -> Fiber.return ()
       | true -> (
@@ -192,10 +196,6 @@ let promote ~dir ~targets ~promote ~promote_source =
           [ Pp.textf "Promoting %S to %S" (Path.Build.to_string src)
               (Path.Source.to_string dst)
           ];
-        (* We know that [dir] exists but if [dst] comes from a directory target,
-           we may need to create some additional subdirectories. *)
-        let dst_path = Path.source dst in
-        create_parent_directory_if_needed ~dst_path;
         (match promote.lifetime with
         | Until_clean -> To_delete.add dst
         | Unlimited -> ());
@@ -205,7 +205,8 @@ let promote ~dir ~targets ~promote ~promote_source =
         let chmod n = n lor 0o200 in
         let* () = promote_source ~chmod ~src ~dst in
         let+ dst_digest_result =
-          Memo.Build.run (Fs_memo.path_digest ~force_update:true dst_path)
+          Memo.Build.run
+            (Fs_memo.path_digest ~force_update:true (Path.source dst))
         in
         match Cached_digest.Digest_result.to_option dst_digest_result with
         | Some dst_digest ->

@@ -20,15 +20,15 @@ module type S = sig
   (** Return the list of all existing [t]s. *)
   val all : unit -> t list
 
+  module Map : Map.S with type key = t
+
   module Set : sig
-    include Set.S with type elt = t
+    include Set.S with type elt = t and type 'a map = 'a Map.t
 
     val to_dyn : t -> Dyn.t
 
     val make : string list -> t
   end
-
-  module Map : Map.S with type key = t
 
   (** Same as a hash table, but optimized for the case where we are using one
       entry for every possible [t] *)

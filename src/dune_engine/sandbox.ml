@@ -187,13 +187,13 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
         (Path.Build.to_string src_dir)
     with
     | Ok files ->
-      List.concat_map files ~f:(fun (file, kind) ->
+      List.map files ~f:(fun (file, kind) ->
           match (kind : Dune_filesystem_stubs.File_kind.t) with
           | S_REG ->
             let src = Path.Build.relative src_dir file in
             let dst = Path.Build.relative dst_dir file in
             Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
-            [ dst ]
+            Appendable_list.singleton (dst_dir, file)
           | S_DIR ->
             loop
               ~src_dir:(Path.Build.relative src_dir file)
@@ -203,6 +203,7 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
               [ Pp.textf "Rule produced a file with unrecognised kind %S"
                   (Dune_filesystem_stubs.File_kind.to_string kind)
               ])
+      |> Appendable_list.concat
     | Error (ENOENT, _, _) ->
       User_error.raise ~loc
         [ Pp.textf "Rule failed to produce directory %S"
@@ -217,7 +218,7 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
         ; Pp.verbatim (Unix.error_message unix_error)
         ]
   in
-  loop ~src_dir ~dst_dir |> Path.Build.Set.of_list
+  loop ~src_dir ~dst_dir
 
 let apply_changes_to_source_tree t ~old_snapshot =
   let new_snapshot = snapshot t in
@@ -249,14 +250,18 @@ let apply_changes_to_source_tree t ~old_snapshot =
         | Gt ->
           copy_file p))
 
-let move_targets_to_build_dir t ~loc ~files ~dirs =
+let move_targets_to_build_dir t ~loc ~should_be_skipped
+    ~(targets : Targets.Validated.t) : unit Targets.Produced.t =
   Option.iter t.snapshot ~f:(fun old_snapshot ->
       apply_changes_to_source_tree t ~old_snapshot);
-  Path.Build.Set.iter files ~f:(fun target ->
-      rename_optional_file ~src:(map_path t target) ~dst:target);
-  Path.Build.Set.fold dirs ~init:Path.Build.Set.empty ~f:(fun target acc ->
-      Path.Build.Set.union acc
-        (rename_dir_recursively ~loc ~src_dir:(map_path t target)
-           ~dst_dir:target))
+  Path.Build.Set.iter targets.files ~f:(fun target ->
+      if not (should_be_skipped target) then
+        rename_optional_file ~src:(map_path t target) ~dst:target);
+  let discovered_targets =
+    Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
+        rename_dir_recursively ~loc ~src_dir:(map_path t target) ~dst_dir:target)
+    |> Appendable_list.concat |> Appendable_list.to_list
+  in
+  Targets.Produced.expand_validated_exn targets discovered_targets
 
 let destroy t = Path.rm_rf (Path.build t.dir)

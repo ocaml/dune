@@ -5,9 +5,9 @@ module Version = struct
     type t = int * int
 
     let compare (major_a, minor_a) (major_b, minor_b) =
-      match Int.compare major_a major_b with
-      | (Gt | Lt) as ne -> ne
-      | Eq -> Int.compare minor_a minor_b
+      let open Ordering.O in
+      let= () = Int.compare major_a major_b in
+      Int.compare minor_a minor_b
 
     let to_dyn t =
       let open Dyn in
@@ -47,19 +47,9 @@ module Version = struct
     let open Int.Infix in
     parser_major = data_major && parser_minor >= data_minor
 
-  let min a b =
-    match compare a b with
-    | Lt
-    | Eq ->
-      a
-    | Gt -> b
+  let min = Ordering.min compare
 
-  let max a b =
-    match compare a b with
-    | Lt
-    | Eq ->
-      b
-    | Gt -> a
+  let max = Ordering.max compare
 end
 
 module Supported_versions = struct

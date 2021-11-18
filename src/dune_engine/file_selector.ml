@@ -12,10 +12,11 @@ let predicate t = t.predicate
 
 let only_generated_files t = t.only_generated_files
 
-let compare x y =
-  match Path.compare x.dir y.dir with
-  | (Ordering.Lt | Gt) as a -> a
-  | Eq -> Predicate.compare x.predicate y.predicate
+let compare { dir; predicate; only_generated_files } t =
+  let open Ordering.O in
+  let= () = Path.compare dir t.dir in
+  let= () = Predicate.compare predicate t.predicate in
+  Bool.compare only_generated_files t.only_generated_files
 
 let create ~dir ?(only_generated_files = false) predicate =
   { dir; predicate; only_generated_files }

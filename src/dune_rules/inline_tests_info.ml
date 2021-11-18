@@ -60,7 +60,18 @@ module Mode_conf = struct
       | Native
       | Best
 
-    let compare (a : t) b = Poly.compare a b
+    let compare x y =
+      match (x, y) with
+      | Byte, Byte -> Eq
+      | Byte, _ -> Lt
+      | _, Byte -> Gt
+      | Javascript, Javascript -> Eq
+      | Javascript, _ -> Lt
+      | _, Javascript -> Gt
+      | Native, Native -> Eq
+      | Native, _ -> Lt
+      | _, Native -> Gt
+      | Best, Best -> Eq
 
     let to_dyn = Dyn.opaque
   end

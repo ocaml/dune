@@ -50,17 +50,13 @@ module Pps = struct
     && List.equal String_with_vars.equal_no_loc t.flags flags
     && Bool.equal t.staged staged
 
-  let compare_no_locs compare_pps
-      { loc = _; pps = pps1; flags = flags1; staged = s1 }
-      { loc = _; pps = pps2; flags = flags2; staged = s2 } =
-    match Bool.compare s1 s2 with
-    | (Lt | Gt) as t -> t
-    | Eq -> (
-      match
-        List.compare flags1 flags2 ~compare:String_with_vars.compare_no_loc
-      with
-      | (Lt | Gt) as t -> t
-      | Eq -> List.compare pps1 pps2 ~compare:compare_pps)
+  let compare_no_locs compare_pps { pps; flags; staged; loc = _ } t =
+    let open Ordering.O in
+    let= () = Bool.compare staged t.staged in
+    let= () =
+      List.compare flags t.flags ~compare:String_with_vars.compare_no_loc
+    in
+    List.compare pps t.pps ~compare:compare_pps
 end
 
 type 'a t =

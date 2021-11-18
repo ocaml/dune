@@ -13,19 +13,18 @@ type t =
   ; loc : Loc.t
   }
 
-let compare_no_loc t1 t2 =
-  match Bool.compare t1.quoted t2.quoted with
-  | (Ordering.Lt | Gt) as a -> a
-  | Eq ->
-    List.compare t1.parts t2.parts ~compare:(fun a b ->
-        match (a, b) with
-        | Text a, Text b -> String.compare a b
-        | Pform (_, a), Pform (_, b) -> Pform.compare a b
-        | Error (_, a), Error (_, b) -> Poly.compare a b
-        | Text _, _ -> Lt
-        | _, Text _ -> Gt
-        | Pform _, _ -> Lt
-        | _, Pform _ -> Gt)
+let compare_no_loc { quoted; parts; loc = _ } t =
+  let open Ordering.O in
+  let= () = Bool.compare quoted t.quoted in
+  List.compare parts t.parts ~compare:(fun a b ->
+      match (a, b) with
+      | Text a, Text b -> String.compare a b
+      | Pform (_, a), Pform (_, b) -> Pform.compare a b
+      | Error (_, a), Error (_, b) -> Poly.compare a b
+      | Text _, _ -> Lt
+      | _, Text _ -> Gt
+      | Pform _, _ -> Lt
+      | _, Pform _ -> Gt)
 
 let equal_no_loc t1 t2 = Ordering.is_eq (compare_no_loc t1 t2)
 

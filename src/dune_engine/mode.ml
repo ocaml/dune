@@ -4,9 +4,20 @@ type t =
   | Byte
   | Native
 
-let equal (x : t) (y : t) = Poly.equal x y
+let equal x y =
+  match (x, y) with
+  | Byte, Byte -> true
+  | Byte, _
+  | _, Byte ->
+    false
+  | Native, Native -> true
 
-let compare = Poly.compare
+let compare x y =
+  match (x, y) with
+  | Byte, Byte -> Eq
+  | Byte, _ -> Lt
+  | _, Byte -> Gt
+  | Native, Native -> Eq
 
 let all = [ Byte; Native ]
 

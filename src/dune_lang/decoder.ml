@@ -16,11 +16,9 @@ module Name = struct
     type t = string
 
     let compare a b =
-      let alen = String.length a
-      and blen = String.length b in
-      match Int.compare alen blen with
-      | Eq -> String.compare a b
-      | ne -> ne
+      let open Ordering.O in
+      let= () = Int.compare (String.length a) (String.length b) in
+      String.compare a b
 
     let to_dyn = Dyn.string
   end

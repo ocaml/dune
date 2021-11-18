@@ -9,6 +9,25 @@ type t =
   | Plugin
   | Js
 
+let compare x y =
+  match (x, y) with
+  | C, C -> Eq
+  | C, _ -> Lt
+  | _, C -> Gt
+  | Exe, Exe -> Eq
+  | Exe, _ -> Lt
+  | _, Exe -> Gt
+  | Object, Object -> Eq
+  | Object, _ -> Lt
+  | _, Object -> Gt
+  | Shared_object, Shared_object -> Eq
+  | Shared_object, _ -> Lt
+  | _, Shared_object -> Gt
+  | Plugin, Plugin -> Eq
+  | Plugin, _ -> Lt
+  | _, Plugin -> Gt
+  | Js, Js -> Eq
+
 let decode =
   let open Dune_lang.Decoder in
   sum

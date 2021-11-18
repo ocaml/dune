@@ -69,10 +69,10 @@ module Edge = struct
     let to_dyn t =
       Dyn.Record [ ("src_id", Dyn.Int t.src_id); ("dst_id", Dyn.Int t.dst_id) ]
 
-    let compare a b =
-      match Int.compare a.src_id b.src_id with
-      | Eq -> Int.compare a.dst_id b.dst_id
-      | _ as neq -> neq
+    let compare { src_id; dst_id } t =
+      let open Ordering.O in
+      let= () = Int.compare src_id t.src_id in
+      Int.compare dst_id t.dst_id
   end
 
   include T

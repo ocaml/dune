@@ -1,28 +1,22 @@
 open! Stdune
+include String
 
-include
-  Interned.Make
-    (struct
-      let initial_size = 256
+let make s = s
 
-      let resize_policy = Interned.Conservative
+let to_string t = t
 
-      let order = Interned.Fast
-    end)
-    ()
+let ppx_driver = "ppx_driver"
 
-let ppx_driver = make "ppx_driver"
+let mt = "mt"
 
-let mt = make "mt"
+let mt_posix = "mt_posix"
 
-let mt_posix = make "mt_posix"
+let byte = "byte"
 
-let byte = make "byte"
+let native = "native"
 
-let native = make "native"
+let plugin = "plugin"
 
-let plugin = make "plugin"
+let encode t = Dune_lang.atom_or_quoted_string t
 
-let encode t = Dune_lang.atom_or_quoted_string (to_string t)
-
-let decode = Dune_lang.Decoder.plain_string (fun ~loc:_ s -> make s)
+let decode = Dune_lang.Decoder.string

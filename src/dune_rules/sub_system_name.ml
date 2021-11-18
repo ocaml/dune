@@ -1,13 +1,6 @@
-open! Dune_engine
 open! Stdune
+include String
 
-include
-  Interned.Make
-    (struct
-      let initial_size = 16
+let make s = s
 
-      let resize_policy = Interned.Conservative
-
-      let order = Interned.Natural
-    end)
-    ()
+let to_string t = t

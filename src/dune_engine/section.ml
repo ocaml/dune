@@ -120,30 +120,23 @@ Stringlike.Make (struct
 end)
 
 module Site = struct
-  module T =
-    Interned.Make
-      (struct
-        let initial_size = 16
-
-        let resize_policy = Interned.Conservative
-
-        let order = Interned.Natural
-      end)
-      ()
-
-  include T
+  include String
 
   include (
     Modulelike (struct
+      type t = string
+
+      let to_string t = t
+
       let module_ = "Section.Site"
 
       let description = "site name"
 
-      include T
+      let make s = s
     end) :
       Stringlike_intf.S with type t := t)
 
-  module Infix = Comparator.Operators (T)
+  module Infix = Comparator.Operators (String)
 end
 
 let dune_site_syntax =

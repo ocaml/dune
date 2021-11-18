@@ -5,24 +5,13 @@ let opam_ext = ".opam"
 let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
 
 module Name = struct
-  module T =
-    Interned.Make
-      (struct
-        let initial_size = 16
-
-        let resize_policy = Interned.Conservative
-
-        let order = Interned.Natural
-      end)
-      ()
-
-  include T
+  include String
 
   include (
     Stringlike.Make (struct
-      type t = T.t
+      type t = string
 
-      let to_string = T.to_string
+      let to_string x = x
 
       let module_ = "Package.Name"
 
@@ -37,7 +26,7 @@ module Name = struct
         if s = "" then
           None
         else
-          Some (make s)
+          Some s
     end) :
       Stringlike_intf.S with type t := t)
 
@@ -52,7 +41,7 @@ module Name = struct
 
   let version_fn (t : t) = to_string t ^ ".version"
 
-  module Infix = Comparator.Operators (T)
+  module Infix = Comparator.Operators (String)
   module Map_traversals = Memo.Build.Make_map_traversals (Map)
 end
 
@@ -713,7 +702,7 @@ let default name dir =
     ; { name = Name.of_string "dune"; constraint_ = None }
     ]
   in
-  { id = { name = Name.make name; dir }
+  { id = { name; dir }
   ; loc = Loc.none
   ; version = None
   ; synopsis = Some "A short synopsis"

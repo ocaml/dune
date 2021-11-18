@@ -206,27 +206,7 @@ let maybe_quoted s =
   else
     quoted s
 
-module O = Comparable.Make (T)
-
-module Set = struct
-  include O.Set
-
-  let pp fmt t =
-    Format.fprintf fmt "Set (@[%a@])"
-      (Format.pp_print_list Format.pp_print_string ~pp_sep:(fun fmt () ->
-           Format.fprintf fmt "@ "))
-      (to_list t)
-end
-
-module Map = struct
-  include O.Map
-
-  let pp f fmt t =
-    Format.pp_print_list
-      (fun fmt (k, v) -> Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v)
-      fmt (to_list t)
-end
-
+include Comparable.Make (T)
 module Table = Hashtbl.Make (T)
 
 let enumerate_gen s =

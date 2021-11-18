@@ -110,21 +110,7 @@ val findi : string -> f:(char -> bool) -> int option
 (** Find index of last character satisfying [f] *)
 val rfindi : string -> f:(char -> bool) -> int option
 
-module Map : sig
-  include Map.S with type key = t
-
-  val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
-
-  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
-end
-
-module Set : sig
-  include Set.S with type elt = t and type 'a map = 'a Map.t
-
-  val pp : Format.formatter -> t -> unit
-
-  val to_dyn : t -> Dyn.t
-end
+include Comparable_intf.S with type Key.t = t
 
 module Table : Hashtbl.S with type key = t
 

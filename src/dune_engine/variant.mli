@@ -5,9 +5,22 @@
 
     They are directly mapped to findlib predicates. *)
 
-include Stdune.Interned_intf.S
+open Stdune
 
-(** Well-known variants *)
+type t = private string
+
+include Comparable_intf.S with type Key.t := t
+
+val make : string -> t
+
+val to_string : t -> string
+
+val encode : t Dune_lang.Encoder.t
+
+val decode : t Dune_lang.Decoder.t
+
+(** {1 Well-known variants} *)
+
 val ppx_driver : t
 
 val mt : t
@@ -19,7 +32,3 @@ val byte : t
 val native : t
 
 val plugin : t
-
-val encode : t Dune_lang.Encoder.t
-
-val decode : t Dune_lang.Decoder.t

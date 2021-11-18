@@ -169,24 +169,26 @@ module Produced = struct
     in
     Digest.generic (List.concat all_digests)
 
-  exception Short_circuit
+  module Option = struct
+    exception Short_circuit
 
-  let with_digests { files; dirs } ~(f : Path.Build.t -> Digest.t option) =
-    let f path () =
-      match f path with
-      | Some digest -> digest
-      | None -> raise_notrace Short_circuit
-    in
-    try
-      let (files : Digest.t Path.Build.Map.t) = Path.Build.Map.mapi files ~f in
-      let dirs =
-        Path.Build.Map.mapi dirs ~f:(fun dir ->
-            String.Map.mapi ~f:(fun filename ->
-                f (Path.Build.relative dir filename)))
+    let mapi { files; dirs } ~(f : Path.Build.t -> 'a -> 'b option) =
+      let f path a =
+        match f path a with
+        | Some b -> b
+        | None -> raise_notrace Short_circuit
       in
-      Some { files; dirs }
-    with
-    | Short_circuit -> None
+      try
+        let files = Path.Build.Map.mapi files ~f in
+        let dirs =
+          Path.Build.Map.mapi dirs ~f:(fun dir ->
+              String.Map.mapi ~f:(fun filename ->
+                  f (Path.Build.relative dir filename)))
+        in
+        Some { files; dirs }
+      with
+      | Short_circuit -> None
+  end
 
   let to_dyn { files; dirs } =
     Dyn.record

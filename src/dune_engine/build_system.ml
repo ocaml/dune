@@ -476,7 +476,7 @@ let compute_target_digests (targets : Targets.Validated.t) :
   let targets =
     Targets.Produced.of_validated_files targets ~on_dir_target:`Ignore
   in
-  Targets.Produced.with_digests targets ~f:(fun target ->
+  Targets.Produced.Option.mapi targets ~f:(fun target () ->
       Cached_digest.build_file target |> Cached_digest.Digest_result.to_option)
 
 let compute_target_digests_or_raise_error exec_params ~loc ~produced_targets :
@@ -497,7 +497,7 @@ let compute_target_digests_or_raise_error exec_params ~loc ~produced_targets :
     Cached_digest.refresh ~remove_write_permissions
   in
   match
-    Targets.Produced.with_digests produced_targets ~f:(fun target ->
+    Targets.Produced.Option.mapi produced_targets ~f:(fun target () ->
         compute_digest target |> Cached_digest.Digest_result.to_option)
   with
   | Some result -> result

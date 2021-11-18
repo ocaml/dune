@@ -69,7 +69,7 @@ val pp : t -> _ Pp.t
 module Produced : sig
   type 'a t = private
     { files : 'a Path.Build.Map.t
-    ; dirs : 'a Path.Build.Map.t Path.Build.Map.t
+    ; dirs : 'a String.Map.t Path.Build.Map.t
     }
 
   (** Returns the given [targets : Validated.t]. Raises a code error if
@@ -81,10 +81,10 @@ module Produced : sig
       error if the list contains duplicates. *)
   val of_file_list_exn : (Path.Build.t * Digest.t) list -> Digest.t t
 
-  (** Add a list of discovered directory-file pairs to [Validated.t]. Raises a
-      code error on an unexpected directory. *)
+  (** Add a list of discovered directory-filename pairs to [Validated.t]. Raises
+      a code error on an unexpected directory. *)
   val expand_validated_exn :
-    Validated.t -> (Path.Build.t * Path.Build.t) list -> unit t
+    Validated.t -> (Path.Build.t * string) list -> unit t
 
   (** Union of [t.files] and all files in [t.dirs]. *)
   val all_files : 'a t -> 'a Path.Build.Map.t

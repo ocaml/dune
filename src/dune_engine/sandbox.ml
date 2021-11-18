@@ -193,7 +193,7 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
             let src = Path.Build.relative src_dir file in
             let dst = Path.Build.relative dst_dir file in
             Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
-            Appendable_list.singleton (dst_dir, dst)
+            Appendable_list.singleton (dst_dir, file)
           | S_DIR ->
             loop
               ~src_dir:(Path.Build.relative src_dir file)

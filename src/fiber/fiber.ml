@@ -60,7 +60,17 @@ module Execution_context : sig
 
   val set_vars : t -> Univ_map.t -> t
 
-  val run : 'a fiber -> iter:(unit -> unit) -> 'a
+  module Execution : sig
+    type 'a t
+
+    val create : 'a fiber -> 'a t
+
+    val advance : 'a t -> 'a option
+
+    val run : 'a t -> iter:(unit -> unit) -> 'a
+
+    val has_jobs : 'a t -> bool
+  end
 
   val reraise_all : t -> Exn_with_backtrace.t list -> unit
 end = struct
@@ -185,28 +195,70 @@ end = struct
       run_k ctx run x;
       run_jobs jobs
 
-  let run fiber ~iter =
-    let result = ref None in
-    let rec t =
-      { on_error = { ctx = t; run = (fun exn -> result := Some (Error exn)) }
-      ; vars = Univ_map.empty
-      ; on_release =
-          On_release { k = { ctx = t; run = ignore }; ref_count = 1; acc = () }
-      ; jobs = Queue.create ()
+  module Execution = struct
+    type 'a t =
+      { mutable result : ('a, Exn_with_backtrace.t) result option
+      ; jobs : job Queue.t
+      ; mutable advancing : bool
       }
-    in
-    spawn (fun () -> fiber) () t (fun x -> result := Some (Ok x));
-    run_jobs t.jobs;
-    let rec loop () =
-      match !result with
-      | Some (Ok res) -> res
-      | Some (Error exn) -> Exn_with_backtrace.reraise exn
+
+    let has_jobs t = not (Queue.is_empty t.jobs)
+
+    let create fiber =
+      let t = { result = None; advancing = false; jobs = Queue.create () } in
+      let rec ctx =
+        { on_error = { ctx; run = (fun exn -> t.result <- Some (Error exn)) }
+        ; vars = Univ_map.empty
+        ; on_release =
+            On_release { k = { ctx; run = ignore }; ref_count = 1; acc = () }
+        ; jobs = t.jobs
+        }
+      in
+      K.enqueue
+        { ctx; run = (fun () -> fiber ctx (fun x -> t.result <- Some (Ok x))) }
+        ();
+      t
+
+    let with_advancing t ~f =
+      if t.advancing then
+        Code_error.raise
+          "Fiber.Execution: advance or run called from whithin advance or run."
+          [];
+      t.advancing <- true;
+      Exn.protectx t ~finally:(fun t -> t.advancing <- false) ~f
+
+    let get_result = function
+      | Ok res -> Some res
+      | Error exn -> Exn_with_backtrace.reraise exn
+
+    let advance t =
+      with_advancing t ~f:(fun t ->
+          match t.result with
+          | Some res -> get_result res
+          | None -> (
+            run_jobs t.jobs;
+            match t.result with
+            | Some res -> get_result res
+            | None -> None))
+
+    let get_result = function
+      | Ok res -> res
+      | Error exn -> Exn_with_backtrace.reraise exn
+
+    let rec loop t ~iter =
+      run_jobs t.jobs;
+      match t.result with
+      | Some res -> get_result res
       | None ->
         iter ();
-        run_jobs t.jobs;
-        loop ()
-    in
-    loop ()
+        loop t ~iter
+
+    let run t ~iter =
+      with_advancing t ~f:(fun t ->
+          match t.result with
+          | Some res -> get_result res
+          | None -> loop t ~iter)
+  end
 end
 
 module EC = Execution_context
@@ -872,4 +924,8 @@ module Pool = struct
   let run t = stream t |> Stream.In.parallel_iter ~f:(fun task -> task ())
 end
 
-let run t ~iter = EC.run t ~iter
+module Execution = EC.Execution
+
+let run fiber ~iter =
+  let exec = Execution.create fiber in
+  Execution.run exec ~iter

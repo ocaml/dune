@@ -384,3 +384,32 @@ with type 'a fiber := 'a t
     the scheduler, it should block waiting for an event and fill some ivars to
     allow fibers to make progress. *)
 val run : 'a t -> iter:(unit -> unit) -> 'a
+
+(** Caller-controlled fiber execution *)
+module Execution : sig
+  type 'a fiber := 'a t
+
+  (** A fiber execution. *)
+  type 'a t
+
+  (** [create t] starts a new execution. This doesn't run the fiber at all, one
+      must call [advance] to start the execution. *)
+  val create : 'a fiber -> 'a t
+
+  (** Advance the execution of the fiber as much as possible. The caller should
+      call [Ivar.fill] in between calls to [advance] to ensure that the fiber
+      may progress. One the execution of the fiber has terminated, return
+      [Some _] or raise if the fiber failed. Calling [advance] past that point
+      will have the same effect.
+
+      Calling [advance t] while another call to [advance t] is in progress is an
+      error. *)
+  val advance : 'a t -> 'a option
+
+  (** Advance in a loop calling [iter] until the execution has completed. *)
+  val run : 'a t -> iter:(unit -> unit) -> 'a
+
+  (** Return whether the execution has any pending jobs. If this is [false],
+      then [advance] will not progress. *)
+  val has_jobs : 'a t -> bool
+end

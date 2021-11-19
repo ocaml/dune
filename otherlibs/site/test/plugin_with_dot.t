@@ -57,7 +57,8 @@
   > EOF
 
   $ cat >c/c.ml <<EOF
-  > let () = Sites.Plugins.Plugins.load Sys.argv.(1)
+  > let () = try Sites.Plugins.Plugins.load Sys.argv.(1)
+  >          with exn -> print_endline (Printexc.to_string exn)
   > let () = Printf.printf "run c: registered:%s.\n%!" (String.concat "," !C_register.registered)
   > EOF
 
@@ -79,13 +80,27 @@ Test with dune exec
 Test error messages
 --------------------------------
   $ dune exec -- c/c.exe "inexistent"
-  Fatal error: exception The plugin "inexistent" can't be found in the paths [$TESTCASE_ROOT/_build/install/default/lib/c/plugins]
-  [2]
+  The plugin "inexistent" can't be found in the search paths "$TESTCASE_ROOT/_build/install/default/lib/c/plugins".
+  run c: registered:.
 
   $ cat >c/c.ml <<EOF
-  > let () = Dune_site_plugins.V1.load Sys.argv.(1)
+  > let l = Lazy.force Dune_site.Private_.Helpers.ocamlpath
+  > let l = List.map (Printf.sprintf "OCAMLPATH=%s") l
+  > let () = print_string (String.concat ":" l)
   > EOF
 
-  $ dune exec -- c/c.exe "inexistent"
-  Fatal error: exception The library "inexistent" can't be found in the paths []
-  [2]
+  $ export BUILD_PATH_PREFIX_MAP="$(dune exe -- c/c.exe):$BUILD_PATH_PREFIX_MAP"
+
+  $ cat >c/c.ml <<EOF
+  > let () = try Dune_site_plugins.V1.load Sys.argv.(1)
+  >          with exn -> print_endline (Printexc.to_string exn)
+  > EOF
+
+  $ dune exec -- c/c.exe "inexistent" 2>&1 | sed -e 's&default/lib:.*&default/lib:..."&g'
+  The library "inexistent" can't be found in the search paths "$TESTCASE_ROOT/_build/install/default/lib:..."
+
+  $ dune exec -- c/c.exe "b.b.b"
+  run b
+
+  $ dune exec -- c/c.exe "b.b.inexistent" 2>&1  | sed -e 's&default/lib:.*&default/lib:..."&g'
+  The sub-library "inexistent" can't be found in the library b.b in the search paths "$TESTCASE_ROOT/_build/install/default/lib:..."

@@ -1,0 +1,19 @@
+(executable
+ (public_name app)
+ (modules sites app)
+ (libraries
+  app.register
+  dune-site
+  dune-site.plugins
+  ;TOREMOVE threads
+  ))
+
+(library
+ (public_name app.register)
+ (name registration)
+ (modules registration))
+
+(generate_sites_module
+ (module sites)
+ (plugins
+  (app plugins)))

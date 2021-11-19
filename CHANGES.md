@@ -62,6 +62,9 @@ Unreleased
 - Improve error handling of misbehaving cram scripts. (#4981, fix #4230,
   @rgrinberg)
 
+- Fix missing -linkall flag when linking library dune-sites.plugin
+  ( #4348, @kakadu, @bobot, reported by @kakadu)
+
 - Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
   when this field was present (#4942, fix #4946, @rgrinberg)
 

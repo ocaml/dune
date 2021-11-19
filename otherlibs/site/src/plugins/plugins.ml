@@ -59,6 +59,8 @@ let rec get_plugin plugins requires entries =
 
 exception Library_not_found of string
 
+exception Thread_library_required_by_plugin_but_not_required_by_main_executable
+
 let rec find_library ~suffix directory meta =
   let rec find_directory directory = function
     | [] -> directory
@@ -194,6 +196,9 @@ let loaded_libraries =
 let load_gen ~load_requires dirs name =
   let loaded_libraries = Lazy.force loaded_libraries in
   if not (Hashtbl.mem loaded_libraries name) then (
+    if name = "threads" then
+      raise
+        Thread_library_required_by_plugin_but_not_required_by_main_executable;
     Hashtbl.add loaded_libraries name ();
     let directory, plugins, requires = lookup_and_summarize dirs name in
     List.iter load_requires requires;

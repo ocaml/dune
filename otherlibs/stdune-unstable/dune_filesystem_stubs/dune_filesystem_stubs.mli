@@ -17,6 +17,8 @@ module Unix_error : sig
     val catch : ('a -> 'b) -> 'a -> ('b, t) result
 
     val equal : t -> t -> bool
+
+    val to_string : t -> string
   end
 end
 

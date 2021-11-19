@@ -190,6 +190,16 @@ module Produced = struct
       | Short_circuit -> None
   end
 
+  let to_seq t =
+    Seq.append
+      (Path.Build.Map.to_seq t.files)
+      (Seq.concat
+         (Path.Build.Map.to_seq t.dirs
+         |> Seq.map ~f:(fun (dir, filenames) ->
+                String.Map.to_seq filenames
+                |> Seq.map ~f:(fun (filename, payload) ->
+                       (Path.Build.relative dir filename, payload)))))
+
   let to_dyn { files; dirs } =
     Dyn.record
       [ ("files", Path.Build.Map.to_dyn Dyn.opaque files)

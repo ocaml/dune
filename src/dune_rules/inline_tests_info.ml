@@ -84,6 +84,7 @@ module Mode_conf = struct
       [ ("byte", Byte); ("js", Javascript); ("native", Native); ("best", Best) ]
 
   module O = Comparable.Make (T)
+  module Map = O.Map
 
   module Set = struct
     include O.Set

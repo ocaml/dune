@@ -9,7 +9,7 @@ open Stdune
 
 type t = private string
 
-include Comparable_intf.S with type Key.t := t
+include Comparable_intf.S with type key := t
 
 val make : string -> t
 

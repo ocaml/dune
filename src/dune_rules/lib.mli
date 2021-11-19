@@ -52,9 +52,7 @@ end
 
 val unique_id : t -> Id.t
 
-module Set : Set.S with type elt = t
-
-module Map : Map.S with type key = t
+include Comparable_intf.S with type key := t
 
 val equal : t -> t -> bool
 
@@ -311,8 +309,6 @@ module Local : sig
 
   val obj_dir : t -> Path.Build.t Obj_dir.t
 
-  module Set : Stdune.Set.S with type elt = t
-
-  module Map : Stdune.Map.S with type key = t
+  include Comparable_intf.S with type key := t
 end
 with type lib := t

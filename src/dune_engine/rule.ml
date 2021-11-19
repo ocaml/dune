@@ -75,8 +75,7 @@ module T = struct
 end
 
 include T
-module O = Comparable.Make (T)
-module Set = O.Set
+include Comparable.Make (T)
 
 let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
     action =

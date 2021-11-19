@@ -11,7 +11,7 @@ let syntax =
     ]
 
 module Language = struct
-  module Key = struct
+  module T = struct
     type t =
       | Dialect of string
       | Dune
@@ -30,9 +30,8 @@ module Language = struct
       | Dune -> variant "dune" []
   end
 
-  module Map = Map.Make (Key)
-  module Set = Set.Make (Key) (Map)
-  include Key
+  include Comparable.Make (T)
+  include T
 
   let of_string = function
     | "dune" -> Dune

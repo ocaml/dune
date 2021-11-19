@@ -52,9 +52,7 @@ module Id : sig
 
   val compare : t -> t -> Ordering.t
 
-  module Map : Map.S with type key = t
-
-  module Set : Set.S with type elt = t
+  include Comparable_intf.S with type key := t
 end
 
 type t = private
@@ -68,7 +66,7 @@ type t = private
   ; (* Directory where all the targets are produced. *) dir : Path.Build.t
   }
 
-module Set : Set.S with type elt = t
+include Comparable_intf.S with type key := t
 
 val equal : t -> t -> bool
 

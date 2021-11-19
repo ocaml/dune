@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fix plugins with dot in the name (#5182, @bobot, review @rgrinberg)
+
 - Fix installation of implementations of virtual libraries (#5150, fix #3636,
   @rgrinberg)
 

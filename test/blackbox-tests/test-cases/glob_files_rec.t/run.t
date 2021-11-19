@@ -25,6 +25,18 @@ Leave a/b2/c empty to make sure we don't choke on empty dirs.
   $ touch foo/a/b3/x.other
 
   $ dune build @x
+  File "dune", line 3, characters 7-33:
+  3 |  (deps (glob_files_rec foo/*.txt))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'glob_files_rec' is only available since version 3.0 of the dune
+  language. Please update your dune-project file to have (lang dune 3.0).
+  [1]
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > EOF
+
+  $ dune build @x
   foo/a/b1/c/x.txt
   foo/a/b1/c/y.txt
   foo/a/b3/x.txt

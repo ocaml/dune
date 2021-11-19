@@ -53,7 +53,7 @@ let decode =
       ; ( "glob_files"
         , sw >>| fun x -> Glob_files { glob = x; recursive = false } )
       ; ( "glob_files_rec"
-        , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 9)
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 0)
           and+ x = sw in
           Glob_files { glob = x; recursive = true } )
       ; ("package", sw >>| fun x -> Package x)

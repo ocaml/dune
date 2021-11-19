@@ -162,6 +162,16 @@ module Produced = struct
     in
     Path.Build.Map.union ~f:disallow_duplicates files files_in_dirs
 
+  let all_files_seq t =
+    Seq.append
+      (Path.Build.Map.to_seq t.files)
+      (Seq.concat
+         (Path.Build.Map.to_seq t.dirs
+         |> Seq.map ~f:(fun (dir, filenames) ->
+                String.Map.to_seq filenames
+                |> Seq.map ~f:(fun (filename, payload) ->
+                       (Path.Build.relative dir filename, payload)))))
+
   let digest { files; dirs } =
     let all_digests =
       Path.Build.Map.values files
@@ -189,16 +199,6 @@ module Produced = struct
       with
       | Short_circuit -> None
   end
-
-  let to_seq t =
-    Seq.append
-      (Path.Build.Map.to_seq t.files)
-      (Seq.concat
-         (Path.Build.Map.to_seq t.dirs
-         |> Seq.map ~f:(fun (dir, filenames) ->
-                String.Map.to_seq filenames
-                |> Seq.map ~f:(fun (filename, payload) ->
-                       (Path.Build.relative dir filename, payload)))))
 
   let to_dyn { files; dirs } =
     Dyn.record

@@ -474,12 +474,10 @@ Test error message if a destination directory is taken up by a file.
   -> required by _build/default/a
   [1]
 
+  $ rm dir/subdir
+
 Test error message for (promote (into <dir>)) if <dir> is missing.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
-  > EOF
   $ cat > dune <<EOF
   > (rule
   >   (mode (promote (into another_dir)))
@@ -499,4 +497,31 @@ Test error message for (promote (into <dir>)) if <dir> is missing.
                              ^^^^^^^^^^^
   Error: Directory "another_dir" does not exist. Please create it manually.
   -> required by _build/default/a
+  [1]
+
+Test cleaning up unexpected files and directories in directory targets.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (mode (promote))
+  >   (deps (sandbox always))
+  >   (targets a (dir dir))
+  >   (action (bash "\| echo a > a;
+  >                 "\| mkdir -p dir/subdir;
+  >                 "\| echo b > dir/b;
+  >                 "\| echo c > dir/c;
+  >                 "\| echo d > dir/subdir/d
+  > )))
+  > EOF
+
+  $ mkdir -p dir/unexpected-dir-1
+  $ mkdir -p dir/subdir/unexpected-dir-2
+  $ touch dir/unexpected-file-1
+  $ touch dir/unexpected-dir-1/unexpected-file-2
+  $ touch dir/subdir/unexpected-file-3
+  $ dune build a
+
+  $ ls dir | grep unexpected
+  [1]
+  $ ls dir/subdir | grep unexpected
   [1]

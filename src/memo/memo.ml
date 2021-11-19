@@ -581,7 +581,6 @@ module M = struct
     Dep_node
 end
 
-module State = M.State
 module Dep_node = M.Dep_node
 module Deps = M.Deps
 
@@ -998,6 +997,28 @@ module Cached_value = struct
     | ( Error { exns = prev_exns; reproducible = true }
       , Error { exns = cur_exns; reproducible = true } ) ->
       not (Exn_set.equal prev_exns cur_exns)
+
+  let to_dyn { value = _; last_changed_at; last_validated_at; deps = _ } =
+    Dyn.record
+      [ ("value", Opaque)
+      ; ("last_changed_at", Run.to_dyn last_changed_at)
+      ; ("last_validated_at", Run.to_dyn last_validated_at)
+      ; ("deps", Opaque)
+      ]
+end
+
+module State = struct
+  include M.State
+
+  let to_dyn = function
+    | Cached_value cached_value ->
+      Dyn.variant "Cached_value" [ Cached_value.to_dyn cached_value ]
+    | Restoring _ -> Dyn.variant "Restoring" [ Opaque ]
+    | Computing _ -> Dyn.variant "Computing" [ Opaque ]
+    | Out_of_date { old_value } ->
+      Dyn.variant "Out_of_date"
+        [ Dyn.record [ ("old_value", Dyn.option Cached_value.to_dyn old_value) ]
+        ]
 end
 
 type ('input, 'output) t =
@@ -1286,18 +1307,28 @@ end = struct
     | Computing { old_value; _ } ->
       Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
 
-  (* This function assumes that restoring the value from cache failed, which
-     means we can only be in two possible states: [Out_of_date] or
-     [Computing]. *)
+  (* This function assumes that restoring the value from cache failed. This
+     means we should be in two possible states: [Out_of_date] or [Computing].
+     However, as it turns out (see CR-someday below), [dep_node.state] can also
+     contain an up-to-date [Cached_value]. We need to figure out why. *)
   and consider_and_compute_without_adding_dep :
         'i 'o.
         ('i, 'o) Dep_node.t -> ('o Cached_value.t, Cycle_error.t) result Fiber.t
       =
    fun dep_node ->
     match dep_node.state with
-    | Cached_value _
-    | Restoring _ ->
-      assert false
+    | Cached_value cached_value ->
+      (* CR-someday amokhov: We hit this branch in [dir-targets-promotion.t] but
+         how is this possible? We need to investigate. For now, I'm replacing
+         the [assert false] that we had here with [return (Ok cached_value)] if
+         the [cached_value] turns out to be up to date. *)
+      if not (Run.is_current cached_value.last_validated_at) then
+        Code_error.raise "consider_and_compute_without_adding_dep"
+          [ ("state", State.to_dyn dep_node.state)
+          ; ("current run", Run.to_dyn (Run.current ()))
+          ];
+      Fiber.return (Ok cached_value)
+    | Restoring _ -> assert false
     | Out_of_date { old_value } ->
       start_computing ~dep_node ~old_value >>| Result.ok
     | Computing { compute; _ } -> (

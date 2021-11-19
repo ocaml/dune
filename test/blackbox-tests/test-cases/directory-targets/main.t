@@ -388,7 +388,6 @@ Directory target whose name conflicts with an internal directory used by Dune.
   4 |   (action (bash "mkdir .dune; echo hello > .dune/hello")))
   Error: This rule defines a directory target ".dune" whose name conflicts with
   an internal directory used by Dune. Please use a different name.
-  -> required by _build/default/.dune/hello
   [1]
 
 Multi-component target directories are not allowed.

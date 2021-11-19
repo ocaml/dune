@@ -69,9 +69,18 @@ let rec get_plugin plugins requires entries =
 
 exception Thread_library_required_by_plugin_but_not_required_by_main_executable
 
-exception Library_not_found of string list * string
+exception
+  Library_not_found of
+    { search_paths : string list
+    ; prefix : string list
+    ; name : string
+    }
 
-exception Plugin_not_found of string list * string
+exception
+  Plugin_not_found of
+    { search_paths : string list
+    ; name : string
+    }
 
 let () =
   Printexc.register_printer (function
@@ -81,17 +90,26 @@ let () =
            "It is not possible to dynamically link a plugin which uses the \
             thread library with an executable not already linked with the \
             thread library.")
-    | Plugin_not_found (paths, name) ->
+    | Plugin_not_found { search_paths; name } ->
       Some
-        (Format.sprintf "The plugin %S can't be found in the paths [%s]" name
-           (String.concat ";" paths))
-    | Library_not_found (paths, name) ->
+        (Format.sprintf "The plugin %S can't be found in the search paths %S."
+           name
+           (String.concat ":" search_paths))
+    | Library_not_found { search_paths; prefix = []; name } ->
       Some
-        (Format.sprintf "The library %S can't be found in the paths [%s]" name
-           (String.concat ";" paths))
+        (Format.sprintf "The library %S can't be found in the search paths %S."
+           name
+           (String.concat ":" search_paths))
+    | Library_not_found { search_paths; prefix; name } ->
+      Some
+        (Format.sprintf
+           "The sub-library %S can't be found in the library %s in the search \
+            paths %S."
+           name (String.concat "." prefix)
+           (String.concat ":" search_paths))
     | _ -> None)
 
-let rec find_library ~dirs ~suffix directory meta =
+let rec find_library ~dirs ~prefix ~suffix directory meta =
   let rec find_directory directory = function
     | [] -> directory
     | Meta_parser.Rule
@@ -107,10 +125,13 @@ let rec find_library ~dirs ~suffix directory meta =
   | pkg :: suffix ->
     let directory = find_directory directory meta in
     let rec aux pkg = function
-      | [] -> raise (Library_not_found (dirs, pkg))
+      | [] ->
+        raise
+          (Library_not_found
+             { search_paths = dirs; prefix = List.rev prefix; name = pkg })
       | Meta_parser.Package { name = Some name; entries } :: _
         when String.equal name pkg ->
-        find_library ~dirs ~suffix directory entries
+        find_library ~dirs ~prefix:(pkg :: prefix) ~suffix directory entries
       | _ :: entries -> aux pkg entries
     in
     aux pkg meta
@@ -144,9 +165,10 @@ let extract_comma_space_separated_words s =
 
 let split_all l = List.concat (List.map extract_comma_space_separated_words l)
 
-let find_plugin ~dirs ~dir ~suffix meta =
+let find_plugin ~dirs ~dir ~suffix (meta : Meta_parser.t) =
   let directory, meta =
-    find_library ~dirs ~suffix None meta.Meta_parser.entries
+    find_library ~dirs ~prefix:(Option.to_list meta.name) ~suffix None
+      meta.entries
   in
   let plugins, requires = get_plugin [] [] meta in
   let directory =
@@ -200,25 +222,26 @@ let lookup_and_load_one_dir ~dir ~pkg =
 
 let split ~dirs name =
   match String.split_on_char '.' name with
-  | [] -> raise (Library_not_found (dirs, name))
+  | [] -> raise (Library_not_found { search_paths = dirs; prefix = []; name })
   | pkg :: rest -> (pkg, rest)
 
-let lookup_and_summarize dirs name =
-  let pkg, suffix = split ~dirs name in
+let lookup_and_summarize alldirs name =
+  let pkg, suffix = split ~dirs:alldirs name in
   let rec loop dirs =
     match dirs with
     | [] -> (
       List.assoc_opt pkg Data.builtin_library |> function
-      | None -> raise (Library_not_found (dirs, name))
+      | None ->
+        raise (Library_not_found { search_paths = alldirs; prefix = []; name })
       | Some meta ->
-        find_plugin ~dirs ~dir:(Lazy.force Helpers.stdlib) ~suffix meta)
+        find_plugin ~dirs:alldirs ~dir:(Lazy.force Helpers.stdlib) ~suffix meta)
     | dir :: dirs -> (
       let dir = Filename.concat dir pkg in
       match lookup_and_load_one_dir ~dir ~pkg with
       | None -> loop dirs
-      | Some p -> find_plugin ~dirs ~dir ~suffix p)
+      | Some p -> find_plugin ~dirs:alldirs ~dir ~suffix p)
   in
-  loop dirs
+  loop alldirs
 
 let loaded_libraries =
   lazy
@@ -247,10 +270,10 @@ let rec load_requires name =
 
 let load_plugin plugin_paths name =
   match lookup plugin_paths (Filename.concat name meta_fn) with
-  | None -> raise (Plugin_not_found (plugin_paths, name))
+  | None -> raise (Plugin_not_found { search_paths = plugin_paths; name })
   | Some meta_file ->
     let meta = load meta_file ~pkg:name in
-    let plugins, requires = get_plugin [] [] meta.Meta_parser.entries in
+    let plugins, requires = get_plugin [] [] meta.entries in
     assert (plugins = []);
     let requires = split_all requires in
     List.iter load_requires requires

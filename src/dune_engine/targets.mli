@@ -96,5 +96,7 @@ module Produced : sig
     val mapi : 'a t -> f:(Path.Build.t -> 'a -> 'b option) -> 'b t option
   end
 
+  val to_seq : 'a t -> (Path.Build.t * 'a) Seq.t
+
   val to_dyn : _ t -> Dyn.t
 end

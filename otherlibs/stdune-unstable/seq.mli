@@ -12,6 +12,8 @@ val cons : 'a -> 'a t -> 'a t
 
 val append : 'a t -> 'a t -> 'a t
 
+val concat : 'a t t -> 'a t
+
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
 val filter : 'a t -> f:('a -> bool) -> 'a t

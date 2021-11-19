@@ -424,3 +424,79 @@ File and directory target with the same name.
   4 |   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
   Error: "output" is declared as both a file and a directory target.
   [1]
+
+Promotion of directory targets.
+
+  $ mkdir test; cd test
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > (using directory-targets 0.1)
+  > EOF
+  $ cat > dune <<EOF
+  > (rule
+  >   (mode promote)
+  >   (deps (sandbox always))
+  >   (targets a (dir dir))
+  >   (action (bash "\| echo a > a;
+  >                 "\| mkdir -p dir/subdir;
+  >                 "\| echo b > dir/b;
+  >                 "\| echo c > dir/c;
+  >                 "\| echo d > dir/subdir/d
+  > )))
+  > EOF
+
+  $ dune build a
+  $ cat a dir/b dir/c dir/subdir/d
+  a
+  b
+  c
+  d
+
+Test error message if a destination directory is taken up by a file.
+
+  $ rm -rf dir
+  $ mkdir dir
+  $ touch dir/subdir
+  $ dune build a
+  File "dune", line 1, characters 0-263:
+   1 | (rule
+   2 |   (mode promote)
+   3 |   (deps (sandbox always))
+   4 |   (targets a (dir dir))
+   5 |   (action (bash "\| echo a > a;
+   6 |                 "\| mkdir -p dir/subdir;
+   7 |                 "\| echo b > dir/b;
+   8 |                 "\| echo c > dir/c;
+   9 |                 "\| echo d > dir/subdir/d
+  10 | )))
+  Error: Cannot promote files to "dir/subdir".
+  Reason: "dir/subdir" is not a directory.
+  -> required by _build/default/a
+  [1]
+
+Test error message for (promote (into <dir>)) if <dir> is missing.
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > (using directory-targets 0.1)
+  > EOF
+  $ cat > dune <<EOF
+  > (rule
+  >   (mode (promote (into another_dir)))
+  >   (deps (sandbox always))
+  >   (targets a (dir dir))
+  >   (action (bash "\| echo a > a;
+  >                 "\| mkdir -p dir/subdir;
+  >                 "\| echo b > dir/b;
+  >                 "\| echo c > dir/c;
+  >                 "\| echo d > dir/subdir/d
+  > )))
+  > EOF
+
+  $ dune build a
+  File "dune", line 2, characters 23-34:
+  2 |   (mode (promote (into another_dir)))
+                             ^^^^^^^^^^^
+  Error: Directory "another_dir" does not exist. Please create it manually.
+  -> required by _build/default/a
+  [1]

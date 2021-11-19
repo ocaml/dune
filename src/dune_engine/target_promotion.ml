@@ -109,8 +109,7 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
    somehow batch file promotions. Another approach is to make restarts really
    cheap, so that we don't care any more, for example, by introducing reverse
    dependencies in Memo (and/or by having smarter cancellations). *)
-let promote ~dir ~targets ~promote ~promote_source =
-  let files_to_promote = Path.Build.Map.keys targets.Targets.Produced.files in
+let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
   let selected_for_promotion =
     match promote.Rule.Promote.only with
     | None -> fun (_ : Path.Build.t) -> true
@@ -160,7 +159,36 @@ let promote ~dir ~targets ~promote ~promote_source =
         | true ->
           fun src -> Path.Source.relative into_dir (Path.Build.basename src)))
   in
-  Fiber.sequential_iter files_to_promote ~f:(fun src ->
+  let create_directory_if_needed ~(dir : Path.Build.t) =
+    let dir = relocate dir |> Path.source in
+    let user_error msg =
+      User_error.raise
+        [ Pp.textf "Cannot promote files to %S." (Path.to_string dir); msg ]
+        ~annots:
+          (User_message.Annots.singleton User_message.Annots.needs_stack_trace
+             ())
+    in
+    (* It is OK to use [Untracked.path_stat] on [dir] here because below we will
+       use [Fs_memo.path_digest] to subscribe to digests of files in [dir], so
+       Dune will watch for relevant changes to [dir], such as its deletion.
+       Furthermore, if we used a tracked version here, [Path.mkdir_p] below
+       would generate an unnecessary file-system event. *)
+    match Fs_cache.(read Untracked.path_stat) dir with
+    | Ok { st_kind; _ } when st_kind = S_DIR -> ()
+    | Error (ENOENT, _, _) -> Path.mkdir_p dir
+    | Ok _exists_but_not_a_directory ->
+      user_error
+        (Pp.textf "Reason: %S is not a directory." (Path.to_string dir))
+    | Error unix_error ->
+      user_error
+        (Pp.textf "Reason: %s." (Unix_error.Detailed.to_string unix_error))
+  in
+  (* Here we know that the promotion directory exists but we may need to create
+     some additional subdirectories in [targets.dirs]. *)
+  Path.Build.Map.iteri targets.dirs ~f:(fun dir (_filenames : _ String.Map.t) ->
+      create_directory_if_needed ~dir);
+  Fiber.sequential_iter_seq (Targets.Produced.to_seq targets)
+    ~f:(fun (src, _payload) ->
       match selected_for_promotion src with
       | false -> Fiber.return ()
       | true -> (

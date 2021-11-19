@@ -969,9 +969,9 @@ end = struct
     in
     (* Compute the set of targets and the set of source files that must not be
        copied *)
-    let source_files_to_ignore =
-      List.fold_left rules ~init:Path.Build.Set.empty
-        ~f:(fun acc_ignored { Rule.targets; mode; loc; _ } ->
+    let source_files_to_ignore, source_dirs_to_ignore =
+      List.fold_left rules ~init:(Path.Build.Set.empty, Path.Build.Set.empty)
+        ~f:(fun (acc_files, acc_dirs) { Rule.targets; mode; loc; _ } ->
           (* CR-someday amokhov: Remove this limitation. *)
           let directory_targets_not_supported ~targets =
             if not (Path.Build.Set.is_empty targets.Targets.Validated.dirs) then
@@ -979,26 +979,36 @@ end = struct
                 [ Pp.text "Directory targets are not supported for this mode" ]
           in
           match mode with
-          | Promote { only = None; _ }
           | Ignore_source_files ->
             directory_targets_not_supported ~targets;
-            Path.Build.Set.union targets.files acc_ignored
-          | Promote { only = Some pred; _ } ->
-            directory_targets_not_supported ~targets;
-            let to_ignore =
-              Path.Build.Set.filter targets.files ~f:(fun target ->
+            (Path.Build.Set.union targets.files acc_files, acc_dirs)
+          | Promote { only; _ } ->
+            let files, dirs =
+              match only with
+              | None -> (targets.files, targets.dirs)
+              | Some pred ->
+                let is_promoted target =
                   Predicate_lang.Glob.exec pred
                     (Path.reach (Path.build target) ~from:(Path.build dir))
-                    ~standard:Predicate_lang.any)
+                    ~standard:Predicate_lang.any
+                in
+                ( Path.Build.Set.filter targets.files ~f:is_promoted
+                , Path.Build.Set.filter targets.dirs ~f:is_promoted )
             in
-            Path.Build.Set.union to_ignore acc_ignored
+            ( Path.Build.Set.union files acc_files
+            , Path.Build.Set.union dirs acc_dirs )
           | Standard
           | Fallback ->
-            acc_ignored)
+            (acc_files, acc_dirs))
     in
     let source_files_to_ignore =
-      Path.Build.Set.to_list source_files_to_ignore
-      |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
+      Path.Build.Set.to_list_map ~f:Path.Build.drop_build_context_exn
+        source_files_to_ignore
+      |> Path.Source.Set.of_list
+    in
+    let source_dirs_to_ignore =
+      Path.Build.Set.to_list_map ~f:Path.Build.basename source_dirs_to_ignore
+      |> String.Set.of_list
     in
     let source_files_to_ignore =
       Target_promotion.delete_stale_dot_merlin_file ~dir ~source_files_to_ignore
@@ -1015,6 +1025,7 @@ end = struct
             (Source_tree.Dir.file_paths dir, Source_tree.Dir.sub_dir_names dir)
         in
         let files = Path.Source.Set.diff files source_files_to_ignore in
+        let subdirs = String.Set.diff subdirs source_dirs_to_ignore in
         if Path.Source.Set.is_empty files then
           (None, subdirs)
         else

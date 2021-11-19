@@ -381,14 +381,6 @@ let parallel_iter l ~f k =
 
 let all_concurrently_unit l = parallel_iter l ~f:Fun.id
 
-let parallel_iter_set (type a s)
-    (module S : Set.S with type elt = a and type t = s) t ~(f : a -> unit t) k =
-  let len = S.cardinal t in
-  match len with
-  | 0 -> k ()
-  | 1 -> f (Option.value_exn (S.min_elt t)) k
-  | n -> parallel_iter_generic ~n ~iter:(S.iter t) ~f k
-
 let record_metrics t ~tag =
   of_thunk (fun () ->
       let timer = Metrics.Timer.start tag in

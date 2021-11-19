@@ -1529,10 +1529,8 @@ end = struct
           Action.progn [ action; Action.write_file stamp_file "" ]
     in
     let* () =
-      Fiber.parallel_iter_set
-        (module Path.Set)
-        chdirs
-        ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_assert_existence ~loc p))
+      Fiber.sequential_iter_seq (Path.Set.to_seq chdirs) ~f:(fun p ->
+          Memo.Build.run (Fs.mkdir_p_or_assert_existence ~loc p))
     in
     let build_deps deps = Memo.Build.run (build_deps deps) in
     let root =

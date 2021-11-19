@@ -30,9 +30,7 @@ module Name : sig
 
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
 
-  module Map : Map.S with type key = t
-
-  module Set : Set.S with type elt = t
+  include Comparable_intf.S with type key := t
 end = struct
   include String
 

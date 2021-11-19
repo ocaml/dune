@@ -16,7 +16,7 @@ module Dependency : sig
   module Map : Map.S with type key = t
 
   module Set : sig
-    include Set.S with type elt = t and type 'a map = 'a Map.t
+    include Set.S with type elt = t and type 'a map := 'a Map.t
 
     include Sexpable with type t := t
   end

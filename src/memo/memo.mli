@@ -88,11 +88,7 @@ module Build : sig
 
   val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
-  val parallel_iter_set :
-       (module Set.S with type elt = 'a and type t = 's)
-    -> 's
-    -> f:('a -> unit t)
-    -> unit t
+  val sequential_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 
   module Make_map_traversals (Map : Map.S) : sig
     val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t

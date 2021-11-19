@@ -15,7 +15,7 @@ module Name : sig
 
   val hash : t -> int
 
-  include Comparable_intf.S with type Key.t := t
+  include Comparable_intf.S with type key := t
 
   include Dune_lang.Conv.S with type t := t
 
@@ -39,9 +39,7 @@ module Id : sig
 
   val name : t -> Name.t
 
-  module Set : Set.S with type elt = t
-
-  module Map : Map.S with type key = t
+  include Comparable_intf.S with type key := t
 end
 
 module Dependency : sig

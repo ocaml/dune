@@ -61,15 +61,13 @@ module Unique : sig
 
   include Dune_lang.Conv.S with type t := t
 
-  module Map : Map.S with type key = t
-
-  module Set : Set.S with type elt = t
+  include Comparable_intf.S with type key := t
 end
 with type name := t
 
 val wrap : t -> with_:t -> Unique.t
 
-module Map : Map.S with type key = t
+include Comparable_intf.S with type key := t
 
 module Map_traversals : sig
   val parallel_iter :
@@ -77,12 +75,6 @@ module Map_traversals : sig
 
   val parallel_map :
     'a Map.t -> f:(t -> 'a -> 'b Memo.Build.t) -> 'b Map.t Memo.Build.t
-end
-
-module Set : sig
-  include Set.S with type elt = t
-
-  val to_dyn : t -> Dyn.t
 end
 
 val of_string_allow_invalid : Loc.t * string -> t

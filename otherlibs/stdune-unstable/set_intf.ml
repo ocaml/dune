@@ -1,9 +1,9 @@
 module type S = sig
   type elt
 
-  type t
-
   type 'a map
+
+  type t = unit map
 
   val empty : t
 
@@ -63,6 +63,8 @@ module type S = sig
 
   (** Convert to a list and map every element. *)
   val to_list_map : t -> f:(elt -> 'a) -> 'a list
+
+  val to_seq : t -> elt Seq.t
 
   val find : t -> f:(elt -> bool) -> elt option
 

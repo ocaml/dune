@@ -210,9 +210,7 @@ include Sub_system.Register_end_point (struct
       List.concat l
     in
     let source_files = List.concat_map source_modules ~f:Module.sources in
-    Memo.Build.parallel_iter_set
-      (module Mode_conf.Set)
-      info.modes
+    Memo.Build.sequential_iter_seq (Mode_conf.Set.to_seq info.modes)
       ~f:(fun (mode : Mode_conf.t) ->
         let ext =
           match mode with

@@ -36,7 +36,7 @@ end
 module Section : sig
   type t = Section.t
 
-  module Set : Set.S with type elt = t
+  include Comparable_intf.S with type key := t
 
   val to_string : t -> string
 

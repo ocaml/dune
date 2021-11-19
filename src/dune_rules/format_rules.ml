@@ -78,10 +78,10 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
   in
   let open Memo.Build.O in
   let* () =
-    Source_tree.files_of source_dir
-    >>= Memo.Build.parallel_iter_set
-          (module Path.Source.Set)
-          ~f:setup_formatting
+    let* files = Source_tree.files_of source_dir in
+    Memo.Build.sequential_iter_seq
+      (Path.Source.Set.to_seq files)
+      ~f:setup_formatting
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 

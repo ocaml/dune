@@ -32,7 +32,7 @@ module type S = sig
   module Map : Map.S with type key = t
 
   module Set : sig
-    include Set.S with type elt = t and type 'a map = 'a Map.t
+    include Set.S with type elt = t and type 'a map := 'a Map.t
 
     val to_dyn : t Dyn.builder
 
@@ -101,7 +101,7 @@ module type Local_gen = sig
     module Map : Map.S with type key = Root.w t
 
     module Set : sig
-      include Set.S with type elt = Root.w t and type 'a map = 'a Map.t
+      include Set.S with type elt = Root.w t and type 'a map := 'a Map.t
 
       val to_dyn : t Dyn.builder
 

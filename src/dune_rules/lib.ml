@@ -255,9 +255,7 @@ module Id : sig
 
   val make : path:Path.t -> name:Lib_name.t -> t
 
-  module Set : Set.S with type elt = t
-
-  module Map : Map.S with type key = t
+  include Comparable_intf.S with type key := t
 
   module Top_closure :
     Top_closure_intf.S
@@ -2184,9 +2182,7 @@ module Local : sig
 
   val hash : t -> int
 
-  module Set : Stdune.Set.S with type elt = t
-
-  module Map : Stdune.Map.S with type key = t
+  include Comparable_intf.S with type key := t
 end = struct
   type nonrec t = t
 

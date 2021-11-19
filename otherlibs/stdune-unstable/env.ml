@@ -22,6 +22,7 @@ module Var = struct
   include T
 end
 
+module Set = Var.Set
 module Map = Var.Map
 
 (* The use of [mutable] here is safe, since we never call (back) to the

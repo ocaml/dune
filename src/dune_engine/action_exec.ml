@@ -48,6 +48,7 @@ module Dynamic_dep = struct
 
   include T
   module O = Comparable.Make (T)
+  module Map = O.Map
 
   module Set = struct
     include O.Set

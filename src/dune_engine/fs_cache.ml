@@ -64,23 +64,13 @@ module Reduced_stats = struct
     { st_dev : int
     ; st_ino : int
     ; st_kind : Unix.file_kind
-    ; st_perm : Unix.file_perm
-    ; st_size : int
-    ; st_mtime : float
-    ; st_ctime : float
     }
 
-  let of_unix_stats
-      { Unix.st_dev; st_ino; st_kind; st_perm; st_size; st_mtime; st_ctime; _ }
-      =
-    { st_dev; st_ino; st_kind; st_perm; st_size; st_mtime; st_ctime }
+  let of_unix_stats { Unix.st_dev; st_ino; st_kind; _ } =
+    { st_dev; st_ino; st_kind }
 
   let equal x y =
-    Ordering.is_eq (Float.compare x.st_mtime y.st_mtime)
-    && Ordering.is_eq (Float.compare x.st_ctime y.st_ctime)
-    && Int.equal x.st_size y.st_size
-    && Int.equal x.st_perm y.st_perm
-    && Int.equal x.st_dev y.st_dev
+    Int.equal x.st_dev y.st_dev
     && Int.equal x.st_ino y.st_ino
     && Dune_filesystem_stubs.File_kind.equal x.st_kind y.st_kind
 end

@@ -141,16 +141,9 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
               (Path.Source.to_string into_dir)
           ]
       | true -> (
-        (* CR-someday amokhov: We use an untracked version here for two reasons:
-
-           - We don't have [Fs_memo.is_directory], and using [Fs_memo.path_stat]
-           would lead to unnecessary restarts when the directory's [mtime]
-           changes. We should provide an alternative to [Fs_memo.path_stat] for
-           extracting everything except for [mtime].
-
-           - Using untracked version here is mostly fine. The only potential
-           issue is that Dune won't notice if the user turns a file into a
-           directory while somehow not triggering [Fs_memo.path_exists]. *)
+        (* CR-someday amokhov: We use an untracked version here. The only issue
+           is that Dune won't notice if the user turns a file into a directory
+           while somehow not triggering [Fs_memo.path_exists]. *)
         match Path.Untracked.is_directory (Path.source into_dir) with
         | false ->
           user_error

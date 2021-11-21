@@ -176,8 +176,7 @@ Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
   $ cat .#debug-output | grep dune-workspace
   Updating dir_contents cache for "dune-workspace": Skipped
   Updating path_digest cache for "dune-workspace": Skipped
-  Updating path_stat cache for "dune-workspace": Skipped
-  Updating path_exists cache for "dune-workspace": Updated { changed = false }
+  Updating path_stat cache for "dune-workspace": Updated { changed = false }
 
 Show that Dune ignores "promoted" events. Events for ".#promoted.dune-temp" are
 filtered out by Dune's file watcher and don't show up here. The [path_digest]
@@ -189,7 +188,6 @@ avoid unnecessarily restarting after receiving the event that it caused itself.
   Updating dir_contents cache for "promoted": Skipped
   Updating path_digest cache for "promoted": Updated { changed = false }
   Updating path_stat cache for "promoted": Skipped
-  Updating path_exists cache for "promoted": Skipped
 
 Show that Dune ignores events for the . directory: [dir_contents] didn't change
 because [promoted] existed before running the build. Also, the subset of fields
@@ -200,4 +198,3 @@ change but [fs_memo] does not provide a way to subscribe to it).
   Updating dir_contents cache for ".": Updated { changed = false }
   Updating path_digest cache for ".": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
-  Updating path_exists cache for ".": Skipped

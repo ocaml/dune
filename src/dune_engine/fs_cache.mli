@@ -66,8 +66,6 @@ end
 
     See [fs_memo.ml] for tracked versions of these operations. *)
 module Untracked : sig
-  val path_exists : bool t
-
   val path_stat : (Reduced_stats.t, Unix_error.Detailed.t) result t
 
   val path_digest : Cached_digest.Digest_result.t t

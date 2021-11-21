@@ -101,9 +101,6 @@ end = struct
 end
 
 module Untracked = struct
-  let path_exists =
-    create "path_exists" ~sample:Path.Untracked.exists ~equal:Bool.equal
-
   let path_stat =
     let sample path =
       Path.Untracked.stat path |> Result.map ~f:Reduced_stats.of_unix_stats

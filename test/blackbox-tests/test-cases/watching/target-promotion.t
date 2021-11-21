@@ -161,43 +161,43 @@ Now test file-system events generated during target promotion.
   >   (action (bash "cat promoted promoted > result")))
   > EOF
 
+  $ cat promoted
+  hi
   $ start_dune --debug-cache=fs
   $ build result
   Success
+  $ cat promoted
+  bye
 
-  $ stop_dune > debug-output
+  $ stop_dune > .#debug-output
 
 Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 
-  $ cat debug-output | grep dune-workspace
+  $ cat .#debug-output | grep dune-workspace
   Updating dir_contents cache for "dune-workspace": Skipped
   Updating path_digest cache for "dune-workspace": Skipped
   Updating path_stat cache for "dune-workspace": Skipped
   Updating path_exists cache for "dune-workspace": Updated { changed = false }
 
 Show that Dune ignores "promoted" events. Events for ".#promoted.dune-temp" are
-filtered out by Dune's file watcher and don't show up here.
+filtered out by Dune's file watcher and don't show up here. The [path_digest]
+event for [promoted] is more interesting: the file's content did change from "hi"
+to "bye" but Dune subscribed to it *after* making the promotion, precisely to
+avoid unnecessarily restarting after receiving the event that it caused itself.
 
-  $ cat debug-output | grep promoted
+  $ cat .#debug-output | grep promoted
   Updating dir_contents cache for "promoted": Skipped
   Updating path_digest cache for "promoted": Updated { changed = false }
   Updating path_stat cache for "promoted": Skipped
   Updating path_exists cache for "promoted": Skipped
 
-Show how Dune processes events for the . directory.
+Show that Dune ignores events for the . directory: [dir_contents] didn't change
+because [promoted] existed before running the build. Also, the subset of fields
+of [path_stat] that matter to Dune didn't change either (the [mtime] field did
+change but [fs_memo] does not provide a way to subscribe to it).
 
-# CR-someday amokhov: We see two events where [path_stat] changed but nothing
-# else did: specifically, the directory still exists and its content is unchanged.
-# We believe the [path_stat]'s changes are due to the [mtimes] field, which can
-# change, for example, because of creation of a temporary file. We should remove
-# [mtimes] from [Fs_cache.Reduced_stats] to avoid such unnecessary retriggering.
-
-  $ cat debug-output | grep '"."'
+  $ cat .#debug-output | grep '"."'
   Updating dir_contents cache for ".": Updated { changed = false }
   Updating path_digest cache for ".": Skipped
-  Updating path_stat cache for ".": Updated { changed = true }
-  Updating path_exists cache for ".": Skipped
-  Updating dir_contents cache for ".": Updated { changed = true }
-  Updating path_digest cache for ".": Skipped
-  Updating path_stat cache for ".": Updated { changed = true }
+  Updating path_stat cache for ".": Updated { changed = false }
   Updating path_exists cache for ".": Skipped

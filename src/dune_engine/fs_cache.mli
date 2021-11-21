@@ -34,16 +34,16 @@ end
 val update : 'a t -> Path.t -> Update_result.t
 
 (** This module caches only a subset of fields of [Unix.stats] because other
-    fields are currently unused. *)
+    fields are currently unused.
+
+    Note that we specifically do not want to cache [mtime] and [ctime] because
+    these fields can change too often: for example, when a temporary file is
+    created in a watched directory. *)
 module Reduced_stats : sig
   type t =
     { st_dev : int  (** Device number *)
     ; st_ino : int  (** Inode number *)
     ; st_kind : Dune_filesystem_stubs.File_kind.t  (** Kind of the file *)
-    ; st_perm : Unix.file_perm  (** Access rights *)
-    ; st_size : int  (** Size in bytes *)
-    ; st_mtime : float  (** Last modification time *)
-    ; st_ctime : float  (** Last status change time *)
     }
 
   val of_unix_stats : Unix.stats -> t

@@ -1,0 +1,4 @@
+(cram
+ (applies_to stray-process)
+ (enabled_if
+  (<> %{system} macosx)))

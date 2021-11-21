@@ -43,7 +43,7 @@ module Reduced_stats : sig
   type t =
     { st_dev : int  (** Device number *)
     ; st_ino : int  (** Inode number *)
-    ; st_kind : Dune_filesystem_stubs.File_kind.t  (** Kind of the file *)
+    ; st_kind : File_kind.t  (** Kind of the file *)
     }
 
   val of_unix_stats : Unix.stats -> t
@@ -55,7 +55,7 @@ module Dir_contents : sig
   type t
 
   (** The sorted list of file names with kinds. *)
-  val to_list : t -> (string * Dune_filesystem_stubs.File_kind.t) list
+  val to_list : t -> (string * File_kind.t) list
 
   val equal : t -> t -> bool
 end

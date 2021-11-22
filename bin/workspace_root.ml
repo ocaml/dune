@@ -15,6 +15,8 @@ module Kind = struct
     | Dune_project -> 2
     | Cwd -> 3
 
+  let lowest_priority = max_int
+
   let of_dir_contents files =
     if String.Set.mem files Workspace.filename then
       Some Dune_workspace
@@ -31,11 +33,18 @@ type t =
   ; kind : Kind.t
   }
 
-let make kind dir = { kind; dir; to_cwd = []; reach_from_root_prefix = "" }
+module Candidate = struct
+  type t =
+    { dir : string
+    ; to_cwd : string list
+    ; kind : Kind.t
+    }
+end
 
 let find () =
   let cwd = Sys.getcwd () in
-  let rec loop counter ~candidate ~to_cwd dir =
+  let rec loop counter ~(candidate : Candidate.t option) ~to_cwd dir :
+      Candidate.t option =
     match Sys.readdir dir with
     | exception Sys_error msg ->
       User_warning.emit
@@ -54,17 +63,11 @@ let find () =
         let candidate_priority =
           match candidate with
           | Some c -> Kind.priority c.kind
-          | None -> 10
+          | None -> Kind.lowest_priority
         in
         match Kind.of_dir_contents files with
         | Some kind when Kind.priority kind <= candidate_priority ->
-          Some
-            { kind
-            ; dir
-            ; to_cwd
-            ; (* This field is computed at the end *) reach_from_root_prefix =
-                ""
-            }
+          Some { Candidate.kind; dir; to_cwd }
         | _ -> candidate
       in
       cont counter ~candidate dir ~to_cwd
@@ -84,20 +87,21 @@ let find () =
 let create ~default_is_cwd ~specified_by_user =
   match
     match specified_by_user with
-    | Some dn -> Some (make Explicit dn)
+    | Some dn -> Some { Candidate.kind = Explicit; dir = dn; to_cwd = [] }
     | None -> (
+      let cwd = { Candidate.kind = Cwd; dir = "."; to_cwd = [] } in
       if Dune_util.Config.inside_dune then
-        Some (make Cwd ".")
+        Some cwd
       else
         match find () with
         | Some s -> Some s
         | None ->
           if default_is_cwd then
-            Some (make Cwd ".")
+            Some cwd
           else
             None)
   with
-  | Some { dir; to_cwd; kind; _ } ->
+  | Some { Candidate.dir; to_cwd; kind } ->
     { kind
     ; dir
     ; to_cwd

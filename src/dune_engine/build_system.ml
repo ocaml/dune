@@ -7,14 +7,6 @@ module Fs : sig
   (** A memoized version of [mkdir] that avoids calling [mkdir] multiple times
       in the same directory. *)
   val mkdir_p : Path.Build.t -> unit Memo.Build.t
-
-  (** If the given path points to the build directory, we call [mkdir_p] on it.
-      Otherwise, we assert that the given source or external path exists.
-
-      How can non-build paths appear here? Here are two examples: (i) there are
-      rules that copy source files to the build directory, (ii) some rules may
-      need to [chdir] to a source directory to run an action there. *)
-  val mkdir_p_or_assert_existence : loc:Loc.t -> Path.t -> unit Memo.Build.t
 end = struct
   let mkdir_p_memo =
     (* CR-someday amokhov: It's difficult to think about the correctness of this
@@ -35,19 +27,6 @@ end = struct
         Memo.Build.return ())
 
   let mkdir_p = Memo.exec mkdir_p_memo
-
-  let mkdir_p_or_assert_existence ~loc path =
-    match Path.as_in_build_dir path with
-    | Some path -> mkdir_p path
-    | None -> (
-      Fs_memo.dir_exists path >>| function
-      | true -> ()
-      | false ->
-        (* CR-someday amokhov: I think this case is impossible because we only
-           call [mkdir_p_or_assert_existence] for directories in [Chdir] actions
-           but those are checked to be in the build directory. *)
-        User_error.raise ~loc
-          [ Pp.textf "Directory %S does not exist" (Path.to_string path) ])
 end
 
 module Loaded = struct
@@ -1507,13 +1486,11 @@ end = struct
         } =
       action
     in
-    let chdirs = Action.chdirs action in
     let sandbox =
       match sandbox_mode with
       | Some mode ->
         Some
-          (Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~chdirs
-             ~rule_digest
+          (Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~rule_digest
              ~expand_aliases:
                (Execution_parameters.expand_aliases_in_sandbox
                   execution_parameters))
@@ -1551,10 +1528,16 @@ end = struct
           Action.progn [ action; Action.write_file stamp_file "" ]
     in
     let* () =
-      Fiber.parallel_iter_set
-        (module Path.Set)
-        chdirs
-        ~f:(fun p -> Memo.Build.run (Fs.mkdir_p_or_assert_existence ~loc p))
+      let chdirs = Action.chdirs action in
+      Fiber.sequential_iter_seq (Path.Set.to_seq chdirs) ~f:(fun path ->
+          match Path.as_in_build_dir path with
+          | Some path -> Memo.Build.run (Fs.mkdir_p path)
+          | None ->
+            Code_error.raise ~loc
+              (sprintf
+                 "Can't [chdir] to %S because it's outside the build directory"
+                 (Path.to_string path))
+              [])
     in
     let build_deps deps = Memo.Build.run (build_deps deps) in
     let root =

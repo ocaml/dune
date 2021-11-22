@@ -61,6 +61,8 @@ module type S = sig
 
   val to_list : t -> elt list
 
+  val to_seq : t -> elt Seq.t
+
   (** Convert to a list and map every element. *)
   val to_list_map : t -> f:(elt -> 'a) -> 'a list
 

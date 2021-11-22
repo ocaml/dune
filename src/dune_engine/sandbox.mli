@@ -15,7 +15,6 @@ val create :
   -> rule_loc:Loc.t
   -> deps:Dep.Facts.t
   -> rule_dir:Path.Build.t
-  -> chdirs:Path.Set.t
   -> rule_digest:Digest.t
   -> expand_aliases:bool
   -> t

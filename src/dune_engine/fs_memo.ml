@@ -205,8 +205,9 @@ let path_digest ?(force_update = false) path =
   );
   declaring_dependency path ~f:Fs_cache.(read Untracked.path_digest)
 
-let dir_contents =
-  declaring_dependency ~f:Fs_cache.(read Untracked.dir_contents)
+let dir_contents ?(force_update = false) path =
+  if force_update then Fs_cache.evict Fs_cache.Untracked.dir_contents path;
+  declaring_dependency path ~f:Fs_cache.(read Untracked.dir_contents)
 
 (* CR-someday amokhov: For now, we do not cache the result of this operation
    because the result's type depends on [f]. There are only two call sites of

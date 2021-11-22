@@ -103,14 +103,15 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
   in
   source_files_to_ignore
 
-(* CR-someday amokhov: If a build causes N file promotions we will potentially
-   restart it N times, which is pretty bad. It doesn't seem possible to avoid
-   this with our current infrastructure. One way to improve the situation is to
-   somehow batch file promotions. Another approach is to make restarts really
-   cheap, so that we don't care any more, for example, by introducing reverse
-   dependencies in Memo (and/or by having smarter cancellations). *)
+(* CR-someday amokhov: If a build causes N file promotions, Dune can potentially
+   restart N times, which is pretty bad. It doesn't seem possible to avoid this
+   with our current infrastructure. One way to improve the situation is to batch
+   file promotions. Another approach is to make restarts really cheap, so that
+   we don't care any more, for example, by introducing reverse dependencies in
+   Memo (and/or by having smarter cancellations). *)
 let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
-  let selected_for_promotion =
+  (* Select targets taking into account the (promote (only <glob>)) field. *)
+  let selected_for_promotion : Path.Build.t -> bool =
     match promote.Rule.Promote.only with
     | None -> fun (_ : Path.Build.t) -> true
     | Some pred ->
@@ -119,7 +120,8 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
           (Path.reach ~from:(Path.build dir) (Path.build target))
   in
   let open Fiber.O in
-  let* relocate =
+  (* Map target paths taking into account the (promote (into <dir>)) field. *)
+  let* (relocate : Path.Build.t -> Path.Source.t) =
     match promote.into with
     | None -> Fiber.return Path.Build.drop_build_context_exn
     | Some { loc; dir = into_dir } -> (
@@ -128,90 +130,115 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
           (Path.Build.drop_build_context_exn dir)
           into_dir ~error_loc:loc
       in
-      let user_error =
+      let promote_into_error msg =
         User_error.raise ~loc
+          [ msg (Path.Source.to_string into_dir) ]
           ~annots:
             (User_message.Annots.singleton User_message.Annots.needs_stack_trace
                ())
       in
       Memo.Build.run (Fs_memo.path_exists (Path.source into_dir)) >>| function
       | false ->
-        user_error
-          [ Pp.textf "Directory %S does not exist. Please create it manually."
-              (Path.Source.to_string into_dir)
-          ]
+        promote_into_error
+          (Pp.textf "Directory %S does not exist. Please create it manually.")
       | true -> (
         (* CR-someday amokhov: We use an untracked version here. The only issue
            is that Dune won't notice if the user turns a file into a directory
            while somehow not triggering [Fs_memo.path_exists]. *)
         match Path.Untracked.is_directory (Path.source into_dir) with
-        | false ->
-          user_error
-            [ Pp.textf "%S is not a directory." (Path.Source.to_string into_dir)
-            ]
+        | false -> promote_into_error (Pp.textf "%S is not a directory.")
         | true ->
           fun src -> Path.Source.relative into_dir (Path.Build.basename src)))
   in
-  let create_directory_if_needed ~(dir : Path.Build.t) =
-    let dir = relocate dir |> Path.source in
-    let user_error msg =
-      User_error.raise
-        [ Pp.textf "Cannot promote files to %S." (Path.to_string dir); msg ]
-        ~annots:
-          (User_message.Annots.singleton User_message.Annots.needs_stack_trace
-             ())
+  let directory_target_error ?unix_error ~dst_dir msgs =
+    let msgs =
+      match unix_error with
+      | None -> msgs
+      | Some error ->
+        Pp.textf "Reason: %s." (Unix_error.Detailed.to_string error) :: msgs
     in
-    (* It is OK to use [Untracked.path_stat] on [dir] here because below we will
-       use [Fs_memo.path_digest] to subscribe to digests of files in [dir], so
-       Dune will watch for relevant changes to [dir], such as its deletion.
-       Furthermore, if we used a tracked version here, [Path.mkdir_p] below
-       would generate an unnecessary file-system event. *)
-    match Fs_cache.(read Untracked.path_stat) dir with
+    User_error.raise
+      (Pp.textf "Cannot promote files to %S." (Path.to_string dst_dir) :: msgs)
+      ~annots:
+        (User_message.Annots.singleton User_message.Annots.needs_stack_trace ())
+  in
+  let create_directory_if_needed ~dir =
+    let dst_dir = Path.source (relocate dir) in
+    (* It is OK to use [Untracked.path_stat] on [dst_dir] here because below we
+       will use [Fs_memo.dir_contents] to subscribe to [dst_dir]'s contents, so
+       Dune will notice its deletion. Furthermore, if we used a tracked version,
+       [Path.mkdir_p] below would generate an unnecessary file-system event. *)
+    match Fs_cache.(read Untracked.path_stat) dst_dir with
     | Ok { st_kind; _ } when st_kind = S_DIR -> ()
-    | Error (ENOENT, _, _) -> Path.mkdir_p dir
+    | Error (ENOENT, _, _) -> Path.mkdir_p dst_dir
     | Ok _exists_but_not_a_directory ->
-      user_error
-        (Pp.textf "Reason: %S is not a directory." (Path.to_string dir))
-    | Error unix_error ->
-      user_error
-        (Pp.textf "Reason: %s." (Unix_error.Detailed.to_string unix_error))
+      directory_target_error ~dst_dir
+        [ Pp.textf "Reason: %S is not a directory." (Path.to_string dst_dir) ]
+    | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
   in
   (* Here we know that the promotion directory exists but we may need to create
-     some additional subdirectories in [targets.dirs]. *)
+     additional subdirectories for [targets.dirs]. *)
   Path.Build.Map.iteri targets.dirs ~f:(fun dir (_filenames : _ String.Map.t) ->
       create_directory_if_needed ~dir);
-  Fiber.sequential_iter_seq (Targets.Produced.to_seq targets)
-    ~f:(fun (src, _payload) ->
-      match selected_for_promotion src with
-      | false -> Fiber.return ()
-      | true -> (
-        let dst = relocate src in
-        Log.info
-          [ Pp.textf "Promoting %S to %S" (Path.Build.to_string src)
-              (Path.Source.to_string dst)
-          ];
-        (match promote.lifetime with
-        | Until_clean -> To_delete.add dst
-        | Unlimited -> ());
-        (* The file in the build directory might be read-only if it comes from
-           the shared cache. However, we want the file in the source tree to be
-           writable by the user, so we explicitly set the user writable bit. *)
-        let chmod n = n lor 0o200 in
-        let* () = promote_source ~chmod ~src ~dst in
-        let+ dst_digest_result =
-          Memo.Build.run
-            (Fs_memo.path_digest ~force_update:true (Path.source dst))
-        in
-        match Cached_digest.Digest_result.to_option dst_digest_result with
-        | Some dst_digest ->
-          (* It's tempting to assert [src_digest = dst_digest] here but it turns
-             out this is not necessarily true: artifact substitution can change
-             the contents of promoted files. *)
-          ignore dst_digest
-        | None ->
-          Code_error.raise
-            (sprintf "Could not compute digest of promoted file %S"
-               (Path.Source.to_string dst))
-            [ ( "dst_digest_result"
-              , Cached_digest.Digest_result.to_dyn dst_digest_result )
-            ]))
+  let* () =
+    Fiber.sequential_iter_seq (Targets.Produced.all_files_seq targets)
+      ~f:(fun (src, _payload) ->
+        match selected_for_promotion src with
+        | false -> Fiber.return ()
+        | true -> (
+          let dst = relocate src in
+          Log.info
+            [ Pp.textf "Promoting %S to %S" (Path.Build.to_string src)
+                (Path.Source.to_string dst)
+            ];
+          (match promote.lifetime with
+          | Until_clean -> To_delete.add dst
+          | Unlimited -> ());
+          (* The file in the build directory might be read-only if it comes from
+             the shared cache. However, we want the file in the source tree to
+             be writable by the user, so we explicitly set the user writable
+             bit. *)
+          let chmod n = n lor 0o200 in
+          let* () = promote_source ~chmod ~src ~dst in
+          let+ dst_digest_result =
+            Memo.Build.run
+              (Fs_memo.path_digest ~force_update:true (Path.source dst))
+          in
+          match Cached_digest.Digest_result.to_option dst_digest_result with
+          | Some dst_digest ->
+            (* It's tempting to assert [src_digest = dst_digest] here but it
+               turns out this is not necessarily true: artifact substitution can
+               change the contents of promoted files. *)
+            ignore dst_digest
+          | None ->
+            Code_error.raise
+              (sprintf "Could not compute digest of promoted file %S"
+                 (Path.Source.to_string dst))
+              [ ( "dst_digest_result"
+                , Cached_digest.Digest_result.to_dyn dst_digest_result )
+              ]))
+  in
+  (* There can be some files or directories left over from earlier builds, so we
+     need to remove them from [targets.dirs]. *)
+  let remove_stale_files_and_subdirectories ~dir ~expected_filenames =
+    let dst_dir = Path.source (relocate dir) in
+    (* We use a tracked version to subscribe to the correct directory listing.
+       In this way, if a user manually creates a file inside a directory target,
+       this function will rerun and remove it. *)
+    Memo.Build.run (Fs_memo.dir_contents ~force_update:true dst_dir)
+    >>| function
+    | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
+    | Ok dir_contents ->
+      Fs_cache.Dir_contents.iter dir_contents ~f:(function
+        | filename, S_REG ->
+          if not (String.Map.mem expected_filenames filename) then
+            Path.unlink_no_err (Path.relative dst_dir filename)
+        | dirname, S_DIR ->
+          let src_dir = Path.Build.relative dir dirname in
+          if not (Path.Build.Map.mem targets.dirs src_dir) then
+            Path.rm_rf (Path.relative dst_dir dirname)
+        | name, _kind -> Path.unlink_no_err (Path.relative dst_dir name))
+  in
+  Fiber.sequential_iter_seq (Path.Build.Map.to_seq targets.dirs)
+    ~f:(fun (dir, filenames) ->
+      remove_stale_files_and_subdirectories ~dir ~expected_filenames:filenames)

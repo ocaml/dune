@@ -82,6 +82,8 @@ module Dir_contents : sig
 
   val to_list : t -> (string * File_kind.t) list
 
+  val iter : t -> f:(string * File_kind.t -> unit) -> unit
+
   val equal : t -> t -> bool
 end = struct
   (* CR-someday amokhov: Using a [String.Map] instead of a list would be better
@@ -91,6 +93,8 @@ end = struct
   type t = (string * File_kind.t) list
 
   let to_list t = t
+
+  let iter t = List.iter t
 
   (* The names must be unique, so we don't care about comparing file kinds. *)
   let of_list = List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)

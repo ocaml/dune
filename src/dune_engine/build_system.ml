@@ -196,6 +196,10 @@ module Subdir_set = struct
       All
     | These a, These b -> These (String.Set.union a b)
 
+  let inter_set = function
+    | All -> Fun.id
+    | These t -> String.Set.inter t
+
   let union_all = List.fold_left ~init:empty ~f:union
 end
 
@@ -967,48 +971,63 @@ end = struct
       | Install _ -> Memo.Build.return None
       | Context _ -> Source_tree.find_dir sub_dir
     in
-    (* Compute the set of targets and the set of source files that must not be
-       copied *)
-    let source_files_to_ignore, source_dirs_to_ignore =
-      List.fold_left rules ~init:(Path.Build.Set.empty, Path.Build.Set.empty)
-        ~f:(fun (acc_files, acc_dirs) { Rule.targets; mode; loc; _ } ->
-          (* CR-someday amokhov: Remove this limitation. *)
-          let directory_targets_not_supported ~targets =
-            if not (Path.Build.Set.is_empty targets.Targets.Validated.dirs) then
-              User_error.raise ~loc
-                [ Pp.text "Directory targets are not supported for this mode" ]
+    (* Compute the set of sources and targets promoted to the source tree that
+       must not be copied to the build directory. *)
+    let source_files_to_ignore, source_dirnames_to_ignore =
+      List.fold_left rules ~init:(Path.Build.Set.empty, String.Set.empty)
+        ~f:(fun (acc_files, acc_dirnames) { Rule.targets; mode; loc; _ } ->
+          let target_filenames =
+            Path.Build.Set.to_list_map ~f:Path.Build.basename targets.files
+            |> String.Set.of_list
           in
+          let target_dirnames =
+            Path.Build.Set.to_list_map ~f:Path.Build.basename targets.dirs
+            |> String.Set.of_list
+          in
+          (* Check if this rule defines any directory targets that conflict with
+             internal Dune directories listed in [extra_subdirs_to_keep]. *)
+          (match
+             String.Set.choose
+               (Subdir_set.inter_set extra_subdirs_to_keep
+                  (String.Set.union target_filenames target_dirnames))
+           with
+          | None -> ()
+          | Some target_name ->
+            User_error.raise ~loc
+              [ Pp.textf
+                  "This rule defines a target %S whose name conflicts with an \
+                   internal directory used by Dune. Please use a different \
+                   name."
+                  target_name
+              ]);
           match mode with
           | Ignore_source_files ->
-            directory_targets_not_supported ~targets;
-            (Path.Build.Set.union targets.files acc_files, acc_dirs)
+            ( Path.Build.Set.union acc_files targets.files
+            , String.Set.union acc_dirnames target_dirnames )
           | Promote { only; _ } ->
-            let files, dirs =
+            (* Note that the [only] predicate applies to the files inside the
+               directory targets rather than to directory names themselves. *)
+            let target_files =
               match only with
-              | None -> (targets.files, targets.dirs)
+              | None -> targets.files
               | Some pred ->
-                let is_promoted target =
+                let is_promoted file =
                   Predicate_lang.Glob.exec pred
-                    (Path.reach (Path.build target) ~from:(Path.build dir))
+                    (Path.reach (Path.build file) ~from:(Path.build dir))
                     ~standard:Predicate_lang.any
                 in
-                ( Path.Build.Set.filter targets.files ~f:is_promoted
-                , Path.Build.Set.filter targets.dirs ~f:is_promoted )
+                Path.Build.Set.filter targets.files ~f:is_promoted
             in
-            ( Path.Build.Set.union files acc_files
-            , Path.Build.Set.union dirs acc_dirs )
+            ( Path.Build.Set.union acc_files target_files
+            , String.Set.union acc_dirnames target_dirnames )
           | Standard
           | Fallback ->
-            (acc_files, acc_dirs))
+            (acc_files, acc_dirnames))
     in
     let source_files_to_ignore =
       Path.Build.Set.to_list_map ~f:Path.Build.drop_build_context_exn
         source_files_to_ignore
       |> Path.Source.Set.of_list
-    in
-    let source_dirs_to_ignore =
-      Path.Build.Set.to_list_map ~f:Path.Build.basename source_dirs_to_ignore
-      |> String.Set.of_list
     in
     let source_files_to_ignore =
       Target_promotion.delete_stale_dot_merlin_file ~dir ~source_files_to_ignore
@@ -1025,7 +1044,7 @@ end = struct
             (Source_tree.Dir.file_paths dir, Source_tree.Dir.sub_dir_names dir)
         in
         let files = Path.Source.Set.diff files source_files_to_ignore in
-        let subdirs = String.Set.diff subdirs source_dirs_to_ignore in
+        let subdirs = String.Set.diff subdirs source_dirnames_to_ignore in
         if Path.Source.Set.is_empty files then
           (None, subdirs)
         else
@@ -1900,11 +1919,13 @@ end = struct
             report_workspace_local_cache_miss
               ~cache_debug_flags:t.cache_debug_flags ~head_target miss_reason;
             (* Step II. Remove stale targets both from the digest table and from
-               the build directory. *)
-            (* CR-someday amokhov: Don't ignore directory targets. *)
-            Path.Build.Set.iter targets.files ~f:(fun target ->
-                Cached_digest.remove target;
-                Path.Build.unlink_no_err target);
+               the buld directiory. *)
+            Path.Build.Set.iter targets.files ~f:(fun file ->
+                Cached_digest.remove file;
+                Path.Build.unlink_no_err file);
+            Path.Build.Set.iter targets.dirs ~f:(fun dir ->
+                Cached_digest.remove dir;
+                Path.rm_rf (Path.build dir));
             (* Step III. Try to restore artifacts from the shared cache. *)
             let produced_targets_from_cache :
                 (Digest.t Targets.Produced.t, _) Cache_result.t =

@@ -171,16 +171,10 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
     (match Fpath.mkdir (Path.Build.to_string dst_dir) with
     | Created -> ()
     | Already_exists ->
-      User_error.raise ~loc
-        ~annots:
-          (User_message.Annots.singleton User_message.Annots.needs_stack_trace
-             ())
-        [ Pp.textf
-            "This rule defines a directory target %S whose name conflicts with \
-             an internal directory used by Dune. Please use a different name."
-            (Path.Build.drop_build_context_exn dst_dir
-            |> Path.Source.to_string_maybe_quoted)
-        ]
+      (* We clean up all targets (including directory targets) before running an
+         action, so this branch should be unreachable. *)
+      Code_error.raise "Stale directory target in the build directory"
+        [ ("dst_dir", Path.Build.to_dyn dst_dir) ]
     | Missing_parent_directory -> assert false);
     match
       Dune_filesystem_stubs.read_directory_with_kinds

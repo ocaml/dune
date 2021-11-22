@@ -89,14 +89,15 @@ module Produced : sig
   (** Union of [t.files] and all files in [t.dirs]. *)
   val all_files : 'a t -> 'a Path.Build.Map.t
 
+  (** Like [all_files] but returns a [Seq.t] for efficient traversal. *)
+  val all_files_seq : 'a t -> (Path.Build.t * 'a) Seq.t
+
   (** Aggregate all content digests. *)
   val digest : Digest.t t -> Digest.t
 
   module Option : sig
     val mapi : 'a t -> f:(Path.Build.t -> 'a -> 'b option) -> 'b t option
   end
-
-  val to_seq : 'a t -> (Path.Build.t * 'a) Seq.t
 
   val to_dyn : _ t -> Dyn.t
 end

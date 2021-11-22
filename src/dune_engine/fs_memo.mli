@@ -34,9 +34,16 @@ val path_digest :
 val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.Build.t
 
 (** Read the contents of a source or external directory and declare a dependency
-    on it. *)
+    on it. When [force_update = true], evict the directory from the file-system
+    cache and force the recomputation of the result. This can be useful if Dune
+    made a change to the directory and therefore knows that the cached contents
+    is stale and is about to be invalidated by an incoming file-system event. By
+    not using the cache in this situation, it's possible to avoid unnecessary
+    restarts. *)
 val dir_contents :
-  Path.t -> (Fs_cache.Dir_contents.t, Unix_error.Detailed.t) result Memo.Build.t
+     ?force_update:bool
+  -> Path.t
+  -> (Fs_cache.Dir_contents.t, Unix_error.Detailed.t) result Memo.Build.t
 
 (** Handle file system event. *)
 val handle_fs_event : Dune_file_watcher.Fs_memo_event.t -> Memo.Invalidation.t

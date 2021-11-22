@@ -72,15 +72,15 @@ module Reduced_stats = struct
   let equal x y =
     Int.equal x.st_dev y.st_dev
     && Int.equal x.st_ino y.st_ino
-    && Dune_filesystem_stubs.File_kind.equal x.st_kind y.st_kind
+    && File_kind.equal x.st_kind y.st_kind
 end
 
 module Dir_contents : sig
   type t
 
-  val of_list : (string * Dune_filesystem_stubs.File_kind.t) list -> t
+  val of_list : (string * File_kind.t) list -> t
 
-  val to_list : t -> (string * Dune_filesystem_stubs.File_kind.t) list
+  val to_list : t -> (string * File_kind.t) list
 
   val equal : t -> t -> bool
 end = struct
@@ -88,22 +88,17 @@ end = struct
      since we'll not need to worry about the invariant that the list is sorted
      and doesn't contain any duplicate file names. Using maps will likely be
      more costly, so we need to do some benchmarking before switching. *)
-  type t = (string * Dune_filesystem_stubs.File_kind.t) list
+  type t = (string * File_kind.t) list
 
   let to_list t = t
 
   (* The names must be unique, so we don't care about comparing file kinds. *)
   let of_list = List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
 
-  let equal =
-    List.equal
-      (Tuple.T2.equal String.equal Dune_filesystem_stubs.File_kind.equal)
+  let equal = List.equal (Tuple.T2.equal String.equal File_kind.equal)
 end
 
 module Untracked = struct
-  let path_exists =
-    create "path_exists" ~sample:Path.Untracked.exists ~equal:Bool.equal
-
   let path_stat =
     let sample path =
       Path.Untracked.stat path |> Result.map ~f:Reduced_stats.of_unix_stats

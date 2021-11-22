@@ -690,7 +690,7 @@ let source_file_digest path =
   | Unexpected_kind st_kind ->
     report_user_error
       [ Pp.textf "This is neither a regular file nor a directory (%s)"
-          (Dune_filesystem_stubs.File_kind.to_string st_kind)
+          (File_kind.to_string st_kind)
       ]
   | Unix_error (error, _, _) ->
     report_user_error [ Pp.textf "%s" (Unix.error_message error) ]

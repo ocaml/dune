@@ -43,7 +43,7 @@ module Reduced_stats : sig
   type t =
     { st_dev : int  (** Device number *)
     ; st_ino : int  (** Inode number *)
-    ; st_kind : Dune_filesystem_stubs.File_kind.t  (** Kind of the file *)
+    ; st_kind : File_kind.t  (** Kind of the file *)
     }
 
   val of_unix_stats : Unix.stats -> t
@@ -55,7 +55,7 @@ module Dir_contents : sig
   type t
 
   (** The sorted list of file names with kinds. *)
-  val to_list : t -> (string * Dune_filesystem_stubs.File_kind.t) list
+  val to_list : t -> (string * File_kind.t) list
 
   val equal : t -> t -> bool
 end
@@ -66,8 +66,6 @@ end
 
     See [fs_memo.ml] for tracked versions of these operations. *)
 module Untracked : sig
-  val path_exists : bool t
-
   val path_stat : (Reduced_stats.t, Unix_error.Detailed.t) result t
 
   val path_digest : Cached_digest.Digest_result.t t

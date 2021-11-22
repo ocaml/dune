@@ -188,7 +188,7 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
     with
     | Ok files ->
       List.map files ~f:(fun (file, kind) ->
-          match (kind : Dune_filesystem_stubs.File_kind.t) with
+          match (kind : File_kind.t) with
           | S_REG ->
             let src = Path.Build.relative src_dir file in
             let dst = Path.Build.relative dst_dir file in
@@ -201,7 +201,7 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
           | _ ->
             User_error.raise ~loc
               [ Pp.textf "Rule produced a file with unrecognised kind %S"
-                  (Dune_filesystem_stubs.File_kind.to_string kind)
+                  (File_kind.to_string kind)
               ])
       |> Appendable_list.concat
     | Error (ENOENT, _, _) ->

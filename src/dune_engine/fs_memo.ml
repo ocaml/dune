@@ -94,8 +94,7 @@ let update_all : Path.t -> Fs_cache.Update_result.t =
     result
   in
   Update_all.reduce
-    [ update Fs_cache.Untracked.path_exists
-    ; update Fs_cache.Untracked.path_stat
+    [ update Fs_cache.Untracked.path_stat
     ; update Fs_cache.Untracked.path_digest
     ; update Fs_cache.Untracked.dir_contents
     ]
@@ -160,9 +159,38 @@ let declaring_dependency path ~f =
   let+ () = depend path in
   f path
 
-let path_exists = declaring_dependency ~f:Fs_cache.(read Untracked.path_exists)
-
 let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
+
+(* We currently implement [path_exists] by calling [Fs_cache.path_stat] instead
+   of creating a separate [Fs_cache.path_exists] primitive. Here are some
+   reasons for doing this:
+
+   - Semantically, this is equivalent because [Path.exists] is also implemented
+   by checking that the [stat] call succeeds (see [caml_sys_file_exists]).
+
+   - [Fs_cache.path_stat] doesn't change too often because the resulting record
+   [Reduced_stats] doesn't include frequently changing fields like [mtime].
+   Technically, it can still change while [path_exists] remains constant [true],
+   for example, if the [st_kind] field changes, in which case Dune will restart
+   unnecessarily, but such changes are rare, so we don't care.
+
+   - Reusing [Fs_cache.path_stat] helps us to reduce the number of [stat] calls,
+   i.e. we can do just one call to answer both [path_stat] and [path_exists].
+
+   - Having a smaller number of primitives in [Fs_cache] is better because it
+   makes it easier to think about reasons for restarting the current build and
+   avoids unnecessary cache tables in [Fs_cache]. *)
+let path_exists =
+  declaring_dependency
+    ~f:
+      Fs_cache.(
+        fun path ->
+          read Untracked.path_stat path |> function
+          (* If the set of ignored fields below changes, it may be necessary to
+             introduce a separate [Fs_cache.path_exists] primitive to avoid
+             unnecessary restarts. *)
+          | Ok { st_dev = _; st_ino = _; st_kind = _ } -> true
+          | Error (_ : Unix_error.Detailed.t) -> false)
 
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right
    here. One could argue that caching is a higher-level concept compared to file

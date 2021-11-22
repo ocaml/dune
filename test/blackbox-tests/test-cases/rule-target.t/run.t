@@ -20,7 +20,9 @@ are not allowed.
   > EOF
 
   $ dune build @all
-  Error: open: _build/default/.dune: Is a directory
-  -> required by _build/default/.dune
-  -> required by alias all
+  File "dune", line 1, characters 0-50:
+  1 | (rule (with-stdout-to .dune (system "echo toto")))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: This rule defines a target ".dune" whose name conflicts with an
+  internal directory used by Dune. Please use a different name.
   [1]

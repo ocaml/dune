@@ -386,8 +386,8 @@ Directory target whose name conflicts with an internal directory used by Dune.
   2 |   (deps (sandbox always))
   3 |   (targets (dir .dune))
   4 |   (action (bash "mkdir .dune; echo hello > .dune/hello")))
-  Error: This rule defines a directory target ".dune" whose name conflicts with
-  an internal directory used by Dune. Please use a different name.
+  Error: This rule defines a target ".dune" whose name conflicts with an
+  internal directory used by Dune. Please use a different name.
   [1]
 
 Multi-component target directories are not allowed.

@@ -976,6 +976,10 @@ end = struct
     let source_files_to_ignore, source_dirnames_to_ignore =
       List.fold_left rules ~init:(Path.Build.Set.empty, String.Set.empty)
         ~f:(fun (acc_files, acc_dirnames) { Rule.targets; mode; loc; _ } ->
+          let target_filenames =
+            Path.Build.Set.to_list_map ~f:Path.Build.basename targets.files
+            |> String.Set.of_list
+          in
           let target_dirnames =
             Path.Build.Set.to_list_map ~f:Path.Build.basename targets.dirs
             |> String.Set.of_list
@@ -984,16 +988,17 @@ end = struct
              internal Dune directories listed in [extra_subdirs_to_keep]. *)
           (match
              String.Set.choose
-               (Subdir_set.inter_set extra_subdirs_to_keep target_dirnames)
+               (Subdir_set.inter_set extra_subdirs_to_keep
+                  (String.Set.union target_filenames target_dirnames))
            with
           | None -> ()
-          | Some dirname ->
+          | Some target_name ->
             User_error.raise ~loc
               [ Pp.textf
-                  "This rule defines a directory target %S whose name \
-                   conflicts with an internal directory used by Dune. Please \
-                   use a different name."
-                  dirname
+                  "This rule defines a target %S whose name conflicts with an \
+                   internal directory used by Dune. Please use a different \
+                   name."
+                  target_name
               ]);
           match mode with
           | Ignore_source_files ->

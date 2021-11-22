@@ -97,30 +97,6 @@ directory, Dune prints out the root when starting:
     Entering directory '/home/jdimino/code/dune'
     ...
 
-More precisely, it will choose the outermost ancestor directory containing a
-``dune-workspace`` file as root. For instance if you are in
-``/home/me/code/myproject/src``, then Dune will look for all these files in
-order:
-
--  ``/dune-workspace``
--  ``/home/dune-workspace``
--  ``/home/me/dune-workspace``
--  ``/home/me/code/dune-workspace``
--  ``/home/me/code/myproject/dune-workspace``
--  ``/home/me/code/myproject/src/dune-workspace``
-
-The first entry to match in this list will determine the root. In
-practice, this means if you nest your workspaces, Dune will
-always use the outermost one.
-
-In addition to determining the root, Dune will read this file
-to setup the configuration of the workspace unless the ``--workspace``
-command line option is used. See the section :ref:`dune-workspace`
-for the syntax of this file.
-
-The ``Entering Directory`` message can be suppressed with the
-``--no-print-directory`` command line option (as in GNU make).
-
 This message can be suppressed with the ``--no-print-directory``
 command line option (as in GNU make).
 

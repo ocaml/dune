@@ -182,7 +182,7 @@ end = struct
     | Ok dir_contents ->
       let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
       let+ files, dirs =
-        Memo.Build.sequential_map dir_contents ~f:(fun (fn, kind) ->
+        Memo.Build.parallel_map dir_contents ~f:(fun (fn, kind) ->
             let path = Path.Source.relative path fn in
             if Path.Source.is_in_build_dir path then
               Memo.Build.return List.Skip

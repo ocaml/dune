@@ -117,3 +117,80 @@ we give an error message:
   Error: Rule dependencies are configured to require sandboxing, but the rule
   has no actions that could potentially require sandboxing.
   [1]
+
+If an action [chdir]s to a non-existing directory, it is created.
+
+  $ echo '(lang dune 2.6)' > dune-project
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets t)
+  >   (deps (sandbox none))
+  >   (action (chdir dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  > EOF
+  $ dune build t
+  $ cat _build/default/dir/file
+  hi
+  $ cat _build/default/t
+  hi
+
+Now the same but with sandboxing. The action succeeds but the directory is not
+re-created in the build directory.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets t)
+  >   (deps (sandbox always))
+  >   (action (chdir dir (progn (run true) (no-infer (write-file file hi)) (write-file ../t hi)))))
+  > EOF
+  $ dune build t
+  $ cat _build/default/dir/file
+  cat: _build/default/dir/file: No such file or directory
+  [1]
+  $ cat _build/default/t
+  hi
+
+Show errors when [chdir]ing outside of the build directory.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets t)
+  >   (deps (sandbox none))
+  >   (action (chdir /dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  > EOF
+  $ dune build t
+  File "dune", line 4, characters 17-21:
+  4 |   (action (chdir /dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+                       ^^^^
+  Error: Directory /dir is outside the build directory. This is not allowed.
+  [1]
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets t)
+  >   (deps (sandbox none))
+  >   (action (chdir ../../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  > EOF
+  $ dune build t
+  File "dune", line 4, characters 17-26:
+  4 |   (action (chdir ../../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+                       ^^^^^^^^^
+  Error: path outside the workspace: ../../dir from default
+  [1]
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets t)
+  >   (deps (sandbox none))
+  >   (action (chdir ../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  > EOF
+  $ dune build t
+  File "dune", line 1, characters 0-131:
+  1 | (rule
+  2 |   (targets t)
+  3 |   (deps (sandbox none))
+  4 |   (action (chdir ../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  Error: Rule has targets in different directories.
+  Targets:
+  - t
+  - . (context t)
+  [1]

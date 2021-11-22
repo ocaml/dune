@@ -161,36 +161,46 @@ let declaring_dependency path ~f =
 
 let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
 
-(* We currently implement [path_exists] by calling [Fs_cache.path_stat] instead
-   of creating a separate [Fs_cache.path_exists] primitive. Here are some
-   reasons for doing this:
+(* We currently implement [file_exists] and [dir_exists] functions by calling
+   [Fs_cache.path_stat] instead of creating separate [Fs_cache] primitives. Here
+   are some reasons for doing this:
 
    - Semantically, this is equivalent because [Path.exists] is also implemented
    by checking that the [stat] call succeeds (see [caml_sys_file_exists]).
 
    - [Fs_cache.path_stat] doesn't change too often because the resulting record
    [Reduced_stats] doesn't include frequently changing fields like [mtime].
-   Technically, it can still change while [path_exists] remains constant [true],
-   for example, if the [st_kind] field changes, in which case Dune will restart
-   unnecessarily, but such changes are rare, so we don't care.
+   Technically, it can still change while [file_exists] remains [false], for
+   example, if the [st_kind] field changes from [S_DIR] to [S_LNK]. In this case
+   Dune will restart unnecessarily, but such changes are rare, so we don't care.
 
    - Reusing [Fs_cache.path_stat] helps us to reduce the number of [stat] calls,
-   i.e. we can do just one call to answer both [path_stat] and [path_exists].
+   i.e. we can do just one call to answer both [path_stat] and [file_exists].
 
    - Having a smaller number of primitives in [Fs_cache] is better because it
    makes it easier to think about reasons for restarting the current build and
    avoids unnecessary cache tables in [Fs_cache]. *)
-let path_exists =
+let path_kind =
   declaring_dependency
     ~f:
       Fs_cache.(
         fun path ->
           read Untracked.path_stat path |> function
           (* If the set of ignored fields below changes, it may be necessary to
-             introduce a separate [Fs_cache.path_exists] primitive to avoid
+             introduce a separate [Fs_cache.path_kind] primitive to avoid
              unnecessary restarts. *)
-          | Ok { st_dev = _; st_ino = _; st_kind = _ } -> true
-          | Error (_ : Unix_error.Detailed.t) -> false)
+          | Ok { st_dev = _; st_ino = _; st_kind } -> Ok st_kind
+          | Error _ as error -> error)
+
+let file_exists path =
+  path_kind path >>| function
+  | Ok kind -> File_kind.equal kind S_REG
+  | Error (_ : Unix_error.Detailed.t) -> false
+
+let dir_exists path =
+  path_kind path >>| function
+  | Ok kind -> File_kind.equal kind S_DIR
+  | Error (_ : Unix_error.Detailed.t) -> false
 
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right
    here. One could argue that caching is a higher-level concept compared to file

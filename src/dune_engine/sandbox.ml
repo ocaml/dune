@@ -47,7 +47,7 @@ let create_dirs t ~deps ~chdirs ~rule_dir =
         (* This [path] is not in the build directory, so we do not need to
            create it. If it comes from [deps], it must exist already. If it
            comes from [chdirs], we'll ensure that it exists in the call to
-           [Fs.mkdir_p_or_assert_existence] below. *)
+           [Fs.mkdir_p_or_assert_existence] in [execute_action_for_rule]. *)
         ()
       | Some path ->
         (* There is no point in using the memoized version [Fs.mkdir_p] since

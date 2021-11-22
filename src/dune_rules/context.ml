@@ -37,12 +37,9 @@ module Bin = struct
   include Bin
 
   let exists fn =
-    let+ stat = Fs_memo.path_stat fn in
-    match stat with
-    | Error _
-    | Ok { st_kind = S_DIR; _ } ->
-      None
-    | Ok _ -> Some fn
+    Fs_memo.file_exists fn >>| function
+    | true -> Some fn
+    | false -> None
 
   let which ~path prog =
     let prog = add_exe prog in

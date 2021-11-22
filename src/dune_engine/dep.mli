@@ -110,29 +110,8 @@ module Facts : sig
 end
 
 module Set : sig
-  type dep := t
-
-  type t = unit Map.t
-
-  val equal : t -> t -> bool
-
-  val empty : t
-
-  val singleton : dep -> t
-
-  val add : t -> dep -> t
-
-  val union : t -> t -> t
-
-  val union_map : 'a list -> f:('a -> t) -> t
-
-  val to_list : t -> dep list
-
-  val of_list : dep list -> t
-
-  val of_list_map : 'a list -> f:('a -> dep) -> t
-
-  val fold : t -> init:'a -> f:(dep -> 'a -> 'a) -> 'a
+  include
+    Set.S with type elt = t and type 'a map := 'a Map.t and type t = unit Map.t
 
   (** Return dependencies on all source files under a certain source directory.
 

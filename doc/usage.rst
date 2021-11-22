@@ -100,14 +100,14 @@ This message can be suppressed with the ``--no-print-directory``
 command line option (as in GNU make).
 
 More precisely, Dune will choose the outermost ancestor directory containing a
-``dune-workspace`` file which is used to mark the root of the current workspace.
-If no ``dune-workspace`` file is present the same strategy applies with
+``dune-workspace`` file, which is used to mark the root of the current workspace.
+If no ``dune-workspace`` file is present, the same strategy applies with
 ``dune-project`` files.
 
 In case of a mix of `dune-workspace` and `dune-project` files, workspace files
 take precedence over project files in the sense that if a ``dune-workspace``
-file is found only parent ``dune-workspace`` files will be considered when
-looking for the root, while if a `dune-project` file is found both parent
+file is found, only parent ``dune-workspace`` files will be considered when
+looking for the root; however, if a `dune-project` file is found both parent
 ``dune-workspace`` and ``dune-project`` files will be considered.
 
 A ``dune-workspace`` file is also a configuration file. Dune will read
@@ -300,7 +300,7 @@ See :ref:`variables-for-artifacts` for more information.
 Finding External Libraries
 ==========================
 
-When a library isn't available in the workspace, Dune search for it
+When a library isn't available in the workspace, Dune will search for it
 in the installed world and expect it to be already compiled.
 
 It looks up external libraries using a specific list of search paths,

@@ -565,7 +565,7 @@ let compute_target_digests_or_raise_error exec_params ~loc ~produced_targets :
          | [] -> []
          | _ ->
            [ Pp.textf "Rule failed to generate the following targets:"
-           ; pp_paths (Path.Set.of_list (List.map ~f:Path.build missing))
+           ; pp_paths (Path.Set.of_list_map ~f:Path.build missing)
            ])
         @
         match errors with

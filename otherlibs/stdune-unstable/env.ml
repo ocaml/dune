@@ -22,6 +22,7 @@ module Var = struct
   include T
 end
 
+module Set = Var.Set
 module Map = Var.Map
 
 (* The use of [mutable] here is safe, since we never call (back) to the
@@ -39,7 +40,7 @@ let make vars = { vars; unix = None }
 
 let empty = make Map.empty
 
-let vars t = Var.Set.of_list (Map.keys t.vars)
+let vars t = Var.Set.of_keys t.vars
 
 let get t k = Map.find t.vars k
 

@@ -110,7 +110,7 @@ val findi : string -> f:(char -> bool) -> int option
 (** Find index of last character satisfying [f] *)
 val rfindi : string -> f:(char -> bool) -> int option
 
-include Comparable_intf.S with type Key.t = t
+include Comparable_intf.S with type key := t
 
 module Table : Hashtbl.S with type key = t
 

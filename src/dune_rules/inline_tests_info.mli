@@ -27,8 +27,10 @@ module Mode_conf : sig
 
   val decode : t Dune_lang.Decoder.t
 
+  module Map : Map.S with type key = t
+
   module Set : sig
-    include Set.S with type elt = t
+    include Set.S with type elt = t and type 'a map = 'a Map.t
 
     val decode : t Dune_lang.Decoder.t
 

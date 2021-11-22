@@ -1,9 +1,7 @@
 module type S = sig
   type t
 
-  module Set : Set.S with type elt = t
-
-  module Map : Map.S with type key = t
+  include Comparable_intf.S with type key := t
 
   module Table : Hashtbl.S with type key = t
 

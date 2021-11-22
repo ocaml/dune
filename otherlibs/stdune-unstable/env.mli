@@ -5,16 +5,14 @@ module Var : sig
 
   val temp_dir : t
 
-  module Set : Set.S with type elt = t
-
-  module Map : Map.S with type key = t
+  include Comparable_intf.S with type key := t
 end
 
 type t
 
 val hash : t -> int
 
-module Map : Map.S with type key = Var.t
+include Comparable_intf.S with type key := Var.t
 
 val equal : t -> t -> bool
 

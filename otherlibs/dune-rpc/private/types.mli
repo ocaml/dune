@@ -19,9 +19,7 @@ module Id : sig
 
   val to_sexp : t -> Sexp.t
 
-  module Set : Set.S with type elt = t
-
-  module Map : Stdune.Map.S with type key = t
+  include Stdune.Comparable_intf.S with type key := t
 end
 
 module Version : sig

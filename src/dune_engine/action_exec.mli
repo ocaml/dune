@@ -16,8 +16,10 @@ module Dynamic_dep : sig
 
   val compare : t -> t -> Ordering.t
 
+  module Map : Map.S with type key := t
+
   module Set : sig
-    include Set.S with type elt = t
+    include Set.S with type elt = t and type 'a map = 'a Map.t
 
     val to_dep_set : t -> Dep.Set.t
   end

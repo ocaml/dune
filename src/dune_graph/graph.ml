@@ -76,8 +76,7 @@ module Edge = struct
   end
 
   include T
-  module Map = Map.Make (T)
-  module Set = Set.Make (T) (Map)
+  include Comparable.Make (T)
 end
 
 type t =

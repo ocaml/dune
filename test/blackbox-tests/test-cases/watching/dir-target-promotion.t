@@ -158,11 +158,7 @@ Dune correctly notices that the contents of . changed because [d1] was created.
   Updating path_digest cache for ".": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
 
-Here [path_stat] of the directory [d1] changed, presumably, because its [mtime]
-changed. Ideally, Dune shouldn't trigger itself when creating files/directories
-inside promoted directories.
-
-# CR-someday amokhov: Fix this by not watching [mtime]s.
+Here [path_stat] of [d1] changed, because it didn't exist before the build.
 
   $ cat .#debug-output | grep d1
   Updating dir_contents cache for "d1": Updated { changed = false }

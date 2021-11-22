@@ -35,19 +35,16 @@ let dir t = t.dir
 
 let map_path t p = Path.Build.append t.dir p
 
-let create_dirs t ~deps ~chdirs ~rule_dir =
+let create_dirs t ~deps ~rule_dir =
   Path.Set.iter
     (Path.Set.add
-       (Path.Set.union_all
-          [ chdirs; Dep.Facts.parent_dirs deps; Dep.Facts.dirs deps ])
+       (Path.Set.union_all [ Dep.Facts.parent_dirs deps; Dep.Facts.dirs deps ])
        (Path.build rule_dir))
     ~f:(fun path ->
       match Path.as_in_build_dir path with
       | None ->
         (* This [path] is not in the build directory, so we do not need to
-           create it. If it comes from [deps], it must exist already. If it
-           comes from [chdirs], we'll ensure that it exists in the call to
-           [Fs.mkdir_p_or_assert_existence] in [execute_action_for_rule]. *)
+           create it. If it comes from [deps], it must exist already. *)
         ()
       | Some path ->
         (* There is no point in using the memoized version [Fs.mkdir_p] since
@@ -114,14 +111,13 @@ let snapshot t =
   in
   walk (Path.build t.dir) Path.Map.empty
 
-let create ~mode ~rule_loc ~deps ~rule_dir ~chdirs ~rule_digest ~expand_aliases
-    =
+let create ~mode ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_aliases =
   init ();
   let sandbox_suffix = rule_digest |> Digest.to_string in
   let sandbox_dir = Path.Build.relative sandbox_dir sandbox_suffix in
   let t = { dir = sandbox_dir; snapshot = None } in
   Path.rm_rf (Path.build sandbox_dir);
-  create_dirs t ~deps ~chdirs ~rule_dir;
+  create_dirs t ~deps ~rule_dir;
   let deps =
     if expand_aliases then
       Dep.Facts.paths deps

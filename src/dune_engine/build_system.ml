@@ -40,11 +40,14 @@ end = struct
     match Path.as_in_build_dir path with
     | Some path -> mkdir_p path
     | None -> (
-      Fs_memo.path_exists path >>| function
+      Fs_memo.dir_exists path >>| function
       | true -> ()
       | false ->
+        (* CR-someday amokhov: I think this case is impossible because we only
+           call [mkdir_p_or_assert_existence] for directories in [Chdir] actions
+           but those are checked to be in the build directory. *)
         User_error.raise ~loc
-          [ Pp.textf "%S does not exist" (Path.to_string_maybe_quoted path) ])
+          [ Pp.textf "Directory %S does not exist" (Path.to_string path) ])
 end
 
 module Loaded = struct

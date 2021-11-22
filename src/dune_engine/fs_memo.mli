@@ -8,17 +8,21 @@ val init : dune_file_watcher:Dune_file_watcher.t option -> Memo.Invalidation.t
 (** All functions in this module raise a code error when given a path in the
     build directory. *)
 
-(* CR-someday amokhov: Note that currently the scheduler calls [handle] only for
-   source paths, because we don't watch external directories. We should try to
-   implement at least a partial support for watching external paths. *)
+(** Check if a source or external file exists and declare a dependency on it. *)
+val file_exists : Path.t -> bool Memo.Build.t
 
-(** Check if a source or external path exists and declare a dependency on it. *)
-val path_exists : Path.t -> bool Memo.Build.t
+(** Check if a source or external directory exists and declare a dependency on
+    it. *)
+val dir_exists : Path.t -> bool Memo.Build.t
 
 (** Call [Path.stat] on a path and declare a dependency on it. *)
 val path_stat :
      Path.t
   -> (Fs_cache.Reduced_stats.t, Unix_error.Detailed.t) result Memo.Build.t
+
+(** Like [path_stat] but extracts the [st_kind] field from the result. *)
+val path_kind :
+  Path.t -> (File_kind.t, Unix_error.Detailed.t) result Memo.Build.t
 
 (** Digest the contents of a source or external path and declare a dependency on
     it. When [force_update = true], evict the path from all digest caches and

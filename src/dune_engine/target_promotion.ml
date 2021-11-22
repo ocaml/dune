@@ -130,25 +130,29 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
           (Path.Build.drop_build_context_exn dir)
           into_dir ~error_loc:loc
       in
-      let promote_into_error msg =
+      let promote_into_error ?unix_error msg =
+        let extra_messages =
+          match unix_error with
+          | None -> []
+          | Some error ->
+            [ Pp.textf "Reason: %s." (Unix_error.Detailed.to_string error) ]
+        in
         User_error.raise ~loc
-          [ msg (Path.Source.to_string into_dir) ]
+          (msg (Path.Source.to_string into_dir) :: extra_messages)
           ~annots:
             (User_message.Annots.singleton User_message.Annots.needs_stack_trace
                ())
       in
-      Memo.Build.run (Fs_memo.path_exists (Path.source into_dir)) >>| function
-      | false ->
+      Memo.Build.run (Fs_memo.path_kind (Path.source into_dir)) >>| function
+      | Ok S_DIR ->
+        fun src -> Path.Source.relative into_dir (Path.Build.basename src)
+      | Ok _other_kind -> promote_into_error (Pp.textf "%S is not a directory.")
+      | Error (ENOENT, _, _) ->
         promote_into_error
           (Pp.textf "Directory %S does not exist. Please create it manually.")
-      | true -> (
-        (* CR-someday amokhov: We use an untracked version here. The only issue
-           is that Dune won't notice if the user turns a file into a directory
-           while somehow not triggering [Fs_memo.path_exists]. *)
-        match Path.Untracked.is_directory (Path.source into_dir) with
-        | false -> promote_into_error (Pp.textf "%S is not a directory.")
-        | true ->
-          fun src -> Path.Source.relative into_dir (Path.Build.basename src)))
+      | Error unix_error ->
+        promote_into_error ~unix_error
+          (Pp.textf "Cannot promote to directory %S."))
   in
   let directory_target_error ?unix_error ~dst_dir msgs =
     let msgs =

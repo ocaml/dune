@@ -11,3 +11,17 @@
   ; https://github.com/ocaml/dune/pull/3575
   false)
  (libraries dune_bench core_bench.inline_benchmarks))
+
+(library
+ (name fiber_bench)
+ (modules fiber_bench)
+ (library_flags -linkall)
+ (preprocess
+  (pps ppx_bench))
+ (libraries fiber stdune core_bench.inline_benchmarks))
+
+(executable
+ (name fiber_bench_main)
+ (allow_overlapping_dependencies)
+ (modules fiber_bench_main)
+ (libraries fiber_bench core_bench.inline_benchmarks))

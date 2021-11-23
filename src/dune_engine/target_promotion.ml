@@ -175,10 +175,19 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
     match Fs_cache.(read Untracked.path_stat) dst_dir with
     | Ok { st_kind; _ } when st_kind = S_DIR -> ()
     | Error (ENOENT, _, _) -> Path.mkdir_p dst_dir
-    | Ok _exists_but_not_a_directory ->
-      directory_target_error ~dst_dir
-        [ Pp.textf "Reason: %S is not a directory." (Path.to_string dst_dir) ]
-    | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
+    | Ok _
+    | Error _ -> (
+      (* Try to delete any unexpected stuff out of the way. In future, we might
+         want to make this aggressive cleaning behaviour conditional. *)
+      match
+        Unix_error.Detailed.catch
+          (fun () ->
+            Path.unlink_no_err dst_dir;
+            Path.mkdir_p dst_dir)
+          ()
+      with
+      | Ok () -> ()
+      | Error unix_error -> directory_target_error ~unix_error ~dst_dir [])
   in
   (* Here we know that the promotion directory exists but we may need to create
      additional subdirectories for [targets.dirs]. *)
@@ -203,7 +212,10 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
              be writable by the user, so we explicitly set the user writable
              bit. *)
           let chmod n = n lor 0o200 in
-          let* () = promote_source ~chmod ~src ~dst in
+          let* () =
+            promote_source ~chmod ~delete_dst_if_it_is_a_directory:true ~src
+              ~dst
+          in
           let+ dst_digest_result =
             Memo.Build.run
               (Fs_memo.path_digest ~force_update:true (Path.source dst))

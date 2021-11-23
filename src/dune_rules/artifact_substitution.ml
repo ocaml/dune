@@ -571,7 +571,8 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
       Fiber.return ())
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
 
-let copy_file ~conf ?chmod ~src ~dst () =
+let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
+    () =
   (* We create a temporary file in the same directory to ensure it's on the same
      partition as [dst] (otherwise, [Path.rename temp_file dst] won't work). The
      prefix ".#" is used because Dune ignores such files and so creating this
@@ -586,11 +587,22 @@ let copy_file ~conf ?chmod ~src ~dst () =
       let open Fiber.O in
       let+ () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
       let up_to_date =
-        Path.exists dst
-        &&
-        let temp_file_digest = Digest.file temp_file in
-        let dst_digest = Digest.file dst in
-        Digest.equal temp_file_digest dst_digest
+        match Path.stat dst with
+        | Ok { st_kind; _ } when st_kind = S_DIR -> (
+          match delete_dst_if_it_is_a_directory with
+          | true ->
+            Path.rm_rf dst;
+            false
+          | false ->
+            User_error.raise
+              [ Pp.textf "Cannot copy artifact to %S because it is a directory"
+                  (Path.to_string dst)
+              ])
+        | Error (_ : Unix_error.Detailed.t) -> false
+        | Ok (_ : Unix.stats) ->
+          let temp_file_digest = Digest.file temp_file in
+          let dst_digest = Digest.file dst in
+          Digest.equal temp_file_digest dst_digest
       in
       (* This is just an optimisation: skip the renaming if the destination
          exists and has the right digest. The optimisation is useful to avoid

@@ -451,29 +451,29 @@ Promotion of directory targets.
   c
   d
 
-Test error message if a destination directory is taken up by a file.
+If a destination directory is taken up by a file, Dune deletes it.
 
   $ rm -rf dir
   $ mkdir dir
   $ touch dir/subdir
   $ dune build a
-  File "dune", line 1, characters 0-263:
-   1 | (rule
-   2 |   (mode promote)
-   3 |   (deps (sandbox always))
-   4 |   (targets a (dir dir))
-   5 |   (action (bash "\| echo a > a;
-   6 |                 "\| mkdir -p dir/subdir;
-   7 |                 "\| echo b > dir/b;
-   8 |                 "\| echo c > dir/c;
-   9 |                 "\| echo d > dir/subdir/d
-  10 | )))
-  Error: Cannot promote files to "dir/subdir".
-  Reason: "dir/subdir" is not a directory.
-  -> required by _build/default/a
-  [1]
+  $ cat a dir/b dir/c dir/subdir/d
+  a
+  b
+  c
+  d
 
-  $ rm dir/subdir
+If a destination file is taken up by a directory, Dune deletes it.
+
+  $ rm dir/b
+  $ mkdir -p dir/b
+  $ touch dir/b
+  $ dune build a
+  $ cat a dir/b dir/c dir/subdir/d
+  a
+  b
+  c
+  d
 
 Test error message for (promote (into <dir>)) if <dir> is missing.
 

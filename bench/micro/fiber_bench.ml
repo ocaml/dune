@@ -27,21 +27,29 @@ let%bench_fun ("ivar" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
      in
      loop jobs)
 
-let%bench_fun ("ivar" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
- fun () ->
-  let ivar = ref (Fiber.Ivar.create ()) in
-  Fiber.run
-    ~iter:(fun () ->
-      let open Nonempty_list in
-      [ Fiber.Fill (!ivar, ()) ])
-    (let rec loop = function
-       | 0 -> Fiber.return ()
-       | n ->
-         ivar := Fiber.Ivar.create ();
-         let* () = Fiber.Ivar.read !ivar in
-         loop (n - 1)
-     in
-     loop jobs)
+let%bench_fun ("Var.set" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
+  let var = Fiber.Var.create () in
+  fun () ->
+    Fiber.run
+      ~iter:(fun () -> assert false)
+      (let rec loop = function
+         | 0 -> Fiber.return ()
+         | n -> Fiber.Var.set var n (fun () -> loop (n - 1))
+       in
+       loop jobs)
+
+let%bench_fun ("Var.get" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
+  let var = Fiber.Var.create () in
+  fun () ->
+    Fiber.run
+      ~iter:(fun () -> assert false)
+      (let rec loop = function
+         | 0 -> Fiber.return ()
+         | n ->
+           let* (_ : int option) = Fiber.Var.get var in
+           loop (n - 1)
+       in
+       Fiber.Var.set var 0 (fun () -> loop jobs))
 
 let exns =
   List.init 100 ~f:(fun _ ->

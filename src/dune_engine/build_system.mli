@@ -111,7 +111,8 @@ val init :
      stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t
   -> promote_source:
-       (   ?chmod:(int -> int)
+       (   chmod:(int -> int)
+        -> delete_dst_if_it_is_a_directory:bool
         -> src:Path.Build.t
         -> dst:Path.Source.t
         -> Build_context.t option

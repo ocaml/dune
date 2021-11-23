@@ -63,11 +63,14 @@ Replace a directory with a file and rebuild.
   $ rm -rf d1/d2
   $ touch d1/d2
   $ build d1
-  Failure
+  Success
+  $ cat d1/a d1/b d1/d2/c
+  +++
 
-Delete the problematic file and retry.
+Replace a file with a directory and rebuild.
 
-  $ rm d1/d2
+  $ rm d1/b
+  $ mkdir -p d1/b
   $ build d1
   Success
   $ cat d1/a d1/b d1/d2/c
@@ -76,7 +79,15 @@ Delete the problematic file and retry.
 Add some unexpected files and directories and check that Dune deletes them.
 
 # CR-someday amokhov: This scenario works but Dune currently produces some
-# spurious errors (see below) that go away after retriggering. We should fix this.
+# spurious errors (see below) that go away after retriggering. The reason for
+# these errors is that "build d1" is interpreted as "build @d1/default", which
+# recursively expands to include, for example, "d1/d2/unexpected-dir-2/default",
+# which can't be built, because the rule doesn't produce it. To fix it, we
+# should find a way to specify the build goal more precisely. One approach is to
+# stop expanding recursive aliases inside promoted directory targets, which can
+# be tricky since we don't know which directories are promoted at when expanding
+# aliases. Another approach is to provide CLI syntax to request a directory as a
+# build goal, for example, "build d1/*".
 
   $ mkdir -p d1/unexpected-dir-1
   $ mkdir -p d1/d2/unexpected-dir-2
@@ -100,18 +111,7 @@ We're done.
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
-  File "dune", line 1, characters 0-151:
-  1 | (rule
-  2 |   (mode promote)
-  3 |   (deps src (sandbox always))
-  4 |   (targets (dir d1))
-  5 |   (action (bash "mkdir -p d1/d2; cp src d1/a; cp src d1/b; cp src d1/d2/c")))
-  Error: Cannot promote files to "d1/d2".
-  Reason: "d1/d2" is not a directory.
-  -> required by _build/default/d1
-  -> required by alias d1/all
-  -> required by alias d1/default
-  Had errors, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   File "dune", line 1, characters 0-151:
   1 | (rule

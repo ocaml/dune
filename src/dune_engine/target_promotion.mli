@@ -10,6 +10,7 @@ val promote :
   -> promote:Rule.Promote.t
   -> promote_source:
        (   chmod:(int -> int)
+        -> delete_dst_if_it_is_a_directory:bool
         -> src:Path.Build.t
         -> dst:Path.Source.t
         -> unit Fiber.t)

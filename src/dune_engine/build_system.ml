@@ -313,7 +313,8 @@ type t =
   ; mutable errors : Error.t list
   ; handler : Handler.t
   ; promote_source :
-         ?chmod:(int -> int)
+         chmod:(int -> int)
+      -> delete_dst_if_it_is_a_directory:bool
       -> src:Path.Build.t
       -> dst:Path.Source.t
       -> Build_context.t option
@@ -1228,7 +1229,8 @@ module type Rec = sig
 
   val build_file : Path.t -> Digest.t Memo.Build.t
 
-  val build_dir : Path.t -> (Digest.t * Digest.t Path.Build.Map.t) Memo.Build.t
+  val build_dir :
+    Path.t -> (Digest.t * Digest.t Path.Build.Map.t) option Memo.Build.t
 
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
 
@@ -1794,7 +1796,7 @@ end = struct
       Fiber.return ()
     | Promote promote, (Some Automatically | None) ->
       Target_promotion.promote ~dir ~targets ~promote
-        ~promote_source:(fun ~chmod -> t.promote_source ~chmod context)
+        ~promote_source:(t.promote_source context)
 
   let execute_rule_impl ~rule_kind rule =
     let t = t () in
@@ -2241,8 +2243,13 @@ end = struct
   module Pred = struct
     let build_impl g =
       let dir = File_selector.dir g in
-      is_target dir >>= function
-      | false ->
+      let* build_dir =
+        is_target dir >>= function
+        | false -> Memo.Build.return None
+        | true -> build_dir dir
+      in
+      match build_dir with
+      | None ->
         let* paths = Pred.eval g in
         let+ files =
           Memo.Build.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
@@ -2252,8 +2259,7 @@ end = struct
         Dep.Fact.Files.make
           ~files:(Path.Map.of_list_exn files)
           ~dirs:Path.Map.empty
-      | true ->
-        let+ digest, path_map = build_dir dir in
+      | Some (digest, path_map) ->
         let files =
           Path.Build.Map.foldi path_map ~init:Path.Map.empty
             ~f:(fun path digest acc ->
@@ -2264,7 +2270,7 @@ end = struct
               | false -> acc)
         in
         let dirs = Path.Map.singleton dir digest in
-        Dep.Fact.Files.make ~files ~dirs
+        Memo.Build.return (Dep.Fact.Files.make ~files ~dirs)
 
     let eval_impl g =
       let dir = File_selector.dir g in
@@ -2317,10 +2323,8 @@ end = struct
   let build_dir path =
     let+ digest, path_map = Memo.exec build_file_memo path in
     match path_map with
-    | Some path_map -> (digest, path_map)
-    | None ->
-      Code_error.raise "build_dir called on a file target"
-        [ ("path", Path.to_dyn path) ]
+    | Some path_map -> Some (digest, path_map)
+    | None -> None
 
   let build_alias_memo =
     Memo.create "build-alias"

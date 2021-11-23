@@ -460,6 +460,9 @@ Conflict between a target directory and a source directory.
   4 |   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
   Error: This rule defines a target "output" whose name conflicts with a source
   directory in the same directory.
+  Hint: If you want Dune to generate and replace "output", add (mode promote)
+  to the rule stanza. Alternatively, you can delete "output" from the source
+  tree or change the rule to generate a different target.
   [1]
 
 Conflict between a target directory and a source file.

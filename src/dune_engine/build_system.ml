@@ -427,6 +427,13 @@ let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
          directory in the same directory."
         (Path.Build.basename fn)
     ]
+    ~hints:
+      [ Pp.textf
+          "If you want Dune to generate and replace %S, add (mode promote) to \
+           the rule stanza. Alternatively, you can delete %S from the source \
+           tree or change the rule to generate a different target."
+          (Path.Build.basename fn) (Path.Build.basename fn)
+      ]
 
 let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
   let fn = Path.build fn in

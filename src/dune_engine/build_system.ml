@@ -959,17 +959,6 @@ end = struct
     in
     let collected = Rules.Dir_rules.consume rules in
     let rules = collected.rules in
-    let* aliases =
-      match context_or_install with
-      | Context _ -> compute_alias_expansions t ~collected ~dir
-      | Install _ ->
-        (* There are no aliases in the [_build/install] directory *)
-        Memo.Build.return Alias.Name.Map.empty
-    and* source_tree_dir =
-      match context_or_install with
-      | Install _ -> Memo.Build.return None
-      | Context _ -> Source_tree.find_dir sub_dir
-    in
     (* Compute the set of sources and targets promoted to the source tree that
        must not be copied to the build directory. *)
     let source_files_to_ignore, source_dirnames_to_ignore =
@@ -1023,37 +1012,35 @@ end = struct
           | Fallback ->
             (acc_files, acc_dirnames))
     in
-    let source_files_to_ignore =
-      Path.Build.Set.to_list_map ~f:Path.Build.drop_build_context_exn
-        source_files_to_ignore
-      |> Path.Source.Set.of_list
-    in
-    let source_files_to_ignore =
-      Target_promotion.delete_stale_dot_merlin_file ~dir ~source_files_to_ignore
-    in
     (* Take into account the source files *)
-    let to_copy, source_dirs =
+    let* to_copy, source_dirs =
       match context_or_install with
-      | Install _ -> (None, String.Set.empty)
+      | Install _ -> Memo.Build.return (None, String.Set.empty)
       | Context context_name ->
-        let files, subdirs =
-          match source_tree_dir with
+        let+ files, subdirs =
+          Source_tree.find_dir sub_dir >>| function
           | None -> (Path.Source.Set.empty, String.Set.empty)
           | Some dir ->
             (Source_tree.Dir.file_paths dir, Source_tree.Dir.sub_dir_names dir)
         in
-        let files = Path.Source.Set.diff files source_files_to_ignore in
+        let files =
+          let source_files_to_ignore =
+            Path.Build.Set.to_list_map ~f:Path.Build.drop_build_context_exn
+              source_files_to_ignore
+            |> Path.Source.Set.of_list
+          in
+          let source_files_to_ignore =
+            Target_promotion.delete_stale_dot_merlin_file ~dir
+              ~source_files_to_ignore
+          in
+          Path.Source.Set.diff files source_files_to_ignore
+        in
         let subdirs = String.Set.diff subdirs source_dirnames_to_ignore in
         if Path.Source.Set.is_empty files then
           (None, subdirs)
         else
           let ctx_path = Context_name.build_dir context_name in
           (Some (ctx_path, files), subdirs)
-    in
-    let subdirs_to_keep =
-      match extra_subdirs_to_keep with
-      | All -> Subdir_set.All
-      | These set -> These (String.Set.union source_dirs set)
     in
     (* Filter out fallback rules *)
     let rules =
@@ -1072,7 +1059,6 @@ end = struct
         create_copy_rules ~ctx_dir ~non_target_source_files:source_files)
       @ rules
     in
-    let rules_here = compile_rules ~dir ~source_dirs rules in
     let* allowed_by_parent =
       match (context_or_install, sub_dir_components) with
       | Context _, [ ".dune" ] ->
@@ -1097,24 +1083,29 @@ end = struct
               ; ("rules", Rules.Dir_rules.to_dyn rules)
               ])
     in
-    let rules_generated_in =
-      Rules.to_map rules_produced
-      |> Path.Build.Map.foldi ~init:Dir_set.empty ~f:(fun p _ acc ->
-             match Path.Local_gen.descendant ~of_:dir p with
-             | None -> acc
-             | Some p -> Dir_set.union acc (Dir_set.singleton p))
-    in
-    let* allowed_granddescendants_of_parent =
-      match allowed_by_parent with
-      | Unrestricted ->
-        (* In this case the parent isn't going to be able to create any
-           generated granddescendant directories. (rules that attempt to do so
-           may run into the [allowed_by_parent] check or will be simply
-           ignored) *)
-        Memo.Build.return Dir_set.empty
-      | Restricted restriction -> Memo.Lazy.force restriction
-    in
-    let descendants_to_keep =
+    let* descendants_to_keep =
+      let rules_generated_in =
+        Rules.to_map rules_produced
+        |> Path.Build.Map.foldi ~init:Dir_set.empty ~f:(fun p _ acc ->
+               match Path.Local_gen.descendant ~of_:dir p with
+               | None -> acc
+               | Some p -> Dir_set.union acc (Dir_set.singleton p))
+      in
+      let subdirs_to_keep =
+        match extra_subdirs_to_keep with
+        | All -> Subdir_set.All
+        | These set -> These (String.Set.union source_dirs set)
+      in
+      let+ allowed_granddescendants_of_parent =
+        match allowed_by_parent with
+        | Unrestricted ->
+          (* In this case the parent isn't going to be able to create any
+             generated granddescendant directories. (rules that attempt to do so
+             may run into the [allowed_by_parent] check or will be simply
+             ignored) *)
+          Memo.Build.return Dir_set.empty
+        | Restricted restriction -> Memo.Lazy.force restriction
+      in
       Dir_set.union_all
         [ rules_generated_in
         ; Subdir_set.to_dir_set subdirs_to_keep
@@ -1122,18 +1113,25 @@ end = struct
         ]
     in
     let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
+    let rules_here = compile_rules ~dir ~source_dirs rules in
     remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
     remove_old_sub_dirs_in_anonymous_actions_dir
       ~dir:
         (Path.Build.append_local Dpath.Build.anonymous_actions_dir
            (Path.Build.local dir))
       ~subdirs_to_keep;
-    Memo.Build.return
-      { Loaded.allowed_subdirs = descendants_to_keep
-      ; rules_produced
-      ; rules_here
-      ; aliases
-      }
+    let+ aliases =
+      match context_or_install with
+      | Context _ -> compute_alias_expansions t ~collected ~dir
+      | Install _ ->
+        (* There are no aliases in the [_build/install] directory *)
+        Memo.Build.return Alias.Name.Map.empty
+    in
+    { Loaded.allowed_subdirs = descendants_to_keep
+    ; rules_produced
+    ; rules_here
+    ; aliases
+    }
 
   let load_dir_impl t ~dir : Loaded.t Memo.Build.t =
     get_dir_triage t ~dir >>= function

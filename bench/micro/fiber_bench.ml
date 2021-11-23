@@ -1,7 +1,9 @@
 open Stdune
 open Fiber.O
 
-let%bench_fun ("bind" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
+let n = 1000
+
+let%bench_fun "bind" =
  fun () ->
   Fiber.run
     ~iter:(fun () -> assert false)
@@ -9,9 +11,9 @@ let%bench_fun ("bind" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
        | 0 -> Fiber.return ()
        | n -> Fiber.return () >>= fun () -> loop (n - 1)
      in
-     loop jobs)
+     loop n)
 
-let%bench_fun ("ivar" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
+let%bench_fun "ivar" =
  fun () ->
   let ivar = ref (Fiber.Ivar.create ()) in
   Fiber.run
@@ -25,9 +27,9 @@ let%bench_fun ("ivar" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
          let* () = Fiber.Ivar.read !ivar in
          loop (n - 1)
      in
-     loop jobs)
+     loop n)
 
-let%bench_fun ("Var.set" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
+let%bench_fun "Var.set" =
   let var = Fiber.Var.create () in
   fun () ->
     Fiber.run
@@ -36,9 +38,9 @@ let%bench_fun ("Var.set" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
          | 0 -> Fiber.return ()
          | n -> Fiber.Var.set var n (fun () -> loop (n - 1))
        in
-       loop jobs)
+       loop n)
 
-let%bench_fun ("Var.get" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
+let%bench_fun "Var.get" =
   let var = Fiber.Var.create () in
   fun () ->
     Fiber.run
@@ -49,10 +51,10 @@ let%bench_fun ("Var.get" [@indexed jobs = [ 100; 10_000; 1_000_000 ]]) =
            let* (_ : int option) = Fiber.Var.get var in
            loop (n - 1)
        in
-       Fiber.Var.set var 0 (fun () -> loop jobs))
+       Fiber.Var.set var 0 (fun () -> loop n))
 
 let exns =
-  List.init 100 ~f:(fun _ ->
+  List.init n ~f:(fun _ ->
       { Exn_with_backtrace.exn = Exit
       ; backtrace = Printexc.get_raw_backtrace ()
       })
@@ -80,5 +82,5 @@ let%bench "installing handlers" =
          in
          loop (n - 1)
      in
-     loop 1000)
+     loop n)
   |> ignore

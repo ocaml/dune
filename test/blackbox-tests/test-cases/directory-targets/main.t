@@ -424,6 +424,65 @@ File and directory target with the same name.
   Error: "output" is declared as both a file and a directory target.
   [1]
 
+File and directory target with the same name, defined in different rules.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (targets output)
+  >   (action (bash "echo hi > output")))
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets (dir output))
+  >   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
+  > EOF
+
+  $ dune build output/x
+  Error: Multiple rules generated for _build/default/output:
+  - dune:1
+  - dune:4
+  [1]
+
+Conflict between a target directory and a source directory.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets (dir output))
+  >   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
+  > EOF
+
+  $ mkdir output
+  $ dune build output/x
+  File "dune", line 1, characters 0-128:
+  1 | (rule
+  2 |   (deps (sandbox always))
+  3 |   (targets (dir output))
+  4 |   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
+  Error: This rule defines a target "output" whose name conflicts with a source
+  directory in the same directory.
+  Hint: If you want Dune to generate and replace "output", add (mode promote)
+  to the rule stanza. Alternatively, you can delete "output" from the source
+  tree or change the rule to generate a different target.
+  [1]
+
+Conflict between a target directory and a source file.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets (dir output))
+  >   (action (bash "mkdir output; echo x > output/x; echo y > output/y")))
+  > EOF
+
+  $ rm -rf output
+  $ touch output
+  $ dune build output/x
+  Error: Multiple rules generated for _build/default/output:
+  - file present in source tree
+  - dune:1
+  Hint: rm -f output
+  [1]
+
 Promotion of directory targets.
 
   $ mkdir test; cd test

@@ -422,9 +422,18 @@ let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
       Loc.in_dir dir
   in
   User_error.raise ~loc
-    [ Pp.textf "Rule has a target %s" (Path.Build.to_string_maybe_quoted fn)
-    ; Pp.textf "This conflicts with a source directory in the same directory"
+    [ Pp.textf
+        "This rule defines a target %S whose name conflicts with a source \
+         directory in the same directory."
+        (Path.Build.basename fn)
     ]
+    ~hints:
+      [ Pp.textf
+          "If you want Dune to generate and replace %S, add (mode promote) to \
+           the rule stanza. Alternatively, you can delete %S from the source \
+           tree or change the rule to generate a different target."
+          (Path.Build.basename fn) (Path.Build.basename fn)
+      ]
 
 let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
   let fn = Path.build fn in
@@ -732,20 +741,20 @@ end = struct
 
   let compile_rules ~dir ~source_dirs rules =
     let file_targets, directory_targets =
+      let check_for_source_dir_conflict rule target =
+        if String.Set.mem source_dirs (Path.Build.basename target) then
+          report_rule_src_dir_conflict dir target rule
+      in
       List.map rules ~f:(fun rule ->
           assert (Path.Build.( = ) dir rule.Rule.dir);
           ( Path.Build.Set.to_list_map rule.targets.files ~f:(fun target ->
-                if String.Set.mem source_dirs (Path.Build.basename target) then
-                  report_rule_src_dir_conflict dir target rule
-                else
-                  (target, rule))
+                check_for_source_dir_conflict rule target;
+                (target, rule))
           , Path.Build.Set.to_list_map rule.targets.dirs ~f:(fun target ->
-                (* CR-someday amokhov: Check there is no matching source dir. *)
+                check_for_source_dir_conflict rule target;
                 (target, rule)) ))
       |> List.unzip
     in
-    (* CR-someday amokhov: Report rule conflicts for all targets rather than
-       doing it separately for files and directories. *)
     let by_file_targets =
       List.concat file_targets
       |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
@@ -754,6 +763,13 @@ end = struct
       List.concat directory_targets
       |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
     in
+    Path.Build.Map.iter2 by_file_targets by_directory_targets
+      ~f:(fun target rule1 rule2 ->
+        match (rule1, rule2) with
+        | None, _
+        | _, None ->
+          ()
+        | Some rule1, Some rule2 -> report_rule_conflict target rule1 rule2);
     { Loaded.by_file_targets; by_directory_targets }
 
   (* Here we are doing a O(log |S|) lookup in a set S of files in the build

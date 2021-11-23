@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Stanza (dune_file_name FILE) in dune-project can be used to change
+  the name of "dune" files to "FILE" in the project
+
 - Fix plugins with dot in the name (#5182, @bobot, review @rgrinberg)
 
 - Don't generate the dune-site build part when not needed (#4861, @bobot,

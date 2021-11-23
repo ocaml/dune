@@ -40,7 +40,7 @@ module Dune_file = struct
       }
   end
 
-  let fname = "dune"
+  let default_fname = "dune"
 
   let alternative_fname = "dune-file"
 
@@ -175,7 +175,7 @@ end = struct
             (Path.Source.to_string_maybe_quoted
                (Path.Source.relative
                   (Path.Source.parent_exn path)
-                  Dune_file.fname))
+                  Dune_file.default_fname))
         ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
         ];
       Memo.Build.return (Error detailed_unix_error)
@@ -483,10 +483,12 @@ end = struct
         && String.Set.mem files Dune_file.alternative_fname
       then
         Some Dune_file.alternative_fname
-      else if String.Set.mem files Dune_file.fname then
-        Some Dune_file.fname
       else
-        None
+        let fname = Dune_project.dune_file_name project in
+        if String.Set.mem files fname then
+          Some fname
+        else
+          None
     in
     let* from_parent =
       match Path.Source.parent path with

@@ -160,6 +160,7 @@ type t =
   ; strict_package_deps : bool
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
+  ; dune_file_name : string option
   }
 
 let equal = ( == )
@@ -224,6 +225,7 @@ let to_dyn
     ; strict_package_deps
     ; cram
     ; expand_aliases_in_sandbox
+    ; dune_file_name
     } =
   let open Dyn in
   record
@@ -251,6 +253,7 @@ let to_dyn
     ; ("strict_package_deps", bool strict_package_deps)
     ; ("cram", bool cram)
     ; ("expand_aliases_in_sandbox", bool expand_aliases_in_sandbox)
+    ; ("dune_file_name", (option string) dune_file_name)
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
@@ -551,6 +554,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; strict_package_deps
   ; cram
   ; expand_aliases_in_sandbox
+  ; dune_file_name = None
   }
 
 module Toggle = struct
@@ -627,6 +631,7 @@ let encode : t -> Dune_lang.t list =
      ; project_file = _
      ; root = _
      ; expand_aliases_in_sandbox
+     ; dune_file_name
      } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -704,7 +709,11 @@ let encode : t -> Dune_lang.t list =
   let version =
     Option.map ~f:(constr "version" string) version |> Option.to_list
   in
-  [ lang_stanza; name ] @ flags @ version
+  let dune_file_name =
+    Option.map ~f:(constr "dune_file_name" string) dune_file_name
+    |> Option.to_list
+  in
+  [ lang_stanza; name ] @ flags @ version @ dune_file_name
   @ Package.Info.encode_fields info
   @ formatting @ dialects @ packages @ subst_config
 
@@ -714,6 +723,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
     (fields
        (let+ name = field_o "name" Name.decode
         and+ version = field_o "version" string
+        and+ dune_file_name = field_o "dune_file_name" string
         and+ info = Package.Info.decode ()
         and+ packages = multi_field "package" (Package.decode ~dir)
         and+ explicit_extensions =
@@ -969,6 +979,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         ; strict_package_deps
         ; cram
         ; expand_aliases_in_sandbox
+        ; dune_file_name
         }))
 
 let load_dune_project ~dir opam_packages ~dir_status =
@@ -1011,6 +1022,11 @@ let wrapped_executables t = t.wrapped_executables
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
 
 let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
+
+let dune_file_name t =
+  match t.dune_file_name with
+  | None -> "dune"
+  | Some file -> file
 
 let () = Extension.register_simple Action_plugin.syntax (return [])
 

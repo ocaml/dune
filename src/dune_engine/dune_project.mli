@@ -199,3 +199,5 @@ val update_execution_parameters :
 val encode : t -> Dune_lang.t list
 
 val dune_site_extension : unit Extension.t
+
+val dune_file_name : t -> string

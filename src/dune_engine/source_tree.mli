@@ -4,7 +4,7 @@ open! Stdune
 open! Import
 
 module Dune_file : sig
-  val fname : string
+  val default_fname : string
 
   val alternative_fname : string
 

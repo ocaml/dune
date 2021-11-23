@@ -5,6 +5,7 @@ module Action_builder = Dune_engine.Action_builder
 module Build_system = Dune_engine.Build_system
 open Action_builder.O
 
+(* CR-someday amokhov: Split [File] into [File] and [Dir] for clarity. *)
 type t =
   | File of Path.t
   | Alias of Alias.t
@@ -68,33 +69,39 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
         ]
     | false -> None
   in
-  let build () =
-    Build_system.is_target path >>= function
-    | true -> Memo.Build.return (Ok [ File path ])
-    | false -> can't_build path
+  let matching_targets src =
+    Memo.Build.parallel_map setup.contexts ~f:(fun ctx ->
+        let path = Path.append_source (Path.build ctx.Context.build_dir) src in
+        Build_system.is_target path >>| function
+        | true -> Some (File path)
+        | false -> None)
+    >>| List.filter_map ~f:Fun.id
+  in
+  let matching_target () =
+    Build_system.is_target path >>| function
+    | true -> Some [ File path ]
+    | false -> None
   in
   match checked with
   | External _ -> Memo.Build.return (Ok [ File path ])
   | In_source_dir src -> (
-    as_source_dir src >>= function
+    matching_targets src >>= function
+    | [] -> (
+      as_source_dir src >>= function
+      | Some res -> Memo.Build.return (Ok res)
+      | None -> can't_build path)
+    | l -> Memo.Build.return (Ok l))
+  | In_build_dir (_ctx, src) -> (
+    matching_target () >>= function
     | Some res -> Memo.Build.return (Ok res)
     | None -> (
-      Memo.Build.parallel_map setup.contexts ~f:(fun ctx ->
-          let path =
-            Path.append_source (Path.build ctx.Context.build_dir) src
-          in
-          Build_system.is_target path >>| function
-          | true -> Some (File path)
-          | false -> None)
-      >>| List.filter_map ~f:Fun.id
-      >>= function
-      | [] -> can't_build path
-      | l -> Memo.Build.return (Ok l)))
-  | In_build_dir (_ctx, src) -> (
-    as_source_dir src >>= function
+      as_source_dir src >>= function
+      | Some res -> Memo.Build.return (Ok res)
+      | None -> can't_build path))
+  | In_install_dir _ -> (
+    matching_target () >>= function
     | Some res -> Memo.Build.return (Ok res)
-    | None -> build ())
-  | In_install_dir _ -> build ()
+    | None -> can't_build path)
 
 let expand_path (root : Workspace_root.t)
     ~(setup : Dune_rules.Main.build_system) ctx sv =

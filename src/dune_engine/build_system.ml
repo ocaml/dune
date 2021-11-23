@@ -1096,20 +1096,20 @@ end = struct
         | All -> Subdir_set.All
         | These set -> These (String.Set.union source_dirs set)
       in
-      let+ allowed_granddescendants_of_parent =
+      let+ allowed_grand_descendants_of_parent =
         match allowed_by_parent with
         | Unrestricted ->
           (* In this case the parent isn't going to be able to create any
-             generated granddescendant directories. (rules that attempt to do so
+             generated grand descendant directories. Rules that attempt to do so
              may run into the [allowed_by_parent] check or will be simply
-             ignored) *)
+             ignored. *)
           Memo.Build.return Dir_set.empty
         | Restricted restriction -> Memo.Lazy.force restriction
       in
       Dir_set.union_all
         [ rules_generated_in
         ; Subdir_set.to_dir_set subdirs_to_keep
-        ; allowed_granddescendants_of_parent
+        ; allowed_grand_descendants_of_parent
         ]
     in
     let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
@@ -2286,6 +2286,12 @@ end = struct
         let dirs = Path.Map.singleton dir digest in
         Memo.Build.return (Dep.Fact.Files.make ~files ~dirs)
 
+    (* CR-someday amokhov: This function is broken for [dir]s located inside a
+       directory target. To check this and give a good error message we need to
+       call [load_dir] on the parent directory but that creates a dependency
+       cycle because of [copy_rules]. So, for now, this function just silently
+       produces a wrong result (the glob evalutes to the empty set of files). Of
+       course, we'd like to eventually fix this. *)
     let eval_impl g =
       let dir = File_selector.dir g in
       load_dir ~dir >>| function

@@ -48,6 +48,7 @@ Workspaces also allow you to set the env for a context:
   (ocamlopt_flags (-g))
   (c_flags ())
   (cxx_flags ())
+  (link_flags ())
   (menhir_flags ())
   (coq_flags (-q))
   (js_of_ocaml_flags ())

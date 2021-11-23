@@ -298,6 +298,8 @@ Unreleased
 - Delete old `promote-into`, `promote-until-clean` and `promote-until-clean-into`
   syntax (#5091, Andrey Mokhov).
 
+- Add link_flags in the env stanza (#5215)
+
 2.9.2 (unreleased)
 ------------------
 

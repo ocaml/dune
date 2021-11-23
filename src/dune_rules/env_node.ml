@@ -18,6 +18,7 @@ type t =
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
   ; ocaml_flags : Ocaml_flags.t Memo.Lazy.t
   ; foreign_flags : string list Action_builder.t Foreign_language.Dict.t
+  ; link_flags : string list Action_builder.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
@@ -35,6 +36,9 @@ let local_binaries t = Memo.Lazy.force t.local_binaries
 let ocaml_flags t = Memo.Lazy.force t.ocaml_flags
 
 let foreign_flags t = t.foreign_flags
+
+let link_flags t =
+  Memo.Lazy.force t.link_flags |> Action_builder.memo_build_join
 
 let external_env t = Memo.Lazy.force t.external_env
 
@@ -167,6 +171,15 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   let foreign_flags =
     Foreign_language.Dict.make ~c:(foreign_flags C) ~cxx:(foreign_flags Cxx)
   in
+  let link_flags =
+    inherited
+      ~field:(fun t -> Memo.Build.return (link_flags t))
+      ~root:(Action_builder.return [])
+      (fun flags ->
+        let+ expander = Memo.Lazy.force expander in
+        let expander = Expander.set_dir expander ~dir in
+        Expander.expand_and_eval_set expander config.link_flags ~standard:flags)
+  in
   let menhir_flags =
     inherited
       ~field:(fun t -> Memo.Build.return (menhir_flags t))
@@ -208,6 +221,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   { scope
   ; ocaml_flags
   ; foreign_flags
+  ; link_flags
   ; external_env
   ; bin_artifacts
   ; local_binaries

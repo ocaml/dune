@@ -86,6 +86,14 @@ val foreign_flags :
   -> language:Foreign_language.t
   -> string list Action_builder.t
 
+val link_flags :
+     t
+  -> dir:Path.Build.t
+  -> expander:Expander.t
+  -> use_standard_cxx_flags:bool
+  -> flags:Ordered_set_lang.Unexpanded.t
+  -> string list Action_builder.t
+
 val menhir_flags :
      t
   -> dir:Path.Build.t

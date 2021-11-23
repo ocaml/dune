@@ -43,6 +43,8 @@ val js_of_ocaml :
 
 val foreign_flags : t -> string list Action_builder.t Foreign_language.Dict.t
 
+val link_flags : t -> string list Action_builder.t
+
 val local_binaries : t -> File_binding.Expanded.t list Memo.Build.t
 
 val bin_artifacts : t -> Artifacts.Bin.t Memo.Build.t

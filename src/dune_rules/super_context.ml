@@ -402,6 +402,23 @@ let foreign_flags t ~dir ~expander ~flags ~language =
   in
   Action_builder.memoize (sprintf "%s flags" name) flags
 
+let link_flags t ~dir ~expander ~use_standard_cxx_flags ~flags =
+  let env_tree = t.env_tree in
+  let default =
+    get_node env_tree ~dir >>| Env_node.link_flags |> Action_builder.memo_build_join
+  in
+  let default =
+    if use_standard_cxx_flags
+    then 
+      let open Action_builder.O in
+      let+ default = default
+      and+ flags = Cxx_flags.get_flags ~for_:Link (context t) in
+      default @ List.concat_map flags ~f:(fun f -> [ "-cclib"; f ])
+    else default 
+  in
+  Action_builder.memoize "link flags"
+    (Expander.expand_and_eval_set expander flags ~standard:default)
+
 let menhir_flags t ~dir ~expander ~flags =
   let t = t.env_tree in
   let default =
@@ -422,6 +439,7 @@ let dump_env t ~dir =
   let t = t.env_tree in
   let ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags in
   let foreign_flags = get_node t ~dir >>| Env_node.foreign_flags in
+  let link_flags = get_node t ~dir >>| Env_node.link_flags in
   let menhir_flags = get_node t ~dir >>| Env_node.menhir_flags in
   let coq_flags = get_node t ~dir >>= Env_node.coq in
   let js_of_ocaml = get_node t ~dir >>= Env_node.js_of_ocaml in
@@ -436,6 +454,10 @@ let dump_env t ~dir =
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ ("c_flags", c_flags); ("cxx_flags", cxx_flags) ]
+  and+ link_flags_dump =
+    let+ flags = Action_builder.memo_build_join link_flags in
+    [ ("link_flags", flags) ]
+    |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
   and+ menhir_dump =
     let+ flags = Action_builder.memo_build_join menhir_flags in
     [ ("menhir_flags", flags) ]
@@ -448,7 +470,8 @@ let dump_env t ~dir =
     let* jsoo = Action_builder.memo_build js_of_ocaml in
     Js_of_ocaml.Flags.dump jsoo.flags
   in
-  List.concat [ o_dump; c_dump; menhir_dump; coq_dump; jsoo_dump ]
+  List.concat
+    [ o_dump; c_dump; link_flags_dump; menhir_dump; coq_dump; jsoo_dump ]
 
 let resolve_program t ~dir ?hint ~loc bin =
   let t = t.env_tree in

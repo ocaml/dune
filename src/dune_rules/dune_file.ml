@@ -341,6 +341,11 @@ module Buildable = struct
 
   let has_foreign t =
     List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
+
+  let has_foreign_cxx t =
+    List.exists
+      ~f:(fun stub -> Foreign_language.(equal Cxx stub.Foreign.Stubs.language))
+      t.foreign_stubs
 end
 
 module Public_lib = struct
@@ -777,6 +782,8 @@ module Library = struct
       |> String.concat ~sep:"/" |> Option.some
 
   let has_foreign t = Buildable.has_foreign t.buildable
+
+  let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
   let foreign_archives t =
     (if List.is_empty t.buildable.foreign_stubs then
@@ -1525,6 +1532,8 @@ module Executables = struct
     (make false, make true)
 
   let has_foreign t = Buildable.has_foreign t.buildable
+
+  let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
   let obj_dir t ~dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd t.names))
 end

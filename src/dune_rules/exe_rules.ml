@@ -104,6 +104,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let ctx = Super_context.context sctx in
+  let project = Scope.project scope in
   let* pp =
     let instrumentation_backend =
       Lib.DB.instrumentation_backend (Scope.libs scope)
@@ -132,10 +133,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         let* m = Pp_spec.pp_module_as pp name m in
         let add_empty_intf =
           (add_empty_intf
-          ||
-          let project = Scope.project scope in
-          Dune_project.executables_implicit_empty_intf project
-          && List.mem executable_names name ~equal:Module_name.equal)
+          || Dune_project.executables_implicit_empty_intf project
+             && List.mem executable_names name ~equal:Module_name.equal)
           && not (Module.has m ~ml_kind:Intf)
         in
         if add_empty_intf then
@@ -144,7 +143,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           Memo.Build.return m)
   in
   let programs = programs ~modules ~exes in
-  let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
+  let explicit_js_mode = Dune_project.explicit_js_mode project in
   let linkages = linkages ctx ~exes ~explicit_js_mode in
   let* flags = Super_context.ocaml_flags sctx ~dir exes.buildable.flags in
   let cctx =
@@ -174,7 +173,14 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
        files directly to improve perf. *)
     let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
     let link_args =
-      let standard = Action_builder.return [] in
+      let standard =
+        match Dune_project.use_standard_c_and_cxx_flags project with
+        | Some true when Buildable.has_foreign_cxx exes.buildable ->
+          let open Action_builder.O in
+          let+ flags = Cxx_flags.get_flags ~for_:Link dir in
+          List.concat_map flags ~f:(fun f -> [ "-cclib"; f ])
+        | _ -> Action_builder.return []
+      in
       let open Action_builder.O in
       let link_flags =
         link_deps
@@ -182,7 +188,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       in
       let+ flags = link_flags
       and+ ctypes_cclib_flags =
-        Ctypes_rules.ctypes_cclib_flags ~scope ~standard ~expander
+        Ctypes_rules.ctypes_cclib_flags ~scope
+          ~standard:(Action_builder.return []) ~expander
           ~buildable:exes.buildable
       in
       Command.Args.S

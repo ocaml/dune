@@ -43,10 +43,19 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
       let ocaml_flags = Ocaml_flags.get flags mode in
-      let standard = Action_builder.return [] in
+      let standard =
+        let project =
+          Super_context.find_scope_by_dir sctx dir |> Scope.project
+        in
+        match Dune_project.use_standard_c_and_cxx_flags project with
+        | Some true when Buildable.has_foreign_cxx lib.buildable ->
+          Cxx_flags.get_flags ~for_:Link dir
+        | _ -> Action_builder.return []
+      in
       let cclibs =
         Expander.expand_and_eval_set expander lib.c_library_flags ~standard
       in
+      let standard = Action_builder.return [] in
       let library_flags =
         Expander.expand_and_eval_set expander lib.library_flags ~standard
       in
@@ -115,20 +124,26 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
 (* Rules for building static and dynamic libraries using [ocamlmklib]. *)
-let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
+let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~o_files ~archive_name
     ~build_targets_together =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
   let static_target =
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
+  let cclibs =
+    Action_builder.map c_library_flags ~f:(fun cclibs ->
+        (* https://github.com/ocaml/dune/issues/119 *)
+        let cclibs =
+          match ctx.lib_config.ccomp_type with
+          | Msvc -> msvc_hack_cclibs cclibs
+          | Other _ -> cclibs
+        in
+        Command.quote_args "-ldopt" cclibs)
+  in
   let build ~custom ~sandbox targets =
     Super_context.add_rule sctx ~dir ~loc
       (let open Action_builder.With_targets.O in
-      let cclibs_args =
-        Expander.expand_and_eval_set expander c_library_flags
-          ~standard:(Action_builder.return [])
-      in
       let ctx = Super_context.context sctx in
       Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
         [ A "-g"
@@ -139,16 +154,9 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
         ; A "-o"
         ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name))
         ; Deps o_files
-        ; Dyn
-            (* The [c_library_flags] is needed only for the [dynamic_target]
-               case, but we pass them unconditionally for simplicity. *)
-            (Action_builder.map cclibs_args ~f:(fun cclibs ->
-                 (* https://github.com/ocaml/dune/issues/119 *)
-                 match ctx.lib_config.ccomp_type with
-                 | Msvc ->
-                   let cclibs = msvc_hack_cclibs cclibs in
-                   Command.quote_args "-ldopt" cclibs
-                 | Other _ -> As cclibs))
+          (* The [c_library_flags] is needed only for the [dynamic_target] case,
+             but we pass them unconditionally for simplicity. *)
+        ; Dyn cclibs
         ; Hidden_targets targets
         ]
       >>| Action.Full.add_sandbox sandbox)
@@ -192,30 +200,40 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
 let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =
   let archive_name = library.archive_name in
+  let* foreign_sources =
+    Dir_contents.foreign_sources dir_contents
+    >>| Foreign_sources.for_archive ~archive_name
+  in
   let* o_files =
-    let* foreign_sources =
-      Dir_contents.foreign_sources dir_contents
-      >>| Foreign_sources.for_archive ~archive_name
-    in
     Foreign_rules.build_o_files ~sctx ~dir ~expander
       ~requires:(Resolve.return []) ~dir_contents ~foreign_sources
     |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
-  ocamlmklib ~archive_name ~loc:library.stubs.loc
-    ~c_library_flags:Ordered_set_lang.Unexpanded.standard ~sctx ~dir ~expander
+  let standard =
+    let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+    match Dune_project.use_standard_c_and_cxx_flags project with
+    | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
+      Cxx_flags.get_flags ~for_:Link dir
+    | _ -> Action_builder.return []
+  in
+  let c_library_flags =
+    Expander.expand_and_eval_set expander Ordered_set_lang.Unexpanded.standard
+      ~standard
+  in
+  ocamlmklib ~archive_name ~loc:library.stubs.loc ~c_library_flags ~sctx ~dir
     ~o_files ~build_targets_together:false
 
 (* Build a required set of archives for an OCaml library. *)
 let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ~vlib_stubs_o_files =
   let sctx = Compilation_context.super_context cctx in
+  let* foreign_sources =
+    let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
+    let name = Library.best_name lib in
+    Foreign_sources.for_lib foreign_sources ~name
+  in
   let* lib_o_files =
-    let* foreign_sources =
-      let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
-      let name = Library.best_name lib in
-      Foreign_sources.for_lib foreign_sources ~name
-    in
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires ~dir_contents
       ~foreign_sources
     |> Memo.Build.parallel_map ~f:(Memo.Build.map ~f:Path.build)
@@ -232,8 +250,18 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       modes.native && modes.byte
       && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
     in
-    ocamlmklib ~archive_name ~loc:lib.buildable.loc ~sctx ~expander ~dir
-      ~o_files ~c_library_flags:lib.c_library_flags ~build_targets_together
+    let standard =
+      let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+      match Dune_project.use_standard_c_and_cxx_flags project with
+      | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
+        Cxx_flags.get_flags ~for_:Link dir
+      | _ -> Action_builder.return []
+    in
+    let c_library_flags =
+      Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+    in
+    ocamlmklib ~archive_name ~loc:lib.buildable.loc ~sctx ~dir ~o_files
+      ~c_library_flags ~build_targets_together
 
 let build_shared lib ~native_archives ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in

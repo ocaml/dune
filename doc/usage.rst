@@ -85,11 +85,10 @@ Finding the Root
 ================
 
 The root of the current workspace is determined by looking up a
-``dune-workspace`` or ``dune-project`` file in the current directory
-and its parent directories.
+``dune-workspace`` or ``dune-project`` file in the current directory and its
+parent directories. Dune requires at least one of these two files to operate.
 
-If it isn't in the current
-directory, Dune prints out the root when starting:
+If it isn't in the current directory, Dune prints out the root when starting:
 
 .. code:: bash
 
@@ -100,17 +99,16 @@ directory, Dune prints out the root when starting:
 This message can be suppressed with the ``--no-print-directory``
 command line option (as in GNU make).
 
-Dune requires at least one ``dune-workspace`` file or ``dune-project``
-file to operate. This file may appear in the current or a parent
-directory. It's used to mark the root of the current workspace;
-however, ``dune-workspace`` and ``dune-project`` files are treated
-slightly differently. Since there can be only a single workspace
-active at a given time, Dune stops its search for the root at the
-first ``dune-workspace`` file it encounters. On the other hand, Dune
-projects are composable, and there can be multiple projects in a
-single workspace. For this reason, when Dune finds a ``dune-project``
-file it will continue searching in parent directories, in case this
-project is part of a bigger workspace.
+More precisely, Dune will choose the outermost ancestor directory containing a
+``dune-workspace`` file, which is used to mark the root of the current workspace.
+If no ``dune-workspace`` file is present, the same strategy applies with
+``dune-project`` files.
+
+In case of a mix of `dune-workspace` and `dune-project` files, workspace files
+take precedence over project files in the sense that if a ``dune-workspace``
+file is found, only parent ``dune-workspace`` files will be considered when
+looking for the root; however, if a `dune-project` file is found both parent
+``dune-workspace`` and ``dune-project`` files will be considered.
 
 A ``dune-workspace`` file is also a configuration file. Dune will read
 it unless the ``--workspace`` command line option is used.  See the
@@ -302,7 +300,7 @@ See :ref:`variables-for-artifacts` for more information.
 Finding External Libraries
 ==========================
 
-When a library isn't available in the workspace, Dune search for it 
+When a library isn't available in the workspace, Dune will search for it
 in the installed world and expect it to be already compiled.
 
 It looks up external libraries using a specific list of search paths,
@@ -411,7 +409,7 @@ dune subst
 ==========
 
 One of the features ``dune-release`` provides is watermarking; it replaces
-various strings of the form ``%%ID%%`` in all your project files 
+various strings of the form ``%%ID%%`` in all your project files
 before creating a release tarball or when the Opam user pins the package.
 
 This is especially interesting for the ``VERSION`` watermark, which gets
@@ -453,7 +451,7 @@ file in the directory where ``dune subst`` is called. The
 ``dune-project`` file must exist and contain a valid ``(name ...)``
 field.
 
-Note that ``dune subst`` is meant to be called from the Opam file and 
+Note that ``dune subst`` is meant to be called from the Opam file and
 behaves a bit different to other Dune commands. In
 particular it doesn't try to detect the root of the workspace and must
 be called from the root of the project.
@@ -523,13 +521,13 @@ OCaml projects to find them, and this location might be different from
 Historically, the location where to store OCaml library files was
 configured through `findlib
 <http://projects.camlcity.org/projects/findlib.html>`__, and the
-``ocamlfind`` command-line tool was used to both install 
-and locate these files. Many Linux distributions (or other packaging systems) 
+``ocamlfind`` command-line tool was used to both install
+and locate these files. Many Linux distributions (or other packaging systems)
 use this mechanism to setup where OCaml library files should be
 copied.
 
 As a result, if neither ``--libdir`` or ``--prefix`` is passed to ``dune
-install``, and ``ocamlfind`` is present in the ``PATH``, then Dune copies library files 
+install``, and ``ocamlfind`` is present in the ``PATH``, then Dune copies library files
 to the directory reported by ``ocamlfind printconf destdir``. This
 ensures that ``dune install`` can be used without Opam. When using opam,
 ``ocamlfind`` is configured to point to the Opam directory, so this rule makes
@@ -562,7 +560,7 @@ Querying Merlin Configuration
 Since Version 2.8, Dune no longer promotes ``.merlin`` files to the source
 directories. Instead, Dune stores these configurations in the `_build`
 folder, and Merlin communicates directly with Dune to obtain its configuration
-via the `ocaml-merlin` subcommand. The Merlin configuration is now stanza-specific, 
+via the `ocaml-merlin` subcommand. The Merlin configuration is now stanza-specific,
 allowing finer control. The following commands aren't needed for
 normal Dune and Merlin use, but they can provide insightful information when
 debugging or configuring non-standard projects.
@@ -592,8 +590,8 @@ Merlin configuration syntax by running the following command:
 
     $ dune ocaml dump-dot-merlin > .merlin
 
-In that case, Dune prints only one configuration: the result of the configuration's 
-coarse merge in the current folder's various modules. 
+In that case, Dune prints only one configuration: the result of the configuration's
+coarse merge in the current folder's various modules.
 This folder must be in a Dune workspace, and the project must be already
 built. Preprocessing directives and other flags will be commented out and must
 be un-commented afterward. This feature doesn't aim at writing exact or correct

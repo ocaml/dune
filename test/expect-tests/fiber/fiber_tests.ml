@@ -1000,3 +1000,89 @@ let%expect_test "cancel_test4" =
     | Cancelled () -> "PASS"
     | Not_cancelled -> "FAIL");
   [%expect {| PASS |}]
+
+open Fiber_util
+
+let%expect_test "observable - create/close" =
+  let test =
+    let* () =
+      let _, sink = Observable.create 100 in
+      Observable.close sink
+    in
+    let _, sink = Observable.create_diff (module Monoid.Add (Int)) 0 in
+    Observable.close sink
+  in
+  Scheduler.run test;
+  [%expect {||}]
+
+let%expect_test "observe - snapshot" =
+  let test =
+    print_endline "initialize observable with 0";
+    let observable, sink = Observable.create 0 in
+    print_endline "creating observer";
+    let obs = Observable.add_observer observable in
+    let await () =
+      print_endline "observer: awaiting value";
+      let+ res = Observer.await obs in
+      match res with
+      | None -> printfn "observer: nothing"
+      | Some v -> printfn "observer: received %d" v
+    in
+    let* () = await () in
+    printfn "observable: update 1";
+    let* () = Observable.update sink 1 in
+    let* () = await () in
+    Observable.close sink
+  in
+  Scheduler.run test;
+  [%expect
+    {|
+    initialize observable with 0
+    creating observer
+    observer: awaiting value
+    observer: received 0
+    observable: update 1
+    observer: awaiting value
+    observer: received 1 |}]
+
+let%expect_test "observe - diff" =
+  let test =
+    print_endline "initialize observable with 0";
+    let observable, sink = Observable.create_diff (module Monoid.Add (Int)) 0 in
+    print_endline "creating observer";
+    let obs = Observable.add_observer observable in
+    let await () =
+      print_endline "observer: awaiting value";
+      let+ res = Observer.await obs in
+      match res with
+      | None -> printfn "observer: nothing"
+      | Some diff -> printfn "observer: received diff = %d" diff
+    in
+    let* () = await () in
+    let update =
+      Fiber.sequential_iter ~f:(fun i ->
+          printfn "observable: update %d" i;
+          Observable.update sink i)
+    in
+    let* () = update [ 1; 2; 3 ] in
+    let* () = await () in
+    let* () = update [ 5; 10 ] in
+    let* () = await () in
+    Observable.close sink
+  in
+  Scheduler.run test;
+  [%expect
+    {|
+    initialize observable with 0
+    creating observer
+    observer: awaiting value
+    observer: received diff = 0
+    observable: update 1
+    observable: update 2
+    observable: update 3
+    observer: awaiting value
+    observer: received diff = 6
+    observable: update 5
+    observable: update 10
+    observer: awaiting value
+    observer: received diff = 15 |}]

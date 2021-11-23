@@ -102,3 +102,208 @@ module Cancellation = struct
             Cancelled x
           | Not_cancelled -> Fiber.return Not_cancelled)
 end
+
+module Observer_id = Id.Make ()
+
+module State = struct
+  type 'a state =
+    | Active of 'a
+    | Closed
+
+  type 'a t = 'a state ref
+
+  let create x = ref (Active x)
+end
+
+module Waiters = struct
+  (* A set of all observers waiting for an ivar to be filled *)
+  type t = unit Fiber.Ivar.t Observer_id.Map.t ref
+
+  let create () = ref Observer_id.Map.empty
+
+  let notify (t : t) =
+    let to_notify = !t in
+    t := Observer_id.Map.empty;
+    Observer_id.Map.values to_notify
+    |> Fiber.parallel_iter ~f:(fun ivar -> Fiber.Ivar.fill ivar ())
+end
+
+module Subscription = struct
+  (* Represents the operations an observer needs from an observable. It's
+     possible to do without this and make observable and observer mutually
+     recursive, but it becomes quite ugly *)
+
+  type 'a t =
+    { observers : 'a Observer_id.Map.t ref
+    ; id : Observer_id.t
+    ; waiters : Waiters.t
+    }
+
+  type packed = E : 'a t -> packed
+
+  (* observer removes itself from the observable's data structure without
+     knowing what's inside an observable *)
+  let unsubscribe (E { observers; id; waiters }) =
+    observers := Observer_id.Map.remove !observers id;
+    match Observer_id.Map.find !waiters id with
+    | None -> Fiber.return ()
+    | Some s -> Fiber.Ivar.fill s ()
+
+  let register (E t) ivar =
+    t.waiters := Observer_id.Map.add_exn !(t.waiters) t.id ivar
+end
+
+module Observer = struct
+  type 'a desc =
+    | Closed
+    | Closed_undelivered of 'a
+    (* When an observable closes, one can still observe the final value *)
+    | Active of
+        { sub : Subscription.packed
+        ; mutable state :
+            [ `Idle (* the next await will go pending *)
+            | `Pending_await of unit Fiber.Ivar.t
+            | `Ready of 'a (* the next await is immediate *)
+            ]
+        }
+
+  type 'a t = 'a desc ref
+
+  let create sub a = ref (Active { sub; state = `Ready a })
+
+  let unsubscribe t =
+    match !t with
+    | Closed
+    | Closed_undelivered _ ->
+      Fiber.return (t := Closed)
+    | Active { sub; state = _ } ->
+      t := Closed;
+      Subscription.unsubscribe sub
+
+  let rec await t =
+    match !t with
+    | Closed -> Fiber.return None
+    | Closed_undelivered a ->
+      t := Closed;
+      Fiber.return (Some a)
+    | Active a -> (
+      match a.state with
+      | `Pending_await _ ->
+        Code_error.raise "await cannot be called concurrently" []
+      | `Ready v ->
+        a.state <- `Idle;
+        Fiber.return (Some v)
+      | `Idle ->
+        let ivar = Fiber.Ivar.create () in
+        Subscription.register a.sub ivar;
+        a.state <- `Pending_await ivar;
+        let* () = Fiber.Ivar.read ivar in
+        (* we need to retry from scratch because it's possible that another
+           observer will get awaken before us and it might interact with the
+           observer somehow to update our [t] *)
+        await t)
+end
+
+module Observable = struct
+  type 'a desc =
+    { observers : 'a Observer.t Observer_id.Map.t ref
+    ; mutable current : 'a
+    ; waiters : Waiters.t
+    }
+
+  type 'a t = 'a desc State.t
+
+  let create_observable current =
+    State.create
+      { current
+      ; observers = ref Observer_id.Map.empty
+      ; waiters = Waiters.create ()
+      }
+
+  let add_observer (type a) (t : a t) : a Observer.t =
+    match !t with
+    | Closed -> Code_error.raise "cannot add observer to closed observable" []
+    | Active a ->
+      let id = Observer_id.gen () in
+      let sub =
+        { Subscription.id; observers = a.observers; waiters = a.waiters }
+      in
+      let obs = Observer.create (Subscription.E sub) a.current in
+      a.observers := Observer_id.Map.add_exn !(a.observers) id obs;
+      obs
+
+  type nonrec 'a sink =
+    | Snapshot of 'a t
+    | Diff of
+        { observable : 'a t
+        ; monoid : (module Monoid with type t = 'a)
+        }
+
+  let create (type a) (a : a) : a t * a sink =
+    let obs = create_observable a in
+    (obs, Snapshot obs)
+
+  let create_diff (type a) monoid (a : a) : a t * a sink =
+    let observable = create_observable a in
+    (observable, Diff { observable; monoid })
+
+  let close sink =
+    let obs =
+      match sink with
+      | Snapshot obs -> obs
+      | Diff d -> d.observable
+    in
+    match !obs with
+    | Closed -> Fiber.return ()
+    | Active o ->
+      obs := Closed;
+      let to_close = !(o.observers) in
+      o.observers := Observer_id.Map.empty;
+      Observer_id.Map.iter to_close ~f:(fun obs ->
+          match !obs with
+          | Closed
+          | Closed_undelivered _ ->
+            assert false
+          | Active active -> (
+            match active.state with
+            | `Pending_await _
+            | `Idle ->
+              obs := Closed
+            | `Ready v -> obs := Closed_undelivered v));
+      Waiters.notify o.waiters
+
+  let update (type a) (sink : a sink) (a : a) =
+    (* TODO remove copy paste *)
+    match sink with
+    | Snapshot obs -> (
+      match !obs with
+      | Closed ->
+        Code_error.raise "unable to update when observable is closed" []
+      | Active observable ->
+        observable.current <- a;
+        Observer_id.Map.iter !(observable.observers)
+          ~f:(fun (obs : a Observer.t) ->
+            match !obs with
+            | Closed -> assert false
+            | Closed_undelivered _ -> assert false
+            | Active active -> active.state <- `Ready a);
+        Waiters.notify observable.waiters)
+    | Diff { observable; monoid } -> (
+      match !observable with
+      | Closed ->
+        Code_error.raise "unable to update when observable is closed" []
+      | Active observable ->
+        let module Monoid = (val monoid) in
+        observable.current <- Monoid.combine observable.current a;
+        Observer_id.Map.iter !(observable.observers)
+          ~f:(fun (obs : a Observer.t) ->
+            match !obs with
+            | Closed -> assert false
+            | Closed_undelivered _ -> assert false
+            | Active active -> (
+              match active.state with
+              | `Pending_await _ -> active.state <- `Ready a
+              | `Idle -> active.state <- `Ready a
+              | `Ready a' -> active.state <- `Ready (Monoid.combine a' a)));
+        Waiters.notify observable.waiters)
+end

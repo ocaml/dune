@@ -62,3 +62,33 @@ module Cancellation : sig
     -> on_cancellation:(unit -> 'b Fiber.t)
     -> ('a * 'b outcome) Fiber.t
 end
+
+module Observer : sig
+  type 'a t
+
+  (** [await t] return the currently observed value. If the value hasn't been
+      updated since the last [await t] call, this call will block. If the
+      observable is closed, or unsubscribe is called this will return [None].
+      After [None], all subsequent calls will return [None] immediately *)
+  val await : 'a t -> 'a option Fiber.t
+
+  (** [unsubscribe t] will make the current and all subsequent [await t] return
+      [None] *)
+  val unsubscribe : 'a t -> unit Fiber.t
+end
+
+module Observable : sig
+  type 'a t
+
+  type 'a sink
+
+  val create : 'a -> 'a t * 'a sink
+
+  val create_diff : (module Monoid with type t = 'a) -> 'a -> 'a t * 'a sink
+
+  val update : 'a sink -> 'a -> unit Fiber.t
+
+  val close : 'a sink -> unit Fiber.t
+
+  val add_observer : 'a t -> 'a Observer.t
+end

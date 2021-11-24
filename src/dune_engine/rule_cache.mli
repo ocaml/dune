@@ -3,6 +3,14 @@
 open! Stdune
 open! Import
 
+(** The workspace-local cache consists of two components:
+
+    - Build artifacts currently available in the build directory.
+
+    - A database [_build/.db] that maps rule digests to their target digests.
+
+    The database makes it possible to decide if the build directory contains up
+    to date results for a given rule. *)
 module Workspace_local : sig
   (** Check if the workspace-local cache contains up-to-date results for a rule
       using the information stored in the rule database. *)
@@ -24,6 +32,9 @@ module Workspace_local : sig
     -> unit
 end
 
+(** The shared cache is a separate directory that contains historical build
+    artifacts produced in different workspaces. To restore results from the
+    shared cache, Dune copes or hardlinks them into the build directory. *)
 module Shared : sig
   (** Check if the shared cache contains results for a rule and decide whether
       to use these results or rerun the rule for a reproducibility check. *)

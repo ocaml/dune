@@ -1321,7 +1321,6 @@ end = struct
                  (Path.to_string path))
               [])
     in
-    let build_deps deps = Memo.Build.run (build_deps deps) in
     let root =
       match context with
       | None -> Path.Build.root
@@ -1335,6 +1334,7 @@ end = struct
     in
     let+ exec_result =
       with_locks t locks ~f:(fun () ->
+          let build_deps deps = Memo.Build.run (build_deps deps) in
           let+ action_exec_result =
             Action_exec.exec ~root ~context ~env ~targets:(Some targets)
               ~rule_loc:loc ~build_deps ~execution_parameters action
@@ -1430,6 +1430,8 @@ end = struct
             select_sandbox_mode ~loc action.sandbox
               ~sandboxing_preference:t.sandboxing_preference
         in
+        (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
+           to [Rule_cache] too. *)
         let always_rerun =
           let is_test =
             (* jeremiedimino: what about:
@@ -1472,13 +1474,12 @@ end = struct
         in
         let* (produced_targets : Digest.t Targets.Produced.t) =
           (* Step I. Check if the workspace-local cache is up to date. *)
-          Rule_cache.Workspace_local.lookup ~always_rerun ~rule_digest ~targets
+          Rule_cache.Workspace_local.lookup ~always_rerun ~rule_digest
+            ~print_debug_info:t.cache_debug_flags.workspace_local_cache ~targets
             ~env:action.env ~build_deps
           >>= function
-          | Hit x -> Fiber.return x
-          | Miss miss_reason ->
-            if t.cache_debug_flags.workspace_local_cache then
-              Rule_cache.Workspace_local.report_miss ~head_target miss_reason;
+          | Some produced_targets -> Fiber.return produced_targets
+          | None ->
             (* Step II. Remove stale targets both from the digest table and from
                the build directory. *)
             Path.Build.Set.iter targets.files ~f:(fun file ->
@@ -1490,12 +1491,12 @@ end = struct
             let* produced_targets, dynamic_deps_stages =
               (* Step III. Try to restore artifacts from the shared cache. *)
               match
-                Rule_cache.Shared_cache.lookup ~can_go_in_shared_cache
+                Rule_cache.Shared.lookup ~can_go_in_shared_cache
                   ~cache_config:t.cache_config
-                  ~debug_shared_cache:t.cache_debug_flags.shared_cache
+                  ~print_debug_info:t.cache_debug_flags.shared_cache
                   ~rule_digest ~targets ~target_dir:rule.dir
               with
-              | Hit produced_targets ->
+              | Some produced_targets ->
                 (* Rules with dynamic deps can't be stored to the shared cache
                    (see the [is_action_dynamic] check above), so we know this is
                    not a dynamic action, so returning an empty list is correct.
@@ -1504,15 +1505,7 @@ end = struct
                    the shared cache. *)
                 let dynamic_deps_stages = [] in
                 Fiber.return (produced_targets, dynamic_deps_stages)
-              | Miss miss_reason ->
-                (match (t.cache_debug_flags.shared_cache, miss_reason) with
-                | true, _
-                | false, Error _ ->
-                  (* Always log errors because they are not expected as a part
-                     of normal operation and might indicate a problem. *)
-                  Rule_cache.Shared_cache.report_miss ~rule_digest ~head_target
-                    miss_reason
-                | false, _ -> ());
+              | None ->
                 (* Step IV. Execute the build action. *)
                 let* exec_result =
                   execute_action_for_rule t ~rule_kind ~rule_digest ~action
@@ -1522,7 +1515,7 @@ end = struct
                 (* Step V. Examine produced targets and store them to the shared
                    cache if needed. *)
                 let* produced_targets =
-                  Rule_cache.Shared_cache.examine_targets_and_store
+                  Rule_cache.Shared.examine_targets_and_store
                     ~cache_config:t.cache_config ~can_go_in_shared_cache ~loc
                     ~rule_digest ~execution_parameters
                     ~produced_targets:exec_result.produced_targets

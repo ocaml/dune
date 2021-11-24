@@ -1,6 +1,8 @@
 open! Stdune
 open Import
 
+(* A type isomorphic to [Result], but without the negative connotations
+   associated with the word "error". *)
 module Result = struct
   type ('hit, 'miss) t =
     | Hit of 'hit
@@ -93,6 +95,26 @@ module Workspace_local = struct
       | Targets_missing
       | Dynamic_deps_changed
       | Always_rerun
+
+    let report ~head_target reason =
+      let reason =
+        match reason with
+        | No_previous_record -> "never seen this target before"
+        | Rule_changed (before, after) ->
+          sprintf "rule or dependencies changed: %s -> %s"
+            (Digest.to_string before) (Digest.to_string after)
+        | Targets_missing -> "target missing from build dir"
+        | Targets_changed -> "target changed in build dir"
+        | Always_rerun -> "not trying to use the cache"
+        | Dynamic_deps_changed -> "dynamic dependencies changed"
+      in
+      Console.print_user_message
+        (User_message.make
+           [ Pp.hbox
+               (Pp.textf "Workspace-local cache miss: %s: %s"
+                  (Path.Build.to_string head_target)
+                  reason)
+           ])
   end
 
   let compute_target_digests (targets : Targets.Validated.t) :
@@ -105,78 +127,74 @@ module Workspace_local = struct
     Targets.Produced.Option.mapi targets ~f:(fun target () ->
         Cached_digest.build_file target |> Cached_digest.Digest_result.to_option)
 
-  let lookup ~always_rerun ~rule_digest ~targets ~env ~build_deps :
-      (Digest.t Targets.Produced.t, Miss_reason.t) Result.t Fiber.t =
-    match always_rerun with
-    | true -> Fiber.return (Result.Miss Miss_reason.Always_rerun)
-    | false -> (
-      (* [prev_trace] will be [None] if [head_target] was never built before. *)
-      let head_target = Targets.Validated.head targets in
-      let prev_trace = Database.get (Path.build head_target) in
-      let prev_trace_with_produced_targets =
-        match prev_trace with
-        | None -> Result.Miss Miss_reason.No_previous_record
-        | Some prev_trace -> (
-          match Digest.equal prev_trace.rule_digest rule_digest with
-          | false ->
-            Result.Miss (Rule_changed (prev_trace.rule_digest, rule_digest))
-          | true -> (
-            (* [compute_target_digests] returns [None] if not all targets are
-               available in the workspace-local cache. *)
-            match compute_target_digests targets with
-            | None -> Result.Miss Targets_missing
-            | Some produced_targets -> (
-              match
-                Digest.equal prev_trace.targets_digest
-                  (Targets.Produced.digest produced_targets)
-              with
-              | true -> Hit (prev_trace, produced_targets)
-              | false -> Result.Miss Targets_changed)))
-      in
-      match prev_trace_with_produced_targets with
-      | Result.Miss reason -> Fiber.return (Result.Miss reason)
-      | Hit (prev_trace, produced_targets) ->
-        (* CR-someday aalekseyev: If there's a change at one of the last stages,
-           we still re-run all the previous stages, which is a bit of a waste.
-           We could remember what stage needs re-running and only re-run that
-           (and later stages). *)
-        let rec loop stages =
-          match stages with
-          | [] -> Fiber.return (Result.Hit produced_targets)
-          | (deps, old_digest) :: rest -> (
-            let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
-            let open Fiber.O in
-            let* deps = Memo.Build.run (build_deps deps) in
-            let new_digest = Dep.Facts.digest deps ~env in
-            match Digest.equal old_digest new_digest with
-            | true -> loop rest
-            | false ->
-              Fiber.return (Result.Miss Miss_reason.Dynamic_deps_changed))
-        in
-        loop prev_trace.dynamic_deps_stages)
-
-  let report_miss ~head_target reason =
-    let reason =
-      match (reason : Miss_reason.t) with
-      | No_previous_record -> "never seen this target before"
-      | Rule_changed (before, after) ->
-        sprintf "rule or dependencies changed: %s -> %s"
-          (Digest.to_string before) (Digest.to_string after)
-      | Targets_missing -> "target missing from build dir"
-      | Targets_changed -> "target changed in build dir"
-      | Always_rerun -> "not trying to use the cache"
-      | Dynamic_deps_changed -> "dynamic dependencies changed"
+  let lookup_impl ~rule_digest ~targets ~env ~build_deps =
+    (* [prev_trace] will be [None] if [head_target] was never built before. *)
+    let head_target = Targets.Validated.head targets in
+    let prev_trace = Database.get (Path.build head_target) in
+    let prev_trace_with_produced_targets =
+      match prev_trace with
+      | None -> Result.Miss Miss_reason.No_previous_record
+      | Some prev_trace -> (
+        match Digest.equal prev_trace.rule_digest rule_digest with
+        | false ->
+          Result.Miss (Rule_changed (prev_trace.rule_digest, rule_digest))
+        | true -> (
+          (* [compute_target_digests] returns [None] if not all targets are
+             available in the workspace-local cache. *)
+          match compute_target_digests targets with
+          | None -> Result.Miss Targets_missing
+          | Some produced_targets -> (
+            match
+              Digest.equal prev_trace.targets_digest
+                (Targets.Produced.digest produced_targets)
+            with
+            | true -> Hit (prev_trace, produced_targets)
+            | false -> Result.Miss Targets_changed)))
     in
-    Console.print_user_message
-      (User_message.make
-         [ Pp.hbox
-             (Pp.textf "Workspace-local cache miss: %s: %s"
-                (Path.Build.to_string head_target)
-                reason)
-         ])
+    match prev_trace_with_produced_targets with
+    | Result.Miss reason -> Fiber.return (Result.Miss reason)
+    | Hit (prev_trace, produced_targets) ->
+      (* CR-someday aalekseyev: If there's a change at one of the last stages,
+         we still re-run all the previous stages, which is a bit of a waste. We
+         could remember what stage needs re-running and only re-run that (and
+         later stages). *)
+      let rec loop stages =
+        match stages with
+        | [] -> Fiber.return (Result.Hit produced_targets)
+        | (deps, old_digest) :: rest -> (
+          let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
+          let open Fiber.O in
+          let* deps = Memo.Build.run (build_deps deps) in
+          let new_digest = Dep.Facts.digest deps ~env in
+          match Digest.equal old_digest new_digest with
+          | true -> loop rest
+          | false -> Fiber.return (Result.Miss Miss_reason.Dynamic_deps_changed)
+          )
+      in
+      loop prev_trace.dynamic_deps_stages
+
+  let lookup ~always_rerun ~print_debug_info ~rule_digest ~targets ~env
+      ~build_deps : Digest.t Targets.Produced.t option Fiber.t =
+    let open Fiber.O in
+    let+ result =
+      match always_rerun with
+      | true -> Fiber.return (Result.Miss Miss_reason.Always_rerun)
+      | false -> lookup_impl ~rule_digest ~targets ~env ~build_deps
+    in
+    match result with
+    | Hit result -> Some result
+    | Miss reason ->
+      if print_debug_info then
+        Miss_reason.report reason ~head_target:(Targets.Validated.head targets);
+      None
 end
 
-module Shared_cache = struct
+module Shared = struct
+  let shared_cache_key_string_for_log ~rule_digest ~head_target =
+    sprintf "[%s] (%s)"
+      (Digest.to_string rule_digest)
+      (Path.Build.to_string head_target)
+
   module Miss_reason = struct
     type t =
       | Cache_disabled
@@ -184,17 +202,30 @@ module Shared_cache = struct
       | Rerunning_for_reproducibility_check
       | Not_found_in_cache
       | Error of string
-  end
 
-  let shared_cache_key_string_for_log ~rule_digest ~head_target =
-    sprintf "[%s] (%s)"
-      (Digest.to_string rule_digest)
-      (Path.Build.to_string head_target)
+    let report ~rule_digest ~head_target reason =
+      let reason =
+        match reason with
+        | Cache_disabled -> "cache disabled"
+        | Cannot_go_in_shared_cache -> "can't go in shared cache"
+        | Error exn -> sprintf "error: %s" exn
+        | Rerunning_for_reproducibility_check ->
+          "rerunning for reproducibility check"
+        | Not_found_in_cache -> "not found in cache"
+      in
+      Console.print_user_message
+        (User_message.make
+           [ Pp.hbox
+               (Pp.textf "Shared cache miss %s: %s"
+                  (shared_cache_key_string_for_log ~rule_digest ~head_target)
+                  reason)
+           ])
+  end
 
   (* CR-someday amokhov: If the cloud cache is enabled, then before attempting
      to restore artifacts from the shared cache, we should send a download
      request for [rule_digest] to the cloud. *)
-  let try_to_restore_from_shared_cache ~debug_shared_cache ~mode ~rule_digest
+  let try_to_restore_from_shared_cache ~print_debug_info ~mode ~rule_digest
       ~head_target ~target_dir :
       (Digest.t Targets.Produced.t, Miss_reason.t) Result.t =
     let key () = shared_cache_key_string_for_log ~rule_digest ~head_target in
@@ -204,52 +235,51 @@ module Shared_cache = struct
          we're also printing successes, but it can be useful to see successes
          too if the goal is to understand when and how the file in the build
          directory appeared *)
-      if debug_shared_cache then
+      if print_debug_info then
         Log.info [ Pp.textf "cache restore success %s" (key ()) ];
       Hit (Targets.Produced.of_file_list_exn res)
     | Not_found_in_cache -> Miss Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
 
-  let lookup ~can_go_in_shared_cache ~cache_config ~debug_shared_cache
-      ~rule_digest ~targets ~target_dir :
-      (Digest.t Targets.Produced.t, Miss_reason.t) Result.t =
-    match can_go_in_shared_cache with
-    | false -> Miss Cannot_go_in_shared_cache
-    | true -> (
-      match (cache_config : Dune_cache.Config.t) with
-      | Disabled -> Miss Miss_reason.Cache_disabled
-      | Enabled { storage_mode = mode; reproducibility_check } -> (
-        match
-          Dune_cache.Config.Reproducibility_check.sample reproducibility_check
-        with
-        | true ->
-          (* CR-someday amokhov: Here we re-execute the rule, as in Jenga. To
-             make [check_probability] more meaningful, we could first make sure
-             that the shared cache actually does contain an entry for
-             [rule_digest]. *)
-          Result.Miss Miss_reason.Rerunning_for_reproducibility_check
-        | false ->
-          try_to_restore_from_shared_cache ~debug_shared_cache ~mode
-            ~head_target:(Targets.Validated.head targets)
-            ~rule_digest ~target_dir))
+  let lookup_impl ~cache_config ~print_debug_info ~rule_digest ~targets
+      ~target_dir =
+    match (cache_config : Dune_cache.Config.t) with
+    | Disabled -> Result.Miss Miss_reason.Cache_disabled
+    | Enabled { storage_mode = mode; reproducibility_check } -> (
+      match
+        Dune_cache.Config.Reproducibility_check.sample reproducibility_check
+      with
+      | true ->
+        (* CR-someday amokhov: Here we re-execute the rule, as in Jenga. To make
+           [check_probability] more meaningful, we could first make sure that
+           the shared cache actually does contain an entry for [rule_digest]. *)
+        Miss Rerunning_for_reproducibility_check
+      | false ->
+        try_to_restore_from_shared_cache ~print_debug_info ~mode
+          ~head_target:(Targets.Validated.head targets)
+          ~rule_digest ~target_dir)
 
-  let report_miss ~rule_digest ~head_target (reason : Miss_reason.t) =
-    let reason =
-      match reason with
-      | Cache_disabled -> "cache disabled"
-      | Cannot_go_in_shared_cache -> "can't go in shared cache"
-      | Error exn -> sprintf "error: %s" exn
-      | Rerunning_for_reproducibility_check ->
-        "rerunning for reproducibility check"
-      | Not_found_in_cache -> "not found in cache"
+  let lookup ~can_go_in_shared_cache ~cache_config ~print_debug_info
+      ~rule_digest ~targets ~target_dir : Digest.t Targets.Produced.t option =
+    let result =
+      match can_go_in_shared_cache with
+      | false -> Result.Miss Miss_reason.Cannot_go_in_shared_cache
+      | true ->
+        lookup_impl ~cache_config ~print_debug_info ~rule_digest ~targets
+          ~target_dir
     in
-    Console.print_user_message
-      (User_message.make
-         [ Pp.hbox
-             (Pp.textf "Shared cache miss %s: %s"
-                (shared_cache_key_string_for_log ~rule_digest ~head_target)
-                reason)
-         ])
+    match result with
+    | Hit result -> Some result
+    | Miss reason ->
+      (match (print_debug_info, reason) with
+      | true, _
+      | false, Error _ ->
+        (* Always log errors because they are not expected as a part of normal
+           operation and might indicate a problem. *)
+        Miss_reason.report reason ~rule_digest
+          ~head_target:(Targets.Validated.head targets)
+      | false, _ -> ());
+      None
 
   (* If this function fails to store the rule to the shared cache, it returns
      [None] because we don't want this to be a catastrophic error. We simply log
@@ -400,7 +430,7 @@ module Shared_cache = struct
                     (Path.pp (Path.build target) :: error))
             ]))
 
-  let examine_targets_and_store ~cache_config ~can_go_in_shared_cache ~loc
+  let examine_targets_and_store ~can_go_in_shared_cache ~cache_config ~loc
       ~rule_digest ~execution_parameters ~action
       ~(produced_targets : unit Targets.Produced.t) :
       Digest.t Targets.Produced.t Fiber.t =

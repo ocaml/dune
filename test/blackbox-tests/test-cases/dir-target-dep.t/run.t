@@ -25,8 +25,11 @@ We should not be able to produce a directory in a rule that already exists
   5 | (rule
   6 |  (targets dir)
   7 |  (action (run ./foo.exe dir)))
-  Error: Rule has a target default/dir
-  This conflicts with a source directory in the same directory
+  Error: This rule defines a target "dir" whose name conflicts with a source
+  directory in the same directory.
+  Hint: If you want Dune to generate and replace "dir", add (mode promote) to
+  the rule stanza. Alternatively, you can delete "dir" from the source tree or
+  change the rule to generate a different target.
   [1]
 
 Dune crashes if there's a file named after the directory target
@@ -36,8 +39,11 @@ Dune crashes if there's a file named after the directory target
   1 | (rule
   2 |  (targets dir)
   3 |  (action (bash "mkdir %{targets}")))
-  Error: Rule has a target default/dir
-  This conflicts with a source directory in the same directory
+  Error: This rule defines a target "dir" whose name conflicts with a source
+  directory in the same directory.
+  Hint: If you want Dune to generate and replace "dir", add (mode promote) to
+  the rule stanza. Alternatively, you can delete "dir" from the source tree or
+  change the rule to generate a different target.
   [1]
 
 directory target and (mode promote) results in a crash

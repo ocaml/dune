@@ -16,7 +16,7 @@ let default_context_flags (ctx : Context.t) ~project =
       let c = cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config in
       let cxx =
         let open Action_builder.O in
-        let+ db_flags = Cxx_flags.get_flags ctx.build_dir in
+        let+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx.build_dir in
         db_flags @ cxxflags
       in
       (Action_builder.return c, cxx)

@@ -16,10 +16,13 @@ jobs:
         # Please keep the list in sync with the minimal version of OCaml in
         # dune-project, dune.opam.template and bootstrap.ml
         ocaml-version:
-          - 4.12.0
+          - 4.13.1
         skip_test:
           - false
         include:
+          - ocaml-version: 4.12.1
+            os: ubuntu-latest
+            skip_test: true
           - ocaml-version: 4.11.1
             os: ubuntu-latest
             skip_test: true

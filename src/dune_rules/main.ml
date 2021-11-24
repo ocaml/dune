@@ -35,7 +35,7 @@ let implicit_default_alias dir =
 
 let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
     =
-  let promote_source ?chmod ~src ~dst ctx =
+  let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst ctx =
     let open Fiber.O in
     let* ctx =
       Memo.Build.run
@@ -45,7 +45,8 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
     let conf = Artifact_substitution.conf_of_context ctx in
     let src = Path.build src in
     let dst = Path.source dst in
-    Artifact_substitution.copy_file ?chmod ~src ~dst ~conf ()
+    Artifact_substitution.copy_file ~chmod ~delete_dst_if_it_is_a_directory ~src
+      ~dst ~conf ()
   in
   Build_system.init ~stats ~sandboxing_preference ~promote_source
     ~contexts:

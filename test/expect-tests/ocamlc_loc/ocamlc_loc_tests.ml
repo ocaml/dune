@@ -148,7 +148,7 @@ let%expect_test "mli mismatch" =
         Structured
           { file_excerpt = None
           ; message =
-              "The implementation test.ml does not match the interface test.cmi:\n\
+              "The implementation test.ml does not match the interface test.cmi: \n\
               \       Values do not match: val x : bool is not included in val x : int"
           ; severity = Error
           }

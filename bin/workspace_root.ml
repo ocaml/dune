@@ -8,6 +8,22 @@ module Kind = struct
     | Dune_workspace
     | Dune_project
     | Cwd
+
+  let priority = function
+    | Explicit -> 0
+    | Dune_workspace -> 1
+    | Dune_project -> 2
+    | Cwd -> 3
+
+  let lowest_priority = max_int
+
+  let of_dir_contents files =
+    if String.Set.mem files Workspace.filename then
+      Some Dune_workspace
+    else if String.Set.mem files Dune_project.filename then
+      Some Dune_project
+    else
+      None
 end
 
 type t =
@@ -27,7 +43,8 @@ end
 
 let find () =
   let cwd = Sys.getcwd () in
-  let rec loop counter ~candidate ~to_cwd dir : Candidate.t option =
+  let rec loop counter ~(candidate : Candidate.t option) ~to_cwd dir :
+      Candidate.t option =
     match Sys.readdir dir with
     | exception Sys_error msg ->
       User_warning.emit
@@ -42,13 +59,18 @@ let find () =
       candidate
     | files ->
       let files = String.Set.of_list (Array.to_list files) in
-      if String.Set.mem files Workspace.filename then
-        Some { kind = Dune_workspace; dir; to_cwd }
-      else if String.Set.mem files Dune_project.filename then
-        let candidate = Some { Candidate.kind = Dune_project; dir; to_cwd } in
-        cont counter ~candidate dir ~to_cwd
-      else
-        cont counter ~candidate dir ~to_cwd
+      let candidate =
+        let candidate_priority =
+          match candidate with
+          | Some c -> Kind.priority c.kind
+          | None -> Kind.lowest_priority
+        in
+        match Kind.of_dir_contents files with
+        | Some kind when Kind.priority kind <= candidate_priority ->
+          Some { Candidate.kind; dir; to_cwd }
+        | _ -> candidate
+      in
+      cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =
     if counter > String.length cwd then
       candidate

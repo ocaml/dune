@@ -62,6 +62,7 @@ val decode : string -> t option
 val copy_file :
      conf:conf
   -> ?chmod:(int -> int)
+  -> ?delete_dst_if_it_is_a_directory:bool
   -> src:Path.t
   -> dst:Path.t
   -> unit

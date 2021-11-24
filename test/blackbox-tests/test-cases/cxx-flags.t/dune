@@ -6,5 +6,5 @@
 (executable
  (name main)
  (libraries quad)
+ (foreign_stubs (language cxx) (names bazexe))
  (modules main))
-

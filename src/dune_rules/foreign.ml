@@ -191,6 +191,10 @@ module Sources = struct
     String.Map.keys t
     |> List.map ~f:(fun c -> Path.Build.relative dir (c ^ ext_obj))
 
+  let has_cxx_sources (t : t) =
+    String.Map.exists t ~f:(fun (_loc, source) ->
+        Foreign_language.(equal Cxx source.stubs.language))
+
   module Unresolved = struct
     type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
 

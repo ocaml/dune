@@ -63,20 +63,20 @@ Replace a directory with a file and rebuild.
   $ rm -rf d1/d2
   $ touch d1/d2
   $ build d1
-  Failure
+  Success
+  $ cat d1/a d1/b d1/d2/c
+  +++
 
-Delete the problematic file and retry.
+Replace a file with a directory and rebuild.
 
-  $ rm d1/d2
+  $ rm d1/b
+  $ mkdir -p d1/b
   $ build d1
   Success
   $ cat d1/a d1/b d1/d2/c
   +++
 
 Add some unexpected files and directories and check that Dune deletes them.
-
-# CR-someday amokhov: This scenario works but Dune currently produces some
-# spurious errors (see below) that go away after retriggering. We should fix this.
 
   $ mkdir -p d1/unexpected-dir-1
   $ mkdir -p d1/d2/unexpected-dir-2
@@ -100,39 +100,8 @@ We're done.
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
-  File "dune", line 1, characters 0-151:
-  1 | (rule
-  2 |   (mode promote)
-  3 |   (deps src (sandbox always))
-  4 |   (targets (dir d1))
-  5 |   (action (bash "mkdir -p d1/d2; cp src d1/a; cp src d1/b; cp src d1/d2/c")))
-  Error: Cannot promote files to "d1/d2".
-  Reason: "d1/d2" is not a directory.
-  -> required by _build/default/d1
-  -> required by alias d1/all
-  -> required by alias d1/default
-  Had errors, waiting for filesystem changes...
   Success, waiting for filesystem changes...
-  File "dune", line 1, characters 0-151:
-  1 | (rule
-  2 |   (mode promote)
-  3 |   (deps src (sandbox always))
-  4 |   (targets (dir d1))
-  5 |   (action (bash "mkdir -p d1/d2; cp src d1/a; cp src d1/b; cp src d1/d2/c")))
-  Error: This rule defines a directory target "d1" that matches the requested
-  path "d1/d2/unexpected-dir-2" but the rule's action didn't produce it
-  -> required by alias d1/d2/unexpected-dir-2/all
-  -> required by alias d1/d2/unexpected-dir-2/default
-  File "dune", line 1, characters 0-151:
-  1 | (rule
-  2 |   (mode promote)
-  3 |   (deps src (sandbox always))
-  4 |   (targets (dir d1))
-  5 |   (action (bash "mkdir -p d1/d2; cp src d1/a; cp src d1/b; cp src d1/d2/c")))
-  Error: This rule defines a directory target "d1" that matches the requested
-  path "d1/unexpected-dir-1" but the rule's action didn't produce it
-  -> required by alias d1/unexpected-dir-1/all
-  -> required by alias d1/unexpected-dir-1/default
+  Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
 
 Now test file-system events generated during directory target promotion.

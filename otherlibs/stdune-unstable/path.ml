@@ -1016,6 +1016,9 @@ let drop_optional_build_context t =
   | None -> t
   | Some (_, t) -> in_source_tree t
 
+let pp path =
+  drop_optional_build_context path |> to_string_maybe_quoted |> Pp.verbatim
+
 let drop_optional_build_context_maybe_sandboxed t =
   match extract_build_context_dir_maybe_sandboxed t with
   | None -> t

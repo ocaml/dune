@@ -227,6 +227,8 @@ val of_filename_relative_to_initial_cwd : string -> t
     root has been set. [root] is the root directory of local paths *)
 val to_absolute_filename : t -> string
 
+val pp : t -> _ Pp.t
+
 (** Reach a given path [from] a directory. For example, let [p] be a path to the
     file [some/dir/file] and [d] be a path to the directory [some/another/dir].
     Then [reach p ~from:d] evaluates to [../../dir/file]. *)

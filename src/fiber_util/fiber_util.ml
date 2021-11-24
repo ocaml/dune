@@ -141,12 +141,14 @@ module Observable_types = struct
     (* When an observable closes, one can still observe the final value *)
     | Active of
         { sub : 'a subscription
-        ; mutable state :
-            [ `Idle (* the next await will go pending *)
-            | `Pending_await of unit Fiber.Ivar.t
-            | `Ready of 'a (* the next await is immediate *)
-            ]
+        ; mutable state : 'a active_observer_state
         }
+
+  and 'a active_observer_state =
+    | Idle (* the next await will go pending *)
+    | Pending_await of unit Fiber.Ivar.t
+    | Ready of 'a
+  (* the next await is immediate *)
 
   and 'a observer = 'a observer_desc ref
 end
@@ -178,7 +180,7 @@ module Observer = struct
   type 'a t = 'a observer
 
   let create (sub : 'a Subscription.t) (a : 'a) : 'a t =
-    ref (Active { sub; state = `Ready a })
+    ref (Active { sub; state = Ready a })
 
   let unsubscribe t =
     match !t with
@@ -197,15 +199,15 @@ module Observer = struct
       Fiber.return (Some a)
     | Active a -> (
       match a.state with
-      | `Pending_await _ ->
+      | Pending_await _ ->
         Code_error.raise "await cannot be called concurrently" []
-      | `Ready v ->
-        a.state <- `Idle;
+      | Ready v ->
+        a.state <- Idle;
         Fiber.return (Some v)
-      | `Idle ->
+      | Idle ->
         let ivar = Fiber.Ivar.create () in
         Subscription.register a.sub ivar;
-        a.state <- `Pending_await ivar;
+        a.state <- Pending_await ivar;
         let* () = Fiber.Ivar.read ivar in
         (* we need to retry from scratch because it's possible that another
            observer will get awaken before us and it might interact with the
@@ -262,10 +264,10 @@ module Observable = struct
             assert false
           | Active active -> (
             match active.state with
-            | `Pending_await _
-            | `Idle ->
+            | Pending_await _
+            | Idle ->
               obs := Closed
-            | `Ready v -> obs := Closed_undelivered v));
+            | Ready v -> obs := Closed_undelivered v));
       Waiters.notify o.waiters
 
   let update (type a) (sink : a sink) (a : a) =
@@ -280,8 +282,8 @@ module Observable = struct
           | Closed_undelivered _ -> assert false
           | Active active -> (
             match active.state with
-            | `Pending_await _ -> active.state <- `Ready a
-            | `Idle -> active.state <- `Ready a
-            | `Ready a' -> active.state <- `Ready (observable.combine a' a)));
+            | Pending_await _ -> active.state <- Ready a
+            | Idle -> active.state <- Ready a
+            | Ready a' -> active.state <- Ready (observable.combine a' a)));
       Waiters.notify observable.waiters
 end

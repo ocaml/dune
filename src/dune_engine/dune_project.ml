@@ -465,8 +465,7 @@ let wrapped_executables_default ~(lang : Lang.Instance.t) =
 let executables_implicit_empty_intf_default ~(lang : Lang.Instance.t) =
   lang.version >= (3, 0)
 
-let strict_package_deps_default ~(lang : Lang.Instance.t) =
-  lang.version >= (3, 0)
+let strict_package_deps_default ~lang:_ = false
 
 let explicit_js_mode_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 

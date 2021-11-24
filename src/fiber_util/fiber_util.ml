@@ -128,38 +128,19 @@ module Waiters = struct
     |> Fiber.sequential_iter ~f:(fun ivar -> Fiber.Ivar.fill ivar ())
 end
 
-module Subscription = struct
-  (* Represents the operations an observer needs from an observable. It's
-     possible to do without this and make observable and observer mutually
-     recursive, but it becomes quite ugly *)
-
-  type 'a t =
-    { observers : 'a Observer_id.Map.t ref
+module Observable_types = struct
+  type 'a subscription =
+    { observers : 'a observer Observer_id.Map.t ref
     ; id : Observer_id.t
     ; waiters : Waiters.t
     }
 
-  type packed = E : 'a t -> packed
-
-  (* observer removes itself from the observable's data structure without
-     knowing what's inside an observable *)
-  let unsubscribe (E { observers; id; waiters }) =
-    observers := Observer_id.Map.remove !observers id;
-    match Observer_id.Map.find !waiters id with
-    | None -> Fiber.return ()
-    | Some s -> Fiber.Ivar.fill s ()
-
-  let register (E t) ivar =
-    t.waiters := Observer_id.Map.add_exn !(t.waiters) t.id ivar
-end
-
-module Observer = struct
-  type 'a desc =
+  and 'a observer_desc =
     | Closed
     | Closed_undelivered of 'a
     (* When an observable closes, one can still observe the final value *)
     | Active of
-        { sub : Subscription.packed
+        { sub : 'a subscription
         ; mutable state :
             [ `Idle (* the next await will go pending *)
             | `Pending_await of unit Fiber.Ivar.t
@@ -167,9 +148,37 @@ module Observer = struct
             ]
         }
 
-  type 'a t = 'a desc ref
+  and 'a observer = 'a observer_desc ref
+end
 
-  let create sub a = ref (Active { sub; state = `Ready a })
+module Subscription = struct
+  open Observable_types
+
+  type 'a t = 'a subscription
+
+  (* Represents the operations an observer needs from an observable. It's
+     possible to do without this and make observable and observer mutually
+     recursive, but it becomes quite ugly *)
+
+  (* observer removes itself from the observable's data structure without
+     knowing what's inside an observable *)
+  let unsubscribe { observers; id; waiters } =
+    observers := Observer_id.Map.remove !observers id;
+    match Observer_id.Map.find !waiters id with
+    | None -> Fiber.return ()
+    | Some s -> Fiber.Ivar.fill s ()
+
+  let register t ivar =
+    t.waiters := Observer_id.Map.add_exn !(t.waiters) t.id ivar
+end
+
+module Observer = struct
+  open Observable_types
+
+  type 'a t = 'a observer
+
+  let create (sub : 'a Subscription.t) (a : 'a) : 'a t =
+    ref (Active { sub; state = `Ready a })
 
   let unsubscribe t =
     match !t with
@@ -232,10 +241,10 @@ module Observable = struct
     | Closed -> Code_error.raise "cannot add observer to closed observable" []
     | Active a ->
       let id = Observer_id.gen () in
-      let sub =
-        { Subscription.id; observers = a.observers; waiters = a.waiters }
+      let sub : a Subscription.t =
+        { id; observers = a.observers; waiters = a.waiters }
       in
-      let obs = Observer.create (Subscription.E sub) a.current in
+      let obs = Observer.create sub a.current in
       a.observers := Observer_id.Map.add_exn !(a.observers) id obs;
       obs
 

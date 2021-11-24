@@ -43,7 +43,7 @@ let () =
         Array.iter (Sys.readdir ".") ~f:(fun fn ->
             if
               String.length fn >= String.length duneboot
-              && String.sub fn 0 (String.length duneboot) = duneboot
+              && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
             then
               Sys.remove fn))
 

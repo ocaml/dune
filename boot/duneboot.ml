@@ -1098,7 +1098,7 @@ let build ~ocaml_config ~dependencies ~c_files ~link_flags
              Fiber.parallel_iter deps ~f:build >>= fun () ->
              Process.run ~cwd:build_dir Config.compiler
                (List.concat
-                  [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49" ]
+                  [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49-6" ]
                   ; external_includes
                   ; [ file ]
                   ]))));
@@ -1138,7 +1138,7 @@ let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files ~link_flags
   Process.run ~cwd:build_dir Config.compiler
     (List.concat
        [ common_build_args name ~external_includes ~external_libraries
-       ; [ "-no-alias-deps"; "-w"; "-49" ]
+       ; [ "-no-alias-deps"; "-w"; "-49-6" ]
        ; c_files
        ; [ "-args"; "mods_list" ] @ link_flags
        ])

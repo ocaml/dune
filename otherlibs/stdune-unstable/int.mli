@@ -16,4 +16,8 @@ val of_string : string -> t option
 
 val to_string : t -> string
 
+val zero : t
+
+val ( + ) : t -> t -> t
+
 module Infix : Comparator.OPS with type t = t

@@ -75,7 +75,7 @@ module Observer : sig
 
       The goal of an observer is to be up-to-date with the observable. It is not
       guaranteed that the observer will observe all possible intermediate values
-      of the observable. For instance, if an observable changes several time in
+      of the observable. For instance, if an observable changes several times in
       a row, by the time the observer is awoken it will receive the latest value
       of the observable. {!await} will only suspend the current fiber if the
       current value of the observable is the same as the last one that was

@@ -62,11 +62,11 @@ module T = struct
 end
 
 include T
-module O = Comparable.Make (T)
 
 module Map = struct
-  include O.Map
-  include Memo.Build.Make_map_traversals (O.Map)
+  module M = Map.Make (T)
+  include M
+  include Memo.Build.Make_map_traversals (M)
 
   let has_universe t = mem t Universe
 end
@@ -305,44 +305,13 @@ module Facts = struct
 end
 
 module Set = struct
-  include O.Map
-
-  module T = struct
-    type t = unit Map.t
-
-    include Monoid.Make (struct
-      type nonrec t = t
-
-      let empty = empty
-
-      let combine = union ~f:(fun _ () () -> Some ())
-    end)
-  end
-
-  include T
-
-  let equal a b = equal a b ~equal:(fun () () -> true)
-
-  let singleton dep = singleton dep ()
-
-  let add t x = set t x ()
-
-  let of_list = Map.of_list_unit
-
-  let of_list_map l ~f = Map.of_list_unit (List.map l ~f:(fun x -> f x))
-
-  let fold t ~init ~f = Map.foldi t ~init ~f:(fun k () acc -> f k acc)
-
-  let to_list = keys
+  module M = Set.Of_map (T) (Map)
+  include M
 
   let of_files l = of_list_map l ~f:file
 
   let of_files_set =
     Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
-
-  let union = combine
-
-  let union_map l ~f = map_reduce ~f l
 
   let add_paths t paths =
     Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
@@ -356,7 +325,7 @@ module Set = struct
     file_selector (File_selector.create ~dir Predicate.false_)
 
   module Source_tree_map_reduce =
-    Source_tree.Dir.Make_map_reduce (Memo.Build) (T)
+    Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (M))
 
   let source_tree dir =
     let prefix_with, dir = Path.extract_build_context_dir_exn dir in
@@ -381,7 +350,7 @@ module Set = struct
   let source_tree_with_file_set dir =
     let+ t = source_tree dir in
     let paths =
-      foldi t ~init:Path.Set.empty ~f:(fun dep () acc ->
+      fold t ~init:Path.Set.empty ~f:(fun dep acc ->
           match dep with
           | File f -> Path.Set.add acc f
           | File_selector fs ->
@@ -393,7 +362,7 @@ module Set = struct
     (t, paths)
 
   let digest t =
-    foldi t ~init:[] ~f:(fun dep _value acc : Stable_for_digest.t list ->
+    fold t ~init:[] ~f:(fun dep acc : Stable_for_digest.t list ->
         match dep with
         | Env var -> Env var :: acc
         | Universe -> Universe :: acc

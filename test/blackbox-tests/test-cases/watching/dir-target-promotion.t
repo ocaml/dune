@@ -78,17 +78,6 @@ Replace a file with a directory and rebuild.
 
 Add some unexpected files and directories and check that Dune deletes them.
 
-# CR-someday amokhov: This scenario works but Dune currently produces some
-# spurious errors (see below) that go away after retriggering. The reason for
-# these errors is that "build d1" is interpreted as "build @d1/default", which
-# recursively expands to include, for example, "d1/d2/unexpected-dir-2/default",
-# which can't be built, because the rule doesn't produce it. To fix it, we
-# should find a way to specify the build goal more precisely. One approach is to
-# stop expanding recursive aliases inside promoted directory targets, which can
-# be tricky since we don't know which directories are promoted at when expanding
-# aliases. Another approach is to provide CLI syntax to request a directory as a
-# build goal, for example, "build d1/*".
-
   $ mkdir -p d1/unexpected-dir-1
   $ mkdir -p d1/d2/unexpected-dir-2
   $ touch d1/unexpected-file-1
@@ -113,26 +102,6 @@ We're done.
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
-  File "dune", line 1, characters 0-151:
-  1 | (rule
-  2 |   (mode promote)
-  3 |   (deps src (sandbox always))
-  4 |   (targets (dir d1))
-  5 |   (action (bash "mkdir -p d1/d2; cp src d1/a; cp src d1/b; cp src d1/d2/c")))
-  Error: This rule defines a directory target "d1" that matches the requested
-  path "d1/d2/unexpected-dir-2" but the rule's action didn't produce it
-  -> required by alias d1/d2/unexpected-dir-2/all
-  -> required by alias d1/d2/unexpected-dir-2/default
-  File "dune", line 1, characters 0-151:
-  1 | (rule
-  2 |   (mode promote)
-  3 |   (deps src (sandbox always))
-  4 |   (targets (dir d1))
-  5 |   (action (bash "mkdir -p d1/d2; cp src d1/a; cp src d1/b; cp src d1/d2/c")))
-  Error: This rule defines a directory target "d1" that matches the requested
-  path "d1/unexpected-dir-1" but the rule's action didn't produce it
-  -> required by alias d1/unexpected-dir-1/all
-  -> required by alias d1/unexpected-dir-1/default
   Success, waiting for filesystem changes...
 
 Now test file-system events generated during directory target promotion.

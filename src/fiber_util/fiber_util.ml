@@ -125,7 +125,7 @@ module Waiters = struct
     let to_notify = !t in
     t := Observer_id.Map.empty;
     Observer_id.Map.values to_notify
-    |> Fiber.parallel_iter ~f:(fun ivar -> Fiber.Ivar.fill ivar ())
+    |> Fiber.sequential_iter ~f:(fun ivar -> Fiber.Ivar.fill ivar ())
 end
 
 module Subscription = struct
@@ -208,17 +208,24 @@ module Observable = struct
   type 'a desc =
     { observers : 'a Observer.t Observer_id.Map.t ref
     ; mutable current : 'a
+    ; combine : 'a -> 'a -> 'a
     ; waiters : Waiters.t
     }
 
   type 'a t = 'a desc State.t
 
-  let create_observable current =
-    State.create
-      { current
-      ; observers = ref Observer_id.Map.empty
-      ; waiters = Waiters.create ()
-      }
+  type 'a sink = 'a t
+
+  let create ?(combine = fun _ x -> x) current =
+    let t =
+      State.create
+        { current
+        ; observers = ref Observer_id.Map.empty
+        ; combine
+        ; waiters = Waiters.create ()
+        }
+    in
+    (t, t)
 
   let add_observer (type a) (t : a t) : a Observer.t =
     match !t with
@@ -232,27 +239,7 @@ module Observable = struct
       a.observers := Observer_id.Map.add_exn !(a.observers) id obs;
       obs
 
-  type nonrec 'a sink =
-    | Snapshot of 'a t
-    | Diff of
-        { observable : 'a t
-        ; monoid : (module Monoid with type t = 'a)
-        }
-
-  let create (type a) (a : a) : a t * a sink =
-    let obs = create_observable a in
-    (obs, Snapshot obs)
-
-  let create_diff (type a) monoid (a : a) : a t * a sink =
-    let observable = create_observable a in
-    (observable, Diff { observable; monoid })
-
-  let close sink =
-    let obs =
-      match sink with
-      | Snapshot obs -> obs
-      | Diff d -> d.observable
-    in
+  let close (obs : _ sink) =
     match !obs with
     | Closed -> Fiber.return ()
     | Active o ->
@@ -273,37 +260,19 @@ module Observable = struct
       Waiters.notify o.waiters
 
   let update (type a) (sink : a sink) (a : a) =
-    (* TODO remove copy paste *)
-    match sink with
-    | Snapshot obs -> (
-      match !obs with
-      | Closed ->
-        Code_error.raise "unable to update when observable is closed" []
-      | Active observable ->
-        observable.current <- a;
-        Observer_id.Map.iter !(observable.observers)
-          ~f:(fun (obs : a Observer.t) ->
-            match !obs with
-            | Closed -> assert false
-            | Closed_undelivered _ -> assert false
-            | Active active -> active.state <- `Ready a);
-        Waiters.notify observable.waiters)
-    | Diff { observable; monoid } -> (
-      match !observable with
-      | Closed ->
-        Code_error.raise "unable to update when observable is closed" []
-      | Active observable ->
-        let module Monoid = (val monoid) in
-        observable.current <- Monoid.combine observable.current a;
-        Observer_id.Map.iter !(observable.observers)
-          ~f:(fun (obs : a Observer.t) ->
-            match !obs with
-            | Closed -> assert false
-            | Closed_undelivered _ -> assert false
-            | Active active -> (
-              match active.state with
-              | `Pending_await _ -> active.state <- `Ready a
-              | `Idle -> active.state <- `Ready a
-              | `Ready a' -> active.state <- `Ready (Monoid.combine a' a)));
-        Waiters.notify observable.waiters)
+    match !sink with
+    | Closed -> Code_error.raise "unable to update when observable is closed" []
+    | Active observable ->
+      observable.current <- observable.combine observable.current a;
+      Observer_id.Map.iter !(observable.observers)
+        ~f:(fun (obs : a Observer.t) ->
+          match !obs with
+          | Closed -> assert false
+          | Closed_undelivered _ -> assert false
+          | Active active -> (
+            match active.state with
+            | `Pending_await _ -> active.state <- `Ready a
+            | `Idle -> active.state <- `Ready a
+            | `Ready a' -> active.state <- `Ready (observable.combine a' a)));
+      Waiters.notify observable.waiters
 end

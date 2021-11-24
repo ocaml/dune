@@ -1009,7 +1009,7 @@ let%expect_test "observable - create/close" =
       let _, sink = Observable.create 100 in
       Observable.close sink
     in
-    let _, sink = Observable.create_diff (module Monoid.Add (Int)) 0 in
+    let _, sink = Observable.create 0 ~combine:( + ) in
     Observable.close sink
   in
   Scheduler.run test;
@@ -1048,7 +1048,7 @@ let%expect_test "observe - snapshot" =
 let%expect_test "observe - diff" =
   let test =
     print_endline "initialize observable with 0";
-    let observable, sink = Observable.create_diff (module Monoid.Add (Int)) 0 in
+    let observable, sink = Observable.create 0 ~combine:( + ) in
     print_endline "creating observer";
     let obs = Observable.add_observer observable in
     let await () =

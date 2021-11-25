@@ -68,7 +68,7 @@ executable was built.
   (csexp (>= 1.4.0))
   pp
   dyn
-  (stdune-unstable (= :version))
+  (stdune (= :version))
   (ocaml (>= 4.08)))
  (synopsis "Private libraries of Dune")
  (description "\
@@ -105,7 +105,7 @@ Among other things, dune-configurator allows one to:
   dune-glob
   (csexp (>= 1.4.0))
   (ppx_expect :with-test)
-  (stdune-unstable (= :version))
+  (stdune (= :version))
   (dune-private-libs (= :version)))
  (synopsis "[experimental] API for writing dynamic Dune actions")
  (description "\
@@ -121,7 +121,7 @@ execution of the action.
 (package
  (name dune-glob)
  (depends
-  (stdune-unstable (= :version))
+  (stdune (= :version))
   (dune-private-libs (= :version)))
  (synopsis "Glob string matching language supported by dune")
  (description "\
@@ -136,7 +136,7 @@ understood by dune language."))
 
 (package
  (name dune-rpc)
- (depends csexp ordering dyn xdg (stdune-unstable (= :version)) (pp (>= 1.1.0)))
+ (depends csexp ordering dyn xdg (stdune (= :version)) (pp (>= 1.1.0)))
  (synopsis "Communicate with dune using rpc")
  (description "Library to connect and control a running dune instance"))
 
@@ -172,7 +172,7 @@ understood by dune language."))
  (description "https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html"))
 
 (package
- (name stdune-unstable)
+ (name stdune)
  (synopsis "Dune's unstable standard library")
  (depends
   (ocaml (>= 4.08.0))
@@ -187,6 +187,6 @@ understood by dune language."))
  (synopsis "Structured concurrency library")
  (depends
   (ocaml (>= 4.08.0))
-  stdune-unstable
+  stdune
   dyn)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

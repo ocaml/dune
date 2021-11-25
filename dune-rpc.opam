@@ -14,7 +14,7 @@ depends: [
   "ordering"
   "dyn"
   "xdg"
-  "stdune-unstable" {= version}
+  "stdune" {= version}
   "pp" {>= "1.1.0"}
   "odoc" {with-doc}
 ]

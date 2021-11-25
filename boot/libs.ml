@@ -6,10 +6,10 @@ let local_libraries =
   [ ("otherlibs/ordering", Some "Ordering", false, None)
   ; ("vendor/pp/src", Some "Pp", false, None)
   ; ("otherlibs/dyn", Some "Dyn", false, None)
-  ; ("otherlibs/stdune-unstable/dune_filesystem_stubs",
-    Some "Dune_filesystem_stubs", false, None)
+  ; ("otherlibs/stdune/dune_filesystem_stubs", Some "Dune_filesystem_stubs",
+    false, None)
   ; ("vendor/csexp/src", Some "Csexp", false, None)
-  ; ("otherlibs/stdune-unstable", Some "Stdune", false, None)
+  ; ("otherlibs/stdune", Some "Stdune", false, None)
   ; ("src/dune_graph", Some "Dune_graph", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)

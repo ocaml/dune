@@ -1,6 +1,6 @@
 (library
  (name stdune)
- (public_name stdune-unstable)
+ (public_name stdune)
  (synopsis
   "Standard library of Dune.\nThis library offers no backwards compatibility guarantees. Use at your own risk.")
  (libraries

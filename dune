@@ -17,7 +17,7 @@
  (copy dune-private-libs.opam.template dune-rpc.opam.template))
 
 (rule
- (copy dune-private-libs.opam.template stdune-unstable.opam.template))
+ (copy dune-private-libs.opam.template stdune.opam.template))
 
 (rule
  (copy dune-private-libs.opam.template dyn.opam.template))

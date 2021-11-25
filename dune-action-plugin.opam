@@ -21,7 +21,7 @@ depends: [
   "dune-glob"
   "csexp" {>= "1.4.0"}
   "ppx_expect" {with-test}
-  "stdune-unstable" {= version}
+  "stdune" {= version}
   "dune-private-libs" {= version}
   "odoc" {with-doc}
 ]

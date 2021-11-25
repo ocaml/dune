@@ -21,7 +21,7 @@ depends: [
   "csexp" {>= "1.4.0"}
   "pp"
   "dyn"
-  "stdune-unstable" {= version}
+  "stdune" {= version}
   "ocaml" {>= "4.08"}
   "odoc" {with-doc}
 ]

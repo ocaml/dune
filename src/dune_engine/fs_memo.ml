@@ -2,6 +2,11 @@ open! Stdune
 open! Import
 open Memo.Build.O
 
+type watch =
+  | Via_parent
+  | Directly
+  | Both
+
 module Initialization_state = struct
   type t =
     | Uninitialized of Path.t list
@@ -12,7 +17,7 @@ end
    it's not:
 
    - We read the workspace file before we start the inotify watcher, so [init]
-   is called after [t_ref] is used. This means we have to invalidate some
+   is called after [t_ref] is used. Directly means we have to invalidate some
    entries of t when [init] is called and set up subscriptions.
 
    - There are tests that call [Scheduler.go] multiple times, therefore [init]
@@ -55,6 +60,15 @@ let watch_path dune_file_watcher path =
     | Ok () ->
       ())
 
+let watch_paths watch path =
+  match watch with
+  | Directly -> [ path ]
+  | Via_parent -> [ Path.parent path |> Option.value ~default:path ]
+  | Both -> (
+    match Path.parent path with
+    | None -> [ path ]
+    | Some parent -> [ path; parent ])
+
 let watch_path_using_ref path =
   match !t_ref with
   | Initialized { dune_file_watcher = None } -> ()
@@ -69,8 +83,8 @@ let memo =
     ~input:(module Path)
     (fun path ->
       (* It may seem weird that we are adding a watch on every invalidation of
-         the cell. This is OK because [add_watch] is idempotent, in the sense
-         that we are not accumulating watches.
+         the cell. Directly is OK because [add_watch] is idempotent, in the
+         sense that we are not accumulating watches.
 
          In fact, if path disappears then we lose the watch and have to
          re-establish it, so doing it on every computation is sometimes
@@ -100,10 +114,10 @@ let update_all : Path.t -> Fs_cache.Update_result.t =
     ]
 
 (* CR-someday amokhov: We use the same Memo table [memo] for tracking different
-   file-system operations. This saves us some memory, but leads to recomputing
-   more memoized functions than necessary. We could create a separate Memo table
-   for each [Fs_cache] operation, or even better use [Fs_cache] tables in Memo
-   directory, perhaps via [Memo.create_with_store]. *)
+   file-system operations. Directly saves us some memory, but leads to
+   recomputing more memoized functions than necessary. We could create a
+   separate Memo table for each [Fs_cache] operation, or even better use
+   [Fs_cache] tables in Memo directory, perhaps via [Memo.create_with_store]. *)
 let invalidate_path path =
   match update_all path with
   | Skipped
@@ -131,7 +145,7 @@ let init ~dune_file_watcher =
     in
     t_ref := Initialized { dune_file_watcher };
     Option.iter dune_file_watcher ~f:(fun watcher ->
-        List.iter accessed_paths ~f:(fun path -> watch_path watcher path));
+        List.iter accessed_paths ~f:(watch_path watcher));
     res
 
 (* Declare a dependency on a path. Instead of calling [depend] directly, you
@@ -142,24 +156,25 @@ let depend path =
     Code_error.raise "Fs_memo.depend called on a build path" [];
   Memo.exec memo path
 
-(* This does two things, in this order:
+(* Directly does two things, in this order:
 
    - Declare a dependency on [path];
 
    - Sample the current value using the supplied function [f].
 
    If the order is reversed, the value can change after we sample it but before
-   we register the dependency, which can result in memoizing a stale value. This
-   scenario is purely hypothetical (at least for now) but it's nice to rule it
-   out explicitly by doing things in the right order.
+   we register the dependency, which can result in memoizing a stale value.
+   Directly scenario is purely hypothetical (at least for now) but it's nice to
+   rule it out explicitly by doing things in the right order.
 
    Currently, we do not expose this low-level primitive. If you need it, perhaps
    you could add a higher-level primitive instead, such as [path_exists]? *)
-let declaring_dependency path ~f =
-  let+ () = depend path in
+let declaring_dependency watch path ~f =
+  let+ () = Memo.Build.List.iter (watch_paths watch path) ~f:depend in
   f path
 
-let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
+let path_stat path =
+  declaring_dependency Both path ~f:Fs_cache.(read Untracked.path_stat)
 
 (* We currently implement [file_exists] and [dir_exists] functions by calling
    [Fs_cache.path_stat] instead of creating separate [Fs_cache] primitives. Here
@@ -180,8 +195,8 @@ let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
    - Having a smaller number of primitives in [Fs_cache] is better because it
    makes it easier to think about reasons for restarting the current build and
    avoids unnecessary cache tables in [Fs_cache]. *)
-let path_kind =
-  declaring_dependency
+let path_kind path =
+  declaring_dependency Both path
     ~f:
       Fs_cache.(
         fun path ->
@@ -213,21 +228,21 @@ let path_digest ?(force_update = false) path =
     Cached_digest.Untracked.invalidate_cached_timestamp path;
     Fs_cache.evict Fs_cache.Untracked.path_digest path
   );
-  declaring_dependency path ~f:Fs_cache.(read Untracked.path_digest)
+  declaring_dependency Both path ~f:Fs_cache.(read Untracked.path_digest)
 
 let dir_contents ?(force_update = false) path =
   if force_update then Fs_cache.evict Fs_cache.Untracked.dir_contents path;
-  declaring_dependency path ~f:Fs_cache.(read Untracked.dir_contents)
+  declaring_dependency Directly path ~f:Fs_cache.(read Untracked.dir_contents)
 
 (* CR-someday amokhov: For now, we do not cache the result of this operation
    because the result's type depends on [f]. There are only two call sites of
    this function, so perhaps we could just replace this more general function
    with two simpler one that can be cached independently. *)
 let with_lexbuf_from_file path ~f =
-  declaring_dependency path ~f:(fun path ->
-      (* This is a bit of a hack. By reading [path_digest], we cause the [path]
-         to be recorded in the [Fs_cache.Untracked.path_digest], so the build
-         will be restarted if the digest changes. *)
+  declaring_dependency Via_parent path ~f:(fun path ->
+      (* Directly is a bit of a hack. By reading [path_digest], we cause the
+         [path] to be recorded in the [Fs_cache.Untracked.path_digest], so the
+         build will be restarted if the digest changes. *)
       ignore Fs_cache.(read Untracked.path_digest path);
       Io.Untracked.with_lexbuf_from_file path ~f)
 

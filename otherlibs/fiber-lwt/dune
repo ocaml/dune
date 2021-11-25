@@ -1,0 +1,3 @@
+(library
+ (name fiber_lwt)
+ (libraries stdune lwt fiber))

@@ -2,6 +2,8 @@ open! Stdune
 
 type 'a t = ('a -> unit) -> unit
 
+type 'a fiber = 'a t
+
 (* This module tries to enforce the following invariants:
 
    - the execution context passed to a continuation is the same as the current
@@ -65,6 +67,18 @@ module Execution_context : sig
   val vars : unit -> Univ_map.t
 
   val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
+
+  module Scheduler : sig
+    type 'a stalled
+
+    type 'a step =
+      | Done of 'a
+      | Stalled of 'a stalled
+
+    val start : 'a fiber -> 'a step
+
+    val advance : 'a stalled -> 'a step
+  end
 
   val run : 'a t -> iter:(unit -> unit) -> 'a
 
@@ -208,12 +222,45 @@ end = struct
       forward_error exn;
       run_jobs jobs
 
-  let run fiber ~iter =
+  let with_context t ~f =
     let backup = !current in
     Exn.protect
       ~finally:(fun () -> current := backup)
       ~f:(fun () ->
-        let t = create () in
+        current := t;
+        f ())
+
+  module Scheduler = struct
+    type 'a state =
+      { mutable result : 'a option
+      ; context : t
+      }
+
+    type 'a stalled = 'a state
+
+    type 'a step =
+      | Done of 'a
+      | Stalled of 'a stalled
+
+    let do_step state =
+      run_jobs state.context.jobs;
+      match state.result with
+      | Some x -> Done x
+      | None -> Stalled state
+
+    let start fiber =
+      let context = create () in
+      let state = { result = None; context } in
+      with_context context ~f:(fun () ->
+          apply (fun () -> fiber) () (fun x -> state.result <- Some x);
+          do_step state)
+
+    let advance state = with_context state.context ~f:(fun () -> do_step state)
+  end
+
+  let run fiber ~iter =
+    let t = create () in
+    with_context t ~f:(fun () ->
         current := t;
         let result = ref None in
         apply (fun () -> fiber) () (fun x -> result := Some x);
@@ -920,8 +967,16 @@ end
 
 type fill = Fill : 'a Ivar.t * 'a -> fill
 
-let run t ~iter =
-  EC.run t ~iter:(fun () ->
-      let fills = iter () in
-      List.iter (Nonempty_list.to_list fills) ~f:(fun (Fill (ivar, v)) ->
-          Ivar.fill_internal ivar v))
+let execute_fills fills =
+  List.iter (Nonempty_list.to_list fills) ~f:(fun (Fill (ivar, v)) ->
+      Ivar.fill_internal ivar v)
+
+let run t ~iter = EC.run t ~iter:(fun () -> iter () |> execute_fills)
+
+module Scheduler = struct
+  include EC.Scheduler
+
+  let advance stalled fills =
+    execute_fills fills;
+    advance stalled
+end

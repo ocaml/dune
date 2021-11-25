@@ -1,3 +1,8 @@
+[@@@alert
+unstable "The Fiber API is not stabilized yet and might break without notice."]
+
+[@@@alert "-unstable"]
+
 (** Concurrency library
 
     This module implements

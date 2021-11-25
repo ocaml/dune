@@ -87,7 +87,7 @@ let get_merlin_files_paths local_path =
   in
   let files =
     Result.value ~default:[] (Path.readdir_unsorted (Path.build merlin_path))
-    |> List.fast_sort ~cmp:Stdlib.compare
+    |> List.sort ~compare:String.compare
   in
   List.map files ~f:(fun f -> Path.Build.relative merlin_path f |> Path.build)
 

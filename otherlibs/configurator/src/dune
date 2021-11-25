@@ -8,7 +8,8 @@
  (flags
   (:standard
    -safe-string
-   (:include flags/flags.sexp)))
+   (:include flags/flags.sexp)
+   \ -alert=-unstable))
  (special_builtin_support
   (configurator
    (api_version 1))))

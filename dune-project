@@ -181,3 +181,12 @@ understood by dune language."))
   pp
   csexp)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
+
+(package
+ (name fiber)
+ (synopsis "Structured concurrency library")
+ (depends
+  (ocaml (>= 4.08.0))
+  stdune-unstable
+  dyn)
+ (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

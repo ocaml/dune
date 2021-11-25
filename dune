@@ -27,3 +27,10 @@
 
 (rule
  (copy dune-private-libs.opam.template dune-rpc-lwt.opam.template))
+
+(rule
+ (copy dune-private-libs.opam.template fiber.opam.template))
+
+(env
+ (_
+  (flags :standard -alert=-unstable)))

@@ -46,6 +46,11 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let union a b ~f = union a b ~f
 
+  let union_exn a b =
+    union a b ~f:(fun key _ _ ->
+        Code_error.raise "Map.union_exn: a key appears in both maps"
+          [ ("key", Key.to_dyn key) ])
+
   let compare a b ~compare:f =
     compare a b ~cmp:(fun a b -> Ordering.to_int (f a b)) |> Ordering.of_int
 

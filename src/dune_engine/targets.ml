@@ -101,19 +101,57 @@ module Produced = struct
     ; dirs : 'a String.Map.t Path.Build.Map.t
     }
 
-  let of_validated_files (validated : Validated.t) ~on_dir_target =
-    (if not (Path.Build.Set.is_empty validated.dirs) then
-      match on_dir_target with
-      | `Raise ->
+  let of_validated =
+    let rec collect dir : (unit String.Map.t Path.Build.Map.t, _) result =
+      match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
+      | Error _ as error -> error
+      | Ok dir_contents ->
+        let open Result.O in
+        let+ filenames, dirs =
+          Result.List.fold_left dir_contents
+            ~init:(String.Map.empty, Path.Build.Map.empty)
+            ~f:(fun (acc_filenames, acc_dirs) (filename, kind) ->
+              match (kind : File_kind.t) with
+              | S_REG ->
+                Ok (String.Map.add_exn acc_filenames filename (), acc_dirs)
+              | S_DIR ->
+                let+ dir = collect (Path.Build.relative dir filename) in
+                (acc_filenames, Path.Build.Map.union_exn acc_dirs dir)
+              | _ -> Ok (acc_filenames, acc_dirs))
+        in
+        Path.Build.Map.add_exn dirs dir filenames
+    in
+    fun (validated : Validated.t) ->
+      match
+        Path.Build.Set.to_list_map validated.dirs ~f:collect |> Result.List.all
+      with
+      | Error _ as error -> error
+      | Ok dirs ->
+        let files =
+          Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) ->
+              ())
+        in
+        (* The [union_exn] below can't raise because each map in [dirs] contains
+           unique keys, which are paths rooted at the corresponding [dir]s. *)
+        let dirs =
+          List.fold_left dirs ~init:Path.Build.Map.empty
+            ~f:Path.Build.Map.union_exn
+        in
+        Ok { files; dirs }
+
+  let of_validated_files_exn (validated : Validated.t) =
+    let dirs =
+      match Path.Build.Set.is_empty validated.dirs with
+      | true -> Path.Build.Map.empty
+      | false ->
         Code_error.raise
-          "Targets.Produced.of_validated_files: Non-empty set of directory \
-           targets."
+          "Targets.Produced.of_validated_files_exn: Unexpected directory."
           [ ("validated", Validated.to_dyn validated) ]
-      | `Ignore -> ());
+    in
     let files =
       Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ())
     in
-    { files; dirs = Path.Build.Map.empty }
+    { files; dirs }
 
   let of_file_list_exn list =
     { files = Path.Build.Map.of_list_exn list; dirs = Path.Build.Map.empty }

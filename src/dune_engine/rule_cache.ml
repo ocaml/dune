@@ -95,6 +95,7 @@ module Workspace_local = struct
       | Targets_missing
       | Dynamic_deps_changed
       | Always_rerun
+      | Error_while_collecting_directory_targets of Unix_error.Detailed.t
 
     let report ~head_target reason =
       let reason =
@@ -107,6 +108,9 @@ module Workspace_local = struct
         | Targets_changed -> "target changed in build dir"
         | Always_rerun -> "not trying to use the cache"
         | Dynamic_deps_changed -> "dynamic dependencies changed"
+        | Error_while_collecting_directory_targets unix_error ->
+          sprintf "error while collecting directory targets: %s"
+            (Unix_error.Detailed.to_string unix_error)
       in
       Console.print_user_message
         (User_message.make
@@ -118,15 +122,18 @@ module Workspace_local = struct
   end
 
   let compute_target_digests (targets : Targets.Validated.t) :
-      Digest.t Targets.Produced.t option =
-    (* CR-someday amokhov: The workspace-local cache currently does not work for
-       directory targets because we ignore [targets.dirs] here. *)
-    let targets =
-      Targets.Produced.of_validated_files targets ~on_dir_target:`Ignore
-    in
-    Targets.Produced.Option.mapi targets ~f:(fun target () ->
-        Cached_digest.build_file ~allow_dirs:true target
-        |> Cached_digest.Digest_result.to_option)
+      (Digest.t Targets.Produced.t, Miss_reason.t) Result.t =
+    match Targets.Produced.of_validated targets with
+    | Error unix_error ->
+      Miss (Error_while_collecting_directory_targets unix_error)
+    | Ok targets -> (
+      match
+        Targets.Produced.Option.mapi targets ~f:(fun target () ->
+            Cached_digest.build_file ~allow_dirs:true target
+            |> Cached_digest.Digest_result.to_option)
+      with
+      | Some produced_targets -> Hit produced_targets
+      | None -> Miss Targets_missing)
 
   let lookup_impl ~rule_digest ~targets ~env ~build_deps =
     (* [prev_trace] will be [None] if [head_target] was never built before. *)
@@ -137,20 +144,19 @@ module Workspace_local = struct
       | None -> Result.Miss Miss_reason.No_previous_record
       | Some prev_trace -> (
         match Digest.equal prev_trace.rule_digest rule_digest with
-        | false ->
-          Result.Miss (Rule_changed (prev_trace.rule_digest, rule_digest))
+        | false -> Miss (Rule_changed (prev_trace.rule_digest, rule_digest))
         | true -> (
-          (* [compute_target_digests] returns [None] if not all targets are
+          (* [compute_target_digests] returns a [Miss] if not all targets are
              available in the workspace-local cache. *)
           match compute_target_digests targets with
-          | None -> Result.Miss Targets_missing
-          | Some produced_targets -> (
+          | Miss reason -> Miss reason
+          | Hit produced_targets -> (
             match
               Digest.equal prev_trace.targets_digest
                 (Targets.Produced.digest produced_targets)
             with
             | true -> Hit (prev_trace, produced_targets)
-            | false -> Result.Miss Targets_changed)))
+            | false -> Miss Targets_changed)))
     in
     match prev_trace_with_produced_targets with
     | Result.Miss reason -> Fiber.return (Result.Miss reason)

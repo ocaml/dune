@@ -13,6 +13,8 @@ open! Stdune
     want. To share the result of a fiber, use an [Ivar.t]. *)
 type 'a t
 
+type 'a fiber := 'a t
+
 (** Create a fiber that has already terminated. *)
 val return : 'a -> 'a t
 
@@ -126,8 +128,6 @@ end
 
 (** Variables local to a fiber *)
 module Var : sig
-  type 'a fiber := 'a t
-
   type 'a t
 
   (** Create a new variable *)
@@ -184,8 +184,6 @@ val reraise_all : Exn_with_backtrace.t list -> 'a t
 
 (** Write once variables *)
 module Ivar : sig
-  type 'a fiber
-
   (** A ivar is a synchronization variable that can be written only once. *)
   type 'a t
 
@@ -202,12 +200,9 @@ module Ivar : sig
   (** Return [Some x] is [fill t x] has been called previously. *)
   val peek : 'a t -> 'a option fiber
 end
-with type 'a fiber := 'a t
 
 (** Mailbox variables *)
 module Mvar : sig
-  type 'a fiber
-
   (** A mailbox variable can be thought of as a box that is either empty or
       full. [create ()] creates a new empty box, and [create_full x] creates a
       new full box containing [x].
@@ -226,11 +221,8 @@ module Mvar : sig
 
   val write : 'a t -> 'a -> unit fiber
 end
-with type 'a fiber := 'a t
 
 module Mutex : sig
-  type 'a fiber := 'a t
-
   type t
 
   val create : unit -> t
@@ -240,8 +232,6 @@ end
 
 module Throttle : sig
   (** Limit the number of jobs *)
-
-  type 'a fiber := 'a t
 
   type t
 
@@ -272,8 +262,6 @@ module Stream : sig
 
       Trying to access the same side of a stream concurrently will result in an
       error. *)
-
-  type 'a fiber
 
   module In : sig
     (** Stream inputs.
@@ -343,14 +331,11 @@ module Stream : sig
       through [i]. *)
   val pipe : unit -> 'a In.t * 'a Out.t
 end
-with type 'a fiber := 'a t
 
 module Pool : sig
   (** Pool is used to submit asynchronous tasks without waiting for their
       completion. *)
   type t
-
-  type 'a fiber
 
   (** Create a new pool. *)
   val create : unit -> t
@@ -376,7 +361,6 @@ module Pool : sig
       by such tasks must be caught here.*)
   val run : t -> unit fiber
 end
-with type 'a fiber := 'a t
 
 (** {1 Running fibers} *)
 
@@ -386,3 +370,22 @@ type fill = Fill : 'a Ivar.t * 'a -> fill
     the scheduler, it should block waiting for an event and return at least one
     ivar to fill. *)
 val run : 'a t -> iter:(unit -> fill Nonempty_list.t) -> 'a
+
+(** Advanced fiber execution *)
+module Scheduler : sig
+  (** Represent a fiber that has stalled. *)
+  type 'a stalled
+
+  (** The outcome of a step of execution. *)
+  type 'a step =
+    | Done of 'a
+    | Stalled of 'a stalled
+
+  (** [start t] starts executing a fiber. This advance the execution of the
+      fiber as possible, until no more progress can be made. *)
+  val start : 'a fiber -> 'a step
+
+  (** Advance a stalled fiber as much as possible by filling a list of ivars.
+      Once must call [advance] on a given [stalled] value only once. *)
+  val advance : 'a stalled -> fill Nonempty_list.t -> 'a step
+end

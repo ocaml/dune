@@ -97,13 +97,10 @@ module Handler : sig
     -> t
 end
 
-type t =
+type t = private
   { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
   ; rule_generator : (module Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
-  ; mutable rule_done : int
-  ; mutable rule_total : int
-  ; mutable errors : Error.t list
   ; handler : Handler.t
   ; promote_source :
          chmod:(int -> int)

@@ -110,9 +110,6 @@ type t =
   { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
   ; rule_generator : (module Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
-  ; mutable rule_done : int
-  ; mutable rule_total : int
-  ; mutable errors : Error.t list
   ; handler : Handler.t
   ; promote_source :
          chmod:(int -> int)
@@ -150,9 +147,6 @@ let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     { contexts
     ; rule_generator
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
-    ; rule_done = 0
-    ; rule_total = 0
-    ; errors = []
     ; handler = Option.value handler ~default:Handler.do_nothing
     ; (* This mutable table is safe: it merely maps paths to lazily created
          mutexes. *)

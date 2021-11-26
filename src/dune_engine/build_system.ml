@@ -80,6 +80,16 @@ module Dir_triage = struct
         }
 end
 
+module State = struct
+  type t =
+    { mutable rule_done : int
+    ; mutable rule_total : int
+    ; mutable errors : Error.t list
+    }
+
+  let t = { rule_done = 0; rule_total = 0; errors = [] }
+end
+
 let t () = Build_config.get ()
 
 let get_dir_triage (t : Build_config.t) ~dir =
@@ -1027,7 +1037,7 @@ end = struct
              sandboxing)"
         ]
 
-  let start_rule (t : Build_config.t) _rule = t.rule_total <- t.rule_total + 1
+  let start_rule _rule = State.t.rule_total <- State.t.rule_total + 1
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
@@ -1067,7 +1077,7 @@ end = struct
     Option.iter t.stats ~f:(fun stats ->
         let module Event = Chrome_trace.Event in
         let event =
-          let args = [ ("value", `Int t.rule_total) ] in
+          let args = [ ("value", `Int State.t.rule_total) ] in
           let ts = Event.Timestamp.now () in
           let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
           Event.counter common args
@@ -1214,7 +1224,7 @@ end = struct
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
     in
-    start_rule t rule;
+    start_rule rule;
     let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target dir with
@@ -1369,10 +1379,10 @@ end = struct
           promote_targets t ~rule_mode:mode ~dir ~targets:produced_targets
             ~context
         in
-        t.rule_done <- t.rule_done + 1;
+        State.t.rule_done <- State.t.rule_done + 1;
         let+ () =
-          Handler.report_progress t.handler ~rule_done:t.rule_done
-            ~rule_total:t.rule_total
+          Handler.report_progress t.handler ~rule_done:State.t.rule_done
+            ~rule_total:State.t.rule_total
         in
         produced_targets)
     (* jeremidimino: We need to include the dependencies discovered while
@@ -1807,7 +1817,7 @@ let report_early_exn exn =
   | true -> Fiber.return ()
   | false ->
     let error = Error.create ~exn in
-    t.errors <- error :: t.errors;
+    State.t.errors <- error :: State.t.errors;
     (match !Clflags.report_errors_config with
     | Early
     | Twice ->
@@ -1829,10 +1839,10 @@ let run f =
   let open Fiber.O in
   Hooks.End_of_build.once Diff_promotion.finalize;
   let t = t () in
-  let old_errors = t.errors in
-  t.errors <- [];
-  t.rule_done <- 0;
-  t.rule_total <- 0;
+  let old_errors = State.t.errors in
+  State.t.errors <- [];
+  State.t.rule_done <- 0;
+  State.t.rule_total <- 0;
   let* () =
     match old_errors with
     | [] -> Fiber.return ()
@@ -1907,12 +1917,11 @@ module Progress = struct
     number_of_rules_discovered <> 0 || number_of_rules_executed <> 0
 end
 
-let errors () = (t ()).errors
+let errors () = State.t.errors
 
 let get_current_progress () =
-  let t = t () in
-  { Progress.number_of_rules_executed = t.rule_done
-  ; number_of_rules_discovered = t.rule_total
+  { Progress.number_of_rules_executed = State.t.rule_done
+  ; number_of_rules_discovered = State.t.rule_total
   }
 
 let file_targets_of = file_targets_of

@@ -82,24 +82,6 @@ no stability guarantee.
 "))
 
 (package
- (name dune-configurator)
- (depends
-  (ocaml (>= 4.04.0))
-  result
-  (csexp (>= 1.3.0)))
- (synopsis "Helper library for gathering system configuration")
- (description "\
-dune-configurator is a small library that helps writing OCaml scripts that
-test features available on the system, in order to generate config.h
-files for instance.
-Among other things, dune-configurator allows one to:
-- test if a C program compiles
-- query pkg-config
-- import #define from OCaml header files
-- generate config.h file
-"))
-
-(package
  (name dune-action-plugin)
  (depends
   dune-glob

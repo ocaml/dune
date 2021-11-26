@@ -736,7 +736,7 @@ end = struct
     fun ~dir -> Memo.exec memo dir
 end
 
-open Load_rules
+include Load_rules
 
 let load_dir_and_get_buildable_targets ~dir =
   load_dir ~dir >>| function
@@ -821,18 +821,10 @@ let get_alias_definition alias =
       [ Pp.text "No rule found for " ++ Alias.describe alias ]
   | Some x -> Memo.Build.return x
 
-let load_dir = load_dir
-
 let load_dir_and_produce_its_rules ~dir =
   load_dir ~dir >>= function
   | Non_build _ -> Memo.Build.return ()
   | Build loaded -> Rules.produce loaded.rules_produced
-
-let file_exists = file_exists
-
-let alias_exists = alias_exists
-
-let file_targets_of = file_targets_of
 
 let is_target file =
   match Path.is_in_build_dir file with

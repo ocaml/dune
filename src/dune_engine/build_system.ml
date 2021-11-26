@@ -29,7 +29,6 @@ end = struct
   let mkdir_p = Memo.exec mkdir_p_memo
 end
 
-module Context_or_install = Build_config.Context_or_install
 module Error = Build_config.Error
 module Handler = Build_config.Handler
 
@@ -47,6 +46,13 @@ module State = struct
   let errors = ref ([] : Error.t list)
 end
 
+let rec with_locks ~f = function
+  | [] -> f ()
+  | m :: mutexes ->
+    Fiber.Mutex.with_lock
+      (Table.find_or_add State.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
+      (fun () -> with_locks ~f mutexes)
+
 (* All file targets of non-sandboxed actions that are currently being executed.
    On exit, we need to delete them as they might contain garbage. There is no
    [pending_dir_targets] since actions with directory targets are sandboxed. *)
@@ -59,13 +65,6 @@ let () =
       let fns = !pending_file_targets in
       pending_file_targets := Path.Build.Set.empty;
       Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
-
-let rec with_locks ~f = function
-  | [] -> f ()
-  | m :: mutexes ->
-    Fiber.Mutex.with_lock
-      (Table.find_or_add State.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
-      (fun () -> with_locks ~f mutexes)
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
@@ -925,9 +924,7 @@ end = struct
                   x.action.Rule.Anonymous_action.loc)))
 end
 
-open Exported
-
-let dep_on_alias_definition = dep_on_alias_definition
+include Exported
 
 let eval_pred = Pred.eval
 
@@ -1042,17 +1039,9 @@ let run_exn f =
   | Ok res -> res
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 
-let build_file = build_file
-
 let read_file p ~f =
   let+ _digest = build_file p in
   f p
-
-let build_deps = build_deps
-
-let execute_action = execute_action
-
-let execute_action_stdout = execute_action_stdout
 
 module Progress = struct
   type t =

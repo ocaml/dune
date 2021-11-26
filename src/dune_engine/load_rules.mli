@@ -1,10 +1,10 @@
-(** Loading build rules. *)
+(** Loading build rules *)
 
 open! Stdune
 open! Import
 module Action_builder := Action_builder0
 
-(** A way to determine the [Loc.t] of the current rule, set by [Build_system]. *)
+(** A way to determine the [Loc.t] of the current rule. Set by [Build_system]. *)
 val set_current_rule_loc : (unit -> Loc.t option Memo.Build.t) -> unit
 
 module Loaded : sig
@@ -32,9 +32,9 @@ end
 (** Returns the set of file targets in the given directory. *)
 val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
 
+(** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
 
-(** Load the rules for this directory. *)
 val load_dir_and_produce_its_rules : dir:Path.t -> unit Memo.Build.t
 
 (** Return [true] if a file exists or is buildable *)

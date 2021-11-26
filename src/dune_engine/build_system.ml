@@ -81,18 +81,20 @@ module Dir_triage = struct
 end
 
 module State = struct
-  type t =
-    { mutable rule_done : int
-    ; mutable rule_total : int
-    ; mutable errors : Error.t list
-    }
+  (* This mutable table is safe: it maps paths to lazily created mutexes. *)
+  let locks : (Path.t, Fiber.Mutex.t) Table.t = Table.create (module Path) 32
 
-  let t = { rule_done = 0; rule_total = 0; errors = [] }
+  (* This mutex ensures that at most one [run] is running in parallel. *)
+  let build_mutex = Fiber.Mutex.create ()
+
+  let rule_done = ref 0
+
+  let rule_total = ref 0
+
+  let errors = ref ([] : Error.t list)
 end
 
-let t () = Build_config.get ()
-
-let get_dir_triage (t : Build_config.t) ~dir =
+let get_dir_triage ~dir =
   match Dpath.analyse_dir dir with
   | Source dir ->
     let+ files = Source_tree.files_of dir in
@@ -113,7 +115,7 @@ let get_dir_triage (t : Build_config.t) ~dir =
               Path.Set.empty
             | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
   | Build (Regular Root) ->
-    let+ contexts = Memo.Lazy.force t.contexts in
+    let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
     let allowed_subdirs =
       Subdir_set.to_dir_set
         (Subdir_set.of_list
@@ -124,7 +126,7 @@ let get_dir_triage (t : Build_config.t) ~dir =
     in
     Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
   | Build (Install Root) ->
-    let+ contexts = Memo.Lazy.force t.contexts in
+    let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
     let allowed_subdirs =
       Context_name.Map.keys contexts
       |> List.map ~f:Context_name.to_string
@@ -215,13 +217,12 @@ let () =
       pending_file_targets := Path.Build.Set.empty;
       Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
 
-let rec with_locks (t : Build_config.t) mutexes ~f =
-  match mutexes with
+let rec with_locks ~f = function
   | [] -> f ()
   | m :: mutexes ->
     Fiber.Mutex.with_lock
-      (Table.find_or_add t.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
-      (fun () -> with_locks t mutexes ~f)
+      (Table.find_or_add State.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
+      (fun () -> with_locks ~f mutexes)
 
 let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
   match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
@@ -261,8 +262,8 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir
             if not (String.Set.mem set fn) then Path.rm_rf (Path.build path))
         | _ -> ())
 
-let no_rule_found (t : Build_config.t) ~loc fn =
-  let+ contexts = Memo.Lazy.force t.contexts in
+let no_rule_found ~loc fn =
+  let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
   let fail fn ~loc =
     User_error.raise ?loc
       [ Pp.textf "No rule found for %s" (Dpath.describe_target fn) ]
@@ -467,13 +468,13 @@ end = struct
     | None -> false
     | Some _ -> true
 
-  let compute_alias_expansions t ~(collected : Rules.Dir_rules.ready) ~dir =
+  let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
     let aliases = collected.aliases in
     let+ aliases =
       if Alias.Name.Map.mem aliases Alias.Name.default then
         Memo.Build.return aliases
       else
-        t.Build_config.implicit_default_alias dir >>| function
+        (Build_config.get ()).implicit_default_alias dir >>| function
         | None -> aliases
         | Some expansion ->
           Alias.Name.Map.set aliases Alias.Name.default
@@ -587,11 +588,11 @@ end = struct
         ~subdir:(Path.Build.basename dir)
   end
 
-  let load_dir_step2_exn t ~dir ~context_or_install ~sub_dir =
+  let load_dir_step2_exn ~dir ~context_or_install ~sub_dir =
     let sub_dir_components = Path.Source.explode sub_dir in
     (* Load all the rules *)
     let (module RG : Build_config.Rule_generator) =
-      t.Build_config.rule_generator
+      (Build_config.get ()).rule_generator
     in
     let* extra_subdirs_to_keep, rules_produced =
       RG.gen_rules context_or_install ~dir sub_dir_components >>| function
@@ -772,7 +773,7 @@ end = struct
       ~subdirs_to_keep;
     let+ aliases =
       match context_or_install with
-      | Context _ -> compute_alias_expansions t ~collected ~dir
+      | Context _ -> compute_alias_expansions ~collected ~dir
       | Install _ ->
         (* There are no aliases in the [_build/install] directory *)
         Memo.Build.return Alias.Name.Map.empty
@@ -783,15 +784,15 @@ end = struct
     ; aliases
     }
 
-  let load_dir_impl t ~dir : Loaded.t Memo.Build.t =
-    get_dir_triage t ~dir >>= function
+  let load_dir_impl ~dir : Loaded.t Memo.Build.t =
+    get_dir_triage ~dir >>= function
     | Known l -> Memo.Build.return l
     | Need_step2 { dir; context_or_install; sub_dir } ->
-      let+ build = load_dir_step2_exn t ~dir ~context_or_install ~sub_dir in
+      let+ build = load_dir_step2_exn ~dir ~context_or_install ~sub_dir in
       Loaded.Build build
 
   let load_dir =
-    let load_dir_impl dir = load_dir_impl (t ()) ~dir in
+    let load_dir_impl dir = load_dir_impl ~dir in
     let memo = Memo.create "load-dir" ~input:(module Path) load_dir_impl in
     fun ~dir -> Memo.exec memo dir
 end
@@ -833,7 +834,7 @@ let get_rule path =
       | Some _ as rule -> Memo.Build.return rule
       | None -> get_rule_for_directory_target path))
 
-let get_rule_or_source t path =
+let get_rule_or_source path =
   let dir = Path.parent_exn path in
   if Path.is_strict_descendant_of_build_dir dir then
     let* rules = load_dir_and_get_buildable_targets ~dir in
@@ -845,7 +846,7 @@ let get_rule_or_source t path =
       | Some rule -> Memo.Build.return (Rule (path, rule))
       | None ->
         let* loc = Rule_fn.loc () in
-        no_rule_found t ~loc path)
+        no_rule_found ~loc path)
   else
     let+ d = source_file_digest path in
     Source d
@@ -853,9 +854,9 @@ let get_rule_or_source t path =
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
 
-let all_targets (t : Build_config.t) =
+let all_targets () =
   let* root = Source_tree.root ()
-  and* contexts = Memo.Lazy.force t.contexts in
+  and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
   Memo.Build.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
       Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
         ~f:(fun dir ->
@@ -1037,7 +1038,7 @@ end = struct
              sandboxing)"
         ]
 
-  let start_rule _rule = State.t.rule_total <- State.t.rule_total + 1
+  let start_rule _rule = State.rule_total := !State.rule_total + 1
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
@@ -1077,7 +1078,7 @@ end = struct
     Option.iter t.stats ~f:(fun stats ->
         let module Event = Chrome_trace.Event in
         let event =
-          let args = [ ("value", `Int State.t.rule_total) ] in
+          let args = [ ("value", `Int !State.rule_total) ] in
           let ts = Event.Timestamp.now () in
           let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
           Event.counter common args
@@ -1099,7 +1100,7 @@ end = struct
         ; attached_to_alias : bool
         }
 
-  let execute_action_for_rule t ~rule_kind ~rule_digest ~action ~deps ~loc
+  let execute_action_for_rule ~rule_kind ~rule_digest ~action ~deps ~loc
       ~(context : Build_context.t option) ~execution_parameters ~sandbox_mode
       ~dir ~(targets : Targets.Validated.t) : Exec_result.t Fiber.t =
     let open Fiber.O in
@@ -1176,7 +1177,7 @@ end = struct
         | Some sandbox -> Sandbox.map_path sandbox root)
     in
     let+ exec_result =
-      with_locks t locks ~f:(fun () ->
+      with_locks locks ~f:(fun () ->
           let build_deps deps = Memo.Build.run (build_deps deps) in
           let+ action_exec_result =
             Action_exec.exec ~root ~context ~env ~targets:(Some targets)
@@ -1210,17 +1211,15 @@ end = struct
         Path.Build.Set.diff !pending_file_targets targets.files);
     exec_result
 
-  let promote_targets (t : Build_config.t) ~rule_mode ~dir ~targets ~context =
+  let promote_targets ~rule_mode ~dir ~targets ~promote_source =
     match (rule_mode, !Clflags.promote) with
     | (Rule.Mode.Standard | Fallback | Ignore_source_files), _
     | Promote _, Some Never ->
       Fiber.return ()
     | Promote promote, (Some Automatically | None) ->
-      Target_promotion.promote ~dir ~targets ~promote
-        ~promote_source:(t.promote_source context)
+      Target_promotion.promote ~dir ~targets ~promote ~promote_source
 
   let execute_rule_impl ~rule_kind rule =
-    let t = t () in
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
     in
@@ -1252,9 +1251,10 @@ end = struct
                 Exn_with_backtrace.reraise { exn with exn = User_error.E msg }
               | _ -> Exn_with_backtrace.reraise exn))
     in
+    let config = Build_config.get () in
     wrap_fiber (fun () ->
         let open Fiber.O in
-        report_evaluated_rule t;
+        report_evaluated_rule config;
         let* () = Memo.Build.run (Fs.mkdir_p dir) in
         let is_action_dynamic = Action.is_dynamic action.action in
         let sandbox_mode =
@@ -1271,7 +1271,7 @@ end = struct
                 ]
           | Maybe ->
             select_sandbox_mode ~loc action.sandbox
-              ~sandboxing_preference:t.sandboxing_preference
+              ~sandboxing_preference:config.sandboxing_preference
         in
         (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
            to [Rule_cache] too. *)
@@ -1348,8 +1348,8 @@ end = struct
               | None ->
                 (* Step IV. Execute the build action. *)
                 let* exec_result =
-                  execute_action_for_rule t ~rule_kind ~rule_digest ~action
-                    ~deps ~loc ~context ~execution_parameters ~sandbox_mode ~dir
+                  execute_action_for_rule ~rule_kind ~rule_digest ~action ~deps
+                    ~loc ~context ~execution_parameters ~sandbox_mode ~dir
                     ~targets
                 in
                 (* Step V. Examine produced targets and store them to the shared
@@ -1376,13 +1376,13 @@ end = struct
             Fiber.return produced_targets
         in
         let* () =
-          promote_targets t ~rule_mode:mode ~dir ~targets:produced_targets
-            ~context
+          promote_targets ~rule_mode:mode ~dir ~targets:produced_targets
+            ~promote_source:(config.promote_source context)
         in
-        State.t.rule_done <- State.t.rule_done + 1;
+        State.rule_done := !State.rule_done + 1;
         let+ () =
-          Handler.report_progress t.handler ~rule_done:State.t.rule_done
-            ~rule_total:State.t.rule_total
+          Handler.report_progress config.handler ~rule_done:!State.rule_done
+            ~rule_total:!State.rule_total
         in
         produced_targets)
     (* jeremidimino: We need to include the dependencies discovered while
@@ -1555,8 +1555,7 @@ end = struct
      [build_file_impl] returns both the set of dependencies of the file as well
      as its digest. *)
   let build_file_impl path =
-    let t = t () in
-    get_rule_or_source t path >>= function
+    get_rule_or_source path >>= function
     | Source digest -> Memo.Build.return (digest, None)
     | Rule (path, rule) -> (
       let+ { deps = _; targets } =
@@ -1812,18 +1811,17 @@ let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   | _ -> false
 
 let report_early_exn exn =
-  let t = t () in
   match caused_by_cancellation exn with
   | true -> Fiber.return ()
   | false ->
     let error = Error.create ~exn in
-    State.t.errors <- error :: State.t.errors;
+    State.errors := error :: !State.errors;
     (match !Clflags.report_errors_config with
     | Early
     | Twice ->
       Dune_util.Report_error.report exn
     | Deterministic -> ());
-    t.handler.error [ Add error ]
+    (Build_config.get ()).handler.errors [ Add error ]
 
 let handle_final_exns exns =
   match !Clflags.report_errors_config with
@@ -1838,19 +1836,19 @@ let handle_final_exns exns =
 let run f =
   let open Fiber.O in
   Hooks.End_of_build.once Diff_promotion.finalize;
-  let t = t () in
-  let old_errors = State.t.errors in
-  State.t.errors <- [];
-  State.t.rule_done <- 0;
-  State.t.rule_total <- 0;
+  let handler = (Build_config.get ()).handler in
+  let old_errors = !State.errors in
+  State.rule_done := 0;
+  State.rule_total := 0;
+  State.errors := [];
   let* () =
     match old_errors with
     | [] -> Fiber.return ()
     | _ :: _ ->
-      t.handler.error (List.map old_errors ~f:(fun x -> Handler.Remove x))
+      handler.errors (List.map old_errors ~f:(fun x -> Handler.Remove x))
   in
   let f () =
-    let* () = Handler.report_build_event t.handler Start in
+    let* () = Handler.report_build_event handler Start in
     let* res =
       Fiber.collect_errors (fun () ->
           Memo.Build.run_with_error_handler f
@@ -1858,7 +1856,7 @@ let run f =
     in
     match res with
     | Ok res ->
-      let+ () = Handler.report_build_event t.handler Finish in
+      let+ () = Handler.report_build_event handler Finish in
       Ok res
     | Error exns ->
       handle_final_exns exns;
@@ -1868,10 +1866,10 @@ let run f =
         else
           Fail
       in
-      let+ () = Handler.report_build_event t.handler final_status in
+      let+ () = Handler.report_build_event handler final_status in
       Error `Already_reported
   in
-  Fiber.Mutex.with_lock t.build_mutex f
+  Fiber.Mutex.with_lock State.build_mutex f
 
 let run_exn f =
   let open Fiber.O in
@@ -1917,15 +1915,13 @@ module Progress = struct
     number_of_rules_discovered <> 0 || number_of_rules_executed <> 0
 end
 
-let errors () = State.t.errors
+let errors () = !State.errors
 
 let get_current_progress () =
-  { Progress.number_of_rules_executed = State.t.rule_done
-  ; number_of_rules_discovered = State.t.rule_total
+  { Progress.number_of_rules_executed = !State.rule_done
+  ; number_of_rules_discovered = !State.rule_total
   }
 
 let file_targets_of = file_targets_of
-
-let all_targets () = all_targets (t ())
 
 let last_event () = !Handler.last_event

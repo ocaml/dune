@@ -1,4 +1,5 @@
-(** Build system's configuration. *)
+(** Build system's configuration: how to generate rules, how to handle events,
+    whether to use the shared cache, etc. *)
 
 open! Stdune
 open! Import
@@ -40,7 +41,10 @@ module type Rule_generator = sig
   val global_rules : Rules.t Memo.Lazy.t
 end
 
+(** Errors found when building targets. *)
 module Error : sig
+  type t
+
   module Id : sig
     type t
 
@@ -53,9 +57,6 @@ module Error : sig
     val to_dyn : t -> Dyn.t
   end
 
-  (** Errors when building a target *)
-  type t
-
   val create : exn:Exn_with_backtrace.t -> t
 
   val info : t -> User_message.t * User_message.t list * Path.t option
@@ -65,6 +66,7 @@ module Error : sig
   val id : t -> Id.t
 end
 
+(** A handler for various build events. *)
 module Handler : sig
   type event =
     | Start
@@ -77,7 +79,7 @@ module Handler : sig
     | Remove of Error.t
 
   type t =
-    { error : error list -> unit Fiber.t
+    { errors : error list -> unit Fiber.t
     ; build_progress : complete:int -> remaining:int -> unit Fiber.t
     ; build_event : event -> unit Fiber.t
     }
@@ -91,7 +93,7 @@ module Handler : sig
   val do_nothing : t
 
   val create :
-       error:(error list -> unit Fiber.t)
+       errors:(error list -> unit Fiber.t)
     -> build_progress:(complete:int -> remaining:int -> unit Fiber.t)
     -> build_event:(event -> unit Fiber.t)
     -> t
@@ -109,8 +111,6 @@ type t = private
       -> dst:Path.Source.t
       -> Build_context.t option
       -> unit Fiber.t
-  ; locks : (Path.t, Fiber.Mutex.t) Table.t
-  ; build_mutex : Fiber.Mutex.t
   ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
@@ -118,7 +118,8 @@ type t = private
       Path.Build.t -> unit Action_builder.t option Memo.Build.t
   }
 
-(** Initialise the build system. This must be called first and only once. *)
+(** Initialise the build system. This must be called before running the build
+    system and only once. *)
 val set :
      stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t

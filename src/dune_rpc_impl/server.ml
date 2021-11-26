@@ -294,7 +294,7 @@ let task t f =
   else
     Fiber.return ()
 
-let error t errors =
+let errors t errors =
   let t = Fdecl.get t in
   task t (fun () ->
       Long_poll.Instance.update (Long_poll.diagnostic t.long_poll) errors)
@@ -318,7 +318,7 @@ let create ~root =
   let pool = Fiber.Pool.create () in
   let config = Run.Config.Server { handler; backlog = 10; pool; root } in
   let build_handler =
-    Build_config.Handler.create ~error:(error t)
+    Build_config.Handler.create ~errors:(errors t)
       ~build_progress:(build_progress t) ~build_event:(build_event t)
   in
   let long_poll = Long_poll.create () in

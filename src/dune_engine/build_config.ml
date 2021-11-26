@@ -82,7 +82,7 @@ module Handler = struct
     | Remove of Error.t
 
   type t =
-    { error : error list -> unit Fiber.t
+    { errors : error list -> unit Fiber.t
     ; build_progress : complete:int -> remaining:int -> unit Fiber.t
     ; build_event : event -> unit Fiber.t
     }
@@ -97,13 +97,13 @@ module Handler = struct
     t.build_event evt
 
   let do_nothing =
-    { error = (fun _ -> Fiber.return ())
+    { errors = (fun _ -> Fiber.return ())
     ; build_progress = (fun ~complete:_ ~remaining:_ -> Fiber.return ())
     ; build_event = (fun _ -> Fiber.return ())
     }
 
-  let create ~error ~build_progress ~build_event =
-    { error; build_progress; build_event }
+  let create ~errors ~build_progress ~build_event =
+    { errors; build_progress; build_event }
 end
 
 type t =
@@ -118,8 +118,6 @@ type t =
       -> dst:Path.Source.t
       -> Build_context.t option
       -> unit Fiber.t
-  ; locks : (Path.t, Fiber.Mutex.t) Table.t
-  ; build_mutex : Fiber.Mutex.t
   ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
@@ -148,11 +146,7 @@ let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ; rule_generator
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; handler = Option.value handler ~default:Handler.do_nothing
-    ; (* This mutable table is safe: it merely maps paths to lazily created
-         mutexes. *)
-      locks = Table.create (module Path) 32
     ; promote_source
-    ; build_mutex = Fiber.Mutex.create ()
     ; stats
     ; cache_config
     ; cache_debug_flags

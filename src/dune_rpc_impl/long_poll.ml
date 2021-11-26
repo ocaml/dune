@@ -94,6 +94,7 @@ module Instance = struct
 end
 
 module Build_system = Dune_engine.Build_system
+module Build_config = Dune_engine.Build_config
 
 module Progress = struct
   module Progress = Dune_rpc.Progress
@@ -138,15 +139,15 @@ module Diagnostic = struct
 
     val empty : t
 
-    val add_error : t -> Build_system.Handler.error -> t
+    val add_error : t -> Build_config.Handler.error -> t
 
     val is_empty : t -> bool
 
     val to_diagnostic_list : t -> Diagnostic.Event.t list
   end = struct
-    module Error = Build_system.Error
-    module Map = Build_system.Error.Id.Map
-    module Handler = Build_system.Handler
+    module Error = Build_config.Error
+    module Map = Build_config.Error.Id.Map
+    module Handler = Build_config.Handler
 
     type t = Handler.error Map.t
 
@@ -170,7 +171,7 @@ module Diagnostic = struct
           | Add x -> Add (Diagnostics.diagnostic_of_error x))
   end
 
-  type update = Build_system.Handler.error list
+  type update = Build_config.Handler.error list
 
   type response = Diagnostic.Event.t list
 

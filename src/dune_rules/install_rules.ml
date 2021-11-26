@@ -1009,4 +1009,4 @@ let gen_rules sctx ~dir =
   let+ () =
     Rules.produce_dir ~dir (Option.value ~default:Rules.Dir_rules.empty rules)
   in
-  Build_system.Subdir_set.These subdirs
+  Subdir_set.These subdirs

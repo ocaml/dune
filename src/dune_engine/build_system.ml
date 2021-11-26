@@ -29,6 +29,10 @@ end = struct
   let mkdir_p = Memo.exec mkdir_p_memo
 end
 
+module Context_or_install = Build_config.Context_or_install
+module Error = Build_config.Error
+module Handler = Build_config.Handler
+
 module Loaded = struct
   type rules_here =
     { by_file_targets : Rule.t Path.Build.Map.t
@@ -60,62 +64,10 @@ module Loaded = struct
       }
 end
 
-module Subdir_set = struct
-  type t =
-    | All
-    | These of String.Set.t
-
-  let to_dir_set = function
-    | All -> Dir_set.universal
-    | These s ->
-      String.Set.fold s ~init:Dir_set.empty ~f:(fun path acc ->
-          let path = Path.Local.of_string path in
-          Dir_set.union acc (Dir_set.singleton path))
-
-  let of_dir_set d =
-    match Dir_set.toplevel_subdirs d with
-    | Infinite -> All
-    | Finite s -> These s
-
-  let of_list l = These (String.Set.of_list l)
-
-  let empty = These String.Set.empty
-
-  let mem t dir =
-    match t with
-    | All -> true
-    | These t -> String.Set.mem t dir
-
-  let union a b =
-    match (a, b) with
-    | All, _
-    | _, All ->
-      All
-    | These a, These b -> These (String.Set.union a b)
-
-  let inter_set = function
-    | All -> Fun.id
-    | These t -> String.Set.inter t
-
-  let union_all = List.fold_left ~init:empty ~f:union
-end
-
-type extra_sub_directories_to_keep = Subdir_set.t
-
 module Rule_fn = struct
   let loc_decl = Fdecl.create Dyn.opaque
 
   let loc () = Fdecl.get loc_decl ()
-end
-
-module Context_or_install = struct
-  type t =
-    | Install of Context_name.t
-    | Context of Context_name.t
-
-  let to_dyn = function
-    | Install ctx -> Dyn.List [ Dyn.String "install"; Context_name.to_dyn ctx ]
-    | Context s -> Context_name.to_dyn s
 end
 
 module Dir_triage = struct
@@ -128,130 +80,9 @@ module Dir_triage = struct
         }
 end
 
-module Error = struct
-  module Id = Id.Make ()
+let t () = Build_config.get ()
 
-  type t =
-    { exn : Exn_with_backtrace.t
-    ; id : Id.t
-    }
-
-  let id t = t.id
-
-  let promotion t =
-    let e =
-      match t.exn.exn with
-      | Memo.Error.E e -> Memo.Error.get e
-      | e -> e
-    in
-    match e with
-    | User_error.E msg ->
-      User_message.Annots.find msg.annots Diff_promotion.Annot.annot
-    | _ -> None
-
-  let info (t : t) =
-    let e =
-      match t.exn.exn with
-      | Memo.Error.E e -> Memo.Error.get e
-      | e -> e
-    in
-    match e with
-    | User_error.E msg -> (
-      let dir =
-        User_message.Annots.find msg.annots Process.with_directory_annot
-      in
-      match User_message.Annots.find msg.annots Compound_user_error.annot with
-      | None -> (msg, [], dir)
-      | Some { main; related } -> (main, related, dir))
-    | e ->
-      (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
-      (User_message.make [ Pp.text (Printexc.to_string e) ], [], None)
-end
-
-module type Rule_generator = sig
-  val gen_rules :
-       Context_or_install.t
-    -> dir:Path.Build.t
-    -> string list
-    -> (extra_sub_directories_to_keep * Rules.t) option Memo.Build.t
-
-  val global_rules : Rules.t Memo.Lazy.t
-end
-
-module Handler = struct
-  (* CR-someday amokhov: The name [Interrupt] is not precise, because the build
-     is restarted, not, e.g. interrupted with Ctrl-C. Similarly, we have other
-     imprecise names, like [Cancelled_due_to_file_changes] in [Scheduler] where
-     the build is not just cancelled, it's restarted. We should make the naming
-     more consistent. *)
-  type event =
-    | Start
-    | Finish
-    | Fail
-    | Interrupt
-
-  type error =
-    | Add of Error.t
-    | Remove of Error.t
-
-  type t =
-    { error : error list -> unit Fiber.t
-    ; build_progress : complete:int -> remaining:int -> unit Fiber.t
-    ; build_event : event -> unit Fiber.t
-    }
-
-  let report_progress t ~rule_done ~rule_total =
-    t.build_progress ~complete:rule_done ~remaining:(rule_total - rule_done)
-
-  let last_event : event option ref = ref None
-
-  let report_build_event t evt =
-    last_event := Some evt;
-    t.build_event evt
-
-  let do_nothing =
-    { error = (fun _ -> Fiber.return ())
-    ; build_progress = (fun ~complete:_ ~remaining:_ -> Fiber.return ())
-    ; build_event = (fun _ -> Fiber.return ())
-    }
-
-  let create ~error ~build_progress ~build_event =
-    { error; build_progress; build_event }
-end
-
-type t =
-  { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
-  ; rule_generator : (module Rule_generator)
-  ; sandboxing_preference : Sandbox_mode.t list
-  ; mutable rule_done : int
-  ; mutable rule_total : int
-  ; mutable errors : Error.t list
-  ; handler : Handler.t
-  ; promote_source :
-         chmod:(int -> int)
-      -> delete_dst_if_it_is_a_directory:bool
-      -> src:Path.Build.t
-      -> dst:Path.Source.t
-      -> Build_context.t option
-      -> unit Fiber.t
-  ; locks : (Path.t, Fiber.Mutex.t) Table.t
-  ; build_mutex : Fiber.Mutex.t
-  ; stats : Dune_stats.t option
-  ; cache_config : Dune_cache.Config.t
-  ; cache_debug_flags : Cache_debug_flags.t
-  ; implicit_default_alias :
-      Path.Build.t -> unit Action_builder.t option Memo.Build.t
-  }
-
-let t = Fdecl.create Dyn.opaque
-
-let set x = Fdecl.set t x
-
-let t () = Fdecl.get t
-
-let errors () = (t ()).errors
-
-let get_dir_triage t ~dir =
+let get_dir_triage (t : Build_config.t) ~dir =
   match Dpath.analyse_dir dir with
   | Source dir ->
     let+ files = Source_tree.files_of dir in
@@ -374,7 +205,7 @@ let () =
       pending_file_targets := Path.Build.Set.empty;
       Path.Build.Set.iter fns ~f:(fun p -> Path.Build.unlink_no_err p))
 
-let rec with_locks t mutexes ~f =
+let rec with_locks (t : Build_config.t) mutexes ~f =
   match mutexes with
   | [] -> f ()
   | m :: mutexes ->
@@ -420,7 +251,7 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir
             if not (String.Set.mem set fn) then Path.rm_rf (Path.build path))
         | _ -> ())
 
-let no_rule_found t ~loc fn =
+let no_rule_found (t : Build_config.t) ~loc fn =
   let+ contexts = Memo.Lazy.force t.contexts in
   let fail fn ~loc =
     User_error.raise ?loc
@@ -632,7 +463,7 @@ end = struct
       if Alias.Name.Map.mem aliases Alias.Name.default then
         Memo.Build.return aliases
       else
-        t.implicit_default_alias dir >>| function
+        t.Build_config.implicit_default_alias dir >>| function
         | None -> aliases
         | Some expansion ->
           Alias.Name.Map.set aliases Alias.Name.default
@@ -749,7 +580,9 @@ end = struct
   let load_dir_step2_exn t ~dir ~context_or_install ~sub_dir =
     let sub_dir_components = Path.Source.explode sub_dir in
     (* Load all the rules *)
-    let (module RG : Rule_generator) = t.rule_generator in
+    let (module RG : Build_config.Rule_generator) =
+      t.Build_config.rule_generator
+    in
     let* extra_subdirs_to_keep, rules_produced =
       RG.gen_rules context_or_install ~dir sub_dir_components >>| function
       | None ->
@@ -1010,7 +843,7 @@ let get_rule_or_source t path =
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
 
-let all_targets t =
+let all_targets (t : Build_config.t) =
   let* root = Source_tree.root ()
   and* contexts = Memo.Lazy.force t.contexts in
   Memo.Build.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
@@ -1194,7 +1027,7 @@ end = struct
              sandboxing)"
         ]
 
-  let start_rule t _rule = t.rule_total <- t.rule_total + 1
+  let start_rule (t : Build_config.t) _rule = t.rule_total <- t.rule_total + 1
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
@@ -1230,11 +1063,11 @@ end = struct
     in
     Digest.generic trace
 
-  let report_evaluated_rule build_system =
-    Option.iter build_system.stats ~f:(fun stats ->
+  let report_evaluated_rule (t : Build_config.t) =
+    Option.iter t.stats ~f:(fun stats ->
         let module Event = Chrome_trace.Event in
         let event =
-          let args = [ ("value", `Int build_system.rule_total) ] in
+          let args = [ ("value", `Int t.rule_total) ] in
           let ts = Event.Timestamp.now () in
           let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
           Event.counter common args
@@ -1367,7 +1200,7 @@ end = struct
         Path.Build.Set.diff !pending_file_targets targets.files);
     exec_result
 
-  let promote_targets t ~rule_mode ~dir ~targets ~context =
+  let promote_targets (t : Build_config.t) ~rule_mode ~dir ~targets ~context =
     match (rule_mode, !Clflags.promote) with
     | (Rule.Mode.Standard | Fallback | Ignore_source_files), _
     | Promote _, Some Never ->
@@ -1976,7 +1809,7 @@ let report_early_exn exn =
   match caused_by_cancellation exn with
   | true -> Fiber.return ()
   | false ->
-    let error = { Error.exn; id = Error.Id.gen () } in
+    let error = Error.create ~exn in
     t.errors <- error :: t.errors;
     (match !Clflags.report_errors_config with
     | Early
@@ -2063,38 +1896,6 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
-    ~sandboxing_preference ~rule_generator ~handler ~implicit_default_alias =
-  let contexts =
-    Memo.lazy_ ~name:"Build_system.init" (fun () ->
-        let+ contexts = Memo.Lazy.force contexts in
-        Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
-            (c.Build_context.name, c)))
-  in
-  let () =
-    match (cache_config : Dune_cache.Config.t) with
-    | Disabled -> ()
-    | Enabled _ -> Dune_cache_storage.Layout.create_cache_directories ()
-  in
-  set
-    { contexts
-    ; rule_generator
-    ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
-    ; rule_done = 0
-    ; rule_total = 0
-    ; errors = []
-    ; handler = Option.value handler ~default:Handler.do_nothing
-    ; (* This mutable table is safe: it merely maps paths to lazily created
-         mutexes. *)
-      locks = Table.create (module Path) 32
-    ; promote_source
-    ; build_mutex = Fiber.Mutex.create ()
-    ; stats
-    ; cache_config
-    ; cache_debug_flags
-    ; implicit_default_alias
-    }
-
 module Progress = struct
   type t =
     { number_of_rules_discovered : int
@@ -2108,6 +1909,8 @@ module Progress = struct
   let is_determined { number_of_rules_discovered; number_of_rules_executed } =
     number_of_rules_discovered <> 0 || number_of_rules_executed <> 0
 end
+
+let errors () = (t ()).errors
 
 let get_current_progress () =
   let t = t () in

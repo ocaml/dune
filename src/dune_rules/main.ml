@@ -48,7 +48,7 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
     Artifact_substitution.copy_file ~chmod ~delete_dst_if_it_is_a_directory ~src
       ~dst ~conf ()
   in
-  Build_system.init ~stats ~sandboxing_preference ~promote_source
+  Build_config.set ~stats ~sandboxing_preference ~promote_source
     ~contexts:
       (Memo.lazy_ (fun () ->
            let open Memo.Build.O in

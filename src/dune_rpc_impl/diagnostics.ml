@@ -10,7 +10,7 @@ module Diagnostic = Dune_rpc.Diagnostic
 module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
 module Source_tree = Dune_engine.Source_tree
-module Build_system = Dune_engine.Build_system
+module Build_config = Dune_engine.Build_config
 module Dune_project = Dune_engine.Dune_project
 
 let absolutize_paths ~dir (loc : Loc.t) =
@@ -25,10 +25,10 @@ let absolutize_paths ~dir (loc : Loc.t) =
   ; stop = { loc.stop with pos_fname = make_path loc.stop.pos_fname }
   }
 
-let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
+let diagnostic_of_error : Build_config.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
-  let message, related, dir = Build_system.Error.info m in
+  let message, related, dir = Build_config.Error.info m in
   let dir =
     Option.map dir ~f:Path.drop_optional_build_context_maybe_sandboxed
   in
@@ -40,11 +40,11 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   let loc = Option.map message.loc ~f:make_loc in
   let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
   let id =
-    Build_system.Error.id m |> Build_system.Error.Id.to_int
+    Build_config.Error.id m |> Build_config.Error.Id.to_int
     |> Diagnostic.Id.create
   in
   let promotion =
-    match Build_system.Error.promotion m with
+    match Build_config.Error.promotion m with
     | None -> []
     | Some { in_source; in_build } ->
       [ { Diagnostic.Promotion.in_source =
@@ -70,7 +70,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   ; directory = Option.map dir ~f:Path.to_absolute_filename
   }
 
-let diagnostic_event_of_error_event (e : Build_system.Handler.error) :
+let diagnostic_event_of_error_event (e : Build_config.Handler.error) :
     Diagnostic.Event.t =
   match e with
   | Remove e -> Remove (diagnostic_of_error e)

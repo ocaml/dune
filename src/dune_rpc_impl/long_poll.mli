@@ -20,5 +20,5 @@ val progress :
 val diagnostic :
      t
   -> ( Dune_rpc_private.Diagnostic.Event.t list
-     , Dune_engine.Build_system.Handler.error list )
+     , Dune_engine.Build_config.Handler.error list )
      Instance.t

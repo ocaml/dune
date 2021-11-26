@@ -14,7 +14,7 @@ module Diagnostic = Dune_rpc.Diagnostic
 module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
 module Source_tree = Dune_engine.Source_tree
-module Build_system = Dune_engine.Build_system
+module Build_config = Dune_engine.Build_config
 module Dune_project = Dune_engine.Dune_project
 module Diff_promotion = Dune_engine.Diff_promotion
 module Build_outcome = Decl.Build_outcome
@@ -128,7 +128,7 @@ type t =
   { config : Run.Config.t
   ; pending_build_jobs :
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
-  ; build_handler : Build_system.Handler.t
+  ; build_handler : Build_config.Handler.t
   ; pool : Fiber.Pool.t
   ; long_poll : Long_poll.t
   ; mutable clients : Clients.t
@@ -237,7 +237,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   let () =
     let f _ () =
-      Build_system.errors ()
+      Dune_engine.Build_system.errors ()
       |> List.map ~f:Diagnostics.diagnostic_of_error
       |> Fiber.return
     in
@@ -294,7 +294,7 @@ let task t f =
   else
     Fiber.return ()
 
-let error t errors =
+let errors t errors =
   let t = Fdecl.get t in
   task t (fun () ->
       Long_poll.Instance.update (Long_poll.diagnostic t.long_poll) errors)
@@ -305,7 +305,7 @@ let build_progress t ~complete ~remaining =
       let progress = Progress.In_progress { complete; remaining } in
       Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
 
-let build_event t (event : Build_system.Handler.event) =
+let build_event t (event : Build_config.Handler.event) =
   let t = Fdecl.get t in
   let progress = progress_of_build_event event in
   task t (fun () ->
@@ -318,7 +318,7 @@ let create ~root =
   let pool = Fiber.Pool.create () in
   let config = Run.Config.Server { handler; backlog = 10; pool; root } in
   let build_handler =
-    Build_system.Handler.create ~error:(error t)
+    Build_config.Handler.create ~errors:(errors t)
       ~build_progress:(build_progress t) ~build_event:(build_event t)
   in
   let long_poll = Long_poll.create () in

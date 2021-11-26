@@ -1,8 +1,7 @@
 open! Dune_engine
 open Stdune
 
-val gen_rules :
-  Super_context.t -> dir:Path.Build.t -> Build_system.Subdir_set.t Memo.Build.t
+val gen_rules : Super_context.t -> dir:Path.Build.t -> Subdir_set.t Memo.Build.t
 
 (** Generate rules for [.dune-package] and [META.<package-name>] files in a
     given super context and directory. Surprisingly, the current implementation

@@ -323,11 +323,11 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     []
 
 let gen_rules ~sctx ~dir components =
-  let module S = Build_system.Subdir_set in
+  let module S = Subdir_set in
   let* () = Opam_create.add_rules sctx ~dir in
   let* () = Install_rules.meta_and_dune_package_rules sctx ~dir in
   let+ subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir
-  and+ (subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep) =
+  and+ (subdirs_to_keep2 : Build_config.extra_sub_directories_to_keep) =
     match components with
     | [ ".dune"; "ccomp" ] ->
       (* Add rules for C compiler detection *)
@@ -396,15 +396,13 @@ let gen_rules ~sctx ~dir components =
   let subdirs_to_keep3 =
     match components with
     | [] ->
-      Build_system.Subdir_set.These
-        (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
+      Subdir_set.These (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
     | _ -> These String.Set.empty
   in
-  Build_system.Subdir_set.union_all
-    [ subdirs_to_keep1; subdirs_to_keep2; subdirs_to_keep3 ]
+  Subdir_set.union_all [ subdirs_to_keep1; subdirs_to_keep2; subdirs_to_keep3 ]
 
 let gen_rules ~sctx ~dir components =
-  let module S = Build_system.Subdir_set in
+  let module S = Subdir_set in
   match components with
   | [ ".dune" ] ->
     (* [.dune] is treated specifically as generating the rules in all other
@@ -425,7 +423,7 @@ let global_rules =
             ~f:Odoc.global_rules))
 
 let gen_rules ctx_or_install ~dir components =
-  match (ctx_or_install : Build_system.Context_or_install.t) with
+  match (ctx_or_install : Build_config.Context_or_install.t) with
   | Install ctx ->
     Super_context.find ctx
     >>= Memo.Build.Option.map ~f:(fun sctx ->

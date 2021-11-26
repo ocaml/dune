@@ -173,8 +173,8 @@ module Workspace_local = struct
       in
       loop prev_trace.dynamic_deps_stages
 
-  let lookup ~always_rerun ~print_debug_info ~rule_digest ~targets ~env
-      ~build_deps : Digest.t Targets.Produced.t option Fiber.t =
+  let lookup ~always_rerun ~rule_digest ~targets ~env ~build_deps :
+      Digest.t Targets.Produced.t option Fiber.t =
     let open Fiber.O in
     let+ result =
       match always_rerun with
@@ -184,7 +184,8 @@ module Workspace_local = struct
     match result with
     | Hit result -> Some result
     | Miss reason ->
-      if print_debug_info then
+      let t = Build_config.get () in
+      if t.cache_debug_flags.workspace_local_cache then
         Miss_reason.report reason ~head_target:(Targets.Validated.head targets);
       None
 end
@@ -225,9 +226,8 @@ module Shared = struct
   (* CR-someday amokhov: If the cloud cache is enabled, then before attempting
      to restore artifacts from the shared cache, we should send a download
      request for [rule_digest] to the cloud. *)
-  let try_to_restore_from_shared_cache ~print_debug_info ~mode ~rule_digest
-      ~head_target ~target_dir :
-      (Digest.t Targets.Produced.t, Miss_reason.t) Result.t =
+  let try_to_restore_from_shared_cache ~mode ~rule_digest ~head_target
+      ~target_dir : (Digest.t Targets.Produced.t, Miss_reason.t) Result.t =
     let key () = shared_cache_key_string_for_log ~rule_digest ~head_target in
     match Dune_cache.Local.restore_artifacts ~mode ~rule_digest ~target_dir with
     | Restored res ->
@@ -235,15 +235,16 @@ module Shared = struct
          we're also printing successes, but it can be useful to see successes
          too if the goal is to understand when and how the file in the build
          directory appeared *)
-      if print_debug_info then
+      let t = Build_config.get () in
+      if t.cache_debug_flags.shared_cache then
         Log.info [ Pp.textf "cache restore success %s" (key ()) ];
       Hit (Targets.Produced.of_file_list_exn res)
     | Not_found_in_cache -> Miss Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
 
-  let lookup_impl ~cache_config ~print_debug_info ~rule_digest ~targets
-      ~target_dir =
-    match (cache_config : Dune_cache.Config.t) with
+  let lookup_impl ~rule_digest ~targets ~target_dir =
+    let t = Build_config.get () in
+    match t.cache_config with
     | Disabled -> Result.Miss Miss_reason.Cache_disabled
     | Enabled { storage_mode = mode; reproducibility_check } -> (
       match
@@ -255,23 +256,22 @@ module Shared = struct
            the shared cache actually does contain an entry for [rule_digest]. *)
         Miss Rerunning_for_reproducibility_check
       | false ->
-        try_to_restore_from_shared_cache ~print_debug_info ~mode
+        try_to_restore_from_shared_cache ~mode
           ~head_target:(Targets.Validated.head targets)
           ~rule_digest ~target_dir)
 
-  let lookup ~can_go_in_shared_cache ~cache_config ~print_debug_info
-      ~rule_digest ~targets ~target_dir : Digest.t Targets.Produced.t option =
+  let lookup ~can_go_in_shared_cache ~rule_digest ~targets ~target_dir :
+      Digest.t Targets.Produced.t option =
     let result =
       match can_go_in_shared_cache with
       | false -> Result.Miss Miss_reason.Cannot_go_in_shared_cache
-      | true ->
-        lookup_impl ~cache_config ~print_debug_info ~rule_digest ~targets
-          ~target_dir
+      | true -> lookup_impl ~rule_digest ~targets ~target_dir
     in
     match result with
     | Hit result -> Some result
     | Miss reason ->
-      (match (print_debug_info, reason) with
+      let t = Build_config.get () in
+      (match (t.cache_debug_flags.shared_cache, reason) with
       | true, _
       | false, Error _ ->
         (* Always log errors because they are not expected as a part of normal
@@ -430,11 +430,12 @@ module Shared = struct
                     (Path.pp (Path.build target) :: error))
             ]))
 
-  let examine_targets_and_store ~can_go_in_shared_cache ~cache_config ~loc
-      ~rule_digest ~execution_parameters ~action
+  let examine_targets_and_store ~can_go_in_shared_cache ~loc ~rule_digest
+      ~execution_parameters ~action
       ~(produced_targets : unit Targets.Produced.t) :
       Digest.t Targets.Produced.t Fiber.t =
-    match (cache_config : Dune_cache.Config.t) with
+    let t = Build_config.get () in
+    match t.cache_config with
     | Enabled { storage_mode = mode; reproducibility_check = _ }
       when can_go_in_shared_cache -> (
       let open Fiber.O in

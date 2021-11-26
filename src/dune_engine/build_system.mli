@@ -16,12 +16,6 @@ val eval_pred : File_selector.t -> Path.Set.t Memo.Build.t
 (** Same as [eval_pred] but also build the resulting set of files. *)
 val build_pred : File_selector.t -> Dep.Fact.Files.t Memo.Build.t
 
-(** Returns the set of file targets in the given directory. *)
-val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
-
-(** Load the rules for this directory. *)
-val load_dir : dir:Path.t -> unit Memo.Build.t
-
 (** Assuming [files] is the list of files in [_build/install] that belong to
     package [pkg], [package_deps t pkg files] is the set of direct package
     dependencies of [package]. *)
@@ -39,13 +33,6 @@ val build_file : Path.t -> Digest.t Memo.Build.t
 (** Build a file and return its contents with [f] *)
 val read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.Build.t
 
-(** Return [true] if a file exists or is buildable *)
-val file_exists : Path.t -> bool Memo.Build.t
-
-val alias_exists : Alias.t -> bool Memo.Build.t
-
-val is_target : Path.t -> bool Memo.Build.t
-
 val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
 
 (** Execute a action. The execution is cached. *)
@@ -56,19 +43,8 @@ val execute_action :
 val execute_action_stdout :
   observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> string Memo.Build.t
 
-(** Return the rule that has the given file has target, if any *)
-val get_rule : Path.t -> Rule.t option Memo.Build.t
-
-type alias_definition
-
-val dep_on_alias_definition : alias_definition -> unit Action_builder.t
-
-(** Return the definition of an alias *)
-val get_alias_definition :
-  Alias.t -> (Loc.t * alias_definition) list Memo.Build.t
-
-(** List of all buildable targets. *)
-val all_targets : unit -> Path.Build.Set.t Memo.Build.t
+val dep_on_alias_definition :
+  Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t
 
 (** {2 Running a build} *)
 

@@ -125,7 +125,7 @@ let term =
           let* request =
             match targets with
             | [] ->
-              Build_system.all_targets ()
+              Load_rules.all_targets ()
               >>| Path.Build.Set.fold ~init:[] ~f:(fun p acc ->
                       Path.build p :: acc)
               >>| Action_builder.paths

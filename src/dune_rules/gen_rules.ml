@@ -376,14 +376,16 @@ let gen_rules ~sctx ~dir components =
             if Utop.is_utop_dir dir then
               Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
             else if components <> [] then
-              Build_system.load_dir ~dir:(Path.parent_exn (Path.build dir))
+              Load_rules.load_dir_and_produce_its_rules
+                ~dir:(Path.parent_exn (Path.build dir))
             else
               Memo.Build.return ()
           | Some source_dir -> (
             (* This interprets "rule" and "copy_files" stanzas. *)
             Dir_contents.gen_rules sctx ~dir
             >>= function
-            | Group_part root -> Build_system.load_dir ~dir:(Path.build root)
+            | Group_part root ->
+              Load_rules.load_dir_and_produce_its_rules ~dir:(Path.build root)
             | Standalone_or_root (dir_contents, subs) ->
               let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
               Memo.Build.parallel_iter subs ~f:(fun dc ->

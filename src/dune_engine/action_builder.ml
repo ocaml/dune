@@ -104,7 +104,7 @@ let if_file_exists p ~then_ ~else_ =
     { f =
         (fun mode ->
           let open Memo.Build.O in
-          Build_system.file_exists p >>= function
+          Load_rules.file_exists p >>= function
           | true -> run then_ mode
           | false -> run else_ mode)
     }
@@ -254,7 +254,7 @@ let dep_on_alias_if_exists alias =
     { f =
         (fun mode ->
           let open Memo.Build.O in
-          let* definition = Build_system.alias_exists alias in
+          let* definition = Load_rules.alias_exists alias in
           match definition with
           | false -> Memo.Build.return (false, Dep.Map.empty)
           | true ->

@@ -399,7 +399,8 @@ let load_all_odoc_rules_pkg sctx ~pkg =
     Memo.Build.parallel_iter
       (Pkg pkg :: List.map pkg_libs ~f:(fun lib -> Lib lib))
       ~f:(fun target ->
-        Build_system.load_dir ~dir:(Path.build (Paths.odocs ctx target)))
+        Load_rules.load_dir_and_produce_its_rules
+          ~dir:(Path.build (Paths.odocs ctx target)))
   in
   pkg_libs
 
@@ -737,7 +738,7 @@ let gen_rules sctx ~dir:_ rest =
          rules for this library *)
       let info = Lib.info lib in
       let dir = Lib_info.src_dir info in
-      Build_system.load_dir ~dir)
+      Load_rules.load_dir_and_produce_its_rules ~dir)
   | "_html" :: lib_unique_name_or_pkg :: _ ->
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)

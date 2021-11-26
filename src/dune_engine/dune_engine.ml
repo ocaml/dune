@@ -41,6 +41,7 @@ module Target_promotion = Target_promotion
 module Build_context = Build_context
 module Build_config = Build_config
 module Build_system = Build_system
+module Load_rules = Load_rules
 module Cram_test = Cram_test
 module Clflags = Clflags
 module Include_stanza = Include_stanza

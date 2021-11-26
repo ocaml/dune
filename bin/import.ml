@@ -9,6 +9,7 @@ module Local_install_path = Dune_engine.Local_install_path
 module Lib_name = Dune_engine.Lib_name
 module Build_config = Dune_engine.Build_config
 module Build_system = Dune_engine.Build_system
+module Load_rules = Dune_engine.Load_rules
 module Findlib = Dune_rules.Findlib
 module Package = Dune_engine.Package
 module Dune_package = Dune_rules.Dune_package

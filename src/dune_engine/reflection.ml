@@ -28,7 +28,7 @@ end = struct
         ~input:(module Alias)
         (fun alias ->
           let* l =
-            Build_system.get_alias_definition alias
+            Load_rules.get_alias_definition alias
             >>= Memo.Build.parallel_map ~f:(fun (loc, definition) ->
                     Memo.push_stack_frame
                       (fun () ->
@@ -79,7 +79,7 @@ let eval ~recursive ~request =
   let rules_of_deps deps =
     Expand.deps deps >>| Path.Set.to_list
     >>= Memo.Build.parallel_map ~f:(fun p ->
-            Build_system.get_rule p >>= function
+            Load_rules.get_rule p >>= function
             | None -> Memo.Build.return None
             | Some rule -> evaluate_rule rule >>| Option.some)
     >>| List.filter_map ~f:Fun.id

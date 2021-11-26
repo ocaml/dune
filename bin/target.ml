@@ -3,6 +3,7 @@ module Log = Dune_util.Log
 module Context = Dune_rules.Context
 module Action_builder = Dune_engine.Action_builder
 module Build_system = Dune_engine.Build_system
+module Load_rules = Dune_engine.Load_rules
 open Action_builder.O
 
 (* CR-someday amokhov: Split [File] into [File] and [Dir] for clarity. *)
@@ -30,7 +31,7 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
 
      (2) We currently provide the same hint for all targets. It would be nice to
      indicate whether a hint corresponds to a file or to a directory target. *)
-  let+ candidates = Build_system.all_targets () >>| Path.Build.Set.to_list in
+  let+ candidates = Load_rules.all_targets () >>| Path.Build.Set.to_list in
   let candidates =
     if Path.is_in_build_dir path then
       List.map ~f:Path.build candidates
@@ -72,13 +73,13 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
   let matching_targets src =
     Memo.Build.parallel_map setup.contexts ~f:(fun ctx ->
         let path = Path.append_source (Path.build ctx.Context.build_dir) src in
-        Build_system.is_target path >>| function
+        Load_rules.is_target path >>| function
         | true -> Some (File path)
         | false -> None)
     >>| List.filter_map ~f:Fun.id
   in
   let matching_target () =
-    Build_system.is_target path >>| function
+    Load_rules.is_target path >>| function
     | true -> Some [ File path ]
     | false -> None
   in

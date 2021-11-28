@@ -218,7 +218,7 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
           in
           let+ dst_digest_result =
             Memo.Build.run
-              (Fs_memo.path_digest ~force_update:true (Path.source dst))
+              (Fs_memo.file_digest ~force_update:true (Path.source dst))
           in
           match Cached_digest.Digest_result.to_option dst_digest_result with
           | Some dst_digest ->

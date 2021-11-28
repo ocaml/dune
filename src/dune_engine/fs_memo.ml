@@ -106,7 +106,7 @@ let update_all : Path.t -> Fs_cache.Update_result.t =
   in
   Update_all.reduce
     [ update Fs_cache.Untracked.path_stat
-    ; update Fs_cache.Untracked.path_digest
+    ; update Fs_cache.Untracked.file_digest
     ; update Fs_cache.Untracked.dir_contents
     ]
 
@@ -222,13 +222,13 @@ let dir_exists path =
    watching, and we should expose this function from the [Cached_digest] module
    instead. For now, we keep it here because it seems nice to group all tracked
    file system access functions in one place, and exposing an uncached version
-   of [path_digest] seems error-prone. We may need to rethink this decision. *)
-let path_digest ?(force_update = false) path =
+   of [file_digest] seems error-prone. We may need to rethink this decision. *)
+let file_digest ?(force_update = false) path =
   if force_update then (
     Cached_digest.Untracked.invalidate_cached_timestamp path;
-    Fs_cache.evict Fs_cache.Untracked.path_digest path
+    Fs_cache.evict Fs_cache.Untracked.file_digest path
   );
-  declaring_dependency path ~f:Fs_cache.(read Untracked.path_digest)
+  declaring_dependency path ~f:Fs_cache.(read Untracked.file_digest)
 
 let dir_contents ?(force_update = false) path =
   if force_update then Fs_cache.evict Fs_cache.Untracked.dir_contents path;
@@ -240,10 +240,10 @@ let dir_contents ?(force_update = false) path =
    with two simpler one that can be cached independently. *)
 let with_lexbuf_from_file path ~f =
   declaring_dependency path ~f:(fun path ->
-      (* This is a bit of a hack. By reading [path_digest], we cause the [path]
-         to be recorded in the [Fs_cache.Untracked.path_digest], so the build
+      (* This is a bit of a hack. By reading [file_digest], we cause the [path]
+         to be recorded in the [Fs_cache.Untracked.file_digest], so the build
          will be restarted if the digest changes. *)
-      ignore Fs_cache.(read Untracked.path_digest path);
+      ignore Fs_cache.(read Untracked.file_digest path);
       Io.Untracked.with_lexbuf_from_file path ~f)
 
 (* When a file or directory is created or deleted, we need to also invalidate

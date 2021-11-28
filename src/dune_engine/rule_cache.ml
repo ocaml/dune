@@ -125,7 +125,8 @@ module Workspace_local = struct
       Targets.Produced.of_validated_files targets ~on_dir_target:`Ignore
     in
     Targets.Produced.Option.mapi targets ~f:(fun target () ->
-        Cached_digest.build_file target |> Cached_digest.Digest_result.to_option)
+        Cached_digest.build_file ~allow_dirs:true target
+        |> Cached_digest.Digest_result.to_option)
 
   let lookup_impl ~rule_digest ~targets ~env ~build_deps =
     (* [prev_trace] will be [None] if [head_target] was never built before. *)
@@ -350,7 +351,7 @@ module Shared = struct
         Execution_parameters.should_remove_write_permissions_on_generated_files
           exec_params
       in
-      Cached_digest.refresh ~remove_write_permissions
+      Cached_digest.refresh ~allow_dirs:true ~remove_write_permissions
     in
     match
       Targets.Produced.Option.mapi produced_targets ~f:(fun target () ->

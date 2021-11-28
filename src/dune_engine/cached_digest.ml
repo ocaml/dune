@@ -207,20 +207,21 @@ module Digest_result = struct
     | Error exn -> Variant ("Error", [ String (Printexc.to_string exn) ])
 end
 
-let digest_path_with_stats path stats =
+let digest_path_with_stats ~allow_dirs path stats =
   match
-    Digest.path_with_stats path (Digest.Stats_for_digest.of_unix_stats stats)
+    Digest.path_with_stats ~allow_dirs path
+      (Digest.Stats_for_digest.of_unix_stats stats)
   with
   | Ok digest -> Digest_result.Ok digest
   | Unexpected_kind -> Unexpected_kind stats.st_kind
   | Unix_error (ENOENT, _, _) -> No_such_file
   | Unix_error other_error -> Unix_error other_error
 
-let refresh stats path =
+let refresh ~allow_dirs stats path =
   (* Note that by the time we reach this point, [stats] may become stale due to
      concurrent processes modifying the [path], so this function can actually
      return [No_such_file] even if the caller managed to obtain the [stats]. *)
-  let result = digest_path_with_stats path stats in
+  let result = digest_path_with_stats ~allow_dirs path stats in
   Digest_result.iter result ~f:(fun digest -> set_with_stat path digest stats);
   result
 
@@ -232,10 +233,10 @@ let catch_fs_errors f =
   | exception exn -> Error exn
 
 (* Here we make only one [stat] call on the happy path. *)
-let refresh_without_removing_write_permissions path =
+let refresh_without_removing_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
       match Path.Untracked.stat_exn path with
-      | stats -> refresh stats path
+      | stats -> refresh stats ~allow_dirs path
       | exception Unix.Unix_error (ENOENT, _, _) -> (
         (* Test if this is a broken symlink for better error messages. *)
         match Path.Untracked.lstat_exn path with
@@ -247,7 +248,7 @@ let refresh_without_removing_write_permissions path =
    be outside of the build directory and not under out control. It seems like it
    should be possible to avoid paying for two system calls ([lstat] and [stat])
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
-let refresh_and_remove_write_permissions path =
+let refresh_and_remove_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
       match Path.Untracked.lstat_exn path with
       | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
@@ -255,7 +256,7 @@ let refresh_and_remove_write_permissions path =
         match stats.st_kind with
         | S_LNK -> (
           match Path.Untracked.stat_exn path with
-          | stats -> refresh stats path
+          | stats -> refresh stats ~allow_dirs:false path
           | exception Unix.Unix_error (ENOENT, _, _) ->
             Digest_result.Broken_symlink)
         | S_REG ->
@@ -263,19 +264,19 @@ let refresh_and_remove_write_permissions path =
             Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
           in
           Path.chmod ~mode:perm path;
-          refresh { stats with st_perm = perm } path
+          refresh ~allow_dirs { stats with st_perm = perm } path
         | _ ->
           (* CR-someday amokhov: Shall we proceed if [stats.st_kind = S_DIR]?
              What about stranger kinds like [S_SOCK]? *)
-          refresh stats path))
+          refresh ~allow_dirs stats path))
 
-let refresh path ~remove_write_permissions =
+let refresh ~allow_dirs ~remove_write_permissions path =
   let path = Path.build path in
   match remove_write_permissions with
-  | false -> refresh_without_removing_write_permissions path
-  | true -> refresh_and_remove_write_permissions path
+  | false -> refresh_without_removing_write_permissions ~allow_dirs path
+  | true -> refresh_and_remove_write_permissions ~allow_dirs path
 
-let peek_file path =
+let peek_file ~allow_dirs path =
   let cache = Lazy.force cache in
   match Path.Table.find cache.table path with
   | None -> None
@@ -302,7 +303,7 @@ let peek_file path =
             Ok x.digest
           | Gt
           | Lt ->
-            let digest_result = digest_path_with_stats path stats in
+            let digest_result = digest_path_with_stats ~allow_dirs path stats in
             Digest_result.iter digest_result ~f:(fun digest ->
                 if !Clflags.debug_digests then
                   Console.print
@@ -323,12 +324,13 @@ let peek_file path =
                 x.stats_checked <- cache.checked_key);
             digest_result))
 
-let peek_or_refresh_file path =
-  match peek_file path with
+let peek_or_refresh_file ~allow_dirs path =
+  match peek_file ~allow_dirs path with
   | Some digest_result -> digest_result
-  | None -> refresh_without_removing_write_permissions path
+  | None -> refresh_without_removing_write_permissions ~allow_dirs path
 
-let build_file path = peek_or_refresh_file (Path.build path)
+let build_file ~allow_dirs path =
+  peek_or_refresh_file ~allow_dirs (Path.build path)
 
 let remove path =
   let path = Path.build path in
@@ -337,7 +339,7 @@ let remove path =
   Path.Table.remove cache.table path
 
 module Untracked = struct
-  let source_or_external_file = peek_or_refresh_file
+  let source_or_external_file = peek_or_refresh_file ~allow_dirs:false
 
   let invalidate_cached_timestamp path =
     let cache = Lazy.force cache in

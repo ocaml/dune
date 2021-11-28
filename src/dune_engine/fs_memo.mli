@@ -24,13 +24,13 @@ val path_stat :
 val path_kind :
   Path.t -> (File_kind.t, Unix_error.Detailed.t) result Memo.Build.t
 
-(** Digest the contents of a source or external path and declare a dependency on
-    it. When [force_update = true], evict the path from all digest caches and
+(** Digest the contents of a source or external file and declare a dependency on
+    it. When [force_update = true], evict the file from all digest caches and
     force the recomputation of the digest. This can be useful if Dune made a
-    change to the path and therefore knows that the cached digest is stale and
+    change to the file and therefore knows that the cached digest is stale and
     is about to be invalidated by an incoming file-system event. By not using
     the cache in this situation, it's possible to avoid unnecessary restarts. *)
-val path_digest :
+val file_digest :
   ?force_update:bool -> Path.t -> Cached_digest.Digest_result.t Memo.Build.t
 
 (** Like [Io.Untracked.with_lexbuf_from_file] but declares a dependency on the

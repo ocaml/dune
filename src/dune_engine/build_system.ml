@@ -731,7 +731,12 @@ end = struct
       match Path.Build.Map.find targets path with
       | Some digest -> (digest, None)
       | None -> (
-        match Cached_digest.build_file path with
+        (* CR-someday amokhov: [Cached_digest.build_file] doesn't do a good job
+           for computing directory digests -- it relies on [mtime] instead of
+           actually computing the digest of the directory's content. As one of
+           the consequences, we currently can't support the early cutoff for
+           directory targets. *)
+        match Cached_digest.build_file ~allow_dirs:true path with
         | Ok digest -> (digest, Some targets) (* Must be a directory target *)
         | No_such_file
         | Broken_symlink

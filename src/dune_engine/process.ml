@@ -602,6 +602,8 @@ let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
   let event = Event.complete ~args ~dur common in
   Dune_stats.emit stats event
 
+let set_temp_dir_when_running_actions = ref true
+
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ?(env = Env.initial) ~purpose fail_mode prog args
     =
@@ -703,8 +705,11 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let stderr = Io.fd stderr_to in
         let stdin = Io.fd stdin_from in
         let env =
-          env |> Dtemp.add_to_env |> Scheduler.Config.add_to_env config
+          match !set_temp_dir_when_running_actions with
+          | true -> Dtemp.add_to_env env
+          | false -> env
         in
+        let env = env |> Scheduler.Config.add_to_env config in
         let env = Env.to_unix env |> Spawn.Env.of_list in
         let started_at, pid =
           (* jeremiedimino: I think we should do this just before the [execve]

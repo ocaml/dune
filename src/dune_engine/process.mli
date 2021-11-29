@@ -59,6 +59,10 @@ type purpose =
   | Build_job of
       Loc.t option * User_message.Annots.t * Targets.Validated.t option
 
+(* Dune overrides the TMPDIR for all running actions. At Jane Street, we change
+   this behaviour by setting [set_temp_dir_when_running_actions = false]. *)
+val set_temp_dir_when_running_actions : bool ref
+
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)
 val run :

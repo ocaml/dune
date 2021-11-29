@@ -183,7 +183,7 @@ end = struct
   type result0_here =
     { t : t
     ; (* [rules] includes rules for subdirectories too *)
-      rules : Rules.t option
+      rules : Rules.t
     ; (* The [kind] of the nodes must be Group_part *)
       subdirs : t Path.Build.Map.t
     }
@@ -261,13 +261,13 @@ end = struct
       Memo.Build.return
         (Here
            { t = empty Standalone ~dir
-           ; rules = None
+           ; rules = Rules.empty
            ; subdirs = Path.Build.Map.empty
            })
     | Standalone (st_dir, d) ->
       let include_subdirs = (Loc.none, Include_subdirs.No) in
       let+ files, rules =
-        Rules.collect_opt (fun () -> load_text_files sctx st_dir d)
+        Rules.collect (fun () -> load_text_files sctx st_dir d)
       in
       let dirs = [ (dir, [], files) ] in
       let ml =
@@ -304,7 +304,7 @@ end = struct
         (loc, Dune_file.Include_subdirs.Include qualif_mode)
       in
       let+ (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
-        Rules.collect_opt (fun () ->
+        Rules.collect (fun () ->
             Memo.Build.fork_and_join
               (fun () -> load_text_files sctx st_dir d)
               (fun () -> collect_group sctx ~st_dir ~dir))
@@ -382,7 +382,7 @@ end = struct
     Memo.exec memo0 (sctx, dir) >>= function
     | See_above group_root -> Memo.Build.return (Group_part group_root)
     | Here { t; rules; subdirs } ->
-      let+ () = Rules.produce_opt rules in
+      let+ () = Rules.produce rules in
       Standalone_or_root (t, Path.Build.Map.values subdirs)
 end
 

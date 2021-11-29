@@ -1,31 +1,29 @@
 ******************************
-Dealing with foreign libraries
+Dealing with Foreign Libraries
 ******************************
 
-The OCaml programming language can interface with libraries written
-in foreign languages such as C. This section explains how to do this
-with Dune. Note that it does not cover how to write the C stubs
-themselves, this is covered by the
-`OCaml manual <https://caml.inria.fr/pub/docs/manual-ocaml/intfc.html>`_.
+The OCaml programming language can interface with libraries written in foreign
+languages such as C. This section explains how to do this with Dune. Note that
+it does not cover how to write the C stubs themselves, but this is covered by
+the `OCaml manual <https://caml.inria.fr/pub/docs/manual-ocaml/intfc.html>`_.
 
 More precisely, this section covers:
 
-- how to add C/C++ stubs to an OCaml library;
-- how to pass specific compilation flags for compiling the stubs;
-- how to build a library with a foreign build system.
+- How to add C/C++ stubs to an OCaml library
+- How to pass specific compilation flags for compiling the stubs
+- How to build a library with a foreign build system
 
-Note that in general Dune has limited support for building source
-files written in foreign languages. This support is suitable for most
-OCaml projects containing C stubs, but is too limited for building
-complex libraries written in C or other languages. For such cases,
-Dune can integrate a foreign build system into a normal Dune
-build.
+In general, Dune has limited support for building source files written in
+foreign languages. This support is suitable for most OCaml projects containing
+C stubs, but it is too limited for building complex libraries written in C or
+other languages. For such cases, Dune can integrate a foreign build system into
+a normal Dune build.
 
-Adding C/C++ stubs to an OCaml library
+Adding C/C++ Stubs to an OCaml Library
 ======================================
 
-To add C stubs to an OCaml library, simply list the C files without
-the ``.c`` extension in the :ref:`foreign-stubs` field. For instance:
+To add C stubs to an OCaml library, simply list the C files without the ``.c``
+extension in the :ref:`foreign-stubs` field. For instance:
 
 .. code:: scheme
 
@@ -36,64 +34,61 @@ the ``.c`` extension in the :ref:`foreign-stubs` field. For instance:
 You can also add C++ stubs to an OCaml library by specifying
 ``(language cxx)`` instead.
 
-Dune is currently not flexible regarding the extension of the C/C++
-source files. They have to be ``.c`` for C files and ``.cpp``, ``.cc``
-or ``.cxx`` for C++ files. If you have source files with other
-extensions and you want to build them with Dune, you need to rename
-them first. Alternatively, you can use the
-:ref:`foreign build sandboxing <foreign-sandboxing>` method described
-below.
+Dune is currently not flexible regarding the extension of the C/C++ source
+files. They have to be ``.c`` for C files and ``.cpp``, ``.cc`` or ``.cxx`` for
+C++ files. If you have source files with other extensions and you want to build
+them with Dune, you need to rename them first. Alternatively, you can use the
+:ref:`foreign build sandboxing <foreign-sandboxing>` method described below.
 
-Header files
+Header Files
 ------------
 
-C/C++ source files may include header files in the same directory as
-the C/C++ source files or in the same directory group when using
-:ref:`include_subdirs`.
+C/C++ source files may include header files in the same directory as the C/C++
+source files or in the same directory group when using :ref:`include_subdirs`.
 
 The header files must have the ``.h`` extension.
 
-Installing header files
+Installing Header Files
 -----------------------
 
-It is sometimes desirable to install header files with the
-library. For that you have two choices: install them explicitly with
-an :ref:`install` stanza or use the ``install_c_headers`` field of the
-:ref:`library` stanza. This field takes a list of header files names
-without the ``.h`` extension. When a library install header files,
-these are made visible to users of the library via the include search
-path.
+It is sometimes desirable to install header files with the library. For that
+you have two choices: install them explicitly with an :ref:`install` stanza or
+use the ``install_c_headers`` field of the :ref:`library` stanza. This field
+takes a list of header files names without the ``.h`` extension. When a library
+installs header files, they are made visible to users of the library via the
+include search path.
 
 .. _ctypes-stubgen:
 
 Stub Generation with Dune Ctypes
 ================================
 
-Beginning in dune 3.0, it is possible to use the ctypes_ stanza to generate
+Beginning in Dune 3.0, it's possible to use the ctypes_ stanza to generate
 bindings for C libraries without writing any C code.
 
-Note that dune support for this feature is experimental and is not subject
-to backward compatibility guarantees.
+Note that Dune support for this feature is experimental and is not subject to
+backward compatibility guarantees.
 
-To use dune ctypes stub generation, you must provide two OCaml modules: a "type
+To use Dune ctypes stub generation, you must provide two OCaml modules: a "type
 description" module for describing the C library types and constants, and a
 "function description" module for describing the C library functions.
 Additionally, you must list any C headers and a method for resolving build and
 link flags.
 
-If you're binding a library distributed by your OS, you can use the
-``pkg-config`` utility to resolve any build and link flags.  Alternatively, if
-you're using a locally installed library or a vendored library, you can provide
-the flags manually.
+If you're binding a library distributed by your OS, you can use the pkg-config_
+utility to resolve any build and link flags. Alternatively, if you're using a
+locally installed library or a vendored library, you can provide the flags
+manually.
 
 The "type description" module must define a functor named ``Types`` with
-signature ``Ctypes.TYPE``.  The "function description" module must define a
+signature ``Ctypes.TYPE``. The "function description" module must define a
 functor named ``Functions`` with signature ``Ctypes.FOREIGN``.
 
-A toy example
+A Toy Example
 -------------
 
-To begin, you must declare the ctypes extension in your ``dune-project`` file:
+To begin, you must declare the ``ctypes`` extension in your ``dune-project``
+file:
 
 .. code:: scheme
 
@@ -101,9 +96,9 @@ To begin, you must declare the ctypes extension in your ``dune-project`` file:
   (using ctypes 0.1)
 
 
-Next, here is a ``dune`` file you can use to define an OCaml program that
-binds a C system library called ``libfoo``, which offers ``foo.h`` in a
-standard location.
+Next, here is a ``dune`` file you can use to define an OCaml program that binds
+a C system library called ``libfoo``, which offers ``foo.h`` in a standard
+location.
 
 .. code:: scheme
 
@@ -127,10 +122,10 @@ standard location.
      (generated_entry_point C)))
 
 This stanza will introduce a module named ``C`` into your project, with the
-sub-modules ``Types`` and ``Functions`` that will have your fully bound C
-types, constants and functions.
+sub-modules ``Types`` and ``Functions`` that will have your fully-bound C
+types, constants, and functions.
 
-Given libfoo with the C header file ``foo.h``:
+Given ``libfoo`` with the C header file ``foo.h``:
 
 .. code:: c
 
@@ -162,7 +157,7 @@ Your example ``function_description.ml`` file is:
 
   (* This Types_generated module is an instantiation of the Types
      functor defined in the type_description.ml file. It's generated by
-     a C program that dune creates and runs behind the scenes. *)
+     a C program that Dune creates and runs behind the scenes. *)
   module Types = Types_generated
 
   module Functions (F : Ctypes.FOREIGN) = struct
@@ -192,13 +187,13 @@ demonstrates how to access the bound C library functions and values:
       Printf.eprintf "foo_init failed: %d" err_code;
   ;;
 
-From here, one only needs to run ``dune build ./foo.exe`` to generate the
-stubs and build and link the example ``foo.exe`` program.
+From here, one only needs to run ``dune build ./foo.exe`` to generate the stubs
+and build and link the example ``foo.exe`` program.
 
-Complete information about the ctypes combinators used above is available at
-the ctypes_ project.
+Complete information about the ``ctypes`` combinators used above is available
+at the ctypes_ project.
 
-Ctypes stanza reference
+Ctypes Stanza Reference
 ------------------------
 
 The ``ctypes`` stanza can be used in any ``executable(s)`` or ``library``
@@ -221,19 +216,18 @@ stanza.
       <optional-ctypes-fields>)
     )
 
-- ``type_description``: the ``functor`` module is a description of the C library
-  types and constants written in the ``ctypes`` domain-specific language you
-  wish to bind.  The ``instance`` module is the name the functor will be
-  instantiated under, inserted into the top-level of the
+- ``type_description``: the ``functor`` module is a description of the C
+  library types and constants written in the ``ctypes`` domain-specific
+  language you wish to bind. The ``instance`` module is the name of the
+  instantiated functor, inserted into the top-level of the
   ``generated_entry_point`` module.
 
 - ``function_description``: the ``functor`` module is a description of the C
   library functions written in the ``ctypes`` domain-specific language you wish
-  to bind.  The ``instance`` module is the name the functor will be
-  instantiated under, inserted into the top-level of the
-  ``generated_entry_point`` module. The ``function_description`` stanza can be
-  repeated. This is useful if you need to specify sets of functions with
-  different concurrency policies (see below).
+  to bind. The ``instance`` module is the name of the instantiated functor,
+  inserted into the top-level of the ``generated_entry_point`` module. The
+  ``function_description`` stanza can be repeated. This is useful if you need
+  to specify sets of functions with different concurrency policies (see below).
 
 The instantiated types described above can be accessed from the function
 descriptions by referencing them as the module specified in optional
@@ -241,15 +235,15 @@ descriptions by referencing them as the module specified in optional
 
 ``<optional-ctypes-fields>`` are:
 
-- ``(build_flags_resolver <pkg_config|vendored-stanza>)`` tells dune how to
-  compile and link your foreign library.  Specifying ``pkg_config`` will use
-  the ``pkg-config`` tool to query the compilation and link flags for
+- ``(build_flags_resolver <pkg_config|vendored-stanza>)`` tells Dune how to
+  compile and link your foreign library. Specifying ``pkg_config`` will use
+  the pkg-config_ tool to query the compilation and link flags for
   ``external_library_name``. For vendored libraries, provide the build and link
-  flags using ``vendored`` stanza.  If ``build_flags_resolver`` is not
+  flags using ``vendored`` stanza. If ``build_flags_resolver`` is not
   specified, the default of ``pkg_config`` will be used.
 
 - ``(generated_types <module-name>)`` is the name of an intermediate module. By
-  default it is named ``Types_generated``. You can use this module to access
+  default, it's named ``Types_generated``. You can use this module to access
   the types defined in ``Type_description`` from your ``Function_description``
   module(s).
 
@@ -259,8 +253,8 @@ descriptions by referencing them as the module specified in optional
 
 ``<optional-function-description-fields>`` are:
 
-- ``(concurrency <sequential|unlocked|lwt_jobs|lwt_preemptive>)`` tells ctypes
-  stubgen whether to call your C functions with the runtime lock held or
+- ``(concurrency <sequential|unlocked|lwt_jobs|lwt_preemptive>)`` tells ``ctypes
+  stubgen`` whether to call your C functions with the runtime lock held or
   released. These correspond to the ``concurrency_policy`` type in the
   ``ctypes`` library. If ``concurrency`` is not specified, the default of
   ``sequential`` will be used.
@@ -275,31 +269,31 @@ descriptions by referencing them as the module specified in optional
 
 .. _foreign-sandboxing:
 
-Foreign build sandboxing
+Foreign Build Sandboxing
 ========================
 
 When the build of a C library is too complicated to express in the
-Dune language, it is possible to simply *sandbox* a foreign
+Dune language, it's possible to simply *sandbox* a foreign
 build. Note that this method can be used to build other things, not
 just C libraries.
 
 To do that, follow the following procedure:
 
-- put all the foreign code in a sub-directory
-- tell Dune not to interpret configuration files in this directory via an
+- Put all the foreign code in a sub-directory
+- Tell Dune not to interpret configuration files in this directory via an
   :ref:`data_only_dirs <dune-data_only_dirs>` stanza
-- write a custom rule that:
+- Write a custom rule that:
 
   - depends on this directory recursively via :ref:`source_tree <source_tree>`
   - invokes the external build system
-- *attach* the C archive files to an OCaml library via :ref:`foreign-archives`.
+- *Attach* the C archive files to an OCaml library via :ref:`foreign-archives`.
 
 For instance, let's assume that you want to build a C library
 ``libfoo`` using ``libfoo``'s own build system and attach it to an
 OCaml library called ``foo``.
 
 The first step is to put the sources of ``libfoo`` in your project,
-for instance in ``src/libfoo``. Then tell dune to consider
+for instance in ``src/libfoo``. Then tell Dune to consider
 ``src/libfoo`` as raw data by writing the following in ``src/dune``:
 
 .. code:: scheme
@@ -323,11 +317,10 @@ writing the following code ``src/dune``:
 
 We copy the resulting archive files to the top directory where they can be
 declared as ``targets``. The build is done in a ``no-infer`` action because
-``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies produced by
-an external build system.
+``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies produced by an
+external build system.
 
-The last step is to attach these archives to an OCaml library as
-follows:
+The last step is to attach these archives to an OCaml library as follows:
 
 .. code:: scheme
 
@@ -335,7 +328,7 @@ follows:
     (name bar)
     (foreign_archives foo))
 
-Then, whenever you use the ``bar`` library, you will also be able to
+Then, whenever you use the ``bar`` library, you'll also be able to
 use C functions from ``libfoo``.
 
 Limitations
@@ -343,19 +336,18 @@ Limitations
 
 When using the sandboxing method, the following limitations apply:
 
-- the build of the foreign code will be sequential
-- the build of the foreign code won't be incremental
+- The build of the foreign code will be sequential
+- The build of the foreign code won't be incremental
 
-both these points could be improved. If you are interested in helping
-make this happen, please let the Dune team know and someone will guide
-you.
+Both these points could be improved. If you're interested in helping make this
+happen, please let the Dune team know and someone will guide you.
 
-Real example
+Real Example
 ------------
 
-The `re2 project <https://github.com/janestreet/re2>`_ uses this
-method to build the re2 C library. You can look at the file
-``re2/src/re2_c/dune`` in this project to see a full working
-example.
+The `re2 project <https://github.com/janestreet/re2>`_ uses this method to
+build the ``re2`` C library. You can look at the file ``re2/src/re2_c/dune`` in
+this project to see a full working example.
 
 .. _ctypes: https://github.com/ocamllabs/ocaml-ctypes
+.. _pkg-config: https://www.freedesktop.org/wiki/Software/pkg-config/

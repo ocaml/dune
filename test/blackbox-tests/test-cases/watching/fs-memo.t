@@ -40,9 +40,9 @@ directly and via its parent.
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "file-2": Skipped
   Updating dir_contents cache for "file-2": Skipped
-  Updating path_digest cache for ".": Skipped
-  Updating path_digest cache for "file-2": Skipped
-  Updating path_digest cache for "file-2": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "file-2": Skipped
+  Updating file_digest cache for "file-2": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "file-2": Skipped
   Updating path_stat cache for "file-2": Skipped
@@ -57,8 +57,8 @@ the glob remains unchanged.
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "dir": Skipped
-  Updating path_digest cache for ".": Skipped
-  Updating path_digest cache for "dir": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "dir": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "dir": Skipped
 
@@ -73,9 +73,9 @@ Again, duplicate events for [dir/file-3].
   Updating dir_contents cache for "dir": Updated { changed = true }
   Updating dir_contents cache for "dir/file-3": Skipped
   Updating dir_contents cache for "dir/file-3": Skipped
-  Updating path_digest cache for "dir": Skipped
-  Updating path_digest cache for "dir/file-3": Skipped
-  Updating path_digest cache for "dir/file-3": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir/file-3": Skipped
+  Updating file_digest cache for "dir/file-3": Skipped
   Updating path_stat cache for "dir": Updated { changed = false }
   Updating path_stat cache for "dir/file-3": Skipped
   Updating path_stat cache for "dir/file-3": Skipped
@@ -90,8 +90,8 @@ Again, duplicate events for [file-2].
   ------------------------------------------
   Updating dir_contents cache for "file-2": Skipped
   Updating dir_contents cache for "file-2": Skipped
-  Updating path_digest cache for "file-2": Updated { changed = false }
-  Updating path_digest cache for "file-2": Updated { changed = true }
+  Updating file_digest cache for "file-2": Updated { changed = false }
+  Updating file_digest cache for "file-2": Updated { changed = true }
   Updating path_stat cache for "file-2": Skipped
   Updating path_stat cache for "file-2": Skipped
 
@@ -105,8 +105,8 @@ On deletion of a file, we receive events for the file and the parent directory.
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "file-2": Skipped
-  Updating path_digest cache for ".": Skipped
-  Updating path_digest cache for "file-2": Updated { changed = true }
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "file-2": Updated { changed = true }
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "file-2": Skipped
 
@@ -127,12 +127,12 @@ we also receive an event about a file inside, which we propagate to the parent.
   Updating dir_contents cache for "dir/file-3": Skipped
   Updating dir_contents cache for "dir/file-3": Skipped
   Updating dir_contents cache for "file-3": Skipped
-  Updating path_digest cache for ".": Skipped
-  Updating path_digest cache for "dir": Skipped
-  Updating path_digest cache for "dir": Skipped
-  Updating path_digest cache for "dir/file-3": Updated { changed = false }
-  Updating path_digest cache for "dir/file-3": Updated { changed = true }
-  Updating path_digest cache for "file-3": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir/file-3": Updated { changed = false }
+  Updating file_digest cache for "dir/file-3": Updated { changed = true }
+  Updating file_digest cache for "file-3": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "dir": Updated { changed = false }
   Updating path_stat cache for "dir": Updated { changed = false }
@@ -147,8 +147,8 @@ we also receive an event about a file inside, which we propagate to the parent.
   ------------------------------------------
   Updating dir_contents cache for "dir": Updated { changed = true }
   Updating dir_contents cache for "dir/subdir": Skipped
-  Updating path_digest cache for "dir": Skipped
-  Updating path_digest cache for "dir/subdir": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir/subdir": Skipped
   Updating path_stat cache for "dir": Updated { changed = false }
   Updating path_stat cache for "dir/subdir": Skipped
 
@@ -163,9 +163,9 @@ Again, duplicate events for [file-4].
   Updating dir_contents cache for "dir/subdir": Updated { changed = true }
   Updating dir_contents cache for "dir/subdir/file-4": Skipped
   Updating dir_contents cache for "dir/subdir/file-4": Skipped
-  Updating path_digest cache for "dir/subdir": Skipped
-  Updating path_digest cache for "dir/subdir/file-4": Skipped
-  Updating path_digest cache for "dir/subdir/file-4": Skipped
+  Updating file_digest cache for "dir/subdir": Skipped
+  Updating file_digest cache for "dir/subdir/file-4": Skipped
+  Updating file_digest cache for "dir/subdir/file-4": Skipped
   Updating path_stat cache for "dir/subdir": Updated { changed = false }
   Updating path_stat cache for "dir/subdir/file-4": Skipped
   Updating path_stat cache for "dir/subdir/file-4": Skipped
@@ -183,12 +183,12 @@ Here we are getting duplicate events for directories [dir] and [dir/subdir].
   Updating dir_contents cache for "dir/subdir": Updated { changed = false }
   Updating dir_contents cache for "dir/subdir": Updated { changed = true }
   Updating dir_contents cache for "subdir": Skipped
-  Updating path_digest cache for ".": Skipped
-  Updating path_digest cache for "dir": Skipped
-  Updating path_digest cache for "dir": Skipped
-  Updating path_digest cache for "dir/subdir": Skipped
-  Updating path_digest cache for "dir/subdir": Skipped
-  Updating path_digest cache for "subdir": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir/subdir": Skipped
+  Updating file_digest cache for "dir/subdir": Skipped
+  Updating file_digest cache for "subdir": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "dir": Updated { changed = false }
   Updating path_stat cache for "dir": Updated { changed = false }
@@ -278,14 +278,14 @@ We receive three events for [file-1] when moving it within the same directory.
   Updating dir_contents cache for "file-1": Skipped
   Updating dir_contents cache for "file-5": Skipped
   Updating dir_contents cache for "file-5": Skipped
-  Updating path_digest cache for ".": Skipped
-  Updating path_digest cache for ".": Skipped
-  Updating path_digest cache for ".": Skipped
-  Updating path_digest cache for "file-1": Updated { changed = false }
-  Updating path_digest cache for "file-1": Updated { changed = false }
-  Updating path_digest cache for "file-1": Updated { changed = true }
-  Updating path_digest cache for "file-5": Skipped
-  Updating path_digest cache for "file-5": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "file-1": Updated { changed = false }
+  Updating file_digest cache for "file-1": Updated { changed = false }
+  Updating file_digest cache for "file-1": Updated { changed = true }
+  Updating file_digest cache for "file-5": Skipped
+  Updating file_digest cache for "file-5": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for ".": Updated { changed = false }

@@ -70,7 +70,7 @@ end
 module Untracked : sig
   val path_stat : (Reduced_stats.t, Unix_error.Detailed.t) result t
 
-  val path_digest : Cached_digest.Digest_result.t t
+  val file_digest : Cached_digest.Digest_result.t t
 
   val dir_contents : (Dir_contents.t, Unix_error.Detailed.t) result t
 end

@@ -117,19 +117,19 @@ Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 
   $ cat .#debug-output | grep dune-workspace
   Updating dir_contents cache for "dune-workspace": Skipped
-  Updating path_digest cache for "dune-workspace": Skipped
+  Updating file_digest cache for "dune-workspace": Skipped
   Updating path_stat cache for "dune-workspace": Updated { changed = false }
 
 Dune correctly notices that the contents of . changed because [d1] was created.
 
   $ cat .#debug-output | grep '"."'
   Updating dir_contents cache for ".": Updated { changed = true }
-  Updating path_digest cache for ".": Skipped
+  Updating file_digest cache for ".": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
 
 Here [path_stat] of [d1] changed, because it didn't exist before the build.
 
   $ cat .#debug-output | grep d1
   Updating dir_contents cache for "d1": Updated { changed = false }
-  Updating path_digest cache for "d1": Skipped
+  Updating file_digest cache for "d1": Skipped
   Updating path_stat cache for "d1": Updated { changed = true }

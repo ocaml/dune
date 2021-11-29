@@ -119,7 +119,8 @@ module Path_digest_result = struct
       Dune_filesystem_stubs.Unix_error.Detailed.equal x y
 end
 
-let path_with_stats path (stats : Stats_for_digest.t) : Path_digest_result.t =
+let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
+    Path_digest_result.t =
   match stats.st_kind with
   | S_REG ->
     let executable = stats.st_perm land 0o100 <> 0 in
@@ -127,11 +128,12 @@ let path_with_stats path (stats : Stats_for_digest.t) : Path_digest_result.t =
       (file_with_executable_bit ~executable)
       path
     |> Path_digest_result.of_result
-  | S_DIR ->
+  | S_DIR when allow_dirs ->
     (* CR-someday amokhov: The current digesting scheme has collisions for files
        and directories. It's unclear if this is actually a problem. If it turns
        out to be a problem, we should include [st_kind] into both digests. *)
     Ok (generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime))
+  | S_DIR
   | S_BLK
   | S_CHR
   | S_LNK

@@ -17,8 +17,21 @@ module Digest_result : sig
   val to_dyn : t -> Dyn.t
 end
 
-(** Digest the contents of a build artifact. *)
-val build_file : Path.Build.t -> Digest_result.t
+(** Digest the contents of a build artifact.
+
+    If [allow_dirs = false], this function returns [Unexpected_kind] if the path
+    points to a directory. *)
+val build_file : allow_dirs:bool -> Path.Build.t -> Digest_result.t
+
+(** Same as [build_file], but forces the digest of the file to be re-computed.
+
+    If [remove_write_permissions] is true, also remove write permissions on the
+    file. *)
+val refresh :
+     allow_dirs:bool
+  -> remove_write_permissions:bool
+  -> Path.Build.t
+  -> Digest_result.t
 
 module Untracked : sig
   (** Digest the contents of a source or external file. This function doesn't
@@ -29,12 +42,6 @@ module Untracked : sig
       [source_or_external_file] to incur an additional [stat] call. *)
   val invalidate_cached_timestamp : Path.t -> unit
 end
-
-(** Same as [build_file], but forces the digest of the file to be re-computed.
-
-    If [remove_write_permissions] is true, also remove write permissions on the
-    file. *)
-val refresh : Path.Build.t -> remove_write_permissions:bool -> Digest_result.t
 
 (** {1 Managing the cache} *)
 

@@ -43,7 +43,7 @@ end
 module Path_digest_result : sig
   type nonrec t =
     | Ok of t
-    | Unexpected_kind  (** Not a regular file or a directory *)
+    | Unexpected_kind
     | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
         (** A Unix error, e.g., [(ENOENT, _, _)] if the path doesn't exist. *)
 
@@ -55,9 +55,10 @@ end
     - If it's a regular file, the resulting digest includes the file's content
       as well as the its executable permissions bit.
 
-    - If it's a directory, the function attempts to do something sensible by
-      digesting [Stats_for_digest] (except for the [st_kind] field since it's
-      known to be [S_DIR] in this case).
+    - If it's a directory and [allow_dirs = true], the function computes the
+      digest of [Stats_for_digest] (except for the [st_kind] field since it's
+      known to be [S_DIR] in this case). This is a poor approach to computing
+      directory digests and we are planning to get rid of it soon.
 
     - Otherwise, the function returns [Unexpected_kind].
 
@@ -65,7 +66,8 @@ end
     may get stale, so [path_with_stats] may return [Unix_error (ENOENT, _, _)]
     even though you've just successfully run [Path.stat] on it. The call sites
     are expected to gracefully handle such races. *)
-val path_with_stats : Path.t -> Stats_for_digest.t -> Path_digest_result.t
+val path_with_stats :
+  allow_dirs:bool -> Path.t -> Stats_for_digest.t -> Path_digest_result.t
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)

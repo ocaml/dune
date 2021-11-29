@@ -100,15 +100,11 @@ val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit Memo.Build.t
 
 val produce : t -> unit Memo.Build.t
 
-val produce_opt : t option -> unit Memo.Build.t
-
 val is_subset : t -> of_:t -> bool
 
 val map_rules : t -> f:(Rule.t -> Rule.t) -> t
 
 val collect : (unit -> 'a Memo.Build.t) -> ('a * t) Memo.Build.t
-
-val collect_opt : (unit -> 'a Memo.Build.t) -> ('a * t option) Memo.Build.t
 
 val collect_unit : (unit -> unit Memo.Build.t) -> t Memo.Build.t
 

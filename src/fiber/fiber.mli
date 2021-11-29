@@ -1,5 +1,5 @@
 [@@@alert
-unstable "The Fiber API is not stabilized yet and might break without notice."]
+unstable "The API of this library is not stable and may change without notice."]
 
 [@@@alert "-unstable"]
 

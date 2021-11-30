@@ -14,4 +14,4 @@ val preprocessed_filename : string
 
 (** [get_flags c_compiler] returns the necessary flags to turn this compiler
     into a c++ compiler for some of the most common compilers *)
-val get_flags : for_:phase -> Path.Build.t -> string list Action_builder.t
+val get_flags : for_:phase -> Context.t -> string list Action_builder.t

@@ -177,7 +177,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         match Dune_project.use_standard_c_and_cxx_flags project with
         | Some true when Buildable.has_foreign_cxx exes.buildable ->
           let open Action_builder.O in
-          let+ flags = Cxx_flags.get_flags ~for_:Link dir in
+          let+ flags = Cxx_flags.get_flags ~for_:Link ctx in
           List.concat_map flags ~f:(fun f -> [ "-cclib"; f ])
         | _ -> Action_builder.return []
       in

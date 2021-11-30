@@ -17,16 +17,16 @@ Show what Dune watches via inotify
   $ dune shutdown
   $ wait
 
-The below pattern excludes absolute files as Dune currently watches
+The pattern below excludes absolute files as Dune currently watches
 everything in the PATH, which is not very reproducible.
 
   $ sed -nE 's/inotify_add_watch\([0-9]*, "([^/].*)", .*\) (=.*)/watch \1 \2/p' ../log
   watch _build/.sync = 1
-  watch dune-workspace = -1 ENOENT (No such file or directory)
   watch . = 2
-  watch dune-workspace = -1 ENOENT (No such file or directory)
+  watch . = 2
   watch . = 2
   watch src = 3
-  watch src/dune = 4
-  watch src/a.ml = 15
-  watch src/b.ml = 16
+  watch . = 2
+  watch src = 3
+  watch src = 3
+  watch src = 3

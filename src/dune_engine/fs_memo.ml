@@ -2,43 +2,59 @@ open! Stdune
 open! Import
 open Memo.Build.O
 
-(* A low-level interface for watching paths. It is the responsibility of the
-   caller of [watch] and [invalidate] functions to decide whether to watch a
-   path directly or do it via its parent. *)
+(* Watching and invalidating paths. *)
 module Watcher : sig
   val init : dune_file_watcher:Dune_file_watcher.t option -> Memo.Invalidation.t
 
-  val watch : Path.t -> unit Memo.Build.t
+  (* Watch a path. You should call this function *before* accessing the file
+     system to prevent possible races.
 
+     If [try_to_watch_via_parent = true], the watcher will attempt to watch the
+     path by watching its parent directory, falling back to watching the path
+     directly if there is no parent. This is an optimisation that allows us to
+     reduce the number of watched paths: typically, the number of directories is
+     a lot smaller than the number of files. *)
+  val watch : try_to_watch_via_parent:bool -> Path.t -> unit Memo.Build.t
+
+  (* Invalidate a path after receiving an event from the file watcher. *)
   val invalidate : Path.t -> Memo.Invalidation.t
 end = struct
+  (* A record of a call to [watch] made while the file watcher was missing. *)
+  type watch_record =
+    { path_to_watch : Path.t
+    ; path_to_invalidate : Path.t
+    }
+
+  (* CR-someday amokhov: We should try to simplify the initialisation of the
+     file watcher. We probably no longer need this complexity because we no
+     longer use an external process for file-watching. *)
+
   (* This module can be in three possible states:
 
-     - It starts in [Waiting_for_file_watcher], accumulating [paths_to_watch] to
-     pass them to the file watcher once it has been initialised.
+     - It starts in [Waiting_for_file_watcher], accumulating [watched_record]s
+     to pass them to the file watcher once it has been initialised.
 
      - If the file watcher turns out to be missing, the state [No_file_watcher]
-     is used to indicate that there is no need to accumulate [paths_to_watch].
+     is used to indicate that there is no need to accumulate [watched_record]s.
 
      - [File_watcher] holds [Dune_file_watcher.t] once it has been initialised
-     and all previously collected [paths_to_watch] have been passed to it. *)
+     and all previously collected [watched_record]s have been passed to it. *)
   type state =
-    | Waiting_for_file_watcher of { paths_to_watch : Path.t list }
+    | Waiting_for_file_watcher of watch_record list
     | No_file_watcher
     | File_watcher of Dune_file_watcher.t
 
-  (* Ideally this should be an [Fdecl], but there are currently two reasons why
-     it's not:
+  (* Ideally this should be an [Fdecl] instead of a mutable reference, but there
+     are currently two reasons why it's not:
 
      - We read the workspace file before the file watcher has been initialised,
-     so [init] is called after [state] is used. Hence, we accumulate
-     [paths_to_watch] to invalidate and start watching them when [init] is
-     called.
+     so [init] is called after [state] is used. We accumulate [watch_record]s to
+     invalidate and start watching them when [init] is finally called.
 
      - There are tests that call [Scheduler.go] multiple times, therefore [init]
-     gets called multiple times. Since these tests don't use the file watcher,
+     can be called multiple times. Since these tests don't use the file watcher,
      it shouldn't be a problem. *)
-  let state = ref (Waiting_for_file_watcher { paths_to_watch = [] })
+  let state = ref (Waiting_for_file_watcher [])
 
   (* CR-someday aalekseyev: For [watch_path] to work correctly we need to ensure
      that the parent directory of [path] exists. That's certainly not guaranteed
@@ -76,36 +92,50 @@ end = struct
       | Ok () ->
         ())
 
-  (* Files and directories have non-overlapping sets of paths, so we can track
-     them using the same memoization table. *)
-  let memo =
-    let watch_or_record_path path =
-      match !state with
-      | Waiting_for_file_watcher { paths_to_watch } ->
-        state :=
-          Waiting_for_file_watcher { paths_to_watch = path :: paths_to_watch }
-      | No_file_watcher -> ()
-      | File_watcher dune_file_watcher -> watch_path dune_file_watcher path
-    in
-    Memo.create "fs_memo"
-      ~input:(module Path)
-      (fun path ->
-        (* It may seem weird that we are adding a watch on every invalidation of
-           the cell. This is OK because [add_watch] is idempotent, in the sense
-           that we are not accumulating watches.
+  let watch_or_record_path ~path_to_watch ~accessed_path =
+    match !state with
+    | Waiting_for_file_watcher watch_records ->
+      state :=
+        Waiting_for_file_watcher
+          ({ path_to_watch; path_to_invalidate = accessed_path }
+          :: watch_records)
+    | No_file_watcher -> ()
+    | File_watcher dune_file_watcher ->
+      watch_path dune_file_watcher path_to_watch
 
-           In fact, if path disappears then we lose the watch and have to
-           re-establish it, so doing it on every computation is sometimes
-           necessary. *)
-        watch_or_record_path path;
+  (* This comment applies to both memoization tables below.
+
+     Files and directories have non-overlapping sets of paths, so we can track
+     them using the same memoization table.
+
+     It may seem weird that we are adding a watch on every invalidation of the
+     cell. This is OK because [add_watch] is idempotent, in the sense that we
+     are not accumulating watches. In fact, if a path disappears then we lose
+     the watch and have to re-establish it, so doing it on every computation is
+     sometimes necessary. *)
+  let memo_for_watching_directly =
+    Memo.create "fs_memo_for_watching_directly"
+      ~input:(module Path)
+      (fun accessed_path ->
+        watch_or_record_path ~path_to_watch:accessed_path ~accessed_path;
         Memo.Build.return ())
 
-  (* Watch a path. You should call this function *before* accessing the file
-     system to prevent possible races. *)
-  let watch path =
+  let memo_for_watching_via_parent =
+    Memo.create "fs_memo_for_watching_via_parent"
+      ~input:(module Path)
+      (fun accessed_path ->
+        let path_to_watch =
+          Option.value (Path.parent accessed_path) ~default:accessed_path
+        in
+        watch_or_record_path ~path_to_watch ~accessed_path;
+        Memo.Build.return ())
+
+  let watch ~try_to_watch_via_parent path =
     if Path.is_in_build_dir path then
       Code_error.raise "Fs_memo.Watcher.watch called on a build path" [];
-    Memo.exec memo path
+    match try_to_watch_via_parent with
+    | false -> Memo.exec memo_for_watching_directly path
+    | true -> Memo.exec memo_for_watching_via_parent path
 
   module Update_all = Monoid.Function (Path) (Fs_cache.Update_result)
 
@@ -128,18 +158,24 @@ end = struct
       ; update Fs_cache.Untracked.dir_contents
       ]
 
-  (* CR-someday amokhov: We use the same Memo table [memo] for tracking
-     different file-system operations. This saves us some memory, but leads to
-     recomputing more memoized functions than necessary. We could create a
-     separate Memo table for each [Fs_cache] operation, or even better use
-     [Fs_cache] tables in Memo directory, e.g. via [Memo.create_with_store]. *)
+  (* CR-someday amokhov: We share the same Memo tables for tracking different
+     file-system operations. This saves us some memory, but leads to recomputing
+     more memoized functions than necessary. We could create a separate table
+     for each [Fs_cache] operation, or even better use [Fs_cache] tables in Memo
+     directory, e.g. via [Memo.create_with_store]. *)
   let invalidate path =
     match update_all path with
     | Skipped
     | Updated { changed = false } ->
       Memo.Invalidation.empty
     | Updated { changed = true } ->
-      Memo.Cell.invalidate (Memo.cell memo path) ~reason:(Path_changed path)
+      Memo.Invalidation.combine
+        (Memo.Cell.invalidate
+           (Memo.cell memo_for_watching_directly path)
+           ~reason:(Path_changed path))
+        (Memo.Cell.invalidate
+           (Memo.cell memo_for_watching_via_parent path)
+           ~reason:(Path_changed path))
 
   let init ~dune_file_watcher =
     match !state with
@@ -159,13 +195,17 @@ end = struct
            already declared as missing"
           [];
       Memo.Invalidation.empty
-    | Waiting_for_file_watcher { paths_to_watch } ->
-      (match dune_file_watcher with
-      | None -> state := No_file_watcher
+    | Waiting_for_file_watcher watch_records -> (
+      match dune_file_watcher with
+      | None ->
+        state := No_file_watcher;
+        Memo.Invalidation.empty
       | Some watcher ->
         state := File_watcher watcher;
-        List.iter paths_to_watch ~f:(fun path -> watch_path watcher path));
-      Memo.Invalidation.reduce (List.map paths_to_watch ~f:invalidate)
+        Memo.Invalidation.map_reduce watch_records
+          ~f:(fun { path_to_watch; path_to_invalidate } ->
+            watch_path watcher path_to_watch;
+            invalidate path_to_invalidate))
 end
 
 (* This does two things, in this order:
@@ -181,11 +221,25 @@ end
 
    Currently, we do not expose this low-level primitive. If you need it, perhaps
    you could add a higher-level primitive instead, such as [file_exists]? *)
-let declaring_dependency path ~f =
-  let+ () = Watcher.watch path in
+let declaring_dependency ~try_to_watch_via_parent path ~f =
+  let+ () = Watcher.watch ~try_to_watch_via_parent path in
   f path
 
-let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
+let path_stat path =
+  declaring_dependency ~try_to_watch_via_parent:true path
+    ~f:Fs_cache.(read Untracked.path_stat)
+  >>= function
+  | Ok { st_dev = _; st_ino = _; st_kind } as result when st_kind = S_DIR ->
+    (* If [path] turned out to be a directory, we conservatively watch it
+       directly too, because its stats may change in a way that doesn't trigger
+       an event in the parent. We probably don't care about such changes for now
+       because they correspond to the fields that are not into [Reduced_stats].
+       Still, to safeguard against future changes to [Reduced_stats], we watch
+       the [path] directly. It doesn't cost us much since we would likely end up
+       watching this directory anyway because of watching the files inside. *)
+    let+ () = Watcher.watch ~try_to_watch_via_parent:false path in
+    result
+  | result -> Memo.Build.return result
 
 (* We currently implement [file_exists] and [dir_exists] functions by calling
    [Fs_cache.path_stat] instead of creating separate [Fs_cache] primitives. Here
@@ -206,17 +260,13 @@ let path_stat = declaring_dependency ~f:Fs_cache.(read Untracked.path_stat)
    - Having a smaller number of primitives in [Fs_cache] is better because it
    makes it easier to think about reasons for restarting the current build and
    avoids unnecessary cache tables in [Fs_cache]. *)
-let path_kind =
-  declaring_dependency
-    ~f:
-      Fs_cache.(
-        fun path ->
-          read Untracked.path_stat path |> function
-          (* If the set of ignored fields below changes, it may be necessary to
-             introduce a separate [Fs_cache.path_kind] primitive to avoid
-             unnecessary restarts. *)
-          | Ok { st_dev = _; st_ino = _; st_kind } -> Ok st_kind
-          | Error _ as error -> error)
+let path_kind path =
+  path_stat path >>| function
+  (* If the set of ignored fields below changes, it may be necessary to
+     introduce a separate [Fs_cache.path_kind] primitive to avoid unnecessary
+     restarts. *)
+  | Ok { st_dev = _; st_ino = _; st_kind } -> Ok st_kind
+  | Error _ as error -> error
 
 let file_exists path =
   path_kind path >>| function
@@ -239,18 +289,20 @@ let file_digest ?(force_update = false) path =
     Cached_digest.Untracked.invalidate_cached_timestamp path;
     Fs_cache.evict Fs_cache.Untracked.file_digest path
   );
-  declaring_dependency path ~f:Fs_cache.(read Untracked.file_digest)
+  declaring_dependency ~try_to_watch_via_parent:true path
+    ~f:Fs_cache.(read Untracked.file_digest)
 
 let dir_contents ?(force_update = false) path =
   if force_update then Fs_cache.evict Fs_cache.Untracked.dir_contents path;
-  declaring_dependency path ~f:Fs_cache.(read Untracked.dir_contents)
+  declaring_dependency ~try_to_watch_via_parent:false path
+    ~f:Fs_cache.(read Untracked.dir_contents)
 
 (* CR-someday amokhov: For now, we do not cache the result of this operation
    because the result's type depends on [f]. There are only two call sites of
    this function, so perhaps we could just replace this more general function
    with two simpler one that can be cached independently. *)
 let with_lexbuf_from_file path ~f =
-  declaring_dependency path ~f:(fun path ->
+  declaring_dependency ~try_to_watch_via_parent:true path ~f:(fun path ->
       (* This is a bit of a hack. By reading [file_digest], we cause the [path]
          to be recorded in the [Fs_cache.Untracked.file_digest], so the build
          will be restarted if the digest changes. *)

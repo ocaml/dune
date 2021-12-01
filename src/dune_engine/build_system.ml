@@ -352,7 +352,7 @@ end = struct
             | None ->
               (* Directory targets are not allowed for non-sandboxed actions, so
                  the call below should not raise. *)
-              Targets.Produced.of_validated_files targets ~on_dir_target:`Raise
+              Targets.Produced.of_validated_files_exn targets
             | Some sandbox ->
               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)

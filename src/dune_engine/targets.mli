@@ -72,10 +72,13 @@ module Produced : sig
     ; dirs : 'a String.Map.t Path.Build.Map.t
     }
 
-  (** Returns the given [targets : Validated.t]. Raises a code error if
-      [on_dir_target = `Raise] and [targets.dir] is non-empty. *)
-  val of_validated_files :
-    Validated.t -> on_dir_target:[< `Ignore | `Raise ] -> unit t
+  (** Expand [targets : Validated.t] by recursively traversing directory targets
+      and collecting all contained files. *)
+  val of_validated : Validated.t -> (unit t, Unix_error.Detailed.t) result
+
+  (** Return [targets : Validated.t] with the empty map of [dirs]. Raises a code
+      error if [targets.dir] is not empty. *)
+  val of_validated_files_exn : Validated.t -> unit t
 
   (** Populates only the [files] field, leaving [dirs] empty. Raises a code
       error if the list contains duplicates. *)

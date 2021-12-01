@@ -34,6 +34,9 @@ module type S = sig
 
   val union : 'a t -> 'a t -> f:(key -> 'a -> 'a -> 'a option) -> 'a t
 
+  (** Like [union] but raises a code error if a key appears in both maps. *)
+  val union_exn : 'a t -> 'a t -> 'a t
+
   (** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
   val superpose : 'a t -> 'a t -> 'a t
 

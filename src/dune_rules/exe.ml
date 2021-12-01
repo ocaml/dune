@@ -277,8 +277,7 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
 let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
     ~programs ~linkages ~promote cctx =
   let open Memo.Build.O in
-  let modules = Compilation_context.modules cctx in
-  let* dep_graphs = Dep_rules.rules cctx ~modules in
+  let* dep_graphs = Dep_rules.rules cctx in
   let* () = Module_compilation.build_all cctx ~dep_graphs in
   link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox ~dep_graphs
     ~programs ~linkages ~promote cctx

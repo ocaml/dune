@@ -116,7 +116,8 @@ let dict_of_func_concurrently f =
 let for_module cctx module_ =
   dict_of_func_concurrently (deps_of cctx (Normal module_))
 
-let rules cctx ~modules =
+let rules cctx =
+  let modules = Compilation_context.modules cctx in
   match Modules.as_singleton modules with
   | Some m -> Memo.Build.return (Dep_graph.Ml_kind.dummy m)
   | None ->

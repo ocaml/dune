@@ -226,9 +226,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
          run bits from [Exe.build_and_link_many] and run them here, then pass
          that to the [Exe.link_many] call here as well as the Ctypes_rules. This
          dance is done to avoid triggering duplicate rule exceptions. *)
-      let* dep_graphs =
-        Dep_rules.rules cctx ~modules:(Compilation_context.modules cctx)
-      in
+      let* dep_graphs = Dep_rules.rules cctx in
       let* () =
         let loc = fst (List.hd exes.Executables.names) in
         Ctypes_rules.gen_rules ~dep_graphs ~cctx ~buildable ~loc ~sctx ~scope

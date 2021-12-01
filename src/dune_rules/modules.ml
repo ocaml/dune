@@ -453,6 +453,8 @@ module Old_format = struct
              [ Pp.text "Cannot wrap without main module name or alias module" ]))
 end
 
+let singleton m = Singleton m
+
 let decode ~version ~src_dir ~implements =
   if version <= (1, 10) then
     Old_format.decode ~implements ~src_dir

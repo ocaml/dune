@@ -47,7 +47,7 @@ let copy_interface ~sctx ~dir ~obj_dir m =
            ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
 
-let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
+let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let sctx = CC.super_context cctx in
   let dir = CC.dir cctx in
   let obj_dir = CC.obj_dir cctx in
@@ -119,7 +119,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     | Cmo ->
       other_targets
   in
-  let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
+  let dep_graph = Ml_kind.Dict.get (CC.dep_graphs cctx) ml_kind in
   let opaque = CC.opaque cctx in
   let other_cm_files =
     Action_builder.dyn_paths_unit
@@ -210,10 +210,9 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     >>| Action.Full.add_sandbox sandbox))
   |> Memo.Build.Option.iter ~f:Fun.id
 
-let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
+let build_module ?(precompiled_cmi = false) cctx m =
   let open Memo.Build.O in
-  let* () =
-    build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo ~phase:None
+  let* () = build_cm cctx m ~precompiled_cmi ~cm_kind:Cmo ~phase:None
   and* () =
     let ctx = CC.context cctx in
     let can_split =
@@ -221,20 +220,16 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
       || Ocaml_config.is_dev_version ctx.ocaml_config
     in
     match (ctx.fdo_target_exe, can_split) with
-    | None, _ ->
-      build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx ~phase:None
+    | None, _ -> build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:None
     | Some _, false ->
-      build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
-        ~phase:(Some Fdo.All)
+      build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some Fdo.All)
     | Some _, true ->
-      build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
-        ~phase:(Some Fdo.Compile)
+      build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some Fdo.Compile)
       >>> Fdo.opt_rule cctx m
-      >>> build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
-            ~phase:(Some Fdo.Emit)
+      >>> build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some Fdo.Emit)
   and* () =
     Memo.Build.when_ (not precompiled_cmi) (fun () ->
-        build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmi ~phase:None)
+        build_cm cctx m ~precompiled_cmi ~cm_kind:Cmi ~phase:None)
   in
   let obj_dir = CC.obj_dir cctx in
   match Obj_dir.Module.cm_file obj_dir m ~kind:Cm_kind.Cmo with
@@ -320,7 +315,8 @@ let alias_source modules =
            (alias name obj_name_as_module))
   |> String.concat ~sep:"\n\n"
 
-let build_alias_module ~alias_module ~cctx =
+let build_alias_module cctx alias_module =
+  let cctx = Compilation_context.for_alias_module cctx alias_module in
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
   let modules = Compilation_context.modules cctx in
@@ -332,9 +328,8 @@ let build_alias_module ~alias_module ~cctx =
       (Action_builder.delayed alias_file
       |> Action_builder.write_file_dyn (Path.as_in_build_dir_exn file))
   in
-  let cctx = Compilation_context.for_alias_module cctx in
+  let cctx = Compilation_context.for_alias_module cctx alias_module in
   build_module cctx alias_module
-    ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)
 
 let root_source entries =
   let b = Buffer.create 128 in
@@ -344,7 +339,8 @@ let root_source entries =
         (Module_name.to_string name));
   Buffer.contents b
 
-let build_root_module root_module ~get_entries ~cctx =
+let build_root_module cctx root_module =
+  let cctx = Compilation_context.for_root_module cctx root_module in
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in
   let dir = Compilation_context.dir cctx in
@@ -354,39 +350,33 @@ let build_root_module root_module ~get_entries ~cctx =
       (let target = Path.as_in_build_dir_exn file in
        Action_builder.write_file_dyn target
          (let open Action_builder.O in
-         let+ entries = get_entries () in
+         let+ entries = Compilation_context.root_module_entries cctx in
          root_source entries))
   in
   build_module cctx root_module
-    ~dep_graphs:(Dep_graph.Ml_kind.dummy root_module)
 
-let build_all cctx ~dep_graphs =
+let build_all cctx =
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Memo.Build.parallel_iter
     (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
     ~f:(fun m ->
       match Module.kind m with
-      | Root ->
-        let cctx = Compilation_context.for_root_module cctx in
-        let get_entries () = Compilation_context.root_module_entries cctx in
-        build_root_module m ~get_entries ~cctx
-      | Alias ->
-        let cctx = Compilation_context.for_alias_module cctx in
-        build_alias_module ~alias_module:m ~cctx
+      | Root -> build_root_module cctx m
+      | Alias -> build_alias_module cctx m
       | Wrapped_compat ->
         let cctx = Lazy.force for_wrapped_compat in
-        build_module cctx ~dep_graphs m
+        build_module cctx m
       | _ ->
         let cctx =
           if Modules.is_stdlib_alias modules m then
             (* XXX it would probably be simpler if the flags were just for this
                module in the definition of the stanza *)
-            Compilation_context.for_alias_module cctx
+            Compilation_context.for_alias_module cctx m
           else
             cctx
         in
-        build_module cctx ~dep_graphs m)
+        build_module cctx m)
 
 let with_empty_intf ~sctx ~dir module_ =
   let name =

@@ -422,7 +422,8 @@ let program_of_module_and_dir ~dir program =
 
 let exe_build_and_link ?libraries ?(modules = []) ~scope ~loc ~dir ~cctx program
     =
-  let cctx =
+  let open Memo.Build.O in
+  let* cctx =
     cctx_with_substitutions ?libraries ~loc ~scope ~dir ~cctx
       ~modules:(program :: modules) ()
   in
@@ -430,10 +431,10 @@ let exe_build_and_link ?libraries ?(modules = []) ~scope ~loc ~dir ~cctx program
   Exe.build_and_link ~program ~linkages:[ Exe.Linkage.native ] ~promote:None
     cctx
 
-let exe_link_only ~dir ~shared_cctx ~dep_graphs program =
+let exe_link_only ~dir ~shared_cctx program =
   let program = program_of_module_and_dir ~dir program in
   Exe.link_many ~programs:[ program ] ~linkages:[ Exe.Linkage.native ]
-    ~dep_graphs ~promote:None shared_cctx
+    ~promote:None shared_cctx
 
 let write_osl_to_sexp_file ~sctx ~dir ~filename osl =
   let build =
@@ -462,7 +463,7 @@ let rec memo_build_list_iter lst ~f =
     let* () = f x in
     memo_build_list_iter tl ~f
 
-let gen_rules ~dep_graphs ~cctx ~buildable ~loc ~scope ~dir ~sctx =
+let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   let ctypes = Option.value_exn buildable.Buildable.ctypes in
   let external_library_name = ctypes.Ctypes.external_library_name in
   let type_description_functor = Stanza_util.type_description_functor ctypes in
@@ -509,7 +510,7 @@ let gen_rules ~dep_graphs ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   in
   let generated_entry_module = Stanza_util.entry_module ctypes in
   let headers = ctypes.Ctypes.headers in
-  let exe_link_only = exe_link_only ~dir ~shared_cctx:cctx ~dep_graphs in
+  let exe_link_only = exe_link_only ~dir ~shared_cctx:cctx in
   (* Type_gen produces a .c file, taking your type description module above as
      an input. The .c file is compiled into an .exe. The .exe, when run produces
      an .ml file. The .ml file is compiled into a module that will have the

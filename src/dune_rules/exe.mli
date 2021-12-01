@@ -52,7 +52,6 @@ val link_many :
   -> ?o_files:Path.t list
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
-  -> dep_graphs:Dep_graph.t Import.Ml_kind.Dict.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option

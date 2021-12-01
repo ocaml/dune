@@ -292,7 +292,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
                ]
           :: dummy))
 
-let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
+let setup_library_odoc_rules cctx (library : Library.t) =
   let open Memo.Build.O in
   let* lib =
     let scope = Compilation_context.scope cctx in
@@ -318,7 +318,9 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let modules_and_odoc_files =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
         let compiled =
-          compile_module sctx ~includes ~dep_graphs ~obj_dir ~pkg_or_lnu m
+          compile_module sctx ~includes
+            ~dep_graphs:(Compilation_context.dep_graphs cctx)
+            ~obj_dir ~pkg_or_lnu m
         in
         compiled :: acc)
   in

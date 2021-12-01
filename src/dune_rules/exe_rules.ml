@@ -146,7 +146,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let explicit_js_mode = Dune_project.explicit_js_mode project in
   let linkages = linkages ctx ~exes ~explicit_js_mode in
   let* flags = Super_context.ocaml_flags sctx ~dir exes.buildable.flags in
-  let cctx =
+  let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let js_of_ocaml =
@@ -226,14 +226,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
          run bits from [Exe.build_and_link_many] and run them here, then pass
          that to the [Exe.link_many] call here as well as the Ctypes_rules. This
          dance is done to avoid triggering duplicate rule exceptions. *)
-      let* dep_graphs = Dep_rules.rules cctx in
       let* () =
         let loc = fst (List.hd exes.Executables.names) in
-        Ctypes_rules.gen_rules ~dep_graphs ~cctx ~buildable ~loc ~sctx ~scope
-          ~dir
+        Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
       in
-      let* () = Module_compilation.build_all cctx ~dep_graphs in
-      Exe.link_many ~programs ~dep_graphs ~linkages ~link_args ~o_files
+      let* () = Module_compilation.build_all cctx in
+      Exe.link_many ~programs ~linkages ~link_args ~o_files
         ~promote:exes.promote ~embed_in_plugin_libraries cctx ~sandbox
   in
   ( cctx

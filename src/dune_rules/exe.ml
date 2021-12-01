@@ -240,8 +240,7 @@ let link_js ~name ~cm_files ~promote ~link_time_code_gen cctx =
     ~link_time_code_gen:other_cm
 
 let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
-    ~dep_graphs ~programs ~linkages ~promote cctx =
-  let dep_graphs : Dep_graph.t Ml_kind.Dict.t = dep_graphs in
+    ~programs ~linkages ~promote cctx =
   let open Memo.Build.O in
   let modules = Compilation_context.modules cctx in
   let* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
@@ -253,7 +252,8 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
         let obj_dir = CC.obj_dir cctx in
         let top_sorted_modules =
           let main = Option.value_exn (Modules.find modules main_module_name) in
-          Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
+          Dep_graph.top_closed_implementations (CC.dep_graphs cctx).impl
+            [ main ]
         in
         Cm_files.make ~obj_dir ~modules ~top_sorted_modules
           ~ext_obj:ctx.lib_config.ext_obj ()
@@ -277,10 +277,9 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
 let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
     ~programs ~linkages ~promote cctx =
   let open Memo.Build.O in
-  let* dep_graphs = Dep_rules.rules cctx in
-  let* () = Module_compilation.build_all cctx ~dep_graphs in
-  link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox ~dep_graphs
-    ~programs ~linkages ~promote cctx
+  let* () = Module_compilation.build_all cctx in
+  link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox ~programs
+    ~linkages ~promote cctx
 
 let build_and_link ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
     ~program ~linkages ~promote cctx =

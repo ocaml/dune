@@ -180,7 +180,7 @@ module Stanza = struct
         [ "-w"; "-24" ]
     in
     let* modules = Source.modules source preprocessing in
-    let cctx =
+    let* cctx =
       Compilation_context.create () ~super_context:sctx ~scope ~obj_dir
         ~expander ~modules ~opaque:(Explicit false) ~requires_compile
         ~requires_link ~flags ~js_of_ocaml:None ~package:None ~preprocessing

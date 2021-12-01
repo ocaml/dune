@@ -5,8 +5,7 @@ open Import
 
 (** Setup rules to build a single module.*)
 val build_module :
-     dep_graphs:Dep_graph.Ml_kind.t
-  -> ?precompiled_cmi:bool
+     ?precompiled_cmi:bool
   -> Compilation_context.t
   -> Module.t
   -> unit Memo.Build.t
@@ -19,8 +18,7 @@ val ocamlc_i :
   -> output:Path.Build.t
   -> unit Memo.Build.t
 
-val build_all :
-  Compilation_context.t -> dep_graphs:Dep_graph.Ml_kind.t -> unit Memo.Build.t
+val build_all : Compilation_context.t -> unit Memo.Build.t
 
 val with_empty_intf :
   sctx:Super_context.t -> dir:Path.Build.t -> Module.t -> Module.t Memo.Build.t

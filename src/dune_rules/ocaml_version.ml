@@ -20,11 +20,7 @@ let supports_response_file version = version >= (4, 05, 0)
 
 let ocamlmklib_supports_response_file version = version >= (4, 08, 0)
 
-let stdlib_includes_uchar version = version >= (4, 03, 0)
-
 let stdlib_includes_bigarray version = version >= (4, 07, 0)
-
-let stdlib_includes_seq version = version >= (4, 07, 0)
 
 let ooi_supports_no_approx version = version >= (4, 05, 0)
 

@@ -232,8 +232,6 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   in
   let dynlink = simple "dynlink" [] ~dir:"+" in
   let bytes = dummy "bytes" in
-  let uchar = dummy "uchar" in
-  let seq = dummy "seq" in
   let threads =
     { name = Some (Lib_name.of_string "threads")
     ; entries =
@@ -278,14 +276,6 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     in
     let base =
       if Ocaml_version.has_bigarray_library ocaml_version then bigarray :: base
-      else base
-    in
-    let base =
-      if Ocaml_version.stdlib_includes_uchar ocaml_version then uchar :: base
-      else base
-    in
-    let base =
-      if Ocaml_version.stdlib_includes_seq ocaml_version then seq :: base
       else base
     in
     let base =

@@ -27,7 +27,6 @@ module Map = Map
 module Option = Option
 module Or_exn = Or_exn
 module Ordering = Ordering
-module Pp = Pp
 module Result = Result
 module Set = Set
 module Signal = Signal
@@ -86,6 +85,13 @@ module Unix_error = struct
         ; ("arg", String arg)
         ]
   end
+end
+
+module Pp = struct
+  include Pp
+
+  let error ?prefix unix_error =
+    Pp.verbatim (Unix_error.Detailed.to_string_hum ?prefix unix_error)
 end
 
 module File_kind = struct

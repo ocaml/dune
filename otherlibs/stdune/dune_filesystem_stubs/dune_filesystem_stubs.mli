@@ -18,7 +18,7 @@ module Unix_error : sig
 
     val equal : t -> t -> bool
 
-    val to_string : t -> string
+    val to_string_hum : ?prefix:string -> t -> string
   end
 end
 

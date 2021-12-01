@@ -77,7 +77,7 @@ module Execution_context : sig
 
     val start : 'a fiber -> 'a step
 
-    val advance : 'a stalled -> 'a step
+    val advance : 'a stalled -> f:(unit -> unit) -> 'a step
   end
 
   val run : 'a t -> iter:(unit -> unit) -> 'a
@@ -255,7 +255,10 @@ end = struct
           apply (fun () -> fiber) () (fun x -> state.result <- Some x);
           do_step state)
 
-    let advance state = with_context state.context ~f:(fun () -> do_step state)
+    let advance state ~f =
+      with_context state.context ~f:(fun () ->
+          f ();
+          do_step state)
   end
 
   let run fiber ~iter =
@@ -976,7 +979,5 @@ let run t ~iter = EC.run t ~iter:(fun () -> iter () |> execute_fills)
 module Scheduler = struct
   include EC.Scheduler
 
-  let advance stalled fills =
-    execute_fills fills;
-    advance stalled
+  let advance stalled fills = advance stalled ~f:(fun () -> execute_fills fills)
 end

@@ -66,12 +66,10 @@ let get_dir_triage ~dir =
          (Non_build
             (match Path.Untracked.readdir_unsorted dir with
             | Error (Unix.ENOENT, _, _) -> Path.Set.empty
-            | Error (e, _syscall, _arg) ->
-              (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
-                 debugging. *)
+            | Error unix_error ->
               User_warning.emit
                 [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-                ; Pp.textf "Reason: %s" (Unix.error_message e)
+                ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
                 ];
               Path.Set.empty
             | Ok filenames -> Path.Set.of_listing ~dir ~filenames))

@@ -65,8 +65,9 @@ let resolve_package_install workspace pkg =
 
 let print_unix_error f =
   try f () with
-  | Unix.Unix_error (e, _, _) ->
-    User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
+  | Unix.Unix_error (error, syscall, arg) ->
+    let error = Unix_error.Detailed.create error ~syscall ~arg in
+    User_message.prerr (User_error.make [ Unix_error.Detailed.pp error ])
 
 module Special_file = struct
   type t =

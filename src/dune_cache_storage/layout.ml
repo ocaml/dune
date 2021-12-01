@@ -46,9 +46,7 @@ let list_entries ~storage =
   match Path.readdir_unsorted storage >>= Result.List.concat_map ~f:entries with
   | Ok res -> res
   | Error (ENOENT, _, _) -> []
-  | Error (e, _syscall, _arg) ->
-    (* CR-someday amokhov: Print [_syscall] and [_arg] too to help debugging. *)
-    User_error.raise [ Pp.text (Unix.error_message e) ]
+  | Error unix_error -> User_error.raise [ Unix_error.Detailed.pp unix_error ]
 
 module Versioned = struct
   let metadata_storage_dir t = root_dir / "meta" / Version.Metadata.to_string t

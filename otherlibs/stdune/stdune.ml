@@ -85,6 +85,9 @@ module Unix_error = struct
         ; ("syscall", String syscall)
         ; ("arg", String arg)
         ]
+
+    let pp ?(prefix = "") unix_error =
+      Pp.verbatim (prefix ^ to_string_hum unix_error)
   end
 end
 

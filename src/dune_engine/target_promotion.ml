@@ -134,8 +134,7 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
         let extra_messages =
           match unix_error with
           | None -> []
-          | Some error ->
-            [ Pp.textf "Reason: %s." (Unix_error.Detailed.to_string error) ]
+          | Some error -> [ Unix_error.Detailed.pp ~prefix:"Reason: " error ]
         in
         User_error.raise ~loc
           (msg (Path.Source.to_string into_dir) :: extra_messages)
@@ -158,8 +157,7 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
     let msgs =
       match unix_error with
       | None -> msgs
-      | Some error ->
-        Pp.textf "Reason: %s." (Unix_error.Detailed.to_string error) :: msgs
+      | Some error -> Unix_error.Detailed.pp ~prefix:"Reason: " error :: msgs
     in
     User_error.raise
       (Pp.textf "Cannot promote files to %S." (Path.to_string dst_dir) :: msgs)

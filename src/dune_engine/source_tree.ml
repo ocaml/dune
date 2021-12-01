@@ -163,9 +163,7 @@ end = struct
 
   let of_source_path_impl path =
     Fs_memo.dir_contents (Path.source path) >>= function
-    | Error ((unix_error, _syscall, _arg) as detailed_unix_error) ->
-      (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
-         debugging. *)
+    | Error unix_error ->
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
             (Path.Source.to_string_maybe_quoted path)
@@ -176,9 +174,9 @@ end = struct
                (Path.Source.relative
                   (Path.Source.parent_exn path)
                   Dune_file.fname))
-        ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
+        ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
         ];
-      Memo.Build.return (Error detailed_unix_error)
+      Memo.Build.return (Error unix_error)
     | Ok dir_contents ->
       let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
       let+ files, dirs =
@@ -535,20 +533,17 @@ end = struct
   let root () =
     let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
-    let error_unable_to_load ~path error =
+    let error_unable_to_load ~path unix_error =
       User_error.raise
-        [ Pp.textf "Unable to load source %s.@.Reason:%s@."
+        [ Pp.textf "Unable to load source %s."
             (Path.Source.to_string_maybe_quoted path)
-            (Unix.error_message error)
+        ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
         ]
     in
     let* readdir =
       Readdir.of_source_path path >>| function
       | Ok dir -> dir
-      | Error (e, _syscall, _arg) ->
-        (* CR-someday amokhov: Print [_syscall] and [_arg] too to help
-           debugging. *)
-        error_unable_to_load ~path e
+      | Error unix_error -> error_unable_to_load ~path unix_error
     in
     let project =
       match
@@ -563,7 +558,7 @@ end = struct
     let* dirs_visited =
       File.of_source_path path >>| function
       | Ok file -> Dirs_visited.singleton path file
-      | Error (e, _, _) -> error_unable_to_load ~path e
+      | Error unix_error -> error_unable_to_load ~path unix_error
     in
     let+ contents, visited =
       contents readdir ~dirs_visited ~project ~dir_status

@@ -509,9 +509,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
     let* cctx =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info
     in
-    let* dep_graphs =
-      Dep_rules.rules cctx ~modules:(Compilation_context.modules cctx)
-    in
+    let* dep_graphs = Dep_rules.rules cctx in
     let* () =
       let buildable = lib.Library.buildable in
       match buildable.Buildable.ctypes with

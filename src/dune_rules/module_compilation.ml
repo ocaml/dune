@@ -316,11 +316,11 @@ let alias_source modules =
   |> String.concat ~sep:"\n\n"
 
 let build_alias_module cctx alias_module =
+  let modules = Compilation_context.modules cctx in
+  let alias_file () = alias_source modules in
   let cctx = Compilation_context.for_alias_module cctx alias_module in
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
-  let modules = Compilation_context.modules cctx in
-  let alias_file () = alias_source modules in
   let dir = Compilation_context.dir cctx in
   let open Memo.Build.O in
   let* () =
@@ -340,6 +340,7 @@ let root_source entries =
   Buffer.contents b
 
 let build_root_module cctx root_module =
+  let entries = Compilation_context.root_module_entries cctx in
   let cctx = Compilation_context.for_root_module cctx root_module in
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in
@@ -350,7 +351,7 @@ let build_root_module cctx root_module =
       (let target = Path.as_in_build_dir_exn file in
        Action_builder.write_file_dyn target
          (let open Action_builder.O in
-         let+ entries = Compilation_context.root_module_entries cctx in
+         let+ entries = entries in
          root_source entries))
   in
   build_module cctx root_module

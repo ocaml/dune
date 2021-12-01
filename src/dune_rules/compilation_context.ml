@@ -53,12 +53,20 @@ let eval_opaque (context : Context.t) = function
     Profile.is_dev context.profile
     && Ocaml_version.supports_opaque_for_mli context.version
 
+type modules =
+  { modules : Modules.t
+  ; dep_graphs : Dep_graph.t Ml_kind.Dict.t
+  }
+
+let singleton_modules m =
+  { modules = Modules.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
+
 type t =
   { super_context : Super_context.t
   ; scope : Scope.t
   ; expander : Expander.t
   ; obj_dir : Path.Build.t Obj_dir.t
-  ; modules : Modules.t
+  ; modules : modules
   ; flags : Ocaml_flags.t
   ; requires_compile : Lib.t list Resolve.Build.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
@@ -73,7 +81,6 @@ type t =
   ; modes : Mode.Dict.Set.t
   ; bin_annot : bool
   ; ocamldep_modules_data : Ocamldep.Modules_data.t
-  ; dep_graphs : Dep_graph.t Ml_kind.Dict.t
   }
 
 let super_context t = t.super_context
@@ -86,7 +93,7 @@ let dir t = Obj_dir.dir t.obj_dir
 
 let obj_dir t = t.obj_dir
 
-let modules t = t.modules
+let modules t = t.modules.modules
 
 let flags t = t.flags
 
@@ -120,7 +127,7 @@ let context t = Super_context.context t.super_context
 
 let ocamldep_modules_data t = t.ocamldep_modules_data
 
-let dep_graphs t = t.dep_graphs
+let dep_graphs t = t.modules.dep_graphs
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
@@ -162,7 +169,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; scope
   ; expander
   ; obj_dir
-  ; modules
+  ; modules = { modules; dep_graphs }
   ; flags
   ; requires_compile
   ; requires_link
@@ -176,7 +183,6 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; vimpl
   ; modes
   ; bin_annot
-  ; dep_graphs
   ; ocamldep_modules_data
   }
 
@@ -197,6 +203,16 @@ let for_alias_module t alias_module =
     else
       Sandbox_config.no_special_requirements
   in
+  let modules : modules =
+    match Modules.is_stdlib_alias t.modules.modules alias_module with
+    | false -> singleton_modules alias_module
+    | true ->
+      (* The stdlib alias module is different from the alias modules usually
+         produced by Dune: it contains code and depends on a few other
+         [CamlinnternalXXX] modules from the stdlib, so we need the full set of
+         modules to compile it. *)
+      t.modules
+  in
   { t with
     flags =
       Ocaml_flags.append_common flags
@@ -204,11 +220,7 @@ let for_alias_module t alias_module =
   ; includes = Includes.empty
   ; stdlib = None
   ; sandbox
-  ; dep_graphs =
-      (if Modules.is_stdlib_alias t.modules alias_module then
-        t.dep_graphs
-      else
-        Dep_graph.Ml_kind.dummy alias_module)
+  ; modules
   }
 
 let for_root_module t root_module =
@@ -223,7 +235,7 @@ let for_root_module t root_module =
       Ocaml_flags.append_common flags
         [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ]
   ; stdlib = None
-  ; dep_graphs = Dep_graph.Ml_kind.dummy root_module
+  ; modules = singleton_modules root_module
   }
 
 let for_module_generated_at_link_time cctx ~requires ~module_ =
@@ -233,15 +245,13 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     let ctx = Super_context.context cctx.super_context in
     Ocaml_version.supports_opaque_for_mli ctx.version
   in
-  (* [modules] adds the wrong prefix "dune__exe__" but it's not used anyway *)
-  let modules = Modules.singleton_exe module_ in
+  let modules = singleton_modules module_ in
   { cctx with
     opaque
   ; flags = Ocaml_flags.empty
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
   ; modules
-  ; dep_graphs = Dep_graph.Ml_kind.dummy module_
   }
 
 let for_wrapped_compat t = { t with includes = Includes.empty; stdlib = None }

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Remove `uchar` and `seq` dummy ocamlfind libraries from dune's builtin
+  library database (#5260, @kit-ty-kate)
+
 - Add a `DUNE_DIFF_COMMAND` environment variable to match `--diff-command`
   command-line parameter (@raphael-proust, fix #5369, #5375)
 

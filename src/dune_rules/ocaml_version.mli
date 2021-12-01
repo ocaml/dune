@@ -29,14 +29,8 @@ val supports_response_file : t -> bool
 (** Does ocamlmklib support [-args0]? *)
 val ocamlmklib_supports_response_file : t -> bool
 
-(** Whether the standard library includes the [Uchar] module *)
-val stdlib_includes_uchar : t -> bool
-
 (** Whether the standard library includes the [Bigarray] module *)
 val stdlib_includes_bigarray : t -> bool
-
-(** Whether the standard library includes the [Seq] module *)
-val stdlib_includes_seq : t -> bool
 
 (** Whether ocamlobjinfo supports -no-approx*)
 val ooi_supports_no_approx : t -> bool

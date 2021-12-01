@@ -109,8 +109,8 @@ module Workspace_local = struct
         | Always_rerun -> "not trying to use the cache"
         | Dynamic_deps_changed -> "dynamic dependencies changed"
         | Error_while_collecting_directory_targets unix_error ->
-          Unix_error.Detailed.to_string_hum
-            ~prefix:"error while collecting directory targets: " unix_error
+          sprintf "error while collecting directory targets: %s"
+            (Unix_error.Detailed.to_string_hum unix_error)
       in
       Console.print_user_message
         (User_message.make
@@ -384,7 +384,7 @@ module Shared = struct
             (missing, (target, error) :: errors)
           | Unix_error (error, syscall, arg) ->
             let unix_error = Unix_error.Detailed.create error ~syscall ~arg in
-            (missing, (target, Pp.error unix_error) :: errors)
+            (missing, (target, Unix_error.Detailed.pp unix_error) :: errors)
           | Error exn ->
             let error =
               match exn with

@@ -71,7 +71,9 @@ let get_error_from_exn = function
     { responsible = User
     ; msg =
         User_error.make
-          [ Pp.error (Unix_error.Detailed.create error ~syscall ~arg) ]
+          [ Unix_error.Detailed.pp
+              (Unix_error.Detailed.create error ~syscall ~arg)
+          ]
     ; has_embedded_location = false
     ; needs_stack_trace = false
     }

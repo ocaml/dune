@@ -24,8 +24,7 @@ module V1 = struct
       try Ok (f ()) with
       | Unix.Unix_error (error, syscall, arg) ->
         let error = Stdune.Unix_error.Detailed.create error ~syscall ~arg in
-        Error
-          (Stdune.Unix_error.Detailed.to_string_hum ~prefix:(name ^ ": ") error)
+        Error (name ^ ": " ^ Stdune.Unix_error.Detailed.to_string_hum error)
       | Sys_error error -> Error (name ^ ": " ^ error)
 
     let read_directory =

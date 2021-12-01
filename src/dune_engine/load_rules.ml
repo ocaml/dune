@@ -69,7 +69,7 @@ let get_dir_triage ~dir =
             | Error unix_error ->
               User_warning.emit
                 [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-                ; Pp.error ~prefix:"Reason: " unix_error
+                ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
                 ];
               Path.Set.empty
             | Ok filenames -> Path.Set.of_listing ~dir ~filenames))

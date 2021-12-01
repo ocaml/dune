@@ -174,7 +174,7 @@ end = struct
                (Path.Source.relative
                   (Path.Source.parent_exn path)
                   Dune_file.fname))
-        ; Pp.error ~prefix:"Reason: " unix_error
+        ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
         ];
       Memo.Build.return (Error unix_error)
     | Ok dir_contents ->
@@ -537,7 +537,7 @@ end = struct
       User_error.raise
         [ Pp.textf "Unable to load source %s."
             (Path.Source.to_string_maybe_quoted path)
-        ; Pp.error ~prefix:"Reason: " unix_error
+        ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
         ]
     in
     let* readdir =

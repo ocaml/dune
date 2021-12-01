@@ -293,9 +293,8 @@ module Unix_error = struct
     let equal (a1, b1, c1) (a2, b2, c2) =
       equal a1 a2 && String.equal b1 b2 && String.equal c1 c2
 
-    let to_string_hum ?(prefix = "") (error, syscall, arg) =
-      Format.sprintf "%s%s(%s): %s" prefix syscall arg
-        (Unix.error_message error)
+    let to_string_hum (error, syscall, arg) =
+      Format.sprintf "%s(%s): %s" syscall arg (Unix.error_message error)
   end
 end
 

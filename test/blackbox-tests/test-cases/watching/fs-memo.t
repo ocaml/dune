@@ -25,10 +25,8 @@ Tests for [Fs_memo] module.
 
   $ echo -n 1 > file-1
 
-Note that we receive duplicate events for [file-2] because we watch it both
-directly and via its parent.
-
-# CR-someday amokhov: Fix this.
+Note that we receive two events for [file-2] because it's first created empty
+and then the contents is written to it.
 
   $ test "echo -n 2 > file-2"
   ------------------------------------------
@@ -47,7 +45,7 @@ directly and via its parent.
   Updating path_stat cache for "file-2": Skipped
   Updating path_stat cache for "file-2": Skipped
 
-Note that Dune does not re-executed the rule because the set of files matching
+Note that Dune did not re-execute the rule because the set of files matching
 the glob remains unchanged.
 
   $ test "mkdir dir"
@@ -62,25 +60,22 @@ the glob remains unchanged.
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "dir": Skipped
 
-Again, duplicate events for [dir/file-3].
+We create [dir/file-3] before running Dune, so we only observe a single
+[file_digest] change event with the file watcher.
 
+  $ echo -n '?' > dir/file-3
   $ test "echo -n 3 > dir/file-3"
   ------------------------------------------
+  12?
   Success, waiting for filesystem changes...
   123
   Success, waiting for filesystem changes...
   ------------------------------------------
-  Updating dir_contents cache for "dir": Updated { changed = true }
   Updating dir_contents cache for "dir/file-3": Skipped
-  Updating dir_contents cache for "dir/file-3": Skipped
-  Updating file_digest cache for "dir": Skipped
-  Updating file_digest cache for "dir/file-3": Skipped
-  Updating file_digest cache for "dir/file-3": Skipped
-  Updating path_stat cache for "dir": Updated { changed = false }
-  Updating path_stat cache for "dir/file-3": Skipped
+  Updating file_digest cache for "dir/file-3": Updated { changed = true }
   Updating path_stat cache for "dir/file-3": Skipped
 
-Again, duplicate events for [file-2].
+Now, Dune similarly updates [file_digest] for [file-2].
 
   $ test "echo -n '*' > file-2"
   ------------------------------------------
@@ -89,10 +84,7 @@ Again, duplicate events for [file-2].
   Success, waiting for filesystem changes...
   ------------------------------------------
   Updating dir_contents cache for "file-2": Skipped
-  Updating dir_contents cache for "file-2": Skipped
-  Updating file_digest cache for "file-2": Updated { changed = false }
   Updating file_digest cache for "file-2": Updated { changed = true }
-  Updating path_stat cache for "file-2": Skipped
   Updating path_stat cache for "file-2": Skipped
 
 On deletion of a file, we receive events for the file and the parent directory.
@@ -110,10 +102,8 @@ On deletion of a file, we receive events for the file and the parent directory.
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "file-2": Skipped
 
-Here we receive duplicate events for [dir] because we watch it directly, plus
-we also receive an event about a file inside, which we propagate to the parent.
-
-# CR-someday amokhov: Fix this.
+Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
+[dir/file-3]'s digest changed (from a digest to the error about missing file).
 
   $ test "mv dir/file-3 ."
   ------------------------------------------
@@ -122,21 +112,15 @@ we also receive an event about a file inside, which we propagate to the parent.
   Success, waiting for filesystem changes...
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
-  Updating dir_contents cache for "dir": Updated { changed = false }
   Updating dir_contents cache for "dir": Updated { changed = true }
-  Updating dir_contents cache for "dir/file-3": Skipped
   Updating dir_contents cache for "dir/file-3": Skipped
   Updating dir_contents cache for "file-3": Skipped
   Updating file_digest cache for ".": Skipped
   Updating file_digest cache for "dir": Skipped
-  Updating file_digest cache for "dir": Skipped
-  Updating file_digest cache for "dir/file-3": Updated { changed = false }
   Updating file_digest cache for "dir/file-3": Updated { changed = true }
   Updating file_digest cache for "file-3": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "dir": Updated { changed = false }
-  Updating path_stat cache for "dir": Updated { changed = false }
-  Updating path_stat cache for "dir/file-3": Skipped
   Updating path_stat cache for "dir/file-3": Skipped
   Updating path_stat cache for "file-3": Skipped
 
@@ -152,7 +136,7 @@ we also receive an event about a file inside, which we propagate to the parent.
   Updating path_stat cache for "dir": Updated { changed = false }
   Updating path_stat cache for "dir/subdir": Skipped
 
-Again, duplicate events for [file-4].
+Again, there are two events for [file-4]: for creation and modification.
 
   $ test "echo -n 4 > dir/subdir/file-4"
   ------------------------------------------
@@ -170,7 +154,8 @@ Again, duplicate events for [file-4].
   Updating path_stat cache for "dir/subdir/file-4": Skipped
   Updating path_stat cache for "dir/subdir/file-4": Skipped
 
-Here we are getting duplicate events for directories [dir] and [dir/subdir].
+Here we are getting duplicate events for directories [dir] and [dir/subdir]
+because we watch each of them both directly and via their parents.
 
   $ test "mv dir/subdir ."
   ------------------------------------------
@@ -195,7 +180,6 @@ Here we are getting duplicate events for directories [dir] and [dir/subdir].
   Updating path_stat cache for "dir/subdir": Updated { changed = false }
   Updating path_stat cache for "dir/subdir": Updated { changed = true }
   Updating path_stat cache for "subdir": Skipped
-
 
 This seems to be a bug: Dune doesn't notice that a directory's permission
 changed and succeeds instead of failing.
@@ -252,17 +236,20 @@ Same problem for files.
   Failure
   Failure
   ------------------------------------------
-  Error: inotify_add_watch: file-1: Permission denied
+  Error: file-1: Permission denied
   -> required by _build/default/file-1
   -> required by alias default in dune:1
   Had errors, waiting for filesystem changes...
-  Error: inotify_add_watch: file-1: Permission denied
+  Error: file-1: Permission denied
   -> required by _build/default/file-1
   -> required by alias default in dune:1
   Had errors, waiting for filesystem changes...
   ------------------------------------------
 
-We receive three events for [file-1] when moving it within the same directory.
+Dune receives one event for [file-1] when moving it within the same directory,
+and two events for [file-5]: for moving and for changing. There are two events
+for [dir_contents] of [.] because moving a file is interpreted as deleting and
+then creating a file.
 
   $ test "mv file-1 file-5; echo -n 5 > file-5"
   ------------------------------------------
@@ -271,26 +258,17 @@ We receive three events for [file-1] when moving it within the same directory.
   Success, waiting for filesystem changes...
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = false }
-  Updating dir_contents cache for ".": Updated { changed = false }
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "file-1": Skipped
-  Updating dir_contents cache for "file-1": Skipped
-  Updating dir_contents cache for "file-1": Skipped
   Updating dir_contents cache for "file-5": Skipped
   Updating dir_contents cache for "file-5": Skipped
   Updating file_digest cache for ".": Skipped
   Updating file_digest cache for ".": Skipped
-  Updating file_digest cache for ".": Skipped
-  Updating file_digest cache for "file-1": Updated { changed = false }
-  Updating file_digest cache for "file-1": Updated { changed = false }
   Updating file_digest cache for "file-1": Updated { changed = true }
   Updating file_digest cache for "file-5": Skipped
   Updating file_digest cache for "file-5": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for ".": Updated { changed = false }
-  Updating path_stat cache for ".": Updated { changed = false }
-  Updating path_stat cache for "file-1": Skipped
-  Updating path_stat cache for "file-1": Skipped
   Updating path_stat cache for "file-1": Skipped
   Updating path_stat cache for "file-5": Skipped
   Updating path_stat cache for "file-5": Skipped

@@ -127,9 +127,26 @@ Dune correctly notices that the contents of . changed because [d1] was created.
   Updating file_digest cache for ".": Skipped
   Updating path_stat cache for ".": Updated { changed = false }
 
-Here [path_stat] of [d1] changed, because it didn't exist before the build.
 
-  $ cat .#debug-output | grep d1
+Here [path_stat] of [d1] changed, because it didn't exist before the build. Dune
+later recomputed [path_stat] once again, when [d1/b] was modified, and the
+result remained unchanged (because fields like [mtime] are ignored). The result
+of [dir_contents] also remained unchanged because Dune fixed the listing of [d1]
+by re-promoting the directory target.
+
+  $ cat .#debug-output | grep \"d1\"
   Updating dir_contents cache for "d1": Updated { changed = false }
   Updating file_digest cache for "d1": Skipped
   Updating path_stat cache for "d1": Updated { changed = true }
+  Updating dir_contents cache for "d1": Updated { changed = false }
+  Updating file_digest cache for "d1": Skipped
+  Updating path_stat cache for "d1": Updated { changed = false }
+
+Events below occurred because we replaced file [d1/b] with a directory. Dune
+undid this change to bring the promoted directory target up to date, which
+explains why [file_digest] remained unchanged.
+
+  $ cat .#debug-output | grep d1/b
+  Updating dir_contents cache for "d1/b": Skipped
+  Updating file_digest cache for "d1/b": Updated { changed = false }
+  Updating path_stat cache for "d1/b": Skipped

@@ -44,11 +44,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
     Compilation_context.for_module_generated_at_link_time cctx ~requires
       ~module_
   in
-  let+ () =
-    Module_compilation.build_module
-      ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)
-      ~precompiled_cmi cctx module_
-  in
+  let+ () = Module_compilation.build_module ~precompiled_cmi cctx module_ in
   Resolve.return module_
 
 let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n")

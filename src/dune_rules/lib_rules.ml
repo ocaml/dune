@@ -306,8 +306,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
       in
       Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
 
-let setup_build_archives (lib : Dune_file.Library.t) ~cctx
-    ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander ~scope =
+let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
   let obj_dir = Compilation_context.obj_dir cctx in
   let flags = Compilation_context.flags cctx in
   let modules = Compilation_context.modules cctx in
@@ -343,7 +342,8 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
                     (Action_builder.copy ~src ~dst)))
   in
   let top_sorted_modules =
-    Dep_graph.top_closed_implementations dep_graphs.impl impl_only
+    Dep_graph.top_closed_implementations
+      (Compilation_context.dep_graphs cctx).impl impl_only
   in
   let modes = Compilation_context.modes cctx in
   (* The [dir] below is used as an object directory without going through
@@ -418,7 +418,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
   in
-  let+ modules =
+  let* modules =
     let add_empty_intf = lib.buildable.empty_module_interface_if_absent in
     Modules.map_user_written source_modules ~f:(fun m ->
         let* m = Pp_spec.pp_module pp m in
@@ -441,7 +441,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ?stdlib:lib.stdlib ~package ?vimpl ~modes
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
-    ~compile_info ~dep_graphs =
+    ~compile_info =
   let source_modules =
     Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
   in
@@ -460,12 +460,12 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let* () = gen_wrapped_compat_modules lib cctx
-  and* () = Module_compilation.build_all cctx ~dep_graphs
+  and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir in
   let+ () =
     Memo.Build.when_
       (not (Library.is_virtual lib))
-      (fun () -> setup_build_archives lib ~cctx ~dep_graphs ~expander ~scope)
+      (fun () -> setup_build_archives lib ~cctx ~expander ~scope)
   and+ () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     Memo.Build.when_
@@ -473,7 +473,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       (fun () ->
         build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
           ~dir_contents ~vlib_stubs_o_files)
-  and+ () = Odoc.setup_library_odoc_rules cctx lib ~dep_graphs
+  and+ () = Odoc.setup_library_odoc_rules cctx lib
   and+ () =
     Sub_system.gen_rules
       { super_context = sctx
@@ -509,17 +509,15 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
     let* cctx =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info
     in
-    let* dep_graphs = Dep_rules.rules cctx in
     let* () =
       let buildable = lib.Library.buildable in
       match buildable.Buildable.ctypes with
       | None -> Memo.Build.return ()
       | Some _ctypes ->
-        Ctypes_rules.gen_rules ~loc:(fst lib.Library.name) ~cctx ~dep_graphs
-          ~buildable ~sctx ~scope ~dir
+        Ctypes_rules.gen_rules ~loc:(fst lib.Library.name) ~cctx ~buildable
+          ~sctx ~scope ~dir
     in
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
-      ~dep_graphs
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps

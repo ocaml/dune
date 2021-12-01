@@ -1,21 +1,21 @@
 open! Dune_engine
 open! Import
 open Memo.Build.O
+open Ocamldep.Modules_data
 
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
   |> String.concat ~sep:"\n"
 
-let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
+let ooi_deps md ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let cm_kind =
     match ml_kind with
     | Intf -> Cm_kind.Cmi
-    | Impl ->
-      Compilation_context.vimpl cctx |> Option.value_exn |> Vimpl.impl_cm_kind
+    | Impl -> md.vimpl |> Option.value_exn |> Vimpl.impl_cm_kind
   in
-  let sctx = Compilation_context.super_context cctx in
-  let dir = Compilation_context.dir cctx in
-  let obj_dir = Compilation_context.obj_dir cctx in
+  let sctx = md.sctx in
+  let dir = md.dir in
+  let obj_dir = md.obj_dir in
   let write, read =
     let ctx = Super_context.context sctx in
     let unit =
@@ -44,44 +44,44 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   in
   read
 
-let deps_of_module cctx ~ml_kind m =
+let deps_of_module md ~ml_kind m =
   match Module.kind m with
   | Wrapped_compat ->
-    let modules = Compilation_context.modules cctx in
+    let modules = md.modules in
     let interface_module =
       match Modules.lib_interface modules with
       | Some m -> m
       | None -> Modules.compat_for_exn modules m
     in
     Action_builder.return (List.singleton interface_module) |> Memo.Build.return
-  | _ -> Ocamldep.deps_of ~cctx ~ml_kind m
+  | _ -> Ocamldep.deps_of md ~ml_kind m
 
-let deps_of_vlib_module cctx ~ml_kind m =
-  let vimpl = Option.value_exn (Compilation_context.vimpl cctx) in
+let deps_of_vlib_module md ~ml_kind m =
+  let vimpl = Option.value_exn md.vimpl in
   let vlib = Vimpl.vlib vimpl in
   match Lib.Local.of_lib vlib with
   | None ->
     let vlib_obj_map = Vimpl.vlib_obj_map vimpl in
-    ooi_deps cctx ~vlib_obj_map ~ml_kind m
+    ooi_deps md ~vlib_obj_map ~ml_kind m
   | Some lib ->
     let modules = Vimpl.vlib_modules vimpl in
     let info = Lib.Local.info lib in
     let vlib_obj_dir = Lib_info.obj_dir info in
-    let dir = Compilation_context.dir cctx in
+    let dir = md.dir in
     let src =
       Obj_dir.Module.dep vlib_obj_dir (Transitive (m, ml_kind)) |> Path.build
     in
     let dst =
-      let obj_dir = Compilation_context.obj_dir cctx in
+      let obj_dir = md.obj_dir in
       Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))
     in
-    let sctx = Compilation_context.super_context cctx in
+    let sctx = md.sctx in
     let+ () =
       Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
     in
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 
-let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
+let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =
     match m with
     | Imported_from_vlib m
@@ -100,30 +100,29 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
     in
     match m with
     | Imported_from_vlib m ->
-      skip_if_source_absent (deps_of_vlib_module cctx ~ml_kind) m
-    | Normal m -> skip_if_source_absent (deps_of_module cctx ~ml_kind) m
+      skip_if_source_absent (deps_of_vlib_module md ~ml_kind) m
+    | Normal m -> skip_if_source_absent (deps_of_module md ~ml_kind) m
     | Impl_of_virtual_module impl_or_vlib -> (
       let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
       match ml_kind with
-      | Intf -> deps_of cctx ~ml_kind (Imported_from_vlib m)
-      | Impl -> deps_of cctx ~ml_kind (Normal m))
+      | Intf -> deps_of md ~ml_kind (Imported_from_vlib m)
+      | Impl -> deps_of md ~ml_kind (Normal m))
 
 let dict_of_func_concurrently f =
   let+ impl = f ~ml_kind:Ml_kind.Impl
   and+ intf = f ~ml_kind:Ml_kind.Intf in
   Ml_kind.Dict.make ~impl ~intf
 
-let for_module cctx module_ =
-  dict_of_func_concurrently (deps_of cctx (Normal module_))
+let for_module md module_ =
+  dict_of_func_concurrently (deps_of md (Normal module_))
 
-let rules cctx =
-  let modules = Compilation_context.modules cctx in
+let rules md =
+  let modules = md.modules in
   match Modules.as_singleton modules with
   | Some m -> Memo.Build.return (Dep_graph.Ml_kind.dummy m)
   | None ->
-    let dir = Compilation_context.dir cctx in
     dict_of_func_concurrently (fun ~ml_kind ->
         let+ per_module =
-          Modules.obj_map_build modules ~f:(deps_of cctx ~ml_kind)
+          Modules.obj_map_build modules ~f:(deps_of md ~ml_kind)
         in
-        Dep_graph.make ~dir ~per_module)
+        Dep_graph.make ~dir:md.dir ~per_module)

@@ -72,6 +72,8 @@ type t =
   ; vimpl : Vimpl.t option
   ; modes : Mode.Dict.Set.t
   ; bin_annot : bool
+  ; ocamldep_modules_data : Ocamldep.Modules_data.t
+  ; dep_graphs : Dep_graph.t Ml_kind.Dict.t
   }
 
 let super_context t = t.super_context
@@ -116,9 +118,14 @@ let bin_annot t = t.bin_annot
 
 let context t = Super_context.context t.super_context
 
+let ocamldep_modules_data t = t.ocamldep_modules_data
+
+let dep_graphs t = t.dep_graphs
+
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) () =
+  let open Memo.Build.O in
   let project = Scope.project scope in
   let requires_compile =
     if Dune_project.implicit_transitive_deps project then
@@ -141,6 +148,16 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     Option.value ~default modes |> Mode.Dict.map ~f:Option.is_some
   in
   let opaque = eval_opaque (Super_context.context super_context) opaque in
+  let ocamldep_modules_data : Ocamldep.Modules_data.t =
+    { dir = Obj_dir.dir obj_dir
+    ; obj_dir
+    ; sctx = super_context
+    ; vimpl
+    ; modules
+    ; stdlib
+    }
+  in
+  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data in
   { super_context
   ; scope
   ; expander
@@ -159,9 +176,11 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; vimpl
   ; modes
   ; bin_annot
+  ; dep_graphs
+  ; ocamldep_modules_data
   }
 
-let for_alias_module t =
+let for_alias_module t alias_module =
   let flags =
     let project = Scope.project t.scope in
     let dune_version = Dune_project.dune_version project in
@@ -185,9 +204,14 @@ let for_alias_module t =
   ; includes = Includes.empty
   ; stdlib = None
   ; sandbox
+  ; dep_graphs =
+      (if Modules.is_stdlib_alias t.modules alias_module then
+        t.dep_graphs
+      else
+        Dep_graph.Ml_kind.dummy alias_module)
   }
 
-let for_root_module t =
+let for_root_module t root_module =
   let flags =
     let project = Scope.project t.scope in
     let dune_version = Dune_project.dune_version project in
@@ -199,6 +223,7 @@ let for_root_module t =
       Ocaml_flags.append_common flags
         [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ]
   ; stdlib = None
+  ; dep_graphs = Dep_graph.Ml_kind.dummy root_module
   }
 
 let for_module_generated_at_link_time cctx ~requires ~module_ =
@@ -216,6 +241,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
   ; modules
+  ; dep_graphs = Dep_graph.Ml_kind.dummy module_
   }
 
 let for_wrapped_compat t = { t with includes = Includes.empty; stdlib = None }

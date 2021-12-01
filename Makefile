@@ -23,7 +23,7 @@ menhir \
 "merlin>=3.4.0" \
 ocamlfind \
 ocamlformat.0.19.0 \
-"odoc>=2.0.0" \
+"odoc>=2.0.1" \
 "ppx_expect>=v0.14" \
 ppx_inline_test \
 ppxlib \

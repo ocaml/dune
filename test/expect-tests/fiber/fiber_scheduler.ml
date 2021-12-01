@@ -20,9 +20,6 @@ let%expect_test "test fiber scheduler" =
     match step with
     | Done () -> ()
     | Stalled _ -> assert false));
-  [%expect.unreachable]
-[@@expect.uncaught_exn {|
-  "Assert_failure src/fiber/fiber.ml:126:6"
-  Trailing output
-  ---------------
-  waiting for ivar |}]
+  [%expect{|
+    waiting for ivar
+    ivar filled |}]

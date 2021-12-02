@@ -18,4 +18,7 @@ val setup_private_library_doc_alias :
   -> unit Memo.build
 
 val gen_rules :
-  Super_context.t -> dir:Path.Build.t -> string list -> unit Memo.Build.t
+     Super_context.t
+  -> dir:Path.Build.t
+  -> string list
+  -> Build_config.gen_rules_result Memo.Build.t

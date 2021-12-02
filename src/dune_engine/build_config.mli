@@ -32,8 +32,7 @@ module type Rule_generator = sig
       addition to the ones that are present in the source tree and the ones that
       already contain rules.
 
-      It is expected that [gen_rules] only generate rules whose targets are
-      descendant of [dir]. *)
+      [gen_rules] may only generate rules whose targets are descendant of [dir]. *)
   val gen_rules :
        Context_or_install.t
     -> dir:Path.Build.t

@@ -546,7 +546,40 @@ end = struct
       in
       let sub_dir_components = Path.Source.explode sub_dir in
       RG.gen_rules context_or_install ~dir sub_dir_components >>= function
-      | Rules (subdirs, rules) -> Memo.Build.return (subdirs, rules)
+      | Rules (subdirs, rules) -> (
+        match
+          Path.Build.Map.find_key (Rules.to_map rules) ~f:(fun p ->
+              not (Path.Build.is_descendant p ~of_:dir))
+        with
+        | None -> Memo.Build.return (subdirs, rules)
+        | Some p ->
+          let dir_rules =
+            Rules.find rules (Path.build p) |> Rules.Dir_rules.consume
+          in
+          Code_error.raise
+            "[gen_rules] returned rules in a directory that is not a \
+             descendant of the directory it was called for"
+            [ ("dir", Path.Build.to_dyn dir)
+            ; ( "example"
+              , match dir_rules with
+                | { rules = r :: _; _ } ->
+                  Dyn.Variant
+                    ( "Rule"
+                    , [ Dyn.Record
+                          [ ("targets", Targets.Validated.to_dyn r.targets) ]
+                      ] )
+                | { rules = []; aliases } -> (
+                  match Alias.Name.Map.choose aliases with
+                  | None -> assert false
+                  | Some (name, _) ->
+                    Dyn.Variant
+                      ( "Alias"
+                      , [ Dyn.Record
+                            [ ("dir", Path.Build.to_dyn p)
+                            ; ("name", Alias.Name.to_dyn name)
+                            ]
+                        ] )) )
+            ])
       | Unknown_context_or_install ->
         Code_error.raise "[gen_rules] did not specify rules for the context"
           [ ("context_or_install", Context_or_install.to_dyn context_or_install)

@@ -166,11 +166,7 @@ val expander : t -> dir:Path.Build.t -> Expander.t Memo.Build.t
 val dir_status_db : t -> Dir_status.DB.t
 
 module As_memo_key : sig
-  type nonrec t = t
+  include Memo.Input with type t = t
 
-  val to_dyn : t -> Dyn.t
-
-  val equal : t -> t -> bool
-
-  val hash : t -> int
+  module And_package : Memo.Input with type t = t * Package.t
 end

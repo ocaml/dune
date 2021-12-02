@@ -324,7 +324,6 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
 
 let gen_rules ~sctx ~dir components =
   let module S = Subdir_set in
-  let* () = Opam_create.add_rules sctx ~dir in
   let* () = Install_rules.meta_and_dune_package_rules sctx ~dir in
   let+ subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir
   and+ (subdirs_to_keep2 : Build_config.extra_sub_directories_to_keep) =
@@ -381,9 +380,21 @@ let gen_rules ~sctx ~dir components =
             else
               Memo.Build.return ()
           | Some source_dir -> (
+            let* () =
+              let project = Source_tree.Dir.project source_dir in
+              if
+                Path.Build.equal
+                  (Path.Build.append_source
+                     (Super_context.context sctx).build_dir
+                     (Dune_project.root project))
+                  dir
+              then
+                Opam_create.add_rules sctx project
+              else
+                Memo.Build.return ()
+            in
             (* This interprets "rule" and "copy_files" stanzas. *)
-            Dir_contents.gen_rules sctx ~dir
-            >>= function
+            Dir_contents.gen_rules sctx ~dir >>= function
             | Group_part root ->
               Load_rules.load_dir_and_produce_its_rules ~dir:(Path.build root)
             | Standalone_or_root (dir_contents, subs) ->

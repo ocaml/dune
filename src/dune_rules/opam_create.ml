@@ -332,8 +332,7 @@ let add_rule sctx ~project ~pkg =
   Memo.Build.sequential_iter aliases ~f:(fun alias ->
       Rules.Produce.Alias.add_deps alias (Action_builder.path_set deps))
 
-let add_rules sctx ~dir =
-  let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+let add_rules sctx project =
   Memo.Build.when_ (Dune_project.generate_opam_files project) (fun () ->
       let packages = Dune_project.packages project in
       Package.Name.Map_traversals.parallel_iter packages

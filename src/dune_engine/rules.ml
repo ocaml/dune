@@ -74,6 +74,10 @@ module Dir_rules = struct
     let id = Id.gen () in
     Id.Map.singleton id data
 
+  let add t data =
+    let id = Id.gen () in
+    Id.Map.set t id data
+
   let is_subset t ~of_ = Id.Map.is_subset t ~of_ ~f:(fun _ ~of_:_ -> true)
 
   let is_empty = Id.Map.is_empty
@@ -88,6 +92,8 @@ module Dir_rules = struct
     val union : t -> t -> t
 
     val singleton : data -> t
+
+    val add : t -> data -> t
   end = struct
     type maybe_empty = t
 
@@ -102,6 +108,8 @@ module Dir_rules = struct
     let union = union
 
     let singleton = singleton
+
+    let add = add
   end
 end
 
@@ -171,10 +179,16 @@ module Produce = struct
   end
 end
 
-let produce_dir ~dir rules =
+let of_dir_rules ~dir rules =
   match Dir_rules.Nonempty.create rules with
-  | None -> Memo.Build.return ()
-  | Some rules -> produce (Path.Build.Map.singleton dir rules)
+  | None -> Path.Build.Map.empty
+  | Some rules -> Path.Build.Map.singleton dir rules
+
+let of_rules rules =
+  List.fold_left rules ~init:Path.Build.Map.empty ~f:(fun acc rule ->
+      Path.Build.Map.update acc rule.Rule.dir ~f:(function
+        | None -> Some (Dir_rules.Nonempty.singleton (Rule rule))
+        | Some acc -> Some (Dir_rules.Nonempty.add acc (Rule rule))))
 
 let collect f =
   let open Memo.Build.O in

@@ -32,7 +32,7 @@ val build_pred : File_selector.t -> Dep.Fact.Files.t Memo.Build.t
 val package_deps :
      packages_of:(Path.Build.t -> Package.Id.Set.t Memo.Build.t)
   -> Package.t
-  -> Path.Set.t
+  -> Path.Build.t list
   -> Package.Id.Set.t Memo.Build.t
 
 (** Execute an action. The execution is cached. *)

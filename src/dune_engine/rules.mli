@@ -96,7 +96,9 @@ val empty : t
 
 val union : t -> t -> t
 
-val produce_dir : dir:Path.Build.t -> Dir_rules.t -> unit Memo.Build.t
+val of_dir_rules : dir:Path.Build.t -> Dir_rules.t -> t
+
+val of_rules : Rule.t list -> t
 
 val produce : t -> unit Memo.Build.t
 

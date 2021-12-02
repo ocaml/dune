@@ -199,9 +199,9 @@ If we repeat the test, we finally see the failure.
   How about now?
   Failure
   ------------------------------------------
-  Error: inotify_add_watch: subdir: Permission denied
+  Error: inotify_add_watch(subdir): Permission denied
   Had errors, waiting for filesystem changes...
-  Error: inotify_add_watch: subdir: Permission denied
+  Error: inotify_add_watch(subdir): Permission denied
   Had errors, waiting for filesystem changes...
   ------------------------------------------
 
@@ -211,9 +211,9 @@ Same problem in the other direction.
   Failure
   Failure
   ------------------------------------------
-  Error: inotify_add_watch: subdir: Permission denied
+  Error: inotify_add_watch(subdir): Permission denied
   Had errors, waiting for filesystem changes...
-  Error: inotify_add_watch: subdir: Permission denied
+  Error: inotify_add_watch(subdir): Permission denied
   Had errors, waiting for filesystem changes...
   ------------------------------------------
 

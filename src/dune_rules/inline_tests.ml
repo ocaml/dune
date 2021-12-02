@@ -153,7 +153,7 @@ include Sub_system.Register_end_point (struct
          Action_builder.With_targets.add ~file_targets:[ target ] action)
     and* cctx =
       let package = Dune_file.Library.package lib in
-      let+ ocaml_flags =
+      let* ocaml_flags =
         Super_context.ocaml_flags sctx ~dir info.executable_ocaml_flags
       in
       let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in

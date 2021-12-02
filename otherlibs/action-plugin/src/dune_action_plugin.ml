@@ -22,7 +22,9 @@ module V1 = struct
   end = struct
     let catch_system_exceptions f ~name =
       try Ok (f ()) with
-      | Unix.Unix_error (e, _, _) -> Error (name ^ ": " ^ Unix.error_message e)
+      | Unix.Unix_error (error, syscall, arg) ->
+        let error = Stdune.Unix_error.Detailed.create error ~syscall ~arg in
+        Error (name ^ ": " ^ Stdune.Unix_error.Detailed.to_string_hum error)
       | Sys_error error -> Error (name ^ ": " ^ error)
 
     let read_directory =

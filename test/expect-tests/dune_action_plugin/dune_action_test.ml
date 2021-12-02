@@ -61,8 +61,9 @@ let%expect_test _ =
     |> map ~f:ignore
   in
   run_action_expect_throws action;
-  [%expect {|
-    read_directory: No such file or directory
+  [%expect
+    {|
+    read_directory: opendir(directory_that_does_not_exist): No such file or directory
   |}]
 
 let%expect_test _ =

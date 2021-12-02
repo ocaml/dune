@@ -40,10 +40,10 @@ val create :
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
   -> ?bin_annot:bool
   -> unit
-  -> t
+  -> t Memo.Build.t
 
 (** Return a compilation context suitable for compiling the alias module. *)
-val for_alias_module : t -> t
+val for_alias_module : t -> Module.t -> t
 
 val super_context : t -> Super_context.t
 
@@ -89,7 +89,7 @@ val modes : t -> Mode.Dict.Set.t
 
 val for_wrapped_compat : t -> t
 
-val for_root_module : t -> t
+val for_root_module : t -> Module.t -> t
 
 val for_module_generated_at_link_time :
   t -> requires:Lib.t list Resolve.Build.t -> module_:Module.t -> t
@@ -102,3 +102,8 @@ val bin_annot : t -> bool
 val without_bin_annot : t -> t
 
 val root_module_entries : t -> Module_name.t list Action_builder.t
+
+(** The dependency graph for the modules of the library. *)
+val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
+
+val ocamldep_modules_data : t -> Ocamldep.Modules_data.t

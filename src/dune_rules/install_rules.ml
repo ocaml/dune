@@ -421,7 +421,7 @@ end
 
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules :
-    Super_context.t -> dir:Path.Build.t -> unit Memo.Build.t
+    Super_context.t -> Dune_project.t -> unit Memo.Build.t
 end = struct
   let sections ctx_name files pkg =
     let pkg_name = Package.name pkg in
@@ -715,41 +715,20 @@ end = struct
              in
              Format.asprintf "%a" Pp.to_fmt pp)))
 
-  let meta_and_dune_package_rules_impl (project, sctx) =
+  let meta_and_dune_package_rules sctx project =
     Dune_project.packages project
     |> Package.Name.Map_traversals.parallel_iter
          ~f:(fun _name (pkg : Package.t) ->
            gen_dune_package sctx pkg >>> gen_meta_file sctx pkg)
-
-  let meta_and_dune_package_rules_memo =
-    let module Project_and_super_context = struct
-      type t = Dune_project.t * Super_context.t
-
-      let equal =
-        Tuple.T2.equal Dune_project.equal Super_context.As_memo_key.equal
-
-      let hash = Tuple.T2.hash Dune_project.hash Super_context.As_memo_key.hash
-
-      let to_dyn (p, s) =
-        Dyn.Tuple [ Dune_project.to_dyn p; Super_context.As_memo_key.to_dyn s ]
-    end in
-    Memo.With_implicit_output.create "meta_and_dune_package_rules"
-      ~input:(module Project_and_super_context)
-      ~implicit_output:Rules.implicit_output meta_and_dune_package_rules_impl
-
-  let meta_and_dune_package_rules sctx ~dir =
-    let project = Scope.project (Super_context.find_scope_by_dir sctx dir) in
-    Memo.With_implicit_output.exec meta_and_dune_package_rules_memo
-      (project, sctx)
 end
 
 include Meta_and_dune_package
 
 let symlink_installed_artifacts_to_build_install sctx
     (entries : Install.Entry.Sourced.t list) ~install_paths =
-  let ctx = Super_context.context sctx in
+  let ctx = Super_context.context sctx |> Context.build_context in
   let install_dir = Local_install_path.dir ~context:ctx.name in
-  Memo.Build.parallel_map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
+  List.map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
       let entry = s.entry in
       let dst =
         let relative =
@@ -764,11 +743,15 @@ let symlink_installed_artifacts_to_build_install sctx
         | User l -> l
         | Dune -> Loc.in_file (Path.build entry.src)
       in
-      let+ () =
-        Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
-          (Action_builder.symlink ~src:(Path.build entry.src) ~dst)
+      let rule =
+        let { Action_builder.With_targets.targets; build } =
+          Action_builder.symlink ~src:(Path.build entry.src) ~dst
+        in
+        Rule.make
+          ~info:(Rule.Info.of_loc_opt (Some loc))
+          ~context:(Some ctx) ~targets build
       in
-      Install.Entry.set_src entry (Path.build dst))
+      ({ s with entry = Install.Entry.set_src entry dst }, rule))
 
 let promote_install_file (ctx : Context.t) =
   !Clflags.promote_install_files
@@ -815,19 +798,51 @@ let packages_file_is_part_of path =
     let+ map = packages sctx in
     Option.value (Path.Build.Map.find map path) ~default:Package.Id.Set.empty
 
-let install_rules sctx (package : Package.t) =
+module Sctx_and_package = struct
+  module Super_context = Super_context.As_memo_key
+
+  type t = Super_context.t * Package.t
+
+  let hash (x, y) = Hashtbl.hash (Super_context.hash x, Package.hash y)
+
+  let equal (x1, y1) (x2, y2) = x1 == x2 && y1 == y2
+
+  let to_dyn _ = Dyn.Opaque
+end
+
+let symlinked_entries sctx package =
   let package_name = Package.name package in
   let install_paths =
     Install.Section.Paths.make ~package:package_name ~destdir:Path.root ()
   in
-  let* entries_with_metadata = install_entries sctx package in
-  let* entries =
-    entries_with_metadata
-    |> symlink_installed_artifacts_to_build_install sctx ~install_paths
+  let+ entries = install_entries sctx package in
+  entries
+  |> symlink_installed_artifacts_to_build_install sctx ~install_paths
+  |> List.split
+
+let symlinked_entries =
+  let memo =
+    Memo.create
+      ~input:(module Sctx_and_package)
+      ~human_readable_description:(fun (_, pkg) ->
+        Pp.textf "Computing installable artifacts for package %s"
+          (Package.Name.to_string (Package.name pkg)))
+      "symlinked_entries"
+      (fun (sctx, pkg) -> symlinked_entries sctx pkg)
   in
+  fun sctx pkg -> Memo.exec memo (sctx, pkg)
+
+let gen_package_install_file_rules sctx (package : Package.t) =
+  let package_name = Package.name package in
+  let install_paths =
+    Install.Section.Paths.make ~package:package_name ~destdir:Path.root ()
+  in
+  let* entries = symlinked_entries sctx package >>| fst in
   let ctx = Super_context.context sctx in
   let pkg_build_dir = Package_paths.build_dir ctx package in
-  let files = Install.files entries in
+  let files =
+    List.map entries ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src)
+  in
   let dune_project =
     let scope = Super_context.find_scope_by_dir sctx pkg_build_dir in
     Scope.project scope
@@ -862,6 +877,7 @@ let install_rules sctx (package : Package.t) =
                    Pp.text (Package.Name.to_string name))
           ]
   in
+  let files = Path.Set.of_list_map files ~f:Path.build in
   let* () =
     let context = Context.build_context ctx in
     let target_alias = Alias.package_install ~context ~pkg:package in
@@ -902,13 +918,16 @@ let install_rules sctx (package : Package.t) =
          | Some toolchain ->
            let toolchain = Context_name.to_string toolchain in
            let prefix = Path.of_string (toolchain ^ "-sysroot") in
-           List.map entries
-             ~f:(Install.Entry.add_install_prefix ~paths:install_paths ~prefix)
+           List.map entries ~f:(fun (e : Install.Entry.Sourced.t) ->
+               { e with
+                 entry =
+                   Install.Entry.add_install_prefix e.entry ~paths:install_paths
+                     ~prefix
+               })
        in
        (if not package.allow_empty then
          if
-           List.for_all entries_with_metadata
-             ~f:(fun (e : Install.Entry.Sourced.t) ->
+           List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
                match e.source with
                | Dune -> true
                | User _ -> false)
@@ -921,7 +940,9 @@ let install_rules sctx (package : Package.t) =
                   the package definition in the dune-project file"
                  (Package.Name.to_string package_name)
              ]);
-       Install.gen_install_file entries)
+       Install.gen_install_file
+         (List.map entries ~f:(fun (e : Install.Entry.Sourced.t) ->
+              Install.Entry.set_src e.entry (Path.build e.entry.src))))
   in
   Super_context.add_rule sctx ~dir:pkg_build_dir
     ~mode:
@@ -934,32 +955,6 @@ let install_rules sctx (package : Package.t) =
     action
 
 let memo =
-  let module Sctx_and_package = struct
-    module Super_context = Super_context.As_memo_key
-
-    type t = Super_context.t * Package.t
-
-    let hash (x, y) = Hashtbl.hash (Super_context.hash x, Package.hash y)
-
-    let equal (x1, y1) (x2, y2) = x1 == x2 && y1 == y2
-
-    let to_dyn _ = Dyn.Opaque
-  end in
-  let install_alias (ctx : Context.t) (package : Package.t) =
-    let name = Package.name package in
-    if not ctx.implicit then
-      let install_fn =
-        Utils.install_file ~package:name
-          ~findlib_toolchain:ctx.findlib_toolchain
-      in
-      let path = Package_paths.build_dir ctx package in
-      let install_alias = Alias.install ~dir:path in
-      let install_file = Path.relative (Path.build path) install_fn in
-      Rules.Produce.Alias.add_deps install_alias
-        (Action_builder.path install_file)
-    else
-      Memo.Build.return ()
-  in
   Memo.create
     ~input:(module Sctx_and_package)
     ~human_readable_description:(fun (_, pkg) ->
@@ -970,24 +965,12 @@ let memo =
       Memo.Build.return
         (let ctx = Super_context.context sctx in
          let context_name = ctx.name in
-         let rules =
-           Memo.lazy_ ~name:"install-rules-and-pkg-entries-rules"
-             ~human_readable_description:(fun () ->
-               Pp.textf "Computing rules for package %s"
-                 (Package.Name.to_string (Package.name pkg)))
-             (fun () ->
-               Rules.collect_unit (fun () ->
-                   let* () = install_rules sctx pkg in
-                   install_alias ctx pkg))
-         in
          Scheme.Approximation
-           ( Dir_set.union_all
-               [ Dir_set.subtree (Local_install_path.dir ~context:context_name)
-               ; Dir_set.singleton (Package_paths.build_dir ctx pkg)
-               ]
+           ( Dir_set.subtree (Local_install_path.dir ~context:context_name)
            , Thunk
                (fun () ->
-                 let+ rules = Memo.Lazy.force rules in
+                 let+ rules = symlinked_entries sctx pkg >>| snd in
+                 let rules = Rules.of_rules rules in
                  Scheme.Finite (Rules.to_map rules)) )))
 
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
@@ -1001,12 +984,44 @@ let scheme_per_ctx_memo =
       let* schemes = Memo.Build.sequential_map packages ~f:(scheme sctx) in
       Scheme.evaluate ~union:Rules.Dir_rules.union (Scheme.all schemes))
 
-let gen_rules sctx ~dir =
-  let* rules, subdirs =
+let symlink_rules sctx ~dir =
+  let+ rules, subdirs =
     let* scheme = Memo.exec scheme_per_ctx_memo sctx in
     Scheme.Evaluated.get_rules scheme ~dir
   in
-  let+ () =
-    Rules.produce_dir ~dir (Option.value ~default:Rules.Dir_rules.empty rules)
+  ( Subdir_set.These subdirs
+  , match rules with
+    | None -> Rules.empty
+    | Some rules -> Rules.of_dir_rules ~dir rules )
+
+let gen_install_alias sctx (package : Package.t) =
+  let ctx = Super_context.context sctx in
+  let name = Package.name package in
+  if ctx.implicit then
+    Memo.Build.return ()
+  else
+    let install_fn =
+      Utils.install_file ~package:name ~findlib_toolchain:ctx.findlib_toolchain
+    in
+    let path = Package_paths.build_dir ctx package in
+    let install_alias = Alias.install ~dir:path in
+    let install_file = Path.relative (Path.build path) install_fn in
+    Rules.Produce.Alias.add_deps install_alias
+      (Action_builder.path install_file)
+
+let gen_project_rules sctx project =
+  let* () = meta_and_dune_package_rules sctx project in
+  let* only_packages = Only_packages.get () in
+  let packages = Dune_project.packages project in
+  let packages =
+    match only_packages with
+    | None -> packages
+    | Some mask ->
+      Package.Name.Map.merge packages mask ~f:(fun _ p mask ->
+          match (p, mask) with
+          | Some _, Some _ -> p
+          | _ -> None)
   in
-  Subdir_set.These subdirs
+  Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name package ->
+      let* () = gen_package_install_file_rules sctx package in
+      gen_install_alias sctx package)

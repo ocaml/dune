@@ -37,6 +37,11 @@ val compat_for_exn : t -> Module.t -> Module.t
 
 val impl_only : t -> Module.t list
 
+(** A set of modules from a single module. Not suitable for single module exe as
+    this produce an unwrapped set of modules. Use [singleton_exe] instead for
+    executables. *)
+val singleton : Module.t -> t
+
 val singleton_exe : Module.t -> t
 
 val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc

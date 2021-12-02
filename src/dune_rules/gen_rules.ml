@@ -322,12 +322,15 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     in
     []
 
+(* To be called once per project, when we are generating the rules for the root
+   diretory of the project *)
+let gen_project_rules sctx project =
+  let* () = Opam_create.add_rules sctx project in
+  Install_rules.gen_project_rules sctx project
+
 let gen_rules ~sctx ~dir components =
   let module S = Subdir_set in
-  let* () = Opam_create.add_rules sctx ~dir in
-  let* () = Install_rules.meta_and_dune_package_rules sctx ~dir in
-  let+ subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir
-  and+ (subdirs_to_keep2 : Build_config.extra_sub_directories_to_keep) =
+  let+ (subdirs_to_keep1 : Build_config.extra_sub_directories_to_keep) =
     match components with
     | [ ".dune"; "ccomp" ] ->
       (* Add rules for C compiler detection *)
@@ -381,9 +384,21 @@ let gen_rules ~sctx ~dir components =
             else
               Memo.Build.return ()
           | Some source_dir -> (
+            let* () =
+              let project = Source_tree.Dir.project source_dir in
+              if
+                Path.Build.equal
+                  (Path.Build.append_source
+                     (Super_context.context sctx).build_dir
+                     (Dune_project.root project))
+                  dir
+              then
+                gen_project_rules sctx project
+              else
+                Memo.Build.return ()
+            in
             (* This interprets "rule" and "copy_files" stanzas. *)
-            Dir_contents.gen_rules sctx ~dir
-            >>= function
+            Dir_contents.gen_rules sctx ~dir >>= function
             | Group_part root ->
               Load_rules.load_dir_and_produce_its_rules ~dir:(Path.build root)
             | Standalone_or_root (dir_contents, subs) ->
@@ -395,13 +410,13 @@ let gen_rules ~sctx ~dir components =
       in
       S.These (String.Set.of_list subdirs)
   in
-  let subdirs_to_keep3 =
+  let subdirs_to_keep2 =
     match components with
     | [] ->
       Subdir_set.These (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
     | _ -> These String.Set.empty
   in
-  Subdir_set.union_all [ subdirs_to_keep1; subdirs_to_keep2; subdirs_to_keep3 ]
+  Subdir_set.union_all [ subdirs_to_keep1; subdirs_to_keep2 ]
 
 let gen_rules ~sctx ~dir components =
   let module S = Subdir_set in
@@ -429,7 +444,7 @@ let gen_rules ctx_or_install ~dir components =
   | Install ctx ->
     Super_context.find ctx
     >>= Memo.Build.Option.map ~f:(fun sctx ->
-            Rules.collect (fun () -> Install_rules.gen_rules sctx ~dir))
+            Install_rules.symlink_rules sctx ~dir)
   | Context ctx ->
     Super_context.find ctx
     >>= Memo.Build.Option.map ~f:(fun sctx ->

@@ -31,6 +31,9 @@
 (rule
  (copy dune-private-libs.opam.template fiber.opam.template))
 
+(rule
+ (copy dune-private-libs.opam.template xdg.opam.template))
+
 (env
  (_
   (flags :standard -alert -unstable)))

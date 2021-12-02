@@ -67,11 +67,13 @@ let get_error_from_exn = function
     { responsible = User; msg; has_embedded_location; needs_stack_trace }
   | Code_error.E e ->
     code_error ~loc:e.loc ~dyn_without_loc:(Code_error.to_dyn_without_loc e)
-  | Unix.Unix_error (err, func, fname) ->
+  | Unix.Unix_error (error, syscall, arg) ->
     { responsible = User
     ; msg =
         User_error.make
-          [ Pp.textf "%s: %s: %s" func fname (Unix.error_message err) ]
+          [ Unix_error.Detailed.pp
+              (Unix_error.Detailed.create error ~syscall ~arg)
+          ]
     ; has_embedded_location = false
     ; needs_stack_trace = false
     }

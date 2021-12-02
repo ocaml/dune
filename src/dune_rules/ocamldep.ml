@@ -1,8 +1,20 @@
 open! Dune_engine
 open! Stdune
 open Import
-module CC = Compilation_context
 module SC = Super_context
+
+module Modules_data = struct
+  type t =
+    { dir : Path.Build.t
+    ; obj_dir : Path.Build.t Obj_dir.t
+    ; sctx : Super_context.t
+    ; vimpl : Vimpl.t option
+    ; modules : Modules.t
+    ; stdlib : Ocaml_stdlib.t option
+    }
+end
+
+open Modules_data
 
 let parse_module_names ~(unit : Module.t) ~modules words =
   List.filter_map words ~f:(fun m ->
@@ -31,12 +43,11 @@ let parse_deps_exn ~file lines =
       if basename <> Path.basename file then invalid ();
       String.extract_blank_separated_words deps)
 
-let interpret_deps cctx ~unit deps =
-  let dir = CC.dir cctx in
-  let modules = CC.modules cctx in
+let interpret_deps md ~unit deps =
+  let dir = md.dir in
+  let modules = md.modules in
   let deps = parse_module_names ~unit ~modules deps in
-  let stdlib = CC.stdlib cctx in
-  if Option.is_none stdlib then
+  if Option.is_none md.stdlib then
     Modules.main_module_name modules
     |> Option.iter ~f:(fun (main_module_name : Module_name.t) ->
            if
@@ -62,13 +73,12 @@ let interpret_deps cctx ~unit deps =
   | None -> deps
   | Some m -> m :: deps
 
-let deps_of ~cctx ~ml_kind unit =
-  let modules = Compilation_context.modules cctx in
-  let sctx = CC.super_context cctx in
+let deps_of md ~ml_kind unit =
+  let modules = md.modules in
+  let sctx = md.sctx in
   let source = Option.value_exn (Module.source unit ~ml_kind) in
-  let obj_dir = Compilation_context.obj_dir cctx in
-  let dir = Compilation_context.dir cctx in
-  let dep = Obj_dir.Module.dep obj_dir in
+  let dir = md.dir in
+  let dep = Obj_dir.Module.dep md.obj_dir in
   let context = SC.context sctx in
   let parse_module_names = parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
@@ -113,7 +123,7 @@ let deps_of ~cctx ~ml_kind unit =
       let+ lines = Action_builder.lines_of (Path.build ocamldep_output) in
       lines
       |> parse_deps_exn ~file:(Module.File.path source)
-      |> interpret_deps cctx ~unit
+      |> interpret_deps md ~unit
       |> fun modules ->
       ( build_paths modules
       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) )

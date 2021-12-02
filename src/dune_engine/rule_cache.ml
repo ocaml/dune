@@ -110,7 +110,7 @@ module Workspace_local = struct
         | Dynamic_deps_changed -> "dynamic dependencies changed"
         | Error_while_collecting_directory_targets unix_error ->
           sprintf "error while collecting directory targets: %s"
-            (Unix_error.Detailed.to_string unix_error)
+            (Unix_error.Detailed.to_string_hum unix_error)
       in
       Console.print_user_message
         (User_message.make
@@ -372,41 +372,28 @@ module Shared = struct
           | Ok (_ : Digest.t) -> (missing, errors)
           | No_such_file -> (target :: missing, errors)
           | Broken_symlink ->
-            let error = [ Pp.verbatim "Broken symlink" ] in
+            let error = Pp.verbatim "Broken symlink" in
             (missing, (target, error) :: errors)
           | Unexpected_kind file_kind ->
             let error =
-              [ Pp.verbatim
-                  (sprintf "Unexpected file kind %S (%s)"
-                     (File_kind.to_string file_kind)
-                     (File_kind.to_string_hum file_kind))
-              ]
+              Pp.verbatim
+                (sprintf "Unexpected file kind %S (%s)"
+                   (File_kind.to_string file_kind)
+                   (File_kind.to_string_hum file_kind))
             in
             (missing, (target, error) :: errors)
-          | Unix_error (error, syscall, path) ->
-            let error =
-              [ (if String.equal expected_syscall_path path then
-                  Pp.verbatim syscall
-                else
-                  Pp.concat
-                    [ Pp.verbatim syscall
-                    ; Pp.verbatim " "
-                    ; Pp.verbatim (String.maybe_quoted path)
-                    ])
-              ; Pp.text (Unix.error_message error)
-              ]
-            in
-            (missing, (target, error) :: errors)
+          | Unix_error (error, syscall, arg) ->
+            let unix_error = Unix_error.Detailed.create error ~syscall ~arg in
+            (missing, (target, Unix_error.Detailed.pp unix_error) :: errors)
           | Error exn ->
             let error =
               match exn with
               | Sys_error msg ->
-                [ Pp.verbatim
-                    (String.drop_prefix_if_exists
-                       ~prefix:(expected_syscall_path ^ ": ")
-                       msg)
-                ]
-              | exn -> [ Pp.verbatim (Printexc.to_string exn) ]
+                Pp.verbatim
+                  (String.drop_prefix_if_exists
+                     ~prefix:(expected_syscall_path ^ ": ")
+                     msg)
+              | exn -> Pp.verbatim (Printexc.to_string exn)
             in
             (missing, (target, error) :: errors)
         in
@@ -434,7 +421,7 @@ module Shared = struct
             [ Pp.textf "Error trying to read targets after a rule was run:"
             ; Pp.enumerate (List.rev errors) ~f:(fun (target, error) ->
                   Pp.concat ~sep:(Pp.verbatim ": ")
-                    (Path.pp (Path.build target) :: error))
+                    [ Path.pp (Path.build target); error ])
             ]))
 
   let examine_targets_and_store ~can_go_in_shared_cache ~loc ~rule_digest

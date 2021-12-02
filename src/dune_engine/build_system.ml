@@ -938,18 +938,12 @@ let build_pred = Pred.build
 let package_deps ~packages_of (pkg : Package.t) files =
   (* CR-someday amokhov: We should get rid of this mutable state. *)
   let rules_seen = ref Rule.Set.empty in
-  let rec loop fn =
-    match Path.as_in_build_dir fn with
-    | None ->
-      (* if this file isn't in the build dir, it doesn't belong to any package
-         and it doesn't have dependencies that do *)
-      Memo.Build.return Package.Id.Set.empty
-    | Some fn ->
-      let* pkgs = packages_of fn in
-      if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs pkg.id then
-        loop_deps fn
-      else
-        Memo.Build.return pkgs
+  let rec loop (fn : Path.Build.t) =
+    let* pkgs = packages_of fn in
+    if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs pkg.id then
+      loop_deps fn
+    else
+      Memo.Build.return pkgs
   and loop_deps fn =
     Load_rules.get_rule (Path.build fn) >>= function
     | None -> Memo.Build.return Package.Id.Set.empty
@@ -959,13 +953,17 @@ let package_deps ~packages_of (pkg : Package.t) files =
       else (
         rules_seen := Rule.Set.add !rules_seen rule;
         let* res = execute_rule rule in
-        loop_files (Dep.Facts.paths res.deps |> Path.Map.keys)
+        loop_files
+          (Dep.Facts.paths res.deps |> Path.Map.keys
+          |> (* if this file isn't in the build dir, it doesn't belong to any
+                package and it doesn't have dependencies that do *)
+          List.filter_map ~f:Path.as_in_build_dir)
       )
   and loop_files files =
     let+ sets = Memo.Build.parallel_map files ~f:loop in
     List.fold_left sets ~init:Package.Id.Set.empty ~f:Package.Id.Set.union
   in
-  loop_files (Path.Set.to_list files)
+  loop_files files
 
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   match exn.exn with

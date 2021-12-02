@@ -322,9 +322,14 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     in
     []
 
+(* To be called once per project, when we are generating the rules for the root
+   diretory of the project *)
+let gen_project_rules sctx project =
+  let* () = Opam_create.add_rules sctx project in
+  Install_rules.meta_and_dune_package_rules sctx project
+
 let gen_rules ~sctx ~dir components =
   let module S = Subdir_set in
-  let* () = Install_rules.meta_and_dune_package_rules sctx ~dir in
   let+ subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir
   and+ (subdirs_to_keep2 : Build_config.extra_sub_directories_to_keep) =
     match components with
@@ -389,7 +394,7 @@ let gen_rules ~sctx ~dir components =
                      (Dune_project.root project))
                   dir
               then
-                Opam_create.add_rules sctx project
+                gen_project_rules sctx project
               else
                 Memo.Build.return ()
             in

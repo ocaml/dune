@@ -87,8 +87,8 @@ production phase, we merely accumulate a set of rules that is later
 processed. The API of `gen_rules` is in fact a bit more complex, but
 the above definition is enough for the purpose of this document.
 
-The first thing `gen_rules` do is analyse the directory it is
-given. If the directory correspond to a source directory with a `dune`
+The first thing `gen_rules` does is analyse the directory it is
+given. If the directory corresponds to a source directory with a `dune`
 file, `gen_rules` will dispatch the call to the part of `dune_rules`
 that parses and interprets the `dune` file. This is the simplest case,
 but even in this case there are some things worth mentioning.
@@ -165,13 +165,13 @@ dependencies from directories to their parents and can create cycles
 because of `copy_files` stanza that create dependencies in the other
 direction.
 
-At a result, some combination of `copy_files` and directory targets
+At a result, some combinations of `copy_files` and directory targets
 don't produce the expected result. This is documented in the test
 suite.
 
 ## Problem
 
-The above description expose a concrete problem with directory
+The above description exposes a concrete problem with directory
 targets, but there is also a general sense of messiness in the way
 things work. Generating rules for multiple directories at once is
 natural, but the current encoding is odd.
@@ -189,13 +189,13 @@ call. `gen_rules` will no longer have to redirect a call via
 `Load_rules.load_dir_and_produce_its_rules`, which we would simply
 remove.
 
-This introduce a cycle with all `copy_files` stanza that copy files
+This introduces a cycle with all `copy_files` stanza that copy files
 from a sub-directory. We propose the break this cycle by introducing
 laziness in the rule production code.
 
 ### Generating rules with a mask
 
-The idea is that when we produce rules, we will producing rules under
+The idea is that when we produce rules, we will produce rules under
 a current active "mask" that tells us where we are allowed to generate
 files or directories.  Trying to produce a rule with targets not
 matched by this mask will be a runtime error.
@@ -215,14 +215,14 @@ mask. `m` wouldn't be evaluated eagerly. Instead, `gen_rules` would
 now return a set of direct rules as well as a list of
 `(Target_mask.t * unit Memo.Build.t)`. Let's call such a pair a
 suspension. A suspension can be forced by evaluation its second
-component, Doing so will yield a list of rules matched by the mask and
+component. Doing so will yield a list of rules matched by the mask and
 a new list of suspension.
 
-### Stagged rules loading
+### Staged rules loading
 
 The next step is to stage `Load_rules.load_dir`. In addition to taking
 a directory, `load_dir` will now also take a mask and will return the
-set of rules for this mask. To do that, it might to force a bunch of
+set of rules for this mask. To do that, it might need to force a bunch of
 suspensions recursively.
 
 

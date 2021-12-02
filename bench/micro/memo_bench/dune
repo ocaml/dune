@@ -1,0 +1,6 @@
+(library
+ (name memo_bench)
+ (library_flags -linkall)
+ (preprocess
+  (pps ppx_bench))
+ (libraries fiber stdune memo core_bench.inline_benchmarks))

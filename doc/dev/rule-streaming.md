@@ -56,7 +56,7 @@ In practice, to evaluate `(glob_files *.txt)` in directory `d`, Dune
 calls `Load_dir.load_dir ~dir:d` and filter the list of files that can
 be built. Similarly, when Dune needs to build a file
 `_build/default/src/x`, it first calls `Load_dir.load_dir` with
-`_build/default/src` and then looks up for a rule that has `x` has
+`_build/default/src` and then looks up a rule that has `x` has
 target in the returned `Loaded.t`. The `Load_dir.load_dir` is
 memoised, so it can be called multiple times during the build without
 guilt.

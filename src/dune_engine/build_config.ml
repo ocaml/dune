@@ -24,8 +24,6 @@ module type Rule_generator = sig
     -> dir:Path.Build.t
     -> string list
     -> gen_rules_result Memo.Build.t
-
-  val global_rules : Rules.t Memo.Lazy.t
 end
 
 module Error = struct

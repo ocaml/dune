@@ -66,3 +66,14 @@ let conf =
         >>| Option.some)
 
 let get () = Memo.Lazy.force conf
+
+let packages_of_project project =
+  let+ t = get () in
+  let packages = Dune_project.packages project in
+  match t with
+  | None -> packages
+  | Some mask ->
+    Package.Name.Map.merge packages mask ~f:(fun _ p mask ->
+        match (p, mask) with
+        | Some _, Some _ -> p
+        | _ -> None)

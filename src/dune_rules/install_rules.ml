@@ -1011,17 +1011,7 @@ let gen_install_alias sctx (package : Package.t) =
 
 let gen_project_rules sctx project =
   let* () = meta_and_dune_package_rules sctx project in
-  let* only_packages = Only_packages.get () in
-  let packages = Dune_project.packages project in
-  let packages =
-    match only_packages with
-    | None -> packages
-    | Some mask ->
-      Package.Name.Map.merge packages mask ~f:(fun _ p mask ->
-          match (p, mask) with
-          | Some _, Some _ -> p
-          | _ -> None)
-  in
+  let* packages = Only_packages.packages_of_project project in
   Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name package ->
       let* () = gen_package_install_file_rules sctx package in
       gen_install_alias sctx package)

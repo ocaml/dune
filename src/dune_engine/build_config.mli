@@ -39,10 +39,6 @@ module type Rule_generator = sig
     -> dir:Path.Build.t
     -> string list
     -> gen_rules_result Memo.Build.t
-
-  (** [global_rules] is a way to generate rules in arbitrary directories
-      upfront. *)
-  val global_rules : Rules.t Memo.Lazy.t
 end
 
 (** Errors found when building targets. *)

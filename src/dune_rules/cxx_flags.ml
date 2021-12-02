@@ -22,10 +22,11 @@ let base_cxx_flags ~for_ cc =
 
 let preprocessed_filename = "ccomp"
 
-let ccomp_type dir =
+let ccomp_type build_dir =
   let open Action_builder.O in
   let filepath =
-    Path.Build.(relative (relative dir ".dune/ccomp") preprocessed_filename)
+    Path.Build.(
+      relative (relative build_dir ".dune/ccomp") preprocessed_filename)
   in
   let+ ccomp = Action_builder.contents (Path.build filepath) in
   match String.trim ccomp with
@@ -45,8 +46,8 @@ let check_warn = function
       ]
   | _ -> ()
 
-let get_flags ~for_ dir =
+let get_flags ~for_ ctx =
   let open Action_builder.O in
-  let+ ccomp_type = ccomp_type dir in
+  let+ ccomp_type = ccomp_type ctx.Context.build_dir in
   check_warn ccomp_type;
   base_cxx_flags ~for_ ccomp_type

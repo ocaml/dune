@@ -906,8 +906,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
         in
         let use_standard_c_and_cxx_flags =
           match use_standard_c_and_cxx_flags with
-          | None when dune_version >= (3, 0) -> Some false
-          | None -> None
+          | None -> use_standard_c_and_cxx_flags_default ~lang
           | some -> some
         in
         let cram =

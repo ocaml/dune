@@ -47,9 +47,10 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         let project =
           Super_context.find_scope_by_dir sctx dir |> Scope.project
         in
+
         match Dune_project.use_standard_c_and_cxx_flags project with
         | Some true when Buildable.has_foreign_cxx lib.buildable ->
-          Cxx_flags.get_flags ~for_:Link dir
+          Cxx_flags.get_flags ~for_:Link ctx
         | _ -> Action_builder.return []
       in
       let cclibs =
@@ -212,9 +213,11 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
   let* () = Check_rules.add_files sctx ~dir o_files in
   let standard =
     let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+    let ctx = Super_context.context sctx in
+
     match Dune_project.use_standard_c_and_cxx_flags project with
     | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
-      Cxx_flags.get_flags ~for_:Link dir
+      Cxx_flags.get_flags ~for_:Link ctx
     | _ -> Action_builder.return []
   in
   let c_library_flags =
@@ -254,7 +257,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
       match Dune_project.use_standard_c_and_cxx_flags project with
       | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
-        Cxx_flags.get_flags ~for_:Link dir
+        Cxx_flags.get_flags ~for_:Link ctx
       | _ -> Action_builder.return []
     in
     let c_library_flags =

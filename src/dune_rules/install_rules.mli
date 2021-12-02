@@ -1,7 +1,8 @@
 open! Dune_engine
 open Stdune
 
-val gen_rules : Super_context.t -> dir:Path.Build.t -> Subdir_set.t Memo.Build.t
+val symlink_rules :
+  Super_context.t -> dir:Path.Build.t -> (Subdir_set.t * Rules.t) Memo.Build.t
 
 (** Generate rules for [.dune-package], [META.<package-name>] files. and
     [<package-name>.install] files. *)

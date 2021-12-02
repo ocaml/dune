@@ -726,9 +726,9 @@ include Meta_and_dune_package
 
 let symlink_installed_artifacts_to_build_install sctx
     (entries : Install.Entry.Sourced.t list) ~install_paths =
-  let ctx = Super_context.context sctx in
+  let ctx = Super_context.context sctx |> Context.build_context in
   let install_dir = Local_install_path.dir ~context:ctx.name in
-  Memo.Build.sequential_map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
+  List.map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
       let entry = s.entry in
       let dst =
         let relative =
@@ -743,11 +743,15 @@ let symlink_installed_artifacts_to_build_install sctx
         | User l -> l
         | Dune -> Loc.in_file (Path.build entry.src)
       in
-      let+ () =
-        Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
-          (Action_builder.symlink ~src:(Path.build entry.src) ~dst)
+      let rule =
+        let { Action_builder.With_targets.targets; build } =
+          Action_builder.symlink ~src:(Path.build entry.src) ~dst
+        in
+        Rule.make
+          ~info:(Rule.Info.of_loc_opt (Some loc))
+          ~context:(Some ctx) ~targets build
       in
-      { s with entry = Install.Entry.set_src entry dst })
+      ({ s with entry = Install.Entry.set_src entry dst }, rule))
 
 let promote_install_file (ctx : Context.t) =
   !Clflags.promote_install_files
@@ -807,13 +811,14 @@ module Sctx_and_package = struct
 end
 
 let symlinked_entries sctx package =
-  Rules.collect (fun () ->
-      let package_name = Package.name package in
-      let install_paths =
-        Install.Section.Paths.make ~package:package_name ~destdir:Path.root ()
-      in
-      install_entries sctx package
-      >>= symlink_installed_artifacts_to_build_install sctx ~install_paths)
+  let package_name = Package.name package in
+  let install_paths =
+    Install.Section.Paths.make ~package:package_name ~destdir:Path.root ()
+  in
+  let+ entries = install_entries sctx package in
+  entries
+  |> symlink_installed_artifacts_to_build_install sctx ~install_paths
+  |> List.split
 
 let symlinked_entries =
   let memo =
@@ -965,6 +970,7 @@ let memo =
            , Thunk
                (fun () ->
                  let+ rules = symlinked_entries sctx pkg >>| snd in
+                 let rules = Rules.of_rules rules in
                  Scheme.Finite (Rules.to_map rules)) )))
 
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
@@ -978,15 +984,15 @@ let scheme_per_ctx_memo =
       let* schemes = Memo.Build.sequential_map packages ~f:(scheme sctx) in
       Scheme.evaluate ~union:Rules.Dir_rules.union (Scheme.all schemes))
 
-let gen_rules sctx ~dir =
-  let* rules, subdirs =
+let symlink_rules sctx ~dir =
+  let+ rules, subdirs =
     let* scheme = Memo.exec scheme_per_ctx_memo sctx in
     Scheme.Evaluated.get_rules scheme ~dir
   in
-  let+ () =
-    Rules.produce_dir ~dir (Option.value ~default:Rules.Dir_rules.empty rules)
-  in
-  Subdir_set.These subdirs
+  ( Subdir_set.These subdirs
+  , match rules with
+    | None -> Rules.empty
+    | Some rules -> Rules.of_dir_rules ~dir rules )
 
 let gen_install_alias sctx (package : Package.t) =
   let ctx = Super_context.context sctx in

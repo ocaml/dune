@@ -444,7 +444,7 @@ let gen_rules ctx_or_install ~dir components =
   | Install ctx ->
     Super_context.find ctx
     >>= Memo.Build.Option.map ~f:(fun sctx ->
-            Rules.collect (fun () -> Install_rules.gen_rules sctx ~dir))
+            Install_rules.symlink_rules sctx ~dir)
   | Context ctx ->
     Super_context.find ctx
     >>= Memo.Build.Option.map ~f:(fun sctx ->

@@ -17,7 +17,6 @@ module Loaded : sig
 
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
-    ; rules_produced : Rules.t
     ; rules_here : rules_here
     ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
     }
@@ -34,8 +33,6 @@ val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
 
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
-
-val load_dir_and_produce_its_rules : dir:Path.t -> unit Memo.Build.t
 
 (** Return [true] if a file exists or is buildable *)
 val file_exists : Path.t -> bool Memo.Build.t

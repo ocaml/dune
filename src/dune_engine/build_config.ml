@@ -13,12 +13,17 @@ end
 
 type extra_sub_directories_to_keep = Subdir_set.t
 
+type gen_rules_result =
+  | Rules of extra_sub_directories_to_keep * Rules.t
+  | Unknown_context_or_install
+  | Redirect_to_parent
+
 module type Rule_generator = sig
   val gen_rules :
        Context_or_install.t
     -> dir:Path.Build.t
     -> string list
-    -> (extra_sub_directories_to_keep * Rules.t) option Memo.Build.t
+    -> gen_rules_result Memo.Build.t
 
   val global_rules : Rules.t Memo.Lazy.t
 end

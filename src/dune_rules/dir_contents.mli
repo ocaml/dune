@@ -40,8 +40,12 @@ val get : Super_context.t -> dir:Path.Build.t -> t Memo.Build.t
     not part of a group. *)
 val dirs : t -> t list
 
-type gen_rules_result =
-  | Standalone_or_root of t * t list  (** Sub-directories part of the group *)
+type triage =
+  | Standalone_or_root of
+      { root : t
+      ; subdirs : t list  (** Sub-directories part of the group *)
+      ; rules : Rules.t
+      }
   | Group_part of Path.Build.t
 
 (** In order to compute the directory contents, we need to interpret stanzas
@@ -50,13 +54,11 @@ type gen_rules_result =
     rules.
 
     As a result, we proceed as follow: we interpret the stanza into rules and
-    extract the targets of the computed rule. This function simply emits these
-    rules so that they can be collected by [Build_system].
+    extract the targets of the computed rule. This function returns these rules.
 
     However, if the directory is part of a group, this function simply returns
-    the root of the group without emitting any rule. *)
-val gen_rules :
-  Super_context.t -> dir:Path.Build.t -> gen_rules_result Memo.Build.t
+    the root of the group. *)
+val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.Build.t
 
 (** Add expansion that depend on OCaml artifacts/sources.
 

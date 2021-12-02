@@ -326,12 +326,11 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
    diretory of the project *)
 let gen_project_rules sctx project =
   let* () = Opam_create.add_rules sctx project in
-  Install_rules.meta_and_dune_package_rules sctx project
+  Install_rules.gen_project_rules sctx project
 
 let gen_rules ~sctx ~dir components =
   let module S = Subdir_set in
-  let+ subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir
-  and+ (subdirs_to_keep2 : Build_config.extra_sub_directories_to_keep) =
+  let+ (subdirs_to_keep1 : Build_config.extra_sub_directories_to_keep) =
     match components with
     | [ ".dune"; "ccomp" ] ->
       (* Add rules for C compiler detection *)
@@ -411,13 +410,13 @@ let gen_rules ~sctx ~dir components =
       in
       S.These (String.Set.of_list subdirs)
   in
-  let subdirs_to_keep3 =
+  let subdirs_to_keep2 =
     match components with
     | [] ->
       Subdir_set.These (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
     | _ -> These String.Set.empty
   in
-  Subdir_set.union_all [ subdirs_to_keep1; subdirs_to_keep2; subdirs_to_keep3 ]
+  Subdir_set.union_all [ subdirs_to_keep1; subdirs_to_keep2 ]
 
 let gen_rules ~sctx ~dir components =
   let module S = Subdir_set in

@@ -80,9 +80,9 @@ This is a reproduction case from issue #4345
   > EOF
   $ dune build --root .
   Error: Dependency cycle between:
-     Computing rules for package lib
+     Computing installable artifacts for package lib
   -> Evaluating predicate in directory _build/default
   -> Computing directory contents of _build/default/lib
-  -> Computing rules for package lib
+  -> Computing installable artifacts for package lib
   [1]
   $ cd ..

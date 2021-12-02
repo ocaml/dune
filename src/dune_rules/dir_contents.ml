@@ -38,8 +38,12 @@ let empty kind ~dir =
   ; coq = Memo.Lazy.of_val Coq_sources.empty
   }
 
-type gen_rules_result =
-  | Standalone_or_root of t * t list
+type triage =
+  | Standalone_or_root of
+      { root : t
+      ; subdirs : t list
+      ; rules : Rules.t
+      }
   | Group_part of Path.Build.t
 
 let dir t = t.dir
@@ -111,8 +115,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
 module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t Memo.Build.t
 
-  val gen_rules :
-    Super_context.t -> dir:Path.Build.t -> gen_rules_result Memo.Build.t
+  val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.Build.t
 
   val add_sources_to_expander : Super_context.t -> Expander.t -> Expander.t
 end = struct
@@ -378,12 +381,12 @@ end = struct
     in
     Fdecl.set Super_context.modules_of_lib f
 
-  let gen_rules sctx ~dir =
-    Memo.exec memo0 (sctx, dir) >>= function
-    | See_above group_root -> Memo.Build.return (Group_part group_root)
+  let triage sctx ~dir =
+    Memo.exec memo0 (sctx, dir) >>| function
+    | See_above group_root -> Group_part group_root
     | Here { t; rules; subdirs } ->
-      let+ () = Rules.produce rules in
-      Standalone_or_root (t, Path.Build.Map.values subdirs)
+      Standalone_or_root
+        { root = t; subdirs = Path.Build.Map.values subdirs; rules }
 end
 
 include Load

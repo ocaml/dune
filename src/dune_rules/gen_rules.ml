@@ -328,105 +328,120 @@ let gen_project_rules sctx project =
   let* () = Opam_create.add_rules sctx project in
   Install_rules.gen_project_rules sctx project
 
-let gen_rules ~sctx ~dir components =
+module B = Build_config
+
+let has_rules m =
+  let+ subdirs, rules = Rules.collect (fun () -> m) in
+  Build_config.Rules (subdirs, rules)
+
+let redirect_to_parent = Memo.Build.return Build_config.Redirect_to_parent
+
+(* Once [gen_rules] has decided what to do with the directory, it should end
+   with [has_rules] or [redirect_to_parent] *)
+let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.Build.t
+    =
   let module S = Subdir_set in
-  let+ (subdirs_to_keep1 : Build_config.extra_sub_directories_to_keep) =
-    match components with
-    | [ ".dune"; "ccomp" ] ->
-      (* Add rules for C compiler detection *)
-      let+ () = Cxx_rules.rules ~sctx ~dir in
-      S.These String.Set.empty
-    | ".dune" :: _ -> Memo.Build.return (S.These String.Set.empty)
-    | ".js" :: rest -> (
-      let+ () = Jsoo_rules.setup_separate_compilation_rules sctx rest in
-      match rest with
-      | [] -> S.All
-      | _ -> S.These String.Set.empty)
-    | "_doc" :: rest -> (
-      let+ () = Odoc.gen_rules sctx rest ~dir in
-      match rest with
-      | [] -> S.All
-      | _ -> S.These String.Set.empty)
-    | ".ppx" :: rest -> (
-      let+ () = Preprocessing.gen_rules sctx rest in
-      match rest with
-      | [] -> S.All
-      | _ -> S.These String.Set.empty)
-    | comps ->
-      let subdirs = [ ".formatted"; ".bin"; ".utop" ] in
-      let+ () =
-        match List.last comps with
-        | Some ".formatted" ->
-          let* expander = Super_context.expander sctx ~dir in
-          gen_format_rules sctx ~expander ~output_dir:dir
-        | Some ".bin" ->
-          let src_dir = Path.Build.parent_exn dir in
-          let* local_binaries =
-            Super_context.local_binaries sctx ~dir:src_dir
-          in
-          Memo.Build.sequential_iter local_binaries ~f:(fun t ->
-              let loc = File_binding.Expanded.src_loc t in
-              let src = Path.build (File_binding.Expanded.src t) in
-              let dst = File_binding.Expanded.dst_path t ~dir in
-              Super_context.add_rule sctx ~loc ~dir
-                (Action_builder.symlink ~src ~dst))
-        | _ -> (
-          Source_tree.find_dir (Path.Build.drop_build_context_exn dir)
-          >>= function
-          | None ->
-            (* We get here when [dir] is a generated directory, such as [.utop]
-               or [.foo.objs]. *)
-            if Utop.is_utop_dir dir then
-              Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
-            else if components <> [] then
-              Load_rules.load_dir_and_produce_its_rules
-                ~dir:(Path.parent_exn (Path.build dir))
-            else
-              Memo.Build.return ()
-          | Some source_dir -> (
-            let* () =
-              let project = Source_tree.Dir.project source_dir in
-              if
-                Path.Build.equal
-                  (Path.Build.append_source
-                     (Super_context.context sctx).build_dir
-                     (Dune_project.root project))
-                  dir
-              then
-                gen_project_rules sctx project
-              else
-                Memo.Build.return ()
-            in
-            (* This interprets "rule" and "copy_files" stanzas. *)
-            Dir_contents.gen_rules sctx ~dir >>= function
-            | Group_part root ->
-              Load_rules.load_dir_and_produce_its_rules ~dir:(Path.build root)
-            | Standalone_or_root (dir_contents, subs) ->
-              let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
-              Memo.Build.parallel_iter subs ~f:(fun dc ->
-                  gen_rules sctx dir_contents cctxs ~source_dir
-                    ~dir:(Dir_contents.dir dc)
-                  >>| ignore)))
-      in
-      S.These (String.Set.of_list subdirs)
-  in
-  let subdirs_to_keep2 =
-    match components with
-    | [] ->
-      Subdir_set.These (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
-    | _ -> These String.Set.empty
-  in
-  Subdir_set.union_all [ subdirs_to_keep1; subdirs_to_keep2 ]
+  match components with
+  | [ ".dune"; "ccomp" ] ->
+    has_rules
+      ((* Add rules for C compiler detection *)
+       let+ () = Cxx_rules.rules ~sctx ~dir in
+       S.These String.Set.empty)
+  | ".dune" :: _ -> has_rules (Memo.Build.return (S.These String.Set.empty))
+  | ".js" :: rest ->
+    has_rules
+      (let+ () = Jsoo_rules.setup_separate_compilation_rules sctx rest in
+       match rest with
+       | [] -> S.All
+       | _ -> S.These String.Set.empty)
+  | "_doc" :: rest ->
+    has_rules
+      (let+ () = Odoc.gen_rules sctx rest ~dir in
+       match rest with
+       | [] -> S.All
+       | _ -> S.These String.Set.empty)
+  | ".ppx" :: rest ->
+    has_rules
+      (let+ () = Preprocessing.gen_rules sctx rest in
+       match rest with
+       | [] -> S.All
+       | _ -> S.These String.Set.empty)
+  | comps -> (
+    Source_tree.find_dir (Path.Build.drop_build_context_exn dir) >>= function
+    | None -> (
+      let has_rules x = has_rules (x >>> Memo.Build.return Subdir_set.empty) in
+      match List.last comps with
+      | Some ".formatted" ->
+        has_rules
+          (let* expander = Super_context.expander sctx ~dir in
+           gen_format_rules sctx ~expander ~output_dir:dir)
+      | Some ".bin" ->
+        has_rules
+          (let src_dir = Path.Build.parent_exn dir in
+           let* local_binaries =
+             Super_context.local_binaries sctx ~dir:src_dir
+           in
+           Memo.Build.sequential_iter local_binaries ~f:(fun t ->
+               let loc = File_binding.Expanded.src_loc t in
+               let src = Path.build (File_binding.Expanded.src t) in
+               let dst = File_binding.Expanded.dst_path t ~dir in
+               Super_context.add_rule sctx ~loc ~dir
+                 (Action_builder.symlink ~src ~dst)))
+      | Some ".utop" ->
+        has_rules (Utop.setup sctx ~dir:(Path.Build.parent_exn dir))
+      | Some _ -> redirect_to_parent
+      | None ->
+        (* [Source_tree.find_dir] never returns [None] for the root, so we
+           cannot be in this branch. *)
+        assert false)
+    | Some source_dir -> (
+      (* This interprets "rule" and "copy_files" stanzas. *)
+      Dir_contents.triage sctx ~dir
+      >>= function
+      | Group_part _ -> redirect_to_parent
+      | Standalone_or_root { root = dir_contents; subdirs; rules } ->
+        has_rules
+          (let* () = Rules.produce rules in
+           let* () =
+             let project = Source_tree.Dir.project source_dir in
+             if
+               Path.Build.equal
+                 (Path.Build.append_source
+                    (Super_context.context sctx).build_dir
+                    (Dune_project.root project))
+                 dir
+             then
+               gen_project_rules sctx project
+             else
+               Memo.Build.return ()
+           in
+           let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
+           let+ () =
+             Memo.Build.parallel_iter subdirs ~f:(fun dc ->
+                 gen_rules sctx dir_contents cctxs ~source_dir
+                   ~dir:(Dir_contents.dir dc)
+                 >>| ignore)
+           in
+           let subdirs = String.Set.of_list [ ".formatted"; ".bin"; ".utop" ] in
+           let subdirs =
+             match components with
+             | [] ->
+               String.Set.union subdirs
+                 (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
+             | _ -> subdirs
+           in
+           S.These subdirs)))
 
 let gen_rules ~sctx ~dir components =
   let module S = Subdir_set in
   match components with
   | [ ".dune" ] ->
-    (* [.dune] is treated specifically as generating the rules in all other
-       directories forces the production of the configurator files for which the
-       rules are setup in this branch. *)
-    let+ () = Context.gen_configurator_rules (Super_context.context sctx) in
-    S.These (String.Set.of_list [ "ccomp" ])
+    has_rules
+      ((* [.dune] is treated specifically as generating the rules in all other
+          directories forces the production of the configurator files for which
+          the rules are setup in this branch. *)
+       let+ () = Context.gen_configurator_rules (Super_context.context sctx) in
+       S.These (String.Set.of_list [ "ccomp" ]))
   | _ ->
     let* () = Memo.Lazy.force Context.force_configurator_files in
     gen_rules ~sctx ~dir components
@@ -439,13 +454,16 @@ let global_rules =
             (Context_name.Map.values sctxs)
             ~f:Odoc.global_rules))
 
+let with_context ctx ~f =
+  Super_context.find ctx >>= function
+  | None -> Memo.Build.return Build_config.Unknown_context_or_install
+  | Some ctx -> f ctx
+
 let gen_rules ctx_or_install ~dir components =
   match (ctx_or_install : Build_config.Context_or_install.t) with
   | Install ctx ->
-    Super_context.find ctx
-    >>= Memo.Build.Option.map ~f:(fun sctx ->
-            Install_rules.symlink_rules sctx ~dir)
+    with_context ctx ~f:(fun sctx ->
+        let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
+        Build_config.Rules (subdirs, rules))
   | Context ctx ->
-    Super_context.find ctx
-    >>= Memo.Build.Option.map ~f:(fun sctx ->
-            Rules.collect (fun () -> gen_rules ~sctx ~dir components))
+    with_context ctx ~f:(fun sctx -> gen_rules ~sctx ~dir components)

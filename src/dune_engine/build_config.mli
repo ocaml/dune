@@ -15,6 +15,13 @@ end
 
 type extra_sub_directories_to_keep = Subdir_set.t
 
+type gen_rules_result =
+  | Rules of extra_sub_directories_to_keep * Rules.t
+  | Unknown_context_or_install
+  | Redirect_to_parent
+      (** [Redirect_to_parent] means that the parent will generate the rules for
+          this directory. *)
+
 module type Rule_generator = sig
   (** The rule generator.
 
@@ -26,15 +33,12 @@ module type Rule_generator = sig
       already contain rules.
 
       It is expected that [gen_rules] only generate rules whose targets are
-      descendant of [dir].
-
-      The callback should return [None] if it doesn't know about the given
-      [Context_or_install.t]. *)
+      descendant of [dir]. *)
   val gen_rules :
        Context_or_install.t
     -> dir:Path.Build.t
     -> string list
-    -> (extra_sub_directories_to_keep * Rules.t) option Memo.Build.t
+    -> gen_rules_result Memo.Build.t
 
   (** [global_rules] is a way to generate rules in arbitrary directories
       upfront. *)

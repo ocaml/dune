@@ -27,7 +27,6 @@ module Loaded = struct
 
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
-    ; rules_produced : Rules.t
     ; rules_here : rules_here
     ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
     }
@@ -39,20 +38,32 @@ module Loaded = struct
   let no_rules ~allowed_subdirs =
     Build
       { allowed_subdirs
-      ; rules_produced = Rules.empty
       ; rules_here = no_rules_here
       ; aliases = Alias.Name.Map.empty
       }
 end
 
 module Dir_triage = struct
+  module Build_directory = struct
+    (* invariant: [dir = context_or_install / sub_dir] *)
+    type t =
+      { dir : Path.Build.t
+      ; context_or_install : Context_or_install.t
+      ; sub_dir : Path.Source.t
+      }
+
+    (* It's ok to only compare and hash the [dir] field because of the
+       invariant. *)
+    let equal a b = Path.Build.equal a.dir b.dir
+
+    let hash t = Path.Build.hash t.dir
+
+    let to_dyn t = Path.Build.to_dyn t.dir
+  end
+
   type t =
     | Known of Loaded.t
-    | Need_step2 of
-        { dir : Path.Build.t
-        ; context_or_install : Context_or_install.t
-        ; sub_dir : Path.Source.t
-        }
+    | Build_directory of Build_directory.t
 end
 
 let get_dir_triage ~dir =
@@ -104,13 +115,13 @@ let get_dir_triage ~dir =
     let dir = Path.as_in_build_dir_exn dir in
     let context_or_install = Context_or_install.Install context_name in
     Memo.Build.return
-      (Dir_triage.Need_step2 { dir; context_or_install; sub_dir })
+      (Dir_triage.Build_directory { dir; context_or_install; sub_dir })
   | Build (Regular (With_context (context_name, sub_dir))) ->
     (* In this branch, [dir] is in the build directory. *)
     let dir = Path.as_in_build_dir_exn dir in
     let context_or_install = Context_or_install.Context context_name in
     Memo.Build.return
-      (Dir_triage.Need_step2 { dir; context_or_install; sub_dir })
+      (Dir_triage.Build_directory { dir; context_or_install; sub_dir })
 
 let describe_rule (rule : Rule.t) =
   match rule.info with
@@ -524,19 +535,51 @@ end = struct
         ~subdir:(Path.Build.basename dir)
   end
 
-  let load_dir_step2_exn ~dir ~context_or_install ~sub_dir =
-    let sub_dir_components = Path.Source.explode sub_dir in
+  module rec Gen_rules : sig
+    val gen_rules :
+      Dir_triage.Build_directory.t -> (Subdir_set.t * Rules.t) Memo.Build.t
+  end = struct
+    let gen_rules_impl
+        { Dir_triage.Build_directory.dir; context_or_install; sub_dir } =
+      let (module RG : Build_config.Rule_generator) =
+        (Build_config.get ()).rule_generator
+      in
+      let sub_dir_components = Path.Source.explode sub_dir in
+      RG.gen_rules context_or_install ~dir sub_dir_components >>= function
+      | Rules (subdirs, rules) -> Memo.Build.return (subdirs, rules)
+      | Unknown_context_or_install ->
+        Code_error.raise "[gen_rules] did not specify rules for the context"
+          [ ("context_or_install", Context_or_install.to_dyn context_or_install)
+          ]
+      | Redirect_to_parent -> (
+        match Path.Source.parent sub_dir with
+        | None ->
+          Code_error.raise
+            "[gen_rules] returned Redirect_to_parent on a root direcoty"
+            [ ( "context_or_install"
+              , Context_or_install.to_dyn context_or_install )
+            ]
+        | Some sub_dir ->
+          Gen_rules.gen_rules
+            { dir = Path.Build.parent_exn dir; context_or_install; sub_dir })
+
+    let gen_rules =
+      let memo =
+        Memo.create
+          ~input:(module Dir_triage.Build_directory)
+          "gen-rules" gen_rules_impl
+      in
+      fun x -> Memo.exec memo x
+  end
+
+  let load_build_directory_exn
+      ({ Dir_triage.Build_directory.dir; context_or_install; sub_dir } as
+      build_dir) =
     (* Load all the rules *)
     let (module RG : Build_config.Rule_generator) =
       (Build_config.get ()).rule_generator
     in
-    let* extra_subdirs_to_keep, rules_produced =
-      RG.gen_rules context_or_install ~dir sub_dir_components >>| function
-      | None ->
-        Code_error.raise "[gen_rules] did not specify rules for the context"
-          [ ("context_or_install", Context_or_install.to_dyn context_or_install)
-          ]
-      | Some x -> x
+    let* extra_subdirs_to_keep, rules_produced = Gen_rules.gen_rules build_dir
     and* global_rules = Memo.Lazy.force RG.global_rules in
     let rules =
       let dir = Path.build dir in
@@ -647,8 +690,8 @@ end = struct
       @ rules
     in
     let* allowed_by_parent =
-      match (context_or_install, sub_dir_components) with
-      | Context _, [ ".dune" ] ->
+      match (context_or_install, Path.Source.to_string sub_dir) with
+      | Context _, ".dune" ->
         (* GROSS HACK: this is to avoid a cycle as the rules for all directories
            force the generation of ".dune/configurator". We need a better way to
            deal with such cases. *)
@@ -714,17 +757,13 @@ end = struct
         (* There are no aliases in the [_build/install] directory *)
         Memo.Build.return Alias.Name.Map.empty
     in
-    { Loaded.allowed_subdirs = descendants_to_keep
-    ; rules_produced
-    ; rules_here
-    ; aliases
-    }
+    { Loaded.allowed_subdirs = descendants_to_keep; rules_here; aliases }
 
   let load_dir_impl ~dir : Loaded.t Memo.Build.t =
     get_dir_triage ~dir >>= function
     | Known l -> Memo.Build.return l
-    | Need_step2 { dir; context_or_install; sub_dir } ->
-      let+ build = load_dir_step2_exn ~dir ~context_or_install ~sub_dir in
+    | Build_directory x ->
+      let+ build = load_build_directory_exn x in
       Loaded.Build build
 
   let load_dir =
@@ -817,11 +856,6 @@ let get_alias_definition alias =
     User_error.raise ?loc
       [ Pp.text "No rule found for " ++ Alias.describe alias ]
   | Some x -> Memo.Build.return x
-
-let load_dir_and_produce_its_rules ~dir =
-  load_dir ~dir >>= function
-  | Non_build _ -> Memo.Build.return ()
-  | Build loaded -> Rules.produce loaded.rules_produced
 
 let is_target file =
   match Path.is_in_build_dir file with

@@ -109,7 +109,10 @@ end
 
 (* these should be listed in the default order of preference *)
 let all_except_patch_back_source_tree =
-  [ None; Some Symlink; Some Copy; Some Hardlink ]
+  if Sys.win32 then
+    [ None; Some Copy; Some Symlink; Some Hardlink ]
+  else
+    [ None; Some Symlink; Some Copy; Some Hardlink ]
 
 let all = all_except_patch_back_source_tree @ [ Some Patch_back_source_tree ]
 

@@ -421,7 +421,7 @@ end
 
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules :
-    Super_context.t -> dir:Path.Build.t -> unit Memo.Build.t
+    Super_context.t -> Dune_project.t -> unit Memo.Build.t
 end = struct
   let sections ctx_name files pkg =
     let pkg_name = Package.name pkg in
@@ -715,32 +715,11 @@ end = struct
              in
              Format.asprintf "%a" Pp.to_fmt pp)))
 
-  let meta_and_dune_package_rules_impl (project, sctx) =
+  let meta_and_dune_package_rules sctx project =
     Dune_project.packages project
     |> Package.Name.Map_traversals.parallel_iter
          ~f:(fun _name (pkg : Package.t) ->
            gen_dune_package sctx pkg >>> gen_meta_file sctx pkg)
-
-  let meta_and_dune_package_rules_memo =
-    let module Project_and_super_context = struct
-      type t = Dune_project.t * Super_context.t
-
-      let equal =
-        Tuple.T2.equal Dune_project.equal Super_context.As_memo_key.equal
-
-      let hash = Tuple.T2.hash Dune_project.hash Super_context.As_memo_key.hash
-
-      let to_dyn (p, s) =
-        Dyn.Tuple [ Dune_project.to_dyn p; Super_context.As_memo_key.to_dyn s ]
-    end in
-    Memo.With_implicit_output.create "meta_and_dune_package_rules"
-      ~input:(module Project_and_super_context)
-      ~implicit_output:Rules.implicit_output meta_and_dune_package_rules_impl
-
-  let meta_and_dune_package_rules sctx ~dir =
-    let project = Scope.project (Super_context.find_scope_by_dir sctx dir) in
-    Memo.With_implicit_output.exec meta_and_dune_package_rules_memo
-      (project, sctx)
 end
 
 include Meta_and_dune_package

@@ -3,14 +3,13 @@ open Import
 
 (** Setup automatic format rules for the given dir. If tools like ocamlformat
     are not available in $PATH, just display an error message when the alias is
-    built. *)
-val gen_rules : dir:Path.Build.t -> unit Memo.Build.t
+    built.
 
-val gen_rules_output :
-     Super_context.t
-  -> Format_config.t
-  -> version:Dune_lang.Syntax.Version.t
-  -> dialects:Dialect.DB.t
-  -> expander:Expander.t
-  -> output_dir:Path.Build.t
-  -> unit Memo.Build.t
+    This must be called from inside the [formatted_dir_basename] sub-directory. *)
+val gen_rules : Super_context.t -> output_dir:Path.Build.t -> unit Memo.Build.t
+
+(** This must be called from the main directory, i.e. the ones containing the
+    source files and the the [formatted_dir_basename] sub-directory. *)
+val setup_alias : Super_context.t -> dir:Path.Build.t -> unit Memo.Build.t
+
+val formatted_dir_basename : string

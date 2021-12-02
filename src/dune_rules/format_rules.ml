@@ -18,11 +18,11 @@ let depend_on_files ~named dir =
   |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative dir))
   |> Action_builder.paths_existing
 
-let formatted = ".formatted"
+let formatted_dir_basename = ".formatted"
 
 let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
     ~expander ~output_dir =
-  assert (formatted = Path.Build.basename output_dir);
+  assert (formatted_dir_basename = Path.Build.basename output_dir);
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let source_dir = Path.Build.drop_build_context_exn dir in
@@ -85,9 +85,28 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 
-let gen_rules ~dir =
-  let output_dir = Path.Build.relative dir formatted in
-  let alias = Alias.fmt ~dir in
-  let alias_formatted = Alias.fmt ~dir:output_dir in
-  Rules.Produce.Alias.add_deps alias
-    (Action_builder.dep (Dep.alias alias_formatted))
+let gen_rules sctx ~output_dir =
+  let open Memo.Build.O in
+  let dir = Path.Build.parent_exn output_dir in
+  let* config = Super_context.format_config sctx ~dir in
+  Memo.Build.when_
+    (not (Format_config.is_empty config))
+    (fun () ->
+      let* expander = Super_context.expander sctx ~dir in
+      let scope = Super_context.find_scope_by_dir sctx output_dir in
+      let project = Scope.project scope in
+      let dialects = Dune_project.dialects project in
+      let version = Dune_project.dune_version project in
+      gen_rules_output sctx config ~version ~dialects ~expander ~output_dir)
+
+let setup_alias sctx ~dir =
+  let open Memo.Build.O in
+  let* config = Super_context.format_config sctx ~dir in
+  Memo.Build.when_
+    (not (Format_config.is_empty config))
+    (fun () ->
+      let output_dir = Path.Build.relative dir formatted_dir_basename in
+      let alias = Alias.fmt ~dir in
+      let alias_formatted = Alias.fmt ~dir:output_dir in
+      Rules.Produce.Alias.add_deps alias
+        (Action_builder.dep (Dep.alias alias_formatted)))

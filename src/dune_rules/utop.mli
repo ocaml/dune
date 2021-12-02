@@ -7,7 +7,7 @@ open! Stdune
     are defined. *)
 val utop_exe : string
 
-val is_utop_dir : Path.Build.t -> bool
+val utop_dir_basename : string
 
 val libs_under_dir :
   Super_context.t -> db:Lib.DB.t -> dir:Path.t -> Lib.L.t Memo.Build.t

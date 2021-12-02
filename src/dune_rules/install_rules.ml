@@ -798,18 +798,6 @@ let packages_file_is_part_of path =
     let+ map = packages sctx in
     Option.value (Path.Build.Map.find map path) ~default:Package.Id.Set.empty
 
-module Sctx_and_package = struct
-  module Super_context = Super_context.As_memo_key
-
-  type t = Super_context.t * Package.t
-
-  let hash (x, y) = Hashtbl.hash (Super_context.hash x, Package.hash y)
-
-  let equal (x1, y1) (x2, y2) = x1 == x2 && y1 == y2
-
-  let to_dyn _ = Dyn.Opaque
-end
-
 let symlinked_entries sctx package =
   let package_name = Package.name package in
   let install_paths =
@@ -823,7 +811,7 @@ let symlinked_entries sctx package =
 let symlinked_entries =
   let memo =
     Memo.create
-      ~input:(module Sctx_and_package)
+      ~input:(module Super_context.As_memo_key.And_package)
       ~human_readable_description:(fun (_, pkg) ->
         Pp.textf "Computing installable artifacts for package %s"
           (Package.Name.to_string (Package.name pkg)))
@@ -956,7 +944,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
 
 let memo =
   Memo.create
-    ~input:(module Sctx_and_package)
+    ~input:(module Super_context.As_memo_key.And_package)
     ~human_readable_description:(fun (_, pkg) ->
       Pp.textf "Computing installable artifacts for package %s"
         (Package.Name.to_string (Package.name pkg)))

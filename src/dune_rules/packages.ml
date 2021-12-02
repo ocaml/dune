@@ -4,6 +4,8 @@ open Import
 open Dune_file
 open Memo.Build.O
 
+(* CR-someday jeremiedimino: This should be a memoized function [Super_context.t
+   -> Package.t -> Path.Build.t list Memo.Build.t]. *)
 let mlds_by_package_def =
   Memo.With_implicit_output.create "mlds by package"
     ~implicit_output:Rules.implicit_output

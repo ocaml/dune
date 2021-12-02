@@ -21,8 +21,6 @@ let source ~dir =
     ~loc:(Loc.in_dir (Path.build dir))
     ~main:"UTop_main.main ();" ~name:exe_name
 
-let is_utop_dir dir = Path.Build.basename dir = utop_dir_basename
-
 module Libs_and_ppxs =
   Monoid.Product
     (Monoid.Appendable_list (struct

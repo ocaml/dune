@@ -827,4 +827,14 @@ module As_memo_key = struct
   let hash = hash
 
   let to_dyn = to_dyn_concise
+
+  module And_package = struct
+    type nonrec t = t * Package.t
+
+    let hash (x, y) = Hashtbl.hash (hash x, Package.hash y)
+
+    let equal (x1, y1) (x2, y2) = equal x1 x2 && y1 == y2
+
+    let to_dyn (s, p) = Dyn.Tuple [ to_dyn s; Package.to_dyn p ]
+  end
 end

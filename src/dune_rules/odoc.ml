@@ -633,50 +633,46 @@ let default_index ~pkg entry_modules =
                |> String.concat ~sep:" ")));
   Buffer.contents b
 
-let setup_package_odoc_rules_def =
-  let module Input = struct
-    module Super_context = Super_context.As_memo_key
-
-    type t = Super_context.t * Package.Name.t
-
-    let hash (sctx, p) =
-      Hashtbl.hash (Super_context.hash sctx, Package.Name.hash p)
-
-    let equal (s1, x1) (s2, x2) =
-      Super_context.equal s1 s2 && Package.Name.equal x1 x2
-
-    let to_dyn (_, name) = Dyn.Tuple [ Package.Name.to_dyn name ]
-  end in
-  Memo.With_implicit_output.create "setup-package-odoc-rules"
-    ~input:(module Input)
-    ~implicit_output:Rules.implicit_output
-    (fun (sctx, pkg) ->
-      let* mlds = Packages.mlds sctx pkg in
-      let mlds = check_mlds_no_dupes ~pkg ~mlds in
-      let ctx = Super_context.context sctx in
-      let* mlds =
-        if String.Map.mem mlds "index" then
-          Memo.Build.return mlds
-        else
-          let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
-          let* entry_modules = entry_modules sctx ~pkg in
-          let+ () =
-            add_rule sctx
-              (Action_builder.write_file gen_mld
-                 (default_index ~pkg entry_modules))
-          in
-          String.Map.set mlds "index" gen_mld
-      in
-      let* odocs =
-        Memo.Build.parallel_map (String.Map.values mlds) ~f:(fun mld ->
-            compile_mld sctx (Mld.create mld) ~pkg
-              ~doc_dir:(Paths.odocs ctx (Pkg pkg))
-              ~includes:(Action_builder.return []))
-      in
-      Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs))
+let package_mlds =
+  let memo =
+    Memo.create "package-mlds"
+      ~input:(module Super_context.As_memo_key.And_package)
+      (fun (sctx, pkg) ->
+        Rules.collect (fun () ->
+            (* CR-someday jeremiedimino: it is weird that we drop the
+               [Package.t] and go back to a package name here. Need to try and
+               change that one day. *)
+            let pkg = Package.name pkg in
+            let* mlds = Packages.mlds sctx pkg in
+            let mlds = check_mlds_no_dupes ~pkg ~mlds in
+            let ctx = Super_context.context sctx in
+            if String.Map.mem mlds "index" then
+              Memo.Build.return mlds
+            else
+              let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
+              let* entry_modules = entry_modules sctx ~pkg in
+              let+ () =
+                add_rule sctx
+                  (Action_builder.write_file gen_mld
+                     (default_index ~pkg entry_modules))
+              in
+              String.Map.set mlds "index" gen_mld))
+  in
+  fun sctx ~pkg -> Memo.exec memo (sctx, pkg)
 
 let setup_package_odoc_rules sctx ~pkg =
-  Memo.With_implicit_output.exec setup_package_odoc_rules_def (sctx, pkg)
+  let* mlds = package_mlds sctx ~pkg >>| fst in
+  let ctx = Super_context.context sctx in
+  (* CR-someday jeremiedimino: it is weird that we drop the [Package.t] and go
+     back to a package name here. Need to try and change that one day. *)
+  let pkg = Package.name pkg in
+  let* odocs =
+    Memo.Build.parallel_map (String.Map.values mlds) ~f:(fun mld ->
+        compile_mld sctx (Mld.create mld) ~pkg
+          ~doc_dir:(Paths.odocs ctx (Pkg pkg))
+          ~includes:(Action_builder.return []))
+  in
+  Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs)
 
 let gen_project_rules sctx project =
   let* packages = Only_packages.packages_of_project project in
@@ -698,47 +694,63 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
     Rules.Produce.Alias.add_deps (Alias.private_doc ~dir)
       (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 
+let has_rules m =
+  let+ rules = Rules.collect_unit (fun () -> m) in
+  Build_config.Rules (Subdir_set.empty, rules)
+
+let with_package sctx pkg ~f =
+  let pkg = Package.Name.of_string pkg in
+  let packages = Super_context.packages sctx in
+  match Package.Name.Map.find packages pkg with
+  | None ->
+    Memo.Build.return (Build_config.Rules (Subdir_set.empty, Rules.empty))
+  | Some pkg -> has_rules (f pkg)
+
 let gen_rules sctx ~dir:_ rest =
   match rest with
-  | [ "_html" ] -> setup_css_rule sctx >>> setup_toplevel_index_rule sctx
-  | "_mlds" :: pkg :: _
-  | "_odoc" :: "pkg" :: pkg :: _ -> (
-    let pkg = Package.Name.of_string pkg in
-    let packages = Super_context.packages sctx in
-    match Package.Name.Map.find packages pkg with
-    | None -> Memo.Build.return ()
-    | Some _ -> setup_package_odoc_rules sctx ~pkg)
-  | "_html" :: lib_unique_name_or_pkg :: _ ->
-    (* TODO we can be a better with the error handling in the case where
-       lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-    let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
-    let setup_pkg_html_rules pkg =
-      let pkg_libs = libs_of_pkg sctx ~pkg in
-      setup_pkg_html_rules sctx ~pkg ~libs:pkg_libs
-    in
-    (* jeremiedimino: why isn't [None] some kind of error here? *)
-    let* lib =
-      let+ lib = Lib.DB.find lib_db lib in
-      Option.bind ~f:Lib.Local.of_lib lib
-    in
-    let+ () =
-      match lib with
-      | None -> Memo.Build.return ()
-      | Some lib -> (
-        match Lib_info.package (Lib.Local.info lib) with
-        | None ->
-          let* requires = Lib.closure ~linking:false [ Lib.Local.to_lib lib ] in
-          setup_lib_html_rules sctx lib ~requires
-        | Some pkg -> setup_pkg_html_rules pkg)
-    and+ () =
-      match
-        Package.Name.Map.find (SC.packages sctx)
-          (Package.Name.of_string lib_unique_name_or_pkg)
-      with
-      | None -> Memo.Build.return ()
-      | Some pkg ->
-        let name = Package.name pkg in
-        setup_pkg_html_rules name
-    in
-    ()
-  | _ -> Memo.Build.return ()
+  | [] -> Memo.Build.return (Build_config.Rules (Subdir_set.All, Rules.empty))
+  | [ "_html" ] ->
+    has_rules (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
+  | [ "_mlds"; pkg ] ->
+    with_package sctx pkg ~f:(fun pkg ->
+        let* _mlds, rules = package_mlds sctx ~pkg in
+        Rules.produce rules)
+  | [ "_odoc"; "pkg"; pkg ] ->
+    with_package sctx pkg ~f:(fun pkg -> setup_package_odoc_rules sctx ~pkg)
+  | [ "_html"; lib_unique_name_or_pkg ] ->
+    has_rules
+      ((* TODO we can be a better with the error handling in the case where
+          lib_unique_name_or_pkg is neither a valid pkg or lnu *)
+       let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
+       let setup_pkg_html_rules pkg =
+         let pkg_libs = libs_of_pkg sctx ~pkg in
+         setup_pkg_html_rules sctx ~pkg ~libs:pkg_libs
+       in
+       (* jeremiedimino: why isn't [None] some kind of error here? *)
+       let* lib =
+         let+ lib = Lib.DB.find lib_db lib in
+         Option.bind ~f:Lib.Local.of_lib lib
+       in
+       let+ () =
+         match lib with
+         | None -> Memo.Build.return ()
+         | Some lib -> (
+           match Lib_info.package (Lib.Local.info lib) with
+           | None ->
+             let* requires =
+               Lib.closure ~linking:false [ Lib.Local.to_lib lib ]
+             in
+             setup_lib_html_rules sctx lib ~requires
+           | Some pkg -> setup_pkg_html_rules pkg)
+       and+ () =
+         match
+           Package.Name.Map.find (SC.packages sctx)
+             (Package.Name.of_string lib_unique_name_or_pkg)
+         with
+         | None -> Memo.Build.return ()
+         | Some pkg ->
+           let name = Package.name pkg in
+           setup_pkg_html_rules name
+       in
+       ())
+  | _ -> Memo.Build.return Build_config.Redirect_to_parent

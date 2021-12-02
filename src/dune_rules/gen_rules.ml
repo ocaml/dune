@@ -168,24 +168,6 @@ end = struct
     |> rev
 end
 
-(* We need to instantiate Install_rules earlier to avoid issues whenever
- * Super_context is used too soon.
- * See: https://github.com/ocaml/dune/pull/1354#issuecomment-427922592 *)
-
-let with_format sctx ~dir ~f =
-  let* config = Super_context.format_config sctx ~dir in
-  Memo.Build.when_ (not (Format_config.is_empty config)) (fun () -> f config)
-
-let gen_format_rules sctx ~expander ~output_dir =
-  let scope = Super_context.find_scope_by_dir sctx output_dir in
-  let project = Scope.project scope in
-  let dialects = Dune_project.dialects project in
-  let version = Dune_project.dune_version project in
-  with_format sctx ~dir:output_dir
-    ~f:
-      (Format_rules.gen_rules_output sctx ~version ~dialects ~expander
-         ~output_dir)
-
 (* This is used to determine the list of source directories to give to Merlin.
    This serves the same purpose as [Merlin.lib_src_dirs] and has a similar
    implementation, but this definition is used for the current library, while
@@ -310,12 +292,12 @@ let gen_rules sctx dir_contents cctxs expander
 
 let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     (Loc.t * Compilation_context.t) list Memo.Build.t =
-  let* () = with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir) in
   let* expander =
     let+ expander = Super_context.expander sctx ~dir in
     Dir_contents.add_sources_to_expander sctx expander
   and* tests = Source_tree.Dir.cram_tests source_dir in
   let* () = Cram_rules.rules ~sctx ~expander ~dir tests in
+  let* () = Format_rules.setup_alias sctx ~dir in
   match Super_context.stanzas_in sctx ~dir with
   | Some d -> gen_rules sctx dir_contents cctxs expander d
   | None ->
@@ -333,6 +315,36 @@ let gen_project_rules sctx project =
   and+ () = Odoc.gen_project_rules sctx project in
   ()
 
+(* Sub-dirs that are automatically generated in all directories. Or rather, all
+   the ones that have a corresponding source directory. *)
+type automatic_sub_dir =
+  | Utop
+  | Formatted
+  | Bin
+
+let bin_dir_basename = ".bin"
+
+let automatic_sub_dirs_map =
+  String.Map.of_list_exn
+    [ (Utop.utop_dir_basename, Utop)
+    ; (Format_rules.formatted_dir_basename, Formatted)
+    ; (bin_dir_basename, Bin)
+    ]
+
+let gen_rules_for_automatic_sub_dir ~sctx ~dir kind =
+  match kind with
+  | Utop -> Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
+  | Formatted -> Format_rules.gen_rules sctx ~output_dir:dir
+  | Bin ->
+    let* local_binaries =
+      Super_context.local_binaries sctx ~dir:(Path.Build.parent_exn dir)
+    in
+    Memo.Build.sequential_iter local_binaries ~f:(fun t ->
+        let loc = File_binding.Expanded.src_loc t in
+        let src = Path.build (File_binding.Expanded.src t) in
+        let dst = File_binding.Expanded.dst_path t ~dir in
+        Super_context.add_rule sctx ~loc ~dir (Action_builder.symlink ~src ~dst))
+
 let has_rules m =
   let+ subdirs, rules = Rules.collect (fun () -> m) in
   Build_config.Rules (subdirs, rules)
@@ -349,54 +361,39 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.Build.t
     has_rules
       ((* Add rules for C compiler detection *)
        let+ () = Cxx_rules.rules ~sctx ~dir in
-       S.These String.Set.empty)
-  | ".dune" :: _ -> has_rules (Memo.Build.return (S.These String.Set.empty))
+       S.empty)
+  | [ ".dune" ] -> has_rules (Memo.Build.return S.empty)
   | ".js" :: rest ->
     has_rules
       (let+ () = Jsoo_rules.setup_separate_compilation_rules sctx rest in
        match rest with
        | [] -> S.All
-       | _ -> S.These String.Set.empty)
-  | "_doc" :: rest ->
-    has_rules
-      (let+ () = Odoc.gen_rules sctx rest ~dir in
-       match rest with
-       | [] -> S.All
-       | _ -> S.These String.Set.empty)
+       | _ -> S.empty)
+  | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
   | ".ppx" :: rest ->
     has_rules
       (let+ () = Preprocessing.gen_rules sctx rest in
        match rest with
        | [] -> S.All
-       | _ -> S.These String.Set.empty)
-  | comps -> (
-    Source_tree.find_dir (Path.Build.drop_build_context_exn dir) >>= function
+       | _ -> S.empty)
+  | _ -> (
+    let src_dir = Path.Build.drop_build_context_exn dir in
+    Source_tree.find_dir src_dir >>= function
     | None -> (
-      let has_rules x = has_rules (x >>> Memo.Build.return Subdir_set.empty) in
-      match List.last comps with
-      | Some ".formatted" ->
-        has_rules
-          (let* expander = Super_context.expander sctx ~dir in
-           gen_format_rules sctx ~expander ~output_dir:dir)
-      | Some ".bin" ->
-        has_rules
-          (let src_dir = Path.Build.parent_exn dir in
-           let* local_binaries =
-             Super_context.local_binaries sctx ~dir:src_dir
-           in
-           Memo.Build.sequential_iter local_binaries ~f:(fun t ->
-               let loc = File_binding.Expanded.src_loc t in
-               let src = Path.build (File_binding.Expanded.src t) in
-               let dst = File_binding.Expanded.dst_path t ~dir in
-               Super_context.add_rule sctx ~loc ~dir
-                 (Action_builder.symlink ~src ~dst)))
-      | Some ".utop" ->
-        has_rules (Utop.setup sctx ~dir:(Path.Build.parent_exn dir))
-      | Some _ -> redirect_to_parent
-      | None ->
-        (* [Source_tree.find_dir] never returns [None] for the root, so we
-           cannot be in this branch. *)
-        assert false)
+      (* There is always a source dir at the root, so we can't be at the root if
+         we are in this branch *)
+      let parent = Path.Source.parent_exn src_dir in
+      Source_tree.find_dir parent >>= function
+      | None -> redirect_to_parent
+      | Some _ -> (
+        match
+          String.Map.find automatic_sub_dirs_map (Path.Source.basename src_dir)
+        with
+        | None -> redirect_to_parent
+        | Some kind ->
+          has_rules
+            (gen_rules_for_automatic_sub_dir ~sctx ~dir kind
+            >>> Memo.Build.return Subdir_set.empty)))
     | Some source_dir -> (
       (* This interprets "rule" and "copy_files" stanzas. *)
       Dir_contents.triage sctx ~dir
@@ -425,7 +422,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.Build.t
                    ~dir:(Dir_contents.dir dc)
                  >>| ignore)
            in
-           let subdirs = String.Set.of_list [ ".formatted"; ".bin"; ".utop" ] in
+           let subdirs = String.Set.of_keys automatic_sub_dirs_map in
            let subdirs =
              match components with
              | [] ->

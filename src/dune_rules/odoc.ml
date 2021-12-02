@@ -678,34 +678,25 @@ let setup_package_odoc_rules_def =
 let setup_package_odoc_rules sctx ~pkg =
   Memo.With_implicit_output.exec setup_package_odoc_rules_def (sctx, pkg)
 
-let global_rules sctx =
-  let stanzas = SC.stanzas sctx in
-  let ctx = Super_context.context sctx in
-  let* () =
-    Package.Name.Map_traversals.parallel_iter (SC.packages sctx)
-      ~f:(fun _ (pkg : Package.t) ->
-        (* setup @doc to build the correct html for the package *)
-        setup_package_aliases sctx pkg)
-  in
-  let* action =
-    Memo.Build.List.concat_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->
-        Memo.Build.List.filter_map w.data ~f:(function
-          | Dune_file.Library (l : Dune_file.Library.t) -> (
-            match l.visibility with
-            | Public _ -> Memo.Build.return None
-            | Private _ ->
-              let scope = SC.find_scope_by_dir sctx w.ctx_dir in
-              Library.best_name l
-              |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-              >>| fun lib ->
-              Option.value_exn lib |> Lib.Local.of_lib_exn |> Option.some)
-          | _ -> Memo.Build.return None))
-    >>| Dune_engine.Dep.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
-            Lib lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias)
-  in
-  Rules.Produce.Alias.add_deps
-    (Alias.private_doc ~dir:ctx.build_dir)
-    (Action_builder.deps action)
+let gen_project_rules sctx project =
+  let* packages = Only_packages.packages_of_project project in
+  Package.Name.Map_traversals.parallel_iter packages
+    ~f:(fun _ (pkg : Package.t) ->
+      (* setup @doc to build the correct html for the package *)
+      setup_package_aliases sctx pkg)
+
+let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
+  match l.visibility with
+  | Public _ -> Memo.Build.return ()
+  | Private _ ->
+    let ctx = Super_context.context sctx in
+    let* lib =
+      Lib.DB.find_even_when_hidden (Scope.libs scope) (Library.best_name l)
+      >>| Option.value_exn
+    in
+    let lib = Lib (Lib.Local.of_lib_exn lib) in
+    Rules.Produce.Alias.add_deps (Alias.private_doc ~dir)
+      (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 
 let gen_rules sctx ~dir:_ rest =
   match rest with

@@ -73,6 +73,9 @@ end = struct
       let+ () = Toplevel_rules.setup ~sctx ~dir ~toplevel in
       empty_none
     | Library lib ->
+      let* () =
+        Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
+      in
       let* available =
         Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
       in
@@ -325,10 +328,10 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
 (* To be called once per project, when we are generating the rules for the root
    diretory of the project *)
 let gen_project_rules sctx project =
-  let* () = Opam_create.add_rules sctx project in
-  Install_rules.gen_project_rules sctx project
-
-module B = Build_config
+  let+ () = Opam_create.add_rules sctx project
+  and+ () = Install_rules.gen_project_rules sctx project
+  and+ () = Odoc.gen_project_rules sctx project in
+  ()
 
 let has_rules m =
   let+ subdirs, rules = Rules.collect (fun () -> m) in
@@ -445,14 +448,6 @@ let gen_rules ~sctx ~dir components =
   | _ ->
     let* () = Memo.Lazy.force Context.force_configurator_files in
     gen_rules ~sctx ~dir components
-
-let global_rules =
-  Memo.lazy_ ~name:"global-rules" (fun () ->
-      Rules.collect_unit (fun () ->
-          let* sctxs = Memo.Lazy.force Super_context.all in
-          Memo.Build.parallel_iter
-            (Context_name.Map.values sctxs)
-            ~f:Odoc.global_rules))
 
 let with_context ctx ~f =
   Super_context.find ctx >>= function

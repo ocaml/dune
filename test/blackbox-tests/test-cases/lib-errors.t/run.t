@@ -5,10 +5,10 @@ Cycle detection
 
   $ dune build cycle.exe
   Error: Dependency cycle between:
-     library "a" in _build/default
+     library "b" in _build/default
+  -> library "a" in _build/default
   -> library "c" in _build/default
   -> library "b" in _build/default
-  -> library "a" in _build/default
   [1]
 
 Select with no solution

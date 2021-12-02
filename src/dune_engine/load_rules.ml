@@ -579,13 +579,12 @@ end = struct
     let (module RG : Build_config.Rule_generator) =
       (Build_config.get ()).rule_generator
     in
-    let* extra_subdirs_to_keep, rules_produced = Gen_rules.gen_rules build_dir
-    and* global_rules = Memo.Lazy.force RG.global_rules in
+    let* extra_subdirs_to_keep, rules_produced =
+      Gen_rules.gen_rules build_dir
+    in
     let rules =
       let dir = Path.build dir in
-      Rules.Dir_rules.union
-        (Rules.find rules_produced dir)
-        (Rules.find global_rules dir)
+      Rules.find rules_produced dir
     in
     let collected = Rules.Dir_rules.consume rules in
     let rules = collected.rules in

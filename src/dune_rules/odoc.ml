@@ -394,18 +394,6 @@ let libs_of_pkg sctx ~pkg =
       Option.some_if (not is_impl) lib
     | Deprecated_library_name _ -> None)
 
-let load_all_odoc_rules_pkg sctx ~pkg =
-  let pkg_libs = libs_of_pkg sctx ~pkg in
-  let ctx = Super_context.context sctx in
-  let+ () =
-    Memo.Build.parallel_iter
-      (Pkg pkg :: List.map pkg_libs ~f:(fun lib -> Lib lib))
-      ~f:(fun target ->
-        Load_rules.load_dir_and_produce_its_rules
-          ~dir:(Path.build (Paths.odocs ctx target)))
-  in
-  pkg_libs
-
 let create_odoc ctx ~target odoc_input =
   let html_base = Paths.html ctx target in
   match target with
@@ -729,24 +717,12 @@ let gen_rules sctx ~dir:_ rest =
     match Package.Name.Map.find packages pkg with
     | None -> Memo.Build.return ()
     | Some _ -> setup_package_odoc_rules sctx ~pkg)
-  | "_odoc" :: "lib" :: lib :: _ -> (
-    let lib, lib_db = Scope_key.of_string sctx lib in
-    (* diml: why isn't [None] some kind of error here? *)
-    let* lib = Lib.DB.find lib_db lib in
-    match lib with
-    | None -> Memo.Build.return ()
-    | Some lib ->
-      (* TODO instead of this hack, call memoized function that generates the
-         rules for this library *)
-      let info = Lib.info lib in
-      let dir = Lib_info.src_dir info in
-      Load_rules.load_dir_and_produce_its_rules ~dir)
   | "_html" :: lib_unique_name_or_pkg :: _ ->
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)
     let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
     let setup_pkg_html_rules pkg =
-      let* pkg_libs = load_all_odoc_rules_pkg sctx ~pkg in
+      let pkg_libs = libs_of_pkg sctx ~pkg in
       setup_pkg_html_rules sctx ~pkg ~libs:pkg_libs
     in
     (* jeremiedimino: why isn't [None] some kind of error here? *)

@@ -20,6 +20,10 @@ let of_list l = These (String.Set.of_list l)
 
 let empty = These String.Set.empty
 
+let is_empty = function
+  | All -> false
+  | These set -> String.Set.is_empty set
+
 let mem t dir =
   match t with
   | All -> true

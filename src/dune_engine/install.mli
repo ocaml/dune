@@ -134,8 +134,6 @@ module Metadata : sig
     | UserDefinedEntry of 'src Entry.t
 end
 
-val files : Path.t Entry.t list -> Path.Set.t
-
 val gen_install_file : Path.t Entry.t list -> string
 
 val load_install_file : Path.t -> Path.t Entry.t list

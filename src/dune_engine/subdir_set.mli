@@ -14,6 +14,8 @@ val of_list : string list -> t
 
 val empty : t
 
+val is_empty : t -> bool
+
 val mem : t -> string -> bool
 
 val union : t -> t -> t

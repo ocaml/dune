@@ -365,9 +365,6 @@ module Metadata = struct
     | UserDefinedEntry of 'src Entry.t
 end
 
-let files entries =
-  Path.Set.of_list_map entries ~f:(fun (entry : Path.t Entry.t) -> entry.src)
-
 let group entries =
   List.map entries ~f:(fun (entry : _ Entry.t) -> (entry.section, entry))
   |> Section.Map.of_list_multi

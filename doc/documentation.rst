@@ -7,7 +7,7 @@ Generating Documentation
 Prerequisites
 =============
 
-Documentation in Dune is done courtesy of the ``odoc`` tool. Therefore, to
+Documentation in Dune is done courtesy of the odoc_ tool. Therefore, to
 generate documentation in Dune, you will need to install this tool. This
 should be done with Opam:
 

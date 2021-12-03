@@ -62,6 +62,11 @@ module Set : sig
 
   val singleton : key -> t
 
+  (** For rules with (mode patch-back-source-tree). *)
+  val patch_back_source_tree_only : t
+
+  val is_patch_back_source_tree_only : t -> bool
+
   val equal : t -> t -> bool
 
   val compare : t -> t -> Ordering.t

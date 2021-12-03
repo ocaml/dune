@@ -117,8 +117,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
                something that didn't permit [Some Patch_back_source_tree], Dune
                would crash in a way that would be difficult for the user to
                understand. *)
-            Action.Full.add_sandbox
-              (Sandbox_mode.Set.singleton (Some Patch_back_source_tree))
+            Action.Full.add_sandbox Sandbox_mode.Set.patch_back_source_tree_only
               action)
       else
         action

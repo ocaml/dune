@@ -144,7 +144,8 @@ let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
   Fdecl.set t
     { contexts
     ; rule_generator
-    ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
+    ; sandboxing_preference =
+        sandboxing_preference @ Sandbox_mode.all_except_patch_back_source_tree
     ; handler = Option.value handler ~default:Handler.do_nothing
     ; promote_source
     ; stats

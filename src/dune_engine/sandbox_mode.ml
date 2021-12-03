@@ -85,9 +85,12 @@ module Set = struct
      non-representable. *)
   let patch_back_source_tree_only = singleton (Some Patch_back_source_tree)
 
-  let is_patch_back_source_tree_only (t : t) =
-    t.patch_back_source_tree && (not t.none) && (not t.copy) && (not t.symlink)
-    && not t.hardlink
+  let is_patch_back_source_tree_only t =
+    match compare t patch_back_source_tree_only with
+    | Eq -> true
+    | Lt
+    | Gt ->
+      false
 
   let equal a b =
     match compare a b with

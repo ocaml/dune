@@ -7,7 +7,7 @@ Generating Documentation
 Prerequisites
 =============
 
-Documentation in Dune is done courtesy of the ``odoc_`` tool. Therefore, to
+Documentation in Dune is done courtesy of the ``odoc`` tool. Therefore, to
 generate documentation in Dune, you will need to install this tool. This
 should be done with Opam:
 
@@ -48,7 +48,7 @@ Documentation for private libraries may also be built with:
 
   $ dune build @doc-private
 
-But these libraries will not be in the main ``_html`` listing above, since they don't
+But these libraries will not be in the main HTML listing above, since they don't
 belong to any particular package, but the generated HTML will still be found in
 ``_build/default/_doc/_html/<library>``.
 

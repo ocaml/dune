@@ -227,6 +227,40 @@ module Mvar : sig
   val write : 'a t -> 'a -> unit fiber
 end
 
+(** State variables *)
+module Svar : sig
+  (** A "state variable" [Svar.t] differs from [Ivar.t] in that it can be
+      updated multiple times. It is particularly useful if you'd like to observe
+      the state of a process by subscribing to "interesting" (from your
+      perspective) events.
+
+      For example, a build system can have a complex state machine, switching
+      between states like "waiting for source file changes", "building", etc.,
+      by calling [Svar.write] on the corresponding state variable. If you don't
+      care about most of the states but would like to observe all errors, you
+      can use [Svar.wait ~until:is_error] to be woken up when an error happens.
+      Other observers may have different preferences, expressed with different
+      [until] predicates. You can also use the non-blocking [Svar.read] if you'd
+      like to use polling instead. *)
+
+  (** ['a t] is a state variable holding the value of type ['a] *)
+  type 'a t
+
+  (** [create init] creates a new state variable initialized with [init] *)
+  val create : 'a -> 'a t
+
+  (** [read t] returns the current value of [t] *)
+  val read : 'a t -> 'a
+
+  (** [wait t ~until] waits until [t]'s value satisfies the predicate [until].
+      If the current value satisfies it, [wait] returns immediately, otherwise,
+      the caller is blocked. *)
+  val wait : 'a t -> until:('a -> bool) -> unit fiber
+
+  (** [write t a] sets the current value of [t] to [a] *)
+  val write : 'a t -> 'a -> unit fiber
+end
+
 module Mutex : sig
   type t
 

@@ -666,6 +666,43 @@ module Mvar = struct
         k ())
 end
 
+module Svar = struct
+  type 'a t =
+    { mutable current : 'a
+    ; mutable waiters : (unit K.t * ('a -> bool)) list
+    }
+
+  let read t = t.current
+
+  let wait =
+    let rec wait t ~until =
+      if until t.current then
+        return ()
+      else
+        let* () = suspend t ~until in
+        wait t ~until
+    and suspend t ~until k = t.waiters <- (K.create k, until) :: t.waiters in
+    fun t ~until -> wait t ~until
+
+  let create current = { current; waiters = [] }
+
+  let write t a k =
+    t.current <- a;
+    let sleep, awake =
+      List.rev_partition_map t.waiters ~f:(fun (k, f) ->
+          if f t.current then
+            Right k
+          else
+            Left (k, f))
+    in
+    (match awake with
+    | [] -> ()
+    | awake ->
+      t.waiters <- List.rev sleep;
+      List.iter awake ~f:(fun k -> K.enqueue k ()));
+    k ()
+end
+
 module Mutex = struct
   type t =
     { mutable locked : bool

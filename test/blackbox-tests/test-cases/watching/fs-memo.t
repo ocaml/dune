@@ -15,15 +15,19 @@ Tests for [Fs_memo] module.
   >   rm .#tmp
   > }
 
+The action ignores the dependency [dep]. We use it to force rerunning the action
+when necessary.
+
   $ echo "(lang dune 2.0)" > dune-project
   $ cat >dune <<EOF
   > (rule
   >  (alias default)
-  >  (deps (glob_files file-?) (glob_files dir/file-?) (glob_files dir/subdir/file-?))
-  >  (action (bash "cat %{deps}")))
+  >  (deps dep (glob_files file-?) (glob_files dir/file-?) (glob_files dir/subdir/file-?))
+  >  (action (bash "echo %{deps} | xargs -d' ' -n 1 | grep -v dep | xargs cat")))
   > EOF
 
   $ echo -n 1 > file-1
+  $ touch dep
 
 Note that we receive two events for [file-2] because it's first created empty
 and then the contents is written to it.
@@ -272,3 +276,159 @@ then creating a file.
   Updating path_stat cache for "file-1": Skipped
   Updating path_stat cache for "file-5": Skipped
   Updating path_stat cache for "file-5": Skipped
+
+Demonstrate that watching symbolic links doesn't currently work.
+
+First, create a symbolic link.
+
+  $ test "ln -s ../file-3 dir/file-6"
+  ------------------------------------------
+  Success, waiting for filesystem changes...
+  353
+  Success, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for "dir": Updated { changed = true }
+  Updating dir_contents cache for "dir/file-6": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir/file-6": Skipped
+  Updating path_stat cache for "dir": Updated { changed = false }
+  Updating path_stat cache for "dir/file-6": Skipped
+
+Now, delete the symbolic link. Dune receives the corresponding events but
+doesn't rerun the affected action.
+
+# CR-someday amokhov: Fix this.
+
+  $ test "rm dir/file-6"
+  ------------------------------------------
+  Success, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for "dir": Updated { changed = true }
+  Updating dir_contents cache for "dir/file-6": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir/file-6": Updated { changed = true }
+  Updating path_stat cache for "dir": Updated { changed = false }
+  Updating path_stat cache for "dir/file-6": Updated { changed = true }
+
+If we force the action to be rerun by modifying [dep], it prints [35] as it
+should have done in the previous run.
+
+  $ test "echo force-1 > dep"
+  ------------------------------------------
+  Success, waiting for filesystem changes...
+  35
+  Success, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for "dep": Skipped
+  Updating file_digest cache for "dep": Updated { changed = true }
+  Updating path_stat cache for "dep": Skipped
+
+Now demonstrate one more problem with symlinks.
+
+  $ mkdir another-dir
+  $ rmdir dir
+  $ ln -s another-dir dir
+
+At first, things appear to be working well: we correctly discover [dir/file-7]
+and re-execute the rule.
+
+  $ test "echo -n 7 > another-dir/file-7"
+  ------------------------------------------
+  Success, waiting for filesystem changes...
+  357
+  Success, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for "dir": Updated { changed = true }
+  Updating dir_contents cache for "dir/file-7": Skipped
+  Updating dir_contents cache for "dir/file-7": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir/file-7": Skipped
+  Updating file_digest cache for "dir/file-7": Skipped
+  Updating path_stat cache for "dir": Updated { changed = false }
+  Updating path_stat cache for "dir/file-7": Skipped
+  Updating path_stat cache for "dir/file-7": Skipped
+
+However, deleting [dir] doesn't trigger rerunning the rule.
+
+# CR-someday amokhov: Fix this.
+
+  $ test "rm dir"
+  ------------------------------------------
+  Success, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for ".": Updated { changed = true }
+  Updating dir_contents cache for "dir": Updated { changed = true }
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating path_stat cache for ".": Updated { changed = false }
+  Updating path_stat cache for "dir": Updated { changed = true }
+
+By changing [dep], we can force Dune to print the correct output.
+
+  $ test "echo force-2 > dep"
+  ------------------------------------------
+  Success, waiting for filesystem changes...
+  35
+  Success, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for "dep": Skipped
+  Updating file_digest cache for "dep": Updated { changed = true }
+  Updating path_stat cache for "dep": Skipped
+
+Restoring the symlink is correctly noticed.
+
+  $ test "ln -s another-dir dir"
+  ------------------------------------------
+  Success, waiting for filesystem changes...
+  357
+  Success, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for ".": Updated { changed = true }
+  Updating dir_contents cache for "dir": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "dir": Skipped
+  Updating path_stat cache for ".": Updated { changed = false }
+  Updating path_stat cache for "dir": Skipped
+
+However, deleting [another-dir] isn't handled correctly either.
+
+# CR-someday amokhov: Fix this.
+
+  $ test "rm -rf another-dir"
+  ------------------------------------------
+  Success, waiting for filesystem changes...
+  Success, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for ".": Updated { changed = true }
+  Updating dir_contents cache for "another-dir": Updated { changed = false }
+  Updating dir_contents cache for "another-dir": Updated { changed = true }
+  Updating dir_contents cache for "another-dir/file-7": Skipped
+  Updating file_digest cache for ".": Skipped
+  Updating file_digest cache for "another-dir": Skipped
+  Updating file_digest cache for "another-dir": Skipped
+  Updating file_digest cache for "another-dir/file-7": Updated { changed = true }
+  Updating path_stat cache for ".": Updated { changed = false }
+  Updating path_stat cache for "another-dir": Updated { changed = false }
+  Updating path_stat cache for "another-dir": Updated { changed = true }
+  Updating path_stat cache for "another-dir/file-7": Skipped
+
+Here is what should have happened:
+
+  $ test "echo force-3 > dep"
+  Failure
+  Failure
+  ------------------------------------------
+  File "dir", line 1, characters 0-0:
+  Error: File unavailable: dir
+  Broken symlink
+  Had errors, waiting for filesystem changes...
+  File "dir", line 1, characters 0-0:
+  Error: File unavailable: dir
+  Broken symlink
+  Had errors, waiting for filesystem changes...
+  ------------------------------------------
+  Updating dir_contents cache for "dep": Skipped
+  Updating file_digest cache for "dep": Updated { changed = true }
+  Updating path_stat cache for "dep": Skipped

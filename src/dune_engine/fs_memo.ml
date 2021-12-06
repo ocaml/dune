@@ -204,6 +204,11 @@ end = struct
             invalidate accessed_path))
 end
 
+(* CR-someday amokhov: The current implementation doesn't handle symbolic links
+   correctly. Instead of running [path_stat] on [path] directly and watching the
+   [path] via its parent, we should watch all intermediate symbolic links, if
+   there are any. If any of them changes, the whole chain should be invalidated
+   and re-traversed/re-watched again. *)
 let path_stat path =
   let* () = Watcher.watch ~try_to_watch_via_parent:true path in
   match Fs_cache.read Fs_cache.Untracked.path_stat path with

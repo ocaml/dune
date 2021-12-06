@@ -8,11 +8,13 @@ let register name of_args run =
       let t = of_args args in
       run t)
 
+(* Doesn't follow the symlinks! *)
 module Stat = struct
   type data =
     | Hardlinks
     | Permissions
     | Size
+    | Kind
 
   type t =
     { file : Path.t
@@ -23,6 +25,7 @@ module Stat = struct
     | "size" -> Size
     | "hardlinks" -> Hardlinks
     | "permissions" -> Permissions
+    | "kind" -> Kind
     | s ->
       raise
         (Arg.Bad
@@ -34,6 +37,7 @@ module Stat = struct
     | Size -> Int.to_string stats.st_size
     | Hardlinks -> Int.to_string stats.st_nlink
     | Permissions -> sprintf "%o" stats.st_perm
+    | Kind -> sprintf "%s" (File_kind.to_string_hum stats.st_kind)
 
   let name = "stat"
 
@@ -45,7 +49,7 @@ module Stat = struct
     | _ -> raise (Arg.Bad (sprintf "2 arguments must be provided"))
 
   let run { file; data } =
-    let stats = Path.stat_exn file in
+    let stats = Path.lstat_exn file in
     print_endline (pp_stats data stats)
 
   let () = register name of_args run

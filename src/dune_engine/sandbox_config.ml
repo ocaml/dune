@@ -5,7 +5,12 @@ let no_special_requirements = of_func (fun _ -> true)
 
 let no_sandboxing = of_func Option.is_none
 
-let needs_sandboxing = of_func Option.is_some
+let needs_sandboxing =
+  of_func (function
+    | None
+    | Some Patch_back_source_tree ->
+      false
+    | Some _ -> true)
 
 let default = no_special_requirements
 

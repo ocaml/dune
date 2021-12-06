@@ -1733,8 +1733,8 @@ module Rule = struct
              User_error.raise ~loc
                [ Pp.text
                    "Rules with (mode patch-back-source-tree) cannot have an \
-                    explicit sandbox configuration has it is implied by (mode \
-                    patch-back-source-tree)."
+                    explicit sandbox configuration because it is implied by \
+                    (mode patch-back-source-tree)."
                ];
            (Standard, true)
        in

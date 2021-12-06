@@ -79,6 +79,19 @@ module Set = struct
 
   let singleton k = of_func (equal k)
 
+  (* CR-someday amokhov: [Patch_back_source_tree] is a bit special in that it
+     can only appear as a singleton. Perhaps, it should be treated differently
+     than other sandboxing modes to make meaningless states
+     non-representable. *)
+  let patch_back_source_tree_only = singleton (Some Patch_back_source_tree)
+
+  let is_patch_back_source_tree_only t =
+    match compare t patch_back_source_tree_only with
+    | Eq -> true
+    | Lt
+    | Gt ->
+      false
+
   let equal a b =
     match compare a b with
     | Eq -> true
@@ -107,7 +120,8 @@ module Set = struct
       ]
 end
 
-(* these should be listed in the default order of preference *)
+(* The order of sandboxing modes in this list determines the order in which Dune
+   will try to use them when satisfying sandboxing constraints. *)
 let all_except_patch_back_source_tree =
   if Sys.win32 then
     [ None; Some Copy; Some Symlink; Some Hardlink ]

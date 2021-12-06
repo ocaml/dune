@@ -71,7 +71,6 @@ Non-modified dependencies are not promoted
   >  (alias default)
   >  (deps x)
   >  (action (system "echo 'Hello, world!'")))
-  > 
   > (rule (with-stdout-to x (progn)))
   > EOF
 
@@ -127,7 +126,7 @@ Interaction with explicit sandboxing
   4 |  (alias default)
   5 |  (action (system "echo 'Hello, world!'")))
   Error: Rules with (mode patch-back-source-tree) cannot have an explicit
-  sandbox configuration has it is implied by (mode patch-back-source-tree).
+  sandbox configuration because it is implied by (mode patch-back-source-tree).
   [1]
 
 Selecting an explicit sandbox mode via the command line doesn't affect
@@ -204,8 +203,7 @@ This is the internal stamp file:
   $ ls _build/.actions/default/blah*
   _build/.actions/default/blah-3209c92f18c7050c580114796b6023bd
 
-And we check that it isn't copied in the soure tree:
+And we check that it isn't copied in the source tree:
 
   $ if [ -d default ]; then echo "Failure"; else echo "Success"; fi
   Success
-

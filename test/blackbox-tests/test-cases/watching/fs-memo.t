@@ -3,13 +3,18 @@ Tests for [Fs_memo] module.
   $ . ./helpers.sh
 
   $ test () {
+  >   echo "------------------------------------------"
+  >   before=$(cat _build/default/result 2>/dev/null)
   >   start_dune --debug-cache=fs
   >   build . | grep -v Success
+  >   between=$(cat _build/default/result)
   >   eval "$@"
   >   build . | grep -v Success
-  >   stop_dune | grep -v dune-workspace > .#tmp
-  >   echo "------------------------------------------"
+  >   stop_dune | grep -v dune-workspace >> .#tmp
+  >   after=$(cat _build/default/result)
   >   cat .#tmp | grep -v Updating
+  >   echo "------------------------------------------"
+  >   echo "result = '$before' -> '$between' -> '$after'"
   >   echo "------------------------------------------"
   >   cat .#tmp | grep Updating | sort
   >   rm .#tmp
@@ -22,8 +27,17 @@ when necessary.
   $ cat >dune <<EOF
   > (rule
   >  (alias default)
-  >  (deps dep (glob_files file-?) (glob_files dir/file-?) (glob_files dir/subdir/file-?))
-  >  (action (bash "echo %{deps} | xargs -d' ' -n 1 | grep -v dep | xargs cat")))
+  >  (deps dep
+  >        (glob_files file-?)
+  >        (glob_files dir/file-?)
+  >        (glob_files dir/subdir/file-?))
+  >  (target result)
+  >  (action (bash "\| echo Executing rule...
+  >                "\| echo %{deps}       |
+  >                "\|   xargs -d' ' -n 1 |
+  >                "\|   grep -v dep      |
+  >                "\|   xargs cat > result
+  > )))
   > EOF
 
   $ echo -n 1 > file-1
@@ -34,10 +48,12 @@ and then the contents is written to it.
 
   $ test "echo -n 2 > file-2"
   ------------------------------------------
-  1
+  Executing rule...
   Success, waiting for filesystem changes...
-  12
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '' -> '1' -> '12'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "file-2": Skipped
@@ -57,6 +73,8 @@ the glob remains unchanged.
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   ------------------------------------------
+  result = '12' -> '12' -> '12'
+  ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "dir": Skipped
   Updating file_digest cache for ".": Skipped
@@ -70,10 +88,12 @@ We create [dir/file-3] before running Dune, so we only observe a single
   $ echo -n '?' > dir/file-3
   $ test "echo -n 3 > dir/file-3"
   ------------------------------------------
-  12?
+  Executing rule...
   Success, waiting for filesystem changes...
-  123
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '12' -> '12?' -> '123'
   ------------------------------------------
   Updating dir_contents cache for "dir/file-3": Skipped
   Updating file_digest cache for "dir/file-3": Updated { changed = true }
@@ -84,8 +104,10 @@ Now, Dune similarly updates [file_digest] for [file-2].
   $ test "echo -n '*' > file-2"
   ------------------------------------------
   Success, waiting for filesystem changes...
-  1*3
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '123' -> '123' -> '1*3'
   ------------------------------------------
   Updating dir_contents cache for "file-2": Skipped
   Updating file_digest cache for "file-2": Updated { changed = true }
@@ -96,8 +118,10 @@ On deletion of a file, we receive events for the file and the parent directory.
   $ test "rm file-2"
   ------------------------------------------
   Success, waiting for filesystem changes...
-  13
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '1*3' -> '1*3' -> '13'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "file-2": Skipped
@@ -112,8 +136,10 @@ Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
   $ test "mv dir/file-3 ."
   ------------------------------------------
   Success, waiting for filesystem changes...
-  13
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '13' -> '13' -> '13'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "dir": Updated { changed = true }
@@ -133,6 +159,8 @@ Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   ------------------------------------------
+  result = '13' -> '13' -> '13'
+  ------------------------------------------
   Updating dir_contents cache for "dir": Updated { changed = true }
   Updating dir_contents cache for "dir/subdir": Skipped
   Updating file_digest cache for "dir": Skipped
@@ -145,8 +173,10 @@ Again, there are two events for [file-4]: for creation and modification.
   $ test "echo -n 4 > dir/subdir/file-4"
   ------------------------------------------
   Success, waiting for filesystem changes...
-  134
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '13' -> '13' -> '134'
   ------------------------------------------
   Updating dir_contents cache for "dir/subdir": Updated { changed = true }
   Updating dir_contents cache for "dir/subdir/file-4": Skipped
@@ -164,7 +194,10 @@ because we watch each of them both directly and via their parents.
   $ test "mv dir/subdir ."
   ------------------------------------------
   Success, waiting for filesystem changes...
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '134' -> '134' -> '13'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "dir": Updated { changed = false }
@@ -193,39 +226,47 @@ changed and succeeds instead of failing.
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   ------------------------------------------
+  result = '13' -> '13' -> '13'
+  ------------------------------------------
 
 If we repeat the test, we finally see the failure.
 
 # CR-someday amokhov: Fix this.
 
   $ test "echo How about now?"
+  ------------------------------------------
   Failure
   How about now?
   Failure
+  Error: inotify_add_watch(subdir): Permission denied
+  Had errors, waiting for filesystem changes...
+  Error: inotify_add_watch(subdir): Permission denied
+  Had errors, waiting for filesystem changes...
   ------------------------------------------
-  Error: inotify_add_watch(subdir): Permission denied
-  Had errors, waiting for filesystem changes...
-  Error: inotify_add_watch(subdir): Permission denied
-  Had errors, waiting for filesystem changes...
+  result = '13' -> '13' -> '13'
   ------------------------------------------
 
 Same problem in the other direction.
 
   $ test "chmod +r subdir"
-  Failure
-  Failure
   ------------------------------------------
+  Failure
+  Failure
   Error: inotify_add_watch(subdir): Permission denied
   Had errors, waiting for filesystem changes...
   Error: inotify_add_watch(subdir): Permission denied
   Had errors, waiting for filesystem changes...
+  ------------------------------------------
+  result = '13' -> '13' -> '13'
   ------------------------------------------
 
   $ test "echo How about now?"
-  How about now?
   ------------------------------------------
+  How about now?
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '13' -> '13' -> '13'
   ------------------------------------------
 
 Same problem for files.
@@ -235,19 +276,25 @@ Same problem for files.
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   ------------------------------------------
+  result = '13' -> '13' -> '13'
+  ------------------------------------------
 
   $ test "chmod +r file-1"
-  Failure
-  Failure
   ------------------------------------------
+  Failure
+  Failure
   Error: file-1: Permission denied
   -> required by _build/default/file-1
-  -> required by alias default in dune:1
+  -> required by _build/default/result
+  -> required by alias default
   Had errors, waiting for filesystem changes...
   Error: file-1: Permission denied
   -> required by _build/default/file-1
-  -> required by alias default in dune:1
+  -> required by _build/default/result
+  -> required by alias default
   Had errors, waiting for filesystem changes...
+  ------------------------------------------
+  result = '13' -> '13' -> '13'
   ------------------------------------------
 
 Dune receives one event for [file-1] when moving it within the same directory,
@@ -258,8 +305,10 @@ then creating a file.
   $ test "mv file-1 file-5; echo -n 5 > file-5"
   ------------------------------------------
   Success, waiting for filesystem changes...
-  35
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '13' -> '13' -> '35'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = false }
   Updating dir_contents cache for ".": Updated { changed = true }
@@ -277,15 +326,17 @@ then creating a file.
   Updating path_stat cache for "file-5": Skipped
   Updating path_stat cache for "file-5": Skipped
 
-Demonstrate that watching symbolic links doesn't currently work.
+Tests for watching symbolic links.
 
-First, create a symbolic link.
+First, create a symbolic link. Dune correctly updates the [result].
 
   $ test "ln -s ../file-3 dir/file-6"
   ------------------------------------------
   Success, waiting for filesystem changes...
-  353
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '35' -> '35' -> '353'
   ------------------------------------------
   Updating dir_contents cache for "dir": Updated { changed = true }
   Updating dir_contents cache for "dir/file-6": Skipped
@@ -294,15 +345,16 @@ First, create a symbolic link.
   Updating path_stat cache for "dir": Updated { changed = false }
   Updating path_stat cache for "dir/file-6": Skipped
 
-Now, delete the symbolic link. Dune receives the corresponding events but
-doesn't rerun the affected action.
-
-# CR-someday amokhov: Fix this.
+Now, delete the symbolic link. Dune receives the corresponding events and
+reruns the affected action.
 
   $ test "rm dir/file-6"
   ------------------------------------------
   Success, waiting for filesystem changes...
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '353' -> '353' -> '35'
   ------------------------------------------
   Updating dir_contents cache for "dir": Updated { changed = true }
   Updating dir_contents cache for "dir/file-6": Skipped
@@ -311,20 +363,7 @@ doesn't rerun the affected action.
   Updating path_stat cache for "dir": Updated { changed = false }
   Updating path_stat cache for "dir/file-6": Updated { changed = true }
 
-If we force the action to be rerun by modifying [dep], it prints [35] as it
-should have done in the previous run.
-
-  $ test "echo force-1 > dep"
-  ------------------------------------------
-  Success, waiting for filesystem changes...
-  35
-  Success, waiting for filesystem changes...
-  ------------------------------------------
-  Updating dir_contents cache for "dep": Skipped
-  Updating file_digest cache for "dep": Updated { changed = true }
-  Updating path_stat cache for "dep": Skipped
-
-Now demonstrate one more problem with symlinks.
+Now test symbolic links to directories.
 
   $ mkdir another-dir
   $ rmdir dir
@@ -336,8 +375,10 @@ and re-execute the rule.
   $ test "echo -n 7 > another-dir/file-7"
   ------------------------------------------
   Success, waiting for filesystem changes...
-  357
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '35' -> '35' -> '357'
   ------------------------------------------
   Updating dir_contents cache for "dir": Updated { changed = true }
   Updating dir_contents cache for "dir/file-7": Skipped
@@ -349,14 +390,15 @@ and re-execute the rule.
   Updating path_stat cache for "dir/file-7": Skipped
   Updating path_stat cache for "dir/file-7": Skipped
 
-However, deleting [dir] doesn't trigger rerunning the rule.
-
-# CR-someday amokhov: Fix this.
+Deleting [dir] triggers a rebuild.
 
   $ test "rm dir"
   ------------------------------------------
   Success, waiting for filesystem changes...
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '357' -> '357' -> '35'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "dir": Updated { changed = true }
@@ -365,25 +407,15 @@ However, deleting [dir] doesn't trigger rerunning the rule.
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "dir": Updated { changed = true }
 
-By changing [dep], we can force Dune to print the correct output.
-
-  $ test "echo force-2 > dep"
-  ------------------------------------------
-  Success, waiting for filesystem changes...
-  35
-  Success, waiting for filesystem changes...
-  ------------------------------------------
-  Updating dir_contents cache for "dep": Skipped
-  Updating file_digest cache for "dep": Updated { changed = true }
-  Updating path_stat cache for "dep": Skipped
-
 Restoring the symlink is correctly noticed.
 
   $ test "ln -s another-dir dir"
   ------------------------------------------
   Success, waiting for filesystem changes...
-  357
+  Executing rule...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '35' -> '35' -> '357'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "dir": Skipped
@@ -392,7 +424,7 @@ Restoring the symlink is correctly noticed.
   Updating path_stat cache for ".": Updated { changed = false }
   Updating path_stat cache for "dir": Skipped
 
-However, deleting [another-dir] isn't handled correctly either.
+However, deleting [another-dir] isn't handled correctly.
 
 # CR-someday amokhov: Fix this.
 
@@ -400,6 +432,8 @@ However, deleting [another-dir] isn't handled correctly either.
   ------------------------------------------
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
+  ------------------------------------------
+  result = '357' -> '357' -> '357'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "another-dir": Updated { changed = true }
@@ -416,10 +450,10 @@ However, deleting [another-dir] isn't handled correctly either.
 
 Here is what should have happened:
 
-  $ test "echo force-3 > dep"
-  Failure
-  Failure
+  $ test "echo force > dep"
   ------------------------------------------
+  Failure
+  Failure
   File "dir", line 1, characters 0-0:
   Error: File unavailable: dir
   Broken symlink
@@ -428,6 +462,8 @@ Here is what should have happened:
   Error: File unavailable: dir
   Broken symlink
   Had errors, waiting for filesystem changes...
+  ------------------------------------------
+  result = '357' -> '357' -> '357'
   ------------------------------------------
   Updating dir_contents cache for "dep": Skipped
   Updating file_digest cache for "dep": Updated { changed = true }

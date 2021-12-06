@@ -23,6 +23,7 @@ val no_special_requirements : t
 
 val no_sandboxing : t
 
+(** Allow any sandboxing mode, except [Patch_back_source_tree] *)
 val needs_sandboxing : t
 
 (** The default sandboxing config for actions that don't bother specifying it.

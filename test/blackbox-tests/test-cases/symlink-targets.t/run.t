@@ -32,7 +32,7 @@ into a regular file.
   $ dune build ./b
   $ cat b
   a-v2
-  $ stat --format=%F _build/default/b
+  $ dune_cmd stat kind _build/default/b
   symbolic link
-  $ stat --format=%F b
+  $ dune_cmd stat kind b
   regular file

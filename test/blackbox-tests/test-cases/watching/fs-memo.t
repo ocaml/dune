@@ -396,13 +396,13 @@ However, deleting [another-dir] isn't handled correctly either.
 
 # CR-someday amokhov: Fix this.
 
-  $ test "rm -rf another-dir"
+  $ test "rm another-dir/file-7; sleep 0.001; rmdir another-dir"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
-  Updating dir_contents cache for "another-dir": Updated { changed = false }
+  Updating dir_contents cache for "another-dir": Updated { changed = true }
   Updating dir_contents cache for "another-dir": Updated { changed = true }
   Updating dir_contents cache for "another-dir/file-7": Skipped
   Updating file_digest cache for ".": Skipped

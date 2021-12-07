@@ -145,10 +145,11 @@ end = struct
           in
           extend_expander t ~dir ~expander_for_artifacts)
     in
+    let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link t.context in
     Env_node.make ~dir ~scope ~config_stanza ~inherit_from:(Some inherit_from)
       ~profile:t.context.profile ~expander ~expander_for_artifacts
       ~default_context_flags ~default_env:t.context_env
-      ~default_bin_artifacts:t.bin_artifacts
+      ~default_bin_artifacts:t.bin_artifacts ~default_cxx_link_flags
 
   (* Here we jump through some hoops to construct [t] as well as create a
      memoization table that has access to [t] and is used in [t.get_node].
@@ -402,22 +403,11 @@ let foreign_flags t ~dir ~expander ~flags ~language =
   in
   Action_builder.memoize (sprintf "%s flags" name) flags
 
-let link_flags t ~dir ~expander ~use_standard_cxx_flags ~flags =
-  let env_tree = t.env_tree in
-  let default =
-    get_node env_tree ~dir >>| Env_node.link_flags |> Action_builder.memo_build_join
-  in
-  let default =
-    if use_standard_cxx_flags
-    then 
-      let open Action_builder.O in
-      let+ default = default
-      and+ flags = Cxx_flags.get_flags ~for_:Link (context t) in
-      default @ List.concat_map flags ~f:(fun f -> [ "-cclib"; f ])
-    else default 
-  in
-  Action_builder.memoize "link flags"
-    (Expander.expand_and_eval_set expander flags ~standard:default)
+let link_flags t ~dir (spec : Link_flags.Spec.t) =
+  let* expander = Env_tree.expander t.env_tree ~dir in
+  let+ link_flags = get_node t.env_tree ~dir >>= Env_node.link_flags in
+  Link_flags.make ~spec ~default:link_flags
+    ~eval:(Expander.expand_and_eval_set expander)
 
 let menhir_flags t ~dir ~expander ~flags =
   let t = t.env_tree in
@@ -439,7 +429,7 @@ let dump_env t ~dir =
   let t = t.env_tree in
   let ocaml_flags = get_node t ~dir >>= Env_node.ocaml_flags in
   let foreign_flags = get_node t ~dir >>| Env_node.foreign_flags in
-  let link_flags = get_node t ~dir >>| Env_node.link_flags in
+  let link_flags = get_node t ~dir >>= Env_node.link_flags in
   let menhir_flags = get_node t ~dir >>| Env_node.menhir_flags in
   let coq_flags = get_node t ~dir >>= Env_node.coq in
   let js_of_ocaml = get_node t ~dir >>= Env_node.js_of_ocaml in
@@ -455,9 +445,8 @@ let dump_env t ~dir =
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ ("c_flags", c_flags); ("cxx_flags", cxx_flags) ]
   and+ link_flags_dump =
-    let+ flags = Action_builder.memo_build_join link_flags in
-    [ ("link_flags", flags) ]
-    |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
+    let* link_flags = Action_builder.memo_build link_flags in
+    Link_flags.dump link_flags
   and+ menhir_dump =
     let+ flags = Action_builder.memo_build_join menhir_flags in
     [ ("menhir_flags", flags) ]
@@ -723,11 +712,12 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
                 Code_error.raise
                   "[expander_for_artifacts] in [default_env] is undefined" [])
           in
+          let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link context in
           let expander = Memo.Lazy.of_val root_expander in
           Env_node.make ~dir ~scope ~inherit_from ~config_stanza
             ~profile:context.profile ~expander ~expander_for_artifacts
             ~default_context_flags ~default_env:context_env
-            ~default_bin_artifacts:artifacts.bin
+            ~default_bin_artifacts:artifacts.bin ~default_cxx_link_flags
         in
         Memo.Build.return
           (make ~config_stanza:context.env_nodes.context

@@ -28,6 +28,7 @@ val make :
   -> default_context_flags:string list Action_builder.t Foreign_language.Dict.t
   -> default_env:Env.t
   -> default_bin_artifacts:Artifacts.Bin.t
+  -> default_cxx_link_flags:string list Action_builder.t
   -> t
 
 val scope : t -> Scope.t
@@ -43,7 +44,7 @@ val js_of_ocaml :
 
 val foreign_flags : t -> string list Action_builder.t Foreign_language.Dict.t
 
-val link_flags : t -> string list Action_builder.t
+val link_flags : t -> Link_flags.t Memo.Build.t
 
 val local_binaries : t -> File_binding.Expanded.t list Memo.Build.t
 

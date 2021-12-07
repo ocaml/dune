@@ -180,8 +180,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       in
       let open Action_builder.O in
       let link_flags =
-        link_deps
-        >>> Super_context.link_flags sctx ~dir ~expander ~use_standard_cxx_flags ~flags:exes.link_flags
+        let* () = link_deps in
+        let* link_flags =
+          Action_builder.memo_build
+            (Super_context.link_flags sctx ~dir exes.link_flags)
+        in
+        Link_flags.get ~use_standard_cxx_flags link_flags
       in
       let+ flags = link_flags
       and+ ctypes_cclib_flags =

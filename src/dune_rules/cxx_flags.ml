@@ -18,7 +18,8 @@ let base_cxx_flags ~for_ cc =
   | Clang, Compile -> [ "-x"; "c++" ]
   | Clang, Link -> [ "-lc++" ]
   | Msvc, Compile -> [ "/TP" ]
-  | _ -> []
+  | Msvc, Link -> []
+  | Other _, (Link | Compile) -> []
 
 let preprocessed_filename = "ccomp"
 

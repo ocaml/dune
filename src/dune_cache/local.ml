@@ -47,14 +47,19 @@ end
 (* This function is like [Unix.link] but handles the "Too many links" error by
    creating a copy of the [src] in a temporary directory, then atomically
    replacing the [src] with the copy, and finally creating the requested [dst]
-   by calling [Unix.link] again.
+   by calling [Unix.link src dst] again.
 
    We hit the "Too many links" error because we store a lot of empty files in
    the cache, which all get deduplicated into the same cache entry. This
    function essentially deletes the "overlinked" entry from the cache, creating
    a fresh copy with the 0 link count. This leads to some duplication but it's
    negligible: we might store the empty file several times across all workspaces
-   instead of just storing it once. *)
+   instead of just storing it once.
+
+   If you need to debug this function, you can trigger the "Too many links"
+   error by running [for i in {1..100000}; do ln $file tmp/$i; done], where the
+   [$file] is the shared cache entry for the empty file. After that, no more
+   hard links on [$file] will be allowed, triggering the [EMLINK] code path. *)
 let link_even_if_there_are_too_many_links_already ~src ~dst =
   try Path.link src dst with
   | Unix.Unix_error (Unix.EMLINK, _, _) ->
@@ -62,7 +67,10 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
       | Error e -> raise e
       | Ok temp_file ->
         Io.copy_file ~src ~dst:temp_file ();
-        Path.rename temp_file dst;
+        (* This replaces [src], which has too many links already, with a fresh
+           copy we've just created in the [temp_file]. *)
+        Path.rename temp_file src;
+        (* This should now succeed. *)
         Path.link src dst)
 
 module Artifacts = struct

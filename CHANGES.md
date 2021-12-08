@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Parse the `native_pack_linker` field of `ocamlc -config` (#5281, @TheLortex)
+
 - Fix plugins with dot in the name (#5182, @bobot, review @rgrinberg)
 
 - Don't generate the dune-site build part when not needed (#4861, @bobot,

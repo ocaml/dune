@@ -529,16 +529,52 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                let p =
                  let open Memo.Build.O in
                  Resolve.Build.peek p >>| function
-                 | Ok p ->
-                   if
-                     (not lib_exec) || (not Sys.win32)
-                     || Filename.extension s = ".exe"
-                   then
-                     dep p
-                   else
-                     let p_exe = Path.extend_basename p ~suffix:".exe" in
-                     Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
-                       ~else_:(dep p)
+                 | Ok p -> (
+                   match file with
+                   | ""
+                   | "." ->
+                     let lang_version =
+                       Dune_project.dune_version (Scope.project t.scope)
+                     in
+                     if lang_version < (3, 0) then
+                       Action_builder.return [ Value.Path p ]
+                     else
+                       User_error.raise
+                         ~loc:(Dune_lang.Template.Pform.loc source)
+                         [ Pp.textf
+                             "The form %%{%s:<libname>:%s} is no longer \
+                              supported since version 3.0 of the Dune \
+                              language."
+                             (if lib_private then
+                               "lib-private"
+                             else
+                               "lib")
+                             file
+                         ]
+                         ~hints:
+                           [ (match Lib_name.to_string lib with
+                             | "ctypes" ->
+                               Pp.text
+                                 "Did you know that Dune 3.0 supports ctypes \
+                                  natively? See the manual for more details."
+                             | _ ->
+                               Pp.textf
+                                 "If you are trying to use this form to refer \
+                                  to include a directory, you should instead \
+                                  use (foreign_stubs (include_dirs (lib %s))). \
+                                  See the manual for more details."
+                                 (Lib_name.to_string lib))
+                           ]
+                   | _ ->
+                     if
+                       (not lib_exec) || (not Sys.win32)
+                       || Filename.extension s = ".exe"
+                     then
+                       dep p
+                     else
+                       let p_exe = Path.extend_basename p ~suffix:".exe" in
+                       Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
+                         ~else_:(dep p))
                  | Error () ->
                    let p =
                      if lib_private then

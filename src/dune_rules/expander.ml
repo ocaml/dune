@@ -559,10 +559,10 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                                   natively? See the manual for more details."
                              | _ ->
                                Pp.textf
-                                 "If you are trying to use this form to refer \
-                                  to include a directory, you should instead \
-                                  use (foreign_stubs (include_dirs (lib %s))). \
-                                  See the manual for more details."
+                                 "If you are trying to use this form to \
+                                  include a directory, you should instead use \
+                                  (foreign_stubs (include_dirs (lib %s))). See \
+                                  the manual for more details."
                                  (Lib_name.to_string lib))
                            ]
                    | _ ->

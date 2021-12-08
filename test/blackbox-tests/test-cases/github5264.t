@@ -9,40 +9,43 @@ syntax in lang Dune < 3.0.
 
   $ cat > dune <<'EOF'
   > (library (name ctypes))
+  > (library (name other))
   > (rule
   >  (alias a)
-  >  (action (run echo %{lib:ctypes:})))
+  >  (action (run echo %{lib-private:ctypes:})))
   > (rule
   >  (alias b)
-  >  (action (run echo %{lib:ctypes:})))
+  >  (action (run echo %{lib-private:other:.})))
   > EOF
 
-At the moment, we get a bad error with all language versions:
+We still support it with older version of the language, for backward
+compatibility purposes:
 
   $ echo '(lang dune 2.9)' > dune-project
   $ dune build @a
-  Error: File unavailable: /home/dim/.opam/4.13.1/lib/ctypes
-  This is not a regular file (S_DIR)
-  -> required by %{lib:ctypes:} at dune:4
-  -> required by alias a in dune:2
-  [1]
+  .
   $ dune build @b
-  Error: File unavailable: /home/dim/.opam/4.13.1/lib/ctypes
-  This is not a regular file (S_DIR)
-  -> required by %{lib:ctypes:} at dune:7
-  -> required by alias b in dune:5
-  [1]
+  .
+
+But we are more strict since 3.0:
 
   $ echo '(lang dune 3.0)' > dune-project
   $ dune build @a
-  Error: File unavailable: /home/dim/.opam/4.13.1/lib/ctypes
-  This is not a regular file (S_DIR)
-  -> required by %{lib:ctypes:} at dune:4
-  -> required by alias a in dune:2
+  File "dune", line 5, characters 19-41:
+  5 |  (action (run echo %{lib-private:ctypes:})))
+                         ^^^^^^^^^^^^^^^^^^^^^^
+  Error: The form %{lib-private:<libname>:} is no longer supported since
+  version 3.0 of the Dune language.
+  Hint: Did you know that Dune 3.0 supports ctypes natively? See the manual for
+  more details.
   [1]
   $ dune build @b
-  Error: File unavailable: /home/dim/.opam/4.13.1/lib/ctypes
-  This is not a regular file (S_DIR)
-  -> required by %{lib:ctypes:} at dune:7
-  -> required by alias b in dune:5
+  File "dune", line 8, characters 19-41:
+  8 |  (action (run echo %{lib-private:other:.})))
+                         ^^^^^^^^^^^^^^^^^^^^^^
+  Error: The form %{lib-private:<libname>:.} is no longer supported since
+  version 3.0 of the Dune language.
+  Hint: If you are trying to use this form to refer to an include directory,
+  you should instead use (foreign_stubs (include_dirs (lib other))). See the
+  manual for more details.
   [1]

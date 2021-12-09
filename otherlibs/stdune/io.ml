@@ -352,4 +352,9 @@ let portable_hardlink ~src ~dst =
          list of dependencies may have duplicates? If yes, it may be better to
          filter out the duplicates first. *)
       Path.unlink dst;
-      Path.link src dst)
+      Path.link src dst
+    | Unix.Unix_error (Unix.EMLINK, _, _) ->
+      (* If we can't make a new hard link because we reached the limit on the
+         number of hard links per file, we fall back to copying. We expect that
+         this happens very rarely (probably only for empty files). *)
+      copy_file ~src ~dst ())

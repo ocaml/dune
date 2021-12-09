@@ -25,3 +25,9 @@
  (allow_overlapping_dependencies)
  (modules fiber_bench_main)
  (libraries fiber_bench core_bench.inline_benchmarks))
+
+(executable
+ (name memo_bench_main)
+ (allow_overlapping_dependencies)
+ (modules memo_bench_main)
+ (libraries memo_bench core_bench.inline_benchmarks))

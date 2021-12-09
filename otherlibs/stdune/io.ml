@@ -322,26 +322,39 @@ let portable_symlink ~src ~dst =
     | exception _ -> Unix.symlink src dst
 
 let portable_hardlink ~src ~dst =
+  let user_error msg =
+    User_error.raise
+      [ Pp.textf "Sandbox creation error: cannot resolve symbolic link %S."
+          (Path.to_string src)
+      ; Pp.textf "Reason: %s" msg
+      ]
+  in
   (* CR-someday amokhov: Instead of always falling back to copying, we could
      detect if hardlinking works on Windows and if yes, use it. We do this in
      the Dune cache implementation, so we can share some code. *)
   match Stdlib.Sys.win32 with
   | true -> copy_file ~src ~dst ()
   | false -> (
-    let rec follow_symlinks name =
-      match Unix.readlink name with
-      | link_name ->
-        let name = Filename.concat (Filename.dirname name) link_name in
-        follow_symlinks name
-      | exception Unix.Unix_error (Unix.EINVAL, _, _) -> name
+    let src =
+      match Path.follow_symlink src with
+      | Ok path -> path
+      | Error Not_a_symlink -> src
+      | Error Max_depth_exceeded ->
+        user_error "Too many indirections; is this a loop of symbolic links?"
+      | Error (Unix_error error) ->
+        user_error
+          (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum error)
     in
-    let src = follow_symlinks (Path.to_string src) in
-    let dst = Path.to_string dst in
-    try Unix.link src dst with
+    try Path.link src dst with
     | Unix.Unix_error (Unix.EEXIST, _, _) ->
       (* CR-someday amokhov: Investigate why we need to occasionally clear the
          destination (we also do this in the symlink case above). Perhaps, the
          list of dependencies may have duplicates? If yes, it may be better to
          filter out the duplicates first. *)
-      Unix.unlink dst;
-      Unix.link src dst)
+      Path.unlink dst;
+      Path.link src dst
+    | Unix.Unix_error (Unix.EMLINK, _, _) ->
+      (* If we can't make a new hard link because we reached the limit on the
+         number of hard links per file, we fall back to copying. We expect that
+         this happens very rarely (probably only for empty files). *)
+      copy_file ~src ~dst ())

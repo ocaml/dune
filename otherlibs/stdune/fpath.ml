@@ -42,7 +42,8 @@ let rec mkdir_p ?(perms = 0o777) t_s =
 let resolve_link path =
   match Unix.readlink path with
   | exception Unix.Unix_error (EINVAL, _, _) -> Ok None
-  | exception Unix.Unix_error (e, _, _) -> Error e
+  | exception Unix.Unix_error (error, syscall, arg) ->
+    Error (Dune_filesystem_stubs.Unix_error.Detailed.create ~syscall ~arg error)
   | link ->
     Ok
       (Some
@@ -54,7 +55,7 @@ let resolve_link path =
 type follow_symlink_error =
   | Not_a_symlink
   | Max_depth_exceeded
-  | Unix_error of Unix.error
+  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
 
 let follow_symlink path =
   let rec loop n path =

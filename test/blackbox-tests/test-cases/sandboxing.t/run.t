@@ -334,8 +334,7 @@ which is circular.
 Still doesn't work: now the loop is detected when running [stat] on the
 dependency.
 
-  $ dune build t --sandbox hardlink
-  File "dune", line 1, characters 0-359:
+  $ dune build t --sandbox hardlink 2>&1 | grep -v "line 1"
   1 | (rule
   2 |   (deps $TESTCASE_ROOT/test/../link)
   3 |   (targets link)
@@ -344,7 +343,6 @@ dependency.
   $TESTCASE_ROOT/test/../link
   Unix.Unix_error(Unix.ELOOP, "stat",
   "$TESTCASE_ROOT/test/../link")
-  [1]
 
 So, it seems like we must play dirty to create a symbolic link loop.
 

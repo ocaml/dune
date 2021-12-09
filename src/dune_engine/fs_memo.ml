@@ -128,7 +128,8 @@ end = struct
 
   let watch ~try_to_watch_via_parent path =
     if Path.is_in_build_dir path then
-      Code_error.raise "Fs_memo.Watcher.watch called on a build path" [];
+      Code_error.raise "Fs_memo.Watcher.watch called on a build path"
+        [ ("path", Path.to_dyn path) ];
     match try_to_watch_via_parent with
     | false -> Memo.exec memo_for_watching_directly path
     | true -> Memo.exec memo_for_watching_via_parent path

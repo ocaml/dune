@@ -45,7 +45,7 @@ But we are more strict since 3.0:
                          ^^^^^^^^^^^^^^^^^^^^^^
   Error: The form %{lib-private:<libname>:.} is no longer supported since
   version 3.0 of the Dune language.
-  Hint: If you are trying to use this form to refer to an include directory,
-  you should instead use (foreign_stubs (include_dirs (lib other))). See the
-  manual for more details.
+  Hint: If you are trying to use this form to include a directory, you should
+  instead use (foreign_stubs (include_dirs (lib other))). See the manual for
+  more details.
   [1]

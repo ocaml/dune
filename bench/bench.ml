@@ -143,11 +143,15 @@ let () =
     stat.st_size
   in
   let results =
-    [ { Output.name = "clean_build"
-      ; metrics = [ ("time", `Float clean, "secs") ]
+    [ { Output.name = "Build times"
+      ; metrics =
+          [ ("Clean build time", `Float clean, "secs")
+          ; ("Null build time", `List zero, "secs")
+          ]
       }
-    ; { Output.name = "zero_build"; metrics = [ ("time", `List zero, "secs") ] }
-    ; { Output.name = "dune_size"; metrics = [ ("size", `Int size, "bytes") ] }
+    ; { Output.name = "Misc"
+      ; metrics = [ ("Size of dune.exe", `Int size, "bytes") ]
+      }
     ]
   in
   let version = 2 in

@@ -725,6 +725,7 @@ end = struct
         | Ok digest -> (digest, Some targets) (* Must be a directory target *)
         | No_such_file
         | Broken_symlink
+        | Cyclic_symlink
         | Unexpected_kind _
         | Unix_error _
         | Error _ ->

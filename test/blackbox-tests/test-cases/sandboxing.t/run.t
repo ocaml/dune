@@ -341,8 +341,7 @@ dependency.
   4 |   (action (bash "ln -s $TESTCASE_ROOT/test/../link link")))
   Error: File unavailable:
   $TESTCASE_ROOT/test/../link
-  Unix.Unix_error(Unix.ELOOP, "stat",
-  "$TESTCASE_ROOT/test/../link")
+  Reason: stat($TESTCASE_ROOT/test/../link): Too many levels of symbolic links
 
 So, it seems like we must play dirty to create a symbolic link loop.
 

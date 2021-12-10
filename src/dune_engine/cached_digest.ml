@@ -288,6 +288,8 @@ let peek_file ~allow_dirs path =
         (* The [stat_exn] below follows symlinks. *)
         match Path.Untracked.stat_exn path with
         | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
+        | exception Unix.Unix_error (error, syscall, arg) ->
+          Unix_error (Unix_error.Detailed.create ~syscall ~arg error)
         | exception exn -> Error exn
         | stats -> (
           let reduced_stats = Reduced_stats.of_unix_stats stats in

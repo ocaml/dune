@@ -380,6 +380,16 @@ let js_of_ocaml_compilation_mode t ~dir =
     else Whole_program
   | Some m -> m
 
+let js_of_ocaml_runner t ~dir ~loc =
+  let+ js_of_ocaml = get_node t.env_tree ~dir >>= Env_node.js_of_ocaml in
+  match js_of_ocaml.runner with
+  | None ->
+    let test_pform = Pform.Var Test in
+    Action_unexpanded.Run
+      ( String_with_vars.make_text loc "node"
+      , [ String_with_vars.make_pform loc test_pform ] )
+  | Some runner -> runner
+
 let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
   let+ expander = Env_tree.expander t.env_tree ~dir
   and+ js_of_ocaml = get_node t.env_tree ~dir >>= Env_node.js_of_ocaml in

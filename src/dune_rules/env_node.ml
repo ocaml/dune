@@ -146,6 +146,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
             pick ~first:local.compilation_mode ~second:jsoo.compilation_mode
         ; runtest_alias =
             pick ~first:local.runtest_alias ~second:jsoo.runtest_alias
+        ; runner = pick ~first:local.runner ~second:jsoo.runner
         ; flags =
             Js_of_ocaml.Flags.make ~spec:local.flags ~default:jsoo.flags
               ~eval:(Expander.expand_and_eval_set expander)

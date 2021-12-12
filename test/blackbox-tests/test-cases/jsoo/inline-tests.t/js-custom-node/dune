@@ -1,0 +1,7 @@
+(library
+ (name inline_tests_js2)
+ (js_of_ocaml (javascript_files js.js))
+ (inline_tests (modes js) (backend fake_backend)))
+
+
+(env (_  (js_of_ocaml (runner (run ../../../../bin/node_wrapper.exe %{test})))))

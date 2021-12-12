@@ -217,55 +217,68 @@ include Sub_system.Register_end_point (struct
           | Javascript -> ".bc.js"
           | Byte -> ".bc"
         in
-        let custom_runner =
-          match mode with
-          | Native | Best | Byte -> None
-          | Javascript -> Some Jsoo_rules.runner
-        in
         let* runtest_alias =
           match mode with
           | Native | Best | Byte -> Memo.Build.return Alias.Name.runtest
           | Javascript -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
+        and* custom_runner =
+          match mode with
+          | Native | Best | Byte -> Memo.Build.return None
+          | Javascript ->
+            Memo.Build.map
+              (Super_context.js_of_ocaml_runner sctx ~dir ~loc:info.loc)
+              ~f:(fun runner -> Some runner)
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc)
           (Alias.make ~dir runtest_alias)
-          (let exe =
+          (let exe_path =
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in
            let open Action_builder.O in
-           let deps, sandbox = Dep_conf_eval.unnamed info.deps ~expander in
-           let+ () = deps
-           and+ () = Action_builder.paths source_files
-           and+ () = Action_builder.path exe
-           and+ action =
+           let deps, _sandbox = Dep_conf_eval.unnamed info.deps ~expander in
+           let* () = deps
+           and* () = Action_builder.paths source_files
+           and* () = Action_builder.path exe_path
+           and* flags = flags in
+           let test_pform = Pform.Var Test in
+           let action =
              match custom_runner with
              | None ->
-               let+ flags = flags in
-               Action.run (Ok exe) flags
-             | Some runner -> (
-               let* prog =
-                 Action_builder.memo_build
-                   (Super_context.resolve_program ~dir sctx ~loc:(Some loc)
-                      runner)
-               and* flags = flags in
-               let action =
-                 Action.run prog (Path.reach exe ~from:(Path.build dir) :: flags)
-               in
-               (* jeremiedimino: it feels like this pattern should be pushed
-                  into [resolve_program] directly *)
-               match prog with
-               | Error _ -> Action_builder.return action
-               | Ok p -> Action_builder.path p >>> Action_builder.return action)
+               Action_unexpanded.Run
+                 (String_with_vars.make_pform loc test_pform, [])
+             | Some runner -> runner
            in
-           let run_tests = Action.chdir (Path.build dir) action in
-           Action.Full.make ~sandbox
-           @@ Action.progn
+           let expander =
+             let bindings =
+               Pform.Map.singleton test_pform
+                 (Value.Path exe_path
+                 :: List.map ~f:(fun f -> Value.String f) flags)
+             in
+             Expander.add_bindings expander ~bindings
+           in
+           let action = action in
+           let run_tests =
+             Action_unexpanded.Chdir
+               ( String_with_vars.make_text loc (Path.Build.to_string dir)
+               , action )
+           in
+           Action_unexpanded.expand_no_targets ~loc ~expander ~deps:[]
+             ~what:"test"
+           @@ Action_unexpanded.Progn
                 (run_tests
                 :: List.map source_files ~f:(fun fn ->
-                       Action.diff ~optional:true fn
-                         (Path.Build.extend_basename
-                            (Path.as_in_build_dir_exn fn)
-                            ~suffix:".corrected")))))
+                       Action_unexpanded.Diff
+                         { optional = true
+                         ; mode = Text
+                         ; file1 =
+                             String_with_vars.make_text loc (Path.to_string fn)
+                         ; file2 =
+                             String_with_vars.make_text loc
+                               (Path.Build.to_string
+                                  (Path.Build.extend_basename
+                                     (Path.as_in_build_dir_exn fn)
+                                     ~suffix:".corrected"))
+                         }))))
 
   let gen_rules c ~(info : Info.t) ~backends =
     let open Memo.Build.O in

@@ -78,6 +78,9 @@ val js_of_ocaml_flags :
   -> Js_of_ocaml.Flags.Spec.t
   -> string list Action_builder.t Js_of_ocaml.Flags.t Memo.Build.t
 
+val js_of_ocaml_runner :
+  t -> dir:Path.Build.t -> loc:Loc.t -> Action_unexpanded.t Memo.Build.t
+
 val foreign_flags :
      t
   -> dir:Path.Build.t

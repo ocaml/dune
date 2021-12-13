@@ -103,7 +103,7 @@ With use_standard_c_and_cxx_flags = true
   1
 
   $ dune rules main.exe  | tr -s '\n' ' ' |
-  > grep -ce "Main.cmx$GCC_LF)\|Main.cmx$Clang_LF)\|Main.cmx$Msvc_LF)"
+  > grep -ce "Main.cmx$GCC_LF_LIB)\|Main.cmx$Clang_LF_LIB)\|Main.cmx$Msvc_LF_LIB)"
   1
 
   $ dune exec ./main.exe

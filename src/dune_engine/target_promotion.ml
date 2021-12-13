@@ -103,6 +103,57 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
   in
   source_files_to_ignore
 
+let promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
+    ~promote_until_clean =
+  let open Fiber.O in
+  (* It is OK to use [Fs_cache.Untracked.file_digest] here because below we use
+     the tracked [Fs_memo.file_digest] to subscribe to the promotion result. *)
+  let* promoted =
+    match
+      Fs_cache.read Fs_cache.Untracked.file_digest (Path.source dst)
+      |> Cached_digest.Digest_result.to_option
+    with
+    | Some dst_digest when Digest.equal src_digest dst_digest ->
+      (* CR-someday amokhov: We skip promotion if [src_digest = dst_digest] but
+         this only works if [src] has no artifact substitution placeholders.
+         Artifact substitution changes [dst]'s contents and digest, which makes
+         this equality check ineffective. As a result, Dune currently executes
+         [promote_source] on all such targets on every start-up. We should fix
+         this, perhaps, by making artifact substitution a field of [promote]. *)
+      Fiber.return false
+    | _ ->
+      Log.info
+        [ Pp.textf "Promoting %S to %S" (Path.Build.to_string src)
+            (Path.Source.to_string dst)
+        ];
+      if promote_until_clean then To_delete.add dst;
+      (* The file in the build directory might be read-only if it comes from the
+         shared cache. However, we want the file in the source tree to be
+         writable by the user, so we explicitly set the user writable bit. *)
+      let chmod n = n lor 0o200 in
+      let+ () =
+        promote_source ~chmod ~delete_dst_if_it_is_a_directory:true ~src ~dst
+      in
+      true
+  in
+  let+ dst_digest_result =
+    Memo.Build.run
+      (Fs_memo.file_digest ~force_update:promoted (Path.source dst))
+  in
+  match Cached_digest.Digest_result.to_option dst_digest_result with
+  | Some dst_digest ->
+    (* It's tempting to assert [src_digest = dst_digest] here but it turns out
+       this is not necessarily true: artifact substitution can change the
+       contents of promoted files. *)
+    ignore dst_digest
+  | None ->
+    Code_error.raise
+      (sprintf "Could not compute digest of promoted file %S"
+         (Path.Source.to_string dst))
+      [ ( "dst_digest_result"
+        , Cached_digest.Digest_result.to_dyn dst_digest_result )
+      ]
+
 (* CR-someday amokhov: If a build causes N file promotions, Dune can potentially
    restart N times, which is pretty bad. It doesn't seem possible to avoid this
    with our current infrastructure. One way to improve the situation is to batch
@@ -191,46 +242,20 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
      additional subdirectories for [targets.dirs]. *)
   Path.Build.Map.iteri targets.dirs ~f:(fun dir (_filenames : _ String.Map.t) ->
       create_directory_if_needed ~dir);
+  let promote_until_clean =
+    match promote.lifetime with
+    | Until_clean -> true
+    | Unlimited -> false
+  in
   let* () =
     Fiber.sequential_iter_seq (Targets.Produced.all_files_seq targets)
-      ~f:(fun (src, _payload) ->
+      ~f:(fun (src, src_digest) ->
         match selected_for_promotion src with
         | false -> Fiber.return ()
-        | true -> (
+        | true ->
           let dst = relocate src in
-          Log.info
-            [ Pp.textf "Promoting %S to %S" (Path.Build.to_string src)
-                (Path.Source.to_string dst)
-            ];
-          (match promote.lifetime with
-          | Until_clean -> To_delete.add dst
-          | Unlimited -> ());
-          (* The file in the build directory might be read-only if it comes from
-             the shared cache. However, we want the file in the source tree to
-             be writable by the user, so we explicitly set the user writable
-             bit. *)
-          let chmod n = n lor 0o200 in
-          let* () =
-            promote_source ~chmod ~delete_dst_if_it_is_a_directory:true ~src
-              ~dst
-          in
-          let+ dst_digest_result =
-            Memo.Build.run
-              (Fs_memo.file_digest ~force_update:true (Path.source dst))
-          in
-          match Cached_digest.Digest_result.to_option dst_digest_result with
-          | Some dst_digest ->
-            (* It's tempting to assert [src_digest = dst_digest] here but it
-               turns out this is not necessarily true: artifact substitution can
-               change the contents of promoted files. *)
-            ignore dst_digest
-          | None ->
-            Code_error.raise
-              (sprintf "Could not compute digest of promoted file %S"
-                 (Path.Source.to_string dst))
-              [ ( "dst_digest_result"
-                , Cached_digest.Digest_result.to_dyn dst_digest_result )
-              ]))
+          promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
+            ~promote_until_clean)
   in
   (* There can be some files or directories left over from earlier builds, so we
      need to remove them from [targets.dirs]. *)

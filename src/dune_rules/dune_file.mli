@@ -250,7 +250,7 @@ module Executables : sig
 
   type t =
     { names : (Loc.t * string) list
-    ; link_flags : Ordered_set_lang.Unexpanded.t
+    ; link_flags : Link_flags.Spec.t
     ; link_deps : Dep_conf.t list
     ; modes : Loc.t Link_mode.Map.t
     ; optional : bool

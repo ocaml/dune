@@ -1,0 +1,32 @@
+(** OCaml flags *)
+open! Dune_engine
+
+open! Stdune
+
+type t
+
+module Spec : sig
+  type t
+
+  val equal : t -> t -> bool
+
+  val decode :
+    since:Dune_lang.Syntax.Version.t option -> t Dune_lang.Decoder.fields_parser
+
+  val standard : t
+end
+
+val make :
+     spec:Spec.t
+  -> default:t
+  -> eval:
+       (   Ordered_set_lang.Unexpanded.t
+        -> standard:string list Action_builder.t
+        -> string list Action_builder.t)
+  -> t
+
+val default : default_cxx_link_flags:string list Action_builder.t -> t
+
+val get : use_standard_cxx_flags:bool -> t -> string list Action_builder.t
+
+val dump : t -> Dune_lang.t list Action_builder.t

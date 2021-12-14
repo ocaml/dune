@@ -74,6 +74,7 @@ module Stanza = struct
   type config =
     { flags : Ocaml_flags.Spec.t
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
+    ; link_flags : Link_flags.Spec.t
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
@@ -87,6 +88,7 @@ module Stanza = struct
   let equal_config
       { flags
       ; foreign_flags
+      ; link_flags
       ; env_vars
       ; binaries
       ; inline_tests
@@ -99,6 +101,7 @@ module Stanza = struct
     Ocaml_flags.Spec.equal flags t.flags
     && Foreign_language.Dict.equal Ordered_set_lang.Unexpanded.equal
          foreign_flags t.foreign_flags
+    && Link_flags.Spec.equal link_flags t.link_flags
     && Env.equal env_vars t.env_vars
     && List.equal File_binding.Unexpanded.equal binaries t.binaries
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
@@ -114,6 +117,7 @@ module Stanza = struct
     { flags = Ocaml_flags.Spec.standard
     ; foreign_flags =
         Foreign_language.Dict.make_both Ordered_set_lang.Unexpanded.standard
+    ; link_flags = Link_flags.Spec.standard
     ; env_vars = Env.empty
     ; binaries = []
     ; inline_tests = None
@@ -181,6 +185,7 @@ module Stanza = struct
   let config =
     let+ flags = Ocaml_flags.Spec.decode
     and+ foreign_flags = foreign_flags ~since:(Some (1, 7))
+    and+ link_flags = Link_flags.Spec.decode ~since:(Some (3, 0))
     and+ env_vars = env_vars_field
     and+ binaries =
       field ~default:[] "binaries"
@@ -194,6 +199,7 @@ module Stanza = struct
     and+ format_config = Format_config.field ~since:(2, 8) in
     { flags
     ; foreign_flags
+    ; link_flags
     ; env_vars
     ; binaries
     ; inline_tests

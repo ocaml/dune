@@ -1540,6 +1540,9 @@ Fields supported in ``<settings>`` are:
 
 - any OCaml flags field. See :ref:`ocaml-flags` for more details.
 
+- ``(link_flags <flags>)`` to specify flags to ocaml when linking an
+  executable. See :ref:`executables stanza <shared-exe-fields>`.
+
 - ``(c_flags <flags>)`` and ``(cxx_flags <flags>)``
   to specify compilation flags for C and C++ stubs, respectively.
   See `library`_ for more details.

@@ -456,11 +456,11 @@ Here is what should have happened:
   Failure
   File "dir", line 1, characters 0-0:
   Error: File unavailable: dir
-  Broken symlink
+  Broken symbolic link
   Had errors, waiting for filesystem changes...
   File "dir", line 1, characters 0-0:
   Error: File unavailable: dir
-  Broken symlink
+  Broken symbolic link
   Had errors, waiting for filesystem changes...
   ------------------------------------------
   result = '357' -> '357' -> '357'

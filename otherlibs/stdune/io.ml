@@ -340,7 +340,7 @@ let portable_hardlink ~src ~dst =
       | Ok path -> path
       | Error Not_a_symlink -> src
       | Error Max_depth_exceeded ->
-        user_error "Too many indirections; is this a loop of symbolic links?"
+        user_error "Too many indirections; is this a cyclic symbolic link?"
       | Error (Unix_error error) ->
         user_error
           (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum error)

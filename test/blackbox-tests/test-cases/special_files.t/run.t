@@ -11,7 +11,7 @@ symlink:
   $ dune build @all
   File "src/foo", line 1, characters 0-0:
   Error: File unavailable: src/foo
-  Broken symlink
+  Broken symbolic link
   [1]
   $ _build/default/bar.exe
   hi!

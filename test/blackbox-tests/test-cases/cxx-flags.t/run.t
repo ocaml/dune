@@ -103,11 +103,36 @@ With use_standard_c_and_cxx_flags = true
   1
 
   $ dune rules main.exe  | tr -s '\n' ' ' |
-  > grep -ce "Main.cmx$GCC_LF)\|Main.cmx$Clang_LF)\|Main.cmx$Msvc_LF)"
+  > grep -ce "Main.cmx$GCC_LF_LIB)\|Main.cmx$Clang_LF_LIB)\|Main.cmx$Msvc_LF_LIB)"
   1
+
+  $ dune clean
 
   $ dune exec ./main.exe
   2046
   4096
   Hello World Baz!
   Hello World Bazexe!
+
+  $ [ -f _build/default/.dune/ccomp/ccomp ]
+
+
+ccomp is not computed if not required
+=====================================
+  $ dune clean
+
+  $ dune exec ./sub/main_no_stubs.exe
+  OK
+
+  $ [ -f _build/default/.dune/ccomp/ccomp ]
+  [1]
+
+
+one can extend link flags in env
+================================
+
+  $ OTHER=" --other-flag --yet-some-other-flag)"
+
+  $ dune rules sub/main.exe --profile some-profile  | tr -s '\n' ' ' |
+  > grep -ce "Main.cmx$GCC_LF_LIB$OTHER\|Main.cmx$Clang_LF_LIB$OTHER\|Main.cmx$Msvc_LF_LIB$OTHER"
+  1

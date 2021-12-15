@@ -152,6 +152,7 @@ module Digest_result = struct
     | Ok of Digest.t
     | No_such_file
     | Broken_symlink
+    | Cyclic_symlink
     | Unexpected_kind of File_kind.t
     | Unix_error of Unix_error.Detailed.t
     | Error of exn
@@ -169,6 +170,10 @@ module Digest_result = struct
     | Broken_symlink, Broken_symlink -> true
     | Broken_symlink, _
     | _, Broken_symlink ->
+      false
+    | Cyclic_symlink, Cyclic_symlink -> true
+    | Cyclic_symlink, _
+    | _, Cyclic_symlink ->
       false
     | Unexpected_kind x, Unexpected_kind y -> File_kind.equal x y
     | Unexpected_kind _, _
@@ -189,6 +194,7 @@ module Digest_result = struct
     | Ok t -> Some t
     | No_such_file
     | Broken_symlink
+    | Cyclic_symlink
     | Unexpected_kind _
     | Unix_error _
     | Error _ ->
@@ -200,6 +206,7 @@ module Digest_result = struct
     | Ok digest -> Dyn.Variant ("Ok", [ Digest.to_dyn digest ])
     | No_such_file -> Variant ("No_such_file", [])
     | Broken_symlink -> Variant ("Broken_symlink", [])
+    | Cyclic_symlink -> Variant ("Cyclic_symlink", [])
     | Unexpected_kind kind ->
       Variant ("Unexpected_kind", [ File_kind.to_dyn kind ])
     | Unix_error error ->
@@ -237,6 +244,7 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
       match Path.Untracked.stat_exn path with
       | stats -> refresh stats ~allow_dirs path
+      | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
       | exception Unix.Unix_error (ENOENT, _, _) -> (
         (* Test if this is a broken symlink for better error messages. *)
         match Path.Untracked.lstat_exn path with
@@ -257,8 +265,8 @@ let refresh_and_remove_write_permissions ~allow_dirs path =
         | S_LNK -> (
           match Path.Untracked.stat_exn path with
           | stats -> refresh stats ~allow_dirs:false path
-          | exception Unix.Unix_error (ENOENT, _, _) ->
-            Digest_result.Broken_symlink)
+          | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
+          | exception Unix.Unix_error (ENOENT, _, _) -> Broken_symlink)
         | S_REG ->
           let perm =
             Path.Permissions.remove ~mode:Path.Permissions.write stats.st_perm
@@ -287,7 +295,10 @@ let peek_file ~allow_dirs path =
       else
         (* The [stat_exn] below follows symlinks. *)
         match Path.Untracked.stat_exn path with
+        | exception Unix.Unix_error (ELOOP, _, _) -> Cyclic_symlink
         | exception Unix.Unix_error (ENOENT, _, _) -> No_such_file
+        | exception Unix.Unix_error (error, syscall, arg) ->
+          Unix_error (Unix_error.Detailed.create ~syscall ~arg error)
         | exception exn -> Error exn
         | stats -> (
           let reduced_stats = Reduced_stats.of_unix_stats stats in

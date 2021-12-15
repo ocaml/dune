@@ -1,0 +1,12 @@
+
+(executable
+ (name main)
+ (link_flags (:standard --yet-some-other-flag \ --remove-this-one-later))
+ (foreign_stubs (language cxx) (names bazexe))
+ (modules main))
+
+(executable
+ (name main_no_stubs)
+ (modules main_no_stubs))
+
+(env (some-profile (link_flags (:standard --other-flag --remove-this-one-later))))

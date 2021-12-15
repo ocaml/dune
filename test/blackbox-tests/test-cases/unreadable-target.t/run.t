@@ -6,7 +6,6 @@
   > (rule
   >   (targets a b)
   >   (action (bash "echo content > a; chmod -r a; ln -s foo b")))
-  > 
   > EOF
 
   $ dune build b
@@ -16,5 +15,5 @@
   3 |   (action (bash "echo content > a; chmod -r a; ln -s foo b")))
   Error: Error trying to read targets after a rule was run:
   - a: Permission denied
-  - b: Broken symlink
+  - b: Broken symbolic link
   [1]

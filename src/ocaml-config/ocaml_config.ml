@@ -88,6 +88,7 @@ type t =
   ; bytecomp_c_libraries : string list
   ; native_c_compiler : Prog_and_args.t
   ; native_c_libraries : string list
+  ; native_pack_linker : Prog_and_args.t
   ; cc_profile : string list
   ; architecture : string
   ; model : string
@@ -155,6 +156,8 @@ let bytecomp_c_libraries t = t.bytecomp_c_libraries
 let native_c_compiler t = t.native_c_compiler
 
 let native_c_libraries t = t.native_c_libraries
+
+let native_pack_linker t = t.native_pack_linker
 
 let cc_profile t = t.cc_profile
 
@@ -244,6 +247,7 @@ let to_list
     ; bytecomp_c_libraries
     ; native_c_compiler
     ; native_c_libraries
+    ; native_pack_linker
     ; cc_profile
     ; architecture
     ; model
@@ -295,6 +299,7 @@ let to_list
   ; ("bytecomp_c_libraries", Words bytecomp_c_libraries)
   ; ("native_c_compiler", Prog_and_args native_c_compiler)
   ; ("native_c_libraries", Words native_c_libraries)
+  ; ("native_pack_linker", Prog_and_args native_pack_linker)
   ; ("cc_profile", Words cc_profile)
   ; ("architecture", String architecture)
   ; ("model", String model)
@@ -352,6 +357,7 @@ let by_name
     ; bytecomp_c_libraries
     ; native_c_compiler
     ; native_c_libraries
+    ; native_pack_linker
     ; cc_profile
     ; architecture
     ; model
@@ -404,6 +410,7 @@ let by_name
   | "bytecomp_c_libraries" -> Some (Words bytecomp_c_libraries)
   | "native_c_compiler" -> Some (Prog_and_args native_c_compiler)
   | "native_c_libraries" -> Some (Words native_c_libraries)
+  | "native_pack_linker" -> Some (Prog_and_args native_pack_linker)
   | "cc_profile" -> Some (Words cc_profile)
   | "architecture" -> Some (String architecture)
   | "model" -> Some (String model)
@@ -575,6 +582,7 @@ let make vars =
       get_prog_or_dummy_exn vars "bytecomp_c_compiler"
     in
     let native_c_compiler = get_prog_or_dummy_exn vars "native_c_compiler" in
+    let native_pack_linker = get_prog_or_dummy_exn vars "native_pack_linker" in
     let ( c_compiler
         , ocamlc_cflags
         , ocamlc_cppflags
@@ -700,6 +708,7 @@ let make vars =
     ; bytecomp_c_libraries
     ; native_c_compiler
     ; native_c_libraries
+    ; native_pack_linker
     ; cc_profile
     ; architecture
     ; model

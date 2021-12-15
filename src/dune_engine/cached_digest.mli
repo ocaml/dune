@@ -6,6 +6,7 @@ module Digest_result : sig
     | Ok of Digest.t
     | No_such_file
     | Broken_symlink
+    | Cyclic_symlink
     | Unexpected_kind of File_kind.t
     | Unix_error of Unix_error.Detailed.t  (** Can't be [ENOENT]. *)
     | Error of exn

@@ -372,7 +372,10 @@ module Shared = struct
           | Ok (_ : Digest.t) -> (missing, errors)
           | No_such_file -> (target :: missing, errors)
           | Broken_symlink ->
-            let error = Pp.verbatim "Broken symlink" in
+            let error = Pp.verbatim "Broken symbolic link" in
+            (missing, (target, error) :: errors)
+          | Cyclic_symlink ->
+            let error = Pp.verbatim "Cyclic symbolic link" in
             (missing, (target, error) :: errors)
           | Unexpected_kind file_kind ->
             let error =

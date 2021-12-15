@@ -312,7 +312,7 @@ This loop is caught immediately after running the rule that creates it.
   2 |   (targets link)
   3 |   (action (bash "ln -s link link")))
   Error: Error trying to read targets after a rule was run:
-  - link: stat(_build/default/link): Too many levels of symbolic links
+  - link: Cyclic symbolic link
   [1]
 
 Let's try to create it in another way. We'll link to the external [../link],
@@ -341,8 +341,7 @@ dependency.
   4 |   (action (bash "ln -s $TESTCASE_ROOT/test/../link link")))
   Error: File unavailable:
   $TESTCASE_ROOT/test/../link
-  Unix.Unix_error(Unix.ELOOP, "stat",
-  "$TESTCASE_ROOT/test/../link")
+  Cyclic symbolic link
 
 So, it seems like we must play dirty to create a symbolic link loop.
 
@@ -372,5 +371,5 @@ Finally, we get to see the error message printed out at sandbox creation.
   11 |   (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
   Error: Sandbox creation error: cannot resolve symbolic link
   "_build/default/link".
-  Reason: Too many indirections; is this a loop of symbolic links?
+  Reason: Too many indirections; is this a cyclic symbolic link?
   [1]

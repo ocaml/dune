@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Parse the `native_pack_linker` field of `ocamlc -config` (#5281, @TheLortex)
+
 - Fix plugins with dot in the name (#5182, @bobot, review @rgrinberg)
 
 - Don't generate the dune-site build part when not needed (#4861, @bobot,
@@ -295,6 +297,8 @@ Unreleased
 
 - Delete old `promote-into`, `promote-until-clean` and `promote-until-clean-into`
   syntax (#5091, Andrey Mokhov).
+
+- Add link_flags in the env stanza (#5215)
 
 2.9.2 (unreleased)
 ------------------

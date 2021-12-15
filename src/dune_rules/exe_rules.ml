@@ -173,18 +173,19 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
        files directly to improve perf. *)
     let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
     let link_args =
-      let standard =
+      let use_standard_cxx_flags =
         match Dune_project.use_standard_c_and_cxx_flags project with
-        | Some true when Buildable.has_foreign_cxx exes.buildable ->
-          let open Action_builder.O in
-          let+ flags = Cxx_flags.get_flags ~for_:Link ctx in
-          List.concat_map flags ~f:(fun f -> [ "-cclib"; f ])
-        | _ -> Action_builder.return []
+        | Some true -> Buildable.has_foreign_cxx exes.buildable
+        | _ -> false
       in
       let open Action_builder.O in
       let link_flags =
-        link_deps
-        >>> Expander.expand_and_eval_set expander exes.link_flags ~standard
+        let* () = link_deps in
+        let* link_flags =
+          Action_builder.memo_build
+            (Super_context.link_flags sctx ~dir exes.link_flags)
+        in
+        Link_flags.get ~use_standard_cxx_flags link_flags
       in
       let+ flags = link_flags
       and+ ctypes_cclib_flags =

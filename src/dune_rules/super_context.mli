@@ -86,6 +86,9 @@ val foreign_flags :
   -> language:Foreign_language.t
   -> string list Action_builder.t
 
+val link_flags :
+  t -> dir:Path.Build.t -> Link_flags.Spec.t -> Link_flags.t Memo.Build.t
+
 val menhir_flags :
      t
   -> dir:Path.Build.t

@@ -56,7 +56,7 @@ module File = struct
 
   let do_promote ~correction_file ~dst =
     Path.Source.unlink_no_err dst;
-    let chmod perms = perms lor 0o200 in
+    let chmod = Path.Permissions.add ~mode:Path.Permissions.write in
     Io.copy_file ~chmod
       ~src:(Path.build correction_file)
       ~dst:(Path.source dst) ()

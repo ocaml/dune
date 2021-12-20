@@ -76,7 +76,8 @@ let link_function ~(mode : Sandbox_mode.some) =
     | Patch_back_source_tree ->
       (* We need to let the action modify its dependencies, so we copy
          dependencies and make them writable. *)
-      fun src dst -> Io.copy_file ~src ~dst ~chmod:(fun n -> n lor 0o200) ())
+      let chmod = Path.Permissions.add ~mode:Path.Permissions.write in
+      fun src dst -> Io.copy_file ~src ~dst ~chmod ())
 
 let link_deps t ~mode ~deps =
   let link = Staged.unstage (link_function ~mode) in

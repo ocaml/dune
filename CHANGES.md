@@ -151,7 +151,7 @@ Unreleased
 - If an .ml file is not used by an executable, Dune no longer report
   parsing error in this file (#4330, @jeremiedimino)
 
-- Add support for sandboxing using hard links (#4360, @snowleopard)
+- Add support for sandboxing using hard links (#4360, Andrey Mokhov)
 
 - Fix dune crash when `subdir` is an absolute path (#4366, @anmonteiro)
 

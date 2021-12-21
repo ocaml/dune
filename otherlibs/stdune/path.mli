@@ -114,14 +114,16 @@ module Source : sig
 end
 
 module Permissions : sig
+  type t
+
   (** Write permissions. *)
-  val write : int
+  val write : t
 
-  (** Add [mode] permissions to a given mask. *)
-  val add : mode:int -> int -> int
+  (** Add permissions to a given mask for the current user. *)
+  val add : t -> int -> int
 
-  (** Remove [mode] permissions from a given mask. *)
-  val remove : mode:int -> int -> int
+  (** Remove permissions from a given mask for all users. *)
+  val remove : t -> int -> int
 end
 
 module Build : sig

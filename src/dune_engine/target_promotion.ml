@@ -130,7 +130,7 @@ let promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
       (* The file in the build directory might be read-only if it comes from the
          shared cache. However, we want the file in the source tree to be
          writable by the user, so we explicitly set the user writable bit. *)
-      let chmod = Path.Permissions.add ~mode:Path.Permissions.write in
+      let chmod = Path.Permissions.add Path.Permissions.write in
       let+ () =
         promote_source ~chmod ~delete_dst_if_it_is_a_directory:true ~src ~dst
       in

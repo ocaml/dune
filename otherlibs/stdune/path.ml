@@ -583,11 +583,17 @@ module Kind = struct
 end
 
 module Permissions = struct
-  let write = 0o222
+  type t =
+    { current_user : int
+    ; all_users : int
+    }
 
-  let add ~mode perm = perm lor mode
+  (* CR-someday amokhov: add [executable]. *)
+  let write = { current_user = 0o200; all_users = 0o222 }
 
-  let remove ~mode perm = perm land lnot mode
+  let add t perm = perm lor t.current_user
+
+  let remove t perm = perm land lnot t.all_users
 end
 
 module Build = struct

@@ -14,7 +14,7 @@ translating OCaml bytecode to JS files. The compiler can be installed with Opam:
 Compiling to JS
 ===============
 
-Dune has full support building Js_of_ocaml libraries and executables transparently.
+Dune has full support building js_of_ocaml libraries and executables transparently.
 There's no need to customize or enable anything to compile OCaml
 libraries/executables to JS.
 
@@ -42,7 +42,7 @@ And then request the ``.js`` target:
 Similar targets are created for libraries, but we recommend sticking to the
 executable targets.
 
-If you're using the Js_of_ocaml syntax extension, you must remember to add the
+If you're using the js_of_ocaml syntax extension, you must remember to add the
 appropriate PPX in the ``preprocess`` field:
 
 .. code:: scheme
@@ -58,7 +58,7 @@ Separate Compilation
 Dune supports two modes of compilation:
 
 - Direct compilation of a bytecode program to JavaScript. This mode allows
-  Js_of_ocaml to perform whole-program deadcode elimination and whole-program
+  js_of_ocaml to perform whole-program deadcode elimination and whole-program
   inlining.
 
 - Separate compilation, where compilation units are compiled to JavaScript

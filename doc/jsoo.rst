@@ -1,11 +1,11 @@
 .. _jsoo:
 
 **********************
-JavaScript compilation
+JavaScript Compilation
 **********************
 
-js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
-translating OCaml bytecode to JS files. The compiler can be installed with opam:
+Js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
+translating OCaml bytecode to JS files. The compiler can be installed with Opam:
 
 .. code:: bash
 
@@ -14,8 +14,8 @@ translating OCaml bytecode to JS files. The compiler can be installed with opam:
 Compiling to JS
 ===============
 
-Dune has full support building js_of_ocaml libraries and executables transparently.
-There's no need to customize or enable anything to compile ocaml
+Dune has full support building Js_of_ocaml libraries and executables transparently.
+There's no need to customize or enable anything to compile OCaml
 libraries/executables to JS.
 
 To build a JS executable, just define an executable as you would normally.
@@ -25,7 +25,7 @@ Consider this example:
 
    echo 'print_endline "hello from js"' > foo.ml
 
-With the following dune file:
+With the following ``dune`` file:
 
 .. code:: scheme
 
@@ -42,8 +42,8 @@ And then request the ``.js`` target:
 Similar targets are created for libraries, but we recommend sticking to the
 executable targets.
 
-If you're using the js_of_ocaml syntax extension, you must remember to add the
-appropriate ppx in the ``preprocess`` field:
+If you're using the Js_of_ocaml syntax extension, you must remember to add the
+appropriate PPX in the ``preprocess`` field:
 
 .. code:: scheme
 
@@ -52,13 +52,13 @@ appropriate ppx in the ``preprocess`` field:
    (modes js)
    (preprocess (pps js_of_ocaml-ppx)))
 
-Separate compilation
+Separate Compilation
 ====================
 
-Dune supports two modes of compilation
+Dune supports two modes of compilation:
 
 - Direct compilation of a bytecode program to JavaScript. This mode allows
-  js_of_ocaml to perform whole program deadcode elimination and whole program
+  Js_of_ocaml to perform whole-program deadcode elimination and whole-program
   inlining.
 
 - Separate compilation, where compilation units are compiled to JavaScript
@@ -66,7 +66,7 @@ Dune supports two modes of compilation
   it builds more quickly.
 
 The separate compilation mode will be selected when the build profile
-is ``dev``, which is the default. It can also be explicitly sepcified
-in an env stanza. See :ref:`dune-env` for more information.
+is ``dev``, which is the default. It can also be explicitly specified
+in an ``env`` stanza. See :ref:`dune-env` for more information.
 
 .. _js_of_ocaml: http://ocsigen.org/js_of_ocaml/

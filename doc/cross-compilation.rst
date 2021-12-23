@@ -1,23 +1,23 @@
 .. _cross-compilation:
 
 *****************
-Cross compilation
+Cross-Compilation
 *****************
 
-Dune allows for cross compilation by defining build contexts with
+Dune allows for cross-compilation by defining build contexts with
 multiple targets. Targets are specified by adding a ``targets`` field
-to the definition of a build context.
+to the build context definition.
 
 ``targets`` takes a list of target name. It can be either:
 
-- ``native`` which means using the native tools that can build
-  binaries that run on the machine doing the build
+- ``native``, the native tools that can build
+  binaries to run on the machine doing the build
 
 - the name of an alternative toolchain
 
 Note that at the moment, there is no official support for
-cross-compilation in OCaml. Dune supports the opam-cross-x
-repositories from the `ocaml-cross organization on GitHub
+cross-compilation in OCaml. Dune supports the ``opam-cross-x``
+repositories from the `OCaml-cross organization on GitHub
 <https://github.com/ocaml-cross/>`_, such as:
 
 - `opam-cross-windows <https://github.com/ocaml-cross/opam-cross-windows>`_
@@ -47,8 +47,8 @@ This configuration defines three build contexts:
 - ``default.android``
 
 Note that the ``native`` target is always implicitly added when not
-present. However, when implicitly added ``dune build @install``
-will skip this context, i.e. ``default`` will only be used for
+present; however, ``dune build @install``
+will skip this context, i.e., ``default`` will only be used for
 building executables needed by the other contexts.
 
 With such a setup, calling ``dune build @install`` will build all
@@ -66,14 +66,14 @@ following ``dune-workspace`` file:
 If you have a ``dune-workspace`` and pass a ``-x foo`` option,
 ``foo`` will be added as target of all context stanzas.
 
-How does it work?
+How Does it Work?
 =================
 
 In such a setup, binaries that need to be built and executed in the
 ``default.windows`` or ``default.android`` contexts as part of the
-build, will no longer be executed. Instead, all the binaries that will
-be executed will come from the ``default`` context. One consequence of
-this is that all preprocessing (ppx or otherwise) will be done using
+build will no longer be executed. Instead, all the binaries that will
+be executed come from the ``default`` context. One consequence of
+this is that all preprocessing (PPX or otherwise) will be done using
 binaries built in the ``default`` context.
 
 To clarify this with an example, let's assume that you have the following
@@ -90,7 +90,7 @@ When building ``_build/default/src/blah``, dune will resolve ``./foo.exe`` to
 ``_build/default/src/foo.exe``
 
 Assuming that the right packages are installed or that your workspace
-has no external dependencies, dune will be able to cross-compile a
+has no external dependencies, Dune will be able to cross-compile a
 given package without doing anything special.
 
 Some packages might still have to be updated to support cross-compilation. For

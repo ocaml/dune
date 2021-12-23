@@ -1,12 +1,12 @@
 .. _formatting-main:
 
 ********************
-Automatic formatting
+Automatic Formatting
 ********************
 
 Dune can be set up to run automatic formatters for source code.
 
-It can use ocamlformat_ to format OCaml source code (``*.ml`` and ``*.mli``
+It can use OCamlformat_ to format OCaml source code (``*.ml`` and ``*.mli``
 files) and refmt_ to format Reason source code (``*.re`` and ``*.rei`` files).
 
 Furthermore it can be used to format code of any defined dialect (see
@@ -15,23 +15,23 @@ Furthermore it can be used to format code of any defined dialect (see
 .. _ocamlformat: https://github.com/ocaml-ppx/ocamlformat
 .. _refmt: https://github.com/facebook/reason/tree/master/src/refmt
 
-Configuring automatic formatting (dune 2.0)
+Configuring Automatic Formatting (Dune 2.0)
 ===========================================
 
-If using ``(lang dune 2.0)``, there is nothing to setup in dune, formatting will
-be set up by default. However, ocamlformat_ will still refuse to format sources
+If using ``(lang dune 2.0)``, there is nothing to setup in Dune, as formatting will
+be set up by default. However, OCamlformat_ will still refuse to format sources
 without an ``.ocamlformat`` file present in the project root.
 
 By default, formatting will be enabled for all languages and dialects present in
-the project that dune knows about. This is not always desirable, for example if
+the project that Dune knows about. This is not always desirable. For example, if
 in a mixed Reason/OCaml project, one only wants to format the Reason files to
-avoid pulling ocamlformat_ as a dependency.
+avoid pulling OCamlformat_ as a dependency.
 
 It is possible to restrict the languages considered for formatting or disable it
 altogether by using the :ref:`formatting` stanza.
 
 
-Formatting a project
+Formatting a Project
 ====================
 
 When this feature is active, an alias named ``fmt`` is defined. When built, it
@@ -49,23 +49,23 @@ differences:
     -    "hello, world"
     +let () = print_endline "hello, world"
 
-It is then possible to accept the correction by calling ``dune promote`` to
-replace the source files by the corrected versions.
+Then it's possible to accept the correction by calling ``dune promote`` to
+replace the source files with the corrected versions.
 
 .. code::
 
     $ dune promote
     Promoting _build/default/hello.ml.formatted to hello.ml.
 
-As usual with promotion, it is possible to combine these two steps by running
+As usual with promotion, it's possible to combine these two steps by running
 ``dune build @fmt --auto-promote``.
 
-Enabling and configuring automatic formatting (dune 1.x)
+Enabling and Configuring Automatic Formatting (Dune 1.x)
 ========================================================
 
 .. note:: This section applies only to projects with ``(lang dune 1.x)``.
 
-In ``(lang dune 1.x)``, no formatting is done by default. This feature is
+In ``(lang dune 1.x)``, there is no default formatting. This feature is
 enabled by adding the following to the ``dune-project`` file:
 
 .. code:: scheme
@@ -78,7 +78,7 @@ Languages can be configured using the following syntax:
 
     (using fmt 1.2 (enabled_for reason))
 
-Version history
+Version History
 ===============
 
 (lang dune 2.0)

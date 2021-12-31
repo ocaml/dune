@@ -914,7 +914,11 @@ let check_point =
   t_opt () >>= function
   | None -> Fiber.return ()
   | Some t ->
-    check_cancelled t;
+    (* CR-someday amokhov: we used to call [check_cancelled t] here but that led
+       to a significant performance regression. Raising [Build_cancelled] saves
+       some unnecessary recomputation but also destroys early cutoffs. We should
+       change Memo to store previous successes to make such early cancellations
+       preserve the early cutoff behaviour. *)
     Event.Queue.yield_if_there_are_pending_events t.events
 
 let () = Memo.check_point := check_point

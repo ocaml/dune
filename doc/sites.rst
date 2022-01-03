@@ -34,11 +34,11 @@ consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
     (name mygui)
     (sites (share themes)))
 
-Adding Files to a Site
+Adding Files to a Site 
 ----------------------
 
 Here the package ``mygui`` defines a site named ``themes`` that will be located
-in the section ``share``. This package can add files to ``sites`` using the
+in the section ``share``. This package can add files to this ``site`` using the
 :ref:`install stanza<install>`:
 
 .. code:: scheme

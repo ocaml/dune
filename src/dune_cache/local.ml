@@ -37,7 +37,7 @@ module Target = struct
     | { Unix.st_kind = Unix.S_REG; st_perm; _ } ->
       Path.Build.chmod path
         ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
-      let executable = st_perm land 0o100 <> 0 in
+      let executable = Path.Permissions.test Path.Permissions.execute st_perm in
       Some { path; executable }
     | (exception _)
     | _ ->

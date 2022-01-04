@@ -123,7 +123,9 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
     Path_digest_result.t =
   match stats.st_kind with
   | S_REG ->
-    let executable = stats.st_perm land 0o100 <> 0 in
+    let executable =
+      Path.Permissions.test Path.Permissions.execute stats.st_perm
+    in
     Dune_filesystem_stubs.Unix_error.Detailed.catch
       (file_with_executable_bit ~executable)
       path

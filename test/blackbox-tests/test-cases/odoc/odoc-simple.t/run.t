@@ -1,6 +1,11 @@
 This test generates documentation using odoc for a library:
 
   $ dune build @doc
+
+This test if `.odocl` files are generated
+  $ find _build/default/_doc/_odocls -name '*.odocl' | sort -n
+  find: _build/default/_doc/_odocls: No such file or directory
+
   $ dune runtest
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">

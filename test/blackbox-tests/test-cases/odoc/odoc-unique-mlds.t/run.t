@@ -7,6 +7,9 @@ Duplicate mld's in the same scope
         ocamlc lib2/.root_lib2.objs/byte/root_lib2.{cmi,cmo,cmt}
           odoc lib1/.root_lib1.objs/byte/root_lib1.odoc
           odoc lib2/.root_lib2.objs/byte/root_lib2.odoc
+          odoc _doc/_odocls/root/root_lib1.odocl
+          odoc _doc/_odocls/root/root_lib2.odocl
+          odoc _doc/_odocls/root/page-index.odocl
           odoc _doc/_html/root/Root_lib1/.dummy,_doc/_html/root/Root_lib1/index.html
           odoc _doc/_html/root/Root_lib2/.dummy,_doc/_html/root/Root_lib2/index.html
           odoc _doc/_html/root/index.html
@@ -22,6 +25,10 @@ Duplicate mld's in different scope
         ocamlc scope2/.scope2.objs/byte/scope2.{cmi,cmo,cmt}
           odoc scope1/.scope1.objs/byte/scope1.odoc
           odoc scope2/.scope2.objs/byte/scope2.odoc
+          odoc _doc/_odocls/scope1/scope1.odocl
+          odoc _doc/_odocls/scope1/page-index.odocl
+          odoc _doc/_odocls/scope2/scope2.odocl
+          odoc _doc/_odocls/scope2/page-index.odocl
           odoc _doc/_html/scope1/Scope1/.dummy,_doc/_html/scope1/Scope1/index.html
           odoc _doc/_html/scope1/index.html
           odoc _doc/_html/scope2/Scope2/.dummy,_doc/_html/scope2/Scope2/index.html

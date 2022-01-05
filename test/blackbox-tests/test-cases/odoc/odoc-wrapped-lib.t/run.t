@@ -11,10 +11,10 @@ This test generates documentation for non-hidden modules only for a library:
 
  Hidden modules should not be linked
   $ find _build/default -name '*.odocl' | sort -n
-  _build/default/.foo.objs/byte/foo.odocl
-  _build/default/.foo.objs/byte/foo__.odocl
-  _build/default/.foo.objs/byte/foo__Bar.odocl
-  _build/default/_doc/_odoc/pkg/foo/page-index.odocl
+  _build/default/_doc/_odocls/foo/foo.odocl
+  _build/default/_doc/_odocls/foo/foo__.odocl
+  _build/default/_doc/_odocls/foo/foo__Bar.odocl
+  _build/default/_doc/_odocls/foo/page-index.odocl
 
  We don't expect html for hidden modules
   $ find _build/default -name '*.html' | sort -n

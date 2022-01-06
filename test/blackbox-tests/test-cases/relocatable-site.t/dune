@@ -1,0 +1,9 @@
+(executable
+ (public_name test)
+ (name test)
+ (modules test site)
+ (libraries dune-site))
+
+(generate_sites_module
+ (module site)
+ (sites test))

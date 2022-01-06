@@ -1945,3 +1945,57 @@ let%expect_test "restore_from_cache and compute phases are well-separated" =
     - ("B", 0)
     - called by ("X", 0)
   |}]
+
+let%expect_test "Simple computation chain with a cutoff" =
+  let f = Fdecl.create (fun _ -> Dyn.Opaque) in
+  let f_impl =
+    Memo.create "integers" ~cutoff:Int.equal
+      ~input:(module Int)
+      (fun x ->
+        printf "Started evaluating f(%d)\n" x;
+        let+ res =
+          match x with
+          | 0 -> Memo.Build.return 0
+          | n ->
+            let+ prev = Memo.exec (Fdecl.get f) (n - 1) in
+            prev + 1
+        in
+        printf "Evaluated f(%d) = %d\n" x res;
+        res)
+  in
+  Fdecl.set f f_impl;
+  let f = Fdecl.get f in
+  Memo.Perf_counters.reset ();
+  evaluate_and_print f 3;
+  print_perf_counters ();
+  [%expect
+    {|
+    Started evaluating f(3)
+    Started evaluating f(2)
+    Started evaluating f(1)
+    Started evaluating f(0)
+    Evaluated f(0) = 0
+    Evaluated f(1) = 1
+    Evaluated f(2) = 2
+    Evaluated f(3) = 3
+    f 3 = Ok 3
+    Memo graph: 0/4 restored/computed nodes, 3 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+  |}];
+  let cell = Memo.cell f 1 in
+  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
+  evaluate_and_print f 3;
+  print_perf_counters ();
+  (* CR-someday amokhov: Only f(1) should be recomputed because we've just
+     invalidated it. However, for some reason, f(2) gets recomputed too. Only
+     afterwards the cutoff kicks in. *)
+  [%expect
+    {|
+    Started evaluating f(1)
+    Evaluated f(1) = 1
+    Started evaluating f(2)
+    Evaluated f(2) = 2
+    f 3 = Ok 3
+    Memo graph: 3/2 restored/computed nodes, 4 traversed edges
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+  |}]

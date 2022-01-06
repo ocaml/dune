@@ -460,6 +460,10 @@ module Debug : sig
 
   (** If [true], Memo will perform additional checks of internal invariants. *)
   val check_invariants : bool ref
+
+  (** If [true], Memo will print out some diagnostics. It's convenient to set
+      this flag temporarily while debugging a test. *)
+  val verbose_diagnostics : bool ref
 end
 
 (** Various performance counters. Reset to zero at the start of every run. *)

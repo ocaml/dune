@@ -6,6 +6,8 @@ module Debug = struct
   let track_locations_of_lazy_values = ref false
 
   let check_invariants = ref false
+
+  let verbose_diagnostics = ref false
 end
 
 module Counters = struct
@@ -357,6 +359,12 @@ module Cache_lookup = struct
     type 'a t =
       | Ok of 'a
       | Failure of 'a Failure.t
+
+    let _to_string_hum = function
+      | Ok _ -> "Ok"
+      | Failure (Out_of_date { old_value = None }) -> "Failed (no value)"
+      | Failure (Out_of_date { old_value = Some _ }) -> "Failed (old value)"
+      | Failure (Cancelled _) -> "Failed (dependency cycle)"
   end
 end
 
@@ -593,8 +601,9 @@ let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
   in
   (* Printing via [Console.print] leads to incorrectly interleaving messages
      with the diagnostic [printf] output in [memoize_tests]. *)
-  Format.printf "%s%s\n" prefix
-    (Dep_node_without_state.to_dyn dep_node.without_state |> Dyn.to_string)
+  if !Debug.verbose_diagnostics then
+    Format.printf "%s%s\n" prefix
+      (Dep_node_without_state.to_dyn dep_node.without_state |> Dyn.to_string)
 
 module Stack_frame_with_state : sig
   type phase =
@@ -1043,7 +1052,7 @@ end
 
 (* There are two approaches to invalidating memoization nodes. Currently, when a
    node is invalidated by calling [invalidate_dep_node], only the node itself is
-   marked as "changed" (by setting [node.state] to [No_value]). Then, the whole
+   marked as "changed" (by setting its [state] to [Out_of_date]). Then the whole
    graph is marked as "possibly changed" by calling [Run.restart ()] that makes
    all remaining [last_validated_at : Run.t] values out of date in O(1) time. In
    the next run, the whole graph is traversed from top to bottom to discover
@@ -1064,12 +1073,17 @@ end
    Is it worth switching from the current approach to the alternative? It's best
    to answer this question by benchmarking. This is not urgent but is worth
    documenting in the code. *)
-let invalidate_dep_node (node : _ Dep_node.t) =
-  (* CR-someday amokhov: We could assert that the [state] can't be [Restoring]
-     or [Computing] here, to catch unexpected [invalidate_dep_node] calls. *)
-  (* CR-someday amokhov: We could set [old_value] to [Some] so that the cutoff
-     could still fire. *)
-  node.state <- Out_of_date { old_value = None }
+let invalidate_dep_node (dep_node : _ Dep_node.t) =
+  match dep_node.state with
+  | Cached_value cached_value ->
+    dep_node.state <- Out_of_date { old_value = Some cached_value }
+  | Out_of_date { old_value = _ } -> ()
+  | Restoring _ ->
+    Code_error.raise "invalidate_dep_node called on a node in Restoring state"
+      [ ("dep_node", Dep_node_without_state.to_dyn dep_node.without_state) ]
+  | Computing _ ->
+    Code_error.raise "invalidate_dep_node called on a node in Computing state"
+      [ ("dep_node", Dep_node_without_state.to_dyn dep_node.without_state) ]
 
 let invalidate_store = Store.iter ~f:invalidate_dep_node
 

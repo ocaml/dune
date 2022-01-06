@@ -1986,16 +1986,13 @@ let%expect_test "Simple computation chain with a cutoff" =
   Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
   evaluate_and_print f 3;
   print_perf_counters ();
-  (* CR-someday amokhov: Only f(1) should be recomputed because we've just
-     invalidated it. However, for some reason, f(2) gets recomputed too. Only
-     afterwards the cutoff kicks in. *)
+  (* CR-someday amokhov: f(1) is recomputed because we've just invalidated it.
+     Further recomputations are avoided thanks to the early cutoff. *)
   [%expect
     {|
     Started evaluating f(1)
     Evaluated f(1) = 1
-    Started evaluating f(2)
-    Evaluated f(2) = 2
     f 3 = Ok 3
-    Memo graph: 3/2 restored/computed nodes, 4 traversed edges
+    Memo graph: 3/1 restored/computed nodes, 3 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]

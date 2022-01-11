@@ -24,6 +24,8 @@ module Loaded : sig
   type t =
     | Non_build of Path.Set.t
     | Build of build
+    | Build_under_directory_target of
+        { directory_target_ancestor : Path.Build.t }
 
   val no_rules : allowed_subdirs:Path.Unspecified.w Dir_set.t -> t
 end
@@ -50,6 +52,25 @@ type is_target =
   | Under_directory_target_so_cannot_say
 
 val is_target : Path.t -> is_target Memo.Build.t
+
+(** [is_under_directory_target p] returns [true] iff [p] is a descendant of one.
+    Returns [true] if [p] is a directory target itself.
+
+    This is similar to:
+
+    {[
+      is_target p >>= function
+      | No
+      | Yes File ->
+        false
+      | Yes Directory
+      | under_directory_target_so_cannot_say ->
+        true
+    ]}
+
+    Except that it forces less rules to be computed, thus creating less
+    opportunities for creating computation cycles. *)
+val is_under_directory_target : Path.t -> bool Memo.Build.t
 
 (** List of all buildable direct targets. This does not include files and
     directory produced under a directory target. *)

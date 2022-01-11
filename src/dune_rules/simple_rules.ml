@@ -167,12 +167,22 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let pred =
     Path.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
   in
-  let* exists =
+  let src_in_build =
+    match Path.as_in_source_tree src_in_src with
+    | None -> src_in_src
+    | Some src_in_src ->
+      let context = Super_context.context sctx in
+      Path.Build.append_source context.build_dir src_in_src |> Path.build
+  in
+  let* exists_or_generated =
     match Path.as_in_source_tree src_in_src with
     | None -> Memo.Build.return (Path.exists src_in_src)
-    | Some src_in_src -> Source_tree.dir_exists src_in_src
+    | Some src_in_src -> (
+      Source_tree.dir_exists src_in_src >>= function
+      | true -> Memo.Build.return true
+      | false -> Load_rules.is_under_directory_target src_in_build)
   in
-  if not exists then
+  if not exists_or_generated then
     User_error.raise ~loc
       [ Pp.textf "Cannot find directory: %s" (Path.to_string src_in_src) ];
   if Path.equal src_in_src (Path.source src_dir) then
@@ -182,13 +192,6 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            <dir> is not the current directory."
       ];
   (* add rules *)
-  let src_in_build =
-    match Path.as_in_source_tree src_in_src with
-    | None -> src_in_src
-    | Some src_in_src ->
-      let context = Super_context.context sctx in
-      Path.Build.append_source context.build_dir src_in_src |> Path.build
-  in
   let* files =
     Build_system.eval_pred (File_selector.create ~dir:src_in_build pred)
   in

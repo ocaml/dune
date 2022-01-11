@@ -40,11 +40,17 @@ val get : Super_context.t -> dir:Path.Build.t -> t Memo.Build.t
     not part of a group. *)
 val dirs : t -> t list
 
+type standalone_or_root =
+  { root : t
+  ; subdirs : t list  (** Sub-directories part of the group *)
+  ; rules : Rules.t
+  }
+
 type triage =
   | Standalone_or_root of
-      { root : t
-      ; subdirs : t list  (** Sub-directories part of the group *)
-      ; rules : Rules.t
+      { directory_targets : Loc.t Path.Build.Map.t
+            (** ALl directory targets that are part of the group. *)
+      ; contents : standalone_or_root Memo.Lazy.t
       }
   | Group_part of Path.Build.t
 

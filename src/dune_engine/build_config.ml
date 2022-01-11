@@ -11,10 +11,14 @@ module Context_or_install = struct
     | Context s -> Context_name.to_dyn s
 end
 
-type extra_sub_directories_to_keep = Subdir_set.t
+type rules =
+  { build_dir_only_sub_dirs : Subdir_set.t
+  ; directory_targets : Loc.t Path.Build.Map.t
+  ; rules : Rules.t Memo.Build.t
+  }
 
 type gen_rules_result =
-  | Rules of extra_sub_directories_to_keep * Rules.t
+  | Rules of rules
   | Unknown_context_or_install
   | Redirect_to_parent
 

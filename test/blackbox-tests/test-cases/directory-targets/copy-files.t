@@ -8,6 +8,11 @@ Copy files from inside a directory target
 Copy from a generated sub-directory
 -----------------------------------
 
+This test just documents that copying from a generated sub-directory
+causes a cycle. In theory, it would be possible to avoid but it would
+requires deep changes in Dune. The cycle exists at the moment because
+Dune loads all the rules of a directory at once.
+
   $ cat >dune <<EOF
   > (rule
   >  (target (dir foo))
@@ -17,10 +22,10 @@ Copy from a generated sub-directory
   > EOF
 
   $ dune build
-  File "dune", line 5, characters 12-17:
-  5 | (copy_files foo/*)
-                  ^^^^^
-  Error: Cannot find directory: foo
+  Error: Dependency cycle between:
+     Computing directory contents of _build/default
+  -> Evaluating predicate in directory _build/default/foo
+  -> Computing directory contents of _build/default
   [1]
 
   $ ls _build/default/
@@ -42,12 +47,8 @@ Copy from a generated directory somewhere else
   > EOF
 
   $ dune build b
-  File "b/dune", line 1, characters 12-22:
-  1 | (copy_files ../a/foo/*)
-                  ^^^^^^^^^^
-  Error: Cannot find directory: a/foo
-  [1]
 
-  $ dir="_build/default/b"
-  $ if [ -d $dir ]; then echo "$dir exists"; else echo "$dir does not exist"; fi
-  _build/default/b does not exist
+  $ ls _build/default/b
+  x
+  y
+  z

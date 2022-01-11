@@ -758,19 +758,36 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
       (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 
 let has_rules m =
-  let+ rules = Rules.collect_unit (fun () -> m) in
-  Build_config.Rules (Subdir_set.empty, rules)
+  let rules = Rules.collect_unit (fun () -> m) in
+  Memo.return
+    (Build_config.Rules
+       { rules
+       ; build_dir_only_sub_dirs = Subdir_set.empty
+       ; directory_targets = Path.Build.Map.empty
+       })
 
 let with_package sctx pkg ~f =
   let pkg = Package.Name.of_string pkg in
   let packages = Super_context.packages sctx in
   match Package.Name.Map.find packages pkg with
-  | None -> Memo.return (Build_config.Rules (Subdir_set.empty, Rules.empty))
+  | None ->
+    Memo.return
+      (Build_config.Rules
+         { rules = Memo.return Rules.empty
+         ; build_dir_only_sub_dirs = Subdir_set.empty
+         ; directory_targets = Path.Build.Map.empty
+         })
   | Some pkg -> has_rules (f pkg)
 
 let gen_rules sctx ~dir:_ rest =
   match rest with
-  | [] -> Memo.return (Build_config.Rules (Subdir_set.All, Rules.empty))
+  | [] ->
+    Memo.return
+      (Build_config.Rules
+         { rules = Memo.return Rules.empty
+         ; build_dir_only_sub_dirs = Subdir_set.All
+         ; directory_targets = Path.Build.Map.empty
+         })
   | [ "_html" ] ->
     has_rules (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
   | [ "_mlds"; pkg ] ->

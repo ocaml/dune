@@ -452,18 +452,12 @@ Here is what should have happened:
 
   $ test "echo force > dep"
   ------------------------------------------
-  Failure
-  Failure
-  File "dir", line 1, characters 0-0:
-  Error: File unavailable: dir
-  Broken symbolic link
-  Had errors, waiting for filesystem changes...
-  File "dir", line 1, characters 0-0:
-  Error: File unavailable: dir
-  Broken symbolic link
-  Had errors, waiting for filesystem changes...
+  Executing rule...
+  Success, waiting for filesystem changes...
+  Executing rule...
+  Success, waiting for filesystem changes...
   ------------------------------------------
-  result = '357' -> '357' -> '357'
+  result = '357' -> '35' -> '35'
   ------------------------------------------
   Updating dir_contents cache for "dep": Skipped
   Updating file_digest cache for "dep": Updated { changed = true }

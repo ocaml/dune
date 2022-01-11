@@ -5,6 +5,7 @@ module Status : sig
     | Data_only
     | Normal
     | Vendored
+    | Generated
 
   val to_dyn : t -> Dyn.t
 
@@ -21,6 +22,7 @@ module Status : sig
       { data_only : 'a
       ; vendored : 'a
       ; normal : 'a
+      ; generated : 'a
       }
 
     val merge : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
@@ -40,15 +42,19 @@ module Status : sig
   end
 end
 
-type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
+type subdir_specifiers
 
-val or_default : subdir_stanzas -> Predicate_lang.Glob.t Status.Map.t
+val is_generated : subdir_specifiers -> sub_dir:string -> bool
 
-val default : Predicate_lang.Glob.t Status.Map.t
+type compiled_subdir_specifiers
+
+val or_default : subdir_specifiers -> compiled_subdir_specifiers
+
+val default : compiled_subdir_specifiers
 
 type status_map
 
-val eval : Predicate_lang.Glob.t Status.Map.t -> dirs:string list -> status_map
+val eval : compiled_subdir_specifiers -> dirs:string list -> status_map
 
 val status : status_map -> dir:string -> Status.Or_ignored.t
 
@@ -57,7 +63,7 @@ module Dir_map : sig
 
   type per_dir =
     { sexps : Dune_lang.Ast.t list
-    ; subdir_status : subdir_stanzas
+    ; subdir_status : subdir_specifiers
     }
 
   val descend : t -> string -> t option

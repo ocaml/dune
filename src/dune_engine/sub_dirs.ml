@@ -5,35 +5,44 @@ module Status = struct
     | Data_only
     | Normal
     | Vendored
+    | Generated
 
   module Map = struct
     type 'a t =
       { data_only : 'a
       ; vendored : 'a
       ; normal : 'a
+      ; generated : 'a
       }
 
     let merge x y ~f =
       { data_only = f x.data_only y.data_only
       ; vendored = f x.vendored y.vendored
       ; normal = f x.normal y.normal
+      ; generated = f x.generated y.generated
       }
 
-    let find { data_only; vendored; normal } = function
+    let find { data_only; vendored; normal; generated } = function
       | Data_only -> data_only
       | Vendored -> vendored
       | Normal -> normal
+      | Generated -> generated
 
-    let to_dyn f { data_only; vendored; normal } =
+    let to_dyn f { data_only; vendored; normal; generated } =
       let open Dyn in
       record
         [ ("data_only", f data_only)
         ; ("vendored", f vendored)
         ; ("normal", f normal)
+        ; ("generated", f generated)
         ]
 
     let init ~f =
-      { data_only = f Data_only; vendored = f Vendored; normal = f Normal }
+      { data_only = f Data_only
+      ; vendored = f Vendored
+      ; normal = f Normal
+      ; generated = f Generated
+      }
   end
 
   let to_dyn t =
@@ -42,11 +51,13 @@ module Status = struct
     | Data_only -> Variant ("Data_only", [])
     | Vendored -> Variant ("Vendored", [])
     | Normal -> Variant ("Normal", [])
+    | Generated -> Variant ("Generated", [])
 
   let to_string = function
     | Data_only -> "data_only"
     | Vendored -> "vendored"
     | Normal -> "normal"
+    | Generated -> "generated"
 
   module Or_ignored = struct
     type nonrec t =
@@ -59,12 +70,20 @@ module Status = struct
 
     type t = bool Map.t
 
-    let all = { data_only = true; vendored = true; normal = true }
+    let all =
+      { data_only = true; vendored = true; normal = true; generated = true }
 
-    let normal_only = { data_only = false; vendored = false; normal = true }
+    let normal_only =
+      { data_only = false; vendored = false; normal = true; generated = false }
 
-    let to_list { data_only; vendored; normal } =
+    let to_list { data_only; vendored; normal; generated } =
       let acc = [] in
+      let acc =
+        if generated then
+          Generated :: acc
+        else
+          acc
+      in
       let acc =
         if vendored then
           Vendored :: acc
@@ -87,6 +106,21 @@ module Status = struct
   end
 end
 
+type subdir_specifier =
+  | No_specifier
+  | Predicate of Loc.t * Predicate_lang.Glob.t
+  | Directory_targets of String.Set.t
+
+type subdir_specifiers = subdir_specifier Status.Map.t
+
+type compiled_subdir_specifiers = Predicate_lang.Glob.t Status.Map.t
+
+let is_generated (t : subdir_specifiers) ~sub_dir =
+  match t.generated with
+  | No_specifier -> false
+  | Predicate _ -> assert false
+  | Directory_targets set -> String.Set.mem set sub_dir
+
 let status status_by_dir ~dir : Status.Or_ignored.t =
   match String.Map.find status_by_dir dir with
   | None -> Ignored
@@ -101,15 +135,17 @@ let default =
   { Status.Map.normal = standard_dirs
   ; data_only = Predicate_lang.empty
   ; vendored = Predicate_lang.empty
+  ; generated = Predicate_lang.empty
   }
 
 let or_default (t : _ Status.Map.t) : _ Status.Map.t =
-  Status.Map.init ~f:(fun kind ->
-      match Status.Map.find t kind with
-      | None -> Status.Map.find default kind
-      | Some (_loc, s) -> s)
+  Status.Map.merge t default ~f:(fun t default ->
+      match t with
+      | No_specifier -> default
+      | Predicate (_, p) -> p
+      | Directory_targets dirs -> Predicate_lang.Glob.of_string_set dirs)
 
-let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
+let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs ~generated =
   let data_only =
     match (data_only, ignored_sub_dirs) with
     | None, [] -> None
@@ -119,11 +155,19 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
       Some (loc, Predicate_lang.union ignored_sub_dirs)
     | Some _data_only, _ :: _ -> assert false
   in
-  { Status.Map.normal = dirs; data_only; vendored = vendored_dirs }
+  let make_pred = function
+    | None -> No_specifier
+    | Some (loc, p) -> Predicate (loc, p)
+  in
+  let dirs = make_pred dirs in
+  let data_only = make_pred data_only in
+  let vendored = make_pred vendored_dirs in
+  let generated = Directory_targets generated in
+  { Status.Map.normal = dirs; data_only; vendored; generated }
 
 type status_map = Status.t String.Map.t
 
-let eval (t : _ Status.Map.t) ~dirs =
+let eval (t : compiled_subdir_specifiers) ~dirs =
   (* This function defines the unexpected behavior of: (dirs foo)
      (data_only_dirs bar)
 
@@ -161,12 +205,10 @@ let eval (t : _ Status.Map.t) ~dirs =
                    | _ -> "all these")
                ]))
 
-type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
-
 module Dir_map = struct
   type per_dir =
     { sexps : Dune_lang.Ast.t list
-    ; subdir_status : subdir_stanzas
+    ; subdir_status : subdir_specifiers
     }
 
   type t =
@@ -175,7 +217,7 @@ module Dir_map = struct
     }
 
   let empty_per_dir =
-    { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> None) }
+    { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> No_specifier) }
 
   let empty = { data = empty_per_dir; nodes = String.Map.empty }
 
@@ -198,11 +240,25 @@ module Dir_map = struct
     { sexps = d1.sexps @ d2.sexps
     ; subdir_status =
         Status.Map.merge d1.subdir_status d2.subdir_status ~f:(fun l r ->
-            Option.merge l r ~f:(fun (loc, _) (loc2, _) ->
-                User_error.raise ~loc
-                  [ Pp.text "This stanza stanza was already specified at:"
-                  ; Pp.verbatim (Loc.to_file_colon_line loc2)
-                  ]))
+            match (l, r) with
+            | No_specifier, No_specifier -> No_specifier
+            | No_specifier, x
+            | x, No_specifier ->
+              x
+            | Predicate _, Directory_targets _
+            | Directory_targets _, Predicate _ ->
+              (* This case is impossible because the syntax dicatates that
+                 [generated] can only be [Directory_targets] or [No_specifier]
+                 and all other fields can only be [Predicate] or
+                 [No_specifier]. *)
+              assert false
+            | Predicate (loc, _), Predicate (loc2, _) ->
+              User_error.raise ~loc
+                [ Pp.text "This stanza stanza was already specified at:"
+                ; Pp.verbatim (Loc.to_file_colon_line loc2)
+                ]
+            | Directory_targets d1, Directory_targets d2 ->
+              Directory_targets (String.Set.union d1 d2))
     }
 
   let rec merge t1 t2 : t =
@@ -260,6 +316,25 @@ let strict_subdir_glob field_name =
   in
   Predicate_lang.union globs
 
+(* This code extract directory targets from the "target"/"targets" fields of
+   "rule" stanzas. The syntax must be kept in sync with the code for parsing of
+   "rule" stanzas in [dune_rules]. *)
+let extract_directory_targets (sexps : Dune_lang.Ast.t list) =
+  List.concat_map sexps ~f:(function
+    | List (_, Atom (_, A "rule") :: sexps) ->
+      List.concat_map sexps ~f:(function
+        | List (_, Atom (_, A ("target" | "targets")) :: sexps) ->
+          List.filter_map sexps ~f:(function
+            | List
+                ( _
+                , [ Atom (_, A "dir"); (Atom (_, A s) | Quoted_string (_, s)) ]
+                ) ->
+              Some s
+            | _ -> None)
+        | _ -> [])
+    | _ -> [])
+  |> String.Set.of_list
+
 let decode =
   let open Dune_lang.Decoder in
   let ignored_sub_dirs =
@@ -316,6 +391,7 @@ let decode =
     and+ vendored_dirs = field_o "vendored_dirs" vendored_dirs
     and+ subdirs = multi_field "subdir" (subdir ())
     and+ rest = leftover_fields in
+    let generated = extract_directory_targets rest in
     match (data_only, dirs, ignored_sub_dirs) with
     | _, Some (loc, _), _ :: _ ->
       User_error.raise ~loc
@@ -331,7 +407,7 @@ let decode =
     | _ ->
       Dir_map.merge_all
         (let subdir_status =
-           make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs
+           make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs ~generated
          in
          Dir_map.singleton { Dir_map.sexps = rest; subdir_status } :: subdirs)
   in

@@ -412,7 +412,7 @@ end = struct
     val all :
          dirs_visited:Dirs_visited.t
       -> dirs:(string * Path.Source.t * File.t) list
-      -> sub_dirs:Predicate_lang.Glob.t Sub_dirs.Status.Map.t
+      -> sub_dirs:Sub_dirs.compiled_subdir_specifiers
       -> parent_status:Sub_dirs.Status.t
       -> dune_file:Dune_file.t option (** to interpret [(subdir ..)] stanzas *)
       -> path:Path.Source.t
@@ -427,8 +427,9 @@ end = struct
         Some
           (match (parent_status, status) with
           | Data_only, _ -> Data_only
+          | Generated, _ -> Generated
           | Vendored, Normal -> Vendored
-          | _, _ -> status)
+          | (Vendored | Normal), status -> status)
 
     let make_subdir ~dir_status ~virtual_ path =
       let sub_dir_as_t = find_dir_raw path in
@@ -665,6 +666,49 @@ let nearest_dir path =
   let components = Path.Source.explode path in
   let* root = root () in
   nearest_dir root components
+
+type path_kind =
+  | In_generated_sub_tree of
+      { parent_of_root_of_generated_sub_tree : Dir0.t
+      ; generated_sub_dir : string
+      }
+  | Not_in_generated_sub_tree of { nearest_dir : Dir0.t }
+
+let rec analyse_path t = function
+  | [] -> Memo.Build.return (Not_in_generated_sub_tree { nearest_dir = t })
+  | comp :: components -> (
+    match String.Map.find (Dir0.sub_dirs t) comp with
+    | None ->
+      Memo.Build.return
+        (match Dir0.dune_file t with
+        | None -> Not_in_generated_sub_tree { nearest_dir = t }
+        | Some dune_file -> (
+          match
+            Sub_dirs.is_generated dune_file.plain.contents.subdir_status
+              ~sub_dir:comp
+          with
+          | true ->
+            In_generated_sub_tree
+              { parent_of_root_of_generated_sub_tree = t
+              ; generated_sub_dir = comp
+              }
+          | false -> Not_in_generated_sub_tree { nearest_dir = t }))
+    | Some sub_dir -> (
+      let* sub_dir = Dir0.sub_dir_as_t sub_dir in
+      match Dir0.status sub_dir with
+      | Generated ->
+        (* This case happens when a directory target is promoted. *)
+        Memo.Build.return
+          (In_generated_sub_tree
+             { parent_of_root_of_generated_sub_tree = t
+             ; generated_sub_dir = comp
+             })
+      | _ -> analyse_path sub_dir components))
+
+let analyse_path path =
+  let components = Path.Source.explode path in
+  let* root = root () in
+  analyse_path root components
 
 let execution_parameters_of_dir =
   let f path =

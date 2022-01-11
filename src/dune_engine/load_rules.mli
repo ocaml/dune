@@ -21,9 +21,15 @@ module Loaded : sig
     ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
     }
 
+  type build_under_directory_target =
+    { parent_of_directory_target : Path.Build.t
+    ; directory_target_basename : string
+    }
+
   type t =
     | Non_build of Path.Set.t
     | Build of build
+    | Build_under_directory_target of build_under_directory_target
 
   val no_rules : allowed_subdirs:Path.Unspecified.w Dir_set.t -> t
 end

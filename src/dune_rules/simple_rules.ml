@@ -167,12 +167,18 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let pred =
     Path.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
   in
-  let* exists =
+  let* exists_or_generated =
     match Path.as_in_source_tree src_in_src with
     | None -> Memo.Build.return (Path.exists src_in_src)
-    | Some src_in_src -> Source_tree.dir_exists src_in_src
+    | Some src_in_src -> (
+      Source_tree.dir_exists src_in_src >>= function
+      | true -> Memo.Build.return true
+      | false -> (
+        Source_tree.analyse_path src_in_src >>| function
+        | In_generated_sub_tree _ -> true
+        | Not_in_generated_sub_tree _ -> false))
   in
-  if not exists then
+  if not exists_or_generated then
     User_error.raise ~loc
       [ Pp.textf "Cannot find directory: %s" (Path.to_string src_in_src) ];
   if Path.equal src_in_src (Path.source src_dir) then

@@ -31,9 +31,15 @@ module Loaded = struct
     ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
     }
 
+  type build_under_directory_target =
+    { parent_of_directory_target : Path.Build.t
+    ; directory_target_basename : string
+    }
+
   type t =
     | Non_build of Path.Set.t
     | Build of build
+    | Build_under_directory_target of build_under_directory_target
 
   let no_rules ~allowed_subdirs =
     Build
@@ -64,6 +70,8 @@ module Dir_triage = struct
   type t =
     | Known of Loaded.t
     | Build_directory of Build_directory.t
+    | Build_directory_under_directory_target of
+        Loaded.build_under_directory_target
 end
 
 let get_dir_triage ~dir =
@@ -116,12 +124,22 @@ let get_dir_triage ~dir =
     let context_or_install = Context_or_install.Install context_name in
     Memo.Build.return
       (Dir_triage.Build_directory { dir; context_or_install; sub_dir })
-  | Build (Regular (With_context (context_name, sub_dir))) ->
+  | Build (Regular (With_context (context_name, sub_dir))) -> (
     (* In this branch, [dir] is in the build directory. *)
     let dir = Path.as_in_build_dir_exn dir in
     let context_or_install = Context_or_install.Context context_name in
-    Memo.Build.return
-      (Dir_triage.Build_directory { dir; context_or_install; sub_dir })
+    Source_tree.analyse_path sub_dir >>| function
+    | Not_in_generated_sub_tree { nearest_dir = _ } ->
+      Dir_triage.Build_directory { dir; context_or_install; sub_dir }
+    | In_generated_sub_tree
+        { parent_of_root_of_generated_sub_tree = dir; generated_sub_dir } ->
+      Build_directory_under_directory_target
+        { parent_of_directory_target =
+            Path.Build.append_source
+              (Path.Build.(relative root) (Context_name.to_string context_name))
+              (Source_tree.Dir.path dir)
+        ; directory_target_basename = generated_sub_dir
+        })
 
 let describe_rule (rule : Rule.t) =
   match rule.info with

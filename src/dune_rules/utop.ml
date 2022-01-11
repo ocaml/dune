@@ -41,7 +41,8 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
   | None -> Memo.Build.return ([], [])
   | Some dir ->
     Source_tree_map_reduce.map_reduce dir
-      ~traverse:{ data_only = false; vendored = true; normal = true }
+      ~traverse:
+        { data_only = false; vendored = true; normal = true; generated = false }
       ~f:(fun dir ->
         let dir =
           Path.Build.append_source (Super_context.context sctx).build_dir

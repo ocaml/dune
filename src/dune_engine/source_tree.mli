@@ -77,13 +77,22 @@ end
 
 val find_dir : Path.Source.t -> Dir.t option Memo.Build.t
 
-(** [nearest_dir t fn] returns the directory with the longest path that is an
+(** [nearest_dir fn] returns the directory with the longest path that is an
     ancestor of [fn]. *)
 val nearest_dir : Path.Source.t -> Dir.t Memo.Build.t
 
-(** [nearest_vcs t fn] returns the version control system with the longest root
+(** [nearest_vcs fn] returns the version control system with the longest root
     path that is an ancestor of [fn]. *)
 val nearest_vcs : Path.Source.t -> Vcs.t option Memo.Build.t
+
+type path_kind =
+  | In_generated_sub_tree of
+      { parent_of_root_of_generated_sub_tree : Dir.t
+      ; generated_sub_dir : string
+      }
+  | Not_in_generated_sub_tree of { nearest_dir : Dir.t }
+
+val analyse_path : Path.Source.t -> path_kind Memo.Build.t
 
 val files_of : Path.Source.t -> Path.Source.Set.t Memo.Build.t
 

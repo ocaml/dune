@@ -1,6 +1,11 @@
 Unreleased
 ----------
 
+- Add support for odoc-link rules (#5045, @lubegasimon)
+
+- Dune will no longer generate documentation for hidden modules (#5045,
+  @lubegasimon)
+
 - Parse the `native_pack_linker` field of `ocamlc -config` (#5281, @TheLortex)
 
 - Fix plugins with dot in the name (#5182, @bobot, review @rgrinberg)

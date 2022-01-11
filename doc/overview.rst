@@ -53,7 +53,7 @@ Terminology
 ===========
 
 -  **package**: a set of libraries and executables that
-   are built and installed as one by Opam
+   Opam builds and installs as one
 
 -  **project**: a source tree, maybe containing one or more
    packages

@@ -113,7 +113,7 @@ Terminology
 
   -  ``release`` which is the profile used for Opam releases
   -  ``dev`` which is the default profile when none is set explicitly, it
-     has stricter warnings that the ``release`` one
+     has stricter warnings than the ``release`` one
 
 Project Layout
 ==============

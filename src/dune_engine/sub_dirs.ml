@@ -32,7 +32,7 @@ module Status = struct
         ; ("normal", f normal)
         ]
 
-    let init f =
+    let init ~f =
       { data_only = f Data_only; vendored = f Vendored; normal = f Normal }
   end
 
@@ -42,6 +42,11 @@ module Status = struct
     | Data_only -> Variant ("Data_only", [])
     | Vendored -> Variant ("Vendored", [])
     | Normal -> Variant ("Normal", [])
+
+  let to_string = function
+    | Data_only -> "data_only"
+    | Vendored -> "vendored"
+    | Normal -> "normal"
 
   module Or_ignored = struct
     type nonrec t =
@@ -57,6 +62,28 @@ module Status = struct
     let all = { data_only = true; vendored = true; normal = true }
 
     let normal_only = { data_only = false; vendored = false; normal = true }
+
+    let to_list { data_only; vendored; normal } =
+      let acc = [] in
+      let acc =
+        if vendored then
+          Vendored :: acc
+        else
+          acc
+      in
+      let acc =
+        if data_only then
+          Data_only :: acc
+        else
+          acc
+      in
+      let acc =
+        if normal then
+          Normal :: acc
+        else
+          acc
+      in
+      acc
   end
 end
 
@@ -77,7 +104,7 @@ let default =
   }
 
 let or_default (t : _ Status.Map.t) : _ Status.Map.t =
-  Status.Map.init (fun kind ->
+  Status.Map.init ~f:(fun kind ->
       match Status.Map.find t kind with
       | None -> Status.Map.find default kind
       | Some (_loc, s) -> s)
@@ -102,33 +129,37 @@ let eval (t : _ Status.Map.t) ~dirs =
 
      In this setup, bar is actually ignored rather than being data only. Because
      it was excluded from the total set of directories. *)
-  let normal =
-    Predicate_lang.Glob.filter t.normal ~standard:default.normal dirs
-  in
-  let eval ~standard pred = Predicate_lang.Glob.filter pred ~standard dirs in
-  let data_only = eval ~standard:default.data_only t.data_only in
-  let vendored = eval ~standard:default.vendored t.vendored in
-  let statuses =
-    List.fold_left normal ~init:String.Map.empty ~f:(fun acc dir ->
-        String.Map.set acc dir Status.Normal)
-  in
-  let statuses =
-    List.fold_left data_only ~init:statuses ~f:(fun acc dir ->
-        String.Map.set acc dir Status.Data_only)
-  in
-  List.fold_left vendored ~init:statuses ~f:(fun acc dir ->
-      String.Map.update acc dir ~f:(function
-        | None
-        | Some Status.Vendored
-        | Some Normal ->
-          Some Vendored
-        | Some Data_only ->
-          User_error.raise
-            [ Pp.textf
-                "Directory %s was marked as vendored and data_only, it can't \
-                 be marked as both."
-                dir
-            ]))
+  String.Set.of_list dirs
+  |> String.Set.to_map ~f:(fun _ -> ())
+  |> String.Map.filter_mapi ~f:(fun dir () : Status.t option ->
+         let statuses =
+           Status.Map.merge t default ~f:(fun pred standard ->
+               Predicate_lang.Glob.exec pred ~standard dir)
+           |> Status.Set.to_list
+         in
+         match statuses with
+         | [] -> None
+         | statuses -> (
+           (* If a directory has a status other than [Normal], then the [Normal]
+              status is irrelevant so we just filter it out. *)
+           match
+             List.filter statuses ~f:(function
+               | Status.Normal -> false
+               | _ -> true)
+           with
+           | [] -> Some Normal
+           | [ status ] -> Some status
+           | statuses ->
+             User_error.raise
+               [ Pp.textf
+                   "Directory %s was marked as %s, it can't be marked as %s."
+                   dir
+                   (String.enumerate_and
+                      (List.map statuses ~f:Status.to_string))
+                   (match List.length statuses with
+                   | 2 -> "both"
+                   | _ -> "all these")
+               ]))
 
 type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
 
@@ -144,7 +175,7 @@ module Dir_map = struct
     }
 
   let empty_per_dir =
-    { sexps = []; subdir_status = Status.Map.init (fun _ -> None) }
+    { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> None) }
 
   let empty = { data = empty_per_dir; nodes = String.Map.empty }
 

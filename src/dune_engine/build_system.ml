@@ -845,27 +845,25 @@ end = struct
 
     let eval_impl g =
       let dir = File_selector.dir g in
-      analyse_source_path dir >>= function
-      | None
-      | Some (Not_in_generated_sub_tree _) -> (
-        Load_rules.load_dir ~dir >>| function
-        | Non_build targets -> Path.Set.filter targets ~f:(File_selector.test g)
-        | Build { rules_here; _ } ->
-          let only_generated_files = File_selector.only_generated_files g in
-          (* We look only at [by_file_targets] because [File_selector] does not
-             match directories. *)
-          Path.Build.Map.foldi ~init:[] rules_here.by_file_targets
-            ~f:(fun s { Rule.info; _ } acc ->
-              match info with
-              | Rule.Info.Source_file_copy _ when only_generated_files -> acc
-              | _ ->
-                let s = Path.build s in
-                if File_selector.test g s then
-                  s :: acc
-                else
-                  acc)
-          |> Path.Set.of_list)
-      | Some (In_generated_sub_tree _) ->
+      Load_rules.load_dir ~dir >>= function
+      | Non_build targets ->
+        Memo.Build.return (Path.Set.filter targets ~f:(File_selector.test g))
+      | Build { rules_here; _ } ->
+        let only_generated_files = File_selector.only_generated_files g in
+        (* We look only at [by_file_targets] because [File_selector] does not
+           match directories. *)
+        Path.Build.Map.foldi ~init:[] rules_here.by_file_targets
+          ~f:(fun s { Rule.info; _ } acc ->
+            match info with
+            | Rule.Info.Source_file_copy _ when only_generated_files -> acc
+            | _ ->
+              let s = Path.build s in
+              if File_selector.test g s then
+                s :: acc
+              else
+                acc)
+        |> Path.Set.of_list |> Memo.Build.return
+      | Build_under_directory_target _ ->
         (* To evaluate a glob in a generated directory, we have no choice but to
            build the whole directory, so we might as well build the
            predicate. *)
@@ -949,25 +947,40 @@ let build_pred = Pred.build
    the results of both [Action_builder.static_deps] and [Action_builder.exec]
    are cached. *)
 let file_exists fn =
-  Load_rules.load_dir ~dir:(Path.parent_exn fn) >>| function
-  | Non_build targets -> Path.Set.mem targets fn
-  | Build { rules_here; _ } -> (
-    match Path.as_in_build_dir fn with
-    | None -> false
-    | Some fn -> (
-      match Path.Build.Map.mem rules_here.by_file_targets fn with
-      | true -> true
-      | false -> (
-        match Path.Build.parent fn with
-        | None -> false
-        | Some dir -> Path.Build.Map.mem rules_here.by_directory_targets dir)))
+  Load_rules.load_dir ~dir:(Path.parent_exn fn) >>= function
+  | Non_build targets -> Memo.Build.return (Path.Set.mem targets fn)
+  | Build { rules_here; _ } ->
+    Memo.Build.return
+      (Path.Build.Map.mem rules_here.by_file_targets
+         (Path.as_in_build_dir_exn fn))
+  | Build_under_directory_target
+      { parent_of_directory_target; directory_target_basename } ->
+    let directory_target =
+      Path.Build.relative parent_of_directory_target directory_target_basename
+    in
+    let+ _digest, path_map = build_dir (Path.build directory_target) in
+    Path.Build.Map.mem path_map (Path.as_in_build_dir_exn fn)
 
 let files_of ~dir =
-  Load_rules.load_dir ~dir >>| function
-  | Non_build file_targets -> file_targets
+  Load_rules.load_dir ~dir >>= function
+  | Non_build file_targets -> Memo.Build.return file_targets
   | Build { rules_here; _ } ->
-    Path.Build.Map.keys rules_here.by_file_targets
-    |> Path.Set.of_list_map ~f:Path.build
+    Memo.Build.return
+      (Path.Build.Map.keys rules_here.by_file_targets
+      |> Path.Set.of_list_map ~f:Path.build)
+  | Build_under_directory_target
+      { parent_of_directory_target; directory_target_basename } ->
+    let directory_target =
+      Path.Build.relative parent_of_directory_target directory_target_basename
+    in
+    let+ _digest, path_map = build_dir (Path.build directory_target) in
+    let dir = Path.as_in_build_dir_exn dir in
+    Path.Build.Map.foldi path_map ~init:Path.Set.empty
+      ~f:(fun path _digest acc ->
+        let parent = Path.Build.parent_exn path in
+        match Path.Build.equal parent dir with
+        | true -> Path.Set.add acc (Path.build path)
+        | false -> acc)
 
 let package_deps ~packages_of (pkg : Package.t) files =
   (* CR-someday amokhov: We should get rid of this mutable state. *)

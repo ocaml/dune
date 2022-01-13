@@ -47,18 +47,8 @@ Copy from a generated directory somewhere else
   > EOF
 
   $ dune build b
-  Error: _build/default/a/foo/x: No such file or directory
-  -> required by _build/default/b/x
-  -> required by alias b/all
-  -> required by alias b/default
-  Error: _build/default/a/foo/y: No such file or directory
-  -> required by _build/default/b/y
-  -> required by alias b/all
-  -> required by alias b/default
-  Error: _build/default/a/foo/z: No such file or directory
-  -> required by _build/default/b/z
-  -> required by alias b/all
-  -> required by alias b/default
-  [1]
 
   $ ls _build/default/b
+  x
+  y
+  z

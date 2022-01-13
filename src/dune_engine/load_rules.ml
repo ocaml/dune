@@ -385,6 +385,7 @@ end = struct
       Code_error.raise "Alias in a non-build dir"
         [ ("alias", Alias.to_dyn alias) ]
     | Build { aliases; _ } -> Alias.Name.Map.find aliases (Alias.name alias)
+    | Build_under_directory_target _ -> None
 
   let alias_exists alias =
     lookup_alias alias >>| function
@@ -503,7 +504,8 @@ end = struct
                load_dir ~dir:(Path.build dir) >>| function
                | Non_build _ -> Dir_set.just_the_root
                | Build { allowed_subdirs; _ } ->
-                 Dir_set.descend allowed_subdirs subdir))
+                 Dir_set.descend allowed_subdirs subdir
+               | Build_under_directory_target _ -> Dir_set.empty))
 
     let allowed_by_parent ~dir =
       allowed_dirs
@@ -773,6 +775,8 @@ end = struct
     | Build_directory x ->
       let+ build = load_build_directory_exn x in
       Loaded.Build build
+    | Build_directory_under_directory_target d ->
+      Memo.Build.return (Loaded.Build_under_directory_target d)
 
   let load_dir =
     let load_dir_impl dir = load_dir_impl ~dir in
@@ -782,36 +786,33 @@ end
 
 include Load_rules
 
-let load_dir_and_get_buildable_targets ~dir =
-  load_dir ~dir >>| function
-  | Non_build _ -> Loaded.no_rules_here
-  | Build { rules_here; _ } -> rules_here
-
-let get_rule_for_directory_target path =
-  let rec loop dir =
-    match Path.Build.parent dir with
-    | None -> Memo.Build.return None
-    | Some parent_dir -> (
-      let* rules =
-        load_dir_and_get_buildable_targets ~dir:(Path.build parent_dir)
+let get_rule_internal path =
+  let dir = Path.Build.parent_exn path in
+  load_dir ~dir:(Path.build dir) >>= function
+  | Non_build _ -> assert false
+  | Build { rules_here; _ } -> (
+    match Path.Build.Map.find rules_here.by_file_targets path with
+    | Some _ as rule -> Memo.Build.return rule
+    | None ->
+      Memo.Build.return
+        (Path.Build.Map.find rules_here.by_directory_targets path))
+  | Build_under_directory_target
+      { parent_of_directory_target; directory_target_basename } -> (
+    load_dir ~dir:(Path.build parent_of_directory_target) >>= function
+    | Non_build _
+    | Build_under_directory_target _ ->
+      assert false
+    | Build { rules_here; _ } ->
+      let directory_target =
+        Path.Build.relative parent_of_directory_target directory_target_basename
       in
-      match Path.Build.Map.find rules.by_directory_targets dir with
-      | None -> loop parent_dir
-      | Some _ as rule -> Memo.Build.return rule)
-  in
-  loop path
+      Memo.Build.return
+        (Path.Build.Map.find rules_here.by_directory_targets directory_target))
 
 let get_rule path =
   match Path.as_in_build_dir path with
   | None -> Memo.Build.return None
-  | Some path -> (
-    let dir = Path.Build.parent_exn path in
-    load_dir ~dir:(Path.build dir) >>= function
-    | Non_build _ -> assert false
-    | Build { rules_here; _ } -> (
-      match Path.Build.Map.find rules_here.by_file_targets path with
-      | Some _ as rule -> Memo.Build.return rule
-      | None -> get_rule_for_directory_target path))
+  | Some path -> get_rule_internal path
 
 type rule_or_source =
   | Source of Digest.t
@@ -820,16 +821,12 @@ type rule_or_source =
 let get_rule_or_source path =
   let dir = Path.parent_exn path in
   if Path.is_strict_descendant_of_build_dir dir then
-    let* rules = load_dir_and_get_buildable_targets ~dir in
     let path = Path.as_in_build_dir_exn path in
-    match Path.Build.Map.find rules.by_file_targets path with
+    get_rule_internal path >>= function
     | Some rule -> Memo.Build.return (Rule (path, rule))
-    | None -> (
-      get_rule_for_directory_target path >>= function
-      | Some rule -> Memo.Build.return (Rule (path, rule))
-      | None ->
-        let* loc = Current_rule_loc.get () in
-        no_rule_found ~loc path)
+    | None ->
+      let* loc = Current_rule_loc.get () in
+      no_rule_found ~loc path
   else
     let+ d = source_file_digest path in
     Source d

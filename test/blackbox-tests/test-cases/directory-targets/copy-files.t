@@ -5,17 +5,49 @@ Copy files from inside a directory target
   > (using directory-targets 0.1)
   > EOF
 
+Copy from a generated sub-directory
+-----------------------------------
+
   $ cat >dune <<EOF
   > (rule
   >  (target (dir foo))
-  >  (action (system "mkdir foo && touch foo/{x,y,z}")))
+  >  (deps (sandbox always))
+  >  (action (system "mkdir foo && touch foo/x foo/y foo/z")))
   > (copy_files foo/*)
   > EOF
 
   $ dune build
-  File "dune", line 4, characters 12-17:
-  4 | (copy_files foo/*)
+  File "dune", line 5, characters 12-17:
+  5 | (copy_files foo/*)
                   ^^^^^
   Error: Cannot find directory: foo
   [1]
+
   $ ls _build/default/
+
+Copy from a generated directory somewhere else
+----------------------------------------------
+
+  $ rm -f dune
+  $ mkdir a b
+  $ cat >a/dune <<EOF
+  > (rule
+  >  (target (dir foo))
+  >  (deps (sandbox always))
+  >  (action (system "mkdir foo && touch foo/x foo/y foo/z")))
+  > EOF
+
+  $ cat >b/dune <<EOF
+  > (copy_files ../a/foo/*)
+  > EOF
+
+  $ dune build b
+  File "b/dune", line 1, characters 12-22:
+  1 | (copy_files ../a/foo/*)
+                  ^^^^^^^^^^
+  Error: Cannot find directory: a/foo
+  [1]
+
+  $ ls _build/default/b
+  ls: cannot access '_build/default/b': No such file or directory
+  [2]

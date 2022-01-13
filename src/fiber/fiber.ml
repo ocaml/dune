@@ -845,27 +845,41 @@ module Jobs = struct
   let exec_fills fills = exec_fills (List.rev fills) Empty
 end
 
-let run (type a) (t : a t) ~iter =
-  let module M = struct
-    type value += X of a
-  end in
-  let rec loop : Jobs.t -> a = function
-    | Empty -> iter () |> Nonempty_list.to_list |> Jobs.exec_fills |> loop
+module Scheduler = struct
+  type step' =
+    | Done of value
+    | Stalled
+
+  module type Witness = sig
+    type t
+
+    type value += X of t
+  end
+
+  type 'a stalled = (module Witness with type t = 'a)
+
+  type 'a step =
+    | Done of 'a
+    | Stalled of 'a stalled
+
+  let rec loop : Jobs.t -> step' = function
+    | Empty -> Stalled
     | Job (ctx, run, x, jobs) -> exec ctx run x jobs
     | Concat (a, b) -> loop2 a b
+
   and loop2 a b =
     match a with
     | Empty -> loop b
     | Job (ctx, run, x, a) -> exec ctx run x (Jobs.concat a b)
     | Concat (a1, a2) -> loop2 a1 (Jobs.concat a2 b)
-  and exec : 'a. context -> ('a -> effect) -> 'a -> Jobs.t -> a =
+
+  and exec : 'a. context -> ('a -> effect) -> 'a -> Jobs.t -> step' =
    fun ctx k x jobs ->
     match k x with
     | exception exn ->
       let exn = Exn_with_backtrace.capture exn in
       exec ctx.on_error.ctx ctx.on_error.run exn jobs
-    | Done (M.X v) -> v
-    | Done _ -> assert false
+    | Done v -> Done v
     | Toplevel_exception exn -> Exn_with_backtrace.reraise exn
     | Unwind (k, x) -> exec ctx.parent k x jobs
     | Read_ivar (ivar, k) -> (
@@ -932,7 +946,8 @@ let run (type a) (t : a t) ~iter =
               Jobs.Job (ctx, run, exn, jobs))
         in
         loop jobs)
-  and deref : 'a 'b. ('a, 'b) map_reduce_context' -> Jobs.t -> a =
+
+  and deref : 'a 'b. ('a, 'b) map_reduce_context' -> Jobs.t -> step' =
    fun r jobs ->
     let ref_count = r.ref_count - 1 in
     r.ref_count <- ref_count;
@@ -941,6 +956,7 @@ let run (type a) (t : a t) ~iter =
     | _ ->
       assert (ref_count > 0);
       loop jobs
+
   and map_reduce_errors :
       type errors b.
          context
@@ -949,7 +965,7 @@ let run (type a) (t : a t) ~iter =
       -> (unit -> effect)
       -> ((b, errors) result -> effect)
       -> Jobs.t
-      -> a =
+      -> step' =
    fun ctx (module M : Monoid with type t = errors) on_error f k jobs ->
     let map_reduce_context =
       { k = { ctx; run = k }; ref_count = 1; errors = M.empty }
@@ -972,17 +988,47 @@ let run (type a) (t : a t) ~iter =
       }
     in
     exec ctx f () jobs
+
+  let repack_step (type a) (module W : Witness with type t = a) (step' : step')
+      =
+    match step' with
+    | Done (W.X a) -> Done a
+    | Done _ ->
+      Code_error.raise
+        "advance: it's illegal to call advance with a fiber created in a \
+         different scheduler"
+        []
+    | Stalled -> Stalled (module W)
+
+  let advance (type a) (module W : Witness with type t = a) fill : a step =
+    fill |> Nonempty_list.to_list |> Jobs.exec_fills |> loop
+    |> repack_step (module W)
+
+  let start (type a) (t : a t) =
+    let module W = struct
+      type t = a
+
+      type value += X of a
+    end in
+    let rec ctx =
+      { parent = ctx
+      ; on_error = { ctx; run = (fun exn -> Toplevel_exception exn) }
+      ; vars = Univ_map.empty
+      ; map_reduce_context =
+          Map_reduce_context
+            { k = { ctx; run = (fun _ -> assert false) }
+            ; ref_count = 1
+            ; errors = ()
+            }
+      }
+    in
+    exec ctx t (fun x -> Done (W.X x)) Empty |> repack_step (module W)
+end
+
+let run =
+  let rec loop ~iter (s : _ Scheduler.step) =
+    match s with
+    | Done a -> a
+    | Stalled w -> loop ~iter (Scheduler.advance w (iter ()))
   in
-  let rec ctx =
-    { parent = ctx
-    ; on_error = { ctx; run = (fun exn -> Toplevel_exception exn) }
-    ; vars = Univ_map.empty
-    ; map_reduce_context =
-        Map_reduce_context
-          { k = { ctx; run = (fun _ -> assert false) }
-          ; ref_count = 1
-          ; errors = ()
-          }
-    }
-  in
-  exec ctx t (fun x -> Done (M.X x)) Empty
+  fun t ~iter -> loop ~iter (Scheduler.start t)

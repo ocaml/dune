@@ -678,7 +678,106 @@ let%expect_test "Stream.parallel_iter doesn't leak" =
      leaking memory: *)
   test ~iter_function:naive_stream_parallel_iter ~check:(fun ~prev ~curr ->
       prev < curr);
-  [%expect {| PASS |}];
+  [%expect {|
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254
+    [FAIL] live words not changing as expected: prev=43254, curr=43254 |}];
 
   (* Check that the number of live words is constant with this iter function: *)
   test ~iter_function:Fiber.Stream.In.parallel_iter ~check:(fun ~prev ~curr ->

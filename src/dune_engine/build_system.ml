@@ -799,8 +799,10 @@ end = struct
       let dir = File_selector.dir g in
       let* build_dir =
         Load_rules.is_target dir >>= function
-        | false -> Memo.Build.return None
-        | true -> build_dir dir
+        | No -> Memo.Build.return None
+        | Yes _
+        | Under_directory_target_so_cannot_say ->
+          build_dir dir
       in
       match build_dir with
       | None ->
@@ -920,6 +922,35 @@ include Exported
 let eval_pred = Pred.eval
 
 let build_pred = Pred.build
+
+(* Here we are doing a O(log |S|) lookup in a set S of files in the build
+   directory [dir]. We could memoize these lookups, but it doesn't seem to be
+   worth it, since we're unlikely to perform exactly the same lookup many times.
+   As far as I can tell, each lookup will be done twice: when computing static
+   dependencies of a [Action_builder.t] with [Action_builder.static_deps] and
+   when executing the very same [Action_builder.t] with [Action_builder.exec] --
+   the results of both [Action_builder.static_deps] and [Action_builder.exec]
+   are cached. *)
+let file_exists fn =
+  Load_rules.load_dir ~dir:(Path.parent_exn fn) >>| function
+  | Non_build targets -> Path.Set.mem targets fn
+  | Build { rules_here; _ } -> (
+    match Path.as_in_build_dir fn with
+    | None -> false
+    | Some fn -> (
+      match Path.Build.Map.mem rules_here.by_file_targets fn with
+      | true -> true
+      | false -> (
+        match Path.Build.parent fn with
+        | None -> false
+        | Some dir -> Path.Build.Map.mem rules_here.by_directory_targets dir)))
+
+let files_of ~dir =
+  Load_rules.load_dir ~dir >>| function
+  | Non_build file_targets -> file_targets
+  | Build { rules_here; _ } ->
+    Path.Build.Map.keys rules_here.by_file_targets
+    |> Path.Set.of_list_map ~f:Path.build
 
 let package_deps ~packages_of (pkg : Package.t) files =
   (* CR-someday amokhov: We should get rid of this mutable state. *)

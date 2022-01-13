@@ -78,7 +78,7 @@ let term =
              executable, they would be located in a subdirectory of [dir], so
              it's unclear if that's what the user wanted. *)
           let+ candidates =
-            Load_rules.file_targets_of ~dir:(Path.build dir)
+            Build_system.files_of ~dir:(Path.build dir)
             >>| Path.Set.to_list
             >>| List.filter ~f:(fun p -> Path.extension p = ".exe")
             >>| List.map ~f:(fun p -> "./" ^ Path.basename p)
@@ -98,14 +98,14 @@ let term =
               | Ok prog -> build_prog prog)
             | Relative_to_current_dir -> (
               let path = Path.relative (Path.build dir) prog in
-              (Load_rules.is_target path >>= function
+              (Build_system.file_exists path >>= function
                | true -> Memo.Build.return (Some path)
                | false -> (
                  if not (Filename.check_suffix prog ".exe") then
                    Memo.Build.return None
                  else
                    let path = Path.extend_basename path ~suffix:".exe" in
-                   Load_rules.is_target path >>= function
+                   Build_system.file_exists path >>= function
                    | true -> Memo.Build.return (Some path)
                    | false -> Memo.Build.return None))
               >>= function

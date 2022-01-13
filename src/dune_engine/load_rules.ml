@@ -299,8 +299,6 @@ let eval_source_file :
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
 
-  val file_exists : Path.t -> bool Memo.Build.t
-
   val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
 
   val directory_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
@@ -366,29 +364,6 @@ end = struct
           ()
         | Some rule1, Some rule2 -> report_rule_conflict target rule1 rule2);
     { Loaded.by_file_targets; by_directory_targets }
-
-  (* Here we are doing a O(log |S|) lookup in a set S of files in the build
-     directory [dir]. We could memoize these lookups, but it doesn't seem to be
-     worth it, since we're unlikely to perform exactly the same lookup many
-     times. As far as I can tell, each lookup will be done twice: when computing
-     static dependencies of a [Action_builder.t] with
-     [Action_builder.static_deps] and when executing the very same
-     [Action_builder.t] with [Action_builder.exec] -- the results of both
-     [Action_builder.static_deps] and [Action_builder.exec] are cached. *)
-  let file_exists fn =
-    load_dir ~dir:(Path.parent_exn fn) >>| function
-    | Non_build targets -> Path.Set.mem targets fn
-    | Build { rules_here; _ } -> (
-      match Path.as_in_build_dir fn with
-      | None -> false
-      | Some fn -> (
-        match Path.Build.Map.mem rules_here.by_file_targets fn with
-        | true -> true
-        | false -> (
-          match Path.Build.parent fn with
-          | None -> false
-          | Some dir -> Path.Build.Map.mem rules_here.by_directory_targets dir))
-      )
 
   let file_targets_of ~dir =
     load_dir ~dir >>| function
@@ -859,10 +834,26 @@ let get_rule_or_source path =
     let+ d = source_file_digest path in
     Source d
 
-module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (Path.Build.Set))
+type target_type =
+  | File
+  | Directory
 
-let all_targets () =
+module All_targets = struct
+  type t = target_type Path.Build.Map.t
+
+  include Monoid.Make (struct
+    type nonrec t = t
+
+    let empty = Path.Build.Map.empty
+
+    let combine = Path.Build.Map.union_exn
+  end)
+end
+
+module Source_tree_map_reduce =
+  Source_tree.Dir.Make_map_reduce (Memo.Build) (All_targets)
+
+let all_direct_targets () =
   let* root = Source_tree.root ()
   and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
   Memo.Build.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
@@ -874,12 +865,13 @@ let all_targets () =
                  (Path.Build.append_source ctx.Build_context.build_dir
                     (Source_tree.Dir.path dir)))
           >>| function
-          | Non_build _ -> Path.Build.Set.empty
+          | Non_build _ -> All_targets.empty
           | Build { rules_here; _ } ->
-            Path.Build.Set.of_list
-              (Path.Build.Map.keys rules_here.by_file_targets
-              @ Path.Build.Map.keys rules_here.by_directory_targets)))
-  >>| Path.Build.Set.union_all
+            All_targets.combine
+              (Path.Build.Map.map rules_here.by_file_targets ~f:(fun _ -> File))
+              (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
+                   Directory))))
+  >>| All_targets.reduce
 
 let get_alias_definition alias =
   lookup_alias alias >>= function
@@ -890,22 +882,32 @@ let get_alias_definition alias =
       [ Pp.text "No rule found for " ++ Alias.describe alias ]
   | Some x -> Memo.Build.return x
 
+type is_target =
+  | No
+  | Yes of target_type
+  | Under_directory_target_so_cannot_say
+
 let is_target file =
   match Path.is_in_build_dir file with
-  | false -> Memo.Build.return false
+  | false -> Memo.Build.return No
   | true -> (
     let parent_dir = Path.parent_exn file in
     let* file_targets = file_targets_of ~dir:parent_dir in
     match Path.Set.mem file_targets file with
-    | true -> Memo.Build.return true
+    | true -> Memo.Build.return (Yes File)
     | false ->
-      let rec loop dir =
-        match Path.parent dir with
-        | None -> Memo.Build.return false
-        | Some parent_dir -> (
-          let* directory_targets = directory_targets_of ~dir:parent_dir in
-          match Path.Set.mem directory_targets dir with
-          | true -> Memo.Build.return true
-          | false -> loop parent_dir)
+      let rec loop file' =
+        match Path.parent file' with
+        | None -> Memo.Build.return No
+        | Some dir -> (
+          let* directory_targets = directory_targets_of ~dir in
+          match Path.Set.mem directory_targets file' with
+          | true ->
+            Memo.Build.return
+              (if Path.equal file file' then
+                Yes Directory
+              else
+                Under_directory_target_so_cannot_say)
+          | false -> loop dir)
       in
       loop file)

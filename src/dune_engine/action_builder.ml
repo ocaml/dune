@@ -104,7 +104,7 @@ let if_file_exists p ~then_ ~else_ =
     { f =
         (fun mode ->
           let open Memo.Build.O in
-          Load_rules.file_exists p >>= function
+          Build_system.file_exists p >>= function
           | true -> run then_ mode
           | false -> run else_ mode)
     }

@@ -28,18 +28,10 @@ module Loaded : sig
   val no_rules : allowed_subdirs:Path.Unspecified.w Dir_set.t -> t
 end
 
-(** Returns the set of file targets in the given directory. *)
-val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
-
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
 
-(** Return [true] if a file exists or is buildable *)
-val file_exists : Path.t -> bool Memo.Build.t
-
 val alias_exists : Alias.t -> bool Memo.Build.t
-
-val is_target : Path.t -> bool Memo.Build.t
 
 (** Return the rule that has the given file has target, if any *)
 val get_rule : Path.t -> Rule.t option Memo.Build.t
@@ -48,8 +40,20 @@ val get_rule : Path.t -> Rule.t option Memo.Build.t
 val get_alias_definition :
   Alias.t -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.Build.t
 
-(** List of all buildable targets. *)
-val all_targets : unit -> Path.Build.Set.t Memo.Build.t
+type target_type =
+  | File
+  | Directory
+
+type is_target =
+  | No
+  | Yes of target_type
+  | Under_directory_target_so_cannot_say
+
+val is_target : Path.t -> is_target Memo.Build.t
+
+(** List of all buildable direct targets. This does not include files and
+    directory produced under a directory target. *)
+val all_direct_targets : unit -> target_type Path.Build.Map.t Memo.Build.t
 
 type rule_or_source =
   | Source of Digest.t

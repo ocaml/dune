@@ -12,6 +12,9 @@ val build_file : Path.t -> Digest.t Memo.Build.t
 (** Build a file and access its contents with [f]. *)
 val read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.Build.t
 
+(** Return [true] if a file exists or is buildable *)
+val file_exists : Path.t -> bool Memo.Build.t
+
 (** Build a set of dependencies and return learned facts about them. *)
 val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
 
@@ -20,6 +23,9 @@ val build_deps : Dep.Set.t -> Dep.Facts.t Memo.Build.t
     of file targets. Currently, this function ignores directory targets, which
     is a limitation we'd like to remove in future. *)
 val eval_pred : File_selector.t -> Path.Set.t Memo.Build.t
+
+(** Same as [eval_pred] with [Predicate.true_] as predicate. *)
+val files_of : dir:Path.t -> Path.Set.t Memo.Build.t
 
 (** Like [eval_pred] but also builds the resulting set of files. This function
     doesn't have [eval_pred]'s limitation about directory targets and takes them

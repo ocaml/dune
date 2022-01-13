@@ -1,3 +1,5 @@
 (cram
  (applies_to :whole_subtree)
+ (deps
+  (package mdx))
  (alias all-mdx-tests))

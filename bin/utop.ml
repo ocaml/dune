@@ -37,7 +37,7 @@ let term =
             let utop_target =
               Path.build (Path.Build.relative context.build_dir utop_target)
             in
-            Load_rules.is_target utop_target >>= function
+            Build_system.file_exists utop_target >>= function
             | false ->
               User_error.raise
                 [ Pp.textf "no library is defined in %s"

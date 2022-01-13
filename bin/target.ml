@@ -31,7 +31,7 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
 
      (2) We currently provide the same hint for all targets. It would be nice to
      indicate whether a hint corresponds to a file or to a directory target. *)
-  let+ candidates = Load_rules.all_targets () >>| Path.Build.Set.to_list in
+  let+ candidates = Load_rules.all_direct_targets () >>| Path.Build.Map.keys in
   let candidates =
     if Path.is_in_build_dir path then
       List.map ~f:Path.build candidates
@@ -74,14 +74,18 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     Memo.Build.parallel_map setup.contexts ~f:(fun ctx ->
         let path = Path.append_source (Path.build ctx.Context.build_dir) src in
         Load_rules.is_target path >>| function
-        | true -> Some (File path)
-        | false -> None)
+        | Yes _
+        | Under_directory_target_so_cannot_say ->
+          Some (File path)
+        | No -> None)
     >>| List.filter_map ~f:Fun.id
   in
   let matching_target () =
     Load_rules.is_target path >>| function
-    | true -> Some [ File path ]
-    | false -> None
+    | Yes _
+    | Under_directory_target_so_cannot_say ->
+      Some [ File path ]
+    | No -> None
   in
   match checked with
   | External _ -> Memo.Build.return (Ok [ File path ])

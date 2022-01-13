@@ -125,8 +125,8 @@ let term =
           let* request =
             match targets with
             | [] ->
-              Load_rules.all_targets ()
-              >>| Path.Build.Set.fold ~init:[] ~f:(fun p acc ->
+              Load_rules.all_direct_targets ()
+              >>| Path.Build.Map.foldi ~init:[] ~f:(fun p _ acc ->
                       Path.build p :: acc)
               >>| Action_builder.paths
             | _ ->

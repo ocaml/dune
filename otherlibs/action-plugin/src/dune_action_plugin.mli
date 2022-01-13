@@ -1,4 +1,7 @@
-(** This API is experimental. The API may change without warning *)
+[@@@alert
+unstable "The API of this library is not stable and may change without notice."]
+
+[@@@alert "-unstable"]
 
 module V1 : sig
   (** Applicative and monadic interface for declaring dependencies.

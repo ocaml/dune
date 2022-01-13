@@ -30,7 +30,10 @@
     any records, using any module types as functor arguments, or make non
     exhaustive matches an error to guarantee compatibility. *)
 
-(* TODO make records private *)
+[@@@alert
+unstable "The API of this library is not stable and may change without notice."]
+
+[@@@alert "-unstable"]
 
 module V1 : sig
   module Id : sig

@@ -371,6 +371,10 @@ module Dir0 = struct
   let sub_dir_paths t =
     String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty ~f:(fun s _ acc ->
         Path.Source.Set.add acc (Path.Source.relative t.path s))
+
+  let sub_dir_as_t (s : sub_dir) =
+    let+ t = Memo.Cell.read s.sub_dir_as_t in
+    (Option.value_exn t).dir
 end
 
 let ancestor_vcs =
@@ -653,11 +657,9 @@ let rec nearest_dir t = function
   | comp :: components -> (
     match String.Map.find (Dir0.sub_dirs t) comp with
     | None -> Memo.Build.return t
-    | Some _ -> (
-      let path = Path.Source.relative (Dir0.path t) comp in
-      find_dir path >>= function
-      | None -> assert false
-      | Some dir -> nearest_dir dir components))
+    | Some sub_dir ->
+      let* sub_dir = Dir0.sub_dir_as_t sub_dir in
+      nearest_dir sub_dir components)
 
 let nearest_dir path =
   let components = Path.Source.explode path in
@@ -699,10 +701,6 @@ let dir_exists path = find_dir path >>| Option.is_some
 
 module Dir = struct
   include Dir0
-
-  let sub_dir_as_t (s : sub_dir) =
-    let+ t = Memo.Cell.read s.sub_dir_as_t in
-    (Option.value_exn t).dir
 
   module Make_map_reduce (M : Memo.Build) (Outcome : Monoid) = struct
     open M.O

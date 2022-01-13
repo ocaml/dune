@@ -10,5 +10,9 @@
   (package ctypes)))
 
 (cram
- (applies_to exe-pkg_config-multiple-fd exe-pkg_config)
+ (applies_to
+  lib-pkg_config
+  lib-pkg_config-multiple-fd
+  exe-pkg_config-multiple-fd
+  exe-pkg_config)
  (deps %{bin:pkg-config}))

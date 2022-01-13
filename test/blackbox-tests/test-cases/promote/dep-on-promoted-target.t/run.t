@@ -1,5 +1,9 @@
 Depending on a promoted file works.
 
+  $ cat > dune-project <<EOF
+  > (lang dune 2.0)
+  > EOF
+
   $ cat > dune <<EOF
   > (rule
   >   (mode promote)

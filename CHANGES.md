@@ -130,6 +130,8 @@ Unreleased
 - Dune no longer automatically create or edit `dune-project` files
   (#4239, fixes #4108, @jeremiedimino)
 
+- Warn if `dune-project` is not found (fatal in release mode) (#5343, @emillon)
+
 - Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
   @rgrinberg)
 

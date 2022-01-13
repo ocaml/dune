@@ -53,3 +53,6 @@ val promote_install_files : bool ref
 
 (** Whether we are ignoring rules with [(mode promote)] *)
 val ignore_promoted_rules : bool ref
+
+(** Whether the "no dune-project file in tree" warning should be fatal *)
+val require_dune_project_file : bool ref

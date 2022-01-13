@@ -51,6 +51,7 @@ type t =
   ; workspace_config : Dune_rules.Workspace.Clflags.t
   ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
   ; report_errors_config : Dune_engine.Report_errors_config.t
+  ; require_dune_project_file : bool
   }
 
 let capture_outputs t = t.capture_outputs
@@ -204,6 +205,7 @@ let init ?log_file c =
   Clflags.promote_install_files := c.promote_install_files;
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
+  Clflags.require_dune_project_file := c.require_dune_project_file;
   Dune_util.Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
@@ -313,6 +315,7 @@ module Options_implied_by_dash_p = struct
     ; default_target : Arg.Dep.t
     ; always_show_command_line : bool
     ; promote_install_files : bool
+    ; require_dune_project_file : bool
     }
 
   let docs = copts_sect
@@ -413,6 +416,12 @@ module Options_implied_by_dash_p = struct
         last
         & opt_all ~vopt:true bool [ false ]
         & info [ "promote-install-files" ] ~docs ~doc)
+    and+ require_dune_project_file =
+      let doc = "Fail if a dune-project file is missing." in
+      Arg.(
+        last
+        & opt_all ~vopt:true bool [ false ]
+        & info [ "require-dune-project-file" ] ~docs ~doc)
     in
     { root
     ; only_packages = No_restriction
@@ -422,6 +431,7 @@ module Options_implied_by_dash_p = struct
     ; default_target
     ; always_show_command_line
     ; promote_install_files
+    ; require_dune_project_file
     }
 
   let dash_dash_release =
@@ -436,6 +446,7 @@ module Options_implied_by_dash_p = struct
           ; "release"
           ; "--always-show-command-line"
           ; "--promote-install-files"
+          ; "--require-dune-project-file"
           ; "--default-target"
           ; "@install"
           ]
@@ -444,10 +455,11 @@ module Options_implied_by_dash_p = struct
             "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
              fact a shorthand for $(b,--root . --ignore-promoted-rules \
              --no-config --profile release --always-show-command-line \
-             --promote-install-files --default-target @install). You should \
-             use this option for release builds. For instance, you must use \
-             this option in your $(i,<package>.opam) files. Except if you \
-             already use $(b,-p), as $(b,-p) implies this option.")
+             --promote-install-files --default-target @install \
+             --require-dune-project-file). You should use this option for \
+             release builds. For instance, you must use this option in your \
+             $(i,<package>.opam) files. Except if you already use $(b,-p), as \
+             $(b,-p) implies this option.")
 
   let options =
     let+ t = options
@@ -872,6 +884,7 @@ let term ~default_root_is_cwd =
        ; default_target
        ; always_show_command_line
        ; promote_install_files
+       ; require_dune_project_file
        } =
     Options_implied_by_dash_p.term
   and+ x =
@@ -1042,6 +1055,7 @@ let term ~default_root_is_cwd =
       }
   ; cache_debug_flags
   ; report_errors_config
+  ; require_dune_project_file
   }
 
 let set_rpc t rpc = { t with rpc = Some rpc }

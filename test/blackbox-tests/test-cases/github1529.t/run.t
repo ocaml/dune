@@ -2,6 +2,9 @@ Reproduction case for #1529: using an extension when no dune-project
 file is present.
 
   $ dune build @install 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/" | sed "s/(using menhir .*)/(using menhir <version>)/"
+  Warning: No dune-project file has been found. A default one is assumed but
+  the project might break when dune is upgraded. Please create a dune-project
+  file.
   File "dune", line 1, characters 0-25:
   1 | (menhir (modules parser))
       ^^^^^^^^^^^^^^^^^^^^^^^^^

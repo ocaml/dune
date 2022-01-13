@@ -317,10 +317,6 @@ let eval_source_file :
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
 
-  val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
-
-  val directory_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
-
   val lookup_alias :
        Alias.t
     -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list option Memo.Build.t
@@ -382,20 +378,6 @@ end = struct
           ()
         | Some rule1, Some rule2 -> report_rule_conflict target rule1 rule2);
     { Loaded.by_file_targets; by_directory_targets }
-
-  let file_targets_of ~dir =
-    load_dir ~dir >>| function
-    | Non_build file_targets -> file_targets
-    | Build { rules_here; _ } ->
-      Path.Build.Map.keys rules_here.by_file_targets
-      |> Path.Set.of_list_map ~f:Path.build
-
-  let directory_targets_of ~dir =
-    load_dir ~dir >>| function
-    | Non_build _file_targets -> Path.Set.empty
-    | Build { rules_here; _ } ->
-      Path.Build.Map.keys rules_here.by_directory_targets
-      |> Path.Set.of_list_map ~f:Path.build
 
   let lookup_alias alias =
     load_dir ~dir:(Path.build (Alias.dir alias)) >>| function
@@ -875,7 +857,8 @@ let all_direct_targets () =
   let* root = Source_tree.root ()
   and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
   Memo.Build.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
-      Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
+      Source_tree_map_reduce.map_reduce root
+        ~traverse:{ Sub_dirs.Status.Set.all with generated = false }
         ~f:(fun dir ->
           load_dir
             ~dir:
@@ -888,7 +871,8 @@ let all_direct_targets () =
             All_targets.combine
               (Path.Build.Map.map rules_here.by_file_targets ~f:(fun _ -> File))
               (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
-                   Directory))))
+                   Directory))
+          | Build_under_directory_target _ -> All_targets.empty))
   >>| All_targets.reduce
 
 let get_alias_definition alias =
@@ -906,26 +890,17 @@ type is_target =
   | Under_directory_target_so_cannot_say
 
 let is_target file =
-  match Path.is_in_build_dir file with
-  | false -> Memo.Build.return No
-  | true -> (
-    let parent_dir = Path.parent_exn file in
-    let* file_targets = file_targets_of ~dir:parent_dir in
-    match Path.Set.mem file_targets file with
-    | true -> Memo.Build.return (Yes File)
-    | false ->
-      let rec loop file' =
-        match Path.parent file' with
-        | None -> Memo.Build.return No
-        | Some dir -> (
-          let* directory_targets = directory_targets_of ~dir in
-          match Path.Set.mem directory_targets file' with
-          | true ->
-            Memo.Build.return
-              (if Path.equal file file' then
-                Yes Directory
-              else
-                Under_directory_target_so_cannot_say)
-          | false -> loop dir)
-      in
-      loop file)
+  match Path.parent file with
+  | None -> Memo.Build.return No
+  | Some dir -> (
+    load_dir ~dir >>| function
+    | Non_build _ -> No
+    | Build { rules_here; _ } -> (
+      let file = Path.as_in_build_dir_exn file in
+      match Path.Build.Map.find rules_here.by_file_targets file with
+      | Some _ -> Yes File
+      | None -> (
+        match Path.Build.Map.find rules_here.by_directory_targets file with
+        | Some _ -> Yes Directory
+        | None -> No))
+    | Build_under_directory_target _ -> Under_directory_target_so_cannot_say)

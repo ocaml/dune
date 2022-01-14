@@ -152,10 +152,6 @@ val anonymous :
 (** "dune-project" *)
 val filename : string
 
-type created_or_already_exist =
-  | Created
-  | Already_exist
-
 (** Default language version to use for projects that don't have a
     [dune-project] file. The default value is the latest version of the dune
     language. *)

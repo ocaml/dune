@@ -267,10 +267,6 @@ let default_dune_language_version =
 let get_dune_lang () =
   { (Lang.get_exn "dune") with version = !default_dune_language_version }
 
-type created_or_already_exist =
-  | Created
-  | Already_exist
-
 module Extension = struct
   type 'a t = 'a Univ_map.Key.t
 

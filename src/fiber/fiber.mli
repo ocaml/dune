@@ -428,3 +428,17 @@ module Scheduler : sig
       Once must call [advance] on a given [stalled] value only once. *)
   val advance : 'a stalled -> fill Nonempty_list.t -> 'a step
 end
+
+module Expert : sig
+  (** This module offers no safety protections. It is only needed for maximizing
+      performance in certain situations *)
+
+  type 'a k
+
+  (** [suspend k] call with the current continuation *)
+  val suspend : ('a k -> unit) -> 'a t
+
+  (** [resume k a] resume a suspended fiber with [a]. It is forbidden to call
+      [resume] more than once on a a fiber. *)
+  val resume : 'a k -> 'a -> unit t
+end

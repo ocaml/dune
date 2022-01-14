@@ -51,6 +51,7 @@ type t =
   ; function_description : Function_description.t list
   ; generated_types : Module_name.t
   ; generated_entry_point : Module_name.t
+  ; deps : Dep_conf.t list
   }
 
 type Stanza.t += T of t

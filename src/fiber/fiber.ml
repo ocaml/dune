@@ -1032,3 +1032,11 @@ let run =
     | Stalled w -> loop ~iter (Scheduler.advance w (iter ()))
   in
   fun t ~iter -> loop ~iter (Scheduler.start t)
+
+module Expert = struct
+  type nonrec 'a k = 'a k
+
+  let suspend f k = suspend f k
+
+  let resume a x k = resume a x k
+end

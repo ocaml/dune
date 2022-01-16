@@ -400,7 +400,8 @@ adding the following field to the ``dune-project`` file:
 
 In this mode, Dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
-completed or overridden using the :ref:`ordered-set-language`.
+completed or overridden using the :ref:`ordered-set-language`. The value
+``true`` is the default for Dune 3.0.
 
 accept_alternative_dune_file_name
 ---------------------------------

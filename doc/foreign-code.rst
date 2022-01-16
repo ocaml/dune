@@ -275,7 +275,9 @@ descriptions by referencing them as the module specified in optional
 - ``(vendored (c_flags <flags>) (c_library_flags <flags>))`` provide the build
   and link flags for binding your vendored code. You must also provide
   instructions in your ``dune`` file on how to build the vendored foreign
-  library; see the :ref:`foreign_library` stanza.
+  library; see the :ref:`foreign_library` stanza. Usually the ``<flags>`` should
+  contain ``:standard`` in order to add the default flags used by the OCaml
+  compiler for C files :ref:`always-add-cflags`.
 
 
 .. _foreign-sandboxing:

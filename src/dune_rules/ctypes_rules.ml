@@ -470,20 +470,18 @@ let exe_link_only ~dir ~shared_cctx ~sandbox program ~deps =
   Exe.link_many ~link_args ~programs:[ program ] ~linkages:[ Exe.Linkage.native ]
     ~promote:None shared_cctx ~sandbox
 
-let write_osl_to_sexp_file ~sctx ~dir ~filename osl =
+let write_osl_to_sexp_file ~sctx ~dir ~filename ~expand_flag flags =
   let build =
-    let path = Path.Build.relative dir filename in
-    let sexp =
-      let encoded =
-        match Ordered_set_lang.Unexpanded.encode osl with
-        | [ s ] -> s
-        | _lst ->
-          User_error.raise
-            [ Pp.textf "expected %s to contain a list of atoms" filename ]
-      in
-      Dune_lang.to_string encoded
+   let sexp =
+      let open Action_builder.O in
+       let* expander =
+         Action_builder.memo_build @@ Super_context.expander sctx ~dir in
+       let+ flags = expand_flag ~expander flags in
+       let sexp = Sexp.List (List.map ~f:(fun x -> Sexp.Atom x) flags) in
+       Sexp.to_string sexp
     in
-    Action_builder.write_file path sexp
+    let path = Path.Build.relative dir filename in
+    Action_builder.write_file_dyn path sexp
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir build
 
@@ -536,9 +534,14 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
     | Vendored { c_flags; c_library_flags } ->
       let* () =
         write_osl_to_sexp_file ~sctx ~dir ~filename:cflags_sexp c_flags
+          ~expand_flag:(fun ~expander flags -> Super_context.foreign_flags
+              sctx ~dir ~expander ~flags ~language:C)
       in
       write_osl_to_sexp_file ~sctx ~dir ~filename:c_library_flags_sexp
         c_library_flags
+          ~expand_flag:(fun ~expander flags ->
+                    Expander.expand_and_eval_set expander flags
+                          ~standard:(Action_builder.return []))
     | Pkg_config ->
       let cflags_sexp = Stanza_util.cflags_sexp ctypes in
       let discover_script = Stanza_util.discover_script ctypes in

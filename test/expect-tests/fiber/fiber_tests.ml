@@ -642,48 +642,64 @@ let%expect_test "Stream.parallel_iter doesn't leak" =
      This test is carefully crafted to avoid creating new live words as we
      iterate through the stream. As a result, the only new live words that can
      appear are because of the iteration function. *)
-  let test ~iter_function ~check =
-    let stream n =
-      let n = ref n in
+  let test n ~iter_function =
+    let finish_stream = Fiber.Ivar.create () in
+    let stream =
+      let count = ref n in
       Fiber.Stream.In.create (fun () ->
-          if !n = 0 then
-            Fiber.return None
-          else (
-            decr n;
+          if !count > 0 then (
+            decr count;
             Fiber.return (Some ())
-          ))
+          ) else
+            let* () = Fiber.Ivar.read finish_stream in
+            Fiber.return None)
     in
-    (* We use [-1] as a [None] value to avoid going from [None] to [Some _],
-       which would case the number of live words to change *)
-    let prev = ref (-1) in
-    let ok = ref true in
-    let f () =
+    let awaiting = ref n in
+    let iter_await = Fiber.Ivar.create () in
+    let record () =
       Gc.full_major ();
       let curr = (Gc.stat ()).live_words in
-      if !prev >= 0 then
-        if not (check ~prev:!prev ~curr) then (
-          Printf.printf
-            "[FAIL] live words not changing as expected: prev=%d, curr=%d\n"
-            !prev curr;
-          ok := false
-        );
-      prev := curr;
-      Fiber.return ()
+      curr
     in
-    Scheduler.run (iter_function (stream 100) ~f);
-    if !ok then print_string "PASS"
+    let f () =
+      decr awaiting;
+      if !awaiting = 0 then
+        Fiber.Ivar.fill iter_await ()
+      else
+        Fiber.return ()
+    in
+    Scheduler.run
+      (let+ prev, curr =
+         Fiber.fork_and_join
+           (fun () ->
+             let prev = record () in
+             let+ () = iter_function stream ~f in
+             prev)
+           (fun () ->
+             let* () = Fiber.Ivar.read iter_await in
+             let curr = record () in
+             let+ () = Fiber.Ivar.fill finish_stream () in
+             curr)
+       in
+       curr - prev)
   in
-
+  let data_points = [ 1; 10; 100; 1000 ] in
+  let rec pair_wise_check ~f = function
+    | [] -> true
+    | [ _ ] -> assert false
+    | x :: y :: xs -> f x y && pair_wise_check ~f xs
+  in
+  let test ~pred ~iter_function =
+    let results = List.map data_points ~f:(test ~iter_function) in
+    Dyn.(list int) results |> print_dyn;
+    assert (pair_wise_check results ~f:pred)
+  in
   (* Check that the number of live words keeps on increasing because we are
      leaking memory: *)
-  test ~iter_function:naive_stream_parallel_iter ~check:(fun ~prev ~curr ->
-      prev < curr);
-  [%expect {| PASS |}];
-
-  (* Check that the number of live words is constant with this iter function: *)
-  test ~iter_function:Fiber.Stream.In.parallel_iter ~check:(fun ~prev ~curr ->
-      prev = curr);
-  [%expect {| PASS |}]
+  test ~pred:( < ) ~iter_function:naive_stream_parallel_iter;
+  [%expect {| [ 62; 125; 755; 7055 ] |}];
+  test ~pred:( = ) ~iter_function:Fiber.Stream.In.parallel_iter;
+  [%expect {| [ 57; 57; 57; 57 ] |}]
 
 let sorted_failures v =
   Result.map_error v

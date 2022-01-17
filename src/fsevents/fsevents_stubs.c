@@ -209,21 +209,17 @@ CAMLprim value dune_fsevents_stop(value v_t) {
   CAMLreturn(Val_unit);
 }
 
-static inline value Val_some(value v) {
-  CAMLparam1(v);
-  CAMLlocal1(some);
-  some = caml_alloc_small(1, 0);
-  Field(some, 0) = v;
-  CAMLreturn(some);
-}
-
 CAMLprim value dune_fsevents_runloop_get(value v_t) {
   CAMLparam1(v_t);
+  CAMLlocal2(v_some, v_runloop);
   dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
   if (t->runloop == NULL) {
     CAMLreturn(Val_int(0));
   } else {
-    CAMLreturn(Val_some(caml_copy_nativeint((intnat)t->runloop)));
+    v_runloop = caml_copy_nativeint((intnat)t->runloop);
+    v_some = caml_alloc_small(1, 0);
+    Store_field(v_some, 0, v_runloop);
+    CAMLreturn(v_some);
   }
 }
 

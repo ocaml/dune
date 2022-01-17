@@ -299,6 +299,12 @@ To do that, follow the following procedure:
 
   - depends on this directory recursively via :ref:`source_tree <source_tree>`
   - invokes the external build system
+  - copies the generated files
+  - the C archive ``.a`` must be built with ``-fpic``
+  - the ``libfoo.so`` must be copied as ``dllfoo.so``, and no ``libfoo.so``
+    should appear otherwise the dynamic linking of the C library will be
+    attempted, but usually fails because the ``libfoo.so`` is not available at
+    the time of the execution.
 - *Attach* the C archive files to an OCaml library via :ref:`foreign-archives`.
 
 For instance, let's assume that you want to build a C library

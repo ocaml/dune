@@ -19,7 +19,6 @@ typedef struct dune_fsevents_t {
   dune_runloop *runloop;
   value v_callback;
   FSEventStreamRef stream;
-  value v_exn;
 } dune_fsevents_t;
 
 #define Runloop_val(v) (*((dune_runloop **)Data_custom_val(v)))

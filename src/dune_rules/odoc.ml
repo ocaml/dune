@@ -541,8 +541,8 @@ let setup_lib_odocl_rules_def =
   let f (sctx, lib, requires) =
     let* odocs = odoc_artefacts sctx (Lib lib) in
     let pkg = Lib_info.package (Lib.Local.info lib) in
-      Memo.Build.parallel_iter odocs ~f:(fun odoc ->
-          link_odoc_rules sctx ~pkg ~requires odoc)
+    Memo.Build.parallel_iter odocs ~f:(fun odoc ->
+        link_odoc_rules sctx ~pkg ~requires odoc)
   in
   Memo.With_implicit_output.create "setup_library_odocls_rules"
     ~implicit_output:Rules.implicit_output

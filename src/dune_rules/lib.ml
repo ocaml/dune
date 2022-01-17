@@ -483,7 +483,9 @@ module Link_params = struct
        separately to help the linker locate them. *)
     let+ hidden_deps =
       match mode with
-      | Byte | Byte_for_jsoo -> Memo.Build.return dll_files
+      | Byte
+      | Byte_for_jsoo ->
+        Memo.Build.return dll_files
       | Byte_with_stubs_statically_linked_in -> Memo.Build.return lib_files
       | Native ->
         let+ native_archives =
@@ -499,7 +501,9 @@ module Link_params = struct
     let include_dirs =
       let files =
         match mode with
-        | Byte | Byte_for_jsoo -> dll_files
+        | Byte
+        | Byte_for_jsoo ->
+          dll_files
         | Byte_with_stubs_statically_linked_in
         | Native ->
           lib_files

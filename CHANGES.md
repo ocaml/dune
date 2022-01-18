@@ -305,6 +305,9 @@ Unreleased
 
 - Add link_flags in the env stanza (#5215)
 
+- Switch to the stag formatting API to be compatible with OCaml 5.0 (#5350,
+  @emillon).
+
 2.9.2 (unreleased)
 ------------------
 

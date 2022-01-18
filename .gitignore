@@ -13,6 +13,9 @@ _perf
 # emacs lock files
 .#*
 
+# ctags
+tags
+
 .duneboot.*
 /boot/*.cm*
 dune.exe

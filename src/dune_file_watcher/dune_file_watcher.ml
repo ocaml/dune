@@ -537,7 +537,7 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
     let paths = [ Path.root ] in
     let exclusion_paths =
       Path.(build Build.root)
-      :: ([ "_esy"; "_opam"; ".git"; ".hg" ]
+      :: ([ "_esy"; "_opam"; ".git"; ".hg"; "tags"; "tags.lock"; "tags.temp" ]
          |> List.rev_map ~f:(fun base ->
                 let path = Path.relative (Path.source Path.Source.root) base in
                 path))

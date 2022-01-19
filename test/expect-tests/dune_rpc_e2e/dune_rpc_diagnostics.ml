@@ -1,6 +1,5 @@
 open Stdune
 open Fiber.O
-open Dune_rpc_e2e
 module Dune_rpc = Dune_rpc_private
 module Sub = Dune_rpc.Sub
 module Client = Dune_rpc_impl.Client
@@ -10,12 +9,12 @@ module Response = Dune_rpc.Response
 
 let%expect_test "turn on and shutdown" =
   let test () =
-    with_dune_watch (fun _pid ->
-        run_client (fun client ->
-            let+ () = dune_build client "." in
+    Dune_rpc_e2e.with_dune_watch (fun _pid ->
+        Dune_rpc_e2e.run_client (fun client ->
+            let+ () = Dune_rpc_e2e.dune_build client "." in
             printfn "shutting down"))
   in
-  run test;
+  Dune_rpc_e2e.run test;
   [%expect
     {|
     Building .
@@ -90,12 +89,12 @@ let on_diagnostic_event diagnostics =
 
 let setup_diagnostics f =
   let exec _pid =
-    run_client (fun client ->
+    Dune_rpc_e2e.run_client (fun client ->
         (* First we test for regular errors *)
         files [ ("dune-project", "(lang dune 3.0)") ];
         f client)
   in
-  run (fun () -> with_dune_watch exec)
+  Dune_rpc_e2e.run (fun () -> Dune_rpc_e2e.with_dune_watch exec)
 
 let poll_exn client decl =
   let+ poll = Client.poll client decl in
@@ -111,15 +110,15 @@ let print_diagnostics poll =
 
 let diagnostic_with_build setup target =
   let exec _pid =
-    run_client (fun client ->
+    Dune_rpc_e2e.run_client (fun client ->
         (* First we test for regular errors *)
         files (("dune-project", "(lang dune 3.0)") :: setup);
-        let* () = dune_build client target in
+        let* () = Dune_rpc_e2e.dune_build client target in
         let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
         let* () = print_diagnostics poll in
         Client.Stream.cancel poll)
   in
-  run (fun () -> with_dune_watch exec)
+  Dune_rpc_e2e.run (fun () -> Dune_rpc_e2e.with_dune_watch exec)
 
 let%expect_test "error in dune file" =
   diagnostic_with_build [ ("dune", "(library (name foo))") ] "foo.cma";
@@ -418,7 +417,7 @@ let%expect_test "create and fix error" =
         ; ("foo.ml", "let () = print_endline 123")
         ];
       let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
-      let* () = dune_build client "./foo.exe" in
+      let* () = Dune_rpc_e2e.dune_build client "./foo.exe" in
       [%expect {|
         Building ./foo.exe
         Build ./foo.exe failed |}];
@@ -459,7 +458,7 @@ let%expect_test "create and fix error" =
           ]
         ] |}];
       files [ ("foo.ml", "let () = print_endline \"foo\"") ];
-      let* () = dune_build client "./foo.exe" in
+      let* () = Dune_rpc_e2e.dune_build client "./foo.exe" in
       [%expect
         {|
         Building ./foo.exe
@@ -519,7 +518,7 @@ let request_exn client req n =
 
 let%expect_test "formatting dune files" =
   let exec _pid =
-    run_client (fun client ->
+    Dune_rpc_e2e.run_client (fun client ->
         (* First we test for regular errors *)
         files [ ("dune-project", "(lang dune 3.0)") ];
         let unformatted = "(\nlibrary (name foo\n))" in
@@ -556,12 +555,12 @@ let%expect_test "formatting dune files" =
           (library
            (name foo)) |}])
   in
-  run (fun () -> with_dune_watch exec);
+  Dune_rpc_e2e.run (fun () -> Dune_rpc_e2e.with_dune_watch exec);
   [%expect {| |}]
 
 let%expect_test "promoting dune files" =
   let exec _pid =
-    run_client (fun client ->
+    Dune_rpc_e2e.run_client (fun client ->
         (* First we test for regular errors *)
         let fname = "x" in
         let promoted = "x.gen" in
@@ -576,7 +575,7 @@ let%expect_test "promoting dune files" =
 |}
                 fname promoted promoted )
           ];
-        let* () = dune_build client "(alias foo)" in
+        let* () = Dune_rpc_e2e.dune_build client "(alias foo)" in
         [%expect
           {|
           Building (alias foo)
@@ -599,7 +598,7 @@ let%expect_test "promoting dune files" =
           promoted file contents:
           toto |}])
   in
-  run (fun () -> with_dune_watch exec);
+  Dune_rpc_e2e.run (fun () -> Dune_rpc_e2e.with_dune_watch exec);
   [%expect
     {|
     stderr:

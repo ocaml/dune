@@ -3,7 +3,6 @@ open Fiber.O
 module Where = Dune_rpc_private.Where
 module Registry = Dune_rpc_private.Registry
 module Scheduler = Dune_engine.Scheduler
-open Dune_rpc_e2e
 
 module Poll_active =
   Dune_rpc_private.Registry.Poll
@@ -84,7 +83,7 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
         ("XDG_RUNTIME_DIR=" ^ xdg_runtime_dir)
         :: Array.to_list (Unix.environment ())
       in
-      with_dune_watch ~env (fun pid ->
+      Dune_rpc_e2e.with_dune_watch ~env (fun pid ->
           let+ res =
             try_ ~times:5 ~delay:0.2 ~f:(fun () ->
                 let+ refresh = Poll_active.poll poll in

@@ -180,4 +180,6 @@ let run run =
     ~finally:(fun () -> Sys.chdir cwd)
     ~f:(fun () ->
       Sys.chdir (Path.to_string dir);
-      Scheduler.Run.go config run ~timeout:5.0 ~on_event:(fun _ _ -> ()))
+      Scheduler.Run.go ~file_watcher:Scheduler.Run.No_watcher config run
+        ~timeout:5.0 ~on_event:(fun _ _ -> ()))
+

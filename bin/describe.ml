@@ -38,6 +38,9 @@ let info = Term.info "describe" ~doc ~man
     information computed by ``dune describe``, and hopefully make users' life
     easier in decoding the S-expressions into meaningful contents. *)
 module Descr = struct
+  (** [dyn_path p] converts a path to a value of type [Dyn.t] *)
+  let dyn_path (p : Path.t) : Dyn.t = Dyn.String (Path.to_string p)
+
   (** Description of modules *)
   module Mod = struct
     type t =
@@ -53,10 +56,10 @@ module Descr = struct
       let open Dyn in
       record
         [ ("name", Dune_rules.Module_name.to_dyn name)
-        ; ("impl", option Path.to_dyn impl)
-        ; ("intf", option Path.to_dyn intf)
-        ; ("cmt", option Path.to_dyn cmt)
-        ; ("cmti", option Path.to_dyn cmti)
+        ; ("impl", option dyn_path impl)
+        ; ("intf", option dyn_path intf)
+        ; ("cmt", option dyn_path cmt)
+        ; ("cmti", option dyn_path cmti)
         ]
   end
 
@@ -79,7 +82,7 @@ module Descr = struct
         [ ("names", List (List.map ~f:(fun name -> String name) names))
         ; ("requires", Dyn.(list string) (List.map ~f:Digest.to_string requires))
         ; ("modules", list Mod.to_dyn modules)
-        ; ("include_dirs", list Path.to_dyn include_dirs)
+        ; ("include_dirs", list dyn_path include_dirs)
         ]
   end
 
@@ -108,9 +111,9 @@ module Descr = struct
         ; ("uid", String (Digest.to_string uid))
         ; ("local", Bool local)
         ; ("requires", (list string) (List.map ~f:Digest.to_string requires))
-        ; ("source_dir", Path.to_dyn source_dir)
+        ; ("source_dir", dyn_path source_dir)
         ; ("modules", List (List.map ~f:Mod.to_dyn modules))
-        ; ("include_dirs", (list Path.to_dyn) include_dirs)
+        ; ("include_dirs", (list dyn_path) include_dirs)
         ]
   end
 

@@ -38,7 +38,9 @@ let info = Term.info "describe" ~doc ~man
     information computed by ``dune describe``, and hopefully make users' life
     easier in decoding the S-expressions into meaningful contents. *)
 module Descr = struct
-  (** [dyn_path p] converts a path to a value of type [Dyn.t] *)
+  (** [dyn_path p] converts a path to a value of type [Dyn.t]. Remark: this is
+      different from Path.to_dyn, that produces extra tags from a variant
+      datatype. *)
   let dyn_path (p : Path.t) : Dyn.t = Dyn.String (Path.to_string p)
 
   (** Description of modules *)

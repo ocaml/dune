@@ -8,7 +8,9 @@
  (modules dune_file_watcher_tests_macos)
  (inline_tests
   (enabled_if
-   (= %{system} macosx))
+   (and
+    (<> %{env:CI=false} true) ;; in github action, CI=true
+    (= %{system} macosx)))
   (deps
    (sandbox always)))
  (libraries

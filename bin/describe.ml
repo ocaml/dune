@@ -78,16 +78,12 @@ module Descr = struct
     (** Conversion to the [Dyn.t] type *)
     let to_dyn { names; requires; modules; include_dirs } : Dyn.t =
       let open Dyn in
-      Variant
-        ( "executables"
-        , [ record
-              [ ("names", List (List.map ~f:(fun name -> String name) names))
-              ; ( "requires"
-                , Dyn.(list string) (List.map ~f:Digest.to_string requires) )
-              ; ("modules", List (List.map ~f:Mod.to_dyn modules))
-              ; ("include_dirs", list dyn_path include_dirs)
-              ]
-          ] )
+      record
+        [ ("names", List (List.map ~f:(fun name -> String name) names))
+        ; ("requires", Dyn.(list string) (List.map ~f:Digest.to_string requires))
+        ; ("modules", List (List.map ~f:Mod.to_dyn modules))
+        ; ("include_dirs", list dyn_path include_dirs)
+        ]
   end
 
   (** Description of libraries *)
@@ -110,19 +106,15 @@ module Descr = struct
     let to_dyn { name; uid; local; requires; source_dir; modules; include_dirs }
         : Dyn.t =
       let open Dyn in
-      Variant
-        ( "library"
-        , [ record
-              [ ("name", Lib_name.to_dyn name)
-              ; ("uid", String (Digest.to_string uid))
-              ; ("local", Bool local)
-              ; ( "requires"
-                , (list string) (List.map ~f:Digest.to_string requires) )
-              ; ("source_dir", dyn_path source_dir)
-              ; ("modules", List (List.map ~f:Mod.to_dyn modules))
-              ; ("include_dirs", (list dyn_path) include_dirs)
-              ]
-          ] )
+      record
+        [ ("name", Lib_name.to_dyn name)
+        ; ("uid", String (Digest.to_string uid))
+        ; ("local", Bool local)
+        ; ("requires", (list string) (List.map ~f:Digest.to_string requires))
+        ; ("source_dir", dyn_path source_dir)
+        ; ("modules", List (List.map ~f:Mod.to_dyn modules))
+        ; ("include_dirs", (list dyn_path) include_dirs)
+        ]
   end
 
   (** Description of items: executables, or libraries *)

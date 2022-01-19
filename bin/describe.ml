@@ -28,38 +28,159 @@ let man =
 
 let info = Term.info "describe" ~doc ~man
 
-(* Crawl the workspace to get all the data *)
+(** The module [Descr] is a typed representation of the description of a
+    workspace, that is provided by the ``dune describe workspace`` command.
+
+    Each sub-module contains a [to_dyn] function, that translates the
+    descriptors to a value of type [Dyn.t].
+
+    The typed representation aims at precisely describing the structure of the
+    information computed by ``dune describe``, and hopefully make users' life
+    easier in decoding the S-expressions into meaningful contents. *)
+module Descr = struct
+  (** [dyn_path p] converts a path to a value of type [Dyn.t] *)
+  let dyn_path (p : Path.t) : Dyn.t = Dyn.String (Path.to_string p)
+
+  (** Description of modules *)
+  module Mod = struct
+    type t =
+      { name : Dune_rules.Module_name.t  (** name of the module *)
+      ; impl : Path.t option  (** path to the .ml file, if any *)
+      ; intf : Path.t option  (** path to the .mli file, if any *)
+      ; cmt : Path.t option  (** path to the .cmt file, if any *)
+      ; cmti : Path.t option  (** path to the .cmti file, if any *)
+      }
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn { name; impl; intf; cmt; cmti } : Dyn.t =
+      let open Dyn in
+      record
+        [ ("name", Dune_rules.Module_name.to_dyn name)
+        ; ("impl", option dyn_path impl)
+        ; ("intf", option dyn_path intf)
+        ; ("cmt", option dyn_path cmt)
+        ; ("cmti", option dyn_path cmti)
+        ]
+  end
+
+  (** Description of executables *)
+  module Exe = struct
+    type t =
+      { names : string list  (** names of the executble *)
+      ; requires : Stdune.Digest.t list
+            (** list of direct dependencies to libraries, identified by their
+                digests *)
+      ; modules : Mod.t list
+            (** list of the modules the executable is composed of *)
+      ; include_dirs : Path.t list  (** list of include directories *)
+      }
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn { names; requires; modules; include_dirs } : Dyn.t =
+      let open Dyn in
+      Variant
+        ( "executables"
+        , [ record
+              [ ("names", List (List.map ~f:(fun name -> String name) names))
+              ; ( "requires"
+                , Dyn.(list string) (List.map ~f:Digest.to_string requires) )
+              ; ("modules", List (List.map ~f:Mod.to_dyn modules))
+              ; ("include_dirs", list dyn_path include_dirs)
+              ]
+          ] )
+  end
+
+  (** Description of libraries *)
+  module Lib = struct
+    type t =
+      { name : Lib_name.t  (** name of the library *)
+      ; uid : Stdune.Digest.t  (** digest of the library *)
+      ; local : bool  (** whether this library is local *)
+      ; requires : Stdune.Digest.t list
+            (** list of direct dependendies to libraries, identified by their
+                digests *)
+      ; source_dir : Path.t
+            (** path to the directory that contains the sources of this library *)
+      ; modules : Mod.t list
+            (** list of the modules the executable is composed of *)
+      ; include_dirs : Path.t list  (** list of include directories *)
+      }
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn { name; uid; local; requires; source_dir; modules; include_dirs }
+        : Dyn.t =
+      let open Dyn in
+      Variant
+        ( "library"
+        , [ record
+              [ ("name", Lib_name.to_dyn name)
+              ; ("uid", String (Digest.to_string uid))
+              ; ("local", Bool local)
+              ; ( "requires"
+                , (list string) (List.map ~f:Digest.to_string requires) )
+              ; ("source_dir", dyn_path source_dir)
+              ; ("modules", List (List.map ~f:Mod.to_dyn modules))
+              ; ("include_dirs", (list dyn_path) include_dirs)
+              ]
+          ] )
+  end
+
+  (** Description of items: executables, or libraries *)
+  module Item = struct
+    type t =
+      | Executables of Exe.t
+      | Library of Lib.t
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn : t -> Dyn.t = function
+      | Executables exe_descr ->
+        Dyn.Variant ("executables", [ Exe.to_dyn exe_descr ])
+      | Library lib_descr -> Dyn.Variant ("library", [ Lib.to_dyn lib_descr ])
+  end
+
+  (** Description of a workspace: a list of items *)
+  module Workspace = struct
+    type t = Item.t list
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn (items : t) : Dyn.t = Dyn.List (List.map ~f:Item.to_dyn items)
+  end
+end
+
+(** Crawl the workspace to get all the data *)
 module Crawl = struct
   open Dune_rules
   open Dune_engine
   open Memo.Build.O
 
-  let uid_of_library lib =
+  (** Computes the digest of a library *)
+  let uid_of_library (lib : Lib.t) : Stdune.Digest.t =
     Digest.generic
       (Lib.name lib, Path.to_string (Lib_info.src_dir (Lib.info lib)))
-    |> Digest.to_string
 
-  let dyn_path p = Dyn.String (Path.to_string p)
+  (** Builds the description of a module from a module and its object directory *)
+  let module_ ~obj_dir (m : Module.t) : Descr.Mod.t =
+    let source ml_kind =
+      Option.map (Module.source m ~ml_kind) ~f:Module.File.path
+    in
+    let cmt ml_kind = Obj_dir.Module.cmt_file obj_dir m ~ml_kind in
+    Descr.Mod.
+      { name = Module.name m
+      ; impl = source Impl
+      ; intf = source Intf
+      ; cmt = cmt Impl
+      ; cmti = cmt Intf
+      }
 
-  let modules ~obj_dir =
-    Modules.fold_no_vlib ~init:[] ~f:(fun m acc ->
-        let source ml_kind =
-          Dyn.option dyn_path
-            (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
-        in
-        let cmt ml_kind =
-          Dyn.option dyn_path (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
-        in
-        Dyn.record
-          [ ("name", Module_name.to_dyn (Module.name m))
-          ; ("impl", source Impl)
-          ; ("intf", source Intf)
-          ; ("cmt", cmt Impl)
-          ; ("cmti", cmt Intf)
-          ]
-        :: acc)
+  (** Builds the list of modules *)
+  let modules ~obj_dir (modules_ : Modules.t) : Descr.Mod.t list =
+    Modules.fold_no_vlib ~init:[]
+      ~f:(fun m acc -> module_ ~obj_dir m :: acc)
+      modules_
 
-  let executables sctx ~project ~dir exes =
+  (** Builds a workspace item for the provided executables object *)
+  let executables sctx ~project ~dir (exes : Dune_file.Executables.t) :
+      Descr.Item.t option Memo.build =
     let* modules_, obj_dir =
       let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
@@ -74,34 +195,29 @@ module Crawl = struct
     | Error () -> None
     | Ok libs ->
       let include_dirs = Obj_dir.all_cmis obj_dir in
-      Some
-        (Dyn.Variant
-           ( "executables"
-           , [ Dyn.record
-                 [ ( "names"
-                   , List
-                       (List.map
-                          ~f:(fun (_, name) -> Dyn.String name)
-                          exes.names) )
-                 ; ( "requires"
-                   , Dyn.(list string) (List.map ~f:uid_of_library libs) )
-                 ; ("modules", List modules_)
-                 ; ("include_dirs", Dyn.list dyn_path include_dirs)
-                 ]
-             ] ))
+      let exe_descr =
+        Descr.Exe.
+          { names = List.map ~f:snd exes.names
+          ; requires = List.map ~f:uid_of_library libs
+          ; modules = modules_
+          ; include_dirs
+          }
+      in
+      Some (Descr.Item.Executables exe_descr)
 
-  let library sctx lib =
+  (** Builds a workspace item for the provided library object *)
+  let library sctx (lib : Lib.t) : Descr.Item.t option Memo.build =
     let* requires = Lib.requires lib in
     match Resolve.peek requires with
     | Error () -> Memo.Build.return None
     | Ok requires ->
       let name = Lib.name lib in
       let info = Lib.info lib in
-      let src_dir = Lib_info.src_dir info in
+      let source_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
       let+ modules_ =
         if Lib.is_local lib then
-          Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
+          Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn source_dir)
           >>= Dir_contents.ocaml
           >>| Ml_sources.modules ~for_:(Library name)
           >>| modules ~obj_dir
@@ -109,24 +225,24 @@ module Crawl = struct
           Memo.Build.return []
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
-      Some
-        (let open Dyn in
-        Dyn.Variant
-          ( "library"
-          , [ Dyn.record
-                [ ("name", Lib_name.to_dyn name)
-                ; ("uid", String (uid_of_library lib))
-                ; ("local", Bool (Lib.is_local lib))
-                ; ( "requires"
-                  , (list string) (List.map requires ~f:uid_of_library) )
-                ; ("source_dir", dyn_path src_dir)
-                ; ("modules", List modules_)
-                ; ("include_dirs", (list dyn_path) include_dirs)
-                ]
-            ] ))
+      let lib_descr =
+        Descr.Lib.
+          { name
+          ; uid = uid_of_library lib
+          ; local = Lib.is_local lib
+          ; requires = List.map requires ~f:uid_of_library
+          ; source_dir
+          ; modules = modules_
+          ; include_dirs
+          }
+      in
+      Some (Descr.Item.Library lib_descr)
 
-  let workspace { Dune_rules.Main.conf; contexts = _; scontexts }
-      (context : Context.t) =
+  (** Builds a workspace description for the provided dune setup and context *)
+  let workspace
+      ({ Dune_rules.Main.conf; contexts = _; scontexts } :
+        Dune_rules.Main.build_system) (context : Context.t) :
+      Descr.Workspace.t Memo.build =
     let sctx = Context_name.Map.find_exn scontexts context.name in
     let* libs =
       Memo.Build.parallel_map conf.projects ~f:(fun project ->
@@ -160,7 +276,14 @@ module Crawl = struct
           >>| List.filter_map ~f:Fun.id)
       >>| List.concat
     in
-    Memo.Build.return (Dyn.List (exes @ libs))
+    Memo.Build.return (exes @ libs)
+
+  (** Builds a [Dyn.t] value that describes the workspace corresponding to the
+      provided dune setup and context *)
+  let workspace_as_dyn (setup : Dune_rules.Main.build_system)
+      (context : Context.t) : Dyn.t Memo.build =
+    let open Memo.Build.O in
+    workspace setup context >>| Descr.Workspace.to_dyn
 end
 
 module Opam_files = struct
@@ -226,7 +349,7 @@ module What = struct
 
   let describe t setup context =
     match t with
-    | Workspace -> Crawl.workspace setup context
+    | Workspace -> Crawl.workspace_as_dyn setup context
     | Opam_files -> Opam_files.get ()
 end
 

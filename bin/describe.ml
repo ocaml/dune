@@ -78,7 +78,7 @@ module Descr = struct
       record
         [ ("names", List (List.map ~f:(fun name -> String name) names))
         ; ("requires", Dyn.(list string) (List.map ~f:Digest.to_string requires))
-        ; ("modules", List (List.map ~f:Mod.to_dyn modules))
+        ; ("modules", list Mod.to_dyn modules)
         ; ("include_dirs", list Path.to_dyn include_dirs)
         ]
   end
@@ -132,7 +132,7 @@ module Descr = struct
     type t = Item.t list
 
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn (items : t) : Dyn.t = Dyn.List (List.map ~f:Item.to_dyn items)
+    let to_dyn (items : t) : Dyn.t = Dyn.list Item.to_dyn items
   end
 end
 
@@ -202,11 +202,11 @@ module Crawl = struct
     | Ok requires ->
       let name = Lib.name lib in
       let info = Lib.info lib in
-      let source_dir = Lib_info.src_dir info in
+      let src_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
       let+ modules_ =
         if Lib.is_local lib then
-          Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn source_dir)
+          Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
           >>= Dir_contents.ocaml
           >>| Ml_sources.modules ~for_:(Library name)
           >>| modules ~obj_dir
@@ -220,7 +220,7 @@ module Crawl = struct
           ; uid = uid_of_library lib
           ; local = Lib.is_local lib
           ; requires = List.map requires ~f:uid_of_library
-          ; source_dir
+          ; source_dir = src_dir
           ; modules = modules_
           ; include_dirs
           }
@@ -266,13 +266,6 @@ module Crawl = struct
       >>| List.concat
     in
     Memo.Build.return (exes @ libs)
-
-  (** Builds a [Dyn.t] value that describes the workspace corresponding to the
-      provided dune setup and context *)
-  let workspace_as_dyn (setup : Dune_rules.Main.build_system)
-      (context : Context.t) : Dyn.t Memo.build =
-    let open Memo.Build.O in
-    workspace setup context >>| Descr.Workspace.to_dyn
 end
 
 module Opam_files = struct
@@ -338,7 +331,9 @@ module What = struct
 
   let describe t setup context =
     match t with
-    | Workspace -> Crawl.workspace_as_dyn setup context
+    | Workspace ->
+      let open Memo.Build.O in
+      Crawl.workspace setup context >>| Descr.Workspace.to_dyn
     | Opam_files -> Opam_files.get ()
 end
 

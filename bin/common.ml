@@ -185,8 +185,7 @@ let init ?log_file c =
     ];
   Dune_rules.Main.init ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference ~cache_config
-    ~cache_debug_flags:c.cache_debug_flags
-    ~handler:(Option.map c.rpc ~f:Dune_rpc_impl.Server.build_handler);
+    ~cache_debug_flags:c.cache_debug_flags;
   Only_packages.Clflags.set c.only_packages;
   Dune_util.Report_error.print_memo_stacks := c.debug_dep_path;
   Clflags.report_errors_config := c.report_errors_config;

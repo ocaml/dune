@@ -121,7 +121,6 @@ let%expect_test "run and connect" =
          Lwt.return_unit));
   [%expect
     {|
-    Success, waiting for filesystem changes...
     started session
     received ping. shutting down.
     dune build finished with 0 |}]

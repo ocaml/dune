@@ -29,21 +29,200 @@ end = struct
   let mkdir_p = Memo.exec mkdir_p_memo
 end
 
-module Error = Build_config.Error
-module Handler = Build_config.Handler
+module Progress = struct
+  type t =
+    { number_of_rules_discovered : int
+    ; number_of_rules_executed : int
+    }
+
+  let equal { number_of_rules_discovered; number_of_rules_executed } t =
+    Int.equal number_of_rules_discovered t.number_of_rules_discovered
+    && Int.equal number_of_rules_executed t.number_of_rules_executed
+
+  let complete t = t.number_of_rules_executed
+
+  let remaining t = t.number_of_rules_discovered - t.number_of_rules_executed
+end
+
+module Error = struct
+  module Id = Id.Make ()
+
+  type t =
+    { exn : Exn_with_backtrace.t
+    ; id : Id.t
+    }
+
+  module Event = struct
+    type nonrec t =
+      | Add of t
+      | Remove of t
+  end
+
+  let create ~exn = { exn; id = Id.gen () }
+
+  let id t = t.id
+
+  let promotion t =
+    let e =
+      match t.exn.exn with
+      | Memo.Error.E e -> Memo.Error.get e
+      | e -> e
+    in
+    match e with
+    | User_error.E msg ->
+      User_message.Annots.find msg.annots Diff_promotion.Annot.annot
+    | _ -> None
+
+  let info (t : t) =
+    let e =
+      match t.exn.exn with
+      | Memo.Error.E e -> Memo.Error.get e
+      | e -> e
+    in
+    match e with
+    | User_error.E msg -> (
+      let dir =
+        User_message.Annots.find msg.annots Process.with_directory_annot
+      in
+      match User_message.Annots.find msg.annots Compound_user_error.annot with
+      | None -> (msg, [], dir)
+      | Some { main; related } -> (main, related, dir))
+    | e ->
+      (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
+      (User_message.make [ Pp.text (Printexc.to_string e) ], [], None)
+
+  module Set : sig
+    type error := t
+
+    type nonrec t = private
+      { current : t Id.Map.t
+      ; stamp : int
+      ; last_event : Event.t option
+      }
+
+    val add : t -> error -> t
+
+    val one_event_diff : prev:t -> next:t -> Event.t option
+
+    val equal : t -> t -> bool
+
+    val current : t -> error Id.Map.t
+
+    val empty : t
+  end = struct
+    type nonrec t =
+      { current : t Id.Map.t
+      ; stamp : int
+      ; last_event : Event.t option
+      }
+
+    let add t error =
+      let current = Id.Map.set t.current (id error) error in
+      { current; stamp = t.stamp + 1; last_event = Some (Add error) }
+
+    let equal t { current; stamp; last_event } =
+      Int.equal t.stamp stamp
+      &&
+      match (t.last_event, last_event) with
+      | None, None ->
+        assert (Id.Map.is_empty t.current && Id.Map.is_empty current);
+        true (* only possible when both sets are empty *)
+      | Some x, Some y -> (
+        match (x, y) with
+        | Add x, Add y -> Id.equal x.id y.id
+        | Add _, _ -> false
+        | Remove x, Remove y -> Id.equal x.id y.id
+        | Remove _, _ -> false)
+      | Some _, None
+      | None, Some _ ->
+        false
+
+    let one_event_diff ~prev ~next =
+      if prev.stamp + 1 = next.stamp then
+        next.last_event
+      else
+        None
+
+    let current t = t.current
+
+    let empty = { current = Id.Map.empty; stamp = 0; last_event = None }
+  end
+end
 
 module State = struct
+  module Svar = Fiber.Svar
+
+  type t =
+    | Initializing
+    | Building of Progress.t
+    | Restarting_current_build
+    | Build_succeeded__now_waiting_for_changes
+    | Build_failed__now_waiting_for_changes
+
+  let equal x y =
+    match (x, y) with
+    | Building x, Building y -> Progress.equal x y
+    | Initializing, Initializing
+    | Restarting_current_build, Restarting_current_build
+    | ( Build_succeeded__now_waiting_for_changes
+      , Build_succeeded__now_waiting_for_changes )
+    | ( Build_failed__now_waiting_for_changes
+      , Build_failed__now_waiting_for_changes ) ->
+      true
+    | Building _, _
+    | Initializing, _
+    | Restarting_current_build, _
+    | Build_succeeded__now_waiting_for_changes, _
+    | Build_failed__now_waiting_for_changes, _ ->
+      false
+
+  let t = Fiber.Svar.create Initializing
+
   (* This mutable table is safe: it maps paths to lazily created mutexes. *)
   let locks : (Path.t, Fiber.Mutex.t) Table.t = Table.create (module Path) 32
 
   (* This mutex ensures that at most one [run] is running in parallel. *)
   let build_mutex = Fiber.Mutex.create ()
 
-  let rule_done = ref 0
+  let progress_init =
+    { Progress.number_of_rules_discovered = 0; number_of_rules_executed = 0 }
 
-  let rule_total = ref 0
+  let reset_progress () = Svar.write t (Building progress_init)
 
-  let errors = ref ([] : Error.t list)
+  let set what = Svar.write t what
+
+  let incr_rule_done_exn () =
+    let current = Svar.read t in
+    match current with
+    | Building current ->
+      Svar.write t
+        (Building
+           { current with
+             number_of_rules_executed = current.number_of_rules_executed + 1
+           })
+    | _ -> assert false
+
+  let start_rule_exn () =
+    let current = Svar.read t in
+    match current with
+    | Building current ->
+      Svar.write t
+        (Building
+           { current with
+             number_of_rules_discovered = current.number_of_rules_discovered + 1
+           })
+    | _ -> assert false
+
+  let errors = Svar.create Error.Set.empty
+
+  let reset_errors () = Svar.write errors Error.Set.empty
+
+  let add_error error =
+    let set =
+      let set = Svar.read errors in
+      Error.Set.add set error
+    in
+    Svar.write errors set
 end
 
 let rec with_locks ~f = function
@@ -187,8 +366,6 @@ end = struct
                sandboxing)"
           ])
 
-  let start_rule _rule = State.rule_total := !State.rule_total + 1
-
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
   let rule_digest_version = 10
@@ -223,11 +400,16 @@ end = struct
     in
     Digest.generic trace
 
-  let report_evaluated_rule (t : Build_config.t) =
+  let report_evaluated_rule_exn (t : Build_config.t) =
     Option.iter t.stats ~f:(fun stats ->
         let module Event = Chrome_trace.Event in
         let event =
-          let args = [ ("value", `Int !State.rule_total) ] in
+          let rule_total =
+            match Fiber.Svar.read State.t with
+            | Building progress -> progress.number_of_rules_discovered
+            | _ -> assert false
+          in
+          let args = [ ("value", `Int rule_total) ] in
           let ts = Event.Timestamp.now () in
           let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
           Event.counter common args
@@ -372,7 +554,7 @@ end = struct
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
     in
-    start_rule rule;
+    let* () = Memo.Build.of_non_reproducible_fiber (State.start_rule_exn ()) in
     let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target dir with
@@ -403,7 +585,7 @@ end = struct
     let config = Build_config.get () in
     wrap_fiber (fun () ->
         let open Fiber.O in
-        report_evaluated_rule config;
+        report_evaluated_rule_exn config;
         let* () = Memo.Build.run (Fs.mkdir_p dir) in
         let is_action_dynamic = Action.is_dynamic action.action in
         let sandbox_mode =
@@ -528,11 +710,7 @@ end = struct
           promote_targets ~rule_mode:mode ~dir ~targets:produced_targets
             ~promote_source:(config.promote_source context)
         in
-        State.rule_done := !State.rule_done + 1;
-        let+ () =
-          Handler.report_progress config.handler ~rule_done:!State.rule_done
-            ~rule_total:!State.rule_total
-        in
+        let+ () = State.incr_rule_done_exn () in
         produced_targets)
     (* jeremidimino: We need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
@@ -994,15 +1172,15 @@ let caused_by_cancellation (exn : Exn_with_backtrace.t) =
 let report_early_exn exn =
   match caused_by_cancellation exn with
   | true -> Fiber.return ()
-  | false ->
+  | false -> (
+    let open Fiber.O in
     let error = Error.create ~exn in
-    State.errors := error :: !State.errors;
-    (match !Clflags.report_errors_config with
+    let+ () = State.add_error error in
+    match !Clflags.report_errors_config with
     | Early
     | Twice ->
       Dune_util.Report_error.report exn
-    | Deterministic -> ());
-    (Build_config.get ()).handler.errors [ Add error ]
+    | Deterministic -> ())
 
 let handle_final_exns exns =
   match !Clflags.report_errors_config with
@@ -1017,19 +1195,9 @@ let handle_final_exns exns =
 let run f =
   let open Fiber.O in
   Hooks.End_of_build.once Diff_promotion.finalize;
-  let handler = (Build_config.get ()).handler in
-  let old_errors = !State.errors in
-  State.rule_done := 0;
-  State.rule_total := 0;
-  State.errors := [];
-  let* () =
-    match old_errors with
-    | [] -> Fiber.return ()
-    | _ :: _ ->
-      handler.errors (List.map old_errors ~f:(fun x -> Handler.Remove x))
-  in
+  let* () = State.reset_progress () in
+  let* () = State.reset_errors () in
   let f () =
-    let* () = Handler.report_build_event handler Start in
     let* res =
       Fiber.collect_errors (fun () ->
           Memo.Build.run_with_error_handler f
@@ -1037,17 +1205,17 @@ let run f =
     in
     match res with
     | Ok res ->
-      let+ () = Handler.report_build_event handler Finish in
+      let+ () = State.set Build_succeeded__now_waiting_for_changes in
       Ok res
     | Error exns ->
       handle_final_exns exns;
       let final_status =
         if List.exists exns ~f:caused_by_cancellation then
-          Handler.Interrupt
+          State.Restarting_current_build
         else
-          Fail
+          Build_failed__now_waiting_for_changes
       in
-      let+ () = Handler.report_build_event handler final_status in
+      let+ () = State.set final_status in
       Error `Already_reported
   in
   Fiber.Mutex.with_lock State.build_mutex f
@@ -1063,25 +1231,6 @@ let read_file p ~f =
   let+ _digest = build_file p in
   f p
 
-module Progress = struct
-  type t =
-    { number_of_rules_discovered : int
-    ; number_of_rules_executed : int
-    }
+let state = State.t
 
-  let complete t = t.number_of_rules_executed
-
-  let remaining t = t.number_of_rules_discovered - t.number_of_rules_executed
-
-  let is_determined { number_of_rules_discovered; number_of_rules_executed } =
-    number_of_rules_discovered <> 0 || number_of_rules_executed <> 0
-end
-
-let errors () = !State.errors
-
-let get_current_progress () =
-  { Progress.number_of_rules_executed = !State.rule_done
-  ; number_of_rules_discovered = !State.rule_total
-  }
-
-let last_event () = !Handler.last_event
+let errors = State.errors

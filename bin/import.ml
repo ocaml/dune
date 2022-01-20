@@ -51,19 +51,24 @@ end = struct
     Console.Status_line.set
       (Live
          (fun () ->
-           let { Build_system.Progress.number_of_rules_executed = done_
+           match Fiber.Svar.read Build_system.state with
+           | Initializing
+           | Restarting_current_build
+           | Build_succeeded__now_waiting_for_changes
+           | Build_failed__now_waiting_for_changes ->
+             Pp.nop
+           | Building
+               { Build_system.Progress.number_of_rules_executed = done_
                ; number_of_rules_discovered = total
-               } =
-             Build_system.get_current_progress ()
-           in
-           Pp.verbatim
-             (sprintf "Done: %u%% (%u/%u, %u left) (jobs: %u)"
-                (if total = 0 then
-                  0
-                else
-                  done_ * 100 / total)
-                done_ total (total - done_)
-                (Scheduler.running_jobs_count scheduler))));
+               } ->
+             Pp.verbatim
+               (sprintf "Done: %u%% (%u/%u, %u left) (jobs: %u)"
+                  (if total = 0 then
+                    0
+                  else
+                    done_ * 100 / total)
+                  done_ total (total - done_)
+                  (Scheduler.running_jobs_count scheduler))));
     Fiber.return (Memo.Build.of_thunk get)
 end
 
@@ -96,7 +101,17 @@ module Scheduler = struct
       Console.Status_line.set
         (Live
            (fun () ->
-             let progression = Build_system.get_current_progress () in
+             let progression =
+               match Fiber.Svar.read Build_system.state with
+               | Initializing
+               | Restarting_current_build
+               | Build_succeeded__now_waiting_for_changes
+               | Build_failed__now_waiting_for_changes ->
+                 { Build_system.Progress.number_of_rules_discovered = 0
+                 ; number_of_rules_executed = 0
+                 }
+               | Building progress -> progress
+             in
              Pp.seq
                (Pp.tag User_message.Style.Error
                   (Pp.verbatim "Source files changed"))

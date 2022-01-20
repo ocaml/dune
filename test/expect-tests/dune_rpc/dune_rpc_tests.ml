@@ -371,7 +371,7 @@ let%test_module "long polling" =
           printfn "server: polling cancelled";
           Fiber.return ()
         in
-        Handler.implement_poll rpc sub_proc ~on_poll ~on_cancel
+        Handler.Private.implement_poll rpc sub_proc ~on_poll ~on_cancel
       in
       rpc
 

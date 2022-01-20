@@ -17,6 +17,7 @@ module Source_tree = Dune_engine.Source_tree
 module Build_config = Dune_engine.Build_config
 module Dune_project = Dune_engine.Dune_project
 module Diff_promotion = Dune_engine.Diff_promotion
+module Build_system = Dune_engine.Build_system
 module Build_outcome = Decl.Build_outcome
 module Status = Decl.Status
 
@@ -128,13 +129,9 @@ type t =
   { config : Run.Config.t
   ; pending_build_jobs :
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
-  ; build_handler : Build_config.Handler.t
   ; pool : Fiber.Pool.t
-  ; long_poll : Long_poll.t
   ; mutable clients : Clients.t
   }
-
-let build_handler t = t.build_handler
 
 let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
@@ -146,11 +143,56 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_terminate session =
     let t = Fdecl.get t in
     t.clients <- Clients.remove_session t.clients session;
-    Long_poll.disconnect_session t.long_poll session
+    Fiber.return ()
   in
   let rpc =
     Handler.create ~on_terminate ~on_init
       ~version:Dune_rpc_private.Version.latest ()
+  in
+  let () =
+    let module Diagnostic = Dune_rpc.Diagnostic in
+    let module Error = Build_system.Error in
+    let diff ~last ~(now : Error.Set.t) =
+      match last with
+      | None ->
+        Error.Id.Map.to_list_map (Error.Set.current now) ~f:(fun _ e ->
+            Diagnostic.Event.Add (Diagnostics.diagnostic_of_error e))
+      | Some (prev : Error.Set.t) -> (
+        match Error.Set.one_event_diff ~prev ~next:now with
+        | Some last_event ->
+          [ Diagnostics.diagnostic_event_of_error_event last_event ]
+        | _ ->
+          (* the slow path where we must calculate a diff between what we have
+             and the last thing we've sent to the poller *)
+          Error.Id.Map.merge (Error.Set.current prev) (Error.Set.current now)
+            ~f:(fun _ prev now ->
+              match (prev, now) with
+              | None, None -> assert false
+              | Some prev, None ->
+                Some (Diagnostics.diagnostic_event_of_error_event (Remove prev))
+              | _, Some next ->
+                Some (Diagnostics.diagnostic_event_of_error_event (Add next)))
+          |> Error.Id.Map.values)
+    in
+    Handler.implement_long_poll rpc Procedures.Poll.diagnostic
+      Build_system.errors ~equal:Error.Set.equal ~diff
+  in
+  let () =
+    let diff ~last:_ ~(now : Build_system.State.t) =
+      match now with
+      | Initializing -> Progress.Waiting
+      | Restarting_current_build -> Interrupted
+      | Build_succeeded__now_waiting_for_changes -> Success
+      | Build_failed__now_waiting_for_changes -> Failed
+      | Building now ->
+        let remaining =
+          now.number_of_rules_discovered - now.number_of_rules_executed
+        in
+        let complete = now.number_of_rules_executed in
+        In_progress { complete; remaining }
+    in
+    Handler.implement_long_poll rpc Procedures.Poll.progress Build_system.state
+      ~equal:Build_system.State.equal ~diff
   in
   let () =
     Handler.declare_notification rpc Procedures.Server_side.abort;
@@ -204,24 +246,6 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     Handler.implement_notification rpc Procedures.Public.shutdown shutdown
   in
   let () =
-    Handler.implement_poll rpc Procedures.Poll.progress
-      ~on_cancel:(fun _session poller ->
-        let p = Long_poll.progress (Fdecl.get t).long_poll in
-        Long_poll.Instance.client_cancel p poller)
-      ~on_poll:(fun _session poller ->
-        let p = Long_poll.progress (Fdecl.get t).long_poll in
-        Long_poll.Instance.poll p poller)
-  in
-  let () =
-    Handler.implement_poll rpc Procedures.Poll.diagnostic
-      ~on_cancel:(fun _session poller ->
-        let p = Long_poll.diagnostic (Fdecl.get t).long_poll in
-        Long_poll.Instance.client_cancel p poller)
-      ~on_poll:(fun _session poller ->
-        let p = Long_poll.diagnostic (Fdecl.get t).long_poll in
-        Long_poll.Instance.poll p poller)
-  in
-  let () =
     let f _ () =
       let t = Fdecl.get t in
       let clients =
@@ -237,7 +261,9 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   let () =
     let f _ () =
-      Dune_engine.Build_system.errors ()
+      let errors = Fiber.Svar.read Dune_engine.Build_system.errors in
+      Build_system.Error.Set.current errors
+      |> Build_system.Error.Id.Map.values
       |> List.map ~f:Diagnostics.diagnostic_of_error
       |> Fiber.return
     in
@@ -287,50 +313,13 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   rpc
 
-let task t f =
-  let* running = Fiber.Pool.running t.pool in
-  if running then
-    Fiber.Pool.task t.pool ~f
-  else
-    Fiber.return ()
-
-let errors t errors =
-  let t = Fdecl.get t in
-  task t (fun () ->
-      Long_poll.Instance.update (Long_poll.diagnostic t.long_poll) errors)
-
-let build_progress t ~complete ~remaining =
-  let t = Fdecl.get t in
-  task t (fun () ->
-      let progress = Progress.In_progress { complete; remaining } in
-      Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
-
-let build_event t (event : Build_config.Handler.event) =
-  let t = Fdecl.get t in
-  let progress = progress_of_build_event event in
-  task t (fun () ->
-      Long_poll.Instance.update (Long_poll.progress t.long_poll) progress)
-
 let create ~root =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let config = Run.Config.Server { handler; backlog = 10; pool; root } in
-  let build_handler =
-    Build_config.Handler.create ~errors:(errors t)
-      ~build_progress:(build_progress t) ~build_event:(build_event t)
-  in
-  let long_poll = Long_poll.create () in
-  let res =
-    { config
-    ; pending_build_jobs
-    ; clients = Clients.empty
-    ; build_handler
-    ; pool
-    ; long_poll
-    }
-  in
+  let res = { config; pending_build_jobs; clients = Clients.empty; pool } in
   Fdecl.set t res;
   res
 

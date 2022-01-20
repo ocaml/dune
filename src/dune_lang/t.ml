@@ -77,32 +77,30 @@ module Deprecated = struct
     let state = ref [] in
     Format.pp_set_mark_tags ppf true;
     let ofuncs = Format.pp_get_formatter_out_functions ppf () in
-    let tfuncs =
-      (Format.pp_get_formatter_tag_functions ppf () [@warning "-3"])
-    in
-    Format.pp_set_formatter_tag_functions ppf
+    let tfuncs = Format.pp_get_formatter_stag_functions ppf () in
+    Format.pp_set_formatter_stag_functions ppf
       { tfuncs with
-        mark_open_tag =
+        mark_open_stag =
           (function
-          | "atom" ->
+          | Format.String_tag "atom" ->
             state := In_atom :: !state;
             ""
-          | "makefile-action" ->
+          | Format.String_tag "makefile-action" ->
             state := In_makefile_action :: !state;
             ""
-          | "makefile-stuff" ->
+          | Format.String_tag "makefile-stuff" ->
             state := In_makefile_stuff :: !state;
             ""
-          | s -> tfuncs.mark_open_tag s)
-      ; mark_close_tag =
+          | s -> tfuncs.mark_open_stag s)
+      ; mark_close_stag =
           (function
-          | "atom"
-          | "makefile-action"
-          | "makefile-stuff" ->
+          | Format.String_tag "atom"
+          | Format.String_tag "makefile-action"
+          | Format.String_tag "makefile-stuff" ->
             state := List.tl !state;
             ""
-          | s -> tfuncs.mark_close_tag s)
-      } [@warning "-3"];
+          | s -> tfuncs.mark_close_stag s)
+      };
     Format.pp_set_formatter_out_functions ppf
       { ofuncs with
         out_newline =

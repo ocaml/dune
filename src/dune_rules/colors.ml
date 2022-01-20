@@ -33,23 +33,25 @@ module Style = struct
     | _ -> None
 end
 
-let mark_open_tag s =
-  match Style.of_string s with
-  | Some style -> Ansi_color.Style.escape_sequence (Style.to_styles style)
-  | None ->
-    if s <> "" && s.[0] = '\027' then
-      s
-    else
-      ""
+let mark_open_stag = function
+  | Format.String_tag s -> (
+    match Style.of_string s with
+    | Some style -> Ansi_color.Style.escape_sequence (Style.to_styles style)
+    | None ->
+      if s <> "" && s.[0] = '\027' then
+        s
+      else
+        "")
+  | _ -> ""
 
 let setup_err_formatter_colors () =
   let open Format in
   if Lazy.force Ansi_color.stderr_supports_color then
     List.iter [ err_formatter; Dune_util.Report_error.ppf ] ~f:(fun ppf ->
-        let funcs = (pp_get_formatter_tag_functions ppf () [@warning "-3"]) in
+        let funcs = pp_get_formatter_stag_functions ppf () in
         pp_set_mark_tags ppf true;
-        pp_set_formatter_tag_functions ppf
+        pp_set_formatter_stag_functions ppf
           { funcs with
-            mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
-          ; mark_open_tag
-          } [@warning "-3"])
+            mark_close_stag = (fun _ -> Ansi_color.Style.escape_sequence [])
+          ; mark_open_stag
+          })

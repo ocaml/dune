@@ -418,6 +418,9 @@ let%expect_test "create and fix error" =
         ; ("foo.ml", "let () = print_endline 123")
         ];
       let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+      let* () = print_diagnostics poll in
+      [%expect {|
+        <no diagnostics> |}];
       let* () = dune_build client "./foo.exe" in
       [%expect {|
         Building ./foo.exe

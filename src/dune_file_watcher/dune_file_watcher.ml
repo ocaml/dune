@@ -245,33 +245,43 @@ module Buffer = struct
          List.rev !lines)
 end
 
-let special_dir_for_fs_sync =
-  lazy
-    (Path.Build.relative Path.Build.root ".sync" |> Path.build |> Path.to_string)
+module Fs_sync : sig
+  val special_dir : string Lazy.t
 
-let emit_sync t =
-  let id = Sync_id.gen () in
-  let fn = id |> Sync_id.to_int |> string_of_int in
-  let path = Filename.concat (Lazy.force special_dir_for_fs_sync) fn in
-  Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC ] 0o666);
-  Table.set t.sync_table fn id;
-  id
+  val emit : t -> Sync_id.t
 
-let is_special_file_for_fs_sync ~path_as_reported_by_file_watcher =
-  (* We use string matching here and that's fine because we match on the path
-     reported by the file watcher backend which will always report the same
-     string that was used to setup the watch. *)
-  Filename.dirname path_as_reported_by_file_watcher
-  = Lazy.force special_dir_for_fs_sync
+  val is_special_file : path_as_reported_by_file_watcher:string -> bool
 
-let consume_sync_event table path =
-  let basename = Filename.basename path in
-  match Table.find table basename with
-  | None -> None
-  | Some id ->
-    Fpath.unlink_no_err path;
-    Table.remove table basename;
-    Some id
+  val consume_event : (string, 'a) Table.t -> string -> 'a option
+end = struct
+  let special_dir =
+    lazy
+      (Path.Build.relative Path.Build.root ".sync"
+      |> Path.build |> Path.to_string)
+
+  let emit t =
+    let id = Sync_id.gen () in
+    let fn = id |> Sync_id.to_int |> string_of_int in
+    let path = Filename.concat (Lazy.force special_dir) fn in
+    Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC ] 0o666);
+    Table.set t.sync_table fn id;
+    id
+
+  let is_special_file ~path_as_reported_by_file_watcher =
+    (* We use string matching here and that's fine because we match on the path
+       reported by the file watcher backend which will always report the same
+       string that was used to setup the watch. *)
+    Filename.dirname path_as_reported_by_file_watcher = Lazy.force special_dir
+
+  let consume_event table path =
+    let basename = Filename.basename path in
+    match Table.find table basename with
+    | None -> None
+    | Some id ->
+      Fpath.unlink_no_err path;
+      Table.remove table basename;
+      Some id
+end
 
 let command ~root ~backend =
   let exclude_paths =
@@ -285,7 +295,7 @@ let command ~root ~backend =
     [ "_build" ]
   in
   let root = Path.to_string root in
-  let inotify_special_path = Lazy.force special_dir_for_fs_sync in
+  let inotify_special_path = Lazy.force Fs_sync.special_dir in
   match backend with
   | `Fswatch fswatch ->
     (* On all other platforms, try to use fswatch. fswatch's event filtering is
@@ -336,7 +346,7 @@ let select_watcher_backend () =
     fswatch_backend ()
 
 let prepare_sync () =
-  let dir = Lazy.force special_dir_for_fs_sync in
+  let dir = Lazy.force Fs_sync.special_dir in
   match Fpath.clear_dir dir with
   | Cleared -> ()
   | Directory_does_not_exist -> (
@@ -370,7 +380,7 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) =
                 | Created path
                 | Unlinked path ->
                   Option.some_if
-                    (is_special_file_for_fs_sync
+                    (Fs_sync.is_special_file
                        ~path_as_reported_by_file_watcher:path)
                     path
                 | Moved _
@@ -380,7 +390,7 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) =
               match is_fs_sync_event_generated_by_dune with
               | None -> process_inotify_event event
               | Some path -> (
-                match consume_sync_event sync_table path with
+                match Fs_sync.consume_event sync_table path with
                 | None -> []
                 | Some id -> [ Event.Sync id ]))))
     ~log_error:(fun error -> Console.print [ Pp.text error ])
@@ -402,10 +412,10 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
                 | Error s -> failwith s
                 | Ok path_s ->
                   if
-                    is_special_file_for_fs_sync
+                    Fs_sync.is_special_file
                       ~path_as_reported_by_file_watcher:path_s
                   then
-                    match consume_sync_event sync_table path_s with
+                    match Fs_sync.consume_event sync_table path_s with
                     | None -> []
                     | Some id -> [ Event.Sync id ]
                   else
@@ -468,7 +478,7 @@ let create_inotifylib ~scheduler =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let inotify = create_inotifylib_watcher ~sync_table ~scheduler in
-  Inotify_lib.add inotify (Lazy.force special_dir_for_fs_sync);
+  Inotify_lib.add inotify (Lazy.force Fs_sync.special_dir);
   { kind = Inotify inotify; sync_table }
 
 let fsevents_callback_gen (scheduler : Scheduler.t) ~f events =
@@ -514,14 +524,13 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
     (* We don't use the [fsevents] function here as we want to match on the
        original file path *)
     Fsevents.create ~latency
-      ~paths:[ Lazy.force special_dir_for_fs_sync ]
+      ~paths:[ Lazy.force Fs_sync.special_dir ]
       ~f:
         (fsevents_callback_gen scheduler ~f:(fun event ->
              let path = Fsevents.Event.path event in
              if
                not
-                 (is_special_file_for_fs_sync
-                    ~path_as_reported_by_file_watcher:path)
+                 (Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path)
              then
                None
              else
@@ -530,8 +539,8 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
                | Unknown
                | Create
                | Modify ->
-                 Option.map (consume_sync_event sync_table path) ~f:(fun id ->
-                     Event.Sync id)))
+                 Option.map (Fs_sync.consume_event sync_table path)
+                   ~f:(fun id -> Event.Sync id)))
   in
   let source =
     let paths = [ Path.root ] in

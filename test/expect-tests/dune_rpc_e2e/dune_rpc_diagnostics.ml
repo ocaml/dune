@@ -472,39 +472,6 @@ let%expect_test "create and fix error" =
         {|
         [ "Remove"
         ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "23" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "26" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ]
-            ]
-          ; [ "message"
-            ; [ "Verbatim"
-              ; "This expression has type int but an expression was expected of type\n\
-                \         string\n\
-                 \n\
-                 "
-              ]
-            ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "targets"; [] ]
-          ]
-        ]
-        [ "Remove"
-        ; [ [ "directory"; "$CWD" ]
           ; [ "id"; "1" ]
           ; [ "loc"
             ; [ [ "start"

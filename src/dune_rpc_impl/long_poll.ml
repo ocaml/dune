@@ -156,12 +156,15 @@ module Diagnostic = struct
     let is_empty t = Map.is_empty t
 
     let add_error t (m : Handler.error) =
-      let id =
-        match m with
-        | Add e -> Error.id e
-        | Remove e -> Error.id e
-      in
-      Map.set t id m
+      match m with
+      | Remove e ->
+        let id = Error.id e in
+        Map.update t id ~f:(function
+          | None -> None
+          | Some _ -> Some m)
+      | Add e ->
+        let id = Error.id e in
+        Map.set t id m
 
     let to_diagnostic_list t =
       Map.to_list_map t ~f:(fun _ e ->

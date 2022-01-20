@@ -451,30 +451,83 @@ module H = struct
     let declare_notification (t : _ t) =
       V.Builder.declare_notification t.builder
 
-    let implement_poll (t : _ t) (sub : _ Procedures.Poll.t) ~on_poll ~on_cancel
-        =
-      let on_poll session id =
-        let poller =
-          Session.find_or_create_poller session (Procedures.Poll.name sub) id
+    module Long_poll = struct
+      let implement_poll (t : _ t) (sub : _ Procedures.Poll.t) ~on_poll
+          ~on_cancel =
+        let on_poll session id =
+          let poller =
+            Session.find_or_create_poller session (Procedures.Poll.name sub) id
+          in
+          let+ res = on_poll session poller in
+          let () =
+            match res with
+            | Some _ -> ()
+            | None ->
+              let _ = Session.cancel_poller session id in
+              ()
+          in
+          res
         in
-        let+ res = on_poll session poller in
-        let () =
-          match res with
-          | Some _ -> ()
-          | None ->
-            let _ = Session.cancel_poller session id in
-            ()
+        let on_cancel session id =
+          let poller = Session.cancel_poller session id in
+          match poller with
+          | None -> Fiber.return () (* XXX log *)
+          | Some poller -> on_cancel session poller
         in
-        res
-      in
-      let on_cancel session id =
-        let poller = Session.cancel_poller session id in
-        match poller with
-        | None -> Fiber.return () (* XXX log *)
-        | Some poller -> on_cancel session poller
-      in
-      implement_request t (Procedures.Poll.poll sub) on_poll;
-      implement_notification t (Procedures.Poll.cancel sub) on_cancel
+        implement_request t (Procedures.Poll.poll sub) on_poll;
+        implement_notification t (Procedures.Poll.cancel sub) on_cancel
+
+      module Poll_comparable = Comparable.Make (Poller)
+      module Map = Poll_comparable.Map
+
+      module Status = struct
+        type 'a t =
+          | Active of 'a
+          | Cancelled
+      end
+
+      let on_cancel map _session poller =
+        let new_map =
+          Map.update !map poller ~f:(function
+            | None -> assert false
+            | Some Status.Cancelled as s -> s
+            | Some (Active _) -> Some Cancelled)
+        in
+        map := new_map;
+        Fiber.return ()
+
+      let make_on_poll map svar ~equal ~diff _session poller =
+        let send last =
+          let* () =
+            match last with
+            | None -> Fiber.return ()
+            | Some last ->
+              let until x = not (equal x last) in
+              Fiber.Svar.wait svar ~until
+          in
+          let now = Fiber.Svar.read svar in
+          map := Map.set !map poller (Status.Active now);
+          let to_send = diff ~last ~now in
+          Fiber.return (Some to_send)
+        in
+        match Map.find !map poller with
+        | None -> send None
+        | Some (Active a) -> send (Some a)
+        | Some Cancelled ->
+          map := Map.remove !map poller;
+          Fiber.never
+
+      let implement_long_poll (rpc : _ t) proc svar ~equal ~diff =
+        let map = ref Map.empty in
+        implement_poll rpc proc ~on_cancel:(on_cancel map)
+          ~on_poll:(make_on_poll map svar ~equal ~diff)
+    end
+
+    let implement_long_poll = Long_poll.implement_long_poll
+
+    module Private = struct
+      let implement_poll = Long_poll.implement_poll
+    end
   end
 end
 

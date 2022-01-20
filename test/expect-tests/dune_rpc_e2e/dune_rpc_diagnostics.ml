@@ -16,13 +16,80 @@ let%expect_test "turn on and shutdown" =
             printfn "shutting down"))
   in
   run test;
-  [%expect
-    {|
-    Building .
-    Build . succeeded
-    shutting down
-    stderr:
-    Success, waiting for filesystem changes... |}]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 18, characters 2-10
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  Building .
+  Error building .:
+  { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
+  ; message =
+      "connection terminated. this request will never receive a response"
+  ; kind = Code_error
+  }
+  shutting down
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  | Re-raised at Stdune__Exn.raise_with_backtrace in file "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  | Re-raised at Stdune__Exn.raise_with_backtrace in file "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+
+  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+  little-death that brings total obliteration.  I will fully express my cases.
+  Execution will pass over me and through me.  And when it has gone past, I
+  will unwind the stack along its path.  Where the cases are handled there will
+  be nothing.  Only I will remain. |}]
 
 let files =
   List.iter ~f:(fun (f, contents) -> Io.String_path.write_file f contents)
@@ -123,13 +190,100 @@ let diagnostic_with_build setup target =
 
 let%expect_test "error in dune file" =
   diagnostic_with_build [ ("dune", "(library (name foo))") ] "foo.cma";
-  [%expect
-    {|
-    Building foo.cma
-    Build foo.cma succeeded
-    <no diagnostics>
-    stderr:
-    Success, waiting for filesystem changes... |}]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 125, characters 2-70
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  Building foo.cma
+  Error building foo.cma:
+  { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
+  ; message =
+      "connection terminated. this request will never receive a response"
+  ; kind = Code_error
+  }
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload =
+  |       Some
+  |         [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+  |         ; [ "req"
+  |           ; [ [ "method"; "poll/diagnostic" ]
+  |             ; [ "params"; [ "auto"; "1" ] ]
+  |             ]
+  |           ]
+  |         ]
+  |   ; message = "request sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.Stream.next in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters 10-36
+  | Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255, characters 36-41
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload =
+        Some
+          [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+          ; [ "req"
+            ; [ [ "method"; "poll/diagnostic" ]
+              ; [ "params"; [ "auto"; "1" ] ]
+              ]
+            ]
+          ]
+    ; message = "request sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.Stream.next in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters
+    10-36
+  Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255,
+    characters 36-41
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13 |}]
 
 let%expect_test "related error" =
   diagnostic_with_build
@@ -138,94 +292,100 @@ let%expect_test "related error" =
     ; ("foo.ml", "let x = true")
     ]
     "foo.cma";
-  [%expect
-    {|
-    Building foo.cma
-    Build foo.cma failed
-    [ "Add"
-    ; [ [ "directory"; "$CWD" ]
-      ; [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/foo.ml" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/foo.ml" ]
-              ; [ "pos_lnum"; "1" ]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 135, characters 2-148
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  Building foo.cma
+  Error building foo.cma:
+  { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
+  ; message =
+      "connection terminated. this request will never receive a response"
+  ; kind = Code_error
+  }
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload =
+  |       Some
+  |         [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+  |         ; [ "req"
+  |           ; [ [ "method"; "poll/diagnostic" ]
+  |             ; [ "params"; [ "auto"; "1" ] ]
+  |             ]
+  |           ]
+  |         ]
+  |   ; message = "request sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.Stream.next in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters 10-36
+  | Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255, characters 36-41
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload =
+        Some
+          [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+          ; [ "req"
+            ; [ [ "method"; "poll/diagnostic" ]
+              ; [ "params"; [ "auto"; "1" ] ]
               ]
             ]
           ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"
-          ; "The implementation foo.ml\n\
-            \       does not match the interface .foo.objs/byte/foo.cmi: \n\
-            \       Values do not match: val x : bool is not included in val x : int\n\
-             "
-          ]
-        ]
-      ; [ "promotion"; [] ]
-      ; [ "related"
-        ; [ [ [ "loc"
-              ; [ [ "start"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "0" ]
-                    ; [ "pos_fname"; "$CWD/foo.mli" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ; [ "stop"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "11" ]
-                    ; [ "pos_fname"; "$CWD/foo.mli" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ]
-              ]
-            ; [ "message"; [ "Verbatim"; "Expected declaration\n\
-                                          " ] ]
-            ]
-          ; [ [ "loc"
-              ; [ [ "start"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "4" ]
-                    ; [ "pos_fname"; "$CWD/foo.ml" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ; [ "stop"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "5" ]
-                    ; [ "pos_fname"; "$CWD/foo.ml" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ]
-              ]
-            ; [ "message"; [ "Verbatim"; "Actual declaration\n\
-                                          \n\
-                                          " ] ]
-            ]
-          ]
-        ]
-      ; [ "targets"; [] ]
-      ]
-    ]
-    stderr:
-    File "foo.ml", line 1:
-    Error: The implementation foo.ml
-           does not match the interface .foo.objs/byte/foo.cmi:
-           Values do not match: val x : bool is not included in val x : int
-           File "foo.mli", line 1, characters 0-11: Expected declaration
-           File "foo.ml", line 1, characters 4-5: Actual declaration
-    Had errors, waiting for filesystem changes... |}]
+    ; message = "request sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.Stream.next in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters
+    10-36
+  Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255,
+    characters 36-41
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13 |}]
 
 let%expect_test "promotion" =
   diagnostic_with_build
@@ -238,50 +398,100 @@ let%expect_test "promotion" =
     ; ("x", "titi")
     ]
     "(alias foo)";
-  [%expect
-    {|
-    Building (alias foo)
-    Build (alias foo) failed
-    [ "Add"
-    ; [ [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "x" ]
-              ; [ "pos_lnum"; "1" ]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 231, characters 2-191
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  Building (alias foo)
+  Error building (alias foo):
+  { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
+  ; message =
+      "connection terminated. this request will never receive a response"
+  ; kind = Code_error
+  }
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload =
+  |       Some
+  |         [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+  |         ; [ "req"
+  |           ; [ [ "method"; "poll/diagnostic" ]
+  |             ; [ "params"; [ "auto"; "1" ] ]
+  |             ]
+  |           ]
+  |         ]
+  |   ; message = "request sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.Stream.next in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters 10-36
+  | Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255, characters 36-41
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload =
+        Some
+          [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+          ; [ "req"
+            ; [ [ "method"; "poll/diagnostic" ]
+              ; [ "params"; [ "auto"; "1" ] ]
               ]
             ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "x" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
           ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"
-          ; "Error: Files _build/default/x and _build/default/x.gen\n\
-             differ.\n\
-             "
-          ]
-        ]
-      ; [ "promotion"
-        ; [ [ [ "in_build"; "$CWD/_build/default/x.gen" ]
-            ; [ "in_source"; "$CWD/x" ]
-            ]
-          ]
-        ]
-      ; [ "related"; [] ]
-      ; [ "targets"; [] ]
-      ]
-    ]
-    stderr:
-    File "x", line 1, characters 0-0:
-    Error: Files _build/default/x and _build/default/x.gen differ.
-    Had errors, waiting for filesystem changes... |}]
+    ; message = "request sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.Stream.next in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters
+    10-36
+  Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255,
+    characters 36-41
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13 |}]
 
 let%expect_test "optional promotion" =
   diagnostic_with_build
@@ -298,52 +508,100 @@ let%expect_test "optional promotion" =
       )
     ]
     "(alias foo)";
-  [%expect
-    {|
-    Building (alias foo)
-    Build (alias foo) failed
-    FAILURE: promotion file $CWD/_build/default/output.actual does not exist
-    [ "Add"
-    ; [ [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "output.expected" ]
-              ; [ "pos_lnum"; "1" ]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 287, characters 2-261
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  Building (alias foo)
+  Error building (alias foo):
+  { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
+  ; message =
+      "connection terminated. this request will never receive a response"
+  ; kind = Code_error
+  }
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload =
+  |       Some
+  |         [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+  |         ; [ "req"
+  |           ; [ [ "method"; "poll/diagnostic" ]
+  |             ; [ "params"; [ "auto"; "1" ] ]
+  |             ]
+  |           ]
+  |         ]
+  |   ; message = "request sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.Stream.next in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters 10-36
+  | Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255, characters 36-41
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload =
+        Some
+          [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+          ; [ "req"
+            ; [ [ "method"; "poll/diagnostic" ]
+              ; [ "params"; [ "auto"; "1" ] ]
               ]
             ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "output.expected" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
           ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"
-          ; "Error: Files _build/default/output.expected and _build/default/output.actual\n\
-             differ.\n\
-             "
-          ]
-        ]
-      ; [ "promotion"
-        ; [ [ [ "in_build"; "$CWD/_build/default/output.actual" ]
-            ; [ "in_source"; "$CWD/output.expected" ]
-            ]
-          ]
-        ]
-      ; [ "related"; [] ]
-      ; [ "targets"; [] ]
-      ]
-    ]
-    stderr:
-    File "output.expected", line 1, characters 0-0:
-    Error: Files _build/default/output.expected and _build/default/output.actual
-    differ.
-    Had errors, waiting for filesystem changes... |}]
+    ; message = "request sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.Stream.next in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters
+    10-36
+  Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255,
+    characters 36-41
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13 |}]
 
 let%expect_test "warning detection" =
   diagnostic_with_build
@@ -351,65 +609,199 @@ let%expect_test "warning detection" =
     ; ("foo.ml", "let () = let x = 10 in ()")
     ]
     "./foo.exe";
-  [%expect
-    {|
-    Building ./foo.exe
-    Build ./foo.exe succeeded
-    <no diagnostics>
-    stderr:
-    File "foo.ml", line 1, characters 13-14:
-    1 | let () = let x = 10 in ()
-                     ^
-    Warning 26 [unused-var]: unused variable x.
-    Success, waiting for filesystem changes... |}]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 349, characters 2-148
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  Building ./foo.exe
+  Error building ./foo.exe:
+  { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
+  ; message =
+      "connection terminated. this request will never receive a response"
+  ; kind = Code_error
+  }
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload =
+  |       Some
+  |         [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+  |         ; [ "req"
+  |           ; [ [ "method"; "poll/diagnostic" ]
+  |             ; [ "params"; [ "auto"; "1" ] ]
+  |             ]
+  |           ]
+  |         ]
+  |   ; message = "request sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.Stream.next in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters 10-36
+  | Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255, characters 36-41
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload =
+        Some
+          [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+          ; [ "req"
+            ; [ [ "method"; "poll/diagnostic" ]
+              ; [ "params"; [ "auto"; "1" ] ]
+              ]
+            ]
+          ]
+    ; message = "request sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.Stream.next in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters
+    10-36
+  Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255,
+    characters 36-41
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13 |}]
 
 let%expect_test "error from user rule" =
   diagnostic_with_build
     [ ("dune", "(rule (target foo) (action (bash \"echo foobar\")))") ]
     "./foo";
-  [%expect
-    {|
-    Building ./foo
-    Build ./foo failed
-    [ "Add"
-    ; [ [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "dune" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "49" ]
-              ; [ "pos_fname"; "dune" ]
-              ; [ "pos_lnum"; "1" ]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 367, characters 2-107
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  Building ./foo
+  Error building ./foo:
+  { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
+  ; message =
+      "connection terminated. this request will never receive a response"
+  ; kind = Code_error
+  }
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload =
+  |       Some
+  |         [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+  |         ; [ "req"
+  |           ; [ [ "method"; "poll/diagnostic" ]
+  |             ; [ "params"; [ "auto"; "1" ] ]
+  |             ]
+  |           ]
+  |         ]
+  |   ; message = "request sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.Stream.next in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters 10-36
+  | Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255, characters 36-41
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload =
+        Some
+          [ [ "id"; [ [ "poll"; [ "auto"; "1" ] ]; [ "i"; "0" ] ] ]
+          ; [ "req"
+            ; [ [ "method"; "poll/diagnostic" ]
+              ; [ "params"; [ "auto"; "1" ] ]
               ]
             ]
           ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"
-          ; "Error: Rule failed to generate the following\n\
-             targets:- foo\n\
-             "
-          ]
-        ]
-      ; [ "promotion"; [] ]
-      ; [ "related"; [] ]
-      ; [ "targets"; [] ]
-      ]
-    ]
-    stderr:
-    foobar
-    File "dune", line 1, characters 0-49:
-    1 | (rule (target foo) (action (bash "echo foobar")))
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    Error: Rule failed to generate the following targets:
-    - foo
-    Had errors, waiting for filesystem changes... |}]
+    ; message = "request sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.Stream.next in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters
+    10-36
+  Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255,
+    characters 36-41
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13 |}]
 
 let%expect_test "create and fix error" =
   setup_diagnostics (fun client ->
@@ -421,95 +813,106 @@ let%expect_test "create and fix error" =
       let* () = dune_build client "./foo.exe" in
       [%expect {|
         Building ./foo.exe
-        Build ./foo.exe failed |}];
+        Error building ./foo.exe:
+        { payload = Some [ [ "id"; [ "auto"; "1" ] ] ]
+        ; message =
+            "connection terminated. this request will never receive a response"
+        ; kind = Code_error
+        } |}];
       let* () = print_diagnostics poll in
-      [%expect
-        {|
-        [ "Add"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "23" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "26" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ]
-            ]
-          ; [ "message"
-            ; [ "Verbatim"
-              ; "This expression has type int but an expression was expected of type\n\
-                \         string\n\
-                 \n\
-                 "
-              ]
-            ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "targets"; [] ]
-          ]
-        ] |}];
+      [%expect.unreachable];
       files [ ("foo.ml", "let () = print_endline \"foo\"") ];
       let* () = dune_build client "./foo.exe" in
-      [%expect
-        {|
-        Building ./foo.exe
-        Build ./foo.exe succeeded |}];
+      [%expect.unreachable];
       let+ () = print_diagnostics poll in
-      [%expect
-        {|
-        [ "Remove"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "23" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "26" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
+      [%expect.unreachable]);
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 415, characters 2-1023
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload =
+  |       Some
+  |         [ [ "id"; [ [ "poll"; [ "auto"; "0" ] ]; [ "i"; "0" ] ] ]
+  |         ; [ "req"
+  |           ; [ [ "method"; "poll/diagnostic" ]
+  |             ; [ "params"; [ "auto"; "0" ] ]
+  |             ]
+  |           ]
+  |         ]
+  |   ; message = "request sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.Stream.next in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters 10-36
+  | Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255, characters 36-41
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload =
+        Some
+          [ [ "id"; [ [ "poll"; [ "auto"; "0" ] ]; [ "i"; "0" ] ] ]
+          ; [ "req"
+            ; [ [ "method"; "poll/diagnostic" ]
+              ; [ "params"; [ "auto"; "0" ] ]
               ]
             ]
-          ; [ "message"
-            ; [ "Verbatim"
-              ; "This expression has type int but an expression was expected of type\n\
-                \         string\n\
-                 \n\
-                 "
-              ]
-            ]
-          ; [ "promotion"; [] ]
-          ; [ "related"; [] ]
-          ; [ "targets"; [] ]
           ]
-        ] |}]);
-  [%expect
-    {|
-    stderr:
-    File "foo.ml", line 1, characters 23-26:
-    1 | let () = print_endline 123
-                               ^^^
-    Error: This expression has type int but an expression was expected of type
-             string
-    Had errors, waiting for filesystem changes...
-    Success, waiting for filesystem changes... |}]
+    ; message = "request sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.Stream.next in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 487, characters
+    10-36
+  Called from Fiber.O.(>>|).(fun) in file "src/fiber/fiber.ml", line 255,
+    characters 36-41
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13 |}]
 
 let request_exn client req n =
   let* staged = Client.Versioned.prepare_request client req in
@@ -580,7 +983,12 @@ let%expect_test "promoting dune files" =
         [%expect
           {|
           Building (alias foo)
-          Build (alias foo) failed |}];
+          Error building (alias foo):
+          { payload = Some [ [ "id"; [ "auto"; "0" ] ] ]
+          ; message =
+              "connection terminated. this request will never receive a response"
+          ; kind = Code_error
+          } |}];
         print_endline "attempting to promote";
         let+ res =
           request_exn client Request.promote
@@ -596,14 +1004,74 @@ let%expect_test "promoting dune files" =
         [%expect
           {|
           attempting to promote
-          promoted file contents:
-          toto |}])
+          Error formatting:
+          { payload =
+              Some
+                [ [ "id"; [ "auto"; "1" ] ]
+                ; [ "req"; [ [ "method"; "promote" ]; [ "params"; "./x" ] ] ]
+                ]
+          ; message = "request sent while connection is dead"
+          ; kind = Code_error
+          } |}])
   in
   run (fun () -> with_dune_watch exec);
-  [%expect
-    {|
-    stderr:
-    File "x", line 1, characters 0-0:
-    Error: Files _build/default/x and _build/default/x.gen differ.
-    Had errors, waiting for filesystem changes...
-    Promoting _build/default/x.gen to x. |}]
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (Dune_util__Report_error.Already_reported)
+  Raised at Dune_engine__Scheduler.Run.go.(fun) in file "src/dune_engine/scheduler.ml", line 1355, characters 27-40
+  Called from Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 12, characters 8-11
+  Re-raised at Stdune__Exn.protectx in file "otherlibs/stdune/exn.ml", line 18, characters 4-11
+  Called from Dune_rpc_diagnostics.(fun) in file "test/expect-tests/dune_rpc_e2e/dune_rpc_diagnostics.ml", line 602, characters 2-38
+  Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19
+
+  Trailing output
+  ---------------
+
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  /-----------------------------------------------------------------------
+  | Internal error: Uncaught exception.
+  | Response.E
+  |   { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+  |   ; message = "notification sent while connection is dead"
+  |   ; kind = Code_error
+  |   }
+  | Raised at Dune_rpc_private.Client.Make.make_notification in file "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  | Re-raised at Stdune__Exn.raise_with_backtrace in file "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  | Re-raised at Stdune__Exn.raise_with_backtrace in file "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  | Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878, characters 10-13
+  \-----------------------------------------------------------------------
+  $PATH/dune build --passive-watch-mode --root . received signal -7
+  Error: exception Response.E
+    { payload = Some [ [ "method"; "shutdown" ]; [ "params"; [] ] ]
+    ; message = "notification sent while connection is dead"
+    ; kind = Code_error
+    }
+  Raised at Dune_rpc_private.Client.Make.make_notification in file
+    "otherlibs/dune-rpc/private/dune_rpc_private.ml", line 429, characters 8-36
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/exn.ml", line 36, characters 27-56
+  Called from Fiber.Scheduler.exec in file "src/fiber/fiber.ml", line 878,
+    characters 10-13 |}]

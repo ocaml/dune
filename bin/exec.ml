@@ -127,6 +127,8 @@ let term =
       in
       let prog = Path.to_string prog in
       let argv = prog :: args in
+      (* The exec doesn't let [Scheduler.go] cleanup the status line. *)
+      Stdune.Console.Status_line.clear ();
       restore_cwd_and_execve common prog argv (Super_context.context_env sctx))
 
 let command = (term, info)

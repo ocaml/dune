@@ -48,6 +48,6 @@ Copy from a generated directory somewhere else
   Error: Cannot find directory: a/foo
   [1]
 
-  $ ls _build/default/b
-  ls: cannot access '_build/default/b': No such file or directory
-  [2]
+  $ dir="_build/default/b"
+  $ if [ -d $dir ]; then echo "$dir exists"; else echo "$dir does not exist"; fi
+  _build/default/b does not exist

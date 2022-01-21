@@ -59,6 +59,8 @@ type odoc_artefact =
   ; odocl_file : Path.Build.t
   ; html_dir : Path.Build.t
   ; html_file : Path.Build.t
+  ; latex_dir : Path.Build.t
+  ; latex_file : Path.Build.t
   ; source : source  (** source of the [odoc_file], either module or mld *)
   }
 
@@ -80,6 +82,8 @@ module Paths = struct
 
   let odocl_root ctx = root ctx ++ "_odocls"
 
+  let latex_root ctx = root ctx ++ "_latex"
+
   let add_pkg_lnu base m =
     base
     ++
@@ -91,19 +95,19 @@ module Paths = struct
 
   let odocl ctx m = add_pkg_lnu (odocl_root ctx) m
 
+  let latex ctx m = add_pkg_lnu (latex_root ctx) m
+
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
-
-  let css_file ctx = html_root ctx ++ "odoc.css"
-
-  let highlight_pack_js ctx = html_root ctx ++ "highlight.pack.js"
-
-  let toplevel_index ctx = html_root ctx ++ "index.html"
 end
 
 module Dep : sig
   (** [html_alias ctx target] returns the alias that depends on all html targets
       produced by odoc for [target] *)
   val html_alias : Context.t -> target -> Alias.t
+
+  (** [latex_alias ctx target] returns the alias that depends on all latex
+      targets produced by odoc for [target] *)
+  val latex_alias : Context.t -> target -> Alias.t
 
   (** [deps ctx pkg libraries] returns all odoc dependencies of [libraries]. If
       [libraries] are all part of a package [pkg], then the odoc dependencies of
@@ -119,6 +123,8 @@ module Dep : sig
   val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.Build.t
 end = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
+
+  let latex_alias ctx m = Alias.doc ~dir:(Paths.latex ctx m)
 
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
@@ -166,6 +172,24 @@ end = struct
     Path.Build.relative doc_dir (sprintf "page-%s%s" t odoc_ext)
 
   let odoc_input t = t
+end
+
+module type Generator_setup = sig
+  val alias : Context.t -> target -> Alias.t
+
+  val name : string
+
+  val setup : SC.t -> odoc_artefact -> unit Memo.build
+
+  val toplevel_path : Context.t -> Path.Build.t
+
+  val toplevel_file_content : Package.t Package.Name.Map.t -> string
+
+  val file_for_generator : odoc_artefact -> Path.Build.t
+
+  val support_files : Context.t -> Path.Build.t list
+
+  val setup_support_files_rule : SC.t -> unit Memo.build
 end
 
 let odoc sctx =
@@ -317,94 +341,7 @@ let setup_library_odoc_rules cctx (library : Library.t) =
   Dep.setup_deps ctx (Lib local_lib)
     (Path.Set.of_list_map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p))
 
-let setup_html sctx (odoc_file : odoc_artefact) =
-  let ctx = Super_context.context sctx in
-  let to_remove, dummy =
-    match odoc_file.source with
-    | Mld -> (odoc_file.html_file, [])
-    | Module ->
-      (* Dummy target so that the bellow rule as at least one target. We do this
-         because we don't know the targets of odoc in this case. The proper way
-         to support this would be to have directory targets. *)
-      let dummy = Action_builder.create_file (odoc_file.html_dir ++ ".dummy") in
-      (odoc_file.html_dir, [ dummy ])
-  in
-  let open Memo.Build.O in
-  let* odoc = odoc sctx in
-  add_rule sctx
-    (Action_builder.progn
-       (Action_builder.with_no_targets
-          (Action_builder.return
-             (Action.Full.make
-                (Action.Progn
-                   [ Action.Remove_tree to_remove
-                   ; Action.Mkdir (Path.build odoc_file.html_dir)
-                   ])))
-       :: Command.run
-            ~dir:(Path.build (Paths.html_root ctx))
-            odoc
-            [ A "html-generate"
-            ; A "-o"
-            ; Path (Path.build (Paths.html_root ctx))
-            ; Dep (Path.build odoc_file.odocl_file)
-            ; Hidden_targets [ odoc_file.html_file ]
-            ]
-       :: dummy))
-
-let setup_css_rule sctx =
-  let open Memo.Build.O in
-  let ctx = Super_context.context sctx in
-  let* odoc = odoc sctx in
-  add_rule sctx
-    (Command.run ~dir:(Path.build ctx.build_dir) odoc
-       [ A "support-files"
-       ; A "-o"
-       ; Path (Path.build (Paths.html_root ctx))
-       ; Hidden_targets [ Paths.css_file ctx; Paths.highlight_pack_js ctx ]
-       ])
-
 let sp = Printf.sprintf
-
-let setup_toplevel_index_rule sctx =
-  let list_items =
-    Super_context.packages sctx
-    |> Package.Name.Map.to_list
-    |> List.filter_map ~f:(fun (name, pkg) ->
-           let name = Package.Name.to_string name in
-           let link = sp {|<a href="%s/index.html">%s</a>|} name name in
-           let version_suffix =
-             match pkg.Package.version with
-             | None -> ""
-             | Some v -> sp {| <span class="version">%s</span>|} v
-           in
-           Some (sp "<li>%s%s</li>" link version_suffix))
-    |> String.concat ~sep:"\n      "
-  in
-  let html =
-    sp
-      {|<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <title>index</title>
-    <link rel="stylesheet" href="./odoc.css"/>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  </head>
-  <body>
-    <main class="content">
-      <div class="by-name">
-      <h2>OCaml package documentation</h2>
-      <ol>
-      %s
-      </ol>
-      </div>
-    </main>
-  </body>
-</html>|}
-      list_items
-  in
-  let ctx = Super_context.context sctx in
-  add_rule sctx (Action_builder.write_file (Paths.toplevel_index ctx) html)
 
 let libs_of_pkg sctx ~pkg =
   SC.lib_entries_of_package sctx pkg
@@ -449,15 +386,19 @@ let entry_modules sctx ~pkg =
 let create_odoc ctx ~target odoc_file =
   let html_base = Paths.html ctx target in
   let odocl_base = Paths.odocl ctx target in
+  let latex_base = Paths.latex ctx target in
   let basename = Path.Build.basename odoc_file |> Filename.chop_extension in
   let odocl_file = odocl_base ++ (basename ^ ".odocl") in
   match target with
   | Lib _ ->
     let html_dir = html_base ++ Stdune.String.capitalize basename in
+    (* let latex_dir = latex_base ++ Stdune.String.capitalize basename in *)
     { odoc_file
     ; odocl_file
     ; html_dir
     ; html_file = html_dir ++ "index.html"
+    ; latex_dir = latex_base
+    ; latex_file = latex_base ++ (basename ^ ".tex")
     ; source = Module
     }
   | Pkg _ ->
@@ -468,12 +409,13 @@ let create_odoc ctx ~target odoc_file =
         html_base
         ++ sprintf "%s.html"
              (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
+    ; latex_dir = latex_base
+    ; latex_file =
+        latex_base
+        ++ sprintf "%s.tex"
+             (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
     ; source = Mld
     }
-
-let static_html ctx =
-  let open Paths in
-  [ css_file ctx; highlight_pack_js ctx; toplevel_index ctx ]
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
@@ -580,6 +522,140 @@ let setup_pkg_rules_def memo_name f =
     ~input:(module Input)
     ~implicit_output:Rules.implicit_output f
 
+module Generator_helper (Setup : Generator_setup) = struct
+  let setup_support_files_rule = Setup.setup_support_files_rule
+
+  let setup_toplevel_index_rule sctx =
+    let content_string =
+      Super_context.packages sctx |> Setup.toplevel_file_content
+    in
+    let ctx = Super_context.context sctx in
+    add_rule sctx
+      (Action_builder.write_file (Setup.toplevel_path ctx) content_string)
+
+  let setup_lib_rules_def =
+    let module Input = struct
+      module Super_context = Super_context.As_memo_key
+
+      type t = Super_context.t * Lib.Local.t
+
+      let equal (sc1, l1) (sc2, l2) =
+        Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
+
+      let hash (sc, l) = Hashtbl.hash (Super_context.hash sc, Lib.Local.hash l)
+
+      let to_dyn _ = Dyn.Opaque
+    end in
+    let f (sctx, lib) =
+      let ctx = Super_context.context sctx in
+      let* odocs = odoc_artefacts sctx (Lib lib) in
+      let* () =
+        Memo.Build.parallel_iter odocs ~f:(fun odoc -> Setup.setup sctx odoc)
+      in
+      let files =
+        List.map ~f:(fun o -> o |> Setup.file_for_generator |> Path.build) odocs
+      in
+      let additional_files =
+        Path.build (Setup.toplevel_path ctx)
+        :: List.map ~f:Path.build (Setup.support_files ctx)
+      in
+      Rules.Produce.Alias.add_deps
+        (Setup.alias ctx (Lib lib))
+        (Action_builder.paths (List.rev_append additional_files files))
+    in
+    Memo.With_implicit_output.create
+      ("setup-library-" ^ Setup.name ^ "-rules")
+      ~implicit_output:Rules.implicit_output
+      ~input:(module Input)
+      f
+
+  let setup_lib_rules sctx lib =
+    Memo.With_implicit_output.exec setup_lib_rules_def (sctx, lib)
+
+  let super_setup_pkg_rules_def = setup_pkg_rules_def
+
+  let setup_pkg_rules_def =
+    let f (sctx, pkg, (libs : Lib.Local.t list)) =
+      let ctx = Super_context.context sctx in
+      let* () = Memo.Build.parallel_iter libs ~f:(setup_lib_rules sctx)
+      and* pkg_odocs =
+        let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
+        let+ () =
+          Memo.Build.parallel_iter pkg_odocs ~f:(fun o -> Setup.setup sctx o)
+        in
+        pkg_odocs
+      and* lib_odocs =
+        Memo.Build.parallel_map libs ~f:(fun lib ->
+            odoc_artefacts sctx (Lib lib))
+      in
+      let odocs = List.concat (pkg_odocs :: lib_odocs) in
+      let files =
+        List.map ~f:(fun o -> o |> Setup.file_for_generator |> Path.build) odocs
+      in
+      let additional_files =
+        Path.build (Setup.toplevel_path ctx)
+        :: List.map ~f:Path.build (Setup.support_files ctx)
+      in
+      Rules.Produce.Alias.add_deps
+        (Setup.alias ctx (Pkg pkg))
+        (Action_builder.paths (List.rev_append additional_files files))
+    in
+    super_setup_pkg_rules_def ("setup-package-" ^ Setup.name ^ "-rules") f
+
+  let setup_pkg_rules sctx ~pkg ~libs : unit Memo.Build.t =
+    Memo.With_implicit_output.exec setup_pkg_rules_def (sctx, pkg, libs)
+
+  let setup_package_aliases_target sctx (pkg : Package.t) =
+    let ctx = Super_context.context sctx in
+    let name = Package.name pkg in
+    let alias =
+      let pkg_dir = Package.dir pkg in
+      let dir = Path.Build.append_source ctx.build_dir pkg_dir in
+      Alias.doc ~dir
+    in
+    Setup.alias ctx (Pkg name)
+    :: (libs_of_pkg sctx ~pkg:name
+       |> List.map ~f:(fun lib -> Setup.alias ctx (Lib lib)))
+    |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
+    |> Action_builder.deps
+    |> Rules.Produce.Alias.add_deps alias
+
+  let gen_base_rules sctx =
+    setup_support_files_rule sctx >>> setup_toplevel_index_rule sctx
+
+  let gen_specific_rules sctx lib_unique_name_or_pkg =
+    (* TODO we can be a better with the error handling in the case where
+       lib_unique_name_or_pkg is neither a valid pkg or lnu *)
+    let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
+    let setup_pkg_rules pkg =
+      let* pkg_libs = load_all_odoc_rules_pkg sctx ~pkg in
+      setup_pkg_rules sctx ~pkg ~libs:pkg_libs
+    in
+    (* jeremiedimino: why isn't [None] some kind of error here? *)
+    let* lib =
+      let+ lib = Lib.DB.find lib_db lib in
+      Option.bind ~f:Lib.Local.of_lib lib
+    in
+    let+ () =
+      match lib with
+      | None -> Memo.Build.return ()
+      | Some lib -> (
+        match Lib_info.package (Lib.Local.info lib) with
+        | None -> setup_lib_rules sctx lib
+        | Some pkg -> setup_pkg_rules pkg)
+    and+ () =
+      match
+        Package.Name.Map.find (SC.packages sctx)
+          (Package.Name.of_string lib_unique_name_or_pkg)
+      with
+      | None -> Memo.Build.return ()
+      | Some pkg ->
+        let name = Package.name pkg in
+        setup_pkg_rules name
+    in
+    ()
+end
+
 let setup_pkg_odocl_rules_def =
   let f (sctx, pkg, (libs : Lib.Local.t list)) =
     let* requires =
@@ -606,78 +682,230 @@ let setup_pkg_odocl_rules_def =
 let setup_pkg_odocl_rules sctx ~pkg ~libs : unit Memo.Build.t =
   Memo.With_implicit_output.exec setup_pkg_odocl_rules_def (sctx, pkg, libs)
 
-let setup_lib_html_rules_def =
-  let module Input = struct
-    module Super_context = Super_context.As_memo_key
+module Html_setup : Generator_setup = struct
+  let alias = Dep.html_alias
 
-    type t = Super_context.t * Lib.Local.t
+  let name = "html"
 
-    let equal (sc1, l1) (sc2, l2) =
-      Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
-
-    let hash (sc, l) = Hashtbl.hash (Super_context.hash sc, Lib.Local.hash l)
-
-    let to_dyn _ = Dyn.Opaque
-  end in
-  let f (sctx, lib) =
+  let setup sctx (odoc_file : odoc_artefact) =
     let ctx = Super_context.context sctx in
-    let* odocs = odoc_artefacts sctx (Lib lib) in
-    let* () =
-      Memo.Build.parallel_iter odocs ~f:(fun odoc -> setup_html sctx odoc)
+    let to_remove, dummy =
+      match odoc_file.source with
+      | Mld -> (odoc_file.html_file, [])
+      | Module ->
+        (* Dummy target so that the bellow rule as at least one target. We do
+           this because we don't know the targets of odoc in this case. The
+           proper way to support this would be to have directory targets. *)
+        let dummy =
+          Action_builder.create_file (odoc_file.html_dir ++ ".dummy")
+        in
+        (odoc_file.html_dir, [ dummy ])
     in
-    let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
-    let static_html = List.map ~f:Path.build (static_html ctx) in
-    Rules.Produce.Alias.add_deps
-      (Dep.html_alias ctx (Lib lib))
-      (Action_builder.paths (List.rev_append static_html html_files))
-  in
-  Memo.With_implicit_output.create "setup-library-html-rules"
-    ~implicit_output:Rules.implicit_output
-    ~input:(module Input)
-    f
+    let open Memo.Build.O in
+    let* odoc = odoc sctx in
+    add_rule sctx
+      (Action_builder.progn
+         (Action_builder.with_no_targets
+            (Action_builder.return
+               (Action.Full.make
+                  (Action.Progn
+                     [ Action.Remove_tree to_remove
+                     ; Action.Mkdir (Path.build odoc_file.html_dir)
+                     ])))
+         :: Command.run
+              ~dir:(Path.build (Paths.html_root ctx))
+              odoc
+              [ A "html-generate"
+              ; A "-o"
+              ; Path (Path.build (Paths.html_root ctx))
+              ; Dep (Path.build odoc_file.odocl_file)
+              ; Hidden_targets [ odoc_file.html_file ]
+              ]
+         :: dummy))
 
-let setup_lib_html_rules sctx lib =
-  Memo.With_implicit_output.exec setup_lib_html_rules_def (sctx, lib)
+  let toplevel_path ctx = Paths.html_root ctx ++ "index.html"
 
-let setup_pkg_html_rules_def =
-  let f (sctx, pkg, (libs : Lib.Local.t list)) =
+  let toplevel_file_content map =
+    Package.Name.Map.to_list map
+    |> List.map ~f:(fun (name, pkg) ->
+           let name = Package.Name.to_string name in
+           let link = sp {|<a href="%s/index.html">%s</a>|} name name in
+           let version_suffix =
+             match pkg.Package.version with
+             | None -> ""
+             | Some v -> sp {| <span class="version">%s</span>|} v
+           in
+           sp "<li>%s%s</li>" link version_suffix)
+    |> String.concat ~sep:"\n      "
+    |> sp
+         {|<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>index</title>
+    <link rel="stylesheet" href="./odoc.css"/>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  </head>
+  <body>
+    <main class="content">
+      <div class="by-name">
+      <h2>OCaml package documentation</h2>
+      <ol>
+      %s
+      </ol>
+      </div>
+    </main>
+  </body>
+</html>|}
+
+  let file_for_generator o = o.html_file
+
+  let css_file ctx = Paths.html_root ctx ++ "odoc.css"
+
+  let highlight_pack_js ctx = Paths.html_root ctx ++ "highlight.pack.js"
+
+  let support_files ctx = [ css_file ctx; highlight_pack_js ctx ]
+
+  let setup_support_files_rule sctx =
+    let open Memo.Build.O in
     let ctx = Super_context.context sctx in
-    let* () = Memo.Build.parallel_iter libs ~f:(setup_lib_html_rules sctx)
-    and* pkg_odocs =
-      let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
-      let+ () =
-        Memo.Build.parallel_iter pkg_odocs ~f:(fun o -> setup_html sctx o)
-      in
-      pkg_odocs
-    and* lib_odocs =
-      Memo.Build.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
+    let* odoc = odoc sctx in
+    add_rule sctx
+      (Command.run ~dir:(Path.build ctx.build_dir) odoc
+         [ A "support-files"
+         ; A "-o"
+         ; Path (Path.build (Paths.html_root ctx))
+         ; Hidden_targets [ css_file ctx; highlight_pack_js ctx ]
+         ])
+end
+
+module Html_generator = Generator_helper (Html_setup)
+
+module Latex_setup : Generator_setup = struct
+  let alias = Dep.latex_alias
+
+  let name = "latex"
+
+  let setup sctx (odoc_file : odoc_artefact) =
+    let ctx = Super_context.context sctx in
+    let to_remove =
+      match odoc_file.source with
+      | Mld -> odoc_file.latex_file
+      | Module -> odoc_file.latex_dir
     in
-    let odocs = List.concat (pkg_odocs :: lib_odocs) in
-    let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
-    let static_html = List.map ~f:Path.build (static_html ctx) in
-    Rules.Produce.Alias.add_deps
-      (Dep.html_alias ctx (Pkg pkg))
-      (Action_builder.paths (List.rev_append static_html html_files))
-  in
-  setup_pkg_rules_def "setup-package-html-rules" f
+    let open Memo.Build.O in
+    let* odoc = odoc sctx in
+    add_rule sctx
+      (Action_builder.progn
+         [ Action_builder.with_no_targets
+             (Action_builder.return
+                (Action.Full.make
+                   (Action.Progn
+                      [ Action.Remove_tree to_remove
+                      ; Action.Mkdir (Path.build odoc_file.latex_dir)
+                      ])))
+         ; Command.run
+             ~dir:(Path.build (Paths.latex_root ctx))
+             odoc
+             [ A "latex-generate"
+             ; A "-o"
+             ; Path (Path.build (Paths.latex_root ctx))
+             ; Dep (Path.build odoc_file.odocl_file)
+             ; Hidden_targets [ odoc_file.latex_file ]
+             ]
+         ])
 
-let setup_pkg_html_rules sctx ~pkg ~libs : unit Memo.Build.t =
-  Memo.With_implicit_output.exec setup_pkg_html_rules_def (sctx, pkg, libs)
+  let toplevel_path ctx = Paths.latex_root ctx ++ "index.tex"
 
-let setup_package_aliases sctx (pkg : Package.t) =
-  let ctx = Super_context.context sctx in
-  let name = Package.name pkg in
-  let alias =
-    let pkg_dir = Package.dir pkg in
-    let dir = Path.Build.append_source ctx.build_dir pkg_dir in
-    Alias.doc ~dir
-  in
-  Dep.html_alias ctx (Pkg name)
-  :: (libs_of_pkg sctx ~pkg:name
-     |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
-  |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
-  |> Action_builder.deps
-  |> Rules.Produce.Alias.add_deps alias
+  let toplevel_file_content map =
+    Package.Name.Map.to_list map
+    |> List.map ~f:(fun (name, _pkg) ->
+           let name = Package.Name.to_string name in
+           let tex_pkg_name =
+             name |> String.capitalize
+             |> Re.replace_string (Re.str "-" |> Re.compile) ~by:"_" ~all:true
+           in
+           sp {|\input{%s/index.tex}
+\input{%s/%s.tex}|} name name tex_pkg_name)
+    |> String.concat ~sep:"\n\n"
+    |> sp
+         {latex|\documentclass[11pt,a4paper,twoside]{article}
+\usepackage[left=25mm,right=25mm,top=25mm,bottom=25mm,marginparwidth=50pt]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[colorlinks=true,breaklinks=true]{hyperref}
+\usepackage{color}
+\usepackage{changepage}
+\usepackage{listings}
+
+\newcommand{\ocamlcodefragment}[1]{{\ttfamily\setlength{\parindent}{0cm}%%
+\raggedright#1}}
+\newcommand{\ocamlinlinecode}[1]{{\ttfamily#1}}
+\newcommand{\bold}[1]{{\bfseries#1}}
+\newenvironment{ocamlexception}{\bfseries}{}
+\newenvironment{ocamlextension}{\bfseries}{}
+\newenvironment{ocamlarrow}{}
+
+\newcommand{\ocamltag}[2]{\begin{ocaml#1}#2\end{ocaml#1}}
+\newenvironment{ocamlkeyword}{\bfseries}{}
+\newenvironment{ocamlconstructor}{\bfseries}{}
+\newenvironment{ocamltype-var}{\itshape\ttfamily}{}
+
+\newcommand{\ocamlhighlight}{\bfseries\uline}
+\newcommand{\ocamlerror}{\bfseries}
+\newcommand{\ocamlwarning}{\bfseries}
+
+\definecolor{lightgray}{gray}{0.97}
+\definecolor{gray}{gray}{0.5}
+\newcommand{\ocamlcomment}{\color{gray}\normalfont\small}
+\newcommand{\ocamlstring}{\color{gray}\bfseries}
+\newenvironment{ocamlindent}{\begin{adjustwidth}{2em}{0pt}}{\end{adjustwidth}}
+\newenvironment{ocamltabular}[2][l]{\begin{tabular}{#2}}%%
+{\end{tabular}}
+
+\lstnewenvironment{ocamlcodeblock}{
+  \lstset{
+    backgroundcolor = \color{lightgray},
+    basicstyle=\ttfamily,
+    showstringspaces=false,
+    language=caml,
+    escapeinside={$}{$},
+    columns=fullflexible,
+    stringstyle=\ocamlstring,
+    commentstyle=\ocamlcomment,
+    keepspaces=true,
+    keywordstyle=\ocamlkeyword,
+    moredelim=[is][\ocamlhighlight]{<<}{>>},
+    moredelim=[s][\ocamlstring]{\{|}{|\}},
+    moredelim=[s][\ocamlstring]{\{delimiter|}{|delimiter\}},
+    keywords={[2]{val,initializer,nonrec}}, keywordstyle={[2]\ocamlkeyword},
+    belowskip=0\baselineskip,
+    upquote=true,
+    literate={'"'}{\textquotesingle "\textquotesingle}3
+    {'\\"'}{\textquotesingle \textbackslash"\textquotesingle}4,
+  }
+}{}
+
+\title{Documentation of Package}
+\date{}
+\author{}
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+%s
+
+\end{document}
+|latex}
+
+  let setup_support_files_rule _ = Memo.Build.return ()
+
+  let support_files _ = []
+
+  let file_for_generator o = o.latex_file
+end
+
+module Latex_generator = Generator_helper (Latex_setup)
 
 let default_index ~pkg entry_modules =
   let b = Buffer.create 512 in
@@ -754,7 +982,8 @@ let gen_project_rules sctx project =
   Package.Name.Map_traversals.parallel_iter packages
     ~f:(fun _ (pkg : Package.t) ->
       (* setup @doc to build the correct html for the package *)
-      setup_package_aliases sctx pkg)
+      Html_generator.setup_package_aliases_target sctx pkg
+      >>> Latex_generator.setup_package_aliases_target sctx pkg)
 
 let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
   match l.visibility with
@@ -766,8 +995,13 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
       >>| Option.value_exn
     in
     let lib = Lib (Lib.Local.of_lib_exn lib) in
+    let* () =
+      Rules.Produce.Alias.add_deps (Alias.private_doc ~dir)
+        (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias
+       |> Action_builder.dep)
+    in
     Rules.Produce.Alias.add_deps (Alias.private_doc ~dir)
-      (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
+      (lib |> Dep.latex_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 
 let has_rules m =
   let+ rules = Rules.collect_unit (fun () -> m) in
@@ -784,8 +1018,8 @@ let with_package sctx pkg ~f =
 let gen_rules sctx ~dir:_ rest =
   match rest with
   | [] -> Memo.Build.return (Build_config.Rules (Subdir_set.All, Rules.empty))
-  | [ "_html" ] ->
-    has_rules (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
+  | [ "_html" ] -> has_rules (Html_generator.gen_base_rules sctx)
+  | [ "_latex" ] -> has_rules (Latex_generator.gen_base_rules sctx)
   | [ "_mlds"; pkg ] ->
     with_package sctx pkg ~f:(fun pkg ->
         let* _mlds, rules = package_mlds sctx ~pkg in
@@ -829,35 +1063,7 @@ let gen_rules sctx ~dir:_ rest =
        in
        ())
   | [ "_html"; lib_unique_name_or_pkg ] ->
-    has_rules
-      ((* TODO we can be a better with the error handling in the case where
-          lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-       let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
-       let setup_pkg_html_rules pkg =
-         let* pkg_libs = load_all_odoc_rules_pkg sctx ~pkg in
-         setup_pkg_html_rules sctx ~pkg ~libs:pkg_libs
-       in
-       (* jeremiedimino: why isn't [None] some kind of error here? *)
-       let* lib =
-         let+ lib = Lib.DB.find lib_db lib in
-         Option.bind ~f:Lib.Local.of_lib lib
-       in
-       let+ () =
-         match lib with
-         | None -> Memo.Build.return ()
-         | Some lib -> (
-           match Lib_info.package (Lib.Local.info lib) with
-           | None -> setup_lib_html_rules sctx lib
-           | Some pkg -> setup_pkg_html_rules pkg)
-       and+ () =
-         match
-           Package.Name.Map.find (SC.packages sctx)
-             (Package.Name.of_string lib_unique_name_or_pkg)
-         with
-         | None -> Memo.Build.return ()
-         | Some pkg ->
-           let name = Package.name pkg in
-           setup_pkg_html_rules name
-       in
-       ())
+    has_rules (Html_generator.gen_specific_rules sctx lib_unique_name_or_pkg)
+  | [ "_latex"; lib_unique_name_or_pkg ] ->
+    has_rules (Latex_generator.gen_specific_rules sctx lib_unique_name_or_pkg)
   | _ -> Memo.Build.return Build_config.Redirect_to_parent

@@ -19,7 +19,12 @@
 (alias
  (name runtest)
  (deps _doc/_html/index.html)
- (action (echo "%{read:_doc/_html/index.html}")))
+ (action (echo "HTML:\n%{read:_doc/_html/index.html}\n\n")))
+ 
+ (alias
+  (name runtest)
+  (deps _doc/_latex/index.tex)
+  (action (echo "LATEX:\n%{read:_doc/_latex/index.tex}\n\n")))
 
 (alias
  (name foo-mld)

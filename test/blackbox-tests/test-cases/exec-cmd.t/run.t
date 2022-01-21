@@ -22,4 +22,6 @@ On Macos there is an additional message about saving the DB.
                        
   Done: 0% (0/0, 0 left) (jobs: 0)
                                   
-  Done: 0% (0/0, 0 left) (jobs: 1)Bar
+  Done: 0% (0/0, 0 left) (jobs: 1)
+                                  
+  Bar

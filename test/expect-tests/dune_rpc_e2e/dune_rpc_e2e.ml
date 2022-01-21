@@ -10,6 +10,9 @@ module Config = Dune_util.Config
 
 let () = if false then Dune_util.Log.init ~file:(Out_channel stderr) ()
 
+(* enable to debug process stdout/stderr *)
+let debug = false
+
 let dune_prog =
   lazy
     (let path = Env.path Env.initial in
@@ -156,8 +159,10 @@ let with_dune_watch ?env f =
   (* We wait until the tests finish to print stdout and stderr for determinism.
      But this has the disadvantage that the fiber above will not always
      terminate for failed tests. Thus, the output below will never be shown. *)
-  if stdout <> "" then printfn "stdout:\n%s" stdout;
-  if stderr <> "" then printfn "stderr:\n%s" stderr;
+  if debug then (
+    if stdout <> "" then printfn "stdout:\n%s" stdout;
+    if stderr <> "" then printfn "stderr:\n%s" stderr
+  );
   res
 
 let config =

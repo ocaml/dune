@@ -13,6 +13,12 @@ val to_string : t -> dir:Path.t -> string
 
 val to_path : ?error_loc:Loc.t -> t -> dir:Path.t -> Path.t
 
+(** The value corresponds to a dependency given by the user. It is interpreted
+    relative to the build directory given. It is converted to an external path
+    if the path is outside the workspace. Otherwise a path in the build
+    directory is returned. *)
+val to_path_in_build : ?error_loc:Loc.t -> t -> dir:Path.Build.t -> Path.t
+
 module L : sig
   val strings : string list -> t list
 

@@ -129,9 +129,9 @@ end = struct
         let loc = String_with_vars.loc glob in
         let+ src_glob = Expander.No_deps.expand_str expander glob in
         if Filename.is_relative src_glob then
-          Some
-            (Path.Source.relative src_dir src_glob ~error_loc:loc
-            |> Path.Source.parent_exn)
+          match Path.relative (Path.source src_dir) src_glob ~error_loc:loc with
+          | In_source_tree s -> Some (Path.Source.parent_exn s)
+          | In_build_dir _ | External _ -> None
         else None
       in
       Memo.return { merlin = None; cctx = None; js = None; source_dirs }

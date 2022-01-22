@@ -137,6 +137,9 @@ module type Local_gen = sig
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> 'w t -> string list -> 'w t
+
+    val relative_result :
+      'w t -> string list -> ('w t, [ `Outside_the_workspace ]) Result.t
   end
 
   val unlink_no_err : 'w t -> unit

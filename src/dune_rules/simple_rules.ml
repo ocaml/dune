@@ -142,7 +142,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let* glob_in_src =
     let+ src_glob = Expander.No_deps.expand_str expander def.files in
     if Filename.is_relative src_glob then
-      Path.Source.relative src_dir src_glob ~error_loc:loc |> Path.source
+      Path.relative (Path.source src_dir) src_glob ~error_loc:loc
     else
       let since = (2, 7) in
       if def.syntax_version < since then

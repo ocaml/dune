@@ -219,10 +219,9 @@ end = struct
         Action_builder.Expander.expand ~dir:(Path.build env.dir) ~mode template
           ~f:(Expander.expand_pform env.expander)
 
-      let expand_path env sw =
-        let+ v = expand env ~mode:Single sw in
-        Value.to_path v ~error_loc:(String_with_vars.loc sw)
-          ~dir:(Path.build env.dir)
+      let expand_path t sw =
+        let+ v = expand t ~mode:Single sw in
+        Value.to_path_in_build v ~error_loc:(String_with_vars.loc sw) ~dir:t.dir
 
       let expand_string env sw =
         let+ v = expand env ~mode:Single sw in
@@ -243,8 +242,8 @@ end = struct
 
         let expand_path env sw =
           let+! v = expand env ~mode:Single sw in
-          Value.to_path v ~error_loc:(String_with_vars.loc sw)
-            ~dir:(Path.build env.dir)
+          Value.to_path_in_build v ~error_loc:(String_with_vars.loc sw)
+            ~dir:env.dir
 
         let expand_string env sw =
           let+! v = expand env ~mode:Single sw in

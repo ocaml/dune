@@ -219,7 +219,7 @@ end = struct
         | "." :: rest -> loop t rest
         | ".." :: rest -> (
           match parent t with
-          | None -> Result.Error `Outside
+          | None -> Result.Error `Outside_the_workspace
           | Some parent -> loop parent rest)
         | fn :: rest ->
           if is_root t then loop fn rest else loop (t ^ "/" ^ fn) rest
@@ -229,7 +229,7 @@ end = struct
     let relative ?error_loc t components =
       match relative_result t components with
       | Result.Ok t -> t
-      | Error `Outside ->
+      | Error `Outside_the_workspace ->
         User_error.raise ?loc:error_loc
           [ Pp.textf "path outside the workspace: %s from %s"
               (String.concat ~sep:"/" components)
@@ -243,7 +243,7 @@ end = struct
         [ ("t", to_dyn t); ("path", String path) ];
     match L.relative_result t (explode_path path) with
     | Result.Ok t -> t
-    | Error `Outside ->
+    | Error `Outside_the_workspace ->
       User_error.raise ?loc:error_loc
         [ Pp.textf "path outside the workspace: %s from %s" path t ]
 
@@ -419,6 +419,9 @@ module Local : sig
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
+
+    val relative_result :
+      t -> string list -> (t, [ `Outside_the_workspace ]) Result.t
   end
 
   val split_first_component : t -> (string * t) option
@@ -754,7 +757,15 @@ let relative ?error_loc t fn =
   | _ when not (Filename.is_relative fn) -> external_ (External.of_string fn)
   | _ -> (
     match t with
-    | In_source_tree p -> make_local_path (Local.relative p fn ?error_loc)
+    | In_source_tree p -> (
+      let fn' = explode_path fn in
+      match Local.L.relative_result p fn' with
+      | Ok l -> make_local_path l
+      | Error `Outside_the_workspace ->
+        external_
+          (External.relative
+             (External.of_string (Kind.to_absolute_filename (kind t)))
+             fn))
     | In_build_dir p -> in_build_dir (Local.relative p fn ?error_loc)
     | External s -> external_ (External.relative s fn))
 

@@ -39,6 +39,22 @@ let to_path ?error_loc t ~dir =
   | String s -> Path.relative ?error_loc dir s
   | Dir p | Path p -> p
 
+let to_path_in_build ?error_loc t ~dir =
+  match t with
+  | String s -> (
+    match Path.Build.extract_build_context dir with
+    | None -> Path.relative ?error_loc (Path.build dir) s
+    | Some (bctxt, source) -> (
+      let path = Path.relative ?error_loc (Path.source source) s in
+      match path with
+      | In_source_tree s ->
+        Path.build
+          (Path.Build.relative
+             (Path.Build.of_string bctxt)
+             (Path.Source.to_string s))
+      | In_build_dir _ | External _ -> path))
+  | Dir p | Path p -> p
+
 module L = struct
   let to_dyn t = Dyn.List (List.map t ~f:to_dyn)
 

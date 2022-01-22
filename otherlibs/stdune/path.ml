@@ -218,11 +218,9 @@ end = struct
         | [] -> Result.Ok t
         | "." :: rest -> loop t rest
         | ".." :: rest -> (
-          if is_root t then Result.Error ()
-          else
-            match parent t with
-            | None -> Error ()
-            | Some parent -> loop parent rest)
+          match parent t with
+          | None -> Result.Error `Outside
+          | Some parent -> loop parent rest)
         | fn :: rest ->
           if is_root t then loop fn rest else loop (t ^ "/" ^ fn) rest
       in
@@ -231,7 +229,7 @@ end = struct
     let relative ?error_loc t components =
       match relative_result t components with
       | Result.Ok t -> t
-      | Error () ->
+      | Error `Outside ->
         User_error.raise ?loc:error_loc
           [ Pp.textf "path outside the workspace: %s from %s"
               (String.concat ~sep:"/" components)
@@ -245,7 +243,7 @@ end = struct
         [ ("t", to_dyn t); ("path", String path) ];
     match L.relative_result t (explode_path path) with
     | Result.Ok t -> t
-    | Error () ->
+    | Error `Outside ->
       User_error.raise ?loc:error_loc
         [ Pp.textf "path outside the workspace: %s from %s" path t ]
 

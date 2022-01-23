@@ -1,5 +1,5 @@
-Unreleased
-----------
+2.9.2 (23/01/2022)
+------------------
 
 - Fix missing -linkall flag when linking library dune-sites.plugin
   ( #4348, @kakadu, @bobot, reported by @kakadu)

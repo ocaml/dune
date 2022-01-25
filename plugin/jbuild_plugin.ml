@@ -1,11 +1,12 @@
+let directive_table = Toploop.directive_table [@@ocaml.warning "-3"]
+
 let () =
-  Hashtbl.add Toploop.directive_table "require"
-    (Toploop.Directive_string ignore);
-  Hashtbl.add Toploop.directive_table "use"
+  Hashtbl.add directive_table "require" (Toploop.Directive_string ignore);
+  Hashtbl.add directive_table "use"
     (Toploop.Directive_string
        (fun _ ->
          failwith "#use is not allowed inside a dune file in OCaml syntax"));
-  Hashtbl.add Toploop.directive_table "use_mod"
+  Hashtbl.add directive_table "use_mod"
     (Toploop.Directive_string
        (fun _ ->
          failwith "#use is not allowed inside a dune file in OCaml syntax"))

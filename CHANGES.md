@@ -302,6 +302,12 @@ Unreleased
 
 - Add link_flags in the env stanza (#5215)
 
+2.9.3 (unreleased)
+------------------
+
+- Disable warning for deprecated Toploop functions used in dune files written in
+  OCaml syntax. Restores 4.02 compatibility. (#5381, @nojb)
+
 2.9.2 (23/01/2022)
 ------------------
 

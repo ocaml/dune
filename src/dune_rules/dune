@@ -28,7 +28,6 @@
 (ocamllex ocamlobjinfo cram_lexer)
 
 (rule
- (mode promote)
  (target assets.ml)
  (action
   (with-stdout-to

@@ -339,22 +339,31 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
 let gen_rules t ~sctx ~dir ~scope ~expander =
   let open Memo.Build.O in
   let register_rules () =
-    let* files_to_mdx = files_to_mdx t ~sctx ~dir
-    and* mdx_prog =
-      Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
-        ~hint:"opam install mdx" "ocaml-mdx"
-    in
-    let* mdx_prog_gen =
-      if Dune_lang.Syntax.Version.Infix.(t.version >= (0, 2)) then
-        Memo.Build.Option.map (Some t)
-          ~f:(mdx_prog_gen ~sctx ~dir ~scope ~expander ~mdx_prog)
-      else
-        Memo.Build.return None
-    in
-    Memo.Build.parallel_iter files_to_mdx
-      ~f:
-        (gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog
-           ~mdx_prog_gen)
+    let* files_to_mdx = files_to_mdx t ~sctx ~dir in
+    let no_files = List.is_empty files_to_mdx in
+    if no_files then
+      User_warning.emit ~loc:t.loc
+        [ Pp.text
+            "The glob used in the 'files' field of this mdx stanza does not \
+             match any file. Note that in the absence of the 'files' field the \
+             default glob '*.md' is used."
+        ];
+    Memo.Build.when_ (not no_files) (fun () ->
+        let* mdx_prog =
+          Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
+            ~hint:"opam install mdx" "ocaml-mdx"
+        in
+        let* mdx_prog_gen =
+          if Dune_lang.Syntax.Version.Infix.(t.version >= (0, 2)) then
+            Memo.Build.Option.map (Some t)
+              ~f:(mdx_prog_gen ~sctx ~dir ~scope ~expander ~mdx_prog)
+          else
+            Memo.Build.return None
+        in
+        Memo.Build.parallel_iter files_to_mdx
+          ~f:
+            (gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog
+               ~mdx_prog_gen))
   in
   let* only_packages = Only_packages.get () in
   let do_it =

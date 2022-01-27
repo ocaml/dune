@@ -108,7 +108,7 @@ Lists are sequences of values enclosed by parentheses. For instance
 ``(x y z)`` is a list containing the three atoms ``x``, ``y`` and
 ``z``. Lists can be empty, for instance: ``()``.
 
-Lists can be nested, allowing arbitrary reprensentation for complex
+Lists can be nested, allowing arbitrary representation for complex
 descriptions. For instance:
 
 .. code::

@@ -255,6 +255,8 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
         Dep_conf_eval.unnamed ~expander (mdx_package_deps @ mdx_generic_deps)
       in
       Action_builder.with_no_targets deps
+      >>> Action_builder.with_no_targets
+            (Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC")
       >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
       >>> Command.run ~dir:(Path.build dir) ~stdout_to:files.corrected
             executable command_line

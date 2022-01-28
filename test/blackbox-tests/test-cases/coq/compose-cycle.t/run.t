@@ -6,6 +6,7 @@
   - b
   - a
   - b
+  -> required by _build/default/a/a.v.d
   -> required by _build/default/a/a.vo
   -> required by _build/install/default/lib/coq/user-contrib/a/a.vo
   -> required by _build/default/ccycle.install
@@ -18,6 +19,7 @@
   - a
   - b
   - a
+  -> required by _build/default/b/b.v.d
   -> required by _build/default/b/b.vo
   -> required by _build/install/default/lib/coq/user-contrib/b/b.vo
   -> required by _build/default/ccycle.install

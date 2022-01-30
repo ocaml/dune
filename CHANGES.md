@@ -74,9 +74,6 @@ Unreleased
 - Improve error handling of misbehaving cram scripts. (#4981, fix #4230,
   @rgrinberg)
 
-- Fix missing -linkall flag when linking library dune-sites.plugin
-  ( #4348, @kakadu, @bobot, reported by @kakadu)
-
 - Fix `foreign_stubs` inside a `tests` stanza. Previously, dune would crash
   when this field was present (#4942, fix #4946, @rgrinberg)
 
@@ -305,16 +302,24 @@ Unreleased
 
 - Add link_flags in the env stanza (#5215)
 
-- Switch to the stag formatting API to be compatible with OCaml 5.0 (#5350,
-  @emillon).
-
-2.9.2 (unreleased)
+2.9.3 (unreleased)
 ------------------
 
-- Fix post-processing of dune-package (fix #4389, @strub)
+- Disable warning for deprecated Toploop functions used in dune files written in
+  OCaml syntax. Restores 4.02 compatibility. (#5381, @nojb)
+
+2.9.2 (23/01/2022)
+------------------
+
+- Fix missing -linkall flag when linking library dune-sites.plugin
+  ( #4348, @kakadu, @bobot, reported by @kakadu)
 
 - No longer reference deprecated Toploop functions when using dune files in
   OCaml syntax. (#4834, fixes #4830, @nojb)
+
+- Use the stag format API to be compatible with OCaml 5.0 (#5351, @emillon).
+
+- Fix post-processing of dune-package (fix #4389, @strub)
 
 2.9.1 (07/09/2021)
 ------------------

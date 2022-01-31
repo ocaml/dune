@@ -143,11 +143,11 @@ opam-release: dev
 
 dune-release:
 	dune-release tag
-	dune-release distrib --skip-build --skip-lint --skip-tests -n dune
+	dune-release distrib --skip-build --skip-lint --skip-tests
 # See https://github.com/ocamllabs/dune-release/issues/206
-	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose -n dune
-	dune-release opam pkg -n dune
-	dune-release opam submit -n dune
+	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose
+	dune-release opam pkg
+	dune-release opam submit
 
 # see nix/default.nix for details
 .PHONY: nix/opam-selection.nix

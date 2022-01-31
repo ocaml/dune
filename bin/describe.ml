@@ -232,6 +232,33 @@ module Crawl = struct
       in
       Some (Descr.Item.Library lib_descr)
 
+  (** [add_transitive_deps libs] returns the union of [libs] and of its
+      transitive dependencies *)
+  let add_transitive_deps libs =
+    let rec transitive_closure ~acc ~todo =
+      (* [transitive_closure ~acc ~todo] returns the union of [acc] and of the
+         transitive dependencies of the libraries in the [todo] set. Invariant:
+         [todo] is included in [acc]. *)
+      if Lib.Set.is_empty todo then
+        Memo.Build.return acc
+      else
+        let* deps =
+          (* the list of direct dependencies of the libs in the [todo] set *)
+          Memo.Build.parallel_map (Lib.Set.to_list todo) ~f:(fun lib ->
+              let+ requires = Lib.requires lib in
+              match Resolve.peek requires with
+              | Error _ -> []
+              | Ok requires -> requires)
+          >>| Lib.Set.union_map ~f:Lib.Set.of_list
+        in
+        let new_deps =
+          (* the set of new dependencies, that have not been treated yet *)
+          Lib.Set.diff deps acc
+        in
+        transitive_closure ~acc:(Lib.Set.union acc new_deps) ~todo:new_deps
+    in
+    transitive_closure ~acc:libs ~todo:libs
+
   (** Builds a workspace description for the provided dune setup and context *)
   let workspace
       ({ Dune_rules.Main.conf; contexts = _; scontexts } :
@@ -242,16 +269,10 @@ module Crawl = struct
       Memo.Build.parallel_map conf.projects ~f:(fun project ->
           Super_context.find_scope_by_project sctx project
           |> Scope.libs |> Lib.DB.all)
-      >>| fun libs -> libs |> Lib.Set.union_all |> Lib.Set.to_list
+      >>| Lib.Set.union_all
     in
     let* libs =
-      Memo.Build.parallel_map libs ~f:(fun lib ->
-          let+ requires = Lib.requires lib in
-          match Resolve.peek requires with
-          | Error _ -> []
-          | Ok requires -> requires)
-      >>| (fun deps ->
-            List.concat (libs :: deps) |> Lib.Set.of_list |> Lib.Set.to_list)
+      add_transitive_deps libs >>| Lib.Set.to_list
       >>= Memo.Build.parallel_map ~f:(library sctx)
       >>| List.filter_map ~f:Fun.id
     in

@@ -19,11 +19,7 @@ Check that default implementation data is installed in the dune package file.
   $ dune_cmd cat dune-package/_build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name a)
-  (sections
-   (lib
-    $TESTCASE_ROOT/dune-package/_build/install/default/lib/a)
-   (libexec
-    $TESTCASE_ROOT/dune-package/_build/install/default/lib/a))
+  (sections (lib .) (libexec .))
   (files
    (lib
     (META

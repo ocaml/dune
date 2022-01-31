@@ -10,7 +10,5 @@ Ensure that a public, non-optional library can be disabled.
   > cat _build/install/default/lib/foo/dune-package;
   (lang dune 3.0)
   (name foo)
-  (sections
-   (lib
-    $TESTCASE_ROOT/_build/install/default/lib/foo))
+  (sections (lib .))
   (files (lib (META dune-package opam)))

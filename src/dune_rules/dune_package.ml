@@ -310,7 +310,7 @@ let decode ~lang ~dir =
   and+ version = field_o "version" string
   and+ sections =
     field ~default:[] "sections"
-      (repeat (pair (located Section.decode) Dpath.External.decode))
+      (repeat (pair (located Section.decode) (Dpath.Local.decode ~dir)))
   and+ sites =
     field ~default:[] "sites"
       (repeat (pair (located Section.Site.decode) Section.decode))
@@ -345,7 +345,6 @@ let decode ~lang ~dir =
         [ Pp.textf "The section %s appears multiple times" (to_string s) ]
   in
   let sections =
-    let sections = List.map sections ~f:(fun (k, v) -> (k, Path.external_ v)) in
     section_map Section.Map.of_list_map Section.to_string sections
   in
   let sites =
@@ -369,16 +368,14 @@ let prepend_version ~dune_version sexps =
 let encode ~dune_version { entries; name; version; dir; sections; sites; files }
     =
   let open Dune_lang.Encoder in
-  let sections =
-    Section.Map.to_list_map sections ~f:(fun k v ->
-        (k, Path.to_absolute_filename v))
-  in
   let sites = Section.Site.Map.to_list sites in
   let sexp =
     record_fields
       [ field "name" Package.Name.encode name
       ; field_o "version" string version
-      ; field_l "sections" (pair Section.encode string) sections
+      ; field_l "sections"
+          (pair Section.encode (Dpath.Local.encode ~dir))
+          (Section.Map.to_list sections)
       ; field_l "sites" (pair Section.Site.encode Section.encode) sites
       ; field_l "files" (pair Section.encode (list Install.Dst.encode)) files
       ]

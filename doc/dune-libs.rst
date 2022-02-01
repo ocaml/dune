@@ -1,5 +1,5 @@
 **************
-Dune libraries
+Dune Libraries
 **************
 
 .. _configurator:
@@ -8,9 +8,9 @@ Configurator
 ============
 
 Configurator is a small library designed to query features available on the
-system, in order to generate configuration for dune builds. Such generated
+system in order to generate configuration for Dune builds. Such generated
 configuration is usually in the form of command line flags, generated headers,
-stubs, but there are no limitations on this.
+and stubs, but there are no limitations on this.
 
 Configurator allows you to query for the following features:
 
@@ -22,22 +22,22 @@ Configurator allows you to query for the following features:
 
 * Extract compile time information such as ``#define`` variables.
 
-Configurator is designed to be cross compilation friendly and avoids _running_
+Configurator is designed to be cross-compilation friendly and avoids _running_
 any compiled code to extract any of the information above.
 
 Configurator started as an `independent library
-<https://github.com/janestreet/configurator>`__, but now lives in dune.
-It is released as the package ``dune-configurator``.
+<https://github.com/janestreet/configurator>`__, but now lives in dune. It is
+released as the package ``dune-configurator``.
 
 Usage
 -----
 
-We'll describe configurator with a simple example. Everything else can be easily
-learned by studying `configurator's API
+We'll describe configurator with a simple example. Everything else can be
+easily learned by studying `configurator's API
 <https://github.com/ocaml/dune/blob/master/otherlibs/configurator/src/v1.mli>`__.
 
-To use configurator, we write an executable that will query the system using
-configurator's API and output a set of targets reflecting the results. For
+To use Configurator, write an executable that will query the system using
+Configurator's API and output a set of targets reflecting the results. For
 example:
 
 .. code-block:: ocaml
@@ -64,7 +64,7 @@ example:
         [ "HAS_CLOCK_GETTIME", Switch has_clock_gettime ]);
 
 Usually, the module above would be named ``discover.ml``. The next step is to
-invoke it as an executable and tell dune about the targets that it produces:
+invoke it as an executable and tell Dune about the targets that it produces:
 
 .. code-block:: lisp
 
@@ -76,8 +76,8 @@ invoke it as an executable and tell dune about the targets that it produces:
    (targets config.h)
    (action (run ./discover.exe)))
 
-Another common pattern is to produce a flags file with configurator and then use
-this flag file using ``:include``:
+Another common pattern is to produce a flags file with Configurator and then
+use this flag file using ``:include``:
 
 .. code-block:: lisp
 
@@ -86,38 +86,38 @@ this flag file using ``:include``:
    (foreign_stubs (language c) (names foo))
    (c_library_flags (:include (flags.sexp))))
 
-For this, generate the list of flags for your library — for example
-using ``Configurator.V1.Pkg_config`` — and then write them to a file,
-in the above example ``flags.sexp``, with
-``Configurator.V1.write_flags "flags.sexp" flags``.
+For this, generate the list of flags for your library (for example, using
+``Configurator.V1.Pkg_config``), and then write them to a file: in the above
+example, ``flags.sexp`` with ``Configurator.V1.write_flags "flags.sexp"
+flags``.
 
-Upgrading from the old Configurator
+Upgrading From the Old Configurator
 -----------------------------------
 
-The old configurator is the independent `configurator
-<https://github.com/janestreet/configurator>`__ opam package. It is deprecated
-and users are encouraged to migrate to dune's own configurator. The advantage of
-the transition include:
+The old Configurator is the independent `Configurator
+<https://github.com/janestreet/configurator>`__ Opam package. It's now
+deprecated, and users are encouraged to migrate to Dune's own Configurator. The
+advantage of the transition include:
 
 * No extra dependencies,
 
 * No need to manually pass ``-ocamlc`` flag,
 
-* New configurator is cross compilation compatible.
+* New Configurator is cross-compilation compatible.
 
-The following steps must be taken to transition from the old configurator:
+The following steps must be taken to transition from the old Configurator:
 
-* Mentions of the ``configurator`` opam package should be replaced
+* Mentions of the ``configurator`` Opam package should be replaced
   with ``dune-configurator``.
 
 * The library name ``configurator`` should be changed ``dune-configurator``.
 
-* The ``-ocamlc`` flag in rules that run configurator scripts should be removed.
-  This information is now passed automatically by dune.
+* The ``-ocamlc`` flag in rules that runs Configurator scripts should be removed.
+  This information is now passed automatically by Dune.
 
-* The new configurator API is versioned explicitly. The version that is
-  compatible with old configurator is under the ``V1`` module. Hence, to
-  transition one's code it's enough to add this module alias:
+* The new Configurator API is versioned explicitly. The version that's
+  compatible with old Configurator is under the ``V1`` module. Hence, to
+  transition one's code, it's enough to add this module alias:
 
 .. code-block:: ocaml
 
@@ -127,12 +127,12 @@ The following steps must be taken to transition from the old configurator:
 
 .. _build-info:
 
-build-info
-==========
+`dune-build-info` Library
+=========================
 
 Dune can embed build information such as versions in executables
 via the special ``dune-build-info`` library. This library exposes
-some information about how the executable was built such as the
+some information about how the executable was built, such as the
 version of the project containing the executable or the list of
 statically linked libraries with their versions. Printing the version
 at which the current executable was built is as simple as:
@@ -147,7 +147,7 @@ at which the current executable was built is as simple as:
 For libraries and executables from development repositories that don't
 have version information written directly in the ``dune-project``
 file, the version is obtained by querying the version control
-system. For instance, the following git command is used in git
+system. For instance, the following Git command is used in Git
 repositories:
 
 .. code:: bash
@@ -157,20 +157,19 @@ repositories:
 which produces a human readable version string of the form
 ``<version>-<commits-since-version>-<hash>[-dirty]``.
 
-Note that in the case where the version string is obtained from the
-version control system, the version string will only be written in
-the binary once it is installed or promoted to the source tree. In
-particular, if you evaluate this expression as part of the build of
-your package, it will return ``None``. This is to ensure that
-committing does not hurt your development experience. Indeed, if dune
-stored the version directly inside the freshly built binaries, then
-every time you commit your code the version would change and dune would
-need to rebuild all the binaries and everything that depend on them,
-such as tests. Instead Dune leaves a placeholder inside the binary and
-fills it during installation or promotion.
+Note that in the case where the version string is obtained from the version
+control system, the version string will only be written in the binary once it's
+installed or promoted to the source tree. In particular, if you evaluate this
+expression as part of your package build, it will return ``None``. This ensures
+that committing doesn't hurt your development experience. Indeed, if Dune
+stored the version directly inside the freshly built binaries, then every time
+you commit your code, the version would change and Dune would need to rebuild
+all the binaries and everything that depends on them, such as tests. Instead,
+Dune leaves a placeholder inside the binary and fills it during installation or
+promotion.
 
 
-(Experimental) Dune action plugin
+(Experimental) Dune Action Plugin
 =================================
 
 *This library is experimental and no backwards compatibility is implied. Use at

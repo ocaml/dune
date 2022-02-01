@@ -57,22 +57,10 @@ let default_build_command =
   [ "dune" "install" "-p" name "--create-install-files" name ]
 ]
 |}))
-  and from_3_0 ~with_subst ~with_sites =
+  and from_3_0 ~with_subst =
     let subst =
       if with_subst then
         {|  [ "dune" "subst" ] {dev} |}
-      else
-        ""
-    in
-    let promote_install_files =
-      if with_sites then
-        {|  "--promote-install-files=false" |}
-      else
-        ""
-    in
-    let install =
-      if with_sites then
-        {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
       else
         ""
     in
@@ -83,15 +71,15 @@ let default_build_command =
                {|
 [
   %s
-  [ "dune" "build" "-p" name "-j" jobs %s
+  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
   ]
-  %s
+  [ "dune" "install" "-p" name "--create-install-files" name ]
 ]
 |}
-               subst promote_install_files install)))
+               subst)))
   in
   fun project ->
     Lazy.force
@@ -106,9 +94,7 @@ let default_build_command =
       else
         from_3_0
           ~with_subst:
-            (Subst_config.is_enabled (Dune_project.subst_config project))
-          ~with_sites:
-            Dune_project.(is_extension_set project dune_site_extension))
+            (Subst_config.is_enabled (Dune_project.subst_config project)))
 
 let package_fields
     { Package.synopsis

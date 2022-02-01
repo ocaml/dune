@@ -562,10 +562,12 @@ the doc dependencies:
       name
       "-j"
       jobs
+      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
     ]
+    ["dune" "install" "-p" name "--create-install-files" name]
   ]
 
   $ cat > dune-project <<EOF
@@ -587,8 +589,10 @@ the doc dependencies:
       name
       "-j"
       jobs
+      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
     ]
+    ["dune" "install" "-p" name "--create-install-files" name]
   ]

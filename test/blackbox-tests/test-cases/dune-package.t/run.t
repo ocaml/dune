@@ -134,7 +134,7 @@ Build with "DUNE_STORE_ORIG_SOURCE_DIR=true" profile
 
 Install the package directly
 
-  $ dune install --prefix=$PWD/prefix --root=a 2>&1 | grep -v "Installing"
+  $ dune install "--prefix=$PWD/prefix" --root=a 2>&1 | grep -v "Installing"
   Entering directory 'a'
 
   $ dune_cmd cat prefix/lib/a/dune-package | grep 'lib/a'
@@ -160,24 +160,34 @@ Install as opam does
       name
       "-j"
       jobs
+      "--promote-install-files=false"
       "@install"
       "@runtest" {with-test}
       "@doc" {with-doc}
     ]
+    ["dune" "install" "-p" name "--create-install-files" name]
   ]
 
-  $ (cd a; "dune" "build" "-p" a "@install")
+  $ (cd a; "dune" "build" "-p" a "--promote-install-files=false" "@install")
+
+  $ ROOT=$PWD
+
+  $ (cd a; "dune" "install" "-p" a "--create-install-files" a "--prefix=$ROOT/prefix")
+  Copying to _destdir$TESTCASE_ROOT/prefix/lib/a/META
+  Copying to _destdir$TESTCASE_ROOT/prefix/lib/a/dune-package
 
   $ ls a
   _build
+  _destdir
   a.install
   a.opam
   dune
   dune-project
 
   $ dune_cmd cat a/a.install | grep dune-package
-    "_build/install/default/lib/a/dune-package"
+    "_destdir$TESTCASE_ROOT/prefix/lib/a/META"
+    "_destdir$TESTCASE_ROOT/prefix/lib/a/dune-package"
 
-  $ dune_cmd cat a/_build/install/default/lib/a/dune-package | grep 'lib/a'
-    $TESTCASE_ROOT/a/_build/install/default/lib/a)
-    $TESTCASE_ROOT/a/_build/install/default/lib/a))
+  $ dune_cmd cat "a/_destdir/$PWD/prefix/lib/a/dune-package" | grep 'lib/a'
+    $TESTCASE_ROOT/prefix/lib/a)
+    $TESTCASE_ROOT/prefix/lib/a))

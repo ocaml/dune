@@ -16,12 +16,6 @@
 
 On Macos there is an additional message about saving the DB.
   $ INSIDE_EMACS=yes dune exec --display=progress dunetestbar 2>&1 | sed -e "s/ *Saving digest db... *//g" -e "s//\n/g"
-  Done: 0% (0/0, 0 left) (jobs: 0)
-                                  
   Scanned 0 directories
                        
-  Done: 0% (0/0, 0 left) (jobs: 0)
-                                  
-  Done: 0% (0/0, 0 left) (jobs: 1)
-                                  
   Bar

@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Add direct dependencies to $ dune describe output (#5412, @esope)
+
 - Fix compilation on MacOS SDK < 10.13. The native watch mode is disabled in
   such instances (#5431 fix #5430, @rgrinberg)
 

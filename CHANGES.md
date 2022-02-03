@@ -305,6 +305,9 @@ Unreleased
 
 - Add link_flags in the env stanza (#5215)
 
+- Bootstrap: ignore errors when trying to remove generated files. (#5407,
+  @damiendoligez)
+
 2.9.3 (unreleased)
 ------------------
 

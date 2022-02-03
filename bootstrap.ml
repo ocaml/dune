@@ -45,7 +45,7 @@ let () =
               String.length fn >= String.length duneboot
               && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
             then
-              Sys.remove fn))
+              try Sys.remove fn with Sys_error _ -> ()))
 
 let runf fmt =
   ksprintf

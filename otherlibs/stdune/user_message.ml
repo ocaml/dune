@@ -127,9 +127,10 @@ let did_you_mean s ~candidates =
   | l -> [ Pp.textf "did you mean %s?" (String.enumerate_or l) ]
 
 let to_string t =
-  Format.asprintf "%a" Pp.to_fmt (pp { t with loc = None })
-  |> String.drop_prefix ~prefix:"Error: "
-  |> Option.value_exn |> String.trim
+  let full_error = Format.asprintf "%a" Pp.to_fmt (pp { t with loc = None }) in
+  match String.drop_prefix ~prefix:"Error: " full_error with
+  | None -> full_error
+  | Some error -> String.trim error
 
 let is_loc_none loc =
   match loc with

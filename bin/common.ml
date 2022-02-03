@@ -889,8 +889,9 @@ let term ~default_root_is_cwd =
           ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
           ~doc)
   and+ diff_command =
-    let doc = "Shell command to use to diff files.\n\
-              \                   Use - to disable printing the diff."
+    let doc =
+      "Shell command to use to diff files.\n\
+      \                   Use - to disable printing the diff."
     in
     Arg.(
       value

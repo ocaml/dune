@@ -27,8 +27,6 @@
  (inline_tests
   (deps
    (package dune)))
- (enabled_if
-  (= %{system} linux))
  (libraries
   fiber
   stdune

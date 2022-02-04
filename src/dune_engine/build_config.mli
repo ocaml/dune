@@ -40,69 +40,10 @@ module type Rule_generator = sig
     -> gen_rules_result Memo.Build.t
 end
 
-(** Errors found when building targets. *)
-module Error : sig
-  type t
-
-  module Id : sig
-    type t
-
-    module Map : Map.S with type key = t
-
-    val compare : t -> t -> Ordering.t
-
-    val to_int : t -> int
-
-    val to_dyn : t -> Dyn.t
-  end
-
-  val create : exn:Exn_with_backtrace.t -> t
-
-  val info : t -> User_message.t * User_message.t list * Path.t option
-
-  val promotion : t -> Diff_promotion.Annot.t option
-
-  val id : t -> Id.t
-end
-
-(** A handler for various build events. *)
-module Handler : sig
-  type event =
-    | Start
-    | Finish
-    | Fail
-    | Interrupt
-
-  type error =
-    | Add of Error.t
-    | Remove of Error.t
-
-  type t =
-    { errors : error list -> unit Fiber.t
-    ; build_progress : complete:int -> remaining:int -> unit Fiber.t
-    ; build_event : event -> unit Fiber.t
-    }
-
-  val report_progress : t -> rule_done:int -> rule_total:int -> unit Fiber.t
-
-  val last_event : event option ref
-
-  val report_build_event : t -> event -> unit Fiber.t
-
-  val do_nothing : t
-
-  val create :
-       errors:(error list -> unit Fiber.t)
-    -> build_progress:(complete:int -> remaining:int -> unit Fiber.t)
-    -> build_event:(event -> unit Fiber.t)
-    -> t
-end
-
 type t = private
   { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
   ; rule_generator : (module Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
-  ; handler : Handler.t
   ; promote_source :
          chmod:(int -> int)
       -> delete_dst_if_it_is_a_directory:bool
@@ -133,7 +74,6 @@ val set :
   -> cache_debug_flags:Cache_debug_flags.t
   -> sandboxing_preference:Sandbox_mode.t list
   -> rule_generator:(module Rule_generator)
-  -> handler:Handler.t option
   -> implicit_default_alias:
        (Path.Build.t -> unit Action_builder.t option Memo.Build.t)
   -> unit

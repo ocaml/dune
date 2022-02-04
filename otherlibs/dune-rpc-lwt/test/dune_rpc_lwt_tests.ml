@@ -35,13 +35,8 @@ let connect ~root_dir =
     in
     connect_chan where
 
-let build_watch ~root_dir ~suppress_stderr =
-  Lwt_process.open_process_none ~stdin:`Close
-    ~stderr:
-      (if suppress_stderr then
-        `Dev_null
-      else
-        `Keep)
+let build_watch ~root_dir =
+  Lwt_process.open_process_none ~stdin:`Close ~stderr:`Dev_null
     ( "dune"
     , [| "dune"
        ; "build"
@@ -77,7 +72,7 @@ let%expect_test "run and connect" =
   Lwt_main.run
     (let* root_dir = Lwt_io.create_temp_dir () in
      Sys.chdir root_dir;
-     let build = build_watch ~root_dir ~suppress_stderr:false in
+     let build = build_watch ~root_dir in
      let rpc =
        let* () = Lwt_unix.sleep 0.5 in
        connect ~root_dir
@@ -121,7 +116,6 @@ let%expect_test "run and connect" =
          Lwt.return_unit));
   [%expect
     {|
-    Success, waiting for filesystem changes...
     started session
     received ping. shutting down.
     dune build finished with 0 |}]

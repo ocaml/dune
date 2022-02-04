@@ -11,6 +11,7 @@ Compilation using jsoo
       ocamldep bin/.technologic.eobjs/z.ml.d
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}
+   js_of_ocaml .js/js_of_ocaml-compiler.runtime/jsoo_runtime.cma.js
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
    js_of_ocaml .js/stdlib/stdlib.cma.js
       ocamlopt lib/.x.objs/native/x__Y.{cmx,o}

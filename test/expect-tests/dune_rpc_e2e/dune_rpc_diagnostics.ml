@@ -16,13 +16,10 @@ let%expect_test "turn on and shutdown" =
             printfn "shutting down"))
   in
   run test;
-  [%expect
-    {|
+  [%expect {|
     Building .
     Build . succeeded
-    shutting down
-    stderr:
-    Success, waiting for filesystem changes... |}]
+    shutting down |}]
 
 let files =
   List.iter ~f:(fun (f, contents) -> Io.String_path.write_file f contents)
@@ -127,9 +124,7 @@ let%expect_test "error in dune file" =
     {|
     Building foo.cma
     Build foo.cma succeeded
-    <no diagnostics>
-    stderr:
-    Success, waiting for filesystem changes... |}]
+    <no diagnostics> |}]
 
 let%expect_test "related error" =
   diagnostic_with_build
@@ -217,15 +212,7 @@ let%expect_test "related error" =
         ]
       ; [ "targets"; [] ]
       ]
-    ]
-    stderr:
-    File "foo.ml", line 1:
-    Error: The implementation foo.ml
-           does not match the interface .foo.objs/byte/foo.cmi:
-           Values do not match: val x : bool is not included in val x : int
-           File "foo.mli", line 1, characters 0-11: Expected declaration
-           File "foo.ml", line 1, characters 4-5: Actual declaration
-    Had errors, waiting for filesystem changes... |}]
+    ] |}]
 
 let%expect_test "promotion" =
   diagnostic_with_build
@@ -277,11 +264,7 @@ let%expect_test "promotion" =
       ; [ "related"; [] ]
       ; [ "targets"; [] ]
       ]
-    ]
-    stderr:
-    File "x", line 1, characters 0-0:
-    Error: Files _build/default/x and _build/default/x.gen differ.
-    Had errors, waiting for filesystem changes... |}]
+    ] |}]
 
 let%expect_test "optional promotion" =
   diagnostic_with_build
@@ -338,12 +321,7 @@ let%expect_test "optional promotion" =
       ; [ "related"; [] ]
       ; [ "targets"; [] ]
       ]
-    ]
-    stderr:
-    File "output.expected", line 1, characters 0-0:
-    Error: Files _build/default/output.expected and _build/default/output.actual
-    differ.
-    Had errors, waiting for filesystem changes... |}]
+    ] |}]
 
 let%expect_test "warning detection" =
   diagnostic_with_build
@@ -355,13 +333,7 @@ let%expect_test "warning detection" =
     {|
     Building ./foo.exe
     Build ./foo.exe succeeded
-    <no diagnostics>
-    stderr:
-    File "foo.ml", line 1, characters 13-14:
-    1 | let () = let x = 10 in ()
-                     ^
-    Warning 26 [unused-var]: unused variable x.
-    Success, waiting for filesystem changes... |}]
+    <no diagnostics> |}]
 
 let%expect_test "error from user rule" =
   diagnostic_with_build
@@ -401,15 +373,7 @@ let%expect_test "error from user rule" =
       ; [ "related"; [] ]
       ; [ "targets"; [] ]
       ]
-    ]
-    stderr:
-    foobar
-    File "dune", line 1, characters 0-49:
-    1 | (rule (target foo) (action (bash "echo foobar")))
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    Error: Rule failed to generate the following targets:
-    - foo
-    Had errors, waiting for filesystem changes... |}]
+    ] |}]
 
 let%expect_test "create and fix error" =
   setup_diagnostics (fun client ->
@@ -418,6 +382,9 @@ let%expect_test "create and fix error" =
         ; ("foo.ml", "let () = print_endline 123")
         ];
       let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+      let* () = print_diagnostics poll in
+      [%expect {|
+        <no diagnostics> |}];
       let* () = dune_build client "./foo.exe" in
       [%expect {|
         Building ./foo.exe
@@ -500,16 +467,7 @@ let%expect_test "create and fix error" =
           ; [ "targets"; [] ]
           ]
         ] |}]);
-  [%expect
-    {|
-    stderr:
-    File "foo.ml", line 1, characters 23-26:
-    1 | let () = print_endline 123
-                               ^^^
-    Error: This expression has type int but an expression was expected of type
-             string
-    Had errors, waiting for filesystem changes...
-    Success, waiting for filesystem changes... |}]
+  [%expect {| |}]
 
 let request_exn client req n =
   let* staged = Client.Versioned.prepare_request client req in
@@ -600,10 +558,4 @@ let%expect_test "promoting dune files" =
           toto |}])
   in
   run (fun () -> with_dune_watch exec);
-  [%expect
-    {|
-    stderr:
-    File "x", line 1, characters 0-0:
-    Error: Files _build/default/x and _build/default/x.gen differ.
-    Had errors, waiting for filesystem changes...
-    Promoting _build/default/x.gen to x. |}]
+  [%expect {| |}]

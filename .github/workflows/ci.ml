@@ -7,7 +7,7 @@ let skip_test =
 
 let run cmd args =
   (* broken when arguments contain spaces but it's good enough for now. *)
-  let cmd = String.concat " " (cmd :: args) in
+  let cmd = String.concat ~sep:" " (cmd :: args) in
   match Sys.command cmd with
   | 0 -> ()
   | n ->

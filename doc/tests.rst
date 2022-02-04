@@ -466,7 +466,7 @@ command. For instance, let's consider this test:
 
    (rule
     (alias runtest)
-    (action (diff tests.expected test.output)))
+    (action (diff tests.expected tests.output)))
 
 After having run ``tests.exe`` and dumping its output to ``tests.output``, Dune
 will compare the latter to ``tests.expected``. In case of mismatch, Dune will

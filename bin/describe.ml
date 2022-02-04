@@ -28,6 +28,12 @@ let man =
 
 let info = Term.info "describe" ~doc ~man
 
+(** Option flags for what to do while crawling the workspace *)
+type options =
+  { with_deps : bool
+        (** whether to compute direct dependencies between modules *)
+  }
+
 (** The module [Descr] is a typed representation of the description of a
     workspace, that is provided by the ``dune describe workspace`` command.
 
@@ -56,16 +62,27 @@ module Descr = struct
       }
 
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn { name; impl; intf; cmt; cmti; module_deps } : Dyn.t =
+    let to_dyn options { name; impl; intf; cmt; cmti; module_deps } : Dyn.t =
       let open Dyn in
+      let optional_fields =
+        let module_deps =
+          if options.with_deps then
+            Some ("module_deps", list Dune_rules.Module_name.to_dyn module_deps)
+          else
+            None
+        in
+        (* we build a list of options, that is later filtered, so that adding
+           new optional fields in the future can be done easily *)
+        [ module_deps ] |> List.filter_map ~f:Fun.id
+      in
       record
-        [ ("name", Dune_rules.Module_name.to_dyn name)
-        ; ("impl", option dyn_path impl)
-        ; ("intf", option dyn_path intf)
-        ; ("cmt", option dyn_path cmt)
-        ; ("cmti", option dyn_path cmti)
-        ; ("module_deps", list Dune_rules.Module_name.to_dyn module_deps)
-        ]
+      @@ [ ("name", Dune_rules.Module_name.to_dyn name)
+         ; ("impl", option dyn_path impl)
+         ; ("intf", option dyn_path intf)
+         ; ("cmt", option dyn_path cmt)
+         ; ("cmti", option dyn_path cmti)
+         ]
+      @ optional_fields
   end
 
   (** Description of executables *)
@@ -81,12 +98,12 @@ module Descr = struct
       }
 
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn { names; requires; modules; include_dirs } : Dyn.t =
+    let to_dyn options { names; requires; modules; include_dirs } : Dyn.t =
       let open Dyn in
       record
         [ ("names", List (List.map ~f:(fun name -> String name) names))
         ; ("requires", Dyn.(list string) (List.map ~f:Digest.to_string requires))
-        ; ("modules", list Mod.to_dyn modules)
+        ; ("modules", list (Mod.to_dyn options) modules)
         ; ("include_dirs", list dyn_path include_dirs)
         ]
   end
@@ -108,8 +125,9 @@ module Descr = struct
       }
 
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn { name; uid; local; requires; source_dir; modules; include_dirs }
-        : Dyn.t =
+    let to_dyn options
+        { name; uid; local; requires; source_dir; modules; include_dirs } :
+        Dyn.t =
       let open Dyn in
       record
         [ ("name", Lib_name.to_dyn name)
@@ -117,7 +135,7 @@ module Descr = struct
         ; ("local", Bool local)
         ; ("requires", (list string) (List.map ~f:Digest.to_string requires))
         ; ("source_dir", dyn_path source_dir)
-        ; ("modules", list Mod.to_dyn modules)
+        ; ("modules", list (Mod.to_dyn options) modules)
         ; ("include_dirs", (list dyn_path) include_dirs)
         ]
   end
@@ -129,10 +147,11 @@ module Descr = struct
       | Library of Lib.t
 
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn : t -> Dyn.t = function
+    let to_dyn options : t -> Dyn.t = function
       | Executables exe_descr ->
-        Dyn.Variant ("executables", [ Exe.to_dyn exe_descr ])
-      | Library lib_descr -> Dyn.Variant ("library", [ Lib.to_dyn lib_descr ])
+        Dyn.Variant ("executables", [ Exe.to_dyn options exe_descr ])
+      | Library lib_descr ->
+        Dyn.Variant ("library", [ Lib.to_dyn options lib_descr ])
   end
 
   (** Description of a workspace: a list of items *)
@@ -140,7 +159,8 @@ module Descr = struct
     type t = Item.t list
 
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn (items : t) : Dyn.t = Dyn.list Item.to_dyn items
+    let to_dyn options (items : t) : Dyn.t =
+      Dyn.list (Item.to_dyn options) items
   end
 end
 
@@ -149,12 +169,6 @@ module Crawl = struct
   open Dune_rules
   open Dune_engine
   open Memo.Build.O
-
-  (** Option flags for how to do while crawling the workspace *)
-  type options =
-    { with_deps : bool
-          (** whether to compute direct dependencies between modules *)
-    }
 
   (** Computes the digest of a library *)
   let uid_of_library (lib : Lib.t) : Stdune.Digest.t =
@@ -452,12 +466,12 @@ module What = struct
     match t with
     | Workspace ->
       let open Memo.Build.O in
-      Crawl.workspace options setup context >>| Descr.Workspace.to_dyn
+      Crawl.workspace options setup context >>| Descr.Workspace.to_dyn options
     | Opam_files -> Opam_files.get ()
 end
 
 module Options = struct
-  type t = Crawl.options
+  type t = options
 
   let arg_with_deps =
     let open Arg in
@@ -467,7 +481,7 @@ module Options = struct
 
   let arg : t Term.t =
     let+ with_deps = arg_with_deps in
-    Crawl.{ with_deps }
+    { with_deps }
 end
 
 module Format = struct

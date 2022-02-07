@@ -14,15 +14,10 @@ let diff a = function
   | b -> Inter [ a; Compl b ]
 
 let inter a = Inter a
-
 let compl a = Compl a
-
 let union a = Union a
-
 let not_union a = compl (union a)
-
 let any = not_union []
-
 let empty = Union []
 
 let rec decode_one f =
@@ -112,7 +107,6 @@ let rec exec t ~standard elem =
 
 module Glob = struct
   type glob = string -> bool
-
   type nonrec t = glob t
 
   let to_dyn t = to_dyn (fun _ -> Dyn.string "opaque") t
@@ -131,10 +125,7 @@ module Glob = struct
     | _ -> List.filter elems ~f:(fun elem -> exec t ~standard elem)
 
   let of_glob g = Element (Glob.test g)
-
   let of_pred p = Element p
-
   let true_ = Element (fun _ -> true)
-
   let of_string_set s = Element (String.Set.mem s)
 end

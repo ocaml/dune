@@ -12,7 +12,6 @@ module Key = struct
   type nonrec t = t
 
   let compare = compare
-
   let to_dyn = to_dyn
 end
 
@@ -26,7 +25,6 @@ let parse_string s =
   | None -> Error (sprintf "invalid section: %s" s)
 
 let enum_decoder = Dune_section.all |> List.map ~f:(fun (x, y) -> (y, x))
-
 let decode = Dune_lang.Decoder.enum enum_decoder
 
 let encode v =
@@ -62,11 +60,8 @@ module Modulelike (S : sig
   type t
 
   val module_ : string
-
   val description : string
-
   val to_string : t -> string
-
   val make : string -> t
 end) =
 Stringlike.Make (struct
@@ -127,11 +122,8 @@ module Site = struct
       type t = string
 
       let to_string t = t
-
       let module_ = "Section.Site"
-
       let description = "site name"
-
       let make s = s
     end) :
       Stringlike_intf.S with type t := t)

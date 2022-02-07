@@ -1,27 +1,16 @@
 type t
 
 val capture_outputs : t -> bool
-
 val root : t -> Workspace_root.t
-
 val rpc : t -> Dune_rpc_impl.Server.t option
-
 val stats : t -> Dune_stats.t option
-
 val print_metrics : t -> bool
-
 val dump_memo_graph_file : t -> string option
-
 val dump_memo_graph_format : t -> Dune_graph.Graph.File_format.t
-
 val dump_memo_graph_with_timing : t -> bool
-
 val watch : t -> Watch_mode_config.t
-
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
-
 val default_target : t -> Arg.Dep.t
-
 val prefix_target : t -> string -> string
 
 (** [init] executes sequence of side-effecting actions to initialize Dune's
@@ -43,22 +32,16 @@ val examples : (string * string) list -> Cmdliner.Manpage.block
 val command_synopsis : string list -> Cmdliner.Manpage.block list
 
 val help_secs : Cmdliner.Manpage.block list
-
 val footer : Cmdliner.Manpage.block
-
 val term : t Cmdliner.Term.t
-
 val term_with_default_root_is_cwd : t Cmdliner.Term.t
 
 (** Set whether Dune should print the "Entering directory '<dir>'" message *)
 val set_print_directory : t -> bool -> t
 
 val debug_backtraces : bool Cmdliner.Term.t
-
 val config_from_config_file : Dune_config.Partial.t Cmdliner.Term.t
-
 val display_term : Dune_engine.Scheduler.Config.Display.t option Cmdliner.Term.t
-
 val context_arg : doc:string -> Dune_engine.Context_name.t Cmdliner.Term.t
 
 (** A [--build-info] command line argument that print build information

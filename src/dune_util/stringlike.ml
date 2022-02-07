@@ -53,6 +53,5 @@ module Make (S : Stringlike_intf.S_base) = struct
         (loc, t))
 
   let encode t = Dune_lang.Encoder.(string (to_string t))
-
   let to_dyn t = Dyn.string (to_string t)
 end

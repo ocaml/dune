@@ -4,7 +4,6 @@ open StdLabels
 open Printf
 
 let list f l = sprintf "[%s]" (String.concat ~sep:"; " (List.map l ~f))
-
 let string s = sprintf "%S" s
 
 let option f = function

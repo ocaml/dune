@@ -9,7 +9,6 @@ struct
   include MoreLabels.Hashtbl.Make (H)
 
   let[@ocaml.warning "-32"] add = `Use_set
-
   let find = find_opt
 
   let find_exn t key =
@@ -28,7 +27,6 @@ struct
       x
 
   let foldi t ~init ~f = fold t ~init ~f:(fun ~key ~data acc -> f key data acc)
-
   let fold t ~init ~f = foldi t ~init ~f:(fun _ x -> f x)
 
   let of_list l =

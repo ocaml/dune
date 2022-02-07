@@ -84,49 +84,27 @@ type t =
   }
 
 let super_context t = t.super_context
-
 let scope t = t.scope
-
 let expander t = t.expander
-
 let dir t = Obj_dir.dir t.obj_dir
-
 let obj_dir t = t.obj_dir
-
 let modules t = t.modules.modules
-
 let flags t = t.flags
-
 let requires_compile t = t.requires_compile
-
 let requires_link t = Memo.Lazy.force t.requires_link
-
 let includes t = t.includes
-
 let preprocessing t = t.preprocessing
-
 let opaque t = t.opaque
-
 let stdlib t = t.stdlib
-
 let js_of_ocaml t = t.js_of_ocaml
-
 let sandbox t = t.sandbox
-
 let set_sandbox t sandbox = { t with sandbox }
-
 let package t = t.package
-
 let vimpl t = t.vimpl
-
 let modes t = t.modes
-
 let bin_annot t = t.bin_annot
-
 let context t = Super_context.context t.super_context
-
 let ocamldep_modules_data t = t.ocamldep_modules_data
-
 let dep_graphs t = t.modules.dep_graphs
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags

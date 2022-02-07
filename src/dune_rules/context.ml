@@ -108,9 +108,7 @@ type t =
   }
 
 let equal x y = Context_name.equal x.name y.name
-
 let hash t = Context_name.hash t.name
-
 let build_context t = t.build_context
 
 let to_dyn t : Dyn.t =
@@ -145,7 +143,6 @@ let to_dyn t : Dyn.t =
     ]
 
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
-
 let compare a b = Poly.compare a.name b.name
 
 (** Wrap calls to the opam binary *)
@@ -846,9 +843,7 @@ let cc_g (ctx : t) =
   | Other _ -> [ "-g" ]
 
 let name t = t.name
-
 let has_native t = Result.is_ok t.ocamlopt
-
 let lib_config t = t.lib_config
 
 let map_exe (context : t) =
@@ -868,9 +863,7 @@ let install_prefix t =
   Path.of_filename_relative_to_initial_cwd (String.trim s)
 
 let dot_dune_dir t = Path.Build.relative t.build_dir ".dune"
-
 let configurator_v1 t = Path.Build.relative (dot_dune_dir t) "configurator"
-
 let configurator_v2 t = Path.Build.relative (dot_dune_dir t) "configurator.v2"
 
 (* We store this so that library such as dune-configurator can read things

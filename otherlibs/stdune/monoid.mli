@@ -1,5 +1,4 @@
 module type Basic = Monoid_intf.Basic
-
 module type S = Monoid_intf.S
 
 (** This functor extends the basic definition of a monoid by adding a convenient
@@ -35,7 +34,6 @@ module Add (M : sig
   type t
 
   val zero : t
-
   val ( + ) : t -> t -> t
 end) : S with type t = M.t
 
@@ -44,7 +42,6 @@ module Mul (M : sig
   type t
 
   val one : t
-
   val ( * ) : t -> t -> t
 end) : S with type t = M.t
 
@@ -53,7 +50,6 @@ module Union (M : sig
   type t
 
   val empty : t
-
   val union : t -> t -> t
 end) : S with type t = M.t
 

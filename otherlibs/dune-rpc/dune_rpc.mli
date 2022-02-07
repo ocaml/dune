@@ -56,9 +56,7 @@ module V1 : sig
       type t
 
       val payload : t -> Csexp.t option
-
       val message : t -> string
-
       val kind : t -> kind
 
       exception E of t
@@ -77,7 +75,6 @@ module V1 : sig
     type t
 
     val start : t -> Lexing.position
-
     val stop : t -> Lexing.position
   end
 
@@ -85,11 +82,8 @@ module V1 : sig
     type t
 
     val dune_root : t
-
     val absolute : string -> t
-
     val relative : t -> string -> t
-
     val to_string_absolute : t -> string
   end
 
@@ -112,7 +106,6 @@ module V1 : sig
       type t
 
       val in_build : t -> string
-
       val in_source : t -> string
     end
 
@@ -120,9 +113,7 @@ module V1 : sig
       type t
 
       val compare : t -> t -> Ordering.t
-
       val hash : t -> int
-
       val create : int -> t
     end
 
@@ -130,22 +121,16 @@ module V1 : sig
       type t
 
       val loc : t -> Loc.t
-
       val message : t -> unit Pp.t
     end
 
     type t
 
     val related : t -> Related.t list
-
     val loc : t -> Loc.t option
-
     val id : t -> Id.t
-
     val message : t -> unit Pp.t
-
     val severity : t -> severity option
-
     val promotion : t -> Promotion.t list
 
     (* The list of targets is ordered such that the first element is the
@@ -184,7 +169,6 @@ module V1 : sig
     type 'a t
 
     val progress : Progress.t t
-
     val diagnostic : Diagnostic.Event.t list t
   end
 
@@ -192,7 +176,6 @@ module V1 : sig
     type t
 
     val payload : t -> Csexp.t option
-
     val message : t -> string
   end
 
@@ -203,7 +186,6 @@ module V1 : sig
     type t
 
     val payload : t -> Csexp.t option
-
     val message : t -> string
 
     exception E of t
@@ -220,7 +202,6 @@ module V1 : sig
     type ('a, 'b) t
 
     val ping : (unit, unit) t
-
     val diagnostics : (unit, Diagnostic.t list) t
 
     (** format a [dune], [dune-project], or a [dune-workspace] file. The full
@@ -239,9 +220,7 @@ module V1 : sig
       (** Rpc client *)
 
       type t
-
       type 'a fiber
-
       type chan
 
       module Handler : sig
@@ -271,7 +250,6 @@ module V1 : sig
           main dune repository. *)
       module Versioned : sig
         type 'a notification
-
         type ('a, 'b) request
 
         (** [prepare_request client r] checks the request [r] against the
@@ -329,7 +307,6 @@ module V1 : sig
 
       module Batch : sig
         type t
-
         type client
 
         val create : client -> t
@@ -342,7 +319,6 @@ module V1 : sig
           -> ('b, Response.Error.t) result fiber
 
         val notification : t -> 'a Versioned.notification -> 'a -> unit
-
         val submit : t -> unit fiber
       end
       with type client := t
@@ -363,28 +339,21 @@ module V1 : sig
       type 'a t
 
       val return : 'a -> 'a t
-
       val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
       val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
       val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
       module O : sig
         val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
 
       module Ivar : sig
         type 'a fiber
-
         type 'a t
 
         val create : unit -> 'a t
-
         val read : 'a t -> 'a fiber
-
         val fill : 'a t -> 'a -> unit fiber
       end
       with type 'a fiber := 'a t
@@ -430,7 +399,6 @@ module V1 : sig
 
       module O : sig
         val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
     end) (IO : sig
@@ -446,11 +414,8 @@ module V1 : sig
       type t
 
       val to_dyn : t -> Dyn.t
-
       val compare : t -> t -> Ordering.t
-
       val where : t -> Where.t
-
       val root : t -> string
     end
 
@@ -458,23 +423,19 @@ module V1 : sig
       type t
 
       val create : Xdg.t -> t
-
       val watch_dir : t -> string
     end
 
     type t
 
     val create : Config.t -> t
-
     val current : t -> Dune.t list
 
     module Refresh : sig
       type t
 
       val added : t -> Dune.t list
-
       val removed : t -> Dune.t list
-
       val errored : t -> (string * exn) list
     end
 
@@ -482,19 +443,15 @@ module V1 : sig
       type 'a t
 
       val return : 'a -> 'a t
-
       val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
       module O : sig
         val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
     end) (IO : sig
       val scandir : string -> (string list, exn) result Fiber.t
-
       val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
-
       val read_file : string -> (string, exn) result Fiber.t
     end) : sig
       val poll : t -> (Refresh.t, exn) result Fiber.t

@@ -24,7 +24,6 @@ type t =
 
 module DB : sig
   type t
-
   type status
 
   val make :

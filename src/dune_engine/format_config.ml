@@ -38,7 +38,6 @@ module Language = struct
     | s -> Dialect s
 
   let in_ext_1_0 = Set.of_list [ Dialect "ocaml"; Dialect "reason" ]
-
   let in_ext_1_1 = Set.add in_ext_1_0 Dune
 
   let encode =

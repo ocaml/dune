@@ -11,7 +11,6 @@ type sub_system = t = ..
     sub-system. *)
 module type S = sig
   type t
-
   type sub_system += T of t
 
   (** Name of the sub-system *)
@@ -40,5 +39,4 @@ val record_parser :
      Dune_lang.Decoder.parser
 
 val get : Sub_system_name.t -> (module S)
-
 val equal : t -> t -> bool

@@ -48,11 +48,8 @@ let ppx_runtime_deps ?(preds = []) pkgs =
   rule "ppx_runtime_deps" preds Set (string_of_deps pkgs)
 
 let description s = rule "description" [] Set s
-
 let directory s = rule "directory" [] Set s
-
 let archive preds s = rule "archive" preds Set s
-
 let plugin preds s = rule "plugin" preds Set s
 
 let archives ?(preds = []) lib =

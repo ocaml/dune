@@ -42,7 +42,6 @@ val conf_for_install :
   -> conf
 
 val conf_dummy : conf
-
 val to_dyn : t -> Dyn.t
 
 (** A string encoding of a substitution. The resulting string is what should be

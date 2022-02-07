@@ -14,7 +14,6 @@ module External_deps = struct
   module Table = Table
 
   let ( ^/ ) = Filename.concat
-
   let sprintf = Printf.sprintf
 end
 
@@ -55,9 +54,7 @@ module Inotify_watch = struct
   type t = Inotify.watch
 
   let hash t = Int.hash (Inotify.int_of_watch t)
-
   let equal a b = Int.equal (Inotify.int_of_watch a) (Inotify.int_of_watch b)
-
   let to_dyn t = Int.to_dyn (Inotify.int_of_watch t)
 end
 

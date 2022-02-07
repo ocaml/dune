@@ -2,9 +2,7 @@ open Import
 include String
 
 let default = "default"
-
 let build_dir t = Path.Build.relative Path.Build.root t
-
 let is_default = String.equal default
 
 include (
@@ -12,13 +10,9 @@ include (
     type nonrec t = t
 
     let description_of_valid_string = None
-
     let hint_valid = None
-
     let to_string t = t
-
     let module_ = "Context_name"
-
     let description = "context name"
 
     let of_string_opt name =

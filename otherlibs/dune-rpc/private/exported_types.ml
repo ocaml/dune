@@ -4,7 +4,6 @@ module Loc = struct
   include Loc
 
   let start t = t.start
-
   let stop t = t.stop
 
   let pos_sexp =
@@ -58,22 +57,21 @@ module Target = struct
       ; econstr executables
       ; econstr preprocess
       ; econstr loc
-      ] (function
-      | Path p -> case p path
-      | Alias a -> case a alias
-      | Library l -> case l lib
-      | Executables es -> case es executables
-      | Preprocess ps -> case ps preprocess
-      | Loc l -> case l loc)
+      ]
+      (function
+        | Path p -> case p path
+        | Alias a -> case a alias
+        | Library l -> case l lib
+        | Executables es -> case es executables
+        | Preprocess ps -> case ps preprocess
+        | Loc l -> case l loc)
 end
 
 module Path = struct
   type t = string
 
   let sexp = Conv.string
-
   let dune_root = "."
-
   let to_string_absolute x = x
 
   let absolute abs =
@@ -97,7 +95,6 @@ module Diagnostic = struct
       }
 
     let in_build t = t.in_build
-
     let in_source t = t.in_source
 
     let sexp =
@@ -150,21 +147,22 @@ module Diagnostic = struct
         ; econstr hovbox
         ; econstr break
         ; econstr tag
-        ] (function
-        | Nop -> case () nop
-        | Seq (x, y) -> case (x, y) seq
-        | Concat (x, y) -> case (x, y) concat
-        | Box (i, t) -> case (i, t) box
-        | Vbox (i, t) -> case (i, t) vbox
-        | Hbox t -> case t hbox
-        | Hvbox (i, t) -> case (i, t) hvbox
-        | Hovbox (i, t) -> case (i, t) hovbox
-        | Verbatim s -> case s verbatim
-        | Char c -> case c char
-        | Break (x, y) -> case (x, y) break
-        | Newline -> case () newline
-        | Text s -> case s text
-        | Tag ((), t) -> case t tag)
+        ]
+        (function
+          | Nop -> case () nop
+          | Seq (x, y) -> case (x, y) seq
+          | Concat (x, y) -> case (x, y) concat
+          | Box (i, t) -> case (i, t) box
+          | Vbox (i, t) -> case (i, t) vbox
+          | Hbox t -> case t hbox
+          | Hvbox (i, t) -> case (i, t) hvbox
+          | Hovbox (i, t) -> case (i, t) hovbox
+          | Verbatim s -> case s verbatim
+          | Char c -> case c char
+          | Break (x, y) -> case (x, y) break
+          | Newline -> case () newline
+          | Text s -> case s text
+          | Tag ((), t) -> case t tag)
     in
     Fdecl.set t_fdecl conv;
     let to_ast x =
@@ -180,11 +178,8 @@ module Diagnostic = struct
     type t = int
 
     let compare (a : t) (b : t) = Int.compare a b
-
     let hash (t : t) = Hashtbl.hash t
-
     let create t : t = t
-
     let sexp = Conv.int
   end
 
@@ -195,7 +190,6 @@ module Diagnostic = struct
       }
 
     let message t = t.message
-
     let loc t = t.loc
 
     let sexp =
@@ -219,19 +213,12 @@ module Diagnostic = struct
     }
 
   let loc t = t.loc
-
   let message t = t.message
-
   let severity t = t.severity
-
   let promotion t = t.promotion
-
   let targets t = t.targets
-
   let directory t = t.directory
-
   let related t = t.related
-
   let id t = t.id
 
   let sexp_severity =
@@ -273,9 +260,11 @@ module Diagnostic = struct
       let open Conv in
       let add = constr "Add" diagnostic (fun a -> Add a) in
       let remove = constr "Remove" diagnostic (fun a -> Remove a) in
-      sum [ econstr add; econstr remove ] (function
-        | Add t -> case t add
-        | Remove t -> case t remove)
+      sum
+        [ econstr add; econstr remove ]
+        (function
+          | Add t -> case t add
+          | Remove t -> case t remove)
 
     let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
   end
@@ -327,7 +316,6 @@ module Message = struct
     }
 
   let payload t = t.payload
-
   let message t = t.message
 
   let sexp =

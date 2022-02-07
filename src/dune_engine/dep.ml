@@ -24,13 +24,9 @@ module T = struct
   end
 
   let env e = Env e
-
   let file f = File f
-
   let alias a = Alias a
-
   let universe = Universe
-
   let file_selector g = File_selector g
 
   let compare x y =
@@ -90,11 +86,8 @@ module Fact = struct
         ]
 
     let is_empty t = Path.Map.is_empty t.files && Path.Map.is_empty t.dirs
-
     let compare a b = Digest.compare a.digest b.digest
-
     let equal a b = Digest.equal a.digest b.digest
-
     let paths t = t.files
 
     let make ~files ~dirs =
@@ -209,7 +202,6 @@ module Fact = struct
     | _ -> false
 
   let nothing = Nothing
-
   let file fn digest = File (fn, digest)
 
   let file_selector fs files =
@@ -230,7 +222,6 @@ module Facts = struct
         Some a)
 
   let union_all xs = List.fold_left xs ~init:Map.empty ~f:union
-
   let to_dyn = Map.to_dyn Fact.to_dyn
 
   let paths t =

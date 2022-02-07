@@ -9,7 +9,6 @@ module V1 = struct
     type t = string * string option
 
     let name = fst
-
     let version = snd
   end
 

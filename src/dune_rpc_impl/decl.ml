@@ -42,7 +42,6 @@ module Status = struct
     iso (list (pair Id.sexp Menu.sexp)) to_ from
 
   let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:sexp ~version:1
-
   let decl = Decl.Request.make ~method_:"status" ~generations:[ v1 ]
 end
 
@@ -55,5 +54,4 @@ module Build = struct
 end
 
 let build = Build.decl
-
 let status = Status.decl

@@ -69,9 +69,7 @@ type t = private
 include Comparable_intf.S with type key := t
 
 val equal : t -> t -> bool
-
 val hash : t -> int
-
 val to_dyn : t -> Dyn.t
 
 (** [make] raises an error if the set of [targets] is not well-formed. See the
@@ -85,7 +83,6 @@ val make :
   -> t
 
 val set_action : t -> Action.Full.t Action_builder.t -> t
-
 val loc : t -> Loc.t
 
 (** [find_source_dir rule] is the closest source directory corresponding to

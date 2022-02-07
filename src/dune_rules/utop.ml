@@ -5,7 +5,6 @@ open! No_io
 open Memo.Build.O
 
 let exe_name = "utop"
-
 let utop_dir_basename = ".utop"
 
 let utop_exe =

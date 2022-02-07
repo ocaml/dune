@@ -18,7 +18,6 @@ module Lib_deps : sig
   type nonrec t = Lib_dep.t list
 
   val of_pps : Lib_name.t list -> t
-
   val decode : for_ -> t Dune_lang.Decoder.t
 end
 
@@ -82,9 +81,7 @@ module Mode_conf : sig
     | Best  (** [Native] if available and [Byte] if not *)
 
   val decode : t Dune_lang.Decoder.t
-
   val compare : t -> t -> Ordering.t
-
   val to_dyn : t -> Dyn.t
 
   module Kind : sig
@@ -103,11 +100,9 @@ module Mode_conf : sig
 
   module Set : sig
     type mode_conf = t
-
     type nonrec t = Kind.t option Map.t
 
     val of_list : (mode_conf * Kind.t) list -> t
-
     val decode : t Dune_lang.Decoder.t
 
     module Details : sig
@@ -115,7 +110,6 @@ module Mode_conf : sig
     end
 
     val eval_detailed : t -> has_native:bool -> Details.t Mode.Dict.t
-
     val eval : t -> has_native:bool -> Mode.Dict.Set.t
   end
 end
@@ -159,7 +153,6 @@ module Library : sig
     }
 
   val sub_dir : t -> string option
-
   val package : t -> Package.t option
 
   (** Check if the library has any foreign stubs or archives. *)
@@ -181,13 +174,9 @@ module Library : sig
   val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
   val best_name : t -> Lib_name.t
-
   val is_virtual : t -> bool
-
   val is_impl : t -> bool
-
   val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
-
   val main_module_name : t -> Lib_info.Main_module_name.t
 
   val to_lib_info :
@@ -228,21 +217,13 @@ module Executables : sig
     include Dune_lang.Conv.S with type t := t
 
     val exe : t
-
     val object_ : t
-
     val shared_object : t
-
     val byte : t
-
     val native : t
-
     val js : t
-
     val compare : t -> t -> Ordering.t
-
     val to_dyn : t -> Dyn.t
-
     val extension : t -> loc:Loc.t -> ext_obj:string -> ext_dll:string -> string
 
     module Map : Map.S with type key = t

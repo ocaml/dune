@@ -8,7 +8,6 @@ let map t ~l ~r =
   | Right x -> r x
 
 let left x = Left x
-
 let right x = Right x
 
 let to_dyn f g = function

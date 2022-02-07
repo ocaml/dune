@@ -19,7 +19,6 @@ type t =
   | Ppx_rewriter of Ppx_args.t
 
 val to_dyn : t Dyn.builder
-
 val equal : t -> t -> bool
 
 include Dune_lang.Conv.S with type t := t

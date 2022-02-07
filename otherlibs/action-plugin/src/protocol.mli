@@ -12,12 +12,10 @@ module Dependency : sig
         }
 
   include Sexpable with type t := t
-
   module Map : Map.S with type key = t
 
   module Set : sig
     include Set.S with type elt = t and type 'a map = 'a Map.t
-
     include Sexpable with type t := t
   end
 end
@@ -60,10 +58,7 @@ module Context : sig
     | Error of string
 
   val create : unit -> create_result
-
   val prepared_dependencies : t -> Dependency.Set.t
-
   val targets : t -> Stdune.String.Set.t
-
   val respond : t -> Response.t -> unit
 end

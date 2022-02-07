@@ -10,7 +10,6 @@ open Import
 type t
 
 val compare_no_loc : t -> t -> Ordering.t
-
 val equal_no_loc : t -> t -> bool
 
 (** [loc t] returns the location of [t] — typically, in the [dune] file. *)
@@ -42,13 +41,9 @@ val add_user_vars_to_decoding_env :
 val virt_pform : ?quoted:bool -> string * int * int * int -> Pform.t -> t
 
 val virt_text : string * int * int * int -> string -> t
-
 val make_pform : ?quoted:bool -> Loc.t -> Pform.t -> t
-
 val make_text : ?quoted:bool -> Loc.t -> string -> t
-
 val is_pform : t -> Pform.t -> bool
-
 val has_pforms : t -> bool
 
 (** If [t] contains no variable, returns the contents of [t]. *)
@@ -89,11 +84,8 @@ type known_prefix =
       }
 
 val known_suffix : t -> known_suffix
-
 val known_prefix : t -> known_prefix
-
 val is_suffix : t -> suffix:string -> yes_no_unknown
-
 val is_prefix : t -> prefix:string -> yes_no_unknown
 
 val fold_pforms :
@@ -120,7 +112,6 @@ module type Expander = sig
 end
 
 include Expander with type 'a app := 'a Memo.Build.t
-
 module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t
 
 val remove_locs : t -> t

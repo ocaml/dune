@@ -8,27 +8,17 @@ module Name : sig
     | Anonymous of Path.Source.t
 
   val to_dyn : t -> Dyn.t
-
   val equal : t -> t -> bool
-
   val compare : t -> t -> Ordering.t
-
   val to_string_hum : t -> string
-
   val encode : t Dune_lang.Encoder.t
-
   val decode : t Dune_lang.Decoder.t
-
   val to_encoded_string : t -> string
-
   val of_encoded_string : string -> t
-
   val anonymous : Path.Source.t -> t
-
   val named : string -> t option
 
   module Infix : Comparator.OPS with type t = t
-
   module Map : Map.S with type key = t
 end = struct
   module T = struct
@@ -127,7 +117,6 @@ module File_key = struct
   module Map = String.Map
 
   let of_string s = s
-
   let to_string s = s
 
   let make ~name ~root =
@@ -163,40 +152,25 @@ type t =
   }
 
 let equal = ( == )
-
 let hash = Hashtbl.hash
-
 let parsing_context t = t.parsing_context
-
 let packages t = t.packages
-
 let version t = t.version
-
 let name t = t.name
-
 let root t = t.root
-
 let stanza_parser t = t.stanza_parser
-
 let file t = t.project_file
-
 let file_key t = t.file_key
-
 let implicit_transitive_deps t = t.implicit_transitive_deps
-
 let generate_opam_files t = t.generate_opam_files
 
 let set_generate_opam_files generate_opam_files t =
   { t with generate_opam_files }
 
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
-
 let dialects t = t.dialects
-
 let set_dialects dialects t = { t with dialects }
-
 let explicit_js_mode t = t.explicit_js_mode
-
 let dune_version t = t.dune_version
 
 let to_dyn
@@ -254,7 +228,6 @@ let to_dyn
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
-
 let is_extension_set t key = Option.is_some (find_extension_args t key)
 
 include Dune_lang.Versioned_file.Make (struct
@@ -446,7 +419,6 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
     (parsing_context, stanza_parser, extension_args)
 
 let key = Univ_map.Key.create ~name:"dune-project" to_dyn
-
 let set t = Dune_lang.Decoder.set key t
 
 let get_exn () =
@@ -456,7 +428,6 @@ let get_exn () =
   | None -> Code_error.raise "Current project is unset" []
 
 let filename = "dune-project"
-
 let implicit_transitive_deps_default ~lang:_ = true
 
 let wrapped_executables_default ~(lang : Lang.Instance.t) =
@@ -466,14 +437,12 @@ let executables_implicit_empty_intf_default ~(lang : Lang.Instance.t) =
   lang.version >= (3, 0)
 
 let strict_package_deps_default ~lang:_ = false
-
 let explicit_js_mode_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 
 let accept_alternative_dune_file_name_default ~(lang : Lang.Instance.t) =
   lang.version >= (3, 0)
 
 let cram_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
-
 let expand_aliases_in_sandbox_default ~lang:_ = false
 
 let use_standard_c_and_cxx_flags_default ~(lang : Lang.Instance.t) =
@@ -1005,20 +974,15 @@ let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser
 
 let wrapped_executables t = t.wrapped_executables
-
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
-
 let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
-
 let () = Extension.register_simple Action_plugin.syntax (return [])
 
 let dune_site_extension =
   Extension.register_unit Section.dune_site_syntax (return [])
 
 let strict_package_deps t = t.strict_package_deps
-
 let cram t = t.cram
-
 let info t = t.info
 
 let update_execution_parameters t ep =

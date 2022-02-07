@@ -14,12 +14,10 @@ module O = struct
     | Some a -> f a
 
   let ( let* ) = ( >>= )
-
   let ( let+ ) = ( >>| )
 end
 
 let map t ~f = O.( >>| ) t f
-
 let bind t ~f = O.( >>= ) t f
 
 let iter t ~f =

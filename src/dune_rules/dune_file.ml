@@ -21,9 +21,7 @@ module Lint = struct
   type t = Preprocess.Without_instrumentation.t Preprocess.Per_module.t
 
   let decode = Preprocess.Per_module.decode
-
   let default = Preprocess.Per_module.default ()
-
   let no_lint = default
 end
 
@@ -356,11 +354,8 @@ module Public_lib = struct
     }
 
   let sub_dir t = t.sub_dir
-
   let loc t = fst t.name
-
   let name t = snd t.name
-
   let package t = t.package
 
   (** if [~allow_deprecated_names] is set, then we allow the package name to be
@@ -431,7 +426,6 @@ module Mode_conf = struct
     | Best -> "best"
 
   let to_dyn t = Dyn.variant (to_string t) []
-
   let encode t = Dune_lang.atom (to_string t)
 
   module Kind = struct
@@ -463,7 +457,6 @@ module Mode_conf = struct
 
   module Set = struct
     type mode_conf = t
-
     type nonrec t = Kind.t option Map.t
 
     let empty : t = Map.make_one None
@@ -782,7 +775,6 @@ module Library = struct
       |> String.concat ~sep:"/" |> Option.some
 
   let has_foreign t = Buildable.has_foreign t.buildable
-
   let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
   let foreign_archives t =
@@ -801,7 +793,6 @@ module Library = struct
         Foreign.Archive.dll_file ~archive ~dir ~ext_dll)
 
   let archive_basename t ~ext = Lib_name.Local.to_string (snd t.name) ^ ext
-
   let archive t ~dir ~ext = Path.Build.relative dir (archive_basename t ~ext)
 
   let best_name t =
@@ -810,7 +801,6 @@ module Library = struct
     | Public p -> snd p.name
 
   let is_virtual t = Option.is_some t.virtual_modules
-
   let is_impl t = Option.is_some t.implements
 
   let obj_dir ~dir t =
@@ -1038,9 +1028,7 @@ module Executables = struct
     type t
 
     val names : t -> (Loc.t * string) list
-
     val package : t -> Package.t option
-
     val has_public_name : t -> bool
 
     val make :
@@ -1067,9 +1055,7 @@ module Executables = struct
       }
 
     let names t = t.names
-
     let package t = Option.map t.public ~f:(fun p -> p.package)
-
     let has_public_name t = Option.is_some t.public
 
     let public_name =
@@ -1237,21 +1223,13 @@ module Executables = struct
     include T
 
     let make mode kind = Other { mode; kind }
-
     let exe = make Best Exe
-
     let object_ = make Best Object
-
     let shared_object = make Best Shared_object
-
     let byte = make Byte Exe
-
     let native = make Native Exe
-
     let js = make Byte Js
-
     let plugin = make Best Plugin
-
     let installable_modes = [ exe; native; byte ]
 
     let simple_representations =
@@ -1532,9 +1510,7 @@ module Executables = struct
     (make false, make true)
 
   let has_foreign t = Buildable.has_foreign t.buildable
-
   let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
-
   let obj_dir t ~dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd t.names))
 end
 
@@ -1606,7 +1582,6 @@ module Rule = struct
     end
 
     let decode = sum mode_decoders
-
     let field = field "mode" decode ~default:Rule.Mode.Standard
   end
 
@@ -1826,7 +1801,9 @@ module Rule = struct
         { targets =
             Static
               { targets =
-                  List.map [ name ^ ".ml"; name ^ ".mli" ] ~f:(fun target ->
+                  List.map
+                    [ name ^ ".ml"; name ^ ".mli" ]
+                    ~f:(fun target ->
                       (S.make_text loc target, Targets_spec.Kind.File))
               ; multiplicity = Multiple
               }
@@ -1987,7 +1964,6 @@ module Tests = struct
           }))
 
   let multi = gen_parse (field "names" (repeat1 (located string)))
-
   let single = gen_parse (field "name" (located string) >>| List.singleton)
 end
 
@@ -2242,11 +2218,9 @@ module Stanzas = struct
     | Plain
 
   let rules l = List.map l ~f:(fun x -> Rule x)
-
   let execs exe = [ Executables exe ]
 
   type Stanza.t += Include of Loc.t * string
-
   type constructors = (string * Stanza.t list Dune_lang.Decoder.t) list
 
   let stanzas : constructors =

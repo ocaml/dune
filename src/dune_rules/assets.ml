@@ -15,11 +15,8 @@ let () =
 module V1 = struct
   (*$ begin_vars $*)
   let context = "dummy_context"
-
   let ocaml_version = "dummy_version"
-
   let ocamlc_config = []
-
   let send_target = "dummy_send_target"
 
   (*$ end_vars $*)

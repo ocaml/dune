@@ -16,15 +16,12 @@ module Timestamp : sig
   type t
 
   val to_json : t -> Json.t
-
   val now : unit -> t
-
   val of_float_seconds : float -> t
 end = struct
   type t = float
 
   let now () = Unix.gettimeofday ()
-
   let of_float_seconds x = x
 
   let to_json f =
@@ -258,9 +255,7 @@ module Event = struct
     | Metadata m -> json_fields_of_metadata m
 
   let to_json t = `Assoc (to_json_fields t)
-
   let counter ?id common args = Counter (common, args, id)
-
   let complete ?tdur ?args ~dur common = Complete { common; tdur; dur; args }
 
   let async ?scope ?args id async common =

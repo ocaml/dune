@@ -32,7 +32,6 @@ let echo s =
     List.map lines ~f:(fun s -> Run ("echo", [ s ]))
 
 let cat fn = Run ("cat", [ fn ])
-
 let mkdir p = Run ("mkdir", [ "-p"; p ])
 
 let interpret_perm (perm : Action.File_perm.t) fn acc =

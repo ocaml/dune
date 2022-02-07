@@ -13,13 +13,9 @@ module Flags : sig
   end
 
   val build_runtime : 'a t -> 'a
-
   val compile : 'a t -> 'a
-
   val link : 'a t -> 'a
-
   val map : f:('a -> 'b) -> 'a t -> 'b t
-
   val standard : Spec.t
 
   val make :
@@ -41,7 +37,6 @@ module In_buildable : sig
     }
 
   val decode : t Dune_lang.Decoder.t
-
   val default : t
 end
 
@@ -64,8 +59,6 @@ module Env : sig
     Ordered_set_lang.Unexpanded.t t -> Ordered_set_lang.Unexpanded.t t -> bool
 
   val decode : Ordered_set_lang.Unexpanded.t t Dune_lang.Decoder.t
-
   val default : profile:Profile.t -> string list t
-
   val empty : Ordered_set_lang.Unexpanded.t t
 end

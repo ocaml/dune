@@ -40,7 +40,6 @@ module Progress = struct
     && Int.equal number_of_rules_executed t.number_of_rules_executed
 
   let complete t = t.number_of_rules_executed
-
   let remaining t = t.number_of_rules_discovered - t.number_of_rules_executed
 end
 
@@ -59,7 +58,6 @@ module Error = struct
   end
 
   let create ~exn = { exn; id = Id.gen () }
-
   let id t = t.id
 
   let promotion t =
@@ -101,13 +99,9 @@ module Error = struct
       }
 
     val add : t -> error -> t
-
     val one_event_diff : prev:t -> next:t -> Event.t option
-
     val equal : t -> t -> bool
-
     val current : t -> error Id.Map.t
-
     val empty : t
   end = struct
     type nonrec t =
@@ -144,7 +138,6 @@ module Error = struct
         None
 
     let current t = t.current
-
     let empty = { current = Id.Map.empty; stamp = 0; last_event = None }
   end
 end
@@ -188,7 +181,6 @@ module State = struct
     { Progress.number_of_rules_discovered = 0; number_of_rules_executed = 0 }
 
   let reset_progress () = Svar.write t (Building progress_init)
-
   let set what = Svar.write t what
 
   let incr_rule_done_exn () =
@@ -214,7 +206,6 @@ module State = struct
     | _ -> assert false
 
   let errors = Svar.create Error.Set.empty
-
   let reset_errors () = Svar.write errors Error.Set.empty
 
   let add_error error =
@@ -236,7 +227,6 @@ let rec with_locks ~f = function
    On exit, we need to delete them as they might contain garbage. There is no
    [pending_dir_targets] since actions with directory targets are sandboxed. *)
 let pending_file_targets = ref Path.Build.Set.empty
-
 let () = Hooks.End_of_build.always Metrics.reset
 
 let () =
@@ -277,7 +267,6 @@ module type Rec = sig
 
   module Pred : sig
     val eval : File_selector.t -> Path.Set.t Memo.Build.t
-
     val build : File_selector.t -> Dep.Fact.Files.t Memo.Build.t
   end
 end
@@ -728,7 +717,6 @@ end = struct
       }
 
     let equal a b = Digest.equal a.digest b.digest
-
     let hash t = Digest.hash t.digest
 
     let to_dyn t : Dyn.t =
@@ -1098,7 +1086,6 @@ end
 include Exported
 
 let eval_pred = Pred.eval
-
 let build_pred = Pred.build
 
 (* Here we are doing a O(log |S|) lookup in a set S of files in the build
@@ -1232,5 +1219,4 @@ let read_file p ~f =
   f p
 
 let state = State.t
-
 let errors = State.errors

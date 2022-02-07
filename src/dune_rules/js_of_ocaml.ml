@@ -17,9 +17,7 @@ module Flags = struct
   end
 
   let build_runtime t = t.build_runtime
-
   let compile t = t.compile
-
   let link t = t.link
 
   let decode =

@@ -4,25 +4,17 @@ module Graph = Dune_graph.Graph
 
 module Debug = struct
   let track_locations_of_lazy_values = ref false
-
   let check_invariants = ref false
-
   let verbose_diagnostics = ref false
 end
 
 module Counters = struct
   let enabled = ref false
-
   let nodes_restored = ref 0
-
   let nodes_computed = ref 0
-
   let edges_traversed = ref 0
-
   let nodes_in_cycle_detection_graph = ref 0
-
   let edges_in_cycle_detection_graph = ref 0
-
   let paths_in_cycle_detection_graph = ref 0
 
   let reset () =
@@ -72,7 +64,6 @@ module Build0 = struct
     include Monad.List (Fiber)
 
     let map = parallel_map
-
     let concat_map l ~f = map l ~f >>| List.concat
   end
 
@@ -133,9 +124,7 @@ module Id = Id.Make ()
    and all the dependencies are properly specified *)
 module Caches = struct
   let cleaners = ref []
-
   let register ~clear = cleaners := clear :: !cleaners
-
   let clear () = List.iter !cleaners ~f:(fun f -> f ())
 end
 
@@ -172,13 +161,9 @@ module Stack_frame_without_state = struct
   type t = Dep_node_without_state.packed
 
   let name (T t) = t.spec.name
-
   let input (T t) = input_to_dyn t
-
   let to_dyn (T t) = Dep_node_without_state.to_dyn t
-
   let id (T a) = a.id
-
   let equal (T a) (T b) = Id.equal a.id b.id
 end
 
@@ -188,7 +173,6 @@ module Cycle_error = struct
   exception E of t
 
   let get t = t
-
   let to_dyn = Dyn.list Stack_frame_without_state.to_dyn
 end
 
@@ -237,7 +221,6 @@ module Error = struct
     | exn -> (exn, List.rev t.rev_stack)
 
   let get t = fst (get_exn_and_stack t)
-
   let stack t = snd (get_exn_and_stack t)
 
   let extend_stack exn ~stack_frame =
@@ -493,11 +476,8 @@ module M = struct
     type t
 
     val create : deps_rev:Dep_node.packed list -> t
-
     val empty : t
-
     val length : t -> int
-
     val to_list : t -> Dep_node.packed list
 
     val changed_or_not :
@@ -511,11 +491,8 @@ module M = struct
     type t = Dep_node.packed array
 
     let create ~deps_rev = Array.of_list deps_rev
-
     let empty = Array.init 0 ~f:(fun _ -> assert false)
-
     let length = Array.length
-
     let to_list = Array.fold_left ~init:[] ~f:(fun acc x -> x :: acc)
 
     let changed_or_not t ~f =
@@ -622,17 +599,13 @@ module Stack_frame_with_state : sig
     -> t
 
   val dep_node : t -> Dep_node_without_state.packed
-
   val dag_node : t -> Dag.node
 
   (* This function accumulates dependencies of frames in the [Compute] phase.
      Calling it in the [Restore_from_cache] frame raises an exception. *)
   val add_dep : t -> dep_node:_ Dep_node.t -> unit
-
   val deps_rev : t -> Dep_node.packed list
-
   val children_added_to_dag : t -> Dag.Id.Set.t
-
   val record_child_added_to_dag : t -> dag_node_id:Dag.Id.t -> unit
 end = struct
   type phase =
@@ -682,7 +655,6 @@ end = struct
       }
 
   let dep_node (T t) = Dep_node_without_state.T t.dep_node
-
   let dag_node (T t) = Lazy_dag_node.force t.dag_node ~dep_node:t.dep_node
 
   let add_dep (T t) ~dep_node =
@@ -865,7 +837,6 @@ end
 
 module Error_handler : sig
   val is_set : bool Fiber.t
-
   val report_error : Exn_with_backtrace.t -> unit Fiber.t
 
   val with_error_handler :
@@ -874,9 +845,7 @@ end = struct
   type t = Exn_with_backtrace.t -> unit Fiber.t
 
   let var : t Fiber.Var.t = Fiber.Var.create ()
-
   let is_set = Fiber.map (Fiber.Var.get var) ~f:Option.is_some
-
   let get_exn = Fiber.Var.get_exn var
 
   let report_error error =
@@ -1484,7 +1453,6 @@ module Invalidation = struct
   end
 
   include T
-
   include (Monoid.Make (T) : Monoid.S with type t := t)
 
   let execute_leaf { Leaf.kind; _ } =
@@ -1563,9 +1531,7 @@ end
 
 module Current_run = struct
   let f () = Run.current () |> Build0.return
-
   let memo = create "current-run" ~input:(module Unit) f
-
   let exec () = exec memo ()
 
   let invalidate ~reason =
@@ -1626,9 +1592,7 @@ module Cell = struct
   type ('i, 'o) t = ('i, 'o) Dep_node.t
 
   let input (t : (_, _) t) = t.without_state.input
-
   let read = Exec.exec_dep_node
-
   let invalidate = Invalidation.invalidate_node
 end
 
@@ -1663,7 +1627,6 @@ module Lazy = struct
     t
 
   let force f = f ()
-
   let map t ~f = create (fun () -> Fiber.map ~f (t ()))
 end
 
@@ -1671,15 +1634,11 @@ let lazy_ = Lazy.create
 
 module Poly (Function : sig
   type 'a input
-
   type 'a output
 
   val name : string
-
   val id : 'a input -> 'a Type_eq.Id.t
-
   val to_dyn : _ input -> Dyn.t
-
   val eval : 'a input -> 'a output Fiber.t
 end) =
 struct
@@ -1689,9 +1648,7 @@ struct
     type t = T : _ input -> t
 
     let to_dyn (T t) = to_dyn t
-
     let hash (T t) = Type_eq.Id.hash (id t)
-
     let equal (T x) (T y) = Type_eq.Id.equal (id x) (id y)
   end
 
@@ -1730,11 +1687,8 @@ let reset invalidation =
 
 module Perf_counters = struct
   let enable () = Counters.enabled := true
-
   let nodes_restored_in_current_run () = !Counters.nodes_restored
-
   let nodes_computed_in_current_run () = !Counters.nodes_computed
-
   let edges_traversed_in_current_run () = !Counters.edges_traversed
 
   let nodes_for_cycle_detection_in_current_run () =
@@ -1796,7 +1750,6 @@ module Run = struct
 
   module For_tests = struct
     let compare = Run.compare
-
     let current = Run.current
   end
 end
@@ -1808,7 +1761,6 @@ type 'a build = 'a Fiber.t
 
 module type Build = sig
   include Monad.S
-
   module List : Monad.List with type 'a t := 'a t
 
   val memo_build : 'a build -> 'a t

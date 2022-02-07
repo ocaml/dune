@@ -16,9 +16,7 @@ module type Desc = sig
   type t
 
   val name : string
-
   val version : int
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -39,9 +37,7 @@ end
     printer. *)
 module Make (D : Desc) : sig
   val to_string : D.t -> string
-
   val dump : Path.t -> D.t -> unit
-
   val load : Path.t -> D.t option
 
   type data += T of D.t

@@ -5,23 +5,14 @@ type t
 include Comparable_intf.S with type key := t
 
 val to_dyn : t -> Dyn.t
-
 val hash : t -> int
-
 val equal : t -> t -> bool
-
 val compare : t -> t -> Ordering.t
-
 val to_string : t -> string
-
 val from_hex : string -> t option
-
 val file : Path.t -> t
-
 val string : string -> t
-
 val to_string_raw : t -> string
-
 val generic : 'a -> t
 
 (** The subset of fields of [Unix.stats] used by this module.

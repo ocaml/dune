@@ -5,6 +5,5 @@ end
 
 module V1 = struct
   let load = Plugins.load
-
   let available = Plugins.available
 end

@@ -3,11 +3,8 @@ module type S = sig
       generate_sites_module *)
 
   val paths : string list
-
   val list : unit -> string list
-
   val load_all : unit -> unit
-
   val load : string -> unit
 end
 

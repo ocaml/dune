@@ -26,7 +26,6 @@ let find t k =
     | Named (k', x) -> Option.some_if (k = k') x)
 
 let empty = []
-
 let singleton x = [ Unnamed x ]
 
 let to_dyn dyn_of_a bindings =

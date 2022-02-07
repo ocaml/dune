@@ -36,11 +36,8 @@ module Client : sig
   type t
 
   val create : Unix.sockaddr -> t Fiber.t
-
   val stop : t -> unit
-
   val connect_exn : t -> Session.t Fiber.t
-
   val connect : t -> (Session.t, Exn_with_backtrace.t) result Fiber.t
 end
 
@@ -49,10 +46,7 @@ module Server : sig
   type t
 
   val create : Unix.sockaddr -> backlog:int -> t
-
   val stop : t -> unit
-
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
-
   val listening_address : t -> Unix.sockaddr
 end

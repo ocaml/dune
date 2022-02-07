@@ -13,7 +13,6 @@ val temp_in_dir :
   ?perms:int -> what -> dir:Path.t -> prefix:string -> suffix:string -> Path.t
 
 val create : ?perms:int -> what -> prefix:string -> suffix:string -> Path.t
-
 val destroy : what -> Path.t -> unit
 
 (** Delete the contents of a temporary directory without deleting the directory

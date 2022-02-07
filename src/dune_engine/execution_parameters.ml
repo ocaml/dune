@@ -15,7 +15,6 @@ module Action_output_on_success = struct
     | Must_be_empty -> Variant ("Must_be_empty", [])
 
   let equal = Poly.equal
-
   let hash = Poly.hash
 end
 
@@ -74,26 +73,18 @@ let builtin_default =
   }
 
 let set_dune_version x t = { t with dune_version = x }
-
 let set_action_stdout_on_success x t = { t with action_stdout_on_success = x }
-
 let set_action_stderr_on_success x t = { t with action_stderr_on_success = x }
-
 let set_expand_aliases_in_sandbox x t = { t with expand_aliases_in_sandbox = x }
-
 let dune_version t = t.dune_version
 
 let should_remove_write_permissions_on_generated_files t =
   t.dune_version >= (2, 4)
 
 let expand_aliases_in_sandbox t = t.expand_aliases_in_sandbox
-
 let action_stdout_on_success t = t.action_stdout_on_success
-
 let action_stderr_on_success t = t.action_stderr_on_success
-
 let default = Fdecl.create Dyn.opaque
-
 let init t = Fdecl.set default t
 
 let default =

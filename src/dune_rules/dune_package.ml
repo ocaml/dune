@@ -204,11 +204,8 @@ module Lib = struct
        { info; main_module_name; modules = Some modules })
 
   let modules t = t.modules
-
   let main_module_name t = t.main_module_name
-
   let wrapped t = Option.map t.modules ~f:Modules.wrapped
-
   let info dp = dp.info
 
   let to_dyn { info; modules; main_module_name } =

@@ -16,5 +16,4 @@ val compare : t -> t -> Ordering.t
 include Dune_lang.Conv.S with type t := t
 
 val all : t list
-
 val to_dyn : t -> Dyn.t

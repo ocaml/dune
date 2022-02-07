@@ -129,7 +129,6 @@ module Logger = struct
     }
 
   let create ~name = { messages = []; name }
-
   let log t fmt = Printf.ksprintf (fun m -> t.messages <- m :: t.messages) fmt
 
   let print { messages; name } =

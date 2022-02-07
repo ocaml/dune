@@ -26,7 +26,6 @@ module V1 : sig
     (** All the libraries that where statically linked in *)
 
     val to_list : unit -> Statically_linked_library.t list
-
     val find : name:string -> Statically_linked_library.t option
   end
 end

@@ -28,5 +28,4 @@ type report =
   }
 
 val dyn_of_report : report -> Dyn.t
-
 val parse : string -> report list

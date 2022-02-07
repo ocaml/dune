@@ -16,7 +16,6 @@ module Config : sig
       }
 
     val all : (string * t) list
-
     val to_dyn : t -> Dyn.t
 
     (** The console backend corresponding to the selected display mode *)

@@ -17,7 +17,6 @@ let go f =
   | Scheduler.Run.Shutdown_requested -> ()
 
 let true_ = Bin.which "true" ~path:(Env.path Env.initial) |> Option.value_exn
-
 let cell = Memo.lazy_cell Memo.Build.return
 
 let%expect_test "cancelling a build" =

@@ -40,13 +40,9 @@ module Dune = struct
   module Set = C.Set
 
   let create ~where ~root ~pid = { where; root; pid }
-
   let root t = t.root
-
   let where t = t.where
-
   let pid t = t.pid
-
   let filename dune = Printf.sprintf "%d.csexp" dune.pid
 
   let sexp : t Conv.value =
@@ -115,7 +111,6 @@ type nonrec t =
   }
 
 let create config = { config; last_mtime = None; current = [] }
-
 let current t = t.current
 
 module Refresh = struct
@@ -126,11 +121,8 @@ module Refresh = struct
     }
 
   let empty = { added = []; removed = []; errored = [] }
-
   let added t = t.added
-
   let removed t = t.removed
-
   let errored t = t.errored
 end
 
@@ -138,19 +130,15 @@ module Poll (Fiber : sig
   type 'a t
 
   val return : 'a -> 'a t
-
   val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
   module O : sig
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
 end) (IO : sig
   val scandir : string -> (string list, exn) result Fiber.t
-
   val stat : string -> ([ `Mtime of float ], exn) result Fiber.t
-
   val read_file : string -> (string, exn) result Fiber.t
 end) =
 struct

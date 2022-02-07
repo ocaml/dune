@@ -265,5 +265,4 @@ module Artifacts = struct
 end
 
 let store_artifacts = Artifacts.store
-
 let restore_artifacts = Artifacts.restore

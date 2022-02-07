@@ -8,17 +8,11 @@ module type OPS = sig
   type t
 
   val equal : t -> t -> bool
-
   val ( = ) : t -> t -> bool
-
   val ( >= ) : t -> t -> bool
-
   val ( > ) : t -> t -> bool
-
   val ( <= ) : t -> t -> bool
-
   val ( < ) : t -> t -> bool
-
   val ( <> ) : t -> t -> bool
 end
 
@@ -33,7 +27,6 @@ module Operators (X : S) = struct
       false
 
   let equal = ( = )
-
   let ( <> ) a b = not (a = b)
 
   let ( >= ) a b =

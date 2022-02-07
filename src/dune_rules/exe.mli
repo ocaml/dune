@@ -32,9 +32,7 @@ module Linkage : sig
   val js : t
 
   val is_native : t -> bool
-
   val is_js : t -> bool
-
   val is_byte : t -> bool
 
   val of_user_config :

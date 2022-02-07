@@ -13,7 +13,6 @@ module Dynamic_dep : sig
     | Glob of Path.t * Glob.t
 
   val to_dep : t -> Dep.t
-
   val compare : t -> t -> Ordering.t
 
   module Map : Map.S with type key := t

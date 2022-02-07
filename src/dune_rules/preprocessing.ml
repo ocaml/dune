@@ -21,7 +21,6 @@ module Key : sig
   (* [decode y] fails if there hasn't been a previous call to [encode] such that
      [encode x = y]. *)
   val encode : Decoded.t -> encoded
-
   val decode : encoded -> Decoded.t
 end = struct
   type encoded = Digest.t
@@ -186,9 +185,7 @@ module Driver = struct
         ""
 
     let desc_article = "a"
-
     let lib t = t.lib
-
     let replaces t = t.replaces
 
     let instantiate ~resolve ~get lib (info : Info.t) =

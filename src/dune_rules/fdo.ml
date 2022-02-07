@@ -8,11 +8,8 @@ type phase =
   | Emit
 
 let linear_ext = ".cmir-linear"
-
 let linear_fdo_ext = linear_ext ^ "-fdo"
-
 let fdo_profile s = Path.extend_basename s ~suffix:".fdo-profile"
-
 let linker_script s = Path.extend_basename s ~suffix:".linker-script"
 
 let phase_flags = function
@@ -62,9 +59,7 @@ module Mode = struct
     | Never -> "never"
 
   let default = If_exists
-
   let all = [ If_exists; Never; Always ]
-
   let var = "OCAMLFDO_USE_PROFILE"
 
   let of_context (ctx : Context.t) =

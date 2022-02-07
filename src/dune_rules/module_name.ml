@@ -7,22 +7,15 @@ include Section.Modulelike (struct
   type t = string
 
   let description = "module name"
-
   let module_ = "Module_name"
-
   let to_string s = s
-
   let make s = String.capitalize s
 end)
 
 let equal = String.equal
-
 let compare = String.compare
-
 let add_suffix = ( ^ )
-
 let uncapitalize = String.uncapitalize
-
 let pp_quote fmt x = Format.fprintf fmt "%S" x
 
 module Set = struct
@@ -36,7 +29,6 @@ module Map_traversals = Memo.Build.Make_map_traversals (Map)
 module Infix = Comparator.Operators (String)
 
 let of_local_lib_name s = of_string (Lib_name.Local.to_string s)
-
 let to_local_lib_name s = Lib_name.Local.of_string s
 
 module Per_item = struct
@@ -89,7 +81,6 @@ module Unique = struct
         [ Pp.textf "%s corresponds to an invalid module name" t ]
 
   let encode = Dune_lang.Encoder.string
-
   let of_string s = of_name_assuming_needs_no_mangling (of_string s)
 
   let decode =
@@ -108,7 +99,6 @@ module Unique = struct
     of_name_assuming_needs_no_mangling (of_string_allow_invalid (loc, name))
 
   let to_dyn = to_dyn
-
   let artifact_filename (t : t) ~ext = t ^ ext
 
   module Map = Map

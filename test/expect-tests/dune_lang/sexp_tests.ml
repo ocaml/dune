@@ -3,7 +3,6 @@ open Dune_lang.Decoder
 open Dune_tests_common
 
 let () = init ()
-
 let print_loc ppf (_ : Loc.t) = Format.pp_print_string ppf "<loc>"
 
 let sexp =
@@ -195,17 +194,11 @@ Ok [ "bar%foo" ]
 (* Printing tests *)
 
 let loc = Loc.none
-
 let a = Dune_lang.atom
-
 let s x = Dune_lang.Quoted_string x
-
 let t x = Dune_lang.Template { quoted = false; parts = x; loc }
-
 let tq x = Dune_lang.Template { quoted = true; parts = x; loc }
-
 let l x = Dune_lang.List x
-
 let var ?payload name = { Dune_lang.Template.Pform.loc; name; payload }
 
 type syntax =

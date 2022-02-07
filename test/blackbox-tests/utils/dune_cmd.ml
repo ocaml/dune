@@ -86,7 +86,6 @@ module Cat = struct
     | _ -> raise (Arg.Bad "Usage: dune_cmd cat <file>")
 
   let run p = print_string (Io.String_path.read_file p)
-
   let () = register name of_args run
 end
 
@@ -100,7 +99,6 @@ module Exists = struct
     | _ -> raise (Arg.Bad "Usage: dune_cmd exists <path>")
 
   let run (Path path) = print_string (Path.exists path |> Bool.to_string)
-
   let () = register name of_args run
 end
 

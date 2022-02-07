@@ -28,7 +28,6 @@ val get_ppx_driver :
   -> (Path.Build.t * string list) Action_builder.t
 
 val gen_rules : Super_context.t -> string list -> unit Memo.Build.t
-
 val chdir : Action_unexpanded.t -> Action_unexpanded.t
 
 val action_for_pp_with_target :

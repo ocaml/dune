@@ -10,13 +10,9 @@ module Name : sig
   type t
 
   val make : string -> t
-
   val compare : t -> t -> Ordering.t
-
   val equal : t -> t -> bool
-
   val to_dyn : t -> Dyn.t
-
   val to_string : t -> string
 end
 
@@ -33,11 +29,8 @@ val make :
 (** Coq does enforce some invariants wrt module vs file names *)
 
 val source : t -> Path.Build.t
-
 val prefix : t -> string list
-
 val name : t -> Name.t
-
 val dep_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 
 (** Some of the object files should not be installed, we control this with the
@@ -57,5 +50,4 @@ val obj_files :
   -> (Path.Build.t * string) list
 
 val to_dyn : t -> Dyn.t
-
 val eval : dir:Path.Build.t -> standard:t list -> Ordered_set_lang.t -> t list

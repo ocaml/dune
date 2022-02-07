@@ -18,7 +18,6 @@
     non-obvious. *)
 
 type t
-
 type file_info = string * UnixLabels.stats
 
 module Event : sig

@@ -6,7 +6,6 @@ type t =
   | Exes of string list
 
 let for_lib l = Lib l
-
 let for_exes ~names = Exes names
 
 (* For debug purposes we use the name of one library or executable and the hash

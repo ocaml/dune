@@ -17,17 +17,11 @@ module Encoded : sig
   type t
 
   val template : Template.t -> t
-
   val atom : Loc.t -> Atom.t -> t
-
   val quoted_string : Loc.t -> string -> t
-
   val comment : Loc.t -> string list -> t
-
   val list : Loc.t -> t list -> t
-
   val to_csts : t list -> Cst.t list
-
   val to_asts : t list -> Ast.t list
 end = struct
   open Ast
@@ -52,7 +46,6 @@ end = struct
     Template t
 
   let atom loc a = Atom (loc, a)
-
   let quoted_string loc s = Quoted_string (loc, s)
 
   let comment loc lines =
@@ -62,7 +55,6 @@ end = struct
         :: List.map lines ~f:(fun line -> Quoted_string (Loc.none, line)) )
 
   let list loc l = List (loc, l)
-
   let to_asts l = l
 
   let rec to_cst (x : Ast.t) : Cst.t =

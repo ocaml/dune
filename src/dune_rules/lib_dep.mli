@@ -25,13 +25,9 @@ type t =
   | Select of Select.t
 
 val equal : t -> t -> bool
-
 val to_dyn : t -> Dyn.t
-
 val direct : Loc.t * Lib_name.t -> t
-
 val re_export : Loc.t * Lib_name.t -> t
-
 val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 
 module L : sig

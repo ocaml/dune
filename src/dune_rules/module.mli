@@ -11,7 +11,6 @@ module File : sig
     }
 
   val path : t -> Path.t
-
   val make : Dialect.t -> Path.t -> t
 end
 
@@ -33,18 +32,14 @@ module Source : sig
   type t
 
   val name : t -> Module_name.t
-
   val make : ?impl:File.t -> ?intf:File.t -> Module_name.t -> t
-
   val has : t -> ml_kind:Ml_kind.t -> bool
-
   val src_dir : t -> Path.t
 end
 
 type t
 
 val kind : t -> Kind.t
-
 val to_dyn : t -> Dyn.t
 
 (** When you initially construct a [t] using [of_source], it assumes no wrapping
@@ -53,13 +48,9 @@ val to_dyn : t -> Dyn.t
 val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 
 val name : t -> Module_name.t
-
 val source : t -> ml_kind:Ml_kind.t -> File.t option
-
 val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option
-
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
-
 val obj_name : t -> Module_name.Unique.t
 
 val iter :
@@ -71,7 +62,6 @@ val has : t -> ml_kind:Ml_kind.t -> bool
 val with_wrapper : t -> main_module_name:Module_name.t -> t
 
 val add_file : t -> Ml_kind.t -> File.t -> t
-
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 (** Set preprocessing flags *)
@@ -81,19 +71,13 @@ val wrapped_compat : t -> t
 
 module Name_map : sig
   type module_
-
   type t = module_ Module_name.Map.t
 
   val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
-
   val encode : t -> Dune_lang.t list
-
   val to_dyn : t -> Dyn.t
-
   val impl_only : t -> module_ list
-
   val of_list_exn : module_ list -> t
-
   val add : t -> module_ -> t
 end
 with type module_ := t
@@ -116,11 +100,8 @@ module Obj_map_traversals : sig
 end
 
 val sources : t -> Path.t list
-
 val visibility : t -> Visibility.t
-
 val encode : t -> Dune_lang.t list
-
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 
 (** [pped m] return [m] but with the preprocessed source paths paths *)

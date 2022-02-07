@@ -21,7 +21,5 @@ let create_internal op path =
     Exn.reraise e
 
 let create path = Option.value_exn (create_internal F_LOCK path)
-
 let try_create = create_internal F_TLOCK
-
 let unlock fd = Unix.close fd

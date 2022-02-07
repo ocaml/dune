@@ -8,38 +8,23 @@ module T = struct
   type t = StringLabels.t
 
   let compare = compare
-
   let equal (x : t) (y : t) = x = y
-
   let hash (s : t) = Hashtbl.hash s
-
   let to_dyn s = Dyn.String s
 end
 
 let to_dyn = T.to_dyn
-
 let equal : string -> string -> bool = ( = )
-
 let hash = Hashtbl.hash
-
 let capitalize = capitalize_ascii
-
 let uncapitalize = uncapitalize_ascii
-
 let uppercase = uppercase_ascii
-
 let lowercase = lowercase_ascii
-
 let index = index_opt
-
 let index_from = index_from_opt
-
 let rindex = rindex_opt
-
 let rindex_from = rindex_from_opt
-
 let break s ~pos = (sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos))
-
 let is_empty s = length s = 0
 
 let rec check_prefix s ~prefix len i =
@@ -220,7 +205,6 @@ let enumerate_gen s =
   fun l -> concat (loop l) ~sep:""
 
 let enumerate_and = enumerate_gen "and"
-
 let enumerate_or = enumerate_gen "or"
 
 let enumerate_one_of = function

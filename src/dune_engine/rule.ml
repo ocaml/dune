@@ -63,11 +63,8 @@ module T = struct
     }
 
   let compare a b = Id.compare a.id b.id
-
   let equal a b = Id.equal a.id b.id
-
   let hash t = Id.hash t.id
-
   let loc t = t.loc
 
   let to_dyn t : Dyn.t =

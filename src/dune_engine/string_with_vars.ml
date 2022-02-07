@@ -27,7 +27,6 @@ let compare_no_loc { quoted; parts; loc = _ } t =
       | _, Pform _ -> Gt)
 
 let equal_no_loc t1 t2 = Ordering.is_eq (compare_no_loc t1 t2)
-
 let make_text ?(quoted = false) loc s = { quoted; loc; parts = [ Text s ] }
 
 let make_pform ?(quoted = false) loc pform =
@@ -82,7 +81,6 @@ let decode_manually f =
     }
 
 let decode = decode_manually Pform.Env.parse
-
 let loc t = t.loc
 
 let virt_pform ?quoted pos pform =

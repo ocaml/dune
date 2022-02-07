@@ -19,7 +19,6 @@ module type S = sig
   end
 
   val load_exn : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
-
   val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a Or_exn.t
 
   val parse_contents :

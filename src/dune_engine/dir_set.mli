@@ -26,7 +26,6 @@ val universal : 'w t
 val trivial : bool -> 'w t
 
 val is_empty : 'w t -> bool
-
 val is_universal : 'w t -> bool
 
 (** [descend t comp] is the set [t'] such that for all path [p], [p] is in [t']
@@ -61,21 +60,13 @@ val singleton : 'w Path.Local_gen.t -> 'w t
 val subtree : 'w Path.Local_gen.t -> 'w t
 
 val is_subset : 'w t -> of_:'w t -> bool
-
 val union : 'w t -> 'w t -> 'w t
-
 val union_all : 'w t list -> 'w t
-
 val inter : 'w t -> 'w t -> 'w t
-
 val inter_all : 'w t list -> 'w t
-
 val diff : 'w t -> 'w t -> 'w t
-
 val negate : 'w t -> 'w t
-
 val to_dyn : 'w t -> Dyn.t
-
 val forget_root : 'w t -> Path.Unspecified.w t
 
 type toplevel_subdirs =
@@ -83,7 +74,5 @@ type toplevel_subdirs =
   | Finite of String.Set.t
 
 val toplevel_subdirs : 'w t -> toplevel_subdirs
-
 val of_list : 'w Path.Local_gen.t list -> 'w t
-
 val just_the_root : 'w t

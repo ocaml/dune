@@ -69,7 +69,6 @@ module Package = struct
     }
 
   let uri { org; name } = sprintf "https://github.com/%s/%s" org name
-
   let make org name = { org; name }
 
   let clone t =

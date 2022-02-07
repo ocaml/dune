@@ -54,7 +54,6 @@ module Var = struct
         (Memo.Cell.invalidate ~reason:Memo.Invalidation.Reason.Test t.cell)
 
   let read t = Memo.Build.of_thunk (fun () -> Memo.Cell.read t.cell)
-
   let peek t = !(t.value)
 end
 
@@ -97,9 +96,7 @@ let one_bind =
                 Build.map (Var.read v) ~f:(fun v -> acc + v))) ))
 
 let%bench_fun "1-bind (create and compute)" = one_bind.create_and_compute ()
-
 let%bench_fun "1-bind (incr and recompute)" = one_bind.incr_and_recompute ()
-
 let%bench_fun "1-bind (restore from cache)" = one_bind.restore_from_cache ()
 
 let twenty_reads =
@@ -133,9 +130,7 @@ let clique =
             Build.map2 node acc ~f:( + )) ))
 
 let%bench_fun "clique (create and compute)" = clique.create_and_compute ()
-
 let%bench_fun "clique (incr and recompute)" = clique.incr_and_recompute ()
-
 let%bench_fun "clique (restore from cache)" = clique.restore_from_cache ()
 
 let bipartite =
@@ -168,9 +163,7 @@ let bipartite =
       (first_var, Build.memoize (Build.all outputs)))
 
 let%bench_fun "bipartite (create and compute)" = bipartite.create_and_compute ()
-
 let%bench_fun "bipartite (incr and recompute)" = bipartite.incr_and_recompute ()
-
 let%bench_fun "bipartite (restore from cache)" = bipartite.restore_from_cache ()
 
 let memo_diamonds =

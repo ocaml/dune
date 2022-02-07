@@ -2,7 +2,6 @@ open Stdune
 open Dune_tests_common
 
 let () = init ()
-
 let extension s = print (Pp.text (Filename.extension s))
 
 let%expect_test _ =

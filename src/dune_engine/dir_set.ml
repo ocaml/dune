@@ -30,7 +30,6 @@ let exceptions = function
   | Nontrivial t -> t.exceptions
 
 let empty = Empty
-
 let universal = Universal
 
 let trivial = function
@@ -135,7 +134,6 @@ let descend t child =
     | Some t -> t)
 
 let union_all = List.fold_left ~init:empty ~f:union
-
 let inter_all = List.fold_left ~init:empty ~f:inter
 
 let of_subtree_gen =
@@ -151,11 +149,8 @@ let just_the_root =
   Nontrivial { here = true; default = false; exceptions = String.Map.empty }
 
 let subtree' = of_subtree_gen universal
-
 let singleton' = of_subtree_gen just_the_root
-
 let subtree p = subtree' (Path.Local_gen.explode p)
-
 let singleton p = singleton' (Path.Local_gen.explode p)
 
 let rec is_subset t ~of_ =

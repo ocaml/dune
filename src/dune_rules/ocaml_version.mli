@@ -4,7 +4,6 @@ open! Dune_engine
 type t
 
 val make : int * int * int -> t
-
 val of_ocaml_config : Ocaml_config.t -> t
 
 (** Does this support [-no-keep-locs]? *)

@@ -86,7 +86,6 @@ type what =
   | List_topics
 
 let commands = [ ("config", Man config); ("topics", List_topics) ]
-
 let doc = "Additional Dune help"
 
 let man =

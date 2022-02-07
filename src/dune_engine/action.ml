@@ -70,9 +70,7 @@ module String_with_sexp = struct
   type t = string
 
   let decode = Dune_lang.Decoder.string
-
   let encode = Dune_lang.Encoder.string
-
   let is_dev_null s = Path.equal (Path.of_string s) Config.dev_null
 end
 
@@ -271,9 +269,7 @@ let is_useful_to distribute memoize =
     | false -> Clearly_not
 
 let is_useful_to_sandbox = is_useful_to false false
-
 let is_useful_to_distribute = is_useful_to true false
-
 let is_useful_to_memoize = is_useful_to true true
 
 module Full = struct
@@ -312,9 +308,7 @@ module Full = struct
     { action; env; locks; can_go_in_shared_cache; sandbox }
 
   let map t ~f = { t with action = f t.action }
-
   let add_env e t = { t with env = Env.extend_env t.env e }
-
   let add_locks l t = { t with locks = t.locks @ l }
 
   let add_can_go_in_shared_cache b t =

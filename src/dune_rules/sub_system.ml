@@ -167,11 +167,9 @@ module Register_end_point (M : End_point) = struct
     module Info = M.Info
 
     type t = Library_compilation_context.t -> unit Memo.Build.t
-
     type Lib.Sub_system.t += T = Gen
 
     let instantiate ~resolve:_ ~get:_ _id info = Memo.Build.return (gen info)
-
     let public_info = None
   end)
 end

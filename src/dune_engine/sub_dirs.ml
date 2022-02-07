@@ -60,7 +60,6 @@ module Status = struct
     type t = bool Map.t
 
     let all = { data_only = true; vendored = true; normal = true }
-
     let normal_only = { data_only = false; vendored = false; normal = true }
 
     let to_list { data_only; vendored; normal } =
@@ -178,11 +177,8 @@ module Dir_map = struct
     { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> None) }
 
   let empty = { data = empty_per_dir; nodes = String.Map.empty }
-
   let root t = t.data
-
   let descend t (p : string) = String.Map.find t.nodes p
-
   let sub_dirs t = String.Map.keys t.nodes
 
   let rec make_at_path path data =

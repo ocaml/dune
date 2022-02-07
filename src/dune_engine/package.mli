@@ -6,21 +6,14 @@ module Name : sig
   type t
 
   val opam_fn : t -> string
-
   val version_fn : t -> string
-
   val compare : t -> t -> Ordering.t
-
   val equal : t -> t -> bool
-
   val hash : t -> int
 
   include Comparable_intf.S with type key := t
-
   include Dune_lang.Conv.S with type t := t
-
   module Infix : Comparator.OPS with type t = t
-
   include Stringlike_intf.S with type t := t
 
   val of_opam_file_basename : string -> t option
@@ -74,9 +67,7 @@ module Dependency : sig
     }
 
   val opam_depend : t -> OpamParserTypes.value
-
   val to_dyn : t -> Dyn.t
-
   val decode : t Dune_lang.Decoder.t
 end
 
@@ -101,9 +92,7 @@ module Source_kind : sig
     | Url of string
 
   val to_dyn : t Dyn.builder
-
   val to_string : t -> string
-
   val decode : t Dune_lang.Decoder.t
 end
 
@@ -111,26 +100,18 @@ module Info : sig
   type t
 
   val source : t -> Source_kind.t option
-
   val license : t -> string option
-
   val authors : t -> string list option
-
   val homepage : t -> string option
-
   val bug_reports : t -> string option
-
   val documentation : t -> string option
-
   val maintainers : t -> string list option
 
   (** example package info (used for project initialization ) *)
   val example : t
 
   val empty : t
-
   val to_dyn : t Dyn.builder
-
   val encode_fields : t -> Dune_lang.t list
 
   val decode :
@@ -159,27 +140,16 @@ type t =
   }
 
 val equal : t -> t -> bool
-
 val name : t -> Name.t
-
 val dir : t -> Path.Source.t
-
 val file : dir:Path.t -> name:Name.t -> Path.t
-
 val encode : Name.t -> t Dune_lang.Encoder.t
-
 val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
-
 val opam_file : t -> Path.Source.t
-
 val meta_file : t -> Path.Source.t
-
 val deprecated_meta_file : t -> Name.t -> Path.Source.t
-
 val to_dyn : t -> Dyn.t
-
 val hash : t -> int
-
 val is_opam_file : Path.t -> bool
 
 (** Construct a default package (e.g., for project initialization) *)

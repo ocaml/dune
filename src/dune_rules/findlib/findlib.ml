@@ -198,7 +198,6 @@ end
 type t = DB.t
 
 let builtins (db : DB.t) = db.builtins
-
 let paths (db : DB.t) = db.paths
 
 let findlib_predicates_set_by_dune =
@@ -244,9 +243,7 @@ end = struct
           get_paths t var (Ps.add preds (Mode.variant mode)))
 
     let version t = Vars.get t.vars "version" Ps.empty
-
     let description t = Vars.get t.vars "description" Ps.empty
-
     let jsoo_runtime t = get_paths t "jsoo_runtime" Ps.empty
 
     let requires t =
@@ -603,9 +600,7 @@ let memo =
     type t = DB.t * Package.Name.t
 
     let to_dyn = Dyn.opaque
-
     let hash = Tuple.T2.hash DB.hash Package.Name.hash
-
     let equal = Tuple.T2.equal DB.equal Package.Name.equal
   end in
   Memo.create "findlib"

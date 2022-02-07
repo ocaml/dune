@@ -11,6 +11,5 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) : sig
     -> Dst.t
 
   val map_one_step : map -> map
-
   val map : map
 end

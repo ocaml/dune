@@ -8,11 +8,8 @@ let ( / ) a b =
   | _ -> Filename.concat a b
 
 let create_file fn = Io.String_path.write_file fn ""
-
 let mkdir fn = Unix.mkdir fn 0o777
-
 let rm = Sys.remove
-
 let rmdir = Unix.rmdir
 
 let string_of_event ev =
@@ -22,7 +19,6 @@ let string_of_event ev =
   sprintf "%-10s%s" kind rest
 
 let print_event ev = print_endline (string_of_event ev)
-
 let print_events = List.iter ~f:print_event
 
 let remove_dot_slash s =

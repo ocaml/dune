@@ -12,9 +12,7 @@ module Digest_result : sig
     | Error of exn
 
   val equal : t -> t -> bool
-
   val to_option : t -> Digest.t option
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -62,8 +60,6 @@ module Reduced_stats : sig
   type t
 
   val to_dyn : t -> Dyn.t
-
   val of_unix_stats : Unix.stats -> t
-
   val compare : t -> t -> Ordering.t
 end

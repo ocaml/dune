@@ -10,7 +10,6 @@ include (
     type nonrec t = t
 
     let description = "profile"
-
     let module_ = "Profile"
 
     let of_string_opt p =
@@ -22,7 +21,6 @@ include (
         | s -> User_defined s)
 
     let description_of_valid_string = None
-
     let hint_valid = None
 
     let to_string = function

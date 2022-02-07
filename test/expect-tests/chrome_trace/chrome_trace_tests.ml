@@ -2,7 +2,6 @@ open Stdune
 open Dune_tests_common
 
 let () = init ()
-
 let buf = Buffer.create 0
 
 let c =

@@ -29,7 +29,6 @@ module Archive = struct
     include String
 
     let to_string t = t
-
     let path ~dir t = Path.Build.relative dir t
 
     let decode =
@@ -45,7 +44,6 @@ module Archive = struct
           | fn -> fn)
 
     let stubs archive_name = archive_name ^ "_stubs"
-
     let lib_file_prefix = "lib"
 
     let lib_file archive_name ~dir ~ext_lib =
@@ -70,9 +68,7 @@ module Archive = struct
     }
 
   let dir_path ~dir t = Path.Build.relative dir t.dir
-
   let name t = t.name
-
   let stubs archive_name = { dir = "."; name = Name.stubs archive_name }
 
   let decode =
@@ -173,9 +169,7 @@ module Source = struct
     }
 
   let language t = t.stubs.language
-
   let flags t = t.stubs.flags
-
   let path t = t.path
 
   let object_name t =

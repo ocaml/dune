@@ -7,9 +7,7 @@ module Paths = struct
     Path.Build.relative dir ("." ^ Lib_name.Local.to_string name ^ ".objs")
 
   let library_native_dir ~obj_dir = Path.Build.relative obj_dir "native"
-
   let library_byte_dir ~obj_dir = Path.Build.relative obj_dir "byte"
-
   let library_public_cmi_dir ~obj_dir = Path.Build.relative obj_dir "public_cmi"
 
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
@@ -83,15 +81,10 @@ module External = struct
        { public_dir; private_dir; public_cmi_dir })
 
   let byte_dir t = t.public_dir
-
   let native_dir t = t.public_dir
-
   let dir t = t.public_dir
-
   let obj_dir t = t.public_dir
-
   let odoc_dir t = t.public_dir
-
   let all_obj_dirs t ~mode:_ = [ t.public_dir ]
 
   let all_cmis { public_dir; private_dir; public_cmi_dir } =
@@ -132,17 +125,11 @@ module Local = struct
     { dir; obj_dir; native_dir; byte_dir; public_cmi_dir; private_lib }
 
   let need_dedicated_public_dir t = Option.is_some t.public_cmi_dir
-
   let public_cmi_dir t = Option.value ~default:t.byte_dir t.public_cmi_dir
-
   let dir t = t.dir
-
   let obj_dir t = t.obj_dir
-
   let byte_dir t = t.byte_dir
-
   let native_dir t = t.native_dir
-
   let odoc_dir t = t.byte_dir
 
   let all_obj_dirs t ~(mode : Mode.t) =
@@ -233,13 +220,9 @@ let get_path :
   | Local_as_path l' -> Path.build (l l')
 
 let public_cmi_dir = get_path ~l:Local.public_cmi_dir ~e:External.public_cmi_dir
-
 let byte_dir = get_path ~l:Local.byte_dir ~e:External.byte_dir
-
 let native_dir = get_path ~l:Local.native_dir ~e:External.native_dir
-
 let dir = get_path ~l:Local.dir ~e:External.dir
-
 let obj_dir = get_path ~l:Local.obj_dir ~e:External.obj_dir
 
 let to_dyn (type path) (t : path t) =

@@ -2,7 +2,6 @@ module T2 : sig
   type ('a, 'b) t = 'a * 'b
 
   val to_dyn : ('a -> Dyn.t) -> ('b -> Dyn.t) -> ('a, 'b) t -> Dyn.t
-
   val hash : ('a -> int) -> ('b -> int) -> ('a, 'b) t -> int
 
   val equal :

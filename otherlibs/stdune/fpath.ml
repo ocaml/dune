@@ -1,5 +1,4 @@
 let is_root t = Filename.dirname t = t
-
 let initial_cwd = Stdlib.Sys.getcwd ()
 
 type mkdir_result =

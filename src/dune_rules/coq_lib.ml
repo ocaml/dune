@@ -24,19 +24,12 @@ type t =
   }
 
 let name l = snd l.name
-
 let implicit l = l.implicit
-
 let location l = fst l.name
-
 let wrapper l = l.wrapper
-
 let src_root l = l.src_root
-
 let obj_root l = l.obj_root
-
 let libraries l = l.libraries
-
 let package l = l.package
 
 module Error = struct

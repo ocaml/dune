@@ -40,7 +40,5 @@ let select_common ~local_versions ~remote_versions =
   | _ :: _ -> Some (Method_name.Map.of_list_exn selected_versions)
 
 let of_list = Method_name.Map.of_list
-
 let to_list = Method_name.Map.to_list
-
 let to_dyn = Method_name.Map.to_dyn Int.to_dyn

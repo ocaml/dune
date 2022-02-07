@@ -8,7 +8,6 @@ module Dst : sig
   type t
 
   val to_string : t -> string
-
   val add_prefix : string -> t -> t
 
   val to_install_file :
@@ -18,9 +17,7 @@ module Dst : sig
     string option -> src_basename:string -> section:Section.t -> t
 
   val explicit : string -> t
-
   val compare : t -> t -> Ordering.t
-
   val infer : src_basename:string -> Section.t -> t
 
   include Dune_lang.Conv.S with type t := t
@@ -30,11 +27,8 @@ end = struct
   type t = string
 
   let to_string t = t
-
   let add_prefix p t = Filename.concat p t
-
   let explicit t = t
-
   let compare = Poly.compare
 
   let man_subdir s =
@@ -74,9 +68,7 @@ end = struct
         Some s
 
   let decode = Dune_lang.Decoder.string
-
   let encode = Dune_lang.Encoder.string
-
   let to_dyn = Dyn.string
 end
 

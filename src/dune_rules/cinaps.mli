@@ -12,7 +12,6 @@ open! Dune_engine
 open Stdune
 
 type t
-
 type Stanza.t += T of t
 
 (** Generate the rules to handle this cinaps stanza *)

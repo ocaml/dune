@@ -16,7 +16,6 @@ let parse =
       OpamBaseParser.main lexer lexbuf lexbuf.Lexing.lex_curr_p.pos_fname)
 
 let parse_value = parse_gen OpamBaseParser.value
-
 let load fn = Io.Untracked.with_lexbuf_from_file fn ~f:parse
 
 let get_field t name =
@@ -67,9 +66,7 @@ let existing_variables t =
 
 module Create = struct
   let string s = String (nopos, s)
-
   let list f xs = List (nopos, List.map ~f xs)
-
   let string_list xs = list string xs
 
   let normalise_field_order =

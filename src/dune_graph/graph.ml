@@ -188,7 +188,6 @@ module String_opt_map = Map.Make (struct
   type t = string option
 
   let to_dyn t = Dyn.Option (Option.map t ~f:(fun s -> Dyn.String s))
-
   let compare = Option.compare String.compare
 end)
 

@@ -33,15 +33,10 @@ type t =
   }
 
 let equal t { vars; unix = _ } = Map.equal ~equal:String.equal t.vars vars
-
 let hash { vars; unix = _ } = Hashtbl.hash vars
-
 let make vars = { vars; unix = None }
-
 let empty = make Map.empty
-
 let vars t = Var.Set.of_keys t.vars
-
 let get t k = Map.find t.vars k
 
 let to_unix t =
@@ -71,11 +66,8 @@ let of_unix arr =
        | x :: _ -> x)
 
 let initial = make (of_unix (Unix.environment ()))
-
 let of_unix u = make (of_unix u)
-
 let add t ~var ~value = make (Map.set t.vars var value)
-
 let remove t ~var = make (Map.remove t.vars var)
 
 let extend t ~vars =

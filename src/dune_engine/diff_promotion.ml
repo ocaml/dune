@@ -86,16 +86,13 @@ module File = struct
 end
 
 let clear_cache () = File.db := []
-
 let () = Hooks.End_of_build.always clear_cache
 
 module P = Persistent.Make (struct
   type t = File.t list
 
   let name = "TO-PROMOTE"
-
   let version = 2
-
   let to_dyn = Dyn.list File.to_dyn
 end)
 

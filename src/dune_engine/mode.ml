@@ -30,21 +30,13 @@ let choose byte native = function
   | Native -> native
 
 let to_string = choose "byte" "native"
-
 let encode t = Dune_lang.Encoder.string (to_string t)
-
 let to_dyn t = Dyn.variant (to_string t) []
-
 let compiled_unit_ext = choose (Cm_kind.ext Cmo) (Cm_kind.ext Cmx)
-
 let compiled_lib_ext = choose ".cma" ".cmxa"
-
 let plugin_ext = choose ".cma" ".cmxs"
-
 let variant = choose Variant.byte Variant.native
-
 let cm_kind = choose Cm_kind.Cmo Cmx
-
 let exe_ext = choose ".bc" ".exe"
 
 let of_cm_kind : Cm_kind.t -> t = function
@@ -62,7 +54,6 @@ module Dict = struct
     }
 
   let equal f { byte; native } t = f byte t.byte && f native t.native
-
   let for_all { byte; native } ~f = f byte && f native
 
   let to_dyn to_dyn { byte; native } =
@@ -74,11 +65,8 @@ module Dict = struct
     | Native -> t.native
 
   let of_func f = { byte = f ~mode:Byte; native = f ~mode:Native }
-
   let map2 a b ~f = { byte = f a.byte b.byte; native = f a.native b.native }
-
   let map t ~f = { byte = f t.byte; native = f t.native }
-
   let mapi t ~f = { byte = f Byte t.byte; native = f Native t.native }
 
   let iteri t ~f =
@@ -86,7 +74,6 @@ module Dict = struct
     f Native t.native
 
   let make_both x = { byte = x; native = x }
-
   let make ~byte ~native = { byte; native }
 
   module Set = struct
@@ -122,7 +109,6 @@ module Dict = struct
       }
 
     let encode t = List.map ~f:encode (to_list t)
-
     let is_empty t = not (t.byte || t.native)
 
     let iter_concurrently t ~f =

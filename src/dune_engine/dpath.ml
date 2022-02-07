@@ -1,9 +1,7 @@
 open Stdune
 
 let install_dir_basename = "install"
-
 let anonymous_actions_dir_basename = ".actions"
-
 let install_dir = Path.Build.(relative root) install_dir_basename
 
 let anonymous_actions_dir =
@@ -180,9 +178,7 @@ module Build = struct
     Path.Build.(relative root) base
 
   let is_dev_null = Fun.const false
-
   let install_dir = install_dir
-
   let anonymous_actions_dir = anonymous_actions_dir
 end
 

@@ -15,9 +15,7 @@ module To_delete = struct
     type t = Path.Set.t
 
     let name = "PROMOTED-TO-DELETE"
-
     let version = 1
-
     let to_dyn = Path.Set.to_dyn
   end)
 
@@ -25,11 +23,8 @@ module To_delete = struct
 
   (* [db] is used to accumulate promoted files from rules. *)
   let db = lazy (ref (Option.value ~default:Path.Set.empty (P.load fn)))
-
   let get_db () = !(Lazy.force db)
-
   let set_db new_db = Lazy.force db := new_db
-
   let needs_dumping = ref false
 
   let modify_db f =

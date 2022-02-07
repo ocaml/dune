@@ -3,11 +3,8 @@ open Dyn
 open Dune_tests_common
 
 let () = init ()
-
 let take s n = String.take s n |> string |> print_dyn
-
 let drop s n = String.drop s n |> string |> print_dyn
-
 let split_n s n = String.split_n s n |> pair string string |> print_dyn
 
 let%expect_test _ =

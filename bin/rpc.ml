@@ -117,11 +117,8 @@ module Init = struct
     client_term common (connect ~wait)
 
   let man = [ `Blocks Common.help_secs ]
-
   let doc = "establish a new rpc connection"
-
   let info = Term.info "init" ~doc ~man
-
   let term = (Term.Group.Term term, info)
 end
 

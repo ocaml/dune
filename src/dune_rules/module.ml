@@ -41,7 +41,6 @@ module Kind = struct
     | Root -> "root"
 
   let to_dyn t = Dyn.string (to_string t)
-
   let encode t = Dune_lang.Encoder.string (to_string t)
 
   let decode =
@@ -94,7 +93,6 @@ module Source = struct
     { name; files }
 
   let has t ~ml_kind = Ml_kind.Dict.get t.files ml_kind |> Option.is_some
-
   let name t = t.name
 
   let choose_file { files = { impl; intf }; name = _ } =
@@ -129,9 +127,7 @@ type t =
   }
 
 let name t = t.source.name
-
 let kind t = t.kind
-
 let pp_flags t = t.pp
 
 let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
@@ -176,9 +172,7 @@ let has t ~ml_kind =
   | Intf -> Option.is_some t.source.files.intf
 
 let source t ~(ml_kind : Ml_kind.t) = Ml_kind.Dict.get t.source.files ml_kind
-
 let file t ~(ml_kind : Ml_kind.t) = source t ~ml_kind |> Option.map ~f:File.path
-
 let obj_name t = t.obj_name
 
 let iter t ~f =
@@ -199,7 +193,6 @@ let map_files t ~f =
   { t with source }
 
 let src_dir t = Source.src_dir t.source
-
 let set_pp t pp = { t with pp }
 
 let to_dyn { source; obj_name; pp; visibility; kind } =
@@ -246,7 +239,6 @@ module Obj_map = struct
     type nonrec t = t
 
     let compare m1 m2 = Module_name.Unique.compare m1.obj_name m2.obj_name
-
     let to_dyn = to_dyn
   end)
 end

@@ -10,16 +10,12 @@ type t =
   }
 
 let root t = t.root
-
 let project t = t.project
-
 let libs t = t.db
-
 let coq_libs t = t.coq_db
 
 module DB = struct
   type scope = t
-
   type t = { by_dir : scope Path.Source.Map.t }
 
   module Found_or_redirect : sig
@@ -28,7 +24,6 @@ module DB = struct
       | Redirect of (Loc.t * Lib_name.t)
 
     val redirect : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
-
     val found : Lib_info.external_ -> t
   end = struct
     type t =

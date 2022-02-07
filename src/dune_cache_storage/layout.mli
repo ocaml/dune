@@ -65,11 +65,8 @@ module Versioned : sig
     Version.Metadata.t -> rule_or_action_digest:Digest.t -> Path.t
 
   val file_storage_dir : Version.File.t -> Path.t
-
   val file_path : Version.File.t -> file_digest:Digest.t -> Path.t
-
   val value_storage_dir : Version.Value.t -> Path.t
-
   val value_path : Version.Value.t -> value_digest:Digest.t -> Path.t
 
   (** List all metadata entries currently stored in the cache. Note that there

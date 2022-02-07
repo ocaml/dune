@@ -8,11 +8,8 @@ type t =
   | User_defined of string
 
 val equal : t -> t -> bool
-
 val is_dev : t -> bool
-
 val is_release : t -> bool
-
 val is_inline_test : t -> bool
 
 include Stringlike_intf.S with type t := t

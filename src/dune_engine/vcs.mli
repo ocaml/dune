@@ -16,7 +16,6 @@ type t =
   }
 
 val equal : t -> t -> bool
-
 val to_dyn : t -> Dyn.t
 
 (** Nice description of the current tip *)

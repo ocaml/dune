@@ -6,9 +6,7 @@ let dir ~context =
   Path.Build.relative Dpath.Build.install_dir context
 
 let lib_root ~context = Path.Build.relative (dir ~context) "lib"
-
 let bin_dir ~context = Path.Build.relative (dir ~context) "bin"
-
 let man_dir ~context = Path.Build.relative (dir ~context) "bin"
 
 let lib_dir ~context ~package =

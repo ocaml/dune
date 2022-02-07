@@ -90,7 +90,6 @@ module Mode_conf = struct
     include O.Set
 
     let decode = repeat decode >>| of_list
-
     let default = of_list [ Best ]
   end
 end
@@ -113,9 +112,7 @@ module Tests = struct
   type Sub_system_info.t += T of t
 
   let loc t = t.loc
-
   let backends t = Option.map t.backend ~f:(fun x -> [ x ])
-
   let syntax = Stanza.syntax
 
   open Dune_lang.Decoder

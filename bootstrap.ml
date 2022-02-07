@@ -26,9 +26,7 @@ let verbose, keep_generated_files, debug =
   (!verbose, !keep_generated_files, !debug)
 
 let modules = [ "boot/libs"; "boot/duneboot" ]
-
 let duneboot = ".duneboot"
-
 let prog = duneboot ^ ".exe"
 
 let () =

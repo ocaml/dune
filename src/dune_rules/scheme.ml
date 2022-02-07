@@ -17,11 +17,8 @@ module Evaluated : sig
   type 'rules t
 
   val union : union_rules:('a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
-
   val empty : unit -> 'a t
-
   val restrict : Path.Build.w Dir_set.t -> 'a t Memo.Lazy.t -> 'a t Memo.Build.t
-
   val finite : union_rules:('a -> 'a -> 'a) -> 'a Path.Build.Map.t -> 'a t
 
   val get_rules :
@@ -157,5 +154,4 @@ let evaluate ~union_rules =
   fun t -> loop ~env:Dir_set.universal t
 
 let all l = List.fold_left ~init:Empty ~f:(fun x y -> Union (x, y)) l
-
 let evaluate t ~union = evaluate ~union_rules:union t

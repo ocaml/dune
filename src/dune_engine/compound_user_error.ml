@@ -35,7 +35,6 @@ let to_dyn { main; related } =
     ]
 
 let annot = User_message.Annots.Key.create ~name:"compound-user-error" to_dyn
-
 let make ~main ~related = create ~main ~related
 
 let make_loc ~dir { Ocamlc_loc.path; chars; line } : Loc.t =

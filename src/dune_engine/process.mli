@@ -25,15 +25,10 @@ module Io : sig
   type 'a t
 
   val stdout : output t
-
   val make_stdout : Execution_parameters.Action_output_on_success.t -> output t
-
   val stderr : output t
-
   val make_stderr : Execution_parameters.Action_output_on_success.t -> output t
-
   val stdin : input t
-
   val null : 'a mode -> 'a t
 
   (** Return a buffered channel for this output. The channel is created lazily. *)

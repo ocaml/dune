@@ -98,9 +98,7 @@ module File_kind = struct
 end
 
 module type Applicative = Applicative_intf.S
-
 module type Monad = Monad_intf.S
-
 module type Monoid = Monoid_intf.S
 
 external reraise : exn -> _ = "%reraise"
@@ -124,7 +122,5 @@ type ordering = Ordering.t =
   | Gt
 
 let sprintf = Printf.sprintf
-
 let ksprintf = Printf.ksprintf
-
 let printfn a = ksprintf print_endline a

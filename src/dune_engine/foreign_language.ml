@@ -38,17 +38,11 @@ module Dict = struct
     }
 
   let equal f { c; cxx } t = f c t.c && f cxx t.cxx
-
   let c t = t.c
-
   let cxx t = t.cxx
-
   let map { c; cxx } ~f = { c = f c; cxx = f cxx }
-
   let mapi { c; cxx } ~f = { c = f ~language:C c; cxx = f ~language:Cxx cxx }
-
   let make_both a = { c = a; cxx = a }
-
   let make ~c ~cxx = { c; cxx }
 
   let get { c; cxx } = function

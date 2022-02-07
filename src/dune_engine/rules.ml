@@ -1,6 +1,5 @@
 open! Stdune
 module Action_builder = Action_builder0
-
 module Id = Id.Make ()
 
 module Dir_rules = struct
@@ -62,7 +61,6 @@ module Dir_rules = struct
     { rules; aliases }
 
   let empty = Id.Map.empty
-
   let union_map a b ~f = Id.Map.union a b ~f:(fun _key a b -> Some (f a b))
 
   let union =
@@ -79,24 +77,18 @@ module Dir_rules = struct
     Id.Map.set t id data
 
   let is_subset t ~of_ = Id.Map.is_subset t ~of_ ~f:(fun _ ~of_:_ -> true)
-
   let is_empty = Id.Map.is_empty
 
   module Nonempty : sig
     type maybe_empty = t
-
     type t = private maybe_empty
 
     val create : maybe_empty -> t option
-
     val union : t -> t -> t
-
     val singleton : data -> t
-
     val add : t -> data -> t
   end = struct
     type maybe_empty = t
-
     type nonrec t = t
 
     let create t =
@@ -106,9 +98,7 @@ module Dir_rules = struct
         Some t
 
     let union = union
-
     let singleton = singleton
-
     let add = add
   end
 end
@@ -122,7 +112,6 @@ module T = struct
     Path.Build.Map.union a b ~f:(fun _key a b -> Some (f a b))
 
   let union = union_map ~f:Dir_rules.Nonempty.union
-
   let name = "Rules"
 end
 

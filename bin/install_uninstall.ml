@@ -99,9 +99,7 @@ module type File_operations = sig
     -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
-
   val remove_file_if_exists : Path.t -> unit
-
   val remove_dir_if_exists_and_empty : Path.t -> unit
 end
 
@@ -665,5 +663,4 @@ let install_uninstall ~what =
   (term, Cmdliner.Term.info (cmd_what what) ~doc ~man:Common.help_secs)
 
 let install = install_uninstall ~what:Install
-
 let uninstall = install_uninstall ~what:Uninstall

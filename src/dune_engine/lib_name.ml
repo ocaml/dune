@@ -23,11 +23,8 @@ module Local = struct
         | _ -> false
 
       let to_string s = s
-
       let module_ = "Lib_name.Local"
-
       let description = "library name"
-
       let description_of_valid_string = Some valid_format_doc
 
       let hint_valid =
@@ -92,13 +89,9 @@ include Stringlike.Make (struct
   type nonrec t = string
 
   let description_of_valid_string = None
-
   let hint_valid = None
-
   let to_string s = s
-
   let module_ = "Lib_name"
-
   let description = "library name"
 
   let of_string_opt name =
@@ -122,15 +115,11 @@ let mangled pkg local_name =
   Package.Name.to_string pkg :: under_pkg |> String.concat ~sep:"." |> of_string
 
 let of_local (_loc, t) = t
-
 let of_package_name p = Package.Name.to_string p
-
 let hash = String.hash
-
 let compare = String.compare
 
 include (Comparator.Operators (String) : Comparator.OPS with type t := t)
-
 module O = Comparable.Make (String)
 module Map = O.Map
 

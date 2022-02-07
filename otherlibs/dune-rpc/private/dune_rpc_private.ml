@@ -22,7 +22,6 @@ module Sub = struct
     { poll = (poll p).decl; cancel = (cancel p).decl; id = name p }
 
   let poll t = t.poll
-
   let poll_cancel t = t.cancel
 
   module Id = Procedures.Poll.Name
@@ -35,13 +34,9 @@ module Public = struct
     type ('a, 'b) t = ('a, 'b) Decl.Request.witness
 
     let ping = Procedures.Public.ping.decl
-
     let diagnostics = Procedures.Public.diagnostics.decl
-
     let format_dune_file = Procedures.Public.format_dune_file.decl
-
     let promote = Procedures.Public.promote.decl
-
     let build_dir = Procedures.Public.build_dir.decl
   end
 
@@ -55,28 +50,23 @@ module Public = struct
     type 'a t = 'a Sub.t
 
     let diagnostic = Sub.of_procedure Procedures.Poll.diagnostic
-
     let progress = Sub.of_procedure Procedures.Poll.progress
   end
 end
 
 module Server_notifications = struct
   let abort = Procedures.Server_side.abort.decl
-
   let log = Procedures.Server_side.log.decl
 end
 
 module Client = struct
   module type S = sig
     type t
-
     type 'a fiber
-
     type chan
 
     module Versioned : sig
       type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
-
       type 'a notification = 'a Versioned.Staged.notification
 
       val prepare_request :
@@ -98,14 +88,12 @@ module Client = struct
       -> ('b, Response.Error.t) result fiber
 
     val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
-
     val disconnected : t -> unit fiber
 
     module Stream : sig
       type 'a t
 
       val cancel : _ t -> unit fiber
-
       val next : 'a t -> 'a option fiber
     end
 
@@ -114,7 +102,6 @@ module Client = struct
 
     module Batch : sig
       type t
-
       type client
 
       val create : client -> t
@@ -127,7 +114,6 @@ module Client = struct
         -> ('b, Response.Error.t) result fiber
 
       val notification : t -> 'a Versioned.notification -> 'a -> unit
-
       val submit : t -> unit fiber
     end
     with type client := t
@@ -167,28 +153,21 @@ module Client = struct
     type 'a t
 
     val return : 'a -> 'a t
-
     val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
     val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
     val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
     module O : sig
       val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
       val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
     end
 
     module Ivar : sig
       type 'a fiber
-
       type 'a t
 
       val create : unit -> 'a t
-
       val read : 'a t -> 'a fiber
-
       val fill : 'a t -> 'a -> unit fiber
     end
     with type 'a fiber := 'a t
@@ -196,7 +175,6 @@ module Client = struct
     type t
 
     val write : t -> Sexp.t list option -> unit Fiber.t
-
     val read : t -> Sexp.t option Fiber.t
   end) =
   struct
@@ -393,7 +371,6 @@ module Client = struct
 
     module Versioned = struct
       type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
-
       type 'a notification = 'a Versioned.Staged.notification
 
       let prepare_request t (decl : _ Decl.Request.witness) =
@@ -580,7 +557,6 @@ module Client = struct
         Fiber.return ()
 
       let abort m = raise (Abort (Server_aborted m))
-
       let default = { log; abort }
 
       let create ?log ?abort () =

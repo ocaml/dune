@@ -1,11 +1,8 @@
 module Backend = struct
   module type S = sig
     val print_user_message : User_message.t -> unit
-
     val set_status_line : User_message.Style.t Pp.t option -> unit
-
     val print_if_no_status_line : User_message.Style.t Pp.t -> unit
-
     val reset : unit -> unit
   end
 
@@ -46,7 +43,6 @@ module Backend = struct
 
   module Progress : S = struct
     let status_line = ref Pp.nop
-
     let status_line_len = ref 0
 
     let hide_status_line () =
@@ -82,11 +78,8 @@ module Backend = struct
   end
 
   let dumb = (module Dumb : S)
-
   let progress = (module Progress : S)
-
   let main = ref dumb
-
   let set t = main := t
 
   let compose (module A : S) (module B : S) : (module S) =
@@ -114,7 +107,6 @@ let print_user_message msg =
   M.print_user_message msg
 
 let print paragraphs = print_user_message (User_message.make paragraphs)
-
 let printf fmt = Printf.ksprintf (fun msg -> print [ Pp.verbatim msg ]) fmt
 
 let set_status_line line =
@@ -137,7 +129,6 @@ module Status_line = struct
   module Id = Id.Make ()
 
   let toplevel = Id.gen ()
-
   let stack = ref []
 
   let refresh () =

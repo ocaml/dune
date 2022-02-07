@@ -5,15 +5,12 @@ module Logger : sig
   type t
 
   val create : unit -> t
-
   val printfn : t -> ('a, unit, string, unit) format4 -> 'a
-
   val flush : t -> unit
 end = struct
   type t = { messages : string Queue.t }
 
   let create () = { messages = Queue.create () }
-
   let printfn t fmt = Printf.ksprintf (fun s -> Queue.push t.messages s) fmt
 
   let flush t =
@@ -36,7 +33,6 @@ let timeout_thread ~wait f =
   ()
 
 let start_filename = ".dune_fsevents_start"
-
 let end_filename = ".dune_fsevents_end"
 
 let emit_start dir =
@@ -145,15 +141,10 @@ let test_with_multiple_fsevents ~setup ~test:f =
         let logger = Logger.create () in
         object
           val mutable started = false
-
           val mutable stopped = false
-
           method logger = logger
-
           method started = started
-
           method stopped = stopped
-
           method start = started <- true
 
           method stop =
@@ -161,7 +152,6 @@ let test_with_multiple_fsevents ~setup ~test:f =
             Fsevents.stop (Option.value_exn !t)
 
           method emit_start = if not started then emit_start config.dir
-
           method emit_stop = if not stopped then emit_stop config.dir
         end
       in

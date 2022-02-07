@@ -61,7 +61,6 @@ val validate : t -> Validation_result.t
 val head : t -> Path.Build.t option
 
 val to_dyn : t -> Dyn.t
-
 val pp : t -> _ Pp.t
 
 (** The set of targets produced by an action. Each target may be tagged with a

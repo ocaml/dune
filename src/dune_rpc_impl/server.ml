@@ -44,7 +44,6 @@ module Session_comparable = Comparable.Make (struct
   type t = Client.t Session.t
 
   let compare = Session.compare
-
   let to_dyn s = Session.to_dyn Client.to_dyn s
 end)
 
@@ -72,7 +71,6 @@ module Clients = struct
     Session.Id.Map.remove t id
 
   let to_list = Session.Id.Map.to_list
-
   let to_list_map = Session.Id.Map.to_list_map
 end
 
@@ -86,9 +84,7 @@ module Job_queue : sig
   val pop_internal : 'a t -> 'a option
 
   val create : unit -> 'a t
-
   val read : 'a t -> 'a Fiber.t
-
   val write : 'a t -> 'a -> unit Fiber.t
 end = struct
   (* invariant: if reader is Some then queue is empty *)
@@ -98,7 +94,6 @@ end = struct
     }
 
   let create () = { queue = Queue.create (); reader = None }
-
   let pop_internal t = Queue.pop t.queue
 
   let read t =

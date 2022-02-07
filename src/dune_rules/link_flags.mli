@@ -26,7 +26,5 @@ val make :
   -> t
 
 val default : default_cxx_link_flags:string list Action_builder.t -> t
-
 val get : use_standard_cxx_flags:bool -> t -> string list Action_builder.t
-
 val dump : t -> Dune_lang.t list Action_builder.t

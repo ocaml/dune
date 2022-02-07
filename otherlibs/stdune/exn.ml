@@ -3,9 +3,7 @@ module String = Stdlib.StringLabels
 type t = exn
 
 external raise : exn -> _ = "%raise"
-
 external raise_notrace : exn -> _ = "%raise_notrace"
-
 external reraise : exn -> _ = "%reraise"
 
 let protectx x ~f ~finally =
@@ -32,11 +30,7 @@ let pp_uncaught ~backtrace fmt exn =
     line
 
 let pp exn = Pp.text (Printexc.to_string exn)
-
 let raise_with_backtrace = Printexc.raise_with_backtrace
-
 let equal = ( = )
-
 let hash = Stdlib.Hashtbl.hash
-
 let to_dyn exn = Dyn.String (Printexc.to_string exn)

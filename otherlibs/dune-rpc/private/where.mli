@@ -4,13 +4,9 @@ type t =
   ]
 
 val to_string : t -> string
-
 val compare : t -> t -> Stdune.Ordering.t
-
 val to_dyn : t -> Dyn.t
-
 val sexp : t Conv.value
-
 val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t
 
 module type S = sig
@@ -35,7 +31,6 @@ module Make (Fiber : sig
 
   module O : sig
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
 end) (IO : sig

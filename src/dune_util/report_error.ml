@@ -124,9 +124,7 @@ let i_must_not_crash =
     )
 
 let report_backtraces_flag = ref false
-
 let report_backtraces b = report_backtraces_flag := b
-
 let print_memo_stacks = ref false
 
 let format_memo_stack pps =

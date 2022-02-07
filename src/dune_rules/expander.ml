@@ -69,26 +69,18 @@ type t =
   }
 
 let scope t = t.scope
-
 let artifacts t = t.bin_artifacts_host
-
 let dir t = t.dir
-
 let context t = t.context
-
 let set_foreign_flags t ~f:foreign_flags = { t with foreign_flags }
 
 let set_local_env_var t ~var ~value =
   { t with local_env = Env.Var.Map.set t.local_env var value }
 
 let set_dir t ~dir = { t with dir }
-
 let set_scope t ~scope = { t with scope }
-
 let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
-
 let set_lookup_ml_sources t ~f = { t with lookup_artifacts = Some f }
-
 let set_expanding_what t x = { t with expanding_what = x }
 
 let map_exe t p =
@@ -114,9 +106,7 @@ let add_bindings t ~bindings =
       (Pform.Map.map bindings ~f:(fun v -> Deps.Without (Memo.Build.return v)))
 
 let path p = [ Value.Path p ]
-
 let string s = [ Value.String s ]
-
 let strings l = Value.L.strings l
 
 let dep p =

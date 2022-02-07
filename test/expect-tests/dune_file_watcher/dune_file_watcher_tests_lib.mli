@@ -1,5 +1,4 @@
 val critical_section : Mutex.t -> f:(unit -> 'a) -> 'a
-
 val init : unit -> unit
 
 val print_events :

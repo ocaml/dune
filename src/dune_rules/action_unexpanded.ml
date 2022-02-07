@@ -6,7 +6,6 @@ module Mapper = Action_mapper.Make (Action_dune_lang) (Action_dune_lang)
 (* So that we can comfortably use both the [Action_builder.O] and [Memo.BUild.O]
    monad at the same time *)
 let ( let+! ) = Memo.Build.O.( let+ )
-
 let ( let*! ) = Memo.Build.O.( let* )
 
 let as_in_build_dir ~what ~loc p =
@@ -37,9 +36,7 @@ module Action_expander : sig
 
   (* Disable targets/dependencies inference detection *)
   val no_infer : 'a t -> 'a t
-
   val chdir : Path.Build.t -> 'a t -> 'a t
-
   val set_env : var:string -> value:string t -> (value:string -> 'a) t -> 'a t
 
   val run :
@@ -48,7 +45,6 @@ module Action_expander : sig
   (* String with vars expansion *)
   module E : sig
     val string : String_with_vars.t -> string t
-
     val strings : String_with_vars.t -> string list t
 
     (* Evaluate a path in a position of target, such as in [(with-stdout-to
@@ -69,7 +65,6 @@ module Action_expander : sig
     (* Evaluate a path that "consumes" a target, such as in [(diff? ...
        <file>)] *)
     val consume_file : String_with_vars.t -> Path.Build.t t
-
     val prog_and_args : String_with_vars.t -> (Action.Prog.t * string list) t
 
     module At_rule_eval_stage : sig
@@ -78,7 +73,6 @@ module Action_expander : sig
          used immediately. However, percent forms that introduce action
          dependencies are disallowed. *)
       val path : String_with_vars.t -> f:(Path.t -> 'a t) -> 'a t
-
       val string : String_with_vars.t -> f:(string -> 'a t) -> 'a t
     end
   end
@@ -199,7 +193,6 @@ end = struct
 
   module O = struct
     let ( let+ ) x f = map x ~f
-
     let ( and+ ) = both
 
     let ( >>> ) a b env acc =
@@ -233,7 +226,6 @@ end = struct
         Value.L.to_strings v ~dir:(Path.build env.dir)
 
       let artifacts = Expander.artifacts
-
       let map_exe = Expander.map_exe
 
       module No_deps = struct
@@ -266,7 +258,6 @@ end = struct
         f x env acc
 
       let string sw ~f = make ~expand:Expander.No_deps.expand_string sw ~f
-
       let path sw ~f = make ~expand:Expander.No_deps.expand_path sw ~f
     end
 

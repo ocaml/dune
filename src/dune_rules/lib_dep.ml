@@ -110,7 +110,6 @@ let to_dyn =
   | Select s -> variant "select" [ Select.to_dyn s ]
 
 let direct x = Direct x
-
 let re_export x = Re_export x
 
 let decode ~allow_re_export =

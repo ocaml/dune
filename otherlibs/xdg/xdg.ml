@@ -69,11 +69,7 @@ let create ?win32 ~env () =
   t
 
 let home_dir t = t.home_dir
-
 let config_dir t = t.config_dir
-
 let data_dir t = t.data_dir
-
 let cache_dir t = t.cache_dir
-
 let runtime_dir t = t.runtime_dir

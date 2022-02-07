@@ -3,7 +3,6 @@ open! Dune_engine
 
 (* usual value for PATH_MAX *)
 let max_path_length = 4096
-
 let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n")
 
 let encode buf e =
@@ -11,7 +10,6 @@ let encode buf e =
     (Artifact_substitution.encode ~min_len:max_path_length e)
 
 let helpers = "Dune_site.Private_.Helpers"
-
 let plugins = "Dune_site_plugins.Private_.Plugins"
 
 let sourceroot_code buf =

@@ -6,23 +6,18 @@ module Map = String.Map
 
 module type Digest_impl = sig
   val file : string -> t
-
   val string : string -> t
 end
 
 module Direct_impl : Digest_impl = struct
   let file = D.file
-
   let string = D.string
 end
 
 module Mutable_impl = struct
   let file_ref = ref D.file
-
   let string_ref = ref D.string
-
   let file f = !file_ref f
-
   let string s = !string_ref s
 end
 
@@ -33,15 +28,10 @@ let override_impl ~file ~string =
 module Impl : Digest_impl = Mutable_impl
 
 let hash = Hashtbl.hash
-
 let equal = String.equal
-
 let file p = Impl.file (Path.to_string p)
-
 let compare x y = Ordering.of_int (D.compare x y)
-
 let to_string = D.to_hex
-
 let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
 
 let from_hex s =
@@ -50,7 +40,6 @@ let from_hex s =
   | exception Invalid_argument _ -> None
 
 let string = Impl.string
-
 let to_string_raw s = s
 
 (* We use [No_sharing] to avoid generating different digests for inputs that

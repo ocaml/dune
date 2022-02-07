@@ -1,5 +1,4 @@
 let reporter = ref (fun msg -> User_message.prerr msg)
-
 let set_reporter f = reporter := f
 
 let emit ?loc ?hints ?(is_error = false) paragraphs =

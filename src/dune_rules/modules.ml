@@ -70,9 +70,7 @@ module Stdlib = struct
     Module_name.Map.find t.modules name
 
   let exists t ~f = Module_name.Map.exists t.modules ~f
-
   let fold t ~init ~f = Module_name.Map.fold t.modules ~f ~init
-
   let map t ~f = { t with modules = Module_name.Map.map t.modules ~f }
 
   let traverse t ~f =

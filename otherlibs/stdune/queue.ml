@@ -1,9 +1,7 @@
 include Stdlib.Queue
 
 let push t x = add x t
-
 let peek_exn t = peek t
-
 let pop_exn t = pop t
 
 let pop t =
@@ -19,7 +17,5 @@ let peek t =
     Some (peek t)
 
 let iter t ~f = iter f t
-
 let fold t ~f ~init = fold f init t
-
 let to_list t = List.rev (fold t ~f:(fun acc a -> a :: acc) ~init:[])

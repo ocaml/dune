@@ -9,14 +9,11 @@ module Path = struct
   type t = string
 
   let path p = Path.of_filename_relative_to_initial_cwd p
-
   let arg s = s
-
   let conv = conv ((fun p -> Ok p), Format.pp_print_string)
 end
 
 let path = Path.conv
-
 let profile = conv Dune_rules.Profile.conv
 
 module Dep = struct
@@ -35,7 +32,6 @@ module Dep = struct
     String_with_vars.make_text Loc.none path
 
   let alias ~dir s = Dep_conf.Alias (make_alias_sw ~dir s)
-
   let alias_rec ~dir s = Dep_conf.Alias_rec (make_alias_sw ~dir s)
 
   let parse_alias s =
@@ -127,7 +123,5 @@ let graph_format : Dune_graph.Graph.File_format.t conv =
   conv Dune_graph.Graph.File_format.conv
 
 let context_name : Context_name.t conv = conv Context_name.conv
-
 let lib_name = conv Dune_engine.Lib_name.conv
-
 let version = pair ~sep:'.' int int

@@ -77,9 +77,7 @@ module Stanza_util = struct
       (module_name_lower_string fd.Ctypes.Function_description.instance)
 
   let type_description_functor ctypes = ctypes.Ctypes.type_description.functor_
-
   let type_description_instance ctypes = ctypes.Ctypes.type_description.instance
-
   let entry_module ctypes = ctypes.Ctypes.generated_entry_point
 
   let cflags_sexp ctypes =
@@ -152,9 +150,7 @@ module Stanza_util = struct
 end
 
 let generated_ml_and_c_files = Stanza_util.generated_ml_and_c_files
-
 let non_installable_modules = Stanza_util.non_installable_modules
-
 let ml_of_module_name mn = Module_name.to_string mn ^ ".ml" |> String.lowercase
 
 let modules_of_list ~dir ~modules =

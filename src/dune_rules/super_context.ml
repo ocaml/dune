@@ -27,7 +27,6 @@ module Env_tree : sig
   type t
 
   val get_node : t -> dir:Path.Build.t -> Env_node.t Memo.Build.t
-
   val get_context_env : t -> Env.t
 
   val create :
@@ -42,7 +41,6 @@ module Env_tree : sig
     -> t
 
   val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t Memo.Build.t
-
   val expander : t -> dir:Path.Build.t -> Expander.t Memo.Build.t
 end = struct
   open Memo.Build.O
@@ -60,7 +58,6 @@ end = struct
     }
 
   let get_node t ~dir = t.get_node dir
-
   let get_context_env t = t.context_env
 
   let bin_artifacts_host t ~dir =
@@ -167,7 +164,6 @@ end = struct
     let module Non_rec = struct
       module rec Rec : sig
         val env_tree : unit -> t
-
         val memo : Path.Build.t -> Env_node.t Memo.Build.t
       end = struct
         let env_tree =
@@ -226,23 +222,14 @@ type t =
   }
 
 let context t = t.context
-
 let context_env t = Env_tree.get_context_env t.env_tree
-
 let stanzas t = t.stanzas
-
 let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
-
 let packages t = t.packages
-
 let equal = (( == ) : t -> t -> bool)
-
 let hash t = Context.hash t.context
-
 let to_dyn_concise t = Context.to_dyn_concise t.context
-
 let to_dyn t = Context.to_dyn t.context
-
 let host t = Option.value t.host ~default:t
 
 let any_package_aux ~packages ~context pkg =
@@ -298,17 +285,11 @@ let internal_lib_names t =
         | _ -> acc))
 
 let public_libs t = t.public_libs
-
 let installed_libs t = t.installed_libs
-
 let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
-
 let find_scope_by_project t = Scope.DB.find_by_project t.scopes
-
 let find_project_by_key t = Dune_project.File_key.Map.find_exn t.projects_by_key
-
 let expander t ~dir = Env_tree.expander t.env_tree ~dir
-
 let get_node t = Env_tree.get_node t
 
 open Memo.Build.O
@@ -418,11 +399,8 @@ let menhir_flags t ~dir ~expander ~flags =
     (Expander.expand_and_eval_set expander flags ~standard:default)
 
 let local_binaries t ~dir = get_node t.env_tree ~dir >>= Env_node.local_binaries
-
 let odoc t ~dir = get_node t.env_tree ~dir >>= Env_node.odoc
-
 let coq t ~dir = get_node t.env_tree ~dir >>= Env_node.coq
-
 let format_config t ~dir = get_node t.env_tree ~dir >>= Env_node.format_config
 
 let dump_env t ~dir =
@@ -836,18 +814,14 @@ module As_memo_key = struct
   type nonrec t = t
 
   let equal = equal
-
   let hash = hash
-
   let to_dyn = to_dyn_concise
 
   module And_package = struct
     type nonrec t = t * Package.t
 
     let hash (x, y) = Hashtbl.hash (hash x, Package.hash y)
-
     let equal (x1, y1) (x2, y2) = equal x1 x2 && y1 == y2
-
     let to_dyn (s, p) = Dyn.Tuple [ to_dyn s; Package.to_dyn p ]
   end
 end

@@ -30,21 +30,13 @@ type t =
   }
 
 let scope t = t.scope
-
 let local_binaries t = Memo.Lazy.force t.local_binaries
-
 let ocaml_flags t = Memo.Lazy.force t.ocaml_flags
-
 let foreign_flags t = t.foreign_flags
-
 let link_flags t = Memo.Lazy.force t.link_flags
-
 let external_env t = Memo.Lazy.force t.external_env
-
 let bin_artifacts t = Memo.Lazy.force t.bin_artifacts
-
 let inline_tests t = Memo.Lazy.force t.inline_tests
-
 let js_of_ocaml t = Memo.Lazy.force t.js_of_ocaml
 
 let menhir_flags t =
@@ -56,7 +48,6 @@ let set_format_config t format_config =
   { t with format_config = Memo.Lazy.of_val format_config }
 
 let odoc t = Memo.Lazy.force t.odoc
-
 let coq t = Memo.Lazy.force t.coq
 
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander

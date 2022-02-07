@@ -18,11 +18,8 @@ module Version = struct
   module Infix = Comparator.Operators (T)
 
   let equal = Infix.equal
-
   let to_string (a, b) = sprintf "%u.%u" a b
-
   let hash = Hashtbl.hash
-
   let encode t = Encoder.string (to_string t)
 
   let decode : t Decoder.t =
@@ -48,7 +45,6 @@ module Version = struct
     parser_major = data_major && parser_minor >= data_minor
 
   let min = Ordering.min compare
-
   let max = Ordering.max compare
 end
 
@@ -325,7 +321,6 @@ let greatest_supported_version t =
     (Supported_versions.greatest_supported_version t.supported_versions)
 
 let key t = t.key
-
 let experimental t = t.experimental
 
 open Decoder

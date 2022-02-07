@@ -1,5 +1,4 @@
 let enabled = ref false
-
 let enable () = enabled := true
 
 module Timer = struct
@@ -17,7 +16,6 @@ module Timer = struct
     }
 
   let aggregate = ref String.Map.empty
-
   let aggregated_timers () = !aggregate
 
   let update_aggregate { start_time; tag; stopped } =

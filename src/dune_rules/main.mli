@@ -17,7 +17,5 @@ type build_system =
   }
 
 val get : unit -> build_system Memo.Build.t
-
 val find_context_exn : build_system -> name:Context_name.t -> Context.t
-
 val find_scontext_exn : build_system -> name:Context_name.t -> Super_context.t

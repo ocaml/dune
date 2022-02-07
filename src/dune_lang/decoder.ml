@@ -42,15 +42,10 @@ module Fields : sig
     }
 
   val of_values : Ast.t list -> t
-
   val add_known : t -> string -> t
-
   val consume : t -> string -> t
-
   val unparsed_ast : t -> Ast.t list
-
   val junk_unparsed : t -> t
-
   val leftover_fields : t -> string list -> t
 end = struct
   module Unparsed = struct
@@ -112,7 +107,6 @@ end = struct
 end
 
 type fields = Fields.t
-
 type values = Ast.t list
 
 (* Arguments are:
@@ -124,9 +118,7 @@ type 'kind context =
   | Fields : Loc.t * string option * Univ_map.t -> Fields.t context
 
 type ('a, 'kind) parser = 'kind context -> 'kind -> 'a * 'kind
-
 type 'a t = ('a, values) parser
-
 type 'a fields_parser = ('a, Fields.t) parser
 
 let return x _ctx state = (x, state)
@@ -144,7 +136,6 @@ let ( >>> ) a b ctx state =
   b ctx state
 
 let ( let* ) = ( >>= )
-
 let ( let+ ) = ( >>| )
 
 let ( and+ ) a b ctx state =
@@ -163,7 +154,6 @@ let get_user_context : type k. k context -> Univ_map.t = function
   | Fields (_, _, uc) -> uc
 
 let get key ctx state = (Univ_map.find (get_user_context ctx) key, state)
-
 let get_all ctx state = (get_user_context ctx, state)
 
 let set : type a b k. a Univ_map.Key.t -> a -> (b, k) parser -> (b, k) parser =
@@ -468,11 +458,8 @@ let basic_loc desc f =
       | Some x -> x))
 
 let basic desc f = basic_loc desc (fun ~loc:_ -> f)
-
 let string = plain_string (fun ~loc:_ x -> x)
-
 let int = basic "Integer" Int.of_string
-
 let float = basic "Float" Float.of_string
 
 let pair a b =
@@ -652,7 +639,6 @@ let field_b_gen field_gen ?check ?on_dup name =
      | _ -> bool)
 
 let field_b = field_b_gen (field ~default:false)
-
 let field_o_b = field_b_gen field_o
 
 let multi_field name t (Fields (_, _, uc)) (state : Fields.t) =

@@ -46,7 +46,6 @@ module O : sig
   val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
 
   val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
   (** Similar to [fork_and_join] *)
@@ -56,7 +55,6 @@ module O : sig
 end
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
-
 val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
 (** {1 Joining} *)
@@ -71,7 +69,6 @@ val both : 'a t -> 'b t -> ('a * 'b) t
 val all : 'a t list -> 'a list t
 
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
-
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 
 (** {1 Forking + joining} *)
@@ -124,7 +121,6 @@ val record_metrics : 'a t -> tag:string -> 'a t
 (** Provide efficient parallel iter/map functions for maps. *)
 module Make_map_traversals (Map : Map.S) : sig
   val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
-
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
 [@@inline always]
@@ -219,11 +215,8 @@ module Mvar : sig
   type 'a t
 
   val create : unit -> 'a t
-
   val create_full : 'a -> 'a t
-
   val read : 'a t -> 'a fiber
-
   val write : 'a t -> 'a -> unit fiber
 end
 
@@ -265,7 +258,6 @@ module Mutex : sig
   type t
 
   val create : unit -> t
-
   val with_lock : t -> (unit -> 'a fiber) -> 'a fiber
 end
 
@@ -330,13 +322,9 @@ module Stream : sig
     val read : 'a t -> 'a option fiber
 
     val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
-
     val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
-
     val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
-
     val append : 'a t -> 'a t -> 'a t
-
     val cons : 'a -> 'a t -> 'a t
   end
 
@@ -353,7 +341,6 @@ module Stream : sig
     val create : ('a option -> unit fiber) -> 'a t
 
     val write : 'a t -> 'a option -> unit fiber
-
     val null : unit -> 'a t
   end
 

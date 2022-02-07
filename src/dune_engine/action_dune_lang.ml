@@ -1,11 +1,8 @@
 open! Stdune
 
 type program = String_with_vars.t
-
 type string = String_with_vars.t
-
 type path = String_with_vars.t
-
 type target = String_with_vars.t
 
 module String_with_vars = struct
@@ -27,6 +24,7 @@ include
   Action_ast.Make (String_with_vars) (String_with_vars) (String_with_vars)
     (String_with_vars)
     (Uast)
+
 module Mapper = Action_mapper.Make (Uast) (Uast)
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
@@ -109,5 +107,4 @@ let decode =
         ]
 
 let to_dyn a = Dune_lang.to_dyn (encode a)
-
 let equal x y = Poly.equal x y

@@ -89,7 +89,6 @@ module Artifacts = struct
     { libraries = Lib_name.Map.empty; modules = Module_name.Map.empty }
 
   let lookup_module { modules; libraries = _ } = Module_name.Map.find modules
-
   let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
   let make (d : _ Dir_with_dune.t) ~lib_config (libs, exes) =
@@ -178,7 +177,6 @@ let modules_and_obj_dir t ~for_ =
   | Exe { first_exe } -> String.Map.find_exn t.modules.executables first_exe
 
 let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
-
 let lookup_module (t : t) name = Module_name.Map.find t.modules.rev_map name
 
 let virtual_modules lookup_vlib vlib =

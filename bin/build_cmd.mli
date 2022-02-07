@@ -7,5 +7,4 @@ val run_build_command :
   -> unit
 
 val runtest : unit Cmdliner.Term.t * Cmdliner.Term.info
-
 val build : unit Cmdliner.Term.t * Cmdliner.Term.info

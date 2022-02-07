@@ -19,7 +19,6 @@ module Rule_top_closure =
 
 module rec Expand : sig
   val alias : Alias.t -> Path.Set.t Memo.Build.t
-
   val deps : Dep.Set.t -> Path.Set.t Memo.Build.t
 end = struct
   let alias =

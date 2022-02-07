@@ -21,9 +21,7 @@ module Clflags = struct
           ] )
 
   let t = Fdecl.create to_dyn
-
   let set x = Fdecl.set t x
-
   let t () = Fdecl.get t
 end
 

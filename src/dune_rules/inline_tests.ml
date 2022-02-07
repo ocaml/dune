@@ -24,9 +24,7 @@ module Backend = struct
         ""
 
     let desc_article = "an"
-
     let lib t = t.lib
-
     let extends t = t.extends
 
     let instantiate ~resolve ~get lib (info : Info.t) =

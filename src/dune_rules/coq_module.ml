@@ -11,13 +11,9 @@ module Name = struct
   type t = string
 
   let make x = x
-
   let compare = String.compare
-
   let equal = String.equal
-
   let to_dyn s = Dyn.String s
-
   let to_string s = s
 end
 
@@ -30,11 +26,8 @@ type t =
   }
 
 let make ~source ~prefix ~name = { source; prefix; name }
-
 let source x = x.source
-
 let prefix x = x.prefix
-
 let name x = x.name
 
 let build_vo_dir ~obj_dir x =

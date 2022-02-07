@@ -34,16 +34,13 @@ module Workspace_local = struct
     type t = Entry.t Path.Table.t
 
     let file = Path.relative Path.build_dir ".db"
-
     let to_dyn = Path.Table.to_dyn Entry.to_dyn
 
     module P = Dune_util.Persistent.Make (struct
       type nonrec t = t
 
       let name = "INCREMENTAL-DB"
-
       let version = 4
-
       let to_dyn = to_dyn
     end)
 

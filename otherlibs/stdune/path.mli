@@ -52,7 +52,6 @@ end
     not containing a '/'. *)
 module Local : sig
   type w = Unspecified.w
-
   type t = w Local_gen.t
 
   include Path_intf.S with type t := t
@@ -64,9 +63,7 @@ module Local : sig
   end
 
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-
   val split_first_component : t -> (string * t) option
-
   val explode : t -> string list
 end
 
@@ -74,18 +71,14 @@ module External : sig
   include Path_intf.S
 
   val initial_cwd : t
-
   val cwd : unit -> t
-
   val relative : t -> string -> t
-
   val mkdir_p : ?perms:int -> t -> unit
 end
 
 (** In the source section of the current workspace. *)
 module Source : sig
   type w
-
   type t = w Local_gen.t
 
   include Path_intf.S with type t := t
@@ -97,11 +90,8 @@ module Source : sig
   end
 
   val of_local : Local.t -> t
-
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-
   val split_first_component : t -> (string * Local.t) option
-
   val explode : t -> string list
 
   (** [Source.t] does not statically forbid overlap with build directory, even
@@ -109,7 +99,6 @@ module Source : sig
   val is_in_build_dir : t -> bool
 
   val descendant : t -> of_:t -> t option
-
   val to_local : t -> Local.t
 end
 
@@ -134,15 +123,12 @@ end
 
 module Build : sig
   type w
-
   type t = w Local_gen.t
 
   include Path_intf.S with type t := t
 
   val root : t
-
   val append_source : t -> Source.t -> t
-
   val append_local : t -> Local.t -> t
 
   (** [append x y] is [append_local x (local y)] *)
@@ -153,17 +139,11 @@ module Build : sig
   end
 
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-
   val split_first_component : t -> (string * Local.t) option
-
   val explode : t -> string list
-
   val local : t -> Local.t
-
   val drop_build_context : t -> Source.t option
-
   val drop_build_context_exn : t -> Source.t
-
   val drop_build_context_maybe_sandboxed_exn : t -> Source.t
 
   (** [Source.t] here is a lie in some cases: consider when the context name
@@ -171,9 +151,7 @@ module Build : sig
   val extract_build_context : t -> (string * Source.t) option
 
   val extract_build_context_exn : t -> string * Source.t
-
   val extract_build_context_dir : t -> (t * Source.t) option
-
   val extract_build_context_dir_exn : t -> t * Source.t
 
   (** This function does the same as [extract_build_context], but has a
@@ -193,7 +171,6 @@ module Build : sig
   val set_build_dir : Kind.t -> unit
 
   val split_sandbox_root : t -> t option * t
-
   val of_local : Local.t -> t
 
   (** Set permissions for a given path. You can use the [Permissions] module if
@@ -201,7 +178,6 @@ module Build : sig
   val chmod : t -> mode:int -> unit
 
   val lstat : t -> Unix.stats
-
   val unlink_no_err : t -> unit
 end
 
@@ -218,13 +194,9 @@ val hash : t -> int
 val to_string_maybe_quoted : t -> string
 
 val root : t
-
 val external_ : External.t -> t
-
 val is_root : t -> bool
-
 val is_managed : t -> bool
-
 val relative : ?error_loc:Loc0.t -> t -> string -> t
 
 (** Create an external path. If the argument is relative, assume it is relative
@@ -246,13 +218,9 @@ val reach : t -> from:t -> string
 val reach_for_running : ?from:t -> t -> string
 
 val descendant : t -> of_:t -> t option
-
 val is_descendant : t -> of_:t -> bool
-
 val append_local : t -> Local.t -> t
-
 val append_source : t -> Source.t -> t
-
 val extend_basename : t -> suffix:string -> t
 
 (** Extract the build context from a path. For instance, representing paths as
@@ -266,7 +234,6 @@ val extend_basename : t -> suffix:string -> t
 val extract_build_context : t -> (string * Source.t) option
 
 val extract_build_context_exn : t -> string * Source.t
-
 val extract_build_dir_first_component : t -> (string * Local.t) option
 
 (** Same as [extract_build_context] but return the build context as a path:
@@ -278,7 +245,6 @@ val extract_build_dir_first_component : t -> (string * Local.t) option
 val extract_build_context_dir : t -> (t * Source.t) option
 
 val extract_build_context_dir_maybe_sandboxed : t -> (t * Source.t) option
-
 val extract_build_context_dir_exn : t -> t * Source.t
 
 (** Drop the "_build/blah" prefix *)
@@ -290,7 +256,6 @@ val drop_build_context_exn : t -> Source.t
 val drop_optional_build_context : t -> t
 
 val drop_optional_build_context_maybe_sandboxed : t -> t
-
 val drop_optional_sandbox_root : t -> t
 
 (** Drop the "_build/blah" prefix if present, return [t] if it's a source file,
@@ -298,7 +263,6 @@ val drop_optional_sandbox_root : t -> t
 val drop_optional_build_context_src_exn : t -> Source.t
 
 val explode : t -> string list option
-
 val explode_exn : t -> string list
 
 (** The build directory *)
@@ -311,11 +275,8 @@ val is_in_build_dir : t -> bool
 val is_in_source_tree : t -> bool
 
 val as_in_source_tree : t -> Source.t option
-
 val as_in_source_tree_exn : t -> Source.t
-
 val as_in_build_dir : t -> Build.t option
-
 val as_in_build_dir_exn : t -> Build.t
 
 (** [is_strict_descendant_of_build_dir t = is_in_build_dir t && t <> build_dir] *)
@@ -325,7 +286,6 @@ val is_strict_descendant_of_build_dir : t -> bool
 val split_first_component : t -> (string * t) option
 
 val insert_after_build_dir_exn : t -> string -> t
-
 val exists : t -> bool
 
 val readdir_unsorted :
@@ -338,19 +298,12 @@ val readdir_unsorted_with_kinds :
      Result.t
 
 val is_dir_sep : char -> bool
-
 val is_directory : t -> bool
-
 val is_directory_with_error : t -> (bool, string) Result.t
-
 val is_file : t -> bool
-
 val rmdir : t -> unit
-
 val unlink : t -> unit
-
 val unlink_no_err : t -> unit
-
 val link : t -> t -> unit
 
 (** If the path does not exist, this function is a no-op. *)
@@ -361,15 +314,10 @@ val rm_rf : ?allow_external:bool -> t -> unit
 val clear_dir : t -> Fpath.clear_dir_result
 
 val mkdir_p : ?perms:int -> t -> unit
-
 val touch : ?create:bool -> t -> unit
-
 val build_dir_exists : unit -> bool
-
 val ensure_build_dir_exists : unit -> unit
-
 val source : Source.t -> t
-
 val build : Build.t -> t
 
 (** paths guaranteed to be in the source directory *)
@@ -404,7 +352,6 @@ val lstat_exn : t -> Unix.stats
 (* it would be nice to call this [Set.of_source_paths], but it's annoying to
    change the [Set] signature because then we don't comply with [Path_intf.S] *)
 val set_of_source_paths : Source.Set.t -> Set.t
-
 val set_of_build_paths_list : Build.t list -> Set.t
 
 (** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to

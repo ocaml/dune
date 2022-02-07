@@ -3,9 +3,7 @@ module type Hashtbl = sig
     type t
 
     val equal : t -> t -> bool
-
     val hash : t -> int
-
     val to_dyn : t -> Dyn.t
   end
 
@@ -23,9 +21,7 @@ module type Key = sig
   type t
 
   val equal : t -> t -> bool
-
   val hash : t -> int
-
   val to_dyn : t -> Dyn.t
 end
 

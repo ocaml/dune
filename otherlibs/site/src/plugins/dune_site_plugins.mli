@@ -12,6 +12,5 @@ end
 
 module Private_ : sig
   module Plugins : module type of Plugins
-
   module Meta_parser : module type of Meta_parser
 end

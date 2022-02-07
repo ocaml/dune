@@ -18,13 +18,9 @@ struct
   include T
 
   let lift m s = m >>| fun a -> (s, a)
-
   let modify f s = M.return (f s, ())
-
   let get : S.t T.t = fun s -> M.return (s, s)
-
   let set s _ = M.return (s, ())
-
   let run t s = t s
 
   include Monad.Make (T)

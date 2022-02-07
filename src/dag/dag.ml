@@ -7,11 +7,9 @@ module Make (Value : Value) () : S with type value := Value.t = struct
      in constant time. *)
   module Raw_graph = struct
     type mark = int
-
     type graph = unit
 
     module Node_map = Map.Make (Int)
-
     module Id = Id.Make ()
 
     type node_info =
@@ -40,21 +38,13 @@ module Make (Value : Value) () : S with type value := Value.t = struct
         mark
 
     let vertex_eq v1 v2 = v1 == v2
-
     let is_marked _ v m = v.info.mark = m
-
     let set_mark _ v m = v.info.mark <- m
-
     let get_level _ v = v.info.level
-
     let set_level _ v l = v.info.level <- l
-
     let get_incoming _ v = v.info.rev_deps
-
     let clear_incoming _ v = v.info.rev_deps <- []
-
     let add_incoming _ v w = v.info.rev_deps <- w :: v.info.rev_deps
-
     let get_outgoing _ v = v.info.deps
 
     let get_parent _ v =
@@ -63,9 +53,7 @@ module Make (Value : Value) () : S with type value := Value.t = struct
       | Some v -> v
 
     let set_parent _ v p = v.info.parent <- Some p
-
     let raw_add_edge _ v w = v.info.deps <- w :: v.info.deps
-
     let raw_add_vertex _ _ = ()
   end
 

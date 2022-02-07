@@ -32,7 +32,6 @@ type t =
   }
 
 let dir t = t.dir
-
 let map_path t p = Path.Build.append t.dir p
 
 let create_dirs t ~deps ~rule_dir =

@@ -96,5 +96,4 @@ let decode_gen decode_string =
   decode
 
 let decode = decode_gen String_with_vars.decode
-
 let decode_manually f = decode_gen (String_with_vars.decode_manually f)

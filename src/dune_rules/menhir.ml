@@ -58,7 +58,6 @@ module Run (P : PARAMS) = struct
   (* [build_dir] is the base directory of the context; we run menhir from this
      directory to we get correct error paths. *)
   let build_dir = (Super_context.context sctx).build_dir
-
   let expander = Compilation_context.expander cctx
 
   (* ------------------------------------------------------------------------ *)
@@ -88,7 +87,6 @@ module Run (P : PARAMS) = struct
      minimize the risk of confusing the build system (and the user). *)
 
   let mock m = m ^ "__mock"
-
   let mock_ml m : Path.Build.t = Path.Build.relative dir (mock m ^ ".ml.mock")
 
   let inferred_mli m : Path.Build.t =
@@ -299,9 +297,7 @@ let module_names (stanza : Dune_file.Menhir.t) : Module_name.t list =
 let gen_rules ~dir cctx stanza =
   let module R = Run (struct
     let cctx = cctx
-
     let dir = dir
-
     let stanza = stanza
   end) in
   R.gen_rules ()

@@ -6,18 +6,13 @@ open Dune_tests_common
 
 module Scheduler = struct
   let t = Test_scheduler.create ()
-
   let yield () = Test_scheduler.yield t
-
   let run f = Test_scheduler.run t f
 end
 
 let () = init ()
-
 let printf = Printf.printf
-
 let () = Memo.Perf_counters.enable ()
-
 let () = Memo.Debug.check_invariants := true
 
 let print_perf_counters () =
@@ -49,7 +44,6 @@ let compdep x = Memo.Build.return (x ^ x)
 
 (* our two dependencies are called some and another *)
 let mcompdep1 = string_fn_create "some" compdep
-
 let mcompdep2 = string_fn_create "another" compdep
 
 (* compute the dependencies once so they are present in the global hash table *)
@@ -227,7 +221,6 @@ module Test_lazy (Lazy : sig
   type 'a t
 
   val create : (unit -> 'a Memo.Build.t) -> 'a t
-
   val force : 'a t -> 'a Memo.Build.t
 end) =
 struct
@@ -276,7 +269,6 @@ module Builtin_lazy = Test_lazy (struct
   type 'a t = 'a Memo.Build.t Stdlib.Lazy.t
 
   let create = Stdlib.Lazy.from_fun
-
   let force = Stdlib.Lazy.force
 end)
 

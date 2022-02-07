@@ -216,17 +216,12 @@ module Per_module = struct
   module Per_module = Module_name.Per_item
 
   type 'a preprocess = 'a t
-
   type 'a t = 'a preprocess Per_module.t
 
   let equal f x y = Per_module.equal (equal f) x y
-
   let decode = Per_module.decode decode ~default:No_preprocessing
-
   let no_preprocessing () = Per_module.for_all No_preprocessing
-
   let find module_name t = Per_module.get t module_name
-
   let default () = Per_module.for_all No_preprocessing
 
   let pps t =

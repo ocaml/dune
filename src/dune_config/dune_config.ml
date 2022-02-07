@@ -92,7 +92,6 @@ module Cache = struct
       | Direct
 
     let all = [ ("daemon", Daemon); ("direct", Direct) ]
-
     let decode = enum all
   end
 
@@ -203,12 +202,10 @@ struct
 end
 
 module rec M : (S with type 'a field = 'a) = M
-
 include M
 
 module Partial = struct
   module rec M : (S with type 'a field = 'a option) = M
-
   include M
 
   let empty =
@@ -254,7 +251,6 @@ include
     end)
 
 let hash = Hashtbl.hash
-
 let equal a b = Poly.equal a b
 
 let default =

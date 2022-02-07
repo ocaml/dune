@@ -47,7 +47,6 @@ let component_name_parser s =
   Ok atom
 
 let atom_conv = Arg.conv (atom_parser, atom_printer)
-
 let component_name_conv = Arg.conv (component_name_parser, atom_printer)
 
 let public_name_conv =

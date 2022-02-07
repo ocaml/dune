@@ -2,7 +2,6 @@
 open! Dune_engine
 
 val dump : string -> unit Fiber.t
-
 val dump_dot_merlin : string -> unit Fiber.t
 
 (** Once started the server will wait for commands on stdin, read the requested

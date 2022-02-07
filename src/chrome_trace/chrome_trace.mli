@@ -26,7 +26,6 @@ module Event : sig
     type t
 
     val of_float_seconds : float -> t
-
     val now : unit -> t
   end
 

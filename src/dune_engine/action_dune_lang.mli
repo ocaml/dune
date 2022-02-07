@@ -23,9 +23,6 @@ include
      and type target = String_with_vars.t
 
 val compare_no_locs : t -> t -> Ordering.t
-
 val to_dyn : t -> Dyn.t
-
 val remove_locs : t -> t
-
 val equal : t -> t -> bool

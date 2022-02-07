@@ -11,9 +11,7 @@ module Name : sig
     | Anonymous of Path.Source.t
 
   val to_dyn : t -> Dyn.t
-
   val equal : t -> t -> bool
-
   val compare : t -> t -> Ordering.t
 
   (** Convert to a string that is suitable for human readable messages *)
@@ -25,7 +23,6 @@ module Name : sig
   val of_encoded_string : string -> t
 
   module Infix : Comparator.OPS with type t = t
-
   module Map : Map.S with type key = t
 end
 
@@ -37,28 +34,19 @@ module File_key : sig
   type t
 
   val to_string : t -> string
-
   val of_string : string -> t
 
   module Map : Map.S with type key = t
 end
 
 val to_dyn : t -> Dyn.t
-
 val file_key : t -> File_key.t
-
 val packages : t -> Package.t Package.Name.Map.t
-
 val version : t -> string option
-
 val name : t -> Name.t
-
 val root : t -> Path.Source.t
-
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
-
 val generate_opam_files : t -> bool
-
 val set_generate_opam_files : bool -> t -> t
 
 (** The option [use_standard_c_and_cxx_flags] enables the automatic addition of
@@ -68,19 +56,12 @@ val set_generate_opam_files : bool -> t -> t
 val use_standard_c_and_cxx_flags : t -> bool option
 
 val dialects : t -> Dialect.DB.t
-
 val set_dialects : Dialect.DB.t -> t -> t
-
 val explicit_js_mode : t -> bool
-
 val format_config : t -> Format_config.t
-
 val subst_config : t -> Subst_config.t
-
 val equal : t -> t -> bool
-
 val hash : t -> int
-
 val parsing_context : t -> Univ_map.t
 
 (** Return the path of the project file. *)
@@ -172,23 +153,14 @@ val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
 val find_extension_args : t -> 'a Extension.t -> 'a option
 
 val is_extension_set : t -> 'a Extension.t -> bool
-
 val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
-
 val implicit_transitive_deps : t -> bool
-
 val dune_version : t -> Dune_lang.Syntax.Version.t
-
 val wrapped_executables : t -> bool
-
 val executables_implicit_empty_intf : t -> bool
-
 val accept_alternative_dune_file_name : t -> bool
-
 val strict_package_deps : t -> bool
-
 val cram : t -> bool
-
 val info : t -> Package.Info.t
 
 (** Update the execution parameters according to what is written in the
@@ -197,5 +169,4 @@ val update_execution_parameters :
   t -> Execution_parameters.t -> Execution_parameters.t
 
 val encode : t -> Dune_lang.t list
-
 val dune_site_extension : unit Extension.t

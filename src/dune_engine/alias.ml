@@ -7,27 +7,16 @@ module Name : sig
   include Dune_lang.Conv.S with type t := t
 
   val equal : t -> t -> bool
-
   val hash : t -> int
-
   val compare : t -> t -> Ordering.t
-
   val of_string : string -> t
-
   val parse_string_exn : Loc.t * string -> t
-
   val to_string : t -> string
-
   val to_dyn : t -> Dyn.t
-
   val default : t
-
   val runtest : t
-
   val install : t
-
   val all : t
-
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
 
   include Comparable_intf.S with type key := t
@@ -76,15 +65,10 @@ end = struct
     | None -> Code_error.raise "invalid alias name" [ ("s", Dyn.string s) ]
 
   let to_string s = s
-
   let default = "default"
-
   let runtest = "runtest"
-
   let install = "install"
-
   let all = "all"
-
   let to_dyn = String.to_dyn
 
   let parse_local_path (loc, p) =
@@ -104,7 +88,6 @@ module T : sig
     }
 
   val make : Name.t -> dir:Path.Build.t -> t
-
   val of_user_written_path : loc:Loc.t -> Path.t -> t
 end = struct
   type t =
@@ -135,7 +118,6 @@ let compare { dir; name } t =
   Path.Build.compare dir t.dir
 
 let equal x y = compare x y = Eq
-
 let hash { dir; name } = Tuple.T2.hash Path.Build.hash Name.hash (dir, name)
 
 let to_dyn { dir; name } =
@@ -143,14 +125,11 @@ let to_dyn { dir; name } =
   Record [ ("dir", Path.Build.to_dyn dir); ("name", Name.to_dyn name) ]
 
 let name t = t.name
-
 let dir t = t.dir
-
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
 (* This mutable table is safe: it's modified only at the top level. *)
 let standard_aliases = Table.create (module Name) 7
-
 let is_standard name = Table.mem standard_aliases name
 
 let make_standard name =
@@ -162,21 +141,13 @@ let register_as_standard name =
   ()
 
 let default = make_standard Name.default
-
 let runtest = make_standard Name.runtest
-
 let install = make_standard Name.install
-
 let doc = make_standard (Name.of_string "doc")
-
 let private_doc = make_standard (Name.of_string "doc-private")
-
 let lint = make_standard (Name.of_string "lint")
-
 let all = make_standard (Name.of_string "all")
-
 let check = make_standard (Name.of_string "check")
-
 let fmt = make_standard (Name.of_string "fmt")
 
 let encode { dir; name } =

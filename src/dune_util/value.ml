@@ -45,11 +45,8 @@ let to_path ?error_loc t ~dir =
 
 module L = struct
   let to_dyn t = Dyn.List (List.map t ~f:to_dyn)
-
   let to_strings t ~dir = List.map t ~f:(to_string ~dir)
-
   let compare_vals ~dir = List.compare ~compare:(compare_vals ~dir)
-
   let concat ts ~dir = List.map ~f:(to_string ~dir) ts |> String.concat ~sep:" "
 
   let deps_only =
@@ -60,8 +57,6 @@ module L = struct
       | Path p -> Some p)
 
   let strings = List.map ~f:(fun x -> String x)
-
   let paths = List.map ~f:(fun x -> Path x)
-
   let dirs = List.map ~f:(fun x -> Dir x)
 end

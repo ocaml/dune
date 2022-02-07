@@ -17,7 +17,6 @@ module Unix_error : sig
     val catch : ('a -> 'b) -> 'a -> ('b, t) result
 
     val equal : t -> t -> bool
-
     val to_string_hum : t -> string
   end
 end
@@ -34,9 +33,7 @@ module File_kind : sig
     | S_SOCK
 
   val to_string : t -> string
-
   val to_string_hum : t -> string
-
   val equal : t -> t -> bool
 end
 

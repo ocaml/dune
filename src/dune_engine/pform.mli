@@ -47,7 +47,6 @@ module Var : sig
     | Toolchain
 
   val compare : t -> t -> Ordering.t
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -57,11 +56,8 @@ module Artifact : sig
     | Lib of Mode.t
 
   val compare : t -> t -> Ordering.t
-
   val to_dyn : t -> Dyn.t
-
   val ext : t -> string
-
   val all : t list
 end
 
@@ -88,7 +84,6 @@ module Macro : sig
     | Artifact of Artifact.t
 
   val compare : t -> t -> Ordering.t
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -97,7 +92,6 @@ type t =
   | Macro of Macro.t * string
 
 val compare : t -> t -> Ordering.t
-
 val to_dyn : t -> Dyn.t
 
 type encode_result =
@@ -122,9 +116,7 @@ module Env : sig
   type t
 
   val initial : Dune_lang.Syntax.Version.t -> t
-
   val add_user_vars : t -> string list -> t
-
   val parse : t -> Dune_lang.Template.Pform.t -> pform
 
   (** Used to parse percent forms in [enabled_if] fields, as the checks are done
@@ -145,7 +137,6 @@ module Env : sig
   type stamp
 
   val to_stamp : t -> stamp
-
   val to_dyn : t -> Dyn.t
 end
 with type pform := t

@@ -28,11 +28,8 @@ module Linkage = struct
     }
 
   let native = { mode = Native; ext = ".exe"; flags = [] }
-
   let is_native x = x.mode = Native
-
   let is_js x = x.mode = Byte && x.ext = ".bc.js"
-
   let is_byte x = x.mode = Byte && not (is_js x)
 
   let custom context =
@@ -53,15 +50,10 @@ module Linkage = struct
     List.mem (List.map ~f:Mode.plugin_ext Mode.all) t.ext ~equal:String.equal
 
   let c_flags = [ "-output-obj" ]
-
   let o_flags = [ "-output-complete-obj" ]
-
   let so_flags_windows = o_flags
-
   let so_flags_unix = [ "-output-complete-obj"; "-runtime-variant"; "_pic" ]
-
   let cmxs_flags = [ "-shared" ]
-
   let cma_flags = [ "-a" ]
 
   let of_user_config (ctx : Context.t) ~loc

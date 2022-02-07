@@ -73,7 +73,6 @@ module Simplified = struct
     }
 
   let equal = Poly.equal
-
   let hash = Poly.hash
 
   let rec to_dyn { name; vars; subs } =
@@ -124,22 +123,16 @@ let of_lex lex ~name =
   simplify { name; entries }
 
 let load p ~name = Fs_memo.with_lexbuf_from_file p ~f:(of_lex ~name)
-
 let of_string s ~name = of_lex (Lexing.from_string s) ~name
-
 let rule var predicates action value = Rule { var; predicates; action; value }
 
 let requires ?(preds = []) pkgs =
   rule "requires" preds Set (String.concat ~sep:" " pkgs)
 
 let version s = rule "version" [] Set s
-
 let directory s = rule "directory" [] Set s
-
 let archive p s = rule "archive" [ Pos p ] Set s
-
 let plugin p s = rule "plugin" [ Pos p ] Set s
-
 let exists_if s = rule "exists_if" [] Set s
 
 let archives ?(kind = [ Mode.Byte; Mode.Native ]) name =
@@ -148,7 +141,8 @@ let archives ?(kind = [ Mode.Byte; Mode.Native ]) name =
     ; (Mode.Native, archive, Mode.compiled_lib_ext)
     ; (Mode.Byte, plugin, Mode.compiled_lib_ext)
     ; (Mode.Native, plugin, Mode.plugin_ext)
-    ] ~f:(fun (k, f, ext) ->
+    ]
+    ~f:(fun (k, f, ext) ->
       if List.mem kind k ~equal:Mode.equal then
         Some (f (Mode.to_string k) (name ^ ext k))
       else

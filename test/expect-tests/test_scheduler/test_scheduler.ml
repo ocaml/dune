@@ -1,7 +1,6 @@
 open Stdune
 
 type job = Job : (unit -> 'a) * 'a Fiber.Ivar.t -> job
-
 type t = job Queue.t
 
 let create () : t = Queue.create ()

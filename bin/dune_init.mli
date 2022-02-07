@@ -12,7 +12,6 @@ module Kind : sig
     | Test
 
   val to_string : t -> string
-
   val commands : (string * t) list
 end
 
@@ -74,7 +73,6 @@ module Component : sig
           | Lib
 
         val of_string : string -> t option
-
         val commands : (string * t) list
       end
 

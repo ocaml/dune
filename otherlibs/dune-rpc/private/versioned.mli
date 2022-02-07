@@ -8,7 +8,6 @@ module Version_error : sig
   type t
 
   val payload : t -> Csexp.t option
-
   val message : t -> string
 
   exception E of t

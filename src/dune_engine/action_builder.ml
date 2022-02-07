@@ -36,9 +36,7 @@ let dyn_deps t =
     }
 
 let path p = deps (Dep.Set.singleton (Dep.file p))
-
 let paths ps = deps (Dep.Set.of_files ps)
-
 let path_set ps = deps (Dep.Set.of_files_set ps)
 
 let paths_matching :
@@ -74,7 +72,6 @@ let dyn_path_set_reuse paths =
   dyn_deps (paths >>| fun paths -> (paths, Dep.Set.of_files_set paths))
 
 let env_var s = deps (Dep.Set.singleton (Dep.env s))
-
 let alias a = dep (Dep.alias a)
 
 let contents p =
@@ -142,7 +139,6 @@ module With_targets = struct
     }
 
   let map_build t ~f = { t with build = f t.build }
-
   let return x = { build = return x; targets = Targets.empty }
 
   let add t ~file_targets =
@@ -171,11 +167,8 @@ module With_targets = struct
 
   module O = struct
     let ( >>> ) = seq
-
     let ( >>| ) t f = map t ~f
-
     let ( and+ ) = both
-
     let ( let+ ) a f = map ~f a
   end
 

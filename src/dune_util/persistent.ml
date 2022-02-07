@@ -4,9 +4,7 @@ module type Desc = sig
   type t
 
   val name : string
-
   val version : int
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -19,7 +17,6 @@ module type Desc_with_data = sig
 end
 
 let registry = String.Table.create 16
-
 let max_magic_length = 128
 
 let register (module D : Desc_with_data) =

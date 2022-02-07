@@ -69,9 +69,7 @@ module Progress : sig
     }
 
   val equal : t -> t -> bool
-
   val complete : t -> int
-
   val remaining : t -> int
 end
 
@@ -98,9 +96,7 @@ module Error : sig
     module Map : Map.S with type key = t
 
     val compare : t -> t -> Ordering.t
-
     val to_int : t -> int
-
     val to_dyn : t -> Dyn.t
   end
 
@@ -112,7 +108,6 @@ module Error : sig
 
   module Set : sig
     type error := t
-
     type t
 
     (** [one_event_diff ~prev ~next] returns the event that constructs [next]
@@ -120,18 +115,13 @@ module Error : sig
     val one_event_diff : prev:t -> next:t -> Event.t option
 
     val equal : t -> t -> bool
-
     val current : t -> error Id.Map.t
-
     val empty : t
   end
 
   val create : exn:Exn_with_backtrace.t -> t
-
   val info : t -> User_message.t * User_message.t list * Path.t option
-
   val promotion : t -> Diff_promotion.Annot.t option
-
   val id : t -> Id.t
 end
 

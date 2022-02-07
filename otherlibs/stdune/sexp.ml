@@ -19,7 +19,6 @@ let rec pp = function
       ++ Pp.text ")")
 
 let hash = Stdlib.Hashtbl.hash
-
 let string_equal (x : string) (y : string) = x = y
 
 let rec equal x y =

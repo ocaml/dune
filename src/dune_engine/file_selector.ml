@@ -7,9 +7,7 @@ type t =
   }
 
 let dir t = t.dir
-
 let predicate t = t.predicate
-
 let only_generated_files t = t.only_generated_files
 
 let compare { dir; predicate; only_generated_files } t =

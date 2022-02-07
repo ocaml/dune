@@ -15,7 +15,6 @@ module Bin : sig
     -> Action.Prog.t Memo.Build.t
 
   val binary_available : t -> string -> bool Memo.Build.t
-
   val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 end
 

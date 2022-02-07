@@ -41,7 +41,6 @@ module Dune_file = struct
   end
 
   let fname = "dune"
-
   let alternative_fname = "dune-file"
 
   type kind =
@@ -56,9 +55,7 @@ module Dune_file = struct
     }
 
   let get_static_sexp t = t.plain.contents.sexps
-
   let kind t = t.kind
-
   let path t = t.path
 
   let sub_dirs (t : t option) =
@@ -115,7 +112,6 @@ module Readdir : sig
     }
 
   val empty : Path.Source.t -> t
-
   val filter_files : t -> Dune_project.t -> t Memo.Build.t
 
   val of_source_path :
@@ -233,9 +229,7 @@ module Dirs_visited : sig
     type dirs_visited
 
     val init : t
-
     val find : t -> Path.Source.t -> dirs_visited
-
     val add : t -> dirs_visited -> string * Path.Source.t * File.t -> t
   end
   with type dirs_visited := t
@@ -345,19 +339,12 @@ module Dir0 = struct
     { path; status; contents; project; vcs }
 
   let contents t = t.contents
-
   let path t = t.path
-
   let status t = t.status
-
   let files t = (contents t).files
-
   let sub_dirs t = (contents t).sub_dirs
-
   let dune_file t = (contents t).dune_file
-
   let project t = t.project
-
   let vcs t = t.vcs
 
   let file_paths t =
@@ -649,7 +636,6 @@ end = struct
 end
 
 let root () = Memoized.root ()
-
 let find_dir path = Memoized.find_dir path
 
 let rec nearest_dir t = function

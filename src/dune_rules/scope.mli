@@ -8,7 +8,6 @@ open! Stdune
 type t
 
 val root : t -> Path.Build.t
-
 val project : t -> Dune_project.t
 
 (** Return the library database associated to this scope *)
@@ -19,7 +18,6 @@ val coq_libs : t -> Coq_lib.DB.t
 (** Scope databases *)
 module DB : sig
   type scope = t
-
   type t
 
   (** Return the new scope database as well as the public libraries database *)
@@ -34,7 +32,6 @@ module DB : sig
     -> (t * Lib.DB.t) Memo.Build.t
 
   val find_by_dir : t -> Path.Build.t -> scope
-
   val find_by_project : t -> Dune_project.t -> scope
 end
 with type scope := t

@@ -6,9 +6,7 @@ open Dune_rpc_server
 module Scheduler = Test_scheduler
 
 let () = Printexc.record_backtrace false
-
 let print pp = Format.printf "%a@." Pp.to_fmt pp
-
 let print_dyn dyn = print (Dyn.pp dyn)
 
 module Chan = struct
@@ -221,7 +219,6 @@ module Add = struct
 
   module V1_only = struct
     let req = Conv.pair Conv.int Conv.int
-
     let resp = Conv.int
   end
 
@@ -264,15 +261,16 @@ module Add = struct
         constr "with_others" (pair int int) (fun (xy, all) ->
             With_others { xy; all })
       in
-      sum [ econstr no_others; econstr with_others ] (function
-        | No_others x -> case x no_others
-        | With_others { xy; all } -> case (xy, all) with_others)
+      sum
+        [ econstr no_others; econstr with_others ]
+        (function
+          | No_others x -> case x no_others
+          | With_others { xy; all } -> case (xy, all) with_others)
     in
     Decl.Request.make_current_gen ~req ~resp ~version:2
 end
 
 let add_v1_only = Decl.Request.make ~method_:"add" ~generations:[ Add.v1_only ]
-
 let add_v1_v2 = Decl.Request.make ~method_:"add" ~generations:[ Add.v1; Add.v2 ]
 
 let%expect_test "client is newer than server" =
@@ -356,11 +354,8 @@ let%test_module "long polling" =
         [ v1 ]
 
     let sub_decl = Sub.of_procedure sub_proc
-
     let version = (3, 0)
-
     let init = init ~version ()
-
     let rpc () = Handler.create ~on_init ~version ()
 
     let server f =

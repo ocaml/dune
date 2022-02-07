@@ -42,13 +42,9 @@ module External : sig
   include Path_intf.S
 
   val relative : t -> string -> t
-
   val mkdir_p : ?perms:int -> t -> unit
-
   val initial_cwd : t
-
   val cwd : unit -> t
-
   val as_local : t -> string
 end = struct
   module Table = String.Table
@@ -56,13 +52,9 @@ end = struct
   type t = string
 
   let to_string t = t
-
   let equal = String.equal
-
   let hash = String.hash
-
   let compare = String.compare
-
   let extend_basename t ~suffix = t ^ suffix
 
   let of_string t =
@@ -93,11 +85,8 @@ end = struct
     | _ -> Filename.concat x y
 
   let basename t = Filename.basename t
-
   let root = of_string "/"
-
   let is_root = equal root
-
   let basename_opt = basename_opt ~is_root ~basename
 
   let parent t =
@@ -116,7 +105,6 @@ end = struct
     ignore (Fpath.mkdir_p ?perms path : Fpath.mkdir_p_result)
 
   let unlink_no_err t = Fpath.unlink_no_err t
-
   let extension t = Filename.extension t
 
   let split_extension t =
@@ -128,7 +116,6 @@ end = struct
     base ^ ext
 
   let cwd () = Sys.getcwd ()
-
   let initial_cwd = Fpath.initial_cwd
 
   let as_local t =
@@ -168,11 +155,9 @@ module Local_gen : sig
 
   module Prefix : sig
     type 'w local = 'w t
-
     type 'w t
 
     val make : 'w local -> 'w t
-
     val drop : 'w t -> 'w local -> 'w local option
 
     (* for all local path p, drop (invalid p = None) *)
@@ -187,13 +172,9 @@ end = struct
   module Table = String.Table
 
   let to_string t = t
-
   let hash = String.hash
-
   let compare = String.compare
-
   let root = "."
-
   let is_root t = Ordering.is_eq (compare t root)
 
   let to_list =
@@ -368,7 +349,6 @@ end = struct
     loop (to_list t) (to_list from)
 
   let extend_basename t ~suffix = t ^ suffix
-
   let extension t = Filename.extension t
 
   let split_extension t =
@@ -443,23 +423,16 @@ end
 
 module Local : sig
   type w = Unspecified.w
-
   type t = w Local_gen.t
 
   include Path_intf.S with type t := t
 
   val root : t
-
   val is_root : t -> bool
-
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-
   val append : t -> t -> t
-
   val descendant : t -> of_:t -> t option
-
   val is_descendant : t -> of_:t -> bool
-
   val reach : t -> from:t -> string
 
   module L : sig
@@ -467,18 +440,14 @@ module Local : sig
   end
 
   val split_first_component : t -> (string * t) option
-
   val explode : t -> string list
-
   val of_local : t -> t
 
   module Prefix : sig
     type local = t
-
     type t
 
     val make : local -> t
-
     val drop : t -> local -> local option
 
     (* for all local path p, drop (invalid p = None) *)
@@ -498,7 +467,6 @@ end = struct
 
   module Prefix = struct
     open Local_gen
-
     include (Prefix : module type of Prefix with type 'a t := 'a Prefix.t)
 
     type t = w Prefix.t
@@ -589,13 +557,9 @@ module Permissions = struct
     }
 
   let execute = { current_user = 0o100; all_users = 0o111 }
-
   let write = { current_user = 0o200; all_users = 0o222 }
-
   let add t perm = perm lor t.current_user
-
   let test t perm = perm land t.current_user <> 0
-
   let remove t perm = perm land lnot t.all_users
 end
 
@@ -603,13 +567,9 @@ module Build = struct
   include Local
 
   let append_source = append
-
   let append_local = append
-
   let local t = t
-
   let extract_build_context t = split_first_component t
-
   let extract_first_component = extract_build_context
 
   let extract_build_context_dir t =
@@ -667,7 +627,6 @@ module Build = struct
         [ ("t", to_dyn t) ]
 
   let build_dir = Fdecl.create Kind.to_dyn
-
   let build_dir_prefix = Fdecl.create Dyn.opaque
 
   let set_build_dir (new_build_dir : Kind.t) =
@@ -700,11 +659,8 @@ module Build = struct
         Filename.concat (External.to_string b) (Local.to_string p)
 
   let of_local t = t
-
   let chmod t ~mode = Unix.chmod (to_string t) mode
-
   let lstat t = Unix.lstat (to_string t)
-
   let unlink_no_err t = Fpath.unlink_no_err (to_string t)
 
   module Kind = Kind
@@ -717,17 +673,11 @@ module T : sig
     | In_build_dir of Local.t
 
   val to_dyn : t -> Dyn.t
-
   val compare : t -> t -> Ordering.t
-
   val equal : t -> t -> bool
-
   val hash : t -> int
-
   val in_build_dir : Local.t -> t
-
   val in_source_tree : Local.t -> t
-
   val external_ : External.t -> t
 end = struct
   type t =
@@ -746,13 +696,9 @@ end = struct
     | In_build_dir x, In_build_dir y -> Local.compare x y
 
   let equal (x : t) (y : t) = x = y
-
   let hash = Hashtbl.hash
-
   let in_build_dir s = In_build_dir s
-
   let in_source_tree s = In_source_tree s
-
   let external_ e = External e
 
   let to_dyn t =
@@ -766,7 +712,6 @@ end
 include T
 
 let hash (t : t) = Hashtbl.hash t
-
 let build_dir = in_build_dir Local.root
 
 let is_root = function
@@ -793,7 +738,6 @@ let to_string t =
   | In_build_dir p -> Build.to_string p
 
 let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
-
 let root = in_source_tree Local.root
 
 let make_local_path p =
@@ -897,7 +841,6 @@ let append_local a b =
   | External a -> external_ (External.relative a (Local.to_string b))
 
 let append_local = append_local
-
 let append_source = append_local
 
 let basename t =
@@ -1084,15 +1027,10 @@ let is_directory_with_error t =
   | bool -> Ok bool
 
 let is_file t = not (is_directory t)
-
 let rmdir t = Unix.rmdir (to_string t)
-
 let unlink t = Fpath.unlink (to_string t)
-
 let link x y = Unix.link (to_string x) (to_string y)
-
 let unlink_no_err t = Fpath.unlink_no_err (to_string t)
-
 let build_dir_exists () = is_directory build_dir
 
 let ensure_build_dir_exists () =
@@ -1212,9 +1150,7 @@ module Set = struct
 end
 
 let in_source s = in_source_tree (Local.of_string s)
-
 let source s = in_source_tree s
-
 let build s = in_build_dir s
 
 module Table = Hashtbl.Make (T)
@@ -1230,11 +1166,8 @@ let local_part = function
   | In_build_dir l -> l
 
 let stat_exn t = Unix.stat (to_string t)
-
 let stat t = Dune_filesystem_stubs.Unix_error.Detailed.catch stat_exn t
-
 let lstat_exn t = Unix.lstat (to_string t)
-
 let lstat t = Dune_filesystem_stubs.Unix_error.Detailed.catch lstat_exn t
 
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
@@ -1245,7 +1178,6 @@ module Source = struct
   include Source0
 
   let is_in_build_dir s = is_in_build_dir (path_of_local s)
-
   let to_local t = t
 end
 

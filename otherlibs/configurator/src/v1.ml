@@ -58,7 +58,6 @@ module Flags = struct
     String.extract_comma_space_separated_words
 
   let extract_blank_separated_words = String.extract_blank_separated_words
-
   let write_lines path s = Io.write_lines path s
 
   let write_sexp path s =

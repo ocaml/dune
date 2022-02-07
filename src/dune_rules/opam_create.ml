@@ -158,7 +158,6 @@ let package_fields
   List.concat fields
 
 let dune_name = Package.Name.of_string "dune"
-
 let odoc_name = Package.Name.of_string "odoc"
 
 let insert_dune_dep depends dune_version =

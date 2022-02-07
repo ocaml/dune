@@ -101,6 +101,5 @@ val fail : exn -> _ Args.t
 
 module Ml_kind : sig
   val flag : Ml_kind.t -> _ Args.t
-
   val ppx_driver_flag : Ml_kind.t -> _ Args.t
 end

@@ -7,7 +7,6 @@ type t =
 exception E of t
 
 let create ?loc message data = { message; data; loc }
-
 let raise ?loc message data = raise (E { message; data; loc })
 
 let dyn_fields_without_loc { loc = _; message; data } =

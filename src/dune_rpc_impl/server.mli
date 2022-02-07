@@ -1,7 +1,6 @@
 type t
 
 val create : root:string -> t
-
 val config : t -> Run.Config.t
 
 type pending_build_action =

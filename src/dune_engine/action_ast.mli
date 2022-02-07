@@ -32,7 +32,6 @@ module Make
               and type target := Target.t
               and type string := String.t) : sig
   include module type of Ast with type t = Ast.t
-
   include Dune_lang.Conv.S with type t := t
 
   include

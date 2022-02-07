@@ -191,7 +191,6 @@ let rec equal eq xs ys =
   | _, _ -> false
 
 let hash f xs = Stdlib.Hashtbl.hash (map ~f xs)
-
 let cons x xs = x :: xs
 
 (* copy&paste from [base] *)
@@ -224,9 +223,7 @@ let reduce xs ~f =
   | init :: xs -> Some (fold_left xs ~init ~f)
 
 let min xs ~f = reduce xs ~f:(Ordering.min f)
-
 let max xs ~f = reduce xs ~f:(Ordering.max f)
-
 let mem t a ~equal = exists t ~f:(equal a)
 
 (* copy&paste from [base] *)

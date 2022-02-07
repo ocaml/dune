@@ -97,11 +97,8 @@ type t = private
   }
 
 val equal : t -> t -> bool
-
 val hash : t -> int
-
 val to_dyn : t -> Dyn.t
-
 val to_dyn_concise : t -> Dyn.t
 
 (** Compare the context names *)
@@ -119,9 +116,7 @@ val best_mode : t -> Mode.t
 val cc_g : t -> string list
 
 val name : t -> Context_name.t
-
 val has_native : t -> bool
-
 val lib_config : t -> Lib_config.t
 
 (** [map_exe t exe] returns a version of [exe] that is suitable for being
@@ -144,6 +139,5 @@ val force_configurator_files : unit Memo.Lazy.t
 
 module DB : sig
   val get : Context_name.t -> t Memo.Build.t
-
   val all : unit -> t list Memo.Build.t
 end

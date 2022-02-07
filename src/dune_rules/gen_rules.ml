@@ -40,7 +40,6 @@ end = struct
     }
 
   let empty_none = { merlin = None; cctx = None; js = None; source_dirs = None }
-
   let empty_list = { merlin = []; cctx = []; js = []; source_dirs = [] }
 
   let cons_maybe hd_o tl =

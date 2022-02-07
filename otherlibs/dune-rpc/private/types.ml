@@ -5,26 +5,18 @@ module Id = struct
     type t = Sexp.t
 
     let equal = Poly.equal
-
     let compare = Poly.compare
-
     let to_dyn s = Sexp.to_dyn s
   end
 
   include T
 
   let make s = s
-
   let to_sexp t = t
-
   let sexp = Conv.sexp
-
   let gen f = Conv.field "id" (f sexp)
-
   let required_field = gen Conv.required
-
   let optional_field = gen Conv.optional
-
   let hash = Poly.hash
 
   module C = Comparable.Make (T)
@@ -104,9 +96,7 @@ module Response = struct
       }
 
     let payload t = t.payload
-
     let kind t = t.kind
-
     let message t = t.message
 
     exception E of t
@@ -162,9 +152,11 @@ module Response = struct
     let open Conv in
     let ok = constr "ok" sexp (fun x -> Ok x) in
     let error = constr "error" Error.sexp (fun x -> Error x) in
-    sum [ econstr ok; econstr error ] (function
-      | Ok s -> case s ok
-      | Error e -> case e error)
+    sum
+      [ econstr ok; econstr error ]
+      (function
+        | Ok s -> case s ok
+        | Error e -> case e error)
 
   let fields =
     let open Conv in
@@ -179,7 +171,6 @@ module Protocol = struct
   type t = int
 
   let latest_version = 0
-
   let sexp = Conv.int
 end
 
@@ -192,9 +183,7 @@ module Initialize = struct
       }
 
     let dune_version t = t.dune_version
-
     let protocol_version t = t.protocol_version
-
     let id t = t.id
 
     let create ~id =
@@ -236,9 +225,7 @@ module Initialize = struct
     type t = unit
 
     let sexp = Conv.unit
-
     let create () = ()
-
     let to_response t = Conv.to_sexp sexp t
   end
 end
@@ -248,7 +235,6 @@ module Version_negotiation = struct
     type t = Menu of (string * int list) list
 
     let method_name = "version_menu"
-
     let create menu = Menu menu
 
     let sexp =
@@ -284,7 +270,6 @@ module Version_negotiation = struct
             | Selected x -> x))
 
     let create x = Selected x
-
     let to_response t = Conv.to_sexp sexp t
   end
 end
@@ -301,9 +286,11 @@ module Persistent = struct
       let close_connection =
         constr "close_connection" unit (fun () -> Close_connection)
       in
-      sum [ econstr packet; econstr close_connection ] (function
-        | Packet p -> case p packet
-        | Close_connection -> case () close_connection)
+      sum
+        [ econstr packet; econstr close_connection ]
+        (function
+          | Packet p -> case p packet
+          | Close_connection -> case () close_connection)
   end
 
   module In = struct
@@ -328,11 +315,12 @@ module Persistent = struct
       let close_connection =
         constr "close_connection" unit (fun () -> Close_connection)
       in
-      sum [ econstr new_connection; econstr packet; econstr close_connection ]
+      sum
+        [ econstr new_connection; econstr packet; econstr close_connection ]
         (function
-        | New_connection -> case () new_connection
-        | Packet p -> case p packet
-        | Close_connection -> case () close_connection)
+          | New_connection -> case () new_connection
+          | Packet p -> case p packet
+          | Close_connection -> case () close_connection)
   end
 end
 
@@ -486,7 +474,6 @@ module Decl = struct
   end
 
   type ('a, 'b) request = ('a, 'b) Request.t
-
   type 'a notification = 'a Notification.t
 end
 
@@ -494,28 +481,21 @@ module type Fiber = sig
   type 'a t
 
   val return : 'a -> 'a t
-
   val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
   val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
   val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
   module O : sig
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
 
   module Ivar : sig
     type 'a fiber
-
     type 'a t
 
     val create : unit -> 'a t
-
     val read : 'a t -> 'a fiber
-
     val fill : 'a t -> 'a -> unit fiber
   end
   with type 'a fiber := 'a t
@@ -525,12 +505,8 @@ module type Sys = sig
   type 'a fiber
 
   val getenv : string -> string option
-
   val is_win32 : unit -> bool
-
   val read_file : string -> string fiber
-
   val readlink : string -> string option fiber
-
   val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
 end

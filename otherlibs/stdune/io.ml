@@ -1,5 +1,4 @@
 let close_in = close_in
-
 let close_out = close_out
 
 let close_both (ic, oc) =
@@ -187,7 +186,6 @@ struct
           read_all_generic t buffer)
 
   let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
-
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
 
   let zero_strings_of_file fn =

@@ -15,7 +15,6 @@ type real =
   }
 
 let t = Fdecl.create Dyn.opaque
-
 let verbose = ref false
 
 let init ?(file = File.Default) () =
@@ -41,7 +40,6 @@ let init ?(file = File.Default) () =
   Fdecl.set t (Some { oc; buf; ppf })
 
 let init_disabled () = Fdecl.set t None
-
 let t () = Fdecl.get t
 
 let info_user_message msg =

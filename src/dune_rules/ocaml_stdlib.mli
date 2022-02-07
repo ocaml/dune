@@ -18,5 +18,4 @@ type t = private
   }
 
 val syntax : Dune_lang.Syntax.t
-
 val decode : t Dune_lang.Decoder.t

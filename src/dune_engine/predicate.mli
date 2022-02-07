@@ -7,13 +7,9 @@ open Stdune
 type 'a t
 
 val equal : 'a t -> 'a t -> bool
-
 val compare : 'a t -> 'a t -> Ordering.t
-
 val hash : _ t -> int
-
 val encode : _ t Dune_lang.Encoder.t
-
 val to_dyn : _ t -> Dyn.t
 
 (**[create id ~f] creates a predicate defined by [f] identified uniquely with

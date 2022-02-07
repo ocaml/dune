@@ -10,7 +10,6 @@ type 'data t =
   }
 
 let data t = t.data
-
 let map t ~f = { t with data = f t.data }
 
 module Deep_fold (M : Monad.S) = struct

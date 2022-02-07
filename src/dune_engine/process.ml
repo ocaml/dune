@@ -31,7 +31,6 @@ let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
 
 module Io = struct
   type input = Input
-
   type output = Output
 
   type 'a mode =
@@ -99,7 +98,6 @@ module Io = struct
     terminal (Out_chan stderr) output_on_success
 
   let stderr = make_stderr Print
-
   let stdin = terminal (In_chan stdin) Print
 
   let null (type a) (mode : a mode) : a t =
@@ -391,7 +389,8 @@ end = struct
           List.filter_map
             [ (has_unexpected_stdout, "stdout")
             ; (has_unexpected_stderr, "stderr")
-            ] ~f:(fun (b, name) -> Option.some_if b name)
+            ]
+            ~f:(fun (b, name) -> Option.some_if b name)
         in
         match (n, unexpected_outputs) with
         | 0, _ :: _ ->
@@ -852,7 +851,6 @@ let run_capture_gen ?dir ?stderr_to ?stdin_from ?env
       x)
 
 let run_capture = run_capture_gen ~f:Stdune.Io.read_file
-
 let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 
 let run_capture_zero_separated =

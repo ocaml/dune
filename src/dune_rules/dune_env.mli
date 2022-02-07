@@ -11,7 +11,6 @@ module Stanza : sig
       | Ignored
 
     val decode : t Dune_lang.Decoder.t
-
     val to_string : t -> string
   end
 
@@ -49,9 +48,7 @@ module Stanza : sig
     }
 
   val hash : t -> int
-
   val to_dyn : t -> Dyn.t
-
   val equal : t -> t -> bool
 
   val foreign_flags :
@@ -60,9 +57,7 @@ module Stanza : sig
        Dune_lang.Decoder.fields_parser
 
   val decode : t Dune_lang.Decoder.t
-
   val empty : t
-
   val find : t -> profile:Profile.t -> config
 end
 

@@ -297,9 +297,7 @@ struct
     | Cram script -> List [ atom "cram"; path script ]
 
   let run prog args = Run (prog, args)
-
   let chdir path t = Chdir (path, t)
-
   let setenv var value t = Setenv (var, value, t)
 
   let with_stdout_to ?(perm = File_perm.Normal) path t =
@@ -312,35 +310,20 @@ struct
     Redirect_out (Outputs, path, perm, t)
 
   let with_stdin_from path t = Redirect_in (Stdin, path, t)
-
   let ignore_stdout t = Ignore (Stdout, t)
-
   let ignore_stderr t = Ignore (Stderr, t)
-
   let ignore_outputs t = Ignore (Outputs, t)
-
   let progn ts = Progn ts
-
   let echo s = Echo s
-
   let cat path = Cat path
-
   let copy a b = Copy (a, b)
-
   let symlink a b = Symlink (a, b)
-
   let copy_and_add_line_directive a b = Copy_and_add_line_directive (a, b)
-
   let system s = System s
-
   let bash s = Bash s
-
   let write_file ?(perm = File_perm.Normal) p s = Write_file (p, perm, s)
-
   let rename a b = Rename (a, b)
-
   let remove_tree path = Remove_tree path
-
   let mkdir path = Mkdir path
 
   let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =

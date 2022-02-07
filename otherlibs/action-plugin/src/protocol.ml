@@ -1,7 +1,6 @@
 open Stdune
 
 let run_by_dune_env_variable = "DUNE_DYNAMIC_RUN_CLIENT"
-
 let sexp_of_list sexp_of_t list : Sexp.t = List (List.map ~f:sexp_of_t list)
 
 let list_of_sexp (t_of_sexp : Sexp.t -> 'a Option.t) : Sexp.t -> _ = function
@@ -59,7 +58,6 @@ module Dependency = struct
     include O.Set
 
     let sexp_of_t (t : t) = to_list t |> sexp_of_list T.sexp_of_t
-
     let t_of_sexp sexp = Option.O.(list_of_sexp T.t_of_sexp sexp >>| of_list)
   end
 end
@@ -161,7 +159,6 @@ module Context = struct
        that was used to build this executable."
 
   let cannot_read_file = Error "Cannot read file containing dune message."
-
   let file_not_found_error = Error "Cannot find file containing dune message."
 
   let create () =
@@ -191,7 +188,6 @@ module Context = struct
               })))
 
   let prepared_dependencies (t : t) = t.prepared_dependencies
-
   let targets (t : t) = t.targets
 
   let respond (t : t) response =

@@ -26,7 +26,6 @@ module Main_module_name = struct
   type t = Module_name.t option Inherited.t
 
   let equal = Inherited.equal (Option.equal Module_name.equal)
-
   let to_dyn x = Inherited.to_dyn (Dyn.option Module_name.to_dyn) x
 end
 
@@ -432,71 +431,38 @@ let equal (type a) (t : a t)
   && Poly.equal path_kind t.path_kind
 
 let name t = t.name
-
 let version t = t.version
-
 let dune_version t = t.dune_version
-
 let loc t = t.loc
-
 let requires t = t.requires
-
 let preprocess t = t.preprocess
-
 let ppx_runtime_deps t = t.ppx_runtime_deps
-
 let sub_systems t = t.sub_systems
-
 let modes t = t.modes
-
 let archives t = t.archives
-
 let foreign_archives t = t.foreign_archives
-
 let native_archives t = t.native_archives
-
 let foreign_dll_files t = t.foreign_dll_files
-
 let foreign_objects t = t.foreign_objects
-
 let exit_module t = t.exit_module
-
 let instrumentation_backend t = t.instrumentation_backend
-
 let plugins t = t.plugins
-
 let src_dir t = t.src_dir
-
 let enabled t = t.enabled
-
 let status t = t.status
-
 let kind t = t.kind
-
 let default_implementation t = t.default_implementation
-
 let obj_dir t = t.obj_dir
-
 let virtual_ t = t.virtual_
-
 let implements t = t.implements
-
 let synopsis t = t.synopsis
-
 let wrapped t = t.wrapped
-
 let special_builtin_support t = t.special_builtin_support
-
 let jsoo_runtime t = t.jsoo_runtime
-
 let jsoo_archive t = t.jsoo_archive
-
 let main_module_name t = t.main_module_name
-
 let orig_src_dir t = t.orig_src_dir
-
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
-
 let set_version t version = { t with version }
 
 let eval_native_archives_exn (type path) (t : path t) ~modules =
@@ -591,7 +557,6 @@ let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
   }
 
 type external_ = Path.t t
-
 type local = Path.Build.t t
 
 let map t ~path_kind ~f_path ~f_obj_dir =

@@ -1,5 +1,4 @@
 module type S = Map_intf.S
-
 module type Key = Map_intf.Key
 
 module Make (Key : Key) : S with type key = Key.t = struct
@@ -10,11 +9,8 @@ module Make (Key : Key) : S with type key = Key.t = struct
   end)
 
   let find key t = find_opt t key
-
   let mem t k = mem k t
-
   let set t k v = add ~key:k ~data:v t
-
   let update t k ~f = update ~key:k ~f t
 
   let add_exn t key v =
@@ -43,7 +39,6 @@ module Make (Key : Key) : S with type key = Key.t = struct
     set t key (x :: l)
 
   let merge a b ~f = merge a b ~f
-
   let union a b ~f = union a b ~f
 
   let union_exn a b =
@@ -55,9 +50,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
     compare a b ~cmp:(fun a b -> Ordering.to_int (f a b)) |> Ordering.of_int
 
   let equal a b ~equal:f = equal a b ~cmp:f
-
   let iteri t ~f = iter t ~f:(fun ~key ~data -> f key data)
-
   let iter t ~f = iteri t ~f:(fun _ x -> f x)
 
   let iter2 a b ~f =
@@ -68,25 +61,15 @@ module Make (Key : Key) : S with type key = Key.t = struct
         : _ t)
 
   let foldi t ~init ~f = fold t ~init ~f:(fun ~key ~data acc -> f key data acc)
-
   let fold t ~init ~f = foldi t ~init ~f:(fun _ x acc -> f x acc)
-
   let for_alli t ~f = for_all t ~f
-
   let for_all t ~f = for_alli t ~f:(fun _ x -> f x)
-
   let existsi t ~f = exists t ~f
-
   let exists t ~f = existsi t ~f:(fun _ x -> f x)
-
   let filteri t ~f = filter t ~f
-
   let filter t ~f = filteri t ~f:(fun _ x -> f x)
-
   let partitioni t ~f = partition t ~f
-
   let partition t ~f = partitioni t ~f:(fun _ x -> f x)
-
   let to_list = bindings
 
   let to_list_map t ~f =
@@ -166,7 +149,6 @@ module Make (Key : Key) : S with type key = Key.t = struct
     fun l -> loop empty l
 
   let keys t = foldi t ~init:[] ~f:(fun k _ l -> k :: l) |> List.rev
-
   let values t = foldi t ~init:[] ~f:(fun _ v l -> v :: l) |> List.rev
 
   let find_exn t key =
@@ -177,15 +159,10 @@ module Make (Key : Key) : S with type key = Key.t = struct
         [ ("key", Key.to_dyn key); ("keys", Dyn.list Key.to_dyn (keys t)) ]
 
   let min_binding = min_binding_opt
-
   let max_binding = max_binding_opt
-
   let choose = choose_opt
-
   let split k t = split t k
-
   let map t ~f = map t ~f
-
   let mapi t ~f = mapi t ~f
 
   let fold_mapi t ~init ~f =
@@ -205,7 +182,6 @@ module Make (Key : Key) : S with type key = Key.t = struct
         | Some data -> f key data)
 
   let filter_map t ~f = filter_mapi t ~f:(fun _ x -> f x)
-
   let superpose a b = union a b ~f:(fun _ _ y -> Some y)
 
   let is_subset t ~of_ ~f =

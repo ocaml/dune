@@ -12,9 +12,6 @@ type dst =
       }
 
 val create : dst -> t
-
 val emit : t -> Chrome_trace.Event.t -> unit
-
 val record_gc_and_fd : t -> unit
-
 val close : t -> unit

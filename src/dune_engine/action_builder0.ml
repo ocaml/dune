@@ -78,15 +78,10 @@ module T = struct
       }
 
     let ( >>= ) t f = bind t ~f
-
     let ( >>| ) t f = map t ~f
-
     let ( and+ ) = both
-
     let ( and* ) = both
-
     let ( let+ ) t f = map t ~f
-
     let ( let* ) t f = bind t ~f
   end
 
@@ -123,7 +118,6 @@ open struct
 end
 
 let of_thunk t = t
-
 let run t mode = t.f mode
 
 let force_lazy_or_eager :

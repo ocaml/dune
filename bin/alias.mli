@@ -23,5 +23,4 @@ val of_string :
   -> t
 
 val pp : t -> _ Pp.t
-
 val request : t -> unit Action_builder.t

@@ -4,14 +4,11 @@ open Dyn
 open Dune_tests_common
 
 let printf = Printf.printf
-
 let () = init ()
 
 module Scheduler = struct
   let t = Test_scheduler.create ()
-
   let yield () = Test_scheduler.yield t
-
   let run f = Test_scheduler.run t f
 end
 

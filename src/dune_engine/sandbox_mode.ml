@@ -70,13 +70,10 @@ end
 
 module Set = struct
   type key = t
-
   type t = bool Dict.t
 
   let compare = Dict.compare Bool.compare
-
   let of_func = Dict.of_func
-
   let singleton k = of_func (equal k)
 
   (* CR-someday amokhov: [Patch_back_source_tree] is a bit special in that it
@@ -129,13 +126,9 @@ let all_except_patch_back_source_tree =
     [ None; Some Symlink; Some Copy; Some Hardlink ]
 
 let all = all_except_patch_back_source_tree @ [ Some Patch_back_source_tree ]
-
 let none = None
-
 let symlink = Some Symlink
-
 let copy = Some Copy
-
 let hardlink = Some Hardlink
 
 let decode =

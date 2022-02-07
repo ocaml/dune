@@ -57,11 +57,7 @@ let parse s =
     None
 
 let of_int i = A (string_of_int i)
-
 let of_float x = of_string (string_of_float x)
-
 let of_bool x = A (string_of_bool x)
-
 let of_digest d = A (Digest.to_string d)
-
 let of_int64 i = A (Int64.to_string i)

@@ -20,11 +20,8 @@ type follow_symlink_error =
   | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
 
 val follow_symlink : string -> (string, follow_symlink_error) result
-
 val unlink : string -> unit
-
 val unlink_no_err : string -> unit
-
 val initial_cwd : string
 
 type clear_dir_result =

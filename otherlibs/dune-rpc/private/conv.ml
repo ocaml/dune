@@ -106,7 +106,6 @@ module Fields = struct
 end
 
 type values = Sexp.t
-
 type fields = Fields.t
 
 type version =
@@ -150,7 +149,6 @@ and ('a, 'arg) constr =
   }
 
 and 'a econstr = Constr : ('a, 'arg) constr -> 'a econstr
-
 and case = Case : 'arg * ('a, 'arg) constr -> case
 
 and 'a field =
@@ -164,19 +162,12 @@ and 'k ret =
 type 'a value = ('a, values) t
 
 let case a c = Case (a, c)
-
 let constr name arg inj = { name; arg; inj }
-
 let econstr c = Constr c
-
 let both x y = Both (x, y)
-
 let list x = List x
-
 let sum x y = Sum (x, y)
-
 let pair x y = Pair (x, y)
-
 let triple x y z = Triple (x, y, z)
 
 let discard_values ((a, x) : _ * values ret) =
@@ -189,7 +180,8 @@ let string =
     , (function
       | Atom s -> s
       | List _ as list ->
-        raise_of_sexp ~payload:[ ("list", list) ]
+        raise_of_sexp
+          ~payload:[ ("list", list) ]
           "string: expected atom. received list")
     , fun s -> Atom s )
 
@@ -198,7 +190,8 @@ let int =
     ( Sexp
     , (function
       | List _ as list ->
-        raise_of_sexp ~payload:[ ("list", list) ]
+        raise_of_sexp
+          ~payload:[ ("list", list) ]
           "int: expected atom. received list"
       | Atom s -> (
         match Int.of_string s with
@@ -217,9 +210,11 @@ let unit =
 let option x =
   let none = constr "None" unit (fun () -> None) in
   let some = constr "Some" x (fun x -> Some x) in
-  sum [ econstr none; econstr some ] (function
-    | None -> case () none
-    | Some s -> case s some)
+  sum
+    [ econstr none; econstr some ]
+    (function
+      | None -> case () none
+      | Some s -> case s some)
 
 let char =
   Iso
@@ -400,17 +395,11 @@ let of_sexp conv ~version sexp =
   | exception Of_sexp e -> Error e
 
 let record r = Record r
-
 let either x y = Either (x, y)
-
 let iso a t f = Iso (a, t, f)
-
 let iso_result a t f = Iso_result (a, t, f)
-
 let version ?until t ~since = Version (t, { until; since })
-
 let field name spec = Field (name, spec)
-
 let enum choices = Enum choices
 
 let three a b c =
@@ -450,9 +439,6 @@ let eight a b c d e f g h =
     (fun (a, b, c, d, e, f, g, h) -> ((a, b, c, d), (e, f, g, h)))
 
 let sexp = Sexp
-
 let required x = Required x
-
 let optional x = Optional x
-
 let fdecl x = Fdecl x

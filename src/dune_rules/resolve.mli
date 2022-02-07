@@ -99,17 +99,13 @@ type 'a t
 include Monad.S with type 'a t := 'a t
 
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-
 val hash : ('a -> int) -> 'a t -> int
-
 val to_dyn : ('a -> Dyn.t) -> 'a t Dyn.builder
-
 val of_result : ('a, exn) result -> 'a t
 
 type error
 
 val to_result : 'a t -> ('a, error) result
-
 val of_error : error -> 'a t
 
 (** Read a [Resolve.t] value inside the action builder monad. *)
@@ -144,13 +140,9 @@ val all : 'a t list -> 'a list t
 
 module List : sig
   val map : 'a list -> f:('a -> 'b t) -> 'b list t
-
   val filter_map : 'a list -> f:('a -> 'b option t) -> 'b list t
-
   val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-
   val iter : 'a list -> f:('a -> unit t) -> unit t
-
   val fold_left : 'a list -> f:('acc -> 'a -> 'acc t) -> init:'acc -> 'acc t
 end
 
@@ -160,7 +152,6 @@ end
 
 module Build : sig
   type 'a resolve
-
   type 'a t = 'a resolve Memo.Build.t
 
   val all : 'a t list -> 'a list t
@@ -173,9 +164,7 @@ module Build : sig
     -> 'a t
 
   val lift_memo : 'a Memo.Build.t -> 'a t
-
   val lift : 'a resolve -> 'a t
-
   val is_ok : 'a t -> bool Memo.Build.t
 
   (** [is_ok t] is the same as [Result.is_error (peek t)] *)
@@ -198,7 +187,6 @@ module Build : sig
   val args : Command.Args.without_targets Command.Args.t t -> 'a Command.Args.t
 
   val fail : User_message.t -> _ t
-
   val of_result : ('a, exn) result -> 'a t
 
   (** Read the value immediatly, ignoring actual errors. *)

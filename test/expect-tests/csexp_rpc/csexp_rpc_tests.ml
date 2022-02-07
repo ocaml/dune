@@ -10,7 +10,6 @@ type event =
   | Abort
 
 let server where = Server.create where ~backlog:10
-
 let client where = Csexp_rpc.Client.create where
 
 module Logger = struct
@@ -22,7 +21,6 @@ module Logger = struct
     }
 
   let create ~name = { messages = []; name }
-
   let log t fmt = Printf.ksprintf (fun m -> t.messages <- m :: t.messages) fmt
 
   let print { messages; name } =

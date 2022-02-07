@@ -6,19 +6,12 @@ open Stdune
 type t
 
 val dir : t -> Path.t
-
 val predicate : t -> string Predicate.t
-
 val only_generated_files : t -> bool
-
 val create : dir:Path.t -> ?only_generated_files:bool -> string Predicate.t -> t
-
 val equal : t -> t -> bool
-
 val hash : t -> int
-
 val compare : t -> t -> Ordering.t
-
 val encode : t Dune_lang.Encoder.t
 
 (** [to_dyn] is used as a marshallable representation of [t] (to compute

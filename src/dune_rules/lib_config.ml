@@ -51,5 +51,4 @@ let linker_can_create_empty_archives t =
   | Other _ -> true
 
 let hash = Poly.hash
-
 let equal = Poly.equal

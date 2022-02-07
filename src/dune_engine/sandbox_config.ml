@@ -2,7 +2,6 @@ open! Stdune
 include Sandbox_mode.Set
 
 let no_special_requirements = of_func (fun _ -> true)
-
 let no_sandboxing = of_func Option.is_none
 
 let needs_sandboxing =

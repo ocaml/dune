@@ -9,14 +9,12 @@ type error =
 type 'a t = ('a, error) result
 
 let return x = Ok x
-
 let bind = Result.bind
 
 include Monad.Make (struct
   type nonrec 'a t = 'a t
 
   let return = return
-
   let bind = bind
 end)
 
@@ -35,11 +33,8 @@ let to_dyn f t =
   Result.to_dyn f Exn.to_dyn (Result.map_error t ~f:(fun x -> x.exn))
 
 let hash f = Result.hash f error_hash
-
 let of_result = Result.map_error ~f:(fun exn -> { exn; stack_frames = [] })
-
 let to_result x = x
-
 let of_error x = Error x
 
 let error_to_memo_build { stack_frames; exn } =
@@ -71,11 +66,8 @@ let args t =
     Command.Args.Dyn (read t >>| fun _ -> assert false)
 
 let fail msg = Error { exn = User_error.E msg; stack_frames = [] }
-
 let peek t = Result.map_error t ~f:ignore
-
 let is_ok t = Result.is_ok (peek t)
-
 let is_error t = Result.is_error (peek t)
 
 let push_stack_frame ~human_readable_description:f t =
@@ -86,13 +78,9 @@ let push_stack_frame ~human_readable_description:f t =
 
 module List = struct
   let map = Result.List.map
-
   let filter_map = Result.List.filter_map
-
   let concat_map = Result.List.concat_map
-
   let iter = Result.List.iter
-
   let fold_left = Result.List.fold_left
 end
 
@@ -133,11 +121,8 @@ module Build = struct
     push_stack_frame ~human_readable_description t
 
   let lift t = Memo.Build.return t
-
   let lift_memo t = Memo.Build.map t ~f:(fun x -> Ok x)
-
   let is_ok t = Memo.Build.map ~f:is_ok t
-
   let is_error t = Memo.Build.map ~f:is_error t
 
   module Option = struct
@@ -157,10 +142,7 @@ module Build = struct
     Action_builder.memo_build (read_memo_build t)
 
   let fail s = Memo.Build.return (fail s)
-
   let args s = Command.Args.Dyn (read s)
-
   let of_result s = Memo.Build.return (of_result s)
-
   let peek t = Memo.Build.map t ~f:(Result.map_error ~f:ignore)
 end

@@ -8,5 +8,4 @@ open! Stdune
 type 'a t
 
 val eval : 'a t -> f:(String_with_vars.t -> string) -> 'a option
-
 val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t

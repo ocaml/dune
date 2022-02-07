@@ -5,9 +5,7 @@ module Poller : sig
   type t
 
   val to_dyn : t -> Dyn.t
-
   val compare : t -> t -> Ordering.t
-
   val name : t -> Procedures.Poll.Name.t
 end
 
@@ -37,11 +35,8 @@ module Session : sig
   val notification : _ t -> 'a Decl.Notification.witness -> 'a -> unit Fiber.t
 
   val compare : 'a t -> 'a t -> Ordering.t
-
   val request_close : 'a t -> unit Fiber.t
-
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
-
   val has_poller : _ t -> Poller.t -> bool
 
   (** A ['a Session.Stage1.t] represents a session prior to version negotiation.
@@ -51,19 +46,12 @@ module Session : sig
     type 'a t
 
     val id : _ t -> Id.t
-
     val initialize : _ t -> Initialize.Request.t
-
     val get : 'a t -> 'a
-
     val set : 'a t -> 'a -> unit
-
     val active : _ t -> bool
-
     val compare : 'a t -> 'a t -> Ordering.t
-
     val request_close : 'a t -> unit Fiber.t
-
     val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
     (** Register a callback to be called once version negotiation has concluded.

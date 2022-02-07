@@ -32,30 +32,19 @@ val make :
   -> t
 
 val scope : t -> Scope.t
-
 val external_env : t -> Env.t Memo.Build.t
-
 val ocaml_flags : t -> Ocaml_flags.t Memo.Build.t
-
 val inline_tests : t -> Dune_env.Stanza.Inline_tests.t Memo.Build.t
 
 val js_of_ocaml :
   t -> string list Action_builder.t Js_of_ocaml.Env.t Memo.Build.t
 
 val foreign_flags : t -> string list Action_builder.t Foreign_language.Dict.t
-
 val link_flags : t -> Link_flags.t Memo.Build.t
-
 val local_binaries : t -> File_binding.Expanded.t list Memo.Build.t
-
 val bin_artifacts : t -> Artifacts.Bin.t Memo.Build.t
-
 val odoc : t -> Odoc.t Memo.Build.t
-
 val coq : t -> Coq.t Action_builder.t Memo.Build.t
-
 val menhir_flags : t -> string list Action_builder.t
-
 val format_config : t -> Format_config.t Memo.Build.t
-
 val set_format_config : t -> Format_config.t -> t

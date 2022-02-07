@@ -46,11 +46,8 @@ val create :
 val for_alias_module : t -> Module.t -> t
 
 val super_context : t -> Super_context.t
-
 val expander : t -> Expander.t
-
 val context : t -> Context.t
-
 val scope : t -> Scope.t
 
 (** [dir] should only be used for adding rules. It should be used to access
@@ -58,37 +55,21 @@ val scope : t -> Scope.t
 val dir : t -> Path.Build.t
 
 val obj_dir : t -> Path.Build.t Obj_dir.t
-
 val modules : t -> Modules.t
-
 val flags : t -> Ocaml_flags.t
-
 val requires_link : t -> Lib.t list Resolve.Build.t
-
 val requires_compile : t -> Lib.t list Resolve.Build.t
-
 val includes : t -> Command.Args.without_targets Command.Args.t Cm_kind.Dict.t
-
 val preprocessing : t -> Pp_spec.t
-
 val opaque : t -> bool
-
 val stdlib : t -> Ocaml_stdlib.t option
-
 val js_of_ocaml : t -> Js_of_ocaml.In_buildable.t option
-
 val sandbox : t -> Sandbox_config.t
-
 val set_sandbox : t -> Sandbox_config.t -> t
-
 val package : t -> Package.t option
-
 val vimpl : t -> Vimpl.t option
-
 val modes : t -> Mode.Dict.Set.t
-
 val for_wrapped_compat : t -> t
-
 val for_root_module : t -> Module.t -> t
 
 val for_module_generated_at_link_time :
@@ -98,9 +79,7 @@ val for_plugin_executable :
   t -> embed_in_plugin_libraries:(Loc.t * Lib_name.t) list -> t
 
 val bin_annot : t -> bool
-
 val without_bin_annot : t -> t
-
 val root_module_entries : t -> Module_name.t list Action_builder.t
 
 (** The dependency graph for the modules of the library. *)

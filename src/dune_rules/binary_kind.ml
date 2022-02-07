@@ -48,7 +48,5 @@ let to_string = function
   | Js -> "js"
 
 let to_dyn t = Dyn.variant (to_string t) []
-
 let encode t = Dune_lang.atom (to_string t)
-
 let all = [ C; Exe; Object; Shared_object; Plugin; Js ]

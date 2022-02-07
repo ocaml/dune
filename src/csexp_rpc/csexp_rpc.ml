@@ -18,7 +18,6 @@ module Session_id = Id.Make ()
 module Socket = struct
   module type Unix_socket = sig
     val connect : Unix.file_descr -> socket:string -> unit
-
     val bind : Unix.file_descr -> socket:string -> unit
   end
 
@@ -26,7 +25,6 @@ module Socket = struct
     type sockaddr = Unix.sockaddr
 
     let connect fd sock = Unix.connect fd sock
-
     let bind fd sock = Unix.bind fd sock
   end
 
@@ -42,7 +40,6 @@ module Socket = struct
           pthread_chdir old)
 
     let connect fd ~socket : unit = with_chdir fd ~socket ~f:Unix.connect
-
     let bind fd ~socket : unit = with_chdir fd ~socket ~f:Unix.bind
   end
 
@@ -57,13 +54,11 @@ module Socket = struct
         | None -> socket)
 
     let connect fd ~socket = Unix.connect fd (addr socket)
-
     let bind fd ~socket = Unix.bind fd (addr socket)
   end
 
   module Fail : Unix_socket = struct
     let connect _ ~socket:_ = Code_error.raise "Fail.connect" []
-
     let bind _ ~socket:_ = Code_error.raise "Fail.bind" []
   end
 
@@ -84,7 +79,6 @@ module Socket = struct
     | _ -> original fd sa
 
   let bind = make ~original:U.bind ~backup:Sel.bind
-
   let connect = make ~original:U.connect ~backup:Sel.connect
 end
 

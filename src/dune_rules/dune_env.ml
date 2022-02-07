@@ -62,7 +62,6 @@ module Stanza = struct
       | (Fatal | Nonfatal), _ -> false
 
     let equal x y = Option.equal warnings_equal x.warnings y.warnings
-
     let warnings_decode = enum [ ("fatal", Fatal); ("nonfatal", Nonfatal) ]
 
     let decode =

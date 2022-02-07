@@ -5,34 +5,21 @@ type 'a t
 
 module O : sig
   val ( >>> ) : unit t -> 'a t -> 'a t
-
   val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-
   val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-
   val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
   val ( and* ) : 'a t -> 'b t -> ('a * 'b) t
-
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
   val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
 end
 
 val return : 'a -> 'a t
-
 val bind : 'a t -> f:('a -> 'b t) -> 'b t
-
 val map : 'a t -> f:('a -> 'b) -> 'b t
-
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
-
 val both : 'a t -> 'b t -> ('a * 'b) t
-
 val ignore : 'a t -> unit t
-
 val all : 'a t list -> 'a list t
-
 val all_unit : unit t list -> unit t
 
 module List : Monad.List with type 'a t := 'a t
@@ -115,6 +102,5 @@ val of_thunk : 'a thunk -> 'a t
 
 module Deps_or_facts : sig
   val union : 'a eval_mode -> 'a Dep.Map.t -> 'a Dep.Map.t -> 'a Dep.Map.t
-
   val union_all : 'a eval_mode -> 'a Dep.Map.t list -> 'a Dep.Map.t
 end

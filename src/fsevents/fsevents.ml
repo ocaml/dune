@@ -10,9 +10,7 @@ module State : sig
   type 'a ref
 
   val get : 'a ref -> 'a
-
   val set : 'a ref -> 'a -> unit
-
   val critical_section : 'a t -> ('a ref -> 'b) -> 'b
 end = struct
   type 'a t =
@@ -23,9 +21,7 @@ end = struct
   type 'a ref = 'a t
 
   let set t a = t.data <- a
-
   let get t = t.data
-
   let create data = { mutex = Mutex.create (); data }
 
   let critical_section (type a) (t : a t) f =
@@ -177,7 +173,6 @@ module Event = struct
     record [ ("flags", Raw.to_dyn (raw t.flags)); ("path", string t.path) ]
 
   let id t = t.id
-
   let path t = t.path
 
   type kind =
@@ -227,7 +222,6 @@ module Raw = struct
   type t
 
   external stop : t -> unit = "dune_fsevents_stop"
-
   external start : t -> RunLoop.Raw.t -> unit = "dune_fsevents_start"
 
   external create : string list -> float -> (Event.t list -> unit) -> t

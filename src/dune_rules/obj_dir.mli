@@ -31,7 +31,6 @@ open! Import
 type 'path t
 
 val of_local : Path.Build.t t -> Path.t t
-
 val equal : 'a t -> 'a t -> bool
 
 (** The source_root directory *)
@@ -52,7 +51,6 @@ val all_cmis : 'path t -> 'path list
 val public_cmi_dir : 'path t -> 'path
 
 val odoc_dir : 'path t -> 'path
-
 val all_obj_dirs : 'path t -> mode:Mode.t -> 'path list
 
 (** Create the object directory for a library *)
@@ -68,19 +66,12 @@ val make_lib :
 val make_external_no_private : dir:Path.t -> Path.t t
 
 val encode : Path.t t -> Dune_lang.t list
-
 val decode : dir:Path.t -> Path.t t Dune_lang.Decoder.t
-
 val convert_to_external : Path.Build.t t -> dir:Path.t -> Path.t t
-
 val cm_dir : 'path t -> Cm_kind.t -> Visibility.t -> 'path
-
 val to_dyn : _ t -> Dyn.t
-
 val make_exe : dir:Path.Build.t -> name:string -> Path.Build.t t
-
 val for_pp : dir:Path.Build.t -> Path.Build.t t
-
 val as_local_exn : Path.t t -> Path.Build.t t
 
 (** For local libraries with private modules, all public cmi's are symlinked to
@@ -96,11 +87,8 @@ module Module : sig
       .o files, ...) *)
 
   val cm_file : 'path t -> Module.t -> kind:Cm_kind.t -> 'path option
-
   val cm_public_file : 'path t -> Module.t -> kind:Cm_kind.t -> 'path option
-
   val cmt_file : 'path t -> Module.t -> ml_kind:Ml_kind.t -> 'path option
-
   val obj_file : 'path t -> Module.t -> kind:Cm_kind.t -> ext:string -> 'path
 
   (** Same as [cm_file] but raises if [cm_kind] is [Cmo] or [Cmx] and the module
@@ -108,9 +96,7 @@ module Module : sig
   val cm_file_exn : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
   val o_file : 'path t -> Module.t -> ext_obj:string -> 'path option
-
   val o_file_exn : 'path t -> Module.t -> ext_obj:string -> 'path
-
   val cm_public_file_exn : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
   (** Either the .cmti, or .cmt if the module has no interface *)
@@ -120,7 +106,6 @@ module Module : sig
 
   module L : sig
     val o_files : 'path t -> Module.t list -> ext_obj:string -> Path.t list
-
     val cm_files : 'path t -> Module.t list -> kind:Cm_kind.t -> Path.t list
   end
 

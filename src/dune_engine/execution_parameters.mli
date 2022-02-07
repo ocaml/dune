@@ -16,9 +16,7 @@
 type t
 
 val equal : t -> t -> bool
-
 val hash : t -> int
-
 val to_dyn : t -> Dyn.t
 
 module Action_output_on_success : sig
@@ -32,24 +30,17 @@ module Action_output_on_success : sig
         (** Require it to be empty. Treat the action as failed if it is not. *)
 
   val all : (string * t) list
-
   val equal : t -> t -> bool
-
   val hash : t -> int
-
   val to_dyn : t -> Dyn.t
 end
 
 (** {1 Constructors} *)
 
 val builtin_default : t
-
 val set_dune_version : Dune_lang.Syntax.Version.t -> t -> t
-
 val set_action_stdout_on_success : Action_output_on_success.t -> t -> t
-
 val set_action_stderr_on_success : Action_output_on_success.t -> t -> t
-
 val set_expand_aliases_in_sandbox : bool -> t -> t
 
 (** As configured by [init] *)
@@ -58,13 +49,9 @@ val default : t Memo.Build.t
 (** {1 Accessors} *)
 
 val dune_version : t -> Dune_lang.Syntax.Version.t
-
 val should_remove_write_permissions_on_generated_files : t -> bool
-
 val expand_aliases_in_sandbox : t -> bool
-
 val action_stdout_on_success : t -> Action_output_on_success.t
-
 val action_stderr_on_success : t -> Action_output_on_success.t
 
 (** {1 Initialisation} *)

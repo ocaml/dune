@@ -2,7 +2,6 @@
 
 open! Stdune
 open! Import
-
 include module type of Action_builder0
 
 module With_targets : sig
@@ -14,13 +13,9 @@ module With_targets : sig
     }
 
   val map_build : 'a t -> f:('a build -> 'b build) -> 'b t
-
   val return : 'a -> 'a t
-
   val add : 'a t -> file_targets:Path.Build.t list -> 'a t
-
   val map : 'a t -> f:('a -> 'b) -> 'b t
-
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
   val write_file_dyn :
@@ -34,11 +29,8 @@ module With_targets : sig
 
   module O : sig
     val ( >>> ) : unit t -> 'a t -> 'a t
-
     val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
     val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
   end
 end
@@ -78,13 +70,9 @@ val with_no_targets : 'a t -> 'a With_targets.t
 val path : Path.t -> unit t
 
 val dep : Dep.t -> unit t
-
 val deps : Dep.Set.t -> unit t
-
 val dyn_deps : ('a * Dep.Set.t) t -> 'a t
-
 val paths : Path.t list -> unit t
-
 val path_set : Path.Set.t -> unit t
 
 (** Evaluate a predicate against all targets and record all the matched files as
@@ -104,7 +92,6 @@ val paths_existing : Path.t list -> unit t
 val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
-
 val dep_on_alias_if_exists : Alias.t -> bool t
 
 (** Depend on an alias recursively. Return [true] if the alias is defined in at
@@ -120,9 +107,7 @@ val source_tree : dir:Path.t -> Path.Set.t t
 val dyn_paths : ('a * Path.t list) t -> 'a t
 
 val dyn_paths_unit : Path.t list t -> unit t
-
 val dyn_path_set : ('a * Path.Set.t) t -> 'a t
-
 val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 
 (** [contents path] returns a description that when run will return the contents

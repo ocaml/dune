@@ -66,9 +66,7 @@ and 'a k =
   }
 
 let return x k = k x
-
 let bind t ~f k = t (fun x -> f x k)
-
 let map t ~f k = t (fun x -> k (f x))
 
 let with_error_handler f ~on_error k =
@@ -79,11 +77,8 @@ let map_reduce_errors m ~on_error f k =
     (m, on_error, (fun () -> f () (fun x -> Unwind_map_reduce (k, Ok x))), k)
 
 let suspend f k = Suspend (f, k)
-
 let resume suspended x k = Resume (suspended, x, k)
-
 let end_of_fiber = End_of_fiber ()
-
 let never _k = Never ()
 
 let apply f x =
@@ -214,9 +209,7 @@ module Ivar = struct
   type 'a t = 'a ivar
 
   let create () = { state = Empty }
-
   let read t k = Read_ivar (t, k)
-
   let fill t x k = Fill_ivar (t, x, k)
 
   let peek t k =
@@ -239,9 +232,7 @@ module Var = struct
       | Some value -> value)
 
   let set var x f k = Set_var (var, x, fun () -> f () (fun x -> Unwind (k, x)))
-
   let unset var f k = Unset_var (var, fun () -> f () (fun x -> Unwind (k, x)))
-
   let create () = create ~name:"var" (fun _ -> Dyn.string "var")
 end
 
@@ -249,17 +240,11 @@ let of_thunk f k = f () k
 
 module O = struct
   let ( >>> ) a b k = a (fun () -> b k)
-
   let ( >>= ) t f k = t (fun x -> f x k)
-
   let ( >>| ) t f k = t (fun x -> k (f x))
-
   let ( let+ ) = ( >>| )
-
   let ( let* ) = ( >>= )
-
   let ( and* ) a b = fork_and_join (fun () -> a) (fun () -> b)
-
   let ( and+ ) = ( and* )
 end
 
@@ -344,9 +329,7 @@ let parallel_map l ~f k =
   | x :: l -> parallel_array_of_list_map' x l ~f (fun a -> k (Array.to_list a))
 
 let all = sequential_map ~f:Fun.id
-
 let all_concurrently = parallel_map ~f:Fun.id
-
 let all_concurrently_unit l = parallel_iter l ~f:Fun.id
 
 let rec sequential_iter_seq (seq : _ Seq.t) ~f =
@@ -545,9 +528,7 @@ module Throttle = struct
     }
 
   let create size = { size; running = 0; waiting = Queue.create () }
-
   let size t = t.size
-
   let running t = t.running
 
   let rec restart t =
@@ -852,7 +833,6 @@ module Scheduler = struct
 
   module type Witness = sig
     type t
-
     type value += X of t
   end
 
@@ -1007,7 +987,6 @@ module Scheduler = struct
   let start (type a) (t : a t) =
     let module W = struct
       type t = a
-
       type value += X of a
     end in
     let rec ctx =
@@ -1037,6 +1016,5 @@ module Expert = struct
   type nonrec 'a k = 'a k
 
   let suspend f k = suspend f k
-
   let resume a x k = resume a x k
 end

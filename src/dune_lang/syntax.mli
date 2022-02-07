@@ -12,20 +12,15 @@ module Version : sig
   include Conv.S with type t := t
 
   val to_dyn : t Dyn.builder
-
   val hash : t -> int
-
   val equal : t -> t -> bool
-
   val to_string : t -> string
 
   (** Whether the parser can read the data or not *)
   val can_read : parser_version:t -> data_version:t -> bool
 
   val compare : t -> t -> Ordering.t
-
   val min : t -> t -> t
-
   val max : t -> t -> t
 
   module Infix : Comparator.OPS with type t = t
@@ -35,7 +30,6 @@ type t
 
 module Error : sig
   val since : Loc.t -> t -> Version.t -> what:string -> _
-
   val renamed_in : Loc.t -> t -> Version.t -> what:string -> to_:string -> _
 
   val deleted_in :
@@ -111,9 +105,6 @@ module Key : sig
 end
 
 val set : t -> Key.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser
-
 val key : t -> Key.t Univ_map.Key.t
-
 val get_exn : t -> (Version.t, 'k) Decoder.parser
-
 val experimental : t -> bool

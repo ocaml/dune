@@ -95,7 +95,6 @@ module Signal = struct
     type nonrec t = t
 
     let compare = compare
-
     let to_dyn = to_dyn
   end)
 
@@ -116,9 +115,7 @@ end
 
 module Thread : sig
   val spawn : (unit -> 'a) -> unit
-
   val delay : float -> unit
-
   val wait_signal : int list -> int
 end = struct
   include Thread
@@ -185,7 +182,6 @@ module Event : sig
 
   module Queue : sig
     type t
-
     type event
 
     val create : Dune_stats.t option -> t
@@ -204,7 +200,6 @@ module Event : sig
     val pending_jobs : t -> int
 
     val send_worker_task_completed : t -> Fiber.fill -> unit
-
     val register_worker_task_started : t -> unit
 
     val send_file_watcher_task :
@@ -216,13 +211,9 @@ module Event : sig
     val send_file_watcher_events : t -> Dune_file_watcher.Event.t list -> unit
 
     val send_invalidation_event : t -> Memo.Invalidation.t -> unit
-
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
-
     val send_signal : t -> Shutdown_reason.t -> unit
-
     val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
-
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
   with type event := t
@@ -320,29 +311,19 @@ end = struct
 
     module Event_source : sig
       type queue := t
-
       type t
 
       val signal : t
-
       val file_watcher_task : t
-
       val invalidation : t
-
       val jobs_completed : t
-
       val worker_tasks_completed : t
-
       val yield : t
-
       val timers : t
-
       val chain : t list -> t
-
       val run : t -> queue -> event option
     end = struct
       type queue = t
-
       type t = queue -> event option
 
       let run t q = t q
@@ -483,7 +464,6 @@ end = struct
           Nonempty_list.to_list timers |> List.iter ~f:(Queue.push q.timers))
 
     let pending_jobs q = q.pending_jobs
-
     let pending_worker_tasks q = q.pending_worker_tasks
   end
 end
@@ -553,11 +533,8 @@ end = struct
 
   module Process_table : sig
     val add : t -> job -> unit
-
     val remove : t -> Proc.Process_info.t -> unit
-
     val running_count : t -> int
-
     val iter : t -> f:(job -> unit) -> unit
   end = struct
     let add t job =
@@ -766,11 +743,8 @@ module Alarm_clock : sig
   type alarm
 
   val await : alarm -> [ `Finished | `Cancelled ] Fiber.t
-
   val cancel : t -> alarm -> unit
-
   val sleep : t -> float -> alarm
-
   val close : t -> unit
 end = struct
   type alarm = [ `Finished | `Cancelled ] Fiber.Ivar.t
@@ -887,13 +861,9 @@ type t =
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
-
 let set x f = Fiber.Var.set t x f
-
 let t_opt () = Fiber.Var.get t
-
 let t () = Fiber.Var.get_exn t
-
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
 let yield_if_there_are_pending_events () =

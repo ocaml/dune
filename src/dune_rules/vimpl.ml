@@ -11,11 +11,8 @@ type t =
   }
 
 let vlib_modules t = t.vlib_modules
-
 let vlib t = t.vlib
-
 let impl t = t.impl
-
 let impl_cm_kind t = t.impl_cm_kind
 
 let impl_modules t m =

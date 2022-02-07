@@ -30,9 +30,7 @@ and predicate =
   | Neg of string
 
 val to_dyn : t -> Dyn.t
-
 val filter_variable : t -> f:(string -> bool) -> t
-
 val parse_entries : Lexing.lexbuf -> entry list
 
 (** Add version fields to all package in [t] that don't have and have at least
@@ -55,16 +53,12 @@ module Simplified : sig
     }
 
   val equal : t -> t -> bool
-
   val hash : t -> int
-
   val to_dyn : t -> Dyn.t
 end
 
 val complexify : Simplified.t -> t
-
 val of_string : string -> name:Package.Name.t option -> Simplified.t
-
 val load : Path.t -> name:Package.Name.t option -> Simplified.t Memo.Build.t
 
 (** Builtin META files for libraries distributed with the compiler. For when

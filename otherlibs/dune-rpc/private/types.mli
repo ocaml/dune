@@ -4,19 +4,12 @@ module Id : sig
   type t
 
   val make : Sexp.t -> t
-
   val sexp : (t, Conv.values) Conv.t
-
   val required_field : (t, Conv.fields) Conv.t
-
   val optional_field : (t option, Conv.fields) Conv.t
-
   val to_dyn : t -> Dyn.t
-
   val hash : t -> int
-
   val equal : t -> t -> bool
-
   val to_sexp : t -> Sexp.t
 
   include Stdune.Comparable_intf.S with type key := t
@@ -26,7 +19,6 @@ module Version : sig
   type t = int * int
 
   val latest : t
-
   val sexp : t Conv.value
 end
 
@@ -57,9 +49,7 @@ module Call : sig
     }
 
   val to_dyn : t -> Dyn.t
-
   val create : ?params:Sexp.t -> method_:Method_name.t -> unit -> t
-
   val fields : (t, Conv.fields) Conv.t
 end
 
@@ -76,24 +66,19 @@ module Response : sig
       }
 
     val to_dyn : t -> Dyn.t
-
     val payload : t -> Sexp.t option
-
     val message : t -> string
-
     val kind : t -> kind
 
     exception E of t
 
     val create : ?payload:Sexp.t -> kind:kind -> message:string -> unit -> t
-
     val of_conv : Conv.error -> t
   end
 
   type t = (Sexp.t, Error.t) result
 
   val fields : (Id.t * t, Conv.fields) Conv.t
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -105,7 +90,6 @@ module Protocol : sig
   type t = int
 
   val latest_version : t
-
   val sexp : t Conv.value
 end
 
@@ -118,15 +102,10 @@ module Initialize : sig
       }
 
     val create : id:Id.t -> t
-
     val of_call : Call.t -> version:int * int -> (t, Response.Error.t) result
-
     val dune_version : t -> int * int
-
     val protocol_version : t -> int
-
     val id : t -> Id.t
-
     val to_call : t -> Call.t
   end
 
@@ -134,9 +113,7 @@ module Initialize : sig
     type t
 
     val create : unit -> t
-
     val to_response : t -> Sexp.t
-
     val sexp : t Conv.value
   end
 end
@@ -146,11 +123,8 @@ module Version_negotiation : sig
     type t = private Menu of (string * int list) list
 
     val create : (string * int list) list -> t
-
     val sexp : t Conv.value
-
     val to_call : t -> Call.t
-
     val of_call : Call.t -> version:Version.t -> (t, Response.Error.t) result
   end
 
@@ -158,9 +132,7 @@ module Version_negotiation : sig
     type t = private Selected of (string * int) list
 
     val create : (string * int) list -> t
-
     val to_response : t -> Sexp.t
-
     val sexp : t Conv.value
   end
 end
@@ -173,7 +145,6 @@ module Persistent : sig
       | Close_connection
 
     val sexp : t Conv.value
-
     val to_dyn : t -> Dyn.t
   end
 
@@ -287,7 +258,6 @@ module Decl : sig
   end
 
   type ('a, 'b) request = ('a, 'b) Request.t
-
   type 'a notification = 'a Notification.t
 end
 
@@ -295,28 +265,21 @@ module type Fiber = sig
   type 'a t
 
   val return : 'a -> 'a t
-
   val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
   val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
   val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
   module O : sig
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
 
   module Ivar : sig
     type 'a fiber
-
     type 'a t
 
     val create : unit -> 'a t
-
     val read : 'a t -> 'a fiber
-
     val fill : 'a t -> 'a -> unit fiber
   end
   with type 'a fiber := 'a t
@@ -326,12 +289,8 @@ module type Sys = sig
   type 'a fiber
 
   val getenv : string -> string option
-
   val is_win32 : unit -> bool
-
   val read_file : string -> string fiber
-
   val readlink : string -> string option fiber
-
   val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
 end

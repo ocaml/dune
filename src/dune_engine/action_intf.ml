@@ -21,11 +21,8 @@ end
 
 module type Ast = sig
   type program
-
   type path
-
   type target
-
   type string
 
   type t =
@@ -63,59 +60,33 @@ end
 
 module type Helpers = sig
   type program
-
   type path
-
   type target
-
   type string
-
   type t
 
   val run : program -> string list -> t
-
   val chdir : path -> t -> t
-
   val setenv : string -> string -> t -> t
-
   val with_stdout_to : ?perm:File_perm.t -> target -> t -> t
-
   val with_stderr_to : ?perm:File_perm.t -> target -> t -> t
-
   val with_outputs_to : ?perm:File_perm.t -> target -> t -> t
-
   val with_stdin_from : path -> t -> t
-
   val ignore_stdout : t -> t
-
   val ignore_stderr : t -> t
-
   val ignore_outputs : t -> t
-
   val progn : t list -> t
-
   val echo : string list -> t
-
   val cat : path -> t
-
   val copy : path -> target -> t
-
   val symlink : path -> target -> t
-
   val copy_and_add_line_directive : path -> target -> t
-
   val system : string -> t
-
   val bash : string -> t
-
   val write_file : ?perm:File_perm.t -> target -> string -> t
-
   val rename : target -> target -> t
-
   val remove_tree : target -> t
-
   val mkdir : path -> t
-
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
 
   val format_dune_file :

@@ -56,5 +56,4 @@ type t =
 type Stanza.t += T of t
 
 val decode : t Dune_lang.Decoder.t
-
 val syntax : Dune_lang.Syntax.t

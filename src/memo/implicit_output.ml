@@ -5,7 +5,6 @@ module type Implicit_output = sig
   type t
 
   val name : string
-
   val union : t -> t -> t
 end
 
@@ -17,16 +16,13 @@ module Witness : sig
   (* val get : 'a t -> (module Implicit_output with type t = 'a) *)
 
   val get_name : 'a t -> string
-
   val get_union : 'a t -> 'a -> 'a -> 'a
-
   val same : 'a t -> 'b t -> ('a, 'b) Type_eq.t option
 end = struct
   type _ w = ..
 
   module type T = sig
     type a
-
     type _ w += W : a w
 
     include Implicit_output with type t = a
@@ -37,7 +33,6 @@ end = struct
   let create (type a) (module I : Implicit_output with type t = a) : a t =
     (module struct
       type nonrec a = a
-
       type _ w += W : a w
 
       include I
@@ -66,7 +61,6 @@ module type Handler = sig
   type o
 
   val type_ : o t
-
   val so_far : o option ref
 end
 
@@ -109,7 +103,6 @@ let collect (type o) (type_ : o t) f =
          type nonrec o = o
 
          let type_ = type_
-
          let so_far = output
        end)
        f)

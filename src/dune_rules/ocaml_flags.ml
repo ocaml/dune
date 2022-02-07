@@ -4,7 +4,6 @@ open Import
 open Action_builder.O
 
 let default_ocamlc_flags = [ "-g" ]
-
 let default_ocamlopt_flags = [ "-g" ]
 
 let dev_mode_warnings =
@@ -43,7 +42,6 @@ let dev_mode_warnings =
   fun ~dune_version:_ -> warnings_range all
 
 let vendored_warnings = [ "-w"; "-a" ]
-
 let default_warnings = "-40"
 
 let default_flags ~dune_version ~profile =
@@ -124,11 +122,8 @@ let map_common t ~f =
   { t with common }
 
 let append_common t flags = map_common t ~f:(fun l -> l @ flags)
-
 let prepend_common flags t = map_common t ~f:(fun l -> flags @ l)
-
 let with_vendored_warnings t = append_common t vendored_warnings
-
 let common t = t.common
 
 let dump t =

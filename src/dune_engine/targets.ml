@@ -20,7 +20,6 @@ module Files = struct
 end
 
 let create ~files ~dirs = { files; dirs }
-
 let empty = { files = Path.Build.Set.empty; dirs = Path.Build.Set.empty }
 
 let combine x y =
@@ -63,7 +62,6 @@ module Validated = struct
     }
 
   let to_dyn = to_dyn
-
   let head = head_exn
 end
 

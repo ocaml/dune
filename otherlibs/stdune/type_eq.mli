@@ -9,15 +9,11 @@ val cast : ('a, 'b) t -> 'a -> 'b
     equality of their types. *)
 module Id : sig
   type ('a, 'b) eq
-
   type 'a t
 
   val create : unit -> 'a t
-
   val hash : _ t -> int
-
   val equal : _ t -> _ t -> bool
-
   val same : 'a t -> 'b t -> ('a, 'b) eq option
 end
 with type ('a, 'b) eq := ('a, 'b) t

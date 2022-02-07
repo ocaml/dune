@@ -447,5 +447,4 @@ let run ~env ~script =
   run_expect_test script ~f:(fun lexbuf -> run ~env ~script lexbuf)
 
 let () = Fdecl.set Action_exec.cram_run run
-
 let linkme = ()

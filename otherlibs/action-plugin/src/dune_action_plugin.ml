@@ -15,9 +15,7 @@ module V1 = struct
 
   module Fs : sig
     val read_directory : string -> (string list, string) result
-
     val read_file : string -> (string, string) result
-
     val write_file : string -> string -> (unit, string) result
   end = struct
     let catch_system_exceptions f ~name =
@@ -190,7 +188,6 @@ module V1 = struct
 
   module O = struct
     let ( let+ ) at f = map at ~f
-
     let ( and+ ) = both
   end
 

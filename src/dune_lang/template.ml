@@ -8,7 +8,6 @@ module Pform = struct
     }
 
   let loc (t : t) = t.loc
-
   let name { name; _ } = name
 
   let compare_no_loc { name; payload; loc = _ } t =
@@ -122,7 +121,6 @@ end = struct
 end
 
 let to_string = Pp.to_string
-
 let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
 let pp_split_strings ppf (t : t) =

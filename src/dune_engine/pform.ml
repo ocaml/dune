@@ -343,9 +343,7 @@ module With_versioning_info = struct
       x
 
   let renamed_in x ~new_name ~version = Renamed_in (x, version, new_name)
-
   let deleted_in ~version ?(repl = []) kind = Deleted_in (kind, version, repl)
-
   let since ~version v = Since (v, version)
 
   let to_dyn f =

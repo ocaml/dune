@@ -4,7 +4,6 @@ type 'a build
 
 module type Build = sig
   include Monad.S
-
   module List : Monad.List with type 'a t := 'a t
 
   val memo_build : 'a build -> 'a t
@@ -55,7 +54,6 @@ module Build : sig
   val of_non_reproducible_fiber : 'a Fiber.t -> 'a t
 
   val of_thunk : (unit -> 'a t) -> 'a t
-
   val return : 'a -> 'a t
 
   (** Combine results of two computations executed in sequence. *)
@@ -77,15 +75,10 @@ module Build : sig
   val all : 'a t list -> 'a list t
 
   val all_concurrently : 'a t list -> 'a list t
-
   val when_ : bool -> (unit -> unit t) -> unit t
-
   val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
-
   val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
-
   val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
-
   val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
   val parallel_iter_set :
@@ -96,16 +89,13 @@ module Build : sig
 
   module Make_map_traversals (Map : Map.S) : sig
     val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
-
     val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
   end
   [@@inline always]
 
   module Option : sig
     val iter : 'a option -> f:('a -> unit t) -> unit t
-
     val map : 'a option -> f:('a -> 'b t) -> 'b option t
-
     val bind : 'a option -> f:('a -> 'b option t) -> 'b option t
   end
 
@@ -119,13 +109,10 @@ type ('input, 'output) t
 (** A stack frame within a computation. *)
 module Stack_frame : sig
   type ('input, 'output) memo = ('input, 'output) t
-
   type t
 
   val to_dyn : t -> Dyn.t
-
   val name : t -> string option
-
   val input : t -> Dyn.t
 
   (** Checks if the stack frame is a frame of the given memoized function and if
@@ -175,7 +162,6 @@ exception Non_reproducible of exn
     passed to [reset]. *)
 module Invalidation : sig
   type ('input, 'output) memo = ('input, 'output) t
-
   type t
 
   include Monoid.S with type t := t
@@ -239,17 +225,12 @@ module Store : sig
 
   module type S = sig
     type key
-
     type 'a t
 
     val create : unit -> _ t
-
     val clear : _ t -> unit
-
     val set : 'a t -> key -> 'a -> unit
-
     val find : 'a t -> key -> 'a option
-
     val iter : 'a t -> f:('a -> unit) -> unit
   end
 end
@@ -320,7 +301,6 @@ module Run : sig
 
   module For_tests : sig
     val compare : t -> t -> Ordering.t
-
     val current : unit -> t
   end
 end
@@ -332,7 +312,6 @@ module Cell : sig
   type ('i, 'o) t
 
   val input : ('i, _) t -> 'i
-
   val read : (_, 'o) t -> 'o Build.t
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
@@ -371,7 +350,6 @@ module Lazy : sig
     -> 'a t
 
   val force : 'a t -> 'a Build.t
-
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
   module Expert : sig
@@ -413,7 +391,6 @@ module Implicit_output : sig
     type t
 
     val name : string
-
     val union : t -> t -> t
   end
 
@@ -439,15 +416,11 @@ end
     correspondence between [input]s and their [id]s. *)
 module Poly (Function : sig
   type 'a input
-
   type 'a output
 
   val name : string
-
   val eval : 'a input -> 'a output Build.t
-
   val to_dyn : _ input -> Dyn.t
-
   val id : 'a input -> 'a Type_eq.Id.t
 end) : sig
   val eval : 'a Function.input -> 'a Function.output Build.t

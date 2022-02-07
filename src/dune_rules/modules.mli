@@ -6,7 +6,6 @@ open Import
 type t
 
 val to_dyn : t -> Dyn.t
-
 val equal : t -> t -> bool
 
 val lib :
@@ -28,13 +27,9 @@ val decode :
   -> t Dune_lang.Decoder.t
 
 val impl : t -> vlib:t -> t
-
 val find_dep : t -> of_:Module.t -> Module_name.t -> Module.t option
-
 val find : t -> Module_name.t -> Module.t option
-
 val compat_for_exn : t -> Module.t -> Module.t
-
 val impl_only : t -> Module.t list
 
 (** A set of modules from a single module. Not suitable for single module exe as
@@ -43,11 +38,8 @@ val impl_only : t -> Module.t list
 val singleton : Module.t -> t
 
 val singleton_exe : Module.t -> t
-
 val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
-
 val exe_unwrapped : Module.Name_map.t -> t
-
 val exe_wrapped : src_dir:Path.Build.t -> modules:Module.Name_map.t -> t
 
 (** For wrapped libraries, this is the user written entry module for the
@@ -63,7 +55,6 @@ val map_user_written :
   t -> f:(Module.t -> Module.t Memo.Build.t) -> t Memo.Build.t
 
 val map : t -> f:(Module.t -> Module.t) -> t
-
 val fold_user_available : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 
 (** Returns all the compatibility modules. *)
@@ -100,13 +91,9 @@ val virtual_module_names : t -> Module_name.Set.t
 val alias_module : t -> Module.t option
 
 val wrapped : t -> Wrapped.t
-
 val version_installed : t -> install_dir:Path.t -> t
-
 val alias_for : t -> Module.t -> Module.t option
-
 val is_stdlib_alias : t -> Module.t -> bool
-
 val exit_module : t -> Module.t option
 
 (** [relocate_alias_module t ~src_dir] sets the source directory of the alias
@@ -114,9 +101,7 @@ val exit_module : t -> Module.t option
 val relocate_alias_module : t -> src_dir:Path.t -> t
 
 val is_empty : t -> bool
-
 val as_singleton : t -> Module.t option
-
 val source_dirs : t -> Path.Set.t
 
 type split_by_lib =

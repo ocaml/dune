@@ -10,17 +10,12 @@ type sub_system = t = ..
 
 module type S = sig
   type t
-
   type sub_system += T of t
 
   val name : Sub_system_name.t
-
   val loc : t -> Loc.t
-
   val syntax : Dune_lang.Syntax.t
-
   val decode : t Dune_lang.Decoder.t
-
   val encode : t -> Dune_lang.Syntax.Version.t * Dune_lang.t list
 end
 
@@ -53,5 +48,4 @@ module Register (M : S) : sig end = struct
 end
 
 let record_parser () = !record_parser Sub_system_name.Map.empty
-
 let get name = Sub_system_name.Table.find_exn all name

@@ -39,34 +39,22 @@ module Archive : sig
     module Map : Map.S with type key = t
 
     val to_dyn : t -> Dyn.t
-
     val to_string : t -> string
-
     val path : dir:Path.Build.t -> t -> Path.Build.t
-
     val decode : t Dune_lang.Decoder.t
-
     val stubs : string -> t
-
     val lib_file_prefix : string
-
     val lib_file : t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
-
     val dll_file : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
   end
 
   type t
 
   val dir_path : dir:Path.Build.t -> t -> Path.Build.t
-
   val name : t -> Name.t
-
   val stubs : string -> t
-
   val decode : t Dune_lang.Decoder.t
-
   val lib_file : archive:t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
-
   val dll_file : archive:t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
 end
 
@@ -147,15 +135,12 @@ module Source : sig
     }
 
   val language : t -> Foreign_language.t
-
   val flags : t -> Ordered_set_lang.Unexpanded.t
-
   val path : t -> Path.Build.t
 
   (* The name of the corresponding object file; for example, [name] for a source
      file [some/path/name.cpp]. *)
   val object_name : t -> string
-
   val make : stubs:Stubs.t -> path:Path.Build.t -> t
 end
 

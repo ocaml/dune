@@ -1,7 +1,6 @@
 open! Import
 
 let opam_ext = ".opam"
-
 let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
 
 module Name = struct
@@ -12,13 +11,9 @@ module Name = struct
       type t = string
 
       let to_string x = x
-
       let module_ = "Package.Name"
-
       let description = "package name"
-
       let description_of_valid_string = None
-
       let hint_valid = None
 
       let of_string_opt s =
@@ -36,9 +31,7 @@ module Name = struct
     of_string_opt name
 
   let opam_fn (t : t) = to_string t ^ opam_ext
-
   let meta_fn (t : t) = "META." ^ to_string t
-
   let version_fn (t : t) = to_string t ^ ".version"
 
   module Infix = Comparator.Operators (String)
@@ -65,7 +58,6 @@ module Id = struct
   include T
 
   let hash { name; dir } = Tuple.T2.hash Name.hash Path.Source.hash (name, dir)
-
   let name t = t.name
 
   module C = Comparable.Make (T)
@@ -393,9 +385,7 @@ module Info = struct
     }
 
   let source t = t.source
-
   let license t = t.license
-
   let authors t = t.authors
 
   let homepage t =
@@ -409,7 +399,6 @@ module Info = struct
     | s, _ -> s
 
   let documentation t = t.documentation
-
   let maintainers t = t.maintainers
 
   let empty =
@@ -551,9 +540,7 @@ type t =
    always be only a single value of type [t] with a given name in memory. That's
    why we only hash the name. *)
 let hash t = Id.hash t.id
-
 let name t = t.id.name
-
 let dir t = t.id.dir
 
 let encode (name : Name.t)
@@ -687,9 +674,7 @@ let to_dyn
     ]
 
 let opam_file t = Path.Source.relative t.id.dir (Name.opam_fn t.id.name)
-
 let meta_file t = Path.Source.relative t.id.dir (Name.meta_fn t.id.name)
-
 let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
 
 let deprecated_meta_file t name =

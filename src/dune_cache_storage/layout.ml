@@ -16,7 +16,6 @@ let root_dir =
     Path.of_filename_relative_to_initial_cwd path
 
 let ( / ) = Path.relative
-
 let temp_dir = root_dir / "temp"
 
 let cache_path ~dir ~hex =
@@ -50,9 +49,7 @@ let list_entries ~storage =
 
 module Versioned = struct
   let metadata_storage_dir t = root_dir / "meta" / Version.Metadata.to_string t
-
   let file_storage_dir t = root_dir / "files" / Version.File.to_string t
-
   let value_storage_dir t = root_dir / "values" / Version.Value.to_string t
 
   let metadata_path t =
@@ -69,9 +66,7 @@ module Versioned = struct
     fun ~value_digest -> cache_path ~dir ~hex:(Digest.to_string value_digest)
 
   let list_metadata_entries t = list_entries ~storage:(metadata_storage_dir t)
-
   let list_file_entries t = list_entries ~storage:(file_storage_dir t)
-
   let list_value_entries t = list_entries ~storage:(value_storage_dir t)
 end
 
@@ -79,13 +74,9 @@ let metadata_storage_dir =
   Versioned.metadata_storage_dir Version.Metadata.current
 
 let metadata_path = Versioned.metadata_path Version.Metadata.current
-
 let file_storage_dir = Versioned.file_storage_dir Version.File.current
-
 let file_path = Versioned.file_path Version.File.current
-
 let value_storage_dir = Versioned.value_storage_dir Version.Value.current
-
 let value_path = Versioned.value_path Version.Value.current
 
 let create_cache_directories () =

@@ -3,7 +3,6 @@ include module type of struct
 end
 
 val split_extension : string -> string * string
-
 val split_extension_after_dot : string -> string * string
 
 type program_name_kind =

@@ -6,9 +6,7 @@ open Import
 type t
 
 val scope : t -> Scope.t
-
 val dir : t -> Path.Build.t
-
 val context : t -> Context.t
 
 (** local or installed package *)
@@ -34,11 +32,8 @@ val set_foreign_flags :
   -> t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
-
 val set_dir : t -> dir:Path.Build.t -> t
-
 val set_scope : t -> scope:Scope.t -> t
-
 val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 
 val set_lookup_ml_sources :
@@ -78,7 +73,6 @@ end
 type value = Value.t list Deps.t
 
 val add_bindings_full : t -> bindings:value Pform.Map.t -> t
-
 val extend_env : t -> env:Env.t -> t
 
 val expand :
@@ -88,9 +82,7 @@ val expand :
   -> 'a Action_builder.t
 
 val expand_path : t -> String_with_vars.t -> Path.t Action_builder.t
-
 val expand_str : t -> String_with_vars.t -> string Action_builder.t
-
 val expand_pform : t -> Value.t list Action_builder.t String_with_vars.expander
 
 module No_deps : sig
@@ -106,7 +98,6 @@ module No_deps : sig
     -> 'a Memo.Build.t
 
   val expand_path : t -> String_with_vars.t -> Path.t Memo.Build.t
-
   val expand_str : t -> String_with_vars.t -> string Memo.Build.t
 end
 
@@ -114,7 +105,6 @@ module With_deps_if_necessary : sig
   (** Same as [expand_xxx] but stay in the [Memo.Build] monad if possible. *)
 
   val expand_path : t -> String_with_vars.t -> Path.t Deps.t
-
   val expand_str : t -> String_with_vars.t -> string Deps.t
 end
 
@@ -145,9 +135,6 @@ val expand_and_eval_set :
   -> string list Action_builder.t
 
 val eval_blang : t -> Blang.t -> bool Memo.Build.t
-
 val map_exe : t -> Path.t -> Path.t
-
 val artifacts : t -> Artifacts.Bin.t
-
 val find_package : t -> Package.Name.t -> any_package option Memo.Build.t

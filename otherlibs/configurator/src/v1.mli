@@ -69,7 +69,6 @@ end
 
 module Pkg_config : sig
   type configurator = t
-
   type t
 
   (** Search pkg-config in the PATH. Returns [None] if pkg-config is not found. *)

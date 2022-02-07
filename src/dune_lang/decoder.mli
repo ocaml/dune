@@ -35,11 +35,8 @@ type hint =
 type ('a, 'kind) parser
 
 type values
-
 type fields
-
 type 'a t = ('a, values) parser
-
 type 'a fields_parser = ('a, fields) parser
 
 (** [parse parser context sexp] parse a S-expression using the following parser.
@@ -48,30 +45,20 @@ type 'a fields_parser = ('a, fields) parser
 val parse : 'a t -> Univ_map.t -> ast -> 'a
 
 val set_input : ast list -> (unit, 'k) parser
-
 val return : 'a -> ('a, _) parser
-
 val ( >>= ) : ('a, 'k) parser -> ('a -> ('b, 'k) parser) -> ('b, 'k) parser
-
 val ( >>| ) : ('a, 'k) parser -> ('a -> 'b) -> ('b, 'k) parser
-
 val ( >>> ) : (unit, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
-
 val map : ('a, 'k) parser -> f:('a -> 'b) -> ('b, 'k) parser
-
 val try_ : ('a, 'k) parser -> (exn -> ('a, 'k) parser) -> ('a, 'k) parser
-
 val traverse : 'a list -> f:('a -> ('b, 'k) parser) -> ('b list, 'k) parser
-
 val all : ('a, 'k) parser list -> ('a list, 'k) parser
 
 (** Access to the context *)
 val get : 'a Univ_map.Key.t -> ('a option, _) parser
 
 val set : 'a Univ_map.Key.t -> 'a -> ('b, 'k) parser -> ('b, 'k) parser
-
 val get_all : (Univ_map.t, _) parser
-
 val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
 
 val update_var :
@@ -140,13 +127,9 @@ val fields : 'a fields_parser -> 'a t
 val string : string t
 
 val int : int t
-
 val float : float t
-
 val bool : bool t
-
 val pair : 'a t -> 'b t -> ('a * 'b) t
-
 val triple : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
 (** [maybe t] is a short-hand for:
@@ -191,9 +174,7 @@ val filename : string t
 val relative_file : string t
 
 val fix : ('a t -> 'a t) -> 'a t
-
 val located : ('a, 'k) parser -> (Loc.t * 'a, 'k) parser
-
 val enum : (string * 'a) list -> 'a t
 
 (** Parser that parse a S-expression of the form
@@ -257,9 +238,6 @@ val leftover_fields_as_sums : (string * 'a t) list -> 'a list fields_parser
 val field_present_too_many_times : Univ_map.t -> string -> Ast.t list -> _
 
 val leftover_fields : Ast.t list fields_parser
-
 val ( let* ) : ('a, 'k) parser -> ('a -> ('b, 'k) parser) -> ('b, 'k) parser
-
 val ( let+ ) : ('a, 'k) parser -> ('a -> 'b) -> ('b, 'k) parser
-
 val ( and+ ) : ('a, 'k) parser -> ('b, 'k) parser -> ('a * 'b, 'k) parser

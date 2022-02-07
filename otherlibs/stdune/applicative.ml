@@ -5,7 +5,6 @@ module Make (A : Applicative_intf.Basic) = struct
 
   module O = struct
     let ( let+ ) x f = A.map x ~f
-
     let ( and+ ) = A.both
 
     let ( >>> ) x y =
@@ -30,9 +29,7 @@ module Id = struct
     type 'a t = 'a
 
     let return a = a
-
     let map x ~f = f x
-
     let both x y = (x, y)
   end)
 

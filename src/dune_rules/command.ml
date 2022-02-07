@@ -31,7 +31,6 @@ module Args0 = struct
     | Expand : expand -> _ t
 
   let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))
-
   let empty = S []
 
   let rec as_any : without_targets t -> any t = function

@@ -24,6 +24,5 @@ module Vars = struct
       | Error (var, _, _) -> Error (sprintf "Variable %S present twice." var))
 
   let of_list_exn = String.Map.of_list_exn
-
   let find t x = String.Map.find t x
 end

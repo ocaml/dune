@@ -6,7 +6,6 @@ module Ast = struct
   [@@@warning "-37"]
 
   type expanded = Expanded
-
   type unexpanded = Unexpanded
 
   type ('a, _) t =
@@ -50,7 +49,6 @@ let of_atoms ~loc lst =
   { ast; loc = Some loc; context = Univ_map.empty }
 
 let equal = equal_generic (Ast.equal (fun (_, x) (_, y) -> String.equal x y))
-
 let loc t = t.loc
 
 module Parse = struct
@@ -225,7 +223,6 @@ let field ?check name =
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
-
   type t = ast generic
 
   let equal x y = equal_generic (Ast.equal String_with_vars.equal_no_loc) x y

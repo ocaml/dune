@@ -16,7 +16,6 @@ module File : sig
   type t
 
   val to_dyn : t -> Dyn.t
-
   val in_staging_area : Path.Source.t -> Path.Build.t
 
   (** Register an intermediate file to promote. The build path may point to the

@@ -11,7 +11,6 @@ module type Serializable = sig
   type t
 
   val serialize : t -> String.t
-
   val deserialize : String.t -> (t, Deserialization_error.t) Result.t
 end
 

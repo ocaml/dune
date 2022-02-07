@@ -6,7 +6,6 @@ type t =
   ]
 
 let default_port = 8587
-
 let compare = Poly.compare
 
 let ( let* ) x f =
@@ -50,7 +49,6 @@ let of_string s : (t, exn) result =
     | Error e -> Error (E (Invalid_where e)))
 
 let rpc_socket_relative_to_build_dir = ".rpc/dune"
-
 let _DUNE_RPC = "DUNE_RPC"
 
 let to_dbus : t -> Dbus_address.t = function
@@ -96,7 +94,6 @@ module Make (Fiber : sig
 
   module O : sig
     val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
 end) (IO : sig

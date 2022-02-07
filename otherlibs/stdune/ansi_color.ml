@@ -2,39 +2,22 @@ module Style = struct
   type t = string
 
   let to_dyn s = Dyn.string s
-
   let fg_black = "30"
-
   let fg_red = "31"
-
   let fg_green = "32"
-
   let fg_yellow = "33"
-
   let fg_blue = "34"
-
   let fg_magenta = "35"
-
   let fg_cyan = "36"
-
   let fg_white = "37"
-
   let fg_default = "39"
-
   let fg_bright_black = "90"
-
   let fg_bright_red = "91"
-
   let fg_bright_green = "92"
-
   let fg_bright_yellow = "93"
-
   let fg_bright_blue = "94"
-
   let fg_bright_magenta = "95"
-
   let fg_bright_cyan = "96"
-
   let fg_bright_white = "97"
 
   let fg_all =
@@ -56,37 +39,21 @@ module Style = struct
     ]
 
   let bg_black = "40"
-
   let bg_red = "41"
-
   let bg_green = "42"
-
   let bg_yellow = "43"
-
   let bg_blue = "44"
-
   let bg_magenta = "45"
-
   let bg_cyan = "46"
-
   let bg_white = "47"
-
   let bg_default = "49"
-
   let bg_bright_black = "100"
-
   let bg_bright_red = "101"
-
   let bg_bright_green = "102"
-
   let bg_bright_yellow = "103"
-
   let bg_bright_blue = "104"
-
   let bg_bright_magenta = "105"
-
   let bg_bright_cyan = "106"
-
   let bg_bright_white = "107"
 
   let bg_all =
@@ -110,9 +77,7 @@ module Style = struct
     ]
 
   let bold = "1"
-
   let dim = "2"
-
   let underlined = "4"
 
   let escape_sequence l =

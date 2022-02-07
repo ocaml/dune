@@ -10,13 +10,9 @@ type t =
   | Comment of Loc.t * string list
 
 val loc : t -> Loc.t
-
 val abstract : t -> Ast.t option
-
 val concrete : Ast.t -> t
-
 val to_dyn : t -> Dyn.t
-
 val to_sexp : t -> T.t option
 
 (** Return all the comments contained in a concrete syntax tree *)

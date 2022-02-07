@@ -226,7 +226,6 @@ module Sub_system0 = struct
     module Info : Sub_system_info.S
 
     type t
-
     type sub_system += T of t
 
     val public_info : (t -> Info.t Resolve.Build.t) option
@@ -246,9 +245,7 @@ module Id : sig
     }
 
   val to_dep_path_lib : t -> Dep_path.Entry.Lib.t
-
   val hash : t -> int
-
   val compare : t -> t -> Ordering.t
 
   include Comparator.OPS with type t := t
@@ -285,7 +282,6 @@ end = struct
   include (Comparator.Operators (T) : Comparator.OPS with type t := T.t)
 
   let hash { path; name } = Tuple.T2.hash Path.hash Lib_name.hash (path, name)
-
   let make ~path ~name = { path; name }
 
   include Comparable.Make (T)
@@ -316,7 +312,6 @@ module T = struct
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
-
   let to_dyn t = Lib_name.to_dyn t.name
 end
 
@@ -392,21 +387,13 @@ and resolve_result =
       db option * (Loc.t * Lib_name.t)
 
 let lib_config (t : lib) = t.lib_config
-
 let name t = t.name
-
 let info t = t.info
-
 let implements t = Option.map ~f:Memo.Build.return t.implements
-
 let unique_id t = t.unique_id
-
 let is_impl t = Option.is_some t.implements
-
 let requires t = Memo.Build.return t.requires
-
 let ppx_runtime_deps t = Memo.Build.return t.ppx_runtime_deps
-
 let obj_dir t = Lib_info.obj_dir t.info
 
 let is_local t =
@@ -453,9 +440,7 @@ let wrapped t =
     | Some (This x) -> Some x)
 
 let to_id t : Id.t = t.unique_id
-
 let equal l1 l2 = Id.equal (to_id l1) (to_id l2)
-
 let hash t = Id.hash (to_id t)
 
 include Comparable.Make (T)
@@ -715,7 +700,6 @@ module Sub_system = struct
     module Info : Sub_system_info.S
 
     type t
-
     type sub_system += T of t
 
     val instantiate :
@@ -732,7 +716,6 @@ module Sub_system = struct
     include S
 
     val for_instance : t Sub_system0.s
-
     val get : lib -> t option Memo.Build.t
   end
 
@@ -756,7 +739,6 @@ module Sub_system = struct
         include M
 
         let for_instance = (module M : Sub_system0.S with type t = t)
-
         let get = get
       end in
       Sub_system_name.Table.set all M.Info.name (module M : S')
@@ -805,7 +787,6 @@ module Dep_stack : sig
   type t
 
   val to_required_by : t -> Dep_path.Entry.t list
-
   val empty : t
 
   module Implements_via : sig
@@ -896,9 +877,7 @@ module Vlib : sig
     type t
 
     val empty : t
-
     val add : t -> lib -> t Resolve.Build.t
-
     val with_default_implementations : t -> lib list
   end
 end = struct
@@ -1053,7 +1032,6 @@ module rec Resolve_names : sig
     db -> Loc.t * Lib_name.t -> private_deps:private_deps -> lib Resolve.Build.t
 
   val resolve_name : db -> Lib_name.t -> Status.t Memo.Build.t
-
   val available_internal : db -> Lib_name.t -> bool Memo.Build.t
 
   val resolve_simple_deps :
@@ -1313,7 +1291,6 @@ end = struct
       type t = db * Lib_name.t * Path.t Lib_info.t * string option
 
       let to_dyn = Dyn.opaque
-
       let hash x = Poly.hash x
 
       let equal (db, lib_name, info, hidden) (db', lib_name', info', hidden') =
@@ -1329,7 +1306,6 @@ end = struct
         Dep_path.Entry.Lib.pp { name; path = Lib_info.src_dir info })
 
   let instantiate db name info ~hidden = Memo.exec memo (db, name, info, hidden)
-
   let find_internal db (name : Lib_name.t) = resolve_name db name
 
   let resolve_dep db (loc, name) ~private_deps : t Resolve.Build.t =
@@ -1883,13 +1859,9 @@ module Compile = struct
     }
 
   let direct_requires t = t.direct_requires
-
   let requires_link t = t.requires_link
-
   let resolved_selects t = t.resolved_selects
-
   let pps t = t.pps
-
   let merlin_ident t = t.merlin_ident
 
   let sub_systems t =
@@ -1914,9 +1886,7 @@ module DB = struct
       | Redirect of db option * (Loc.t * Lib_name.t)
 
     let found f = Found f
-
     let not_found = Not_found
-
     let redirect db lib = Redirect (db, lib)
 
     let to_dyn x =
@@ -2169,19 +2139,12 @@ module Local : sig
   type t = private lib
 
   val of_lib : lib -> t option
-
   val of_lib_exn : lib -> t
-
   val to_lib : t -> lib
-
   val obj_dir : t -> Path.Build.t Obj_dir.t
-
   val info : t -> Path.Build.t Lib_info.t
-
   val to_dyn : t -> Dyn.t
-
   val equal : t -> t -> bool
-
   val hash : t -> int
 
   include Comparable_intf.S with type key := t
@@ -2189,7 +2152,6 @@ end = struct
   type nonrec t = t
 
   let to_lib t = t
-
   let of_lib (t : lib) = Option.some_if (is_local t) t
 
   let of_lib_exn t =
@@ -2198,15 +2160,12 @@ end = struct
     | None -> Code_error.raise "Lib.Local.of_lib_exn" [ ("l", to_dyn t) ]
 
   let obj_dir t = Obj_dir.as_local_exn (Lib_info.obj_dir t.info)
-
   let info t = Lib_info.as_local_exn t.info
 
   module Set = Set
   module Map = Map
 
   let to_dyn = to_dyn
-
   let equal = equal
-
   let hash = hash
 end

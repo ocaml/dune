@@ -5,7 +5,6 @@ open! Import
 
 module Dune_file : sig
   val fname : string
-
   val alternative_fname : string
 
   type kind = private
@@ -15,29 +14,22 @@ module Dune_file : sig
   type t
 
   val get_static_sexp : t -> Dune_lang.Ast.t list
-
   val kind : t -> kind
-
   val path : t -> Path.Source.t
 end
 
 module Dir : sig
   type t
-
   type error = Missing_run_t of Cram_test.t
 
   val cram_tests : t -> (Cram_test.t, error) result list Memo.Build.t
-
   val path : t -> Path.Source.t
-
   val files : t -> String.Set.t
-
   val file_paths : t -> Path.Source.Set.t
 
   type sub_dir
 
   val sub_dirs : t -> sub_dir String.Map.t
-
   val sub_dir_as_t : sub_dir -> t Memo.Build.t
 
   module Make_map_reduce (M : Memo.Build) (Outcome : Monoid) : sig
@@ -51,9 +43,7 @@ module Dir : sig
   end
 
   val sub_dir_paths : t -> Path.Source.Set.t
-
   val sub_dir_names : t -> String.Set.t
-
   val status : t -> Sub_dirs.Status.t
 
   (** Return the contents of the dune (or jbuild) file in this directory *)

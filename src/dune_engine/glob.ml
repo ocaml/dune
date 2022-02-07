@@ -3,15 +3,10 @@ open Import
 include Dune_glob.V1
 
 let of_string = `shadowed
-
 let _ = of_string
-
 let compare x y = String.compare (to_string x) (to_string y)
-
 let equal x y = String.equal (to_string x) (to_string y)
-
 let hash t = String.hash (to_string t)
-
 let to_dyn t = Dyn.string (to_string t)
 
 let of_string_exn loc repr =

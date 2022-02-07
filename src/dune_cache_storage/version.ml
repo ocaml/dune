@@ -4,7 +4,6 @@ module File = struct
     | V4
 
   let current = V4
-
   let all = [ V3; V4 ]
 
   let to_string = function
@@ -16,7 +15,6 @@ module Value = struct
   type t = V3
 
   let current = V3
-
   let all = [ V3 ]
 
   let to_string = function
@@ -30,7 +28,6 @@ module Metadata = struct
     | V5
 
   let current = V5
-
   let all = [ V3; V4; V5 ]
 
   let to_string = function

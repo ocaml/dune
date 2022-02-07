@@ -14,9 +14,7 @@ let to_string = function
   | Enabled -> "enabled"
 
 let to_dyn conf = to_string conf |> Dyn.string
-
 let encode t = Dune_lang.Encoder.string (to_string t)
-
 let decoder = enum [ ("disabled", Disabled); ("enabled", Enabled) ]
 
 let field ~since =

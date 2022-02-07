@@ -10,15 +10,10 @@ module Lib : sig
   type t
 
   val modules : t -> Modules.t option
-
   val main_module_name : t -> Module_name.t option
-
   val dir_of_name : Lib_name.t -> Path.Local.t
-
   val wrapped : t -> Wrapped.t option
-
   val info : t -> Path.t Lib_info.t
-
   val of_findlib : Path.t Lib_info.t -> t
 
   val of_dune_lib :
@@ -54,11 +49,8 @@ module Entry : sig
             Dune itself never produces hidden libraries. *)
 
   val name : t -> Lib_name.t
-
   val version : t -> string option
-
   val loc : t -> Loc.t
-
   val to_dyn : t Dyn.builder
 end
 
@@ -83,6 +75,5 @@ module Or_meta : sig
     dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
 
   val load : Dpath.t -> t Or_exn.t
-
   val to_dyn : t Dyn.builder
 end

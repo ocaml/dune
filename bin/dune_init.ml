@@ -287,13 +287,9 @@ module Component = struct
         List.map ~f:(fun x -> Atom x)
 
       let public_name name = List [ atom "public_name"; Atom name ]
-
       let name name = List [ atom "name"; Atom name ]
-
       let inline_tests = List [ atom "inline_tests" ]
-
       let libraries libs = List (atom "libraries" :: atoms libs)
-
       let pps pps = List [ atom "preprocess"; List (atom "pps" :: atoms pps) ]
 
       let optional_field ~f = function

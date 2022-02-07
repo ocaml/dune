@@ -17,7 +17,6 @@ let man =
   ]
 
 let doc = "Manage the shared cache of build artifacts"
-
 let info = Term.info name ~doc ~man
 
 let trim ~trimmed_size ~size =

@@ -8,7 +8,6 @@ module Concurrency : sig
     | Auto
 
   val of_string : string -> (t, string) result
-
   val to_string : t -> string
 end
 
@@ -23,9 +22,7 @@ module Cache : sig
       | Disabled
 
     val all : (string * t) list
-
     val decode : t Dune_lang.Decoder.t
-
     val to_string : t -> string
   end
 
@@ -33,9 +30,7 @@ module Cache : sig
     type t = Dune_cache_storage.Mode.t option
 
     val all : (string * t) list
-
     val decode : t Dune_lang.Decoder.t
-
     val to_string : t -> string
   end
 end
@@ -77,9 +72,7 @@ module Partial : sig
   include S with type 'a field := 'a option
 
   val empty : t
-
   val superpose : t -> t -> t
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -92,9 +85,7 @@ val decode : Partial.t Dune_lang.Decoder.t
 val decode_fields_of_workspace_file : Partial.t Dune_lang.Decoder.fields_parser
 
 val superpose : t -> Partial.t -> t
-
 val default : t
-
 val user_config_file : Path.t
 
 (** We return a [Partial.t] here so that the result can easily be merged with
@@ -111,9 +102,7 @@ val adapt_display : t -> output_is_a_tty:bool -> t
 val init : t -> unit
 
 val to_dyn : t -> Dyn.t
-
 val hash : t -> int
-
 val equal : t -> t -> bool
 
 val for_scheduler :

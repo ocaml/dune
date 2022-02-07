@@ -163,9 +163,7 @@ let encode_replacement ~len ~repl:s =
   | Gt -> String.sub repl ~pos:0 ~len
 
 let prefix = "%%DUNE_PLACEHOLDER:"
-
 let prefix_len = String.length prefix
-
 let max_len = 65536
 
 let encode ?(min_len = 0) t =
@@ -412,7 +410,6 @@ module Scanner = struct
 end
 
 let buf_len = max_len
-
 let buf = Bytes.create buf_len
 
 type _ mode =

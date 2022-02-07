@@ -3,7 +3,6 @@ open Dune_tests_common
 open Memo.Build.O
 
 let () = init ()
-
 let print = Printf.printf "%s\n"
 
 module Directory_rules = struct
@@ -14,13 +13,9 @@ module Directory_rules = struct
   and t = element Appendable_list.t
 
   let empty = Appendable_list.empty
-
   let union = Appendable_list.( @ )
-
   let concat t = List.fold_left t ~init:empty ~f:union
-
   let thunk f = Appendable_list.singleton (Thunk f)
-
   let file f = Appendable_list.singleton (File f)
 
   let rec force l =
@@ -152,7 +147,6 @@ let print_rules scheme ~dir =
     print_log res1
 
 let run m = Fiber.run (Memo.Build.run m) ~iter:(fun () -> assert false)
-
 let print_rules scheme ~dir = run @@ print_rules scheme ~dir
 
 open Dune_rules.Scheme

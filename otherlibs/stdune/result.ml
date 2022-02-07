@@ -3,7 +3,6 @@ type ('a, 'error) t = ('a, 'error) result =
   | Error of 'error
 
 let ok x = Ok x
-
 let return = ok
 
 let value r ~default =
@@ -66,13 +65,9 @@ let both a b =
 
 module O = struct
   let ( >>= ) t f = bind t ~f
-
   let ( >>| ) t f = map t ~f
-
   let ( let* ) = ( >>= )
-
   let ( let+ ) = ( >>| )
-
   let ( and+ ) = both
 end
 

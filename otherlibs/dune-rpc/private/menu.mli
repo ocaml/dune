@@ -17,5 +17,4 @@ val of_list :
   -> (t, Method_name.t * Method_version.t * Method_version.t) result
 
 val to_list : t -> (Method_name.t * Method_version.t) list
-
 val to_dyn : t -> Dyn.t

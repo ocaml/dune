@@ -53,9 +53,7 @@ module P = Persistent.Make (struct
   type nonrec t = t
 
   let name = "DIGEST-DB"
-
   let version = 5
-
   let to_dyn = to_dyn
 end)
 

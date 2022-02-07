@@ -13,9 +13,7 @@ module Expanded = struct
   type nonrec t = (Loc.t * Path.Build.t, Loc.t * string) t
 
   let src t = snd t.src
-
   let dst t = Option.map ~f:snd t.dst
-
   let src_loc t = fst t.src
 
   let dst_basename { src = _, src; dst } =

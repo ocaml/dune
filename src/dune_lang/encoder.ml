@@ -4,27 +4,16 @@ open T
 type nonrec 'a t = 'a -> t
 
 let unit () = List []
-
 let char c = atom_or_quoted_string (String.make 1 c)
-
 let string = atom_or_quoted_string
-
 let int n = Atom (Atom.of_int n)
-
 let float f = Atom (Atom.of_float f)
-
 let bool b = Atom (Atom.of_bool b)
-
 let pair fa fb (a, b) = List [ fa a; fb b ]
-
 let triple fa fb fc (a, b, c) = List [ fa a; fb b; fc c ]
-
 let list f l = List (List.map l ~f)
-
 let array f a = list f (Array.to_list a)
-
 let sexp x = x
-
 let constr s f x = pair string f (s, x)
 
 let option f = function

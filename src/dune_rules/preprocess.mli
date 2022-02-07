@@ -19,7 +19,6 @@ type 'a t =
   | Future_syntax of Loc.t
 
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
 module Without_instrumentation : sig
@@ -65,15 +64,11 @@ val remove_future_syntax :
 
 module Per_module : sig
   type 'a preprocess = 'a t
-
   type 'a t = 'a preprocess Module_name.Per_item.t
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-
   val decode : Without_instrumentation.t t Dune_lang.Decoder.t
-
   val no_preprocessing : unit -> 'a t
-
   val default : unit -> 'a t
 
   (** [find module_name] find the preprocessing specification for a given module *)

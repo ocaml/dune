@@ -39,16 +39,12 @@ module Section : sig
   include Comparable_intf.S with type key := t
 
   val to_string : t -> string
-
   val parse_string : string -> (t, string) Result.t
-
   val decode : t Dune_lang.Decoder.t
-
   val to_dyn : t -> Dyn.t
 
   module Paths : sig
     type section = t
-
     type t
 
     val make :
@@ -62,7 +58,6 @@ module Section : sig
       -> t
 
     val install_path : t -> section -> Dst.t -> Path.t
-
     val get : t -> section -> Path.t
 
     val get_local_location :
@@ -110,7 +105,6 @@ module Entry : sig
     -> Path.Build.t t Memo.Build.t
 
   val set_src : _ t -> 'src -> 'src t
-
   val relative_installed_path : _ t -> paths:Section.Paths.t -> Path.t
 
   val add_install_prefix :
@@ -135,5 +129,4 @@ module Metadata : sig
 end
 
 val gen_install_file : Path.t Entry.t list -> string
-
 val load_install_file : Path.t -> Path.t Entry.t list

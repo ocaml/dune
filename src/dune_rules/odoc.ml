@@ -9,7 +9,6 @@ let ( ++ ) = Path.Build.relative
 
 module Scope_key : sig
   val of_string : Super_context.t -> string -> Lib_name.t * Lib.DB.t
-
   val to_string : Lib_name.t -> Dune_project.t -> string
 end = struct
   let of_string sctx s =
@@ -77,7 +76,6 @@ module Paths = struct
     | Pkg pkg -> root ctx ++ sprintf "_odoc/pkg/%s" (Package.Name.to_string pkg)
 
   let html_root ctx = root ctx ++ "_html"
-
   let odocl_root ctx = root ctx ++ "_odocls"
 
   let add_pkg_lnu base m =
@@ -88,15 +86,10 @@ module Paths = struct
     | Lib lib -> pkg_or_lnu (Lib.Local.to_lib lib)
 
   let html ctx m = add_pkg_lnu (html_root ctx) m
-
   let odocl ctx m = add_pkg_lnu (odocl_root ctx) m
-
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
-
   let css_file ctx = html_root ctx ++ "odoc.css"
-
   let highlight_pack_js ctx = html_root ctx ++ "highlight.pack.js"
-
   let toplevel_index ctx = html_root ctx ++ "index.html"
 end
 
@@ -119,7 +112,6 @@ module Dep : sig
   val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.Build.t
 end = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
-
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
@@ -152,9 +144,7 @@ module Mld : sig
   type t
 
   val create : Path.Build.t -> t
-
   val odoc_file : doc_dir:Path.Build.t -> t -> Path.Build.t
-
   val odoc_input : t -> Path.Build.t
 end = struct
   type t = Path.Build.t
@@ -616,7 +606,6 @@ let setup_lib_html_rules_def =
       Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
 
     let hash (sc, l) = Hashtbl.hash (Super_context.hash sc, Lib.Local.hash l)
-
     let to_dyn _ = Dyn.Opaque
   end in
   let f (sctx, lib) =

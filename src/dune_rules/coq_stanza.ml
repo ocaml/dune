@@ -168,7 +168,6 @@ module Theory = struct
     x
 
   let coqlib_p = ("coqlib", decode >>| fun x -> [ T (coqlib_warn x) ])
-
   let p = ("coq.theory", decode >>| fun x -> [ T x ])
 end
 

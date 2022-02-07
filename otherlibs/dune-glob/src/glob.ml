@@ -14,7 +14,6 @@ let test t s =
   | Re { re; repr = _ } -> Re.execp re s
 
 let empty = Re { re = Re.compile Re.empty; repr = "\000" }
-
 let universal = Re { re = Re.compile (Re.rep Re.any); repr = "**" }
 
 let of_string_result repr =

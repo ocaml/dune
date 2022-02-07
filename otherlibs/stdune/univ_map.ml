@@ -8,13 +8,10 @@ module Make () = struct
 
     module type T = sig
       type t
-
       type 'a Witness.t += T : t Witness.t
 
       val id : int
-
       val name : string
-
       val to_dyn : t -> Dyn.t
     end
 
@@ -27,13 +24,10 @@ module Make () = struct
       next := n + 1;
       let module M = struct
         type t = a
-
         type 'a Witness.t += T : t Witness.t
 
         let id = n
-
         let to_dyn = to_dyn
-
         let name = name
       end in
       (module M : T with type t = a)
@@ -54,7 +48,6 @@ module Make () = struct
   type t = Binding.t Int.Map.t
 
   let empty = Int.Map.empty
-
   let is_empty = Int.Map.is_empty
 
   let set (type a) t (key : a Key.t) x =
@@ -81,7 +74,6 @@ module Make () = struct
         f (Some x) |> Option.map ~f:(fun x -> Binding.T (key, x)))
 
   let mem t key = Int.Map.mem t (Key.id key)
-
   let remove t key = Int.Map.remove t (Key.id key)
 
   let find t key =
@@ -99,7 +91,6 @@ module Make () = struct
       Type_eq.cast eq v
 
   let singleton key v = Int.Map.singleton (Key.id key) (Binding.T (key, v))
-
   let superpose = Int.Map.superpose
 
   let to_dyn (t : t) =

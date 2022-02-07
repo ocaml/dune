@@ -47,11 +47,8 @@ type triage =
   | Group_part of Path.Build.t
 
 let dir t = t.dir
-
 let coq t = Memo.Lazy.force t.coq
-
 let ocaml t = Memo.Lazy.force t.ml
-
 let artifacts t = Memo.Lazy.force t.ml >>= Ml_sources.artifacts
 
 let dirs t =
@@ -63,7 +60,6 @@ let dirs t =
       [ ("dir", Path.Build.to_dyn t.dir) ]
 
 let text_files t = t.text_files
-
 let foreign_sources t = Memo.Lazy.force t.foreign_sources
 
 let mlds t (doc : Documentation.t) =
@@ -114,9 +110,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
 
 module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t Memo.Build.t
-
   val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.Build.t
-
   val add_sources_to_expander : Super_context.t -> Expander.t -> Expander.t
 end = struct
   let add_sources_to_expander sctx expander =
@@ -204,7 +198,6 @@ end = struct
       Dyn.Tuple [ Super_context.to_dyn sctx; Path.Build.to_dyn path ]
 
     let equal = Tuple.T2.equal Super_context.equal Path.Build.equal
-
     let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
   end
 

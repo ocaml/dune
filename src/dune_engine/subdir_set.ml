@@ -17,7 +17,6 @@ let of_dir_set d =
   | Finite s -> These s
 
 let of_list l = These (String.Set.of_list l)
-
 let empty = These String.Set.empty
 
 let is_empty = function

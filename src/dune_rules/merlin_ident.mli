@@ -5,7 +5,6 @@ open! Stdune
 type t
 
 val for_lib : Dune_engine.Lib_name.t -> t
-
 val for_exes : names:string list -> t
 
 (** Merlin config folder name *)

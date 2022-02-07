@@ -5,7 +5,6 @@ open! Stdune
    dependency if Dune_file tries to access it. *)
 
 val cflags_sexp : external_library_name:string -> string
-
 val c_library_flags : external_library_name:string -> string
 
 val c_generated_functions_cout_no_ext :

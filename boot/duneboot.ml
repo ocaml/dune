@@ -83,9 +83,7 @@ let fatal fmt =
 
 module Status_line = struct
   let num_jobs = ref 0
-
   let num_jobs_finished = ref 0
-
   let displayed = ref ""
 
   let display_status_line =
@@ -270,15 +268,12 @@ module Fiber : sig
 
   module O : sig
     val ( >>> ) : unit t -> 'a t -> 'a t
-
     val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-
     val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
   end
 
   module Future : sig
     type 'a fiber
-
     type 'a t
 
     val wait : 'a t -> 'a fiber
@@ -286,18 +281,13 @@ module Fiber : sig
   with type 'a fiber := 'a t
 
   val fork : (unit -> 'a t) -> 'a Future.t t
-
   val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
-
   val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
   val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
-
   val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
   module Process : sig
     val run : ?cwd:string -> string -> string list -> unit t
-
     val run_and_capture : ?cwd:string -> string -> string list -> string t
 
     val try_run_and_capture :
@@ -314,9 +304,7 @@ end = struct
 
   module O = struct
     let ( >>> ) a b k = a (fun () -> b k)
-
     let ( >>= ) t f k = t (fun x -> f x k)
-
     let ( >>| ) t f k = t (fun x -> k (f x))
   end
 
@@ -558,23 +546,15 @@ end
 
 module Config : sig
   val compiler : string
-
   val ocamldep : string
-
   val ocamllex : string
-
   val ocamlyacc : string
-
   val mode : Mode.t
-
   val ocaml_archive_ext : string
-
   val ocaml_config : unit -> string StringMap.t Fiber.t
-
   val output_complete_obj_arg : string
 end = struct
   let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> (a, b))
-
   let prog_not_found prog = fatal "Program %s not found in PATH" prog
 
   let best_prog dir prog =
@@ -624,9 +604,7 @@ end = struct
       | Some x -> x
 
   let ocamlyacc = get_prog bin_dir "ocamlyacc"
-
   let ocamllex = get_prog bin_dir "ocamllex"
-
   let ocamldep = get_prog bin_dir "ocamldep"
 
   let compiler, mode, ocaml_archive_ext =

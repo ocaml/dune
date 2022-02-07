@@ -39,14 +39,12 @@ module Prog : sig
       -> t
 
     val raise : t -> _
-
     val user_message : t -> User_message.t
   end
 
   type t = (Path.t, Not_found.t) result
 
   val to_dyn : t -> Dyn.t
-
   val ok_exn : t -> Path.t
 end
 
@@ -146,11 +144,8 @@ module Full : sig
       {[ combine t (make ~xxx:x (Progn [])) ]} *)
 
   val add_env : Env.t -> t -> t
-
   val add_locks : Path.t list -> t -> t
-
   val add_sandbox : Sandbox_config.t -> t -> t
-
   val add_can_go_in_shared_cache : bool -> t -> t
 
   include Monoid with type t := t

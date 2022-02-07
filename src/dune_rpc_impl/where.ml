@@ -9,7 +9,6 @@ module Where =
 
       module O = struct
         let ( let+ ) x f = f x
-
         let ( let* ) x f = f x
       end
     end)

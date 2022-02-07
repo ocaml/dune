@@ -3,9 +3,7 @@ module Caml_lazy = Lazy
 
 module Scheduler = struct
   let t = Test_scheduler.create ()
-
   let yield () = Test_scheduler.yield t
-
   let run f = Test_scheduler.run t f
 end
 

@@ -3,7 +3,6 @@ open! Dune_engine
 
 module type S = sig
   type key
-
   type 'a t
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
@@ -23,7 +22,6 @@ module type S = sig
   val is_constant : _ t -> bool
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
-
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
 
   val fold_resolve :

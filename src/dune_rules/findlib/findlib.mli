@@ -7,7 +7,6 @@ open! Stdune
 type t
 
 val meta_fn : string
-
 val create : paths:Path.t list -> lib_config:Lib_config.t -> t
 
 (** The search path for this DB *)
@@ -53,10 +52,7 @@ module Config : sig
   type t
 
   val to_dyn : t -> Dyn.t
-
   val load : Path.t -> toolchain:string -> context:string -> t Memo.Build.t
-
   val get : t -> string -> string option
-
   val env : t -> Env.t
 end

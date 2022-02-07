@@ -6,7 +6,6 @@ type t =
   | Cmx
 
 let compare = Poly.compare
-
 let all = [ Cmi; Cmo; Cmx ]
 
 let choose cmi cmo cmx = function
@@ -15,7 +14,6 @@ let choose cmi cmo cmx = function
   | Cmx -> cmx
 
 let ext = choose ".cmi" ".cmo" ".cmx"
-
 let source = choose Ml_kind.Intf Impl Impl
 
 module Dict = struct

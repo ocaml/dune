@@ -34,7 +34,6 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
     t.values.(index)
 
   let map t ~f = { t with values = Array.map t.values ~f }
-
   let fold t ~init ~f = Array.fold_right t.values ~init ~f
 
   let fold_resolve t ~init ~f =
@@ -49,7 +48,6 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
     loop 0 init
 
   let exists t ~f = Array.exists t.values ~f
-
   let is_constant t = Array.length t.values = 1
 
   module Make_monad_traversals (M : sig

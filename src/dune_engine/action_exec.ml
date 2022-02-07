@@ -368,7 +368,8 @@ let rec exec t ~ectx ~eenv =
       Fdecl.get
         cram_run
         (* We don't pass cwd because Cram_exec will use the script's dir to
-           run *) ~env:eenv.env ~script
+           run *)
+        ~env:eenv.env ~script
     in
     Done
 

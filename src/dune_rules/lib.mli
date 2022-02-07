@@ -14,7 +14,6 @@ val to_dyn : t -> Dyn.t
 val name : t -> Lib_name.t
 
 val lib_config : t -> Lib_config.t
-
 val implements : t -> t Resolve.Build.t option
 
 (** Directory where the object files for the library are located. *)
@@ -24,13 +23,9 @@ val obj_dir : t -> Path.t Obj_dir.t
 val is_local : t -> bool
 
 val info : t -> Path.t Lib_info.t
-
 val main_module_name : t -> Module_name.t option Resolve.Build.t
-
 val entry_module_names : t -> Module_name.t list Resolve.Build.t
-
 val src_dirs : t -> Path.Set.t Memo.Build.t
-
 val wrapped : t -> Wrapped.t option Resolve.Build.t
 
 (** [is_impl lib] returns [true] if the library is an implementation of a
@@ -55,7 +50,6 @@ val unique_id : t -> Id.t
 include Comparable_intf.S with type key := t
 
 val equal : t -> t -> bool
-
 val hash : t -> int
 
 (** The list of files that will be read by the compiler when linking an
@@ -65,26 +59,19 @@ val link_deps : t -> Link_mode.t -> Path.t list Memo.Build.t
 (** Operations on list of libraries *)
 module L : sig
   type lib
-
   type nonrec t = t list
 
   val to_iflags : Path.Set.t -> _ Command.Args.t
-
   val include_paths : ?project:Dune_project.t -> t -> Mode.t -> Path.Set.t
-
   val include_flags : ?project:Dune_project.t -> t -> Mode.t -> _ Command.Args.t
-
   val c_include_paths : t -> Path.Set.t
-
   val c_include_flags : t -> _ Command.Args.t
-
   val toplevel_include_paths : t -> Path.Set.t
 
   val compile_and_link_flags :
     compile:t -> link:t -> mode:Link_mode.t -> _ Command.Args.t
 
   val jsoo_runtime_files : t -> Path.t list
-
   val remove_dups : t -> t
 
   val top_closure :
@@ -122,7 +109,6 @@ type sub_system = ..
 (** For compiling a library or executable *)
 module Compile : sig
   type t
-
   type lib
 
   (** Return the list of dependencies needed for linking this library/exe *)
@@ -162,15 +148,11 @@ module DB : sig
 
   module Resolve_result : sig
     type t
-
     type db
 
     val not_found : t
-
     val found : Lib_info.external_ -> t
-
     val to_dyn : t Dyn.builder
-
     val redirect : db option -> Loc.t * Lib_name.t -> t
   end
   with type db := t
@@ -200,9 +182,7 @@ module DB : sig
     -> t
 
   val find : t -> Lib_name.t -> lib option Memo.Build.t
-
   val find_even_when_hidden : t -> Lib_name.t -> lib option Memo.Build.t
-
   val available : t -> Lib_name.t -> bool Memo.Build.t
 
   (** Retrieve the compile information for the given library. Works for
@@ -253,14 +233,12 @@ val closure : L.t -> linking:bool -> L.t Resolve.Build.t
 
 module Sub_system : sig
   type lib = t
-
   type t = sub_system = ..
 
   module type S = sig
     module Info : Sub_system_info.S
 
     type t
-
     type sub_system += T of t
 
     val instantiate :
@@ -290,23 +268,15 @@ val to_dune_lib :
 (** Local libraries *)
 module Local : sig
   type lib
-
   type t = private lib
 
   val to_dyn : t -> Dyn.t
-
   val equal : t -> t -> bool
-
   val hash : t -> int
-
   val of_lib : lib -> t option
-
   val of_lib_exn : lib -> t
-
   val to_lib : t -> lib
-
   val info : t -> Lib_info.local
-
   val obj_dir : t -> Path.Build.t Obj_dir.t
 
   include Comparable_intf.S with type key := t

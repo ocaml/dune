@@ -55,11 +55,8 @@ module Context : sig
     | Opam of Opam.t
 
   val loc : t -> Loc.t
-
   val name : t -> Context_name.t
-
   val env : t -> Dune_env.Stanza.t
-
   val host_context : t -> Context_name.t option
 end
 
@@ -81,9 +78,7 @@ type t = private
   }
 
 val equal : t -> t -> bool
-
 val to_dyn : t -> Dyn.t
-
 val hash : t -> int
 
 module Clflags : sig

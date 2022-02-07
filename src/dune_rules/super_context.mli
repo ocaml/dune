@@ -19,7 +19,6 @@ val modules_of_lib :
   (t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.Build.t) Fdecl.t
 
 val to_dyn : t -> Dyn.t
-
 val context : t -> Context.t
 
 (** Context env with additional variables computed from packages *)
@@ -31,7 +30,6 @@ val stanzas_in :
   t -> dir:Path.Build.t -> Dune_file.Stanzas.t Dir_with_dune.t option
 
 val packages : t -> Package.t Package.Name.Map.t
-
 val host : t -> t
 
 val any_package :
@@ -114,9 +112,7 @@ val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.Build.t
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
 
 val find_scope_by_dir : t -> Path.Build.t -> Scope.t
-
 val find_scope_by_project : t -> Dune_project.t -> Scope.t
-
 val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
 
 val add_rule :
@@ -165,11 +161,9 @@ val resolve_program :
   -> Action.Prog.t Memo.Build.t
 
 val expander : t -> dir:Path.Build.t -> Expander.t Memo.Build.t
-
 val dir_status_db : t -> Dir_status.DB.t
 
 module As_memo_key : sig
   include Memo.Input with type t = t
-
   module And_package : Memo.Input with type t = t * Package.t
 end

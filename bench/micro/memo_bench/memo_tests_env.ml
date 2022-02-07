@@ -2,26 +2,20 @@ module Io = struct
   type 'a t = 'a Fiber.t
 
   let of_thunk f = Fiber.of_thunk f
-
   let map t ~f = Fiber.map t ~f
-
   let bind t ~f = Fiber.bind t ~f:(fun x -> f x)
-
   let return x = Fiber.return x
 
   module Ivar = struct
     include Fiber.Ivar
 
     let read x = read x
-
     let fill x v = fill x v
   end
 
   module Let_syntax = struct
     let ( let+ ) x f = map x ~f
-
     let ( let* ) x f = bind x ~f
-
     let return = return
   end
 end
@@ -80,9 +74,7 @@ module Build = struct
 
   module Let_syntax = struct
     let ( let+ ) x f = map x ~f
-
     let ( let* ) x f = bind x ~f
-
     let return = return
   end
 end
@@ -124,6 +116,5 @@ module Var = struct
         (Memo.Cell.invalidate ~reason:Memo.Invalidation.Reason.Test t.cell)
 
   let read t = Memo.Build.of_thunk (fun () -> Memo.Cell.read t.cell)
-
   let peek t = !(t.value)
 end

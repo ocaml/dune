@@ -5,11 +5,8 @@ open! Dune_tests_common
 module Config = Dune_util.Config
 
 let () = init ()
-
 let printf = Printf.printf
-
 let temp_dir = lazy (Path.of_string "vcs-tests")
-
 let () = at_exit (fun () -> Path.rm_rf (Lazy.force temp_dir))
 
 (* When hg is not available, we test with git twice indeed. This is because many

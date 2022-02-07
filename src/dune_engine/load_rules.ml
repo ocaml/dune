@@ -6,9 +6,7 @@ module Context_or_install = Build_config.Context_or_install
 
 module Current_rule_loc = struct
   let t = ref (fun () -> Memo.Build.return None)
-
   let set f = t := f
-
   let get () = !t ()
 end
 
@@ -55,9 +53,7 @@ module Dir_triage = struct
     (* It's ok to only compare and hash the [dir] field because of the
        invariant. *)
     let equal a b = Path.Build.equal a.dir b.dir
-
     let hash t = Path.Build.hash t.dir
-
     let to_dyn t = Path.Build.to_dyn t.dir
   end
 
@@ -298,9 +294,7 @@ let eval_source_file :
 
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
-
   val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
-
   val directory_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
 
   val lookup_alias :
@@ -845,7 +839,6 @@ module All_targets = struct
     type nonrec t = t
 
     let empty = Path.Build.Map.empty
-
     let combine = Path.Build.Map.union_exn
   end)
 end

@@ -11,7 +11,6 @@ module Only_packages = Dune_rules.Only_packages
 
 module Let_syntax = struct
   let ( let+ ) t f = Term.(const f $ t)
-
   let ( and+ ) a b = Term.(const (fun x y -> (x, y)) $ a $ b)
 end
 
@@ -54,29 +53,17 @@ type t =
   }
 
 let capture_outputs t = t.capture_outputs
-
 let root t = t.root
-
 let watch t = t.watch
-
 let print_metrics t = t.print_metrics
-
 let dump_memo_graph_file t = t.dump_memo_graph_file
-
 let dump_memo_graph_format t = t.dump_memo_graph_format
-
 let dump_memo_graph_with_timing t = t.dump_memo_graph_with_timing
-
 let file_watcher t = t.file_watcher
-
 let default_target t = t.default_target
-
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
-
 let rpc t = t.rpc
-
 let stats t = t.stats
-
 let set_print_directory t b = { t with no_print_directory = not b }
 
 (* To avoid needless recompilations under Windows, where the case of

@@ -19,9 +19,7 @@ module V1 = struct
   module Client = struct
     module type S = sig
       type t
-
       type 'a fiber
-
       type chan
 
       module Handler : sig
@@ -36,7 +34,6 @@ module V1 = struct
 
       module Versioned : sig
         type 'a notification
-
         type ('a, 'b) request
 
         val prepare_request :
@@ -58,14 +55,12 @@ module V1 = struct
         -> ('b, Response.Error.t) result fiber
 
       val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
-
       val disconnected : t -> unit fiber
 
       module Stream : sig
         type 'a t
 
         val cancel : _ t -> unit fiber
-
         val next : 'a t -> 'a option fiber
       end
 
@@ -74,7 +69,6 @@ module V1 = struct
 
       module Batch : sig
         type t
-
         type client
 
         val create : client -> t
@@ -87,7 +81,6 @@ module V1 = struct
           -> ('b, Response.Error.t) result fiber
 
         val notification : t -> 'a Versioned.notification -> 'a -> unit
-
         val submit : t -> unit fiber
       end
       with type client := t

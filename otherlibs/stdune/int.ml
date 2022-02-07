@@ -16,7 +16,6 @@ include T
 include Comparable.Make (T)
 
 let equal (a : t) b = a = b
-
 let hash (t : t) = t
 
 let of_string_exn s =

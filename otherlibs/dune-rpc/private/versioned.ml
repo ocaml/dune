@@ -8,9 +8,7 @@ module Version_error = struct
     }
 
   let payload t = t.payload
-
   let message t = t.message
-
   let create ?payload ~message () = { payload; message }
 
   exception E of t
@@ -49,11 +47,8 @@ module Make (Fiber : Fiber) = struct
       }
 
     let handle_request t = t.handle_request t.menu
-
     let handle_notification t = t.handle_notification t.menu
-
     let prepare_request t = t.prepare_request t.menu
-
     let prepare_notification t = t.prepare_notification t.menu
   end
 

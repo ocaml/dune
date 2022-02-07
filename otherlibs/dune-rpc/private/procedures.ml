@@ -20,7 +20,6 @@ module Public = struct
 
   module Shutdown = struct
     let v1 = Decl.Notification.make_current_gen ~conv:Conv.unit ~version:1
-
     let decl = Decl.Notification.make ~method_:"shutdown" ~generations:[ v1 ]
   end
 
@@ -56,15 +55,10 @@ module Public = struct
   end
 
   let ping = Ping.decl
-
   let diagnostics = Diagnostics.decl
-
   let shutdown = Shutdown.decl
-
   let format_dune_file = Format_dune_file.decl
-
   let promote = Promote.decl
-
   let build_dir = Build_dir.decl
 end
 
@@ -78,12 +72,10 @@ module Server_side = struct
 
   module Log = struct
     let v1 = Decl.Notification.make_current_gen ~conv:Message.sexp ~version:1
-
     let decl = Decl.Notification.make ~method_:"notify/log" ~generations:[ v1 ]
   end
 
   let abort = Abort.decl
-
   let log = Log.decl
 end
 
@@ -95,7 +87,6 @@ module Poll = struct
     type t = string
 
     let make t = t
-
     let compare = Stdune.String.compare
   end
 
@@ -114,9 +105,7 @@ module Poll = struct
     { poll; cancel; name }
 
   let poll t = t.poll
-
   let cancel t = t.cancel
-
   let name t = t.name
 
   module Progress = struct

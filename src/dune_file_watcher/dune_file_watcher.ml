@@ -53,7 +53,6 @@ module Watch_trie : sig
   type 'a t
 
   val empty : 'a t
-
   val to_list : 'a t -> (Path.External.t * 'a) list
 
   type 'a add =
@@ -247,11 +246,8 @@ end
 
 module Fs_sync : sig
   val special_dir_path : Path.Build.t Lazy.t
-
   val special_dir : string Lazy.t
-
   val emit : t -> Sync_id.t
-
   val is_special_file : path_as_reported_by_file_watcher:string -> bool
 
   (** fsevents always reports absolute paths. therefore, we need callers to make
@@ -261,7 +257,6 @@ module Fs_sync : sig
   val consume_event : (string, 'a) Table.t -> string -> 'a option
 end = struct
   let special_dir_path = lazy (Path.Build.relative Path.Build.root ".sync")
-
   let special_dir = lazy (Lazy.force special_dir_path |> Path.Build.to_string)
 
   let emit t =

@@ -34,7 +34,6 @@ let try_paths n ~dir ~prefix ~suffix ~f =
   loop n
 
 let tmp_files = ref Path.Set.empty
-
 let tmp_dirs = ref Path.Set.empty
 
 let create_temp_file ?(perms = 0o600) path =
@@ -160,5 +159,4 @@ module Id = Monad (struct
 end)
 
 let with_temp_file = Id.with_temp_file
-
 let with_temp_dir = Id.with_temp_dir

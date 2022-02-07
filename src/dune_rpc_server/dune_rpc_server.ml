@@ -1,7 +1,6 @@
 open Stdune
 open Dune_rpc_private
 open Fiber.O
-
 module Session_id = Stdune.Id.Make ()
 
 module Poller = struct
@@ -14,11 +13,8 @@ module Poller = struct
     }
 
   let create session_id name = { id = Id.gen (); name; session_id }
-
   let to_dyn { id; name = _; session_id = _ } = Id.to_dyn id
-
   let name t = t.name
-
   let compare x y = Id.compare x.id y.id
 end
 
@@ -94,9 +90,7 @@ module Session = struct
       | Initialized { closed; _ } -> closed
 
     let id t = t.id
-
     let send t packets = t.send packets
-
     let compare x y = Id.compare x.id y.id
 
     let dyn_of_state f =
@@ -128,25 +122,15 @@ module Session = struct
     }
 
   let get t = Stage1.get t.base
-
   let set t = Stage1.set t.base
-
   let active t = Stage1.active t.base
-
   let initialize t = Stage1.initialize t.base
-
   let close t = Stage1.close t.base
-
   let request_close t = Stage1.request_close t.base
-
   let closed t = Stage1.closed t.base
-
   let compare x y = Stage1.compare x.base y.base
-
   let send t = Stage1.send t.base
-
   let queries t = t.base.queries
-
   let id t = t.base.id
 
   let of_stage1 base handler menu =
@@ -534,7 +518,6 @@ end
 type t = Server : 'a H.stage1 -> t
 
 let make (type a) (h : a H.Builder.t) : t = Server (H.Builder.to_handler h)
-
 let version (Server h) = h.base.version
 
 let new_session (Server handler) stats ~queries ~send =
@@ -566,7 +549,6 @@ module Make (S : sig
   type t
 
   val write : t -> Sexp.t list option -> unit Fiber.t
-
   val read : t -> Sexp.t option Fiber.t
 end) =
 struct

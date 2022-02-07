@@ -12,7 +12,6 @@ end
    To upgrade the latest version of the dune language, you need to edit the file
    in the rpc library. *)
 let latest_version = Dune_rpc_private.Version.latest
-
 let since v = (v, `Since v)
 
 let all_minors (major, minor) =

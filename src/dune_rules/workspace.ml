@@ -403,9 +403,7 @@ module Clflags = struct
       ]
 
   let t = Fdecl.create to_dyn
-
   let set v = Fdecl.set t v
-
   let t () = Fdecl.get t
 end
 

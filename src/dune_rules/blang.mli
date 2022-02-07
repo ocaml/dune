@@ -28,7 +28,6 @@ val eval :
   -> bool Memo.Build.t
 
 val to_dyn : t -> Dyn.t
-
 val decode : t Dune_lang.Decoder.t
 
 (** Resolve variables manually. For complex cases such as [enabled_if] *)

@@ -8,7 +8,6 @@ open Import
 type t
 
 val of_atoms : loc:Loc.t -> string list -> t
-
 val decode : t Dune_lang.Decoder.t
 
 (** Return the location of the set. [loc standard] returns [None] *)
@@ -45,7 +44,6 @@ val equal : t -> t -> bool
 
 module Unexpanded : sig
   type expanded = t
-
   type t
 
   val equal : t -> t -> bool
@@ -53,9 +51,7 @@ module Unexpanded : sig
   include Dune_lang.Conv.S with type t := t
 
   val encode : t -> Dune_lang.t list
-
   val standard : t
-
   val of_strings : pos:string * int * int * int -> string list -> t
 
   val include_single :
@@ -67,7 +63,6 @@ module Unexpanded : sig
     -> t Dune_lang.Decoder.fields_parser
 
   val has_special_forms : t -> bool
-
   val has_standard : t -> bool
 
   (** Expand [t] using with the given file contents. [file_contents] is a map

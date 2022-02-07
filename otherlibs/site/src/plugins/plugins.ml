@@ -19,11 +19,8 @@ let rec lookup dirs file =
 
 module type S = sig
   val paths : string list
-
   val list : unit -> string list
-
   val load_all : unit -> unit
-
   val load : string -> unit
 end
 
@@ -284,9 +281,7 @@ end) : S = struct
   include X
 
   let list () = List.sort String.compare (readdir paths)
-
   let load name = load_plugin paths name
-
   let load_all () = List.iter load (list ())
 end
 

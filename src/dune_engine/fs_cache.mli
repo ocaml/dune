@@ -26,7 +26,6 @@ module Update_result : sig
   val empty : t
 
   val combine : t -> t -> t
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -47,7 +46,6 @@ module Reduced_stats : sig
     }
 
   val of_unix_stats : Unix.stats -> t
-
   val equal : t -> t -> bool
 end
 
@@ -58,7 +56,6 @@ module Dir_contents : sig
   val to_list : t -> (string * File_kind.t) list
 
   val iter : t -> f:(string * File_kind.t -> unit) -> unit
-
   val equal : t -> t -> bool
 end
 
@@ -69,9 +66,7 @@ end
     See [fs_memo.ml] for tracked versions of these operations. *)
 module Untracked : sig
   val path_stat : (Reduced_stats.t, Unix_error.Detailed.t) result t
-
   val file_digest : Cached_digest.Digest_result.t t
-
   val dir_contents : (Dir_contents.t, Unix_error.Detailed.t) result t
 end
 

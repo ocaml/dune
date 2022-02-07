@@ -7,8 +7,8 @@ Grep should work
   > depends: [
   >   "a"
   > ]
-  x-after: "true"
-  EOF
+  > x-after: "true"
+  > EOF
   $ cat multi-line.opam
 
 Grep should not fail

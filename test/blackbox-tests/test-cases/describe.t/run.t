@@ -27,11 +27,61 @@ Setup
   >  (name main)
   >  (libraries foo_x foo)
   >  (modules main))
+  > 
+  > (library
+  >   (name bar)
+  >   (preprocess (pps ppx_inline_test))
+  >   (modules bar bar2))
+  > 
+  > (executable
+  >  (name main2)
+  >  (libraries foo_x foo)
+  >  (modules main2 main2_aux1 main2_aux2 main2_aux3 main2_aux4)
+  >  (modules_without_implementation main2_aux4))
   > EOF
 
   $ touch foo.ml
   $ touch foo_x.ml
   $ touch main.ml
+
+  $ cat >bar.ml <<EOF
+  > let x = Bar2.x
+  > let%test _ = (x = 42)
+  > EOF
+
+  $ cat >bar2.ml <<EOF
+  > let x = 42
+  > EOF
+
+  $ cat >main2.ml <<EOF
+  > let x = Main2_aux1.x
+  > EOF
+
+  $ cat >main2_aux1.ml <<EOF
+  > let x = Main2_aux2.x
+  > let y : Main2_aux4.t = Main2_aux2.x
+  > EOF
+
+  $ cat >main2_aux1.mli <<EOF
+  > val x: Main2_aux3.t
+  > val y: Main2_aux4.t
+  > EOF
+
+  $ cat >main2_aux2.ml <<EOF
+  > let x = 0
+  > EOF
+
+  $ cat >main2_aux3.ml <<EOF
+  > type t = int
+  > EOF
+
+  $ cat >main2_aux3.mli <<EOF
+  > type t = int
+  > EOF
+
+  $ cat >main2_aux4.mli <<EOF
+  > type t = int
+  > EOF
 
 Describe various things
 -----------------------
@@ -48,6 +98,65 @@ Describe various things
         (cmt (_build/default/.main.eobjs/byte/dune__exe__Main.cmt))
         (cmti ()))))
      (include_dirs (_build/default/.main.eobjs/byte))))
+   (executables
+    ((names (main2))
+     (requires
+      (c17373aee51bab94097b4b7818553cf3 5dd4bd87ad37b4f5713085aff4bee9c9))
+     (modules
+      (((name Main2_aux4)
+        (impl ())
+        (intf (_build/default/main2_aux4.mli))
+        (cmt ())
+        (cmti (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux4.cmti)))
+       ((name Main2_aux3)
+        (impl (_build/default/main2_aux3.ml))
+        (intf (_build/default/main2_aux3.mli))
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux3.cmt))
+        (cmti (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux3.cmti)))
+       ((name Main2_aux2)
+        (impl (_build/default/main2_aux2.ml))
+        (intf ())
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux2.cmt))
+        (cmti ()))
+       ((name Main2_aux1)
+        (impl (_build/default/main2_aux1.ml))
+        (intf (_build/default/main2_aux1.mli))
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux1.cmt))
+        (cmti (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux1.cmti)))
+       ((name Main2)
+        (impl (_build/default/main2.ml))
+        (intf ())
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe__Main2.cmt))
+        (cmti ()))
+       ((name Dune__exe)
+        (impl (_build/default/.main2.eobjs/dune__exe.ml-gen))
+        (intf ())
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.main2.eobjs/byte))))
+   (library
+    ((name bar)
+     (uid 97586d5adea44246d88d31b0f6e340ed)
+     (local true)
+     (requires (b13e404f0f2441ffa82284dcf008c3ea))
+     (source_dir _build/default)
+     (modules
+      (((name Bar2)
+        (impl (_build/default/bar2.ml))
+        (intf ())
+        (cmt (_build/default/.bar.objs/byte/bar__Bar2.cmt))
+        (cmti ()))
+       ((name Bar)
+        (impl (_build/default/bar.ml))
+        (intf ())
+        (cmt (_build/default/.bar.objs/byte/bar.cmt))
+        (cmti ()))
+       ((name Bar__)
+        (impl (_build/default/bar__.ml-gen))
+        (intf ())
+        (cmt (_build/default/.bar.objs/byte/bar__.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.bar.objs/byte))))
    (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
@@ -73,7 +182,162 @@ Describe various things
         (intf ())
         (cmt (_build/default/.foo_x.objs/byte/foo_x.cmt))
         (cmti ()))))
-     (include_dirs (_build/default/.foo_x.objs/byte)))))
+     (include_dirs (_build/default/.foo_x.objs/byte))))
+   (library
+    ((name ppx_inline_test.runtime-lib)
+     (uid b13e404f0f2441ffa82284dcf008c3ea)
+     (local false)
+     (requires
+      (044a84a512a8cdf58b1ed9e92494d2ec
+       57f07ff97d4e072bff92dfb4e9b7b8bd
+       9b92cba59819bd732b556f904a49c39d))
+     (source_dir /home/bmontagu/.opam/4.13.1/lib/ppx_inline_test/runtime-lib)
+     (modules ())
+     (include_dirs
+      (/home/bmontagu/.opam/4.13.1/lib/ppx_inline_test/runtime-lib)))))
+
+  $ dune describe workspace --lang 0.1 --with-deps
+  ((executables
+    ((names (main))
+     (requires
+      (c17373aee51bab94097b4b7818553cf3 5dd4bd87ad37b4f5713085aff4bee9c9))
+     (modules
+      (((name Main)
+        (impl (_build/default/main.ml))
+        (intf ())
+        (cmt (_build/default/.main.eobjs/byte/dune__exe__Main.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/.main.eobjs/byte))))
+   (executables
+    ((names (main2))
+     (requires
+      (c17373aee51bab94097b4b7818553cf3 5dd4bd87ad37b4f5713085aff4bee9c9))
+     (modules
+      (((name Main2_aux4)
+        (impl ())
+        (intf (_build/default/main2_aux4.mli))
+        (cmt ())
+        (cmti (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux4.cmti))
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Main2_aux3)
+        (impl (_build/default/main2_aux3.ml))
+        (intf (_build/default/main2_aux3.mli))
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux3.cmt))
+        (cmti (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux3.cmti))
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Main2_aux2)
+        (impl (_build/default/main2_aux2.ml))
+        (intf ())
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux2.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Main2_aux1)
+        (impl (_build/default/main2_aux1.ml))
+        (intf (_build/default/main2_aux1.mli))
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux1.cmt))
+        (cmti (_build/default/.main2.eobjs/byte/dune__exe__Main2_aux1.cmti))
+        (module_deps
+         ((for_intf
+           (Main2_aux3 Main2_aux4))
+          (for_impl
+           (Main2_aux2 Main2_aux4)))))
+       ((name Main2)
+        (impl (_build/default/main2.ml))
+        (intf ())
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe__Main2.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl (Main2_aux1)))))
+       ((name Dune__exe)
+        (impl (_build/default/.main2.eobjs/dune__exe.ml-gen))
+        (intf ())
+        (cmt (_build/default/.main2.eobjs/byte/dune__exe.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/.main2.eobjs/byte))))
+   (library
+    ((name bar)
+     (uid 97586d5adea44246d88d31b0f6e340ed)
+     (local true)
+     (requires (b13e404f0f2441ffa82284dcf008c3ea))
+     (source_dir _build/default)
+     (modules
+      (((name Bar2)
+        (impl (_build/default/bar2.ml))
+        (intf ())
+        (cmt (_build/default/.bar.objs/byte/bar__Bar2.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Bar)
+        (impl (_build/default/bar.ml))
+        (intf ())
+        (cmt (_build/default/.bar.objs/byte/bar.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl (Bar2)))))
+       ((name Bar__)
+        (impl (_build/default/bar__.ml-gen))
+        (intf ())
+        (cmt (_build/default/.bar.objs/byte/bar__.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/.bar.objs/byte))))
+   (library
+    ((name foo)
+     (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
+     (local true)
+     (requires (c17373aee51bab94097b4b7818553cf3))
+     (source_dir _build/default)
+     (modules
+      (((name Foo)
+        (impl (_build/default/foo.ml))
+        (intf ())
+        (cmt (_build/default/.foo.objs/byte/foo.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/.foo.objs/byte))))
+   (library
+    ((name foo.x)
+     (uid c17373aee51bab94097b4b7818553cf3)
+     (local true)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+      (((name Foo_x)
+        (impl (_build/default/foo_x.ml))
+        (intf ())
+        (cmt (_build/default/.foo_x.objs/byte/foo_x.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/.foo_x.objs/byte))))
+   (library
+    ((name ppx_inline_test.runtime-lib)
+     (uid b13e404f0f2441ffa82284dcf008c3ea)
+     (local false)
+     (requires
+      (044a84a512a8cdf58b1ed9e92494d2ec
+       57f07ff97d4e072bff92dfb4e9b7b8bd
+       9b92cba59819bd732b556f904a49c39d))
+     (source_dir /home/bmontagu/.opam/4.13.1/lib/ppx_inline_test/runtime-lib)
+     (modules ())
+     (include_dirs
+      (/home/bmontagu/.opam/4.13.1/lib/ppx_inline_test/runtime-lib)))))
+
 
 Test other formats
 ------------------

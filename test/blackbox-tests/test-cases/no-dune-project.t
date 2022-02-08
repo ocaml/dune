@@ -5,12 +5,14 @@ When no dune-project file is present, a warning is printed.
   Warning: No dune-project file has been found. A default one is assumed but
   the project might break when dune is upgraded. Please create a dune-project
   file.
+  Hint: generate the project file with: $ dune init project <name>
 
 In release mode, this is fatal.
 
   $ dune build --release
   Error: No dune-project file has been found. A default one is assumed but the
   project might break when dune is upgraded. Please create a dune-project file.
+  Hint: generate the project file with: $ dune init project <name>
   [1]
 
 This corresponds to a flag:
@@ -18,6 +20,7 @@ This corresponds to a flag:
   $ dune build --require-dune-project-file
   Error: No dune-project file has been found. A default one is assumed but the
   project might break when dune is upgraded. Please create a dune-project file.
+  Hint: generate the project file with: $ dune init project <name>
   [1]
 
 Test case: warning should be emitted
@@ -28,6 +31,7 @@ Test case: warning should be emitted
   Warning: No dune-project file has been found. A default one is assumed but
   the project might break when dune is upgraded. Please create a dune-project
   file.
+  Hint: generate the project file with: $ dune init project <name>
   $ cd ..
 
 Test case: warning should not be emitted

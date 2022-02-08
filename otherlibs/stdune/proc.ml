@@ -20,8 +20,7 @@ let restore_cwd_and_execve prog argv ~env =
   else (
     ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
     Stdlib.do_at_exit ();
-    Unix.execve prog argv env
-  )
+    Unix.execve prog argv env)
 
 module Resource_usage = struct
   type t =
@@ -51,8 +50,7 @@ external stub_wait3 :
   = "dune_wait3"
 
 let wait flags =
-  if Sys.win32 then
-    Code_error.raise "wait3 not available on windows" []
+  if Sys.win32 then Code_error.raise "wait3 not available on windows" []
   else
     let pid, status, end_time, resource_usage = stub_wait3 flags in
     { Process_info.pid = Pid.of_int pid

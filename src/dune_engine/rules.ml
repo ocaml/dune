@@ -99,11 +99,7 @@ module Dir_rules = struct
 
     type nonrec t = t
 
-    let create t =
-      if is_empty t then
-        None
-      else
-        Some t
+    let create t = if is_empty t then None else Some t
 
     let union = union
 
@@ -135,10 +131,8 @@ let singleton_rule (rule : Rule.t) =
 let implicit_output = Memo.Implicit_output.add (module T)
 
 let produce rules =
-  if Path.Build.Map.is_empty rules then
-    Memo.Build.return ()
-  else
-    Memo.Implicit_output.produce implicit_output rules
+  if Path.Build.Map.is_empty rules then Memo.Build.return ()
+  else Memo.Implicit_output.produce implicit_output rules
 
 module Produce = struct
   let rule rule = produce (singleton_rule rule)

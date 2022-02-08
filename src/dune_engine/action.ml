@@ -85,9 +85,7 @@ include Monoid.Make (struct
 
   let combine a b =
     match (a, b) with
-    | Progn [], x
-    | x, Progn [] ->
-      x
+    | Progn [], x | x, Progn [] -> x
     | Progn xs, Progn ys -> Progn (xs @ ys)
     | x, y -> Progn [ x; y ]
 end)
@@ -143,11 +141,8 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_in (_, _, t)
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t)
-  | No_infer t ->
-    f acc t
-  | Progn l
-  | Pipe (_, l) ->
-    List.fold_left l ~init:acc ~f
+  | No_infer t -> f acc t
+  | Progn l | Pipe (_, l) -> List.fold_left l ~init:acc ~f
   | Run _
   | Dynamic_run _
   | Echo _
@@ -165,8 +160,7 @@ let fold_one_step t ~init:acc ~f =
   | Diff _
   | Merge_files_into _
   | Cram _
-  | Format_dune_file _ ->
-    acc
+  | Format_dune_file _ -> acc
 
 include Action_mapper.Make (Ast) (Ast)
 
@@ -191,11 +185,8 @@ let rec is_dynamic = function
   | Redirect_in (_, _, t)
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t)
-  | No_infer t ->
-    is_dynamic t
-  | Progn l
-  | Pipe (_, l) ->
-    List.exists l ~f:is_dynamic
+  | No_infer t -> is_dynamic t
+  | Progn l | Pipe (_, l) -> List.exists l ~f:is_dynamic
   | Run _
   | System _
   | Bash _
@@ -212,8 +203,7 @@ let rec is_dynamic = function
   | Mkdir _
   | Merge_files_into _
   | Cram _
-  | Format_dune_file _ ->
-    false
+  | Format_dune_file _ -> false
 
 let maybe_sandbox_path sandbox p =
   match Path.as_in_build_dir p with
@@ -238,13 +228,8 @@ let is_useful_to distribute memoize =
     | Setenv (_, _, t) -> loop t
     | Redirect_out (_, _, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
-    | Ignore (_, t)
-    | With_accepted_exit_codes (_, t)
-    | No_infer t ->
-      loop t
-    | Progn l
-    | Pipe (_, l) ->
-      List.exists l ~f:loop
+    | Ignore (_, t) | With_accepted_exit_codes (_, t) | No_infer t -> loop t
+    | Progn l | Pipe (_, l) -> List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> memoize
     | Copy _ -> memoize
@@ -257,9 +242,7 @@ let is_useful_to distribute memoize =
     | Diff _ -> distribute
     | Mkdir _ -> false
     | Merge_files_into _ -> distribute
-    | Cram _
-    | Run _ ->
-      true
+    | Cram _ | Run _ -> true
     | Dynamic_run _ -> true
     | System _ -> true
     | Bash _ -> true

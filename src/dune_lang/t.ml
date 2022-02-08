@@ -7,10 +7,7 @@ type t =
   | Template of Template.t
 
 let atom_or_quoted_string s =
-  if Atom.is_valid s then
-    Atom (Atom.of_string s)
-  else
-    Quoted_string s
+  if Atom.is_valid s then Atom (Atom.of_string s) else Quoted_string s
 
 let atom s = Atom (Atom.of_string s)
 
@@ -45,9 +42,8 @@ module Deprecated = struct
         Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (Escape.escaped first);
         List.iter rest ~f:(fun s ->
             Format.fprintf ppf "@,\\n%s" (Escape.escaped s));
-        Format.fprintf ppf "@}\"@]"
-    ) else
-      Format.pp_print_string ppf (Escape.quoted s)
+        Format.fprintf ppf "@}\"@]")
+    else Format.pp_print_string ppf (Escape.quoted s)
 
   let rec pp_split_strings ppf = function
     | Atom (A s) -> Format.pp_print_string ppf s

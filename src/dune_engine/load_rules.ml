@@ -134,8 +134,7 @@ let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
   let loc =
     match rule.info with
     | From_dune_file loc -> loc
-    | Internal
-    | Source_file_copy _ ->
+    | Internal | Source_file_copy _ ->
       let dir =
         match Path.Build.drop_build_context dir with
         | None -> Path.build dir
@@ -167,8 +166,7 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
     ]
     ~hints:
       (match (rule.info, rule'.info) with
-      | Source_file_copy _, _
-      | _, Source_file_copy _ ->
+      | Source_file_copy _, _ | _, Source_file_copy _ ->
         [ Pp.textf "rm -f %s"
             (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
         ]
@@ -227,8 +225,7 @@ let no_rule_found ~loc fn =
   match Dpath.analyse_target fn with
   | Other _ -> fail fn ~loc
   | Regular (ctx, _) ->
-    if Context_name.Map.mem contexts ctx then
-      fail fn ~loc
+    if Context_name.Map.mem contexts ctx then fail fn ~loc
     else
       User_error.raise
         [ Pp.textf "Trying to build %s but build context %s doesn't exist."
@@ -237,8 +234,7 @@ let no_rule_found ~loc fn =
         ]
         ~hints:(hints ctx)
   | Install (ctx, _) ->
-    if Context_name.Map.mem contexts ctx then
-      fail fn ~loc
+    if Context_name.Map.mem contexts ctx then fail fn ~loc
     else
       User_error.raise
         [ Pp.textf
@@ -248,8 +244,7 @@ let no_rule_found ~loc fn =
         ]
         ~hints:(hints ctx)
   | Alias (ctx, fn') ->
-    if Context_name.Map.mem contexts ctx then
-      fail fn ~loc
+    if Context_name.Map.mem contexts ctx then fail fn ~loc
     else
       let fn =
         Path.append_source (Path.build (Context_name.build_dir ctx)) fn'
@@ -359,9 +354,7 @@ end = struct
     Path.Build.Map.iter2 by_file_targets by_directory_targets
       ~f:(fun target rule1 rule2 ->
         match (rule1, rule2) with
-        | None, _
-        | _, None ->
-          ()
+        | None, _ | _, None -> ()
         | Some rule1, Some rule2 -> report_rule_conflict target rule1 rule2);
     { Loaded.by_file_targets; by_directory_targets }
 
@@ -413,10 +406,7 @@ end = struct
   let filter_out_fallback_rules ~to_copy rules =
     List.filter rules ~f:(fun (rule : Rule.t) ->
         match rule.mode with
-        | Standard
-        | Promote _
-        | Ignore_source_files ->
-          true
+        | Standard | Promote _ | Ignore_source_files -> true
         | Fallback ->
           let source_files_for_targets =
             if not (Path.Build.Set.is_empty rule.targets.dirs) then
@@ -430,14 +420,12 @@ end = struct
             |> Path.Source.Set.of_list
           in
           if Path.Source.Set.is_subset source_files_for_targets ~of_:to_copy
-          then
-            (* All targets are present *)
+          then (* All targets are present *)
             false
           else if
             Path.Source.Set.is_empty
               (Path.Source.Set.inter source_files_for_targets to_copy)
-          then
-            (* No target is present *)
+          then (* No target is present *)
             true
           else
             let absent_targets =
@@ -481,10 +469,7 @@ end = struct
 
     let corresponding_source_dir ~dir =
       match Dpath.analyse_target dir with
-      | Install _
-      | Alias _
-      | Anonymous_action _
-      | Other _ ->
+      | Install _ | Alias _ | Anonymous_action _ | Other _ ->
         Memo.Build.return None
       | Regular (_ctx, sub_dir) -> Source_tree.find_dir sub_dir
 
@@ -495,8 +480,7 @@ end = struct
 
     let allowed_dirs ~dir ~subdir : restriction Memo.Build.t =
       let+ subdirs = source_subdirs_of_build_dir ~dir in
-      if String.Set.mem subdirs subdir then
-        Unrestricted
+      if String.Set.mem subdirs subdir then Unrestricted
       else
         Restricted
           (Memo.Lazy.create ~name:"allowed_dirs" (fun () ->
@@ -646,9 +630,7 @@ end = struct
             in
             ( Path.Build.Set.union acc_files target_files
             , String.Set.union acc_dirnames target_dirnames )
-          | Standard
-          | Fallback ->
-            (acc_files, acc_dirnames))
+          | Standard | Fallback -> (acc_files, acc_dirnames))
     in
     (* Take into account the source files *)
     let* to_copy, source_dirs =
@@ -674,8 +656,7 @@ end = struct
           Path.Source.Set.diff files source_files_to_ignore
         in
         let subdirs = String.Set.diff subdirs source_dirnames_to_ignore in
-        if Path.Source.Set.is_empty files then
-          (None, subdirs)
+        if Path.Source.Set.is_empty files then (None, subdirs)
         else
           let ctx_path = Context_name.build_dir context_name in
           (Some (ctx_path, files), subdirs)
@@ -904,10 +885,8 @@ let is_target file =
           match Path.Set.mem directory_targets file' with
           | true ->
             Memo.Build.return
-              (if Path.equal file file' then
-                Yes Directory
-              else
-                Under_directory_target_so_cannot_say)
+              (if Path.equal file file' then Yes Directory
+              else Under_directory_target_so_cannot_say)
           | false -> loop dir)
       in
       loop file)

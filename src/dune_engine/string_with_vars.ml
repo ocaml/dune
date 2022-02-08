@@ -186,33 +186,19 @@ type yes_no_unknown =
 
 let is_suffix t ~suffix:want =
   match known_suffix t with
-  | Full s ->
-    if String.is_suffix ~suffix:want s then
-      Yes
-    else
-      No
+  | Full s -> if String.is_suffix ~suffix:want s then Yes else No
   | Partial { suffix = have; source_pform } ->
-    if String.is_suffix ~suffix:want have then
-      Yes
-    else if String.is_suffix ~suffix:have want then
-      Unknown { source_pform }
-    else
-      No
+    if String.is_suffix ~suffix:want have then Yes
+    else if String.is_suffix ~suffix:have want then Unknown { source_pform }
+    else No
 
 let is_prefix t ~prefix:want =
   match known_prefix t with
-  | Full s ->
-    if String.is_prefix ~prefix:want s then
-      Yes
-    else
-      No
+  | Full s -> if String.is_prefix ~prefix:want s then Yes else No
   | Partial { prefix = have; source_pform } ->
-    if String.is_prefix ~prefix:want have then
-      Yes
-    else if String.is_prefix ~prefix:have want then
-      Unknown { source_pform }
-    else
-      No
+    if String.is_prefix ~prefix:want have then Yes
+    else if String.is_prefix ~prefix:have want then Unknown { source_pform }
+    else No
 
 module type Expander = sig
   type 'a app
@@ -255,10 +241,8 @@ struct
               raise (User_error.E msg)
             | Pform (source, p) ->
               let+ v = f ~source p in
-              if t.quoted then
-                Value.L.concat v ~dir
-              else
-                Value.to_string ~dir (Mode.value Single v ~source)))
+              if t.quoted then Value.L.concat v ~dir
+              else Value.to_string ~dir (Mode.value Single v ~source)))
       in
       Mode.string mode (String.concat chunks ~sep:"")
 
@@ -267,26 +251,19 @@ struct
       A.all
         (List.map t.parts ~f:(fun part ->
              match part with
-             | Text _
-             | Error _ ->
-               A.return part
+             | Text _ | Error _ -> A.return part
              | Pform (source, p) -> (
                let+ v = f ~source p in
                match v with
                | None -> part
                | Some v ->
                  Text
-                   (if t.quoted then
-                     Value.L.concat v ~dir
-                   else
-                     Value.to_string ~dir (Mode.value Single v ~source)))))
+                   (if t.quoted then Value.L.concat v ~dir
+                   else Value.to_string ~dir (Mode.value Single v ~source)))))
     in
     let commit_text acc_text acc =
       let s = concat_rev acc_text in
-      if s = "" then
-        acc
-      else
-        Text s :: acc
+      if s = "" then acc else Text s :: acc
     in
     (* This pass merges all consecutive [Text] constructors *)
     let rec loop acc_text acc items =

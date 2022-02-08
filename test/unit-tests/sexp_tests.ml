@@ -32,8 +32,7 @@ let () =
            - Dune_lang.Atom.is_valid s = %B\n\
            - parser_recognizes_as_atom = %B\n"
           s valid_dune_atom parser_recognizes_as_atom;
-        exit 1
-      );
+        exit 1);
       if printed_as_atom && not parser_recognizes_as_atom then (
         Printf.eprintf
           "Dune_lang.Atom.atom_or_quoted_string error:\n\
@@ -41,7 +40,6 @@ let () =
            - printed_as_atom = %B\n\
            - parser_recognizes_as_atom = %B\n"
           s printed_as_atom parser_recognizes_as_atom;
-        exit 1
-      )
+        exit 1)
     done
   done

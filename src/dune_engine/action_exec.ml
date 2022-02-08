@@ -93,9 +93,7 @@ type exec_environment =
 
 let validate_context_and_prog context prog =
   match context with
-  | None
-  | Some { Build_context.host = None; _ } ->
-    ()
+  | None | Some { Build_context.host = None; _ } -> ()
   | Some ({ Build_context.host = Some host; _ } as target) ->
     let target_name = Context_name.to_string target.name in
     let invalid_prefix prefix =
@@ -274,8 +272,7 @@ let rec exec t ~ectx ~eenv =
     Path.rm_rf (Path.build path);
     Fiber.return Done
   | Mkdir path ->
-    if Path.is_in_build_dir path then
-      Path.mkdir_p path
+    if Path.is_in_build_dir path then Path.mkdir_p path
     else
       Code_error.raise "Action_exec.exec: mkdir on non build dir"
         [ ("path", Path.to_dyn path) ];
@@ -283,13 +280,13 @@ let rec exec t ~ectx ~eenv =
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
       if optional then
-        try Path.unlink (Path.build file2) with
-        | Unix.Unix_error (ENOENT, _, _) -> ()
+        try Path.unlink (Path.build file2)
+        with Unix.Unix_error (ENOENT, _, _) -> ()
     in
     if Diff.eq_files diff then (
       remove_intermediate_file ();
-      Fiber.return Done
-    ) else
+      Fiber.return Done)
+    else
       let is_copied_from_source_tree file =
         match Path.extract_build_context_dir_maybe_sandboxed file with
         | None -> false
@@ -311,9 +308,8 @@ let rec exec t ~ectx ~eenv =
                 { Diff_promotion.Annot.in_source = source_file
                 ; in_build =
                     (if optional && in_source_or_target then
-                      Diff_promotion.File.in_staging_area source_file
-                    else
-                      file2)
+                     Diff_promotion.File.in_staging_area source_file
+                    else file2)
                 }
             in
             if mode = Binary then
@@ -340,8 +336,7 @@ let rec exec t ~ectx ~eenv =
               if in_source_or_target then
                 Diff_promotion.File.register_intermediate ~source_file
                   ~correction_file:file2
-              else
-                remove_intermediate_file ());
+              else remove_intermediate_file ());
             Fiber.return ())
       in
       Done
@@ -368,7 +363,8 @@ let rec exec t ~ectx ~eenv =
       Fdecl.get
         cram_run
         (* We don't pass cwd because Cram_exec will use the script's dir to
-           run *) ~env:eenv.env ~script
+           run *)
+        ~env:eenv.env ~script
     in
     Done
 

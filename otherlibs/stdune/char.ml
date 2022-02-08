@@ -5,7 +5,5 @@ let is_digit = function
   | _non_digit_char -> false
 
 let is_lowercase_hex = function
-  | '0' .. '9'
-  | 'a' .. 'f' ->
-    true
+  | '0' .. '9' | 'a' .. 'f' -> true
   | _non_lowercase_hex_char -> false

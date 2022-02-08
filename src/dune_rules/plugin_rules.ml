@@ -36,13 +36,10 @@ let setup_rules ~sctx ~dir t =
 
 let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =
   let* skip_files =
-    if t.optional then
-      Resolve.Build.is_error (resolve_libs ~sctx t)
-    else
-      Memo.Build.return false
+    if t.optional then Resolve.Build.is_error (resolve_libs ~sctx t)
+    else Memo.Build.return false
   in
-  if skip_files then
-    Memo.Build.return []
+  if skip_files then Memo.Build.return []
   else
     let meta = meta_file ~dir t in
     let+ entry =

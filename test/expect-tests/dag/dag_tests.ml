@@ -33,8 +33,7 @@ let%expect_test _ =
   try
     add_assuming_missing node41 root;
     print_endline "no cycle"
-  with
-  | Cycle cycle ->
+  with Cycle cycle ->
     print_endline "cycle:";
     let cycle = List.map cycle ~f:name in
     List.map ~f:Pp.text cycle |> Pp.concat ~sep:Pp.space |> print;
@@ -54,9 +53,7 @@ let%expect_test _ =
 
 let rec adjacent_pairs l =
   match l with
-  | []
-  | [ _ ] ->
-    []
+  | [] | [ _ ] -> []
   | x :: y :: rest -> (x, y) :: adjacent_pairs (y :: rest)
 
 let cycle_test variant =

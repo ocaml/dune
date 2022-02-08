@@ -5,12 +5,7 @@ let printf = Printf.printf
 
 let test glob s ~expect =
   let res = Glob.test glob s in
-  let status =
-    if res = expect then
-      "pass"
-    else
-      "fail"
-  in
+  let status = if res = expect then "pass" else "fail" in
   printf "[%s] %S matches %S == %b" status (Glob.to_string glob) s res
 
 let%expect_test _ =

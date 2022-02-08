@@ -58,23 +58,14 @@ let default_build_command =
 ]
 |}))
   and from_3_0 ~with_subst ~with_sites =
-    let subst =
-      if with_subst then
-        {|  [ "dune" "subst" ] {dev} |}
-      else
-        ""
-    in
+    let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
     let promote_install_files =
-      if with_sites then
-        {|  "--promote-install-files=false" |}
-      else
-        ""
+      if with_sites then {|  "--promote-install-files=false" |} else ""
     in
     let install =
       if with_sites then
         {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
-      else
-        ""
+      else ""
     in
     lazy
       (Opam_file.parse_value
@@ -95,14 +86,11 @@ let default_build_command =
   in
   fun project ->
     Lazy.force
-      (if Dune_project.dune_version project < (1, 11) then
-        before_1_11
+      (if Dune_project.dune_version project < (1, 11) then before_1_11
       else if Dune_project.dune_version project < (2, 7) then
         from_1_11_before_2_7
-      else if Dune_project.dune_version project < (2, 9) then
-        from_2_7
-      else if Dune_project.dune_version project < (3, 0) then
-        from_2_9
+      else if Dune_project.dune_version project < (2, 9) then from_2_7
+      else if Dune_project.dune_version project < (3, 0) then from_2_9
       else
         from_3_0
           ~with_subst:
@@ -127,12 +115,7 @@ let package_fields
     ; allow_empty = _
     } ~project =
   let open Opam_file.Create in
-  let tags =
-    if tags = [] then
-      []
-    else
-      [ ("tags", string_list tags) ]
-  in
+  let tags = if tags = [] then [] else [ ("tags", string_list tags) ] in
   let optional =
     [ ("synopsis", synopsis); ("description", description) ]
     |> List.filter_map ~f:(fun (k, v) ->
@@ -150,10 +133,7 @@ let package_fields
   let fields = [ optional; dep_fields ] in
   let fields =
     let dune_version = Dune_project.dune_version project in
-    if dune_version >= (2, 0) && tags <> [] then
-      tags :: fields
-    else
-      fields
+    if dune_version >= (2, 0) && tags <> [] then tags :: fields else fields
   in
   List.concat fields
 
@@ -175,8 +155,7 @@ let insert_dune_dep depends dune_version =
     | (dep : Package.Dependency.t) :: rest ->
       if Package.Name.equal dep.name dune_name then
         let dep =
-          if dune_version < (2, 6) then
-            dep
+          if dune_version < (2, 6) then dep
           else
             { dep with
               constraint_ =
@@ -187,17 +166,13 @@ let insert_dune_dep depends dune_version =
             }
         in
         List.rev_append acc (dep :: rest)
-      else
-        loop (dep :: acc) rest
+      else loop (dep :: acc) rest
   in
   loop [] depends
 
 let rec already_requires_odoc : Package.Dependency.Constraint.t -> bool =
   function
-  | Bvar (Var "with-doc" | Var "build" | Var "post")
-  | Uop _
-  | Bop _ ->
-    true
+  | Bvar (Var "with-doc" | Var "build" | Var "post") | Uop _ | Bop _ -> true
   | Bvar _ -> false
   | And l -> List.for_all ~f:already_requires_odoc l
   | Or l -> List.exists ~f:already_requires_odoc l
@@ -216,8 +191,7 @@ let insert_odoc_dep depends =
       then
         (* Stop now as odoc will be required anyway *)
         List.rev_append (dep :: acc) rest
-      else
-        loop (dep :: acc) rest
+      else loop (dep :: acc) rest
   in
   loop [] depends
 
@@ -227,14 +201,12 @@ let opam_fields project (package : Package.t) =
   let package =
     if dune_version < (1, 11) || Package.Name.equal package_name dune_name then
       package
-    else
-      { package with depends = insert_dune_dep package.depends dune_version }
+    else { package with depends = insert_dune_dep package.depends dune_version }
   in
   let package =
     if dune_version < (2, 7) || Package.Name.equal package_name odoc_name then
       package
-    else
-      { package with depends = insert_odoc_dep package.depends }
+    else { package with depends = insert_odoc_dep package.depends }
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in
@@ -258,9 +230,7 @@ let opam_fields project (package : Package.t) =
     ]
     |> List.filter_map ~f:(fun (k, v) ->
            match v with
-           | None
-           | Some [] ->
-             None
+           | None | Some [] -> None
            | Some (_ :: _ as v) -> Some (k, string_list v))
   in
   let fields =
@@ -269,10 +239,8 @@ let opam_fields project (package : Package.t) =
   let fields =
     List.concat [ fields; list_fields; optional_fields; package_fields ]
   in
-  if Dune_project.dune_version project < (1, 11) then
-    fields
-  else
-    Opam_file.Create.normalise_field_order fields
+  if Dune_project.dune_version project < (1, 11) then fields
+  else Opam_file.Create.normalise_field_order fields
 
 let template_file = Path.extend_basename ~suffix:".template"
 

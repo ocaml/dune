@@ -39,8 +39,7 @@ module DB = struct
       if Lib_name.equal from to_ then
         Code_error.raise ~loc "Invalid redirect"
           [ ("to_", Lib_name.to_dyn to_) ]
-      else
-        (from, Redirect (loc, to_))
+      else (from, Redirect (loc, to_))
 
     let found x = Found x
   end
@@ -80,14 +79,10 @@ module DB = struct
                 match (v1, v2) with
                 | Found info1, Found info2 ->
                   Error (Lib_info.loc info1, Lib_info.loc info2)
-                | Found info, Redirect (loc, _)
-                | Redirect (loc, _), Found info ->
-                  Error (loc, Lib_info.loc info)
+                | Found info, Redirect (loc, _) | Redirect (loc, _), Found info
+                  -> Error (loc, Lib_info.loc info)
                 | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
-                  if Lib_name.equal lib1 lib2 then
-                    Ok v1
-                  else
-                    Error (loc1, loc2)
+                  if Lib_name.equal lib1 lib2 then Ok v1 else Error (loc1, loc2)
               in
               match res with
               | Ok x -> x
@@ -147,9 +142,7 @@ module DB = struct
           match stanza with
           | Library (_, { project; visibility = Public p; _ }) ->
             Some (Dune_file.Public_lib.name p, Project project)
-          | Library _
-          | Library_redirect _ ->
-            None
+          | Library _ | Library_redirect _ -> None
           | Deprecated_library_name s ->
             let old_name =
               Dune_file.Deprecated_library_name.old_public_name s
@@ -169,9 +162,7 @@ module DB = struct
                 named (Dune_file.Public_lib.name p) loc
               | _ -> None)
         with
-        | []
-        | [ _ ] ->
-          assert false
+        | [] | [ _ ] -> assert false
         | loc1 :: loc2 :: _ ->
           User_error.raise
             [ Pp.textf "Public library %s is defined twice:"

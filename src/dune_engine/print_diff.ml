@@ -65,10 +65,7 @@ let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
         | None -> fallback ())
     in
     let args =
-      if skip_trailing_cr then
-        args @ [ skip_trailing_cr_arg ]
-      else
-        args
+      if skip_trailing_cr then args @ [ skip_trailing_cr_arg ] else args
     in
     let args = args @ files in
     let* () = run_process ~dir path args in
@@ -86,16 +83,14 @@ let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
     let* () = run_process sh [ arg; cmd ] in
     User_error.raise ~loc ~annots
       [ Pp.textf "command reported no differences: %s"
-          (if Path.is_root dir then
-            cmd
+          (if Path.is_root dir then cmd
           else
             sprintf "cd %s && %s"
               (String.quote_for_shell (Path.to_string dir))
               cmd)
       ]
   | None -> (
-    if Config.inside_dune then
-      fallback ()
+    if Config.inside_dune then fallback ()
     else
       match Bin.which ~path:(Env.path Env.initial) "patdiff" with
       | None -> normal_diff ()
@@ -103,10 +98,8 @@ let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
         let* () =
           run_process prog
             ([ "-keep-whitespace"; "-location-style"; "omake" ]
-            @ (if Lazy.force Ansi_color.stderr_supports_color then
-                []
-              else
-                [ "-ascii" ])
+            @ (if Lazy.force Ansi_color.stderr_supports_color then []
+              else [ "-ascii" ])
             @ [ file1; file2 ])
             ~purpose:
               ((* Because of the [-location-style omake], patdiff will print the

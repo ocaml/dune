@@ -71,10 +71,8 @@ module Make (D : Desc) = struct
                      ]);
                 None
               | d -> Some d
-            else
-              None)
-    else
-      None
+            else None)
+    else None
 end
 
 type t = T : (module Desc with type t = 'a) * 'a -> t
@@ -83,8 +81,7 @@ let load_exn path =
   Io.with_file_in path ~f:(fun ic ->
       let buf = Buffer.create max_magic_length in
       let rec read_magic n =
-        if n = max_magic_length then
-          None
+        if n = max_magic_length then None
         else
           match Stdlib.input_char ic with
           | exception End_of_file -> None

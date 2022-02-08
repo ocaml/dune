@@ -15,10 +15,7 @@ type program_name_kind =
   | Absolute
 
 let analyze_program_name fn =
-  if not (is_relative fn) then
-    Absolute
+  if not (is_relative fn) then Absolute
   else if String.contains fn '/' || (Stdlib.Sys.win32 && String.contains fn '\\')
-  then
-    Relative_to_current_dir
-  else
-    In_path
+  then Relative_to_current_dir
+  else In_path

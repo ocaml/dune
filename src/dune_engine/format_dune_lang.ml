@@ -7,10 +7,8 @@ type dune_file =
   | Sexps of Dune_lang.Cst.t list
 
 let parse_lexbuf lb =
-  if Dune_lexer.is_script lb then
-    OCaml_syntax (Loc.of_lexbuf lb)
-  else
-    Sexps (Dune_lang.Parser.parse lb ~mode:Cst)
+  if Dune_lexer.is_script lb then OCaml_syntax (Loc.of_lexbuf lb)
+  else Sexps (Dune_lang.Parser.parse lb ~mode:Cst)
 
 let parse_file path_opt =
   match path_opt with
@@ -20,15 +18,9 @@ let parse_file path_opt =
 let can_be_displayed_wrapped =
   List.for_all ~f:(fun (c : Dune_lang.Cst.t) ->
       match c with
-      | Atom _
-      | Quoted_string _
-      | Template _
-      | List (_, [])
-      | List (_, [ _ ]) ->
-        true
-      | List _
-      | Comment _ ->
-        false)
+      | Atom _ | Quoted_string _ | Template _ | List (_, []) | List (_, [ _ ])
+        -> true
+      | List _ | Comment _ -> false)
 
 let pp_simple t =
   Dune_lang.Cst.abstract t |> Option.value_exn |> Dune_lang.Ast.remove_locs
@@ -38,19 +30,14 @@ let print_wrapped_list ~version x =
   let inner = Pp.concat_map ~sep:Pp.space ~f:pp_simple x in
   if version < (2, 8) then
     Pp.char '(' ++ Pp.hovbox ~indent:1 inner ++ Pp.char ')'
-  else
-    Pp.hvbox ~indent:1 (Pp.char '(' ++ inner ++ Pp.char ')')
+  else Pp.hvbox ~indent:1 (Pp.char '(' ++ inner ++ Pp.char ')')
 
 let pp_comment_line l = Pp.char ';' ++ Pp.verbatim l
 
 let pp_comment lines =
   Pp.vbox (Pp.concat_map ~sep:Pp.cut ~f:pp_comment_line lines)
 
-let pp_break attached =
-  if attached then
-    Pp.char ' '
-  else
-    Pp.cut
+let pp_break attached = if attached then Pp.char ' ' else Pp.cut
 
 let pp_list_with_comments pp_sexp sexps =
   let rec go (l : Dune_lang.Cst.t list) =
@@ -69,10 +56,8 @@ let rec pp_sexp ~version : Dune_lang.Cst.t -> _ = function
   | (Atom _ | Quoted_string _ | Template _) as sexp -> pp_simple sexp
   | List (_, sexps) ->
     Pp.vbox ~indent:1
-      (if can_be_displayed_wrapped sexps then
-        print_wrapped_list ~version sexps
-      else
-        pp_sexp_list ~version sexps)
+      (if can_be_displayed_wrapped sexps then print_wrapped_list ~version sexps
+      else pp_sexp_list ~version sexps)
   | Comment (_, c) -> pp_comment c
 
 and pp_sexp_list ~version sexps =

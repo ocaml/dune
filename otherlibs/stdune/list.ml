@@ -30,10 +30,7 @@ let filteri l ~f =
     | [] -> []
     | x :: l ->
       let i' = succ i in
-      if f i x then
-        x :: filteri l i'
-      else
-        filteri l i'
+      if f i x then x :: filteri l i' else filteri l i'
   in
   filteri l 0
 
@@ -99,22 +96,14 @@ let findi l ~f =
   let rec findi acc l ~f =
     match l with
     | [] -> None
-    | x :: l ->
-      if f x then
-        Some (x, acc)
-      else
-        findi (acc + 1) l ~f
+    | x :: l -> if f x then Some (x, acc) else findi (acc + 1) l ~f
   in
   findi 0 l ~f
 
 let rec find l ~f =
   match l with
   | [] -> None
-  | x :: l ->
-    if f x then
-      Some x
-    else
-      find l ~f
+  | x :: l -> if f x then Some x else find l ~f
 
 let find_exn l ~f =
   match find l ~f with
@@ -155,11 +144,7 @@ let rec compare a b ~compare:f : Ordering.t =
 let rec assoc t x =
   match t with
   | [] -> None
-  | (k, v) :: t ->
-    if x = k then
-      Some v
-    else
-      assoc t x
+  | (k, v) :: t -> if x = k then Some v else assoc t x
 
 let singleton x = [ x ]
 
@@ -173,10 +158,7 @@ let physically_equal = Stdlib.( == )
 
 let init =
   let rec loop acc i n f =
-    if i = n then
-      rev acc
-    else
-      loop (f i :: acc) (i + 1) n f
+    if i = n then rev acc else loop (f i :: acc) (i + 1) n f
   in
   fun n ~f -> loop [] 0 n f
 
@@ -211,11 +193,7 @@ let unzip l =
 let rec for_all2 x y ~f =
   match (x, y) with
   | [], [] -> Ok true
-  | x :: xs, y :: ys ->
-    if f x y then
-      for_all2 xs ys ~f
-    else
-      Ok false
+  | x :: xs, y :: ys -> if f x y then for_all2 xs ys ~f else Ok false
   | _, _ -> Error `Length_mismatch
 
 let reduce xs ~f =

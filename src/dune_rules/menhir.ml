@@ -74,10 +74,7 @@ module Run (P : PARAMS) = struct
   let targets m ~cmly =
     let base = [ m ^ ".ml"; m ^ ".mli" ] in
     List.map ~f:(Path.Build.relative dir)
-      (if cmly then
-        (m ^ ".cmly") :: base
-      else
-        base)
+      (if cmly then (m ^ ".cmly") :: base else base)
 
   let sources ms = List.map ~f:source ms
 
@@ -265,14 +262,11 @@ module Run (P : PARAMS) = struct
             match String_with_vars.text_only sw with
             | Some "--only-tokens" -> (true, cmly)
             | Some "--cmly" -> (only_tokens, true)
-            | Some _
-            | None ->
-              acc))
+            | Some _ | None -> acc))
     in
     if ocaml_type_inference_disabled || not stanza.infer then
       process1 base stanza ~cmly
-    else
-      process3 base stanza ~cmly
+    else process3 base stanza ~cmly
 
   (* ------------------------------------------------------------------------ *)
   let gen_rules () = Memo.Build.sequential_iter ~f:process stanzas

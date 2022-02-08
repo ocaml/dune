@@ -142,10 +142,8 @@ module Io = struct
     | Keep_open -> flush t
     | Close_after_exec ->
       t.status <- Closed;
-      if Lazy.is_val t.channel then
-        close_channel (Lazy.force t.channel)
-      else
-        Unix.close (Lazy.force t.fd)
+      if Lazy.is_val t.channel then close_channel (Lazy.force t.channel)
+      else Unix.close (Lazy.force t.fd)
 
   let multi_use t = { t with status = Keep_open }
 end
@@ -175,9 +173,7 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
   in
   let suffix =
     match stdin_from.kind with
-    | Null
-    | Terminal _ ->
-      suffix
+    | Null | Terminal _ -> suffix
     | File fn -> suffix ^ " < " ^ quote fn
   in
   let suffix =
@@ -218,17 +214,13 @@ end
 module Fancy = struct
   let split_prog s =
     let len = String.length s in
-    if len = 0 then
-      ("", "", "")
+    if len = 0 then ("", "", "")
     else
       let rec find_prog_start i =
-        if i < 0 then
-          0
+        if i < 0 then 0
         else
           match s.[i] with
-          | '\\'
-          | '/' ->
-            i + 1
+          | '\\' | '/' -> i + 1
           | _ -> find_prog_start (i - 1)
       in
       let prog_end =
@@ -265,8 +257,7 @@ module Fancy = struct
 
   let colorize_prog s =
     let len = String.length s in
-    if len = 0 then
-      Pp.verbatim s
+    if len = 0 then Pp.verbatim s
     else
       let before, prog, after = split_prog s in
       let styles =
@@ -316,10 +307,8 @@ end = struct
         | [] -> (List.rev targets_acc, Context_name.Set.to_list ctxs_acc)
         | path :: rest -> (
           let add_ctx ctx acc =
-            if Context_name.is_default ctx then
-              acc
-            else
-              Context_name.Set.add acc ctx
+            if Context_name.is_default ctx then acc
+            else Context_name.Set.add acc ctx
           in
           match Dpath.analyse_target path with
           | Other path ->
@@ -391,7 +380,8 @@ end = struct
           List.filter_map
             [ (has_unexpected_stdout, "stdout")
             ; (has_unexpected_stderr, "stderr")
-            ] ~f:(fun (b, name) -> Option.some_if b name)
+            ]
+            ~f:(fun (b, name) -> Option.some_if b name)
         in
         match (n, unexpected_outputs) with
         | 0, _ :: _ ->
@@ -485,8 +475,7 @@ end = struct
           match Compound_user_error.parse_output ~dir output.without_color with
           | None -> annots
           | Some e -> User_message.Annots.set annots Compound_user_error.annot e
-        else
-          annots
+        else annots
     in
     (loc, annots)
 
@@ -540,8 +529,7 @@ end = struct
       if show_command then
         Pp.tag User_message.Style.Details (Pp.verbatim command_line)
         :: paragraphs
-      else
-        paragraphs
+      else paragraphs
     in
     match t with
     | Ok n ->
@@ -552,8 +540,7 @@ end = struct
       in
       let paragraphs =
         match (verbosity, purpose, output) with
-        | Short, Build_job _, _
-        | Short, Internal_job _, Has_output _ ->
+        | Short, Build_job _, _ | Short, Internal_job _, Has_output _ ->
           Short_display.pp_ok ~prog ~purpose :: paragraphs
         | _ -> paragraphs
       in
@@ -612,11 +599,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       let dir =
         match dir with
         | None -> dir
-        | Some p ->
-          if Path.is_root p then
-            None
-          else
-            Some p
+        | Some p -> if Path.is_root p then None else Some p
       in
       let id = gen_id () in
       let ok_codes = accepted_codes fail_mode in
@@ -650,9 +633,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
                 List.iter args ~f:(fun arg ->
                     output_string oc arg;
                     output_char oc '\000'));
-            ([ arg; Path.to_string fn ], Some fn)
-        ) else
-          (args, None)
+            ([ arg; Path.to_string fn ], Some fn))
+        else (args, None)
       in
       let argv = prog_str :: args in
       let output_on_success (out : Io.output Io.t) =
@@ -664,9 +646,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       let stderr_on_success = output_on_success stderr_to in
       let (stdout_capture, stdout_to), (stderr_capture, stderr_to) =
         match (stdout_to.kind, stderr_to.kind) with
-        | Terminal _, _
-        | _, Terminal _
-          when !Clflags.capture_outputs ->
+        | (Terminal _, _ | _, Terminal _) when !Clflags.capture_outputs ->
           let capture () =
             let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
             (`Capture fn, Io.file fn Io.Out)
@@ -752,18 +732,14 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       in
       let actual_stderr =
         match stderr_capture with
-        | `No_capture
-        | `Merged_with_stdout ->
-          lazy ""
+        | `No_capture | `Merged_with_stdout -> lazy ""
         | `Capture fn -> lazy (Stdune.Io.read_file fn)
       in
       let has_unexpected_output (on_success : Action_output_on_success.t)
           actual_output =
         match on_success with
         | Must_be_empty -> Lazy.force actual_output <> ""
-        | Print
-        | Swallow ->
-          false
+        | Print | Swallow -> false
       in
       let has_unexpected_stdout =
         has_unexpected_output stdout_on_success actual_stdout
@@ -775,8 +751,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         | WEXITED n
           when (not has_unexpected_stdout)
                && (not has_unexpected_stderr)
-               && ok_codes n ->
-          Ok n
+               && ok_codes n -> Ok n
         | WEXITED n -> Error (Failed n)
         | WSIGNALED n -> Error (Signaled (Signal.name n))
         | WSTOPPED _ -> assert false
@@ -800,9 +775,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       in
       let stderr =
         match stderr_capture with
-        | `No_capture
-        | `Merged_with_stdout ->
-          ""
+        | `No_capture | `Merged_with_stdout -> ""
         | `Capture fn ->
           swallow_on_success_if_requested fn actual_stderr stderr_on_success
       in

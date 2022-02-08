@@ -17,8 +17,7 @@ let is_a_source_file path =
   | ".pdf"
   | ".png"
   | ".ttf"
-  | ".woff" ->
-    false
+  | ".woff" -> false
   | _ -> true)
   && Path.is_file path
 
@@ -45,44 +44,34 @@ let subst_string s path ~map =
     loop 1 0 0
   in
   let rec loop i acc =
-    if i = len then
-      acc
+    if i = len then acc
     else
       match s.[i] with
       | '%' -> after_percent (i + 1) acc
       | _ -> loop (i + 1) acc
   and after_percent i acc =
-    if i = len then
-      acc
+    if i = len then acc
     else
       match s.[i] with
       | '%' -> after_double_percent ~start:(i - 1) (i + 1) acc
       | _ -> loop (i + 1) acc
   and after_double_percent ~start i acc =
-    if i = len then
-      acc
+    if i = len then acc
     else
       match s.[i] with
       | '%' -> after_double_percent ~start:(i - 1) (i + 1) acc
-      | 'A' .. 'Z'
-      | '_' ->
-        in_var ~start (i + 1) acc
+      | 'A' .. 'Z' | '_' -> in_var ~start (i + 1) acc
       | _ -> loop (i + 1) acc
   and in_var ~start i acc =
-    if i - start > longest_var + double_percent_len then
-      loop i acc
-    else if i = len then
-      acc
+    if i - start > longest_var + double_percent_len then loop i acc
+    else if i = len then acc
     else
       match s.[i] with
       | '%' -> end_of_var ~start (i + 1) acc
-      | 'A' .. 'Z'
-      | '_' ->
-        in_var ~start (i + 1) acc
+      | 'A' .. 'Z' | '_' -> in_var ~start (i + 1) acc
       | _ -> loop (i + 1) acc
   and end_of_var ~start i acc =
-    if i = len then
-      acc
+    if i = len then acc
     else
       match s.[i] with
       | '%' -> (
@@ -119,8 +108,7 @@ let subst_file path ~map =
   let s =
     if Path.is_root (Path.parent_exn path) && Package.is_opam_file path then
       "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
-    else
-      s
+    else s
   in
   match subst_string s ~map path with
   | None -> ()
@@ -222,9 +210,8 @@ module Dune_project = struct
           done;
           if !ofs < len && t.contents.[!ofs] = '\n' then (
             incr ofs;
-            replace_text !ofs !ofs version_field
-          ) else
-            replace_text !ofs !ofs ("\n" ^ version_field))
+            replace_text !ofs !ofs version_field)
+          else replace_text !ofs !ofs ("\n" ^ version_field))
     in
     let s = Option.value (subst_string s ~map filename) ~default:s in
     if s <> t.contents then Io.write_file filename s
@@ -294,8 +281,7 @@ let subst vcs =
         List.fold_left files ~init:String.Set.empty ~f:(fun acc fn ->
             if Path.is_root (Path.parent_exn fn) then
               String.Set.add acc (Path.to_string fn)
-            else
-              acc)
+            else acc)
       in
       Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true
     with
@@ -356,21 +342,18 @@ let subst vcs =
       | Ok s -> s
       | Error e -> raise (User_error.E e)
     in
-    if version >= (3, 0) then
-      metadata_from_dune_project ()
+    if version >= (3, 0) then metadata_from_dune_project ()
     else if version >= (2, 8) then
       match metadata_from_matching_package () with
       | Ok p -> p
       | Error _ -> metadata_from_dune_project ()
-    else
-      ok_exn (metadata_from_matching_package ())
+    else ok_exn (metadata_from_matching_package ())
   in
   let watermarks = make_watermark_map ~commit ~version ~dune_project ~info in
   Dune_project.subst ~map:watermarks ~version dune_project;
   List.iter files ~f:(fun path ->
       if is_a_source_file path && not (Path.equal path Dune_project.filename)
-      then
-        subst_file path ~map:watermarks)
+      then subst_file path ~map:watermarks)
 
 let subst () =
   match

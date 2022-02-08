@@ -91,10 +91,7 @@ let libs_of_coq_deps ~lib_db = Resolve.Build.List.map ~f:(Lib.DB.resolve lib_db)
 
 let select_native_mode ~sctx ~(buildable : Buildable.t) =
   let profile = (SC.context sctx).profile in
-  if Profile.is_dev profile then
-    Coq_mode.VoOnly
-  else
-    snd buildable.mode
+  if Profile.is_dev profile then Coq_mode.VoOnly else snd buildable.mode
 
 let rec resolve_first lib_db = function
   | [] -> assert false
@@ -138,12 +135,7 @@ module Context = struct
     let setup_theory_flag lib =
       let wrapper = Coq_lib.wrapper lib in
       let dir = Coq_lib.src_root lib in
-      let binding_flag =
-        if Coq_lib.implicit lib then
-          "-R"
-        else
-          "-Q"
-      in
+      let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
       [ Command.Args.A binding_flag; Path (Path.build dir); A wrapper ]
     in
     fun t ->
@@ -235,8 +227,7 @@ module Context = struct
                 Path.Build.Set.of_list theory_dirs)
           in
           Resolve.return (Path.Build.Set.union_all (theory_dirs :: l)))
-    | Coq_mode.VoOnly
-    | Coq_mode.Legacy ->
+    | Coq_mode.VoOnly | Coq_mode.Legacy ->
       Memo.Build.return (Resolve.return Path.Build.Set.empty)
 
   let create ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
@@ -301,9 +292,7 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
   in
   let line =
     match lines with
-    | []
-    | _ :: _ :: _ :: _ ->
-      invalid "line"
+    | [] | _ :: _ :: _ :: _ -> invalid "line"
     | [ line ] -> line
     | [ l1; _l2 ] ->
       (* .vo is produced before .vio, this is fragile tho *)
@@ -332,9 +321,7 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
        compiling the prelude *)
     let deps = List.map ~f:(Path.relative (Path.build dir)) deps in
     match boot_type with
-    | No_boot
-    | Bootstrap_prelude ->
-      deps
+    | No_boot | Bootstrap_prelude -> deps
     | Bootstrap lib ->
       Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo"
       :: deps)
@@ -491,8 +478,7 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
              in
              let entry = Install.Entry.make Section.Lib_root ~dst plugin_file in
              Install.Entry.Sourced.create ~loc entry)
-    else
-      []
+    else []
   in
   List.concat_map ~f:rules_for_lib ml_libs
 
@@ -519,10 +505,8 @@ let install_rules ~sctx ~dir s =
     (* Also, stdlib plugins are handled in a hardcoded way, so no compat install
        is needed *)
     let* coq_plugins_install_rules =
-      if s.boot then
-        Memo.Build.return []
-      else
-        coq_plugins_install_rules ~scope ~package ~dst_dir s
+      if s.boot then Memo.Build.return []
+      else coq_plugins_install_rules ~scope ~package ~dst_dir s
     in
     let wrapper_name = Coq_lib_name.wrapper name in
     let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in

@@ -63,8 +63,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                 (* external lib with a name matching our private name *)
               in
               match lib with
-              | None
-              | Some (Error ()) ->
+              | None | Some (Error ()) ->
                 (acc, pps)
                 (* library is defined but outside our scope or is disabled *)
               | Some (Ok lib) ->
@@ -79,8 +78,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                 if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
                 then
                   match Lib_info.kind info with
-                  | Lib_kind.Ppx_rewriter _
-                  | Ppx_deriver _ ->
+                  | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
                     ( Appendable_list.( @ ) (Appendable_list.singleton lib) acc
                     , Appendable_list.( @ )
                         (Appendable_list.singleton
@@ -89,8 +87,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                   | Normal ->
                     ( Appendable_list.( @ ) (Appendable_list.singleton lib) acc
                     , pps )
-                else
-                  (acc, pps))
+                else (acc, pps))
             | Dune_file.Executables exes -> (
               let* libs =
                 let open Memo.Build.O in
@@ -121,8 +118,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                   ~f:(fun (acc, pps) lib ->
                     let info = Lib.info lib in
                     match Lib_info.kind info with
-                    | Lib_kind.Ppx_rewriter _
-                    | Ppx_deriver _ ->
+                    | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
                       Memo.Build.return
                         ( Appendable_list.( @ )
                             (Appendable_list.singleton lib)
@@ -150,10 +146,8 @@ let setup sctx ~dir =
   let db = Scope.libs scope in
   let* libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
   let pps =
-    if List.is_empty pps then
-      Preprocess.No_preprocessing
-    else
-      Preprocess.Pps { loc = Loc.none; pps; flags = []; staged = false }
+    if List.is_empty pps then Preprocess.No_preprocessing
+    else Preprocess.Pps { loc = Loc.none; pps; flags = []; staged = false }
   in
   let preprocess = Module_name.Per_item.for_all pps in
   let* preprocessing =

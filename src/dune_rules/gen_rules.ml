@@ -88,8 +88,7 @@ end = struct
         ; js = None
         ; source_dirs = None
         }
-      else
-        Memo.Build.return empty_none
+      else Memo.Build.return empty_none
     | Foreign_library lib ->
       let+ () =
         Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander
@@ -135,8 +134,7 @@ end = struct
           Some
             (Path.Source.relative src_dir src_glob ~error_loc:loc
             |> Path.Source.parent_exn)
-        else
-          None
+        else None
       in
       Memo.Build.return { merlin = None; cctx = None; js = None; source_dirs }
     | Install i ->
@@ -192,14 +190,12 @@ let define_all_alias ~dir ~scope ~js_targets =
       List.iter js_targets ~f:(fun js_target ->
           assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
       let f =
-        if Dune_project.explicit_js_mode (Scope.project scope) then
-          fun _ ->
-        true
-        else
-          fun basename ->
-        not
-          (List.exists js_targets ~f:(fun js_target ->
-               String.equal (Path.Build.basename js_target) basename))
+        if Dune_project.explicit_js_mode (Scope.project scope) then fun _ ->
+          true
+        else fun basename ->
+          not
+            (List.exists js_targets ~f:(fun js_target ->
+                 String.equal (Path.Build.basename js_target) basename))
       in
       Predicate.create ~id ~f
     in
@@ -410,10 +406,8 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.Build.t
                     (Super_context.context sctx).build_dir
                     (Dune_project.root project))
                  dir
-             then
-               gen_project_rules sctx project
-             else
-               Memo.Build.return ()
+             then gen_project_rules sctx project
+             else Memo.Build.return ()
            in
            let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
            let+ () =

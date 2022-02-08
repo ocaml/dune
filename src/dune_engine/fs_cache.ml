@@ -33,9 +33,7 @@ module Update_result = struct
 
   let combine x y =
     match (x, y) with
-    | Skipped, res
-    | res, Skipped ->
-      res
+    | Skipped, res | res, Skipped -> res
     | Updated { changed = x }, Updated { changed = y } ->
       Updated { changed = x || y }
 

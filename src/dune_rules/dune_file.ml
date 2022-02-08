@@ -58,16 +58,14 @@ module Lib_deps = struct
           User_error.raise ~loc
             [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
         | (Optional | Forbidden), (Optional | Forbidden) -> acc
-        | Optional, Required
-        | Required, Optional ->
+        | Optional, Required | Required, Optional ->
           User_error.raise ~loc
             [ Pp.textf
                 "library %S is present both as an optional and required \
                  dependency"
                 (Lib_name.to_string name)
             ]
-        | Forbidden, Required
-        | Required, Forbidden ->
+        | Forbidden, Required | Required, Forbidden ->
           User_error.raise ~loc
             [ Pp.textf
                 "library %S is present both as a forbidden and required \
@@ -78,8 +76,7 @@ module Lib_deps = struct
     ignore
       (List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
            match x with
-           | Lib_dep.Re_export (_, s)
-           | Lib_dep.Direct (_, s) ->
+           | Lib_dep.Re_export (_, s) | Lib_dep.Direct (_, s) ->
              add Required s acc
            | Select { choices; _ } ->
              List.fold_left choices ~init:acc
@@ -111,12 +108,8 @@ let preprocess_fields =
       let deps_might_be_used =
         Module_name.Per_item.exists preprocess ~f:(fun p ->
             match (p : _ Preprocess.t) with
-            | Action _
-            | Pps _ ->
-              true
-            | No_preprocessing
-            | Future_syntax _ ->
-              false)
+            | Action _ | Pps _ -> true
+            | No_preprocessing | Future_syntax _ -> false)
       in
       if not deps_might_be_used then
         User_warning.emit ~loc
@@ -230,8 +223,7 @@ module Buildable = struct
                          in
                          let version_check flag =
                            let ver = (2, 8) in
-                           if current_ver >= ver then
-                             flag
+                           if current_ver >= ver then flag
                            else
                              let what =
                                "The possibility to pass arguments to \
@@ -275,10 +267,8 @@ module Buildable = struct
     in
     let libraries =
       let ctypes_libraries =
-        if Option.is_none ctypes then
-          []
-        else
-          Ctypes_stubs.libraries_needed_for_ctypes ~loc:Loc.none
+        if Option.is_none ctypes then []
+        else Ctypes_stubs.libraries_needed_for_ctypes ~loc:Loc.none
       in
       libraries @ ctypes_libraries
     in
@@ -368,8 +358,7 @@ module Public_lib = struct
   let make ~allow_deprecated_names project ((_, s) as loc_name) =
     let pkg, rest = Lib_name.split s in
     let x =
-      if not allow_deprecated_names then
-        None
+      if not allow_deprecated_names then None
       else
         Dune_project.packages project
         |> Package.Name.Map.values
@@ -377,8 +366,7 @@ module Public_lib = struct
              ~f:(fun ({ Package.deprecated_package_names; _ } as package) ->
                if Package.Name.Map.mem deprecated_package_names pkg then
                  Some { package; sub_dir = None; name = loc_name }
-               else
-                 None)
+               else None)
     in
     match x with
     | Some x -> Ok x
@@ -387,10 +375,8 @@ module Public_lib = struct
       |> Result.map ~f:(fun pkg ->
              { package = pkg
              ; sub_dir =
-                 (if rest = [] then
-                   None
-                 else
-                   Some (String.concat rest ~sep:"/"))
+                 (if rest = [] then None
+                 else Some (String.concat rest ~sep:"/"))
              ; name = loc_name
              })
 
@@ -491,24 +477,14 @@ module Mode_conf = struct
     module Details = struct
       type t = Kind.t option
 
-      let validate t ~if_ =
-        if if_ then
-          t
-        else
-          None
+      let validate t ~if_ = if if_ then t else None
 
-      let ( ||| ) x y =
-        if Option.is_some x then
-          x
-        else
-          y
+      let ( ||| ) x y = if Option.is_some x then x else y
     end
 
     let eval_detailed t ~has_native =
       let exists = function
-        | Best
-        | Byte ->
-          true
+        | Best | Byte -> true
         | Native -> has_native
       in
       let get key : Details.t =
@@ -523,12 +499,7 @@ module Mode_conf = struct
           in
           Option.some_if exists (Kind.Requested loc)
       in
-      let best_mode =
-        if has_native then
-          Native
-        else
-          Byte
-      in
+      let best_mode = if has_native then Native else Byte in
       let best = get Best in
       let open Details in
       let byte = get Byte ||| validate best ~if_:(best_mode = Byte) in
@@ -709,9 +680,8 @@ module Library = struct
            User_error.raise ~loc:stanza_loc
              [ Pp.text
                  (if dune_version >= (1, 1) then
-                   "supply at least one of name or public_name fields"
-                 else
-                   "name field is missing")
+                  "supply at least one of name or public_name fields"
+                 else "name field is missing")
              ]
        in
        let visibility =
@@ -786,10 +756,8 @@ module Library = struct
   let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
   let foreign_archives t =
-    (if List.is_empty t.buildable.foreign_stubs then
-      []
-    else
-      [ Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)) ])
+    (if List.is_empty t.buildable.foreign_stubs then []
+    else [ Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)) ])
     @ List.map ~f:snd t.buildable.foreign_archives
 
   let foreign_lib_files t ~dir ~ext_lib =
@@ -817,9 +785,7 @@ module Library = struct
     let private_lib =
       match t.visibility with
       | Private (Some _) -> true
-      | Private None
-      | Public _ ->
-        false
+      | Private None | Public _ -> false
     in
     Obj_dir.make_lib ~dir
       ~has_private_modules:
@@ -834,8 +800,7 @@ module Library = struct
     match (t.implements, t.wrapped) with
     | Some x, From _ -> From x
     | Some _, This _ (* cannot specify for wrapped for implements *)
-    | None, From _ ->
-      assert false (* cannot inherit for normal libs *)
+    | None, From _ -> assert false (* cannot inherit for normal libs *)
     | None, This (Simple false) -> This None
     | None, This (Simple true | Yes_with_transition _) ->
       This (Some (Module_name.of_local_lib_name (snd t.name)))
@@ -849,10 +814,7 @@ module Library = struct
     let archive ?(dir = dir) ext = archive conf ~dir ~ext in
     let modes = Mode_conf.Set.eval ~has_native conf.modes in
     let archive_for_mode ~f_ext ~mode =
-      if Mode.Dict.get modes mode then
-        Some (archive (f_ext mode))
-      else
-        None
+      if Mode.Dict.get modes mode then Some (archive (f_ext mode)) else None
     in
     let archives_for_mode ~f_ext =
       Mode.Dict.of_func (fun ~mode ->
@@ -871,35 +833,29 @@ module Library = struct
     let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in
     let native_archives =
       let archive = archive ext_lib in
-      if virtual_library || not modes.native then
-        Lib_info.Files []
+      if virtual_library || not modes.native then Lib_info.Files []
       else if
         Option.is_some conf.implements
         || Lib_config.linker_can_create_empty_archives lib_config
            && Ocaml_version.ocamlopt_always_calls_library_linker
                 lib_config.ocaml_version
-      then
-        Lib_info.Files [ archive ]
-      else
-        Lib_info.Needs_module_info archive
+      then Lib_info.Files [ archive ]
+      else Lib_info.Needs_module_info archive
     in
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
     let jsoo_archive =
       (* XXX we shouldn't access the directory of the obj_dir directly. We
          should use something like [Obj_dir.Archive.obj] instead *)
-      if modes.byte then
-        Some (archive ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
-      else
-        None
+      if modes.byte then Some (archive ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
+      else None
     in
     let virtual_ =
       Option.map conf.virtual_modules ~f:(fun _ -> Lib_info.Source.Local)
     in
     let foreign_objects = Lib_info.Source.Local in
     let archives, plugins =
-      if virtual_library then
-        (Mode.Dict.make_both [], Mode.Dict.make_both [])
+      if virtual_library then (Mode.Dict.make_both [], Mode.Dict.make_both [])
       else
         let plugins =
           let archive_file ~mode =
@@ -907,9 +863,8 @@ module Library = struct
           in
           { Mode.Dict.native =
               (if Dynlink_supported.get conf.dynlink natdynlink_supported then
-                archive_file ~mode:Native
-              else
-                [])
+               archive_file ~mode:Native
+              else [])
           ; byte = archive_file ~mode:Byte
           }
         in
@@ -926,18 +881,13 @@ module Library = struct
       in
       if not enabled_if_result then
         Lib_info.Enabled_status.Disabled_because_of_enabled_if
-      else if conf.optional then
-        Optional
-      else
-        Normal
+      else if conf.optional then Optional
+      else Normal
     in
     let version =
       match status with
       | Public (_, pkg) -> pkg.version
-      | Installed_private
-      | Installed
-      | Private _ ->
-        None
+      | Installed_private | Installed | Private _ -> None
     in
     let requires = conf.buildable.libraries in
     let loc = conf.buildable.loc in
@@ -1024,10 +974,7 @@ module Promote = struct
            >>> Predicate_lang.Glob.decode)
        in
        { Rule.Promote.lifetime =
-           (if until_clean then
-             Until_clean
-           else
-             Unlimited)
+           (if until_clean then Until_clean else Unlimited)
        ; into
        ; only
        })
@@ -1104,19 +1051,11 @@ module Executables = struct
       ( Option.map name ~f:List.singleton
       , Option.map public_name ~f:(fun (loc, s) -> [ (loc, Some s) ]) )
 
-    let pluralize s ~multi =
-      if multi then
-        s ^ "s"
-      else
-        s
+    let pluralize s ~multi = if multi then s ^ "s" else s
 
     let make ~multi ~stanza ~allow_omit_names_version =
       let check_valid_name_version = (3, 0) in
-      let+ names =
-        if multi then
-          multi_fields
-        else
-          single_fields
+      let+ names = if multi then multi_fields else single_fields
       and+ loc = loc
       and+ dune_syntax = Dune_lang.Syntax.get_exn Stanza.syntax
       and+ package =
@@ -1309,8 +1248,7 @@ module Executables = struct
         let same_as_mode : Mode.t =
           match mode with
           | Byte -> Byte
-          | Native
-          | Best ->
+          | Native | Best ->
             (* From the point of view of the extension, [native] and [best] are
                the same *)
             Native
@@ -1364,16 +1302,10 @@ module Executables = struct
       let byte_and_exe = of_list_exn [ (byte, Loc.none); (exe, Loc.none) ]
 
       let default_for_exes ~version =
-        if version < (2, 0) then
-          byte_and_exe
-        else
-          singleton exe Loc.none
+        if version < (2, 0) then byte_and_exe else singleton exe Loc.none
 
       let default_for_tests ~version =
-        if version < (3, 0) then
-          byte_and_exe
-        else
-          singleton exe Loc.none
+        if version < (3, 0) then byte_and_exe else singleton exe Loc.none
 
       let best_install_mode t = List.find ~f:(mem t) installable_modes
     end
@@ -1470,10 +1402,7 @@ module Executables = struct
         | None when has_public_name ->
           User_error.raise ~loc:buildable.loc
             [ Pp.textf "No installable mode found for %s."
-                (if multi then
-                  "these executables"
-                else
-                  "this executable")
+                (if multi then "these executables" else "this executable")
             ; Pp.text
                 "When public_name is set, one of the following modes is \
                  required:"
@@ -1484,9 +1413,7 @@ module Executables = struct
         | Some mode ->
           let ext =
             match mode with
-            | Byte_complete
-            | Other { mode = Byte; _ } ->
-              ".bc"
+            | Byte_complete | Other { mode = Byte; _ } -> ".bc"
             | Other { mode = Native | Best; _ } -> ".exe"
           in
           Names.install_conf names ~ext ~enabled_if
@@ -1826,7 +1753,9 @@ module Rule = struct
         { targets =
             Static
               { targets =
-                  List.map [ name ^ ".ml"; name ^ ".mli" ] ~f:(fun target ->
+                  List.map
+                    [ name ^ ".ml"; name ^ ".mli" ]
+                    ~f:(fun target ->
                       (S.make_text loc target, Targets_spec.Kind.File))
               ; multiplicity = Multiple
               }
@@ -2012,11 +1941,8 @@ module Toplevel = struct
            ~default:Preprocess.No_preprocessing
        in
        match pps with
-       | Preprocess.Pps _
-       | No_preprocessing ->
-         { name; libraries; loc; pps }
-       | Action (loc, _)
-       | Future_syntax loc ->
+       | Preprocess.Pps _ | No_preprocessing -> { name; libraries; loc; pps }
+       | Action (loc, _) | Future_syntax loc ->
          User_error.raise ~loc
            [ Pp.text
                "Toplevel does not currently support action or future_syntax \
@@ -2093,11 +2019,7 @@ module Include_subdirs = struct
   let decode ~enable_qualified =
     let opts_list =
       [ ("no", No); ("unqualified", Include Unqualified) ]
-      @
-      if enable_qualified then
-        [ ("qualified", Include Qualified) ]
-      else
-        []
+      @ if enable_qualified then [ ("qualified", Include Qualified) ] else []
     in
     enum opts_list
 end
@@ -2118,9 +2040,7 @@ module Library_redirect = struct
 
     let of_private_lib (lib : Library.t) : t option =
       match lib.visibility with
-      | Public _
-      | Private None ->
-        None
+      | Public _ | Private None -> None
       | Private (Some package) ->
         let loc, name = lib.name in
         let package_name = Package.name package in
@@ -2134,8 +2054,7 @@ module Library_redirect = struct
         | Public plib -> Some plib.name
         | Private _ -> None
       in
-      if Lib_name.equal (Lib_name.of_local lib.name) (snd public_name) then
-        None
+      if Lib_name.equal (Lib_name.of_local lib.name) (snd public_name) then None
       else
         let loc = fst public_name in
         Some (for_lib lib ~loc ~new_public_name:public_name)
@@ -2159,10 +2078,8 @@ module Deprecated_library_name = struct
         if
           let name = Package.name (Public_lib.package public) in
           Package.Name.equal deprecated_package name
-        then
-          Not_deprecated
-        else
-          Deprecated { deprecated_package }
+        then Not_deprecated
+        else Deprecated { deprecated_package }
       in
       (public, deprecation)
   end
@@ -2388,8 +2305,7 @@ module Stanzas = struct
             if env then
               User_error.raise ~loc:e.loc
                 [ Pp.text "The 'env' stanza cannot appear more than once" ]
-            else
-              true
+            else true
           | _ -> env)
     in
     stanzas
@@ -2403,8 +2319,7 @@ let stanza_package = function
   | Plugin { package; _ }
   | Executables { install_conf = Some { package; _ }; _ }
   | Documentation { package; _ }
-  | Tests { package = Some package; _ } ->
-    Some package
+  | Tests { package = Some package; _ } -> Some package
   | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
   | _ -> None
 
@@ -2420,11 +2335,9 @@ let parse sexps ~dir ~file ~project =
     if !Clflags.ignore_promoted_rules then
       List.filter stanzas ~f:(function
         | Rule { mode = Rule.Mode.Promote { only = None; _ }; _ }
-        | Menhir.T { mode = Rule.Mode.Promote { only = None; _ }; _ } ->
-          false
+        | Menhir.T { mode = Rule.Mode.Promote { only = None; _ }; _ } -> false
         | _ -> true)
-    else
-      stanzas
+    else stanzas
   in
   { dir; project; stanzas }
 

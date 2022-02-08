@@ -9,8 +9,7 @@ let default_context_flags (ctx : Context.t) ~project =
   in
   let c, cxx =
     match Dune_project.use_standard_c_and_cxx_flags project with
-    | None
-    | Some false ->
+    | None | Some false ->
       (Action_builder.return cflags, Action_builder.return cxxflags)
     | Some true ->
       let c = cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config in
@@ -378,8 +377,7 @@ let js_of_ocaml_compilation_mode t ~dir =
   | None ->
     if Profile.is_dev t.context.profile then
       Js_of_ocaml.Compilation_mode.Separate_compilation
-    else
-      Whole_program
+    else Whole_program
   | Some m -> m
 
 let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
@@ -489,8 +487,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
                 let p = Path.Local.of_string (Install.Dst.to_string p) in
                 if Path.Local.is_root (Path.Local.parent_exn p) then
                   Some (Path.Build.append_local install_dir p)
-                else
-                  None)
+                else None)
             >>| List.filter_map ~f:Fun.id >>| Path.Build.Set.of_list
           in
           match (stanza : Stanza.t) with
@@ -530,10 +527,8 @@ let get_installed_binaries stanzas ~(context : Context.t) =
                   let+ available = Lib.Compile.direct_requires compile_info in
                   Resolve.is_ok available
                 in
-                if available then
-                  binaries_from_install files
-                else
-                  Memo.Build.return Path.Build.Set.empty))
+                if available then binaries_from_install files
+                else Memo.Build.return Path.Build.Set.empty))
           | _ -> Memo.Build.return Path.Build.Set.empty)
       >>| Path.Build.Set.union_all)
   >>| Path.Build.Set.union_all
@@ -688,14 +683,11 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
               Stdune.Bin.path_sep
               (Path.to_absolute_filename
                  (Install.Section.Paths.get paths section))
-              (if String.is_empty acc then
-                acc
-              else
-                sprintf "%c%s" Stdune.Bin.path_sep acc)))
+              (if String.is_empty acc then acc
+              else sprintf "%c%s" Stdune.Bin.path_sep acc)))
   in
   let context_env =
-    if String.is_empty env_dune_dir_locations then
-      context.env
+    if String.is_empty env_dune_dir_locations then context.env
     else
       Stdune.Env.add context.env ~var:dune_dir_locations_var
         ~value:env_dune_dir_locations
@@ -772,8 +764,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
           let name = Package.name package in
           Package.Name.Map.mem visible_pkgs name
       in
-      if include_stanza then
-        Some stanza
+      if include_stanza then Some stanza
       else
         match stanza with
         | Dune_file.Library l ->

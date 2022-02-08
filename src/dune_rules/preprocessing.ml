@@ -59,10 +59,7 @@ end = struct
               let status = Lib_info.status info in
               match status with
               | Private (scope_name, _) -> Some scope_name
-              | Installed_private
-              | Public _
-              | Installed ->
-                None
+              | Installed_private | Public _ | Installed -> None
             in
             Option.merge acc scope_for_key ~f:(fun a b ->
                 assert (Dune_project.equal a b);
@@ -84,8 +81,7 @@ end = struct
       Table.set reverse_table y x;
       y
     | Some x' ->
-      if Decoded.equal x x' then
-        y
+      if Decoded.equal x x' then y
       else
         User_error.raise
           [ Pp.textf "Hash collision between set of ppx drivers:"
@@ -177,13 +173,7 @@ module Driver = struct
       ; replaces : t list Resolve.t
       }
 
-    let desc ~plural =
-      "ppx driver"
-      ^
-      if plural then
-        "s"
-      else
-        ""
+    let desc ~plural = "ppx driver" ^ if plural then "s" else ""
 
     let desc_article = "a"
 
@@ -254,8 +244,7 @@ module Driver = struct
                 List.filter_map libs ~f:(fun lib ->
                     match Lib_name.to_string (Lib.name lib) with
                     | ("ocaml-migrate-parsetree" | "ppxlib" | "ppx_driver") as s
-                      ->
-                      Some s
+                      -> Some s
                     | _ -> None)
               with
               | [] ->
@@ -410,8 +399,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
         let kind = Lib_info.kind info in
         match kind with
         | Normal -> Memo.Build.return []
-        | Ppx_rewriter { cookies }
-        | Ppx_deriver { cookies } ->
+        | Ppx_rewriter { cookies } | Ppx_deriver { cookies } ->
           Memo.Build.List.map
             ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
               let+ value = Expander.No_deps.expand_str expander value in
@@ -425,8 +413,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
        | Some cookie -> cookie :: l)
   |> String.Map.of_list_reducei
        ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
-         if String.equal val1 val2 then
-           res
+         if String.equal val1 val2 then res
          else
            let lib1 = Lib_name.to_string lib1 in
            let lib2 = Lib_name.to_string lib2 in

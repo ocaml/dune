@@ -21,8 +21,7 @@ let failing_fiber () : unit Fiber.t =
 
 let long_running_fiber () =
   let rec loop n =
-    if n = 0 then
-      Fiber.return ()
+    if n = 0 then Fiber.return ()
     else
       let* () = Scheduler.yield () in
       loop (n - 1)
@@ -38,8 +37,8 @@ let unit_result dyn_of_ok = Result.to_dyn dyn_of_ok unit
 
 let test ?(expect_never = false) to_dyn f =
   let never_raised = ref false in
-  (try Scheduler.run f |> to_dyn |> print_dyn with
-  | Test_scheduler.Never -> never_raised := true);
+  (try Scheduler.run f |> to_dyn |> print_dyn
+   with Test_scheduler.Never -> never_raised := true);
   match (!never_raised, expect_never) with
   | false, false ->
     (* We don't raise in this case b/c we assume something else is being
@@ -281,8 +280,7 @@ let%expect_test "nested with_error_handler" =
             Exn_with_backtrace.reraise exn)
           (fun () -> raise Exit))
   in
-  (try test unit fiber with
-  | Exit -> print_endline "[PASS] got Exit");
+  (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
   [%expect {|
      inner handler
      outter handler
@@ -292,17 +290,12 @@ let must_set_flag f =
   let flag = ref false in
   let setter () = flag := true in
   let check_set () =
-    print_endline
-      (if !flag then
-        "[PASS] flag set"
-      else
-        "[FAIL] flag not set")
+    print_endline (if !flag then "[PASS] flag set" else "[FAIL] flag not set")
   in
   try
     f setter;
     check_set ()
-  with
-  | e ->
+  with e ->
     check_set ();
     raise e
 
@@ -323,8 +316,7 @@ let%expect_test "finalize" =
       ~finally:(fun () -> Fiber.return (print_endline "finally"))
       (fun () -> raise Exit)
   in
-  (try test unit fiber with
-  | Exit -> print_endline "[PASS] got Exit");
+  (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
   [%expect {|
     finally
     [PASS] got Exit |}]
@@ -338,8 +330,7 @@ let%expect_test "nested finalize" =
           ~finally:(fun () -> Fiber.return (print_endline "inner finally"))
           (fun () -> raise Exit))
   in
-  (try test unit fiber with
-  | Exit -> print_endline "[PASS] got Exit");
+  (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
   [%expect {|
     inner finally
     outter finally
@@ -362,8 +353,7 @@ let%expect_test "context switch and raise inside finalize" =
             printf "raising in second fiber\n";
             raise Exit))
   in
-  (try test unit fiber with
-  | Exit -> print_endline "[PASS] got Exit");
+  (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
   [%expect
     {|
     Hello from first fiber!
@@ -379,10 +369,8 @@ let%expect_test "sequential_iter error handling" =
         map_reduce_errors_unit
           (fun () ->
             Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
-                if x = 2 then
-                  raise Exit
-                else
-                  Fiber.return (Printf.printf "count: %d\n" x)))
+                if x = 2 then raise Exit
+                else Fiber.return (Printf.printf "count: %d\n" x)))
           ~on_error:(fun exn_with_bt ->
             printf "exn: %s\n%!" (Printexc.to_string exn_with_bt.exn);
             Fiber.return ()))
@@ -428,10 +416,7 @@ let%expect_test _ =
   let forking_fiber () =
     Fiber.parallel_map [ 1; 2; 3; 4; 5 ] ~f:(fun x ->
         let* () = Scheduler.yield () in
-        if x mod 2 = 1 then
-          Fiber.return ()
-        else
-          Printf.ksprintf failwith "%d" x)
+        if x mod 2 = 1 then Fiber.return () else Printf.ksprintf failwith "%d" x)
   in
   must_set_flag (fun setter ->
       test ~expect_never:true unit
@@ -509,17 +494,11 @@ let%expect_test "writing multiple values" =
      in
      let rec produce n =
        let* () = write n in
-       if n = 0 then
-         Fiber.return ()
-       else
-         produce (n - 1)
+       if n = 0 then Fiber.return () else produce (n - 1)
      in
      let rec consume () =
        let* n = read () in
-       if n = 0 then
-         Fiber.return ()
-       else
-         consume ()
+       if n = 0 then Fiber.return () else consume ()
      in
      Fiber.fork_and_join_unit (fun () -> produce 3) consume);
   (* Writing to a mvar only blocks if the mvar is full. Similarly, reading from
@@ -567,8 +546,7 @@ let%expect_test "writing multiple values" =
 let stream a b =
   let n = ref a in
   Fiber.Stream.In.create (fun () ->
-      if !n > b then
-        Fiber.return None
+      if !n > b then Fiber.return None
       else
         let x = !n in
         n := x + 1;
@@ -652,8 +630,8 @@ let%expect_test "Stream.parallel_iter doesn't leak" =
       Fiber.Stream.In.create (fun () ->
           if !count > 0 then (
             decr count;
-            Fiber.return (Some ())
-          ) else
+            Fiber.return (Some ()))
+          else
             let* () = Fiber.Ivar.read finish_stream in
             Fiber.return None)
     in
@@ -666,10 +644,7 @@ let%expect_test "Stream.parallel_iter doesn't leak" =
     in
     let f () =
       decr awaiting;
-      if !awaiting = 0 then
-        Fiber.Ivar.fill iter_await ()
-      else
-        Fiber.return ()
+      if !awaiting = 0 then Fiber.Ivar.fill iter_await () else Fiber.return ()
     in
     Scheduler.run
       (let+ prev, curr =
@@ -688,9 +663,7 @@ let%expect_test "Stream.parallel_iter doesn't leak" =
   in
   let data_points = [ 1; 10; 100; 1000 ] in
   let rec pair_wise_check ~f = function
-    | []
-    | [ _ ] ->
-      true
+    | [] | [ _ ] -> true
     | x :: y :: xs -> f x y && pair_wise_check ~f (y :: xs)
   in
   let test ~pred ~iter_function =
@@ -762,8 +735,7 @@ let%expect_test "Stream: multiple readers is an error" =
           if x = 0 then
             let* () = long_running_fiber () in
             long_running_fiber ()
-          else
-            Fiber.return ()
+          else Fiber.return ()
         in
         Some ())
   in
@@ -878,8 +850,7 @@ let%expect_test "raise exception" =
 let%expect_test "stack usage with consecutive Ivar.fill" =
   let stack_size () = (Gc.stat ()).stack_size in
   let rec loop acc prev n =
-    if n = 0 then
-      (acc, prev)
+    if n = 0 then (acc, prev)
     else
       let next = Fiber.Ivar.create () in
       let fiber =
@@ -901,8 +872,7 @@ let%expect_test "stack usage with consecutive Ivar.fill" =
   in
   let n0 = Scheduler.run (stack_usage 0) in
   let n1000 = Scheduler.run (stack_usage 1000) in
-  if n0 = n1000 then
-    printf "[PASS]"
+  if n0 = n1000 then printf "[PASS]"
   else
     printf
       "[FAIL]\n\

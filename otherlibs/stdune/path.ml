@@ -1,38 +1,25 @@
 module Sys = Stdlib.Sys
 
 let basename_opt ~is_root ~basename t =
-  if is_root t then
-    None
-  else
-    Some (basename t)
+  if is_root t then None else Some (basename t)
 
 let is_dir_sep =
-  if Sys.win32 || Sys.cygwin then
-    fun c ->
-  c = '/' || c = '\\' || c = ':'
-  else
-    fun c ->
-  c = '/'
+  if Sys.win32 || Sys.cygwin then fun c -> c = '/' || c = '\\' || c = ':'
+  else fun c -> c = '/'
 
 let explode_path =
   let rec start acc path i =
-    if i < 0 then
-      acc
-    else if is_dir_sep (String.unsafe_get path i) then
-      start acc path (i - 1)
-    else
-      component acc path i (i - 1)
+    if i < 0 then acc
+    else if is_dir_sep (String.unsafe_get path i) then start acc path (i - 1)
+    else component acc path i (i - 1)
   and component acc path end_ i =
-    if i < 0 then
-      String.take path (end_ + 1) :: acc
+    if i < 0 then String.take path (end_ + 1) :: acc
     else if is_dir_sep (String.unsafe_get path i) then
       start (String.sub path ~pos:(i + 1) ~len:(end_ - i) :: acc) path (i - 1)
-    else
-      component acc path end_ (i - 1)
+    else component acc path end_ (i - 1)
   in
   fun path ->
-    if path = Filename.current_dir_name then
-      [ path ]
+    if path = Filename.current_dir_name then [ path ]
     else
       match start [] path (String.length path - 1) with
       | "." :: xs -> xs
@@ -100,11 +87,7 @@ end = struct
 
   let basename_opt = basename_opt ~is_root ~basename
 
-  let parent t =
-    if is_root t then
-      None
-    else
-      Some (Filename.dirname t)
+  let parent t = if is_root t then None else Some (Filename.dirname t)
 
   let parent_exn t =
     match parent t with
@@ -146,10 +129,8 @@ end = struct
   let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
 
   let is_descendant b ~of_:a =
-    if is_root a then
-      true
-    else
-      String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
+    if is_root a then true
+    else String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
 
   module Map = String.Map
 
@@ -198,23 +179,20 @@ end = struct
 
   let to_list =
     let rec loop t acc i j =
-      if i = 0 then
-        String.take t j :: acc
+      if i = 0 then String.take t j :: acc
       else
         match t.[i - 1] with
         | '/' -> loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
         | _ -> loop t acc (i - 1) j
     in
     fun t ->
-      if is_root t then
-        []
+      if is_root t then []
       else
         let len = String.length t in
         loop t [] len len
 
   let parent t =
-    if is_root t then
-      None
+    if is_root t then None
     else
       match String.rindex_from t (String.length t - 1) '/' with
       | None -> Some root
@@ -240,17 +218,13 @@ end = struct
         | [] -> Result.Ok t
         | "." :: rest -> loop t rest
         | ".." :: rest -> (
-          if is_root t then
-            Result.Error ()
+          if is_root t then Result.Error ()
           else
             match parent t with
             | None -> Error ()
             | Some parent -> loop parent rest)
         | fn :: rest ->
-          if is_root t then
-            loop fn rest
-          else
-            loop (t ^ "/" ^ fn) rest
+          if is_root t then loop fn rest else loop (t ^ "/" ^ fn) rest
       in
       loop t components
 
@@ -281,8 +255,7 @@ end = struct
 
   let is_canonicalized =
     let rec before_slash s i =
-      if i < 0 then
-        false
+      if i < 0 then false
       else
         match s.[i] with
         | '/' -> false
@@ -290,8 +263,7 @@ end = struct
         | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1)
     and before_dot_slash s i =
-      if i < 0 then
-        false
+      if i < 0 then false
       else
         match s.[i] with
         | '/' -> false
@@ -299,16 +271,14 @@ end = struct
         | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1)
     and before_dot_dot_slash s i =
-      if i < 0 then
-        false
+      if i < 0 then false
       else
         match s.[i] with
         | '/' -> false
         | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1)
     and in_component s i =
-      if i < 0 then
-        true
+      if i < 0 then true
       else
         match s.[i] with
         | '/' -> before_slash s (i - 1)
@@ -321,9 +291,7 @@ end = struct
 
   let parse_string_exn ~loc s =
     match s with
-    | ""
-    | "." ->
-      root
+    | "" | "." -> root
     | _ when is_canonicalized s -> s
     | _ -> relative root s ~error_loc:loc
 
@@ -336,18 +304,14 @@ end = struct
     | _, _ -> a ^ "/" ^ b
 
   let descendant t ~of_ =
-    if is_root of_ then
-      Some t
-    else if t = of_ then
-      Some root
+    if is_root of_ then Some t
+    else if t = of_ then Some root
     else
       let of_len = String.length of_ in
       let t_len = String.length t in
       if t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_
-      then
-        Some (String.drop t (of_len + 1))
-      else
-        None
+      then Some (String.drop t (of_len + 1))
+      else None
 
   let is_descendant t ~of_ =
     is_root of_ || t = of_
@@ -393,27 +357,20 @@ end = struct
 
     let drop t p =
       let len = String.length p in
-      if len = t.len && p = t.path then
-        Some root
-      else
-        String.drop_prefix p ~prefix:t.path_slash
+      if len = t.len && p = t.path then Some root
+      else String.drop_prefix p ~prefix:t.path_slash
 
     let invalid = { len = -1; path = "/"; path_slash = "/" }
   end
 
   let split_first_component t =
-    if is_root t then
-      None
+    if is_root t then None
     else
       match String.lsplit2 t ~on:'/' with
       | None -> Some (t, root)
       | Some (before, after) -> Some (before, after |> of_string)
 
-  let explode p =
-    if is_root p then
-      []
-    else
-      String.split p ~on:'/'
+  let explode p = if is_root p then [] else String.split p ~on:'/'
 
   let to_string_maybe_quoted t = String.maybe_quoted t
 
@@ -567,10 +524,8 @@ module Kind = struct
   let to_dyn t = Dyn.String (to_string t)
 
   let of_string s =
-    if Filename.is_relative s then
-      In_source_dir (Local.of_string s)
-    else
-      External (External.of_string s)
+    if Filename.is_relative s then In_source_dir (Local.of_string s)
+    else External (External.of_string s)
 
   let mkdir_p ?perms = function
     | In_source_dir t -> Relative_to_source_root.mkdir_p ?perms t
@@ -623,9 +578,7 @@ module Build = struct
       | Some (sandbox_name, t) ->
         (Some (of_string (".sandbox" ^ "/" ^ sandbox_name)), t)
       | None -> (None, t_original))
-    | Some _
-    | None ->
-      (None, t_original)
+    | Some _ | None -> (None, t_original)
 
   let extract_build_context_dir_maybe_sandboxed t =
     let sandbox_root, t = split_sandbox_root t in
@@ -694,10 +647,8 @@ module Build = struct
     match Fdecl.get build_dir with
     | In_source_dir b -> Local.to_string (Local.append b p)
     | External b ->
-      if Local.is_root p then
-        External.to_string b
-      else
-        Filename.concat (External.to_string b) (Local.to_string p)
+      if Local.is_root p then External.to_string b
+      else Filename.concat (External.to_string b) (Local.to_string p)
 
   let of_local t = t
 
@@ -771,9 +722,7 @@ let build_dir = in_build_dir Local.root
 
 let is_root = function
   | In_source_tree s -> Local.is_root s
-  | In_build_dir _
-  | External _ ->
-    false
+  | In_build_dir _ | External _ -> false
 
 let kind = function
   | In_build_dir p -> Kind.append_local (Fdecl.get Build.build_dir) p
@@ -781,9 +730,7 @@ let kind = function
   | External s -> Kind.External s
 
 let is_managed = function
-  | In_build_dir _
-  | In_source_tree _ ->
-    true
+  | In_build_dir _ | In_source_tree _ -> true
   | External _ -> false
 
 let to_string t =
@@ -805,9 +752,7 @@ let of_local = make_local_path
 
 let relative ?error_loc t fn =
   match fn with
-  | ""
-  | "." ->
-    t
+  | "" | "." -> t
   | _ when not (Filename.is_relative fn) -> external_ (External.of_string fn)
   | _ -> (
     match t with
@@ -817,14 +762,11 @@ let relative ?error_loc t fn =
 
 let parse_string_exn ~loc s =
   match s with
-  | ""
-  | "." ->
-    in_source_tree Local.root
+  | "" | "." -> in_source_tree Local.root
   | s ->
     if Filename.is_relative s then
       make_local_path (Local.parse_string_exn ~loc s)
-    else
-      external_ (External.parse_string_exn ~loc s)
+    else external_ (External.parse_string_exn ~loc s)
 
 let of_string s = parse_string_exn ~loc:Loc0.none s
 
@@ -837,10 +779,8 @@ let to_dyn =
 
 let of_filename_relative_to_initial_cwd fn =
   external_
-    (if Filename.is_relative fn then
-      External.relative External.initial_cwd fn
-    else
-      External.of_string fn)
+    (if Filename.is_relative fn then External.relative External.initial_cwd fn
+    else External.of_string fn)
 
 let to_absolute_filename t = Kind.to_absolute_filename (kind t)
 
@@ -853,8 +793,7 @@ let external_of_in_source_tree x =
 let reach t ~from =
   match (t, from) with
   | External t, _ -> External.to_string t
-  | In_source_tree t, In_source_tree from
-  | In_build_dir t, In_build_dir from ->
+  | In_source_tree t, In_source_tree from | In_build_dir t, In_build_dir from ->
     Local.reach t ~from
   | In_source_tree t, In_build_dir from -> (
     match Fdecl.get Build.build_dir with
@@ -878,15 +817,13 @@ let reach_for_running ?(from = root) t =
 
 let descendant t ~of_ =
   match (t, of_) with
-  | In_source_tree t, In_source_tree of_
-  | In_build_dir t, In_build_dir of_ ->
+  | In_source_tree t, In_source_tree of_ | In_build_dir t, In_build_dir of_ ->
     Option.map ~f:in_source_tree (Local.descendant t ~of_)
   | _ -> None
 
 let is_descendant t ~of_ =
   match (t, of_) with
-  | In_source_tree t, In_source_tree of_
-  | In_build_dir t, In_build_dir of_ ->
+  | In_source_tree t, In_source_tree of_ | In_build_dir t, In_build_dir of_ ->
     Local.is_descendant t ~of_
   | _ -> false
 
@@ -925,27 +862,19 @@ let parent_exn t =
 
 let is_strict_descendant_of_build_dir = function
   | In_build_dir p -> not (Local.is_root p)
-  | In_source_tree _
-  | External _ ->
-    false
+  | In_source_tree _ | External _ -> false
 
 let is_in_build_dir = function
   | In_build_dir _ -> true
-  | In_source_tree _
-  | External _ ->
-    false
+  | In_source_tree _ | External _ -> false
 
 let is_in_source_tree = function
   | In_source_tree _ -> true
-  | In_build_dir _
-  | External _ ->
-    false
+  | In_build_dir _ | External _ -> false
 
 let as_in_source_tree = function
   | In_source_tree s -> Some s
-  | In_build_dir _
-  | External _ ->
-    None
+  | In_build_dir _ | External _ -> None
 
 let as_in_source_tree_exn t =
   match as_in_source_tree t with
@@ -957,23 +886,18 @@ let as_in_source_tree_exn t =
 
 let as_in_build_dir = function
   | In_build_dir b -> Some b
-  | In_source_tree _
-  | External _ ->
-    None
+  | In_source_tree _ | External _ -> None
 
 let as_in_build_dir_exn t =
   match t with
-  | External _
-  | In_source_tree _ ->
+  | External _ | In_source_tree _ ->
     Code_error.raise
       "[as_in_build_dir_exn] called on something not in build dir"
       [ ("t", to_dyn t) ]
   | In_build_dir p -> p
 
 let extract_build_context = function
-  | In_source_tree _
-  | External _ ->
-    None
+  | In_source_tree _ | External _ -> None
   | In_build_dir p when Local.is_root p -> None
   | In_build_dir t -> Build.extract_build_context t
 
@@ -986,17 +910,13 @@ let extract_build_context_exn t =
     Code_error.raise "Path.extract_build_context_exn" [ ("t", to_dyn t) ]
 
 let extract_build_context_dir = function
-  | In_source_tree _
-  | External _ ->
-    None
+  | In_source_tree _ | External _ -> None
   | In_build_dir t ->
     Option.map (Build.extract_build_context_dir t) ~f:(fun (base, rest) ->
         (in_build_dir base, rest))
 
 let extract_build_context_dir_maybe_sandboxed = function
-  | In_source_tree _
-  | External _ ->
-    None
+  | In_source_tree _ | External _ -> None
   | In_build_dir t ->
     Option.map (Build.extract_build_context_dir_maybe_sandboxed t)
       ~f:(fun (base, rest) -> (in_build_dir base, rest))
@@ -1065,9 +985,7 @@ let explode_exn t =
   | Some s -> s
   | None -> Code_error.raise "Path.explode_exn" [ ("path", to_dyn t) ]
 
-let exists t =
-  try Sys.file_exists (to_string t) with
-  | Sys_error _ -> false
+let exists t = try Sys.file_exists (to_string t) with Sys_error _ -> false
 
 let readdir_unsorted t = Dune_filesystem_stubs.read_directory (to_string t)
 
@@ -1075,8 +993,7 @@ let readdir_unsorted_with_kinds t =
   Dune_filesystem_stubs.read_directory_with_kinds (to_string t)
 
 let is_directory t =
-  try Sys.is_directory (to_string t) with
-  | Sys_error _ -> false
+  try Sys.is_directory (to_string t) with Sys_error _ -> false
 
 let is_directory_with_error t =
   match Sys.is_directory (to_string t) with
@@ -1102,9 +1019,7 @@ let ensure_build_dir_exists () =
   | External p -> (
     let p = External.to_string p in
     match Fpath.mkdir ~perms p with
-    | Created
-    | Already_exists ->
-      ()
+    | Created | Already_exists -> ()
     | Missing_parent_directory ->
       User_error.raise
         [ Pp.textf
@@ -1127,9 +1042,7 @@ let insert_after_build_dir_exn =
   fun a b ->
     match a with
     | In_build_dir a -> in_build_dir (Local.append (Local.of_string b) a)
-    | In_source_tree _
-    | External _ ->
-      error a b
+    | In_source_tree _ | External _ -> error a b
 
 let clear_dir dir = Fpath.clear_dir (to_string dir)
 
@@ -1153,11 +1066,8 @@ let touch ?(create = true) p =
       Kind.to_string (Kind.append_local (Fdecl.get Build.build_dir) k)
   in
   let create =
-    if create then
-      fun () ->
-    Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
-    else
-      Fun.id
+    if create then fun () -> Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
+    else Fun.id
   in
   try Unix.utimes p 0.0 0.0 with
   | Unix.Unix_error (Unix.ENOENT, _, _) -> create ()
@@ -1179,9 +1089,7 @@ let compare x y =
 let extension t =
   match t with
   | External t -> External.extension t
-  | In_build_dir t
-  | In_source_tree t ->
-    Local.extension t
+  | In_build_dir t | In_source_tree t -> Local.extension t
 
 let split_extension t =
   match t with
@@ -1269,12 +1177,7 @@ module Expert = struct
     | None -> None
     | Some "" -> Some Local.root
     | Some p ->
-      Some
-        (Local.of_string
-           (if is_dir_sep p.[0] then
-             String.drop p 1
-           else
-             p))
+      Some (Local.of_string (if is_dir_sep p.[0] then String.drop p 1 else p))
 
   let try_localize_external ext =
     let p = External.to_string ext in

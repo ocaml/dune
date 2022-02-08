@@ -49,9 +49,7 @@ module File = struct
   let make_text path name content = Text { path; name; content }
 
   let full_path = function
-    | Dune { path; name; _ }
-    | Text { path; name; _ } ->
-      Path.relative path name
+    | Dune { path; name; _ } | Text { path; name; _ } -> Path.relative path name
 
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
@@ -124,8 +122,8 @@ module File = struct
   (* Stanza *)
 
   let create_dir path =
-    try Path.mkdir_p path with
-    | Unix.Unix_error (EACCES, _, _) ->
+    try Path.mkdir_p path
+    with Unix.Unix_error (EACCES, _, _) ->
       User_error.raise
         [ Pp.textf
             "A project directory cannot be created or accessed: Lacking \
@@ -137,8 +135,7 @@ module File = struct
     let name = "dune" in
     let full_path = Path.relative path name in
     let content =
-      if not (Path.exists full_path) then
-        []
+      if not (Path.exists full_path) then []
       else
         match Format_dune_lang.parse_file (Some full_path) with
         | Format_dune_lang.Sexps content -> content
@@ -162,10 +159,8 @@ module File = struct
     match f with
     | Dune f -> Ok (write_dune_file f)
     | Text f ->
-      if Path.exists path then
-        Error path
-      else
-        Ok (Io.write_file ~binary:false path f.content)
+      if Path.exists path then Error path
+      else Ok (Io.write_file ~binary:false path f.content)
 end
 
 (** The context in which the initialization is executed *)
@@ -315,10 +310,7 @@ module Component = struct
       |> Cst.concrete (* Package as a list CSTs *) |> List.singleton
 
     let add_to_list_set elem set =
-      if List.mem ~equal:Dune_lang.Atom.equal set elem then
-        set
-      else
-        elem :: set
+      if List.mem ~equal:Dune_lang.Atom.equal set elem then set else elem :: set
 
     let public_name_field ~default = function
       | (None : Options.public_name option) -> []
@@ -332,8 +324,7 @@ module Component = struct
 
     let library (common : Options.Common.t) (options : Options.Library.t) =
       let common, inline_tests =
-        if not options.inline_tests then
-          (common, [])
+        if not options.inline_tests then (common, [])
         else
           let pps =
             add_to_list_set

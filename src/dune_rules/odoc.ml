@@ -35,9 +35,7 @@ let lib_unique_name lib =
   let info = Lib.info lib in
   let status = Lib_info.status info in
   match status with
-  | Installed_private
-  | Installed ->
-    assert false
+  | Installed_private | Installed -> assert false
   | Public _ -> Lib_name.to_string name
   | Private (project, _) -> Scope_key.to_string name project
 
@@ -183,8 +181,7 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
   Action_builder.dyn_paths_unit
     (let open Action_builder.O in
     let+ deps =
-      if Module.has m ~ml_kind:Intf then
-        Dep_graph.deps_of dep_graphs.intf m
+      if Module.has m ~ml_kind:Intf then Dep_graph.deps_of dep_graphs.intf m
       else
         (* When a module has no .mli, use the dependencies for the .ml *)
         Dep_graph.deps_of dep_graphs.impl m
@@ -498,8 +495,7 @@ let odoc_artefacts sctx target =
     let+ mlds =
       let+ mlds = Packages.mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
-      if String.Map.mem mlds "index" then
-        mlds
+      if String.Map.mem mlds "index" then mlds
       else
         let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
         String.Map.add_exn mlds "index" gen_mld
@@ -721,8 +717,7 @@ let package_mlds =
             let* mlds = Packages.mlds sctx pkg in
             let mlds = check_mlds_no_dupes ~pkg ~mlds in
             let ctx = Super_context.context sctx in
-            if String.Map.mem mlds "index" then
-              Memo.Build.return mlds
+            if String.Map.mem mlds "index" then Memo.Build.return mlds
             else
               let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
               let* entry_modules = entry_modules sctx ~pkg in

@@ -107,8 +107,7 @@ let run_bench () =
   let+ zero =
     let open Fiber.O in
     let rec zero acc n =
-      if n = 0 then
-        Fiber.return (List.rev acc)
+      if n = 0 then Fiber.return (List.rev acc)
       else
         let* time = dune_build () in
         zero (time :: acc) (pred n)

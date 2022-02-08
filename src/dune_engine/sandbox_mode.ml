@@ -26,9 +26,7 @@ let compare = Option.compare compare_some
 let equal a b =
   match compare a b with
   | Eq -> true
-  | Lt
-  | Gt ->
-    false
+  | Lt | Gt -> false
 
 module Dict = struct
   type key = t
@@ -88,16 +86,12 @@ module Set = struct
   let is_patch_back_source_tree_only t =
     match compare t patch_back_source_tree_only with
     | Eq -> true
-    | Lt
-    | Gt ->
-      false
+    | Lt | Gt -> false
 
   let equal a b =
     match compare a b with
     | Eq -> true
-    | Lt
-    | Gt ->
-      false
+    | Lt | Gt -> false
 
   let mem = Dict.get
 
@@ -123,10 +117,8 @@ end
 (* The order of sandboxing modes in this list determines the order in which Dune
    will try to use them when satisfying sandboxing constraints. *)
 let all_except_patch_back_source_tree =
-  if Sys.win32 then
-    [ None; Some Copy; Some Symlink; Some Hardlink ]
-  else
-    [ None; Some Symlink; Some Copy; Some Hardlink ]
+  if Sys.win32 then [ None; Some Copy; Some Symlink; Some Hardlink ]
+  else [ None; Some Symlink; Some Copy; Some Hardlink ]
 
 let all = all_except_patch_back_source_tree @ [ Some Patch_back_source_tree ]
 

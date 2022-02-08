@@ -87,9 +87,7 @@ let normalize_path path =
   if Sys.win32 then
     let src = Path.External.to_string path in
     let is_letter = function
-      | 'a' .. 'z'
-      | 'A' .. 'Z' ->
-        true
+      | 'a' .. 'z' | 'A' .. 'Z' -> true
       | _ -> false
     in
     if String.length src >= 2 && is_letter src.[0] && src.[1] = ':' then (
@@ -97,11 +95,9 @@ let normalize_path path =
       Bytes.set dst 0 (Char.uppercase_ascii src.[0]);
       Bytes.blit_string ~src ~src_pos:1 ~dst ~dst_pos:1
         ~len:(String.length src - 1);
-      Path.External.of_string (Bytes.unsafe_to_string dst)
-    ) else
-      path
-  else
-    path
+      Path.External.of_string (Bytes.unsafe_to_string dst))
+    else path
+  else path
 
 let print_entering_message c =
   let cwd = Path.to_absolute_filename Path.root in
@@ -123,9 +119,7 @@ let print_entering_message c =
       | true -> (
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with
-          | None
-          | Some "" ->
-            None
+          | None | Some "" -> None
           | Some s -> Some (String.drop s 1)
         in
         match descendant_simple cwd ~of_:Fpath.initial_cwd with
@@ -135,10 +129,8 @@ let print_entering_message c =
           | None -> cwd
           | Some s ->
             let rec loop acc dir =
-              if dir = Filename.current_dir_name then
-                acc
-              else
-                loop (Filename.concat acc "..") (Filename.dirname dir)
+              if dir = Filename.current_dir_name then acc
+              else loop (Filename.concat acc "..") (Filename.dirname dir)
             in
             loop ".." (Filename.dirname s)))
     in
@@ -206,10 +198,7 @@ let init ?log_file c =
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
   Clflags.on_missing_dune_project_file :=
-    if c.require_dune_project_file then
-      Error
-    else
-      Warn;
+    if c.require_dune_project_file then Error else Warn;
   Dune_util.Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
@@ -306,8 +295,7 @@ let build_info =
       pr "statically linked libraries:";
       let longest = String.longest_map libs ~f:fst in
       List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v));
-    exit 0
-  )
+    exit 0)
 
 module Options_implied_by_dash_p = struct
   type t =
@@ -352,10 +340,8 @@ module Options_implied_by_dash_p = struct
     | No_config -> Dune_config.Partial.empty
     | This fname -> Dune_config.load_config_file fname
     | Default ->
-      if Dune_util.Config.inside_dune then
-        Dune_config.Partial.empty
-      else
-        Dune_config.load_user_config_file ()
+      if Dune_util.Config.inside_dune then Dune_config.Partial.empty
+      else Dune_config.load_user_config_file ()
 
   let packages =
     let parser s =
@@ -830,10 +816,7 @@ let term ~default_root_is_cwd =
                    "Instead of terminating build after completion, wait \
                     continuously for file changes.")
          in
-         if watch then
-           Some Watch_mode_config.Eager
-         else
-           None)
+         if watch then Some Watch_mode_config.Eager else None)
         (let+ watch =
            Arg.(
              value & flag
@@ -842,10 +825,7 @@ let term ~default_root_is_cwd =
                    "Similar to [--watch], but only start a build when \
                     instructed externally by an RPC.")
          in
-         if watch then
-           Some Watch_mode_config.Passive
-         else
-           None)
+         if watch then Some Watch_mode_config.Passive else None)
     in
     match res with
     | None -> Watch_mode_config.No
@@ -1018,8 +998,7 @@ let term ~default_root_is_cwd =
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();
-    Metrics.enable ()
-  );
+    Metrics.enable ());
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces

@@ -93,20 +93,14 @@ module List (M : Monad_intf.S) = struct
     | [] -> return true
     | x :: xs ->
       let* pred = f x in
-      if pred then
-        for_all xs ~f
-      else
-        return false
+      if pred then for_all xs ~f else return false
 
   let rec exists xs ~f =
     match xs with
     | [] -> return false
     | x :: xs ->
       let* pred = f x in
-      if pred then
-        return true
-      else
-        exists xs ~f
+      if pred then return true else exists xs ~f
 end
 
 module Option (M : Monad_intf.S) = struct

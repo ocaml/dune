@@ -57,15 +57,8 @@ module Kind = struct
       ]
 
   let has_impl = function
-    | Alias
-    | Impl_vmodule
-    | Wrapped_compat
-    | Root
-    | Impl ->
-      true
-    | Intf_only
-    | Virtual ->
-      false
+    | Alias | Impl_vmodule | Wrapped_compat | Root | Impl -> true
+    | Intf_only | Virtual -> false
 end
 
 (* Only the source of a module, not yet associated to a library *)
@@ -87,9 +80,7 @@ module Source = struct
     | None, None ->
       Code_error.raise "Module.Source.make called with no files"
         [ ("name", Module_name.to_dyn name) ]
-    | Some _, _
-    | _, Some _ ->
-      ());
+    | Some _, _ | _, Some _ -> ());
     let files = Ml_kind.Dict.make ~impl ~intf in
     { name; files }
 
@@ -100,10 +91,7 @@ module Source = struct
   let choose_file { files = { impl; intf }; name = _ } =
     match (intf, impl) with
     | None, None -> assert false
-    | Some x, Some _
-    | Some x, None
-    | None, Some x ->
-      x
+    | Some x, Some _ | Some x, None | None, Some x -> x
 
   let add_file t ml_kind file =
     if has t ~ml_kind then
@@ -137,8 +125,7 @@ let pp_flags t = t.pp
 let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match (kind, visibility) with
   | (Alias | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
-  | (Impl | Intf_only), _ ->
-    ()
+  | (Impl | Intf_only), _ -> ()
   | _, _ ->
     Code_error.raise "Module.of_source: invalid kind, visibility combination"
       [ ("name", Module_name.to_dyn source.name)
@@ -262,14 +249,8 @@ let encode
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
-    | Root
-    | Wrapped_compat
-    | Impl_vmodule
-    | Alias
-    | Impl
-    | Virtual
-    | Intf_only ->
-      Some kind
+    | Root | Wrapped_compat | Impl_vmodule | Alias | Impl | Virtual | Intf_only
+      -> Some kind
   in
   record_fields
     [ field "name" Module_name.encode name
@@ -297,8 +278,7 @@ let decode ~src_dir =
        if exists then
          let basename = module_basename name ~ml_kind ~dialect:Dialect.ocaml in
          Some (File.make Dialect.ocaml (Path.relative src_dir basename))
-       else
-         None
+       else None
      in
      let kind =
        match kind with
@@ -371,10 +351,7 @@ module Name_map = struct
 
   let impl_only =
     Module_name.Map.fold ~init:[] ~f:(fun m acc ->
-        if has m ~ml_kind:Impl then
-          m :: acc
-        else
-          acc)
+        if has m ~ml_kind:Impl then m :: acc else acc)
 
   let of_list_exn modules =
     List.map modules ~f:(fun m -> (name m, m)) |> Module_name.Map.of_list_exn

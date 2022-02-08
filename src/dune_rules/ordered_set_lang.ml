@@ -62,10 +62,7 @@ module Parse = struct
     let rec one () =
       peek_exn >>= function
       | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
-      | Atom (_, A "")
-      | Quoted_string (_, _)
-      | Template _ ->
-        elt
+      | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
       | Atom (loc, A s) -> (
         match s with
         | ":standard" -> junk >>> return Standard
@@ -143,10 +140,7 @@ module Eval = struct
         let right = loop right in
         diff left right
     in
-    if is_standard t then
-      standard
-    else
-      loop t.ast
+    if is_standard t then standard else loop t.ast
 
   let ordered eq =
     let singleton = List.singleton in
@@ -162,9 +156,7 @@ module Eval = struct
       List.fold_left ~init:empty ~f:(fun acc t ->
           merge acc t ~f:(fun _name x y ->
               match (x, y) with
-              | Some x, _
-              | _, Some x ->
-                Some x
+              | Some x, _ | _, Some x -> Some x
               | _ -> None))
     in
     let diff a b =
@@ -284,9 +276,7 @@ module Unexpanded = struct
     let rec loop (t : ast) =
       let open Ast in
       match t with
-      | Standard
-      | Include _ ->
-        true
+      | Standard | Include _ -> true
       | Element _ -> false
       | Union l -> List.exists l ~f:loop
       | Diff (l, r) -> loop l || loop r
@@ -312,9 +302,7 @@ module Unexpanded = struct
     let rec loop (t : ast) pos acc =
       let open Ast in
       match t with
-      | Standard
-      | Include _ ->
-        acc
+      | Standard | Include _ -> acc
       | Element x -> f pos x acc
       | Union l -> List.fold_left l ~init:acc ~f:(fun acc x -> loop x pos acc)
       | Diff (l, r) ->

@@ -13,8 +13,7 @@ module Pps_and_flags = struct
       List.partition_map l ~f:(fun s ->
           match String_with_vars.is_prefix ~prefix:"-" s with
           | Yes -> Right s
-          | No
-          | Unknown _ -> (
+          | No | Unknown _ -> (
             let loc = String_with_vars.loc s in
             match String_with_vars.text_only s with
             | None ->
@@ -83,10 +82,7 @@ let filter_map t ~f =
   match t with
   | Pps t ->
     let pps = List.filter_map t.pps ~f in
-    if pps = [] then
-      No_preprocessing
-    else
-      Pps { t with pps }
+    if pps = [] then No_preprocessing else Pps { t with pps }
   | (No_preprocessing | Action _ | Future_syntax _) as t -> t
 
 let filter_map_resolve t ~f =
@@ -95,20 +91,15 @@ let filter_map_resolve t ~f =
   | Pps t ->
     let+ pps = Resolve.Build.List.filter_map t.pps ~f in
     let pps, flags = List.split pps in
-    if pps = [] then
-      No_preprocessing
-    else
-      Pps { t with pps; flags = t.flags @ List.flatten flags }
+    if pps = [] then No_preprocessing
+    else Pps { t with pps; flags = t.flags @ List.flatten flags }
   | (No_preprocessing | Action _ | Future_syntax _) as t ->
     Resolve.Build.return t
 
 let fold_resolve t ~init ~f =
   match t with
   | Pps t -> Resolve.Build.List.fold_left t.pps ~init ~f
-  | No_preprocessing
-  | Action _
-  | Future_syntax _ ->
-    Resolve.Build.return init
+  | No_preprocessing | Action _ | Future_syntax _ -> Resolve.Build.return init
 
 module Without_instrumentation = struct
   type t = Loc.t * Lib_name.t
@@ -158,10 +149,7 @@ let decode =
 
 let loc = function
   | No_preprocessing -> None
-  | Action (loc, _)
-  | Pps { loc; _ }
-  | Future_syntax loc ->
-    Some loc
+  | Action (loc, _) | Pps { loc; _ } | Future_syntax loc -> Some loc
 
 let pps = function
   | Pps { pps; _ } -> pps
@@ -189,8 +177,7 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v :
   | Action (loc, action) -> Action (loc, action)
   | Pps pps -> Pps pps
   | Future_syntax loc ->
-    if Ocaml_version.supports_let_syntax v then
-      No_preprocessing
+    if Ocaml_version.supports_let_syntax v then No_preprocessing
     else
       Action
         ( loc
@@ -239,10 +226,8 @@ module Per_module = struct
   let dummy_name = Module_name.of_string "A"
 
   let single_preprocess t =
-    if Per_module.is_constant t then
-      Per_module.get t dummy_name
-    else
-      No_preprocessing
+    if Per_module.is_constant t then Per_module.get t dummy_name
+    else No_preprocessing
 
   let add_instrumentation t ~loc ~flags ~deps libname =
     Per_module.map t ~f:(fun pp ->
@@ -261,8 +246,7 @@ module Per_module = struct
             :: pps
           in
           Pps { t with pps }
-        | Action (loc, _)
-        | Future_syntax loc ->
+        | Action (loc, _) | Future_syntax loc ->
           User_error.raise ~loc
             [ Pp.text
                 "Preprocessing with actions and future syntax cannot be used \

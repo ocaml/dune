@@ -87,10 +87,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
           | Some (loc, _) -> f loc acc
         in
         let add_if b kind loc acc =
-          if b then
-            (kind, loc, module_name) :: acc
-          else
-            acc
+          if b then (kind, loc, module_name) :: acc else acc
         in
         let ( ++ ) f g loc acc = f loc (g loc acc) in
         let ( !? ) = Option.is_some in
@@ -211,27 +208,27 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
       |> List.map ~f:(fun name -> (buildable.loc, name)))
       [ Pp.text "You must provide an implementation for all of these modules." ];
     (if missing_intf_only <> [] then
-      match Ordered_set_lang.loc buildable.modules_without_implementation with
-      | None ->
-        User_error.raise ~loc:buildable.loc
-          [ Pp.text "Some modules don't have an implementation."
-          ; Pp.text "You need to add the following field to this stanza:"
-          ; Pp.nop
-          ; Pp.textf "  %s"
-              (let tag = Dune_lang.atom "modules_without_implementation" in
-               let modules =
-                 missing_intf_only |> uncapitalized
-                 |> List.map ~f:Dune_lang.Encoder.string
-               in
-               Dune_lang.to_string (List (tag :: modules)))
-          ]
-      | Some loc ->
-        User_error.raise ~loc
-          [ Pp.text
-              "The following modules must be listed here as they don't have an \
-               implementation:"
-          ; line_list missing_intf_only
-          ]);
+     match Ordered_set_lang.loc buildable.modules_without_implementation with
+     | None ->
+       User_error.raise ~loc:buildable.loc
+         [ Pp.text "Some modules don't have an implementation."
+         ; Pp.text "You need to add the following field to this stanza:"
+         ; Pp.nop
+         ; Pp.textf "  %s"
+             (let tag = Dune_lang.atom "modules_without_implementation" in
+              let modules =
+                missing_intf_only |> uncapitalized
+                |> List.map ~f:Dune_lang.Encoder.string
+              in
+              Dune_lang.to_string (List (tag :: modules)))
+         ]
+     | Some loc ->
+       User_error.raise ~loc
+         [ Pp.text
+             "The following modules must be listed here as they don't have an \
+              implementation:"
+         ; line_list missing_intf_only
+         ]);
     print
       [ Pp.text
           "The following modules have an implementation, they cannot be listed \
@@ -243,8 +240,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
           "The following modules have an implementation, they cannot be listed \
            as virtual:"
       ]
-      spurious_modules_virtual []
-  )
+      spurious_modules_virtual [])
 
 let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
     ~buildable:(conf : Buildable.t) ~private_modules ~kind ~src_dir =
@@ -258,23 +254,17 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
   in
   let allow_new_public_modules =
     match kind with
-    | Exe_or_normal_lib
-    | Virtual _ ->
-      true
+    | Exe_or_normal_lib | Virtual _ -> true
     | Implementation { allow_new_public_modules; _ } -> allow_new_public_modules
   in
   let existing_virtual_modules =
     match kind with
-    | Exe_or_normal_lib
-    | Virtual _ ->
-      Module_name.Set.empty
+    | Exe_or_normal_lib | Virtual _ -> Module_name.Set.empty
     | Implementation { existing_virtual_modules; _ } -> existing_virtual_modules
   in
   let virtual_modules =
     match kind with
-    | Exe_or_normal_lib
-    | Implementation _ ->
-      Module_name.Map.empty
+    | Exe_or_normal_lib | Implementation _ -> Module_name.Map.empty
     | Virtual { virtual_modules } ->
       eval ~standard:Module_name.Map.empty virtual_modules
   in
@@ -291,22 +281,17 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
     Module_name.Map.map modules ~f:(fun (_, m) ->
         let name = Module.Source.name m in
         let visibility =
-          if Module_name.Map.mem private_modules name then
-            Visibility.Private
-          else
-            Public
+          if Module_name.Map.mem private_modules name then Visibility.Private
+          else Public
         in
         let kind =
-          if Module_name.Map.mem virtual_modules name then
-            Module.Kind.Virtual
+          if Module_name.Map.mem virtual_modules name then Module.Kind.Virtual
           else if Module.Source.has m ~ml_kind:Impl then
             let name = Module.Source.name m in
             if Module_name.Set.mem existing_virtual_modules name then
               Impl_vmodule
-            else
-              Impl
-          else
-            Intf_only
+            else Impl
+          else Intf_only
         in
         Module.of_source m ~kind ~visibility)
   in

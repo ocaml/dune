@@ -16,10 +16,8 @@ let () =
       let pp =
         User_message.pp t
         ++
-        if User_message.Annots.is_empty t.annots then
-          Pp.nop
-        else
-          Dyn.pp (User_message.Annots.to_dyn t.annots)
+        if User_message.Annots.is_empty t.annots then Pp.nop
+        else Dyn.pp (User_message.Annots.to_dyn t.annots)
       in
       Some (Format.asprintf "%a" Pp.to_fmt pp)
     | _ -> None)

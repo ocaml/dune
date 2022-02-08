@@ -135,8 +135,7 @@ let%expect_test "call method with matching versions" =
             (Response.Error.E
                (Response.Error.create ~kind:Invalid_request
                   ~message:"0 not allowed" ()))
-        else
-          Fiber.return (x + x)
+        else Fiber.return (x + x)
       in
       Handler.implement_request rpc decl cb
     in
@@ -264,9 +263,11 @@ module Add = struct
         constr "with_others" (pair int int) (fun (xy, all) ->
             With_others { xy; all })
       in
-      sum [ econstr no_others; econstr with_others ] (function
-        | No_others x -> case x no_others
-        | With_others { xy; all } -> case (xy, all) with_others)
+      sum
+        [ econstr no_others; econstr with_others ]
+        (function
+          | No_others x -> case x no_others
+          | With_others { xy; all } -> case (xy, all) with_others)
     in
     Decl.Request.make_current_gen ~req ~resp ~version:2
 end
@@ -431,11 +432,7 @@ let%test_module "long polling" =
         let state = ref 0 in
         server (fun _poller ->
             incr state;
-            Fiber.return
-              (if !state = 3 then
-                None
-              else
-                Some !state))
+            Fiber.return (if !state = 3 then None else Some !state))
       in
       test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
       [%expect

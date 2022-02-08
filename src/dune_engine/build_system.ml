@@ -133,15 +133,10 @@ module Error = struct
         | Add _, _ -> false
         | Remove x, Remove y -> Id.equal x.id y.id
         | Remove _, _ -> false)
-      | Some _, None
-      | None, Some _ ->
-        false
+      | Some _, None | None, Some _ -> false
 
     let one_event_diff ~prev ~next =
-      if prev.stamp + 1 = next.stamp then
-        next.last_event
-      else
-        None
+      if prev.stamp + 1 = next.stamp then next.last_event else None
 
     let current t = t.current
 
@@ -167,14 +162,12 @@ module State = struct
     | ( Build_succeeded__now_waiting_for_changes
       , Build_succeeded__now_waiting_for_changes )
     | ( Build_failed__now_waiting_for_changes
-      , Build_failed__now_waiting_for_changes ) ->
-      true
+      , Build_failed__now_waiting_for_changes ) -> true
     | Building _, _
     | Initializing, _
     | Restarting_current_build, _
     | Build_succeeded__now_waiting_for_changes, _
-    | Build_failed__now_waiting_for_changes, _ ->
-      false
+    | Build_failed__now_waiting_for_changes, _ -> false
 
   let t = Fiber.Svar.create Initializing
 
@@ -322,8 +315,7 @@ end = struct
       (* Fact: file selector [g] expands to the set of file- and (possibly)
          dir-digest pairs [digests] *)
       Dep.Fact.file_selector g digests
-    | Universe
-    | Env _ ->
+    | Universe | Env _ ->
       (* Facts about these dependencies are constructed in
          [Dep.Facts.digest]. *)
       Memo.Build.return Dep.Fact.nothing
@@ -479,10 +471,8 @@ end = struct
       match rule_kind with
       | Normal_rule -> action
       | Anonymous_action { stamp_file; capture_stdout; _ } ->
-        if capture_stdout then
-          Action.with_stdout_to stamp_file action
-        else
-          Action.progn [ action; Action.write_file stamp_file "" ]
+        if capture_stdout then Action.with_stdout_to stamp_file action
+        else Action.progn [ action; Action.write_file stamp_file "" ]
     in
     let* () =
       let chdirs = Action.chdirs action in
@@ -545,8 +535,7 @@ end = struct
   let promote_targets ~rule_mode ~dir ~targets ~promote_source =
     match (rule_mode, !Clflags.promote) with
     | (Rule.Mode.Standard | Fallback | Ignore_source_files), _
-    | Promote _, Some Never ->
-      Fiber.return ()
+    | Promote _, Some Never -> Fiber.return ()
     | Promote promote, (Some Automatically | None) ->
       Target_promotion.promote ~dir ~targets ~promote ~promote_source
 
@@ -572,8 +561,7 @@ end = struct
     let* action, deps = Action_builder.run action Eager in
     let wrap_fiber f =
       Memo.Build.of_reproducible_fiber
-        (if Loc.is_none loc then
-          f ()
+        (if Loc.is_none loc then f ()
         else
           Fiber.with_error_handler f ~on_error:(fun exn ->
               match exn.exn with
@@ -926,8 +914,7 @@ end = struct
             | [ dir ] ->
               Path.Build.drop_build_context_exn dir
               |> Path.Source.to_string_maybe_quoted
-            | []
-            | _ :: _ ->
+            | [] | _ :: _ ->
               Code_error.raise "Multiple matching directory targets"
                 [ ("targets", Targets.Validated.to_dyn rule.targets) ]
           in
@@ -978,9 +965,7 @@ end = struct
       let* build_dir =
         Load_rules.is_target dir >>= function
         | No -> Memo.Build.return None
-        | Yes _
-        | Under_directory_target_so_cannot_say ->
-          build_dir dir
+        | Yes _ | Under_directory_target_so_cannot_say -> build_dir dir
       in
       match build_dir with
       | None ->
@@ -1026,10 +1011,7 @@ end = struct
             | Rule.Info.Source_file_copy _ when only_generated_files -> acc
             | _ ->
               let s = Path.build s in
-              if File_selector.test g s then
-                s :: acc
-              else
-                acc)
+              if File_selector.test g s then s :: acc else acc)
         |> Path.Set.of_list
 
     let eval_memo =
@@ -1137,8 +1119,7 @@ let package_deps ~packages_of (pkg : Package.t) files =
     let* pkgs = packages_of fn in
     if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs pkg.id then
       loop_deps fn
-    else
-      Memo.Build.return pkgs
+    else Memo.Build.return pkgs
   and loop_deps fn =
     Load_rules.get_rule (Path.build fn) >>= function
     | None -> Memo.Build.return Package.Id.Set.empty
@@ -1152,8 +1133,7 @@ let package_deps ~packages_of (pkg : Package.t) files =
           (Dep.Facts.paths res.deps |> Path.Map.keys
           |> (* if this file isn't in the build dir, it doesn't belong to any
                 package and it doesn't have dependencies that do *)
-          List.filter_map ~f:Path.as_in_build_dir)
-      )
+          List.filter_map ~f:Path.as_in_build_dir))
   and loop_files files =
     let+ sets = Memo.Build.parallel_map files ~f:loop in
     List.fold_left sets ~init:Package.Id.Set.empty ~f:Package.Id.Set.union
@@ -1177,16 +1157,13 @@ let report_early_exn exn =
     let error = Error.create ~exn in
     let+ () = State.add_error error in
     match !Clflags.report_errors_config with
-    | Early
-    | Twice ->
-      Dune_util.Report_error.report exn
+    | Early | Twice -> Dune_util.Report_error.report exn
     | Deterministic -> ())
 
 let handle_final_exns exns =
   match !Clflags.report_errors_config with
   | Early -> ()
-  | Twice
-  | Deterministic ->
+  | Twice | Deterministic ->
     let report exn =
       if not (caused_by_cancellation exn) then Dune_util.Report_error.report exn
     in
@@ -1212,8 +1189,7 @@ let run f =
       let final_status =
         if List.exists exns ~f:caused_by_cancellation then
           State.Restarting_current_build
-        else
-          Build_failed__now_waiting_for_changes
+        else Build_failed__now_waiting_for_changes
       in
       let+ () = State.set final_status in
       Error `Already_reported

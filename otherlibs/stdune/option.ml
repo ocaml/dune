@@ -43,11 +43,7 @@ let value_exn = function
 
 let some x = Some x
 
-let some_if cond x =
-  if cond then
-    Some x
-  else
-    None
+let some_if cond x = if cond then Some x else None
 
 let is_some = function
   | None -> false

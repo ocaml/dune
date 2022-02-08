@@ -494,10 +494,8 @@ module Vars = struct
     let lines = Io.lines_of_file file in
     List.filter_map lines ~f:(fun line ->
         let line = String.trim line in
-        if line = "" || line.[0] = '#' then
-          None
-        else
-          String.lsplit2 line ~on:'=')
+        if line = "" || line.[0] = '#' then None
+        else String.lsplit2 line ~on:'=')
     |> String.Map.of_list_reduce ~f:(fun _ x -> x)
 
   exception E of Origin.t * string
@@ -570,8 +568,7 @@ let get_arch_sixtyfour stdlib_dir =
           | _ -> loop ic)
       in
       Exn.protectx (open_in file) ~finally:close_in ~f:loop
-    else
-      false
+    else false
   in
   List.exists ~f:get_arch_sixtyfour_from files
 
@@ -638,11 +635,7 @@ let make vars =
     let word_size =
       match get_int_opt vars "word_size" with
       | Some n -> n
-      | None ->
-        if get_arch_sixtyfour standard_library then
-          64
-        else
-          32
+      | None -> if get_arch_sixtyfour standard_library then 64 else 32
     in
     let int_size =
       match get_int_opt vars "int_size" with
@@ -656,11 +649,7 @@ let make vars =
     let ext_exe =
       match get_opt vars "exe_ext" with
       | Some s -> s
-      | None ->
-        if os_type = Os_type.Win32 then
-          ".exe"
-        else
-          ""
+      | None -> if os_type = Os_type.Win32 then ".exe" else ""
     in
     let default_executable_name = get vars "default_executable_name" in
     let systhread_supported = get_bool vars "systhread_supported" in

@@ -46,12 +46,7 @@ let get_error_from_exn = function
              ])
     | Some last ->
       let first = List.hd cycle in
-      let cycle =
-        if last = first then
-          cycle
-        else
-          last :: cycle
-      in
+      let cycle = if last = first then cycle else last :: cycle in
       { responsible = User
       ; msg =
           User_message.make ~prefix:User_error.prefix
@@ -108,8 +103,7 @@ let get_error_from_exn = function
 let i_must_not_crash =
   let reported = ref false in
   fun () ->
-    if !reported then
-      []
+    if !reported then []
     else (
       reported := true;
       [ Pp.nop
@@ -120,8 +114,7 @@ let i_must_not_crash =
            when it has gone past, I will unwind the stack along its path.  \
            Where the cases are handled there will be nothing.  Only I will \
            remain."
-      ]
-    )
+      ])
 
 let report_backtraces_flag = ref false
 
@@ -154,17 +147,13 @@ let report { Exn_with_backtrace.exn; backtrace } =
       get_error_from_exn exn
     in
     let msg =
-      if msg.loc = Some Loc.none then
-        { msg with loc = None }
-      else
-        msg
+      if msg.loc = Some Loc.none then { msg with loc = None } else msg
     in
     let append (msg : User_message.t) pp =
       { msg with paragraphs = msg.paragraphs @ pp }
     in
     let msg =
-      if responsible = User && not !report_backtraces_flag then
-        msg
+      if responsible = User && not !report_backtraces_flag then msg
       else
         append msg
           (List.map
@@ -172,22 +161,16 @@ let report { Exn_with_backtrace.exn; backtrace } =
              ~f:(fun line -> Pp.box ~indent:2 (Pp.text line)))
     in
     let memo_stack =
-      if !print_memo_stacks || needs_stack_trace then
-        memo_stack
+      if !print_memo_stacks || needs_stack_trace then memo_stack
       else
         match msg.loc with
-        | None ->
-          if has_embedded_location then
-            []
-          else
-            memo_stack
+        | None -> if has_embedded_location then [] else memo_stack
         | Some loc ->
           if Filename.is_relative loc.start.pos_fname then
             (* If the error points to a local file, we assume that we don't need
                to explain to the user how we reached this error. *)
             []
-          else
-            memo_stack
+          else memo_stack
     in
     let memo_stack =
       match responsible with

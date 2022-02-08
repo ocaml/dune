@@ -447,8 +447,7 @@ let wrapped t =
     let+ vlib = Memo.Build.return (Option.value_exn t.implements) in
     let wrapped = Lib_info.wrapped vlib.info in
     match wrapped with
-    | Some (From _) (* can't inherit this value in virtual libs *)
-    | None ->
+    | Some (From _) (* can't inherit this value in virtual libs *) | None ->
       assert false (* will always be specified in dune package *)
     | Some (This x) -> Some x)
 
@@ -483,9 +482,7 @@ module Link_params = struct
        separately to help the linker locate them. *)
     let+ hidden_deps =
       match mode with
-      | Byte
-      | Byte_for_jsoo ->
-        Memo.Build.return dll_files
+      | Byte | Byte_for_jsoo -> Memo.Build.return dll_files
       | Byte_with_stubs_statically_linked_in -> Memo.Build.return lib_files
       | Native ->
         let+ native_archives =
@@ -501,12 +498,8 @@ module Link_params = struct
     let include_dirs =
       let files =
         match mode with
-        | Byte
-        | Byte_for_jsoo ->
-          dll_files
-        | Byte_with_stubs_statically_linked_in
-        | Native ->
-          lib_files
+        | Byte | Byte_for_jsoo -> dll_files
+        | Byte_with_stubs_statically_linked_in | Native -> lib_files
       in
       let files =
         match Lib_info.exit_module t.info with
@@ -530,9 +523,7 @@ module Link_params = struct
           Path.relative (Lib_info.src_dir t.info) (Module_name.uncapitalize m)
         in
         match mode with
-        | Byte_for_jsoo
-        | Byte
-        | Byte_with_stubs_statically_linked_in ->
+        | Byte_for_jsoo | Byte | Byte_with_stubs_statically_linked_in ->
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden_deps
         | Native ->
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
@@ -568,9 +559,7 @@ module L = struct
         in
         fun lib ->
           match Lib_info.status lib.info with
-          | Private (_, Some _)
-          | Installed_private ->
-            check_project lib
+          | Private (_, Some _) | Installed_private -> check_project lib
           | _ -> true)
     in
     let dirs =
@@ -580,8 +569,7 @@ module L = struct
             if visible_cmi t then
               let public_cmi_dir = Obj_dir.public_cmi_dir obj_dir in
               Path.Set.add acc public_cmi_dir
-            else
-              acc
+            else acc
           in
           match mode with
           | Mode.Byte -> acc
@@ -648,10 +636,8 @@ module L = struct
       match l with
       | [] -> acc
       | x :: l ->
-        if Id.Set.mem seen x.unique_id then
-          loop acc l seen
-        else
-          loop (x :: acc) l (Id.Set.add seen x.unique_id)
+        if Id.Set.mem seen x.unique_id then loop acc l seen
+        else loop (x :: acc) l (Id.Set.add seen x.unique_id)
     in
     loop [] l Id.Set.empty
 
@@ -697,8 +683,7 @@ module Lib_and_module = struct
                         ]
                       | Byte
                       | Byte_for_jsoo
-                      | Byte_with_stubs_statically_linked_in ->
-                        [])))))
+                      | Byte_with_stubs_statically_linked_in -> [])))))
          in
          Command.Args.S l)
 
@@ -774,8 +759,7 @@ module Sub_system = struct
             [ Pp.textf "Library %S depends on itself"
                 (Lib_name.to_string lib.name)
             ]
-        else
-          M.get lib'
+        else M.get lib'
       in
       let+ inst = M.instantiate ~resolve ~get lib info in
       Sub_system0.Instance.T (M.for_instance, inst)
@@ -847,17 +831,13 @@ end = struct
       | [] -> assert false
       | (x : Id.t) :: stack ->
         let acc = (x.path, x.name) :: acc in
-        if Id.equal x last then
-          acc
-        else
-          build_loop acc stack
+        if Id.equal x last then acc else build_loop acc stack
     in
     let loop = build_loop [ (last.path, last.name) ] t.stack in
     Error.dependency_cycle loop
 
   let push (t : t) ~implements_via (x : Id.t) =
-    if Id.Set.mem t.seen x then
-      dependency_cycle t x
+    if Id.Set.mem t.seen x then dependency_cycle t x
     else
       let implements_via =
         match implements_via with
@@ -917,10 +897,8 @@ end = struct
       | Some _, Some _ -> assert false (* can't be virtual and implement *)
       | None, Some _ ->
         Resolve.Build.return
-          (if Set.mem t.implemented lib then
-            t
-          else
-            { t with unimplemented = Set.add t.unimplemented lib })
+          (if Set.mem t.implemented lib then t
+          else { t with unimplemented = Set.add t.unimplemented lib })
       | Some vlib, None ->
         let+ vlib = Memo.Build.return vlib in
         { implemented = Set.add t.implemented vlib
@@ -1003,8 +981,7 @@ end = struct
       let rec loop t =
         let t = Option.value ~default:t (Map.find impls t) in
         let* res, visited = R.get in
-        if Id.Set.mem visited t.unique_id then
-          R.return ()
+        if Id.Set.mem visited t.unique_id then R.return ()
         else
           let* () = R.set (res, Id.Set.add visited t.unique_id) in
           let* deps = R.lift (Memo.Build.return t.requires) in
@@ -1021,8 +998,7 @@ end = struct
     if linking && not (Table.Partial.is_empty impls) then
       let* impls = Table.make impls in
       second_step_closure closure impls
-    else
-      Resolve.Build.return closure
+    else Resolve.Build.return closure
 end
 
 let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
@@ -1035,8 +1011,7 @@ let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
     match lib |> info |> Lib_info.instrumentation_backend with
     | Some _ as ppx -> Resolve.Build.return ppx
     | None ->
-      if do_not_fail then
-        Resolve.Build.return (Some libname)
+      if do_not_fail then Resolve.Build.return (Some libname)
       else
         Resolve.Build.fail
           (User_error.make ~loc:(fst libname)
@@ -1100,10 +1075,7 @@ end = struct
       (* [Allow_all] is used for libraries that are installed because we don't
          have to check it again. It has been checked when compiling the
          libraries before their installation *)
-      | Installed_private
-      | Private _
-      | Installed ->
-        Allow_all
+      | Installed_private | Private _ | Installed -> Allow_all
       | Public (_, _) -> From_same_project
     in
     let resolve name = resolve_dep db name ~private_deps in
@@ -1167,10 +1139,8 @@ end = struct
         | Some vlib -> Memo.Build.return vlib
         | None -> Error.not_an_implementation_of ~vlib:info ~impl:impl.info
       in
-      if Id.equal vlib.unique_id unique_id then
-        Resolve.Build.return impl
-      else
-        Error.not_an_implementation_of ~vlib:info ~impl:impl.info
+      if Id.equal vlib.unique_id unique_id then Resolve.Build.return impl
+      else Error.not_an_implementation_of ~vlib:info ~impl:impl.info
     in
     let default_implementation =
       Lib_info.default_implementation info
@@ -1193,8 +1163,7 @@ end = struct
                      (* It's not good to rely on package names for equality like
                         this, but we piggy back on the fact that package names
                         are globally unique *)
-                     if Package.Name.equal p p' then
-                       Resolve.Build.return impl
+                     if Package.Name.equal p p' then Resolve.Build.return impl
                      else
                        Error.make ~loc
                          [ Pp.textf
@@ -1297,10 +1266,8 @@ end = struct
             (* TODO this could be made lazier *)
             let requires = Resolve.is_ok requires in
             let ppx_runtime_deps = Resolve.is_ok t.ppx_runtime_deps in
-            if requires && ppx_runtime_deps then
-              None
-            else
-              Some "optional with unavailable dependencies")
+            if requires && ppx_runtime_deps then None
+            else Some "optional with unavailable dependencies")
       in
       match hidden with
       | None -> Status.Found t
@@ -1387,8 +1354,7 @@ end = struct
     fun ts ->
       let rec one (t : lib) =
         let* res, visited = R.get in
-        if Set.mem visited t then
-          R.return ()
+        if Set.mem visited t then R.return ()
         else
           let* () = R.set (res, Set.add visited t) in
           let* re_exports = R.lift (Memo.Build.return t.re_exports) in
@@ -1423,8 +1389,7 @@ end = struct
               let* exists =
                 Memo.Build.List.exists forbidden ~f:(available_internal db)
               in
-              if exists then
-                Memo.Build.return None
+              if exists then Memo.Build.return None
               else
                 Resolve.Build.peek
                   (let deps =
@@ -1622,8 +1587,7 @@ end = struct
     let library_is_default vlib_default_parent lib =
       match Map.find vlib_default_parent lib with
       | Some (_ :: _) -> Resolve.Build.return None
-      | None
-      | Some [] -> (
+      | None | Some [] -> (
         match lib.default_implementation with
         | None -> Resolve.Build.return None
         | Some default ->
@@ -1683,8 +1647,7 @@ end = struct
           (* If the library has an implementation according to variants or
              default impl. *)
           let virtual_ = Lib_info.virtual_ lib.info in
-          if Option.is_none virtual_ then
-            R.return ()
+          if Option.is_none virtual_ then R.return ()
           else
             let* impl = R.lift (impl_for lib) in
             match impl with
@@ -1742,8 +1705,7 @@ end = struct
     let rec visit (t : t) ~stack (implements_via, lib) =
       let open R.O in
       let* state = R.get in
-      if Set.mem state.visited lib then
-        R.return ()
+      if Set.mem state.visited lib then R.return ()
       else
         match Map.find t.forbidden_libraries lib with
         | Some loc ->
@@ -1767,8 +1729,7 @@ end = struct
                   (let open Memo.Build.O in
                   find_internal db lib.name >>= function
                   | Status.Found lib' ->
-                    if lib = lib' then
-                      Resolve.Build.return ()
+                    if lib = lib' then Resolve.Build.return ()
                     else
                       let req_by = Dep_stack.to_required_by stack in
                       Error.overlap ~in_workspace:lib'.info
@@ -1974,20 +1935,13 @@ module DB = struct
     let open Memo.Build.O in
     Resolve_names.find_internal t name >>| function
     | Found t -> Some t
-    | Not_found
-    | Invalid _
-    | Hidden _ ->
-      None
+    | Not_found | Invalid _ | Hidden _ -> None
 
   let find_even_when_hidden t name =
     let open Memo.Build.O in
     Resolve_names.find_internal t name >>| function
-    | Found t
-    | Hidden { lib = t; reason = _; path = _ } ->
-      Some t
-    | Invalid _
-    | Not_found ->
-      None
+    | Found t | Hidden { lib = t; reason = _; path = _ } -> Some t
+    | Invalid _ | Not_found -> None
 
   let resolve_when_exists t (loc, name) =
     let open Memo.Build.O in
@@ -2126,9 +2080,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
   in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
-    | Some _, None
-    | None, Some _ ->
-      assert false
+    | Some _, None | None, Some _ -> assert false
     | None, None -> Resolve.Build.return None
     | Some (loc, _), Some field ->
       let open Resolve.Build.O in
@@ -2154,8 +2106,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
     List.map requires ~f:(fun lib ->
         if List.exists re_exports ~f:(fun r -> r = lib) then
           Lib_dep.Re_export (loc, mangled_name lib)
-        else
-          Direct (loc, mangled_name lib))
+        else Direct (loc, mangled_name lib))
   in
   let name = mangled_name lib in
   let info =

@@ -10,14 +10,12 @@ module Scheduler = struct
 end
 
 let rec delay_n_time_units counter n =
-  if n = 0 then
-    Fiber.return ()
+  if n = 0 then Fiber.return ()
   else (
     assert (n > 0);
     Fiber.bind (Scheduler.yield ()) ~f:(fun () ->
         incr counter;
-        delay_n_time_units counter (n - 1))
-  )
+        delay_n_time_units counter (n - 1)))
 
 (* This test demonstrates that [Memo.run_with_error_handler] does indeed return
    exceptions early, but it also demonstrates a problem where if you run

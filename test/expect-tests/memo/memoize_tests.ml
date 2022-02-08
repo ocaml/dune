@@ -33,8 +33,7 @@ let int_fn_create name ~cutoff = Memo.create name ~input:(module Int) ~cutoff
 let run m = Scheduler.run (Memo.Build.run m)
 
 let run_memo f v =
-  try run (Memo.exec f v) with
-  | Memo.Error.E err -> raise (Memo.Error.get err)
+  try run (Memo.exec f v) with Memo.Error.E err -> raise (Memo.Error.get err)
 
 let run_and_log_errors m =
   match Scheduler.run (Fiber.collect_errors (fun () -> Memo.Build.run m)) with
@@ -140,10 +139,8 @@ let mcompcycle =
   let compcycle x =
     let* x = Memo.Build.return x >>= dump_stack in
     counter := !counter + 1;
-    if !counter < 20 then
-      (x + 1) mod 3 |> Memo.exec (Fdecl.get mcompcycle)
-    else
-      failwith "cycle"
+    if !counter < 20 then (x + 1) mod 3 |> Memo.exec (Fdecl.get mcompcycle)
+    else failwith "cycle"
   in
   let fn = int_fn_create "cycle" compcycle ~cutoff:Int.equal in
   Fdecl.set mcompcycle fn;
@@ -151,8 +148,8 @@ let mcompcycle =
 
 let%expect_test _ =
   counter := 0;
-  try run_memo mcompcycle 5 |> ignore with
-  | Cycle_error.E err ->
+  try run_memo mcompcycle 5 |> ignore
+  with Cycle_error.E err ->
     let cycle =
       Cycle_error.get err
       |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:mcompcycle)
@@ -185,8 +182,7 @@ let mfib =
   let compfib x =
     let mfib = Memo.exec (Fdecl.get mfib) in
     counter := !counter + 1;
-    if x <= 1 then
-      Memo.Build.return x
+    if x <= 1 then Memo.Build.return x
     else
       let* r1 = mfib (x - 1) in
       let+ r2 = mfib (x - 2) in
@@ -373,10 +369,8 @@ let%expect_test "fib linked list" =
     printf "computing %d\n" x;
     let prev_cell = Memo.cell memo (x - 1) in
     let+ value =
-      if x < 1 then
-        Memo.Build.return 0
-      else if x = 1 then
-        Memo.Build.return 1
+      if x < 1 then Memo.Build.return 0
+      else if x = 1 then Memo.Build.return 1
       else
         let* x = force prev_cell
         and* y = force prev_cell in
@@ -541,8 +535,7 @@ let evaluate_and_print f x =
       Fiber.run
         ~iter:(fun () -> raise Exit)
         (run_collect_errors (fun () -> Memo.exec f x))
-    with
-    | exn -> Error [ Exn_with_backtrace.capture exn ]
+    with exn -> Error [ Exn_with_backtrace.capture exn ]
   in
   print_result x res
 
@@ -550,14 +543,12 @@ let%expect_test "error handling and memo" =
   let f =
     int_fn_create "f" ~cutoff:Int.equal (fun x ->
         printf "Calling f %d\n" x;
-        if x = 42 then
-          failwith "42"
+        if x = 42 then failwith "42"
         else if x = 84 then
           Memo.Build.fork_and_join_unit
             (fun () -> failwith "left")
             (fun () -> failwith "right")
-        else
-          Memo.Build.return x)
+        else Memo.Build.return x)
   in
   let test x = evaluate_and_print f x in
   test 20;
@@ -1466,8 +1457,7 @@ let%expect_test "error handling with diamonds" =
   in
   Fdecl.set f_impl (fun x ->
       printf "Calling f %d\n" x;
-      if x = 0 then
-        failwith "reached 0"
+      if x = 0 then failwith "reached 0"
       else
         Memo.Build.fork_and_join_unit
           (fun () -> Memo.exec f (x - 1))
@@ -1598,10 +1588,8 @@ let%expect_test "errors work with early cutoff" =
         | Input_too_large run ->
           Some
             (sprintf "Input_too_large <%s run>"
-               (if Memo.Run.For_tests.compare first_run run = Eq then
-                 "first"
-               else
-                 "second"))
+               (if Memo.Run.For_tests.compare first_run run = Eq then "first"
+               else "second"))
         | _ -> None);
     Memo.create "divide 100 by input"
       ~input:(module Int)

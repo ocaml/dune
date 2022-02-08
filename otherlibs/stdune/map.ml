@@ -33,8 +33,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
         (update t key ~f:(function
           | None -> Some v
           | Some e -> raise_notrace (M.Found e)))
-    with
-    | M.Found e -> Error e
+    with M.Found e -> Error e
 
   let remove t k = remove k t
 
@@ -107,10 +106,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
       | [] -> Result.Ok acc
       | x :: l ->
         let k, v = f x in
-        if not (mem acc k) then
-          loop f (set acc k v) l
-        else
-          Error k
+        if not (mem acc k) then loop f (set acc k v) l else Error k
     in
     fun l ~f ->
       match loop f empty l with
@@ -217,11 +213,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
           | Some t -> (
             match of_ with
             | None -> not_subset ()
-            | Some of_ ->
-              if f t ~of_ then
-                None
-              else
-                not_subset ()))
+            | Some of_ -> if f t ~of_ then None else not_subset ()))
     with
     | (_ : _ t) -> true
     | exception Exit -> false
@@ -253,11 +245,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let find_key t ~f =
     match
-      iteri t ~f:(fun key _ ->
-          if f key then
-            raise_notrace (Found key)
-          else
-            ())
+      iteri t ~f:(fun key _ -> if f key then raise_notrace (Found key) else ())
     with
     | () -> None
     | exception Found e -> Some e

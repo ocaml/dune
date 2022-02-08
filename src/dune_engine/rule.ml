@@ -85,8 +85,7 @@ let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
     | From_dune_file loc ->
       let pp = [ Pp.text message ] @ extra_pp in
       User_error.raise ~loc pp
-    | Internal
-    | Source_file_copy _ ->
+    | Internal | Source_file_copy _ ->
       Code_error.raise message
         [ ("info", Info.to_dyn info); ("targets", Targets.to_dyn targets) ]
   in

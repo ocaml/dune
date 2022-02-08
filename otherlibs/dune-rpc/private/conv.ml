@@ -189,7 +189,8 @@ let string =
     , (function
       | Atom s -> s
       | List _ as list ->
-        raise_of_sexp ~payload:[ ("list", list) ]
+        raise_of_sexp
+          ~payload:[ ("list", list) ]
           "string: expected atom. received list")
     , fun s -> Atom s )
 
@@ -198,7 +199,8 @@ let int =
     ( Sexp
     , (function
       | List _ as list ->
-        raise_of_sexp ~payload:[ ("list", list) ]
+        raise_of_sexp
+          ~payload:[ ("list", list) ]
           "int: expected atom. received list"
       | Atom s -> (
         match Int.of_string s with
@@ -217,19 +219,19 @@ let unit =
 let option x =
   let none = constr "None" unit (fun () -> None) in
   let some = constr "Some" x (fun x -> Some x) in
-  sum [ econstr none; econstr some ] (function
-    | None -> case () none
-    | Some s -> case s some)
+  sum
+    [ econstr none; econstr some ]
+    (function
+      | None -> case () none
+      | Some s -> case s some)
 
 let char =
   Iso
     ( Sexp
     , (function
       | Atom s ->
-        if String.length s = 1 then
-          s.[0]
-        else
-          raise_of_sexp "expected only a single character"
+        if String.length s = 1 then s.[0]
+        else raise_of_sexp "expected only a single character"
       | List _ -> raise_of_sexp "expected a string of length 1")
     , fun c -> Atom (String.make 1 c) )
 
@@ -275,10 +277,7 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
     | Enum choices -> (
       match
         List.find_map choices ~f:(fun (s, a') ->
-            if Poly.equal a a' then
-              Some s
-            else
-              None)
+            if Poly.equal a a' then Some s else None)
       with
       | Some v -> Atom v
       | None ->
@@ -295,8 +294,7 @@ let check_version ~version ~since ~until _ctx =
     match until with
     | None -> false
     | Some until -> version > until
-  then
-    raise_version_error ?until ~since "invalid version"
+  then raise_version_error ?until ~since "invalid version"
 
 let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
  fun t ~version sexp ->
@@ -353,8 +351,7 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
          (* TODO share computation somehow *)
          let a, x = loop x ctx in
          (Left a, x)
-       with
-       | Of_sexp _ ->
+       with Of_sexp _ ->
          let a, y = loop y ctx in
          (Right a, y))
      | Iso (t, f, _) ->
@@ -378,8 +375,7 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
                  Some
                    (let a, k = loop c.arg args in
                     (c.inj a, k))
-               else
-                 None)
+               else None)
          with
          | None -> raise_of_sexp "invalid constructor name"
          | Some p -> p)

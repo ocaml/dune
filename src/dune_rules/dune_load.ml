@@ -214,8 +214,7 @@ let load () =
       let projects =
         if Path.Source.equal path (Dune_project.root project) then
           Appendable_list.singleton project
-        else
-          Appendable_list.empty
+        else Appendable_list.empty
       in
       let dune_files =
         match Source_tree.Dir.dune_file dir with

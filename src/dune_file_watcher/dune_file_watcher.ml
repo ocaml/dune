@@ -652,7 +652,7 @@ let add_watch t path =
   match t.kind with
   | Fsevents f -> (
     match path with
-    | Path.In_source_tree _ -> (* already watched by source watcher *) Ok ()
+    | Path.In_source_tree _ -> (* already watched by source watcher *) ()
     | In_build_dir _ ->
       Code_error.raise "attempted to watch a directory in build" []
     | External ext -> (
@@ -671,26 +671,25 @@ let add_watch t path =
         loop ext
       in
       match ext with
-      | None -> Ok ()
-      | Some ext ->
+      | None -> ()
+      | Some ext -> (
         let watch =
           lazy
             (fsevents ~latency:f.latency f.scheduler ~paths:[ path ]
                fsevents_standard_event)
         in
-        (match Watch_trie.add f.external_ ext watch with
+        match Watch_trie.add f.external_ ext watch with
         | Watch_trie.Under_existing_node -> ()
         | Inserted { new_t; removed } ->
           let watch = Lazy.force watch in
           Fsevents.start watch f.runloop;
           List.iter removed ~f:(fun (_, fs) -> Fsevents.stop fs);
-          f.external_ <- new_t);
-        Ok ()))
+          f.external_ <- new_t)))
   | Fswatch _ ->
     (* Here we assume that the path is already being watched because the coarse
        file watchers are expected to watch all the source files from the
        start *)
-    Ok ()
+    ()
   | Inotify { inotify; awaiting_creation; mutex } ->
     Mutex.lock mutex;
     let rec loop p =
@@ -706,7 +705,6 @@ let add_watch t path =
         | Some p -> loop p)
     in
     loop path;
-    Mutex.unlock mutex;
-    Ok ()
+    Mutex.unlock mutex
 
 let emit_sync = Fs_sync.emit

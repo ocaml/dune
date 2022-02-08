@@ -73,7 +73,7 @@ val wait_for_initial_watches_established_blocking : t -> unit
     far. *)
 val emit_sync : t -> Sync_id.t
 
-val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result
+val add_watch : t -> Path.t -> unit
 
 module For_tests : sig
   val should_exclude : string -> bool

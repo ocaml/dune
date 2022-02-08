@@ -477,21 +477,42 @@ end = struct
   end
 
   let ensure_dune_project_file_exists =
-    Memo.create "ensure-dune-project-file-exists"
-      ~input:(module Dune_project)
-      (fun project ->
-        let open Memo.Build.O in
-        let+ exists =
-          Dune_project.file project |> Path.source |> Fs_memo.file_exists
-        in
-        if not exists then
-          User_warning.emit
-            ~is_error:!Clflags.require_dune_project_file
-            [ Pp.text
-                "No dune-project file has been found. A default one is assumed \
-                 but the project might break when dune is upgraded. Please \
-                 create a dune-project file."
-            ])
+    let memo =
+      let module Input = struct
+        type t = [ `Is_error of bool ] * Dune_project.t
+
+        let equal (a1, p1) (a2, p2) =
+          Poly.equal a1 a2 && Dune_project.equal p1 p2
+
+        let hash = Tuple.T2.hash Poly.hash Dune_project.hash
+
+        let to_dyn (`Is_error b, project) =
+          Dyn.(pair bool Dune_project.to_dyn) (b, project)
+      end in
+      Memo.create "ensure-dune-project-file-exists"
+        ~input:(module Input)
+        (fun (`Is_error is_error, project) ->
+          let open Memo.Build.O in
+          let+ exists =
+            Dune_project.file project |> Path.source |> Fs_memo.file_exists
+          in
+          if not exists then
+            User_warning.emit ~is_error
+              ~hints:
+                [ Pp.text
+                    "generate the project file with: $ dune init project <name>"
+                ]
+              [ Pp.text
+                  "No dune-project file has been found. A default one is \
+                   assumed but the project might break when dune is upgraded. \
+                   Please create a dune-project file."
+              ])
+    in
+    fun inp ->
+      match !Clflags.on_missing_dune_project_file with
+      | Ignore -> Memo.Build.return ()
+      | Warn -> Memo.exec memo (`Is_error false, inp)
+      | Error -> Memo.exec memo (`Is_error true, inp)
 
   let dune_file ~(dir_status : Sub_dirs.Status.t) ~path ~files ~project =
     let file_exists =
@@ -529,7 +550,7 @@ end = struct
     in
     Memo.Build.Option.map file ~f:(fun file ->
         let open Memo.Build.O in
-        let* () = Memo.exec ensure_dune_project_file_exists project in
+        let* () = ensure_dune_project_file_exists project in
         let file_exists = Option.is_some file_exists in
         let from_parent = Option.map from_parent ~f:snd in
         Dune_file.load file ~file_exists ~project ~from_parent)

@@ -38,4 +38,9 @@ let promote_install_files = ref false
 
 let ignore_promoted_rules = ref false
 
-let require_dune_project_file = ref false
+type on_missing_dune_project_file =
+  | Error
+  | Warn
+  | Ignore
+
+let on_missing_dune_project_file = ref Warn

@@ -23,6 +23,7 @@ Can build the public library
   Warning: No dune-project file has been found. A default one is assumed but
   the project might break when dune is upgraded. Please create a dune-project
   file.
+  Hint: generate the project file with: $ dune init project <name>
   $ cat ./_test_lib_dir/dune
   (library
    (public_name test_lib)
@@ -74,6 +75,7 @@ Can build an executable
   Warning: No dune-project file has been found. A default one is assumed but
   the project might break when dune is upgraded. Please create a dune-project
   file.
+  Hint: generate the project file with: $ dune init project <name>
 
 Can run the created executable
 
@@ -81,6 +83,7 @@ Can run the created executable
   Warning: No dune-project file has been found. A default one is assumed but
   the project might break when dune is upgraded. Please create a dune-project
   file.
+  Hint: generate the project file with: $ dune init project <name>
   Hello, World!
 
 Clean up the executable tests
@@ -157,6 +160,7 @@ Can build the combo project
   Warning: No dune-project file has been found. A default one is assumed but
   the project might break when dune is upgraded. Please create a dune-project
   file.
+  Hint: generate the project file with: $ dune init project <name>
 
 Can run the combo project
 
@@ -164,6 +168,7 @@ Can run the combo project
   Warning: No dune-project file has been found. A default one is assumed but
   the project might break when dune is upgraded. Please create a dune-project
   file.
+  Hint: generate the project file with: $ dune init project <name>
   Hello, World!
 
 Clean up the combo project
@@ -193,6 +198,7 @@ Can build the multiple library project
   Warning: No dune-project file has been found. A default one is assumed but
   the project might break when dune is upgraded. Please create a dune-project
   file.
+  Hint: generate the project file with: $ dune init project <name>
 
 Clan up the multiple library project
 

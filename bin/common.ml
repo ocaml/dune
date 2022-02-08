@@ -205,7 +205,11 @@ let init ?log_file c =
   Clflags.promote_install_files := c.promote_install_files;
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
-  Clflags.require_dune_project_file := c.require_dune_project_file;
+  Clflags.on_missing_dune_project_file :=
+    if c.require_dune_project_file then
+      Error
+    else
+      Warn;
   Dune_util.Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)

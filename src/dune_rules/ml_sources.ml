@@ -273,8 +273,7 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
         in
         let obj_dir = Library.obj_dir lib ~dir:d.ctx_dir in
         List.Left (lib, modules, obj_dir)
-      | Executables exes
-      | Tests { exes; _ } ->
+      | Executables exes | Tests { exes; _ } ->
         let src_dir = d.ctx_dir in
         let modules =
           let modules =
@@ -285,8 +284,7 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
           let project = Scope.project d.scope in
           if Dune_project.wrapped_executables project then
             Modules_group.exe_wrapped ~src_dir ~modules
-          else
-            Modules_group.exe_unwrapped modules
+          else Modules_group.exe_unwrapped modules
         in
         let obj_dir = Dune_file.Executables.obj_dir ~dir:src_dir exes in
         let modules =

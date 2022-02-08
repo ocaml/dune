@@ -40,8 +40,7 @@ let make_relative_to_root p =
   let prefix, p =
     if Sys.win32 || Sys.cygwin then
       (String.lowercase_ascii prefix, String.lowercase_ascii p)
-    else
-      (prefix, p)
+    else (prefix, p)
   in
   String.drop_prefix ~prefix p
   (* After dropping the prefix we need to remove the leading path separator *)
@@ -63,8 +62,7 @@ let to_local file_path =
       (* If dune ocaml-merlin is called from within the build dir we must remove
          the build context *)
       Ok (Path.drop_optional_build_context path |> Path.local_part)
-    with
-    | User_error.E mess -> User_message.to_string mess |> error)
+    with User_error.E mess -> User_message.to_string mess |> error)
   | None ->
     Printf.sprintf "Path %S is not in dune workspace (%S)." file_path
       Path.(to_absolute_filename Path.root)
@@ -103,17 +101,13 @@ let load_merlin_file local_path file =
             match Merlin.Processed.load_file file_path with
             | Ok config -> Merlin.Processed.get config ~filename
             | Error msg -> Some (Merlin_conf.make_error msg)
-          else
-            None)
+          else None)
     in
     match result with
     | Some p -> Fiber.return (Some p)
     | None -> (
       match
-        if Path.Local.is_root path then
-          None
-        else
-          Path.Local.parent path
+        if Path.Local.is_root path then None else Path.Local.parent path
       with
       | None -> Fiber.return None
       | Some dir -> find_closest dir)

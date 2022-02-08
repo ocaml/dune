@@ -25,5 +25,4 @@ let equal x y =
   | Native, _ -> false
   | _, Native -> false
   | Byte_with_stubs_statically_linked_in, Byte_with_stubs_statically_linked_in
-    ->
-    true
+    -> true

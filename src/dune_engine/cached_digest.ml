@@ -94,13 +94,11 @@ let delete_very_recent_entries () =
   let now = get_current_filesystem_time () in
   match Float.compare cache.max_timestamp now with
   | Lt -> ()
-  | Eq
-  | Gt ->
+  | Eq | Gt ->
     Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
         match Float.compare data.stats.mtime now with
         | Lt -> true
-        | Gt
-        | Eq ->
+        | Gt | Eq ->
           if !Clflags.debug_digests then
             Console.print
               [ Pp.textf
@@ -117,15 +115,14 @@ let dump () =
       (Live (fun () -> Pp.hbox (Pp.text "Saving digest db...")))
       ~f:(fun () ->
         delete_very_recent_entries ();
-        P.dump db_file (Lazy.force cache))
-  )
+        P.dump db_file (Lazy.force cache)))
 
 let () = at_exit dump
 
 let invalidate_cached_timestamps () =
   (if Lazy.is_val cache then
-    let cache = Lazy.force cache in
-    cache.checked_key <- cache.checked_key + 1);
+   let cache = Lazy.force cache in
+   cache.checked_key <- cache.checked_key + 1);
   delete_very_recent_entries ()
 
 let set_max_timestamp cache (stat : Unix.stats) =
@@ -160,30 +157,18 @@ module Digest_result = struct
   let equal x y =
     match (x, y) with
     | Ok x, Ok y -> Digest.equal x y
-    | Ok _, _
-    | _, Ok _ ->
-      false
+    | Ok _, _ | _, Ok _ -> false
     | No_such_file, No_such_file -> true
-    | No_such_file, _
-    | _, No_such_file ->
-      false
+    | No_such_file, _ | _, No_such_file -> false
     | Broken_symlink, Broken_symlink -> true
-    | Broken_symlink, _
-    | _, Broken_symlink ->
-      false
+    | Broken_symlink, _ | _, Broken_symlink -> false
     | Cyclic_symlink, Cyclic_symlink -> true
-    | Cyclic_symlink, _
-    | _, Cyclic_symlink ->
-      false
+    | Cyclic_symlink, _ | _, Cyclic_symlink -> false
     | Unexpected_kind x, Unexpected_kind y -> File_kind.equal x y
-    | Unexpected_kind _, _
-    | _, Unexpected_kind _ ->
-      false
+    | Unexpected_kind _, _ | _, Unexpected_kind _ -> false
     | Unix_error x, Unix_error y ->
       Tuple.T3.equal Unix_error.equal String.equal String.equal x y
-    | Unix_error _, _
-    | _, Unix_error _ ->
-      false
+    | Unix_error _, _ | _, Unix_error _ -> false
     | Error x, Error y ->
       (* Falling back to polymorphic equality check seems OK for this rare case.
          We could also just return [false] but that would break the reflexivity
@@ -197,8 +182,7 @@ module Digest_result = struct
     | Cyclic_symlink
     | Unexpected_kind _
     | Unix_error _
-    | Error _ ->
-      None
+    | Error _ -> None
 
   let iter t ~f = Option.iter (to_option t) ~f
 
@@ -290,8 +274,7 @@ let peek_file ~allow_dirs path =
   | None -> None
   | Some x ->
     Some
-      (if x.stats_checked = cache.checked_key then
-        Digest_result.Ok x.digest
+      (if x.stats_checked = cache.checked_key then Digest_result.Ok x.digest
       else
         (* The [stat_exn] below follows symlinks. *)
         match Path.Untracked.stat_exn path with
@@ -312,8 +295,7 @@ let peek_file ~allow_dirs path =
                or not. *)
             x.stats_checked <- cache.checked_key;
             Ok x.digest
-          | Gt
-          | Lt ->
+          | Gt | Lt ->
             let digest_result = digest_path_with_stats ~allow_dirs path stats in
             Digest_result.iter digest_result ~f:(fun digest ->
                 if !Clflags.debug_digests then

@@ -15,13 +15,7 @@ module Backend = struct
       ; extends : t list Resolve.t
       }
 
-    let desc ~plural =
-      "inline tests backend"
-      ^
-      if plural then
-        "s"
-      else
-        ""
+    let desc ~plural = "inline tests backend" ^ if plural then "s" else ""
 
     let desc_article = "an"
 
@@ -169,8 +163,7 @@ include Sub_system.Register_end_point (struct
       let modes =
         if Mode_conf.Set.mem info.modes Javascript then
           Mode_conf.Set.add info.modes Byte
-        else
-          info.modes
+        else info.modes
       in
       List.map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
           match mode with
@@ -219,26 +212,18 @@ include Sub_system.Register_end_point (struct
       ~f:(fun (mode : Mode_conf.t) ->
         let ext =
           match mode with
-          | Native
-          | Best ->
-            ".exe"
+          | Native | Best -> ".exe"
           | Javascript -> ".bc.js"
           | Byte -> ".bc"
         in
         let custom_runner =
           match mode with
-          | Native
-          | Best
-          | Byte ->
-            None
+          | Native | Best | Byte -> None
           | Javascript -> Some Jsoo_rules.runner
         in
         let* runtest_alias =
           match mode with
-          | Native
-          | Best
-          | Byte ->
-            Memo.Build.return Alias.Name.runtest
+          | Native | Best | Byte -> Memo.Build.return Alias.Name.runtest
           | Javascript -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc)
@@ -289,8 +274,7 @@ include Sub_system.Register_end_point (struct
     in
     let* expander = Super_context.expander sctx ~dir in
     let* enabled_if = Expander.eval_blang expander info.enabled_if in
-    if enabled_if then
-      gen_rules c ~expander ~info ~backends
+    if enabled_if then gen_rules c ~expander ~info ~backends
     else
       let alias = Alias.runtest ~dir in
       Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:(Some info.loc)

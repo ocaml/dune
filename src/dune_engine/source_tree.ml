@@ -150,11 +150,7 @@ end = struct
      #3124 for more on issues caused by special devices *)
   let is_special (st_kind : Unix.file_kind) =
     match st_kind with
-    | S_CHR
-    | S_BLK
-    | S_FIFO
-    | S_SOCK ->
-      true
+    | S_CHR | S_BLK | S_FIFO | S_SOCK -> true
     | _ -> false
 
   let filter_files t project =
@@ -182,8 +178,7 @@ end = struct
       let+ files, dirs =
         Memo.Build.parallel_map dir_contents ~f:(fun (fn, kind) ->
             let path = Path.Source.relative path fn in
-            if Path.Source.is_in_build_dir path then
-              Memo.Build.return List.Skip
+            if Path.Source.is_in_build_dir path then Memo.Build.return List.Skip
             else
               let+ is_directory, file =
                 match kind with
@@ -194,17 +189,12 @@ end = struct
                 | S_LNK -> (
                   Fs_memo.path_stat (Path.source path) >>| function
                   | Ok ({ st_kind = S_DIR; _ } as st) -> (true, File.of_stats st)
-                  | Ok _
-                  | Error _ ->
-                    (false, File.dummy))
+                  | Ok _ | Error _ -> (false, File.dummy))
                 | _ -> Memo.Build.return (false, File.dummy)
               in
-              if is_directory then
-                List.Right (fn, path, file)
-              else if is_special kind then
-                Skip
-              else
-                Left fn)
+              if is_directory then List.Right (fn, path, file)
+              else if is_special kind then Skip
+              else Left fn)
         >>| List.filter_partition_map ~f:Fun.id
       in
       { path; files = String.Set.of_list files; dirs } |> Result.ok
@@ -254,8 +244,7 @@ end = struct
       |> Option.value ~default:File.Map.empty
 
     let add (acc : t) dirs_visited (fn, path, file) =
-      if Sys.win32 then
-        acc
+      if Sys.win32 then acc
       else
         let new_dirs_visited =
           File.Map.update dirs_visited file ~f:(function
@@ -379,12 +368,10 @@ end
 
 let ancestor_vcs =
   Memo.lazy_ ~name:"ancestor_vcs" (fun () ->
-      if Config.inside_dune then
-        Memo.Build.return None
+      if Config.inside_dune then Memo.Build.return None
       else
         let rec loop dir =
-          if Fpath.is_root dir then
-            None
+          if Fpath.is_root dir then None
           else
             let dir = Filename.dirname dir in
             match
@@ -516,17 +503,13 @@ end = struct
 
   let dune_file ~(dir_status : Sub_dirs.Status.t) ~path ~files ~project =
     let file_exists =
-      if dir_status = Data_only then
-        None
+      if dir_status = Data_only then None
       else if
         Dune_project.accept_alternative_dune_file_name project
         && String.Set.mem files Dune_file.alternative_fname
-      then
-        Some Dune_file.alternative_fname
-      else if String.Set.mem files Dune_file.fname then
-        Some Dune_file.fname
-      else
-        None
+      then Some Dune_file.alternative_fname
+      else if String.Set.mem files Dune_file.fname then Some Dune_file.fname
+      else None
     in
     let* from_parent =
       match Path.Source.parent path with
@@ -630,10 +613,8 @@ end = struct
             if
               Dune_project.cram parent_dir.project
               && Cram_test.is_cram_suffix basename
-            then
-              Sub_dirs.Status.Data_only
-            else
-              status
+            then Sub_dirs.Status.Data_only
+            else status
           in
           (status, sub_dir.virtual_)
         in
@@ -643,16 +624,14 @@ end = struct
       | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
         let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
         let* readdir =
-          if virtual_ then
-            Memo.Build.return (Readdir.empty path)
+          if virtual_ then Memo.Build.return (Readdir.empty path)
           else
             Readdir.of_source_path path >>| function
             | Ok dir -> dir
             | Error _ -> Readdir.empty path
         in
         let project =
-          if dir_status = Data_only then
-            parent_dir.project
+          if dir_status = Data_only then parent_dir.project
           else
             Option.value
               (Dune_project.load ~dir:path ~files:readdir.files
@@ -768,8 +747,7 @@ module Dir = struct
         |> List.filter_map ~f:(fun s ->
                if Cram_test.is_cram_suffix s then
                  Some (Ok (Cram_test.File (Path.Source.relative t.path s)))
-               else
-                 None)
+               else None)
       in
       let+ dir_tests =
         Memo.Build.parallel_map (String.Map.to_list t.contents.sub_dirs)
@@ -788,14 +766,11 @@ module Dir = struct
                 Cram_test.Dir { file; dir }
               in
               let files = contents.contents.files in
-              if String.Set.is_empty files then
-                None
+              if String.Set.is_empty files then None
               else
                 Some
-                  (if String.Set.mem files fname then
-                    Ok test
-                  else
-                    Error (Missing_run_t test)))
+                  (if String.Set.mem files fname then Ok test
+                  else Error (Missing_run_t test)))
         >>| List.filter_map ~f:Fun.id
       in
       file_tests @ dir_tests

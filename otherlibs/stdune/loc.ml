@@ -50,10 +50,7 @@ let pp_file_colon_line t = Pp.verbatim (to_file_colon_line t)
 let pp_left_pad n s =
   let needed_spaces = n - String.length s in
   Pp.verbatim
-    (if needed_spaces > 0 then
-      String.make needed_spaces ' ' ^ s
-    else
-      s)
+    (if needed_spaces > 0 then String.make needed_spaces ' ' ^ s else s)
 
 let pp_line padding_width (lnum, l) =
   let open Pp.O in
@@ -120,18 +117,14 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full { start; stop } :
         ++ print_lines last_shown_lines padding_width
   in
   let whole_file = start_c = 0 && stop_c = 0 in
-  if whole_file then
-    Pp.nop
+  if whole_file then Pp.nop
   else
     match
       let open Result.O in
       let* exists =
         Result.try_with (fun () -> Sys.file_exists start.pos_fname)
       in
-      if exists then
-        pp_file_excerpt ()
-      else
-        Result.Ok Pp.nop
+      if exists then pp_file_excerpt () else Result.Ok Pp.nop
     with
     | Ok pp -> pp
     | Error exn ->

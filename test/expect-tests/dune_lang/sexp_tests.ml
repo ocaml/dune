@@ -29,8 +29,8 @@ let of_sexp =
   enter (fields (field "foo" int))
 
 let%expect_test _ =
-  (try ignore (parse of_sexp Univ_map.empty (Lazy.force sexp) : int) with
-  | User_error.E msg -> User_message.print { msg with loc = None });
+  (try ignore (parse of_sexp Univ_map.empty (Lazy.force sexp) : int)
+   with User_error.E msg -> User_message.print { msg with loc = None });
   [%expect {|
 Error: Field "foo" is present too many times
 |}]
@@ -247,10 +247,7 @@ let test syntax sexp =
       match Dune_lang.Parser.parse_string s ~mode:Single ~fname:"" with
       | sexp' ->
         let sexp' = Dune_lang.Ast.remove_locs sexp' in
-        if sexp = sexp' then
-          Round_trip_success
-        else
-          Did_not_round_trip sexp'
+        if sexp = sexp' then Round_trip_success else Did_not_round_trip sexp'
       | exception User_error.E msg ->
         Did_not_parse_back (string_of_user_error msg) )
   in

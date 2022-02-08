@@ -103,9 +103,8 @@ let levenshtein_distance s t =
   done;
   for j = 1 to n do
     for i = 1 to m do
-      if s.[i - 1] = t.[j - 1] then
-        d.(i).(j) <- d.(i - 1).(j - 1)
-      (* no operation required *)
+      if s.[i - 1] = t.[j - 1] then d.(i).(j) <- d.(i - 1).(j - 1)
+        (* no operation required *)
       else
         d.(i).(j) <-
           min

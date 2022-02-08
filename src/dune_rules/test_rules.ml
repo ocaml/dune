@@ -13,13 +13,11 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
         ; optional = false
         ; mode = Text
         }
-    else
-      `Regular
+    else `Regular
   in
   let open Memo.Build.O in
   let runtest_modes =
-    if Dune_project.dune_version (Scope.project scope) < (3, 0) then
-      [ `exe ]
+    if Dune_project.dune_version (Scope.project scope) < (3, 0) then [ `exe ]
     else
       Dune_file.Executables.Link_mode.Map.to_list t.exes.modes
       |> List.filter_map
@@ -46,9 +44,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             let custom_runner =
               match runtest_mode with
               | `js -> Some Jsoo_rules.runner
-              | `bc
-              | `exe ->
-                None
+              | `bc | `exe -> None
             in
             let test_pform = Pform.Var Test in
             let run_action =
@@ -75,9 +71,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             let* runtest_alias =
               match runtest_mode with
               | `js -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
-              | `exe
-              | `bc ->
-                Memo.Build.return Alias.Name.runtest
+              | `exe | `bc -> Memo.Build.return Alias.Name.runtest
             in
             let add_alias ~loc ~action ~locks =
               let alias =

@@ -43,7 +43,6 @@ let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
   if
     List.exists include_stack ~f:(fun (_, f) ->
         Path.Source.equal f current_file)
-  then
-    error { current_file; include_stack };
+  then error { current_file; include_stack };
   let sexps = Dune_lang.Parser.load (Path.source current_file) ~mode:Many in
   (sexps, { current_file; include_stack })

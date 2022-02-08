@@ -69,9 +69,9 @@ module File = struct
     Console.print
       [ Pp.box ~indent:2
           (if correction_exists then
-            Pp.textf "Promoting %s to %s."
-              (Path.to_string_maybe_quoted (Path.build src))
-              (Path.Source.to_string_maybe_quoted dst)
+           Pp.textf "Promoting %s to %s."
+             (Path.to_string_maybe_quoted (Path.build src))
+             (Path.Source.to_string_maybe_quoted dst)
           else
             Pp.textf "Skipping promotion of %s to %s as the %s is missing."
               (Path.to_string_maybe_quoted (Path.build src))
@@ -171,9 +171,7 @@ let finalize () =
   let db =
     match !Clflags.promote with
     | Some Automatically -> do_promote !File.db All
-    | Some Never
-    | None ->
-      !File.db
+    | Some Never | None -> !File.db
   in
   dump_db db
 

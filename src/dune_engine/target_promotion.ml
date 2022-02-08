@@ -42,24 +42,17 @@ module To_delete = struct
   let add p =
     let p = Path.source p in
     modify_db (fun db ->
-        if Path.Set.mem db p then
-          None
-        else
-          Some (Path.Set.add db p))
+        if Path.Set.mem db p then None else Some (Path.Set.add db p))
 
   let remove p =
     let p = Path.source p in
     modify_db (fun db ->
-        if Path.Set.mem db p then
-          Some (Path.Set.remove db p)
-        else
-          None)
+        if Path.Set.mem db p then Some (Path.Set.remove db p) else None)
 
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
-      get_db () |> P.dump fn
-    )
+      get_db () |> P.dump fn)
 
   let mem p =
     let p = Path.source p in
@@ -97,9 +90,8 @@ let delete_stale_dot_merlin_file ~dir ~source_files_to_ignore =
       Path.Source.unlink_no_err merlin_in_src;
       (* We need to keep ignoring the .merlin file for that build or Dune will
          attempt to copy it and fail because it has been deleted *)
-      Path.Source.Set.add source_files_to_ignore merlin_in_src
-    ) else
-      source_files_to_ignore
+      Path.Source.Set.add source_files_to_ignore merlin_in_src)
+    else source_files_to_ignore
   in
   source_files_to_ignore
 
@@ -224,8 +216,7 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
     match Fs_cache.(read Untracked.path_stat) dst_dir with
     | Ok { st_kind; _ } when st_kind = S_DIR -> ()
     | Error (ENOENT, _, _) -> Path.mkdir_p dst_dir
-    | Ok _
-    | Error _ -> (
+    | Ok _ | Error _ -> (
       (* Try to delete any unexpected stuff out of the way. In future, we might
          want to make this aggressive cleaning behaviour conditional. *)
       match

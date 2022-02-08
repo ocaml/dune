@@ -32,9 +32,7 @@ let empty =
 
 let valid_name language ~loc s =
   match s with
-  | ""
-  | "."
-  | ".." ->
+  | "" | "." | ".." ->
     User_error.raise ~loc
       [ Pp.textf "%S is not a valid %s name." s
           (Foreign_language.proper_name language)
@@ -140,8 +138,7 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
             , (library.archive_name, (library.archive_name_loc, all))
               :: foreign_libs
             , exes )
-          | Executables exe
-          | Tests { exes = exe; _ } ->
+          | Executables exe | Tests { exes = exe; _ } ->
             let all =
               eval_foreign_stubs d exe.buildable.foreign_stubs ~sources
             in

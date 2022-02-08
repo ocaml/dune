@@ -36,8 +36,7 @@ module Flags = struct
       ; compile = [ "--pretty"; "--source-map-inline" ]
       ; link = [ "--source-map-inline" ]
       }
-    else
-      empty
+    else empty
 
   let map ~f { build_runtime; compile; link } =
     { build_runtime = f build_runtime; compile = f compile; link = f link }

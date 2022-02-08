@@ -21,9 +21,7 @@ type t =
 let is_running t =
   match t.state with
   | Running -> true
-  | Stopped
-  | Finished ->
-    false
+  | Stopped | Finished -> false
 
 let run t =
   let rec loop () =
@@ -68,9 +66,8 @@ let add_work t ~f =
       if is_running t then (
         Queue.push t.work f;
         Condition.signal t.work_available;
-        Ok ()
-      ) else
-        Error `Stopped)
+        Ok ())
+      else Error `Stopped)
 
 let stop t =
   with_mutex t.mutex ~f:(fun () ->
@@ -78,6 +75,4 @@ let stop t =
       | Running ->
         t.state <- Stopped;
         Condition.signal t.work_available
-      | Stopped
-      | Finished ->
-        ())
+      | Stopped | Finished -> ())

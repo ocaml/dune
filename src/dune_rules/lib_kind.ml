@@ -22,8 +22,7 @@ module Ppx_args = struct
                if String.contains str '=' then
                  User_error.raise ~loc
                    [ Pp.text "Character '=' is not allowed in cookie names" ]
-               else
-                 str)
+               else str)
          and+ value = String_with_vars.decode in
          { name; value })
 

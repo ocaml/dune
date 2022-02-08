@@ -71,10 +71,7 @@ module RunLoop = struct
             State.set t (Running w);
             w)
     in
-    let res =
-      try Ok (Raw.run_current_thread w) with
-      | exn -> Error exn
-    in
+    let res = try Ok (Raw.run_current_thread w) with exn -> Error exn in
     stop t;
     res
 end
@@ -266,8 +263,7 @@ let start t (rl : RunLoop.t) =
         State.critical_section rl (fun rl' ->
             match State.get rl' with
             | Stopped -> Code_error.raise "Fsevents.start: runloop stopped" []
-            | Idle rl'
-            | Running rl' ->
+            | Idle rl' | Running rl' ->
               State.set t (Start (r, rl));
               Raw.start r rl'))
 
@@ -275,9 +271,7 @@ let runloop t =
   State.critical_section t (fun t ->
       match State.get t with
       | Idle _ -> None
-      | Start (_, rl)
-      | Stop rl ->
-        Some rl)
+      | Start (_, rl) | Stop rl -> Some rl)
 
 let flush_sync t =
   let t =
@@ -303,9 +297,7 @@ let set_exclusion_paths t ~paths =
   State.critical_section t (fun t ->
       match State.get t with
       | Stop _ -> Code_error.raise "Fsevents.set_exclusion_paths: stop" []
-      | Idle r
-      | Start (r, _) ->
-        Raw.set_exclusion_paths r paths)
+      | Idle r | Start (r, _) -> Raw.set_exclusion_paths r paths)
 
 (* let flush_async t = *)
 (*   let res = flush_async t in *)

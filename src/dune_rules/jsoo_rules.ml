@@ -132,9 +132,7 @@ let build_cm cc ~in_buildable ~src ~target =
 
 let setup_separate_compilation_rules sctx components =
   match components with
-  | []
-  | _ :: _ :: _ ->
-    Memo.Build.return ()
+  | [] | _ :: _ :: _ -> Memo.Build.return ()
   | [ pkg ] -> (
     let pkg = Lib_name.parse_string_exn (Loc.none, pkg) in
     let ctx = SC.context sctx in

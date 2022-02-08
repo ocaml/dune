@@ -7,11 +7,7 @@ let dirs : (string * Dune_section.t, string) Hashtbl.t = Hashtbl.create 10
 (* multi-bindings first is the one with least priority *)
 
 (* TODO already exists in stdue/bin.ml *)
-let path_sep =
-  if Sys.win32 then
-    ';'
-  else
-    ':'
+let path_sep = if Sys.win32 then ';' else ':'
 
 let () =
   match Sys.getenv_opt "DUNE_DIR_LOCATIONS" with
@@ -42,8 +38,7 @@ let eval s =
        large *)
     let vlen = min vlen (len - colon_pos - 1) in
     Some (String.sub s (colon_pos + 1) vlen)
-  else
-    None
+  else None
   [@@inline never]
 
 let get_dir ~package ~section = Hashtbl.find_all dirs (package, section)
@@ -82,10 +77,8 @@ let prefix =
      prefix)
 
 let relocate_if_needed path =
-  if Lazy.force relocatable then
-    Filename.concat (Lazy.force prefix) path
-  else
-    path
+  if Lazy.force relocatable then Filename.concat (Lazy.force prefix) path
+  else path
 
 let site ~package ~section ~suffix ~encoded =
   let dirs = get_dir ~package ~section in

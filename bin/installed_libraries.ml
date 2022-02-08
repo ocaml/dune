@@ -45,8 +45,8 @@ let term =
          let ppf = Format.std_formatter in
          List.iter all ~f:(fun (n, r) ->
              Format.fprintf ppf "%-*s -> %s@\n" longest (Lib_name.to_string n) r);
-         Format.pp_print_flush ppf ()
-       ) else
+         Format.pp_print_flush ppf ())
+       else
          let pkgs =
            List.filter all_packages ~f:(function
              | Dune_package.Entry.Hidden_library _ -> false

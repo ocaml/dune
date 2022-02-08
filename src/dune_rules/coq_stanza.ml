@@ -41,10 +41,7 @@ module Buildable = struct
     and+ mode =
       let* version = Dune_lang.Syntax.get_exn coq_syntax in
       let default =
-        if version < (0, 3) then
-          Coq_mode.Legacy
-        else
-          Coq_mode.VoOnly
+        if version < (0, 3) then Coq_mode.Legacy else Coq_mode.VoOnly
       in
       located
         (field "mode" ~default

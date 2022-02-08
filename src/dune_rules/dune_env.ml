@@ -56,9 +56,7 @@ module Stanza = struct
 
     let warnings_equal x y =
       match (x, y) with
-      | Fatal, Fatal
-      | Nonfatal, Nonfatal ->
-        true
+      | Fatal, Fatal | Nonfatal, Nonfatal -> true
       | (Fatal | Nonfatal), _ -> false
 
     let equal x y = Option.equal warnings_equal x.warnings y.warnings

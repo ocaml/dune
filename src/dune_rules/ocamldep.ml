@@ -32,9 +32,7 @@ let parse_deps_exn ~file lines =
       ]
   in
   match lines with
-  | []
-  | _ :: _ :: _ ->
-    invalid ()
+  | [] | _ :: _ :: _ -> invalid ()
   | [ line ] -> (
     match String.lsplit2 line ~on:':' with
     | None -> invalid ()
@@ -104,12 +102,9 @@ let deps_of md ~ml_kind unit =
   let build_paths dependencies =
     let dependency_file_path m =
       let ml_kind m =
-        if Module.kind m = Alias then
-          None
-        else if Module.has m ~ml_kind:Intf then
-          Some Ml_kind.Intf
-        else
-          Some Impl
+        if Module.kind m = Alias then None
+        else if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf
+        else Some Impl
       in
       ml_kind m
       |> Option.map ~f:(fun ml_kind ->

@@ -28,8 +28,7 @@ let echo s =
       List.fold_left rest
         ~init:[ Run ("echo", [ "-n"; last ]) ]
         ~f:(fun acc s -> Run ("echo", [ s ]) :: acc)
-  else
-    List.map lines ~f:(fun s -> Run ("echo", [ s ]))
+  else List.map lines ~f:(fun s -> Run ("echo", [ s ]))
 
 let cat fn = Run ("cat", [ fn ])
 

@@ -84,9 +84,7 @@ let term =
      in
      match mode with
      | Some Trim -> `Ok (trim ~trimmed_size ~size)
-     | Some Start_deprecated
-     | Some Stop_deprecated ->
-       deprecated_error ()
+     | Some Start_deprecated | Some Stop_deprecated -> deprecated_error ()
      | None -> `Help (`Pager, Some name)
 
 let command = (term, info)

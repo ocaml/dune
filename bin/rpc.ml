@@ -50,8 +50,7 @@ let retry_loop once =
 
 let establish_connection_or_raise ~wait ~common once =
   let open Fiber.O in
-  if wait then
-    retry_loop once
+  if wait then retry_loop once
   else
     let+ res = once () in
     match res with

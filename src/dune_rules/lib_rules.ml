@@ -80,9 +80,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
               ; As
                   (match lib.kind with
                   | Normal -> []
-                  | Ppx_deriver _
-                  | Ppx_rewriter _ ->
-                    [ "-linkall" ])
+                  | Ppx_deriver _ | Ppx_rewriter _ -> [ "-linkall" ])
               ; Dyn
                   (Cm_files.top_sorted_cms cm_files ~mode
                   |> Action_builder.map ~f:(fun x -> Command.Args.Deps x))
@@ -148,10 +146,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~o_files ~archive_name
       let ctx = Super_context.context sctx in
       Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
         [ A "-g"
-        ; (if custom then
-            A "-custom"
-          else
-            Command.Args.empty)
+        ; (if custom then A "-custom" else Command.Args.empty)
         ; A "-o"
         ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name))
         ; Deps o_files
@@ -170,9 +165,8 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~o_files ~archive_name
        unless dynamically linked foreign archives are disabled. *)
     build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
       (if ctx.dynamically_linked_foreign_archives then
-        [ static_target; dynamic_target ]
-      else
-        [ static_target ])
+       [ static_target; dynamic_target ]
+      else [ static_target ])
   else
     let open Memo.Build.O in
     (* Build the static target only by passing the [-custom] flag. *)
@@ -427,8 +421,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
         let* m = Pp_spec.pp_module pp m in
         if add_empty_intf && not (Module.has m ~ml_kind:Intf) then
           Module_compilation.with_empty_intf ~sctx ~dir m
-        else
-          Memo.Build.return m)
+        else Memo.Build.return m)
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in

@@ -84,11 +84,7 @@ let encode = function
     List [ Dune_lang.atom "alias_rec"; String_with_vars.encode t ]
   | Glob_files { glob = t; recursive } ->
     List
-      [ Dune_lang.atom
-          (if recursive then
-            "glob_files_rec"
-          else
-            "glob_files")
+      [ Dune_lang.atom (if recursive then "glob_files_rec" else "glob_files")
       ; String_with_vars.encode t
       ]
   | Source_tree t ->
@@ -99,7 +95,6 @@ let encode = function
   | Sandbox_config config ->
     if Sandbox_config.equal config Sandbox_config.no_special_requirements then
       List []
-    else
-      Code_error.raise "There's no syntax for [Sandbox_config] yet" []
+    else Code_error.raise "There's no syntax for [Sandbox_config] yet" []
 
 let to_dyn t = Dune_lang.to_dyn (encode t)

@@ -63,8 +63,7 @@ let decode ~allowed_vars ?(is_error = true) ~since () =
                 let loc = Dune_lang.Template.Pform.loc var in
                 let what = Dune_lang.Template.Pform.describe var in
                 Dune_lang.Syntax.Error.since loc Stanza.syntax min_ver ~what
-              else
-                Pform.Env.unsafe_parse_without_checking_version env var))
+              else Pform.Env.unsafe_parse_without_checking_version env var))
   in
   let decode =
     match since with

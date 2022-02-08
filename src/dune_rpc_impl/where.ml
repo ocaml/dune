@@ -20,9 +20,7 @@ module Where =
         match (Unix.stat s).st_kind with
         | Unix.S_SOCK -> Ok `Unix_socket
         | S_REG -> Ok `Normal_file
-        | _
-        | (exception Unix.Unix_error (Unix.ENOENT, _, _)) ->
-          Ok `Other
+        | _ | (exception Unix.Unix_error (Unix.ENOENT, _, _)) -> Ok `Other
         | exception (Unix.Unix_error _ as e) -> Error e
     end)
 

@@ -38,10 +38,7 @@ let string_in_ocaml_syntax str =
   in
   let escape_protect_first_space s =
     let first_char =
-      if String.length s > 0 && is_space s.[0] then
-        "\\"
-      else
-        " "
+      if String.length s > 0 && is_space s.[0] then "\\" else " "
     in
     first_char ^ String.escaped s
   in
@@ -71,10 +68,7 @@ let pp_sequence start stop x ~f =
     Pp.hvbox
       (Pp.concat_mapi ~sep:Pp.cut x ~f:(fun i x ->
            Pp.box
-             ((if i = 0 then
-                Pp.verbatim (start ^ " ")
-              else
-                Pp.verbatim sep)
+             ((if i = 0 then Pp.verbatim (start ^ " ") else Pp.verbatim sep)
              ++ f x))
       ++ Pp.space ++ Pp.verbatim stop)
 

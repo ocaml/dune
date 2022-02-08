@@ -26,16 +26,11 @@ module Reproducibility_check = struct
             "The reproducibility check probability must be in the range [0, 1]."
         ]
     in
-    if p < 0. then
-      error ()
-    else if p = 0. then
-      Skip
-    else if p < 1. then
-      Check_with_probability p
-    else if p = 1. then
-      Check
-    else
-      error ()
+    if p < 0. then error ()
+    else if p = 0. then Skip
+    else if p < 1. then Check_with_probability p
+    else if p = 1. then Check
+    else error ()
 end
 
 type t =

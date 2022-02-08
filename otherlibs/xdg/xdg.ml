@@ -13,11 +13,7 @@ let ( / ) = Filename.concat
 let make t env_var unix_default win32_default =
   match t.env env_var with
   | Some s -> s
-  | None ->
-    if t.win32 then
-      win32_default
-    else
-      unix_default
+  | None -> if t.win32 then win32_default else unix_default
 
 let cache_dir t =
   let home = t.home_dir in
@@ -49,8 +45,7 @@ let create ?win32 ~env () =
         match env "AppData" with
         | None -> ""
         | Some s -> s
-      else
-        ""
+      else ""
   in
   let t =
     { env

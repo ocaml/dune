@@ -82,10 +82,7 @@ module Syntax = struct
   let term =
     let doc = "Output the rules in Makefile syntax." in
     let+ makefile = Arg.(value & flag & info [ "m"; "makefile" ] ~doc) in
-    if makefile then
-      Makefile
-    else
-      Sexp
+    if makefile then Makefile else Sexp
 
   let print_rule = function
     | Makefile -> print_rule_makefile

@@ -215,8 +215,7 @@ module Crawl = struct
           >>= Dir_contents.ocaml
           >>| Ml_sources.modules ~for_:(Library name)
           >>| modules ~obj_dir
-        else
-          Memo.Build.return []
+        else Memo.Build.return []
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
       let lib_descr =
@@ -295,8 +294,7 @@ module Opam_files = struct
                let template =
                  if Path.exists template_file then
                    Some (template_file, Io.read_file template_file)
-                 else
-                   None
+                 else None
                in
                Dune_rules.Opam_create.generate project pkg ~template
            in
@@ -377,8 +375,7 @@ module Lang = struct
            & info [ "lang" ] ~docv:"VERSION"
                ~doc:"Behave the same as this version of Dune.")
        in
-       if v = (0, 1) then
-         `Ok v
+       if v = (0, 1) then `Ok v
        else
          let msg =
            let pp =

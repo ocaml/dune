@@ -119,8 +119,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
                understand. *)
             Action.Full.add_sandbox Sandbox_mode.Set.patch_back_source_tree_only
               action)
-      else
-        action
+      else action
     in
     match rule_kind ~rule ~action with
     | No_alias ->
@@ -204,9 +203,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         let file_dst = Path.Build.relative dir basename in
         SC.add_rule sctx ~loc ~dir ~mode:def.mode
           ((if def.add_line_directive then
-             Action_builder.copy_and_add_line_directive
-           else
-             Action_builder.copy)
+            Action_builder.copy_and_add_line_directive
+           else Action_builder.copy)
              ~src:file_src ~dst:file_dst))
   in
 

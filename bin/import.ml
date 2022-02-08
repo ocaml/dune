@@ -55,18 +55,14 @@ end = struct
            | Initializing
            | Restarting_current_build
            | Build_succeeded__now_waiting_for_changes
-           | Build_failed__now_waiting_for_changes ->
-             Pp.nop
+           | Build_failed__now_waiting_for_changes -> Pp.nop
            | Building
                { Build_system.Progress.number_of_rules_executed = done_
                ; number_of_rules_discovered = total
                } ->
              Pp.verbatim
                (sprintf "Done: %u%% (%u/%u, %u left) (jobs: %u)"
-                  (if total = 0 then
-                    0
-                  else
-                    done_ * 100 / total)
+                  (if total = 0 then 0 else done_ * 100 / total)
                   done_ total (total - done_)
                   (Scheduler.running_jobs_count scheduler))));
     Fiber.return (Memo.Build.of_thunk get)
@@ -159,8 +155,7 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
     if Filename.is_relative prog then
       let root = Common.root common in
       Filename.concat root.dir prog
-    else
-      prog
+    else prog
   in
   Proc.restore_cwd_and_execve prog argv ~env
 

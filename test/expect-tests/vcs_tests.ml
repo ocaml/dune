@@ -24,8 +24,7 @@ let run (vcs : Vcs.t) args =
     match vcs.kind with
     | Git -> (Vcs.git, "git", args)
     | Hg -> (
-      if has_hg then
-        (Vcs.hg, "hg", args)
+      if has_hg then (Vcs.hg, "hg", args)
       else
         ( Vcs.git
         , "hg"
@@ -84,22 +83,16 @@ let run_action (vcs : Vcs.t) action =
       String.split s ~on:'-'
       |> List.map ~f:(fun s ->
              match s with
-             | ""
-             | "dirty" ->
-               s
+             | "" | "dirty" -> s
              | s
                when String.length s = 1
                     && String.for_all s ~f:(function
                          | '0' .. '9' -> true
-                         | _ -> false) ->
-               s
+                         | _ -> false) -> s
              | _
                when String.for_all s ~f:(function
-                      | '0' .. '9'
-                      | 'a' .. 'z' ->
-                        true
-                      | _ -> false) ->
-               "<commit-id>"
+                      | '0' .. '9' | 'a' .. 'z' -> true
+                      | _ -> false) -> "<commit-id>"
              | _ -> s)
       |> String.concat ~sep:"-"
     in

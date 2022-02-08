@@ -54,8 +54,7 @@ module Config = struct
     match t.rpc with
     | None -> env
     | Some where ->
-      if true then
-        env
+      if true then env
       else
         (* This is disabled because setting DUNE_RPC in tests breaks inner dune
            invocations. We should come up with a better design for this feature,
@@ -129,14 +128,13 @@ end = struct
        ignore (Unix.sigprocmask SIG_BLOCK signos : int list))
 
   let create =
-    if Sys.win32 then
-      Thread.create
+    if Sys.win32 then Thread.create
     else
       (* On unix, we make sure to block signals globally before starting a
          thread so that only the signal watcher thread can receive signals. *)
       fun f x ->
-    Lazy.force block_signals;
-    Thread.create f x
+      Lazy.force block_signals;
+      Thread.create f x
 
   let spawn f =
     let (_ : Thread.t) = create f () in
@@ -303,13 +301,11 @@ end = struct
       f q;
       if not q.got_event then (
         q.got_event <- true;
-        Condition.signal q.cond
-      );
+        Condition.signal q.cond);
       Mutex.unlock q.mutex
 
     let yield_if_there_are_pending_events q =
-      if Config.inside_dune || not q.got_event then
-        Fiber.return ()
+      if Config.inside_dune || not q.got_event then Fiber.return ()
       else
         match q.yield with
         | Some ivar -> Fiber.Ivar.read ivar
@@ -508,14 +504,12 @@ let kill_process_group pid signal =
        The downside is that it's more complicated, but also that by sending the
        signal twice we're greatly increasing the existing race condition where
        we call [wait] in parallel with [kill]. *)
-    try Unix.kill (-Pid.to_int pid) signal with
-    | Unix.Unix_error _ -> ())
+    try Unix.kill (-Pid.to_int pid) signal with Unix.Unix_error _ -> ())
   | true -> (
     (* Process groups are not supported on Windows (or even if they are, [spawn]
        does not know how to use them), so we're only sending the signal to the
        job itself. *)
-    try Unix.kill (Pid.to_int pid) signal with
-    | Unix.Unix_error _ -> ())
+    try Unix.kill (Pid.to_int pid) signal with Unix.Unix_error _ -> ())
 
 module Process_watcher : sig
   (** Initialize the process watcher thread. *)
@@ -617,8 +611,7 @@ end = struct
             in
             raise_notrace (Finished info));
       false
-    with
-    | Finished proc_info ->
+    with Finished proc_info ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
          the lock, otherwise the pid might be reused in between. *)
       Process_table.remove t proc_info;
@@ -637,11 +630,7 @@ end = struct
     Mutex.lock t.mutex;
     Process_table.remove t proc_info
 
-  let wait =
-    if Sys.win32 then
-      wait_win32
-    else
-      wait_unix
+  let wait = if Sys.win32 then wait_win32 else wait_unix
 
   let run t =
     Mutex.lock t.mutex;
@@ -689,8 +678,8 @@ end = struct
         (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
       Staged.stage (fun () ->
           assert (Unix.read r buf 0 1 = 1);
-          Signal.Int)
-    ) else
+          Signal.Int))
+    else
       Staged.stage (fun () ->
           Thread.wait_signal signos |> Signal.of_int |> Option.value_exn)
 
@@ -701,9 +690,7 @@ end = struct
       let signal = wait_signal () in
       Event.Queue.send_signal q (Signal signal);
       match signal with
-      | Int
-      | Quit
-      | Term ->
+      | Int | Quit | Term ->
         let now = Unix.gettimeofday () in
         Queue.push last_exit_signals now;
         (* Discard old signals *)
@@ -806,10 +793,8 @@ end = struct
         let now = Unix.gettimeofday () in
         let expired, active =
           List.partition_map t.alarms ~f:(fun (expiration, ivar) ->
-              if now > expiration then
-                Left (Fiber.Fill (ivar, `Finished))
-              else
-                Right (expiration, ivar))
+              if now > expiration then Left (Fiber.Fill (ivar, `Finished))
+              else Right (expiration, ivar))
         in
         t.alarms <- active;
         Mutex.unlock t.mutex;
@@ -837,8 +822,7 @@ end = struct
     let ivar = Fiber.Ivar.create () in
     if not t.active then (
       Mutex.unlock t.mutex;
-      Code_error.raise "cannot schedule timers after close" []
-    );
+      Code_error.raise "cannot schedule timers after close" []);
     t.alarms <- (duration +. Unix.gettimeofday (), ivar) :: t.alarms;
     Mutex.unlock t.mutex;
     ivar
@@ -1093,9 +1077,7 @@ end = struct
       | Some ivar ->
         t.wait_for_build_input_change := None;
         Fill (ivar, ()) :: fills)
-    | Timer fill
-    | Worker_task fill ->
-      [ fill ]
+    | Timer fill | Worker_task fill -> [ fill ]
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
@@ -1186,11 +1168,9 @@ let wait_for_build_input_change t =
     match !(t.status) with
     | Standing_by { invalidation; saw_insignificant_changes }
       when (not (Memo.Invalidation.is_empty invalidation))
-           || saw_insignificant_changes ->
-      Fiber.return ()
+           || saw_insignificant_changes -> Fiber.return ()
     | Restarting_build _ -> Fiber.return ()
-    | Standing_by _
-    | Building _ ->
+    | Standing_by _ | Building _ ->
       let ivar = Fiber.Ivar.create () in
       t.wait_for_build_input_change := Some ivar;
       Fiber.Ivar.read ivar)
@@ -1209,8 +1189,7 @@ module Run = struct
   let rec poll_iter t step ~invalidation =
     let cancellation = Fiber_util.Cancellation.create () in
     t.status := Building cancellation;
-    (if Memo.Invalidation.is_empty invalidation then
-      Memo.Perf_counters.reset ()
+    (if Memo.Invalidation.is_empty invalidation then Memo.Perf_counters.reset ()
     else
       let details_hum = Memo.Invalidation.details_hum invalidation in
       t.handler t.config (Source_files_changed { details_hum });
@@ -1237,9 +1216,7 @@ module Run = struct
 
   let poll_iter t step =
     match !(t.status) with
-    | Building _
-    | Restarting_build _ ->
-      assert false
+    | Building _ | Restarting_build _ -> assert false
     | Standing_by { invalidation; _ } -> poll_iter t step ~invalidation
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
@@ -1373,10 +1350,8 @@ let wait_for_process_with_timeout t pid ~timeout ~is_process_group_leader =
           let+ res = Alarm_clock.await sleep in
           if res = `Finished && Process_watcher.is_running t.process_watcher pid
           then
-            if is_process_group_leader then
-              kill_process_group pid Sys.sigkill
-            else
-              Unix.kill (Pid.to_int pid) Sys.sigkill)
+            if is_process_group_leader then kill_process_group pid Sys.sigkill
+            else Unix.kill (Pid.to_int pid) Sys.sigkill)
         (fun () ->
           let+ res = wait_for_process t pid in
           Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;

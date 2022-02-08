@@ -68,10 +68,7 @@ end = struct
     match t with
     | s ->
       let s' = infer ~src_basename section in
-      if String.equal s s' then
-        None
-      else
-        Some s
+      if String.equal s s' then None else Some s
 
   let decode = Dune_lang.Decoder.string
 
@@ -264,22 +261,17 @@ module Entry = struct
             match src_suffix with
             | Full s -> String.is_suffix s ~suffix:ext
             | Partial { source_pform; suffix } ->
-              if String.is_suffix suffix ~suffix:ext then
-                true
-              else if String.is_suffix ext ~suffix then
-                error source_pform
-              else
-                false
+              if String.is_suffix suffix ~suffix:ext then true
+              else if String.is_suffix ext ~suffix then error source_pform
+              else false
           in
           has_ext ".exe" || has_ext ".bc"
         in
         if
           Sys.win32 && is_executable
           && Filename.extension (Dst.to_string dst) <> ".exe"
-        then
-          Dst.explicit (Dst.to_string dst ^ ".exe")
-        else
-          dst
+        then Dst.explicit (Dst.to_string dst ^ ".exe")
+        else dst
 
   let adjust_dst ~src ~dst ~section =
     adjust_dst_gen ~src_suffix:(String_with_vars.known_suffix src) ~dst ~section
@@ -310,8 +302,7 @@ module Entry = struct
         | Lib -> (Lib_root, dst_with_pkg_prefix)
         | Libexec -> (Libexec_root, dst_with_pkg_prefix)
         | Share -> (Share_root, dst_with_pkg_prefix)
-        | Etc
-        | Doc ->
+        | Etc | Doc ->
           User_error.raise
             [ Pp.textf "Can't have site in etc and doc for opam" ]
         | Lib_root
@@ -322,8 +313,7 @@ module Entry = struct
         | Share_root
         | Stublibs
         | Man
-        | Misc ->
-          (section, dst)
+        | Misc -> (section, dst)
       in
       { src; dst; section }
 

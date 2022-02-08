@@ -143,11 +143,10 @@ let print_rules scheme ~dir =
       print "naive calls:";
       print_log calls1;
       print "[evaluate] calls:";
-      print_log calls2
-    ) else (
+      print_log calls2)
+    else (
       print "calls:";
-      print_log calls1
-    );
+      print_log calls1);
     print "rules:";
     print_log res1
 

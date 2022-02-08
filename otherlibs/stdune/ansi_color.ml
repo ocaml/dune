@@ -146,9 +146,8 @@ let make_printer supports_color ppf =
   let f =
     lazy
       (if Lazy.force supports_color then
-        Pp.to_fmt_with_tags ppf ~tag_handler:(tag_handler [])
-      else
-        Pp.to_fmt ppf)
+       Pp.to_fmt_with_tags ppf ~tag_handler:(tag_handler [])
+      else Pp.to_fmt ppf)
   in
   Staged.stage (fun pp ->
       Lazy.force f pp;
@@ -164,8 +163,7 @@ let strip str =
   let len = String.length str in
   let buf = Buffer.create len in
   let rec loop i =
-    if i = len then
-      Buffer.contents buf
+    if i = len then Buffer.contents buf
     else
       match str.[i] with
       | '\027' -> skip (i + 1)
@@ -173,8 +171,7 @@ let strip str =
         Buffer.add_char buf c;
         loop (i + 1)
   and skip i =
-    if i = len then
-      Buffer.contents buf
+    if i = len then Buffer.contents buf
     else
       match str.[i] with
       | 'm' -> loop (i + 1)
@@ -185,8 +182,7 @@ let strip str =
 let parse_line str styles =
   let len = String.length str in
   let add_chunk acc ~styles ~pos ~len =
-    if len = 0 then
-      acc
+    if len = 0 then acc
     else
       let s = Pp.verbatim (String.sub str ~pos ~len) in
       let s =
@@ -203,8 +199,7 @@ let parse_line str styles =
       let acc = add_chunk acc ~styles ~pos:i ~len:(seq_start - i) in
       (* Skip the "\027[" *)
       let seq_start = seq_start + 2 in
-      if seq_start >= len || str.[seq_start - 1] <> '[' then
-        (styles, acc)
+      if seq_start >= len || str.[seq_start - 1] <> '[' then (styles, acc)
       else
         match String.index_from str seq_start 'm' with
         | None -> (styles, acc)
@@ -224,10 +219,8 @@ let parse_line str styles =
                      else if s = Style.bg_default then
                        List.filter styles ~f:(fun s ->
                            not (List.mem Style.bg_all s ~equal:String.equal))
-                     else if s = "0" then
-                       []
-                     else
-                       s :: styles)
+                     else if s = "0" then []
+                     else s :: styles)
               |> List.rev
           in
           loop styles (seq_end + 1) acc)

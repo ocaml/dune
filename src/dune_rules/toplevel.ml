@@ -87,9 +87,7 @@ let pp_flags t =
     ++ Pp.verbatim ";" ++ Pp.newline
     ++ Pp.verbatim "Compenv.first_ppx :="
     ++ Pp.cut ++ Dyn.pp ppx ++ Pp.verbatim ";" ++ Pp.newline
-  | Action _
-  | Future_syntax _ ->
-    assert false (* Error in parsing *)
+  | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
   | No_preprocessing -> Action_builder.return Pp.nop
 
 let setup_module_rules t =
@@ -144,9 +142,7 @@ module Stanza = struct
     let pps =
       match toplevel.pps with
       | Preprocess.Pps pps -> pps.pps
-      | Action _
-      | Future_syntax _ ->
-        assert false (* Error in parsing *)
+      | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
       | No_preprocessing -> []
     in
     let preprocess = Module_name.Per_item.for_all toplevel.pps in

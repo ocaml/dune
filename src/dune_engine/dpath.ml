@@ -66,36 +66,25 @@ let is_digest s = String.length s = 32
 
 let analyse_target (fn as original_fn) : target_kind =
   match Target_dir.of_target fn with
-  | Invalid _
-  | Install Root
-  | Regular Root
-  | Anonymous_action Root ->
-    Other fn
+  | Invalid _ | Install Root | Regular Root | Anonymous_action Root -> Other fn
   | Install (With_context (ctx, src_dir)) -> Install (ctx, src_dir)
   | Regular (With_context (ctx, src_dir)) -> Regular (ctx, src_dir)
   | Anonymous_action (With_context (ctx, fn)) -> (
-    if Path.Source.is_root fn then
-      Other original_fn
+    if Path.Source.is_root fn then Other original_fn
     else
       let basename = Path.Source.basename fn in
       match String.rsplit2 basename ~on:'-' with
       | None ->
-        if is_digest basename then
-          Anonymous_action ctx
-        else
-          Other original_fn
+        if is_digest basename then Anonymous_action ctx else Other original_fn
       | Some (basename, suffix) ->
         if is_digest suffix then
           Alias (ctx, Path.Source.relative (Path.Source.parent_exn fn) basename)
-        else
-          Other original_fn)
+        else Other original_fn)
 
 let describe_target fn =
   let ctx_suffix name =
-    if Context_name.is_default name then
-      ""
-    else
-      sprintf " (context %s)" (Context_name.to_string name)
+    if Context_name.is_default name then ""
+    else sprintf " (context %s)" (Context_name.to_string name)
   in
   match analyse_target fn with
   | Alias (ctx, p) ->
@@ -111,9 +100,7 @@ let describe_target fn =
 
 let describe_path (p : Path.t) =
   match p with
-  | External _
-  | In_source_tree _ ->
-    Path.to_string_maybe_quoted p
+  | External _ | In_source_tree _ -> Path.to_string_maybe_quoted p
   | In_build_dir p -> describe_target p
 
 let analyse_path (fn : Path.t) =
@@ -147,8 +134,7 @@ let decode =
     plain_string (fun ~loc t ->
         if Filename.is_relative t then
           User_error.raise ~loc [ Pp.text "Absolute path expected" ]
-        else
-          Path.parse_string_exn ~loc t)
+        else Path.parse_string_exn ~loc t)
   in
   sum
     [ ("In_build_dir", string >>| Path.(relative build_dir))

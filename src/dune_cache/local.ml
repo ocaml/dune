@@ -39,9 +39,7 @@ module Target = struct
         ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
       let executable = Path.Permissions.test Path.Permissions.execute st_perm in
       Some { path; executable }
-    | (exception _)
-    | _ ->
-      None
+    | (exception _) | _ -> None
 end
 
 (* This function is like [Unix.link] but handles the "Too many links" error by
@@ -61,8 +59,8 @@ end
    [$file] is the shared cache entry for the empty file. After that, no more
    hard links on [$file] will be allowed, triggering the [EMLINK] code path. *)
 let link_even_if_there_are_too_many_links_already ~src ~dst =
-  try Path.link src dst with
-  | Unix.Unix_error (Unix.EMLINK, _, _) ->
+  try Path.link src dst
+  with Unix.Unix_error (Unix.EMLINK, _, _) ->
     Temp.with_temp_file ~dir:temp_dir ~prefix:"dune" ~suffix:"copy" ~f:(function
       | Error e -> raise e
       | Ok temp_file ->

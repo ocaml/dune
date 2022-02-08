@@ -10,9 +10,7 @@ let atom_or_quoted_string loc s =
   match T.atom_or_quoted_string s with
   | Atom a -> Atom (loc, a)
   | Quoted_string s -> Quoted_string (loc, s)
-  | Template _
-  | List _ ->
-    assert false
+  | Template _ | List _ -> assert false
 
 let loc
     ( Atom (loc, _)

@@ -159,9 +159,7 @@ let reason =
 
 let ml_suffix { file_kinds = { Ml_kind.Dict.intf; impl }; _ } ml_kind =
   match (ml_kind, intf.preprocess, impl.preprocess) with
-  | Ml_kind.Intf, None, _
-  | Impl, _, None ->
-    None
+  | Ml_kind.Intf, None, _ | Impl, _, None -> None
   | _ -> Some (extension ocaml ml_kind)
 
 module DB = struct
@@ -193,10 +191,8 @@ module DB = struct
             || preprocess d Ml_kind.Intf <> None
             || impl = extension ocaml Ml_kind.Impl
                && intf = extension ocaml Ml_kind.Intf
-          then
-            s
-          else
-            { Ml_kind.Dict.impl; intf } :: s)
+          then s
+          else { Ml_kind.Dict.impl; intf } :: s)
       |> List.sort ~compare:(Ml_kind.Dict.compare String.compare)
     in
     t.extensions_for_merlin <- Some v;
@@ -240,10 +236,8 @@ module DB = struct
     Option.map
       ~f:(fun dialect ->
         let kind =
-          if dialect.file_kinds.intf.extension = extension then
-            Ml_kind.Intf
-          else
-            Ml_kind.Impl
+          if dialect.file_kinds.intf.extension = extension then Ml_kind.Intf
+          else Ml_kind.Impl
         in
         (dialect, kind))
       (String.Map.find by_extension extension)

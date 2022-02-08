@@ -62,8 +62,7 @@ end = struct
         Memo.Lazy.create ~name:"restrict-rules-here" (fun () ->
             let* t = Memo.Lazy.force t in
             Memo.Lazy.force t.rules_here)
-      else
-        Memo.Lazy.of_val None
+      else Memo.Lazy.of_val None
     in
     let+ by_child =
       match Dir_set.default dirs with

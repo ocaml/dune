@@ -48,8 +48,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Redirect_in (_, _, t)
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t)
-    | No_infer t ->
-      loop t
+    | No_infer t -> loop t
     | Run _
     | Echo _
     | Cat _
@@ -66,10 +65,8 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Diff _
     | Merge_files_into _
     | Cram _
-    | Format_dune_file _ ->
-      false
-    | Pipe (_, ts)
-    | Progn ts ->
+    | Format_dune_file _ -> false
+    | Pipe (_, ts) | Progn ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->
           let have_dyn = loop t in
           if acc && have_dyn then
@@ -78,8 +75,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
                   "Multiple 'dynamic-run' commands within single action are \
                    not supported."
               ]
-          else
-            acc || have_dyn)
+          else acc || have_dyn)
   in
   ignore (loop action)
 

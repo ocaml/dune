@@ -138,7 +138,7 @@ Describe various things
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
      (local true)
-     (requires (b13e404f0f2441ffa82284dcf008c3ea))
+     (requires (9ed1d72dc21827b45479492c0bbb4462))
      (source_dir _build/default)
      (modules
       (((name Bar2)
@@ -185,16 +185,17 @@ Describe various things
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
     ((name ppx_inline_test.runtime-lib)
-     (uid b13e404f0f2441ffa82284dcf008c3ea)
+     (uid 9ed1d72dc21827b45479492c0bbb4462)
      (local false)
      (requires
-      (044a84a512a8cdf58b1ed9e92494d2ec
-       57f07ff97d4e072bff92dfb4e9b7b8bd
-       9b92cba59819bd732b556f904a49c39d))
-     (source_dir /home/bmontagu/.opam/4.13.1/lib/ppx_inline_test/runtime-lib)
+      (1f21b37866ba38ff793ea459291e8f1b
+       852eb703a825c761732e04cdf6ee6bc2
+       b491f2077664db66388b26b2991b9041))
+     (source_dir
+      /Users/rgrinberg/github/ocaml/dune/_opam/lib/ppx_inline_test/runtime-lib)
      (modules ())
      (include_dirs
-      (/home/bmontagu/.opam/4.13.1/lib/ppx_inline_test/runtime-lib)))))
+      (/Users/rgrinberg/github/ocaml/dune/_opam/lib/ppx_inline_test/runtime-lib)))))
 
   $ dune describe workspace --lang 0.1 --with-deps
   ((executables
@@ -269,7 +270,7 @@ Describe various things
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
      (local true)
-     (requires (b13e404f0f2441ffa82284dcf008c3ea))
+     (requires (9ed1d72dc21827b45479492c0bbb4462))
      (source_dir _build/default)
      (modules
       (((name Bar2)
@@ -327,16 +328,17 @@ Describe various things
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
     ((name ppx_inline_test.runtime-lib)
-     (uid b13e404f0f2441ffa82284dcf008c3ea)
+     (uid 9ed1d72dc21827b45479492c0bbb4462)
      (local false)
      (requires
-      (044a84a512a8cdf58b1ed9e92494d2ec
-       57f07ff97d4e072bff92dfb4e9b7b8bd
-       9b92cba59819bd732b556f904a49c39d))
-     (source_dir /home/bmontagu/.opam/4.13.1/lib/ppx_inline_test/runtime-lib)
+      (1f21b37866ba38ff793ea459291e8f1b
+       852eb703a825c761732e04cdf6ee6bc2
+       b491f2077664db66388b26b2991b9041))
+     (source_dir
+      /Users/rgrinberg/github/ocaml/dune/_opam/lib/ppx_inline_test/runtime-lib)
      (modules ())
      (include_dirs
-      (/home/bmontagu/.opam/4.13.1/lib/ppx_inline_test/runtime-lib)))))
+      (/Users/rgrinberg/github/ocaml/dune/_opam/lib/ppx_inline_test/runtime-lib)))))
 
 
 Test other formats

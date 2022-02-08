@@ -590,9 +590,14 @@ let term : unit Term.t =
       let* setup = Import.Main.setup () in
       let* setup = Memo.Build.run setup in
       let context = Import.Main.find_context_exn setup ~name:context_name in
-      let+ res = Memo.Build.run (What.describe what options setup context) in
-      match format with
-      | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-      | Sexp -> print_as_sexp res)
+      let+ res =
+        Build_system.run (fun () -> What.describe what options setup context)
+      in
+      match res with
+      | Error `Already_reported -> ()
+      | Ok res -> (
+        match format with
+        | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+        | Sexp -> print_as_sexp res))
 
 let command : unit Term.t * Term.info = (term, info)

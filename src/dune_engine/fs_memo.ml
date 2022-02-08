@@ -56,40 +56,6 @@ end = struct
      it shouldn't be a problem. *)
   let state = ref (Waiting_for_file_watcher [])
 
-  (* CR-someday aalekseyev: For [watch_path] to work correctly we need to ensure
-     that the parent directory of [path] exists. That's certainly not guaranteed
-     by the [Fs_memo] API, so we should do something to make it more robust, but
-     I believe that is masked by the fact that we usually (always?) look at the
-     source directory before looking for files in that directory.
-
-     It might seem that the [`Does_not_exist] "fall back to the containing dir"
-     trick used below can be extended to fall back all the way to the root, but
-     it can't be because watching the root is not sufficient to receive events
-     for creation of "root/a/b/c" -- for that we need to watch "root/a/b". *)
-  let watch_path watcher path =
-    match Dune_file_watcher.add_watch watcher path with
-    | Ok () -> ()
-    | Error `Does_not_exist -> (
-      (* If we're at the root of the workspace (or the Unix root) then we can't
-         get [`Does_not_exist] because Dune can't start without a workspace and
-         the Unix root always exists. Hence, the [_exn] below can't raise,
-         except if the user deletes the workspace directory under our feet, in
-         which case all bets are off. *)
-      let containing_dir = Path.parent_exn path in
-      (* If the [path] is absent, we need to wait for it to be created by
-         watching the parent. We still try to add a watch for the [path] itself
-         after that succeeds, in case the [path] was created already before we
-         started watching its parent. *)
-      (match Dune_file_watcher.add_watch watcher containing_dir with
-      | Ok () -> ()
-      | Error `Does_not_exist ->
-        Log.info
-          [ Pp.textf "Attempted to add watch to non-existent directory %s."
-              (Path.to_string containing_dir)
-          ]);
-      match Dune_file_watcher.add_watch watcher path with
-      | Error `Does_not_exist | Ok () -> ())
-
   let watch_or_record_path ~accessed_path ~path_to_watch =
     match !state with
     | Waiting_for_file_watcher watch_records ->
@@ -98,7 +64,7 @@ end = struct
           ({ accessed_path; path_to_watch } :: watch_records)
     | No_file_watcher -> ()
     | File_watcher dune_file_watcher ->
-      watch_path dune_file_watcher path_to_watch
+      Dune_file_watcher.add_watch dune_file_watcher path_to_watch
 
   (* This comment applies to both memoization tables below.
 
@@ -197,7 +163,7 @@ end = struct
         state := File_watcher watcher;
         Memo.Invalidation.map_reduce watch_records
           ~f:(fun { accessed_path; path_to_watch } ->
-            watch_path watcher path_to_watch;
+            Dune_file_watcher.add_watch watcher path_to_watch;
             invalidate accessed_path))
 end
 

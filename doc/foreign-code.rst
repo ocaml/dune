@@ -258,7 +258,7 @@ descriptions by referencing them as the module specified in optional
      can be used in ``<preamble>`` such as ``%{read: }``.
 
 - Since the Dune's ``ctypes`` features is still experimental, it could be useful to
-  add additionnal dependencies in order for example to make sure that local
+  add additional dependencies in order to make sure that local
   headers or libraries are available: ``(deps <deps-conf list>)``. See the
   :ref:`deps-field` section for more details.
 

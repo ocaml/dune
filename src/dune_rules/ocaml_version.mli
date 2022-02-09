@@ -68,3 +68,6 @@ val has_sys_opaque_identity : t -> bool
 
 (** Whether [vmthreads] exists *)
 val has_vmthreads : t -> bool
+
+(** Whether [bigarray] {em library} exists *)
+val has_bigarray_library : t -> bool

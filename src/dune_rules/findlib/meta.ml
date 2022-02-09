@@ -279,16 +279,13 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   in
   let libs =
     let base =
-      [ stdlib
-      ; compiler_libs
-      ; str
-      ; unix
-      ; bigarray
-      ; threads
-      ; dynlink
-      ; bytes
-      ; ocamldoc
-      ]
+      [ stdlib; compiler_libs; str; unix; threads; dynlink; bytes; ocamldoc ]
+    in
+    let base =
+      if Ocaml_version.has_bigarray_library ocaml_version then
+        bigarray :: base
+      else
+        base
     in
     let base =
       if Ocaml_version.stdlib_includes_uchar ocaml_version then

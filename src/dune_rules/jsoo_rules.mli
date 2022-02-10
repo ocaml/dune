@@ -6,14 +6,14 @@ open Import
 
 val build_cm :
      Compilation_context.t
-  -> in_buildable:Js_of_ocaml.In_buildable.t
+  -> in_context:Js_of_ocaml.In_context.t
   -> src:Path.Build.t
   -> target:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t Memo.Build.t
 
 val build_exe :
      Compilation_context.t
-  -> in_buildable:Js_of_ocaml.In_buildable.t
+  -> in_context:Js_of_ocaml.In_context.t
   -> src:Path.Build.t
   -> cm:Path.t list Action_builder.t
   -> promote:Rule.Promote.t option

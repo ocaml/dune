@@ -45,7 +45,7 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
           (let open Resolve.Build.O in
           let+ libs = libs in
           Command.Args.Deps (Lib.L.jsoo_runtime_files libs))
-      ; Deps javascript_files
+      ; Deps (List.map ~f:Path.build javascript_files)
       ]
   in
   let dir = Compilation_context.dir cc in
@@ -63,7 +63,7 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
           (let open Resolve.Build.O in
           let+ libs = libs in
           Command.Args.Deps (Lib.L.jsoo_runtime_files libs))
-      ; Deps javascript_files
+      ; Deps (List.map ~f:Path.build javascript_files)
       ; Dep (Path.build src)
       ]
   in
@@ -123,11 +123,11 @@ let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
   in
   js_of_ocaml_rule sctx ~sub_command:Link ~dir ~spec ~target ~flags
 
-let build_cm cc ~in_buildable ~src ~target =
+let build_cm cc ~in_context ~src ~target =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
   let spec = Command.Args.Dep (Path.build src) in
-  let flags = in_buildable.Js_of_ocaml.In_buildable.flags in
+  let flags = in_context.Js_of_ocaml.In_context.flags in
   js_of_ocaml_rule sctx ~sub_command:Compile ~dir ~flags ~spec ~target
 
 let setup_separate_compilation_rules sctx components =
@@ -172,14 +172,11 @@ let setup_separate_compilation_rules sctx components =
           in
           SC.add_rule sctx ~dir action_with_targets))
 
-let build_exe cc ~in_buildable ~src ~(cm : Path.t list Action_builder.t)
+let build_exe cc ~in_context ~src ~(cm : Path.t list Action_builder.t)
     ~promote ~link_time_code_gen =
-  let { Js_of_ocaml.In_buildable.javascript_files; flags } = in_buildable in
+  let { Js_of_ocaml.In_context.javascript_files; flags } = in_context in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
-  let javascript_files =
-    List.map javascript_files ~f:(Path.relative (Path.build dir))
-  in
   let mk_target ext = Path.Build.set_extension src ~ext in
   let target = mk_target ".bc.js" in
   let standalone_runtime = mk_target ".bc.runtime.js" in

@@ -310,6 +310,12 @@ Unreleased
 - Bootstrap: ignore errors when trying to remove generated files. (#5407,
   @damiendoligez)
 
+2.9.4 (unreleased)
+------------------
+
+- Do not generate META information for `bigarray` library in OCaml >= 5.0
+  (#5421, @nojb)
+
 2.9.3 (unreleased)
 ------------------
 

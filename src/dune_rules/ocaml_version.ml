@@ -49,3 +49,5 @@ let ocamlopt_always_calls_library_linker version = version < (4, 12, 0)
 let has_sys_opaque_identity version = version >= (4, 3, 0)
 
 let has_vmthreads version = version < (4, 9, 0)
+
+let has_bigarray_library version = version < (5, 0, 0)

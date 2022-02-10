@@ -43,8 +43,8 @@ This is a working document and will be updated as the design evolves.
 
 - The **declaration** of a procedure lists its model types and all
     known generations, along with its method name. Multiple
-    declarations of the same procedure, so long as they do not overlap
-    version numbers.
+    declarations of the same procedure is allowed, so long as they do
+    not overlap version numbers.
 
 - The **implementation** of a declaration is the actual behavior of
     a procedure, which acts on the model types. Typically, this will
@@ -153,7 +153,7 @@ swallow errors and clients must be upgraded to handle version errors
 on notifications, which were previously infallible).
 
 Finally, the versioning protocol itself must be either versioned
-separately or stabilised (see [Session versioning](#session-versioning).
+separately or stabilised (see [Session versioning](#session-versioning)).
 
 ### Tweaks
 

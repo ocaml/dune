@@ -205,9 +205,9 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
     action_with_targets
 
 let link_js ~name ~cm_files ~promote ~link_time_code_gen cctx =
-  let in_buildable =
+  let in_context =
     CC.js_of_ocaml cctx
-    |> Option.value ~default:Js_of_ocaml.In_buildable.default
+    |> Option.value ~default:Js_of_ocaml.In_context.default
   in
   let other_cm =
     let open Memo.Build.O in
@@ -224,7 +224,7 @@ let link_js ~name ~cm_files ~promote ~link_time_code_gen cctx =
   in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte_for_jsoo in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:Mode.Byte in
-  Jsoo_rules.build_exe cctx ~in_buildable ~src ~cm:top_sorted_cms ~promote
+  Jsoo_rules.build_exe cctx ~in_context ~src ~cm:top_sorted_cms ~promote
     ~link_time_code_gen:other_cm
 
 let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox

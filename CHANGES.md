@@ -261,7 +261,7 @@ Unreleased
 
 - Introduce mdx stanza 0.2, requiring mdx >= 1.9.0, with a new generic `deps`
   field and the possibility to statically link `libraries` in the test
-  executable. (#3956, fixes #3955)
+  executable. (#3956, #5391, fixes #3955)
 
 - Improve lookup of optional or disabled binaries. Previously, we'd treat every
   executable with missing libraries as optional. Now, we treat make sure to

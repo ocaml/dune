@@ -86,7 +86,13 @@ Setup
 Describe various things
 -----------------------
 
-  $ dune describe workspace --lang 0.1
+Warning: when testing the ``dune describe workspace`` command, do not
+forget to pass the ``--sanitize-for-tests`` flags, so that the tests
+are reproducible, and are kept consistent between different machines.
+``dune describe workspace`` may indeed print absolute paths, that are
+not stable across different setups.
+
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests
   ((executables
     ((names (main))
      (requires
@@ -138,7 +144,7 @@ Describe various things
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
      (local true)
-     (requires (9ed1d72dc21827b45479492c0bbb4462))
+     (requires (34d24431bb62c3c8c9933acac64a4fb8))
      (source_dir _build/default)
      (modules
       (((name Bar2)
@@ -185,19 +191,17 @@ Describe various things
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
     ((name ppx_inline_test.runtime-lib)
-     (uid 9ed1d72dc21827b45479492c0bbb4462)
+     (uid 34d24431bb62c3c8c9933acac64a4fb8)
      (local false)
      (requires
-      (1f21b37866ba38ff793ea459291e8f1b
-       852eb703a825c761732e04cdf6ee6bc2
-       b491f2077664db66388b26b2991b9041))
-     (source_dir
-      /Users/rgrinberg/github/ocaml/dune/_opam/lib/ppx_inline_test/runtime-lib)
+      (3bb762fc176df327f9073eba2bc8dc2b
+       5793e5a96f11c93185b5422a5edc7b05
+       319b80b484fe99fb8019ed8ff7892b5c))
+     (source_dir /OCAML_ROOT/lib/ppx_inline_test/runtime-lib)
      (modules ())
-     (include_dirs
-      (/Users/rgrinberg/github/ocaml/dune/_opam/lib/ppx_inline_test/runtime-lib)))))
+     (include_dirs (/OCAML_ROOT/lib/ppx_inline_test/runtime-lib)))))
 
-  $ dune describe workspace --lang 0.1 --with-deps
+  $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests
   ((executables
     ((names (main))
      (requires
@@ -270,7 +274,7 @@ Describe various things
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
      (local true)
-     (requires (9ed1d72dc21827b45479492c0bbb4462))
+     (requires (34d24431bb62c3c8c9933acac64a4fb8))
      (source_dir _build/default)
      (modules
       (((name Bar2)
@@ -328,23 +332,21 @@ Describe various things
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
     ((name ppx_inline_test.runtime-lib)
-     (uid 9ed1d72dc21827b45479492c0bbb4462)
+     (uid 34d24431bb62c3c8c9933acac64a4fb8)
      (local false)
      (requires
-      (1f21b37866ba38ff793ea459291e8f1b
-       852eb703a825c761732e04cdf6ee6bc2
-       b491f2077664db66388b26b2991b9041))
-     (source_dir
-      /Users/rgrinberg/github/ocaml/dune/_opam/lib/ppx_inline_test/runtime-lib)
+      (3bb762fc176df327f9073eba2bc8dc2b
+       5793e5a96f11c93185b5422a5edc7b05
+       319b80b484fe99fb8019ed8ff7892b5c))
+     (source_dir /OCAML_ROOT/lib/ppx_inline_test/runtime-lib)
      (modules ())
-     (include_dirs
-      (/Users/rgrinberg/github/ocaml/dune/_opam/lib/ppx_inline_test/runtime-lib)))))
+     (include_dirs (/OCAML_ROOT/lib/ppx_inline_test/runtime-lib)))))
 
 
 Test other formats
 ------------------
 
-  $ dune describe workspace --format csexp --lang 0.1 | cut -c 1-85
+  $ dune describe workspace --format csexp --lang 0.1 --sanitize-for-tests | cut -c 1-85
   ((11:executables((5:names(4:main))(8:requires(32:c17373aee51bab94097b4b7818553cf332:5
 
 Test errors

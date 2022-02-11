@@ -32,6 +32,9 @@ let info = Term.info "describe" ~doc ~man
 type options =
   { with_deps : bool
         (** whether to compute direct dependencies between modules *)
+  ; sanitize_for_tests : bool
+        (** whether to sanitize absolute paths of workspace items, and their
+            UIDs, to ensure reproducible tests *)
   }
 
 (** The module [Descr] is a typed representation of the description of a
@@ -187,10 +190,15 @@ module Crawl = struct
   open Dune_engine
   open Memo.Build.O
 
+  (** Computes the digest of a name and a source dir *)
+  let compute_uid ~(name : Lib_name.t) ~(source_dir : Path.t) =
+    Digest.generic (name, Path.to_string source_dir)
+
   (** Computes the digest of a library *)
   let uid_of_library (lib : Lib.t) : Stdune.Digest.t =
-    Digest.generic
-      (Lib.name lib, Path.to_string (Lib_info.src_dir (Lib.info lib)))
+    let name = Lib.name lib
+    and source_dir = Lib_info.src_dir (Lib.info lib) in
+    compute_uid ~name ~source_dir
 
   (** Module that computes the direct dependencies between compilation units *)
   module Deps : sig
@@ -423,6 +431,320 @@ module Crawl = struct
     Memo.Build.return (exes @ libs)
 end
 
+(** The following module is responsible sanitizing the output of
+    [dune describe workspace], so that the absolute paths and the UIDs that
+    depend on them are stable for tests. These paths may differ, depending on
+    the machine they are run on. *)
+module Sanitize_for_tests = struct
+  (** State for UID maps: a counter and the map for the registered library
+      digests. UID maps are used to associate fresh (but reproducible) UIDs to
+      non-local libraries. *)
+  type uid_map_state = int * Digest.t Digest.Map.t
+
+  (** State for path maps: a counter and the map for the registered paths. Path
+      maps are used to associate fresh (but reproducible) paths to absolute
+      paths. *)
+  type path_map_state = int * string Path.Map.t
+
+  (** State for analyzing a workspace *)
+  type state =
+    { required : Digest.Set.t  (** the UIDs of the required libraries *)
+    ; defined : Digest.Set.t  (** the UIDs of the defined libraries *)
+    ; external_ : Digest.Set.t  (** the UIDs of the external libraries *)
+    ; uid_map_state : uid_map_state  (** state for UID maps *)
+    ; path_map_state : path_map_state  (** state for path maps *)
+    }
+
+  (** Updates the state for UID maps to register a UID. If the UID was
+      registered already, the state is unchanged. If the UID is new, then it is
+      added to the map with digest of the current value of the counter, and the
+      counter is incremented. *)
+  let register_in_uid_map ((n, m) as uid_map_state) uid =
+    match Digest.Map.add m uid (Digest.generic n) with
+    | Ok m' -> (n + 1, m')
+    | Error _ -> uid_map_state
+
+  (** Updates the state for path maps to register a path. If the path was
+      registered already, the state is unchanged. If the path is new, then it is
+      added to the map with the string representation of the current value of
+      the counter, and the counter is incremented. *)
+  let register_in_path_map ((n, m) as path_map_state) uid =
+    match Path.Map.add m uid (string_of_int n) with
+    | Ok m' -> (n + 1, m')
+    | Error _ -> path_map_state
+
+  module Exe = struct
+    open Descr.Exe
+
+    (** Analyzes an executable to detect which libraries it requires or
+        declares, which are external, and computes candidates for fresh UIDs and
+        fresh paths *)
+    let analyze { required; defined; external_; uid_map_state; path_map_state }
+        { names = _; requires; modules = _; include_dirs } =
+      { required =
+          List.fold_left ~f:Stdune.Digest.Set.add ~init:required requires
+      ; defined
+      ; external_
+      ; uid_map_state =
+          List.fold_left ~f:register_in_uid_map ~init:uid_map_state requires
+      ; path_map_state =
+          List.fold_left ~f:register_in_path_map ~init:path_map_state
+            include_dirs
+      }
+
+    (** Sanitizes an executable, by renaming non-reproducible paths *)
+    let sanitize_path rename_path exe =
+      { exe with include_dirs = List.map ~f:rename_path exe.include_dirs }
+
+    (** Sanitizes an executable, by renaming the UIDs of required libraries *)
+    let sanitize_requires rename_uid exe =
+      { exe with requires = List.map ~f:rename_uid exe.requires }
+  end
+
+  module Lib = struct
+    open Descr.Lib
+
+    (** Analyzes a library to detect which libraries it requires or declares,
+        which are external, and computes candidates for fresh UIDs and fresh
+        paths *)
+    let analyze { required; defined; external_; uid_map_state; path_map_state }
+        { name = _
+        ; uid
+        ; local = _
+        ; requires
+        ; source_dir
+        ; modules = _
+        ; include_dirs
+        } =
+      { required = List.fold_left ~f:Digest.Set.add ~init:required requires
+      ; defined = Digest.Set.add defined uid
+      ; external_ =
+          (if
+           (not (Path.is_managed source_dir))
+           || List.exists ~f:(Fun.negate Path.is_managed) include_dirs
+          then
+            Digest.Set.add external_ uid
+          else
+            external_)
+      ; uid_map_state =
+          List.fold_left ~f:register_in_uid_map
+            ~init:(register_in_uid_map uid_map_state uid)
+            requires
+      ; path_map_state =
+          List.fold_left ~f:register_in_path_map
+            ~init:(register_in_path_map path_map_state source_dir)
+            include_dirs
+      }
+
+    (** Sanitizes a library, by renaming its paths and updating its UID if
+        necessary. If the UID has changed, add an entry to the UID rename maps
+        that serves as an accumulator *)
+    let sanitize_path_uid rename_path lib uid_map =
+      let old_uid = lib.uid in
+      let new_source_dir = rename_path lib.source_dir in
+      let new_uid =
+        Crawl.compute_uid ~name:lib.name ~source_dir:new_source_dir
+      in
+      let lib =
+        { lib with
+          uid = new_uid
+        ; source_dir = new_source_dir
+        ; include_dirs = List.map ~f:rename_path lib.include_dirs
+        }
+      in
+      let uid_map =
+        if Digest.equal old_uid new_uid then
+          uid_map
+        else
+          Digest.Map.add_exn uid_map old_uid new_uid
+      in
+      (lib, uid_map)
+
+    (** Sanitizes the UIDs in the required libraries of a library *)
+    let sanitize_requires rename_uid lib =
+      { lib with requires = List.map ~f:rename_uid lib.requires }
+  end
+
+  module Item = struct
+    open Descr.Item
+
+    (** Analyzes a workspace item to detect which libraries it requires or
+        declares, which are external, and computes candidates for fresh UIDs and
+        fresh paths *)
+    let analyze acc = function
+      | Executables exe -> Exe.analyze acc exe
+      | Library lib -> Lib.analyze acc lib
+
+    (** Sanitizes a workspace item, by renaming non-reproducible UIDs and paths *)
+    let sanitize_path_uid rename_path item uid_map =
+      match item with
+      | Executables exe ->
+        (Executables (Exe.sanitize_path rename_path exe), uid_map)
+      | Library lib ->
+        let lib, uid_map = Lib.sanitize_path_uid rename_path lib uid_map in
+        (Library lib, uid_map)
+
+    (** Sanitizes the UIDs in the required libraries of a workspace item *)
+    let sanitize_requires rename_uid = function
+      | Executables exe -> Executables (Exe.sanitize_requires rename_uid exe)
+      | Library lib -> Library (Lib.sanitize_requires rename_uid lib)
+  end
+
+  module Workspace = struct
+    (** Analyzes a workspace description to detect which libraries it requires
+        or declares, which are external, and computes candidates for fresh UIDs
+        and fresh paths *)
+    let analyze items =
+      let init =
+        { required = Digest.Set.empty
+        ; defined = Digest.Set.empty
+        ; external_ = Digest.Set.empty
+        ; uid_map_state = (0, Digest.Map.empty)
+        ; path_map_state = (0, Path.Map.empty)
+        }
+      in
+      List.fold_left ~f:Item.analyze ~init items
+
+    (** Tries to get OCaml's root path, using the [OPAM_SWITCH_PREFIX]
+        environment variable, or using [ocamlc - where], or using
+        [ocamlfind ocamlc -where] *)
+    let get_ocaml_root () : string option =
+      let ( ||| ) o f =
+        match o with
+        | Some _ as res -> res
+        | None -> f ()
+      in
+      let read_from_env_var var =
+        match Unix.getenv var with
+        | prefix -> Some prefix
+        | exception _ -> None
+      in
+      let read_line_from_args args =
+        match Unix.open_process_args_in args.(0) args with
+        | in_chn -> (
+          match input_line in_chn with
+          | exception _ ->
+            close_in in_chn;
+            None
+          | s -> Some s)
+        | exception End_of_file -> None
+      in
+      Option.map
+        ~f:(fun s ->
+          (* ensure the path ends with "/" *)
+          if String.ends_with ~suffix:Filename.dir_sep s then
+            s
+          else
+            s ^ Filename.dir_sep)
+        ( read_from_env_var "OPAM_SWITCH_PREFIX" ||| fun () ->
+          Option.bind
+            ~f:(String.drop_suffix ~suffix:Filename.(concat "lib" "ocaml"))
+            ( read_line_from_args [| "ocamlc"; "-where" |] ||| fun () ->
+              read_line_from_args [| "ocamlfind"; "ocamlc"; "-where" |] ) )
+
+    (** Sanitizes a workspace description, by renaming non-reproducible UIDs and
+        paths *)
+    let really_sanitize items =
+      let uid_default_replace_map, path_replace_map =
+        let { required
+            ; defined
+            ; external_
+            ; uid_map_state = _n, uid_replace_map
+            ; path_map_state = _p, path_replace_map
+            } =
+          analyze items
+        in
+        let uids_to_sanitize =
+          (* the UIDs that are likely to sanitize are the external libraries as
+             well as the required libraries that are not defined by the project
+             (which may not be listed in the external libraries if the set of
+             libraries is not transitively closed) *)
+          Digest.Set.(union (diff required defined) external_)
+        in
+        let uid_default_replace_map =
+          (* we only keep the mapping for UIDs that are likely to be unstable:
+             the other ones must be left unchanged *)
+          Digest.Map.filteri
+            ~f:(fun uid _ -> Digest.Set.mem uids_to_sanitize uid)
+            uid_replace_map
+        in
+        (uid_default_replace_map, path_replace_map)
+      in
+      let rename_path =
+        (* the function that renames paths *)
+        let default_rename_path =
+          (* the default renaming function for paths, that uses the names
+             computed during the analysis stage *)
+          let prefix = Filename.(concat dir_sep @@ "SANITIZED_ABSOLUTE_PATH") in
+          fun path ->
+            Path.external_
+            @@ Path.External.of_string
+                 Filename.(
+                   concat prefix (Path.Map.find_exn path_replace_map path))
+        in
+        match get_ocaml_root () with
+        | None -> (* we found no path for OCaml's root *) default_rename_path
+        | Some ocaml_root -> (
+          function
+          (* we have found a path for OCaml's root: let's define the renaming
+             function *)
+          | Path.External ext_path as path -> (
+            (* if the path to rename is an external path, try to find the OCaml
+               root inside, and replace it with a fixed string *)
+            let s = Path.External.to_string ext_path in
+            match String.drop_prefix ~prefix:ocaml_root s with
+            | Some s' ->
+              (* we have found the OCaml root path: let's replace it with a
+                 constant string *)
+              Path.external_
+              @@ Path.External.of_string
+                   Filename.(concat dir_sep @@ concat "OCAML_ROOT" s')
+            | None ->
+              (* we have not found the OCaml root path: rename using the default
+                 renaming function *)
+              default_rename_path path)
+          | path ->
+            (* if the path to rename is not external, it should not be
+               changed *)
+            path)
+      in
+      let items, uid_replace_map =
+        (* rename the paths in the workspace items, and build the map that
+           renames UIDs that have changed: the list of items is now in the
+           reversed order *)
+        List.fold_left
+          ~f:(fun (items, map) item ->
+            let new_item, new_map =
+              Item.sanitize_path_uid rename_path item map
+            in
+            (new_item :: items, new_map))
+          ~init:([], Digest.Map.empty) items
+      in
+      let rename_uid uid =
+        (* the function that renames UIDs: we use first the UID map that results
+           from the path changes, then the UID map that results from the prior
+           analysis phase as a fallback *)
+        match Digest.Map.find uid_replace_map uid with
+        | Some uid' -> uid'
+        | None -> (
+          match Digest.Map.find uid_default_replace_map uid with
+          | Some uid' -> uid'
+          | None -> uid)
+      in
+      (* now, we rename the UIDs in the [requires] field , while reversing the
+         list of items, so taht we get back the original ordering *)
+      List.rev_map ~f:(Item.sanitize_requires rename_uid) items
+
+    (** Sanitizes a workspace description when options ask to do so, or performs
+        no change at all otherwise *)
+    let sanitize options items =
+      if options.sanitize_for_tests then
+        really_sanitize items
+      else
+        items
+  end
+end
+
 module Opam_files = struct
   let get () =
     let open Memo.Build.O in
@@ -487,7 +809,9 @@ module What = struct
     match t with
     | Workspace ->
       let open Memo.Build.O in
-      Crawl.workspace options setup context >>| Descr.Workspace.to_dyn options
+      Crawl.workspace options setup context
+      >>| Sanitize_for_tests.Workspace.sanitize options
+      >>| Descr.Workspace.to_dyn options
     | Opam_files -> Opam_files.get ()
 end
 
@@ -500,9 +824,19 @@ module Options = struct
     & info [ "with-deps" ]
         ~doc:"Whether the dependencies between modules should be printed."
 
+  let sanitize_for_tests =
+    let open Arg in
+    value & flag
+    & info [ "sanitize-for-tests" ]
+        ~doc:
+          "Sanitize the absolute paths in workspace items, and the associated \
+           UIDs, so that the output is reproducible. For use in dune's \
+           internal tests only."
+
   let arg : t Term.t =
-    let+ with_deps = arg_with_deps in
-    { with_deps }
+    let+ with_deps = arg_with_deps
+    and+ sanitize_for_tests in
+    { with_deps; sanitize_for_tests }
 end
 
 module Format = struct

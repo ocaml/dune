@@ -611,6 +611,7 @@ module Client = struct
       Builder.declare_notification t Procedures.Public.shutdown;
       Builder.declare_request t Procedures.Public.format_dune_file;
       Builder.declare_request t Procedures.Public.promote;
+      Builder.declare_request t Procedures.Public.build_dir;
       Builder.implement_notification t Procedures.Server_side.abort (fun () ->
           handler.abort);
       Builder.implement_notification t Procedures.Server_side.log (fun () ->

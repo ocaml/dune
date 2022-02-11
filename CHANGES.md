@@ -319,7 +319,7 @@ Unreleased
 - Do not generate META information for `bigarray` library in OCaml >= 5.0
   (#5421, @nojb)
 
-2.9.3 (unreleased)
+2.9.3 (26/01/2022)
 ------------------
 
 - Disable warning for deprecated Toploop functions used in dune files written in

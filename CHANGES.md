@@ -7,10 +7,10 @@
 - Add a `DUNE_DIFF_COMMAND` environment variable to match `--diff-command`
   command-line parameter (@raphael-proust, fix #5369, #5375)
 
-- Add support for odoc-link rules (#5045, @lubegasimon)
+- Add support for odoc-link rules (#5045, @jonludlam, @lubegasimon)
 
 - Dune will no longer generate documentation for hidden modules (#5045,
-  @lubegasimon)
+  @jonludlam, @lubegasimon)
 
 - Parse the `native_pack_linker` field of `ocamlc -config` (#5281, @TheLortex)
 

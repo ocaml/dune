@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.0.0 (11/02/2022)
+------------------
 
 - Remove `uchar` and `seq` dummy ocamlfind libraries from dune's builtin
   library database (#5260, @kit-ty-kate)

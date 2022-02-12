@@ -88,8 +88,7 @@ module Descr = struct
         let module_deps =
           if options.with_deps then
             Some ("module_deps", Mod_deps.to_dyn module_deps)
-          else
-            None
+          else None
         in
         (* we build a list of options, that is later filtered, so that adding
            new optional fields in the future can be done easily *)
@@ -244,10 +243,7 @@ module Crawl = struct
              preprocessed files have an attached ocamldep rule: the source files
              have no such rule attached. In such a case, we refer to the
              preprocessed module instead of the source module. *)
-          if use_pp then
-            Module.pped unit
-          else
-            unit
+          if use_pp then Module.pped unit else unit
         in
         Memo.Build.return
         @@
@@ -264,8 +260,7 @@ module Crawl = struct
                FIXME: remove this restriction on singleton modules if/when
                https://github.com/ocaml/dune/pull/4659 is merged *)
             Action_builder.return no_deps
-          else
-            read_deps_of_unit ~obj_dir ~modules unit
+          else read_deps_of_unit ~obj_dir ~modules unit
   end
 
   (** Builds the description of a module from a module and its object directory *)
@@ -373,8 +368,7 @@ module Crawl = struct
             Deps.read ~options ~use_pp ~obj_dir:obj_dir_ ~modules:modules_
           in
           modules ~obj_dir ~deps_of modules_
-        else
-          Memo.Build.return []
+        else Memo.Build.return []
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
       let lib_descr =
@@ -522,10 +516,8 @@ module Sanitize_for_tests = struct
           (if
            (not (Path.is_managed source_dir))
            || List.exists ~f:(Fun.negate Path.is_managed) include_dirs
-          then
-            Digest.Set.add external_ uid
-          else
-            external_)
+          then Digest.Set.add external_ uid
+          else external_)
       ; uid_map_state =
           List.fold_left ~f:register_in_uid_map
             ~init:(register_in_uid_map uid_map_state uid)
@@ -553,10 +545,8 @@ module Sanitize_for_tests = struct
         }
       in
       let uid_map =
-        if Digest.equal old_uid new_uid then
-          uid_map
-        else
-          Digest.Map.add_exn uid_map old_uid new_uid
+        if Digest.equal old_uid new_uid then uid_map
+        else Digest.Map.add_exn uid_map old_uid new_uid
       in
       (lib, uid_map)
 
@@ -632,10 +622,8 @@ module Sanitize_for_tests = struct
       Option.map
         ~f:(fun s ->
           (* ensure the path ends with "/" *)
-          if String.ends_with ~suffix:Filename.dir_sep s then
-            s
-          else
-            s ^ Filename.dir_sep)
+          if String.ends_with ~suffix:Filename.dir_sep s then s
+          else s ^ Filename.dir_sep)
         ( read_from_env_var "OPAM_SWITCH_PREFIX" ||| fun () ->
           Option.bind
             ~f:(String.drop_suffix ~suffix:Filename.(concat "lib" "ocaml"))
@@ -738,10 +726,7 @@ module Sanitize_for_tests = struct
     (** Sanitizes a workspace description when options ask to do so, or performs
         no change at all otherwise *)
     let sanitize options items =
-      if options.sanitize_for_tests then
-        really_sanitize items
-      else
-        items
+      if options.sanitize_for_tests then really_sanitize items else items
   end
 end
 
@@ -824,7 +809,7 @@ module Options = struct
     & info [ "with-deps" ]
         ~doc:"Whether the dependencies between modules should be printed."
 
-  let sanitize_for_tests =
+  let arg_sanitize_for_tests =
     let open Arg in
     value & flag
     & info [ "sanitize-for-tests" ]
@@ -835,7 +820,7 @@ module Options = struct
 
   let arg : t Term.t =
     let+ with_deps = arg_with_deps
-    and+ sanitize_for_tests in
+    and+ sanitize_for_tests = arg_sanitize_for_tests in
     { with_deps; sanitize_for_tests }
 end
 

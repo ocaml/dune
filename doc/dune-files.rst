@@ -302,9 +302,9 @@ defined in the project:
 - ``(license <name>)`` - specifies the license of the project, ideally as an
   identifier from the `SPDX License List <https://spdx.org/licenses/>`__
 
-- ``(authors <authors>)`` - a list of authors
+- ``(authors <author> ..)`` - authors as inline strings
 
-- ``(maintainers <maintainers>)`` - a list of maintainers
+- ``(maintainers <maintainer> ..)`` - maintainers as inline strings
 
 - ``(source <source>)`` - where the source is specified two ways:
   ``(github <user/repo>)`` or ``(uri <uri>)``

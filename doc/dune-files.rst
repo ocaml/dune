@@ -328,7 +328,7 @@ Some or all of these fields may be overridden for each package of the project, s
 package
 -------
 
-Package specific information is specified in the ``(package <package>)`` stanza.
+Package specific information is specified in the ``(package <package-fields>)`` stanza.
 It contains the following fields:
 
 - ``(name <string>)`` is the name of the package. This must be specified.

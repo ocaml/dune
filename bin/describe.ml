@@ -422,7 +422,7 @@ module Crawl = struct
     in
     let* libs =
       add_transitive_deps libs
-      >>= Memo.Build.parallel_map ~f:(library sctx)
+      >>= Memo.Build.parallel_map ~f:(library ~options sctx)
       >>| List.filter_map ~f:Fun.id
     in
     let open Memo.Build.O in

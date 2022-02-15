@@ -100,8 +100,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         if have_binaries then
           let dir = Utils.local_bin dir |> Path.build in
           Memo.Build.return (Env.cons_path env ~dir)
-        else
-          Memo.Build.return env)
+        else Memo.Build.return env)
   in
   let bin_artifacts =
     inherited ~field:bin_artifacts ~root:default_bin_artifacts (fun binaries ->
@@ -127,9 +126,8 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       inherited ~field:inline_tests Memo.Build.return
         ~root:
           (if Profile.is_inline_test profile then
-            Dune_env.Stanza.Inline_tests.Enabled
-          else
-            Disabled)
+           Dune_env.Stanza.Inline_tests.Enabled
+          else Disabled)
   in
   let js_of_ocaml =
     inherited

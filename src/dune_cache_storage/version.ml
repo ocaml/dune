@@ -40,13 +40,8 @@ module Metadata = struct
 
   let file_version = function
     | V3 -> File.V3
-    | V4
-    | V5 ->
-      File.V4
+    | V4 | V5 -> File.V4
 
   let value_version = function
-    | V3
-    | V4
-    | V5 ->
-      Value.V3
+    | V3 | V4 | V5 -> Value.V3
 end

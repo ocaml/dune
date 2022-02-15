@@ -1,13 +1,24 @@
 Unreleased
 ----------
 
+- Add direct dependencies to $ dune describe output (#5412, @esope)
+
+- Fix compilation on MacOS SDK < 10.13. The native watch mode is disabled in
+  such instances (#5431 fix #5430, @rgrinberg)
+
+3.0.0 (11/02/2022)
+------------------
+
+- Remove `uchar` and `seq` dummy ocamlfind libraries from dune's builtin
+  library database (#5260, @kit-ty-kate)
+
 - Add a `DUNE_DIFF_COMMAND` environment variable to match `--diff-command`
   command-line parameter (@raphael-proust, fix #5369, #5375)
 
-- Add support for odoc-link rules (#5045, @lubegasimon)
+- Add support for odoc-link rules (#5045, @jonludlam, @lubegasimon)
 
 - Dune will no longer generate documentation for hidden modules (#5045,
-  @lubegasimon)
+  @jonludlam, @lubegasimon)
 
 - Parse the `native_pack_linker` field of `ocamlc -config` (#5281, @TheLortex)
 
@@ -129,6 +140,8 @@ Unreleased
 
 - Dune no longer automatically create or edit `dune-project` files
   (#4239, fixes #4108, @jeremiedimino)
+
+- Warn if `dune-project` is not found (fatal in release mode) (#5343, @emillon)
 
 - Cleanup temporary files after running `$ dune exec`. (#4260, fixes #4243,
   @rgrinberg)
@@ -256,7 +269,7 @@ Unreleased
 
 - Introduce mdx stanza 0.2, requiring mdx >= 1.9.0, with a new generic `deps`
   field and the possibility to statically link `libraries` in the test
-  executable. (#3956, fixes #3955)
+  executable. (#3956, #5391, fixes #3955)
 
 - Improve lookup of optional or disabled binaries. Previously, we'd treat every
   executable with missing libraries as optional. Now, we treat make sure to
@@ -308,7 +321,13 @@ Unreleased
 - Bootstrap: ignore errors when trying to remove generated files. (#5407,
   @damiendoligez)
 
-2.9.3 (unreleased)
+2.9.4 (unreleased)
+------------------
+
+- Do not generate META information for `bigarray` library in OCaml >= 5.0
+  (#5421, @nojb)
+
+2.9.3 (26/01/2022)
 ------------------
 
 - Disable warning for deprecated Toploop functions used in dune files written in

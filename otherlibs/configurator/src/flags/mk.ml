@@ -14,11 +14,7 @@ let () =
       , "Version of ocaml being used" )
     ]
     anon usage;
-  if !ocaml_version = "" then
-    raise (Arg.Bad "Provide version with -ocamlv")
+  if !ocaml_version = "" then raise (Arg.Bad "Provide version with -ocamlv")
   else
     let x, y, _ = parse_version !ocaml_version in
-    if x >= 4 && y > 2 then
-      printf "()\n"
-    else
-      printf "(-w -50)\n"
+    if x >= 4 && y > 2 then printf "()\n" else printf "(-w -50)\n"

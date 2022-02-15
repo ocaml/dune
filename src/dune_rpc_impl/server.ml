@@ -270,8 +270,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in
   let source_path_of_string path =
-    if Filename.is_relative path then
-      Path.Source.(relative root path)
+    if Filename.is_relative path then Path.Source.(relative root path)
     else
       let source_root =
         Path.to_absolute_filename (Path.source Path.Source.root)

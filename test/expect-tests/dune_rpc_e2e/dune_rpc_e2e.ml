@@ -161,8 +161,7 @@ let with_dune_watch ?env f =
      terminate for failed tests. Thus, the output below will never be shown. *)
   if debug then (
     if stdout <> "" then printfn "stdout:\n%s" stdout;
-    if stderr <> "" then printfn "stderr:\n%s" stderr
-  );
+    if stderr <> "" then printfn "stderr:\n%s" stderr);
   res
 
 let config =

@@ -101,8 +101,7 @@ module Status_line = struct
         sprintf "Done: %d/%d (jobs: %d)" !num_jobs_finished !num_jobs jobs
       in
       Printf.printf "\r%*s\r%s%!" (String.length !displayed) "" new_displayed;
-      displayed := new_displayed
-    )
+      displayed := new_displayed)
 
   let () =
     at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
@@ -142,10 +141,8 @@ let split_lines s =
   let rec loop ~last_is_cr ~acc i j =
     if j = String.length s then
       let acc =
-        if j = i || (j = i + 1 && last_is_cr) then
-          acc
-        else
-          String.sub s ~pos:i ~len:(j - i) :: acc
+        if j = i || (j = i + 1 && last_is_cr) then acc
+        else String.sub s ~pos:i ~len:(j - i) :: acc
       in
       List.rev acc
     else
@@ -153,12 +150,7 @@ let split_lines s =
       | '\r' -> loop ~last_is_cr:true ~acc i (j + 1)
       | '\n' ->
         let line =
-          let len =
-            if last_is_cr then
-              j - i - 1
-            else
-              j - i
-          in
+          let len = if last_is_cr then j - i - 1 else j - i in
           String.sub s ~pos:i ~len
         in
         loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
@@ -176,30 +168,19 @@ let copy ?(header = "") a b =
   let oc = open_out_bin b in
   output_string oc header;
   (* MSVC is fussy about #line 1 vs # 1 *)
-  let directive =
-    if Filename.extension b = ".c" then
-      "line"
-    else
-      ""
-  in
+  let directive = if Filename.extension b = ".c" then "line" else "" in
   fprintf oc "#%s 1 %S\n" directive a;
   output_string oc s;
   close_out oc
 
-let path_sep =
-  if Sys.win32 then
-    ';'
-  else
-    ':'
+let path_sep = if Sys.win32 then ';' else ':'
 
 let split_path s =
   let rec loop i j =
-    if j = String.length s then
-      [ String.sub s ~pos:i ~len:(j - i) ]
+    if j = String.length s then [ String.sub s ~pos:i ~len:(j - i) ]
     else if s.[j] = path_sep then
       String.sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
-    else
-      loop i (j + 1)
+    else loop i (j + 1)
   in
   loop 0 0
 
@@ -208,11 +189,7 @@ let path =
   | exception Not_found -> []
   | s -> split_path s
 
-let exe =
-  if Sys.win32 then
-    ".exe"
-  else
-    ""
+let exe = if Sys.win32 then ".exe" else ""
 
 (** {2 Concurrency level} *)
 
@@ -391,9 +368,7 @@ end = struct
       at_exit (fun () ->
           let fns = !tmp_files in
           tmp_files := Files.empty;
-          Files.iter fns ~f:(fun fn ->
-              try Sys.remove fn with
-              | _ -> ()))
+          Files.iter fns ~f:(fun fn -> try Sys.remove fn with _ -> ()))
 
     let file prefix suffix =
       let fn = Filename.temp_file prefix suffix in
@@ -401,8 +376,7 @@ end = struct
       fn
 
     let destroy_file fn =
-      (try Sys.remove fn with
-      | _ -> ());
+      (try Sys.remove fn with _ -> ());
       tmp_files := Files.remove fn !tmp_files
   end
 
@@ -422,11 +396,7 @@ end = struct
         wait_win32 ()
       | exception Finished (pid, status) -> (pid, status)
 
-    let wait =
-      if Sys.win32 then
-        wait_win32
-      else
-        Unix.wait
+    let wait = if Sys.win32 then wait_win32 else Unix.wait
 
     let waiting_for_slot = Queue.create ()
 
@@ -434,9 +404,8 @@ end = struct
       if Hashtbl.length running >= concurrency then (
         let ivar = Ivar.create () in
         Queue.push ivar waiting_for_slot;
-        Ivar.read ivar
-      ) else
-        return ()
+        Ivar.read ivar)
+      else return ()
 
     let restart_throttled () =
       while
@@ -464,10 +433,7 @@ end = struct
       throttle () >>= fun () ->
       let stdout_fn, stdout_fd = open_temp_file () in
       let stderr_fn, stderr_fd =
-        if split then
-          open_temp_file ()
-        else
-          (stdout_fn, stdout_fd)
+        if split then open_temp_file () else (stdout_fn, stdout_fd)
       in
       (match cwd with
       | Some x -> Sys.chdir x
@@ -486,12 +452,7 @@ end = struct
       Hashtbl.add running ~key:pid ~data:ivar;
       Ivar.read ivar >>= fun (status : Unix.process_status) ->
       let stdout_s = read_temp stdout_fn in
-      let stderr_s =
-        if split then
-          read_temp stderr_fn
-        else
-          stdout_s
-      in
+      let stderr_s = if split then read_temp stderr_fn else stdout_s in
       if stderr_s <> "" || status <> WEXITED 0 || verbose then (
         let cmdline = String.concat ~sep:" " (prog :: args) in
         let cmdline =
@@ -501,8 +462,7 @@ end = struct
         in
         prerr_endline cmdline;
         prerr_string stderr_s;
-        flush stderr
-      );
+        flush stderr);
       match status with
       | WEXITED 0 -> return (Ok stdout_s)
       | WEXITED n -> return (Error n)
@@ -536,8 +496,8 @@ end = struct
         Hashtbl.remove Process.running pid;
         Ivar.fill ivar status;
         Process.restart_throttled ();
-        loop ()
-      ) else
+        loop ())
+      else
         match !result with
         | Some x -> x
         | None -> fatal "bootstrap got stuck!"
@@ -579,14 +539,10 @@ end = struct
 
   let best_prog dir prog =
     let fn = dir ^/ prog ^ ".opt" ^ exe in
-    if Sys.file_exists fn then
-      Some fn
+    if Sys.file_exists fn then Some fn
     else
       let fn = dir ^/ prog ^ exe in
-      if Sys.file_exists fn then
-        Some fn
-      else
-        None
+      if Sys.file_exists fn then Some fn else None
 
   let find_prog prog =
     let rec search = function
@@ -611,8 +567,7 @@ end = struct
              [ "-toolchain"; "secondary"; "query"; "ocaml" ])
       in
       match split_lines s with
-      | []
-      | _ :: _ :: _ ->
+      | [] | _ :: _ :: _ ->
         fatal "Unexpected output locating secondary compiler"
       | [ bin_dir ] -> (
         match best_prog bin_dir "ocamlc" with
@@ -631,9 +586,7 @@ end = struct
 
   let compiler, mode, ocaml_archive_ext =
     match (force_byte_compilation, best_prog bin_dir "ocamlopt") with
-    | true, _
-    | _, None ->
-      (ocamlc, Mode.Byte, ".cma")
+    | true, _ | _, None -> (ocamlc, Mode.Byte, ".cma")
     | false, Some path -> (path, Mode.Native, ".cmxa")
 
   let ocaml_config () =
@@ -646,10 +599,7 @@ end = struct
             (String.escaped line))
 
   let output_complete_obj_arg =
-    if ocaml_version < (4, 10) then
-      "-custom"
-    else
-      "-output-complete-exe"
+    if ocaml_version < (4, 10) then "-custom" else "-output-complete-exe"
 end
 
 let insert_header fn ~header =
@@ -694,8 +644,7 @@ module Build_info = struct
     match from_dune_project with
     | Some _ -> Fiber.return from_dune_project
     | None -> (
-      if not (Sys.file_exists ".git") then
-        Fiber.return None
+      if not (Sys.file_exists ".git") then Fiber.return None
       else
         Process.try_run_and_capture "git"
           [ "describe"; "--always"; "--dirty"; "--abbrev=7" ]
@@ -750,10 +699,7 @@ module Library = struct
     let analyse fn =
       let dn = Filename.dirname fn in
       let fn = Filename.basename fn in
-      let i =
-        try String.index fn '.' with
-        | Not_found -> String.length fn
-      in
+      let i = try String.index fn '.' with Not_found -> String.length fn in
       match String.sub fn ~pos:i ~len:(String.length fn - i) with
       | ".c" -> Some C
       | ".ml" -> Some Ml
@@ -762,10 +708,7 @@ module Library = struct
       | ".mly" -> Some Mly
       | ".defaults.ml" ->
         let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
-        if Sys.file_exists (dn ^/ fn') then
-          None
-        else
-          Some Ml
+        if Sys.file_exists (dn ^/ fn') then None else Some Ml
       | _ -> None
   end
 
@@ -780,12 +723,10 @@ module Library = struct
       | None -> None
       | Some namespace ->
         let namespace = String.capitalize_ascii namespace in
-        if StringSet.equal modules (StringSet.singleton namespace) then
-          None
+        if StringSet.equal modules (StringSet.singleton namespace) then None
         else if StringSet.mem namespace modules then
           Some { toplevel_module = namespace; alias_module = namespace ^ "__" }
-        else
-          Some { toplevel_module = namespace; alias_module = namespace }
+        else Some { toplevel_module = namespace; alias_module = namespace }
 
     let mangle_filename t fn (kind : File_kind.t) =
       let base =
@@ -804,10 +745,8 @@ module Library = struct
         match t with
         | None -> base ^ ext
         | Some t ->
-          if String.capitalize_ascii base = t.toplevel_module then
-            base ^ ext
-          else
-            String.uncapitalize_ascii t.toplevel_module ^ "__" ^ base ^ ext)
+          if String.capitalize_ascii base = t.toplevel_module then base ^ ext
+          else String.uncapitalize_ascii t.toplevel_module ^ "__" ^ base ^ ext)
 
     let header t =
       match t with
@@ -838,10 +777,7 @@ module Library = struct
       | file :: files ->
         let acc =
           if Sys.is_directory file then
-            if scan_subdirs then
-              loop (readdir file) acc
-            else
-              acc
+            if scan_subdirs then loop (readdir file) acc else acc
           else
             match File_kind.analyse file with
             | Some kind -> (file, kind) :: acc
@@ -857,10 +793,7 @@ module Library = struct
       List.fold_left files ~init:StringSet.empty ~f:(fun acc (fn, kind) ->
           match (kind : File_kind.t) with
           | C -> acc
-          | Ml
-          | Mli
-          | Mll
-          | Mly ->
+          | Ml | Mli | Mll | Mly ->
             let module_name =
               let fn = Filename.basename fn in
               String.sub fn ~pos:0 ~len:(String.index fn '.')
@@ -884,8 +817,7 @@ module Library = struct
             | C ->
               copy fn dst;
               Fiber.return [ mangled ]
-            | Ml
-            | Mli ->
+            | Ml | Mli ->
               copy fn dst ~header;
               Fiber.return [ mangled ]
             | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
@@ -923,8 +855,7 @@ let ocamldep args =
       let colon = String.index line ':' in
       let filename = String.sub line ~pos:0 ~len:colon in
       let modules =
-        if colon = String.length line - 1 then
-          []
+        if colon = String.length line - 1 then []
         else
           let modules =
             String.sub line ~pos:(colon + 2)
@@ -941,21 +872,18 @@ let convert_dependencies ~all_source_files (file, dependencies) =
   let is_mli = Filename.check_suffix file ".mli" in
   let convert_module module_name =
     let filename = String.uncapitalize_ascii module_name in
-    if filename = Filename.chop_extension file then
-      (* Self-reference *)
+    if filename = Filename.chop_extension file then (* Self-reference *)
       None
     else if StringSet.mem (filename ^ ".mli") all_source_files then
       if (not is_mli) && StringSet.mem (filename ^ ".ml") all_source_files then
         (* We need to build the .ml for inlining info *)
         Some [ filename ^ ".mli"; filename ^ ".ml" ]
-      else
-        (* .mli files never depend on .ml files *)
+      else (* .mli files never depend on .ml files *)
         Some [ filename ^ ".mli" ]
     else if StringSet.mem (filename ^ ".ml") all_source_files then
       (* If there's no .mli, then we must always depend on the .ml *)
       Some [ filename ^ ".ml" ]
-    else
-      (* This is a module coming from an external library *)
+    else (* This is a module coming from an external library *)
       None
   in
   let dependencies =
@@ -965,8 +893,7 @@ let convert_dependencies ~all_source_files (file, dependencies) =
   let dependencies =
     if (not is_mli) && StringSet.mem (file ^ "i") all_source_files then
       (file ^ "i") :: dependencies
-    else
-      dependencies
+    else dependencies
   in
   (file, dependencies)
 
@@ -1002,8 +929,7 @@ let get_dependencies libraries =
     eprintf "***** Dependencies *****\n";
     List.iter deps ~f:(fun (fn, deps) ->
         eprintf "%s: %s\n" fn (String.concat deps ~sep:" "));
-    eprintf "**********\n"
-  );
+    eprintf "**********\n");
   deps
 
 let assemble_libraries { local_libraries; target = _, main; _ } =
@@ -1052,8 +978,7 @@ let sort_files dependencies ~main =
     if not (StringSet.mem file !seen) then (
       seen := StringSet.add file !seen;
       List.iter (Hashtbl.find deps_by_file file) ~f:loop;
-      res := file :: !res
-    )
+      res := file :: !res)
   in
   loop (Filename.basename main);
   List.rev !res
@@ -1071,8 +996,7 @@ let common_build_args name ~external_includes ~external_libraries =
 let build ~ocaml_config ~dependencies ~c_files ~link_flags
     { target = name, main; external_libraries; _ } =
   let ext_obj =
-    try StringMap.find "ext_obj" ocaml_config with
-    | Not_found -> ".o"
+    try StringMap.find "ext_obj" ocaml_config with Not_found -> ".o"
   in
   let external_libraries, external_includes =
     resolve_externals external_libraries
@@ -1177,10 +1101,7 @@ let main () =
       | Some flags -> flags)
   in
   let build =
-    if concurrency = 1 || Sys.win32 then
-      build_with_single_command
-    else
-      build
+    if concurrency = 1 || Sys.win32 then build_with_single_command else build
   in
   build ~ocaml_config ~dependencies ~c_files ~link_flags task
 

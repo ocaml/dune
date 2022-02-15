@@ -7,6 +7,10 @@
 #include <caml/threads.h>
 
 #if defined(__APPLE__)
+#include <Availability.h>
+#endif
+
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 
@@ -312,7 +316,8 @@ static const FSEventStreamEventFlags all_flags[] = {
     kFSEventStreamEventFlagOwnEvent,
     kFSEventStreamEventFlagItemIsHardlink,
     kFSEventStreamEventFlagItemIsLastHardlink,
-    kFSEventStreamEventFlagItemCloned};
+    kFSEventStreamEventFlagItemCloned,
+};
 
 CAMLprim value dune_fsevents_raw(value v_flags) {
   CAMLparam1(v_flags);
@@ -333,58 +338,61 @@ CAMLprim value dune_fsevents_available(value unit) {
 
 #else
 
+static char *unavailable_message =
+    "fsevents is only available on macos >= 10.13";
+
 CAMLprim value dune_fsevents_stop(value v_t) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_start(value v_t) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
                                     value v_callback) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_set_exclusion_paths(value v_t, value v_paths) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_flush_async(value v_t) {
 
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_kind(value v_flags) {
 
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_action(value v_flags) {
 
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_raw(value v_flags) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_flush_sync(value v_t) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_destroy(value v_t) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_break(value v_t) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_loop(value v_t) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_runloop_current(value v_unit) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_runloop_run(value v_unit) {
-  caml_failwith("fsevents is only available on macos");
+  caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_available(value unit) {
   CAMLparam1(unit);

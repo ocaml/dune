@@ -76,21 +76,16 @@ module Unexpanded = struct
         and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
         if (not is_atom) && version < (1, 6) then
           let what =
-            (if String_with_vars.has_pforms s then
-              "variables"
-            else
-              "quoted strings")
+            (if String_with_vars.has_pforms s then "variables"
+            else "quoted strings")
             |> sprintf "Using %s here"
           in
           Dune_lang.Syntax.Error.since (String_with_vars.loc s) Stanza.syntax
             (1, 6) ~what
-        else
-          s
+        else s
       in
       peek_exn >>= function
-      | Atom _
-      | Quoted_string _
-      | Template _ ->
+      | Atom _ | Quoted_string _ | Template _ ->
         decode >>| fun src -> { src; dst = None }
       | List (_, [ _; Atom (_, A "as"); _ ]) ->
         enter

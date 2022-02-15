@@ -40,9 +40,7 @@ module Stanzas_to_entries : sig
 end = struct
   let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
     match lib.kind with
-    | Normal
-    | Ppx_deriver _ ->
-      Memo.Build.return []
+    | Normal | Ppx_deriver _ -> Memo.Build.return []
     | Ppx_rewriter _ ->
       let name = Dune_file.Library.best_name lib in
       let+ ppx_exe =
@@ -50,11 +48,7 @@ end = struct
       in
       [ ppx_exe ]
 
-  let if_ cond l =
-    if cond then
-      l
-    else
-      []
+  let if_ cond l = if cond then l else []
 
   let lib_files ~dir_contents ~dir ~lib_config lib =
     let virtual_library = Option.is_some (Lib_info.virtual_ lib) in
@@ -69,8 +63,7 @@ end = struct
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
         Foreign.Sources.object_files files ~dir ~ext_obj
-      else
-        Memo.Build.return (Lib_info.foreign_archives lib)
+      else Memo.Build.return (Lib_info.foreign_archives lib)
     in
     List.concat_map
       ~f:(List.map ~f:(fun f -> (Section.Lib, f)))
@@ -151,10 +144,8 @@ end = struct
       let cm_dir m cm_kind =
         let visibility = Module.visibility m in
         let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
-        if Path.equal (Path.build dir) dir' then
-          None
-        else
-          Path.basename dir' |> inside_subdir |> Option.some
+        if Path.equal (Path.build dir) dir' then None
+        else Path.basename dir' |> inside_subdir |> Option.some
       in
       let virtual_library = Library.is_virtual lib in
       let modules =
@@ -165,8 +156,7 @@ end = struct
               match f with
               | None -> []
               | Some f -> [ (cm_kind, f) ]
-            else
-              []
+            else []
           in
           let open Cm_kind in
           [ if_ true (Cmi, cm_file Cmi)
@@ -192,10 +182,7 @@ end = struct
         in
         let modules_vlib =
           List.concat_map installable_modules.vlib ~f:(fun m ->
-              if Module.kind m = Virtual then
-                []
-              else
-                common m |> set_dir m)
+              if Module.kind m = Virtual then [] else common m |> set_dir m)
         in
         modules_vlib @ modules_impl
       in
@@ -232,10 +219,8 @@ end = struct
           if lib.optional then
             Lib.DB.available (Scope.libs scope)
               (Dune_file.Library.best_name lib)
-          else
-            Memo.Build.return true
-        else
-          Memo.Build.return false
+          else Memo.Build.return true
+        else Memo.Build.return false
       | Dune_file.Documentation _ -> Memo.Build.return true
       | Dune_file.Install { enabled_if; _ } ->
         Expander.eval_blang expander enabled_if
@@ -244,8 +229,7 @@ end = struct
         Expander.eval_blang expander exes.enabled_if >>= function
         | false -> Memo.Build.return false
         | true ->
-          if not exes.optional then
-            Memo.Build.return true
+          if not exes.optional then Memo.Build.return true
           else
             let* compile_info =
               let dune_version =
@@ -361,8 +345,7 @@ end = struct
             :: Install.Entry.Sourced.create
                  (Install.Entry.make Lib dune_package_file ~dst:Dune_package.fn)
             ::
-            (if not pkg.has_opam_file then
-              deprecated_meta_and_dune_files
+            (if not pkg.has_opam_file then deprecated_meta_and_dune_files
             else
               let opam_file = Package_paths.opam_file ctx pkg in
               Install.Entry.Sourced.create
@@ -380,8 +363,7 @@ end = struct
                      let odig_file = Path.Build.relative pkg_dir fn in
                      let entry = Install.Entry.make Doc odig_file in
                      Install.Entry.Sourced.create entry :: acc
-                   else
-                     acc))
+                   else acc))
     and+ l =
       Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun d stanza acc ->
           let named_entries =
@@ -462,8 +444,7 @@ end = struct
       Memo.Build.parallel_map lib_entries ~f:(fun stanza ->
           match stanza with
           | Super_context.Lib_entry.Deprecated_library_name
-              { old_name = _, Deprecated _; _ } ->
-            Memo.Build.return None
+              { old_name = _, Deprecated _; _ } -> Memo.Build.return None
           | Super_context.Lib_entry.Deprecated_library_name
               { old_name = old_public_name, Not_deprecated
               ; new_public_name = _, new_public_name
@@ -685,8 +666,7 @@ end = struct
                     with
                     | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries
                     | _ -> Pp.verbatim s
-                  else
-                    Pp.verbatim s))
+                  else Pp.verbatim s))
          in
          Format.asprintf "%a" Pp.to_fmt pp)
         |> Action_builder.write_file_dyn meta)
@@ -853,8 +833,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
         in
         Package.missing_deps package ~effective_deps
       in
-      if Package.Name.Set.is_empty missing_deps then
-        packages
+      if Package.Name.Set.is_empty missing_deps then packages
       else
         let name = Package.name package in
         User_error.raise
@@ -897,8 +876,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
        and+ () =
          if strict_package_deps then
            Action_builder.map packages ~f:(fun (_ : Package.Id.Set.t) -> ())
-         else
-           Action_builder.return ()
+         else Action_builder.return ()
        in
        let entries =
          match ctx.findlib_toolchain with
@@ -914,20 +892,20 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                })
        in
        (if not package.allow_empty then
-         if
-           List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
-               match e.source with
-               | Dune -> true
-               | User _ -> false)
-         then
-           let is_error = Dune_project.dune_version dune_project >= (3, 0) in
-           User_warning.emit ~is_error
-             [ Pp.textf
-                 "The package %s does not have any user defined stanzas \
-                  attached to it. If this is intentional, add (allow_empty) to \
-                  the package definition in the dune-project file"
-                 (Package.Name.to_string package_name)
-             ]);
+        if
+          List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
+              match e.source with
+              | Dune -> true
+              | User _ -> false)
+        then
+          let is_error = Dune_project.dune_version dune_project >= (3, 0) in
+          User_warning.emit ~is_error
+            [ Pp.textf
+                "The package %s does not have any user defined stanzas \
+                 attached to it. If this is intentional, add (allow_empty) to \
+                 the package definition in the dune-project file"
+                (Package.Name.to_string package_name)
+            ]);
        Install.gen_install_file
          (List.map entries ~f:(fun (e : Install.Entry.Sourced.t) ->
               Install.Entry.set_src e.entry (Path.build e.entry.src))))
@@ -935,7 +913,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   Super_context.add_rule sctx ~dir:pkg_build_dir
     ~mode:
       (if promote_install_file ctx then
-        Promote { lifetime = Until_clean; into = None; only = None }
+       Promote { lifetime = Until_clean; into = None; only = None }
       else
         (* We must ignore the source file since it might be copied to the source
            tree by another context. *)
@@ -985,8 +963,7 @@ let symlink_rules sctx ~dir =
 let gen_install_alias sctx (package : Package.t) =
   let ctx = Super_context.context sctx in
   let name = Package.name package in
-  if ctx.implicit then
-    Memo.Build.return ()
+  if ctx.implicit then Memo.Build.return ()
   else
     let install_fn =
       Utils.install_file ~package:name ~findlib_toolchain:ctx.findlib_toolchain

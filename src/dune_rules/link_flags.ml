@@ -49,10 +49,7 @@ let make ~spec ~default ~eval =
   }
 
 let get ~use_standard_cxx_flags (t : t) =
-  if use_standard_cxx_flags then
-    t.link_flags_cxx
-  else
-    t.link_flags
+  if use_standard_cxx_flags then t.link_flags_cxx else t.link_flags
 
 let dump t =
   let+ link_flags = t.link_flags in

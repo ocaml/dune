@@ -31,10 +31,7 @@ type enclosing_group =
   | Group_root of Path.Build.t
 
 let current_group dir = function
-  | Generated
-  | Source_only _
-  | Standalone _ ->
-    No_group
+  | Generated | Source_only _ | Standalone _ -> No_group
   | Group_root _ -> Group_root dir
   | Is_component_of_a_group_but_not_the_root { group_root; _ } ->
     Group_root group_root
@@ -98,8 +95,7 @@ module DB = struct
       in
       match stanzas_in db ~dir with
       | None -> (
-        if build_dir_is_project_root then
-          Memo.Build.return (Source_only st_dir)
+        if build_dir_is_project_root then Memo.Build.return (Source_only st_dir)
         else
           let+ enclosing_group = enclosing_group ~dir in
           match enclosing_group with

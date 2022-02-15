@@ -18,11 +18,11 @@ core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
 js_of_ocaml-compiler \
-mdx \
+"mdx>=2.1.0" \
 menhir \
 "merlin>=3.4.0" \
 ocamlfind \
-ocamlformat.0.19.0 \
+ocamlformat.0.20.1 \
 "odoc>=2.0.1" \
 "ppx_expect>=v0.14" \
 ppx_inline_test \

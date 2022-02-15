@@ -210,6 +210,7 @@ let term =
       & info [ "pkg" ] ~docv ~doc)
   in
   let _config = Common.init common_term in
+  Dune_engine.Clflags.on_missing_dune_project_file := Dune_engine.Clflags.Ignore;
   let open Component in
   let context = Init_context.make path in
   let common : Options.Common.t = { name; libraries; pps } in

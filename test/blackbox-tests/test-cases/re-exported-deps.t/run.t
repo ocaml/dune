@@ -9,11 +9,7 @@ transitive deps expressed in the dune-package
   $ dune_cmd cat transitive/_build/install/default/lib/pkg/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name pkg)
-  (sections
-   (lib
-    $TESTCASE_ROOT/transitive/_build/install/default/lib/pkg)
-   (libexec
-    $TESTCASE_ROOT/transitive/_build/install/default/lib/pkg))
+  (sections (lib .) (libexec .))
   (files
    (lib
     (META

@@ -22,9 +22,7 @@ module Context = struct
     let equal x y =
       match (x, y) with
       | Native, Native -> true
-      | Native, _
-      | _, Native ->
-        false
+      | Native, _ | _, Native -> false
       | Named x, Named y -> Context_name.equal x y
 
     let t =
@@ -36,11 +34,7 @@ module Context = struct
     let add ts x =
       match x with
       | None -> ts
-      | Some t ->
-        if List.mem ts t ~equal then
-          ts
-        else
-          ts @ [ t ]
+      | Some t -> if List.mem ts t ~equal then ts else ts @ [ t ]
   end
 
   module Common = struct
@@ -117,8 +111,7 @@ module Context = struct
       and+ fdo_target_exe =
         let f file =
           let ext = Filename.extension file in
-          if ext = ".exe" then
-            Path.(relative root file)
+          if ext = ".exe" then Path.(relative root file)
           else
             User_error.raise
               [ Pp.textf
@@ -275,8 +268,7 @@ module Context = struct
     | Opam x -> x.base.loc
 
   let host_context = function
-    | Default { host_context; _ }
-    | Opam { base = { host_context; _ }; _ } ->
+    | Default { host_context; _ } | Opam { base = { host_context; _ }; _ } ->
       host_context
 
   let t =
@@ -540,8 +532,7 @@ let step1 clflags =
                User_error.raise ~loc:(Context.loc ctx)
                  [ Pp.text "you can only have one context for merlin" ]
              | Opam { base = { merlin = true; _ }; _ }, None
-             | Default { merlin = true; _ }, None ->
-               Some name
+             | Default { merlin = true; _ }, None -> Some name
              | _ -> acc)
        in
        let contexts =
@@ -560,10 +551,8 @@ let step1 clflags =
              List.exists contexts ~f:(function
                | Context.Default _ -> true
                | _ -> false)
-           then
-             Some Context_name.default
-           else
-             None
+           then Some Context_name.default
+           else None
        in
        { merlin_context; contexts = top_sort (List.rev contexts); env; config })
   in
@@ -598,8 +587,7 @@ let default_step1 clflags =
 
 let load_step1 clflags p =
   Io.with_lexbuf_from_file p ~f:(fun lb ->
-      if Dune_lexer.eof_reached lb then
-        default_step1 clflags
+      if Dune_lexer.eof_reached lb then default_step1 clflags
       else
         parse_contents lb ~f:(fun lang ->
             String_with_vars.set_decoding_env

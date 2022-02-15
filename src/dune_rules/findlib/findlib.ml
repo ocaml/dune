@@ -67,17 +67,14 @@ module Rules = struct
     let rec find_set_rule = function
       | [] -> None
       | rule :: rules ->
-        if Rule.matches rule ~preds then
-          Some rule.value
-        else
-          find_set_rule rules
+        if Rule.matches rule ~preds then Some rule.value
+        else find_set_rule rules
     in
     let v = find_set_rule t.set_rules in
     List.fold_left t.add_rules ~init:v ~f:(fun v rule ->
         if Rule.matches rule ~preds then
           Some (Option.value ~default:"" v ^ " " ^ rule.value)
-        else
-          v)
+        else v)
 
   let of_meta_rules (rules : Meta.Simplified.Rules.t) =
     let add_rules = List.map rules.add_rules ~f:Rule.make in
@@ -283,8 +280,7 @@ end = struct
         Memo.Build.List.for_all exists_if ~f:(fun fn ->
             Fs_memo.file_exists (Path.relative t.dir fn))
       | [] -> (
-        if not is_builtin then
-          Memo.Build.return true
+        if not is_builtin then Memo.Build.return true
         else
           (* The META files for installed packages are sometimes broken, i.e.
              META files for libraries that were not installed by the compiler
@@ -320,10 +316,8 @@ end = struct
         (* libraries without archives are compatible with all modes. mainly a
            hack for compiler-libs which doesn't have any archives *)
         let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
-        if Mode.Dict.Set.is_empty discovered then
-          Mode.Dict.Set.all
-        else
-          discovered
+        if Mode.Dict.Set.is_empty discovered then Mode.Dict.Set.all
+        else discovered
       in
       let+ (info : Path.t Lib_info.t) =
         let kind = kind t in
@@ -391,12 +385,9 @@ end = struct
                   if
                     String.is_prefix f
                       ~prefix:Foreign.Archive.Name.lib_file_prefix
-                  then
-                    Left file
-                  else
-                    Right file
-                else
-                  Skip)
+                  then Left file
+                  else Right file
+                else Skip)
         in
         let entry_modules =
           Lib_info.Source.External
@@ -425,8 +416,7 @@ end = struct
                         (* We add this hack to skip manually mangled
                            libraries *)
                         Re.execp (Lazy.force mangled_module_re) fname
-                      then
-                        Ok None
+                      then Ok None
                       else
                         match
                           let name = Filename.chop_extension fname in
@@ -457,16 +447,12 @@ end = struct
       let pkg_dir = Vars.get vars "directory" Ps.empty in
       let dir =
         match pkg_dir with
-        | None
-        | Some "" ->
-          dir
+        | None | Some "" -> dir
         | Some pkg_dir ->
           if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
             Path.relative db.stdlib_dir (String.drop pkg_dir 1)
-          else if Filename.is_relative pkg_dir then
-            Path.relative dir pkg_dir
-          else
-            Path.of_filename_relative_to_initial_cwd pkg_dir
+          else if Filename.is_relative pkg_dir then Path.relative dir pkg_dir
+          else Path.of_filename_relative_to_initial_cwd pkg_dir
       in
       let pkg : Findlib_package.t =
         { meta_file; name = full_name; dir; vars }
@@ -481,10 +467,7 @@ end = struct
               (Package.Name.Map.mem db.builtins
                  (Lib_name.package_name pkg.name))
         in
-        if exists then
-          Dune_package.Entry.Library lib
-        else
-          Hidden_library lib
+        if exists then Dune_package.Entry.Library lib else Hidden_library lib
       in
       let acc =
         Lib_name.Map.add_exn acc (Dune_package.Entry.name entry) entry
@@ -555,8 +538,7 @@ end = struct
         let* meta_exists = Fs_memo.file_exists meta_file in
         if meta_exists then
           load_and_convert db ~dir ~meta_file ~name >>| Option.some
-        else
-          Memo.Build.return None
+        else Memo.Build.return None
 
   let lookup_and_load (db : DB.t) name =
     let rec loop dirs :
@@ -569,16 +551,13 @@ end = struct
       | dir :: dirs -> (
         let dir = Path.relative dir (Package.Name.to_string name) in
         let* dir_exists = Fs_memo.dir_exists dir in
-        if not dir_exists then
-          loop dirs
+        if not dir_exists then loop dirs
         else
           let dune = Path.relative dir Dune_package.fn in
           let* exists =
             let+ exists = Fs_memo.file_exists dune in
-            if exists then
-              Dune_package.Or_meta.load dune
-            else
-              Ok Dune_package.Or_meta.Use_meta
+            if exists then Dune_package.Or_meta.load dune
+            else Ok Dune_package.Or_meta.Use_meta
           in
           match exists with
           | Error e ->
@@ -648,10 +627,7 @@ let root_packages (db : DB.t) =
               let+ exists =
                 Fs_memo.file_exists (Path.relative dir (name ^ "/" ^ meta_fn))
               in
-              if exists then
-                Some (Package.Name.of_string name)
-              else
-                None))
+              if exists then Some (Package.Name.of_string name) else None))
     >>| Package.Name.Set.of_list
   in
   let builtins = Package.Name.Set.of_list (Package.Name.Map.keys db.builtins) in
@@ -688,8 +664,6 @@ let all_broken_packages t =
   let+ packages = load_all_packages t in
   List.fold_left packages ~init:[] ~f:(fun acc (name, x) ->
       match x with
-      | Ok _
-      | Error Unavailable_reason.Not_found ->
-        acc
+      | Ok _ | Error Unavailable_reason.Not_found -> acc
       | Error (Invalid_dune_package exn) -> (name, exn) :: acc)
   |> List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)

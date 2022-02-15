@@ -25,9 +25,7 @@ let string_of_path ~dir p = Path.reach ~from:dir p
 let to_string t ~dir =
   match t with
   | String s -> s
-  | Dir p
-  | Path p ->
-    string_of_path ~dir p
+  | Dir p | Path p -> string_of_path ~dir p
 
 let compare_vals ~dir x y =
   match (x, y) with
@@ -39,9 +37,7 @@ let compare_vals ~dir x y =
 let to_path ?error_loc t ~dir =
   match t with
   | String s -> Path.relative ?error_loc dir s
-  | Dir p
-  | Path p ->
-    p
+  | Dir p | Path p -> p
 
 module L = struct
   let to_dyn t = Dyn.List (List.map t ~f:to_dyn)
@@ -54,9 +50,7 @@ module L = struct
 
   let deps_only =
     List.filter_map ~f:(function
-      | Dir _
-      | String _ ->
-        None
+      | Dir _ | String _ -> None
       | Path p -> Some p)
 
   let strings = List.map ~f:(fun x -> String x)

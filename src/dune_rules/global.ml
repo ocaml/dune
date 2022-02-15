@@ -9,10 +9,8 @@ let init ~capture_outputs =
        if
          (not capture_outputs)
          || not (Lazy.force Ansi_color.stderr_supports_color)
-       then
-         Env.initial
-       else
-         Colors.setup_env_for_colors Env.initial
+       then Env.initial
+       else Colors.setup_env_for_colors Env.initial
      in
      let env = Env.add env ~var:"INSIDE_DUNE" ~value:"1" in
      (* To improve reproducibility, we don't let command executed by Dune

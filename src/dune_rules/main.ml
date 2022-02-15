@@ -22,10 +22,7 @@ let implicit_default_alias dir =
         let dune_version =
           Source_tree.Dir.project dir |> Dune_project.dune_version
         in
-        if dune_version >= (2, 0) then
-          Alias.Name.all
-        else
-          Alias.Name.install
+        if dune_version >= (2, 0) then Alias.Name.all else Alias.Name.install
       in
       Some
         (Action_builder.ignore

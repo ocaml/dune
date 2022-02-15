@@ -234,8 +234,7 @@ module Produced = struct
                   f (Path.Build.relative dir filename)))
         in
         Some { files; dirs }
-      with
-      | Short_circuit -> None
+      with Short_circuit -> None
   end
 
   let to_dyn { files; dirs } =

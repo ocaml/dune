@@ -231,13 +231,12 @@ module Buffer = struct
            let c = Bytes.get buffer.data i in
            if c = '\n' || c = '\r' then (
              (if !line_start < i then
-               let line =
-                 Bytes.sub_string buffer.data ~pos:!line_start
-                   ~len:(i - !line_start)
-               in
-               lines := line :: !lines);
-             line_start := i + 1
-           )
+              let line =
+                Bytes.sub_string buffer.data ~pos:!line_start
+                  ~len:(i - !line_start)
+              in
+              lines := line :: !lines);
+             line_start := i + 1)
          done;
          buffer.size <- buffer.size - !line_start;
          Bytes.blit ~src:buffer.data ~src_pos:!line_start ~dst:buffer.data
@@ -289,9 +288,7 @@ end = struct
 
   let is_special_file_fsevents (path : Path.t) =
     match path with
-    | In_source_tree _
-    | External _ ->
-      false
+    | In_source_tree _ | External _ -> false
     | In_build_dir build_path -> (
       match Path.Build.parent build_path with
       | None -> false
@@ -354,11 +351,9 @@ let fswatch_backend () =
 let select_watcher_backend () =
   if Sys.linux then (
     assert (Ocaml_inotify.Inotify.supported_by_the_os ());
-    `Inotify_lib
-  ) else if Fsevents.available () then
-    `Fsevents
-  else
-    fswatch_backend ()
+    `Inotify_lib)
+  else if Fsevents.available () then `Fsevents
+  else fswatch_backend ()
 
 let prepare_sync () =
   let dir = Lazy.force Fs_sync.special_dir in
@@ -366,9 +361,7 @@ let prepare_sync () =
   | Cleared -> ()
   | Directory_does_not_exist -> (
     match Fpath.mkdir_p dir with
-    | Already_exists
-    | Created ->
-      ())
+    | Already_exists | Created -> ())
 
 let spawn_external_watcher ~root ~backend =
   prepare_sync ();
@@ -391,16 +384,12 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) =
           List.concat_map events ~f:(fun event ->
               let is_fs_sync_event_generated_by_dune =
                 match (event : Inotify_lib.Event.t) with
-                | Modified path
-                | Created path
-                | Unlinked path ->
+                | Modified path | Created path | Unlinked path ->
                   Option.some_if
                     (Fs_sync.is_special_file
                        ~path_as_reported_by_file_watcher:path)
                     path
-                | Moved _
-                | Queue_overflow ->
-                  None
+                | Moved _ | Queue_overflow -> None
               in
               match is_fs_sync_event_generated_by_dune with
               | None -> process_inotify_event event
@@ -522,10 +511,7 @@ let fsevents_standard_event event path =
     | Create -> Created
     | Remove -> Deleted
     | Modify ->
-      if Fsevents.Event.kind event = File then
-        File_changed
-      else
-        Unknown
+      if Fsevents.Event.kind event = File then File_changed else Unknown
   in
   Some (Event.Fs_memo_event { Fs_memo_event.kind; path })
 
@@ -540,14 +526,11 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
       scheduler
       (fun event localized_path ->
         let path = Fsevents.Event.path event in
-        if not (Fs_sync.is_special_file_fsevents localized_path) then
-          None
+        if not (Fs_sync.is_special_file_fsevents localized_path) then None
         else
           match Fsevents.Event.action event with
           | Remove -> None
-          | Unknown
-          | Create
-          | Modify ->
+          | Unknown | Create | Modify ->
             Option.map (Fs_sync.consume_event sync_table path) ~f:(fun id ->
                 Event.Sync id))
   in
@@ -610,8 +593,7 @@ let create_default ?fsevents_debounce ~scheduler () =
 let wait_for_initial_watches_established_blocking t =
   match t.kind with
   | Fswatch c -> c.wait_for_watches_established ()
-  | Fsevents _
-  | Inotify _ ->
+  | Fsevents _ | Inotify _ ->
     (* no initial watches needed: all watches should be set up at the time just
        before file access *)
     ()
@@ -626,8 +608,7 @@ let add_watch t path =
     | External ext -> (
       let ext =
         let rec loop p =
-          if Path.is_directory (Path.external_ p) then
-            Some ext
+          if Path.is_directory (Path.external_ p) then Some ext
           else
             match Path.External.parent p with
             | None ->
@@ -661,7 +642,7 @@ let add_watch t path =
        start *)
     Ok ()
   | Inotify inotify -> (
-    try Ok (Inotify_lib.add inotify (Path.to_string path)) with
-    | Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
+    try Ok (Inotify_lib.add inotify (Path.to_string path))
+    with Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
 
 let emit_sync = Fs_sync.emit

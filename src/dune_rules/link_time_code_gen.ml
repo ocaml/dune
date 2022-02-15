@@ -70,10 +70,7 @@ let sorted_public_lib_names libs =
     ~f:(fun lib ->
       let info = Lib.info lib in
       let status = Lib_info.status info in
-      if Lib_info.Status.is_private status then
-        None
-      else
-        Some (Lib.name lib))
+      if Lib_info.Status.is_private status then None else Some (Lib.name lib))
     libs
   |> List.sort ~compare:Lib_name.compare
 
@@ -145,9 +142,7 @@ let build_info_code cctx ~libs ~api_version =
           | Some v -> Memo.Build.return (sprintf "Some %S" v)
           | None -> (
             match Lib_info.status (Lib.info lib) with
-            | Installed_private
-            | Installed ->
-              Memo.Build.return "None"
+            | Installed_private | Installed -> Memo.Build.return "None"
             | Public (_, p) -> version_of_package p
             | Private _ ->
               let p =
@@ -210,10 +205,7 @@ let dune_site_plugins_code ~libs ~builtins =
       let meta =
         Meta.filter_variable
           ~f:(function
-            | "plugin"
-            | "directory"
-            | "requires" ->
-              true
+            | "plugin" | "directory" | "requires" -> true
             | _ -> false)
           meta
       in
@@ -292,8 +284,7 @@ let handle_special_libs cctx =
               Action_builder.return
                 (dune_site_plugins_code ~libs:all_libs
                    ~builtins:(Findlib.builtins ctx.Context.findlib))
-            else
-              Action_builder.return (dune_site_code ())
+            else Action_builder.return (dune_site_code ())
           in
           let& module_ =
             generate_and_compile_module cctx ~name:data_module ~lib ~code

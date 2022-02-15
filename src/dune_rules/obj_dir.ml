@@ -29,16 +29,10 @@ module External = struct
 
   let make ~dir ~has_private_modules ~private_lib =
     let private_dir =
-      if has_private_modules then
-        Some (Path.relative dir ".private")
-      else
-        None
+      if has_private_modules then Some (Path.relative dir ".private") else None
     in
     let public_cmi_dir =
-      if private_lib then
-        Some (Path.relative dir ".public_cmi")
-      else
-        None
+      if private_lib then Some (Path.relative dir ".public_cmi") else None
     in
     { public_dir = dir; private_dir; public_cmi_dir }
 
@@ -174,9 +168,7 @@ module Local = struct
   let cm_dir t cm_kind _ =
     match cm_kind with
     | Cm_kind.Cmx -> native_dir t
-    | Cmo
-    | Cmi ->
-      byte_dir t
+    | Cmo | Cmi -> byte_dir t
 
   let cm_public_dir t (cm_kind : Cm_kind.t) =
     match cm_kind with
@@ -328,9 +320,7 @@ module Module = struct
 
   let has_impl_if_needed m ~kind =
     match (kind : Cm_kind.t) with
-    | Cmo
-    | Cmx ->
-      Module.has m ~ml_kind:Impl
+    | Cmo | Cmx -> Module.has m ~ml_kind:Impl
     | Cmi -> true
 
   let raise_no_impl m ~kind =
@@ -339,10 +329,8 @@ module Module = struct
 
   let o_file t m ~ext_obj =
     let kind = Cm_kind.Cmx in
-    if Module.has m ~ml_kind:Impl then
-      Some (obj_file t m ~kind ~ext:ext_obj)
-    else
-      None
+    if Module.has m ~ml_kind:Impl then Some (obj_file t m ~kind ~ext:ext_obj)
+    else None
 
   let o_file_exn t m ~ext_obj =
     match o_file t m ~ext_obj with
@@ -353,8 +341,7 @@ module Module = struct
     if has_impl_if_needed m ~kind then
       let ext = Cm_kind.ext kind in
       Some (obj_file t m ~kind ~ext)
-    else
-      None
+    else None
 
   let cm_file_exn t m ~kind =
     match cm_file t m ~kind with
@@ -366,10 +353,7 @@ module Module = struct
     let is_private = Module.visibility m = Private in
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
-    | Cmx
-    | Cmo
-      when not has_impl ->
-      None
+    | (Cmx | Cmo) when not has_impl -> None
     | Cmi when is_private -> None
     | _ ->
       let ext = Cm_kind.ext kind in
@@ -429,8 +413,7 @@ module Module = struct
       List.filter_map modules ~f:(fun m ->
           if Module.has m ~ml_kind:Impl then
             Some (path_of_build t (obj_file t m ~kind:Cmx ~ext:ext_obj))
-          else
-            None)
+          else None)
 
     let cm_files t modules ~kind =
       List.filter_map modules ~f:(fun m ->

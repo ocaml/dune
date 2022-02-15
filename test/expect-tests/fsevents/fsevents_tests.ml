@@ -62,8 +62,7 @@ let test f =
       if not !finished then (
         Format.eprintf "Test timed out@.";
         finished := true;
-        Condition.signal cv
-      );
+        Condition.signal cv);
       Mutex.unlock mutex);
   let test () =
     let dir = Temp.create Dir ~prefix:"fsevents_dune" ~suffix:"" in
@@ -113,17 +112,15 @@ let make_callback sync ~f =
           | `Looking_start ->
             if is_marker event start_filename then (
               state := `Keep;
-              sync#start
-            );
+              sync#start);
             acc
           | `Finish -> acc
           | `Keep ->
             if is_marker event end_filename then (
               state := `Finish;
               sync#stop;
-              acc
-            ) else
-              event :: acc)
+              acc)
+            else event :: acc)
     in
     match events with
     | [] -> ()

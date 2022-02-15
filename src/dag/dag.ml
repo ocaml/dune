@@ -93,8 +93,7 @@ module Make (Value : Value) () : S with type value := Value.t = struct
             List.rev path))
 
   let rec pp_depth depth pp_value fmt n =
-    if depth >= 20 then
-      Format.fprintf fmt "..."
+    if depth >= 20 then Format.fprintf fmt "..."
     else
       Format.fprintf fmt "(%d: k=%d) (%a) [@[%a@]]" (Id.to_int n.info.id)
         n.info.level pp_value n.data

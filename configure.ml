@@ -20,10 +20,7 @@ let () =
   let etcdir = ref None in
   let cwd = lazy (Sys.getcwd ()) in
   let dir_of_string s =
-    if Filename.is_relative s then
-      Filename.concat (Lazy.force cwd) s
-    else
-      s
+    if Filename.is_relative s then Filename.concat (Lazy.force cwd) s else s
   in
   let set_libdir s =
     let dir = dir_of_string s in

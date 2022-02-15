@@ -18,12 +18,9 @@ module Kind = struct
   let lowest_priority = max_int
 
   let of_dir_contents files =
-    if String.Set.mem files Workspace.filename then
-      Some Dune_workspace
-    else if String.Set.mem files Dune_project.filename then
-      Some Dune_project
-    else
-      None
+    if String.Set.mem files Workspace.filename then Some Dune_workspace
+    else if String.Set.mem files Dune_project.filename then Some Dune_project
+    else None
 end
 
 type t =
@@ -72,12 +69,10 @@ let find () =
       in
       cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =
-    if counter > String.length cwd then
-      candidate
+    if counter > String.length cwd then candidate
     else
       let parent = Filename.dirname dir in
-      if parent = dir then
-        candidate
+      if parent = dir then candidate
       else
         let base = Filename.basename dir in
         loop (counter + 1) parent ~candidate ~to_cwd:(base :: to_cwd)
@@ -90,16 +85,11 @@ let create ~default_is_cwd ~specified_by_user =
     | Some dn -> Some { Candidate.kind = Explicit; dir = dn; to_cwd = [] }
     | None -> (
       let cwd = { Candidate.kind = Cwd; dir = "."; to_cwd = [] } in
-      if Dune_util.Config.inside_dune then
-        Some cwd
+      if Dune_util.Config.inside_dune then Some cwd
       else
         match find () with
         | Some s -> Some s
-        | None ->
-          if default_is_cwd then
-            Some cwd
-          else
-            None)
+        | None -> if default_is_cwd then Some cwd else None)
   with
   | Some { Candidate.dir; to_cwd; kind } ->
     { kind

@@ -284,10 +284,8 @@ module Find_by_contents = struct
         | S_DIR -> find_files ~dir:path regexp
         | S_REG ->
           let s = Io.String_path.read_file path in
-          if Str.string_match regexp s 0 then
-            [ Printf.sprintf "%s\n" path ]
-          else
-            []
+          if Str.string_match regexp s 0 then [ Printf.sprintf "%s\n" path ]
+          else []
         | _other -> [])
 
   let run (dir, regexp) =

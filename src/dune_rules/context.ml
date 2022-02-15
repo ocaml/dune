@@ -65,8 +65,7 @@ module Program = struct
       match path with
       | None -> exe_path program
       | Some _ as path -> Memo.Build.return path
-    else
-      exe_path program
+    else exe_path program
 
   let which ~path program =
     Memo.Build.List.find_map path ~f:(fun dir -> best_path dir program)
@@ -243,11 +242,9 @@ end = struct
 end
 
 let ocamlpath_sep =
-  if Sys.cygwin then
-    (* because that's what ocamlfind expects *)
+  if Sys.cygwin then (* because that's what ocamlfind expects *)
     ';'
-  else
-    Bin.path_sep
+  else Bin.path_sep
 
 module Build_environment_kind = struct
   (* Heuristics to detect the current environment *)
@@ -315,8 +312,7 @@ let check_fdo_support has_native ocfg ~name =
          support the required options, fdo builds will fail because the compiler
          won't recognize the options. Normals builds won't be affected. *) )
   else if not (Ocaml_version.supports_split_at_emit version) then
-    if not (Ocaml_version.supports_function_sections version) then
-      err ()
+    if not (Ocaml_version.supports_function_sections version) then err ()
     else
       User_warning.emit
         [ Pp.textf
@@ -493,8 +489,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           | Some s -> "color=always," ^ s
         in
         Env.add env ~var:"OCAMLPARAM" ~value
-      else
-        env
+      else env
     in
     let env =
       let cwd = Sys.getcwd () in
@@ -633,8 +628,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       Result.iter t.ocamlopt ~f:set;
       Result.iter t.ocamldep ~f:set;
       if Ocaml_version.ocamlmklib_supports_response_file version then
-        Result.iter ~f:set t.ocamlmklib
-    );
+        Result.iter ~f:set t.ocamlmklib);
     Memo.Build.return t
   in
   let implicit =

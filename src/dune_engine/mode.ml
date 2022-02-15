@@ -7,9 +7,7 @@ type t =
 let equal x y =
   match (x, y) with
   | Byte, Byte -> true
-  | Byte, _
-  | _, Byte ->
-    false
+  | Byte, _ | _, Byte -> false
   | Native, Native -> true
 
 let compare x y =
@@ -48,9 +46,7 @@ let cm_kind = choose Cm_kind.Cmo Cmx
 let exe_ext = choose ".bc" ".exe"
 
 let of_cm_kind : Cm_kind.t -> t = function
-  | Cmi
-  | Cmo ->
-    Byte
+  | Cmi | Cmo -> Byte
   | Cmx -> Native
 
 module Dict = struct
@@ -102,18 +98,8 @@ module Dict = struct
 
     let to_list t =
       let l = [] in
-      let l =
-        if t.native then
-          Native :: l
-        else
-          l
-      in
-      let l =
-        if t.byte then
-          Byte :: l
-        else
-          l
-      in
+      let l = if t.native then Native :: l else l in
+      let l = if t.byte then Byte :: l else l in
       l
 
     let of_list l =

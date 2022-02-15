@@ -54,8 +54,7 @@ module Bin = struct
             if Sys.win32 then
               Option.value ~default:name
                 (String.drop_suffix name ~suffix:".exe")
-            else
-              name
+            else name
           in
           String.Map.set acc key path)
     in

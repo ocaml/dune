@@ -307,8 +307,7 @@ module H = struct
       match result with
       | Ok r -> r
       | Error [ { Exn_with_backtrace.exn = Response.Error.E e; backtrace = _ } ]
-        ->
-        Error e
+        -> Error e
       | Error xs ->
         let payload =
           Sexp.List
@@ -322,10 +321,8 @@ module H = struct
     Event.emit
       (Message { kind; meth_; stage = Stop })
       stats (Session.id session);
-    if Session.closed session then
-      Fiber.return ()
-    else
-      Session.send session (Some [ Response (id, response) ])
+    if Session.closed session then Fiber.return ()
+    else Session.send session (Some [ Response (id, response) ])
 
   let run_session (type a) (t : a t) stats (session : a Session.t) =
     let open Fiber.O in
@@ -334,9 +331,7 @@ module H = struct
         ~f:(fun (message : Packet.Query.t) ->
           let meth_ =
             match message with
-            | Notification c
-            | Request (_, c) ->
-              c.method_
+            | Notification c | Request (_, c) -> c.method_
           in
           match message with
           | Notification n ->

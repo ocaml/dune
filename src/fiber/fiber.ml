@@ -87,14 +87,14 @@ let end_of_fiber = End_of_fiber ()
 let never _k = Never ()
 
 let apply f x =
-  try f x with
-  | exn ->
+  try f x
+  with exn ->
     let exn = Exn_with_backtrace.capture exn in
     Reraise exn
 
 let apply2 f x y =
-  try f x y with
-  | exn ->
+  try f x y
+  with exn ->
     let exn = Exn_with_backtrace.capture exn in
     Reraise exn
 
@@ -140,10 +140,7 @@ let parallel_iter_seq (seq : _ Seq.t) ~f k =
     let f x =
       f x (fun () ->
           decr left_over;
-          if !left_over = 0 then
-            k ()
-          else
-            end_of_fiber)
+          if !left_over = 0 then k () else end_of_fiber)
     in
     nfork_seq left_over x seq f
 
@@ -222,9 +219,7 @@ module Ivar = struct
   let peek t k =
     k
       (match t.state with
-      | Empty
-      | Empty_with_readers _ ->
-        None
+      | Empty | Empty_with_readers _ -> None
       | Full x -> Some x)
 end
 
@@ -300,10 +295,7 @@ let parallel_iter l ~f k =
     let f x =
       f x (fun () ->
           decr left_over;
-          if !left_over = 0 then
-            k ()
-          else
-            end_of_fiber)
+          if !left_over = 0 then k () else end_of_fiber)
     in
     nfork x l f
 
@@ -324,10 +316,7 @@ let parallel_array_of_list_map' x l ~f k =
             a
         in
         decr left_over;
-        if !left_over = 0 then
-          k a
-        else
-          end_of_fiber)
+        if !left_over = 0 then k a else end_of_fiber)
   in
   nforki x l f
 
@@ -372,8 +361,7 @@ module Make_map_traversals (Map : Map.S) = struct
     parallel_iter_seq (Map.to_seq t) ~f:(fun (k, v) -> f k v)
 
   let parallel_map t ~f =
-    if Map.is_empty t then
-      return Map.empty
+    if Map.is_empty t then return Map.empty
     else
       let+ a =
         parallel_array_of_list_map (Map.to_list t) ~f:(fun (k, v) -> f k v)
@@ -411,9 +399,7 @@ let finalize f ~finally =
   let res =
     match (res1, res2) with
     | Ok x, Ok () -> Ok x
-    | Error l, Ok _
-    | Ok _, Error l ->
-      Error l
+    | Error l, Ok _ | Ok _, Error l -> Error l
     | Error l1, Error l2 -> Error (l1 @ l2)
   in
   match res with
@@ -477,8 +463,7 @@ module Svar = struct
       suspend (fun k -> t.waiters <- (k, until) :: t.waiters)
     in
     let rec wait t ~until =
-      if until t.current then
-        return ()
+      if until t.current then return ()
       else
         let* () = suspend t ~until in
         wait t ~until
@@ -496,10 +481,7 @@ module Svar = struct
       t.current <- a;
       let sleep, awake =
         List.rev_partition_map t.waiters ~f:(fun (k, f) ->
-            if f t.current then
-              Right k
-            else
-              Left (k, f))
+            if f t.current then Right k else Left (k, f))
       in
       match awake with
       | [] -> k ()
@@ -515,12 +497,10 @@ module Mutex = struct
     }
 
   let lock t k =
-    if t.locked then
-      suspend (fun k -> Queue.push t.waiters k) k
+    if t.locked then suspend (fun k -> Queue.push t.waiters k) k
     else (
       t.locked <- true;
-      k ()
-    )
+      k ())
 
   let unlock t k =
     assert t.locked;
@@ -551,8 +531,7 @@ module Throttle = struct
   let running t = t.running
 
   let rec restart t =
-    if t.running >= t.size then
-      return ()
+    if t.running >= t.size then return ()
     else
       match Queue.pop t.waiting with
       | None -> return ()
@@ -573,8 +552,8 @@ module Throttle = struct
       (fun () ->
         if t.running < t.size then (
           t.running <- t.running + 1;
-          f ()
-        ) else
+          f ())
+        else
           let waiting = Ivar.create () in
           Queue.push t.waiting waiting;
           let* () = Ivar.read waiting in
@@ -676,9 +655,8 @@ module Stream = struct
         decr n;
         if !n = 0 then (
           unlock t;
-          k ()
-        ) else
-          end_of_fiber
+          k ())
+        else end_of_fiber
       in
       let rec loop t =
         t.read () (function
@@ -817,9 +795,7 @@ module Jobs = struct
 
   let concat a b =
     match (a, b) with
-    | Empty, x
-    | x, Empty ->
-      x
+    | Empty, x | x, Empty -> x
     | _ -> Concat (a, b)
 
   let rec enqueue_readers (readers : (_, [ `Empty ]) ivar_state) x jobs =

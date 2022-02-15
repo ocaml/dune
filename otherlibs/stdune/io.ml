@@ -36,8 +36,7 @@ let input_zero_separated =
       if total_len > from then
         let rest = String.sub buf ~pos:from ~len:(total_len - from) in
         (Some rest, acc)
-      else
-        (None, acc)
+      else (None, acc)
   in
   let ibuf_size = 65536 in
   let ibuf = Bytes.create ibuf_size in
@@ -83,10 +82,7 @@ struct
 
   let open_in ?(binary = true) p =
     let fn = Path.to_string p in
-    if binary then
-      Stdlib.open_in_bin fn
-    else
-      Stdlib.open_in fn
+    if binary then Stdlib.open_in_bin fn else Stdlib.open_in fn
 
   let open_out ?(binary = true) ?(perm = 0o666) p =
     let fn = Path.to_string p in
@@ -94,10 +90,7 @@ struct
       [ Open_wronly
       ; Open_creat
       ; Open_trunc
-      ; (if binary then
-          Open_binary
-        else
-          Open_text)
+      ; (if binary then Open_binary else Open_text)
       ]
     in
     Stdlib.open_out_gen flags perm fn
@@ -120,14 +113,11 @@ struct
         f lb)
 
   let rec eagerly_input_acc ic s ~pos ~len acc =
-    if len <= 0 then
-      acc
+    if len <= 0 then acc
     else
       let r = input ic s pos len in
-      if r = 0 then
-        acc
-      else
-        eagerly_input_acc ic s ~pos:(pos + r) ~len:(len - r) (acc + r)
+      if r = 0 then acc
+      else eagerly_input_acc ic s ~pos:(pos + r) ~len:(len - r) (acc + r)
 
   (* [eagerly_input_string ic len] tries to read [len] chars from the channel.
      Unlike [really_input_string], if the file ends before [len] characters are
@@ -139,10 +129,8 @@ struct
   let eagerly_input_string ic len =
     let buf = Bytes.create len in
     let r = eagerly_input_acc ic buf ~pos:0 ~len 0 in
-    if r = len then
-      Bytes.unsafe_to_string buf
-    else
-      Bytes.sub_string buf ~pos:0 ~len:r
+    if r = len then Bytes.unsafe_to_string buf
+    else Bytes.sub_string buf ~pos:0 ~len:r
 
   let read_all =
     (* We use 65536 because that is the size of OCaml's IO buffers. *)
@@ -154,8 +142,7 @@ struct
         Buffer.add_channel buffer t chunk_size;
         loop ()
       in
-      try loop () with
-      | End_of_file -> Buffer.contents buffer
+      try loop () with End_of_file -> Buffer.contents buffer
     in
     fun t ->
       (* Optimisation for regular files: if the channel supports seeking, we
@@ -205,8 +192,7 @@ struct
           lines)
 
   let read_file_and_normalize_eols fn =
-    if not Stdlib.Sys.win32 then
-      read_file fn
+    if not Stdlib.Sys.win32 then read_file fn
     else
       let src = read_file fn in
       let len = String.length src in
@@ -215,19 +201,15 @@ struct
         match String.index_from src i '\r' with
         | None -> None
         | Some j ->
-          if j + 1 < len && src.[j + 1] = '\n' then
-            Some j
-          else
-            find_next_crnl (j + 1)
+          if j + 1 < len && src.[j + 1] = '\n' then Some j
+          else find_next_crnl (j + 1)
       in
       let rec loop src_pos dst_pos =
         match find_next_crnl src_pos with
         | None ->
           let len =
-            if len > src_pos && src.[len - 1] = '\r' then
-              len - 1 - src_pos
-            else
-              len - src_pos
+            if len > src_pos && src.[len - 1] = '\r' then len - 1 - src_pos
+            else len - src_pos
           in
           Bytes.blit_string ~src ~src_pos ~dst ~dst_pos ~len;
           Bytes.sub_string dst ~pos:0 ~len:(dst_pos + len)
@@ -260,8 +242,7 @@ struct
         Stdlib.open_out_gen
           [ Open_wronly; Open_creat; Open_trunc; Open_binary ]
           perm (Path.to_string dst)
-      with
-      | exn ->
+      with exn ->
         close_in ic;
         Exn.reraise exn
     in
@@ -281,12 +262,11 @@ struct
   let file_lines path ~start ~stop =
     with_file_in ~binary:true path ~f:(fun ic ->
         let rec aux acc lnum =
-          if lnum > stop then
-            List.rev acc
+          if lnum > stop then List.rev acc
           else if lnum < start then (
             ignore (input_line ic);
-            aux acc (lnum + 1)
-          ) else
+            aux acc (lnum + 1))
+          else
             let line = input_line ic in
             aux ((string_of_int lnum, line) :: acc) (lnum + 1)
         in
@@ -302,8 +282,7 @@ module String_path = Make (struct
 end)
 
 let portable_symlink ~src ~dst =
-  if Stdlib.Sys.win32 then
-    copy_file ~src ~dst ()
+  if Stdlib.Sys.win32 then copy_file ~src ~dst ()
   else
     let src =
       match Path.parent dst with
@@ -317,8 +296,7 @@ let portable_symlink ~src ~dst =
         (* @@DRA Win32 remove read-only attribute needed when symlinking
            enabled *)
         Unix.unlink dst;
-        Unix.symlink src dst
-      )
+        Unix.symlink src dst)
     | exception _ -> Unix.symlink src dst
 
 let portable_hardlink ~src ~dst =

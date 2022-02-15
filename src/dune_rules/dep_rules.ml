@@ -30,10 +30,8 @@ let ooi_deps md ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
       let+ (ooi : Ocamlobjinfo.t) = read in
       Module_name.Unique.Set.to_list ooi.intf
       |> List.filter_map ~f:(fun dep ->
-             if Module.obj_name m = dep then
-               None
-             else
-               Module_name.Unique.Map.find vlib_obj_map dep))
+             if Module.obj_name m = dep then None
+             else Module_name.Unique.Map.find vlib_obj_map dep))
   in
   let+ () = add_rule write
   and+ () =
@@ -84,19 +82,14 @@ let deps_of_vlib_module md ~ml_kind m =
 let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =
     match m with
-    | Imported_from_vlib m
-    | Normal m ->
-      Module.kind m = Alias
+    | Imported_from_vlib m | Normal m -> Module.kind m = Alias
     | Impl_of_virtual_module _ -> false
   in
-  if is_alias then
-    Memo.Build.return (Action_builder.return [])
+  if is_alias then Memo.Build.return (Action_builder.return [])
   else
     let skip_if_source_absent f m =
-      if Module.has m ~ml_kind then
-        f m
-      else
-        Memo.Build.return (Action_builder.return [])
+      if Module.has m ~ml_kind then f m
+      else Memo.Build.return (Action_builder.return [])
     in
     match m with
     | Imported_from_vlib m ->

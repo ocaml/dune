@@ -142,8 +142,7 @@ let rec loop with_comments depth lexer lexbuf acc =
       error (Loc.of_lexbuf lexbuf) "unclosed parenthesis at end of input";
     List.rev acc
   | Comment lines ->
-    if not with_comments then
-      loop false depth lexer lexbuf acc
+    if not with_comments then loop false depth lexer lexbuf acc
     else
       let loc = Loc.of_lexbuf lexbuf in
       loop with_comments depth lexer lexbuf (Encoded.comment loc lines :: acc)
@@ -168,14 +167,10 @@ let insert_comments csts comments =
   in
   let rec reconciliate acc tokens1 tokens2 =
     match (tokens1, tokens2) with
-    | [], l
-    | l, [] ->
-      List.rev_append acc l
+    | [], l | l, [] -> List.rev_append acc l
     | tok1 :: rest1, tok2 :: rest2 -> (
       match compare tok1 tok2 with
-      | Eq
-      | Lt ->
-        reconciliate (tok1 :: acc) rest1 tokens2
+      | Eq | Lt -> reconciliate (tok1 :: acc) rest1 tokens2
       | Gt -> reconciliate (tok2 :: acc) tokens1 rest2)
   in
   let tokens =

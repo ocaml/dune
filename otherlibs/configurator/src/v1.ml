@@ -20,10 +20,7 @@ type t =
 let rec rm_rf dir =
   Array.iter (Sys.readdir dir) ~f:(fun fn ->
       let fn = dir ^/ fn in
-      if Sys.is_directory fn then
-        rm_rf fn
-      else
-        Unix.unlink fn);
+      if Sys.is_directory fn then rm_rf fn else Unix.unlink fn);
   Unix.rmdir dir
 
 module Temp = struct
@@ -69,35 +66,23 @@ module Flags = struct
 end
 
 module Find_in_path = struct
-  let path_sep =
-    if Sys.win32 then
-      ';'
-    else
-      ':'
+  let path_sep = if Sys.win32 then ';' else ':'
 
   let get_path () =
     match Sys.getenv "PATH" with
     | exception Not_found -> []
     | s -> String.split s ~on:path_sep
 
-  let exe =
-    if Sys.win32 then
-      ".exe"
-    else
-      ""
+  let exe = if Sys.win32 then ".exe" else ""
 
   let prog_not_found prog = die "Program %s not found in PATH" prog
 
   let best_prog dir prog =
     let fn = dir ^/ prog ^ ".opt" ^ exe in
-    if Sys.file_exists fn then
-      Some fn
+    if Sys.file_exists fn then Some fn
     else
       let fn = dir ^/ prog ^ exe in
-      if Sys.file_exists fn then
-        Some fn
-      else
-        None
+      if Sys.file_exists fn then Some fn else None
 
   let find_ocaml_prog prog =
     match List.find_map (get_path ()) ~f:(fun dir -> best_prog dir prog) with
@@ -119,16 +104,12 @@ let gen_id t =
 
 let quote_if_needed =
   let need_quote = function
-    | ' '
-    | '\"' ->
-      true
+    | ' ' | '\"' -> true
     | _ -> false
   in
   fun s ->
-    if String.is_empty s || String.exists ~f:need_quote s then
-      Filename.quote s
-    else
-      s
+    if String.is_empty s || String.exists ~f:need_quote s then Filename.quote s
+    else s
 
 module Process = struct
   type result =
@@ -230,12 +211,10 @@ module Process = struct
 
   let run_command_capture_exn t ?dir ?env cmd =
     let { exit_code; stdout; stderr } = run_command t ?dir ?env cmd in
-    if exit_code <> 0 then
-      die "command exited with code %d: %s" exit_code cmd
+    if exit_code <> 0 then die "command exited with code %d: %s" exit_code cmd
     else if not (String.is_empty stderr) then
       die "command has non-empty stderr: %s" cmd
-    else
-      stdout
+    else stdout
 
   let run_command_ok t ?dir ?env cmd =
     (run_command t ?dir ?env cmd).exit_code = 0
@@ -428,10 +407,7 @@ let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
            ; link_flags
            ])
   in
-  if ok then
-    Ok ()
-  else
-    Error ()
+  if ok then Ok () else Error ()
 
 let compile_c_prog t ?(c_flags = []) code =
   let dir = t.dest_dir ^/ sprintf "c-test-%d" (gen_id t) in
@@ -449,10 +425,7 @@ let compile_c_prog t ?(c_flags = []) code =
          @ "-I" :: t.stdlib_dir :: "-o" :: obj_fname :: "-c" :: c_fname
            :: t.c_libraries))
   in
-  if ok then
-    Ok obj_fname
-  else
-    Error ()
+  if ok then Ok obj_fname else Error ()
 
 let c_test t ?c_flags ?link_flags code =
   match compile_and_link_c_prog t ?c_flags ?link_flags code with
@@ -656,10 +629,7 @@ module Pkg_config = struct
       | None ->
         if
           String.exists package ~f:(function
-            | '='
-            | '>'
-            | '<' ->
-              true
+            | '=' | '>' | '<' -> true
             | _ -> false)
         then
           warn
@@ -711,8 +681,7 @@ module Pkg_config = struct
         | s -> String.extract_blank_separated_words s
       in
       Ok { libs = run "--libs"; cflags = run "--cflags" }
-    else
-      Error stderr
+    else Error stderr
 
   let query t ~package = Result.to_option @@ gen_query t ~package ~expr:None
 
@@ -751,16 +720,11 @@ let main ?(args = []) ~name f =
   try
     let t =
       create_from_inside_dune ~dest_dir:!dest_dir
-        ~log:
-          (if !verbose then
-            prerr_endline
-          else
-            log)
+        ~log:(if !verbose then prerr_endline else log)
         ~build_dir ~name
     in
     f t
-  with
-  | exn -> (
+  with exn -> (
     let bt = Printexc.get_raw_backtrace () in
     List.iter (List.rev !log_db) ~f:(eprintf "%s\n");
     match exn with

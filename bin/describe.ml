@@ -322,7 +322,7 @@ module Crawl = struct
 
   (** Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t) :
-      Descr.Item.t option Memo.build =
+      (Descr.Item.t * Lib.Set.t) option Memo.build =
     let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
     let* modules_, obj_dir =
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
@@ -351,7 +351,7 @@ module Crawl = struct
           ; include_dirs
           }
       in
-      Some (Descr.Item.Executables exe_descr)
+      Some (Descr.Item.Executables exe_descr, Lib.Set.of_list libs)
 
   (** [lib_uses_pp lib] tells whether the compilation units of library [lib] are
       subject to a preprocessing phase. *)
@@ -414,20 +414,11 @@ module Crawl = struct
         Dune_rules.Main.build_system) (context : Context.t) :
       Descr.Workspace.t Memo.build =
     let sctx = Context_name.Map.find_exn scontexts context.name in
-    let* libs =
-      Memo.Build.parallel_map conf.projects ~f:(fun project ->
-          Super_context.find_scope_by_project sctx project
-          |> Scope.libs |> Lib.DB.all)
-      >>| Lib.Set.union_all >>| Lib.Set.to_list
-    in
-    let* libs =
-      add_transitive_deps libs
-      >>= Memo.Build.parallel_map ~f:(library ~options sctx)
-      >>| List.filter_map ~f:Fun.id
-    in
     let open Memo.Build.O in
     let* dune_files = Dune_load.Dune_files.eval conf.dune_files ~context in
-    let* exes =
+    let* exes, exe_libs =
+      (* the list of workspace items that describe executables, and the list of
+         their direct library dependencies *)
       Memo.Build.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
           Memo.Build.parallel_map dune_file.stanzas ~f:(fun stanza ->
               let dir =
@@ -438,7 +429,27 @@ module Crawl = struct
                 executables sctx ~options ~project:dune_file.project ~dir exes
               | _ -> Memo.Build.return None)
           >>| List.filter_map ~f:Fun.id)
-      >>| List.concat
+      >>| List.concat >>| List.split
+    in
+    let exe_libs =
+      (* conflate the dependencies of executables into a single set *)
+      Lib.Set.union_all exe_libs
+    in
+    let* project_libs =
+      (* the list of libraries declared in the project *)
+      Memo.Build.parallel_map conf.projects ~f:(fun project ->
+          Super_context.find_scope_by_project sctx project
+          |> Scope.libs |> Lib.DB.all)
+      >>| Lib.Set.union_all
+    in
+    let* libs =
+      let libs =
+        (* the executables' libraries, and the project's libraries *)
+        Lib.Set.union exe_libs project_libs |> Lib.Set.to_list
+      in
+      add_transitive_deps libs
+      >>= Memo.Build.parallel_map ~f:(library ~options sctx)
+      >>| List.filter_map ~f:Fun.id
     in
     Memo.Build.return (exes @ libs)
 end

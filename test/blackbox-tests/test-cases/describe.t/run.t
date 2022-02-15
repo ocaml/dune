@@ -38,6 +38,11 @@ Setup
   >  (libraries foo_x foo)
   >  (modules main2 main2_aux1 main2_aux2 main2_aux3 main2_aux4)
   >  (modules_without_implementation main2_aux4))
+  > 
+  > (executable
+  >   (name main3)
+  >   (libraries cmdliner)
+  >   (modules main3))
   > EOF
 
   $ touch foo.ml
@@ -82,6 +87,8 @@ Setup
   $ cat >main2_aux4.mli <<EOF
   > type t = int
   > EOF
+
+  $ touch main3.ml
 
 Describe various things
 -----------------------
@@ -140,6 +147,16 @@ not stable across different setups.
         (cmt (_build/default/.main2.eobjs/byte/dune__exe.cmt))
         (cmti ()))))
      (include_dirs (_build/default/.main2.eobjs/byte))))
+   (executables
+    ((names (main3))
+     (requires (c480a7c584d174c22d86dbdb79515d7d))
+     (modules
+      (((name Main3)
+        (impl (_build/default/main3.ml))
+        (intf ())
+        (cmt (_build/default/.main3.eobjs/byte/dune__exe__Main3.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.main3.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -199,6 +216,14 @@ not stable across different setups.
      (source_dir /FINDLIB//base/shadow_stdlib)
      (modules ())
      (include_dirs (/FINDLIB//base/shadow_stdlib))))
+   (library
+    ((name cmdliner)
+     (uid c480a7c584d174c22d86dbdb79515d7d)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//cmdliner)
+     (modules ())
+     (include_dirs (/FINDLIB//cmdliner))))
    (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
@@ -379,6 +404,17 @@ not stable across different setups.
          ((for_intf ())
           (for_impl ()))))))
      (include_dirs (_build/default/.main2.eobjs/byte))))
+   (executables
+    ((names (main3))
+     (requires (c480a7c584d174c22d86dbdb79515d7d))
+     (modules
+      (((name Main3)
+        (impl (_build/default/main3.ml))
+        (intf ())
+        (cmt (_build/default/.main3.eobjs/byte/dune__exe__Main3.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/.main3.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -447,6 +483,14 @@ not stable across different setups.
      (source_dir /FINDLIB//base/shadow_stdlib)
      (modules ())
      (include_dirs (/FINDLIB//base/shadow_stdlib))))
+   (library
+    ((name cmdliner)
+     (uid c480a7c584d174c22d86dbdb79515d7d)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//cmdliner)
+     (modules ())
+     (include_dirs (/FINDLIB//cmdliner))))
    (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)

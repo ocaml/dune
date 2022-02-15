@@ -144,7 +144,7 @@ not stable across different setups.
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
      (local true)
-     (requires (34d24431bb62c3c8c9933acac64a4fb8))
+     (requires (55b023c301c18e021a22384b996d66af))
      (source_dir _build/default)
      (modules
       (((name Bar2)
@@ -191,15 +191,15 @@ not stable across different setups.
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
     ((name ppx_inline_test.runtime-lib)
-     (uid 34d24431bb62c3c8c9933acac64a4fb8)
+     (uid 55b023c301c18e021a22384b996d66af)
      (local false)
      (requires
-      (3bb762fc176df327f9073eba2bc8dc2b
-       5793e5a96f11c93185b5422a5edc7b05
-       319b80b484fe99fb8019ed8ff7892b5c))
-     (source_dir /OCAML_ROOT/lib/ppx_inline_test/runtime-lib)
+      (46774e2b7a404647f12956126bd28f95
+       46e75006466e7a020139d86575978cb3
+       66c5927ddd01193cdcfac8ce97e58e63))
+     (source_dir /FINDLIB//ppx_inline_test/runtime-lib)
      (modules ())
-     (include_dirs (/OCAML_ROOT/lib/ppx_inline_test/runtime-lib)))))
+     (include_dirs (/FINDLIB//ppx_inline_test/runtime-lib)))))
 
   $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests
   ((executables
@@ -274,7 +274,7 @@ not stable across different setups.
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
      (local true)
-     (requires (34d24431bb62c3c8c9933acac64a4fb8))
+     (requires (55b023c301c18e021a22384b996d66af))
      (source_dir _build/default)
      (modules
       (((name Bar2)
@@ -332,15 +332,15 @@ not stable across different setups.
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
     ((name ppx_inline_test.runtime-lib)
-     (uid 34d24431bb62c3c8c9933acac64a4fb8)
+     (uid 55b023c301c18e021a22384b996d66af)
      (local false)
      (requires
-      (3bb762fc176df327f9073eba2bc8dc2b
-       5793e5a96f11c93185b5422a5edc7b05
-       319b80b484fe99fb8019ed8ff7892b5c))
-     (source_dir /OCAML_ROOT/lib/ppx_inline_test/runtime-lib)
+      (46774e2b7a404647f12956126bd28f95
+       46e75006466e7a020139d86575978cb3
+       66c5927ddd01193cdcfac8ce97e58e63))
+     (source_dir /FINDLIB//ppx_inline_test/runtime-lib)
      (modules ())
-     (include_dirs (/OCAML_ROOT/lib/ppx_inline_test/runtime-lib)))))
+     (include_dirs (/FINDLIB//ppx_inline_test/runtime-lib)))))
 
 
 Test other formats

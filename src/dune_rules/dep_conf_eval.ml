@@ -20,14 +20,14 @@ let collect_source_files_recursively dir ~f =
         f (Path.append_source prefix_with (Source_tree.Dir.path dir)))
 
 type dep_evaluation_result =
-  | Simple of Path.t Memo.Build.t
+  | Simple of Path.t list Memo.Build.t
   | Other of Path.t list Action_builder.t
 
 let to_action_builder = function
-  | Simple path ->
-    let* path = Action_builder.memo_build path in
-    let+ () = Action_builder.path path in
-    [ path ]
+  | Simple paths ->
+    let* paths = Action_builder.memo_build paths in
+    let+ () = Action_builder.all_unit (List.map ~f:Action_builder.path paths) in
+    paths
   | Other x -> x
 
 let dep_on_alias_rec alias ~loc =
@@ -60,7 +60,7 @@ let dep_on_alias_rec alias ~loc =
 let dep expander = function
   | File s -> (
     match Expander.With_deps_if_necessary.expand_path expander s with
-    | Without path ->
+    | Without paths ->
       (* This special case is to support this pattern:
 
          {v ... (deps (:x foo)) (action (... (diff? %{x} %{x}.corrected))) ...
@@ -72,12 +72,14 @@ let dep expander = function
          at rule production time. This is not compatible with computing its
          expansion in the action builder monad, which is evaluated at rule
          execution time. *)
-      Simple path
-    | With path ->
+      Simple paths
+    | With paths ->
       Other
-        (let* path = path in
-         let+ () = Action_builder.path path in
-         [ path ]))
+        (let* paths = paths in
+         let+ () =
+           Action_builder.all_unit (List.map ~f:Action_builder.path paths)
+         in
+         paths))
   | Alias s ->
     Other
       (let* a = make_alias expander s in
@@ -209,11 +211,12 @@ let named ~expander l =
               Pform.Map.set bindings (Var (User_var name))
                 (Expander.Deps.Without
                    (let+ paths = Memo.Lazy.force x in
-                    Dune_util.Value.L.paths paths))
+                    Dune_util.Value.L.paths (List.concat paths)))
             in
             let x =
               let open Action_builder.O in
               let* x = Action_builder.memo_build (Memo.Lazy.force x) in
+              let x = List.concat x in
               let+ () = Action_builder.paths x in
               x
             in

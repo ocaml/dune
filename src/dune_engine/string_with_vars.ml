@@ -83,6 +83,42 @@ let decode_manually f =
 
 let decode = decode_manually Pform.Env.parse
 
+let decode_many f =
+  let open Dune_lang.Decoder in
+  let+ env = get decoding_env_key
+  and+ x = raw in
+  let env =
+    match env with
+    | Some env -> env
+    | None ->
+      Code_error.raise ~loc:(Dune_lang.Ast.loc x)
+        "pform decoding environment not set" []
+  in
+  let rec helper x =
+    match x with
+    | Atom (loc, A s) -> [ literal ~quoted:false ~loc s ]
+    | Quoted_string (loc, s) -> [ literal ~quoted:true ~loc s ]
+    | List (_loc, xs) -> List.concat_map ~f:helper xs
+    | Template { quoted; loc; parts } ->
+      [ { quoted
+        ; loc
+        ; parts =
+            List.map parts ~f:(function
+              | Dune_lang.Template.Text s -> Text s
+              | Pform v -> (
+                match f env v with
+                | pform -> Pform (v, pform)
+                | exception User_error.E msg
+                  when Pform.Env.syntax_version env < (3, 0) ->
+                  (* Before dune 3.0, unknown variable errors were delayed *)
+                  Error (v, msg)))
+        }
+      ]
+  in
+  helper x
+
+let decode_many = decode_many Pform.Env.parse
+
 let loc t = t.loc
 
 let virt_pform ?quoted pos pform =
@@ -215,12 +251,8 @@ struct
   open A.O
 
   let expand :
-        'a.
-           t
-        -> mode:'a Mode.t
-        -> dir:Path.t
-        -> f:Value.t list A.t expander
-        -> 'a A.t =
+      type a.
+      t -> mode:a Mode.t -> dir:Path.t -> f:Value.t list A.t expander -> a A.t =
    fun t ~mode ~dir ~f ->
     match t.parts with
     (* Optimizations for some common cases *)
@@ -233,7 +265,7 @@ struct
       let+ chunks =
         A.all
           (List.map t.parts ~f:(function
-            | Text s -> A.return s
+            | Text s -> A.return [ s ]
             | Error (_, msg) ->
               (* The [let+ () = A.return () in ...] is to delay the error until
                  the evaluation of the applicative *)
@@ -241,10 +273,12 @@ struct
               raise (User_error.E msg)
             | Pform (source, p) ->
               let+ v = f ~source p in
-              if t.quoted then Value.L.concat v ~dir
-              else Value.to_string ~dir (Mode.value Single v ~source)))
+              if t.quoted then [ Value.L.concat ~dir v ]
+              else
+                let vs = Mode.value Many v ~source in
+                List.map ~f:(Value.to_string ~dir) vs))
       in
-      Mode.string mode (String.concat chunks ~sep:"")
+      Mode.string mode (String.concat (List.concat chunks) ~sep:"")
 
   let expand_as_much_as_possible t ~dir ~f =
     let+ parts =

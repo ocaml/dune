@@ -543,7 +543,11 @@ end = struct
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
     in
-    let* () = Memo.Build.of_non_reproducible_fiber (State.start_rule_exn ()) in
+    (* We run [State.start_rule_exn ()] entirely for its side effect, so one
+       might be tempted to use [Memo.Build.of_reproducible_fiber] here but that
+       is wrong, because that would force us to rerun [execute_rule_impl] on
+       every incremental build. *)
+    let* () = Memo.Build.of_reproducible_fiber (State.start_rule_exn ()) in
     let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target dir with

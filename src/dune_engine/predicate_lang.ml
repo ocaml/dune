@@ -8,9 +8,7 @@ type 'a t =
   | Inter of 'a t list
 
 let diff a = function
-  | Union []
-  | Inter [] ->
-    a
+  | Union [] | Inter [] -> a
   | b -> Inter [ a; Compl b ]
 
 let inter a = Inter a
@@ -40,10 +38,7 @@ let rec decode_one f =
   in
   peek_exn >>= function
   | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
-  | Atom (_, A "")
-  | Quoted_string (_, _)
-  | Template _ ->
-    elt
+  | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
   | Atom (loc, A s) -> (
     match s with
     | ":standard" -> junk >>> return Standard
@@ -58,10 +53,7 @@ let rec decode_one f =
     | ":include" ->
       User_error.raise ~loc
         [ Pp.text ":include isn't supported in the predicate language" ]
-    | "or"
-    | "and"
-    | "not" ->
-      bool_ops ()
+    | "or" | "and" | "not" -> bool_ops ()
     | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
       User_error.raise ~loc
         [ Pp.text
@@ -125,9 +117,7 @@ module Glob = struct
 
   let filter (t : t) ~standard elems =
     match t with
-    | Inter []
-    | Union [] ->
-      []
+    | Inter [] | Union [] -> []
     | _ -> List.filter elems ~f:(fun elem -> exec t ~standard elem)
 
   let of_glob g = Element (Glob.test g)

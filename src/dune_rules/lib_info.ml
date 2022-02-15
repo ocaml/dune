@@ -11,9 +11,7 @@ module Inherited = struct
     | This x, This y -> f x y
     | From (x, y), From (x', y') ->
       Tuple.T2.equal Loc.equal Lib_name.equal (x, y) (x', y')
-    | This _, From _
-    | From _, This _ ->
-      false
+    | This _, From _ | From _, This _ -> false
 
   let to_dyn f x =
     let open Dyn in
@@ -220,20 +218,12 @@ module Status = struct
         [ Dune_project.to_dyn proj; option Package.to_dyn package ]
 
   let is_private = function
-    | Installed_private
-    | Private _ ->
-      true
-    | Installed
-    | Public _ ->
-      false
+    | Installed_private | Private _ -> true
+    | Installed | Public _ -> false
 
   let project = function
-    | Installed_private
-    | Installed ->
-      None
-    | Private (project, _)
-    | Public (project, _) ->
-      Some project
+    | Installed_private | Installed -> None
+    | Private (project, _) | Public (project, _) -> Some project
 end
 
 module Source = struct
@@ -245,9 +235,7 @@ module Source = struct
     match (x, y) with
     | Local, Local -> true
     | External x, External y -> f x y
-    | External _, Local
-    | Local, External _ ->
-      false
+    | External _, Local | Local, External _ -> false
 
   let to_dyn f x =
     let open Dyn in
@@ -505,10 +493,7 @@ let eval_native_archives_exn (type path) (t : path t) ~modules =
   | Needs_module_info _, None ->
     Code_error.raise "missing module information" []
   | Needs_module_info f, Some modules ->
-    if Modules.has_impl modules then
-      [ f ]
-    else
-      []
+    if Modules.has_impl modules then [ f ] else []
 
 let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
     ~obj_dir ~implements ~default_implementation ~sub_systems ~modules =
@@ -708,9 +693,7 @@ let to_dyn path
 
 let package t =
   match t.status with
-  | Installed_private
-  | Installed ->
-    Some (Lib_name.package_name t.name)
+  | Installed_private | Installed -> Some (Lib_name.package_name t.name)
   | Public (_, p) -> Some (Package.name p)
   | Private (_, p) -> Option.map p ~f:Package.name
 

@@ -157,9 +157,7 @@ let of_config ~ext ~dune_lang ~version =
   match (ext, dune_lang, dune2) with
   | None, None, true -> enabled_for_all
   | None, None, false -> disabled
-  | Some x, None, false
-  | None, Some x, true ->
-    x
+  | Some x, None, false | None, Some x, true -> x
   | _, Some _, false ->
     Code_error.raise "(formatting ...) stanza requires version 2.0" []
   | Some ext, _, true ->

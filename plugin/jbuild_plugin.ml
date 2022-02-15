@@ -42,8 +42,7 @@ module V1 = struct
       | line -> loop ic (line :: acc)
     in
     let output = loop (open_in tmp_fname) [] in
-    if n = 0 then
-      output
+    if n = 0 then output
     else
       Printf.ksprintf failwith
         "Command failed: %%s\nExit code: %%d\nOutput:\n%%s" cmd n

@@ -32,9 +32,7 @@ let parse_deps_exn ~file lines =
       ]
   in
   match lines with
-  | []
-  | _ :: _ :: _ ->
-    invalid ()
+  | [] | _ :: _ :: _ -> invalid ()
   | [ line ] -> (
     match String.lsplit2 line ~on:':' with
     | None -> invalid ()
@@ -104,12 +102,9 @@ let deps_of md ~ml_kind unit =
   let build_paths dependencies =
     let dependency_file_path m =
       let ml_kind m =
-        if Module.kind m = Alias then
-          None
-        else if Module.has m ~ml_kind:Intf then
-          Some Ml_kind.Intf
-        else
-          Some Impl
+        if Module.kind m = Alias then None
+        else if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf
+        else Some Impl
       in
       ml_kind m
       |> Option.map ~f:(fun ml_kind ->
@@ -153,3 +148,16 @@ let read_deps_of ~obj_dir ~modules ~ml_kind unit =
     (Action_builder.map
        ~f:(parse_module_names ~unit ~modules)
        (Action_builder.lines_of (Path.build all_deps_file)))
+
+let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =
+  match Module.source ~ml_kind unit with
+  | None -> Action_builder.return []
+  | Some source ->
+    let ocamldep_output = Obj_dir.Module.dep obj_dir (Immediate source) in
+    Action_builder.memoize
+      (Path.Build.to_string ocamldep_output)
+      (Action_builder.map
+         ~f:(fun lines ->
+           parse_deps_exn ~file:(Module.File.path source) lines
+           |> parse_module_names ~unit ~modules)
+         (Action_builder.lines_of (Path.build ocamldep_output)))

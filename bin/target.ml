@@ -33,8 +33,7 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
      indicate whether a hint corresponds to a file or to a directory target. *)
   let+ candidates = Load_rules.all_direct_targets () >>| Path.Build.Map.keys in
   let candidates =
-    if Path.is_in_build_dir path then
-      List.map ~f:Path.build candidates
+    if Path.is_in_build_dir path then List.map ~f:Path.build candidates
     else
       List.map candidates ~f:(fun path ->
           match Path.Build.extract_build_context path with
@@ -47,8 +46,7 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
     List.filter_map candidates ~f:(fun path ->
         if Path.equal (Path.parent_exn path) sub_dir then
           Some (Path.to_string path)
-        else
-          None)
+        else None)
   in
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
   User_message.did_you_mean (Path.to_string path) ~candidates
@@ -74,17 +72,13 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     Memo.Build.parallel_map setup.contexts ~f:(fun ctx ->
         let path = Path.append_source (Path.build ctx.Context.build_dir) src in
         Load_rules.is_target path >>| function
-        | Yes _
-        | Under_directory_target_so_cannot_say ->
-          Some (File path)
+        | Yes _ | Under_directory_target_so_cannot_say -> Some (File path)
         | No -> None)
     >>| List.filter_map ~f:Fun.id
   in
   let matching_target () =
     Load_rules.is_target path >>| function
-    | Yes _
-    | Under_directory_target_so_cannot_say ->
-      Some [ File path ]
+    | Yes _ | Under_directory_target_so_cannot_say -> Some [ File path ]
     | No -> None
   in
   match checked with

@@ -96,19 +96,16 @@ let trim ~goal =
            | Ok stats ->
              if file_exists_and_is_unused ~stats then
                Some (path, stats.st_size, stats.st_ctime)
-             else
-               None
+             else None
            | Error _ -> None))
   in
   let delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
-    if trimmed_so_far.trimmed_bytes >= goal then
-      trimmed_so_far
+    if trimmed_so_far.trimmed_bytes >= goal then trimmed_so_far
     else (
       Path.unlink_no_err path;
       (* CR-someday amokhov: We should really be using block_size * #blocks
          because that's how much we save actually. *)
-      Trimming_result.add trimmed_so_far ~bytes
-    )
+      Trimming_result.add trimmed_so_far ~bytes)
   in
   let trimmed_so_far =
     List.fold_left ~init:Trimming_result.empty ~f:delete files
@@ -121,12 +118,9 @@ let overhead_size () =
     let f p =
       try
         let stats = Path.stat_exn p in
-        if file_exists_and_is_unused ~stats then
-          Int64.of_int stats.st_size
-        else
-          0L
-      with
-      | Unix.Unix_error (Unix.ENOENT, _, _) -> 0L
+        if file_exists_and_is_unused ~stats then Int64.of_int stats.st_size
+        else 0L
+      with Unix.Unix_error (Unix.ENOENT, _, _) -> 0L
     in
     List.map ~f files
   in

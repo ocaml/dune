@@ -2,12 +2,7 @@ module T = struct
   type t = int
 
   let compare (a : int) b : Ordering.t =
-    if a < b then
-      Lt
-    else if a = b then
-      Eq
-    else
-      Gt
+    if a < b then Lt else if a = b then Eq else Gt
 
   let to_dyn x = Dyn.Int x
 end

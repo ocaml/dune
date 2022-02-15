@@ -3,20 +3,14 @@ module Var = struct
     type t = string
 
     let compare =
-      if Sys.win32 then
-        fun a b ->
-      String.compare (String.lowercase a) (String.lowercase b)
-      else
-        String.compare
+      if Sys.win32 then fun a b ->
+        String.compare (String.lowercase a) (String.lowercase b)
+      else String.compare
 
     let to_dyn = Dyn.string
   end
 
-  let temp_dir =
-    if Sys.win32 then
-      "TEMP"
-    else
-      "TMPDIR"
+  let temp_dir = if Sys.win32 then "TEMP" else "TMPDIR"
 
   include Comparable.Make (T)
   include T
@@ -79,16 +73,9 @@ let add t ~var ~value = make (Map.set t.vars var value)
 let remove t ~var = make (Map.remove t.vars var)
 
 let extend t ~vars =
-  if Map.is_empty vars then
-    t
-  else
-    make (Map.superpose t.vars vars)
+  if Map.is_empty vars then t else make (Map.superpose t.vars vars)
 
-let extend_env x y =
-  if Map.is_empty x.vars then
-    y
-  else
-    extend x ~vars:y.vars
+let extend_env x y = if Map.is_empty x.vars then y else extend x ~vars:y.vars
 
 let to_dyn t =
   let open Dyn in

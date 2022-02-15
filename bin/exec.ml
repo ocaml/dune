@@ -57,8 +57,7 @@ let term =
         let build_prog p =
           let open Memo.Build.O in
           if no_rebuild then
-            if Path.exists p then
-              Memo.Build.return p
+            if Path.exists p then Memo.Build.return p
             else
               User_error.raise
                 [ Pp.textf
@@ -115,10 +114,8 @@ let term =
               | Absolute -> (
                 match
                   let prog = Path.of_string prog in
-                  if Path.exists prog then
-                    Some prog
-                  else if not Sys.win32 then
-                    None
+                  if Path.exists prog then Some prog
+                  else if not Sys.win32 then None
                   else
                     let prog = Path.extend_basename prog ~suffix:Bin.exe in
                     Option.some_if (Path.exists prog) prog

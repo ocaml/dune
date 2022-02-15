@@ -3,10 +3,7 @@ open Import
 
 let system_shell_exn =
   let cmd, arg, os =
-    if Sys.win32 then
-      ("cmd", "/c", "on Windows")
-    else
-      ("sh", "-c", "")
+    if Sys.win32 then ("cmd", "/c", "on Windows") else ("sh", "-c", "")
   in
   let bin = lazy (Bin.which ~path:(Env.path Env.initial) cmd) in
   fun ~needed_to ->
@@ -59,10 +56,7 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 
 let line_directive ~filename:fn ~line_number =
   let directive =
-    if Foreign_language.has_foreign_extension ~fn then
-      "line"
-    else
-      ""
+    if Foreign_language.has_foreign_extension ~fn then "line" else ""
   in
   sprintf "#%s %d %S\n" directive line_number fn
 

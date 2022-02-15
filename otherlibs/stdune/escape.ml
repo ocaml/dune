@@ -13,12 +13,7 @@ let quote_length s =
       !n
       +
       match String.unsafe_get s i with
-      | '\"'
-      | '\\'
-      | '\n'
-      | '\t'
-      | '\r'
-      | '\b' ->
+      | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' ->
         needs_quoting := true;
         2
       | ' ' ->
@@ -29,12 +24,10 @@ let quote_length s =
         needs_quoting := true;
         4
   done;
-  if !needs_quoting then
-    Needs_quoting_with_length len
+  if !needs_quoting then Needs_quoting_with_length len
   else (
     assert (len = !n);
-    No_quoting
-  )
+    No_quoting)
 
 let escape_to s ~dst:s' ~ofs =
   let n = ref ofs in
@@ -78,17 +71,11 @@ let escape_to s ~dst:s' ~ofs =
 let quote_if_needed s =
   let len = String.length s in
   match quote_length s with
-  | No_quoting ->
-    if s = "" then
-      "\"\""
-    else
-      s
+  | No_quoting -> if s = "" then "\"\"" else s
   | Needs_quoting_with_length n ->
     let s' = Bytes.create (n + 2) in
     Bytes.unsafe_set s' 0 '"';
-    if len = 0 || n > len then
-      escape_to s ~dst:s' ~ofs:1
-    else
-      Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len;
+    if len = 0 || n > len then escape_to s ~dst:s' ~ofs:1
+    else Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len;
     Bytes.unsafe_set s' (n + 1) '"';
     Bytes.unsafe_to_string s'

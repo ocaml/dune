@@ -27,10 +27,8 @@ include (
         || String.is_prefix name ~prefix:"."
         || name = "log" || name = "install" || String.contains name '/'
         || String.contains name '\\'
-      then
-        None
-      else
-        Some name
+      then None
+      else Some name
   end) :
     Stringlike_intf.S with type t := t)
 

@@ -26,13 +26,11 @@ module Includes = struct
               [ iflags libs Native
               ; Hidden_deps
                   (if opaque then
-                    List.map libs ~f:(fun lib ->
-                        ( lib
-                        , if Lib.is_local lib then
-                            [ Lib_file_deps.Group.Cmi ]
-                          else
-                            [ Cmi; Cmx ] ))
-                    |> Lib_file_deps.deps_with_exts
+                   List.map libs ~f:(fun lib ->
+                       ( lib
+                       , if Lib.is_local lib then [ Lib_file_deps.Group.Cmi ]
+                         else [ Cmi; Cmx ] ))
+                   |> Lib_file_deps.deps_with_exts
                   else
                     Lib_file_deps.deps libs
                       ~groups:[ Lib_file_deps.Group.Cmi; Cmx ])
@@ -137,8 +135,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   let requires_compile =
     if Dune_project.implicit_transitive_deps project then
       Memo.Lazy.force requires_link
-    else
-      requires_compile
+    else requires_compile
   in
   let sandbox =
     (* With sandboxing, there are a few build errors in ocaml platform 1162238ae
@@ -200,8 +197,7 @@ let for_alias_module t alias_module =
        modules it references are built after. *)
     if Ocaml_version.always_reads_alias_cmi ctx.version then
       Sandbox_config.needs_sandboxing
-    else
-      Sandbox_config.no_special_requirements
+    else Sandbox_config.no_special_requirements
   in
   let modules : modules =
     match Modules.is_stdlib_alias t.modules.modules alias_module with

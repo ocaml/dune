@@ -129,23 +129,14 @@ let process_raw_events t events =
           | Some (m_trans_id, m_fn) ->
             if m_trans_id = trans_id then
               (None, Moved (Move (m_fn, fn)) :: actions)
-            else
-              (None, Moved (Away m_fn) :: Moved (Into fn) :: actions))
+            else (None, Moved (Away m_fn) :: Moved (Into fn) :: actions))
         | Move_self -> (Some (trans_id, fn), add_pending actions)
         | Create -> (None, Created fn :: add_pending actions)
         | Delete -> (None, Unlinked fn :: add_pending actions)
-        | Modify
-        | Close_write ->
-          (None, Modified fn :: add_pending actions)
+        | Modify | Close_write -> (None, Modified fn :: add_pending actions)
         | Q_overflow -> (None, Queue_overflow :: add_pending actions)
         | Delete_self -> (None, add_pending actions)
-        | Access
-        | Attrib
-        | Open
-        | Ignored
-        | Isdir
-        | Unmount
-        | Close_nowrite ->
+        | Access | Attrib | Open | Ignored | Isdir | Unmount | Close_nowrite ->
           (None, add_pending actions))
   in
   List.rev

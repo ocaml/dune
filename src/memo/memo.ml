@@ -524,8 +524,8 @@ module M = struct
           if !Counters.enabled then
             Counters.edges_traversed :=
               !Counters.edges_traversed + Array.length t;
-          Fiber.return Changed_or_not.Unchanged
-        ) else
+          Fiber.return Changed_or_not.Unchanged)
+        else
           f t.(index) >>= function
           | Changed_or_not.Unchanged -> go (index - 1)
           | (Changed | Cancelled _) as res ->
@@ -902,12 +902,10 @@ end = struct
   let deduplicate_errors f =
     let reported = ref Exn_set.empty in
     fun exn ->
-      if Exn_set.mem !reported exn then
-        Fiber.return ()
+      if Exn_set.mem !reported exn then Fiber.return ()
       else (
         reported := Exn_set.add !reported exn;
-        f exn
-      )
+        f exn)
 
   let with_error_handler t f =
     Fiber.of_thunk (fun () ->
@@ -939,14 +937,8 @@ let dump_stack () =
 let get_cached_value_in_current_run (dep_node : _ Dep_node.t) =
   match dep_node.state with
   | Cached_value cv ->
-    if Run.is_current cv.last_validated_at then
-      Some cv
-    else
-      None
-  | Out_of_date _
-  | Restoring _
-  | Computing _ ->
-    None
+    if Run.is_current cv.last_validated_at then Some cv else None
+  | Out_of_date _ | Restoring _ | Computing _ -> None
 
 module Cached_value = struct
   include M.Cached_value
@@ -997,8 +989,7 @@ module Cached_value = struct
     | (Cancelled _ | Error { reproducible = false; _ }), _
     | _, (Cancelled _ | Error { reproducible = false; _ })
     | Error _, Ok _
-    | Ok _, Error _ ->
-      true
+    | Ok _, Error _ -> true
     | Ok prev_value, Ok cur_value -> (
       match node.without_state.spec.allow_cutoff with
       | Yes equal -> not (equal prev_value cur_value)
@@ -1165,8 +1156,7 @@ end = struct
       (* We do not cache non-reproducible errors. *)
       Fiber.return
         (Cache_lookup.Result.Failure (Out_of_date { old_value = None }))
-    | Ok _
-    | Error { reproducible = true; _ } -> (
+    | Ok _ | Error { reproducible = true; _ } -> (
       (* We cache reproducible errors just like normal values. We assume that
          all [Memo] computations are deterministic, which means if we rerun a
          computation that previously raised a set of errors on the same inputs
@@ -1189,9 +1179,7 @@ end = struct
                   cached_value.last_validated_at
               with
               | Gt -> Fiber.return Changed_or_not.Changed
-              | Eq
-              | Lt ->
-                Fiber.return Changed_or_not.Unchanged)
+              | Eq | Lt -> Fiber.return Changed_or_not.Unchanged)
             | Failure (Cancelled { dependency_cycle }) ->
               Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
             | Failure (Out_of_date _old_value) -> (
@@ -1218,9 +1206,7 @@ end = struct
                       cached_value.last_validated_at
                   with
                   | Gt -> Changed_or_not.Changed
-                  | Eq
-                  | Lt ->
-                    Unchanged)
+                  | Eq | Lt -> Unchanged)
                 | Error dependency_cycle -> Cancelled { dependency_cycle })))
       in
       match deps_changed with
@@ -1291,8 +1277,7 @@ end = struct
         if !Counters.enabled then (
           incr Counters.nodes_computed;
           Counters.edges_traversed :=
-            !Counters.edges_traversed + Deps.length cached_value.deps
-        );
+            !Counters.edges_traversed + Deps.length cached_value.deps);
         dep_node.state <- Cached_value cached_value;
         cached_value)
 
@@ -1308,8 +1293,7 @@ end = struct
          the [Run.is_current] check. We should try to find a shortcut. *)
       if Run.is_current cached_value.last_validated_at then
         Fiber.return (Cache_lookup.Result.Ok cached_value)
-      else
-        start_restoring ~dep_node ~cached_value
+      else start_restoring ~dep_node ~cached_value
     | Restoring { restore_from_cache } -> (
       Computation.read_but_first_check_for_cycles restore_from_cache
         ~dep_node:dep_node.without_state
@@ -1317,8 +1301,7 @@ end = struct
       | Ok res -> res
       | Error dependency_cycle ->
         Cache_lookup.Result.Failure (Cancelled { dependency_cycle }))
-    | Out_of_date { old_value }
-    | Computing { old_value; _ } ->
+    | Out_of_date { old_value } | Computing { old_value; _ } ->
       Fiber.return (Cache_lookup.Result.Failure (Out_of_date { old_value }))
 
   (* This function assumes that restoring the value from cache failed. This
@@ -1401,8 +1384,7 @@ let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
           in
           let runtime = Unix.gettimeofday () -. start in
           String.Map.of_list_exn [ ("runtime", Graph.Attribute.Float runtime) ]
-        else
-          Fiber.return String.Map.empty
+        else Fiber.return String.Map.empty
       in
       let graph =
         Graph.add_node graph ~id:src_id ?label:dep_node.without_state.spec.name
@@ -1413,10 +1395,8 @@ let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
           let* graph = graph in
           let dst_id = Id.to_int dst_node.without_state.id in
           let graph = Graph.add_edge graph ~src_id ~dst_id in
-          if Graph.has_node graph ~id:dst_id then
-            Fiber.return graph
-          else
-            collect_graph packed graph)
+          if Graph.has_node graph ~id:dst_id then Fiber.return graph
+          else collect_graph packed graph)
     | None -> (
       match on_not_cached with
       | `Raise -> failwith "Memo graph contains uncached nodes"
@@ -1477,9 +1457,7 @@ module Invalidation = struct
 
     let combine a b =
       match (a, b) with
-      | Empty, x
-      | x, Empty ->
-        x
+      | Empty, x | x, Empty -> x
       | x, y -> Combine (x, y)
   end
 

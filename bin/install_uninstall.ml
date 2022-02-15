@@ -64,8 +64,8 @@ let resolve_package_install workspace pkg =
              |> List.map ~f:Package.Name.to_string))
 
 let print_unix_error f =
-  try f () with
-  | Unix.Unix_error (error, syscall, arg) ->
+  try f ()
+  with Unix.Unix_error (error, syscall, arg) ->
     let error = Unix_error.Detailed.create error ~syscall ~arg in
     User_message.prerr (User_error.make [ Unix_error.Detailed.pp error ])
 
@@ -78,12 +78,9 @@ module Special_file = struct
     match e.section with
     | Lib ->
       let dst = Install.Dst.to_string e.dst in
-      if dst = Findlib.meta_fn then
-        Some META
-      else if dst = Dune_package.fn then
-        Some Dune_package
-      else
-        None
+      if dst = Findlib.meta_fn then Some META
+      else if dst = Dune_package.fn then Some Dune_package
+      else None
     | _ -> None
 end
 
@@ -158,8 +155,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
           match packages with
           | None -> Fiber.return None
           | Some vcs -> Memo.Build.run (Dune_engine.Vcs.describe vcs)
-        else
-          Fiber.return None
+        else Fiber.return None
       in
       let ppf = Format.formatter_of_out_channel oc in
       callback ppf ?version;
@@ -186,11 +182,9 @@ module File_ops_real (W : Workspace) : File_operations = struct
               raise_notrace Exit)
         in
         false
-      with
-      | Exit -> true
+      with Exit -> true
     in
-    if not need_more_versions then
-      None
+    if not need_more_versions then None
     else
       let callback ?version ppf =
         let meta =
@@ -241,8 +235,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         (List.exists dp ~f:(function
           | Dune_lang.List (Atom (A "version") :: _)
           | Dune_lang.List [ Atom (A "use_meta"); Atom (A "true") ]
-          | Dune_lang.List [ Atom (A "use_meta") ] ->
-            true
+          | Dune_lang.List [ Atom (A "use_meta") ] -> true
           | _ -> false))
     in
     let callback ?version ppf =
@@ -271,14 +264,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
 
   let copy_file ~src ~dst ~executable ~special_file ~package
       ~(conf : Dune_rules.Artifact_substitution.conf) =
-    let chmod =
-      if executable then
-        fun _ ->
-      0o755
-      else
-        fun _ ->
-      0o644
-    in
+    let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
     let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
     Fiber.finalize
       ~finally:(fun () ->
@@ -297,8 +283,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
   let remove_file_if_exists dst =
     if Path.exists dst then (
       print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
-      print_unix_error (fun () -> Path.unlink dst)
-    )
+      print_unix_error (fun () -> Path.unlink dst))
 
   let remove_dir_if_exists_and_empty dir =
     if Path.exists dir then
@@ -360,8 +345,7 @@ module Sections = struct
 end
 
 let file_operations ~dry_run ~workspace : (module File_operations) =
-  if dry_run then
-    (module File_ops_dry_run)
+  if dry_run then (module File_ops_dry_run)
   else
     (module File_ops_real (struct
       let workspace = workspace
@@ -499,10 +483,7 @@ let install_uninstall ~what =
                   let fn =
                     Path.append_source (Path.build ctx.Context.build_dir) fn
                   in
-                  if Path.exists fn then
-                    Left (ctx, (pkg, fn))
-                  else
-                    Right fn))
+                  if Path.exists fn then Left (ctx, (pkg, fn)) else Right fn))
           |> List.partition_map ~f:Fun.id
         in
         if missing_install_files <> [] then
@@ -515,8 +496,7 @@ let install_uninstall ~what =
         (match
            (contexts, prefix_from_command_line, libdir_from_command_line)
          with
-        | _ :: _ :: _, Some _, _
-        | _ :: _ :: _, _, Some _ ->
+        | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
           User_error.raise
             [ Pp.text
                 "Cannot specify --prefix or --libdir when installing into \
@@ -557,8 +537,7 @@ let install_uninstall ~what =
         let destdir =
           if create_install_files then
             Some (Option.value ~default:"_destdir" destdir)
-          else
-            destdir
+          else destdir
         in
         let open Fiber.O in
         let (module Ops) = file_operations ~dry_run ~workspace in
@@ -622,17 +601,14 @@ let install_uninstall ~what =
                               Fiber.return true
                           in
                           let msg =
-                            if create_install_files then
-                              "Copying to"
-                            else
-                              "Installing"
+                            if create_install_files then "Copying to"
+                            else "Installing"
                           in
                           if copy then
                             let* () =
                               (match Path.is_directory dst with
                               | true -> Ops.remove_dir_if_exists_and_empty dst
-                              | false
-                              | (exception _) ->
+                              | false | (exception _) ->
                                 Ops.remove_file_if_exists dst);
                               print_line "%s %s" msg
                                 (Path.to_string_maybe_quoted dst);
@@ -644,8 +620,7 @@ let install_uninstall ~what =
                                 ~special_file ~package ~conf
                             in
                             Fiber.return (Install.Entry.set_src entry dst)
-                          else
-                            Fiber.return entry
+                          else Fiber.return entry
                         | Uninstall ->
                           Ops.remove_file_if_exists dst;
                           files_deleted_in := Path.Set.add !files_deleted_in dir;

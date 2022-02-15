@@ -2,11 +2,7 @@ Include variants and implementation information in dune-package
   $ dune build | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name foo)
-  (sections
-   (lib
-    $TESTCASE_ROOT/_build/install/default/lib/foo)
-   (libexec
-    $TESTCASE_ROOT/_build/install/default/lib/foo))
+  (sections (lib .) (libexec .))
   (files
    (lib
     (META

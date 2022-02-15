@@ -206,10 +206,7 @@ let files_to_mdx t ~sctx ~dir =
     Path.Build.append_source (Super_context.context sctx).build_dir src_path
   in
   List.filter_map src_dir_files ~f:(fun src_path ->
-      if must_mdx src_path then
-        Some (build_path src_path)
-      else
-        None)
+      if must_mdx src_path then Some (build_path src_path) else None)
 
 (** Generates the rules for a single [src] file covered covered by the given
     [stanza]. *)
@@ -258,6 +255,8 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
         Dep_conf_eval.unnamed ~expander (mdx_package_deps @ mdx_generic_deps)
       in
       Action_builder.with_no_targets deps
+      >>> Action_builder.with_no_targets
+            (Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC")
       >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
       >>> Command.run ~dir:(Path.build dir) ~stdout_to:files.corrected
             executable command_line
@@ -282,8 +281,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
   let directory_args =
     let+ libs_to_include =
       Resolve.Build.List.filter_map t.libraries ~f:(function
-        | Direct lib
-        | Re_export lib ->
+        | Direct lib | Re_export lib ->
           let+ lib = Lib.DB.resolve (Scope.libs scope) lib in
           Some lib
         | _ -> Resolve.Build.return None)
@@ -348,8 +346,7 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
       if Dune_lang.Syntax.Version.Infix.(t.version >= (0, 2)) then
         Memo.Build.Option.map (Some t)
           ~f:(mdx_prog_gen ~sctx ~dir ~scope ~expander ~mdx_prog)
-      else
-        Memo.Build.return None
+      else Memo.Build.return None
     in
     Memo.Build.parallel_iter files_to_mdx
       ~f:
@@ -359,9 +356,7 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
   let* only_packages = Only_packages.get () in
   let do_it =
     match (only_packages, t.package) with
-    | None, _
-    | Some _, None ->
-      true
+    | None, _ | Some _, None -> true
     | Some only, Some stanza_package ->
       Package.Name.Map.mem only (Package.name stanza_package)
   in

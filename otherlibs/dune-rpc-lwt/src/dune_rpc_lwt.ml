@@ -61,8 +61,7 @@ module V1 = struct
                 if depth = 0 then
                   let sexps = Stack.to_list stack in
                   sexps |> List.hd |> Lwt.return_some
-                else
-                  loop depth stack
+                else loop depth stack
               | Atom count ->
                 let* atom =
                   let bytes = Bytes.create count in

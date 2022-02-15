@@ -55,8 +55,7 @@ let decode elem =
     | Right x :: l -> loop vars (Unnamed x :: acc) l
     | Left (loc, name, values) :: l ->
       let vars =
-        if not (String.Set.mem vars name) then
-          String.Set.add vars name
+        if not (String.Set.mem vars name) then String.Set.add vars name
         else
           User_error.raise ~loc
             [ Pp.textf "Variable %s is defined for the second time." name ]

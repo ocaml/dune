@@ -13,10 +13,7 @@ module Op = struct
 
   let eval t (x : Ordering.t) =
     match (t, x) with
-    | (Eq | Gte | Lte), Eq
-    | (Neq | Lt | Lte), Lt
-    | (Neq | Gt | Gte), Gt ->
-      true
+    | (Eq | Gte | Lte), Eq | (Neq | Lt | Lte), Lt | (Neq | Gt | Gte), Gt -> true
     | _, _ -> false
 
   let to_dyn =

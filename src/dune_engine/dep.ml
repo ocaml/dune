@@ -118,18 +118,13 @@ module Fact = struct
 
     let group ts files =
       let ts =
-        if Path.Map.is_empty files then
-          ts
-        else
-          make ~files ~dirs:Path.Map.empty :: ts
+        if Path.Map.is_empty files then ts
+        else make ~files ~dirs:Path.Map.empty :: ts
       in
       (* Sort and de-dup so that the result is resilient to code changes *)
       let ts =
         List.filter_map ts ~f:(fun t ->
-            if is_empty t then
-              None
-            else
-              Some (t.digest, t))
+            if is_empty t then None else Some (t.digest, t))
         |> Digest.Map.of_list_reduce ~f:(fun t _ -> t)
         |> Digest.Map.values
       in
@@ -238,16 +233,13 @@ module Facts = struct
         match (fact : Fact.t) with
         | Nothing -> acc
         | File (p, d) -> Path.Map.set acc p d
-        | File_selector (_, ps)
-        | Alias ps ->
+        | File_selector (_, ps) | Alias ps ->
           Path.Map.union acc ps.files ~f:(fun _ a _ -> Some a))
 
   let paths_without_expanding_aliases t =
     Map.fold t ~init:Path.Map.empty ~f:(fun fact acc ->
         match (fact : Fact.t) with
-        | Nothing
-        | Alias _ ->
-          acc
+        | Nothing | Alias _ -> acc
         | File (p, d) -> Path.Map.set acc p d
         | File_selector (_, ps) ->
           Path.Map.union acc ps.files ~f:(fun _ a _ -> Some a))
@@ -259,20 +251,15 @@ module Facts = struct
               match (fact : Fact.t) with
               | Nothing -> acc
               | File (p, d) -> (acc_ff, Path.Map.set acc_paths p d)
-              | File_selector (_, ps)
-              | Alias ps ->
-                (ps :: acc_ff, acc_paths)))
+              | File_selector (_, ps) | Alias ps -> (ps :: acc_ff, acc_paths)))
     in
     Fact.Files.group fact_files paths
 
   let dirs t =
     Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
         match (fact : Fact.t) with
-        | Nothing
-        | File _ ->
-          acc
-        | File_selector (_, ps)
-        | Alias ps ->
+        | Nothing | File _ -> acc
+        | File_selector (_, ps) | Alias ps ->
           Path.Set.union acc (Path.Map.keys ps.dirs |> Path.Set.of_list))
 
   let parent_dirs t =
@@ -280,9 +267,7 @@ module Facts = struct
         match (fact : Fact.t) with
         | Nothing -> acc
         | File (p, _) -> Path.Set.add acc (Path.parent_exn p)
-        | File_selector (_, ps)
-        | Alias ps ->
-          Path.Set.union acc ps.parent_dirs)
+        | File_selector (_, ps) | Alias ps -> Path.Set.union acc ps.parent_dirs)
 
   let digest t ~env =
     let facts =
@@ -292,9 +277,7 @@ module Facts = struct
           match dep with
           | Env var -> Env (var, Env.get env var) :: acc
           | Universe -> acc
-          | File _
-          | File_selector _
-          | Alias _ -> (
+          | File _ | File_selector _ | Alias _ -> (
             match (fact : Fact.t) with
             | Nothing -> acc
             | File (p, d) -> File (file (p, d)) :: acc

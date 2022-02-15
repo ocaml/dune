@@ -132,20 +132,15 @@ let parse_message msg =
   | exception Not_found -> Raw msg
   | group ->
     let file_excerpt =
-      if Re.Group.test group 1 then
-        Some (Re.Group.get group 1)
-      else
-        None
+      if Re.Group.test group 1 then Some (Re.Group.get group 1) else None
     in
     let severity =
-      if Re.Mark.test group error_marker then
-        Error
+      if Re.Mark.test group error_marker then Error
       else if Re.Group.(test group 2 && test group 3) then
         let code = int_of_string (Re.Group.get group 2) in
         let name = Re.Group.get group 3 in
         Warning (Some { code; name })
-      else
-        Warning None
+      else Warning None
     in
     Structured { file_excerpt; severity; message = Re.Group.get group 4 }
 
@@ -154,29 +149,20 @@ let parse s =
   match Re.split_full re s with
   | [] -> []
   | [ `Text _ ] -> []
-  | (`Delim _ :: _ as rest)
-  | `Text _ :: rest ->
+  | (`Delim _ :: _ as rest) | `Text _ :: rest ->
     let loc_of_group group message =
       let str_group = Re.Group.get group in
       let int_group i = int_of_string (str_group i) in
       let line =
-        if Re.Mark.test group single_marker then
-          `Single (int_group 2)
-        else
-          `Range (int_group 3, int_group 4)
+        if Re.Mark.test group single_marker then `Single (int_group 2)
+        else `Range (int_group 3, int_group 4)
       in
       let chars =
-        if Re.Group.test group 5 then
-          Some (int_group 5, int_group 6)
-        else
-          None
+        if Re.Group.test group 5 then Some (int_group 5, int_group 6) else None
       in
       let message = parse_message message in
       let res = ({ path = str_group 1; line; chars }, message) in
-      if Re.Mark.test group related_marker then
-        `Related res
-      else
-        `Parent res
+      if Re.Mark.test group related_marker then `Related res else `Parent res
     in
     let rec loop acc = function
       | `Text _ :: _ -> assert false

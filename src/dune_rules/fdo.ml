@@ -108,10 +108,7 @@ let get_profile =
             ])
       | Never -> Memo.Build.return false
     in
-    if use_profile then
-      Some path
-    else
-      None
+    if use_profile then Some path else None
   in
   let memo = Memo.create Mode.var ~input:(module Context) f in
   Memo.exec memo
@@ -194,10 +191,8 @@ module Linker_script = struct
         Path.equal name fdo_target_exe
         && (Ocaml_version.supports_function_sections ctx.version
            || Ocaml_config.is_dev_version ctx.ocaml_config)
-      then
-        Some (linker_script_rule cctx fdo_target_exe)
-      else
-        None
+      then Some (linker_script_rule cctx fdo_target_exe)
+      else None
 
   let flags t =
     let open Memo.Build.O in

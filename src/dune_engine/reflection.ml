@@ -50,9 +50,7 @@ end = struct
         | File p -> Memo.Build.return (Path.Set.singleton p)
         | File_selector g -> Build_system.eval_pred g
         | Alias a -> Expand.alias a
-        | Env _
-        | Universe ->
-          Memo.Build.return Path.Set.empty)
+        | Env _ | Universe -> Memo.Build.return Path.Set.empty)
     >>| Path.Set.union_all
 end
 
@@ -89,10 +87,7 @@ let eval ~recursive ~request =
   Rule_top_closure.top_closure root_rules
     ~key:(fun rule -> rule.Rule.id)
     ~deps:(fun rule ->
-      if recursive then
-        rules_of_deps rule.deps
-      else
-        Memo.Build.return [])
+      if recursive then rules_of_deps rule.deps else Memo.Build.return [])
   >>| function
   | Ok l -> l
   | Error cycle ->

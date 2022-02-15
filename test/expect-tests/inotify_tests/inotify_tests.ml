@@ -82,8 +82,7 @@ let watch, collect_events =
     | Async_inotify.Event.Modified fn :: events when fn = end_of_test_file ->
       if not (List.is_empty events) then (
         printf "***** Leftover events after end of test marker event *****\n";
-        print_events events
-      );
+        print_events events);
       List.rev acc
     | ev :: events -> collect_events (ev :: acc) events
   in
@@ -94,8 +93,7 @@ let watch, collect_events =
       match next_events () with
       | [] -> assert false
       | Async_inotify.Event.Modified fn :: events
-        when fn = beginning_of_test_file ->
-        collect_events [] events
+        when fn = beginning_of_test_file -> collect_events [] events
       | events ->
         printf "***** First event is not the beginning of test marker *****\n";
         collect_events [] events
@@ -127,12 +125,7 @@ let%expect_test "Simple test" =
   [%expect {| modified  file |}]
 
 let fold_int n ~init ~f =
-  let rec loop i acc =
-    if i = n then
-      acc
-    else
-      loop (i + 1) (f i acc)
-  in
+  let rec loop i acc = if i = n then acc else loop (i + 1) (f i acc) in
   loop 0 init
 
 type kind =
@@ -146,8 +139,7 @@ let rec gen_tree acc ~dir ~depth ~files_per_dir ~sub_dirs_per_dir =
         create_file fn;
         (File, fn) :: acc)
   in
-  if depth = 0 then
-    acc
+  if depth = 0 then acc
   else
     fold_int sub_dirs_per_dir ~init:acc ~f:(fun n acc ->
         let dir = dir / sprintf "d%d" (n + 1) in
@@ -204,11 +196,7 @@ let setup1 ~depth ~files_per_dir ~sub_dirs_per_dir =
 
 let check_events ~real_events ~expected_events =
   let real_events = List.map real_events ~f:remove_dot_slash_from_event in
-  print_endline
-    (if real_events = expected_events then
-      "Success"
-    else
-      "FAILURE");
+  print_endline (if real_events = expected_events then "Success" else "FAILURE");
   print_endline "";
   let rec loop real expected =
     match (real, expected) with
@@ -221,12 +209,11 @@ let check_events ~real_events ~expected_events =
     | ev :: real, ev' :: expected ->
       if ev = ev' then (
         print_event ev;
-        loop real expected
-      ) else (
+        loop real expected)
+      else (
         printf "%s <- XXX first mismatch, expected: %s\n" (string_of_event ev)
           (Async_inotify.Event.to_string ev');
-        print_events real
-      )
+        print_events real)
   in
   loop real_events expected_events
 
@@ -411,6 +398,5 @@ let%expect_test "Check that FS events are reported chronologically 3" =
     in
     if expected_events <> real_events then (
       print_endline "--------------------";
-      check_events ~real_events ~expected_events
-    )
+      check_events ~real_events ~expected_events)
   done

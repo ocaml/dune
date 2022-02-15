@@ -272,8 +272,7 @@ end = struct
 
     let register_dep x ~f env acc =
       Memo.Build.return
-        (if not env.infer then
-          (x, acc)
+        (if not env.infer then (x, acc)
         else
           let x = Action_builder.memoize "dep" x in
           ( x
@@ -293,8 +292,7 @@ end = struct
     let dep_if_exists sw env acc =
       Memo.Build.return
         (let fn = Expander.expand_path env sw in
-         if not env.infer then
-           (fn, acc)
+         if not env.infer then (fn, acc)
          else
            let fn = Action_builder.memoize "dep_if_exists" fn in
            ( fn
@@ -337,8 +335,7 @@ end = struct
           | Path p -> Action_builder.return (Ok p)
           | String s -> (
             match Filename.analyze_program_name s with
-            | Relative_to_current_dir
-            | Absolute ->
+            | Relative_to_current_dir | Absolute ->
               Action_builder.return (Ok (Path.relative dir s))
             | In_path ->
               Action_builder.memo_build
@@ -462,8 +459,7 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
   | Diff { optional; file1; file2; mode } ->
     let+ file1 = E.dep_if_exists file1
     and+ file2 =
-      if optional then
-        E.consume_file file2
+      if optional then E.consume_file file2
       else
         let+ p = E.dep file2 in
         as_in_build_dir p ~loc:(String_with_vars.loc file2) ~what:"File"

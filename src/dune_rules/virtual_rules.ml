@@ -20,11 +20,8 @@ end = struct
         | No_preprocessing -> Module.ml_source
         | Action (_, _) -> fun m -> Module.ml_source (Module.pped m)
         | Pps { loc = _; pps = _; flags = _; staged } ->
-          if staged then
-            Module.ml_source
-          else
-            fun m ->
-          Module.pped (Module.ml_source m))
+          if staged then Module.ml_source
+          else fun m -> Module.pped (Module.ml_source m))
 
   let pped_module (t : t) m = Module_name.Per_item.get t (Module.name m) m
 end
@@ -103,9 +100,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
       let+ vlib_modules, vlib_foreign_objects =
         let foreign_objects = Lib_info.foreign_objects info in
         match (virtual_, foreign_objects) with
-        | External _, Local
-        | Local, External _ ->
-          assert false
+        | External _, Local | Local, External _ -> assert false
         | External modules, External fa -> Memo.Build.return (modules, fa)
         | Local, Local ->
           let name = Lib.name vlib in

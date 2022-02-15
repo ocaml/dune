@@ -143,8 +143,7 @@ let serialize_to_gexf t oc =
     String.Map.iteri t.attributes ~f:(fun name (id, kind) ->
         Printf.fprintf oc "<attribute id=\"%d\" title=\"%s\" type=\"%s\" />\n"
           id name kind);
-    output_string oc "</attributes>\n"
-  );
+    output_string oc "</attributes>\n");
   Int.Map.iteri t.nodes ~f:(fun id node ->
       let label =
         match node.label with
@@ -158,8 +157,7 @@ let serialize_to_gexf t oc =
         Int.Map.iteri node.attributes ~f:(fun attr_id value ->
             Printf.fprintf oc "<attvalue for=\"%d\" value=\"%s\" />\n" attr_id
               (Attribute.to_string value));
-        output_string oc "</attvalues>\n</node>\n"
-      ));
+        output_string oc "</attvalues>\n</node>\n"));
   output_string oc "</nodes>\n<edges>\n";
   let _ =
     Edge.Set.fold t.edges ~init:0 ~f:(fun edge id ->
@@ -200,10 +198,8 @@ let serialize_summary t oc =
      these nodes to a single table since they only have a single entry each *)
   let rename_all_deps label =
     Option.map label ~f:(fun label ->
-        if String.is_suffix label ~suffix:".all-deps" then
-          "*.all-deps"
-        else
-          label)
+        if String.is_suffix label ~suffix:".all-deps" then "*.all-deps"
+        else label)
   in
   let by_label =
     Int.Map.fold t.nodes ~init:String_opt_map.empty ~f:(fun node acc ->
@@ -271,10 +267,7 @@ let serialize_summary t oc =
                      Some
                        ( Printf.sprintf "%.4f" runtime
                        , Printf.sprintf "%.4f" avg_ms )
-                   | String _
-                   | Int _
-                   | Boolean _ ->
-                     None))
+                   | String _ | Int _ | Boolean _ -> None))
            |> Option.value ~default:("", "")
          in
          Printf.fprintf oc "%14d %14d %14d %14s %14s  %s\n" agg.count
@@ -304,8 +297,7 @@ module For_tests = struct
                   Int.Map.mapi node.attributes ~f:(fun id attr ->
                       if Int.Set.mem opaque_attributes id then
                         Attribute.String "<opaque>"
-                      else
-                        attr)
+                      else attr)
               })
       }
     in

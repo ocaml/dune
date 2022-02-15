@@ -98,13 +98,9 @@ module Processed = struct
            protected by single quotes). It is only a problem on windows because
            Filename.quote is using double quotes. *)
         String.escape_only '\\' s
-      else
-        s
+      else s
     in
-    if String.need_quoting s then
-      Filename.quote s
-    else
-      s
+    if String.need_quoting s then Filename.quote s else s
 
   let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions =
     let serialize_path p = Path.to_absolute_filename p in
@@ -256,11 +252,7 @@ module Unprocessed = struct
     in
     { ident; config; modules }
 
-  let quote_if_needed s =
-    if String.need_quoting s then
-      Filename.quote s
-    else
-      s
+  let quote_if_needed s = if String.need_quoting s then Filename.quote s else s
 
   let pp_flag_of_action ~expander ~loc ~action :
       Processed.pp_flag option Action_builder.t =
@@ -269,10 +261,8 @@ module Unprocessed = struct
       let args =
         let open Option.O in
         let* args, input_file = List.destruct_last args in
-        if String_with_vars.is_pform input_file (Var Input_file) then
-          Some args
-        else
-          None
+        if String_with_vars.is_pform input_file (Var Input_file) then Some args
+        else None
       in
       match args with
       | None -> Action_builder.return None

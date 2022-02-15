@@ -143,20 +143,10 @@ let bipartite =
       let first_var = Var.create 0 in
       let inputs =
         List.init 30 ~f:(fun i ->
-            let v =
-              if i = 0 then
-                first_var
-              else
-                Var.create 0
-            in
+            let v = if i = 0 then first_var else Var.create 0 in
             Build.memoize (Var.read v))
       in
-      let matrix i j =
-        if i = j then
-          1
-        else
-          0
-      in
+      let matrix i j = if i = j then 1 else 0 in
       let outputs =
         List.init 30 ~f:(fun i ->
             Build.memoize

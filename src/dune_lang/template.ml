@@ -94,23 +94,16 @@ end = struct
     Buffer.clear buf;
     if quoted then Buffer.add_char buf '"';
     let commit_text s =
-      if s = "" then
-        ()
+      if s = "" then ()
       else if not quoted then (
         check_valid_unquoted ~loc s;
-        Buffer.add_string buf s
-      ) else
-        Buffer.add_string buf (Escape.escaped s)
+        Buffer.add_string buf s)
+      else Buffer.add_string buf (Escape.escaped s)
     in
     let rec add_parts acc_text = function
       | [] -> commit_text acc_text
       | Text s :: rest ->
-        add_parts
-          (if acc_text = "" then
-            s
-          else
-            acc_text ^ s)
-          rest
+        add_parts (if acc_text = "" then s else acc_text ^ s) rest
       | Pform v :: rest ->
         commit_text acc_text;
         add_pform v;
@@ -142,9 +135,8 @@ let pp_split_strings ppf (t : t) =
           Format.pp_print_list
             ~pp_sep:(fun ppf () -> Format.fprintf ppf "@,\\n")
             Format.pp_print_string ppf split));
-    Format.fprintf ppf "@}\"@]"
-  ) else
-    Format.pp_print_string ppf (Pp.to_string t)
+    Format.fprintf ppf "@}\"@]")
+  else Format.pp_print_string ppf (Pp.to_string t)
 
 let remove_locs t =
   { t with

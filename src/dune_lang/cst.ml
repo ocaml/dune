@@ -41,10 +41,7 @@ let to_sexp c = abstract c |> Option.map ~f:Ast.remove_locs
 
 let extract_comments =
   let rec loop acc = function
-    | Atom _
-    | Quoted_string _
-    | Template _ ->
-      acc
+    | Atom _ | Quoted_string _ | Template _ -> acc
     | List (_, l) -> List.fold_left l ~init:acc ~f:loop
     | Comment (loc, comment) -> (loc, comment) :: acc
   in

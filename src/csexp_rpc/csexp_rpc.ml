@@ -69,12 +69,9 @@ module Socket = struct
 
   external is_osx : unit -> bool = "dune_pthread_chdir_is_osx" [@@noalloc]
 
-  module Sel = (val if is_osx () then
-                      (module Mac)
-                    else if Sys.unix then
-                      (module Unix)
-                    else
-                      (module Fail) : Unix_socket)
+  module Sel = (val if is_osx () then (module Mac)
+                    else if Sys.unix then (module Unix)
+                    else (module Fail) : Unix_socket)
 
   let max_len = 104 (* 108 on some systems but we keep it conservative *)
 
@@ -188,13 +185,12 @@ module Session = struct
       match sexps with
       | None ->
         (if socket then
-          try
-            (* TODO this hack is temporary until we get rid of dune rpc init *)
-            Unix.shutdown
-              (Unix.descr_of_out_channel out_channel)
-              Unix.SHUTDOWN_ALL
-          with
-          | Unix.Unix_error (_, _, _) -> ());
+         try
+           (* TODO this hack is temporary until we get rid of dune rpc init *)
+           Unix.shutdown
+             (Unix.descr_of_out_channel out_channel)
+             Unix.SHUTDOWN_ALL
+         with Unix.Unix_error (_, _, _) -> ());
         close t;
         Fiber.return ()
       | Some sexps -> (
@@ -211,9 +207,7 @@ module Session = struct
           Exn_with_backtrace.reraise e))
 end
 
-let close_fd_no_error fd =
-  try Unix.close fd with
-  | _ -> ()
+let close_fd_no_error fd = try Unix.close fd with _ -> ()
 
 module Server = struct
   module Transport = struct
@@ -252,21 +246,16 @@ module Server = struct
       | r, [], [] ->
         let inter, accept =
           List.fold_left r ~init:(false, false) ~f:(fun (i, a) fd ->
-              if fd = t.fd then
-                (i, true)
-              else if fd = t.r_interrupt_accept then
-                (true, a)
-              else
-                assert false)
+              if fd = t.fd then (i, true)
+              else if fd = t.r_interrupt_accept then (true, a)
+              else assert false)
         in
-        if inter then
-          None
+        if inter then None
         else if accept then (
           let fd, _ = Unix.accept ~cloexec:true t.fd in
           Unix.clear_nonblock fd;
-          Some fd
-        ) else
-          assert false
+          Some fd)
+        else assert false
       | _, _, _ -> assert false
       | exception Unix.Unix_error (Unix.EAGAIN, _, _) -> accept t
       | exception Unix.Unix_error (Unix.EBADF, _, _) -> None

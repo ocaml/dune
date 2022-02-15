@@ -23,10 +23,7 @@ module Name = struct
 
       let of_string_opt s =
         (* DUNE3 verify no dots or spaces *)
-        if s = "" then
-          None
-        else
-          Some s
+        if s = "" then None else Some s
     end) :
       Stringlike_intf.S with type t := t)
 
@@ -85,13 +82,7 @@ module Dependency = struct
 
     let equal a b =
       match (a, b) with
-      | Eq, Eq
-      | Gte, Gte
-      | Lte, Lte
-      | Gt, Gt
-      | Lt, Lt
-      | Neq, Neq ->
-        true
+      | Eq, Eq | Gte, Gte | Lte, Lte | Gt, Gt | Lt, Lt | Neq, Neq -> true
       | _ -> false
 
     let map =
@@ -134,10 +125,7 @@ module Dependency = struct
       let decode =
         let open Dune_lang.Decoder in
         let+ s = string in
-        if String.is_prefix s ~prefix:":" then
-          Var (String.drop s 1)
-        else
-          QVar s
+        if String.is_prefix s ~prefix:":" then Var (String.drop s 1) else QVar s
 
       let to_opam : t -> OpamParserTypes.value =
         let nopos = Opam_file.nopos in
@@ -256,9 +244,7 @@ module Dependency = struct
     | Or [ c ] -> opam_constraint c
     | Or (c :: cs) ->
       Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
-    | And []
-    | Or [] ->
-      Code_error.raise "opam_constraint" []
+    | And [] | Or [] -> Code_error.raise "opam_constraint" []
 
   let opam_depend : t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
@@ -318,9 +304,7 @@ module Source_kind = struct
       homepage t
       ^
       match t.kind with
-      | Bitbucket
-      | Github ->
-        "/issues"
+      | Bitbucket | Github -> "/issues"
       | Gitlab -> "/-/issues"
 
     let enum k =

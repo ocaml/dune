@@ -1,10 +1,6 @@
 open Stdune
 
-let dev_null_fn =
-  if Sys.win32 then
-    "nul"
-  else
-    "/dev/null"
+let dev_null_fn = if Sys.win32 then "nul" else "/dev/null"
 
 let dev_null = Path.of_filename_relative_to_initial_cwd dev_null_fn
 

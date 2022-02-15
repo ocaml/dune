@@ -28,6 +28,16 @@ let man =
 
 let info = Term.info "describe" ~doc ~man
 
+(** whether to sanitize absolute paths of workspace items, and their UIDs, to
+    ensure reproducible tests *)
+let sanitize_for_tests = ref false
+
+(** Option flags for what to do while crawling the workspace *)
+type options =
+  { with_deps : bool
+        (** whether to compute direct dependencies between modules *)
+  }
+
 (** The module [Descr] is a typed representation of the description of a
     workspace, that is provided by the ``dune describe workspace`` command.
 
@@ -43,6 +53,24 @@ module Descr = struct
       datatype. *)
   let dyn_path (p : Path.t) : Dyn.t = Dyn.String (Path.to_string p)
 
+  (** Description of the dependencies of a module *)
+  module Mod_deps = struct
+    type t =
+      { for_intf : Dune_rules.Module_name.t list
+            (** direct module dependencies for the interface *)
+      ; for_impl : Dune_rules.Module_name.t list
+            (** direct module dependencies for the implementation *)
+      }
+
+    (** Conversion to the [Dyn.t] type *)
+    let to_dyn { for_intf; for_impl } =
+      let open Dyn in
+      record
+        [ ("for_intf", list Dune_rules.Module_name.to_dyn for_intf)
+        ; ("for_impl", list Dune_rules.Module_name.to_dyn for_impl)
+        ]
+  end
+
   (** Description of modules *)
   module Mod = struct
     type t =
@@ -51,25 +79,39 @@ module Descr = struct
       ; intf : Path.t option  (** path to the .mli file, if any *)
       ; cmt : Path.t option  (** path to the .cmt file, if any *)
       ; cmti : Path.t option  (** path to the .cmti file, if any *)
+      ; module_deps : Mod_deps.t  (** direct module dependencies *)
       }
 
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn { name; impl; intf; cmt; cmti } : Dyn.t =
+    let to_dyn options { name; impl; intf; cmt; cmti; module_deps } : Dyn.t =
       let open Dyn in
+      let optional_fields =
+        let module_deps =
+          if options.with_deps then
+            Some ("module_deps", Mod_deps.to_dyn module_deps)
+          else None
+        in
+        (* we build a list of options, that is later filtered, so that adding
+           new optional fields in the future can be done easily *)
+        match module_deps with
+        | None -> []
+        | Some module_deps -> [ module_deps ]
+      in
       record
-        [ ("name", Dune_rules.Module_name.to_dyn name)
-        ; ("impl", option dyn_path impl)
-        ; ("intf", option dyn_path intf)
-        ; ("cmt", option dyn_path cmt)
-        ; ("cmti", option dyn_path cmti)
-        ]
+      @@ [ ("name", Dune_rules.Module_name.to_dyn name)
+         ; ("impl", option dyn_path impl)
+         ; ("intf", option dyn_path intf)
+         ; ("cmt", option dyn_path cmt)
+         ; ("cmti", option dyn_path cmti)
+         ]
+      @ optional_fields
   end
 
   (** Description of executables *)
   module Exe = struct
     type t =
       { names : string list  (** names of the executble *)
-      ; requires : Stdune.Digest.t list
+      ; requires : Digest.t list
             (** list of direct dependencies to libraries, identified by their
                 digests *)
       ; modules : Mod.t list
@@ -77,13 +119,15 @@ module Descr = struct
       ; include_dirs : Path.t list  (** list of include directories *)
       }
 
+    let map_path t ~f = { t with include_dirs = List.map ~f t.include_dirs }
+
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn { names; requires; modules; include_dirs } : Dyn.t =
+    let to_dyn options { names; requires; modules; include_dirs } : Dyn.t =
       let open Dyn in
       record
         [ ("names", List (List.map ~f:(fun name -> String name) names))
         ; ("requires", Dyn.(list string) (List.map ~f:Digest.to_string requires))
-        ; ("modules", list Mod.to_dyn modules)
+        ; ("modules", list (Mod.to_dyn options) modules)
         ; ("include_dirs", list dyn_path include_dirs)
         ]
   end
@@ -92,9 +136,9 @@ module Descr = struct
   module Lib = struct
     type t =
       { name : Lib_name.t  (** name of the library *)
-      ; uid : Stdune.Digest.t  (** digest of the library *)
+      ; uid : Digest.t  (** digest of the library *)
       ; local : bool  (** whether this library is local *)
-      ; requires : Stdune.Digest.t list
+      ; requires : Digest.t list
             (** list of direct dependendies to libraries, identified by their
                 digests *)
       ; source_dir : Path.t
@@ -104,9 +148,16 @@ module Descr = struct
       ; include_dirs : Path.t list  (** list of include directories *)
       }
 
+    let map_path t ~f =
+      { t with
+        source_dir = f t.source_dir
+      ; include_dirs = List.map ~f t.include_dirs
+      }
+
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn { name; uid; local; requires; source_dir; modules; include_dirs }
-        : Dyn.t =
+    let to_dyn options
+        { name; uid; local; requires; source_dir; modules; include_dirs } :
+        Dyn.t =
       let open Dyn in
       record
         [ ("name", Lib_name.to_dyn name)
@@ -114,7 +165,7 @@ module Descr = struct
         ; ("local", Bool local)
         ; ("requires", (list string) (List.map ~f:Digest.to_string requires))
         ; ("source_dir", dyn_path source_dir)
-        ; ("modules", List (List.map ~f:Mod.to_dyn modules))
+        ; ("modules", list (Mod.to_dyn options) modules)
         ; ("include_dirs", (list dyn_path) include_dirs)
         ]
   end
@@ -125,11 +176,17 @@ module Descr = struct
       | Executables of Exe.t
       | Library of Lib.t
 
+    let map_path t ~f =
+      match t with
+      | Executables exe -> Executables (Exe.map_path exe ~f)
+      | Library lib -> Library (Lib.map_path lib ~f)
+
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn : t -> Dyn.t = function
+    let to_dyn options : t -> Dyn.t = function
       | Executables exe_descr ->
-        Dyn.Variant ("executables", [ Exe.to_dyn exe_descr ])
-      | Library lib_descr -> Dyn.Variant ("library", [ Lib.to_dyn lib_descr ])
+        Dyn.Variant ("executables", [ Exe.to_dyn options exe_descr ])
+      | Library lib_descr ->
+        Dyn.Variant ("library", [ Lib.to_dyn options lib_descr ])
   end
 
   (** Description of a workspace: a list of items *)
@@ -137,7 +194,8 @@ module Descr = struct
     type t = Item.t list
 
     (** Conversion to the [Dyn.t] type *)
-    let to_dyn (items : t) : Dyn.t = Dyn.list Item.to_dyn items
+    let to_dyn options (items : t) : Dyn.t =
+      Dyn.list (Item.to_dyn options) items
   end
 end
 
@@ -148,12 +206,80 @@ module Crawl = struct
   open Memo.Build.O
 
   (** Computes the digest of a library *)
-  let uid_of_library (lib : Lib.t) : Stdune.Digest.t =
-    Digest.generic
-      (Lib.name lib, Path.to_string (Lib_info.src_dir (Lib.info lib)))
+  let uid_of_library (lib : Lib.t) : Digest.t =
+    let name = Lib.name lib in
+    if Lib.is_local lib then
+      let source_dir = Lib_info.src_dir (Lib.info lib) in
+      Digest.generic (name, Path.to_string source_dir)
+    else Digest.generic name
+
+  (** Module that computes the direct dependencies between compilation units *)
+  module Deps : sig
+    val read :
+         options:options
+      -> use_pp:bool
+      -> obj_dir:Path.Build.t Obj_dir.t
+      -> modules:Modules.t
+      -> Module.t
+      -> (Module.t list * Module.t list) Action_builder.t Memo.build
+  end = struct
+    (** Reads the dependencies of the compilation unit [unit] (for its interface
+        and its implementation, if any) *)
+    let read_deps_of_unit ~obj_dir ~modules unit =
+      let open Action_builder.O in
+      let+ deps_for_intf =
+        (* compute the dependencies for the interface part *)
+        let ml_kind = Dune_util.Ml_kind.Intf in
+        Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+      and+ deps_for_impl =
+        (* compute the dependencies for the implementation part *)
+        let ml_kind = Dune_util.Ml_kind.Impl in
+        Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+      in
+      (deps_for_intf, deps_for_impl)
+
+    (** Tests whether a set of modules is a singleton *)
+    let has_single_file modules = Option.is_some @@ Modules.as_singleton modules
+
+    (** [read ~options ~use_pp ~obj_dir ~modules unit] reads the direct
+        dependencies of the compilation unit [unit] in the set of modules
+        [modules]. The flag [use_pp] indicates whether the compilation unit is
+        subject to a preprocessing phase. Two lists are returned. The first list
+        contains the direct dependencies of the interface file, whereas the
+        second list contains the direct dependencies of the implementation file. *)
+    let read ~options ~use_pp ~obj_dir ~modules unit =
+      let no_deps = ([], []) in
+      match options.with_deps with
+      | false -> Memo.Build.return (Action_builder.return no_deps)
+      | true -> (
+        let unit =
+          (* For files that are subject to a preprocessing phase, only the
+             preprocessed files have an attached ocamldep rule: the source files
+             have no such rule attached. In such a case, we refer to the
+             preprocessed module instead of the source module. *)
+          if use_pp then Module.pped unit else unit
+        in
+        Memo.Build.return
+        @@
+        match Module.kind unit with
+        | Module.Kind.Alias ->
+          (* TODO: handle Alias modules, that are generated by dune. They are
+             currently associated to no ocamldep-related rules. *)
+          Action_builder.return no_deps
+        | _ ->
+          if has_single_file modules then
+            (* Single-file modules have no ".ml.d", due to the change in
+               https://github.com/ocaml/dune/pull/3847
+
+               FIXME: remove this restriction on singleton modules if/when
+               https://github.com/ocaml/dune/pull/4659 is merged *)
+            Action_builder.return no_deps
+          else read_deps_of_unit ~obj_dir ~modules unit)
+  end
 
   (** Builds the description of a module from a module and its object directory *)
-  let module_ ~obj_dir (m : Module.t) : Descr.Mod.t =
+  let module_ ~obj_dir ~(deps_for_intf : Module.t list)
+      ~(deps_for_impl : Module.t list) (m : Module.t) : Descr.Mod.t =
     let source ml_kind =
       Option.map (Module.source m ~ml_kind) ~f:Module.File.path
     in
@@ -164,27 +290,55 @@ module Crawl = struct
       ; intf = source Intf
       ; cmt = cmt Impl
       ; cmti = cmt Intf
+      ; module_deps =
+          { for_intf = List.map ~f:Module.name deps_for_intf
+          ; for_impl = List.map ~f:Module.name deps_for_impl
+          }
       }
 
   (** Builds the list of modules *)
-  let modules ~obj_dir (modules_ : Modules.t) : Descr.Mod.t list =
-    Modules.fold_no_vlib ~init:[]
-      ~f:(fun m acc -> module_ ~obj_dir m :: acc)
+  let modules ~obj_dir
+      ~(deps_of :
+            Module.t
+         -> (Module.t list * Module.t list) Action_builder.t Memo.Build.t)
+      (modules_ : Modules.t) : Descr.Mod.t list Memo.Build.t =
+    Modules.fold_no_vlib ~init:(Memo.Build.return [])
+      ~f:(fun m macc ->
+        let* acc = macc in
+        let* deps = deps_of m in
+        let+ (deps_for_intf, deps_for_impl), _ =
+          Dune_engine.Action_builder.run deps Eager
+        in
+        module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
       modules_
 
+  (** [exes_uses_pp exes] tells whether the compilations units of [exes] are
+      subject to a preprocessing phase. *)
+  let exes_uses_pp exes =
+    let open Preprocess.Per_module in
+    List.is_non_empty @@ pps
+    @@ without_instrumentation
+         exes.Dune_file.Executables.buildable.Dune_file.Buildable.preprocess
+
   (** Builds a workspace item for the provided executables object *)
-  let executables sctx ~project ~dir (exes : Dune_file.Executables.t) :
+  let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t) :
       Descr.Item.t option Memo.build =
+    let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
     let* modules_, obj_dir =
-      let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
       >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
     in
+    let deps_of =
+      let use_pp = exes_uses_pp exes in
+      Deps.read ~options ~use_pp ~obj_dir ~modules:modules_
+    in
     let obj_dir = Obj_dir.of_local obj_dir in
-    let modules_ = modules ~obj_dir modules_ in
     let scope = Super_context.find_scope_by_project sctx project in
-    let* compile_info = Exe_rules.compile_info ~scope exes in
-    let+ requires = Lib.Compile.direct_requires compile_info in
+    let* modules_ = modules ~obj_dir ~deps_of modules_ in
+    let+ requires =
+      let* compile_info = Exe_rules.compile_info ~scope exes in
+      Lib.Compile.direct_requires compile_info
+    in
     match Resolve.peek requires with
     | Error () -> None
     | Ok libs ->
@@ -199,8 +353,16 @@ module Crawl = struct
       in
       Some (Descr.Item.Executables exe_descr)
 
+  (** [lib_uses_pp lib] tells whether the compilation units of library [lib] are
+      subject to a preprocessing phase. *)
+  let lib_uses_pp (lib : Lib.t) : bool Memo.Build.t =
+    let+ res = Lib.pps lib in
+    match Resolve.peek res with
+    | Ok pps -> List.is_non_empty pps
+    | Error _ -> assert false
+
   (** Builds a workspace item for the provided library object *)
-  let library sctx (lib : Lib.t) : Descr.Item.t option Memo.build =
+  let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.build =
     let* requires = Lib.requires lib in
     match Resolve.peek requires with
     | Error () -> Memo.Build.return None
@@ -213,10 +375,14 @@ module Crawl = struct
         if Lib.is_local lib then
           Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
           >>= Dir_contents.ocaml
-          >>| Ml_sources.modules ~for_:(Library name)
-          >>| modules ~obj_dir
-        else
-          Memo.Build.return []
+          >>| Ml_sources.modules_and_obj_dir ~for_:(Library name)
+          >>= fun (modules_, obj_dir_) ->
+          let* deps_of =
+            let+ use_pp = lib_uses_pp lib in
+            Deps.read ~options ~use_pp ~obj_dir:obj_dir_ ~modules:modules_
+          in
+          modules ~obj_dir ~deps_of modules_
+        else Memo.Build.return []
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
       let lib_descr =
@@ -243,7 +409,7 @@ module Crawl = struct
     Lib.Set.of_list >>| Lib.Set.to_list
 
   (** Builds a workspace description for the provided dune setup and context *)
-  let workspace
+  let workspace options
       ({ Dune_rules.Main.conf; contexts = _; scontexts } :
         Dune_rules.Main.build_system) (context : Context.t) :
       Descr.Workspace.t Memo.build =
@@ -269,12 +435,61 @@ module Crawl = struct
               in
               match stanza with
               | Dune_file.Executables exes ->
-                executables sctx ~project:dune_file.project ~dir exes
+                executables sctx ~options ~project:dune_file.project ~dir exes
               | _ -> Memo.Build.return None)
           >>| List.filter_map ~f:Fun.id)
       >>| List.concat
     in
     Memo.Build.return (exes @ libs)
+end
+
+(** The following module is responsible sanitizing the output of
+    [dune describe workspace], so that the absolute paths and the UIDs that
+    depend on them are stable for tests. These paths may differ, depending on
+    the machine they are run on. *)
+module Sanitize_for_tests = struct
+  module Workspace = struct
+    (** Sanitizes a workspace description, by renaming non-reproducible UIDs and
+        paths *)
+    let really_sanitize (context : Context.t) items =
+      let rename_path =
+        let findlib_paths =
+          Findlib.paths context.findlib |> List.map ~f:Path.to_string
+        in
+        function
+        (* we have found a path for OCaml's root: let's define the renaming
+           function *)
+        | Path.External ext_path as path -> (
+          match
+            List.find_map findlib_paths ~f:(fun prefix ->
+                (* if the path to rename is an external path, try to find the
+                   OCaml root inside, and replace it with a fixed string *)
+                let s = Path.External.to_string ext_path in
+                match String.drop_prefix ~prefix s with
+                | None -> None
+                | Some s' ->
+                  (* we have found the OCaml root path: let's replace it with a
+                     constant string *)
+                  Some
+                    (Path.external_
+                    @@ Path.External.of_string
+                         Filename.(concat dir_sep @@ concat "FINDLIB" s')))
+          with
+          | None -> path
+          | Some p -> p)
+        | path ->
+          (* if the path to rename is not external, it should not be changed *)
+          path
+      in
+      (* now, we rename the UIDs in the [requires] field , while reversing the
+         list of items, so taht we get back the original ordering *)
+      List.map ~f:(Descr.Item.map_path ~f:rename_path) items
+
+    (** Sanitizes a workspace description when options ask to do so, or performs
+        no change at all otherwise *)
+    let sanitize context items =
+      if !sanitize_for_tests then really_sanitize context items else items
+  end
 end
 
 module Opam_files = struct
@@ -299,8 +514,7 @@ module Opam_files = struct
                let template =
                  if Path.exists template_file then
                    Some (template_file, Io.read_file template_file)
-                 else
-                   None
+                 else None
                in
                Dune_rules.Opam_create.generate project pkg ~template
            in
@@ -338,12 +552,39 @@ module What = struct
       in
       Dune_lang.Decoder.parse parse Univ_map.empty ast
 
-  let describe t setup context =
+  let describe t options setup context =
     match t with
     | Workspace ->
       let open Memo.Build.O in
-      Crawl.workspace setup context >>| Descr.Workspace.to_dyn
+      Crawl.workspace options setup context
+      >>| Sanitize_for_tests.Workspace.sanitize context
+      >>| Descr.Workspace.to_dyn options
     | Opam_files -> Opam_files.get ()
+end
+
+module Options = struct
+  type t = options
+
+  let arg_with_deps =
+    let open Arg in
+    value & flag
+    & info [ "with-deps" ]
+        ~doc:"Whether the dependencies between modules should be printed."
+
+  let arg_sanitize_for_tests =
+    let open Arg in
+    value & flag
+    & info [ "sanitize-for-tests" ]
+        ~doc:
+          "Sanitize the absolute paths in workspace items, and the associated \
+           UIDs, so that the output is reproducible. For use in dune's \
+           internal tests only."
+
+  let arg : t Term.t =
+    let+ with_deps = arg_with_deps
+    and+ sanitize_for_tests_value = arg_sanitize_for_tests in
+    sanitize_for_tests := sanitize_for_tests_value;
+    { with_deps }
 end
 
 module Format = struct
@@ -381,8 +622,7 @@ module Lang = struct
            & info [ "lang" ] ~docv:"VERSION"
                ~doc:"Behave the same as this version of Dune.")
        in
-       if v = (0, 1) then
-         `Ok v
+       if v = (0, 1) then `Ok v
        else
          let msg =
            let pp =
@@ -412,7 +652,7 @@ let print_as_sexp dyn =
   Pp.to_fmt Stdlib.Format.std_formatter
     (Dune_engine.Format_dune_lang.pp_top_sexps ~version [ cst ])
 
-let term =
+let term : unit Term.t =
   let+ common = Common.term
   and+ what =
     Arg.(
@@ -423,7 +663,8 @@ let term =
              version passed to $(b,--lang)")
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Format.arg
-  and+ lang = Lang.arg in
+  and+ lang = Lang.arg
+  and+ options = Options.arg in
   let config = Common.init common in
   let what = What.parse what ~lang in
   Scheduler.go ~common ~config (fun () ->
@@ -431,9 +672,14 @@ let term =
       let* setup = Import.Main.setup () in
       let* setup = Memo.Build.run setup in
       let context = Import.Main.find_context_exn setup ~name:context_name in
-      let+ res = Memo.Build.run (What.describe what setup context) in
-      match format with
-      | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
-      | Sexp -> print_as_sexp res)
+      let+ res =
+        Build_system.run (fun () -> What.describe what options setup context)
+      in
+      match res with
+      | Error `Already_reported -> ()
+      | Ok res -> (
+        match format with
+        | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+        | Sexp -> print_as_sexp res))
 
-let command = (term, info)
+let command : unit Term.t * Term.info = (term, info)

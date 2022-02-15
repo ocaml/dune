@@ -45,8 +45,7 @@ module Common = struct
       | List (loc, Atom (loca, A atom) :: tll) :: tl when atom = old_name ->
         List (loc, Atom (loca, Dune_lang.Atom.of_string new_name) :: tll) :: tl
       | List (loc, Quoted_string (loca, str) :: tll) :: tl when str = old_name
-        ->
-        List (loc, Quoted_string (loca, new_name) :: tll) :: tl
+        -> List (loc, Quoted_string (loca, new_name) :: tll) :: tl
       | hd :: tl -> hd :: replace_first old_name new_name tl
       | [] -> []
 
@@ -54,8 +53,7 @@ module Common = struct
       let rec is_names vals names =
         match (vals, names) with
         | (Atom (_, A str) | Quoted_string (_, str)) :: tl, name :: tln
-          when str = name ->
-          is_names tl tln
+          when str = name -> is_names tl tln
         | _, [] -> true
         | _, _ -> false
       in
@@ -118,8 +116,7 @@ module Common = struct
       if not (Path.Source.Map.mem !files path) then (
         let sexps, comments = read_and_parse path in
         files := Path.Source.Map.set !files path (sexps, comments);
-        List.iter (Ast_tools.included_files_paths path sexps) ~f:iter
-      )
+        List.iter (Ast_tools.included_files_paths path sexps) ~f:iter)
     in
     iter path;
     !files
@@ -149,8 +146,7 @@ module Common = struct
                       ; Dune_lang.atom_or_quoted_string s
                       ])
                ])
-           ])
-    )
+           ]))
 end
 
 module V2 = struct
@@ -158,8 +154,7 @@ module V2 = struct
 
   (* If no mode is defined, explicitly use the previous default *)
   let explicit_mode fields =
-    if Ast_tools.is_in_fields [ "modes" ] fields then
-      fields
+    if Ast_tools.is_in_fields [ "modes" ] fields then fields
     else
       Dune_lang.Atom.(
         Ast_tools.field_of_list
@@ -179,9 +174,7 @@ module V2 = struct
   (* Always no-op no_keep_loc field should be removed *)
   let no_no_keep_loc fields =
     match Ast_tools.extract_first [ "no_keep_locs" ] fields with
-    | Some _, rest
-    | None, rest ->
-      rest
+    | Some _, rest | None, rest -> rest
 
   (* c_names, c_flags, cxx_names and cxx_flags -> foreign_stubs *)
   let to_foreign_stubs fields =
@@ -201,8 +194,7 @@ module V2 = struct
       if Ast_tools.is_in_fields [ "action" ] tl then
         let tl = Ast_tools.replace_first "name" "alias" tl in
         List (loc, Atom (loca, Dune_lang.Atom.of_string "rule") :: tl)
-      else
-        ast
+      else ast
     | List (loc, Atom (loca, (A "executable" as atom)) :: tl)
     | List (loc, Atom (loca, (A "executables" as atom)) :: tl) ->
       let tl =
@@ -317,18 +309,14 @@ let detect_project_version project dir =
            projects. You need to use an older version of Dune to upgrade this \
            project."
       ];
-    Unknown
-  ) else
+    Unknown)
+  else
     let project_dune_version = Dune_project.dune_version project in
     let open Dune_lang.Syntax.Version.Infix in
-    if project_dune_version >= (2, 0) then
-      Dune2_project
-    else if project_dune_version >= (1, 0) then
-      Dune1_project
-    else if in_tree Source_tree.Dune_file.fname then
-      Dune1_project
-    else
-      Unknown
+    if project_dune_version >= (2, 0) then Dune2_project
+    else if project_dune_version >= (1, 0) then Dune1_project
+    else if in_tree Source_tree.Dune_file.fname then Dune1_project
+    else Unknown
 
 let upgrade () =
   let open Fiber.O in
@@ -388,8 +376,8 @@ let upgrade () =
       (* We reset memoization tables as a simple way to refresh the
          Source_tree *)
       Memo.reset (Memo.Invalidation.clear_caches ~reason:Upgrade);
-      aux true
-    ) else if !v2_updates then (
+      aux true)
+    else if !v2_updates then (
       Console.print
         [ Pp.textf
             "\n\
@@ -401,8 +389,7 @@ let upgrade () =
              %s"
             V2.todo_log
         ];
-      Fiber.return ()
-    ) else
-      Fiber.return ()
+      Fiber.return ())
+    else Fiber.return ()
   in
   aux false

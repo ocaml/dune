@@ -6,17 +6,9 @@ let peek_exn t = peek t
 
 let pop_exn t = pop t
 
-let pop t =
-  if is_empty t then
-    None
-  else
-    Some (pop_exn t)
+let pop t = if is_empty t then None else Some (pop_exn t)
 
-let peek t =
-  if is_empty t then
-    None
-  else
-    Some (peek t)
+let peek t = if is_empty t then None else Some (peek t)
 
 let iter t ~f = iter f t
 

@@ -69,8 +69,7 @@ let on_diagnostic_event diagnostics =
     ; related
     }
   in
-  if List.is_empty diagnostics then
-    print_endline "<no diagnostics>"
+  if List.is_empty diagnostics then print_endline "<no diagnostics>"
   else
     List.iter diagnostics ~f:(fun (e : Diagnostic.Event.t) ->
         (match e with

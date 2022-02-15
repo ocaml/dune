@@ -40,11 +40,7 @@ module Concurrency = struct
     | s -> (
       match int_of_string s with
       | exception _ -> error
-      | n ->
-        if n >= 1 then
-          Ok (Fixed n)
-        else
-          error)
+      | n -> if n >= 1 then Ok (Fixed n) else error)
 
   let decode =
     plain_string (fun ~loc s ->
@@ -259,11 +255,7 @@ let equal a b = Poly.equal a b
 
 let default =
   { display = { verbosity = Quiet; status_line = not Config.inside_dune }
-  ; concurrency =
-      (if Config.inside_dune then
-        Fixed 1
-      else
-        Auto)
+  ; concurrency = (if Config.inside_dune then Fixed 1 else Auto)
   ; terminal_persistence = Terminal_persistence.Preserve
   ; sandboxing_preference = []
   ; cache_enabled = Disabled
@@ -363,10 +355,8 @@ let load_config_file p =
       String_with_vars.set_decoding_env (Pform.Env.initial lang.version) decode)
 
 let load_user_config_file () =
-  if Path.exists user_config_file then
-    load_config_file user_config_file
-  else
-    Partial.empty
+  if Path.exists user_config_file then load_config_file user_config_file
+  else Partial.empty
 
 let adapt_display config ~output_is_a_tty =
   (* Progress isn't meaningful if inside a terminal (or emacs), so disable it if
@@ -375,17 +365,14 @@ let adapt_display config ~output_is_a_tty =
     if
       config.display.status_line && (not output_is_a_tty)
       && not Config.inside_emacs
-    then
-      { config with display = { config.display with status_line = false } }
-    else
-      config
+    then { config with display = { config.display with status_line = false } }
+    else config
   in
   (* Similarly, terminal clearing is meaningless if stderr doesn't support ANSI
      codes, so revert-back to Preserve in that case *)
   if config.terminal_persistence = Clear_on_rebuild && not output_is_a_tty then
     { config with terminal_persistence = Terminal_persistence.Preserve }
-  else
-    config
+  else config
 
 let init t =
   Console.Backend.set (Scheduler.Config.Display.console_backend t.display);
@@ -394,9 +381,9 @@ let init t =
 let auto_concurrency =
   lazy
     (if Sys.win32 then
-      match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
-      | None -> 1
-      | Some s -> Int.of_string s |> Option.value ~default:1
+     match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
+     | None -> 1
+     | Some s -> Int.of_string s |> Option.value ~default:1
     else
       let commands =
         [ ("nproc", [])

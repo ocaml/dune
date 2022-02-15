@@ -5,8 +5,9 @@ let () = Dune_tests_common.init ()
 let pp pp = Format.printf "%a@." Pp.to_fmt pp
 
 let enum_x_and_y =
-  Pp.enumerate [ Array.make 50 "x"; Array.make 50 "y" ] ~f:(fun a ->
-      Pp.concat_map (Array.to_list a) ~sep:Pp.space ~f:Pp.verbatim)
+  Pp.enumerate
+    [ Array.make 50 "x"; Array.make 50 "y" ]
+    ~f:(fun a -> Pp.concat_map (Array.to_list a) ~sep:Pp.space ~f:Pp.verbatim)
 
 let%expect_test _ =
   pp enum_x_and_y;

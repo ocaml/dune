@@ -148,11 +148,11 @@ let archives ?(kind = [ Mode.Byte; Mode.Native ]) name =
     ; (Mode.Native, archive, Mode.compiled_lib_ext)
     ; (Mode.Byte, plugin, Mode.compiled_lib_ext)
     ; (Mode.Native, plugin, Mode.plugin_ext)
-    ] ~f:(fun (k, f, ext) ->
+    ]
+    ~f:(fun (k, f, ext) ->
       if List.mem kind k ~equal:Mode.equal then
         Some (f (Mode.to_string k) (name ^ ext k))
-      else
-        None)
+      else None)
 
 (* fake entry we use to pass down the list of toplevel modules for
    root_module *)
@@ -175,10 +175,8 @@ let builtins ~stdlib_dir ~version:ocaml_version =
           | '-' -> '_'
           | c -> c)
       in
-      if labels then
-        main_modules [ name; name ^ "Labels" ]
-      else
-        main_modules [ name ]
+      if labels then main_modules [ name; name ^ "Labels" ]
+      else main_modules [ name ]
     in
     let name = Lib_name.of_string name in
     let archives = archives archive_name ?kind in
@@ -229,15 +227,11 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     if
       Ocaml_version.stdlib_includes_bigarray ocaml_version
       && not (Path.exists (Path.relative stdlib_dir "bigarray.cma"))
-    then
-      dummy "bigarray"
-    else
-      simple "bigarray" [ "unix" ] ~dir:"+"
+    then dummy "bigarray"
+    else simple "bigarray" [ "unix" ] ~dir:"+"
   in
   let dynlink = simple "dynlink" [] ~dir:"+" in
   let bytes = dummy "bytes" in
-  let uchar = dummy "uchar" in
-  let seq = dummy "seq" in
   let threads =
     { name = Some (Lib_name.of_string "threads")
     ; entries =
@@ -259,8 +253,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
           [ Package
               (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
           ]
-        else
-          [])
+        else [])
     }
   in
   let num =
@@ -279,42 +272,22 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   in
   let libs =
     let base =
-      [ stdlib
-      ; compiler_libs
-      ; str
-      ; unix
-      ; bigarray
-      ; threads
-      ; dynlink
-      ; bytes
-      ; ocamldoc
-      ]
+      [ stdlib; compiler_libs; str; unix; threads; dynlink; bytes; ocamldoc ]
     in
     let base =
-      if Ocaml_version.stdlib_includes_uchar ocaml_version then
-        uchar :: base
-      else
-        base
-    in
-    let base =
-      if Ocaml_version.stdlib_includes_seq ocaml_version then
-        seq :: base
-      else
-        base
+      if Ocaml_version.has_bigarray_library ocaml_version then bigarray :: base
+      else base
     in
     let base =
       if Path.exists (Path.relative stdlib_dir "graphics.cma") then
         graphics :: base
-      else
-        base
+      else base
     in
     (* We do not rely on an "exists_if" ocamlfind variable, because it would
        produce an error message mentioning a "hidden" package (which could be
        confusing). *)
-    if Path.exists (Path.relative stdlib_dir "nums.cma") then
-      num :: base
-    else
-      base
+    if Path.exists (Path.relative stdlib_dir "nums.cma") then num :: base
+    else base
   in
   List.filter_map libs ~f:(fun t ->
       Option.map t.name ~f:(fun name ->
@@ -350,8 +323,7 @@ let pp_quoted_value var =
   | "requires"
   | "ppx_runtime_deps"
   | "linkopts"
-  | "jsoo_runtime" ->
-    pp_print_text
+  | "jsoo_runtime" -> pp_print_text
   | _ -> pp_print_string
 
 let rec pp entries = Pp.vbox (Pp.concat_map entries ~sep:Pp.newline ~f:pp_entry)

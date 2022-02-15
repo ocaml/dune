@@ -51,6 +51,5 @@ module Make (TypeToSerialize : S) : T with type t := TypeToSerialize.t = struct
     in
     if format_version <> version then
       Error (Deserialization_error.Version_mismatch format_version)
-    else
-      t_of_sexp data |> parsing_error_of_option
+    else t_of_sexp data |> parsing_error_of_option
 end

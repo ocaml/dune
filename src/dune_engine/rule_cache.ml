@@ -63,8 +63,7 @@ module Workspace_local = struct
         needs_dumping := false;
         Console.Status_line.with_overlay
           (Live (fun () -> Pp.hbox (Pp.text "Saving build trace db...")))
-          ~f:(fun () -> P.dump file (Lazy.force t))
-      )
+          ~f:(fun () -> P.dump file (Lazy.force t)))
 
     (* CR-someday amokhov: If this happens to be executed after we've cleared
        the status line and printed some text afterwards, [dump] would overwrite
@@ -279,8 +278,7 @@ module Shared = struct
     | Miss reason ->
       let t = Build_config.get () in
       (match (t.cache_debug_flags.shared_cache, reason) with
-      | true, _
-      | false, Error _ ->
+      | true, _ | false, Error _ ->
         (* Always log errors because they are not expected as a part of normal
            operation and might indicate a problem. *)
         Miss_reason.report reason ~rule_digest

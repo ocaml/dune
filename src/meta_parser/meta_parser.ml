@@ -69,8 +69,7 @@ struct
   let add_versions t ~get_version =
     let rec map_entries ~rev_path ~has_version ~has_rules = function
       | [] -> (
-        if has_version || not has_rules then
-          []
+        if has_version || not has_rules then []
         else
           match get_version (List.rev rev_path) with
           | None -> []
@@ -161,15 +160,11 @@ struct
     let rec entries lb depth acc =
       match next lb with
       | Rparen ->
-        if depth > 0 then
-          List.rev acc
-        else
-          error lb "closing parenthesis without matching opening one"
+        if depth > 0 then List.rev acc
+        else error lb "closing parenthesis without matching opening one"
       | Eof ->
-        if depth = 0 then
-          List.rev acc
-        else
-          error lb (Printf.sprintf "%d closing parentheses missing" depth)
+        if depth = 0 then List.rev acc
+        else error lb (Printf.sprintf "%d closing parentheses missing" depth)
       | Name "package" ->
         let name = package_name lb in
         lparen lb;

@@ -21,6 +21,7 @@
 
 (package
  (name dune)
+ (synopsis "Fast, portable, and opinionated build system")
  ; The "depends" and "build" field are written in dune.opam.template
  (conflicts
   (merlin (< 3.4.0))
@@ -30,7 +31,6 @@
   (dune-release (< 1.3.0))
   (js_of_ocaml-compiler (< 3.6.0))
   (jbuilder (= transition)))
- (synopsis "Fast, portable, and opinionated build system")
  (description "
 dune is a build system that was designed to simplify the release of
 Jane Street packages. It reads metadata from \"dune\" files following a
@@ -53,6 +53,8 @@ for free.
 (package
  (name dune-build-info)
  (synopsis "Embed build informations inside executable")
+ (depends
+  (ocaml (>= 4.08)))
  (description "\
 The build-info library allows to access information about how the
 executable was built, such as the version of the project at which it
@@ -64,13 +66,13 @@ executable was built.
 
 (package
  (name dune-private-libs)
+ (synopsis "Private libraries of Dune")
  (depends
   (csexp (>= 1.4.0))
   pp
   dyn
   (stdune (= :version))
   (ocaml (>= 4.08)))
- (synopsis "Private libraries of Dune")
  (description "\
 !!!!!!!!!!!!!!!!!!!!!!
 !!!!! DO NOT USE !!!!!
@@ -83,10 +85,10 @@ no stability guarantee.
 
 (package
  (name dune-configurator)
+ (synopsis "Helper library for gathering system configuration")
  (depends
   (ocaml (>= 4.04.0))
   (csexp (>= 1.3.0)))
- (synopsis "Helper library for gathering system configuration")
  (description "\
 dune-configurator is a small library that helps writing OCaml scripts that
 test features available on the system, in order to generate config.h
@@ -100,13 +102,13 @@ Among other things, dune-configurator allows one to:
 
 (package
  (name dune-action-plugin)
+ (synopsis "[experimental] API for writing dynamic Dune actions")
  (depends
   dune-glob
   (csexp (>= 1.4.0))
   (ppx_expect :with-test)
   (stdune (= :version))
   (dune-private-libs (= :version)))
- (synopsis "[experimental] API for writing dynamic Dune actions")
  (description "\
 
 This library is experimental. No backwards compatibility is implied.
@@ -119,34 +121,34 @@ execution of the action.
 
 (package
  (name dune-glob)
+ (synopsis "Glob string matching language supported by dune")
  (depends
   (stdune (= :version))
   (dune-private-libs (= :version)))
- (synopsis "Glob string matching language supported by dune")
  (description "\
 dune-glob provides a parser and interpreter for globs as \
 understood by dune language."))
 
 (package
  (name dune-site)
- (depends (dune-private-libs (= :version)))
  (synopsis "Embed locations informations inside executable and libraries")
+ (depends (dune-private-libs (= :version)))
  (description ""))
 
 (package
  (name dune-rpc)
- (depends csexp ordering dyn xdg (stdune (= :version)) (pp (>= 1.1.0)))
  (synopsis "Communicate with dune using rpc")
+ (depends csexp ordering dyn xdg (stdune (= :version)) (pp (>= 1.1.0)))
  (description "Library to connect and control a running dune instance"))
 
 (package
  (name dune-rpc-lwt)
+ (synopsis "Communicate with dune using rpc and Lwt")
  (depends
   result
   (dune-rpc (= :version))
   (csexp (>= 1.4.0))
   lwt)
- (synopsis "Communicate with dune using rpc and Lwt")
  (description "Specialization of dune-rpc to Lwt"))
 
 (package
@@ -168,6 +170,8 @@ understood by dune language."))
 (package
  (name xdg)
  (synopsis "XDG Base Directory Specification")
+ (depends
+  (ocaml (>= 4.08)))
  (description "https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html"))
 
 (package

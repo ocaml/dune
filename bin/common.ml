@@ -889,13 +889,15 @@ let term ~default_root_is_cwd =
           ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
           ~doc)
   and+ diff_command =
+    let doc = "Shell command to use to diff files.\n\
+              \                   Use - to disable printing the diff."
+    in
     Arg.(
       value
       & opt (some string) None
       & info [ "diff-command" ] ~docs
-          ~doc:
-            "Shell command to use to diff files.\n\
-            \                   Use - to disable printing the diff.")
+          ~env:(Arg.env_var ~doc "DUNE_DIFF_COMMAND")
+          ~doc)
   and+ stats_trace_file =
     Arg.(
       value

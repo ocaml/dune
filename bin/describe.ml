@@ -595,23 +595,6 @@ module Sanitize_for_tests = struct
       in
       List.fold_left ~f:Item.analyze ~init items
 
-    (** [string_ends_with ~suffix s] returns [true] if [suffix] is a suffix of
-        [s], or returns [false] otherwise. This function is not available in old
-        versions of the [String] module. *)
-    let string_ends_with ~suffix s =
-      let s_len = String.length s
-      and suffix_len = String.length suffix in
-      suffix_len <= s_len
-      &&
-      let d = s_len - suffix_len
-      and ok = ref true
-      and i = ref 0 in
-      while !ok && !i < String.length suffix do
-        ok := !ok && Char.equal suffix.[!i] s.[d + !i];
-        incr i
-      done;
-      !ok
-
     (** Tries to get OCaml's root path, using the [OPAM_SWITCH_PREFIX]
         environment variable, or using [ocamlc - where], or using
         [ocamlfind ocamlc -where] *)
@@ -639,7 +622,7 @@ module Sanitize_for_tests = struct
       Option.map
         ~f:(fun s ->
           (* ensure the path ends with "/" *)
-          if string_ends_with ~suffix:Filename.dir_sep s then s
+          if String.is_suffix ~suffix:Filename.dir_sep s then s
           else s ^ Filename.dir_sep)
         ( read_from_env_var "OPAM_SWITCH_PREFIX" ||| fun () ->
           Option.bind

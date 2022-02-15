@@ -2,14 +2,14 @@ open Stdune
 
 module Optimistically = struct
   let rename ~src ~dst =
-    try Path.rename src dst with
-    | Sys_error _ ->
+    try Path.rename src dst
+    with Sys_error _ ->
       Path.mkdir_p (Path.parent_exn dst);
       Path.rename src dst
 
   let link ~src ~dst =
-    try Path.link src dst with
-    | Unix.Unix_error (Unix.ENOENT, _, _) ->
+    try Path.link src dst
+    with Unix.Unix_error (Unix.ENOENT, _, _) ->
       Path.mkdir_p (Path.parent_exn dst);
       Path.link src dst
 end

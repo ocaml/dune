@@ -231,13 +231,12 @@ module Buffer = struct
            let c = Bytes.get buffer.data i in
            if c = '\n' || c = '\r' then (
              (if !line_start < i then
-               let line =
-                 Bytes.sub_string buffer.data ~pos:!line_start
-                   ~len:(i - !line_start)
-               in
-               lines := line :: !lines);
-             line_start := i + 1
-           )
+              let line =
+                Bytes.sub_string buffer.data ~pos:!line_start
+                  ~len:(i - !line_start)
+              in
+              lines := line :: !lines);
+             line_start := i + 1)
          done;
          buffer.size <- buffer.size - !line_start;
          Bytes.blit ~src:buffer.data ~src_pos:!line_start ~dst:buffer.data
@@ -245,33 +244,56 @@ module Buffer = struct
          List.rev !lines)
 end
 
-let special_dir_for_fs_sync =
-  lazy
-    (Path.Build.relative Path.Build.root ".sync" |> Path.build |> Path.to_string)
+module Fs_sync : sig
+  val special_dir_path : Path.Build.t Lazy.t
 
-let emit_sync t =
-  let id = Sync_id.gen () in
-  let fn = id |> Sync_id.to_int |> string_of_int in
-  let path = Filename.concat (Lazy.force special_dir_for_fs_sync) fn in
-  Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC ] 0o666);
-  Table.set t.sync_table fn id;
-  id
+  val special_dir : string Lazy.t
 
-let is_special_file_for_fs_sync ~path_as_reported_by_file_watcher =
-  (* We use string matching here and that's fine because we match on the path
-     reported by the file watcher backend which will always report the same
-     string that was used to setup the watch. *)
-  Filename.dirname path_as_reported_by_file_watcher
-  = Lazy.force special_dir_for_fs_sync
+  val emit : t -> Sync_id.t
 
-let consume_sync_event table path =
-  let basename = Filename.basename path in
-  match Table.find table basename with
-  | None -> None
-  | Some id ->
-    Fpath.unlink_no_err path;
-    Table.remove table basename;
-    Some id
+  val is_special_file : path_as_reported_by_file_watcher:string -> bool
+
+  (** fsevents always reports absolute paths. therefore, we need callers to make
+      an effort to determine if an abosulte path is in fact in the build dir *)
+  val is_special_file_fsevents : Path.t -> bool
+
+  val consume_event : (string, 'a) Table.t -> string -> 'a option
+end = struct
+  let special_dir_path = lazy (Path.Build.relative Path.Build.root ".sync")
+
+  let special_dir = lazy (Lazy.force special_dir_path |> Path.Build.to_string)
+
+  let emit t =
+    let id = Sync_id.gen () in
+    let fn = id |> Sync_id.to_int |> string_of_int in
+    let path = Filename.concat (Lazy.force special_dir) fn in
+    Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC ] 0o666);
+    Table.set t.sync_table fn id;
+    id
+
+  let is_special_file ~path_as_reported_by_file_watcher =
+    (* We use string matching here and that's fine because we match on the path
+       reported by the file watcher backend which will always report the same
+       string that was used to setup the watch. *)
+    Filename.dirname path_as_reported_by_file_watcher = Lazy.force special_dir
+
+  let consume_event table path =
+    let basename = Filename.basename path in
+    match Table.find table basename with
+    | None -> None
+    | Some id ->
+      Fpath.unlink_no_err path;
+      Table.remove table basename;
+      Some id
+
+  let is_special_file_fsevents (path : Path.t) =
+    match path with
+    | In_source_tree _ | External _ -> false
+    | In_build_dir build_path -> (
+      match Path.Build.parent build_path with
+      | None -> false
+      | Some dir -> Path.Build.equal dir (Lazy.force special_dir_path))
+end
 
 let command ~root ~backend =
   let exclude_paths =
@@ -285,7 +307,7 @@ let command ~root ~backend =
     [ "_build" ]
   in
   let root = Path.to_string root in
-  let inotify_special_path = Lazy.force special_dir_for_fs_sync in
+  let inotify_special_path = Lazy.force Fs_sync.special_dir in
   match backend with
   | `Fswatch fswatch ->
     (* On all other platforms, try to use fswatch. fswatch's event filtering is
@@ -329,21 +351,17 @@ let fswatch_backend () =
 let select_watcher_backend () =
   if Sys.linux then (
     assert (Ocaml_inotify.Inotify.supported_by_the_os ());
-    `Inotify_lib
-  ) else if Fsevents.available () then
-    `Fsevents
-  else
-    fswatch_backend ()
+    `Inotify_lib)
+  else if Fsevents.available () then `Fsevents
+  else fswatch_backend ()
 
 let prepare_sync () =
-  let dir = Lazy.force special_dir_for_fs_sync in
+  let dir = Lazy.force Fs_sync.special_dir in
   match Fpath.clear_dir dir with
   | Cleared -> ()
   | Directory_does_not_exist -> (
     match Fpath.mkdir_p dir with
-    | Already_exists
-    | Created ->
-      ())
+    | Already_exists | Created -> ())
 
 let spawn_external_watcher ~root ~backend =
   prepare_sync ();
@@ -366,21 +384,17 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) =
           List.concat_map events ~f:(fun event ->
               let is_fs_sync_event_generated_by_dune =
                 match (event : Inotify_lib.Event.t) with
-                | Modified path
-                | Created path
-                | Unlinked path ->
+                | Modified path | Created path | Unlinked path ->
                   Option.some_if
-                    (is_special_file_for_fs_sync
+                    (Fs_sync.is_special_file
                        ~path_as_reported_by_file_watcher:path)
                     path
-                | Moved _
-                | Queue_overflow ->
-                  None
+                | Moved _ | Queue_overflow -> None
               in
               match is_fs_sync_event_generated_by_dune with
               | None -> process_inotify_event event
               | Some path -> (
-                match consume_sync_event sync_table path with
+                match Fs_sync.consume_event sync_table path with
                 | None -> []
                 | Some id -> [ Event.Sync id ]))))
     ~log_error:(fun error -> Console.print [ Pp.text error ])
@@ -402,10 +416,10 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
                 | Error s -> failwith s
                 | Ok path_s ->
                   if
-                    is_special_file_for_fs_sync
+                    Fs_sync.is_special_file
                       ~path_as_reported_by_file_watcher:path_s
                   then
-                    match consume_sync_event sync_table path_s with
+                    match Fs_sync.consume_event sync_table path_s with
                     | None -> []
                     | Some id -> [ Event.Sync id ]
                   else
@@ -468,20 +482,17 @@ let create_inotifylib ~scheduler =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let inotify = create_inotifylib_watcher ~sync_table ~scheduler in
-  Inotify_lib.add inotify (Lazy.force special_dir_for_fs_sync);
+  Inotify_lib.add inotify (Lazy.force Fs_sync.special_dir);
   { kind = Inotify inotify; sync_table }
 
-let fsevents_callback_gen (scheduler : Scheduler.t) ~f events =
-  scheduler.thread_safe_send_emit_events_job (fun () ->
-      List.filter_map events ~f)
-
 let fsevents_callback (scheduler : Scheduler.t) ~f events =
-  fsevents_callback_gen scheduler events ~f:(fun event ->
-      let path =
-        Fsevents.Event.path event |> Path.of_string
-        |> Path.Expert.try_localize_external
-      in
-      Some (f event path))
+  scheduler.thread_safe_send_emit_events_job (fun () ->
+      List.filter_map events ~f:(fun event ->
+          let path =
+            Fsevents.Event.path event |> Path.of_string
+            |> Path.Expert.try_localize_external
+          in
+          f event path))
 
 let fsevents ?exclusion_paths ~latency ~paths scheduler f =
   let paths = List.map paths ~f:Path.to_absolute_filename in
@@ -500,12 +511,9 @@ let fsevents_standard_event event path =
     | Create -> Created
     | Remove -> Deleted
     | Modify ->
-      if Fsevents.Event.kind event = File then
-        File_changed
-      else
-        Unknown
+      if Fsevents.Event.kind event = File then File_changed else Unknown
   in
-  Event.Fs_memo_event { Fs_memo_event.kind; path }
+  Some (Event.Fs_memo_event { Fs_memo_event.kind; path })
 
 let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
   prepare_sync ();
@@ -513,25 +521,18 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
   let sync =
     (* We don't use the [fsevents] function here as we want to match on the
        original file path *)
-    Fsevents.create ~latency
-      ~paths:[ Lazy.force special_dir_for_fs_sync ]
-      ~f:
-        (fsevents_callback_gen scheduler ~f:(fun event ->
-             let path = Fsevents.Event.path event in
-             if
-               not
-                 (is_special_file_for_fs_sync
-                    ~path_as_reported_by_file_watcher:path)
-             then
-               None
-             else
-               match Fsevents.Event.action event with
-               | Remove -> None
-               | Unknown
-               | Create
-               | Modify ->
-                 Option.map (consume_sync_event sync_table path) ~f:(fun id ->
-                     Event.Sync id)))
+    fsevents ~latency
+      ~paths:[ Path.build (Lazy.force Fs_sync.special_dir_path) ]
+      scheduler
+      (fun event localized_path ->
+        let path = Fsevents.Event.path event in
+        if not (Fs_sync.is_special_file_fsevents localized_path) then None
+        else
+          match Fsevents.Event.action event with
+          | Remove -> None
+          | Unknown | Create | Modify ->
+            Option.map (Fs_sync.consume_event sync_table path) ~f:(fun id ->
+                Event.Sync id))
   in
   let source =
     let paths = [ Path.root ] in
@@ -592,8 +593,7 @@ let create_default ?fsevents_debounce ~scheduler () =
 let wait_for_initial_watches_established_blocking t =
   match t.kind with
   | Fswatch c -> c.wait_for_watches_established ()
-  | Fsevents _
-  | Inotify _ ->
+  | Fsevents _ | Inotify _ ->
     (* no initial watches needed: all watches should be set up at the time just
        before file access *)
     ()
@@ -608,8 +608,7 @@ let add_watch t path =
     | External ext -> (
       let ext =
         let rec loop p =
-          if Path.is_directory (Path.external_ p) then
-            Some ext
+          if Path.is_directory (Path.external_ p) then Some ext
           else
             match Path.External.parent p with
             | None ->
@@ -643,5 +642,7 @@ let add_watch t path =
        start *)
     Ok ()
   | Inotify inotify -> (
-    try Ok (Inotify_lib.add inotify (Path.to_string path)) with
-    | Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
+    try Ok (Inotify_lib.add inotify (Path.to_string path))
+    with Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
+
+let emit_sync = Fs_sync.emit

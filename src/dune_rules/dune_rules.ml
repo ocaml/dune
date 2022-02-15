@@ -32,6 +32,8 @@ module Toplevel = Toplevel
 module Global = Global
 module Only_packages = Only_packages
 module Resolve = Resolve
+module Ocamldep = Ocamldep
+module Preprocess = Preprocess
 
 (* Only for tests *)
 module Scheme = Scheme

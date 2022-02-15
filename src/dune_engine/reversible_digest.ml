@@ -11,9 +11,7 @@ let digest_string string =
      Dune_cache_storage.Raw_value.store_unchecked ~content:string
        ~content_digest:digest ~mode:Hardlink
    with
-  | Ok
-  | Already_present ->
-    ()
+  | Ok | Already_present -> ()
   | Error exn ->
     Log.info
       [ Pp.textf "error making digest reversible [%s]: %s"

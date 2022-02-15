@@ -14,27 +14,14 @@ let is_valid =
     ||
     match String.unsafe_get s i with
     | '%' -> after_percent s (i + 1) len
-    | '"'
-    | '('
-    | ')'
-    | ';'
-    | '\000' .. '\032'
-    | '\127' .. '\255' ->
-      false
+    | '"' | '(' | ')' | ';' | '\000' .. '\032' | '\127' .. '\255' -> false
     | _ -> loop s (i + 1) len
   and after_percent s i len =
     i = len
     ||
     match String.unsafe_get s i with
     | '%' -> after_percent s (i + 1) len
-    | '"'
-    | '('
-    | ')'
-    | ';'
-    | '\000' .. '\032'
-    | '\127' .. '\255'
-    | '{' ->
-      false
+    | '"' | '(' | ')' | ';' | '\000' .. '\032' | '\127' .. '\255' | '{' -> false
     | _ -> loop s (i + 1) len
   in
   fun s ->
@@ -42,19 +29,14 @@ let is_valid =
     len > 0 && loop s 0 len
 
 let of_string s =
-  if is_valid s then
-    A s
+  if is_valid s then A s
   else
     Code_error.raise "Dune_lang.Atom.of_string got invalid atom"
       [ ("atom", String s) ]
 
 let to_string (A s) = s
 
-let parse s =
-  if is_valid s then
-    Some (A s)
-  else
-    None
+let parse s = if is_valid s then Some (A s) else None
 
 let of_int i = A (string_of_int i)
 

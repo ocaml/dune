@@ -107,10 +107,8 @@ module Register_backend (M : Backend) = struct
           in
           loop all backends
         in
-        if List.length roots = 1 then
-          Ok backends
-        else
-          Error (Too_many_backends roots))
+        if List.length roots = 1 then Ok backends
+        else Error (Too_many_backends roots))
 
   let select_replaceable_backend ?written_by_user ~replaces to_scan =
     Memo.Build.map (written_by_user_or_scan ~written_by_user ~to_scan)

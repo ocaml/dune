@@ -123,10 +123,7 @@ module Supported_versions = struct
         let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in
         let lower_bound =
           (* Map 0.0 to 0.1 since 0.0 is not a valid version number *)
-          if major = 0 then
-            (0, 1)
-          else
-            (major, 0)
+          if major = 0 then (0, 1) else (major, 0)
         in
         let upper_bound = (major, max_minor) in
         assert (lower_bound <= upper_bound);
@@ -178,12 +175,7 @@ end
 
 module Error_msg = struct
   let since t ver ~what =
-    let lang_or_using =
-      if t.name = "dune" then
-        "lang"
-      else
-        "using"
-    in
+    let lang_or_using = if t.name = "dune" then "lang" else "using" in
     Printf.sprintf
       "%s is only available since version %s of %s. Please update your \
        dune-project file to have (%s %s %s)."
@@ -206,10 +198,7 @@ module Error = struct
       (Pp.concat
          [ Pp.textf "%s was deleted in version %s of %s." what
              (Version.to_string ver) t.desc
-         ; (if extra_info = "" then
-             Pp.nop
-           else
-             Pp.space)
+         ; (if extra_info = "" then Pp.nop else Pp.space)
          ; Pp.text extra_info
          ]
       :: repl)
@@ -264,10 +253,7 @@ module Warning = struct
       (Pp.concat
          [ Pp.textf "%s was deprecated in version %s of %s." what
              (Version.to_string ver) t.desc
-         ; (if extra_info = "" then
-             Pp.nop
-           else
-             Pp.space)
+         ; (if extra_info = "" then Pp.nop else Pp.space)
          ; Pp.text extra_info
          ]
       :: repl)
@@ -300,9 +286,8 @@ let check_supported ~dune_lang_ver t (loc, ver) =
     in
     let supported =
       (if List.is_empty l then
-        Pp.textf "There are no supported versions of this extension in %s."
-      else
-        Pp.textf "Supported versions of this extension in %s:")
+       Pp.textf "There are no supported versions of this extension in %s."
+      else Pp.textf "Supported versions of this extension in %s:")
         (dune_ver_text dune_lang_ver)
     in
     let message =
@@ -311,10 +296,8 @@ let check_supported ~dune_lang_ver t (loc, ver) =
       ; supported
       ; Pp.enumerate l ~f:(fun (a, b) ->
             let open Version.Infix in
-            if a = b then
-              Pp.text (Version.to_string a)
-            else
-              Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
+            if a = b then Pp.text (Version.to_string a)
+            else Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
     in
     let is_error = String.is_empty until || dune_lang_ver >= (2, 6) in
@@ -357,8 +340,7 @@ let get_exn t =
 let deleted_in ?(extra_info = "") t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
-  if current_ver < ver then
-    return ()
+  if current_ver < ver then return ()
   else
     let* loc, what = desc () in
     Error.deleted_in ~extra_info loc t ver ~what
@@ -366,8 +348,7 @@ let deleted_in ?(extra_info = "") t ver =
 let deprecated_in ?(extra_info = "") t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
-  if current_ver < ver then
-    return ()
+  if current_ver < ver then return ()
   else
     let+ loc, what = desc () in
     Warning.deprecated_in ~extra_info loc t ver ~what
@@ -375,8 +356,7 @@ let deprecated_in ?(extra_info = "") t ver =
 let renamed_in t ver ~to_ =
   let open Version.Infix in
   let* current_ver = get_exn t in
-  if current_ver < ver then
-    return ()
+  if current_ver < ver then return ()
   else
     let+ loc, what = desc () in
     Error.renamed_in loc t ver ~what ~to_
@@ -384,8 +364,7 @@ let renamed_in t ver ~to_ =
 let since ?(fatal = true) t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
-  if current_ver >= ver then
-    return ()
+  if current_ver >= ver then return ()
   else
     desc () >>= function
     | loc, what when fatal -> Error.since loc t ver ~what

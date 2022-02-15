@@ -50,10 +50,8 @@ struct
   include Ast
 
   let translate_to_ignore fn output action =
-    if Target.is_dev_null fn then
-      Ignore (output, action)
-    else
-      Redirect_out (output, fn, Normal, action)
+    if Target.is_dev_null fn then Ignore (output, action)
+    else Redirect_out (output, fn, Normal, action)
 
   let two_or_more decode =
     let open Dune_lang.Decoder in
@@ -83,18 +81,14 @@ struct
                     Syntax.Version.Infix.(version >= nesting_support_version)
                   in
                   let rec is_ok = function
-                    | Run _
-                    | Bash _
-                    | System _ ->
-                      true
+                    | Run _ | Bash _ | System _ -> true
                     | Chdir (_, t)
                     | Setenv (_, _, t)
                     | Ignore (_, t)
                     | Redirect_in (_, _, t)
                     | Redirect_out (_, _, _, t)
                     | No_infer t ->
-                      if nesting_support then
-                        is_ok t
+                      if nesting_support then is_ok t
                       else
                         Syntax.Error.since loc Stanza.syntax
                           nesting_support_version

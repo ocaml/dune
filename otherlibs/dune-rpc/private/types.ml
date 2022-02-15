@@ -162,9 +162,11 @@ module Response = struct
     let open Conv in
     let ok = constr "ok" sexp (fun x -> Ok x) in
     let error = constr "error" Error.sexp (fun x -> Error x) in
-    sum [ econstr ok; econstr error ] (function
-      | Ok s -> case s ok
-      | Error e -> case e error)
+    sum
+      [ econstr ok; econstr error ]
+      (function
+        | Ok s -> case s ok
+        | Error e -> case e error)
 
   let fields =
     let open Conv in
@@ -301,9 +303,11 @@ module Persistent = struct
       let close_connection =
         constr "close_connection" unit (fun () -> Close_connection)
       in
-      sum [ econstr packet; econstr close_connection ] (function
-        | Packet p -> case p packet
-        | Close_connection -> case () close_connection)
+      sum
+        [ econstr packet; econstr close_connection ]
+        (function
+          | Packet p -> case p packet
+          | Close_connection -> case () close_connection)
   end
 
   module In = struct
@@ -328,11 +332,12 @@ module Persistent = struct
       let close_connection =
         constr "close_connection" unit (fun () -> Close_connection)
       in
-      sum [ econstr new_connection; econstr packet; econstr close_connection ]
+      sum
+        [ econstr new_connection; econstr packet; econstr close_connection ]
         (function
-        | New_connection -> case () new_connection
-        | Packet p -> case p packet
-        | Close_connection -> case () close_connection)
+          | New_connection -> case () new_connection
+          | Packet p -> case p packet
+          | Close_connection -> case () close_connection)
   end
 end
 

@@ -7,9 +7,7 @@ let no_sandboxing = of_func Option.is_none
 
 let needs_sandboxing =
   of_func (function
-    | None
-    | Some Patch_back_source_tree ->
-      false
+    | None | Some Patch_back_source_tree -> false
     | Some _ -> true)
 
 let default = no_special_requirements
@@ -23,10 +21,7 @@ module Partial = struct
     match l with
     | [] -> Ok None
     | x :: xs ->
-      if List.for_all xs ~f:(eq x) then
-        Ok (Some x)
-      else
-        Error Conflict
+      if List.for_all xs ~f:(eq x) then Ok (Some x) else Error Conflict
 
   (** [merge] behaves like [inter] when there is no error, but it can detect a
       nonsensical configuration where [inter] can't. *)
@@ -66,10 +61,7 @@ module Partial = struct
 
   let disallow (mode : Sandbox_mode.t) =
     Sandbox_mode.Dict.of_func (fun mode' ->
-        if Sandbox_mode.equal mode mode' then
-          Some false
-        else
-          None)
+        if Sandbox_mode.equal mode mode' then Some false else None)
 end
 
 let disallow (mode : Sandbox_mode.t) =

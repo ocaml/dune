@@ -16,10 +16,7 @@ let dev_mode_warnings =
   in
   let warnings_range ws =
     let wrange_to_flag (x, y) =
-      if x = y then
-        sprintf "@%d" x
-      else
-        sprintf "@%d..%d" x y
+      if x = y then sprintf "@%d" x else sprintf "@%d..%d" x y
     in
     let acc, last_range =
       Int.Set.fold ws ~init:([], None) ~f:(fun x (acc, last_range) ->
@@ -28,10 +25,8 @@ let dev_mode_warnings =
             assert (acc = []);
             ([], Some (x, x))
           | Some (l, u) ->
-            if succ u = x then
-              (acc, Some (l, succ u))
-            else
-              (wrange_to_flag (l, u) :: acc, Some (x, x)))
+            if succ u = x then (acc, Some (l, succ u))
+            else (wrange_to_flag (l, u) :: acc, Some (x, x)))
     in
     let acc =
       match last_range with
@@ -55,8 +50,7 @@ let default_flags ~dune_version ~profile =
     ; "-short-paths"
     ; "-keep-locs"
     ]
-  else
-    [ "-w"; default_warnings ]
+  else [ "-w"; default_warnings ]
 
 type 'a t' =
   { common : 'a

@@ -231,6 +231,7 @@ module V1 : sig
     (** Promote a file. *)
     val promote : (Path.t, unit) t
 
+    (** Returns the location of the build directory for the current build. *)
     val build_dir : (unit, Path.t) t
   end
 

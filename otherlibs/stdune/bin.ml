@@ -1,8 +1,4 @@
-let path_sep =
-  if Sys.win32 then
-    ';'
-  else
-    ':'
+let path_sep = if Sys.win32 then ';' else ':'
 
 let parse_path ?(sep = path_sep) s =
   String.split s ~on:sep
@@ -16,11 +12,7 @@ let cons_path p ~_PATH =
   | None -> p
   | Some s -> Printf.sprintf "%s%c%s" p path_sep s
 
-let exe =
-  if Sys.win32 then
-    ".exe"
-  else
-    ""
+let exe = if Sys.win32 then ".exe" else ""
 
 let exists fn =
   match Unix.stat (Path.to_string fn) with
@@ -29,10 +21,8 @@ let exists fn =
   | _ -> true
 
 let add_exe prog =
-  if String.is_suffix (String.lowercase prog) ~suffix:exe then
-    prog
-  else
-    prog ^ exe
+  if String.is_suffix (String.lowercase prog) ~suffix:exe then prog
+  else prog ^ exe
 
 let which ~path prog =
   let prog = add_exe prog in
@@ -41,12 +31,7 @@ let which ~path prog =
       Option.some_if (exists fn) fn)
 
 let make ~path =
-  let gmake =
-    if Sys.unix then
-      which ~path "gmake"
-    else
-      None
-  in
+  let gmake = if Sys.unix then which ~path "gmake" else None in
   match gmake with
   | None -> which ~path "make"
   | some -> some

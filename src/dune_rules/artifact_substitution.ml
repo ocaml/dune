@@ -80,10 +80,7 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
     ~mandir ~docdir ~etcdir =
   let get_vcs = Source_tree.nearest_vcs in
   let hardcoded_ocaml_path =
-    if relocatable then
-      Relocatable prefix
-    else
-      Hardcoded default_ocamlpath
+    if relocatable then Relocatable prefix else Hardcoded default_ocamlpath
   in
   let get_location section package =
     let paths =
@@ -186,16 +183,11 @@ let encode ?(min_len = 0) t =
   in
   let len =
     let len0 = prefix_len + String.length suffix in
-    if len0 + 1 < 10 then
-      len0 + 1
-    else if len0 + 2 < 100 then
-      len0 + 2
-    else if len0 + 3 < 1000 then
-      len0 + 3
-    else if len0 + 4 < 10000 then
-      len0 + 4
-    else
-      len0 + 5
+    if len0 + 1 < 10 then len0 + 1
+    else if len0 + 2 < 100 then len0 + 2
+    else if len0 + 3 < 1000 then len0 + 3
+    else if len0 + 4 < 10000 then len0 + 4
+    else len0 + 5
   in
   let len = max min_len len in
   if len > max_len then
@@ -221,8 +213,7 @@ let decode s =
       || s.[1] <> '%'
       || s.[len - 2] <> '%'
       || s.[len - 1] <> '%'
-    then
-      fail ();
+    then fail ();
     let dune_placeholder, len', rest =
       match String.split (String.sub s ~pos:2 ~len:(len - 4)) ~on:':' with
       | dune_placeholder :: len' :: rest -> (dune_placeholder, len', rest)
@@ -330,8 +321,7 @@ module Scanner = struct
       match c with
       | '%' -> scan1 ~buf ~pos ~end_of_data
       | _ -> scan0 ~buf ~pos ~end_of_data
-    else
-      Scan0
+    else Scan0
 
   and scan1 ~buf ~pos ~end_of_data =
     if pos < end_of_data then
@@ -340,8 +330,7 @@ module Scanner = struct
       match c with
       | '%' -> scan2 ~buf ~pos ~end_of_data
       | _ -> scan0 ~buf ~pos ~end_of_data
-    else
-      Scan1
+    else Scan1
 
   and scan2 ~buf ~pos ~end_of_data =
     if pos < end_of_data then
@@ -351,8 +340,7 @@ module Scanner = struct
       | '%' -> scan2 ~buf ~pos ~end_of_data
       | 'D' -> scan_prefix ~buf ~pos ~end_of_data ~placeholder_start:(pos - 3)
       | _ -> scan0 ~buf ~pos ~end_of_data
-    else
-      Scan2
+    else Scan2
 
   and scan_prefix ~buf ~pos ~end_of_data ~placeholder_start =
     if pos < end_of_data then
@@ -365,12 +353,9 @@ module Scanner = struct
         if c = prefix.[pos_in_prefix] then
           if pos_in_prefix = prefix_len - 1 then
             scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc:0
-          else
-            scan_prefix ~buf ~pos ~end_of_data ~placeholder_start
-        else
-          scan0 ~buf ~pos ~end_of_data
-    else
-      Scan_prefix placeholder_start
+          else scan_prefix ~buf ~pos ~end_of_data ~placeholder_start
+        else scan0 ~buf ~pos ~end_of_data
+    else Scan_prefix placeholder_start
 
   and scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc =
     if pos < end_of_data then
@@ -386,18 +371,15 @@ module Scanner = struct
              is not possible, so [acc = 0] here correspond to an invalid
              placeholder *)
           scan0 ~buf ~pos ~end_of_data
-        else
-          scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc
+        else scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc
       | ':' ->
         if acc < pos - placeholder_start then
           (* If the length is too small, then this is surely not a valid
              placeholder *)
           scan0 ~buf ~pos ~end_of_data
-        else
-          Scan_placeholder (placeholder_start, acc)
+        else Scan_placeholder (placeholder_start, acc)
       | _ -> scan0 ~buf ~pos ~end_of_data
-    else
-      Scan_length (placeholder_start, acc)
+    else Scan_length (placeholder_start, acc)
 
   let run state ~buf ~pos ~end_of_data =
     match state with
@@ -474,8 +456,7 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
       | Scan2 -> end_of_data - 2
       | Scan_prefix placeholder_start
       | Scan_length (placeholder_start, _)
-      | Scan_placeholder (placeholder_start, _) ->
-        placeholder_start
+      | Scan_placeholder (placeholder_start, _) -> placeholder_start
     in
     (* All the data before [placeholder_start] can be sent to the output
        immediately since we know for sure that they are not part of a
@@ -496,15 +477,15 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
         | Copy { output; input_file; conf } ->
           let* s = eval t ~conf in
           (if !Clflags.debug_artifact_substitution then
-            let open Pp.O in
-            Console.print
-              [ Pp.textf "Found placeholder in %s:"
-                  (Path.to_string_maybe_quoted input_file)
-              ; Pp.enumerate ~f:Fun.id
-                  [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
-                  ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
-                  ]
-              ]);
+           let open Pp.O in
+           Console.print
+             [ Pp.textf "Found placeholder in %s:"
+                 (Path.to_string_maybe_quoted input_file)
+             ; Pp.enumerate ~f:Fun.id
+                 [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
+                 ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
+                 ]
+             ]);
           let s = encode_replacement ~len ~repl:s in
           output (Bytes.unsafe_of_string s) 0 len;
           let pos = placeholder_start + len in
@@ -525,10 +506,7 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
          to the beginning of [buf] *)
       let scanner_state : Scanner.state =
         match scanner_state with
-        | Scan0
-        | Scan1
-        | Scan2 ->
-          scanner_state
+        | Scan0 | Scan1 | Scan2 -> scanner_state
         | Scan_prefix _ -> Scan_prefix 0
         | Scan_length (_, acc) -> Scan_length (0, acc)
         | Scan_placeholder (_, len) -> Scan_placeholder (0, len)

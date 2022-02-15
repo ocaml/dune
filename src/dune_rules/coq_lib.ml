@@ -120,8 +120,7 @@ module DB = struct
     | Some s ->
       if (not allow_private_deps) && Option.is_none s.package then
         Error.private_deps_not_allowed ~loc s
-      else
-        Ok s
+      else Ok s
     | None -> Error.theory_not_found ~loc name
 
   let find_many t ~loc = Result.List.map ~f:(fun name -> resolve t (loc, name))

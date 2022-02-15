@@ -11,18 +11,12 @@ type t =
 let pp { name; recursive; dir; contexts = _ } =
   let open Pp.O in
   let s =
-    (if recursive then
-      "@"
-    else
-      "@@")
+    (if recursive then "@" else "@@")
     ^ Path.Source.to_string
         (Path.Source.relative dir (Dune_engine.Alias.Name.to_string name))
   in
   let pp = Pp.verbatim "alias" ++ Pp.space ++ Pp.verbatim s in
-  if recursive then
-    Pp.verbatim "recursive" ++ Pp.space ++ pp
-  else
-    pp
+  if recursive then Pp.verbatim "recursive" ++ Pp.space ++ pp else pp
 
 let in_dir ~name ~recursive ~contexts dir =
   let checked = Util.check_path contexts dir in
@@ -94,8 +88,6 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
 
 let request { name; recursive; dir; contexts } =
   let contexts = List.map ~f:Dune_rules.Context.name contexts in
-  (if recursive then
-    dep_on_alias_rec_multi_contexts
-  else
-    dep_on_alias_multi_contexts)
+  (if recursive then dep_on_alias_rec_multi_contexts
+  else dep_on_alias_multi_contexts)
     ~dir ~name ~contexts

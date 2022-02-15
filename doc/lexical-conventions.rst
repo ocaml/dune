@@ -1,27 +1,24 @@
 .. _metadata-format:
 
 *******************
-Lexical conventions
+Lexical Conventions
 *******************
 
-All configuration files read by Dune are using a syntax similar to the
-one of S-expressions, which is very simple. The Dune language can
-represent three kinds of values: atoms, strings and lists. By
-combining these, it is possible to construct arbitrarily complex
-project descriptions.
+All configuration files read by Dune use a simple syntax that's similar to
+S-expressions. The Dune language can represent three kinds of values: atoms,
+strings, and lists. By combining these, it's possible to construct arbitrarily
+complex project descriptions.
 
-A Dune configuration file is a sequence of atoms, strings or lists
-separated by spaces, newlines and comments. The other sections of this
-manual describe how each configuration file is interpreted. We
-describe below the syntax of the language.
+A Dune configuration file is a sequence of atoms, strings, or lists separated
+by spaces, newlines, and comments. The other sections of this manual describe
+how each configuration file is interpreted, and we illustrate the syntax below:
 
 Comments
 ========
 
-The Dune language only has end of line comments. End of line comments
-are introduced with a semicolon and span up to the end of the end of
-the current line. Everything from the semicolon to the end of the line
-is ignored. For instance:
+The Dune language only has end of line comments. A semicolon introduces end of
+line comments and span up to the end of the current line. The system ignores
+everything from the semicolon to the end of the line. For instance:
 
 .. code::
 
@@ -40,17 +37,16 @@ special characters. Special characters are:
 
 For instance ``hello`` or ``+`` are valid atoms.
 
-Note that backslashes inside atoms have no special meaning are always
-interpreted as plain backslashes characters.
+Note that backslashes inside atoms have no special meaning and Dune always
+interprets them as plain backslash characters.
 
 Strings
 =======
 
-A string is a sequence of characters surrounded by double quotes. A
-string represent the exact text between the double quotes, except for
-escape sequences. Escape sequence are introduced by the a backslash
-character. Dune recognizes and interprets the following escape
-sequences:
+A string is a sequence of characters surrounded by double quotes. A string
+represent the exact text between the double quotes, except for escape
+sequences. A backslash character introduces escape sequences. Dune recognizes
+and interprets the following escape sequences:
 
 - ``\n`` to represent a newline character
 - ``\r`` to represent a carriage return (character with ASCII code 13)
@@ -63,9 +59,9 @@ sequences:
 - ``\\``, a double backslash to represent a single backslash
 - ``\%{`` to represent ``%{`` (see :ref:`variables`)
 
-Additionally, a backslash that comes just before the end of the line
-is used to skip the newline up to the next non-space character. For
-instance the following two strings represent the same text:
+Additionally, you can use a backslash just before the end of the line. This
+skips the newline leading up to the next non-space character. For instance, the
+following two strings represent the same text:
 
 .. code::
 
@@ -73,21 +69,21 @@ instance the following two strings represent the same text:
    "abc\
       def"
 
-In most places where Dune expect a string, it will also accept an
-atom. As a result it possible to write most Dune configuration file
-using very few double quotes. This is very convenient in practice.
+In most places where Dune expects a string, it will also accept an atom. As a
+result, it's possible to write most Dune configuration files using very few
+double quotes. This is very convenient in practice.
 
-End of line strings
+End of Line Strings
 ===================
 
-End of line strings are another way to write strings. The are a
-convenient way to write blocks of text inside a Dune file.
+You can also write string using end of line strings. They are a convenient way
+to write blocks of text inside a Dune file.
 
-End of line strings are introduced by ``"\|`` or ``"\>`` and span up
-the end of the current line. If the next line starts as well by
-``"\|`` or ``"\>`` it is the continuation of the same string. For
-readability, it is necessary that the text that follows the delimiter
-is either empty or starts with a space that is ignored.
+The characters ``"\|`` or ``"\>`` introduce end of line strings and span to the
+end of the current line. If the next line also starts with ``"\|`` or ``"\>``,
+Dune reads it as a continuation of the same string. For readability, either
+leave the text following the delimiter empty or start it with a space (that
+will be ignored).
 
 For instance:
 
@@ -96,7 +92,7 @@ For instance:
    "\| this is a block
    "\| of text
 
-represent the same text as the string ``"this is a block\nof text"``.
+represents the same text as the string ``"this is a block\nof text"``.
 
 Escape sequences are interpreted in text that follows ``"\|`` but not
 in text that follows ``"\>``. Both delimiters can be mixed inside the
@@ -109,7 +105,7 @@ Lists are sequences of values enclosed by parentheses. For instance
 ``(x y z)`` is a list containing the three atoms ``x``, ``y`` and
 ``z``. Lists can be empty, for instance: ``()``.
 
-Lists can be nested, allowing to represent arbitrarily complex
+Lists can be nested, allowing arbitrary representation for complex
 descriptions. For instance:
 
 .. code::

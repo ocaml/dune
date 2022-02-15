@@ -32,8 +32,7 @@ let rec mkdir_p ?(perms = 0o777) t_s =
     else
       let parent = Filename.dirname t_s in
       match mkdir_p ~perms parent with
-      | Created
-      | Already_exists ->
+      | Created | Already_exists ->
         (* The [Already_exists] case might happen if some other process managed
            to create the parent directory concurrently. *)
         Unix.mkdir t_s perms;
@@ -48,9 +47,8 @@ let resolve_link path =
     Ok
       (Some
          (if Filename.is_relative link then
-           Filename.concat (Filename.dirname path) link
-         else
-           link))
+          Filename.concat (Filename.dirname path) link
+         else link))
 
 type follow_symlink_error =
   | Not_a_symlink
@@ -59,8 +57,7 @@ type follow_symlink_error =
 
 let follow_symlink path =
   let rec loop n path =
-    if n = 0 then
-      Error Max_depth_exceeded
+    if n = 0 then Error Max_depth_exceeded
     else
       match resolve_link path with
       | Error e -> Error (Unix_error e)
@@ -73,24 +70,17 @@ let follow_symlink path =
   | Error e -> Error (Unix_error e)
 
 let win32_unlink fn =
-  try Unix.unlink fn with
-  | Unix.Unix_error (Unix.EACCES, _, _) as e -> (
+  try Unix.unlink fn
+  with Unix.Unix_error (Unix.EACCES, _, _) as e -> (
     try
       (* Try removing the read-only attribute *)
       Unix.chmod fn 0o666;
       Unix.unlink fn
-    with
-    | _ -> raise e)
+    with _ -> raise e)
 
-let unlink =
-  if Stdlib.Sys.win32 then
-    win32_unlink
-  else
-    Unix.unlink
+let unlink = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
 
-let unlink_no_err t =
-  try unlink t with
-  | _ -> ()
+let unlink_no_err t = try unlink t with _ -> ()
 
 type clear_dir_result =
   | Cleared

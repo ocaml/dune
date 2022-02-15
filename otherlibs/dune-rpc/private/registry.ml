@@ -178,8 +178,7 @@ struct
         t.last_mtime <- Some mtime;
         false
     in
-    if skip then
-      Fiber.return (Ok Refresh.empty)
+    if skip then Fiber.return (Ok Refresh.empty)
     else
       let++ results =
         let** contents = IO.scandir dir in

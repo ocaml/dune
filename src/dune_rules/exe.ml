@@ -75,8 +75,7 @@ module Linkage = struct
         | Other { mode; _ } -> (
           match mode with
           | Byte ->
-            if ctx.dynamically_linked_foreign_archives then
-              Byte
+            if ctx.dynamically_linked_foreign_archives then Byte
             else
               (* When [dynamically_linked_foreign_archives] is set to [false] in
                  the workspace, we link in all stub archives statically into the
@@ -84,10 +83,8 @@ module Linkage = struct
               Byte_with_stubs_statically_linked_in
           | Native -> Native
           | Best ->
-            if Result.is_ok ctx.ocamlopt then
-              Native
-            else
-              Byte_with_stubs_statically_linked_in)
+            if Result.is_ok ctx.ocamlopt then Native
+            else Byte_with_stubs_statically_linked_in)
       in
       let ext =
         Dune_file.Executables.Link_mode.extension m ~loc
@@ -114,10 +111,7 @@ module Linkage = struct
           | Shared_object -> (
             let so_flags =
               let os_type = Ocaml_config.os_type ctx.ocaml_config in
-              if os_type = Win32 then
-                so_flags_windows
-              else
-                so_flags_unix
+              if os_type = Win32 then so_flags_windows else so_flags_unix
             in
             match link_mode with
             | Native ->
@@ -129,9 +123,7 @@ module Linkage = struct
               List.concat_map native_c_libraries ~f:(fun flag ->
                   [ "-cclib"; flag ])
               @ so_flags
-            | Byte
-            | Byte_for_jsoo
-            | Byte_with_stubs_statically_linked_in ->
+            | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in ->
               so_flags))
       in
       { ext; mode = link_mode; flags }
@@ -192,11 +184,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                 link_time_code_gen
               in
               Command.Args.S
-                [ As
-                    (if force_linkall then
-                      [ "-linkall" ]
-                    else
-                      [])
+                [ As (if force_linkall then [ "-linkall" ] else [])
                 ; Lib.Lib_and_module.L.link_flags to_link
                     ~lib_config:ctx.lib_config ~mode:linkage.mode
                 ])

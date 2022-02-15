@@ -67,31 +67,22 @@ end = struct
     let len = String.length name in
     len > 0
     && String.for_all name ~f:(function
-         | '.'
-         | '/' ->
-           false
+         | '.' | '/' -> false
          | _ -> true)
 
-  let named name =
-    if validate name then
-      Some (Named name)
-    else
-      None
+  let named name = if validate name then Some (Named name) else None
 
   let anonymous path = Anonymous path
 
   let decode =
     Dune_lang.Decoder.plain_string (fun ~loc s ->
-        if validate s then
-          Named s
-        else
-          User_error.raise ~loc [ Pp.text "Invalid project name" ])
+        if validate s then Named s
+        else User_error.raise ~loc [ Pp.text "Invalid project name" ])
 
   let to_encoded_string = function
     | Named s -> s
     | Anonymous p ->
-      if Path.Source.is_root p then
-        "."
+      if Path.Source.is_root p then "."
       else
         "."
         ^ String.map (Path.Source.to_string p) ~f:(function
@@ -266,10 +257,6 @@ let default_dune_language_version =
 
 let get_dune_lang () =
   { (Lang.get_exn "dune") with version = !default_dune_language_version }
-
-type created_or_already_exist =
-  | Created
-  | Already_exist
 
 module Extension = struct
   type 'a t = 'a Univ_map.Key.t
@@ -477,10 +464,7 @@ let cram_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
 let expand_aliases_in_sandbox_default ~lang:_ = false
 
 let use_standard_c_and_cxx_flags_default ~(lang : Lang.Instance.t) =
-  if lang.version >= (3, 0) then
-    Some true
-  else
-    None
+  if lang.version >= (3, 0) then Some true else None
 
 let format_extension_key =
   Extension.register Format_config.syntax Format_config.dparse_args
@@ -631,17 +615,14 @@ let encode : t -> Dune_lang.t list =
   let lang = Lang.get_exn "dune" in
   let flags =
     let flag name value default =
-      if Bool.equal value (default ~lang) then
-        None
-      else
-        Some (constr name bool value)
+      if Bool.equal value (default ~lang) then None
+      else Some (constr name bool value)
     in
     (* Flags that don't take a boolean for some reason *)
     let flag' name v default =
       if v && not (Bool.equal (default ~lang) v) then
         Some (list string [ name ])
-      else
-        None
+      else None
     in
     List.filter_opt
       [ flag "generate_opam_files" generate_opam_files (fun ~lang:_ ->
@@ -666,14 +647,10 @@ let encode : t -> Dune_lang.t list =
             not
               (Option.equal Bool.equal (Some b)
                  (use_standard_c_and_cxx_flags_default ~lang))
-          then
-            Some (constr "use_standard_c_and_cxx_flags" bool b)
-          else
-            None)
-      ; (if Bool.equal cram (cram_default ~lang) then
-          None
-        else
-          Some (constr "cram" Toggle.encode (Toggle.of_bool cram)))
+          then Some (constr "use_standard_c_and_cxx_flags" bool b)
+          else None)
+      ; (if Bool.equal cram (cram_default ~lang) then None
+        else Some (constr "cram" Toggle.encode (Toggle.of_bool cram)))
       ; flag "expand_aliases_in_sandbox" expand_aliases_in_sandbox
           expand_aliases_in_sandbox_default
       ]
@@ -859,8 +836,7 @@ let parse ~dir ~lang ~opam_packages ~file ~dir_status =
                            stanza in your dune-project file, you must a \
                            (package ...) stanza for each opam package in your \
                            project."
-                      ])
-          )
+                      ]))
         in
         let packages =
           Package.Name.Map.map packages ~f:(fun p ->
@@ -998,8 +974,7 @@ let load ~dir ~files ~infer_from_opam_files ~dir_status =
     Some
       (infer ~dir
          (Package.Name.Map.map opam_packages ~f:(fun (_loc, p) -> Lazy.force p)))
-  else
-    None
+  else None
 
 let set_parsing_context t parser =
   Dune_lang.Decoder.set_many t.parsing_context parser

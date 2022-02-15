@@ -336,10 +336,7 @@ module With_versioning_info = struct
     | Renamed_in of 'a * Dune_lang.Syntax.Version.t * string
 
   let get_data = function
-    | No_info x
-    | Since (x, _)
-    | Deleted_in (x, _, _)
-    | Renamed_in (x, _, _) ->
+    | No_info x | Since (x, _) | Deleted_in (x, _, _) | Renamed_in (x, _, _) ->
       x
 
   let renamed_in x ~new_name ~version = Renamed_in (x, version, new_name)
@@ -506,21 +503,18 @@ module Env = struct
       match v with
       | No_info v -> v
       | Since (v, min_version) ->
-        if syntax_version >= min_version then
-          v
+        if syntax_version >= min_version then v
         else
           Dune_lang.Syntax.Error.since (P.loc pform) Stanza.syntax min_version
             ~what:(P.describe pform)
       | Renamed_in (v, in_version, new_name) ->
-        if syntax_version < in_version then
-          v
+        if syntax_version < in_version then v
         else
           Dune_lang.Syntax.Error.renamed_in (P.loc pform) Stanza.syntax
             in_version ~what:(P.describe pform)
             ~to_:(P.describe { pform with name = new_name })
       | Deleted_in (v, in_version, repl) ->
-        if syntax_version < in_version then
-          v
+        if syntax_version < in_version then v
         else
           Dune_lang.Syntax.Error.deleted_in (P.loc pform) Stanza.syntax
             in_version ~what:(P.describe pform) ~repl)

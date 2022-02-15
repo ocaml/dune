@@ -32,10 +32,8 @@ end
 let%expect_test "csexp server life cycle" =
   let tmp_dir = Temp.create Dir ~prefix:"test" ~suffix:"dune_rpc" in
   let addr : Unix.sockaddr =
-    if Sys.win32 then
-      ADDR_INET (Unix.inet_addr_loopback, 0)
-    else
-      ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+    if Sys.win32 then ADDR_INET (Unix.inet_addr_loopback, 0)
+    else ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
   in
   let client_log = Logger.create ~name:"client" in
   let server_log = Logger.create ~name:"server" in

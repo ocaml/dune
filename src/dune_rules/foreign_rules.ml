@@ -107,8 +107,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     match kind with
     | Foreign_language.C -> (
       match use_standard_flags with
-      | None
-      | Some false ->
+      | None | Some false ->
         (* In dune < 2.8 flags from ocamlc_config are always added *)
         List.concat
           [ Ocaml_config.ocamlc_cflags cfg
@@ -188,10 +187,8 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
     List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
         String.Set.fold (Dir_contents.text_files dc) ~init:acc ~f:(fun fn acc ->
             if String.is_suffix fn ~suffix:Foreign_language.header_extension
-            then
-              Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
-            else
-              acc))
+            then Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
+            else acc))
   in
   let includes =
     Command.Args.S

@@ -51,6 +51,7 @@ type t =
   ; workspace_config : Dune_rules.Workspace.Clflags.t
   ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
   ; report_errors_config : Dune_engine.Report_errors_config.t
+  ; require_dune_project_file : bool
   }
 
 let capture_outputs t = t.capture_outputs
@@ -86,9 +87,7 @@ let normalize_path path =
   if Sys.win32 then
     let src = Path.External.to_string path in
     let is_letter = function
-      | 'a' .. 'z'
-      | 'A' .. 'Z' ->
-        true
+      | 'a' .. 'z' | 'A' .. 'Z' -> true
       | _ -> false
     in
     if String.length src >= 2 && is_letter src.[0] && src.[1] = ':' then (
@@ -96,11 +95,9 @@ let normalize_path path =
       Bytes.set dst 0 (Char.uppercase_ascii src.[0]);
       Bytes.blit_string ~src ~src_pos:1 ~dst ~dst_pos:1
         ~len:(String.length src - 1);
-      Path.External.of_string (Bytes.unsafe_to_string dst)
-    ) else
-      path
-  else
-    path
+      Path.External.of_string (Bytes.unsafe_to_string dst))
+    else path
+  else path
 
 let print_entering_message c =
   let cwd = Path.to_absolute_filename Path.root in
@@ -122,9 +119,7 @@ let print_entering_message c =
       | true -> (
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with
-          | None
-          | Some "" ->
-            None
+          | None | Some "" -> None
           | Some s -> Some (String.drop s 1)
         in
         match descendant_simple cwd ~of_:Fpath.initial_cwd with
@@ -134,10 +129,8 @@ let print_entering_message c =
           | None -> cwd
           | Some s ->
             let rec loop acc dir =
-              if dir = Filename.current_dir_name then
-                acc
-              else
-                loop (Filename.concat acc "..") (Filename.dirname dir)
+              if dir = Filename.current_dir_name then acc
+              else loop (Filename.concat acc "..") (Filename.dirname dir)
             in
             loop ".." (Filename.dirname s)))
     in
@@ -185,8 +178,7 @@ let init ?log_file c =
     ];
   Dune_rules.Main.init ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference ~cache_config
-    ~cache_debug_flags:c.cache_debug_flags
-    ~handler:(Option.map c.rpc ~f:Dune_rpc_impl.Server.build_handler);
+    ~cache_debug_flags:c.cache_debug_flags;
   Only_packages.Clflags.set c.only_packages;
   Dune_util.Report_error.print_memo_stacks := c.debug_dep_path;
   Clflags.report_errors_config := c.report_errors_config;
@@ -205,6 +197,8 @@ let init ?log_file c =
   Clflags.promote_install_files := c.promote_install_files;
   Clflags.always_show_command_line := c.always_show_command_line;
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
+  Clflags.on_missing_dune_project_file :=
+    if c.require_dune_project_file then Error else Warn;
   Dune_util.Log.info
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
@@ -301,8 +295,7 @@ let build_info =
       pr "statically linked libraries:";
       let longest = String.longest_map libs ~f:fst in
       List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v));
-    exit 0
-  )
+    exit 0)
 
 module Options_implied_by_dash_p = struct
   type t =
@@ -314,6 +307,7 @@ module Options_implied_by_dash_p = struct
     ; default_target : Arg.Dep.t
     ; always_show_command_line : bool
     ; promote_install_files : bool
+    ; require_dune_project_file : bool
     }
 
   let docs = copts_sect
@@ -346,10 +340,8 @@ module Options_implied_by_dash_p = struct
     | No_config -> Dune_config.Partial.empty
     | This fname -> Dune_config.load_config_file fname
     | Default ->
-      if Dune_util.Config.inside_dune then
-        Dune_config.Partial.empty
-      else
-        Dune_config.load_user_config_file ()
+      if Dune_util.Config.inside_dune then Dune_config.Partial.empty
+      else Dune_config.load_user_config_file ()
 
   let packages =
     let parser s =
@@ -414,6 +406,12 @@ module Options_implied_by_dash_p = struct
         last
         & opt_all ~vopt:true bool [ false ]
         & info [ "promote-install-files" ] ~docs ~doc)
+    and+ require_dune_project_file =
+      let doc = "Fail if a dune-project file is missing." in
+      Arg.(
+        last
+        & opt_all ~vopt:true bool [ false ]
+        & info [ "require-dune-project-file" ] ~docs ~doc)
     in
     { root
     ; only_packages = No_restriction
@@ -423,6 +421,7 @@ module Options_implied_by_dash_p = struct
     ; default_target
     ; always_show_command_line
     ; promote_install_files
+    ; require_dune_project_file
     }
 
   let dash_dash_release =
@@ -437,6 +436,7 @@ module Options_implied_by_dash_p = struct
           ; "release"
           ; "--always-show-command-line"
           ; "--promote-install-files"
+          ; "--require-dune-project-file"
           ; "--default-target"
           ; "@install"
           ]
@@ -445,10 +445,11 @@ module Options_implied_by_dash_p = struct
             "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
              fact a shorthand for $(b,--root . --ignore-promoted-rules \
              --no-config --profile release --always-show-command-line \
-             --promote-install-files --default-target @install). You should \
-             use this option for release builds. For instance, you must use \
-             this option in your $(i,<package>.opam) files. Except if you \
-             already use $(b,-p), as $(b,-p) implies this option.")
+             --promote-install-files --default-target @install \
+             --require-dune-project-file). You should use this option for \
+             release builds. For instance, you must use this option in your \
+             $(i,<package>.opam) files. Except if you already use $(b,-p), as \
+             $(b,-p) implies this option.")
 
   let options =
     let+ t = options
@@ -815,10 +816,7 @@ let term ~default_root_is_cwd =
                    "Instead of terminating build after completion, wait \
                     continuously for file changes.")
          in
-         if watch then
-           Some Watch_mode_config.Eager
-         else
-           None)
+         if watch then Some Watch_mode_config.Eager else None)
         (let+ watch =
            Arg.(
              value & flag
@@ -827,10 +825,7 @@ let term ~default_root_is_cwd =
                    "Similar to [--watch], but only start a build when \
                     instructed externally by an RPC.")
          in
-         if watch then
-           Some Watch_mode_config.Passive
-         else
-           None)
+         if watch then Some Watch_mode_config.Passive else None)
     in
     match res with
     | None -> Watch_mode_config.No
@@ -873,6 +868,7 @@ let term ~default_root_is_cwd =
        ; default_target
        ; always_show_command_line
        ; promote_install_files
+       ; require_dune_project_file
        } =
     Options_implied_by_dash_p.term
   and+ x =
@@ -889,8 +885,9 @@ let term ~default_root_is_cwd =
           ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
           ~doc)
   and+ diff_command =
-    let doc = "Shell command to use to diff files.\n\
-              \                   Use - to disable printing the diff."
+    let doc =
+      "Shell command to use to diff files.\n\
+      \                   Use - to disable printing the diff."
     in
     Arg.(
       value
@@ -1001,8 +998,7 @@ let term ~default_root_is_cwd =
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();
-    Metrics.enable ()
-  );
+    Metrics.enable ());
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
@@ -1042,6 +1038,7 @@ let term ~default_root_is_cwd =
       }
   ; cache_debug_flags
   ; report_errors_config
+  ; require_dune_project_file
   }
 
 let set_rpc t rpc = { t with rpc = Some rpc }

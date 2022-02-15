@@ -111,12 +111,22 @@ module Handler : sig
       notifications according to metadata [decl]. *)
   val declare_notification : 's t -> 'a Decl.notification -> unit
 
-  val implement_poll :
-       's t
-    -> 'a Procedures.Poll.t
-    -> on_poll:('s Session.t -> Poller.t -> 'a option Fiber.t)
-    -> on_cancel:('s Session.t -> Poller.t -> unit Fiber.t)
+  val implement_long_poll :
+       _ t
+    -> 'diff Procedures.Poll.t
+    -> 'state Fiber.Svar.t
+    -> equal:('state -> 'state -> bool)
+    -> diff:(last:'state option -> now:'state -> 'diff)
     -> unit
+
+  module Private : sig
+    val implement_poll :
+         's t
+      -> 'a Procedures.Poll.t
+      -> on_poll:('s Session.t -> Poller.t -> 'a option Fiber.t)
+      -> on_cancel:('s Session.t -> Poller.t -> unit Fiber.t)
+      -> unit
+  end
 end
 
 type t

@@ -60,9 +60,7 @@ let info paragraphs = info_user_message (User_message.make paragraphs)
 
 let command ~command_line ~output ~exit_status =
   match t () with
-  | None
-  | Some { oc = None; _ } ->
-    ()
+  | None | Some { oc = None; _ } -> ()
   | Some { oc = Some oc; _ } ->
     Printf.fprintf oc "$ %s\n" (Ansi_color.strip command_line);
     List.iter (String.split_lines output) ~f:(fun s ->

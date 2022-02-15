@@ -65,24 +65,9 @@ module Status = struct
 
     let to_list { data_only; vendored; normal } =
       let acc = [] in
-      let acc =
-        if vendored then
-          Vendored :: acc
-        else
-          acc
-      in
-      let acc =
-        if data_only then
-          Data_only :: acc
-        else
-          acc
-      in
-      let acc =
-        if normal then
-          Normal :: acc
-        else
-          acc
-      in
+      let acc = if vendored then Vendored :: acc else acc in
+      let acc = if data_only then Data_only :: acc else acc in
+      let acc = if normal then Normal :: acc else acc in
       acc
   end
 end
@@ -240,16 +225,13 @@ let strict_subdir field_name =
         User_error.raise ~loc ~hints msg
       else if
         match dn with
-        | ""
-        | "." ->
+        | "" | "." ->
           let hints = [ Pp.textf "did you mean (%s *)?" field_name ] in
           User_error.raise ~loc ~hints msg
         | ".." -> true
         | _ -> false
-      then
-        User_error.raise ~loc msg
-      else
-        (loc, dn))
+      then User_error.raise ~loc msg
+      else (loc, dn))
 
 let strict_subdir_glob field_name =
   let open Dune_lang.Decoder in
@@ -303,8 +285,7 @@ let decode =
     and+ data_only = field_o "data_only_dirs" data_only_dirs
     and+ ignored_sub_dirs =
       let parser =
-        if allow_ignored_subdirs then
-          ignored_sub_dirs
+        if allow_ignored_subdirs then ignored_sub_dirs
         else
           let+ loc = loc in
           User_error.raise ~loc

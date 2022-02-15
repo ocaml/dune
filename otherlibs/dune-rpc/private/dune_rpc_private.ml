@@ -233,18 +233,12 @@ module Client = struct
         match s with
         | Some _ -> t.write s
         | None ->
-          if t.closed_write then
-            Fiber.return ()
+          if t.closed_write then Fiber.return ()
           else (
             t.closed_write <- true;
-            t.write None
-          )
+            t.write None)
 
-      let read t =
-        if t.closed_read then
-          Fiber.return None
-        else
-          t.read ()
+      let read t = if t.closed_read then Fiber.return None else t.read ()
     end
 
     type abort =
@@ -617,6 +611,7 @@ module Client = struct
       Builder.declare_notification t Procedures.Public.shutdown;
       Builder.declare_request t Procedures.Public.format_dune_file;
       Builder.declare_request t Procedures.Public.promote;
+      Builder.declare_request t Procedures.Public.build_dir;
       Builder.implement_notification t Procedures.Server_side.abort (fun () ->
           handler.abort);
       Builder.implement_notification t Procedures.Server_side.log (fun () ->

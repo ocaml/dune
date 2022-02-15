@@ -103,9 +103,8 @@ let levenshtein_distance s t =
   done;
   for j = 1 to n do
     for i = 1 to m do
-      if s.[i - 1] = t.[j - 1] then
-        d.(i).(j) <- d.(i - 1).(j - 1)
-      (* no operation required *)
+      if s.[i - 1] = t.[j - 1] then d.(i).(j) <- d.(i - 1).(j - 1)
+        (* no operation required *)
       else
         d.(i).(j) <-
           min
@@ -127,9 +126,10 @@ let did_you_mean s ~candidates =
   | l -> [ Pp.textf "did you mean %s?" (String.enumerate_or l) ]
 
 let to_string t =
-  Format.asprintf "%a" Pp.to_fmt (pp { t with loc = None })
-  |> String.drop_prefix ~prefix:"Error: "
-  |> Option.value_exn |> String.trim
+  let full_error = Format.asprintf "%a" Pp.to_fmt (pp { t with loc = None }) in
+  match String.drop_prefix ~prefix:"Error: " full_error with
+  | None -> full_error
+  | Some error -> String.trim error
 
 let is_loc_none loc =
   match loc with

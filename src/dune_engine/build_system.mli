@@ -68,17 +68,72 @@ module Progress : sig
     ; number_of_rules_executed : int
     }
 
+  val equal : t -> t -> bool
+
   val complete : t -> int
 
   val remaining : t -> int
-
-  val is_determined : t -> bool
 end
 
-val get_current_progress : unit -> Progress.t
+module State : sig
+  type t =
+    | Initializing
+    | Building of Progress.t
+    | Restarting_current_build
+    | Build_succeeded__now_waiting_for_changes
+    | Build_failed__now_waiting_for_changes
+
+  val equal : t -> t -> bool
+end
+
+val state : State.t Fiber.Svar.t
+
+(** Errors found when building targets. *)
+module Error : sig
+  type t
+
+  module Id : sig
+    type t
+
+    module Map : Map.S with type key = t
+
+    val compare : t -> t -> Ordering.t
+
+    val to_int : t -> int
+
+    val to_dyn : t -> Dyn.t
+  end
+
+  module Event : sig
+    type nonrec t =
+      | Add of t
+      | Remove of t
+  end
+
+  module Set : sig
+    type error := t
+
+    type t
+
+    (** [one_event_diff ~prev ~next] returns the event that constructs [next]
+        from [prev] if [next] is in the successive "generation" of [prev] *)
+    val one_event_diff : prev:t -> next:t -> Event.t option
+
+    val equal : t -> t -> bool
+
+    val current : t -> error Id.Map.t
+
+    val empty : t
+  end
+
+  val create : exn:Exn_with_backtrace.t -> t
+
+  val info : t -> User_message.t * User_message.t list * Path.t option
+
+  val promotion : t -> Diff_promotion.Annot.t option
+
+  val id : t -> Id.t
+end
 
 (** The current set of active errors. *)
-val errors : unit -> Build_config.Error.t list
-
-(** Returns the last event reported to the handler. *)
-val last_event : unit -> Build_config.Handler.event option
+val errors : Error.Set.t Fiber.Svar.t

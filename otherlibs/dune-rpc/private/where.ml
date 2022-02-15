@@ -106,10 +106,8 @@ end) (IO : sig
     string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
 end) : S with type 'a fiber := 'a Fiber.t = struct
   let default ?(win32 = win32) ~build_dir () =
-    if win32 then
-      `Ip (`Host "0.0.0.0", `Port default_port)
-    else
-      `Unix (Filename.concat build_dir rpc_socket_relative_to_build_dir)
+    if win32 then `Ip (`Host "0.0.0.0", `Port default_port)
+    else `Unix (Filename.concat build_dir rpc_socket_relative_to_build_dir)
 
   let ( let** ) x f =
     let open Fiber.O in

@@ -31,9 +31,7 @@ let mem t dir =
 
 let union a b =
   match (a, b) with
-  | All, _
-  | _, All ->
-    All
+  | All, _ | _, All -> All
   | These a, These b -> These (String.Set.union a b)
 
 let inter_set = function

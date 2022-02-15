@@ -14,9 +14,7 @@ end
 (* to run a computation *)
 let run m = Scheduler.run (Memo.Build.run m)
 
-let run_memo f v =
-  try run (Memo.exec f v) with
-  | Memo.Error.E _ -> ()
+let run_memo f v = try run (Memo.exec f v) with Memo.Error.E _ -> ()
 
 let a = Memo.create "A" ~input:(module Unit) (fun () -> Build.return ())
 

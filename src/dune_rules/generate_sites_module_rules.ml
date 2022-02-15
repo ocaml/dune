@@ -77,32 +77,18 @@ let is_ocaml_keywords = function
   | "virtual"
   | "when"
   | "while"
-  | "with" ->
-    true
+  | "with" -> true
   | _ -> false
 
 let sanitize_site_name name =
   let rec aux name i =
-    if i < 0 then
-      i
-    else if name.[i] = '_' then
-      aux name (i - 1)
-    else
-      i
+    if i < 0 then i else if name.[i] = '_' then aux name (i - 1) else i
   in
   let name = String.uncapitalize_ascii (Section.Site.to_string name) in
   let last = String.length name - 1 in
   let i = aux name last in
-  let s =
-    if i <> last then
-      String.sub name ~pos:0 ~len:(i + 1)
-    else
-      name
-  in
-  if is_ocaml_keywords s then
-    name ^ "_"
-  else
-    name
+  let s = if i <> last then String.sub name ~pos:0 ~len:(i + 1) else name in
+  if is_ocaml_keywords s then name ^ "_" else name
 
 let sites_code sctx buf (loc, pkg) =
   let package =
@@ -148,16 +134,14 @@ let setup_rules sctx ~dir (def : Dune_file.Generate_sites_module.t) =
     if List.is_non_empty sites then (
       pr buf "module Sites = struct";
       List.iter sites ~f:(sites_code sctx buf);
-      pr buf "end"
-    );
+      pr buf "end");
     let plugins =
       Package.Name.Map.of_list_multi (List.map ~f:snd def.plugins)
     in
     if not (Package.Name.Map.is_empty plugins) then (
       pr buf "module Plugins = struct";
       Package.Name.Map.iteri plugins ~f:(plugins_code sctx buf);
-      pr buf "end"
-    );
+      pr buf "end");
     Buffer.contents buf
   in
   let module_ = Module_name.to_string def.module_ ^ ".ml" in

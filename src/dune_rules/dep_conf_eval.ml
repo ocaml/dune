@@ -98,10 +98,8 @@ let dep expander = function
          Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
        in
        let+ files =
-         if recursive then
-           collect_source_files_recursively dir ~f:files_in
-         else
-           files_in dir
+         if recursive then collect_source_files_recursively dir ~f:files_in
+         else files_in dir
        in
        Path.Set.to_list files)
   | Source_tree s ->

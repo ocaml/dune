@@ -30,9 +30,7 @@ module V1 = struct
     let read_directory =
       let rec loop dh acc =
         match Unix.readdir dh with
-        | "."
-        | ".." ->
-          loop dh acc
+        | "." | ".." -> loop dh acc
         | s -> loop dh (s :: acc)
         | exception End_of_file -> acc
       in
@@ -158,8 +156,7 @@ module V1 = struct
       in
       if Dependency.Set.is_empty required_dependencies then
         run_by_dune (at.action ()) context
-      else
-        Context.respond context (Need_more_deps required_dependencies)
+      else Context.respond context (Need_more_deps required_dependencies)
 
   (* If executable is not run by dune, assume that all dependencies are already
      prepared and no target checking is done. *)
@@ -183,8 +180,7 @@ module V1 = struct
     try
       do_run t;
       exit 0
-    with
-    | Execution_error.E message ->
+    with Execution_error.E message ->
       prerr_endline message;
       exit 1
 

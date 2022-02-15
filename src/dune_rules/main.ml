@@ -22,10 +22,7 @@ let implicit_default_alias dir =
         let dune_version =
           Source_tree.Dir.project dir |> Dune_project.dune_version
         in
-        if dune_version >= (2, 0) then
-          Alias.Name.all
-        else
-          Alias.Name.install
+        if dune_version >= (2, 0) then Alias.Name.all else Alias.Name.install
       in
       Some
         (Action_builder.ignore
@@ -33,8 +30,7 @@ let implicit_default_alias dir =
               (Context_name.of_string ctx_name)
               dir)))
 
-let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
-    =
+let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags : unit =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst ctx =
     let open Fiber.O in
     let* ctx =
@@ -55,7 +51,7 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags ~handler
            Workspace.workspace () >>| Workspace.build_contexts))
     ~cache_config ~cache_debug_flags
     ~rule_generator:(module Gen_rules)
-    ~handler ~implicit_default_alias
+    ~implicit_default_alias
 
 let get () =
   let open Memo.Build.O in

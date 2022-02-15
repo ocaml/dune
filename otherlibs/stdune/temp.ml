@@ -6,18 +6,8 @@ let prng = lazy (Random.State.make_self_init ())
 
 let try_paths n ~dir ~prefix ~suffix ~f =
   assert (n > 0);
-  let prefix =
-    if prefix = "" then
-      ""
-    else
-      prefix ^ "_"
-  in
-  let suffix =
-    if suffix = "" then
-      ""
-    else
-      "_" ^ suffix
-  in
+  let prefix = if prefix = "" then "" else prefix ^ "_" in
+  let suffix = if suffix = "" then "" else "_" ^ suffix in
   let rec loop n =
     let path =
       let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
@@ -28,8 +18,7 @@ let try_paths n ~dir ~prefix ~suffix ~f =
     | Error `Retry ->
       if n = 1 then
         Code_error.raise "[Temp.try_paths] failed to find a good candidate" []
-      else
-        loop (n - 1)
+      else loop (n - 1)
   in
   loop n
 

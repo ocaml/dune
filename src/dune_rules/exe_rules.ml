@@ -19,18 +19,14 @@ let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
     let modes =
       if not has_native then
         List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
-      else
-        modes
+      else modes
     in
     let modes =
-      if L.Map.mem exes.modes L.js then
-        Exe.Linkage.byte_for_jsoo :: modes
-      else if explicit_js_mode then
-        modes
+      if L.Map.mem exes.modes L.js then Exe.Linkage.byte_for_jsoo :: modes
+      else if explicit_js_mode then modes
       else if L.Map.mem exes.modes L.byte then
         Exe.Linkage.js :: Exe.Linkage.byte_for_jsoo :: modes
-      else
-        modes
+      else modes
     in
     modes
   in
@@ -40,10 +36,8 @@ let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
     L.Map.mem exes.modes L.byte
     && (not (L.Map.mem exes.modes L.native))
     && not (L.Map.mem exes.modes L.exe)
-  then
-    Exe.Linkage.custom ctx :: l
-  else
-    l
+  then Exe.Linkage.custom ctx :: l
+  else l
 
 let programs ~modules ~(exes : Executables.t) =
   List.map exes.names ~f:(fun (loc, name) ->
@@ -64,14 +58,11 @@ let programs ~modules ~(exes : Executables.t) =
 
 let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     ~requires_compile =
-  if not (Executables.has_foreign exes) then
-    Memo.Build.return []
+  if not (Executables.has_foreign exes) then Memo.Build.return []
   else
     let what =
-      if List.is_empty exes.buildable.Buildable.foreign_stubs then
-        "archives"
-      else
-        "stubs"
+      if List.is_empty exes.buildable.Buildable.foreign_stubs then "archives"
+      else "stubs"
     in
     if List.exists linkages ~f:Exe.Linkage.is_byte then
       User_error.raise ~loc:exes.buildable.loc
@@ -137,10 +128,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
              && List.mem executable_names name ~equal:Module_name.equal)
           && not (Module.has m ~ml_kind:Intf)
         in
-        if add_empty_intf then
-          Module_compilation.with_empty_intf ~sctx ~dir m
-        else
-          Memo.Build.return m)
+        if add_empty_intf then Module_compilation.with_empty_intf ~sctx ~dir m
+        else Memo.Build.return m)
   in
   let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
@@ -153,8 +142,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       let js_of_ocaml = exes.buildable.js_of_ocaml in
       if explicit_js_mode then
         Option.some_if (List.exists linkages ~f:Exe.Linkage.is_js) js_of_ocaml
-      else
-        Some js_of_ocaml
+      else Some js_of_ocaml
     in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp

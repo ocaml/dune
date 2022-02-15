@@ -50,11 +50,7 @@ module Option = struct
     | None -> None
     | Some x -> Some (f x)
 
-  let some_if cond x =
-    if cond then
-      Some x
-    else
-      None
+  let some_if cond x = if cond then Some x else None
 
   let some x = Some x
 
@@ -185,10 +181,8 @@ module String = struct
     let rec loop ~last_is_cr ~acc i j =
       if j = length s then
         let acc =
-          if j = i || (j = i + 1 && last_is_cr) then
-            acc
-          else
-            sub s ~pos:i ~len:(j - i) :: acc
+          if j = i || (j = i + 1 && last_is_cr) then acc
+          else sub s ~pos:i ~len:(j - i) :: acc
         in
         List.rev acc
       else
@@ -196,12 +190,7 @@ module String = struct
         | '\r' -> loop ~last_is_cr:true ~acc i (j + 1)
         | '\n' ->
           let line =
-            let len =
-              if last_is_cr then
-                j - i - 1
-              else
-                j - i
-            in
+            let len = if last_is_cr then j - i - 1 else j - i in
             sub s ~pos:i ~len
           in
           loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
@@ -211,10 +200,7 @@ module String = struct
 
   let exists =
     let rec loop s i len f =
-      if i = len then
-        false
-      else
-        f (unsafe_get s i) || loop s (i + 1) len f
+      if i = len then false else f (unsafe_get s i) || loop s (i + 1) len f
     in
     fun s ~f -> loop s 0 (length s) f
 
@@ -224,62 +210,41 @@ module String = struct
 
   let extract_words s ~is_word_char =
     let rec skip_blanks i =
-      if i = length s then
-        []
-      else if is_word_char s.[i] then
-        parse_word i (i + 1)
-      else
-        skip_blanks (i + 1)
+      if i = length s then []
+      else if is_word_char s.[i] then parse_word i (i + 1)
+      else skip_blanks (i + 1)
     and parse_word i j =
-      if j = length s then
-        [ sub s ~pos:i ~len:(j - i) ]
-      else if is_word_char s.[j] then
-        parse_word i (j + 1)
-      else
-        sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
+      if j = length s then [ sub s ~pos:i ~len:(j - i) ]
+      else if is_word_char s.[j] then parse_word i (j + 1)
+      else sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
     in
     skip_blanks 0
 
   let extract_comma_space_separated_words s =
     extract_words s ~is_word_char:(function
-      | ','
-      | ' '
-      | '\t'
-      | '\n' ->
-        false
+      | ',' | ' ' | '\t' | '\n' -> false
       | _ -> true)
 
   let extract_blank_separated_words s =
     extract_words s ~is_word_char:(function
-      | ' '
-      | '\t' ->
-        false
+      | ' ' | '\t' -> false
       | _ -> true)
 
   let split s ~on =
     let rec loop i j =
-      if j = length s then
-        [ sub s ~pos:i ~len:(j - i) ]
-      else if s.[j] = on then
-        sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
-      else
-        loop i (j + 1)
+      if j = length s then [ sub s ~pos:i ~len:(j - i) ]
+      else if s.[j] = on then sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
+      else loop i (j + 1)
     in
     loop 0 0
 end
 
 module Io = struct
   let open_in ?(binary = true) fn =
-    if binary then
-      open_in_bin fn
-    else
-      open_in fn
+    if binary then open_in_bin fn else open_in fn
 
   let open_out ?(binary = true) fn =
-    if binary then
-      open_out_bin fn
-    else
-      open_out fn
+    if binary then open_out_bin fn else open_out fn
 
   let input_lines =
     let rec loop ic acc =
@@ -316,8 +281,7 @@ module Io = struct
         Buffer.add_channel buffer t chunk_size;
         loop ()
       in
-      try loop () with
-      | End_of_file -> Buffer.contents buffer
+      try loop () with End_of_file -> Buffer.contents buffer
     in
     fun t ->
       (* Optimisation for regular files: if the channel supports seeking, we

@@ -35,8 +35,7 @@ module Archive = struct
     let decode =
       Dune_lang.Decoder.plain_string (fun ~loc s ->
           match s with
-          | "."
-          | ".." ->
+          | "." | ".." ->
             User_error.raise ~loc
               [ Pp.textf "%S is not a valid archive name." s ]
           | fn when String.exists fn ~f:Path.is_dir_sep ->

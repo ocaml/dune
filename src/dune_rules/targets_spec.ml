@@ -16,9 +16,7 @@ module Multiplicity = struct
         ]
     in
     match (field, variable) with
-    | One, One
-    | Multiple, Multiple ->
-      ()
+    | One, One | Multiple, Multiple -> ()
     | One, Multiple -> error "target" "targets"
     | Multiple, One -> error "targets" "target"
 end

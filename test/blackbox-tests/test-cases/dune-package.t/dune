@@ -18,3 +18,11 @@
 (rule (with-stdout-to z.ml (echo "")))
 (rule (with-stdout-to y.ml (echo "")))
 (rule (with-stdout-to y.mli (echo "")))
+
+(rule (with-stdout-to foo.txt (echo "")))
+
+(install
+ (section share)
+ (package a)
+ (files foo.txt)
+)

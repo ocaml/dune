@@ -18,10 +18,7 @@ module Lib = struct
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
-      if Path.is_managed p then
-        Path.relative dir (Path.basename p)
-      else
-        p
+      if Path.is_managed p then Path.relative dir (Path.basename p) else p
     in
     let info = Lib_info.map_path info ~f:map_path in
     { info; main_module_name; modules }
@@ -137,8 +134,7 @@ module Lib = struct
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
        and+ foreign_archives =
-         if lang.version >= (2, 0) then
-           paths "foreign_archives"
+         if lang.version >= (2, 0) then paths "foreign_archives"
          else
            let+ m = mode_paths "foreign_archives" in
            m.byte
@@ -182,10 +178,7 @@ module Lib = struct
          let virtual_deps = [] in
          let dune_version = None in
          let virtual_ =
-           if virtual_ then
-             Some (Lib_info.Source.External modules)
-           else
-             None
+           if virtual_ then Some (Lib_info.Source.External modules) else None
          in
          let wrapped =
            Some (Lib_info.Inherited.This (Modules.wrapped modules))
@@ -258,21 +251,15 @@ module Entry = struct
     | Hidden_library of Lib.t
 
   let name = function
-    | Library lib
-    | Hidden_library lib ->
-      Lib_info.name (Lib.info lib)
+    | Library lib | Hidden_library lib -> Lib_info.name (Lib.info lib)
     | Deprecated_library_name d -> d.old_public_name
 
   let version = function
-    | Library lib
-    | Hidden_library lib ->
-      Lib_info.version (Lib.info lib)
+    | Library lib | Hidden_library lib -> Lib_info.version (Lib.info lib)
     | Deprecated_library_name _ -> None
 
   let loc = function
-    | Library lib
-    | Hidden_library lib ->
-      Lib_info.loc (Lib.info lib)
+    | Library lib | Hidden_library lib -> Lib_info.loc (Lib.info lib)
     | Deprecated_library_name d -> d.loc
 
   let cstrs ~lang ~dir =
@@ -310,7 +297,7 @@ let decode ~lang ~dir =
   and+ version = field_o "version" string
   and+ sections =
     field ~default:[] "sections"
-      (repeat (pair (located Section.decode) Dpath.External.decode))
+      (repeat (pair (located Section.decode) (Dpath.Local.decode ~dir)))
   and+ sites =
     field ~default:[] "sites"
       (repeat (pair (located Section.Site.decode) Section.decode))
@@ -345,7 +332,6 @@ let decode ~lang ~dir =
         [ Pp.textf "The section %s appears multiple times" (to_string s) ]
   in
   let sections =
-    let sections = List.map sections ~f:(fun (k, v) -> (k, Path.external_ v)) in
     section_map Section.Map.of_list_map Section.to_string sections
   in
   let sites =
@@ -369,16 +355,14 @@ let prepend_version ~dune_version sexps =
 let encode ~dune_version { entries; name; version; dir; sections; sites; files }
     =
   let open Dune_lang.Encoder in
-  let sections =
-    Section.Map.to_list_map sections ~f:(fun k v ->
-        (k, Path.to_absolute_filename v))
-  in
   let sites = Section.Site.Map.to_list sites in
   let sexp =
     record_fields
       [ field "name" Package.Name.encode name
       ; field_o "version" string version
-      ; field_l "sections" (pair Section.encode string) sections
+      ; field_l "sections"
+          (pair Section.encode (Dpath.Local.encode ~dir))
+          (Section.Map.to_list sections)
       ; field_l "sites" (pair Section.Site.encode Section.encode) sites
       ; field_l "files" (pair Section.encode (list Install.Dst.encode)) files
       ]
@@ -425,8 +409,7 @@ module Or_meta = struct
     let open Dune_lang.Decoder in
     fields
       (let* use_meta = field_b "use_meta" in
-       if use_meta then
-         return Use_meta
+       if use_meta then return Use_meta
        else
          let+ package = decode ~lang ~dir in
          Dune_package package)

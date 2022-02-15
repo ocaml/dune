@@ -36,16 +36,14 @@ let () =
       Array.iter (Sys.readdir "boot") ~f:(fun fn ->
           let fn = Filename.concat "boot" fn in
           if Filename.check_suffix fn ".cmi" || Filename.check_suffix fn ".cmo"
-          then
-            Sys.remove fn));
+          then Sys.remove fn));
   if not keep_generated_files then
     at_exit (fun () ->
         Array.iter (Sys.readdir ".") ~f:(fun fn ->
             if
               String.length fn >= String.length duneboot
               && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
-            then
-              Sys.remove fn))
+            then try Sys.remove fn with Sys_error _ -> ()))
 
 let runf fmt =
   ksprintf
@@ -67,8 +65,7 @@ let read_file fn =
 let () =
   let v = Scanf.sscanf Sys.ocaml_version "%d.%d.%d" (fun a b c -> (a, b, c)) in
   let compiler, which =
-    if v >= min_supported_natively then
-      ("ocamlc", None)
+    if v >= min_supported_natively then ("ocamlc", None)
     else
       let compiler = "ocamlfind -toolchain secondary ocamlc" in
       let output_fn = duneboot ^ ".ocamlfind-output" in
@@ -86,18 +83,14 @@ let () =
               OCaml compiler (in opam, this can be done by installing the \
               ocamlfind-secondary package)."
              a b);
-        exit 2
-      );
+        exit 2);
       (compiler, Some "--secondary")
   in
   exit_if_non_zero
     (runf "%s %s -w -24 -g -o %s -I boot unix.cma %s" compiler
        (* Make sure to produce a self-contained binary as dlls tend to cause
           issues *)
-       (if v < (4, 10, 1) then
-         "-custom"
-       else
-         "-output-complete-exe")
+       (if v < (4, 10, 1) then "-custom" else "-output-complete-exe")
        prog
        (List.map modules ~f:(fun m -> m ^ ".ml") |> String.concat ~sep:" "));
   let args = List.tl (Array.to_list Sys.argv) in

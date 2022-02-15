@@ -41,21 +41,14 @@ end = struct
   let of_string_opt = function
     (* The [""] case is caught by of_string_opt_loose. But there's no harm in
        being more explicit about it *)
-    | ""
-    | "."
-    | "/"
-    | ".." ->
-      None
+    | "" | "." | "/" | ".." -> None
     | s -> of_string_opt_loose s
 
   let invalid_alias = Pp.textf "%S is not a valid alias name"
 
   let parse_string_exn ~syntax (loc, s) =
     let of_string_opt =
-      if syntax >= (2, 0) then
-        of_string_opt
-      else
-        of_string_opt_loose
+      if syntax >= (2, 0) then of_string_opt else of_string_opt_loose
     in
     match of_string_opt s with
     | None -> User_error.raise ~loc [ invalid_alias s ]
@@ -206,15 +199,11 @@ let describe ?(loc = Loc.none) alias =
                 (Path.Source.relative dir_in_context
                    (Name.to_string alias.name)))
       in
-      if Context_name.is_default ctx then
-        pp
-      else
-        pp ++ Pp.textf " (context %s)" (Context_name.to_string ctx)
+      if Context_name.is_default ctx then pp
+      else pp ++ Pp.textf " (context %s)" (Context_name.to_string ctx)
   in
-  if Loc.is_none loc then
-    pp
-  else
-    pp ++ Pp.textf " in %s" (Loc.to_file_colon_line loc)
+  if Loc.is_none loc then pp
+  else pp ++ Pp.textf " in %s" (Loc.to_file_colon_line loc)
 
 let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
   let dir =

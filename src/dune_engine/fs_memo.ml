@@ -88,9 +88,7 @@ end = struct
               (Path.to_string containing_dir)
           ]);
       match Dune_file_watcher.add_watch watcher path with
-      | Error `Does_not_exist
-      | Ok () ->
-        ())
+      | Error `Does_not_exist | Ok () -> ())
 
   let watch_or_record_path ~accessed_path ~path_to_watch =
     match !state with
@@ -162,9 +160,7 @@ end = struct
      [Memo.create_with_store]. *)
   let invalidate path =
     match update_all path with
-    | Skipped
-    | Updated { changed = false } ->
-      Memo.Invalidation.empty
+    | Skipped | Updated { changed = false } -> Memo.Invalidation.empty
     | Updated { changed = true } ->
       Memo.Invalidation.combine
         (Memo.Cell.invalidate
@@ -271,8 +267,7 @@ let dir_exists path =
 let file_digest ?(force_update = false) path =
   if force_update then (
     Cached_digest.Untracked.invalidate_cached_timestamp path;
-    Fs_cache.evict Fs_cache.Untracked.file_digest path
-  );
+    Fs_cache.evict Fs_cache.Untracked.file_digest path);
   let+ () = Watcher.watch ~try_to_watch_via_parent:true path in
   Fs_cache.read Fs_cache.Untracked.file_digest path
 
@@ -321,9 +316,6 @@ let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t) :
     Memo.Invalidation.t =
   match kind with
   | File_changed -> Watcher.invalidate path
-  | Created
-  | Deleted
-  | Unknown ->
-    invalidate_path_and_its_parent path
+  | Created | Deleted | Unknown -> invalidate_path_and_its_parent path
 
 let init = Watcher.init

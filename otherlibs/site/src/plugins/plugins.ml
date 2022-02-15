@@ -12,10 +12,7 @@ let rec lookup dirs file =
   | [] -> None
   | dir :: dirs ->
     let file' = Filename.concat dir file in
-    if Sys.file_exists file' then
-      Some file'
-    else
-      lookup dirs file
+    if Sys.file_exists file' then Some file' else lookup dirs file
 
 module type S = sig
   val paths : string list
@@ -54,14 +51,12 @@ let rec get_plugin plugins requires entries =
   | Meta_parser.Comment _ :: entries -> get_plugin plugins requires entries
   | Package _ :: entries -> get_plugin plugins requires entries
   | Rule { var = "plugin"; predicates; action = Set; value } :: entries
-    when check_predicates predicates ->
-    get_plugin [ value ] requires entries
+    when check_predicates predicates -> get_plugin [ value ] requires entries
   | Rule { var = "plugin"; predicates; action = Add; value } :: entries
     when check_predicates predicates ->
     get_plugin (value :: plugins) requires entries
   | Rule { var = "requires"; predicates; action = Set; value } :: entries
-    when check_predicates predicates ->
-    get_plugin plugins [ value ] entries
+    when check_predicates predicates -> get_plugin plugins [ value ] entries
   | Rule { var = "requires"; predicates; action = Add; value } :: entries
     when check_predicates predicates ->
     get_plugin plugins (value :: requires) entries
@@ -138,29 +133,19 @@ let rec find_library ~dirs ~prefix ~suffix directory meta =
 
 let extract_words s ~is_word_char =
   let rec skip_blanks i =
-    if i = String.length s then
-      []
-    else if is_word_char s.[i] then
-      parse_word i (i + 1)
-    else
-      skip_blanks (i + 1)
+    if i = String.length s then []
+    else if is_word_char s.[i] then parse_word i (i + 1)
+    else skip_blanks (i + 1)
   and parse_word i j =
-    if j = String.length s then
-      [ StringLabels.sub s ~pos:i ~len:(j - i) ]
-    else if is_word_char s.[j] then
-      parse_word i (j + 1)
-    else
-      StringLabels.sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
+    if j = String.length s then [ StringLabels.sub s ~pos:i ~len:(j - i) ]
+    else if is_word_char s.[j] then parse_word i (j + 1)
+    else StringLabels.sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
   in
   skip_blanks 0
 
 let extract_comma_space_separated_words s =
   extract_words s ~is_word_char:(function
-    | ','
-    | ' '
-    | '\t'
-    | '\n' ->
-      false
+    | ',' | ' ' | '\t' | '\n' -> false
     | _ -> true)
 
 let split_all l = List.concat (List.map extract_comma_space_separated_words l)
@@ -179,10 +164,8 @@ let find_plugin ~dirs ~dir ~suffix (meta : Meta_parser.t) =
         Filename.concat
           (Lazy.force Helpers.stdlib)
           (String.sub pkg_dir 1 (String.length pkg_dir - 1))
-      else if Filename.is_relative pkg_dir then
-        Filename.concat dir pkg_dir
-      else
-        pkg_dir
+      else if Filename.is_relative pkg_dir then Filename.concat dir pkg_dir
+      else pkg_dir
   in
   let plugins = split_all plugins in
   let requires = split_all requires in
@@ -198,8 +181,7 @@ let load file ~pkg =
       let r = Meta_parser.Parse.entries lb 0 [] in
       close_in ic;
       r
-    with
-    | exn ->
+    with exn ->
       close_in ic;
       raise exn
   in
@@ -209,16 +191,12 @@ let meta_fn = "META"
 
 let lookup_and_load_one_dir ~dir ~pkg =
   let meta_file = Filename.concat dir meta_fn in
-  if Sys.file_exists meta_file then
-    Some (load meta_file ~pkg)
+  if Sys.file_exists meta_file then Some (load meta_file ~pkg)
   else
     (* Alternative layout *)
     let dir = Filename.dirname dir in
     let meta_file = Filename.concat dir (meta_fn ^ "." ^ pkg) in
-    if Sys.file_exists meta_file then
-      Some (load meta_file ~pkg)
-    else
-      None
+    if Sys.file_exists meta_file then Some (load meta_file ~pkg) else None
 
 let split ~dirs name =
   match String.split_on_char '.' name with
@@ -262,8 +240,7 @@ let load_gen ~load_requires dirs name =
       (fun p ->
         let file = Filename.concat directory p in
         Dynlink.loadfile file)
-      plugins
-  )
+      plugins)
 
 let rec load_requires name =
   load_gen ~load_requires (Lazy.force Helpers.ocamlpath) name
@@ -299,7 +276,5 @@ let available name =
   try
     ignore (lookup_and_summarize ocamlpath name);
     true
-  with
-  | _ ->
-    (* CR - What exceptions are being swallowed here? *)
-    false
+  with _ -> (* CR - What exceptions are being swallowed here? *)
+            false

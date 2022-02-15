@@ -94,9 +94,7 @@ let set_expanding_what t x = { t with expanding_what = x }
 let map_exe t p =
   match t.expanding_what with
   | Deps_like_field -> p
-  | Nothing_special
-  | User_action _
-  | User_action_without_targets _ ->
+  | Nothing_special | User_action _ | User_action_without_targets _ ->
     Context.map_exe t.context p
 
 let extend_env t ~env =
@@ -244,9 +242,7 @@ let static v = Direct (Without (Memo.Build.return v))
 let[@inline never] invalid_use_of_target_variable t
     ~(source : Dune_lang.Template.Pform.t) ~var_multiplicity =
   match t.expanding_what with
-  | Nothing_special
-  | Deps_like_field ->
-    isn't_allowed_in_this_position ~source
+  | Nothing_special | Deps_like_field -> isn't_allowed_in_this_position ~source
   | User_action_without_targets { what } ->
     User_error.raise ~loc:source.loc
       [ Pp.textf "You cannot use %s in %s."
@@ -350,9 +346,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (string
              (Mode.plugin_ext
                 (if Ocaml_config.natdynlink_supported context.ocaml_config then
-                  Mode.Native
-                else
-                  Mode.Byte)))
+                 Mode.Native
+                else Mode.Byte)))
       | Profile -> static (string (Profile.to_string context.profile))
       | Workspace_root -> static [ Value.Dir (Path.build context.build_dir) ]
       | Context_name -> static (string (Context_name.to_string context.name))
@@ -470,12 +465,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                      [ Pp.textf "invalid %%{lib:...} form: %s" s ]
                  | Some (lib, f) -> (Lib_name.parse_string_exn (loc, lib), f)
                in
-               let scope =
-                 if lib_exec then
-                   t.scope_host
-                 else
-                   t.scope
-               in
+               let scope = if lib_exec then t.scope_host else t.scope in
                let p =
                  let open Resolve.Build.O in
                  if lib_private then
@@ -502,10 +492,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                                to libraries within the same project. The \
                                current project's name is %S, but the reference \
                                is to %s."
-                              (if lib_exec then
-                                "exec"
-                              else
-                                "")
+                              (if lib_exec then "exec" else "")
                               (Dune_project.Name.to_string_hum
                                  (Dune_project.name current_project))
                               (match referenced_project with
@@ -517,10 +504,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                           ])
                  else
                    let artifacts =
-                     if lib_exec then
-                       t.lib_artifacts_host
-                     else
-                       t.lib_artifacts
+                     if lib_exec then t.lib_artifacts_host else t.lib_artifacts
                    in
                    Artifacts.Public_libs.file_of_lib artifacts
                      ~loc:(Dune_lang.Template.Pform.loc source)
@@ -531,8 +515,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                  Resolve.Build.peek p >>| function
                  | Ok p -> (
                    match file with
-                   | ""
-                   | "." ->
+                   | "" | "." ->
                      let lang_version =
                        Dune_project.dune_version (Scope.project t.scope)
                      in
@@ -545,10 +528,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                              "The form %%{%s:<libname>:%s} is no longer \
                               supported since version 3.0 of the Dune \
                               language."
-                             (if lib_private then
-                               "lib-private"
-                             else
-                               "lib")
+                             (if lib_private then "lib-private" else "lib")
                              file
                          ]
                          ~hints:
@@ -569,8 +549,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                      if
                        (not lib_exec) || (not Sys.win32)
                        || Filename.extension s = ".exe"
-                     then
-                       dep p
+                     then dep p
                      else
                        let p_exe = Path.extend_basename p ~suffix:".exe" in
                        Action_builder.if_file_exists p_exe ~then_:(dep p_exe)
@@ -597,10 +576,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                                    installation path which is not defined for \
                                    private libraries."
                                   (Lib_name.to_string lib)
-                                  (if lib_exec then
-                                    "exec"
-                                  else
-                                    "")
+                                  (if lib_exec then "exec" else "")
                               ])
                    in
                    Resolve.Build.read p
@@ -655,8 +631,8 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
   | Need_full_expander f ->
     Need_full_expander
       (fun t ->
-        try f t with
-        | User_error.E _ as exn ->
+        try f t
+        with User_error.E _ as exn ->
           Without
             (let open Memo.Build.O in
             let+ () = Memo.Build.return () in
@@ -792,9 +768,7 @@ module With_reduced_var_set = struct
     Memo.push_stack_frame
       (fun () ->
         match expand_pform_gen ~context ~bindings ~dir ~source pform with
-        | Need_full_expander _
-        | Direct (With _) ->
-          Memo.Build.return None
+        | Need_full_expander _ | Direct (With _) -> Memo.Build.return None
         | Direct (Without x) -> x >>| Option.some)
       ~human_readable_description:(fun () -> describe_source ~source)
 
@@ -823,10 +797,8 @@ end
 let expand_and_eval_set t set ~standard =
   let dir = Path.build (dir t) in
   let+ standard =
-    if Ordered_set_lang.Unexpanded.has_special_forms set then
-      standard
-    else
-      Action_builder.return []
+    if Ordered_set_lang.Unexpanded.has_special_forms set then standard
+    else Action_builder.return []
   and+ set = Ordered_set_lang.Unexpanded.expand set ~dir ~f:(expand_pform t) in
   Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s ->
       s)

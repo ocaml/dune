@@ -66,13 +66,7 @@ let generic a =
 let file_with_executable_bit ~executable path =
   (* We follow the digest scheme used by Jenga. *)
   let string_and_bool ~digest_hex ~bool =
-    Impl.string
-      (digest_hex
-      ^
-      if bool then
-        "\001"
-      else
-        "\000")
+    Impl.string (digest_hex ^ if bool then "\001" else "\000")
   in
   let content_digest = file path in
   string_and_bool ~digest_hex:content_digest ~bool:executable
@@ -108,13 +102,9 @@ module Path_digest_result = struct
   let equal x y =
     match (x, y) with
     | Ok x, Ok y -> D.equal x y
-    | Ok _, _
-    | _, Ok _ ->
-      false
+    | Ok _, _ | _, Ok _ -> false
     | Unexpected_kind, Unexpected_kind -> true
-    | Unexpected_kind, _
-    | _, Unexpected_kind ->
-      false
+    | Unexpected_kind, _ | _, Unexpected_kind -> false
     | Unix_error x, Unix_error y ->
       Dune_filesystem_stubs.Unix_error.Detailed.equal x y
 end
@@ -135,10 +125,4 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
        and directories. It's unclear if this is actually a problem. If it turns
        out to be a problem, we should include [st_kind] into both digests. *)
     Ok (generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime))
-  | S_DIR
-  | S_BLK
-  | S_CHR
-  | S_LNK
-  | S_FIFO
-  | S_SOCK ->
-    Unexpected_kind
+  | S_DIR | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK -> Unexpected_kind

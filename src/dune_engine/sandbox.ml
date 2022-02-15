@@ -120,10 +120,8 @@ let create ~mode ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_aliases =
   Path.rm_rf (Path.build sandbox_dir);
   create_dirs t ~deps ~rule_dir;
   let deps =
-    if expand_aliases then
-      Dep.Facts.paths deps
-    else
-      Dep.Facts.paths_without_expanding_aliases deps
+    if expand_aliases then Dep.Facts.paths deps
+    else Dep.Facts.paths_without_expanding_aliases deps
   in
   (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
      targets produced dynamically will be unavailable. *)
@@ -237,9 +235,7 @@ let apply_changes_to_source_tree t ~old_snapshot =
       | Some before, Some after -> (
         match Cached_digest.Reduced_stats.compare before after with
         | Eq -> ()
-        | Lt
-        | Gt ->
-          copy_file p))
+        | Lt | Gt -> copy_file p))
 
 let move_targets_to_build_dir t ~loc ~should_be_skipped
     ~(targets : Targets.Validated.t) : unit Targets.Produced.t =

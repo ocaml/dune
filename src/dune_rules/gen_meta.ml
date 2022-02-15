@@ -85,9 +85,7 @@ let gen_lib pub_name lib ~path ~version =
   let preds =
     match kind with
     | Normal -> []
-    | Ppx_rewriter _
-    | Ppx_deriver _ ->
-      [ Pos "ppx_driver" ]
+    | Ppx_rewriter _ | Ppx_deriver _ -> [ Pos "ppx_driver" ]
   in
   let name lib =
     let name = Lib.name lib in
@@ -124,8 +122,7 @@ let gen_lib pub_name lib ~path ~version =
     [ version
     ; [ description desc; requires ~preds lib_deps ]
     ; archives ~preds lib
-    ; (if Lib_name.Set.is_empty ppx_rt_deps then
-        []
+    ; (if Lib_name.Set.is_empty ppx_rt_deps then []
       else
         [ Comment
             "This is what dune uses to find out the runtime dependencies of"
@@ -134,8 +131,7 @@ let gen_lib pub_name lib ~path ~version =
         ])
     ; (match kind with
       | Normal -> []
-      | Ppx_rewriter _
-      | Ppx_deriver _ ->
+      | Ppx_rewriter _ | Ppx_deriver _ ->
         (* Deprecated ppx method support *)
         let no_ppx_driver = Neg "ppx_driver"
         and no_custom_ppx = Neg "custom_ppx" in
@@ -251,8 +247,7 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
              let pkg =
                if add_directory_entry then
                  { pkg with entries = directory name :: pkg.entries }
-               else
-                 pkg
+               else pkg
              in
              Package pkg)
     in

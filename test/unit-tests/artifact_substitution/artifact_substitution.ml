@@ -76,8 +76,7 @@ let simple_subst =
         || s.[pos] <> '%'
         || s.[pos + 1] <> '%'
         || s.[pos + 2] <> 'D'
-      then
-        None
+      then None
       else
         let* groups = Re.exec_opt re s ~pos in
         let* len =
@@ -86,16 +85,14 @@ let simple_subst =
           | n -> Some n
           | exception _ -> None
         in
-        if pos + len > slen then
-          None
+        if pos + len > slen then None
         else
           let* p = Artifact_substitution.decode (String.sub s ~pos ~len) in
           Some (len, p)
     in
     let buf = Buffer.create slen in
     let rec loop pos =
-      if pos = slen then
-        Buffer.contents buf
+      if pos = slen then Buffer.contents buf
       else
         match extract_placeholder pos with
         | None ->
@@ -121,8 +118,7 @@ let compress_string s =
   let last_char = ref '\000' in
   let commit_chain () =
     let s = Char.escaped !last_char in
-    if !chain_length > 5 then
-      Printf.bprintf buf "%s\\{%d}" s !chain_length
+    if !chain_length > 5 then Printf.bprintf buf "%s\\{%d}" s !chain_length
     else
       for _i = 1 to !chain_length do
         Buffer.add_string buf s
@@ -130,13 +126,11 @@ let compress_string s =
   in
   for i = 0 to String.length s - 1 do
     let c = s.[i] in
-    if c = !last_char then
-      incr chain_length
+    if c = !last_char then incr chain_length
     else (
       commit_chain ();
       last_char := c;
-      chain_length := 1
-    )
+      chain_length := 1)
   done;
   commit_chain ();
   Buffer.contents buf

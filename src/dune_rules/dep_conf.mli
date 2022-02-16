@@ -17,6 +17,7 @@ type t =
      [no_sandboxing], it's that your action depends on something undeclared
      (e.g. absolute path of cwd) and you want to allow it) *)
   | Sandbox_config of Sandbox_config.t
+  | Include of string
 
 val remove_locs : t -> t
 

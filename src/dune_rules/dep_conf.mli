@@ -22,6 +22,4 @@ val remove_locs : t -> t
 
 include Dune_lang.Conv.S with type t := t
 
-val decode_many : t list Dune_lang.Decoder.t
-
 val to_dyn : t Dyn.builder

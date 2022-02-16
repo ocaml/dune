@@ -83,42 +83,6 @@ let decode_manually f =
 
 let decode = decode_manually Pform.Env.parse
 
-let decode_many f =
-  let open Dune_lang.Decoder in
-  let+ env = get decoding_env_key
-  and+ x = raw in
-  let env =
-    match env with
-    | Some env -> env
-    | None ->
-      Code_error.raise ~loc:(Dune_lang.Ast.loc x)
-        "pform decoding environment not set" []
-  in
-  let rec helper x =
-    match x with
-    | Atom (loc, A s) -> [ literal ~quoted:false ~loc s ]
-    | Quoted_string (loc, s) -> [ literal ~quoted:true ~loc s ]
-    | List (_loc, xs) -> List.concat_map ~f:helper xs
-    | Template { quoted; loc; parts } ->
-      [ { quoted
-        ; loc
-        ; parts =
-            List.map parts ~f:(function
-              | Dune_lang.Template.Text s -> Text s
-              | Pform v -> (
-                match f env v with
-                | pform -> Pform (v, pform)
-                | exception User_error.E msg
-                  when Pform.Env.syntax_version env < (3, 0) ->
-                  (* Before dune 3.0, unknown variable errors were delayed *)
-                  Error (v, msg)))
-        }
-      ]
-  in
-  helper x
-
-let decode_many = decode_many Pform.Env.parse
-
 let loc t = t.loc
 
 let virt_pform ?quoted pos pform =

@@ -75,10 +75,6 @@ let decode =
   <|> let+ x = String_with_vars.decode in
       File x
 
-let decode_many =
-  let+ xs = String_with_vars.decode_many in
-  List.map ~f:(fun f -> File f) xs
-
 open Dune_lang
 
 let encode = function

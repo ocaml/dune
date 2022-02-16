@@ -25,8 +25,6 @@ val decode_manually :
      (Pform.Env.t -> Dune_lang.Template.Pform.t -> Pform.t)
   -> t Dune_lang.Decoder.t
 
-val decode_many : t list Dune_lang.Decoder.t
-
 val decoding_env_key : Pform.Env.t Univ_map.Key.t
 
 val set_decoding_env :

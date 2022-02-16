@@ -1237,6 +1237,7 @@ module Run = struct
   let poll step =
     let* t = poll_init () in
     let rec loop () =
+      (* let step = File_lock.Lock.with_lock File_lock.t ~f:(fun () -> step) in *)
       let* _res = poll_iter t step in
       let* () = wait_for_build_input_change t in
       loop ()
@@ -1248,24 +1249,25 @@ module Run = struct
     let rec loop () =
       let* step, response_ivar = get_build_request in
       (* Flush before to make the build reproducible. The passive watch mode is
-         designed for tests and We want to observe all the change made by the
-         test before starting the build. *)
+      designed for tests and We want to observe all the change made by the
+      test before starting the build. *)
       let* () = flush_file_watcher t in
       let step =
         let* res = step in
         (* Flush after the build to make sure we reach a fix point if the build
-           interrupts itself. Without that, a file change caused by the build
-           itself might be picked up before or after the build finishes, which
-           makes the behavior racy and not good for tests.
-
-           Flushing here makes the previous [flush_file_watcher] less useful,
-           however we keep it because without it we might start the build
-           without having observed all the changes made by the current test.
-           Such an intermediate state might result in a build error, which would
-           make the test racy.*)
+          interrupts itself. Without that, a file change caused by the build
+        itself might be picked up before or after the build finishes, which
+        makes the behavior racy and not good for tests.
+        
+        Flushing here makes the previous [flush_file_watcher] less useful,
+        however we keep it because without it we might start the build
+        without having observed all the changes made by the current test.
+        Such an intermediate state might result in a build error, which would
+        make the test racy.*)
         let+ () = flush_file_watcher t in
         res
       in
+      let step = File_lock.Lock.with_lock File_lock.t ~f:(fun () -> step) in
       let* res = poll_iter t step in
       let* () = Fiber.Ivar.fill response_ivar res in
       loop ()

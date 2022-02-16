@@ -43,5 +43,7 @@ before we're able to cancel the build.
   new-contents
 
   $ stop_dune
+  Hello
   Success, waiting for filesystem changes...
+  Hello
   Success, waiting for filesystem changes...

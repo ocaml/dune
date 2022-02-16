@@ -68,3 +68,4 @@ module Report_errors_config = Report_errors_config
 module Compound_user_error = Compound_user_error
 module Reflection = Reflection
 module Dtemp = Dtemp
+module File_lock = File_lock

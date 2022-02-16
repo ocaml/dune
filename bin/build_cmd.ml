@@ -111,6 +111,9 @@ let run_build_command_once ~(common : Common.t) ~config ~request =
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
   in
+  let once () =
+    let open Dune_engine.File_lock in
+    Lock.with_lock t ~f:once in
   Scheduler.go ~common ~config once
 
 let run_build_command ~(common : Common.t) ~config ~request =

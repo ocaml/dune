@@ -111,9 +111,14 @@ module In_context = struct
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
     ; javascript_files : Path.Build.t list
     }
-  let make ~(dir: Path.Build.t) (x : In_buildable.t) =
+
+  let make ~(dir : Path.Build.t) (x : In_buildable.t) =
     { flags = x.flags
-    ; javascript_files = List.map ~f:(fun name -> Path.Build.relative dir name) x.javascript_files }
+    ; javascript_files =
+        List.map
+          ~f:(fun name -> Path.Build.relative dir name)
+          x.javascript_files
+    }
 
   let default = { flags = Flags.standard; javascript_files = [] }
 end

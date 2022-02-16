@@ -206,8 +206,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
 
 let link_js ~name ~cm_files ~promote ~link_time_code_gen cctx =
   let in_context =
-    CC.js_of_ocaml cctx
-    |> Option.value ~default:Js_of_ocaml.In_context.default
+    CC.js_of_ocaml cctx |> Option.value ~default:Js_of_ocaml.In_context.default
   in
   let other_cm =
     let open Memo.Build.O in

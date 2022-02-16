@@ -41,6 +41,7 @@ module In_buildable : sig
     }
 
   val decode : t Dune_lang.Decoder.t
+
   val default : t
 end
 
@@ -51,6 +52,7 @@ module In_context : sig
     }
 
   val make : dir:Path.Build.t -> In_buildable.t -> t
+
   val default : t
 end
 

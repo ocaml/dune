@@ -308,7 +308,9 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
   let dir = Compilation_context.dir cctx in
   let flags = Compilation_context.flags cctx in
   let modules = Compilation_context.modules cctx in
-  let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
+  let js_of_ocaml =
+    Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
+  in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Compilation_context.context cctx in
   let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.lib_config in
@@ -334,9 +336,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
                   (* XXX we should get the directory from the dir of the cma
                      file explicitly *)
                   let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
-                  Super_context.add_rule sctx
-                    ~dir
-                    ~loc:lib.buildable.loc
+                  Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc
                     (Action_builder.copy ~src ~dst)))
   in
   let top_sorted_modules =
@@ -432,7 +432,9 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
   in
   let package = Dune_file.Library.package lib in
-  let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
+  let js_of_ocaml =
+    Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
+  in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)

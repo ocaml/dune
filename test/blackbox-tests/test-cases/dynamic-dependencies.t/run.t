@@ -64,6 +64,7 @@ Works with aliases and other dependency specifications
   > (alias depA)
   > (universe)
   > depB
+  > another_dep
   > EOF
 
   $ cat > dune <<EOF
@@ -78,6 +79,10 @@ Works with aliases and other dependency specifications
   >   (progn
   >     (run echo building depB)
   >     (bash "echo depB > %{target}"))))
+  > (rule
+  >  (target another_dep)
+  >  (action
+  >   (bash "echo building a_dep > %{target}")))
   > 
   > (rule
   >  (alias output)
@@ -91,7 +96,8 @@ Works with aliases and other dependency specifications
   building depA
           echo depB
   building depB
+          bash another_dep
           bash depB
           echo alias output
-  dependencies depB
+  dependencies depB another_dep
 

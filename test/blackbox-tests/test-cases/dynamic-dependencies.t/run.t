@@ -101,3 +101,22 @@ Works with aliases and other dependency specifications
           echo alias output
   dependencies depB another_dep
 
+Multiple `(include)` nesting
+
+  $ cat >> dune <<EOF
+  > (rule
+  >  (target meta-deps.d)
+  >  (action
+  >   (bash "echo '(include ./deps.d)' > %{target}")))
+  > 
+  > (rule
+  >  (alias nested)
+  >  (deps (include meta-deps.d))
+  >  (action (bash "echo metadeps: %{deps}")))
+  > EOF
+
+  $ dune build @nested --display=short
+          bash meta-deps.d
+          bash alias nested
+  metadeps: depB another_dep
+

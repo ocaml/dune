@@ -38,6 +38,11 @@ Setup
   >  (libraries foo_x foo)
   >  (modules main2 main2_aux1 main2_aux2 main2_aux3 main2_aux4)
   >  (modules_without_implementation main2_aux4))
+  > 
+  > (executable
+  >   (name main3)
+  >   (libraries cmdliner)
+  >   (modules main3))
   > EOF
 
   $ touch foo.ml
@@ -82,6 +87,8 @@ Setup
   $ cat >main2_aux4.mli <<EOF
   > type t = int
   > EOF
+
+  $ touch main3.ml
 
 Describe various things
 -----------------------
@@ -140,6 +147,16 @@ not stable across different setups.
         (cmt (_build/default/.main2.eobjs/byte/dune__exe.cmt))
         (cmti ()))))
      (include_dirs (_build/default/.main2.eobjs/byte))))
+   (executables
+    ((names (main3))
+     (requires (c480a7c584d174c22d86dbdb79515d7d))
+     (modules
+      (((name Main3)
+        (impl (_build/default/main3.ml))
+        (intf ())
+        (cmt (_build/default/.main3.eobjs/byte/dune__exe__Main3.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.main3.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -163,6 +180,50 @@ not stable across different setups.
         (cmt (_build/default/.bar.objs/byte/bar__.cmt))
         (cmti ()))))
      (include_dirs (_build/default/.bar.objs/byte))))
+   (library
+    ((name base)
+     (uid 46774e2b7a404647f12956126bd28f95)
+     (local false)
+     (requires
+      (3803213fe04d38cea3157f466b9a8747
+       ce20dcd0c4bae81524a96662594adde2
+       449445be7a24ce51e119d57e9e255d3f
+       b91de1a8b6b882f5b4726d5b1f2ece6e))
+     (source_dir /FINDLIB//base)
+     (modules ())
+     (include_dirs (/FINDLIB//base))))
+   (library
+    ((name base.base_internalhash_types)
+     (uid 3803213fe04d38cea3157f466b9a8747)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//base/base_internalhash_types)
+     (modules ())
+     (include_dirs (/FINDLIB//base/base_internalhash_types))))
+   (library
+    ((name base.caml)
+     (uid ce20dcd0c4bae81524a96662594adde2)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//base/caml)
+     (modules ())
+     (include_dirs (/FINDLIB//base/caml))))
+   (library
+    ((name base.shadow_stdlib)
+     (uid b91de1a8b6b882f5b4726d5b1f2ece6e)
+     (local false)
+     (requires (ce20dcd0c4bae81524a96662594adde2))
+     (source_dir /FINDLIB//base/shadow_stdlib)
+     (modules ())
+     (include_dirs (/FINDLIB//base/shadow_stdlib))))
+   (library
+    ((name cmdliner)
+     (uid c480a7c584d174c22d86dbdb79515d7d)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//cmdliner)
+     (modules ())
+     (include_dirs (/FINDLIB//cmdliner))))
    (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
@@ -190,6 +251,49 @@ not stable across different setups.
         (cmti ()))))
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
+    ((name jane-street-headers)
+     (uid 73ad4e016c34da2f2d4a1cff930ac883)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//jane-street-headers)
+     (modules ())
+     (include_dirs (/FINDLIB//jane-street-headers))))
+   (library
+    ((name ppx_compare.runtime-lib)
+     (uid 708bf5748829e3636236f5d8c610f430)
+     (local false)
+     (requires (46774e2b7a404647f12956126bd28f95))
+     (source_dir /FINDLIB//ppx_compare/runtime-lib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_compare/runtime-lib))))
+   (library
+    ((name ppx_enumerate.runtime-lib)
+     (uid 2c6f959289bddfd3b3ada8f64a3ca5d8)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//ppx_enumerate/runtime-lib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_enumerate/runtime-lib))))
+   (library
+    ((name ppx_hash.runtime-lib)
+     (uid 92685e7ac0dd1fa9cd96be221032349e)
+     (local false)
+     (requires
+      (46774e2b7a404647f12956126bd28f95
+       475f353b2705e034b0287d7ffe9e5225
+       708bf5748829e3636236f5d8c610f430))
+     (source_dir /FINDLIB//ppx_hash/runtime-lib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_hash/runtime-lib))))
+   (library
+    ((name ppx_inline_test.config)
+     (uid 46e75006466e7a020139d86575978cb3)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//ppx_inline_test/config)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_inline_test/config))))
+   (library
     ((name ppx_inline_test.runtime-lib)
      (uid 55b023c301c18e021a22384b996d66af)
      (local false)
@@ -199,7 +303,37 @@ not stable across different setups.
        66c5927ddd01193cdcfac8ce97e58e63))
      (source_dir /FINDLIB//ppx_inline_test/runtime-lib)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_inline_test/runtime-lib)))))
+     (include_dirs (/FINDLIB//ppx_inline_test/runtime-lib))))
+   (library
+    ((name ppx_sexp_conv.runtime-lib)
+     (uid 475f353b2705e034b0287d7ffe9e5225)
+     (local false)
+     (requires (449445be7a24ce51e119d57e9e255d3f))
+     (source_dir /FINDLIB//ppx_sexp_conv/runtime-lib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_sexp_conv/runtime-lib))))
+   (library
+    ((name sexplib0)
+     (uid 449445be7a24ce51e119d57e9e255d3f)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//sexplib0)
+     (modules ())
+     (include_dirs (/FINDLIB//sexplib0))))
+   (library
+    ((name time_now)
+     (uid 66c5927ddd01193cdcfac8ce97e58e63)
+     (local false)
+     (requires
+      (46774e2b7a404647f12956126bd28f95
+       73ad4e016c34da2f2d4a1cff930ac883
+       475f353b2705e034b0287d7ffe9e5225
+       708bf5748829e3636236f5d8c610f430
+       2c6f959289bddfd3b3ada8f64a3ca5d8
+       92685e7ac0dd1fa9cd96be221032349e))
+     (source_dir /FINDLIB//time_now)
+     (modules ())
+     (include_dirs (/FINDLIB//time_now)))))
 
   $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests
   ((executables
@@ -270,6 +404,17 @@ not stable across different setups.
          ((for_intf ())
           (for_impl ()))))))
      (include_dirs (_build/default/.main2.eobjs/byte))))
+   (executables
+    ((names (main3))
+     (requires (c480a7c584d174c22d86dbdb79515d7d))
+     (modules
+      (((name Main3)
+        (impl (_build/default/main3.ml))
+        (intf ())
+        (cmt (_build/default/.main3.eobjs/byte/dune__exe__Main3.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/.main3.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -303,6 +448,50 @@ not stable across different setups.
           (for_impl ()))))))
      (include_dirs (_build/default/.bar.objs/byte))))
    (library
+    ((name base)
+     (uid 46774e2b7a404647f12956126bd28f95)
+     (local false)
+     (requires
+      (3803213fe04d38cea3157f466b9a8747
+       ce20dcd0c4bae81524a96662594adde2
+       449445be7a24ce51e119d57e9e255d3f
+       b91de1a8b6b882f5b4726d5b1f2ece6e))
+     (source_dir /FINDLIB//base)
+     (modules ())
+     (include_dirs (/FINDLIB//base))))
+   (library
+    ((name base.base_internalhash_types)
+     (uid 3803213fe04d38cea3157f466b9a8747)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//base/base_internalhash_types)
+     (modules ())
+     (include_dirs (/FINDLIB//base/base_internalhash_types))))
+   (library
+    ((name base.caml)
+     (uid ce20dcd0c4bae81524a96662594adde2)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//base/caml)
+     (modules ())
+     (include_dirs (/FINDLIB//base/caml))))
+   (library
+    ((name base.shadow_stdlib)
+     (uid b91de1a8b6b882f5b4726d5b1f2ece6e)
+     (local false)
+     (requires (ce20dcd0c4bae81524a96662594adde2))
+     (source_dir /FINDLIB//base/shadow_stdlib)
+     (modules ())
+     (include_dirs (/FINDLIB//base/shadow_stdlib))))
+   (library
+    ((name cmdliner)
+     (uid c480a7c584d174c22d86dbdb79515d7d)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//cmdliner)
+     (modules ())
+     (include_dirs (/FINDLIB//cmdliner))))
+   (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
      (local true)
@@ -331,6 +520,49 @@ not stable across different setups.
         (module_deps ((for_intf ()) (for_impl ()))))))
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
+    ((name jane-street-headers)
+     (uid 73ad4e016c34da2f2d4a1cff930ac883)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//jane-street-headers)
+     (modules ())
+     (include_dirs (/FINDLIB//jane-street-headers))))
+   (library
+    ((name ppx_compare.runtime-lib)
+     (uid 708bf5748829e3636236f5d8c610f430)
+     (local false)
+     (requires (46774e2b7a404647f12956126bd28f95))
+     (source_dir /FINDLIB//ppx_compare/runtime-lib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_compare/runtime-lib))))
+   (library
+    ((name ppx_enumerate.runtime-lib)
+     (uid 2c6f959289bddfd3b3ada8f64a3ca5d8)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//ppx_enumerate/runtime-lib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_enumerate/runtime-lib))))
+   (library
+    ((name ppx_hash.runtime-lib)
+     (uid 92685e7ac0dd1fa9cd96be221032349e)
+     (local false)
+     (requires
+      (46774e2b7a404647f12956126bd28f95
+       475f353b2705e034b0287d7ffe9e5225
+       708bf5748829e3636236f5d8c610f430))
+     (source_dir /FINDLIB//ppx_hash/runtime-lib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_hash/runtime-lib))))
+   (library
+    ((name ppx_inline_test.config)
+     (uid 46e75006466e7a020139d86575978cb3)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//ppx_inline_test/config)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_inline_test/config))))
+   (library
     ((name ppx_inline_test.runtime-lib)
      (uid 55b023c301c18e021a22384b996d66af)
      (local false)
@@ -340,7 +572,37 @@ not stable across different setups.
        66c5927ddd01193cdcfac8ce97e58e63))
      (source_dir /FINDLIB//ppx_inline_test/runtime-lib)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_inline_test/runtime-lib)))))
+     (include_dirs (/FINDLIB//ppx_inline_test/runtime-lib))))
+   (library
+    ((name ppx_sexp_conv.runtime-lib)
+     (uid 475f353b2705e034b0287d7ffe9e5225)
+     (local false)
+     (requires (449445be7a24ce51e119d57e9e255d3f))
+     (source_dir /FINDLIB//ppx_sexp_conv/runtime-lib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppx_sexp_conv/runtime-lib))))
+   (library
+    ((name sexplib0)
+     (uid 449445be7a24ce51e119d57e9e255d3f)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//sexplib0)
+     (modules ())
+     (include_dirs (/FINDLIB//sexplib0))))
+   (library
+    ((name time_now)
+     (uid 66c5927ddd01193cdcfac8ce97e58e63)
+     (local false)
+     (requires
+      (46774e2b7a404647f12956126bd28f95
+       73ad4e016c34da2f2d4a1cff930ac883
+       475f353b2705e034b0287d7ffe9e5225
+       708bf5748829e3636236f5d8c610f430
+       2c6f959289bddfd3b3ada8f64a3ca5d8
+       92685e7ac0dd1fa9cd96be221032349e))
+     (source_dir /FINDLIB//time_now)
+     (modules ())
+     (include_dirs (/FINDLIB//time_now)))))
 
 
 Test other formats

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Ensure that `dune describe` computes a transitively closed set of
+  libraries (#5395, @esope)
+
 - Add direct dependencies to $ dune describe output (#5412, @esope)
 
 - Fix compilation on MacOS SDK < 10.13. The native watch mode is disabled in

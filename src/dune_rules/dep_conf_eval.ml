@@ -93,14 +93,9 @@ let rec dep expander = function
     let deps = expand_include ~expander s in
     Other
       (let* deps = Action_builder.memo_build deps in
-       let builder, _expander, _sandbox_config =
-         named_paths_builder ~expander deps
-       in
-       let+ (paths : Dune_util.Value.t list) = builder in
-       (List.map
-          ~f:(function
-            | Dune_util.Value.Path p -> p)
-          paths [@ocaml.warning "-8"]))
+       let builder, _bindings = named_paths_builder ~expander deps in
+       let+ paths = builder in
+       paths)
   | File s -> (
     match Expander.With_deps_if_necessary.expand_path expander s with
     | Without paths ->
@@ -214,7 +209,7 @@ let rec dep expander = function
        [])
   | Sandbox_config _ -> Other (Action_builder.return [])
 
-and named_paths_builder ~expander (l : Dep_conf.t Bindings.t) =
+and named_paths_builder ~expander l =
   let builders, bindings =
     let expander = prepare_expander expander in
     List.fold_left l ~init:([], Pform.Map.empty)
@@ -262,26 +257,28 @@ and named_paths_builder ~expander (l : Dep_conf.t Bindings.t) =
   in
   let builder =
     let+ l = Action_builder.all (List.rev builders) in
-    Dune_util.Value.L.paths (List.concat l)
+    List.concat l
+  in
+  (builder, bindings)
+
+let named ~expander l =
+  let builder, bindings = named_paths_builder ~expander l in
+  let builder =
+    let+ paths = builder in
+    Dune_util.Value.L.paths paths
   in
   let builder = Action_builder.memoize "deps" builder in
   let bindings =
     Pform.Map.set bindings (Var Deps) (Expander.Deps.With builder)
   in
   let expander = Expander.add_bindings_full expander ~bindings in
-  ( builder
+  ( Action_builder.ignore builder
   , expander
   , Bindings.fold l ~init:Sandbox_config.no_special_requirements
       ~f:(fun one acc ->
         match one with
         | Unnamed dep -> add_sandbox_config acc dep
         | Named (_, l) -> List.fold_left l ~init:acc ~f:add_sandbox_config) )
-
-let named ~expander l =
-  let named_builder, expander, sandbox_config =
-    named_paths_builder ~expander l
-  in
-  (Action_builder.ignore named_builder, expander, sandbox_config)
 
 let unnamed ~expander l =
   let expander = prepare_expander expander in

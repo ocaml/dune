@@ -302,9 +302,9 @@ defined in the project:
 - ``(license <name>)`` - specifies the license of the project, ideally as an
   identifier from the `SPDX License List <https://spdx.org/licenses/>`__
 
-- ``(authors <authors>)`` - a list of authors
+- ``(authors <author> ..)`` - authors as inline strings
 
-- ``(maintainers <maintainers>)`` - a list of maintainers
+- ``(maintainers <maintainer> ..)`` - maintainers as inline strings
 
 - ``(source <source>)`` - where the source is specified two ways:
   ``(github <user/repo>)`` or ``(uri <uri>)``
@@ -328,7 +328,7 @@ Some or all of these fields may be overridden for each package of the project, s
 package
 -------
 
-Package specific information is specified in the ``(package <package>)`` stanza.
+Package specific information is specified in the ``(package <package-fields>)`` stanza.
 It contains the following fields:
 
 - ``(name <string>)`` is the name of the package. This must be specified.

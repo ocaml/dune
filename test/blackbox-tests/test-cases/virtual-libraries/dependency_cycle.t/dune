@@ -1,0 +1,14 @@
+
+(library
+  (name multicore_compute)
+  (virtual_modules multicore_compute))
+
+(library
+  (name multicore_compute_real)
+  (libraries domainslib)
+  (implements multicore_compute))
+
+(executable
+	(public_name hello_world)
+	(libraries multicore_compute))
+	

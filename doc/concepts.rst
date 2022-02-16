@@ -610,6 +610,9 @@ Dependencies in ``dune`` files can be specified using one of the following:
   will be rebuilt.
 - ``(sandbox <config>)`` requires a particular sandboxing configuration.
   ``<config>`` can be one (or many) of:
+- ``(include <file>)`` read the s-expression in ``<file>`` and intepret it as
+  additional dependencies. The s-expression is expected to be a list of the
+  same constructs enumerated here.
 
   - ``always``: the action requires a clean environment
   - ``none``: the action must run in the build directory

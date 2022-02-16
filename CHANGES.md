@@ -1,5 +1,8 @@
-Unreleased
-----------
+3.1.0 (Unreleased)
+------------------
+
+- Add `(include <file>)` constructor to dependency specifications. This can be
+  used to introduce dynamic dependencies (#5442, @anmonteiro)
 
 - Ensure that `dune describe` computes a transitively closed set of
   libraries (#5395, @esope)

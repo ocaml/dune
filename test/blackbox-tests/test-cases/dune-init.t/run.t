@@ -335,7 +335,7 @@ The generated project contains all expected sub-components:
 In particular, the dune-project file has the expected content:
 
   $ cat test_exec_proj/dune-project
-  (lang dune 3.0)
+  (lang dune 3.1)
   
   (name test_exec_proj)
   
@@ -383,7 +383,7 @@ And the opam file will be generated as expected
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
-    "dune" {>= "3.0"}
+    "dune" {>= "3.1"}
     "odoc" {with-doc}
   ]
   build: [
@@ -437,7 +437,7 @@ The generated project contains all expected sub-components:
 In particular, the dune-project file has the expected content:
 
   $ cat test_lib_proj/dune-project
-  (lang dune 3.0)
+  (lang dune 3.1)
   
   (name test_lib_proj)
   
@@ -490,7 +490,7 @@ And the opam file will be generated as expected
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
-    "dune" {>= "3.0"}
+    "dune" {>= "3.1"}
     "odoc" {with-doc}
   ]
   build: [

@@ -151,13 +151,14 @@ include Sub_system.Register_end_point (struct
         Super_context.ocaml_flags sctx ~dir info.executable_ocaml_flags
       in
       let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
+      let js_of_ocaml =
+        Js_of_ocaml.In_context.make ~dir
+          { lib.buildable.js_of_ocaml with javascript_files = [] }
+      in
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
         ~requires_link:(Memo.lazy_ (fun () -> runner_libs))
-        ~flags
-        ~js_of_ocaml:
-          (Some { lib.buildable.js_of_ocaml with javascript_files = [] })
-        ~package
+        ~flags ~js_of_ocaml:(Some js_of_ocaml) ~package
     in
     let linkages =
       let modes =

@@ -139,7 +139,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let js_of_ocaml =
-      let js_of_ocaml = exes.buildable.js_of_ocaml in
+      let js_of_ocaml = Js_of_ocaml.In_context.make ~dir exes.buildable.js_of_ocaml in
       if explicit_js_mode then
         Option.some_if (List.exists linkages ~f:Exe.Linkage.is_js) js_of_ocaml
       else Some js_of_ocaml

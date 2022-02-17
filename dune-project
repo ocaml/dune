@@ -68,9 +68,9 @@ executable was built.
  (name dune-private-libs)
  (synopsis "Private libraries of Dune")
  (depends
-  (csexp (>= 1.4.0))
-  pp
-  dyn
+  (csexp (>= 1.5.0))
+  (pp (>= 1.1.0))
+  (dyn (= :version))
   (stdune (= :version))
   (ocaml (>= 4.08)))
  (description "\
@@ -88,7 +88,7 @@ no stability guarantee.
  (synopsis "Helper library for gathering system configuration")
  (depends
   (ocaml (>= 4.04.0))
-  (csexp (>= 1.3.0)))
+  (csexp (>= 1.5.0)))
  (description "\
 dune-configurator is a small library that helps writing OCaml scripts that
 test features available on the system, in order to generate config.h
@@ -104,8 +104,8 @@ Among other things, dune-configurator allows one to:
  (name dune-action-plugin)
  (synopsis "[experimental] API for writing dynamic Dune actions")
  (depends
-  dune-glob
-  (csexp (>= 1.4.0))
+  (dune-glob (= :version))
+  (csexp (>= 1.5.0))
   (ppx_expect :with-test)
   (stdune (= :version))
   (dune-private-libs (= :version)))
@@ -145,10 +145,10 @@ understood by dune language."))
  (name dune-rpc-lwt)
  (synopsis "Communicate with dune using rpc and Lwt")
  (depends
-  result
   (dune-rpc (= :version))
-  (csexp (>= 1.4.0))
-  lwt)
+  (result (>= 1.5.0))
+  (csexp (>= 1.5.0))
+  (lwt (>= 5.3.0)))
  (description "Specialization of dune-rpc to Lwt"))
 
 (package
@@ -156,8 +156,8 @@ understood by dune language."))
  (synopsis "Dynamic type")
  (depends
   (ocaml (>= 4.08.0))
-  ordering
-  pp)
+  (ordering (= :version))
+  (pp (>= 1.1.0)))
  (description "Dynamic type"))
 
 (package
@@ -179,10 +179,10 @@ understood by dune language."))
  (synopsis "Dune's unstable standard library")
  (depends
   (ocaml (>= 4.08.0))
-  dyn
-  ordering
-  pp
-  csexp)
+  (dyn (= :version))
+  (ordering (= :version))
+  (pp (>= 1.1.0))
+  (csexp (>= 1.5.0)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
 (package
@@ -190,6 +190,6 @@ understood by dune language."))
  (synopsis "Structured concurrency library")
  (depends
   (ocaml (>= 4.08.0))
-  stdune
-  dyn)
+  (stdune (= :version))
+  (dyn (= :version)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

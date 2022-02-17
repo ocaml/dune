@@ -239,6 +239,14 @@ module Make (Key : Key) : S with type key = Key.t = struct
               (match v with
               | None -> entries
               | Some x -> List.append x entries))
+
+    let find_elt : type a. a t -> f:(a -> bool) -> (key * a) option =
+      fun m ~f ->
+      let exception Found of (key * a) in
+      try
+        let check_found k e = if f e then raise_notrace (Found (k, e)) in
+        iteri ~f:(fun k -> List.iter ~f:(check_found k)) m; None
+      with Found p -> Some p
   end
 
   exception Found of Key.t

@@ -30,7 +30,7 @@ let all : _ Term.Group.t list =
     ]
     |> List.map ~f:in_group
   in
-  let groups = [ Ocaml.group; Rpc.group; Internal.group ] in
+  let groups = [ Ocaml.group; Coq.group; Rpc.group; Internal.group ] in
   terms @ groups
 
 (* Short reminders for the most used and useful commands *)

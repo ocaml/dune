@@ -613,3 +613,34 @@ match with available configurations.
 For example, if you use the ``cppo`` preprocessor to generate the file
 ``real_module_name.ml``, then the source file could be named
 ``real_module_name.cppo.ml``.
+
+Running a Coq Toplevel
+======================
+
+Dune supports running a Coq toplevel like ``coqtop``, which is typically used
+for Coq to interact with proof editors like CoqIDE or Proof General.
+
+.. code:: bash
+
+   $ dune coq top <file> -- <args>
+
+Run a Coq toplevel (``coqtop`` by default) on the given Coq file ``<file>``,
+after having re-compiled its dependencies if necessary. The given arguments
+``<args>`` are forwarded to the invoked command. For example, this can be used
+to pass a ``-emacs`` flag to ``coqtop``.
+
+A different toplevel can be chosen with ``dune coq top --toplevel CMD <file>``.
+Note that using ``--toplevel echo`` is one way to observe what options are
+actually passed to the toplevel. These options are computed based on the
+options that would be passed to the Coq compiler if it was invoked on the Coq
+file ``<file>``.
+
+Limitations
+-----------
+
+* Only files that are part of a stanza can be loaded in a Coq toplevel.
+* When a file is created, it must be written to the file system before the Coq
+  toplevel is started.
+* When new dependencies are added to a file (via a Coq ``Require`` vernacular
+  command), it is in principle required to save the file and restart to Coq
+  toplevel process.

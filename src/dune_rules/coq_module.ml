@@ -21,13 +21,32 @@ module Name = struct
   let to_string s = s
 end
 
-(* We keep prefix and name separated as the handling of `From Foo Require Bar.`
-   may benefit from it. *)
-type t =
-  { source : Path.Build.t
-  ; prefix : string list
-  ; name : Name.t
-  }
+module Module = struct
+  (* We keep prefix and name separated as the handling of `From Foo Require Bar.`
+     may benefit from it. *)
+  type t =
+    { source : Path.Build.t
+    ; prefix : string list
+    ; name : Name.t
+    }
+
+  let compare { source; prefix; name } t =
+    let open Ordering.O in
+    let= () = Path.Build.compare source t.source in
+    let= () = List.compare prefix t.prefix ~compare:String.compare in
+    Name.compare name t.name
+
+  let to_dyn { source; prefix; name } =
+    Dyn.record
+      [ ("source", Path.Build.to_dyn source)
+      ; ("prefix", Dyn.list Dyn.string prefix)
+      ; ("name", Name.to_dyn name)
+      ]
+end
+
+include Module
+
+module Map = Map.Make(Module)
 
 let make ~source ~prefix ~name = { source; prefix; name }
 

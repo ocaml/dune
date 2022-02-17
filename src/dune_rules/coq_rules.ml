@@ -447,6 +447,26 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
       let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
       [ coqc; coqdep ])
 
+let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
+  let name = snd s.name in
+  let scope = SC.find_scope_by_dir sctx dir in
+  let coq_lib_db = Scope.coq_libs scope in
+  let theory = Coq_lib.DB.resolve coq_lib_db s.name |> Result.ok_exn in
+  let* coq_dir_contents = Dir_contents.coq dir_contents in
+  let+ cctx =
+    let wrapper_name = Coq_lib.wrapper theory in
+    let theories_deps =
+      Coq_lib.DB.requires coq_lib_db theory |> Resolve.of_result
+    in
+    let theory_dirs = Coq_sources.directories coq_dir_contents ~name in
+    let theory_dirs = Path.Build.Set.of_list theory_dirs in
+    let coqc_dir = (Super_context.context sctx).build_dir in
+    Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
+      s.buildable
+  in
+  let cctx = Context.for_module cctx coq_module in
+  (Context.coqc_file_flags cctx, cctx.boot_type)
+
 (******************************************************************************)
 (* Install rules *)
 (******************************************************************************)
@@ -571,3 +591,23 @@ let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule coq_module in
   let coqc = Action_builder.With_targets.add coqc ~file_targets:ml_targets in
   [ coqdep; coqc ]
+
+let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
+  let* cctx =
+    let wrapper_name = "DuneExtraction" in
+    let theories_deps =
+      let scope = SC.find_scope_by_dir sctx dir in
+      let coq_lib_db = Scope.coq_libs scope in
+      Resolve.of_result
+        (Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories)
+    in
+    let theory_dirs = Path.Build.Set.empty in
+    Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
+      ~theory_dirs s.buildable
+  in
+  let+ coq_module =
+    let+ coq = Dir_contents.coq dir_contents in
+    Coq_sources.extract coq s
+  in
+  let cctx = Context.for_module cctx coq_module in
+  (Context.coqc_file_flags cctx, cctx.boot_type)

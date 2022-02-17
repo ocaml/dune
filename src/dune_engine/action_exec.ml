@@ -504,12 +504,18 @@ let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
     ~execution_parameters t =
   let purpose = Process.Build_job (None, User_message.Annots.empty, targets) in
   let env =
-    extend_build_path_prefix_map env `New_rules_have_precedence
-      [ Some
-          { source = Path.to_absolute_filename root
-          ; target = "/workspace_root"
-          }
-      ]
+    match
+      Execution_parameters.add_workspace_root_to_build_path_prefix_map
+        execution_parameters
+    with
+    | false -> env
+    | true ->
+      extend_build_path_prefix_map env `New_rules_have_precedence
+        [ Some
+            { source = Path.to_absolute_filename root
+            ; target = "/workspace_root"
+            }
+        ]
   in
   let ectx = { targets; purpose; context; rule_loc; build_deps }
   and eenv =

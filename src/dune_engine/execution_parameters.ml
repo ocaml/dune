@@ -86,6 +86,8 @@ let dune_version t = t.dune_version
 let should_remove_write_permissions_on_generated_files t =
   t.dune_version >= (2, 4)
 
+let add_workspace_root_to_build_path_prefix_map t = t.dune_version >= (3, 0)
+
 let expand_aliases_in_sandbox t = t.expand_aliases_in_sandbox
 
 let action_stdout_on_success t = t.action_stdout_on_success

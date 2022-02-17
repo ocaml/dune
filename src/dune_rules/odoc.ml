@@ -124,7 +124,7 @@ module Dep : sig
 end = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
 
-  let latex_alias ctx m = Alias.doc ~dir:(Paths.latex ctx m)
+  let latex_alias ctx m = Alias.doc_latex ~dir:(Paths.latex ctx m)
 
   let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
@@ -175,6 +175,8 @@ end = struct
 end
 
 module type Generator_setup = sig
+  val parent_alias : dir:Path.Build.t -> Alias.t
+  
   val alias : Context.t -> target -> Alias.t
 
   val name : string
@@ -611,7 +613,7 @@ module Generator_helper (Setup : Generator_setup) = struct
     let alias =
       let pkg_dir = Package.dir pkg in
       let dir = Path.Build.append_source ctx.build_dir pkg_dir in
-      Alias.doc ~dir
+      Setup.parent_alias ~dir
     in
     Setup.alias ctx (Pkg name)
     :: (libs_of_pkg sctx ~pkg:name
@@ -683,6 +685,8 @@ let setup_pkg_odocl_rules sctx ~pkg ~libs : unit Memo.Build.t =
   Memo.With_implicit_output.exec setup_pkg_odocl_rules_def (sctx, pkg, libs)
 
 module Html_setup : Generator_setup = struct
+  let parent_alias = Alias.doc
+  
   let alias = Dep.html_alias
 
   let name = "html"
@@ -782,6 +786,8 @@ end
 module Html_generator = Generator_helper (Html_setup)
 
 module Latex_setup : Generator_setup = struct
+  let parent_alias = Alias.doc_latex
+  
   let alias = Dep.latex_alias
 
   let name = "latex"

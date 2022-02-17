@@ -171,6 +171,8 @@ let doc = make_standard (Name.of_string "doc")
 
 let private_doc = make_standard (Name.of_string "doc-private")
 
+let doc_latex = make_standard (Name.of_string "doc-latex")
+
 let lint = make_standard (Name.of_string "lint")
 
 let all = make_standard (Name.of_string "all")

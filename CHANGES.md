@@ -6,7 +6,7 @@ Unreleased
 
 - Add direct dependencies to $ dune describe output (#5412, @esope)
 
-3.0.2 (Unreleased)
+3.0.2 (17/02/2022)
 ------------------
 
 - Fix digest computation bug introduced in 3.0.1 (#5451, @rgrinberg)

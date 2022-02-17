@@ -360,7 +360,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 10
+  let rule_digest_version = 11
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
@@ -388,7 +388,8 @@ end = struct
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
       , Execution_parameters.action_stdout_on_success execution_parameters
-      , Execution_parameters.action_stderr_on_success execution_parameters )
+      , Execution_parameters.action_stderr_on_success execution_parameters
+      , Execution_parameters.expand_aliases_in_sandbox execution_parameters )
     in
     Digest.generic trace
 

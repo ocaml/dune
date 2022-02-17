@@ -1,35 +1,35 @@
 open! Stdune
 
-type 'a t = ('a -> effect) -> effect
+type 'a t = ('a -> eff) -> eff
 
-and effect =
-  | Read_ivar : 'a ivar * ('a -> effect) -> effect
-  | Fill_ivar : 'a ivar * 'a * (unit -> effect) -> effect
-  | Suspend : ('a k -> unit) * ('a -> effect) -> effect
-  | Resume : 'a k * 'a * (unit -> effect) -> effect
-  | Get_var : 'a Univ_map.Key.t * ('a option -> effect) -> effect
-  | Set_var : 'a Univ_map.Key.t * 'a * (unit -> effect) -> effect
-  | Unset_var : 'a Univ_map.Key.t * (unit -> effect) -> effect
+and eff =
+  | Read_ivar : 'a ivar * ('a -> eff) -> eff
+  | Fill_ivar : 'a ivar * 'a * (unit -> eff) -> eff
+  | Suspend : ('a k -> unit) * ('a -> eff) -> eff
+  | Resume : 'a k * 'a * (unit -> eff) -> eff
+  | Get_var : 'a Univ_map.Key.t * ('a option -> eff) -> eff
+  | Set_var : 'a Univ_map.Key.t * 'a * (unit -> eff) -> eff
+  | Unset_var : 'a Univ_map.Key.t * (unit -> eff) -> eff
   | With_error_handler :
-      (Exn_with_backtrace.t -> Nothing.t t) * (unit -> effect)
-      -> effect
-  | Unwind : ('a -> effect) * 'a -> effect
+      (Exn_with_backtrace.t -> Nothing.t t) * (unit -> eff)
+      -> eff
+  | Unwind : ('a -> eff) * 'a -> eff
   | Map_reduce_errors :
       (module Monoid with type t = 'a)
       * (Exn_with_backtrace.t -> 'a t)
-      * (unit -> effect)
-      * (('b, 'a) result -> effect)
-      -> effect
-  | Unwind_map_reduce : ('a -> effect) * 'a -> effect
-  | End_of_map_reduce_error_handler : (_, _) map_reduce_context' -> effect
+      * (unit -> eff)
+      * (('b, 'a) result -> eff)
+      -> eff
+  | Unwind_map_reduce : ('a -> eff) * 'a -> eff
+  | End_of_map_reduce_error_handler : (_, _) map_reduce_context' -> eff
   | End_of_fiber of unit
   | Never of unit
   (* Add a dummy unit argument to [End_of_fiber] and [Never] so that all
      constructors are boxed, which removes a branch in the pattern match. *)
-  | Fork : effect * (unit -> effect) -> effect
-  | Reraise : Exn_with_backtrace.t -> effect
-  | Reraise_all : Exn_with_backtrace.t list -> effect
-  | Toplevel_exception : Exn_with_backtrace.t -> effect
+  | Fork : eff * (unit -> eff) -> eff
+  | Reraise : Exn_with_backtrace.t -> eff
+  | Reraise_all : Exn_with_backtrace.t list -> eff
+  | Toplevel_exception : Exn_with_backtrace.t -> eff
   | Done of value
 
 and 'a ivar = { mutable state : ('a, [ `Full | `Empty ]) ivar_state }
@@ -38,7 +38,7 @@ and ('a, _) ivar_state =
   | Full : 'a -> ('a, [> `Full ]) ivar_state
   | Empty : ('a, [> `Empty ]) ivar_state
   | Empty_with_readers :
-      context * ('a -> effect) * ('a, [ `Empty ]) ivar_state
+      context * ('a -> eff) * ('a, [ `Empty ]) ivar_state
       -> ('a, [> `Empty ]) ivar_state
 
 and value = ..
@@ -61,7 +61,7 @@ and map_reduce_context =
   | Map_reduce_context : (_, _) map_reduce_context' -> map_reduce_context
 
 and 'a k =
-  { run : 'a -> effect
+  { run : 'a -> eff
   ; ctx : context
   }
 
@@ -101,7 +101,7 @@ let apply2 f x y =
 let[@inlined always] fork a b =
   match apply a () with
   | End_of_fiber () -> b ()
-  | effect -> Fork (effect, b)
+  | eff -> Fork (eff, b)
 
 let rec nfork x l f =
   match l with
@@ -111,7 +111,7 @@ let rec nfork x l f =
        getting rid of the closures. *)
     match apply f x with
     | End_of_fiber () -> nfork y l f
-    | effect -> Fork (effect, fun () -> nfork y l f))
+    | eff -> Fork (eff, fun () -> nfork y l f))
 
 let rec nforki i x l f =
   match l with
@@ -119,7 +119,7 @@ let rec nforki i x l f =
   | y :: l -> (
     match apply2 f i x with
     | End_of_fiber () -> nforki (i + 1) y l f
-    | effect -> Fork (effect, fun () -> nforki (i + 1) y l f))
+    | eff -> Fork (eff, fun () -> nforki (i + 1) y l f))
 
 let nforki x l f = nforki 0 x l f
 
@@ -130,7 +130,7 @@ let rec nfork_seq left_over x (seq : _ Seq.t) f =
     incr left_over;
     match apply f x with
     | End_of_fiber () -> nfork_seq left_over y seq f
-    | effect -> Fork (effect, fun () -> nfork_seq left_over y seq f))
+    | eff -> Fork (eff, fun () -> nfork_seq left_over y seq f))
 
 let parallel_iter_seq (seq : _ Seq.t) ~f k =
   match seq () with
@@ -168,7 +168,7 @@ let fork_and_join fa fb k =
   in
   match apply2 fa () ka with
   | End_of_fiber () -> fb () kb
-  | effect -> Fork (effect, fun () -> fb () kb)
+  | eff -> Fork (eff, fun () -> fb () kb)
 
 let fork_and_join_unit fa fb k =
   let state = ref Nothing_yet in
@@ -182,9 +182,9 @@ let fork_and_join_unit fa fb k =
         | Got_b b -> k b)
   with
   | End_of_fiber () -> fb () k
-  | effect ->
+  | eff ->
     Fork
-      ( effect
+      ( eff
       , fun () ->
           fb () (fun b ->
               match !state with
@@ -790,7 +790,7 @@ type fill = Fill : 'a ivar * 'a -> fill
 module Jobs = struct
   type t =
     | Empty
-    | Job : context * ('a -> effect) * 'a * t -> t
+    | Job : context * ('a -> eff) * 'a * t -> t
     | Concat : t * t -> t
 
   let concat a b =
@@ -849,7 +849,7 @@ module Scheduler = struct
     | Job (ctx, run, x, a) -> exec ctx run x (Jobs.concat a b)
     | Concat (a1, a2) -> loop2 a1 (Jobs.concat a2 b)
 
-  and exec : 'a. context -> ('a -> effect) -> 'a -> Jobs.t -> step' =
+  and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
    fun ctx k x jobs ->
     match k x with
     | exception exn ->
@@ -938,8 +938,8 @@ module Scheduler = struct
          context
       -> (module Monoid with type t = errors)
       -> (Exn_with_backtrace.t -> errors t)
-      -> (unit -> effect)
-      -> ((b, errors) result -> effect)
+      -> (unit -> eff)
+      -> ((b, errors) result -> eff)
       -> Jobs.t
       -> step' =
    fun ctx (module M : Monoid with type t = errors) on_error f k jobs ->

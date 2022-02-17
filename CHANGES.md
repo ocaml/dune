@@ -6,8 +6,16 @@ Unreleased
 
 - Add direct dependencies to $ dune describe output (#5412, @esope)
 
+3.0.1 (17/02/2022)
+------------------
+
 - Fix compilation on MacOS SDK < 10.13. The native watch mode is disabled in
   such instances (#5431 fix #5430, @rgrinberg)
+
+- Do no add workspace_root to `BUILD_PATH_PREFIX_MAP` for projects before 3.0
+  (5448, @rgrinberg)
+
+- Fix performance regression in incremental builds (#5439, @snowleopard)
 
 3.0.0 (11/02/2022)
 ------------------

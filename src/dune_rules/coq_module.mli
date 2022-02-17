@@ -22,6 +22,8 @@ end
 
 type t
 
+module Map : Map.S with type key = t
+
 (** A Coq module [a.b.foo] defined in file [a/b/foo.v] *)
 val make :
      source:Path.Build.t

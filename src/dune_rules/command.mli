@@ -104,3 +104,11 @@ module Ml_kind : sig
 
   val ppx_driver_flag : Ml_kind.t -> _ Args.t
 end
+
+(** [expand ~dir args] interprets the command line arguments [args] to produce
+    corresponding strings, assuming they will be used as arguments to run a
+    command in directory [dir]. *)
+val expand :
+  dir:Path.t ->
+  'a Args.t ->
+  string list Action_builder.With_targets.t

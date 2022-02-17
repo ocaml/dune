@@ -1,6 +1,8 @@
 3.1.0 (Unreleased)
 ------------------
 
+- Add `dune coq top` command for running a Coq toplevel (#5457, @rlepigre)
+
 - Fix dune exec dumping database in wrong directory (#5544, @bobot)
 
 - Always output absolute paths for locations in RPC reported diagnostics

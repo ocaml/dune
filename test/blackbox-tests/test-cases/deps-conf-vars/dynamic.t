@@ -7,12 +7,12 @@ this feature.
 
   $ echo "(lang dune 1.6)" > dune-project
   $ cat >dune <<EOF
+  > (rule (with-stdout-to foo (echo bar)))
   > (alias
   >  (name default)
   >  (deps %{read:foo}))
   > EOF
   $ dune build
-  Error: No rule found for foo
-  -> required by %{read:foo} at dune:3
-  -> required by alias default in dune:1
+  Error: No rule found for bar
+  -> required by alias default in dune:2
   [1]

@@ -41,10 +41,12 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
               | `bc -> ".bc"
               | `exe -> ".exe"
             in
-            let custom_runner =
+            let* custom_runner =
               match runtest_mode with
-              | `js -> Some Jsoo_rules.runner
-              | `bc | `exe -> None
+              | `js ->
+                Memo.Build.map (Super_context.js_of_ocaml_runner sctx ~dir ~loc)
+                  ~f:(fun runner -> Some runner)
+              | `bc | `exe -> Memo.Build.return None
             in
             let test_pform = Pform.Var Test in
             let run_action =
@@ -55,10 +57,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                 | None ->
                   Action_unexpanded.Run
                     (String_with_vars.make_pform loc test_pform, [])
-                | Some runner ->
-                  Action_unexpanded.Run
-                    ( String_with_vars.make_text loc runner
-                    , [ String_with_vars.make_pform loc test_pform ] ))
+                | Some runner -> runner)
             in
             let test_exe = s ^ ext in
             let extra_bindings =

@@ -1,0 +1,14 @@
+(library
+  (name fake_backend_runtime)
+  (modules fake_backend_runtime)
+)
+
+(library
+ (name fake_backend)
+ (modules ())
+ (inline_tests.backend
+  (runner_libraries fake_backend_runtime)
+  (generate_runner
+   (progn
+    (echo "let () = Fake_backend_runtime.run_all ()")
+))))

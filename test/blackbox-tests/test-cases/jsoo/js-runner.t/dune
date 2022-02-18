@@ -1,0 +1,5 @@
+(env (_
+  (js_of_ocaml
+    (runner (run %{project_root}/runner/runner.exe %{test}))
+    (runtest_alias runtest-js)
+    )))

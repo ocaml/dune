@@ -8,7 +8,7 @@
 { pkgs, stdenv, opam2nix, fetchFromGitHub }:
 let
   strings = pkgs.lib.strings;
-  ocaml = pkgs.ocaml-ng.ocamlPackages_4_12.ocaml;
+  ocaml = pkgs.ocaml-ng.ocamlPackages_4_13.ocaml;
   coq = fetchFromGitHub {
     owner = "coq";
     repo = "coq";

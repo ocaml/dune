@@ -61,12 +61,7 @@ let relative d s = Path.build (Path.Build.relative d s)
 
 let expand_include ~expander s =
   let path = relative (Expander.dir expander) s in
-  let open Memo.Build.O in
-  let+ contents = Build_system.read_file path ~f:Io.read_file in
-  let asts =
-    Dune_lang.Parser.parse_string ~fname:(Path.to_string path)
-      ~mode:Dune_lang.Parser.Mode.Many contents
-  in
+  let+ asts = Action_builder.read_sexp ~mode:Many path in
   let dep_parser =
     Dune_lang.Syntax.set Stanza.syntax
       (Active
@@ -92,7 +87,7 @@ let rec dep expander = function
   | Include s ->
     let deps = expand_include ~expander s in
     Other
-      (let* deps = Action_builder.memo_build deps in
+      (let* deps = deps in
        let builder, _bindings = named_paths_builder ~expander deps in
        let+ paths = builder in
        paths)

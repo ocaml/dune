@@ -752,8 +752,10 @@ module With_deps_if_necessary = struct
     E.expand ~dir:(Path.build t.dir) ~mode sw ~f:(expand_pform t)
 
   let expand_path t sw =
-    let+ v = expand t ~mode:Single sw in
-    Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
+    let+ vs = expand t ~mode:Many sw in
+    List.map vs ~f:(fun v ->
+        Value.to_path v ~error_loc:(String_with_vars.loc sw)
+          ~dir:(Path.build t.dir))
 
   let expand_str t sw =
     let+ v = expand t ~mode:Single sw in

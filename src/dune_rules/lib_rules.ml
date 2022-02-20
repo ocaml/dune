@@ -305,9 +305,12 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
 
 let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
   let obj_dir = Compilation_context.obj_dir cctx in
+  let dir = Compilation_context.dir cctx in
   let flags = Compilation_context.flags cctx in
   let modules = Compilation_context.modules cctx in
-  let js_of_ocaml = lib.buildable.js_of_ocaml in
+  let js_of_ocaml =
+    Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
+  in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Compilation_context.context cctx in
   let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.lib_config in
@@ -333,9 +336,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
                   (* XXX we should get the directory from the dir of the cma
                      file explicitly *)
                   let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
-                  Super_context.add_rule sctx
-                    ~dir:(Compilation_context.dir cctx)
-                    ~loc:lib.buildable.loc
+                  Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc
                     (Action_builder.copy ~src ~dst)))
   in
   let top_sorted_modules =
@@ -379,7 +380,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
               (Path.Build.basename src)
             |> Path.Build.extend_basename ~suffix:".js"
           in
-          Jsoo_rules.build_cm cctx ~in_buildable:js_of_ocaml ~src ~target
+          Jsoo_rules.build_cm cctx ~in_context:js_of_ocaml ~src ~target
         in
         action_with_targets
         >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
@@ -431,9 +432,12 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
   in
   let package = Dune_file.Library.package lib in
+  let js_of_ocaml =
+    Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
+  in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
-    ~opaque:Inherit_from_settings ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
+    ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)
     ?stdlib:lib.stdlib ~package ?vimpl ~modes
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents

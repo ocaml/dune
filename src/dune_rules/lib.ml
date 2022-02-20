@@ -407,6 +407,8 @@ let requires t = Memo.Build.return t.requires
 
 let ppx_runtime_deps t = Memo.Build.return t.ppx_runtime_deps
 
+let pps t = Memo.Build.return t.pps
+
 let obj_dir t = Lib_info.obj_dir t.info
 
 let is_local t =

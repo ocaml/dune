@@ -42,6 +42,8 @@ val requires : t -> t list Resolve.Build.t
 
 val ppx_runtime_deps : t -> t list Resolve.Build.t
 
+val pps : t -> t list Resolve.Build.t
+
 (** A unique integer identifier. It is only unique for the duration of the
     process *)
 module Id : sig

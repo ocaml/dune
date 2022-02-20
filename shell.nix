@@ -11,7 +11,7 @@ in pkgs.mkShell {
     coreutils
     # we prefer tools from outside our opam build plan to minimize conflicts
     ocamlformat_0_20_1
-    ocamlPackages.ocaml-lsp
+    ocaml-ng.ocamlPackages_4_13.ocaml-lsp
     git
     mercurial # for tests
     opam

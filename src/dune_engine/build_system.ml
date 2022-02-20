@@ -360,7 +360,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 10
+  let rule_digest_version = 12
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode
       ~execution_parameters =
@@ -388,7 +388,9 @@ end = struct
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
       , Execution_parameters.action_stdout_on_success execution_parameters
-      , Execution_parameters.action_stderr_on_success execution_parameters )
+      , Execution_parameters.action_stderr_on_success execution_parameters
+      , Execution_parameters.add_workspace_root_to_build_path_prefix_map
+          execution_parameters )
     in
     Digest.generic trace
 
@@ -543,7 +545,11 @@ end = struct
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
     in
-    let* () = Memo.Build.of_non_reproducible_fiber (State.start_rule_exn ()) in
+    (* We run [State.start_rule_exn ()] entirely for its side effect, so one
+       might be tempted to use [Memo.Build.of_non_reproducible_fiber] here but
+       that is wrong, because that would force us to rerun [execute_rule_impl]
+       on every incremental build. *)
+    let* () = Memo.Build.of_reproducible_fiber (State.start_rule_exn ()) in
     let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target dir with

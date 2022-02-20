@@ -1,5 +1,5 @@
 open! Dune_engine
-open! Stdune
+open Stdune
 
 module Flags : sig
   type 'flags t =
@@ -41,6 +41,17 @@ module In_buildable : sig
     }
 
   val decode : t Dune_lang.Decoder.t
+
+  val default : t
+end
+
+module In_context : sig
+  type t =
+    { flags : Flags.Spec.t
+    ; javascript_files : Path.Build.t list
+    }
+
+  val make : dir:Path.Build.t -> In_buildable.t -> t
 
   val default : t
 end

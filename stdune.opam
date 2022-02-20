@@ -12,10 +12,10 @@ bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
   "dune" {>= "3.0"}
   "ocaml" {>= "4.08.0"}
-  "dyn"
-  "ordering"
-  "pp"
-  "csexp"
+  "dyn" {= version}
+  "ordering" {= version}
+  "pp" {>= "1.1.0"}
+  "csexp" {>= "1.5.0"}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

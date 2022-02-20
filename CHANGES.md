@@ -1,3 +1,27 @@
+Unreleased
+----------
+
+- Ensure that `dune describe` computes a transitively closed set of
+  libraries (#5395, @esope)
+
+- Add direct dependencies to $ dune describe output (#5412, @esope)
+
+3.0.2 (17/02/2022)
+------------------
+
+- Fix digest computation bug introduced in 3.0.1 (#5451, @rgrinberg)
+
+3.0.1 (17/02/2022)
+------------------
+
+- Fix compilation on MacOS SDK < 10.13. The native watch mode is disabled in
+  such instances (#5431 fix #5430, @rgrinberg)
+
+- Do no add workspace_root to `BUILD_PATH_PREFIX_MAP` for projects before 3.0
+  (5448, @rgrinberg)
+
+- Fix performance regression in incremental builds (#5439, @snowleopard)
+
 3.0.0 (11/02/2022)
 ------------------
 
@@ -7,10 +31,10 @@
 - Add a `DUNE_DIFF_COMMAND` environment variable to match `--diff-command`
   command-line parameter (@raphael-proust, fix #5369, #5375)
 
-- Add support for odoc-link rules (#5045, @lubegasimon)
+- Add support for odoc-link rules (#5045, @jonludlam, @lubegasimon)
 
 - Dune will no longer generate documentation for hidden modules (#5045,
-  @lubegasimon)
+  @jonludlam, @lubegasimon)
 
 - Parse the `native_pack_linker` field of `ocamlc -config` (#5281, @TheLortex)
 

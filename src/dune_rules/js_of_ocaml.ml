@@ -106,6 +106,23 @@ module In_buildable = struct
   let default = { flags = Flags.standard; javascript_files = [] }
 end
 
+module In_context = struct
+  type t =
+    { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; javascript_files : Path.Build.t list
+    }
+
+  let make ~(dir : Path.Build.t) (x : In_buildable.t) =
+    { flags = x.flags
+    ; javascript_files =
+        List.map
+          ~f:(fun name -> Path.Build.relative dir name)
+          x.javascript_files
+    }
+
+  let default = { flags = Flags.standard; javascript_files = [] }
+end
+
 module Compilation_mode = struct
   type t =
     | Whole_program

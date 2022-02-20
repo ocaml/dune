@@ -162,14 +162,14 @@ let expand_version { scope; _ } ~source s =
             s
         ])
 
-let isn't_allowed_in_this_position_message ~source =
-  User_error.make ~loc:source.Dune_lang.Template.Pform.loc
-    [ Pp.textf "%s isn't allowed in this position."
-        (Dune_lang.Template.Pform.describe source)
-    ]
-
 let isn't_allowed_in_this_position ~source =
-  raise (User_error.E (isn't_allowed_in_this_position_message ~source))
+  let exn =
+    User_error.make ~loc:source.Dune_lang.Template.Pform.loc
+      [ Pp.textf "%s isn't allowed in this position."
+          (Dune_lang.Template.Pform.describe source)
+      ]
+  in
+  raise (User_error.E exn)
 
 let expand_artifact ~source t a s =
   match t.lookup_artifacts with

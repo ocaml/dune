@@ -6,6 +6,12 @@ Unreleased
 
 - Add direct dependencies to $ dune describe output (#5412, @esope)
 
+3.0.3 (Unreleased)
+------------------
+
+- Allow %{read-lines} to introduce dynamic dependencies like %{read}. (#5440,
+  @anmonteiro)
+
 3.0.2 (17/02/2022)
 ------------------
 

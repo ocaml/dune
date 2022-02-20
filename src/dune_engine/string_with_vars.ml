@@ -215,12 +215,8 @@ struct
   open A.O
 
   let expand :
-        'a.
-           t
-        -> mode:'a Mode.t
-        -> dir:Path.t
-        -> f:Value.t list A.t expander
-        -> 'a A.t =
+      type a.
+      t -> mode:a Mode.t -> dir:Path.t -> f:Value.t list A.t expander -> a A.t =
    fun t ~mode ~dir ~f ->
     match t.parts with
     (* Optimizations for some common cases *)
@@ -233,7 +229,7 @@ struct
       let+ chunks =
         A.all
           (List.map t.parts ~f:(function
-            | Text s -> A.return s
+            | Text s -> A.return [ s ]
             | Error (_, msg) ->
               (* The [let+ () = A.return () in ...] is to delay the error until
                  the evaluation of the applicative *)
@@ -241,10 +237,12 @@ struct
               raise (User_error.E msg)
             | Pform (source, p) ->
               let+ v = f ~source p in
-              if t.quoted then Value.L.concat v ~dir
-              else Value.to_string ~dir (Mode.value Single v ~source)))
+              if t.quoted then [ Value.L.concat ~dir v ]
+              else
+                let vs = Mode.value Many v ~source in
+                List.map ~f:(Value.to_string ~dir) vs))
       in
-      Mode.string mode (String.concat chunks ~sep:"")
+      Mode.string mode (String.concat (List.concat chunks) ~sep:"")
 
   let expand_as_much_as_possible t ~dir ~f =
     let+ parts =

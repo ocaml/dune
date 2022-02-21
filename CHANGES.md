@@ -6,6 +6,8 @@ Unreleased
 
 - Add direct dependencies to $ dune describe output (#5412, @esope)
 
+- Handle empty output from `getconf` (#5473 fixes #5471, @mndrix)
+
 3.0.3 (Unreleased)
 ------------------
 

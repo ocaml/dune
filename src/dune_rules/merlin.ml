@@ -175,13 +175,14 @@ module Processed = struct
             , init.config.src_dirs
             , [ init.config.flags ]
             , init.config.extensions )
-          ~f:
-            (fun (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
-                 { modules = _
-                 ; pp_config
-                 ; config =
-                     { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
-                 } ->
+          ~f:(fun
+               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
+               { modules = _
+               ; pp_config
+               ; config =
+                   { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
+               }
+             ->
             ( pp_config :: acc_pp
             , Path.Set.union acc_obj obj_dirs
             , Path.Set.union acc_src src_dirs

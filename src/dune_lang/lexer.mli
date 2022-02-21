@@ -18,7 +18,9 @@ module Token : sig
 
             is represented as:
 
-            {[ Lines [ " abc"; " def" ] ]} *)
+            {[
+              Lines [ " abc"; " def" ]
+            ]} *)
 end
 
 type t = with_comments:bool -> Lexing.lexbuf -> Token.t

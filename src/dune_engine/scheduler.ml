@@ -711,7 +711,7 @@ end
 type status =
   | (* We are not doing a build. Just accumulating invalidations until the next
        build starts. *)
-      Standing_by of
+    Standing_by of
       { invalidation : Memo.Invalidation.t
       ; saw_insignificant_changes : bool
             (* Whether we saw build input changes that are insignificant for the
@@ -721,10 +721,10 @@ type status =
                change. *)
       }
   | (* Running a build *)
-      Building of Fiber_util.Cancellation.t
+    Building of Fiber_util.Cancellation.t
   | (* Cancellation requested. Build jobs are immediately rejected in this
        state *)
-      Restarting_build of
+    Restarting_build of
       Memo.Invalidation.t
 
 module Build_outcome = struct

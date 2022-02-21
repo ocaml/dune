@@ -10,7 +10,9 @@ module type S = sig
     (** [register id data] registers a new language. Users will select this
         language by writing:
 
-        {[ (lang <name> <version>) ]}
+        {[
+          (lang <name> <version>)
+        ]}
 
         as the first line of the versioned file. *)
     val register : Syntax.t -> data -> unit

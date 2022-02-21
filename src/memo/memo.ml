@@ -107,9 +107,7 @@ module Spec = struct
     let name =
       match name with
       | None when !Debug.track_locations_of_lazy_values ->
-        Option.map
-          (Caller_id.get ~skip:[ __FILE__ ])
-          ~f:(fun loc ->
+        Option.map (Caller_id.get ~skip:[ __FILE__ ]) ~f:(fun loc ->
             sprintf "lazy value created at %s" (Loc.to_file_colon_line loc))
       | _ -> name
     in

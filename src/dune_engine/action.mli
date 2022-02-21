@@ -143,7 +143,9 @@ module Full : sig
   (** The various [add_xxx] functions merge the given value with existing field
       of the action. Put another way, [add_xxx x t] is the same as:
 
-      {[ combine t (make ~xxx:x (Progn [])) ]} *)
+      {[
+        combine t (make ~xxx:x (Progn []))
+      ]} *)
 
   val add_env : Env.t -> t -> t
 

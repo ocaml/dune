@@ -149,7 +149,9 @@ module Var : sig
 
       For instance, the following fiber always evaluate to [true]:
 
-      {[ set v x (get_exn v >>| fun y -> x = y) ]} *)
+      {[
+        set v x (get_exn v >>| fun y -> x = y)
+      ]} *)
   val set : 'a t -> 'a -> (unit -> 'b fiber) -> 'b fiber
 
   val unset : 'a t -> (unit -> 'b fiber) -> 'b fiber

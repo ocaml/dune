@@ -1022,8 +1022,9 @@ target ``foo`` and a directory target ``bar``.
      (targets foo (dir bar))
      (action  <action>))
 
-To enable this experimental feature, add ``(using directory-targets 0.1)``
-to your ``dune-project`` file.
+To enable this experimental feature, add ``(using directory-targets 0.1)`` to
+your ``dune-project`` file. However note that currently rules with a directory
+target are always rebuilt. We are working on fixing this performance bug.
 
 
 ``<action>`` is what you run to produce the targets from the dependencies.

@@ -1,7 +1,7 @@
 Tests for dynamic dependencies computed from the `%{read:...}` family of macros
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.0)
+  > (lang dune 3.1)
   > EOF
 
 Define 2 rules and a file containing their paths
@@ -43,21 +43,21 @@ Building `./output` should now produce a file with contents "depA depB"
 Doesn't work in dune pre 3.0
 
   $ cat > dune-project <<EOF
-  > (lang dune 2.9)
+  > (lang dune 3.0)
   > EOF
 
   $ dune build ./output --display=short
   File "dune", line 12, characters 7-23:
   12 |  (deps (include deps.d))
               ^^^^^^^^^^^^^^^^
-  Error: 'include' is only available since version 3.0 of the dune language.
-  Please update your dune-project file to have (lang dune 3.0).
+  Error: 'include' is only available since version 3.1 of the dune language.
+  Please update your dune-project file to have (lang dune 3.1).
   [1]
 
 Works with aliases and other dependency specifications
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.0)
+  > (lang dune 3.1)
   > EOF
 
   $ cat > deps.d <<EOF

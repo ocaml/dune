@@ -72,8 +72,9 @@ let decode =
       ; ("env_var", sw >>| fun x -> Env_var x)
       ; ("sandbox", decode_sandbox_config >>| fun x -> Sandbox_config x)
       ; ( "include"
-        , Dune_lang.Syntax.since Stanza.syntax (3, 0) >>> filename >>| fun x ->
-          Include x )
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 1)
+          and+ filename = filename in
+          Include filename )
       ]
   in
   decode

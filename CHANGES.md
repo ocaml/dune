@@ -14,7 +14,7 @@ Unreleased
 - Allow %{read-lines} to introduce dynamic dependencies like %{read}. (#5440,
   @anmonteiro)
 
-- Look up `gmake` before `make` (#.., fixes #5470, @rgrinberg)
+- Look up `gmake` before `make` (#5474, fixes #5470, @rgrinberg)
 
 3.0.2 (17/02/2022)
 ------------------

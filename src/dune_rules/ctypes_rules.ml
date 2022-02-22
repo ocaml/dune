@@ -335,7 +335,8 @@ let rule ?(deps = []) ?stdout_to ?(args = []) ?(targets = []) ~exe ~sctx ~dir ()
   in
   Super_context.add_rule sctx ~dir build
 
-let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
+let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
+    ~cflags_sexp ~output () =
   let ctx = Super_context.context sctx in
   let open Memo.Build.O in
   let* exe =
@@ -360,8 +361,14 @@ let build_c_program ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output () =
     List.concat_map include_dirs ~f:(fun dir -> [ "-I"; dir ])
   in
   let deps =
-    List.map source_files ~f:(Path.relative (Path.build dir))
-    |> Dep.Set.of_files
+    let source_file_deps =
+      List.map source_files ~f:(Path.relative (Path.build dir))
+      |> Dep.Set.of_files
+    in
+    let foreign_archives_deps =
+      List.map foreign_archives_deps ~f:Path.build |> Dep.Set.of_files
+    in
+    Dep.Set.union source_file_deps foreign_archives_deps
   in
   let build =
     let cflags_args =
@@ -489,6 +496,16 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   let c_generated_types_module = Stanza_util.c_generated_types_module ctypes in
   let rule = rule ~sctx ~dir in
   let open Memo.Build.O in
+  let foreign_archives_deps =
+    let ctx = Super_context.context sctx in
+    let ext_lib = ctx.Context.lib_config.ext_lib in
+    let ext_dll = ctx.Context.lib_config.ext_dll in
+    List.concat_map buildable.Buildable.foreign_archives
+      ~f:(fun (_loc, archive) ->
+        [ Foreign.Archive.lib_file ~archive ~dir ~ext_lib
+        ; Foreign.Archive.dll_file ~archive ~dir ~ext_dll
+        ])
+  in
   let* () =
     write_c_types_includer_module ~sctx ~dir
       ~filename:(ml_of_module_name c_types_includer_module)
@@ -554,7 +571,7 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
         ()
     in
     let* () =
-      build_c_program ~sctx ~dir ~scope ~cflags_sexp
+      build_c_program ~foreign_archives_deps ~sctx ~dir ~scope ~cflags_sexp
         ~source_files:[ c_generated_types_cout_c ]
         ~output:c_generated_types_cout_exe ()
     in

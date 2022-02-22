@@ -29,4 +29,4 @@ Regression test for https://github.com/ocaml/dune/issues/5470
   $ PATH="$PWD/make:$PATH" dune build @make --force
   make
   $ PATH="$PWD/gmake:$PWD/make:$PATH" dune build @make --force
-  make
+  gmake

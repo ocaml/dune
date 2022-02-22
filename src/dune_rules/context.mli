@@ -94,6 +94,7 @@ type t = private
             executable in PATH, e.g. [Some "/path/to/ocaml.opt.exe"]. *)
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
+  ; make : Path.t option Memo.Lazy.t
   }
 
 val equal : t -> t -> bool
@@ -111,6 +112,9 @@ val install_ocaml_libdir : t -> Path.t option Memo.Build.t
 
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Mode.t -> Action.Prog.t
+
+(** Return what [%{make}] should expand into *)
+val make : t -> Path.t option Memo.Build.t
 
 (** The best compilation mode for this context *)
 val best_mode : t -> Mode.t

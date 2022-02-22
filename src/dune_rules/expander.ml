@@ -317,12 +317,12 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         let open Memo.Build.O in
         Direct
           (Without
-             (context.which "make" >>| function
+             (Context.make context >>| function
+              | Some p -> path p
               | None ->
                 Utils.program_not_found ~context:context.name
                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                  "make"
-              | Some p -> path p))
+                  "make"))
       | Cpp -> static (strings (c_compiler_and_flags context @ [ "-E" ]))
       | Pa_cpp ->
         static

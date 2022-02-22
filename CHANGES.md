@@ -9,6 +9,8 @@ Unreleased
 3.0.3 (Unreleased)
 ------------------
 
+- Do not enable warnings 63-70 by default (#5476, fixes #5464, @rgrinberg)
+
 - Allow %{read-lines} to introduce dynamic dependencies like %{read}. (#5440,
   @anmonteiro)
 

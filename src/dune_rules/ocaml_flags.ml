@@ -11,8 +11,29 @@ let dev_mode_warnings =
   (* New warnings should be introduced here *)
   let all =
     Int.Set.diff
-      (Int.Set.of_list (List.init 62 ~f:succ))
-      (Int.Set.of_list [ 4; 29; 40; 41; 42; 44; 45; 48; 58; 59; 60 ])
+      (* TODO update this list once OCaml versions are out *)
+      (Int.Set.of_list (List.init 70 ~f:succ))
+      (Int.Set.of_list
+         [ 4
+         ; 29
+         ; 40
+         ; 41
+         ; 42
+         ; 44
+         ; 45
+         ; 48
+         ; 58
+         ; 59
+         ; 60
+         ; 63
+         ; 64
+         ; 65
+         ; 66
+         ; 67
+         ; 68
+         ; 69
+         ; 70
+         ])
   in
   let warnings_range ws =
     let wrange_to_flag (x, y) =

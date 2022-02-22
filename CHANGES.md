@@ -14,6 +14,9 @@ Unreleased
 
 - Look up `gmake` before `make` (#.., fixes #5470, @rgrinberg)
 
+- Depend on any provided `foreign_archives` for ctypes stub generation (#5475,
+  @mbacarella)
+
 3.0.2 (17/02/2022)
 ------------------
 

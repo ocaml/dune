@@ -230,6 +230,7 @@ module Client = struct
         }
 
       let write t s =
+        let* () = Fiber.return () in
         match s with
         | Some _ -> t.write s
         | None ->
@@ -238,7 +239,9 @@ module Client = struct
             t.closed_write <- true;
             t.write None)
 
-      let read t = if t.closed_read then Fiber.return None else t.read ()
+      let read t =
+        let* () = Fiber.return () in
+        if t.closed_read then Fiber.return None else t.read ()
     end
 
     type abort =
@@ -279,6 +282,7 @@ module Client = struct
     (* When the client is terminated via this function, the session is
        considered to be dead without a way to recover. *)
     let terminate t =
+      let* () = Fiber.return () in
       match t.running with
       | false -> Fiber.return ()
       | true ->
@@ -363,6 +367,7 @@ module Client = struct
         Ok ivar
 
     let request_untyped conn (id, req) =
+      let* () = Fiber.return () in
       match prepare_request' conn (id, req) with
       | Error e -> Fiber.return (Error e)
       | Ok ivar ->
@@ -423,6 +428,7 @@ module Client = struct
         raise (Response.Error.E err)
 
     let notification (type a) t (stg : a Versioned.notification) (n : a) =
+      let* () = Fiber.return () in
       make_notification t stg n (fun call ->
           send t (Some [ Notification call ]))
 
@@ -460,6 +466,7 @@ module Client = struct
           Code_error.raise "polling is inactive" [ ("id", Id.to_dyn t.id) ]
 
       let next t =
+        let* () = Fiber.return () in
         check_active t;
         if t.next_pending then
           Code_error.raise "Poll.next: previous Poll.next did not terminate yet"
@@ -481,12 +488,14 @@ module Client = struct
           raise (Response.Error.E e)
 
       let cancel t =
+        let* () = Fiber.return () in
         check_active t;
         t.active <- false;
         notification t.client t.cancel t.id
     end
 
     let poll ?id client sub =
+      let* () = Fiber.return () in
       let id = gen_id client id in
       Stream.create sub client id
 
@@ -505,6 +514,7 @@ module Client = struct
       let request (type a b) ?id t
           ({ encode_req; decode_resp } : (a, b) Versioned.request) (req : a) :
           (b, _) result Fiber.t =
+        let* () = Fiber.return () in
         let id = gen_id t.client id in
         let call = encode_req req in
         let ivar = prepare_request' t.client (id, call) in
@@ -516,6 +526,7 @@ module Client = struct
           parse_response t.client decode_resp res
 
       let submit t =
+        let* () = Fiber.return () in
         let pending = List.rev t.pending in
         t.pending <- [];
         send t.client (Some pending)
@@ -567,11 +578,11 @@ module Client = struct
         }
 
       let log { Message.payload; message } =
-        (match payload with
+        let+ () = Fiber.return () in
+        match payload with
         | None -> Format.eprintf "%s@." message
         | Some payload ->
-          Format.eprintf "%s: %s@." message (Sexp.to_string payload));
-        Fiber.return ()
+          Format.eprintf "%s: %s@." message (Sexp.to_string payload)
 
       let abort m = raise (Abort (Server_aborted m))
 

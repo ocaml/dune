@@ -118,6 +118,7 @@ end) : S with type 'a fiber := 'a Fiber.t = struct
 
   let get ~env ~build_dir : (t option, exn) result Fiber.t =
     let open Fiber.O in
+    let* () = Fiber.return () in
     match env _DUNE_RPC with
     | Some d ->
       Fiber.return

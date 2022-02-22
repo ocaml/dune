@@ -413,7 +413,11 @@ let auto_concurrency =
             | pid -> (
               Unix.close fdw;
               let ic = Unix.in_channel_of_descr fdr in
-              let n = input_line ic |> String.trim |> Int.of_string in
+              let n =
+                match input_line ic with
+                | line -> String.trim line |> Int.of_string
+                | exception End_of_file -> None
+              in
               close_in ic;
               match (n, snd (Unix.waitpid [] pid)) with
               | Some n, WEXITED 0 -> n

@@ -29,9 +29,3 @@ let which ~path prog =
   List.find_map path ~f:(fun dir ->
       let fn = Path.relative dir prog in
       Option.some_if (exists fn) fn)
-
-let make ~path =
-  let gmake = if Sys.unix then which ~path "gmake" else None in
-  match gmake with
-  | None -> which ~path "make"
-  | some -> some

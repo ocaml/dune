@@ -45,7 +45,12 @@ let dev_mode_warnings =
     |> List.rev_map ~f:wrange_to_flag
     |> String.concat ~sep:""
   in
-  fun ~dune_version:_ -> warnings_range all
+  let pre_3_3 = lazy (warnings_range all) in
+  let post_3_3 =
+    lazy (warnings_range (Int.Set.union all (Int.Set.of_list [ 67; 69 ])))
+  in
+  fun ~dune_version ->
+    if dune_version >= (3, 3) then Lazy.force post_3_3 else Lazy.force pre_3_3
 
 let vendored_warnings = [ "-w"; "-a" ]
 

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Add warnings 67-69 to dune's default set of warnings. These are warnings of
+  the form "unused X.." (#5844, @rgrinbreg)
+
 - Introduce project "composition" for coq theories. Coq theories in separate
   projects can now refer to each other when in the same workspace (#5784,
   @Alitzer, @rgrinberg)

@@ -82,12 +82,17 @@ let run config stats =
                        in
                        Registry.Config.register registry_config dune
                      in
-                     let (_ : Fpath.mkdir_p_result) =
-                       Fpath.mkdir_p (Filename.dirname path)
-                     in
-                     Io.String_path.write_file path contents;
-                     cleanup_registry := Some path;
-                     at_exit run_cleanup_registry
+                     let dirname = Filename.dirname path in
+                     match Fpath.mkdir_p dirname with
+                     | Permission_denied ->
+                       User_warning.emit
+                         [ Pp.textf "Cannot create path %S: Permission Denied"
+                             dirname
+                         ]
+                     | Created | Already_exists ->
+                       Io.String_path.write_file path contents;
+                       cleanup_registry := Some path;
+                       at_exit run_cleanup_registry
                    in
                    let* () = Server.serve sessions t.stats t.handler in
                    Fiber.Pool.stop t.pool)

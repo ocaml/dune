@@ -47,6 +47,9 @@ let create_temp_dir ?perms path =
   | Missing_parent_directory ->
     Code_error.raise "[Temp.create_temp_dir] called in a non-existing directory"
       []
+  | Permission_denied ->
+    Code_error.raise "[Temp.create_temp_dir] called without sufficient permissions"
+      []
 
 let set = function
   | Dir -> tmp_dirs

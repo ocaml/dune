@@ -5,12 +5,14 @@ type mkdir_result =
   | Created  (** The directory was created. *)
   | Missing_parent_directory
       (** No parent directory, use [mkdir_p] if you want to create it too. *)
+  | Permission_denied (** Not enough permissions to create the directory *)
 
 val mkdir : ?perms:int -> string -> mkdir_result
 
 type mkdir_p_result =
   | Already_exists  (** The directory already exists. No action was taken. *)
   | Created  (** The directory was created. *)
+  | Permission_denied (** Not enough permissions to create the directory *)
 
 val mkdir_p : ?perms:int -> string -> mkdir_p_result
 

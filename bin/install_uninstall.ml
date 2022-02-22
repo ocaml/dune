@@ -328,6 +328,11 @@ module File_ops_real (W : Workspace) : File_operations = struct
           [ Pp.textf "Please delete file %s manually."
               (Path.to_string_maybe_quoted p)
           ])
+    | Permission_denied ->
+      User_error.raise
+        [ Pp.textf "Cannot create directory %s. Permission Denied."
+            (Path.to_string_maybe_quoted p)
+        ]
 end
 
 module Sections = struct

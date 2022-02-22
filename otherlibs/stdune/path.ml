@@ -1026,6 +1026,12 @@ let ensure_build_dir_exists () =
             "Cannot create external build directory %s. Make sure that the \
              parent dir %s exists."
             p (Filename.dirname p)
+        ]
+    | Permission_denied ->
+      User_error.raise
+        [ Pp.textf
+            "Cannot create external build directory %s. Permission Denied."
+            p
         ])
 
 let extend_basename t ~suffix =

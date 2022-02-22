@@ -6,6 +6,7 @@ type mkdir_result =
   | Already_exists
   | Created
   | Missing_parent_directory
+  | Permission_denied
 
 let mkdir ?(perms = 0o777) t_s =
   try
@@ -14,15 +15,18 @@ let mkdir ?(perms = 0o777) t_s =
   with
   | Unix.Unix_error (EEXIST, _, _) -> Already_exists
   | Unix.Unix_error (ENOENT, _, _) -> Missing_parent_directory
+  | Unix.Unix_error (EACCES, _, _) -> Permission_denied
 
 type mkdir_p_result =
   | Already_exists
   | Created
+  | Permission_denied
 
 let rec mkdir_p ?(perms = 0o777) t_s =
   match mkdir ~perms t_s with
   | Created -> Created
   | Already_exists -> Already_exists
+  | Permission_denied -> Permission_denied
   | Missing_parent_directory -> (
     if is_root t_s then
       Code_error.raise
@@ -32,6 +36,7 @@ let rec mkdir_p ?(perms = 0o777) t_s =
     else
       let parent = Filename.dirname t_s in
       match mkdir_p ~perms parent with
+      | Permission_denied -> Permission_denied
       | Created | Already_exists ->
         (* The [Already_exists] case might happen if some other process managed
            to create the parent directory concurrently. *)

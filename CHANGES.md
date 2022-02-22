@@ -8,6 +8,9 @@
 
 - Handle empty output from `getconf` (#5473 fixes #5471, @mndrix)
 
+- Depend on any provided `foreign_archives` for ctypes stub generation (#5475,
+  @mbacarella)
+
 3.0.2 (17/02/2022)
 ------------------
 

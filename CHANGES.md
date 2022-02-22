@@ -6,8 +6,6 @@ Unreleased
 
 - Add direct dependencies to $ dune describe output (#5412, @esope)
 
-- Handle empty output from `getconf` (#5473 fixes #5471, @mndrix)
-
 3.0.3 (Unreleased)
 ------------------
 
@@ -15,6 +13,8 @@ Unreleased
   @anmonteiro)
 
 - Look up `gmake` before `make` (#5474, fixes #5470, @rgrinberg)
+
+- Handle empty output from `getconf` (#5473 fixes #5471, @mndrix)
 
 3.0.2 (17/02/2022)
 ------------------

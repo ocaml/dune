@@ -21,6 +21,3 @@ val exists : Path.t -> bool
 
 (** Look for a program in the PATH *)
 val which : path:Path.t list -> string -> Path.t option
-
-(** "make" program *)
-val make : path:Path.t list -> Path.t option

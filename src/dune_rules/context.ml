@@ -104,6 +104,7 @@ type t =
   ; which : string -> Path.t option Memo.Build.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
+  ; make : Path.t option Memo.Lazy.t
   }
 
 let equal x y = Context_name.equal x.name y.name
@@ -577,6 +578,17 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let dynamically_linked_foreign_archives =
       supports_shared_libraries && dynamically_linked_foreign_archives
     in
+    let make =
+      let make = Memo.lazy_ (fun () -> which "make") in
+      match Sys.unix with
+      | false -> make
+      | true ->
+        Memo.lazy_ (fun () ->
+            let* res = which "gmake" in
+            match res with
+            | Some _ as s -> Memo.Build.return s
+            | None -> Memo.Lazy.force make)
+    in
     let t =
       let build_context =
         Build_context.create ~name ~host:(Option.map host ~f:(fun c -> c.name))
@@ -617,6 +629,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; which
       ; lib_config
       ; build_context
+      ; make
       }
     in
     if Ocaml_version.supports_response_file version then (
@@ -920,3 +933,5 @@ let force_configurator_files =
       in
       Memo.Build.parallel_iter files ~f:(fun file ->
           Build_system.build_file file >>| ignore))
+
+let make t = Memo.Lazy.force t.make

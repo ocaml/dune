@@ -481,7 +481,7 @@ module H = struct
           | Cancelled
       end
 
-      let on_cancel map result _session poller =
+      let on_cancel map ready _session poller =
         let new_map =
           Map.update !map poller ~f:(function
             | None -> assert false
@@ -489,12 +489,12 @@ module H = struct
             | Some (Active _) -> Some Cancelled)
         in
         map := new_map;
-        let* result_status = Fiber.Ivar.peek result in
-        match result_status with
+        let* ready_status = Fiber.Ivar.peek ready in
+        match ready_status with
         | Some _ -> Fiber.return ()
-        | None -> Fiber.Ivar.fill result `Cancelled
+        | None -> Fiber.Ivar.fill ready `Cancelled
 
-      let make_on_poll map svar result ~equal ~diff (session : _ Session.t)
+      let make_on_poll map svar ready ~equal ~diff (session : _ Session.t)
           poller =
         let send last =
           let wait_for_svar () =
@@ -505,13 +505,13 @@ module H = struct
                 let until x = not (equal x last) in
                 Fiber.Svar.wait svar ~until
             in
-            let* result_status = Fiber.Ivar.peek result in
-            match result_status with
+            let* ready_status = Fiber.Ivar.peek ready in
+            match ready_status with
             | Some _ -> Fiber.return ()
-            | None -> Fiber.Ivar.fill result `Data_available
+            | None -> Fiber.Ivar.fill ready `Data_available
           in
           let* () = Fiber.Pool.task session.base.pool ~f:wait_for_svar in
-          let* result_ready = Fiber.Ivar.read result in
+          let* result_ready = Fiber.Ivar.read ready in
           match result_ready with
           | `Cancelled -> Fiber.return None
           | `Data_available ->
@@ -528,12 +528,12 @@ module H = struct
           Fiber.never
 
       let implement_long_poll (rpc : _ t) proc svar ~equal ~diff =
-        let result : [ `Cancelled | `Data_available ] Fiber.Ivar.t =
+        let ready : [ `Cancelled | `Data_available ] Fiber.Ivar.t =
           Fiber.Ivar.create ()
         in
         let map = ref Map.empty in
-        implement_poll rpc proc ~on_cancel:(on_cancel map result)
-          ~on_poll:(make_on_poll map svar result ~equal ~diff)
+        implement_poll rpc proc ~on_cancel:(on_cancel map ready)
+          ~on_poll:(make_on_poll map svar ready ~equal ~diff)
     end
 
     let implement_long_poll = Long_poll.implement_long_poll

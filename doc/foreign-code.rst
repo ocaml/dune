@@ -302,8 +302,8 @@ To do that, follow the following procedure:
   - copies the generated files
   - the C archive ``.a`` must be built with ``-fpic``
   - the ``libfoo.so`` must be copied as ``dllfoo.so``, and no ``libfoo.so``
-    should appear otherwise the dynamic linking of the C library will be
-    attempted, but usually fails because the ``libfoo.so`` is not available at
+    should appear, otherwise the dynamic linking of the C library will be
+    attempted. However, this usually fails because the ``libfoo.so`` isn't available at
     the time of the execution.
 - *Attach* the C archive files to an OCaml library via :ref:`foreign-archives`.
 

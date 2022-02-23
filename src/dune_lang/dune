@@ -1,5 +1,6 @@
 (library
  (name dune_lang)
+ (public_name dune-private-libs.lang)
  (synopsis "[Internal] S-expression library")
  (libraries stdune))
 

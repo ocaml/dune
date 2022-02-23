@@ -1,2 +1,3 @@
 (library
- (name build_path_prefix_map))
+ (name build_path_prefix_map)
+ (public_name dune-private-libs.build_path_prefix_map))

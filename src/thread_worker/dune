@@ -1,3 +1,4 @@
 (library
  (name thread_worker)
+ (public_name dune-private-libs.thread_worker)
  (libraries stdune threads.posix))

@@ -1,3 +1,4 @@
 (library
  (name dune_stats)
+ (public_name dune-private-libs.stats)
  (libraries stdune chrome_trace spawn))

@@ -39,16 +39,14 @@ let local_libraries =
   ; ("src/ocamlc_loc", Some "Ocamlc_loc", false, None)
   ; ("src/fsevents", Some "Fsevents", false, None)
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)
-  ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false,
-    None)
+  ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false, None)
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
   ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_rules", Some "Dune_rules", true, None)
   ; ("src/upgrader", Some "Dune_upgrader", false, None)
   ; ("vendor/cmdliner/src", None, false, None)
-  ; ("otherlibs/build-info/src", Some "Build_info", false,
-    Some "Build_info_data")
+  ; ("otherlibs/build-info/src", Some "Build_info", false, Some "Build_info_data")
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ]

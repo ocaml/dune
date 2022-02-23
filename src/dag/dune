@@ -1,4 +1,5 @@
 (library
  (name dag)
+ (public_name dune-private-libs.dag)
  (libraries stdune incremental_cycles)
  (synopsis "Directed Acyclic Graph library"))

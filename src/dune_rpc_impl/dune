@@ -1,5 +1,6 @@
 (library
  (name dune_rpc_impl)
+ (public_name dune-private-libs.rpc_impl)
  (libraries
   stdune
   unix

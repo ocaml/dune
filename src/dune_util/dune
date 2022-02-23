@@ -1,3 +1,4 @@
 (library
  (name dune_util)
+ (public_name dune-private-libs.util)
  (libraries stdune xdg dune_lang memo))

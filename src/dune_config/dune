@@ -1,5 +1,6 @@
 (library
  (name dune_config)
+ (public_name dune-private-libs.config)
  (libraries
   stdune
   xdg

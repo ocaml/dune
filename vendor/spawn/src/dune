@@ -1,5 +1,6 @@
 (library
  (name spawn)
+ (public_name dune-private-libs.spawn)
  (foreign_stubs
   (language c)
   (names spawn_stubs))

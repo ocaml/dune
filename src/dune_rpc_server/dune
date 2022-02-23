@@ -1,4 +1,5 @@
 (library
  (name dune_rpc_server)
+ (public_name dune-private-libs.rpc_server)
  (synopsis "Private API to define a dune rpc server")
  (libraries fiber stdune chrome_trace dune_stats dune_util dune_rpc_private))

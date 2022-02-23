@@ -1,4 +1,5 @@
 (library
  (name dune_cache)
+ (public_name dune-private-libs.cache)
  (synopsis "[Internal] Dune's local and cloud build cache")
  (libraries csexp dune_cache_storage fiber stdune))

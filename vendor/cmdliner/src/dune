@@ -1,4 +1,5 @@
 (library
  (name      cmdliner)
+ (public_name dune-private-libs.cmdliner)
  (wrapped   false)
  (flags     (-w -3-6-27-32-33-35-50)))

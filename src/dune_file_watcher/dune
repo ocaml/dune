@@ -1,5 +1,6 @@
 (library
  (name dune_file_watcher)
+ (public_name dune-private-libs.file_watcher)
  (libraries
   spawn
   fsevents

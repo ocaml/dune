@@ -1,5 +1,6 @@
 (library
  (name csexp_rpc)
+ (public_name dune-private-libs.csexp_rpc)
  (synopsis "Threaded client & server that uses csexp for communication")
  (libraries stdune dyn dune_util csexp dune_engine fiber)
  (foreign_stubs

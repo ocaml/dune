@@ -12,7 +12,12 @@ Unreleased
 - Allow %{read-lines} to introduce dynamic dependencies like %{read}. (#5440,
   @anmonteiro)
 
-- Look up `gmake` before `make` (#.., fixes #5470, @rgrinberg)
+- Look up `gmake` before `make` (#5474, fixes #5470, @rgrinberg)
+
+- Handle empty output from `getconf` (#5473 fixes #5471, @mndrix)
+
+- Depend on any provided `foreign_archives` for ctypes stub generation (#5475,
+  @mbacarella)
 
 3.0.2 (17/02/2022)
 ------------------

@@ -374,7 +374,8 @@ language. The syntax is a list of the following elements:
 
    logop := or | and
 
-   dep := (name <stage>)
+   dep := name
+        | (name <stage>)
         | (name <constr>)
         | (name (<logop> (<stage> | <constr>)*))
 

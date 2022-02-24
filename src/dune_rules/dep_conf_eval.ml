@@ -61,19 +61,24 @@ let relative d s = Path.build (Path.Build.relative d s)
 
 let expand_include ~expander s =
   let path = relative (Expander.dir expander) s in
-  let+ asts = Action_builder.read_sexp ~mode:Many path in
-  let dep_parser =
-    Dune_lang.Syntax.set Stanza.syntax
-      (Active
-         (Dune_project.dune_version (Scope.project (Expander.scope expander))))
-      (String_with_vars.set_decoding_env
-         (Pform.Env.initial Stanza.latest_version)
-         (Bindings.decode Dep_conf.decode))
-  in
-  let builders =
-    List.map ~f:(Dune_lang.Decoder.parse dep_parser Univ_map.empty) asts
-  in
-  List.concat builders
+  let+ ast = Action_builder.read_sexp path in
+  match ast with
+  | Dune_lang.Ast.List (_loc, asts) ->
+    let dep_parser =
+      Dune_lang.Syntax.set Stanza.syntax
+        (Active
+           (Dune_project.dune_version (Scope.project (Expander.scope expander))))
+        (String_with_vars.set_decoding_env
+           (Pform.Env.initial Stanza.latest_version)
+           (Bindings.decode Dep_conf.decode))
+    in
+    List.concat_map ~f:(Dune_lang.Decoder.parse dep_parser Univ_map.empty) asts
+  | ast ->
+    let loc = Dune_lang.Ast.loc ast in
+    User_error.raise ~loc
+      [ Pp.text
+          "Dependency specification in `(include <filename>)` must be a list"
+      ]
 
 let prepare_expander expander =
   Expander.set_expanding_what expander Deps_like_field

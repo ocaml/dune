@@ -7,8 +7,7 @@ Tests for dynamic dependencies computed from the `%{read:...}` family of macros
 Define 2 rules and a file containing their paths
 
   $ cat > deps.d <<EOF
-  > depA
-  > depB
+  > (depA depB)
   > EOF
 
   $ cat > dune <<EOF
@@ -61,10 +60,7 @@ Works with aliases and other dependency specifications
   > EOF
 
   $ cat > deps.d <<EOF
-  > (alias depA)
-  > (universe)
-  > depB
-  > another_dep
+  > ((alias depA) (universe) depB another_dep)
   > EOF
 
   $ cat > dune <<EOF
@@ -107,7 +103,7 @@ Multiple `(include)` nesting
   > (rule
   >  (target meta-deps.d)
   >  (action
-  >   (bash "echo '(include ./deps.d)' > %{target}")))
+  >   (bash "echo '((include ./deps.d))' > %{target}")))
   > 
   > (rule
   >  (alias nested)

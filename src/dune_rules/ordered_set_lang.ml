@@ -342,7 +342,7 @@ module Unexpanded = struct
           let* sexp =
             let* path = expand_template fn ~mode:Single in
             let path = Value.to_path path ?error_loc:(Some loc) ~dir in
-            Action_builder.read_sexp ~mode:Single path
+            Action_builder.read_sexp path
           in
           let t = Dune_lang.Decoder.parse decode context sexp in
           expand t.ast ~allow_include:false

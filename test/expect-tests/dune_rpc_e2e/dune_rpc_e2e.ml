@@ -185,3 +185,12 @@ let run run =
     ~f:(fun () ->
       Sys.chdir (Path.to_string dir);
       Scheduler.Run.go config run ~timeout:5.0 ~on_event:(fun _ _ -> ()))
+
+let files =
+  List.iter ~f:(fun (f, contents) -> Io.String_path.write_file f contents)
+
+let poll_exn client decl =
+  let+ poll = Client.poll client decl in
+  match poll with
+  | Ok p -> p
+  | Error e -> raise (Dune_rpc.Version_error.E e)

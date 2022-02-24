@@ -10,3 +10,10 @@ val run_client :
   -> 'a Fiber.t
 
 val run : (unit -> 'a Fiber.t) -> 'a
+
+val files : (string * string) list -> unit
+
+val poll_exn :
+     Dune_rpc_impl.Client.t
+  -> 'a Dune_rpc_private.Sub.t
+  -> 'a Dune_rpc_impl.Client.Stream.t Fiber.t

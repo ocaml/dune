@@ -21,9 +21,6 @@ let%expect_test "turn on and shutdown" =
     Build . succeeded
     shutting down |}]
 
-let files =
-  List.iter ~f:(fun (f, contents) -> Io.String_path.write_file f contents)
-
 let on_diagnostic_event diagnostics =
   let cwd = Sys.getcwd () in
   let sanitize_path path =
@@ -93,12 +90,6 @@ let setup_diagnostics f =
   in
   run (fun () -> with_dune_watch exec)
 
-let poll_exn client decl =
-  let+ poll = Client.poll client decl in
-  match poll with
-  | Ok p -> p
-  | Error e -> raise (Dune_rpc.Version_error.E e)
-
 let print_diagnostics poll =
   let+ res = Client.Stream.next poll in
   match res with
@@ -159,7 +150,7 @@ let%expect_test "related error" =
       ; [ "message"
         ; [ "Verbatim"
           ; "The implementation foo.ml\n\
-            \       does not match the interface .foo.objs/byte/foo.cmi: \n\
+            \       does not match the interface .foo.objs/byte/foo.cmi:\n\
             \       Values do not match: val x : bool is not included in val x : int\n\
              "
           ]

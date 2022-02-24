@@ -46,13 +46,14 @@ let%expect_test "cancelling subscription while request is in-flight" =
               Build ./foo.exe succeeded
               Succeeded |}];
             let result = Fiber.Ivar.create () in
-            (* This ordering is a bit strange. We need the pool to begin
-               executing the [next] fiber before we cancel the subscription,
-               which is inherently a bit of a race condition. *)
+            (* TODO: Putting the cancellation in the pool is probably flaky. The
+               point of this test is to submit the [next] request, then cancel
+               the poll before a response is received. Experimentally, this is
+               the only combination and ordering I could find that does this
+               correctly. *)
             let* () =
               Fiber.Pool.task pool ~f:(fun () -> Client.Stream.cancel poll)
             in
-            let* () = Fiber.return () in
             let* () =
               (* Because we've already received all pending progress updates,
                  this request will hang forever unless cancelled. *)
@@ -63,7 +64,7 @@ let%expect_test "cancelling subscription while request is in-flight" =
             (match response with
             | None -> ()
             | Some progress ->
-              printfn "unexpectedly received response";
+              printfn "unexpectedly received actual response";
               display_progress progress);
             [%expect {||}];
             Fiber.Pool.stop pool))

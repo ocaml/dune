@@ -691,20 +691,24 @@ let add_watch t path =
        start *)
     ()
   | Inotify { inotify; awaiting_creation; mutex } ->
-    Mutex.lock mutex;
+    let locked = ref false in
     let rec loop p =
       match Inotify_lib.add inotify (Path.to_string p) with
       | () -> ()
       | exception Unix.Unix_error (ENOENT, _, _) -> (
+        if not !locked then (
+          Mutex.lock mutex;
+          locked := true);
         let (_ : (_, _) result) = Table.add awaiting_creation p () in
         match Path.parent p with
+        | Some p -> loop p
         | None ->
           User_warning.emit
             [ Pp.textf "Refusing to watch %s" (Path.to_string_maybe_quoted path)
-            ]
-        | Some p -> loop p)
+            ])
     in
-    loop path;
-    Mutex.unlock mutex
+    Exn.protect
+      ~f:(fun () -> loop path)
+      ~finally:(fun () -> if !locked then Mutex.unlock mutex)
 
 let emit_sync = Fs_sync.emit

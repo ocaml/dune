@@ -6,7 +6,7 @@ The Dune project strives to provide the best possible build tool for the
 entire OCaml community, including individual developers contributing to open 
 source projects in their free time, larger companies (such as Jane Street), 
 and communities, like MirageOS and Irmin. Additionally, we aim to provide the same 
-features for other funcational programming communities, such as Coq and
+features for other neighboring communities, such as Coq and
 possibly Reason/Bucklescript, in the future.
 
 We haven't reached this goal yet, as Dune still requires development in some areas 

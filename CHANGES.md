@@ -9,6 +9,8 @@
 
 - Add direct dependencies to $ dune describe output (#5412, @esope)
 
+- Show auto-detected concurrency on Windows too (#5502, @MisterDA)
+
 3.0.3 (Unreleased)
 ------------------
 

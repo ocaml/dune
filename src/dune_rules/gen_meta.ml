@@ -163,12 +163,7 @@ let gen_lib pub_name lib ~path ~version =
       | l ->
         let root = Pub_name.root pub_name in
         let l = List.map l ~f:Path.basename in
-        [ rule "linkopts" [ Pos "javascript" ] Set
-            (List.map l
-               ~f:(sprintf "+%s/%s" (String.concat ~sep:"/" (root :: path)))
-            |> String.concat ~sep:" ")
-        ; rule "jsoo_runtime" [] Set (String.concat l ~sep:" ")
-        ])
+        [ rule "jsoo_runtime" [] Set (String.concat l ~sep:" ") ])
     ]
 
 let gen ~(package : Package.t) ~add_directory_entry entries =

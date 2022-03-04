@@ -72,6 +72,6 @@ let%expect_test _ =
   print_events 3;
   [%expect
     {|
-    { path = In_source_tree "e"; kind = "Created" }
+    { path = In_source_tree "e/1/2"; kind = "Created" }
     { path = In_source_tree "e/1"; kind = "Created" }
-    { path = In_source_tree "e/1/2"; kind = "Created" } |}]
+    { path = In_source_tree "e/1/2"; kind = "File_changed" } |}]

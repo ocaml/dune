@@ -428,7 +428,7 @@ not.
 
 .. _preprocessing-spec:
 
-PreprocessingSspecification
+Preprocessing Specification
 ===========================
 
 Dune accepts three kinds of preprocessing:

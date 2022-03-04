@@ -39,6 +39,17 @@ module Event = struct
     | Queue_overflow
     | Sync of Sync_id.t
     | Watcher_terminated
+
+  let path = function
+    | Fs_memo_event event -> Some event.path
+    | Queue_overflow | Sync _ | Watcher_terminated -> None
+
+  let _to_dyn = function
+    | Fs_memo_event fs ->
+      Dyn.variant "Fs_memo_event" [ Fs_memo_event.to_dyn fs ]
+    | Queue_overflow -> Dyn.variant "Queue_overflow" []
+    | Sync sid -> Dyn.variant "Sync" [ Sync_id.to_dyn sid ]
+    | Watcher_terminated -> Dyn.variant "Watcher_terminated" []
 end
 
 module Scheduler = struct
@@ -386,12 +397,17 @@ let spawn_external_watcher ~root ~backend =
   ((r_stdout, parse_line, wait), pid)
 
 let create_inotifylib_watcher ~inotify ~sync_table ~(scheduler : Scheduler.t) =
+  let gen_id counter =
+    let res = !counter in
+    incr counter;
+    res
+  in
   Inotify_lib.create ~spawn_thread:scheduler.spawn_thread
     ~modify_event_selector:`Closed_writable_fd
     ~log_error:(fun error -> Console.print [ Pp.text error ])
     ~send_emit_events_job_to_scheduler:(fun f ->
       scheduler.thread_safe_send_emit_events_job
-        (let rec self acc events =
+        (let rec self counter acc events =
            let events =
              List.concat_map events ~f:(fun event ->
                  let is_fs_sync_event_generated_by_dune =
@@ -404,49 +420,71 @@ let create_inotifylib_watcher ~inotify ~sync_table ~(scheduler : Scheduler.t) =
                    | Moved _ | Queue_overflow -> None
                  in
                  match is_fs_sync_event_generated_by_dune with
-                 | None -> process_inotify_event event
+                 | None ->
+                   process_inotify_event event
+                   |> List.map ~f:(fun e -> (gen_id counter, e))
                  | Some path -> (
                    match Fs_sync.consume_event sync_table path with
                    | None -> []
-                   | Some id -> [ Event.Sync id ]))
+                   | Some id -> [ (gen_id counter, Event.Sync id) ]))
            in
-           let events =
-             match events with
-             | [] -> acc @ events
-             | _ :: _ ->
-               let inotify = Fdecl.get inotify in
+           match events with
+           | [] -> events :: acc
+           | _ :: _ ->
+             let inotify = Fdecl.get inotify in
+             let to_scan =
                Mutex.lock inotify.mutex;
-               let to_scan =
-                 List.filter_map events ~f:(fun (event : Event.t) ->
-                     match event with
-                     | Queue_overflow | Sync _ | Watcher_terminated
-                     | Fs_memo_event
-                         { path = _; kind = Deleted | File_changed | Unknown }
-                       -> None
-                     | Fs_memo_event { path; kind = Created } -> (
-                       match Table.mem inotify.awaiting_creation path with
-                       | false -> None
-                       | true ->
-                         Inotify_lib.add inotify.inotify (Path.to_string path);
-                         Table.remove inotify.awaiting_creation path;
-                         Some path))
-               in
-               Mutex.unlock inotify.mutex;
-               let scan_dirs dirs =
-                 List.concat_map dirs ~f:(fun dir ->
-                     match Path.readdir_unsorted dir with
-                     | Error _ -> []
-                     | Ok contents ->
-                       List.map contents ~f:(fun fname ->
-                           let path = Path.relative dir fname in
-                           Inotify_lib.Event.Created (Path.to_string path)))
-               in
-               let new_events = scan_dirs to_scan in
-               self events new_events
-           in
-           events
+               Exn.protect
+                 ~finally:(fun () -> Mutex.unlock inotify.mutex)
+                 ~f:(fun () ->
+                   List.filter_map events ~f:(fun (_id, (event : Event.t)) ->
+                       match event with
+                       | Queue_overflow | Sync _ | Watcher_terminated
+                       | Fs_memo_event
+                           { path = _; kind = Deleted | File_changed | Unknown }
+                         -> None
+                       | Fs_memo_event { path; kind = Created } -> (
+                         match Table.mem inotify.awaiting_creation path with
+                         | false -> None
+                         | true ->
+                           Table.remove inotify.awaiting_creation path;
+                           Some path)))
+             in
+             let new_events =
+               List.concat_map to_scan ~f:(fun dir ->
+                   Inotify_lib.add inotify.inotify (Path.to_string dir);
+                   match Path.readdir_unsorted dir with
+                   | Error _ -> []
+                   | Ok contents ->
+                     List.map contents ~f:(fun fname ->
+                         let path = Path.relative dir fname in
+                         Inotify_lib.Event.Created (Path.to_string path)))
+             in
+             self counter (events :: acc) new_events
          in
-         fun () -> self [] (f ())))
+         fun () ->
+           let no_path, with_path =
+             self (ref 0) [] (f ())
+             |> List.flatten
+             |> List.fold_left ~init:([], Path.Map.empty)
+                  ~f:(fun (no_path, map) (id, event) ->
+                    match Event.path event with
+                    | None -> ((id, event) :: no_path, map)
+                    | Some path ->
+                      let map =
+                        Path.Map.update map path ~f:(function
+                          | None -> Some (id, event)
+                          | Some (id', event') -> (
+                            match Int.compare id' id with
+                            | Lt -> Some (id, event)
+                            | Gt -> Some (id', event')
+                            | Eq -> assert false))
+                      in
+                      (no_path, map))
+           in
+           Path.Map.values with_path |> List.rev_append no_path
+           |> List.sort ~compare:(fun (id, _) (id', _) -> Int.compare id id')
+           |> List.map ~f:snd))
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend =
   let sync_table = Table.create (module String) 64 in

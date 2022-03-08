@@ -1192,7 +1192,7 @@ To use Menhir in a Dune project, the language version should be selected in the
 
 .. code:: scheme
 
-  (using Menhir 2.0)
+  (using menhir 2.0)
 
 This will enable support for Menhir stanzas in the current project. If the
 language version is absent, Dune will automatically add this line with the

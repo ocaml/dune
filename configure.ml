@@ -18,7 +18,7 @@ let out =
 
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in
-  let library_path = ref None in
+  let library_path = ref [] in
   let library_destdir = ref None in
   let mandir = ref None in
   let docdir = ref None in
@@ -29,7 +29,7 @@ let () =
   in
   let set_libdir s =
     let dir = dir_of_string s in
-    library_path := Some [ dir ];
+    library_path := dir :: !library_path;
     library_destdir := Some dir
   in
   let set_dir v s =
@@ -57,7 +57,7 @@ let () =
     "Usage: ocaml configure.ml [OPTIONS]\nOptions are:";
   let oc = open_out out in
   let pr fmt = fprintf oc (fmt ^^ "\n") in
-  pr "let library_path    = %s" (option (list string) !library_path);
+  pr "let library_path    = %s" ((list string) !library_path);
   pr "let library_destdir = %s" (option string !library_destdir);
   pr "let mandir = %s" (option string !mandir);
   pr "let docdir = %s" (option string !docdir);

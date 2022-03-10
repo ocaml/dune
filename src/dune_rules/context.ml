@@ -269,8 +269,8 @@ module Build_environment_kind = struct
           assert false)
       | Default -> (
         match Setup.library_path with
-        | Some l -> Hardcoded_path l
-        | None -> (
+        | _ :: _ as l -> Hardcoded_path l
+        | [] -> (
           match opam_prefix with
           | Some s -> Opam2_environment s
           | None -> Unknown)))

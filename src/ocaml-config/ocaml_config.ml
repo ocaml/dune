@@ -513,7 +513,14 @@ let make vars =
     let cmt_magic_number = get vars "cmt_magic_number" in
     let windows_unicode = get_bool vars "windows_unicode" in
     let natdynlink_supported =
-      Sys.file_exists (Filename.concat standard_library "dynlink.cmxa")
+      let lib = "dynlink.cmxa" in
+      let lib =
+        if version >= (5, 0, 0) then
+          Filename.concat "dynlink" lib
+        else
+          lib
+      in
+      Sys.file_exists (Filename.concat standard_library lib)
     in
     let file =
       let stdlib = Path.external_ (Path.External.of_string standard_library) in

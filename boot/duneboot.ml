@@ -572,6 +572,8 @@ module Config : sig
   val ocaml_config : unit -> string StringMap.t Fiber.t
 
   val output_complete_obj_arg : string
+
+  val unix_library_flags : string list
 end = struct
   let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> (a, b))
 
@@ -650,6 +652,12 @@ end = struct
       "-custom"
     else
       "-output-complete-exe"
+
+  let unix_library_flags =
+    if ocaml_version >= (5, 0) then
+      [ "-I"; "+unix" ]
+    else
+      []
 end
 
 let insert_header fn ~header =
@@ -1031,7 +1039,7 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads.posix" ->
         ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
-      | "unix" -> ("unix" ^ Config.ocaml_archive_ext, [])
+      | "unix" -> ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
       | s -> fatal "unhandled external library %s" s
     in
     let externals = List.map ~f:convert external_libraries in

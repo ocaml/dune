@@ -1,3 +1,8 @@
+2.9.4 (unreleased)
+------------------
+
+- Support new locations of unix, str, dynlink in OCaml >= 5.0 (#5582, @dra27)
+
 2.9.3 (26/01/2022)
 ------------------
 

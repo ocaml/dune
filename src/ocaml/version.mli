@@ -67,3 +67,7 @@ val has_bigarray_library : t -> bool
 
 (** Whether the compiler supports alerts and the corresponding [-alert] option *)
 val supports_alerts : t -> bool
+
+(** Whether [dynlink], [str] and [unix] are in subdirectories of the standard
+    library *)
+val has_sandboxed_otherlibs : t -> bool

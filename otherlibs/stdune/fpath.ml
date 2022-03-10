@@ -116,9 +116,7 @@ and rm_rf_dir path =
          deleted the directory. *)
       ())
 
-let rm_rf ?(allow_external = false) fn =
-  if (not allow_external) && not (Filename.is_relative fn) then
-    Code_error.raise "Path.rm_rf called on external dir" [ ("fn", String fn) ];
+let rm_rf fn =
   match Unix.lstat fn with
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
   | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn

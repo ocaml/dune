@@ -68,3 +68,10 @@ val ocamlopt_always_calls_library_linker : t -> bool
 
 (** Whether [Sys.opaque_identity] is in the standard library *)
 val has_sys_opaque_identity : t -> bool
+
+(** Whether [bigarray] {e library} exists *)
+val has_bigarray_library : t -> bool
+
+(** Whether [dynlink], [str] and [unix] are in subdirectories of the standard
+    library *)
+val has_sandboxed_otherlibs : t -> bool

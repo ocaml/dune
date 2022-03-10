@@ -1,3 +1,9 @@
+3.3.0 (unreleased)
+------------------
+
+- Support new locations of unix, str, dynlink in OCaml >= 5.0
+  (#5582, @dra27)
+
 3.2.0 (17-05-2022)
 ------------------
 
@@ -481,6 +487,9 @@
 
 - Do not generate META information for `bigarray` library in OCaml >= 5.0
   (#5421, @nojb)
+
+- Support new locations of unix, str, dynlink in OCaml >= 5.0
+  (#5582, @dra27)
 
 2.9.3 (26/01/2022)
 ------------------

@@ -46,3 +46,12 @@
  (mode fallback)
  (action
   (copy# setup.defaults.ml setup.ml)))
+
+(rule
+ (mode promote)
+ (targets setup.defaults.ml)
+ (deps ../../configure.ml)
+ (action
+  (chdir ../..
+   (setenv DUNE_CONFIGURE_OUTPUT "src/dune_rules/setup.defaults.ml"
+     (run %{ocaml} configure.ml)))))

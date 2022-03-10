@@ -11,6 +11,11 @@ let option f = function
   | None -> "None"
   | Some x -> sprintf "Some %s" (f x)
 
+let out =
+  match Sys.getenv_opt "DUNE_CONFIGURE_OUTPUT" with
+  | None -> "src/dune_rules/setup.ml"
+  | Some out -> out
+
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in
   let library_path = ref None in
@@ -50,7 +55,7 @@ let () =
   let anon s = bad "Don't know what to do with %s" s in
   Arg.parse (Arg.align args) anon
     "Usage: ocaml configure.ml [OPTIONS]\nOptions are:";
-  let oc = open_out "src/dune_rules/setup.ml" in
+  let oc = open_out out in
   let pr fmt = fprintf oc (fmt ^^ "\n") in
   pr "let library_path    = %s" (option (list string) !library_path);
   pr "let library_destdir = %s" (option string !library_destdir);

@@ -1049,7 +1049,7 @@ let clear_dir dir = Fpath.clear_dir (to_string dir)
 let rm_rf ?(allow_external = false) t =
   if (not allow_external) && not (is_managed t) then
     Code_error.raise "Path.rm_rf called on external dir" [ ("t", to_dyn t) ];
-  Fpath.rm_rf ~allow_external (to_string t)
+  Fpath.rm_rf (to_string t)
 
 let mkdir_p ?perms = function
   | External s -> External.mkdir_p s ?perms

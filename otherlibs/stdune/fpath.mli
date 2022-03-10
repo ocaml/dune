@@ -34,6 +34,6 @@ type clear_dir_result =
 val clear_dir : string -> clear_dir_result
 
 (** If the path does not exist, this function is a no-op. *)
-val rm_rf : ?allow_external:bool -> string -> unit
+val rm_rf : string -> unit
 
 val is_root : string -> bool

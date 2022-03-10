@@ -13,6 +13,8 @@
 
 - Show auto-detected concurrency on Windows too (#5502, @MisterDA)
 
+- Fix operations that remove folders with absolute path. This happens when using esy (#5507, @EduardoRFS)
+
 3.0.3 (Unreleased)
 ------------------
 

@@ -1,6 +1,8 @@
 3.1.0 (Unreleased)
 ------------------
 
+- Add `(deps <deps>)` in ctype field (#5346, @bobot)
+
 - Add `(include <file>)` constructor to dependency specifications. This can be
   used to introduce dynamic dependencies (#5442, @anmonteiro)
 

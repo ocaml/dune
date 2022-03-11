@@ -139,32 +139,84 @@ module Section = struct
       ; man : Path.t
       }
 
-    (* FIXME: we should handle all directories uniformly, instead of
-       special-casing etcdir, mandir, and docdir as of today [which was done for
-       convenience of backporting] *)
-    let make ~package ~destdir ?(libdir = Path.relative destdir "lib")
-        ?(mandir = Path.relative destdir "man")
-        ?(docdir = Path.relative destdir "doc")
-        ?(etcdir = Path.relative destdir "etc") () =
+    module Roots = struct
+      type 'a t =
+        { lib_root : 'a
+        ; libexec_root : 'a
+        ; bin : 'a
+        ; sbin : 'a
+        ; share_root : 'a
+        ; etc_root : 'a
+        ; doc_root : 'a
+        ; man : 'a
+        }
+
+      let opam_from_prefix prefix =
+        let lib_root = Path.relative prefix "lib" in
+        { lib_root
+        ; libexec_root = lib_root
+        ; bin = Path.relative prefix "bin"
+        ; sbin = Path.relative prefix "sbin"
+        ; share_root = Path.relative prefix "share"
+        ; man = Path.relative prefix "man"
+        ; doc_root = Path.relative prefix "doc"
+        ; etc_root = Path.relative prefix "etc"
+        }
+
+      let complete x =
+        match x.libexec_root with
+        | Some _ -> x
+        | None -> { x with libexec_root = x.lib_root }
+
+      let map ~f x =
+        { lib_root = f x.lib_root
+        ; libexec_root = f x.libexec_root
+        ; bin = f x.bin
+        ; sbin = f x.sbin
+        ; share_root = f x.share_root
+        ; etc_root = f x.etc_root
+        ; doc_root = f x.doc_root
+        ; man = f x.man
+        }
+
+      let map2 ~f x y =
+        { lib_root = f x.lib_root y.lib_root
+        ; libexec_root = f x.libexec_root y.libexec_root
+        ; bin = f x.bin y.bin
+        ; sbin = f x.sbin y.sbin
+        ; share_root = f x.share_root y.share_root
+        ; etc_root = f x.etc_root y.etc_root
+        ; doc_root = f x.doc_root y.doc_root
+        ; man = f x.man y.man
+        }
+
+      let map3 ~f x y z =
+        { lib_root = f x.lib_root y.lib_root z.lib_root
+        ; libexec_root = f x.libexec_root y.libexec_root z.libexec_root
+        ; bin = f x.bin y.bin z.bin
+        ; sbin = f x.sbin y.sbin z.sbin
+        ; share_root = f x.share_root y.share_root z.share_root
+        ; etc_root = f x.etc_root y.etc_root z.etc_root
+        ; doc_root = f x.doc_root y.doc_root z.doc_root
+        ; man = f x.man y.man z.man
+        }
+    end
+
+    let make ~package ~(roots : Path.t Roots.t) =
       let package = Package.Name.to_string package in
-      let lib_root = libdir in
-      let libexec_root = libdir in
-      let share_root = Path.relative destdir "share" in
-      let etc_root = etcdir in
-      let doc_root = docdir in
-      { lib_root
-      ; libexec_root
-      ; share_root
-      ; bin = Path.relative destdir "bin"
-      ; sbin = Path.relative destdir "sbin"
-      ; man = mandir
-      ; toplevel = Path.relative libdir "toplevel"
-      ; stublibs = Path.relative libdir "stublibs"
-      ; lib = Path.relative lib_root package
-      ; libexec = Path.relative libexec_root package
-      ; share = Path.relative share_root package
-      ; etc = Path.relative etc_root package
-      ; doc = Path.relative doc_root package
+      { lib_root = roots.lib_root
+      ; libexec_root = roots.libexec_root
+      ; share_root = roots.share_root
+      ; bin = roots.bin
+      ; sbin = roots.sbin
+      ; man = roots.man
+      ; toplevel = Path.relative roots.lib_root "toplevel"
+      ; stublibs = Path.relative roots.lib_root "stublibs"
+      ; lib = Path.relative roots.lib_root package
+      ; libexec = Path.relative roots.libexec_root package
+      ; share = Path.relative roots.share_root package
+      ; etc = Path.relative roots.etc_root package
+      ; doc = Path.relative roots.doc_root package
       }
 
     let get t section =
@@ -188,7 +240,8 @@ module Section = struct
       (* check that we get the good path *)
       let install_dir = Local_install_path.dir ~context in
       let install_dir = Path.build install_dir in
-      let paths = make ~package:package_name ~destdir:install_dir () in
+      let roots = Roots.opam_from_prefix install_dir in
+      let paths = make ~package:package_name ~roots in
       get paths section
 
     let install_path t section p =

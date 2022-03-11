@@ -825,12 +825,6 @@ module DB = struct
     Memo.exec memo
 end
 
-let install_ocaml_libdir t =
-  match (t.kind, Setup.library_destdir) with
-  | Default, Some d ->
-    Memo.return (Some (Path.of_filename_relative_to_initial_cwd d))
-  | _ -> Memo.return None
-
 let compiler t (mode : Mode.t) =
   match mode with
   | Byte -> Ok t.ocamlc
@@ -862,11 +856,26 @@ let map_exe (context : t) =
         Path.append_source (Path.build host.build_dir) exe
       | _ -> exe)
 
-let install_prefix t =
+let roots t =
   let open Fiber.O in
-  let* opam = Memo.run (Opam.opam_binary_exn ()) in
-  let+ s = Process.run_capture Strict opam ~env:t.env [ "var"; "prefix" ] in
-  Path.of_filename_relative_to_initial_cwd (String.trim s)
+  let+ prefix_roots =
+    let* opam = Memo.run (Opam.opam_binary_exn ()) in
+    let+ s = Process.run_capture Strict opam ~env:t.env [ "var"; "prefix" ] in
+    let prefix = Path.of_filename_relative_to_initial_cwd (String.trim s) in
+    Install.Section.Paths.Roots.opam_from_prefix prefix
+  in
+  match t.kind with
+  | Default ->
+    let setup_roots =
+      Install.Section.Paths.Roots.map
+        ~f:(Option.map ~f:Path.of_filename_relative_to_initial_cwd)
+        Setup.roots
+    in
+    Install.Section.Paths.Roots.map2 prefix_roots setup_roots
+      ~f:(fun from_prefix -> function
+      | Some dir -> dir
+      | None -> from_prefix)
+  | Opam _ -> prefix_roots
 
 let dot_dune_dir t = Path.Build.relative t.build_dir ".dune"
 

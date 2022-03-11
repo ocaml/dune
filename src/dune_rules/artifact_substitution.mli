@@ -31,14 +31,10 @@ type conf = private
 val conf_of_context : Context.t option -> conf
 
 val conf_for_install :
-     relocatable:bool
+     relocatable:Path.t option
   -> default_ocamlpath:Path.t list
   -> stdlib_dir:Path.t
-  -> prefix:Path.t
-  -> libdir:Path.t option
-  -> mandir:Path.t option
-  -> docdir:Path.t option
-  -> etcdir:Path.t option
+  -> roots:Path.t Install.Section.Paths.Roots.t
   -> conf
 
 val conf_dummy : conf

@@ -7,24 +7,25 @@ let print_line fmt =
 let interpret_destdir ~destdir path =
   match destdir with
   | None -> path
-  | Some prefix ->
-    Path.append_local (Path.of_string prefix) (Path.local_part path)
+  | Some destdir -> Path.append_local destdir (Path.local_part path)
 
-let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
-  match prefix_from_command_line with
-  | Some p ->
-    let prefix = Path.of_string p in
-    let dir = Option.value ~default:"lib" libdir_from_command_line in
-    Fiber.return (prefix, Some (Path.relative prefix dir))
-  | None ->
-    let open Fiber.O in
-    let* prefix = Context.install_prefix context in
-    let+ libdir =
-      match libdir_from_command_line with
-      | None -> Memo.run (Context.install_ocaml_libdir context)
-      | Some l -> Fiber.return (Some (Path.relative prefix l))
-    in
-    (prefix, libdir)
+let get_dirs context ~prefix_from_command_line ~from_command_line =
+  let open Fiber.O in
+  let prefix_from_command_line =
+    Option.map ~f:Path.of_string prefix_from_command_line
+  in
+  let+ roots =
+    match prefix_from_command_line with
+    | Some prefix ->
+      Fiber.return
+        (Install.Section.Paths.Roots.opam_from_prefix prefix)
+    | None -> Context.roots context
+  in
+  Install.Section.Paths.Roots.map2 from_command_line roots
+    ~f:(fun from_command_line from_prefix ->
+      match (from_command_line, from_prefix) with
+      | Some dir, _ -> dir
+      | None, dir -> dir)
 
 module Workspace = struct
   type t =
@@ -417,17 +418,17 @@ let install_uninstall ~what =
         & info [ "destdir" ] ~env:(env_var "DESTDIR") ~docv:"PATH"
             ~doc:
               "When passed, this directory is prepended to all installed paths.")
-    and+ mandir =
+    and+ mandir_from_command_line =
       let doc =
         "When passed, manually override the directory to install man pages"
       in
       Arg.(value & opt (some string) None & info [ "mandir" ] ~docv:"PATH" ~doc)
-    and+ docdir =
+    and+ docdir_from_command_line =
       let doc =
         "When passed, manually override the directory to install documentation"
       in
       Arg.(value & opt (some string) None & info [ "docdir" ] ~docv:"PATH" ~doc)
-    and+ etcdir =
+    and+ etcdir_from_command_line =
       let doc =
         "When passed, manually override the directory to install configuration \
          files"
@@ -444,7 +445,8 @@ let install_uninstall ~what =
         & info [ "relocatable" ]
             ~doc:
               "Make the binaries relocatable (the installation directory can \
-               be moved).")
+               be moved). The installation directory must be specified with \
+               --prefix")
     and+ create_install_files =
       Arg.(
         value & flag
@@ -552,50 +554,52 @@ let install_uninstall ~what =
                  (context, entries_per_package))
         in
         let destdir =
-          if create_install_files then
-            Some (Option.value ~default:"_destdir" destdir)
-          else destdir
+          Option.map ~f:Path.of_string
+            (if create_install_files then
+             Some (Option.value ~default:"_destdir" destdir)
+            else destdir)
         in
+        let relocatable =
+          if relocatable then
+            match prefix_from_command_line with
+            | Some dir -> Some (Path.of_string dir)
+            | None ->
+              User_error.raise
+                [ Pp.text "Option --prefix is needed with --relocation" ]
+          else None
+        in
+
         let open Fiber.O in
         let (module Ops) = file_operations ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in
+        let from_command_line =
+          let open Install.Section.Paths.Roots in
+          { lib_root = libdir_from_command_line
+          ; etc_root = etcdir_from_command_line
+          ; doc_root = docdir_from_command_line
+          ; man = mandir_from_command_line
+          ; bin = None
+          ; sbin = None
+          ; libexec_root = None
+          ; share_root = None
+          }
+          |> map ~f:(Option.map ~f:Path.of_string)
+          |> complete
+        in
         let+ () =
-          let mandir =
-            Option.map ~f:Path.of_string
-              (match mandir with
-              | Some _ -> mandir
-              | None -> Dune_rules.Setup.mandir)
-          in
-          let docdir =
-            Option.map ~f:Path.of_string
-              (match docdir with
-              | Some _ -> docdir
-              | None -> Dune_rules.Setup.docdir)
-          in
-          let etcdir =
-            Option.map ~f:Path.of_string
-              (match etcdir with
-              | Some _ -> etcdir
-              | None -> Dune_rules.Setup.etcdir)
-          in
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
-              let* prefix, libdir =
-                get_dirs context ~prefix_from_command_line
-                  ~libdir_from_command_line
+              let* roots =
+                get_dirs context ~prefix_from_command_line ~from_command_line
               in
               let conf =
                 Dune_rules.Artifact_substitution.conf_for_install ~relocatable
                   ~default_ocamlpath:context.default_ocamlpath
-                  ~stdlib_dir:context.stdlib_dir ~prefix ~libdir ~mandir ~docdir
-                  ~etcdir
+                  ~stdlib_dir:context.stdlib_dir ~roots
               in
               Fiber.sequential_iter entries_per_package
                 ~f:(fun (package, entries) ->
-                  let paths =
-                    Install.Section.Paths.make ~package ~destdir:prefix ?libdir
-                      ?mandir ?docdir ?etcdir ()
-                  in
+                  let paths = Install.Section.Paths.make ~package ~roots in
                   let+ entries =
                     Fiber.sequential_map entries ~f:(fun entry ->
                         let special_file = Special_file.of_entry entry in

@@ -4,7 +4,7 @@
 `dune install` should handle destination directories that don't exist
 
   $ dune build @install
-  $ dune install --prefix install --libdir lib 2>&1 | dune_cmd sanitize
+  $ dune install --prefix install --libdir install/lib 2>&1 | dune_cmd sanitize
   Installing install/lib/foo/META
   Installing install/lib/foo/dune-package
   Installing install/lib/foo/foo$ext_lib

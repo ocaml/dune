@@ -663,6 +663,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let env_dune_dir_locations =
     let install_dir = Local_install_path.dir ~context:context.Context.name in
     let install_dir = Path.build install_dir in
+    let roots = Install.Section.Paths.Roots.opam_from_prefix install_dir in
     let v =
       Option.value
         (Stdune.Env.get context.env dune_dir_locations_var)
@@ -670,10 +671,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     in
     Package.Name.Map.foldi ~init:v package_sections
       ~f:(fun package_name sections init ->
-        let paths =
-          Install.Section.Paths.make ~package:package_name ~destdir:install_dir
-            ()
-        in
+        let paths = Install.Section.Paths.make ~package:package_name ~roots in
         Section.Set.fold sections ~init ~f:(fun section acc ->
             sprintf "%s%c%s%c%s%s"
               (Package.Name.to_string package_name)

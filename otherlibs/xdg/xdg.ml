@@ -11,8 +11,10 @@ type t =
 let ( / ) = Filename.concat
 
 let make t env_var unix_default win32_default =
+  let default = if t.win32 then win32_default else unix_default in
   match t.env env_var with
-  | None | Some "" -> if t.win32 then win32_default else unix_default
+  | None -> default
+  | Some s when Filename.is_relative s -> default
   | Some s -> s
 
 let cache_dir t =

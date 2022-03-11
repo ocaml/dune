@@ -66,9 +66,8 @@ module Section : sig
 
       val map : f:('a -> 'b) -> 'a t -> 'b t
 
-      val map2 : f:('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
-
-      val map3 : f:('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
+      (** return the roots of the first argument if present *)
+      val first_has_priority : 'a option t -> 'a option t -> 'a option t
     end
 
     type section := t

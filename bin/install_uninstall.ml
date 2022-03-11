@@ -10,22 +10,33 @@ let interpret_destdir ~destdir path =
   | Some destdir -> Path.append_local destdir (Path.local_part path)
 
 let get_dirs context ~prefix_from_command_line ~from_command_line =
-  let open Fiber.O in
+  let open Install.Section.Paths.Roots in
   let prefix_from_command_line =
     Option.map ~f:Path.of_string prefix_from_command_line
   in
-  let+ roots =
+  let roots =
     match prefix_from_command_line with
-    | Some prefix ->
-      Fiber.return
-        (Install.Section.Paths.Roots.opam_from_prefix prefix)
+    | Some prefix -> opam_from_prefix prefix |> map ~f:(fun s -> Some s)
     | None -> Context.roots context
   in
-  Install.Section.Paths.Roots.map2 from_command_line roots
-    ~f:(fun from_command_line from_prefix ->
-      match (from_command_line, from_prefix) with
-      | Some dir, _ -> dir
-      | None, dir -> dir)
+  let roots = first_has_priority from_command_line roots in
+  let must_be_defined name v =
+    match v with
+    | Some v -> v
+    | None ->
+      User_error.raise
+        [ Pp.textf "The %s installation directory is unknown." name ]
+        ~hints:[ Pp.textf "It could be specified with --%s" name ]
+  in
+  { lib_root = must_be_defined "libdir" roots.lib_root
+  ; libexec_root = must_be_defined "libexecdir" roots.libexec_root
+  ; bin = must_be_defined "bindir" roots.bin
+  ; sbin = must_be_defined "sbindir" roots.sbin
+  ; etc_root = must_be_defined "etcdir" roots.etc_root
+  ; doc_root = must_be_defined "docdir" roots.doc_root
+  ; share_root = must_be_defined "datadir" roots.share_root
+  ; man = must_be_defined "mandir" roots.man
+  }
 
 module Workspace = struct
   type t =
@@ -616,7 +627,7 @@ let install_uninstall ~what =
         let+ () =
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
-              let* roots =
+              let roots =
                 get_dirs context ~prefix_from_command_line ~from_command_line
               in
               let conf =

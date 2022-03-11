@@ -152,9 +152,10 @@ let compare a b = Poly.compare a.name b.name
 module Opam : sig
   (** Environment for this opam switch *)
   val env :
-    env:Env.t -> root:string option -> switch:string -> string Env.Map.t Memo.t
-
-  val opam_binary_exn : unit -> Path.t Memo.t
+       env:Env.t
+    -> root:string option
+    -> switch:string
+    -> string Env.Map.t Memo.t
 end = struct
   let opam =
     Memo.Lazy.create ~name:"context-opam" (fun () ->
@@ -857,24 +858,27 @@ let map_exe (context : t) =
       | _ -> exe)
 
 let roots t =
-  let open Fiber.O in
-  let+ prefix_roots =
-    let* opam = Memo.run (Opam.opam_binary_exn ()) in
-    let+ s = Process.run_capture Strict opam ~env:t.env [ "var"; "prefix" ] in
-    let prefix = Path.of_filename_relative_to_initial_cwd (String.trim s) in
-    Install.Section.Paths.Roots.opam_from_prefix prefix
+  let open Install.Section.Paths.Roots in
+  let prefix_roots =
+    match Env.get t.env Build_environment_kind.opam_switch_prefix_var_name with
+    | None ->
+      { lib_root = None
+      ; libexec_root = None
+      ; bin = None
+      ; sbin = None
+      ; etc_root = None
+      ; doc_root = None
+      ; share_root = None
+      ; man = None
+      }
+    | Some prefix ->
+      let prefix = Path.of_filename_relative_to_initial_cwd prefix in
+      opam_from_prefix prefix |> map ~f:(fun s -> Some s)
   in
   match t.kind with
   | Default ->
-    let setup_roots =
-      Install.Section.Paths.Roots.map
-        ~f:(Option.map ~f:Path.of_filename_relative_to_initial_cwd)
-        Setup.roots
-    in
-    Install.Section.Paths.Roots.map2 prefix_roots setup_roots
-      ~f:(fun from_prefix -> function
-      | Some dir -> dir
-      | None -> from_prefix)
+    let setup_roots = map ~f:(Option.map ~f:Path.of_string) Setup.roots in
+    first_has_priority setup_roots prefix_roots
   | Opam _ -> prefix_roots
 
 let dot_dune_dir t = Path.Build.relative t.build_dir ".dune"

@@ -8,5 +8,5 @@ open! Dune_engine
     auto-detect it using standard tools such as [ocamlfind]. *)
 val library_path : string list
 
-(** Where to install files. *)
+(** Where to install files. All the directories are absolute path *)
 val roots : string option Install.Section.Paths.Roots.t

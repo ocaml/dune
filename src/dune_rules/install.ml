@@ -190,16 +190,11 @@ module Section = struct
         ; man = f x.man y.man
         }
 
-      let map3 ~f x y z =
-        { lib_root = f x.lib_root y.lib_root z.lib_root
-        ; libexec_root = f x.libexec_root y.libexec_root z.libexec_root
-        ; bin = f x.bin y.bin z.bin
-        ; sbin = f x.sbin y.sbin z.sbin
-        ; share_root = f x.share_root y.share_root z.share_root
-        ; etc_root = f x.etc_root y.etc_root z.etc_root
-        ; doc_root = f x.doc_root y.doc_root z.doc_root
-        ; man = f x.man y.man z.man
-        }
+      let first_has_priority x y =
+        map2 x y ~f:(fun x y ->
+            match x with
+            | Some _ -> x
+            | None -> y)
     end
 
     let make ~package ~(roots : Path.t Roots.t) =

@@ -45,19 +45,37 @@ module Section : sig
   val to_dyn : t -> Dyn.t
 
   module Paths : sig
+    module Roots : sig
+      type 'a t =
+        { lib_root : 'a
+        ; libexec_root : 'a
+        ; bin : 'a
+        ; sbin : 'a
+        ; share_root : 'a
+        ; etc_root : 'a
+        ; doc_root : 'a
+        ; man : 'a
+        }
+
+      (** Compute the opam layout from prefix. the opam layout is used for
+          _build *)
+      val opam_from_prefix : Path.t -> Path.t t
+
+      (** Some roots (e.g. libexec) have another roots as default (e.g. lib) *)
+      val complete : 'a option t -> 'a option t
+
+      val map : f:('a -> 'b) -> 'a t -> 'b t
+
+      val map2 : f:('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+
+      val map3 : f:('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
+    end
+
     type section := t
 
     type t
 
-    val make :
-         package:Dune_engine.Package.Name.t
-      -> destdir:Path.t
-      -> ?libdir:Path.t
-      -> ?mandir:Path.t
-      -> ?docdir:Path.t
-      -> ?etcdir:Path.t
-      -> unit
-      -> t
+    val make : package:Dune_engine.Package.Name.t -> roots:Path.t Roots.t -> t
 
     val install_path : t -> section -> Dst.t -> Path.t
 

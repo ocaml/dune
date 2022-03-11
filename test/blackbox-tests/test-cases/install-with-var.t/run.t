@@ -11,7 +11,7 @@
   > EOF
 
   $ dune build @install
-  $ dune install --prefix install --libdir lib
+  $ dune install --prefix install --libdir install/lib
   Installing install/lib/foo/META
   Installing install/lib/foo/dune-package
   Installing install/lib/foo/opam

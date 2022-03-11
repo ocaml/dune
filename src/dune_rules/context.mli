@@ -108,8 +108,6 @@ val to_dyn_concise : t -> Dyn.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-val install_ocaml_libdir : t -> Path.t option Memo.t
-
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Mode.t -> Action.Prog.t
 
@@ -138,7 +136,7 @@ val build_context : t -> Build_context.t
 
 (** Query where build artifacts should be installed if the user doesn't specify
     an explicit installation directory. *)
-val install_prefix : t -> Path.t Fiber.t
+val roots : t -> Path.t Install.Section.Paths.Roots.t Fiber.t
 
 (** Generate the rules for producing the files needed by configurator. *)
 val gen_configurator_rules : t -> unit Memo.t

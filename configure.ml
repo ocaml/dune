@@ -57,9 +57,16 @@ let () =
     "Usage: ocaml configure.ml [OPTIONS]\nOptions are:";
   let oc = open_out out in
   let pr fmt = fprintf oc (fmt ^^ "\n") in
+  pr "open! Dune_engine";
   pr "let library_path    = %s" ((list string) !library_path);
-  pr "let library_destdir = %s" (option string !library_destdir);
-  pr "let mandir = %s" (option string !mandir);
-  pr "let docdir = %s" (option string !docdir);
-  pr "let etcdir = %s" (option string !etcdir);
+  pr "let roots = Install.Section.Paths.Roots.{ ";
+  pr "lib_root = %s;" (option string !library_destdir);
+  pr "man = %s;" (option string !mandir);
+  pr "doc_root = %s;" (option string !docdir);
+  pr "etc_root = %s;" (option string !etcdir);
+  pr "share_root = None;";
+  pr "bin = None;";
+  pr "sbin = None;";
+  pr "libexec_root = None;";
+  pr "}";
   close_out oc

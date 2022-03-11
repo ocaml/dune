@@ -1,5 +1,12 @@
+open! Dune_engine
 let library_path    = []
-let library_destdir = None
-let mandir = None
-let docdir = None
-let etcdir = None
+let roots = Install.Section.Paths.Roots.{ 
+lib_root = None;
+man = None;
+doc_root = None;
+etc_root = None;
+share_root = None;
+bin = None;
+sbin = None;
+libexec_root = None;
+}

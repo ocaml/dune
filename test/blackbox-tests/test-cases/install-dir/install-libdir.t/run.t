@@ -21,6 +21,24 @@
   Installing install/man/man1/a-man-page.1
   Installing install/man/man3/another-man-page.3
 
+Even if it is possible to ask for different libexecdir than libdir, the installed .cmxs will not be found
+  $ dune install --prefix install2 --libdir install2/lib --libexecdir install2/libexec 2>&1 | dune_cmd sanitize
+  Installing install2/lib/foo/META
+  Installing install2/lib/foo/dune-package
+  Installing install2/lib/foo/foo$ext_lib
+  Installing install2/lib/foo/foo.cma
+  Installing install2/lib/foo/foo.cmi
+  Installing install2/lib/foo/foo.cmt
+  Installing install2/lib/foo/foo.cmx
+  Installing install2/lib/foo/foo.cmxa
+  Installing install2/lib/foo/foo.ml
+  Installing install2/lib/foo/opam
+  Installing install2/libexec/foo/foo.cmxs
+  Installing install2/bin/exec
+  Installing install2/man/a-man-page-with-no-ext
+  Installing install2/man/man1/a-man-page.1
+  Installing install2/man/man3/another-man-page.3
+
 If prefix is passed, the default for libdir is `$prefix/lib`:
 
   $ dune install --prefix install --dry-run 2>&1 | dune_cmd sanitize

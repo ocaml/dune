@@ -434,6 +434,33 @@ let install_uninstall ~what =
          files"
       in
       Arg.(value & opt (some string) None & info [ "etcdir" ] ~docv:"PATH" ~doc)
+    and+ bindir_from_command_line =
+      let doc =
+        "When passed, manually override the directory to install public \
+         binaries"
+      in
+      Arg.(value & opt (some string) None & info [ "bindir" ] ~docv:"PATH" ~doc)
+    and+ sbindir_from_command_line =
+      let doc =
+        "When passed, manually override the directory to files from sbin \
+         section"
+      in
+      Arg.(
+        value & opt (some string) None & info [ "sbindir" ] ~docv:"PATH" ~doc)
+    and+ datadir_from_command_line =
+      let doc =
+        "When passed, manually override the directory to files from share \
+         section"
+      in
+      Arg.(
+        value & opt (some string) None & info [ "datadir" ] ~docv:"PATH" ~doc)
+    and+ libexecdir_from_command_line =
+      let doc =
+        "When passed, manually override the directory to executable library \
+         files"
+      in
+      Arg.(
+        value & opt (some string) None & info [ "libexecdir" ] ~docv:"PATH" ~doc)
     and+ dry_run =
       Arg.(
         value & flag
@@ -578,10 +605,10 @@ let install_uninstall ~what =
           ; etc_root = etcdir_from_command_line
           ; doc_root = docdir_from_command_line
           ; man = mandir_from_command_line
-          ; bin = None
-          ; sbin = None
-          ; libexec_root = None
-          ; share_root = None
+          ; bin = bindir_from_command_line
+          ; sbin = sbindir_from_command_line
+          ; libexec_root = libexecdir_from_command_line
+          ; share_root = datadir_from_command_line
           }
           |> map ~f:(Option.map ~f:Path.of_string)
           |> complete

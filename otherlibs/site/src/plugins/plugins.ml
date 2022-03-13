@@ -45,6 +45,15 @@ let rec check_predicates predicates =
     (not (Data.findlib_predicates_set_by_dune pred))
     && check_predicates predicates
 
+let check_predicates_with_plugin predicates =
+  let rec aux predicates has_plugin acc =
+    match predicates with
+    | [] -> has_plugin && check_predicates acc
+    | Meta_parser.Pos "plugin" :: predicates -> aux predicates true acc
+    | predicate :: predicates -> aux predicates has_plugin (predicate :: acc)
+  in
+  aux predicates false []
+
 let rec get_plugin plugins requires entries =
   match entries with
   | [] -> (List.rev plugins, List.rev requires)
@@ -54,6 +63,14 @@ let rec get_plugin plugins requires entries =
     when check_predicates predicates -> get_plugin [ value ] requires entries
   | Rule { var = "plugin"; predicates; action = Add; value } :: entries
     when check_predicates predicates ->
+    get_plugin (value :: plugins) requires entries
+  (* archive(native|byte,plugin) is the way used in the wild before findlib
+     supported plugins *)
+  | Rule { var = "archive"; predicates; action = Set; value } :: entries
+    when check_predicates_with_plugin predicates ->
+    get_plugin [ value ] requires entries
+  | Rule { var = "archive"; predicates; action = Add; value } :: entries
+    when check_predicates_with_plugin predicates ->
     get_plugin (value :: plugins) requires entries
   | Rule { var = "requires"; predicates; action = Set; value } :: entries
     when check_predicates predicates -> get_plugin plugins [ value ] entries

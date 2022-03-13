@@ -4,6 +4,10 @@
 - Allow to specify `--prefix` via the environment variable
   `DUNE_INSTALL_PREFIX` (#5589, @vapourismo)
 
+- Dune-site.plugin: add support for `archive(native|byte, plugin)` used in the wild before
+  findlib documented `plugin(native|byte)` in 2015 (#5518, @bobot)
+
+
 3.1.1 (19/04/2022)
 ------------------
 

@@ -1,10 +1,17 @@
-Unreleased
-----------
+3.1.0 (Unreleased)
+------------------
+
+- Add `(deps <deps>)` in ctype field (#5346, @bobot)
+
+- Add `(include <file>)` constructor to dependency specifications. This can be
+  used to introduce dynamic dependencies (#5442, @anmonteiro)
 
 - Ensure that `dune describe` computes a transitively closed set of
   libraries (#5395, @esope)
 
 - Add direct dependencies to $ dune describe output (#5412, @esope)
+
+- Show auto-detected concurrency on Windows too (#5502, @MisterDA)
 
 3.0.3 (Unreleased)
 ------------------

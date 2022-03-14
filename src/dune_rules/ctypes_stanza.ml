@@ -111,6 +111,7 @@ type t =
   ; function_description : Function_description.t list
   ; generated_types : Module_name.t
   ; generated_entry_point : Module_name.t
+  ; deps : Dep_conf.t list
   }
 
 let name = "ctypes"
@@ -134,6 +135,8 @@ let decode =
      and+ generated_types = field_o "generated_types" Module_name.decode
      and+ generated_entry_point =
        field "generated_entry_point" Module_name.decode
+     and+ deps =
+       field_o "deps" (repeat Dep_conf.decode)
      in
      { external_library_name
      ; build_flags_resolver =
@@ -145,6 +148,7 @@ let decode =
          Option.value generated_types
            ~default:(Module_name.of_string "Types_generated")
      ; generated_entry_point
+     ; deps = Option.value ~default:[] deps
      })
 
 let () =

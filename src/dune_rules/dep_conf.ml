@@ -16,6 +16,7 @@ type t =
   | Universe
   | Env_var of String_with_vars.t
   | Sandbox_config of Sandbox_config.t
+  | Include of string
 
 let remove_locs = function
   | File sw -> File (String_with_vars.remove_locs sw)
@@ -28,6 +29,7 @@ let remove_locs = function
   | Universe -> Universe
   | Env_var sw -> Env_var sw
   | Sandbox_config s -> Sandbox_config s
+  | Include s -> Include s
 
 let decode_sandbox_config =
   let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 12)
@@ -69,6 +71,10 @@ let decode =
           Source_tree x )
       ; ("env_var", sw >>| fun x -> Env_var x)
       ; ("sandbox", decode_sandbox_config >>| fun x -> Sandbox_config x)
+      ; ( "include"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 1)
+          and+ filename = filename in
+          Include filename )
       ]
   in
   decode
@@ -96,5 +102,6 @@ let encode = function
     if Sandbox_config.equal config Sandbox_config.no_special_requirements then
       List []
     else Code_error.raise "There's no syntax for [Sandbox_config] yet" []
+  | Include t -> List [ Dune_lang.atom "include"; Dune_lang.atom t ]
 
 let to_dyn t = Dune_lang.to_dyn (encode t)

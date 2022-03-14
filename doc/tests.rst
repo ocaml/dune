@@ -674,7 +674,7 @@ To use this binary in the Cram test, we should depend on the binary in the test:
 
 .. code:: scheme
 
-	(cram
+   (cram
     (deps %{bin:wc}))
 
 

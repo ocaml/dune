@@ -92,7 +92,7 @@ file:
 
 .. code:: scheme
 
-  (lang dune 3.0)
+  (lang dune 3.1)
   (using ctypes 0.1)
 
 
@@ -257,6 +257,11 @@ descriptions by referencing them as the module specified in optional
    - ``(headers (preamble <preamble>)`` adds directly the preamble. Variables
      can be used in ``<preamble>`` such as ``%{read: }``.
 
+- Since the Dune's ``ctypes`` feature is still experimental, it could be useful to
+  add additional dependencies in order to make sure that local
+  headers or libraries are available: ``(deps <deps-conf list>)``. See the
+  :ref:`deps-field` section for more details.
+
 ``<optional-function-description-fields>`` are:
 
 - ``(concurrency <sequential|unlocked|lwt_jobs|lwt_preemptive>)`` tells ``ctypes
@@ -270,7 +275,9 @@ descriptions by referencing them as the module specified in optional
 - ``(vendored (c_flags <flags>) (c_library_flags <flags>))`` provide the build
   and link flags for binding your vendored code. You must also provide
   instructions in your ``dune`` file on how to build the vendored foreign
-  library; see the :ref:`foreign_library` stanza.
+  library; see the :ref:`foreign_library` stanza. Usually the ``<flags>`` should
+  contain ``:standard`` in order to add the default flags used by the OCaml
+  compiler for C files :ref:`always-add-cflags`.
 
 
 .. _foreign-sandboxing:
@@ -292,6 +299,12 @@ To do that, follow the following procedure:
 
   - depends on this directory recursively via :ref:`source_tree <source_tree>`
   - invokes the external build system
+  - copies the generated files
+  - the C archive ``.a`` must be built with ``-fpic``
+  - the ``libfoo.so`` must be copied as ``dllfoo.so``, and no ``libfoo.so``
+    should appear, otherwise the dynamic linking of the C library will be
+    attempted. However, this usually fails because the ``libfoo.so`` isn't available at
+    the time of the execution.
 - *Attach* the C archive files to an OCaml library via :ref:`foreign-archives`.
 
 For instance, let's assume that you want to build a C library

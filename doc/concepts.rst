@@ -428,7 +428,7 @@ not.
 
 .. _preprocessing-spec:
 
-PreprocessingSspecification
+Preprocessing Specification
 ===========================
 
 Dune accepts three kinds of preprocessing:
@@ -615,6 +615,9 @@ Dependencies in ``dune`` files can be specified using one of the following:
   - ``none``: the action must run in the build directory
   - ``preserve_file_kind``: the action needs the files it reads to look
     like normal files (so Dune won't use symlinks for sandboxing)
+- ``(include <file>)`` read the s-expression in ``<file>`` and intepret it as
+  additional dependencies. The s-expression is expected to be a list of the
+  same constructs enumerated here.
 
 In all these cases, the argument supports :ref:`variables`.
 

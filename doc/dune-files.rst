@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: scheme
 
-   (lang dune 3.0)
+   (lang dune 3.1)
 
 Additionally, they can contains the following stanzas.
 
@@ -374,7 +374,8 @@ language. The syntax is a list of the following elements:
 
    logop := or | and
 
-   dep := (name <stage>)
+   dep := name
+        | (name <stage>)
         | (name <constr>)
         | (name (<logop> (<stage> | <constr>)*))
 
@@ -399,7 +400,8 @@ adding the following field to the ``dune-project`` file:
 
 In this mode, Dune will populate the ``:standard`` set of C flags with the
 content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
-completed or overridden using the :ref:`ordered-set-language`.
+completed or overridden using the :ref:`ordered-set-language`. The value
+``true`` is the default for Dune 3.0.
 
 accept_alternative_dune_file_name
 ---------------------------------
@@ -1191,7 +1193,7 @@ To use Menhir in a Dune project, the language version should be selected in the
 
 .. code:: scheme
 
-  (using Menhir 2.0)
+  (using menhir 2.0)
 
 This will enable support for Menhir stanzas in the current project. If the
 language version is absent, Dune will automatically add this line with the
@@ -2131,7 +2133,7 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 3.0)
+    (lang dune 3.1)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))
@@ -2143,7 +2145,7 @@ containing exactly:
 
 .. code:: scheme
 
-    (lang dune 3.0)
+    (lang dune 3.1)
     (context default)
 
 This allows you to use an empty ``dune-workspace`` file to mark the root of your

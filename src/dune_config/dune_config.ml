@@ -423,14 +423,15 @@ let auto_concurrency =
               | Some n, WEXITED 0 -> n
               | _ -> loop rest)))
       in
-      let n = loop commands in
-      Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
-      n)
+      loop commands)
 
 let for_scheduler (t : t) rpc stats =
   let concurrency =
     match t.concurrency with
     | Fixed i -> i
-    | Auto -> Lazy.force auto_concurrency
+    | Auto ->
+      let n = Lazy.force auto_concurrency in
+      Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
+      n
   in
   { Scheduler.Config.concurrency; display = t.display; rpc; stats }

@@ -23,11 +23,29 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
   Memo.Build.Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
-        List.concat_map (Library.foreign_archives lib) ~f:(fun archive ->
-            let lname =
-              "-l" ^ Foreign.Archive.(name archive |> Name.to_string)
+        let open Action_builder.O in
+        Action_builder.List.concat_map (Library.foreign_archives lib)
+          ~f:(fun archive ->
+            let name = Foreign.Archive.(name archive |> Name.to_string) in
+            let lname = "-l" ^ name in
+            let+ cclib =
+              match Foreign.Archive.mode archive with
+              | As_needed -> Action_builder.return [ lname ]
+              | Whole -> (
+                let+ ccomp_type = Cxx_flags.ccomp_type ctx in
+                match ccomp_type with
+                | Gcc ->
+                  [ "-Wl,-whole-archive"; lname; "-Wl,-no-whole-archive" ]
+                | Clang -> [ "-Wl,-force_load"; sprintf "lib%s.a" name ]
+                | Msvc -> [ sprintf "/WHOLEARCHIVE:lib%s.a" name ]
+                | Other _ ->
+                  User_warning.emit
+                    [ Pp.textf
+                        "Whole archive for other compiler not implemented"
+                    ];
+                  [ lname ])
             in
-            let cclib = [ "-cclib"; lname ] in
+            let cclib = List.concat_map ~f:(fun a -> [ "-cclib"; a ]) cclib in
             let dllib = [ "-dllib"; lname ] in
             match mode with
             | Native -> cclib
@@ -72,7 +90,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
               ; A "-a"
               ; A "-o"
               ; Target target
-              ; As stubs_flags
+              ; Command.Args.dyn stubs_flags
               ; Dyn
                   (Action_builder.map cclibs ~f:(fun x ->
                        Command.quote_args "-cclib" (map_cclibs x)))

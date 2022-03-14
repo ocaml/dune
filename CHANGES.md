@@ -3,6 +3,10 @@
 
 - Add `(deps <deps>)` in ctype field (#5346, @bobot)
 
+- Add `(foreign_archives ((path <path>)(mode whole))` to ensure that all the
+  archives are included in the `.cmxs`, otherwise only the symbols accessed from
+  the OCaml library are linked ( @bobot )
+
 - Add `(include <file>)` constructor to dependency specifications. This can be
   used to introduce dynamic dependencies (#5442, @anmonteiro)
 

@@ -125,7 +125,8 @@ Testsuite for the (foreign_stubs ...) field.
   Error: No rule found for libbar$ext_lib
 
 ----------------------------------------------------------------------------------
-* Build succeeds when a self-built archive exists.
+* Build succeeds when a self-built archive exists but it is not in the .cmxs
+because bar is not used.
 
   $ cat >bar.c <<EOF
   > #include <caml/mlvalues.h>
@@ -148,6 +149,38 @@ Testsuite for the (foreign_stubs ...) field.
   > EOF
 
   $ ./sdune build
+
+  $ nm _build/default/foo.cmxs | grep bar -q
+  [1]
+
+----------------------------------------------------------------------------------
+* Build succeeds when a self-built archive exists, it is in the .cmxs with whole
+
+  $ echo "(lang dune 3.1)" > dune-project
+
+  $ cat >bar.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value bar(value unit) { return Val_int(10); }
+  > EOF
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name foo)
+  >  (foreign_stubs (language c) (names foo))
+  >  (foreign_archives ((path bar) (mode whole))))
+  > (rule
+  >  (targets bar%{ext_obj})
+  >  (deps bar.c)
+  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  > (rule
+  >  (targets libbar.a)
+  >  (deps bar%{ext_obj})
+  >  (action (run ar rcs %{targets} %{deps})))
+  > EOF
+
+  $ ./sdune build
+
+  $ nm _build/default/foo.cmxs | grep bar -q
 
 ----------------------------------------------------------------------------------
 * Error when specifying an (archive_name ...) in (foreign_stubs ...) stanza.

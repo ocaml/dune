@@ -61,6 +61,12 @@ module Archive : sig
 
   val name : t -> Name.t
 
+  type mode =
+    | Whole
+    | As_needed
+
+  val mode : t -> mode
+
   val stubs : string -> t
 
   val decode : t Dune_lang.Decoder.t

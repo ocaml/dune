@@ -347,8 +347,10 @@ The last step is to attach these archives to an OCaml library as follows:
     (name bar)
     (foreign_archives foo))
 
-Then, whenever you use the ``bar`` library, you'll also be able to
-use C functions from ``libfoo``.
+Then, the C functions from ``libfoo`` can be accessed from ``bar`` as external.
+In order to be able to use the C functions from ``libfoo`` even if they are not
+used by ``bar``, the mode ``whole`` must be used ``(foreign_archives ((path
+foo)(mode whole))``.
 
 Limitations
 -----------

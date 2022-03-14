@@ -554,9 +554,16 @@ to use the :ref:`include_subdirs` stanza.
   and ``cxx_flags``.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
-  object files to be packaged with the library. See the section
-  :ref:`foreign-archives` for more details. This field replaces the now-deleted
-  field ``self_build_stubs_archive``.
+  object files to be packaged with the library. ``<foreign-archives-list>`` can
+  be :
+
+    - ``<path>`` : ``path/foo`` (for the files: ``dllfoo.so`` and ``libfoo.a``)
+    - ``((path <path>)(mode <mode>))``: ``<mode>`` could be ``as_needed``
+      (default) only the symbols used by the OCaml library are included or
+      ``whole`` all the symbols of the archive are included.
+
+  See the section :ref:`foreign-archives` for more details. This field replaces
+  the now-deleted field ``self_build_stubs_archive``.
 
 - ``(install_c_headers (<names>))`` - if your library has public C header files
   that must be installed, you must list them in this field, without the ``.h``
@@ -990,7 +997,7 @@ It shares the same fields as the ``executable`` stanza, except that instead of
   of each executable.
 
 - ``(public_names <names>)`` describes under what name to install each executable.
-The list of names must be of the same length as the list in the
+  The list of names must be of the same length as the list in the
   ``(names ...)`` field. Moreover, you can use ``-`` for executables that
   shouldn't be installed.
 

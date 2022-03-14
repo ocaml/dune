@@ -63,21 +63,39 @@ module Archive = struct
     type t = string
   end
 
+  type mode =
+    | Whole
+    | As_needed
+
+  let decode_mode =
+    let open Dune_lang.Decoder in
+    enum [ ("as_needed", As_needed); ("whole", Whole) ]
+
   type t =
     { dir : Dir.t
     ; name : Name.t
+    ; mode : mode
     }
 
   let dir_path ~dir t = Path.Build.relative dir t.dir
 
   let name t = t.name
 
-  let stubs archive_name = { dir = "."; name = Name.stubs archive_name }
+  let mode t = t.mode
+
+  let stubs archive_name =
+    { dir = "."; name = Name.stubs archive_name; mode = As_needed }
 
   let decode =
     let open Dune_lang.Decoder in
-    let+ s = string in
-    { dir = Filename.dirname s; name = Filename.basename s }
+    (let+ s = string in
+     { dir = Filename.dirname s; name = Filename.basename s; mode = As_needed })
+    <|> let* () = Dune_lang.Syntax.since Stanza.syntax (3, 1) in
+        enter
+          (fields
+             (let+ s = field "path" string
+              and+ mode = field "mode" decode_mode in
+              { dir = Filename.dirname s; name = Filename.basename s; mode }))
 
   let lib_file ~archive ~dir ~ext_lib =
     let dir = dir_path ~dir archive in

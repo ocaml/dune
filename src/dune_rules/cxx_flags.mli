@@ -12,6 +12,15 @@ type phase =
     preprocessor *)
 val preprocessed_filename : string
 
+type ccomp_type =
+  | Gcc
+  | Msvc
+  | Clang
+  | Other of string
+
+(** Get the kind of C processor *)
+val ccomp_type : Context.t -> ccomp_type Action_builder.t
+
 (** [get_flags c_compiler] returns the necessary flags to turn this compiler
     into a c++ compiler for some of the most common compilers *)
 val get_flags : for_:phase -> Context.t -> string list Action_builder.t

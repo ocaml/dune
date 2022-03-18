@@ -190,10 +190,10 @@ Creating Rules
 A Dune rule consists of 3 components:
 
 - *Dependencies* that the rule may read when executed (files, aliases, etc.), 
-described by ``'a Action_builder.t`` values.
+  described by ``'a Action_builder.t`` values.
 
 - *Targets* that the rule produces (files and/or directories), 
-described by ``'a Action_builder.With_targets.t'`` values.
+  described by ``'a Action_builder.With_targets.t'`` values.
 
 - *Action* that Dune must execute (external programs, redirects, etc.).
   Actions are represented by ``Action.t`` values.

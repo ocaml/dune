@@ -206,7 +206,7 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
 - ``lib:<public-library-name>:<file>`` expands to the file's installation path 
-``<file>`` in the library ``<public-library-name>``. If
+  ``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local
   file will be used, otherwise the one from the installed world will be used.
 - ``lib-private:<library-name>:<file>`` expands to the file's build path 

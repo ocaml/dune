@@ -50,7 +50,7 @@ to all Opam packages that rely on the ``jbuilder`` binary or Jbuilder
 configuration files.
 
 January 2020: The ``jbuilder`` Binary Goes Away
----------------------------------------------
+-----------------------------------------------
 
 The ``dune`` package no longer installs a ``jbuilder`` binary. The rest is
 unchanged.
@@ -209,7 +209,7 @@ should be rewritten to the following ``dune`` file:
 
 
 ``jbuild-ignore`` (Deprecated)
---------------------------
+------------------------------
 
 ``jbuild-ignore`` files are deprecated and replaced by :ref:`dune-subdirs`
 stanzas in ``dune`` files.

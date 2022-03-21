@@ -19,7 +19,7 @@ the following operations:
 
 Examples:
 
-.. code:: lisp
+.. code:: dune
 
    (dirs *) ;; include all directories
    (dirs :standard \ ocaml) ;; include all dirs except ocaml

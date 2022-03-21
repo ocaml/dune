@@ -47,7 +47,7 @@ To add a new executable to a ``dune`` file in the current directory
 
 This will add the following stanza to the ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (executable
      (name main)
@@ -67,7 +67,7 @@ Run the following command to create a new directory ``src``, initialized as a li
 This will ensure the file ``./src/dune`` contains the below stanza (creating
 the file and directory, if necessary):
 
-.. code:: scheme
+.. code:: dune
 
     (library
      (public_name mylib)
@@ -204,7 +204,7 @@ Please note: it's not currently possible to build a target directly if that targ
 lives in a directory that starts with the ``@`` character. In the rare cases
 where you need to do that, you can declare an alias like so:
 
-.. code:: scheme
+.. code:: dune
 
     (alias
      (name foo)

@@ -92,7 +92,7 @@ Here's a complete example of a ``dune-project`` file with opam metadata. This
 configuration will tell Dune to generate two opam files: ``cohttp.opam`` and
 ``cohttp-async.opam``. (See )
 
-.. code:: scheme
+.. code:: dune
 
    (lang dune 3.8)
    (name cohttp)

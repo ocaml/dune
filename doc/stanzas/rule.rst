@@ -6,7 +6,7 @@ generate a specific set of files from a specific set of dependencies.
 
 The syntax is as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (rule
      (action <action>)
@@ -97,7 +97,7 @@ targets are usually obvious.
 
 For instance:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (target b)
@@ -108,20 +108,20 @@ In this example, the dependencies and targets are obvious by inspecting the
 action. When this is the case, you can use the following shorter syntax and have
 Dune infer dependencies and targets for you:
 
-.. code:: scheme
+.. code:: dune
 
     (rule <action>)
 
 For instance:
 
-.. code:: scheme
+.. code:: dune
 
     (rule (copy a b))
 
 Note that in Dune, targets must always be known statically. For instance, this
 ``(rule ...)`` stanza is rejected by Dune:
 
-.. code:: lisp
+.. code:: dune
 
     (rule (copy a b.%{read:file}))
 
@@ -135,7 +135,7 @@ whole tree of build artifacts. To specify a directory target, you can use the
 ``(dir <dirname>)`` syntax. For example, the following stanza describes a rule
 with a file target ``foo`` and a directory target ``bar``.
 
-.. code:: scheme
+.. code:: dune
 
     (rule
      (targets foo (dir bar))

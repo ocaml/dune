@@ -4,7 +4,7 @@ test
 The ``test`` stanza is the singular form of ``tests``. The only difference is
 that it's of the form:
 
-.. code:: scheme
+.. code:: dune
 
    (test
     (name foo)
@@ -20,7 +20,7 @@ tests
 The ``tests`` stanza allows one to easily define multiple tests. For example, we
 can define two tests at once with:
 
-.. code:: scheme
+.. code:: dune
 
    (tests
     (names mytest expect_test)
@@ -42,7 +42,7 @@ override the test binary invocation, i.e., if you're using Alcotest and wish to
 see all the test failures on the standard output. When running Dune ``runtest``
 you can use the following stanza:
 
-.. code:: lisp
+.. code:: dune
 
    (tests
     (names mytest)

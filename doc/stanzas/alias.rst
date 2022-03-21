@@ -8,7 +8,7 @@ to construct the alias.
 
 The syntax is as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (alias
      (name    <alias-name>)
@@ -43,7 +43,7 @@ The syntax is as follows:
 
 The typical use of the ``alias`` stanza is to define tests:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (alias   runtest)

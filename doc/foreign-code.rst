@@ -25,7 +25,7 @@ Adding C/C++ Stubs to an OCaml Library
 To add C stubs to an OCaml library, simply list the C files without the ``.c``
 extension in the :ref:`foreign-stubs` field. For instance:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name mylib)
@@ -90,7 +90,7 @@ A Toy Example
 To begin, you must declare the ``ctypes`` extension in your ``dune-project``
 file:
 
-.. code:: scheme
+.. code:: dune
 
   (lang dune 3.8)
   (using ctypes 0.1)
@@ -100,7 +100,7 @@ Next, here is a ``dune`` file you can use to define an OCaml program that binds
 a C system library called ``libfoo``, which offers ``foo.h`` in a standard
 location.
 
-.. code:: scheme
+.. code:: dune
 
    (executable
     (name foo)
@@ -199,7 +199,7 @@ Ctypes Field Reference
 The ``ctypes`` field can be used in any ``executable(s)`` or ``library``
 stanza.
 
-.. code:: scheme
+.. code:: dune
 
   ((executable|library)
     ...
@@ -321,14 +321,14 @@ The first step is to put the sources of ``libfoo`` in your project,
 for instance in ``src/libfoo``. Then tell Dune to consider
 ``src/libfoo`` as raw data by writing the following in ``src/dune``:
 
-.. code:: scheme
+.. code:: dune
 
    (data_only_dirs libfoo)
 
 The next step is to setup the rule to build ``libfoo``. For this,
 writing the following code ``src/dune``:
 
-.. code:: scheme
+.. code:: dune
 
    (rule
     (deps (source_tree libfoo))
@@ -347,7 +347,7 @@ external build system.
 
 The last step is to attach these archives to an OCaml library as follows:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name bar)

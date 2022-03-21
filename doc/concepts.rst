@@ -83,7 +83,7 @@ Below is a simple example of a condition expressing that the build
 has a Flambda compiler, with the help of variable expansion, and is
 targeting OSX:
 
-.. code:: lisp
+.. code:: dune
 
    (and %{ocaml-config:flambda} (= %{ocaml-config:system} macosx))
 
@@ -261,7 +261,7 @@ The reason you might see such dependency cycle is because Dune is
 trying to evaluate the `%{read:<path>}` too early. For instance, let's
 consider the following example:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (targets x)
@@ -284,7 +284,7 @@ to a different directory, preferably a standalone one. You can use the
 :ref:`subdir` stanza to keep the logic self-contained in the same
 ``dune`` file:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (targets x)
@@ -303,7 +303,7 @@ Forms that expand to a list of items, such as ``%{cc}``, ``%{deps}``,
 ``%{targets}``, or ``%{read-lines:...}``, are suitable to be used in
 ``(run <prog> <arguments>)``. For instance in:
 
-.. code:: lisp
+.. code:: dune
 
     (run foo %{deps})
 
@@ -317,7 +317,7 @@ will be equivalent to the shell command:
 If you want both dependencies to be passed as a single argument,
 you must quote the variable:
 
-.. code:: scheme
+.. code:: dune
 
     (run foo "%{deps}")
 
@@ -331,7 +331,7 @@ which is equivalent to the following shell command:
 Please note: since ``%{deps}`` is a list of items, the first one may be
 used as a program name. For instance:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (targets result.txt)
@@ -340,7 +340,7 @@ used as a program name. For instance:
 
 Here is another example:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (target foo.exe)
@@ -375,7 +375,7 @@ of library dependencies.
 
 Select forms are specified as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (select <target-filename> from
      (<literals> -> <filename>)
@@ -401,13 +401,13 @@ Re-exported dependencies
 A dependency ``foo`` may be marked as always *re-exported* using the
 following syntax:
 
-.. code:: scheme
+.. code:: dune
 
    (re_export foo)
 
 For instance:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name bar)
@@ -476,7 +476,7 @@ be an action that reads the file given as a dependency named
 More precisely, ``(preprocess (action <action>))`` acts as if
 you had set up a rule for every file of the form:
 
-   .. code:: lisp
+   .. code:: dune
 
        (rule
         (target file.pp.ml)
@@ -496,7 +496,7 @@ name of a library. If you want to pass command line flags that don't
 start with a ``-``, you can separate library names from flags using
 ``--``. So for instance from the following ``preprocess`` field:
 
-   .. code:: scheme
+   .. code:: dune
 
        (preprocess (pps ppx1 -foo ppx2 -- -bar 42))
 
@@ -519,7 +519,7 @@ By default, a preprocessing specification applies to all modules in the
 library/set of executables. It's possible to select the preprocessing on a
 module-by-module basis by using the following syntax:
 
- .. code:: scheme
+ .. code:: dune
 
     (preprocess (per_module
                  (<spec1> <module-list1>)
@@ -532,7 +532,7 @@ names.
 
 For instance:
 
- .. code:: lisp
+ .. code:: dune
 
     (preprocess (per_module
                  (((action (run ./pp.sh X=1 %{input-file})) foo bar))
@@ -626,7 +626,7 @@ in actions (like the ``%{deps}``, ``%{target}``, and ``%{targets}`` built in var
 One instance where this is useful is for naming globs. Here's an
 example of an imaginary bundle command:
 
-.. code:: lisp
+.. code:: dune
 
    (rule
     (target archive.tar)
@@ -738,7 +738,7 @@ The default value for ``(flags ...)`` is taken from the environment,
 as a result it's recommended to write ``(flags ...)`` fields as
 follows:
 
-.. code:: scheme
+.. code:: dune
 
     (flags (:standard <my options>))
 
@@ -841,7 +841,7 @@ Note: expansion of the special ``%{<kind>:...}`` is done relative to the current
 working directory of the DSL being executed. So for instance, if you
 have this action in a ``src/foo/dune``:
 
-.. code:: lisp
+.. code:: dune
 
     (action (chdir ../../.. (echo %{dep:dune})))
 
@@ -976,7 +976,7 @@ complicated tests. In order to prevent Dune from running the
 actions at the same time, you can specify that both actions take the
 same lock:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (alias  runtest)
@@ -1002,7 +1002,7 @@ contexts setup, the same rule might still be executed concurrently between the
 two build contexts. If you want a lock that is global to all build contexts,
 simply use an absolute filename:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (alias   runtest)
@@ -1061,7 +1061,7 @@ file and ``<file2>`` is a generated file.
 
 More precisely, let's consider the following Dune file:
 
-.. code:: scheme
+.. code:: dune
 
    (rule
     (with-stdout-to data.out (run ./test.exe)))
@@ -1107,7 +1107,7 @@ Declaring a Package
 To declare a package, simply add a ``package`` stanza to your
 ``dune-project`` file:
 
-.. code:: lisp
+.. code:: dune
 
           (package
            (name mypackage)
@@ -1174,7 +1174,7 @@ character.
 
 For instance:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name mylib)
@@ -1205,7 +1205,7 @@ will be attached to this package.
 
 For instance:
 
-.. code:: scheme
+.. code:: dune
 
           (executable
            (name main)
@@ -1246,7 +1246,7 @@ Foreign Stubs
 You can specify foreign sources using the ``foreign_stubs`` field of the
 ``library`` and ``executable`` stanzas. For example:
 
-.. code:: scheme
+.. code:: dune
 
     (library
      (name lib)
@@ -1320,7 +1320,7 @@ If the same stub is defined twice, Dune will automatically chose the correct one
 This allows the use of different sets of flags or even different source files
 from which the stubs are built.
 
-.. code:: scheme
+.. code:: dune
 
   (executable
    (name main)
@@ -1348,7 +1348,7 @@ that need to be packaged with an OCaml library or linked into an OCaml
 executable. To do that, use the ``foreign_archives`` field of the
 corresponding ``library`` or ``executable`` stanza. For example:
 
-.. code:: scheme
+.. code:: dune
 
     (library
      (name lib)
@@ -1364,7 +1364,7 @@ You can build a foreign archive manually, e.g., using a custom ``rule`` as
 described in :ref:`foreign-sandboxing`, or ask Dune to build it via the
 ``foreign_library`` stanza:
 
-.. code:: scheme
+.. code:: dune
 
     (foreign_library
      (archive_name arch1)
@@ -1398,7 +1398,7 @@ libraries or linked into OCaml executables. Do this by using the
 ``extra_objects`` field of the ``library`` or ``executable`` stanzas.
 For example:
 
-.. code:: lisp
+.. code:: dune
 
     (executable
      (public_name main)

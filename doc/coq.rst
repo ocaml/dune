@@ -31,7 +31,7 @@ be Dune targets of other rules.
 To enable Coq support in a Dune project, specify the :ref:`Coq language
 version<coq-lang>` in the :ref:`dune-project` file. For example, adding
 
-.. code:: scheme
+.. code:: dune
 
     (using coq 0.7)
 
@@ -47,7 +47,7 @@ coq.theory
 The Coq theory stanza is very similar in form to the OCaml :ref:`library`
 stanza:
 
-.. code:: scheme
+.. code:: dune
 
     (coq.theory
      (name <module_prefix>)
@@ -171,7 +171,7 @@ Recursive Qualification of Modules
 
 If you add:
 
-.. code:: scheme
+.. code:: dune
 
     (include_subdirs qualified)
 
@@ -198,7 +198,7 @@ By default, all :ref:`coq-theory` stanzas are considered private by Dune. In
 order to make a private theory into a public theory, the ``(package )`` field
 must be specified.
 
-.. code:: scheme
+.. code:: dune
 
   (coq.theory
    (name private_theory))
@@ -233,7 +233,7 @@ Coq Language Version
 The Coq lang can be modified by adding the following to a :ref:`dune-project`
 file:
 
-.. code:: scheme
+.. code:: dune
 
     (using coq 0.7)
 
@@ -270,7 +270,7 @@ coq.extraction
 Coq may be instructed to *extract* OCaml sources as part of the compilation
 process by using the ``coq.extraction`` stanza:
 
-.. code:: scheme
+.. code:: dune
 
    (coq.extraction
     (prelude <name>)
@@ -306,7 +306,7 @@ Authors of Coq plugins often need to write ``.mlg`` files to extend the Coq
 grammar. Such files are preprocessed with the ``coqpp`` binary. To help plugin
 authors avoid writing boilerplate, we provide a ``(coq.pp ...)`` stanza:
 
-.. code:: scheme
+.. code:: dune
 
     (coq.pp
      (modules <ordered_set_lang>))
@@ -329,14 +329,14 @@ Simple Project
 Let us start with a simple project. First, make sure we have a
 :ref:`dune-project` file with a :ref:`Coq lang<coq-lang>` stanza present:
 
-.. code:: scheme
+.. code:: dune
 
   (lang dune 3.8)
   (using coq 0.7)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:
 
-.. code:: scheme
+.. code:: dune
 
   (coq.theory
    (name myTheory))
@@ -389,7 +389,7 @@ Here is an example of a more complicated setup:
 
 Here are the :ref:`dune<dune-files>` files:
 
-.. code:: scheme
+.. code:: dune
 
   ; A/dune
   (include_subdirs qualified)
@@ -474,7 +474,7 @@ theories.
 
 Our :ref:`dune<dune-files>` file in ``CombinedWork`` looks like:
 
-.. code:: scheme
+.. code:: dune
 
   (coq.theory
    (name Combined)
@@ -542,7 +542,7 @@ Let us build a simple Coq plugin to demonstrate how Dune can handle this setup.
 Our :ref:`dune-project` will need to have a package for the plugin to sit in,
 otherwise Coq will not be able to find it.
 
-.. code:: scheme
+.. code:: dune
 
   (lang dune 3.8)
   (using coq 0.7)
@@ -556,7 +556,7 @@ Now we have two directories, ``src/`` and ``theories/`` each with their own
 :ref:`dune file<dune-files>`. Let us begin with the plugin :ref:`dune
 file<dune-files>`:
 
-.. code:: scheme
+.. code:: dune
 
   (library
    (name my_plugin)
@@ -599,7 +599,7 @@ The file for ``theories/`` is a standard :ref:`coq-theory` stanza with an
 included ``libraries`` field allowing Dune to see ``my-coq-plugin.plugin`` as a
 dependency.
 
-.. code:: scheme
+.. code:: dune
 
   (coq.theory
    (name MyPlugin)

@@ -71,13 +71,13 @@ Enabling and Configuring Automatic Formatting (Dune 1.x)
 In ``(lang dune 1.x)``, there is no default formatting. This feature is
 enabled by adding the following to the ``dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (using fmt 1.2)
 
 Languages can be configured using the following syntax:
 
-.. code:: scheme
+.. code:: dune
 
     (using fmt 1.2 (enabled_for reason))
 

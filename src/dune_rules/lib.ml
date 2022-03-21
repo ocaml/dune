@@ -1257,9 +1257,20 @@ end = struct
           | Re_export lib ->
             let+ lib = resolve_dep db lib ~private_deps in
             add_re_exports acc lib
-          | Direct lib ->
-            let+ lib = resolve_dep db lib ~private_deps in
-            add_resolved acc lib
+          | Direct (loc, name) ->
+            let ocaml_version = db.lib_config.ocaml_version in
+            if
+              String.equal "bigarray" (Lib_name.to_string name)
+              && not (Ocaml.Version.has_bigarray_library ocaml_version)
+            then (
+              User_warning.emit ~loc
+                [ Pp.textf "Already in the Standard Library of OCaml %s"
+                    db.lib_config.ocaml_version_string
+                ];
+              Memo.return acc)
+            else
+              let+ lib = resolve_dep db (loc, name) ~private_deps in
+              add_resolved acc lib
           | Select select ->
             let+ resolved, select = resolve_select select in
             add_select acc resolved select)

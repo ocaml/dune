@@ -496,8 +496,6 @@ to use the :ref:`include_subdirs` stanza.
 
 - ``(package <package>)`` installs a private library under the specified package.
   Such a library is now usable by public libraries defined in the same project.
-
-=======
   The Findlib name for this library will be ``<package>.__private__.<name>``;
   however, the library's interface will be hidden from consumers outside the
   project.
@@ -990,7 +988,7 @@ It shares the same fields as the ``executable`` stanza, except that instead of
   of each executable.
 
 - ``(public_names <names>)`` describes under what name to install each executable.
-The list of names must be of the same length as the list in the
+  The list of names must be of the same length as the list in the
   ``(names ...)`` field. Moreover, you can use ``-`` for executables that
   shouldn't be installed.
 
@@ -1564,7 +1562,7 @@ Fields supported in ``<settings>`` are:
   whether to use separate compilation or not.
 
 - ``(js_of_ocaml (runtest_alias <alias-name>))`` is used to specify
-  the alias under which `inline_tests`_ and tests (`tests-stanza`_)
+  the alias under which :ref:`inline_tests` and tests (`tests-stanza`_)
   run for the `js` mode.
 
 - ``(binaries <binaries>)``, where ``<binaries>`` is a list of entries

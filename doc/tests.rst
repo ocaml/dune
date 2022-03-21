@@ -487,16 +487,16 @@ This provides a nice way of dealing with the usual *write code*,
 
 .. code:: bash
 
-$ dune runtest
-   [...]
-   -tests.expected
-   +tests.output
-   File "tests.expected", line 1, characters 0-1:
-   -Hello, world!
-   +Good bye!
-   $ dune promote
-
-   Promoting _build/default/tests.output to tests.expected.
+    $ dune runtest
+       [...]
+       -tests.expected
+       +tests.output
+       File "tests.expected", line 1, characters 0-1:
+       -Hello, world!
+       +Good bye!
+       $ dune promote
+    
+       Promoting _build/default/tests.output to tests.expected.
 
 Note that if available, the diffing is done using the patdiff_ tool,
 which displays nicer looking diffs than the standard ``diff``
@@ -629,7 +629,7 @@ This introduces a dependency on ``foo.exe`` on all Cram tests in this directory.
 To apply the stanza to a particular test, it's possible to use ``applies_to``
 field:
 
-.. code:: scheme
+.. code::
 
    (cram
     (applies_to * \ foo bar)
@@ -651,7 +651,7 @@ The ``cram`` stanza accepts the following fields:
   holding the following locks. See the :ref:`locks` section for more details.
 - ``deps`` - dependencies of the test
 - ``(package <package-name>)`` - attach the tests selected by this stanza to the
-specified package
+  specified package
 
 A single test may be configured by more than one ``cram`` stanza. In such cases,
 the values from all applicable ``cram`` stanzas are merged together to get the
@@ -672,7 +672,7 @@ in Dune. For example:
 
 To use this binary in the Cram test, we should depend on the binary in the test:
 
-.. code:: scheme
+.. code::
 
    (cram
     (deps %{bin:wc}))

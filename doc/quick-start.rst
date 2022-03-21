@@ -369,7 +369,7 @@ this ``dune`` file:
      (c_library_flags (-lblah)))
 
 Defining a Library with C Stubs using ``pkg-config``
-==================================================
+====================================================
 
 Same context as before, but using ``pkg-config`` to query the
 compilation and link flags. Write this ``dune`` file:

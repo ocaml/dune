@@ -135,9 +135,7 @@ let decode =
      and+ generated_types = field_o "generated_types" Module_name.decode
      and+ generated_entry_point =
        field "generated_entry_point" Module_name.decode
-     and+ deps =
-       field_o "deps" (repeat Dep_conf.decode)
-     in
+     and+ deps = field_o "deps" (repeat Dep_conf.decode) in
      { external_library_name
      ; build_flags_resolver =
          Option.value build_flags_resolver ~default:Build_flags_resolver.default

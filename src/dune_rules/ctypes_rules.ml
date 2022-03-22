@@ -335,7 +335,8 @@ let rule ?(deps = []) ?stdout_to ?(args = []) ?(targets = []) ~exe ~sctx ~dir ()
   in
   Super_context.add_rule sctx ~dir build
 
-let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope ~cflags_sexp ~output ~deps () =
+let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
+    ~cflags_sexp ~output ~deps () =
   let ctx = Super_context.context sctx in
   let open Memo.Build.O in
   let* exe =
@@ -363,14 +364,16 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope ~cfla
     let source_file_deps =
       List.map source_files ~f:(Path.relative (Path.build dir))
       |> Dep.Set.of_files
-
     in
+
     let foreign_archives_deps =
       List.map foreign_archives_deps ~f:Path.build |> Dep.Set.of_files
     in
     let open Action_builder.O in
-    let* () = Dep.Set.union source_file_deps foreign_archives_deps
-    |> Action_builder.deps in
+    let* () =
+      Dep.Set.union source_file_deps foreign_archives_deps
+      |> Action_builder.deps
+    in
     deps
   in
   let build =
@@ -448,8 +451,8 @@ let program_of_module_and_dir ~dir program =
     ; loc = Loc.in_file (Path.relative build_dir program)
     }
 
-let exe_build_and_link ?libraries ?(modules = []) ~scope ~loc ~dir ~cctx ~sandbox program
-    =
+let exe_build_and_link ?libraries ?(modules = []) ~scope ~loc ~dir ~cctx
+    ~sandbox program =
   let open Memo.Build.O in
   let* cctx =
     cctx_with_substitutions ?libraries ~loc ~scope ~dir ~cctx
@@ -457,8 +460,7 @@ let exe_build_and_link ?libraries ?(modules = []) ~scope ~loc ~dir ~cctx ~sandbo
   in
   let program = program_of_module_and_dir ~dir program in
   Exe.build_and_link ~program ~linkages:[ Exe.Linkage.native ] ~promote:None
-~sandbox
-    cctx
+    ~sandbox cctx
 
 let exe_link_only ~dir ~shared_cctx ~sandbox program ~deps =
   let link_args =
@@ -467,18 +469,19 @@ let exe_link_only ~dir ~shared_cctx ~sandbox program ~deps =
     Command.Args.empty
   in
   let program = program_of_module_and_dir ~dir program in
-  Exe.link_many ~link_args ~programs:[ program ] ~linkages:[ Exe.Linkage.native ]
-    ~promote:None shared_cctx ~sandbox
+  Exe.link_many ~link_args ~programs:[ program ]
+    ~linkages:[ Exe.Linkage.native ] ~promote:None shared_cctx ~sandbox
 
 let write_osl_to_sexp_file ~sctx ~dir ~filename ~expand_flag flags =
   let build =
-   let sexp =
+    let sexp =
       let open Action_builder.O in
-       let* expander =
-         Action_builder.memo_build @@ Super_context.expander sctx ~dir in
-       let+ flags = expand_flag ~expander flags in
-       let sexp = Sexp.List (List.map ~f:(fun x -> Sexp.Atom x) flags) in
-       Sexp.to_string sexp
+      let* expander =
+        Action_builder.memo_build @@ Super_context.expander sctx ~dir
+      in
+      let+ flags = expand_flag ~expander flags in
+      let sexp = Sexp.List (List.map ~f:(fun x -> Sexp.Atom x) flags) in
+      Sexp.to_string sexp
     in
     let path = Path.Build.relative dir filename in
     Action_builder.write_file_dyn path sexp
@@ -534,14 +537,13 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
     | Vendored { c_flags; c_library_flags } ->
       let* () =
         write_osl_to_sexp_file ~sctx ~dir ~filename:cflags_sexp c_flags
-          ~expand_flag:(fun ~expander flags -> Super_context.foreign_flags
-              sctx ~dir ~expander ~flags ~language:C)
+          ~expand_flag:(fun ~expander flags ->
+            Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:C)
       in
       write_osl_to_sexp_file ~sctx ~dir ~filename:c_library_flags_sexp
-        c_library_flags
-          ~expand_flag:(fun ~expander flags ->
-                    Expander.expand_and_eval_set expander flags
-                          ~standard:(Action_builder.return []))
+        c_library_flags ~expand_flag:(fun ~expander flags ->
+          Expander.expand_and_eval_set expander flags
+            ~standard:(Action_builder.return []))
     | Pkg_config ->
       let cflags_sexp = Stanza_util.cflags_sexp ctypes in
       let discover_script = Stanza_util.discover_script ctypes in
@@ -559,7 +561,7 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   in
   let generated_entry_module = Stanza_util.entry_module ctypes in
   let headers = ctypes.Ctypes.headers in
-  let exe_link_only = exe_link_only ~deps ~dir ~shared_cctx:cctx  ~sandbox in
+  let exe_link_only = exe_link_only ~deps ~dir ~shared_cctx:cctx ~sandbox in
   (* Type_gen produces a .c file, taking your type description module above as
      an input. The .c file is compiled into an .exe. The .exe, when run produces
      an .ml file. The .ml file is compiled into a module that will have the

@@ -87,43 +87,6 @@ let establish_client_session ~common ~wait =
   in
   establish_connection_or_raise ~wait ~common once
 
-module Init = struct
-  let connect ~wait common =
-    Dune_util.Log.init ~file:No_log_file ();
-    let open Fiber.O in
-    let* client, session = establish_client_session ~common ~wait in
-    let* stdio = Csexp_rpc.Session.create ~socket:false stdin stdout in
-    let forward f t =
-      Fiber.repeat_while ~init:() ~f:(fun () ->
-          let* read = Csexp_rpc.Session.read f in
-          let+ () =
-            Csexp_rpc.Session.write t (Option.map read ~f:List.singleton)
-          in
-          Option.map read ~f:(fun (_ : Sexp.t) -> ()))
-    in
-    Fiber.finalize
-      (fun () ->
-        Fiber.fork_and_join_unit
-          (fun () -> forward session stdio)
-          (fun () -> forward stdio session))
-      ~finally:(fun () ->
-        Csexp_rpc.Client.stop client;
-        Fiber.return ())
-
-  let term =
-    let+ (common : Common.t) = Common.term
-    and+ wait = wait_term in
-    client_term common (connect ~wait)
-
-  let man = [ `Blocks Common.help_secs ]
-
-  let doc = "establish a new rpc connection"
-
-  let info = Term.info "init" ~doc ~man
-
-  let term = (Term.Group.Term term, info)
-end
-
 let report_error error =
   Printf.printf "Error: %s\n%!"
     (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
@@ -250,5 +213,4 @@ let info =
   in
   Term.info "rpc" ~doc ~man
 
-let group =
-  (Term.Group.Group [ Init.term; Status.term; Build.term; Ping.term ], info)
+let group = (Term.Group.Group [ Status.term; Build.term; Ping.term ], info)

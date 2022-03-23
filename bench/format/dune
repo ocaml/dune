@@ -1,0 +1,5 @@
+(library
+ (name bench_format)
+ (libraries yojson)
+ (preprocess
+  (pps ppx_yojson_conv)))

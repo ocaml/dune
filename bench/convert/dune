@@ -1,0 +1,4 @@
+(executable
+ (name convert)
+ (libraries ppx_yojson_conv_lib parsexp yojson base stdio sexplib0 bench_format)
+ (preprocess (pps ppx_sexp_conv)))

@@ -1,6 +1,6 @@
 (executable
  (name bench)
- (libraries dune_stats chrome_trace stdune fiber dune_engine dune_util))
+ (libraries stdune fiber dune_engine dune_util ppx_yojson_conv_lib yojson bench_format))
 
 (rule
  (alias bench)

@@ -2,57 +2,6 @@ open Stdune
 module Process = Dune_engine.Process
 module Config = Dune_util.Config
 
-module Json = struct
-  include Chrome_trace.Json
-  include Dune_stats.Json
-end
-
-module Output = struct
-  type measurement =
-    [ `Int of int
-    | `Float of float
-    ]
-
-  type bench =
-    { name : string
-    ; metrics :
-        (string * [ measurement | `List of measurement list ] * string) list
-    }
-
-  let json_of_bench { name; metrics } : Json.t =
-    let metrics =
-      List.map metrics ~f:(fun (name, value, units) ->
-          let value =
-            match value with
-            | `Int i -> `Int i
-            | `Float f -> `Float f
-            | `List xs -> `List (xs :> Json.t list)
-          in
-          `Assoc
-            [ ("name", `String name)
-            ; ("value", value)
-            ; ("units", `String units)
-            ])
-    in
-    `Assoc [ ("name", `String name); ("metrics", `List metrics) ]
-
-  type t =
-    { config : (string * Json.t) list
-    ; version : int
-    ; results : bench list
-    }
-
-  let to_json { config; version; results } : Json.t =
-    let assoc = [ ("results", `List (List.map results ~f:json_of_bench)) ] in
-    let assoc = ("version", `Int version) :: assoc in
-    let assoc =
-      match config with
-      | [] -> assoc
-      | _ :: _ -> ("config", `Assoc config) :: assoc
-    in
-    `Assoc assoc
-end
-
 let git =
   lazy
     (let path =
@@ -136,24 +85,24 @@ let () =
         let* () = prepare_workspace () in
         run_bench ())
   in
-  let zero = List.map zero ~f:(fun t -> `Float t) in
+  let zero = List.map zero ~f:(fun t -> Bench_format.Value.F t) in
   let size =
     let stat : Unix.stats = Path.stat_exn dune in
     stat.st_size
   in
-  let results =
-    [ { Output.name = "Build times"
-      ; metrics =
-          [ ("Clean build time", `Float clean, "secs")
-          ; ("Null build time", `List zero, "secs")
-          ]
-      }
-    ; { Output.name = "Misc"
-      ; metrics = [ ("Size of dune.exe", `Int size, "bytes") ]
-      }
-    ]
-  in
-  let version = 2 in
-  let output = { Output.config = []; version; results } in
-  print_string (Json.to_string (Output.to_json output));
+  { Bench_format.version = V2
+  ; results =
+      [ { name = "Build times"
+        ; metrics =
+            [ { name = "Clean build time"; value = F clean; units = "secs" }
+            ; { name = "Null build time"; value = L zero; units = "secs" }
+            ]
+        }
+      ; { name = "Misc"
+        ; metrics =
+            [ { name = "Size of dune.exe"; value = I size; units = "bytes" } ]
+        }
+      ]
+  }
+  |> Bench_format.yojson_of_t |> Yojson.Safe.pretty_to_string |> print_string;
   flush stdout

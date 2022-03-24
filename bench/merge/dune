@@ -1,3 +1,0 @@
-(executable
- (name merge)
- (libraries ppx_yojson_conv_lib bench_format yojson ))

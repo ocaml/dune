@@ -15,6 +15,8 @@
 
 - Fix operations that remove folders with absolute path. This happens when using esy (#5507, @EduardoRFS)
 
+- When a `(test)` stanza is disabled through `(enabled_if)`, do not create any rule. This removes spurious "Library X is hidden (unsatisfied `enabled_if`)" error messages. (#5529, fixes #5505, @emillon)
+
 3.0.3 (Unreleased)
 ------------------
 

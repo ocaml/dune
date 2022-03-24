@@ -127,14 +127,14 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
 endif
 
 .PHONY: bench
-bench: bench-micro.json bench-macro.json
+bench: bench-micro-dune.json bench-micro-fiber.json bench-micro-memo.json bench-macro.json
 	cat $+
 
-bench-micro.sexp: release
-	./bench/micro/runner.sh dune -sexp |grep -v ^Warning > $@
+bench-micro-%.sexp: release
+	./bench/micro/runner.sh $* -sexp -suppress-warnings > $@
 
-bench-micro.json: release bench-micro.sexp
-	@$(BIN) exec -- ./bench/convert/convert.exe bench-micro.sexp > $@
+bench-micro-%.json: bench-micro-%.sexp release
+	@$(BIN) exec -- ./bench/convert/convert.exe $< > $@
 
 bench-macro.json: release
 	@$(BIN) exec -- ./bench/bench.exe _build/default/dune.exe  2> /dev/null > $@

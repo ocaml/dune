@@ -57,10 +57,10 @@ let setup_client_server () =
 let test ?(private_menu = []) ?no_real_methods ~client ~handler ~init () =
   let () =
     match no_real_methods with
+    | Some () -> ()
     | None ->
       Handler.implement_notification handler Procedures.Public.shutdown
-        (fun _ _ -> raise (Failure "shutdown called"))
-    | Some () -> ()
+        (fun _ _ -> failwith "shutdown called")
   in
   let run =
     let client_chan, sessions, connect = setup_client_server () in

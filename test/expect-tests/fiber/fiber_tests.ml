@@ -931,26 +931,26 @@ let%expect_test "all_concurrently_unit" =
     multi element list |}]
 
 let%expect_test "cancel_test1" =
-  let cancel = Fiber_util.Cancellation.create () in
+  let cancel = Fiber.Cancellation.create () in
   Scheduler.run
-    (printf "%B\n" (Fiber_util.Cancellation.fired cancel);
-     let* () = Fiber_util.Cancellation.fire cancel in
-     printf "%B\n" (Fiber_util.Cancellation.fired cancel);
+    (printf "%B\n" (Fiber.Cancellation.fired cancel);
+     let* () = Fiber.Cancellation.fire cancel in
+     printf "%B\n" (Fiber.Cancellation.fired cancel);
      Fiber.return ());
   [%expect {|
     false
     true |}]
 
 let%expect_test "cancel_test2" =
-  let cancel = Fiber_util.Cancellation.create () in
+  let cancel = Fiber.Cancellation.create () in
   let ivar1 = Fiber.Ivar.create () in
   let ivar2 = Fiber.Ivar.create () in
   let (), what =
     Scheduler.run
-      (Fiber_util.Cancellation.with_handler cancel
+      (Fiber.Cancellation.with_handler cancel
          (fun () ->
            let* () = Fiber.Ivar.fill ivar1 () in
-           let* () = Fiber_util.Cancellation.fire cancel in
+           let* () = Fiber.Cancellation.fire cancel in
            Fiber.Ivar.read ivar2)
          ~on_cancellation:(fun () -> Fiber.Ivar.fill ivar2 ()))
   in
@@ -962,10 +962,10 @@ let%expect_test "cancel_test2" =
     PASS |}]
 
 let%expect_test "cancel_test3" =
-  let cancel = Fiber_util.Cancellation.create () in
+  let cancel = Fiber.Cancellation.create () in
   let (), what =
     Scheduler.run
-      (Fiber_util.Cancellation.with_handler cancel
+      (Fiber.Cancellation.with_handler cancel
          (fun () -> Fiber.return ())
          ~on_cancellation:(fun () -> assert false))
   in
@@ -977,11 +977,11 @@ let%expect_test "cancel_test3" =
     PASS |}]
 
 let%expect_test "cancel_test4" =
-  let cancel = Fiber_util.Cancellation.create () in
+  let cancel = Fiber.Cancellation.create () in
   let (), what =
     Scheduler.run
-      (let* () = Fiber_util.Cancellation.fire cancel in
-       Fiber_util.Cancellation.with_handler cancel
+      (let* () = Fiber.Cancellation.fire cancel in
+       Fiber.Cancellation.with_handler cancel
          (fun () -> Fiber.return ())
          ~on_cancellation:(fun () -> Fiber.return ()))
   in

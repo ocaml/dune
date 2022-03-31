@@ -374,6 +374,46 @@ let%expect_test "error from user rule" =
       ]
     ] |}]
 
+let%expect_test "library error location" =
+  diagnostic_with_build
+    [ ("dune", "(library (name foo) (libraries fake-library))")
+    ; ("foo.ml", "")
+    ]
+    "./foo.cma";
+  [%expect
+    {|
+    Building ./foo.cma
+    Build ./foo.cma failed
+    [ "Add"
+    ; [ [ "id"; "0" ]
+      ; [ "loc"
+        ; [ [ "start"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "31" ]
+              ; [ "pos_fname"; "dune" ]
+              ; [ "pos_lnum"; "1" ]
+              ]
+            ]
+          ; [ "stop"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "43" ]
+              ; [ "pos_fname"; "dune" ]
+              ; [ "pos_lnum"; "1" ]
+              ]
+            ]
+          ]
+        ]
+      ; [ "message"
+        ; [ "Verbatim"; "Error: Library \"fake-library\" not\n\
+                         found.\n\
+                         " ]
+        ]
+      ; [ "promotion"; [] ]
+      ; [ "related"; [] ]
+      ; [ "targets"; [] ]
+      ]
+    ] |}]
+
 let%expect_test "create and fix error" =
   setup_diagnostics (fun client ->
       files

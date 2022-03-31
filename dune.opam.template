@@ -1,6 +1,4 @@
 build: [
-  # opam 2 sets OPAM_SWITCH_PREFIX, so we don't need a hardcoded path
-  ["ocaml" "configure.ml" "--libdir" lib] {opam-version < "2"}
   ["ocaml" "bootstrap.ml" "-j" jobs]
   ["./dune.exe" "build" "dune.install" "--release" "--profile" "dune-bootstrap" "-j" jobs]
 ]

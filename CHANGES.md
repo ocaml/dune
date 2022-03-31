@@ -1,6 +1,9 @@
 3.1.0 (Unreleased)
 ------------------
 
+- Always output absolute paths for locations in RPC reported diagnostics
+  (#5539, @rgrinberg)
+
 - Add `(deps <deps>)` in ctype field (#5346, @bobot)
 
 - Add `(include <file>)` constructor to dependency specifications. This can be
@@ -13,7 +16,8 @@
 
 - Show auto-detected concurrency on Windows too (#5502, @MisterDA)
 
-- Fix operations that remove folders with absolute path. This happens when using esy (#5507, @EduardoRFS)
+- Fix operations that remove folders with absolute path. This happens when
+  using esy (#5507, @EduardoRFS)
 
 3.0.3 (Unreleased)
 ------------------

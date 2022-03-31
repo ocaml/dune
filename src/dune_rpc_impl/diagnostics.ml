@@ -32,9 +32,8 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     Option.map dir ~f:Path.drop_optional_build_context_maybe_sandboxed
   in
   let make_loc loc =
-    match dir with
-    | None -> loc
-    | Some dir -> absolutize_paths ~dir loc
+    let dir = Option.value ~default:Path.root dir in
+    absolutize_paths ~dir loc
   in
   let loc = Option.map message.loc ~f:make_loc in
   let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in

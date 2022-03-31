@@ -179,6 +179,17 @@ let strip str =
   in
   loop 0
 
+let index_from_any str start chars =
+  let n = String.length str in
+  let rec go i =
+    if i >= n then None
+    else
+      match List.find chars ~f:(fun c -> Char.equal str.[i] c) with
+      | None -> go (i + 1)
+      | Some c -> Some (i, c)
+  in
+  go start
+
 let parse_line str styles =
   let len = String.length str in
   let add_chunk acc ~styles ~pos ~len =
@@ -201,9 +212,9 @@ let parse_line str styles =
       let seq_start = seq_start + 2 in
       if seq_start >= len || str.[seq_start - 1] <> '[' then (styles, acc)
       else
-        match String.index_from str seq_start 'm' with
+        match index_from_any str seq_start [ 'm'; 'K' ] with
         | None -> (styles, acc)
-        | Some seq_end ->
+        | Some (seq_end, 'm') ->
           let styles =
             if seq_start = seq_end then
               (* Some commands output "\027[m", which seems to be interpreted
@@ -223,7 +234,8 @@ let parse_line str styles =
                      else s :: styles)
               |> List.rev
           in
-          loop styles (seq_end + 1) acc)
+          loop styles (seq_end + 1) acc
+        | Some (seq_end, _) -> loop styles (seq_end + 1) acc)
   in
   loop styles 0 Pp.nop
 

@@ -91,6 +91,9 @@
 
 - Allow include statement in install stanza (#6139, fixes #256, @gridbugs)
 
+- Handle CSI n K code in ANSI escape codes from commands. (#6214, fixes #5528,
+  @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

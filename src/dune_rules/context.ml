@@ -858,11 +858,11 @@ let map_exe (context : t) =
       | _ -> exe)
 
 let roots t =
-  let open Install.Section.Paths.Roots in
+  let module Roots = Install.Section.Paths.Roots in
   let prefix_roots =
     match Env.get t.env Build_environment_kind.opam_switch_prefix_var_name with
     | None ->
-      { lib_root = None
+      { Roots.lib_root = None
       ; libexec_root = None
       ; bin = None
       ; sbin = None
@@ -873,12 +873,12 @@ let roots t =
       }
     | Some prefix ->
       let prefix = Path.of_filename_relative_to_initial_cwd prefix in
-      opam_from_prefix prefix |> map ~f:(fun s -> Some s)
+      Roots.opam_from_prefix prefix |> Roots.map ~f:(fun s -> Some s)
   in
   match t.kind with
   | Default ->
-    let setup_roots = map ~f:(Option.map ~f:Path.of_string) Setup.roots in
-    first_has_priority setup_roots prefix_roots
+    let setup_roots = Roots.map ~f:(Option.map ~f:Path.of_string) Setup.roots in
+    Roots.first_has_priority setup_roots prefix_roots
   | Opam _ -> prefix_roots
 
 let dot_dune_dir t = Path.Build.relative t.build_dir ".dune"

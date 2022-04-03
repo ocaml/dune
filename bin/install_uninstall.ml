@@ -10,16 +10,17 @@ let interpret_destdir ~destdir path =
   | Some destdir -> Path.append_local destdir (Path.local_part path)
 
 let get_dirs context ~prefix_from_command_line ~from_command_line =
-  let open Install.Section.Paths.Roots in
+  let module Roots = Install.Section.Paths.Roots in
   let prefix_from_command_line =
     Option.map ~f:Path.of_string prefix_from_command_line
   in
   let roots =
     match prefix_from_command_line with
-    | Some prefix -> opam_from_prefix prefix |> map ~f:(fun s -> Some s)
+    | Some prefix ->
+      Roots.opam_from_prefix prefix |> Roots.map ~f:(fun s -> Some s)
     | None -> Context.roots context
   in
-  let roots = first_has_priority from_command_line roots in
+  let roots = Roots.first_has_priority from_command_line roots in
   let must_be_defined name v =
     match v with
     | Some v -> v
@@ -28,7 +29,7 @@ let get_dirs context ~prefix_from_command_line ~from_command_line =
         [ Pp.textf "The %s installation directory is unknown." name ]
         ~hints:[ Pp.textf "It could be specified with --%s" name ]
   in
-  { lib_root = must_be_defined "libdir" roots.lib_root
+  { Roots.lib_root = must_be_defined "libdir" roots.lib_root
   ; libexec_root = must_be_defined "libexecdir" roots.libexec_root
   ; bin = must_be_defined "bindir" roots.bin
   ; sbin = must_be_defined "sbindir" roots.sbin

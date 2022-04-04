@@ -99,7 +99,9 @@ module type File_operations = sig
 
   val remove_file_if_exists : Path.t -> unit
 
-  val remove_dir_if_exists_and_empty : Path.t -> unit
+  val remove_dir_if_empty : Path.t -> unit
+
+  val try_remove_dir_if_empty : Path.t -> unit
 end
 
 module type Workspace = sig
@@ -120,7 +122,11 @@ module File_ops_dry_run : File_operations = struct
   let remove_file_if_exists path =
     print_line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
 
-  let remove_dir_if_exists_and_empty path =
+  let remove_dir_if_empty path =
+    print_line "Removing directory (fail if not empty) %s"
+      (Path.to_string_maybe_quoted path)
+
+  let try_remove_dir_if_empty path =
     print_line "Removing directory (if empty) %s"
       (Path.to_string_maybe_quoted path)
 end
@@ -285,7 +291,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
       print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
       print_unix_error (fun () -> Path.unlink dst))
 
-  let remove_dir_if_exists_and_empty dir =
+  let remove_dir_if_empty ~try_ dir =
     if Path.exists dir then
       match Path.readdir_unsorted dir with
       | Ok [] ->
@@ -295,10 +301,20 @@ module File_ops_real (W : Workspace) : File_operations = struct
       | Error (e, _, _) ->
         User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
       | _ ->
-        User_error.raise
-          [ Pp.textf "Please delete non-empty directory %s manually."
-              (Path.to_string_maybe_quoted dir)
-          ]
+        let dir = Path.to_string_maybe_quoted dir in
+        if try_ then
+          User_message.prerr
+            (User_error.make
+               [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)."
+                   dir
+               ])
+        else
+          User_error.raise
+            [ Pp.textf "Please delete non-empty directory %s manually." dir ]
+
+  let try_remove_dir_if_empty dir = remove_dir_if_empty ~try_:true dir
+
+  let remove_dir_if_empty dir = remove_dir_if_empty ~try_:false dir
 
   let mkdir_p p =
     (* CR-someday amokhov: We should really change [Path.mkdir_p dir] to fail if
@@ -607,7 +623,7 @@ let install_uninstall ~what =
                           if copy then
                             let* () =
                               (match Path.is_directory dst with
-                              | true -> Ops.remove_dir_if_exists_and_empty dst
+                              | true -> Ops.remove_dir_if_empty dst
                               | false | (exception _) ->
                                 Ops.remove_file_if_exists dst);
                               print_line "%s %s" msg
@@ -635,7 +651,7 @@ let install_uninstall ~what =
         (* This [List.rev] is to ensure we process children directories before
            their parents *)
         |> List.rev
-        |> List.iter ~f:Ops.remove_dir_if_exists_and_empty)
+        |> List.iter ~f:Ops.try_remove_dir_if_empty)
   in
   (term, Cmdliner.Term.info (cmd_what what) ~doc ~man:Common.help_secs)
 

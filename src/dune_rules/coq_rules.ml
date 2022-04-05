@@ -346,7 +346,7 @@ let coqdep_rule (cctx : _ Context.t) ~source_rule ~file_flags coq_module =
   (* Coqdep has to be called in the stanza's directory *)
   let open Action_builder.With_targets.O in
   Action_builder.with_no_targets cctx.mlpack_rule
-  >>> Action_builder.with_no_targets source_rule
+  >>> Action_builder.(with_no_targets (goal source_rule))
   >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to cctx.coqdep file_flags
 
 let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =

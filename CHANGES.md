@@ -24,6 +24,9 @@
 - Dune will not fail if some directories are non-empty when uninstalling.
   (#5543, fixes #5542, @nojb)
 
+- `coqdep` now depends only on the filesystem layout of the .v files,
+  and not on their contents (#5547, helps with #5100, @ejgallego)
+
 3.0.3 (Unreleased)
 ------------------
 

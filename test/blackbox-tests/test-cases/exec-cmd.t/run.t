@@ -28,6 +28,3 @@
   $ ls -a test/_build
   .
   ..
-  .db
-  .digest-db
-  .filesystem-clock

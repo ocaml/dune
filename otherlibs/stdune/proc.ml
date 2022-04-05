@@ -8,6 +8,8 @@ external sys_exit : int -> 'a = "caml_sys_exit"
 let restore_cwd_and_execve prog argv ~env =
   let env = Env.to_unix env |> Array.of_list in
   let argv = Array.of_list argv in
+  (* run at_exit before changing the working directory *)
+  Stdlib.do_at_exit ();
   Sys.chdir (Path.External.to_string Path.External.initial_cwd);
   if Sys.win32 then
     let pid =
@@ -19,7 +21,6 @@ let restore_cwd_and_execve prog argv ~env =
     | WSTOPPED _ -> assert false
   else (
     ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
-    Stdlib.do_at_exit ();
     Unix.execve prog argv env)
 
 module Resource_usage = struct

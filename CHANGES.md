@@ -1,6 +1,8 @@
 3.1.0 (Unreleased)
 ------------------
 
+- Fix dune exec dumping database in wrong directory (#5544, @bobot)
+
 - Always output absolute paths for locations in RPC reported diagnostics
   (#5539, @rgrinberg)
 

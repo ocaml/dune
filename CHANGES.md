@@ -19,6 +19,9 @@
 - Fix operations that remove folders with absolute path. This happens when
   using esy (#5507, @EduardoRFS)
 
+- Dune will not fail if some directories are non-empty when uninstalling.
+  (#5543, fixes #5542, @nojb)
+
 3.0.3 (Unreleased)
 ------------------
 

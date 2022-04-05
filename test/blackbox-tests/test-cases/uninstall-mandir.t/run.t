@@ -55,5 +55,6 @@ tools, dune should not remove it, nor complain about it being non-empty.
   Deleting install/lib/test/dune-package
   Deleting install/lib/test/opam
   Deleting install/man/man1/test.1
-  Error: Please delete non-empty directory install/man/man1 manually.
+  Error: Directory install/man/man1 is not empty, cannot delete (ignoring).
+  Deleting empty directory install/lib/test
 

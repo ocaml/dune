@@ -165,11 +165,11 @@ If prefix is not passed, libdir defaults to the opam-prefix/lib directory:
   Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
   Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
   Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
-  Removing directory (if empty) /OPAM_PREFIX/man/man3
-  Removing directory (if empty) /OPAM_PREFIX/man/man1
-  Removing directory (if empty) /OPAM_PREFIX/man
-  Removing directory (if empty) /OPAM_PREFIX/lib/foo
-  Removing directory (if empty) /OPAM_PREFIX/bin
+  Removing directory (warn if not empty) /OPAM_PREFIX/man/man3
+  Removing directory (warn if not empty) /OPAM_PREFIX/man/man1
+  Removing directory (warn if not empty) /OPAM_PREFIX/man
+  Removing directory (warn if not empty) /OPAM_PREFIX/lib/foo
+  Removing directory (warn if not empty) /OPAM_PREFIX/bin
 
 If only libdir is passed, binaries are installed under prefix/bin and libraries
 in libdir:
@@ -251,11 +251,11 @@ in libdir:
   Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
   Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
   Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
-  Removing directory (if empty) /OPAM_PREFIX/man/man3
-  Removing directory (if empty) /OPAM_PREFIX/man/man1
-  Removing directory (if empty) /OPAM_PREFIX/man
-  Removing directory (if empty) /OPAM_PREFIX/bin
-  Removing directory (if empty) /LIBDIR/foo
+  Removing directory (warn if not empty) /OPAM_PREFIX/man/man3
+  Removing directory (warn if not empty) /OPAM_PREFIX/man/man1
+  Removing directory (warn if not empty) /OPAM_PREFIX/man
+  Removing directory (warn if not empty) /OPAM_PREFIX/bin
+  Removing directory (warn if not empty) /LIBDIR/foo
 
 The DESTDIR var is supported. When set, it is prepended to the prefix.
 This is the case when the prefix is implicit:

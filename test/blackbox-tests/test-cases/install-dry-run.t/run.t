@@ -59,4 +59,4 @@
   Removing (if it exists) _install/lib/mylib/mylib.ml
   Removing (if it exists) _install/lib/mylib/opam
   Removing (if it exists) _install/lib/mylib/mylib.cmxs
-  Removing directory (if empty) _install/lib/mylib
+  Removing directory (warn if not empty) _install/lib/mylib

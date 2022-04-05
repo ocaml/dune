@@ -13,3 +13,21 @@
   [1]
   $ dune exec dunetestbar
   Bar
+
+#Test the at exit bookkeeping of dune is done in the right directory
+  $ dune clean
+
+  $ mkdir test
+
+  $ mkdir test/_build
+
+  $ (cd test; dune exec --root .. -- dunetestbar)
+  Entering directory '..'
+  Bar
+
+  $ ls -a test/_build
+  .
+  ..
+  .db
+  .digest-db
+  .filesystem-clock

@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Fix ``dune coq top`` when it is invoked on files from a subdirectory of the
+  directory containing the associated stanza (#5784, fixes #5552, @ejgallego,
+  @rlepigre)
+
 - Sandbox preprocessing, lint, and dialect rules by default. All these rules
   now require precise dependency specifications (#5807, @rgrinberg)
 

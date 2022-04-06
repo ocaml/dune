@@ -39,18 +39,20 @@ let term =
         let context = Dune_rules.Super_context.context sctx in
         (* Try to compute a relative path if we got an absolute path. *)
         let coq_file_arg =
-          let cwd = Path.external_ Path.External.initial_cwd in
-          let file =
-            (* Best-effort symbolic link unfolding. *)
-            let file = Fpath.follow_symlinks coq_file_arg in
-            Option.value file ~default:coq_file_arg
-          in
-          let file = Path.of_filename_relative_to_initial_cwd file in
-          let cwd = Path.to_string cwd in
-          let file = Path.to_string file in
-          match String.drop_prefix ~prefix:(cwd ^ "/") file with
-          | None -> coq_file_arg
-          | Some s -> s
+          if Filename.is_relative coq_file_arg then coq_file_arg
+          else
+            let cwd = Path.external_ Path.External.initial_cwd in
+            let file =
+              (* Best-effort symbolic link unfolding. *)
+              let file = Fpath.follow_symlinks coq_file_arg in
+              Option.value file ~default:coq_file_arg
+            in
+            let file = Path.of_filename_relative_to_initial_cwd file in
+            let cwd = Path.to_string cwd in
+            let file = Path.to_string file in
+            match String.drop_prefix ~prefix:(cwd ^ "/") file with
+            | None -> coq_file_arg
+            | Some s -> s
         in
         let coq_file_build =
           let p = Common.prefix_target common coq_file_arg in
@@ -64,6 +66,14 @@ let term =
         let* coqtop, args =
           let open Memo.O in
           Build_system.run_exn (fun () ->
+              let* (tr : Dune_rules.Dir_contents.triage) =
+                Dune_rules.Dir_contents.triage sctx ~dir
+              in
+              let dir =
+                match tr with
+                | Group_part dir -> dir
+                | Standalone_or_root _ -> dir
+              in
               let* dc = Dune_rules.Dir_contents.get sctx ~dir in
               let* coq_src = Dune_rules.Dir_contents.coq dc in
               let coq_module =

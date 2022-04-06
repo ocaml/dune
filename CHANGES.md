@@ -35,6 +35,9 @@
 - The mdx stanza 0.2 can now be used with `(implicit_transitive_deps false)`
   (#5558, fixes #5499, @emillon)
 
+- Fix missing parenthesis in printing of corresponding terminal command for
+  `(with-outputs-to )` (#5551, fixes #5546, @Alizter)
+
 3.0.3 (Unreleased)
 ------------------
 

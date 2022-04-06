@@ -240,7 +240,7 @@ Errors with-outputs-to
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-outputs-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
-  (cd _build/default && SH -c 'echo '\''File "foo", line 1: blah'\''; exit 42' &> _build/default/bar
+  (cd _build/default && SH -c 'echo '\''File "foo", line 1: blah'\''; exit 42') &> _build/default/bar
   Command exited with code 42.
   [1]
 
@@ -258,5 +258,5 @@ Errors with-outputs-to
   2 |  (alias default)
   3 |  (action (with-outputs-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
             sh bar (exit 42)
-  (cd _build/default && SH -c 'echo '\''File "foo", line 1: blah'\''; exit 42' &> _build/default/bar
+  (cd _build/default && SH -c 'echo '\''File "foo", line 1: blah'\''; exit 42') &> _build/default/bar
   [1]

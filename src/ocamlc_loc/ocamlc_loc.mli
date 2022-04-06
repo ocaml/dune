@@ -1,3 +1,6 @@
+[@@@alert
+unstable "The API of this library is not stable and may change without notice."]
+
 type warning =
   { code : int
   ; name : string
@@ -30,3 +33,6 @@ type report =
 val dyn_of_report : report -> Dyn.t
 
 val parse : string -> report list
+
+val parse_raw :
+  string -> [ `Loc of [ `Related | `Parent ] * loc | `Message of message ] list

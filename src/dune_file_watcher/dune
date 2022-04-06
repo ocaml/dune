@@ -8,5 +8,5 @@
   threads.posix
   ocaml_inotify
   async_inotify_for_dune
-  dune_re)
+  re)
  (synopsis "Internal Dune library, do not use!"))

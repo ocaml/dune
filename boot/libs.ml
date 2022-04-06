@@ -21,7 +21,7 @@ let local_libraries =
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
   ; ("src/dune_cache", Some "Dune_cache", false, None)
-  ; ("vendor/re/src", Some "Dune_re", false, None)
+  ; ("vendor/re/src", Some "Re", false, None)
   ; ("vendor/opam-file-format/src", None, false, None)
   ; ("otherlibs/dune-glob/src", Some "Dune_glob", false, None)
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)

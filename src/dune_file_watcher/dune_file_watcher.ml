@@ -157,8 +157,6 @@ let exclude_patterns =
   ; {|/4913$|}
   ]
 
-module Re = Dune_re
-
 let exclude_regex =
   Re.compile
     (Re.alt (List.map exclude_patterns ~f:(fun pattern -> Re.Posix.re pattern)))

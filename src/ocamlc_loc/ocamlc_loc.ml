@@ -1,5 +1,3 @@
-module Re = Dune_re
-
 type warning =
   { code : int
   ; name : string

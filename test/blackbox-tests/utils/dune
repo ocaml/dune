@@ -2,7 +2,7 @@
  (name dune_cmd)
  (libraries
   stdune
-  dune-private-libs.dune_re
+  dune-private-libs.re
   dune-configurator
   build_path_prefix_map
   str))

@@ -49,7 +49,7 @@ When a list is indented, there is no extra space at the end.
 When there is a long list of atoms, quoted strings, templates and singletons,
 it gets wrapped.
 
-  $ echo '(library (name dune) (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang ocaml_config which_program) (synopsis "Internal Dune library, do not use!") (preprocess  (action (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))' | dune format-dune-file
+  $ echo '(library (name dune) (libraries unix stdune fiber xdg re threads opam_file_format dune_lang ocaml_config which_program) (synopsis "Internal Dune library, do not use!") (preprocess  (action (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))' | dune format-dune-file
   (library
    (name dune)
    (libraries
@@ -57,7 +57,7 @@ it gets wrapped.
     stdune
     fiber
     xdg
-    dune_re
+    re
     threads
     opam_file_format
     dune_lang

@@ -106,6 +106,7 @@ Among other things, dune-configurator allows one to:
  (depends
   (dune-glob (= :version))
   (csexp (>= 1.5.0))
+  re
   (ppx_expect :with-test)
   (stdune (= :version))
   (dune-private-libs (= :version)))

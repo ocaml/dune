@@ -20,6 +20,7 @@ depends: [
   "dune" {>= "3.0"}
   "dune-glob" {= version}
   "csexp" {>= "1.5.0"}
+  "re"
   "ppx_expect" {with-test}
   "stdune" {= version}
   "dune-private-libs" {= version}
@@ -30,6 +31,7 @@ build: [
   ["dune" "subst"] {dev}
   ["rm" "-rf" "vendor/csexp"]
   ["rm" "-rf" "vendor/pp"]
+  ["rm" "-rf" "vendor/re"]
   [
     "dune"
     "build"

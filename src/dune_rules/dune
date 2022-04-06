@@ -8,7 +8,7 @@
   fiber
   fiber_util
   memo
-  dune_re
+  re
   opam_file_format
   dune_lang
   dune_glob

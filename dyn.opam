@@ -20,6 +20,7 @@ build: [
   ["dune" "subst"] {dev}
   ["rm" "-rf" "vendor/csexp"]
   ["rm" "-rf" "vendor/pp"]
+  ["rm" "-rf" "vendor/re"]
   [
     "dune"
     "build"

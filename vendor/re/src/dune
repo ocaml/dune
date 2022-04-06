@@ -1,4 +1,4 @@
 (library
- (name dune_re)
- (public_name dune-private-libs.dune_re)
+ (name re)
+ (public_name dune-private-libs.re)
  (synopsis "Internal Dune library, do not use!"))

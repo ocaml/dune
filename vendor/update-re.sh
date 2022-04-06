@@ -22,11 +22,10 @@ SRC=$TMP/ocaml-re
 cp -v $SRC/LICENSE.md re
 cp -v $SRC/lib/*.{ml,mli} re/src/
 
-echo "include Re" > re/src/dune_re.ml
 cat >re/src/dune <<EOF
 (library
- (name dune_re)
- (public_name dune-private-libs.dune_re)
+ (name re)
+ (public_name dune-private-libs.re)
  (synopsis "Internal Dune library, do not use!"))
 EOF
 

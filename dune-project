@@ -186,6 +186,14 @@ understood by dune language."))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
 (package
+ (name ocamlc-loc)
+ (synopsis "Parse ocaml compiler output into structured form")
+ (depends
+  (ocaml (>= 4.08.0))
+  (dyn (= :version)))
+ (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
+
+(package
  (name fiber)
  (synopsis "Structured concurrency library")
  (depends

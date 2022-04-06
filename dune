@@ -34,6 +34,9 @@
 (rule
  (copy dune-private-libs.opam.template xdg.opam.template))
 
+(rule
+ (copy dune-private-libs.opam.template ocamlc-loc.opam.template))
+
 (env
  (_
   (flags :standard -alert -unstable)))

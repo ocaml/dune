@@ -1,3 +1,6 @@
+[@@@alert
+unstable "The API of this library is not stable and may change without notice."]
+
 type warning =
   { code : int
   ; name : string

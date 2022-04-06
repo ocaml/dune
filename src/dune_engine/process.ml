@@ -182,7 +182,7 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
       , io_to_redirection_path stderr_to.kind )
     with
     | Some fn1, Some fn2 when String.equal fn1 fn2 ->
-      " &> " ^ String.quote_for_shell fn1
+      suffix ^ " &> " ^ String.quote_for_shell fn1
     | path_out, path_err ->
       let add_to_suffix suffix path redirect =
         match path with

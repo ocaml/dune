@@ -21,12 +21,10 @@ val of_dir :
   -> dirs:(Path.Build.t * string list * String.Set.t) list
   -> t
 
-(** [find_module ~source t] finds a Coq library name and module corresponding
-    to file [source], if there is one. *)
+(** [find_module ~source t] finds a Coq library name and module corresponding to
+    file [source], if there is one. *)
 val find_module :
-     source:Path.Build.t
-  -> t
-  -> (Coq_lib_name.t * Coq_module.t) option
+  source:Path.Build.t -> t -> (Coq_lib_name.t * Coq_module.t) option
 
 val lookup_module :
      t

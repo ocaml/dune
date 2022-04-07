@@ -21,9 +21,9 @@ type follow_symlink_error =
 
 val follow_symlink : string -> (string, follow_symlink_error) result
 
-(** [follow_symlinks path] returns a file path that is equivalent to [path],
-    but free of symbolic links. The value [None] is returned if the maximum
-    symbolic link dept is reached (i.e., [follow_symlink] returns the value
+(** [follow_symlinks path] returns a file path that is equivalent to [path], but
+    free of symbolic links. The value [None] is returned if the maximum symbolic
+    link dept is reached (i.e., [follow_symlink] returns the value
     [Error Max_depth_exceeded] on some intermediate path). *)
 val follow_symlinks : string -> string option
 

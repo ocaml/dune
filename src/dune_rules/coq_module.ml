@@ -22,8 +22,8 @@ module Name = struct
 end
 
 module Module = struct
-  (* We keep prefix and name separated as the handling of `From Foo Require Bar.`
-     may benefit from it. *)
+  (* We keep prefix and name separated as the handling of `From Foo Require
+     Bar.` may benefit from it. *)
   type t =
     { source : Path.Build.t
     ; prefix : string list
@@ -45,8 +45,7 @@ module Module = struct
 end
 
 include Module
-
-module Map = Map.Make(Module)
+module Map = Map.Make (Module)
 
 let make ~source ~prefix ~name = { source; prefix; name }
 

@@ -15,48 +15,36 @@ jobs:
           - windows-latest
         # Please keep the list in sync with the minimal version of OCaml in
         # dune-project, dune.opam.template and bootstrap.ml
-        ocaml-version:
-          - 4.13.1
+        #
+        # We don't run tests on all versions of the Windows environment and on
+        # 4.02.x and 4.07.x in other environments
+        ocaml-compiler:
+          - 4.13.x
         skip_test:
           - false
         include:
-          - ocaml-version: 4.12.1
+          - ocaml-compiler: 4.12.x
             os: ubuntu-latest
             skip_test: true
-          - ocaml-version: 4.11.1
+          - ocaml-compiler: 4.11.x
             os: ubuntu-latest
             skip_test: true
-          - ocaml-version: 4.10.0
+          - ocaml-compiler: 4.10.x
             os: ubuntu-latest
             skip_test: true
-          - ocaml-version: 4.09.1
+          - ocaml-compiler: 4.09.x
             os: ubuntu-latest
             skip_test: true
-          - ocaml-version: 4.08.1
+          - ocaml-compiler: 4.08.x
             os: ubuntu-latest
             skip_test: true
-          - ocaml-version: 4.04.2
+          - ocaml-compiler: 4.04.x
             os: ubuntu-latest
             skip_test: true
             configurator: true
-          - ocaml-version: 4.02.3
+          - ocaml-compiler: 4.02.x
             os: ubuntu-latest
             skip_test: true
-
-    # We don't run tests on all versions of the Windows environment and on
-    # 4.02.3 and 4.07.1 in other environments
-    env:
-      # Note that this environment variable is recognized as a string by GitHub
-      # Actions, so the following doesn't actually work:
-      #
-      # if: env.SKIP_TEST
-      #
-      # To skip an action, the following should be used:
-      # if: ${{ env.SKIP_TEST != "false" }}
-      SKIP_TEST: ${{ matrix.skip_test }}
-      OCAML_VERSION: ${{ matrix.ocaml-version }}
-      OS: ${{ matrix.os }}
-      CONFIGURATOR: ${{ matrix.configurator }}
 
     runs-on: ${{ matrix.os }}
 
@@ -64,10 +52,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: ocaml/setup-ocaml@v1
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          opam-depext: false
 
       # git user needs to be configured for the following tests:
       # otherlibs/build-info/test/run.t
@@ -76,16 +65,15 @@ jobs:
       # test/expect-tests/vcs_tests.ml
       - name: Set git user
         run: |
-          git config --global user.name github-actions
-          git config --global user.email github-actions-bot@users.noreply.github.com
-
-      - run: opam exec -- ocaml .github/workflows/ci.ml pin
+          git config --global user.name github-actions[bot]
+          git config --global user.email github-actions[bot]@users.noreply.github.com
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: opam install ./dune.opam --deps-only --with-test
 
-      - run: brew install fswatch coreutils
-        if: env.OS == 'macos-latest'
+      - name: Install system deps on macOS
+        run: brew install coreutils
+        if: ${{ matrix.os == 'macos-latest' }}
 
       # dune doesn't have any additional dependencies so we can build it right
       # away this makes it possible to see build errors as soon as possible
@@ -94,14 +82,28 @@ jobs:
       # Ensure Dune can build itself
       - run: opam exec -- ./dune.exe build -p dune --profile dune-bootstrap
 
-      - name: run test suite
-        run: opam exec -- ocaml .github/workflows/ci.ml test
-        if: env.SKIP_TEST != 'true'
+      - name: Install deps on Unix
+        run: |
+          opam install . --deps-only --with-test
+          opam exec -- make dev-deps
+        if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
 
-      - name: test source is well formatted
+      - name: Install deps on Win32
+        run: opam install ./dune-configurator.opam --deps-only --with-test
+        if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
+
+      - name: Run test suite on Unix
+        run: opam exec -- make test
+        if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
+
+      - name: Run test suite on Win32
+        run: opam exec -- make test-windows
+        if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
+
+      - name: Test source is well formatted
         run: opam exec -- make fmt
-        if: env.OCAML_VERSION == '4.12.0' && env.OS == 'ubuntu-latest'
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.ocaml-compiler == '4.13.x' }}
 
-      - name: build configurator
+      - name: Build configurator
         run: opam install ./dune-configurator.opam
-        if: env.CONFIGURATOR == 'true'
+        if: ${{ matrix.configurator == true }}

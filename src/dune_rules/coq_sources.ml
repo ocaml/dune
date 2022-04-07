@@ -12,8 +12,8 @@ type t =
         (* [directories] is used to compute the include paths for Coq's native
            mode *)
   ; extract : Coq_module.t Loc.Map.t
-  ; rev_map : [ `Theory of Theory.t
-              | `Extraction of Extraction.t ] Coq_module.Map.t
+  ; rev_map :
+      [ `Theory of Theory.t | `Extraction of Extraction.t ] Coq_module.Map.t
   }
 
 let find_module ~source t =
@@ -74,7 +74,7 @@ let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
       in
       let rev_map =
         List.fold_left modules ~init:acc.rev_map ~f:(fun acc m ->
-          Coq_module.Map.add_exn acc m (`Theory coq))
+            Coq_module.Map.add_exn acc m (`Theory coq))
       in
       { acc with directories; libraries; rev_map }
     | Extraction.T extr ->
@@ -94,5 +94,4 @@ let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
       { acc with extract; rev_map }
     | _ -> acc)
 
-let lookup_module t m =
-  Coq_module.Map.find t.rev_map m
+let lookup_module t m = Coq_module.Map.find t.rev_map m

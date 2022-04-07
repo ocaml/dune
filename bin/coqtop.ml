@@ -1,8 +1,7 @@
 open Stdune
 open Import
 
-let doc =
-  "Execute the Coq toplevel with the local configuration."
+let doc = "Execute the Coq toplevel with the local configuration."
 
 let man =
   [ `S "DESCRIPTION"
@@ -40,7 +39,7 @@ let term =
         let context = Dune_rules.Super_context.context sctx in
         (* Try to compute a relative path if we got an absolute path. *)
         let coq_file_arg =
-          let cwd = Path.external_ (Path.External.initial_cwd) in
+          let cwd = Path.external_ Path.External.initial_cwd in
           let file =
             (* Best-effort symbolic link unfolding. *)
             let file = Fpath.follow_symlinks coq_file_arg in
@@ -62,7 +61,7 @@ let term =
           let p = Common.prefix_target common dir in
           Path.Build.relative context.build_dir p
         in
-        let* (coqtop, args) =
+        let* coqtop, args =
           let open Memo.Build.O in
           Build_system.run_exn (fun () ->
               let* dc = Dune_rules.Dir_contents.get sctx ~dir in
@@ -72,29 +71,30 @@ let term =
                 match Dune_rules.Coq_sources.find_module ~source coq_src with
                 | Some m -> snd m
                 | None ->
-                    let hints =
-                      [ Pp.textf "is the file part of a stanza?"
-                      ; Pp.textf "has the file been written to disk?" ]
-                    in
-                    User_error.raise ~hints
-                      [ Pp.textf "cannot find file: %s" coq_file_arg ]
+                  let hints =
+                    [ Pp.textf "is the file part of a stanza?"
+                    ; Pp.textf "has the file been written to disk?"
+                    ]
+                  in
+                  User_error.raise ~hints
+                    [ Pp.textf "cannot find file: %s" coq_file_arg ]
               in
               let stanza =
                 Dune_rules.Coq_sources.lookup_module coq_src coq_module
               in
-              let* (args, boot_type) =
+              let* args, boot_type =
                 match stanza with
                 | None ->
-                    User_error.raise
-                      [ Pp.textf "file not part of any stanza: %s" coq_file_arg ]
+                  User_error.raise
+                    [ Pp.textf "file not part of any stanza: %s" coq_file_arg ]
                 | Some (`Theory theory) ->
-                    Dune_rules.Coq_rules.coqtop_args_theory ~sctx ~dir
-                      ~dir_contents:dc theory coq_module
+                  Dune_rules.Coq_rules.coqtop_args_theory ~sctx ~dir
+                    ~dir_contents:dc theory coq_module
                 | Some (`Extraction extr) ->
-                    Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir
-                      ~dir_contents:dc extr
+                  Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir
+                    ~dir_contents:dc extr
               in
-              let* _ : unit * Dep.Fact.t Dep.Map.t =
+              let* (_ : unit * Dep.Fact.t Dep.Map.t) =
                 let deps =
                   Dune_rules.Coq_rules.deps_of ~dir ~boot_type coq_module
                 in
@@ -102,7 +102,7 @@ let term =
               in
               let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
                 let args =
-                  let dir = Path.external_ (Path.External.initial_cwd) in
+                  let dir = Path.external_ Path.External.initial_cwd in
                   Dune_rules.Command.expand ~dir (S args)
                 in
                 Action_builder.run args.build Eager
@@ -111,14 +111,12 @@ let term =
                 Super_context.resolve_program sctx ~dir ~loc:None coqtop
               in
               let prog = Action.Prog.ok_exn prog in
-              let+ _ : Digest.t = Build_system.build_file prog in
+              let+ (_ : Digest.t) = Build_system.build_file prog in
               (Path.to_string prog, args))
         in
         let argv =
-          let topfile =
-            Path.to_absolute_filename (Path.build coq_file_build)
-          in
-          coqtop :: "-topfile" :: topfile :: args @ extra_args
+          let topfile = Path.to_absolute_filename (Path.build coq_file_build) in
+          (coqtop :: "-topfile" :: topfile :: args) @ extra_args
         in
         let env = Super_context.context_env sctx in
         Fiber.return (coqtop, argv, env))

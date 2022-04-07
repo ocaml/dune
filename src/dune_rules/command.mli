@@ -109,6 +109,4 @@ end
     corresponding strings, assuming they will be used as arguments to run a
     command in directory [dir]. *)
 val expand :
-  dir:Path.t ->
-  'a Args.t ->
-  string list Action_builder.With_targets.t
+  dir:Path.t -> 'a Args.t -> string list Action_builder.With_targets.t

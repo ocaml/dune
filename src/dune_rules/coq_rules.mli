@@ -12,12 +12,10 @@ open Coq_stanza
 
 module Bootstrap : sig
   type t =
-    | No_boot
-    (** Coq's stdlib is installed globally *)
+    | No_boot  (** Coq's stdlib is installed globally *)
     | Bootstrap of Coq_lib.t
-    (** Coq's stdlib is in scope of the composed build *)
-    | Bootstrap_prelude
-    (** We are compiling the prelude itself *)
+        (** Coq's stdlib is in scope of the composed build *)
+    | Bootstrap_prelude  (** We are compiling the prelude itself *)
 end
 
 val setup_rules :
@@ -49,10 +47,10 @@ val extraction_rules :
 (** [deps_of ~dir ~boot_type m] produces an action builder that can be run to
     build all dependencies of the Coq module [m]. *)
 val deps_of :
-    dir:Path.Build.t ->
-    boot_type:Bootstrap.t ->
-    Coq_module.t ->
-    unit Dune_engine.Action_builder.t
+     dir:Path.Build.t
+  -> boot_type:Bootstrap.t
+  -> Coq_module.t
+  -> unit Dune_engine.Action_builder.t
 
 val coqtop_args_theory :
      sctx:Super_context.t

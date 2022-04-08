@@ -29,6 +29,9 @@
   layout (ie when the META file is named `META.$pkg`). The `Llvm` bindings were
   affected by this issue. (#5619, fixes #5616, @nojb)
 
+- Support `(binaries)` in `(env)` in dune-workspace files (#5560, fix #5555,
+  @emillon)
+
 3.1.1 (19/04/2022)
 ------------------
 

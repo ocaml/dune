@@ -6,10 +6,30 @@ open Dune_lang.Decoder
    simplicity *)
 let syntax = Stanza.syntax
 
+let has_binaries e =
+  let open Dune_env.Stanza in
+  List.exists e.rules ~f:(fun (_, config) -> List.is_non_empty config.binaries)
+
 let env_field, env_field_lazy =
   let make f g =
     field "env" ~default:(f Dune_env.Stanza.empty)
-      (g (Dune_lang.Syntax.since syntax (1, 1) >>> Dune_env.Stanza.decode))
+      (g
+         (let+ () = Dune_lang.Syntax.since syntax (1, 1)
+          and+ version = Dune_lang.Syntax.get_exn syntax
+          and+ loc = loc
+          and+ s = Dune_env.Stanza.decode in
+          if has_binaries s then
+            let minimum_version = (3, 2) in
+            if version < minimum_version then
+              let message =
+                Dune_lang.Syntax.Error_msg.since syntax minimum_version
+                  ~what:"'binaries' in an 'env' stanza in a dune-workspace file"
+              in
+              s
+              |> Dune_env.Stanza.add_warning ~loc ~message
+              |> Dune_env.Stanza.add_error ~loc ~message
+            else s
+          else s))
   in
   (make Fun.id Fun.id, make Lazy.from_val lazy_)
 

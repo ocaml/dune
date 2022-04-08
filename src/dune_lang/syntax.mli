@@ -33,6 +33,10 @@ end
 
 type t
 
+module Error_msg : sig
+  val since : t -> Version.t -> what:string -> string
+end
+
 module Error : sig
   val since : Loc.t -> t -> Version.t -> what:string -> _
 

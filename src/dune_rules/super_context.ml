@@ -703,12 +703,14 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
                 Code_error.raise
                   "[expander_for_artifacts] in [default_env] is undefined" [])
           in
+          let profile = context.profile in
+          Dune_env.Stanza.fire_hooks config_stanza ~profile;
           let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link context in
           let expander = Memo.Lazy.of_val root_expander in
-          Env_node.make ~dir ~scope ~inherit_from ~config_stanza
-            ~profile:context.profile ~expander ~expander_for_artifacts
-            ~default_context_flags ~default_env:context_env
-            ~default_bin_artifacts:artifacts.bin ~default_cxx_link_flags
+          Env_node.make ~dir ~scope ~inherit_from ~config_stanza ~profile
+            ~expander ~expander_for_artifacts ~default_context_flags
+            ~default_env:context_env ~default_bin_artifacts:artifacts.bin
+            ~default_cxx_link_flags
         in
         Memo.return
           (make ~config_stanza:context.env_nodes.context

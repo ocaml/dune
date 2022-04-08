@@ -59,6 +59,14 @@ let odoc t = Memo.Lazy.force t.odoc
 
 let coq t = Memo.Lazy.force t.coq
 
+let expand_str_lazy expander sw =
+  match String_with_vars.text_only sw with
+  | Some s -> Memo.return s
+  | None ->
+    let open Memo.O in
+    let* expander = Memo.Lazy.force expander in
+    Expander.No_deps.expand_str expander sw
+
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     ~expander_for_artifacts ~default_context_flags ~default_env
     ~default_bin_artifacts ~default_cxx_link_flags =
@@ -86,11 +94,8 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     Memo.lazy_ (fun () ->
         Memo.sequential_map config.binaries
           ~f:
-            (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
-                 let* expander_for_artifacts =
-                   Memo.Lazy.force expander_for_artifacts
-                 in
-                 Expander.No_deps.expand_str expander_for_artifacts template)))
+            (File_binding.Unexpanded.expand ~dir
+               ~f:(expand_str_lazy expander_for_artifacts)))
   in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->

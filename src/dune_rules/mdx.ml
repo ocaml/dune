@@ -312,10 +312,11 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
   let module_ = Module.generated ~src_dir:(Path.build dir) main_module_name in
   let modules = Modules.singleton_exe module_ in
   let flags = Ocaml_flags.default ~dune_version ~profile:Release in
+  let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
       [ (t.loc, name) ]
-      (Lib_dep.Direct (loc, Lib_name.of_string "mdx.test") :: t.libraries)
+      (lib "mdx.test" :: lib "mdx.top" :: t.libraries)
       ~pps:[] ~dune_version
   in
   let* cctx =

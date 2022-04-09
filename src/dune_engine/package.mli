@@ -86,6 +86,7 @@ module Source_kind : sig
       | Github
       | Bitbucket
       | Gitlab
+      | Sourcehut
 
     type t =
       { user : string

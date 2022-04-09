@@ -269,11 +269,13 @@ module Source_kind = struct
       | Github
       | Bitbucket
       | Gitlab
+      | Sourcehut
 
     let to_string = function
       | Github -> "github"
       | Bitbucket -> "bitbucket"
       | Gitlab -> "gitlab"
+      | Sourcehut -> "sourcehut"
 
     type t =
       { user : string
@@ -295,22 +297,36 @@ module Source_kind = struct
       | Github -> "github.com"
       | Bitbucket -> "bitbucket.org"
       | Gitlab -> "gitlab.com"
+      | Sourcehut -> "sr.ht"
 
-    let homepage { kind; user; repo } =
+    let base_uri { kind; user; repo } =
       let host = host_of_kind kind in
-      sprintf "https://%s/%s/%s" host user repo
+      sprintf "%s/%s/%s" host
+        (match kind with
+        | Sourcehut -> "~" ^ user
+        | _ -> user)
+        repo
+
+    let add_https s = "https://" ^ s
+
+    let homepage t = add_https (base_uri t)
 
     let bug_reports t =
-      homepage t
-      ^
       match t.kind with
-      | Bitbucket | Github -> "/issues"
-      | Gitlab -> "/-/issues"
+      | Sourcehut -> add_https ("todo." ^ base_uri t)
+      | _ -> (
+        homepage t
+        ^
+        match t.kind with
+        | Sourcehut -> assert false
+        | Bitbucket | Github -> "/issues"
+        | Gitlab -> "/-/issues")
 
     let enum k =
       [ ("GitHub", Github, None)
       ; ("Bitbucket", Bitbucket, Some (2, 8))
       ; ("Gitlab", Gitlab, Some (2, 8))
+      ; ("Sourcehut", Sourcehut, Some (3, 1))
       ]
       |> List.map ~f:(fun (name, kind, since) ->
              let decode =
@@ -336,8 +352,14 @@ module Source_kind = struct
       let open Dune_lang.Encoder in
       pair string string (forge, path)
 
-    let to_string { user; repo; kind } =
-      sprintf "git+https://%s/%s/%s.git" (host_of_kind kind) user repo
+    let to_string t =
+      let base_uri =
+        let base = base_uri t in
+        match t.kind with
+        | Sourcehut -> "git." ^ base
+        | _ -> base ^ ".git"
+      in
+      "git+https://" ^ base_uri
   end
 
   type t =

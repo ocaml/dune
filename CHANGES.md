@@ -1,6 +1,9 @@
 3.1.0 (Unreleased)
 ------------------
 
+- Add `sourcehut` as an option for defining project sources in dune-project
+  files. For example, `(source (sourcehut user/repo))`. (#5564, @rgrinberg)
+
 - Add `dune coq top` command for running a Coq toplevel (#5457, @rlepigre)
 
 - Fix dune exec dumping database in wrong directory (#5544, @bobot)

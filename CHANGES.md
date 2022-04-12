@@ -29,6 +29,9 @@
 - `coqdep` now depends only on the filesystem layout of the .v files,
   and not on their contents (#5547, helps with #5100, @ejgallego)
 
+- The mdx stanza 0.2 can now be used with `(implicit_transitive_deps false)`
+  (#5558, fixes #5499, @emillon)
+
 3.0.3 (Unreleased)
 ------------------
 

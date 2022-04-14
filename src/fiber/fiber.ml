@@ -1,5 +1,5 @@
 include Core
-module Cancellation = Cancellation
+module Cancel = Cancel
 module Pool = Pool
 module Stream = Stream
 module Mvar = Mvar

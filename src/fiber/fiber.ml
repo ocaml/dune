@@ -510,7 +510,7 @@ module Mutex = struct
       k ()
     | Some next -> resume next () k
 
-  let with_lock t f =
+  let with_lock t ~f =
     let* () = lock t in
     finalize f ~finally:(fun () -> unlock t)
 

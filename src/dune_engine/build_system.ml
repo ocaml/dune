@@ -223,7 +223,7 @@ let rec with_locks ~f = function
   | m :: mutexes ->
     Fiber.Mutex.with_lock
       (Table.find_or_add State.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
-      (fun () -> with_locks ~f mutexes)
+      ~f:(fun () -> with_locks ~f mutexes)
 
 (* All file targets of non-sandboxed actions that are currently being executed.
    On exit, we need to delete them as they might contain garbage. There is no
@@ -1201,7 +1201,7 @@ let run f =
       let+ () = State.set final_status in
       Error `Already_reported
   in
-  Fiber.Mutex.with_lock State.build_mutex f
+  Fiber.Mutex.with_lock State.build_mutex ~f
 
 let run_exn f =
   let open Fiber.O in

@@ -266,7 +266,7 @@ module Mutex : sig
 
   val create : unit -> t
 
-  val with_lock : t -> (unit -> 'a fiber) -> 'a fiber
+  val with_lock : t -> f:(unit -> 'a fiber) -> 'a fiber
 end
 
 module Throttle : sig

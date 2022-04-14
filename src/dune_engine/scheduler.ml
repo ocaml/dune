@@ -721,7 +721,7 @@ type status =
                change. *)
       }
   | (* Running a build *)
-      Building of Fiber.Cancellation.t
+      Building of Fiber.Cancel.t
   | (* Cancellation requested. Build jobs are immediately rejected in this
        state *)
       Restarting_build of
@@ -834,8 +834,8 @@ end = struct
 end
 
 (** All fields of [t] must be immutable. This is because we re-create [t]
-    everytime we start a new build to locally set the [cancellation] field.
-    However, all instances of [t] must share all other fields, in particular the
+    everytime we start a new build to locally set the [cancel] field. However,
+    all instances of [t] must share all other fields, in particular the
     references such as [status].
 
     Another option would be to split [t] in two records such as:
@@ -845,7 +845,7 @@ end
 
       type t =
         { shared : shared
-        ; cancellation : Fiber.Cancellation.t
+        ; cancel : Fiber.Cancel.t
         }
     ]}
 
@@ -867,7 +867,7 @@ type t =
   ; file_watcher : Dune_file_watcher.t option
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
   ; wait_for_build_input_change : unit Fiber.Ivar.t option ref
-  ; cancellation : Fiber.Cancellation.t
+  ; cancel : Fiber.Cancel.t
   }
 
 let t : t Fiber.Var.t = Fiber.Var.create ()
@@ -889,8 +889,7 @@ exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
 
-let check_cancelled t =
-  if Fiber.Cancellation.fired t.cancellation then cancelled ()
+let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
 
 let abort_if_build_was_cancelled = t_opt () >>| Option.iter ~f:check_cancelled
 
@@ -917,8 +916,8 @@ let with_job_slot f =
    scheduler explicitly *)
 let wait_for_process t pid =
   let+ res, outcome =
-    Fiber.Cancellation.with_handler t.cancellation
-      ~on_cancellation:(fun () ->
+    Fiber.Cancel.with_handler t.cancel
+      ~on_cancel:(fun () ->
         Process_watcher.killall t.process_watcher Sys.sigkill;
         Fiber.return ())
       (fun () ->
@@ -974,7 +973,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
              "Stand_by" from the start. We can't "just" switch the initial value
              here because then the non-polling mode would run in "Standing_by"
              mode, which is even weirder. *)
-          ref (Building (Fiber.Cancellation.create ()))
+          ref (Building (Fiber.Cancel.create ()))
       ; job_throttle = Fiber.Throttle.create config.concurrency
       ; process_watcher
       ; events
@@ -984,11 +983,11 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
       ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
       ; wait_for_build_input_change = ref None
       ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
-      ; cancellation =
+      ; cancel =
           (* This cancellation will never be fired, so this field could instead
              be an [option]. We use a dummy cancellation rather than an option
              to keep the code simpler. *)
-          Fiber.Cancellation.create ()
+          Fiber.Cancel.create ()
       } )
 
 module Run_once : sig
@@ -1067,7 +1066,7 @@ end = struct
           | Building cancellation ->
             t.handler t.config Build_interrupted;
             t.status := Restarting_build invalidation;
-            Fiber.Cancellation.fire' cancellation
+            Fiber.Cancel.fire' cancellation
       in
       match !(t.wait_for_build_input_change) with
       | None -> (
@@ -1187,14 +1186,14 @@ module Run = struct
   module Event = Handler.Event
 
   let rec poll_iter t step ~invalidation =
-    let cancellation = Fiber.Cancellation.create () in
-    t.status := Building cancellation;
+    let cancel = Fiber.Cancel.create () in
+    t.status := Building cancel;
     (if Memo.Invalidation.is_empty invalidation then Memo.Perf_counters.reset ()
     else
       let details_hum = Memo.Invalidation.details_hum invalidation in
       t.handler t.config (Source_files_changed { details_hum });
       Memo.reset invalidation);
-    let* res = set { t with cancellation } (fun () -> step) in
+    let* res = set { t with cancel } (fun () -> step) in
     match !(t.status) with
     | Standing_by _ ->
       (* We just finished a build, so there's no way this was set *)

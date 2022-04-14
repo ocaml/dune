@@ -430,7 +430,7 @@ module Scheduler : sig
 end
 
 (** {1 Fiber cancellation} *)
-module Cancellation : sig
+module Cancel : sig
   (** This module provides a way to cancel long running computations.
       Cancellation is fully explicit and fibers must explicitely check for it at
       strategic points. *)
@@ -439,7 +439,7 @@ module Cancellation : sig
 
   val create : unit -> t
 
-  (** Activate a cancellation.
+  (** Activate a cancellation request.
 
       [fire] is idempotent, so calling [fire t] more than once has no effect. *)
   val fire : t -> unit fiber
@@ -455,21 +455,19 @@ module Cancellation : sig
     | Cancelled of 'a
     | Not_cancelled
 
-  (** [with_handler t ~on_cancellation f] runs [f ()] with a cancellation
-      handler. If [t] is fired during the execution of [f], then
-      [on_cancellation] is called.
+  (** [with_handler t ~on_cancel f] runs [f ()] with a cancellation handler. If
+      [t] is fired during the execution of [f], then [on_cancel] is called.
 
-      The aim of [on_cancellation] is to somehow cut short the execution of [f].
-      A typical example is a function running an external command.
-      [on_cancellation] might send a [KILL] signal to the command to abort its
-      execution.
+      The aim of [on_cancel] is to somehow cut short the execution of [f]. A
+      typical example is a function running an external command. [on_cancel]
+      might send a [KILL] signal to the command to abort its execution.
 
-      If [f ()] finished before [t] is fired, then [on_cancellation] will never
-      be invoked. *)
+      If [f ()] finished before [t] is fired, then [on_cancel] will never be
+      invoked. *)
   val with_handler :
        t
     -> (unit -> 'a fiber)
-    -> on_cancellation:(unit -> 'b fiber)
+    -> on_cancel:(unit -> 'b fiber)
     -> ('a * 'b outcome) fiber
 end
 

@@ -54,10 +54,10 @@ let fired t =
   | Cancelled -> true
   | Not_cancelled _ -> false
 
-let with_handler t f ~on_cancellation =
+let with_handler t f ~on_cancel =
   match t.state with
   | Cancelled ->
-    let+ x, y = fork_and_join f on_cancellation in
+    let+ x, y = fork_and_join f on_cancel in
     (x, Cancelled y)
   | Not_cancelled h ->
     let ivar = Ivar.create () in
@@ -90,6 +90,6 @@ let with_handler t f ~on_cancellation =
       (fun () ->
         Ivar.read ivar >>= function
         | Cancelled () ->
-          let+ x = on_cancellation () in
+          let+ x = on_cancel () in
           Cancelled x
         | Not_cancelled -> return Not_cancelled)

@@ -34,50 +34,18 @@ module Counters = struct
     paths_in_cycle_detection_graph := 0
 end
 
-module Build0 = struct
-  include Fiber
+include Fiber
 
-  let when_ x y =
-    match x with
-    | true -> y ()
-    | false -> return ()
+let when_ x y =
+  match x with
+  | true -> y ()
+  | false -> return ()
 
-  let of_reproducible_fiber = Fun.id
+type 'a memo = 'a t
 
-  module Option = struct
-    let iter option ~f =
-      match option with
-      | None -> return ()
-      | Some a -> f a
+let of_reproducible_fiber = Fun.id
 
-    let map option ~f =
-      match option with
-      | None -> return None
-      | Some a -> f a >>| Option.some
-
-    let bind option ~f =
-      match option with
-      | None -> return None
-      | Some a -> f a
-  end
-
-  module Result = struct
-    let iter result ~f =
-      match result with
-      | Error _ -> return ()
-      | Ok a -> f a
-  end
-
-  module List = struct
-    include Monad.List (Fiber)
-
-    let map = parallel_map
-
-    let concat_map l ~f = map l ~f >>| List.concat
-  end
-
-  let memo_build = Fun.id
-end
+let of_memo = Fun.id
 
 module Allow_cutoff = struct
   type 'o t =
@@ -1538,7 +1506,7 @@ module Invalidation = struct
 end
 
 module Current_run = struct
-  let f () = Run.current () |> Build0.return
+  let f () = Run.current () |> return
 
   let memo = create "current-run" ~input:(module Unit) f
 
@@ -1550,37 +1518,33 @@ end
 
 let current_run () = Current_run.exec ()
 
-module Build = struct
-  include Build0
+let of_non_reproducible_fiber fiber =
+  let* (_ : Run.t) = current_run () in
+  fiber
 
-  let of_non_reproducible_fiber fiber =
-    let* (_ : Run.t) = current_run () in
-    fiber
+let is_top_level =
+  let+ is_set = Error_handler.is_set in
+  not is_set
 
-  let is_top_level =
-    let+ is_set = Error_handler.is_set in
-    not is_set
+let run_with_error_handler t ~handle_error_no_raise =
+  Error_handler.with_error_handler handle_error_no_raise (fun () ->
+      let* res = report_and_collect_errors t in
+      match res with
+      | Ok ok -> Fiber.return ok
+      | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) ->
+        Fiber.reraise_all (Exn_set.to_list exns))
 
-  let run_with_error_handler t ~handle_error_no_raise =
-    Error_handler.with_error_handler handle_error_no_raise (fun () ->
-        let* res = report_and_collect_errors t in
-        match res with
-        | Ok ok -> Fiber.return ok
-        | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) ->
-          Fiber.reraise_all (Exn_set.to_list exns))
-
-  let run t =
-    let* is_top_level = is_top_level in
-    (* CR-someday aalekseyev: I think this automagical detection of toplevel
-       calls is weird. My hunch is that having separate functions for toplevel
-       and non-toplevel [run] would be better. *)
-    match is_top_level with
-    | true ->
-      run_with_error_handler
-        (fun () -> t)
-        ~handle_error_no_raise:(fun _exn -> Fiber.return ())
-    | false -> t
-end
+let run t =
+  let* is_top_level = is_top_level in
+  (* CR-someday aalekseyev: I think this automagical detection of toplevel calls
+     is weird. My hunch is that having separate functions for toplevel and
+     non-toplevel [run] would be better. *)
+  match is_top_level with
+  | true ->
+    run_with_error_handler
+      (fun () -> t)
+      ~handle_error_no_raise:(fun _exn -> Fiber.return ())
+  | false -> t
 
 module With_implicit_output = struct
   type ('i, 'o) t = 'i -> 'o Fiber.t
@@ -1777,15 +1741,42 @@ module Run = struct
   end
 end
 
-(* By placing this definition at the end of the file we prevent Merlin from
-   using [build] instead of [Fiber.t] when showing types throughout this
-   file. *)
-type 'a build = 'a Fiber.t
-
-module type Build = sig
+module type S = sig
   include Monad.S
 
   module List : Monad.List with type 'a t := 'a t
 
-  val memo_build : 'a build -> 'a t
+  val of_memo : 'a memo -> 'a t
+end
+
+module Option = struct
+  let iter option ~f =
+    match option with
+    | None -> return ()
+    | Some a -> f a
+
+  let map option ~f =
+    match option with
+    | None -> return None
+    | Some a -> f a >>| Option.some
+
+  let bind option ~f =
+    match option with
+    | None -> return None
+    | Some a -> f a
+end
+
+module Result = struct
+  let iter result ~f =
+    match result with
+    | Error _ -> return ()
+    | Ok a -> f a
+end
+
+module List = struct
+  include Monad.List (Fiber)
+
+  let map = parallel_map
+
+  let concat_map l ~f = map l ~f >>| List.concat
 end

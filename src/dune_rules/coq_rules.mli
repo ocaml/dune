@@ -23,26 +23,26 @@ val setup_rules :
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Theory.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.Build.t
+  -> Action.Full.t Action_builder.With_targets.t list Memo.t
 
 val install_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> Theory.t
-  -> Install.Entry.Sourced.t list Memo.Build.t
+  -> Install.Entry.Sourced.t list Memo.t
 
 val coqpp_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> Coqpp.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.Build.t
+  -> Action.Full.t Action_builder.With_targets.t list Memo.t
 
 val extraction_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Extraction.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.Build.t
+  -> Action.Full.t Action_builder.With_targets.t list Memo.t
 
 (** [deps_of ~dir ~boot_type m] produces an action builder that can be run to
     build all dependencies of the Coq module [m]. *)
@@ -58,11 +58,11 @@ val coqtop_args_theory :
   -> dir_contents:Dir_contents.t
   -> Theory.t
   -> Coq_module.t
-  -> ('a Command.Args.t list * Bootstrap.t) Memo.Build.t
+  -> ('a Command.Args.t list * Bootstrap.t) Memo.t
 
 val coqtop_args_extraction :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Extraction.t
-  -> ('a Command.Args.t list * Bootstrap.t) Memo.Build.t
+  -> ('a Command.Args.t list * Bootstrap.t) Memo.t

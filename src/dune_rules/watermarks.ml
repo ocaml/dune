@@ -266,10 +266,10 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
 
 let subst vcs =
   let+ (version, commit), files =
-    Memo.Build.run
-      (Memo.Build.fork_and_join
+    Memo.run
+      (Memo.fork_and_join
          (fun () ->
-           Memo.Build.fork_and_join
+           Memo.fork_and_join
              (fun () -> Vcs.describe vcs)
              (fun () -> Vcs.commit_id vcs))
          (fun () -> Vcs.files vcs))

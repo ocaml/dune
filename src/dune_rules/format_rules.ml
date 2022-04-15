@@ -70,26 +70,24 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
         >>> Preprocessing.action_for_pp_with_target ~loc ~expander ~action ~src
               ~target:output
     in
-    Memo.Build.Option.iter formatter ~f:(fun action ->
-        let open Memo.Build.O in
+    Memo.Option.iter formatter ~f:(fun action ->
+        let open Memo.O in
         Super_context.add_rule sctx ~mode:Standard ~loc ~dir action
         >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
               ~output)
   in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* () =
     Source_tree.files_of source_dir
-    >>= Memo.Build.parallel_iter_set
-          (module Path.Source.Set)
-          ~f:setup_formatting
+    >>= Memo.parallel_iter_set (module Path.Source.Set) ~f:setup_formatting
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 
 let gen_rules sctx ~output_dir =
-  let open Memo.Build.O in
+  let open Memo.O in
   let dir = Path.Build.parent_exn output_dir in
   let* config = Super_context.format_config sctx ~dir in
-  Memo.Build.when_
+  Memo.when_
     (not (Format_config.is_empty config))
     (fun () ->
       let* expander = Super_context.expander sctx ~dir in
@@ -100,9 +98,9 @@ let gen_rules sctx ~output_dir =
       gen_rules_output sctx config ~version ~dialects ~expander ~output_dir)
 
 let setup_alias sctx ~dir =
-  let open Memo.Build.O in
+  let open Memo.O in
   let* config = Super_context.format_config sctx ~dir in
-  Memo.Build.when_
+  Memo.when_
     (not (Format_config.is_empty config))
     (fun () ->
       let output_dir = Path.Build.relative dir formatted_dir_basename in

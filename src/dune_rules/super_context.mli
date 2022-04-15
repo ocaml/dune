@@ -12,11 +12,11 @@ type t
 val all : t Context_name.Map.t Memo.Lazy.t
 
 (** Find a super context by name. *)
-val find : Context_name.t -> t option Memo.Build.t
+val find : Context_name.t -> t option Memo.t
 
 val modules_of_lib :
   (* to avoid a cycle with [Dir_contents] *)
-  (t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.Build.t) Fdecl.t
+  (t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.t) Fdecl.t
 
 val to_dyn : t -> Dyn.t
 
@@ -34,15 +34,14 @@ val packages : t -> Package.t Package.Name.Map.t
 
 val host : t -> t
 
-val any_package :
-  t -> Package.Name.t -> Expander.any_package option Memo.Build.t
+val any_package : t -> Package.Name.t -> Expander.any_package option Memo.t
 
 val get_site_of_packages :
      t
   -> loc:Loc.t
   -> pkg:Package.Name.t
   -> site:Section.Site.t
-  -> Section.t Memo.Build.t
+  -> Section.t Memo.t
 
 module Lib_entry : sig
   type t =
@@ -64,19 +63,18 @@ val internal_lib_names : t -> Lib_name.Set.t
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
 val ocaml_flags :
-  t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t Memo.Build.t
+  t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t Memo.t
 
-val js_of_ocaml_runtest_alias :
-  t -> dir:Path.Build.t -> Alias.Name.t Memo.Build.t
+val js_of_ocaml_runtest_alias : t -> dir:Path.Build.t -> Alias.Name.t Memo.t
 
 val js_of_ocaml_compilation_mode :
-  t -> dir:Path.Build.t -> Js_of_ocaml.Compilation_mode.t Memo.Build.t
+  t -> dir:Path.Build.t -> Js_of_ocaml.Compilation_mode.t Memo.t
 
 val js_of_ocaml_flags :
      t
   -> dir:Path.Build.t
   -> Js_of_ocaml.Flags.Spec.t
-  -> string list Action_builder.t Js_of_ocaml.Flags.t Memo.Build.t
+  -> string list Action_builder.t Js_of_ocaml.Flags.t Memo.t
 
 val foreign_flags :
      t
@@ -87,7 +85,7 @@ val foreign_flags :
   -> string list Action_builder.t
 
 val link_flags :
-  t -> dir:Path.Build.t -> Link_flags.Spec.t -> Link_flags.t Memo.Build.t
+  t -> dir:Path.Build.t -> Link_flags.Spec.t -> Link_flags.t Memo.t
 
 val menhir_flags :
      t
@@ -99,16 +97,16 @@ val menhir_flags :
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
 val local_binaries :
-  t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.Build.t
+  t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t
 
 (** odoc config in the corresponding [(env)] stanza. *)
-val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t Memo.Build.t
+val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t Memo.t
 
 (** coq config in the corresponding [(env)] stanza. *)
-val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Action_builder.t Memo.Build.t
+val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Action_builder.t Memo.t
 
 (** Formatting settings in the corresponding [(env)] stanza. *)
-val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.Build.t
+val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.t
 
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
@@ -125,7 +123,7 @@ val add_rule :
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t
-  -> unit Memo.Build.t
+  -> unit Memo.t
 
 val add_rule_get_targets :
      t
@@ -133,13 +131,13 @@ val add_rule_get_targets :
   -> ?loc:Loc.t
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t
-  -> Targets.Validated.t Memo.Build.t
+  -> Targets.Validated.t Memo.t
 
 val add_rules :
      t
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t list
-  -> unit Memo.Build.t
+  -> unit Memo.t
 
 val add_alias_action :
      t
@@ -147,7 +145,7 @@ val add_alias_action :
   -> dir:Path.Build.t
   -> loc:Loc.t option
   -> Action.Full.t Action_builder.t
-  -> unit Memo.Build.t
+  -> unit Memo.t
 
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in
     the workspace, if it is not found in the tree is is looked up in the PATH.
@@ -162,9 +160,9 @@ val resolve_program :
   -> ?hint:string
   -> loc:Loc.t option
   -> string
-  -> Action.Prog.t Memo.Build.t
+  -> Action.Prog.t Memo.t
 
-val expander : t -> dir:Path.Build.t -> Expander.t Memo.Build.t
+val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
 
 val dir_status_db : t -> Dir_status.DB.t
 

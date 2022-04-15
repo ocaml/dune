@@ -29,13 +29,13 @@ module type S = sig
   val fold_resolve :
        'a t
     -> init:'acc
-    -> f:('a -> 'acc -> 'acc Resolve.Build.t)
-    -> 'acc Resolve.Build.t
+    -> f:('a -> 'acc -> 'acc Resolve.Memo.t)
+    -> 'acc Resolve.Memo.t
 
   val exists : 'a t -> f:('a -> bool) -> bool
 
   val map_action_builder :
     'a t -> f:('a -> 'b Action_builder.t) -> 'b t Action_builder.t
 
-  val map_resolve : 'a t -> f:('a -> 'b Resolve.Build.t) -> 'b t Resolve.Build.t
+  val map_resolve : 'a t -> f:('a -> 'b Resolve.Memo.t) -> 'b t Resolve.Memo.t
 end

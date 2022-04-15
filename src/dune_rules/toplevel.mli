@@ -8,14 +8,14 @@ module Source : sig
 
   val loc : t -> Loc.t
 
-  val modules : t -> Pp_spec.t -> Modules.t Memo.Build.t
+  val modules : t -> Pp_spec.t -> Modules.t Memo.t
 
   val obj_dir : t -> Path.Build.t Obj_dir.t
 end
 
 type t
 
-val setup_rules : t -> unit Memo.Build.t
+val setup_rules : t -> unit Memo.t
 
 val make :
      cctx:Compilation_context.t
@@ -31,5 +31,5 @@ module Stanza : sig
        sctx:Super_context.t
     -> dir:Path.Build.t
     -> toplevel:Dune_file.Toplevel.t
-    -> unit Memo.Build.t
+    -> unit Memo.t
 end

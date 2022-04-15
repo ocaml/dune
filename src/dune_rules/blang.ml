@@ -37,9 +37,9 @@ type t =
 let true_ = Const true
 
 let rec eval t ~dir ~f =
-  let open Memo.Build.O in
+  let open Memo.O in
   match t with
-  | Const x -> Memo.Build.return x
+  | Const x -> Memo.return x
   | Expr sw -> (
     String_with_vars.expand sw ~mode:Single ~dir ~f >>| function
     | String "true" -> true
@@ -48,9 +48,8 @@ let rec eval t ~dir ~f =
       let loc = String_with_vars.loc sw in
       User_error.raise ~loc
         [ Pp.text "This value must be either true or false" ])
-  | And xs ->
-    Memo.Build.List.map xs ~f:(eval ~f ~dir) >>| List.for_all ~f:Fun.id
-  | Or xs -> Memo.Build.List.map xs ~f:(eval ~f ~dir) >>| List.exists ~f:Fun.id
+  | And xs -> Memo.List.map xs ~f:(eval ~f ~dir) >>| List.for_all ~f:Fun.id
+  | Or xs -> Memo.List.map xs ~f:(eval ~f ~dir) >>| List.exists ~f:Fun.id
   | Compare (op, x, y) ->
     let+ x = String_with_vars.expand x ~mode:Many ~dir ~f
     and+ y = String_with_vars.expand y ~mode:Many ~dir ~f in

@@ -16,7 +16,7 @@ let term =
   let config = Common.init common in
   Scheduler.go ~common ~config
     (let run () =
-       let open Memo.Build.O in
+       let open Memo.O in
        let* ctxs = Context.DB.all () in
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
@@ -65,8 +65,8 @@ let term =
              Printf.printf "%-*s (version: %s)\n" max_len
                (Lib_name.to_string (Dune_package.Entry.name e))
                ver);
-         Memo.Build.return ()
+         Memo.return ()
      in
-     fun () -> Memo.Build.run (run ()))
+     fun () -> Memo.run (run ()))
 
 let command = (term, info)

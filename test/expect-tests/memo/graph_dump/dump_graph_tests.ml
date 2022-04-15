@@ -1,6 +1,5 @@
 open Stdune
-open Memo
-open Memo.Build.O
+open Memo.O
 module Graph = Dune_graph.Graph
 
 module Scheduler = struct
@@ -12,11 +11,11 @@ module Scheduler = struct
 end
 
 (* to run a computation *)
-let run m = Scheduler.run (Memo.Build.run m)
+let run m = Scheduler.run (Memo.run m)
 
 let run_memo f v = try run (Memo.exec f v) with Memo.Error.E _ -> ()
 
-let a = Memo.create "A" ~input:(module Unit) (fun () -> Build.return ())
+let a = Memo.create "A" ~input:(module Unit) (fun () -> Memo.return ())
 
 let b =
   Memo.create "B"

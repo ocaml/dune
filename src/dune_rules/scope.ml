@@ -53,19 +53,19 @@ module DB = struct
 
   let create_db_from_stanzas ~parent ~lib_config ~modules_of_lib
       ~projects_by_package stanzas =
-    let open Memo.Build.O in
+    let open Memo.O in
     let+ (map : Found_or_redirect.t Lib_name.Map.t) =
-      Memo.Build.List.map stanzas ~f:(fun stanza ->
+      Memo.List.map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
           | Library_redirect s ->
             let old_public_name = Lib_name.of_local s.old_name in
-            Memo.Build.return
+            Memo.return
               (Found_or_redirect.redirect old_public_name s.new_public_name)
           | Deprecated_library_name s ->
             let old_public_name =
               Dune_file.Deprecated_library_name.old_public_name s
             in
-            Memo.Build.return
+            Memo.return
               (Found_or_redirect.redirect old_public_name s.new_public_name)
           | Library (dir, (conf : Dune_file.Library.t)) ->
             let+ info =
@@ -96,12 +96,12 @@ module DB = struct
     in
     Lib.DB.create () ~parent:(Some parent) ~projects_by_package
       ~resolve:(fun name ->
-        Memo.Build.return
+        Memo.return
           (match Lib_name.Map.find map name with
           | None -> Lib.DB.Resolve_result.not_found
           | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect None lib
           | Some (Found lib) -> Lib.DB.Resolve_result.found lib))
-      ~all:(fun () -> Lib_name.Map.keys map |> Memo.Build.return)
+      ~all:(fun () -> Lib_name.Map.keys map |> Memo.return)
       ~modules_of_lib ~lib_config
 
   (* This function is linear in the depth of [dir] in the worst case, so if it
@@ -171,18 +171,17 @@ module DB = struct
             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
             ])
     in
-    let resolve lib = Memo.Build.return (resolve t public_libs lib) in
+    let resolve lib = Memo.return (resolve t public_libs lib) in
     Lib.DB.create ~parent:(Some installed_libs) ~resolve ~modules_of_lib
       ~projects_by_package
-      ~all:(fun () -> Lib_name.Map.keys public_libs |> Memo.Build.return)
+      ~all:(fun () -> Lib_name.Map.keys public_libs |> Memo.return)
       ~lib_config ()
 
-  module Path_source_map_traversals =
-    Memo.Build.Make_map_traversals (Path.Source.Map)
+  module Path_source_map_traversals = Memo.Make_map_traversals (Path.Source.Map)
 
   let scopes_by_dir context ~projects_by_package ~modules_of_lib ~projects
       ~public_libs stanzas coq_stanzas =
-    let open Memo.Build.O in
+    let open Memo.O in
     let projects_by_dir =
       List.map projects ~f:(fun (project : Dune_project.t) ->
           (Dune_project.root project, project))
@@ -236,7 +235,7 @@ module DB = struct
 
   let create ~projects_by_package ~context ~installed_libs ~modules_of_lib
       ~projects stanzas coq_stanzas =
-    let open Memo.Build.O in
+    let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
     let public_libs =
       let lib_config = Context.lib_config context in

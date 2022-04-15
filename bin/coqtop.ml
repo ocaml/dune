@@ -34,7 +34,7 @@ let term =
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
         let* setup = Import.Main.setup () in
-        let* setup = Memo.Build.run setup in
+        let* setup = Memo.run setup in
         let sctx = Import.Main.find_scontext_exn setup ~name:context in
         let context = Dune_rules.Super_context.context sctx in
         (* Try to compute a relative path if we got an absolute path. *)
@@ -62,7 +62,7 @@ let term =
           Path.Build.relative context.build_dir p
         in
         let* coqtop, args =
-          let open Memo.Build.O in
+          let open Memo.O in
           Build_system.run_exn (fun () ->
               let* dc = Dune_rules.Dir_contents.get sctx ~dir in
               let* coq_src = Dune_rules.Dir_contents.coq dc in

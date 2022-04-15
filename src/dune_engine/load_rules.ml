@@ -1,11 +1,11 @@
 open! Stdune
 open Import
-open Memo.Build.O
+open Memo.O
 module Action_builder = Action_builder0
 module Context_or_install = Build_config.Context_or_install
 
 module Current_rule_loc = struct
-  let t = ref (fun () -> Memo.Build.return None)
+  let t = ref (fun () -> Memo.return None)
 
   let set f = t := f
 
@@ -72,7 +72,7 @@ let get_dir_triage ~dir =
     let+ files = Source_tree.files_of dir in
     Dir_triage.Known (Non_build (Path.set_of_source_paths files))
   | External _ ->
-    Memo.Build.return
+    Memo.return
     @@ Dir_triage.Known
          (Non_build
             (match Path.Untracked.readdir_unsorted dir with
@@ -108,19 +108,19 @@ let get_dir_triage ~dir =
     Code_error.raise "Called get_dir_triage on an anonymous action directory"
       [ ("dir", Path.Build.to_dyn build_dir) ]
   | Build (Invalid _) ->
-    Memo.Build.return
+    Memo.return
     @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
   | Build (Install (With_context (context_name, sub_dir))) ->
     (* In this branch, [dir] is in the build directory. *)
     let dir = Path.as_in_build_dir_exn dir in
     let context_or_install = Context_or_install.Install context_name in
-    Memo.Build.return
+    Memo.return
       (Dir_triage.Build_directory { dir; context_or_install; sub_dir })
   | Build (Regular (With_context (context_name, sub_dir))) ->
     (* In this branch, [dir] is in the build directory. *)
     let dir = Path.as_in_build_dir_exn dir in
     let context_or_install = Context_or_install.Context context_name in
-    Memo.Build.return
+    Memo.return
       (Dir_triage.Build_directory { dir; context_or_install; sub_dir })
 
 let describe_rule (rule : Rule.t) =
@@ -270,7 +270,7 @@ let source_file_digest path =
       @ details)
   in
   Fs_memo.file_digest path >>= function
-  | Ok digest -> Memo.Build.return digest
+  | Ok digest -> Memo.return digest
   | No_such_file -> report_user_error []
   | Broken_symlink -> report_user_error [ Pp.text "Broken symbolic link" ]
   | Cyclic_symlink -> report_user_error [ Pp.text "Cyclic symbolic link" ]
@@ -282,27 +282,26 @@ let source_file_digest path =
     report_user_error [ Unix_error.Detailed.pp ~prefix:"Reason: " unix_error ]
   | Error exn -> report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
 
-let eval_source_file :
-    type a. a Action_builder.eval_mode -> Path.t -> a Memo.Build.t =
+let eval_source_file : type a. a Action_builder.eval_mode -> Path.t -> a Memo.t
+    =
  fun mode path ->
   match mode with
-  | Lazy -> Memo.Build.return ()
+  | Lazy -> Memo.return ()
   | Eager ->
     let+ d = source_file_digest path in
     Dep.Fact.file path d
 
 module rec Load_rules : sig
-  val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
+  val load_dir : dir:Path.t -> Loaded.t Memo.t
 
-  val file_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
+  val file_targets_of : dir:Path.t -> Path.Set.t Memo.t
 
-  val directory_targets_of : dir:Path.t -> Path.Set.t Memo.Build.t
+  val directory_targets_of : dir:Path.t -> Path.Set.t Memo.t
 
   val lookup_alias :
-       Alias.t
-    -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list option Memo.Build.t
+    Alias.t -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list option Memo.t
 
-  val alias_exists : Alias.t -> bool Memo.Build.t
+  val alias_exists : Alias.t -> bool Memo.t
 end = struct
   open Load_rules
 
@@ -387,8 +386,7 @@ end = struct
   let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
     let aliases = collected.aliases in
     let+ aliases =
-      if Alias.Name.Map.mem aliases Alias.Name.default then
-        Memo.Build.return aliases
+      if Alias.Name.Map.mem aliases Alias.Name.default then Memo.return aliases
       else
         (Build_config.get ()).implicit_default_alias dir >>| function
         | None -> aliases
@@ -461,7 +459,7 @@ end = struct
       | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
 
     (** Used by the child to ask about the restrictions placed by the parent. *)
-    val allowed_by_parent : dir:Path.Build.t -> restriction Memo.Build.t
+    val allowed_by_parent : dir:Path.Build.t -> restriction Memo.t
   end = struct
     type restriction =
       | Unrestricted
@@ -469,8 +467,7 @@ end = struct
 
     let corresponding_source_dir ~dir =
       match Dpath.analyse_target dir with
-      | Install _ | Alias _ | Anonymous_action _ | Other _ ->
-        Memo.Build.return None
+      | Install _ | Alias _ | Anonymous_action _ | Other _ -> Memo.return None
       | Regular (_ctx, sub_dir) -> Source_tree.find_dir sub_dir
 
     let source_subdirs_of_build_dir ~dir =
@@ -478,7 +475,7 @@ end = struct
       | None -> String.Set.empty
       | Some dir -> Source_tree.Dir.sub_dir_names dir
 
-    let allowed_dirs ~dir ~subdir : restriction Memo.Build.t =
+    let allowed_dirs ~dir ~subdir : restriction Memo.t =
       let+ subdirs = source_subdirs_of_build_dir ~dir in
       if String.Set.mem subdirs subdir then Unrestricted
       else
@@ -497,7 +494,7 @@ end = struct
 
   module rec Gen_rules : sig
     val gen_rules :
-      Dir_triage.Build_directory.t -> (Subdir_set.t * Rules.t) Memo.Build.t
+      Dir_triage.Build_directory.t -> (Subdir_set.t * Rules.t) Memo.t
   end = struct
     let gen_rules_impl
         { Dir_triage.Build_directory.dir; context_or_install; sub_dir } =
@@ -511,7 +508,7 @@ end = struct
           Path.Build.Map.find_key (Rules.to_map rules) ~f:(fun p ->
               not (Path.Build.is_descendant p ~of_:dir))
         with
-        | None -> Memo.Build.return (subdirs, rules)
+        | None -> Memo.return (subdirs, rules)
         | Some p ->
           let dir_rules =
             Rules.find rules (Path.build p) |> Rules.Dir_rules.consume
@@ -635,7 +632,7 @@ end = struct
     (* Take into account the source files *)
     let* to_copy, source_dirs =
       match context_or_install with
-      | Install _ -> Memo.Build.return (None, String.Set.empty)
+      | Install _ -> Memo.return (None, String.Set.empty)
       | Context context_name ->
         let+ files, subdirs =
           Source_tree.find_dir sub_dir >>| function
@@ -684,15 +681,15 @@ end = struct
         (* GROSS HACK: this is to avoid a cycle as the rules for all directories
            force the generation of ".dune/configurator". We need a better way to
            deal with such cases. *)
-        Memo.Build.return Generated_directory_restrictions.Unrestricted
+        Memo.return Generated_directory_restrictions.Unrestricted
       | _ -> Generated_directory_restrictions.allowed_by_parent ~dir
     in
     let* () =
       match allowed_by_parent with
-      | Unrestricted -> Memo.Build.return ()
+      | Unrestricted -> Memo.return ()
       | Restricted restriction -> (
         match Path.Build.Map.find (Rules.to_map rules_produced) dir with
-        | None -> Memo.Build.return ()
+        | None -> Memo.return ()
         | Some rules ->
           let+ restriction = Memo.Lazy.force restriction in
           if not (Dir_set.here restriction) then
@@ -722,7 +719,7 @@ end = struct
              generated grand descendant directories. Rules that attempt to do so
              may run into the [allowed_by_parent] check or will be simply
              ignored. *)
-          Memo.Build.return Dir_set.empty
+          Memo.return Dir_set.empty
         | Restricted restriction -> Memo.Lazy.force restriction
       in
       Dir_set.union_all
@@ -744,13 +741,13 @@ end = struct
       | Context _ -> compute_alias_expansions ~collected ~dir
       | Install _ ->
         (* There are no aliases in the [_build/install] directory *)
-        Memo.Build.return Alias.Name.Map.empty
+        Memo.return Alias.Name.Map.empty
     in
     { Loaded.allowed_subdirs = descendants_to_keep; rules_here; aliases }
 
-  let load_dir_impl ~dir : Loaded.t Memo.Build.t =
+  let load_dir_impl ~dir : Loaded.t Memo.t =
     get_dir_triage ~dir >>= function
-    | Known l -> Memo.Build.return l
+    | Known l -> Memo.return l
     | Build_directory x ->
       let+ build = load_build_directory_exn x in
       Loaded.Build build
@@ -771,27 +768,27 @@ let load_dir_and_get_buildable_targets ~dir =
 let get_rule_for_directory_target path =
   let rec loop dir =
     match Path.Build.parent dir with
-    | None -> Memo.Build.return None
+    | None -> Memo.return None
     | Some parent_dir -> (
       let* rules =
         load_dir_and_get_buildable_targets ~dir:(Path.build parent_dir)
       in
       match Path.Build.Map.find rules.by_directory_targets dir with
       | None -> loop parent_dir
-      | Some _ as rule -> Memo.Build.return rule)
+      | Some _ as rule -> Memo.return rule)
   in
   loop path
 
 let get_rule path =
   match Path.as_in_build_dir path with
-  | None -> Memo.Build.return None
+  | None -> Memo.return None
   | Some path -> (
     let dir = Path.Build.parent_exn path in
     load_dir ~dir:(Path.build dir) >>= function
     | Non_build _ -> assert false
     | Build { rules_here; _ } -> (
       match Path.Build.Map.find rules_here.by_file_targets path with
-      | Some _ as rule -> Memo.Build.return rule
+      | Some _ as rule -> Memo.return rule
       | None -> get_rule_for_directory_target path))
 
 type rule_or_source =
@@ -804,10 +801,10 @@ let get_rule_or_source path =
     let* rules = load_dir_and_get_buildable_targets ~dir in
     let path = Path.as_in_build_dir_exn path in
     match Path.Build.Map.find rules.by_file_targets path with
-    | Some rule -> Memo.Build.return (Rule (path, rule))
+    | Some rule -> Memo.return (Rule (path, rule))
     | None -> (
       get_rule_for_directory_target path >>= function
-      | Some rule -> Memo.Build.return (Rule (path, rule))
+      | Some rule -> Memo.return (Rule (path, rule))
       | None ->
         let* loc = Current_rule_loc.get () in
         no_rule_found ~loc path)
@@ -832,12 +829,12 @@ module All_targets = struct
 end
 
 module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (Memo.Build) (All_targets)
+  Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
 
 let all_direct_targets () =
   let* root = Source_tree.root ()
   and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-  Memo.Build.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
+  Memo.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
       Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
         ~f:(fun dir ->
           load_dir
@@ -861,7 +858,7 @@ let get_alias_definition alias =
     let+ loc = Current_rule_loc.get () in
     User_error.raise ?loc
       [ Pp.text "No rule found for " ++ Alias.describe alias ]
-  | Some x -> Memo.Build.return x
+  | Some x -> Memo.return x
 
 type is_target =
   | No
@@ -870,21 +867,21 @@ type is_target =
 
 let is_target file =
   match Path.is_in_build_dir file with
-  | false -> Memo.Build.return No
+  | false -> Memo.return No
   | true -> (
     let parent_dir = Path.parent_exn file in
     let* file_targets = file_targets_of ~dir:parent_dir in
     match Path.Set.mem file_targets file with
-    | true -> Memo.Build.return (Yes File)
+    | true -> Memo.return (Yes File)
     | false ->
       let rec loop file' =
         match Path.parent file' with
-        | None -> Memo.Build.return No
+        | None -> Memo.return No
         | Some dir -> (
           let* directory_targets = directory_targets_of ~dir in
           match Path.Set.mem directory_targets file' with
           | true ->
-            Memo.Build.return
+            Memo.return
               (if Path.equal file file' then Yes Directory
               else Under_directory_target_so_cannot_say)
           | false -> loop dir)

@@ -131,14 +131,13 @@ module Dune_files = struct
     Path.build path |> Path.parent |> Option.iter ~f:Path.mkdir_p
 
   let eval dune_files ~(context : Context.t) =
-    let open Memo.Build.O in
+    let open Memo.O in
     let static, dynamic =
       List.partition_map dune_files ~f:(function
         | Literal x -> Left x
         | Script { script; from_parent } -> Right (script, from_parent))
     in
-    Memo.Build.parallel_map dynamic
-      ~f:(fun ({ dir; file; project }, from_parent) ->
+    Memo.parallel_map dynamic ~f:(fun ({ dir; file; project }, from_parent) ->
         let generated_dune_file =
           Path.Build.append_source
             (Path.Build.relative generated_dune_files_dir
@@ -160,7 +159,7 @@ module Dune_files = struct
         in
         let ocaml = Action.Prog.ok_exn context.ocaml in
         let* () =
-          Memo.Build.of_reproducible_fiber
+          Memo.of_reproducible_fiber
             (Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml
                args)
         in
@@ -170,7 +169,7 @@ module Dune_files = struct
                 (Path.Source.to_string_maybe_quoted file)
             ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
             ];
-        Memo.Build.return
+        Memo.return
           (Dune_lang.Parser.load (Path.build generated_dune_file) ~mode:Many
           |> List.rev_append from_parent
           |> Dune_file.parse ~dir ~file ~project))
@@ -201,14 +200,12 @@ module Projects_and_dune_files =
     end))
 
 module Source_tree_map_reduce =
-  Source_tree.Make_map_reduce_with_progress
-    (Memo.Build)
-    (Projects_and_dune_files)
+  Source_tree.Make_map_reduce_with_progress (Memo) (Projects_and_dune_files)
 
 let load () =
-  let open Memo.Build.O in
+  let open Memo.O in
   let+ projects, dune_files =
-    let f dir : Projects_and_dune_files.t Memo.Build.t =
+    let f dir : Projects_and_dune_files.t Memo.t =
       let path = Source_tree.Dir.path dir in
       let project = Source_tree.Dir.project dir in
       let projects =
@@ -221,7 +218,7 @@ let load () =
         | None -> Appendable_list.empty
         | Some d -> Appendable_list.singleton (path, project, d)
       in
-      Memo.Build.return (projects, dune_files)
+      Memo.return (projects, dune_files)
     in
     Source_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f
   in

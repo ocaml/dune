@@ -48,7 +48,7 @@ let inline_tests t = Memo.Lazy.force t.inline_tests
 let js_of_ocaml t = Memo.Lazy.force t.js_of_ocaml
 
 let menhir_flags t =
-  Memo.Lazy.force t.menhir_flags |> Action_builder.memo_build_join
+  Memo.Lazy.force t.menhir_flags |> Action_builder.of_memo_join
 
 let format_config t = Memo.Lazy.force t.format_config
 
@@ -62,12 +62,12 @@ let coq t = Memo.Lazy.force t.coq
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     ~expander_for_artifacts ~default_context_flags ~default_env
     ~default_bin_artifacts ~default_cxx_link_flags =
-  let open Memo.Build.O in
+  let open Memo.O in
   let config = Dune_env.Stanza.find config_stanza ~profile in
   let inherited ~field ~root extend =
     Memo.lazy_ (fun () ->
         (match inherit_from with
-        | None -> Memo.Build.return root
+        | None -> Memo.return root
         | Some t -> Memo.Lazy.force t >>= field)
         >>= extend)
   in
@@ -80,11 +80,11 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           | Some t ->
             let* field = Memo.Lazy.force t >>= field in
             f_absent (Some field))
-        | Some x -> Memo.Build.return x)
+        | Some x -> Memo.return x)
   in
   let local_binaries =
     Memo.lazy_ (fun () ->
-        Memo.Build.sequential_map config.binaries
+        Memo.sequential_map config.binaries
           ~f:
             (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
                  let* expander_for_artifacts =
@@ -99,8 +99,8 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         in
         if have_binaries then
           let dir = Utils.local_bin dir |> Path.build in
-          Memo.Build.return (Env.cons_path env ~dir)
-        else Memo.Build.return env)
+          Memo.return (Env.cons_path env ~dir)
+        else Memo.return env)
   in
   let bin_artifacts =
     inherited ~field:bin_artifacts ~root:default_bin_artifacts (fun binaries ->
@@ -123,7 +123,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     match config with
     | { inline_tests = Some s; _ } -> Memo.Lazy.of_val s
     | { inline_tests = None; _ } ->
-      inherited ~field:inline_tests Memo.Build.return
+      inherited ~field:inline_tests Memo.return
         ~root:
           (if Profile.is_inline_test profile then
            Dune_env.Stanza.Inline_tests.Enabled
@@ -153,9 +153,9 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   in
   let foreign_flags lang =
     let field t =
-      Memo.Build.return (Foreign_language.Dict.get t.foreign_flags lang)
+      Memo.return (Foreign_language.Dict.get t.foreign_flags lang)
     in
-    Action_builder.memo_build_join
+    Action_builder.of_memo_join
       (Memo.Lazy.force
          (inherited ~field
             ~root:(Foreign_language.Dict.get default_context_flags lang)
@@ -178,7 +178,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   in
   let menhir_flags =
     inherited
-      ~field:(fun t -> Memo.Build.return (menhir_flags t))
+      ~field:(fun t -> Memo.return (menhir_flags t))
       ~root:(Action_builder.return [])
       (fun flags ->
         let+ expander = Memo.Lazy.force expander in
@@ -193,7 +193,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       { warnings = Nonfatal }
     in
     inherited ~field:odoc ~root (fun { warnings } ->
-        Memo.Build.return
+        Memo.return
           { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
   let default_coq_flags = Action_builder.return [ "-q" ] in
@@ -212,7 +212,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
           "format config should always have a default value taken from the \
            project root"
           []
-      | Some x -> Memo.Build.return x)
+      | Some x -> Memo.return x)
   in
   { scope
   ; ocaml_flags

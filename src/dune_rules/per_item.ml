@@ -38,9 +38,9 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
   let fold t ~init ~f = Array.fold_right t.values ~init ~f
 
   let fold_resolve t ~init ~f =
-    let open Resolve.Build.O in
+    let open Resolve.Memo.O in
     let rec loop i acc =
-      if i = Array.length t.values then Resolve.Build.return acc
+      if i = Array.length t.values then Resolve.Memo.return acc
       else
         let* acc = f t.values.(i) acc in
         loop (i + 1) acc
@@ -68,7 +68,7 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
 
   let map_action_builder = A.map
 
-  module R = Make_monad_traversals (Resolve.Build)
+  module R = Make_monad_traversals (Resolve.Memo)
 
   let map_resolve = R.map
 end

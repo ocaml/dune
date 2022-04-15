@@ -55,7 +55,7 @@ val set_expand_aliases_in_sandbox : bool -> t -> t
 val add_workspace_root_to_build_path_prefix_map : t -> bool
 
 (** As configured by [init] *)
-val default : t Memo.Build.t
+val default : t Memo.t
 
 (** {1 Accessors} *)
 
@@ -71,4 +71,4 @@ val action_stderr_on_success : t -> Action_output_on_success.t
 
 (** {1 Initialisation} *)
 
-val init : t Memo.Build.t -> unit
+val init : t Memo.t -> unit

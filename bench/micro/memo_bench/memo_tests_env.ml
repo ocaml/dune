@@ -28,8 +28,8 @@ end
 
 let invalidation_acc = ref Memo.Invalidation.empty
 
-module Build = struct
-  include Memo.Build
+module Memo = struct
+  include Memo
 
   let sample_count =
     (* Count number of samples of all lifted computations, to allow simple
@@ -41,27 +41,27 @@ module Build = struct
     sample_count := 0;
     Memo.reset !invalidation_acc;
     invalidation_acc := Memo.Invalidation.empty;
-    let fiber = Memo.Build.run build in
+    let fiber = Memo.run build in
     Fiber.run fiber ~iter:(fun _ -> failwith "deadlock?")
 
-  let of_io f = Memo.Build.of_reproducible_fiber (Fiber.of_thunk f)
+  let of_io f = Memo.of_reproducible_fiber (Fiber.of_thunk f)
 
   let memoize t =
     let l = Memo.lazy_ ~cutoff:(fun _ _ -> false) (fun () -> t) in
-    Memo.Build.of_thunk (fun () -> Memo.Lazy.force l)
+    Memo.of_thunk (fun () -> Memo.Lazy.force l)
 
   let map2 x y ~f =
     map
       ~f:(fun (x, y) -> f x y)
-      (Memo.Build.fork_and_join (fun () -> x) (fun () -> y))
+      (Memo.fork_and_join (fun () -> x) (fun () -> y))
 
-  let all l = Memo.Build.all_concurrently l
+  let all l = Memo.all_concurrently l
 
   module Glass = struct
     type t = (unit, unit) Memo.Cell.t
 
     let create () =
-      Memo.lazy_cell ~cutoff:(fun _ _ -> false) (fun () -> Memo.Build.return ())
+      Memo.lazy_cell ~cutoff:(fun _ _ -> false) (fun () -> Memo.return ())
 
     let break (t : t) =
       invalidation_acc :=
@@ -71,12 +71,10 @@ module Build = struct
   end
 
   let of_glass (g : Glass.t) v =
-    Memo.Build.of_thunk (fun () ->
-        Memo.Build.map (Memo.Cell.read g) ~f:(fun () -> v))
+    Memo.of_thunk (fun () -> Memo.map (Memo.Cell.read g) ~f:(fun () -> v))
 
   let of_thunk f =
-    Memo.Build.of_reproducible_fiber
-      (Fiber.of_thunk (fun () -> Memo.Build.run (f ())))
+    Memo.of_reproducible_fiber (Fiber.of_thunk (fun () -> Memo.run (f ())))
 
   module Let_syntax = struct
     let ( let+ ) x f = map x ~f
@@ -87,16 +85,16 @@ module Build = struct
   end
 end
 
-let run tenacious = Build.exec tenacious
+let run tenacious = Memo.exec tenacious
 
-module Glass = Build.Glass
+module Glass = Memo.Glass
 
 let make_counter () =
   let r = ref 0 in
   let glass = Glass.create () in
   let break () = Glass.break glass in
-  ( Memo.Build.map
-      (Memo.Build.of_thunk (fun () -> Memo.Cell.read glass))
+  ( Memo.map
+      (Memo.of_thunk (fun () -> Memo.Cell.read glass))
       ~f:(fun () ->
         incr r;
         !r)
@@ -112,9 +110,7 @@ module Var = struct
     let value = ref value in
     { value
     ; cell =
-        Memo.lazy_cell
-          ~cutoff:(fun _ _ -> false)
-          (fun () -> Memo.Build.return !value)
+        Memo.lazy_cell ~cutoff:(fun _ _ -> false) (fun () -> Memo.return !value)
     }
 
   let set t v =
@@ -123,7 +119,7 @@ module Var = struct
       Memo.Invalidation.combine !invalidation_acc
         (Memo.Cell.invalidate ~reason:Memo.Invalidation.Reason.Test t.cell)
 
-  let read t = Memo.Build.of_thunk (fun () -> Memo.Cell.read t.cell)
+  let read t = Memo.of_thunk (fun () -> Memo.Cell.read t.cell)
 
   let peek t = !(t.value)
 end

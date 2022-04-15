@@ -7,11 +7,11 @@ module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Cm_kind.Dict.t
 
   let make ~project ~opaque ~requires : _ Cm_kind.Dict.t =
-    let open Resolve.Build.O in
+    let open Resolve.Memo.O in
     let iflags libs mode = Lib.L.include_flags ~project libs mode in
     let cmi_includes =
       Command.Args.memo
-        (Resolve.Build.args
+        (Resolve.Memo.args
            (let+ libs = requires in
             Command.Args.S
               [ iflags libs Byte
@@ -20,7 +20,7 @@ module Includes = struct
     in
     let cmx_includes =
       Command.Args.memo
-        (Resolve.Build.args
+        (Resolve.Memo.args
            (let+ libs = requires in
             Command.Args.S
               [ iflags libs Native
@@ -66,7 +66,7 @@ type t =
   ; obj_dir : Path.Build.t Obj_dir.t
   ; modules : modules
   ; flags : Ocaml_flags.t
-  ; requires_compile : Lib.t list Resolve.Build.t
+  ; requires_compile : Lib.t list Resolve.Memo.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
@@ -130,7 +130,7 @@ let dep_graphs t = t.modules.dep_graphs
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
     ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) () =
-  let open Memo.Build.O in
+  let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =
     if Dune_project.implicit_transitive_deps project then
@@ -256,8 +256,7 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
   let libs = Scope.libs t.scope in
   let requires_link =
     Memo.lazy_ (fun () ->
-        Resolve.Build.List.map ~f:(Lib.DB.resolve libs)
-          embed_in_plugin_libraries)
+        Resolve.Memo.List.map ~f:(Lib.DB.resolve libs) embed_in_plugin_libraries)
   in
   { t with requires_link }
 
@@ -265,9 +264,9 @@ let without_bin_annot t = { t with bin_annot = false }
 
 let root_module_entries t =
   let open Action_builder.O in
-  let* requires = Resolve.Build.read t.requires_compile in
+  let* requires = Resolve.Memo.read t.requires_compile in
   let* l =
     Action_builder.List.map requires ~f:(fun lib ->
-        Action_builder.memo_build (Lib.entry_module_names lib) >>= Resolve.read)
+        Action_builder.of_memo (Lib.entry_module_names lib) >>= Resolve.read)
   in
   Action_builder.return (List.concat l)

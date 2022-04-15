@@ -21,7 +21,7 @@ let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
     let* prefix = Context.install_prefix context in
     let+ libdir =
       match libdir_from_command_line with
-      | None -> Memo.Build.run (Context.install_ocaml_libdir context)
+      | None -> Memo.run (Context.install_ocaml_libdir context)
       | Some l -> Fiber.return (Some (Path.relative prefix l))
     in
     (prefix, libdir)
@@ -33,8 +33,8 @@ module Workspace = struct
     }
 
   let get () =
-    let open Memo.Build.O in
-    Memo.Build.run
+    let open Memo.O in
+    Memo.run
       (let+ conf = Dune_rules.Dune_load.load ()
        and+ contexts = Context.DB.all () in
        { packages = conf.packages; contexts })
@@ -157,11 +157,11 @@ module File_ops_real (W : Workspace) : File_operations = struct
           let* packages =
             match Package.Name.Map.find workspace.packages package with
             | None -> Fiber.return None
-            | Some package -> Memo.Build.run (get_vcs (Package.dir package))
+            | Some package -> Memo.run (get_vcs (Package.dir package))
           in
           match packages with
           | None -> Fiber.return None
-          | Some vcs -> Memo.Build.run (Dune_engine.Vcs.describe vcs)
+          | Some vcs -> Memo.run (Dune_engine.Vcs.describe vcs)
         else Fiber.return None
       in
       let ppf = Format.formatter_of_out_channel oc in
@@ -367,7 +367,7 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
 
 let package_is_vendored (pkg : Dune_engine.Package.t) =
   let dir = Package.dir pkg in
-  Memo.Build.run (Dune_engine.Source_tree.is_vendored dir)
+  Memo.run (Dune_engine.Source_tree.is_vendored dir)
 
 type what =
   | Install

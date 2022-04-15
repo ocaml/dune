@@ -16,7 +16,6 @@ module Rule : sig
 end
 
 (** Used by Jane Street internal rules. *)
-val evaluate_rule : Non_evaluated_rule.t -> Rule.t Memo.Build.t
+val evaluate_rule : Non_evaluated_rule.t -> Rule.t Memo.t
 
-val eval :
-  recursive:bool -> request:unit Action_builder.t -> Rule.t list Memo.Build.t
+val eval : recursive:bool -> request:unit Action_builder.t -> Rule.t list Memo.t

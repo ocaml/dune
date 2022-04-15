@@ -597,7 +597,7 @@ let load_step1 clflags p =
 let filename = "dune-workspace"
 
 let workspace_step1 =
-  let open Memo.Build.O in
+  let open Memo.O in
   let f () =
     let clflags = Clflags.t () in
     let+ workspace_file =
@@ -624,12 +624,12 @@ let workspace_step1 =
   Memo.exec memo
 
 let workspace_config () =
-  let open Memo.Build.O in
+  let open Memo.O in
   let+ step1 = workspace_step1 () in
   step1.config
 
 let workspace =
-  let open Memo.Build.O in
+  let open Memo.O in
   let f () =
     let+ step1 = workspace_step1 () in
     Lazy.force step1.t

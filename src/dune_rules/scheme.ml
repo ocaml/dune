@@ -1,6 +1,6 @@
 open! Dune_engine
 open! Stdune
-open Memo.Build.O
+open Memo.O
 
 module T = struct
   type 'rules t =
@@ -8,7 +8,7 @@ module T = struct
     | Union of 'rules t * 'rules t
     | Approximation of Path.Build.w Dir_set.t * 'rules t
     | Finite of 'rules Path.Build.Map.t
-    | Thunk of (unit -> 'rules t Memo.Build.t)
+    | Thunk of (unit -> 'rules t Memo.t)
 end
 
 include T
@@ -20,12 +20,11 @@ module Evaluated : sig
 
   val empty : unit -> 'a t
 
-  val restrict : Path.Build.w Dir_set.t -> 'a t Memo.Lazy.t -> 'a t Memo.Build.t
+  val restrict : Path.Build.w Dir_set.t -> 'a t Memo.Lazy.t -> 'a t Memo.t
 
   val finite : union_rules:('a -> 'a -> 'a) -> 'a Path.Build.Map.t -> 'a t
 
-  val get_rules :
-    'a t -> dir:Path.Build.t -> ('a option * String.Set.t) Memo.Build.t
+  val get_rules : 'a t -> dir:Path.Build.t -> ('a option * String.Set.t) Memo.t
 end = struct
   type 'rules t =
     { by_child : 'rules t Memo.Lazy.t String.Map.t
@@ -37,7 +36,7 @@ end = struct
 
   let descend t dir =
     match String.Map.find t.by_child dir with
-    | None -> Memo.Build.return (empty ())
+    | None -> Memo.return (empty ())
     | Some res -> Memo.Lazy.force res
 
   let rec union ~union_rules x y =
@@ -56,7 +55,7 @@ end = struct
     }
 
   let rec restrict (dirs : Path.Local.w Dir_set.t) (t : _ Memo.Lazy.t) :
-      _ t Memo.Build.t =
+      _ t Memo.t =
     let rules_here =
       if Dir_set.here dirs then
         Memo.Lazy.create ~name:"restrict-rules-here" (fun () ->
@@ -75,7 +74,7 @@ end = struct
             Memo.lazy_ ~name:"restrict-by-child-default" (fun () ->
                 restrict (Dir_set.descend dirs dir) v))
       | false ->
-        Memo.Build.return
+        Memo.return
           (String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
                Memo.lazy_ ~name:"restrict-by-child-non-default-outer" (fun () ->
                    restrict v
@@ -108,7 +107,7 @@ end = struct
   let get_rules t ~dir =
     let rec loop dir t =
       match dir with
-      | [] -> Memo.Build.return t
+      | [] -> Memo.return t
       | x :: dir -> descend t x >>= loop dir
     in
     let* t = loop (Path.Build.explode dir) t in
@@ -118,7 +117,7 @@ end
 
 let evaluate ~union_rules =
   let rec loop ~env = function
-    | Empty -> Memo.Build.return (Evaluated.empty ())
+    | Empty -> Memo.return (Evaluated.empty ())
     | Union (x, y) ->
       let+ x = loop ~env x
       and+ y = loop ~env y in
@@ -150,7 +149,7 @@ let evaluate ~union_rules =
           "Scheme attempted to generate rules in a directory it promised not \
            to touch"
           [ ("directories", (Dyn.list Path.Build.to_dyn) violations) ]);
-      Memo.Build.return (Evaluated.finite ~union_rules rules)
+      Memo.return (Evaluated.finite ~union_rules rules)
     | Thunk f -> f () >>= loop ~env
   in
   fun t -> loop ~env:Dir_set.universal t

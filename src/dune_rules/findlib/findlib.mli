@@ -31,30 +31,26 @@ end
 (** Lookup a whole package, including sub-packages, in the given database.
     [root_name] must be a library name without dots. *)
 val find_root_package :
-     t
-  -> Package.Name.t
-  -> (Dune_package.t, Unavailable_reason.t) result Memo.Build.t
+  t -> Package.Name.t -> (Dune_package.t, Unavailable_reason.t) result Memo.t
 
 val find :
-     t
-  -> Lib_name.t
-  -> (Dune_package.Entry.t, Unavailable_reason.t) result Memo.Build.t
+  t -> Lib_name.t -> (Dune_package.Entry.t, Unavailable_reason.t) result Memo.t
 
 (** List all the packages available in this Database *)
-val all_packages : t -> Dune_package.Entry.t list Memo.Build.t
+val all_packages : t -> Dune_package.Entry.t list Memo.t
 
 (** List all the packages that have broken [dune-package] files *)
-val all_broken_packages : t -> (Package.Name.t * exn) list Memo.Build.t
+val all_broken_packages : t -> (Package.Name.t * exn) list Memo.t
 
 (** A dummy package. This is used to implement [external-lib-deps] *)
-val dummy_lib : t -> name:Lib_name.t -> Dune_package.Lib.t Memo.Build.t
+val dummy_lib : t -> name:Lib_name.t -> Dune_package.Lib.t Memo.t
 
 module Config : sig
   type t
 
   val to_dyn : t -> Dyn.t
 
-  val load : Path.t -> toolchain:string -> context:string -> t Memo.Build.t
+  val load : Path.t -> toolchain:string -> context:string -> t Memo.t
 
   val get : t -> string -> string option
 

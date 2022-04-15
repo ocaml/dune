@@ -2,7 +2,7 @@ open! Dune_engine
 open! Stdune
 open Import
 open Dune_file
-open Memo.Build.O
+open Memo.O
 module SC = Super_context
 
 let ( ++ ) = Path.Build.relative
@@ -114,7 +114,7 @@ module Dep : sig
 
   (*** [setup_deps ctx target odocs] Adds [odocs] as dependencies for [target].
     These dependencies may be used using the [deps] function *)
-  val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.Build.t
+  val setup_deps : Context.t -> target -> Path.Set.t -> unit Memo.t
 end = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
 
@@ -171,7 +171,7 @@ let odoc sctx =
   SC.resolve_program sctx ~dir "odoc" ~loc:None ~hint:"opam install odoc"
 
 let odoc_base_flags sctx build_dir =
-  let open Memo.Build.O in
+  let open Memo.O in
   let+ conf = Super_context.odoc sctx ~dir:build_dir in
   match conf.Env_node.Odoc.warnings with
   | Fatal -> Command.Args.A "--warn-error"
@@ -191,7 +191,7 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     ~dep_graphs ~pkg_or_lnu =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
-  let open Memo.Build.O in
+  let open Memo.O in
   let+ () =
     let* action_with_targets =
       let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
@@ -217,7 +217,7 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
   (m, odoc_file)
 
 let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
-  let open Memo.Build.O in
+  let open Memo.O in
   let odoc_file = Mld.odoc_file m ~doc_dir in
   let odoc_input = Mld.odoc_input m in
   let* odoc = odoc sctx in
@@ -259,7 +259,7 @@ let odoc_include_flags ctx pkg requires =
 let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
   let ctx = Super_context.context sctx in
   let deps = Dep.deps ctx pkg requires in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* odoc = odoc sctx
   and* odoc_base_flags = odoc_base_flags sctx odoc_file.odoc_file in
   add_rule sctx
@@ -277,7 +277,7 @@ let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
           ])
 
 let setup_library_odoc_rules cctx (library : Library.t) =
-  let open Memo.Build.O in
+  let open Memo.O in
   let* lib =
     let scope = Compilation_context.scope cctx in
     Library.best_name library
@@ -308,9 +308,7 @@ let setup_library_odoc_rules cctx (library : Library.t) =
         in
         compiled :: acc)
   in
-  let* modules_and_odoc_files =
-    Memo.Build.all_concurrently modules_and_odoc_files
-  in
+  let* modules_and_odoc_files = Memo.all_concurrently modules_and_odoc_files in
   Dep.setup_deps ctx (Lib local_lib)
     (Path.Set.of_list_map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p))
 
@@ -326,7 +324,7 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       let dummy = Action_builder.create_file (odoc_file.html_dir ++ ".dummy") in
       (odoc_file.html_dir, [ dummy ])
   in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* odoc = odoc sctx in
   add_rule sctx
     (Action_builder.progn
@@ -349,7 +347,7 @@ let setup_html sctx (odoc_file : odoc_artefact) =
        :: dummy))
 
 let setup_css_rule sctx =
-  let open Memo.Build.O in
+  let open Memo.O in
   let ctx = Super_context.context sctx in
   let* odoc = odoc sctx in
   add_rule sctx
@@ -415,9 +413,9 @@ let libs_of_pkg sctx ~pkg =
 let load_all_odoc_rules_pkg sctx ~pkg =
   let pkg_libs = libs_of_pkg sctx ~pkg in
   let+ () =
-    Memo.Build.parallel_iter
+    Memo.parallel_iter
       (Pkg pkg :: List.map pkg_libs ~f:(fun lib -> Lib lib))
-      ~f:(fun _ -> Memo.Build.return ())
+      ~f:(fun _ -> Memo.return ())
   in
   pkg_libs
 
@@ -437,7 +435,7 @@ let entry_modules sctx ~pkg =
            |> not)
   in
   let+ l =
-    Memo.Build.parallel_map l ~f:(fun l ->
+    Memo.parallel_map l ~f:(fun l ->
         let+ m = entry_modules_by_lib sctx l in
         (l, m))
   in
@@ -513,7 +511,7 @@ let odoc_artefacts sctx target =
         let odoc_file = Obj_dir.Module.odoc obj_dir m in
         create_odoc ctx ~target odoc_file)
       modules
-    |> Memo.Build.return
+    |> Memo.return
 
 let setup_lib_odocl_rules_def =
   let module Input = struct
@@ -537,7 +535,7 @@ let setup_lib_odocl_rules_def =
   let f (sctx, lib, requires) =
     let* odocs = odoc_artefacts sctx (Lib lib) in
     let pkg = Lib_info.package (Lib.Local.info lib) in
-    Memo.Build.parallel_iter odocs ~f:(fun odoc ->
+    Memo.parallel_iter odocs ~f:(fun odoc ->
         link_odoc_rules sctx ~pkg ~requires odoc)
   in
   Memo.With_implicit_output.create "setup_library_odocls_rules"
@@ -582,24 +580,23 @@ let setup_pkg_odocl_rules_def =
       let libs = (libs :> Lib.t list) in
       Lib.closure libs ~linking:false
     in
-    let* () =
-      Memo.Build.parallel_iter libs ~f:(setup_lib_odocl_rules sctx ~requires)
+    let* () = Memo.parallel_iter libs ~f:(setup_lib_odocl_rules sctx ~requires)
     and* _ =
       let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
       let pkg = Some pkg in
       let+ () =
-        Memo.Build.parallel_iter pkg_odocs ~f:(fun odoc ->
+        Memo.parallel_iter pkg_odocs ~f:(fun odoc ->
             link_odoc_rules sctx ~pkg ~requires odoc)
       in
       pkg_odocs
     and* _ =
-      Memo.Build.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
+      Memo.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
     in
-    Memo.Build.return ()
+    Memo.return ()
   in
   setup_pkg_rules_def "setup-package-odocls-rules" f
 
-let setup_pkg_odocl_rules sctx ~pkg ~libs : unit Memo.Build.t =
+let setup_pkg_odocl_rules sctx ~pkg ~libs : unit Memo.t =
   Memo.With_implicit_output.exec setup_pkg_odocl_rules_def (sctx, pkg, libs)
 
 let setup_lib_html_rules_def =
@@ -618,9 +615,7 @@ let setup_lib_html_rules_def =
   let f (sctx, lib) =
     let ctx = Super_context.context sctx in
     let* odocs = odoc_artefacts sctx (Lib lib) in
-    let* () =
-      Memo.Build.parallel_iter odocs ~f:(fun odoc -> setup_html sctx odoc)
-    in
+    let* () = Memo.parallel_iter odocs ~f:(fun odoc -> setup_html sctx odoc) in
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
     let static_html = List.map ~f:Path.build (static_html ctx) in
     Rules.Produce.Alias.add_deps
@@ -638,15 +633,13 @@ let setup_lib_html_rules sctx lib =
 let setup_pkg_html_rules_def =
   let f (sctx, pkg, (libs : Lib.Local.t list)) =
     let ctx = Super_context.context sctx in
-    let* () = Memo.Build.parallel_iter libs ~f:(setup_lib_html_rules sctx)
+    let* () = Memo.parallel_iter libs ~f:(setup_lib_html_rules sctx)
     and* pkg_odocs =
       let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
-      let+ () =
-        Memo.Build.parallel_iter pkg_odocs ~f:(fun o -> setup_html sctx o)
-      in
+      let+ () = Memo.parallel_iter pkg_odocs ~f:(fun o -> setup_html sctx o) in
       pkg_odocs
     and* lib_odocs =
-      Memo.Build.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
+      Memo.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
     in
     let odocs = List.concat (pkg_odocs :: lib_odocs) in
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
@@ -657,7 +650,7 @@ let setup_pkg_html_rules_def =
   in
   setup_pkg_rules_def "setup-package-html-rules" f
 
-let setup_pkg_html_rules sctx ~pkg ~libs : unit Memo.Build.t =
+let setup_pkg_html_rules sctx ~pkg ~libs : unit Memo.t =
   Memo.With_implicit_output.exec setup_pkg_html_rules_def (sctx, pkg, libs)
 
 let setup_package_aliases sctx (pkg : Package.t) =
@@ -717,7 +710,7 @@ let package_mlds =
             let* mlds = Packages.mlds sctx pkg in
             let mlds = check_mlds_no_dupes ~pkg ~mlds in
             let ctx = Super_context.context sctx in
-            if String.Map.mem mlds "index" then Memo.Build.return mlds
+            if String.Map.mem mlds "index" then Memo.return mlds
             else
               let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
               let* entry_modules = entry_modules sctx ~pkg in
@@ -737,7 +730,7 @@ let setup_package_odoc_rules sctx ~pkg =
      back to a package name here. Need to try and change that one day. *)
   let pkg = Package.name pkg in
   let* odocs =
-    Memo.Build.parallel_map (String.Map.values mlds) ~f:(fun mld ->
+    Memo.parallel_map (String.Map.values mlds) ~f:(fun mld ->
         compile_mld sctx (Mld.create mld) ~pkg
           ~doc_dir:(Paths.odocs ctx (Pkg pkg))
           ~includes:(Action_builder.return []))
@@ -753,7 +746,7 @@ let gen_project_rules sctx project =
 
 let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
   match l.visibility with
-  | Public _ -> Memo.Build.return ()
+  | Public _ -> Memo.return ()
   | Private _ ->
     let ctx = Super_context.context sctx in
     let* lib =
@@ -772,13 +765,12 @@ let with_package sctx pkg ~f =
   let pkg = Package.Name.of_string pkg in
   let packages = Super_context.packages sctx in
   match Package.Name.Map.find packages pkg with
-  | None ->
-    Memo.Build.return (Build_config.Rules (Subdir_set.empty, Rules.empty))
+  | None -> Memo.return (Build_config.Rules (Subdir_set.empty, Rules.empty))
   | Some pkg -> has_rules (f pkg)
 
 let gen_rules sctx ~dir:_ rest =
   match rest with
-  | [] -> Memo.Build.return (Build_config.Rules (Subdir_set.All, Rules.empty))
+  | [] -> Memo.return (Build_config.Rules (Subdir_set.All, Rules.empty))
   | [ "_html" ] ->
     has_rules (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
   | [ "_mlds"; pkg ] ->
@@ -803,7 +795,7 @@ let gen_rules sctx ~dir:_ rest =
        in
        let+ () =
          match lib with
-         | None -> Memo.Build.return ()
+         | None -> Memo.return ()
          | Some lib -> (
            match Lib_info.package (Lib.Local.info lib) with
            | None ->
@@ -817,7 +809,7 @@ let gen_rules sctx ~dir:_ rest =
            Package.Name.Map.find (SC.packages sctx)
              (Package.Name.of_string lib_unique_name_or_pkg)
          with
-         | None -> Memo.Build.return ()
+         | None -> Memo.return ()
          | Some pkg ->
            let name = Package.name pkg in
            setup_pkg_odocl_rules name
@@ -839,7 +831,7 @@ let gen_rules sctx ~dir:_ rest =
        in
        let+ () =
          match lib with
-         | None -> Memo.Build.return ()
+         | None -> Memo.return ()
          | Some lib -> (
            match Lib_info.package (Lib.Local.info lib) with
            | None -> setup_lib_html_rules sctx lib
@@ -849,10 +841,10 @@ let gen_rules sctx ~dir:_ rest =
            Package.Name.Map.find (SC.packages sctx)
              (Package.Name.of_string lib_unique_name_or_pkg)
          with
-         | None -> Memo.Build.return ()
+         | None -> Memo.return ()
          | Some pkg ->
            let name = Package.name pkg in
            setup_pkg_html_rules name
        in
        ())
-  | _ -> Memo.Build.return Build_config.Redirect_to_parent
+  | _ -> Memo.return Build_config.Redirect_to_parent

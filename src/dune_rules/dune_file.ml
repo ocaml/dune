@@ -809,7 +809,7 @@ module Library = struct
       ~lib_config:
         ({ Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ } as
         lib_config) =
-    let open Memo.Build.O in
+    let open Memo.O in
     let obj_dir = obj_dir ~dir conf in
     let archive ?(dir = dir) ext = archive conf ~dir ~ext in
     let modes = Mode_conf.Set.eval ~has_native conf.modes in
@@ -877,7 +877,7 @@ module Library = struct
         Blang.eval conf.enabled_if ~dir:(Path.build dir)
           ~f:(fun ~source:_ pform ->
             let value = Lib_config.get_for_enabled_if lib_config pform in
-            Memo.Build.return [ Value.String value ])
+            Memo.return [ Value.String value ])
       in
       if not enabled_if_result then
         Lib_info.Enabled_status.Disabled_because_of_enabled_if

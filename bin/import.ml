@@ -41,7 +41,7 @@ module Main : sig
     include Dune_rules.Main
   end
 
-  val setup : unit -> build_system Memo.Build.t Fiber.t
+  val setup : unit -> build_system Memo.t Fiber.t
 end = struct
   include Dune_rules.Main
 
@@ -65,7 +65,7 @@ end = struct
                   (if total = 0 then 0 else done_ * 100 / total)
                   done_ total (total - done_)
                   (Scheduler.running_jobs_count scheduler))));
-    Fiber.return (Memo.Build.of_thunk get)
+    Fiber.return (Memo.of_thunk get)
 end
 
 module Scheduler = struct

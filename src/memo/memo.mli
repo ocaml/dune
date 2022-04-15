@@ -1,117 +1,113 @@
 open! Stdune
 
-type 'a build
+type 'a memo
 
-module type Build = sig
+(** A type of Memo-like modules. *)
+module type S = sig
   include Monad.S
 
   module List : Monad.List with type 'a t := 'a t
 
-  val memo_build : 'a build -> 'a t
+  val of_memo : 'a memo -> 'a t
 end
 
-(* This should eventually be just [Module Build : Build] *)
-module Build : sig
-  (** The build monad *)
+include S with type 'a t = 'a memo
 
-  include Build with type 'a t = 'a build
+(* CR-someday amokhov: Return the set of exceptions explicitly. *)
+val run : 'a t -> 'a Fiber.t
 
-  (* CR-someday amokhov: Return the set of exceptions explicitly. *)
-  val run : 'a t -> 'a Fiber.t
+(** Every error gets reported twice: once early, in non-deterministic order, by
+    calling [handler_error], and once later, in deterministic order, by raising
+    a fiber exception.
 
-  (** Every error gets reported twice: once early, in non-deterministic order,
-      by calling [handler_error], and once later, in deterministic order, by
-      raising a fiber exception.
+    [handle_error_no_raise] must not raise exceptions, otherwise internal memo
+    invariants get messed up and you get confusing errors like "Attempted to
+    create a cached value based on some stale inputs".
 
-      [handle_error_no_raise] must not raise exceptions, otherwise internal memo
-      invariants get messed up and you get confusing errors like "Attempted to
-      create a cached value based on some stale inputs".
+    Nested calls of [run_with_error_handler] are not allowed.
 
-      Nested calls of [run_with_error_handler] are not allowed.
+    If multiple calls to [run_with_error_handler] happen concurrently (possibly
+    with different error handlers), then each handler will correctly receive all
+    errors it would be expected to receive if run independently. However, each
+    error will only be sent "early" to one of the handlers, while the other
+    handler will get this error delayed. If this limitation becomes problematic,
+    it may be possible to lift it by eagerly bubbling up each error through
+    individual dependency edges instead of sending errors directly to the
+    handler in scope. *)
+val run_with_error_handler :
+     (unit -> 'a t)
+  -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
+  -> 'a Fiber.t
 
-      If multiple calls to [run_with_error_handler] happen concurrently
-      (possibly with different error handlers), then each handler will correctly
-      receive all errors it would be expected to receive if run independently.
-      However, each error will only be sent "early" to one of the handlers,
-      while the other handler will get this error delayed. If this limitation
-      becomes problematic, it may be possible to lift it by eagerly bubbling up
-      each error through individual dependency edges instead of sending errors
-      directly to the handler in scope. *)
-  val run_with_error_handler :
-       (unit -> 'a t)
-    -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
-    -> 'a Fiber.t
+(** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
+    given fiber must be "reproducible", i.e. executing it multiple times should
+    always yield the same result. It is up to the caller to ensure that this
+    property holds. If it doesn't, use [of_non_reproducible_fiber]. *)
+val of_reproducible_fiber : 'a Fiber.t -> 'a t
 
-  (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
-      given fiber must be "reproducible", i.e. executing it multiple times
-      should always yield the same result. It is up to the caller to ensure that
-      this property holds. If it doesn't, use [of_non_reproducible_fiber]. *)
-  val of_reproducible_fiber : 'a Fiber.t -> 'a t
+(** [of_non_reproducible_fiber fiber] injects a fiber into the build monad. The
+    fiber is considered to be "non-reproducible", i.e. it may return different
+    values each time it is executed (for example, the current time), and it will
+    therefore be re-executed on every build run. *)
+val of_non_reproducible_fiber : 'a Fiber.t -> 'a t
 
-  (** [of_non_reproducible_fiber fiber] injects a fiber into the build monad.
-      The fiber is considered to be "non-reproducible", i.e. it may return
-      different values each time it is executed (for example, the current time),
-      and it will therefore be re-executed on every build run. *)
-  val of_non_reproducible_fiber : 'a Fiber.t -> 'a t
+val of_thunk : (unit -> 'a t) -> 'a t
 
-  val of_thunk : (unit -> 'a t) -> 'a t
+val return : 'a -> 'a t
 
-  val return : 'a -> 'a t
+(** Combine results of two computations executed in sequence. *)
+val both : 'a t -> 'b t -> ('a * 'b) t
 
-  (** Combine results of two computations executed in sequence. *)
-  val both : 'a t -> 'b t -> ('a * 'b) t
+(** Combine results of two computations executed in parallel. Note that this
+    function combines both successes and errors: if one of the computations
+    fails, we let the other one run to completion, to give it a chance to raise
+    its errors too. Regardless of the outcome (success or failure), the result
+    will collect dependencies from both of the computations. All other parallel
+    execution combinators have the same error/dependencies semantics. *)
+val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
 
-  (** Combine results of two computations executed in parallel. Note that this
-      function combines both successes and errors: if one of the computations
-      fails, we let the other one run to completion, to give it a chance to
-      raise its errors too. Regardless of the outcome (success or failure), the
-      result will collect dependencies from both of the computations. All other
-      parallel execution combinators have the same error/dependencies semantics. *)
-  val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
+val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
-  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
+(** This uses a sequential implementation. We use the short name to conform with
+    the [Applicative] interface. See [all_concurrently] for the version with
+    concurrency. *)
+val all : 'a t list -> 'a list t
 
-  (** This uses a sequential implementation. We use the short name to conform
-      with the [Applicative] interface. See [all_concurrently] for the version
-      with concurrency. *)
-  val all : 'a t list -> 'a list t
+val all_concurrently : 'a t list -> 'a list t
 
-  val all_concurrently : 'a t list -> 'a list t
+val when_ : bool -> (unit -> unit t) -> unit t
 
-  val when_ : bool -> (unit -> unit t) -> unit t
+val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
-  val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
+val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 
-  val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
+val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
-  val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
+val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
-  val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
+val parallel_iter_set :
+     (module Set.S with type elt = 'a and type t = 's)
+  -> 's
+  -> f:('a -> unit t)
+  -> unit t
 
-  val parallel_iter_set :
-       (module Set.S with type elt = 'a and type t = 's)
-    -> 's
-    -> f:('a -> unit t)
-    -> unit t
+module Make_map_traversals (Map : Map.S) : sig
+  val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
 
-  module Make_map_traversals (Map : Map.S) : sig
-    val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
+  val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
+end
+[@@inline always]
 
-    val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
-  end
-  [@@inline always]
+module Option : sig
+  val iter : 'a option -> f:('a -> unit t) -> unit t
 
-  module Option : sig
-    val iter : 'a option -> f:('a -> unit t) -> unit t
+  val map : 'a option -> f:('a -> 'b t) -> 'b option t
 
-    val map : 'a option -> f:('a -> 'b t) -> 'b option t
+  val bind : 'a option -> f:('a -> 'b option t) -> 'b option t
+end
 
-    val bind : 'a option -> f:('a -> 'b option t) -> 'b option t
-  end
-
-  module Result : sig
-    val iter : ('a, _) result -> f:('a -> unit t) -> unit t
-  end
+module Result : sig
+  val iter : ('a, _) result -> f:('a -> unit t) -> unit t
 end
 
 (** A table memoizing results of executing a function. *)
@@ -254,9 +250,8 @@ module Store : sig
 end
 
 (** [create name ~input ?cutoff f] creates a memoized version of the function
-    [f : 'i -> 'o Build.t]. The result of [f] for a given input is cached, so
-    that the second time [exec t x] is called, the previous result is re-used if
-    possible.
+    [f : 'i -> 'o t]. The result of [f] for a given input is cached, so that the
+    second time [exec t x] is called, the previous result is reused if possible.
 
     [exec t x] tracks what calls to other memoized functions [f x] performs.
     When the result of any of such dependent calls changes, [exec t x] will
@@ -277,7 +272,7 @@ val create :
   -> input:(module Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
-  -> ('i -> 'o Build.t)
+  -> ('i -> 'o t)
   -> ('i, 'o) Table.t
 
 (** Like [create] but accepts a custom [store] for memoization. This is useful
@@ -289,11 +284,11 @@ val create_with_store :
   -> input:(module Store.Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
-  -> ('i -> 'o Build.t)
+  -> ('i -> 'o t)
   -> ('i, 'o) Table.t
 
 (** Execute a memoized function. *)
-val exec : ('i, 'o) Table.t -> 'i -> 'o Build.t
+val exec : ('i, 'o) Table.t -> 'i -> 'o t
 
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
@@ -302,14 +297,14 @@ val dump_stack : unit -> unit Fiber.t
 val pp_stack : unit -> _ Pp.t Fiber.t
 
 (** Get the memoized call stack during the execution of a memoized function. *)
-val get_call_stack : unit -> Stack_frame.t list Build.t
+val get_call_stack : unit -> Stack_frame.t list t
 
 (** Insert a stack frame to make call stacks more precise when showing them to
     the user. *)
 val push_stack_frame :
      human_readable_description:(unit -> User_message.Style.t Pp.t)
-  -> (unit -> 'a Build.t)
-  -> 'a Build.t
+  -> (unit -> 'a t)
+  -> 'a t
 
 (** A single build run. *)
 module Run : sig
@@ -323,14 +318,14 @@ module Run : sig
 end
 
 (** Introduces a dependency on the current build run. *)
-val current_run : unit -> Run.t Build.t
+val current_run : unit -> Run.t t
 
 module Cell : sig
   type ('i, 'o) t
 
   val input : ('i, _) t -> 'i
 
-  val read : (_, 'o) t -> 'o Build.t
+  val read : (_, 'o) t -> 'o memo
 
   (** Mark this cell as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
@@ -345,7 +340,7 @@ val lazy_cell :
      ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
-  -> (unit -> 'a Build.t)
+  -> (unit -> 'a t)
   -> (unit, 'a) Cell.t
 
 (** Returns the cached dependency graph discoverable from the specified node *)
@@ -364,10 +359,10 @@ module Lazy : sig
        ?cutoff:('a -> 'a -> bool)
     -> ?name:string
     -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
-    -> (unit -> 'a Build.t)
+    -> (unit -> 'a memo)
     -> 'a t
 
-  val force : 'a t -> 'a Build.t
+  val force : 'a t -> 'a memo
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
@@ -378,7 +373,7 @@ module Lazy : sig
          ?cutoff:('a -> 'a -> bool)
       -> ?name:string
       -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
-      -> (unit -> 'a Build.t)
+      -> (unit -> 'a memo)
       -> (unit, 'a) Cell.t * 'a t
   end
 end
@@ -387,7 +382,7 @@ val lazy_ :
      ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
-  -> (unit -> 'a Build.t)
+  -> (unit -> 'a t)
   -> 'a Lazy.t
 
 module Implicit_output : sig
@@ -395,16 +390,16 @@ module Implicit_output : sig
 
   (** [produce] and [produce_opt] are used by effectful functions to produce
       output. *)
-  val produce : 'o t -> 'o -> unit Build.t
+  val produce : 'o t -> 'o -> unit memo
 
-  val produce_opt : 'o t -> 'o option -> unit Build.t
+  val produce_opt : 'o t -> 'o option -> unit memo
 
   (** [collect] and [forbid] take a potentially effectful function (one which
       may produce some implicit output) and turn it into a pure one (with
       explicit output if any). *)
-  val collect : 'o t -> (unit -> 'a Build.t) -> ('a * 'o option) Build.t
+  val collect : 'o t -> (unit -> 'a memo) -> ('a * 'o option) memo
 
-  val forbid : (unit -> 'a Build.t) -> 'a Build.t
+  val forbid : (unit -> 'a memo) -> 'a memo
 
   module type Implicit_output = sig
     type t
@@ -425,14 +420,14 @@ module With_implicit_output : sig
        string
     -> input:(module Input with type t = 'i)
     -> implicit_output:'io Implicit_output.t
-    -> ('i -> 'o Build.t)
+    -> ('i -> 'o memo)
     -> ('i, 'o) t
 
-  val exec : ('i, 'o) t -> 'i -> 'o Build.t
+  val exec : ('i, 'o) t -> 'i -> 'o memo
 end
 
-(** Memoization of polymorphic functions ['a input -> 'a output Build.t]. The
-    provided [id] function must be injective, i.e. there must be a one-to-one
+(** Memoization of polymorphic functions ['a input -> 'a output t]. The provided
+    [id] function must be injective, i.e. there must be a one-to-one
     correspondence between [input]s and their [id]s. *)
 module Poly (Function : sig
   type 'a input
@@ -441,13 +436,13 @@ module Poly (Function : sig
 
   val name : string
 
-  val eval : 'a input -> 'a output Build.t
+  val eval : 'a input -> 'a output t
 
   val to_dyn : _ input -> Dyn.t
 
   val id : 'a input -> 'a Type_eq.Id.t
 end) : sig
-  val eval : 'a Function.input -> 'a Function.output Build.t
+  val eval : 'a Function.input -> 'a Function.output t
 end
 
 (** Diagnostics features that affect performance but are useful for debugging. *)

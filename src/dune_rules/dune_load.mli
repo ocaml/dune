@@ -10,7 +10,7 @@ module Dune_files : sig
       dune files in ocaml syntax *)
   type t
 
-  val eval : t -> context:Context.t -> Dune_file.t list Memo.Build.t
+  val eval : t -> context:Context.t -> Dune_file.t list Memo.t
 end
 
 type conf = private
@@ -20,4 +20,4 @@ type conf = private
   }
 
 (** Load all dune files. This function is memoized. *)
-val load : unit -> conf Memo.Build.t
+val load : unit -> conf Memo.t

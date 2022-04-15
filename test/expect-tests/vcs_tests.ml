@@ -77,7 +77,7 @@ let run_action (vcs : Vcs.t) action =
       | Hg when not has_hg -> { vcs with kind = Git }
       | _ -> vcs
     in
-    let+ s = Memo.Build.run (Vcs.describe vcs) in
+    let+ s = Memo.run (Vcs.describe vcs) in
     let s = Option.value s ~default:"n/a" in
     let processed =
       String.split s ~on:'-'

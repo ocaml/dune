@@ -17,7 +17,7 @@ let go f =
 
 let true_ = Bin.which "true" ~path:(Env.path Env.initial) |> Option.value_exn
 
-let cell = Memo.lazy_cell Memo.Build.return
+let cell = Memo.lazy_cell Memo.return
 
 let%expect_test "cancelling a build" =
   let build_started = Fiber.Ivar.create () in

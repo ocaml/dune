@@ -5,7 +5,7 @@ open! Import
 module Action_builder := Action_builder0
 
 (** A way to determine the [Loc.t] of the current rule. Set by [Build_system]. *)
-val set_current_rule_loc : (unit -> Loc.t option Memo.Build.t) -> unit
+val set_current_rule_loc : (unit -> Loc.t option Memo.t) -> unit
 
 module Loaded : sig
   type rules_here =
@@ -29,16 +29,16 @@ module Loaded : sig
 end
 
 (** Load the rules for this directory. *)
-val load_dir : dir:Path.t -> Loaded.t Memo.Build.t
+val load_dir : dir:Path.t -> Loaded.t Memo.t
 
-val alias_exists : Alias.t -> bool Memo.Build.t
+val alias_exists : Alias.t -> bool Memo.t
 
 (** Return the rule that has the given file has target, if any *)
-val get_rule : Path.t -> Rule.t option Memo.Build.t
+val get_rule : Path.t -> Rule.t option Memo.t
 
 (** Return the definition of an alias. *)
 val get_alias_definition :
-  Alias.t -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.Build.t
+  Alias.t -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.t
 
 type target_type =
   | File
@@ -49,14 +49,14 @@ type is_target =
   | Yes of target_type
   | Under_directory_target_so_cannot_say
 
-val is_target : Path.t -> is_target Memo.Build.t
+val is_target : Path.t -> is_target Memo.t
 
 (** List of all buildable direct targets. This does not include files and
     directory produced under a directory target. *)
-val all_direct_targets : unit -> target_type Path.Build.Map.t Memo.Build.t
+val all_direct_targets : unit -> target_type Path.Build.Map.t Memo.t
 
 type rule_or_source =
   | Source of Digest.t
   | Rule of Path.Build.t * Rule.t
 
-val get_rule_or_source : Path.t -> rule_or_source Memo.Build.t
+val get_rule_or_source : Path.t -> rule_or_source Memo.t

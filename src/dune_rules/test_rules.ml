@@ -15,7 +15,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
         }
     else `Regular
   in
-  let open Memo.Build.O in
+  let open Memo.O in
   let runtest_modes =
     if Dune_project.dune_version (Scope.project scope) < (3, 0) then [ `exe ]
     else
@@ -33,8 +33,8 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       |> List.sort_uniq ~compare:Poly.compare
   in
   let* () =
-    Memo.Build.parallel_iter t.exes.names ~f:(fun (loc, s) ->
-        Memo.Build.parallel_iter runtest_modes ~f:(fun runtest_mode ->
+    Memo.parallel_iter t.exes.names ~f:(fun (loc, s) ->
+        Memo.parallel_iter runtest_modes ~f:(fun runtest_mode ->
             let ext =
               match runtest_mode with
               | `js -> ".bc.js"
@@ -71,7 +71,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             let* runtest_alias =
               match runtest_mode with
               | `js -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
-              | `exe | `bc -> Memo.Build.return Alias.Name.runtest
+              | `exe | `bc -> Memo.return Alias.Name.runtest
             in
             let add_alias ~loc ~action ~locks =
               let alias =

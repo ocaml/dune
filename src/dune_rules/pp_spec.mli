@@ -6,14 +6,13 @@ type t
 val dummy : t
 
 val make :
-     (Module.t -> lint:bool -> Module.t Memo.Build.t) Module_name.Per_item.t
-  -> t Memo.Build.t
+  (Module.t -> lint:bool -> Module.t Memo.t) Module_name.Per_item.t -> t Memo.t
 
 (** Setup the preprocessing rules for the following modules and returns the
     translated modules *)
-val pp_module : t -> ?lint:bool -> Module.t -> Module.t Memo.Build.t
+val pp_module : t -> ?lint:bool -> Module.t -> Module.t Memo.t
 
 (** Preprocess a single module, using the configuration for the given module
     name. *)
 val pp_module_as :
-  t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t Memo.Build.t
+  t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t Memo.t

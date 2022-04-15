@@ -57,8 +57,7 @@ let of_string (root : Workspace_root.t) ~recursive s ~contexts =
 
 let dep_on_alias_multi_contexts ~dir ~name ~contexts =
   Stdlib.ignore
-    (Dune_engine.Source_tree.find_dir_specified_on_command_line ~dir
-      : _ Memo.Build.t);
+    (Dune_engine.Source_tree.find_dir_specified_on_command_line ~dir : _ Memo.t);
   let context_to_alias_expansion ctx =
     let ctx_dir = Dune_engine.Context_name.build_dir ctx in
     let dir = Path.Build.(append_source ctx_dir dir) in
@@ -69,7 +68,7 @@ let dep_on_alias_multi_contexts ~dir ~name ~contexts =
 let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   let open Action_builder.O in
   let* dir =
-    Action_builder.memo_build
+    Action_builder.of_memo
       (Dune_engine.Source_tree.find_dir_specified_on_command_line ~dir:src_dir)
   in
   let+ is_nonempty_list =

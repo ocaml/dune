@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open! No_io
-open Memo.Build.O
+open Memo.O
 module Executables = Dune_file.Executables
 module Buildable = Dune_file.Buildable
 
@@ -58,7 +58,7 @@ let programs ~modules ~(exes : Executables.t) =
 
 let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     ~requires_compile =
-  if not (Executables.has_foreign exes) then Memo.Build.return []
+  if not (Executables.has_foreign exes) then Memo.return []
   else
     let what =
       if List.is_empty exes.buildable.Buildable.foreign_stubs then "archives"
@@ -80,7 +80,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     let+ o_files =
       Foreign_rules.build_o_files ~sctx ~dir ~expander
         ~requires:requires_compile ~dir_contents ~foreign_sources
-      |> Memo.Build.all_concurrently
+      |> Memo.all_concurrently
     in
     List.map o_files ~f:Path.build
 
@@ -101,12 +101,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       Lib.DB.instrumentation_backend (Scope.libs scope)
     in
     let* preprocess =
-      Resolve.Build.read_memo_build
+      Resolve.Memo.read_memo
         (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
            ~instrumentation_backend)
     in
     let* instrumentation_deps =
-      Resolve.Build.read_memo_build
+      Resolve.Memo.read_memo
         (Preprocess.Per_module.instrumentation_deps exes.buildable.preprocess
            ~instrumentation_backend)
     in
@@ -129,7 +129,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           && not (Module.has m ~ml_kind:Intf)
         in
         if add_empty_intf then Module_compilation.with_empty_intf ~sctx ~dir m
-        else Memo.Build.return m)
+        else Memo.return m)
   in
   let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
@@ -153,7 +153,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let stdlib_dir = ctx.Context.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* preprocess =
-    Resolve.Build.read_memo_build
+    Resolve.Memo.read_memo
       (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
@@ -172,7 +172,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       let link_flags =
         let* () = link_deps in
         let* link_flags =
-          Action_builder.memo_build
+          Action_builder.of_memo
             (Super_context.link_flags sctx ~dir exes.link_flags)
         in
         Link_flags.get ~use_standard_cxx_flags link_flags
@@ -235,7 +235,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
-    Resolve.Build.read_memo_build
+    Resolve.Memo.read_memo
       (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))

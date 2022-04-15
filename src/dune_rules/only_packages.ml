@@ -1,5 +1,5 @@
 open Import
-open Memo.Build.O
+open Memo.O
 
 module Clflags = struct
   type t =
@@ -32,7 +32,7 @@ type t = Package.t Package.Name.Map.t option
 let conf =
   Memo.lazy_ (fun () ->
       match Clflags.t () with
-      | No_restriction -> Memo.Build.return None
+      | No_restriction -> Memo.return None
       | Restrict { names; command_line_option } ->
         let* conf = Dune_load.load () in
         Package.Name.Set.iter names ~f:(fun pkg_name ->
@@ -47,7 +47,7 @@ let conf =
                      ~candidates:
                        (Package.Name.Map.keys conf.packages
                        |> List.map ~f:Package.Name.to_string)));
-        Memo.Build.sequential_map (Package.Name.Map.to_list conf.packages)
+        Memo.sequential_map (Package.Name.Map.to_list conf.packages)
           ~f:(fun (name, pkg) ->
             let+ vendored =
               Dune_engine.Source_tree.is_vendored (Package.dir pkg)

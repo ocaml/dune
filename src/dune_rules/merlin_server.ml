@@ -73,7 +73,7 @@ let to_local file_path =
    context. Then it returns the list of available Merlin configurations for this
    directory. *)
 let get_merlin_files_paths local_path =
-  let+ workspace = Memo.Build.run (Workspace.workspace ()) in
+  let+ workspace = Memo.run (Workspace.workspace ()) in
   let context =
     Option.value ~default:Context_name.default workspace.merlin_context
   in

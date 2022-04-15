@@ -6,4 +6,4 @@ open! Dune_engine
 (** Collect functions keyed by a package *)
 open Stdune
 
-val mlds : Super_context.t -> Package.Name.t -> Path.Build.t list Memo.Build.t
+val mlds : Super_context.t -> Package.Name.t -> Path.Build.t list Memo.t

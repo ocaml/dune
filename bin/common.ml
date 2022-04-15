@@ -147,7 +147,7 @@ let init ?log_file c =
   let config =
     (* Here we make the assumption that this computation doesn't yield. *)
     Fiber.run
-      (Memo.Build.run (Dune_rules.Workspace.workspace_config ()))
+      (Memo.run (Dune_rules.Workspace.workspace_config ()))
       ~iter:(fun () -> assert false)
   in
   let config =
@@ -157,7 +157,7 @@ let init ?log_file c =
   Dune_config.init config;
   Dune_util.Log.init () ?file:log_file;
   Dune_engine.Execution_parameters.init
-    (let open Memo.Build.O in
+    (let open Memo.O in
     let+ w = Dune_rules.Workspace.workspace () in
     Dune_engine.Execution_parameters.builtin_default
     |> Dune_rules.Workspace.update_execution_parameters w);

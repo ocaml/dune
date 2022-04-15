@@ -10,6 +10,6 @@ val utop_exe : string
 val utop_dir_basename : string
 
 val libs_under_dir :
-  Super_context.t -> db:Lib.DB.t -> dir:Path.t -> Lib.L.t Memo.Build.t
+  Super_context.t -> db:Lib.DB.t -> dir:Path.t -> Lib.L.t Memo.t
 
-val setup : Super_context.t -> dir:Path.Build.t -> unit Memo.Build.t
+val setup : Super_context.t -> dir:Path.Build.t -> unit Memo.t

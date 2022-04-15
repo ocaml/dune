@@ -43,7 +43,7 @@ let ocamlfdo_binary sctx dir =
 let get_flags var =
   let f (ctx : Context.t) =
     Env.get ctx.env var |> Option.value ~default:""
-    |> String.extract_blank_separated_words |> Memo.Build.return
+    |> String.extract_blank_separated_words |> Memo.return
   in
   let memo = Memo.create var ~input:(module Context) f in
   Memo.exec memo
@@ -90,10 +90,10 @@ let get_profile =
     let profile_exists =
       Memo.lazy_ (fun () ->
           match Path.as_in_source_tree path with
-          | None -> Memo.Build.return false
+          | None -> Memo.return false
           | Some path -> Source_tree.file_exists path)
     in
-    let open Memo.Build.O in
+    let open Memo.O in
     let+ use_profile =
       match Mode.of_context ctx with
       | If_exists -> Memo.Lazy.force profile_exists
@@ -106,7 +106,7 @@ let get_profile =
             [ Pp.textf "%s=%s but profile file %s does not exist." Mode.var
                 (Mode.to_string Always) (Path.to_string path)
             ])
-      | Never -> Memo.Build.return false
+      | Never -> Memo.return false
     in
     if use_profile then Some path else None
   in
@@ -122,7 +122,7 @@ let opt_rule cctx m =
   let linear_fdo =
     Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:linear_fdo_ext
   in
-  let open Memo.Build.O in
+  let open Memo.O in
   let flags () =
     let open Command.Args in
     let+ get_profile = get_profile ctx in
@@ -143,11 +143,11 @@ let opt_rule cctx m =
        ; Hidden_targets [ linear_fdo ]
        ; Dep (Path.build linear)
        ; As ocamlfdo_flags
-       ; Dyn (Action_builder.memo_build (Memo.Build.return () >>= flags))
+       ; Dyn (Action_builder.of_memo (Memo.return () >>= flags))
        ])
 
 module Linker_script = struct
-  type t = Path.t Memo.Build.t option
+  type t = Path.t Memo.t option
 
   let ocamlfdo_linker_script_flags = get_flags "OCAMLFDO_LINKER_SCRIPT_FLAGS"
 
@@ -159,7 +159,7 @@ module Linker_script = struct
     let linker_script_path =
       Path.Build.(relative ctx.build_dir (Path.to_string linker_script))
     in
-    let open Memo.Build.O in
+    let open Memo.O in
     let flags () =
       let open Command.Args in
       let+ get_profile = get_profile ctx in
@@ -175,7 +175,7 @@ module Linker_script = struct
            [ A "linker-script"
            ; A "-o"
            ; Target linker_script_path
-           ; Dyn (Action_builder.memo_build (Memo.Build.return () >>= flags))
+           ; Dyn (Action_builder.of_memo (Memo.return () >>= flags))
            ; A "-q"
            ; As ocamlfdo_linker_script_flags
            ])
@@ -195,10 +195,10 @@ module Linker_script = struct
       else None
 
   let flags t =
-    let open Memo.Build.O in
+    let open Memo.O in
     let open Command.Args in
     match t with
-    | None -> Memo.Build.return (As [])
+    | None -> Memo.return (As [])
     | Some linker_script ->
       let+ linker_script = linker_script in
       S

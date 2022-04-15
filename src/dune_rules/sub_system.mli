@@ -38,4 +38,4 @@ module Register_end_point (M : End_point) : sig end
 
 (** Scan the sub-systems used by the library and generate rules for all of the
     ones that needs it. *)
-val gen_rules : Library_compilation_context.t -> unit Memo.Build.t
+val gen_rules : Library_compilation_context.t -> unit Memo.t

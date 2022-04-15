@@ -23,14 +23,14 @@ val make :
   -> lib_artifacts:Artifacts.Public_libs.t
   -> lib_artifacts_host:Artifacts.Public_libs.t
   -> bin_artifacts_host:Artifacts.Bin.t
-  -> find_package:(Package.Name.t -> any_package option Memo.Build.t)
+  -> find_package:(Package.Name.t -> any_package option Memo.t)
   -> t
 
 val set_foreign_flags :
      t
   -> f:
        (   dir:Path.Build.t
-        -> string list Action_builder.t Foreign_language.Dict.t Memo.Build.t)
+        -> string list Action_builder.t Foreign_language.Dict.t Memo.t)
   -> t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
@@ -42,7 +42,7 @@ val set_scope : t -> scope:Scope.t -> t
 val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 
 val set_lookup_ml_sources :
-  t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) -> t
+  t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t) -> t
 
 module Expanding_what : sig
   type t =
@@ -67,7 +67,7 @@ val add_bindings : t -> bindings:Value.t list Pform.Map.t -> t
 
 module Deps : sig
   type 'a t =
-    | Without of 'a Memo.Build.t
+    | Without of 'a Memo.t
     | With of 'a Action_builder.t
 
   include Applicative with type 'a t := 'a t
@@ -97,21 +97,18 @@ module No_deps : sig
   (** Same as [expand_xxx] but disallow percent forms that introduce action
       dependencies, such as [%{dep:...}] *)
 
-  val expand_pform : t -> Value.t list Memo.Build.t String_with_vars.expander
+  val expand_pform : t -> Value.t list Memo.t String_with_vars.expander
 
   val expand :
-       t
-    -> mode:'a String_with_vars.Mode.t
-    -> String_with_vars.t
-    -> 'a Memo.Build.t
+    t -> mode:'a String_with_vars.Mode.t -> String_with_vars.t -> 'a Memo.t
 
-  val expand_path : t -> String_with_vars.t -> Path.t Memo.Build.t
+  val expand_path : t -> String_with_vars.t -> Path.t Memo.t
 
-  val expand_str : t -> String_with_vars.t -> string Memo.Build.t
+  val expand_str : t -> String_with_vars.t -> string Memo.t
 end
 
 module With_deps_if_necessary : sig
-  (** Same as [expand_xxx] but stay in the [Memo.Build] monad if possible. *)
+  (** Same as [expand_xxx] but stay in the [Memo] monad if possible. *)
 
   val expand_path : t -> String_with_vars.t -> Path.t list Deps.t
 
@@ -120,19 +117,16 @@ end
 
 module With_reduced_var_set : sig
   val expand_str :
-       context:Context.t
-    -> dir:Path.Build.t
-    -> String_with_vars.t
-    -> string Memo.Build.t
+    context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> string Memo.t
 
   val expand_str_partial :
        context:Context.t
     -> dir:Path.Build.t
     -> String_with_vars.t
-    -> String_with_vars.t Memo.Build.t
+    -> String_with_vars.t Memo.t
 
   val eval_blang :
-    context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.Build.t
+    context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.t
 end
 
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible
@@ -144,10 +138,10 @@ val expand_and_eval_set :
   -> standard:string list Action_builder.t
   -> string list Action_builder.t
 
-val eval_blang : t -> Blang.t -> bool Memo.Build.t
+val eval_blang : t -> Blang.t -> bool Memo.t
 
 val map_exe : t -> Path.t -> Path.t
 
 val artifacts : t -> Artifacts.Bin.t
 
-val find_package : t -> Package.Name.t -> any_package option Memo.Build.t
+val find_package : t -> Package.Name.t -> any_package option Memo.t

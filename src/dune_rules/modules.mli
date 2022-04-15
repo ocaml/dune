@@ -59,8 +59,7 @@ val for_alias : t -> Module.Name_map.t
 
 val fold_user_written : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 
-val map_user_written :
-  t -> f:(Module.t -> Module.t Memo.Build.t) -> t Memo.Build.t
+val map_user_written : t -> f:(Module.t -> Module.t Memo.t) -> t Memo.t
 
 val map : t -> f:(Module.t -> Module.t) -> t
 
@@ -79,9 +78,7 @@ end
 val obj_map : t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t
 
 val obj_map_build :
-     t
-  -> f:(Sourced_module.t -> 'a Memo.Build.t)
-  -> 'a Module.Obj_map.t Memo.Build.t
+  t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t
 
 (** List of entry modules visible to users of the library. For wrapped
     libraries, this is always one module. For unwrapped libraries, this could be

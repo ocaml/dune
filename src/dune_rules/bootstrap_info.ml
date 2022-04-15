@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open! No_io
-open Memo.Build.O
+open Memo.O
 
 let def name dyn =
   let open Pp.O in
@@ -10,7 +10,7 @@ let def name dyn =
 let rule sctx compile (exes : Dune_file.Executables.t) () =
   let* locals, externals =
     let+ libs =
-      Resolve.Build.read_memo_build
+      Resolve.Memo.read_memo
         (Memo.Lazy.force (Lib.Compile.requires_link compile))
     in
     List.partition_map libs ~f:(fun lib ->
@@ -29,7 +29,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
     ]
   in
   let+ locals =
-    Memo.Build.parallel_map locals ~f:(fun x ->
+    Memo.parallel_map locals ~f:(fun x ->
         let info = Lib.Local.info x in
         let dir = Lib_info.src_dir info in
         let special_builtin_support =
@@ -74,9 +74,8 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           ]))
 
 let gen_rules sctx (exes : Dune_file.Executables.t) ~dir compile =
-  Memo.Build.Option.iter exes.bootstrap_info ~f:(fun fname ->
+  Memo.Option.iter exes.bootstrap_info ~f:(fun fname ->
       Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir
         (Action_builder.write_file_dyn
            (Path.Build.relative dir fname)
-           (Action_builder.memo_build
-              (Memo.Build.return () >>= rule sctx compile exes))))
+           (Action_builder.of_memo (Memo.return () >>= rule sctx compile exes))))

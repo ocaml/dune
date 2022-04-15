@@ -18,7 +18,7 @@ type 'rules t =
   | Finite of 'rules Path.Build.Map.t
       (** [Finite rules] just produces a fixed set of rules known in advance.
           The keys in the map are the directory paths. *)
-  | Thunk of (unit -> 'rules t Memo.Build.t)
+  | Thunk of (unit -> 'rules t Memo.t)
       (** [Thunk f] is a "lazy" collection of rules. This is normally used with
           [Approximation (dirs, Thunk f)] such that the work of [f] can be
           delayed (or avoided entirely) until (or unless) the rules for [dirs]
@@ -31,8 +31,7 @@ module Evaluated : sig
 
   (** returns the rules and the set of child directories that could have rules
       defined in this scheme *)
-  val get_rules :
-    'a t -> dir:Path.Build.t -> ('a option * String.Set.t) Memo.Build.t
+  val get_rules : 'a t -> dir:Path.Build.t -> ('a option * String.Set.t) Memo.t
 end
 
 (** [Evaluated.t] shares the work of scheme evaluation between multiple
@@ -46,6 +45,6 @@ end
       collapse them to a directory-keyed trie for faster lookup. - Sharing the
       work done by user thunks. Every thunk will only be called at most once per
       [evaluate]. *)
-val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t Memo.Build.t
+val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t Memo.t
 
 val all : 'a t list -> 'a t

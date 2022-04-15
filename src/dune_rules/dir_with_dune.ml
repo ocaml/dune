@@ -29,4 +29,4 @@ module Deep_fold (M : Monad.S) = struct
 end
 
 include Deep_fold (Monad.Id)
-module Memo = Deep_fold (Memo.Build)
+module Memo = Deep_fold (Memo)

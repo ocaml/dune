@@ -1,7 +1,7 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Memo.Build.O
+open Memo.O
 open! No_io
 module Library = Dune_file.Library
 
@@ -35,16 +35,15 @@ end
 
 module Stanzas_to_entries : sig
   val stanzas_to_entries :
-       Super_context.t
-    -> Install.Entry.Sourced.t list Package.Name.Map.t Memo.Build.t
+    Super_context.t -> Install.Entry.Sourced.t list Package.Name.Map.t Memo.t
 end = struct
   let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
     match lib.kind with
-    | Normal | Ppx_deriver _ -> Memo.Build.return []
+    | Normal | Ppx_deriver _ -> Memo.return []
     | Ppx_rewriter _ ->
       let name = Dune_file.Library.best_name lib in
       let+ ppx_exe =
-        Resolve.Build.read_memo_build (Preprocessing.ppx_exe sctx ~scope name)
+        Resolve.Memo.read_memo (Preprocessing.ppx_exe sctx ~scope name)
       in
       [ ppx_exe ]
 
@@ -63,7 +62,7 @@ end = struct
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
         Foreign.Sources.object_files files ~dir ~ext_obj
-      else Memo.Build.return (Lib_info.foreign_archives lib)
+      else Memo.return (Lib_info.foreign_archives lib)
     in
     List.concat_map
       ~f:(List.map ~f:(fun f -> (Section.Lib, f)))
@@ -219,17 +218,17 @@ end = struct
           if lib.optional then
             Lib.DB.available (Scope.libs scope)
               (Dune_file.Library.best_name lib)
-          else Memo.Build.return true
-        else Memo.Build.return false
-      | Dune_file.Documentation _ -> Memo.Build.return true
+          else Memo.return true
+        else Memo.return false
+      | Dune_file.Documentation _ -> Memo.return true
       | Dune_file.Install { enabled_if; _ } ->
         Expander.eval_blang expander enabled_if
-      | Dune_file.Plugin _ -> Memo.Build.return true
+      | Dune_file.Plugin _ -> Memo.return true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) -> (
         Expander.eval_blang expander exes.enabled_if >>= function
-        | false -> Memo.Build.return false
+        | false -> Memo.return false
         | true ->
-          if not exes.optional then Memo.Build.return true
+          if not exes.optional then Memo.return true
           else
             let* compile_info =
               let dune_version =
@@ -240,7 +239,7 @@ end = struct
                   exes.buildable.preprocess
                   ~instrumentation_backend:
                     (Lib.DB.instrumentation_backend (Scope.libs scope))
-                |> Resolve.Build.read_memo_build >>| Preprocess.Per_module.pps
+                |> Resolve.Memo.read_memo >>| Preprocess.Per_module.pps
               in
               Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
                 exes.names exes.buildable.libraries ~pps ~dune_version
@@ -248,8 +247,8 @@ end = struct
             in
             let+ requires = Lib.Compile.direct_requires compile_info in
             Resolve.is_ok requires)
-      | Coq_stanza.Theory.T d -> Memo.Build.return (Option.is_some d.package)
-      | _ -> Memo.Build.return false
+      | Coq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)
+      | _ -> Memo.return false
     in
     Option.some_if keep stanza
 
@@ -266,7 +265,7 @@ end = struct
       (stanza, package)
     in
     match stanza_and_package with
-    | None -> Memo.Build.return None
+    | None -> Memo.return None
     | Some (stanza, package) ->
       let new_entries =
         match (stanza : Stanza.t) with
@@ -277,7 +276,7 @@ end = struct
               ~f:(Expander.No_deps.expand_str expander)
           in
           let section = i.section in
-          Memo.Build.List.map i.files ~f:(fun unexpanded ->
+          Memo.List.map i.files ~f:(fun unexpanded ->
               let* fb = path_expander unexpanded in
               let loc = File_binding.Expanded.src_loc fb in
               let src = File_binding.Expanded.src fb in
@@ -305,7 +304,7 @@ end = struct
               in
               Install.Entry.Sourced.create ~loc:d.loc entry)
         | Dune_file.Plugin t -> Plugin_rules.install_rules ~sctx ~dir t
-        | _ -> Memo.Build.return []
+        | _ -> Memo.return []
       in
       let name = Package.name package in
       let+ entries = new_entries in
@@ -372,7 +371,7 @@ end = struct
             stanza_to_entries ~sctx ~dir ~scope ~expander stanza
           in
           named_entries :: acc)
-      |> Memo.Build.all
+      |> Memo.all
     in
     List.fold_left l ~init ~f:(fun acc named_entries ->
         match named_entries with
@@ -403,7 +402,7 @@ end
 
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules :
-    Super_context.t -> Dune_project.t -> unit Memo.Build.t
+    Super_context.t -> Dune_project.t -> unit Memo.t
 end = struct
   let sections ctx_name files pkg =
     let pkg_name = Package.name pkg in
@@ -441,10 +440,10 @@ end = struct
       Path.Build.L.relative pkg_root subdir
     in
     let* entries =
-      Memo.Build.parallel_map lib_entries ~f:(fun stanza ->
+      Memo.parallel_map lib_entries ~f:(fun stanza ->
           match stanza with
           | Super_context.Lib_entry.Deprecated_library_name
-              { old_name = _, Deprecated _; _ } -> Memo.Build.return None
+              { old_name = _, Deprecated _; _ } -> Memo.return None
           | Super_context.Lib_entry.Deprecated_library_name
               { old_name = old_public_name, Not_deprecated
               ; new_public_name = _, new_public_name
@@ -452,7 +451,7 @@ end = struct
               ; project = _
               } ->
             let old_public_name = Dune_file.Public_lib.name old_public_name in
-            Memo.Build.return
+            Memo.return
               (Some
                  ( old_public_name
                  , Dune_package.Entry.Deprecated_library_name
@@ -487,7 +486,7 @@ end = struct
               Lib.to_dune_lib lib
                 ~dir:(Path.build (lib_root lib))
                 ~modules ~foreign_objects
-              >>= Resolve.read_memo_build
+              >>= Resolve.read_memo
             in
             Some (name, Dune_package.Entry.Library sub_systems))
     in
@@ -532,8 +531,8 @@ end = struct
           Action_builder.if_file_exists (Path.build meta_template)
             ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
             ~else_:
-              (Action_builder.memo_build
-                 (Memo.Build.bind (Memo.Build.return ()) ~f:(fun () ->
+              (Action_builder.of_memo
+                 (Memo.bind (Memo.return ()) ~f:(fun () ->
                       make_dune_package sctx lib_entries pkg)))
         in
         Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
@@ -549,8 +548,8 @@ end = struct
       |> Package.Name.Map.of_list_multi
     in
     let* () =
-      Package.Name.Map.foldi pkg.deprecated_package_names
-        ~init:(Memo.Build.return ()) ~f:(fun name _ acc ->
+      Package.Name.Map.foldi pkg.deprecated_package_names ~init:(Memo.return ())
+        ~f:(fun name _ acc ->
           acc
           >>>
           let dune_pkg =
@@ -654,7 +653,7 @@ end = struct
         (let open Action_builder.O in
         (let* template = template in
          let+ meta =
-           Action_builder.memo_build
+           Action_builder.of_memo
              (Gen_meta.gen ~package:pkg ~add_directory_entry:true entries)
          in
          let pp =
@@ -686,7 +685,7 @@ end = struct
                  | None -> []
                  | Some entries -> entries
                in
-               Action_builder.memo_build
+               Action_builder.of_memo
                  (Gen_meta.gen ~package:pkg entries ~add_directory_entry:false)
              in
              let pp =
@@ -749,7 +748,7 @@ let packages =
   let f sctx =
     let packages = Package.Name.Map.values (Super_context.packages sctx) in
     let+ l =
-      Memo.Build.parallel_map packages ~f:(fun (pkg : Package.t) ->
+      Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
           install_entries sctx pkg
           >>| List.map ~f:(fun (e : Install.Entry.Sourced.t) ->
                   (e.entry.src, pkg.id)))
@@ -766,15 +765,15 @@ let packages =
   fun sctx -> Memo.exec memo sctx
 
 let packages_file_is_part_of path =
-  Memo.Build.Option.bind
+  Memo.Option.bind
     (let open Option.O in
     let* ctx_name, _ = Path.Build.extract_build_context path in
     Context_name.of_string_opt ctx_name)
     ~f:Super_context.find
   >>= function
-  | None -> Memo.Build.return Package.Id.Set.empty
+  | None -> Memo.return Package.Id.Set.empty
   | Some sctx ->
-    let open Memo.Build.O in
+    let open Memo.O in
     let+ map = packages sctx in
     Option.value (Path.Build.Map.find map path) ~default:Package.Id.Set.empty
 
@@ -819,7 +818,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let packages =
     let open Action_builder.O in
     let+ packages =
-      Action_builder.memo_build
+      Action_builder.of_memo
         (Build_system.package_deps package files
            ~packages_of:packages_file_is_part_of)
     in
@@ -928,7 +927,7 @@ let memo =
         (Package.Name.to_string (Package.name pkg)))
     "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
-      Memo.Build.return
+      Memo.return
         (let ctx = Super_context.context sctx in
          let context_name = ctx.name in
          Scheme.Approximation
@@ -947,7 +946,7 @@ let scheme_per_ctx_memo =
     "install-rule-scheme"
     (fun sctx ->
       let packages = Package.Name.Map.values (Super_context.packages sctx) in
-      let* schemes = Memo.Build.sequential_map packages ~f:(scheme sctx) in
+      let* schemes = Memo.sequential_map packages ~f:(scheme sctx) in
       Scheme.evaluate ~union:Rules.Dir_rules.union (Scheme.all schemes))
 
 let symlink_rules sctx ~dir =
@@ -963,7 +962,7 @@ let symlink_rules sctx ~dir =
 let gen_install_alias sctx (package : Package.t) =
   let ctx = Super_context.context sctx in
   let name = Package.name package in
-  if ctx.implicit then Memo.Build.return ()
+  if ctx.implicit then Memo.return ()
   else
     let install_fn =
       Utils.install_file ~package:name ~findlib_toolchain:ctx.findlib_toolchain

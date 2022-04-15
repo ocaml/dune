@@ -191,10 +191,7 @@ module Library : sig
   val main_module_name : t -> Lib_info.Main_module_name.t
 
   val to_lib_info :
-       t
-    -> dir:Path.Build.t
-    -> lib_config:Lib_config.t
-    -> Lib_info.local Memo.Build.t
+    t -> dir:Path.Build.t -> lib_config:Lib_config.t -> Lib_info.local Memo.t
 end
 
 module Plugin : sig

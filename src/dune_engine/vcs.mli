@@ -20,13 +20,13 @@ val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 
 (** Nice description of the current tip *)
-val describe : t -> string option Memo.Build.t
+val describe : t -> string option Memo.t
 
 (** String uniquely identifying the current head commit *)
-val commit_id : t -> string option Memo.Build.t
+val commit_id : t -> string option Memo.t
 
 (** List of files committed in the repo *)
-val files : t -> Path.t list Memo.Build.t
+val files : t -> Path.t list Memo.t
 
 (** VCS commands *)
 val git : Path.t Lazy.t

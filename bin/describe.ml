@@ -203,7 +203,7 @@ end
 module Crawl = struct
   open Dune_rules
   open Dune_engine
-  open Memo.Build.O
+  open Memo.O
 
   (** Computes the digest of a library *)
   let uid_of_library (lib : Lib.t) : Digest.t =
@@ -221,7 +221,7 @@ module Crawl = struct
       -> obj_dir:Path.Build.t Obj_dir.t
       -> modules:Modules.t
       -> Module.t
-      -> (Module.t list * Module.t list) Action_builder.t Memo.build
+      -> (Module.t list * Module.t list) Action_builder.t Memo.t
   end = struct
     (** Reads the dependencies of the compilation unit [unit] (for its interface
         and its implementation, if any) *)
@@ -250,7 +250,7 @@ module Crawl = struct
     let read ~options ~use_pp ~obj_dir ~modules unit =
       let no_deps = ([], []) in
       match options.with_deps with
-      | false -> Memo.Build.return (Action_builder.return no_deps)
+      | false -> Memo.return (Action_builder.return no_deps)
       | true -> (
         let unit =
           (* For files that are subject to a preprocessing phase, only the
@@ -259,7 +259,7 @@ module Crawl = struct
              preprocessed module instead of the source module. *)
           if use_pp then Module.pped unit else unit
         in
-        Memo.Build.return
+        Memo.return
         @@
         match Module.kind unit with
         | Module.Kind.Alias ->
@@ -299,10 +299,9 @@ module Crawl = struct
   (** Builds the list of modules *)
   let modules ~obj_dir
       ~(deps_of :
-            Module.t
-         -> (Module.t list * Module.t list) Action_builder.t Memo.Build.t)
-      (modules_ : Modules.t) : Descr.Mod.t list Memo.Build.t =
-    Modules.fold_no_vlib ~init:(Memo.Build.return [])
+         Module.t -> (Module.t list * Module.t list) Action_builder.t Memo.t)
+      (modules_ : Modules.t) : Descr.Mod.t list Memo.t =
+    Modules.fold_no_vlib ~init:(Memo.return [])
       ~f:(fun m macc ->
         let* acc = macc in
         let* deps = deps_of m in
@@ -322,7 +321,7 @@ module Crawl = struct
 
   (** Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t) :
-      (Descr.Item.t * Lib.Set.t) option Memo.build =
+      (Descr.Item.t * Lib.Set.t) option Memo.t =
     let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
     let* modules_, obj_dir =
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
@@ -355,17 +354,17 @@ module Crawl = struct
 
   (** [lib_uses_pp lib] tells whether the compilation units of library [lib] are
       subject to a preprocessing phase. *)
-  let lib_uses_pp (lib : Lib.t) : bool Memo.Build.t =
+  let lib_uses_pp (lib : Lib.t) : bool Memo.t =
     let+ res = Lib.pps lib in
     match Resolve.peek res with
     | Ok pps -> List.is_non_empty pps
     | Error _ -> assert false
 
   (** Builds a workspace item for the provided library object *)
-  let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.build =
+  let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
     let* requires = Lib.requires lib in
     match Resolve.peek requires with
-    | Error () -> Memo.Build.return None
+    | Error () -> Memo.return None
     | Ok requires ->
       let name = Lib.name lib in
       let info = Lib.info lib in
@@ -382,7 +381,7 @@ module Crawl = struct
             Deps.read ~options ~use_pp ~obj_dir:obj_dir_ ~modules:modules_
           in
           modules ~obj_dir ~deps_of modules_
-        else Memo.Build.return []
+        else Memo.return []
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
       let lib_descr =
@@ -412,22 +411,22 @@ module Crawl = struct
   let workspace options
       ({ Dune_rules.Main.conf; contexts = _; scontexts } :
         Dune_rules.Main.build_system) (context : Context.t) :
-      Descr.Workspace.t Memo.build =
+      Descr.Workspace.t Memo.t =
     let sctx = Context_name.Map.find_exn scontexts context.name in
-    let open Memo.Build.O in
+    let open Memo.O in
     let* dune_files = Dune_load.Dune_files.eval conf.dune_files ~context in
     let* exes, exe_libs =
       (* the list of workspace items that describe executables, and the list of
          their direct library dependencies *)
-      Memo.Build.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
-          Memo.Build.parallel_map dune_file.stanzas ~f:(fun stanza ->
+      Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
+          Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
               let dir =
                 Path.Build.append_source context.build_dir dune_file.dir
               in
               match stanza with
               | Dune_file.Executables exes ->
                 executables sctx ~options ~project:dune_file.project ~dir exes
-              | _ -> Memo.Build.return None)
+              | _ -> Memo.return None)
           >>| List.filter_map ~f:Fun.id)
       >>| List.concat >>| List.split
     in
@@ -437,7 +436,7 @@ module Crawl = struct
     in
     let* project_libs =
       (* the list of libraries declared in the project *)
-      Memo.Build.parallel_map conf.projects ~f:(fun project ->
+      Memo.parallel_map conf.projects ~f:(fun project ->
           Super_context.find_scope_by_project sctx project
           |> Scope.libs |> Lib.DB.all)
       >>| Lib.Set.union_all
@@ -448,10 +447,10 @@ module Crawl = struct
         Lib.Set.union exe_libs project_libs |> Lib.Set.to_list
       in
       add_transitive_deps libs
-      >>= Memo.Build.parallel_map ~f:(library ~options sctx)
+      >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_map ~f:Fun.id
     in
-    Memo.Build.return (exes @ libs)
+    Memo.return (exes @ libs)
 end
 
 (** The following module is responsible sanitizing the output of
@@ -505,7 +504,7 @@ end
 
 module Opam_files = struct
   let get () =
-    let open Memo.Build.O in
+    let open Memo.O in
     let+ project =
       Dune_engine.Source_tree.root () >>| Dune_engine.Source_tree.Dir.project
     in
@@ -566,7 +565,7 @@ module What = struct
   let describe t options setup context =
     match t with
     | Workspace ->
-      let open Memo.Build.O in
+      let open Memo.O in
       Crawl.workspace options setup context
       >>| Sanitize_for_tests.Workspace.sanitize context
       >>| Descr.Workspace.to_dyn options
@@ -681,7 +680,7 @@ let term : unit Term.t =
   Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
-      let* setup = Memo.Build.run setup in
+      let* setup = Memo.run setup in
       let context = Import.Main.find_context_exn setup ~name:context_name in
       let+ res =
         Build_system.run (fun () -> What.describe what options setup context)

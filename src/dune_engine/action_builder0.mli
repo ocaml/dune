@@ -78,15 +78,15 @@ module Expander : String_with_vars.Expander with type 'a app := 'a t
 (** If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
     build rule dependencies. *)
-val memo_build : 'a Memo.Build.t -> 'a t
+val of_memo : 'a Memo.t -> 'a t
 
-(** Like [memo_build] but collapses the two levels of [t]. *)
-val memo_build_join : 'a t Memo.Build.t -> 'a t
+(** Like [of_memo] but collapses the two levels of [t]. *)
+val of_memo_join : 'a t Memo.t -> 'a t
 
 (** If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
     build rule dependencies. *)
-val dyn_memo_build : 'a Memo.Build.t t -> 'a t
+val dyn_of_memo : 'a Memo.t t -> 'a t
 
 (** {1 Execution} *)
 
@@ -104,11 +104,11 @@ type 'a eval_mode =
   | Eager : Dep.Fact.t eval_mode
 
 (** Execute an action builder. *)
-val run : 'a t -> 'b eval_mode -> ('a * 'b Dep.Map.t) Memo.Build.t
+val run : 'a t -> 'b eval_mode -> ('a * 'b Dep.Map.t) Memo.t
 
 (** {1 Low-level} *)
 
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.Build.t }
+type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t }
 [@@unboxed]
 
 val of_thunk : 'a thunk -> 'a t

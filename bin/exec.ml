@@ -48,16 +48,16 @@ let term =
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
         let* setup = Import.Main.setup () in
-        let* setup = Memo.Build.run setup in
+        let* setup = Memo.run setup in
         let sctx = Import.Main.find_scontext_exn setup ~name:context in
         let context = Dune_rules.Super_context.context sctx in
         let dir =
           Path.Build.relative context.build_dir (Common.prefix_target common "")
         in
         let build_prog p =
-          let open Memo.Build.O in
+          let open Memo.O in
           if no_rebuild then
-            if Path.exists p then Memo.Build.return p
+            if Path.exists p then Memo.return p
             else
               User_error.raise
                 [ Pp.textf
@@ -70,7 +70,7 @@ let term =
             p
         in
         let not_found () =
-          let open Memo.Build.O in
+          let open Memo.O in
           let+ hints =
             (* Good candidates for the "./x.exe" instead of "x.exe" error are
                executables present in the current directory. Note: we do not
@@ -88,7 +88,7 @@ let term =
           User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
         in
         let* prog =
-          let open Memo.Build.O in
+          let open Memo.O in
           Build_system.run_exn (fun () ->
               match Filename.analyze_program_name prog with
               | In_path -> (
@@ -99,15 +99,15 @@ let term =
               | Relative_to_current_dir -> (
                 let path = Path.relative (Path.build dir) prog in
                 (Build_system.file_exists path >>= function
-                 | true -> Memo.Build.return (Some path)
+                 | true -> Memo.return (Some path)
                  | false -> (
                    if not (Filename.check_suffix prog ".exe") then
-                     Memo.Build.return None
+                     Memo.return None
                    else
                      let path = Path.extend_basename path ~suffix:".exe" in
                      Build_system.file_exists path >>= function
-                     | true -> Memo.Build.return (Some path)
-                     | false -> Memo.Build.return None))
+                     | true -> Memo.return (Some path)
+                     | false -> Memo.return None))
                 >>= function
                 | Some path -> build_prog path
                 | None -> not_found ())
@@ -120,7 +120,7 @@ let term =
                     let prog = Path.extend_basename prog ~suffix:Bin.exe in
                     Option.some_if (Path.exists prog) prog
                 with
-                | Some prog -> Memo.Build.return prog
+                | Some prog -> Memo.return prog
                 | None -> not_found ()))
         in
         let prog = Path.to_string prog in

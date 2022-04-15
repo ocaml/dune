@@ -37,7 +37,7 @@ module type Rule_generator = sig
        Context_or_install.t
     -> dir:Path.Build.t
     -> string list
-    -> gen_rules_result Memo.Build.t
+    -> gen_rules_result Memo.t
 end
 
 type t = private
@@ -54,8 +54,7 @@ type t = private
   ; stats : Dune_stats.t option
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
-  ; implicit_default_alias :
-      Path.Build.t -> unit Action_builder.t option Memo.Build.t
+  ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   }
 
 (** Initialise the build system. This must be called before running the build
@@ -75,7 +74,7 @@ val set :
   -> sandboxing_preference:Sandbox_mode.t list
   -> rule_generator:(module Rule_generator)
   -> implicit_default_alias:
-       (Path.Build.t -> unit Action_builder.t option Memo.Build.t)
+       (Path.Build.t -> unit Action_builder.t option Memo.t)
   -> unit
 
 val get : unit -> t

@@ -146,7 +146,7 @@ let setup_rules sctx ~dir (def : Dune_file.Generate_sites_module.t) =
   in
   let module_ = Module_name.to_string def.module_ ^ ".ml" in
   let file = Path.Build.relative dir module_ in
-  let open Memo.Build.O in
+  let open Memo.O in
   let+ () =
     Super_context.add_rule sctx ~dir
       (Action_builder.write_file_dyn file (Action_builder.delayed impl))

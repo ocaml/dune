@@ -30,6 +30,6 @@ module DB : sig
   val make :
     stanzas_per_dir:Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t -> t
 
-  val get : t -> dir:Path.Build.t -> status Memo.Build.t
+  val get : t -> dir:Path.Build.t -> status Memo.t
 end
 with type status := t

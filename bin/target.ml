@@ -21,7 +21,7 @@ let request targets =
 
 let target_hint (_setup : Dune_rules.Main.build_system) path =
   assert (Path.is_managed path);
-  let open Memo.Build.O in
+  let open Memo.O in
   let sub_dir = Option.value ~default:path (Path.parent path) in
   (* CR-someday amokhov: There are two issues with the code below.
 
@@ -52,7 +52,7 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
   User_message.did_you_mean (Path.to_string path) ~candidates
 
 let resolve_path path ~(setup : Dune_rules.Main.build_system) =
-  let open Memo.Build.O in
+  let open Memo.O in
   let checked = Util.check_path setup.contexts path in
   let can't_build path =
     let+ hint = target_hint setup path in
@@ -69,7 +69,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     | false -> None
   in
   let matching_targets src =
-    Memo.Build.parallel_map setup.contexts ~f:(fun ctx ->
+    Memo.parallel_map setup.contexts ~f:(fun ctx ->
         let path = Path.append_source (Path.build ctx.Context.build_dir) src in
         Load_rules.is_target path >>| function
         | Yes _ | Under_directory_target_so_cannot_say -> Some (File path)
@@ -82,24 +82,24 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     | No -> None
   in
   match checked with
-  | External _ -> Memo.Build.return (Ok [ File path ])
+  | External _ -> Memo.return (Ok [ File path ])
   | In_source_dir src -> (
     matching_targets src >>= function
     | [] -> (
       as_source_dir src >>= function
-      | Some res -> Memo.Build.return (Ok res)
+      | Some res -> Memo.return (Ok res)
       | None -> can't_build path)
-    | l -> Memo.Build.return (Ok l))
+    | l -> Memo.return (Ok l))
   | In_build_dir (_ctx, src) -> (
     matching_target () >>= function
-    | Some res -> Memo.Build.return (Ok res)
+    | Some res -> Memo.return (Ok res)
     | None -> (
       as_source_dir src >>= function
-      | Some res -> Memo.Build.return (Ok res)
+      | Some res -> Memo.return (Ok res)
       | None -> can't_build path))
   | In_install_dir _ -> (
     matching_target () >>= function
-    | Some res -> Memo.Build.return (Ok res)
+    | Some res -> Memo.return (Ok res)
     | None -> can't_build path)
 
 let expand_path (root : Workspace_root.t)
@@ -112,7 +112,7 @@ let expand_path (root : Workspace_root.t)
       (String.concat ~sep:Filename.dir_sep root.to_cwd)
   in
   let* expander =
-    Action_builder.memo_build (Dune_rules.Super_context.expander sctx ~dir)
+    Action_builder.of_memo (Dune_rules.Super_context.expander sctx ~dir)
   in
   let expander =
     Dune_rules.Dir_contents.add_sources_to_expander sctx expander
@@ -141,7 +141,7 @@ let resolve_target root ~setup target =
   | File sv as dep ->
     let f ctx =
       let* path = expand_path root ~setup ctx sv in
-      Action_builder.memo_build (resolve_path path ~setup)
+      Action_builder.of_memo (resolve_path path ~setup)
       >>| Result.map_error ~f:(fun hints -> (dep, hints))
     in
     Action_builder.List.map setup.contexts ~f

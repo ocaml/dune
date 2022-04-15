@@ -23,7 +23,7 @@ val deps_of :
      Modules_data.t
   -> ml_kind:Ml_kind.t
   -> Module.t
-  -> Module.t list Action_builder.t Memo.Build.t
+  -> Module.t list Action_builder.t Memo.t
 
 val read_deps_of :
      obj_dir:Path.Build.t Obj_dir.t

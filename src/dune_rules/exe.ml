@@ -142,7 +142,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let exe = exe_path_from_name cctx ~name ~linkage in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* action_with_targets =
     let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
     let prefix =
@@ -209,9 +209,9 @@ let link_js ~name ~cm_files ~promote ~link_time_code_gen cctx =
     CC.js_of_ocaml cctx |> Option.value ~default:Js_of_ocaml.In_context.default
   in
   let other_cm =
-    let open Memo.Build.O in
+    let open Memo.O in
     let+ { Link_time_code_gen.to_link; force_linkall = _ } =
-      Resolve.read_memo_build link_time_code_gen
+      Resolve.read_memo link_time_code_gen
     in
     List.map to_link ~f:(function
       | Lib.Lib_and_module.Lib lib -> `Lib lib
@@ -228,11 +228,10 @@ let link_js ~name ~cm_files ~promote ~link_time_code_gen cctx =
 
 let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
     ~programs ~linkages ~promote cctx =
-  let open Memo.Build.O in
+  let open Memo.O in
   let modules = Compilation_context.modules cctx in
   let* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
-  Memo.Build.parallel_iter programs
-    ~f:(fun { Program.name; main_module_name; loc } ->
+  Memo.parallel_iter programs ~f:(fun { Program.name; main_module_name; loc } ->
       let cm_files =
         let sctx = CC.super_context cctx in
         let ctx = SC.context sctx in
@@ -245,13 +244,13 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
         Cm_files.make ~obj_dir ~modules ~top_sorted_modules
           ~ext_obj:ctx.lib_config.ext_obj ()
       in
-      Memo.Build.parallel_iter linkages ~f:(fun linkage ->
+      Memo.parallel_iter linkages ~f:(fun linkage ->
           if Linkage.is_js linkage then
             link_js ~name ~cm_files ~promote cctx ~link_time_code_gen
           else
             let* link_time_code_gen =
               match Linkage.is_plugin linkage with
-              | false -> Memo.Build.return link_time_code_gen
+              | false -> Memo.return link_time_code_gen
               | true ->
                 let cc =
                   CC.for_plugin_executable cctx ~embed_in_plugin_libraries
@@ -263,7 +262,7 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
 
 let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
     ~programs ~linkages ~promote cctx =
-  let open Memo.Build.O in
+  let open Memo.O in
   let* () = Module_compilation.build_all cctx in
   link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox ~programs
     ~linkages ~promote cctx

@@ -16,4 +16,4 @@ val gen_rules :
   -> dir:Path.Build.t
   -> scope:Scope.t
   -> expander:Expander.t
-  -> unit Memo.Build.t
+  -> unit Memo.t

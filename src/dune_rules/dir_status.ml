@@ -65,7 +65,7 @@ let check_no_module_consumer stanzas =
 module DB = struct
   type nonrec t =
     { stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
-    ; fn : (Path.Build.t, t) Memo.t
+    ; fn : (Path.Build.t, t) Memo.Table.t
     }
 
   let stanzas_in db ~dir = Path.Build.Map.find db.stanzas_per_dir dir

@@ -1021,18 +1021,18 @@ module State = struct
         ]
 end
 
-type ('input, 'output) t =
-  { spec : ('input, 'output) Spec.t
-  ; cache : ('input, ('input, 'output) Dep_node.t) Store.t
-  }
+module Table = struct
+  type ('input, 'output) t =
+    { spec : ('input, 'output) Spec.t
+    ; cache : ('input, ('input, 'output) Dep_node.t) Store.t
+    }
+end
 
 module Stack_frame = struct
-  type ('input, 'output) memo = ('input, 'output) t
-
   include Stack_frame_without_state
 
   let as_instance_of (type i) (Dep_node_without_state.T t)
-      ~of_:(memo : (i, _) memo) : i option =
+      ~of_:(memo : (i, _) Table.t) : i option =
     match Type_eq.Id.same memo.spec.witness t.spec.witness with
     | Some Type_eq.T -> Some t.input
     | None -> None
@@ -1079,7 +1079,7 @@ let invalidate_dep_node (dep_node : _ Dep_node.t) =
 let invalidate_store = Store.iter ~f:invalidate_dep_node
 
 let create_with_cache (type i o) name ~cache ~input ~cutoff
-    ~human_readable_description (f : i -> o Fiber.t) =
+    ~human_readable_description (f : i -> o Fiber.t) : (i, o) Table.t =
   let spec =
     Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description f
   in
@@ -1097,7 +1097,7 @@ let create_with_store (type i) name
 let create (type i) name ~input:(module Input : Input with type t = i) ?cutoff
     ?human_readable_description f =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
-  let cache = Store.of_table (Table.create (module Input) 2) in
+  let cache = Store.of_table (Stdune.Table.create (module Input) 2) in
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
 
@@ -1113,7 +1113,7 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
       | No -> false)
   }
 
-let dep_node (t : (_, _) t) input =
+let dep_node (t : (_, _) Table.t) input =
   match Store.find t.cache input with
   | Some dep_node -> dep_node
   | None ->
@@ -1366,7 +1366,7 @@ end = struct
         | Error cycle_error -> raise (Cycle_error.E cycle_error))
 end
 
-let exec (type i o) (t : (i, o) t) i = Exec.exec_dep_node (dep_node t i)
+let exec (type i o) (t : (i, o) Table.t) i = Exec.exec_dep_node (dep_node t i)
 
 let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
   let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =
@@ -1409,8 +1409,6 @@ let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
 let get_call_stack = Call_stack.get_call_stack_without_state
 
 module Invalidation = struct
-  type ('i, 'o) memo = ('i, 'o) t
-
   (* This is currently used only for informing the user about the reason for
      restarting a build. *)
   module Reason = struct
@@ -1532,7 +1530,7 @@ module Invalidation = struct
 
   let clear_caches ~reason = Leaf { kind = Clear_caches; reason }
 
-  let invalidate_cache ~reason { cache; _ } =
+  let invalidate_cache ~reason ({ cache; _ } : _ Table.t) =
     Leaf { kind = Clear_cache cache; reason }
 
   let invalidate_node ~reason (dep_node : _ Dep_node.t) =
@@ -1751,7 +1749,7 @@ module Perf_counters = struct
 end
 
 module For_tests = struct
-  let get_deps (type i o) (t : (i, o) t) inp =
+  let get_deps (type i o) (t : (i, o) Table.t) inp =
     match Store.find t.cache inp with
     | None -> None
     | Some dep_node -> (

@@ -174,8 +174,8 @@ let fail x =
   x.fail ()
 
 type ('input, 'output) memo =
-  { lazy_ : ('input, 'output * Dep.Set.t) Memo.t Lazy.t
-  ; eager : ('input, 'output * Dep.Facts.t) Memo.t Lazy.t
+  { lazy_ : ('input, 'output * Dep.Set.t) Memo.Table.t Lazy.t
+  ; eager : ('input, 'output * Dep.Facts.t) Memo.Table.t Lazy.t
   }
 
 let create_memo name ~input ?cutoff ?human_readable_description f =

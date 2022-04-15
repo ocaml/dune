@@ -114,12 +114,12 @@ module Build : sig
   end
 end
 
-type ('input, 'output) t
+module Table : sig
+  type ('input, 'output) t
+end
 
 (** A stack frame within a computation. *)
 module Stack_frame : sig
-  type ('input, 'output) memo = ('input, 'output) t
-
   type t
 
   val to_dyn : t -> Dyn.t
@@ -130,7 +130,7 @@ module Stack_frame : sig
 
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
-  val as_instance_of : t -> of_:('input, _) memo -> 'input option
+  val as_instance_of : t -> of_:('input, _) Table.t -> 'input option
 
   val human_readable_description : t -> User_message.Style.t Pp.t option
 end
@@ -174,8 +174,6 @@ exception Non_reproducible of exn
     memoization runs. These sets can be combined into larger sets to then be
     passed to [reset]. *)
 module Invalidation : sig
-  type ('input, 'output) memo = ('input, 'output) t
-
   type t
 
   include Monoid.S with type t := t
@@ -211,7 +209,7 @@ module Invalidation : sig
   val clear_caches : reason:Reason.t -> t
 
   (** Invalidate all computations stored in a given [memo] table. *)
-  val invalidate_cache : reason:Reason.t -> _ memo -> t
+  val invalidate_cache : reason:Reason.t -> _ Table.t -> t
 
   (** A list of human-readable strings explaining the reasons for invalidation.
       The list is truncated to [max_elements] elements, with [max_elements = 1]
@@ -227,7 +225,7 @@ val reset : Invalidation.t -> unit
 module type Input = sig
   type t
 
-  include Table.Key with type t := t
+  include Stdune.Table.Key with type t := t
 end
 
 module Store : sig
@@ -281,7 +279,7 @@ val create :
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
   -> ('i -> 'o Build.t)
-  -> ('i, 'o) t
+  -> ('i, 'o) Table.t
 
 (** Like [create] but accepts a custom [store] for memoization. This is useful
     when there is a custom data structure indexed by keys of type ['i] that is
@@ -293,10 +291,10 @@ val create_with_store :
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
   -> ('i -> 'o Build.t)
-  -> ('i, 'o) t
+  -> ('i, 'o) Table.t
 
 (** Execute a memoized function. *)
-val exec : ('i, 'o) t -> 'i -> 'o Build.t
+val exec : ('i, 'o) Table.t -> 'i -> 'o Build.t
 
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
@@ -342,7 +340,7 @@ end
 
 (** Create a "memoization cell" that focuses on a single input/output pair of a
     memoized function. *)
-val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
+val cell : ('i, 'o) Table.t -> 'i -> ('i, 'o) Cell.t
 
 val lazy_cell :
      ?cutoff:('a -> 'a -> bool)
@@ -510,7 +508,7 @@ module For_tests : sig
       by calling [get_deps] with the name and input used during execution.
 
       Returns [None] if the dependencies were not computed yet. *)
-  val get_deps : ('i, _) t -> 'i -> (string option * Dyn.t) list option
+  val get_deps : ('i, _) Table.t -> 'i -> (string option * Dyn.t) list option
 
   (** Forget all memoized values, forcing them to be recomputed on the next
       build run. *)

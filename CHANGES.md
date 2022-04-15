@@ -38,7 +38,7 @@
 - Fix missing parenthesis in printing of corresponding terminal command for
   `(with-outputs-to )` (#5551, fixes #5546, @Alizter)
 
-3.0.3 (Unreleased)
+3.0.3 (01/03/2022)
 ------------------
 
 - Do not enable warnings 63-70 by default (#5476, fixes #5464, @rgrinberg)

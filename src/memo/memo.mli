@@ -114,6 +114,7 @@ module Build : sig
   end
 end
 
+(** A table memoizing results of executing a function. *)
 module Table : sig
   type ('input, 'output) t
 end
@@ -264,12 +265,10 @@ end
     If the caller provides the [cutoff] equality check, we will use it to check
     if the function's output is the same as cached in the previous computation.
     If it's the same, we will be able to skip recomputing the functions that
-    depend on it. Note: by default Dune wipes all memoization caches on every
-    run, so this early cutoff optimisation is not effective. To override default
-    behaviour, run Dune with the flag [DUNE_WATCHING_MODE_INCREMENTAL=true].
+    depend on it.
 
     If [human_readable_description] is passed, it will be used when displaying
-    the memo stack to the user.
+    the Memo stack to the user.
 
     Running the computation may raise [Memo.Cycle_error.E] if a dependency cycle
     is detected. *)
@@ -312,8 +311,8 @@ val push_stack_frame :
   -> (unit -> 'a Build.t)
   -> 'a Build.t
 
+(** A single build run. *)
 module Run : sig
-  (** A single build run. *)
   type t
 
   module For_tests : sig

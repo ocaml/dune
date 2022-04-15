@@ -266,7 +266,7 @@ module Mutex : sig
 
   val create : unit -> t
 
-  val with_lock : t -> (unit -> 'a fiber) -> 'a fiber
+  val with_lock : t -> f:(unit -> 'a fiber) -> 'a fiber
 end
 
 module Throttle : sig
@@ -427,6 +427,48 @@ module Scheduler : sig
   (** Advance a stalled fiber as much as possible by filling a list of ivars.
       Once must call [advance] on a given [stalled] value only once. *)
   val advance : 'a stalled -> fill Nonempty_list.t -> 'a step
+end
+
+(** {1 Fiber cancellation} *)
+module Cancel : sig
+  (** This module provides a way to cancel long running computations.
+      Cancellation is fully explicit and fibers must explicitely check for it at
+      strategic points. *)
+
+  type t
+
+  val create : unit -> t
+
+  (** Activate a cancellation request.
+
+      [fire] is idempotent, so calling [fire t] more than once has no effect. *)
+  val fire : t -> unit fiber
+
+  (** Version of [fire] that is suitable to call from the [iter] callback of
+      [Fiber.run]. *)
+  val fire' : t -> fill list
+
+  (** Return whether the given cancellation has been fired. *)
+  val fired : t -> bool
+
+  type 'a outcome =
+    | Cancelled of 'a
+    | Not_cancelled
+
+  (** [with_handler t ~on_cancel f] runs [f ()] with a cancellation handler. If
+      [t] is fired during the execution of [f], then [on_cancel] is called.
+
+      The aim of [on_cancel] is to somehow cut short the execution of [f]. A
+      typical example is a function running an external command. [on_cancel]
+      might send a [KILL] signal to the command to abort its execution.
+
+      If [f ()] finished before [t] is fired, then [on_cancel] will never be
+      invoked. *)
+  val with_handler :
+       t
+    -> (unit -> 'a fiber)
+    -> on_cancel:(unit -> 'b fiber)
+    -> ('a * 'b outcome) fiber
 end
 
 module Expert : sig

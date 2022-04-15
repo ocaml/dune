@@ -1,4 +1,4 @@
-3.1.0 (Unreleased)
+3.1.0 (15/04/2022)
 ------------------
 
 - Add `sourcehut` as an option for defining project sources in dune-project

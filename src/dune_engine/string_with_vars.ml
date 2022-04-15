@@ -274,7 +274,7 @@ struct
     { t with parts }
 end
 
-include Make_expander (Memo.Build)
+include Make_expander (Memo)
 
 let is_pform t pform =
   match t.parts with

@@ -1,6 +1,6 @@
 open! Stdune
 open! Import
-open Memo.Build.O
+open Memo.O
 
 (* Watching and invalidating paths. *)
 module Watcher : sig
@@ -14,7 +14,7 @@ module Watcher : sig
      directly if there is no parent. This is an optimisation that allows us to
      reduce the number of watched paths: typically, the number of directories is
      a lot smaller than the number of files. *)
-  val watch : try_to_watch_via_parent:bool -> Path.t -> unit Memo.Build.t
+  val watch : try_to_watch_via_parent:bool -> Path.t -> unit Memo.t
 
   (* Invalidate a path after receiving an event from the file watcher. *)
   val invalidate : Path.t -> Memo.Invalidation.t
@@ -112,7 +112,7 @@ end = struct
       ~input:(module Path)
       (fun accessed_path ->
         watch_or_record_path ~accessed_path ~path_to_watch:accessed_path;
-        Memo.Build.return ())
+        Memo.return ())
 
   let memo_for_watching_via_parent =
     Memo.create "fs_memo_for_watching_via_parent"
@@ -122,7 +122,7 @@ end = struct
           Option.value (Path.parent accessed_path) ~default:accessed_path
         in
         watch_or_record_path ~accessed_path ~path_to_watch;
-        Memo.Build.return ())
+        Memo.return ())
 
   let watch ~try_to_watch_via_parent path =
     if Path.is_in_build_dir path then
@@ -219,7 +219,7 @@ let path_stat path =
        up watching this directory anyway. *)
     let+ () = Watcher.watch ~try_to_watch_via_parent:false path in
     result
-  | result -> Memo.Build.return result
+  | result -> Memo.return result
 
 (* We currently implement [file_exists] and [dir_exists] functions by calling
    [Fs_cache.path_stat] instead of creating separate [Fs_cache] primitives. Here

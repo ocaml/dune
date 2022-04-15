@@ -89,7 +89,7 @@ type t = private
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; which : string -> Path.t option Memo.Build.t
+  ; which : string -> Path.t option Memo.t
         (** Given a program name, e.g. ["ocaml"], find the path to a preferred
             executable in PATH, e.g. [Some "/path/to/ocaml.opt.exe"]. *)
   ; lib_config : Lib_config.t
@@ -108,13 +108,13 @@ val to_dyn_concise : t -> Dyn.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-val install_ocaml_libdir : t -> Path.t option Memo.Build.t
+val install_ocaml_libdir : t -> Path.t option Memo.t
 
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Mode.t -> Action.Prog.t
 
 (** Return what [%{make}] should expand into *)
-val make : t -> Path.t option Memo.Build.t
+val make : t -> Path.t option Memo.t
 
 (** The best compilation mode for this context *)
 val best_mode : t -> Mode.t
@@ -141,13 +141,13 @@ val build_context : t -> Build_context.t
 val install_prefix : t -> Path.t Fiber.t
 
 (** Generate the rules for producing the files needed by configurator. *)
-val gen_configurator_rules : t -> unit Memo.Build.t
+val gen_configurator_rules : t -> unit Memo.t
 
 (** Force the files required by configurator at runtime to be produced. *)
 val force_configurator_files : unit Memo.Lazy.t
 
 module DB : sig
-  val get : Context_name.t -> t Memo.Build.t
+  val get : Context_name.t -> t Memo.t
 
-  val all : unit -> t list Memo.Build.t
+  val all : unit -> t list Memo.t
 end

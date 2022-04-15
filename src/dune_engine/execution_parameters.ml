@@ -99,6 +99,6 @@ let default = Fdecl.create Dyn.opaque
 let init t = Fdecl.set default t
 
 let default =
-  let open Memo.Build.O in
-  let* () = Memo.Build.return () in
+  let open Memo.O in
+  let* () = Memo.return () in
   Fdecl.get default

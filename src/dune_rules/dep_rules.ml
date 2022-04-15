@@ -1,6 +1,6 @@
 open! Dune_engine
 open! Import
-open Memo.Build.O
+open Memo.O
 open Ocamldep.Modules_data
 
 let transitive_deps_contents modules =
@@ -51,7 +51,7 @@ let deps_of_module md ~ml_kind m =
       | Some m -> m
       | None -> Modules.compat_for_exn modules m
     in
-    Action_builder.return (List.singleton interface_module) |> Memo.Build.return
+    Action_builder.return (List.singleton interface_module) |> Memo.return
   | _ -> Ocamldep.deps_of md ~ml_kind m
 
 let deps_of_vlib_module md ~ml_kind m =
@@ -85,11 +85,11 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
     | Imported_from_vlib m | Normal m -> Module.kind m = Alias
     | Impl_of_virtual_module _ -> false
   in
-  if is_alias then Memo.Build.return (Action_builder.return [])
+  if is_alias then Memo.return (Action_builder.return [])
   else
     let skip_if_source_absent f m =
       if Module.has m ~ml_kind then f m
-      else Memo.Build.return (Action_builder.return [])
+      else Memo.return (Action_builder.return [])
     in
     match m with
     | Imported_from_vlib m ->
@@ -112,7 +112,7 @@ let for_module md module_ =
 let rules md =
   let modules = md.modules in
   match Modules.as_singleton modules with
-  | Some m -> Memo.Build.return (Dep_graph.Ml_kind.dummy m)
+  | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)
   | None ->
     dict_of_func_concurrently (fun ~ml_kind ->
         let+ per_module =

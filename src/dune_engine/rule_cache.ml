@@ -170,7 +170,7 @@ module Workspace_local = struct
         | (deps, old_digest) :: rest -> (
           let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
           let open Fiber.O in
-          let* deps = Memo.Build.run (build_deps deps) in
+          let* deps = Memo.run (build_deps deps) in
           let new_digest = Dep.Facts.digest deps ~env in
           match Digest.equal old_digest new_digest with
           | true -> loop rest

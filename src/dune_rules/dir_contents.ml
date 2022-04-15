@@ -4,7 +4,7 @@ open Import
 module Menhir_rules = Menhir
 open Dune_file
 open! No_io
-open Memo.Build.O
+open Memo.O
 
 let loc_of_dune_file st_dir =
   Loc.in_file
@@ -89,9 +89,9 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
             match String.lsplit2 fn ~on:'.' with
             | Some (s, "mld") -> String.Map.set acc s fn
             | _ -> acc)
-        |> Memo.Build.return)
+        |> Memo.return)
   in
-  Memo.Build.parallel_map d.data ~f:(function
+  Memo.parallel_map d.data ~f:(function
     | Documentation doc ->
       let+ mlds =
         let+ mlds = Memo.Lazy.force mlds in
@@ -109,13 +109,13 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
           ~standard:mlds
       in
       Some (doc, List.map (String.Map.values mlds) ~f:(Path.Build.relative dir))
-    | _ -> Memo.Build.return None)
+    | _ -> Memo.return None)
   >>| List.filter_map ~f:Fun.id
 
 module rec Load : sig
-  val get : Super_context.t -> dir:Path.Build.t -> t Memo.Build.t
+  val get : Super_context.t -> dir:Path.Build.t -> t Memo.t
 
-  val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.Build.t
+  val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.t
 
   val add_sources_to_expander : Super_context.t -> Expander.t -> Expander.t
 end = struct
@@ -137,14 +137,14 @@ end = struct
       Super_context.expander sctx ~dir >>| add_sources_to_expander sctx
     in
     let+ generated_files =
-      Memo.Build.parallel_map stanzas ~f:(fun stanza ->
+      Memo.parallel_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
           (* XXX What about mli files? *)
           | Coq_stanza.Coqpp.T { modules; _ } ->
-            Memo.Build.return (List.map modules ~f:(fun m -> m ^ ".ml"))
+            Memo.return (List.map modules ~f:(fun m -> m ^ ".ml"))
           | Coq_stanza.Extraction.T s ->
-            Memo.Build.return (Coq_stanza.Extraction.ml_target_fnames s)
-          | Menhir.T menhir -> Memo.Build.return (Menhir_rules.targets menhir)
+            Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
+          | Menhir.T menhir -> Memo.return (Menhir_rules.targets menhir)
           | Rule rule -> (
             Simple_rules.user_rule sctx rule ~dir ~expander >>| function
             | None -> []
@@ -174,8 +174,8 @@ end = struct
               | None -> []
               | Some ctypes -> Ctypes_rules.generated_ml_and_c_files ctypes
             in
-            Memo.Build.return (select_deps_files @ ctypes_files)
-          | _ -> Memo.Build.return [])
+            Memo.return (select_deps_files @ ctypes_files)
+          | _ -> Memo.return [])
       >>| fun l -> String.Set.of_list (List.concat l)
     in
     String.Set.union generated_files (Source_tree.Dir.files st_dir)
@@ -217,11 +217,11 @@ end = struct
       | Is_component_of_a_group_but_not_the_root { stanzas = d; group_root = _ }
         ->
         let+ a, b =
-          Memo.Build.fork_and_join
+          Memo.fork_and_join
             (fun () ->
               let+ files =
                 match d with
-                | None -> Memo.Build.return (Source_tree.Dir.files st_dir)
+                | None -> Memo.return (Source_tree.Dir.files st_dir)
                 | Some d -> load_text_files sctx st_dir d
               in
               Appendable_list.singleton (dir, List.rev local, files))
@@ -229,10 +229,10 @@ end = struct
         in
         Appendable_list.( @ ) a b
       | Generated | Source_only _ | Standalone _ | Group_root _ ->
-        Memo.Build.return Appendable_list.empty
+        Memo.return Appendable_list.empty
     and walk_children st_dir ~dir ~local =
       let+ l =
-        Memo.Build.parallel_map
+        Memo.parallel_map
           (Source_tree.Dir.sub_dirs st_dir |> String.Map.to_list)
           ~f:(fun (basename, st_dir) ->
             let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
@@ -245,16 +245,16 @@ end = struct
     let+ l = walk_children st_dir ~dir ~local:[] in
     Appendable_list.to_list l
 
-  let get0_impl (sctx, dir) : result0 Memo.Build.t =
+  let get0_impl (sctx, dir) : result0 Memo.t =
     let dir_status_db = Super_context.dir_status_db sctx in
     let ctx = Super_context.context sctx in
     let lib_config = (Super_context.context sctx).lib_config in
     let* status = Dir_status.DB.get dir_status_db ~dir in
     match status with
     | Is_component_of_a_group_but_not_the_root { group_root; stanzas = _ } ->
-      Memo.Build.return (See_above group_root)
+      Memo.return (See_above group_root)
     | Generated | Source_only _ ->
-      Memo.Build.return
+      Memo.return
         (Here
            { t = empty Standalone ~dir
            ; rules = Rules.empty
@@ -284,11 +284,10 @@ end = struct
                 Memo.lazy_ (fun () ->
                     Foreign_sources.make d ~lib_config:ctx.lib_config
                       ~include_subdirs ~dirs
-                    |> Memo.Build.return)
+                    |> Memo.return)
             ; coq =
                 Memo.lazy_ (fun () ->
-                    Coq_sources.of_dir d ~include_subdirs ~dirs
-                    |> Memo.Build.return)
+                    Coq_sources.of_dir d ~include_subdirs ~dirs |> Memo.return)
             }
         ; rules
         ; subdirs = Path.Build.Map.empty
@@ -301,7 +300,7 @@ end = struct
       in
       let+ (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
         Rules.collect (fun () ->
-            Memo.Build.fork_and_join
+            Memo.fork_and_join
               (fun () -> load_text_files sctx st_dir d)
               (fun () -> collect_group sctx ~st_dir ~dir))
       in
@@ -316,11 +315,11 @@ end = struct
         Memo.lazy_ (fun () ->
             Foreign_sources.make d ~include_subdirs ~lib_config:ctx.lib_config
               ~dirs
-            |> Memo.Build.return)
+            |> Memo.return)
       in
       let coq =
         Memo.lazy_ (fun () ->
-            Coq_sources.of_dir d ~dirs ~include_subdirs |> Memo.Build.return)
+            Coq_sources.of_dir d ~dirs ~include_subdirs |> Memo.return)
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->
@@ -360,7 +359,7 @@ end = struct
 
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir) >>= function
-    | Here { t; rules = _; subdirs = _ } -> Memo.Build.return t
+    | Here { t; rules = _; subdirs = _ } -> Memo.return t
     | See_above group_root -> (
       Memo.exec memo0 (sctx, group_root) >>| function
       | See_above _ -> assert false

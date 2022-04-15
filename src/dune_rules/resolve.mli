@@ -45,11 +45,10 @@
     inline tests. This is because some information needed to setup the rules are
     attached to the backend library for the inline test framework.
 
-    One way to do that would be to call [read_memo_build] while setting up the
-    rules:
+    One way to do that would be to call [read_memo] while setting up the rules:
 
     {[
-      let open Memo.Build.O in
+      let open Memo.O in
       let* libs = Resolve.get libs in
       gen_rules libs
     ]}
@@ -120,7 +119,7 @@ val read : 'a t -> 'a Action_builder.t
 val args : 'a Command.Args.t t -> 'a Command.Args.t
 
 (** Same as [read] but in the memo build monad. Use with caution! *)
-val read_memo_build : 'a t -> 'a Memo.Build.t
+val read_memo : 'a t -> 'a Memo.t
 
 (** Read the value immediatly, ignoring actual errors. *)
 val peek : 'a t -> ('a, unit) result
@@ -158,10 +157,10 @@ module Option : sig
   val iter : 'a option -> f:('a -> unit t) -> unit t
 end
 
-module Build : sig
+module Memo : sig
   type 'a resolve
 
-  type 'a t = 'a resolve Memo.Build.t
+  type 'a t = 'a resolve Memo.t
 
   val all : 'a t list -> 'a list t
 
@@ -172,14 +171,14 @@ module Build : sig
     -> (unit -> 'a t)
     -> 'a t
 
-  val lift_memo : 'a Memo.Build.t -> 'a t
+  val lift_memo : 'a Memo.t -> 'a t
 
   val lift : 'a resolve -> 'a t
 
-  val is_ok : 'a t -> bool Memo.Build.t
+  val is_ok : 'a t -> bool Memo.t
 
   (** [is_ok t] is the same as [Result.is_error (peek t)] *)
-  val is_error : 'a t -> bool Memo.Build.t
+  val is_error : 'a t -> bool Memo.t
 
   module List : Monad.List with type 'a t := 'a t
 
@@ -188,7 +187,7 @@ module Build : sig
   end
 
   (** Same as [read] but in the memo build monad. Use with caution! *)
-  val read_memo_build : 'a t -> 'a Memo.Build.t
+  val read_memo : 'a t -> 'a Memo.t
 
   (** Read a [Resolve.t] value inside the action builder monad. *)
   val read : 'a t -> 'a Action_builder.t
@@ -202,6 +201,6 @@ module Build : sig
   val of_result : ('a, exn) result -> 'a t
 
   (** Read the value immediatly, ignoring actual errors. *)
-  val peek : 'a t -> ('a, unit) result Memo.Build.t
+  val peek : 'a t -> ('a, unit) result Memo.t
 end
 with type 'a resolve := 'a t

@@ -2,7 +2,7 @@ open! Dune_engine
 open! Stdune
 open Import
 open! No_io
-open Memo.Build.O
+open Memo.O
 
 let exe_name = "utop"
 
@@ -31,14 +31,14 @@ module Libs_and_ppxs =
     end))
 
 module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (Memo.Build) (Libs_and_ppxs)
+  Source_tree.Dir.Make_map_reduce (Memo) (Libs_and_ppxs)
 
 let libs_and_ppx_under_dir sctx ~db ~dir =
   (match Path.drop_build_context dir with
-  | None -> Memo.Build.return None
+  | None -> Memo.return None
   | Some dir -> Source_tree.find_dir dir)
   >>= function
-  | None -> Memo.Build.return ([], [])
+  | None -> Memo.return ([], [])
   | Some dir ->
     Source_tree_map_reduce.map_reduce dir
       ~traverse:{ data_only = false; vendored = true; normal = true }
@@ -48,13 +48,13 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
             (Source_tree.Dir.path dir)
         in
         match Super_context.stanzas_in sctx ~dir with
-        | None -> Memo.Build.return Libs_and_ppxs.empty
+        | None -> Memo.return Libs_and_ppxs.empty
         | Some (d : _ Dir_with_dune.t) ->
-          Memo.Build.List.fold_left d.data ~init:Libs_and_ppxs.empty
+          Memo.List.fold_left d.data ~init:Libs_and_ppxs.empty
             ~f:(fun (acc, pps) -> function
             | Dune_file.Library l -> (
               let+ lib =
-                let open Memo.Build.O in
+                let open Memo.O in
                 let+ resolve =
                   Lib.DB.resolve_when_exists db
                     (l.buildable.loc, Dune_file.Library.best_name l)
@@ -90,12 +90,12 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                 else (acc, pps))
             | Dune_file.Executables exes -> (
               let* libs =
-                let open Memo.Build.O in
+                let open Memo.O in
                 let* compile_info =
                   let project = Scope.project d.scope in
                   let dune_version = Dune_project.dune_version project in
                   let+ pps =
-                    Resolve.Build.read_memo_build
+                    Resolve.Memo.read_memo
                       (Preprocess.Per_module.with_instrumentation
                          exes.buildable.preprocess
                          ~instrumentation_backend:
@@ -112,14 +112,14 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                 Resolve.peek available
               in
               match libs with
-              | Error () -> Memo.Build.return (acc, pps)
+              | Error () -> Memo.return (acc, pps)
               | Ok libs ->
-                Memo.Build.List.fold_left libs ~init:(acc, pps)
+                Memo.List.fold_left libs ~init:(acc, pps)
                   ~f:(fun (acc, pps) lib ->
                     let info = Lib.info lib in
                     match Lib_info.kind info with
                     | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
-                      Memo.Build.return
+                      Memo.return
                         ( Appendable_list.( @ )
                             (Appendable_list.singleton lib)
                             acc
@@ -128,19 +128,19 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                                (Lib_info.loc info, Lib_info.name info))
                             pps )
                     | Normal ->
-                      Memo.Build.return
+                      Memo.return
                         ( Appendable_list.( @ )
                             (Appendable_list.singleton lib)
                             acc
                         , pps )))
-            | _ -> Memo.Build.return (acc, pps)))
+            | _ -> Memo.return (acc, pps)))
     >>| fun (libs, pps) ->
     (Appendable_list.to_list libs, Appendable_list.to_list pps)
 
 let libs_under_dir sctx ~db ~dir = libs_and_ppx_under_dir sctx ~db ~dir >>| fst
 
 let setup sctx ~dir =
-  let open Memo.Build.O in
+  let open Memo.O in
   let* expander = Super_context.expander sctx ~dir in
   let scope = Super_context.find_scope_by_dir sctx dir in
   let db = Scope.libs scope in
@@ -160,7 +160,7 @@ let setup sctx ~dir =
   let loc = Toplevel.Source.loc source in
   let* modules = Toplevel.Source.modules source preprocessing in
   let requires =
-    let open Resolve.Build.O in
+    let open Resolve.Memo.O in
     (loc, Lib_name.of_string "utop")
     |> Lib.DB.resolve db
     >>| (fun utop -> utop :: libs)

@@ -1,6 +1,6 @@
 open Stdune
 open Dune_tests_common
-open Memo.Build.O
+open Memo.O
 
 let () = init ()
 
@@ -68,7 +68,7 @@ module Scheme = struct
   let collect_rules_simple =
     let rec go (t : _ t) ~dir =
       match t with
-      | Empty -> Memo.Build.return Directory_rules.empty
+      | Empty -> Memo.return Directory_rules.empty
       | Union (a, b) ->
         let+ a = go a ~dir
         and+ b = go b ~dir in
@@ -76,9 +76,9 @@ module Scheme = struct
       | Approximation (dirs, t) -> (
         match Dune_engine.Dir_set.mem dirs dir with
         | true -> go t ~dir
-        | false -> Memo.Build.return Directory_rules.empty)
+        | false -> Memo.return Directory_rules.empty)
       | Finite rules ->
-        Memo.Build.return
+        Memo.return
           (match Path.Build.Map.find rules dir with
           | None -> Directory_rules.empty
           | Some rule -> rule)
@@ -150,14 +150,14 @@ let print_rules scheme ~dir =
     print "rules:";
     print_log res1
 
-let run m = Fiber.run (Memo.Build.run m) ~iter:(fun () -> assert false)
+let run m = Fiber.run (Memo.run m) ~iter:(fun () -> assert false)
 
 let print_rules scheme ~dir = run @@ print_rules scheme ~dir
 
 open Dune_rules.Scheme
 
 let%expect_test _ =
-  let scheme = Scheme.Thunk (fun () -> Memo.Build.return Scheme.Empty) in
+  let scheme = Scheme.Thunk (fun () -> Memo.return Scheme.Empty) in
   print_rules scheme ~dir:(Path.of_string "foo/bar");
   [%expect {|
 calls:
@@ -169,7 +169,7 @@ rules:
 let scheme_all_but_foo_bar =
   Scheme.Approximation
     ( Dir_set.negate (Dir_set.subtree (Path.of_string "foo/bar"))
-    , Thunk (fun () -> Memo.Build.return Empty) )
+    , Thunk (fun () -> Memo.return Empty) )
 
 let%expect_test _ =
   print_rules scheme_all_but_foo_bar ~dir:(Path.of_string "unrelated/dir");

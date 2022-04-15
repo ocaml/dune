@@ -17,31 +17,31 @@ end
 module Deps = struct
   module T = struct
     type 'a t =
-      | Without of 'a Memo.Build.t
+      | Without of 'a Memo.t
       | With of 'a Action_builder.t
 
-    let return x = Without (Memo.Build.return x)
+    let return x = Without (Memo.return x)
 
     let map t ~f =
       match t with
-      | Without t -> Without (Memo.Build.map t ~f)
+      | Without t -> Without (Memo.map t ~f)
       | With t -> With (Action_builder.map t ~f)
 
     let both a b =
       match (a, b) with
-      | Without a, Without b -> Without (Memo.Build.both a b)
+      | Without a, Without b -> Without (Memo.both a b)
       | With a, With b -> With (Action_builder.both a b)
       | Without a, With b ->
-        With (Action_builder.both (Action_builder.memo_build a) b)
+        With (Action_builder.both (Action_builder.of_memo a) b)
       | With a, Without b ->
-        With (Action_builder.both a (Action_builder.memo_build b))
+        With (Action_builder.both a (Action_builder.of_memo b))
   end
 
   include T
   include Applicative.Make (T)
 
   let action_builder = function
-    | Without x -> Action_builder.memo_build x
+    | Without x -> Action_builder.of_memo x
     | With x -> x
 end
 
@@ -60,11 +60,11 @@ type t =
   ; c_compiler : string
   ; context : Context.t
   ; lookup_artifacts :
-      (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.Build.t) option
+      (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t) option
   ; foreign_flags :
          dir:Path.Build.t
-      -> string list Action_builder.t Foreign_language.Dict.t Memo.Build.t
-  ; find_package : Package.Name.t -> any_package option Memo.Build.t
+      -> string list Action_builder.t Foreign_language.Dict.t Memo.t
+  ; find_package : Package.Name.t -> any_package option Memo.t
   ; expanding_what : Expanding_what.t
   }
 
@@ -109,7 +109,7 @@ let add_bindings_full t ~bindings =
 let add_bindings t ~bindings =
   add_bindings_full t
     ~bindings:
-      (Pform.Map.map bindings ~f:(fun v -> Deps.Without (Memo.Build.return v)))
+      (Pform.Map.map bindings ~f:(fun v -> Deps.Without (Memo.return v)))
 
 let path p = [ Value.Path p ]
 
@@ -132,7 +132,7 @@ let expand_version { scope; _ } ~source s =
       (Dune_project.packages project)
       (Package.Name.of_string s)
   with
-  | Some p -> Memo.Build.return (value_from_version p.version)
+  | Some p -> Memo.return (value_from_version p.version)
   | None when Dune_project.dune_version project < (2, 9) ->
     User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
       [ Pp.textf "Package %S doesn't exist in the current project." s ]
@@ -151,7 +151,7 @@ let expand_version { scope; _ } ~source s =
             "Library names are not allowed in this position. Only package \
              names are allowed"
         ];
-    let open Memo.Build.O in
+    let open Memo.O in
     Lib.DB.find (Scope.libs scope) libname >>| function
     | Some lib -> value_from_version (Lib_info.version (Lib.info lib))
     | None ->
@@ -181,7 +181,7 @@ let expand_artifact ~source t a s =
     let does_not_exist ~loc ~what name =
       User_error.raise ~loc [ Pp.textf "%s %s does not exist." what name ]
     in
-    let* artifacts = Action_builder.memo_build (lookup ~dir) in
+    let* artifacts = Action_builder.of_memo (lookup ~dir) in
     match a with
     | Pform.Artifact.Mod kind -> (
       let name =
@@ -216,7 +216,7 @@ let expand_artifact ~source t a s =
                Value.Path fn))))
 
 let cc t =
-  Memo.Build.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
+  Memo.map (t.foreign_flags ~dir:t.dir) ~f:(fun cc ->
       Foreign_language.Dict.map cc ~f:(fun cc ->
           let+ flags = cc in
           strings (t.c_compiler :: flags)))
@@ -237,7 +237,7 @@ type nonrec expansion_result =
   | Direct of value
   | Need_full_expander of (t -> value)
 
-let static v = Direct (Without (Memo.Build.return v))
+let static v = Direct (Without (Memo.return v))
 
 let[@inline never] invalid_use_of_target_variable t
     ~(source : Dune_lang.Template.Pform.t) ~var_multiplicity =
@@ -265,7 +265,7 @@ let[@inline never] invalid_use_of_target_variable t
 let expand_read_macro ~dir ~source s ~read ~pack =
   let path = relative ~source dir s in
   let read =
-    let open Memo.Build.O in
+    let open Memo.O in
     let+ x = Build_system.read_file path ~f:read in
     pack x
   in
@@ -277,7 +277,7 @@ let expand_read_macro ~dir ~source s ~read ~pack =
         (* To prevent it from working in certain position before Dune 3.0. It'd
            be nice if we could invite the user to upgrade to (lang dune 3.0),
            but this is a bigger refactoring. *)
-        With (Action_builder.memo_build read))
+        With (Action_builder.of_memo read))
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
     (pform : Pform.t) : expansion_result =
@@ -314,7 +314,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
       | Ocamlc -> static (path context.ocamlc)
       | Ocamlopt -> static (get_prog context.ocamlopt)
       | Make ->
-        let open Memo.Build.O in
+        let open Memo.O in
         Direct
           (Without
              (Context.make context >>| function
@@ -366,19 +366,18 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
         Need_full_expander
           (fun t ->
             Without
-              (Memo.Build.return
-                 [ Value.Dir (Path.build (Scope.root t.scope)) ]))
+              (Memo.return [ Value.Dir (Path.build (Scope.root t.scope)) ]))
       | Cc ->
         Need_full_expander
           (fun t ->
             With
-              (let* cc = Action_builder.memo_build (cc t) in
+              (let* cc = Action_builder.of_memo (cc t) in
                cc.c))
       | Cxx ->
         Need_full_expander
           (fun t ->
             With
-              (let* cc = Action_builder.memo_build (cc t) in
+              (let* cc = Action_builder.of_memo (cc t) in
                cc.cxx))
       | Ccomp_type ->
         static
@@ -427,7 +426,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                    string v)
               | None ->
                 Without
-                  (Memo.Build.return
+                  (Memo.return
                      (string (Option.value ~default (Env.get t.env var))))))
       | Version ->
         Need_full_expander (fun t -> Without (expand_version t ~source s))
@@ -447,7 +446,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             With
               (let* prog =
-                 Action_builder.memo_build
+                 Action_builder.of_memo
                    (Artifacts.Bin.binary
                       ~loc:(Some (Dune_lang.Template.Pform.loc source))
                       t.bin_artifacts_host s)
@@ -467,7 +466,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                in
                let scope = if lib_exec then t.scope_host else t.scope in
                let p =
-                 let open Resolve.Build.O in
+                 let open Resolve.Memo.O in
                  if lib_private then
                    let* lib =
                      Lib.DB.resolve (Scope.libs scope)
@@ -481,10 +480,10 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                      Option.equal Dune_project.equal (Some current_project)
                        referenced_project
                    then
-                     Resolve.Build.return
+                     Resolve.Memo.return
                        (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
                    else
-                     Resolve.Build.fail
+                     Resolve.Memo.fail
                        (User_error.make
                           ~loc:(Dune_lang.Template.Pform.loc source)
                           [ Pp.textf
@@ -511,8 +510,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                      ~lib ~file
                in
                let p =
-                 let open Memo.Build.O in
-                 Resolve.Build.peek p >>| function
+                 let open Memo.O in
+                 Resolve.Memo.peek p >>| function
                  | Ok p -> (
                    match file with
                    | "" | "." ->
@@ -557,17 +556,17 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                  | Error () ->
                    let p =
                      if lib_private then
-                       Resolve.Build.map p ~f:(fun _ -> assert false)
+                       Resolve.Memo.map p ~f:(fun _ -> assert false)
                      else
-                       let open Resolve.Build.O in
+                       let open Resolve.Memo.O in
                        let* available =
-                         Resolve.Build.lift_memo
+                         Resolve.Memo.lift_memo
                            (Lib.DB.available (Scope.libs scope) lib)
                        in
                        match available with
                        | false -> p >>| fun _ -> assert false
                        | true ->
-                         Resolve.Build.fail
+                         Resolve.Memo.fail
                            (User_error.make
                               ~loc:(Dune_lang.Template.Pform.loc source)
                               [ Pp.textf
@@ -579,9 +578,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                                   (if lib_exec then "exec" else "")
                               ])
                    in
-                   Resolve.Build.read p
+                   Resolve.Memo.read p
                in
-               Action_builder.memo_build_join p))
+               Action_builder.of_memo_join p))
       | Lib_available ->
         Need_full_expander
           (fun t ->
@@ -590,14 +589,14 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                  Lib_name.parse_string_exn
                    (Dune_lang.Template.Pform.loc source, s)
                in
-               let open Memo.Build.O in
+               let open Memo.O in
                let+ available = Lib.DB.available (Scope.libs t.scope) lib in
                available |> string_of_bool |> string))
       | Bin_available ->
         Need_full_expander
           (fun t ->
             Without
-              (let open Memo.Build.O in
+              (let open Memo.O in
               let+ b = Artifacts.Bin.binary_available t.bin_artifacts_host s in
               b |> string_of_bool |> string))
       | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
@@ -624,8 +623,8 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
   | exception (User_error.E _ as exn) ->
     Direct
       (Without
-         (let open Memo.Build.O in
-         let+ () = Memo.Build.return () in
+         (let open Memo.O in
+         let+ () = Memo.return () in
          reraise exn))
   | Direct _ as x -> x
   | Need_full_expander f ->
@@ -634,8 +633,8 @@ let expand_pform_gen ~context ~bindings ~dir ~source pform =
         try f t
         with User_error.E _ as exn ->
           Without
-            (let open Memo.Build.O in
-            let+ () = Memo.Build.return () in
+            (let open Memo.O in
+            let+ () = Memo.return () in
             reraise exn))
 
 let describe_source ~source =
@@ -655,7 +654,7 @@ let expand_pform t ~source pform =
         | Need_full_expander f -> f t
       with
       | With x -> x
-      | Without x -> Action_builder.memo_build x)
+      | Without x -> Action_builder.of_memo x)
     ~human_readable_description:(fun () -> describe_source ~source)
 
 let expand_pform_no_deps t ~source pform =
@@ -708,7 +707,7 @@ let expand_str t sw =
   Value.to_string v ~dir:(Path.build t.dir)
 
 module No_deps = struct
-  open Memo.Build.O
+  open Memo.O
 
   let expand_pform = expand_pform_no_deps
 
@@ -763,14 +762,14 @@ module With_deps_if_necessary = struct
 end
 
 module With_reduced_var_set = struct
-  open Memo.Build.O
+  open Memo.O
 
   let expand_pform_opt ~context ~bindings ~dir ~source pform =
-    let open Memo.Build.O in
+    let open Memo.O in
     Memo.push_stack_frame
       (fun () ->
         match expand_pform_gen ~context ~bindings ~dir ~source pform with
-        | Need_full_expander _ | Direct (With _) -> Memo.Build.return None
+        | Need_full_expander _ | Direct (With _) -> Memo.return None
         | Direct (Without x) -> x >>| Option.some)
       ~human_readable_description:(fun () -> describe_source ~source)
 

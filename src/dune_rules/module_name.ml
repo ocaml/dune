@@ -32,7 +32,7 @@ module Set = struct
 end
 
 module Map = String.Map
-module Map_traversals = Memo.Build.Make_map_traversals (Map)
+module Map_traversals = Memo.Make_map_traversals (Map)
 module Infix = Comparator.Operators (String)
 
 let of_local_lib_name s = of_string (Lib_name.Local.to_string s)

@@ -1,7 +1,6 @@
 open Stdune
-open Memo.Build.O
+open Memo.O
 module Caml_lazy = Lazy
-open Memo
 open Dune_tests_common
 
 module Scheduler = struct
@@ -30,13 +29,13 @@ let string_fn_create name =
 let int_fn_create name ~cutoff = Memo.create name ~input:(module Int) ~cutoff
 
 (* to run a computation *)
-let run m = Scheduler.run (Memo.Build.run m)
+let run m = Scheduler.run (Memo.run m)
 
 let run_memo f v =
   try run (Memo.exec f v) with Memo.Error.E err -> raise (Memo.Error.get err)
 
 let run_and_log_errors m =
-  match Scheduler.run (Fiber.collect_errors (fun () -> Memo.Build.run m)) with
+  match Scheduler.run (Fiber.collect_errors (fun () -> Memo.run m)) with
   | Ok res -> res
   | Error exns ->
     List.iter exns ~f:(fun exn ->
@@ -44,7 +43,7 @@ let run_and_log_errors m =
           (Dyn.pp (Exn_with_backtrace.to_dyn exn)))
 
 (* the trivial dependencies are simply the identity function *)
-let compdep x = Memo.Build.return (x ^ x)
+let compdep x = Memo.return (x ^ x)
 
 (* our two dependencies are called some and another *)
 let mcompdep1 = string_fn_create "some" compdep
@@ -62,9 +61,7 @@ let counter = ref 0
 (* our computation increases the counter, adds the two dependencies, "some" and
    "another" and works by multiplying the input by two *)
 let comp x =
-  let+ a =
-    Memo.Build.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2
-  in
+  let+ a = Memo.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2 in
   counter := !counter + 1;
   String.sub a ~pos:0 ~len:(String.length a |> min 3)
 
@@ -130,14 +127,14 @@ let%expect_test _ =
 let stack = ref []
 
 let dump_stack v =
-  let* s = get_call_stack () in
+  let* s = Memo.get_call_stack () in
   stack := s;
-  Memo.Build.return v
+  Memo.return v
 
 let mcompcycle =
   let mcompcycle = Fdecl.create Dyn.opaque in
   let compcycle x =
-    let* x = Memo.Build.return x >>= dump_stack in
+    let* x = Memo.return x >>= dump_stack in
     counter := !counter + 1;
     if !counter < 20 then (x + 1) mod 3 |> Memo.exec (Fdecl.get mcompcycle)
     else failwith "cycle"
@@ -149,9 +146,9 @@ let mcompcycle =
 let%expect_test _ =
   counter := 0;
   try run_memo mcompcycle 5 |> ignore
-  with Cycle_error.E err ->
+  with Memo.Cycle_error.E err ->
     let cycle =
-      Cycle_error.get err
+      Memo.Cycle_error.get err
       |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:mcompcycle)
     in
     print (Pp.enumerate cycle ~f:(Pp.textf "%d"));
@@ -161,7 +158,7 @@ let%expect_test _ =
            let open Dyn in
            pair (option string)
              (fun x -> x)
-             (Stack_frame.name st, Stack_frame.input st))
+             (Memo.Stack_frame.name st, Memo.Stack_frame.input st))
     |> Dyn.list (fun x -> x)
     |> print_dyn;
     [%expect
@@ -182,7 +179,7 @@ let mfib =
   let compfib x =
     let mfib = Memo.exec (Fdecl.get mfib) in
     counter := !counter + 1;
-    if x <= 1 then Memo.Build.return x
+    if x <= 1 then Memo.return x
     else
       let* r1 = mfib (x - 1) in
       let+ r2 = mfib (x - 2) in
@@ -216,22 +213,22 @@ let%expect_test _ =
 let make_f name = Memo.create name ~cutoff:String.equal
 
 let id =
-  let f = make_f "id" ~input:(module String) Memo.Build.return in
+  let f = make_f "id" ~input:(module String) Memo.return in
   Memo.exec f
 
 module Test_lazy (Lazy : sig
   type 'a t
 
-  val create : (unit -> 'a Memo.Build.t) -> 'a t
+  val create : (unit -> 'a Memo.t) -> 'a t
 
-  val force : 'a t -> 'a Memo.Build.t
+  val force : 'a t -> 'a Memo.t
 end) =
 struct
   let lazy_memo =
     let f =
       Memo.create "lazy_memo"
         ~input:(module String)
-        (fun s -> Memo.Build.return (Lazy.create (fun () -> id ("lazy: " ^ s))))
+        (fun s -> Memo.return (Lazy.create (fun () -> id ("lazy: " ^ s))))
     in
     Memo.exec f
 
@@ -259,17 +256,18 @@ struct
     run
       (let* x = f1 "foo" in
        let* y = f2 "foo" in
-       Memo.Build.return (x, y))
+       Memo.return (x, y))
 
   let deps () =
     let open Dyn in
     let conv = option (list (pair (option string) (fun x -> x))) in
     pair conv conv
-      (For_tests.get_deps f1_def "foo", For_tests.get_deps f2_def "foo")
+      ( Memo.For_tests.get_deps f1_def "foo"
+      , Memo.For_tests.get_deps f2_def "foo" )
 end
 
 module Builtin_lazy = Test_lazy (struct
-  type 'a t = 'a Memo.Build.t Stdlib.Lazy.t
+  type 'a t = 'a Memo.t Stdlib.Lazy.t
 
   let create = Stdlib.Lazy.from_fun
 
@@ -332,7 +330,7 @@ let%expect_test _ =
   run (Memo.exec depends_on_run ());
   run (Memo.exec depends_on_run ());
   print_endline "resetting memo";
-  Memo.reset Invalidation.empty;
+  Memo.reset Memo.Invalidation.empty;
   run (Memo.exec depends_on_run ());
   [%expect {|
     running foobar
@@ -342,13 +340,13 @@ let%expect_test _ =
 (* Tests for Memo.Cell *)
 
 let%expect_test _ =
-  let f x = Memo.Build.return ("*" ^ x) in
+  let f x = Memo.return ("*" ^ x) in
   let memo =
     Memo.create "for-cell" ~input:(module String) ~cutoff:String.equal f
   in
   let cell = Memo.cell memo "foobar" in
-  print_endline (run (Cell.read cell));
-  print_endline (run (Cell.read cell));
+  print_endline (run (Memo.Cell.read cell));
+  print_endline (run (Memo.Cell.read cell));
   [%expect {|
     *foobar
     *foobar |}]
@@ -362,15 +360,15 @@ let%expect_test "fib linked list" =
       ; next_cell : (int, t) Memo.Cell.t
       }
   end in
-  let force cell : Element.t Memo.Build.t = Memo.Cell.read cell in
+  let force cell : Element.t Memo.t = Memo.Cell.read cell in
   let memo_fdecl = Fdecl.create Dyn.opaque in
   let compute_element x =
     let memo = Fdecl.get memo_fdecl in
     printf "computing %d\n" x;
     let prev_cell = Memo.cell memo (x - 1) in
     let+ value =
-      if x < 1 then Memo.Build.return 0
-      else if x = 1 then Memo.Build.return 1
+      if x < 1 then Memo.return 0
+      else if x = 1 then Memo.return 1
       else
         let* x = force prev_cell
         and* y = force prev_cell in
@@ -431,16 +429,16 @@ module Function = struct
 
   let to_dyn _ = Dyn.Opaque
 
-  let eval (type a) (x : a input) : a output Memo.Build.t =
+  let eval (type a) (x : a input) : a output Memo.t =
     match x with
     | I (_, i) ->
-      let* () = Memo.Build.return () in
+      let* () = Memo.return () in
       printf "Evaluating %d\n" i;
-      Memo.Build.return (List.init i ~f:(fun i -> i + 1))
+      Memo.return (List.init i ~f:(fun i -> i + 1))
     | S (_, s) ->
-      let* () = Memo.Build.return () in
+      let* () = Memo.return () in
       printf "Evaluating %S\n" s;
-      Memo.Build.return [ s ]
+      Memo.return [ s ]
 
   let get (type a) (x : a input) : a =
     match x with
@@ -499,7 +497,8 @@ let print_cycle_error cycle_error =
         | 0 -> ""
         | _ -> "called by "
       in
-      printf "- %s%s\n" called_by (Dyn.to_string (Stack_frame.to_dyn frame)))
+      printf "- %s%s\n" called_by
+        (Dyn.to_string (Memo.Stack_frame.to_dyn frame)))
 
 let print_result arg res =
   let res =
@@ -520,7 +519,7 @@ let print_result arg res =
 
 let run_collect_errors f =
   let open Fiber.O in
-  Fiber.collect_errors (fun () -> Memo.Build.run (f ())) >>| function
+  Fiber.collect_errors (fun () -> Memo.run (f ())) >>| function
   | Ok _ as res -> res
   | Error errs ->
     Error
@@ -545,10 +544,10 @@ let%expect_test "error handling and memo" =
         printf "Calling f %d\n" x;
         if x = 42 then failwith "42"
         else if x = 84 then
-          Memo.Build.fork_and_join_unit
+          Memo.fork_and_join_unit
             (fun () -> failwith "left")
             (fun () -> failwith "right")
-        else Memo.Build.return x)
+        else Memo.return x)
   in
   let test x = evaluate_and_print f x in
   test 20;
@@ -582,7 +581,7 @@ let count_runs name =
     printf "Started evaluating %s\n" name;
     incr counter;
     let result = !counter in
-    let+ (_ : Run.t) = Memo.current_run () in
+    let+ (_ : Memo.Run.t) = Memo.current_run () in
     printf "Evaluated %s: %d\n" name result;
     result
 
@@ -729,7 +728,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
       result
     | input ->
       printf "Evaluated %s: %d\n" which input;
-      Build.return input
+      Memo.return input
   in
   let rec incrementing_chain ~end_with_cutoff ~from n =
     match n with
@@ -1072,9 +1071,9 @@ let%expect_test "No deadlocks when creating the same cycle twice" =
         let base = Fdecl.get fdecl_base in
         let+ result =
           let+ bases =
-            Build.of_reproducible_fiber
+            Memo.of_reproducible_fiber
               (Fiber.parallel_map [ (); () ] ~f:(fun () ->
-                   Build.run (Memo.exec base ())))
+                   Memo.run (Memo.exec base ())))
           in
           match bases with
           | [ base1; base2 ] -> base1 + base2
@@ -1169,9 +1168,9 @@ let%expect_test "two similar, but not physically-equal, cycle errors" =
   let cycle2 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
   let both =
     Memo.Lazy.create ~name:"both" (fun () ->
-        Memo.Build.fork_and_join_unit
-          (fun () -> Lazy.force cycle1)
-          (fun () -> Lazy.force cycle2))
+        Memo.fork_and_join_unit
+          (fun () -> Memo.Lazy.force cycle1)
+          (fun () -> Memo.Lazy.force cycle2))
   in
   run_and_log_errors (Memo.Lazy.force both);
   (* Even though these errors look similar, they are actually talking about two
@@ -1280,7 +1279,7 @@ let%expect_test "Test that there are no phantom dependencies" =
     create ~with_cutoff:false "base" (fun () ->
         let result = 8 in
         printf "base = %d\n" result;
-        Build.return result)
+        Memo.return result)
   in
   let cell = Memo.cell const_8 () in
   let summit =
@@ -1297,7 +1296,7 @@ let%expect_test "Test that there are no phantom dependencies" =
                 Memo.Cell.read cell
               | _ ->
                 printf "*** middle does not depend on base ***\n";
-                Build.return 0)
+                Memo.return 0)
         in
         let+ middle = Memo.exec middle () in
         let result = middle + offset in
@@ -1368,7 +1367,7 @@ let%expect_test "Abandoned node with no cutoff is recomputed" =
             Memo.exec (Option.value_exn !captured_base) ()
           | 2 ->
             printf "*** Abandoned captured base ***\n";
-            Build.return input
+            Memo.return input
           | _ ->
             printf "*** Recalled captured base ***\n";
             Memo.exec (Option.value_exn !captured_base) ()
@@ -1459,7 +1458,7 @@ let%expect_test "error handling with diamonds" =
       printf "Calling f %d\n" x;
       if x = 0 then failwith "reached 0"
       else
-        Memo.Build.fork_and_join_unit
+        Memo.fork_and_join_unit
           (fun () -> Memo.exec f (x - 1))
           (fun () -> Memo.exec f (x - 1)));
   let test x = print_exns (fun () -> Memo.exec f x) in
@@ -1503,7 +1502,7 @@ let%expect_test "error handling and duplicate exceptions" =
       | 0 -> Memo.exec forward_fail x
       | 1 -> Memo.exec forward_fail2 x
       | _ ->
-        Memo.Build.fork_and_join_unit
+        Memo.fork_and_join_unit
           (fun () -> Memo.exec f (x - 1))
           (fun () -> Memo.exec f (x - 2)));
   let test x = print_exns (fun () -> Memo.exec f x) in
@@ -1527,7 +1526,7 @@ let%expect_test "reproducible errors are cached" =
         if x = 0 then raise (Memo.Non_reproducible (Failure "Zero input"));
         let res = x * x in
         printf "Evaluated %d: %d\n" x res;
-        Memo.Build.return res)
+        Memo.return res)
   in
   Memo.Perf_counters.reset ();
   evaluate_and_print f 5;
@@ -1676,7 +1675,7 @@ let%expect_test "Test that there are no spurious cycles" =
           | 0 ->
             let+ b = Memo.exec (Fdecl.get task_b_fdecl) 0 in
             b + 1
-          | _ -> Memo.Build.return 0
+          | _ -> Memo.return 0
         in
         incr memory_a;
         printf "A = %d\n" result;
@@ -1692,7 +1691,7 @@ let%expect_test "Test that there are no spurious cycles" =
         printf "Started evaluating B\n";
         let+ result =
           match !memory_b with
-          | 0 -> Memo.Build.return 0
+          | 0 -> Memo.return 0
           | _ ->
             let+ a = Memo.exec task_a 0 in
             a + 1
@@ -1756,7 +1755,7 @@ let%expect_test "Test Memo.clear_cache" =
       (fun input ->
         let result = input + 1 in
         printf "Evaluated add_one(%d)\n" input;
-        Memo.Build.return result)
+        Memo.return result)
   in
   let add_two =
     Memo.create "Add 2"
@@ -1837,10 +1836,8 @@ let%expect_test "restore_from_cache and compute phases are well-separated" =
       ~input:(module Int)
       (fun input ->
         printf "Started evaluating C\n";
-        let* () =
-          Memo.Build.of_reproducible_fiber (Fiber.of_thunk Scheduler.yield)
-        in
-        let+ (_ : Run.t) = Memo.current_run () in
+        let* () = Memo.of_reproducible_fiber (Fiber.of_thunk Scheduler.yield) in
+        let+ (_ : Memo.Run.t) = Memo.current_run () in
         printf "Evaluated C\n";
         input + 1)
   in
@@ -1891,8 +1888,8 @@ let%expect_test "restore_from_cache and compute phases are well-separated" =
   let (_results : int * int) =
     Scheduler.run
       (Fiber.fork_and_join
-         (fun () -> Memo.Build.run (Memo.exec task_c 0))
-         (fun () -> Memo.Build.run (Memo.exec task_a 0)))
+         (fun () -> Memo.run (Memo.exec task_c 0))
+         (fun () -> Memo.run (Memo.exec task_a 0)))
   in
   [%expect
     {|
@@ -1910,12 +1907,12 @@ let%expect_test "restore_from_cache and compute phases are well-separated" =
     {|
     Memo graph: 0/4 restored/computed nodes, 3 traversed edges
     Memo cycle detection graph: 3/2/1 nodes/edges/paths |}];
-  Memo.reset Invalidation.empty;
+  Memo.reset Memo.Invalidation.empty;
   (match
      Scheduler.run
        (Fiber.fork_and_join
-          (fun () -> Memo.Build.run (Memo.exec task_c 0))
-          (fun () -> Memo.Build.run (Memo.exec task_a 0)))
+          (fun () -> Memo.run (Memo.exec task_c 0))
+          (fun () -> Memo.run (Memo.exec task_a 0)))
    with
   | (_result : int * int) -> ()
   | exception Test_scheduler.Never -> print_endline "Deadlock!"
@@ -1943,7 +1940,7 @@ let%expect_test "Simple computation chain with a cutoff" =
         printf "Started evaluating f(%d)\n" x;
         let+ res =
           match x with
-          | 0 -> Memo.Build.return 0
+          | 0 -> Memo.return 0
           | n ->
             let+ prev = Memo.exec (Fdecl.get f) (n - 1) in
             prev + 1

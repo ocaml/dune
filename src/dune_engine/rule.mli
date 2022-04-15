@@ -91,7 +91,7 @@ val loc : t -> Loc.t
 (** [find_source_dir rule] is the closest source directory corresponding to
     rule.dir. Eg. [src/dune] for a rule with dir
     [_build/default/src/dune/.dune.objs]. *)
-val find_source_dir : t -> Source_tree.Dir.t Memo.Build.t
+val find_source_dir : t -> Source_tree.Dir.t Memo.t
 
 module Anonymous_action : sig
   (* jeremiedimino: this type correspond to a subset of [Rule.t]. We should

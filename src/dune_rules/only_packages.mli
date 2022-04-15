@@ -18,8 +18,7 @@ end
 type t = Package.t Package.Name.Map.t option
 
 (** Returns the package restrictions. This function is memoized. *)
-val get : unit -> t Memo.Build.t
+val get : unit -> t Memo.t
 
 (** Apply the package mask to the packages defined by the project *)
-val packages_of_project :
-  Dune_project.t -> Package.t Package.Name.Map.t Memo.Build.t
+val packages_of_project : Dune_project.t -> Package.t Package.Name.Map.t Memo.t

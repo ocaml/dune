@@ -288,7 +288,7 @@ let add_rule sctx ~project ~pkg =
   let mode =
     Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None }
   in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* () = Super_context.add_rule sctx ~mode ~dir opam_rule in
   let aliases =
     [ Alias.install ~dir
@@ -297,11 +297,11 @@ let add_rule sctx ~project ~pkg =
     ]
   in
   let deps = Path.Set.singleton (Path.build opam_path) in
-  Memo.Build.sequential_iter aliases ~f:(fun alias ->
+  Memo.sequential_iter aliases ~f:(fun alias ->
       Rules.Produce.Alias.add_deps alias (Action_builder.path_set deps))
 
 let add_rules sctx project =
-  Memo.Build.when_ (Dune_project.generate_opam_files project) (fun () ->
+  Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
       let packages = Dune_project.packages project in
       Package.Name.Map_traversals.parallel_iter packages
         ~f:(fun _name (pkg : Package.t) -> add_rule sctx ~project ~pkg))

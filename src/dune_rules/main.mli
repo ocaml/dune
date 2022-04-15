@@ -16,7 +16,7 @@ type build_system =
   ; scontexts : Super_context.t Context_name.Map.t
   }
 
-val get : unit -> build_system Memo.Build.t
+val get : unit -> build_system Memo.t
 
 val find_context_exn : build_system -> name:Context_name.t -> Context.t
 

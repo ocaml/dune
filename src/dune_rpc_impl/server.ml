@@ -285,8 +285,8 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let () =
     let f _ (path, `Contents contents) =
       let+ version =
-        Memo.Build.run
-          (let open Memo.Build.O in
+        Memo.run
+          (let open Memo.O in
           let source_path = source_path_of_string path in
           let+ dir = Source_tree.nearest_dir source_path in
           let project = Source_tree.Dir.project dir in

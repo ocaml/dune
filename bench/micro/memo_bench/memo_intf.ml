@@ -43,7 +43,7 @@ module type Test_env = sig
     val of_thunk : (unit -> 'a t) -> 'a t
   end
 
-  module Build : sig
+  module Memo : sig
     include Monad_intf
 
     val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
@@ -66,13 +66,13 @@ module type Test_env = sig
 
     val set : 'a t -> 'a -> unit
 
-    val read : 'a t -> 'a Build.t
+    val read : 'a t -> 'a Memo.t
 
     (** peek once without registering interest in future updates *)
     val peek : 'a t -> 'a
   end
 
-  val run : 'a Build.t -> 'a
+  val run : 'a Memo.t -> 'a
 
-  val make_counter : unit -> int Build.t * (unit -> unit)
+  val make_counter : unit -> int Memo.t * (unit -> unit)
 end

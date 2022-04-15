@@ -11,9 +11,9 @@ type build_system =
   }
 
 let implicit_default_alias dir =
-  let open Memo.Build.O in
+  let open Memo.O in
   match Path.Build.extract_build_context dir with
-  | None -> Memo.Build.return None
+  | None -> Memo.return None
   | Some (ctx_name, src_dir) -> (
     Source_tree.find_dir src_dir >>| function
     | None -> None
@@ -34,8 +34,8 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags : unit =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst ctx =
     let open Fiber.O in
     let* ctx =
-      Memo.Build.run
-        (Memo.Build.Option.map ctx ~f:(fun (ctx : Build_context.t) ->
+      Memo.run
+        (Memo.Option.map ctx ~f:(fun (ctx : Build_context.t) ->
              Context.DB.get ctx.name))
     in
     let conf = Artifact_substitution.conf_of_context ctx in
@@ -47,18 +47,18 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags : unit =
   Build_config.set ~stats ~sandboxing_preference ~promote_source
     ~contexts:
       (Memo.lazy_ (fun () ->
-           let open Memo.Build.O in
+           let open Memo.O in
            Workspace.workspace () >>| Workspace.build_contexts))
     ~cache_config ~cache_debug_flags
     ~rule_generator:(module Gen_rules)
     ~implicit_default_alias
 
 let get () =
-  let open Memo.Build.O in
+  let open Memo.O in
   let* conf = Dune_load.load () in
   let* contexts = Context.DB.all () in
   let* scontexts = Memo.Lazy.force Super_context.all in
-  Memo.Build.return { conf; contexts; scontexts }
+  Memo.return { conf; contexts; scontexts }
 
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> Context_name.equal c.name name) with

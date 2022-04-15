@@ -70,11 +70,9 @@ val wrap : t -> with_:t -> Unique.t
 include Comparable_intf.S with type key := t
 
 module Map_traversals : sig
-  val parallel_iter :
-    'a Map.t -> f:(t -> 'a -> unit Memo.Build.t) -> unit Memo.Build.t
+  val parallel_iter : 'a Map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
 
-  val parallel_map :
-    'a Map.t -> f:(t -> 'a -> 'b Memo.Build.t) -> 'b Map.t Memo.Build.t
+  val parallel_map : 'a Map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Map.t Memo.t
 end
 
 val of_string_allow_invalid : Loc.t * string -> t

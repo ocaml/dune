@@ -5,7 +5,7 @@ type 'a eval_mode =
   | Lazy : unit eval_mode
   | Eager : Dep.Fact.t eval_mode
 
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.Build.t }
+type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t }
 [@@unboxed]
 
 module Deps_or_facts = struct
@@ -19,12 +19,12 @@ module Deps_or_facts = struct
 end
 
 module T = struct
-  open Memo.Build.O
+  open Memo.O
 
   module M = struct
     type 'a t = 'a thunk
 
-    let return x = { f = (fun _mode -> Memo.Build.return (x, Dep.Map.empty)) }
+    let return x = { f = (fun _mode -> Memo.return (x, Dep.Map.empty)) }
 
     let map t ~f =
       { f =
@@ -55,12 +55,12 @@ module T = struct
   let all xs =
     { f =
         (fun mode ->
-          let+ res = Memo.Build.parallel_map xs ~f:(fun x -> x.f mode) in
+          let+ res = Memo.parallel_map xs ~f:(fun x -> x.f mode) in
           let res, facts = List.split res in
           (res, Deps_or_facts.union_all mode facts))
     }
 
-  let memo_build m =
+  let of_memo m =
     { f =
         (fun _mode ->
           let+ x = m in
@@ -72,7 +72,7 @@ module T = struct
       { f =
           (fun mode ->
             let+ ((), deps_a), (b, deps_b) =
-              Memo.Build.fork_and_join (fun () -> a.f mode) (fun () -> b.f mode)
+              Memo.fork_and_join (fun () -> a.f mode) (fun () -> b.f mode)
             in
             (b, Deps_or_facts.union mode deps_a deps_b))
       }
@@ -99,7 +99,7 @@ module T = struct
     let map l ~f =
       { f =
           (fun mode ->
-            let+ res = Memo.Build.parallel_map l ~f:(fun x -> (f x).f mode) in
+            let+ res = Memo.parallel_map l ~f:(fun x -> (f x).f mode) in
             let res, deps = List.split res in
             (res, Deps_or_facts.union_all mode deps))
       }
@@ -107,7 +107,7 @@ module T = struct
     let concat_map l ~f =
       { f =
           (fun mode ->
-            let+ res = Memo.Build.parallel_map l ~f:(fun x -> (f x).f mode) in
+            let+ res = Memo.parallel_map l ~f:(fun x -> (f x).f mode) in
             let res, deps = List.split res in
             (List.concat res, Deps_or_facts.union_all mode deps))
       }
@@ -131,7 +131,7 @@ let force_lazy_or_eager :
        a eval_mode
     -> (b * Dep.Set.t) Memo.Lazy.t Lazy.t
     -> (b * Dep.Facts.t) Memo.Lazy.t Lazy.t
-    -> (b * a Dep.Map.t) Memo.Build.t =
+    -> (b * a Dep.Map.t) Memo.t =
  fun mode lazy_ eager ->
   match mode with
   | Lazy -> Memo.Lazy.force (Lazy.force lazy_)
@@ -163,8 +163,8 @@ let delayed f =
 let all_unit (xs : unit t list) =
   { f =
       (fun mode ->
-        let open Memo.Build.O in
-        let+ res = Memo.Build.parallel_map xs ~f:(fun x -> x.f mode) in
+        let open Memo.O in
+        let+ res = Memo.parallel_map xs ~f:(fun x -> x.f mode) in
         let deps = List.map res ~f:snd in
         ((), Deps_or_facts.union_all mode deps))
   }
@@ -200,8 +200,7 @@ let create_memo name ~input ?cutoff ?human_readable_description f =
   { lazy_; eager }
 
 let exec_memo :
-    type i o m.
-    (i, o) memo -> i -> m eval_mode -> (o * m Dep.Map.t) Memo.Build.t =
+    type i o m. (i, o) memo -> i -> m eval_mode -> (o * m Dep.Map.t) Memo.t =
  fun memo i mode ->
   match mode with
   | Lazy -> Memo.exec (Lazy.force memo.lazy_) i
@@ -212,17 +211,17 @@ let exec_memo m i = { f = (fun mode -> exec_memo m i mode) }
 let goal t =
   { f =
       (fun mode ->
-        let open Memo.Build.O in
+        let open Memo.O in
         let+ a, (_irrelevant_for_goals : _ Dep.Map.t) = t.f mode in
         (a, Dep.Map.empty))
   }
 
-let memo_build_join f =
+let of_memo_join f =
   { f =
       (fun mode ->
-        let open Memo.Build.O in
+        let open Memo.O in
         let* t = f in
         t.f mode)
   }
 
-let dyn_memo_build f = f >>= memo_build
+let dyn_of_memo f = f >>= of_memo

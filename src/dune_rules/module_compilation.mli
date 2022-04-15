@@ -5,10 +5,7 @@ open Import
 
 (** Setup rules to build a single module.*)
 val build_module :
-     ?precompiled_cmi:bool
-  -> Compilation_context.t
-  -> Module.t
-  -> unit Memo.Build.t
+  ?precompiled_cmi:bool -> Compilation_context.t -> Module.t -> unit Memo.t
 
 val ocamlc_i :
      ?flags:string list
@@ -16,9 +13,9 @@ val ocamlc_i :
   -> Compilation_context.t
   -> Module.t
   -> output:Path.Build.t
-  -> unit Memo.Build.t
+  -> unit Memo.t
 
-val build_all : Compilation_context.t -> unit Memo.Build.t
+val build_all : Compilation_context.t -> unit Memo.t
 
 val with_empty_intf :
-  sctx:Super_context.t -> dir:Path.Build.t -> Module.t -> Module.t Memo.Build.t
+  sctx:Super_context.t -> dir:Path.Build.t -> Module.t -> Module.t Memo.t

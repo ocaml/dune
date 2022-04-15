@@ -8,4 +8,4 @@ val rules :
   -> expander:Expander.t
   -> dir:Path.Build.t
   -> (Cram_test.t, Source_tree.Dir.error) result list
-  -> unit Memo.Build.t
+  -> unit Memo.t

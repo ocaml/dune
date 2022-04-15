@@ -8,17 +8,17 @@ open struct
 end
 
 let register_action_deps :
-    type a. a eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.Build.t =
+    type a. a eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.t =
  fun mode deps ->
   match mode with
   | Eager -> Build_system.build_deps deps
-  | Lazy -> Memo.Build.return deps
+  | Lazy -> Memo.return deps
 
 let deps d =
   of_thunk
     { f =
         (fun mode ->
-          let open Memo.Build.O in
+          let open Memo.O in
           let+ deps = register_action_deps mode d in
           ((), deps))
     }
@@ -29,7 +29,7 @@ let dyn_deps t =
   of_thunk
     { f =
         (fun mode ->
-          let open Memo.Build.O in
+          let open Memo.O in
           let* (x, deps), deps_x = run t mode in
           let+ deps = register_action_deps mode deps in
           (x, Deps_or_facts.union mode deps deps_x))
@@ -42,10 +42,10 @@ let paths ps = deps (Dep.Set.of_files ps)
 let path_set ps = deps (Dep.Set.of_files_set ps)
 
 let paths_matching :
-    type a.
-    File_selector.t -> a eval_mode -> (Path.Set.t * a Dep.Map.t) Memo.Build.t =
+    type a. File_selector.t -> a eval_mode -> (Path.Set.t * a Dep.Map.t) Memo.t
+    =
  fun g mode ->
-  let open Memo.Build.O in
+  let open Memo.O in
   match mode with
   | Eager ->
     let+ files = Build_system.build_pred g in
@@ -81,7 +81,7 @@ let contents p =
   of_thunk
     { f =
         (fun _mode ->
-          let open Memo.Build.O in
+          let open Memo.O in
           let+ x = Build_system.read_file p ~f:Io.read_file in
           (x, Dep.Map.empty))
     }
@@ -90,7 +90,7 @@ let lines_of p =
   of_thunk
     { f =
         (fun _mode ->
-          let open Memo.Build.O in
+          let open Memo.O in
           let+ x = Build_system.read_file p ~f:Io.lines_of_file in
           (x, Dep.Map.empty))
     }
@@ -103,7 +103,7 @@ let if_file_exists p ~then_ ~else_ =
   of_thunk
     { f =
         (fun mode ->
-          let open Memo.Build.O in
+          let open Memo.O in
           Build_system.file_exists p >>= function
           | true -> run then_ mode
           | false -> run else_ mode)
@@ -124,7 +124,7 @@ let source_tree ~dir =
   of_thunk
     { f =
         (fun mode ->
-          let open Memo.Build.O in
+          let open Memo.O in
           let* deps, paths = Dep.Set.source_tree_with_file_set dir in
           let+ deps = register_action_deps mode deps in
           (paths, deps))
@@ -247,16 +247,16 @@ let progn ts =
   let open With_targets.O in
   With_targets.all ts >>| Action.Full.reduce
 
-let dyn_memo_build_deps t = dyn_deps (dyn_memo_build t)
+let dyn_of_memo_deps t = dyn_deps (dyn_of_memo t)
 
 let dep_on_alias_if_exists alias =
   of_thunk
     { f =
         (fun mode ->
-          let open Memo.Build.O in
+          let open Memo.O in
           let* definition = Load_rules.alias_exists alias in
           match definition with
-          | false -> Memo.Build.return (false, Dep.Map.empty)
+          | false -> Memo.return (false, Dep.Map.empty)
           | true ->
             let deps = Dep.Set.singleton (Dep.alias alias) in
             let+ deps = register_action_deps mode deps in

@@ -1,5 +1,5 @@
 open Stdune
-open Memo.Build.O
+open Memo.O
 
 (* CR-someday amokhov: We probably want to add a new variant [Dir] to provide
    first-class support for depending on directory targets. *)
@@ -66,7 +66,7 @@ include T
 module Map = struct
   module M = Map.Make (T)
   include M
-  include Memo.Build.Make_map_traversals (M)
+  include Memo.Make_map_traversals (M)
 
   let has_universe t = mem t Universe
 end
@@ -308,12 +308,12 @@ module Set = struct
     file_selector (File_selector.create ~dir Predicate.false_)
 
   module Source_tree_map_reduce =
-    Source_tree.Dir.Make_map_reduce (Memo.Build) (Monoid.Union (M))
+    Source_tree.Dir.Make_map_reduce (Memo) (Monoid.Union (M))
 
   let source_tree dir =
     let prefix_with, dir = Path.extract_build_context_dir_exn dir in
     Source_tree.find_dir dir >>= function
-    | None -> Memo.Build.return empty
+    | None -> Memo.return empty
     | Some dir ->
       Source_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
         ~f:(fun dir ->
@@ -322,13 +322,13 @@ module Set = struct
             Path.append_source prefix_with (Source_tree.Dir.path dir)
           in
           match String.Set.is_empty files with
-          | true -> Memo.Build.return (singleton (dir_without_files_dep path))
+          | true -> Memo.return (singleton (dir_without_files_dep path))
           | false ->
             let paths =
               String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
                   Path.Set.add acc (Path.relative path fn))
             in
-            Memo.Build.return (add_paths empty paths))
+            Memo.return (add_paths empty paths))
 
   let source_tree_with_file_set dir =
     let+ t = source_tree dir in

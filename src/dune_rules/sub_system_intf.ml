@@ -13,11 +13,11 @@ module type S = sig
 
   (** Create an instance of the sub-system *)
   val instantiate :
-       resolve:(Loc.t * Lib_name.t -> Lib.t Resolve.Build.t)
-    -> get:(loc:Loc.t -> Lib.t -> t option Memo.Build.t)
+       resolve:(Loc.t * Lib_name.t -> Lib.t Resolve.Memo.t)
+    -> get:(loc:Loc.t -> Lib.t -> t option Memo.t)
     -> Lib.t
     -> Info.t
-    -> t Memo.Build.t
+    -> t Memo.t
 end
 
 (** A backend, for implementors of the sub-system *)
@@ -37,16 +37,16 @@ module type Backend = sig
   (** Return the processed information. This is what is serialised in
       [dune-package] files. Typically, it should be the original info with the
       private library names replaced by public ones. *)
-  val public_info : t -> Info.t Resolve.Build.t
+  val public_info : t -> Info.t Resolve.Memo.t
 end
 
 module type Registered_backend = sig
   type t
 
-  val get : Lib.t -> t option Memo.Build.t
+  val get : Lib.t -> t option Memo.t
 
   (** Resolve a backend name *)
-  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Resolve.Build.t
+  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Resolve.Memo.t
 
   module Selection_error : sig
     type nonrec t =
@@ -66,7 +66,7 @@ module type Registered_backend = sig
        ?written_by_user:t list
     -> extends:(t -> t list Resolve.t)
     -> Lib.t list
-    -> (t list, Selection_error.t) result Resolve.Build.t
+    -> (t list, Selection_error.t) result Resolve.Memo.t
 
   (** Choose a backend by either using the ones written by the user or by
       scanning the dependencies.
@@ -76,7 +76,7 @@ module type Registered_backend = sig
        ?written_by_user:t list
     -> replaces:(t -> t list Resolve.t)
     -> Lib.t list
-    -> (t, Selection_error.t) result Resolve.t Memo.Build.t
+    -> (t, Selection_error.t) result Resolve.t Memo.t
 end
 
 (* This is probably what we'll give to plugins *)
@@ -111,5 +111,5 @@ module type End_point = sig
        Library_compilation_context.t
     -> info:Info.t
     -> backends:Backend.t list
-    -> unit Memo.Build.t
+    -> unit Memo.t
 end

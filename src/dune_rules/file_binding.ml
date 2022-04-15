@@ -1,6 +1,6 @@
 open! Dune_engine
 open! Stdune
-open Memo.Build.O
+open Memo.O
 
 type ('src, 'dst) t =
   { src : 'src
@@ -43,7 +43,7 @@ module Unexpanded = struct
 
   let destination_relative_to_install_path t ~section ~expand ~expand_partial =
     let+ src = expand_partial t.src
-    and+ dst = Memo.Build.Option.map ~f:expand t.dst in
+    and+ dst = Memo.Option.map ~f:expand t.dst in
     Install.Entry.adjust_dst ~section ~src ~dst
 
   let expand t ~dir ~f =
@@ -57,7 +57,7 @@ module Unexpanded = struct
     in
     let+ dst =
       match t.dst with
-      | None -> Memo.Build.return None
+      | None -> Memo.return None
       | Some dst ->
         let+ loc, p = f dst in
         Some (loc, p)

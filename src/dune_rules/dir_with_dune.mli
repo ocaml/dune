@@ -23,6 +23,6 @@ module Memo : sig
   val deep_fold :
        'a list t list
     -> init:'acc
-    -> f:('a list t -> 'a -> 'acc -> 'acc Memo.Build.t)
-    -> 'acc Memo.Build.t
+    -> f:('a list t -> 'a -> 'acc -> 'acc Memo.t)
+    -> 'acc Memo.t
 end

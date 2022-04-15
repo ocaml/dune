@@ -26,7 +26,7 @@ module Dir : sig
 
   type error = Missing_run_t of Cram_test.t
 
-  val cram_tests : t -> (Cram_test.t, error) result list Memo.Build.t
+  val cram_tests : t -> (Cram_test.t, error) result list Memo.t
 
   val path : t -> Path.Source.t
 
@@ -38,9 +38,9 @@ module Dir : sig
 
   val sub_dirs : t -> sub_dir String.Map.t
 
-  val sub_dir_as_t : sub_dir -> t Memo.Build.t
+  val sub_dir_as_t : sub_dir -> t Memo.t
 
-  module Make_map_reduce (M : Memo.Build) (Outcome : Monoid) : sig
+  module Make_map_reduce (M : Memo.S) (Outcome : Monoid) : sig
     (** Traverse sub-directories recursively, pass them to [f] and combine
         intermediate results into a single one via [M.combine]. *)
     val map_reduce :
@@ -65,9 +65,9 @@ module Dir : sig
   val to_dyn : t -> Dyn.t
 end
 
-val root : unit -> Dir.t Memo.Build.t
+val root : unit -> Dir.t Memo.t
 
-module Make_map_reduce_with_progress (M : Memo.Build) (Outcome : Monoid) : sig
+module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) : sig
   (** Traverse starting from the root and report progress in the status line *)
   val map_reduce :
        traverse:Sub_dirs.Status.Set.t
@@ -75,32 +75,31 @@ module Make_map_reduce_with_progress (M : Memo.Build) (Outcome : Monoid) : sig
     -> Outcome.t M.t
 end
 
-val find_dir : Path.Source.t -> Dir.t option Memo.Build.t
+val find_dir : Path.Source.t -> Dir.t option Memo.t
 
 (** [nearest_dir t fn] returns the directory with the longest path that is an
     ancestor of [fn]. *)
-val nearest_dir : Path.Source.t -> Dir.t Memo.Build.t
+val nearest_dir : Path.Source.t -> Dir.t Memo.t
 
 (** [nearest_vcs t fn] returns the version control system with the longest root
     path that is an ancestor of [fn]. *)
-val nearest_vcs : Path.Source.t -> Vcs.t option Memo.Build.t
+val nearest_vcs : Path.Source.t -> Vcs.t option Memo.t
 
-val files_of : Path.Source.t -> Path.Source.Set.t Memo.Build.t
+val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
 
 (** [true] iff the path is a directory *)
-val dir_exists : Path.Source.t -> bool Memo.Build.t
+val dir_exists : Path.Source.t -> bool Memo.t
 
 (** [true] iff the path is a vendored directory *)
-val is_vendored : Path.Source.t -> bool Memo.Build.t
+val is_vendored : Path.Source.t -> bool Memo.t
 
 (** [true] iff the path is a file *)
-val file_exists : Path.Source.t -> bool Memo.Build.t
+val file_exists : Path.Source.t -> bool Memo.t
 
-val find_dir_specified_on_command_line : dir:Path.Source.t -> Dir.t Memo.Build.t
+val find_dir_specified_on_command_line : dir:Path.Source.t -> Dir.t Memo.t
 
 (** Return the execution parameters for the following directory *)
-val execution_parameters_of_dir :
-  Path.Source.t -> Execution_parameters.t Memo.Build.t
+val execution_parameters_of_dir : Path.Source.t -> Execution_parameters.t Memo.t
 
 (**/**)
 
@@ -109,4 +108,4 @@ val execution_parameters_of_dir :
 
    This is currently used inside Jane Street. *)
 val filter_source_files :
-  (Dune_project.t -> (Path.Source.t -> string -> bool) Memo.Build.t) ref
+  (Dune_project.t -> (Path.Source.t -> string -> bool) Memo.t) ref

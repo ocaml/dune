@@ -14,18 +14,18 @@ module Source_tree_map_reduce =
 let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
   let scope = Expander.scope expander in
   let lib_dir loc lib_name =
-    let open Resolve.Build.O in
+    let open Resolve.Memo.O in
     let+ lib = Lib.DB.resolve (Scope.libs scope) (loc, lib_name) in
     Lib_info.src_dir (Lib.info lib)
   in
   Command.Args.S
     (List.map stubs.include_dirs ~f:(fun include_dir ->
-         Resolve.Build.args
-           (let open Resolve.Build.O in
+         Resolve.Memo.args
+           (let open Resolve.Memo.O in
            let+ loc, include_dir =
              match (include_dir : Foreign.Stubs.Include_dir.t) with
              | Dir dir ->
-               Resolve.Build.return
+               Resolve.Memo.return
                  (String_with_vars.loc dir, Expander.expand_path expander dir)
              | Lib (loc, lib_name) ->
                let+ lib_dir = lib_dir loc lib_name in
@@ -70,7 +70,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                  Command.Args.Dyn
                    ((* This branch corresponds to a source directory. We track
                        its contents recursively. *)
-                    Action_builder.memo_build (Source_tree.find_dir source_dir)
+                    Action_builder.of_memo (Source_tree.find_dir source_dir)
                     >>= function
                     | None ->
                       User_error.raise ~loc
@@ -117,7 +117,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
       | Some true -> Fdo.c_flags ctx)
     | Foreign_language.Cxx -> Fdo.cxx_flags ctx
   in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* with_user_and_std_flags =
     let flags = Foreign.Source.flags src in
     (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
@@ -129,7 +129,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     let+ is_vendored =
       match Path.Build.drop_build_context dir with
       | Some src_dir -> Dune_engine.Source_tree.is_vendored src_dir
-      | None -> Memo.Build.return false
+      | None -> Memo.return false
     in
     if
       Dune_project.dune_version project >= (2, 8)

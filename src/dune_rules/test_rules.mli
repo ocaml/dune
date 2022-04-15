@@ -8,4 +8,4 @@ val rules :
   -> scope:Scope.t
   -> expander:Expander.t
   -> dir_contents:Dir_contents.t
-  -> (Compilation_context.t * Merlin.t) Memo.Build.t
+  -> (Compilation_context.t * Merlin.t) Memo.t

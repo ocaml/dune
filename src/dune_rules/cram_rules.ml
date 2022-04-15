@@ -44,7 +44,7 @@ let missing_run_t (error : Cram_test.t) =
 
 let test_rule ~sctx ~expander ~dir (spec : effective)
     (test : (Cram_test.t, Source_tree.Dir.error) result) =
-  let open Memo.Build.O in
+  let open Memo.O in
   let module Alias_rules = Simple_rules.Alias_rules in
   let* enabled = Expander.eval_blang expander (Blang.And spec.enabled_if) in
   let loc = Some spec.loc in
@@ -52,12 +52,12 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
-    Memo.Build.parallel_iter aliases ~f:(fun alias ->
+    Memo.parallel_iter aliases ~f:(fun alias ->
         Alias_rules.add sctx ~alias ~loc (missing_run_t test))
   | Ok test -> (
     match enabled with
     | false ->
-      Memo.Build.parallel_iter aliases ~f:(fun alias ->
+      Memo.parallel_iter aliases ~f:(fun alias ->
           Alias_rules.add_empty sctx ~alias ~loc)
     | true ->
       let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
@@ -89,7 +89,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
         in
         Action.Full.make action ~locks ~sandbox:spec.sandbox
       in
-      Memo.Build.parallel_iter aliases ~f:(fun alias ->
+      Memo.parallel_iter aliases ~f:(fun alias ->
           Alias_rules.add sctx ~alias ~loc cram))
 
 let rules ~sctx ~expander ~dir tests =
@@ -116,20 +116,20 @@ let rules ~sctx ~expander ~dir tests =
     | None -> acc
     | Some dir -> collect_whole_subtree [ acc ] dir
   in
-  Memo.Build.parallel_iter tests ~f:(fun test ->
+  Memo.parallel_iter tests ~f:(fun test ->
       let name =
         match test with
         | Ok test -> Cram_test.name test
         | Error (Source_tree.Dir.Missing_run_t test) -> Cram_test.name test
       in
-      let open Memo.Build.O in
+      let open Memo.O in
       let* effective =
         let init =
           let alias =
             Alias.Name.of_string name
             |> Alias.Name.Set.add empty_effective.alias
           in
-          Memo.Build.return { empty_effective with alias }
+          Memo.return { empty_effective with alias }
         in
         List.fold_left stanzas ~init
           ~f:(fun acc (dir, (spec : Cram_stanza.t)) ->
@@ -145,7 +145,7 @@ let rules ~sctx ~expander ~dir tests =
               let* acc = acc in
               let* deps, sandbox =
                 match spec.deps with
-                | None -> Memo.Build.return (acc.deps, acc.sandbox)
+                | None -> Memo.return (acc.deps, acc.sandbox)
                 | Some deps ->
                   let+ (deps : unit Action_builder.t), _, sandbox =
                     let+ expander = Super_context.expander sctx ~dir in
@@ -168,7 +168,7 @@ let rules ~sctx ~expander ~dir tests =
               let+ locks =
                 (* Locks must be relative to the cram stanza directory and not
                    the individual tests directories *)
-                Memo.Build.List.map spec.locks ~f:(fun lock ->
+                Memo.List.map spec.locks ~f:(fun lock ->
                     Expander.No_deps.expand_str expander lock
                     >>| Path.relative (Path.build dir))
                 >>| Path.Set.of_list >>| Path.Set.union acc.locks
@@ -180,7 +180,7 @@ let rules ~sctx ~expander ~dir tests =
       | None -> test_rule ()
       | Some only ->
         let only = Package.Name.Map.keys only |> Package.Name.Set.of_list in
-        Memo.Build.when_
+        Memo.when_
           (Package.Name.Set.is_empty effective.packages
           || Package.Name.Set.(not (is_empty (inter only effective.packages))))
           test_rule)

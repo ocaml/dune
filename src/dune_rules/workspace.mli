@@ -103,11 +103,11 @@ end
 (** Default name of workspace files *)
 val filename : string
 
-val workspace : unit -> t Memo.Build.t
+val workspace : unit -> t Memo.t
 
 (** Same as [workspace ()] except that if there are errors related to fields
     other than the ones of [config], they are not reported. *)
-val workspace_config : unit -> Dune_config.t Memo.Build.t
+val workspace_config : unit -> Dune_config.t Memo.t
 
 (** Update the execution parameters according to what is written in the
     [dune-workspace] file. *)

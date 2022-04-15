@@ -2,24 +2,24 @@ open! Dune_engine
 open! Stdune
 open Import
 open Dune_file
-open Memo.Build.O
+open Memo.O
 
 (* CR-someday jeremiedimino: This should be a memoized function [Super_context.t
-   -> Package.t -> Path.Build.t list Memo.Build.t]. *)
+   -> Package.t -> Path.Build.t list Memo.t]. *)
 let mlds_by_package_def =
   Memo.With_implicit_output.create "mlds by package"
     ~implicit_output:Rules.implicit_output
     ~input:(module Super_context.As_memo_key)
     (fun sctx ->
       let stanzas = Super_context.stanzas sctx in
-      Memo.Build.parallel_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->
-          Memo.Build.parallel_map w.data ~f:(function
+      Memo.parallel_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->
+          Memo.parallel_map w.data ~f:(function
             | Documentation d ->
               let* dc = Dir_contents.get sctx ~dir:w.ctx_dir in
               let+ mlds = Dir_contents.mlds dc d in
               let name = Package.name d.package in
               Some (name, mlds)
-            | _ -> Memo.Build.return None)
+            | _ -> Memo.return None)
           >>| List.filter_map ~f:Fun.id)
       >>| List.concat
       >>| Package.Name.Map.of_list_reduce ~f:List.rev_append)

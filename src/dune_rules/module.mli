@@ -62,8 +62,7 @@ val file : t -> ml_kind:Ml_kind.t -> Path.t option
 
 val obj_name : t -> Module_name.Unique.t
 
-val iter :
-  t -> f:(Ml_kind.t -> File.t -> unit Memo.Build.t) -> unit Memo.Build.t
+val iter : t -> f:(Ml_kind.t -> File.t -> unit Memo.t) -> unit Memo.t
 
 val has : t -> ml_kind:Ml_kind.t -> bool
 
@@ -108,11 +107,10 @@ end
 with type module_ := t
 
 module Obj_map_traversals : sig
-  val parallel_iter :
-    'a Obj_map.t -> f:(t -> 'a -> unit Memo.Build.t) -> unit Memo.Build.t
+  val parallel_iter : 'a Obj_map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
 
   val parallel_map :
-    'a Obj_map.t -> f:(t -> 'a -> 'b Memo.Build.t) -> 'b Obj_map.t Memo.Build.t
+    'a Obj_map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Obj_map.t Memo.t
 end
 
 val sources : t -> Path.t list

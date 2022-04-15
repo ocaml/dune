@@ -53,4 +53,4 @@ val add_rules :
   -> more_src_dirs:Path.Source.t list
   -> expander:Expander.t
   -> t
-  -> unit Memo.Build.t
+  -> unit Memo.t

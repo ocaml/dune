@@ -176,6 +176,6 @@ val create_file :
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.Full.t With_targets.t list -> Action.Full.t With_targets.t
 
-(** A version of [dyn_memo_build] that makes it convenient to declare dynamic
+(** A version of [dyn_of_memo] that makes it convenient to declare dynamic
     action dependencies. *)
-val dyn_memo_build_deps : ('a * Dep.Set.t) Memo.Build.t t -> 'a t
+val dyn_of_memo_deps : ('a * Dep.Set.t) Memo.t t -> 'a t

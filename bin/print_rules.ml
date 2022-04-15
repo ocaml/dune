@@ -117,7 +117,7 @@ let term =
       let open Fiber.O in
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
-          let open Memo.Build.O in
+          let open Memo.O in
           let* setup = setup in
           let* request =
             match targets with
@@ -127,7 +127,7 @@ let term =
                       Path.build p :: acc)
               >>| Action_builder.paths
             | _ ->
-              Memo.Build.return
+              Memo.return
                 (Target.interpret_targets (Common.root common) config setup
                    targets)
           in

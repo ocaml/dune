@@ -1,7 +1,7 @@
 open! Dune_engine
 open Import
 open Dune_file
-open Memo.Build.O
+open Memo.O
 module Modules_group = Modules
 
 module Modules = struct
@@ -94,7 +94,7 @@ module Artifacts = struct
 
   let make (d : _ Dir_with_dune.t) ~lib_config (libs, exes) =
     let+ libraries =
-      Memo.Build.List.map libs ~f:(fun (lib, _, _) ->
+      Memo.List.map libs ~f:(fun (lib, _, _) ->
           let name = Lib_name.of_local lib.Library.name in
           let+ info =
             Dune_file.Library.to_lib_info lib ~dir:d.ctx_dir ~lib_config
@@ -185,7 +185,7 @@ let virtual_modules lookup_vlib vlib =
   let info = Lib.info vlib in
   let+ modules =
     match Option.value_exn (Lib_info.virtual_ info) with
-    | External modules -> Memo.Build.return modules
+    | External modules -> Memo.return modules
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
       let+ t = lookup_vlib ~dir:src_dir in
@@ -202,7 +202,7 @@ let virtual_modules lookup_vlib vlib =
 let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     ~modules =
   let src_dir = d.ctx_dir in
-  let open Resolve.Build.O in
+  let open Resolve.Memo.O in
   let+ kind, main_module_name, wrapped =
     match lib.implements with
     | None ->
@@ -225,10 +225,10 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
         | None -> Exe_or_normal_lib
         | Some virtual_modules -> Virtual { virtual_modules }
       in
-      Memo.Build.return (Resolve.return (kind, main_module_name, wrapped))
+      Memo.return (Resolve.return (kind, main_module_name, wrapped))
     | Some _ ->
       assert (Option.is_none lib.virtual_modules);
-      let open Memo.Build.O in
+      let open Memo.O in
       let* resolved =
         let name = Library.best_name lib in
         Lib.DB.find_even_when_hidden (Scope.libs d.scope) name
@@ -236,14 +236,14 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
            stanza *)
         >>| Option.value_exn
       in
-      let open Resolve.Build.O in
+      let open Resolve.Memo.O in
       (* This [Option.value_exn] is correct because the above [lib.implements]
          is [Some _] and this [lib] variable correspond to the same library. *)
       let* vlib = Option.value_exn (Lib.implements resolved) in
       let* wrapped = Lib.wrapped resolved in
       let wrapped = Option.value_exn wrapped in
       let* main_module_name = Lib.main_module_name resolved in
-      let+ impl = Resolve.Build.lift_memo (virtual_modules lookup_vlib vlib) in
+      let+ impl = Resolve.Memo.lift_memo (virtual_modules lookup_vlib vlib) in
       let kind : Modules_field_evaluator.kind = Implementation impl in
       (kind, main_module_name, wrapped)
   in
@@ -260,7 +260,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     ~main_module_name ~wrapped
 
 let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
-  Memo.Build.parallel_map d.data ~f:(fun stanza ->
+  Memo.parallel_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
         (* jeremiedimino: this [Resolve.get] means that if the user writes an
@@ -268,8 +268,7 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
            the library is not built. We should change this to carry the
            [Or_exn.t] a bit longer. *)
         let+ modules =
-          make_lib_modules d ~lookup_vlib ~modules ~lib
-          >>= Resolve.read_memo_build
+          make_lib_modules d ~lookup_vlib ~modules ~lib >>= Resolve.read_memo
         in
         let obj_dir = Library.obj_dir lib ~dir:d.ctx_dir in
         List.Left (lib, modules, obj_dir)
@@ -295,8 +294,8 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
              there are multiple executable stanzas in the same directory *)
           Modules_group.relocate_alias_module modules ~src_dir
         in
-        Memo.Build.return (List.Right (exes, modules, obj_dir))
-      | _ -> Memo.Build.return List.Skip)
+        Memo.return (List.Right (exes, modules, obj_dir))
+      | _ -> Memo.return List.Skip)
   >>| List.filter_partition_map ~f:Fun.id
 
 let check_no_qualified (loc, include_subdirs) =

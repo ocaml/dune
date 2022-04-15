@@ -25,7 +25,7 @@ let%expect_test "Memo.run_with_error_handler" =
   let time_counter = ref 0 in
   let error_node =
     Memo.Lazy.create (fun () ->
-        Memo.Build.of_reproducible_fiber
+        Memo.of_reproducible_fiber
           (Fiber.fork_and_join_unit
              (fun () ->
                Fiber.map (Scheduler.yield ()) ~f:(fun () ->
@@ -44,8 +44,7 @@ let%expect_test "Memo.run_with_error_handler" =
            log "late";
            Fiber.return ())
          (fun () ->
-           Memo.Build.run_with_error_handler m
-             ~handle_error_no_raise:(fun _exn ->
+           Memo.run_with_error_handler m ~handle_error_no_raise:(fun _exn ->
                log "early";
                Fiber.return ())))
       ~f:(fun _result -> !trace)

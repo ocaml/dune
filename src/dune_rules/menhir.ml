@@ -109,12 +109,12 @@ module Run (P : PARAMS) = struct
   (* [menhir args] generates a Menhir command line (a build action). *)
 
   let menhir (args : 'a args) :
-      Action.Full.t Action_builder.With_targets.t Memo.Build.t =
-    Memo.Build.map menhir_binary ~f:(fun prog ->
+      Action.Full.t Action_builder.With_targets.t Memo.t =
+    Memo.map menhir_binary ~f:(fun prog ->
         Command.run ~dir:(Path.build build_dir) prog args)
 
   let rule ?(mode = stanza.mode) :
-      Action.Full.t Action_builder.With_targets.t -> unit Memo.Build.t =
+      Action.Full.t Action_builder.With_targets.t -> unit Memo.t =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags = Super_context.menhir_flags sctx ~dir ~expander ~flags
@@ -172,8 +172,8 @@ module Run (P : PARAMS) = struct
      is the three-step process where Menhir is invoked twice and OCaml type
      inference is performed in between. *)
 
-  let process3 base ~cmly (stanza : stanza) : unit Memo.Build.t =
-    let open Memo.Build.O in
+  let process3 base ~cmly (stanza : stanza) : unit Memo.t =
+    let open Memo.O in
     let expanded_flags = expand_flags stanza.flags in
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
     let* () =
@@ -231,8 +231,8 @@ module Run (P : PARAMS) = struct
   (* [process3 stanza] converts a Menhir stanza into a set of build rules. This
      is a simpler one-step process where Menhir is invoked directly. *)
 
-  let process1 base ~cmly (stanza : stanza) : unit Memo.Build.t =
-    let open Memo.Build.O in
+  let process1 base ~cmly (stanza : stanza) : unit Memo.t =
+    let open Memo.O in
     let expanded_flags = expand_flags stanza.flags in
     menhir
       [ Command.Args.dyn expanded_flags
@@ -251,7 +251,7 @@ module Run (P : PARAMS) = struct
   (* Because Menhir processes [--only-tokens] before the [--infer-*] commands,
      when [--only-tokens] is present, no [--infer-*] command should be used. *)
 
-  let process (stanza : stanza) : unit Memo.Build.t =
+  let process (stanza : stanza) : unit Memo.t =
     let base = Option.value_exn stanza.merge_into in
     let ocaml_type_inference_disabled, cmly =
       Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:(false, false)
@@ -269,7 +269,7 @@ module Run (P : PARAMS) = struct
     else process3 base stanza ~cmly
 
   (* ------------------------------------------------------------------------ *)
-  let gen_rules () = Memo.Build.sequential_iter ~f:process stanzas
+  let gen_rules () = Memo.sequential_iter ~f:process stanzas
 end
 
 (* -------------------------------------------------------------------------- *)

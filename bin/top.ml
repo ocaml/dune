@@ -18,8 +18,8 @@ let man =
 let info = Term.info "top" ~doc ~man
 
 let link_deps link =
-  let open Memo.Build.O in
-  Memo.Build.parallel_map link ~f:(fun t ->
+  let open Memo.O in
+  Memo.parallel_map link ~f:(fun t ->
       Dune_rules.Lib.link_deps t Dune_rules.Link_mode.Byte)
   >>| List.concat
 
@@ -34,7 +34,7 @@ let term =
       let open Fiber.O in
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
-          let open Memo.Build.O in
+          let open Memo.O in
           let* setup = setup in
           let sctx =
             Dune_engine.Context_name.Map.find setup.scontexts ctx_name
@@ -50,7 +50,7 @@ let term =
             Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)
           in
           let* requires =
-            Dune_rules.Resolve.Build.read_memo_build
+            Dune_rules.Resolve.Memo.read_memo
               (Dune_rules.Lib.closure ~linking:true libs)
           in
           let include_paths =
@@ -58,7 +58,7 @@ let term =
           in
           let* files = link_deps requires in
           let* () =
-            Memo.Build.parallel_iter files ~f:(fun file ->
+            Memo.parallel_iter files ~f:(fun file ->
                 Build_system.build_file file >>| ignore)
           in
           let files_to_load =
@@ -69,6 +69,6 @@ let term =
           in
           Dune_rules.Toplevel.print_toplevel_init_file ~include_paths
             ~files_to_load;
-          Memo.Build.return ()))
+          Memo.return ()))
 
 let command = (term, info)

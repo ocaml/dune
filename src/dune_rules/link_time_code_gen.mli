@@ -9,4 +9,4 @@ type t =
   }
 
 (** Generate link time code for special libraries such as [findlib.dynload] *)
-val handle_special_libs : Compilation_context.t -> t Resolve.t Memo.Build.t
+val handle_special_libs : Compilation_context.t -> t Resolve.t Memo.t

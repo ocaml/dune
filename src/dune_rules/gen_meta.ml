@@ -67,7 +67,7 @@ let archives ?(preds = []) lib =
   ]
 
 let gen_lib pub_name lib ~path ~version =
-  let open Memo.Build.O in
+  let open Memo.O in
   let info = Lib.info lib in
   let synopsis = Lib_info.synopsis info in
   let kind = Lib_info.kind info in
@@ -95,13 +95,11 @@ let gen_lib pub_name lib ~path ~version =
     | _ -> name
   in
   let to_names = Lib_name.Set.of_list_map ~f:name in
-  let* lib_deps =
-    Resolve.Build.read_memo_build (Lib.requires lib) >>| to_names
-  in
+  let* lib_deps = Resolve.Memo.read_memo (Lib.requires lib) >>| to_names in
   let* ppx_rt_deps =
     Lib.ppx_runtime_deps lib
-    |> Memo.Build.bind ~f:Resolve.read_memo_build
-    |> Memo.Build.map ~f:to_names
+    |> Memo.bind ~f:Resolve.read_memo
+    |> Memo.map ~f:to_names
   in
   let+ ppx_runtime_deps_for_deprecated_method =
     (* For the deprecated method, we need to put all the runtime dependencies of
@@ -113,10 +111,10 @@ let gen_lib pub_name lib ~path ~version =
        itself.
 
        Sigh... *)
-    let open Resolve.Build.O in
+    let open Resolve.Memo.O in
     Lib.closure [ lib ] ~linking:false
-    >>= Resolve.Build.List.concat_map ~f:Lib.ppx_runtime_deps
-    >>| to_names |> Resolve.Build.read_memo_build
+    >>= Resolve.Memo.List.concat_map ~f:Lib.ppx_runtime_deps
+    >>| to_names |> Resolve.Memo.read_memo
   in
   List.concat
     [ version
@@ -176,14 +174,14 @@ let gen_lib pub_name lib ~path ~version =
     ]
 
 let gen ~(package : Package.t) ~add_directory_entry entries =
-  let open Memo.Build.O in
+  let open Memo.O in
   let version =
     match package.version with
     | None -> []
     | Some s -> [ rule "version" [] Set s ]
   in
   let+ pkgs =
-    Memo.Build.parallel_map entries ~f:(fun (e : Super_context.Lib_entry.t) ->
+    Memo.parallel_map entries ~f:(fun (e : Super_context.Lib_entry.t) ->
         match e with
         | Library lib -> (
           let info = Lib.Local.info lib in
@@ -222,7 +220,7 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
             ; new_public_name = _, new_public_name
             ; _
             } ->
-          Memo.Build.return
+          Memo.return
             ( Pub_name.of_lib_name (Dune_file.Public_lib.name old_public_name)
             , version @ [ requires (Lib_name.Set.singleton new_public_name) ] ))
   in

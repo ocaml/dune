@@ -43,7 +43,7 @@ let findlib =
 let%expect_test _ =
   let pkg =
     match
-      Lib_name.of_string "foo" |> Findlib.find findlib |> Memo.Build.run
+      Lib_name.of_string "foo" |> Findlib.find findlib |> Memo.run
       |> Test_scheduler.(run (create ()))
     with
     | Ok (Library x) -> x
@@ -90,7 +90,7 @@ let conf () =
   Findlib.Config.load
     (Path.relative db_path "../toolchain")
     ~toolchain:"tlc" ~context:"<context>"
-  |> Memo.Build.run
+  |> Memo.run
   |> Test_scheduler.(run (create ()))
 
 let%expect_test _ =

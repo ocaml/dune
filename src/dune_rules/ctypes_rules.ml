@@ -297,7 +297,7 @@ let add_rule_gen ~sctx ~dir ~filename f =
   let script =
     let open Action_builder.O in
     let* expander =
-      Action_builder.memo_build @@ Super_context.expander sctx ~dir
+      Action_builder.of_memo @@ Super_context.expander sctx ~dir
     in
     let+ pp = f ~expander in
     Format.asprintf "%a" Pp.to_fmt pp
@@ -338,7 +338,7 @@ let rule ?(deps = []) ?stdout_to ?(args = []) ?(targets = []) ~exe ~sctx ~dir ()
 let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
     ~cflags_sexp ~output ~deps () =
   let ctx = Super_context.context sctx in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* exe =
     Ocaml_config.c_compiler ctx.Context.ocaml_config
     |> Super_context.resolve_program ~loc:None ~dir sctx
@@ -346,7 +346,7 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
   let include_args =
     let ocaml_where = Path.to_string ctx.Context.stdlib_dir in
     (* XXX: need glob dependency *)
-    let open Resolve.Build.O in
+    let open Resolve.Memo.O in
     let+ ctypes_include_dirs =
       let+ lib =
         let ctypes = Lib_name.of_string "ctypes" in
@@ -407,7 +407,7 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
     in
     let action =
       let open Action_builder.O in
-      let* include_args = Resolve.Build.read include_args in
+      let* include_args = Resolve.Memo.read include_args in
       deps
       >>> Action_builder.map cflags_args ~f:(fun cflags_args ->
               let source_files = List.map source_files ~f:absolute_path_hack in
@@ -453,7 +453,7 @@ let program_of_module_and_dir ~dir program =
 
 let exe_build_and_link ?libraries ?(modules = []) ~scope ~loc ~dir ~cctx
     ~sandbox program =
-  let open Memo.Build.O in
+  let open Memo.O in
   let* cctx =
     cctx_with_substitutions ?libraries ~loc ~scope ~dir ~cctx
       ~modules:(program :: modules) ()
@@ -477,7 +477,7 @@ let write_osl_to_sexp_file ~sctx ~dir ~filename ~expand_flag flags =
     let sexp =
       let open Action_builder.O in
       let* expander =
-        Action_builder.memo_build @@ Super_context.expander sctx ~dir
+        Action_builder.of_memo @@ Super_context.expander sctx ~dir
       in
       let+ flags = expand_flag ~expander flags in
       let sexp = Sexp.List (List.map ~f:(fun x -> Sexp.Atom x) flags) in
@@ -488,15 +488,15 @@ let write_osl_to_sexp_file ~sctx ~dir ~filename ~expand_flag flags =
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir build
 
-(* Adding an 'iter' to Memo.Build produced pretty strange far-flung type errors,
-   so just doing this here. *)
-let rec memo_build_list_iter lst ~f =
-  let open Memo.Build.O in
+(* Adding an 'iter' to Memo produced pretty strange far-flung type errors, so
+   just doing this here. *)
+let rec memo_list_iter lst ~f =
+  let open Memo.O in
   match lst with
-  | [] -> Memo.Build.return ()
+  | [] -> Memo.return ()
   | x :: tl ->
     let* () = f x in
-    memo_build_list_iter tl ~f
+    memo_list_iter tl ~f
 
 let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   let ctypes = Option.value_exn buildable.Buildable.ctypes in
@@ -505,7 +505,7 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   let c_types_includer_module = Stanza_util.c_types_includer_module ctypes in
   let c_generated_types_module = Stanza_util.c_generated_types_module ctypes in
   let rule = rule ~sctx ~dir in
-  let open Memo.Build.O in
+  let open Memo.O in
   let foreign_archives_deps =
     let ctx = Super_context.context sctx in
     let ext_lib = ctx.Context.lib_config.ext_lib in
@@ -604,7 +604,7 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
      functions, for example, which requires a different 'concurrency' parameter
      in the code generator. *)
   let* () =
-    memo_build_list_iter ctypes.Ctypes.function_description ~f:(fun fd ->
+    memo_list_iter ctypes.Ctypes.function_description ~f:(fun fd ->
         let stubs_prefix = external_library_name ^ "_stubs" in
         let c_generated_functions_cout_c =
           Stanza_util.c_generated_functions_cout_c ctypes fd

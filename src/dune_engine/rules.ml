@@ -131,7 +131,7 @@ let singleton_rule (rule : Rule.t) =
 let implicit_output = Memo.Implicit_output.add (module T)
 
 let produce rules =
-  if Path.Build.Map.is_empty rules then Memo.Build.return ()
+  if Path.Build.Map.is_empty rules then Memo.return ()
   else Memo.Implicit_output.produce implicit_output rules
 
 module Produce = struct
@@ -185,12 +185,12 @@ let of_rules rules =
         | Some acc -> Some (Dir_rules.Nonempty.add acc (Rule rule))))
 
 let collect f =
-  let open Memo.Build.O in
+  let open Memo.O in
   let+ result, out = Memo.Implicit_output.collect implicit_output f in
   (result, Option.value out ~default:T.empty)
 
 let collect_unit f =
-  let open Memo.Build.O in
+  let open Memo.O in
   let+ (), rules = collect f in
   rules
 
@@ -222,7 +222,7 @@ let find t p =
     | None -> Dir_rules.empty)
 
 let prefix_rules prefix ~f =
-  let open Memo.Build.O in
+  let open Memo.O in
   let* res, rules = collect f in
   let+ () =
     produce

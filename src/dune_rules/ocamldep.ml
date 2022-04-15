@@ -81,7 +81,7 @@ let deps_of md ~ml_kind unit =
   let parse_module_names = parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate source) in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* () =
     SC.add_rule sctx ~dir
       (let open Action_builder.With_targets.O in

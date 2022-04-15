@@ -11,7 +11,7 @@ module Backend = struct
     type t =
       { info : Info.t
       ; lib : Lib.t
-      ; runner_libraries : Lib.t list Resolve.Build.t
+      ; runner_libraries : Lib.t list Resolve.Memo.t
       ; extends : t list Resolve.t
       }
 
@@ -24,31 +24,31 @@ module Backend = struct
     let extends t = t.extends
 
     let instantiate ~resolve ~get lib (info : Info.t) =
-      let open Memo.Build.O in
+      let open Memo.O in
       let+ extends =
-        Memo.Build.parallel_map info.extends ~f:(fun ((loc, name) as x) ->
-            Resolve.Build.bind (resolve x) ~f:(fun lib ->
+        Memo.parallel_map info.extends ~f:(fun ((loc, name) as x) ->
+            Resolve.Memo.bind (resolve x) ~f:(fun lib ->
                 get ~loc lib >>= function
                 | None ->
-                  Resolve.Build.fail
+                  Resolve.Memo.fail
                     (User_error.make ~loc
                        [ Pp.textf "%S is not an %s" (Lib_name.to_string name)
                            (desc ~plural:false)
                        ])
-                | Some t -> Resolve.Build.return t))
+                | Some t -> Resolve.Memo.return t))
         >>| Resolve.List.map ~f:Fun.id
       in
       { info
       ; lib
       ; runner_libraries =
-          Resolve.Build.List.map info.runner_libraries ~f:resolve
+          Resolve.Memo.List.map info.runner_libraries ~f:resolve
       ; extends
       }
 
     let public_info t =
-      let open Resolve.Build.O in
+      let open Resolve.Memo.O in
       let+ runner_libraries = t.runner_libraries
-      and+ extends = Memo.Build.return t.extends in
+      and+ extends = Memo.return t.extends in
       { Info.loc = t.info.loc
       ; flags = t.info.flags
       ; generate_runner = t.info.generate_runner
@@ -97,19 +97,19 @@ include Sub_system.Register_end_point (struct
       let src_dir = Path.build inline_test_dir in
       Module.generated ~src_dir name
     in
-    let open Memo.Build.O in
+    let open Memo.O in
     let modules = Modules.singleton_exe main_module in
     let runner_libs =
-      let open Resolve.Build.O in
+      let open Resolve.Memo.O in
       let* libs =
-        Resolve.Build.List.concat_map backends ~f:(fun (backend : Backend.t) ->
+        Resolve.Memo.List.concat_map backends ~f:(fun (backend : Backend.t) ->
             backend.runner_libraries)
       in
       let* lib =
         Lib.DB.resolve (Scope.libs scope) (loc, Dune_file.Library.best_name lib)
       in
       let* more_libs =
-        Resolve.Build.List.map info.libraries
+        Resolve.Memo.List.map info.libraries
           ~f:(Lib.DB.resolve (Scope.libs scope))
       in
       Lib.closure ~linking:true ((lib :: libs) @ more_libs)
@@ -207,7 +207,7 @@ include Sub_system.Register_end_point (struct
       List.concat l
     in
     let source_files = List.concat_map source_modules ~f:Module.sources in
-    Memo.Build.parallel_iter_set
+    Memo.parallel_iter_set
       (module Mode_conf.Set)
       info.modes
       ~f:(fun (mode : Mode_conf.t) ->
@@ -224,7 +224,7 @@ include Sub_system.Register_end_point (struct
         in
         let* runtest_alias =
           match mode with
-          | Native | Best | Byte -> Memo.Build.return Alias.Name.runtest
+          | Native | Best | Byte -> Memo.return Alias.Name.runtest
           | Javascript -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc)
@@ -244,7 +244,7 @@ include Sub_system.Register_end_point (struct
                Action.run (Ok exe) flags
              | Some runner -> (
                let* prog =
-                 Action_builder.memo_build
+                 Action_builder.of_memo
                    (Super_context.resolve_program ~dir sctx ~loc:(Some loc)
                       runner)
                and* flags = flags in
@@ -268,7 +268,7 @@ include Sub_system.Register_end_point (struct
                             ~suffix:".corrected")))))
 
   let gen_rules c ~(info : Info.t) ~backends =
-    let open Memo.Build.O in
+    let open Memo.O in
     let { dir; Sub_system.Library_compilation_context.super_context = sctx; _ }
         =
       c

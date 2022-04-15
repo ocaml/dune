@@ -76,7 +76,7 @@ module Stdlib = struct
   let map t ~f = { t with modules = Module_name.Map.map t.modules ~f }
 
   let traverse t ~f =
-    let open Memo.Build.O in
+    let open Memo.O in
     let+ modules =
       Module_name.Map_traversals.parallel_map t.modules ~f:(fun _ -> f)
     in
@@ -671,8 +671,8 @@ let rec fold_user_written t ~f ~init =
   | Impl { impl; vlib = _ } -> fold_user_written impl ~f ~init
 
 let rec map_user_written t ~f =
-  let f m = if is_user_written m then f m else Memo.Build.return m in
-  let open Memo.Build.O in
+  let f m = if is_user_written m then f m else Memo.return m in
+  let open Memo.O in
   match t with
   | Singleton m ->
     let+ res = f m in
@@ -741,10 +741,7 @@ let rec obj_map : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
           assert false)
 
 let obj_map_build :
-      'a.
-         t
-      -> f:(Sourced_module.t -> 'a Memo.Build.t)
-      -> 'a Module.Obj_map.t Memo.Build.t =
+      'a. t -> f:(Sourced_module.t -> 'a Memo.t) -> 'a Module.Obj_map.t Memo.t =
  fun t ~f ->
   Module.Obj_map_traversals.parallel_map (obj_map t ~f) ~f:(fun _ x -> x)
 

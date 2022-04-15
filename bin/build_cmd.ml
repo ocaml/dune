@@ -40,7 +40,7 @@ let run_build_system ~common ~request =
       Cached_digest.invalidate_cached_timestamps ();
       let* setup = Import.Main.setup () in
       let request =
-        Action_builder.bind (Action_builder.memo_build setup) ~f:(fun setup ->
+        Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup ->
             request setup)
       in
       (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
@@ -48,7 +48,7 @@ let run_build_system ~common ~request =
       (* This top-level node is used for traversing the whole Memo graph. *)
       let toplevel_cell, toplevel =
         Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
-            let open Memo.Build.O in
+            let open Memo.O in
             let+ (), (_ : Dep.Fact.t Dep.Map.t) =
               Action_builder.run request Eager
             in

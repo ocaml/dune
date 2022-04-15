@@ -42,11 +42,11 @@ let to_result x = x
 
 let of_error x = Error x
 
-let error_to_memo_build { stack_frames; exn } =
-  let open Memo.Build.O in
+let error_to_memo { stack_frames; exn } =
+  let open Memo.O in
   let rec loop = function
     | [] ->
-      let+ () = Memo.Build.return () in
+      let+ () = Memo.return () in
       raise exn
     | x :: rest ->
       Memo.push_stack_frame
@@ -55,13 +55,13 @@ let error_to_memo_build { stack_frames; exn } =
   in
   loop stack_frames
 
-let read_memo_build = function
-  | Ok x -> Memo.Build.return x
-  | Error err -> error_to_memo_build err
+let read_memo = function
+  | Ok x -> Memo.return x
+  | Error err -> error_to_memo err
 
 let read = function
   | Ok x -> Action_builder.return x
-  | Error err -> Action_builder.memo_build (error_to_memo_build err)
+  | Error err -> Action_builder.of_memo (error_to_memo err)
 
 let args t =
   match t with
@@ -105,19 +105,19 @@ module Option = struct
     | Some x -> f x
 end
 
-module Build = struct
-  open Memo.Build.O
+module Memo = struct
+  open Memo.O
 
   module T = struct
-    type nonrec 'a t = 'a t Memo.Build.t
+    type nonrec 'a t = 'a t Memo.t
 
-    let return x = Memo.Build.return (Ok x)
+    let return x = Memo.return (Ok x)
 
     let bind t ~f =
       let* t = t in
       match t with
       | Ok s -> f s
-      | Error e -> Memo.Build.return (Error e)
+      | Error e -> Memo.return (Error e)
   end
 
   module M = struct
@@ -132,13 +132,13 @@ module Build = struct
     let+ t = Memo.push_stack_frame ~human_readable_description f in
     push_stack_frame ~human_readable_description t
 
-  let lift t = Memo.Build.return t
+  let lift t = Memo.return t
 
-  let lift_memo t = Memo.Build.map t ~f:(fun x -> Ok x)
+  let lift_memo t = Memo.map t ~f:(fun x -> Ok x)
 
-  let is_ok t = Memo.Build.map ~f:is_ok t
+  let is_ok t = Memo.map ~f:is_ok t
 
-  let is_error t = Memo.Build.map ~f:is_error t
+  let is_error t = Memo.map ~f:is_error t
 
   module Option = struct
     let iter t ~f : unit t =
@@ -149,18 +149,18 @@ module Build = struct
 
   let all = List.map ~f:Fun.id
 
-  let read_memo_build t =
+  let read_memo t =
     let* t = t in
-    read_memo_build t
+    read_memo t
 
   let read (type a) (t : a t) : a Action_builder.t =
-    Action_builder.memo_build (read_memo_build t)
+    Action_builder.of_memo (read_memo t)
 
-  let fail s = Memo.Build.return (fail s)
+  let fail s = Memo.return (fail s)
 
   let args s = Command.Args.Dyn (read s)
 
-  let of_result s = Memo.Build.return (of_result s)
+  let of_result s = Memo.return (of_result s)
 
-  let peek t = Memo.Build.map t ~f:(Result.map_error ~f:ignore)
+  let peek t = Memo.map t ~f:(Result.map_error ~f:ignore)
 end

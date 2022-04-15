@@ -3,7 +3,7 @@ open! Dune_engine.Import
 open! Stdune
 open Dune_file
 module SC = Super_context
-open Memo.Build.O
+open Memo.O
 
 module Alias_rules = struct
   let add sctx ~alias ~loc build =
@@ -53,9 +53,7 @@ let rule_kind ~(rule : Rule.t) ~(action : _ Action_builder.With_targets.t) =
     | Some target -> Alias_with_targets (alias, target))
 
 let interpret_and_add_locks ~expander locks action =
-  let+ locks =
-    Memo.Build.List.map locks ~f:(Expander.No_deps.expand_path expander)
-  in
+  let+ locks = Memo.List.map locks ~f:(Expander.No_deps.expand_path expander) in
   match locks with
   | [] -> action
   | _ ->
@@ -72,7 +70,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   Expander.eval_blang expander rule.enabled_if >>= function
   | false -> (
     match rule.alias with
-    | None -> Memo.Build.return None
+    | None -> Memo.return None
     | Some name ->
       let alias = Alias.make ~dir name in
       let+ () = Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) in
@@ -80,10 +78,10 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   | true -> (
     let* targets =
       match rule.targets with
-      | Infer -> Memo.Build.return Targets_spec.Infer
+      | Infer -> Memo.return Targets_spec.Infer
       | Static { targets; multiplicity } ->
         let+ targets =
-          Memo.Build.List.concat_map targets ~f:(fun (target, kind) ->
+          Memo.List.concat_map targets ~f:(fun (target, kind) ->
               let error_loc = String_with_vars.loc target in
               (match multiplicity with
               | One ->
@@ -168,7 +166,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   in
   let* exists =
     match Path.as_in_source_tree src_in_src with
-    | None -> Memo.Build.return (Path.exists src_in_src)
+    | None -> Memo.return (Path.exists src_in_src)
     | Some src_in_src -> Source_tree.dir_exists src_in_src
   in
   if not exists then
@@ -193,9 +191,9 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   in
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
      add the corresponding rules, and then to convert the files to [targets]. To
-     do only one traversal we need [Memo.Build.parallel_map_set]. *)
+     do only one traversal we need [Memo.parallel_map_set]. *)
   let* () =
-    Memo.Build.parallel_iter_set
+    Memo.parallel_iter_set
       (module Path.Set)
       files
       ~f:(fun file_src ->
@@ -215,7 +213,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         Path.build file_dst)
   in
   let+ () =
-    Memo.Build.Option.iter def.alias ~f:(fun alias ->
+    Memo.Option.iter def.alias ~f:(fun alias ->
         let alias = Alias.make alias ~dir in
         Rules.Produce.Alias.add_deps alias (Action_builder.path_set targets))
   in
@@ -224,7 +222,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   Expander.eval_blang expander def.enabled_if >>= function
   | true -> copy_files sctx ~dir ~expander ~src_dir def
-  | false -> Memo.Build.return Path.Set.empty
+  | false -> Memo.return Path.Set.empty
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in

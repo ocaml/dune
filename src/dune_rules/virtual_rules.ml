@@ -45,10 +45,10 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     let dst = Obj_dir.Module.cm_file_exn impl_obj_dir m ~kind in
     copy_to_obj_dir ~src ~dst
   in
-  let open Memo.Build.O in
+  let open Memo.O in
   let copy_objs src =
     copy_obj_file src Cmi
-    >>> Memo.Build.when_
+    >>> Memo.when_
           (Module.visibility src = Public
           && Obj_dir.need_dedicated_public_dir impl_obj_dir)
           (fun () ->
@@ -59,9 +59,9 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
               Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi
             in
             copy_to_obj_dir ~src ~dst)
-    >>> Memo.Build.when_ (Module.has src ~ml_kind:Impl) (fun () ->
-            Memo.Build.when_ byte (fun () -> copy_obj_file src Cmo)
-            >>> Memo.Build.when_ native (fun () ->
+    >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
+            Memo.when_ byte (fun () -> copy_obj_file src Cmo)
+            >>> Memo.when_ native (fun () ->
                     copy_obj_file src Cmx
                     >>>
                     let object_file dir =
@@ -71,13 +71,13 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
                       ~dst:(object_file impl_obj_dir)))
   in
   let vlib_modules = Vimpl.vlib_modules vimpl in
-  Modules.fold_no_vlib vlib_modules ~init:(Memo.Build.return ())
-    ~f:(fun m acc -> acc >>> copy_objs m)
+  Modules.fold_no_vlib vlib_modules ~init:(Memo.return ()) ~f:(fun m acc ->
+      acc >>> copy_objs m)
 
 let impl sctx ~(lib : Dune_file.Library.t) ~scope =
-  let open Memo.Build.O in
+  let open Memo.O in
   match lib.implements with
-  | None -> Memo.Build.return None
+  | None -> Memo.return None
   | Some (loc, implements) -> (
     Lib.DB.find (Scope.libs scope) implements >>= function
     | None ->
@@ -101,7 +101,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
         let foreign_objects = Lib_info.foreign_objects info in
         match (virtual_, foreign_objects) with
         | External _, Local | Local, External _ -> assert false
-        | External modules, External fa -> Memo.Build.return (modules, fa)
+        | External modules, External fa -> Memo.return (modules, fa)
         | Local, Local ->
           let name = Lib.name vlib in
           let vlib = Lib.Local.of_lib_exn vlib in
@@ -111,7 +111,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             Dir_contents.get sctx ~dir
           in
           let* preprocess =
-            Resolve.Build.read_memo_build
+            Resolve.Memo.read_memo
               (Preprocess.Per_module.with_instrumentation
                  lib.buildable.preprocess
                  ~instrumentation_backend:
@@ -124,7 +124,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             Dir_contents.ocaml dir_contents
             >>| Ml_sources.modules ~for_:(Library name)
             >>= Modules.map_user_written ~f:(fun m ->
-                    Memo.Build.return (Pp_spec.pped_module pp_spec m))
+                    Memo.return (Pp_spec.pped_module pp_spec m))
           in
           let+ foreign_objects =
             let ext_obj = (Super_context.context sctx).lib_config.ext_obj in

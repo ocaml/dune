@@ -80,12 +80,10 @@ module Deps = struct
       | File f -> Right (to_path ~dir f))
 
   let to_dep_set ~dir t_list =
-    let open Memo.Build.O in
+    let open Memo.O in
     let dirs, files = dirs_and_files ~dir t_list in
     let dep_set = Dep.Set.of_files files in
-    let+ l =
-      Memo.Build.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir)
-    in
+    let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
     List.fold_left l ~init:dep_set ~f:Dep.Set.union
 end
 
@@ -193,7 +191,7 @@ let () =
 (** Returns the list of files (in _build) to be passed to mdx for the given
     stanza and context *)
 let files_to_mdx t ~sctx ~dir =
-  let open Memo.Build.O in
+  let open Memo.O in
   let src_dir = Path.Build.drop_build_context_exn dir in
   let+ src_dir_files =
     Source_tree.files_of src_dir >>| Path.Source.Set.to_list
@@ -216,7 +214,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
   let mdx_dir = Path.Build.relative dir ".mdx" in
   let files = Files.from_source_file ~mdx_dir src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
-  let open Memo.Build.O in
+  let open Memo.O in
   let* () =
     Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
   and* () =
@@ -225,7 +223,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
       let open Action_builder.With_targets.O in
       let mdx_input_dependencies =
         Action_builder.bind (Deps.read files) ~f:(fun dep_set ->
-            Action_builder.memo_build (Deps.to_dep_set dep_set ~dir))
+            Action_builder.of_memo (Deps.to_dep_set dep_set ~dir))
       in
       let dyn_deps =
         Action_builder.map mdx_input_dependencies ~f:(fun d -> ((), d))
@@ -277,14 +275,14 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
   let file = Path.Build.relative dir "mdx_gen.ml-gen" in
   (* Libs from the libraries field should have their include directories sent to
      mdx *)
-  let open Resolve.Build.O in
+  let open Resolve.Memo.O in
   let directory_args =
     let+ libs_to_include =
-      Resolve.Build.List.filter_map t.libraries ~f:(function
+      Resolve.Memo.List.filter_map t.libraries ~f:(function
         | Direct lib | Re_export lib ->
           let+ lib = Lib.DB.resolve (Scope.libs scope) lib in
           Some lib
-        | _ -> Resolve.Build.return None)
+        | _ -> Resolve.Memo.return None)
     in
     let mode = Context.best_mode (Super_context.context sctx) in
     let libs_include_paths = Lib.L.include_paths libs_to_include mode in
@@ -301,9 +299,9 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
   (* We call mdx to generate the testing executable source *)
   let action =
     Command.run ~dir:(Path.build dir) mdx_prog ~stdout_to:file
-      [ A "dune-gen"; prelude_args; Resolve.Build.args directory_args ]
+      [ A "dune-gen"; prelude_args; Resolve.Memo.args directory_args ]
   in
-  let open Memo.Build.O in
+  let open Memo.O in
   let* () = Super_context.add_rule sctx ~loc ~dir action in
   (* We build the generated executable linking in the libs from the libraries
      field *)
@@ -336,7 +334,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
 
 (** Generates the rules for a given mdx stanza *)
 let gen_rules t ~sctx ~dir ~scope ~expander =
-  let open Memo.Build.O in
+  let open Memo.O in
   let register_rules () =
     let* files_to_mdx = files_to_mdx t ~sctx ~dir
     and* mdx_prog =
@@ -345,11 +343,11 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
     in
     let* mdx_prog_gen =
       if Dune_lang.Syntax.Version.Infix.(t.version >= (0, 2)) then
-        Memo.Build.Option.map (Some t)
+        Memo.Option.map (Some t)
           ~f:(mdx_prog_gen ~sctx ~dir ~scope ~expander ~mdx_prog)
-      else Memo.Build.return None
+      else Memo.return None
     in
-    Memo.Build.parallel_iter files_to_mdx
+    Memo.parallel_iter files_to_mdx
       ~f:
         (gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog
            ~mdx_prog_gen)
@@ -361,4 +359,4 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
     | Some only, Some stanza_package ->
       Package.Name.Map.mem only (Package.name stanza_package)
   in
-  Memo.Build.when_ do_it register_rules
+  Memo.when_ do_it register_rules

@@ -44,7 +44,7 @@ type hardcoded_ocaml_path =
   | Relocatable of Path.t
 
 type conf =
-  { get_vcs : Path.Source.t -> Vcs.t option Memo.Build.t
+  { get_vcs : Path.Source.t -> Vcs.t option Memo.t
   ; get_location : Section.t -> Package.Name.t -> Path.t
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
@@ -96,7 +96,7 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~prefix ~libdir
   { get_location; get_vcs; get_config_path; hardcoded_ocaml_path }
 
 let conf_dummy =
-  { get_vcs = (fun _ -> Memo.Build.return None)
+  { get_vcs = (fun _ -> Memo.return None)
   ; get_location = (fun _ _ -> Path.root)
   ; get_config_path = (fun _ -> None)
   ; hardcoded_ocaml_path = Hardcoded []
@@ -129,10 +129,10 @@ let eval t ~conf =
   | Repeat (n, s) ->
     Fiber.return (Array.make n s |> Array.to_list |> String.concat ~sep:"")
   | Vcs_describe p ->
-    Memo.Build.run
-      (let open Memo.Build.O in
+    Memo.run
+      (let open Memo.O in
       conf.get_vcs p >>= function
-      | None -> Memo.Build.return ""
+      | None -> Memo.return ""
       | Some vcs ->
         let+ res = Vcs.describe vcs in
         Option.value res ~default:"")

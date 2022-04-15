@@ -2,9 +2,9 @@ open! Dune_engine
 open Stdune
 
 let gen_select_rules t ~dir compile_info =
-  let open Memo.Build.O in
-  Resolve.Build.read_memo_build (Lib.Compile.resolved_selects compile_info)
-  >>= Memo.Build.parallel_iter ~f:(fun rs ->
+  let open Memo.O in
+  Resolve.Memo.read_memo (Lib.Compile.resolved_selects compile_info)
+  >>= Memo.parallel_iter ~f:(fun rs ->
           let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
           let dst = Path.Build.relative dir dst_fn in
           Super_context.add_rule t ~dir

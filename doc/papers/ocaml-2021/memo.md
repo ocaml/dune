@@ -29,33 +29,33 @@ the project's file tree, re-parsing all build specification files, and
 re-generating all build rules from scratch every time, Dune uses an incremental
 computation library called Memo. Below we briefly introduce the Memo's API.
 
-Memo's `Build` monad is implemented on top of the *concurrency monad* `Fiber`.
+Memo's `Memo` monad is implemented on top of the *concurrency monad* `Fiber`.
 Dune uses `Fiber` to speed up builds by executing external commands in parallel,
 e.g., running multiple instances of `ocamlopt` to compile independent source
-files. To inject a *fiber* into the `Build` monad, and to extract it back, one
+files. To inject a *fiber* into the `Memo` monad, and to extract it back, one
 can use the following pair of functions:
 
 ```ocaml
-  val of_reproducible_fiber : 'a Fiber.t -> 'a Build.t
-  val run : 'a Build.t -> 'a Fiber.t
+  val of_reproducible_fiber : 'a Fiber.t -> 'a Memo.t
+  val run : 'a Memo.t -> 'a Fiber.t
 ```
 
-More interestingly, functions in the `Build` monad can be memoized and cached
+More interestingly, functions in the `Memo` monad can be memoized and cached
 between different build runs:
 
 ```ocaml
-  val create : ('i -> 'o Build.t) -> ('i, 'o) t (* A few arguments omitted for simplicity *)
-  val exec : ('i, 'o) t -> 'i -> 'o Build.t
+  val create : ('i -> 'o Memo.t) -> ('i, 'o) Memo.Table.t (* A few arguments omitted for simplicity *)
+  val exec : ('i, 'o) Memo.Table.t -> 'i -> 'o Memo.t
 ```
 
-Here `t` is a memoization table that stores the input/output mapping computed in
-the current build run. Outputs are stored alongside their *dependencies*, which
-are automatically captured by Memo when memoized functions call one another.
+Here `Memo.Table.t` is a memoization table that stores the input/output mapping
+computed in the current build run. Outputs are stored alongside their *dependencies*,
+which are automatically captured by Memo when memoized functions call one another.
 Finally, Memo provides a way to *invalidate* a specific input/output pair, or a
 *cell*, via the following API:
 
 ```ocaml
-  val cell : ('i, 'o) t -> 'i -> ('i, 'o) Cell.t
+  val cell : ('i, 'o) Memo.Table.t -> 'i -> ('i, 'o) Cell.t
   val invalidate : ('i, 'o) Cell.t -> unit
   val restart_current_run : unit -> unit
 ```

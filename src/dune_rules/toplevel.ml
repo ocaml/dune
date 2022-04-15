@@ -25,7 +25,7 @@ module Source = struct
   let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
 
   let modules t pp =
-    let open Memo.Build.O in
+    let open Memo.O in
     main_module t |> Pp_spec.pp_module pp >>| Modules.singleton_exe
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }
@@ -98,7 +98,7 @@ let setup_module_rules t =
   let main_ml =
     let open Action_builder.O in
     Action_builder.write_file_dyn path
-      (let* libs = Resolve.Build.read requires_compile in
+      (let* libs = Resolve.Memo.read requires_compile in
        let include_dirs =
          Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
        in
@@ -110,7 +110,7 @@ let setup_module_rules t =
   Super_context.add_rule sctx ~dir main_ml
 
 let setup_rules_and_return_exe_path t =
-  let open Memo.Build.O in
+  let open Memo.O in
   let linkage = Exe.Linkage.custom (Compilation_context.context t.cctx) in
   let program = Source.program t.source in
   let* () =
@@ -123,7 +123,7 @@ let setup_rules_and_return_exe_path t =
   let+ () = setup_module_rules t in
   Exe.exe_path t.cctx ~program ~linkage
 
-let setup_rules t = Memo.Build.map (setup_rules_and_return_exe_path t) ~f:ignore
+let setup_rules t = Memo.map (setup_rules_and_return_exe_path t) ~f:ignore
 
 let print_toplevel_init_file ~include_paths ~files_to_load =
   let includes = Path.Set.to_list include_paths in
@@ -134,7 +134,7 @@ let print_toplevel_init_file ~include_paths ~files_to_load =
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
-    let open Memo.Build.O in
+    let open Memo.O in
     let source = Source.of_stanza ~dir ~toplevel in
     let* expander = Super_context.expander sctx ~dir in
     let scope = Super_context.find_scope_by_dir sctx dir in

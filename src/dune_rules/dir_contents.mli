@@ -21,20 +21,20 @@ val dir : t -> Path.Build.t
 val text_files : t -> String.Set.t
 
 (** C/C++ sources *)
-val foreign_sources : t -> Foreign_sources.t Memo.Build.t
+val foreign_sources : t -> Foreign_sources.t Memo.t
 
-val ocaml : t -> Ml_sources.t Memo.Build.t
+val ocaml : t -> Ml_sources.t Memo.t
 
 (** Artifacts defined in this directory *)
-val artifacts : t -> Ml_sources.Artifacts.t Memo.Build.t
+val artifacts : t -> Ml_sources.Artifacts.t Memo.t
 
 (** All mld files attached to this documentation stanza *)
-val mlds : t -> Dune_file.Documentation.t -> Path.Build.t list Memo.Build.t
+val mlds : t -> Dune_file.Documentation.t -> Path.Build.t list Memo.t
 
-val coq : t -> Coq_sources.t Memo.Build.t
+val coq : t -> Coq_sources.t Memo.t
 
 (** Get the directory contents of the given directory. *)
-val get : Super_context.t -> dir:Path.Build.t -> t Memo.Build.t
+val get : Super_context.t -> dir:Path.Build.t -> t Memo.t
 
 (** All directories in this group if [t] is a group root or just [t] if it is
     not part of a group. *)
@@ -58,7 +58,7 @@ type triage =
 
     However, if the directory is part of a group, this function simply returns
     the root of the group. *)
-val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.Build.t
+val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.t
 
 (** Add expansion that depend on OCaml artifacts/sources.
 

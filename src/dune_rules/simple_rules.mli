@@ -11,13 +11,10 @@ module Alias_rules : sig
     -> alias:Alias.t
     -> loc:Loc.t option
     -> Action.Full.t Action_builder.t
-    -> unit Memo.Build.t
+    -> unit Memo.t
 
   val add_empty :
-       Super_context.t
-    -> loc:Stdune.Loc.t option
-    -> alias:Alias.t
-    -> unit Memo.Build.t
+    Super_context.t -> loc:Stdune.Loc.t option -> alias:Alias.t -> unit Memo.t
 end
 
 (** Interpret a [(rule ...)] stanza and return the targets it produces, if any. *)
@@ -27,7 +24,7 @@ val user_rule :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Rule.t
-  -> Targets.Validated.t option Memo.Build.t
+  -> Targets.Validated.t option Memo.t
 
 (** Interpret a [(copy_files ...)] stanza and return the targets it produces. *)
 val copy_files :
@@ -36,7 +33,7 @@ val copy_files :
   -> expander:Expander.t
   -> src_dir:Path.Source.t
   -> Copy_files.t
-  -> Path.Set.t Memo.Build.t
+  -> Path.Set.t Memo.t
 
 (** Interpret an [(alias ...)] stanza. *)
 val alias :
@@ -45,4 +42,4 @@ val alias :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> Alias_conf.t
-  -> unit Memo.Build.t
+  -> unit Memo.t

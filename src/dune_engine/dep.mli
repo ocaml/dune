@@ -26,8 +26,7 @@ module Map : sig
 
   val has_universe : _ t -> bool
 
-  val parallel_map :
-    'a t -> f:(dep -> 'a -> 'b Memo.Build.t) -> 'b t Memo.Build.t
+  val parallel_map : 'a t -> f:(dep -> 'a -> 'b Memo.t) -> 'b t Memo.t
 end
 
 module Fact : sig
@@ -118,14 +117,14 @@ module Set : sig
       Dependency on a source_tree requires special care for empty directory, so
       you should use this function rather than manually traverse the source
       tree. *)
-  val source_tree : Path.t -> t Memo.Build.t
+  val source_tree : Path.t -> t Memo.t
 
   (** Same as [source_tree] but also return the set of files as a set. Because
       of the special care for empty directories, the set of dependencies
       returned contains dependencies other than [File]. So extracting the set of
       files from the dependency set is a bit awkward. This is why this function
       exist. *)
-  val source_tree_with_file_set : Path.t -> (t * Path.Set.t) Memo.Build.t
+  val source_tree_with_file_set : Path.t -> (t * Path.Set.t) Memo.t
 
   val of_files : Path.t list -> t
 

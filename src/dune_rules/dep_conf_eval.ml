@@ -12,7 +12,7 @@ module Source_tree_map_reduce =
 
 let collect_source_files_recursively dir ~f =
   let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-  Action_builder.memo_build (Source_tree.find_dir dir) >>= function
+  Action_builder.of_memo (Source_tree.find_dir dir) >>= function
   | None -> Action_builder.return Path.Set.empty
   | Some dir ->
     Source_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
@@ -20,12 +20,12 @@ let collect_source_files_recursively dir ~f =
         f (Path.append_source prefix_with (Source_tree.Dir.path dir)))
 
 type dep_evaluation_result =
-  | Simple of Path.t list Memo.Build.t
+  | Simple of Path.t list Memo.t
   | Other of Path.t list Action_builder.t
 
 let to_action_builder = function
   | Simple paths ->
-    let* paths = Action_builder.memo_build paths in
+    let* paths = Action_builder.of_memo paths in
     let+ () = Action_builder.all_unit (List.map ~f:Action_builder.path paths) in
     paths
   | Other x -> x
@@ -34,7 +34,7 @@ let dep_on_alias_rec alias ~loc =
   let ctx_name, src_dir =
     Path.Build.extract_build_context_exn (Alias.dir alias)
   in
-  Action_builder.memo_build (Source_tree.find_dir src_dir) >>= function
+  Action_builder.of_memo (Source_tree.find_dir src_dir) >>= function
   | None ->
     Action_builder.fail
       { fail =
@@ -153,7 +153,7 @@ let rec dep expander = function
        let+ () =
          let pkg = Package.Name.of_string pkg in
          let context = Expander.context expander in
-         Action_builder.memo_build (Expander.find_package expander pkg)
+         Action_builder.of_memo (Expander.find_package expander pkg)
          >>= function
          | Some (Local pkg) ->
            Action_builder.alias
@@ -226,8 +226,8 @@ and named_paths_builder ~expander l =
                 | Other _ -> None))
           with
           | Some x ->
-            let open Memo.Build.O in
-            let x = Memo.lazy_ (fun () -> Memo.Build.all x) in
+            let open Memo.O in
+            let x = Memo.lazy_ (fun () -> Memo.all x) in
             let bindings =
               Pform.Map.set bindings (Var (User_var name))
                 (Expander.Deps.Without
@@ -236,7 +236,7 @@ and named_paths_builder ~expander l =
             in
             let x =
               let open Action_builder.O in
-              let* x = Action_builder.memo_build (Memo.Lazy.force x) in
+              let* x = Action_builder.of_memo (Memo.Lazy.force x) in
               let x = List.concat x in
               let+ () = Action_builder.paths x in
               x

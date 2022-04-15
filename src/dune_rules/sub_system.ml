@@ -2,7 +2,7 @@ open! Dune_engine
 open! Stdune
 open! Import
 include Sub_system_intf
-open Memo.Build.O
+open Memo.O
 
 module Register_backend (M : Backend) = struct
   include Sub_system_info.Register (M.Info)
@@ -16,7 +16,7 @@ module Register_backend (M : Backend) = struct
   end)
 
   let top_closure l ~deps =
-    let open Resolve.Build.O in
+    let open Resolve.Memo.O in
     Lib.L.top_closure l ~key:M.lib ~deps >>| function
     | Ok x -> x
     | Error _ ->
@@ -33,8 +33,8 @@ module Register_backend (M : Backend) = struct
   end)
 
   let resolve db (loc, name) =
-    let open Memo.Build.O in
-    Resolve.Build.bind
+    let open Memo.O in
+    Resolve.Memo.bind
       (Lib.DB.resolve db (loc, name))
       ~f:(fun lib ->
         get lib >>| function
@@ -77,31 +77,29 @@ module Register_backend (M : Backend) = struct
   open Selection_error
 
   let written_by_user_or_scan ~written_by_user ~to_scan =
-    let open Memo.Build.O in
+    let open Memo.O in
     (match written_by_user with
-    | Some l -> Memo.Build.return l
-    | None ->
-      Memo.Build.parallel_map to_scan ~f:get >>| List.filter_map ~f:Fun.id)
+    | Some l -> Memo.return l
+    | None -> Memo.parallel_map to_scan ~f:get >>| List.filter_map ~f:Fun.id)
     >>| function
     | [] -> Error No_backend_found
     | l -> Ok l
 
   let select_extensible_backends ?written_by_user ~extends to_scan =
-    Memo.Build.bind (written_by_user_or_scan ~written_by_user ~to_scan)
-      ~f:(function
-      | Error _ as err -> Resolve.Build.return err
+    Memo.bind (written_by_user_or_scan ~written_by_user ~to_scan) ~f:(function
+      | Error _ as err -> Resolve.Memo.return err
       | Ok backends ->
-        let open Resolve.Build.O in
+        let open Resolve.Memo.O in
         let* backends =
-          top_closure backends ~deps:(fun s -> Memo.Build.return (extends s))
+          top_closure backends ~deps:(fun s -> Memo.return (extends s))
         in
         let+ roots =
           let all = Set.of_list backends in
           let rec loop acc backends =
             match backends with
-            | [] -> Resolve.Build.return (Set.to_list acc)
+            | [] -> Resolve.Memo.return (Set.to_list acc)
             | t :: rest ->
-              let* x = Memo.Build.return (extends t) in
+              let* x = Memo.return (extends t) in
               let acc = Set.diff acc (Set.of_list x) in
               loop acc rest
           in
@@ -111,8 +109,7 @@ module Register_backend (M : Backend) = struct
         else Error (Too_many_backends roots))
 
   let select_replaceable_backend ?written_by_user ~replaces to_scan =
-    Memo.Build.map (written_by_user_or_scan ~written_by_user ~to_scan)
-      ~f:(function
+    Memo.map (written_by_user_or_scan ~written_by_user ~to_scan) ~f:(function
       | Error _ as err -> Resolve.return err
       | Ok backends -> (
         let open Resolve.O in
@@ -125,25 +122,23 @@ module Register_backend (M : Backend) = struct
         | l -> Error (Too_many_backends l)))
 end
 
-type Lib.Sub_system.t +=
-  | Gen of (Library_compilation_context.t -> unit Memo.Build.t)
+type Lib.Sub_system.t += Gen of (Library_compilation_context.t -> unit Memo.t)
 
 module Register_end_point (M : End_point) = struct
   include Sub_system_info.Register (M.Info)
 
   let gen info (c : Library_compilation_context.t) =
-    let open Memo.Build.O in
+    let open Memo.O in
     let* backends =
-      let ( let& ) t f = Resolve.Build.bind t ~f in
+      let ( let& ) t f = Resolve.Memo.bind t ~f in
       let& deps = Lib.Compile.direct_requires c.compile_info in
       let& pps = Lib.Compile.pps c.compile_info in
       let& written_by_user =
         match M.Info.backends info with
-        | None -> Memo.Build.return (Resolve.return None)
+        | None -> Memo.return (Resolve.return None)
         | Some l ->
           let+ l =
-            Memo.Build.parallel_map l
-              ~f:(M.Backend.resolve (Scope.libs c.scope))
+            Memo.parallel_map l ~f:(M.Backend.resolve (Scope.libs c.scope))
           in
           Resolve.map (Resolve.List.map l ~f:Fun.id) ~f:Option.some
       in
@@ -151,7 +146,7 @@ module Register_end_point (M : End_point) = struct
         M.Backend.select_extensible_backends ?written_by_user
           ~extends:M.Backend.extends (deps @ pps)
       in
-      Memo.Build.return
+      Memo.return
         (M.Backend.Selection_error.to_lib_resolve ~loc:(M.Info.loc info)
            backends)
     in
@@ -164,11 +159,11 @@ module Register_end_point (M : End_point) = struct
   include Lib.Sub_system.Register (struct
     module Info = M.Info
 
-    type t = Library_compilation_context.t -> unit Memo.Build.t
+    type t = Library_compilation_context.t -> unit Memo.t
 
     type Lib.Sub_system.t += T = Gen
 
-    let instantiate ~resolve:_ ~get:_ _id info = Memo.Build.return (gen info)
+    let instantiate ~resolve:_ ~get:_ _id info = Memo.return (gen info)
 
     let public_info = None
   end)
@@ -176,6 +171,6 @@ end
 
 let gen_rules (c : Library_compilation_context.t) =
   let* l = Lib.Compile.sub_systems c.compile_info in
-  Memo.Build.parallel_iter l ~f:(function
+  Memo.parallel_iter l ~f:(function
     | Gen gen -> gen c
-    | _ -> Memo.Build.return ())
+    | _ -> Memo.return ())

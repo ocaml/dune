@@ -260,7 +260,7 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     ; ("PKG_HOMEPAGE", make_value "homepage" @@ Package.Info.homepage info)
     ; ("PKG_ISSUES", make_value "bug-reports" @@ Package.Info.bug_reports info)
     ; ("PKG_DOC", make_value "doc" @@ Package.Info.documentation info)
-    ; ("PKG_LICENSE", make_value "license" @@ Package.Info.license info)
+    ; ("PKG_LICENSE", make_separated "license" ", " @@ Package.Info.license info)
     ; ("PKG_REPO", make_dev_repo_value @@ Package.Info.source info)
     ]
 

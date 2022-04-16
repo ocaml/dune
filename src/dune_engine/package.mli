@@ -111,7 +111,7 @@ module Info : sig
 
   val source : t -> Source_kind.t option
 
-  val license : t -> string option
+  val license : t -> string list option
 
   val authors : t -> string list option
 

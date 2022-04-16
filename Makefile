@@ -22,7 +22,7 @@ js_of_ocaml-compiler \
 menhir \
 "merlin>=3.4.0" \
 ocamlfind \
-ocamlformat.0.21.0 \
+ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
 "odoc>=2.0.1" \
 "ppx_expect>=v0.14" \
 ppx_inline_test \

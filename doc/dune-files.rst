@@ -299,8 +299,9 @@ following field to the ``dune-project`` file:
 Dune uses the following global fields to set the metadata for all packages
 defined in the project:
 
-- ``(license <name>)`` - specifies the license of the project, ideally as an
-  identifier from the `SPDX License List <https://spdx.org/licenses/>`__
+- ``(license <names>)`` - specifies the license of the project, ideally as an
+  identifier from the `SPDX License List <https://spdx.org/licenses/>`__.
+  Multiple licenses may be specified.
 
 - ``(authors <author> ..)`` - authors as inline strings
 

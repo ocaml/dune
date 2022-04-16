@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Allow specifying multiple licenses in project file (#5579, fixes #5574,
+  @liyishuai)
+
 - Match `glob_files` only against files in external directories (#5614, fixes
   #5540, @rgrinberg)
 

@@ -215,7 +215,10 @@ let opam_fields project (package : Package.t) =
     [ ("bug-reports", Package.Info.bug_reports info)
     ; ("homepage", Package.Info.homepage info)
     ; ("doc", Package.Info.documentation info)
-    ; ("license", Package.Info.license info)
+    ; ( "license"
+      , match Package.Info.license info with
+        | Some [ x ] -> Some x
+        | _ -> None )
     ; ("version", package.Package.version)
     ; ( "dev-repo"
       , Option.map ~f:Package.Source_kind.to_string (Package.Info.source info)
@@ -227,6 +230,10 @@ let opam_fields project (package : Package.t) =
   let list_fields =
     [ ("maintainer", Package.Info.maintainers info)
     ; ("authors", Package.Info.authors info)
+    ; ( "license"
+      , match Package.Info.license info with
+        | None | Some [ _ ] -> None
+        | Some l -> Some l )
     ]
     |> List.filter_map ~f:(fun (k, v) ->
            match v with

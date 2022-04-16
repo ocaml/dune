@@ -43,13 +43,17 @@ include Backend.S
 
 (** [print paragraphs] is a short-hand for:
 
-    {[ print_user_message (User_message.make paragraphs) ]} *)
+    {[
+      print_user_message (User_message.make paragraphs)
+    ]} *)
 val print : User_message.Style.t Pp.t list -> unit
 
 (** [printf fmt] is a convenient function for debugging. It formats a string and
     then print it raw followed by a newline. It is the same as:
 
-    {[ print [Pp.verbatim (sprintf fmt ...)] ]}
+    {[
+      print [Pp.verbatim (sprintf fmt ...)]
+    ]}
 
     For properly formatted output you should use [print]. *)
 val printf : ('a, unit, string, unit) format4 -> 'a

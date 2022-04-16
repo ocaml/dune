@@ -20,7 +20,9 @@ val universal : 'w t
 
 (** [trivial b] is such that for all path [p]:
 
-    {[ mem (trivial b) p = b ]}
+    {[
+      mem (trivial b) p = b
+    ]}
 
     i.e. [trivial false] is [empty] and [trivial true] is [universal]. *)
 val trivial : bool -> 'w t

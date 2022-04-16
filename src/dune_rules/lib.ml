@@ -386,7 +386,7 @@ and resolve_result =
   | Hidden of Lib_info.external_ Hidden.t
   | Invalid of exn
   | (* Redirect (None, lib) looks up lib in the same database *)
-      Redirect of
+    Redirect of
       db option * (Loc.t * Lib_name.t)
 
 let lib_config (t : lib) = t.lib_config

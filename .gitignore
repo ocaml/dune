@@ -17,6 +17,6 @@ _perf
 /boot/*.cm*
 dune.exe
 Makefile.dev
-src/dune/setup.ml
+src/dune_rules/setup.ml
 
 .DS_Store

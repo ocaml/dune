@@ -98,7 +98,9 @@ val atom_matching : (string -> 'a option) -> desc:string -> 'a t
 
 (** [keyword s] is a short-hand for
 
-    {[ atom_matching (String.equal s) ~desc:(sprintf "'%s'" s) ]} *)
+    {[
+      atom_matching (String.equal s) ~desc:(sprintf "'%s'" s)
+    ]} *)
 val keyword : string -> unit t
 
 (** Use [before] to parse elements until the keyword is reached. Then use

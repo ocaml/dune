@@ -27,7 +27,7 @@ module Dir_rules : sig
 
            When passing [--force] to Dune, these are exactly the actions that
            will be re-executed. *)
-          Action of
+        Action of
           Rule.Anonymous_action.t Action_builder.t
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]

@@ -258,7 +258,9 @@ val extend_basename : t -> suffix:string -> t
 (** Extract the build context from a path. For instance, representing paths as
     strings:
 
-    {[ extract_build_context "_build/blah/foo/bar" = Some ("blah", "foo/bar") ]}
+    {[
+      extract_build_context "_build/blah/foo/bar" = Some ("blah", "foo/bar")
+    ]}
 
     It doesn't work correctly (doesn't return a sensible source path) for build
     directories that are not build contexts, e.g. "_build/install" and

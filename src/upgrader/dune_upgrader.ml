@@ -76,7 +76,9 @@ module Common = struct
       | List
           ( loc
           , (Atom (_, A "lang") as lang)
-            :: (Atom (_, A "dune") as dune) :: Atom (loc3, A _) :: tll )
+            :: (Atom (_, A "dune") as dune)
+            :: Atom (loc3, A _)
+            :: tll )
         :: tl ->
         List
           (loc, lang :: dune :: Atom (loc3, Dune_lang.Atom.of_string v) :: tll)

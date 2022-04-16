@@ -12,15 +12,15 @@ module T = struct
     | Generated
     | Source_only of Source_tree.Dir.t
     | (* Directory not part of a multi-directory group *)
-        Standalone of
+      Standalone of
         Source_tree.Dir.t * Stanza.t list Dir_with_dune.t
     | (* Directory with [(include_subdirs x)] where [x] is not [no] *)
-        Group_root of
+      Group_root of
         Source_tree.Dir.t
         * (Loc.t * Include_subdirs.qualification)
         * Stanza.t list Dir_with_dune.t
     | (* Sub-directory of a [Group_root _] *)
-        Is_component_of_a_group_but_not_the_root of
+      Is_component_of_a_group_but_not_the_root of
         is_component_of_a_group_but_not_the_root
 end
 

@@ -90,7 +90,9 @@ module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will select
       this language by writing:
 
-      {[ (lang <name> <version>) ]}
+      {[
+        (lang <name> <version>)
+      ]}
 
       as the first line of their [dune-project] file. [stanza_parsers] defines
       what stanzas the user can write in [dune] files. *)
@@ -103,7 +105,9 @@ module Extension : sig
   (** [register id parser] registers a new extension. Users will enable this
       extension by writing:
 
-      {[ (using <name> <version> <args>) ]}
+      {[
+        (using <name> <version> <args>)
+      ]}
 
       in their [dune-project] file. [parser] is used to describe what [<args>]
       might be. *)

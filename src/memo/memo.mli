@@ -1,5 +1,7 @@
 open! Stdune
 
+(* CR-soon amokhov: This causes Merlin to show [Memo.memo] instead of [Memo.t]
+   in inferred type signatures. We should get rid of this alias. *)
 type 'a memo
 
 (** A type of Memo-like modules. *)
@@ -12,6 +14,10 @@ module type S = sig
 end
 
 include S with type 'a t = 'a memo
+
+module Option : Monad.Option with type 'a t := 'a t
+
+module Result : Monad.Result with type 'a t := 'a t
 
 (* CR-someday amokhov: Return the set of exceptions explicitly. *)
 val run : 'a t -> 'a Fiber.t
@@ -52,8 +58,6 @@ val of_reproducible_fiber : 'a Fiber.t -> 'a t
 val of_non_reproducible_fiber : 'a Fiber.t -> 'a t
 
 val of_thunk : (unit -> 'a t) -> 'a t
-
-val return : 'a -> 'a t
 
 (** Combine results of two computations executed in sequence. *)
 val both : 'a t -> 'b t -> ('a * 'b) t
@@ -97,18 +101,6 @@ module Make_map_traversals (Map : Map.S) : sig
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
 [@@inline always]
-
-module Option : sig
-  val iter : 'a option -> f:('a -> unit t) -> unit t
-
-  val map : 'a option -> f:('a -> 'b t) -> 'b option t
-
-  val bind : 'a option -> f:('a -> 'b option t) -> 'b option t
-end
-
-module Result : sig
-  val iter : ('a, _) result -> f:('a -> unit t) -> unit t
-end
 
 (** A table memoizing results of executing a function. *)
 module Table : sig
@@ -225,30 +217,6 @@ module type Input = sig
   include Stdune.Table.Key with type t := t
 end
 
-module Store : sig
-  module type Input = sig
-    type t
-
-    val to_dyn : t -> Dyn.t
-  end
-
-  module type S = sig
-    type key
-
-    type 'a t
-
-    val create : unit -> _ t
-
-    val clear : _ t -> unit
-
-    val set : 'a t -> key -> 'a -> unit
-
-    val find : 'a t -> key -> 'a option
-
-    val iter : 'a t -> f:('a -> unit) -> unit
-  end
-end
-
 (** [create name ~input ?cutoff f] creates a memoized version of the function
     [f : 'i -> 'o t]. The result of [f] for a given input is cached, so that the
     second time [exec t x] is called, the previous result is reused if possible.
@@ -274,6 +242,16 @@ val create :
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
   -> ('i -> 'o t)
   -> ('i, 'o) Table.t
+
+module Store : sig
+  module type Input = sig
+    type t
+
+    val to_dyn : t -> Dyn.t
+  end
+
+  module type S = Store_intf.S
+end
 
 (** Like [create] but accepts a custom [store] for memoization. This is useful
     when there is a custom data structure indexed by keys of type ['i] that is
@@ -401,13 +379,7 @@ module Implicit_output : sig
 
   val forbid : (unit -> 'a memo) -> 'a memo
 
-  module type Implicit_output = sig
-    type t
-
-    val name : string
-
-    val union : t -> t -> t
-  end
+  module type Implicit_output = Implicit_output.Implicit_output
 
   (** Register a new type of implicit output. *)
   val add : (module Implicit_output with type t = 'o) -> 'o t

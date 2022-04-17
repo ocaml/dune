@@ -448,7 +448,9 @@ However, deleting [another-dir] isn't handled correctly.
   Updating path_stat cache for "another-dir": Updated { changed = true }
   Updating path_stat cache for "another-dir/file-7": Skipped
 
-Here is what should have happened:
+If we force a rebuild, Dune belatedly notices that [another-dir/file-7] is now
+unreachable but doesn't complain about the symlink [dir] now being broken. We
+should fix this too.
 
   $ test "echo force > dep"
   ------------------------------------------

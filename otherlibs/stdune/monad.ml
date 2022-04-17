@@ -4,7 +4,11 @@ module type S = Monad_intf.S
 
 module type List = Monad_intf.List
 
-module Make (M : Monad_intf.Basic) = struct
+module type Option = Monad_intf.Option
+
+module type Result = Monad_intf.Result
+
+module Make (M : Basic) = struct
   include M
 
   let map t ~f = bind t ~f:(fun x -> return (f x))
@@ -38,7 +42,7 @@ module Id = Make (struct
   let bind x ~f = f x
 end)
 
-module List (M : Monad_intf.S) = struct
+module List (M : S) = struct
   open M
   open M.O
 
@@ -103,9 +107,26 @@ module List (M : Monad_intf.S) = struct
       if pred then return true else exists xs ~f
 end
 
-module Option (M : Monad_intf.S) = struct
-  let iter a ~f =
-    match a with
+module Option (M : S) = struct
+  let iter option ~f =
+    match option with
     | None -> M.return ()
-    | Some s -> f s
+    | Some a -> f a
+
+  let map option ~f =
+    match option with
+    | None -> M.return None
+    | Some a -> M.map (f a) ~f:Option.some
+
+  let bind option ~f =
+    match option with
+    | None -> M.return None
+    | Some a -> f a
+end
+
+module Result (M : S) = struct
+  let iter result ~f =
+    match result with
+    | Error _ -> M.return ()
+    | Ok a -> f a
 end

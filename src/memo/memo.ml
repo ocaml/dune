@@ -1747,30 +1747,6 @@ module type S = sig
   val of_memo : 'a memo -> 'a t
 end
 
-module Option = struct
-  let iter option ~f =
-    match option with
-    | None -> return ()
-    | Some a -> f a
-
-  let map option ~f =
-    match option with
-    | None -> return None
-    | Some a -> f a >>| Option.some
-
-  let bind option ~f =
-    match option with
-    | None -> return None
-    | Some a -> f a
-end
-
-module Result = struct
-  let iter result ~f =
-    match result with
-    | Error _ -> return ()
-    | Ok a -> f a
-end
-
 module List = struct
   include Monad.List (Fiber)
 
@@ -1778,3 +1754,6 @@ module List = struct
 
   let concat_map l ~f = map l ~f >>| List.concat
 end
+
+module Option = Monad.Option (Fiber)
+module Result = Monad.Result (Fiber)

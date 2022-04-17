@@ -95,17 +95,12 @@ let build_info_code cctx ~libs ~api_version =
      binding [(p, v)], we will generate the following code:
 
      {[ let v = Placeholder "%%DUNE_PLACEHOLDER:...:vcs-describe:...:p%%" ]} *)
-  let placeholders = ref Path.Source.Map.empty in
-  let gen_placeholder_var =
-    let n = ref 0 in
-    fun () ->
-      let s = sprintf "p%d" !n in
-      incr n;
-      s
+  let gen_placeholder_var placeholders =
+    sprintf "p%d" (Path.Source.Map.cardinal placeholders)
   in
-  let placeholder p =
-    Memo.of_memo (Source_tree.nearest_vcs p) >>| function
-    | None -> "None"
+  let placeholder placeholders p =
+    Source_tree.nearest_vcs p >>| function
+    | None -> ("None", placeholders)
     | Some vcs -> (
       let p =
         Option.value
@@ -116,42 +111,45 @@ let build_info_code cctx ~libs ~api_version =
              VCS when performing the actual substitution. *)
           ~default:Path.Source.root
       in
-      match Path.Source.Map.find !placeholders p with
-      | Some var -> var
+      match Path.Source.Map.find placeholders p with
+      | Some var -> (var, placeholders)
       | None ->
-        let var = gen_placeholder_var () in
-        placeholders := Path.Source.Map.set !placeholders p var;
-        var)
+        let var = gen_placeholder_var placeholders in
+        let placeholders = Path.Source.Map.set placeholders p var in
+        (var, placeholders))
   in
-  let version_of_package (p : Package.t) =
+  let version_of_package placeholders (p : Package.t) =
     match p.version with
-    | Some v -> Memo.return (sprintf "Some %S" v)
-    | None -> placeholder (Package.dir p)
+    | Some v -> Memo.return (sprintf "Some %S" v, placeholders)
+    | None -> placeholder placeholders (Package.dir p)
   in
-  let* version =
+  let placeholders = Path.Source.Map.empty in
+  let* version, placeholders =
     match Compilation_context.package cctx with
-    | Some p -> version_of_package p
+    | Some p -> version_of_package placeholders p
     | None ->
       let p = Path.Build.drop_build_context_exn (CC.dir cctx) in
-      placeholder p
+      placeholder placeholders p
   in
-  let* libs =
-    Memo.List.map libs ~f:(fun lib ->
-        let+ v =
+  let+ libs, placeholders =
+    Memo.List.fold_left ~init:([], placeholders) libs
+      ~f:(fun (libs, placeholders) lib ->
+        let+ v, placeholders =
           match Lib_info.version (Lib.info lib) with
-          | Some v -> Memo.return (sprintf "Some %S" v)
+          | Some v -> Memo.return (sprintf "Some %S" v, placeholders)
           | None -> (
             match Lib_info.status (Lib.info lib) with
-            | Installed_private | Installed -> Memo.return "None"
-            | Public (_, p) -> version_of_package p
+            | Installed_private | Installed -> Memo.return ("None", placeholders)
+            | Public (_, p) -> version_of_package placeholders p
             | Private _ ->
               let p =
                 Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
               in
-              placeholder p)
+              placeholder placeholders p)
         in
-        (Lib.name lib, v))
+        ((Lib.name lib, v) :: libs, placeholders))
   in
+  let libs = List.rev libs in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   pr buf "let eval s =";
@@ -169,15 +167,15 @@ let build_info_code cctx ~libs ~api_version =
   pr buf "[@@inline never]";
   pr buf "";
   let fmt_eval : _ format6 = "let %s = eval %S" in
-  Path.Source.Map.iteri !placeholders ~f:(fun path var ->
+  Path.Source.Map.iteri placeholders ~f:(fun path var ->
       pr buf fmt_eval var
         (Artifact_substitution.encode ~min_len:64 (Vcs_describe path)));
-  if not (Path.Source.Map.is_empty !placeholders) then pr buf "";
+  if not (Path.Source.Map.is_empty placeholders) then pr buf "";
   pr buf "let version = %s" version;
   pr buf "";
   prlist buf "statically_linked_libraries" libs ~f:(fun (name, v) ->
       pr buf "%S, %s" (Lib_name.to_string name) v);
-  Memo.return (Buffer.contents buf)
+  Buffer.contents buf
 
 let dune_site_code () =
   let buf = Buffer.create 5000 in

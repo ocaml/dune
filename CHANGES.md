@@ -1,3 +1,9 @@
+3.2.0 (Unreleased)
+-----------------
+
+- Allow to specify `--prefix` via the environment variable
+  `DUNE_INSTALL_PREFIX` (#5589, @vapourismo)
+
 3.1.1 (19/04/2022)
 ------------------
 

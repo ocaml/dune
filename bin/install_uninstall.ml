@@ -390,7 +390,9 @@ let install_uninstall ~what =
       Arg.(
         value
         & opt (some string) None
-        & info [ "prefix" ] ~docv:"PREFIX"
+        & info [ "prefix" ]
+            ~env:(env_var "DUNE_INSTALL_PREFIX")
+            ~docv:"PREFIX"
             ~doc:
               "Directory where files are copied. For instance binaries are \
                copied into $(i,\\$prefix/bin), library files into \

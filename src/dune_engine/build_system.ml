@@ -1133,31 +1133,33 @@ let files_of ~dir =
         | false -> acc)
 
 let package_deps ~packages_of (pkg : Package.t) files =
-  (* CR-someday amokhov: We should get rid of this mutable state. *)
-  let rules_seen = ref Rule.Set.empty in
-  let rec loop (fn : Path.Build.t) =
+  let rec loop rules_seen (fn : Path.Build.t) =
     let* pkgs = packages_of fn in
     if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs pkg.id then
-      loop_deps fn
-    else Memo.return pkgs
-  and loop_deps fn =
+      loop_deps rules_seen fn
+    else Memo.return (pkgs, rules_seen)
+  and loop_deps rules_seen fn =
     Load_rules.get_rule (Path.build fn) >>= function
-    | None -> Memo.return Package.Id.Set.empty
+    | None -> Memo.return (Package.Id.Set.empty, rules_seen)
     | Some rule ->
-      if Rule.Set.mem !rules_seen rule then Memo.return Package.Id.Set.empty
-      else (
-        rules_seen := Rule.Set.add !rules_seen rule;
+      if Rule.Set.mem rules_seen rule then
+        Memo.return (Package.Id.Set.empty, rules_seen)
+      else
+        let rules_seen = Rule.Set.add rules_seen rule in
         let* res = execute_rule rule in
-        loop_files
+        loop_files rules_seen
           (Dep.Facts.paths res.deps |> Path.Map.keys
           |> (* if this file isn't in the build dir, it doesn't belong to any
                 package and it doesn't have dependencies that do *)
-          List.filter_map ~f:Path.as_in_build_dir))
-  and loop_files files =
-    let+ sets = Memo.parallel_map files ~f:loop in
-    List.fold_left sets ~init:Package.Id.Set.empty ~f:Package.Id.Set.union
+          List.filter_map ~f:Path.as_in_build_dir)
+  and loop_files rules_seen files =
+    Memo.List.fold_left ~init:(Package.Id.Set.empty, rules_seen) files
+      ~f:(fun (sets, rules_seen) file ->
+        let+ set, rules_seen = loop rules_seen file in
+        (Package.Id.Set.union set sets, rules_seen))
   in
-  loop_files files
+  let+ packages, _rules_seen = loop_files Rule.Set.empty files in
+  packages
 
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   match exn.exn with

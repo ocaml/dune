@@ -161,6 +161,7 @@ let%expect_test "related error" =
           ; "The implementation foo.ml\n\
             \       does not match the interface .foo.objs/byte/foo.cmi: \n\
             \       Values do not match: val x : bool is not included in val x : int\n\
+            \       The type bool is not compatible with the type int\n\
              "
           ]
         ]

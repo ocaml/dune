@@ -19,10 +19,13 @@ jobs:
         # We don't run tests on all versions of the Windows environment and on
         # 4.02.x and 4.07.x in other environments
         ocaml-compiler:
-          - 4.13.x
+          - 4.14.x
         skip_test:
           - false
         include:
+          - ocaml-compiler: 4.13.x
+            os: ubuntu-latest
+            skip_test: true
           - ocaml-compiler: 4.12.x
             os: ubuntu-latest
             skip_test: true
@@ -102,7 +105,7 @@ jobs:
 
       - name: Test source is well formatted
         run: opam exec -- make fmt
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.ocaml-compiler == '4.13.x' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.ocaml-compiler == '4.14.x' }}
 
       - name: Build configurator
         run: opam install ./dune-configurator.opam

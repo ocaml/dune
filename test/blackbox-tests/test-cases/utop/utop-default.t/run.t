@@ -2,6 +2,7 @@ By default, dune utop tries to make a toplevel for the current directory:
 
   $ echo 'exit 0;;' | dune utop --root lib-in-root . -- -init "" | grep -v 'version'
   Entering directory 'lib-in-root'
+  Enter #help;; for help.
   
   Init file not found: "".
   # 
@@ -11,6 +12,7 @@ Utop will load libs recursively:
 
   $ echo 'exit 0;;' | dune utop --root nothing-in-root . -- -init "" | grep -v 'version'
   Entering directory 'nothing-in-root'
+  Enter #help;; for help.
   
   Init file not found: "".
   # 

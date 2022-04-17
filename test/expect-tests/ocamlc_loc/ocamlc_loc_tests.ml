@@ -95,7 +95,9 @@ end
               \       Values do not match:\n\
               \         val x : float -> float\n\
               \       is not included in\n\
-              \         val x : int -> int"
+              \         val x : int -> int\n\
+              \       The type float -> float is not compatible with the type int -> int\n\
+              \       Type float is not compatible with type int "
           ; severity = Error
           }
     ; related =
@@ -149,7 +151,8 @@ let%expect_test "mli mismatch" =
           { file_excerpt = None
           ; message =
               "The implementation test.ml does not match the interface test.cmi: \n\
-              \       Values do not match: val x : bool is not included in val x : int"
+              \       Values do not match: val x : bool is not included in val x : int\n\
+              \       The type bool is not compatible with the type int"
           ; severity = Error
           }
     ; related =

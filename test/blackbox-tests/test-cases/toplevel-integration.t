@@ -45,3 +45,4 @@ Test toplevel-init-file on a tiny project
                     ^^^^^^^^^^^^^^^^^^
   Error: Unbound value undefined_function
   Command exited with code 1.
+  [125]

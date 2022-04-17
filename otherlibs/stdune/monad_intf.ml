@@ -56,4 +56,14 @@ module type Option = sig
   type 'a t
 
   val iter : 'a option -> f:('a -> unit t) -> unit t
+
+  val map : 'a option -> f:('a -> 'b t) -> 'b option t
+
+  val bind : 'a option -> f:('a -> 'b option t) -> 'b option t
+end
+
+module type Result = sig
+  type 'a t
+
+  val iter : ('a, _) result -> f:('a -> unit t) -> unit t
 end

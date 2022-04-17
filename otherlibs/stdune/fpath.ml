@@ -84,7 +84,7 @@ let rec follow_symlinks path =
     | None -> None
     | Some parent -> (
       let path = Filename.concat parent file in
-      (* Nomalize the result. *)
+      (* Normalize the result. *)
       match follow_symlink path with
       | Ok p -> Some p
       | Error Max_depth_exceeded -> None

@@ -3,8 +3,8 @@ open! Stdune
 open Import
 module Mapper = Action_mapper.Make (Action_dune_lang) (Action_dune_lang)
 
-(* So that we can comfortably use both the [Action_builder.O] and [Memo.BUild.O]
-   monad at the same time *)
+(* So that we can comfortably use both the [Action_builder.O] and [Memo.O]
+   monads at the same time. *)
 let ( let+! ) = Memo.O.( let+ )
 
 let ( let*! ) = Memo.O.( let* )

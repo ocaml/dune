@@ -1,19 +1,22 @@
 open! Stdune
 
-(* CR-soon amokhov: This causes Merlin to show [Memo.memo] instead of [Memo.t]
-   in inferred type signatures. We should get rid of this alias. *)
-type 'a memo
+(** A type of memoized computations that can be recomputed incrementally when
+    their dependencies change. *)
+type 'a t
 
-(** A type of Memo-like modules. *)
+type 'a memo := 'a t
+
+(** A type of Memo-like monads. *)
 module type S = sig
   include Monad.S
 
   module List : Monad.List with type 'a t := 'a t
 
+  (** Inject a value of type ['a Memo.t] into ['a t]. *)
   val of_memo : 'a memo -> 'a t
 end
 
-include S with type 'a t = 'a memo
+include S with type 'a t := 'a t
 
 module Option : Monad.Option with type 'a t := 'a t
 

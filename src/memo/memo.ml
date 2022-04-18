@@ -41,11 +41,7 @@ let when_ x y =
   | true -> y ()
   | false -> return ()
 
-type 'a memo = 'a t
-
 let of_reproducible_fiber = Fun.id
-
-let of_memo = Fun.id
 
 module Allow_cutoff = struct
   type 'o t =
@@ -1740,12 +1736,17 @@ module Run = struct
 end
 
 module type S = sig
+  type 'a memo = 'a t
+
   include Monad.S
 
   module List : Monad.List with type 'a t := 'a t
 
   val of_memo : 'a memo -> 'a t
 end
+with type 'a memo := 'a t
+
+let of_memo = Fun.id
 
 module List = struct
   include Monad.List (Fiber)

@@ -80,11 +80,12 @@ let findlib_init_code ~preds ~libs =
       pr buf "Findlib.record_package Findlib.Record_core %S;;"
         (Lib_name.to_string lib));
   prvariants buf "preds" preds;
-  pr buf "in";
-  pr buf "let preds =";
-  pr buf "  (if Dynlink.is_native then \"native\" else \"byte\") :: preds";
-  pr buf "in";
-  pr buf "Findlib.record_package_predicates preds;;";
+  pr buf
+    {ocaml|in
+let preds =
+  (if Dynlink.is_native then "native" else "byte") :: preds
+in
+Findlib.record_package_predicates preds;;|ocaml};
   Buffer.contents buf
 
 let build_info_code cctx ~libs ~api_version =
@@ -152,20 +153,21 @@ let build_info_code cctx ~libs ~api_version =
   let libs = List.rev libs in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
-  pr buf "let eval s =";
-  pr buf "  let s = Bytes.unsafe_to_string (Bytes.unsafe_of_string s) in";
-  pr buf "  let len = String.length s in";
-  pr buf "  if s.[0] = '=' then";
-  pr buf "    let colon_pos = String.index_from s 1 ':' in";
-  pr buf "    let vlen = int_of_string (String.sub s 1 (colon_pos - 1)) in";
-  pr buf "    (* This [min] is because the value might have been truncated";
-  pr buf "       if it was too large *)";
-  pr buf "    let vlen = min vlen (len - colon_pos - 1) in";
-  pr buf "    Some (String.sub s (colon_pos + 1) vlen)";
-  pr buf "  else";
-  pr buf "    None";
-  pr buf "[@@inline never]";
-  pr buf "";
+  pr buf
+    {ocaml|let eval s =
+  let s = Bytes.unsafe_to_string (Bytes.unsafe_of_string s) in
+  let len = String.length s in
+  if s.[0] = '=' then
+    let colon_pos = String.index_from s 1 ':' in
+    let vlen = int_of_string (String.sub s 1 (colon_pos - 1)) in
+    (* This [min] is because the value might have been truncated
+       if it was too large *)
+    let vlen = min vlen (len - colon_pos - 1) in
+    Some (String.sub s (colon_pos + 1) vlen)
+  else
+    None
+[@@inline never]
+|ocaml};
   let fmt_eval : _ format6 = "let %s = eval %S" in
   Path.Source.Map.iteri placeholders ~f:(fun path var ->
       pr buf fmt_eval var
@@ -187,10 +189,12 @@ let dune_site_code () =
 
 let dune_site_plugins_code ~libs ~builtins =
   let buf = Buffer.create 5000 in
-  pr buf "let findlib_predicates_set_by_dune pred =";
-  pr buf "   match Sys.backend_type, pred with";
-  pr buf "   | Sys.Native, \"native\" -> true";
-  pr buf "   | Sys.Bytecode, \"byte\" -> true";
+  pr buf
+    {ocaml|
+let findlib_predicates_set_by_dune pred =
+   match Sys.backend_type, pred with
+   | Sys.Native, "native" -> true
+   | Sys.Bytecode, "byte" -> true|ocaml};
   Variant.Set.iter Findlib.findlib_predicates_set_by_dune ~f:(fun variant ->
       pr buf "   | _, %S -> true" (Variant.to_string variant));
   pr buf "   | _, _ -> false";

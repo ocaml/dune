@@ -1,19 +1,23 @@
 open! Stdune
 
-(* CR-soon amokhov: This causes Merlin to show [Memo.memo] instead of [Memo.t]
-   in inferred type signatures. We should get rid of this alias. *)
-type 'a memo
+(** A type of memoized computations that can be recomputed incrementally when
+    their dependencies change. *)
+type 'a t
 
-(** A type of Memo-like modules. *)
+(** A type of Memo-like monads. *)
 module type S = sig
+  type 'a memo
+
   include Monad.S
 
   module List : Monad.List with type 'a t := 'a t
 
+  (** Inject a value of type ['a Memo.t] into ['a t]. *)
   val of_memo : 'a memo -> 'a t
 end
+with type 'a memo := 'a t
 
-include S with type 'a t = 'a memo
+include S with type 'a t := 'a t
 
 module Option : Monad.Option with type 'a t := 'a t
 
@@ -299,6 +303,8 @@ end
 val current_run : unit -> Run.t t
 
 module Cell : sig
+  type 'a memo
+
   type ('i, 'o) t
 
   val input : ('i, _) t -> 'i
@@ -309,6 +315,7 @@ module Cell : sig
       consumers may be recomputed or not, depending on early cutoff. *)
   val invalidate : reason:Invalidation.Reason.t -> _ t -> Invalidation.t
 end
+with type 'a memo := 'a t
 
 (** Create a "memoization cell" that focuses on a single input/output pair of a
     memoized function. *)
@@ -329,6 +336,8 @@ val dump_cached_graph :
   -> Dune_graph.Graph.t Fiber.t
 
 module Lazy : sig
+  type 'a memo
+
   type 'a t
 
   val of_val : 'a -> 'a t
@@ -355,6 +364,7 @@ module Lazy : sig
       -> (unit, 'a) Cell.t * 'a t
   end
 end
+with type 'a memo := 'a t
 
 val lazy_ :
      ?cutoff:('a -> 'a -> bool)
@@ -364,6 +374,8 @@ val lazy_ :
   -> 'a Lazy.t
 
 module Implicit_output : sig
+  type 'a memo
+
   type 'o t
 
   (** [produce] and [produce_opt] are used by effectful functions to produce
@@ -384,8 +396,11 @@ module Implicit_output : sig
   (** Register a new type of implicit output. *)
   val add : (module Implicit_output with type t = 'o) -> 'o t
 end
+with type 'a memo := 'a t
 
 module With_implicit_output : sig
+  type 'a memo
+
   type ('i, 'o) t
 
   val create :
@@ -397,6 +412,7 @@ module With_implicit_output : sig
 
   val exec : ('i, 'o) t -> 'i -> 'o memo
 end
+with type 'a memo := 'a t
 
 (** Memoization of polymorphic functions ['a input -> 'a output t]. The provided
     [id] function must be injective, i.e. there must be a one-to-one

@@ -84,16 +84,16 @@ module Dune_file = struct
 
   let load file ~file_exists ~from_parent ~project =
     let+ kind, plain =
+      let load_plain = load_plain ~file ~from_parent ~project in
       match file_exists with
-      | false -> Memo.return (Plain, load_plain [] ~file ~from_parent ~project)
+      | false -> Memo.return (Plain, load_plain [])
       | true ->
         Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
-            if Dune_lexer.is_script lb then
-              let from_parent = load_plain [] ~file ~from_parent ~project in
-              (Ocaml_script, from_parent)
-            else
-              let sexps = Dune_lang.Parser.parse lb ~mode:Many in
-              (Plain, load_plain sexps ~file ~from_parent ~project))
+            let kind, ast =
+              if Dune_lexer.is_script lb then (Ocaml_script, [])
+              else (Plain, Dune_lang.Parser.parse lb ~mode:Many)
+            in
+            (kind, load_plain ast))
     in
     { path = file; kind; plain }
 end

@@ -3,7 +3,8 @@
 type mkdir_result =
   | Already_exists  (** The directory already exists. No action was taken. *)
   | Created  (** The directory was created. *)
-  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t (** Unix errors to be handled by caller. *)
+  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+      (** Unix errors to be handled by caller. *)
 
 val mkdir : ?perms:int -> string -> mkdir_result
 

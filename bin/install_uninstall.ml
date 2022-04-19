@@ -332,8 +332,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
       User_error.raise
         [ Pp.textf "Cannot create directory %s. Permission Denied."
             (Path.to_string_maybe_quoted p)
-        ; Pp.text
-            (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
+        ; Pp.text (Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
         ]
 end
 

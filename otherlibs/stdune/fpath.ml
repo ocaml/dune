@@ -15,7 +15,8 @@ let mkdir ?(perms = 0o777) t_s =
     Created
   with
   | Unix.Unix_error (EEXIST, _, _) -> Already_exists
-  | Unix.Unix_error (errtyp, syscall, arg) -> Unix_error (FSError.create errtyp ~syscall ~arg)
+  | Unix.Unix_error (errtyp, syscall, arg) ->
+    Unix_error (FSError.create errtyp ~syscall ~arg)
 
 let rec mkdir_p ?(perms = 0o777) t_s =
   match mkdir ~perms t_s with
@@ -35,8 +36,7 @@ let rec mkdir_p ?(perms = 0o777) t_s =
            to create the parent directory concurrently. *)
         Unix.mkdir t_s perms;
         Created
-      | e -> e
-  )
+      | e -> e)
   | e -> e
 
 let resolve_link path =

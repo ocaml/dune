@@ -1030,9 +1030,7 @@ let ensure_build_dir_exists () =
     | Unix_error e ->
       let e = Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e in
       User_error.raise
-        [ Pp.textf "Cannot create external build directory %s." p
-        ; Pp.text e
-        ])
+        [ Pp.textf "Cannot create external build directory %s." p; Pp.text e ])
 
 let extend_basename t ~suffix =
   match t with

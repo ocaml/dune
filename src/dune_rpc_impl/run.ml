@@ -86,12 +86,11 @@ let run config stats =
                      match Fpath.mkdir_p dirname with
                      | Unix_error e ->
                        let e =
-                         Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e
+                         Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum
+                           e
                        in
                        User_warning.emit
-                         [ Pp.textf "Cannot create path %S" dirname
-                         ; Pp.text e
-                         ]
+                         [ Pp.textf "Cannot create path %S" dirname; Pp.text e ]
                      | Created | Already_exists ->
                        Io.String_path.write_file path contents;
                        cleanup_registry := Some path;

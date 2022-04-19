@@ -49,9 +49,8 @@ let create_temp_dir ?perms path =
       []
   | Unix_error e ->
     Code_error.raise
-      ( "[Temp.create_temp_dir] "
-      ^ Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e
-      )
+      ("[Temp.create_temp_dir] "
+      ^ Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e)
       []
 
 let set = function

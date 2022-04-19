@@ -196,6 +196,15 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
 let exec_echo stdout_to str =
   Fiber.return (output_string (Process.Io.out_channel stdout_to) str)
 
+let bash_exn =
+  let bin = lazy (Bin.which ~path:(Env.path Env.initial) "bash") in
+  fun ~needed_to ->
+    match Lazy.force bin with
+    | Some path -> path
+    | None ->
+      User_error.raise
+        [ Pp.textf "I need bash to %s but I couldn't find it :(" needed_to ]
+
 let rec exec t ~ectx ~eenv =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
@@ -257,7 +266,7 @@ let rec exec t ~ectx ~eenv =
   | Bash cmd ->
     let+ () =
       exec_run ~ectx ~eenv
-        (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
+        (bash_exn ~needed_to:"interpret (bash ...) actions")
         [ "-e"; "-u"; "-o"; "pipefail"; "-c"; cmd ]
     in
     Done

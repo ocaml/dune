@@ -16,15 +16,6 @@ let system_shell_exn =
             cmd needed_to cmd os
         ]
 
-let bash_exn =
-  let bin = lazy (Bin.which ~path:(Env.path Env.initial) "bash") in
-  fun ~needed_to ->
-    match Lazy.force bin with
-    | Some path -> path
-    | None ->
-      User_error.raise
-        [ Pp.textf "I need bash to %s but I couldn't find it :(" needed_to ]
-
 let not_found fmt ?loc ?context ?hint x =
   User_error.make ?loc
     (Pp.textf fmt (String.maybe_quoted x)

@@ -1262,12 +1262,7 @@ end = struct
             if
               String.equal "bigarray" (Lib_name.to_string name)
               && not (Ocaml.Version.has_bigarray_library ocaml_version)
-            then (
-              User_warning.emit ~loc
-                [ Pp.textf "Already in the Standard Library of OCaml %s"
-                    db.lib_config.ocaml_version_string
-                ];
-              Memo.return acc)
+            then Memo.return acc
             else
               let+ lib = resolve_dep db (loc, name) ~private_deps in
               add_resolved acc lib

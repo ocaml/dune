@@ -170,7 +170,7 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
          action, so this branch should be unreachable. *)
       Code_error.raise "Stale directory target in the build directory"
         [ ("dst_dir", Path.Build.to_dyn dst_dir) ]
-    | Missing_parent_directory | Permission_denied (* TODO *) -> assert false);
+    | Unix_error _ (* TODO *) -> assert false);
     match
       Dune_filesystem_stubs.read_directory_with_kinds
         (Path.Build.to_string src_dir)

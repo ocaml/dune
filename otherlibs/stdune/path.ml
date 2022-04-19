@@ -96,7 +96,7 @@ end = struct
     | Some p -> p
 
   let mkdir_p ?perms path =
-    ignore (Fpath.mkdir_p ?perms path : Fpath.mkdir_p_result)
+    ignore (Fpath.mkdir_p ?perms path : Fpath.mkdir_result)
 
   let unlink_no_err t = Fpath.unlink_no_err t
 
@@ -480,7 +480,7 @@ end
 
 module Relative_to_source_root = struct
   let mkdir_p ?perms path =
-    ignore (Fpath.mkdir_p ?perms (Local.to_string path) : Fpath.mkdir_p_result)
+    ignore (Fpath.mkdir_p ?perms (Local.to_string path) : Fpath.mkdir_result)
 end
 
 module Source0 = Local
@@ -1020,18 +1020,18 @@ let ensure_build_dir_exists () =
     let p = External.to_string p in
     match Fpath.mkdir ~perms p with
     | Created | Already_exists -> ()
-    | Missing_parent_directory ->
+    | Unix_error (ENOENT, _, _) ->
       User_error.raise
         [ Pp.textf
             "Cannot create external build directory %s. Make sure that the \
              parent dir %s exists."
             p (Filename.dirname p)
         ]
-    | Permission_denied ->
+    | Unix_error e ->
+      let e = Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e in
       User_error.raise
-        [ Pp.textf
-            "Cannot create external build directory %s. Permission Denied."
-            p
+        [ Pp.textf "Cannot create external build directory %s." p
+        ; Pp.text e
         ])
 
 let extend_basename t ~suffix =

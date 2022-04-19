@@ -1,3 +1,5 @@
+module FSError = Dune_filesystem_stubs.Unix_error.Detailed
+
 let is_root t = Filename.dirname t = t
 
 let initial_cwd = Stdlib.Sys.getcwd ()
@@ -5,8 +7,7 @@ let initial_cwd = Stdlib.Sys.getcwd ()
 type mkdir_result =
   | Already_exists
   | Created
-  | Missing_parent_directory
-  | Permission_denied
+  | Unix_error of FSError.t
 
 let mkdir ?(perms = 0o777) t_s =
   try
@@ -14,20 +15,13 @@ let mkdir ?(perms = 0o777) t_s =
     Created
   with
   | Unix.Unix_error (EEXIST, _, _) -> Already_exists
-  | Unix.Unix_error (ENOENT, _, _) -> Missing_parent_directory
-  | Unix.Unix_error (EACCES, _, _) -> Permission_denied
-
-type mkdir_p_result =
-  | Already_exists
-  | Created
-  | Permission_denied
+  | Unix.Unix_error (errtyp, syscall, arg) -> Unix_error (FSError.create errtyp ~syscall ~arg)
 
 let rec mkdir_p ?(perms = 0o777) t_s =
   match mkdir ~perms t_s with
   | Created -> Created
   | Already_exists -> Already_exists
-  | Permission_denied -> Permission_denied
-  | Missing_parent_directory -> (
+  | Unix_error (ENOENT, _, _) -> (
     if is_root t_s then
       Code_error.raise
         "Impossible happened: [Fpath.mkdir] refused to create a directory at \
@@ -36,18 +30,20 @@ let rec mkdir_p ?(perms = 0o777) t_s =
     else
       let parent = Filename.dirname t_s in
       match mkdir_p ~perms parent with
-      | Permission_denied -> Permission_denied
       | Created | Already_exists ->
         (* The [Already_exists] case might happen if some other process managed
            to create the parent directory concurrently. *)
         Unix.mkdir t_s perms;
-        Created)
+        Created
+      | e -> e
+  )
+  | e -> e
 
 let resolve_link path =
   match Unix.readlink path with
   | exception Unix.Unix_error (EINVAL, _, _) -> Ok None
   | exception Unix.Unix_error (error, syscall, arg) ->
-    Error (Dune_filesystem_stubs.Unix_error.Detailed.create ~syscall ~arg error)
+    Error (FSError.create ~syscall ~arg error)
   | link ->
     Ok
       (Some
@@ -58,7 +54,7 @@ let resolve_link path =
 type follow_symlink_error =
   | Not_a_symlink
   | Max_depth_exceeded
-  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
+  | Unix_error of FSError.t
 
 let follow_symlink path =
   let rec loop n path =

@@ -92,4 +92,4 @@ let create_cache_directories () =
   List.iter
     [ temp_dir; metadata_storage_dir; file_storage_dir; value_storage_dir ]
     ~f:(fun path ->
-      ignore (Fpath.mkdir_p (Path.to_string path) : Fpath.mkdir_p_result))
+      ignore (Fpath.mkdir_p (Path.to_string path) : Fpath.mkdir_result))

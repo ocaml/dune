@@ -44,11 +44,14 @@ let create_temp_dir ?perms path =
   match Fpath.mkdir ?perms dir with
   | Created -> Ok ()
   | Already_exists -> Error `Retry
-  | Missing_parent_directory ->
+  | Unix_error (ENOENT, _, _) ->
     Code_error.raise "[Temp.create_temp_dir] called in a non-existing directory"
       []
-  | Permission_denied ->
-    Code_error.raise "[Temp.create_temp_dir] called without sufficient permissions"
+  | Unix_error e ->
+    Code_error.raise
+      ( "[Temp.create_temp_dir] "
+      ^ Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e
+      )
       []
 
 let set = function

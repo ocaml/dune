@@ -362,7 +362,7 @@ let prepare_sync () =
   | Directory_does_not_exist -> (
     match Fpath.mkdir_p dir with
     | Already_exists | Created -> ()
-    | Permission_denied (* TODO *) -> assert false)
+    | Unix_error _ (* TODO *) -> assert false)
 
 let spawn_external_watcher ~root ~backend =
   prepare_sync ();

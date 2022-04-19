@@ -3,18 +3,11 @@
 type mkdir_result =
   | Already_exists  (** The directory already exists. No action was taken. *)
   | Created  (** The directory was created. *)
-  | Missing_parent_directory
-      (** No parent directory, use [mkdir_p] if you want to create it too. *)
-  | Permission_denied (** Not enough permissions to create the directory *)
+  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t (** Unix errors to be handled by caller. *)
 
 val mkdir : ?perms:int -> string -> mkdir_result
 
-type mkdir_p_result =
-  | Already_exists  (** The directory already exists. No action was taken. *)
-  | Created  (** The directory was created. *)
-  | Permission_denied (** Not enough permissions to create the directory *)
-
-val mkdir_p : ?perms:int -> string -> mkdir_p_result
+val mkdir_p : ?perms:int -> string -> mkdir_result
 
 type follow_symlink_error =
   | Not_a_symlink

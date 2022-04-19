@@ -257,7 +257,7 @@ let%expect_test "set exclusion paths" =
     test_with_operations
       ~exclusion_paths:(fun cwd -> [ paths cwd ignored ])
       (fun () ->
-        let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p ignored in
+        let (_ : Fpath.mkdir_result) = Fpath.mkdir_p ignored in
         Io.String_path.write_file (Filename.concat ignored "old") "foobar")
   in
   (* absolute paths work *)

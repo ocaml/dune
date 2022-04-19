@@ -84,10 +84,13 @@ let run config stats =
                      in
                      let dirname = Filename.dirname path in
                      match Fpath.mkdir_p dirname with
-                     | Permission_denied ->
+                     | Unix_error e ->
+                       let e =
+                         Dune_filesystem_stubs.Unix_error.Detailed.to_string_hum e
+                       in
                        User_warning.emit
-                         [ Pp.textf "Cannot create path %S: Permission Denied"
-                             dirname
+                         [ Pp.textf "Cannot create path %S" dirname
+                         ; Pp.text e
                          ]
                      | Created | Already_exists ->
                        Io.String_path.write_file path contents;

@@ -1,3 +1,11 @@
+3.1.1 (19/04/2022)
+------------------
+
+- Fix build on Cygwin. (#5593, fixes 5577, @nojb)
+
+- Fix execution of `(system ..)` actions on Windows. (#5593, fixes #5523,
+  @nojb)
+
 3.1.0 (15/04/2022)
 ------------------
 

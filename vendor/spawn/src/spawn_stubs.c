@@ -29,7 +29,9 @@ CAMLprim value spawn_is_osx()
 
 #include <assert.h>
 #include <string.h>
+#if !defined(__CYGWIN__)
 #include <sys/syscall.h>
+#endif
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>

@@ -112,6 +112,15 @@ external spawn_windows :
   -> stderr:Unix.file_descr
   -> int = "spawn_windows_byte" "spawn_windows"
 
+let maybe_quote f =
+  if
+    String.contains f ' ' || String.contains f '\"' || String.contains f '\t'
+    || f = ""
+  then
+    Filename.quote f
+  else
+    f
+
 let spawn_windows ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork:_
     ~setpgid:_ =
   let cwd =
@@ -120,7 +129,7 @@ let spawn_windows ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork:_
     | Fd _ -> invalid_arg "Spawn.spawn: [cwd=Fd _] is not supported on Windows"
     | Inherit -> None
   in
-  let cmdline = String.concat (List.map argv ~f:Filename.quote) ~sep:" " in
+  let cmdline = String.concat (List.map argv ~f:maybe_quote) ~sep:" " in
   let prog =
     match (Filename.is_relative prog, cwd) with
     | true, Some p -> Filename.concat p prog

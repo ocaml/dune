@@ -586,7 +586,7 @@ let default_step1 clflags =
   { Step1.t = lazy t; config = t.config }
 
 let load_step1 clflags p =
-  Io.with_lexbuf_from_file p ~f:(fun lb ->
+  Fs_memo.with_lexbuf_from_file p ~f:(fun lb ->
       if Dune_lexer.eof_reached lb then default_step1 clflags
       else
         parse_contents lb ~f:(fun lang ->
@@ -600,7 +600,7 @@ let workspace_step1 =
   let open Memo.O in
   let f () =
     let clflags = Clflags.t () in
-    let+ workspace_file =
+    let* workspace_file =
       match clflags.workspace_file with
       | None ->
         let p = Path.of_string filename in
@@ -617,7 +617,7 @@ let workspace_step1 =
     in
     let clflags = { clflags with workspace_file } in
     match workspace_file with
-    | None -> default_step1 clflags
+    | None -> Memo.return (default_step1 clflags)
     | Some p -> load_step1 clflags p
   in
   let memo = Memo.create "workspaces-internal" ~input:(module Unit) f in

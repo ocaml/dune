@@ -102,5 +102,14 @@ module Unexpanded = struct
     let decode =
       let open Dune_lang.Decoder in
       repeat decode_file
+
+    let strings_with_vars { src; dst } = src :: Option.to_list dst
+
+    let find_var fbs =
+      List.find_map fbs ~f:(fun fb ->
+          List.find_map (strings_with_vars fb) ~f:(fun sw ->
+              match String_with_vars.text_only sw with
+              | None -> Some (String_with_vars.loc sw)
+              | Some _ -> None))
   end
 end

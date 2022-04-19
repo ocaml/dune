@@ -6,9 +6,9 @@ open Dune_lang.Decoder
    simplicity *)
 let syntax = Stanza.syntax
 
-let has_binaries e =
+let all_binaries e =
   let open Dune_env.Stanza in
-  List.exists e.rules ~f:(fun (_, config) -> List.is_non_empty config.binaries)
+  List.concat_map e.rules ~f:(fun (_, config) -> config.binaries)
 
 let env_field, env_field_lazy =
   let make f g =
@@ -18,7 +18,9 @@ let env_field, env_field_lazy =
           and+ version = Dune_lang.Syntax.get_exn syntax
           and+ loc = loc
           and+ s = Dune_env.Stanza.decode in
-          if has_binaries s then
+          let binaries = all_binaries s in
+          if List.is_empty binaries then s
+          else
             let minimum_version = (3, 2) in
             if version < minimum_version then
               let message =
@@ -28,8 +30,15 @@ let env_field, env_field_lazy =
               s
               |> Dune_env.Stanza.add_warning ~loc ~message
               |> Dune_env.Stanza.add_error ~loc ~message
-            else s
-          else s))
+            else
+              match File_binding.Unexpanded.L.find_var binaries with
+              | None -> s
+              | Some loc ->
+                User_error.raise ~loc
+                  [ Pp.text
+                      "Variables are not supported in 'binaries' in an 'env' \
+                       stanza in a dune-workspace file."
+                  ]))
   in
   (make Fun.id Fun.id, make Lazy.from_val lazy_)
 

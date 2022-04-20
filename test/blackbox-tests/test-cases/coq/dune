@@ -1,14 +1,15 @@
-; Coq for macos does not support native compilation yet.
-; TODO Enable tests when ready
-
 (cram
  (applies_to native-compose native-single)
+ ;; Coq for macos does not support native compilation yet.
+ ; TODO Enable tests when ready
  (enabled_if
   (<> %{system} macosx)))
 
-; An alias that runs all Coq tests
+;; to run all coq tests:
+;; $ ./dune.exe runtest test/blackbox-tests/test-cases/coq
 
 (cram
  (applies_to :whole_subtree)
  (alias all-coq-tests)
- (enabled_if %{bin-available:coqc}))
+ (deps
+  (package coq)))

@@ -272,13 +272,13 @@ let gen_rules sctx dir_contents cctxs expander
           | false -> Memo.return ()
           | true ->
             Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
-            >>= Super_context.add_rules ~dir:ctx_dir sctx)
+            >>= Super_context.add_rules ~loc:m.buildable.loc ~dir:ctx_dir sctx)
         | Coq_stanza.Extraction.T m ->
           Coq_rules.extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
-          >>= Super_context.add_rules ~dir:ctx_dir sctx
+          >>= Super_context.add_rules ~loc:m.buildable.loc ~dir:ctx_dir sctx
         | Coq_stanza.Coqpp.T m ->
           Coq_rules.coqpp_rules ~sctx ~dir:ctx_dir m
-          >>= Super_context.add_rules ~dir:ctx_dir sctx
+          >>= Super_context.add_rules ~loc:m.loc ~dir:ctx_dir sctx
         | _ -> Memo.return ())
   in
   let+ () = define_all_alias ~dir:ctx_dir ~scope ~js_targets in

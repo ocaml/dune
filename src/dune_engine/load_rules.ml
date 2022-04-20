@@ -181,7 +181,8 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
         ]
       | _ -> [])
 
-let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
+let remove_old_artifacts ~dir ~(rules_here : Loaded.rules_here)
+    ~(subdirs_to_keep : Subdir_set.t) =
   match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
   | exception _ -> ()
   | Error _ -> ()
@@ -189,8 +190,8 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
     List.iter files ~f:(fun (fn, kind) ->
         let path = Path.Build.relative dir fn in
         let path_is_a_target =
-          (* CR-someday amokhov: Also check directory targets. *)
-          Path.Build.Map.mem rules_here.Loaded.by_file_targets path
+          Path.Build.Map.mem rules_here.by_file_targets path
+          || Path.Build.Map.mem rules_here.by_directory_targets path
         in
         if not path_is_a_target then
           match kind with

@@ -88,11 +88,7 @@ Build directory target from the command line.
 
 Test that workspace-local cache works for directory targets.
 
-# CR-someday amokhov: Actually, it doesn't work at the moment, because we clean
-directory targets in [Load_rules.load_dir]. We should fix it.
-
   $ dune build output/x --debug-cache=workspace-local
-  Workspace-local cache miss: _build/default/output: error while collecting directory targets: opendir(_build/default/output): No such file or directory
 
 Requesting the directory target directly works too.
 

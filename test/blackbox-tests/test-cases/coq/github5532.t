@@ -15,10 +15,10 @@ Reproducing test case for #5532.
   >  (name basic))
   > EOF
 
-  $ dune build --display short
-        coqdep foo.v.d
-  File "_unknown_", line 1, characters 0-0:
-          coqc .foo.aux,foo.{glob,vo} (exit 1)
+  $ dune build
+  File "dune", line 1, characters 0-26:
+  1 | (coq.theory
+  2 |  (name basic))
   A
   File "./foo.v", line 2, characters 18-22:
   Error:  (in proof dummy): Attempt to save an incomplete proof

@@ -482,7 +482,7 @@ Via opam
 When releasing a package using Dune in opam, there's nothing special
 to do.  Dune generates a file called ``<package-name>.install`` at the
 root of the project.  This contains a list of files to install, and
-Opamreads it in order to perform the installation.
+Opam reads it in order to perform the installation.
 
 Manually
 --------

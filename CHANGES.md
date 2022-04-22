@@ -1,6 +1,8 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Fix race when creating local cache directory (#5613, fixes #5461, @rgrinberg)
+
 - Add `not` to boolean expressions (#5610, fix #5503, @rgrinberg)
 
 - Allow to specify `--prefix` via the environment variable

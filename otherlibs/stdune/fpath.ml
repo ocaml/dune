@@ -35,8 +35,14 @@ let rec mkdir_p ?perms t_s =
       | Created | Already_exists -> (
         (* The [Already_exists] case might happen if some other process managed
            to create the parent directory concurrently. *)
-        Unix.mkdir t_s perms;
-        Created)
+        match mkdir t_s ?perms with
+        | Created -> Created
+        | Already_exists -> Already_exists
+        | Missing_parent_directory ->
+          (* But we just successfully created the parent directory. So it was
+             likely deleted right now. Let's give up *)
+          Code_error.raise "failed to create parent directory"
+            [ ("t_s", Dyn.string t_s) ]))
 
 let resolve_link path =
   match Unix.readlink path with

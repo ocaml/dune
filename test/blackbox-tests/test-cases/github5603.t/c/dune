@@ -1,0 +1,6 @@
+
+(library
+  (name c)
+  (public_name c)
+  (libraries b)
+  (modules))

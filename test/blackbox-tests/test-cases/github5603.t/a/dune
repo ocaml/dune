@@ -1,0 +1,5 @@
+(library
+  (name a)
+  (public_name a)
+  (optional)
+  (modules a))

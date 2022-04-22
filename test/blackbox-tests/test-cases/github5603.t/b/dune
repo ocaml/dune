@@ -1,0 +1,8 @@
+(library
+  (name b)
+  (public_name b)
+  (libraries
+    (select b.ml from
+     (a -> b.a.ml)
+     (  -> b.no-a.ml)))
+  (modules b))

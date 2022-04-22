@@ -35,7 +35,8 @@ module Map = String.Map
 module Map_traversals = Memo.Make_map_traversals (Map)
 module Infix = Comparator.Operators (String)
 
-let of_local_lib_name s = of_string (Lib_name.Local.to_string s)
+let of_local_lib_name (loc, s) =
+  parse_string_exn (loc, Lib_name.Local.to_string s)
 
 let to_local_lib_name s = Lib_name.Local.of_string s
 

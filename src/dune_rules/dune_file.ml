@@ -803,7 +803,7 @@ module Library = struct
     | None, From _ -> assert false (* cannot inherit for normal libs *)
     | None, This (Simple false) -> This None
     | None, This (Simple true | Yes_with_transition _) ->
-      This (Some (Module_name.of_local_lib_name (snd t.name)))
+      This (Some (Module_name.of_local_lib_name t.name))
 
   let to_lib_info conf ~dir
       ~lib_config:

@@ -26,7 +26,7 @@ end
 
 module Infix : Comparator.OPS with type t = t
 
-val of_local_lib_name : Lib_name.Local.t -> t
+val of_local_lib_name : Loc.t * Lib_name.Local.t -> t
 
 val to_local_lib_name : t -> Lib_name.Local.t
 

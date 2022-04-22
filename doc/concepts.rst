@@ -73,6 +73,7 @@ Dune can evaluate. Here's a semi-formal specification of the language:
    expr := (and <expr>+)
          | (or <expr>+)
          | (<op> <template> <template>)
+         | (not <expr>)
          | <template>
 
 After an expression is evaluated, it must be exactly the string ``true`` or

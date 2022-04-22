@@ -1,6 +1,8 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Add `not` to boolean expressions (#5610, fix #5503, @rgrinberg)
+
 - Allow to specify `--prefix` via the environment variable
   `DUNE_INSTALL_PREFIX` (#5589, @vapourismo)
 

@@ -29,6 +29,7 @@ end
 
 type t =
   | Const of bool
+  | Not of t
   | Expr of String_with_vars.t
   | And of t list
   | Or of t list
@@ -50,6 +51,7 @@ let rec eval t ~dir ~f =
         [ Pp.text "This value must be either true or false" ])
   | And xs -> Memo.List.map xs ~f:(eval ~f ~dir) >>| List.for_all ~f:Fun.id
   | Or xs -> Memo.List.map xs ~f:(eval ~f ~dir) >>| List.exists ~f:Fun.id
+  | Not t -> eval t ~f ~dir >>| not
   | Compare (op, x, y) ->
     let+ x = String_with_vars.expand x ~mode:Many ~dir ~f
     and+ y = String_with_vars.expand y ~mode:Many ~dir ~f in
@@ -59,6 +61,7 @@ let rec to_dyn =
   let open Dyn in
   function
   | Const b -> variant "Const" [ bool b ]
+  | Not t -> variant "Not" [ to_dyn t ]
   | Expr e -> variant "Expr" [ String_with_vars.to_dyn e ]
   | And t -> variant "And" (List.map ~f:to_dyn t)
   | Or t -> variant "Or" (List.map ~f:to_dyn t)
@@ -83,6 +86,9 @@ let decode_gen decode_string =
         sum ~force_parens:true
           (("or", repeat t >>| fun x -> Or x)
           :: ("and", repeat t >>| fun x -> And x)
+          :: ( "not"
+             , Dune_lang.Syntax.since Stanza.syntax (3, 2) >>> t >>| fun x ->
+               Not x )
           :: ops)
         <|> let+ v = decode_string in
             Expr v)

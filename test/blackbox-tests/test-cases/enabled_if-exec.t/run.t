@@ -86,3 +86,20 @@ For dune >= 2.7 context_name allowed
   $ dune exec ./foo.exe --root var_context_name
   Entering directory 'var_context_name'
   bar
+
+For dune >= 3.2, negating expressions is allowed
+  $ mkdir negated
+  $ cat > negated/dune-project <<EOF
+  > (lang dune 3.2)
+  > EOF
+  $ cat > negated/dune <<EOF
+  > (executable
+  >  (name foo)
+  >  (enabled_if (not false)))
+  > EOF
+  $ cat > negated/foo.ml <<EOF
+  > print_endline "runs";;
+  > EOF
+  $ dune exec ./foo.exe --root negated
+  Entering directory 'negated'
+  runs

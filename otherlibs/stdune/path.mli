@@ -229,6 +229,11 @@ val is_managed : t -> bool
 
 val relative : ?error_loc:Loc0.t -> t -> string -> t
 
+(** [relative_to_source_in_build ~dir s] compute the path [s] relative to the
+    source directory corresponding to [dir] *)
+val relative_to_source_in_build_or_external :
+  ?error_loc:Loc0.t -> dir:Build.t -> string -> t
+
 (** Create an external path. If the argument is relative, assume it is relative
     to the initial directory dune was launched in. *)
 val of_filename_relative_to_initial_cwd : string -> t

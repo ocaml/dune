@@ -97,7 +97,9 @@ let term =
                 | Error (_ : Action.Prog.Not_found.t) -> not_found ()
                 | Ok prog -> build_prog prog)
               | Relative_to_current_dir -> (
-                let path = Path.relative (Path.build dir) prog in
+                let path =
+                  Path.relative_to_source_in_build_or_external ~dir prog
+                in
                 (Build_system.file_exists path >>= function
                  | true -> Memo.return (Some path)
                  | false -> (

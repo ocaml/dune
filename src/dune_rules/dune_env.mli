@@ -37,6 +37,8 @@ module Stanza : sig
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
     ; coq : Ordered_set_lang.Unexpanded.t
     ; format_config : Format_config.t option
+    ; error_on_use : (Loc.t * string) option
+    ; warn_on_load : (Loc.t * string) option
     }
 
   type pattern =
@@ -64,6 +66,12 @@ module Stanza : sig
   val empty : t
 
   val find : t -> profile:Profile.t -> config
+
+  val add_error : t -> loc:Loc.t -> message:string -> t
+
+  val add_warning : t -> loc:Loc.t -> message:string -> t
+
+  val fire_hooks : t -> profile:Profile.t -> unit
 end
 
 type stanza += T of Stanza.t

@@ -81,7 +81,11 @@ module Stanza = struct
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
     ; coq : Ordered_set_lang.Unexpanded.t
     ; format_config : Format_config.t option
+    ; error_on_use : (Loc.t * string) option
+    ; warn_on_load : (Loc.t * string) option
     }
+
+  let msg_equal (la, sa) (lb, sb) = Loc.equal la lb && String.equal sa sb
 
   let equal_config
       { flags
@@ -95,6 +99,8 @@ module Stanza = struct
       ; js_of_ocaml
       ; coq
       ; format_config
+      ; error_on_use
+      ; warn_on_load
       } t =
     Ocaml_flags.Spec.equal flags t.flags
     && Foreign_language.Dict.equal Ordered_set_lang.Unexpanded.equal
@@ -108,6 +114,8 @@ module Stanza = struct
     && Ordered_set_lang.Unexpanded.equal coq t.coq
     && Option.equal Format_config.equal format_config t.format_config
     && Js_of_ocaml.Env.equal js_of_ocaml t.js_of_ocaml
+    && Option.equal msg_equal error_on_use t.error_on_use
+    && Option.equal msg_equal warn_on_load t.warn_on_load
 
   let hash_config = Hashtbl.hash
 
@@ -124,6 +132,8 @@ module Stanza = struct
     ; js_of_ocaml = Js_of_ocaml.Env.empty
     ; coq = Ordered_set_lang.Unexpanded.standard
     ; format_config = None
+    ; error_on_use = None
+    ; warn_on_load = None
     }
 
   type pattern =
@@ -206,6 +216,8 @@ module Stanza = struct
     ; js_of_ocaml
     ; coq
     ; format_config
+    ; error_on_use = None
+    ; warn_on_load = None
     }
 
   let rule =
@@ -231,6 +243,23 @@ module Stanza = struct
            match pat with
            | Any -> Some cfg
            | Profile a -> Option.some_if (a = profile) cfg)
+
+  let map_configs t ~f =
+    { t with rules = List.map t.rules ~f:(fun (p, c) -> (p, f c)) }
+
+  let add_error t ~loc ~message =
+    map_configs t ~f:(fun c -> { c with error_on_use = Some (loc, message) })
+
+  let add_warning t ~loc ~message =
+    map_configs t ~f:(fun c -> { c with warn_on_load = Some (loc, message) })
+
+  let fire_hooks t ~profile =
+    let current_config = find t ~profile in
+    Option.iter current_config.error_on_use ~f:(fun (loc, msg) ->
+        User_error.raise ~loc [ Pp.text msg ]);
+    List.iter t.rules ~f:(fun (_, config) ->
+        Option.iter config.warn_on_load ~f:(fun (loc, msg) ->
+            User_warning.emit ~loc [ Pp.text msg ]))
 end
 
 type stanza += T of Stanza.t

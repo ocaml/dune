@@ -998,6 +998,17 @@ let explode_exn t =
   | Some s -> s
   | None -> Code_error.raise "Path.explode_exn" [ ("path", to_dyn t) ]
 
+let relative_to_source_in_build_or_external ?error_loc ~dir s =
+  match Build.extract_build_context dir with
+  | None -> relative ?error_loc (In_build_dir dir) s
+  | Some (bctxt, source) -> (
+    let path = relative ?error_loc (In_source_tree source) s in
+    match path with
+    | In_source_tree s ->
+      In_build_dir
+        (Build.relative (Build.of_string bctxt) (Source0.to_string s))
+    | In_build_dir _ | External _ -> path)
+
 let exists t = try Sys.file_exists (to_string t) with Sys_error _ -> false
 
 let readdir_unsorted t = Dune_filesystem_stubs.read_directory (to_string t)

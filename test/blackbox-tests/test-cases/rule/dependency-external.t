@@ -193,13 +193,11 @@ rules with dependencies outside the build dir are allowed
 ## Test dune exec 1 level below
   $ dune exec --root=a/b -- ../script.sh
   Entering directory 'a/b'
-  Error: Program "../script.sh" not found!
-  [1]
+  txt1
 
 ## Test dune exec 2 level below
   $ mv a/script.sh .
 
   $ dune exec --root=a/b -- ../../script.sh
   Entering directory 'a/b'
-  Error: path outside the workspace: ../../script.sh from default
-  [1]
+  txt1

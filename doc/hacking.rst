@@ -171,7 +171,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 
 .. code:: scheme
 
-   (lang dune 3.1)
+   (lang dune 3.2)
    (using coq 0.2)
 
 If such extensions are experimental, it's recommended that they pass

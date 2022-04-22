@@ -8,7 +8,7 @@ Ensure that a public, non-optional library can be disabled.
   > EOF
   $ dune build @install;
   > cat _build/install/default/lib/foo/dune-package;
-  (lang dune 3.1)
+  (lang dune 3.2)
   (name foo)
   (sections (lib .))
   (files (lib (META dune-package opam)))

@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Match `glob_files` only against files in external directories (#5614, fixes
+  #5540, @rgrinberg)
+
 - Add pid's to chrome trace output (#5617, @rgrinberg)
 
 - Fix race when creating local cache directory (#5613, fixes #5461, @rgrinberg)

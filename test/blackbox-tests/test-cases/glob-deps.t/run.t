@@ -26,8 +26,4 @@ Globs should not match directories when matching in external folders either:
   >  (action (echo %{deps})))
   > EOF
   $ dune build @foo
-  Error: File unavailable:
-  $TESTCASE_ROOT/glob-external-dir/_foo/dir
-  This is not a regular file (S_DIR)
-  -> required by alias foo in dune:1
-  [1]
+  $TESTCASE_ROOT/glob-external-dir/_foo/file

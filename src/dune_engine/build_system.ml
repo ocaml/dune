@@ -1007,8 +1007,8 @@ end = struct
     let eval_impl g =
       let dir = File_selector.dir g in
       Load_rules.load_dir ~dir >>= function
-      | Non_build targets ->
-        Memo.return (Path.Set.filter targets ~f:(File_selector.test g))
+      | Non_build { files } ->
+        Memo.return (Path.Set.filter files ~f:(File_selector.test g))
       | Build { rules_here; _ } ->
         let only_generated_files = File_selector.only_generated_files g in
         (* We look only at [by_file_targets] because [File_selector] does not
@@ -1106,7 +1106,7 @@ let build_pred = Pred.build
    are cached. *)
 let file_exists fn =
   Load_rules.load_dir ~dir:(Path.parent_exn fn) >>= function
-  | Non_build targets -> Memo.return (Path.Set.mem targets fn)
+  | Non_build { files } -> Memo.return (Path.Set.mem files fn)
   | Build { rules_here; _ } ->
     Memo.return
       (Path.Build.Map.mem rules_here.by_file_targets
@@ -1117,7 +1117,7 @@ let file_exists fn =
 
 let files_of ~dir =
   Load_rules.load_dir ~dir >>= function
-  | Non_build file_targets -> Memo.return file_targets
+  | Non_build { files } -> Memo.return files
   | Build { rules_here; _ } ->
     Memo.return
       (Path.Build.Map.keys rules_here.by_file_targets

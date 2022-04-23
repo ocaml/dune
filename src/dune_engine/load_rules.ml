@@ -32,7 +32,7 @@ module Loaded = struct
     }
 
   type t =
-    | Non_build of Path.Set.t
+    | Non_build of { files : Path.Set.t }
     | Build of build
     | Build_under_directory_target of
         { directory_target_ancestor : Path.Build.t }
@@ -79,20 +79,27 @@ let get_dir_triage ~dir =
   match Dpath.analyse_dir dir with
   | Source dir ->
     let+ files = Source_tree.files_of dir in
-    Dir_triage.Known (Non_build (Path.set_of_source_paths files))
+    Dir_triage.Known (Non_build { files = Path.set_of_source_paths files })
   | External _ ->
-    Memo.return
-    @@ Dir_triage.Known
-         (Non_build
-            (match Path.Untracked.readdir_unsorted dir with
-            | Error (Unix.ENOENT, _, _) -> Path.Set.empty
-            | Error unix_error ->
-              User_warning.emit
-                [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-                ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
-                ];
-              Path.Set.empty
-            | Ok filenames -> Path.Set.of_listing ~dir ~filenames))
+    let files =
+      match Path.Untracked.readdir_unsorted_with_kinds dir with
+      | Error (Unix.ENOENT, _, _) -> Path.Set.empty
+      | Error unix_error ->
+        User_warning.emit
+          [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
+          ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+          ];
+        Path.Set.empty
+      | Ok filenames ->
+        let filenames =
+          List.filter_map filenames ~f:(fun (name, kind) ->
+              match kind with
+              | S_DIR -> None
+              | _ -> Some name)
+        in
+        Path.Set.of_listing ~dir ~filenames
+    in
+    Memo.return @@ Dir_triage.Known (Non_build { files })
   | Build (Regular Root) ->
     let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
     let allowed_subdirs =

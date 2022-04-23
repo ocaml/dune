@@ -22,7 +22,7 @@ module Loaded : sig
     }
 
   type t =
-    | Non_build of Path.Set.t
+    | Non_build of { files : Path.Set.t }
     | Build of build
     | Build_under_directory_target of
         { directory_target_ancestor : Path.Build.t }

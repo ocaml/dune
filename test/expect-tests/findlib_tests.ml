@@ -71,11 +71,11 @@ let print_pkg_archives pkg =
 
 let%expect_test _ =
   print_pkg_archives "qux";
-  [%expect {| Error Not_found |}]
+  [%expect {| Ok { byte = [ "/qux/qux.cma" ]; native = [] } |}]
 
 let%expect_test _ =
   print_pkg_archives "xyz";
-  [%expect {| Error Not_found |}]
+  [%expect {| Ok { byte = [ "/xyz.cma" ]; native = [] } |}]
 
 let%expect_test _ =
   let pkg =

@@ -1,6 +1,8 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Add pid's to chrome trace output (#5617, @rgrinberg)
+
 - Fix race when creating local cache directory (#5613, fixes #5461, @rgrinberg)
 
 - Add `not` to boolean expressions (#5610, fix #5503, @rgrinberg)

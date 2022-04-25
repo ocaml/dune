@@ -570,14 +570,16 @@ end = struct
       fail ~loc ~annots paragraphs
 end
 
-let report_process_start stats ~id ~prog ~args ~now =
+let report_process_start stats ~id ~pid ~prog ~args ~now =
   let common =
     let name = Filename.basename prog in
     let ts = Timestamp.of_float_seconds now in
     Event.common_fields ~cat:[ "process" ] ~name ~ts ()
   in
   let args =
-    [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg))) ]
+    [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg)))
+    ; ("pid", `Int (Pid.to_int pid))
+    ]
   in
   let event = Event.async (Int id) ~args Start common in
   Dune_stats.emit stats event;
@@ -585,7 +587,7 @@ let report_process_start stats ~id ~prog ~args ~now =
 
 let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
   let common = Event.set_ts common (Timestamp.of_float_seconds now) in
-  let dur = Chrome_trace.Event.Timestamp.of_float_seconds times.elapsed_time in
+  let dur = Event.Timestamp.of_float_seconds times.elapsed_time in
   let event = Event.complete ~args ~dur common in
   Dune_stats.emit stats event
 
@@ -707,7 +709,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let event_common =
           Option.map config.stats ~f:(fun stats ->
               ( stats
-              , report_process_start stats ~id ~prog:prog_str ~args
+              , report_process_start stats ~id ~pid ~prog:prog_str ~args
                   ~now:started_at ))
         in
         (event_common, started_at, pid)

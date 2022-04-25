@@ -1,3 +1,8 @@
+[@@@alert
+unstable "The API of this library is not stable and may change without notice."]
+
+[@@@alert "-unstable"]
+
 (** Output trace data to a file in Chrome's trace_event format. This format is
     compatible with chrome trace viewer [chrome://tracing].
 

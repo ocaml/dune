@@ -104,34 +104,76 @@ module Fd_count = struct
     | Unknown
     | This of int
 
-  let try_to_use_lsof () =
+  let lsof () =
     (* note: we do not use the Process module here, because it would create a
        circular dependency *)
-    let temp = Temp.create File ~prefix:"dune" ~suffix:"lsof" in
-    let stdout =
-      Unix.openfile
-        (Path.to_absolute_filename temp)
-        [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
-        0o666
+    let lsof_r, lsof_w = Unix.pipe ~cloexec:true () in
+    let pid =
+      let prog = "/usr/sbin/lsof" in
+      let argv =
+        [ prog
+        ; "-l"
+        ; "-O"
+        ; "-P"
+        ; "-n"
+        ; "-w"
+        ; "-p"
+        ; string_of_int (Unix.getpid ())
+        ]
+      in
+      Spawn.spawn ~prog ~argv ~stdout:lsof_w () |> Pid.of_int
     in
-    let prog = "/usr/sbin/lsof" in
-    let argv = [ prog; "-w"; "-p"; string_of_int (Unix.getpid ()) ] in
-    let pid = Spawn.spawn ~prog ~argv ~stdout () |> Pid.of_int in
-    Unix.close stdout;
-    match Unix.waitpid [] (Pid.to_int pid) with
-    | _, Unix.WEXITED 0 ->
-      let num_lines = List.length (Io.input_lines (Io.open_in temp)) in
-      This (num_lines - 1)
-    (* the output contains a header line *)
-    | _ -> Unknown
+    Unix.close lsof_w;
+    match
+      let _, status = Unix.waitpid [] (Pid.to_int pid) in
+      status
+    with
+    | Unix.WEXITED 0 ->
+      let count =
+        let chan = Unix.in_channel_of_descr lsof_r in
+        let rec loop acc =
+          match input_line chan with
+          | exception End_of_file -> acc
+          | _ -> loop (acc + 1)
+        in
+        (* the output contains a header line *)
+        let res = loop (-1) in
+        Io.close_in chan;
+        res
+      in
+      This count
+    | (exception Unix.Unix_error (_, _, _))
+    (* The final [waitpid] call fails with:
+
+       {[ Error: waitpid(): No child processes ]} *)
+    | _ ->
+      Unix.close lsof_r;
+      Unknown
+
+  let proc_fs () =
+    match Sys.readdir "/proc/self/fd" with
+    | files -> This (Array.length files - 1 (* -1 for the dirfd *))
+    | exception _ -> Unknown
+
+  let how = ref `Unknown
 
   let get () =
-    match Sys.readdir "/proc/self/fd" with
-    | exception _ -> (
-      match try_to_use_lsof () with
-      | exception _ -> Unknown
-      | value -> value)
-    | files -> This (Array.length files - 1 (* -1 for the dirfd *))
+    match !how with
+    | `Disable -> Unknown
+    | `Lsof -> lsof ()
+    | `Proc_fs -> proc_fs ()
+    | `Unknown -> (
+      match proc_fs () with
+      | This _ as n ->
+        how := `Proc_fs;
+        n
+      | Unknown ->
+        let res = lsof () in
+        (how :=
+           match res with
+           | This _ -> `Lsof
+           | Unknown -> `Disable);
+        res)
 end
 
 let record_gc_and_fd stats =

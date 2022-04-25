@@ -105,7 +105,7 @@ module Unexpanded = struct
 
     let strings_with_vars { src; dst } = src :: Option.to_list dst
 
-    let find_var fbs =
+    let find_pform fbs =
       List.find_map fbs ~f:(fun fb ->
           List.find_map (strings_with_vars fb) ~f:(fun sw ->
               match String_with_vars.text_only sw with

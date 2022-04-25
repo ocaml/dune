@@ -42,6 +42,8 @@ module Unexpanded : sig
   module L : sig
     val decode : t list Dune_lang.Decoder.t
 
-    val find_var : t list -> Loc.t option
+    (** Determine if there is a pform in the unexpanded source. If there is one,
+        return a loc appropriate for an error message. Otherwise, return [None]. *)
+    val find_pform : t list -> Loc.t option
   end
 end

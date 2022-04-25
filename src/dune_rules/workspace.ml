@@ -30,7 +30,7 @@ let env_field, env_field_lazy =
               |> Dune_env.Stanza.add_warning ~loc ~message
               |> Dune_env.Stanza.add_error ~loc ~message
             else
-              match File_binding.Unexpanded.L.find_var binaries with
+              match File_binding.Unexpanded.L.find_pform binaries with
               | None -> s
               | Some loc ->
                 User_error.raise ~loc

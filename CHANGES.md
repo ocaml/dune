@@ -42,7 +42,7 @@
 
 - Add `not` to boolean expressions (#5610, fix #5503, @rgrinberg)
 
-- Fix relative dependencies outside the workspace (#4035, @bobot)
+- Fix relative dependencies outside the workspace (#4035, fixes #5572, @bobot)
 
 - Allow to specify `--prefix` via the environment variable
   `DUNE_INSTALL_PREFIX` (#5589, @vapourismo)

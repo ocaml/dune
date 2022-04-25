@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Add `$ dune describe pp` to print the preprocssed ast of sources. (#5615,
+  fixes #4470, @cannorin)
+
 - Report dune file evaluation errors concurrently. In the same way we report
   build errors. (#5655, @rgrinberg)
 

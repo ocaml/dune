@@ -404,7 +404,7 @@ end = struct
             | _ -> assert false
           in
           let args = [ ("value", `Int rule_total) ] in
-          let ts = Event.Timestamp.now () in
+          let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
           let common = Event.common_fields ~name:"evaluated_rules" ~ts () in
           Event.counter common args
         in

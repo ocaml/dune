@@ -17,13 +17,9 @@ module Timestamp : sig
 
   val to_json : t -> Json.t
 
-  val now : unit -> t
-
   val of_float_seconds : float -> t
 end = struct
   type t = float
-
-  let now () = Unix.gettimeofday ()
 
   let of_float_seconds x = x
 

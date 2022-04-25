@@ -207,6 +207,5 @@ understood by dune language."))
  (name chrome-trace)
  (synopsis "Chrome trace event generation library")
  (depends
-  (ocaml (>= 4.08.0))
-  base-unix)
+  (ocaml (>= 4.08.0)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

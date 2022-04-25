@@ -137,7 +137,7 @@ end
 let record_gc_and_fd stats =
   let module Event = Chrome_trace.Event in
   let module Json = Chrome_trace.Json in
-  let ts = Event.Timestamp.now () in
+  let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
   let () =
     let common = Event.common_fields ~name:"gc" ~ts () in
     let args =

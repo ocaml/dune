@@ -231,7 +231,7 @@ module Event = struct
               (async_kind_of_stage stage, meth_, args)
           in
           let common =
-            let ts = Event.Timestamp.now () in
+            let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
             Event.common_fields ~ts ~name ()
           in
           let id = Event.Id.Int (Session.Id.to_int id) in

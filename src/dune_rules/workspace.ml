@@ -6,8 +6,7 @@ open Dune_lang.Decoder
    simplicity *)
 let syntax = Stanza.syntax
 
-let all_binaries e =
-  let open Dune_env.Stanza in
+let all_binaries (e : Dune_env.Stanza.t) =
   List.concat_map e.rules ~f:(fun (_, config) -> config.binaries)
 
 let env_field, env_field_lazy =

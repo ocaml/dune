@@ -19,6 +19,13 @@
 - Dune-site.plugin: add support for `archive(native|byte, plugin)` used in the
   wild before findlib documented `plugin(native|byte)` in 2015 (#5518, @bobot)
 
+- Dune-site.plugin: add support for `archive(native|byte, plugin)` used in the wild before
+  findlib documented `plugin(native|byte)` in 2015 (#5518, @bobot)
+
+- Fix a bug where Dune would not correctly interpret `META` files in alternative
+  layout (ie when the META file is named `META.$pkg`). The `Llvm` bindings were
+  affected by this issue. (#5619, fixes #5616, @nojb)
+
 3.1.1 (19/04/2022)
 ------------------
 

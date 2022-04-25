@@ -38,7 +38,8 @@ let pp_with_ocamlc sctx project pp_ml =
         | Impl -> ".cmo.dump"
     )
   in
-  if not (Path.of_string dump_file |> Path.is_file) then
+  let dump_file_path = Path.of_string dump_file in
+  if not (Path.exists dump_file_path && Path.is_file dump_file_path) then
     User_error.raise [ Pp.textf "cannot find a dump file: %s" dump_file ]
   else
     In_channel.with_open_text dump_file (fun ic -> Io.copy_channels ic stdout);

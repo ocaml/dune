@@ -17,7 +17,7 @@ let change_ext f path =
   let suffix = f ext in
   Path.extend_basename base ~suffix |> Path.to_string
 
-let pp_with_ocamlc sctx pp_ml =
+let pp_with_ocamlc sctx project pp_ml =
   let ocamlc = (Super_context.context sctx).ocamlc |> Path.to_string in
   let env = Super_context.context_env sctx |> Env.to_unix |> Array.of_list in
   let argv =
@@ -28,11 +28,22 @@ let pp_with_ocamlc sctx pp_ml =
   in
   match Unix.waitpid [] pid |> snd with
   | Unix.WEXITED 0 ->
+    let open Dune_engine in
     let dump_file =
-      pp_ml |> change_ext (function
-        | ".mli" -> ".cmi.dump"
-        | ".ml"  -> ".cmo.dump"
-        | _ -> failwith "unreachable")
+      pp_ml |> change_ext (fun ext ->
+        let dialect =
+          Dialect.DB.find_by_extension
+            (Dune_project.dialects project)
+            ext
+        in
+        match dialect with
+        | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
+        | Some (_, kind) ->
+          let open Import.Ml_kind in
+          match kind with
+          | Intf -> ".cmi.dump"
+          | Impl -> ".cmo.dump"
+      )
     in
     if not (Path.of_string dump_file |> Path.is_file) then
       User_error.raise [ Pp.textf "cannot find a dump file: %s" dump_file ]
@@ -52,19 +63,17 @@ let term =
   let file = Common.prefix_target common file in
   if String.is_empty file then
     User_error.raise [ Pp.textf "no file is given" ];
-  let pp_file =
-    file |> change_ext (function
-      | ".mli" -> ".pp.mli"
-      | ".ml"  -> ".pp.ml"
-      | _ -> User_error.raise [ Pp.textf "unsupported file: %s" file ])
-  in
-  let sctx, path =
+  let pp_file = file |> change_ext (fun ext -> ".pp" ^ ext) in
+  let sctx, project, path =
     Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
         let open Memo.O in
         let* setup = setup in
+        let* project =
+          Dune_engine.Source_tree.root () >>| Dune_engine.Source_tree.Dir.project
+        in
         let context = Import.Main.find_context_exn setup ~name:ctx_name in
         let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
         let target = Path.build (Path.Build.relative context.build_dir pp_file) in
@@ -74,9 +83,9 @@ let term =
             [ Pp.textf "%s is not preprocessed" (String.maybe_quoted file) ]
         | true ->
           let+ _digest = Build_system.build_file target in
-          (sctx, Path.to_string target)))
+          (sctx, project, Path.to_string target)))
   in
   Hooks.End_of_build.run ();
-  pp_with_ocamlc sctx path
+  pp_with_ocamlc sctx project path
 
 let command = (term, info)

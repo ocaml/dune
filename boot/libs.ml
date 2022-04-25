@@ -26,7 +26,7 @@ let local_libraries =
   ; ("otherlibs/dune-glob/src", Some "Dune_glob", false, None)
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
-  ; ("src/chrome_trace", Some "Chrome_trace", false, None)
+  ; ("otherlibs/chrome-trace/src", Some "Chrome_trace", false, None)
   ; ("vendor/spawn/src", Some "Spawn", false, None)
   ; ("src/dune_stats", Some "Dune_stats", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)

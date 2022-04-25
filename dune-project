@@ -202,3 +202,11 @@ understood by dune language."))
   (stdune (= :version))
   (dyn (= :version)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
+
+(package
+ (name chrome-trace)
+ (synopsis "Chrome trace event generation library")
+ (depends
+  (ocaml (>= 4.08.0))
+  base-unix)
+ (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

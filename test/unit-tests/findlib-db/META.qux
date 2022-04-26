@@ -1,0 +1,2 @@
+directory = "qux"
+archive(byte) = "qux.cma"

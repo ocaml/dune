@@ -40,12 +40,46 @@ let findlib =
   in
   Findlib.create ~paths:[ db_path ] ~lib_config
 
+let resolve_pkg s =
+  Lib_name.of_string s |> Findlib.find findlib |> Memo.run
+  |> Test_scheduler.(run (create ()))
+
+let elide_db_path path =
+  let prefix = Path.to_string db_path in
+  let path = Path.to_string path in
+  String.drop_prefix_if_exists path ~prefix
+
+let print_pkg_archives pkg =
+  let pkg = resolve_pkg pkg in
+  let pkg =
+    match pkg with
+    | Ok (Library x) ->
+      Ok
+        (Mode.Dict.map
+           (Lib_info.archives (Dune_package.Lib.info x))
+           ~f:(List.map ~f:elide_db_path))
+    | Ok _ -> assert false
+    | Error _ as err -> err
+  in
+  let to_dyn =
+    Result.to_dyn
+      (Mode.Dict.to_dyn (Dyn.list Dyn.string))
+      Findlib.Unavailable_reason.to_dyn
+  in
+  let pp = Dyn.pp (to_dyn pkg) in
+  Format.printf "%a@." Pp.to_fmt pp
+
+let%expect_test _ =
+  print_pkg_archives "qux";
+  [%expect {| Error Not_found |}]
+
+let%expect_test _ =
+  print_pkg_archives "xyz";
+  [%expect {| Error Not_found |}]
+
 let%expect_test _ =
   let pkg =
-    match
-      Lib_name.of_string "foo" |> Findlib.find findlib |> Memo.run
-      |> Test_scheduler.(run (create ()))
-    with
+    match resolve_pkg "foo" with
     | Ok (Library x) -> x
     | _ -> assert false
   in

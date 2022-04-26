@@ -104,51 +104,56 @@ module Fd_count = struct
     | Unknown
     | This of int
 
-  let lsof () =
+  let lsof =
+    let prog = lazy (Bin.which ~path:(Env.path Env.initial) "lsof") in
     (* note: we do not use the Process module here, because it would create a
        circular dependency *)
-    let lsof_r, lsof_w = Unix.pipe ~cloexec:true () in
-    let pid =
-      let prog = "/usr/sbin/lsof" in
-      let argv =
-        [ prog
-        ; "-l"
-        ; "-O"
-        ; "-P"
-        ; "-n"
-        ; "-w"
-        ; "-p"
-        ; string_of_int (Unix.getpid ())
-        ]
-      in
-      Spawn.spawn ~prog ~argv ~stdout:lsof_w () |> Pid.of_int
-    in
-    Unix.close lsof_w;
-    match
-      let _, status = Unix.waitpid [] (Pid.to_int pid) in
-      status
-    with
-    | Unix.WEXITED 0 ->
-      let count =
-        let chan = Unix.in_channel_of_descr lsof_r in
-        let rec loop acc =
-          match input_line chan with
-          | exception End_of_file -> acc
-          | _ -> loop (acc + 1)
+    fun () ->
+      match Lazy.force prog with
+      | None -> Unknown
+      | Some prog -> (
+        let lsof_r, lsof_w = Unix.pipe ~cloexec:true () in
+        let prog = Path.to_string prog in
+        let pid =
+          let argv =
+            [ prog
+            ; "-l"
+            ; "-O"
+            ; "-P"
+            ; "-n"
+            ; "-w"
+            ; "-p"
+            ; string_of_int (Unix.getpid ())
+            ]
+          in
+          Spawn.spawn ~prog ~argv ~stdout:lsof_w () |> Pid.of_int
         in
-        (* the output contains a header line *)
-        let res = loop (-1) in
-        Io.close_in chan;
-        res
-      in
-      This count
-    | (exception Unix.Unix_error (_, _, _))
-    (* The final [waitpid] call fails with:
+        Unix.close lsof_w;
+        match
+          let _, status = Unix.waitpid [] (Pid.to_int pid) in
+          status
+        with
+        | Unix.WEXITED 0 ->
+          let count =
+            let chan = Unix.in_channel_of_descr lsof_r in
+            let rec loop acc =
+              match input_line chan with
+              | exception End_of_file -> acc
+              | _ -> loop (acc + 1)
+            in
+            (* the output contains a header line *)
+            let res = loop (-1) in
+            Io.close_in chan;
+            res
+          in
+          This count
+        | (exception Unix.Unix_error (_, _, _))
+        (* The final [waitpid] call fails with:
 
-       {[ Error: waitpid(): No child processes ]} *)
-    | _ ->
-      Unix.close lsof_r;
-      Unknown
+           {[ Error: waitpid(): No child processes ]} *)
+        | _ ->
+          Unix.close lsof_r;
+          Unknown)
 
   let proc_fs () =
     match Sys.readdir "/proc/self/fd" with

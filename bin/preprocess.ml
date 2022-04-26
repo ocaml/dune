@@ -6,7 +6,9 @@ let doc = "Print the preprocessed output"
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      {|$(b,dune preprocess FILE) build the given FILE and print the preprocessed output|}
+      {|$(b,dune preprocess FILE) build the given FILE and print the preprocessed output.
+
+      If FILE is not preprocessed by dune, it prints the original contents of FILE.|}
   ; `Blocks Common.help_secs
   ]
 

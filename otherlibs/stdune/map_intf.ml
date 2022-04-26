@@ -137,6 +137,8 @@ module type S = sig
 
   val filter_mapi : 'a t -> f:(key -> 'a -> 'b option) -> 'b t
 
+  val filter_opt : 'a option t -> 'a t
+
   (** [is_subset t ~of_ ~f] is [true] iff all keys in [t] are in [of_] and [f]
       is [true] for all keys that are in both. *)
   val is_subset : 'a t -> of_:'b t -> f:('a -> of_:'b -> bool) -> bool

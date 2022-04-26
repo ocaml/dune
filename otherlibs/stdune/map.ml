@@ -202,6 +202,8 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let filter_map t ~f = filter_mapi t ~f:(fun _ x -> f x)
 
+  let filter_opt t = filter_map t ~f:Fun.id
+
   let superpose a b = union a b ~f:(fun _ _ y -> Some y)
 
   let is_subset t ~of_ ~f =

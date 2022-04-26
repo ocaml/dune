@@ -770,7 +770,7 @@ module Dir = struct
                 Some
                   (if String.Set.mem files fname then Ok test
                   else Error (Missing_run_t test)))
-        >>| List.filter_map ~f:Fun.id
+        >>| List.filter_opt
       in
       file_tests @ dir_tests
 end

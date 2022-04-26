@@ -487,7 +487,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
                 if Path.Local.is_root (Path.Local.parent_exn p) then
                   Some (Path.Build.append_local install_dir p)
                 else None)
-            >>| List.filter_map ~f:Fun.id >>| Path.Build.Set.of_list
+            >>| List.filter_opt >>| Path.Build.Set.of_list
           in
           match (stanza : Stanza.t) with
           | Dune_file.Install { section = Section Bin; files; _ } ->

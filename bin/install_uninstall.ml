@@ -489,7 +489,7 @@ let install_uninstall ~what =
                 package_is_vendored pkg >>| function
                 | true -> None
                 | false -> Some (Package.name pkg))
-            >>| List.filter_map ~f:Fun.id
+            >>| List.filter_opt
           | l -> Fiber.return l
         in
         let install_files, missing_install_files =

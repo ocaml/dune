@@ -778,7 +778,7 @@ module Sub_system = struct
           | Some f ->
             let+ info = Resolve.Memo.read_memo (f t) in
             Some (M.Info.T info))
-      >>| Sub_system_name.Map.filter_map ~f:Fun.id
+      >>| Sub_system_name.Map.filter_opt
 end
 
 (* Library name resolution and transitive closure *)

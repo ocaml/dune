@@ -427,7 +427,7 @@ module Crawl = struct
               | Dune_file.Executables exes ->
                 executables sctx ~options ~project:dune_file.project ~dir exes
               | _ -> Memo.return None)
-          >>| List.filter_map ~f:Fun.id)
+          >>| List.filter_opt)
       >>| List.concat >>| List.split
     in
     let exe_libs =
@@ -448,7 +448,7 @@ module Crawl = struct
       in
       add_transitive_deps libs
       >>= Memo.parallel_map ~f:(library ~options sctx)
-      >>| List.filter_map ~f:Fun.id
+      >>| List.filter_opt
     in
     Memo.return (exes @ libs)
 end

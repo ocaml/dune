@@ -80,7 +80,7 @@ module Register_backend (M : Backend) = struct
     let open Memo.O in
     (match written_by_user with
     | Some l -> Memo.return l
-    | None -> Memo.parallel_map to_scan ~f:get >>| List.filter_map ~f:Fun.id)
+    | None -> Memo.parallel_map to_scan ~f:get >>| List.filter_opt)
     >>| function
     | [] -> Error No_backend_found
     | l -> Ok l

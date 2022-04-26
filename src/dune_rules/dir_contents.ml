@@ -115,7 +115,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
       in
       Some (doc, List.map (String.Map.values mlds) ~f:(Path.Build.relative dir))
     | _ -> Memo.return None)
-  >>| List.filter_map ~f:Fun.id
+  >>| List.filter_opt
 
 module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t Memo.t

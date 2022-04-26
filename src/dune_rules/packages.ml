@@ -20,7 +20,7 @@ let mlds_by_package_def =
               let name = Package.name d.package in
               Some (name, mlds)
             | _ -> Memo.return None)
-          >>| List.filter_map ~f:Fun.id)
+          >>| List.filter_opt)
       >>| List.concat
       >>| Package.Name.Map.of_list_reduce ~f:List.rev_append)
 

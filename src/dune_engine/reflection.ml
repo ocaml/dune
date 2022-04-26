@@ -79,7 +79,7 @@ let eval ~recursive ~request =
             Load_rules.get_rule p >>= function
             | None -> Memo.return None
             | Some rule -> evaluate_rule rule >>| Option.some)
-    >>| List.filter_map ~f:Fun.id
+    >>| List.filter_opt
   in
   let* (), deps = Action_builder.run request Lazy in
   let* root_rules = rules_of_deps deps in

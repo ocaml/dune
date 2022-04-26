@@ -74,7 +74,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
         Load_rules.is_target path >>| function
         | Yes _ | Under_directory_target_so_cannot_say -> Some (File path)
         | No -> None)
-    >>| List.filter_map ~f:Fun.id
+    >>| List.filter_opt
   in
   let matching_target () =
     Load_rules.is_target path >>| function

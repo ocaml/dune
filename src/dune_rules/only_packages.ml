@@ -62,8 +62,7 @@ let conf =
                     command_line_option
                 ];
             Option.some_if (vendored || included) (name, pkg))
-        >>| List.filter_map ~f:Fun.id >>| Package.Name.Map.of_list_exn
-        >>| Option.some)
+        >>| List.filter_opt >>| Package.Name.Map.of_list_exn >>| Option.some)
 
 let get () = Memo.Lazy.force conf
 

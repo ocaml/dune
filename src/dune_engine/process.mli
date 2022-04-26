@@ -62,8 +62,20 @@ type purpose =
 type metadata =
   { loc : Loc.t option
   ; annots : User_message.Annots.t
+  ; name : string option
+        (** name when emitting stats. defaults to the basename of the executable *)
+  ; categories : string list  (** additional categories when emitting stats *)
   ; purpose : purpose
   }
+
+val create_metadata :
+     ?loc:Loc.t
+  -> ?annots:User_message.Annots.t
+  -> ?name:string
+  -> ?categories:string list
+  -> ?purpose:purpose
+  -> unit
+  -> metadata
 
 (* Dune overrides the TMPDIR for all running actions. At Jane Street, we change
    this behaviour by setting [set_temp_dir_when_running_actions = false]. *)

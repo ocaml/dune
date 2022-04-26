@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Improve metrics for cram tests. Include test names in the event and add a
+  category for cram tests (#5626, @rgrinberg)
+
 - Allow specifying multiple licenses in project file (#5579, fixes #5574,
   @liyishuai)
 

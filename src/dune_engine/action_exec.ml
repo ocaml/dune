@@ -514,12 +514,7 @@ let extend_build_path_prefix_map env how map =
 let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
     ~execution_parameters t =
   let ectx =
-    let metadata =
-      { Process.purpose = Build_job targets
-      ; loc = None
-      ; annots = User_message.Annots.empty
-      }
-    in
+    let metadata = Process.create_metadata ~purpose:(Build_job targets) () in
     { targets; metadata; context; rule_loc; build_deps }
   and eenv =
     let env =

@@ -52,12 +52,18 @@ module Io : sig
   val multi_use : 'a t -> 'a t
 end
 
-(** Why a Fiber.t was run. The location and annotations will be attached to
-    error messages. *)
+(** Why a Fiber.t was run.*)
 type purpose =
-  | Internal_job of Loc.t option * User_message.Annots.t
-  | Build_job of
-      Loc.t option * User_message.Annots.t * Targets.Validated.t option
+  | Internal_job
+  | Build_job of Targets.Validated.t option
+
+(** Additional metadata attached to processes. The location and annotations will
+    be attached to error messages. *)
+type metadata =
+  { loc : Loc.t option
+  ; annots : User_message.Annots.t
+  ; purpose : purpose
+  }
 
 (* Dune overrides the TMPDIR for all running actions. At Jane Street, we change
    this behaviour by setting [set_temp_dir_when_running_actions = false]. *)
@@ -71,7 +77,7 @@ val run :
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?purpose:purpose
+  -> ?metadata:metadata
   -> (unit, 'a) failure_mode
   -> Path.t
   -> string list
@@ -83,7 +89,7 @@ val run_with_times :
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?purpose:purpose
+  -> ?metadata:metadata
   -> Path.t
   -> string list
   -> Proc.Times.t Fiber.t
@@ -94,7 +100,7 @@ val run_capture :
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?purpose:purpose
+  -> ?metadata:metadata
   -> (string, 'a) failure_mode
   -> Path.t
   -> string list
@@ -105,7 +111,7 @@ val run_capture_line :
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?purpose:purpose
+  -> ?metadata:metadata
   -> (string, 'a) failure_mode
   -> Path.t
   -> string list
@@ -116,7 +122,7 @@ val run_capture_lines :
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?purpose:purpose
+  -> ?metadata:metadata
   -> (string list, 'a) failure_mode
   -> Path.t
   -> string list
@@ -127,7 +133,7 @@ val run_capture_zero_separated :
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?purpose:purpose
+  -> ?metadata:metadata
   -> (string list, 'a) failure_mode
   -> Path.t
   -> string list

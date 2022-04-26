@@ -12,74 +12,89 @@ let man =
 
 let info = Term.info "preprocess" ~doc ~man
 
-let change_ext f path =
-  let base, ext = Path.of_string path |> Path.split_extension in
-  let suffix = f ext in
-  Path.extend_basename base ~suffix |> Path.to_string
-
 let pp_with_ocamlc sctx project pp_ml =
   let open Dune_engine in
   let ocamlc = (Super_context.context sctx).ocamlc in
   let env = Super_context.context_env sctx in
-  let argv = ["-stop-after"; "parsing"; "-dsource"; pp_ml; "-dump-into-file"] in
-  let open Fiber.O in
-  let* _ = Process.run ~env Process.Strict ocamlc argv in
-  let dump_file =
-    pp_ml |> change_ext (fun ext ->
-      let dialect =
-        Dialect.DB.find_by_extension (Dune_project.dialects project) ext
-      in
-      match dialect with
-      | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
-      | Some (_, kind) ->
-        let open Import.Ml_kind in
-        match kind with
-        | Intf -> ".cmi.dump"
-        | Impl -> ".cmo.dump"
-    )
+  let argv =
+    [ "-stop-after"
+    ; "parsing"
+    ; "-dsource"
+    ; Path.to_string pp_ml
+    ; "-dump-into-file"
+    ]
   in
-  let dump_file_path = Path.of_string dump_file in
-  if not (Path.exists dump_file_path && Path.is_file dump_file_path) then
-    User_error.raise [ Pp.textf "cannot find a dump file: %s" dump_file ]
-  else
-    In_channel.with_open_text dump_file (fun ic -> Io.copy_channels ic stdout);
-    Sys.remove dump_file;
-    exit 0
+  let open Fiber.O in
+  let+ () = Process.run ~env Process.Strict ocamlc argv in
+  let dump_file =
+    Path.map_extension pp_ml ~f:(fun ext ->
+        let dialect =
+          Dialect.DB.find_by_extension (Dune_project.dialects project) ext
+        in
+        match dialect with
+        | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
+        | Some (_, kind) -> (
+          let open Import.Ml_kind in
+          match kind with
+          | Intf -> ".cmi.dump"
+          | Impl -> ".cmo.dump"))
+  in
+  if not (Path.exists dump_file && Path.is_file dump_file) then
+    User_error.raise
+      [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]
+  else Io.cat dump_file;
+  Path.unlink_no_err dump_file;
+  ()
 
 let term =
   let+ common = Common.term
   and+ file = Arg.(value & pos 0 string "" & info [] ~docv:"FILE")
-  and+ ctx_name =
-    Common.context_arg ~doc:{|Select context where to build.|} in
+  and+ ctx_name = Common.context_arg ~doc:{|Select context where to build.|} in
   let config = Common.init common in
-  let file = Common.prefix_target common file in
-  if String.is_empty file then
-    User_error.raise [ Pp.textf "no file is given" ];
-  let pp_file = file |> change_ext (fun ext -> ".pp" ^ ext) in
-  let sctx, project, path =
+  let file =
+    let file = Common.prefix_target common file in
+    if String.is_empty file then
+      User_error.raise [ Pp.textf "no file is given" ]
+    else Path.of_string file
+  in
+  let pp_file = file |> Path.map_extension ~f:(fun ext -> ".pp" ^ ext) in
+  let result =
     Scheduler.go ~common ~config (fun () ->
-      let open Fiber.O in
-      let* setup = Import.Main.setup () in
-      Build_system.run_exn (fun () ->
-        let open Memo.O in
-        let* setup = setup in
-        let* project =
-          Dune_engine.Source_tree.root () >>| Dune_engine.Source_tree.Dir.project
-        in
-        let context = Import.Main.find_context_exn setup ~name:ctx_name in
-        let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
-        let target = Path.build (Path.Build.relative context.build_dir pp_file) in
-        Build_system.file_exists target >>= function
-        | false ->
-          User_error.raise
-            [ Pp.textf "%s is not preprocessed" (String.maybe_quoted file) ]
-        | true ->
-          let+ _digest = Build_system.build_file target in
-          (sctx, project, Path.to_string target)))
+        let open Fiber.O in
+        let* setup = Import.Main.setup () in
+        Build_system.run_exn (fun () ->
+            let open Memo.O in
+            let* setup = setup in
+            let* project =
+              Dune_engine.Source_tree.root ()
+              >>| Dune_engine.Source_tree.Dir.project
+            in
+            let context = Import.Main.find_context_exn setup ~name:ctx_name in
+            let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
+            let in_build_dir file =
+              file |> Path.to_string
+              |> Path.Build.relative context.build_dir
+              |> Path.build
+            in
+            let pp_file = in_build_dir pp_file in
+            Build_system.file_exists pp_file >>= function
+            | true ->
+              let+ _digest = Build_system.build_file pp_file in
+              Ok (sctx, project, pp_file)
+            | false -> (
+              let file = in_build_dir file in
+              Build_system.file_exists file >>= function
+              | true ->
+                let+ _digest = Build_system.build_file file in
+                Error file
+              | false ->
+                User_error.raise
+                  [ Pp.textf "%s does not exist" (Path.to_string file) ])))
   in
   Hooks.End_of_build.run ();
-  Scheduler.go ~common ~config (fun () ->
-    pp_with_ocamlc sctx project path
-  )
+  match result with
+  | Ok (sctx, project, path) ->
+    Scheduler.go ~common ~config (fun () -> pp_with_ocamlc sctx project path)
+  | Error path -> Io.cat path
 
 let command = (term, info)

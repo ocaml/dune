@@ -292,14 +292,10 @@ let decode ~src_dir =
      of_source ~obj_name ~visibility ~kind source)
 
 let pped =
-  let pped_path path ~suffix =
-    (* We need to insert the suffix before the extension as some tools inspect
-       the extension *)
-    let base, ext = Path.split_extension path in
-    Path.extend_basename base ~suffix:(suffix ^ ext)
-  in
   map_files ~f:(fun _kind (file : File.t) ->
-      let pp_path = pped_path file.path ~suffix:".pp" in
+      (* We need to insert the suffix before the extension as some tools inspect
+         the extension *)
+      let pp_path = Path.map_extension file.path ~f:(fun ext -> ".pp" ^ ext) in
       { file with path = pp_path })
 
 let ml_source =

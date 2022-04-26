@@ -110,6 +110,10 @@ end = struct
     let base, _ = split_extension t in
     base ^ ext
 
+  let map_extension t ~f =
+    let base, ext = split_extension t in
+    base ^ f ext
+
   let cwd () = Sys.getcwd ()
 
   let initial_cwd = Fpath.initial_cwd
@@ -340,6 +344,10 @@ end = struct
   let set_extension t ~ext =
     let base, _ = split_extension t in
     base ^ ext
+
+  let map_extension t ~f =
+    let base, ext = split_extension t in
+    base ^ f ext
 
   module Prefix = struct
     type _ t =
@@ -1132,6 +1140,10 @@ let set_extension t ~ext =
   | External t -> external_ (External.set_extension t ~ext)
   | In_build_dir t -> in_build_dir (Local.set_extension t ~ext)
   | In_source_tree t -> in_source_tree (Local.set_extension t ~ext)
+
+let map_extension t ~f =
+  let base, ext = split_extension t in
+  extend_basename ~suffix:(f ext) base
 
 module O = Comparable.Make (T)
 module Map = O.Map

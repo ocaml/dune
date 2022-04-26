@@ -45,4 +45,7 @@ module type S = sig
   val file_line : path -> int -> string
 
   val file_lines : path -> start:int -> stop:int -> (string * string) list
+
+  (** reads a file and prints its contents to stdout or the specified channel *)
+  val cat : ?binary:bool (* default true *) -> ?dst:out_channel -> path -> unit
 end

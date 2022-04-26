@@ -12,22 +12,10 @@ let man =
 
 let info = Term.info "preprocess" ~doc ~man
 
-let pp_with_ocamlc sctx project pp_ml =
+let pp_with_ocamlc sctx project pp_file =
   let open Dune_engine in
-  let ocamlc = (Super_context.context sctx).ocamlc in
-  let env = Super_context.context_env sctx in
-  let argv =
-    [ "-stop-after"
-    ; "parsing"
-    ; "-dsource"
-    ; Path.to_string pp_ml
-    ; "-dump-into-file"
-    ]
-  in
-  let open Fiber.O in
-  let+ () = Process.run ~env Process.Strict ocamlc argv in
   let dump_file =
-    Path.map_extension pp_ml ~f:(fun ext ->
+    Path.map_extension pp_file ~f:(fun ext ->
         let dialect =
           Dialect.DB.find_by_extension (Dune_project.dialects project) ext
         in
@@ -38,6 +26,18 @@ let pp_with_ocamlc sctx project pp_ml =
           match kind with
           | Intf -> ".cmi.dump"
           | Impl -> ".cmo.dump"))
+  in
+  let open Fiber.O in
+  let+ () =
+    Process.run
+      ~env:(Super_context.context_env sctx)
+      Process.Strict (Super_context.context sctx).ocamlc
+      [ "-stop-after"
+      ; "parsing"
+      ; "-dsource"
+      ; Path.to_string pp_file
+      ; "-dump-into-file"
+      ]
   in
   if not (Path.exists dump_file && Path.is_file dump_file) then
     User_error.raise

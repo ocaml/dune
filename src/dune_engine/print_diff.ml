@@ -28,8 +28,9 @@ let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
   in
   let loc = Loc.in_file file1 in
   let run_process ?(dir = dir)
-      ?(metadata = { Process.purpose = Internal_job; loc = Some loc; annots })
-      prog args =
+      ?(metadata =
+        Process.create_metadata ~purpose:Internal_job ~loc ~annots ()) prog args
+      =
     Process.run ~dir ~env:Env.initial Strict prog args ~metadata
   in
   let file1, file2 = Path.(to_string file1, to_string file2) in
@@ -103,19 +104,18 @@ let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
               else [ "-ascii" ])
             @ [ file1; file2 ])
             ~metadata:
-              { (* Because of the [-location-style omake], patdiff will print
-                   the location of each hunk in a format that the editor should
-                   understand. However, the location won't be the first line of
-                   the output, so the [process] module won't recognise that the
-                   output has a location.
+              ((* Because of the [-location-style omake], patdiff will print the
+                  location of each hunk in a format that the editor should
+                  understand. However, the location won't be the first line of
+                  the output, so the [process] module won't recognise that the
+                  output has a location.
 
-                   For this reason, we manually pass the below annotation. *)
-                Process.purpose = Internal_job
-              ; loc = Some loc
-              ; annots =
-                  User_message.Annots.set annots
-                    User_message.Annots.has_embedded_location ()
-              }
+                  For this reason, we manually pass the below annotation. *)
+               Process.create_metadata ~purpose:Internal_job ~loc
+                 ~annots:
+                   (User_message.Annots.set annots
+                      User_message.Annots.has_embedded_location ())
+                 ())
         in
         (* Use "diff" if "patdiff" reported no differences *)
         normal_diff ())

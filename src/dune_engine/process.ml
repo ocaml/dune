@@ -155,11 +155,22 @@ type purpose =
 type metadata =
   { loc : Loc.t option
   ; annots : User_message.Annots.t
+  ; name : string option
+  ; categories : string list
   ; purpose : purpose
   }
 
 let default_metadata =
-  { loc = None; annots = User_message.Annots.empty; purpose = Internal_job }
+  { loc = None
+  ; annots = User_message.Annots.empty
+  ; purpose = Internal_job
+  ; categories = []
+  ; name = None
+  }
+
+let create_metadata ?loc ?(annots = default_metadata.annots) ?name
+    ?(categories = default_metadata.categories) ?(purpose = Internal_job) () =
+  { loc; annots; name; categories; purpose }
 
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
@@ -464,7 +475,7 @@ end = struct
       Has_output { with_color; without_color; has_embedded_location }
 
   let get_loc_and_annots ~dir ~metadata ~output =
-    let { loc; annots; purpose = _ } = metadata in
+    let { loc; annots; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
     let annots = User_message.Annots.set annots with_directory_annot dir in
     let annots =
@@ -575,11 +586,15 @@ end = struct
       fail ~loc ~annots paragraphs
 end
 
-let report_process_start stats ~id ~pid ~prog ~args ~now =
+let report_process_start stats ~metadata ~id ~pid ~prog ~args ~now =
   let common =
-    let name = Filename.basename prog in
+    let name =
+      match metadata.name with
+      | Some n -> n
+      | None -> Filename.basename prog
+    in
     let ts = Timestamp.of_float_seconds now in
-    Event.common_fields ~cat:[ "process" ] ~name ~ts ()
+    Event.common_fields ~cat:("process" :: metadata.categories) ~name ~ts ()
   in
   let args =
     [ ("process_args", `List (List.map args ~f:(fun arg -> `String arg)))
@@ -714,8 +729,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let event_common =
           Option.map config.stats ~f:(fun stats ->
               ( stats
-              , report_process_start stats ~id ~pid ~prog:prog_str ~args
-                  ~now:started_at ))
+              , report_process_start stats ~metadata ~id ~pid ~prog:prog_str
+                  ~args ~now:started_at ))
         in
         (event_common, started_at, pid)
       in
@@ -850,7 +865,7 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
           | None -> prog_display
           | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
-        let { loc; annots; purpose = _ } =
+        let { loc; annots; _ } =
           Option.value metadata ~default:default_metadata
         in
         match l with

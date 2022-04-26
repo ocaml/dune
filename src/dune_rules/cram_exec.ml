@@ -415,7 +415,20 @@ let run ~env ~script lexbuf : string Fiber.t =
       let path = Env.path Env.initial in
       Option.value_exn (Bin.which ~path "sh")
     in
-    Process.run ~dir:cwd ~env Strict sh [ Path.to_string sh_script.script ]
+    let metadata =
+      let name =
+        let base = Path.basename sh_script.script in
+        match String.equal base "run.t" with
+        | false -> base
+        | true ->
+          sprintf "%s/%s"
+            (Path.basename (Path.parent_exn sh_script.script))
+            base
+      in
+      Process.create_metadata ~name ~categories:[ "cram" ] ()
+    in
+    Process.run ~metadata ~dir:cwd ~env Strict sh
+      [ Path.to_string sh_script.script ]
   in
   let raw = read_and_attach_exit_codes sh_script in
   let sanitized = sanitize ~parent_script:sh_script.script raw in

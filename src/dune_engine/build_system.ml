@@ -980,7 +980,7 @@ end = struct
     let build_impl g =
       let dir = File_selector.dir g in
       Load_rules.load_dir ~dir >>= function
-      | Non_build _ | Build _ ->
+      | External _ | Source _ | Build _ ->
         let* paths = Pred.eval g in
         let+ files =
           Memo.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
@@ -1007,8 +1007,14 @@ end = struct
     let eval_impl g =
       let dir = File_selector.dir g in
       Load_rules.load_dir ~dir >>= function
-      | Non_build { files } ->
-        Memo.return (Path.Set.filter files ~f:(File_selector.test g))
+      | Source { files } ->
+        Path.set_of_source_paths files
+        |> Path.Set.filter ~f:(File_selector.test g)
+        |> Memo.return
+      | External { files } ->
+        Path.set_of_external_paths files
+        |> Path.Set.filter ~f:(File_selector.test g)
+        |> Memo.return
       | Build { rules_here; _ } ->
         let only_generated_files = File_selector.only_generated_files g in
         (* We look only at [by_file_targets] because [File_selector] does not
@@ -1106,7 +1112,16 @@ let build_pred = Pred.build
    are cached. *)
 let file_exists fn =
   Load_rules.load_dir ~dir:(Path.parent_exn fn) >>= function
-  | Non_build { files } -> Memo.return (Path.Set.mem files fn)
+  | Source { files } ->
+    Memo.return
+      (match Path.as_in_source_tree fn with
+      | None -> false
+      | Some file -> Path.Source.Set.mem files file)
+  | External { files } ->
+    Memo.return
+      (match Path.as_external fn with
+      | None -> false
+      | Some file -> Path.External.Set.mem files file)
   | Build { rules_here; _ } ->
     Memo.return
       (Path.Build.Map.mem rules_here.by_file_targets
@@ -1117,7 +1132,8 @@ let file_exists fn =
 
 let files_of ~dir =
   Load_rules.load_dir ~dir >>= function
-  | Non_build { files } -> Memo.return files
+  | Source { files } -> Memo.return (Path.set_of_source_paths files)
+  | External { files } -> Memo.return (Path.set_of_external_paths files)
   | Build { rules_here; _ } ->
     Memo.return
       (Path.Build.Map.keys rules_here.by_file_targets

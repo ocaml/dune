@@ -896,6 +896,10 @@ let as_in_build_dir_exn t =
       [ ("t", to_dyn t) ]
   | In_build_dir p -> p
 
+let as_external = function
+  | External s -> Some s
+  | In_build_dir _ | In_source_tree _ -> None
+
 let extract_build_context = function
   | In_source_tree _ | External _ -> None
   | In_build_dir p when Local.is_root p -> None
@@ -1162,6 +1166,9 @@ let set_of_source_paths set =
 
 let set_of_build_paths_list =
   List.fold_left ~init:Set.empty ~f:(fun acc e -> Set.add acc (build e))
+
+let set_of_external_paths set =
+  External.Set.to_list set |> Set.of_list_map ~f:external_
 
 let rename old_path new_path =
   Sys.rename (to_string old_path) (to_string new_path)

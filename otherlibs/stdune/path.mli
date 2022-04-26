@@ -320,6 +320,8 @@ val as_in_build_dir : t -> Build.t option
 
 val as_in_build_dir_exn : t -> Build.t
 
+val as_external : t -> External.t option
+
 (** [is_strict_descendant_of_build_dir t = is_in_build_dir t && t <> build_dir] *)
 val is_strict_descendant_of_build_dir : t -> bool
 
@@ -408,6 +410,8 @@ val lstat_exn : t -> Unix.stats
 val set_of_source_paths : Source.Set.t -> Set.t
 
 val set_of_build_paths_list : Build.t list -> Set.t
+
+val set_of_external_paths : External.Set.t -> Set.t
 
 (** Rename a file. [rename oldpath newpath] renames the file called [oldpath] to
     [newpath], moving it between directories if needed. If [newpath] already

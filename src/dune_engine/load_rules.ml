@@ -32,7 +32,8 @@ module Loaded = struct
     }
 
   type t =
-    | Non_build of { files : Path.Set.t }
+    | Source of { files : Path.Source.Set.t }
+    | External of { files : Path.External.Set.t }
     | Build of build
     | Build_under_directory_target of
         { directory_target_ancestor : Path.Build.t }
@@ -79,17 +80,17 @@ let get_dir_triage ~dir =
   match Dpath.analyse_dir dir with
   | Source dir ->
     let+ files = Source_tree.files_of dir in
-    Dir_triage.Known (Non_build { files = Path.set_of_source_paths files })
-  | External _ ->
+    Dir_triage.Known (Source { files })
+  | External dir_ext ->
     let files =
       match Path.Untracked.readdir_unsorted_with_kinds dir with
-      | Error (Unix.ENOENT, _, _) -> Path.Set.empty
+      | Error (Unix.ENOENT, _, _) -> Path.External.Set.empty
       | Error unix_error ->
         User_warning.emit
           [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
           ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
           ];
-        Path.Set.empty
+        Path.External.Set.empty
       | Ok filenames ->
         let filenames =
           List.filter_map filenames ~f:(fun (name, kind) ->
@@ -97,9 +98,9 @@ let get_dir_triage ~dir =
               | S_DIR -> None
               | _ -> Some name)
         in
-        Path.Set.of_listing ~dir ~filenames
+        Path.External.Set.of_listing ~dir:dir_ext ~filenames
     in
-    Memo.return @@ Dir_triage.Known (Non_build { files })
+    Memo.return @@ Dir_triage.Known (External { files })
   | Build (Regular Root) ->
     let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
     let allowed_subdirs =
@@ -374,7 +375,7 @@ end = struct
 
   let lookup_alias alias =
     load_dir ~dir:(Path.build (Alias.dir alias)) >>| function
-    | Non_build _ ->
+    | Source _ | External _ ->
       Code_error.raise "Alias in a non-build dir"
         [ ("alias", Alias.to_dyn alias) ]
     | Build { aliases; _ } -> Alias.Name.Map.find aliases (Alias.name alias)
@@ -484,7 +485,7 @@ end = struct
         Restricted
           (Memo.Lazy.create ~name:"allowed_dirs" (fun () ->
                load_dir ~dir:(Path.build dir) >>| function
-               | Non_build _ -> Dir_set.just_the_root
+               | External _ | Source _ -> Dir_set.just_the_root
                | Build { allowed_subdirs; _ } ->
                  Dir_set.descend allowed_subdirs subdir
                | Build_under_directory_target _ -> Dir_set.empty))
@@ -841,7 +842,7 @@ include Load_rules
 let get_rule_internal path =
   let dir = Path.Build.parent_exn path in
   load_dir ~dir:(Path.build dir) >>= function
-  | Non_build _ -> assert false
+  | External _ | Source _ -> assert false
   | Build { rules_here; _ } -> (
     match Path.Build.Map.find rules_here.by_file_targets path with
     | Some _ as rule -> Memo.return rule
@@ -850,7 +851,7 @@ let get_rule_internal path =
   | Build_under_directory_target { directory_target_ancestor } -> (
     load_dir ~dir:(Path.build (Path.Build.parent_exn directory_target_ancestor))
     >>= function
-    | Non_build _ | Build_under_directory_target _ -> assert false
+    | External _ | Source _ | Build_under_directory_target _ -> assert false
     | Build { rules_here; _ } ->
       Memo.return
         (Path.Build.Map.find rules_here.by_directory_targets
@@ -909,7 +910,7 @@ let all_direct_targets () =
                  (Path.Build.append_source ctx.Build_context.build_dir
                     (Source_tree.Dir.path dir)))
           >>| function
-          | Non_build _ -> All_targets.empty
+          | External _ | Source _ -> All_targets.empty
           | Build { rules_here; _ } ->
             All_targets.combine
               (Path.Build.Map.map rules_here.by_file_targets ~f:(fun _ -> File))
@@ -937,7 +938,7 @@ let is_target file =
   | None -> Memo.return No
   | Some dir -> (
     load_dir ~dir >>| function
-    | Non_build _ -> No
+    | External _ | Source _ -> No
     | Build { rules_here; _ } -> (
       let file = Path.as_in_build_dir_exn file in
       match Path.Build.Map.find rules_here.by_file_targets file with

@@ -1,1 +1,1 @@
-print_endline _STRING_
+Util.log _STRING_

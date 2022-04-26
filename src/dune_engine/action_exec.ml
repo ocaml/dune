@@ -76,7 +76,7 @@ type done_or_more_deps =
 type exec_context =
   { targets : Targets.Validated.t option
   ; context : Build_context.t option
-  ; purpose : Process.purpose
+  ; metadata : Process.metadata
   ; rule_loc : Loc.t
   ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
   }
@@ -117,7 +117,7 @@ let exec_run ~ectx ~eenv prog args =
   let+ (_ : (unit, int) result) =
     Process.run (Accept eenv.exit_codes) ~dir:eenv.working_dir ~env:eenv.env
       ~stdout_to:eenv.stdout_to ~stderr_to:eenv.stderr_to
-      ~stdin_from:eenv.stdin_from ~purpose:ectx.purpose prog args
+      ~stdin_from:eenv.stdin_from ~metadata:ectx.metadata prog args
   in
   ()
 
@@ -157,7 +157,7 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   let+ () =
     Process.run Strict ~dir:eenv.working_dir ~env ~stdout_to:eenv.stdout_to
       ~stderr_to:eenv.stderr_to ~stdin_from:eenv.stdin_from
-      ~purpose:ectx.purpose prog args
+      ~metadata:ectx.metadata prog args
   in
   let response = Io.read_file response_fn in
   Path.(
@@ -513,23 +513,29 @@ let extend_build_path_prefix_map env how map =
 
 let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
     ~execution_parameters t =
-  let purpose = Process.Build_job (None, User_message.Annots.empty, targets) in
-  let env =
-    match
-      Execution_parameters.add_workspace_root_to_build_path_prefix_map
-        execution_parameters
-    with
-    | false -> env
-    | true ->
-      extend_build_path_prefix_map env `New_rules_have_precedence
-        [ Some
-            { source = Path.to_absolute_filename root
-            ; target = "/workspace_root"
-            }
-        ]
-  in
-  let ectx = { targets; purpose; context; rule_loc; build_deps }
+  let ectx =
+    let metadata =
+      { Process.purpose = Build_job targets
+      ; loc = None
+      ; annots = User_message.Annots.empty
+      }
+    in
+    { targets; metadata; context; rule_loc; build_deps }
   and eenv =
+    let env =
+      match
+        Execution_parameters.add_workspace_root_to_build_path_prefix_map
+          execution_parameters
+      with
+      | false -> env
+      | true ->
+        extend_build_path_prefix_map env `New_rules_have_precedence
+          [ Some
+              { source = Path.to_absolute_filename root
+              ; target = "/workspace_root"
+              }
+          ]
+    in
     { working_dir = Path.root
     ; env
     ; stdout_to =

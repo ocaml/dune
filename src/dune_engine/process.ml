@@ -149,13 +149,17 @@ module Io = struct
 end
 
 type purpose =
-  | Internal_job of Loc.t option * User_message.Annots.t
-  | Build_job of
-      Loc.t option * User_message.Annots.t * Targets.Validated.t option
+  | Internal_job
+  | Build_job of Targets.Validated.t option
 
-let loc_and_annots_of_purpose = function
-  | Internal_job (loc, annots) -> (loc, annots)
-  | Build_job (loc, annots, _) -> (loc, annots)
+type metadata =
+  { loc : Loc.t option
+  ; annots : User_message.Annots.t
+  ; purpose : purpose
+  }
+
+let default_metadata =
+  { loc = None; annots = User_message.Annots.empty; purpose = Internal_job }
 
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
@@ -301,8 +305,8 @@ module Short_display : sig
     -> User_message.Style.t Pp.t
 end = struct
   let pp_purpose = function
-    | Internal_job _ -> Pp.verbatim "(internal)"
-    | Build_job (_, _, targets) -> (
+    | Internal_job -> Pp.verbatim "(internal)"
+    | Build_job targets -> (
       let rec split_paths targets_acc ctxs_acc = function
         | [] -> (List.rev targets_acc, Context_name.Set.to_list ctxs_acc)
         | path :: rest -> (
@@ -414,7 +418,7 @@ module Handle_exit_status : sig
   val verbose :
        ('a, error) result
     -> id:int
-    -> purpose:purpose
+    -> metadata:metadata
     -> output:string
     -> command_line:User_message.Style.t Pp.t
     -> dir:Path.t option
@@ -423,7 +427,7 @@ module Handle_exit_status : sig
   val non_verbose :
        ('a, error) result
     -> verbosity:Scheduler.Config.Display.verbosity
-    -> purpose:purpose
+    -> metadata:metadata
     -> output:string
     -> prog:string
     -> command_line:string
@@ -459,8 +463,8 @@ end = struct
       in
       Has_output { with_color; without_color; has_embedded_location }
 
-  let get_loc_and_annots ~dir ~purpose ~output =
-    let loc, annots = loc_and_annots_of_purpose purpose in
+  let get_loc_and_annots ~dir ~metadata ~output =
+    let { loc; annots; purpose = _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
     let annots = User_message.Annots.set annots with_directory_annot dir in
     let annots =
@@ -485,7 +489,7 @@ end = struct
        command. *)
     raise (User_error.E (User_message.make ?loc ~annots paragraphs))
 
-  let verbose t ~id ~purpose ~output ~command_line ~dir =
+  let verbose t ~id ~metadata ~output ~command_line ~dir =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -506,7 +510,7 @@ end = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" signame
       in
-      let loc, annots = get_loc_and_annots ~dir ~purpose ~output in
+      let loc, annots = get_loc_and_annots ~dir ~metadata ~output in
       fail ~loc ~annots
         (Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
          ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
@@ -514,7 +518,7 @@ end = struct
            ++ Pp.char ' ' ++ command_line
         :: pp_output output)
 
-  let non_verbose t ~(verbosity : Scheduler.Config.Display.verbosity) ~purpose
+  let non_verbose t ~(verbosity : Scheduler.Config.Display.verbosity) ~metadata
       ~output ~prog ~command_line ~dir ~has_unexpected_stdout
       ~has_unexpected_stderr =
     let output = parse_output output in
@@ -531,6 +535,7 @@ end = struct
         :: paragraphs
       else paragraphs
     in
+    let purpose = metadata.purpose in
     match t with
     | Ok n ->
       let paragraphs =
@@ -540,7 +545,7 @@ end = struct
       in
       let paragraphs =
         match (verbosity, purpose, output) with
-        | Short, Build_job _, _ | Short, Internal_job _, Has_output _ ->
+        | Short, Build_job _, _ | Short, Internal_job, Has_output _ ->
           Short_display.pp_ok ~prog ~purpose :: paragraphs
         | _ -> paragraphs
       in
@@ -548,7 +553,7 @@ end = struct
         Console.print_user_message (User_message.make paragraphs);
       n
     | Error error ->
-      let loc, annots = get_loc_and_annots ~dir ~purpose ~output in
+      let loc, annots = get_loc_and_annots ~dir ~metadata ~output in
       let paragraphs =
         match verbosity with
         | Short ->
@@ -594,8 +599,8 @@ let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
 let set_temp_dir_when_running_actions = ref true
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
-    ?(stdin_from = Io.null In) ?(env = Env.initial) ~purpose fail_mode prog args
-    =
+    ?(stdin_from = Io.null In) ?(env = Env.initial)
+    ?(metadata = default_metadata) fail_mode prog args =
   Scheduler.with_job_slot (fun (config : Scheduler.Config.t) ->
       let display = config.display in
       let dir =
@@ -787,38 +792,36 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         match (display.verbosity, exit_status', output) with
         | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
         | Verbose, _, _ ->
-          Handle_exit_status.verbose exit_status' ~id ~purpose ~dir
+          Handle_exit_status.verbose exit_status' ~id ~metadata ~dir
             ~command_line:fancy_command_line ~output
         | _ ->
           Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
-            ~command_line ~output ~purpose ~verbosity:display.verbosity
+            ~command_line ~output ~metadata ~verbosity:display.verbosity
             ~has_unexpected_stdout ~has_unexpected_stderr
       in
       (res, times))
 
-let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job (None, User_message.Annots.empty)) fail_mode prog
+let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
     args =
   let+ run =
-    run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose fail_mode
+    run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
       prog args
     >>| fst
   in
   map_result fail_mode run ~f:ignore
 
-let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job (None, User_message.Annots.empty)) prog args =
-  run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ~purpose Strict prog
+let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata prog
+    args =
+  run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata Strict prog
     args
   >>| snd
 
-let run_capture_gen ?dir ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job (None, User_message.Annots.empty)) fail_mode prog
+let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
     args ~f =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
     run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
-      ~purpose fail_mode prog args
+      ?metadata fail_mode prog args
     >>| fst
   in
   map_result fail_mode run ~f:(fun () ->
@@ -833,10 +836,9 @@ let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 let run_capture_zero_separated =
   run_capture_gen ~f:Stdune.Io.zero_strings_of_file
 
-let run_capture_line ?dir ?stderr_to ?stdin_from ?env
-    ?(purpose = Internal_job (None, User_message.Annots.empty)) fail_mode prog
+let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
     args =
-  run_capture_gen ?dir ?stderr_to ?stdin_from ?env ~purpose fail_mode prog args
+  run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog args
     ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
       | [ x ] -> x
@@ -848,7 +850,9 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ?env
           | None -> prog_display
           | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
-        let loc, annots = loc_and_annots_of_purpose purpose in
+        let { loc; annots; purpose = _ } =
+          Option.value metadata ~default:default_metadata
+        in
         match l with
         | [] ->
           User_error.raise ?loc ~annots

@@ -47,7 +47,7 @@ module Section : sig
   val to_dyn : t -> Dyn.t
 
   module Paths : sig
-    type section = t
+    type section := t
 
     type t
 
@@ -68,7 +68,6 @@ module Section : sig
     val get_local_location :
       Context_name.t -> section -> Package.Name.t -> Path.t
   end
-  with type section := t
 end
 
 module Entry : sig
@@ -83,7 +82,7 @@ module Entry : sig
       | User of Loc.t
       | Dune
 
-    type entry
+    type entry := Path.Build.t t
 
     type nonrec t =
       { source : source
@@ -92,7 +91,6 @@ module Entry : sig
 
     val create : ?loc:Loc.t -> entry -> t
   end
-  with type entry := Path.Build.t t
 
   val adjust_dst :
     src:String_with_vars.t -> dst:string option -> section:Section.t -> Dst.t

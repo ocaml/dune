@@ -249,7 +249,7 @@ include
       let field f = f
     end)
 
-let hash = Hashtbl.hash
+let hash = Poly.hash
 
 let equal a b = Poly.equal a b
 

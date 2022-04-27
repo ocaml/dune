@@ -525,7 +525,7 @@ let setup_lib_odocl_rules_def =
       && Resolve.equal (List.equal Lib.equal) r1 r2
 
     let hash (sc, l, r) =
-      Hashtbl.hash
+      Poly.hash
         ( Super_context.hash sc
         , Lib.Local.hash l
         , Resolve.hash (List.hash Lib.hash) r )
@@ -558,7 +558,7 @@ let setup_pkg_rules_def memo_name f =
       && Super_context.equal s1 s2
 
     let hash (sctx, p, ls) =
-      Hashtbl.hash
+      Poly.hash
         ( Super_context.hash sctx
         , Package.Name.hash p
         , List.hash Lib.Local.hash ls )
@@ -608,7 +608,7 @@ let setup_lib_html_rules_def =
     let equal (sc1, l1) (sc2, l2) =
       Super_context.equal sc1 sc2 && Lib.Local.equal l1 l2
 
-    let hash (sc, l) = Hashtbl.hash (Super_context.hash sc, Lib.Local.hash l)
+    let hash (sc, l) = Poly.hash (Super_context.hash sc, Lib.Local.hash l)
 
     let to_dyn _ = Dyn.Opaque
   end in

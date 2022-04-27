@@ -45,7 +45,7 @@ let hash
     ; action_stderr_on_success
     ; expand_aliases_in_sandbox
     } =
-  Hashtbl.hash
+  Poly.hash
     ( Dune_lang.Syntax.Version.hash dune_version
     , Action_output_on_success.hash action_stdout_on_success
     , Action_output_on_success.hash action_stderr_on_success

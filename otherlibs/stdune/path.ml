@@ -698,7 +698,7 @@ end = struct
 
   let equal (x : t) (y : t) = x = y
 
-  let hash = Hashtbl.hash
+  let hash = Poly.hash
 
   let in_build_dir s = In_build_dir s
 
@@ -716,7 +716,7 @@ end
 
 include T
 
-let hash (t : t) = Hashtbl.hash t
+let hash (t : t) = Poly.hash t
 
 let build_dir = in_build_dir Local.root
 

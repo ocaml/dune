@@ -158,7 +158,7 @@ module Fd_count = struct
   let proc_fs () =
     match Sys.readdir "/proc/self/fd" with
     | files -> This (Array.length files - 1 (* -1 for the dirfd *))
-    | exception _ -> Unknown
+    | exception Sys_error _ -> Unknown
 
   let how = ref `Unknown
 

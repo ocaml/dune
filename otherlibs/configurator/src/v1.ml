@@ -333,7 +333,12 @@ let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
     }
 
 let create ?dest_dir ?ocamlc ?(log = ignore) name =
-  match (ocamlc, Option.try_with (fun () -> Sys.getenv "INSIDE_DUNE")) with
+  let inside_dune =
+    match Sys.getenv "INSIDE_DUNE" with
+    | exception Not_found -> None
+    | n -> Some n
+  in
+  match (ocamlc, inside_dune) with
   | None, Some build_dir when build_dir <> "1" ->
     create_from_inside_dune ~dest_dir ~log ~build_dir ~name
   | _ ->

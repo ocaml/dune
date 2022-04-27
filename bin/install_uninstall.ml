@@ -169,6 +169,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
       Format.pp_print_flush ppf ();
       Fiber.return ()
     | None -> plain_copy ()
+    (* XXX should we really be catching everything here? *)
     | exception _ ->
       User_warning.emit ~loc:(Loc.in_file src)
         [ Pp.text

@@ -406,7 +406,7 @@ let auto_concurrency =
                 ~stderr:(Lazy.force Config.dev_null_out)
                 ()
             with
-            | exception _ ->
+            | exception Unix.Unix_error _ ->
               Unix.close fdw;
               Unix.close fdr;
               loop commands

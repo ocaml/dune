@@ -273,7 +273,7 @@ let read_directory_with_kinds_exn dir_path =
           File_kind.Option.elim kind
             ~none:(fun () ->
               match Unix.lstat (Filename.concat dir_path base) with
-              | exception _ ->
+              | exception Unix.Unix_error _ ->
                 (* File disappeared between readdir & lstat system calls. Handle
                    as if readdir never told us about it *)
                 skip ()

@@ -3,6 +3,8 @@ type t =
   ; stop : Lexing.position
   }
 
+let compare = Poly.compare
+
 let none_pos p : Lexing.position =
   { pos_fname = p; pos_lnum = 1; pos_cnum = 0; pos_bol = 0 }
 

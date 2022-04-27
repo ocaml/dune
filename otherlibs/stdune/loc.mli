@@ -39,4 +39,6 @@ val render : Format.formatter -> tag Pp.t -> unit
 
 val on_same_line : t -> t -> bool
 
+val compare : t -> t -> Ordering.t
+
 val span : t -> t -> t

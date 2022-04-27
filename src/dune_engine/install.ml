@@ -35,7 +35,7 @@ end = struct
 
   let explicit t = t
 
-  let compare = Poly.compare
+  let compare = String.compare
 
   let man_subdir s =
     let s =

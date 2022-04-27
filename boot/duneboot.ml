@@ -199,7 +199,7 @@ let concurrency =
     let line =
       match input_line ic with
       | s -> Some s
-      | exception _ -> None
+      | exception End_of_file -> None
     in
     match (Unix.close_process_full (ic, oc, ec), line) with
     | WEXITED 0, Some s -> Some s
@@ -210,9 +210,9 @@ let concurrency =
   | None ->
     (* If no [-j] was given, try to autodetect the number of processors *)
     if Sys.win32 then
-      match Sys.getenv "NUMBER_OF_PROCESSORS" with
-      | exception _ -> 1
-      | s -> (
+      match Sys.getenv_opt "NUMBER_OF_PROCESSORS" with
+      | None -> 1
+      | Some s -> (
         match int_of_string s with
         | exception _ -> 1
         | n -> n)

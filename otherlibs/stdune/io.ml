@@ -150,7 +150,7 @@ struct
          avoid an extra memory copy. We expect that most files Dune reads are
          regular files so this optimizations seems worth it. *)
       match in_channel_length t with
-      | exception _ -> read_all_generic t (Buffer.create chunk_size)
+      | exception Sys_error _ -> read_all_generic t (Buffer.create chunk_size)
       | n -> (
         (* For some files [in_channel_length] returns an invalid value. For
            instance for files in /proc it returns [0] and on Windows the
@@ -297,7 +297,7 @@ let portable_symlink ~src ~dst =
            enabled *)
         Unix.unlink dst;
         Unix.symlink src dst)
-    | exception _ -> Unix.symlink src dst
+    | exception Unix.Unix_error _ -> Unix.symlink src dst
 
 let portable_hardlink ~src ~dst =
   let user_error msg =

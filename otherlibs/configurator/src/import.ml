@@ -54,11 +54,6 @@ module Option = struct
 
   let some x = Some x
 
-  let try_with f =
-    match f () with
-    | exception _ -> None
-    | x -> Some x
-
   let iter t ~f =
     match t with
     | None -> ()
@@ -92,7 +87,7 @@ module Bool = struct
   let of_string s =
     match bool_of_string s with
     | s -> Some s
-    | exception _ -> None
+    | exception Invalid_argument _ -> None
 end
 
 module Map (S : Map.OrderedType) = struct
@@ -138,7 +133,7 @@ module Int = struct
   let of_string s =
     match int_of_string s with
     | s -> Some s
-    | exception _ -> None
+    | exception Failure _ -> None
 
   module Map = struct
     include Map (struct
@@ -289,7 +284,7 @@ module Io = struct
          avoid an extra memory copy. We expect that most files Dune reads are
          regular files so this optimizations seems worth it. *)
       match in_channel_length t with
-      | exception _ -> read_all_generic t (Buffer.create chunk_size)
+      | exception Sys_error _ -> read_all_generic t (Buffer.create chunk_size)
       | n -> (
         let s = really_input_string t n in
         (* For some files [in_channel_length] returns an invalid value. For

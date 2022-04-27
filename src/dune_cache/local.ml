@@ -39,7 +39,7 @@ module Target = struct
         ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
       let executable = Path.Permissions.test Path.Permissions.execute st_perm in
       Some { path; executable }
-    | (exception _) | _ -> None
+    | (exception Unix.Unix_error _) | _ -> None
 end
 
 (* This function is like [Unix.link] but handles the "Too many links" error by

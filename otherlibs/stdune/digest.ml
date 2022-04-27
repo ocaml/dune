@@ -32,7 +32,7 @@ let override_impl ~file ~string =
 
 module Impl : Digest_impl = Mutable_impl
 
-let hash = Hashtbl.hash
+let hash = Poly.hash
 
 let equal = String.equal
 

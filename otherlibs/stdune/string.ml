@@ -11,7 +11,7 @@ module T = struct
 
   let equal (x : t) (y : t) = x = y
 
-  let hash (s : t) = Hashtbl.hash s
+  let hash (s : t) = Poly.hash s
 
   let to_dyn s = Dyn.String s
 end
@@ -20,7 +20,7 @@ let to_dyn = T.to_dyn
 
 let equal : string -> string -> bool = ( = )
 
-let hash = Hashtbl.hash
+let hash = Poly.hash
 
 let capitalize = capitalize_ascii
 

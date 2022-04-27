@@ -21,7 +21,7 @@ module Version = struct
 
   let to_string (a, b) = sprintf "%u.%u" a b
 
-  let hash = Hashtbl.hash
+  let hash = Poly.hash
 
   let encode t = Encoder.string (to_string t)
 

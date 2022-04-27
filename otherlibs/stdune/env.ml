@@ -28,7 +28,7 @@ type t =
 
 let equal t { vars; unix = _ } = Map.equal ~equal:String.equal t.vars vars
 
-let hash { vars; unix = _ } = Hashtbl.hash vars
+let hash { vars; unix = _ } = Poly.hash vars
 
 let make vars = { vars; unix = None }
 

@@ -229,7 +229,7 @@ end = struct
         && Option.equal String.equal root_a root_b
         && String.equal switch_a switch_b
 
-      let hash (env, root, switch) = Hashtbl.hash (Env.hash env, root, switch)
+      let hash (env, root, switch) = Poly.hash (Env.hash env, root, switch)
 
       let to_dyn (env, root, switch) =
         Dyn.Tuple [ Env.to_dyn env; Dyn.(option string root); String switch ]

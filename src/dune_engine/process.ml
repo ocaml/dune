@@ -276,7 +276,7 @@ module Fancy = struct
     else
       let before, prog, after = split_prog s in
       let styles =
-        let hash = Hashtbl.hash prog in
+        let hash = Poly.hash prog in
         let styles = color_combos.(hash mod Array.length color_combos) in
         User_message.Style.Ansi_styles styles
       in

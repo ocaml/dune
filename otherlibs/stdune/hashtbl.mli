@@ -5,5 +5,3 @@ module Make (Key : sig
 
   val to_dyn : t -> Dyn.t
 end) : S with type key = Key.t
-
-val hash : 'a -> int

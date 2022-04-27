@@ -155,7 +155,7 @@ type t =
 
 let equal = ( == )
 
-let hash = Hashtbl.hash
+let hash = Poly.hash
 
 let parsing_context t = t.parsing_context
 

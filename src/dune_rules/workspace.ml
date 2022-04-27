@@ -282,7 +282,7 @@ module Context = struct
     | Default of Default.t
     | Opam of Opam.t
 
-  let hash = Hashtbl.hash
+  let hash = Poly.hash
 
   let to_dyn =
     let open Dyn in
@@ -385,7 +385,7 @@ let equal { merlin_context; contexts; env; config } w =
   && Dune_config.equal config w.config
 
 let hash { merlin_context; contexts; env; config } =
-  Hashtbl.hash
+  Poly.hash
     ( Option.hash Context_name.hash merlin_context
     , List.hash Context.hash contexts
     , Dune_env.Stanza.hash env

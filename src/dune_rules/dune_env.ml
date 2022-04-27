@@ -115,7 +115,7 @@ module Stanza = struct
     && Option.equal User_message.equal error_on_use t.error_on_use
     && Option.equal User_message.equal warn_on_load t.warn_on_load
 
-  let hash_config = Hashtbl.hash
+  let hash_config = Poly.hash
 
   let empty_config =
     { flags = Ocaml_flags.Spec.standard
@@ -144,7 +144,7 @@ module Stanza = struct
     | Any, Any -> true
     | _, _ -> false
 
-  let hash_pattern = Hashtbl.hash
+  let hash_pattern = Poly.hash
 
   type t =
     { loc : Loc.t

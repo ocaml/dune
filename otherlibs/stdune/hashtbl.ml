@@ -85,5 +85,3 @@ struct
 
   let iter t ~f = iter t ~f:(fun ~key:_ ~data -> f data)
 end
-
-let hash = MoreLabels.Hashtbl.hash

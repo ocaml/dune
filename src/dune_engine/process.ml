@@ -616,7 +616,7 @@ let set_temp_dir_when_running_actions = ref true
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ?(env = Env.initial)
     ?(metadata = default_metadata) fail_mode prog args =
-  Scheduler.with_job_slot (fun (config : Scheduler.Config.t) ->
+  Scheduler.with_job_slot (fun cancel (config : Scheduler.Config.t) ->
       let display = config.display in
       let dir =
         match dir with
@@ -801,20 +801,32 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         | `Capture fn ->
           swallow_on_success_if_requested fn actual_stderr stderr_on_success
       in
-      let output = stdout ^ stderr in
-      Log.command ~command_line ~output ~exit_status:process_info.status;
-      let res =
-        match (display.verbosity, exit_status', output) with
-        | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
-        | Verbose, _, _ ->
-          Handle_exit_status.verbose exit_status' ~id ~metadata ~dir
-            ~command_line:fancy_command_line ~output
-        | _ ->
-          Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
-            ~command_line ~output ~metadata ~verbosity:display.verbosity
-            ~has_unexpected_stdout ~has_unexpected_stderr
-      in
-      (res, times))
+      if Fiber.Cancel.fired cancel then
+        (* if the cancellation token was fired, then we:
+
+           1) aren't interested in printing the output from the cancelled job
+
+           2) allowing callers to continue work with the already stale value
+           we're about to return. We reuse [Already_reported] to signal that
+           this exception is propagated without being reported. It's not the
+           original intention of [Already_reported] but it works adequately
+           here. *)
+        raise Dune_util.Report_error.Already_reported
+      else
+        let output = stdout ^ stderr in
+        Log.command ~command_line ~output ~exit_status:process_info.status;
+        let res =
+          match (display.verbosity, exit_status', output) with
+          | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
+          | Verbose, _, _ ->
+            Handle_exit_status.verbose exit_status' ~id ~metadata ~dir
+              ~command_line:fancy_command_line ~output
+          | _ ->
+            Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
+              ~command_line ~output ~metadata ~verbosity:display.verbosity
+              ~has_unexpected_stdout ~has_unexpected_stderr
+        in
+        (res, times))
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
     args =

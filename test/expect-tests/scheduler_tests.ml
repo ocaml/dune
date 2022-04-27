@@ -30,7 +30,7 @@ let%expect_test "cancelling a build" =
              let* () = Fiber.Ivar.read build_cancelled in
              let* res =
                Fiber.collect_errors (fun () ->
-                   Scheduler.with_job_slot (fun _ -> Fiber.return ()))
+                   Scheduler.with_job_slot (fun _ _ -> Fiber.return ()))
              in
              print_endline
                (match res with
@@ -68,7 +68,7 @@ let%expect_test "cancelling a build: effect on other fibers" =
           let* () = Scheduler.wait_for_build_input_change () in
           let* res =
             Fiber.collect_errors (fun () ->
-                Scheduler.with_job_slot (fun _ -> Fiber.return ()))
+                Scheduler.with_job_slot (fun _ _ -> Fiber.return ()))
           in
           print_endline
             (match res with

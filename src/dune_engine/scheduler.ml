@@ -910,7 +910,7 @@ let with_job_slot f =
   let* t = t () in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
       check_cancelled t;
-      f t.config)
+      f t.cancel t.config)
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)

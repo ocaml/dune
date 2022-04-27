@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- The output of jobs that finished but were cancelled is now omitted. (#5631,
+  fixes #5482, @rgrinberg)
+
 - Allows to configure all the default destination directories with `./configure`
   (adds `bin`, `sbin`, `data`, `libexec`). Use `OPAM_SWITCH_PREFIX` instead of
   calling the `opam` binaries in `dune install`. Fix handling of multiple

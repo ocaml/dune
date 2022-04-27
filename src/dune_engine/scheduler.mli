@@ -113,8 +113,9 @@ type t
 val t : unit -> t Fiber.t
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-    available and then calls [f]. *)
-val with_job_slot : (Config.t -> 'a Fiber.t) -> 'a Fiber.t
+    available and then calls [f]. The cancellation token is provided to [f] to
+    avoid doing some work if the job's result is no longer necessary. *)
+val with_job_slot : (Fiber.Cancel.t -> Config.t -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of

@@ -147,12 +147,6 @@ module Entry_with_site : sig
     }
 end
 
-module Metadata : sig
-  type 'src t =
-    | DefaultEntry of 'src Entry.t
-    | UserDefinedEntry of 'src Entry.t
-end
-
 val gen_install_file : Path.t Entry.t list -> string
 
 (** XXX what's this function doing here? it has nothing to do with generating

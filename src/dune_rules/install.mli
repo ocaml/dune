@@ -1,8 +1,6 @@
 (** Opam install file *)
 open! Stdune
 
-module Dune_section = Section
-
 module Dst : sig
   type t
 
@@ -17,10 +15,10 @@ end
     package, and sites of possibly other packages *)
 module Section_with_site : sig
   type t =
-    | Section of Section.t
+    | Section of Dune_engine.Section.t
     | Site of
-        { pkg : Package.Name.t
-        ; site : Section.Site.t
+        { pkg : Dune_engine.Package.Name.t
+        ; site : Dune_engine.Section.Site.t
         ; loc : Loc.t
         }
 
@@ -34,7 +32,7 @@ module Section_with_site : sig
 end
 
 module Section : sig
-  type t = Section.t
+  type t = Dune_engine.Section.t
 
   include Comparable_intf.S with type key := t
 
@@ -52,7 +50,7 @@ module Section : sig
     type t
 
     val make :
-         package:Package.Name.t
+         package:Dune_engine.Package.Name.t
       -> destdir:Path.t
       -> ?libdir:Path.t
       -> ?mandir:Path.t
@@ -66,7 +64,10 @@ module Section : sig
     val get : t -> section -> Path.t
 
     val get_local_location :
-      Context_name.t -> section -> Package.Name.t -> Path.t
+         Dune_engine.Context_name.t
+      -> section
+      -> Dune_engine.Package.Name.t
+      -> Path.t
   end
 end
 
@@ -93,7 +94,10 @@ module Entry : sig
   end
 
   val adjust_dst :
-    src:String_with_vars.t -> dst:string option -> section:Section.t -> Dst.t
+       src:Dune_engine.String_with_vars.t
+    -> dst:string option
+    -> section:Section.t
+    -> Dst.t
 
   val make : Section.t -> ?dst:string -> Path.Build.t -> Path.Build.t t
 
@@ -101,8 +105,8 @@ module Entry : sig
        Section_with_site.t
     -> ?dst:string
     -> (   loc:Loc.t
-        -> pkg:Package.Name.t
-        -> site:Dune_section.Site.t
+        -> pkg:Dune_engine.Package.Name.t
+        -> site:Dune_engine.Section.Site.t
         -> Section.t Memo.t)
     -> Path.Build.t
     -> Path.Build.t t Memo.t

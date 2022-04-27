@@ -5,7 +5,6 @@ module Local_install_path = Local_install_path
 module Dep = Dep
 module Lib_name = Lib_name
 module String_with_vars = String_with_vars
-module Install = Install
 module Import = Import
 module Package = Package
 module Stanza = Stanza

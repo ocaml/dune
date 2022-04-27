@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-module Dune_section = Section
+module Dune_section = Dune_engine.Section
 
 (* The path after the man section mangling done by opam-installer. This roughly
    follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)

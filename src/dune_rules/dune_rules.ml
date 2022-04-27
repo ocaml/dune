@@ -40,6 +40,7 @@ module Coq_sources = Coq_sources
 module Coq_stanza = Coq_stanza
 module Coq_lib = Coq_lib
 module Command = Command
+module Install = Install
 
 (* Only for tests *)
 module Scheme = Scheme

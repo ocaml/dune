@@ -545,9 +545,27 @@ module What = struct
 
   let default = Workspace
 
+  (* The list of command names, their documentation, and their tag *)
+  let args_with_docs : (string * string * t) list =
+    [ ( "workspace"
+      , "prints a description of the workspace's structure"
+      , Workspace )
+    ; ( "opam-files"
+      , "prints information about the Opam files that have been discovered"
+      , Opam_files )
+    ]
+
+  (* The list of documentation strings (one for each command) *)
+  let docs =
+    List.map
+      ~f:(fun (stag, doc, _tag) -> "$(b," ^ stag ^ ")" ^ " (" ^ doc ^ ")")
+      args_with_docs
+
+  (* The decoder for commands *)
   let parse =
     let open Dune_lang.Decoder in
-    sum [ ("workspace", return Workspace); ("opam-files", return Opam_files) ]
+    sum
+    @@ List.map ~f:(fun (stag, _doc, tag) -> (stag, return tag)) args_with_docs
 
   let parse ~lang args =
     match args with
@@ -579,7 +597,9 @@ module Options = struct
     let open Arg in
     value & flag
     & info [ "with-deps" ]
-        ~doc:"Whether the dependencies between modules should be printed."
+        ~doc:
+          "Whether the dependencies between modules should be printed (for the \
+           $(b,workspace) command only)."
 
   let arg_sanitize_for_tests =
     let open Arg in
@@ -588,7 +608,7 @@ module Options = struct
         ~doc:
           "Sanitize the absolute paths in workspace items, and the associated \
            UIDs, so that the output is reproducible. For use in dune's \
-           internal tests only."
+           internal tests only (for the $(b,workspace) command only)."
 
   let arg : t Term.t =
     let+ with_deps = arg_with_deps
@@ -669,8 +689,11 @@ let term : unit Term.t =
       value & pos_all string []
       & info [] ~docv:"STRING"
           ~doc:
-            "What to describe. The syntax of this description is tied to the \
-             version passed to $(b,--lang)")
+            ("What to describe. The syntax of this description is tied to the \
+              version passed to $(b,--lang). The currently available commands \
+              are the following: "
+            ^ String.concat ~sep:", " What.docs
+            ^ "."))
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Format.arg
   and+ lang = Lang.arg

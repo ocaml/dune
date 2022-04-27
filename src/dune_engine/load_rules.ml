@@ -82,8 +82,8 @@ let get_dir_triage ~dir =
     let+ files = Source_tree.files_of dir in
     Dir_triage.Known (Source { files })
   | External dir_ext ->
-    let files =
-      match Path.Untracked.readdir_unsorted_with_kinds dir with
+    let+ files =
+      Fs_memo.dir_contents dir >>| function
       | Error (Unix.ENOENT, _, _) -> Path.External.Set.empty
       | Error unix_error ->
         User_warning.emit
@@ -93,14 +93,15 @@ let get_dir_triage ~dir =
         Path.External.Set.empty
       | Ok filenames ->
         let filenames =
-          List.filter_map filenames ~f:(fun (name, kind) ->
-              match kind with
-              | S_DIR -> None
-              | _ -> Some name)
+          Fs_cache.Dir_contents.to_list filenames
+          |> List.filter_map ~f:(fun (name, kind) ->
+                 match kind with
+                 | Unix.S_DIR -> None
+                 | _ -> Some name)
         in
         Path.External.Set.of_listing ~dir:dir_ext ~filenames
     in
-    Memo.return @@ Dir_triage.Known (External { files })
+    Dir_triage.Known (External { files })
   | Build (Regular Root) ->
     let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
     let allowed_subdirs =

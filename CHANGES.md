@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Watch mode now tracks external directories for dependencies (#5627,
+  @rgrinberg)
+
 - Improve metrics for cram tests. Include test names in the event and add a
   category for cram tests (#5626, @rgrinberg)
 

@@ -128,6 +128,7 @@ type t =
   ; enabled_if : Blang.t
   ; package : Package.t option
   ; libraries : Lib_dep.t list
+  ; locks : String_with_vars.t list
   }
 
 let enabled_if t = t.enabled_if
@@ -138,7 +139,10 @@ let syntax =
   let name = "mdx" in
   let desc = "mdx extension to verify code blocks in .md files" in
   Dune_lang.Syntax.create ~name ~desc
-    [ ((0, 1), `Since (2, 4)); ((0, 2), `Since (3, 0)) ]
+    [ ((0, 1), `Since (2, 4))
+    ; ((0, 2), `Since (3, 0))
+    ; ((0, 3), `Since (3, 2))
+    ]
 
 let default_files =
   let has_extension ext s = String.equal ext (Filename.extension s) in
@@ -169,6 +173,11 @@ let decode =
        field "libraries" ~default:[]
          (Dune_lang.Syntax.since syntax (0, 2)
          >>> Dune_file.Lib_deps.decode Executable)
+     and+ locks =
+       field "locks"
+         (Dune_lang.Syntax.since syntax (0, 3)
+         >>> repeat String_with_vars.decode)
+         ~default:[]
      in
      { loc
      ; version
@@ -179,6 +188,7 @@ let decode =
      ; libraries
      ; enabled_if
      ; package
+     ; locks
      })
 
 let () =
@@ -214,6 +224,9 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
   let files = Files.from_source_file ~mdx_dir src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
   let open Memo.O in
+  let* locks =
+    Memo.List.map stanza.locks ~f:(Expander.No_deps.expand_path expander)
+  in
   let* () =
     Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
   and* () =
@@ -257,6 +270,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
       >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
       >>> Command.run ~dir:(Path.build dir) ~stdout_to:files.corrected
             executable command_line
+      >>| Action.Full.add_locks locks
       >>| Action.Full.add_sandbox sandbox
     in
     Super_context.add_rule sctx ~loc ~dir mdx_action

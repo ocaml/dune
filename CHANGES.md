@@ -69,6 +69,8 @@
 - Support `(binaries)` in `(env)` in dune-workspace files (#5560, fix #5555,
   @emillon)
 
+- (mdx) stanza: add support for (locks). (#5628, fixes #5489, @emillon)
+
 3.1.1 (19/04/2022)
 ------------------
 

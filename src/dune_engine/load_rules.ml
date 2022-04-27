@@ -193,7 +193,6 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
 let remove_old_artifacts ~dir ~(rules_here : Loaded.rules_here)
     ~(subdirs_to_keep : Subdir_set.t) =
   match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
-  | exception _ -> ()
   | Error _ -> ()
   | Ok files ->
     List.iter files ~f:(fun (fn, kind) ->
@@ -216,7 +215,6 @@ let remove_old_artifacts ~dir ~(rules_here : Loaded.rules_here)
 let remove_old_sub_dirs_in_anonymous_actions_dir ~dir
     ~(subdirs_to_keep : Subdir_set.t) =
   match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
-  | exception _ -> ()
   | Error _ -> ()
   | Ok files ->
     List.iter files ~f:(fun (fn, kind) ->

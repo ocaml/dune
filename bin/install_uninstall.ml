@@ -625,8 +625,7 @@ let install_uninstall ~what =
                               (match Path.is_directory dst with
                               | true ->
                                 Ops.remove_dir_if_exists ~if_non_empty:Fail dst
-                              | false | (exception _) ->
-                                Ops.remove_file_if_exists dst);
+                              | false -> Ops.remove_file_if_exists dst);
                               print_line "%s %s" msg
                                 (Path.to_string_maybe_quoted dst);
                               Ops.mkdir_p dir;

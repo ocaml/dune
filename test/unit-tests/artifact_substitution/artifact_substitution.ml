@@ -79,12 +79,7 @@ let simple_subst =
       then None
       else
         let* groups = Re.exec_opt re s ~pos in
-        let* len =
-          let len = Re.Group.get groups 1 in
-          match int_of_string len with
-          | n -> Some n
-          | exception _ -> None
-        in
+        let* len = Int.of_string (Re.Group.get groups 1) in
         if pos + len > slen then None
         else
           let* p = Artifact_substitution.decode (String.sub s ~pos ~len) in

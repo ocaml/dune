@@ -95,7 +95,7 @@ let load_exn path =
         let* s = read_magic 0 in
         let* s = String.drop_prefix s ~prefix:"DUNE-" in
         let* name, version = String.rsplit2 s ~on:'v' in
-        let* version = Option.try_with (fun () -> int_of_string version) in
+        let* version = Int.of_string version in
         Some (name, version)
       in
       match magic with

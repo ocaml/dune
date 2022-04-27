@@ -24,4 +24,4 @@ let to_string i = string_of_int i
 
 module Infix = Comparator.Operators (T)
 
-let of_string s = Option.try_with (fun () -> int_of_string s)
+let of_string s = int_of_string_opt s

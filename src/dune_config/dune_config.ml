@@ -38,9 +38,9 @@ module Concurrency = struct
   let of_string = function
     | "auto" -> Ok Auto
     | s -> (
-      match int_of_string s with
-      | exception _ -> error
-      | n -> if n >= 1 then Ok (Fixed n) else error)
+      match Int.of_string s with
+      | None -> error
+      | Some n -> if n >= 1 then Ok (Fixed n) else error)
 
   let decode =
     plain_string (fun ~loc s ->

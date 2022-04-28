@@ -22,7 +22,7 @@ let%expect_test "cache-check-probability 0.1" =
     {|
     { display = { status_line = false; verbosity = Quiet }
     ; concurrency = Fixed 1
-    ; terminal_persistence = Preserve
+    ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
     ; cache_enabled = Disabled
     ; cache_reproducibility_check = Check_with_probability 0.1
@@ -38,7 +38,7 @@ let%expect_test "cache-storage-mode copy" =
     {|
     { display = { status_line = false; verbosity = Quiet }
     ; concurrency = Fixed 1
-    ; terminal_persistence = Preserve
+    ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
     ; cache_enabled = Disabled
     ; cache_reproducibility_check = Skip
@@ -54,7 +54,7 @@ let%expect_test "cache-storage-mode hardlink" =
     {|
     { display = { status_line = false; verbosity = Quiet }
     ; concurrency = Fixed 1
-    ; terminal_persistence = Preserve
+    ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
     ; cache_enabled = Disabled
     ; cache_reproducibility_check = Skip

@@ -21,6 +21,8 @@ module Name : sig
 
   val install : t
 
+  val fmt : t
+
   val all : t
 
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t

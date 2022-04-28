@@ -188,3 +188,28 @@ let build =
     run_build_command ~common ~config ~request
   in
   (term, Term.info "build" ~doc ~man)
+
+let fmt =
+  let doc = "Format source code." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P
+        {|$(b,dune fmt) runs the formatter on the source code. The formatter is automatically selected. ocamlformat is used to format OCaml source code (*.ml and *.mli files) and refmt is used to format Reason source code (*.re and *.rei files).|}
+    ; `Blocks Common.help_secs
+    ]
+  in
+  let term =
+    let+ common = Common.term in
+    let common =
+      Common.set_promote common Dune_engine.Clflags.Promote.Automatically
+    in
+    let config = Common.init common in
+    let request (setup : Import.Main.build_system) =
+      let dir = Path.(relative root) (Common.prefix_target common ".") in
+      Alias.in_dir ~name:Dune_engine.Alias.Name.fmt ~recursive:true
+        ~contexts:setup.contexts dir
+      |> Alias.request
+    in
+    run_build_command ~common ~config ~request
+  in
+  (term, Term.info "fmt" ~doc ~man)

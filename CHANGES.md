@@ -1,6 +1,8 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Add a fmt command as a shortcut of `dune build @fmt --auto-promote` (#5574, @tmattio)
+
 - Watch mode now tracks external directories for dependencies (#5627,
   @rgrinberg)
 

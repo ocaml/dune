@@ -278,7 +278,8 @@ let no_rule_found ~loc fn =
     Code_error.raise ?loc "Build_system.no_rule_found got anonymous action path"
       [ ("fn", Path.Build.to_dyn fn) ]
 
-let source_file_digest path =
+let source_or_external_file_digest path =
+  assert (not (Path.is_in_build_dir path));
   let report_user_error details =
     let+ loc = Current_rule_loc.get () in
     User_error.raise ?loc
@@ -304,7 +305,7 @@ let eval_source_file : type a. a Action_builder.eval_mode -> Path.t -> a Memo.t
   match mode with
   | Lazy -> Memo.return ()
   | Eager ->
-    let+ d = source_file_digest path in
+    let+ d = source_or_external_file_digest path in
     Dep.Fact.file path d
 
 module rec Load_rules : sig
@@ -873,7 +874,7 @@ let get_rule_or_source path =
       let* loc = Current_rule_loc.get () in
       no_rule_found ~loc path
   else
-    let+ d = source_file_digest path in
+    let+ d = source_or_external_file_digest path in
     Source d
 
 type target_type =

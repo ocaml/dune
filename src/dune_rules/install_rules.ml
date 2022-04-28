@@ -843,7 +843,9 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                    Pp.text (Package.Name.to_string name))
           ]
   in
-  let files = Path.Set.of_list_map files ~f:Path.build in
+  let install_file_deps =
+    Path.Set.of_list_map files ~f:Path.build |> Action_builder.path_set
+  in
   let* () =
     let context = Context.build_context ctx in
     let target_alias = Alias.package_install ~context ~pkg:package in
@@ -851,7 +853,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     Rules.Produce.Alias.add_deps target_alias
       (Action_builder.dyn_deps
          (let+ packages = packages
-          and+ () = Action_builder.deps (Dep.Set.of_files_set files) in
+          and+ () = install_file_deps in
           ( ()
           , Package.Id.Set.to_list packages
             |> Dep.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
@@ -871,7 +873,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     in
     let open Action_builder.O in
     Action_builder.write_file_dyn install_file
-      (let+ () = Action_builder.path_set files
+      (let+ () = install_file_deps
        and+ () =
          if strict_package_deps then
            Action_builder.map packages ~f:(fun (_ : Package.Id.Set.t) -> ())

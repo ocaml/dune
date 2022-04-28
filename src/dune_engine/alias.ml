@@ -26,6 +26,8 @@ module Name : sig
 
   val install : t
 
+  val fmt : t
+
   val all : t
 
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
@@ -75,6 +77,8 @@ end = struct
   let runtest = "runtest"
 
   let install = "install"
+
+  let fmt = "fmt"
 
   let all = "all"
 
@@ -170,7 +174,7 @@ let all = make_standard (Name.of_string "all")
 
 let check = make_standard (Name.of_string "check")
 
-let fmt = make_standard (Name.of_string "fmt")
+let fmt = make_standard Name.fmt
 
 let encode { dir; name } =
   let open Dune_lang.Encoder in

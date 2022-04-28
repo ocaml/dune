@@ -7,6 +7,7 @@ let all : _ Term.Group.t list =
     ; External_lib_deps.command
     ; Build_cmd.build
     ; Build_cmd.runtest
+    ; Build_cmd.fmt
     ; command_alias Build_cmd.runtest "test"
     ; Clean.command
     ; Install_uninstall.install

@@ -80,6 +80,8 @@ let stats t = t.stats
 
 let set_print_directory t b = { t with no_print_directory = not b }
 
+let set_promote t v = { t with promote = Some v }
+
 (* To avoid needless recompilations under Windows, where the case of
    [Sys.getcwd] can vary between different invocations of [dune], normalize to
    lowercase. *)

@@ -60,6 +60,9 @@ replace the source files with the corrected versions.
 As usual with promotion, it's possible to combine these two steps by running
 ``dune build @fmt --auto-promote``.
 
+Starting with Dune 3.2.0, you can also run ``dune fmt`` which is equivalent to
+``dune build @fmt --auto-promote``.
+
 Enabling and Configuring Automatic Formatting (Dune 1.x)
 ========================================================
 

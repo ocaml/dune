@@ -256,7 +256,7 @@ let equal a b = Poly.equal a b
 let default =
   { display = { verbosity = Quiet; status_line = not Config.inside_dune }
   ; concurrency = (if Config.inside_dune then Fixed 1 else Auto)
-  ; terminal_persistence = Terminal_persistence.Preserve
+  ; terminal_persistence = Clear_on_rebuild
   ; sandboxing_preference = []
   ; cache_enabled = Disabled
   ; cache_reproducibility_check = Skip

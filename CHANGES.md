@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Watch mode now default to clearing the terminal on rebuild (#5636, fixes,
+  #5216, @rgrinberg)
+
 - The output of jobs that finished but were cancelled is now omitted. (#5631,
   fixes #5482, @rgrinberg)
 

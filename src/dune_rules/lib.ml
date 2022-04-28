@@ -1231,7 +1231,8 @@ end = struct
               let forbidden = Lib_name.Set.to_list forbidden in
               if
                 List.exists
-                  ~f:(fun lib -> is_bigarray lib && bigarray_in_std_libraries)
+                  ~f:(fun lib ->
+                    is_bigarray lib && not bigarray_in_std_libraries)
                   forbidden
               then Memo.return None
               else
@@ -1240,21 +1241,30 @@ end = struct
                 in
                 if exists then Memo.return None
                 else
-                  let required =
-                    Lib_name.Set.filter
-                      ~f:(fun lib ->
-                        (not (is_bigarray lib)) || bigarray_in_std_libraries)
-                      required
+                  let found, required =
+                    ( Lib_name.Set.mem required (Lib_name.of_string "bigarray")
+                    , Lib_name.Set.filter
+                        ~f:(fun lib ->
+                          (not (is_bigarray lib)) || bigarray_in_std_libraries)
+                        required )
                   in
-                  Resolve.Memo.peek
-                    (let deps =
-                       Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
-                           (loc, x) :: acc)
-                     in
-                     resolve_simple_deps ~private_deps db deps)
-                  >>| function
-                  | Ok ts -> Some (ts, file)
-                  | Error () -> None)
+                  if
+                    Lib_name.Set.is_empty required
+                    && found
+                    && not bigarray_in_std_libraries
+                  then Memo.return None
+                    (*avoid the case where forbidden and required are empty, so
+                      it switch in case "(_ -> dummy)"*)
+                  else
+                    Resolve.Memo.peek
+                      (let deps =
+                         Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
+                             (loc, x) :: acc)
+                       in
+                       resolve_simple_deps ~private_deps db deps)
+                    >>| function
+                    | Ok ts -> Some (ts, file)
+                    | Error () -> None)
         in
         let get which =
           let res = select |> Option.map ~f:which in

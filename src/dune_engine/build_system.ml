@@ -897,11 +897,6 @@ end = struct
       match Path.Build.Map.find targets path with
       | Some digest -> (digest, File_target)
       | None -> (
-        (* CR-someday amokhov: [Cached_digest.build_file] doesn't do a good job
-           for computing directory digests -- it relies on [mtime] instead of
-           actually computing the digest of the directory's content. As one of
-           the consequences, we currently can't support the early cutoff for
-           directory targets. *)
         match Cached_digest.build_file ~allow_dirs:true path with
         | Ok digest ->
           (digest, Dir_target { generated_file_digests = targets })

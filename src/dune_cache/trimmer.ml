@@ -90,7 +90,8 @@ let trim ~goal =
   let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
   let files =
     List.sort
-      ~compare:(fun (_, _, ctime1) (_, _, ctime2) -> Poly.compare ctime1 ctime2)
+      ~compare:(fun (_, _, ctime1) (_, _, ctime2) ->
+        Float.compare ctime1 ctime2)
       (List.filter_map files ~f:(fun path ->
            match Path.stat path with
            | Ok stats ->

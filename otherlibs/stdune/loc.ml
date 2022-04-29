@@ -1,13 +1,5 @@
 include Loc0
-
-module O = Comparable.Make (struct
-  type nonrec t = t
-
-  let compare = Poly.compare
-
-  let to_dyn = to_dyn
-end)
-
+module O = Comparable.Make (Loc0)
 include O
 
 let in_file p =

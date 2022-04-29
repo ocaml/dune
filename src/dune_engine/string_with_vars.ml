@@ -20,7 +20,7 @@ let compare_no_loc { quoted; parts; loc = _ } t =
       match (a, b) with
       | Text a, Text b -> String.compare a b
       | Pform (_, a), Pform (_, b) -> Pform.compare a b
-      | Error (_, a), Error (_, b) -> Poly.compare a b
+      | Error (_, a), Error (_, b) -> User_message.compare a b
       | Text _, _ -> Lt
       | _, Text _ -> Gt
       | Pform _, _ -> Lt

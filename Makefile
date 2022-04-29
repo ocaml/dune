@@ -92,7 +92,7 @@ check: $(BIN)
 	$(BIN) build @check
 
 fmt: $(BIN)
-	$(BIN) build @fmt --auto-promote
+	$(BIN) fmt
 
 promote: $(BIN)
 	$(BIN) promote

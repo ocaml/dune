@@ -72,6 +72,15 @@
  (files   dune-external-lib-deps.1))
 
 (rule
+ (with-stdout-to dune-fmt.1
+  (run dune fmt --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-fmt.1))
+
+(rule
  (with-stdout-to dune-format-dune-file.1
   (run dune format-dune-file --help=groff)))
 

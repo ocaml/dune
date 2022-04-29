@@ -132,21 +132,10 @@ The fmt command automatically promotes the formatted files:
   > let  y = ();
   > EOF
   $ (cd fmt-cmd && dune fmt)
-  File "ocaml_file.ml", line 1, characters 0-0:
-  Error: Files _build/default/ocaml_file.ml and
-  _build/default/.formatted/ocaml_file.ml differ.
-  File "reason_file.re", line 1, characters 0-0:
-  Error: Files _build/default/reason_file.re and
-  _build/default/.formatted/reason_file.re differ.
-  Promoting _build/default/.formatted/ocaml_file.ml to ocaml_file.ml.
-  Promoting _build/default/.formatted/reason_file.re to reason_file.re.
-  [1]
   $ cat fmt-cmd/ocaml_file.ml
-  Sys.argv: ../install/default/bin/ocamlformat --impl fmt-cmd/ocaml_file.ml
-  ocamlformat output
+  let  y=()
   $ cat fmt-cmd/reason_file.re
-  Sys.argv: ../install/default/bin/refmt fmt-cmd/reason_file.re
-  refmt output
+  let  y = ();
 
 All .ocamlformat files are considered dependencies:
 
@@ -164,12 +153,6 @@ All .ocamlformat files are considered dependencies:
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
-  File "fmt-cmd/ocaml_file.ml", line 1, characters 0-0:
-  Error: Files _build/default/fmt-cmd/ocaml_file.ml and
-  _build/default/fmt-cmd/.formatted/ocaml_file.ml differ.
-  File "fmt-cmd/reason_file.re", line 1, characters 0-0:
-  Error: Files _build/default/fmt-cmd/reason_file.re and
-  _build/default/fmt-cmd/.formatted/reason_file.re differ.
   File "lang2/default/dune", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/dune and
   _build/default/lang2/default/.formatted/dune differ.

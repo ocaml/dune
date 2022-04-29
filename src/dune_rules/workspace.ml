@@ -23,12 +23,17 @@ let env_field, env_field_lazy =
             let minimum_version = (3, 2) in
             if version < minimum_version then
               let message =
-                Dune_lang.Syntax.Error_msg.since syntax minimum_version
-                  ~what:"'binaries' in an 'env' stanza in a dune-workspace file"
+                User_message.make ~loc
+                  [ Pp.text
+                      (Dune_lang.Syntax.Error_msg.since syntax minimum_version
+                         ~what:
+                           "'binaries' in an 'env' stanza in a dune-workspace \
+                            file")
+                  ]
               in
               s
-              |> Dune_env.Stanza.add_warning ~loc ~message
-              |> Dune_env.Stanza.add_error ~loc ~message
+              |> Dune_env.Stanza.add_warning ~message
+              |> Dune_env.Stanza.add_error ~message
             else
               match File_binding.Unexpanded.L.find_pform binaries with
               | None -> s

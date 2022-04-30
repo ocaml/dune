@@ -1,7 +1,6 @@
 open! Dune_engine
 open! Stdune
 open Import
-open Fiber.O
 
 let is_a_source_file path =
   (match Path.extension path with
@@ -134,13 +133,15 @@ module Dune_project = struct
   let filename = Path.in_source Dune_project.filename
 
   let load ~dir ~files ~infer_from_opam_files =
-    let open Option.O in
-    let* project =
+    let open Memo.O in
+    let+ project =
       (* dir_status only affects warning status, but it will not matter here.
          dune subst will fail with a hard error if the name is missing *)
       let dir_status = Sub_dirs.Status.Normal in
       Dune_project.load ~dir ~files ~infer_from_opam_files ~dir_status
     in
+    let open Option.O in
+    let* project = project in
     let file =
       Dune_project.file project |> Path.Source.to_string |> Path.in_source
     in
@@ -265,26 +266,25 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     ]
 
 let subst vcs =
-  let+ (version, commit), files =
-    Memo.run
-      (Memo.fork_and_join
-         (fun () ->
-           Memo.fork_and_join
-             (fun () -> Vcs.describe vcs)
-             (fun () -> Vcs.commit_id vcs))
-         (fun () -> Vcs.files vcs))
+  let open Memo.O in
+  let* (version, commit), files =
+    Memo.fork_and_join
+      (fun () ->
+        Memo.fork_and_join
+          (fun () -> Vcs.describe vcs)
+          (fun () -> Vcs.commit_id vcs))
+      (fun () -> Vcs.files vcs)
   in
-  let dune_project : Dune_project.t =
-    match
-      let files =
-        (* Filter-out files form sub-directories *)
-        List.fold_left files ~init:String.Set.empty ~f:(fun acc fn ->
-            if Path.is_root (Path.parent_exn fn) then
-              String.Set.add acc (Path.to_string fn)
-            else acc)
-      in
-      Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true
-    with
+  let+ (dune_project : Dune_project.t) =
+    (let files =
+       (* Filter-out files form sub-directories *)
+       List.fold_left files ~init:String.Set.empty ~f:(fun acc fn ->
+           if Path.is_root (Path.parent_exn fn) then
+             String.Set.add acc (Path.to_string fn)
+           else acc)
+     in
+     Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true)
+    >>| function
     | Some dune_project -> dune_project
     | None ->
       User_error.raise
@@ -361,4 +361,4 @@ let subst () =
     |> Vcs.Kind.of_dir_contents
   with
   | None -> Fiber.return ()
-  | Some kind -> subst { kind; root = Path.root }
+  | Some kind -> Memo.run (subst { kind; root = Path.root })

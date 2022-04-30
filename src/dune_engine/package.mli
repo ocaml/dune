@@ -185,6 +185,6 @@ val is_opam_file : Path.t -> bool
 val default : string -> Path.Source.t -> t
 
 (** Construct a package description from an opam file. *)
-val load_opam_file : Path.Source.t -> Name.t -> t
+val load_opam_file : Path.Source.t -> Name.t -> t Memo.t
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t

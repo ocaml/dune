@@ -439,7 +439,7 @@ let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function
 
 let load_install_file path =
   let open OpamParserTypes in
-  let file = Result.ok_exn (Opam_file.load path) in
+  let file = Opam_file.load_untracked path in
   let fail (fname, line, col) msg =
     let pos : Lexing.position =
       { pos_fname = fname; pos_lnum = line; pos_bol = 0; pos_cnum = col }

@@ -7,7 +7,7 @@ open OpamParserTypes
 type t = opamfile
 
 (** Load a file *)
-val load : Path.t -> t
+val load : Path.t -> (t, exn) result
 
 (** Extracts a field *)
 val get_field : t -> string -> value option

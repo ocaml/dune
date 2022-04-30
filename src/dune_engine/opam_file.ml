@@ -17,7 +17,16 @@ let parse =
 
 let parse_value = parse_gen OpamBaseParser.value
 
-let load fn = Io.Untracked.with_lexbuf_from_file fn ~f:parse
+let load fn =
+  Io.Untracked.with_lexbuf_from_file fn ~f:(fun lexbuf ->
+      try
+        Ok
+          (parse_gen
+             (fun lexer lexbuf ->
+               OpamBaseParser.main lexer lexbuf
+                 lexbuf.Lexing.lex_curr_p.pos_fname)
+             lexbuf)
+      with User_error.E _ as exn -> Error exn)
 
 let get_field t name =
   List.find_map t.file_contents ~f:(function

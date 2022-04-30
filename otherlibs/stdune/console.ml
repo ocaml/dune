@@ -25,7 +25,7 @@ module Backend = struct
       Ansi_color.prerr
         (Pp.seq (Pp.map_tags msg ~f:User_message.Print_config.default) Pp.cut)
 
-    let reset () = prerr_string "\x1bc"
+    let reset () = prerr_string "\x1b[H\x1b[2J"
   end
 
   module Dumb : S = struct

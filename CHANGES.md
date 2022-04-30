@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- `--terminal-persistence=clear-on-rebuild` will no longer destroy scrollback
+  on some terminals (#5646, @rgrinberg)
+
 - Add a fmt command as a shortcut of `dune build @fmt --auto-promote` (#5574,
   @tmattio)
 

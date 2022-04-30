@@ -732,8 +732,8 @@ let load_opam_file file name =
   let loc = Loc.in_file (Path.source file) in
   let opam =
     match Opam_file.load (Path.source file) with
-    | s -> Some s
-    | exception exn ->
+    | Ok s -> Some s
+    | Error exn ->
       User_warning.emit ~loc
         [ Pp.text
             "Unable to read opam file. Some information about this package \

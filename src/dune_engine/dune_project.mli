@@ -138,7 +138,7 @@ val load :
   -> files:String.Set.t
   -> infer_from_opam_files:bool
   -> dir_status:Sub_dirs.Status.t
-  -> t option
+  -> t option Memo.t
 
 (** Create an anonymous project at the given directory
 

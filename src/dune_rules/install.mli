@@ -155,4 +155,6 @@ end
 
 val gen_install_file : Path.t Entry.t list -> string
 
+(** XXX what's this function doing here? it has nothing to do with generating
+    any rules *)
 val load_install_file : Path.t -> Path.t Entry.t list

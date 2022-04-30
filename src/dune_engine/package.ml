@@ -728,10 +728,11 @@ let default name dir =
   }
 
 let load_opam_file file name =
-  let open Option.O in
   let loc = Loc.in_file (Path.source file) in
-  let opam =
-    match Opam_file.load (Path.source file) with
+  let open Memo.O in
+  let+ opam =
+    let+ opam = Opam_file.load (Path.source file) in
+    match opam with
     | Ok s -> Some s
     | Error exn ->
       User_warning.emit ~loc
@@ -742,6 +743,7 @@ let load_opam_file file name =
         ];
       None
   in
+  let open Option.O in
   let get_one name =
     let* opam = opam in
     let* value = Opam_file.get_field opam name in

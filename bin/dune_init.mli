@@ -23,7 +23,7 @@ module Init_context : sig
     ; project : Dune_project.t
     }
 
-  val make : string option -> t
+  val make : string option -> t Memo.t
 end
 
 (** A [Component.t] is a set of files that can be built or included as part of a

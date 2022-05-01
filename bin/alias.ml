@@ -55,9 +55,18 @@ let of_string (root : Workspace_root.t) ~recursive s ~contexts =
     let name = Dune_engine.Alias.Name.of_string (Path.basename path) in
     in_dir ~name ~recursive ~contexts dir
 
+let find_dir_specified_on_command_line ~dir =
+  let open Memo.O in
+  Source_tree.find_dir dir >>| function
+  | Some dir -> dir
+  | None ->
+    User_error.raise
+      [ Pp.textf "Don't know about directory %s specified on the command line!"
+          (Path.Source.to_string_maybe_quoted dir)
+      ]
+
 let dep_on_alias_multi_contexts ~dir ~name ~contexts =
-  Stdlib.ignore
-    (Dune_engine.Source_tree.find_dir_specified_on_command_line ~dir : _ Memo.t);
+  ignore (find_dir_specified_on_command_line ~dir : _ Memo.t);
   let context_to_alias_expansion ctx =
     let ctx_dir = Dune_engine.Context_name.build_dir ctx in
     let dir = Path.Build.(append_source ctx_dir dir) in
@@ -68,8 +77,7 @@ let dep_on_alias_multi_contexts ~dir ~name ~contexts =
 let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   let open Action_builder.O in
   let* dir =
-    Action_builder.of_memo
-      (Dune_engine.Source_tree.find_dir_specified_on_command_line ~dir:src_dir)
+    Action_builder.of_memo (find_dir_specified_on_command_line ~dir:src_dir)
   in
   let+ is_nonempty_list =
     Action_builder.all

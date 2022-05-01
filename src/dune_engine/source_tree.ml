@@ -796,16 +796,6 @@ module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) = struct
     res
 end
 
-(* jeremiedimino: it feels like this should go in the bin/ directory *)
-let find_dir_specified_on_command_line ~dir =
-  find_dir dir >>| function
-  | Some dir -> dir
-  | None ->
-    User_error.raise
-      [ Pp.textf "Don't know about directory %s specified on the command line!"
-          (Path.Source.to_string_maybe_quoted dir)
-      ]
-
 let is_vendored dir =
   find_dir dir >>| function
   | None -> false

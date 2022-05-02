@@ -7,8 +7,8 @@
   > EOF
   $ dune build @install
   $ mkdir install datadir
-  $ dune install --dry-run --prefix ./install --datadir ./datadir 2>&1 | grep datadir
-  Removing (if it exists) datadir/foo/datafile
-  Installing datadir/foo/datafile
-  Creating directory datadir/foo
-  Copying _build/install/default/share/foo/datafile to datadir/foo/datafile (executable: false)
+  $ dune install --dry-run --prefix ./install --datadir $PWD/datadir 2>&1 | grep datadir
+  Removing (if it exists) $TESTCASE_ROOT/datadir/foo/datafile
+  Installing $TESTCASE_ROOT/datadir/foo/datafile
+  Creating directory $TESTCASE_ROOT/datadir/foo
+  Copying _build/install/default/share/foo/datafile to $TESTCASE_ROOT/datadir/foo/datafile (executable: false)

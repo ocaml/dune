@@ -1107,11 +1107,11 @@ we will go through the various kinds of elements and describe how to
 attach each of them to a package.
 
 In the rest of this section, ``<prefix>`` refers to the directory in
-which the user chooses to install packages. When installing via Opam,
-it's Opam that sets this directory. When calling ``dune install``,
+which the user chooses to install packages. When installing via opam,
+it's opam that sets this directory. When calling ``dune install``,
 the installation directory is either guessed or can be manually
-specified by the user. This is described more in detail in the last
-section of this page.
+specified by the user. Defaults directories which replace guessing
+can be set during the compilation of dune.
 
 Sites of a Package
 ------------------

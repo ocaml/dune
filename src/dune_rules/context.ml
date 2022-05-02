@@ -152,10 +152,7 @@ let compare a b = Poly.compare a.name b.name
 module Opam : sig
   (** Environment for this opam switch *)
   val env :
-       env:Env.t
-    -> root:string option
-    -> switch:string
-    -> string Env.Map.t Memo.t
+    env:Env.t -> root:string option -> switch:string -> string Env.Map.t Memo.t
 end = struct
   let opam =
     Memo.Lazy.create ~name:"context-opam" (fun () ->

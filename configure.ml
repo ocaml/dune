@@ -83,16 +83,16 @@ let () =
   | Some _ -> ());
   let oc = open_out out in
   let pr fmt = fprintf oc (fmt ^^ "\n") in
-  pr "open! Dune_engine";
-  pr "let library_path    = %s" ((list string) !library_path);
-  pr "let roots = Install.Section.Paths.Roots.{ ";
-  pr "lib_root = %s;" (option string !library_destdir);
-  pr "man = %s;" (option string !mandir);
-  pr "doc_root = %s;" (option string !docdir);
-  pr "etc_root = %s;" (option string !etcdir);
-  pr "share_root = %s;" (option string !datadir);
-  pr "bin = %s;" (option string !bindir);
-  pr "sbin = %s;" (option string !sbindir);
-  pr "libexec_root = %s;" (option string !libexecdir);
-  pr "}";
+  pr "open! Dune_engine\n";
+  pr "let library_path = %s\n" ((list string) !library_path);
+  pr "let roots =\n  Install.Section.Paths.Roots.";
+  pr "    { lib_root = %s" (option string !library_destdir);
+  pr "    ; man = %s" (option string !mandir);
+  pr "    ; doc_root = %s" (option string !docdir);
+  pr "    ; etc_root = %s" (option string !etcdir);
+  pr "    ; share_root = %s" (option string !datadir);
+  pr "    ; bin = %s" (option string !bindir);
+  pr "    ; sbin = %s" (option string !sbindir);
+  pr "    ; libexec_root = %s" (option string !libexecdir);
+  pr "    }";
   close_out oc

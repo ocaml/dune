@@ -52,6 +52,9 @@
  (targets setup.defaults.ml)
  (deps ../../configure.ml)
  (action
-  (chdir ../..
-   (setenv DUNE_CONFIGURE_OUTPUT "src/dune_rules/setup.defaults.ml"
-     (run %{ocaml} configure.ml)))))
+  (chdir
+   ../..
+   (setenv
+    DUNE_CONFIGURE_OUTPUT
+    "src/dune_rules/setup.defaults.ml"
+    (run %{ocaml} configure.ml)))))

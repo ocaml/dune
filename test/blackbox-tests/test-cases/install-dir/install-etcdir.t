@@ -7,8 +7,8 @@
   > EOF
   $ dune build @install
   $ mkdir install etcdir
-  $ dune install --dry-run --prefix ./install --etcdir ./etcdir 2>&1 | grep etcdir
-  Removing (if it exists) etcdir/foo/configfile
-  Installing etcdir/foo/configfile
-  Creating directory etcdir/foo
-  Copying _build/install/default/etc/foo/configfile to etcdir/foo/configfile (executable: false)
+  $ dune install --dry-run --prefix ./install --etcdir $PWD/etcdir 2>&1 | grep etcdir
+  Removing (if it exists) $TESTCASE_ROOT/etcdir/foo/configfile
+  Installing $TESTCASE_ROOT/etcdir/foo/configfile
+  Creating directory $TESTCASE_ROOT/etcdir/foo
+  Copying _build/install/default/etc/foo/configfile to $TESTCASE_ROOT/etcdir/foo/configfile (executable: false)

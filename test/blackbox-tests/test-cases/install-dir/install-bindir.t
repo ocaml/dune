@@ -13,12 +13,12 @@
   > EOF
   $ dune build @install
   $ mkdir install bindir sbindir
-  $ dune install --dry-run --prefix ./install --bindir ./bindir --sbindir ./sbindir 2>&1 | grep bindir
-  Removing (if it exists) bindir/user
-  Installing bindir/user
-  Creating directory bindir
-  Copying _build/install/default/bin/user to bindir/user (executable: true)
-  Removing (if it exists) sbindir/admin.exe
-  Installing sbindir/admin.exe
-  Creating directory sbindir
-  Copying _build/install/default/sbin/admin.exe to sbindir/admin.exe (executable: true)
+  $ dune install --dry-run --prefix ./install --bindir $PWD/bindir --sbindir $PWD/sbindir 2>&1 | grep bindir
+  Removing (if it exists) $TESTCASE_ROOT/bindir/user
+  Installing $TESTCASE_ROOT/bindir/user
+  Creating directory $TESTCASE_ROOT/bindir
+  Copying _build/install/default/bin/user to $TESTCASE_ROOT/bindir/user (executable: true)
+  Removing (if it exists) $TESTCASE_ROOT/sbindir/admin.exe
+  Installing $TESTCASE_ROOT/sbindir/admin.exe
+  Creating directory $TESTCASE_ROOT/sbindir
+  Copying _build/install/default/sbin/admin.exe to $TESTCASE_ROOT/sbindir/admin.exe (executable: true)

@@ -11,10 +11,10 @@
   > EOF
 
   $ dune build @install
-  $ dune install --prefix install --libdir install/lib
-  Installing install/lib/foo/META
-  Installing install/lib/foo/dune-package
-  Installing install/lib/foo/opam
+  $ dune install --prefix install --libdir $PWD/install/lib
+  Installing $TESTCASE_ROOT/install/lib/foo/META
+  Installing $TESTCASE_ROOT/install/lib/foo/dune-package
+  Installing $TESTCASE_ROOT/install/lib/foo/opam
   Installing install/man/man-page-a.default.1
   Installing install/man/man1/man-page-b.default.1
   Installing install/man/man3/another-man-page.3

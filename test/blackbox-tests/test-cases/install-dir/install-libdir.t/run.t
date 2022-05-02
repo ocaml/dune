@@ -4,36 +4,36 @@
 `dune install` should handle destination directories that don't exist
 
   $ dune build @install
-  $ dune install --prefix install --libdir install/lib 2>&1 | dune_cmd sanitize
-  Installing install/lib/foo/META
-  Installing install/lib/foo/dune-package
-  Installing install/lib/foo/foo$ext_lib
-  Installing install/lib/foo/foo.cma
-  Installing install/lib/foo/foo.cmi
-  Installing install/lib/foo/foo.cmt
-  Installing install/lib/foo/foo.cmx
-  Installing install/lib/foo/foo.cmxa
-  Installing install/lib/foo/foo.ml
-  Installing install/lib/foo/opam
-  Installing install/lib/foo/foo.cmxs
+  $ dune install --prefix install --libdir $PWD/install/lib 2>&1 | dune_cmd sanitize
+  Installing $TESTCASE_ROOT/install/lib/foo/META
+  Installing $TESTCASE_ROOT/install/lib/foo/dune-package
+  Installing $TESTCASE_ROOT/install/lib/foo/foo$ext_lib
+  Installing $TESTCASE_ROOT/install/lib/foo/foo.cma
+  Installing $TESTCASE_ROOT/install/lib/foo/foo.cmi
+  Installing $TESTCASE_ROOT/install/lib/foo/foo.cmt
+  Installing $TESTCASE_ROOT/install/lib/foo/foo.cmx
+  Installing $TESTCASE_ROOT/install/lib/foo/foo.cmxa
+  Installing $TESTCASE_ROOT/install/lib/foo/foo.ml
+  Installing $TESTCASE_ROOT/install/lib/foo/opam
+  Installing $TESTCASE_ROOT/install/lib/foo/foo.cmxs
   Installing install/bin/exec
   Installing install/man/a-man-page-with-no-ext
   Installing install/man/man1/a-man-page.1
   Installing install/man/man3/another-man-page.3
 
 Even if it is possible to ask for different libexecdir than libdir, the installed .cmxs will not be found
-  $ dune install --prefix install2 --libdir install2/lib --libexecdir install2/libexec 2>&1 | dune_cmd sanitize
-  Installing install2/lib/foo/META
-  Installing install2/lib/foo/dune-package
-  Installing install2/lib/foo/foo$ext_lib
-  Installing install2/lib/foo/foo.cma
-  Installing install2/lib/foo/foo.cmi
-  Installing install2/lib/foo/foo.cmt
-  Installing install2/lib/foo/foo.cmx
-  Installing install2/lib/foo/foo.cmxa
-  Installing install2/lib/foo/foo.ml
-  Installing install2/lib/foo/opam
-  Installing install2/libexec/foo/foo.cmxs
+  $ dune install --prefix install2 --libdir $PWD/install2/lib --libexecdir $PWD/install2/libexec 2>&1 | dune_cmd sanitize
+  Installing $TESTCASE_ROOT/install2/lib/foo/META
+  Installing $TESTCASE_ROOT/install2/lib/foo/dune-package
+  Installing $TESTCASE_ROOT/install2/lib/foo/foo$ext_lib
+  Installing $TESTCASE_ROOT/install2/lib/foo/foo.cma
+  Installing $TESTCASE_ROOT/install2/lib/foo/foo.cmi
+  Installing $TESTCASE_ROOT/install2/lib/foo/foo.cmt
+  Installing $TESTCASE_ROOT/install2/lib/foo/foo.cmx
+  Installing $TESTCASE_ROOT/install2/lib/foo/foo.cmxa
+  Installing $TESTCASE_ROOT/install2/lib/foo/foo.ml
+  Installing $TESTCASE_ROOT/install2/lib/foo/opam
+  Installing $TESTCASE_ROOT/install2/libexec/foo/foo.cmxs
   Installing install2/bin/exec
   Installing install2/man/a-man-page-with-no-ext
   Installing install2/man/man1/a-man-page.1

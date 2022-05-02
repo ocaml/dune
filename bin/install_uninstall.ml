@@ -8,7 +8,8 @@ let synopsis =
     `Noblank;
     `P "- directories set in dune binary. They are setup before the compilation of dune with $(i,./configure)";
     `Noblank;
-    `P "- inferred from the environment variable $(i,OPAM_SWITCH_PREFIX) if present" ]
+    `P "- inferred from the environment variable $(i,OPAM_SWITCH_PREFIX) if present"
+  ]
 
 
 let print_line fmt =
@@ -408,6 +409,14 @@ let cmd_what = function
 let install_uninstall ~what =
   let doc = Format.asprintf "%a packages." pp_what what in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
+  let absolute_path =
+    (fun path ->
+    if Filename.is_relative path then
+      `Error "the path must be absolute to avoid ambiguity"
+    else
+      `Ok path),
+    snd Arg.string
+  in
   let term =
     let+ common = Common.term
     and+ prefix_from_command_line =
@@ -421,15 +430,6 @@ let install_uninstall ~what =
               "Directory where files are copied. For instance binaries are \
                copied into $(i,\\$prefix/bin), library files into \
                $(i,\\$prefix/lib), etc...")
-    and+ libdir_from_command_line =
-      Arg.(
-        value
-        & opt (some string) None
-        & info [ "libdir" ] ~docv:"PATH"
-            ~doc:
-              "Directory where library files are copied, relative to \
-               $(b,prefix) or absolute. If $(b,--prefix) is specified the \
-               default is $(i,\\$prefix/lib)")
     and+ destdir =
       Arg.(
         value
@@ -437,49 +437,58 @@ let install_uninstall ~what =
         & info [ "destdir" ] ~env:(env_var "DESTDIR") ~docv:"PATH"
             ~doc:
               "When passed, this directory is prepended to all installed paths.")
+    and+ libdir_from_command_line =
+      Arg.(
+        value
+        & opt (some absolute_path) None
+        & info [ "libdir" ] ~docv:"PATH"
+            ~doc:
+              "Directory where library files are copied, relative to \
+               $(b,prefix) or absolute. If $(b,--prefix) is specified the \
+               default is $(i,\\$prefix/lib)")
     and+ mandir_from_command_line =
       let doc =
         "When passed, manually override the directory to install man pages"
       in
-      Arg.(value & opt (some string) None & info [ "mandir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some absolute_path) None & info [ "mandir" ] ~docv:"PATH" ~doc)
     and+ docdir_from_command_line =
       let doc =
         "When passed, manually override the directory to install documentation"
       in
-      Arg.(value & opt (some string) None & info [ "docdir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some absolute_path) None & info [ "docdir" ] ~docv:"PATH" ~doc)
     and+ etcdir_from_command_line =
       let doc =
         "When passed, manually override the directory to install configuration \
          files"
       in
-      Arg.(value & opt (some string) None & info [ "etcdir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some absolute_path) None & info [ "etcdir" ] ~docv:"PATH" ~doc)
     and+ bindir_from_command_line =
       let doc =
         "When passed, manually override the directory to install public \
          binaries"
       in
-      Arg.(value & opt (some string) None & info [ "bindir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some absolute_path) None & info [ "bindir" ] ~docv:"PATH" ~doc)
     and+ sbindir_from_command_line =
       let doc =
         "When passed, manually override the directory to files from sbin \
          section"
       in
       Arg.(
-        value & opt (some string) None & info [ "sbindir" ] ~docv:"PATH" ~doc)
+        value & opt (some absolute_path) None & info [ "sbindir" ] ~docv:"PATH" ~doc)
     and+ datadir_from_command_line =
       let doc =
         "When passed, manually override the directory to files from share \
          section"
       in
       Arg.(
-        value & opt (some string) None & info [ "datadir" ] ~docv:"PATH" ~doc)
+        value & opt (some absolute_path) None & info [ "datadir" ] ~docv:"PATH" ~doc)
     and+ libexecdir_from_command_line =
       let doc =
         "When passed, manually override the directory to executable library \
          files"
       in
       Arg.(
-        value & opt (some string) None & info [ "libexecdir" ] ~docv:"PATH" ~doc)
+        value & opt (some absolute_path) None & info [ "libexecdir" ] ~docv:"PATH" ~doc)
     and+ dry_run =
       Arg.(
         value & flag

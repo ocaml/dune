@@ -20,6 +20,7 @@
   ppx_expect.common
   base
   ppx_inline_test.config)
+ (inline_tests)
  (preprocess
   (pps ppx_expect)))
 

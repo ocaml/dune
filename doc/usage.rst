@@ -504,42 +504,16 @@ build contexts.
 Destination Directory
 ---------------------
 
-The ``<prefix>`` directory is determined as follows for a given build
-context:
+For a given build context, the installation directories are determined with a
+single scheme for all installation sections. Taking the ``lib`` installation
+section as an example, the priorities of this scheme are as follows:
 
-#. if an explicit ``--prefix <path>`` argument is passed, use this path
-#. if ``opam`` is present in the ``PATH`` and is configured, use the
-   output of ``opam config var prefix``
-#. otherwise, take the parent of the directory where ``ocamlc`` was found.
-
-As an exception to this rule, library files might be copied to a
-different location. The reason for this is that they often need to be
-copied to a particular location for the various build system used in
-OCaml projects to find them, and this location might be different from
-``<prefix>/lib`` on some systems.
-
-Historically, the location where to store OCaml library files was
-configured through `findlib
-<http://projects.camlcity.org/projects/findlib.html>`__, and the
-``ocamlfind`` command-line tool was used to both install
-and locate these files. Many Linux distributions (or other packaging systems)
-use this mechanism to setup where OCaml library files should be
-copied.
-
-As a result, if neither ``--libdir`` or ``--prefix`` is passed to ``dune
-install``, and ``ocamlfind`` is present in the ``PATH``, then Dune copies library files
-to the directory reported by ``ocamlfind printconf destdir``. This
-ensures that ``dune install`` can be used without Opam. When using opam,
-``ocamlfind`` is configured to point to the Opam directory, so this rule makes
-no difference.
-
-Note that ``--prefix`` and ``--libdir`` are only supported if a single build
-context is in use.
-
-Also note that ``dune install`` (and Dune's ``configure``) supports
-additional parameters to override install directories in addition to
-``--prefix``, in particular. ``--mandir``, ``--docdir``, and
-``--etcdir`` are supported
+#. if an explicit ``--lib <path>`` argument is passed, use this path
+#. if an explicit ``--prefix <path>`` argument is passed, use ``<path>/lib``
+#. if ``--lib <path>`` argument is passed before during dune compilation to
+   ``./configure``, use this paths
+#. if ``OPAM_SWITCH_PREFIX`` is present in the environment use ``$OPAM_SWITCH_PREFIX/lib``
+#. otherwise, fail
 
 Relocation Mode
 ---------------

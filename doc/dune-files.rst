@@ -1342,28 +1342,28 @@ installed in ``<prefix>/share/mypackage``.
 
 The following sections are available:
 
-- ``lib`` installs to ``<prefix>/lib/<pkgname>/``
-- ``lib_root`` installs to ``<prefix>/lib/``
-- ``libexec`` installs to ``<prefix>/lib/<pkgname>/`` with the
+- ``lib`` installs by default to ``<prefix>/lib/<pkgname>/``
+- ``lib_root`` installs by default to ``<prefix>/lib/``
+- ``libexec`` installs by default to ``<prefix>/lib/<pkgname>/`` with the
   executable bit set
-- ``libexec_root`` installs to ``<prefix>/lib/`` with the executable
+- ``libexec_root`` installs by default to ``<prefix>/lib/`` with the executable
   bit set
-- ``bin`` installs to ``<prefix>/bin/`` with the executable bit set
-- ``sbin`` installs to ``<prefix>/sbin/`` with the executable bit set
-- ``toplevel`` installs to ``<prefix>/lib/toplevel/``
-- ``share`` installs to ``<prefix>/share/<pkgname>/``
-- ``share_root`` installs to ``<prefix>/share/``
-- ``etc`` installs to ``<prefix>/etc/<pkgname>/``
-- ``doc`` installs to ``<prefix>/doc/<pkgname>/``
-- ``stublibs`` installs to ``<prefix>/lib/stublibs/`` with the
+- ``bin`` installs by default  to ``<prefix>/bin/`` with the executable bit set
+- ``sbin`` installs by default  to ``<prefix>/sbin/`` with the executable bit set
+- ``toplevel`` installs by default  to ``<prefix>/lib/toplevel/``
+- ``share`` installs by default  to ``<prefix>/share/<pkgname>/``
+- ``share_root`` installs by default  to ``<prefix>/share/``
+- ``etc`` installs by default  to ``<prefix>/etc/<pkgname>/``
+- ``doc`` installs by default  to ``<prefix>/doc/<pkgname>/``
+- ``stublibs`` installs by default  to ``<prefix>/lib/stublibs/`` with the
   executable bit set
-- ``man`` installs relative to ``<prefix>/man`` with the destination
+- ``man`` installs by default  relative to ``<prefix>/man`` with the destination
   directory extracted from the extension of the source file (so that
   installing ``foo.1`` is equivalent to a destination of
   ``man1/foo.1``)
-- ``misc`` requires files to specify an absolute destination, and the
-  user will be prompted before the installation when it's done via
-  Opam. Only use this for advanced cases.
+- ``misc`` requires files to specify an absolute destination. It will only work
+  when used with opam and the user will be prompted before the installation when
+  it's done via opam. It is deprecated.
 - ``(site (<package> <site>))`` installs in the ``<site>`` directory of
   ``<package>``. If the prefix isn't the same as the one used when installing
   ``<package>``, ``<package>`` won't find the files.

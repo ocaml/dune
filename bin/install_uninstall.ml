@@ -1,6 +1,16 @@
 open Stdune
 open Import
 
+let synopsis =
+  [ `P "The installation directories used are defined by priority:";
+    `Noblank;
+    `P "- directories set on the command line of $(i,dune install), or corresponding environment variables";
+    `Noblank;
+    `P "- directories set in dune binary. They are setup before the compilation of dune with $(i,./configure)";
+    `Noblank;
+    `P "- inferred from the environment variable $(i,OPAM_SWITCH_PREFIX) if present" ]
+
+
 let print_line fmt =
   Printf.ksprintf (fun s -> Console.print [ Pp.verbatim s ]) fmt
 
@@ -410,9 +420,7 @@ let install_uninstall ~what =
             ~doc:
               "Directory where files are copied. For instance binaries are \
                copied into $(i,\\$prefix/bin), library files into \
-               $(i,\\$prefix/lib), etc... It defaults to the current opam \
-               prefix if opam is available and configured, otherwise it uses \
-               the same prefix as the ocaml compiler.")
+               $(i,\\$prefix/lib), etc...")
     and+ libdir_from_command_line =
       Arg.(
         value
@@ -421,8 +429,7 @@ let install_uninstall ~what =
             ~doc:
               "Directory where library files are copied, relative to \
                $(b,prefix) or absolute. If $(b,--prefix) is specified the \
-               default is $(i,\\$prefix/lib), otherwise it is the output of \
-               $(b,ocamlfind printconf destdir)")
+               default is $(i,\\$prefix/lib)")
     and+ destdir =
       Arg.(
         value
@@ -697,7 +704,7 @@ let install_uninstall ~what =
         |> List.rev
         |> List.iter ~f:(Ops.remove_dir_if_exists ~if_non_empty:Warn))
   in
-  (term, Cmdliner.Term.info (cmd_what what) ~doc ~man:Common.help_secs)
+  (term, Cmdliner.Term.info (cmd_what what) ~doc ~man:Manpage.(`S s_synopsis :: (synopsis @ Common.help_secs)))
 
 let install = install_uninstall ~what:Install
 

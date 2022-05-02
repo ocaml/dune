@@ -23,13 +23,34 @@ let possible_sources ~language obj ~dune_version =
         (Foreign_language.equal lang language && dune_version >= version)
         (obj ^ "." ^ ext))
 
+module For = struct
+  type t =
+    | Only of Mode.t
+    | All
+
+  let of_option = function
+    | None -> All
+    | Some m -> Only m
+
+  let not_all = function
+    | All -> false
+    | Only _ -> true
+end
+
+let add_mode_suffix mode s =
+  match mode with
+  | For.All -> s
+  | Only mode -> String.concat ~sep:"_" [ s; Mode.to_string mode ]
+
 module Archive = struct
   module Name = struct
     include String
 
     let to_string t = t
 
-    let path ~dir t = Path.Build.relative dir t
+    let path ~dir ~mode archive_name =
+      let archive_name = add_mode_suffix mode archive_name in
+      Path.Build.relative dir archive_name
 
     let decode =
       Dune_lang.Decoder.plain_string (fun ~loc s ->
@@ -46,11 +67,13 @@ module Archive = struct
 
     let lib_file_prefix = "lib"
 
-    let lib_file archive_name ~dir ~ext_lib =
+    let lib_file archive_name ~dir ~ext_lib ~mode =
+      let archive_name = add_mode_suffix mode archive_name in
       Path.Build.relative dir
         (sprintf "%s%s%s" lib_file_prefix archive_name ext_lib)
 
-    let dll_file archive_name ~dir ~ext_dll =
+    let dll_file archive_name ~dir ~ext_dll ~mode =
+      let archive_name = add_mode_suffix mode archive_name in
       Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)
   end
 
@@ -69,7 +92,7 @@ module Archive = struct
 
   let dir_path ~dir t = Path.Build.relative dir t.dir
 
-  let name t = t.name
+  let name ~mode t = add_mode_suffix mode t.name
 
   let stubs archive_name = { dir = "."; name = Name.stubs archive_name }
 
@@ -78,13 +101,13 @@ module Archive = struct
     let+ s = string in
     { dir = Filename.dirname s; name = Filename.basename s }
 
-  let lib_file ~archive ~dir ~ext_lib =
+  let lib_file ~archive ~dir ~ext_lib ~mode =
     let dir = dir_path ~dir archive in
-    Name.lib_file archive.name ~dir ~ext_lib
+    Name.lib_file archive.name ~dir ~ext_lib ~mode
 
-  let dll_file ~archive ~dir ~ext_dll =
+  let dll_file ~archive ~dir ~ext_dll ~mode =
     let dir = dir_path ~dir archive in
-    Name.dll_file archive.name ~dir ~ext_dll
+    Name.dll_file archive.name ~dir ~ext_dll ~mode
 end
 
 module Stubs = struct
@@ -128,13 +151,14 @@ module Stubs = struct
     { loc : Loc.t
     ; language : Foreign_language.t
     ; names : Ordered_set_lang.t
+    ; mode : For.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; include_dirs : Include_dir.t list
     ; extra_deps : Dep_conf.t list
     }
 
-  let make ~loc ~language ~names ~flags =
-    { loc; language; names; flags; include_dirs = []; extra_deps = [] }
+  let make ~loc ~language ~names ~mode ~flags =
+    { loc; language; names; mode; flags; include_dirs = []; extra_deps = [] }
 
   let decode_stubs =
     let open Dune_lang.Decoder in
@@ -143,6 +167,7 @@ module Stubs = struct
       located (field_o "archive_name" string)
     and+ language = field "language" decode_lang
     and+ names = Ordered_set_lang.field "names"
+    and+ mode = field_o "mode" Mode.decode
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ include_dirs =
       field ~default:[] "include_dirs" (repeat Include_dir.decode)
@@ -159,9 +184,28 @@ module Stubs = struct
                (foreign_library ...) stanza."
           ]
     in
-    { loc; language; names; flags; include_dirs; extra_deps }
+    let mode = For.of_option mode in
+    { loc; language; names; mode; flags; include_dirs; extra_deps }
 
   let decode = Dune_lang.Decoder.fields decode_stubs
+
+  let is_mode_dependent t = For.not_all t.mode
+end
+
+module O_file = struct
+  type 'path t = For.t * 'path
+
+  module L = struct
+    type nonrec 'path t = 'path t list
+
+    let filter for_ ?(and_all = false) l =
+      List.filter_map l ~f:(fun (for_', p) ->
+          match (for_, for_') with
+          | For.All, For.All -> Some p
+          | _, For.All when and_all -> Some p
+          | For.Only m, For.Only m' when Mode.equal m m' -> Some p
+          | _ -> None)
+  end
 end
 
 module Objects = struct
@@ -194,8 +238,11 @@ module Objects = struct
         ]
 
   let build_paths t ~ext_obj ~dir =
+    (* Foreign objects are not mode-dependent *)
     List.map t ~f:(fun (loc, name) ->
-        Object_name.build_path name ~error_loc:loc ~ext_obj ~dir)
+        ( For.All
+        , Object_name.build_path name ~error_loc:loc ~ext_obj ~dir |> Path.build
+        ))
 end
 
 module Library = struct
@@ -228,8 +275,11 @@ module Source = struct
 
   let path t = t.path
 
-  let object_name t =
-    t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
+  let object_name ?(with_mode_suffix = true) t =
+    let name =
+      t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
+    in
+    if with_mode_suffix then add_mode_suffix t.stubs.mode name else name
 
   let make ~stubs ~path = { stubs; path }
 end

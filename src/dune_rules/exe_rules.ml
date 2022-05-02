@@ -91,7 +91,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
       let { Lib_config.ext_obj; _ } = (Super_context.context sctx).lib_config in
       Foreign.Objects.build_paths exes.buildable.extra_objects ~ext_obj ~dir
     in
-    List.map (built_o_files @ foreign_o_files) ~f:Path.build
+    built_o_files @ foreign_o_files
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
@@ -172,7 +172,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
              (* XXX: don't these need the msvc hack being done in lib_rules? *)
              (* XXX: also the Command.quote_args being done in lib_rules? *)
              List.map foreign_archives ~f:(fun archive ->
-                 let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
+                 let lib =
+                   Foreign.Archive.lib_file ~archive ~dir ~ext_lib
+                     ~mode:Foreign.For.All
+                 in
                  Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
           (* XXX: don't these need the msvc hack being done in lib_rules? *)
           (* XXX: also the Command.quote_args being done in lib_rules? *)
@@ -184,7 +187,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents
         ~requires_compile
     in
-    let* () = Check_rules.add_files sctx ~dir o_files in
+    let* () = Check_rules.add_files sctx ~dir @@ List.map o_files ~f:snd in
     let buildable = exes.buildable in
     match buildable.ctypes with
     | None ->

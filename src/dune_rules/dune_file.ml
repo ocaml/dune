@@ -158,7 +158,8 @@ module Buildable = struct
         let flags =
           Option.value ~default:Ordered_set_lang.Unexpanded.standard flags
         in
-        Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
+        Foreign.Stubs.make ~loc ~language ~names ~mode:Foreign.For.All ~flags
+        :: foreign_stubs
     in
     let+ loc = loc
     and+ project = Dune_project.get_exn ()
@@ -344,6 +345,9 @@ module Buildable = struct
     List.exists
       ~f:(fun stub -> Foreign_language.(equal Cxx stub.Foreign.Stubs.language))
       t.foreign_stubs
+
+  let has_mode_dependent_foreign_stubs t =
+    List.exists ~f:Foreign.Stubs.is_mode_dependent t.foreign_stubs
 end
 
 module Public_lib = struct
@@ -764,17 +768,50 @@ module Library = struct
   let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
   let foreign_archives t =
-    (if List.is_empty t.buildable.foreign_stubs then []
-    else [ Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)) ])
-    @ List.map ~f:snd t.buildable.foreign_archives
+    let lib_stubs =
+      if List.is_empty t.buildable.foreign_stubs then None
+      else Some (Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)))
+    in
+    (lib_stubs, List.map ~f:snd t.buildable.foreign_archives)
 
-  let foreign_lib_files t ~dir ~ext_lib =
-    List.map (foreign_archives t) ~f:(fun archive ->
-        Foreign.Archive.lib_file ~archive ~dir ~ext_lib)
+  let foreign_lib_files t ~dir ~ext_lib ~mode =
+    let lib_archive, foreign_archives = foreign_archives t in
+    let mode =
+      if Buildable.has_mode_dependent_foreign_stubs t.buildable then
+        Foreign.For.Only mode
+      else Foreign.For.All
+    in
+    let lib_file ~mode archive =
+      Foreign.Archive.lib_file ~archive ~dir ~ext_lib ~mode
+    in
+    let lib_archive = Option.map ~f:(lib_file ~mode) lib_archive in
+    let foreign_archives =
+      List.map foreign_archives ~f:(lib_file ~mode:Foreign.For.All)
+    in
+    (* Stubs can have mode-dependent versions, not foreign archives *)
+    match lib_archive with
+    | Some lib_archive -> lib_archive :: foreign_archives
+    | None -> foreign_archives
 
   let foreign_dll_files t ~dir ~ext_dll =
-    List.map (foreign_archives t) ~f:(fun archive ->
-        Foreign.Archive.dll_file ~archive ~dir ~ext_dll)
+    let lib_archive, foreign_archives = foreign_archives t in
+    let mode =
+      if Buildable.has_mode_dependent_foreign_stubs t.buildable then
+        (* Shared object are never created in Native mode where everything is
+           linked statically. *)
+        Foreign.For.Only Mode.Byte
+      else Foreign.For.All
+    in
+    let dll_file ~mode archive =
+      Foreign.Archive.dll_file ~archive ~dir ~ext_dll ~mode
+    in
+    let foreign_archives =
+      List.map foreign_archives ~f:(dll_file ~mode:Foreign.For.All)
+    in
+    (* Stubs can have mode-dependent versions, not foreign archives *)
+    match lib_archive with
+    | Some lib_archive -> dll_file ~mode lib_archive :: foreign_archives
+    | None -> foreign_archives
 
   let archive_basename t ~ext = Lib_name.Local.to_string (snd t.name) ^ ext
 
@@ -838,7 +875,9 @@ module Library = struct
       | Public p -> Public (conf.project, p.package)
     in
     let virtual_library = is_virtual conf in
-    let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in
+    let foreign_archives =
+      Mode.Dict.of_func (foreign_lib_files conf ~dir ~ext_lib)
+    in
     let native_archives =
       let archive = archive ext_lib in
       if virtual_library || not modes.native then Lib_info.Files []

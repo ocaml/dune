@@ -25,19 +25,19 @@ module Link_params = struct
     let+ hidden_deps =
       match mode with
       | Byte | Byte_for_jsoo -> Memo.return dll_files
-      | Byte_with_stubs_statically_linked_in -> Memo.return lib_files
+      | Byte_with_stubs_statically_linked_in -> Memo.return lib_files.byte
       | Native ->
         let+ native_archives =
           let+ modules = Dir_contents.modules_of_lib sctx t in
           Lib_info.eval_native_archives_exn info ~modules
         in
-        List.rev_append native_archives lib_files
+        List.rev_append native_archives lib_files.native
     in
     let include_dirs =
       let files =
         match mode with
         | Byte | Byte_for_jsoo -> dll_files
-        | Byte_with_stubs_statically_linked_in | Native -> lib_files
+        | Byte_with_stubs_statically_linked_in | Native -> lib_files.native
       in
       let files =
         match Lib_info.exit_module info with

@@ -19,7 +19,7 @@ The plan is as follows:
 July 2018: Release of Dune 1.0.0
 --------------------------------
 
-First, the release of the Opam package `dune`: the `jbuilder` package becomes a
+First, the release of the opam package `dune`: the `jbuilder` package becomes a
 transitional package that depends on `dune`.
 
 The `dune` package installs two binaries: ``dune`` and ``jbuilder``. These two
@@ -46,7 +46,7 @@ Dune no longer reads `jbuild` or other Jbuidler configuration files, but it
 still prints a warning when encountering them.
 
 At this point, a conflict with newer versions of Dune will be added
-to all Opam packages that rely on the ``jbuilder`` binary or Jbuilder
+to all opam packages that rely on the ``jbuilder`` binary or Jbuilder
 configuration files.
 
 January 2020: The ``jbuilder`` Binary Goes Away

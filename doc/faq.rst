@@ -39,13 +39,13 @@ How Do I Publish My Packages with Dune?
 
 Dune is just a build system and considers publishing outside of its scope.
 However, the dune-release_ project is specifically designed for releasing Dune
-projects to Opam. We recommend using this tool for publishing Dune packages.
+projects to opam. We recommend using this tool for publishing Dune packages.
 
 Where Can I Find Some Examples of Projects Using Dune?
 ======================================================
 
 The dune-universe_ repository contains a snapshot of the latest versions of all
-Opam packages that depend on Dune. Therefore, it's a useful reference to find
+opam packages that depend on Dune. Therefore, it's a useful reference to find
 different approaches for constructing build rules.
 
 What is Jenga?
@@ -76,7 +76,7 @@ non-fatal:
 - You can pass ``--profile release`` to ``dune``. It will set up different
   compilation options that usually make sense for release builds, including
   making warnings non-fatal. This is done by default when installing packages
-  from Opam.
+  from opam.
 - You can change the flags used by the ``dev`` profile by adding the following
   stanza to a ``dune`` file:
 
@@ -106,7 +106,7 @@ How Can I Generate an ``mli`` File From an ``ml`` File
 When a module starts as just an implementation (``.ml`` file), it can be
 tedious to define the corresponding interface (``.mli`` file).
 
-It is possible to use the ``ocaml-print-intf`` program (available on Opam
+It is possible to use the ``ocaml-print-intf`` program (available on opam
 through ``$ opam install ocaml-print-intf``) to generate the right ``mli``
 file:
 

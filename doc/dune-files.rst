@@ -318,7 +318,7 @@ defined in the project:
 - ``(documentation <url>)`` - where the documentation is hosted
 
 With these fields, every time one calls Dune to execute some rules (either via
-``dune build``, ``dune runtest``, or something else), the Opam files get
+``dune build``, ``dune runtest``, or something else), the opam files get
 generated.
 
 Some or all of these fields may be overridden for each package of the project, see
@@ -362,7 +362,7 @@ It contains the following fields:
 Adding libraries to different packages is done via the ``public_name`` field. See
 :ref:`library` section for details.
 
-The list of dependencies ``<dep-specification>`` is modeled after Opam's own
+The list of dependencies ``<dep-specification>`` is modeled after opam's own
 language. The syntax is a list of the following elements:
 
 .. code::
@@ -585,12 +585,12 @@ to use the :ref:`include_subdirs` stanza.
   rewriter`` or a ``[@@deriving ...]`` plugin, and has runtime dependencies. You
   need to specify these runtime dependencies here.
 
-- ``(virtual_deps (<opam-packages>)``. Sometimes Opam packages enable a specific
+- ``(virtual_deps (<opam-packages>)``. Sometimes opam packages enable a specific
   feature only if another package is installed. For instance, the case of
   ``ctypes`` will only install ``ctypes.foreign`` if the dummy
   ``ctypes-foreign`` package is installed. You can specify such virtual
   dependencies here, but you don't need to do so unless you use Dune to
-  synthesize the ``depends`` and ``depopts`` sections of your Opam file.
+  synthesize the ``depends`` and ``depopts`` sections of your opam file.
 
 - ``js_of_ocaml`` sets options for JavaScript compilation, see :ref:`jsoo-field`.
 
@@ -1310,7 +1310,7 @@ The typical use of the ``alias`` stanza is to define tests:
 See the section about :ref:`running-tests` for details.
 
 Please note: if your project contains several packages, and you run the tests
-from the Opam file using a ``build-test`` field, all your ``runtest`` alias
+from the opam file using a ``build-test`` field, all your ``runtest`` alias
 stanzas should have a ``(package ...)`` field in order to partition the set of
 tests.
 
@@ -2174,7 +2174,7 @@ context
 
 The ``(context ...)`` stanza declares a build context. The argument
 can be either ``default`` or ``(default)`` for the default build
-context, or it can be the description of an Opam switch, as follows:
+context, or it can be the description of an opam switch, as follows:
 
 .. code:: scheme
 
@@ -2186,8 +2186,8 @@ context, or it can be the description of an Opam switch, as follows:
 -  ``(name <name>)`` is the subdirectory's name for ``_build``,
    where this build's context artifacts will be stored.
 
--  ``(root <opam-root>)`` is the Opam root. By default, it will take
-   the Opam root defined by the environment in which ``dune`` is
+-  ``(root <opam-root>)`` is the opam root. By default, it will take
+   the opam root defined by the environment in which ``dune`` is
    run, which is usually ``~/.opam``.
 
 - ``(merlin)`` instructs Dune to use this build context for

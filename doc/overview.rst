@@ -11,7 +11,7 @@ to build any project in any language. On the contrary, it makes
 lots of choices in order to encourage a consistent development style.
 
 This scheme is inspired from the one used inside Jane Street and adapted
-to the Opam world. It has matured over a long time and is used daily by
+to the opam world. It has matured over a long time and is used daily by
 hundreds of developers, which means that it is highly tested and
 productive.
 
@@ -53,7 +53,7 @@ Terminology
 ===========
 
 -  **package**: a set of libraries and executables that
-   Opam builds and installs as one
+   opam builds and installs as one
 
 -  **project**: a source tree, maybe containing one or more
    packages
@@ -111,7 +111,7 @@ Terminology
   <profile>`` or from ``dune-workspace`` files. The following
   profiles are standard:
 
-  -  ``release`` which is the profile used for Opam releases
+  -  ``release`` which is the profile used for opam releases
   -  ``dev`` which is the default profile when none is set explicitly, it
      has stricter warnings than the ``release`` one
 

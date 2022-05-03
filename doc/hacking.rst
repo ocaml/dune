@@ -91,7 +91,7 @@ how this software works before proceeding. Publishing a release consists of two 
 
 * Updating ``CHANGES.md`` to reflect the version being published
 * Running ``$ make opam-release`` to create the release tarball. Then publish it to
-  GitHub and submit it to Opam.
+  GitHub and submit it to opam.
 
 Major & Feature Releases
 ------------------------

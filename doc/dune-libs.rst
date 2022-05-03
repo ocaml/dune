@@ -95,7 +95,7 @@ Upgrading From the Old Configurator
 -----------------------------------
 
 The old Configurator is the independent `Configurator
-<https://github.com/janestreet/configurator>`__ Opam package. It's now
+<https://github.com/janestreet/configurator>`__ opam package. It's now
 deprecated, and users are encouraged to migrate to Dune's own Configurator. The
 advantage of the transition include:
 
@@ -107,7 +107,7 @@ advantage of the transition include:
 
 The following steps must be taken to transition from the old Configurator:
 
-* Mentions of the ``configurator`` Opam package should be replaced
+* Mentions of the ``configurator`` opam package should be replaced
   with ``dune-configurator``.
 
 * The library name ``configurator`` should be changed ``dune-configurator``.

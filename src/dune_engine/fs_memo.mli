@@ -35,6 +35,8 @@ val file_digest :
     path. *)
 val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.t
 
+val file_contents : Path.t -> string Memo.t
+
 (** Read the contents of a source or external directory and declare a dependency
     on it. When [force_update = true], evict the directory from the file-system
     cache and force the recomputation of the result. This can be useful if Dune

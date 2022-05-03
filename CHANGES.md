@@ -21,8 +21,8 @@
 - Add a fmt command as a shortcut of `dune build @fmt --auto-promote` (#5574,
   @tmattio)
 
-- Watch mode now tracks external directories for dependencies (#5627,
-  @rgrinberg)
+- Watch mode now tracks external directories for dependencies, dune files in
+  OCaml syntax (#5627, #5652, @rgrinberg)
 
 - Improve metrics for cram tests. Include test names in the event and add a
   category for cram tests (#5626, @rgrinberg)

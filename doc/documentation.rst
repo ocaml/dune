@@ -9,7 +9,7 @@ Prerequisites
 
 Documentation in Dune is done courtesy of the odoc_ tool. Therefore, to
 generate documentation in Dune, you will need to install this tool. This
-should be done with Opam:
+should be done with opam:
 
 ::
 
@@ -35,7 +35,7 @@ to build this alias:
 
   $ dune build @doc
 
-An index page containing links to all the Opam packages in your project can be
+An index page containing links to all the opam packages in your project can be
 found in:
 
 ::
@@ -81,7 +81,7 @@ excluding ``wip.mld``, in the current directory:
     (mld_files :standard \ wip))
 
 All ``.mld`` files attached to a package will be included in the generated
-``.install`` file for that package. They'll be installed by Opam.
+``.install`` file for that package. They'll be installed by opam.
 
 Package Entry Page
 ------------------

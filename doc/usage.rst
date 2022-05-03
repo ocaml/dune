@@ -116,7 +116,7 @@ section :ref:`dune-workspace` for the syntax of this file. The scope
 of ``dune-project`` files is wider than the scope ``dune-workspace``
 files. For instance, a ``dune-project`` file may specify the name of
 the project which is a universal property of the project, while a
-``dune-workspace`` file may specify an Opam switch name which is valid
+``dune-workspace`` file may specify an opam switch name which is valid
 only on a given machine. For this reason, it is common and recommended
 to commit ``dune-project`` files in repositories, while it is less
 common to commit ``dune-workspace`` files.
@@ -306,8 +306,8 @@ in the installed world and expect it to be already compiled.
 It looks up external libraries using a specific list of search paths,
 and each build context has a specific list of search paths.
 
-When running inside an Opam environment, Dune will look for installed
-libraries in ``$OPAM_SWITCH_PREFIX/lib``. This includes both Opam
+When running inside an opam environment, Dune will look for installed
+libraries in ``$OPAM_SWITCH_PREFIX/lib``. This includes both opam
 build context configured via the ``dune-workspace`` file and the
 default build context when the variable ``$OPAM_SWITCH_PREFIX`` is
 set.
@@ -410,7 +410,7 @@ dune subst
 
 One of the features ``dune-release`` provides is watermarking; it replaces
 various strings of the form ``%%ID%%`` in all your project files
-before creating a release tarball or when the Opam user pins the package.
+before creating a release tarball or when the opam user pins the package.
 
 This is especially interesting for the ``VERSION`` watermark, which gets
 replaced by the version obtained from the Version-Control System (VCS). For instance, if you're using
@@ -438,20 +438,20 @@ More precisely, it replaces the following watermarks in the source files:
   ``v`` or ``V`` dropped
 - ``VCS_COMMIT_ID``, commit hash from the vcs
 - ``PKG_MAINTAINER``, contents of the ``maintainer`` field from the
-  Opam file
-- ``PKG_AUTHORS``, contents of the ``authors`` field from the Opam file
-- ``PKG_HOMEPAGE``, contents of the ``homepage`` field from the Opam file
-- ``PKG_ISSUES``, contents of the ``issues`` field from the Opam file
-- ``PKG_DOC``, contents of the ``doc`` field from the Opam file
-- ``PKG_LICENSE``, contents of the ``license`` field from the Opam file
-- ``PKG_REPO``, contents of the ``repo`` field from the Opam file
+  opam file
+- ``PKG_AUTHORS``, contents of the ``authors`` field from the opam file
+- ``PKG_HOMEPAGE``, contents of the ``homepage`` field from the opam file
+- ``PKG_ISSUES``, contents of the ``issues`` field from the opam file
+- ``PKG_DOC``, contents of the ``doc`` field from the opam file
+- ``PKG_LICENSE``, contents of the ``license`` field from the opam file
+- ``PKG_REPO``, contents of the ``repo`` field from the opam file
 
 The project name is obtained by reading the ``dune-project``
 file in the directory where ``dune subst`` is called. The
 ``dune-project`` file must exist and contain a valid ``(name ...)``
 field.
 
-Note that ``dune subst`` is meant to be called from the Opam file and
+Note that ``dune subst`` is meant to be called from the opam file and
 behaves a bit different to other Dune commands. In
 particular it doesn't try to detect the root of the workspace and must
 be called from the root of the project.
@@ -482,7 +482,7 @@ Via opam
 When releasing a package using Dune in opam, there's nothing special
 to do.  Dune generates a file called ``<package-name>.install`` at the
 root of the project.  This contains a list of files to install, and
-Opam reads it in order to perform the installation.
+opam reads it in order to perform the installation.
 
 Manually
 --------

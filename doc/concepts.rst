@@ -989,7 +989,7 @@ However, it is different for the following reason:
   called when the files are not byte equals
 
 - By default, it will use ``patdiff`` if it is installed. ``patdiff``
-  is a better diffing program. You can install it via Opam with:
+  is a better diffing program. You can install it via opam with:
 
   .. code:: sh
 
@@ -1051,9 +1051,9 @@ Package Specification
 
 Installation is the process of copying freshly built libraries,
 binaries, and other files from the build directory to the system. Dune
-offers two ways of doing this: via Opam or directly via the ``install``
+offers two ways of doing this: via opam or directly via the ``install``
 command. In particular, the installation model implemented by Dune
-was copied from Opam. Opam is the standard OCaml package manager.
+was copied from opam. Opam is the standard OCaml package manager.
 
 In both cases, Dune only know how to install whole packages. A
 package being a collection of executables, libraries, and other files.

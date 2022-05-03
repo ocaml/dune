@@ -85,14 +85,14 @@ let () =
   let pr fmt = fprintf oc (fmt ^^ "\n") in
   pr "open! Dune_engine\n";
   pr "let library_path = %s\n" ((list string) !library_path);
-  pr "let roots =\n  Install.Section.Paths.Roots.";
-  pr "    { lib_root = %s" (option string !library_destdir);
-  pr "    ; man = %s" (option string !mandir);
-  pr "    ; doc_root = %s" (option string !docdir);
-  pr "    ; etc_root = %s" (option string !etcdir);
-  pr "    ; share_root = %s" (option string !datadir);
-  pr "    ; bin = %s" (option string !bindir);
-  pr "    ; sbin = %s" (option string !sbindir);
-  pr "    ; libexec_root = %s" (option string !libexecdir);
-  pr "    }";
+  pr "let roots : string option Install.Section.Paths.Roots.t =";
+  pr "  { lib_root = %s" (option string !library_destdir);
+  pr "  ; man = %s" (option string !mandir);
+  pr "  ; doc_root = %s" (option string !docdir);
+  pr "  ; etc_root = %s" (option string !etcdir);
+  pr "  ; share_root = %s" (option string !datadir);
+  pr "  ; bin = %s" (option string !bindir);
+  pr "  ; sbin = %s" (option string !sbindir);
+  pr "  ; libexec_root = %s" (option string !libexecdir);
+  pr "  }";
   close_out oc

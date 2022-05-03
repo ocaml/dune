@@ -439,8 +439,7 @@ let install_uninstall ~what =
         value
         & opt (some string) None
         & info [ "destdir" ] ~env:(env_var "DESTDIR") ~docv:"PATH"
-            ~doc:
-              "When passed, this directory is prepended to all installed paths.")
+            ~doc:"This directory is prepended to all installed paths.")
     and+ libdir_from_command_line =
       Arg.(
         value
@@ -452,8 +451,8 @@ let install_uninstall ~what =
                default is $(i,\\$prefix/lib). Only absolute path accepted.")
     and+ mandir_from_command_line =
       let doc =
-        "When passed, manually override the directory to install man pages. \
-         Only absolute path accepted."
+        "Manually override the directory to install man pages. Only absolute \
+         path accepted."
       in
       Arg.(
         value
@@ -461,8 +460,8 @@ let install_uninstall ~what =
         & info [ "mandir" ] ~docv:"PATH" ~doc)
     and+ docdir_from_command_line =
       let doc =
-        "When passed, manually override the directory to install \
-         documentation. Only absolute path accepted."
+        "Manually override the directory to install documentation files. Only \
+         absolute path accepted."
       in
       Arg.(
         value
@@ -470,8 +469,8 @@ let install_uninstall ~what =
         & info [ "docdir" ] ~docv:"PATH" ~doc)
     and+ etcdir_from_command_line =
       let doc =
-        "When passed, manually override the directory to install configuration \
-         files. Only absolute path accepted."
+        "Manually override the directory to install configuration files. Only \
+         absolute path accepted."
       in
       Arg.(
         value
@@ -479,8 +478,8 @@ let install_uninstall ~what =
         & info [ "etcdir" ] ~docv:"PATH" ~doc)
     and+ bindir_from_command_line =
       let doc =
-        "When passed, manually override the directory to install public \
-         binaries. Only absolute path accepted."
+        "Manually override the directory to install public binaries. Only \
+         absolute path accepted."
       in
       Arg.(
         value
@@ -488,8 +487,8 @@ let install_uninstall ~what =
         & info [ "bindir" ] ~docv:"PATH" ~doc)
     and+ sbindir_from_command_line =
       let doc =
-        "When passed, manually override the directory to files from sbin \
-         section. Only absolute path accepted."
+        "Manually override the directory to install files from sbin section. \
+         Only absolute path accepted."
       in
       Arg.(
         value
@@ -497,8 +496,8 @@ let install_uninstall ~what =
         & info [ "sbindir" ] ~docv:"PATH" ~doc)
     and+ datadir_from_command_line =
       let doc =
-        "When passed, manually override the directory to files from share \
-         section. Only absolute path accepted."
+        "Manually override the directory to install files from share section. \
+         Only absolute path accepted."
       in
       Arg.(
         value
@@ -506,8 +505,8 @@ let install_uninstall ~what =
         & info [ "datadir" ] ~docv:"PATH" ~doc)
     and+ libexecdir_from_command_line =
       let doc =
-        "When passed, manually override the directory to executable library \
-         files. Only absolute path accepted."
+        "Manually override the directory to install executable library files. \
+         Only absolute path accepted."
       in
       Arg.(
         value

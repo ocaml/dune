@@ -1,6 +1,14 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Allows to configure all the default destination directories with `./configure`
+  (adds `bin`, `sbin`, `data`, `libexec`). Use `OPAM_SWITCH_PREFIX` instead of
+  calling the `opam` binaries in `dune install`. Fix handling of multiple
+  `libdir` in `./configure` for handling `/usr/lib/ocaml/` and
+  `/usr/local/lib/ocaml`. In `dune install` forbid relative directories in
+  `libdir`, `docdir` and others specific directory setting because their handling
+  was inconsistent (#5516, fixes #3978 and #5455, @bobot)
+
 - `--terminal-persistence=clear-on-rebuild` will no longer destroy scrollback
   on some terminals (#5646, @rgrinberg)
 

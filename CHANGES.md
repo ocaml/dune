@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Report dune file evaluation errors concurrently. In the same way we report
+  build errors. (#5655, @rgrinberg)
+
 - Watch mode now default to clearing the terminal on rebuild (#5636, fixes,
   #5216, @rgrinberg)
 

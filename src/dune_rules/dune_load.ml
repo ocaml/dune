@@ -249,7 +249,7 @@ let load () =
   in
   let+ dune_files =
     Appendable_list.to_list dune_files
-    |> Memo.sequential_map ~f:(fun (dir, project, dune_file) ->
+    |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
            interpret ~dir ~project ~dune_file)
   in
   { dune_files; packages; projects }

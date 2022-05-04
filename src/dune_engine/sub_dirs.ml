@@ -318,44 +318,77 @@ let decode =
   in
   enter (fields (decode ~allow_ignored_subdirs:true))
 
-let decode_includes ~context =
-  let open Dune_lang.Decoder in
-  let rec subdir ~context ~path ~inside_include =
-    let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-    let* loc = loc in
-    let* name, path =
-      plain_string (fun ~loc s ->
-          (Dune_lang.Ast.atom_or_quoted_string loc s, s :: path))
-    in
-    let+ nodes = fields (decode ~context ~path ~inside_include) in
-    let required_version = (2, 7) in
-    if inside_include && dune_version < required_version then
-      Dune_lang.Syntax.Error.since loc Stanza.syntax required_version
-        ~what:"Using a `subdir' stanza within an `include'd file";
-    List
-      (loc, Atom (Loc.none, Dune_lang.Atom.of_string "subdir") :: name :: nodes)
-  and decode ~context ~path ~inside_include =
-    let* includes =
-      multi_field "include"
-        (let* loc = loc
-         and+ fn = relative_file in
-         let fn =
-           List.fold_left
-             ~f:(fun fn dir -> Filename.concat dir fn)
-             ~init:fn path
+type decoder =
+  { decode : 'a. Dune_lang.Ast.t list -> 'a Dune_lang.Decoder.t -> 'a }
+
+let decode_includes ~context (decoder : decoder) =
+  let rec subdir ~loc:subdir_loc ~context ~path ~inside_include sexps =
+    let name, path, nodes =
+      decoder.decode sexps
+      @@
+      let open Dune_lang.Decoder in
+      enter
+      @@ let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+         let* name, path =
+           plain_string (fun ~loc s ->
+               (Dune_lang.Ast.atom_or_quoted_string loc s, s :: path))
          in
-         let sexps, context = Include_stanza.load_sexps ~context (loc, fn) in
-         let* () = set_input sexps in
-         fields (decode ~context ~path ~inside_include:true))
+         let+ nodes = repeat raw in
+         let required_version = (2, 7) in
+         if inside_include && dune_version < required_version then
+           Dune_lang.Syntax.Error.since subdir_loc Stanza.syntax
+             required_version
+             ~what:"Using a `subdir' stanza within an `include'd file";
+         (name, path, nodes)
     in
-    let+ subdirs = multi_field "subdir" (subdir ~context ~path ~inside_include)
-    and+ sexps = leftover_fields in
+    let open Memo.O in
+    let+ nodes = decode ~context ~path ~inside_include nodes in
+    Dune_lang.Ast.List
+      ( subdir_loc
+      , Atom (Loc.none, Dune_lang.Atom.of_string "subdir") :: name :: nodes )
+  and decode ~context ~path ~inside_include (sexps : Dune_lang.Ast.t list) =
+    let sexps, subdirs, includes =
+      decoder.decode sexps
+      @@
+      let open Dune_lang.Decoder in
+      enter @@ fields
+      @@ let+ includes =
+           multi_field "include"
+             (let+ loc = loc
+              and+ fn = relative_file in
+              let fn =
+                List.fold_left ~init:fn path ~f:(fun fn dir ->
+                    Filename.concat dir fn)
+              in
+              (loc, fn))
+         and+ subdirs =
+           multi_field "subdir"
+             (let+ loc = loc
+              and+ stanzas = repeat raw in
+              (loc, stanzas))
+         and+ sexps = leftover_fields in
+         (sexps, subdirs, includes)
+    in
+    let open Memo.O in
+    let+ includes, subdirs =
+      Memo.fork_and_join
+        (fun () ->
+          Memo.parallel_map includes ~f:(fun (loc, fn) ->
+              let* sexps, context =
+                Include_stanza.load_sexps ~context (loc, fn)
+              in
+              decode ~context ~path ~inside_include:true sexps))
+        (fun () ->
+          Memo.parallel_map subdirs ~f:(fun (loc, sexps) ->
+              subdir ~loc ~context ~path ~inside_include sexps))
+    in
     List.concat (sexps :: subdirs :: includes)
   in
-  enter (fields (decode ~context ~path:[] ~inside_include:false))
+  fun sexps -> decode ~context ~path:[] ~inside_include:false sexps
 
-let decode ~file =
-  let open Dune_lang.Decoder in
-  let* sexps = decode_includes ~context:(Include_stanza.in_file file) in
-  let* () = set_input [ List (Loc.none, sexps) ] in
-  decode
+let decode ~file (decoder : decoder) sexps =
+  let open Memo.O in
+  let+ sexps =
+    decode_includes ~context:(Include_stanza.in_file file) decoder sexps
+  in
+  decoder.decode sexps decode

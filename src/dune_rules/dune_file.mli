@@ -461,7 +461,7 @@ val parse :
   -> dir:Path.Source.t
   -> file:Path.Source.t
   -> project:Dune_project.t
-  -> t
+  -> t Memo.t
 
 val fold_stanzas :
   t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc

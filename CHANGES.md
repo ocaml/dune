@@ -25,7 +25,8 @@
   @tmattio)
 
 - Watch mode now tracks external directories for dependencies, dune files in
-  OCaml syntax (#5627, #5652, @rgrinberg)
+  OCaml syntax, files used by `include` stanzas (#5627, #5652, #5656, fixes
+  #5331, @rgrinberg)
 
 - Improve metrics for cram tests. Include test names in the event and add a
   category for cram tests (#5626, @rgrinberg)

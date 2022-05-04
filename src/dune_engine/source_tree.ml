@@ -67,13 +67,17 @@ module Dune_file = struct
     | Some t -> Sub_dirs.or_default t.plain.contents.subdir_status
 
   let load_plain sexps ~file ~from_parent ~project =
-    let decoder =
-      Dune_project.set_parsing_context project (Sub_dirs.decode ~file)
-    in
-    let active =
-      let parsed =
-        Dune_lang.Decoder.parse decoder Univ_map.empty
-          (Dune_lang.Ast.List (Loc.none, sexps))
+    let+ active =
+      let+ parsed =
+        let decoder =
+          { Sub_dirs.decode =
+              (fun ast d ->
+                let d = Dune_project.set_parsing_context project d in
+                Dune_lang.Decoder.parse d Univ_map.empty
+                  (Dune_lang.Ast.List (Loc.none, ast)))
+          }
+        in
+        Sub_dirs.decode ~file decoder sexps
       in
       match from_parent with
       | None -> parsed
@@ -86,14 +90,20 @@ module Dune_file = struct
     let+ kind, plain =
       let load_plain = load_plain ~file ~from_parent ~project in
       match file_exists with
-      | false -> Memo.return (Plain, load_plain [])
+      | false ->
+        let+ plain = load_plain [] in
+        (Plain, plain)
       | true ->
-        Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
-            let kind, ast =
-              if Dune_lexer.is_script lb then (Ocaml_script, [])
-              else (Plain, Dune_lang.Parser.parse lb ~mode:Many)
-            in
-            (kind, load_plain ast))
+        let* kind, ast =
+          Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
+              let kind, ast =
+                if Dune_lexer.is_script lb then (Ocaml_script, [])
+                else (Plain, Dune_lang.Parser.parse lb ~mode:Many)
+              in
+              (kind, ast))
+        in
+        let+ ast = load_plain ast in
+        (kind, ast)
     in
     { path = file; kind; plain }
 end

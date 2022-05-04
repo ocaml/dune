@@ -35,7 +35,9 @@ let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
   let include_stack = (loc, current_file) :: include_stack in
   let dir = Path.Source.parent_exn current_file in
   let current_file = Path.Source.relative dir fn in
-  if not (Path.Untracked.exists (Path.source current_file)) then
+  let open Memo.O in
+  let* exists = Fs_memo.file_exists (Path.source current_file) in
+  if not exists then
     User_error.raise ~loc
       [ Pp.textf "File %s doesn't exist."
           (Path.Source.to_string_maybe_quoted current_file)
@@ -44,5 +46,8 @@ let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
     List.exists include_stack ~f:(fun (_, f) ->
         Path.Source.equal f current_file)
   then error { current_file; include_stack };
-  let sexps = Dune_lang.Parser.load (Path.source current_file) ~mode:Many in
+  let+ sexps =
+    Path.source current_file
+    |> Fs_memo.with_lexbuf_from_file ~f:(Dune_lang.Parser.parse ~mode:Many)
+  in
   (sexps, { current_file; include_stack })

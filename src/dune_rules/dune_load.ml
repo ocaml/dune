@@ -163,7 +163,7 @@ module Dune_files = struct
               ]
           in
           let ocaml = Action.Prog.ok_exn context.ocaml in
-          let+ () =
+          let* () =
             Memo.of_reproducible_fiber
               (Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml
                  args)
@@ -191,13 +191,14 @@ type conf =
 let interpret ~dir ~project ~(dune_file : Source_tree.Dune_file.t) =
   let file = Source_tree.Dune_file.path dune_file in
   let static = Source_tree.Dune_file.get_static_sexp dune_file in
-  Memo.return
-  @@
   match Source_tree.Dune_file.kind dune_file with
   | Ocaml_script ->
-    Dune_files.Script { script = { dir; project; file }; from_parent = static }
+    Memo.return
+      (Dune_files.Script
+         { script = { dir; project; file }; from_parent = static })
   | Plain ->
-    let stanzas = Dune_file.parse static ~dir ~file ~project in
+    let open Memo.O in
+    let+ stanzas = Dune_file.parse static ~dir ~file ~project in
     Dune_files.Literal stanzas
 
 module Projects_and_dune_files =

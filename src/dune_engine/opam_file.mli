@@ -6,11 +6,6 @@ open OpamParserTypes
 (** Type of opam files *)
 type t = opamfile
 
-(** Load a file *)
-val load : Path.t -> (t, exn) result Memo.t
-
-val load_untracked : Path.t -> t
-
 (** Extracts a field *)
 val get_field : t -> string -> value option
 

@@ -731,7 +731,12 @@ let load_opam_file file name =
   let loc = Loc.in_file (Path.source file) in
   let open Memo.O in
   let+ opam =
-    let+ opam = Opam_file.load (Path.source file) in
+    let+ opam =
+      Path.source file
+      |> Fs_memo.with_lexbuf_from_file ~f:(fun lexbuf ->
+             try Ok (Opam_file.parse lexbuf)
+             with User_error.E _ as exn -> Error exn)
+    in
     match opam with
     | Ok s -> Some s
     | Error exn ->

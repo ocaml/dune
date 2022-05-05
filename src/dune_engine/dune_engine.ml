@@ -66,4 +66,3 @@ module Reversible_digest = Reversible_digest
 module Report_errors_config = Report_errors_config
 module Compound_user_error = Compound_user_error
 module Reflection = Reflection
-module Dtemp = Dtemp

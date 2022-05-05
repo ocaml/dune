@@ -59,5 +59,9 @@ let link_flags =
     ; "-framework Foundation"
     ; "-cclib"
     ; "-framework CoreServices"
-    ])
+    ]);
+    ("beos",
+     [ "-cclib"
+     ; "-lbsd"
+     ])
   ]

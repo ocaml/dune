@@ -29,7 +29,7 @@ CAMLprim value spawn_is_osx()
 
 #include <assert.h>
 #include <string.h>
-#if !defined(__CYGWIN__)
+#if !defined(__CYGWIN__) && !defined(__HAIKU__)
 #include <sys/syscall.h>
 #endif
 #include <sys/types.h>
@@ -44,7 +44,7 @@ CAMLprim value spawn_is_osx()
    | pipe2                                                           |
    +-----------------------------------------------------------------+ */
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) || defined(__HAIKU__)
 
 static int safe_pipe(int fd[2])
 {

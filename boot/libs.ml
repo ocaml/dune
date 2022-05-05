@@ -36,7 +36,7 @@ let local_libraries =
   ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/thread_worker", Some "Thread_worker", false, None)
-  ; ("src/ocamlc_loc", Some "Ocamlc_loc", false, None)
+  ; ("otherlibs/ocamlc_loc/src", Some "Ocamlc_loc", false, None)
   ; ("src/fsevents", Some "Fsevents", false, None)
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)
   ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false,

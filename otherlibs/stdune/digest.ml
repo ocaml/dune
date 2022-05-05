@@ -75,18 +75,10 @@ module Stats_for_digest = struct
   type t =
     { st_kind : Unix.file_kind
     ; st_perm : Unix.file_perm
-    ; st_size : int
-    ; st_mtime : float
-    ; st_ctime : float
     }
 
   let of_unix_stats (stats : Unix.stats) =
-    { st_kind = stats.st_kind
-    ; st_perm = stats.st_perm
-    ; st_size = stats.st_size
-    ; st_mtime = stats.st_mtime
-    ; st_ctime = stats.st_ctime
-    }
+    { st_kind = stats.st_kind; st_perm = stats.st_perm }
 end
 
 module Path_digest_result = struct
@@ -115,7 +107,7 @@ exception
     | `Unexpected_kind
     ]
 
-let directory_digest_version = 1
+let directory_digest_version = 2
 
 let rec path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
     Path_digest_result.t =
@@ -155,12 +147,5 @@ let rec path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
       | exception E (`Unix_error e) -> Path_digest_result.Unix_error e
       | exception E `Unexpected_kind -> Path_digest_result.Unexpected_kind
       | contents ->
-        Ok
-          (generic
-             ( directory_digest_version
-             , contents
-             , stats.st_size
-             , stats.st_perm
-             , stats.st_mtime
-             , stats.st_ctime ))))
+        Ok (generic (directory_digest_version, contents, stats.st_perm))))
   | S_DIR | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK -> Unexpected_kind

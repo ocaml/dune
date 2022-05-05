@@ -6,7 +6,6 @@
   stdune
   csexp
   fiber
-  fiber_util
   memo
   dune_re
   opam_file_format

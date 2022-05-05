@@ -51,7 +51,7 @@ module Descr = struct
   (** [dyn_path p] converts a path to a value of type [Dyn.t]. Remark: this is
       different from Path.to_dyn, that produces extra tags from a variant
       datatype. *)
-  let dyn_path (p : Path.t) : Dyn.t = Dyn.String (Path.to_string p)
+  let dyn_path (p : Path.t) : Dyn.t = String (Path.to_string p)
 
   (** Description of the dependencies of a module *)
   module Mod_deps = struct
@@ -184,9 +184,9 @@ module Descr = struct
     (** Conversion to the [Dyn.t] type *)
     let to_dyn options : t -> Dyn.t = function
       | Executables exe_descr ->
-        Dyn.Variant ("executables", [ Exe.to_dyn options exe_descr ])
+        Variant ("executables", [ Exe.to_dyn options exe_descr ])
       | Library lib_descr ->
-        Dyn.Variant ("library", [ Lib.to_dyn options lib_descr ])
+        Variant ("library", [ Lib.to_dyn options lib_descr ])
   end
 
   (** Description of a workspace: a list of items *)
@@ -301,28 +301,25 @@ module Crawl = struct
       ~(deps_of :
          Module.t -> (Module.t list * Module.t list) Action_builder.t Memo.t)
       (modules_ : Modules.t) : Descr.Mod.t list Memo.t =
-    Modules.fold_no_vlib ~init:(Memo.return [])
-      ~f:(fun m macc ->
+    Modules.fold_no_vlib ~init:(Memo.return []) modules_ ~f:(fun m macc ->
         let* acc = macc in
         let* deps = deps_of m in
         let+ (deps_for_intf, deps_for_impl), _ =
           Dune_engine.Action_builder.run deps Eager
         in
         module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
-      modules_
 
   (** [exes_uses_pp exes] tells whether the compilations units of [exes] are
       subject to a preprocessing phase. *)
-  let exes_uses_pp exes =
+  let exes_uses_pp (exes : Dune_file.Executables.t) =
     let open Preprocess.Per_module in
     List.is_non_empty @@ pps
-    @@ without_instrumentation
-         exes.Dune_file.Executables.buildable.Dune_file.Buildable.preprocess
+    @@ without_instrumentation exes.buildable.preprocess
 
   (** Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t) :
       (Descr.Item.t * Lib.Set.t) option Memo.t =
-    let first_exe = snd (List.hd exes.Dune_file.Executables.names) in
+    let first_exe = snd (List.hd exes.names) in
     let* modules_, obj_dir =
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
       >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
@@ -343,12 +340,11 @@ module Crawl = struct
     | Ok libs ->
       let include_dirs = Obj_dir.all_cmis obj_dir in
       let exe_descr =
-        Descr.Exe.
-          { names = List.map ~f:snd exes.names
-          ; requires = List.map ~f:uid_of_library libs
-          ; modules = modules_
-          ; include_dirs
-          }
+        { Descr.Exe.names = List.map ~f:snd exes.names
+        ; requires = List.map ~f:uid_of_library libs
+        ; modules = modules_
+        ; include_dirs
+        }
       in
       Some (Descr.Item.Executables exe_descr, Lib.Set.of_list libs)
 
@@ -371,7 +367,9 @@ module Crawl = struct
       let src_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
       let+ modules_ =
-        if Lib.is_local lib then
+        match Lib.is_local lib with
+        | false -> Memo.return []
+        | true ->
           Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
           >>= Dir_contents.ocaml
           >>| Ml_sources.modules_and_obj_dir ~for_:(Library name)
@@ -381,19 +379,17 @@ module Crawl = struct
             Deps.read ~options ~use_pp ~obj_dir:obj_dir_ ~modules:modules_
           in
           modules ~obj_dir ~deps_of modules_
-        else Memo.return []
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
       let lib_descr =
-        Descr.Lib.
-          { name
-          ; uid = uid_of_library lib
-          ; local = Lib.is_local lib
-          ; requires = List.map requires ~f:uid_of_library
-          ; source_dir = src_dir
-          ; modules = modules_
-          ; include_dirs
-          }
+        { Descr.Lib.name
+        ; uid = uid_of_library lib
+        ; local = Lib.is_local lib
+        ; requires = List.map requires ~f:uid_of_library
+        ; source_dir = src_dir
+        ; modules = modules_
+        ; include_dirs
+        }
       in
       Some (Descr.Item.Library lib_descr)
 
@@ -441,16 +437,14 @@ module Crawl = struct
           |> Scope.libs |> Lib.DB.all)
       >>| Lib.Set.union_all
     in
-    let* libs =
-      let libs =
-        (* the executables' libraries, and the project's libraries *)
-        Lib.Set.union exe_libs project_libs |> Lib.Set.to_list
-      in
-      add_transitive_deps libs
+    let+ libs =
+      (* the executables' libraries, and the project's libraries *)
+      Lib.Set.union exe_libs project_libs
+      |> Lib.Set.to_list |> add_transitive_deps
       >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_opt
     in
-    Memo.return (exes @ libs)
+    exes @ libs
 end
 
 (** The following module is responsible sanitizing the output of
@@ -557,9 +551,8 @@ module What = struct
 
   (* The list of documentation strings (one for each command) *)
   let docs =
-    List.map
-      ~f:(fun (stag, doc, _tag) -> "$(b," ^ stag ^ ")" ^ " (" ^ doc ^ ")")
-      args_with_docs
+    List.map args_with_docs ~f:(fun (stag, doc, _tag) ->
+        "$(b," ^ stag ^ ")" ^ " (" ^ doc ^ ")")
 
   (* The decoder for commands *)
   let parse =
@@ -582,12 +575,12 @@ module What = struct
 
   let describe t options setup context =
     match t with
+    | Opam_files -> Opam_files.get ()
     | Workspace ->
       let open Memo.O in
       Crawl.workspace options setup context
       >>| Sanitize_for_tests.Workspace.sanitize context
       >>| Descr.Workspace.to_dyn options
-    | Opam_files -> Opam_files.get ()
 end
 
 module Options = struct

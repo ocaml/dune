@@ -798,6 +798,35 @@ let symlinked_entries =
   in
   fun sctx pkg -> Memo.exec memo (sctx, pkg)
 
+let package_deps (pkg : Package.t) files =
+  let rec loop rules_seen (fn : Path.Build.t) =
+    let* pkgs = packages_file_is_part_of fn in
+    if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs pkg.id then
+      loop_deps rules_seen fn
+    else Memo.return (pkgs, rules_seen)
+  and loop_deps rules_seen fn =
+    Load_rules.get_rule (Path.build fn) >>= function
+    | None -> Memo.return (Package.Id.Set.empty, rules_seen)
+    | Some rule ->
+      if Rule.Set.mem rules_seen rule then
+        Memo.return (Package.Id.Set.empty, rules_seen)
+      else
+        let rules_seen = Rule.Set.add rules_seen rule in
+        let* res = Dune_engine.Build_system.execute_rule rule in
+        loop_files rules_seen
+          (Dep.Facts.paths res.deps |> Path.Map.keys
+          |> (* if this file isn't in the build dir, it doesn't belong to any
+                package and it doesn't have dependencies that do *)
+          List.filter_map ~f:Path.as_in_build_dir)
+  and loop_files rules_seen files =
+    Memo.List.fold_left ~init:(Package.Id.Set.empty, rules_seen) files
+      ~f:(fun (sets, rules_seen) file ->
+        let+ set, rules_seen = loop rules_seen file in
+        (Package.Id.Set.union set sets, rules_seen))
+  in
+  let+ packages, _rules_seen = loop_files Rule.Set.empty files in
+  packages
+
 let gen_package_install_file_rules sctx (package : Package.t) =
   let package_name = Package.name package in
   let roots = Install.Section.Paths.Roots.opam_from_prefix Path.root in
@@ -815,11 +844,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let strict_package_deps = Dune_project.strict_package_deps dune_project in
   let packages =
     let open Action_builder.O in
-    let+ packages =
-      Action_builder.of_memo
-        (Build_system.package_deps package files
-           ~packages_of:packages_file_is_part_of)
-    in
+    let+ packages = Action_builder.of_memo (package_deps package files) in
     match strict_package_deps with
     | false -> packages
     | true ->

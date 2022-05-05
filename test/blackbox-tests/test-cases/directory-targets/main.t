@@ -317,13 +317,12 @@ mtime changes when the rule reruns. We can delete this when switching to (1).
   b:
   new-b
 
-There is no early cutoff on directory targets at the moment. Ideally, we should
-skip the second action since the produced directory has the same contents.
+Dune supports early cutoff for directory targets: it skips the second action
+since the produced directory has the same contents.
 
   $ dune_cmd wait-for-fs-clock-to-advance
   $ echo new-cc > src_c
   $ dune build contents
-  running
   running
   $ cat _build/default/contents
   a:
@@ -331,14 +330,12 @@ skip the second action since the produced directory has the same contents.
   b:
   new-b
 
-There is no shared cache support for directory targets at the moment. Note that
-we rerun both actions: the first one because there is no shared cache support
-and the second one because of the lack of early cutoff.
+There is no shared cache support for directory targets at the moment, which is
+why we rerun the first action.
 
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm _build/default/output/a
   $ dune build contents
-  running
   running
 
 Check that Dune clears stale files from directory targets.

@@ -32,9 +32,6 @@ module Stats_for_digest : sig
   type t =
     { st_kind : Unix.file_kind
     ; st_perm : Unix.file_perm
-    ; st_size : int
-    ; st_mtime : float
-    ; st_ctime : float
     }
 
   val of_unix_stats : Unix.stats -> t
@@ -56,9 +53,7 @@ end
       as well as the its executable permissions bit.
 
     - If it's a directory and [allow_dirs = true], the function computes the
-      digest of [Stats_for_digest] (except for the [st_kind] field since it's
-      known to be [S_DIR] in this case). This is a poor approach to computing
-      directory digests and we are planning to get rid of it soon.
+      digest of all contained filename/digest pairs, recursively.
 
     - Otherwise, the function returns [Unexpected_kind].
 

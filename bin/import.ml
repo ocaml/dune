@@ -21,7 +21,6 @@ module Action_to_sh = Dune_engine.Action_to_sh
 module Dpath = Dune_engine.Dpath
 module Install = Dune_rules.Install
 module Section = Dune_engine.Section
-module Watermarks = Dune_rules.Watermarks
 module Diff_promotion = Dune_engine.Diff_promotion
 module Colors = Dune_rules.Colors
 module Dune_project = Dune_engine.Dune_project

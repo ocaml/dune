@@ -9,7 +9,6 @@ module Dune_package = Dune_package
 module Dep_conf = Dep_conf
 module Dir_contents = Dir_contents
 module Expander = Expander
-module Watermarks = Watermarks
 module Lib = Lib
 module Lib_info = Lib_info
 module Modules = Modules

@@ -292,8 +292,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
           let project = Source_tree.Dir.project dir in
           Dune_project.dune_version project)
       in
-      let module Format_dune_lang = Dune_engine.Format_dune_lang in
-      Format_dune_lang.format_string ~version contents
+      Dune_lang.Format.format_string ~version contents
     in
     Handler.implement_request rpc Procedures.Public.format_dune_file f
   in

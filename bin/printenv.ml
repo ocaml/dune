@@ -32,7 +32,7 @@ let pp ppf ~fields sexps =
         in
         Dune_lang.Ast.add_loc sexp ~loc:Loc.none
         |> Dune_lang.Cst.concrete |> List.singleton
-        |> Dune_engine.Format_dune_lang.pp_top_sexps ~version
+        |> Dune_lang.Format.pp_top_sexps ~version
         |> Format.fprintf ppf "%a@?" Pp.to_fmt)
 
 let term =

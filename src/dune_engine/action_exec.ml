@@ -367,7 +367,7 @@ let rec exec t ~ectx ~eenv =
   | No_infer t -> exec t ~ectx ~eenv
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Format_dune_file (version, src, dst) ->
-    Format_dune_lang.format_file ~version ~input:(Some src)
+    Dune_lang.Format.format_file ~version ~input:(Some src)
       ~output:(Some (Path.build dst));
     Fiber.return Done
   | Cram script ->

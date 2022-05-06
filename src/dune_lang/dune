@@ -3,4 +3,4 @@
  (synopsis "[Internal] S-expression library")
  (libraries stdune))
 
-(ocamllex lexer versioned_file_first_line)
+(ocamllex lexer versioned_file_first_line dune_lexer)

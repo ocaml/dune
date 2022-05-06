@@ -1,4 +1,3 @@
-open! Dune_engine
 open Import
 
 (* cwong: This should probably go in a better place than here, but I'm not sure

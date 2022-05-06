@@ -60,10 +60,11 @@ end = struct
 
   let decode =
     let open Dune_lang.Decoder in
-    let* syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+    let* syntax = Dune_lang.Syntax.get_exn Dune_lang.Stanza.syntax in
     plain_string (fun ~loc s -> parse_string_exn ~syntax (loc, s))
 
-  let parse_string_exn = parse_string_exn ~syntax:Stanza.latest_version
+  let parse_string_exn =
+    parse_string_exn ~syntax:Dune_lang.Stanza.latest_version
 
   let of_string s =
     match of_string_opt s with

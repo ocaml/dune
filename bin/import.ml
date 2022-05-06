@@ -2,6 +2,7 @@ open Stdune
 open Dune_engine
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
+module Stanza = Dune_lang.Stanza
 module Super_context = Dune_rules.Super_context
 module Context = Dune_rules.Context
 module Config = Dune_util.Config

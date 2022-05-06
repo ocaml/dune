@@ -1,7 +1,6 @@
 (** Handling of coq source files *)
-open! Dune_engine
+open Import
 
-open Stdune
 open Coq_stanza
 
 type t

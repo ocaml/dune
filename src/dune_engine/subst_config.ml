@@ -20,7 +20,8 @@ let encode t = Dune_lang.Encoder.string (to_string t)
 let decoder = enum [ ("disabled", Disabled); ("enabled", Enabled) ]
 
 let field ~since =
-  field_o "subst" (Dune_lang.Syntax.since Stanza.syntax since >>> decoder)
+  field_o "subst"
+    (Dune_lang.Syntax.since Dune_lang.Stanza.syntax since >>> decoder)
 
 let of_config = function
   | None -> Enabled

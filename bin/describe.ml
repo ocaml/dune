@@ -658,9 +658,7 @@ module What = struct
     match args with
     | [] -> default
     | _ ->
-      let parse =
-        Dune_lang.Syntax.set Dune_engine.Stanza.syntax (Active lang) parse
-      in
+      let parse = Dune_lang.Syntax.set Stanza.syntax (Active lang) parse in
       let ast =
         Dune_lang.Ast.add_loc ~loc:Loc.none
           (List (List.map args ~f:Dune_lang.atom_or_quoted_string))
@@ -770,9 +768,7 @@ let print_as_sexp dyn =
     |> Dune_lang.Ast.add_loc ~loc:Loc.none
     |> Dune_lang.Cst.concrete
   in
-  let version =
-    Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
-  in
+  let version = Dune_lang.Syntax.greatest_supported_version Stanza.syntax in
   Pp.to_fmt Stdlib.Format.std_formatter
     (Dune_lang.Format.pp_top_sexps ~version [ cst ])
 

@@ -6,7 +6,6 @@ module Lib_name = Lib_name
 module String_with_vars = String_with_vars
 module Import = Import
 module Package = Package
-module Stanza = Stanza
 module Action = Action
 module Variant = Variant
 module Utils = Utils

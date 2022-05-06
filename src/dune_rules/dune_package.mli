@@ -1,7 +1,6 @@
 (** Representation of dune-package files *)
-open! Dune_engine
 
-open! Stdune
+open Import
 
 (** The filename of a dune-package file*)
 val fn : string

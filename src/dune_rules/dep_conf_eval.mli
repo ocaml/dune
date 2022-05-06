@@ -1,7 +1,6 @@
 (** Interpret dependencies written in Dune files *)
-open! Stdune
 
-open! Dune_engine
+open Import
 
 (** Evaluates unnamed dependency specifications. *)
 val unnamed :

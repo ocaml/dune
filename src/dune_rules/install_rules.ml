@@ -1,8 +1,5 @@
-open! Dune_engine
-open! Stdune
 open Import
 open Memo.O
-open! No_io
 module Library = Dune_file.Library
 
 let install_file ~(package : Package.Name.t) ~findlib_toolchain =

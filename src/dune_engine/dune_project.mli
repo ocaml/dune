@@ -55,7 +55,7 @@ val name : t -> Name.t
 
 val root : t -> Path.Source.t
 
-val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
+val stanza_parser : t -> Dune_lang.Stanza.t list Dune_lang.Decoder.t
 
 val generate_opam_files : t -> bool
 
@@ -96,7 +96,7 @@ module Lang : sig
 
       as the first line of their [dune-project] file. [stanza_parsers] defines
       what stanzas the user can write in [dune] files. *)
-  val register : Dune_lang.Syntax.t -> Stanza.Parser.t list -> unit
+  val register : Dune_lang.Syntax.t -> Dune_lang.Stanza.Parser.t list -> unit
 end
 
 module Extension : sig
@@ -113,14 +113,16 @@ module Extension : sig
       might be. *)
   val register :
        Dune_lang.Syntax.t
-    -> ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
+    -> ('a * Dune_lang.Stanza.Parser.t list) Dune_lang.Decoder.t
     -> ('a -> Dyn.t)
     -> 'a t
 
   (** A simple version where the arguments are not used through
       [find_extension_args]. *)
   val register_simple :
-    Dune_lang.Syntax.t -> Stanza.Parser.t list Dune_lang.Decoder.t -> unit
+       Dune_lang.Syntax.t
+    -> Dune_lang.Stanza.Parser.t list Dune_lang.Decoder.t
+    -> unit
 
   (** Register experimental extensions that were deleted *)
   val register_deleted :

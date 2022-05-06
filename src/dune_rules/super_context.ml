@@ -1,5 +1,3 @@
-open! Dune_engine
-open! Stdune
 open Import
 
 let default_context_flags (ctx : Context.t) ~project =

@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 open Dune_lang.Decoder
 
 (* workspace files use the same version numbers as dune-project files for

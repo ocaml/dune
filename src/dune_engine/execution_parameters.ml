@@ -67,7 +67,7 @@ let to_dyn
     ]
 
 let builtin_default =
-  { dune_version = Stanza.latest_version
+  { dune_version = Dune_lang.Stanza.latest_version
   ; action_stdout_on_success = Print
   ; action_stderr_on_success = Print
   ; expand_aliases_in_sandbox = true

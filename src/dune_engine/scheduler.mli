@@ -26,7 +26,7 @@ module Config : sig
   type t =
     { concurrency : int
     ; display : Display.t
-    ; rpc : Dune_rpc.Where.t option
+    ; rpc : Dune_rpc_private.Where.t option
     ; stats : Dune_stats.t option
     }
 

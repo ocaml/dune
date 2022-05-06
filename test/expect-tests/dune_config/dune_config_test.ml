@@ -8,7 +8,7 @@ let parse s =
     Parser.parse_string ~fname:"expect_test" ~mode:Parser.Mode.Single s
   in
   let decode =
-    Dune_lang.Syntax.set Dune_engine.Stanza.syntax
+    Dune_lang.Syntax.set Dune_lang.Stanza.syntax
       (Active (3, 0))
       Dune_config.decode
   in

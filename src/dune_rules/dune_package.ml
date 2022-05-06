@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 module Vfile = Dune_lang.Versioned_file.Make (struct
   type t = unit

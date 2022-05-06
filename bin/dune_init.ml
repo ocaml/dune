@@ -1,6 +1,6 @@
 open! Stdune
 module Dune_file = Dune_rules.Dune_file
-module Stanza = Dune_engine.Stanza
+module Stanza = Dune_lang.Stanza
 module Dune_project = Dune_engine.Dune_project
 module Package = Dune_engine.Package
 module Dialect = Dune_engine.Dialect
@@ -153,7 +153,7 @@ module File = struct
   let write_dune_file (dune_file : dune) =
     let path = Path.relative dune_file.path dune_file.name in
     let version =
-      Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+      Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax
     in
     Io.with_file_out ~binary:true
       (* Why do we pass [~binary:true] but not anywhere else when formatting? *)

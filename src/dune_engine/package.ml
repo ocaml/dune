@@ -1,4 +1,5 @@
 open! Import
+module Stanza = Dune_lang.Stanza
 
 let opam_ext = ".opam"
 

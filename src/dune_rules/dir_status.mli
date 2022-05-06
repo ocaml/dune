@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 type is_component_of_a_group_but_not_the_root =
   { group_root : Path.Build.t

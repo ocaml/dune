@@ -1,10 +1,7 @@
 open! Stdune
 open Import
 open Dune_lang.Decoder
-
-let () =
-  let module M = Stanza in
-  ()
+module Stanza = Dune_lang.Stanza
 
 module Outputs = struct
   include Action_intf.Outputs

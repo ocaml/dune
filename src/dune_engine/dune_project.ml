@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+module Stanza = Dune_lang.Stanza
 open Dune_lang.Decoder
 
 module Name : sig

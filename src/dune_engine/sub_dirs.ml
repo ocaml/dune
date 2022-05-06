@@ -1,4 +1,5 @@
 open! Stdune
+module Stanza = Dune_lang.Stanza
 
 module Status = struct
   type t =

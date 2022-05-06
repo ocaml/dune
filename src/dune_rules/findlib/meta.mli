@@ -1,8 +1,6 @@
 (** META file parsing/printing *)
 
-open! Stdune
-open! Dune_engine
-open! Dune_engine.Import
+open Import
 
 type t =
   { name : Lib_name.t option

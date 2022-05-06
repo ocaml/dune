@@ -541,8 +541,7 @@ module Preprocess = struct
           match dialect with
           | None ->
             User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
-          | Some (_, kind) -> (
-            let open Import.Ml_kind in
+          | Some (_, (kind : Dune_util.Ml_kind.t)) -> (
             match kind with
             | Intf -> ".cmi.dump"
             | Impl -> ".cmo.dump"))

@@ -1,8 +1,6 @@
 (** [Ordered_set_lang.t] is a sexp-based representation for an ordered list of
     strings, with some set like operations. *)
 
-open! Stdune
-open Dune_engine
 open Import
 
 type t

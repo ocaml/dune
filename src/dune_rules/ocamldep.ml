@@ -79,6 +79,10 @@ let deps_of md ~ml_kind unit =
   let parse_module_names = parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate source) in
+  let strict =
+    if Ocaml.Version.ocamldep_supports_strict context.version then [ "-strict" ]
+    else []
+  in
   let open Memo.O in
   let* () =
     SC.add_rule sctx ~dir
@@ -90,6 +94,7 @@ let deps_of md ~ml_kind unit =
       Command.run context.ocamldep
         ~dir:(Path.build context.build_dir)
         [ A "-modules"
+        ; As strict
         ; Command.Args.dyn flags
         ; Command.Ml_kind.flag ml_kind
         ; Dep (Module.File.path source)

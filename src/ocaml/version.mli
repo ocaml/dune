@@ -67,3 +67,6 @@ val has_bigarray_library : t -> bool
 
 (** Whether the compiler supports alerts and the corresponding [-alert] option *)
 val supports_alerts : t -> bool
+
+(** Whether [ocamldep] supports the [-strict] flag. *)
+val ocamldep_supports_strict : t -> bool

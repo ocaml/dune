@@ -17,9 +17,6 @@ val program_not_found_message :
   -> string
   -> User_message.t
 
-(** Raise an error about a library not found *)
-val library_not_found : ?context:Context_name.t -> ?hint:string -> string -> _
-
 val install_file :
   package:Package.Name.t -> findlib_toolchain:Context_name.t option -> string
 

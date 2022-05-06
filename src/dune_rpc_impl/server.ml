@@ -13,6 +13,7 @@ module Id = Dune_rpc.Id
 module Diagnostic = Dune_rpc.Diagnostic
 module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
+module Stanza = Dune_engine.Stanza
 module Source_tree = Dune_engine.Source_tree
 module Build_config = Dune_engine.Build_config
 module Dune_project = Dune_engine.Dune_project
@@ -26,7 +27,6 @@ type pending_build_action =
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)
 let dep_parser =
-  let open Dune_engine in
   Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
     Dep_conf.decode
 

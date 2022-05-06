@@ -1,5 +1,4 @@
 (** Generate bootstrap info *)
-open! Dune_engine
 
 (** Generate an OCaml file containing a description of the dune sources for the
     bootstrap procedure *)

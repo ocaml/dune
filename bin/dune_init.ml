@@ -1,6 +1,9 @@
-open! Dune_engine
 open! Stdune
 module Dune_file = Dune_rules.Dune_file
+module Stanza = Dune_engine.Stanza
+module Dune_project = Dune_engine.Dune_project
+module Package = Dune_engine.Package
+module Dialect = Dune_engine.Dialect
 
 (** Because the dune_init utility deals with the addition of stanzas and fields
     to dune projects and files, we need to inspect and manipulate the concrete

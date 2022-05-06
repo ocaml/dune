@@ -4,7 +4,6 @@ module Conv = Conv
 module Cst = Cst
 module Decoder = Decoder
 module Encoder = Encoder
-module Lexer = Lexer
 module Parser = Parser
 module Syntax = Syntax
 module Template = Template

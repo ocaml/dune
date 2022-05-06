@@ -62,16 +62,19 @@ module Stanza_util = struct
   let sprintf = Printf.sprintf
 
   let discover_script ctypes =
-    sprintf "%s__ctypes_discover" ctypes.Ctypes.external_library_name
+    sprintf "%s__ctypes_discover"
+      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
 
   let type_gen_script ctypes =
-    sprintf "%s__type_gen" ctypes.Ctypes.external_library_name
+    sprintf "%s__type_gen"
+      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
 
   let module_name_lower_string module_name =
     String.lowercase (Module_name.to_string module_name)
 
   let function_gen_script ctypes fd =
-    sprintf "%s__function_gen__%s__%s" ctypes.Ctypes.external_library_name
+    sprintf "%s__function_gen__%s__%s"
+      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
       (module_name_lower_string fd.Ctypes.Function_description.functor_)
       (module_name_lower_string fd.Ctypes.Function_description.instance)
 
@@ -86,15 +89,17 @@ module Stanza_util = struct
       ~external_library_name:ctypes.Ctypes.external_library_name
 
   let c_library_flags_sexp ctypes =
-    sprintf "%s__c_library_flags.sexp" ctypes.Ctypes.external_library_name
+    sprintf "%s__c_library_flags.sexp"
+      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
 
   let c_generated_types_module ctypes =
-    sprintf "%s__c_generated_types" ctypes.Ctypes.external_library_name
+    sprintf "%s__c_generated_types"
+      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
     |> Module_name.of_string
 
   let c_generated_functions_module ctypes fd =
     sprintf "%s__c_generated_functions__%s__%s"
-      ctypes.Ctypes.external_library_name
+      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
       (module_name_lower_string fd.Ctypes.Function_description.functor_)
       (module_name_lower_string fd.Ctypes.Function_description.instance)
     |> Module_name.of_string
@@ -105,7 +110,7 @@ module Stanza_util = struct
 
   let c_generated_functions_cout_c ctypes fd =
     sprintf "%s__c_cout_generated_functions__%s__%s.c"
-      ctypes.Ctypes.external_library_name
+      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
       (module_name_lower_string fd.Ctypes.Function_description.functor_)
       (module_name_lower_string fd.Ctypes.Function_description.instance)
 
@@ -213,16 +218,18 @@ let discover_gen ~external_library_name:lib ~cflags_sexp ~c_library_flags_sexp =
   Pp.concat
     [ verbatimf "module C = Configurator.V1"
     ; verbatimf "let () ="
-    ; verbatimf "  C.main ~name:\"%s\" (fun c ->" lib
+    ; verbatimf "  C.main ~name:\"%s\" (fun c ->"
+        (External_lib_name.to_string lib)
     ; verbatimf "    let default : C.Pkg_config.package_conf ="
-    ; verbatimf "      { libs   = [\"-l%s\"];" lib
+    ; verbatimf "      { libs   = [\"-l%s\"];" (External_lib_name.to_string lib)
     ; verbatimf "        cflags = [\"-I/usr/include\"] }"
     ; verbatimf "    in"
     ; verbatimf "    let conf ="
     ; verbatimf "      match C.Pkg_config.get c with"
     ; verbatimf "      | None -> default"
     ; verbatimf "      | Some pc ->"
-    ; verbatimf "        match C.Pkg_config.query pc ~package:\"%s\" with" lib
+    ; verbatimf "        match C.Pkg_config.query pc ~package:\"%s\" with"
+        (External_lib_name.to_string lib)
     ; verbatimf "        | None -> default"
     ; verbatimf "        | Some deps -> deps"
     ; verbatimf "    in"
@@ -570,10 +577,12 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
      data/types produced in this step. *)
   let* () =
     let c_generated_types_cout_c =
-      sprintf "%s__c_cout_generated_types.c" external_library_name
+      sprintf "%s__c_cout_generated_types.c"
+        (External_lib_name.to_string external_library_name)
     in
     let c_generated_types_cout_exe =
-      sprintf "%s__c_cout_generated_types.exe" external_library_name
+      sprintf "%s__c_cout_generated_types.exe"
+        (External_lib_name.to_string external_library_name)
     in
     let type_gen_script = Stanza_util.type_gen_script ctypes in
     let* () =
@@ -604,7 +613,9 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
      in the code generator. *)
   let* () =
     memo_list_iter ctypes.Ctypes.function_description ~f:(fun fd ->
-        let stubs_prefix = external_library_name ^ "_stubs" in
+        let stubs_prefix =
+          External_lib_name.to_string external_library_name ^ "_stubs"
+        in
         let c_generated_functions_cout_c =
           Stanza_util.c_generated_functions_cout_c ctypes fd
         in

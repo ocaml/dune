@@ -103,7 +103,7 @@ module Function_description = struct
 end
 
 type t =
-  { external_library_name : string
+  { external_library_name : External_lib_name.t
   ; build_flags_resolver : Build_flags_resolver.t
   ; headers : Headers.t
   ; type_description : Type_description.t
@@ -135,7 +135,7 @@ let decode =
      and+ generated_entry_point =
        field "generated_entry_point" Module_name.decode
      and+ deps = field_o "deps" (repeat Dep_conf.decode) in
-     { external_library_name
+     { external_library_name = External_lib_name.of_string external_library_name
      ; build_flags_resolver =
          Option.value build_flags_resolver ~default:Build_flags_resolver.default
      ; headers = Option.value headers ~default:Headers.default

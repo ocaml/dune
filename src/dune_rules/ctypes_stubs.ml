@@ -1,16 +1,18 @@
 open Import
 
 let cflags_sexp ~external_library_name =
-  sprintf "%s__c_flags.sexp" external_library_name
+  sprintf "%s__c_flags.sexp" (External_lib_name.to_string external_library_name)
 
 let c_generated_functions_cout_no_ext ~external_library_name ~functor_ ~instance
     =
-  sprintf "%s__c_cout_generated_functions__%s__%s" external_library_name
+  sprintf "%s__c_cout_generated_functions__%s__%s"
+    (External_lib_name.to_string external_library_name)
     (Module_name.to_string functor_ |> String.lowercase)
     (Module_name.to_string instance |> String.lowercase)
 
 let c_library_flags ~external_library_name =
-  sprintf "%s__c_library_flags.sexp" external_library_name
+  sprintf "%s__c_library_flags.sexp"
+    (External_lib_name.to_string external_library_name)
 
 let lib_deps_of_strings ~loc lst =
   List.map lst ~f:(fun lib -> Lib_dep.Direct (loc, Lib_name.of_string lib))

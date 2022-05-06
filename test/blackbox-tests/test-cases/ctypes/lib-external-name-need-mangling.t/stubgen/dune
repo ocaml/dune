@@ -1,0 +1,16 @@
+(library
+ (name examplelib)
+ (flags
+  (:standard -w -9-27))
+ (ctypes
+  (external_library_name need-mangling)
+  (build_flags_resolver pkg_config)
+  (headers
+   (include "example.h"))
+  (type_description
+   (instance Types)
+   (functor Type_description))
+  (function_description
+   (instance Functions)
+   (functor Function_description))
+  (generated_entry_point C)))

@@ -17,7 +17,8 @@ val to_path : ?error_loc:Loc.t -> t -> dir:Path.t -> Path.t
     relative to the build directory given. It is converted to an external path
     if the path is outside the workspace. Otherwise a path in the build
     directory is returned. *)
-val to_path_in_build_or_external : ?error_loc:Loc.t -> t -> dir:Path.Build.t -> Path.t
+val to_path_in_build_or_external :
+  ?error_loc:Loc.t -> t -> dir:Path.Build.t -> Path.t
 
 module L : sig
   val strings : string list -> t list

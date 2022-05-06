@@ -221,7 +221,8 @@ end = struct
 
       let expand_path t sw =
         let+ v = expand t ~mode:Single sw in
-        Value.to_path_in_build_or_external v ~error_loc:(String_with_vars.loc sw) ~dir:t.dir
+        Value.to_path_in_build_or_external v
+          ~error_loc:(String_with_vars.loc sw) ~dir:t.dir
 
       let expand_string env sw =
         let+ v = expand env ~mode:Single sw in
@@ -242,8 +243,8 @@ end = struct
 
         let expand_path env sw =
           let+! v = expand env ~mode:Single sw in
-          Value.to_path_in_build_or_external v ~error_loc:(String_with_vars.loc sw)
-            ~dir:env.dir
+          Value.to_path_in_build_or_external v
+            ~error_loc:(String_with_vars.loc sw) ~dir:env.dir
 
         let expand_string env sw =
           let+! v = expand env ~mode:Single sw in

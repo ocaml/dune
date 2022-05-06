@@ -172,9 +172,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       Path.Build.append_source context.build_dir src_in_src |> Path.build
   in
   let* exists_or_generated =
-    match Path.as_in_source_tree src_in_src with
-    | None -> Memo.return (Path.exists src_in_src)
-    | Some src_in_src -> (
+    match src_in_src with
+    | In_build_dir _ -> assert false
+    | External _ -> Fs_memo.dir_exists src_in_src
+    | In_source_tree src_in_src -> (
       Source_tree.dir_exists src_in_src >>= function
       | true -> Memo.return true
       | false -> Load_rules.is_under_directory_target src_in_build)

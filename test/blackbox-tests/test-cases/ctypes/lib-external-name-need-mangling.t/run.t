@@ -13,9 +13,9 @@ cannot set ${prefix} to be interpreted relative to the .pc itself ufortunately
   Raised at Stdune__Code_error.raise in file "otherlibs/stdune/code_error.ml",
     line 11, characters 30-62
   Called from Dune_rules__Ctypes_rules.Stanza_util.generated_modules in file
-    "src/dune_rules/ctypes_rules.ml", line 129, characters 8-39
+    "src/dune_rules/ctypes_rules.ml", line 134, characters 8-39
   Called from Dune_rules__Ctypes_rules.Stanza_util.generated_ml_and_c_files in
-    file "src/dune_rules/ctypes_rules.ml", line 142, characters 6-30
+    file "src/dune_rules/ctypes_rules.ml", line 147, characters 6-30
   Called from Dune_rules__Dir_contents.Load.load_text_files.(fun) in file
     "src/dune_rules/dir_contents.ml", line 180, characters 31-75
   Called from Fiber__Scheduler.exec in file "src/fiber/scheduler.ml", line 69,

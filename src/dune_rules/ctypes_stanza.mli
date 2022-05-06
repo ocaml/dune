@@ -43,7 +43,7 @@ module Function_description : sig
 end
 
 type t =
-  { external_library_name : string
+  { external_library_name : External_lib_name.t
   ; build_flags_resolver : Build_flags_resolver.t
   ; headers : Headers.t
   ; type_description : Type_description.t

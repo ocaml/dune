@@ -73,8 +73,6 @@ let protect = Exn.protect
 
 let protectx = Exn.protectx
 
-type fail = { fail : 'a. unit -> 'a }
-
 (* Disable file operations to force to use the IO module *)
 let open_in = `Use_Io
 

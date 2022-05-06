@@ -45,6 +45,8 @@ val push_stack_frame :
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 
+type fail = { fail : 'a. unit -> 'a }
+
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)
 val fail : fail -> _ t

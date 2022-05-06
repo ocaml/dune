@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Dune_engine.Import
-open! Stdune
+open Import
 open Memo.O
 module Opam_package = Package
 module P = Variant

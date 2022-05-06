@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Dune_engine.Import
-open! Stdune
+open Import
 
 module Jbuild_plugin : sig
   val create_plugin_wrapper :
@@ -168,14 +166,15 @@ module Dune_files = struct
               (Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml
                  args)
           in
-          if not (Path.exists (Path.build generated_dune_file)) then
+          if not (Path.Untracked.exists (Path.build generated_dune_file)) then
             User_error.raise
               [ Pp.textf "%s failed to produce a valid dune_file file."
                   (Path.Source.to_string_maybe_quoted file)
               ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
               ];
           Path.build generated_dune_file
-          |> Io.with_lexbuf_from_file ~f:(Dune_lang.Parser.parse ~mode:Many)
+          |> Io.Untracked.with_lexbuf_from_file
+               ~f:(Dune_lang.Parser.parse ~mode:Many)
           |> List.rev_append from_parent
           |> Dune_file.parse ~dir ~file ~project)
     in

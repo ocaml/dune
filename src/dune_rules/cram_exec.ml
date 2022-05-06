@@ -148,7 +148,7 @@ let run_expect_test file ~f =
     (* we only need to restore the test file so the diff doesn't fail *)
     let () = Io.write_file file file_contents in
     Io.write_file ~binary:false corrected_file expected
-  else if Path.exists corrected_file then Path.rm_rf corrected_file
+  else if Path.Untracked.exists corrected_file then Path.rm_rf corrected_file
 
 let fprln oc fmt = Printf.fprintf oc (fmt ^^ "\n")
 

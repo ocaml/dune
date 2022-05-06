@@ -97,7 +97,7 @@ module Dune_file = struct
         let* kind, ast =
           Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
               let kind, ast =
-                if Dune_lexer.is_script lb then (Ocaml_script, [])
+                if Dune_lang.Dune_lexer.is_script lb then (Ocaml_script, [])
                 else (Plain, Dune_lang.Parser.parse lb ~mode:Many)
               in
               (kind, ast))

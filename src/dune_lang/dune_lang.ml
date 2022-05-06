@@ -8,4 +8,8 @@ module Parser = Parser
 module Syntax = Syntax
 module Template = Template
 module Versioned_file = Versioned_file
+module Format = Format
+
+(* TODO remove the [Dune] prefix *)
+module Dune_lexer = Dune_lexer
 include T

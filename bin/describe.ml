@@ -673,7 +673,7 @@ let print_as_sexp dyn =
     Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
   in
   Pp.to_fmt Stdlib.Format.std_formatter
-    (Dune_engine.Format_dune_lang.pp_top_sexps ~version [ cst ])
+    (Dune_lang.Format.pp_top_sexps ~version [ cst ])
 
 let term : unit Term.t =
   let+ common = Common.term

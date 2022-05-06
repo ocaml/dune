@@ -1,6 +1,5 @@
 open Import
 open Stdune
-module Format_dune_lang = Dune_engine.Format_dune_lang
 
 let doc = "Format dune files"
 
@@ -29,6 +28,6 @@ let term =
     Arg.(value & opt version default & info [ "dune-version" ] ~docv ~doc)
   in
   let input = Option.map ~f:Arg.Path.path path_opt in
-  Format_dune_lang.format_file ~version ~input ~output:None
+  Dune_lang.Format.format_file ~version ~input ~output:None
 
 let command = (term, info)

@@ -1,30 +1,28 @@
 open! Stdune
-open! Import
 open Pp.O
+module Format = Stdlib.Format
 
 type dune_file =
   | OCaml_syntax of Loc.t
-  | Sexps of Dune_lang.Cst.t list
+  | Sexps of Cst.t list
 
 let parse_lexbuf lb =
   if Dune_lexer.is_script lb then OCaml_syntax (Loc.of_lexbuf lb)
-  else Sexps (Dune_lang.Parser.parse lb ~mode:Cst)
+  else Sexps (Parser.parse lb ~mode:Cst)
 
 let parse_file path_opt =
   match path_opt with
-  | Some path -> Io.Untracked.with_lexbuf_from_file path ~f:parse_lexbuf
+  | Some path -> Io.with_lexbuf_from_file path ~f:parse_lexbuf
   | None -> parse_lexbuf @@ Lexing.from_channel stdin
 
 let can_be_displayed_wrapped =
-  List.for_all ~f:(fun (c : Dune_lang.Cst.t) ->
+  List.for_all ~f:(fun (c : Cst.t) ->
       match c with
       | Atom _ | Quoted_string _ | Template _ | List (_, []) | List (_, [ _ ])
         -> true
       | List _ | Comment _ -> false)
 
-let pp_simple t =
-  Dune_lang.Cst.abstract t |> Option.value_exn |> Dune_lang.Ast.remove_locs
-  |> Dune_lang.pp
+let pp_simple t = Cst.abstract t |> Option.value_exn |> Ast.remove_locs |> T.pp
 
 let print_wrapped_list ~version x =
   let inner = Pp.concat_map ~sep:Pp.space ~f:pp_simple x in
@@ -40,10 +38,10 @@ let pp_comment lines =
 let pp_break attached = if attached then Pp.char ' ' else Pp.cut
 
 let pp_list_with_comments pp_sexp sexps =
-  let rec go (l : Dune_lang.Cst.t list) =
+  let rec go (l : Cst.t list) =
     match l with
     | x :: Comment (loc, c) :: xs ->
-      let attached = Loc.on_same_line (Dune_lang.Cst.loc x) loc in
+      let attached = Loc.on_same_line (Cst.loc x) loc in
       pp_sexp x ++ pp_break attached ++ pp_comment c ++ Pp.cut ++ go xs
     | Comment (_, c) :: xs -> pp_comment c ++ Pp.cut ++ go xs
     | [ x ] -> pp_sexp x
@@ -52,7 +50,7 @@ let pp_list_with_comments pp_sexp sexps =
   in
   go sexps
 
-let rec pp_sexp ~version : Dune_lang.Cst.t -> _ = function
+let rec pp_sexp ~version : Cst.t -> _ = function
   | (Atom _ | Quoted_string _ | Template _) as sexp -> pp_simple sexp
   | List (_, sexps) ->
     Pp.vbox ~indent:1

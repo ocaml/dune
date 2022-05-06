@@ -45,7 +45,7 @@ val compare_no_loc : t -> t -> Ordering.t
 
 val pp : t -> _ Pp.t
 
-val pp_split_strings : Format.formatter -> t -> unit
+val pp_split_strings : Stdlib.Format.formatter -> t -> unit
 
 val remove_locs : t -> t
 

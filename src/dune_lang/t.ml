@@ -1,4 +1,5 @@
 open! Stdune
+module Format = Stdlib.Format
 
 type t =
   | Atom of Atom.t

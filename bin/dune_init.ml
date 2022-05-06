@@ -137,9 +137,9 @@ module File = struct
     let content =
       if not (Path.exists full_path) then []
       else
-        match Format_dune_lang.parse_file (Some full_path) with
-        | Format_dune_lang.Sexps content -> content
-        | Format_dune_lang.OCaml_syntax _ ->
+        match Dune_lang.Format.parse_file (Some full_path) with
+        | Dune_lang.Format.Sexps content -> content
+        | Dune_lang.Format.OCaml_syntax _ ->
           User_error.raise
             [ Pp.textf "Cannot load dune file %s because it uses OCaml syntax"
                 (Path.to_string_maybe_quoted full_path)
@@ -152,7 +152,7 @@ module File = struct
     let version =
       Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
     in
-    Format_dune_lang.write_file ~version ~path dune_file.content
+    Dune_lang.Format.write_file ~version ~path dune_file.content
 
   let write f =
     let path = full_path f in

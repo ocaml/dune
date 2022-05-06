@@ -1,4 +1,5 @@
 open! Stdune
+module Format = Stdlib.Format
 
 module Pform = struct
   type t =

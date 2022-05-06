@@ -126,7 +126,7 @@ module Common = struct
   let string_of_sexps ~version sexps comments =
     let new_csts = List.map sexps ~f:Dune_lang.Cst.concrete in
     Dune_lang.Parser.insert_comments new_csts comments
-    |> Format_dune_lang.pp_top_sexps ~version
+    |> Dune_lang.Format.pp_top_sexps ~version
     |> Format.asprintf "%a@?" Pp.to_fmt
 
   let ensure_project_file_exists project ~lang_version =
@@ -251,7 +251,10 @@ module V2 = struct
     then
       let path = Source_tree.Dir.path dir in
       let fn = Path.Source.relative path Source_tree.Dune_file.fname in
-      if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lexer.is_script then
+      if
+        Io.with_lexbuf_from_file (Path.source fn)
+          ~f:Dune_lang.Dune_lexer.is_script
+      then
         User_warning.emit
           ~loc:(Loc.in_file (Path.source fn))
           [ Pp.text "Cannot upgrade this file as it is using the OCaml syntax."

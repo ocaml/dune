@@ -176,7 +176,7 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v :
   | Action (loc, action) -> Action (loc, action)
   | Pps pps -> Pps pps
   | Future_syntax loc ->
-    if Ocaml_version.supports_let_syntax v then No_preprocessing
+    if Ocaml.Version.supports_let_syntax v then No_preprocessing
     else
       Action
         ( loc

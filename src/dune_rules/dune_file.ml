@@ -835,7 +835,7 @@ module Library = struct
       else if
         Option.is_some conf.implements
         || Lib_config.linker_can_create_empty_archives lib_config
-           && Ocaml_version.ocamlopt_always_calls_library_linker
+           && Ocaml.Version.ocamlopt_always_calls_library_linker
                 lib_config.ocaml_version
       then Lib_info.Files [ archive ]
       else Lib_info.Needs_module_info archive

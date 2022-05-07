@@ -50,7 +50,6 @@ end
 module Scheme = Scheme
 module Lib_config = Lib_config
 module Dynlink_supported = Dynlink_supported
-module Ocaml_version = Ocaml_version
 module Lib_dep = Lib_dep
 module Ocamlobjinfo = Ocamlobjinfo
 module Action_unexpanded = Action_unexpanded

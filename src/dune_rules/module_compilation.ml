@@ -129,7 +129,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   in
   let opaque_arg =
     let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
-    if opaque || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version)
+    if opaque || (intf_only && Ocaml.Version.supports_opaque_for_mli ctx.version)
     then Command.Args.A "-opaque"
     else Command.Args.empty
   in
@@ -198,7 +198,7 @@ let build_module ?(precompiled_cmi = false) cctx m =
   and* () =
     let ctx = CC.context cctx in
     let can_split =
-      Ocaml_version.supports_split_at_emit ctx.version
+      Ocaml.Version.supports_split_at_emit ctx.version
       || Ocaml_config.is_dev_version ctx.ocaml_config
     in
     match (ctx.fdo_target_exe, can_split) with

@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Import
+open Import
 open Resolve.Memo.O
 
 (* Errors *)

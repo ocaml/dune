@@ -5,6 +5,9 @@
 
     They are directly mapped to findlib predicates. *)
 
+(* XXX technically this is all findlib/dune conventions, but we'll allow it for
+   now *)
+
 open Stdune
 
 type t = private string

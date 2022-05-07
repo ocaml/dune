@@ -18,6 +18,7 @@ let local_libraries =
   ; ("src/dag", Some "Dag", false, None)
   ; ("src/fiber", Some "Fiber", false, None)
   ; ("src/memo", Some "Memo", false, None)
+  ; ("src/ocaml", Some "Ocaml", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)

@@ -1,4 +1,4 @@
-open! Dune_engine
+open Import
 
 module Group : sig
   type t =

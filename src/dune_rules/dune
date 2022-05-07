@@ -7,6 +7,7 @@
   csexp
   fiber
   memo
+  ocaml
   dune_re
   opam_file_format
   dune_lang

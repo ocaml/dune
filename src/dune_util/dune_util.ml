@@ -1,6 +1,5 @@
 module Config = Config
 module Log = Log
-module Ml_kind = Ml_kind
 module Persistent = Persistent
 module Report_error = Report_error
 module Stringlike = Stringlike

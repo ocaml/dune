@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 (* This module expands either a (library ... (ctypes ...)) rule or an
    (executables ... (ctypes ...)) rule into the generated set of .ml and .c

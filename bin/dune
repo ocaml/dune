@@ -6,6 +6,7 @@
   (<> %{profile} dune-bootstrap))
  (libraries
   memo
+  ocaml
   dune_lang
   fiber
   stdune

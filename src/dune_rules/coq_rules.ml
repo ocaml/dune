@@ -1,4 +1,4 @@
-open! Dune_engine
+open Import
 open Memo.O
 
 (* This file is licensed under The MIT License *)

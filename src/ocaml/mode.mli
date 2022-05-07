@@ -1,4 +1,4 @@
-open! Import
+open! Stdune
 
 type t =
   | Byte

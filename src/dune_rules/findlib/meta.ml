@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
   include Stdune

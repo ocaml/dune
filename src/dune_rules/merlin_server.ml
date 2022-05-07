@@ -74,20 +74,20 @@ let to_local file_path =
    directory. *)
 let get_merlin_files_paths local_path =
   let+ workspace = Memo.run (Workspace.workspace ()) in
-  let context =
-    Option.value ~default:Context_name.default workspace.merlin_context
-  in
-  let ctx = Context_name.to_string context in
-  let ctx_root = Path.Build.(relative root ctx) in
-  let dir_path = Path.Build.(append_local ctx_root local_path) in
   let merlin_path =
+    let ctx_root =
+      let context =
+        Option.value ~default:Context_name.default workspace.merlin_context
+      in
+      let ctx = Context_name.to_string context in
+      Path.Build.(relative root ctx)
+    in
+    let dir_path = Path.Build.(append_local ctx_root local_path) in
     Path.Build.relative dir_path Merlin_ident.merlin_folder_name
   in
-  let files =
-    Result.value ~default:[] (Path.readdir_unsorted (Path.build merlin_path))
-    |> List.sort ~compare:String.compare
-  in
-  List.map files ~f:(fun f -> Path.Build.relative merlin_path f |> Path.build)
+  Path.build merlin_path |> Path.readdir_unsorted |> Result.value ~default:[]
+  |> List.sort ~compare:String.compare
+  |> List.map ~f:(fun f -> Path.Build.relative merlin_path f |> Path.build)
 
 let load_merlin_file local_path file =
   (* We search for an appropriate merlin configuration in the current directory

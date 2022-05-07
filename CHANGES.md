@@ -29,8 +29,8 @@
 
 - Watch mode now tracks copied external files, external directories for
   dependencies, dune files in OCaml syntax, files used by `include` stanzas,
-  dune-project, and opam files (#5627, #5645, #5652, #5656, #5672, fixes #5331,
-  @rgrinberg)
+  dune-project, opam files, and libraries builtin with compiler (#5627, #5645,
+  #5652, #5656, #5672, #5691, fixes #5331, @rgrinberg)
 
 - Improve metrics for cram tests. Include test names in the event and add a
   category for cram tests (#5626, @rgrinberg)

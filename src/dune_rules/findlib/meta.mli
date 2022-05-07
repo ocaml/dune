@@ -72,6 +72,6 @@ val load : Path.t -> name:Package.Name.t option -> Simplified.t Memo.t
 val builtins :
      stdlib_dir:Path.t
   -> version:Ocaml_version.t
-  -> Simplified.t Package.Name.Map.t
+  -> Simplified.t Package.Name.Map.t Memo.t
 
 val pp : entry list -> unit Pp.t

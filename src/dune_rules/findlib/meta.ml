@@ -223,12 +223,16 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let stdlib = dummy "stdlib" in
   let str = simple "str" [] ~dir:"+" in
   let unix = simple ~labels:true "unix" [] ~dir:"+" in
-  let bigarray =
-    if
-      Ocaml_version.stdlib_includes_bigarray ocaml_version
-      && not (Path.exists (Path.relative stdlib_dir "bigarray.cma"))
-    then dummy "bigarray"
-    else simple "bigarray" [ "unix" ] ~dir:"+"
+  let open Memo.O in
+  let* bigarray =
+    let simple () = simple "bigarray" [ "unix" ] ~dir:"+" in
+    if not (Ocaml_version.stdlib_includes_bigarray ocaml_version) then
+      Memo.return (simple ())
+    else
+      let+ cma =
+        Fs_memo.file_exists (Path.relative stdlib_dir "bigarray.cma")
+      in
+      if cma then dummy "bigarray" else simple ()
   in
   let dynlink = simple "dynlink" [] ~dir:"+" in
   let bytes = dummy "bytes" in
@@ -270,7 +274,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let ocamldoc =
     simple "ocamldoc" [ "compiler-libs" ] ~dir:"+ocamldoc" ~kind:[]
   in
-  let libs =
+  let+ libs =
     let base =
       [ stdlib; compiler_libs; str; unix; threads; dynlink; bytes; ocamldoc ]
     in
@@ -278,16 +282,17 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       if Ocaml_version.has_bigarray_library ocaml_version then bigarray :: base
       else base
     in
-    let base =
-      if Path.exists (Path.relative stdlib_dir "graphics.cma") then
-        graphics :: base
-      else base
+    let* base =
+      let+ cma =
+        Fs_memo.file_exists (Path.relative stdlib_dir "graphics.cma")
+      in
+      if cma then graphics :: base else base
     in
     (* We do not rely on an "exists_if" ocamlfind variable, because it would
        produce an error message mentioning a "hidden" package (which could be
        confusing). *)
-    if Path.exists (Path.relative stdlib_dir "nums.cma") then num :: base
-    else base
+    let+ nums_cma = Fs_memo.file_exists (Path.relative stdlib_dir "nums.cma") in
+    if nums_cma then num :: base else base
   in
   List.filter_map libs ~f:(fun t ->
       Option.map t.name ~f:(fun name ->

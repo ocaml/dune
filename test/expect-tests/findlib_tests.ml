@@ -38,10 +38,14 @@ let findlib =
     ; context_name = Context_name.of_string "default"
     }
   in
-  Findlib.create ~paths:[ db_path ] ~lib_config
+  Memo.lazy_ (fun () -> Findlib.create ~paths:[ db_path ] ~lib_config)
 
 let resolve_pkg s =
-  Lib_name.of_string s |> Findlib.find findlib |> Memo.run
+  (let lib_name = Lib_name.of_string s in
+   let open Memo.O in
+   let* findlib = Memo.Lazy.force findlib in
+   Findlib.find findlib lib_name)
+  |> Memo.run
   |> Test_scheduler.(run (create ()))
 
 let elide_db_path path =

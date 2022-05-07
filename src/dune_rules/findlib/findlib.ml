@@ -544,9 +544,9 @@ end = struct
           else
             let dune = Path.relative dir Dune_package.fn in
             let* exists =
-              let+ exists = Fs_memo.file_exists dune in
+              let* exists = Fs_memo.file_exists dune in
               if exists then Dune_package.Or_meta.load dune
-              else Ok Dune_package.Or_meta.Use_meta
+              else Memo.return (Ok Dune_package.Or_meta.Use_meta)
             in
             match exists with
             | Error e ->

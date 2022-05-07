@@ -414,12 +414,15 @@ module Or_meta = struct
          let+ package = decode ~lang ~dir in
          Dune_package package)
 
-  let load p =
-    let dir = Path.parent_exn p in
-    Vfile.load p ~f:(fun lang ->
-        String_with_vars.set_decoding_env
-          (Pform.Env.initial lang.version)
-          (decode ~lang ~dir))
+  let load file =
+    let dir = Path.parent_exn file in
+    Fs_memo.with_lexbuf_from_file file ~f:(fun lexbuf ->
+        (* XXX stop catching code errors, invalid args, etc. *)
+        Result.try_with (fun () ->
+            Vfile.parse_contents lexbuf ~f:(fun lang ->
+                String_with_vars.set_decoding_env
+                  (Pform.Env.initial lang.version)
+                  (decode ~lang ~dir))))
 
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in

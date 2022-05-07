@@ -354,7 +354,7 @@ let build_dir_is_vendored build_dir =
 
 let with_vendored_flags ~ocaml_version flags =
   let with_warnings = Ocaml_flags.with_vendored_warnings flags in
-  if Ocaml_version.supports_alerts ocaml_version then
+  if Ocaml.Version.supports_alerts ocaml_version then
     Ocaml_flags.with_vendored_alerts with_warnings
   else with_warnings
 

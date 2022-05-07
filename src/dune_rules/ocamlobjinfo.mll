@@ -44,13 +44,13 @@ let rules ~dir ~(ctx : Context.t) ~unit =
     |> Path.Build.extend_basename ~suffix:".ooi-deps"
   in
   let no_approx =
-    if Ocaml_version.ooi_supports_no_approx ctx.version then
+    if Ocaml.Version.ooi_supports_no_approx ctx.version then
       [Command.Args.A "-no-approx"]
     else
       []
   in
   let no_code =
-    if Ocaml_version.ooi_supports_no_code ctx.version then
+    if Ocaml.Version.ooi_supports_no_code ctx.version then
       [Command.Args.A "-no-code"]
     else
       []

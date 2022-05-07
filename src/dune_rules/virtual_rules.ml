@@ -7,7 +7,7 @@ module Pp_spec : sig
 
   val make :
        Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
-    -> Ocaml_version.t
+    -> Ocaml.Version.t
     -> t
 
   val pped_module : t -> Module.t -> Module.t

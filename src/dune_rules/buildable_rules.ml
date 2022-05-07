@@ -3,9 +3,10 @@ open Stdune
 
 let gen_select_rules t ~dir compile_info =
   let open Memo.O in
-  Resolve.Memo.read_memo (Lib.Compile.resolved_selects compile_info)
-  >>= Memo.parallel_iter ~f:(fun rs ->
-          let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
+  Lib.Compile.resolved_selects compile_info
+  |> Resolve.Memo.read_memo
+  >>= Memo.parallel_iter
+        ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn } ->
           let dst = Path.Build.relative dir dst_fn in
           Super_context.add_rule t ~dir
             (Action_builder.with_file_targets ~file_targets:[ dst ]
@@ -18,7 +19,8 @@ let gen_select_rules t ~dir compile_info =
 let with_lib_deps (t : Context.t) compile_info ~dir ~f =
   let prefix =
     if t.merlin then
-      Merlin_ident.merlin_file_path dir (Lib.Compile.merlin_ident compile_info)
+      Lib.Compile.merlin_ident compile_info
+      |> Merlin_ident.merlin_file_path dir
       |> Path.build |> Action_builder.path |> Action_builder.goal
     else Action_builder.return ()
   in

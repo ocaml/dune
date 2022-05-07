@@ -50,8 +50,6 @@ module Dir : sig
       -> Outcome.t M.t
   end
 
-  val sub_dir_paths : t -> Path.Source.Set.t
-
   val sub_dir_names : t -> String.Set.t
 
   val status : t -> Sub_dirs.Status.t

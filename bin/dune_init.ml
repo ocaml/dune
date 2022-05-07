@@ -137,7 +137,7 @@ module File = struct
     let content =
       if not (Path.exists full_path) then []
       else
-        match Dune_lang.Format.parse_file (Some full_path) with
+        match Io.with_lexbuf_from_file ~f:Dune_lang.Format.parse full_path with
         | Dune_lang.Format.Sexps content -> content
         | Dune_lang.Format.OCaml_syntax _ ->
           User_error.raise
@@ -152,7 +152,12 @@ module File = struct
     let version =
       Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
     in
-    Dune_lang.Format.write_file ~version ~path dune_file.content
+    Io.with_file_out ~binary:true
+      (* Why do we pass [~binary:true] but not anywhere else when formatting? *)
+      path ~f:(fun oc ->
+        let fmt = Format.formatter_of_out_channel oc in
+        Format.fprintf fmt "%a%!" Pp.to_fmt
+          (Dune_lang.Format.pp_top_sexps ~version dune_file.content))
 
   let write f =
     let path = full_path f in

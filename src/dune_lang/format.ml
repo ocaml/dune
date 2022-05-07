@@ -6,14 +6,9 @@ type dune_file =
   | OCaml_syntax of Loc.t
   | Sexps of Cst.t list
 
-let parse_lexbuf lb =
+let parse lb =
   if Dune_lexer.is_script lb then OCaml_syntax (Loc.of_lexbuf lb)
   else Sexps (Parser.parse lb ~mode:Cst)
-
-let parse_file path_opt =
-  match path_opt with
-  | Some path -> Io.with_lexbuf_from_file path ~f:parse_lexbuf
-  | None -> parse_lexbuf @@ Lexing.from_channel stdin
 
 let can_be_displayed_wrapped =
   List.for_all ~f:(fun (c : Cst.t) ->
@@ -66,35 +61,18 @@ let pp_top_sexp ~version sexp = pp_sexp ~version sexp ++ Pp.char '\n'
 let pp_top_sexps ~version =
   Pp.concat_map ~sep:Pp.newline ~f:(pp_top_sexp ~version)
 
-let write_file ~version ~path sexps =
-  let f oc =
-    let fmt = Format.formatter_of_out_channel oc in
-    Format.fprintf fmt "%a%!" Pp.to_fmt (pp_top_sexps ~version sexps)
-  in
-  Io.with_file_out ~binary:true path ~f
-
 let format_string ~version input =
-  match parse_lexbuf (Lexing.from_string input) with
+  match parse (Lexing.from_string input) with
   | OCaml_syntax _ ->
     User_error.raise [ Pp.text "OCaml syntax is not supported." ]
   | Sexps sexps ->
     Format.asprintf "%a%!" Pp.to_fmt (pp_top_sexps ~version sexps)
 
-let format_file ~version ~input ~output =
-  let with_output f =
-    match output with
-    | None -> f stdout
-    | Some output -> Io.with_file_out output ~f
-  in
-  match parse_file input with
-  | OCaml_syntax loc -> (
-    match input with
-    | Some path ->
-      Io.with_file_in path ~f:(fun ic ->
-          with_output (fun oc -> Io.copy_channels ic oc))
-    | None -> User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ]
-    )
+let format_action ~version ~src ~dst =
+  let dst = Path.build dst in
+  match Io.with_lexbuf_from_file src ~f:parse with
+  | OCaml_syntax _ -> Io.copy_file ~src ~dst ()
   | Sexps sexps ->
-    with_output (fun oc ->
+    Io.with_file_out dst ~f:(fun oc ->
         let oc = Format.formatter_of_out_channel oc in
         Format.fprintf oc "%a%!" Pp.to_fmt (pp_top_sexps ~version sexps))

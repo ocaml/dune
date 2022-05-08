@@ -674,9 +674,9 @@ end = struct
       Package.Name.Map.of_list_multi deprecated_packages
     in
     Package.Name.Map_traversals.parallel_iter pkg.deprecated_package_names
-      ~f:(fun name _loc ->
+      ~f:(fun name loc ->
         let meta = Package_paths.deprecated_meta_file ctx pkg name in
-        Super_context.add_rule sctx ~dir:ctx.build_dir
+        Super_context.add_rule sctx ~dir:ctx.build_dir ~loc
           (Action_builder.write_file_dyn meta
              (let open Action_builder.O in
              let+ meta =

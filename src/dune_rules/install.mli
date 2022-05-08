@@ -1,5 +1,5 @@
 (** Opam install file *)
-open! Stdune
+open Import
 
 module Dst : sig
   type t

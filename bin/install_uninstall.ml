@@ -76,7 +76,8 @@ module Workspace = struct
       let dir = Package.dir p in
       Ok
         (Path.Source.relative dir
-           (Dune_engine.Utils.install_file ~package:name ~findlib_toolchain:None))
+           (Dune_rules.Install_rules.install_file ~package:name
+              ~findlib_toolchain:None))
 end
 
 let resolve_package_install workspace pkg =

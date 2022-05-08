@@ -41,6 +41,10 @@ module Coq_lib = Coq_lib
 module Command = Command
 module Install = Install
 
+module Install_rules = struct
+  let install_file = Install_rules.install_file
+end
+
 (* Only for tests *)
 module Scheme = Scheme
 module Lib_config = Lib_config

@@ -36,12 +36,6 @@ let program_not_found_message ?context ?hint ~loc prog =
 let program_not_found ?context ?hint ~loc prog =
   raise (User_error.E (program_not_found_message ?context ?hint ~loc prog))
 
-let install_file ~(package : Package.Name.t) ~findlib_toolchain =
-  let package = Package.Name.to_string package in
-  match findlib_toolchain with
-  | None -> package ^ ".install"
-  | Some x -> sprintf "%s-%s.install" package (Context_name.to_string x)
-
 let line_directive ~filename:fn ~line_number =
   let directive =
     if Foreign_language.has_foreign_extension ~fn then "line" else ""

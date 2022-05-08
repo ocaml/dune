@@ -5,6 +5,10 @@ open! Import
 module Bin : sig
   type t
 
+  (** [local_bin dir] The directory which contains the local binaries viewed by
+      rules defined in [dir] *)
+  val local_bin : Path.Build.t -> Path.Build.t
+
   (** A named artifact that is looked up in the PATH if not found in the tree If
       the name is an absolute path, it is used as it. *)
   val binary :

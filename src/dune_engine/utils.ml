@@ -42,8 +42,6 @@ let line_directive ~filename:fn ~line_number =
   in
   sprintf "#%s %d %S\n" directive line_number fn
 
-let local_bin p = Path.Build.relative p ".bin"
-
 let pp_command_hint command =
   let open Pp.O in
   Pp.textf "try:" ++ Pp.newline ++ Pp.cut

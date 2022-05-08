@@ -549,7 +549,7 @@ end = struct
     in
     let* () =
       Package.Name.Map.foldi pkg.deprecated_package_names ~init:(Memo.return ())
-        ~f:(fun name _ acc ->
+        ~f:(fun name loc acc ->
           acc
           >>>
           let dune_pkg =
@@ -594,7 +594,8 @@ end = struct
                  (Dune_package.Or_meta.pp ~dune_version)
                  (Dune_package.Or_meta.Dune_package dune_pkg))
           in
-          Super_context.add_rule sctx ~dir:ctx.build_dir action_with_targets)
+          Super_context.add_rule sctx ~dir:ctx.build_dir ~loc
+            action_with_targets)
     in
     Super_context.add_rule sctx ~dir:ctx.build_dir action
 

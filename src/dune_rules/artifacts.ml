@@ -4,6 +4,8 @@ open Import
 open Memo.O
 
 module Bin = struct
+  let local_bin p = Path.Build.relative p ".bin"
+
   type t =
     { context : Context.t
     ; (* Mapping from executable names to their actual path in the workspace.
@@ -39,9 +41,7 @@ module Bin = struct
   let add_binaries t ~dir l =
     let local_bins =
       List.fold_left l ~init:t.local_bins ~f:(fun acc fb ->
-          let path =
-            File_binding.Expanded.dst_path fb ~dir:(Utils.local_bin dir)
-          in
+          let path = File_binding.Expanded.dst_path fb ~dir:(local_bin dir) in
           String.Map.set acc (Path.Build.basename path) path)
     in
     { t with local_bins }

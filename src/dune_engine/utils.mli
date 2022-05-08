@@ -17,9 +17,6 @@ val program_not_found_message :
   -> string
   -> User_message.t
 
-val install_file :
-  package:Package.Name.t -> findlib_toolchain:Context_name.t option -> string
-
 (** Produce a line directive *)
 val line_directive : filename:string -> line_number:int -> string
 

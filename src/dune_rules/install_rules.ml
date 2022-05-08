@@ -5,6 +5,12 @@ open Memo.O
 open! No_io
 module Library = Dune_file.Library
 
+let install_file ~(package : Package.Name.t) ~findlib_toolchain =
+  let package = Package.Name.to_string package in
+  match findlib_toolchain with
+  | None -> package ^ ".install"
+  | Some x -> sprintf "%s-%s.install" package (Context_name.to_string x)
+
 module Package_paths = struct
   let opam_file (ctx : Context.t) pkg =
     Path.Build.append_source ctx.build_dir (Package.opam_file pkg)
@@ -892,7 +898,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let action =
     let install_file =
       Path.Build.relative pkg_build_dir
-        (Utils.install_file ~package:package_name
+        (install_file ~package:package_name
            ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let open Action_builder.O in
@@ -991,7 +997,7 @@ let gen_install_alias sctx (package : Package.t) =
   if ctx.implicit then Memo.return ()
   else
     let install_fn =
-      Utils.install_file ~package:name ~findlib_toolchain:ctx.findlib_toolchain
+      install_file ~package:name ~findlib_toolchain:ctx.findlib_toolchain
     in
     let path = Package_paths.build_dir ctx package in
     let install_alias = Alias.install ~dir:path in

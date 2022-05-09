@@ -153,15 +153,6 @@
  (files   dune-ocaml-merlin.1))
 
 (rule
- (with-stdout-to dune-preprocess.1
-  (run dune preprocess --help=groff)))
-
-(install
- (section man)
- (package dune)
- (files   dune-preprocess.1))
-
-(rule
  (with-stdout-to dune-printenv.1
   (run dune printenv --help=groff)))
 

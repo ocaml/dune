@@ -17,7 +17,6 @@ let all : _ Term.Group.t list =
     ; Print_rules.command
     ; Utop.command
     ; Init.command
-    ; Preprocess.command
     ; Promote.command
     ; Printenv.command
     ; Help.command

@@ -619,7 +619,8 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   let* () =
     memo_list_iter ctypes.Ctypes.function_description ~f:(fun fd ->
         let stubs_prefix =
-          External_lib_name.to_string external_library_name ^ "_stubs"
+          External_lib_name.(external_library_name |> clean |> to_string)
+          ^ "_stubs"
         in
         let c_generated_functions_cout_c =
           Stanza_util.c_generated_functions_cout_c ctypes fd

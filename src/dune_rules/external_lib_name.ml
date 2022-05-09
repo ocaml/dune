@@ -26,6 +26,6 @@ let clean t =
   String.init (String.length t) ~f:(fun i ->
       match t.[i] with
       | ('a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '\'') as c -> c
-      | _ -> 'c')
+      | _ -> '_')
 
 let to_module_name t = Module_name.of_string (clean t)

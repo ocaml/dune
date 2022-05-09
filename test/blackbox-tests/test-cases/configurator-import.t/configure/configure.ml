@@ -78,11 +78,11 @@ let default_cflags c =
       | [ String "arm" ] -> `arm
       | _ -> `unknown
     in
-    [ (* Basic optimisation *) "-g"; "-O3" ]
+    [ (* Basic optimisation *) "-g"; ]
     @ (match arch, os with
-      | `arm64, `mac -> [ "-mcpu=apple-m1" ]
-      | `arm64, _    -> [ "-march=native" ]
-      | `x86_64, _   -> [ "-march=native"; "-mfpmath=sse"; "-msse2" ]
+      | `arm64, `mac -> []
+      | `arm64, _    -> []
+      | `x86_64, _   -> []
       | _            -> [])
 
 let () =

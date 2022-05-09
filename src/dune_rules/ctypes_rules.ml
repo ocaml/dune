@@ -63,18 +63,21 @@ module Stanza_util = struct
 
   let discover_script ctypes =
     sprintf "%s__ctypes_discover"
-      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
+      (ctypes.Ctypes.external_library_name |> External_lib_name.clean
+     |> External_lib_name.to_string)
 
   let type_gen_script ctypes =
     sprintf "%s__type_gen"
-      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
+      (ctypes.Ctypes.external_library_name |> External_lib_name.clean
+     |> External_lib_name.to_string)
 
   let module_name_lower_string module_name =
     String.lowercase (Module_name.to_string module_name)
 
   let function_gen_script ctypes fd =
     sprintf "%s__function_gen__%s__%s"
-      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
+      (ctypes.Ctypes.external_library_name |> External_lib_name.clean
+     |> External_lib_name.to_string)
       (module_name_lower_string fd.Ctypes.Function_description.functor_)
       (module_name_lower_string fd.Ctypes.Function_description.instance)
 
@@ -94,12 +97,14 @@ module Stanza_util = struct
 
   let c_generated_types_module ctypes =
     sprintf "%s__c_generated_types"
-      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
+      (ctypes.Ctypes.external_library_name |> External_lib_name.to_module_name
+     |> Module_name.to_string)
     |> Module_name.of_string
 
   let c_generated_functions_module ctypes fd =
     sprintf "%s__c_generated_functions__%s__%s"
-      (External_lib_name.to_string ctypes.Ctypes.external_library_name)
+      (ctypes.Ctypes.external_library_name |> External_lib_name.clean
+     |> External_lib_name.to_string)
       (module_name_lower_string fd.Ctypes.Function_description.functor_)
       (module_name_lower_string fd.Ctypes.Function_description.instance)
     |> Module_name.of_string
@@ -614,7 +619,8 @@ let gen_rules ~cctx ~buildable ~loc ~scope ~dir ~sctx =
   let* () =
     memo_list_iter ctypes.Ctypes.function_description ~f:(fun fd ->
         let stubs_prefix =
-          External_lib_name.to_string external_library_name ^ "_stubs"
+          External_lib_name.(external_library_name |> clean |> to_string)
+          ^ "_stubs"
         in
         let c_generated_functions_cout_c =
           Stanza_util.c_generated_functions_cout_c ctypes fd

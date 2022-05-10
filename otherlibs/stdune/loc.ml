@@ -80,7 +80,8 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full { start; stop } :
         (* We add 2 to the width of max line to account for the extra space and
            the `|` character at the end of a line number *)
         let line = String.make (padding_width + 2) '.' in
-        Pp.verbatim line
+        let open Pp.O in
+        Pp.verbatim line ++ Pp.newline
       in
       let print_lines lines padding_width =
         Pp.concat_map lines ~f:(pp_line padding_width)

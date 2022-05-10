@@ -5,7 +5,8 @@ In this test we want to check the output of the rule reporting.
    1 | (rule
    2 |  (deps idontexist)
    3 |  ;
-  ....14 |  (targets bar)
+  ....
+  14 |  (targets bar)
   15 |  (action
   16 |   (run idontexist)))
   Error: No rule found for idontexist

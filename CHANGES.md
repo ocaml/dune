@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Disable alerts when compiling code in vendored directories (#5683,
+  @NathanReb)
+
 - Add `$ dune describe pp` to print the preprocssed ast of sources. (#5615,
   fixes #4470, @cannorin)
 

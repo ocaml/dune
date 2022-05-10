@@ -1,0 +1,17 @@
+(rule
+ (deps idontexist)
+ ;
+ ; A load of
+ ; @@@@
+ ; !!!!
+ ; ####
+ ; nonsense
+ ; for
+ ; a
+ ; longer
+ ; file
+ ;
+ (targets bar)
+ (action
+  (run idontexist)))
+ 

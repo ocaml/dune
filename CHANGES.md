@@ -1,6 +1,10 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Fixed ``dune describe --with-deps``, that crashed when some
+  preprocessing was required in a dune file using ``per_module``.
+  (#5682, fixes #5680, @esope)
+
 - Add `$ dune describe pp` to print the preprocssed ast of sources. (#5615,
   fixes #4470, @cannorin)
 

@@ -309,12 +309,22 @@ module Crawl = struct
         in
         module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
 
-  (** [exes_uses_pp exes] tells whether the compilations units of [exes] are
-      subject to a preprocessing phase. *)
-  let exes_uses_pp (exes : Dune_file.Executables.t) =
-    let open Preprocess.Per_module in
-    List.is_non_empty @@ pps
-    @@ without_instrumentation exes.buildable.preprocess
+  (** [module_uses_pp per_module_pp module_] tells whether the module [module_]
+      needs some pre-processing stage, according to the per-module information
+      [per_module_pp]. The per-module information can be retrieved from the
+      library or executable [module_] belongs to. *)
+  let module_uses_pp
+      (per_module_pp :
+        Preprocess.With_instrumentation.t Preprocess.Per_module.t)
+      (module_ : Module.t) : bool =
+    let open Preprocess in
+    match
+      Per_module.find (Module.name module_)
+        (Per_module.without_instrumentation per_module_pp)
+    with
+    | No_preprocessing -> false
+    | Future_syntax _ | Action _ -> true
+    | Pps pps -> not @@ List.is_empty @@ pps.Pps.pps
 
   (** Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t) :
@@ -324,9 +334,9 @@ module Crawl = struct
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
       >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
     in
-    let deps_of =
-      let use_pp = exes_uses_pp exes in
-      Deps.read ~options ~use_pp ~obj_dir ~modules:modules_
+    let deps_of module_ =
+      let use_pp = module_uses_pp exes.buildable.preprocess module_ in
+      Deps.read ~options ~use_pp ~obj_dir ~modules:modules_ module_
     in
     let obj_dir = Obj_dir.of_local obj_dir in
     let scope = Super_context.find_scope_by_project sctx project in
@@ -348,14 +358,6 @@ module Crawl = struct
       in
       Some (Descr.Item.Executables exe_descr, Lib.Set.of_list libs)
 
-  (** [lib_uses_pp lib] tells whether the compilation units of library [lib] are
-      subject to a preprocessing phase. *)
-  let lib_uses_pp (lib : Lib.t) : bool Memo.t =
-    let+ res = Lib.pps lib in
-    match Resolve.peek res with
-    | Ok pps -> List.is_non_empty pps
-    | Error _ -> assert false
-
   (** Builds a workspace item for the provided library object *)
   let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
     let* requires = Lib.requires lib in
@@ -374,9 +376,12 @@ module Crawl = struct
           >>= Dir_contents.ocaml
           >>| Ml_sources.modules_and_obj_dir ~for_:(Library name)
           >>= fun (modules_, obj_dir_) ->
-          let* deps_of =
-            let+ use_pp = lib_uses_pp lib in
+          let deps_of module_ =
+            let use_pp =
+              module_uses_pp (Lib_info.preprocess @@ Lib.info lib) module_
+            in
             Deps.read ~options ~use_pp ~obj_dir:obj_dir_ ~modules:modules_
+              module_
           in
           modules ~obj_dir ~deps_of modules_
       in

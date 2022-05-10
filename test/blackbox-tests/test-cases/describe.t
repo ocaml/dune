@@ -43,6 +43,30 @@ Setup
   >   (name main3)
   >   (libraries cmdliner)
   >   (modules main3))
+  > 
+  > (library
+  >  (name per_module_pp_lib)
+  >  (modules pp1 pp2)
+  >  (preprocess (per_module ((pps ppx_inline_test) pp2)))
+  > )
+  > 
+  > (executable
+  >  (name per_module_pp_exe)
+  >  (modules per_module_pp_exe pp3 pp4)
+  >  (preprocess (per_module ((pps ppx_inline_test) pp4)))
+  > )
+  > 
+  > (library
+  >  (name per_module_action_lib)
+  >  (modules action1 action2)
+  >  (preprocess (per_module ((action (cat %{input-file})) action2)))
+  > )
+  > 
+  > (library
+  >  (name per_module_action_exe)
+  >  (modules per_module_action_exe action3 action4)
+  >  (preprocess (per_module ((action (cat %{input-file})) action4)))
+  > )
   > EOF
 
   $ touch foo.ml
@@ -89,6 +113,44 @@ Setup
   > EOF
 
   $ touch main3.ml
+
+  $ cat >pp1.ml <<EOF
+  > let x = 0
+  > EOF
+
+  $ cat >pp2.ml <<EOF
+  > let%test _ = (Pp1.x = 0)
+  > let y = 0
+  > EOF
+
+  $ cat >pp4.ml <<EOF
+  > type t =
+  > | Foo
+  > | Bar of bool
+  > [@@deriving enumerate]
+  > EOF
+
+  $ cat >pp3.ml <<EOF
+  > let foo = Pp4.foo
+  > EOF
+
+  $ cat >per_module_pp_exe.ml <<EOF
+  > let () = assert (List.mem Pp3.foo Pp4.all)
+  > EOF
+
+  $ cat >action1.ml <<EOF
+  > let x = 0
+  > EOF
+
+  $ cat >action2.ml <<EOF
+  > let y = Action1.x
+  > EOF
+
+  $ cp action1.ml action3.ml
+  $ cp action2.ml action4.ml
+  $ cat >per_module_action_exe.ml <<EOF
+  > let () = assert (Action3.x = Action4.y)
+  > EOF
 
 Describe various things
 -----------------------
@@ -157,6 +219,32 @@ not stable across different setups.
         (cmt (_build/default/.main3.eobjs/byte/dune__exe__Main3.cmt))
         (cmti ()))))
      (include_dirs (_build/default/.main3.eobjs/byte))))
+   (executables
+    ((names (per_module_pp_exe))
+     (requires (55b023c301c18e021a22384b996d66af))
+     (modules
+      (((name Pp4)
+        (impl (_build/default/pp4.ml))
+        (intf ())
+        (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe__Pp4.cmt))
+        (cmti ()))
+       ((name Pp3)
+        (impl (_build/default/pp3.ml))
+        (intf ())
+        (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe__Pp3.cmt))
+        (cmti ()))
+       ((name Per_module_pp_exe)
+        (impl (_build/default/per_module_pp_exe.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe__Per_module_pp_exe.cmt))
+        (cmti ()))
+       ((name Dune__exe)
+        (impl (_build/default/.per_module_pp_exe.eobjs/dune__exe.ml-gen))
+        (intf ())
+        (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.per_module_pp_exe.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -258,6 +346,90 @@ not stable across different setups.
      (source_dir /FINDLIB//jane-street-headers)
      (modules ())
      (include_dirs (/FINDLIB//jane-street-headers))))
+   (library
+    ((name per_module_action_exe)
+     (uid 241344d239919555633eb26a01215e22)
+     (local true)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+      (((name Per_module_action_exe)
+        (impl (_build/default/per_module_action_exe.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe.cmt))
+        (cmti ()))
+       ((name Action4)
+        (impl (_build/default/action4.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe__Action4.cmt))
+        (cmti ()))
+       ((name Action3)
+        (impl (_build/default/action3.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe__Action3.cmt))
+        (cmti ()))
+       ((name Per_module_action_exe__)
+        (impl (_build/default/per_module_action_exe__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe__.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.per_module_action_exe.objs/byte))))
+   (library
+    ((name per_module_action_lib)
+     (uid a8434281597a2d5c0db820319d93c1f7)
+     (local true)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+      (((name Action2)
+        (impl (_build/default/action2.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_lib.objs/byte/per_module_action_lib__Action2.cmt))
+        (cmti ()))
+       ((name Action1)
+        (impl (_build/default/action1.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_lib.objs/byte/per_module_action_lib__Action1.cmt))
+        (cmti ()))
+       ((name Per_module_action_lib)
+        (impl (_build/default/per_module_action_lib.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_lib.objs/byte/per_module_action_lib.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.per_module_action_lib.objs/byte))))
+   (library
+    ((name per_module_pp_lib)
+     (uid 7fc36e5c5f46521a6842f4167e4c75b2)
+     (local true)
+     (requires (55b023c301c18e021a22384b996d66af))
+     (source_dir _build/default)
+     (modules
+      (((name Pp2)
+        (impl (_build/default/pp2.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_pp_lib.objs/byte/per_module_pp_lib__Pp2.cmt))
+        (cmti ()))
+       ((name Pp1)
+        (impl (_build/default/pp1.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_pp_lib.objs/byte/per_module_pp_lib__Pp1.cmt))
+        (cmti ()))
+       ((name Per_module_pp_lib)
+        (impl (_build/default/per_module_pp_lib.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_pp_lib.objs/byte/per_module_pp_lib.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.per_module_pp_lib.objs/byte))))
    (library
     ((name ppx_compare.runtime-lib)
      (uid 708bf5748829e3636236f5d8c610f430)
@@ -415,6 +587,45 @@ not stable across different setups.
         (cmti ())
         (module_deps ((for_intf ()) (for_impl ()))))))
      (include_dirs (_build/default/.main3.eobjs/byte))))
+   (executables
+    ((names (per_module_pp_exe))
+     (requires (55b023c301c18e021a22384b996d66af))
+     (modules
+      (((name Pp4)
+        (impl (_build/default/pp4.ml))
+        (intf ())
+        (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe__Pp4.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Pp3)
+        (impl (_build/default/pp3.ml))
+        (intf ())
+        (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe__Pp3.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl (Pp4)))))
+       ((name Per_module_pp_exe)
+        (impl (_build/default/per_module_pp_exe.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe__Per_module_pp_exe.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl
+           (Pp3 Pp4)))))
+       ((name Dune__exe)
+        (impl (_build/default/.per_module_pp_exe.eobjs/dune__exe.ml-gen))
+        (intf ())
+        (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/.per_module_pp_exe.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -527,6 +738,121 @@ not stable across different setups.
      (source_dir /FINDLIB//jane-street-headers)
      (modules ())
      (include_dirs (/FINDLIB//jane-street-headers))))
+   (library
+    ((name per_module_action_exe)
+     (uid 241344d239919555633eb26a01215e22)
+     (local true)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+      (((name Per_module_action_exe)
+        (impl (_build/default/per_module_action_exe.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl
+           (Action3 Action4)))))
+       ((name Action4)
+        (impl (_build/default/action4.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe__Action4.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Action3)
+        (impl (_build/default/action3.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe__Action3.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Per_module_action_exe__)
+        (impl (_build/default/per_module_action_exe__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe__.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/.per_module_action_exe.objs/byte))))
+   (library
+    ((name per_module_action_lib)
+     (uid a8434281597a2d5c0db820319d93c1f7)
+     (local true)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+      (((name Action2)
+        (impl (_build/default/action2.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_lib.objs/byte/per_module_action_lib__Action2.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl (Action1)))))
+       ((name Action1)
+        (impl (_build/default/action1.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_lib.objs/byte/per_module_action_lib__Action1.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Per_module_action_lib)
+        (impl (_build/default/per_module_action_lib.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_action_lib.objs/byte/per_module_action_lib.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/.per_module_action_lib.objs/byte))))
+   (library
+    ((name per_module_pp_lib)
+     (uid 7fc36e5c5f46521a6842f4167e4c75b2)
+     (local true)
+     (requires (55b023c301c18e021a22384b996d66af))
+     (source_dir _build/default)
+     (modules
+      (((name Pp2)
+        (impl (_build/default/pp2.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_pp_lib.objs/byte/per_module_pp_lib__Pp2.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl (Pp1)))))
+       ((name Pp1)
+        (impl (_build/default/pp1.ml))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_pp_lib.objs/byte/per_module_pp_lib__Pp1.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Per_module_pp_lib)
+        (impl (_build/default/per_module_pp_lib.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/.per_module_pp_lib.objs/byte/per_module_pp_lib.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/.per_module_pp_lib.objs/byte))))
    (library
     ((name ppx_compare.runtime-lib)
      (uid 708bf5748829e3636236f5d8c610f430)

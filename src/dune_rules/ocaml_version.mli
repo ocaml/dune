@@ -65,3 +65,6 @@ val has_vmthreads : t -> bool
 
 (** Whether [bigarray] {e library} exists *)
 val has_bigarray_library : t -> bool
+
+(** Whether the compiler supports alerts and the corresponding [-alert] option *)
+val supports_alerts : t -> bool

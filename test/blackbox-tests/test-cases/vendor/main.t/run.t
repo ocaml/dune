@@ -15,6 +15,12 @@ When compiling vendored code, all warnings should be disabled
   Entering directory 'warnings'
   There should be no OCaml warning!
 
+When compiling vendored code, all alerts should be disabled as well
+
+  $ dune build --root alerts @no-alerts-please
+  Entering directory 'alerts'
+  There should be no OCaml alerts!
+
 Dune will not warn about generating inaccurate .merlin files within vendored directories
 
   $ dune build --root inaccurate-merlin @inaccurate-merlins-are-ok

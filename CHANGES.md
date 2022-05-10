@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Disable alerts when compiling code in vendored directories (#5683,
+  @NathanReb)
+
 - Fixed ``dune describe --with-deps``, that crashed when some
   preprocessing was required in a dune file using ``per_module``.
   (#5682, fixes #5680, @esope)

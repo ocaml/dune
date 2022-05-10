@@ -45,3 +45,5 @@ let has_sys_opaque_identity version = version >= (4, 3, 0)
 let has_vmthreads version = version < (4, 9, 0)
 
 let has_bigarray_library version = version < (5, 0, 0)
+
+let supports_alerts version = version >= (4, 8, 0)

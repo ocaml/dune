@@ -13,12 +13,14 @@ Absolute paths cause an error.
   > ```
   > EOF
 
-  $ dune runtest 2>&1 | awk '/Internal error/,/Raised at/'
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Local.relative: received absolute path",
-    { t = "."; path = "/etc/passwd" })
-  Raised at Stdune__Code_error.raise in file "otherlibs/stdune/code_error.ml",
+  $ dune runtest
+  File "dune", line 1, characters 0-5:
+  1 | (mdx)
+      ^^^^^
+  Error: Paths referenced in mdx files must be relative. This stanza refers to
+  the following absolute path:
+  /etc/passwd
+  [1]
 
 Relative paths that go over the root cause an error.
 
@@ -28,12 +30,15 @@ Relative paths that go over the root cause an error.
   > EOF
 
   $ dune runtest
-  Error: path outside the workspace: ../x from .
-  -> required by _build/default/.mdx/README.md.corrected
-  -> required by alias runtest in dune:1
+  File "dune", line 1, characters 0-5:
+  1 | (mdx)
+      ^^^^^
+  Error: Paths referenced in mdx files must stay within the workspace. This
+  stanza refers to the following path which escapes:
+  ../x
   [1]
 
-Relative paths within the workspace should work.
+Relative paths within the workspace do not work.
 
   $ mkdir a b
   $ mv dune a/
@@ -48,9 +53,12 @@ Relative paths within the workspace should work.
   > EOF
 
   $ dune runtest
-  Error: path outside the workspace: ../b/src.ml from .
-  -> required by _build/default/a/.mdx/README.md.corrected
-  -> required by alias a/runtest in a/dune:1
+  File "a/dune", line 1, characters 0-5:
+  1 | (mdx)
+      ^^^^^
+  Error: Paths referenced in mdx files cannot escape the directory. This stanza
+  refers to the following path which escapes:
+  ../b/src.ml
   [1]
 
 Files in the same directory work.

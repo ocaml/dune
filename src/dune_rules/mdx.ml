@@ -68,19 +68,46 @@ module Deps = struct
       [ A "deps"; Dep (Path.build files.Files.src) ]
       ~stdout_to:files.Files.deps
 
-  let to_path ~dir str =
-    let local = Path.Local.of_string str in
-    let build = Path.Build.append_local dir local in
+  let path_escapes_dir str =
+    try
+      let (_ : Path.Local.t) = Path.Local.of_string str in
+      false
+    with _ -> true
+
+  let to_path ~loc ~dir str =
+    if not (Filename.is_relative str) then
+      User_error.raise ~loc
+        [ Pp.text
+            "Paths referenced in mdx files must be relative. This stanza \
+             refers to the following absolute path:"
+        ; Pp.text str
+        ];
+    let path = Path.relative_to_source_in_build_or_external ~dir str in
+    if not (Path.is_managed path) then
+      User_error.raise ~loc
+        [ Pp.text
+            "Paths referenced in mdx files must stay within the workspace. \
+             This stanza refers to the following path which escapes:"
+        ; Pp.text str
+        ];
+    if path_escapes_dir str then
+      User_error.raise ~loc
+        [ Pp.text
+            "Paths referenced in mdx files cannot escape the directory. This \
+             stanza refers to the following path which escapes:"
+        ; Pp.text str
+        ];
+    let build = Path.as_in_build_dir_exn path in
     Path.build build
 
-  let dirs_and_files ~dir t_list =
+  let dirs_and_files ~loc ~dir t_list =
     List.partition_map t_list ~f:(function
-      | Dir d -> Left (to_path ~dir d)
-      | File f -> Right (to_path ~dir f))
+      | Dir d -> Left (to_path ~loc ~dir d)
+      | File f -> Right (to_path ~loc ~dir f))
 
-  let to_dep_set ~dir t_list =
+  let to_dep_set ~loc ~dir t_list =
     let open Memo.O in
-    let dirs, files = dirs_and_files ~dir t_list in
+    let dirs, files = dirs_and_files ~loc ~dir t_list in
     let dep_set = Dep.Set.of_files files in
     let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
     List.fold_left l ~init:dep_set ~f:Dep.Set.union
@@ -226,11 +253,11 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
     Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
   and* () =
     (* Add the rule for generating the .corrected file using ocaml-mdx test *)
-    let mdx_action =
+    let mdx_action ~loc =
       let open Action_builder.With_targets.O in
       let mdx_input_dependencies =
         Action_builder.bind (Deps.read files) ~f:(fun dep_set ->
-            Action_builder.of_memo (Deps.to_dep_set dep_set ~dir))
+            Action_builder.of_memo (Deps.to_dep_set dep_set ~loc ~dir))
       in
       let dyn_deps =
         Action_builder.map mdx_input_dependencies ~f:(fun d -> ((), d))
@@ -268,7 +295,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
       >>| Action.Full.add_locks locks
       >>| Action.Full.add_sandbox sandbox
     in
-    Super_context.add_rule sctx ~loc ~dir mdx_action
+    Super_context.add_rule sctx ~loc ~dir (mdx_action ~loc)
   in
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action = Files.diff_action files in

@@ -11,14 +11,11 @@ let with_directory_annot =
 
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
-  | Accept : int Predicate_lang.t -> ('a, ('a, int) result) failure_mode
+  | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
 
 let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
   | Strict -> Int.equal 0
-  | Accept exit_codes ->
-    fun i ->
-      Predicate_lang.exec exit_codes ~standard:(Predicate_lang.Element 0)
-        (Int.equal i)
+  | Accept exit_codes -> fun i -> Predicate.test exit_codes i
 
 let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
  fun mode t ~f ->

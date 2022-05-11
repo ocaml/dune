@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 open Fiber.O
 module DAP = Dune_action_plugin.Private.Protocol
@@ -88,7 +87,7 @@ type exec_environment =
   ; stderr_to : Process.Io.output Process.Io.t
   ; stdin_from : Process.Io.input Process.Io.t
   ; prepared_dependencies : DAP.Dependency.Set.t
-  ; exit_codes : int Predicate_lang.t
+  ; exit_codes : int Predicate.t
   }
 
 let validate_context_and_prog ectx prog =
@@ -217,7 +216,18 @@ let rec exec t ~ectx ~eenv =
     let+ () = exec_run ~ectx ~eenv prog args in
     Done
   | With_accepted_exit_codes (exit_codes, t) ->
-    let eenv = { eenv with exit_codes } in
+    let eenv =
+      let standard =
+        Predicate_lang.Element
+          (Predicate.create ~id:(lazy (Dyn.int 0)) ~f:(Int.equal 0))
+      in
+      let exit_codes =
+        Predicate_lang.map exit_codes ~f:(fun i ->
+            Predicate.create ~f:(Int.equal i) ~id:(lazy (Dyn.int i)))
+        |> Predicate_lang.to_predicate ~standard
+      in
+      { eenv with exit_codes }
+    in
     exec t ~ectx ~eenv
   | Dynamic_run (Error e, _) -> Action.Prog.Not_found.raise e
   | Dynamic_run (Ok prog, args) -> exec_run_dynamic_client ~ectx ~eenv prog args
@@ -540,7 +550,7 @@ let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
           (Execution_parameters.action_stderr_on_success execution_parameters)
     ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
-    ; exit_codes = Predicate_lang.Element 0
+    ; exit_codes = Predicate.create ~id:(lazy (Dyn.int 0)) ~f:(Int.equal 0)
     }
   in
   exec_until_all_deps_ready t ~ectx ~eenv

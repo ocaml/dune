@@ -102,6 +102,23 @@ let rec exec t ~standard elem =
   | Inter xs -> List.for_all ~f:(fun t -> exec t ~standard elem) xs
   | Standard -> exec standard ~standard elem
 
+let rec map t ~f =
+  match t with
+  | Compl x -> Compl (map x ~f)
+  | Element x -> Element (f x)
+  | Union x -> Union (List.map x ~f:(map ~f))
+  | Inter x -> Inter (List.map x ~f:(map ~f))
+  | Standard -> Standard
+
+let to_predicate (type a) (t : a Predicate.t t) ~standard : a Predicate.t =
+  let id =
+    lazy
+      (Dyn.variant "Predicate_lang.to_predicate"
+         [ to_dyn Predicate.to_dyn standard; to_dyn Predicate.to_dyn t ])
+  in
+  Predicate.create ~id ~f:(fun a ->
+      exec t ~standard (fun pred -> Predicate.test pred a))
+
 module Glob = struct
   type glob = string -> bool
 

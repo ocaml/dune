@@ -4,9 +4,3 @@
   (:deps-conf configure/configure.exe))
  (action
   (run %{deps-conf})))
-
-(executable
- (name configurator)
- (flags
-  :standard
-  (:include c_flags.sexp)))

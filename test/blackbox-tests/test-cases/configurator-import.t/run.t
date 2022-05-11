@@ -3,5 +3,4 @@ custom header files correctly.
 
 C_define.import functions properly
 ====================================================================
-  $ dune exec ./configurator.exe
-  Hello world!
+  $ dune build ./c_flags.sexp

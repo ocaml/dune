@@ -352,7 +352,7 @@ let build_dir_is_vendored build_dir =
   | Some src_dir -> Dune_engine.Source_tree.is_vendored src_dir
   | None -> Memo.return false
 
-let add_vendored_flags ~ocaml_version flags =
+let with_vendored_flags ~ocaml_version flags =
   let with_warnings = Ocaml_flags.with_vendored_warnings flags in
   if Ocaml_version.supports_alerts ocaml_version then
     Ocaml_flags.with_vendored_alerts with_warnings
@@ -368,7 +368,7 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   build_dir_is_vendored dir >>| function
   | true ->
     let ocaml_version = t.context.version in
-    add_vendored_flags ~ocaml_version flags
+    with_vendored_flags ~ocaml_version flags
   | false -> flags
 
 let js_of_ocaml_runtest_alias t ~dir =

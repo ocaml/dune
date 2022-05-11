@@ -15,7 +15,7 @@ let to_dyn t =
   let open Dyn in
   Record [ ("id", Lazy.force t.id) ]
 
-let encode _ = Dune_lang.Encoder.string "predicate <opaque>"
+let encode _ = Encoder.string "predicate <opaque>"
 
 let create ~id ~f = { id; f }
 

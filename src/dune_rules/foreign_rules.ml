@@ -62,7 +62,8 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                  let deps =
                    Dep.Set.singleton
                      (Dep.file_selector
-                        (File_selector.create ~dir:include_dir Predicate.true_))
+                        (File_selector.create ~dir:include_dir
+                           Dune_lang.Predicate.true_))
                  in
                  Command.Args.Hidden_deps deps
                | Some (build_dir, source_dir) ->

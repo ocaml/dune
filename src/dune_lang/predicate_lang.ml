@@ -24,7 +24,7 @@ let any = not_union []
 let empty = Union []
 
 let rec decode_one f =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   let bool_ops () =
     sum
       [ ("or", many f union [])
@@ -64,7 +64,7 @@ let rec decode_one f =
   | List _ -> enter (many f union [])
 
 and many f k acc =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   peek >>= function
   | None -> return (k (List.rev acc))
   | Some (Atom (_, A "\\")) ->
@@ -77,7 +77,7 @@ and many f k acc =
 and decode f = many f union []
 
 let rec encode f =
-  let open Dune_lang.Encoder in
+  let open Encoder in
   function
   | Element a -> f a
   | Compl a -> constr "not" (encode f) a
@@ -109,8 +109,8 @@ module Glob = struct
 
   let to_dyn t = to_dyn (fun _ -> Dyn.string "opaque") t
 
-  let decode : t Dune_lang.Decoder.t =
-    let open Dune_lang.Decoder in
+  let decode : t Decoder.t =
+    let open Decoder in
     decode (Glob.decode >>| Glob.test)
 
   let exec (t : t) ~standard elem = exec t ~standard (fun f -> f elem)

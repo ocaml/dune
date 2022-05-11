@@ -318,9 +318,9 @@ module Crawl = struct
         Preprocess.With_instrumentation.t Preprocess.Per_module.t)
       (module_ : Module.t) : bool =
     let open Preprocess in
-    let open Per_module in
     match
-      find (Module.name module_) (without_instrumentation per_module_pp)
+      Per_module.find (Module.name module_)
+        (Per_module.without_instrumentation per_module_pp)
     with
     | No_preprocessing -> false
     | Future_syntax _ | Action _ -> true

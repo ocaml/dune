@@ -47,26 +47,22 @@ Setup
   > (library
   >  (name per_module_pp_lib)
   >  (modules pp1 pp2)
-  >  (preprocess (per_module ((pps ppx_inline_test) pp2)))
-  > )
+  >  (preprocess (per_module ((pps ppx_inline_test) pp2))))
   > 
   > (executable
   >  (name per_module_pp_exe)
   >  (modules per_module_pp_exe pp3 pp4)
-  >  (preprocess (per_module ((pps ppx_inline_test) pp4)))
-  > )
+  >  (preprocess (per_module ((pps ppx_inline_test) pp4))))
   > 
   > (library
   >  (name per_module_action_lib)
   >  (modules action1 action2)
-  >  (preprocess (per_module ((action (cat %{input-file})) action2)))
-  > )
+  >  (preprocess (per_module ((action (cat %{input-file})) action2))))
   > 
   > (library
   >  (name per_module_action_exe)
   >  (modules per_module_action_exe action3 action4)
-  >  (preprocess (per_module ((action (cat %{input-file})) action4)))
-  > )
+  >  (preprocess (per_module ((action (cat %{input-file})) action4))))
   > EOF
 
   $ touch foo.ml

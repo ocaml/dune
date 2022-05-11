@@ -36,7 +36,7 @@ module Promote = struct
   type t =
     { lifetime : Lifetime.t
     ; into : Into.t option
-    ; only : Predicate_lang.Glob.t option
+    ; only : string Predicate.t option
     }
 end
 

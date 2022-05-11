@@ -157,7 +157,7 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
     | None -> fun (_ : Path.Build.t) -> true
     | Some pred ->
       fun target ->
-        Predicate_lang.Glob.exec pred ~standard:Predicate_lang.any
+        Predicate.test pred
           (Path.reach ~from:(Path.build dir) (Path.build target))
   in
   let open Fiber.O in

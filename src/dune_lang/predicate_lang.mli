@@ -39,6 +39,9 @@ val to_predicate :
   'a Predicate.t t -> standard:'a Predicate.t t -> 'a Predicate.t
 
 module Glob : sig
+  (** The underlying type for the string predicate is not an actual glob, so
+      this module is confusingly named. *)
+
   type glob
 
   type nonrec t = glob t
@@ -54,6 +57,8 @@ module Glob : sig
   val of_glob : Glob.t -> t
 
   val of_pred : (string -> bool) -> t
+
+  val to_predicate : t -> standard:t -> string Predicate.t
 
   val of_string_set : String.Set.t -> t
 

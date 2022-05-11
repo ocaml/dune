@@ -672,9 +672,8 @@ end = struct
                 | None -> targets.files
                 | Some pred ->
                   let is_promoted file =
-                    Predicate_lang.Glob.exec pred
+                    Predicate.test pred
                       (Path.reach (Path.build file) ~from:(Path.build dir))
-                      ~standard:Predicate_lang.any
                   in
                   Path.Build.Set.filter targets.files ~f:is_promoted
               in

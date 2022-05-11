@@ -33,6 +33,11 @@ val exec : 'a t -> standard:'a t -> ('a -> bool) -> bool
 
 val empty : 'a t
 
+val map : 'a t -> f:('a -> 'b) -> 'b t
+
+val to_predicate :
+  'a Predicate.t t -> standard:'a Predicate.t t -> 'a Predicate.t
+
 module Glob : sig
   type glob
 

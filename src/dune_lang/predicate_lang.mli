@@ -21,11 +21,11 @@ val not_union : 'a t list -> 'a t
 
 val any : 'a t
 
-val decode_one : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+val decode_one : 'a Decoder.t -> 'a t Decoder.t
 
-val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+val decode : 'a Decoder.t -> 'a t Decoder.t
 
-val encode : 'a Dune_lang.Encoder.t -> 'a t Dune_lang.Encoder.t
+val encode : 'a Encoder.t -> 'a t Encoder.t
 
 val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 
@@ -40,7 +40,7 @@ module Glob : sig
 
   val to_dyn : t -> Dyn.t
 
-  val decode : t Dune_lang.Decoder.t
+  val decode : t Decoder.t
 
   val exec : t -> standard:t -> string -> bool
 

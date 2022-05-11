@@ -12,7 +12,7 @@ val compare : 'a t -> 'a t -> Ordering.t
 
 val hash : _ t -> int
 
-val encode : _ t Dune_lang.Encoder.t
+val encode : _ t Encoder.t
 
 val to_dyn : _ t -> Dyn.t
 

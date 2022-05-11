@@ -1,4 +1,4 @@
-open Stdune
+open Import
 open Memo.O
 
 (* CR-someday amokhov: We probably want to add a new variant [Dir] to provide

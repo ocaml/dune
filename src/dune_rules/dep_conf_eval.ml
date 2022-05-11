@@ -140,7 +140,9 @@ let rec dep expander = function
     Other
       (let loc = String_with_vars.loc s in
        let* path = Expander.expand_path expander s in
-       let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
+       let pred =
+         Path.basename path |> Glob.of_string_exn loc |> Glob.to_pred
+       in
        let dir = Path.parent_exn path in
        let files_in dir =
          Action_builder.paths_matching ~loc (File_selector.create ~dir pred)

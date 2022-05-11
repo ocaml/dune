@@ -1,4 +1,4 @@
-open! Stdune
+open! Import
 
 module Outputs = struct
   type t =

@@ -4,7 +4,7 @@
     Stdlib module) is used as the alias module when compiling all the other
     modules. We cannot generate an implicit one as that would break hard-coded
     names inside the compiler. *)
-open! Dune_engine
+open Import
 
 type t = private
   { modules_before_stdlib : Module_name.Set.t

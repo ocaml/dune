@@ -1,4 +1,4 @@
-open! Stdune
+open! Import
 module Stanza = Dune_lang.Stanza
 
 module Status = struct

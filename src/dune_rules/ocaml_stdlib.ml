@@ -1,4 +1,4 @@
-open! Dune_engine
+open! Import
 
 type t =
   { modules_before_stdlib : Module_name.Set.t
@@ -23,7 +23,7 @@ let decode =
        field "modules_before_stdlib" (repeat Module_name.decode) ~default:[]
      and+ exit_module = field_o "exit_module" Module_name.decode
      and+ internal_modules =
-       field "internal_modules" Glob.decode ~default:Glob.empty
+       field "internal_modules" Glob.decode ~default:Dune_lang.Glob.empty
      in
      { modules_before_stdlib = Module_name.Set.of_list modules_before_stdlib
      ; exit_module

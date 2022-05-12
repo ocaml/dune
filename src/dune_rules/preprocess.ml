@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 open Dune_lang.Decoder
 
 module Pps_and_flags = struct

@@ -1,4 +1,4 @@
-open! Dune_engine
+open Import
 open Stdune
 
 module Expanded : sig

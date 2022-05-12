@@ -1,7 +1,5 @@
 (** Representation and parsing of Dune files *)
-open! Dune_engine
 
-open! Stdune
 open Import
 
 module Lint : sig

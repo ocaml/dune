@@ -544,9 +544,9 @@ end = struct
           else
             let dune = Path.relative dir Dune_package.fn in
             let* exists =
-              let+ exists = Fs_memo.file_exists dune in
+              let* exists = Fs_memo.file_exists dune in
               if exists then Dune_package.Or_meta.load dune
-              else Ok Dune_package.Or_meta.Use_meta
+              else Memo.return (Ok Dune_package.Or_meta.Use_meta)
             in
             match exists with
             | Error e ->
@@ -641,14 +641,11 @@ let all_packages t =
            (Dune_package.Entry.name a)
            (Dune_package.Entry.name b))
 
-let create ~paths ~(lib_config : Lib_config.t) : t =
+let create ~paths ~(lib_config : Lib_config.t) : t Memo.t =
   let stdlib_dir = lib_config.stdlib_dir in
   let version = lib_config.ocaml_version in
-  { DB.stdlib_dir
-  ; paths
-  ; builtins = Meta.builtins ~stdlib_dir ~version
-  ; lib_config
-  }
+  let+ builtins = Meta.builtins ~stdlib_dir ~version in
+  { DB.stdlib_dir; paths; builtins; lib_config }
 
 let all_broken_packages t =
   let+ packages = load_all_packages t in

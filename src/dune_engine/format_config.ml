@@ -124,7 +124,8 @@ let disabled =
   { loc = Loc.none; enabled_for = Enabled_for.Only Language.Set.empty }
 
 let field ~since =
-  field_o "formatting" (Dune_lang.Syntax.since Stanza.syntax since >>> dune2_dec)
+  field_o "formatting"
+    (Dune_lang.Syntax.since Dune_lang.Stanza.syntax since >>> dune2_dec)
 
 let is_empty = function
   | { enabled_for = Enabled_for.Only l; _ } -> Language.Set.is_empty l

@@ -3,7 +3,7 @@ open Import
 let latest_lang_version =
   ( (let+ () = Term.const () in
      print_endline
-       (Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+       (Dune_lang.Syntax.greatest_supported_version Stanza.syntax
        |> Dune_lang.Syntax.Version.to_string))
   , Term.info "latest-lang-version" )
 

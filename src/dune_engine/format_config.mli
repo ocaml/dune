@@ -29,7 +29,7 @@ val includes : t -> Language.t -> bool
 val is_empty : t -> bool
 
 (** Parse arguments for the 1.x extension. *)
-val dparse_args : (t * Stanza.Parser.t list) Dune_lang.Decoder.t
+val dparse_args : (t * Dune_lang.Stanza.Parser.t list) Dune_lang.Decoder.t
 
 val to_dyn : t -> Dyn.t
 

@@ -1,0 +1,3 @@
+(executable
+ (name main)
+ (preprocess (action (run pp/pp.exe %{input-file}))))

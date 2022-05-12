@@ -1,9 +1,6 @@
-open! Dune_engine
-open! Stdune
 open Import
 module Menhir_rules = Menhir
 open Dune_file
-open! No_io
 open Memo.O
 
 let loc_of_dune_file st_dir =

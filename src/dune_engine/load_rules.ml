@@ -906,7 +906,7 @@ let all_direct_targets () =
           load_dir
             ~dir:
               (Path.build
-                 (Path.Build.append_source ctx.Build_context.build_dir
+                 (Path.Build.append_source ctx.build_dir
                     (Source_tree.Dir.path dir)))
           >>| function
           | External _ | Source _ -> All_targets.empty

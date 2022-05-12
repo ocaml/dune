@@ -1,4 +1,3 @@
-open! Dune_engine
 open Import
 
 (** This module loads and validates foreign sources from directories. *)

@@ -43,7 +43,7 @@ let term =
     let docv = "VERSION" in
     let doc = "Which version of Dune language to use." in
     let default =
-      Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+      Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax
     in
     Arg.(value & opt version default & info [ "dune-version" ] ~docv ~doc)
   in

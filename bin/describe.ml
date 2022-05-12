@@ -530,6 +530,81 @@ module Opam_files = struct
            Dyn.Tuple [ String (Path.to_string opam_file); String contents ]))
 end
 
+module Preprocess = struct
+  let pp_with_ocamlc sctx project pp_file =
+    let open Dune_engine in
+    let dump_file =
+      Path.map_extension pp_file ~f:(fun ext ->
+          let dialect =
+            Dialect.DB.find_by_extension (Dune_project.dialects project) ext
+          in
+          match dialect with
+          | None ->
+            User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
+          | Some (_, kind) -> (
+            let open Import.Ml_kind in
+            match kind with
+            | Intf -> ".cmi.dump"
+            | Impl -> ".cmo.dump"))
+    in
+    let open Fiber.O in
+    let+ () =
+      Process.run
+        ~env:(Super_context.context_env sctx)
+        Process.Strict (Super_context.context sctx).ocamlc
+        [ "-stop-after"
+        ; "parsing"
+        ; "-dsource"
+        ; Path.to_string pp_file
+        ; "-dump-into-file"
+        ]
+    in
+    if not (Path.exists dump_file && Path.is_file dump_file) then
+      User_error.raise
+        [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]
+    else Io.cat dump_file;
+    Path.unlink_no_err dump_file;
+    ()
+
+  let get_pped_file super_context file =
+    let open Memo.O in
+    let context = Super_context.context super_context in
+    let in_build_dir file =
+      file |> Path.to_string
+      |> Path.Build.relative context.build_dir
+      |> Path.build
+    in
+    let file =
+      if String.is_empty file then
+        User_error.raise [ Pp.textf "no file is given" ]
+      else Path.of_string file |> in_build_dir
+    in
+    let pp_file = file |> Path.map_extension ~f:(fun ext -> ".pp" ^ ext) in
+    Build_system.file_exists pp_file >>= function
+    | true ->
+      let* _digest = Build_system.build_file pp_file in
+      let+ project =
+        Dune_engine.Source_tree.root () >>| Dune_engine.Source_tree.Dir.project
+      in
+      Ok (project, pp_file)
+    | false -> (
+      Build_system.file_exists file >>= function
+      | true ->
+        let+ _digest = Build_system.build_file file in
+        Error file
+      | false ->
+        User_error.raise [ Pp.textf "%s does not exist" (Path.to_string file) ])
+
+  let run super_context file =
+    let open Memo.O in
+    let* result = get_pped_file super_context file in
+    match result with
+    | Error file -> Io.cat file |> Memo.return
+    | Ok (project, file) ->
+      pp_with_ocamlc super_context project file
+      |> Memo.of_non_reproducible_fiber
+end
+
 (* What to describe. To determine what to describe, we convert the positional
    arguments of the command line to a list of atoms and we parse it using the
    regular [Dune_lang.Decoder].
@@ -541,51 +616,75 @@ module What = struct
   type t =
     | Workspace
     | Opam_files
+    | Pp of string
 
   let default = Workspace
 
-  (* The list of command names, their documentation, and their tag *)
-  let args_with_docs : (string * string * t) list =
+  (* The list of command names, their args, their documentation, and their
+     parser *)
+  let parsers_with_docs :
+      (string * string list * string * t Dune_lang.Decoder.t) list =
+    let open Dune_lang.Decoder in
     [ ( "workspace"
+      , []
       , "prints a description of the workspace's structure"
-      , Workspace )
+      , return Workspace )
     ; ( "opam-files"
+      , []
       , "prints information about the Opam files that have been discovered"
-      , Opam_files )
+      , return Opam_files )
+    ; ( "pp"
+      , [ "FILE" ]
+      , "builds a given FILE and prints the preprocessed output"
+      , filename >>| fun s -> Pp s )
     ]
 
   (* The list of documentation strings (one for each command) *)
   let docs =
-    List.map args_with_docs ~f:(fun (stag, doc, _tag) ->
-        "$(b," ^ stag ^ ")" ^ " (" ^ doc ^ ")")
+    List.map parsers_with_docs ~f:(fun (stag, args, doc, _parser) ->
+        let command = "$(b," ^ stag ^ ")" in
+        let args =
+          match args with
+          | [] -> " "
+          | _ -> " " ^ String.concat ~sep:" " args ^ " "
+        in
+        let desc = "(" ^ doc ^ ")" in
+        command ^ args ^ desc)
 
   (* The decoder for commands *)
   let parse =
     let open Dune_lang.Decoder in
     sum
-    @@ List.map ~f:(fun (stag, _doc, tag) -> (stag, return tag)) args_with_docs
+    @@ List.map
+         ~f:(fun (stag, _args, _doc, parser) -> (stag, parser))
+         parsers_with_docs
 
   let parse ~lang args =
     match args with
     | [] -> default
     | _ ->
-      let parse =
-        Dune_lang.Syntax.set Dune_engine.Stanza.syntax (Active lang) parse
-      in
+      let parse = Dune_lang.Syntax.set Stanza.syntax (Active lang) parse in
       let ast =
         Dune_lang.Ast.add_loc ~loc:Loc.none
           (List (List.map args ~f:Dune_lang.atom_or_quoted_string))
       in
       Dune_lang.Decoder.parse parse Univ_map.empty ast
 
-  let describe t options setup context =
+  let describe t options setup super_context =
+    let some = Memo.map ~f:(fun x -> Some x) in
     match t with
-    | Opam_files -> Opam_files.get ()
+    | Opam_files -> Opam_files.get () |> some
     | Workspace ->
+      let context = Super_context.context super_context in
       let open Memo.O in
       Crawl.workspace options setup context
       >>| Sanitize_for_tests.Workspace.sanitize context
       >>| Descr.Workspace.to_dyn options
+      |> some
+    | Pp file ->
+      let open Memo.O in
+      let+ () = Preprocess.run super_context file in
+      None
 end
 
 module Options = struct
@@ -674,9 +773,7 @@ let print_as_sexp dyn =
     |> Dune_lang.Ast.add_loc ~loc:Loc.none
     |> Dune_lang.Cst.concrete
   in
-  let version =
-    Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
-  in
+  let version = Dune_lang.Syntax.greatest_supported_version Stanza.syntax in
   Pp.to_fmt Stdlib.Format.std_formatter
     (Dune_lang.Format.pp_top_sexps ~version [ cst ])
 
@@ -702,13 +799,16 @@ let term : unit Term.t =
       let open Fiber.O in
       let* setup = Import.Main.setup () in
       let* setup = Memo.run setup in
-      let context = Import.Main.find_context_exn setup ~name:context_name in
+      let super_context =
+        Import.Main.find_scontext_exn setup ~name:context_name
+      in
       let+ res =
-        Build_system.run (fun () -> What.describe what options setup context)
+        Build_system.run (fun () ->
+            What.describe what options setup super_context)
       in
       match res with
-      | Error `Already_reported -> ()
-      | Ok res -> (
+      | Error `Already_reported | Ok None -> ()
+      | Ok (Some res) -> (
         match format with
         | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
         | Sexp -> print_as_sexp res))

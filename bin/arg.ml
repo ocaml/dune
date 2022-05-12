@@ -1,7 +1,11 @@
 open Stdune
-open Dune_engine
-open Dune_rules
 include Cmdliner.Arg
+module Stanza = Dune_lang.Stanza
+module Package = Dune_engine.Package
+module String_with_vars = Dune_engine.String_with_vars
+module Pform = Dune_engine.Pform
+module Dep_conf = Dune_rules.Dep_conf
+module Context_name = Dune_engine.Context_name
 
 let package_name = conv Package.Name.conv
 

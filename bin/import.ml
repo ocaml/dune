@@ -2,10 +2,10 @@ open Stdune
 open Dune_engine
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
+module Stanza = Dune_lang.Stanza
 module Super_context = Dune_rules.Super_context
 module Context = Dune_rules.Context
 module Config = Dune_util.Config
-module Local_install_path = Dune_engine.Local_install_path
 module Lib_name = Dune_engine.Lib_name
 module Build_config = Dune_engine.Build_config
 module Build_system = Dune_engine.Build_system

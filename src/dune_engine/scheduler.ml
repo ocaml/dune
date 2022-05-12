@@ -1,6 +1,7 @@
 open! Stdune
 open Import
 open Fiber.O
+module Dune_rpc = Dune_rpc_private
 
 module Config = struct
   include Config

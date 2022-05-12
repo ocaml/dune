@@ -11,12 +11,13 @@ let local_libraries =
   ; ("vendor/csexp/src", Some "Csexp", false, None)
   ; ("otherlibs/stdune", Some "Stdune", false, None)
   ; ("src/dune_graph", Some "Dune_graph", false, None)
+  ; ("otherlibs/xdg", Some "Xdg", false, None)
+  ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)
   ; ("src/fiber", Some "Fiber", false, None)
   ; ("src/memo", Some "Memo", false, None)
-  ; ("otherlibs/xdg", Some "Xdg", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
@@ -33,10 +34,8 @@ let local_libraries =
   ; ("src/section", Some "Dune_section", false, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
-  ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
-  ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/thread_worker", Some "Thread_worker", false, None)
-  ; ("src/ocamlc_loc", Some "Ocamlc_loc", false, None)
+  ; ("otherlibs/ocamlc_loc/src", Some "Ocamlc_loc", false, None)
   ; ("src/fsevents", Some "Fsevents", false, None)
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)
   ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false,
@@ -50,6 +49,7 @@ let local_libraries =
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
+  ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ]
 

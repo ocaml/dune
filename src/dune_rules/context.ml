@@ -581,10 +581,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             | Some _ as s -> Memo.return s
             | None -> Memo.Lazy.force make)
     in
-    let t =
+    let* t =
       let build_context =
         Build_context.create ~name ~host:(Option.map host ~f:(fun c -> c.name))
       in
+      let+ findlib = Findlib.create ~paths:findlib_paths ~lib_config in
       { name
       ; implicit
       ; kind
@@ -608,7 +609,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocamlmklib
       ; ocamlobjinfo
       ; env
-      ; findlib = Findlib.create ~paths:findlib_paths ~lib_config
+      ; findlib
       ; findlib_toolchain
       ; default_ocamlpath
       ; arch_sixtyfour

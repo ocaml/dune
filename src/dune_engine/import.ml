@@ -6,7 +6,6 @@ module Stringlike_intf = Dune_util.Stringlike_intf
 module Persistent = Dune_util.Persistent
 module Value = Dune_util.Value
 module Ml_kind = Dune_util.Ml_kind
-module Dune_rpc = Dune_rpc_private
 module Config = Dune_util.Config
 
 module Path = struct

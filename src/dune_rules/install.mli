@@ -1,5 +1,5 @@
 (** Opam install file *)
-open! Stdune
+open Import
 
 module Dst : sig
   type t
@@ -145,12 +145,6 @@ module Entry_with_site : sig
     ; dst : Dst.t
     ; section : Section_with_site.t
     }
-end
-
-module Metadata : sig
-  type 'src t =
-    | DefaultEntry of 'src Entry.t
-    | UserDefinedEntry of 'src Entry.t
 end
 
 val gen_install_file : Path.t Entry.t list -> string

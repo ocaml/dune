@@ -1,10 +1,7 @@
-open! Dune_engine
-open! Stdune
 open Import
 module Menhir_rules = Menhir
 module Toplevel_rules = Toplevel.Stanza
 open Dune_file
-open! No_io
 open Memo.O
 
 module For_stanza : sig

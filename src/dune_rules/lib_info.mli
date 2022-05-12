@@ -1,5 +1,6 @@
 (** Raw library descriptions *)
-open! Dune_engine
+
+open Import
 
 (** This module regroup all information about a library. We call such
     descriptions "raw" as the names, such as the names of dependencies are plain

@@ -1,6 +1,0 @@
-(rule
- (alias no-alerts-please)
- (deps vendored/lib.cmxa)
- (action (echo "There should be no OCaml alerts!")))
-
-(vendored_dirs vendored)

@@ -14,6 +14,12 @@ Setup
 
   $ cat >dune <<EOF
   > (library
+  >  (name dummy_ppx)
+  >  (kind ppx_rewriter)
+  >  (libraries ppxlib)
+  >  (modules dummy_ppx))
+  > 
+  > (library
   >  (public_name foo)
   >  (libraries foo.x)
   >  (modules foo))
@@ -30,7 +36,7 @@ Setup
   > 
   > (library
   >  (name bar)
-  >  (preprocess (pps ppx_inline_test))
+  >  (preprocess (pps dummy_ppx))
   >  (modules bar bar2))
   > 
   > (executable
@@ -47,12 +53,12 @@ Setup
   > (library
   >  (name per_module_pp_lib)
   >  (modules pp1 pp2)
-  >  (preprocess (per_module ((pps ppx_inline_test) pp2))))
+  >  (preprocess (per_module ((pps dummy_ppx) pp2))))
   > 
   > (executable
   >  (name per_module_pp_exe)
   >  (modules per_module_pp_exe pp3 pp4)
-  >  (preprocess (per_module ((pps ppx_inline_test) pp4))))
+  >  (preprocess (per_module ((pps dummy_ppx) pp4))))
   > 
   > (library
   >  (name per_module_action_lib)
@@ -65,13 +71,21 @@ Setup
   >  (preprocess (per_module ((action (cat %{input-file})) action4))))
   > EOF
 
+  $ cat >dummy_ppx.ml <<EOF
+  > (* dummy PPX rewriter, for use in tests *)
+  > let () =
+  >   Ppxlib.Driver.register_transformation
+  >     "dummy"
+  >     ~impl:(fun s -> s)
+  > EOF
+
   $ touch foo.ml
   $ touch foo_x.ml
   $ touch main.ml
 
   $ cat >bar.ml <<EOF
   > let x = Bar2.x
-  > let%test _ = (x = 42)
+  > let%dummy _ = (x = 42)
   > EOF
 
   $ cat >bar2.ml <<EOF
@@ -115,7 +129,7 @@ Setup
   > EOF
 
   $ cat >pp2.ml <<EOF
-  > let%test _ = (Pp1.x = 0)
+  > let%dummy _ = (Pp1.x = 0)
   > let y = 0
   > EOF
 
@@ -217,7 +231,7 @@ not stable across different setups.
      (include_dirs (_build/default/.main3.eobjs/byte))))
    (executables
     ((names (per_module_pp_exe))
-     (requires (55b023c301c18e021a22384b996d66af))
+     (requires ())
      (modules
       (((name Pp4)
         (impl (_build/default/pp4.ml))
@@ -245,7 +259,7 @@ not stable across different setups.
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
      (local true)
-     (requires (55b023c301c18e021a22384b996d66af))
+     (requires ())
      (source_dir _build/default)
      (modules
       (((name Bar2)
@@ -265,42 +279,6 @@ not stable across different setups.
         (cmti ()))))
      (include_dirs (_build/default/.bar.objs/byte))))
    (library
-    ((name base)
-     (uid 46774e2b7a404647f12956126bd28f95)
-     (local false)
-     (requires
-      (3803213fe04d38cea3157f466b9a8747
-       ce20dcd0c4bae81524a96662594adde2
-       449445be7a24ce51e119d57e9e255d3f
-       b91de1a8b6b882f5b4726d5b1f2ece6e))
-     (source_dir /FINDLIB//base)
-     (modules ())
-     (include_dirs (/FINDLIB//base))))
-   (library
-    ((name base.base_internalhash_types)
-     (uid 3803213fe04d38cea3157f466b9a8747)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//base/base_internalhash_types)
-     (modules ())
-     (include_dirs (/FINDLIB//base/base_internalhash_types))))
-   (library
-    ((name base.caml)
-     (uid ce20dcd0c4bae81524a96662594adde2)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//base/caml)
-     (modules ())
-     (include_dirs (/FINDLIB//base/caml))))
-   (library
-    ((name base.shadow_stdlib)
-     (uid b91de1a8b6b882f5b4726d5b1f2ece6e)
-     (local false)
-     (requires (ce20dcd0c4bae81524a96662594adde2))
-     (source_dir /FINDLIB//base/shadow_stdlib)
-     (modules ())
-     (include_dirs (/FINDLIB//base/shadow_stdlib))))
-   (library
     ((name cmdliner)
      (uid c480a7c584d174c22d86dbdb79515d7d)
      (local false)
@@ -308,6 +286,28 @@ not stable across different setups.
      (source_dir /FINDLIB//cmdliner)
      (modules ())
      (include_dirs (/FINDLIB//cmdliner))))
+   (library
+    ((name compiler-libs.common)
+     (uid c9367091ddd9a70d99fc22ede348f17c)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//ocaml/compiler-libs)
+     (modules ())
+     (include_dirs (/FINDLIB//ocaml/compiler-libs))))
+   (library
+    ((name dummy_ppx)
+     (uid 8773da23dc506fbda63b4ff411075fb9)
+     (local true)
+     (requires
+      (ba85adfb1c97e7d7af3df35b16b2fc0d 2c61db8e94cb08e0fe642152aee8121a))
+     (source_dir _build/default)
+     (modules
+      (((name Dummy_ppx)
+        (impl (_build/default/dummy_ppx.ml))
+        (intf ())
+        (cmt (_build/default/.dummy_ppx.objs/byte/dummy_ppx.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.dummy_ppx.objs/byte))))
    (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
@@ -335,13 +335,21 @@ not stable across different setups.
         (cmti ()))))
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
-    ((name jane-street-headers)
-     (uid 73ad4e016c34da2f2d4a1cff930ac883)
+    ((name ocaml-compiler-libs.common)
+     (uid 1f2b5eb300ea716920494385a31bb5fb)
+     (local false)
+     (requires (c9367091ddd9a70d99fc22ede348f17c))
+     (source_dir /FINDLIB//ocaml-compiler-libs/common)
+     (modules ())
+     (include_dirs (/FINDLIB//ocaml-compiler-libs/common))))
+   (library
+    ((name ocaml-compiler-libs.shadow)
+     (uid 2363fd46dac995a1c79679dfa1a9881b)
      (local false)
      (requires ())
-     (source_dir /FINDLIB//jane-street-headers)
+     (source_dir /FINDLIB//ocaml-compiler-libs/shadow)
      (modules ())
-     (include_dirs (/FINDLIB//jane-street-headers))))
+     (include_dirs (/FINDLIB//ocaml-compiler-libs/shadow))))
    (library
     ((name per_module_action_exe)
      (uid 241344d239919555633eb26a01215e22)
@@ -404,7 +412,7 @@ not stable across different setups.
     ((name per_module_pp_lib)
      (uid 7fc36e5c5f46521a6842f4167e4c75b2)
      (local true)
-     (requires (55b023c301c18e021a22384b996d66af))
+     (requires ())
      (source_dir _build/default)
      (modules
       (((name Pp2)
@@ -427,59 +435,73 @@ not stable across different setups.
         (cmti ()))))
      (include_dirs (_build/default/.per_module_pp_lib.objs/byte))))
    (library
-    ((name ppx_compare.runtime-lib)
-     (uid 708bf5748829e3636236f5d8c610f430)
-     (local false)
-     (requires (46774e2b7a404647f12956126bd28f95))
-     (source_dir /FINDLIB//ppx_compare/runtime-lib)
-     (modules ())
-     (include_dirs (/FINDLIB//ppx_compare/runtime-lib))))
-   (library
-    ((name ppx_enumerate.runtime-lib)
-     (uid 2c6f959289bddfd3b3ada8f64a3ca5d8)
+    ((name ppx_derivers)
+     (uid e68a558facd1546b51c7abdbf6aed1cb)
      (local false)
      (requires ())
-     (source_dir /FINDLIB//ppx_enumerate/runtime-lib)
+     (source_dir /FINDLIB//ppx_derivers)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_enumerate/runtime-lib))))
+     (include_dirs (/FINDLIB//ppx_derivers))))
    (library
-    ((name ppx_hash.runtime-lib)
-     (uid 92685e7ac0dd1fa9cd96be221032349e)
+    ((name ppxlib)
+     (uid 2c61db8e94cb08e0fe642152aee8121a)
      (local false)
      (requires
-      (46774e2b7a404647f12956126bd28f95
-       475f353b2705e034b0287d7ffe9e5225
-       708bf5748829e3636236f5d8c610f430))
-     (source_dir /FINDLIB//ppx_hash/runtime-lib)
+      (ba85adfb1c97e7d7af3df35b16b2fc0d
+       2363fd46dac995a1c79679dfa1a9881b
+       5014e215e204cf8da6c32644cda1b31e
+       43b7cbe1f93f4f502ec614971027cff9
+       e68a558facd1546b51c7abdbf6aed1cb
+       24f4eb12e3ff51b310dbf7443c6087be
+       5ae836dcdead11d5c16815297c5a1ae6
+       249b2edaf3cc552a247667041bb5f015
+       449445be7a24ce51e119d57e9e255d3f))
+     (source_dir /FINDLIB//ppxlib)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_hash/runtime-lib))))
+     (include_dirs (/FINDLIB//ppxlib))))
    (library
-    ((name ppx_inline_test.config)
-     (uid 46e75006466e7a020139d86575978cb3)
+    ((name ppxlib.ast)
+     (uid ba85adfb1c97e7d7af3df35b16b2fc0d)
+     (local false)
+     (requires
+      (5014e215e204cf8da6c32644cda1b31e 249b2edaf3cc552a247667041bb5f015))
+     (source_dir /FINDLIB//ppxlib/ast)
+     (modules ())
+     (include_dirs (/FINDLIB//ppxlib/ast))))
+   (library
+    ((name ppxlib.astlib)
+     (uid 5014e215e204cf8da6c32644cda1b31e)
+     (local false)
+     (requires
+      (1f2b5eb300ea716920494385a31bb5fb c9367091ddd9a70d99fc22ede348f17c))
+     (source_dir /FINDLIB//ppxlib/astlib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppxlib/astlib))))
+   (library
+    ((name ppxlib.print_diff)
+     (uid 43b7cbe1f93f4f502ec614971027cff9)
      (local false)
      (requires ())
-     (source_dir /FINDLIB//ppx_inline_test/config)
+     (source_dir /FINDLIB//ppxlib/print_diff)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_inline_test/config))))
+     (include_dirs (/FINDLIB//ppxlib/print_diff))))
    (library
-    ((name ppx_inline_test.runtime-lib)
-     (uid 55b023c301c18e021a22384b996d66af)
+    ((name ppxlib.stdppx)
+     (uid 5ae836dcdead11d5c16815297c5a1ae6)
      (local false)
      (requires
-      (46774e2b7a404647f12956126bd28f95
-       46e75006466e7a020139d86575978cb3
-       66c5927ddd01193cdcfac8ce97e58e63))
-     (source_dir /FINDLIB//ppx_inline_test/runtime-lib)
+      (449445be7a24ce51e119d57e9e255d3f 249b2edaf3cc552a247667041bb5f015))
+     (source_dir /FINDLIB//ppxlib/stdppx)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_inline_test/runtime-lib))))
+     (include_dirs (/FINDLIB//ppxlib/stdppx))))
    (library
-    ((name ppx_sexp_conv.runtime-lib)
-     (uid 475f353b2705e034b0287d7ffe9e5225)
+    ((name ppxlib.traverse_builtins)
+     (uid 24f4eb12e3ff51b310dbf7443c6087be)
      (local false)
-     (requires (449445be7a24ce51e119d57e9e255d3f))
-     (source_dir /FINDLIB//ppx_sexp_conv/runtime-lib)
+     (requires ())
+     (source_dir /FINDLIB//ppxlib/traverse_builtins)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_sexp_conv/runtime-lib))))
+     (include_dirs (/FINDLIB//ppxlib/traverse_builtins))))
    (library
     ((name sexplib0)
      (uid 449445be7a24ce51e119d57e9e255d3f)
@@ -489,19 +511,13 @@ not stable across different setups.
      (modules ())
      (include_dirs (/FINDLIB//sexplib0))))
    (library
-    ((name time_now)
-     (uid 66c5927ddd01193cdcfac8ce97e58e63)
+    ((name stdlib-shims)
+     (uid 249b2edaf3cc552a247667041bb5f015)
      (local false)
-     (requires
-      (46774e2b7a404647f12956126bd28f95
-       73ad4e016c34da2f2d4a1cff930ac883
-       475f353b2705e034b0287d7ffe9e5225
-       708bf5748829e3636236f5d8c610f430
-       2c6f959289bddfd3b3ada8f64a3ca5d8
-       92685e7ac0dd1fa9cd96be221032349e))
-     (source_dir /FINDLIB//time_now)
+     (requires ())
+     (source_dir /FINDLIB//stdlib-shims)
      (modules ())
-     (include_dirs (/FINDLIB//time_now)))))
+     (include_dirs (/FINDLIB//stdlib-shims)))))
 
   $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests
   ((executables
@@ -585,7 +601,7 @@ not stable across different setups.
      (include_dirs (_build/default/.main3.eobjs/byte))))
    (executables
     ((names (per_module_pp_exe))
-     (requires (55b023c301c18e021a22384b996d66af))
+     (requires ())
      (modules
       (((name Pp4)
         (impl (_build/default/pp4.ml))
@@ -626,7 +642,7 @@ not stable across different setups.
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
      (local true)
-     (requires (55b023c301c18e021a22384b996d66af))
+     (requires ())
      (source_dir _build/default)
      (modules
       (((name Bar2)
@@ -655,42 +671,6 @@ not stable across different setups.
           (for_impl ()))))))
      (include_dirs (_build/default/.bar.objs/byte))))
    (library
-    ((name base)
-     (uid 46774e2b7a404647f12956126bd28f95)
-     (local false)
-     (requires
-      (3803213fe04d38cea3157f466b9a8747
-       ce20dcd0c4bae81524a96662594adde2
-       449445be7a24ce51e119d57e9e255d3f
-       b91de1a8b6b882f5b4726d5b1f2ece6e))
-     (source_dir /FINDLIB//base)
-     (modules ())
-     (include_dirs (/FINDLIB//base))))
-   (library
-    ((name base.base_internalhash_types)
-     (uid 3803213fe04d38cea3157f466b9a8747)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//base/base_internalhash_types)
-     (modules ())
-     (include_dirs (/FINDLIB//base/base_internalhash_types))))
-   (library
-    ((name base.caml)
-     (uid ce20dcd0c4bae81524a96662594adde2)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//base/caml)
-     (modules ())
-     (include_dirs (/FINDLIB//base/caml))))
-   (library
-    ((name base.shadow_stdlib)
-     (uid b91de1a8b6b882f5b4726d5b1f2ece6e)
-     (local false)
-     (requires (ce20dcd0c4bae81524a96662594adde2))
-     (source_dir /FINDLIB//base/shadow_stdlib)
-     (modules ())
-     (include_dirs (/FINDLIB//base/shadow_stdlib))))
-   (library
     ((name cmdliner)
      (uid c480a7c584d174c22d86dbdb79515d7d)
      (local false)
@@ -698,6 +678,29 @@ not stable across different setups.
      (source_dir /FINDLIB//cmdliner)
      (modules ())
      (include_dirs (/FINDLIB//cmdliner))))
+   (library
+    ((name compiler-libs.common)
+     (uid c9367091ddd9a70d99fc22ede348f17c)
+     (local false)
+     (requires ())
+     (source_dir /FINDLIB//ocaml/compiler-libs)
+     (modules ())
+     (include_dirs (/FINDLIB//ocaml/compiler-libs))))
+   (library
+    ((name dummy_ppx)
+     (uid 8773da23dc506fbda63b4ff411075fb9)
+     (local true)
+     (requires
+      (ba85adfb1c97e7d7af3df35b16b2fc0d 2c61db8e94cb08e0fe642152aee8121a))
+     (source_dir _build/default)
+     (modules
+      (((name Dummy_ppx)
+        (impl (_build/default/dummy_ppx.ml))
+        (intf ())
+        (cmt (_build/default/.dummy_ppx.objs/byte/dummy_ppx.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/.dummy_ppx.objs/byte))))
    (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
@@ -727,13 +730,21 @@ not stable across different setups.
         (module_deps ((for_intf ()) (for_impl ()))))))
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
-    ((name jane-street-headers)
-     (uid 73ad4e016c34da2f2d4a1cff930ac883)
+    ((name ocaml-compiler-libs.common)
+     (uid 1f2b5eb300ea716920494385a31bb5fb)
+     (local false)
+     (requires (c9367091ddd9a70d99fc22ede348f17c))
+     (source_dir /FINDLIB//ocaml-compiler-libs/common)
+     (modules ())
+     (include_dirs (/FINDLIB//ocaml-compiler-libs/common))))
+   (library
+    ((name ocaml-compiler-libs.shadow)
+     (uid 2363fd46dac995a1c79679dfa1a9881b)
      (local false)
      (requires ())
-     (source_dir /FINDLIB//jane-street-headers)
+     (source_dir /FINDLIB//ocaml-compiler-libs/shadow)
      (modules ())
-     (include_dirs (/FINDLIB//jane-street-headers))))
+     (include_dirs (/FINDLIB//ocaml-compiler-libs/shadow))))
    (library
     ((name per_module_action_exe)
      (uid 241344d239919555633eb26a01215e22)
@@ -818,7 +829,7 @@ not stable across different setups.
     ((name per_module_pp_lib)
      (uid 7fc36e5c5f46521a6842f4167e4c75b2)
      (local true)
-     (requires (55b023c301c18e021a22384b996d66af))
+     (requires ())
      (source_dir _build/default)
      (modules
       (((name Pp2)
@@ -829,7 +840,7 @@ not stable across different setups.
         (cmti ())
         (module_deps
          ((for_intf ())
-          (for_impl (Pp1)))))
+          (for_impl ()))))
        ((name Pp1)
         (impl (_build/default/pp1.ml))
         (intf ())
@@ -850,59 +861,73 @@ not stable across different setups.
           (for_impl ()))))))
      (include_dirs (_build/default/.per_module_pp_lib.objs/byte))))
    (library
-    ((name ppx_compare.runtime-lib)
-     (uid 708bf5748829e3636236f5d8c610f430)
-     (local false)
-     (requires (46774e2b7a404647f12956126bd28f95))
-     (source_dir /FINDLIB//ppx_compare/runtime-lib)
-     (modules ())
-     (include_dirs (/FINDLIB//ppx_compare/runtime-lib))))
-   (library
-    ((name ppx_enumerate.runtime-lib)
-     (uid 2c6f959289bddfd3b3ada8f64a3ca5d8)
+    ((name ppx_derivers)
+     (uid e68a558facd1546b51c7abdbf6aed1cb)
      (local false)
      (requires ())
-     (source_dir /FINDLIB//ppx_enumerate/runtime-lib)
+     (source_dir /FINDLIB//ppx_derivers)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_enumerate/runtime-lib))))
+     (include_dirs (/FINDLIB//ppx_derivers))))
    (library
-    ((name ppx_hash.runtime-lib)
-     (uid 92685e7ac0dd1fa9cd96be221032349e)
+    ((name ppxlib)
+     (uid 2c61db8e94cb08e0fe642152aee8121a)
      (local false)
      (requires
-      (46774e2b7a404647f12956126bd28f95
-       475f353b2705e034b0287d7ffe9e5225
-       708bf5748829e3636236f5d8c610f430))
-     (source_dir /FINDLIB//ppx_hash/runtime-lib)
+      (ba85adfb1c97e7d7af3df35b16b2fc0d
+       2363fd46dac995a1c79679dfa1a9881b
+       5014e215e204cf8da6c32644cda1b31e
+       43b7cbe1f93f4f502ec614971027cff9
+       e68a558facd1546b51c7abdbf6aed1cb
+       24f4eb12e3ff51b310dbf7443c6087be
+       5ae836dcdead11d5c16815297c5a1ae6
+       249b2edaf3cc552a247667041bb5f015
+       449445be7a24ce51e119d57e9e255d3f))
+     (source_dir /FINDLIB//ppxlib)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_hash/runtime-lib))))
+     (include_dirs (/FINDLIB//ppxlib))))
    (library
-    ((name ppx_inline_test.config)
-     (uid 46e75006466e7a020139d86575978cb3)
+    ((name ppxlib.ast)
+     (uid ba85adfb1c97e7d7af3df35b16b2fc0d)
+     (local false)
+     (requires
+      (5014e215e204cf8da6c32644cda1b31e 249b2edaf3cc552a247667041bb5f015))
+     (source_dir /FINDLIB//ppxlib/ast)
+     (modules ())
+     (include_dirs (/FINDLIB//ppxlib/ast))))
+   (library
+    ((name ppxlib.astlib)
+     (uid 5014e215e204cf8da6c32644cda1b31e)
+     (local false)
+     (requires
+      (1f2b5eb300ea716920494385a31bb5fb c9367091ddd9a70d99fc22ede348f17c))
+     (source_dir /FINDLIB//ppxlib/astlib)
+     (modules ())
+     (include_dirs (/FINDLIB//ppxlib/astlib))))
+   (library
+    ((name ppxlib.print_diff)
+     (uid 43b7cbe1f93f4f502ec614971027cff9)
      (local false)
      (requires ())
-     (source_dir /FINDLIB//ppx_inline_test/config)
+     (source_dir /FINDLIB//ppxlib/print_diff)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_inline_test/config))))
+     (include_dirs (/FINDLIB//ppxlib/print_diff))))
    (library
-    ((name ppx_inline_test.runtime-lib)
-     (uid 55b023c301c18e021a22384b996d66af)
+    ((name ppxlib.stdppx)
+     (uid 5ae836dcdead11d5c16815297c5a1ae6)
      (local false)
      (requires
-      (46774e2b7a404647f12956126bd28f95
-       46e75006466e7a020139d86575978cb3
-       66c5927ddd01193cdcfac8ce97e58e63))
-     (source_dir /FINDLIB//ppx_inline_test/runtime-lib)
+      (449445be7a24ce51e119d57e9e255d3f 249b2edaf3cc552a247667041bb5f015))
+     (source_dir /FINDLIB//ppxlib/stdppx)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_inline_test/runtime-lib))))
+     (include_dirs (/FINDLIB//ppxlib/stdppx))))
    (library
-    ((name ppx_sexp_conv.runtime-lib)
-     (uid 475f353b2705e034b0287d7ffe9e5225)
+    ((name ppxlib.traverse_builtins)
+     (uid 24f4eb12e3ff51b310dbf7443c6087be)
      (local false)
-     (requires (449445be7a24ce51e119d57e9e255d3f))
-     (source_dir /FINDLIB//ppx_sexp_conv/runtime-lib)
+     (requires ())
+     (source_dir /FINDLIB//ppxlib/traverse_builtins)
      (modules ())
-     (include_dirs (/FINDLIB//ppx_sexp_conv/runtime-lib))))
+     (include_dirs (/FINDLIB//ppxlib/traverse_builtins))))
    (library
     ((name sexplib0)
      (uid 449445be7a24ce51e119d57e9e255d3f)
@@ -912,19 +937,13 @@ not stable across different setups.
      (modules ())
      (include_dirs (/FINDLIB//sexplib0))))
    (library
-    ((name time_now)
-     (uid 66c5927ddd01193cdcfac8ce97e58e63)
+    ((name stdlib-shims)
+     (uid 249b2edaf3cc552a247667041bb5f015)
      (local false)
-     (requires
-      (46774e2b7a404647f12956126bd28f95
-       73ad4e016c34da2f2d4a1cff930ac883
-       475f353b2705e034b0287d7ffe9e5225
-       708bf5748829e3636236f5d8c610f430
-       2c6f959289bddfd3b3ada8f64a3ca5d8
-       92685e7ac0dd1fa9cd96be221032349e))
-     (source_dir /FINDLIB//time_now)
+     (requires ())
+     (source_dir /FINDLIB//stdlib-shims)
      (modules ())
-     (include_dirs (/FINDLIB//time_now)))))
+     (include_dirs (/FINDLIB//stdlib-shims)))))
 
 
 Test other formats

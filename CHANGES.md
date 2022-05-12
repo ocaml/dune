@@ -1,6 +1,10 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Fixed ``dune describe --with-deps``, that crashed when some
+  preprocessing was required in a dune file using ``per_module``.
+  (#5680, @esope)
+
 - Report dune file evaluation errors concurrently. In the same way we report
   build errors. (#5655, @rgrinberg)
 

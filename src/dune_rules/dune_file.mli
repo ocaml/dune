@@ -301,7 +301,7 @@ module Rule : sig
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
     ; patch_back_source_tree : bool
-    ; locks : String_with_vars.t list
+    ; locks : Locks.t
     ; loc : Loc.t
     ; enabled_if : Blang.t
     ; alias : Alias.Name.t option
@@ -314,7 +314,7 @@ module Alias_conf : sig
     { name : Alias.Name.t
     ; deps : Dep_conf.t Bindings.t
     ; action : (Loc.t * Action_dune_lang.t) option
-    ; locks : String_with_vars.t list
+    ; locks : Locks.t
     ; package : Package.t option
     ; enabled_if : Blang.t
     ; loc : Loc.t
@@ -332,7 +332,7 @@ end
 module Tests : sig
   type t =
     { exes : Executables.t
-    ; locks : String_with_vars.t list
+    ; locks : Locks.t
     ; package : Package.t option
     ; deps : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t

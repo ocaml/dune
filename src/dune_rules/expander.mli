@@ -145,3 +145,6 @@ val map_exe : t -> Path.t -> Path.t
 val artifacts : t -> Artifacts.Bin.t
 
 val find_package : t -> Package.Name.t -> any_package option Memo.t
+
+val expand_locks :
+  base:[ `Of_expander | `This of Path.t ] -> t -> Locks.t -> Path.t list Memo.t

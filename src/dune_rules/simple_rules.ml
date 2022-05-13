@@ -51,7 +51,7 @@ let rule_kind ~(rule : Rule.t) ~(action : _ Action_builder.With_targets.t) =
     | Some target -> Alias_with_targets (alias, target))
 
 let interpret_and_add_locks ~expander locks action =
-  let+ locks = Memo.List.map locks ~f:(Expander.No_deps.expand_path expander) in
+  let+ locks = Expander.expand_locks expander ~base:`Of_expander locks in
   match locks with
   | [] -> action
   | _ ->

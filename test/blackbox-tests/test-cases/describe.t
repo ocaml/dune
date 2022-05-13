@@ -13,6 +13,13 @@ Setup
   > EOF
 
   $ cat >dune <<EOF
+  > (env
+  >  (_ (binaries refmt.exe)))
+  > 
+  > (executable
+  >  (name refmt)
+  >  (modules refmt))
+  > 
   > (library
   >  (name dummy_ppx)
   >  (kind ppx_rewriter)
@@ -69,7 +76,19 @@ Setup
   >  (name per_module_action_exe)
   >  (modules per_module_action_exe action3 action4)
   >  (preprocess (per_module ((action (cat %{input-file})) action4))))
+  > 
+  > (executable
+  >  (name re_exe)
+  >  (modules re_exe re_exe1 re_exe2)
+  >  (preprocess (per_module ((pps dummy_ppx) re_exe1))))
+  > 
+  > (library
+  >  (name re_lib)
+  >  (modules re_lib1 re_lib2)
+  >  (preprocess (per_module ((pps dummy_ppx) re_lib1))))
   > EOF
+
+  $ touch refmt.ml
 
   $ cat >dummy_ppx.ml <<EOF
   > (* dummy PPX rewriter, for use in tests *)
@@ -162,6 +181,10 @@ Setup
   > let () = assert (Action3.x = Action4.y)
   > EOF
 
+  $ touch re_exe.re re_exe1.re re_exe1.rei re_exe2.re
+
+  $ touch re_lib1.re re_lib2.re re_lib2.rei
+
 Describe various things
 -----------------------
 
@@ -173,6 +196,16 @@ not stable across different setups.
 
   $ dune describe workspace --lang 0.1 --sanitize-for-tests
   ((executables
+    ((names (refmt))
+     (requires ())
+     (modules
+      (((name Refmt)
+        (impl (_build/default/refmt.ml))
+        (intf ())
+        (cmt (_build/default/.refmt.eobjs/byte/dune__exe__Refmt.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.refmt.eobjs/byte))))
+   (executables
     ((names (main))
      (requires
       (c17373aee51bab94097b4b7818553cf3 5dd4bd87ad37b4f5713085aff4bee9c9))
@@ -255,6 +288,31 @@ not stable across different setups.
         (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe.cmt))
         (cmti ()))))
      (include_dirs (_build/default/.per_module_pp_exe.eobjs/byte))))
+   (executables
+    ((names (re_exe))
+     (requires ())
+     (modules
+      (((name Re_exe2)
+        (impl (_build/default/re_exe2.re))
+        (intf ())
+        (cmt (_build/default/.re_exe.eobjs/byte/dune__exe__Re_exe2.cmt))
+        (cmti ()))
+       ((name Re_exe1)
+        (impl (_build/default/re_exe1.re))
+        (intf (_build/default/re_exe1.rei))
+        (cmt (_build/default/.re_exe.eobjs/byte/dune__exe__Re_exe1.cmt))
+        (cmti (_build/default/.re_exe.eobjs/byte/dune__exe__Re_exe1.cmti)))
+       ((name Re_exe)
+        (impl (_build/default/re_exe.re))
+        (intf ())
+        (cmt (_build/default/.re_exe.eobjs/byte/dune__exe__Re_exe.cmt))
+        (cmti ()))
+       ((name Dune__exe)
+        (impl (_build/default/.re_exe.eobjs/dune__exe.ml-gen))
+        (intf ())
+        (cmt (_build/default/.re_exe.eobjs/byte/dune__exe.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.re_exe.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -503,6 +561,29 @@ not stable across different setups.
      (modules ())
      (include_dirs (/FINDLIB//ppxlib/traverse_builtins))))
    (library
+    ((name re_lib)
+     (uid 798aa1770524e0cedf34956792e4feac)
+     (local true)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+      (((name Re_lib2)
+        (impl (_build/default/re_lib2.re))
+        (intf (_build/default/re_lib2.rei))
+        (cmt (_build/default/.re_lib.objs/byte/re_lib__Re_lib2.cmt))
+        (cmti (_build/default/.re_lib.objs/byte/re_lib__Re_lib2.cmti)))
+       ((name Re_lib1)
+        (impl (_build/default/re_lib1.re))
+        (intf ())
+        (cmt (_build/default/.re_lib.objs/byte/re_lib__Re_lib1.cmt))
+        (cmti ()))
+       ((name Re_lib)
+        (impl (_build/default/re_lib.ml-gen))
+        (intf ())
+        (cmt (_build/default/.re_lib.objs/byte/re_lib.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/.re_lib.objs/byte))))
+   (library
     ((name sexplib0)
      (uid 449445be7a24ce51e119d57e9e255d3f)
      (local false)
@@ -521,6 +602,17 @@ not stable across different setups.
 
   $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests
   ((executables
+    ((names (refmt))
+     (requires ())
+     (modules
+      (((name Refmt)
+        (impl (_build/default/refmt.ml))
+        (intf ())
+        (cmt (_build/default/.refmt.eobjs/byte/dune__exe__Refmt.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/.refmt.eobjs/byte))))
+   (executables
     ((names (main))
      (requires
       (c17373aee51bab94097b4b7818553cf3 5dd4bd87ad37b4f5713085aff4bee9c9))
@@ -638,6 +730,43 @@ not stable across different setups.
          ((for_intf ())
           (for_impl ()))))))
      (include_dirs (_build/default/.per_module_pp_exe.eobjs/byte))))
+   (executables
+    ((names (re_exe))
+     (requires ())
+     (modules
+      (((name Re_exe2)
+        (impl (_build/default/re_exe2.re))
+        (intf ())
+        (cmt (_build/default/.re_exe.eobjs/byte/dune__exe__Re_exe2.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Re_exe1)
+        (impl (_build/default/re_exe1.re))
+        (intf (_build/default/re_exe1.rei))
+        (cmt (_build/default/.re_exe.eobjs/byte/dune__exe__Re_exe1.cmt))
+        (cmti (_build/default/.re_exe.eobjs/byte/dune__exe__Re_exe1.cmti))
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Re_exe)
+        (impl (_build/default/re_exe.re))
+        (intf ())
+        (cmt (_build/default/.re_exe.eobjs/byte/dune__exe__Re_exe.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Dune__exe)
+        (impl (_build/default/.re_exe.eobjs/dune__exe.ml-gen))
+        (intf ())
+        (cmt (_build/default/.re_exe.eobjs/byte/dune__exe.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/.re_exe.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -929,6 +1058,38 @@ not stable across different setups.
      (modules ())
      (include_dirs (/FINDLIB//ppxlib/traverse_builtins))))
    (library
+    ((name re_lib)
+     (uid 798aa1770524e0cedf34956792e4feac)
+     (local true)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+      (((name Re_lib2)
+        (impl (_build/default/re_lib2.re))
+        (intf (_build/default/re_lib2.rei))
+        (cmt (_build/default/.re_lib.objs/byte/re_lib__Re_lib2.cmt))
+        (cmti (_build/default/.re_lib.objs/byte/re_lib__Re_lib2.cmti))
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Re_lib1)
+        (impl (_build/default/re_lib1.re))
+        (intf ())
+        (cmt (_build/default/.re_lib.objs/byte/re_lib__Re_lib1.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Re_lib)
+        (impl (_build/default/re_lib.ml-gen))
+        (intf ())
+        (cmt (_build/default/.re_lib.objs/byte/re_lib.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/.re_lib.objs/byte))))
+   (library
     ((name sexplib0)
      (uid 449445be7a24ce51e119d57e9e255d3f)
      (local false)
@@ -950,7 +1111,7 @@ Test other formats
 ------------------
 
   $ dune describe workspace --format csexp --lang 0.1 --sanitize-for-tests | cut -c 1-85
-  ((11:executables((5:names(4:main))(8:requires(32:c17373aee51bab94097b4b7818553cf332:5
+  ((11:executables((5:names(5:refmt))(8:requires())(7:modules(((4:name5:Refmt)(4:impl(2
 
 Test errors
 -----------

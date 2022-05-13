@@ -64,9 +64,6 @@ module Fact : sig
 
     (** Return all file paths in this file group. *)
     val paths : t -> Digest.t Path.Map.t
-
-    (** Create a new [t] from a list of [t] and a list of files. *)
-    val group : t list -> Digest.t Path.Map.t -> t
   end
 
   (** [digest] is assumed to be the [digest_paths expansion]. *)

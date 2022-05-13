@@ -435,7 +435,7 @@ let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function
 
 let load_install_file path =
   let open OpamParserTypes in
-  let file = Io.with_lexbuf_from_file path ~f:Opam_file.parse in
+  let file = Io.Untracked.with_lexbuf_from_file path ~f:Opam_file.parse in
   let fail (fname, line, col) msg =
     let pos : Lexing.position =
       { pos_fname = fname; pos_lnum = line; pos_bol = 0; pos_cnum = col }

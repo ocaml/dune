@@ -563,7 +563,7 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
       let open Fiber.O in
       let+ () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
       let up_to_date =
-        match Path.stat dst with
+        match Path.Untracked.stat dst with
         | Ok { st_kind; _ } when st_kind = S_DIR -> (
           match delete_dst_if_it_is_a_directory with
           | true ->

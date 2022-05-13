@@ -2003,6 +2003,9 @@ Where ``<optional-fields>`` are:
   Note that this feature is completely separate from ``(packages)``, which
   specifies some dependencies.
 
+- ``(locks <lock-names>)`` specifies that the action of running the tests
+  holds the specified locks.  See the :ref:`locks` section for more details.
+
 Upgrading from Version 0.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

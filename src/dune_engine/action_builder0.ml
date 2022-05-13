@@ -169,6 +169,8 @@ let all_unit (xs : unit t list) =
         ((), Deps_or_facts.union_all mode deps))
   }
 
+type fail = { fail : 'a. unit -> 'a }
+
 let fail x =
   let+ () = return () in
   x.fail ()

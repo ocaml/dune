@@ -40,6 +40,7 @@ module Coq_stanza = Coq_stanza
 module Coq_lib = Coq_lib
 module Command = Command
 module Install = Install
+module Lib_name = Lib_name
 
 module Install_rules = struct
   let install_file = Install_rules.install_file
@@ -49,7 +50,6 @@ end
 module Scheme = Scheme
 module Lib_config = Lib_config
 module Dynlink_supported = Dynlink_supported
-module Ocaml_version = Ocaml_version
 module Lib_dep = Lib_dep
 module Ocamlobjinfo = Ocamlobjinfo
 module Action_unexpanded = Action_unexpanded

@@ -39,7 +39,7 @@ module Linkage = struct
     { mode = Byte_with_stubs_statically_linked_in
     ; ext = ".exe"
     ; flags =
-        [ Ocaml_version.custom_or_output_complete_exe context.Context.version ]
+        [ Ocaml.Version.custom_or_output_complete_exe context.Context.version ]
     }
 
   let native_or_custom (context : Context.t) =
@@ -93,7 +93,7 @@ module Linkage = struct
       let flags =
         match m with
         | Byte_complete ->
-          [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
+          [ Ocaml.Version.custom_or_output_complete_exe ctx.version ]
         | Other { kind; _ } -> (
           match kind with
           | C -> c_flags
@@ -101,7 +101,7 @@ module Linkage = struct
           | Exe -> (
             match link_mode with
             | Byte_with_stubs_statically_linked_in ->
-              [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
+              [ Ocaml.Version.custom_or_output_complete_exe ctx.version ]
             | _ -> [])
           | Object -> o_flags
           | Plugin -> (

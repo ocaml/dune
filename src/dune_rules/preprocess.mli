@@ -60,7 +60,7 @@ end
 val remove_future_syntax :
      'a t
   -> for_:Pp_flag_consumer.t
-  -> Ocaml_version.t
+  -> Ocaml.Version.t
   -> 'a Without_future_syntax.t
 
 module Per_module : sig

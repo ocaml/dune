@@ -98,7 +98,7 @@ type t =
   ; arch_sixtyfour : bool
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
-  ; version : Ocaml_version.t
+  ; version : Ocaml.Version.t
   ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; which : string -> Path.t option Memo.t
@@ -288,7 +288,7 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
 let check_fdo_support has_native ocfg ~name =
-  let version = Ocaml_version.of_ocaml_config ocfg in
+  let version = Ocaml.Version.of_ocaml_config ocfg in
   let version_string = Ocaml_config.version_string ocfg in
   let err () =
     User_error.raise
@@ -306,8 +306,8 @@ let check_fdo_support has_native ocfg ~name =
          the toolchain. When using a dev version of ocamlopt that does not
          support the required options, fdo builds will fail because the compiler
          won't recognize the options. Normals builds won't be affected. *) )
-  else if not (Ocaml_version.supports_split_at_emit version) then
-    if not (Ocaml_version.supports_function_sections version) then err ()
+  else if not (Ocaml.Version.supports_split_at_emit version) then
+    if not (Ocaml.Version.supports_function_sections version) then err ()
     else
       User_warning.emit
         [ Pp.textf
@@ -464,7 +464,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             | Error msg -> Error (Ocamlc_config, msg)))
     in
     let findlib_paths = ocamlpath @ default_ocamlpath in
-    let version = Ocaml_version.of_ocaml_config ocfg in
+    let version = Ocaml.Version.of_ocaml_config ocfg in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors. For versions
          where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
@@ -473,8 +473,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       if
         !Clflags.capture_outputs
         && Lazy.force Ansi_color.stderr_supports_color
-        && Ocaml_version.supports_color_in_ocamlparam version
-        && not (Ocaml_version.supports_ocaml_color version)
+        && Ocaml.Version.supports_color_in_ocamlparam version
+        && not (Ocaml.Version.supports_ocaml_color version)
       then
         let value =
           match Env.get env "OCAMLPARAM" with
@@ -547,7 +547,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ccomp_type = Ocaml_config.ccomp_type ocfg
       ; profile
       ; ocaml_version_string = Ocaml_config.version_string ocfg
-      ; ocaml_version = Ocaml_version.of_ocaml_config ocfg
+      ; ocaml_version = Ocaml.Version.of_ocaml_config ocfg
       ; instrument_with
       ; context_name = name
       }
@@ -625,7 +625,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; make
       }
     in
-    if Ocaml_version.supports_response_file version then (
+    if Ocaml.Version.supports_response_file version then (
       let set prog =
         Response_file.set ~prog (Zero_terminated_strings "-args0")
       in
@@ -633,7 +633,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       set t.ocamlc;
       Result.iter t.ocamlopt ~f:set;
       Result.iter t.ocamldep ~f:set;
-      if Ocaml_version.ocamlmklib_supports_response_file version then
+      if Ocaml.Version.ocamlmklib_supports_response_file version then
         Result.iter ~f:set t.ocamlmklib);
     Memo.return t
   in

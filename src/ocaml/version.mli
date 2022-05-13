@@ -1,5 +1,4 @@
 (** Version numbers for ocamlc and ocamlopt *)
-open! Dune_engine
 
 type t
 

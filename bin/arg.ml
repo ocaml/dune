@@ -119,6 +119,6 @@ let graph_format : Dune_graph.Graph.File_format.t conv =
 
 let context_name : Context_name.t conv = conv Context_name.conv
 
-let lib_name = conv Dune_engine.Lib_name.conv
+let lib_name = conv Dune_rules.Lib_name.conv
 
 let version = pair ~sep:'.' int int

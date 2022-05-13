@@ -33,7 +33,7 @@ let findlib =
     ; ccomp_type = Other "gcc"
     ; profile = Profile.Dev
     ; ocaml_version_string = "4.02.3"
-    ; ocaml_version = Ocaml_version.make (4, 2, 3)
+    ; ocaml_version = Ocaml.Version.make (4, 2, 3)
     ; instrument_with = []
     ; context_name = Context_name.of_string "default"
     }
@@ -59,7 +59,7 @@ let print_pkg_archives pkg =
     match pkg with
     | Ok (Library x) ->
       Ok
-        (Mode.Dict.map
+        (Ocaml.Mode.Dict.map
            (Lib_info.archives (Dune_package.Lib.info x))
            ~f:(List.map ~f:elide_db_path))
     | Ok _ -> assert false
@@ -67,7 +67,7 @@ let print_pkg_archives pkg =
   in
   let to_dyn =
     Result.to_dyn
-      (Mode.Dict.to_dyn (Dyn.list Dyn.string))
+      (Ocaml.Mode.Dict.to_dyn (Dyn.list Dyn.string))
       Findlib.Unavailable_reason.to_dyn
   in
   let pp = Dyn.pp (to_dyn pkg) in

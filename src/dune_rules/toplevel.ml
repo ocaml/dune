@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 let toplevel_dir_prefix = ".toplevel."
 

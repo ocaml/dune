@@ -1,7 +1,12 @@
 (executable
  (name main)
+ (public_name dune)
+ (package dune)
+ (enabled_if
+  (<> %{profile} dune-bootstrap))
  (libraries
   memo
+  ocaml
   dune_lang
   fiber
   stdune
@@ -25,11 +30,20 @@
   dune_rpc_private)
  (bootstrap_info bootstrap-info))
 
+; Installing the dune binary depends on the kind of build:
+; - for bootstrap builds, dune.exe is copied from ../dune.exe
+;   and installed using a manual install stanza
+; - for non-bootstrap builds (building dune with another dune),
+;   the executable stanza does everything (and attached it to the
+;   right package, which is important for build-info to succeed)
+;   but we still need to setup a dummy dune.exe so that profiles
+;   agree on the targets.
+
 (rule
- (action
-  (copy main.exe dune.exe))
  (enabled_if
-  (<> %{profile} dune-bootstrap)))
+  (<> %{profile} dune-bootstrap))
+ (action
+  (with-stdout-to dune.exe (progn))))
 
 (rule
  (action
@@ -39,6 +53,8 @@
 
 (install
  (section bin)
+ (enabled_if
+  (= %{profile} dune-bootstrap))
  (package dune)
  (files
   (dune.exe as dune)))

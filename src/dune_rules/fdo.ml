@@ -189,7 +189,7 @@ module Linker_script = struct
     | Some fdo_target_exe ->
       if
         Path.equal name fdo_target_exe
-        && (Ocaml_version.supports_function_sections ctx.version
+        && (Ocaml.Version.supports_function_sections ctx.version
            || Ocaml_config.is_dev_version ctx.ocaml_config)
       then Some (linker_script_rule cctx fdo_target_exe)
       else None

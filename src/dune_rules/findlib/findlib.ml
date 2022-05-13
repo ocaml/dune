@@ -1,10 +1,8 @@
-open! Dune_engine
-open! Dune_engine.Import
-open! Stdune
+open Import
 open Memo.O
 module Opam_package = Package
-module P = Variant
-module Ps = Variant.Set
+module P = Ocaml.Variant
+module Ps = Ocaml.Variant.Set
 
 let meta_fn = "META"
 

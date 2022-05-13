@@ -27,7 +27,7 @@ module Args0 = struct
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> [> `Targets ] t
     | Dyn : without_targets t Action_builder.t -> _ t
-    | Fail : fail -> _ t
+    | Fail : Action_builder.fail -> _ t
     | Expand : expand -> _ t
 
   let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))

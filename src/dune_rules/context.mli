@@ -86,7 +86,7 @@ type t = private
   ; arch_sixtyfour : bool
   ; ocaml_config : Ocaml_config.t
   ; ocaml_config_vars : Ocaml_config.Vars.t
-  ; version : Ocaml_version.t
+  ; version : Ocaml.Version.t
   ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; which : string -> Path.t option Memo.t

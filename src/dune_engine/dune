@@ -11,6 +11,7 @@
   dag
   memo
   xdg
+  ocaml
   dune_re
   threads.posix
   opam_file_format

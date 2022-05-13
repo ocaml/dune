@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
   include Stdune
@@ -226,7 +225,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let open Memo.O in
   let* bigarray =
     let simple () = simple "bigarray" [ "unix" ] ~dir:"+" in
-    if not (Ocaml_version.stdlib_includes_bigarray ocaml_version) then
+    if not (Ocaml.Version.stdlib_includes_bigarray ocaml_version) then
       Memo.return (simple ())
     else
       let+ cma =
@@ -253,7 +252,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
              (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
          ]
         @
-        if Ocaml_version.has_vmthreads ocaml_version then
+        if Ocaml.Version.has_vmthreads ocaml_version then
           [ Package
               (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
           ]
@@ -279,7 +278,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       [ stdlib; compiler_libs; str; unix; threads; dynlink; bytes; ocamldoc ]
     in
     let base =
-      if Ocaml_version.has_bigarray_library ocaml_version then bigarray :: base
+      if Ocaml.Version.has_bigarray_library ocaml_version then bigarray :: base
       else base
     in
     let* base =

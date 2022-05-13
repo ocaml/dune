@@ -33,6 +33,7 @@
  (modules findlib_tests)
  (libraries
   ocaml_config
+  ocaml
   dune_tests_common
   stdune
   dune_engine

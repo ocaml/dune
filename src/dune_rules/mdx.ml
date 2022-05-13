@@ -74,13 +74,15 @@ module Deps = struct
       false
     with User_error.E _ -> true
 
-  let to_path ~dir str =
+  let to_path ~version ~dir str =
     if not (Filename.is_relative str) then Error (`Absolute str)
     else
       let path = Path.relative_to_source_in_build_or_external ~dir str in
       match path with
       | In_build_dir _ ->
-        if path_escapes_dir str then Error (`Escapes_dir str) else Ok path
+        if version < (0, 3) && path_escapes_dir str then
+          Error (`Escapes_dir str)
+        else Ok path
       | _ -> Error (`Escapes_workspace str)
 
   let add_acc (dirs, files) kind path =
@@ -88,7 +90,7 @@ module Deps = struct
     | `Dir -> (path :: dirs, files)
     | `File -> (dirs, path :: files)
 
-  let dirs_and_files ~dir t_list =
+  let dirs_and_files ~version ~dir t_list =
     List.fold_left t_list
       ~init:(Ok ([], []))
       ~f:(fun acc df ->
@@ -99,11 +101,11 @@ module Deps = struct
           | Dir d -> (`Dir, d)
           | File f -> (`File, f)
         in
-        let+ path = to_path ~dir path in
+        let+ path = to_path ~version ~dir path in
         add_acc acc kind path)
 
-  let to_dep_set ~dir t_list =
-    match dirs_and_files ~dir t_list with
+  let to_dep_set ~version ~dir t_list =
+    match dirs_and_files ~version ~dir t_list with
     | Error e -> Memo.return (Error e)
     | Ok (dirs, files) ->
       let open Memo.O in
@@ -242,7 +244,7 @@ let files_to_mdx t ~sctx ~dir =
     [stanza]. *)
 let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
     ~mdx_prog_gen src =
-  let loc = stanza.loc in
+  let { loc; version; _ } = stanza in
   let mdx_dir = Path.Build.relative dir ".mdx" in
   let files = Files.from_source_file ~mdx_dir src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
@@ -259,7 +261,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
         let* dep_set = Deps.read files in
         Action_builder.of_memo
           (let open Memo.O in
-          let+ dsr = Deps.to_dep_set dep_set ~dir in
+          let+ dsr = Deps.to_dep_set dep_set ~version ~dir in
           let src_path_msg =
             Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src))
           in

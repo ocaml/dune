@@ -74,6 +74,10 @@
 
 - (mdx) stanza: add support for (locks). (#5628, fixes #5489, @emillon)
 
+- (mdx) stanza: support including files in different directories using relative
+  paths, and provide better error messages when paths are invalid (#5703, #5704,
+  fixes #5596, @emillon)
+
 3.1.1 (19/04/2022)
 ------------------
 

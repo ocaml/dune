@@ -2,7 +2,6 @@ module Vcs = Vcs
 module Context_name = Context_name
 module Action_builder = Action_builder
 module Dep = Dep
-module Lib_name = Lib_name
 module String_with_vars = String_with_vars
 module Import = Import
 module Package = Package

@@ -40,6 +40,7 @@ module Coq_stanza = Coq_stanza
 module Coq_lib = Coq_lib
 module Command = Command
 module Install = Install
+module Lib_name = Lib_name
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

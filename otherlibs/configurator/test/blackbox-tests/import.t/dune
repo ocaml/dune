@@ -1,0 +1,3 @@
+(rule
+ (targets c_flags.sexp)
+ (action (run configure/configure.exe -target %{targets})))

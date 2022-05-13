@@ -60,6 +60,8 @@ let dev_mode_warnings =
 
 let vendored_warnings = [ "-w"; "-a" ]
 
+let vendored_alerts = [ "-alert"; "-all" ]
+
 let default_warnings = "-40"
 
 let default_flags ~dune_version ~profile =
@@ -143,6 +145,8 @@ let append_common t flags = map_common t ~f:(fun l -> l @ flags)
 let prepend_common flags t = map_common t ~f:(fun l -> flags @ l)
 
 let with_vendored_warnings t = append_common t vendored_warnings
+
+let with_vendored_alerts t = append_common t vendored_alerts
 
 let common t = t.common
 

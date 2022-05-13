@@ -4,6 +4,13 @@
 - Fixed ``dune describe workspace --with-deps`` so that it correctly
   handles Reason files, as well as files any other dialect. (#5701, @esope)
 
+- Disable alerts when compiling code in vendored directories (#5683,
+  @NathanReb)
+
+- Fixed ``dune describe --with-deps``, that crashed when some
+  preprocessing was required in a dune file using ``per_module``.
+  (#5682, fixes #5680, @esope)
+
 - Add `$ dune describe pp` to print the preprocssed ast of sources. (#5615,
   fixes #4470, @cannorin)
 

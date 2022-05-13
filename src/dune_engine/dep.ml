@@ -110,8 +110,8 @@ module Fact = struct
       ; parent_dirs
       ; digest =
           Digest.generic
-            (Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d))
-            @ Path.Map.to_list_map dirs ~f:(fun p d -> (Path.to_string p, d)))
+            ( Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d))
+            , Path.Map.to_list_map dirs ~f:(fun p d -> (Path.to_string p, d)) )
       }
 
     let empty = lazy (make ~files:Path.Map.empty ~dirs:Path.Map.empty)

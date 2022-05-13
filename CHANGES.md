@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Fixed ``dune describe workspace --with-deps`` so that it correctly
+  handles Reason files, as well as files any other dialect. (#5701, @esope)
+
 - Disable alerts when compiling code in vendored directories (#5683,
   @NathanReb)
 

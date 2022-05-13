@@ -253,6 +253,11 @@ module Crawl = struct
       | false -> Memo.return (Action_builder.return no_deps)
       | true -> (
         let unit =
+          (* This translation is necessary to handle files that are not in the
+             "ocaml" dialect, such as Reason files *)
+          Module.ml_source unit
+        in
+        let unit =
           (* For files that are subject to a preprocessing phase, only the
              preprocessed files have an attached ocamldep rule: the source files
              have no such rule attached. In such a case, we refer to the

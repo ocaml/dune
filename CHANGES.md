@@ -1,6 +1,9 @@
 3.2.0 (Unreleased)
 -----------------
 
+- Fixed ``dune describe workspace --with-deps`` so that it correctly
+  handles Reason files, as well as files any other dialect. (#5701, @esope)
+
 - Add `$ dune describe pp` to print the preprocssed ast of sources. (#5615,
   fixes #4470, @cannorin)
 

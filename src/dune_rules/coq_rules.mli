@@ -22,7 +22,7 @@ val setup_rules :
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Theory.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.t
+  -> unit Memo.t
 
 val install_rules :
      sctx:Super_context.t
@@ -30,18 +30,15 @@ val install_rules :
   -> Theory.t
   -> Install.Entry.Sourced.t list Memo.t
 
-val coqpp_rules :
-     sctx:Super_context.t
-  -> dir:Path.Build.t
-  -> Coqpp.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.t
+val setup_coqpp_rules :
+  sctx:Super_context.t -> dir:Path.Build.t -> Coqpp.t -> unit Memo.t
 
-val extraction_rules :
+val setup_extraction_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Extraction.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.t
+  -> unit Memo.t
 
 (** [deps_of ~dir ~boot_type m] produces an action builder that can be run to
     build all dependencies of the Coq module [m]. *)

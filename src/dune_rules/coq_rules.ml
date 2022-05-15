@@ -420,7 +420,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let coq_lib_db = Scope.coq_libs scope in
   let theory = Coq_lib.DB.resolve coq_lib_db s.name |> Result.ok_exn in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
-  let+ cctx =
+  let* cctx =
     let wrapper_name = Coq_lib.wrapper theory in
     let theories_deps =
       Coq_lib.DB.requires coq_lib_db theory |> Resolve.of_result
@@ -445,6 +445,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
       let cctx = Context.for_module cctx m in
       let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
       [ coqc; coqdep ])
+  |> Super_context.add_rules ~loc:s.buildable.loc ~dir sctx
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let name = snd s.name in
@@ -550,8 +551,8 @@ let install_rules ~sctx ~dir s =
            make_entry vfile vfile_dst :: obj_files)
     |> List.rev_append coq_plugins_install_rules
 
-let coqpp_rules ~sctx ~dir (s : Coqpp.t) =
-  let+ coqpp = resolve_program sctx ~dir ~loc:s.loc "coqpp" in
+let setup_coqpp_rules ~sctx ~dir (s : Coqpp.t) =
+  let* coqpp = resolve_program sctx ~dir ~loc:s.loc "coqpp" in
   let mlg_rule m =
     let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
     let target = Path.Build.relative dir (m ^ ".ml") in
@@ -559,9 +560,10 @@ let coqpp_rules ~sctx ~dir (s : Coqpp.t) =
     let build_dir = (Super_context.context sctx).build_dir in
     Command.run ~dir:(Path.build build_dir) coqpp args
   in
-  List.map ~f:mlg_rule s.modules
+  List.rev_map ~f:mlg_rule s.modules
+  |> Super_context.add_rules ~loc:s.loc ~dir sctx
 
-let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
+let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx =
     let wrapper_name = "DuneExtraction" in
     let theories_deps =
@@ -574,7 +576,7 @@ let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
       ~theory_dirs s.buildable
   in
-  let+ coq_module =
+  let* coq_module =
     let+ coq = Dir_contents.coq dir_contents in
     Coq_sources.extract coq s
   in
@@ -588,7 +590,7 @@ let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   in
   let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule coq_module in
   let coqc = Action_builder.With_targets.add coqc ~file_targets:ml_targets in
-  [ coqdep; coqc ]
+  [ coqdep; coqc ] |> Super_context.add_rules ~loc:s.buildable.loc ~dir sctx
 
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx =

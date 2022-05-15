@@ -15,6 +15,8 @@ val file_exists : Path.t -> bool Memo.t
     it. *)
 val dir_exists : Path.t -> bool Memo.t
 
+val is_directory : Path.t -> (bool, Unix_error.Detailed.t) result Memo.t
+
 (** Call [Path.stat] on a path and declare a dependency on it. *)
 val path_stat :
   Path.t -> (Fs_cache.Reduced_stats.t, Unix_error.Detailed.t) result Memo.t

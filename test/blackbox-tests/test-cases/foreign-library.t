@@ -252,7 +252,7 @@ Testsuite for the (foreign_library ...) stanza.
   12 |  (include_dirs headers /some/path)
                               ^^^^^^^^^^
   Error: Unable to read the include directory.
-  Reason: /some/path: No such file or directory.
+  Reason: stat(/some/path): No such file or directory.
   [1]
 
 ----------------------------------------------------------------------------------

@@ -8,6 +8,8 @@ module Path = struct
 
     let is_directory = is_directory
 
+    let is_file = is_file
+
     let is_directory_with_error = is_directory_with_error
 
     let readdir_unsorted = readdir_unsorted
@@ -27,6 +29,8 @@ module Path = struct
      are still available in the [Path.Untracked] module. *)
 
   let exists = `Use_fs_memo_or_untracked_module_instead
+
+  let is_file = `Use_fs_memo_or_untracked_module_instead
 
   let is_directory = `Use_fs_memo_or_untracked_module_instead
 

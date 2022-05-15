@@ -875,7 +875,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   in
   let* () =
     let context = Context.build_context ctx in
-    let target_alias = Alias.package_install ~context ~pkg:package in
+    let target_alias = Dep_conf_eval.package_install ~context ~pkg:package in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps target_alias
       (Action_builder.dyn_deps
@@ -890,7 +890,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                        (Super_context.packages sctx)
                        name
                    in
-                   Alias.package_install ~context ~pkg |> Dep.alias) )))
+                   Dep_conf_eval.package_install ~context ~pkg |> Dep.alias) )))
   in
   let action =
     let install_file =

@@ -2,6 +2,9 @@
 
 open Import
 
+(** Alias for all the files in [_build/install] that belong to this package *)
+val package_install : context:Build_context.t -> pkg:Package.t -> Alias.t
+
 (** Evaluates unnamed dependency specifications. *)
 val unnamed :
      expander:Expander.t

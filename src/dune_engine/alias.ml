@@ -209,12 +209,3 @@ let describe ?(loc = Loc.none) alias =
   in
   if Loc.is_none loc then pp
   else pp ++ Pp.textf " in %s" (Loc.to_file_colon_line loc)
-
-let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
-  let dir =
-    let dir = Package.dir pkg in
-    Path.Build.append_source context.build_dir dir
-  in
-  let name = Package.name pkg in
-  sprintf ".%s-files" (Package.Name.to_string name)
-  |> Name.of_string |> make ~dir

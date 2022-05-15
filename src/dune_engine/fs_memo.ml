@@ -253,6 +253,11 @@ let file_exists path =
   | Ok kind -> File_kind.equal kind S_REG
   | Error (_ : Unix_error.Detailed.t) -> false
 
+let is_directory path =
+  path_kind path >>| function
+  | Ok kind -> Ok (File_kind.equal kind S_DIR)
+  | Error e -> Error e
+
 let dir_exists path =
   path_kind path >>| function
   | Ok kind -> File_kind.equal kind S_DIR

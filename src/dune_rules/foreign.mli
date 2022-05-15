@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 val drop_source_extension :
      string

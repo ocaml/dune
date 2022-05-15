@@ -25,8 +25,7 @@
     to treat object directories of both local and external library in the same
     way. *)
 
-open! Dune_engine
-open! Import
+open Import
 
 type 'path t
 

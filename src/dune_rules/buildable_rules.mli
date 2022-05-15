@@ -1,7 +1,6 @@
 (** Rules and helpers shared by OCaml libraries and executables *)
-open! Dune_engine
 
-open Stdune
+open Import
 
 (** Make sure all rules produces by [f] record the library dependencies for
     [dune external-lib-deps] and depend on the generation of the .merlin file.

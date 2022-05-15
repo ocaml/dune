@@ -7,7 +7,6 @@ open Memo.O
 (* Written by: Emilio Jesús Gallego Arias *)
 (* Written by: Rudi Grinberg *)
 
-open! Stdune
 open Coq_stanza
 module SC = Super_context
 

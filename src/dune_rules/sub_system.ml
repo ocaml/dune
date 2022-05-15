@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Stdune
-open! Import
+open Import
 include Sub_system_intf
 open Memo.O
 

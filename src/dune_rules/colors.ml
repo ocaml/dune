@@ -1,5 +1,3 @@
-open! Dune_engine
-open! Stdune
 open Import
 
 (* We redirect the output of all commands, so by default the various tools will

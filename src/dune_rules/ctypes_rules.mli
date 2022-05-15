@@ -1,4 +1,3 @@
-open! Dune_engine
 open Import
 
 val generated_ml_and_c_files : Ctypes_stanza.t -> string list

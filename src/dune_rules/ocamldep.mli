@@ -1,6 +1,5 @@
 (** ocamldep management *)
 
-open! Dune_engine
 open Import
 
 module Modules_data : sig

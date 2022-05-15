@@ -1,4 +1,4 @@
-open! Dune_engine
+open Import
 
 module Ppx_args : sig
   module Cookie : sig

@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Stdune
-open! Import
+open Import
 
 module Bin : sig
   type t

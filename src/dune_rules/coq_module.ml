@@ -1,11 +1,8 @@
-open! Dune_engine
-
-(* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
 (* (c) INRIA 2020                              *)
 (* Written by: Emilio Jesús Gallego Arias *)
 
-open! Stdune
+open Import
 
 module Name = struct
   type t = string

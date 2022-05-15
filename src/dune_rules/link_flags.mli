@@ -1,7 +1,6 @@
 (** OCaml flags *)
-open! Dune_engine
 
-open! Stdune
+open Import
 
 type t
 

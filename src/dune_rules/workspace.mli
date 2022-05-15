@@ -1,8 +1,6 @@
 (** Workspaces definitions *)
-open! Dune_engine
 
-open! Stdune
-open! Import
+open Import
 
 module Context : sig
   module Target : sig

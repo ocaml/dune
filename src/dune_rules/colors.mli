@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 (** [Env.initial] extended with variables to force a few tools to print colors *)
 val setup_env_for_colors : Env.t -> Env.t

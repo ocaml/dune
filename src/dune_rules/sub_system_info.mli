@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 (** The type of all kind of sub-system information. This type is what we get
     just after parsing a [dune] file. *)

@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 let gen_select_rules t ~dir compile_info =
   let open Memo.O in

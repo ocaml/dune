@@ -5,9 +5,7 @@
     the Merlin configuration as it will be marshalled to and from the
     configuration files, while [Merlin.t] represents raw information coming from
     the build system. *)
-open! Dune_engine
 
-open! Stdune
 open Import
 
 (** Type of "unprocessed" merlin information *)

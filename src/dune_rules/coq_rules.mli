@@ -1,4 +1,4 @@
-open! Dune_engine
+open Import
 
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
@@ -7,7 +7,6 @@ open! Dune_engine
 
 (* Build rules for Coq's .v -> .vo files *)
 
-open! Stdune
 open Coq_stanza
 
 module Bootstrap : sig

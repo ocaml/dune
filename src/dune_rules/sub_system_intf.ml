@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Stdune
-open! Import
+open Import
 
 module type Info = Sub_system_info.S
 

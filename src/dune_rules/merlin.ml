@@ -1,7 +1,4 @@
-open! Dune_engine
-open! Stdune
 open Import
-module SC = Super_context
 
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
@@ -377,10 +374,10 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
       (Action_builder.with_no_targets
          (Action_builder.map ~f:Processed.Persist.to_string merlin))
   in
-  SC.add_rule sctx ~dir action
+  Super_context.add_rule sctx ~dir action
 
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
-  Memo.when_ (SC.context sctx).merlin (fun () ->
+  Memo.when_ (Super_context.context sctx).merlin (fun () ->
       dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
 
 include Unprocessed

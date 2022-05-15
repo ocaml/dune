@@ -1,7 +1,6 @@
 (** Utop rules *)
-open! Dune_engine
 
-open! Stdune
+open Import
 
 (** Return the name of the utop target inside a directory where some libraries
     are defined. *)

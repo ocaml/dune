@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Import
+open Import
 open Memo.O
 open Ocamldep.Modules_data
 

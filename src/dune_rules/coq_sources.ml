@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 open Coq_stanza
 
 (* TODO: Build reverse map and check duplicates, however, are duplicates

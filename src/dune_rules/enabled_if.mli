@@ -1,5 +1,3 @@
-open! Dune_engine
-
 type allowed_vars =
   | Any
   | Only of (string * Dune_lang.Syntax.Version.t) list

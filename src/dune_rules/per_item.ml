@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
   module Map = Map.Make (Key)

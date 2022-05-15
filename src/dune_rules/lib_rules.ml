@@ -1,7 +1,4 @@
-open! Dune_engine
-open! Stdune
 open Import
-open! No_io
 open Memo.O
 module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library

@@ -1,7 +1,5 @@
 (** Simple rules: user, copy_files, alias *)
-open! Dune_engine
 
-open! Stdune
 open Import
 open Dune_file
 

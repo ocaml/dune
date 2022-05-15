@@ -1,5 +1,4 @@
-open! Stdune
-open! Dune_engine
+open Import
 
 (* usual value for PATH_MAX *)
 let max_path_length = 4096

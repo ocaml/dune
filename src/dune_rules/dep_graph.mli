@@ -1,6 +1,5 @@
 (** Represent dependency graphs between OCaml modules *)
 
-open! Dune_engine
 open Import
 
 type t

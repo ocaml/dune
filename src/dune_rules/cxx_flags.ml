@@ -1,5 +1,4 @@
-open! Stdune
-open Dune_engine
+open Import
 
 type phase =
   | Compile

@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 (** A directory with a [dune] file *)
 type 'data t =

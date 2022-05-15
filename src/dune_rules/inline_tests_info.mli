@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Stdune
-open! Import
+open Import
 
 module Backend : sig
   type t =

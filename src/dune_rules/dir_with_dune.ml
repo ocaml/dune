@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 type 'data t =
   { src_dir : Path.Source.t

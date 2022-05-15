@@ -6,6 +6,15 @@ let make_alias expander s =
   let loc = String_with_vars.loc s in
   Expander.expand_path expander s >>| Alias.of_user_written_path ~loc
 
+let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
+  let dir =
+    let dir = Package.dir pkg in
+    Path.Build.append_source context.build_dir dir
+  in
+  let name = Package.name pkg in
+  sprintf ".%s-files" (Package.Name.to_string name)
+  |> Alias.Name.of_string |> Alias.make ~dir
+
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Union (Path.Set))
 
@@ -156,9 +165,7 @@ let rec dep expander = function
          >>= function
          | Some (Local pkg) ->
            Action_builder.alias
-             (Alias.package_install
-                ~context:(Context.build_context context)
-                ~pkg)
+             (package_install ~context:(Context.build_context context) ~pkg)
          | Some (Installed pkg) ->
            let version =
              Dune_project.dune_version @@ Scope.project

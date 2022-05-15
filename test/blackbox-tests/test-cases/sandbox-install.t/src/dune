@@ -1,0 +1,4 @@
+(library
+  (public_name foo))
+
+

@@ -1,0 +1,8 @@
+ 
+(rule
+ (alias bar)
+ (deps
+  (sandbox always)
+  (package foo)
+ )
+ (action (run tree ../..)))

@@ -77,15 +77,17 @@ module Fact = struct
     type t =
       { files : Digest.t Path.Map.t
       ; dirs : Digest.t Path.Map.t (* Only for file selectors for now *)
-      ; parent_dirs : Path.Set.t
+      ; (* TODO these directories are only needed for sandboxing, perhaps they
+      should be generated lazily? *)
+        dirs_that_must_exist : Path.Build.Set.t
       ; digest : Digest.t
       }
 
-    let to_dyn { files; dirs; parent_dirs; digest } =
+    let to_dyn { files; dirs; dirs_that_must_exist; digest } =
       Dyn.Record
         [ ("files", Path.Map.to_dyn Digest.to_dyn files)
         ; ("dirs", Path.Map.to_dyn Digest.to_dyn dirs)
-        ; ("parent_dirs", Path.Set.to_dyn parent_dirs)
+        ; ("dirs_that_must_exist", Path.Build.Set.to_dyn dirs_that_must_exist)
         ; ("digest", Digest.to_dyn digest)
         ]
 
@@ -98,16 +100,18 @@ module Fact = struct
     let paths t = t.files
 
     let make ~files ~dirs =
-      let parent_dirs =
+      let dirs_that_must_exist =
         let f path (_ : Digest.t) acc =
-          Path.Set.add acc (Path.parent_exn path)
+          match Path.as_in_build_dir path with
+          | None -> acc
+          | Some p -> Path.Build.Set.add acc (Path.Build.parent_exn p)
         in
-        let init = Path.Map.foldi files ~init:Path.Set.empty ~f in
+        let init = Path.Map.foldi files ~init:Path.Build.Set.empty ~f in
         Path.Map.foldi files ~init ~f
       in
       { files
       ; dirs
-      ; parent_dirs
+      ; dirs_that_must_exist
       ; digest =
           Digest.generic
             ( Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d))
@@ -142,9 +146,9 @@ module Fact = struct
                 Path.Map.union t.dirs acc ~f:(fun _ d1 d2 ->
                     assert (Digest.equal d1 d2);
                     Some d1))
-        ; parent_dirs =
-            List.fold_left l ~init:t.parent_dirs ~f:(fun acc t ->
-                Path.Set.union t.parent_dirs acc)
+        ; dirs_that_must_exist =
+            List.fold_left l ~init:t.dirs_that_must_exist ~f:(fun acc t ->
+                Path.Build.Set.union t.dirs_that_must_exist acc)
         ; digest = Digest.generic (List.map ts ~f:(fun t -> t.digest))
         }
   end
@@ -255,19 +259,24 @@ module Facts = struct
     in
     Fact.Files.group fact_files paths
 
-  let dirs t =
-    Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
-        match (fact : Fact.t) with
-        | Nothing | File _ -> acc
-        | File_selector (_, ps) | Alias ps ->
-          Path.Set.union acc (Path.Map.keys ps.dirs |> Path.Set.of_list))
-
-  let parent_dirs t =
-    Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
+  let dirs_that_must_exist t =
+    Map.fold t ~init:Path.Build.Set.empty ~f:(fun fact acc ->
         match (fact : Fact.t) with
         | Nothing -> acc
-        | File (p, _) -> Path.Set.add acc (Path.parent_exn p)
-        | File_selector (_, ps) | Alias ps -> Path.Set.union acc ps.parent_dirs)
+        | File (p, _) -> (
+          match Path.as_in_build_dir p with
+          | None -> acc
+          | Some p ->
+            let p = Path.Build.parent_exn p in
+            Path.Build.Set.add acc p)
+        | File_selector (_, ps) | Alias ps ->
+          Path.Build.Set.union_all
+            [ acc
+            ; Path.Map.keys ps.dirs
+              |> List.filter_map ~f:Path.as_in_build_dir
+              |> Path.Build.Set.of_list
+            ; ps.dirs_that_must_exist
+            ])
 
   let digest t ~env =
     let facts =

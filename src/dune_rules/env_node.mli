@@ -1,7 +1,6 @@
 (** An environment node represents an evaluated (env ..) stanza in a directory. *)
-open! Dune_engine
 
-open Stdune
+open Import
 
 module Odoc : sig
   type warnings = Dune_env.Stanza.Odoc.warnings =

@@ -1,6 +1,5 @@
 (** Parse ocamlobjinfo output *)
 
-open! Dune_engine
 open Import
 
 type t = Module_name.Unique.Set.t Ml_kind.Dict.t

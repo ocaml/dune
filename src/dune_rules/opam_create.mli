@@ -1,7 +1,6 @@
 (** Generate opam files from dune-project metadata *)
-open! Dune_engine
 
-open Stdune
+open Import
 
 (** Given an opam filename, returns the filename of the template file *)
 val template_file : Path.t -> Path.t

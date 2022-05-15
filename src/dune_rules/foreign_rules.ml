@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce
@@ -51,7 +50,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                        ; Pp.textf "Reason: %s." msg
                        ]
                    in
-                   match Path.is_directory_with_error include_dir with
+                   match Path.Untracked.is_directory_with_error include_dir with
                    | Error msg -> error msg
                    | Ok false ->
                      error

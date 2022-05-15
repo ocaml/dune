@@ -3,7 +3,7 @@
 (** Generate an OCaml file containing a description of the dune sources for the
     bootstrap procedure *)
 
-open Stdune
+open Import
 
 (** Generate the rules to handle the stanza *)
 val gen_rules :

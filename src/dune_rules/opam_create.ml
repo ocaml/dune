@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 let default_build_command =
   let before_1_11 =

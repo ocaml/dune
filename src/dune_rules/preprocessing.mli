@@ -1,8 +1,6 @@
 (** Preprocessing of OCaml source files *)
-open! Dune_engine
 
-open! Stdune
-open! Import
+open Import
 
 val make :
      Super_context.t

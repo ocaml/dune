@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 module Build_flags_resolver : sig

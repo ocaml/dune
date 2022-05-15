@@ -1,7 +1,4 @@
-open! Dune_engine
-open! Stdune
 open Import
-open! No_io
 module CC = Compilation_context
 module SC = Super_context
 

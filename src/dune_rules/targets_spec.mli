@@ -1,5 +1,4 @@
 (** Specification of targets. *)
-open! Dune_engine
 
 open Import
 

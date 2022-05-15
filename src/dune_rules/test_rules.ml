@@ -1,6 +1,4 @@
-open! Dune_engine
 open Import
-open! No_io
 
 let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   let test_kind (loc, name) =

@@ -1,8 +1,6 @@
 (** Represents OCaml and Reason source files *)
-open! Dune_engine
 
-open! Stdune
-open! Import
+open Import
 
 module File : sig
   type t =

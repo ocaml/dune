@@ -1,4 +1,3 @@
-open! Dune_engine
 open Import
 
 let add_diff sctx loc alias ~dir ~input ~output =

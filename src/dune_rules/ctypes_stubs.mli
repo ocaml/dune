@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 (* This module would be part of Ctypes_rules, except it creates a circular
    dependency if Dune_file tries to access it. *)

@@ -1,9 +1,8 @@
 (** Scopes *)
-open! Dune_engine
 
 (** A scope is a project + a library database *)
 
-open! Stdune
+open Import
 
 type t
 

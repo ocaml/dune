@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 let cflags_sexp ~external_library_name =
   sprintf "%s__c_flags.sexp" external_library_name

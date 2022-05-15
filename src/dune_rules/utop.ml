@@ -1,7 +1,4 @@
-open! Dune_engine
-open! Stdune
 open Import
-open! No_io
 open Memo.O
 
 let exe_name = "utop"

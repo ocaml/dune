@@ -1,7 +1,6 @@
 (** Actions as they are written in dune files. *)
-open! Dune_engine
 
-open Stdune
+open Import
 
 include module type of struct
     (** The type definition exists in [Action_dune_lang] and not here to break

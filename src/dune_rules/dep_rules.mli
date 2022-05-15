@@ -1,6 +1,5 @@
 (** Get dependencies for a set of modules using either ocamldep or ocamlobjinfo *)
 
-open! Dune_engine
 open Import
 
 val for_module :

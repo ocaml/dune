@@ -1,6 +1,5 @@
 (** An expander is able to expand any dune template. *)
 
-open! Dune_engine
 open Import
 
 type t

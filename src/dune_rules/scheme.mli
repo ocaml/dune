@@ -1,7 +1,6 @@
 (** A collection of rules for one or multiple directories. *)
-open! Dune_engine
 
-open! Stdune
+open Import
 
 type 'rules t =
   | Empty  (** [Empty] is a scheme that has no rules *)

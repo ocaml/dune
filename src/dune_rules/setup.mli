@@ -1,5 +1,4 @@
 (** Setup of dune *)
-open! Dune_engine
 
 (** These parameters are set by [ocaml configure.ml] ran by the user or without
     argument as a fallback. *)

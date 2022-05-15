@@ -1,5 +1,3 @@
-open! Dune_engine
-open! Stdune
 open Import
 
 let () = Inline_tests.linkme

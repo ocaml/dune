@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 let valid_format_doc = Section.valid_format_doc
 

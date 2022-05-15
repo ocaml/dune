@@ -1,5 +1,4 @@
 (** Compilation contexts *)
-open! Dune_engine
 
 (** Dune supports two different kind of contexts:
 
@@ -20,8 +19,7 @@ open! Dune_engine
     this allow for simple cross-compilation: when an executable running on the
     host is needed, it is obtained by looking in another context. *)
 
-open! Stdune
-open! Import
+open Import
 
 module Kind : sig
   module Opam : sig

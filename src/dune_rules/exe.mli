@@ -1,6 +1,6 @@
 (** Compilation and linking of executables *)
-open! Dune_engine
 
+open Import
 open Stdune
 
 module Program : sig

@@ -1,7 +1,4 @@
 (** {1 Handle link time code generation} *)
-open! Dune_engine
-
-open! Stdune
 
 type t =
   { to_link : Lib.Lib_and_module.L.t

@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 let env = Fdecl.create Env.to_dyn
 

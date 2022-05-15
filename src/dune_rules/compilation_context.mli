@@ -1,7 +1,5 @@
 (** High-level API for compiling OCaml files *)
-open! Dune_engine
 
-open! Stdune
 open Import
 
 (** Represent a compilation context.

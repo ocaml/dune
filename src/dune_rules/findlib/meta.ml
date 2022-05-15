@@ -231,7 +231,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       let+ cma =
         Fs_memo.file_exists (Path.relative stdlib_dir "bigarray.cma")
       in
-      if cma then dummy "bigarray" else simple ()
+      if cma then simple () else dummy "bigarray"
   in
   let dynlink = simple "dynlink" [] ~dir:"+" in
   let bytes = dummy "bytes" in

@@ -250,7 +250,14 @@ module Unprocessed = struct
     in
     { ident; config; modules }
 
-  let quote_if_needed s = if String.need_quoting s then Filename.quote s else s
+  let encode_command =
+    let quote_if_needed s =
+      if String.need_quoting s then Filename.quote s else s
+    in
+    fun ~bin ~args ->
+      Path.to_absolute_filename bin :: args
+      |> List.map ~f:quote_if_needed
+      |> String.concat ~sep:" "
 
   let pp_flag_of_action ~expander ~loc ~action :
       Processed.pp_flag option Action_builder.t =
@@ -272,12 +279,8 @@ module Unprocessed = struct
         let pp_of_action exe args =
           match exe with
           | Error _ -> None
-          | Ok exe ->
-            let args =
-              Path.to_absolute_filename exe :: args
-              |> List.map ~f:quote_if_needed
-              |> String.concat ~sep:" "
-            in
+          | Ok bin ->
+            let args = encode_command ~bin ~args in
             Some { Processed.flag = "-pp"; args }
         in
         Action_builder.map action ~f:(fun act ->
@@ -305,9 +308,7 @@ module Unprocessed = struct
           ~flags ~scope pps
       in
       let args =
-        Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
-        |> List.map ~f:quote_if_needed
-        |> String.concat ~sep:" "
+        encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags)
       in
       Some { Processed.flag = "-ppx"; args }
 

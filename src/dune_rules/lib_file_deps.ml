@@ -39,7 +39,7 @@ module Group = struct
 end
 
 let deps_of_lib (lib : Lib.t) ~groups =
-  let obj_dir = Lib.obj_dir lib in
+  let obj_dir = Lib.info lib |> Lib_info.obj_dir in
   List.map groups ~f:(fun g ->
       let dir = Group.obj_dir g obj_dir in
       Group.to_predicate g |> File_selector.create ~dir |> Dep.file_selector)

@@ -29,7 +29,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let vlib = Vimpl.vlib vimpl in
   let impl = Vimpl.impl vimpl in
   let impl_obj_dir = Dune_file.Library.obj_dir ~dir impl in
-  let vlib_obj_dir = Lib.obj_dir vlib in
+  let vlib_obj_dir = Lib.info vlib |> Lib_info.obj_dir in
   let add_rule = Super_context.add_rule sctx ~dir in
   let copy_to_obj_dir ~src ~dst =
     add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)

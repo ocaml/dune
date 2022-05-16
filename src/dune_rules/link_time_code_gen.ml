@@ -143,7 +143,8 @@ let build_info_code cctx ~libs ~api_version =
             | Public (_, p) -> version_of_package placeholders p
             | Private _ ->
               let p =
-                Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
+                Lib.info lib |> Lib_info.obj_dir |> Obj_dir.dir
+                |> Path.drop_build_context_exn
               in
               placeholder placeholders p)
         in

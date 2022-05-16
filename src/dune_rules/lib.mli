@@ -15,9 +15,6 @@ val lib_config : t -> Lib_config.t
 
 val implements : t -> t Resolve.Memo.t option
 
-(** Directory where the object files for the library are located. *)
-val obj_dir : t -> Path.t Obj_dir.t
-
 (** Same as [Path.is_managed (obj_dir t)] *)
 val is_local : t -> bool
 
@@ -31,10 +28,6 @@ val src_dirs : t -> Path.Set.t Memo.t
 
 val wrapped : t -> Wrapped.t option Resolve.Memo.t
 
-(** [is_impl lib] returns [true] if the library is an implementation of a
-    virtual library *)
-val is_impl : t -> bool
-
 (** Direct library dependencies of this library *)
 val requires : t -> t list Resolve.Memo.t
 
@@ -42,17 +35,9 @@ val ppx_runtime_deps : t -> t list Resolve.Memo.t
 
 val pps : t -> t list Resolve.Memo.t
 
-(** A unique integer identifier. It is only unique for the duration of the
-    process *)
-module Id : sig
-  type t
-
-  val compare : t -> t -> Ordering.t
-end
-
-val unique_id : t -> Id.t
-
 include Comparable_intf.S with type key := t
+
+val compare : t -> t -> Ordering.t
 
 val equal : t -> t -> bool
 
@@ -64,7 +49,7 @@ val link_deps : t -> Link_mode.t -> Path.t list Memo.t
 
 (** Operations on list of libraries *)
 module L : sig
-  type lib
+  type lib := t
 
   type nonrec t = t list
 
@@ -74,18 +59,11 @@ module L : sig
 
   val include_flags : ?project:Dune_project.t -> t -> Mode.t -> _ Command.Args.t
 
-  val c_include_paths : t -> Path.Set.t
-
   val c_include_flags : t -> _ Command.Args.t
 
   val toplevel_include_paths : t -> Path.Set.t
 
-  val compile_and_link_flags :
-    compile:t -> link:t -> mode:Link_mode.t -> _ Command.Args.t
-
   val jsoo_runtime_files : t -> Path.t list
-
-  val remove_dups : t -> t
 
   val top_closure :
        'a list
@@ -93,11 +71,10 @@ module L : sig
     -> deps:('a -> 'a list Resolve.Memo.t)
     -> ('a list, 'a list) Result.t Resolve.Memo.t
 end
-with type lib := t
 
 (** Operation on list of libraries and modules *)
 module Lib_and_module : sig
-  type lib = t
+  type lib := t
 
   type t =
     | Lib of lib
@@ -106,13 +83,10 @@ module Lib_and_module : sig
   module L : sig
     type nonrec t = t list
 
-    val of_libs : lib list -> t
-
     val link_flags :
       t -> lib_config:Lib_config.t -> mode:Link_mode.t -> _ Command.Args.t
   end
 end
-with type lib := t
 
 (** {1 Compilation contexts} *)
 
@@ -122,8 +96,6 @@ type sub_system = ..
 (** For compiling a library or executable *)
 module Compile : sig
   type t
-
-  type lib
 
   (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> L.t Resolve.t Memo.Lazy.t
@@ -149,13 +121,12 @@ module Compile : sig
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list Memo.t
 end
-with type lib := t
 
 (** {1 Library name resolution} *)
 
 (** Collection of libraries organized by names *)
 module DB : sig
-  type lib = t
+  type lib := t
 
   (** A database allow to resolve library names *)
   type t
@@ -243,7 +214,6 @@ module DB : sig
     -> Loc.t * Lib_name.t
     -> Preprocess.Without_instrumentation.t option Resolve.Memo.t
 end
-with type lib := t
 
 (** {1 Transitive closure} *)
 
@@ -252,7 +222,7 @@ val closure : L.t -> linking:bool -> L.t Resolve.Memo.t
 (** {1 Sub-systems} *)
 
 module Sub_system : sig
-  type lib = t
+  type lib := t
 
   type t = sub_system = ..
 
@@ -278,7 +248,6 @@ module Sub_system : sig
     val get : lib -> M.t option Memo.t
   end
 end
-with type lib := t
 
 val to_dune_lib :
      t
@@ -289,7 +258,7 @@ val to_dune_lib :
 
 (** Local libraries *)
 module Local : sig
-  type lib
+  type lib := t
 
   type t = private lib
 
@@ -311,4 +280,3 @@ module Local : sig
 
   include Comparable_intf.S with type key := t
 end
-with type lib := t

@@ -396,20 +396,14 @@ let info t = t.info
 
 let implements t = Option.map ~f:Memo.return t.implements
 
-let unique_id t = t.unique_id
-
-let is_impl t = Option.is_some t.implements
-
 let requires t = Memo.return t.requires
 
 let ppx_runtime_deps t = Memo.return t.ppx_runtime_deps
 
 let pps t = Memo.return t.pps
 
-let obj_dir t = Lib_info.obj_dir t.info
-
 let is_local t =
-  let obj_dir = obj_dir t in
+  let obj_dir = Lib_info.obj_dir t.info in
   Path.is_managed (Obj_dir.byte_dir obj_dir)
 
 let main_module_name t =
@@ -450,11 +444,9 @@ let wrapped t =
       assert false (* will always be specified in dune package *)
     | Some (This x) -> Some x)
 
-let to_id t : Id.t = t.unique_id
+let equal l1 l2 = Ordering.is_eq (compare l1 l2)
 
-let equal l1 l2 = Id.equal (to_id l1) (to_id l2)
-
-let hash t = Id.hash (to_id t)
+let hash t = Id.hash t.unique_id
 
 include Comparable.Make (T)
 
@@ -604,44 +596,11 @@ module L = struct
     in
     Path.Set.union (include_paths ts Mode.Byte) (c_include_paths with_dlls)
 
-  let compile_and_link_flags ~compile ~link ~mode =
-    Command.Args.Dyn
-      (let open Action_builder.O in
-      let+ params =
-        Action_builder.of_memo
-          (Memo.parallel_map link ~f:(fun t -> Link_params.get t mode))
-      in
-      let dirs =
-        let dirs =
-          Path.Set.union
-            (include_paths compile (Link_mode.mode mode))
-            (c_include_paths link)
-        in
-        List.fold_left params ~init:dirs ~f:(fun acc (p : Link_params.t) ->
-            List.fold_left p.include_dirs ~init:acc ~f:Path.Set.add)
-      in
-      Command.Args.S
-        (to_iflags dirs
-        :: List.map params ~f:(fun (p : Link_params.t) ->
-               Command.Args.S
-                 [ Deps p.deps; Hidden_deps (Dep.Set.of_files p.hidden_deps) ])
-        ))
-
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> Lib_info.jsoo_runtime t.info)
 
-  let remove_dups l =
-    let rec loop acc l seen =
-      match l with
-      | [] -> acc
-      | x :: l ->
-        if Id.Set.mem seen x.unique_id then loop acc l seen
-        else loop (x :: acc) l (Id.Set.add seen x.unique_id)
-    in
-    loop [] l Id.Set.empty
-
   let top_closure l ~key ~deps =
-    Id.Top_closure.top_closure l ~key:(fun t -> unique_id (key t)) ~deps
+    Id.Top_closure.top_closure l ~key:(fun t -> (key t).unique_id) ~deps
 end
 
 module Lib_and_module = struct
@@ -685,8 +644,6 @@ module Lib_and_module = struct
                       | Byte_with_stubs_statically_linked_in -> [])))))
          in
          Command.Args.S l)
-
-    let of_libs l = List.map l ~f:(fun x -> Lib x)
   end
 end
 
@@ -1739,7 +1696,7 @@ end = struct
                       ]))
           in
           let* new_stack =
-            R.lift (Dep_stack.push stack ~implements_via (to_id lib))
+            R.lift (Dep_stack.push stack ~implements_via lib.unique_id)
           in
           let* deps = R.lift (Memo.return lib.requires) in
           let* unimplemented' =
@@ -2068,7 +2025,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
   in
   let add_loc = List.map ~f:(fun x -> (loc, mangled_name x)) in
   let obj_dir =
-    match Obj_dir.to_local (obj_dir lib) with
+    match Lib_info.obj_dir lib.info |> Obj_dir.to_local with
     | None -> assert false
     | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
   in

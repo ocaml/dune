@@ -339,7 +339,7 @@ module Unprocessed = struct
                 ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
                   ( Path.Set.union src_dirs more_src_dirs
                   , let public_cmi_dir =
-                      Obj_dir.public_cmi_dir (Lib.obj_dir lib)
+                      Lib.info lib |> Lib_info.obj_dir |> Obj_dir.public_cmi_dir
                     in
                     Path.Set.add obj_dirs public_cmi_dir )))
       in

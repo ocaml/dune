@@ -404,7 +404,10 @@ let libs_of_pkg sctx ~pkg =
   |> (* Filter out all implementations of virtual libraries *)
   List.filter_map ~f:(function
     | Super_context.Lib_entry.Library lib ->
-      let is_impl = Lib.Local.to_lib lib |> Lib.is_impl in
+      let is_impl =
+        Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements
+        |> Option.is_some
+      in
       Option.some_if (not is_impl) lib
     | Deprecated_library_name _ -> None)
 

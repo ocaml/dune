@@ -78,11 +78,10 @@ module Deps = struct
     if not (Filename.is_relative str) then Error (`Absolute str)
     else
       let path = Path.relative_to_source_in_build_or_external ~dir str in
-      if not (Path.is_managed path) then Error (`Escapes_workspace str)
-      else if path_escapes_dir str then Error (`Escapes_dir str)
-      else
-        let build = Path.as_in_build_dir_exn path in
-        Ok (Path.build build)
+      match path with
+      | In_build_dir _ ->
+        if path_escapes_dir str then Error (`Escapes_dir str) else Ok path
+      | _ -> Error (`Escapes_workspace str)
 
   let add_acc (dirs, files) kind path =
     match kind with

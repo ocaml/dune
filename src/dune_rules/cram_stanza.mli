@@ -11,7 +11,7 @@ type t =
   ; alias : Alias.Name.t option
   ; deps : Dep_conf.t Bindings.t option
   ; enabled_if : Blang.t
-  ; locks : String_with_vars.t list
+  ; locks : Locks.t
   ; package : Package.t option
   }
 

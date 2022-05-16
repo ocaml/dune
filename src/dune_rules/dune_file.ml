@@ -1541,7 +1541,7 @@ module Rule = struct
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
     ; patch_back_source_tree : bool
-    ; locks : String_with_vars.t list
+    ; locks : Locks.t
     ; loc : Loc.t
     ; enabled_if : Blang.t
     ; alias : Alias.Name.t option
@@ -1621,7 +1621,7 @@ module Rule = struct
       (let+ loc = loc
        and+ action = field "action" (located Action_dune_lang.decode)
        and+ targets = Targets_spec.field ~allow_directory_targets
-       and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
+       and+ locks = Locks.field ()
        and+ () =
          let+ fallback =
            field_b
@@ -1818,7 +1818,7 @@ module Alias_conf = struct
     { name : Alias.Name.t
     ; deps : Dep_conf.t Bindings.t
     ; action : (Loc.t * Action_dune_lang.t) option
-    ; locks : String_with_vars.t list
+    ; locks : Locks.t
     ; package : Package.t option
     ; enabled_if : Blang.t
     ; loc : Loc.t
@@ -1842,8 +1842,7 @@ module Alias_conf = struct
                in
                located Action_dune_lang.decode)
           and+ loc = loc
-          and+ locks =
-            field "locks" (repeat String_with_vars.decode) ~default:[]
+          and+ locks = Locks.field ()
           and+ enabled_if =
             field "enabled_if" Blang.decode ~default:Blang.true_
           in
@@ -1853,7 +1852,7 @@ end
 module Tests = struct
   type t =
     { exes : Executables.t
-    ; locks : String_with_vars.t list
+    ; locks : Locks.t
     ; package : Package.t option
     ; deps : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
@@ -1871,8 +1870,7 @@ module Tests = struct
           and+ link_flags = Link_flags.Spec.decode ~since:None
           and+ names = names
           and+ package = field_o "package" Stanza_common.Pkg.decode
-          and+ locks =
-            field "locks" (repeat String_with_vars.decode) ~default:[]
+          and+ locks = Locks.field ()
           and+ modes =
             field "modes" Executables.Link_mode.Map.decode
               ~default:

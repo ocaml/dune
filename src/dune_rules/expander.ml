@@ -808,3 +808,14 @@ let eval_blang t blang =
   Blang.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
 
 let find_package t pkg = t.find_package pkg
+
+let expand_lock ~base expander (Locks.Lock sw) =
+  let open Memo.O in
+  match base with
+  | `Of_expander -> No_deps.expand_path expander sw
+  | `This base ->
+    let+ str = No_deps.expand_str expander sw in
+    Path.relative base str
+
+let expand_locks ~base expander locks =
+  Memo.List.map locks ~f:(expand_lock ~base expander)

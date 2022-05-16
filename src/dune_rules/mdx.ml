@@ -72,7 +72,7 @@ module Deps = struct
     try
       let (_ : Path.Local.t) = Path.Local.of_string str in
       false
-    with _ -> true
+    with User_error.E _ -> true
 
   let to_path ~dir str =
     if not (Filename.is_relative str) then Error (`Absolute str)

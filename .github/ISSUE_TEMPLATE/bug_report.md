@@ -17,7 +17,7 @@ assignees: ''
 ## Reproduction
 
 <!-- If possible, please open a PR with a test that reproduces the problem.
-      Adding tests is easy, see  https://github.com/ocaml/dune/blob/master/HACKING.md#tests -->
+      Adding tests is easy, see  https://github.com/ocaml/dune/blob/master/doc/hacking.rst -->
 
 - PR with a reproducing test: 
 

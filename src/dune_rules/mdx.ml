@@ -109,7 +109,7 @@ module Deps = struct
       let open Memo.O in
       let dep_set = Dep.Set.of_files files in
       let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
-      Ok (List.fold_left l ~init:dep_set ~f:Dep.Set.union)
+      Ok (Dep.Set.union_all (dep_set :: l))
 end
 
 module Prelude = struct

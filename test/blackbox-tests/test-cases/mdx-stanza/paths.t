@@ -19,7 +19,8 @@ Absolute paths cause an error.
       ^^^^^
   Error: Paths referenced in mdx files must be relative. This stanza refers to
   the following absolute path:
-  /etc/passwd
+  Source path: README.md
+  Included path: /etc/passwd
   [1]
 
 Relative paths that go over the root cause an error.
@@ -35,7 +36,8 @@ Relative paths that go over the root cause an error.
       ^^^^^
   Error: Paths referenced in mdx files must stay within the workspace. This
   stanza refers to the following path which escapes:
-  ../x
+  Source path: README.md
+  Included path: ../x
   [1]
 
 Relative paths within the workspace do not work.
@@ -58,7 +60,8 @@ Relative paths within the workspace do not work.
       ^^^^^
   Error: Paths referenced in mdx files cannot escape the directory. This stanza
   refers to the following path which escapes:
-  ../b/src.ml
+  Source path: a/README.md
+  Included path: ../b/src.ml
   [1]
 
 Files in the same directory work.

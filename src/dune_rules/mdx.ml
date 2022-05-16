@@ -74,43 +74,43 @@ module Deps = struct
       false
     with _ -> true
 
-  let to_path ~loc ~dir str =
-    if not (Filename.is_relative str) then
-      User_error.raise ~loc
-        [ Pp.text
-            "Paths referenced in mdx files must be relative. This stanza \
-             refers to the following absolute path:"
-        ; Pp.text str
-        ];
-    let path = Path.relative_to_source_in_build_or_external ~dir str in
-    if not (Path.is_managed path) then
-      User_error.raise ~loc
-        [ Pp.text
-            "Paths referenced in mdx files must stay within the workspace. \
-             This stanza refers to the following path which escapes:"
-        ; Pp.text str
-        ];
-    if path_escapes_dir str then
-      User_error.raise ~loc
-        [ Pp.text
-            "Paths referenced in mdx files cannot escape the directory. This \
-             stanza refers to the following path which escapes:"
-        ; Pp.text str
-        ];
-    let build = Path.as_in_build_dir_exn path in
-    Path.build build
+  let to_path ~dir str =
+    if not (Filename.is_relative str) then Error (`Absolute str)
+    else
+      let path = Path.relative_to_source_in_build_or_external ~dir str in
+      if not (Path.is_managed path) then Error (`Escapes_workspace str)
+      else if path_escapes_dir str then Error (`Escapes_dir str)
+      else
+        let build = Path.as_in_build_dir_exn path in
+        Ok (Path.build build)
 
-  let dirs_and_files ~loc ~dir t_list =
-    List.partition_map t_list ~f:(function
-      | Dir d -> Left (to_path ~loc ~dir d)
-      | File f -> Right (to_path ~loc ~dir f))
+  let add_acc (dirs, files) kind path =
+    match kind with
+    | `Dir -> (path :: dirs, files)
+    | `File -> (dirs, path :: files)
 
-  let to_dep_set ~loc ~dir t_list =
-    let open Memo.O in
-    let dirs, files = dirs_and_files ~loc ~dir t_list in
-    let dep_set = Dep.Set.of_files files in
-    let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
-    List.fold_left l ~init:dep_set ~f:Dep.Set.union
+  let dirs_and_files ~dir t_list =
+    List.fold_left t_list
+      ~init:(Ok ([], []))
+      ~f:(fun acc df ->
+        let open Result.O in
+        let* acc = acc in
+        let kind, path =
+          match df with
+          | Dir d -> (`Dir, d)
+          | File f -> (`File, f)
+        in
+        let+ path = to_path ~dir path in
+        add_acc acc kind path)
+
+  let to_dep_set ~dir t_list =
+    match dirs_and_files ~dir t_list with
+    | Error e -> Memo.return (Error e)
+    | Ok (dirs, files) ->
+      let open Memo.O in
+      let dep_set = Dep.Set.of_files files in
+      let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
+      Ok (List.fold_left l ~init:dep_set ~f:Dep.Set.union)
 end
 
 module Prelude = struct
@@ -253,12 +253,46 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
     Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
   and* () =
     (* Add the rule for generating the .corrected file using ocaml-mdx test *)
-    let mdx_action ~loc =
+    let mdx_action ~loc:_ =
       let open Action_builder.With_targets.O in
       let mdx_input_dependencies =
-        Action_builder.bind (Deps.read files) ~f:(fun dep_set ->
-            Action_builder.of_memo (Deps.to_dep_set dep_set ~loc ~dir))
+        let open Action_builder.O in
+        let* dep_set = Deps.read files in
+        Action_builder.of_memo
+          (let open Memo.O in
+          let+ dsr = Deps.to_dep_set dep_set ~dir in
+          let src_path_msg =
+            Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src))
+          in
+          match dsr with
+          | Result.Ok r -> r
+          | Error (`Absolute str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files must be relative. This stanza \
+                   refers to the following absolute path:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ]
+          | Error (`Escapes_workspace str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files must stay within the \
+                   workspace. This stanza refers to the following path which \
+                   escapes:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ]
+          | Error (`Escapes_dir str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files cannot escape the directory. \
+                   This stanza refers to the following path which escapes:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ])
       in
+
       let dyn_deps =
         Action_builder.map mdx_input_dependencies ~f:(fun d -> ((), d))
       in

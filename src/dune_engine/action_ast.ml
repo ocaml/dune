@@ -13,11 +13,13 @@ module Make
     (Path : Encoder)
     (Target : Encoder)
     (String : Encoder)
+    (Extension : Encoder)
     (Ast : Action_intf.Ast
              with type program := Program.t
              with type path := Path.t
              with type target := Target.t
-             with type string := String.t) =
+             with type string := String.t
+              and type ext := Extension.t) =
 struct
   include Ast
 
@@ -62,8 +64,6 @@ struct
     | Copy (x, y) -> List [ atom "copy"; path x; target y ]
     | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
     | Hardlink (x, y) -> List [ atom "hardlink"; path x; target y ]
-    | Copy_and_add_line_directive (x, y) ->
-      List [ atom "copy#"; path x; target y ]
     | System x -> List [ atom "system"; string x ]
     | Bash x -> List [ atom "bash"; string x ]
     | Write_file (x, perm, y) ->
@@ -90,14 +90,7 @@ struct
       List
         (atom (sprintf "pipe-%s" (Outputs.to_string outputs))
         :: List.map l ~f:encode)
-    | Format_dune_file (ver, src, dst) ->
-      List
-        [ atom "format-dune-file"
-        ; Dune_lang.Syntax.Version.encode ver
-        ; path src
-        ; target dst
-        ]
-    | Cram script -> List [ atom "cram"; path script ]
+    | Extension ext -> List [ atom "ext"; Extension.encode ext ]
 
   let run prog args = Run (prog, args)
 
@@ -132,8 +125,6 @@ struct
 
   let symlink a b = Symlink (a, b)
 
-  let copy_and_add_line_directive a b = Copy_and_add_line_directive (a, b)
-
   let system s = System s
 
   let bash s = Bash s
@@ -148,6 +139,4 @@ struct
 
   let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
     Diff { optional; file1; file2; mode }
-
-  let format_dune_file ~version src dst = Format_dune_file (version, src, dst)
 end

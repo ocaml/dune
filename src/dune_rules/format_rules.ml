@@ -19,6 +19,44 @@ let depend_on_files ~named dir =
 
 let formatted_dir_basename = ".formatted"
 
+let action =
+  let module Spec = struct
+    type ('path, 'target) t = Dune_lang.Syntax.Version.t * 'path * 'target
+
+    let name = "format-dune-file"
+
+    let version = 1
+
+    let bimap (ver, src, dst) f g = (ver, f src, g dst)
+
+    let is_useful_to ~distribute:_ ~memoize = memoize
+
+    let encode (version, src, dst) path target : Dune_lang.t =
+      List
+        [ Dune_lang.atom_or_quoted_string "format-dune-file"
+        ; Dune_lang.Syntax.Version.encode version
+        ; path src
+        ; target dst
+        ]
+
+    let action (version, src, dst) ~ectx:_ ~eenv:_ =
+      Dune_lang.Format.format_action ~version ~src ~dst;
+      Fiber.return ()
+  end in
+  fun ~version (src : Path.t) (dst : Path.Build.t) ->
+    let module M :
+      Action.Ext.Instance with type path = Path.t and type target = Path.Build.t =
+    struct
+      type path = Path.t
+
+      type target = Path.Build.t
+
+      module Spec = Spec
+
+      let v = (version, src, dst)
+    end in
+    Action.Extension (module M)
+
 let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
     ~expander ~output_dir =
   assert (formatted_dir_basename = Path.Build.basename output_dir);
@@ -40,7 +78,7 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
         @@
         let open Action_builder.O in
         let+ () = Action_builder.path input in
-        Action.Full.make (Action.format_dune_file ~version input output)
+        Action.Full.make (action ~version input output)
       | _ ->
         let ext = Path.Source.extension file in
         let open Option.O in

@@ -1,9 +1,5 @@
 open Import
 
-(* cwong: This should probably go in a better place than here, but I'm not sure
-   where. Putting it in [Cram_test] creates dependency cycles. *)
-let () = Cram_exec.linkme
-
 type effective =
   { loc : Loc.t
   ; alias : Alias.Name.Set.t
@@ -65,7 +61,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
       in
       let action =
         Action.progn
-          [ Action.Cram (Path.build script)
+          [ Cram_exec.action (Path.build script)
           ; Diff
               { Diff.optional = true
               ; mode = Text

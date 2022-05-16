@@ -200,8 +200,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         let basename = Path.basename file_src in
         let file_dst = Path.Build.relative dir basename in
         SC.add_rule sctx ~loc ~dir ~mode:def.mode
-          ((if def.add_line_directive then
-            Action_builder.copy_and_add_line_directive
+          ((if def.add_line_directive then Copy_line_directive.builder
            else Action_builder.copy)
              ~src:file_src ~dst:file_dst))
   in

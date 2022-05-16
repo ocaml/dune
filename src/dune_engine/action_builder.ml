@@ -236,12 +236,6 @@ let copy ~src ~dst =
   with_file_targets ~file_targets:[ dst ]
     (path src >>> return (Action.Full.make (Action.Copy (src, dst))))
 
-let copy_and_add_line_directive ~src ~dst =
-  with_file_targets ~file_targets:[ dst ]
-    (path src
-    >>> return
-          (Action.Full.make (Action.Copy_and_add_line_directive (src, dst))))
-
 let symlink ~src ~dst =
   with_file_targets ~file_targets:[ dst ]
     (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))

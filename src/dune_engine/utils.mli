@@ -17,8 +17,5 @@ val program_not_found_message :
   -> string
   -> User_message.t
 
-(** Produce a line directive *)
-val line_directive : filename:string -> line_number:int -> string
-
 (** Pretty-printer for suggesting a given shell command to the user *)
 val pp_command_hint : string -> _ Pp.t

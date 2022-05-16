@@ -437,6 +437,31 @@ let run ~env ~script lexbuf : string Fiber.t =
 let run ~env ~script =
   run_expect_test script ~f:(fun lexbuf -> run ~env ~script lexbuf)
 
-let () = Fdecl.set Action_exec.cram_run run
+module Spec = struct
+  type ('path, _) t = 'path
 
-let linkme = ()
+  let name = "cram"
+
+  let version = 1
+
+  let bimap path f _ = f path
+
+  let is_useful_to ~distribute:_ ~memoize:_ = true
+
+  let encode script path _ : Dune_lang.t =
+    List [ Dune_lang.atom_or_quoted_string "cram"; path script ]
+
+  let action script ~ectx:_ ~(eenv : Action.Ext.env) = run ~env:eenv.env ~script
+end
+
+let action script =
+  let module M = struct
+    type path = Path.t
+
+    type target = Path.Build.t
+
+    module Spec = Spec
+
+    let v = script
+  end in
+  Action.Extension (module M)

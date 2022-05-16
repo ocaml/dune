@@ -2,10 +2,6 @@ open Import
 open Fiber.O
 module DAP = Dune_action_plugin.Private.Protocol
 
-(* CR-someday cwong: Adjust this to be a nicer design. It would be ideal if we
-   could generally allow actions to be extended. *)
-let cram_run = Fdecl.create (fun _ -> Dyn.Opaque)
-
 (** A version of [Dune_action_plugin.Private.Protocol.Dependency] where all
     relative paths are replaced by [Path.t]. (except the protocol doesn't
     support Globs yet) *)
@@ -208,6 +204,23 @@ let bash_exn =
       User_error.raise ~loc
         [ Pp.textf "I need bash to %s but I couldn't find it :(" needed_to ]
 
+(* When passing these to an extension, they shouldn't need to know about any
+   kind of dynamic build dependency functions or prepped dependencies, etc,
+   which should be handled here instead. *)
+let restrict_ctx { targets; context; metadata; rule_loc; build_deps = _ } =
+  { Action.Ext.targets; context; purpose = metadata.purpose; rule_loc }
+
+let restrict_env
+    { working_dir
+    ; env
+    ; stdout_to
+    ; stderr_to
+    ; stdin_from
+    ; exit_codes
+    ; prepared_dependencies = _
+    } =
+  { Action.Ext.working_dir; env; stdout_to; stderr_to; stdin_from; exit_codes }
+
 let rec exec t ~ectx ~eenv =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
@@ -257,16 +270,6 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | Hardlink (src, dst) ->
     Io.portable_hardlink ~src ~dst:(Path.build dst);
-    Fiber.return Done
-  | Copy_and_add_line_directive (src, dst) ->
-    Io.with_file_in src ~f:(fun ic ->
-        Path.build dst
-        |> Io.with_file_out ~f:(fun oc ->
-               let fn = Path.drop_optional_build_context_maybe_sandboxed src in
-               output_string oc
-                 (Utils.line_directive ~filename:(Path.to_string fn)
-                    ~line_number:1);
-               Io.copy_channels ic oc));
     Fiber.return Done
   | System cmd ->
     let path, arg =
@@ -372,18 +375,11 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | No_infer t -> exec t ~ectx ~eenv
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
-  | Format_dune_file (version, src, dst) ->
-    Dune_lang.Format.format_action ~version ~src ~dst;
-    Fiber.return Done
-  | Cram script ->
-    let+ () =
-      Fdecl.get
-        cram_run
-        (* We don't pass cwd because [Cram_exec] will use the script's dir to
-           run *)
-        ~env:eenv.env ~script
+  | Extension (module A) ->
+    let* () =
+      A.Spec.action A.v ~ectx:(restrict_ctx ectx) ~eenv:(restrict_env eenv)
     in
-    Done
+    Fiber.return Done
 
 and redirect_out t ~ectx ~eenv ~perm outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()

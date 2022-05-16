@@ -13,7 +13,7 @@ let gen_select_rules t ~dir compile_info =
                let* src_fn = Resolve.read src_fn in
                let src = Path.build (Path.Build.relative dir src_fn) in
                let+ () = Action_builder.path src in
-               Action.Full.make (Action.Copy_and_add_line_directive (src, dst)))))
+               Action.Full.make (Copy_line_directive.action src dst))))
 
 let with_lib_deps (t : Context.t) compile_info ~dir ~f =
   let prefix =

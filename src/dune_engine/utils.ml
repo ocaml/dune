@@ -35,12 +35,6 @@ let program_not_found_message ?context ?hint ~loc prog =
 let program_not_found ?context ?hint ~loc prog =
   raise (User_error.E (program_not_found_message ?context ?hint ~loc prog))
 
-let line_directive ~filename:fn ~line_number =
-  let directive =
-    if Foreign_language.has_foreign_extension ~fn then "line" else ""
-  in
-  sprintf "#%s %d %S\n" directive line_number fn
-
 let pp_command_hint command =
   let open Pp.O in
   Pp.textf "try:" ++ Pp.newline ++ Pp.cut

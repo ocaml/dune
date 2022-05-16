@@ -1,18 +1,5 @@
 open Import
 
-(* CR-soon cwong: I am deeply unsatisfied with the refactoring that lead to the
-   existence of this module, and would like to delete it. This module (and the
-   last three functions) were initially part of [Foreign], but needed to be
-   split separately to keep [Foreign] cleanly in the front-end. However, the
-   only real backend use of these files is that [Utils] uses
-   [has_foreign_extension], which could theoretically be moved to the backedn by
-   itself. However, that function relies on the key set of [source_extensions],
-   which ultimately pulls in the rest of this infrastructure. In theory, we
-   could just hardcode that key set somewhere (such as in [Utils]), that would
-   add extra maintenance burden to ensure that the external keyset evolves in
-   sync with the [source_extensions] here, and so this module was created to
-   hold it. *)
-
 type t =
   | C
   | Cxx

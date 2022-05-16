@@ -18,6 +18,8 @@ module Name = struct
 
   let fmt = of_string "fmt"
 
+  let uideps = of_string "uideps"
+
   let all = of_string "all"
 
   let parse_local_path (loc, p) =
@@ -104,6 +106,8 @@ let default = make_standard Name.default
 let runtest = make_standard Name.runtest
 
 let install = make_standard Name.install
+
+let uideps = make_standard Name.uideps
 
 let doc = make_standard (Name.of_string "doc")
 

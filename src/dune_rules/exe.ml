@@ -291,6 +291,10 @@ let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
     ~programs ~linkages ~promote cctx =
   let open Memo.O in
   let* () = Module_compilation.build_all cctx in
+  let* () =
+    if Compilation_context.bin_annot cctx then Uideps.cctx_rules cctx
+    else Memo.return ()
+  in
   link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox ~programs
     ~linkages ~promote cctx
 

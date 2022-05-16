@@ -523,6 +523,9 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     info
   in
   let+ () =
+    if Compilation_context.bin_annot cctx then Uideps.cctx_rules cctx
+    else Memo.return ()
+  and+ () =
     Memo.when_
       (not (Library.is_virtual lib))
       (fun () ->

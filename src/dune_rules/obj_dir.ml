@@ -521,6 +521,11 @@ module Module = struct
     let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
     Option.map file ~f:(fun _ -> obj_file t m ~kind:cmi_kind ~ext)
 
+  let uideps_file t m =
+    let ext = ".uideps" in
+    let kind = Lib_mode.Cm_kind.(Ocaml Cmi) in
+    obj_file t m ~kind ~ext
+
   let cmti_file t m ~cm_kind =
     let ext =
       Ml_kind.cmt_ext

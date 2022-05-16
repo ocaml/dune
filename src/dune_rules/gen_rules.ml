@@ -332,6 +332,7 @@ let gen_project_rules sctx project : unit Memo.t =
   let+ () = Opam_create.add_rules sctx project
   and+ () = Install_rules.gen_project_rules sctx project
   and+ () = Odoc.gen_project_rules sctx project
+  and+ () = Uideps.project_rule sctx project
   and+ () =
     let version = (2, 8) in
     match Dune_project.allow_approximate_merlin project with

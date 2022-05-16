@@ -1,9 +1,14 @@
 Absolute paths cause an error.
 
+  $ set_version () {
+  >   sed -i.bak "s/using mdx .../using mdx $1/" dune-project
+  > }
+
   $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > (using mdx 0.2)
+  > (lang dune 3.2)
+  > (using mdx ---)
   > EOF
+  $ set_version 0.2
   $ cat > dune << EOF
   > (mdx)
   > EOF
@@ -63,6 +68,16 @@ Relative paths within the workspace do not work.
   Source path: a/README.md
   Included path: ../b/src.ml
   [1]
+
+But this works with stanza 0.3:
+
+  $ set_version 0.3
+  $ dune runtest
+  File "a/README.md", line 1, characters 0-0:
+  Error: Files _build/default/a/README.md and
+  _build/default/a/.mdx/README.md.corrected differ.
+  [1]
+  $ set_version 0.2
 
 Files in the same directory work.
 

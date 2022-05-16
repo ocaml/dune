@@ -13,6 +13,10 @@
  (deps %{bin:dunepp}))
 
 (cram
+ (applies_to tuideps)
+ (deps %{bin:ocaml-uideps}))
+
+(cram
  (applies_to :whole_subtree)
  (deps
   %{bin:dune_cmd}

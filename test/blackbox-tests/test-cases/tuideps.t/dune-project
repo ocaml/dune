@@ -1,0 +1,4 @@
+(lang dune 3.5)
+(implicit_transitive_deps false)
+
+(enable_project_indexation)

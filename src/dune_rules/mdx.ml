@@ -68,22 +68,48 @@ module Deps = struct
       [ A "deps"; Dep (Path.build files.Files.src) ]
       ~stdout_to:files.Files.deps
 
+  let path_escapes_dir str =
+    try
+      let (_ : Path.Local.t) = Path.Local.of_string str in
+      false
+    with User_error.E _ -> true
+
   let to_path ~dir str =
-    let local = Path.Local.of_string str in
-    let build = Path.Build.append_local dir local in
-    Path.build build
+    if not (Filename.is_relative str) then Error (`Absolute str)
+    else
+      let path = Path.relative_to_source_in_build_or_external ~dir str in
+      match path with
+      | In_build_dir _ ->
+        if path_escapes_dir str then Error (`Escapes_dir str) else Ok path
+      | _ -> Error (`Escapes_workspace str)
+
+  let add_acc (dirs, files) kind path =
+    match kind with
+    | `Dir -> (path :: dirs, files)
+    | `File -> (dirs, path :: files)
 
   let dirs_and_files ~dir t_list =
-    List.partition_map t_list ~f:(function
-      | Dir d -> Left (to_path ~dir d)
-      | File f -> Right (to_path ~dir f))
+    List.fold_left t_list
+      ~init:(Ok ([], []))
+      ~f:(fun acc df ->
+        let open Result.O in
+        let* acc = acc in
+        let kind, path =
+          match df with
+          | Dir d -> (`Dir, d)
+          | File f -> (`File, f)
+        in
+        let+ path = to_path ~dir path in
+        add_acc acc kind path)
 
   let to_dep_set ~dir t_list =
-    let open Memo.O in
-    let dirs, files = dirs_and_files ~dir t_list in
-    let dep_set = Dep.Set.of_files files in
-    let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
-    List.fold_left l ~init:dep_set ~f:Dep.Set.union
+    match dirs_and_files ~dir t_list with
+    | Error e -> Memo.return (Error e)
+    | Ok (dirs, files) ->
+      let open Memo.O in
+      let dep_set = Dep.Set.of_files files in
+      let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
+      Ok (Dep.Set.union_all (dep_set :: l))
 end
 
 module Prelude = struct
@@ -226,12 +252,46 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
     Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
   and* () =
     (* Add the rule for generating the .corrected file using ocaml-mdx test *)
-    let mdx_action =
+    let mdx_action ~loc:_ =
       let open Action_builder.With_targets.O in
       let mdx_input_dependencies =
-        Action_builder.bind (Deps.read files) ~f:(fun dep_set ->
-            Action_builder.of_memo (Deps.to_dep_set dep_set ~dir))
+        let open Action_builder.O in
+        let* dep_set = Deps.read files in
+        Action_builder.of_memo
+          (let open Memo.O in
+          let+ dsr = Deps.to_dep_set dep_set ~dir in
+          let src_path_msg =
+            Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src))
+          in
+          match dsr with
+          | Result.Ok r -> r
+          | Error (`Absolute str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files must be relative. This stanza \
+                   refers to the following absolute path:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ]
+          | Error (`Escapes_workspace str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files must stay within the \
+                   workspace. This stanza refers to the following path which \
+                   escapes:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ]
+          | Error (`Escapes_dir str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files cannot escape the directory. \
+                   This stanza refers to the following path which escapes:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ])
       in
+
       let dyn_deps =
         Action_builder.map mdx_input_dependencies ~f:(fun d -> ((), d))
       in
@@ -268,7 +328,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
       >>| Action.Full.add_locks locks
       >>| Action.Full.add_sandbox sandbox
     in
-    Super_context.add_rule sctx ~loc ~dir mdx_action
+    Super_context.add_rule sctx ~loc ~dir (mdx_action ~loc)
   in
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action = Files.diff_action files in

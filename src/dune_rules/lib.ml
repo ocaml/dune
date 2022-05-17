@@ -1848,8 +1848,6 @@ module DB = struct
 
   type t = db
 
-  (* CR-someday amokhov: this whole module should be rewritten using the
-     memoization framework instead of using mutable state. *)
   let create ~parent ~resolve ~projects_by_package ~all ~modules_of_lib
       ~lib_config () =
     { parent

@@ -222,7 +222,6 @@ let handle_special_libs cctx =
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
   let sctx = CC.super_context cctx in
   let ctx = Super_context.context sctx in
-  let module LM = Lib.Lib_and_module in
   let rec process_libs ~to_link_rev ~force_linkall libs =
     match libs with
     | [] ->
@@ -230,9 +229,7 @@ let handle_special_libs cctx =
     | lib :: libs -> (
       match Lib_info.special_builtin_support (Lib.info lib) with
       | None ->
-        process_libs libs
-          ~to_link_rev:(LM.Lib lib :: to_link_rev)
-          ~force_linkall
+        process_libs libs ~to_link_rev:(Lib lib :: to_link_rev) ~force_linkall
       | Some special -> (
         match special with
         | Build_info { data_module; api_version } ->
@@ -245,7 +242,7 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~to_link_rev:(Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall
         | Findlib_dynload ->
           (* If findlib.dynload is linked, we stores in the binary the packages
@@ -274,12 +271,10 @@ let handle_special_libs cctx =
               ~requires ~precompiled_cmi:false
           in
           process_libs libs
-            ~to_link_rev:(LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
+            ~to_link_rev:(Module (obj_dir, module_) :: Lib lib :: to_link_rev)
             ~force_linkall:true
         | Configurator _ ->
-          process_libs libs
-            ~to_link_rev:(LM.Lib lib :: to_link_rev)
-            ~force_linkall
+          process_libs libs ~to_link_rev:(Lib lib :: to_link_rev) ~force_linkall
         | Dune_site { data_module; plugins } ->
           let code =
             if plugins then
@@ -294,7 +289,7 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~to_link_rev:(Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall:true))
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

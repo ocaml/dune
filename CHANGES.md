@@ -79,6 +79,9 @@
   paths, and provide better error messages when paths are invalid (#5703, #5704,
   fixes #5596, @emillon)
 
+- Fix ctypes rules for external lib names which aren't valid ocaml names
+  (#5667, fixes #5511, @Khady)
+
 3.1.1 (19/04/2022)
 ------------------
 

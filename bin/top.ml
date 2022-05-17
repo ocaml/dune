@@ -35,18 +35,20 @@ let term =
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
           let open Memo.O in
-          let* setup = setup in
-          let sctx =
-            Dune_engine.Context_name.Map.find setup.scontexts ctx_name
-            |> Option.value_exn
-          in
-          let dir =
-            let build_dir = (Super_context.context sctx).build_dir in
-            Path.Build.relative build_dir (Common.prefix_target common dir)
-          in
-          let scope = Super_context.find_scope_by_dir sctx dir in
-          let db = Dune_rules.Scope.libs scope in
           let* libs =
+            let* setup = setup in
+            let sctx =
+              Dune_engine.Context_name.Map.find setup.scontexts ctx_name
+              |> Option.value_exn
+            in
+            let dir =
+              let build_dir = (Super_context.context sctx).build_dir in
+              Path.Build.relative build_dir (Common.prefix_target common dir)
+            in
+            let db =
+              let scope = Super_context.find_scope_by_dir sctx dir in
+              Dune_rules.Scope.libs scope
+            in
             Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)
           in
           let* requires =
@@ -57,9 +59,10 @@ let term =
             Dune_rules.Lib.L.toplevel_include_paths requires
           in
           let* files = link_deps requires in
-          let* () =
+          let+ () =
             Memo.parallel_iter files ~f:(fun file ->
-                Build_system.build_file file >>| ignore)
+                let+ (_ : Digest.t) = Build_system.build_file file in
+                ())
           in
           let files_to_load =
             List.filter files ~f:(fun p ->
@@ -68,7 +71,6 @@ let term =
                 || ext = Ocaml.Cm_kind.ext Cmo)
           in
           Dune_rules.Toplevel.print_toplevel_init_file ~include_paths
-            ~files_to_load;
-          Memo.return ()))
+            ~files_to_load))
 
 let command = (term, info)

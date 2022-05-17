@@ -19,7 +19,8 @@ let js_of_ocaml_rule sctx ~sub_command ~dir ~(flags : _ Js_of_ocaml.Flags.t)
   let open Memo.O in
   let+ jsoo = jsoo ~dir sctx
   and+ flags = Super_context.js_of_ocaml_flags sctx ~dir flags in
-  Command.run ~dir:(Path.build dir) jsoo
+  Command.run ~sandbox:Sandbox_config.needs_sandboxing ~dir:(Path.build dir)
+    jsoo
     [ (match sub_command with
       | Compile -> S []
       | Link -> A "link"

@@ -37,6 +37,9 @@
 (rule
  (copy dune-private-libs.opam.template ocamlc-loc.opam.template))
 
+(rule
+ (copy dune-private-libs.opam.template chrome-trace.opam.template))
+
 (env
  (_
   (flags :standard -alert -unstable)))

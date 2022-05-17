@@ -26,10 +26,4 @@ Reproduction case for #5515
   > EOF
 
   $ dune test
-  File "dune", line 4, characters 1-28:
-  4 |  (inline_tests (modes byte))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  You are doing something unexpected with the tests. No tests have 
-  been run. You should use the inline_tests_runner script to run 
-  tests.
-  [1]
+  byte

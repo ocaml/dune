@@ -21,6 +21,9 @@ module Linkage : sig
   (** Native compilation, extension [.exe] *)
   val native : t
 
+  (** like [custom] but allows for a custom extension *)
+  val custom_with_ext : ext:string -> Context.t -> t
+
   (** Byte compilation with stubs statically linked in, extension [.exe] *)
   val custom : Context.t -> t
 

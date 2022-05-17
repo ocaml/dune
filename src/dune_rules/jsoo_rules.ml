@@ -169,8 +169,8 @@ let setup_separate_compilation_rules sctx components =
           in
           SC.add_rule sctx ~dir action_with_targets))
 
-let build_exe cc ~in_context ~src ~(cm : Path.t list Action_builder.t) ~promote
-    ~link_time_code_gen =
+let build_exe cc ~loc ~in_context ~src ~(cm : Path.t list Action_builder.t)
+    ~promote ~link_time_code_gen =
   let { Js_of_ocaml.In_context.javascript_files; flags } = in_context in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
@@ -188,12 +188,12 @@ let build_exe cc ~in_context ~src ~(cm : Path.t list Action_builder.t) ~promote
   | Separate_compilation ->
     standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime
       ~flags
-    >>= SC.add_rule sctx ~dir
+    >>= SC.add_rule ~loc sctx ~dir
     >>> link_rule cc ~runtime:standalone_runtime ~target cm ~flags
           ~link_time_code_gen
-    >>= SC.add_rule sctx ~dir ~mode
+    >>= SC.add_rule sctx ~loc ~dir ~mode
   | Whole_program ->
     exe_rule cc ~javascript_files ~src ~target ~flags
-    >>= SC.add_rule sctx ~dir ~mode
+    >>= SC.add_rule sctx ~loc ~dir ~mode
 
 let runner = "node"

@@ -1,5 +1,5 @@
-3.2.0 (Unreleased)
------------------
+3.2.0 (17-05-2022)
+------------------
 
 - Fixed ``dune describe workspace --with-deps`` so that it correctly
   handles Reason files, as well as files any other dialect. (#5701, @esope)

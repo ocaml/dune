@@ -7,11 +7,12 @@ type t
 
 val dir : t -> Path.t
 
-val predicate : t -> string Predicate.t
+val predicate : t -> Filename.t Predicate.t
 
 val only_generated_files : t -> bool
 
-val create : dir:Path.t -> ?only_generated_files:bool -> string Predicate.t -> t
+val create :
+  dir:Path.t -> ?only_generated_files:bool -> Filename.t Predicate.t -> t
 
 val equal : t -> t -> bool
 

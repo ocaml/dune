@@ -2,6 +2,9 @@ include module type of struct
   include Stdlib.Filename
 end
 
+(* TODO add invariants and make this abstract or private *)
+type t = string
+
 val split_extension : string -> string * string
 
 val split_extension_after_dot : string -> string * string

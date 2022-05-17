@@ -167,7 +167,7 @@ include Sub_system.Register_end_point (struct
           match mode with
           | Native -> Exe.Linkage.native
           | Best -> Exe.Linkage.native_or_custom (Super_context.context sctx)
-          | Byte -> Exe.Linkage.byte
+          | Byte -> Exe.Linkage.custom (Super_context.context sctx)
           | Javascript -> Exe.Linkage.js)
     in
     let* () =
@@ -212,7 +212,7 @@ include Sub_system.Register_end_point (struct
           match mode with
           | Native | Best -> ".exe"
           | Javascript -> ".bc.js"
-          | Byte -> ".bc"
+          | Byte -> ".exe"
         in
         let custom_runner =
           match mode with

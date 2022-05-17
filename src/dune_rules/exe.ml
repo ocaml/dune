@@ -32,12 +32,14 @@ module Linkage = struct
 
   let is_byte x = x.mode = Byte && not (is_js x)
 
-  let custom context =
+  let custom_with_ext ~ext context =
     { mode = Byte_with_stubs_statically_linked_in
-    ; ext = ".exe"
+    ; ext
     ; flags =
         [ Ocaml.Version.custom_or_output_complete_exe context.Context.version ]
     }
+
+  let custom = custom_with_ext ~ext:".exe"
 
   let native_or_custom (context : Context.t) =
     match context.ocamlopt with

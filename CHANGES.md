@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fix running inline tests in byteode mode (#5622, fixes #5515, @dariusf)
+
 - [ctypes] always re-run `pkg-config` because we aren't tracking its external
   dependencies (#6052, @rgrinberg)
 

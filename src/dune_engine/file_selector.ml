@@ -2,7 +2,7 @@ open Import
 
 type t =
   { dir : Path.t
-  ; predicate : string Predicate.t
+  ; predicate : Filename.t Predicate.t
   ; only_generated_files : bool
   }
 

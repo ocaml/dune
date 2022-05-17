@@ -58,7 +58,7 @@ module Glob : sig
 
   val of_pred : (string -> bool) -> t
 
-  val to_predicate : t -> standard:t -> string Predicate.t
+  val to_predicate : t -> standard:t -> Filename.t Predicate.t
 
   val of_string_set : String.Set.t -> t
 

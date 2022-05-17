@@ -145,7 +145,7 @@ module Glob = struct
 
   let of_string_set s = Element (String.Set.mem s)
 
-  let to_predicate (t : t) ~(standard : t) : string Predicate.t =
+  let to_predicate (t : t) ~(standard : t) =
     let f f = Predicate.create ~id:(lazy (Dyn.int 0)) ~f in
     let standard = map ~f standard in
     map t ~f |> to_predicate ~standard

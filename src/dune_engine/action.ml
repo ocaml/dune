@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 module Outputs = Action_ast.Outputs
 module Inputs = Action_ast.Inputs

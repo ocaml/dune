@@ -1,3 +1,4 @@
+(* we don't [Import] here because this module is part of [Import] *)
 open Stdune
 
 module Path = struct

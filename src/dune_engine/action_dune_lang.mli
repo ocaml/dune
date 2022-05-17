@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 (* This module is to be used in Dune_file. It should not introduce any
    dependencies unless they're already dependencies of Dune_file *)

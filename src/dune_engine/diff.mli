@@ -1,6 +1,6 @@
 (** Representation of (diff ...) actions *)
 
-open Stdune
+open Import
 
 module Mode : sig
   type t =

@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 (* CR-soon cwong: I am deeply unsatisfied with the refactoring that lead to the
    existence of this module, and would like to delete it. This module (and the

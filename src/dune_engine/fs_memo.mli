@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 (** [init] must be called at initialization. Returns the set of nodes that need

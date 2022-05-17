@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 open Fiber.O
 module Json = Chrome_trace.Json

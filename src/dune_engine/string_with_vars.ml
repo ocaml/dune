@@ -1,5 +1,4 @@
-open! Stdune
-open! Import
+open Import
 
 type part =
   | Text of string

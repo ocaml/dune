@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 type t =
   | File of Path.Source.t

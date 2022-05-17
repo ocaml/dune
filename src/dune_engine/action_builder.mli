@@ -1,6 +1,5 @@
 (** Action builder *)
 
-open! Stdune
 open! Import
 
 include module type of Action_builder0

@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 include Sandbox_mode.Set
 
 let no_special_requirements = of_func (fun _ -> true)

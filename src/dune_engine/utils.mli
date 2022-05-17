@@ -1,6 +1,6 @@
 (** Utilities that can't go in [Import] *)
 
-open! Stdune
+open Import
 
 (** Return the absolute path to the shell and the argument to pass it (-c or
     /c). Raise in case in cannot be found. *)

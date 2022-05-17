@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Action_output_on_success = struct
   type t =

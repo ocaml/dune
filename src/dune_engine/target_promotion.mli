@@ -2,7 +2,7 @@
 
     See [Diff_promotion] for the logic related to promoting [diff]s. *)
 
-open! Stdune
+open Import
 
 val promote :
      dir:Path.Build.t

@@ -1,5 +1,4 @@
-module Caml_digest = Digest
-open! Stdune
+module Caml_digest = Stdlib.Digest
 open Import
 
 let digest_string string =

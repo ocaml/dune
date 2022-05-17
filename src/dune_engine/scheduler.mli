@@ -1,7 +1,6 @@
 (** Scheduling *)
 
 open! Import
-open Stdune
 
 module Config : sig
   module Display : sig

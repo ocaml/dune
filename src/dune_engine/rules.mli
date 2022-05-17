@@ -1,6 +1,6 @@
 (** A collection of rules across a known finite set of directories *)
 
-open! Stdune
+open! Import
 module Action_builder := Action_builder0
 
 (** Represent a set of rules producing files in a given directory *)

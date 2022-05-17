@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 type program = String_with_vars.t
 

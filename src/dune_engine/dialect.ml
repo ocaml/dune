@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 module File_kind = struct
   type t =

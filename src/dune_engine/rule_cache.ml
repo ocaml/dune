@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 (* A type isomorphic to [Result], but without the negative connotations

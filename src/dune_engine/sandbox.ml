@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"

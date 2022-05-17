@@ -1,5 +1,4 @@
-open! Stdune
-open! Import
+open Import
 
 (** A non-validated set of targets of a build rule. *)
 type t

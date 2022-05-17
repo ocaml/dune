@@ -1,5 +1,4 @@
-open! Stdune
-open! Import
+open Import
 
 type 'a t
 

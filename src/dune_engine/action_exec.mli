@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (* For registering the cram_exec function. *)
 val cram_run : (env:Env.t -> script:Path.t -> unit Fiber.t) Fdecl.t

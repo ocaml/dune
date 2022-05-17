@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
   type map =

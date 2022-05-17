@@ -1,8 +1,7 @@
 (** Build system's configuration: how to generate rules, how to handle events,
     whether to use the shared cache, etc. *)
 
-open! Stdune
-open! Import
+open Import
 module Action_builder = Action_builder0
 
 module Context_or_install : sig

@@ -1,5 +1,4 @@
-open! Stdune
-open! Import
+open Import
 
 type t =
   { name : Context_name.t

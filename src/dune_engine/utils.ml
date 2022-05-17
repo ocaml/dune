@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 let system_shell_exn =

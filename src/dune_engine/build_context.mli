@@ -3,8 +3,7 @@
 
    This name could probably be chosen to be a bit more informative. *)
 
-open! Stdune
-open! Import
+open Import
 
 type t = private
   { name : Context_name.t

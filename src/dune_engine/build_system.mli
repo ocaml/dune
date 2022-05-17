@@ -1,7 +1,6 @@
 (** The core of the build system *)
 
-open! Stdune
-open! Import
+open Import
 module Action_builder := Action_builder0
 
 (** {1 Requests} *)

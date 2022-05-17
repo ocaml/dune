@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module type S = sig
   val always : (unit -> unit) -> unit

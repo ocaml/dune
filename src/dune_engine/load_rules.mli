@@ -1,7 +1,6 @@
 (** Loading build rules *)
 
-open! Stdune
-open! Import
+open Import
 module Action_builder := Action_builder0
 
 (** A way to determine the [Loc.t] of the current rule. Set by [Build_system]. *)

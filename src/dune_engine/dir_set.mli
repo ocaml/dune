@@ -1,6 +1,6 @@
 (** Potentially infinite sets of directories *)
 
-open! Stdune
+open Import
 
 (** Type of potentially infinite sets of directories. Not all sets can be
     represented, only ones that can be efficiently inspected. *)

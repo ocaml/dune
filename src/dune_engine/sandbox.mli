@@ -1,6 +1,6 @@
 (** Creation and management of sandboxes *)
 
-open Stdune
+open Import
 
 type t
 

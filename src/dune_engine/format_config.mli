@@ -1,6 +1,5 @@
 (** Represent the [(formatting)] field in [dune-project] files *)
 
-open! Stdune
 open Import
 
 module Language : sig

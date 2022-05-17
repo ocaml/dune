@@ -1,5 +1,6 @@
 (** Digest files with [stat]-based caching persisted between builds. *)
-open Stdune
+
+open Import
 
 module Digest_result : sig
   type t =

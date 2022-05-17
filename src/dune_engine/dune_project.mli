@@ -1,5 +1,4 @@
 (** dune-project files *)
-open! Stdune
 
 open Import
 

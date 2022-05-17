@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 let temp_dir = lazy (Temp.create Dir ~prefix:"build" ~suffix:"dune")
 

@@ -1,5 +1,4 @@
-open! Stdune
-open! Import
+open Import
 open Memo.O
 
 (* Watching and invalidating paths. *)

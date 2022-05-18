@@ -1,7 +1,7 @@
 open Import
 
 module Backend = struct
-  let name = Sub_system_name.make "inline_tests.backend"
+  let name = Sub_system_name.of_string "inline_tests.backend"
 
   type t =
     { loc : Loc.t
@@ -94,7 +94,7 @@ module Mode_conf = struct
 end
 
 module Tests = struct
-  let name = Sub_system_name.make "inline_tests"
+  let name = Sub_system_name.of_string "inline_tests"
 
   type t =
     { loc : Loc.t

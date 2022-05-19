@@ -38,7 +38,6 @@ module Include_stanza = Include_stanza
 module Response_file = Response_file
 module File_selector = File_selector
 module Action_mapper = Action_mapper
-module Action_intf = Action_intf
 module Action_to_sh = Action_to_sh
 module Diff = Diff
 module Scheduler = Scheduler

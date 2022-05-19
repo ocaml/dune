@@ -22,6 +22,8 @@ let local_libraries =
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)
   ; ("src/ocaml", Some "Ocaml", false, None)
+  ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
+    None)
   ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
@@ -33,8 +35,6 @@ let local_libraries =
   ; ("src/dune_stats", Some "Dune_stats", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
   ; ("src/section", Some "Dune_section", false, None)
-  ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
-    None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/thread_worker", Some "Thread_worker", false, None)
   ; ("otherlibs/ocamlc_loc/src", Some "Ocamlc_loc", false, None)

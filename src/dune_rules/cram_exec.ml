@@ -356,7 +356,8 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
       fprln oc {|printf "%%d\0%%s\0" $? "$%s" >> %s|}
-        Action_exec._BUILD_PATH_PREFIX_MAP metadata_file_sh_path;
+        Dune_util.Build_path_prefix_map._BUILD_PATH_PREFIX_MAP
+        metadata_file_sh_path;
       Cram_lexer.Command
         { command = lines
         ; output_file = user_shell_code_output_file
@@ -394,7 +395,8 @@ let run ~env ~script lexbuf : string Fiber.t =
     let env = Env.add env ~var:"LC_ALL" ~value:"C" in
     let temp_dir = Path.relative temp_dir "tmp" in
     let env =
-      Action_exec.extend_build_path_prefix_map env `New_rules_have_precedence
+      Dune_util.Build_path_prefix_map.extend_build_path_prefix_map env
+        `New_rules_have_precedence
         [ Some
             { source = Path.to_absolute_filename cwd
             ; target = "$TESTCASE_ROOT"

@@ -111,13 +111,20 @@ let rec map t ~f =
   | Standard -> Standard
 
 let to_predicate (type a) (t : a Predicate.t t) ~standard : a Predicate.t =
+  Predicate.create (fun a ->
+      exec t ~standard (fun pred -> Predicate.test pred a))
+
+let to_predicate_with_id (type a) (t : a Predicate_with_id.t t) ~standard :
+    a Predicate_with_id.t =
   let id =
     lazy
       (Dyn.variant "Predicate_lang.to_predicate"
-         [ to_dyn Predicate.to_dyn standard; to_dyn Predicate.to_dyn t ])
+         [ to_dyn Predicate_with_id.to_dyn standard
+         ; to_dyn Predicate_with_id.to_dyn t
+         ])
   in
-  Predicate.create ~id ~f:(fun a ->
-      exec t ~standard (fun pred -> Predicate.test pred a))
+  Predicate_with_id.create ~id ~f:(fun a ->
+      exec t ~standard (fun pred -> Predicate_with_id.test pred a))
 
 module Glob = struct
   type glob = string -> bool
@@ -144,9 +151,4 @@ module Glob = struct
   let true_ = Element (fun _ -> true)
 
   let of_string_set s = Element (String.Set.mem s)
-
-  let to_predicate (t : t) ~(standard : t) =
-    let f f = Predicate.create ~id:(lazy (Dyn.int 0)) ~f in
-    let standard = map ~f standard in
-    map t ~f |> to_predicate ~standard
 end

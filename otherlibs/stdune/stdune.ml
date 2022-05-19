@@ -70,6 +70,7 @@ module Queue = Queue
 module Caller_id = Caller_id
 module Metrics = Metrics
 module Dune_filesystem_stubs = Dune_filesystem_stubs
+module Predicate = Predicate
 
 module Unix_error = struct
   include Dune_filesystem_stubs.Unix_error

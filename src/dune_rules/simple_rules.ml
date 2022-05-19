@@ -160,7 +160,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.parent_exn glob_in_src in
   let pred =
-    Path.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
+    Path.basename glob_in_src |> Glob.of_string_exn loc
+    |> Glob.to_predicate_with_id
   in
   let src_in_build =
     match Path.as_in_source_tree src_in_src with

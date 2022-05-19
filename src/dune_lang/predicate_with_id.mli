@@ -2,9 +2,14 @@
     string. The uniquely identifying string allows us to safely memoize on the
     predicate *)
 
+(* TODO move back to dune_engine? this is really only needed for
+   [File_selector.t] *)
+
 open Stdune
 
 type 'a t
+
+val predicate : 'a t -> 'a Predicate.t
 
 val equal : 'a t -> 'a t -> bool
 

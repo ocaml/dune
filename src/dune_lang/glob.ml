@@ -28,6 +28,8 @@ let decode =
 
 let filter t = List.filter ~f:(test t)
 
-let to_pred t =
+let to_predicate t = Predicate.create (test t)
+
+let to_predicate_with_id t =
   let id = lazy (Dyn.variant "Glob" [ String (to_string t) ]) in
-  Predicate.create ~id ~f:(test t)
+  Predicate_with_id.create ~id ~f:(test t)

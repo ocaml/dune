@@ -18,7 +18,8 @@ module Dynamic_dep = struct
     let to_dep = function
       | File fn -> Dep.file fn
       | Glob (dir, glob) ->
-        Glob.to_pred glob |> File_selector.create ~dir |> Dep.file_selector
+        Glob.to_predicate_with_id glob
+        |> File_selector.create ~dir |> Dep.file_selector
 
     let of_DAP_dep ~loc ~working_dir : DAP.Dependency.t -> t =
       let to_dune_path = Path.relative working_dir in
@@ -217,13 +218,10 @@ let rec exec t ~ectx ~eenv =
     Done
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =
-      let standard =
-        Predicate_lang.Element
-          (Predicate.create ~id:(lazy (Dyn.int 0)) ~f:(Int.equal 0))
-      in
+      let standard = Predicate_lang.Element (Predicate.create (Int.equal 0)) in
       let exit_codes =
         Predicate_lang.map exit_codes ~f:(fun i ->
-            Predicate.create ~f:(Int.equal i) ~id:(lazy (Dyn.int i)))
+            Predicate.create (Int.equal i))
         |> Predicate_lang.to_predicate ~standard
       in
       { eenv with exit_codes }
@@ -539,7 +537,7 @@ let exec ~targets ~root ~context ~env ~rule_loc ~build_deps
           (Execution_parameters.action_stderr_on_success execution_parameters)
     ; stdin_from = Process.Io.null In
     ; prepared_dependencies = DAP.Dependency.Set.empty
-    ; exit_codes = Predicate.create ~id:(lazy (Dyn.int 0)) ~f:(Int.equal 0)
+    ; exit_codes = Predicate.create (Int.equal 0)
     }
   in
   exec_until_all_deps_ready t ~ectx ~eenv

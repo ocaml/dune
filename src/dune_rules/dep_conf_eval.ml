@@ -141,7 +141,8 @@ let rec dep expander = function
       (let loc = String_with_vars.loc s in
        let* path = Expander.expand_path expander s in
        let pred =
-         Path.basename path |> Glob.of_string_exn loc |> Glob.to_pred
+         Path.basename path |> Glob.of_string_exn loc
+         |> Glob.to_predicate_with_id
        in
        let dir = Path.parent_exn path in
        let files_in dir =

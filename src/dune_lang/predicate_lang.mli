@@ -35,6 +35,11 @@ val empty : 'a t
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
+val to_predicate_with_id :
+     'a Predicate_with_id.t t
+  -> standard:'a Predicate_with_id.t t
+  -> 'a Predicate_with_id.t
+
 val to_predicate :
   'a Predicate.t t -> standard:'a Predicate.t t -> 'a Predicate.t
 
@@ -57,8 +62,6 @@ module Glob : sig
   val of_glob : Glob.t -> t
 
   val of_pred : (string -> bool) -> t
-
-  val to_predicate : t -> standard:t -> Filename.t Predicate.t
 
   val of_string_set : String.Set.t -> t
 

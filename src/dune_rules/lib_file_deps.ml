@@ -30,7 +30,7 @@ module Group = struct
               variant "Lib_file_deps" [ string ext ])
           in
           let pred =
-            Dune_lang.Predicate.create ~id ~f:(fun p ->
+            Dune_lang.Predicate_with_id.create ~id ~f:(fun p ->
                 String.equal (Filename.extension p) ext)
           in
           (g, pred))

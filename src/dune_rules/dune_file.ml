@@ -973,7 +973,7 @@ module Promote = struct
        in
        let only =
          Option.map only ~f:(fun only ->
-             let only = Predicate_lang.map only ~f:Glob.to_pred in
+             let only = Predicate_lang.map only ~f:Glob.to_predicate in
              Predicate_lang.to_predicate only ~standard:Predicate_lang.any)
        in
        { Rule.Promote.lifetime =

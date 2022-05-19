@@ -11,7 +11,7 @@ module Versioned_file = Versioned_file
 module Format = Format
 module Stanza = Stanza
 module Predicate_lang = Predicate_lang
-module Predicate = Predicate
+module Predicate_with_id = Predicate_with_id
 module Glob = Glob
 
 (* TODO remove the [Dune] prefix *)

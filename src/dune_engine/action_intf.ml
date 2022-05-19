@@ -1,23 +1,5 @@
 open Import
-
-module Outputs = struct
-  type t =
-    | Stdout
-    | Stderr
-    | Outputs  (** Both Stdout and Stderr *)
-end
-
-module Inputs = struct
-  type t = Stdin
-end
-
-module File_perm = struct
-  (** File mode, for when creating files. We only allow what Dune takes into
-      account when memoizing commands. *)
-  type t =
-    | Normal
-    | Executable
-end
+open Action_types
 
 module type Ast = sig
   type program

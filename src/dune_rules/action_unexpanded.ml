@@ -1,5 +1,4 @@
 open Import
-module Mapper = Action_mapper.Make (Action_dune_lang) (Action_dune_lang)
 
 (* So that we can comfortably use both the [Action_builder.O] and [Memo.O]
    monads at the same time. *)

@@ -44,7 +44,7 @@ in the section ``share``. This package can add files to this ``site`` using the
 .. code:: scheme
 
    (install
-    (section (site mygui themes))
+    (section (site (mygui themes)))
     (files
      (layout.css as default/layout.css)
      (ok.png  as default/ok.png)
@@ -95,29 +95,28 @@ Then inside ``mygui.ml`` module the locations can be recovered and used:
 
    (** Locations of the site for the themes *)
    let themes_locations : string list = Mysites.Sites.themes
-
-   (** Merge the content of the directories in [dirs] *)
-   let rec readdirs dirs =
-     List.concat
-       (List.map
-          (fun dir -> Array.to_list (Sys.readdir dir))
-          (List.filter Sys.file_exists dirs))
-
-   (** Get the lists of the available themes  *)
-   let find_available_themes () : string list = lookup_dirs themes_locations
-
-   (** Lookup a file in the directories *)
-   let rec lookup_file filename = function
-     | [] -> raise Not_found
-     | dir::dirs ->
-        let filename' = Filename.concat dir filename in
-        if Sys.file_exists filename' then filename'
-        else lookup_file filename dirs
-
+   
+   (** Merge the contents of the directories in [dirs] *)
+   let lookup_dirs dirs =
+     List.filter Sys.file_exists dirs
+     |> List.map (fun dir -> Array.to_list (Sys.readdir dir))
+     |> List.concat
+   
+   (** Get the available themes *)
+   let find_available_themes () = lookup_dirs themes_locations
+   
+   (** [lookup_file name dirs] finds the first file called [name] in [dirs] *)
+   let lookup_file filename dirs =
+     List.find_map
+       (fun dir ->
+         let filename' = Filename.concat dir filename in
+         if Sys.file_exists filename' then Some filename' else None)
+       dirs
+   
    (** [lookup_theme_file theme file] get the [file] of the [theme] *)
    let lookup_theme_file file theme =
      lookup_file (Filename.concat theme file) themes_locations
-
+   
    let get_layout_css = lookup_theme_file "layout.css"
    let get_ok_ico = lookup_theme_file "ok.png"
    let get_ko_ico = lookup_theme_file "ko.png"

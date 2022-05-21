@@ -17,6 +17,9 @@ type ('path, 'target) t =
   ; file2 : 'target
   }
 
+let map t ~path ~target =
+  { t with file1 = path t.file1; file2 = target t.file2 }
+
 let decode path target ~optional =
   let open Dune_lang.Decoder in
   let+ file1 = path

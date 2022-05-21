@@ -15,6 +15,8 @@ type ('path, 'target) t =
   ; file2 : 'target
   }
 
+val map : ('p, 't) t -> path:('p -> 'x) -> target:('t -> 'y) -> ('x, 'y) t
+
 val decode :
      'path Dune_lang.Decoder.t
   -> 'target Dune_lang.Decoder.t

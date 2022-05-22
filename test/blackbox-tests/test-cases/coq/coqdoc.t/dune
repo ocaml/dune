@@ -1,0 +1,5 @@
+(coq.theory
+ (name basic)
+ (package base)
+ (modules :standard)
+ (synopsis "Test Coq library"))

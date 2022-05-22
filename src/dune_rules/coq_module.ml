@@ -70,6 +70,10 @@ type obj_files_mode =
   | Build
   | Install
 
+let glob_file x ~obj_dir =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  Path.Build.relative vo_dir (x.name ^ ".glob")
+
 (* XXX: Remove the install .coq-native hack once rules can output targets in
    multiple subdirs *)
 let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =

@@ -8,7 +8,7 @@ val equal : t -> t -> bool
 
 val compare : t -> t -> Ordering.t
 
-val decode : t Dune_lang.Decoder.t
+val decode : t Dune_sexp.Decoder.t
 
 val all : t list
 
@@ -51,9 +51,9 @@ module Dict : sig
 
     val empty : 'a t
 
-    val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+    val decode : 'a Dune_sexp.Decoder.t -> 'a t Dune_sexp.Decoder.t
 
-    val encode : 'a Dune_lang.Encoder.t -> 'a t -> Dune_lang.t list
+    val encode : 'a Dune_sexp.Encoder.t -> 'a t -> Dune_sexp.t list
   end
   with type 'a dict := 'a t
 
@@ -78,7 +78,7 @@ module Dict : sig
 
     val to_dyn : t -> Dyn.t
 
-    val encode : t -> Dune_lang.t list
+    val encode : t -> Dune_sexp.t list
 
     val equal : t -> t -> bool
 

@@ -18,9 +18,9 @@ val make : string -> t
 
 val to_string : t -> string
 
-val encode : t Dune_lang.Encoder.t
+val encode : t Dune_sexp.Encoder.t
 
-val decode : t Dune_lang.Decoder.t
+val decode : t Dune_sexp.Decoder.t
 
 (** {1 Well-known variants} *)
 

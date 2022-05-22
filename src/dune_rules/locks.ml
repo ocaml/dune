@@ -6,7 +6,7 @@ type t = lock list
 
 let decode_one =
   let open Dune_lang.Decoder in
-  let+ sw = Dune_engine.String_with_vars.decode in
+  let+ sw = Dune_lang.String_with_vars.decode in
   Lock sw
 
 let field ?(check = Dune_lang.Decoder.return ()) () =

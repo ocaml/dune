@@ -26,7 +26,10 @@ type rules =
         (** Directories that are target of a rule. For each directory target,
             give the location of the rule that generates it. The keys in this
             map must correspond exactly to the set of directory targets that
-            will be produces by [rules]. *)
+            will be produces by [rules]. The values should be the locations of
+            the rules that are going to produce these targets. However, it's ok
+            to have an approximate location as the rule that produces the target
+            will be responsible for producing the final location*)
   ; rules : Rules.t Memo.t
   }
 

@@ -22,8 +22,6 @@ module Prog : sig
       -> t
 
     val raise : t -> _
-
-    val user_message : t -> User_message.t
   end
 
   type t = (Path.t, Not_found.t) result

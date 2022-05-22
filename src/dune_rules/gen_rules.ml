@@ -277,6 +277,24 @@ let gen_rules sctx dir_contents cctxs expander
   let+ () = define_all_alias ~dir:ctx_dir ~scope ~js_targets in
   cctxs
 
+let collect_directory_targets sctx ~init ~dir =
+  match Super_context.stanzas_in sctx ~dir with
+  | None -> init
+  | Some { Dir_with_dune.data = stanzas; ctx_dir = dir; _ } ->
+    List.fold_left stanzas ~init ~f:(fun acc stanza ->
+        match stanza with
+        | Coq_stanza.Theory.T m ->
+          Coq_rules.coqdoc_directory_targets ~dir m
+          |> Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
+                 User_error.raise
+                   [ Pp.textf
+                       "the following both define the directory target: %s"
+                       (Path.Build.to_string path)
+                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                   ])
+        | _ -> acc)
+
 let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     (Loc.t * Compilation_context.t) list Memo.t =
   let* expander =
@@ -429,7 +447,8 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
         Memo.return
           (Build_config.Rules
              { build_dir_only_sub_dirs = S.These subdirs
-             ; directory_targets
+             ; directory_targets =
+                 collect_directory_targets sctx ~dir ~init:directory_targets
              ; rules
              })))
 

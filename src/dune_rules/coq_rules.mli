@@ -17,6 +17,9 @@ module Bootstrap : sig
     | Bootstrap_prelude  (** We are compiling the prelude itself *)
 end
 
+val coqdoc_directory_targets :
+  dir:Path.Build.t -> Coq_stanza.Theory.t -> Loc.t Path.Build.Map.t
+
 val setup_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t

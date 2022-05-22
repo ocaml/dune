@@ -9,6 +9,12 @@ Unreleased
 
 - Support new locations of unix, str, dynlink in OCaml >= 5.0 (#5582, @dra27)
 
+- The ``coq.theory`` stanza now produces rules for running ``coqdoc``. Given a
+  theory named ``mytheory``, the directory targets ``mytheory.html/`` and
+  ``mytheory.tex/`` or additionally the aliases `@doc` and `@doc-latex` will
+  build the HTML and LaTeX documentation repsectively. (#5695, fixes #3760,
+  @Alizter)
+
 3.2.0 (17-05-2022)
 ------------------
 

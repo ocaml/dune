@@ -4,8 +4,8 @@ module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
 module Stanza = Dune_lang.Stanza
 module Config = Dune_util.Config
-module String_with_vars = Dune_engine.String_with_vars
-module Pform = Dune_engine.Pform
+module String_with_vars = Dune_lang.String_with_vars
+module Pform = Dune_lang.Pform
 module Log = Dune_util.Log
 
 (* the configuration file use the same version numbers as dune-project files for

@@ -111,7 +111,7 @@ module Entry : sig
   end
 
   val adjust_dst :
-       src:Dune_engine.String_with_vars.t
+       src:Dune_lang.String_with_vars.t
     -> dst:string option
     -> section:Section.t
     -> Dst.t

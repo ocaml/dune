@@ -121,7 +121,7 @@ let expand_path (root : Workspace_root.t)
   Path.relative Path.root (root.reach_from_root_prefix ^ s)
 
 let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
-  match Dune_engine.String_with_vars.text_only sv with
+  match Dune_lang.String_with_vars.text_only sv with
   | Some s ->
     Ok [ Alias (Alias.of_string root ~recursive s ~contexts:setup.contexts) ]
   | None -> Error [ Pp.text "alias cannot contain variables" ]

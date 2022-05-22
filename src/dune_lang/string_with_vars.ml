@@ -1,10 +1,12 @@
-open Import
+open Stdune
+open Dune_sexp
+open Dune_util
 
 type part =
   | Text of string
-  | Pform of Dune_lang.Template.Pform.t * Pform.t
+  | Pform of Template.Pform.t * Pform.t
   (* [Error _] is for percent forms that failed to parse with lang dune < 3.0 *)
-  | Error of Dune_lang.Template.Pform.t * User_message.t
+  | Error of Template.Pform.t * User_message.t
 
 type t =
   { quoted : bool
@@ -32,8 +34,7 @@ let make_text ?(quoted = false) loc s = { quoted; loc; parts = [ Text s ] }
 let make_pform ?(quoted = false) loc pform =
   let source =
     match Pform.encode_to_latest_dune_lang_version pform with
-    | Success { name; payload } ->
-      { Dune_lang.Template.Pform.loc; name; payload }
+    | Success { name; payload } -> { Template.Pform.loc; name; payload }
     | Pform_was_deleted -> assert false
   in
   { quoted; loc; parts = [ Pform (source, pform) ] }
@@ -43,23 +44,22 @@ let literal ~quoted ~loc s = { parts = [ Text s ]; quoted; loc }
 let decoding_env_key =
   Univ_map.Key.create ~name:"pform decoding environment" Pform.Env.to_dyn
 
-let set_decoding_env env = Dune_lang.Decoder.set decoding_env_key env
+let set_decoding_env env = Decoder.set decoding_env_key env
 
 let add_user_vars_to_decoding_env vars =
-  Dune_lang.Decoder.update_var decoding_env_key ~f:(function
+  Decoder.update_var decoding_env_key ~f:(function
     | None -> Code_error.raise "Decoding env not set" []
     | Some env -> Some (Pform.Env.add_user_vars env vars))
 
 let decode_manually f =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   let+ env = get decoding_env_key
   and+ x = raw in
   let env =
     match env with
     | Some env -> env
     | None ->
-      Code_error.raise ~loc:(Dune_lang.Ast.loc x)
-        "pform decoding environment not set" []
+      Code_error.raise ~loc:(Ast.loc x) "pform decoding environment not set" []
   in
   match x with
   | Atom (loc, A s) -> literal ~quoted:false ~loc s
@@ -70,7 +70,7 @@ let decode_manually f =
     ; loc
     ; parts =
         List.map parts ~f:(function
-          | Dune_lang.Template.Text s -> Text s
+          | Template.Text s -> Text s
           | Pform v -> (
             match f env v with
             | pform -> Pform (v, pform)
@@ -111,18 +111,16 @@ module Mode = struct
     | At_least_one -> (Value.String s, [])
 
   let invalid_multivalue ~source l ~what =
-    User_error.raise ~loc:source.Dune_lang.Template.Pform.loc
+    User_error.raise ~loc:source.Template.Pform.loc
       [ Pp.textf
           "%s %s expands to %d values, however %s value is expected here. \
            Please quote this atom."
-          (String.capitalize_ascii
-             (Dune_lang.Template.Pform.describe_kind source))
-          (Dune_lang.Template.Pform.describe source)
+          (String.capitalize_ascii (Template.Pform.describe_kind source))
+          (Template.Pform.describe source)
           (List.length l) what
       ]
 
-  let value :
-      type a. source:Dune_lang.Template.Pform.t -> a t -> Value.t list -> a =
+  let value : type a. source:Template.Pform.t -> a t -> Value.t list -> a =
    fun ~source t x ->
     match (t, x) with
     | Many, x -> x
@@ -135,7 +133,7 @@ end
 type known_suffix =
   | Full of string
   | Partial of
-      { source_pform : Dune_lang.Template.Pform.t
+      { source_pform : Template.Pform.t
       ; suffix : string
       }
 
@@ -153,7 +151,7 @@ type known_prefix =
   | Full of string
   | Partial of
       { prefix : string
-      ; source_pform : Dune_lang.Template.Pform.t
+      ; source_pform : Template.Pform.t
       }
 
 let known_prefix =
@@ -176,12 +174,12 @@ let fold_pforms =
   in
   fun t ~init ~f -> loop t.parts init f
 
-type 'a expander = source:Dune_lang.Template.Pform.t -> Pform.t -> 'a
+type 'a expander = source:Template.Pform.t -> Pform.t -> 'a
 
 type yes_no_unknown =
   | Yes
   | No
-  | Unknown of { source_pform : Dune_lang.Template.Pform.t }
+  | Unknown of { source_pform : Template.Pform.t }
 
 let is_suffix t ~suffix:want =
   match known_suffix t with
@@ -289,14 +287,14 @@ let has_pforms t = Option.is_none (text_only t)
 
 let encode t =
   match text_only t with
-  | Some s -> Dune_lang.atom_or_quoted_string s
+  | Some s -> atom_or_quoted_string s
   | None ->
-    Dune_lang.Template
+    Template
       { loc = t.loc
       ; quoted = t.quoted
       ; parts =
           List.map t.parts ~f:(function
-            | Text s -> Dune_lang.Template.Text s
+            | Text s -> Template.Text s
             | Error (_, msg) -> raise (User_error.E msg)
             | Pform (source, pform) -> (
               match Pform.encode_to_latest_dune_lang_version pform with
@@ -305,13 +303,13 @@ let encode t =
                   [ Pp.textf
                       "%s was deleted in the latest version of the dune \
                        language. It cannot appear here. "
-                      (Dune_lang.Template.Pform.describe source)
+                      (Template.Pform.describe source)
                   ]
               | Success { name; payload } ->
                 Pform { loc = source.loc; name; payload }))
       }
 
-let to_dyn t = Dune_lang.to_dyn (encode t)
+let to_dyn t = to_dyn (encode t)
 
 let remove_locs { quoted; loc = _; parts } =
   { quoted

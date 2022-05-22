@@ -17,6 +17,6 @@ let native = "native"
 
 let plugin = "plugin"
 
-let encode t = Dune_lang.atom_or_quoted_string t
+let encode t = Dune_sexp.atom_or_quoted_string t
 
-let decode = Dune_lang.Decoder.string
+let decode = Dune_sexp.Decoder.string

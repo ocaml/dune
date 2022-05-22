@@ -5,6 +5,10 @@
   stdune
   dune_glob
   dune_rpc_private
+  dune_util
+  memo
+  ocaml
+  ordering
   (re_export dune_sexp)))
 
 (ocamllex dune_lexer)

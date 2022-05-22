@@ -1,4 +1,5 @@
-open Import
+open Stdune
+open Dune_sexp
 
 module Var : sig
   type t =
@@ -53,8 +54,8 @@ end
 
 module Artifact : sig
   type t =
-    | Mod of Cm_kind.t
-    | Lib of Mode.t
+    | Mod of Ocaml.Cm_kind.t
+    | Lib of Ocaml.Mode.t
 
   val compare : t -> t -> Ordering.t
 
@@ -121,22 +122,21 @@ module Env : sig
   (** Decoding environment *)
   type t
 
-  val initial : Dune_lang.Syntax.Version.t -> t
+  val initial : Syntax.Version.t -> t
 
   val add_user_vars : t -> string list -> t
 
-  val parse : t -> Dune_lang.Template.Pform.t -> pform
+  val parse : t -> Template.Pform.t -> pform
 
   (** Used to parse percent forms in [enabled_if] fields, as the checks are done
       manually *)
-  val unsafe_parse_without_checking_version :
-    t -> Dune_lang.Template.Pform.t -> pform
+  val unsafe_parse_without_checking_version : t -> Template.Pform.t -> pform
 
   (** The set of all variables and macros known, including deleted ones. Macros
       are returned with an empty payload. *)
   val all_known : t -> pform String.Map.t
 
-  val syntax_version : t -> Dune_lang.Syntax.Version.t
+  val syntax_version : t -> Syntax.Version.t
 
   (** Introduce the renaming "<" -> "input-file". In [initial], "<" is marked as
       deleted. *)

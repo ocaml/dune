@@ -1004,7 +1004,8 @@ let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
 
 let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
 
-let () = Extension.register_simple Action_plugin.syntax (return [])
+let () =
+  Extension.register_simple Dune_lang.Action.Action_plugin.syntax (return [])
 
 let dune_site_extension =
   Extension.register_unit Section.dune_site_syntax (return [])

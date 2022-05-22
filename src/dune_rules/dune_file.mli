@@ -298,7 +298,7 @@ module Rule : sig
   type t =
     { targets : String_with_vars.t Targets_spec.t
     ; deps : Dep_conf.t Bindings.t
-    ; action : Loc.t * Action_dune_lang.t
+    ; action : Loc.t * Dune_lang.Action.t
     ; mode : Rule.Mode.t
     ; patch_back_source_tree : bool
     ; locks : Locks.t
@@ -313,7 +313,7 @@ module Alias_conf : sig
   type t =
     { name : Alias.Name.t
     ; deps : Dep_conf.t Bindings.t
-    ; action : (Loc.t * Action_dune_lang.t) option
+    ; action : (Loc.t * Dune_lang.Action.t) option
     ; locks : Locks.t
     ; package : Package.t option
     ; enabled_if : Blang.t
@@ -336,7 +336,7 @@ module Tests : sig
     ; package : Package.t option
     ; deps : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
-    ; action : Action_dune_lang.t option
+    ; action : Dune_lang.Action.t option
     }
 end
 

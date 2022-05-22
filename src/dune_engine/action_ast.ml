@@ -1,5 +1,4 @@
 open Import
-open Action_types
 module Stanza = Dune_lang.Stanza
 
 module type Encoder = sig

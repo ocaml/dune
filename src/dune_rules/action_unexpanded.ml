@@ -348,7 +348,7 @@ end = struct
   end
 end
 
-let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
+let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   let module A = Action_expander in
   let module E = Action_expander.E in
   let open Action_expander.O in
@@ -536,6 +536,6 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
   in
   Action_builder.with_targets ~targets build
 
-(* We re-export [Action_dune_lang] in the end to avoid polluting the inferred
+(* We re-export [Dune_lang.Action] in the end to avoid polluting the inferred
    types in this module with all the various t's *)
-include Action_dune_lang
+include Dune_lang.Action

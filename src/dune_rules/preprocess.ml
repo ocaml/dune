@@ -59,7 +59,7 @@ end
 
 type 'a t =
   | No_preprocessing
-  | Action of Loc.t * Action_dune_lang.t
+  | Action of Loc.t * Dune_lang.Action.t
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
@@ -67,7 +67,7 @@ let equal f x y =
   match (x, y) with
   | No_preprocessing, No_preprocessing -> true
   | Action (x, y), Action (x', y') ->
-    Tuple.T2.equal Loc.equal Action_dune_lang.equal (x, y) (x', y')
+    Tuple.T2.equal Loc.equal Dune_lang.Action.equal (x, y) (x', y')
   | Pps x, Pps y -> Pps.equal f x y
   | Future_syntax x, Future_syntax y -> Loc.equal x y
   | _, _ -> false
@@ -128,7 +128,7 @@ let decode =
                ~f:(fun env ->
                  let env = Option.value_exn env in
                  Some (Pform.Env.lt_renamed_input_file env))
-               Action_dune_lang.decode)
+               Dune_lang.Action.decode)
         in
         Action (loc, x) )
     ; ( "pps"
@@ -157,7 +157,7 @@ let pps = function
 module Without_future_syntax = struct
   type 'a t =
     | No_preprocessing
-    | Action of Loc.t * Action_dune_lang.t
+    | Action of Loc.t * Dune_lang.Action.t
     | Pps of 'a Pps.t
 end
 

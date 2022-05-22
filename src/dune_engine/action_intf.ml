@@ -1,5 +1,4 @@
 open Import
-open Action_types
 
 module Simplified = struct
   type destination =

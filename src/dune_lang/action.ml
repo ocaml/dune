@@ -1,6 +1,76 @@
-open Import
-open Action_types
-module Stanza = Dune_lang.Stanza
+open Stdune
+open Dune_sexp
+
+module Action_plugin = struct
+  let syntax =
+    Syntax.create ~name:"action-plugin" ~desc:"action plugin extension"
+      ~experimental:true
+      [ ((0, 1), `Since (2, 0)) ]
+end
+
+module Diff = struct
+  module Mode = struct
+    type t =
+      | Binary
+      | Text
+  end
+
+  type ('path, 'target) t =
+    { optional : bool
+    ; mode : Mode.t
+    ; file1 : 'path
+    ; file2 : 'target
+    }
+
+  let map t ~path ~target =
+    { t with file1 = path t.file1; file2 = target t.file2 }
+
+  let decode path target ~optional =
+    let open Decoder in
+    let+ file1 = path
+    and+ file2 = target in
+    { optional; file1; file2; mode = Text }
+
+  let decode_binary path target =
+    let open Decoder in
+    let+ () = Syntax.since Stanza.syntax (1, 0)
+    and+ file1 = path
+    and+ file2 = target in
+    { optional = false; file1; file2; mode = Binary }
+end
+
+module Outputs = struct
+  type t =
+    | Stdout
+    | Stderr
+    | Outputs
+
+  let to_string = function
+    | Stdout -> "stdout"
+    | Stderr -> "stderr"
+    | Outputs -> "outputs"
+end
+
+module Inputs = struct
+  type t = Stdin
+
+  let to_string = function
+    | Stdin -> "stdin"
+end
+
+module File_perm = struct
+  type t =
+    | Normal
+    | Executable
+
+  let suffix = function
+    | Normal -> ""
+    | Executable -> "-executable"
+
+  let to_unix_perm = function
+    | Normal -> 0o666
+    | Executable -> 0o777
+end
 
 type t =
   | Run of String_with_vars.t * String_with_vars.t list
@@ -36,25 +106,25 @@ let translate_to_ignore fn output action =
   else Redirect_out (output, fn, Normal, action)
 
 let two_or_more decode =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   let+ n1 = decode
   and+ n2 = decode
   and+ rest = repeat decode in
   n1 :: n2 :: rest
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   let sw = String_with_vars.decode in
-  Dune_lang.Decoder.fix (fun t ->
+  Decoder.fix (fun t ->
       sum
         [ ( "run"
           , let+ prog = sw
             and+ args = repeat sw in
             Run (prog, args) )
         ; ( "with-accepted-exit-codes"
-          , let open Dune_lang in
+          , let open Decoder in
             Syntax.since Stanza.syntax (2, 0)
-            >>> let+ codes = Predicate_lang.decode_one Dune_lang.Decoder.int
+            >>> let+ codes = Predicate_lang.decode_one Decoder.int
                 and+ version = Syntax.get_exn Stanza.syntax
                 and+ loc, t = located t in
                 let nesting_support_version = (2, 2) in
@@ -106,7 +176,7 @@ let decode =
                            (quote [ "run"; "bash"; "system" ]))
                     ] )
         ; ( "dynamic-run"
-          , Dune_lang.Syntax.since Action_plugin.syntax (0, 1)
+          , Syntax.since Action_plugin.syntax (0, 1)
             >>> let+ prog = sw
                 and+ args = repeat sw in
                 Dynamic_run (prog, args) )
@@ -132,7 +202,7 @@ let decode =
             and+ t = t in
             translate_to_ignore fn Outputs t )
         ; ( "with-stdin-from"
-          , Dune_lang.Syntax.since Stanza.syntax (2, 0)
+          , Syntax.since Stanza.syntax (2, 0)
             >>> let+ fn = sw
                 and+ t = t in
                 Redirect_in (Stdin, fn, t) )
@@ -173,35 +243,33 @@ let decode =
           , let+ diff = Diff.decode_binary sw sw in
             Diff diff )
         ; ( "no-infer"
-          , Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t ->
-            No_infer t )
+          , Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t -> No_infer t )
         ; ( "pipe-stdout"
-          , Dune_lang.Syntax.since Stanza.syntax (2, 7)
+          , Syntax.since Stanza.syntax (2, 7)
             >>> let+ ts = two_or_more t in
                 Pipe (Stdout, ts) )
         ; ( "pipe-stderr"
-          , Dune_lang.Syntax.since Stanza.syntax (2, 7)
+          , Syntax.since Stanza.syntax (2, 7)
             >>> let+ ts = two_or_more t in
                 Pipe (Stderr, ts) )
         ; ( "pipe-outputs"
-          , Dune_lang.Syntax.since Stanza.syntax (2, 7)
+          , Syntax.since Stanza.syntax (2, 7)
             >>> let+ ts = two_or_more t in
                 Pipe (Outputs, ts) )
         ; ( "cram"
-          , Dune_lang.Syntax.since Stanza.syntax (2, 7)
+          , Syntax.since Stanza.syntax (2, 7)
             >>> let+ script = sw in
                 Cram script )
         ])
 
 let rec encode =
-  let open Dune_lang in
   let sw = String_with_vars.encode in
   function
   | Run (a, xs) -> List (atom "run" :: sw a :: List.map xs ~f:sw)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
-      ; Predicate_lang.encode Dune_lang.Encoder.int pred
+      ; Predicate_lang.encode Encoder.int pred
       ; encode t
       ]
   | Dynamic_run (a, xs) -> List (atom "run_dynamic" :: sw a :: List.map xs ~f:sw)
@@ -328,7 +396,7 @@ let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs
 
 let compare_no_locs t1 t2 = Poly.compare (remove_locs t1) (remove_locs t2)
 
-open Dune_lang.Decoder
+open Decoder
 
 let decode =
   (let+ loc, action = located decode in
@@ -341,7 +409,7 @@ let decode =
              \"...\") instead"
         ]
 
-let to_dyn a = Dune_lang.to_dyn (encode a)
+let to_dyn a = to_dyn (encode a)
 
 let equal x y = Poly.equal x y
 

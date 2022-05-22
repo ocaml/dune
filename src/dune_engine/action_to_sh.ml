@@ -1,8 +1,6 @@
 open Import
 
 module Simplified = struct
-  open Action_types
-
   type destination =
     | Dev_null
     | File of string

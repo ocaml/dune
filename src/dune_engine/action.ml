@@ -1,6 +1,8 @@
 open Import
-include Action_types
 module Ext = Action_intf.Ext
+module File_perm = File_perm
+module Outputs = Outputs
+module Inputs = Inputs
 
 module type Encoder = sig
   type t

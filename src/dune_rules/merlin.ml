@@ -261,7 +261,7 @@ module Unprocessed = struct
 
   let pp_flag_of_action ~expander ~loc ~action :
       Processed.pp_flag option Action_builder.t =
-    match (action : Action_dune_lang.t) with
+    match (action : Dune_lang.Action.t) with
     | Run (exe, args) -> (
       match
         let open Option.O in
@@ -298,7 +298,7 @@ module Unprocessed = struct
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
         (Super_context.context sctx).version
     with
-    | Action (loc, (action : Action_dune_lang.t)) ->
+    | Action (loc, (action : Dune_lang.Action.t)) ->
       pp_flag_of_action ~expander ~loc ~action
     | No_preprocessing -> Action_builder.return None
     | Pps { loc; pps; flags; staged = _ } ->

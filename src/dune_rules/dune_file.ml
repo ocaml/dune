@@ -1543,7 +1543,7 @@ module Rule = struct
   type t =
     { targets : String_with_vars.t Targets_spec.t
     ; deps : Dep_conf.t Bindings.t
-    ; action : Loc.t * Action_dune_lang.t
+    ; action : Loc.t * Dune_lang.Action.t
     ; mode : Rule.Mode.t
     ; patch_back_source_tree : bool
     ; locks : Locks.t
@@ -1592,7 +1592,7 @@ module Rule = struct
       ]
 
   let short_form =
-    let+ loc, action = located Action_dune_lang.decode in
+    let+ loc, action = located Dune_lang.Action.decode in
     { targets = Infer
     ; deps = Bindings.empty
     ; action = (loc, action)
@@ -1624,7 +1624,7 @@ module Rule = struct
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
-       and+ action = field "action" (located Action_dune_lang.decode)
+       and+ action = field "action" (located Dune_lang.Action.decode)
        and+ targets = Targets_spec.field ~allow_directory_targets
        and+ locks = Locks.field ()
        and+ () =
@@ -1822,7 +1822,7 @@ module Alias_conf = struct
   type t =
     { name : Alias.Name.t
     ; deps : Dep_conf.t Bindings.t
-    ; action : (Loc.t * Action_dune_lang.t) option
+    ; action : (Loc.t * Dune_lang.Action.t) option
     ; locks : Locks.t
     ; package : Package.t option
     ; enabled_if : Blang.t
@@ -1845,7 +1845,7 @@ module Alias_conf = struct
                let* () =
                  Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
                in
-               located Action_dune_lang.decode)
+               located Dune_lang.Action.decode)
           and+ loc = loc
           and+ locks = Locks.field ()
           and+ enabled_if =
@@ -1861,7 +1861,7 @@ module Tests = struct
     ; package : Package.t option
     ; deps : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
-    ; action : Action_dune_lang.t option
+    ; action : Dune_lang.Action.t option
     }
 
   let gen_parse names =
@@ -1886,7 +1886,7 @@ module Tests = struct
           and+ action =
             field_o "action"
               (Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
-              >>> Action_dune_lang.decode)
+              >>> Dune_lang.Action.decode)
           and+ forbidden_libraries =
             field "forbidden_libraries"
               (Dune_lang.Syntax.since Stanza.syntax (2, 0)

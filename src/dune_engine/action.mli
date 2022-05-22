@@ -6,7 +6,23 @@
 
 open! Import
 
-include module type of Action_types
+module Outputs : sig
+  include
+    module type of Dune_lang.Action.Outputs
+      with type t = Dune_lang.Action.Outputs.t
+end
+
+module Inputs : sig
+  include
+    module type of Dune_lang.Action.Inputs
+      with type t = Dune_lang.Action.Inputs.t
+end
+
+module File_perm : sig
+  include
+    module type of Dune_lang.Action.File_perm
+      with type t = Dune_lang.Action.File_perm.t
+end
 
 module Ext : module type of Action_intf.Ext
 

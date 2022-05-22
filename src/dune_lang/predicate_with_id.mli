@@ -6,6 +6,7 @@
    [File_selector.t] *)
 
 open Stdune
+open Dune_sexp
 
 type 'a t
 

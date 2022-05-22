@@ -1,6 +1,7 @@
 (** Stanza in dune/jbuild files *)
 
 open! Stdune
+open Dune_sexp
 
 type t = ..
 

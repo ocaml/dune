@@ -1,11 +1,15 @@
 (lang dune 1.5)
 
-(env (_ (env-vars
-    (VARIABLE_FROM_WORKSPACE value1)
-    (VARIABLE_FROM_BOTH from_workspace)
-)))
+(env
+ (_
+  (env-vars
+   (VARIABLE_FROM_WORKSPACE value1)
+   (VARIABLE_FROM_BOTH from_workspace))))
 
-(context (default (env (_ (env-vars
-    (VARIABLE_FROM_CONTEXT value2)
-    (VARIABLE_FROM_BOTH from_context)
-)))))
+(context
+  (default
+   (env
+    (_
+     (env-vars
+      (VARIABLE_FROM_CONTEXT value2)
+      (VARIABLE_FROM_BOTH from_context))))))

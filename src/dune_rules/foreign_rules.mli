@@ -5,6 +5,6 @@ val build_o_files :
   -> foreign_sources:Foreign.Sources.t
   -> dir:Path.Build.t
   -> expander:Expander.t
-  -> requires:Lib.L.t Resolve.t
+  -> requires:Lib.t list Resolve.t
   -> dir_contents:Dir_contents.t
   -> Path.Build.t Memo.t list

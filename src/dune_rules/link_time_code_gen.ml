@@ -3,7 +3,7 @@ module CC = Compilation_context
 module SC = Super_context
 
 type t =
-  { to_link : Lib.Lib_and_module.t list
+  { to_link : Lib_flags.Lib_and_module.L.t
   ; force_linkall : bool
   }
 

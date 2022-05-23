@@ -20,7 +20,7 @@ let info = Term.info "top" ~doc ~man
 let link_deps link =
   let open Memo.O in
   Memo.parallel_map link ~f:(fun t ->
-      Dune_rules.Lib.link_deps t Dune_rules.Link_mode.Byte)
+      Dune_rules.Lib_flags.link_deps t Dune_rules.Link_mode.Byte)
   >>| List.concat
 
 let term =
@@ -56,7 +56,7 @@ let term =
               (Dune_rules.Lib.closure ~linking:true libs)
           in
           let include_paths =
-            Dune_rules.Lib.L.toplevel_include_paths requires
+            Dune_rules.Lib_flags.L.toplevel_include_paths requires
           in
           let* files = link_deps requires in
           let+ () =

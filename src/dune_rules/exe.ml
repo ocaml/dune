@@ -183,7 +183,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
               in
               Command.Args.S
                 [ As (if force_linkall then [ "-linkall" ] else [])
-                ; Lib.Lib_and_module.L.link_flags to_link
+                ; Lib_flags.Lib_and_module.L.link_flags to_link
                     ~lib_config:ctx.lib_config ~mode:linkage.mode
                 ])
           ; Deps o_files
@@ -212,7 +212,7 @@ let link_js ~name ~loc ~cm_files ~promote ~link_time_code_gen cctx =
       Resolve.read_memo link_time_code_gen
     in
     List.map to_link ~f:(function
-      | Lib.Lib_and_module.Lib lib -> `Lib lib
+      | Lib_flags.Lib_and_module.Lib lib -> `Lib lib
       | Module (obj_dir, m) ->
         let path =
           Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Mode.cm_kind Byte)

@@ -27,7 +27,7 @@ module Util = struct
         let obj_dir = Obj_dir.public_cmi_dir (Lib_info.obj_dir info) in
         Path.Set.add acc obj_dir)
 
-  let include_flags ts = include_paths ts |> Lib.L.to_iflags
+  let include_flags ts = include_paths ts |> Lib_flags.L.to_iflags
 
   (* coqdep expects an mlpack file next to the sources otherwise it
    * will omit the cmxs deps *)

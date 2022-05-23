@@ -34,6 +34,9 @@ let js_of_ocaml_rule sctx ~sub_command ~dir ~(flags : _ Js_of_ocaml.Flags.t)
     ; spec
     ]
 
+let jsoo_runtime_files =
+  List.concat_map ~f:(fun t -> Lib_info.jsoo_runtime (Lib.info t))
+
 let standalone_runtime_rule cc ~javascript_files ~target ~flags =
   let libs = Compilation_context.requires_link cc in
   let spec =
@@ -41,7 +44,7 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
       [ Resolve.Memo.args
           (let open Resolve.Memo.O in
           let+ libs = libs in
-          Command.Args.Deps (Lib.L.jsoo_runtime_files libs))
+          Command.Args.Deps (jsoo_runtime_files libs))
       ; Deps (List.map ~f:Path.build javascript_files)
       ]
   in
@@ -59,7 +62,7 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
       [ Resolve.Memo.args
           (let open Resolve.Memo.O in
           let+ libs = libs in
-          Command.Args.Deps (Lib.L.jsoo_runtime_files libs))
+          Command.Args.Deps (jsoo_runtime_files libs))
       ; Deps (List.map ~f:Path.build javascript_files)
       ; Dep (Path.build src)
       ]

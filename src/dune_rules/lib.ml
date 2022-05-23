@@ -1151,13 +1151,11 @@ end = struct
 
     val empty : t
 
-    val add_resolved : t -> resolved:lib Resolve.t -> t
+    val add_resolved : t -> lib Resolve.t -> t
 
-    val add_resolved_list : t -> resolved:lib list Resolve.t -> t
+    val add_re_exports : t -> lib Resolve.t -> t
 
-    val add_re_exports : t -> re_exports:lib Resolve.t -> t
-
-    val add_select : t -> select:Resolved_select.t -> t
+    val add_select : t -> lib list Resolve.t -> Resolved_select.t -> t
 
     val value : t -> resolved_deps
   end = struct
@@ -1171,7 +1169,7 @@ end = struct
       ; re_exports = Resolve.return []
       }
 
-    let add_resolved_list t ~resolved =
+    let add_resolved_list t resolved =
       let resolved =
         let+ resolved = resolved
         and+ tl = t.resolved in
@@ -1179,21 +1177,21 @@ end = struct
       in
       { t with resolved }
 
-    let add_select (t : t) ~select = { t with selects = select :: t.selects }
+    let add_select (t : t) resolved select =
+      add_resolved_list { t with selects = select :: t.selects } resolved
 
-    let add_re_exports (t : t) ~re_exports =
+    let add_resolved t resolved =
+      add_resolved_list t
+        (let+ resolved = resolved in
+         [ resolved ])
+
+    let add_re_exports (t : t) lib =
       let re_exports =
-        let+ hd = re_exports
+        let+ hd = lib
         and+ tl = t.re_exports in
         hd :: tl
       in
-      { t with re_exports }
-
-    let add_resolved t ~resolved =
-      add_resolved_list t
-        ~resolved:
-          (let+ resolved = resolved in
-           [ resolved ])
+      add_resolved { t with re_exports } lib
 
     let value { resolved; selects; re_exports } =
       let resolved =
@@ -1246,13 +1244,13 @@ end = struct
           match (dep : Lib_dep.t) with
           | Re_export lib ->
             let+ lib = resolve_dep db lib ~private_deps in
-            acc |> add_re_exports ~re_exports:lib |> add_resolved ~resolved:lib
+            add_re_exports acc lib
           | Direct lib ->
             let+ lib = resolve_dep db lib ~private_deps in
-            add_resolved acc ~resolved:lib
+            add_resolved acc lib
           | Select select ->
             let+ resolved, select = resolve_select select in
-            acc |> add_resolved_list ~resolved |> add_select ~select)
+            add_select acc resolved select)
     in
     value builder
 

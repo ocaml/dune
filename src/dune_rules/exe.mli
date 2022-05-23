@@ -1,7 +1,6 @@
 (** Compilation and linking of executables *)
 
 open Import
-open Stdune
 
 module Program : sig
   type t =

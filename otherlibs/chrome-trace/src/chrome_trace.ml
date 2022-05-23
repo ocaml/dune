@@ -28,6 +28,48 @@ end = struct
     `Int n
 end
 
+module Stack_frame = struct
+  module Id = struct
+    type t =
+      [ `String of string
+      | `Int of int
+      ]
+
+    let to_json (t : t) : Json.t = (t :> Json.t)
+
+    let to_string = function
+      | `String s -> s
+      | `Int i -> string_of_int i
+
+    let create x : t = x
+  end
+
+  module Raw = struct
+    type t = string list
+
+    let create t = t
+
+    let to_json t = `List (List.map t ~f:(fun s -> `String s))
+  end
+
+  type t =
+    { parent : Id.t option
+    ; name : string
+    ; category : string
+    }
+
+  let create ?parent ~name ~category () = { parent; name; category }
+
+  let to_json { parent; name; category } : Json.t =
+    let json = [ ("name", `String name); ("category", `String category) ] in
+    let json =
+      match parent with
+      | None -> json
+      | Some id -> ("parent", Id.to_json id) :: json
+    in
+    `Assoc json
+end
+
 module Event = struct
   [@@@ocaml.warning "-37"]
 
@@ -41,10 +83,13 @@ module Event = struct
     ; pid : int
     ; tid : int
     ; cname : string option
+    ; stackframe :
+        [ `Id of Stack_frame.Id.t | `Raw of Stack_frame.Raw.t ] option
     }
 
-  let common_fields ?tts ?cname ?(cat = []) ?(pid = 0) ?(tid = 0) ~ts ~name () =
-    { tts; cname; cat; ts; pid; tid; name }
+  let common_fields ?tts ?cname ?(cat = []) ?(pid = 0) ?(tid = 0) ?stackframe
+      ~ts ~name () =
+    { tts; cname; cat; ts; pid; tid; name; stackframe }
 
   let set_ts t ts = { t with ts }
 
@@ -143,7 +188,8 @@ module Event = struct
     | None -> fields
     | Some f -> to_field f :: fields
 
-  let json_fields_of_common_fields { name; cat; ts; tts; pid; tid; cname } =
+  let json_fields_of_common_fields
+      { name; cat; ts; tts; pid; tid; cname; stackframe } =
     let fields =
       [ ("name", `String name)
       ; ("cat", `String (String.concat ~sep:"," cat))
@@ -155,7 +201,15 @@ module Event = struct
     let fields =
       add_field_opt (fun cname -> ("cname", `String cname)) cname fields
     in
-    add_field_opt (fun tts -> ("tts", Timestamp.to_json tts)) tts fields
+    let fields =
+      add_field_opt (fun tts -> ("tts", Timestamp.to_json tts)) tts fields
+    in
+    add_field_opt
+      (fun stackframe ->
+        match stackframe with
+        | `Id id -> ("sf", Stack_frame.Id.to_json id)
+        | `Raw r -> ("stack", Stack_frame.Raw.to_json r))
+      stackframe fields
 
   let json_of_scope = function
     | Global -> `String "g"
@@ -267,10 +321,11 @@ module Output_object = struct
   type t =
     { displayTimeUnit : [ `Ms | `Ns ] option
     ; traceEvents : Event.t list
+    ; stackFrames : (Stack_frame.Id.t * Stack_frame.t) list option
     ; extra_fields : (string * Json.t) list option
     }
 
-  let to_json { displayTimeUnit; traceEvents; extra_fields } =
+  let to_json { displayTimeUnit; traceEvents; extra_fields; stackFrames } =
     let json =
       [ ("traceEvents", `List (List.map traceEvents ~f:Event.to_json)) ]
     in
@@ -285,6 +340,17 @@ module Output_object = struct
             | `Ns -> "ns") )
         :: json
     in
+    let json : (string * Json.t) list =
+      match stackFrames with
+      | None -> json
+      | Some frames ->
+        let frames =
+          List.map frames ~f:(fun (id, frame) ->
+              let id = Stack_frame.Id.to_string id in
+              (id, Stack_frame.to_json frame))
+        in
+        ("stackFrames", `Assoc frames) :: json
+    in
     let json =
       match extra_fields with
       | None -> json
@@ -292,6 +358,6 @@ module Output_object = struct
     in
     `Assoc json
 
-  let create ?displayTimeUnit ?extra_fields ~traceEvents () =
-    { displayTimeUnit; extra_fields; traceEvents }
+  let create ?displayTimeUnit ?extra_fields ?stackFrames ~traceEvents () =
+    { displayTimeUnit; extra_fields; traceEvents; stackFrames }
 end

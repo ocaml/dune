@@ -262,3 +262,36 @@ module Event = struct
   let async ?scope ?args id async common =
     Async { common; args; scope; id; async }
 end
+
+module Output_object = struct
+  type t =
+    { displayTimeUnit : [ `Ms | `Ns ] option
+    ; traceEvents : Event.t list
+    ; extra_fields : (string * Json.t) list option
+    }
+
+  let to_json { displayTimeUnit; traceEvents; extra_fields } =
+    let json =
+      [ ("traceEvents", `List (List.map traceEvents ~f:Event.to_json)) ]
+    in
+    let json =
+      match displayTimeUnit with
+      | None -> json
+      | Some u ->
+        ( "displayTimeUnit"
+        , `String
+            (match u with
+            | `Ms -> "ms"
+            | `Ns -> "ns") )
+        :: json
+    in
+    let json =
+      match extra_fields with
+      | None -> json
+      | Some extra_fields -> json @ extra_fields
+    in
+    `Assoc json
+
+  let create ?displayTimeUnit ?extra_fields ~traceEvents () =
+    { displayTimeUnit; extra_fields; traceEvents }
+end

@@ -71,3 +71,18 @@ module Event : sig
 
   val to_json : t -> Json.t
 end
+
+module Output_object : sig
+  (** The object format provided in whole *)
+
+  type t
+
+  val create :
+       ?displayTimeUnit:[ `Ms | `Ns ]
+    -> ?extra_fields:(string * Json.t) list
+    -> traceEvents:Event.t list
+    -> unit
+    -> t
+
+  val to_json : t -> Json.t
+end

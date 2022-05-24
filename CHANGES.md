@@ -1,3 +1,8 @@
+3.3.0 (Unreleased)
+------------------
+
+- Enable formatting when no .ocamlformat file is present. (#5768, @tmattio)
+
 3.2.0 (17-05-2022)
 ------------------
 

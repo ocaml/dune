@@ -112,7 +112,8 @@ let ocaml =
       (S.make_pform Loc.none (Var Workspace_root))
       (Action_dune_lang.run
          (S.make_text Loc.none "ocamlformat")
-         [ S.make_text Loc.none (flag_of_kind kind)
+         [ S.make_text Loc.none "--enable-outside-detected-project"
+         ; S.make_text Loc.none (flag_of_kind kind)
          ; S.make_pform Loc.none (Var Input_file)
          ])
   in

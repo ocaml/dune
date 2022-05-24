@@ -1227,13 +1227,10 @@ end = struct
             List.filter_map select.choices ~f:(fun choice ->
                 if Lib_name.Set.mem choice.forbidden target then None
                 else
-                  let found = Lib_name.Set.mem choice.required target in
-                  let required = Lib_name.Set.remove choice.required target in
-                  if Lib_name.Set.is_empty required && found then
-                    (* avoid the case where forbidden and required are empty, so
-                       it switch in case "(_ -> dummy)" *)
-                    None
-                  else Some { choice with required })
+                  Some
+                    { choice with
+                      required = Lib_name.Set.remove choice.required target
+                    })
           in
           Some (Select { select with choices }))
 

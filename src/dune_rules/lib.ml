@@ -1217,54 +1217,47 @@ end = struct
       { resolved; selects; re_exports }
   end
 
+  let remove_library deps target =
+    List.filter_map deps ~f:(fun (dep : Lib_dep.t) ->
+        match dep with
+        | Re_export (_, name) | Direct (_, name) ->
+          Option.some_if (not (Lib_name.equal target name)) dep
+        | Select select ->
+          let choices =
+            List.filter_map select.choices ~f:(fun choice ->
+                if Lib_name.Set.mem choice.forbidden target then None
+                else
+                  let found = Lib_name.Set.mem choice.required target in
+                  let required = Lib_name.Set.remove choice.required target in
+                  if Lib_name.Set.is_empty required && found then
+                    (* avoid the case where forbidden and required are empty, so
+                       it switch in case "(_ -> dummy)" *)
+                    None
+                  else Some { choice with required })
+          in
+          Some (Select { select with choices }))
+
   let resolve_complex_deps db deps ~private_deps : resolved_deps Memo.t =
-    let ocaml_version = db.lib_config.ocaml_version in
-    let bigarray_in_std_libraries =
-      Ocaml.Version.has_bigarray_library ocaml_version
-    in
-    let is_bigarray lib = String.equal "bigarray" (Lib_name.to_string lib) in
     let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
       let open Memo.O in
       let+ res, src_fn =
         let+ select =
           Memo.List.find_map choices ~f:(fun { required; forbidden; file } ->
               let forbidden = Lib_name.Set.to_list forbidden in
-              if
-                List.exists
-                  ~f:(fun lib ->
-                    is_bigarray lib && not bigarray_in_std_libraries)
-                  forbidden
-              then Memo.return None
+              let* exists =
+                Memo.List.exists forbidden ~f:(available_internal db)
+              in
+              if exists then Memo.return None
               else
-                let* exists =
-                  Memo.List.exists forbidden ~f:(available_internal db)
-                in
-                if exists then Memo.return None
-                else
-                  let found, required =
-                    ( Lib_name.Set.mem required (Lib_name.of_string "bigarray")
-                    , Lib_name.Set.filter
-                        ~f:(fun lib ->
-                          (not (is_bigarray lib)) || bigarray_in_std_libraries)
-                        required )
-                  in
-                  if
-                    Lib_name.Set.is_empty required
-                    && found
-                    && not bigarray_in_std_libraries
-                  then Memo.return None
-                    (*avoid the case where forbidden and required are empty, so
-                      it switch in case "(_ -> dummy)"*)
-                  else
-                    Resolve.Memo.peek
-                      (let deps =
-                         Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
-                             (loc, x) :: acc)
-                       in
-                       resolve_simple_deps ~private_deps db deps)
-                    >>| function
-                    | Ok ts -> Some (ts, file)
-                    | Error () -> None)
+                Resolve.Memo.peek
+                  (let deps =
+                     Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
+                         (loc, x) :: acc)
+                   in
+                   resolve_simple_deps ~private_deps db deps)
+                >>| function
+                | Ok ts -> Some (ts, file)
+                | Error () -> None)
         in
         let get which =
           let res = select |> Option.map ~f:which in
@@ -1278,21 +1271,25 @@ end = struct
     in
     let open Memo.O in
     let open Resolved_deps_builder in
+    let deps =
+      let ocaml_version = db.lib_config.ocaml_version in
+      let bigarray_in_std_libraries =
+        Ocaml.Version.has_bigarray_library ocaml_version
+      in
+      if bigarray_in_std_libraries then deps
+      else
+        let bigarray = Lib_name.of_string "bigarray" in
+        remove_library deps bigarray
+    in
     let+ builder =
       Memo.List.fold_left deps ~init:empty ~f:(fun acc dep ->
           match (dep : Lib_dep.t) with
-          | Re_export (loc, name) ->
-            if is_bigarray name && not bigarray_in_std_libraries then
-              Memo.return acc
-            else
-              let+ lib = resolve_dep db (loc, name) ~private_deps in
-              add_re_exports acc lib
-          | Direct (loc, name) ->
-            if is_bigarray name && not bigarray_in_std_libraries then
-              Memo.return acc
-            else
-              let+ lib = resolve_dep db (loc, name) ~private_deps in
-              add_resolved acc lib
+          | Re_export lib ->
+            let+ lib = resolve_dep db lib ~private_deps in
+            add_re_exports acc lib
+          | Direct lib ->
+            let+ lib = resolve_dep db lib ~private_deps in
+            add_resolved acc lib
           | Select select ->
             let+ resolved, select = resolve_select select in
             add_select acc resolved select)

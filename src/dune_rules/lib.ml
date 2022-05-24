@@ -1146,6 +1146,65 @@ end = struct
     ; re_exports : lib list Resolve.t
     }
 
+  module Resolved_deps_builder : sig
+    type t
+
+    val empty : t
+
+    val add_resolved : t -> lib Resolve.t -> t
+
+    val add_re_exports : t -> lib Resolve.t -> t
+
+    val add_select : t -> lib list Resolve.t -> Resolved_select.t -> t
+
+    val value : t -> resolved_deps
+  end = struct
+    open Resolve.O
+
+    type t = resolved_deps
+
+    let empty =
+      { resolved = Resolve.return []
+      ; selects = []
+      ; re_exports = Resolve.return []
+      }
+
+    let add_resolved_list t resolved =
+      let resolved =
+        let+ resolved = resolved
+        and+ tl = t.resolved in
+        List.rev_append resolved tl
+      in
+      { t with resolved }
+
+    let add_select (t : t) resolved select =
+      add_resolved_list { t with selects = select :: t.selects } resolved
+
+    let add_resolved t resolved =
+      add_resolved_list t
+        (let+ resolved = resolved in
+         [ resolved ])
+
+    let add_re_exports (t : t) lib =
+      let re_exports =
+        let+ hd = lib
+        and+ tl = t.re_exports in
+        hd :: tl
+      in
+      add_resolved { t with re_exports } lib
+
+    let value { resolved; selects; re_exports } =
+      let resolved =
+        let+ resolved = resolved in
+        List.rev resolved
+      in
+      let re_exports =
+        let+ re_exports = re_exports in
+        List.rev re_exports
+      in
+      { resolved; selects; re_exports }
+  end
+
   let resolve_complex_deps db deps ~private_deps : resolved_deps Memo.t =
     let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
       let open Memo.O in
@@ -1179,48 +1238,21 @@ end = struct
       (res, { Resolved_select.src_fn; dst_fn = result_fn })
     in
     let open Memo.O in
-    let+ res, selects, re_exports =
-      Memo.List.fold_left deps
-        ~init:(Resolve.return [], [], Resolve.return [])
-        ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
-          let open Memo.O in
+    let open Resolved_deps_builder in
+    let+ builder =
+      Memo.List.fold_left deps ~init:empty ~f:(fun acc dep ->
           match (dep : Lib_dep.t) with
-          | Re_export (loc, name) ->
-            let+ lib = resolve_dep db (loc, name) ~private_deps in
-            let open Resolve.O in
-            let acc_re_exports =
-              let+ lib = lib
-              and+ acc_re_exports = acc_re_exports in
-              lib :: acc_re_exports
-            in
-            let acc_res =
-              let+ lib = lib
-              and+ acc_res = acc_res in
-              lib :: acc_res
-            in
-            (acc_res, acc_selects, acc_re_exports)
-          | Direct (loc, name) ->
-            let+ lib = resolve_dep db (loc, name) ~private_deps in
-            let acc_res =
-              let open Resolve.O in
-              let+ lib = lib
-              and+ acc_res = acc_res in
-              lib :: acc_res
-            in
-            (acc_res, acc_selects, acc_re_exports)
+          | Re_export lib ->
+            let+ lib = resolve_dep db lib ~private_deps in
+            add_re_exports acc lib
+          | Direct lib ->
+            let+ lib = resolve_dep db lib ~private_deps in
+            add_resolved acc lib
           | Select select ->
-            let+ res, resolved_select = resolve_select select in
-            let acc_res =
-              let open Resolve.O in
-              let+ res = res
-              and+ acc_res = acc_res in
-              List.rev_append res acc_res
-            in
-            (acc_res, resolved_select :: acc_selects, acc_re_exports))
+            let+ resolved, select = resolve_select select in
+            add_select acc resolved select)
     in
-    let resolved = Resolve.map ~f:List.rev res in
-    let re_exports = Resolve.map ~f:List.rev re_exports in
-    { resolved; selects; re_exports }
+    value builder
 
   type pp_deps =
     { pps : t list Resolve.Memo.t

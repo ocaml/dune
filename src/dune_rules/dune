@@ -22,7 +22,8 @@
   dune_cache
   build_path_prefix_map
   dune_engine
-  dune_config)
+  dune_config
+  unix)
  (synopsis "Internal Dune library, do not use!"))
 
 (ocamllex ocamlobjinfo cram_lexer)

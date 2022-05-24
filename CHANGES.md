@@ -1,8 +1,10 @@
-3.3.0 (unreleased)
-------------------
+Unreleased
+----------
 
-- Support new locations of unix, str, dynlink in OCaml >= 5.0
-  (#5582, @dra27)
+- Set the exit code to 130 when dune is terminated with a signal (#5769, fixes
+  #5757)
+
+- Support new locations of unix, str, dynlink in OCaml >= 5.0 (#5582, @dra27)
 
 3.2.0 (17-05-2022)
 ------------------

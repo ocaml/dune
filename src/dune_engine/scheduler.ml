@@ -113,6 +113,18 @@ module Signal = struct
   let name t = Signal.name (to_int t)
 end
 
+module Shutdown = struct
+  module Signal = Signal
+
+  module Reason = struct
+    type t =
+      | Requested
+      | Signal of Signal.t
+  end
+
+  exception E of Reason.t
+end
+
 module Thread : sig
   val spawn : (unit -> 'a) -> unit
 
@@ -993,7 +1005,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
 module Run_once : sig
   type run_error =
     | Already_reported
-    | Shutdown_requested
+    | Shutdown_requested of Shutdown.Reason.t
     | Exn of Exn_with_backtrace.t
 
   (** Run the build and clean up after it (kill any stray processes etc). *)
@@ -1001,7 +1013,7 @@ module Run_once : sig
 end = struct
   type run_error =
     | Already_reported
-    | Shutdown_requested
+    | Shutdown_requested of Shutdown.Reason.t
     | Exn of Exn_with_backtrace.t
 
   exception Abort of run_error
@@ -1081,11 +1093,14 @@ end = struct
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
     | Yield ivar -> [ Fill (ivar, ()) ]
-    | Shutdown signal -> (
+    | Shutdown signal ->
       got_signal signal;
-      match signal with
-      | Shutdown -> raise (Abort Shutdown_requested)
-      | _ -> raise (Abort Already_reported))
+      raise
+      @@ Abort
+           (Shutdown_requested
+              (match signal with
+              | Shutdown -> Requested
+              | Signal s -> Signal s))
 
   let run t f : _ result =
     let fiber =
@@ -1176,6 +1191,8 @@ let wait_for_build_input_change t =
 
 module Run = struct
   exception Build_cancelled = Build_cancelled
+
+  module Shutdown = Shutdown
 
   type file_watcher =
     | Automatic
@@ -1271,8 +1288,6 @@ module Run = struct
     in
     loop ()
 
-  exception Shutdown_requested
-
   let go config ?timeout ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
     let events, prepare = prepare config ~handler:on_event in
@@ -1312,7 +1327,7 @@ module Run = struct
       in
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
-      | Error Shutdown_requested -> Error (Shutdown_requested, None)
+      | Error (Shutdown_requested reason) -> Error (Shutdown.E reason, None)
       | Error Already_reported ->
         Error (Dune_util.Report_error.Already_reported, None)
       | Error (Exn exn_with_bt) ->

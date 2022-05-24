@@ -11,4 +11,4 @@ Demonstrate the exit code once dune is interrupted by a signal
   > EOF
 
   $ dune build @all
-  [1]
+  [130]

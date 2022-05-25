@@ -1,4 +1,4 @@
-DECLARE PLUGIN "ml_lib.gram"
+DECLARE PLUGIN "ml_lib.ml_plugin_a"
 
 {
 

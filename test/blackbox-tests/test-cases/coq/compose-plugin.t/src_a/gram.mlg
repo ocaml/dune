@@ -1,4 +1,4 @@
-DECLARE PLUGIN "cplugin.gram"
+DECLARE PLUGIN "cplugin.ml_plugin_a"
 
 {
 

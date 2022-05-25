@@ -71,6 +71,12 @@ module Map = struct
   let has_universe t = mem t Universe
 end
 
+let as_in_build_dir_no_source = function
+  | Path.In_source_tree _ ->
+    Code_error.raise "we don't depend on paths from the source" []
+  | External _ -> None
+  | In_build_dir p -> Some p
+
 module Fact = struct
   (* CR-someday amokhov: Find a better name, perhaps, [Files_and_dirs]? *)
   module Files = struct
@@ -105,8 +111,8 @@ module Fact = struct
       }
 
     let necessary_dirs_for_sandboxing { files; dirs; digest = _ } =
-      let f path (_ : Digest.t) acc =
-        match Path.as_in_build_dir path with
+      let f (path : Path.t) (_ : Digest.t) acc =
+        match as_in_build_dir_no_source path with
         | None -> acc
         | Some p -> Path.Build.Set.add acc (Path.Build.parent_exn p)
       in
@@ -256,7 +262,7 @@ module Facts = struct
         match (fact : Fact.t) with
         | Nothing -> acc
         | File (p, _) -> (
-          match Path.as_in_build_dir p with
+          match as_in_build_dir_no_source p with
           | None -> acc
           | Some p ->
             let p = Path.Build.parent_exn p in
@@ -265,7 +271,7 @@ module Facts = struct
           Path.Build.Set.union_all
             [ acc
             ; Path.Map.keys ps.dirs
-              |> List.filter_map ~f:Path.as_in_build_dir
+              |> List.filter_map ~f:as_in_build_dir_no_source
               |> Path.Build.Set.of_list
             ; Fact.Files.necessary_dirs_for_sandboxing ps
             ])

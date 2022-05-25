@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Handle directory dependencies in sandboxed rules. Previously, the parents of
+  these directory dependencies weren't created. (#5754, @rgrinberg)
+
 - Set the exit code to 130 when dune is terminated with a signal (#5769, fixes
   #5757)
 

@@ -104,14 +104,14 @@ module Fact = struct
             , Path.Map.to_list_map dirs ~f:(fun p d -> (Path.to_string p, d)) )
       }
 
-    let necessary_dirs_for_sandboxing { files; dirs = _; digest = _ } =
+    let necessary_dirs_for_sandboxing { files; dirs; digest = _ } =
       let f path (_ : Digest.t) acc =
         match Path.as_in_build_dir path with
         | None -> acc
         | Some p -> Path.Build.Set.add acc (Path.Build.parent_exn p)
       in
       let init = Path.Map.foldi files ~init:Path.Build.Set.empty ~f in
-      Path.Map.foldi files ~init ~f
+      Path.Map.foldi dirs ~init ~f
 
     let empty = lazy (make ~files:Path.Map.empty ~dirs:Path.Map.empty)
 

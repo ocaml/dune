@@ -99,7 +99,7 @@ module Facts : sig
 
   (** directory targets and parent directories of all dependencies in the build
       directory. Needed for sandboxing *)
-  val dirs_that_must_exist : t -> Path.Build.Set.t
+  val necessary_dirs_for_sandboxing : t -> Path.Build.Set.t
 
   val digest : t -> env:Env.t -> Digest.t
 

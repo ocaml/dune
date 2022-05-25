@@ -104,7 +104,7 @@ module Fact = struct
             , Path.Map.to_list_map dirs ~f:(fun p d -> (Path.to_string p, d)) )
       }
 
-    let dirs_that_must_exist { files; dirs = _; digest = _ } =
+    let necessary_dirs_for_sandboxing { files; dirs = _; digest = _ } =
       let f path (_ : Digest.t) acc =
         match Path.as_in_build_dir path with
         | None -> acc
@@ -251,7 +251,7 @@ module Facts = struct
     in
     Fact.Files.group fact_files paths
 
-  let dirs_that_must_exist t =
+  let necessary_dirs_for_sandboxing t =
     Map.fold t ~init:Path.Build.Set.empty ~f:(fun fact acc ->
         match (fact : Fact.t) with
         | Nothing -> acc
@@ -267,7 +267,7 @@ module Facts = struct
             ; Path.Map.keys ps.dirs
               |> List.filter_map ~f:Path.as_in_build_dir
               |> Path.Build.Set.of_list
-            ; Fact.Files.dirs_that_must_exist ps
+            ; Fact.Files.necessary_dirs_for_sandboxing ps
             ])
 
   let digest t ~env =

@@ -35,7 +35,7 @@ let dir t = t.dir
 let map_path t p = Path.Build.append t.dir p
 
 let create_dirs t ~deps ~rule_dir =
-  Path.Build.Set.add (Dep.Facts.dirs_that_must_exist deps) rule_dir
+  Path.Build.Set.add (Dep.Facts.necessary_dirs_for_sandboxing deps) rule_dir
   |> Path.Build.Set.iter ~f:(fun path ->
          (* There is no point in using the memoized version [Fs.mkdir_p] since
             these directories are not shared between actions. *)

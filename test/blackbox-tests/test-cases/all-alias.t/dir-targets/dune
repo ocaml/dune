@@ -1,0 +1,9 @@
+(rule
+ (deps (sandbox always))
+ (target
+  (dir foo))
+ (action
+  (progn
+   (run mkdir foo)
+   (run touch foo/A)
+   (run touch foo/B))))

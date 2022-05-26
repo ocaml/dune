@@ -33,6 +33,13 @@
   Entering directory 'user-defined'
           echo foo
 
+@all builds directory targets
+  $ dune build --display short --root dir-targets @all
+  Entering directory 'dir-targets'
+         mkdir foo
+         touch foo
+         touch foo
+
 @all includes user defined install alias
 
   $ dune build --display short --root install-alias @all

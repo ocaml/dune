@@ -2,6 +2,10 @@ open Import
 open Memo.O
 module Action_builder = Action_builder0
 
+(* CR-someday amokhov: We should just get rid of this. It's broken in
+   file-watching mode (see [sandbox-mkdir.t]) and is also unnecessary: we should
+   just [mkdir] a directory before [chdir]ing into it because it's cheap and we
+   are already [mkdir]ing a lot -- see [Sandbox.create_dirs]. *)
 module Fs : sig
   (** A memoized version of [mkdir] that avoids calling [mkdir] multiple times
       in the same directory. *)

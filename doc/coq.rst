@@ -30,7 +30,7 @@ version<coq-lang>` in the :ref:`dune-project` file. For example, adding
 
 .. code:: scheme
 
-    (using coq 0.3)
+    (using coq 0.4)
 
 to a :ref:`dune-project` file enables using the ``coq.theory`` stanza and other
 ``coq.*`` stanzas. See the :ref:`Dune Coq language<coq-lang>` section for more
@@ -67,12 +67,12 @@ The semantics of the fields are:
 - ``<module_prefix>`` is a dot-separated list of valid Coq module names and
   determines the module scope under which the theory is compiled (this
   corresponds to Coq's ``-R`` option).
-  
+
   For example, if ``<module_prefix>`` is ``foo.Bar``, the theory modules are
   named ``foo.Bar.module1``, ``foo.Bar.module2``, etc. Note that modules in the
   same theory don't see the ``foo.Bar`` prefix in the same way that OCaml
   ``wrapped`` libraries do.
-  
+
   For compatibility, :ref:`Coq lang 1.0<coq-lang-1.0>` installs a theory named
   ``foo.Bar`` under ``foo/Bar``. Also note that Coq supports composing a module
   path from different theories, thus you can name a theory ``foo.Bar`` and a
@@ -85,12 +85,12 @@ The semantics of the fields are:
 
 - If ``package`` is present, Dune generates install rules for the ``.vo`` files
   of the theory. ``pkg_name`` must be a valid package name.
-  
+
   Note that :ref:`Coq lang 1.0<coq-lang-1.0>` will use the Coq legacy install
   setup, where all packages share a common root namespace and install directory,
   ``lib/coq/user-contrib/<module_prefix>``, as is customary in the Make-based
   Coq package ecosystem.
-  
+
   For compatibility, Dune also installs, under the ``user-contrib`` prefix, the
   ``.cmxs`` files that appear in ``<ocaml_libraries>``.
 
@@ -105,12 +105,30 @@ The semantics of the fields are:
 - Your Coq theory can depend on other theories by specifying them in the
   ``<coq_theories>`` field. Dune then passes to Coq the corresponding flags for
   everything to compile correctly (this corresponds to the ``-Q`` flag for Coq).
+
+  You may also depend on theories belonging to another :ref:`dune-project` as
+  long as they share a common scope under another :ref:`dune-project` file or a
+  :ref:`dune-workspace` file.
+
+  Doing so can be as simple as placing a Coq project within the scope of
+  another. This process is termed *composition*. See the :ref:`interproject
+  composition<example-interproject-theory>` example. 
   
-  As of today, we only support composition with libraries defined in the same
-  scope (i.e., under the same :ref:`dune-project` domain). This restriction will
-  be lifted in the future. Note that composition with the Coq standard library
-  is supported, but in this case the ``Coq`` prefix has been made available in a
-  qualified way, since :ref:`Coq lang 0.2<coq-lang>`.
+  Interproject composition allows for a fine granularity of dependencies. In
+  practice, this means that Dune will only build the parts of a dependency that
+  are needed. This means that building a project depending on another will not
+  trigger a rebuild of the whole of the latter.
+  
+  Interproject composition has been available since :ref:`Coq lang
+  0.4<coq-lang>`.
+
+  As of today, Dune cannot depend on installed Coq theories. This restriction
+  will be lifted in the future. Note that composition with the Coq standard
+  library is supported, but in this case the ``Coq`` prefix has been made
+  available in a qualified way, since :ref:`Coq lang 0.2<coq-lang>`.
+
+  You may still use installed libraries in your Coq project, but there is
+  currently no way for Dune to know about it.
 
 - You can enable the production of Coq's native compiler object files by setting
   ``<coq_native_mode>`` to ``native``. This passes ``-native-compiler on`` to
@@ -142,6 +160,33 @@ directory and its subdirectories, adding a prefix to the module name in the
 usual Coq style for subdirectories. For example, file ``A/b/C.v`` becomes the
 module ``A.b.C``.
 
+.. _public-private-theory:
+
+Public and Private Theories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A *public theory* is a :ref:`coq-theory` stanza that is visible outside the
+scope of a :ref:`dune-project` file.
+
+A *private theory* is a :ref:`coq-theory` stanza that is limited to the scope of
+the :ref:`dune-project` file it is in.
+
+A private theory may depend on both private and public theories; however, a
+public theory may only depend on other public theories.
+
+By default, all :ref:`coq-theory` stanzas are considered private by Dune. In
+order to make a private theory into a public theory, the ``(package )`` field
+must be specified.
+
+.. code:: scheme
+
+  (coq.theory
+   (name private_theory))
+
+  (coq.theory
+   (name private_theory)
+   (package coq-public-theory))
+
 Limitations
 ~~~~~~~~~~~
 
@@ -168,15 +213,16 @@ file:
 
 .. code:: scheme
 
-    (using coq 0.3)
+    (using coq 0.4)
 
 The supported Coq language versions (not the version of Coq) are:
 
 - ``0.1``: Basic Coq theory support.
 - ``0.2``: Support for the ``theories`` field and composition of theories in the
-  same scope,
+  same scope.
 - ``0.3``: Support for ``(mode native)`` requires Coq >= 8.10 (and Dune >= 2.9
   for Coq >= 8.14).
+- ``0.4``: Support for interproject composition of theories.
 
 .. _coq-lang-1.0:
 
@@ -255,21 +301,21 @@ Here we list some examples of some basic Coq project setups in order.
 
 .. _example-simple:
 
-Simple Coq Project
-~~~~~~~~~~~~~~~~~~
+Simple Project
+~~~~~~~~~~~~~~
 
-Let us start with a simple project. First we make sure we have a
+Let us start with a simple project. First, make sure we have a
 :ref:`dune-project` file with a :ref:`Coq lang<coq-lang>` stanza present:
 
 .. code:: scheme
 
   (lang dune 3.3)
-  (using coq 0.3)
+  (using coq 0.4)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:
 
 .. code:: scheme
-  
+
   (coq.theory
    (name myTheory))
 
@@ -336,12 +382,12 @@ Here are the :ref:`dune<dune-files>` files:
 Notice the ``theories`` field in ``B`` allows one :ref:`coq-theory` to depend on
 another. Another thing to note is the inclusion of the :ref:`include_subdirs`
 stanza. This allows our theory to have :ref:`multiple
-subdirectories<include-subdirs-coq>`. 
+subdirectories<include-subdirs-coq>`.
 
 Here are the contents of the ``.v`` files:
 
 .. code:: coq
-  
+
   (* A/AA/aa.v is empty *)
 
   (* A/AB/ab.v *)
@@ -353,6 +399,70 @@ Here are the contents of the ``.v`` files:
 This causes a dependency chain ``b.v -> ab.v -> aa.v``. Now we might be
 interested in building theory ``B``, so all we have to do is run ``dune build
 B``. Dune will automatically build the theory ``A`` since it is a dependency.
+
+.. _example-interproject-theory:
+
+Composing Projects
+~~~~~~~~~~~~~~~~~~
+
+To demonstrate the composition of Coq projects, we can take our previous two
+examples and put them in project which has a theory that depends on theories in
+both projects.
+
+.. code::
+
+  .
+  ├── CombinedWork
+  │   ├── comb.v
+  │   └── dune
+  ├── DeeperTheory
+  │   ├── A
+  │   │   ├── AA
+  │   │   │   └── aa.v
+  │   │   ├── AB
+  │   │   │   └── ab.v
+  │   │   └── dune
+  │   ├── B
+  │   │   ├── b.v
+  │   │   └── dune
+  │   ├── Deep.opam
+  │   └── dune-project
+  ├── dune-project
+  └── SimpleTheory
+      ├── A.v
+      ├── dune
+      ├── dune-project
+      └── Simple.opam
+
+The file ``comb.v`` looks like:
+
+.. code:: coq
+
+  (* Files from DeeperTheory *)
+  From A.AA Require Import aa.
+  (* In Coq, partial prefixes for theory names are enough *)
+  From A Require Import ab.
+  From B Require Import b.
+
+  (* Files from SimpleTheory *)
+  From myTheory Require Import A.
+
+We are referencing Coq modules from all three of our previously defined
+theories.
+
+Our :ref:`dune<dune-files>` file in ``CombinedWork`` looks like:
+
+.. code:: scheme
+
+  (coq.theory
+   (name Combined)
+   (theories myTheory A B))
+
+As you can see, there are dependencies on all the theories we mentioned.
+
+All three of the theories we defined before were *private theories*. In order to
+depend on them, we needed to make them *public theories*. See the section on
+:ref:`public-private-theory`.
 
 .. _running-coq-top:
 

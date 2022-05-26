@@ -8,6 +8,8 @@ open! Import
 (* Coq Directory Path *)
 type t = string list
 
+let compare = List.compare ~compare:String.compare
+
 let to_string x = String.concat ~sep:"." x
 
 let to_dir x = String.concat ~sep:"/" x

@@ -23,11 +23,13 @@ let coq_syntax =
     [ ((0, 1), `Since (1, 9))
     ; ((0, 2), `Since (2, 5))
     ; ((0, 3), `Since (2, 8))
+    ; ((0, 4), `Since (3, 3))
     ]
 
 module Buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
+    ; coq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Loc.t * Coq_mode.t
     ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
@@ -35,12 +37,12 @@ module Buildable = struct
     }
 
   let decode =
+    let* coq_lang_version = Dune_lang.Syntax.get_exn coq_syntax in
     let+ loc = loc
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ mode =
-      let* version = Dune_lang.Syntax.get_exn coq_syntax in
       let default =
-        if version < (0, 3) then Coq_mode.Legacy else Coq_mode.VoOnly
+        if coq_lang_version < (0, 3) then Coq_mode.Legacy else Coq_mode.VoOnly
       in
       located
         (field "mode" ~default
@@ -52,7 +54,7 @@ module Buildable = struct
         (Dune_lang.Syntax.since coq_syntax (0, 2) >>> repeat Coq_lib_name.decode)
         ~default:[]
     in
-    { flags; mode; libraries; theories; loc }
+    { flags; mode; coq_lang_version; libraries; theories; loc }
 end
 
 module Extraction = struct
@@ -82,7 +84,8 @@ end
 
 module Theory = struct
   type t =
-    { name : Loc.t * Coq_lib_name.t
+    { loc : Loc.t
+    ; name : Coq_lib_name.t
     ; package : Package.t option
     ; project : Dune_project.t
     ; synopsis : string option
@@ -132,7 +135,7 @@ module Theory = struct
 
   let decode =
     fields
-      (let+ name = field "name" Coq_lib_name.decode
+      (let+ loc, name = field "name" Coq_lib_name.decode
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
@@ -143,7 +146,8 @@ module Theory = struct
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode in
        let package = select_deprecation ~package ~public in
-       { name
+       { loc
+       ; name
        ; package
        ; project
        ; synopsis

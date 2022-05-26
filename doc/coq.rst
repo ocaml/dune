@@ -214,7 +214,11 @@ Limitations
 .. _limitation-mlpack:
 
 - A ``foo.mlpack`` file must the present in directories of locally defined
-  plugins for things to work. This is a limitation of ``coqdep``.
+  plugins for things to work. ``coqdep`` will recognize a plugin by looking at
+  the existence of an ``.mlpack`` file, as it cannot access (for now) Dune's
+  library database. This is a limitation of ``coqdep``. See the :ref:`example
+  plugin<example plugin>` or the `this template
+  <https://github.com/ejgallego/coq-plugin-template>`_.
 
 - Building a theory and a plugin in the same directory can lead to issues with
   the presence of the META file. We recommend the following:
@@ -516,6 +520,109 @@ we can call ``dune build B/B.tex/``. If we want to build all the HTML
 documentation targets, we can use the ``@doc`` alias as in ``dune build @doc``.
 If we want to build all the LaTeX documentation then we use the ``@doc-latex``
 alias instead.
+
+.. _example plugin:
+
+Coq Plugin Project
+~~~~~~~~~~~~~~~~~~
+
+Let us build a simple Coq plugin to demonstrate how Dune can handle this setup.
+
+.. code::
+
+  .
+  ├── dune-project
+  ├── src
+  │   ├── dune
+  │   ├── hello_world.ml
+  │   ├── my_plugin.mlpack
+  │   └── syntax.mlg
+  └── theories
+      ├── dune
+      └── UsingMyPlugin.v
+
+Our :ref:`dune-project` will need to have a package for the plugin to sit in,
+otherwise Coq will not be able to find it.
+
+.. code:: scheme
+
+  (lang dune 3.2)
+  (using coq 0.3)
+
+  (package
+   (name my-coq-plugin)
+   (synopsis "My Coq Plugin")
+   (depends coq-core))
+
+Now we have two directories, ``src/`` and ``theories/`` each with their own
+:ref:`dune file<dune-files>`. Let us begin with the plugin :ref:`dune
+file<dune-files>`:
+
+.. code:: scheme
+
+  (library
+   (name my_plugin)
+   (public_name my-coq-plugin.plugin)
+   (synopsis "My Coq Plugin")
+   (flags :standard -rectypes -w -27)
+   (libraries coq-core.vernac))
+
+  (coq.pp
+   (modules syntax))
+
+Here we define a library using the :ref:`library` stanza. Importantly, we
+declared which external libraries we rely on and gave the library a
+``public_name``, since this is how Coq will find it.
+
+The :ref:`coq-pp` stanza allows ``src/syntax.mlg`` to be preprocessed, which for
+reference looks like:
+
+.. code:: ocaml
+
+  DECLARE PLUGIN "my-coq-plugin.plugin"
+
+  VERNAC COMMAND EXTEND CallToC CLASSIFIED AS QUERY
+  | [ "Hello" ] -> { Feedback.msg_notice Pp.(str Hello_world.hello_world) }
+  END
+
+Together with ``hello_world.ml``:
+
+.. code:: ocaml
+
+  let hello_world = "hello world!"
+
+They make up the plugin. There is one more important ingredient here, and that
+is the ``my_plugin.mlpack`` file. Only its existence is needed by ``coqdep``, so
+an empty file will suffice. See :ref:`this note on .mlpack
+files<limitation-mlpack>`.
+
+The file for ``theories/`` is a standard :ref:`coq-theory` stanza, with an
+included ``libraries`` field allowing Dune to see ``my-coq-plugin.plugin`` as a
+dependency.
+
+.. code:: scheme
+
+  (coq.theory
+   (name MyPlugin)
+   (package my-coq-plugin)
+   (plugins my-coq-plugin.plugin))
+
+Finally, our .v file will look something like this:
+
+.. code:: coq
+
+  (* For Coq < 8.16 *)
+  Declare ML Module "my_plugin".
+
+  (* For Coq = 8.16 *)
+  Declare ML Module "my_plugin:my-coq-plugin.plugin".
+
+  (* At some point Coq 8.17 or 8.18 will transition to the syntax below, check Coq's manual *)
+  Declare ML Module "my-coq-plugin.plugin".
+
+  Hello.
+
+Running ``dune build`` will build everything correctly.
 
 .. _running-coq-top:
 

@@ -10,6 +10,8 @@ open Import
 (** A Coq library name is a dot-separated list of Coq module identifiers. *)
 type t
 
+val compare : t -> t -> Ordering.t
+
 (** Returns the wrapper name, a dot-separated list of Coq module identifies *)
 val wrapper : t -> string
 

@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Introduce project "composition" for coq theories. Coq theories in separate
+  projects can now refer to each other when in the same workspace (#5784,
+  @Alitzer, @rgrinberg)
+
 - Fix hint message for ``data_only_dirs`` that wrongly mentions the unknown
   constructor ``data_only`` (#5803, @lambdaxdotx)
 

@@ -1,4 +1,0 @@
-(coq.theory
- (name b)
- (package ccycle)
- (theories a))

@@ -47,7 +47,7 @@ val setup_extraction_rules :
     build all dependencies of the Coq module [m]. *)
 val deps_of :
      dir:Path.Build.t
-  -> boot_type:Bootstrap.t
+  -> boot_type:Bootstrap.t Resolve.Memo.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 

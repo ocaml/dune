@@ -144,6 +144,18 @@ The semantics of the fields are:
   generation of native compilation objects when ``(mode vo)`` is enabled,
   irrespective of the configuration of Coq. This will be improved in the future.
 
+Coq Documentation
+~~~~~~~~~~~~~~~~~
+
+Given a :ref:`coq-theory` stanza with ``name A``, Dune will produce two
+*directory targets*, ``A.html/`` and ``A.tex/``. HTML or LaTeX documentation for
+a Coq theory may then be built by running ``dune build A.html`` or ``dune build
+A.tex``, respectively (if the :ref:`dune file<dune-files>` for the theory is the
+current directory).
+
+There are also two aliases ``@doc`` and ``@doc-latex`` that will respectively
+build the HTML or LaTeX documentation when called.
+
 .. _include-subdirs-coq:
 
 Recursive Qualification of Modules
@@ -463,6 +475,39 @@ As you can see, there are dependencies on all the theories we mentioned.
 All three of the theories we defined before were *private theories*. In order to
 depend on them, we needed to make them *public theories*. See the section on
 :ref:`public-private-theory`.
+
+Building Documentation
+~~~~~~~~~~~~~~~~~~~~~~
+
+Following from our last example, we might wish to build the HTML documentation
+for ``A``. We simply do ``dune build A/A.html/``. This will produce the
+following files:
+
+.. code::
+
+  A
+  ├── AA
+  │   ├── aa.glob
+  │   ├── aa.v
+  │   ├── aa.v.d
+  │   └── aa.vo
+  ├── AB
+  │   ├── ab.glob
+  │   ├── ab.v
+  │   ├── ab.v.d
+  │   └── ab.vo
+  └── A.html
+      ├── A.AA.aa.html
+      ├── A.AB.ab.html
+      ├── coqdoc.css
+      ├── index.html
+      └── toc.html
+
+We may also want to build the LaTeX documentation of the theory ``B``. For this
+we can call ``dune build B/B.tex/``. If we want to build all the HTML
+documentation targets, we can use the ``@doc`` alias as in ``dune build @doc``.
+If we want to build all the LaTeX documentation then we use the ``@doc-latex``
+alias instead.
 
 .. _running-coq-top:
 

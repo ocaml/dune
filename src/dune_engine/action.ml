@@ -1,14 +1,5 @@
 open Import
-module Outputs = Action_ast.Outputs
-module Inputs = Action_ast.Inputs
-
-module File_perm = struct
-  include Action_intf.File_perm
-
-  let to_unix_perm = function
-    | Normal -> 0o666
-    | Executable -> 0o777
-end
+include Action_types
 
 module Prog = struct
   module Not_found = struct

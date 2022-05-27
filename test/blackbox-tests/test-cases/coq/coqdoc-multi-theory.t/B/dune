@@ -1,0 +1,5 @@
+(include_subdirs qualified)
+
+(coq.theory
+ (name B)
+ (theories A))

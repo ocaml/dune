@@ -1,3 +1,20 @@
+Unreleased
+----------
+
+- Handle directory dependencies in sandboxed rules. Previously, the parents of
+  these directory dependencies weren't created. (#5754, @rgrinberg)
+
+- Set the exit code to 130 when dune is terminated with a signal (#5769, fixes
+  #5757)
+
+- Support new locations of unix, str, dynlink in OCaml >= 5.0 (#5582, @dra27)
+
+- The ``coq.theory`` stanza now produces rules for running ``coqdoc``. Given a
+  theory named ``mytheory``, the directory targets ``mytheory.html/`` and
+  ``mytheory.tex/`` or additionally the aliases `@doc` and `@doc-latex` will
+  build the HTML and LaTeX documentation repsectively. (#5695, fixes #3760,
+  @Alizter)
+
 3.2.0 (17-05-2022)
 ------------------
 
@@ -481,6 +498,9 @@
 
 - Do not generate META information for `bigarray` library in OCaml >= 5.0
   (#5421, @nojb)
+
+- Support new locations of unix, str, dynlink in OCaml >= 5.0
+  (#5582, @dra27)
 
 2.9.3 (26/01/2022)
 ------------------

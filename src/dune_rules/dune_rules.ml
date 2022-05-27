@@ -10,6 +10,7 @@ module Dep_conf = Dep_conf
 module Dir_contents = Dir_contents
 module Expander = Expander
 module Lib = Lib
+module Lib_flags = Lib_flags
 module Lib_info = Lib_info
 module Modules = Modules
 module Exe_rules = Exe_rules

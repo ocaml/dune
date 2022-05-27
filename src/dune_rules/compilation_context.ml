@@ -5,7 +5,7 @@ module Includes = struct
 
   let make ~project ~opaque ~requires : _ Cm_kind.Dict.t =
     let open Resolve.Memo.O in
-    let iflags libs mode = Lib.L.include_flags ~project libs mode in
+    let iflags libs mode = Lib_flags.L.include_flags ~project libs mode in
     let cmi_includes =
       Command.Args.memo
         (Resolve.Memo.args

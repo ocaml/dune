@@ -43,49 +43,17 @@ val equal : t -> t -> bool
 
 val hash : t -> int
 
-(** The list of files that will be read by the compiler when linking an
-    executable against this library *)
-val link_deps : t -> Link_mode.t -> Path.t list Memo.t
+val project : t -> Dune_project.t option
+
+val modules : t -> Modules.t Memo.Lazy.t option
 
 (** Operations on list of libraries *)
 module L : sig
-  type lib := t
-
-  type nonrec t = t list
-
-  val to_iflags : Path.Set.t -> _ Command.Args.t
-
-  val include_paths : ?project:Dune_project.t -> t -> Mode.t -> Path.Set.t
-
-  val include_flags : ?project:Dune_project.t -> t -> Mode.t -> _ Command.Args.t
-
-  val c_include_flags : t -> _ Command.Args.t
-
-  val toplevel_include_paths : t -> Path.Set.t
-
-  val jsoo_runtime_files : t -> Path.t list
-
   val top_closure :
        'a list
-    -> key:('a -> lib)
+    -> key:('a -> t)
     -> deps:('a -> 'a list Resolve.Memo.t)
     -> ('a list, 'a list) Result.t Resolve.Memo.t
-end
-
-(** Operation on list of libraries and modules *)
-module Lib_and_module : sig
-  type lib := t
-
-  type t =
-    | Lib of lib
-    | Module of Path.t Obj_dir.t * Module.t
-
-  module L : sig
-    type nonrec t = t list
-
-    val link_flags :
-      t -> lib_config:Lib_config.t -> mode:Link_mode.t -> _ Command.Args.t
-  end
 end
 
 (** {1 Compilation contexts} *)
@@ -95,13 +63,15 @@ type sub_system = ..
 
 (** For compiling a library or executable *)
 module Compile : sig
+  type lib := t
+
   type t
 
   (** Return the list of dependencies needed for linking this library/exe *)
-  val requires_link : t -> L.t Resolve.t Memo.Lazy.t
+  val requires_link : t -> lib list Resolve.t Memo.Lazy.t
 
   (** Dependencies listed by the user + runtime dependencies from ppx *)
-  val direct_requires : t -> L.t Resolve.Memo.t
+  val direct_requires : t -> lib list Resolve.Memo.t
 
   module Resolved_select : sig
     type t =
@@ -114,7 +84,7 @@ module Compile : sig
   val resolved_selects : t -> Resolved_select.t list Resolve.Memo.t
 
   (** Transitive closure of all used ppx rewriters *)
-  val pps : t -> L.t Resolve.Memo.t
+  val pps : t -> lib list Resolve.Memo.t
 
   val merlin_ident : t -> Merlin_ident.t
 
@@ -203,7 +173,7 @@ module DB : sig
     -> dune_version:Dune_lang.Syntax.Version.t
     -> Compile.t
 
-  val resolve_pps : t -> (Loc.t * Lib_name.t) list -> L.t Resolve.Memo.t
+  val resolve_pps : t -> (Loc.t * Lib_name.t) list -> lib list Resolve.Memo.t
 
   (** Return the list of all libraries in this database. If [recursive] is true,
       also include libraries in parent databases recursively. *)
@@ -217,7 +187,7 @@ end
 
 (** {1 Transitive closure} *)
 
-val closure : L.t -> linking:bool -> L.t Resolve.Memo.t
+val closure : t list -> linking:bool -> t list Resolve.Memo.t
 
 (** {1 Sub-systems} *)
 

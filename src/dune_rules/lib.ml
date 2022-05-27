@@ -394,6 +394,10 @@ let name t = t.name
 
 let info t = t.info
 
+let project t = t.project
+
+let modules t = t.modules
+
 let implements t = Option.map ~f:Memo.return t.implements
 
 let requires t = Memo.return t.requires
@@ -450,201 +454,9 @@ let hash t = Id.hash t.unique_id
 
 include Comparable.Make (T)
 
-module Link_params = struct
-  type t =
-    { include_dirs : Path.t list
-    ; deps : Path.t list
-          (* List of files that will be read by the compiler at link time and
-             appear directly on the command line *)
-    ; hidden_deps : Path.t list
-          (* List of files that will be read by the compiler at link time but do
-             not appear on the command line *)
-    }
-
-  let get (t : lib) (mode : Link_mode.t) =
-    let open Memo.O in
-    let lib_files = Lib_info.foreign_archives t.info
-    and dll_files = Lib_info.foreign_dll_files t.info in
-    (* OCaml library archives [*.cma] and [*.cmxa] are directly listed in the
-       command line. *)
-    let deps = Mode.Dict.get (Lib_info.archives t.info) (Link_mode.mode mode) in
-    (* Foreign archives [lib*.a] and [dll*.so] and native archives [lib*.a] are
-       declared as hidden dependencies, and appropriate [-I] flags are provided
-       separately to help the linker locate them. *)
-    let+ hidden_deps =
-      match mode with
-      | Byte | Byte_for_jsoo -> Memo.return dll_files
-      | Byte_with_stubs_statically_linked_in -> Memo.return lib_files
-      | Native ->
-        let+ native_archives =
-          let+ modules =
-            match t.modules with
-            | None -> Memo.return None
-            | Some m -> Memo.Lazy.force m >>| Option.some
-          in
-          Lib_info.eval_native_archives_exn t.info ~modules
-        in
-        List.rev_append native_archives lib_files
-    in
-    let include_dirs =
-      let files =
-        match mode with
-        | Byte | Byte_for_jsoo -> dll_files
-        | Byte_with_stubs_statically_linked_in | Native -> lib_files
-      in
-      let files =
-        match Lib_info.exit_module t.info with
-        | None -> files
-        | Some _ ->
-          (* The exit module is copied next to the archive, so we add the
-             archive here so that its directory ends up in [include_dirs]. *)
-          files @ deps
-      in
-      (* TODO: Remove the below unsafe call to [parent_exn] by separating files
-         and directories at the type level. Then any file will have a
-         well-defined parent directory, possibly ".". *)
-      let dirs = List.map files ~f:Path.parent_exn in
-      List.sort_uniq dirs ~compare:Path.compare
-    in
-    let hidden_deps =
-      match Lib_info.exit_module t.info with
-      | None -> hidden_deps
-      | Some m -> (
-        let obj_name =
-          Path.relative (Lib_info.src_dir t.info) (Module_name.uncapitalize m)
-        in
-        match mode with
-        | Byte_for_jsoo | Byte | Byte_with_stubs_statically_linked_in ->
-          Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden_deps
-        | Native ->
-          Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-          :: Path.extend_basename obj_name ~suffix:t.lib_config.ext_obj
-          :: hidden_deps)
-    in
-    { deps; hidden_deps; include_dirs }
-end
-
-let link_deps t mode =
-  let open Memo.O in
-  let+ x = Link_params.get t mode in
-  List.rev_append x.hidden_deps x.deps
-
 module L = struct
-  type nonrec t = t list
-
-  let to_iflags dirs =
-    Command.Args.S
-      (Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
-           Command.Args.Path dir :: A "-I" :: acc)
-      |> List.rev)
-
-  let include_paths ?project ts mode =
-    let visible_cmi =
-      match project with
-      | None -> fun _ -> true
-      | Some project -> (
-        let check_project lib =
-          match lib.project with
-          | None -> false
-          | Some project' -> Dune_project.equal project project'
-        in
-        fun lib ->
-          match Lib_info.status lib.info with
-          | Private (_, Some _) | Installed_private -> check_project lib
-          | _ -> true)
-    in
-    let dirs =
-      List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-          let obj_dir = Lib_info.obj_dir t.info in
-          let acc =
-            if visible_cmi t then
-              let public_cmi_dir = Obj_dir.public_cmi_dir obj_dir in
-              Path.Set.add acc public_cmi_dir
-            else acc
-          in
-          match mode with
-          | Mode.Byte -> acc
-          | Native ->
-            let native_dir = Obj_dir.native_dir obj_dir in
-            Path.Set.add acc native_dir)
-    in
-    match ts with
-    | [] -> dirs
-    | x :: _ -> Path.Set.remove dirs x.lib_config.stdlib_dir
-
-  let include_flags ?project ts mode =
-    to_iflags (include_paths ?project ts mode)
-
-  let c_include_paths ts =
-    let dirs =
-      List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-          let src_dir = Lib_info.src_dir t.info in
-          Path.Set.add acc src_dir)
-    in
-    match ts with
-    | [] -> dirs
-    | x :: _ -> Path.Set.remove dirs x.lib_config.stdlib_dir
-
-  let c_include_flags ts = to_iflags (c_include_paths ts)
-
-  let toplevel_include_paths ts =
-    let with_dlls =
-      List.filter ts ~f:(fun t ->
-          match Lib_info.foreign_dll_files (info t) with
-          | [] -> false
-          | _ -> true)
-    in
-    Path.Set.union (include_paths ts Mode.Byte) (c_include_paths with_dlls)
-
-  let jsoo_runtime_files ts =
-    List.concat_map ts ~f:(fun t -> Lib_info.jsoo_runtime t.info)
-
   let top_closure l ~key ~deps =
     Id.Top_closure.top_closure l ~key:(fun t -> (key t).unique_id) ~deps
-end
-
-module Lib_and_module = struct
-  type t =
-    | Lib of lib
-    | Module of Path.t Obj_dir.t * Module.t
-
-  module L = struct
-    type nonrec t = t list
-
-    let link_flags ts ~(lib_config : Lib_config.t) ~mode =
-      let open Action_builder.O in
-      Command.Args.Dyn
-        (let+ l =
-           Action_builder.all
-             (List.map ts ~f:(function
-               | Lib t ->
-                 let+ p = Action_builder.of_memo (Link_params.get t mode) in
-                 Command.Args.S
-                   (Deps p.deps
-                   :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
-                   :: List.map p.include_dirs ~f:(fun dir ->
-                          Command.Args.S [ A "-I"; Path dir ]))
-               | Module (obj_dir, m) ->
-                 Action_builder.return
-                   (Command.Args.S
-                      (Dep
-                         (Obj_dir.Module.cm_file_exn obj_dir m
-                            ~kind:(Mode.cm_kind (Link_mode.mode mode)))
-                      ::
-                      (match mode with
-                      | Native ->
-                        [ Command.Args.Hidden_deps
-                            (Dep.Set.of_files
-                               [ Obj_dir.Module.o_file_exn obj_dir m
-                                   ~ext_obj:lib_config.ext_obj
-                               ])
-                        ]
-                      | Byte
-                      | Byte_for_jsoo
-                      | Byte_with_stubs_statically_linked_in -> [])))))
-         in
-         Command.Args.S l)
-  end
 end
 
 (* Sub-systems *)
@@ -679,7 +491,7 @@ module Sub_system = struct
 
   (* This mutable table is safe under the assumption that subsystems are
      registered at the top level, which is currently true. *)
-  let all = Sub_system_name.Table.create 16
+  let all = Table.create (module Sub_system_name) 16
 
   module Register (M : S) = struct
     let get lib =
@@ -700,12 +512,12 @@ module Sub_system = struct
 
         let get = get
       end in
-      Sub_system_name.Table.set all M.Info.name (module M : S')
+      Table.set all M.Info.name (module M : S')
   end
 
   let instantiate name info lib ~resolve =
     let open Memo.O in
-    let impl = Sub_system_name.Table.find_exn all name in
+    let impl = Table.find_exn all name in
     let (module M : S') = impl in
     match info with
     | M.Info.T info ->
@@ -1334,6 +1146,65 @@ end = struct
     ; re_exports : lib list Resolve.t
     }
 
+  module Resolved_deps_builder : sig
+    type t
+
+    val empty : t
+
+    val add_resolved : t -> lib Resolve.t -> t
+
+    val add_re_exports : t -> lib Resolve.t -> t
+
+    val add_select : t -> lib list Resolve.t -> Resolved_select.t -> t
+
+    val value : t -> resolved_deps
+  end = struct
+    open Resolve.O
+
+    type t = resolved_deps
+
+    let empty =
+      { resolved = Resolve.return []
+      ; selects = []
+      ; re_exports = Resolve.return []
+      }
+
+    let add_resolved_list t resolved =
+      let resolved =
+        let+ resolved = resolved
+        and+ tl = t.resolved in
+        List.rev_append resolved tl
+      in
+      { t with resolved }
+
+    let add_select (t : t) resolved select =
+      add_resolved_list { t with selects = select :: t.selects } resolved
+
+    let add_resolved t resolved =
+      add_resolved_list t
+        (let+ resolved = resolved in
+         [ resolved ])
+
+    let add_re_exports (t : t) lib =
+      let re_exports =
+        let+ hd = lib
+        and+ tl = t.re_exports in
+        hd :: tl
+      in
+      add_resolved { t with re_exports } lib
+
+    let value { resolved; selects; re_exports } =
+      let resolved =
+        let+ resolved = resolved in
+        List.rev resolved
+      in
+      let re_exports =
+        let+ re_exports = re_exports in
+        List.rev re_exports
+      in
+      { resolved; selects; re_exports }
+  end
+
   let resolve_complex_deps db deps ~private_deps : resolved_deps Memo.t =
     let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
       let open Memo.O in
@@ -1367,48 +1238,21 @@ end = struct
       (res, { Resolved_select.src_fn; dst_fn = result_fn })
     in
     let open Memo.O in
-    let+ res, selects, re_exports =
-      Memo.List.fold_left deps
-        ~init:(Resolve.return [], [], Resolve.return [])
-        ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
-          let open Memo.O in
+    let open Resolved_deps_builder in
+    let+ builder =
+      Memo.List.fold_left deps ~init:empty ~f:(fun acc dep ->
           match (dep : Lib_dep.t) with
-          | Re_export (loc, name) ->
-            let+ lib = resolve_dep db (loc, name) ~private_deps in
-            let open Resolve.O in
-            let acc_re_exports =
-              let+ lib = lib
-              and+ acc_re_exports = acc_re_exports in
-              lib :: acc_re_exports
-            in
-            let acc_res =
-              let+ lib = lib
-              and+ acc_res = acc_res in
-              lib :: acc_res
-            in
-            (acc_res, acc_selects, acc_re_exports)
-          | Direct (loc, name) ->
-            let+ lib = resolve_dep db (loc, name) ~private_deps in
-            let acc_res =
-              let open Resolve.O in
-              let+ lib = lib
-              and+ acc_res = acc_res in
-              lib :: acc_res
-            in
-            (acc_res, acc_selects, acc_re_exports)
+          | Re_export lib ->
+            let+ lib = resolve_dep db lib ~private_deps in
+            add_re_exports acc lib
+          | Direct lib ->
+            let+ lib = resolve_dep db lib ~private_deps in
+            add_resolved acc lib
           | Select select ->
-            let+ res, resolved_select = resolve_select select in
-            let acc_res =
-              let open Resolve.O in
-              let+ res = res
-              and+ acc_res = acc_res in
-              List.rev_append res acc_res
-            in
-            (acc_res, resolved_select :: acc_selects, acc_re_exports))
+            let+ resolved, select = resolve_select select in
+            add_select acc resolved select)
     in
-    let resolved = Resolve.map ~f:List.rev res in
-    let re_exports = Resolve.map ~f:List.rev re_exports in
-    { resolved; selects; re_exports }
+    value builder
 
   type pp_deps =
     { pps : t list Resolve.Memo.t

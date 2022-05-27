@@ -53,10 +53,26 @@ module Run : sig
     | Automatic
     | No_watcher
 
-  (** Raised when [go] terminates due to the user requesting a shutdown via rpc.
-      The caller needs to know about this to set the exit code to 0 for such
-      cases *)
-  exception Shutdown_requested
+  module Shutdown : sig
+    module Signal : sig
+      (* TODO move this stuff into stdune? *)
+      type t =
+        | Int
+        | Quit
+        | Term
+    end
+
+    module Reason : sig
+      type t =
+        | Requested
+        | Signal of Signal.t
+    end
+
+    (** Raised when [go] terminates due to the user requesting a shutdown via
+        rpc or raising a signal. The caller needs to know about this to set the
+        exit code correctly *)
+    exception E of Reason.t
+  end
 
   exception Build_cancelled
 

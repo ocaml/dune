@@ -23,6 +23,7 @@ depends: [
   "ppx_expect" {with-test}
   "stdune" {= version}
   "dune-private-libs" {= version}
+  "base-unix"
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

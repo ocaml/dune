@@ -1,35 +1,12 @@
 open Import
 open Dune_lang.Decoder
+open Action_types
 module Stanza = Dune_lang.Stanza
-
-module Outputs = struct
-  include Action_intf.Outputs
-
-  let to_string = function
-    | Stdout -> "stdout"
-    | Stderr -> "stderr"
-    | Outputs -> "outputs"
-end
-
-module Inputs = struct
-  include Action_intf.Inputs
-
-  let to_string = function
-    | Stdin -> "stdin"
-end
 
 module type Target_intf = sig
   include Dune_lang.Conv.S
 
   val is_dev_null : t -> bool
-end
-
-module File_perm = struct
-  include Action_intf.File_perm
-
-  let suffix = function
-    | Normal -> ""
-    | Executable -> "-executable"
 end
 
 module Make

@@ -405,7 +405,7 @@ module Crawl = struct
 
   (** [add_transitive_deps libs] returns the union of [libs] and of its
       transitive dependencies *)
-  let add_transitive_deps (libs : Lib.L.t) =
+  let add_transitive_deps (libs : Lib.t list) =
     (* get the transitive closure using [Lib.closure] *)
     Lib.closure libs ~linking:false
     >>| Resolve.to_result >>| Result.value ~default:[]

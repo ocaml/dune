@@ -18,6 +18,8 @@ module With_targets : sig
 
   val add : 'a t -> file_targets:Path.Build.t list -> 'a t
 
+  val add_directories : 'a t -> directory_targets:Path.Build.t list -> 'a t
+
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t

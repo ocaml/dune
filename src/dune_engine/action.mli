@@ -1,22 +1,6 @@
 open! Import
 
-module Outputs : sig
-  include module type of Action_intf.Outputs
-
-  val to_string : t -> string
-end
-
-module Inputs : module type of struct
-  include Action_intf.Inputs
-end
-
-module File_perm : sig
-  include module type of struct
-    include Action_intf.File_perm
-  end
-
-  val to_unix_perm : t -> int
-end
+include module type of Action_types
 
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
@@ -38,8 +22,6 @@ module Prog : sig
       -> t
 
     val raise : t -> _
-
-    val user_message : t -> User_message.t
   end
 
   type t = (Path.t, Not_found.t) result

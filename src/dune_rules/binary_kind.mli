@@ -1,6 +1,6 @@
 (** Linking modes for binaries *)
 
-open Stdune
+open Import
 
 type t =
   | C

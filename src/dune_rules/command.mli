@@ -79,6 +79,7 @@ end
    we can use the constructor [S] to concatenate lists instead. *)
 val run :
      dir:Path.t
+  -> ?sandbox:Sandbox_config.t
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
   -> Args.any Args.t list

@@ -114,7 +114,7 @@ let pped_module m ~f =
 module Driver = struct
   module M = struct
     module Info = struct
-      let name = Sub_system_name.make "ppx.driver"
+      let name = Sub_system_name.of_string "ppx.driver"
 
       type t =
         { loc : Loc.t

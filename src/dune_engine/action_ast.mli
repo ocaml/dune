@@ -11,16 +11,6 @@ module type Target_intf = sig
   val is_dev_null : t -> bool
 end
 
-module Inputs : module type of struct
-  include Action_intf.Inputs
-end
-
-module Outputs : sig
-  include module type of Action_intf.Outputs
-
-  val to_string : t -> string
-end
-
 module Make
     (Program : Dune_lang.Conv.S)
     (Path : Dune_lang.Conv.S)

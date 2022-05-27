@@ -1,5 +1,4 @@
 open Import
-open Stdune
 
 module Expanded : sig
   type t

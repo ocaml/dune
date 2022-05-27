@@ -90,8 +90,7 @@
         Rules.prefix_rules fail ~f:(fun () -> gen_rules libs)
     ]} *)
 
-open Stdune
-open Dune_engine
+open Import
 
 type 'a t
 

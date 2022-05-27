@@ -27,7 +27,7 @@ module Util = struct
         let obj_dir = Obj_dir.public_cmi_dir (Lib_info.obj_dir info) in
         Path.Set.add acc obj_dir)
 
-  let include_flags ts = include_paths ts |> Lib.L.to_iflags
+  let include_flags ts = include_paths ts |> Lib_flags.L.to_iflags
 
   (* coqdep expects an mlpack file next to the sources otherwise it
    * will omit the cmxs deps *)
@@ -106,6 +106,7 @@ module Context = struct
   type 'a t =
     { coqdep : Action.Prog.t
     ; coqc : Action.Prog.t * Path.Build.t
+    ; coqdoc : Action.Prog.t
     ; wrapper_name : string
     ; dir : Path.Build.t
     ; expander : Expander.t
@@ -190,6 +191,16 @@ module Context = struct
       in
       Resolve.args args
 
+  let coqdoc_file_flags cctx =
+    let file_flags =
+      [ theories_flags cctx
+      ; Command.Args.A "-R"
+      ; Path (Path.build cctx.dir)
+      ; A cctx.wrapper_name
+      ]
+    in
+    [ Command.Args.S (Bootstrap.flags cctx.boot_type); S file_flags ]
+
   (* compute include flags and mlpack rules *)
   let setup_ml_deps ~lib_db libs theories =
     (* Pair of include flags and paths to mlpack *)
@@ -250,9 +261,11 @@ module Context = struct
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs
     and+ coqdep = rr "coqdep"
     and+ coqc = rr "coqc"
+    and+ coqdoc = rr "coqdoc"
     and+ profile_flags = Super_context.coq sctx ~dir in
     { coqdep
     ; coqc = (coqc, coqc_dir)
+    ; coqdoc
     ; wrapper_name
     ; dir
     ; expander
@@ -372,6 +385,79 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   Context.coqc cctx (Command.Args.dyn coq_flags :: file_flags)
   >>| Action.Full.add_sandbox sandbox
 
+module Coqdoc_mode = struct
+  type t =
+    | Html
+    | Latex
+
+  let flag = function
+    | Html -> "--html"
+    | Latex -> "--latex"
+
+  let directory t obj_dir (theory : Coq_lib_name.t) =
+    Path.Build.relative obj_dir
+      (Coq_lib_name.to_string theory
+      ^
+      match t with
+      | Html -> ".html"
+      | Latex -> ".tex")
+
+  let alias t ~dir =
+    match t with
+    | Html -> Alias.doc ~dir
+    | Latex -> Alias.make (Alias.Name.of_string "doc-latex") ~dir
+end
+
+let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
+  let loc, name = theory.name in
+  Path.Build.Map.of_list_exn
+    [ (Coqdoc_mode.directory Html obj_dir name, loc)
+    ; (Coqdoc_mode.directory Latex obj_dir name, loc)
+    ]
+
+let coqdoc_rule (cctx : _ Context.t) ~sctx ~name:(_, name) ~file_flags ~mode
+    ~theories_deps coq_modules =
+  let obj_dir = cctx.dir in
+  let doc_dir = Coqdoc_mode.directory mode obj_dir name in
+  let file_flags =
+    let globs =
+      let open Action_builder.O in
+      let* theories_deps = Resolve.read theories_deps in
+      Action_builder.of_memo
+      @@
+      let open Memo.O in
+      let+ deps =
+        Memo.parallel_map theories_deps ~f:(fun theory ->
+            let+ theory_dirs = Context.directories_of_lib ~sctx theory in
+            Dep.Set.of_list_map theory_dirs ~f:(fun dir ->
+                (* TODO *)
+                Glob.of_string_exn Loc.none "*.{glob}"
+                |> Glob.to_pred
+                |> File_selector.create ~dir:(Path.build dir)
+                |> Dep.file_selector))
+      in
+      Command.Args.Hidden_deps (Dep.Set.union_all deps)
+    in
+    [ Command.Args.S file_flags
+    ; A "--toc"
+    ; A Coqdoc_mode.(flag mode)
+    ; A "-d"
+    ; Path (Path.build doc_dir)
+    ; Deps (List.map ~f:Path.build @@ List.map ~f:Coq_module.source coq_modules)
+    ; Dyn globs
+    ; Hidden_deps
+        (Dep.Set.of_files @@ List.map ~f:Path.build
+        @@ List.map ~f:(Coq_module.glob_file ~obj_dir) coq_modules)
+    ]
+  in
+  Command.run ~sandbox:Sandbox_config.needs_sandboxing
+    ~dir:(Path.build cctx.dir) cctx.coqdoc file_flags
+  |> Action_builder.With_targets.map
+       ~f:
+         (Action.Full.map ~f:(fun coqdoc ->
+              Action.Progn [ Action.mkdir (Path.build doc_dir); coqdoc ]))
+  |> Action_builder.With_targets.add_directories ~directory_targets:[ doc_dir ]
+
 module Module_rule = struct
   type t =
     { coqdep : Action.Full.t Action_builder.With_targets.t
@@ -425,8 +511,9 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     let theories_deps =
       Coq_lib.DB.requires coq_lib_db theory |> Resolve.of_result
     in
-    let theory_dirs = Coq_sources.directories coq_dir_contents ~name in
-    let theory_dirs = Path.Build.Set.of_list theory_dirs in
+    let theory_dirs =
+      Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
+    in
     let coqc_dir = (Super_context.context sctx).build_dir in
     Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
       s.buildable
@@ -441,11 +528,28 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     in
     source_rule ~sctx theories
   in
+  let loc = s.buildable.loc in
+  let* () =
+    let rule =
+      let file_flags = Context.coqdoc_file_flags cctx in
+      fun mode ->
+        let* () =
+          coqdoc_rule cctx ~sctx ~mode ~theories_deps:cctx.theories_deps
+            ~name:s.name ~file_flags coq_modules
+          |> Super_context.add_rule ~loc ~dir sctx
+        in
+        Coqdoc_mode.directory mode cctx.dir name
+        |> Path.build |> Action_builder.path
+        |> Rules.Produce.Alias.add_deps (Coqdoc_mode.alias mode ~dir) ~loc
+    in
+    let* () = rule Html in
+    rule Latex
+  in
   List.concat_map coq_modules ~f:(fun m ->
       let cctx = Context.for_module cctx m in
       let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
       [ coqc; coqdep ])
-  |> Super_context.add_rules ~loc:s.buildable.loc ~dir sctx
+  |> Super_context.add_rules ~loc ~dir sctx
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let name = snd s.name in

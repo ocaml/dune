@@ -1,0 +1,21 @@
+(rule
+ (targets
+  (dir base.html))
+ (action
+  (progn
+   (run mkdir base.html)
+   (run touch base.html/base.base.html))))
+
+(rule
+ (targets
+  (dir base.tex))
+ (action
+  (progn
+   (run mkdir base.tex)
+   (run touch base.tex/base.base.tex))))
+
+(coq.theory
+ (name base)
+ (package base)
+ (modules base)
+ (synopsis "Base Coq library"))

@@ -13,7 +13,7 @@ let go f =
   in
   try
     Scheduler.Run.go config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ()) f
-  with Scheduler.Run.Shutdown_requested -> ()
+  with Scheduler.Run.Shutdown.E Requested -> ()
 
 let true_ = Bin.which "true" ~path:(Env.path Env.initial) |> Option.value_exn
 

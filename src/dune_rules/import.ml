@@ -1,6 +1,12 @@
 include Stdune
+open Dune_util
+module Config = Config
+module Log = Log
+module Persistent = Persistent
+module Stringlike = Stringlike
+module Stringlike_intf = Stringlike_intf
+module Value = Value
 include Dune_engine
-include Dune_util
 include Ocaml
 module Re = Dune_re
 module Stanza = Dune_lang.Stanza

@@ -1,6 +1,4 @@
-open! Import
-open! Dune_engine
-open Stdune
+open Import
 
 include Stringlike.Make (struct
   type t = string

@@ -432,7 +432,7 @@ let coqdoc_rule (cctx : _ Context.t) ~sctx ~name:(_, name) ~file_flags ~mode
             Dep.Set.of_list_map theory_dirs ~f:(fun dir ->
                 (* TODO *)
                 Glob.of_string_exn Loc.none "*.{glob}"
-                |> Glob.to_pred
+                |> Glob.to_predicate_with_id
                 |> File_selector.create ~dir:(Path.build dir)
                 |> Dep.file_selector))
       in

@@ -281,19 +281,6 @@ let lib_entries_of_package t pkg_name =
   Package.Name.Map.find t.lib_entries_by_package pkg_name
   |> Option.value ~default:[]
 
-let internal_lib_names t =
-  List.fold_left t.stanzas ~init:Lib_name.Set.empty
-    ~f:(fun acc { Dir_with_dune.data = stanzas; _ } ->
-      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
-        | Dune_file.Library lib ->
-          Lib_name.Set.add
-            (match lib.visibility with
-            | Private _ -> acc
-            | Public public ->
-              Lib_name.Set.add acc (Dune_file.Public_lib.name public))
-            (Lib_name.of_local lib.name)
-        | _ -> acc))
-
 let public_libs t = t.public_libs
 
 let installed_libs t = t.installed_libs

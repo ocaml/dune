@@ -468,21 +468,21 @@ let get_installed_binaries stanzas ~(context : Context.t) =
     Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
   in
   Memo.List.map stanzas ~f:(fun (d : _ Dir_with_dune.t) ->
+      let binaries_from_install files =
+        Memo.List.map files ~f:(fun fb ->
+            let+ p =
+              File_binding.Unexpanded.destination_relative_to_install_path fb
+                ~section:Bin
+                ~expand:(expand_str ~dir:d.ctx_dir)
+                ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
+            in
+            let p = Path.Local.of_string (Install.Dst.to_string p) in
+            if Path.Local.is_root (Path.Local.parent_exn p) then
+              Some (Path.Build.append_local install_dir p)
+            else None)
+        >>| List.filter_opt >>| Path.Build.Set.of_list
+      in
       Memo.List.map d.data ~f:(fun stanza ->
-          let binaries_from_install files =
-            Memo.List.map files ~f:(fun fb ->
-                let+ p =
-                  File_binding.Unexpanded.destination_relative_to_install_path
-                    fb ~section:Bin
-                    ~expand:(expand_str ~dir:d.ctx_dir)
-                    ~expand_partial:(expand_str_partial ~dir:d.ctx_dir)
-                in
-                let p = Path.Local.of_string (Install.Dst.to_string p) in
-                if Path.Local.is_root (Path.Local.parent_exn p) then
-                  Some (Path.Build.append_local install_dir p)
-                else None)
-            >>| List.filter_opt >>| Path.Build.Set.of_list
-          in
           match (stanza : Stanza.t) with
           | Dune_file.Install { section = Section Bin; files; _ } ->
             binaries_from_install files
@@ -527,36 +527,37 @@ let get_installed_binaries stanzas ~(context : Context.t) =
   >>| Path.Build.Set.union_all
 
 let create_lib_entries_by_package ~public_libs stanzas =
-  Dir_with_dune.Memo.deep_fold stanzas ~init:[] ~f:(fun d stanza acc ->
-      match stanza with
-      | Dune_file.Library ({ visibility = Private (Some pkg); _ } as lib) -> (
-        let+ lib =
-          let db = Scope.libs d.scope in
-          Lib.DB.find db (Dune_file.Library.best_name lib)
-        in
-        match lib with
-        | None -> acc
-        | Some lib ->
-          let name = Package.name pkg in
-          (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-      | Dune_file.Library { visibility = Public pub; _ } -> (
-        let+ lib = Lib.DB.find public_libs (Dune_file.Public_lib.name pub) in
-        match lib with
-        | None ->
-          (* Skip hidden or unavailable libraries. TODO we should assert that
-             the library name is always found somehow *)
-          acc
-        | Some lib ->
-          let package = Dune_file.Public_lib.package pub in
+  let+ libs =
+    Dir_with_dune.Memo.deep_fold stanzas ~init:[] ~f:(fun d stanza acc ->
+        match stanza with
+        | Dune_file.Library ({ visibility = Private (Some pkg); _ } as lib) -> (
+          let+ lib =
+            let db = Scope.libs d.scope in
+            Lib.DB.find db (Dune_file.Library.best_name lib)
+          in
+          match lib with
+          | None -> acc
+          | Some lib ->
+            let name = Package.name pkg in
+            (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
+        | Dune_file.Library { visibility = Public pub; _ } -> (
+          let+ lib = Lib.DB.find public_libs (Dune_file.Public_lib.name pub) in
+          match lib with
+          | None ->
+            (* Skip hidden or unavailable libraries. TODO we should assert that
+               the library name is always found somehow *)
+            acc
+          | Some lib ->
+            let package = Dune_file.Public_lib.package pub in
+            let name = Package.name package in
+            (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
+        | Dune_file.Deprecated_library_name
+            ({ old_name = old_public_name, _; _ } as d) ->
+          let package = Dune_file.Public_lib.package old_public_name in
           let name = Package.name package in
-          (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-      | Dune_file.Deprecated_library_name
-          ({ old_name = old_public_name, _; _ } as d) ->
-        let package = Dune_file.Public_lib.package old_public_name in
-        let name = Package.name package in
-        Memo.return ((name, Lib_entry.Deprecated_library_name d) :: acc)
-      | _ -> Memo.return acc)
-  >>| fun libs ->
+          Memo.return ((name, Lib_entry.Deprecated_library_name d) :: acc)
+        | _ -> Memo.return acc)
+  in
   Package.Name.Map.of_list_multi libs
   |> Package.Name.Map.map
        ~f:
@@ -605,65 +606,64 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
       ~bin_artifacts_host:artifacts_host.bin
       ~lib_artifacts_host:artifacts_host.public_libs ~find_package:any_package
   in
-  let dune_dir_locations_var : Stdune.Env.Var.t = "DUNE_DIR_LOCATIONS" in
-  (* Add the section of the site mentioned in stanzas (it could be a site of an
-     external package) *)
-  let add_in_package_section m pkg section =
-    Package.Name.Map.update m pkg ~f:(function
-      | None -> Some (Section.Set.singleton section)
-      | Some s -> Some (Section.Set.add s section))
-  in
   let* package_sections =
-    Dir_with_dune.Memo.deep_fold stanzas ~init:Package.Name.Map.empty
-      ~f:(fun _ stanza acc ->
-        let add_in_package_sites acc pkg site loc =
-          let+ section =
-            get_site_of_packages_aux ~loc ~any_package ~pkg ~site
-          in
-          add_in_package_section acc pkg section
-        in
-        match stanza with
-        | Dune_file.Install { section = Site { pkg; site; loc }; _ } ->
-          add_in_package_sites acc pkg site loc
-        | Dune_file.Plugin { site = loc, (pkg, site); _ } ->
-          add_in_package_sites acc pkg site loc
-        | _ -> Memo.return acc)
-  in
-  (* Add the site of the local package: it should only useful for making sure
-     that at least one location is given to the site of local package because if
-     the site is used it should already be in [packages_sections] *)
-  let* package_sections =
-    Package.Name.Map.to_list packages
-    |> Memo.List.fold_left ~init:package_sections
-         ~f:(fun acc (package_name, package) ->
-           Section.Site.Map.to_list package.Package.sites
-           |> Memo.List.fold_left ~init:acc ~f:(fun acc (_, section) ->
-                  Memo.return (add_in_package_section acc package_name section)))
-  in
-  let env_dune_dir_locations =
-    let install_dir = Local_install_path.dir ~context:context.Context.name in
-    let install_dir = Path.build install_dir in
-    let roots = Install.Section.Paths.Roots.opam_from_prefix install_dir in
-    let v =
-      Option.value
-        (Stdune.Env.get context.env dune_dir_locations_var)
-        ~default:""
+    (* Add the section of the site mentioned in stanzas (it could be a site of
+       an external package) *)
+    let add_in_package_section m pkg section =
+      Package.Name.Map.update m pkg ~f:(function
+        | None -> Some (Section.Set.singleton section)
+        | Some s -> Some (Section.Set.add s section))
     in
-    Package.Name.Map.foldi ~init:v package_sections
-      ~f:(fun package_name sections init ->
-        let paths = Install.Section.Paths.make ~package:package_name ~roots in
-        Section.Set.fold sections ~init ~f:(fun section acc ->
-            sprintf "%s%c%s%c%s%s"
-              (Package.Name.to_string package_name)
-              Stdune.Bin.path_sep
-              (Section.to_string section)
-              Stdune.Bin.path_sep
-              (Path.to_absolute_filename
-                 (Install.Section.Paths.get paths section))
-              (if String.is_empty acc then acc
-              else sprintf "%c%s" Stdune.Bin.path_sep acc)))
+    let+ package_sections =
+      Dir_with_dune.Memo.deep_fold stanzas ~init:Package.Name.Map.empty
+        ~f:(fun _ stanza acc ->
+          let add_in_package_sites acc pkg site loc =
+            let+ section =
+              get_site_of_packages_aux ~loc ~any_package ~pkg ~site
+            in
+            add_in_package_section acc pkg section
+          in
+          match stanza with
+          | Dune_file.Install { section = Site { pkg; site; loc }; _ } ->
+            add_in_package_sites acc pkg site loc
+          | Dune_file.Plugin { site = loc, (pkg, site); _ } ->
+            add_in_package_sites acc pkg site loc
+          | _ -> Memo.return acc)
+    in
+    (* Add the site of the local package: it should only useful for making sure
+       that at least one location is given to the site of local package because
+       if the site is used it should already be in [packages_sections] *)
+    Package.Name.Map.foldi packages ~init:package_sections
+      ~f:(fun package_name package acc ->
+        Section.Site.Map.fold package.Package.sites ~init:acc
+          ~f:(fun section acc ->
+            add_in_package_section acc package_name section))
   in
   let context_env =
+    let dune_dir_locations_var : Stdune.Env.Var.t = "DUNE_DIR_LOCATIONS" in
+    let env_dune_dir_locations =
+      let roots =
+        Local_install_path.dir ~context:context.Context.name
+        |> Path.build |> Install.Section.Paths.Roots.opam_from_prefix
+      in
+      let init =
+        Stdune.Env.get context.env dune_dir_locations_var
+        |> Option.value ~default:""
+      in
+      Package.Name.Map.foldi ~init package_sections
+        ~f:(fun package_name sections init ->
+          let paths = Install.Section.Paths.make ~package:package_name ~roots in
+          Section.Set.fold sections ~init ~f:(fun section acc ->
+              sprintf "%s%c%s%c%s%s"
+                (Package.Name.to_string package_name)
+                Stdune.Bin.path_sep
+                (Section.to_string section)
+                Stdune.Bin.path_sep
+                (Path.to_absolute_filename
+                   (Install.Section.Paths.get paths section))
+                (if String.is_empty acc then acc
+                else sprintf "%c%s" Stdune.Bin.path_sep acc)))
+    in
     if String.is_empty env_dune_dir_locations then context.env
     else
       Stdune.Env.add context.env ~var:dune_dir_locations_var

@@ -133,7 +133,7 @@ module DB : sig
     -> unit
     -> t
 
-  val create_from_findlib : lib_config:Lib_config.t -> Findlib.t -> t
+  val create_from_findlib : Findlib.t -> t
 
   val find : t -> Lib_name.t -> lib option Memo.t
 

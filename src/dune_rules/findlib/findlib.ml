@@ -645,6 +645,8 @@ let create ~paths ~(lib_config : Lib_config.t) : t Memo.t =
   let+ builtins = Meta.builtins ~stdlib_dir ~version in
   { DB.stdlib_dir; paths; builtins; lib_config }
 
+let lib_config (t : t) = t.lib_config
+
 let all_broken_packages t =
   let+ packages = load_all_packages t in
   List.fold_left packages ~init:[] ~f:(fun acc (name, x) ->

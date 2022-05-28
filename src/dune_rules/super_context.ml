@@ -566,8 +566,7 @@ let create_lib_entries_by_package ~public_libs stanzas =
 let modules_of_lib = Fdecl.create Dyn.opaque
 
 let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
-  let lib_config = Context.lib_config context in
-  let installed_libs = Lib.DB.create_from_findlib context.findlib ~lib_config in
+  let installed_libs = Lib.DB.create_from_findlib context.findlib in
   let modules_of_lib_for_scope = Fdecl.create Dyn.opaque in
   let* scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~context ~installed_libs

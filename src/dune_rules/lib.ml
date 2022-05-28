@@ -1713,7 +1713,8 @@ module DB = struct
     ; modules_of_lib
     }
 
-  let create_from_findlib ~lib_config findlib =
+  let create_from_findlib findlib =
+    let lib_config = Findlib.lib_config findlib in
     create () ~parent:None ~lib_config
       ~modules_of_lib:
         (let t = Fdecl.create Dyn.opaque in

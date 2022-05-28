@@ -563,27 +563,15 @@ let create_lib_entries_by_package ~public_libs stanzas =
          (List.sort ~compare:(fun a b ->
               Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
 
-let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
-  List.concat_map projects ~f:(fun project ->
-      Dune_project.packages project
-      |> Package.Name.Map.values
-      |> List.map ~f:(fun (pkg : Package.t) ->
-             let name = Package.name pkg in
-             (name, project)))
-  |> Package.Name.Map.of_list_exn
-
 let modules_of_lib = Fdecl.create Dyn.opaque
 
 let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
-  let projects_by_package = create_projects_by_package projects in
-  let installed_libs =
-    Lib.DB.create_from_findlib context.findlib ~lib_config ~projects_by_package
-  in
+  let installed_libs = Lib.DB.create_from_findlib context.findlib ~lib_config in
   let modules_of_lib_for_scope = Fdecl.create Dyn.opaque in
   let* scopes, public_libs =
-    Scope.DB.create_from_stanzas ~projects ~projects_by_package ~context
-      ~installed_libs ~modules_of_lib:modules_of_lib_for_scope stanzas
+    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs
+      ~modules_of_lib:modules_of_lib_for_scope stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_file.dir; project; stanzas } ->

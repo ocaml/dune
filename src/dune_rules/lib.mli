@@ -126,7 +126,6 @@ module DB : sig
   val create :
        parent:t option
     -> resolve:(Lib_name.t -> Resolve_result.t Memo.t)
-    -> projects_by_package:Dune_project.t Package.Name.Map.t
     -> all:(unit -> Lib_name.t list Memo.t)
     -> modules_of_lib:
          (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.t) Fdecl.t
@@ -134,11 +133,7 @@ module DB : sig
     -> unit
     -> t
 
-  val create_from_findlib :
-       lib_config:Lib_config.t
-    -> projects_by_package:Dune_project.t Package.Name.Map.t
-    -> Findlib.t
-    -> t
+  val create_from_findlib : lib_config:Lib_config.t -> Findlib.t -> t
 
   val find : t -> Lib_name.t -> lib option Memo.t
 

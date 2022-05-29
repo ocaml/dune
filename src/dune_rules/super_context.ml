@@ -640,34 +640,43 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
             add_in_package_section acc package_name section))
   in
   let context_env =
-    let dune_dir_locations_var : Stdune.Env.Var.t = "DUNE_DIR_LOCATIONS" in
     let env_dune_dir_locations =
       let roots =
         Local_install_path.dir ~context:context.Context.name
         |> Path.build |> Install.Section.Paths.Roots.opam_from_prefix
       in
       let init =
-        Stdune.Env.get context.env dune_dir_locations_var
-        |> Option.value ~default:""
+        match
+          Stdune.Env.get context.env
+            Dune_site_private.dune_dir_locations_env_var
+        with
+        | None -> []
+        | Some var -> (
+          match Dune_site_private.decode_dune_dir_locations var with
+          | Some s -> s
+          | None ->
+            User_error.raise
+              [ Pp.textf "Invalid env var %s=%S"
+                  Dune_site_private.dune_dir_locations_env_var var
+              ])
       in
       Package.Name.Map.foldi ~init package_sections
         ~f:(fun package_name sections init ->
           let paths = Install.Section.Paths.make ~package:package_name ~roots in
           Section.Set.fold sections ~init ~f:(fun section acc ->
-              sprintf "%s%c%s%c%s%s"
-                (Package.Name.to_string package_name)
-                Stdune.Bin.path_sep
-                (Section.to_string section)
-                Stdune.Bin.path_sep
-                (Path.to_absolute_filename
-                   (Install.Section.Paths.get paths section))
-                (if String.is_empty acc then acc
-                else sprintf "%c%s" Stdune.Bin.path_sep acc)))
+              let package = Package.Name.to_string package_name in
+              let dir =
+                Path.to_absolute_filename
+                  (Install.Section.Paths.get paths section)
+              in
+              { Dune_site_private.package; dir; section } :: acc))
     in
-    if String.is_empty env_dune_dir_locations then context.env
+    if List.is_empty env_dune_dir_locations then context.env
     else
-      Stdune.Env.add context.env ~var:dune_dir_locations_var
-        ~value:env_dune_dir_locations
+      Stdune.Env.add context.env
+        ~var:Dune_site_private.dune_dir_locations_env_var
+        ~value:
+          (Dune_site_private.encode_dune_dir_locations env_dune_dir_locations)
   in
   let default_env =
     Memo.lazy_ (fun () ->

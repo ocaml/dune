@@ -16,6 +16,7 @@
   dune_action_plugin
   chrome_trace
   dune_stats
+  dune_site_private
   dune_util
   dune_meta_parser
   dune_section

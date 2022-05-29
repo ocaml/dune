@@ -583,7 +583,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   in
   let stanzas_per_dir =
     Path.Build.Map.of_list_map_exn stanzas ~f:(fun stanzas ->
-        (stanzas.Dir_with_dune.ctx_dir, stanzas))
+        (stanzas.ctx_dir, stanzas))
   in
   let* artifacts =
     let+ local_bins = get_installed_binaries ~context stanzas in
@@ -635,14 +635,13 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
        if the site is used it should already be in [packages_sections] *)
     Package.Name.Map.foldi packages ~init:package_sections
       ~f:(fun package_name package acc ->
-        Section.Site.Map.fold package.Package.sites ~init:acc
-          ~f:(fun section acc ->
+        Section.Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
             add_in_package_section acc package_name section))
   in
   let context_env =
     let env_dune_dir_locations =
       let roots =
-        Local_install_path.dir ~context:context.Context.name
+        Local_install_path.dir ~context:context.name
         |> Path.build |> Install.Section.Paths.Roots.opam_from_prefix
       in
       let init =

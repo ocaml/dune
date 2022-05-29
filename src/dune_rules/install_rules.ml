@@ -849,8 +849,8 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let packages =
     let open Action_builder.O in
     let+ packages = Action_builder.of_memo (package_deps package files) in
-    match strict_package_deps with
-    | false -> packages
+    (match strict_package_deps with
+    | false -> ()
     | true ->
       let missing_deps =
         let effective_deps =
@@ -859,8 +859,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
         in
         Package.missing_deps package ~effective_deps
       in
-      if Package.Name.Set.is_empty missing_deps then packages
-      else
+      if not (Package.Name.Set.is_empty missing_deps) then
         let name = Package.name package in
         User_error.raise
           [ Pp.textf "Package %s is missing the following package dependencies"
@@ -868,7 +867,8 @@ let gen_package_install_file_rules sctx (package : Package.t) =
           ; Package.Name.Set.to_list missing_deps
             |> Pp.enumerate ~f:(fun name ->
                    Pp.text (Package.Name.to_string name))
-          ]
+          ]);
+    packages
   in
   let install_file_deps =
     Path.Set.of_list_map files ~f:Path.build |> Action_builder.path_set

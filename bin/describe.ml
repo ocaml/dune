@@ -289,17 +289,16 @@ module Crawl = struct
       Option.map (Module.source m ~ml_kind) ~f:Module.File.path
     in
     let cmt ml_kind = Obj_dir.Module.cmt_file obj_dir m ~ml_kind in
-    Descr.Mod.
-      { name = Module.name m
-      ; impl = source Impl
-      ; intf = source Intf
-      ; cmt = cmt Impl
-      ; cmti = cmt Intf
-      ; module_deps =
-          { for_intf = List.map ~f:Module.name deps_for_intf
-          ; for_impl = List.map ~f:Module.name deps_for_impl
-          }
-      }
+    { Descr.Mod.name = Module.name m
+    ; impl = source Impl
+    ; intf = source Intf
+    ; cmt = cmt Impl
+    ; cmti = cmt Intf
+    ; module_deps =
+        { for_intf = List.map ~f:Module.name deps_for_intf
+        ; for_impl = List.map ~f:Module.name deps_for_impl
+        }
+    }
 
   (** Builds the list of modules *)
   let modules ~obj_dir

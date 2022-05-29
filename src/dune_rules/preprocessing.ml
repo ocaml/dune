@@ -396,17 +396,14 @@ let get_cookies ~loc ~expander ~lib_name libs =
         match kind with
         | Normal -> Memo.return []
         | Ppx_rewriter { cookies } | Ppx_deriver { cookies } ->
-          Memo.List.map
+          Memo.List.map cookies
             ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
               let+ value = Expander.No_deps.expand_str expander value in
-              (name, (value, Lib.name t)))
-            cookies)
+              (name, (value, Lib.name t))))
   in
-  cookies
-  |> (fun l ->
-       match library_name_cookie with
-       | None -> l
-       | Some cookie -> cookie :: l)
+  (match library_name_cookie with
+  | None -> cookies
+  | Some cookie -> cookie :: cookies)
   |> String.Map.of_list_reducei
        ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
          if String.equal val1 val2 then res

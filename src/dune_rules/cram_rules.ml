@@ -170,7 +170,7 @@ let rules ~sctx ~expander ~dir tests =
               { acc with enabled_if; locks; deps; alias; packages; sandbox })
       in
       let test_rule () = test_rule ~sctx ~expander ~dir effective test in
-      Only_packages.get () >>= function
+      Only_packages.get_mask () >>= function
       | None -> test_rule ()
       | Some only ->
         let only = Package.Name.Map.keys only |> Package.Name.Set.of_list in

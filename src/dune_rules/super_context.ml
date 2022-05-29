@@ -743,31 +743,13 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
       Fdecl.get modules_of_lib t ~dir ~name);
   t
 
-let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
-  List.filter_map ~f:(fun stanza ->
-      let include_stanza =
-        match Dune_file.stanza_package stanza with
-        | None -> true
-        | Some package ->
-          let name = Package.name package in
-          Package.Name.Map.mem visible_pkgs name
-      in
-      if include_stanza then Some stanza
-      else
-        match stanza with
-        | Dune_file.Library l ->
-          let open Option.O in
-          let+ redirect = Dune_file.Library_redirect.Local.of_private_lib l in
-          Dune_file.Library_redirect redirect
-        | _ -> None)
-
 let all =
   Memo.lazy_ (fun () ->
       let open Memo.O in
-      let* { Dune_load.dune_files; packages; projects } = Dune_load.load ()
-      and* contexts = Context.DB.all ()
-      and* only_packages = Only_packages.get () in
-      let packages = Option.value only_packages ~default:packages in
+      let* { Dune_load.dune_files = _; packages = _; projects } =
+        Dune_load.load ()
+      and* packages = Only_packages.get ()
+      and* contexts = Context.DB.all () in
       let rec sctxs =
         lazy
           (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
@@ -783,19 +765,10 @@ let all =
             in
             Some sctx
         in
-        let stanzas () =
-          let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
-          match only_packages with
-          | None -> stanzas
-          | Some visible_pkgs ->
-            List.map stanzas ~f:(fun (dir_conf : Dune_file.t) ->
-                { dir_conf with
-                  stanzas =
-                    filter_out_stanzas_from_hidden_packages ~visible_pkgs
-                      dir_conf.stanzas
-                })
+        let* host, stanzas =
+          Memo.fork_and_join host (fun () ->
+              Only_packages.filtered_stanzas context)
         in
-        let* host, stanzas = Memo.fork_and_join host stanzas in
         create ~host ~context ~projects ~packages ~stanzas
       in
       Lazy.force sctxs |> Context_name.Map.to_list

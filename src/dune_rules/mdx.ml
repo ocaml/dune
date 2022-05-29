@@ -422,7 +422,7 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
         (gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog
            ~mdx_prog_gen)
   in
-  let* only_packages = Only_packages.get () in
+  let* only_packages = Only_packages.get_mask () in
   let do_it =
     match (only_packages, t.package) with
     | None, _ | Some _, None -> true

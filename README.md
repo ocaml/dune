@@ -19,15 +19,13 @@ guide][quick-start] or watch [this introduction video][video].
 The [example][example] directory contains examples of projects using
 dune.
 
-[![Travis status][travis-img]][travis]
+[![Main workflow](https://github.com/ocaml/dune/actions/workflows/workflow.yml/badge.svg)](https://github.com/ocaml/dune/actions/workflows/workflow.yml)
 [![AppVeyor status][appveyor-img]][appveyor]
 [![Release][release-img]][release]
 
 [manual]:         https://dune.readthedocs.io/en/latest/
 [quick-start]:    https://dune.readthedocs.io/en/latest/quick-start.html
 [example]:        https://github.com/ocaml/dune/tree/master/example
-[travis]:         https://travis-ci.org/ocaml/dune
-[travis-img]:     https://travis-ci.org/ocaml/dune.svg?branch=master
 [appveyor]:       https://ci.appveyor.com/project/diml/dune/branch/master
 [appveyor-img]:   https://ci.appveyor.com/api/projects/status/rsxayce22e8f2jkp?svg=true
 [release]:        https://github.com/ocaml/dune/releases

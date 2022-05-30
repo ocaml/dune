@@ -26,5 +26,3 @@ val universal : t
 val of_string_exn : Loc.t -> string -> t
 
 val to_predicate : t -> Filename.t Predicate.t
-
-val to_predicate_with_id : t -> Filename.t Predicate_with_id.t

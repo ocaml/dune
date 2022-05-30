@@ -6,13 +6,13 @@ let of_string = `shadowed
 
 let _ = of_string
 
+let to_dyn t = Dyn.variant "Glob" [ Dyn.string (to_string t) ]
+
 let compare x y = String.compare (to_string x) (to_string y)
 
 let equal x y = String.equal (to_string x) (to_string y)
 
 let hash t = String.hash (to_string t)
-
-let to_dyn t = Dyn.string (to_string t)
 
 let of_string_exn loc repr =
   match of_string_result repr with
@@ -30,7 +30,3 @@ let decode =
 let filter t = List.filter ~f:(test t)
 
 let to_predicate t = Predicate.create (test t)
-
-let to_predicate_with_id t =
-  let id = lazy (Dyn.variant "Glob" [ String (to_string t) ]) in
-  Predicate_with_id.create ~id ~f:(test t)

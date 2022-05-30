@@ -1,5 +1,35 @@
 open Import
 
+module Predicate_with_id = struct
+  open Stdune
+  open Dune_sexp
+
+  type 'a t =
+    { id : Dyn.t Lazy.t
+    ; f : 'a Predicate.t
+    }
+
+  let compare x y = Dyn.compare (Lazy.force x.id) (Lazy.force y.id)
+
+  let equal x y = compare x y = Ordering.Eq
+
+  let hash t = Dyn.hash (Lazy.force t.id)
+
+  let to_dyn t =
+    let open Dyn in
+    Record [ ("id", Lazy.force t.id) ]
+
+  let encode _ = Encoder.string "predicate <opaque>"
+
+  let create ~id ~f = { id; f = Predicate.create f }
+
+  let true_ = { id = lazy (String "true_"); f = Predicate.true_ }
+
+  let false_ = { id = lazy (String "false_"); f = Predicate.false_ }
+
+  let test t e = Predicate.test t.f e
+end
+
 type t =
   { dir : Path.t
   ; predicate : Filename.t Predicate_with_id.t
@@ -20,6 +50,10 @@ let compare { dir; predicate; only_generated_files } t =
 
 let create ~dir ?(only_generated_files = false) predicate =
   { dir; predicate; only_generated_files }
+
+let of_glob ~dir glob =
+  let id = lazy (Glob.to_dyn glob) in
+  create ~dir (Predicate_with_id.create ~id ~f:(Glob.test glob))
 
 let to_dyn { dir; predicate; only_generated_files } =
   Dyn.Record

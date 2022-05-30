@@ -17,9 +17,7 @@ module Dynamic_dep = struct
 
     let to_dep = function
       | File fn -> Dep.file fn
-      | Glob (dir, glob) ->
-        Glob.to_predicate_with_id glob
-        |> File_selector.create ~dir |> Dep.file_selector
+      | Glob (dir, glob) -> File_selector.of_glob ~dir glob |> Dep.file_selector
 
     let of_DAP_dep ~loc ~working_dir : DAP.Dependency.t -> t =
       let to_dune_path = Path.relative working_dir in

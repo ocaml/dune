@@ -192,7 +192,7 @@ let define_all_alias ~dir ~scope ~js_targets =
             (List.exists js_targets ~f:(fun js_target ->
                  String.equal (Path.Build.basename js_target) basename))
       in
-      Dune_lang.Predicate_with_id.create ~id ~f
+      Predicate_with_id.create ~id ~f
     in
     let only_generated_files =
       Dune_project.dune_version (Scope.project scope) >= (3, 0)

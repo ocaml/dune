@@ -140,15 +140,13 @@ let rec dep expander = function
     Other
       (let loc = String_with_vars.loc s in
        let* path = Expander.expand_path expander s in
-       let pred =
-         Path.basename path |> Glob.of_string_exn loc
-         |> Glob.to_predicate_with_id
-       in
-       let dir = Path.parent_exn path in
-       let files_in dir =
-         Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
+       let files_in =
+         let glob = Path.basename path |> Glob.of_string_exn loc in
+         fun dir ->
+           Action_builder.paths_matching ~loc (File_selector.of_glob ~dir glob)
        in
        let+ files =
+         let dir = Path.parent_exn path in
          if recursive then collect_source_files_recursively dir ~f:files_in
          else files_in dir
        in

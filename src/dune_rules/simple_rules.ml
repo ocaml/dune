@@ -159,10 +159,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            (Path.to_string_maybe_quoted glob_in_src)
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.parent_exn glob_in_src in
-  let pred =
-    Path.basename glob_in_src |> Glob.of_string_exn loc
-    |> Glob.to_predicate_with_id
-  in
+  let glob = Path.basename glob_in_src |> Glob.of_string_exn loc in
   let src_in_build =
     match Path.as_in_source_tree src_in_src with
     | None -> src_in_src
@@ -190,7 +187,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       ];
   (* add rules *)
   let* files =
-    Build_system.eval_pred (File_selector.create ~dir:src_in_build pred)
+    Build_system.eval_pred (File_selector.of_glob ~dir:src_in_build glob)
   in
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
      add the corresponding rules, and then to convert the files to [targets]. To

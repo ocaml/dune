@@ -63,7 +63,7 @@ end
 val for_shell : t -> For_shell.t
 
 (** Return the list of directories the action chdirs to *)
-val chdirs : t -> Path.Set.t
+val chdirs : t -> Path.Build.Set.t
 
 (** The empty action that does nothing. *)
 val empty : t

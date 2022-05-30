@@ -23,20 +23,16 @@ Test that Dune mkdirs the right set of directories in the sandbox.
   $ cat test/target
   hello
 
-# CR-someday amokhov: Actually, it doesn't because of the broken memoization of
-# mkdirs in [build_system.ml].
+Now force a rebuild. This suceeds (in the past it could fail due to [mkdir]
+memoization).
 
   $ rm _build/default/test/target test/target
   $ build test
-  Failure
+  Success
 
   $ with_timeout dune shutdown
-  $ cat .#dune-output
-  $TESTCASE_ROOT/_build/.sandbox/2e3efa702a8fa42966a2f897c1c27efc/default/test/subdir
+  $ cat .#dune-output | sed -e 's#.sandbox/[^/]*/default/test/subdir#.sandbox/<hash>/default/test/subdir#'
+  $TESTCASE_ROOT/_build/.sandbox/<hash>/default/test/subdir
   Success, waiting for filesystem changes...
-  Error:
-  chdir(_build/.sandbox/2e3efa702a8fa42966a2f897c1c27efc/default/test/subdir): No such file or directory
-  -> required by _build/default/test/target
-  -> required by alias test/all
-  -> required by alias test/default
-  Had errors, waiting for filesystem changes...
+  $TESTCASE_ROOT/_build/.sandbox/<hash>/default/test/subdir
+  Success, waiting for filesystem changes...

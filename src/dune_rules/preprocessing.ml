@@ -106,7 +106,7 @@ let pped_module m ~f =
           Module.file pped ~ml_kind |> Option.value_exn
           |> Path.as_in_build_dir_exn
         in
-        let file = Path.as_in_build_dir_exn file.path in
+        let file = Path.as_in_build_dir_exn (Module.File.path file) in
         f ml_kind file pp_path)
   in
   pped
@@ -494,9 +494,10 @@ let setup_dialect_rules sctx ~dir ~expander (m : Module.t) =
   let ml = Module.ml_source m in
   let+ () =
     Module.iter m ~f:(fun ml_kind f ->
-        Memo.Option.iter (Dialect.preprocess f.dialect ml_kind)
+        Memo.Option.iter
+          (Dialect.preprocess (Module.File.dialect f) ml_kind)
           ~f:(fun (loc, action) ->
-            let src = Path.as_in_build_dir_exn f.path in
+            let src = Path.as_in_build_dir_exn (Module.File.path f) in
             let dst =
               Option.value_exn (Module.file ml ~ml_kind)
               |> Path.as_in_build_dir_exn
@@ -530,7 +531,7 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
          | Action (loc, action) ->
            fun ~source ~ast:_ ->
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
-                 let src = Path.as_in_build_dir_exn src.path in
+                 let src = Path.as_in_build_dir_exn (Module.File.path src) in
                  add_alias ~loc:(Some loc)
                    (action_for_pp ~loc ~expander ~action ~src))
          | Pps { loc; pps; flags; staged } ->
@@ -566,7 +567,7 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
                          (Ok (Path.build exe))
                          [ As args
                          ; Command.Ml_kind.ppx_driver_flag ml_kind
-                         ; Dep src.path
+                         ; Dep (Module.File.path src)
                          ; As flags
                          ]))))
      in

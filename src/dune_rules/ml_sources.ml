@@ -158,8 +158,8 @@ let modules_of_files ~dialects ~dir ~files =
         [ Pp.textf "Too many files for module %s in %s:"
             (Module_name.to_string name)
             (Path.Source.to_string_maybe_quoted src_dir)
-        ; Pp.textf "- %s" (Path.to_string_maybe_quoted f1.path)
-        ; Pp.textf "- %s" (Path.to_string_maybe_quoted f2.path)
+        ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
+        ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
         ]
   in
   let impls = parse_one_set impl_files in

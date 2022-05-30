@@ -403,25 +403,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
                ~hint ()))
     in
     let build_dir = Context_name.build_dir name in
-    let ocamlpath =
-      match
-        let var = "OCAMLPATH" in
-        match (kind, findlib_toolchain) with
-        | Default, None -> Env.get env var
-        | _ -> (
-          (* If we are not in the default context, we can only use the OCAMLPATH
-             variable if it is specific to this build context *)
-          (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
-             build contexts *)
-          match (Env.get env var, Env.get Env.initial var) with
-          | None, None -> None
-          | Some s, None -> Some s
-          | None, Some _ -> None
-          | Some x, Some y -> Option.some_if (x <> y) x)
-      with
-      | None -> []
-      | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
-    in
     let default_library_search_path () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
@@ -461,7 +442,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               (vars, ocfg)
             | Error msg -> Error (Ocamlc_config, msg)))
     in
-    let findlib_paths = ocamlpath @ default_ocamlpath in
     let version = Ocaml.Version.of_ocaml_config ocfg in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors. For versions
@@ -583,7 +563,31 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       let build_context =
         Build_context.create ~name ~host:(Option.map host ~f:(fun c -> c.name))
       in
-      let+ findlib = Findlib.create ~paths:findlib_paths ~lib_config in
+      let+ findlib =
+        let findlib_paths =
+          let ocamlpath =
+            match
+              let var = "OCAMLPATH" in
+              match (kind, findlib_toolchain) with
+              | Default, None -> Env.get env var
+              | _ -> (
+                (* If we are not in the default context, we can only use the
+                   OCAMLPATH variable if it is specific to this build context *)
+                (* CR-someday diml: maybe we should actually clear OCAMLPATH in
+                   other build contexts *)
+                match (Env.get env var, Env.get Env.initial var) with
+                | None, None -> None
+                | Some s, None -> Some s
+                | None, Some _ -> None
+                | Some x, Some y -> Option.some_if (x <> y) x)
+            with
+            | None -> []
+            | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
+          in
+          ocamlpath @ default_ocamlpath
+        in
+        Findlib.create ~paths:findlib_paths ~lib_config
+      in
       { name
       ; implicit
       ; kind

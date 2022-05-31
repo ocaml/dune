@@ -1,4 +1,5 @@
 open Stdune
+open Dune_sexp
 
 type dune_file =
   | OCaml_syntax of Loc.t

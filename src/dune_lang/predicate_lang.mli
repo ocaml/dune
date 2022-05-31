@@ -1,6 +1,7 @@
 (** DSL to define sets that are defined by a membership : 'a -> bool function. *)
 
 open! Stdune
+open Dune_sexp
 
 type 'a t =
   | Element of 'a

@@ -1,4 +1,5 @@
 open! Stdune
+open Dune_sexp
 include Dune_glob.V1
 
 let of_string = `shadowed

@@ -24,6 +24,24 @@ module Json : sig
     ]
 end
 
+module Stack_frame : sig
+  module Id : sig
+    type t
+
+    val create : [ `String of string | `Int of int ] -> t
+  end
+
+  module Raw : sig
+    type t
+
+    val create : string list -> t
+  end
+
+  type t
+
+  val create : ?parent:Id.t -> name:string -> category:string -> unit -> t
+end
+
 module Event : sig
   type t
 
@@ -47,6 +65,7 @@ module Event : sig
     -> ?cat:string list
     -> ?pid:int
     -> ?tid:int
+    -> ?stackframe:[ `Id of Stack_frame.Id.t | `Raw of Stack_frame.Raw.t ]
     -> ts:Timestamp.t
     -> name:string
     -> unit
@@ -68,6 +87,22 @@ module Event : sig
 
   val complete :
     ?tdur:Timestamp.t -> ?args:args -> dur:Timestamp.t -> common_fields -> t
+
+  val to_json : t -> Json.t
+end
+
+module Output_object : sig
+  (** The object format provided in whole *)
+
+  type t
+
+  val create :
+       ?displayTimeUnit:[ `Ms | `Ns ]
+    -> ?extra_fields:(string * Json.t) list
+    -> ?stackFrames:(Stack_frame.Id.t * Stack_frame.t) list
+    -> traceEvents:Event.t list
+    -> unit
+    -> t
 
   val to_json : t -> Json.t
 end

@@ -1,4 +1,5 @@
 open Stdune
+open Dune_sexp
 
 type 'a t =
   { id : Dyn.t Lazy.t

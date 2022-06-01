@@ -9,6 +9,7 @@ module Modules_data = struct
     ; vimpl : Vimpl.t option
     ; modules : Modules.t
     ; stdlib : Ocaml_stdlib.t option
+    ; sandbox : Sandbox_config.t
     }
 end
 
@@ -85,7 +86,7 @@ let deps_of md ~ml_kind unit =
       (let open Action_builder.With_targets.O in
       let flags, sandbox =
         Option.value (Module.pp_flags unit)
-          ~default:(Action_builder.return [], Sandbox_config.default)
+          ~default:(Action_builder.return [], md.sandbox)
       in
       Command.run context.ocamldep
         ~dir:(Path.build context.build_dir)

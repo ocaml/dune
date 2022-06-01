@@ -151,6 +151,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   let opaque = eval_opaque (Super_context.context super_context) opaque in
   let ocamldep_modules_data : Ocamldep.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
+    ; sandbox
     ; obj_dir
     ; sctx = super_context
     ; vimpl

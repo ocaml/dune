@@ -104,7 +104,8 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
         in
         let open Action_builder.With_targets.O in
         Action_builder.with_no_targets extra_deps
-        >>> Preprocessing.action_for_pp_with_target ~loc ~expander ~action ~src
+        >>> Preprocessing.action_for_pp_with_target
+              ~sandbox:Sandbox_config.default ~loc ~expander ~action ~src
               ~target:output
     in
     Memo.Option.iter formatter ~f:(fun action ->

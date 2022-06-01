@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Sandbox preprocessing, lint, and dialect rules by default. All these rules
+  now require precise dependency specifications (#5807, @rgrinberg)
+
 - Allow list expansion in the `pps` specification for preprocessing (#5820,
   @Firobe)
 

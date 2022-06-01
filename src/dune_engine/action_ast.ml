@@ -1,19 +1,18 @@
 open Import
-open Dune_lang.Decoder
 open Action_types
 module Stanza = Dune_lang.Stanza
 
-module type Target_intf = sig
-  include Dune_lang.Conv.S
+module type Encoder = sig
+  type t
 
-  val is_dev_null : t -> bool
+  val encode : t -> Dune_lang.t
 end
 
 module Make
-    (Program : Dune_lang.Conv.S)
-    (Path : Dune_lang.Conv.S)
-    (Target : Target_intf)
-    (String : Dune_lang.Conv.S)
+    (Program : Encoder)
+    (Path : Encoder)
+    (Target : Encoder)
+    (String : Encoder)
     (Ast : Action_intf.Ast
              with type program := Program.t
              with type path := Path.t
@@ -21,169 +20,6 @@ module Make
              with type string := String.t) =
 struct
   include Ast
-
-  let translate_to_ignore fn output action =
-    if Target.is_dev_null fn then Ignore (output, action)
-    else Redirect_out (output, fn, Normal, action)
-
-  let two_or_more decode =
-    let open Dune_lang.Decoder in
-    let+ n1 = decode
-    and+ n2 = decode
-    and+ rest = repeat decode in
-    n1 :: n2 :: rest
-
-  let decode =
-    let path = Path.decode in
-    let string = String.decode in
-    let target = Target.decode in
-    Dune_lang.Decoder.fix (fun t ->
-        sum
-          [ ( "run"
-            , let+ prog = Program.decode
-              and+ args = repeat String.decode in
-              Run (prog, args) )
-          ; ( "with-accepted-exit-codes"
-            , let open Dune_lang in
-              Syntax.since Stanza.syntax (2, 0)
-              >>> let+ codes = Predicate_lang.decode_one Dune_lang.Decoder.int
-                  and+ version = Syntax.get_exn Stanza.syntax
-                  and+ loc, t = located t in
-                  let nesting_support_version = (2, 2) in
-                  let nesting_support =
-                    Syntax.Version.Infix.(version >= nesting_support_version)
-                  in
-                  let rec is_ok = function
-                    | Run _ | Bash _ | System _ -> true
-                    | Chdir (_, t)
-                    | Setenv (_, _, t)
-                    | Ignore (_, t)
-                    | Redirect_in (_, _, t)
-                    | Redirect_out (_, _, _, t)
-                    | No_infer t ->
-                      if nesting_support then is_ok t
-                      else
-                        Syntax.Error.since loc Stanza.syntax
-                          nesting_support_version
-                          ~what:
-                            "nesting modifiers under 'with-accepted-exit-codes'"
-                    | _ -> false
-                  in
-                  let quote = List.map ~f:(Printf.sprintf "\"%s\"") in
-                  match (is_ok t, nesting_support) with
-                  | true, _ -> With_accepted_exit_codes (codes, t)
-                  | false, true ->
-                    User_error.raise ~loc
-                      [ Pp.textf
-                          "Only %s can be nested under \
-                           \"with-accepted-exit-codes\""
-                          (Stdune.String.enumerate_and
-                             (quote
-                                [ "run"
-                                ; "bash"
-                                ; "system"
-                                ; "chdir"
-                                ; "setenv"
-                                ; "ignore-<outputs>"
-                                ; "with-stdin-from"
-                                ; "with-<outputs>-to"
-                                ; "no-infer"
-                                ]))
-                      ]
-                  | false, false ->
-                    User_error.raise ~loc
-                      [ Pp.textf
-                          "with-accepted-exit-codes can only be used with %s"
-                          (Stdune.String.enumerate_or
-                             (quote [ "run"; "bash"; "system" ]))
-                      ] )
-          ; ( "dynamic-run"
-            , Dune_lang.Syntax.since Action_plugin.syntax (0, 1)
-              >>> let+ prog = Program.decode
-                  and+ args = repeat String.decode in
-                  Dynamic_run (prog, args) )
-          ; ( "chdir"
-            , let+ dn = path
-              and+ t = t in
-              Chdir (dn, t) )
-          ; ( "setenv"
-            , let+ k = string
-              and+ v = string
-              and+ t = t in
-              Setenv (k, v, t) )
-          ; ( "with-stdout-to"
-            , let+ fn = target
-              and+ t = t in
-              translate_to_ignore fn Stdout t )
-          ; ( "with-stderr-to"
-            , let+ fn = target
-              and+ t = t in
-              translate_to_ignore fn Stderr t )
-          ; ( "with-outputs-to"
-            , let+ fn = target
-              and+ t = t in
-              translate_to_ignore fn Outputs t )
-          ; ( "with-stdin-from"
-            , Dune_lang.Syntax.since Stanza.syntax (2, 0)
-              >>> let+ fn = path
-                  and+ t = t in
-                  Redirect_in (Stdin, fn, t) )
-          ; ("ignore-stdout", t >>| fun t -> Ignore (Stdout, t))
-          ; ("ignore-stderr", t >>| fun t -> Ignore (Stderr, t))
-          ; ("ignore-outputs", t >>| fun t -> Ignore (Outputs, t))
-          ; ("progn", repeat t >>| fun l -> Progn l)
-          ; ( "echo"
-            , let+ x = string
-              and+ xs = repeat string in
-              Echo (x :: xs) )
-          ; ("cat", path >>| fun x -> Cat x)
-          ; ( "copy"
-            , let+ src = path
-              and+ dst = target in
-              Copy (src, dst) )
-          ; ( "copy#"
-            , let+ src = path
-              and+ dst = target in
-              Copy_and_add_line_directive (src, dst) )
-          ; ( "copy-and-add-line-directive"
-            , let+ src = path
-              and+ dst = target in
-              Copy_and_add_line_directive (src, dst) )
-          ; ("system", string >>| fun cmd -> System cmd)
-          ; ("bash", string >>| fun cmd -> Bash cmd)
-          ; ( "write-file"
-            , let+ fn = target
-              and+ s = string in
-              Write_file (fn, Normal, s) )
-          ; ( "diff"
-            , let+ diff = Diff.decode path target ~optional:false in
-              Diff diff )
-          ; ( "diff?"
-            , let+ diff = Diff.decode path target ~optional:true in
-              Diff diff )
-          ; ( "cmp"
-            , let+ diff = Diff.decode_binary path target in
-              Diff diff )
-          ; ( "no-infer"
-            , Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t ->
-              No_infer t )
-          ; ( "pipe-stdout"
-            , Dune_lang.Syntax.since Stanza.syntax (2, 7)
-              >>> let+ ts = two_or_more t in
-                  Pipe (Stdout, ts) )
-          ; ( "pipe-stderr"
-            , Dune_lang.Syntax.since Stanza.syntax (2, 7)
-              >>> let+ ts = two_or_more t in
-                  Pipe (Stderr, ts) )
-          ; ( "pipe-outputs"
-            , Dune_lang.Syntax.since Stanza.syntax (2, 7)
-              >>> let+ ts = two_or_more t in
-                  Pipe (Outputs, ts) )
-          ; ( "cram"
-            , Dune_lang.Syntax.since Stanza.syntax (2, 7)
-              >>> let+ script = path in
-                  Cram script )
-          ])
 
   let rec encode =
     let open Dune_lang in

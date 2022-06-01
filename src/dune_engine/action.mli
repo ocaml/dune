@@ -1,3 +1,9 @@
+(** Actions as defined an executed by the build system.
+
+    These executions correpsond to primitives that the build system knows how to
+    execute. These usually, but not necessarily correspond to actions written by
+    the user in [Action_dune_lang.t] *)
+
 open! Import
 
 include module type of Action_types
@@ -63,7 +69,7 @@ end
 val for_shell : t -> For_shell.t
 
 (** Return the list of directories the action chdirs to *)
-val chdirs : t -> Path.Set.t
+val chdirs : t -> Path.Build.Set.t
 
 (** The empty action that does nothing. *)
 val empty : t

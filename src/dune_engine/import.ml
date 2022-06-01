@@ -10,7 +10,8 @@ module Cm_kind = Ocaml.Cm_kind
 module Mode = Ocaml.Mode
 module Config = Dune_util.Config
 module Predicate_lang = Dune_lang.Predicate_lang
-module Predicate = Dune_lang.Predicate
+module String_with_vars = Dune_lang.String_with_vars
+module Pform = Dune_lang.Pform
 module Glob = Dune_lang.Glob
 include No_io
 

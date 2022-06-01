@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix creating sandbox directory trees by getting rid of buggy memoization
+  (@5794, @rgrinberg, @snowleopard)
+
 - Handle directory dependencies in sandboxed rules. Previously, the parents of
   these directory dependencies weren't created. (#5754, @rgrinberg)
 

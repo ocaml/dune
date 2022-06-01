@@ -67,10 +67,7 @@ let run t args =
   String.trim s
 
 let git_accept () =
-  Process.Accept
-    (Predicate.create
-       ~id:(lazy (Dyn.Set [ Dyn.int 0; Dyn.int 128 ]))
-       ~f:(fun x -> Int.equal x 0 || Int.equal x 128))
+  Process.Accept (Predicate.create (fun x -> Int.equal x 0 || Int.equal x 128))
 
 let run_git t args =
   let res =

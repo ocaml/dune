@@ -1,4 +1,5 @@
 open! Stdune
+open Dune_sexp
 open Pp.O
 module Format = Stdlib.Format
 
@@ -17,7 +18,8 @@ let can_be_displayed_wrapped =
         -> true
       | List _ | Comment _ -> false)
 
-let pp_simple t = Cst.abstract t |> Option.value_exn |> Ast.remove_locs |> T.pp
+let pp_simple t =
+  Cst.abstract t |> Option.value_exn |> Ast.remove_locs |> Dune_sexp.pp
 
 let print_wrapped_list ~version x =
   let inner = Pp.concat_map ~sep:Pp.space ~f:pp_simple x in

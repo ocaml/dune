@@ -33,9 +33,6 @@ module Prog = struct
 
   type t = (Path.t, Not_found.t) result
 
-  let decode : t Dune_lang.Decoder.t =
-    Dune_lang.Decoder.map Dpath.decode ~f:Result.ok
-
   let encode = function
     | Ok s -> Dpath.encode s
     | Error (e : Not_found.t) -> Dune_lang.Encoder.string e.program
@@ -59,11 +56,7 @@ module rec Ast : Ast = Ast
 module String_with_sexp = struct
   type t = string
 
-  let decode = Dune_lang.Decoder.string
-
   let encode = Dune_lang.Encoder.string
-
-  let is_dev_null s = Path.equal (Path.of_string s) Config.dev_null
 end
 
 include Action_ast.Make (Prog) (Dpath) (Dpath.Build) (String_with_sexp) (Ast)
@@ -154,16 +147,23 @@ let fold_one_step t ~init:acc ~f =
 
 include Action_mapper.Make (Ast) (Ast)
 
+(* TODO change [chdir] to use [Path.Build.t] in the directory. This will be
+   easier once [Action.t] is split off from the dune lang's action *)
 let chdirs =
   let rec loop acc t =
     let acc =
       match t with
-      | Chdir (dir, _) -> Path.Set.add acc dir
+      | Chdir (dir, _) -> (
+        match Path.as_in_build_dir dir with
+        | None ->
+          Code_error.raise "chdir ouside the build directory"
+            [ ("dir", Path.to_dyn dir) ]
+        | Some dir -> Path.Build.Set.add acc dir)
       | _ -> acc
     in
     fold_one_step t ~init:acc ~f:loop
   in
-  fun t -> loop Path.Set.empty t
+  fun t -> loop Path.Build.Set.empty t
 
 let empty = Progn []
 

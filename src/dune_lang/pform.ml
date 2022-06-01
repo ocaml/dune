@@ -1,5 +1,5 @@
-open! Import
-module Stanza = Dune_lang.Stanza
+open Stdune
+open Dune_sexp
 
 module Var = struct
   type t =
@@ -102,6 +102,8 @@ module Var = struct
 end
 
 module Artifact = struct
+  open Ocaml
+
   type t =
     | Mod of Cm_kind.t
     | Lib of Mode.t
@@ -331,10 +333,9 @@ let describe_kind = function
 module With_versioning_info = struct
   type 'a t =
     | No_info of 'a
-    | Since of 'a * Dune_lang.Syntax.Version.t
-    | Deleted_in of
-        'a * Dune_lang.Syntax.Version.t * User_message.Style.t Pp.t list
-    | Renamed_in of 'a * Dune_lang.Syntax.Version.t * string
+    | Since of 'a * Syntax.Version.t
+    | Deleted_in of 'a * Syntax.Version.t * User_message.Style.t Pp.t list
+    | Renamed_in of 'a * Syntax.Version.t * string
 
   let get_data = function
     | No_info x | Since (x, _) | Deleted_in (x, _, _) | Renamed_in (x, _, _) ->
@@ -350,17 +351,17 @@ module With_versioning_info = struct
     let open Dyn in
     function
     | No_info x -> variant "No_info" [ f x ]
-    | Since (x, v) -> variant "Since" [ f x; Dune_lang.Syntax.Version.to_dyn v ]
+    | Since (x, v) -> variant "Since" [ f x; Syntax.Version.to_dyn v ]
     | Deleted_in (x, v, repl) ->
       variant "Deleted_in"
         [ f x
-        ; Dune_lang.Syntax.Version.to_dyn v
+        ; Syntax.Version.to_dyn v
         ; List
             (List.map repl ~f:(fun pp ->
-                 Dyn.String (Format.asprintf "%a" Pp.to_fmt pp)))
+                 Dyn.String (Stdlib.Format.asprintf "%a" Pp.to_fmt pp)))
         ]
     | Renamed_in (x, v, s) ->
-      variant "Renamed_in" [ f x; Dune_lang.Syntax.Version.to_dyn v; string s ]
+      variant "Renamed_in" [ f x; Syntax.Version.to_dyn v; string s ]
 end
 
 open With_versioning_info
@@ -369,7 +370,7 @@ module Env = struct
   type 'a map = 'a With_versioning_info.t String.Map.t
 
   type t =
-    { syntax_version : Dune_lang.Syntax.Version.t
+    { syntax_version : Syntax.Version.t
     ; vars : Var.t map
     ; macros : Macro.t map
     }
@@ -494,8 +495,8 @@ module Env = struct
           (renamed_in ~new_name:"input-file" ~version:(1, 0) Var.Input_file)
     }
 
-  let parse map syntax_version (pform : Dune_lang.Template.Pform.t) =
-    let module P = Dune_lang.Template.Pform in
+  let parse map syntax_version (pform : Template.Pform.t) =
+    let module P = Template.Pform in
     match String.Map.find map pform.name with
     | None ->
       User_error.raise ~loc:pform.loc
@@ -506,36 +507,34 @@ module Env = struct
       | Since (v, min_version) ->
         if syntax_version >= min_version then v
         else
-          Dune_lang.Syntax.Error.since (P.loc pform) Stanza.syntax min_version
+          Syntax.Error.since (P.loc pform) Stanza.syntax min_version
             ~what:(P.describe pform)
       | Renamed_in (v, in_version, new_name) ->
         if syntax_version < in_version then v
         else
-          Dune_lang.Syntax.Error.renamed_in (P.loc pform) Stanza.syntax
-            in_version ~what:(P.describe pform)
+          Syntax.Error.renamed_in (P.loc pform) Stanza.syntax in_version
+            ~what:(P.describe pform)
             ~to_:(P.describe { pform with name = new_name })
       | Deleted_in (v, in_version, repl) ->
         if syntax_version < in_version then v
         else
-          Dune_lang.Syntax.Error.deleted_in (P.loc pform) Stanza.syntax
-            in_version ~what:(P.describe pform) ~repl)
+          Syntax.Error.deleted_in (P.loc pform) Stanza.syntax in_version
+            ~what:(P.describe pform) ~repl)
 
-  let parse t (pform : Dune_lang.Template.Pform.t) =
+  let parse t (pform : Template.Pform.t) =
     match pform.payload with
     | None -> Var (parse t.vars t.syntax_version pform)
     | Some payload -> Macro (parse t.macros t.syntax_version pform, payload)
 
-  let unsafe_parse_without_checking_version map
-      (pform : Dune_lang.Template.Pform.t) =
-    let module P = Dune_lang.Template.Pform in
+  let unsafe_parse_without_checking_version map (pform : Template.Pform.t) =
+    let module P = Template.Pform in
     match String.Map.find map pform.name with
     | None ->
       User_error.raise ~loc:pform.loc
         [ Pp.textf "Unknown %s %s" (P.describe_kind pform) (P.describe pform) ]
     | Some v -> With_versioning_info.get_data v
 
-  let unsafe_parse_without_checking_version t
-      (pform : Dune_lang.Template.Pform.t) =
+  let unsafe_parse_without_checking_version t (pform : Template.Pform.t) =
     match pform.payload with
     | None -> Var (unsafe_parse_without_checking_version t.vars pform)
     | Some payload ->
@@ -544,7 +543,7 @@ module Env = struct
   let to_dyn { syntax_version; vars; macros } =
     let open Dyn in
     record
-      [ ("syntax_version", Dune_lang.Syntax.Version.to_dyn syntax_version)
+      [ ("syntax_version", Syntax.Version.to_dyn syntax_version)
       ; ("vars", String.Map.to_dyn (to_dyn Var.to_dyn) vars)
       ; ("macros", String.Map.to_dyn (to_dyn Macro.to_dyn) macros)
       ]
@@ -557,7 +556,7 @@ module Env = struct
     }
 
   type stamp =
-    Dune_lang.Syntax.Version.t
+    Syntax.Version.t
     * (string * Var.t With_versioning_info.t) list
     * (string * Macro.t With_versioning_info.t) list
 

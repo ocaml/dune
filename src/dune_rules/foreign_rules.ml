@@ -63,7 +63,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                    Dep.Set.singleton
                      (Dep.file_selector
                         (File_selector.create ~dir:include_dir
-                           Dune_lang.Predicate.true_))
+                           Predicate_with_id.true_))
                  in
                  Command.Args.Hidden_deps deps
                | Some (build_dir, source_dir) ->
@@ -90,7 +90,8 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                                let deps =
                                  Dep.Set.singleton
                                    (Dep.file_selector
-                                      (File_selector.create ~dir Predicate.true_))
+                                      (File_selector.create ~dir
+                                         Predicate_with_id.true_))
                                in
                                Action_builder.return
                                  (Appendable_list.singleton

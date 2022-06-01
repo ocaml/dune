@@ -554,7 +554,7 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
            in
            fun ~source ~ast ->
              Module.iter ast ~f:(fun ml_kind src ->
-                 add_alias ~loc:None
+                 add_alias ~loc:(Some loc)
                    (promote_correction ~suffix:corrected_suffix
                       (Path.as_in_build_dir_exn
                          (Option.value_exn (Module.file source ~ml_kind)))

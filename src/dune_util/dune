@@ -4,6 +4,6 @@
   stdune
   xdg
   build_path_prefix_map
-  dune_lang
+  dune_sexp
   memo
   (re_export unix)))

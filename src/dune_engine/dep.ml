@@ -312,7 +312,8 @@ module Set = struct
      depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
      directories in directories that contain no file. *)
   let dir_without_files_dep dir =
-    file_selector (File_selector.create ~dir Predicate.false_)
+    file_selector
+      (File_selector.create ~dir File_selector.Predicate_with_id.false_)
 
   module Source_tree_map_reduce =
     Source_tree.Dir.Make_map_reduce (Memo) (Monoid.Union (M))
@@ -345,7 +346,9 @@ module Set = struct
           | File f -> Path.Set.add acc f
           | File_selector fs ->
             assert (
-              Predicate.equal (File_selector.predicate fs) Predicate.false_);
+              File_selector.Predicate_with_id.equal
+                (File_selector.predicate fs)
+                File_selector.Predicate_with_id.false_);
             acc
           | _ -> assert false)
     in

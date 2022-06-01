@@ -7,7 +7,7 @@ let dev_files =
       (let open Dyn in
       variant "dev_files" (List.map ~f:string exts))
   in
-  Dune_lang.Predicate.create ~id ~f:(fun p ->
+  Predicate_with_id.create ~id ~f:(fun p ->
       let ext = Filename.extension p in
       List.mem exts ext ~equal:String.equal)
 

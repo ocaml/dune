@@ -376,7 +376,6 @@ type db =
   ; instrument_with : Lib_name.t list
   ; modules_of_lib :
       (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.t) Fdecl.t
-  ; projects_by_package : Dune_project.t Package.Name.Map.t
   }
 
 and resolve_result =
@@ -834,6 +833,18 @@ module rec Resolve_names : sig
 end = struct
   open Resolve_names
 
+  let projects_by_package =
+    Memo.lazy_ (fun () ->
+        let open Memo.O in
+        let+ conf = Dune_load.load () in
+        List.concat_map conf.projects ~f:(fun project ->
+            Dune_project.packages project
+            |> Package.Name.Map.values
+            |> List.map ~f:(fun (pkg : Package.t) ->
+                   let name = Package.name pkg in
+                   (name, project)))
+        |> Package.Name.Map.of_list_exn)
+
   let instantiate_impl (db, name, info, hidden) =
     let open Memo.O in
     let unique_id = Id.make ~name ~path:(Lib_info.src_dir info) in
@@ -962,14 +973,15 @@ end = struct
     in
     let requires = map_error requires in
     let ppx_runtime_deps = map_error ppx_runtime_deps in
-    let project =
+    let* project =
       let status = Lib_info.status info in
       match Lib_info.Status.project status with
-      | Some _ as project -> project
+      | Some _ as project -> Memo.return project
       | None ->
+        let+ projects_by_package = Memo.Lazy.force projects_by_package in
         let open Option.O in
         let* package = Lib_info.package info in
-        Package.Name.Map.find db.projects_by_package package
+        Package.Name.Map.find projects_by_package package
     in
     let modules =
       match Path.as_in_build_dir (Lib_info.src_dir info) with
@@ -1692,19 +1704,18 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~resolve ~projects_by_package ~all ~modules_of_lib
-      ~lib_config () =
+  let create ~parent ~resolve ~all ~modules_of_lib ~lib_config () =
     { parent
     ; resolve
     ; all = Memo.lazy_ all
     ; lib_config
     ; instrument_with = lib_config.Lib_config.instrument_with
-    ; projects_by_package
     ; modules_of_lib
     }
 
-  let create_from_findlib ~lib_config ~projects_by_package findlib =
-    create () ~parent:None ~lib_config ~projects_by_package
+  let create_from_findlib findlib =
+    let lib_config = Findlib.lib_config findlib in
+    create () ~parent:None ~lib_config
       ~modules_of_lib:
         (let t = Fdecl.create Dyn.opaque in
          Fdecl.set t (fun ~dir ~name ->

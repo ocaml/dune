@@ -6,7 +6,8 @@ let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
   |> String.concat ~sep:"\n"
 
-let ooi_deps md ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
+let ooi_deps md ~dune_version ~vlib_obj_map ~(ml_kind : Ml_kind.t)
+    (m : Module.t) =
   let cm_kind =
     match ml_kind with
     | Intf -> Cm_kind.Cmi
@@ -20,7 +21,11 @@ let ooi_deps md ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
     let unit =
       Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind |> Path.build
     in
-    Ocamlobjinfo.rules ~dir ~ctx ~unit
+    let sandbox =
+      if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing
+      else None
+    in
+    Ocamlobjinfo.rules ~sandbox ~dir ~ctx ~unit
   in
   let add_rule = Super_context.add_rule sctx ~dir in
   let read =
@@ -59,7 +64,11 @@ let deps_of_vlib_module md ~ml_kind m =
   match Lib.Local.of_lib vlib with
   | None ->
     let vlib_obj_map = Vimpl.vlib_obj_map vimpl in
-    ooi_deps md ~vlib_obj_map ~ml_kind m
+    let dune_version =
+      let impl = Vimpl.impl vimpl in
+      Dune_project.dune_version impl.project
+    in
+    ooi_deps md ~dune_version ~vlib_obj_map ~ml_kind m
   | Some lib ->
     let modules = Vimpl.vlib_modules vimpl in
     let info = Lib.Local.info lib in

@@ -9,6 +9,8 @@ val meta_fn : string
 
 val create : paths:Path.t list -> lib_config:Lib_config.t -> t Memo.t
 
+val lib_config : t -> Lib_config.t
+
 (** The search path for this DB *)
 val paths : t -> Path.t list
 

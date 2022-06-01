@@ -11,6 +11,8 @@ include Ocaml
 module Re = Dune_re
 module Stanza = Dune_lang.Stanza
 module Predicate_lang = Dune_lang.Predicate_lang
-module Predicate = Dune_lang.Predicate
+module Predicate_with_id = Dune_engine.File_selector.Predicate_with_id
+module String_with_vars = Dune_lang.String_with_vars
+module Pform = Dune_lang.Pform
 module Glob = Dune_lang.Glob
 include Dune_engine.No_io

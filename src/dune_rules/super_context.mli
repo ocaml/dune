@@ -55,9 +55,6 @@ val public_libs : t -> Lib.DB.t
 (** Installed libraries that are not part of the workspace *)
 val installed_libs : t -> Lib.DB.t
 
-(** All non-public library names *)
-val internal_lib_names : t -> Lib_name.Set.t
-
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
 val ocaml_flags :

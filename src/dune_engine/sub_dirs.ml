@@ -268,7 +268,7 @@ let decode =
   let data_only_dirs =
     located
       (Dune_lang.Syntax.since Stanza.syntax (1, 6)
-      >>> strict_subdir_glob "data_only")
+      >>> strict_subdir_glob "data_only_dirs")
   in
   let vendored_dirs =
     (* let decode = Predicate_lang.Glob.decode in *)

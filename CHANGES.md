@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix hint message for ``data_only_dirs`` that wrongly mentions the unknown
+  constructor ``data_only`` (#5803, @lambdaxdotx)
+
 - Fix creating sandbox directory trees by getting rid of buggy memoization
   (@5794, @rgrinberg, @snowleopard)
 

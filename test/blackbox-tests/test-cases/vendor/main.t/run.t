@@ -59,7 +59,7 @@ The current directory cannot be marked as data-only
   1 | (data_only_dirs .)
                       ^
   Error: invalid sub-directory name "."
-  Hint: did you mean (data_only *)?
+  Hint: did you mean (data_only_dirs *)?
   [1]
 
 Only direct subdirectories can be marked as vendored
@@ -81,7 +81,7 @@ Only direct subdirectories can be marked as data-only
   1 | (data_only_dirs a/b/c)
                       ^^^^^
   Error: only immediate sub-directories may be specified.
-  Hint: to ignore a/b/c, write "(data_only c)" in a/b/dune
+  Hint: to ignore a/b/c, write "(data_only_dirs c)" in a/b/dune
   [1]
 
 Multiple direct subdirectories can be marked as data-only or vendored

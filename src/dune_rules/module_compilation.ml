@@ -159,7 +159,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     |> List.concat_map ~f:(fun p ->
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
-  SC.add_rule sctx ~dir
+  SC.add_rule sctx ~dir ?loc:(CC.loc cctx)
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)
     >>> Action_builder.with_no_targets other_cm_files

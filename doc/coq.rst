@@ -263,7 +263,7 @@ Let us start with a simple project. First we make sure we have a
 
 .. code:: scheme
 
-  (lang dune 3.2)
+  (lang dune 3.3)
   (using coq 0.3)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:

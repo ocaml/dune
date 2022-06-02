@@ -23,6 +23,15 @@ let libraries_needed_for_ctypes ~loc =
 
 let add ~loc ~parsing_context ~external_library_name ~add_stubs ~functor_
     ~instance ~foreign_stubs =
+  let pos = ("", 0, 0, 0) in
+  let flags =
+    let cflags_sexp_include =
+      Ordered_set_lang.Unexpanded.include_single ~context:parsing_context ~pos
+        (cflags_sexp ~external_library_name)
+    in
+    Ordered_set_lang.Unexpanded.concat ~context:parsing_context ~pos
+      Ordered_set_lang.Unexpanded.standard cflags_sexp_include
+  in
   add_stubs Foreign_language.C ~loc
     ~names:
       (Some
@@ -30,9 +39,4 @@ let add ~loc ~parsing_context ~external_library_name ~add_stubs ~functor_
             [ c_generated_functions_cout_no_ext ~external_library_name ~functor_
                 ~instance
             ]))
-    ~flags:
-      (Some
-         (Ordered_set_lang.Unexpanded.include_single ~context:parsing_context
-            ~pos:("", 0, 0, 0)
-            (cflags_sexp ~external_library_name)))
-    foreign_stubs
+    ~flags:(Some flags) foreign_stubs

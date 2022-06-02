@@ -40,6 +40,9 @@ Unreleased
 - Ignore `bigarray` in `(libraries)` with OCaml >= 5.0. (#5526, fixes #5494,
   @moyodiallo)
 
+- Start with :standard when building the ctypes generated foreign stubs so that
+  we include important compiler flags, such as -fPIC (#5816, fixes #5809).
+
 3.2.0 (17-05-2022)
 ------------------
 

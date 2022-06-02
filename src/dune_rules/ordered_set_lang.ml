@@ -262,6 +262,9 @@ module Unexpanded = struct
     ; context
     }
 
+  let concat ~context ~pos a b =
+    { ast = Ast.Union [ a.ast; b.ast ]; loc = Some (Loc.of_pos pos); context }
+
   let field ?check name =
     let decode =
       match check with

@@ -228,13 +228,13 @@ module DB = struct
         in
         Some { project; db; coq_db; root })
 
-  let create ~context ~installed_libs ~modules_of_lib ~projects stanzas
-      coq_stanzas =
+  let create ~context ~modules_of_lib ~projects stanzas coq_stanzas =
     let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
-    let public_libs =
+    let* public_libs =
       let lib_config = Context.lib_config context in
-      public_libs t ~installed_libs ~lib_config ~modules_of_lib stanzas
+      let+ installed_libs = Lib.DB.installed context in
+      public_libs t ~lib_config ~installed_libs ~modules_of_lib stanzas
     in
     let+ by_dir =
       scopes_by_dir context ~projects ~public_libs ~modules_of_lib stanzas
@@ -250,8 +250,7 @@ module DB = struct
         [ ("dir", Path.Build.to_dyn dir) ];
     find_by_dir t (Path.Build.drop_build_context_exn dir)
 
-  let create_from_stanzas ~projects ~context ~installed_libs ~modules_of_lib
-      stanzas =
+  let create_from_stanzas ~projects ~context ~modules_of_lib stanzas =
     let stanzas, coq_stanzas =
       Dune_file.fold_stanzas stanzas ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
@@ -271,6 +270,5 @@ module DB = struct
             (acc, (ctx_dir, coq_lib) :: coq_acc)
           | _ -> (acc, coq_acc))
     in
-    create ~projects ~context ~installed_libs ~modules_of_lib stanzas
-      coq_stanzas
+    create ~projects ~context ~modules_of_lib stanzas coq_stanzas
 end

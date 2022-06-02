@@ -90,7 +90,7 @@ type t =
   ; ocamlmklib : Action.Prog.t
   ; ocamlobjinfo : Action.Prog.t
   ; env : Env.t
-  ; findlib : Findlib.t
+  ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option
   ; default_ocamlpath : Path.t list
   ; arch_sixtyfour : bool
@@ -132,7 +132,7 @@ let to_dyn t : Dyn.t =
     ; ("ocamldep", Action.Prog.to_dyn t.ocamldep)
     ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
     ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
-    ; ("findlib_path", list path (Findlib.paths t.findlib))
+    ; ("findlib_paths", list path t.findlib_paths)
     ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
     ; ( "natdynlink_supported"
       , Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
@@ -579,11 +579,10 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             | Some _ as s -> Memo.return s
             | None -> Memo.Lazy.force make)
     in
-    let* t =
+    let t =
       let build_context =
         Build_context.create ~name ~host:(Option.map host ~f:(fun c -> c.name))
       in
-      let+ findlib = Findlib.create ~paths:findlib_paths ~lib_config in
       { name
       ; implicit
       ; kind
@@ -607,7 +606,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocamlmklib
       ; ocamlobjinfo
       ; env
-      ; findlib
+      ; findlib_paths
       ; findlib_toolchain
       ; default_ocamlpath
       ; arch_sixtyfour

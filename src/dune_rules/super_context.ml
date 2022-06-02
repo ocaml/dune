@@ -206,7 +206,7 @@ type t =
   { context : Context.t
   ; scopes : Scope.DB.t
   ; public_libs : Lib.DB.t
-  ; installed_libs : Lib.DB.t
+  ; findlib : Findlib.t
   ; stanzas : Dune_file.Stanzas.t Dir_with_dune.t list
   ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
   ; packages : Package.t Package.Name.Map.t
@@ -242,18 +242,18 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
-let any_package_aux ~packages ~context pkg =
+let any_package_aux ~packages ~findlib pkg =
   match Package.Name.Map.find packages pkg with
   | Some p -> Memo.return (Some (Expander.Local p))
   | None -> (
     let open Memo.O in
-    Findlib.find_root_package context.Context.findlib pkg >>| function
+    Findlib.find_root_package findlib pkg >>| function
     | Ok p -> Some (Expander.Installed p)
     | Error Not_found -> None
     | Error (Invalid_dune_package exn) -> Exn.raise exn)
 
 let any_package t pkg =
-  any_package_aux ~packages:t.packages ~context:t.context pkg
+  any_package_aux ~packages:t.packages ~findlib:t.findlib pkg
 
 let get_site_of_packages_aux ~loc ~any_package ~pkg ~site =
   let find_site sites ~pkg ~site =
@@ -282,8 +282,6 @@ let lib_entries_of_package t pkg_name =
   |> Option.value ~default:[]
 
 let public_libs t = t.public_libs
-
-let installed_libs t = t.installed_libs
 
 let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
 
@@ -567,10 +565,9 @@ let create_lib_entries_by_package ~public_libs stanzas =
 let modules_of_lib = Fdecl.create Dyn.opaque
 
 let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
-  let installed_libs = Lib.DB.create_from_findlib context.findlib in
   let modules_of_lib_for_scope = Fdecl.create Dyn.opaque in
   let* scopes, public_libs =
-    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs
+    Scope.DB.create_from_stanzas ~projects ~context
       ~modules_of_lib:modules_of_lib_for_scope stanzas
   in
   let stanzas =
@@ -592,7 +589,10 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     let+ local_bins = get_installed_binaries ~context stanzas in
     Artifacts.create context ~public_libs ~local_bins
   in
-  let any_package = any_package_aux ~packages ~context in
+  let* findlib =
+    Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
+  in
+  let any_package = any_package_aux ~packages ~findlib in
   let root_expander =
     let scopes_host, artifacts_host, context_host =
       match host with
@@ -727,7 +727,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     ; host
     ; scopes
     ; public_libs
-    ; installed_libs
+    ; findlib
     ; stanzas
     ; stanzas_per_dir
     ; packages

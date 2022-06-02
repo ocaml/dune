@@ -28,3 +28,5 @@ val linker_can_create_empty_archives : t -> bool
 val hash : t -> int
 
 val equal : t -> t -> bool
+
+val to_dyn : t -> Dyn.t

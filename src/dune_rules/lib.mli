@@ -101,6 +101,8 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t
 
+  val installed : Context.t -> t Memo.t
+
   module Resolve_result : sig
     type t
 
@@ -132,8 +134,6 @@ module DB : sig
     -> lib_config:Lib_config.t
     -> unit
     -> t
-
-  val create_from_findlib : Findlib.t -> t
 
   val find : t -> Lib_name.t -> lib option Memo.t
 

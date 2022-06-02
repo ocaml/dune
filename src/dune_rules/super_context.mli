@@ -50,9 +50,6 @@ val lib_entries_of_package : t -> Package.Name.t -> Lib_entry.t list
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
 
-(** Installed libraries that are not part of the workspace *)
-val installed_libs : t -> Lib.DB.t
-
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
 val ocaml_flags :

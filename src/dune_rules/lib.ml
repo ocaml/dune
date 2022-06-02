@@ -1739,6 +1739,13 @@ module DB = struct
         let open Memo.O in
         Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
 
+  let installed (context : Context.t) =
+    let open Memo.O in
+    let+ findlib =
+      Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
+    in
+    create_from_findlib findlib
+
   let find t name =
     let open Memo.O in
     Resolve_names.find_internal t name >>| function

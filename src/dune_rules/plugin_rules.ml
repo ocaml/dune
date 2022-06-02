@@ -33,7 +33,8 @@ let setup_rules ~sctx ~dir t =
           Format.asprintf "%a" Pp.to_fmt
             (Pp.vbox (Pp.seq (Meta.pp meta.entries) Pp.cut)))))
 
-let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =
+let install_rules ~sctx ~sites ~dir ({ name; site = loc, (pkg, site); _ } as t)
+    =
   let* skip_files =
     if t.optional then Resolve.Memo.is_error (resolve_libs ~sctx t)
     else Memo.return false
@@ -45,7 +46,7 @@ let install_rules ~sctx ~dir ({ name; site = loc, (pkg, site); _ } as t) =
       Install.Entry.make_with_site
         ~dst:(sprintf "%s/%s" (Package.Name.to_string name) Findlib.meta_fn)
         (Site { pkg; site; loc })
-        (Super_context.get_site_of_packages sctx)
+        (Sites.section_of_site sites)
         meta
     in
     [ Install.Entry.Sourced.create ~loc entry ]

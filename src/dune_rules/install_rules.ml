@@ -259,7 +259,7 @@ end = struct
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY" ] ~f:(fun prefix ->
         String.is_prefix fn ~prefix)
 
-  let stanza_to_entries ~sctx ~dir ~scope ~expander stanza =
+  let stanza_to_entries ~sites ~sctx ~dir ~scope ~expander stanza =
     let* stanza_and_package =
       let+ stanza = keep_if expander stanza ~scope in
       let open Option.O in
@@ -286,7 +286,7 @@ end = struct
               let dst = File_binding.Expanded.dst fb in
               let+ entry =
                 Install.Entry.make_with_site section
-                  (Super_context.get_site_of_packages sctx)
+                  (Sites.section_of_site sites)
                   src ?dst
               in
               Install.Entry.Sourced.create ~loc entry)
@@ -306,7 +306,7 @@ end = struct
                   Section.Doc mld
               in
               Install.Entry.Sourced.create ~loc:d.loc entry)
-        | Dune_file.Plugin t -> Plugin_rules.install_rules ~sctx ~dir t
+        | Dune_file.Plugin t -> Plugin_rules.install_rules ~sctx ~sites ~dir t
         | _ -> Memo.return []
       in
       let name = Package.name package in
@@ -367,11 +367,12 @@ end = struct
                      Install.Entry.Sourced.create entry :: acc
                    else acc))
     and+ l =
+      let* sites = Sites.create ctx in
       Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun d stanza acc ->
           let named_entries =
             let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in
             let* expander = Super_context.expander sctx ~dir in
-            stanza_to_entries ~sctx ~dir ~scope ~expander stanza
+            stanza_to_entries ~sites ~sctx ~dir ~scope ~expander stanza
           in
           named_entries :: acc)
       |> Memo.all

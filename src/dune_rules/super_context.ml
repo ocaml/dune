@@ -242,41 +242,6 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
-let any_package_aux ~packages ~findlib pkg =
-  match Package.Name.Map.find packages pkg with
-  | Some p -> Memo.return (Some (Expander.Local p))
-  | None -> (
-    let open Memo.O in
-    Findlib.find_root_package findlib pkg >>| function
-    | Ok p -> Some (Expander.Installed p)
-    | Error Not_found -> None
-    | Error (Invalid_dune_package exn) -> Exn.raise exn)
-
-let any_package t pkg =
-  any_package_aux ~packages:t.packages ~findlib:t.findlib pkg
-
-let get_site_of_packages_aux ~loc ~any_package ~pkg ~site =
-  let find_site sites ~pkg ~site =
-    match Section.Site.Map.find sites site with
-    | Some section -> section
-    | None ->
-      User_error.raise ~loc
-        [ Pp.textf "Package %s doesn't define a site %s"
-            (Package.Name.to_string pkg)
-            (Section.Site.to_string site)
-        ]
-  in
-  let open Memo.O in
-  any_package pkg >>| function
-  | Some (Expander.Local p) -> find_site p.Package.sites ~pkg ~site
-  | Some (Expander.Installed p) -> find_site p.sites ~pkg ~site
-  | None ->
-    User_error.raise ~loc
-      [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
-
-let get_site_of_packages t ~loc ~pkg ~site =
-  get_site_of_packages_aux ~loc ~any_package:(any_package t) ~pkg ~site
-
 let lib_entries_of_package t pkg_name =
   Package.Name.Map.find t.lib_entries_by_package pkg_name
   |> Option.value ~default:[]
@@ -592,8 +557,8 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let* findlib =
     Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
   in
-  let any_package = any_package_aux ~packages ~findlib in
-  let root_expander =
+  let* sites = Sites.create context in
+  let* root_expander =
     let scopes_host, artifacts_host, context_host =
       match host with
       | None -> (scopes, artifacts, context)
@@ -604,7 +569,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
       ~scope_host:(Scope.DB.find_by_dir scopes_host context_host.build_dir)
       ~context ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
-      ~lib_artifacts_host:artifacts_host.public_libs ~find_package:any_package
+      ~lib_artifacts_host:artifacts_host.public_libs
   in
   let* package_sections =
     (* Add the section of the site mentioned in stanzas (it could be a site of
@@ -618,9 +583,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
       Dir_with_dune.Memo.deep_fold stanzas ~init:Package.Name.Map.empty
         ~f:(fun _ stanza acc ->
           let add_in_package_sites acc pkg site loc =
-            let+ section =
-              get_site_of_packages_aux ~loc ~any_package ~pkg ~site
-            in
+            let+ section = Sites.section_of_site sites ~loc ~pkg ~site in
             add_in_package_section acc pkg section
           in
           match stanza with
@@ -634,7 +597,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
        that at least one location is given to the site of local package because
        if the site is used it should already be in [packages_sections] *)
     Package.Name.Map.foldi packages ~init:package_sections
-      ~f:(fun package_name package acc ->
+      ~f:(fun package_name (package : Package.t) acc ->
         Section.Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
             add_in_package_section acc package_name section))
   in

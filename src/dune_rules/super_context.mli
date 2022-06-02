@@ -32,13 +32,6 @@ val packages : t -> Package.t Package.Name.Map.t
 
 val host : t -> t
 
-val get_site_of_packages :
-     t
-  -> loc:Loc.t
-  -> pkg:Package.Name.t
-  -> site:Section.Site.t
-  -> Section.t Memo.t
-
 module Lib_entry : sig
   type t =
     | Library of Lib.Local.t

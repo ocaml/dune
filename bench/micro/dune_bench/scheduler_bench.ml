@@ -2,6 +2,7 @@
 
 open Stdune
 open Dune_engine
+module Caml = Stdlib
 
 let config =
   { Scheduler.Config.concurrency = 1

@@ -76,7 +76,10 @@ type t =
   ; modes : Mode.Dict.Set.t
   ; bin_annot : bool
   ; ocamldep_modules_data : Ocamldep.Modules_data.t
+  ; loc : Loc.t option
   }
+
+let loc t = t.loc
 
 let super_context t = t.super_context
 
@@ -126,7 +129,7 @@ let dep_graphs t = t.modules.dep_graphs
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
-    ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) () =
+    ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) ?loc () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =
@@ -179,6 +182,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; modes
   ; bin_annot
   ; ocamldep_modules_data
+  ; loc
   }
 
 let for_alias_module t alias_module =

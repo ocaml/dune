@@ -113,9 +113,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         Option.some_if (List.exists linkages ~f:Exe.Linkage.is_js) js_of_ocaml
       else Some js_of_ocaml
     in
-    Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-      ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
-      ~js_of_ocaml ~opaque:Inherit_from_settings ~package:exes.package
+    Compilation_context.create () ~loc:exes.buildable.loc ~super_context:sctx
+      ~expander ~scope ~obj_dir ~modules ~flags ~requires_link ~requires_compile
+      ~preprocessing:pp ~js_of_ocaml ~opaque:Inherit_from_settings
+      ~package:exes.package
   in
   let stdlib_dir = ctx.Context.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in

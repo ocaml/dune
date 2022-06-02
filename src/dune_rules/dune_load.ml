@@ -2,7 +2,7 @@ open Import
 
 module Jbuild_plugin : sig
   val create_plugin_wrapper :
-       Context.t
+    Context.t
     -> exec_dir:Path.t
     -> plugin:Path.t
     -> wrapper:Path.Build.t
@@ -48,7 +48,7 @@ end = struct
       sprintf "%s%s%s" prefix t suffix
 
   let write oc ~(context : Context.t) ~target ~exec_dir ~plugin ~plugin_contents
-      =
+    =
     let ocamlc_config =
       let vars =
         Ocaml_config.to_list context.ocaml_config
@@ -133,8 +133,8 @@ module Dune_files = struct
     let open Memo.O in
     let static, dynamic =
       List.partition_map dune_files ~f:(function
-        | Literal x -> Left x
-        | Script { script; from_parent } -> Right (script, from_parent))
+          | Literal x -> Left x
+          | Script { script; from_parent } -> Right (script, from_parent))
     in
     let+ dynamic =
       Memo.parallel_map dynamic ~f:(fun ({ dir; file; project }, from_parent) ->
@@ -174,7 +174,7 @@ module Dune_files = struct
               ];
           Path.build generated_dune_file
           |> Io.Untracked.with_lexbuf_from_file
-               ~f:(Dune_lang.Parser.parse ~mode:Many)
+            ~f:(Dune_lang.Parser.parse ~mode:Many)
           |> List.rev_append from_parent
           |> Dune_file.parse ~dir ~file ~project)
     in
@@ -203,11 +203,11 @@ let interpret ~dir ~project ~(dune_file : Source_tree.Dune_file.t) =
 module Projects_and_dune_files =
   Monoid.Product
     (Monoid.Appendable_list (struct
-      type t = Dune_project.t
-    end))
+       type t = Dune_project.t
+     end))
     (Monoid.Appendable_list (struct
-      type t = Path.Source.t * Dune_project.t * Source_tree.Dune_file.t
-    end))
+       type t = Path.Source.t * Dune_project.t * Source_tree.Dune_file.t
+     end))
 
 module Source_tree_map_reduce =
   Source_tree.Make_map_reduce_with_progress (Memo) (Projects_and_dune_files)
@@ -236,21 +236,21 @@ let load () =
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
       ~f:(fun acc (p : Dune_project.t) ->
-        Package.Name.Map.merge acc (Dune_project.packages p) ~f:(fun name a b ->
-            Option.merge a b ~f:(fun a b ->
-                User_error.raise
-                  [ Pp.textf "Too many opam files for package %S:"
-                      (Package.Name.to_string name)
-                  ; Pp.textf "- %s"
-                      (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-                  ; Pp.textf "- %s"
-                      (Path.Source.to_string_maybe_quoted (Package.opam_file b))
-                  ])))
+          Package.Name.Map.merge acc (Dune_project.packages p) ~f:(fun name a b ->
+              Option.merge a b ~f:(fun a b ->
+                  User_error.raise
+                    [ Pp.textf "Too many opam files for package %S:"
+                        (Package.Name.to_string name)
+                    ; Pp.textf "- %s"
+                        (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+                    ; Pp.textf "- %s"
+                        (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+                    ])))
   in
   let+ dune_files =
     Appendable_list.to_list dune_files
     |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
-           interpret ~dir ~project ~dune_file)
+        interpret ~dir ~project ~dune_file)
   in
   { dune_files; packages; projects }
 

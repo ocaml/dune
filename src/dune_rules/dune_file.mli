@@ -23,8 +23,8 @@ end
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields :
   (Preprocess.Without_instrumentation.t Preprocess.Per_module.t
-  * Dep_conf.t list)
-  Dune_lang.Decoder.fields_parser
+   * Dep_conf.t list)
+    Dune_lang.Decoder.fields_parser
 
 module Buildable : sig
   type t =
@@ -67,7 +67,7 @@ module Public_lib : sig
   val package : t -> Package.t
 
   val make :
-       allow_deprecated_names:bool
+    allow_deprecated_names:bool
     -> Dune_project.t
     -> Loc.t * Lib_name.t
     -> (t, User_message.t) result
@@ -131,11 +131,11 @@ module Library : sig
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Set.t
     ; kind : Lib_kind.t
-          (* TODO: It may be worth remaming [c_library_flags] to
-             [link_time_flags_for_c_compiler] and [library_flags] to
-             [link_time_flags_for_ocaml_compiler], both here and in the Dune
-             language, to make it easier to understand the purpose of various
-             flags. Also we could add [c_library_flags] to [Foreign.Stubs.t]. *)
+    (* TODO: It may be worth remaming [c_library_flags] to
+       [link_time_flags_for_c_compiler] and [library_flags] to
+       [link_time_flags_for_ocaml_compiler], both here and in the Dune
+       language, to make it easier to understand the purpose of various
+       flags. Also we could add [c_library_flags] to [Foreign.Stubs.t]. *)
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; virtual_deps : (Loc.t * Lib_name.t) list
@@ -413,11 +413,11 @@ module Generate_sites_module : sig
     ; module_ : Module_name.t  (** name of the module to generate *)
     ; sourceroot : bool  (** should the sourceroot of the project be provided *)
     ; relocatable : bool
-          (** should the fact that the installation use the relocatable mode *)
+    (** should the fact that the installation use the relocatable mode *)
     ; sites : (Loc.t * Package.Name.t) list
-          (** list of the sites whose location should be given *)
+    (** list of the sites whose location should be given *)
     ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
-          (** list of the sites for which a plugin system must be provided *)
+    (** list of the sites for which a plugin system must be provided *)
     }
 end
 
@@ -458,7 +458,7 @@ type t =
   }
 
 val parse :
-     Dune_lang.Ast.t list
+  Dune_lang.Ast.t list
   -> dir:Path.Source.t
   -> file:Path.Source.t
   -> project:Dune_project.t

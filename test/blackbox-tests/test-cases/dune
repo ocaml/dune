@@ -63,6 +63,13 @@
 ; CONDITIONALLY DISABLED TESTS
 
 (cram
+ (applies_to signal-exit-code)
+ (enabled_if
+  (and
+   (<> %{env:CI=false} true) ;; in github action, CI=true
+   (= %{system} macosx))))
+
+(cram
  (applies_to github764)
  (enabled_if
   (<> %{ocaml-config:system} win)))

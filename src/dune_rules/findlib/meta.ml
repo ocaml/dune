@@ -160,147 +160,157 @@ let main_modules names =
   |> String.concat ~sep:" " |> rule "main_modules" [] Set
 
 let builtins ~stdlib_dir ~version:ocaml_version =
-  let version = version "[distributed with OCaml]" in
-  let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext deps
-      =
-    let archive_name =
-      match archive_name with
-      | None -> name
-      | Some a -> a
-    in
-    let main_modules =
-      let name =
-        String.map name ~f:(function
-          | '-' -> '_'
-          | c -> c)
+  if Ocaml.Version.has_META_files ocaml_version then
+    Memo.return Package.Name.Map.empty
+  else
+    let version = version "[distributed with OCaml]" in
+    let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext
+        deps =
+      let archive_name =
+        match archive_name with
+        | None -> name
+        | Some a -> a
       in
-      if labels then main_modules [ name; name ^ "Labels" ]
-      else main_modules [ name ]
-    in
-    let name = Lib_name.of_string name in
-    let archives = archives archive_name ?kind in
-    let main_modules = main_modules in
-    { name = Some name
-    ; entries =
-        requires deps :: version :: main_modules
-        ::
-        (match dir with
-        | None -> []
-        | Some d -> [ directory d ])
-        @ (match exists_if_ext with
+      let main_modules =
+        let name =
+          String.map name ~f:(function
+            | '-' -> '_'
+            | c -> c)
+        in
+        if labels then main_modules [ name; name ^ "Labels" ]
+        else main_modules [ name ]
+      in
+      let name = Lib_name.of_string name in
+      let archives = archives archive_name ?kind in
+      let main_modules = main_modules in
+      { name = Some name
+      ; entries =
+          requires deps :: version :: main_modules
+          ::
+          (match dir with
           | None -> []
-          | Some ext -> [ exists_if (archive_name ^ ext) ])
-        @ archives
-    }
-  in
-  let dummy name =
-    { name = Some (Lib_name.of_string name)
-    ; entries = [ version; main_modules [ name ] ]
-    }
-  in
-  let sandbox_if_necessary dir =
-    if Ocaml.Version.has_sandboxed_otherlibs ocaml_version then "+" ^ dir
-    else "+"
-  in
-  let compiler_libs =
-    let sub name ?kind ?exists_if_ext deps =
-      Package
-        (simple name deps ~archive_name:("ocaml" ^ name) ?kind ?exists_if_ext)
+          | Some d -> [ directory d ])
+          @ (match exists_if_ext with
+            | None -> []
+            | Some ext -> [ exists_if (archive_name ^ ext) ])
+          @ archives
+      }
     in
-    { name = Some (Lib_name.of_string "compiler-libs")
-    ; entries =
-        [ requires []
-        ; version
-        ; directory "+compiler-libs"
-        ; sub "common" []
-        ; sub "bytecomp" [ "compiler-libs.common" ]
-        ; sub "optcomp" [ "compiler-libs.common" ]
-        ; sub "toplevel" [ "compiler-libs.bytecomp" ] ~kind:[ Byte ]
-        ; sub "native-toplevel"
-            [ "compiler-libs.optcomp"; "dynlink" ]
-            ~kind:[ Native ]
-            ~exists_if_ext:(Mode.compiled_lib_ext Native)
-        ]
-    }
-  in
-  let stdlib = dummy "stdlib" in
-  let str = simple "str" [] ~dir:(sandbox_if_necessary "str") in
-  let unix = simple ~labels:true "unix" [] ~dir:(sandbox_if_necessary "unix") in
-  let open Memo.O in
-  let* bigarray =
-    let simple () = simple "bigarray" [ "unix" ] ~dir:"+" in
-    if not (Ocaml.Version.stdlib_includes_bigarray ocaml_version) then
-      Memo.return (simple ())
-    else
-      let+ cma =
-        Fs_memo.file_exists (Path.relative stdlib_dir "bigarray.cma")
+    let dummy name =
+      { name = Some (Lib_name.of_string name)
+      ; entries = [ version; main_modules [ name ] ]
+      }
+    in
+    let sandbox_if_necessary dir =
+      if Ocaml.Version.has_sandboxed_otherlibs ocaml_version then "+" ^ dir
+      else "+"
+    in
+    let compiler_libs =
+      let sub name ?kind ?exists_if_ext deps =
+        Package
+          (simple name deps ~archive_name:("ocaml" ^ name) ?kind ?exists_if_ext)
       in
-      if cma then simple () else dummy "bigarray"
-  in
-  let dynlink = simple "dynlink" [] ~dir:(sandbox_if_necessary "dynlink") in
-  let bytes = dummy "bytes" in
-  let threads =
-    { name = Some (Lib_name.of_string "threads")
-    ; entries =
-        ([ version
-         ; main_modules [ "thread" ]
-         ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
-         ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
-         ; directory "+"
-         ; rule "type_of_threads" [] Set "posix"
-         ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
-         ; rule "error"
-             [ Neg "mt_vm"; Neg "mt_posix" ]
-             Set "Missing -thread or -vmthread switch"
-         ; Package
-             (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
-         ]
-        @
-        if Ocaml.Version.has_vmthreads ocaml_version then
-          [ Package
-              (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
+      { name = Some (Lib_name.of_string "compiler-libs")
+      ; entries =
+          [ requires []
+          ; version
+          ; directory "+compiler-libs"
+          ; sub "common" []
+          ; sub "bytecomp" [ "compiler-libs.common" ]
+          ; sub "optcomp" [ "compiler-libs.common" ]
+          ; sub "toplevel" [ "compiler-libs.bytecomp" ] ~kind:[ Byte ]
+          ; sub "native-toplevel"
+              [ "compiler-libs.optcomp"; "dynlink" ]
+              ~kind:[ Native ]
+              ~exists_if_ext:(Mode.compiled_lib_ext Native)
           ]
-        else [])
-    }
-  in
-  let num =
-    { name = Some (Lib_name.of_string "num")
-    ; entries =
-        [ requires [ "num.core" ]
-        ; main_modules [ "num" ]
-        ; version
-        ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
-        ]
-    }
-  in
-  let graphics = simple "graphics" [] ~dir:"+" in
-  let ocamldoc =
-    simple "ocamldoc" [ "compiler-libs" ] ~dir:"+ocamldoc" ~kind:[]
-  in
-  let+ libs =
-    let base =
-      [ stdlib; compiler_libs; str; unix; threads; dynlink; bytes; ocamldoc ]
+      }
     in
-    let base =
-      if Ocaml.Version.has_bigarray_library ocaml_version then bigarray :: base
-      else base
+    let stdlib = dummy "stdlib" in
+    let str = simple "str" [] ~dir:(sandbox_if_necessary "str") in
+    let unix =
+      simple ~labels:true "unix" [] ~dir:(sandbox_if_necessary "unix")
     in
-    let* base =
-      let+ cma =
-        Fs_memo.file_exists (Path.relative stdlib_dir "graphics.cma")
+    let open Memo.O in
+    let* bigarray =
+      let simple () = simple "bigarray" [ "unix" ] ~dir:"+" in
+      if not (Ocaml.Version.stdlib_includes_bigarray ocaml_version) then
+        Memo.return (simple ())
+      else
+        let+ cma =
+          Fs_memo.file_exists (Path.relative stdlib_dir "bigarray.cma")
+        in
+        if cma then simple () else dummy "bigarray"
+    in
+    let dynlink = simple "dynlink" [] ~dir:(sandbox_if_necessary "dynlink") in
+    let bytes = dummy "bytes" in
+    let threads =
+      { name = Some (Lib_name.of_string "threads")
+      ; entries =
+          ([ version
+           ; main_modules [ "thread" ]
+           ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
+           ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
+           ; directory "+"
+           ; rule "type_of_threads" [] Set "posix"
+           ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
+           ; rule "error"
+               [ Neg "mt_vm"; Neg "mt_posix" ]
+               Set "Missing -thread or -vmthread switch"
+           ; Package
+               (simple "posix" [ "unix" ] ~dir:"+threads"
+                  ~archive_name:"threads")
+           ]
+          @
+          if Ocaml.Version.has_vmthreads ocaml_version then
+            [ Package
+                (simple "vm" [ "unix" ] ~dir:"+vmthreads"
+                   ~archive_name:"threads")
+            ]
+          else [])
+      }
+    in
+    let num =
+      { name = Some (Lib_name.of_string "num")
+      ; entries =
+          [ requires [ "num.core" ]
+          ; main_modules [ "num" ]
+          ; version
+          ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
+          ]
+      }
+    in
+    let graphics = simple "graphics" [] ~dir:"+" in
+    let ocamldoc =
+      simple "ocamldoc" [ "compiler-libs" ] ~dir:"+ocamldoc" ~kind:[]
+    in
+    let+ libs =
+      let base =
+        [ stdlib; compiler_libs; str; unix; threads; dynlink; bytes; ocamldoc ]
       in
-      if cma then graphics :: base else base
+      let base =
+        if Ocaml.Version.has_bigarray_library ocaml_version then
+          bigarray :: base
+        else base
+      in
+      let* base =
+        let+ cma =
+          Fs_memo.file_exists (Path.relative stdlib_dir "graphics.cma")
+        in
+        if cma then graphics :: base else base
+      in
+      (* We do not rely on an "exists_if" ocamlfind variable, because it would
+         produce an error message mentioning a "hidden" package (which could be
+         confusing). *)
+      let+ nums_cma =
+        Fs_memo.file_exists (Path.relative stdlib_dir "nums.cma")
+      in
+      if nums_cma then num :: base else base
     in
-    (* We do not rely on an "exists_if" ocamlfind variable, because it would
-       produce an error message mentioning a "hidden" package (which could be
-       confusing). *)
-    let+ nums_cma = Fs_memo.file_exists (Path.relative stdlib_dir "nums.cma") in
-    if nums_cma then num :: base else base
-  in
-  List.filter_map libs ~f:(fun t ->
-      Option.map t.name ~f:(fun name ->
-          (Lib_name.package_name name, simplify t)))
-  |> Package.Name.Map.of_list_exn
+    List.filter_map libs ~f:(fun t ->
+        Option.map t.name ~f:(fun name ->
+            (Lib_name.package_name name, simplify t)))
+    |> Package.Name.Map.of_list_exn
 
 let string_of_action = function
   | Set -> "="

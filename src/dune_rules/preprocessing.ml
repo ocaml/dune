@@ -420,10 +420,20 @@ let get_cookies ~loc ~expander ~lib_name libs =
          [ "--cookie"; sprintf "%s=%S" name value ])
   |> List.concat
 
-let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
+let ppx_driver_and_flags_internal sctx ~dune_version ~loc ~expander ~lib_name
+    ~flags libs =
   let open Action_builder.O in
   let* flags =
-    Action_builder.List.map ~f:(Expander.expand_str expander) flags
+    if dune_version <= (3, 2) then
+      Action_builder.List.map ~f:(Expander.expand_str expander) flags
+    else
+      (* Allow list expansion *)
+      Action_builder.List.concat_map flags
+        ~f:(Expander.expand ~mode:Many expander)
+      |> Action_builder.map
+           ~f:
+             (List.map
+                ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
   in
   let+ cookies =
     Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
@@ -435,7 +445,9 @@ let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
   let open Action_builder.O in
   let* libs = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
   let* exe, flags =
-    ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
+    let dune_version = Scope.project scope |> Dune_project.dune_version in
+    ppx_driver_and_flags_internal sctx ~loc ~expander ~dune_version ~lib_name
+      ~flags libs
   in
   let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true) in
   let+ driver =
@@ -698,7 +710,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
 let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Action_builder.O in
   let* libs = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
-  ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
+  ppx_driver_and_flags_internal sctx ~loc ~expander ~scope ~lib_name ~flags libs
 
 let ppx_exe sctx ~scope pp =
   let open Resolve.Memo.O in

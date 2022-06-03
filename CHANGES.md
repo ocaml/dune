@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow list expansion in the `pps` specification for preprocessing (#5820,
+  @Firobe)
+
 - Add warnings 67-69 to dune's default set of warnings. These are warnings of
   the form "unused X.." (#5844, @rgrinbreg)
 

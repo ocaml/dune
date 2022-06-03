@@ -71,3 +71,6 @@ val supports_alerts : t -> bool
 (** Whether [dynlink], [str] and [unix] are in subdirectories of the standard
     library *)
 val has_sandboxed_otherlibs : t -> bool
+
+(** Whether the compiler distributes META files independently of ocamlfind *)
+val has_META_files : t -> bool

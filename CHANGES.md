@@ -15,6 +15,9 @@
 
 - The `(cat)` action now supports several files. (#5928, fixes #5795, @emillon)
 
+- Dune no longer uses shimmed `META` files for OCaml 5.x, solely using the ones
+  installed by the compiler. (#5916, @dra27)
+
 3.3.1 (19-06-2022)
 ------------------
 

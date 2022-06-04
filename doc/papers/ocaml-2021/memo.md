@@ -109,17 +109,17 @@ implementation of Memo makes one unusual design choice. Incremental, Adapton and
 Tenacious are all *push based*, i.e., they trigger recomputation starting from
 the leaves of the computation graph. Memo is *pull based*: `invalidate` calls
 merely mark leaves (cells) as out of date, but recomputation is driven from the
-top-level `run` calls. The main drawback of our approach is that Memo needs to
-traverse the whole graph on each rebuild. The main benefits are: (i) Memo
+top-level `run` calls. The main drawback of our approach is that Memo traverses
+the whole graph on each rebuild. The main benefits are: (i) Memo
 doesn't need to store reverse dependencies, which saves space and eliminates
 various garbage collection pitfalls; (ii) the pull based approach makes it
 easier to avoid "spurious" recomputations, where a node is recomputed but
 subsequently becomes unreachable from the top due to a new dependency structure.
 Our current experiments show that traversing the whole graph on each rebuild
 isn't prohibitively expensive even for large builds where computation graphs
-contain tens of millions of nodes. We may reconsider this design choice in
-future as Dune and Memo need to scale to larger projects. Having said that, we
-consider the pull based approach to incrementality to be a under-researched, and
+contain tens of millions of nodes. We may rethink this design decision in future
+as Dune and Memo need to scale to larger projects. Having said that, we consider
+the pull based approach to incremental computation to be under-researched, and
 are keen to investigate how far we can take it in practice.
 
 ## Development status

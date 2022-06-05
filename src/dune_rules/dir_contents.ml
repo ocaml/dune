@@ -325,7 +325,8 @@ end = struct
                                |> Memo.return)
                        ; coq =
                            Memo.lazy_ (fun () ->
-                               Coq_sources.of_dir d ~include_subdirs ~dirs
+                               Coq_sources.of_dir d.data ~dir:d.ctx_dir
+                                 ~include_subdirs ~dirs
                                |> Memo.return)
                        }
                    ; rules
@@ -380,7 +381,9 @@ end = struct
             in
             let coq =
               Memo.lazy_ (fun () ->
-                  Coq_sources.of_dir d ~dirs ~include_subdirs |> Memo.return)
+                  Coq_sources.of_dir d.data ~dir:d.ctx_dir ~dirs
+                    ~include_subdirs
+                  |> Memo.return)
             in
             let subdirs =
               List.map subdirs ~f:(fun (dir, _local, files) ->

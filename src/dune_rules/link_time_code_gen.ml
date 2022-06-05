@@ -258,7 +258,7 @@ let handle_special_libs cctx =
           let requires =
             (* This shouldn't fail since findlib.dynload depends on dynlink and
                findlib. That's why it's ok to use a dummy location. *)
-            let db = SC.public_libs sctx in
+            let* db = Scope.DB.public_libs (Super_context.context sctx) in
             let open Resolve.Memo.O in
             let+ dynlink =
               Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")

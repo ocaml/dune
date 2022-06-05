@@ -136,7 +136,7 @@ module Stanza = struct
     let open Memo.O in
     let source = Source.of_stanza ~dir ~toplevel in
     let* expander = Super_context.expander sctx ~dir in
-    let scope = Super_context.find_scope_by_dir sctx dir in
+    let* scope = Scope.DB.find_by_dir dir in
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps =
       match toplevel.pps with

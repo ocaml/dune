@@ -264,7 +264,7 @@ module Context = struct
     let loc = buildable.loc in
     let rr = resolve_program sctx ~dir ~loc in
     let* expander = Super_context.expander sctx ~dir in
-    let scope = Super_context.find_scope_by_dir sctx dir in
+    let* scope = Scope.DB.find_by_dir dir in
     let lib_db = Scope.libs scope in
     (* ML-level flags for depending libraries *)
     let ml_flags, mlpack_rule =
@@ -592,7 +592,7 @@ let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let theory =
-    let scope = Super_context.find_scope_by_dir sctx dir in
+    let* scope = Scope.DB.find_by_dir dir in
     let coq_lib_db = Scope.coq_libs scope in
     Coq_lib.DB.resolve coq_lib_db ~coq_lang_version:s.buildable.coq_lang_version
       s.name
@@ -606,7 +606,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let name = s.name in
-  let scope = Super_context.find_scope_by_dir sctx dir in
+  let* scope = Scope.DB.find_by_dir dir in
   let coq_lib_db = Scope.coq_libs scope in
   let theory =
     Coq_lib.DB.resolve coq_lib_db name
@@ -671,7 +671,7 @@ let install_rules ~sctx ~dir s =
   | { Theory.package = Some package; buildable; _ } ->
     let mode = select_native_mode ~sctx ~buildable in
     let loc = s.buildable.loc in
-    let scope = Super_context.find_scope_by_dir sctx dir in
+    let* scope = Scope.DB.find_by_dir dir in
     let* dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
@@ -730,13 +730,14 @@ let setup_coqpp_rules ~sctx ~dir (s : Coqpp.t) =
 let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx =
     let wrapper_name = "DuneExtraction" in
-    let theories_deps =
-      let scope = Super_context.find_scope_by_dir sctx dir in
+    let* theories_deps =
+      let* scope = Scope.DB.find_by_dir dir in
       let coq_lib_db = Scope.coq_libs scope in
       Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
         ~coq_lang_version:s.buildable.coq_lang_version
     in
     let theory_dirs = Path.Build.Set.empty in
+    let theories_deps = Resolve.Memo.lift theories_deps in
     Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
       ~theory_dirs s.buildable
   in
@@ -759,13 +760,14 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx =
     let wrapper_name = "DuneExtraction" in
-    let theories_deps =
-      let scope = Super_context.find_scope_by_dir sctx dir in
+    let* theories_deps =
+      let* scope = Scope.DB.find_by_dir dir in
       let coq_lib_db = Scope.coq_libs scope in
       Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
         ~coq_lang_version:s.buildable.coq_lang_version
     in
     let theory_dirs = Path.Build.Set.empty in
+    let theories_deps = Resolve.Memo.lift theories_deps in
     Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
       ~theory_dirs s.buildable
   in

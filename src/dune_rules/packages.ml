@@ -9,11 +9,13 @@ let mlds_by_package_def =
     ~implicit_output:Rules.implicit_output
     ~input:(module Super_context.As_memo_key)
     (fun sctx ->
-      let stanzas = Super_context.stanzas sctx in
-      Memo.parallel_map stanzas ~f:(fun (w : _ Dir_with_dune.t) ->
-          Memo.parallel_map w.data ~f:(function
+      let ctx = Super_context.context sctx in
+      let* dune_files = Only_packages.filtered_stanzas ctx in
+      Memo.parallel_map dune_files ~f:(fun dune_file ->
+          Memo.parallel_map dune_file.stanzas ~f:(function
             | Documentation d ->
-              let* dc = Dir_contents.get sctx ~dir:w.ctx_dir in
+              let dir = Path.Build.append_source ctx.build_dir dune_file.dir in
+              let* dc = Dir_contents.get sctx ~dir in
               let+ mlds = Dir_contents.mlds dc d in
               let name = Package.name d.package in
               Some (name, mlds)

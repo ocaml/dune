@@ -195,7 +195,7 @@ end = struct
       let dll_files = dll_files ~modes ~dynlink:lib.dynlink ~ctx info in
       (lib_files, dll_files)
     in
-    let+ execs = lib_ppxs sctx ~scope ~lib in
+    let+ execs = lib_ppxs ctx ~scope ~lib in
     let install_c_headers =
       List.map lib.install_c_headers ~f:(fun base ->
           Path.Build.relative dir (base ^ Foreign_language.header_extension))
@@ -315,7 +315,7 @@ end = struct
 
   let stanzas_to_entries sctx =
     let ctx = Super_context.context sctx in
-    let stanzas = Super_context.stanzas sctx in
+    let* stanzas = Only_packages.filtered_stanzas ctx in
     let* packages = Only_packages.get () in
     let+ init =
       Package.Name.Map_traversals.parallel_map packages
@@ -369,10 +369,11 @@ end = struct
                    else acc))
     and+ l =
       let* sites = Sites.create ctx in
-      Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun d stanza acc ->
+      Dune_file.fold_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
+          let dir = Path.Build.append_source ctx.build_dir dune_file.dir in
           let named_entries =
-            let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in
             let* expander = Super_context.expander sctx ~dir in
+            let scope = Expander.scope expander in
             stanza_to_entries ~sites ~sctx ~dir ~scope ~expander stanza
           in
           named_entries :: acc)
@@ -445,11 +446,11 @@ end = struct
       Path.Build.L.relative pkg_root subdir
     in
     let* entries =
-      Memo.parallel_map lib_entries ~f:(fun stanza ->
+      Memo.parallel_map lib_entries ~f:(fun (stanza : Scope.DB.Lib_entry.t) ->
           match stanza with
-          | Super_context.Lib_entry.Deprecated_library_name
-              { old_name = _, Deprecated _; _ } -> Memo.return None
-          | Super_context.Lib_entry.Deprecated_library_name
+          | Deprecated_library_name { old_name = _, Deprecated _; _ } ->
+            Memo.return None
+          | Deprecated_library_name
               { old_name = old_public_name, Not_deprecated
               ; new_public_name = _, new_public_name
               ; loc
@@ -524,9 +525,7 @@ end = struct
     let dune_version =
       Dune_lang.Syntax.greatest_supported_version Stanza.syntax
     in
-    let lib_entries =
-      Super_context.lib_entries_of_package sctx (Package.name pkg)
-    in
+    let* lib_entries = Scope.DB.lib_entries_of_package ctx (Package.name pkg) in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       let meta_template = Package_paths.meta_template ctx pkg in
@@ -544,7 +543,7 @@ end = struct
     in
     let deprecated_dune_packages =
       List.filter_map lib_entries ~f:(function
-        | Super_context.Lib_entry.Deprecated_library_name
+        | Deprecated_library_name
             ({ old_name = old_public_name, Deprecated _; _ } as t) ->
           Some
             ( Lib_name.package_name (Dune_file.Public_lib.name old_public_name)
@@ -607,10 +606,10 @@ end = struct
   let gen_meta_file sctx (pkg : Package.t) =
     let ctx = Super_context.context sctx in
     let pkg_name = Package.name pkg in
-    let deprecated_packages, entries =
-      let entries = Super_context.lib_entries_of_package sctx pkg_name in
+    let* deprecated_packages, entries =
+      let+ entries = Scope.DB.lib_entries_of_package ctx pkg_name in
       List.partition_map entries ~f:(function
-        | Super_context.Lib_entry.Deprecated_library_name
+        | Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry
           -> (
           match Dune_file.Public_lib.sub_dir public with
@@ -626,7 +625,7 @@ end = struct
            however. *)
         let vlib =
           List.find_map entries ~f:(function
-            | Super_context.Lib_entry.Library lib ->
+            | Library lib ->
               let info = Lib.Local.info lib in
               Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib
             | Deprecated_library_name _ -> None)
@@ -844,8 +843,8 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let files =
     List.map entries ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src)
   in
-  let dune_project =
-    let scope = Super_context.find_scope_by_dir sctx pkg_build_dir in
+  let* dune_project =
+    let+ scope = Scope.DB.find_by_dir pkg_build_dir in
     Scope.project scope
   in
   let strict_package_deps = Dune_project.strict_package_deps dune_project in

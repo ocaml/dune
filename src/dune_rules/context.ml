@@ -841,6 +841,19 @@ module DB = struct
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in
     Memo.exec memo
+
+  let by_dir dir =
+    let context =
+      match Dune_engine.Dpath.analyse_dir (Path.build dir) with
+      | Build
+          ( Install (With_context (name, _))
+          | Regular (With_context (name, _))
+          | Anonymous_action (With_context (name, _)) ) -> name
+      | _ ->
+        Code_error.raise "directory does not have an associated context"
+          [ ("dir", Path.Build.to_dyn dir) ]
+    in
+    get context
 end
 
 let compiler t (mode : Mode.t) =
@@ -873,6 +886,8 @@ let map_exe (context : t) =
       | Some (dir, exe) when Path.equal dir (Path.build context.build_dir) ->
         Path.append_source (Path.build host.build_dir) exe
       | _ -> exe)
+
+let host t = Option.value ~default:t t.for_host
 
 let roots t =
   let module Roots = Install.Section.Paths.Roots in

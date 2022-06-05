@@ -2345,12 +2345,34 @@ let parse sexps ~dir ~file ~project =
   in
   { dir; project; stanzas }
 
-let rec fold_stanzas l ~init ~f =
-  match l with
-  | [] -> init
-  | t :: l -> inner_fold t t.stanzas l ~init ~f
+module Make_fold (M : Monad.S) = struct
+  open M.O
 
-and inner_fold t inner_list l ~init ~f =
-  match inner_list with
-  | [] -> fold_stanzas l ~init ~f
-  | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
+  let rec fold_stanzas l ~init ~f =
+    match l with
+    | [] -> M.return init
+    | t :: l -> inner_fold t t.stanzas l ~init ~f
+
+  and inner_fold t inner_list l ~init ~f =
+    match inner_list with
+    | [] -> fold_stanzas l ~init ~f
+    | x :: inner_list ->
+      let* init = f t x init in
+      inner_fold t inner_list l ~init ~f
+end
+
+module Memo_fold = Make_fold (Memo)
+module Id_fold = Make_fold (Monad.Id)
+
+let fold_stanzas t ~init ~f = Id_fold.fold_stanzas t ~init ~f
+
+let equal t { dir; project; stanzas } =
+  Path.Source.equal t.dir dir
+  && Dune_project.equal t.project project
+  && List.equal ( == ) t.stanzas stanzas
+
+let hash = Poly.hash
+
+let to_dyn = Dyn.opaque
+
+let of_ast = Stanzas.of_ast

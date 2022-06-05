@@ -173,7 +173,7 @@ let lib_src_dirs ~dir_contents =
 
 (* Stanza *)
 
-let define_all_alias ~dir ~scope ~js_targets =
+let define_all_alias ~dir ~project ~js_targets =
   let deps =
     let pred =
       let id =
@@ -185,8 +185,7 @@ let define_all_alias ~dir ~scope ~js_targets =
       List.iter js_targets ~f:(fun js_target ->
           assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
       let f =
-        if Dune_project.explicit_js_mode (Scope.project scope) then fun _ ->
-          true
+        if Dune_project.explicit_js_mode project then fun _ -> true
         else fun basename ->
           not
             (List.exists js_targets ~f:(fun js_target ->
@@ -194,17 +193,14 @@ let define_all_alias ~dir ~scope ~js_targets =
       in
       Predicate_with_id.create ~id ~f
     in
-    let only_generated_files =
-      Dune_project.dune_version (Scope.project scope) >= (3, 0)
-    in
+    let only_generated_files = Dune_project.dune_version project >= (3, 0) in
     File_selector.create ~dir:(Path.build dir) ~only_generated_files pred
     |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
   Rules.Produce.Alias.add_deps (Alias.all ~dir) deps
 
 let gen_rules sctx dir_contents cctxs expander
-    { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
-    =
+    { Dune_file.dir = src_dir; stanzas; project } ~dir:ctx_dir =
   let files_to_install
       { Install_conf.section = _; files; package = _; enabled_if = _ } =
     Memo.List.map files ~f:(fun fb ->
@@ -220,6 +216,7 @@ let gen_rules sctx dir_contents cctxs expander
        ; js = js_targets
        ; source_dirs
        } =
+    let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope
       ~dir_contents ~expander ~files_to_install
   in
@@ -275,14 +272,14 @@ let gen_rules sctx dir_contents cctxs expander
           Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
         | _ -> Memo.return ())
   in
-  let+ () = define_all_alias ~dir:ctx_dir ~scope ~js_targets in
+  let+ () = define_all_alias ~dir:ctx_dir ~project ~js_targets in
   cctxs
 
-let collect_directory_targets sctx ~init ~dir =
-  match Super_context.stanzas_in sctx ~dir with
+let collect_directory_targets ~init ~dir =
+  Only_packages.stanzas_in_dir dir >>| function
   | None -> init
-  | Some { Dir_with_dune.data = stanzas; ctx_dir = dir; _ } ->
-    List.fold_left stanzas ~init ~f:(fun acc stanza ->
+  | Some d ->
+    List.fold_left d.stanzas ~init ~f:(fun acc stanza ->
         match stanza with
         | Coq_stanza.Theory.T m ->
           Coq_rules.coqdoc_directory_targets ~dir m
@@ -304,13 +301,12 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
   and* tests = Source_tree.Dir.cram_tests source_dir in
   let* () = Cram_rules.rules ~sctx ~expander ~dir tests in
   let* () = Format_rules.setup_alias sctx ~dir in
-  match Super_context.stanzas_in sctx ~dir with
-  | Some d -> gen_rules sctx dir_contents cctxs expander d
+  Only_packages.stanzas_in_dir dir >>= function
+  | Some d -> gen_rules sctx dir_contents cctxs expander d ~dir
   | None ->
-    let+ () =
-      define_all_alias ~dir ~js_targets:[]
-        ~scope:(Super_context.find_scope_by_dir sctx dir)
-    in
+    let* scope = Scope.DB.find_by_dir dir in
+    let project = Scope.project scope in
+    let+ () = define_all_alias ~dir ~js_targets:[] ~project in
     []
 
 (* To be called once per project, when we are generating the rules for the root
@@ -445,13 +441,14 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
               (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
           | _ -> subdirs
         in
-        Memo.return
-          (Build_config.Rules
-             { build_dir_only_sub_dirs = S.These subdirs
-             ; directory_targets =
-                 collect_directory_targets sctx ~dir ~init:directory_targets
-             ; rules
-             })))
+        let+ directory_targets =
+          collect_directory_targets ~dir ~init:directory_targets
+        in
+        Build_config.Rules
+          { build_dir_only_sub_dirs = S.These subdirs
+          ; directory_targets
+          ; rules
+          }))
 
 let with_context ctx ~f =
   Super_context.find ctx >>= function

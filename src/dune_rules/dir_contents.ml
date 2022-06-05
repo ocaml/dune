@@ -83,8 +83,7 @@ let mlds t (doc : Documentation.t) =
             (List.map map ~f:(fun (d, _) -> d.Documentation.loc)) )
       ]
 
-let build_mlds_map (d : _ Dir_with_dune.t) ~files =
-  let dir = d.ctx_dir in
+let build_mlds_map stanzas ~dir ~files =
   let mlds =
     Memo.lazy_ (fun () ->
         String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->
@@ -93,11 +92,11 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
             | _ -> acc)
         |> Memo.return)
   in
-  Memo.parallel_map d.data ~f:(function
+  Memo.parallel_map stanzas ~f:(function
     | Documentation doc ->
       let+ mlds =
         let+ mlds = Memo.Lazy.force mlds in
-        Ordered_set_lang.Unordered_string.eval doc.mld_files
+        Ordered_set_lang.Unordered_string.eval doc.mld_files ~standard:mlds
           ~key:(fun x -> x)
           ~parse:(fun ~loc s ->
             match String.Map.find mlds s with
@@ -108,7 +107,6 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
                     (Path.to_string_maybe_quoted
                        (Path.drop_optional_build_context (Path.build dir)))
                 ])
-          ~standard:mlds
       in
       Some (doc, List.map (String.Map.values mlds) ~f:(Path.Build.relative dir))
     | _ -> Memo.return None)
@@ -126,13 +124,7 @@ end = struct
     Expander.set_lookup_ml_sources expander ~f
 
   (* As a side-effect, setup user rules and copy_files rules. *)
-  let load_text_files sctx st_dir
-      { Dir_with_dune.ctx_dir = dir
-      ; src_dir
-      ; scope = _
-      ; data = stanzas
-      ; dune_version = _
-      } =
+  let load_text_files sctx st_dir stanzas ~dir ~src_dir =
     (* Interpret a few stanzas in order to determine the list of files generated
        by the user. *)
     let* expander =
@@ -301,7 +293,9 @@ end = struct
                Memo.lazy_ ~human_readable_description (fun () ->
                    let include_subdirs = (Loc.none, Include_subdirs.No) in
                    let+ files, rules =
-                     Rules.collect (fun () -> load_text_files sctx st_dir d)
+                     Rules.collect (fun () ->
+                         load_text_files sctx st_dir d.data ~src_dir:d.src_dir
+                           ~dir:d.ctx_dir)
                    in
                    let dirs = [ (dir, [], files) ] in
                    let ml =
@@ -316,7 +310,9 @@ end = struct
                        ; dir
                        ; text_files = files
                        ; ml
-                       ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+                       ; mlds =
+                           Memo.lazy_ (fun () ->
+                               build_mlds_map d.data ~dir:d.ctx_dir ~files)
                        ; foreign_sources =
                            Memo.lazy_ (fun () ->
                                Foreign_sources.make d.data
@@ -356,14 +352,18 @@ end = struct
             let+ (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
               Rules.collect (fun () ->
                   Memo.fork_and_join
-                    (fun () -> load_text_files sctx st_dir d)
+                    (fun () ->
+                      load_text_files sctx st_dir d.data ~src_dir:d.src_dir
+                        ~dir:d.ctx_dir)
                     (fun () ->
                       Memo.parallel_map subdirs
                         ~f:(fun (dir, local, st_dir, stanzas) ->
                           let+ files =
                             match stanzas with
                             | None -> Memo.return (Source_tree.Dir.files st_dir)
-                            | Some d -> load_text_files sctx st_dir d
+                            | Some d ->
+                              load_text_files sctx st_dir d.data
+                                ~src_dir:d.src_dir ~dir:d.ctx_dir
                           in
                           (dir, local, files))))
             in
@@ -393,7 +393,9 @@ end = struct
                   ; text_files = files
                   ; ml
                   ; foreign_sources
-                  ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+                  ; mlds =
+                      Memo.lazy_ (fun () ->
+                          build_mlds_map d.data ~dir:d.ctx_dir ~files)
                   ; coq
                   })
             in
@@ -403,7 +405,9 @@ end = struct
               ; text_files = files
               ; ml
               ; foreign_sources
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+              ; mlds =
+                  Memo.lazy_ (fun () ->
+                      build_mlds_map d.data ~dir:d.ctx_dir ~files)
               ; coq
               }
             in

@@ -527,13 +527,9 @@ let create_lib_entries_by_package ~public_libs stanzas =
          (List.sort ~compare:(fun a b ->
               Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
 
-let modules_of_lib = Fdecl.create Dyn.opaque
-
 let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
-  let modules_of_lib_for_scope = Fdecl.create Dyn.opaque in
   let* scopes, public_libs =
-    Scope.DB.create_from_stanzas ~projects ~context
-      ~modules_of_lib:modules_of_lib_for_scope stanzas
+    Scope.DB.create_from_stanzas ~projects ~context stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_file.dir; project; stanzas } ->
@@ -683,27 +679,22 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let+ lib_entries_by_package =
     create_lib_entries_by_package ~public_libs stanzas
   in
-  let t =
-    { context
-    ; root_expander
-    ; host
-    ; scopes
-    ; public_libs
-    ; findlib
-    ; stanzas
-    ; stanzas_per_dir
-    ; packages
-    ; artifacts
-    ; lib_entries_by_package
-    ; env_tree
-    ; default_env
-    ; dir_status_db
-    ; projects_by_key
-    }
-  in
-  Fdecl.set modules_of_lib_for_scope (fun ~dir ~name ->
-      Fdecl.get modules_of_lib t ~dir ~name);
-  t
+  { context
+  ; root_expander
+  ; host
+  ; scopes
+  ; public_libs
+  ; findlib
+  ; stanzas
+  ; stanzas_per_dir
+  ; packages
+  ; artifacts
+  ; lib_entries_by_package
+  ; env_tree
+  ; default_env
+  ; dir_status_db
+  ; projects_by_key
+  }
 
 let all =
   Memo.lazy_ (fun () ->

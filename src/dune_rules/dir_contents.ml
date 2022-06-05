@@ -1,4 +1,8 @@
 open Import
+
+(* we need to convince ocamldep that we don't depend on the menhir rules *)
+module Menhir = struct end
+
 open Dune_file
 open Memo.O
 
@@ -79,7 +83,7 @@ let mlds t (doc : Documentation.t) =
       [ ("doc", Loc.to_dyn_hum doc.loc)
       ; ( "available"
         , Dyn.(list Loc.to_dyn_hum)
-            (List.map map ~f:(fun (d, _) -> d.Documentation.loc)) )
+            (List.map map ~f:(fun ((d : Documentation.t), _) -> d.loc)) )
       ]
 
 let build_mlds_map stanzas ~dir ~files =
@@ -438,14 +442,6 @@ end = struct
         let+ { t; rules = _; subdirs = _ } = Memo.Lazy.force contents in
         t)
 
-  let () =
-    let f sctx ~dir ~name =
-      let* t = get sctx ~dir in
-      let+ ml_sources = ocaml t in
-      Ml_sources.modules ml_sources ~for_:(Library name)
-    in
-    Fdecl.set Super_context.modules_of_lib f
-
   let triage sctx ~dir =
     Memo.exec memo0 (sctx, dir) >>| function
     | See_above group_root -> Group_part group_root
@@ -459,3 +455,13 @@ end = struct
 end
 
 include Load
+
+let modules_of_lib sctx lib =
+  let dir = Lib_info.src_dir (Lib.info lib) in
+  match Path.as_in_build_dir dir with
+  | None -> Memo.return None
+  | Some dir ->
+    let* t = get sctx ~dir in
+    let+ ml_sources = ocaml t in
+    let name = Lib.name lib in
+    Some (Ml_sources.modules ml_sources ~for_:(Library name))

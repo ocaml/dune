@@ -34,6 +34,8 @@ val coq : t -> Coq_sources.t Memo.t
 (** Get the directory contents of the given directory. *)
 val get : Super_context.t -> dir:Path.Build.t -> t Memo.t
 
+val modules_of_lib : Super_context.t -> Lib.t -> Modules.t option Memo.t
+
 (** All directories in this group if [t] is a group root or just [t] if it is
     not part of a group. *)
 val dirs : t -> t list

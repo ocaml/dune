@@ -49,7 +49,7 @@ module DB = struct
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  let create_db_from_stanzas ~parent ~lib_config ~modules_of_lib stanzas =
+  let create_db_from_stanzas ~parent ~lib_config stanzas =
     let open Memo.O in
     let+ (map : Found_or_redirect.t Lib_name.Map.t) =
       Memo.List.map stanzas ~f:(fun stanza ->
@@ -99,7 +99,7 @@ module DB = struct
           | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect None lib
           | Some (Found lib) -> Lib.DB.Resolve_result.found lib))
       ~all:(fun () -> Lib_name.Map.keys map |> Memo.return)
-      ~modules_of_lib ~lib_config
+      ~lib_config
 
   (* This function is linear in the depth of [dir] in the worst case, so if it
      shows up in the profile we should memoize it. *)
@@ -132,7 +132,7 @@ module DB = struct
     | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
   (* Create a database from the public libraries defined in the stanzas *)
-  let public_libs t ~installed_libs ~modules_of_lib ~lib_config stanzas =
+  let public_libs t ~installed_libs ~lib_config stanzas =
     let public_libs =
       List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
           match stanza with
@@ -168,14 +168,13 @@ module DB = struct
             ])
     in
     let resolve lib = Memo.return (resolve t public_libs lib) in
-    Lib.DB.create ~parent:(Some installed_libs) ~resolve ~modules_of_lib
+    Lib.DB.create ~parent:(Some installed_libs) ~resolve
       ~all:(fun () -> Lib_name.Map.keys public_libs |> Memo.return)
       ~lib_config ()
 
   module Path_source_map_traversals = Memo.Make_map_traversals (Path.Source.Map)
 
-  let scopes_by_dir context ~modules_of_lib ~projects ~public_libs stanzas
-      coq_stanzas =
+  let scopes_by_dir context ~projects ~public_libs stanzas coq_stanzas =
     let open Memo.O in
     let projects_by_dir =
       List.map projects ~f:(fun (project : Dune_project.t) ->
@@ -210,8 +209,7 @@ module DB = struct
       |> Path_source_map_traversals.parallel_map
            ~f:(fun _dir (project, stanzas) ->
              let+ db =
-               create_db_from_stanzas stanzas ~parent:public_libs
-                 ~modules_of_lib ~lib_config
+               create_db_from_stanzas stanzas ~parent:public_libs ~lib_config
              in
              (project, db))
     in
@@ -228,17 +226,16 @@ module DB = struct
         in
         Some { project; db; coq_db; root })
 
-  let create ~context ~modules_of_lib ~projects stanzas coq_stanzas =
+  let create ~context ~projects stanzas coq_stanzas =
     let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
     let* public_libs =
       let lib_config = Context.lib_config context in
       let+ installed_libs = Lib.DB.installed context in
-      public_libs t ~lib_config ~installed_libs ~modules_of_lib stanzas
+      public_libs t ~lib_config ~installed_libs stanzas
     in
     let+ by_dir =
-      scopes_by_dir context ~projects ~public_libs ~modules_of_lib stanzas
-        coq_stanzas
+      scopes_by_dir context ~projects ~public_libs stanzas coq_stanzas
     in
     let value = { by_dir } in
     Fdecl.set t value;
@@ -250,7 +247,7 @@ module DB = struct
         [ ("dir", Path.Build.to_dyn dir) ];
     find_by_dir t (Path.Build.drop_build_context_exn dir)
 
-  let create_from_stanzas ~projects ~context ~modules_of_lib stanzas =
+  let create_from_stanzas ~projects ~context stanzas =
     let stanzas, coq_stanzas =
       Dune_file.fold_stanzas stanzas ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
@@ -270,5 +267,5 @@ module DB = struct
             (acc, (ctx_dir, coq_lib) :: coq_acc)
           | _ -> (acc, coq_acc))
     in
-    create ~projects ~context ~modules_of_lib stanzas coq_stanzas
+    create ~projects ~context stanzas coq_stanzas
 end

@@ -11,7 +11,7 @@ module Link_params = struct
              not appear on the command line *)
     }
 
-  let get (t : Lib.t) (mode : Link_mode.t) =
+  let get sctx (t : Lib.t) (mode : Link_mode.t) =
     let open Memo.O in
     let info = Lib.info t in
     let lib_files = Lib_info.foreign_archives info
@@ -28,11 +28,7 @@ module Link_params = struct
       | Byte_with_stubs_statically_linked_in -> Memo.return lib_files
       | Native ->
         let+ native_archives =
-          let+ modules =
-            match Lib.modules t with
-            | None -> Memo.return None
-            | Some m -> Memo.Lazy.force m >>| Option.some
-          in
+          let+ modules = Dir_contents.modules_of_lib sctx t in
           Lib_info.eval_native_archives_exn info ~modules
         in
         List.rev_append native_archives lib_files
@@ -75,9 +71,9 @@ module Link_params = struct
     { deps; hidden_deps; include_dirs }
 end
 
-let link_deps t mode =
+let link_deps sctx t mode =
   let open Memo.O in
-  let+ x = Link_params.get t mode in
+  let+ x = Link_params.get sctx t mode in
   List.rev_append x.hidden_deps x.deps
 
 module L = struct
@@ -157,14 +153,16 @@ module Lib_and_module = struct
   module L = struct
     type nonrec t = t list
 
-    let link_flags ts ~(lib_config : Lib_config.t) ~mode =
+    let link_flags sctx ts ~(lib_config : Lib_config.t) ~mode =
       let open Action_builder.O in
       Command.Args.Dyn
         (let+ l =
            Action_builder.all
              (List.map ts ~f:(function
                | Lib t ->
-                 let+ p = Action_builder.of_memo (Link_params.get t mode) in
+                 let+ p =
+                   Action_builder.of_memo (Link_params.get sctx t mode)
+                 in
                  Command.Args.S
                    (Deps p.deps
                    :: Hidden_deps (Dep.Set.of_files p.hidden_deps)

@@ -22,10 +22,6 @@ val info : t -> Path.t Lib_info.t
 
 val main_module_name : t -> Module_name.t option Resolve.Memo.t
 
-val entry_module_names : t -> Module_name.t list Resolve.Memo.t
-
-val src_dirs : t -> Path.Set.t Memo.t
-
 val wrapped : t -> Wrapped.t option Resolve.Memo.t
 
 (** Direct library dependencies of this library *)
@@ -44,8 +40,6 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 val project : t -> Dune_project.t option
-
-val modules : t -> Modules.t Memo.Lazy.t option
 
 (** Operations on list of libraries *)
 module L : sig
@@ -129,8 +123,6 @@ module DB : sig
        parent:t option
     -> resolve:(Lib_name.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_name.t list Memo.t)
-    -> modules_of_lib:
-         (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.t) Fdecl.t
     -> lib_config:Lib_config.t
     -> unit
     -> t

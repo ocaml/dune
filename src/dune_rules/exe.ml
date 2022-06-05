@@ -183,7 +183,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
               in
               Command.Args.S
                 [ As (if force_linkall then [ "-linkall" ] else [])
-                ; Lib_flags.Lib_and_module.L.link_flags to_link
+                ; Lib_flags.Lib_and_module.L.link_flags sctx to_link
                     ~lib_config:ctx.lib_config ~mode:linkage.mode
                 ])
           ; Deps o_files

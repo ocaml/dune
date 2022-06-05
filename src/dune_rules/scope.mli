@@ -25,8 +25,6 @@ module DB : sig
   val create_from_stanzas :
        projects:Dune_project.t list
     -> context:Context.t
-    -> modules_of_lib:
-         (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.t) Fdecl.t
     -> Dune_file.t list
     -> (t * Lib.DB.t) Memo.t
 

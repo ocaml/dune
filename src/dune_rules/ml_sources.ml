@@ -91,13 +91,11 @@ module Artifacts = struct
 
   let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
-  let make (d : _ Dir_with_dune.t) ~lib_config (libs, exes) =
+  let make ~dir ~lib_config (libs, exes) =
     let+ libraries =
       Memo.List.map libs ~f:(fun (lib, _, _) ->
           let name = Lib_name.of_local lib.Library.name in
-          let+ info =
-            Dune_file.Library.to_lib_info lib ~dir:d.ctx_dir ~lib_config
-          in
+          let+ info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
           (name, info))
       >>| Lib_name.Map.of_list_exn
     in
@@ -198,9 +196,7 @@ let virtual_modules lookup_vlib vlib =
   ; allow_new_public_modules
   }
 
-let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
-    ~modules =
-  let src_dir = d.ctx_dir in
+let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
   let open Resolve.Memo.O in
   let+ kind, main_module_name, wrapped =
     match lib.implements with
@@ -230,7 +226,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
       let open Memo.O in
       let* resolved =
         let name = Library.best_name lib in
-        Lib.DB.find_even_when_hidden (Scope.libs d.scope) name
+        Lib.DB.find_even_when_hidden libs name
         (* can't happen because this library is defined using the current
            stanza *)
         >>| Option.value_exn
@@ -250,16 +246,16 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
     Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
-      ~src_dir
+      ~src_dir:dir
   in
   let stdlib = lib.stdlib in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
-  Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
+  Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir:dir ~modules
     ~main_module_name ~wrapped
 
-let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
-  Memo.parallel_map d.data ~f:(fun stanza ->
+let libs_and_exes dune_file ~dir ~scope ~lookup_vlib ~modules =
+  Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
         (* jeremiedimino: this [Resolve.get] means that if the user writes an
@@ -267,24 +263,25 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
            the library is not built. We should change this to carry the
            [Or_exn.t] a bit longer. *)
         let+ modules =
-          make_lib_modules d ~lookup_vlib ~modules ~lib >>= Resolve.read_memo
+          make_lib_modules ~dir ~libs:(Scope.libs scope) ~lookup_vlib ~modules
+            ~lib
+          >>= Resolve.read_memo
         in
-        let obj_dir = Library.obj_dir lib ~dir:d.ctx_dir in
+        let obj_dir = Library.obj_dir lib ~dir in
         List.Left (lib, modules, obj_dir)
       | Executables exes | Tests { exes; _ } ->
-        let src_dir = d.ctx_dir in
         let modules =
           let modules =
             Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
-              ~private_modules:Ordered_set_lang.standard ~src_dir
+              ~private_modules:Ordered_set_lang.standard ~src_dir:dir
           in
-          let project = Scope.project d.scope in
+          let project = Scope.project scope in
           if Dune_project.wrapped_executables project then
-            Modules_group.exe_wrapped ~src_dir ~modules
+            Modules_group.exe_wrapped ~src_dir:dir ~modules
           else Modules_group.exe_unwrapped modules
         in
-        let obj_dir = Dune_file.Executables.obj_dir ~dir:src_dir exes in
+        let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
         let modules =
           let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
           (* We need to relocate the source of the alias module to its own
@@ -302,12 +299,12 @@ let check_no_qualified (loc, include_subdirs) =
     User_error.raise ~loc
       [ Pp.text "(include_subdirs qualified) is not supported yet" ]
 
-let make (d : _ Dir_with_dune.t) ~lib_config ~loc ~lookup_vlib ~include_subdirs
+let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib ~include_subdirs
     ~dirs =
   let+ libs_and_exes =
     check_no_qualified include_subdirs;
     let modules =
-      let dialects = Dune_project.dialects (Scope.project d.scope) in
+      let dialects = Dune_project.dialects (Scope.project scope) in
       List.fold_left dirs ~init:Module_name.Map.empty
         ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
           let modules = modules_of_files ~dialects ~dir ~files in
@@ -322,10 +319,10 @@ let make (d : _ Dir_with_dune.t) ~lib_config ~loc ~lookup_vlib ~include_subdirs
                 ; Pp.text "This is not allowed, please rename one of them."
                 ]))
     in
-    libs_and_exes d ~lookup_vlib ~modules
+    libs_and_exes dune_file ~dir ~scope ~lookup_vlib ~modules
   in
   let modules = Modules.make libs_and_exes in
   let artifacts =
-    Memo.lazy_ (fun () -> Artifacts.make ~lib_config d libs_and_exes)
+    Memo.lazy_ (fun () -> Artifacts.make ~dir ~lib_config libs_and_exes)
   in
   { modules; artifacts }

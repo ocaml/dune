@@ -40,11 +40,8 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
       let ocaml_flags = Ocaml_flags.get flags mode in
-      let standard =
-        let project =
-          Super_context.find_scope_by_dir sctx dir |> Scope.project
-        in
-
+      let* standard =
+        let+ project = Scope.DB.find_by_dir dir |> Memo.map ~f:Scope.project in
         match Dune_project.use_standard_c_and_cxx_flags project with
         | Some true when Buildable.has_foreign_cxx lib.buildable ->
           Cxx_flags.get_flags ~for_:Link ctx
@@ -202,10 +199,12 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     |> Memo.parallel_map ~f:(Memo.map ~f:Path.build)
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
-  let standard =
-    let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+  let* standard =
+    let+ project =
+      let+ scope = Scope.DB.find_by_dir dir in
+      Scope.project scope
+    in
     let ctx = Super_context.context sctx in
-
     match Dune_project.use_standard_c_and_cxx_flags project with
     | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
       Cxx_flags.get_flags ~for_:Link ctx
@@ -244,8 +243,8 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       modes.native && modes.byte
       && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
     in
-    let standard =
-      let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+    let* standard =
+      let+ project = Scope.DB.find_by_dir dir >>| Scope.project in
       match Dune_project.use_standard_c_and_cxx_flags project with
       | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
         Cxx_flags.get_flags ~for_:Link ctx

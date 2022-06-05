@@ -15,7 +15,8 @@ val directories : t -> name:Coq_lib_name.t -> Path.Build.t list
 val extract : t -> Extraction.t -> Coq_module.t
 
 val of_dir :
-     Stanza.t list Dir_with_dune.t
+     Stanza.t list
+  -> dir:Path.Build.t
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
   -> dirs:(Path.Build.t * string list * String.Set.t) list
   -> t

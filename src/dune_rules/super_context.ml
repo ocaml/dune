@@ -30,7 +30,6 @@ module Env_tree : sig
   val create :
        context:Context.t
     -> host_env_tree:t option
-    -> scopes:Scope.DB.t
     -> default_env:Env_node.t Memo.Lazy.t
     -> stanzas_per_dir:Stanza.t list Dir_with_dune.t Path.Build.Map.t
     -> root_expander:Expander.t
@@ -47,7 +46,6 @@ end = struct
   type t =
     { context : Context.t
     ; context_env : Env.t  (** context env with additional variables *)
-    ; scopes : Scope.DB.t
     ; default_env : Env_node.t Memo.Lazy.t
     ; stanzas_per_dir : Stanza.t list Dir_with_dune.t Path.Build.Map.t
     ; host : t option
@@ -112,7 +110,7 @@ end = struct
   let get_impl t dir =
     (* We recompute the scope on every recursive call, even though it should be
        unchanged. If this becomes a problem, we can memoize [find_by_dir]. *)
-    let scope = Scope.DB.find_by_dir t.scopes dir in
+    let+ scope = Scope.DB.find_by_dir dir in
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope) then
         let format_config = Dune_project.format_config (Scope.project scope) in
@@ -159,7 +157,7 @@ end = struct
      binding. To work around this limitation, we place the functions into a
      recursive module [Rec]. Since recursive let-modules are not allowed either,
      we need to also wrap [Rec] inside a non-recursive module [Non_rec]. *)
-  let create ~context ~host_env_tree ~scopes ~default_env ~stanzas_per_dir
+  let create ~context ~host_env_tree ~default_env ~stanzas_per_dir
       ~root_expander ~bin_artifacts ~context_env =
     let module Non_rec = struct
       module rec Rec : sig
@@ -170,7 +168,6 @@ end = struct
         let env_tree =
           { context
           ; context_env
-          ; scopes
           ; default_env
           ; stanzas_per_dir
           ; host = host_env_tree
@@ -183,7 +180,7 @@ end = struct
           Memo.exec
             (Memo.create "env-nodes-memo"
                ~input:(module Path.Build)
-               (fun path -> Memo.return (get_impl env_tree path)))
+               (fun path -> get_impl env_tree path))
 
         let env_tree () = env_tree
       end
@@ -204,7 +201,6 @@ end
 
 type t =
   { context : Context.t
-  ; scopes : Scope.DB.t
   ; public_libs : Lib.DB.t
   ; findlib : Findlib.t
   ; stanzas : Dune_file.Stanzas.t Dir_with_dune.t list
@@ -248,9 +244,7 @@ let lib_entries_of_package t pkg_name =
 
 let public_libs t = t.public_libs
 
-let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
-
-let find_scope_by_project t = Scope.DB.find_by_project t.scopes
+let find_scope_by_project t = Scope.DB.find_by_project t.context
 
 let find_project_by_key t = Dune_project.File_key.Map.find_exn t.projects_by_key
 
@@ -528,20 +522,19 @@ let create_lib_entries_by_package ~public_libs stanzas =
               Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
 
 let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
-  let* scopes, public_libs =
-    Scope.DB.create_from_stanzas ~projects ~context stanzas
+  let* stanzas =
+    Scope.DB.with_all context ~f:(fun find ->
+        List.map stanzas ~f:(fun { Dune_file.dir; project; stanzas } ->
+            let ctx_dir = Path.Build.append_source context.build_dir dir in
+            let dune_version = Dune_project.dune_version project in
+            { Dir_with_dune.src_dir = dir
+            ; ctx_dir
+            ; data = stanzas
+            ; scope = find project
+            ; dune_version
+            }))
   in
-  let stanzas =
-    List.map stanzas ~f:(fun { Dune_file.dir; project; stanzas } ->
-        let ctx_dir = Path.Build.append_source context.build_dir dir in
-        let dune_version = Dune_project.dune_version project in
-        { Dir_with_dune.src_dir = dir
-        ; ctx_dir
-        ; data = stanzas
-        ; scope = Scope.DB.find_by_project scopes project
-        ; dune_version
-        })
-  in
+  let* public_libs = Scope.DB.public_libs context in
   let stanzas_per_dir =
     Path.Build.Map.of_list_map_exn stanzas ~f:(fun stanzas ->
         (stanzas.ctx_dir, stanzas))
@@ -555,15 +548,15 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   in
   let* sites = Sites.create context in
   let* root_expander =
-    let scopes_host, artifacts_host, context_host =
+    let artifacts_host, context_host =
       match host with
-      | None -> (scopes, artifacts, context)
-      | Some host -> (host.scopes, host.artifacts, host.context)
+      | None -> (artifacts, context)
+      | Some host -> (host.artifacts, host.context)
     in
-    Expander.make
-      ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
-      ~scope_host:(Scope.DB.find_by_dir scopes_host context_host.build_dir)
-      ~context ~lib_artifacts:artifacts.public_libs
+    let* scope = Scope.DB.find_by_dir context.build_dir in
+    let* scope_host = Scope.DB.find_by_dir context_host.build_dir in
+    Expander.make ~scope ~scope_host ~context
+      ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
       ~lib_artifacts_host:artifacts_host.public_libs
   in
@@ -640,7 +633,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     Memo.lazy_ (fun () ->
         let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
-          let scope = Scope.DB.find_by_dir scopes dir in
+          let+ scope = Scope.DB.find_by_dir dir in
           let project = Scope.project scope in
           let default_context_flags = default_context_flags context ~project in
           let expander_for_artifacts =
@@ -657,17 +650,15 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
             ~default_env:context_env ~default_bin_artifacts:artifacts.bin
             ~default_cxx_link_flags
         in
-        Memo.return
-          (make ~config_stanza:context.env_nodes.context
-             ~inherit_from:
-               (Some
-                  (Memo.lazy_ (fun () ->
-                       Memo.return
-                         (make ~inherit_from:None
-                            ~config_stanza:context.env_nodes.workspace))))))
+        make ~config_stanza:context.env_nodes.context
+          ~inherit_from:
+            (Some
+               (Memo.lazy_ (fun () ->
+                    make ~inherit_from:None
+                      ~config_stanza:context.env_nodes.workspace))))
   in
   let env_tree =
-    Env_tree.create ~context ~scopes ~default_env ~stanzas_per_dir
+    Env_tree.create ~context ~default_env ~stanzas_per_dir
       ~host_env_tree:(Option.map host ~f:(fun x -> x.env_tree))
       ~root_expander ~bin_artifacts:artifacts.bin ~context_env
   in
@@ -682,7 +673,6 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   { context
   ; root_expander
   ; host
-  ; scopes
   ; public_libs
   ; findlib
   ; stanzas

@@ -423,12 +423,11 @@ end = struct
       Memo.return (Here { directory_targets; contents })
 
   let memo0 =
-    Memo.create "dir-contents-get0"
+    Memo.create "dir-contents-get0" get0_impl
       ~input:(module Key)
       ~human_readable_description:(fun (_, dir) ->
         Pp.textf "Computing directory contents of %s"
           (Path.to_string_maybe_quoted (Path.build dir)))
-      get0_impl
 
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir) >>= function

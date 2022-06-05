@@ -307,10 +307,8 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
   match Super_context.stanzas_in sctx ~dir with
   | Some d -> gen_rules sctx dir_contents cctxs expander d
   | None ->
-    let+ () =
-      define_all_alias ~dir ~js_targets:[]
-        ~scope:(Super_context.find_scope_by_dir sctx dir)
-    in
+    let* scope = Scope.DB.find_by_dir dir in
+    let+ () = define_all_alias ~dir ~js_targets:[] ~scope in
     []
 
 (* To be called once per project, when we are generating the rules for the root

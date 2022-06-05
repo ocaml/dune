@@ -6,16 +6,17 @@ module SC = Super_context
 let ( ++ ) = Path.Build.relative
 
 module Scope_key : sig
-  val of_string : Super_context.t -> string -> Lib_name.t * Lib.DB.t
+  val of_string : Super_context.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
 
   val to_string : Lib_name.t -> Dune_project.t -> string
 end = struct
   let of_string sctx s =
     match String.rsplit2 s ~on:'@' with
     | None ->
-      (Lib_name.parse_string_exn (Loc.none, s), Super_context.public_libs sctx)
+      Memo.return
+        (Lib_name.parse_string_exn (Loc.none, s), Super_context.public_libs sctx)
     | Some (lib, key) ->
-      let scope =
+      let+ scope =
         Dune_project.File_key.of_string key
         |> Super_context.find_project_by_key sctx
         |> Super_context.find_scope_by_project sctx
@@ -801,7 +802,7 @@ let gen_rules sctx ~dir:_ rest =
     has_rules
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-       let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
+       let* lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
        let setup_pkg_odocl_rules pkg =
          let* pkg_libs = load_all_odoc_rules_pkg sctx ~pkg in
          setup_pkg_odocl_rules sctx ~pkg ~libs:pkg_libs
@@ -837,7 +838,7 @@ let gen_rules sctx ~dir:_ rest =
     has_rules
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-       let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
+       let* lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
        let setup_pkg_html_rules pkg =
          let* pkg_libs = load_all_odoc_rules_pkg sctx ~pkg in
          setup_pkg_html_rules sctx ~pkg ~libs:pkg_libs

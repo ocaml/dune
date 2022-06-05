@@ -139,7 +139,7 @@ let libs_under_dir sctx ~db ~dir = libs_and_ppx_under_dir sctx ~db ~dir >>| fst
 let setup sctx ~dir =
   let open Memo.O in
   let* expander = Super_context.expander sctx ~dir in
-  let scope = Super_context.find_scope_by_dir sctx dir in
+  let* scope = Scope.DB.find_by_dir dir in
   let db = Scope.libs scope in
   let* libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
   let pps =

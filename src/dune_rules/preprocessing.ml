@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 module SC = Super_context
 
 (* Encoded representation of a set of library names + scope *)
@@ -336,7 +337,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
 
 let get_rules sctx key =
   let exe = ppx_exe sctx ~key in
-  let pp_names, scope =
+  let* pp_names, scope =
     match Digest.from_hex key with
     | None ->
       User_error.raise
@@ -345,14 +346,14 @@ let get_rules sctx key =
         ]
     | Some key ->
       let { Key.Decoded.pps; project_root } = Key.decode key in
-      let scope =
+      let+ scope =
         let dir =
           match project_root with
           | None -> (Super_context.context sctx).build_dir
           | Some dir ->
             Path.Build.append_source (Super_context.context sctx).build_dir dir
         in
-        Super_context.find_scope_by_dir sctx dir
+        Scope.DB.find_by_dir dir
       in
       (pps, scope)
   in

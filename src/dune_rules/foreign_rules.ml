@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce
@@ -103,7 +104,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
 
 let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let ctx = Super_context.context sctx in
-  let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+  let* project = Scope.DB.find_by_dir dir >>| Scope.project in
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
   let base_flags =
     let cfg = ctx.ocaml_config in

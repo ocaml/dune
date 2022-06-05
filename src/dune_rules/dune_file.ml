@@ -2354,3 +2354,12 @@ and inner_fold t inner_list l ~init ~f =
   match inner_list with
   | [] -> fold_stanzas l ~init ~f
   | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
+
+let equal t { dir; project; stanzas } =
+  Path.Source.equal t.dir dir
+  && Dune_project.equal t.project project
+  && t.stanzas == stanzas
+
+let hash = Poly.hash
+
+let to_dyn = Dyn.opaque

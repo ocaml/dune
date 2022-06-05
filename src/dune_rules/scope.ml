@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 type t =
   { project : Dune_project.t
@@ -298,4 +299,51 @@ module DB = struct
           | _ -> (acc, coq_acc))
     in
     create ~projects ~context stanzas coq_stanzas
+
+  let memo =
+    let module Input = struct
+      type t = Dune_project.t list * Context.t * Dune_file.t list
+
+      let equal =
+        Tuple.T3.equal
+          (List.equal Dune_project.equal)
+          Context.equal
+          (List.equal Dune_file.equal)
+
+      let hash =
+        Tuple.T3.hash
+          (List.hash Dune_project.hash)
+          Context.hash (List.hash Dune_file.hash)
+
+      let to_dyn = Dyn.opaque
+    end in
+    Memo.create "scope-db"
+      ~input:(module Input)
+      (fun (projects, context, stanzas) ->
+        create_from_stanzas ~projects ~context stanzas)
+
+  let create_from_stanzas context =
+    let* stanzas = Only_packages.filtered_stanzas context in
+    let* { Dune_load.dune_files = _; packages = _; projects } =
+      Dune_load.load ()
+    in
+    Memo.exec memo (projects, context, stanzas)
+
+  let with_all context ~f =
+    let+ scopes, _ = create_from_stanzas context in
+    let find = find_by_project scopes in
+    f find
+
+  let public_libs context =
+    let+ _, public_libs = create_from_stanzas context in
+    public_libs
+
+  let find_by_dir dir =
+    let* context = Context.DB.by_dir dir in
+    let+ scopes, _ = create_from_stanzas context in
+    find_by_dir scopes dir
+
+  let find_by_project context project =
+    let+ scopes, _ = create_from_stanzas context in
+    find_by_project scopes project
 end

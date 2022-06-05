@@ -842,8 +842,8 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let files =
     List.map entries ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src)
   in
-  let dune_project =
-    let scope = Super_context.find_scope_by_dir sctx pkg_build_dir in
+  let* dune_project =
+    let+ scope = Scope.DB.find_by_dir pkg_build_dir in
     Scope.project scope
   in
   let strict_package_deps = Dune_project.strict_package_deps dune_project in

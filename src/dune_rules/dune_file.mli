@@ -457,6 +457,12 @@ type t =
   ; stanzas : Stanzas.t
   }
 
+val equal : t -> t -> bool
+
+val hash : t -> int
+
+val to_dyn : t -> Dyn.t
+
 val parse :
      Dune_lang.Ast.t list
   -> dir:Path.Source.t

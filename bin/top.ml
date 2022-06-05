@@ -45,8 +45,8 @@ let term =
               let build_dir = (Super_context.context sctx).build_dir in
               Path.Build.relative build_dir (Common.prefix_target common dir)
             in
-            let db =
-              let scope = Super_context.find_scope_by_dir sctx dir in
+            let* db =
+              let+ scope = Dune_rules.Scope.DB.find_by_dir dir in
               Dune_rules.Scope.libs scope
             in
             Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)

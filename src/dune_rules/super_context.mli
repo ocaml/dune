@@ -90,9 +90,7 @@ val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.t
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
 
-val find_scope_by_dir : t -> Path.Build.t -> Scope.t
-
-val find_scope_by_project : t -> Dune_project.t -> Scope.t
+val find_scope_by_project : t -> Dune_project.t -> Scope.t Memo.t
 
 val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
 

@@ -343,7 +343,7 @@ module Crawl = struct
       Deps.read ~options ~use_pp ~obj_dir ~modules:modules_ module_
     in
     let obj_dir = Obj_dir.of_local obj_dir in
-    let scope = Super_context.find_scope_by_project sctx project in
+    let* scope = Super_context.find_scope_by_project sctx project in
     let* modules_ = modules ~obj_dir ~deps_of modules_ in
     let+ requires =
       let* compile_info = Exe_rules.compile_info ~scope exes in
@@ -442,8 +442,8 @@ module Crawl = struct
     let* project_libs =
       (* the list of libraries declared in the project *)
       Memo.parallel_map conf.projects ~f:(fun project ->
-          Super_context.find_scope_by_project sctx project
-          |> Scope.libs |> Lib.DB.all)
+          Super_context.find_scope_by_project sctx project >>= fun scope ->
+          Scope.libs scope |> Lib.DB.all)
       >>| Lib.Set.union_all
     in
     let+ libs =

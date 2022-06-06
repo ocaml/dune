@@ -437,10 +437,6 @@ val stanza_package : Stanza.t -> Package.t option
 module Stanzas : sig
   type t = Stanza.t list
 
-  type syntax =
-    | OCaml
-    | Plain
-
   (** [of_ast project ast] is the list of [Stanza.t]s derived from decoding the
       [ast] according to the syntax given by [kind] in the context of the
       [project] *)

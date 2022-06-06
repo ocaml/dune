@@ -2155,10 +2155,6 @@ type Stanza.t +=
 module Stanzas = struct
   type t = Stanza.t list
 
-  type syntax =
-    | OCaml
-    | Plain
-
   let rules l = List.map l ~f:(fun x -> Rule x)
 
   let execs exe = [ Executables exe ]

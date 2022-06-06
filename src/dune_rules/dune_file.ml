@@ -1816,6 +1816,15 @@ module Menhir = struct
   let () =
     Dune_project.Extension.register_simple Menhir_stanza.syntax
       (return [ ("menhir", decode >>| fun x -> [ T x ]) ])
+
+  let modules (stanza : t) : string list =
+    match stanza.merge_into with
+    | Some m -> [ m ]
+    | None -> stanza.modules
+
+  let targets (stanza : t) : string list =
+    let f m = [ m ^ ".ml"; m ^ ".mli" ] in
+    List.concat_map (modules stanza) ~f
 end
 
 module Alias_conf = struct

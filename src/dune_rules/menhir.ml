@@ -274,17 +274,8 @@ end
 
 (* The final glue. *)
 
-let modules (stanza : Dune_file.Menhir.t) : string list =
-  match stanza.merge_into with
-  | Some m -> [ m ]
-  | None -> stanza.modules
-
-let targets (stanza : Dune_file.Menhir.t) : string list =
-  let f m = [ m ^ ".ml"; m ^ ".mli" ] in
-  List.concat_map (modules stanza) ~f
-
 let module_names (stanza : Dune_file.Menhir.t) : Module_name.t list =
-  List.map (modules stanza) ~f:(fun s ->
+  List.map (Dune_file.Menhir.modules stanza) ~f:(fun s ->
       (* TODO the loc can improved here *)
       Module_name.of_string_allow_invalid (stanza.loc, s))
 

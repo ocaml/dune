@@ -249,7 +249,8 @@ let gen_rules sctx dir_contents cctxs expander
               (* This happens often when passing a [-p ...] option that hides a
                  library *)
               let file_targets =
-                List.map (Menhir_rules.targets m)
+                List.map
+                  (Dune_file.Menhir.targets m)
                   ~f:(Path.Build.relative ctx_dir)
               in
               Super_context.add_rule sctx ~dir:ctx_dir

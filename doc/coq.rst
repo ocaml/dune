@@ -51,7 +51,7 @@ stanza:
      (package <package>)
      (synopsis <text>)
      (modules <ordered_set_lang>)
-     (libraries <ocaml_libraries>)
+     (plugins <ocaml_plugins>)
      (flags <coq_flags>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
@@ -92,15 +92,15 @@ The semantics of the fields are:
   Coq package ecosystem.
 
   For compatibility, Dune also installs, under the ``user-contrib`` prefix, the
-  ``.cmxs`` files that appear in ``<ocaml_libraries>``.
+  ``.cmxs`` files that appear in ``<ocaml_plugins>``.
 
 - ``<coq_flags>`` are passed to ``coqc`` as command-line options. ``:standard``
   is taken from the value set in the ``(coq (flags <flags>))`` field in ``env``
   profile. See :ref:`dune-env` for more information.
 
-- The path to the installed locations of the ``<ocaml_libraries>`` is passed to
+- The path to the installed locations of the ``<ocaml_plugins>`` is passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag. This allows a Coq theory to
-  depend on an OCaml library.
+  depend on OCaml plugins.
 
 - Your Coq theory can depend on other theories by specifying them in the
   ``<coq_theories>`` field. Dune then passes to Coq the corresponding flags for
@@ -138,7 +138,7 @@ The semantics of the fields are:
   0.3<coq-lang>`.
 
   Please note: support for ``native_compute`` is **experimental** and requires a
-  version of Coq later than 8.12.1. Furthermore, dependent libraries *must* be
+  version of Coq later than 8.12.1. Furthermore, dependent theories *must* be
   built with the ``(mode native)`` enabled. In addition to that, Coq must be
   configured to support native compilation. Dune explicitly disables the
   generation of native compilation objects when ``(mode vo)`` is enabled,
@@ -255,7 +255,7 @@ process by using the ``coq.extraction`` stanza:
 - ``(extracted_modules <names>)`` is an exhaustive list of OCaml modules
   extracted.
 
-- ``<optional-fields>`` are ``flags``, ``theories``, and ``libraries``. All of
+- ``<optional-fields>`` are ``flags``, ``theories``, and ``plugins``. All of
   these fields have the same meaning as in the ``coq.theory`` stanza.
 
 The extracted sources can then be used in ``executable`` or ``library`` stanzas

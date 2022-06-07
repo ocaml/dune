@@ -19,6 +19,11 @@ module Test = struct
     Io.write_file path contents;
     path
 
+  let print_errors =
+    List.iteri ~f:(fun i report ->
+        printfn ">> error %d" i;
+        print_endline (Dyn.to_string (Ocamlc_loc.dyn_of_report report)))
+
   let create f =
     let dir = Temp.create Dir ~prefix:"dune." ~suffix:".test" in
     let t = { dir } in
@@ -26,13 +31,9 @@ module Test = struct
     let out_file = Exn.protect ~f:(fun () -> f t) ~finally:restore_cwd in
     let output = Io.read_file out_file in
     (* Format.eprintf "print raw output:@.%s@.%!" output; *)
-    let locs =
-      Ocamlc_loc.parse
-        (Format.asprintf "%a@." Pp.to_fmt (Ansi_color.parse output))
-    in
-    List.iteri locs ~f:(fun i report ->
-        printfn ">> error %d" i;
-        print_endline (Dyn.to_string (Ocamlc_loc.dyn_of_report report)))
+    Ocamlc_loc.parse
+      (Format.asprintf "%a@." Pp.to_fmt (Ansi_color.parse output))
+    |> print_errors
 end
 
 let%expect_test "" =
@@ -161,5 +162,72 @@ let%expect_test "mli mismatch" =
         ; ({ path = "test.ml"; line = Single 1; chars = Some (4, 5) },
           Raw "Actual declaration\n\
                ")
+        ]
+    } |}]
+
+let%expect_test "ml mli mismatch 2" =
+  let raw_error =
+    String.trim
+      {|
+File "src/dune_rules/artifacts.ml", line 1:
+Error: The implementation src/dune_rules/artifacts.ml
+       does not match the interface src/dune_rules/.dune_rules.objs/byte/dune_rules__Artifacts.cmi:
+        ... ... In module Bin.Local:
+       Values do not match:
+         val equal :
+           Import.Path.Build.t Import.String.Set.map ->
+           Import.Path.Build.t Import.String.Set.map -> bool
+       is not included in
+         val equal : t -> bool -> bool
+       The type
+         Import.Path.Build.t Import.String.Set.map ->
+         Import.Path.Build.t Import.String.Set.map -> bool
+       is not compatible with the type t -> bool -> bool
+       Type Import.Path.Build.t Import.String.Set.map
+       is not compatible with type bool
+       File "src/dune_rules/artifacts.mli", line 20, characters 4-33:
+         Expected declaration
+       File "src/dune_rules/artifacts.ml", line 50, characters 8-13:
+         Actual declaration
+         |}
+  in
+  String.split_lines raw_error
+  |> String.concat ~sep:"\r\n" |> Ocamlc_loc.parse |> Test.print_errors;
+  [%expect {|
+    >> error 0
+    { loc =
+        { path = "src/dune_rules/artifacts.ml"; line = Single 1; chars = None }
+    ; message =
+        Structured
+          { file_excerpt = None
+          ; message =
+              "The implementation src/dune_rules/artifacts.ml\r\n\
+              \       does not match the interface src/dune_rules/.dune_rules.objs/byte/dune_rules__Artifacts.cmi:\r\n\
+              \        ... ... In module Bin.Local:\r\n\
+              \       Values do not match:\r\n\
+              \         val equal :\r\n\
+              \           Import.Path.Build.t Import.String.Set.map ->\r\n\
+              \           Import.Path.Build.t Import.String.Set.map -> bool\r\n\
+              \       is not included in\r\n\
+              \         val equal : t -> bool -> bool\r\n\
+              \       The type\r\n\
+              \         Import.Path.Build.t Import.String.Set.map ->\r\n\
+              \         Import.Path.Build.t Import.String.Set.map -> bool\r\n\
+              \       is not compatible with the type t -> bool -> bool\r\n\
+              \       Type Import.Path.Build.t Import.String.Set.map\r\n\
+              \       is not compatible with type bool\r"
+          ; severity = Error
+          }
+    ; related =
+        [ ({ path = "src/dune_rules/artifacts.mli"
+           ; line = Single 20
+           ; chars = Some (4, 33)
+           },
+          Raw "Expected declaration\r")
+        ; ({ path = "src/dune_rules/artifacts.ml"
+           ; line = Single 50
+           ; chars = Some (8, 13)
+           },
+          Raw "Actual declaration")
         ]
     } |}]

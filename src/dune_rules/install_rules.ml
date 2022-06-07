@@ -316,8 +316,9 @@ end = struct
   let stanzas_to_entries sctx =
     let ctx = Super_context.context sctx in
     let stanzas = Super_context.stanzas sctx in
+    let* packages = Only_packages.get () in
     let+ init =
-      Package.Name.Map_traversals.parallel_map (Super_context.packages sctx)
+      Package.Name.Map_traversals.parallel_map packages
         ~f:(fun _name (pkg : Package.t) ->
           let init =
             let deprecated_meta_and_dune_files =
@@ -751,7 +752,8 @@ let install_entries sctx (package : Package.t) =
 
 let packages =
   let f sctx =
-    let packages = Package.Name.Map.values (Super_context.packages sctx) in
+    let* packages = Only_packages.get () in
+    let packages = Package.Name.Map.values packages in
     let+ l =
       Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
           install_entries sctx pkg
@@ -875,6 +877,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     Path.Set.of_list_map files ~f:Path.build |> Action_builder.path_set
   in
   let* () =
+    let* all_packages = Only_packages.get () in
     let context = Context.build_context ctx in
     let target_alias = Dep_conf_eval.package_install ~context ~pkg:package in
     let open Action_builder.O in
@@ -887,9 +890,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
             |> Dep.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
                    let pkg =
                      let name = Package.Id.name pkg in
-                     Package.Name.Map.find_exn
-                       (Super_context.packages sctx)
-                       name
+                     Package.Name.Map.find_exn all_packages name
                    in
                    Dep_conf_eval.package_install ~context ~pkg |> Dep.alias) )))
   in
@@ -975,7 +976,8 @@ let scheme_per_ctx_memo =
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->
-      let packages = Package.Name.Map.values (Super_context.packages sctx) in
+      let* packages = Only_packages.get () in
+      let packages = Package.Name.Map.values packages in
       let* schemes = Memo.sequential_map packages ~f:(scheme sctx) in
       Scheme.evaluate ~union:Rules.Dir_rules.union (Scheme.all schemes))
 

@@ -206,9 +206,8 @@ type t =
   { context : Context.t
   ; scopes : Scope.DB.t
   ; public_libs : Lib.DB.t
-  ; stanzas : Dune_file.Stanzas.t Dir_with_dune.t list
   ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
-  ; packages : Package.t Package.Name.Map.t
+  ; stanzas : Stanza.t list Dir_with_dune.t list
   ; artifacts : Artifacts.t
   ; host : t option
   ; lib_entries_by_package : Lib_entry.t list Package.Name.Map.t
@@ -224,8 +223,6 @@ let context_env t = Env_tree.get_context_env t.env_tree
 let stanzas t = t.stanzas
 
 let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
-
-let packages t = t.packages
 
 let equal = (( == ) : t -> t -> bool)
 
@@ -679,7 +676,6 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   ; public_libs
   ; stanzas
   ; stanzas_per_dir
-  ; packages
   ; artifacts
   ; lib_entries_by_package
   ; env_tree

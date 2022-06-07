@@ -89,9 +89,9 @@ let sanitize_site_name name =
   let s = if i <> last then String.sub name ~pos:0 ~len:(i + 1) else name in
   if is_ocaml_keywords s then name ^ "_" else name
 
-let sites_code sctx buf (loc, pkg) =
+let sites_code packages buf (loc, pkg) =
   let package =
-    match Package.Name.Map.find (Super_context.packages sctx) pkg with
+    match Package.Name.Map.find packages pkg with
     | Some p -> p
     | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
   in
@@ -104,9 +104,9 @@ let sites_code sctx buf (loc, pkg) =
       pr buf "      ~suffix:%S" (Section.Site.to_string name);
       pr buf "      ~encoded:%a" encode (Location (section, package_name)))
 
-let plugins_code sctx buf pkg sites =
-  let package =
-    match Package.Name.Map.find (Super_context.packages sctx) pkg with
+let plugins_code packages buf pkg sites =
+  let package : Package.t =
+    match Package.Name.Map.find packages pkg with
     | Some p -> p
     | None -> assert false
   in
@@ -121,6 +121,8 @@ let plugins_code sctx buf pkg sites =
         (String.capitalize site) plugins plugins site)
 
 let setup_rules sctx ~dir (def : Dune_file.Generate_sites_module.t) =
+  let open Memo.O in
+  let* packages = Only_packages.get () in
   let impl () =
     let buf = Buffer.create 1024 in
     if def.sourceroot then sourceroot_code buf;
@@ -132,20 +134,19 @@ let setup_rules sctx ~dir (def : Dune_file.Generate_sites_module.t) =
     in
     if List.is_non_empty sites then (
       pr buf "module Sites = struct";
-      List.iter sites ~f:(sites_code sctx buf);
+      List.iter sites ~f:(sites_code packages buf);
       pr buf "end");
     let plugins =
       Package.Name.Map.of_list_multi (List.map ~f:snd def.plugins)
     in
     if not (Package.Name.Map.is_empty plugins) then (
       pr buf "module Plugins = struct";
-      Package.Name.Map.iteri plugins ~f:(plugins_code sctx buf);
+      Package.Name.Map.iteri plugins ~f:(plugins_code packages buf);
       pr buf "end");
     Buffer.contents buf
   in
   let module_ = Module_name.to_string def.module_ ^ ".ml" in
   let file = Path.Build.relative dir module_ in
-  let open Memo.O in
   let+ () =
     Super_context.add_rule sctx ~dir
       (Action_builder.write_file_dyn file (Action_builder.delayed impl))

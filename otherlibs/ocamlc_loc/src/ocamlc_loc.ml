@@ -81,7 +81,9 @@ let re =
     let file = seq [ str "File "; char '"'; group path; char '"'; char ',' ] in
     let single_marker, line = mark (seq [ str "line"; rep1 space; number ]) in
     let lines = seq [ str "lines"; rep1 space; range ] in
-    let related_marker, related_space = mark (seq [ char '\n'; rep1 blank ]) in
+    let related_marker, related_space =
+      mark (seq [ opt (char '\r'); char '\n'; rep1 blank ])
+    in
     let re =
       seq
         [ opt related_space

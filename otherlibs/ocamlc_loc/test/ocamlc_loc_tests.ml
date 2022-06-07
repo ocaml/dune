@@ -193,7 +193,8 @@ Error: The implementation src/dune_rules/artifacts.ml
   in
   String.split_lines raw_error
   |> String.concat ~sep:"\r\n" |> Ocamlc_loc.parse |> Test.print_errors;
-  [%expect {|
+  [%expect
+    {|
     >> error 0
     { loc =
         { path = "src/dune_rules/artifacts.ml"; line = Single 1; chars = None }
@@ -215,7 +216,7 @@ Error: The implementation src/dune_rules/artifacts.ml
               \         Import.Path.Build.t Import.String.Set.map -> bool\r\n\
               \       is not compatible with the type t -> bool -> bool\r\n\
               \       Type Import.Path.Build.t Import.String.Set.map\r\n\
-              \       is not compatible with type bool\r"
+              \       is not compatible with type bool"
           ; severity = Error
           }
     ; related =
@@ -223,7 +224,7 @@ Error: The implementation src/dune_rules/artifacts.ml
            ; line = Single 20
            ; chars = Some (4, 33)
            },
-          Raw "Expected declaration\r")
+          Raw "Expected declaration")
         ; ({ path = "src/dune_rules/artifacts.ml"
            ; line = Single 50
            ; chars = Some (8, 13)

@@ -359,9 +359,9 @@ let setup_css_rule sctx =
 let sp = Printf.sprintf
 
 let setup_toplevel_index_rule sctx =
-  let list_items =
-    Super_context.packages sctx
-    |> Package.Name.Map.to_list
+  let* list_items =
+    let+ packages = Only_packages.get () in
+    Package.Name.Map.to_list packages
     |> List.filter_map ~f:(fun (name, pkg) ->
            let name = Package.Name.to_string name in
            let link = sp {|<a href="%s/index.html">%s</a>|} name name in
@@ -767,9 +767,9 @@ let has_rules m =
        ; directory_targets = Path.Build.Map.empty
        })
 
-let with_package sctx pkg ~f =
+let with_package pkg ~f =
   let pkg = Package.Name.of_string pkg in
-  let packages = Super_context.packages sctx in
+  let* packages = Only_packages.get () in
   match Package.Name.Map.find packages pkg with
   | None ->
     Memo.return
@@ -792,11 +792,11 @@ let gen_rules sctx ~dir:_ rest =
   | [ "_html" ] ->
     has_rules (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
   | [ "_mlds"; pkg ] ->
-    with_package sctx pkg ~f:(fun pkg ->
+    with_package pkg ~f:(fun pkg ->
         let* _mlds, rules = package_mlds sctx ~pkg in
         Rules.produce rules)
   | [ "_odoc"; "pkg"; pkg ] ->
-    with_package sctx pkg ~f:(fun pkg -> setup_package_odoc_rules sctx ~pkg)
+    with_package pkg ~f:(fun pkg -> setup_package_odoc_rules sctx ~pkg)
   | [ "_odocls"; lib_unique_name_or_pkg ] ->
     has_rules
       ((* TODO we can be a better with the error handling in the case where
@@ -823,8 +823,9 @@ let gen_rules sctx ~dir:_ rest =
              setup_lib_odocl_rules sctx lib ~requires
            | Some pkg -> setup_pkg_odocl_rules pkg)
        and+ () =
+         let* packages = Only_packages.get () in
          match
-           Package.Name.Map.find (SC.packages sctx)
+           Package.Name.Map.find packages
              (Package.Name.of_string lib_unique_name_or_pkg)
          with
          | None -> Memo.return ()
@@ -855,8 +856,9 @@ let gen_rules sctx ~dir:_ rest =
            | None -> setup_lib_html_rules sctx lib
            | Some pkg -> setup_pkg_html_rules pkg)
        and+ () =
+         let* packages = Only_packages.get () in
          match
-           Package.Name.Map.find (SC.packages sctx)
+           Package.Name.Map.find packages
              (Package.Name.of_string lib_unique_name_or_pkg)
          with
          | None -> Memo.return ()

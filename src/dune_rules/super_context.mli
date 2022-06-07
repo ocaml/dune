@@ -24,8 +24,6 @@ val stanzas : t -> Dune_file.Stanzas.t Dir_with_dune.t list
 val stanzas_in :
   t -> dir:Path.Build.t -> Dune_file.Stanzas.t Dir_with_dune.t option
 
-val packages : t -> Package.t Package.Name.Map.t
-
 val host : t -> t
 
 module Lib_entry : sig

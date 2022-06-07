@@ -14,6 +14,9 @@
 - Improve parsing of ocamlc errors. We now correctly strip excerpts and parse
   alerts (#5879, @rgrinberg)
 
+- The `(libraries)` field of the `coq.theory` stanza has been renamed to
+  `(plugins)` and the Coq language version has been bumped to 0.5.
+
 3.3.0 (17-06-2022)
 ------------------
 

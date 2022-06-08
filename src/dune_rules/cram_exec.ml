@@ -190,7 +190,6 @@ type sh_script =
   { script : Path.t
   ; cram_to_output : block_result Cram_lexer.block list
   ; metadata_file : Path.t option
-  ; command_count : int
   }
 
 let read_exit_codes_and_prefix_maps file =
@@ -369,7 +368,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   close_out oc;
   let command_count = !i in
   let metadata_file = Option.some_if (command_count > 0) metadata_file in
-  { script; cram_to_output; metadata_file; command_count }
+  { script; cram_to_output; metadata_file }
 
 let _display_with_bars s =
   List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")

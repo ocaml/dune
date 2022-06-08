@@ -301,7 +301,6 @@ module T = struct
     ; ppx_runtime_deps : t list Resolve.t
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
-    ; user_written_deps : Dune_file.Lib_deps.t
     ; implements : t Resolve.t option
     ; lib_config : Lib_config.t
     ; project : Dune_project.t option
@@ -1018,7 +1017,6 @@ end = struct
         ; pps
         ; resolved_selects
         ; re_exports
-        ; user_written_deps = Lib_info.user_written_deps info
         ; implements
         ; default_implementation
         ; lib_config = db.lib_config

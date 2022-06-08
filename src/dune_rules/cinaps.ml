@@ -6,7 +6,6 @@ type t =
   ; libraries : Lib_dep.t list
   ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
-  ; flags : Ocaml_flags.Spec.t
   }
 
 let name = "cinaps"
@@ -28,8 +27,9 @@ let decode =
      and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
      and+ libraries =
        field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
-     and+ flags = Ocaml_flags.Spec.decode in
-     { loc; files; libraries; preprocess; preprocessor_deps; flags })
+     (* TODO use this field? *)
+     and+ _flags = Ocaml_flags.Spec.decode in
+     { loc; files; libraries; preprocess; preprocessor_deps })
 
 let () =
   let open Dune_lang.Decoder in

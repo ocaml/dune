@@ -30,7 +30,7 @@ module type S = sig
   val encode : t -> Dune_lang.Syntax.Version.t * Dune_lang.t list
 end
 
-module Register (M : S) : sig end
+module Register (_ : S) : sig end
 
 val record_parser :
      unit

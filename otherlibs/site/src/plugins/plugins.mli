@@ -12,7 +12,7 @@ module type S = sig
 end
 
 (** The functor applied in the generated module *)
-module Make (X : sig
+module Make (_ : sig
   val paths : string list
 end) : S
 

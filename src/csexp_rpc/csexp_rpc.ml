@@ -139,7 +139,10 @@ module Session = struct
     let debug res =
       if debug then
         Log.info
-          [ Pp.verbatim ("RPC <<\n" ^ string_of_packet res); Pp.text "<<" ]
+          [ Pp.verbatim
+              (sprintf "RPC (%d) <<\n%s" (Id.to_int t.id) (string_of_packet res))
+          ; Pp.text "<<"
+          ]
     in
     match t.state with
     | Closed ->
@@ -173,7 +176,11 @@ module Session = struct
   let write t sexps =
     if debug then
       Log.info
-        [ Pp.verbatim ("RPC >>\n" ^ string_of_packets sexps); Pp.text ">>" ];
+        [ Pp.verbatim
+            (sprintf "RPC (%id) >>\n%s" (Id.to_int t.id)
+               (string_of_packets sexps))
+        ; Pp.text ">>"
+        ];
     match t.state with
     | Closed -> (
       match sexps with

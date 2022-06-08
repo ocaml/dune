@@ -171,6 +171,11 @@ let test_with_multiple_fsevents ~setup ~test:f =
               Fsevents.create ~paths:[ config.dir ] ~latency:0.0
                 ~f:(make_callback sync ~f:config.on_event)
             in
+            (match config.exclusion_paths with
+            | [] -> ()
+            | paths ->
+              (* apple doesn't like [paths] empty *)
+              Fsevents.set_exclusion_paths res ~paths);
             t := Some res;
             (res, sync))
         |> List.unzip

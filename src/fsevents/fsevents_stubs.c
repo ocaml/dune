@@ -181,7 +181,7 @@ CAMLprim value dune_fsevents_set_exclusion_paths(value v_t, value v_paths) {
   bool ret = FSEventStreamSetExclusionPaths(t->stream, paths);
   CFRelease(paths);
   if (!ret) {
-    // TODO use code errors
+    // wrapped with a code error in the caller
     caml_failwith("Fsevents.set_exclusion_paths: unable to set");
   }
   CAMLreturn(Val_unit);

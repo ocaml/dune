@@ -55,10 +55,6 @@ module Io = struct
     | In_chan ic -> Unix.descr_of_in_channel ic
     | Out_chan oc -> Unix.descr_of_out_channel oc
 
-  let mode_of_channel : type a. a channel -> a mode = function
-    | In_chan _ -> In
-    | Out_chan _ -> Out
-
   let channel_of_descr : type a. _ -> a mode -> a channel =
    fun fd mode ->
     match mode with
@@ -71,7 +67,6 @@ module Io = struct
 
   type 'a t =
     { kind : kind
-    ; mode : 'a mode
     ; fd : Unix.file_descr Lazy.t
     ; channel : 'a channel Lazy.t
     ; mutable status : status
@@ -80,7 +75,6 @@ module Io = struct
   let terminal ch output_on_success =
     let fd = descr_of_channel ch in
     { kind = Terminal output_on_success
-    ; mode = mode_of_channel ch
     ; fd = lazy fd
     ; channel = lazy ch
     ; status = Keep_open
@@ -105,7 +99,7 @@ module Io = struct
       | Out -> Config.dev_null_out
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
-    { kind = Null; mode; fd; channel; status = Keep_open }
+    { kind = Null; fd; channel; status = Keep_open }
 
   let file : type a. _ -> ?perm:int -> a mode -> a t =
    fun fn ?(perm = 0o666) mode ->
@@ -116,7 +110,7 @@ module Io = struct
     in
     let fd = lazy (Unix.openfile (Path.to_string fn) flags perm) in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
-    { kind = File fn; mode; fd; channel; status = Close_after_exec }
+    { kind = File fn; fd; channel; status = Close_after_exec }
 
   let flush : type a. a t -> unit =
    fun t ->

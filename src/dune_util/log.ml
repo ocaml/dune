@@ -8,11 +8,7 @@ module File = struct
     | Out_channel of out_channel
 end
 
-type real =
-  { oc : out_channel option
-  ; buf : Buffer.t
-  ; ppf : Format.formatter
-  }
+type real = { oc : out_channel option }
 
 let t = Fdecl.create Dyn.opaque
 
@@ -36,9 +32,7 @@ let init ?(file = File.Default) () =
         (match Env.get Env.initial "OCAMLPARAM" with
         | Some s -> Printf.sprintf "%S" s
         | None -> "unset"));
-  let buf = Buffer.create 1024 in
-  let ppf = Format.formatter_of_buffer buf in
-  Fdecl.set t (Some { oc; buf; ppf })
+  Fdecl.set t (Some { oc })
 
 let init_disabled () = Fdecl.set t None
 

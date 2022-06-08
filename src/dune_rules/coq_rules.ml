@@ -116,7 +116,6 @@ module Context = struct
     ; ml_flags : 'a Command.Args.t
     ; scope : Scope.t
     ; boot_type : Bootstrap.t
-    ; build_dir : Path.Build.t
     ; profile_flags : string list Action_builder.t
     ; mode : Coq_mode.t
     ; native_includes : Path.Set.t Resolve.t
@@ -275,7 +274,6 @@ module Context = struct
     ; ml_flags
     ; scope
     ; boot_type = Bootstrap.No_boot
-    ; build_dir = (Super_context.context sctx).build_dir
     ; profile_flags
     ; mode
     ; native_includes

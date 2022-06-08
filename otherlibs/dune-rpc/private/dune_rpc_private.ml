@@ -207,7 +207,7 @@ module Client = struct
       type t =
         { read : unit -> Sexp.t option Fiber.t
         ; write : Sexp.t list option -> unit Fiber.t
-        ; mutable closed_read : bool
+        ; closed_read : bool
         ; mutable closed_write : bool
         ; disconnected : unit Fiber.Ivar.t
         }
@@ -441,7 +441,7 @@ module Client = struct
         ; client : t
         ; id : Id.t
         ; mutable next_pending : bool
-        ; mutable counter : int
+        ; counter : int
         ; mutable active : bool
         }
 

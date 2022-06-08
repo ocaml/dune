@@ -14,7 +14,7 @@ type rename_and_edit =
   }
 
 type todo =
-  { mutable to_rename_and_edit : rename_and_edit list
+  { to_rename_and_edit : rename_and_edit list
   ; mutable to_edit : (Path.Source.t * string) list
   }
 

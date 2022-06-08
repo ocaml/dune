@@ -34,16 +34,12 @@ end
 module Bin = struct
   include Bin
 
-  let exists fn =
-    Fs_memo.file_exists fn >>| function
-    | true -> Some fn
-    | false -> None
-
   let which ~path prog =
     let prog = add_exe prog in
     Memo.List.find_map path ~f:(fun dir ->
         let fn = Path.relative dir prog in
-        exists fn)
+        let+ exists = Fs_memo.file_exists fn in
+        if exists then Some fn else None)
 end
 
 module Program = struct
@@ -55,7 +51,8 @@ module Program = struct
   let best_path dir program =
     let exe_path program =
       let fn = Path.relative dir (program ^ Bin.exe) in
-      Bin.exists fn
+      let+ exists = Fs_memo.file_exists fn in
+      if exists then Some fn else None
     in
     if List.mem programs_for_which_we_prefer_opt_ext program ~equal:String.equal
     then
@@ -65,8 +62,39 @@ module Program = struct
       | Some _ as path -> Memo.return path
     else exe_path program
 
-  let which ~path program =
-    Memo.List.find_map path ~f:(fun dir -> best_path dir program)
+  module rec Rec : sig
+    val which : path:Path.t list -> string -> Path.t option Memo.t
+  end = struct
+    open Rec
+
+    let which_impl (path, program) =
+      match path with
+      | [] -> Memo.return None
+      | dir :: path -> (
+        let* res = best_path dir program in
+        match res with
+        | None -> which ~path program
+        | Some prog -> Memo.return (Some prog))
+
+    let which =
+      let memo =
+        let module Input = struct
+          type t = Path.t list * string
+
+          let equal = Tuple.T2.equal (List.equal Path.equal) String.equal
+
+          let hash = Tuple.T2.hash (List.hash Path.hash) String.hash
+
+          let to_dyn = Dyn.opaque
+        end in
+        Memo.create "which"
+          ~input:(module Input)
+          ~cutoff:(Option.equal Path.equal) which_impl
+      in
+      fun ~path prog -> Memo.exec memo (path, prog)
+  end
+
+  include Rec
 end
 
 type t =
@@ -99,7 +127,6 @@ type t =
   ; version : Ocaml.Version.t
   ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; which : string -> Path.t option Memo.t
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
   ; make : Path.t option Memo.Lazy.t
@@ -321,13 +348,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
-  let which_memo =
-    Memo.create
-      (sprintf "which-memo-for-%s" (Context_name.to_string name))
-      ~input:(module Program.Name)
-      ~cutoff:(Option.equal Path.equal) (Program.which ~path)
-  in
-  let which = Memo.exec which_memo in
+  let which = Program.which ~path in
   let which_exn x =
     which x >>| function
     | None -> prog_not_found_in_path x
@@ -616,7 +637,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; version
       ; supports_shared_libraries =
           Dynlink_supported.By_the_os.of_bool supports_shared_libraries
-      ; which
       ; lib_config
       ; build_context
       ; make
@@ -653,6 +673,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         >>| Option.some)
   in
   native :: List.filter_opt others
+
+let which t fname = Program.which ~path:t.path fname
 
 let extend_paths t ~env =
   let t =

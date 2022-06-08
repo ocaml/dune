@@ -87,13 +87,12 @@ type t = private
   ; version : Ocaml.Version.t
   ; stdlib_dir : Path.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; which : string -> Path.t option Memo.t
-        (** Given a program name, e.g. ["ocaml"], find the path to a preferred
-            executable in PATH, e.g. [Some "/path/to/ocaml.opt.exe"]. *)
   ; lib_config : Lib_config.t
   ; build_context : Build_context.t
   ; make : Path.t option Memo.Lazy.t
   }
+
+val which : t -> string -> Path.t option Memo.t
 
 val equal : t -> t -> bool
 

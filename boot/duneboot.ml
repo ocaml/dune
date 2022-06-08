@@ -998,6 +998,8 @@ let common_build_args name ~external_includes ~external_libraries =
     ; external_libraries
     ]
 
+let allow_unstable_sources = [ "-alert"; "-unstable" ]
+
 let build ~ocaml_config ~dependencies ~c_files ~link_flags
     { target = name, main; external_libraries; _ } =
   let ext_obj =
@@ -1027,14 +1029,8 @@ let build ~ocaml_config ~dependencies ~c_files ~link_flags
              Fiber.parallel_iter deps ~f:build >>= fun () ->
              Process.run ~cwd:build_dir Config.compiler
                (List.concat
-                  [ [ "-c"
-                    ; "-g"
-                    ; "-no-alias-deps"
-                    ; "-w"
-                    ; "-49-6"
-                    ; "-alert"
-                    ; "-unstable"
-                    ]
+                  [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49-6" ]
+                  ; allow_unstable_sources
                   ; external_includes
                   ; [ file ]
                   ]))));
@@ -1062,7 +1058,9 @@ let build ~ocaml_config ~dependencies ~c_files ~link_flags
     (List.concat
        [ common_build_args name ~external_includes ~external_libraries
        ; obj_files
-       ; [ "-args"; "compiled_ml_files" ] @ link_flags
+       ; [ "-args"; "compiled_ml_files" ]
+       ; link_flags
+       ; allow_unstable_sources
        ])
 
 let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files ~link_flags

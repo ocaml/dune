@@ -383,7 +383,7 @@ let%test_module "long polling" =
           ~diff:(fun ~last ~now ->
             match last with
             | None -> now
-            | Some last -> (now - last))
+            | Some last -> now - last)
       in
       rpc
 
@@ -480,18 +480,23 @@ let%test_module "long polling" =
             Client.Stream.cancel poller)
           (fun () ->
             printfn "client: waiting for second value (that will never come)";
-            let+ () = Fiber.fork_and_join_unit req (Fiber.Ivar.fill ready_to_cancel) in
+            let+ () =
+              Fiber.fork_and_join_unit req (Fiber.Ivar.fill ready_to_cancel)
+            in
             printfn "client: finishing session")
       in
       test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
       [%expect.unreachable]
-    [@@expect.uncaught_exn {|
+      [@@expect.uncaught_exn
+        {|
       (Test_scheduler.Never)
       Trailing output
       ---------------
       client: received 1
       client: waiting for second value (that will never come)
-      client: cancelling |}]
+      client: cancelling
+      client: no more values
+      client: finishing session |}]
 
     let%expect_test "long polling - server side termination" =
       let client client =

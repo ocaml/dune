@@ -37,22 +37,13 @@ let dev_mode_warnings =
     let wrange_to_flag (x, y) =
       if x = y then sprintf "@%d" x else sprintf "@%d..%d" x y
     in
-    let acc, last_range =
-      Int.Set.fold ws ~init:([], None) ~f:(fun x (acc, last_range) ->
-          match last_range with
-          | None ->
-            assert (acc = []);
-            ([], Some (x, x))
-          | Some (l, u) ->
-            if succ u = x then (acc, Some (l, succ u))
-            else (wrange_to_flag (l, u) :: acc, Some (x, x)))
-    in
-    let acc =
-      match last_range with
-      | None -> acc
-      | Some (x, y) -> wrange_to_flag (x, y) :: acc
-    in
-    List.rev acc |> String.concat ~sep:""
+    Int.Set.fold ws ~init:[] ~f:(fun x acc ->
+        match acc with
+        | [] -> [ (x, x) ]
+        | (l, u) :: acc when succ u = x -> (l, x) :: acc
+        | _ -> (x, x) :: acc)
+    |> List.rev_map ~f:wrange_to_flag
+    |> String.concat ~sep:""
   in
   fun ~dune_version:_ -> warnings_range all
 

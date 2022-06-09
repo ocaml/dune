@@ -1075,6 +1075,7 @@ let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files ~link_flags
        ; [ "-no-alias-deps"; "-w"; "-49-6" ]
        ; c_files
        ; [ "-args"; "mods_list" ] @ link_flags
+       ; allow_unstable_sources
        ])
 
 let rec rm_rf fn =

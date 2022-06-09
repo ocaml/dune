@@ -1,7 +1,6 @@
-open! Stdune
+open Import
 open Fiber.O
 open Dune_rpc_server
-open Import
 module Initialize = Dune_rpc.Initialize
 module Public = Dune_rpc.Public
 module Versioned = Dune_rpc.Versioned
@@ -18,7 +17,6 @@ module Source_tree = Dune_engine.Source_tree
 module Build_config = Dune_engine.Build_config
 module Dune_project = Dune_engine.Dune_project
 module Diff_promotion = Dune_engine.Diff_promotion
-module Build_system = Dune_engine.Build_system
 module Build_outcome = Decl.Build_outcome
 module String_with_vars = Dune_lang.String_with_vars
 module Pform = Dune_lang.Pform

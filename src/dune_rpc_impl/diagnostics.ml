@@ -1,5 +1,4 @@
-open! Stdune
-module Dune_rpc = Dune_rpc_private
+open Import
 module Initialize = Dune_rpc.Initialize
 module Public = Dune_rpc.Public
 module Server_notifications = Dune_rpc.Server_notifications
@@ -10,7 +9,6 @@ module Diagnostic = Dune_rpc.Diagnostic
 module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
 module Source_tree = Dune_engine.Source_tree
-module Build_system = Dune_engine.Build_system
 module Dune_project = Dune_engine.Dune_project
 
 let absolutize_paths ~dir (loc : Loc.t) =

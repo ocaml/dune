@@ -54,14 +54,10 @@ let setup_client_server () =
   let connect () = Chan.connect client_chan server_chan in
   (client_chan, sessions, connect)
 
-let test ?(private_menu = []) ?no_real_methods ~client ~handler ~init () =
-  let () =
-    match no_real_methods with
-    | Some () -> ()
-    | None ->
-      Handler.implement_notification handler Procedures.Public.shutdown
-        (fun _ _ -> failwith "shutdown called")
-  in
+let test ?(private_menu = []) ?(real_methods = true) ~client ~handler ~init () =
+  if real_methods then
+    Handler.implement_notification handler Procedures.Public.shutdown
+      (fun _ _ -> failwith "shutdown called");
   let run =
     let client_chan, sessions, connect = setup_client_server () in
     let client () =
@@ -100,7 +96,7 @@ let%expect_test "initialize scheduler with rpc" =
 let%expect_test "no methods in common" =
   let handler = Handler.create ~on_init ~version:(2, 0) () in
   let init = init ~version:(2, 5) () in
-  test ~init ~no_real_methods:() ~client:(fun _ -> assert false) ~handler ();
+  test ~init ~real_methods:false ~client:(fun _ -> assert false) ~handler ();
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|

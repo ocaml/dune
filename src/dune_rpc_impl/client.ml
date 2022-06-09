@@ -1,3 +1,5 @@
+open Import
+
 module Fiber = struct
   include Fiber
 
@@ -6,4 +8,4 @@ module Fiber = struct
     Fiber.Stream.In.parallel_iter stream ~f
 end
 
-include Dune_rpc_private.Client.Make (Fiber) (Csexp_rpc.Session)
+include Dune_rpc.Client.Make (Fiber) (Csexp_rpc.Session)

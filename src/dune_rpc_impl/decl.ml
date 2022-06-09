@@ -1,6 +1,5 @@
-open Dune_rpc_private
-
-(* Internal RPC requests *)
+open Import
+open Dune_rpc
 
 module Build_outcome = struct
   type t = Dune_engine.Scheduler.Run.Build_outcome.t =

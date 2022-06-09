@@ -2,6 +2,7 @@ open! Stdune
 open Import
 
 let wait_for_server common =
+  (* XXX the name wait is confusing. There's no waiting going on here. *)
   match (Dune_rpc_impl.Where.get (), Common.rpc common) with
   | None, None -> User_error.raise [ Pp.text "rpc server not running" ]
   | Some p, Some _ ->

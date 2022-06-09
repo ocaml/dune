@@ -6,18 +6,20 @@ csl: refs.csl
 
 # Memo: an incremental computation library that powers Dune
 
-Andrey Mokhov, Arseniy Alekseyev, Jeremie Dimino
+Andrey Mokhov, Arseniy Alekseyev
 
 *Jane Street, London, United Kingdom*
 
 ### Abstract
 
-We present Memo, an incremental computation library that supports the
-file-watching build mode in Dune 3.0. The requirements from the build systems
-domain make Memo a unique point in the design space of incremental computation
-libraries. In particular, Memo needs to cope with concurrency, dynamic
-dependencies, dependency cycles, non-determinism, and scale to computation
-graphs containing tens of millions of incremental nodes.
+We present Memo, an incremental computation library that supports a new, faster
+and more scalable, file-watching build mode in Dune 3.0. The requirements from
+the build systems domain make Memo a unique point in the design space of
+incremental computation libraries. Specifically, Memo needs to cope with
+concurrency, dynamic dependencies, dependency cycles, and non-determinism;
+provide support for efficiently collecting and reporting user-friendly errors;
+and scale to computation graphs containing tens of millions of incremental
+nodes.
 
 ## Introduction
 
@@ -29,11 +31,11 @@ the project's source tree, re-parsing all build specification files, and
 re-generating all build rules from scratch every time, Dune uses an incremental
 computation library called Memo. Below we briefly introduce the Memo's API.
 
-Memo provides a monadic API built on top of the *concurrency monad* `Fiber`.
-Dune uses `Fiber` to speed up builds by executing external commands in parallel,
-e.g., running multiple instances of `ocamlopt` to compile independent source
-files. To inject a *fiber* into the `Memo` monad, and to extract it back, one
-can use the following pair of functions:
+Memo provides a monadic API built on top of the *structured concurrency monad*
+`Fiber`. Dune uses `Fiber` to speed up builds by executing external commands in
+parallel, e.g., running multiple instances of `ocamlopt` to compile independent
+source files. To inject a *fiber* into the `Memo` monad, and to extract it back,
+one can use the following pair of functions:
 
 ```ocaml
   val of_fiber : 'a Fiber.t -> 'a Memo.t
@@ -41,10 +43,13 @@ can use the following pair of functions:
 ```
 
 More interestingly, functions in the `Memo` monad can be memoized and cached
-between different build runs:
+between different build runs[^1]:
+
+[^1]: The function `create` takes a few more arguments, e.g., for reporting good
+error messages, which we omit for the sake of clarity.
 
 ```ocaml
-  val create : ('i -> 'o Memo.t) -> ('i, 'o) Memo.Table.t (* Some arguments are omitted *)
+  val create : ('i -> 'o Memo.t) -> ('i, 'o) Memo.Table.t
   val exec : ('i, 'o) Memo.Table.t -> 'i -> 'o Memo.t
 ```
 
@@ -90,7 +95,8 @@ overridden for *non-reproducible errors* that should not be cached, for example,
 the errors that occur while Dune cancels the current build by interrupting the
 execution of external commands.
 
-One of the most interesting features of Memo is *dependency cycle detection*.
+One of the most interesting features of Memo compared to other incremental
+computation libraries is *dependency cycle detection*.
 Since Dune supports *dynamic build dependencies* [@mokhov2020build], the
 dependency graph is not known before the build starts. During the build, new
 computation nodes and dependency edges are discovered concurrently, and Memo
@@ -102,7 +108,9 @@ internal build system Jenga) does support concurrency but it detects cycles by
 "stopping the world" and traversing the "frozen" dependency graph to see if
 concurrent computations might have deadlocked by waiting for each other. The
 approach used by Tenacious is conceptually simple but introduces a delay between
-the creation of a dependency cycle and its detection.
+the creation of a dependency cycle and its detection. Memo reports dependency
+cycle errors without delay, and uses the human-readable annotations supplied to
+`create` to make it easier to understand and debug cycles.
 
 Compared to the incremental computation libraries mentioned above, the current
 implementation of Memo makes one unusual design choice. Incremental, Adapton and
@@ -132,10 +140,11 @@ with Async and Lwt.
 
 ## Acknowledgements
 
-We thank Rudi Horn, Rudi Grinberg, Emilio Jesús Gallego Arias, and other Dune
-developers for their contributions to Memo and Dune. We are also grateful to
-Armaël Guéneau for helping us integrate the incremental cycle detection library
-in Memo.
+We thank Jeremie Dimino for driving the design of Memo and for his work on
+incrementalising Dune. We are also grateful to Rudi Horn, Rudi Grinberg, Emilio Jesús Gallego
+Arias and other Dune developers for their many contributions, and to Armaël
+Guéneau for helping us integrate the incremental cycle detection library in
+Memo.
 
 # References
 

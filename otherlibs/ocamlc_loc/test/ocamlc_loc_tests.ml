@@ -135,6 +135,32 @@ let%expect_test "warning" =
     ; related = []
     } |}]
 
+(* FIXME: unused value warning isn't parsed correctly - the file excerpt isn't
+   extracted *)
+let%expect_test "unused value" =
+  let raw_error =
+    String.trim
+      {|
+File "test.ml", line 1, characters 4-7:
+1 | let foo = ()
+        ^^^
+Error (warning 32 [unused-value-declaration]): unused value foo.
+    |}
+  in
+  String.split_lines raw_error
+  |> String.concat ~sep:"\r\n" |> Ocamlc_loc.parse |> Test.print_errors;
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "test.ml"; line = Single 1; chars = Some (4, 7) }
+    ; message =
+        Raw
+          "1 | let foo = ()\r\n\
+          \        ^^^\r\n\
+           Error (warning 32 [unused-value-declaration]): unused value foo."
+    ; related = []
+    } |}]
+
 let%expect_test "mli mismatch" =
   Test.create (fun t ->
       let open Test in
@@ -191,8 +217,7 @@ Error: The implementation src/dune_rules/artifacts.ml
          Actual declaration
          |}
   in
-  String.split_lines raw_error
-  |> String.concat ~sep:"\r\n" |> Ocamlc_loc.parse |> Test.print_errors;
+  Ocamlc_loc.parse raw_error |> Test.print_errors;
   [%expect
     {|
     >> error 0

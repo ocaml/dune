@@ -235,17 +235,6 @@ module DB = struct
 
               (loc, theory))
         in
-        let theories =
-          let open Resolve.O in
-          let* boot = boot in
-          match boot with
-          | None -> theories
-          | Some boot ->
-            let+ theories = theories in
-            (* TODO: if lib is boot, don't add boot dep *)
-            (* maybe use the loc for boot? *)
-            (Loc.none, boot) :: theories
-        in
         let map_error x =
           let human_readable_description () = Id.pp id in
           Resolve.push_stack_frame ~human_readable_description x

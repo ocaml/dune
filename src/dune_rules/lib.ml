@@ -246,8 +246,6 @@ module Id : sig
 
   val to_dep_path_lib : t -> Dep_path.Entry.Lib.t
 
-  val hash : t -> int
-
   val compare : t -> t -> Ordering.t
 
   include Comparator.OPS with type t := t
@@ -280,8 +278,6 @@ end = struct
   let to_dep_path_lib { path; name } = { Dep_path.Entry.Lib.path; name }
 
   include (Comparator.Operators (T) : Comparator.OPS with type t := T.t)
-
-  let hash { path; name } = Tuple.T2.hash Path.hash Lib_name.hash (path, name)
 
   let make ~path ~name = { path; name }
 
@@ -431,9 +427,10 @@ let wrapped t =
       assert false (* will always be specified in dune package *)
     | Some (This x) -> Some x)
 
-let equal l1 l2 = Ordering.is_eq (compare l1 l2)
+(* We can't write a structural equality because of all the lazy fields *)
+let equal = ( == )
 
-let hash t = Id.hash t.unique_id
+let hash = Poly.hash
 
 include Comparable.Make (T)
 

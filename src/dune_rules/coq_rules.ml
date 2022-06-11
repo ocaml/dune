@@ -77,11 +77,23 @@ module Bootstrap = struct
       | false -> Bootstrap lib
       | true -> Bootstrap_prelude)
 
-  let flags =
+  let boot_lib_flags ~coqdoc lib =
+    let open Command in
+    let dir = Coq_lib.src_root lib in
+    if coqdoc then [ Args.A "--coqlib"; Args.Path (Path.build dir) ]
+    else
+      let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
+      [ Args.A "-boot"
+      ; Args.A binding_flag
+      ; Path (Path.build dir)
+      ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
+      ]
+
+  let flags ~coqdoc =
     let open Command in
     function
     | No_boot -> []
-    | Bootstrap _lib -> [ Args.A "-boot" ]
+    | Bootstrap lib -> boot_lib_flags ~coqdoc lib
     | Bootstrap_prelude -> [ Args.As [ "-boot"; "-noinit" ] ]
 end
 
@@ -156,7 +168,7 @@ module Context = struct
     in
     [ Command.Args.Dyn
         (Resolve.Memo.map
-           ~f:(fun b -> Command.Args.S (Bootstrap.flags b))
+           ~f:(fun b -> Command.Args.S (Bootstrap.flags ~coqdoc:false b))
            cctx.boot_type
         |> Resolve.Memo.read)
     ; S file_flags
@@ -208,7 +220,7 @@ module Context = struct
     in
     [ Command.Args.Dyn
         (Resolve.Memo.map
-           ~f:(fun b -> Command.Args.S (Bootstrap.flags b))
+           ~f:(fun b -> Command.Args.S (Bootstrap.flags ~coqdoc:true b))
            cctx.boot_type
         |> Resolve.Memo.read)
     ; S file_flags
@@ -531,14 +543,32 @@ let source_rule ~sctx theories =
     in
     List.concat l |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m)))
 
+let setup_coqdoc_rules ~sctx ~cctx ~dir (s : Theory.t) coq_modules =
+  let name = snd s.name in
+  let loc = s.buildable.loc in
+  let rule =
+    let file_flags = Context.coqdoc_file_flags cctx in
+    fun mode ->
+      let* () =
+        coqdoc_rule cctx ~sctx ~mode ~theories_deps:cctx.theories_deps ~name
+          ~file_flags coq_modules
+        |> Super_context.add_rule ~loc ~dir sctx
+      in
+      Coqdoc_mode.directory mode cctx.dir name
+      |> Path.build |> Action_builder.path
+      |> Rules.Produce.Alias.add_deps (Coqdoc_mode.alias mode ~dir) ~loc
+  in
+  let* () = rule Html in
+  rule Latex
+
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
-  let scope = Super_context.find_scope_by_dir sctx dir in
+  let loc, name = (s.buildable.loc, snd s.name) in
+  let scope = SC.find_scope_by_dir sctx dir in
   let coq_lib_db = Scope.coq_libs scope in
   let theory =
     Coq_lib.DB.resolve coq_lib_db ~coq_lang_version:s.buildable.coq_lang_version
       s.name
   in
-  let name = snd s.name in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
   let* cctx =
     let wrapper_name = Coq_lib_name.wrapper name in
@@ -564,23 +594,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     in
     source_rule ~sctx theories
   in
-  let loc = s.buildable.loc in
-  let* () =
-    let rule =
-      let file_flags = Context.coqdoc_file_flags cctx in
-      fun mode ->
-        let* () =
-          coqdoc_rule cctx ~sctx ~mode ~theories_deps:cctx.theories_deps ~name
-            ~file_flags coq_modules
-          |> Super_context.add_rule ~loc ~dir sctx
-        in
-        Coqdoc_mode.directory mode cctx.dir name
-        |> Path.build |> Action_builder.path
-        |> Rules.Produce.Alias.add_deps (Coqdoc_mode.alias mode ~dir) ~loc
-    in
-    let* () = rule Html in
-    rule Latex
-  in
+  let* () = setup_coqdoc_rules ~sctx ~cctx ~dir s coq_modules in
   List.concat_map coq_modules ~f:(fun m ->
       let cctx = Context.for_module cctx m in
       let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in

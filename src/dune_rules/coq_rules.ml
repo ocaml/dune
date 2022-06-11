@@ -536,9 +536,45 @@ let source_rule ~sctx theories =
     in
     List.concat l |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m)))
 
-let setup_coqdoc_rules ~sctx ~cctx ~dir (s : Theory.t) coq_modules =
+let setup_cctx_and_modules ~sctx ~dir ~dir_contents (s : Theory.t) theory =
   let name = snd s.name in
+  let wrapper_name = Coq_lib_name.wrapper name in
+  let theories_deps =
+    Resolve.Memo.bind theory ~f:(fun theory ->
+        Resolve.Memo.lift @@ Coq_lib.theories_closure theory)
+  in
+  let* coq_dir_contents = Dir_contents.coq dir_contents in
+  let theory_dirs =
+    Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
+  in
+  let coqc_dir = (Super_context.context sctx).build_dir in
+  let+ cctx =
+    Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
+      s.buildable
+  in
+  let coq_modules = Coq_sources.library coq_dir_contents ~name in
+  (cctx, coq_modules)
+
+let setup_vo_rules ~sctx ~dir ~(cctx : _ Context.t) (s : Theory.t) theory
+    coq_modules =
   let loc = s.buildable.loc in
+  let source_rule =
+    let theories =
+      let open Resolve.Memo.O in
+      let* theory = theory in
+      let+ theories = cctx.theories_deps in
+      theory :: theories
+    in
+    source_rule ~sctx theories
+  in
+  List.concat_map coq_modules ~f:(fun m ->
+      let cctx = Context.for_module cctx m in
+      let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
+      [ coqc; coqdep ])
+  |> Super_context.add_rules ~loc ~dir sctx
+
+let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
+  let loc, name = (s.buildable.loc, snd s.name) in
   let rule =
     let file_flags = Context.coqdoc_file_flags cctx in
     fun mode ->
@@ -555,44 +591,18 @@ let setup_coqdoc_rules ~sctx ~cctx ~dir (s : Theory.t) coq_modules =
   rule Latex
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
-  let loc, name = (s.buildable.loc, snd s.name) in
-  let scope = SC.find_scope_by_dir sctx dir in
-  let coq_lib_db = Scope.coq_libs scope in
   let theory =
+    let scope = SC.find_scope_by_dir sctx dir in
+    let coq_lib_db = Scope.coq_libs scope in
     Coq_lib.DB.resolve coq_lib_db ~coq_lang_version:s.buildable.coq_lang_version
       s.name
   in
-  let* coq_dir_contents = Dir_contents.coq dir_contents in
-  let* cctx =
-    let wrapper_name = Coq_lib_name.wrapper name in
-    let theories_deps =
-      Resolve.Memo.bind theory ~f:(fun theory ->
-          Resolve.Memo.lift @@ Coq_lib.theories_closure theory)
-    in
-    let theory_dirs =
-      Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
-    in
-    let coqc_dir = (Super_context.context sctx).build_dir in
-    Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
-      s.buildable
+  let* cctx, coq_modules =
+    setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory
   in
-  (* List of modules to compile for this library *)
-  let coq_modules = Coq_sources.library coq_dir_contents ~name in
-  let source_rule =
-    let theories =
-      let open Resolve.Memo.O in
-      let* theory = theory in
-      let+ theories = cctx.theories_deps in
-      theory :: theories
-    in
-    source_rule ~sctx theories
-  in
-  let* () = setup_coqdoc_rules ~sctx ~cctx ~dir s coq_modules in
-  List.concat_map coq_modules ~f:(fun m ->
-      let cctx = Context.for_module cctx m in
-      let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
-      [ coqc; coqdep ])
-  |> Super_context.add_rules ~loc ~dir sctx
+  let* () = setup_vo_rules ~sctx ~dir ~cctx s theory coq_modules in
+  let+ () = setup_coqdoc_rules ~sctx ~dir ~cctx s coq_modules in
+  ()
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let name = s.name in

@@ -132,6 +132,16 @@ module Theory = struct
              1.0 version of the Coq language"
         ]
 
+  let boot_has_deps loc =
+    User_error.raise ~loc
+      [ Pp.textf "(boot) libraries cannot have dependencies" ]
+
+  let check_boot_has_no_deps boot { Buildable.theories; _ } =
+    if boot then
+      match theories with
+      | [] -> ()
+      | (loc, _) :: _ -> boot_has_deps loc
+
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
@@ -144,6 +154,8 @@ module Theory = struct
        and+ modules = Stanza_common.modules_field "modules"
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode in
+       (* boot libraries cannot depend on other theories *)
+       check_boot_has_no_deps boot buildable;
        let package = select_deprecation ~package ~public in
        { name
        ; package

@@ -43,6 +43,14 @@ module Util = struct
       ]
     in
     List.concat_map plugins ~f:to_mlpack
+
+  let theory_coqc_flag lib =
+    let dir = Coq_lib.src_root lib in
+    let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
+    [ Command.Args.A binding_flag
+    ; Path (Path.build dir)
+    ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
+    ]
 end
 
 let resolve_program sctx ~loc ~dir prog =
@@ -81,13 +89,7 @@ module Bootstrap = struct
     let open Command in
     let dir = Coq_lib.src_root lib in
     if coqdoc then [ Args.A "--coqlib"; Args.Path (Path.build dir) ]
-    else
-      let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
-      [ Args.A "-boot"
-      ; Args.A binding_flag
-      ; Path (Path.build dir)
-      ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
-      ]
+    else Args.A "-boot" :: Util.theory_coqc_flag lib
 
   let flags ~coqdoc =
     let open Command in
@@ -142,20 +144,11 @@ module Context = struct
     let standard = t.profile_flags in
     Expander.expand_and_eval_set t.expander t.buildable.flags ~standard
 
-  let theories_flags =
-    let setup_theory_flag lib =
-      let dir = Coq_lib.src_root lib in
-      let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
-      [ Command.Args.A binding_flag
-      ; Path (Path.build dir)
-      ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
-      ]
-    in
-    fun t ->
-      Resolve.Memo.args
-        (let open Resolve.Memo.O in
-        let+ libs = t.theories_deps in
-        Command.Args.S (List.concat_map libs ~f:setup_theory_flag))
+  let theories_flags t =
+    Resolve.Memo.args
+      (let open Resolve.Memo.O in
+      let+ libs = t.theories_deps in
+      Command.Args.S (List.concat_map libs ~f:Util.theory_coqc_flag))
 
   let coqc_file_flags cctx =
     let file_flags =

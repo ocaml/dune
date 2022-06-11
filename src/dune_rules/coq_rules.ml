@@ -440,8 +440,8 @@ module Coqdoc_mode = struct
 end
 
 let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
-  let loc = theory.loc in
-  let name = theory.name in
+  let loc = theory.buildable.loc in
+  let name = snd theory.name in
   Path.Build.Map.of_list_exn
     [ (Coqdoc_mode.directory Html obj_dir name, loc)
     ; (Coqdoc_mode.directory Latex obj_dir name, loc)
@@ -532,13 +532,13 @@ let source_rule ~sctx theories =
     List.concat l |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m)))
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
-  let name = s.name in
-  let scope = SC.find_scope_by_dir sctx dir in
+  let scope = Super_context.find_scope_by_dir sctx dir in
   let coq_lib_db = Scope.coq_libs scope in
   let theory =
     Coq_lib.DB.resolve coq_lib_db ~coq_lang_version:s.buildable.coq_lang_version
-      ~loc:s.loc s.name
+      s.name
   in
+  let name = snd s.name in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
   let* cctx =
     let wrapper_name = Coq_lib_name.wrapper name in
@@ -570,8 +570,8 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
       let file_flags = Context.coqdoc_file_flags cctx in
       fun mode ->
         let* () =
-          coqdoc_rule cctx ~sctx ~mode ~theories_deps:cctx.theories_deps
-            ~name:s.name ~file_flags coq_modules
+          coqdoc_rule cctx ~sctx ~mode ~theories_deps:cctx.theories_deps ~name
+            ~file_flags coq_modules
           |> Super_context.add_rule ~loc ~dir sctx
         in
         Coqdoc_mode.directory mode cctx.dir name
@@ -592,9 +592,10 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let scope = SC.find_scope_by_dir sctx dir in
   let coq_lib_db = Scope.coq_libs scope in
   let theory =
-    Coq_lib.DB.resolve coq_lib_db ~loc:s.loc s.name
+    Coq_lib.DB.resolve coq_lib_db name
       ~coq_lang_version:s.buildable.coq_lang_version
   in
+  let name = snd s.name in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
   let* cctx =
     let wrapper_name = Coq_lib_name.wrapper name in
@@ -655,9 +656,9 @@ let install_rules ~sctx ~dir s =
     let loc = s.buildable.loc in
     let scope = SC.find_scope_by_dir sctx dir in
     let* dir_contents = Dir_contents.get sctx ~dir in
-    let name = s.name in
+    let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
-    let dst_suffix = Coq_lib_name.dir s.name in
+    let dst_suffix = Coq_lib_name.dir name in
     (* These are the rules for now, coq lang 2.0 will make this uniform *)
     let dst_dir =
       if s.boot then

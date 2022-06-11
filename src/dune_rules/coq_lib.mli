@@ -47,9 +47,8 @@ module DB : sig
 
   val resolve :
        t
-    -> loc:Loc.t
-    -> Coq_lib_name.t
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
+    -> Loc.t * Coq_lib_name.t
     -> lib Resolve.Memo.t
 
   val requires_for_user_written :

@@ -84,8 +84,7 @@ end
 
 module Theory = struct
   type t =
-    { loc : Loc.t
-    ; name : Coq_lib_name.t
+    { name : Loc.t * Coq_lib_name.t
     ; package : Package.t option
     ; project : Dune_project.t
     ; synopsis : string option
@@ -135,7 +134,7 @@ module Theory = struct
 
   let decode =
     fields
-      (let+ loc, name = field "name" Coq_lib_name.decode
+      (let+ name = field "name" Coq_lib_name.decode
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
@@ -146,8 +145,7 @@ module Theory = struct
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode in
        let package = select_deprecation ~package ~public in
-       { loc
-       ; name
+       { name
        ; package
        ; project
        ; synopsis

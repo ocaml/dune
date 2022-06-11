@@ -116,7 +116,7 @@ module Error = struct
   let duplicate_boot_lib theories =
     let open Coq_stanza.Theory in
     let name (t : Coq_stanza.Theory.t) =
-      let name = Coq_lib_name.to_string t.name in
+      let name = Coq_lib_name.to_string (snd t.name) in
       Pp.textf "%s at %s" name (Loc.to_file_colon_line t.buildable.loc)
     in
     User_error.raise
@@ -155,9 +155,8 @@ module DB = struct
   module rec R : sig
     val resolve :
          t
-      -> loc:Loc.t
       -> coq_lang_version:Dune_sexp.Syntax.Version.t
-      -> Coq_lib_name.t
+      -> Loc.t * Coq_lib_name.t
       -> lib Resolve.Memo.t
   end = struct
     open R
@@ -173,7 +172,8 @@ module DB = struct
 
     let create_from_stanza =
       let create_from_stanza_impl (coq_db, db, dir, (s : Coq_stanza.Theory.t)) =
-        let id = Id.create ~path:dir ~name:s.name in
+        let name = snd s.name in
+        let id = Id.create ~path:dir ~name in
         let coq_lang_version = s.buildable.coq_lang_version in
         let open Memo.O in
         let* boot = if s.boot then Resolve.Memo.return None else boot coq_db in
@@ -199,7 +199,7 @@ module DB = struct
                          [ Pp.textf
                              "private theory %s may not depend on a public \
                               library"
-                             (Coq_lib_name.to_string s.name)
+                             (Coq_lib_name.to_string name)
                          ]
               in
               (loc, lib))
@@ -218,16 +218,19 @@ module DB = struct
                 | Eq -> Resolve.return ()
                 | _ -> Error.incompatible_boot lib.id id))
           in
-          Resolve.Memo.List.map s.buildable.theories ~f:(fun (loc, theory) ->
+          Resolve.Memo.List.map s.buildable.theories
+            ~f:(fun (loc, theory_name) ->
               let open Resolve.Memo.O in
-              let* theory = resolve ~coq_lang_version coq_db ~loc theory in
+              let* theory =
+                resolve ~coq_lang_version coq_db (loc, theory_name)
+              in
               let* () = Resolve.Memo.lift @@ check_boot theory in
               let+ () =
                 if allow_private_deps then Resolve.Memo.return ()
                 else
                   match theory.package with
                   | Some _ -> Resolve.Memo.return ()
-                  | None -> Error.private_deps_not_allowed ~loc theory.id.name
+                  | None -> Error.private_deps_not_allowed ~loc theory_name
               in
 
               (loc, theory))
@@ -250,7 +253,7 @@ module DB = struct
         let theories = map_error theories in
         let libraries = map_error libraries in
 
-        { loc = s.loc
+        { loc = s.buildable.loc
         ; boot
         ; id
         ; implicit = s.boot
@@ -281,7 +284,7 @@ module DB = struct
       let memo =
         Memo.create "create-from-stanza"
           ~human_readable_description:(fun (_, _, path, theory) ->
-            Id.pp (Id.create ~path ~name:theory.name))
+            Id.pp (Id.create ~path ~name:(snd theory.name)))
           ~input:(module Input)
           create_from_stanza_impl
       in
@@ -306,7 +309,7 @@ module DB = struct
         | `Not_found -> `Hidden
         | `Theory _ | `Redirect _ -> `Found (mldb, dir, stanza))
 
-    let resolve coq_db ~loc ~coq_lang_version name =
+    let resolve coq_db ~coq_lang_version (loc, name) =
       match find coq_db ~coq_lang_version name with
       | `Not_found -> Error.theory_not_found ~loc name
       | `Hidden -> Error.hidden_without_composition ~loc name
@@ -319,7 +322,7 @@ module DB = struct
         theory
   end
 
-  open R
+  include R
 
   let rec boot_library_finder t =
     match t.boot with
@@ -350,7 +353,10 @@ module DB = struct
         with
         | [] -> None
         | [ ((theory : Coq_stanza.Theory.t), _entry) ] ->
-          Some (theory.loc, theory.name, theory.buildable.coq_lang_version)
+          Some
+            ( theory.buildable.loc
+            , theory.name
+            , theory.buildable.coq_lang_version )
         | boots ->
           let stanzas = List.map boots ~f:fst in
           Error.duplicate_boot_lib stanzas
@@ -361,7 +367,7 @@ module DB = struct
         let lib =
           Memo.lazy_ (fun () ->
               let t = Fdecl.get t in
-              resolve t ~coq_lang_version ~loc name)
+              resolve t ~coq_lang_version name)
         in
         Some (loc, lib)
     in
@@ -370,11 +376,12 @@ module DB = struct
         match
           Coq_lib_name.Map.of_list_map entries
             ~f:(fun ((theory : Coq_stanza.Theory.t), entry) ->
-              (theory.name, (theory, entry)))
+              (snd theory.name, (theory, entry)))
         with
         | Ok m -> m
         | Error (_name, _, (theory, _entry)) ->
-          Error.duplicate_theory_name ~loc:theory.loc theory.name
+          let loc, name = theory.name in
+          Error.duplicate_theory_name ~loc name
       in
       fun name ->
         match Coq_lib_name.Map.find map name with
@@ -388,18 +395,14 @@ module DB = struct
     Fdecl.get t
 
   let find_many t theories ~coq_lang_version =
-    Resolve.Memo.List.map theories ~f:(fun (loc, name) ->
-        resolve ~coq_lang_version t ~loc name)
+    Resolve.Memo.List.map theories ~f:(resolve ~coq_lang_version t)
 
   let requires_for_user_written db theories ~coq_lang_version =
     let open Memo.O in
     let+ theories =
-      Resolve.Memo.List.map theories ~f:(fun (loc, name) ->
-          resolve ~coq_lang_version db ~loc name)
+      Resolve.Memo.List.map theories ~f:(resolve ~coq_lang_version db)
     in
     Resolve.O.(theories >>= top_closure)
-
-  let resolve db ~loc l ~coq_lang_version = resolve db ~loc ~coq_lang_version l
 end
 
 let theories_closure t = Lazy.force t.theories_closure

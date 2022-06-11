@@ -63,10 +63,12 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
     | Theory.T coq ->
       let modules = Coq_module.eval ~dir coq.modules ~standard:modules in
       let directories =
-        Coq_lib_name.Map.add_exn acc.directories coq.name
+        Coq_lib_name.Map.add_exn acc.directories (snd coq.name)
           (List.map dirs ~f:(fun (d, _, _) -> d))
       in
-      let libraries = Coq_lib_name.Map.add_exn acc.libraries coq.name modules in
+      let libraries =
+        Coq_lib_name.Map.add_exn acc.libraries (snd coq.name) modules
+      in
       let rev_map =
         List.fold_left modules ~init:acc.rev_map ~f:(fun acc m ->
             Coq_module.Map.add_exn acc m (`Theory coq))

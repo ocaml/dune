@@ -25,8 +25,7 @@ end
 
 module Theory : sig
   type t =
-    { loc : Loc.t
-    ; name : Coq_lib_name.t
+    { name : Loc.t * Coq_lib_name.t
     ; package : Package.t option
     ; project : Dune_project.t
     ; synopsis : string option

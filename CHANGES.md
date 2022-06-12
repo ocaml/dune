@@ -25,6 +25,9 @@ Unreleased
   build the HTML and LaTeX documentation repsectively. (#5695, fixes #3760,
   @Alizter)
 
+- Coq theories marked as `(boot)` cannot depend on other theories
+  (#5867, @ejgallego)
+
 3.2.0 (17-05-2022)
 ------------------
 

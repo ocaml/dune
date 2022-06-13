@@ -1,4 +1,8 @@
 (library
  (name xdg)
  (public_name xdg)
+ (c_library_flags -lshell32 -lole32)
+ (foreign_stubs
+  (language c)
+  (names xdg_stubs))
  (synopsis "[Internal] XDG base directories specification implementation"))

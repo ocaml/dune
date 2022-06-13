@@ -10,28 +10,37 @@ type t =
 
 let ( / ) = Filename.concat
 
-let make t env_var unix_default win32_default =
-  let default = if t.win32 then win32_default else unix_default in
+let make t env_var unix_default win32_var =
+  let default =
+    if t.win32 then
+      match win32_var t.env with
+      | None -> ""
+      | Some s -> s
+    else unix_default
+  in
   match t.env env_var with
   | None -> default
   | Some s when Filename.is_relative s -> default
   | Some s -> s
 
+external get_user_cache_dir : unit -> string = "xdg__get_user_cache_dir"
+
 let cache_dir t =
   let home = t.home_dir in
-  make t "XDG_CACHE_HOME" (home / ".cache") (home / "Local Settings" / "Cache")
+  make t "XDG_CACHE_HOME" (home / ".cache") (fun env ->
+      match get_user_cache_dir () with
+      | s -> Some s
+      | exception Not_found -> env "TEMP")
 
 let config_dir t =
   let home = t.home_dir in
-  make t "XDG_CONFIG_HOME" (home / ".config") (home / "Local Settings")
+  make t "XDG_CONFIG_HOME" (home / ".config") (fun env -> env "LOCALAPPDATA")
 
 let data_dir t =
   let home = t.home_dir in
   make t "XDG_DATA_HOME"
     (home / ".local" / "share")
-    (match t.env "AppData" with
-    | Some s -> s
-    | None -> "")
+    (fun env -> env "LOCALAPPDATA")
 
 let create ?win32 ~env () =
   let win32 =
@@ -40,14 +49,10 @@ let create ?win32 ~env () =
     | Some s -> s
   in
   let home_dir =
-    match env "HOME" with
+    let var = if win32 then "USERPROFILE" else "HOME" in
+    match env var with
+    | None -> ""
     | Some s -> s
-    | None ->
-      if win32 then
-        match env "AppData" with
-        | None -> ""
-        | Some s -> s
-      else ""
   in
   let t =
     { env

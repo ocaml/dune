@@ -130,7 +130,7 @@ endif
 
 .PHONY: bench
 bench: release
-	@$(BIN) exec -- ./bench/bench.exe _build/default/dune.exe  2> /dev/null
+	@$(BIN) exec -- ./bench/bench.exe _build/default/dune.exe
 
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)

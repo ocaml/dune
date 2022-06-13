@@ -28,6 +28,7 @@ module Workspace = Dune_rules.Workspace
 module Cached_digest = Dune_engine.Cached_digest
 module Targets = Dune_engine.Targets
 module Profile = Dune_rules.Profile
+module Resolve = Dune_rules.Resolve
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph

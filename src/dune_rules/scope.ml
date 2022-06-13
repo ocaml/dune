@@ -20,6 +20,33 @@ module DB = struct
 
   type t = { by_dir : scope Path.Source.Map.t }
 
+  let find_by_dir_in_map =
+    (* This function is linear in the depth of [dir] in the worst case, so if it
+       shows up in the profile we should memoize it. *)
+    let find_by_dir map (dir : Path.Source.t) =
+      let rec loop d =
+        match Path.Source.Map.find map d with
+        | Some s -> s
+        | None -> (
+          match Path.Source.parent d with
+          | Some d -> loop d
+          | None ->
+            Code_error.raise "find_by_dir: invalid directory"
+              [ ("d", Path.Source.to_dyn d); ("dir", Path.Source.to_dyn dir) ])
+      in
+      loop dir
+    in
+    fun map dir ->
+      if Path.Build.is_root dir then
+        Code_error.raise "Scope.DB.find_by_dir_in_map got an invalid path"
+          [ ("dir", Path.Build.to_dyn dir) ];
+      find_by_dir map (Path.Build.drop_build_context_exn dir)
+
+  let find_by_dir t dir = find_by_dir_in_map t.by_dir dir
+
+  let find_by_project t project =
+    Path.Source.Map.find_exn t.by_dir (Dune_project.root project)
+
   module Found_or_redirect : sig
     type t = private
       | Found of Lib_info.external_
@@ -49,7 +76,7 @@ module DB = struct
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  let create_db_from_stanzas ~parent ~lib_config ~modules_of_lib stanzas =
+  let create_db_from_stanzas ~parent ~lib_config stanzas =
     let open Memo.O in
     let+ (map : Found_or_redirect.t Lib_name.Map.t) =
       Memo.List.map stanzas ~f:(fun stanza ->
@@ -99,25 +126,7 @@ module DB = struct
           | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect None lib
           | Some (Found lib) -> Lib.DB.Resolve_result.found lib))
       ~all:(fun () -> Lib_name.Map.keys map |> Memo.return)
-      ~modules_of_lib ~lib_config
-
-  (* This function is linear in the depth of [dir] in the worst case, so if it
-     shows up in the profile we should memoize it. *)
-  let find_by_dir t (dir : Path.Source.t) =
-    let rec loop d =
-      match Path.Source.Map.find t.by_dir d with
-      | Some s -> s
-      | None -> (
-        match Path.Source.parent d with
-        | Some d -> loop d
-        | None ->
-          Code_error.raise "find_by_dir: invalid directory"
-            [ ("d", Path.Source.to_dyn d); ("dir", Path.Source.to_dyn dir) ])
-    in
-    loop dir
-
-  let find_by_project t project =
-    Path.Source.Map.find_exn t.by_dir (Dune_project.root project)
+      ~lib_config
 
   type redirect_to =
     | Project of Dune_project.t
@@ -131,8 +140,15 @@ module DB = struct
       Lib.DB.Resolve_result.redirect (Some scope.db) (Loc.none, name)
     | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
+  let public_theories ~find_db coq_stanzas =
+    List.filter_map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
+        if Option.is_some stanza.package then
+          Some (stanza, Coq_lib.DB.Theory dir)
+        else None)
+    |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db ~parent:None
+
   (* Create a database from the public libraries defined in the stanzas *)
-  let public_libs t ~installed_libs ~modules_of_lib ~lib_config stanzas =
+  let public_libs t ~installed_libs ~lib_config stanzas =
     let public_libs =
       List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
           match stanza with
@@ -168,13 +184,13 @@ module DB = struct
             ])
     in
     let resolve lib = Memo.return (resolve t public_libs lib) in
-    Lib.DB.create ~parent:(Some installed_libs) ~resolve ~modules_of_lib
+    Lib.DB.create ~parent:(Some installed_libs) ~resolve
       ~all:(fun () -> Lib_name.Map.keys public_libs |> Memo.return)
       ~lib_config ()
 
   module Path_source_map_traversals = Memo.Make_map_traversals (Path.Source.Map)
 
-  let scopes_by_dir context ~modules_of_lib ~projects ~public_libs stanzas
+  let scopes_by_dir context ~projects ~public_libs ~public_theories stanzas
       coq_stanzas =
     let open Memo.O in
     let projects_by_dir =
@@ -193,12 +209,11 @@ module DB = struct
           (Dune_project.root project, stanza))
       |> Path.Source.Map.of_list_multi
     in
-    let coq_db_by_project_dir =
-      List.map coq_stanzas ~f:(fun (dir, t) ->
-          let project = t.Coq_stanza.Theory.project in
-          (Dune_project.root project, (dir, t)))
+    let coq_stanzas_by_project_dir =
+      List.map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
+          let project = stanza.project in
+          (Dune_project.root project, (dir, stanza)))
       |> Path.Source.Map.of_list_multi
-      |> Path.Source.Map.map ~f:Coq_lib.DB.create_from_coqlib_stanzas
     in
     let lib_config = Context.lib_config context in
     let+ db_by_project_dir =
@@ -210,48 +225,59 @@ module DB = struct
       |> Path_source_map_traversals.parallel_map
            ~f:(fun _dir (project, stanzas) ->
              let+ db =
-               create_db_from_stanzas stanzas ~parent:public_libs
-                 ~modules_of_lib ~lib_config
+               create_db_from_stanzas stanzas ~parent:public_libs ~lib_config
              in
              (project, db))
+    in
+    let coq_db_by_project_dir =
+      let find_db dir = snd (find_by_dir_in_map db_by_project_dir dir) in
+      Path.Source.Map.merge projects_by_dir coq_stanzas_by_project_dir
+        ~f:(fun _dir project coq_stanzas ->
+          assert (Option.is_some project);
+          let stanzas = Option.value coq_stanzas ~default:[] in
+          let entries =
+            List.map stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
+                let entry =
+                  match stanza.package with
+                  | None -> Coq_lib.DB.Theory dir
+                  | Some _ -> Redirect public_theories
+                in
+                (stanza, entry))
+          in
+          Some entries)
+      |> Path.Source.Map.map ~f:(fun stanzas ->
+             Coq_lib.DB.create_from_coqlib_stanzas
+               ~parent:(Some public_theories) ~find_db stanzas)
     in
     Path.Source.Map.merge db_by_project_dir coq_db_by_project_dir
       ~f:(fun _dir project_and_db coq_db ->
         let project, db = Option.value_exn project_and_db in
-        let coq_db =
-          match coq_db with
-          | Some db -> db
-          | None -> Coq_lib.DB.create_from_coqlib_stanzas []
-        in
+        let coq_db = Option.value_exn coq_db in
         let root =
           Path.Build.append_source context.build_dir (Dune_project.root project)
         in
         Some { project; db; coq_db; root })
 
-  let create ~context ~installed_libs ~modules_of_lib ~projects stanzas
-      coq_stanzas =
+  let create ~context ~projects stanzas coq_stanzas =
     let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
-    let public_libs =
+    let* public_libs =
       let lib_config = Context.lib_config context in
-      public_libs t ~installed_libs ~lib_config ~modules_of_lib stanzas
+      let+ installed_libs = Lib.DB.installed context in
+      public_libs t ~lib_config ~installed_libs stanzas
+    in
+    let public_theories =
+      public_theories coq_stanzas ~find_db:(fun _ -> public_libs)
     in
     let+ by_dir =
-      scopes_by_dir context ~projects ~public_libs ~modules_of_lib stanzas
+      scopes_by_dir context ~projects ~public_libs ~public_theories stanzas
         coq_stanzas
     in
     let value = { by_dir } in
     Fdecl.set t value;
     (value, public_libs)
 
-  let find_by_dir t dir =
-    if Path.Build.is_root dir then
-      Code_error.raise "Scope.DB.find_by_dir got an invalid path"
-        [ ("dir", Path.Build.to_dyn dir) ];
-    find_by_dir t (Path.Build.drop_build_context_exn dir)
-
-  let create_from_stanzas ~projects ~context ~installed_libs ~modules_of_lib
-      stanzas =
+  let create_from_stanzas ~projects ~context stanzas =
     let stanzas, coq_stanzas =
       Dune_file.fold_stanzas stanzas ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
@@ -271,6 +297,5 @@ module DB = struct
             (acc, (ctx_dir, coq_lib) :: coq_acc)
           | _ -> (acc, coq_acc))
     in
-    create ~projects ~context ~installed_libs ~modules_of_lib stanzas
-      coq_stanzas
+    create ~projects ~context stanzas coq_stanzas
 end

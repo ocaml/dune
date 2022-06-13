@@ -62,7 +62,6 @@ type dst =
 type t =
   { print : string -> unit
   ; close : unit -> unit
-  ; buffer : Buffer.t
   ; mutable after_first_event : bool
   }
 
@@ -83,8 +82,7 @@ let create dst =
     | Out out -> fun () -> Stdlib.close_out out
     | Custom c -> c.close
   in
-  let buffer = Buffer.create 1024 in
-  { print; close; after_first_event = false; buffer }
+  { print; close; after_first_event = false }
 
 let next_leading_char t =
   match t.after_first_event with

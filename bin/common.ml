@@ -34,8 +34,6 @@ type t =
   ; build_dir : string
   ; no_print_directory : bool
   ; store_orig_src_dir : bool
-  ; (* Original arguments for the external-lib-deps hint *)
-    orig_args : string list
   ; rpc : Dune_rpc_impl.Server.t option
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : Watch_mode_config.t
@@ -43,7 +41,6 @@ type t =
   ; dump_memo_graph_file : string option
   ; dump_memo_graph_format : Graph.File_format.t
   ; dump_memo_graph_with_timing : bool
-  ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
   ; stats : Dune_stats.t option
@@ -1009,7 +1006,6 @@ let term ~default_root_is_cwd =
   ; wait_for_filesystem_clock
   ; capture_outputs = not no_buffer
   ; root
-  ; orig_args = []
   ; diff_command
   ; promote
   ; force
@@ -1025,7 +1021,6 @@ let term ~default_root_is_cwd =
   ; dump_memo_graph_file
   ; dump_memo_graph_format
   ; dump_memo_graph_with_timing
-  ; stats_trace_file
   ; always_show_command_line
   ; promote_install_files
   ; stats
@@ -1045,13 +1040,9 @@ let term ~default_root_is_cwd =
 
 let set_rpc t rpc = { t with rpc = Some rpc }
 
-let term_with_default_root_is_cwd =
-  let+ t, orig_args = Term.with_used_args (term ~default_root_is_cwd:true) in
-  { t with orig_args }
+let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
 
-let term =
-  let+ t, orig_args = Term.with_used_args (term ~default_root_is_cwd:false) in
-  { t with orig_args }
+let term = term ~default_root_is_cwd:false
 
 let config_from_config_file = Options_implied_by_dash_p.config_term
 

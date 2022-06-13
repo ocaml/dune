@@ -1,7 +1,6 @@
-open! Stdune
+open Import
 open Fiber.O
 open Dune_rpc_server
-open Import
 module Initialize = Dune_rpc.Initialize
 module Public = Dune_rpc.Public
 module Versioned = Dune_rpc.Versioned
@@ -18,7 +17,6 @@ module Source_tree = Dune_engine.Source_tree
 module Build_config = Dune_engine.Build_config
 module Dune_project = Dune_engine.Dune_project
 module Diff_promotion = Dune_engine.Diff_promotion
-module Build_system = Dune_engine.Build_system
 module Build_outcome = Decl.Build_outcome
 module String_with_vars = Dune_lang.String_with_vars
 module Pform = Dune_lang.Pform
@@ -32,15 +30,7 @@ let dep_parser =
   Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
     Dep_conf.decode
 
-module Client = struct
-  type t = { mutable next_id : int }
-
-  let create () = { next_id = 0 }
-
-  let to_dyn { next_id = _ } =
-    let open Dyn in
-    opaque ()
-end
+module Client = Stdune.Unit
 
 module Session_comparable = Comparable.Make (struct
   type t = Client.t Session.t
@@ -131,14 +121,13 @@ type t =
   { config : Run.Config.t
   ; pending_build_jobs :
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
-  ; pool : Fiber.Pool.t
   ; mutable clients : Clients.t
   }
 
 let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
-    let client = Client.create () in
+    let client = () in
     t.clients <- Clients.add_session t.clients session;
     Fiber.return client
   in
@@ -318,7 +307,7 @@ let create ~root =
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let config = Run.Config.Server { handler; backlog = 10; pool; root } in
-  let res = { config; pending_build_jobs; clients = Clients.empty; pool } in
+  let res = { config; pending_build_jobs; clients = Clients.empty } in
   Fdecl.set t res;
   res
 

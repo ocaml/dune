@@ -18,7 +18,7 @@ module Bin = struct
       match String.Map.find t.local_bins name with
       | Some path -> Memo.return (Ok (Path.build path))
       | None -> (
-        t.context.which name >>| function
+        Context.which t.context name >>| function
         | Some p -> Ok p
         | None ->
           Error
@@ -32,7 +32,7 @@ module Bin = struct
       match String.Map.find t.local_bins name with
       | Some _ -> Memo.return true
       | None -> (
-        t.context.which name >>| function
+        Context.which t.context name >>| function
         | Some _ -> true
         | None -> false)
 

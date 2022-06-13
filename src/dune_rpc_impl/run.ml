@@ -1,5 +1,4 @@
-open Stdune
-module Scheduler = Dune_engine.Scheduler
+open Import
 module Registry = Dune_rpc_private.Registry
 
 module Config = struct
@@ -28,10 +27,10 @@ let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
 module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
 
-let of_config config stats =
+let of_config (config : Config.t) stats =
   match config with
-  | Config.Client -> Client
-  | Config.Server { handler; backlog; pool; root } ->
+  | Client -> Client
+  | Server { handler; backlog; pool; root } ->
     let where = Where.default () in
     let server = Csexp_rpc.Server.create (Where.to_socket where) ~backlog in
     Server { server; handler; where; stats; pool; root }

@@ -12,10 +12,6 @@ val all : t Context_name.Map.t Memo.Lazy.t
 (** Find a super context by name. *)
 val find : Context_name.t -> t option Memo.t
 
-val modules_of_lib :
-  (* to avoid a cycle with [Dir_contents] *)
-  (t -> dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.t) Fdecl.t
-
 val to_dyn : t -> Dyn.t
 
 val context : t -> Context.t
@@ -32,13 +28,6 @@ val packages : t -> Package.t Package.Name.Map.t
 
 val host : t -> t
 
-val get_site_of_packages :
-     t
-  -> loc:Loc.t
-  -> pkg:Package.Name.t
-  -> site:Section.Site.t
-  -> Section.t Memo.t
-
 module Lib_entry : sig
   type t =
     | Library of Lib.Local.t
@@ -49,9 +38,6 @@ val lib_entries_of_package : t -> Package.Name.t -> Lib_entry.t list
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
-
-(** Installed libraries that are not part of the workspace *)
-val installed_libs : t -> Lib.DB.t
 
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)

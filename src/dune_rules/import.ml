@@ -17,4 +17,5 @@ module Pform = Dune_lang.Pform
 module Glob = Dune_lang.Glob
 module Diff = Dune_lang.Action.Diff
 module Outputs = Dune_lang.Action.Outputs
+module Syntax = Dune_sexp.Syntax
 include Dune_engine.No_io

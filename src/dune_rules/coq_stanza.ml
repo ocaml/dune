@@ -23,11 +23,13 @@ let coq_syntax =
     [ ((0, 1), `Since (1, 9))
     ; ((0, 2), `Since (2, 5))
     ; ((0, 3), `Since (2, 8))
+    ; ((0, 4), `Since (3, 3))
     ]
 
 module Buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
+    ; coq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Loc.t * Coq_mode.t
     ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
@@ -35,12 +37,12 @@ module Buildable = struct
     }
 
   let decode =
+    let* coq_lang_version = Dune_lang.Syntax.get_exn coq_syntax in
     let+ loc = loc
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ mode =
-      let* version = Dune_lang.Syntax.get_exn coq_syntax in
       let default =
-        if version < (0, 3) then Coq_mode.Legacy else Coq_mode.VoOnly
+        if coq_lang_version < (0, 3) then Coq_mode.Legacy else Coq_mode.VoOnly
       in
       located
         (field "mode" ~default
@@ -52,7 +54,7 @@ module Buildable = struct
         (Dune_lang.Syntax.since coq_syntax (0, 2) >>> repeat Coq_lib_name.decode)
         ~default:[]
     in
-    { flags; mode; libraries; theories; loc }
+    { flags; mode; coq_lang_version; libraries; theories; loc }
 end
 
 module Extraction = struct
@@ -130,6 +132,16 @@ module Theory = struct
              1.0 version of the Coq language"
         ]
 
+  let boot_has_deps loc =
+    User_error.raise ~loc
+      [ Pp.textf "(boot) libraries cannot have dependencies" ]
+
+  let check_boot_has_no_deps boot { Buildable.theories; _ } =
+    if boot then
+      match theories with
+      | [] -> ()
+      | (loc, _) :: _ -> boot_has_deps loc
+
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
@@ -142,6 +154,8 @@ module Theory = struct
        and+ modules = Stanza_common.modules_field "modules"
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode in
+       (* boot libraries cannot depend on other theories *)
+       check_boot_has_no_deps boot buildable;
        let package = select_deprecation ~package ~public in
        { name
        ; package

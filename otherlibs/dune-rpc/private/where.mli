@@ -38,7 +38,7 @@ module Make (Fiber : sig
 
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
-end) (IO : sig
+end) (_ : sig
   val read_file : string -> (string, exn) result Fiber.t
 
   val analyze_path :

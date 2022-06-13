@@ -995,7 +995,6 @@ module Executables = struct
 
     val make :
          multi:bool
-      -> stanza:string
       -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
@@ -1010,10 +1009,6 @@ module Executables = struct
     type t =
       { names : (Loc.t * string) list
       ; public : public option
-      ; stanza : string
-      ; project : Dune_project.t
-      ; loc : Loc.t
-      ; multi : bool
       }
 
     let names t = t.names
@@ -1056,7 +1051,7 @@ module Executables = struct
 
     let pluralize s ~multi = if multi then s ^ "s" else s
 
-    let make ~multi ~stanza ~allow_omit_names_version =
+    let make ~multi ~allow_omit_names_version =
       let check_valid_name_version = (3, 0) in
       let+ names = if multi then multi_fields else single_fields
       and+ loc = loc
@@ -1068,7 +1063,6 @@ module Executables = struct
            (loc, pkg))
       and+ project = Dune_project.get_exn () in
       let names, public_names = names in
-      let stanza = pluralize stanza ~multi in
       let names =
         let open Dune_lang.Syntax.Version.Infix in
         if dune_syntax >= check_valid_name_version then
@@ -1139,7 +1133,7 @@ module Executables = struct
                 (pluralize "public_name" ~multi)
             ]
       in
-      { names; public; project; stanza; loc; multi }
+      { names; public }
 
     let install_conf t ~ext ~enabled_if =
       Option.map t.public ~f:(fun { package; public_names } ->
@@ -1452,10 +1446,9 @@ module Executables = struct
       }
 
   let single, multi =
-    let stanza = "executable" in
     let make multi =
       fields
-        (let+ names = Names.make ~multi ~stanza ~allow_omit_names_version:(1, 1)
+        (let+ names = Names.make ~multi ~allow_omit_names_version:(1, 1)
          and+ f = common in
          f names ~multi)
     in

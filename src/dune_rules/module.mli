@@ -3,10 +3,9 @@
 open Import
 
 module File : sig
-  type t =
-    { path : Path.t
-    ; dialect : Dialect.t
-    }
+  type t
+
+  val dialect : t -> Dialect.t
 
   val path : t -> Path.t
 

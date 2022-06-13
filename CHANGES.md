@@ -1,6 +1,13 @@
 Unreleased
 ----------
 
+- Introduce project "composition" for coq theories. Coq theories in separate
+  projects can now refer to each other when in the same workspace (#5784,
+  @Alitzer, @rgrinberg)
+
+- Fix hint message for ``data_only_dirs`` that wrongly mentions the unknown
+  constructor ``data_only`` (#5803, @lambdaxdotx)
+
 - Fix creating sandbox directory trees by getting rid of buggy memoization
   (@5794, @rgrinberg, @snowleopard)
 
@@ -17,6 +24,9 @@ Unreleased
   ``mytheory.tex/`` or additionally the aliases `@doc` and `@doc-latex` will
   build the HTML and LaTeX documentation repsectively. (#5695, fixes #3760,
   @Alizter)
+
+- Coq theories marked as `(boot)` cannot depend on other theories
+  (#5867, @ejgallego)
 
 3.2.0 (17-05-2022)
 ------------------

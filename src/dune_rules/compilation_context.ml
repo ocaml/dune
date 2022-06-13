@@ -259,11 +259,21 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 
 let without_bin_annot t = { t with bin_annot = false }
 
+let entry_module_names sctx t =
+  match Lib_info.entry_modules (Lib.info t) with
+  | External d -> Resolve.Memo.of_result d
+  | Local ->
+    let open Memo.O in
+    let+ modules = Dir_contents.modules_of_lib sctx t in
+    let modules = Option.value_exn modules in
+    Resolve.return (Modules.entry_modules modules |> List.map ~f:Module.name)
+
 let root_module_entries t =
   let open Action_builder.O in
   let* requires = Resolve.Memo.read t.requires_compile in
   let* l =
     Action_builder.List.map requires ~f:(fun lib ->
-        Action_builder.of_memo (Lib.entry_module_names lib) >>= Resolve.read)
+        Action_builder.of_memo (entry_module_names t.super_context lib)
+        >>= Resolve.read)
   in
   Action_builder.return (List.concat l)

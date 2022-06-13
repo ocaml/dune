@@ -207,7 +207,7 @@ module Client = struct
       type t =
         { read : unit -> Sexp.t option Fiber.t
         ; write : Sexp.t list option -> unit Fiber.t
-        ; mutable closed_read : bool
+        ; closed_read : bool
         ; mutable closed_write : bool
         ; disconnected : unit Fiber.Ivar.t
         }
@@ -266,7 +266,12 @@ module Client = struct
 
     type t =
       { chan : Chan.t
-      ; requests : (Id.t, Response.t Fiber.Ivar.t) Table.t
+      ; requests :
+          ( Id.t
+          , [ `Cancelled
+            | `Pending of [ `Completed of Response.t | `Cancelled ] Fiber.Ivar.t
+            ] )
+          Table.t
       ; initialize : Initialize.Request.t
       ; mutable next_id : int
       ; mutable running : bool
@@ -302,16 +307,19 @@ module Client = struct
         Fiber.fork_and_join_unit
           (fun () -> Chan.write t.chan None)
           (fun () ->
-            Fiber.parallel_iter ivars ~f:(fun (id, ivar) ->
-                let error =
-                  let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
-                  Response.Error.create ~kind:Code_error ~payload
-                    ~message:
-                      "connection terminated. this request will never receive \
-                       a response"
-                    ()
-                in
-                Fiber.Ivar.fill ivar (Error error)))
+            Fiber.parallel_iter ivars ~f:(fun (id, status) ->
+                match status with
+                | `Cancelled -> Fiber.return ()
+                | `Pending ivar ->
+                  let error =
+                    let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
+                    Response.Error.create ~kind:Code_error ~payload
+                      ~message:
+                        "connection terminated. this request will never \
+                         receive a response"
+                      ()
+                  in
+                  Fiber.Ivar.fill ivar (`Completed (Error error))))
 
     let terminate_with_error t message info =
       Fiber.fork_and_join_unit
@@ -361,7 +369,7 @@ module Client = struct
         Error err
       | true ->
         let ivar = Fiber.Ivar.create () in
-        (match Table.add conn.requests id ivar with
+        (match Table.add conn.requests id (`Pending ivar) with
         | Ok () -> ()
         | Error _ -> Code_error.raise "duplicate id" [ ("id", Id.to_dyn id) ]);
         Ok ivar
@@ -369,7 +377,7 @@ module Client = struct
     let request_untyped conn (id, req) =
       let* () = Fiber.return () in
       match prepare_request' conn (id, req) with
-      | Error e -> Fiber.return (Error e)
+      | Error e -> Fiber.return (`Completed (Error e))
       | Ok ivar ->
         let* () = send conn (Some [ Request (id, req) ]) in
         Fiber.Ivar.read ivar
@@ -408,7 +416,18 @@ module Client = struct
       let id = gen_id t id in
       let req = encode_req req in
       let* res = request_untyped t (id, req) in
-      parse_response t decode_resp res
+      match res with
+      | `Cancelled -> Fiber.return `Cancelled
+      | `Completed res ->
+        let+ res = parse_response t decode_resp res in
+        `Completed res
+
+    let cancel t id =
+      match Table.find t.requests id with
+      | None | Some `Cancelled -> Fiber.return ()
+      | Some (`Pending ivar) ->
+        Table.remove t.requests id;
+        Fiber.Ivar.fill ivar `Cancelled
 
     let make_notification (type a) t ({ encode } : a Versioned.notification)
         (n : a) (k : Call.t -> 'a) : 'a =
@@ -440,8 +459,8 @@ module Client = struct
         ; cancel : Id.t Versioned.notification
         ; client : t
         ; id : Id.t
-        ; mutable next_pending : bool
-        ; mutable counter : int
+        ; mutable pending_request_id : Id.t option
+        ; counter : int
         ; mutable active : bool
         }
 
@@ -456,9 +475,9 @@ module Client = struct
         ; cancel
         ; client
         ; id
+        ; pending_request_id = None
         ; counter = 0
         ; active = true
-        ; next_pending = false
         }
 
       let check_active t =
@@ -468,10 +487,11 @@ module Client = struct
       let next t =
         let* () = Fiber.return () in
         check_active t;
-        if t.next_pending then
+        (match t.pending_request_id with
+        | Some _ ->
           Code_error.raise "Poll.next: previous Poll.next did not terminate yet"
-            [];
-        t.next_pending <- true;
+            []
+        | None -> ());
         let id =
           Sexp.record
             [ ("poll", Id.to_sexp t.id)
@@ -479,11 +499,13 @@ module Client = struct
             ]
           |> Id.make
         in
+        t.pending_request_id <- Some id;
         let+ res = request ~id t.client t.poll t.id in
-        t.next_pending <- false;
+        t.pending_request_id <- None;
         match res with
-        | Ok res -> res
-        | Error e ->
+        | `Cancelled -> None
+        | `Completed (Ok res) -> res
+        | `Completed (Error e) ->
           (* cwong: Should this really be a raise? *)
           raise (Response.Error.E e)
 
@@ -491,8 +513,22 @@ module Client = struct
         let* () = Fiber.return () in
         check_active t;
         t.active <- false;
-        notification t.client t.cancel t.id
+        (* XXX should we add a pool to stop waiting for the notification to
+           reach the server? *)
+        let notify () = notification t.client t.cancel t.id in
+        match t.pending_request_id with
+        | None -> notify ()
+        | Some id ->
+          Fiber.fork_and_join_unit (fun () -> cancel t.client id) notify
     end
+
+    let no_cancel = function
+      | `Cancelled -> assert false
+      | `Completed s -> s
+
+    let request ?id t spec req =
+      let+ res = request ?id t spec req in
+      no_cancel res
 
     let poll ?id client sub =
       let* () = Fiber.return () in
@@ -520,10 +556,15 @@ module Client = struct
         let ivar = prepare_request' t.client (id, call) in
         match ivar with
         | Error e -> Fiber.return (Error e)
-        | Ok ivar ->
+        | Ok ivar -> (
           t.pending <- Packet.Query.Request (id, call) :: t.pending;
           let* res = Fiber.Ivar.read ivar in
-          parse_response t.client decode_resp res
+          match res with
+          | `Cancelled ->
+            (* currently impossible because there's no batching for polling and
+               cancellation is only available for polled requests *)
+            assert false
+          | `Completed res -> parse_response t.client decode_resp res)
 
       let submit t =
         let* () = Fiber.return () in
@@ -561,9 +602,11 @@ module Client = struct
               | Ok () -> Fiber.return ())
           | Response (id, response) -> (
             match Table.find t.requests id with
-            | Some ivar ->
+            | Some status -> (
               Table.remove t.requests id;
-              Fiber.Ivar.fill ivar response
+              match status with
+              | `Pending ivar -> Fiber.Ivar.fill ivar (`Completed response)
+              | `Cancelled -> Fiber.return ())
             | None ->
               terminate_with_error t "unexpected response"
                 [ ("id", Id.to_dyn id); ("response", Response.to_dyn response) ]
@@ -664,7 +707,7 @@ module Client = struct
           let initialize = Initialize.Request.to_call initialize in
           request_untyped client (id, initialize)
         in
-        match init with
+        match no_cancel init with
         | Error e -> raise (Response.Error.E e)
         | Ok csexp ->
           let* menu =
@@ -683,7 +726,8 @@ module Client = struct
                 Version_negotiation.Request.to_call request
               in
               let+ resp = request_untyped client (id, supported_versions) in
-              match resp with
+              (* we don't allow cancelling negotiation *)
+              match no_cancel resp with
               | Error e -> raise (Response.Error.E e)
               | Ok sexp -> (
                 match

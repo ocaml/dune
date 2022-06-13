@@ -206,7 +206,7 @@ type t =
   { context : Context.t
   ; scopes : Scope.DB.t
   ; public_libs : Lib.DB.t
-  ; installed_libs : Lib.DB.t
+  ; findlib : Findlib.t
   ; stanzas : Dune_file.Stanzas.t Dir_with_dune.t list
   ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
   ; packages : Package.t Package.Name.Map.t
@@ -242,48 +242,11 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
-let any_package_aux ~packages ~context pkg =
-  match Package.Name.Map.find packages pkg with
-  | Some p -> Memo.return (Some (Expander.Local p))
-  | None -> (
-    let open Memo.O in
-    Findlib.find_root_package context.Context.findlib pkg >>| function
-    | Ok p -> Some (Expander.Installed p)
-    | Error Not_found -> None
-    | Error (Invalid_dune_package exn) -> Exn.raise exn)
-
-let any_package t pkg =
-  any_package_aux ~packages:t.packages ~context:t.context pkg
-
-let get_site_of_packages_aux ~loc ~any_package ~pkg ~site =
-  let find_site sites ~pkg ~site =
-    match Section.Site.Map.find sites site with
-    | Some section -> section
-    | None ->
-      User_error.raise ~loc
-        [ Pp.textf "Package %s doesn't define a site %s"
-            (Package.Name.to_string pkg)
-            (Section.Site.to_string site)
-        ]
-  in
-  let open Memo.O in
-  any_package pkg >>| function
-  | Some (Expander.Local p) -> find_site p.Package.sites ~pkg ~site
-  | Some (Expander.Installed p) -> find_site p.sites ~pkg ~site
-  | None ->
-    User_error.raise ~loc
-      [ Pp.textf "The package %s is not found" (Package.Name.to_string pkg) ]
-
-let get_site_of_packages t ~loc ~pkg ~site =
-  get_site_of_packages_aux ~loc ~any_package:(any_package t) ~pkg ~site
-
 let lib_entries_of_package t pkg_name =
   Package.Name.Map.find t.lib_entries_by_package pkg_name
   |> Option.value ~default:[]
 
 let public_libs t = t.public_libs
-
-let installed_libs t = t.installed_libs
 
 let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
 
@@ -564,14 +527,9 @@ let create_lib_entries_by_package ~public_libs stanzas =
          (List.sort ~compare:(fun a b ->
               Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
 
-let modules_of_lib = Fdecl.create Dyn.opaque
-
 let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
-  let installed_libs = Lib.DB.create_from_findlib context.findlib in
-  let modules_of_lib_for_scope = Fdecl.create Dyn.opaque in
   let* scopes, public_libs =
-    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs
-      ~modules_of_lib:modules_of_lib_for_scope stanzas
+    Scope.DB.create_from_stanzas ~projects ~context stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_file.dir; project; stanzas } ->
@@ -586,14 +544,17 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   in
   let stanzas_per_dir =
     Path.Build.Map.of_list_map_exn stanzas ~f:(fun stanzas ->
-        (stanzas.Dir_with_dune.ctx_dir, stanzas))
+        (stanzas.ctx_dir, stanzas))
   in
   let* artifacts =
     let+ local_bins = get_installed_binaries ~context stanzas in
     Artifacts.create context ~public_libs ~local_bins
   in
-  let any_package = any_package_aux ~packages ~context in
-  let root_expander =
+  let* findlib =
+    Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
+  in
+  let* sites = Sites.create context in
+  let* root_expander =
     let scopes_host, artifacts_host, context_host =
       match host with
       | None -> (scopes, artifacts, context)
@@ -604,7 +565,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
       ~scope_host:(Scope.DB.find_by_dir scopes_host context_host.build_dir)
       ~context ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
-      ~lib_artifacts_host:artifacts_host.public_libs ~find_package:any_package
+      ~lib_artifacts_host:artifacts_host.public_libs
   in
   let* package_sections =
     (* Add the section of the site mentioned in stanzas (it could be a site of
@@ -618,9 +579,7 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
       Dir_with_dune.Memo.deep_fold stanzas ~init:Package.Name.Map.empty
         ~f:(fun _ stanza acc ->
           let add_in_package_sites acc pkg site loc =
-            let+ section =
-              get_site_of_packages_aux ~loc ~any_package ~pkg ~site
-            in
+            let+ section = Sites.section_of_site sites ~loc ~pkg ~site in
             add_in_package_section acc pkg section
           in
           match stanza with
@@ -634,15 +593,14 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
        that at least one location is given to the site of local package because
        if the site is used it should already be in [packages_sections] *)
     Package.Name.Map.foldi packages ~init:package_sections
-      ~f:(fun package_name package acc ->
-        Section.Site.Map.fold package.Package.sites ~init:acc
-          ~f:(fun section acc ->
+      ~f:(fun package_name (package : Package.t) acc ->
+        Section.Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
             add_in_package_section acc package_name section))
   in
   let context_env =
     let env_dune_dir_locations =
       let roots =
-        Local_install_path.dir ~context:context.Context.name
+        Local_install_path.dir ~context:context.name
         |> Path.build |> Install.Section.Paths.Roots.opam_from_prefix
       in
       let init =
@@ -721,27 +679,22 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
   let+ lib_entries_by_package =
     create_lib_entries_by_package ~public_libs stanzas
   in
-  let t =
-    { context
-    ; root_expander
-    ; host
-    ; scopes
-    ; public_libs
-    ; installed_libs
-    ; stanzas
-    ; stanzas_per_dir
-    ; packages
-    ; artifacts
-    ; lib_entries_by_package
-    ; env_tree
-    ; default_env
-    ; dir_status_db
-    ; projects_by_key
-    }
-  in
-  Fdecl.set modules_of_lib_for_scope (fun ~dir ~name ->
-      Fdecl.get modules_of_lib t ~dir ~name);
-  t
+  { context
+  ; root_expander
+  ; host
+  ; scopes
+  ; public_libs
+  ; findlib
+  ; stanzas
+  ; stanzas_per_dir
+  ; packages
+  ; artifacts
+  ; lib_entries_by_package
+  ; env_tree
+  ; default_env
+  ; dir_status_db
+  ; projects_by_key
+  }
 
 let all =
   Memo.lazy_ (fun () ->

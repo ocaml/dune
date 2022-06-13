@@ -301,15 +301,12 @@ module T = struct
     ; ppx_runtime_deps : t list Resolve.t
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
-    ; user_written_deps : Dune_file.Lib_deps.t
     ; implements : t Resolve.t option
     ; lib_config : Lib_config.t
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation : t Resolve.t Memo.Lazy.t option
     ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
-    ; modules : Modules.t Memo.Lazy.t option
-    ; src_dirs : Path.Set.t Memo.Lazy.t
     }
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
@@ -374,8 +371,6 @@ type db =
   ; all : Lib_name.t list Memo.Lazy.t
   ; lib_config : Lib_config.t
   ; instrument_with : Lib_name.t list
-  ; modules_of_lib :
-      (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.t) Fdecl.t
   }
 
 and resolve_result =
@@ -394,8 +389,6 @@ let name t = t.name
 let info t = t.info
 
 let project t = t.project
-
-let modules t = t.modules
 
 let implements t = Option.map ~f:Memo.return t.implements
 
@@ -420,19 +413,6 @@ let main_module_name t =
     match main_module_name with
     | This x -> x
     | From _ -> assert false)
-
-let entry_module_names t =
-  match Lib_info.entry_modules t.info with
-  | External d -> Resolve.Memo.of_result d
-  | Local -> (
-    match t.modules with
-    | None -> assert false
-    | Some m ->
-      let open Memo.O in
-      let* m = Memo.Lazy.force m in
-      Resolve.Memo.return (Modules.entry_modules m |> List.map ~f:Module.name))
-
-let src_dirs t = Memo.Lazy.force t.src_dirs
 
 let wrapped t =
   let wrapped = Lib_info.wrapped t.info in
@@ -983,27 +963,6 @@ end = struct
         let* package = Lib_info.package info in
         Package.Name.Map.find projects_by_package package
     in
-    let modules =
-      match Path.as_in_build_dir (Lib_info.src_dir info) with
-      | None -> None
-      | Some dir ->
-        Some (Memo.lazy_ (fun () -> Fdecl.get db.modules_of_lib ~dir ~name))
-    in
-    let src_dirs =
-      let open Memo.O in
-      Memo.Lazy.create (fun () ->
-          let obj_dir = Lib_info.obj_dir info in
-          match Path.is_managed (Obj_dir.byte_dir obj_dir) with
-          | false -> Memo.return (Path.Set.singleton src_dir)
-          | true ->
-            let+ modules =
-              match modules with
-              | None -> assert false
-              | Some m -> Memo.Lazy.force m
-            in
-            Path.Set.map ~f:Path.drop_optional_build_context
-              (Modules.source_dirs modules))
-    in
     let rec t =
       lazy
         (let open Resolve.O in
@@ -1018,13 +977,10 @@ end = struct
         ; pps
         ; resolved_selects
         ; re_exports
-        ; user_written_deps = Lib_info.user_written_deps info
         ; implements
         ; default_implementation
         ; lib_config = db.lib_config
         ; project
-        ; modules
-        ; src_dirs
         ; sub_systems =
             Sub_system_name.Map.mapi (Lib_info.sub_systems info)
               ~f:(fun name info ->
@@ -1731,26 +1687,17 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~resolve ~all ~modules_of_lib ~lib_config () =
+  let create ~parent ~resolve ~all ~lib_config () =
     { parent
     ; resolve
     ; all = Memo.lazy_ all
     ; lib_config
     ; instrument_with = lib_config.Lib_config.instrument_with
-    ; modules_of_lib
     }
 
   let create_from_findlib findlib =
     let lib_config = Findlib.lib_config findlib in
     create () ~parent:None ~lib_config
-      ~modules_of_lib:
-        (let t = Fdecl.create Dyn.opaque in
-         Fdecl.set t (fun ~dir ~name ->
-             Code_error.raise "external libraries need no modules"
-               [ ("dir", Path.Build.to_dyn dir)
-               ; ("name", Lib_name.to_dyn name)
-               ]);
-         t)
       ~resolve:(fun name ->
         let open Memo.O in
         Findlib.find findlib name >>| function
@@ -1765,6 +1712,13 @@ module DB = struct
       ~all:(fun () ->
         let open Memo.O in
         Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
+
+  let installed (context : Context.t) =
+    let open Memo.O in
+    let+ findlib =
+      Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
+    in
+    create_from_findlib findlib
 
   let find t name =
     let open Memo.O in

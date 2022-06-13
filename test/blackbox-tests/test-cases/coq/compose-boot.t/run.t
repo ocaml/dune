@@ -1,2 +1,7 @@
-# Test only works on Coq 8.12 due to boot constraints
-# $ dune build --display short --debug-dependency-path
+Testing composition with two boot libraries
+
+  $ dune build
+  Error: Cannot have more than one boot theory in scope:
+  - B at B/dune:1
+  - A at A/dune:1
+  [1]

@@ -4,5 +4,5 @@ directory targets. Notice how the tex one fails before html one.
   Error: the following both define the directory target:
   _build/default/base.tex
   - dune:9
-  - dune:18
+  - dune:17
   [1]

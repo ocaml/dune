@@ -17,10 +17,10 @@ let man =
 
 let info = Term.info "top" ~doc ~man
 
-let link_deps link =
+let link_deps sctx link =
   let open Memo.O in
   Memo.parallel_map link ~f:(fun t ->
-      Dune_rules.Lib_flags.link_deps t Dune_rules.Link_mode.Byte)
+      Dune_rules.Lib_flags.link_deps sctx t Dune_rules.Link_mode.Byte)
   >>| List.concat
 
 let term =
@@ -35,12 +35,12 @@ let term =
       let* setup = Import.Main.setup () in
       Build_system.run_exn (fun () ->
           let open Memo.O in
+          let* setup = setup in
+          let sctx =
+            Dune_engine.Context_name.Map.find setup.scontexts ctx_name
+            |> Option.value_exn
+          in
           let* libs =
-            let* setup = setup in
-            let sctx =
-              Dune_engine.Context_name.Map.find setup.scontexts ctx_name
-              |> Option.value_exn
-            in
             let dir =
               let build_dir = (Super_context.context sctx).build_dir in
               Path.Build.relative build_dir (Common.prefix_target common dir)
@@ -58,7 +58,7 @@ let term =
           let include_paths =
             Dune_rules.Lib_flags.L.toplevel_include_paths requires
           in
-          let* files = link_deps requires in
+          let* files = link_deps sctx requires in
           let+ () =
             Memo.parallel_iter files ~f:(fun file ->
                 let+ (_ : Digest.t) = Build_system.build_file file in

@@ -28,6 +28,9 @@ Unreleased
 - Coq theories marked as `(boot)` cannot depend on other theories
   (#5867, @ejgallego)
 
+- Ignore `bigarray` in `(libraries)` with OCaml >= 5.0. (#5526, fixes #5494,
+  @moyodiallo)
+
 3.2.0 (17-05-2022)
 ------------------
 

@@ -829,8 +829,8 @@ module DB = struct
             ]);
       all
     in
-    let memo = Memo.create "build-contexts" ~input:(module Unit) impl in
-    Memo.exec memo
+    let memo = Memo.lazy_ ~name:"build-contexts" impl in
+    fun () -> Memo.Lazy.force memo
 
   let get =
     let memo =

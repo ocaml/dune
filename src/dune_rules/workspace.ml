@@ -652,8 +652,8 @@ let workspace_step1 =
     | None -> Memo.return (default_step1 clflags)
     | Some p -> load_step1 clflags p
   in
-  let memo = Memo.create "workspaces-internal" ~input:(module Unit) f in
-  Memo.exec memo
+  let memo = Memo.lazy_ ~name:"workspaces-internal" f in
+  fun () -> Memo.Lazy.force memo
 
 let workspace_config () =
   let open Memo.O in
@@ -666,8 +666,8 @@ let workspace =
     let+ step1 = workspace_step1 () in
     Lazy.force step1.t
   in
-  let memo = Memo.create "workspace" ~input:(module Unit) ~cutoff:equal f in
-  Memo.exec memo
+  let memo = Memo.lazy_ ~cutoff:equal ~name:"workspace" f in
+  fun () -> Memo.Lazy.force memo
 
 let update_execution_parameters t ep =
   ep

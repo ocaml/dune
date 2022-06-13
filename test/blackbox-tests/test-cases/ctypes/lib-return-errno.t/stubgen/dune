@@ -1,0 +1,17 @@
+(library
+ (name examplelib)
+ (flags (:standard -w -9-27))
+ (ctypes
+  (external_library_name libexample)
+  (headers (include "example.h"))
+  (type_description
+   (instance Types)
+   (functor Type_description))
+  (function_description
+   (instance Functions_default_policy)
+   (functor Function_description_default_policy))
+  (function_description
+   (errno_policy return_errno)
+   (instance Functions_return_errno)
+   (functor Function_description_return_errno))
+  (generated_entry_point C)))

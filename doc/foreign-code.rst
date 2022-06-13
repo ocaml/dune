@@ -270,6 +270,11 @@ descriptions by referencing them as the module specified in optional
   ``ctypes`` library. If ``concurrency`` is not specified, the default of
   ``sequential`` will be used.
 
+- ``(errno_policy <ignore_errno|return_errno>)`` specifies the errno_policy_
+  passed to the code generator. With ``ignore_errno``, the errno variable is
+  not accessed or returned by function calls. With ``return_errno``, all
+  functions will return the tuple ``(retval, errno)``.
+
 ``<vendored-stanza>`` is:
 
 - ``(vendored (c_flags <flags>) (c_library_flags <flags>))`` provide the build
@@ -370,3 +375,4 @@ this project to see a full working example.
 
 .. _ctypes: https://github.com/ocamllabs/ocaml-ctypes
 .. _pkg-config: https://www.freedesktop.org/wiki/Software/pkg-config/
+.. _errno_policy: https://ocaml.org/p/ctypes/0.20.1/doc/Cstubs/index.html#type-errno_policy

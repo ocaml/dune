@@ -21,6 +21,12 @@ module Concurrency_policy : sig
     | Lwt_preemptive
 end
 
+module Errno_policy : sig
+  type t =
+    | Ignore_errno
+    | Return_errno
+end
+
 module Headers : sig
   type t =
     | Include of Ordered_set_lang.Unexpanded.t
@@ -37,6 +43,7 @@ end
 module Function_description : sig
   type t =
     { concurrency : Concurrency_policy.t
+    ; errno_policy : Errno_policy.t
     ; functor_ : Module_name.t
     ; instance : Module_name.t
     }

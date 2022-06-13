@@ -1,3 +1,9 @@
+3.4.0 (Unreleased)
+------------------
+
+- [ctypes] Add support for the `errno` parameter using the `errno_policy` field
+  in the ctypes settings. (#5827, @droyo)
+
 3.3.1 (19-06-2022)
 ------------------
 

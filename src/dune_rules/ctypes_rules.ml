@@ -170,7 +170,7 @@ let type_gen_gen ~expander ~headers ~type_description_functor =
     ]
 
 let function_gen_gen ~expander ~(concurrency : Ctypes.Concurrency_policy.t)
-    ~headers ~function_description_functor =
+    ~errno_policy ~headers ~function_description_functor =
   let open Action_builder.O in
   let module_name = Module_name.to_string function_description_functor in
   let concurrency =
@@ -180,18 +180,26 @@ let function_gen_gen ~expander ~(concurrency : Ctypes.Concurrency_policy.t)
     | Lwt_jobs -> "Cstubs.lwt_jobs"
     | Lwt_preemptive -> "Cstubs.lwt_preemptive"
   in
+  let errno_policy =
+    match errno_policy with
+    | Ctypes.Errno_policy.Ignore_errno -> "Cstubs.ignore_errno"
+    | Ctypes.Errno_policy.Return_errno -> "Cstubs.return_errno"
+  in
   let+ headers = gen_headers ~expander headers in
   Pp.concat
     [ verbatimf "let () ="
     ; verbatimf "  let concurrency = %s in" concurrency
+    ; verbatimf "  let errno = %s in" errno_policy
     ; verbatimf "  let prefix = Sys.argv.(2) in"
     ; verbatimf "  match Sys.argv.(1) with"
     ; verbatimf "  | \"ml\" ->"
     ; verbatimf "    Cstubs.write_ml ~concurrency Format.std_formatter ~prefix"
+    ; verbatimf "      ~errno"
     ; verbatimf "      (module %s.Functions)" module_name
     ; verbatimf "  | \"c\" ->"
     ; headers
     ; verbatimf "    Cstubs.write_c ~concurrency Format.std_formatter ~prefix"
+    ; verbatimf "      ~errno"
     ; verbatimf "      (module %s.Functions)" module_name
     ; verbatimf "  | s -> failwith (\"unknown functions \"^s)"
     ]
@@ -218,9 +226,10 @@ let write_type_gen_script ~headers ~dir ~filename ~sctx
     (type_gen_gen ~headers ~type_description_functor)
 
 let write_function_gen_script ~headers ~sctx ~dir ~name
-    ~function_description_functor ~concurrency =
+    ~function_description_functor ~concurrency ~errno_policy =
   add_rule_gen ~dir ~filename:(name ^ ".ml") ~sctx
-    (function_gen_gen ~concurrency ~headers ~function_description_functor)
+    (function_gen_gen ~concurrency ~errno_policy ~headers
+       ~function_description_functor)
 
 let rule ?(deps = []) ?stdout_to ?(args = []) ?(targets = []) ~exe ~sctx ~dir ()
     =
@@ -513,6 +522,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         let* () =
           write_function_gen_script ~headers ~sctx ~dir
             ~name:function_gen_script ~concurrency:fd.concurrency
+            ~errno_policy:fd.errno_policy
             ~function_description_functor:fd.functor_
         in
         let* () = exe_link_only function_gen_script in

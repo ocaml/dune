@@ -1,6 +1,12 @@
 open Import
 open Dune_lang.Decoder
 
+let name = "ctypes"
+
+let syntax =
+  Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
+    [ ((0, 1), `Since (3, 0)); ((0, 2), `Since (3, 4)) ]
+
 module Build_flags_resolver = struct
   module Vendored = struct
     type t =
@@ -49,6 +55,17 @@ module Concurrency_policy = struct
   let default = Sequential
 end
 
+module Errno_policy = struct
+  type t =
+    | Ignore_errno
+    | Return_errno
+
+  let decode =
+    enum [ ("ignore_errno", Ignore_errno); ("return_errno", Return_errno) ]
+
+  let default = Ignore_errno
+end
+
 module Headers = struct
   type t =
     | Include of Ordered_set_lang.Unexpanded.t
@@ -85,6 +102,7 @@ end
 module Function_description = struct
   type t =
     { concurrency : Concurrency_policy.t
+    ; errno_policy : Errno_policy.t
     ; functor_ : Module_name.t
     ; instance : Module_name.t
     }
@@ -93,10 +111,14 @@ module Function_description = struct
     let open Dune_lang.Decoder in
     fields
       (let+ concurrency = field_o "concurrency" Concurrency_policy.decode
+       and+ errno_policy =
+         field_o "errno_policy"
+           (Dune_lang.Syntax.since syntax (0, 2) >>> Errno_policy.decode)
        and+ functor_ = field "functor" Module_name.decode
        and+ instance = field "instance" Module_name.decode in
        { concurrency =
            Option.value concurrency ~default:Concurrency_policy.default
+       ; errno_policy = Option.value errno_policy ~default:Errno_policy.default
        ; functor_
        ; instance
        })
@@ -113,13 +135,7 @@ type t =
   ; deps : Dep_conf.t list
   }
 
-let name = "ctypes"
-
 type Stanza.t += T of t
-
-let syntax =
-  Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
-    [ ((0, 1), `Since (3, 0)) ]
 
 let decode =
   let open Dune_lang.Decoder in

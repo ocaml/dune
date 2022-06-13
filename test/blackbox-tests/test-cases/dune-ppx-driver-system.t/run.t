@@ -92,6 +92,20 @@ Test the argument syntax
   - test_ppx_args.pp.ml
   [1]
 
+Test the argument syntax with list expansion allowed (dune > 3.2)
+
+  $ dune build --root driver-tests-list-args
+  Entering directory 'driver-tests-list-args'
+  File "dune-project", line 1, characters 11-14:
+  1 | (lang dune 3.3)
+                 ^^^
+  Error: Version 3.3 of the dune language is not supported.
+  Supported versions of this extension in version 3.3 of the dune language:
+  - 1.0 to 1.12
+  - 2.0 to 2.9
+  - 3.0 to 3.2
+  [1]
+
 Test that going through the -ppx option of the compiler works
 
   $ dune build --root driver-tests test_ppx_staged.cma

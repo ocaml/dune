@@ -7,6 +7,8 @@ let () =
     with
     | Fl_package_base.No_such_package(pkg, _) ->
       Printf.printf "The package %S can't be found.\n%!" pkg
-    | Dynlink.Error error ->
-      Printf.printf "Error during dynlink: %s\n%!" (Dynlink.error_message error)
+    | e ->
+      (* This is just a convoluted way to avoid this module directly depending on
+         Dynlink *)
+      Mytool.Register.handle_dynlink_error e
   done

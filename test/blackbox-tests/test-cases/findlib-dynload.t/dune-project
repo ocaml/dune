@@ -1,1 +1,4 @@
-(lang dune 1.0)
+(lang dune 2.0)
+; The use of (implicit_transitive_deps false) tests that the auto-generated
+; modules are compiled with the correct dependencies.
+(implicit_transitive_deps false)

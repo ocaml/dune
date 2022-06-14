@@ -14,6 +14,7 @@
 (library
   (name mytool)
   (public_name mytool)
+  (libraries dynlink)
   (modules register)
 )
 
@@ -59,5 +60,5 @@
   (name c_thread)
   (public_name c_thread)
   (modules c_thread)
-  (libraries threads mytool)
+  (libraries threads.posix mytool)
 )

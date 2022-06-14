@@ -233,6 +233,7 @@ let for_root_module t root_module =
   }
 
 let for_module_generated_at_link_time cctx ~requires ~module_ =
+  let project = Scope.project cctx.scope in
   let opaque =
     (* Cmi's of link time generated modules are compiled with -opaque, hence
        their implementation must also be compiled with -opaque *)
@@ -244,6 +245,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     opaque
   ; flags = Ocaml_flags.empty
   ; requires_link = Memo.lazy_ (fun () -> requires)
+  ; includes = Includes.make ~project ~opaque ~requires
   ; requires_compile = requires
   ; modules
   }

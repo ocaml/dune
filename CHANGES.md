@@ -7,6 +7,9 @@ Unreleased
 - Allow list expansion in the `pps` specification for preprocessing (#5820,
   @Firobe)
 
+- Ensure that auto-generated modules are compiled with the correct dependencies
+  even with `(implicit_transitive_deps false)` (#5881, @dra27)
+
 - Add warnings 67-69 to dune's default set of warnings. These are warnings of
   the form "unused X.." (#5844, @rgrinbreg)
 

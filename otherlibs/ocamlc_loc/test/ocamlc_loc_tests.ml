@@ -257,3 +257,60 @@ Error: The implementation src/dune_rules/artifacts.ml
           Raw "Actual declaration")
         ]
     } |}]
+
+let%expect_test "" =
+  let raw_error =
+    {|
+File "fooexe.ml", line 3, characters 0-7:
+3 | Bar.run ();;
+    ^^^^^^^
+Error (alert deprecated): module Bar
+Will be removed past 2020-20-20. Use Mylib.Bar instead.
+File "fooexe.ml", line 4, characters 0-7:
+4 | Foo.run ();;
+    ^^^^^^^
+Error (alert deprecated): module Foo
+Will be removed past 2020-20-20. Use Mylib.Foo instead.
+File "fooexe.ml", line 7, characters 11-22:
+7 | module X : Intf_only.S = struct end
+               ^^^^^^^^^^^
+Error (alert deprecated): module Intf_only
+Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
+|}
+    |> String.trim
+  in
+  Ocamlc_loc.parse raw_error |> Test.print_errors;
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "fooexe.ml"; line = Single 3; chars = Some (0, 7) }
+    ; message =
+        Raw
+          "3 | Bar.run ();;\n\
+          \    ^^^^^^^\n\
+           Error (alert deprecated): module Bar\n\
+           Will be removed past 2020-20-20. Use Mylib.Bar instead.\n\
+           "
+    ; related = []
+    }
+    >> error 1
+    { loc = { path = "fooexe.ml"; line = Single 4; chars = Some (0, 7) }
+    ; message =
+        Raw
+          "4 | Foo.run ();;\n\
+          \    ^^^^^^^\n\
+           Error (alert deprecated): module Foo\n\
+           Will be removed past 2020-20-20. Use Mylib.Foo instead.\n\
+           "
+    ; related = []
+    }
+    >> error 2
+    { loc = { path = "fooexe.ml"; line = Single 7; chars = Some (11, 22) }
+    ; message =
+        Raw
+          "7 | module X : Intf_only.S = struct end\n\
+          \               ^^^^^^^^^^^\n\
+           Error (alert deprecated): module Intf_only\n\
+           Will be removed past 2020-20-20. Use Mylib.Intf_only instead."
+    ; related = []
+    } |}]

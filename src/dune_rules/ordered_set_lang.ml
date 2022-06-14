@@ -62,26 +62,26 @@ module Parse = struct
       | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
       | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
       | Atom (loc, A s) -> (
-          match s with
-          | ":standard" -> junk >>> return Standard
-          | ":include" ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "Invalid use of :include, should be: (:include <filename>)"
-              ]
-          | _ when s.[0] = ':' ->
-            User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
-          | _ -> elt)
+        match s with
+        | ":standard" -> junk >>> return Standard
+        | ":include" ->
+          User_error.raise ~loc
+            [ Pp.text
+                "Invalid use of :include, should be: (:include <filename>)"
+            ]
+        | _ when s.[0] = ':' ->
+          User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
+        | _ -> elt)
       | List (_, Atom (loc, A s) :: _) -> (
-          match s with
-          | ":include" -> inc
-          | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "This atom must be quoted because it is the first element of a \
-                   list and doesn't start with - or:"
-              ]
-          | _ -> enter (many []))
+        match s with
+        | ":include" -> inc
+        | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
+          User_error.raise ~loc
+            [ Pp.text
+                "This atom must be quoted because it is the first element of a \
+                 list and doesn't start with - or:"
+            ]
+        | _ -> enter (many []))
       | List _ -> enter (many [])
     and many acc =
       peek >>= function
@@ -263,10 +263,7 @@ module Unexpanded = struct
     }
 
   let concat ~context ~pos a b =
-    { ast = Ast.Union [ a.ast; b.ast ]
-    ; loc = Some (Loc.of_pos pos)
-    ; context
-    }
+    { ast = Ast.Union [ a.ast; b.ast ]; loc = Some (Loc.of_pos pos); context }
 
   let field ?check name =
     let decode =

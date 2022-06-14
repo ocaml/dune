@@ -13,7 +13,7 @@ val decode : t Dune_lang.Decoder.t
 val loc : t -> Loc.t option
 
 val eval :
-  t
+     t
   -> parse:(loc:Loc.t -> string -> 'a)
   -> eq:('a -> 'a -> bool)
   -> standard:'a list
@@ -23,7 +23,7 @@ module Unordered (Key : Ordered_set_lang_intf.Key) :
   Ordered_set_lang_intf.Unordered_eval with type t = t and module Key := Key
 
 val eval_loc :
-  t
+     t
   -> parse:(loc:Loc.t -> string -> 'a)
   -> eq:('a -> 'a -> bool)
   -> standard:(Loc.t * 'a) list
@@ -62,7 +62,7 @@ module Unexpanded : sig
   val concat : context:Univ_map.t -> pos:string * int * int * int -> t -> t -> t
 
   val field :
-    ?check:unit Dune_lang.Decoder.t
+       ?check:unit Dune_lang.Decoder.t
     -> string
     -> t Dune_lang.Decoder.fields_parser
 
@@ -75,7 +75,7 @@ module Unexpanded : sig
       replaced by [Map.find files_contents fn]. Every element is converted to a
       string using [f]. *)
   val expand :
-    t
+       t
     -> dir:Path.t
     -> f:Value.t list Action_builder.t String_with_vars.expander
     -> expanded Action_builder.t

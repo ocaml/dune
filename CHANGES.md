@@ -1,3 +1,9 @@
+3.3.1 (Unreleased)
+------------------
+
+- Improve parsing of ocamlc errors. We now correctly strip excerpts and parse
+  alerts (#5879, @rgrinberg)
+
 3.3.0 (17-06-2022)
 ------------------
 

@@ -194,7 +194,6 @@ understood by dune language."))
  (synopsis "Parse ocaml compiler output into structured form")
  (depends
   (ocaml (>= 4.08.0))
-  (dune-private-libs (= :version))
   (dyn (= :version)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 

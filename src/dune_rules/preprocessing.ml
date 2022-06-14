@@ -710,7 +710,9 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
 let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Action_builder.O in
   let* libs = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
-  ppx_driver_and_flags_internal sctx ~loc ~expander ~scope ~lib_name ~flags libs
+  let dune_version = Scope.project scope |> Dune_project.dune_version in
+  ppx_driver_and_flags_internal sctx ~loc ~expander ~dune_version ~lib_name
+    ~flags libs
 
 let ppx_exe sctx ~scope pp =
   let open Resolve.Memo.O in

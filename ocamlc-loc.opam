@@ -12,7 +12,6 @@ bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
   "dune" {>= "3.3"}
   "ocaml" {>= "4.08.0"}
-  "dune-private-libs" {= version}
   "dyn" {= version}
   "odoc" {with-doc}
 ]

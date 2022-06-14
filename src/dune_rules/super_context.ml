@@ -206,19 +206,14 @@ type t =
   { context : Context.t
   ; scopes : Scope.DB.t
   ; public_libs : Lib.DB.t
-  ; findlib : Findlib.t
   ; stanzas : Dune_file.Stanzas.t Dir_with_dune.t list
   ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
   ; packages : Package.t Package.Name.Map.t
   ; artifacts : Artifacts.t
-  ; root_expander : Expander.t
   ; host : t option
   ; lib_entries_by_package : Lib_entry.t list Package.Name.Map.t
   ; env_tree : Env_tree.t
   ; dir_status_db : Dir_status.DB.t
-  ; (* Env node that represents the environment configured for the workspace. It
-       is used as default at the root of every project in the workspace. *)
-    default_env : Env_node.t Memo.Lazy.t
   ; projects_by_key : Dune_project.t Dune_project.File_key.Map.t
   }
 
@@ -550,9 +545,6 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     let+ local_bins = get_installed_binaries ~context stanzas in
     Artifacts.create context ~public_libs ~local_bins
   in
-  let* findlib =
-    Findlib.create ~paths:context.findlib_paths ~lib_config:context.lib_config
-  in
   let* sites = Sites.create context in
   let* root_expander =
     let scopes_host, artifacts_host, context_host =
@@ -637,6 +629,8 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
           (Dune_site_private.encode_dune_dir_locations env_dune_dir_locations)
   in
   let default_env =
+    (* Env node that represents the environment configured for the workspace. It
+       is used as default at the root of every project in the workspace. *)
     Memo.lazy_ (fun () ->
         let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
@@ -680,18 +674,15 @@ let create ~(context : Context.t) ~host ~projects ~packages ~stanzas =
     create_lib_entries_by_package ~public_libs stanzas
   in
   { context
-  ; root_expander
   ; host
   ; scopes
   ; public_libs
-  ; findlib
   ; stanzas
   ; stanzas_per_dir
   ; packages
   ; artifacts
   ; lib_entries_by_package
   ; env_tree
-  ; default_env
   ; dir_status_db
   ; projects_by_key
   }

@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.3.0 (17-06-2022)
+------------------
 
 - Sandbox preprocessing, lint, and dialect rules by default. All these rules
   now require precise dependency specifications (#5807, @rgrinberg)

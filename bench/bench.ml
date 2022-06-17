@@ -97,7 +97,7 @@ let dune_build () =
   let open Fiber.O in
   let+ times =
     Process.run_with_times dune ~stdin_from ~stdout_to ~stderr_to
-      [ "build"; "@install"; "--root"; "." ]
+      [ "build"; "@install"; "--release" ]
   in
   times.elapsed_time
 

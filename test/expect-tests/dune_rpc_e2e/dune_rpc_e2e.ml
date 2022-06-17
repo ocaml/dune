@@ -26,7 +26,7 @@ let init_chan ~root_dir =
     | Error exn -> Exn.raise exn
     | Ok None -> Fiber.return None
     | Ok (Some where) -> (
-      let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
+      let* client = Dune_rpc_impl.Client.Connect.csexp_client where in
       let+ res = Csexp_rpc.Client.connect client in
       match res with
       | Ok s -> Some s

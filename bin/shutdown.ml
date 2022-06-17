@@ -14,10 +14,9 @@ let send_shutdown cli =
 
 let exec common =
   let where = Rpc.wait_for_server common in
-  Dune_rpc_impl.Run.client where
+  Dune_rpc_impl.Client.client where ~f:send_shutdown
     (Dune_rpc_private.Initialize.Request.create
        ~id:(Dune_rpc_private.Id.make (Sexp.Atom "shutdown_cmd")))
-    ~f:send_shutdown
 
 let info =
   let doc = "cancel and shutdown any builds in the current workspace" in

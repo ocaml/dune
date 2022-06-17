@@ -77,7 +77,7 @@ let establish_client_session ~common ~wait =
     match where with
     | None -> Fiber.return None
     | Some where -> (
-      let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
+      let* client = Dune_rpc_impl.Client.Connect.csexp_client where in
       let+ session = Csexp_rpc.Client.connect client in
       match session with
       | Ok session -> Some (client, session)
@@ -101,7 +101,7 @@ module Status = struct
     let where = wait_for_server common in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "Connected clients (including this one):\n";
-    Dune_rpc_impl.Run.client where
+    Dune_rpc_impl.Client.client where
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
       ~f:(fun session ->
@@ -151,7 +151,7 @@ module Build = struct
     client_term common @@ fun common ->
     let open Fiber.O in
     let* _client, session = establish_client_session ~common ~wait in
-    Dune_rpc_impl.Run.client_with_session ~session
+    Dune_rpc_impl.Client.client_with_session ~session
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "build")))
       ~f:(fun session ->
@@ -188,10 +188,9 @@ module Ping = struct
 
   let exec common =
     let where = wait_for_server common in
-    Dune_rpc_impl.Run.client where
+    Dune_rpc_impl.Client.client where ~f:send_ping
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "ping_cmd")))
-      ~f:send_ping
 
   let info =
     let doc = "Ping the build server running in the current directory" in

@@ -154,9 +154,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       ~metadata:ectx.metadata prog args
   in
   let response = Io.read_file response_fn in
-  Path.(
-    unlink_no_err run_arguments_fn;
-    unlink_no_err response_fn);
+  Temp.destroy File run_arguments_fn;
+  Temp.destroy File response_fn;
   let prog_name = Path.reach ~from:eenv.working_dir prog in
   match DAP.Response.deserialize response with
   | Error _ when String.is_empty response ->

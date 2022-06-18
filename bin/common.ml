@@ -34,7 +34,7 @@ type t =
   ; build_dir : string
   ; no_print_directory : bool
   ; store_orig_src_dir : bool
-  ; rpc : Dune_rpc_impl.Server.t option
+  ; rpc : Dune_rpc_impl.Server.t Lazy.t
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : Watch_mode_config.t
   ; print_metrics : bool
@@ -71,7 +71,7 @@ let default_target t = t.default_target
 
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
-let rpc t = t.rpc
+let rpc t = Lazy.force t.rpc
 
 let stats t = t.stats
 
@@ -983,17 +983,13 @@ let term ~default_root_is_cwd =
     Workspace_root.create ~default_is_cwd:default_root_is_cwd
       ~specified_by_user:root
   in
-  let rpc =
-    match watch with
-    | Yes _ -> Some (Dune_rpc_impl.Server.create ~root:root.dir)
-    | No -> None
-  in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->
         let stats = Dune_stats.create (Out (open_out f)) in
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
+  let rpc = lazy (Dune_rpc_impl.Server.create ~root:root.dir stats) in
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();
@@ -1037,8 +1033,6 @@ let term ~default_root_is_cwd =
   ; report_errors_config
   ; require_dune_project_file
   }
-
-let set_rpc t rpc = { t with rpc = Some rpc }
 
 let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
 

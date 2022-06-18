@@ -701,7 +701,6 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           | true -> Dtemp.add_to_env env
           | false -> env
         in
-        let env = env |> Scheduler.Config.add_to_env config in
         let env = Env.to_unix env |> Spawn.Env.of_list in
         let started_at, pid =
           (* jeremiedimino: I think we should do this just before the [execve]

@@ -1,3 +1,5 @@
+open Import
+
 module V1 = struct
   module Path = Path
   module Glob = Dune_glob.V1
@@ -23,8 +25,8 @@ module V1 = struct
     let catch_system_exceptions f ~name =
       try Ok (f ()) with
       | Unix.Unix_error (error, syscall, arg) ->
-        let error = Stdune.Unix_error.Detailed.create error ~syscall ~arg in
-        Error (name ^ ": " ^ Stdune.Unix_error.Detailed.to_string_hum error)
+        let error = Unix_error.Detailed.create error ~syscall ~arg in
+        Error (name ^ ": " ^ Unix_error.Detailed.to_string_hum error)
       | Sys_error error -> Error (name ^ ": " ^ error)
 
     let read_directory =
@@ -37,24 +39,24 @@ module V1 = struct
       fun path ->
         catch_system_exceptions ~name:"read_directory" (fun () ->
             let dh = Unix.opendir path in
-            Stdune.Exn.protect
-              ~f:(fun () -> loop dh [] |> List.sort String.compare)
+            Exn.protect
+              ~f:(fun () -> loop dh [] |> List.sort ~compare:String.compare)
               ~finally:(fun () -> Unix.closedir dh))
 
     let read_file path =
       catch_system_exceptions ~name:"read_file" (fun () ->
-          Stdune.Io.String_path.read_file path)
+          Io.String_path.read_file path)
 
     let write_file path data =
       catch_system_exceptions ~name:"write_file" (fun () ->
-          Stdune.Io.String_path.write_file path data)
+          Io.String_path.write_file path data)
   end
 
   module Stage = struct
     type 'a t =
       { action : unit -> 'a
       ; dependencies : Dependency.Set.t
-      ; targets : Stdune.String.Set.t
+      ; targets : String.Set.t
       }
 
     let map (t : 'a t) ~f = { t with action = (fun () -> f (t.action ())) }
@@ -62,7 +64,7 @@ module V1 = struct
     let both (t1 : 'a t) (t2 : 'b t) =
       { action = (fun () -> (t1.action (), t2.action ()))
       ; dependencies = Dependency.Set.union t1.dependencies t2.dependencies
-      ; targets = Stdune.String.Set.union t1.targets t2.targets
+      ; targets = String.Set.union t1.targets t2.targets
       }
   end
 
@@ -98,7 +100,7 @@ module V1 = struct
     lift_stage
       { action
       ; dependencies = Dependency.Set.singleton (File path)
-      ; targets = Stdune.String.Set.empty
+      ; targets = String.Set.empty
       }
 
   let write_file ~path ~data =
@@ -109,7 +111,7 @@ module V1 = struct
     lift_stage
       { action
       ; dependencies = Dependency.Set.empty
-      ; targets = Stdune.String.Set.singleton path
+      ; targets = String.Set.singleton path
       }
 
   (* TODO jstaron: If program tries to read empty directory, dune does not copy
@@ -118,13 +120,13 @@ module V1 = struct
     let path = Path.to_string path in
     let action () =
       Fs.read_directory path |> Execution_error.raise_on_fs_error
-      |> List.filter (Glob.test glob)
+      |> List.filter ~f:(Glob.test glob)
     in
     lift_stage
       { action
       ; dependencies =
           Dependency.Set.singleton (Glob { path; glob = Glob.to_string glob })
-      ; targets = Stdune.String.Set.empty
+      ; targets = String.Set.empty
       }
 
   let rec run_by_dune t context =
@@ -132,10 +134,8 @@ module V1 = struct
     | Pure () -> Context.respond context Done
     | Stage at ->
       let allowed_targets = Context.targets context in
-      let disallowed_targets =
-        Stdune.String.Set.diff at.targets allowed_targets
-      in
-      (match Stdune.String.Set.to_list disallowed_targets with
+      let disallowed_targets = String.Set.diff at.targets allowed_targets in
+      (match String.Set.to_list disallowed_targets with
       | [] -> ()
       | [ t ] ->
         Execution_error.raise
@@ -149,7 +149,7 @@ module V1 = struct
              "Following files were written despite not being declared as \
               targets in dune file:\n\
               %sTo fix, add them to target list in dune file."
-             (ts |> String.concat "\n")));
+             (ts |> String.concat ~sep:"\n")));
       let prepared_dependencies = Context.prepared_dependencies context in
       let required_dependencies =
         Dependency.Set.diff at.dependencies prepared_dependencies

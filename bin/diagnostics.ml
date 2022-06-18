@@ -32,7 +32,8 @@ let exec common =
   let open Fiber.O in
   let where = Rpc.active_server common in
   let+ errors =
-    Dune_rpc_impl.Client.client where
+    let* connect = Dune_rpc_impl.Client.Connection.connect_exn where in
+    Dune_rpc_impl.Client.client connect
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "diagnostics_cmd")))
       ~f:(fun cli ->

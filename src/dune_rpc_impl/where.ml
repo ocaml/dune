@@ -44,3 +44,7 @@ let to_socket = function
   | `Unix p -> Unix.ADDR_UNIX p
   | `Ip (`Host host, `Port port) ->
     Unix.ADDR_INET (Unix.inet_addr_of_string host, port)
+
+let to_string = function
+  | `Unix p -> sprintf "unix://%s" p
+  | `Ip (`Host host, `Port port) -> sprintf "%s:%d" host port

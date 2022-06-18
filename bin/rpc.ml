@@ -1,7 +1,7 @@
 open! Stdune
 open Import
 
-let wait_for_server common =
+let active_server common =
   (* XXX the name wait is confusing. There's no waiting going on here. *)
   match (Dune_rpc_impl.Where.get (), Common.rpc common) with
   | None, None -> User_error.raise [ Pp.text "rpc server not running" ]
@@ -57,7 +57,7 @@ let establish_connection_or_raise ~wait ~common once =
     match res with
     | Some (client, session) -> (client, session)
     | None ->
-      let (_ : Dune_rpc_private.Where.t) = wait_for_server common in
+      let (_ : Dune_rpc_private.Where.t) = active_server common in
       User_error.raise
         [ Pp.text
             "failed to establish connection even though server seems to be \
@@ -98,7 +98,7 @@ module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
     client_term common @@ fun common ->
-    let where = wait_for_server common in
+    let where = active_server common in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "Connected clients (including this one):\n";
     Dune_rpc_impl.Client.client where
@@ -187,7 +187,7 @@ module Ping = struct
     | Error e -> raise_rpc_error e
 
   let exec common =
-    let where = wait_for_server common in
+    let where = active_server common in
     Dune_rpc_impl.Client.client where ~f:send_ping
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "ping_cmd")))

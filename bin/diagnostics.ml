@@ -30,7 +30,7 @@ let format_diagnostic (err : Dune_rpc_private.Diagnostic.t) : User_message.t =
 
 let exec common =
   let open Fiber.O in
-  let where = Rpc.wait_for_server common in
+  let where = Rpc.active_server common in
   let+ errors =
     Dune_rpc_impl.Client.client where
       (Dune_rpc_private.Initialize.Request.create

@@ -13,7 +13,7 @@ let send_shutdown cli =
   | Error e -> raise (Dune_rpc_private.Version_error.E e)
 
 let exec common =
-  let where = Rpc.wait_for_server common in
+  let where = Rpc.active_server common in
   Dune_rpc_impl.Client.client where ~f:send_shutdown
     (Dune_rpc_private.Initialize.Request.create
        ~id:(Dune_rpc_private.Id.make (Sexp.Atom "shutdown_cmd")))

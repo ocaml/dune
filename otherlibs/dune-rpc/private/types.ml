@@ -387,7 +387,7 @@ end
 module Decl = struct
   type 'gen t =
     { method_ : Method_name.t
-    ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
+    ; key : 'gen Int.Map.t Univ_map.Key.t
     }
 
   module Generation = struct
@@ -439,9 +439,7 @@ module Decl = struct
       { generations
       ; decl =
           { method_
-          ; key =
-              Stdune.Univ_map.Key.create ~name:method_
-                (Int.Map.to_dyn gen_to_dyn)
+          ; key = Univ_map.Key.create ~name:method_ (Int.Map.to_dyn gen_to_dyn)
           }
       }
 
@@ -481,9 +479,7 @@ module Decl = struct
       { generations
       ; decl =
           { method_
-          ; key =
-              Stdune.Univ_map.Key.create ~name:method_
-                (Int.Map.to_dyn gen_to_dyn)
+          ; key = Univ_map.Key.create ~name:method_ (Int.Map.to_dyn gen_to_dyn)
           }
       }
 

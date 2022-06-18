@@ -1,4 +1,4 @@
-open Stdune
+open Import
 open Types
 
 module Version_error = struct
@@ -284,27 +284,23 @@ module Make (Fiber : Fiber_intf.S) = struct
         ~registry_key:(proc.Request.decl.method_, proc.Request.decl.key)
         ~other_key:proc.Request.decl.method_ ~pack:(fun rc -> rc)
 
-    let declare_notification t proc =
-      register_generic t ~method_:proc.Notification.decl.method_
-        ~generations:proc.Notification.generations ~registry:Declared_notifs
-        ~other:Impl_notifs
-        ~registry_key:
-          (proc.Notification.decl.method_, proc.Notification.decl.key)
-        ~other_key:proc.Notification.decl.method_ ~pack:(fun nc -> nc)
+    let declare_notification t (proc : _ notification) =
+      register_generic t ~method_:proc.decl.method_
+        ~generations:proc.generations ~registry:Declared_notifs
+        ~other:Impl_notifs ~registry_key:(proc.decl.method_, proc.decl.key)
+        ~other_key:proc.decl.method_ ~pack:(fun nc -> nc)
 
-    let implement_request t proc f =
-      register_generic t ~method_:proc.Request.decl.method_
-        ~generations:proc.Request.generations ~registry:Impl_requests
-        ~other:Declared_requests ~registry_key:proc.Request.decl.method_
-        ~other_key:(proc.Request.decl.method_, proc.Request.decl.key)
-        ~pack:(fun r -> R (f, r))
+    let implement_request t (proc : _ request) f =
+      register_generic t ~method_:proc.decl.method_
+        ~generations:proc.generations ~registry:Impl_requests
+        ~other:Declared_requests ~registry_key:proc.decl.method_
+        ~other_key:(proc.decl.method_, proc.decl.key) ~pack:(fun r -> R (f, r))
 
-    let implement_notification t proc f =
-      register_generic t ~method_:proc.Notification.decl.method_
-        ~generations:proc.Notification.generations ~registry:Impl_notifs
-        ~other:Declared_notifs ~registry_key:proc.Notification.decl.method_
-        ~other_key:(proc.Notification.decl.method_, proc.Notification.decl.key)
-        ~pack:(fun n -> N (f, n))
+    let implement_notification t (proc : _ notification) f =
+      register_generic t ~method_:proc.decl.method_
+        ~generations:proc.generations ~registry:Impl_notifs
+        ~other:Declared_notifs ~registry_key:proc.decl.method_
+        ~other_key:(proc.decl.method_, proc.decl.key) ~pack:(fun n -> N (f, n))
 
     let lookup_method_generic t ~menu ~table ~key ~method_ k s =
       match (get t table key, Method_name.Map.find menu method_) with

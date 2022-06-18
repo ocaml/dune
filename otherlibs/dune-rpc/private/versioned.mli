@@ -1,7 +1,6 @@
 (** The main logic for the runtime versioning protocol for the Dune RPC. For a
     high-level explanation and rationale, see [doc/dev/rpc-versioning.ml]. *)
 
-open Stdune
 open Types
 
 module Version_error : sig

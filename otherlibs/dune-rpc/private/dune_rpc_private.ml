@@ -654,8 +654,8 @@ module Client = struct
       | Poll : 'a Procedures.Poll.t -> proc
 
     let setup_versioning ?(private_menu = []) ~(handler : Handler.t) () =
-      let open V in
-      let t : _ Builder.t = Builder.create () in
+      let module Builder = V.Builder in
+      let t : unit Builder.t = Builder.create () in
       (* CR-soon cwong: It is a *huge* footgun that you have to remember to
          declare a request here, or via [private_menu], and there is no
          mechanism to warn you if you forget. The closest thing is either seeing
@@ -676,14 +676,12 @@ module Client = struct
       Builder.declare_request t Procedures.Poll.(poll progress);
       Builder.declare_notification t Procedures.Poll.(cancel diagnostic);
       Builder.declare_notification t Procedures.Poll.(cancel progress);
-      List.iter
-        ~f:(function
-          | Request r -> Builder.declare_request t r
-          | Notification n -> Builder.declare_notification t n
-          | Poll p ->
-            Builder.declare_request t (Procedures.Poll.poll p);
-            Builder.declare_notification t (Procedures.Poll.cancel p))
-        private_menu;
+      List.iter private_menu ~f:(function
+        | Request r -> Builder.declare_request t r
+        | Notification n -> Builder.declare_notification t n
+        | Poll p ->
+          Builder.declare_request t (Procedures.Poll.poll p);
+          Builder.declare_notification t (Procedures.Poll.cancel p));
       t
 
     let connect_raw chan (initialize : Initialize.Request.t)
@@ -749,9 +747,8 @@ module Client = struct
                       ])))
           in
           let handler =
-            V.Builder.to_handler builder
-              ~session_version:(fun () -> client.initialize.dune_version)
-              ~menu
+            V.Builder.to_handler builder ~menu ~session_version:(fun () ->
+                client.initialize.dune_version)
           in
           client.handler_initialized <- true;
           let* () = Fiber.Ivar.fill handler_var handler in

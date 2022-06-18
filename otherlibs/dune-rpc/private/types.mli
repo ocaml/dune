@@ -321,17 +321,3 @@ module type Fiber = sig
   end
   with type 'a fiber := 'a t
 end
-
-module type Sys = sig
-  type 'a fiber
-
-  val getenv : string -> string option
-
-  val is_win32 : unit -> bool
-
-  val read_file : string -> string fiber
-
-  val readlink : string -> string option fiber
-
-  val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
-end

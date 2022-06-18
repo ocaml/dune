@@ -19,7 +19,7 @@ module Id : sig
 
   val to_sexp : t -> Sexp.t
 
-  include Stdune.Comparable_intf.S with type key := t
+  include Comparable_intf.S with type key := t
 end
 
 module Version : sig
@@ -35,8 +35,8 @@ module Method_name : sig
 
   val sexp : t Conv.value
 
-  module Map = Stdune.String.Map
-  module Table = Stdune.String.Table
+  module Map = String.Map
+  module Table = String.Table
 end
 
 module Method_version : sig
@@ -44,8 +44,8 @@ module Method_version : sig
 
   val sexp : t Conv.value
 
-  module Set = Stdune.Int.Set
-  module Map = Stdune.Int.Map
+  module Set = Int.Set
+  module Map = Int.Map
 end
 
 module Call : sig
@@ -207,7 +207,7 @@ end
 module Decl : sig
   type 'gen t =
     { method_ : Method_name.t
-    ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
+    ; key : 'gen Int.Map.t Univ_map.Key.t
     }
 
   module Generation : sig

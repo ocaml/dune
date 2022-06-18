@@ -1,5 +1,4 @@
 module V1 = struct
-  module Sexp = Stdune.Sexp
   open Dune_rpc_private
   module Id = Id
   module Response = Response

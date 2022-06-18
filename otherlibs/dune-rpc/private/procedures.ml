@@ -1,3 +1,4 @@
+open Import
 open Types
 open Exported_types
 
@@ -90,7 +91,11 @@ end
 module Poll = struct
   let cancel_gen = Decl.Notification.make_current_gen ~conv:Id.sexp ~version:1
 
-  module Name = Stdune.String
+  module Name = struct
+    include String
+
+    let make s = s
+  end
 
   type 'a t =
     { poll : (Id.t, 'a option) Decl.request

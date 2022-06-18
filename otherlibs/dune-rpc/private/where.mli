@@ -1,3 +1,5 @@
+open Import
+
 type t =
   [ `Unix of string
   | `Ip of [ `Host of string ] * [ `Port of int ]
@@ -5,13 +7,13 @@ type t =
 
 val to_string : t -> string
 
-val compare : t -> t -> Stdune.Ordering.t
+val compare : t -> t -> Ordering.t
 
 val to_dyn : t -> Dyn.t
 
 val sexp : t Conv.value
 
-val add_to_env : t -> Stdune.Env.t -> Stdune.Env.t
+val add_to_env : t -> Env.t -> Env.t
 
 module type S = sig
   type 'a fiber

@@ -1,3 +1,5 @@
+open Stdune
+
 module Conv : module type of Conv
 
 module Where : module type of Where
@@ -23,7 +25,7 @@ module Id : sig
 
   val to_sexp : t -> Csexp.t
 
-  include Stdune.Comparable_intf.S with type key := t
+  include Comparable_intf.S with type key := t
 end
 
 module Call : sig
@@ -431,7 +433,7 @@ module Menu : sig
   (** For each method known by both local and remote, choose the highest common
       version number. Returns [None] if the resulting menu would be empty. *)
   val select_common :
-       local_versions:Stdune.Int.Set.t Stdune.String.Map.t
+       local_versions:Int.Set.t String.Map.t
     -> remote_versions:(string * int list) list
     -> t option
 

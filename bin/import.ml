@@ -127,25 +127,17 @@ module Scheduler = struct
 
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
-    let config = Dune_config.for_scheduler dune_config None stats in
+    let config = Dune_config.for_scheduler dune_config stats in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
     let stats = Common.stats common in
-    let rpc_where = Some (Dune_rpc_impl.Where.default ()) in
-    let config = Dune_config.for_scheduler dune_config rpc_where stats in
+    let config = Dune_config.for_scheduler dune_config stats in
     let file_watcher = Common.file_watcher common in
-    let run =
-      match Common.rpc common with
-      | None -> run
-      | Some rpc ->
-        fun () ->
-          Fiber.fork_and_join_unit
-            (fun () ->
-              let rpc_config = Dune_rpc_impl.Server.config rpc in
-              Dune_rpc_impl.Server.run rpc_config config.stats)
-            run
+    let rpc = Common.rpc common in
+    let run () =
+      Fiber.fork_and_join_unit (fun () -> Dune_rpc_impl.Server.run rpc) run
     in
     Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end

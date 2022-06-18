@@ -1,23 +1,15 @@
 open! Stdune
 open Import
 
-let active_server common =
-  (* XXX the name wait is confusing. There's no waiting going on here. *)
-  match (Dune_rpc_impl.Where.get (), Common.rpc common) with
-  | None, None -> User_error.raise [ Pp.text "rpc server not running" ]
-  | Some p, Some _ ->
-    User_error.raise
-      [ Pp.textf "cannot start rpc. It's already running at %s"
-          (Dune_rpc.Where.to_string p)
-      ]
-  | Some w, None -> w
-  | None, Some _ ->
-    User_error.raise [ Pp.text "failed to establish rpc connection " ]
+let active_server () =
+  match Dune_rpc_impl.Where.get () with
+  | Some p -> p
+  | None -> User_error.raise [ Pp.text "rpc server not running" ]
 
 let client_term common f =
   let common = Common.set_print_directory common false in
   let config = Common.init ~log_file:No_log_file common in
-  Scheduler.go ~common ~config (fun () -> f common)
+  Scheduler.go ~common ~config f
 
 (* cwong: Should we put this into [dune-rpc]? *)
 let interpret_kind = function
@@ -49,7 +41,7 @@ let retry_loop once =
   in
   loop ()
 
-let establish_connection_or_raise ~wait ~common once =
+let establish_connection_or_raise ~wait once =
   let open Fiber.O in
   if wait then retry_loop once
   else
@@ -57,7 +49,7 @@ let establish_connection_or_raise ~wait ~common once =
     match res with
     | Some conn -> conn
     | None ->
-      let (_ : Dune_rpc_private.Where.t) = active_server common in
+      let (_ : Dune_rpc_private.Where.t) = active_server () in
       User_error.raise
         [ Pp.text
             "failed to establish connection even though server seems to be \
@@ -70,7 +62,7 @@ let wait_term =
   in
   Arg.(value & flag & info [ "wait" ] ~doc)
 
-let establish_client_session ~common ~wait =
+let establish_client_session ~wait =
   let open Fiber.O in
   let once () =
     let where = Dune_rpc_impl.Where.get () in
@@ -84,7 +76,7 @@ let establish_client_session ~common ~wait =
         Console.print_user_message message;
         None)
   in
-  establish_connection_or_raise ~wait ~common once
+  establish_connection_or_raise ~wait once
 
 let report_error error =
   Printf.printf "Error: %s\n%!"
@@ -95,8 +87,8 @@ let witness = Dune_rpc_private.Decl.Request.witness
 module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
-    client_term common @@ fun common ->
-    let where = active_server common in
+    client_term common @@ fun _common ->
+    let where = active_server () in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "Connected clients (including this one):\n";
     let open Fiber.O in
@@ -148,9 +140,9 @@ module Build = struct
     let+ (common : Common.t) = Common.term
     and+ wait = wait_term
     and+ targets = Arg.(value & pos_all string [] name_) in
-    client_term common @@ fun common ->
+    client_term common @@ fun _common ->
     let open Fiber.O in
-    let* conn = establish_client_session ~common ~wait in
+    let* conn = establish_client_session ~wait in
     Dune_rpc_impl.Client.client conn
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "build")))

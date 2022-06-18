@@ -1,6 +1,5 @@
 open Import
 open Fiber.O
-module Dune_rpc = Dune_rpc_private
 
 module Config = struct
   include Config
@@ -46,21 +45,8 @@ module Config = struct
   type t =
     { concurrency : int
     ; display : Display.t
-    ; rpc : Dune_rpc.Where.t option
     ; stats : Dune_stats.t option
     }
-
-  let add_to_env t env =
-    match t.rpc with
-    | None -> env
-    | Some where ->
-      if true then env
-      else
-        (* This is disabled because setting DUNE_RPC in tests breaks inner dune
-           invocations. We should come up with a better design for this feature,
-           or a way to cleanly work around it and prevent "unauthorized" access
-           where the test shuts down a dune that's running it. *)
-        Dune_rpc.Where.add_to_env where env
 end
 
 type job =

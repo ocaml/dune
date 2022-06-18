@@ -126,7 +126,6 @@ let () =
   let config =
     { Scheduler.Config.concurrency = 10
     ; display = { verbosity = Quiet; status_line = false }
-    ; rpc = None
     ; stats = None
     }
   in

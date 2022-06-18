@@ -28,6 +28,7 @@ module Config = struct
     ; pool : Fiber.Pool.t
     ; backlog : int
     ; root : string
+    ; where : Dune_rpc.Where.t
     }
 end
 
@@ -39,20 +40,18 @@ module Run = struct
     { server : Csexp_rpc.Server.t
     ; handler : Dune_rpc_server.t
     ; pool : Fiber.Pool.t
-    ; where : Dune_rpc_private.Where.t
+    ; where : Dune_rpc.Where.t
     ; stats : Dune_stats.t option
     ; root : string
     }
 
   let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
-  let of_config { Config.handler; backlog; pool; root } stats =
-    let where = Where.default () in
+  let of_config { Config.handler; backlog; pool; root; where } stats =
     let server = Csexp_rpc.Server.create (Where.to_socket where) ~backlog in
-    { server; handler; where; stats; pool; root }
+    { server; handler; stats; pool; root; where }
 
-  let run config stats =
-    let t = of_config config stats in
+  let run t =
     Fiber.Var.set t_var t (fun () ->
         let cleanup_registry = ref None in
         let run_cleanup_registry () =
@@ -117,8 +116,6 @@ module Run = struct
       Csexp_rpc.Server.stop s.server;
       Fiber.return ()
 end
-
-let run = Run.run
 
 let stop = Run.stop
 
@@ -222,6 +219,7 @@ type t =
   ; pending_build_jobs :
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; mutable clients : Clients.t
+  ; stats : Dune_stats.t option
   }
 
 let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
@@ -401,17 +399,24 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   rpc
 
-let create ~root =
+let create ~root stats =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
-  let config = { Config.handler; backlog = 10; pool; root } in
-  let res = { config; pending_build_jobs; clients = Clients.empty } in
+  let where = Where.default () in
+  let config = { Config.handler; backlog = 10; pool; root; where } in
+  let res = { config; pending_build_jobs; clients = Clients.empty; stats } in
   Fdecl.set t res;
   res
 
-let config t = t.config
+let listening_address t = t.config.where
+
+let run t =
+  let* () = Fiber.return () in
+  Run.run (Run.of_config t.config t.stats)
+
+let stats (t : t) = t.stats
 
 let pending_build_action t =
   Job_queue.read t.pending_build_jobs

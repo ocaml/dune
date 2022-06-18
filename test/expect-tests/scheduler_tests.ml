@@ -7,7 +7,6 @@ let go f =
   let config =
     { Scheduler.Config.concurrency = 1
     ; display = { verbosity = Short; status_line = false }
-    ; rpc = None
     ; stats = None
     }
   in

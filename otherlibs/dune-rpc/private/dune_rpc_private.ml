@@ -10,6 +10,8 @@ include Exported_types
 module Version_error = Versioned.Version_error
 module Decl = Decl
 
+module type Fiber = Fiber_intf.S
+
 module Sub = struct
   type 'a t =
     { poll : (Id.t, 'a option) Decl.Request.witness

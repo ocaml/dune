@@ -28,7 +28,7 @@ module Staged = struct
   type 'payload notification = { encode : 'payload -> Call.t }
 end
 
-module Make (Fiber : Fiber) = struct
+module Make (Fiber : Fiber_intf.S) = struct
   module Handler = struct
     type 'state t =
       { menu : Menu.t

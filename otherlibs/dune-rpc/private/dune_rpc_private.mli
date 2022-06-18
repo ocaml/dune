@@ -4,6 +4,10 @@ module Where : module type of Where
 
 module Registry : module type of Registry
 
+module type Fiber = Fiber_intf.S
+
+include module type of Exported_types
+
 module Id : sig
   type t
 
@@ -123,139 +127,6 @@ module Version_negotiation : sig
 
     val sexp : t Conv.value
   end
-end
-
-module Loc : sig
-  type t = Stdune.Loc.t =
-    { start : Lexing.position
-    ; stop : Lexing.position
-    }
-
-  val start : t -> Lexing.position
-
-  val stop : t -> Lexing.position
-end
-
-module Target : sig
-  type t =
-    | Path of string
-    | Alias of string
-    | Library of string
-    | Executables of string list
-    | Preprocess of string list
-    | Loc of Loc.t
-end
-
-module Path : sig
-  type t = string
-
-  val dune_root : t
-
-  val absolute : string -> t
-
-  val relative : t -> string -> t
-
-  val to_string_absolute : t -> string
-end
-
-module Diagnostic : sig
-  type severity =
-    | Error
-    | Warning
-
-  module Promotion : sig
-    type t =
-      { in_build : string
-      ; in_source : string
-      }
-
-    val in_build : t -> string
-
-    val in_source : t -> string
-  end
-
-  module Id : sig
-    type t
-
-    val compare : t -> t -> Ordering.t
-
-    val hash : t -> int
-
-    val create : int -> t
-  end
-
-  module Related : sig
-    type t =
-      { message : unit Pp.t
-      ; loc : Loc.t
-      }
-
-    val message : t -> unit Pp.t
-
-    val loc : t -> Loc.t
-  end
-
-  type t =
-    { targets : Target.t list
-    ; id : Id.t
-    ; message : unit Pp.t
-    ; loc : Loc.t option
-    ; severity : severity option
-    ; promotion : Promotion.t list
-    ; directory : string option
-    ; related : Related.t list
-    }
-
-  val to_dyn : t -> Dyn.t
-
-  val related : t -> Related.t list
-
-  val id : t -> Id.t
-
-  val loc : t -> Loc.t option
-
-  val message : t -> unit Pp.t
-
-  val severity : t -> severity option
-
-  val promotion : t -> Promotion.t list
-
-  val targets : t -> Target.t list
-
-  val directory : t -> string option
-
-  module Event : sig
-    type nonrec t =
-      | Add of t
-      | Remove of t
-
-    val to_dyn : t -> Dyn.t
-  end
-end
-
-module Progress : sig
-  type t =
-    | Waiting
-    | In_progress of
-        { complete : int
-        ; remaining : int
-        }
-    | Failed
-    | Interrupted
-    | Success
-end
-
-module Message : sig
-  type t =
-    { payload : Csexp.t option
-    ; message : string
-    }
-
-  val payload : t -> Csexp.t option
-
-  val message : t -> string
-
-  val to_sexp_unversioned : t -> Csexp.t
 end
 
 module Decl : sig
@@ -378,37 +249,6 @@ module Sub : sig
   end
 
   val id : 'a t -> Id.t
-end
-
-module type Fiber = sig
-  type 'a t
-
-  val return : 'a -> 'a t
-
-  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
-  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
-
-  module O : sig
-    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-  end
-
-  module Ivar : sig
-    type 'a fiber
-
-    type 'a t
-
-    val create : unit -> 'a t
-
-    val read : 'a t -> 'a fiber
-
-    val fill : 'a t -> 'a -> unit fiber
-  end
-  with type 'a fiber := 'a t
 end
 
 module Public : sig

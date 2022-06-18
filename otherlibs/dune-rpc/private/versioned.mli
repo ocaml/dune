@@ -23,7 +23,7 @@ module Staged : sig
   type 'payload notification = { encode : 'payload -> Call.t }
 end
 
-module Make (Fiber : Fiber) : sig
+module Make (Fiber : Fiber_intf.S) : sig
   module Handler : sig
     type 'state t
 

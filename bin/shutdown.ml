@@ -13,8 +13,10 @@ let send_shutdown cli =
   | Error e -> raise (Dune_rpc_private.Version_error.E e)
 
 let exec common =
+  let open Fiber.O in
   let where = Rpc.active_server common in
-  Dune_rpc_impl.Client.client where ~f:send_shutdown
+  let* conn = Dune_rpc_impl.Client.Connection.connect_exn where in
+  Dune_rpc_impl.Client.client conn ~f:send_shutdown
     (Dune_rpc_private.Initialize.Request.create
        ~id:(Dune_rpc_private.Id.make (Sexp.Atom "shutdown_cmd")))
 

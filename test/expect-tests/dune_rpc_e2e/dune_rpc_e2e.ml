@@ -26,9 +26,8 @@ let init_chan ~root_dir =
     | Error exn -> Exn.raise exn
     | Ok None -> Fiber.return None
     | Ok (Some where) -> (
-      let* client = Dune_rpc_impl.Client.Connect.csexp_client where in
-      let+ res = Csexp_rpc.Client.connect client in
-      match res with
+      let+ conn = Dune_rpc_impl.Client.Connection.connect where in
+      match conn with
       | Ok s -> Some s
       | Error _ -> None)
   in
@@ -64,10 +63,7 @@ let run_client ?handler f =
     let id = Dune_rpc.Id.make (Atom "test") in
     Dune_rpc.Initialize.Request.create ~id
   in
-  Client.connect_with_menu ?handler chan initialize
-    ~private_menu:
-      [ Request Dune_rpc_impl.Decl.build; Request Dune_rpc_impl.Decl.status ]
-    ~f:(fun client ->
+  Dune_rpc_impl.Client.client ?handler chan initialize ~f:(fun client ->
       Fiber.finalize
         (fun () -> f client)
         ~finally:(fun () ->

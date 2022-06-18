@@ -1,6 +1,7 @@
 open Import
 open Sexpable_intf
-open Serializable_intf
+
+module Error : module type of Error
 
 module Dependency : sig
   type t =
@@ -11,14 +12,10 @@ module Dependency : sig
         ; glob : string
         }
 
-  include Sexpable with type t := t
-
   module Map : Map.S with type key = t
 
   module Set : sig
     include Set.S with type elt = t and type 'a map = 'a Map.t
-
-    include Sexpable with type t := t
   end
 end
 
@@ -28,7 +25,7 @@ module Greeting : sig
     ; response_fn : string
     }
 
-  include Serializable with type t := t
+  include Sexpable with type t := t
 end
 
 module Run_arguments : sig
@@ -37,7 +34,7 @@ module Run_arguments : sig
     ; targets : String.Set.t
     }
 
-  include Serializable with type t := t
+  include Sexpable with type t := t
 end
 
 module Response : sig
@@ -45,7 +42,7 @@ module Response : sig
     | Done
     | Need_more_deps of Dependency.Set.t
 
-  include Serializable with type t := t
+  include Sexpable with type t := t
 end
 
 (** Dune sets this environment variable to pass [Greeting.t] to client. *)

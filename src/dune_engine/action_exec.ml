@@ -137,14 +137,17 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
     ; targets
     }
   in
-  Io.write_file run_arguments_fn (DAP.Run_arguments.serialize run_arguments);
+  DAP.Run_arguments.to_sexp run_arguments
+  |> Csexp.to_string
+  |> Io.write_file run_arguments_fn;
   let env =
     let value =
       DAP.Greeting.(
-        serialize
+        to_sexp
           { run_arguments_fn = Path.to_absolute_filename run_arguments_fn
           ; response_fn = Path.to_absolute_filename response_fn
           })
+      |> Csexp.to_string
     in
     Env.add eenv.env ~var:DAP.run_by_dune_env_variable ~value
   in
@@ -153,12 +156,17 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       ~stderr_to:eenv.stderr_to ~stdin_from:eenv.stdin_from
       ~metadata:ectx.metadata prog args
   in
-  let response = Io.read_file response_fn in
+  let response_raw = Io.read_file response_fn in
   Temp.destroy File run_arguments_fn;
   Temp.destroy File response_fn;
+  let response =
+    match Csexp.parse_string response_raw with
+    | Ok s -> DAP.Response.of_sexp s
+    | Error _ -> Error DAP.Error.Parse_error
+  in
   let prog_name = Path.reach ~from:eenv.working_dir prog in
-  match DAP.Response.deserialize response with
-  | Error _ when String.is_empty response ->
+  match response with
+  | Error _ when String.is_empty response_raw ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
           "Executable '%s' declared as using dune-action-plugin (declared with \

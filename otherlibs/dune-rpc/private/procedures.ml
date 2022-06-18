@@ -87,17 +87,10 @@ module Server_side = struct
   let log = Log.decl
 end
 
-(* TODO: This is pretty clunky, make a better interface. *)
 module Poll = struct
   let cancel_gen = Decl.Notification.make_current_gen ~conv:Id.sexp ~version:1
 
-  module Name = struct
-    type t = string
-
-    let make t = t
-
-    let compare = Stdune.String.compare
-  end
+  module Name = Stdune.String
 
   type 'a t =
     { poll : (Id.t, 'a option) Decl.request

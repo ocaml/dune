@@ -1,4 +1,4 @@
-3.3.1 (Unreleased)
+3.3.1 (19-06-2022)
 ------------------
 
 - Improve parsing of ocamlc errors. We now correctly strip excerpts and parse

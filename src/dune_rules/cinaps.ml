@@ -114,7 +114,7 @@ let gen_rules sctx t ~dir ~scope =
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
       ~js_of_ocaml:None ~package:None
   in
-  let* () =
+  let* (_ : Exe.dep_graphs) =
     Exe.build_and_link cctx
       ~program:{ name; main_module_name; loc }
       ~linkages:[ Exe.Linkage.native_or_custom (Super_context.context sctx) ]

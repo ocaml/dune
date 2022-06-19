@@ -40,6 +40,8 @@ module Linkage : sig
     Context.t -> loc:Loc.t -> Dune_file.Executables.Link_mode.t -> t
 end
 
+type dep_graphs = { for_exes : Module.t list Action_builder.t list }
+
 (** {1 High-level functions} *)
 
 (** Build and link one or more executables *)
@@ -55,7 +57,7 @@ val link_many :
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit Memo.t
+  -> dep_graphs Memo.t
 
 val build_and_link :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
@@ -66,7 +68,7 @@ val build_and_link :
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit Memo.t
+  -> dep_graphs Memo.t
 
 val build_and_link_many :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
@@ -77,7 +79,7 @@ val build_and_link_many :
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit Memo.t
+  -> dep_graphs Memo.t
 
 val exe_path :
      Compilation_context.t

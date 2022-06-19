@@ -455,7 +455,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         write_discover_script ~sctx ~dir ~filename:(discover_script ^ ".ml")
           ~cflags_sexp ~c_library_flags_sexp ~external_library_name
       in
-      let* () =
+      let* (_ : Exe.dep_graphs) =
         exe_build_and_link ~scope ~loc ~dir ~cctx ~sandbox
           ~libraries:[ "dune.configurator" ] discover_script
       in
@@ -487,7 +487,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
       write_type_gen_script ~headers ~sctx ~dir
         ~filename:(type_gen_script ^ ".ml") ~type_description_functor
     in
-    let* () = exe_link_only type_gen_script in
+    let* (_ : Exe.dep_graphs) = exe_link_only type_gen_script in
     let* () =
       rule ~stdout_to:c_generated_types_cout_c ~exe:(type_gen_script ^ ".exe")
         ()
@@ -525,7 +525,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
             ~errno_policy:fd.errno_policy
             ~function_description_functor:fd.functor_
         in
-        let* () = exe_link_only function_gen_script in
+        let* (_ : Exe.dep_graphs) = exe_link_only function_gen_script in
         let* () =
           rule ~stdout_to:c_generated_functions_cout_c
             ~exe:(function_gen_script ^ ".exe")

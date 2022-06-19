@@ -309,7 +309,7 @@ Let us start with a simple project. First, make sure we have a
 
 .. code:: scheme
 
-  (lang dune 3.3)
+  (lang dune 3.4)
   (using coq 0.4)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:

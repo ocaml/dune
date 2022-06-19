@@ -300,7 +300,8 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
       in
       Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
 
-let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
+let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
+    ~expander ~scope =
   let obj_dir = Compilation_context.obj_dir cctx in
   let dir = Compilation_context.dir cctx in
   let flags = Compilation_context.flags cctx in
@@ -311,7 +312,6 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
   let sctx = Compilation_context.super_context cctx in
   let ctx = Compilation_context.context cctx in
   let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.lib_config in
-  let impl_only = Modules.impl_only modules in
   let open Memo.O in
   let* () =
     Modules.exit_module modules
@@ -335,10 +335,6 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
                   let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
                   Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc
                     (Action_builder.copy ~src ~dst)))
-  in
-  let top_sorted_modules =
-    Dep_graph.top_closed_implementations
-      (Compilation_context.dep_graphs cctx).impl impl_only
   in
   let modes = Compilation_context.modes cctx in
   (* The [dir] below is used as an object directory without going through
@@ -451,18 +447,25 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
+  let top_sorted_modules =
+    let impl_only = Modules.impl_only modules in
+    Dep_graph.top_closed_implementations
+      (Compilation_context.dep_graphs cctx).impl impl_only
+  in
   let* () =
     Memo.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
+  let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir in
   let+ () =
     Memo.when_
       (not (Library.is_virtual lib))
-      (fun () -> setup_build_archives lib ~cctx ~expander ~scope)
+      (fun () ->
+        setup_build_archives lib ~top_sorted_modules ~cctx ~expander ~scope)
   and+ () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     Memo.when_

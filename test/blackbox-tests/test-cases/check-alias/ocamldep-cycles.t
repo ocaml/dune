@@ -21,6 +21,12 @@ The @check alias should detect dependency cycles
   > EOF
 
   $ dune build @check
+  Error: dependency cycle between modules in _build/default:
+     B
+  -> A
+  -> B
+  -> required by alias check
+  [1]
   $ dune build @all
   Error: dependency cycle between modules in _build/default:
      B

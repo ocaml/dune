@@ -1,6 +1,9 @@
 3.4.0 (Unreleased)
 ------------------
 
+- Building the `@check` alias should make sure the libraries and executables
+  don't have dependency cycles (#5892, @rgrinberg)
+
 - [ctypes] Add support for the `errno` parameter using the `errno_policy` field
   in the ctypes settings. (#5827, @droyo)
 

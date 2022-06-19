@@ -224,39 +224,48 @@ let link_js ~name ~loc ~cm_files ~promote ~link_time_code_gen cctx =
   Jsoo_rules.build_exe cctx ~loc ~in_context ~src ~cm:top_sorted_cms ~promote
     ~link_time_code_gen:other_cm
 
+type dep_graphs = { for_exes : Module.t list Action_builder.t list }
+
 let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
     ~programs ~linkages ~promote cctx =
   let open Memo.O in
   let modules = Compilation_context.modules cctx in
   let* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
-  Memo.parallel_iter programs ~f:(fun { Program.name; main_module_name; loc } ->
-      let cm_files =
-        let sctx = CC.super_context cctx in
-        let ctx = SC.context sctx in
-        let obj_dir = CC.obj_dir cctx in
+  let+ for_exes =
+    Memo.parallel_map programs
+      ~f:(fun { Program.name; main_module_name; loc } ->
         let top_sorted_modules =
           let main = Option.value_exn (Modules.find modules main_module_name) in
           Dep_graph.top_closed_implementations (CC.dep_graphs cctx).impl
             [ main ]
         in
-        Cm_files.make ~obj_dir ~modules ~top_sorted_modules
-          ~ext_obj:ctx.lib_config.ext_obj ()
-      in
-      Memo.parallel_iter linkages ~f:(fun linkage ->
-          if Linkage.is_js linkage then
-            link_js ~loc ~name ~cm_files ~promote cctx ~link_time_code_gen
-          else
-            let* link_time_code_gen =
-              match Linkage.is_plugin linkage with
-              | false -> Memo.return link_time_code_gen
-              | true ->
-                let cc =
-                  CC.for_plugin_executable cctx ~embed_in_plugin_libraries
+        let cm_files =
+          let sctx = CC.super_context cctx in
+          let ctx = SC.context sctx in
+          let obj_dir = CC.obj_dir cctx in
+          Cm_files.make ~obj_dir ~modules ~top_sorted_modules
+            ~ext_obj:ctx.lib_config.ext_obj ()
+        in
+        let+ () =
+          Memo.parallel_iter linkages ~f:(fun linkage ->
+              if Linkage.is_js linkage then
+                link_js ~loc ~name ~cm_files ~promote cctx ~link_time_code_gen
+              else
+                let* link_time_code_gen =
+                  match Linkage.is_plugin linkage with
+                  | false -> Memo.return link_time_code_gen
+                  | true ->
+                    let cc =
+                      CC.for_plugin_executable cctx ~embed_in_plugin_libraries
+                    in
+                    Link_time_code_gen.handle_special_libs cc
                 in
-                Link_time_code_gen.handle_special_libs cc
-            in
-            link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
-              ~promote ?link_args ?o_files ?sandbox))
+                link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
+                  ~promote ?link_args ?o_files ?sandbox)
+        in
+        top_sorted_modules)
+  in
+  { for_exes }
 
 let build_and_link_many ?link_args ?o_files ?embed_in_plugin_libraries ?sandbox
     ~programs ~linkages ~promote cctx =

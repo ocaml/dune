@@ -332,7 +332,10 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
       ~requires_compile:(Memo.return requires_compile)
       ~requires_link ~opaque ~js_of_ocaml:None ~package:None ~bin_annot:false ()
   in
-  Exe.build_and_link ~program ~linkages cctx ~promote:None
+  let+ (_ : Exe.dep_graphs) =
+    Exe.build_and_link ~program ~linkages cctx ~promote:None
+  in
+  ()
 
 let get_rules sctx key =
   let exe = ppx_exe sctx ~key in

@@ -156,7 +156,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
-  let+ () =
+  let* dep_graphs =
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
     let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
@@ -204,8 +204,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         ~requires_compile
     in
     let* () = Check_rules.add_files sctx ~dir o_files in
-    let buildable = exes.Executables.buildable in
-    match buildable.Buildable.ctypes with
+    let buildable = exes.buildable in
+    match buildable.ctypes with
     | None ->
       Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
         ~promote:exes.promote ~embed_in_plugin_libraries ~sandbox
@@ -222,6 +222,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       let* () = Module_compilation.build_all cctx in
       Exe.link_many ~programs ~linkages ~link_args ~o_files
         ~promote:exes.promote ~embed_in_plugin_libraries cctx ~sandbox
+  in
+  let+ () =
+    Memo.parallel_iter dep_graphs.for_exes
+      ~f:(Check_rules.add_cycle_check sctx ~dir)
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

@@ -39,7 +39,10 @@ let term =
         let context = Dune_rules.Super_context.context sctx in
         (* Try to compute a relative path if we got an absolute path. *)
         let coq_file_arg =
-          if Filename.is_relative coq_file_arg then coq_file_arg
+          if Filename.is_relative coq_file_arg then
+            let root = Common.root common in
+            Path.relative Path.root (root.reach_from_root_prefix ^ coq_file_arg)
+            |> Path.to_string
           else
             let cwd = Path.external_ Path.External.initial_cwd in
             let file =

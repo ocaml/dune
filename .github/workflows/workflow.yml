@@ -54,6 +54,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          # Fetches all git history
+          fetch-depth: 0
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
@@ -99,12 +102,28 @@ jobs:
         run: opam exec -- make test
         if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
 
+      - name: Run test suite on Unix on each commit
+        run: |
+          for commit in $(git rev-list ${{ github.base_ref }}..HEAD); do
+              git checkout $commit
+              opam exec -- make test
+          done
+        if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
+
       - name: Run test suite on Win32
         run: opam exec -- make test-windows
         if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
 
       - name: Test source is well formatted
         run: opam exec -- make fmt
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.ocaml-compiler == '4.14.x' }}
+
+      - name: Test all commits are well formatted
+        run: |
+          for commit in $(git rev-list ${{ github.base_ref }}..HEAD); do
+              git checkout $commit
+              opam exec -- make fmt
+          done
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.ocaml-compiler == '4.14.x' }}
 
       - name: Build configurator

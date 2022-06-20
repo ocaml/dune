@@ -60,6 +60,7 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
           opam-depext: false
+          dune-cache: true
 
       # git user needs to be configured for the following tests:
       # otherlibs/build-info/test/run.t

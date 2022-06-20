@@ -3,6 +3,9 @@
 
 - Support new locations of unix, str, dynlink in OCaml >= 5.0 (#5582, @dra27)
 
+- Ignore `bigarray` in `(libraries)` with OCaml >= 5.0. (#5526, fixes #5494,
+  @moyodiallo)
+
 2.9.3 (26/01/2022)
 ------------------
 

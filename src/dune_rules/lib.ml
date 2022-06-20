@@ -1314,6 +1314,23 @@ end = struct
     ; re_exports : lib list Or_exn.t
     }
 
+  let remove_library deps target =
+    List.filter_map deps ~f:(fun (dep : Lib_dep.t) ->
+        match dep with
+        | Re_export (_, name) | Direct (_, name) ->
+          Option.some_if (not (Lib_name.equal target name)) dep
+        | Select select ->
+          let choices =
+            List.filter_map select.choices ~f:(fun choice ->
+                if Lib_name.Set.mem choice.forbidden target then None
+                else
+                  Some
+                    { choice with
+                      required = Lib_name.Set.remove choice.required target
+                    })
+          in
+          Some (Select { select with choices }))
+
   let resolve_complex_deps db deps ~private_deps ~stack : resolved_deps =
     let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
       let res, src_fn =
@@ -1339,6 +1356,16 @@ end = struct
           (e (), e ())
       in
       (res, { Resolved_select.src_fn; dst_fn = result_fn })
+    in
+    let deps =
+      let ocaml_version = db.lib_config.ocaml_version in
+      let bigarray_in_std_libraries =
+        Ocaml_version.has_bigarray_library ocaml_version
+      in
+      if bigarray_in_std_libraries then deps
+      else
+        let bigarray = Lib_name.of_string "bigarray" in
+        remove_library deps bigarray
     in
     let res, resolved_selects, re_exports =
       List.fold_left deps ~init:(Ok [], [], Ok [])

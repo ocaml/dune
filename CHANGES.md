@@ -32,6 +32,9 @@
   particular, messages where the excerpt line number started with a blank
   character were skipped. (#5981, @rgrinberg)
 
+- env stanza: warn if some rules are ignored because they appear after a
+  wildcard rule. (#5898, fixes #5886, @emillon)
+
 3.3.1 (19-06-2022)
 ------------------
 

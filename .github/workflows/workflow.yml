@@ -104,7 +104,7 @@ jobs:
 
       - name: Run test suite on Unix on each commit
         run: |
-          for commit in $(git rev-list ${{ github.base_ref }}..HEAD); do
+          for commit in $(git rev-list ${{ github.event.before }}..${{ github.event.after }}); do
               git checkout $commit
               opam exec -- make test
           done
@@ -120,7 +120,7 @@ jobs:
 
       - name: Test all commits are well formatted
         run: |
-          for commit in $(git rev-list ${{ github.base_ref }}..HEAD); do
+          for commit in $(git rev-list ${{ github.event.before }}..${{ github.event.after }}); do
               git checkout $commit
               opam exec -- make fmt
           done

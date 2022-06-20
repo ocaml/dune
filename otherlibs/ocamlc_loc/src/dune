@@ -1,6 +1,6 @@
 (library
  (name ocamlc_loc)
  (public_name ocamlc-loc)
- (libraries dune_re dyn))
+ (libraries dyn))
 
 (ocamllex lexer)

@@ -1,4 +1,3 @@
-module Caml_digest = Stdlib.Digest
 open Import
 
 let digest_string string =

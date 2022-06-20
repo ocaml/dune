@@ -26,8 +26,8 @@
   projects can now refer to each other when in the same workspace (#5784,
   @Alitzer, @rgrinberg)
 
-- Fix hint message for ``data_only_dirs`` that wrongly mentions the unknown
-  constructor ``data_only`` (#5803, @lambdaxdotx)
+- Fix hint message for `data_only_dirs` that wrongly mentions the unknown
+  constructor `data_only` (#5803, @lambdaxdotx)
 
 - Fix creating sandbox directory trees by getting rid of buggy memoization
   (@5794, @rgrinberg, @snowleopard)
@@ -40,9 +40,9 @@
 
 - Support new locations of unix, str, dynlink in OCaml >= 5.0 (#5582, @dra27)
 
-- The ``coq.theory`` stanza now produces rules for running ``coqdoc``. Given a
-  theory named ``mytheory``, the directory targets ``mytheory.html/`` and
-  ``mytheory.tex/`` or additionally the aliases `@doc` and `@doc-latex` will
+- The `coq.theory` stanza now produces rules for running `coqdoc`. Given a
+  theory named `mytheory`, the directory targets `mytheory.html/` and
+  `mytheory.tex/` or additionally the aliases `@doc` and `@doc-latex` will
   build the HTML and LaTeX documentation repsectively. (#5695, fixes #3760,
   @Alizter)
 
@@ -58,15 +58,14 @@
 3.2.0 (17-05-2022)
 ------------------
 
-- Fixed ``dune describe workspace --with-deps`` so that it correctly
-  handles Reason files, as well as files any other dialect. (#5701, @esope)
+- Fixed `dune describe workspace --with-deps` so that it correctly handles
+  Reason files, as well as files any other dialect. (#5701, @esope)
 
 - Disable alerts when compiling code in vendored directories (#5683,
   @NathanReb)
 
-- Fixed ``dune describe --with-deps``, that crashed when some
-  preprocessing was required in a dune file using ``per_module``.
-  (#5682, fixes #5680, @esope)
+- Fixed `dune describe --with-deps`, that crashed when some preprocessing was
+  required in a dune file using `per_module`. (#5682, fixes #5680, @esope)
 
 - Add `$ dune describe pp` to print the preprocssed ast of sources. (#5615,
   fixes #4470, @cannorin)

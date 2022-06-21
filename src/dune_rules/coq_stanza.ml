@@ -30,6 +30,7 @@ let coq_syntax =
 module Buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
+    ; warnings : Ordered_set_lang.Unexpanded.t
     ; coq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Loc.t * Coq_mode.t
     ; plugins : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
@@ -53,6 +54,7 @@ module Buildable = struct
     let* coq_lang_version = Dune_lang.Syntax.get_exn coq_syntax in
     let+ loc = loc
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+    and+ warnings = Ordered_set_lang.Unexpanded.field "warnings"
     and+ mode =
       let default =
         if coq_lang_version < (0, 3) then Coq_mode.Legacy else Coq_mode.VoOnly
@@ -73,7 +75,7 @@ module Buildable = struct
         ~default:[]
     in
     let plugins = merge_plugins_libraries ~plugins ~libraries in
-    { flags; mode; coq_lang_version; plugins; theories; loc }
+    { flags; warnings; mode; coq_lang_version; plugins; theories; loc }
 end
 
 module Extraction = struct

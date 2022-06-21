@@ -131,6 +131,7 @@ module Context = struct
     ; scope : Scope.t
     ; boot_type : Bootstrap.t Resolve.Memo.t
     ; profile_flags : string list Action_builder.t
+    ; profile_warnings : string list Action_builder.t
     ; mode : Coq_mode.t
     ; native_includes : Path.Set.t Resolve.t
     ; native_theory_includes : Path.Build.Set.t Resolve.t
@@ -141,8 +142,18 @@ module Context = struct
     Command.run ~dir ?stdout_to (fst t.coqc) args
 
   let coq_flags t =
-    let standard = t.profile_flags in
-    Expander.expand_and_eval_set t.expander t.buildable.flags ~standard
+    let open Action_builder.O in
+    let+ warnings =
+      Expander.expand_and_eval_set t.expander t.buildable.warnings
+        ~standard:t.profile_warnings
+    and+ flags =
+      Expander.expand_and_eval_set t.expander t.buildable.flags
+        ~standard:t.profile_flags
+    in
+    let warnings =
+      warnings |> List.map ~f:(fun x -> [ "-w"; x ]) |> List.flatten
+    in
+    warnings @ flags
 
   let theories_flags t =
     Resolve.Memo.args
@@ -296,7 +307,8 @@ module Context = struct
     and+ coqdep = rr "coqdep"
     and+ coqc = rr "coqc"
     and+ coqdoc = rr "coqdoc"
-    and+ profile_flags = Super_context.coq sctx ~dir in
+    and+ profile_flags = Super_context.coq sctx ~dir
+    and+ profile_warnings = Memo.return (Action_builder.return []) in
     { coqdep
     ; coqc = (coqc, coqc_dir)
     ; coqdoc
@@ -310,6 +322,7 @@ module Context = struct
     ; scope
     ; boot_type = Resolve.Memo.return Bootstrap.No_boot
     ; profile_flags
+    ; profile_warnings
     ; mode
     ; native_includes
     ; native_theory_includes

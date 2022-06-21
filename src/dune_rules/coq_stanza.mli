@@ -3,6 +3,7 @@ open Import
 module Buildable : sig
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
+    ; warnings : Ordered_set_lang.Unexpanded.t
     ; coq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Loc.t * Coq_mode.t
     ; plugins : (Loc.t * Lib_name.t) list  (** ocaml plugins *)

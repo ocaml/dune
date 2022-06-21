@@ -54,6 +54,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          # checkout full tree
+          fetch-depth: 0
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
@@ -97,6 +100,14 @@ jobs:
 
       - name: Run test suite on Unix
         run: opam exec -- make test
+        if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
+
+      - name: Run test suite on Unix on each commit
+        run: |
+          for commit in $(git rev-list ${{ github.event.before }}..${{ github.event.after }}); do
+              git checkout $commit
+              opam exec -- make test
+          done
         if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
 
       - name: Run test suite on Win32

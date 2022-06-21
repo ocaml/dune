@@ -46,10 +46,11 @@ module Util = struct
   let theory_coqc_flag lib =
     let dir = Coq_lib.src_root lib in
     let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
-    [ Command.Args.A binding_flag
-    ; Path (Path.build dir)
-    ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
-    ]
+    Command.Args.S
+      [ A binding_flag
+      ; Path (Path.build dir)
+      ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
+      ]
 end
 
 let resolve_program sctx ~loc ~dir prog =
@@ -85,26 +86,25 @@ module Bootstrap = struct
       | false -> Bootstrap lib
       | true -> Bootstrap_prelude)
 
-  let boot_lib_flags ~coqdoc lib =
-    let open Command in
+  let boot_lib_flags ~coqdoc lib : _ Command.Args.t =
     let dir = Coq_lib.src_root lib in
-    if coqdoc then [ Args.A "--coqlib"; Args.Path (Path.build dir) ]
-    else Args.A "-boot" :: Util.theory_coqc_flag lib
+    S
+      (if coqdoc then [ A "--coqlib"; Path (Path.build dir) ]
+      else [ A "-boot"; Util.theory_coqc_flag lib ])
 
-  let flags ~coqdoc =
-    let open Command in
-    function
-    | No_boot -> []
+  let flags ~coqdoc t : _ Command.Args.t =
+    match t with
+    | No_boot -> As []
     | Bootstrap lib -> boot_lib_flags ~coqdoc lib
-    | Bootstrap_prelude -> [ Args.As [ "-boot"; "-noinit" ] ]
+    | Bootstrap_prelude -> As [ "-boot"; "-noinit" ]
 end
 
 (* get_libraries from Coq's ML dependencies *)
 let libs_of_coq_deps ~lib_db = Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db)
 
-let select_native_mode ~sctx ~(buildable : Buildable.t) =
+let select_native_mode ~sctx ~(buildable : Buildable.t) : Coq_mode.t =
   let profile = (Super_context.context sctx).profile in
-  if Profile.is_dev profile then Coq_mode.VoOnly else snd buildable.mode
+  if Profile.is_dev profile then VoOnly else snd buildable.mode
 
 let rec resolve_first lib_db = function
   | [] -> assert false
@@ -148,30 +148,31 @@ module Context = struct
     Resolve.Memo.args
       (let open Resolve.Memo.O in
       let+ libs = t.theories_deps in
-      Command.Args.S (List.concat_map libs ~f:Util.theory_coqc_flag))
+      Command.Args.S (List.map ~f:Util.theory_coqc_flag libs))
 
   let coqc_file_flags cctx =
-    let file_flags =
-      [ Command.Args.Dyn (Resolve.Memo.read cctx.ml_flags)
+    let file_flags : _ Command.Args.t list =
+      [ Dyn (Resolve.Memo.read cctx.ml_flags)
       ; theories_flags cctx
-      ; Command.Args.A "-R"
+      ; A "-R"
       ; Path (Path.build cctx.dir)
       ; A cctx.wrapper_name
       ]
     in
-    [ Command.Args.Dyn
-        (Resolve.Memo.map
-           ~f:(fun b -> Command.Args.S (Bootstrap.flags ~coqdoc:false b))
-           cctx.boot_type
-        |> Resolve.Memo.read)
-    ; S file_flags
-    ]
+    ([ Dyn
+         (Resolve.Memo.map
+            ~f:(fun b -> Bootstrap.flags ~coqdoc:false b)
+            cctx.boot_type
+         |> Resolve.Memo.read)
+     ; S file_flags
+     ]
+      : _ Command.Args.t list)
 
   let coqc_native_flags cctx : _ Command.Args.t =
     match cctx.mode with
-    | Coq_mode.Legacy -> Command.Args.As []
-    | Coq_mode.VoOnly ->
-      Command.Args.As
+    | Legacy -> As []
+    | VoOnly ->
+      As
         [ "-w"
         ; "-deprecated-native-compiler-option"
         ; "-w"
@@ -179,7 +180,7 @@ module Context = struct
         ; "-native-compiler"
         ; "ondemand"
         ]
-    | Coq_mode.Native ->
+    | Native ->
       let args =
         let open Resolve.O in
         let* native_includes = cctx.native_includes in
@@ -194,11 +195,11 @@ module Context = struct
         in
         (* This dir is relative to the file, by default [.coq-native/] *)
         Command.Args.S
-          [ Command.Args.As [ "-w"; "-deprecated-native-compiler-option" ]
-          ; Command.Args.As [ "-native-output-dir"; "." ]
-          ; Command.Args.As [ "-native-compiler"; "on" ]
-          ; Command.Args.S (List.rev native_include_ml_args)
-          ; Command.Args.S (List.rev native_include_theory_output)
+          [ As [ "-w"; "-deprecated-native-compiler-option" ]
+          ; As [ "-native-output-dir"; "." ]
+          ; As [ "-native-compiler"; "on" ]
+          ; S (List.rev native_include_ml_args)
+          ; S (List.rev native_include_theory_output)
           ]
       in
       Resolve.args args
@@ -206,14 +207,14 @@ module Context = struct
   let coqdoc_file_flags cctx =
     let file_flags =
       [ theories_flags cctx
-      ; Command.Args.A "-R"
+      ; A "-R"
       ; Path (Path.build cctx.dir)
       ; A cctx.wrapper_name
       ]
     in
     [ Command.Args.Dyn
         (Resolve.Memo.map
-           ~f:(fun b -> Command.Args.S (Bootstrap.flags ~coqdoc:true b))
+           ~f:(fun b -> Bootstrap.flags ~coqdoc:true b)
            cctx.boot_type
         |> Resolve.Memo.read)
     ; S file_flags
@@ -247,8 +248,9 @@ module Context = struct
     Coq_sources.directories coq_sources ~name
 
   let setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs =
-    match mode with
-    | Coq_mode.Native ->
+    match (mode : Coq_mode.t) with
+    | VoOnly | Legacy -> Memo.return (Resolve.return Path.Build.Set.empty)
+    | Native ->
       Resolve.Memo.bind theories_deps ~f:(fun theories_deps ->
           let+ l =
             Memo.parallel_map theories_deps ~f:(fun lib ->
@@ -256,8 +258,6 @@ module Context = struct
                 Path.Build.Set.of_list theory_dirs)
           in
           Resolve.return (Path.Build.Set.union_all (theory_dirs :: l)))
-    | Coq_mode.VoOnly | Coq_mode.Legacy ->
-      Memo.return (Resolve.return Path.Build.Set.empty)
 
   let create ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
       (buildable : Buildable.t) =
@@ -410,7 +410,7 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
     [ Command.Args.Hidden_targets objects_to
     ; native_flags
     ; S file_flags
-    ; Command.Args.Dep (Path.build source)
+    ; Dep (Path.build source)
     ]
   in
   let open Action_builder.With_targets.O in

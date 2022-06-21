@@ -8,7 +8,6 @@ open Memo.O
 (* Written by: Rudi Grinberg *)
 
 open Coq_stanza
-module SC = Super_context
 
 let coq_debug = false
 
@@ -54,7 +53,8 @@ module Util = struct
 end
 
 let resolve_program sctx ~loc ~dir prog =
-  SC.resolve_program ~dir sctx prog ~loc:(Some loc) ~hint:"opam install coq"
+  Super_context.resolve_program ~dir sctx prog ~loc:(Some loc)
+    ~hint:"opam install coq"
 
 module Bootstrap = struct
   (* the internal boot flag determines if the Coq "standard library" is being
@@ -103,7 +103,7 @@ end
 let libs_of_coq_deps ~lib_db = Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db)
 
 let select_native_mode ~sctx ~(buildable : Buildable.t) =
-  let profile = (SC.context sctx).profile in
+  let profile = (Super_context.context sctx).profile in
   if Profile.is_dev profile then Coq_mode.VoOnly else snd buildable.mode
 
 let rec resolve_first lib_db = function
@@ -264,7 +264,7 @@ module Context = struct
     let loc = buildable.loc in
     let rr = resolve_program sctx ~dir ~loc in
     let* expander = Super_context.expander sctx ~dir in
-    let scope = SC.find_scope_by_dir sctx dir in
+    let scope = Super_context.find_scope_by_dir sctx dir in
     let lib_db = Scope.libs scope in
     (* ML-level flags for depending libraries *)
     let ml_flags, mlpack_rule =
@@ -592,7 +592,7 @@ let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let theory =
-    let scope = SC.find_scope_by_dir sctx dir in
+    let scope = Super_context.find_scope_by_dir sctx dir in
     let coq_lib_db = Scope.coq_libs scope in
     Coq_lib.DB.resolve coq_lib_db ~coq_lang_version:s.buildable.coq_lang_version
       s.name
@@ -606,7 +606,7 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let name = s.name in
-  let scope = SC.find_scope_by_dir sctx dir in
+  let scope = Super_context.find_scope_by_dir sctx dir in
   let coq_lib_db = Scope.coq_libs scope in
   let theory =
     Coq_lib.DB.resolve coq_lib_db name
@@ -671,7 +671,7 @@ let install_rules ~sctx ~dir s =
   | { Theory.package = Some package; buildable; _ } ->
     let mode = select_native_mode ~sctx ~buildable in
     let loc = s.buildable.loc in
-    let scope = SC.find_scope_by_dir sctx dir in
+    let scope = Super_context.find_scope_by_dir sctx dir in
     let* dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
@@ -731,7 +731,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx =
     let wrapper_name = "DuneExtraction" in
     let theories_deps =
-      let scope = SC.find_scope_by_dir sctx dir in
+      let scope = Super_context.find_scope_by_dir sctx dir in
       let coq_lib_db = Scope.coq_libs scope in
       Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
         ~coq_lang_version:s.buildable.coq_lang_version
@@ -760,7 +760,7 @@ let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx =
     let wrapper_name = "DuneExtraction" in
     let theories_deps =
-      let scope = SC.find_scope_by_dir sctx dir in
+      let scope = Super_context.find_scope_by_dir sctx dir in
       let coq_lib_db = Scope.coq_libs scope in
       Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
         ~coq_lang_version:s.buildable.coq_lang_version

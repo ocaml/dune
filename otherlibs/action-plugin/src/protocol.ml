@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 let run_by_dune_env_variable = "DUNE_DYNAMIC_RUN_CLIENT"
 

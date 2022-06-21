@@ -4,6 +4,10 @@
 - [ctypes] Add support for the `errno` parameter using the `errno_policy` field
   in the ctypes settings. (#5827, @droyo)
 
+- Fix `dune coq top` when it is invoked on files from a subdirectory of the
+  directory containing the associated stanza (#5784, fixes #5552, @ejgallego,
+  @rlepigre, @Alizter)
+
 3.3.1 (19-06-2022)
 ------------------
 

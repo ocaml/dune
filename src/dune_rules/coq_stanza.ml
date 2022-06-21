@@ -184,21 +184,11 @@ module Theory = struct
 
   type Stanza.t += T of t
 
-  let coqlib_warn x =
-    User_warning.emit ~loc:x.buildable.loc
-      [ Pp.text
-          "(coqlib ...) is deprecated and will be removed in the Coq language \
-           version 1.0, please use (coq.theory ...) instead."
-      ];
-    x
-
-  let coqlib_p = ("coqlib", decode >>| fun x -> [ T (coqlib_warn x) ])
-
   let p = ("coq.theory", decode >>| fun x -> [ T x ])
 end
 
 let unit_stanzas =
-  let+ r = return [ Theory.coqlib_p; Theory.p; Coqpp.p; Extraction.p ] in
+  let+ r = return [ Theory.p; Coqpp.p; Extraction.p ] in
   ((), r)
 
 let key = Dune_project.Extension.register coq_syntax unit_stanzas Unit.to_dyn

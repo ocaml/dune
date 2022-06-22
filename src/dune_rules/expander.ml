@@ -625,7 +625,12 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                            "This file must be a list of lines escaped using \
                             OCaml's conventions"
                        ]
-                   | Ok s -> s)))))
+                   | Ok s -> s)))
+      | Coq_config ->
+          static (match (Coq_config.by_name s)
+        
+        
+        ))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =

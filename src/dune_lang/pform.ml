@@ -149,6 +149,7 @@ module Macro = struct
     | Read_lines
     | Path_no_dep
     | Ocaml_config
+    | Coq_config
     | Env
     | Artifact of Artifact.t
 
@@ -193,6 +194,9 @@ module Macro = struct
     | Ocaml_config, Ocaml_config -> Eq
     | Ocaml_config, _ -> Lt
     | _, Ocaml_config -> Gt
+    | Coq_config, Coq_config -> Eq
+    | Coq_config, _ -> Lt
+    | _, Coq_config -> Gt
     | Env, Env -> Eq
     | Env, _ -> Lt
     | _, Env -> Gt
@@ -217,6 +221,7 @@ module Macro = struct
     | Read_lines -> string "Read_lines"
     | Path_no_dep -> string "Path_no_dep"
     | Ocaml_config -> string "Ocaml_config"
+    | Coq_config -> string "Coq_config"
     | Env -> string "Env"
     | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
 end
@@ -323,6 +328,7 @@ let encode_to_latest_dune_lang_version t =
       | Read_lines -> Some "read-lines"
       | Path_no_dep -> None
       | Ocaml_config -> Some "ocaml-config"
+      | Coq_config -> Some "coq-config"
       | Env -> Some "env"
       | Artifact a -> Some (String.drop (Artifact.ext a) 1)
     with

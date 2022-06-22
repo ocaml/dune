@@ -179,7 +179,7 @@ module DB = struct
         let* boot = if s.boot then Resolve.Memo.return None else boot coq_db in
         let allow_private_deps = Option.is_none s.package in
         let+ libraries =
-          Resolve.Memo.List.map s.buildable.libraries ~f:(fun (loc, lib) ->
+          Resolve.Memo.List.map s.buildable.plugins ~f:(fun (loc, lib) ->
               let open Resolve.Memo.O in
               let* lib = Lib.DB.resolve db (loc, lib) in
               let+ () =
@@ -234,17 +234,6 @@ module DB = struct
               in
 
               (loc, theory))
-        in
-        let theories =
-          let open Resolve.O in
-          let* boot = boot in
-          match boot with
-          | None -> theories
-          | Some boot ->
-            let+ theories = theories in
-            (* TODO: if lib is boot, don't add boot dep *)
-            (* maybe use the loc for boot? *)
-            (Loc.none, boot) :: theories
         in
         let map_error x =
           let human_readable_description () = Id.pp id in

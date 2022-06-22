@@ -51,7 +51,7 @@ stanza:
      (package <package>)
      (synopsis <text>)
      (modules <ordered_set_lang>)
-     (libraries <ocaml_libraries>)
+     (plugins <ocaml_plugins>)
      (flags <coq_flags>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
@@ -92,15 +92,15 @@ The semantics of the fields are:
   Coq package ecosystem.
 
   For compatibility, Dune also installs, under the ``user-contrib`` prefix, the
-  ``.cmxs`` files that appear in ``<ocaml_libraries>``.
+  ``.cmxs`` files that appear in ``<ocaml_plugins>``.
 
 - ``<coq_flags>`` are passed to ``coqc`` as command-line options. ``:standard``
   is taken from the value set in the ``(coq (flags <flags>))`` field in ``env``
   profile. See :ref:`dune-env` for more information.
 
-- The path to the installed locations of the ``<ocaml_libraries>`` is passed to
+- The path to the installed locations of the ``<ocaml_plugins>`` is passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag. This allows a Coq theory to
-  depend on an OCaml library.
+  depend on OCaml plugins.
 
 - Your Coq theory can depend on other theories by specifying them in the
   ``<coq_theories>`` field. Dune then passes to Coq the corresponding flags for
@@ -138,11 +138,23 @@ The semantics of the fields are:
   0.3<coq-lang>`.
 
   Please note: support for ``native_compute`` is **experimental** and requires a
-  version of Coq later than 8.12.1. Furthermore, dependent libraries *must* be
+  version of Coq later than 8.12.1. Furthermore, dependent theories *must* be
   built with the ``(mode native)`` enabled. In addition to that, Coq must be
   configured to support native compilation. Dune explicitly disables the
   generation of native compilation objects when ``(mode vo)`` is enabled,
   irrespective of the configuration of Coq. This will be improved in the future.
+
+Coq Documentation
+~~~~~~~~~~~~~~~~~
+
+Given a :ref:`coq-theory` stanza with ``name A``, Dune will produce two
+*directory targets*, ``A.html/`` and ``A.tex/``. HTML or LaTeX documentation for
+a Coq theory may then be built by running ``dune build A.html`` or ``dune build
+A.tex``, respectively (if the :ref:`dune file<dune-files>` for the theory is the
+current directory).
+
+There are also two aliases ``@doc`` and ``@doc-latex`` that will respectively
+build the HTML or LaTeX documentation when called.
 
 .. _include-subdirs-coq:
 
@@ -255,7 +267,7 @@ process by using the ``coq.extraction`` stanza:
 - ``(extracted_modules <names>)`` is an exhaustive list of OCaml modules
   extracted.
 
-- ``<optional-fields>`` are ``flags``, ``theories``, and ``libraries``. All of
+- ``<optional-fields>`` are ``flags``, ``theories``, and ``plugins``. All of
   these fields have the same meaning as in the ``coq.theory`` stanza.
 
 The extracted sources can then be used in ``executable`` or ``library`` stanzas
@@ -463,6 +475,39 @@ As you can see, there are dependencies on all the theories we mentioned.
 All three of the theories we defined before were *private theories*. In order to
 depend on them, we needed to make them *public theories*. See the section on
 :ref:`public-private-theory`.
+
+Building Documentation
+~~~~~~~~~~~~~~~~~~~~~~
+
+Following from our last example, we might wish to build the HTML documentation
+for ``A``. We simply do ``dune build A/A.html/``. This will produce the
+following files:
+
+.. code::
+
+  A
+  ├── AA
+  │   ├── aa.glob
+  │   ├── aa.v
+  │   ├── aa.v.d
+  │   └── aa.vo
+  ├── AB
+  │   ├── ab.glob
+  │   ├── ab.v
+  │   ├── ab.v.d
+  │   └── ab.vo
+  └── A.html
+      ├── A.AA.aa.html
+      ├── A.AB.ab.html
+      ├── coqdoc.css
+      ├── index.html
+      └── toc.html
+
+We may also want to build the LaTeX documentation of the theory ``B``. For this
+we can call ``dune build B/B.tex/``. If we want to build all the HTML
+documentation targets, we can use the ``@doc`` alias as in ``dune build @doc``.
+If we want to build all the LaTeX documentation then we use the ``@doc-latex``
+alias instead.
 
 .. _running-coq-top:
 

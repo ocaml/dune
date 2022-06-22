@@ -19,11 +19,12 @@ module Coqpp = struct
 end
 
 let coq_syntax =
-  Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
+  Dune_lang.Syntax.create ~name:"coq" ~desc:"the Coq language"
     [ ((0, 1), `Since (1, 9))
     ; ((0, 2), `Since (2, 5))
     ; ((0, 3), `Since (2, 8))
     ; ((0, 4), `Since (3, 3))
+    ; ((0, 5), `Since (3, 4))
     ]
 
 module Buildable = struct
@@ -31,10 +32,22 @@ module Buildable = struct
     { flags : Ordered_set_lang.Unexpanded.t
     ; coq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Loc.t * Coq_mode.t
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
+    ; plugins : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
     }
+
+  let merge_plugins_libraries ~plugins ~libraries =
+    match (plugins, libraries) with
+    | p, [] -> p
+    | [], ls -> ls
+    | _, (loc, _) :: _ ->
+      User_error.raise ~loc
+        [ Pp.text
+            "Cannot both use 'plugins' and 'libraries', please remove \
+             'libraries' as it has been deprecated since version 0.5 of the \
+             Coq language. It will be removed before version 1.0."
+        ]
 
   let decode =
     let* coq_lang_version = Dune_lang.Syntax.get_exn coq_syntax in
@@ -48,13 +61,19 @@ module Buildable = struct
         (field "mode" ~default
            (Dune_lang.Syntax.since coq_syntax (0, 3) >>> Coq_mode.decode))
     and+ libraries =
-      field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+      field "libraries" ~default:[]
+        (Dune_sexp.Syntax.deprecated_in coq_syntax (0, 5)
+           ~extra_info:"It has been renamed to 'plugins'."
+        >>> repeat (located Lib_name.decode))
+    and+ plugins =
+      field "plugins" (repeat (located Lib_name.decode)) ~default:[]
     and+ theories =
       field "theories"
         (Dune_lang.Syntax.since coq_syntax (0, 2) >>> repeat Coq_lib_name.decode)
         ~default:[]
     in
-    { flags; mode; coq_lang_version; libraries; theories; loc }
+    let plugins = merge_plugins_libraries ~plugins ~libraries in
+    { flags; mode; coq_lang_version; plugins; theories; loc }
 end
 
 module Extraction = struct
@@ -99,7 +118,9 @@ module Theory = struct
       (let+ project = Dune_project.get_exn ()
        and+ loc_name =
          field_o "public_name"
-           (Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, s)))
+           (Dune_sexp.Syntax.deprecated_in coq_syntax (0, 5)
+              ~extra_info:"Please use 'package' instead."
+           >>> Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, s)))
        in
        (project, loc_name))
       ~f:(fun (project, loc_name) ->
@@ -114,22 +135,16 @@ module Theory = struct
           Stanza_common.Pkg.resolve project pkg
           |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
 
-  let select_deprecation ~package ~public =
+  let merge_package_public ~package ~public =
     match (package, public) with
     | p, None -> p
-    | None, Some (loc, pkg) ->
-      User_warning.emit ~loc
-        [ Pp.text
-            "(public_name ...) is deprecated and will be removed in the Coq \
-             language version 1.0, please use (package ...) instead"
-        ];
-      Some pkg
+    | None, Some (_loc, pkg) -> Some pkg
     | Some _, Some (loc, _) ->
       User_error.raise ~loc
         [ Pp.text
-            "Cannot both use (package ...) and (public_name ...), please \
-             remove the latter as it is deprecated and will be removed in the \
-             1.0 version of the Coq language"
+            "Cannot both use 'package' and 'public_name', please remove \
+             'public_name' as it has been deprecated since version 0.5 of the \
+             Coq langugage. It will be removed before version 1.0."
         ]
 
   let boot_has_deps loc =
@@ -156,7 +171,7 @@ module Theory = struct
        and+ buildable = Buildable.decode in
        (* boot libraries cannot depend on other theories *)
        check_boot_has_no_deps boot buildable;
-       let package = select_deprecation ~package ~public in
+       let package = merge_package_public ~package ~public in
        { name
        ; package
        ; project
@@ -173,7 +188,7 @@ module Theory = struct
     User_warning.emit ~loc:x.buildable.loc
       [ Pp.text
           "(coqlib ...) is deprecated and will be removed in the Coq language \
-           version 1.0, please use (coq.theory ...) instead"
+           version 1.0, please use (coq.theory ...) instead."
       ];
     x
 

@@ -46,6 +46,7 @@ module Var : sig
     | Corrected_suffix
     | Inline_tests
     | Toolchain
+    | Coq_version
 
   val compare : t -> t -> Ordering.t
 

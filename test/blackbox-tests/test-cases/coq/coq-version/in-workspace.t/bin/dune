@@ -1,0 +1,3 @@
+(executable
+ (libraries axsxasdsdads)
+ (public_name coqc))

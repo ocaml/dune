@@ -46,6 +46,7 @@ module Var = struct
     | Corrected_suffix
     | Inline_tests
     | Toolchain
+    | Coq_version
 
   let compare : t -> t -> Ordering.t = Poly.compare
 
@@ -97,6 +98,7 @@ module Var = struct
         | Corrected_suffix -> "Corrected_suffix"
         | Inline_tests -> "Inline_tests"
         | Toolchain -> "Toolchain"
+        | Coq_version -> "Coq_version"
       in
       Dyn.Variant (cstr, [])
 end
@@ -299,6 +301,7 @@ let encode_to_latest_dune_lang_version t =
       | Corrected_suffix -> Some "corrected-suffix"
       | Inline_tests -> Some "inline_tests"
       | Toolchain -> Some "toolchain"
+      | Coq_version -> Some "coq_version"
     with
     | None -> Pform_was_deleted
     | Some name -> Success { name; payload = None })
@@ -482,6 +485,7 @@ module Env = struct
         ; ("corrected-suffix", No_info Corrected_suffix)
         ; ("inline_tests", No_info Inline_tests)
         ; ("toolchains", since ~version:(3, 0) Var.Toolchain)
+        ; ("coq_version", since ~version:(3, 4) Var.Coq_version)
         ]
       in
       String.Map.of_list_exn (List.concat [ lowercased; uppercased; other ])

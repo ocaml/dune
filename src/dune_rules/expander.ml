@@ -368,6 +368,21 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
             With
               (let* cc = Action_builder.of_memo (cc t) in
                cc.c))
+      | Coq_version ->
+        Need_full_expander
+          (fun t ->
+            Without
+              (let open Memo.O in
+              let* bin =
+                Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc"
+              in
+              match bin with
+              | Error _ -> failwith "TODO"
+              | Ok bin -> (
+                let+ res = Coq_config.version ~bin in
+                match res with
+                | None -> failwith "bad version"
+                | Some s -> [ Value.String s ])))
       | Cxx ->
         Need_full_expander
           (fun t ->

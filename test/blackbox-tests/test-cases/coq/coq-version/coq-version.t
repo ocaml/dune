@@ -14,6 +14,4 @@
   $ dune build ./file
 
   $ cat _build/default/file
-  8.15.2
-
-  (>= 8.15.0-x12gn1 8.15.1) => false
+  8.15.1

@@ -21,7 +21,3 @@
 
   $ dune build ./alwayspresent
 
-  (coq.theory
-   (name foo)
-   (native_theories mathcomp)
-   (theories mathcomp))

@@ -392,6 +392,44 @@ module DB = struct
       Resolve.Memo.List.map theories ~f:(resolve ~coq_lang_version db)
     in
     Resolve.O.(theories >>= top_closure)
+
+  let installed (_ : Context.t) =
+    (* TODO For now there are only two installed "theories" that we know about:
+
+        1. Coq stdlib
+        2. user-contrib
+
+        The second one might require some more explanation. We consider the
+        entire user-contrib folder as a single Coq theory. This makes sense for
+        the following reasons:
+
+        - Dune has no way of knowing how to separate the theories inside the
+          user-contrib folder.
+        - Coq internally treats the user-contrib folder as a single theory by
+          passing `-Q user-contrib ""`.
+
+        In the future we might want to install Coq libraries in a more
+        principled manner together with Dune metadata.
+
+        Therefore the Coq library installed in OCaml should have two theories:
+
+        -R $COQLIB/theories/ Coq
+        -Q $COQLIB/user-contrib/ ""
+
+        To find where Coq is installed we can use the Findlib machinary. From
+        there theories and user-contrib should be easy to spot.
+
+        theories/ will typically come with it's own Dune file, so we can create
+        the Coq_lib.DB.t from the (boot) coq.theory stanza there. (Though if we
+        are to refactor the coq stdlib in the future it might make more sense to
+        make one up here).
+
+        We will have to make up a Coq_lib.DB.t for user-contrib anyway.
+    *)
+
+    (* For now we return an empty Coq Lib *)
+    let resolve _ = `Not_found in
+    Memo.return { parent = None; resolve; boot = None }
 end
 
 let theories_closure t = Lazy.force t.theories_closure

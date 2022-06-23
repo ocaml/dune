@@ -63,6 +63,9 @@ uninstall:
 
 reinstall: uninstall install
 
+install-ocamlformat:
+	opam install -y ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat)
+
 dev-deps:
 	opam install -y $(TEST_DEPS)
 

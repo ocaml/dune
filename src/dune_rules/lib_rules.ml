@@ -433,8 +433,8 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)
     ?stdlib:lib.stdlib ~package ?vimpl ~modes
 
-let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
-    ~compile_info =
+let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
+    ~dir_contents ~compile_info =
   let source_modules =
     Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
   in
@@ -473,7 +473,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       (fun () ->
         build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
           ~dir_contents ~vlib_stubs_o_files)
-  and+ () = Odoc.setup_library_odoc_rules cctx lib
+  and+ () = Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =
     Sub_system.gen_rules
       { super_context = sctx
@@ -497,10 +497,12 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       () )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
-  let* compile_info =
+  let buildable = lib.buildable in
+  let* local_lib, compile_info =
     Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
-      ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
+      ~allow_overlaps:buildable.allow_overlapping_dependencies
   in
+  let local_lib = Lib.Local.of_lib_exn local_lib in
   let f () =
     let* source_modules =
       Dir_contents.ocaml dir_contents
@@ -510,14 +512,14 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info
     in
     let* () =
-      let buildable = lib.Library.buildable in
-      match buildable.Buildable.ctypes with
+      match buildable.ctypes with
       | None -> Memo.return ()
       | Some _ctypes ->
-        Ctypes_rules.gen_rules ~loc:(fst lib.Library.name) ~cctx ~buildable
-          ~sctx ~scope ~dir
+        Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope
+          ~dir
     in
-    library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
+    library_rules lib ~local_lib ~cctx ~source_modules ~dir_contents
+      ~compile_info
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps

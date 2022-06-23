@@ -1757,7 +1757,7 @@ module DB = struct
     | None ->
       Code_error.raise "Lib.DB.get_compile_info got library that doesn't exist"
         [ ("name", Lib_name.to_dyn name) ]
-    | Some lib -> Compile.for_lib ~allow_overlaps t lib
+    | Some lib -> (lib, Compile.for_lib ~allow_overlaps t lib)
 
   let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
       ?(forbidden_libraries = []) deps ~pps ~dune_version =

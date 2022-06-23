@@ -65,7 +65,7 @@ type t =
   ; camlflags : string
   ; warn : string
   ; hasnatdynlink : bool
-  ; coq_src_subdirs : Path.t list
+  ; coq_src_subdirs : string list
   ; coq_native_compiler_default : string
   }
 
@@ -80,7 +80,7 @@ let version_memo =
 let impl_config bin =
   let* _ = Build_system.build_file bin in
   Memo.of_non_reproducible_fiber
-  @@ Process.run_capture_line Process.Strict bin [ "--config" ]
+  @@ Process.run_capture_lines Process.Strict bin [ "--config" ]
 
 let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
 
@@ -92,7 +92,7 @@ let make ~bin =
     | None ->
       User_error.raise
         Pp.[ textf "cannot get version of %s" (Path.to_string bin) ]
-  and+ config_lines = Memo.exec config_memo bin >>| String.split_lines in
+  and+ config_lines = Memo.exec config_memo bin in
   let version =
     match version_string |> String.split ~on:'.' with
     | major :: minor :: patch :: _ -> (
@@ -120,7 +120,7 @@ let make ~bin =
     let hasnatdynlink = Vars.get_bool vars "HASNATDYNLINK" in
     let coq_src_subdirs =
       Vars.get vars "COQ_SRC_SUBDIRS"
-      |> String.split ~on:' ' |> List.map ~f:Path.of_string
+      |> String.split ~on:' '
     in
     let coq_native_compiler_default =
       Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
@@ -148,8 +148,8 @@ module Value = struct
   type t =
     | Bool of bool
     | String of string
+    | Strings of string list
     | Path of Path.t
-    | Paths of Path.t list
     | Version of int * int * int
 end
 
@@ -178,6 +178,6 @@ let by_name
   | "camlflags" -> Some (String camlflags)
   | "warn" -> Some (String warn)
   | "hasnatdynlink" -> Some (Bool hasnatdynlink)
-  | "coq_src_subdirs" -> Some (Paths coq_src_subdirs)
+  | "coq_src_subdirs" -> Some (Strings coq_src_subdirs)
   | "coq_native_compiler_default" -> Some (String coq_native_compiler_default)
   | _ -> None

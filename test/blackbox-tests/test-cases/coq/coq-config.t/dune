@@ -1,0 +1,21 @@
+(rule
+ (action
+  (with-outputs-to
+   config.output
+   (progn
+    (echo "COQLIB=%{coq-config:coqlib}\n")
+    (echo "COQCORELIB=%{coq-config:coqcorelib}\n")
+    (echo "DOCDIR=%{coq-config:docdir}\n")
+    (echo "OCAMLFIND=%{coq-config:ocamlfind}\n")
+    (echo "CAMLFLAGS=%{coq-config:camlflags}\n")
+    (echo "WARN=%{coq-config:warn}\n")
+    (echo "HASNATDYNLINK=%{coq-config:hasnatdynlink}\n")
+    (echo "COQ_SRC_SUBDIRS=%{coq-config:coq_src_subdirs}\n")
+    (echo "COQ_NATIVE_COMPILER_DEFAULT=%{coq-config:coq_native_compiler_default}\n")
+    (echo "")))))
+
+(rule
+ (action
+  (with-outputs-to
+   config.expected
+   (run %{bin:coqc} --config))))

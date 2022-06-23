@@ -631,8 +631,8 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                   match v with
                   | Bool x -> string (string_of_bool x)
                   | String x -> string x
+                  | Strings x -> strings x
                   | Path x -> Value.L.paths [ x ]
-                  | Paths x -> Value.L.paths x
                   | Version (major, minor, patch) ->
                     strings (List.map ~f:string_of_int [ major; minor; patch ]))
                 )

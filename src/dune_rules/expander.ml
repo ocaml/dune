@@ -368,21 +368,6 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
             With
               (let* cc = Action_builder.of_memo (cc t) in
                cc.c))
-      | Coq_version ->
-        Need_full_expander
-          (fun t ->
-            Without
-              (let open Memo.O in
-              let* bin =
-                Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc"
-              in
-              match bin with
-              | Error _ -> failwith "TODO"
-              | Ok bin -> (
-                let+ res = Coq_config.version ~bin in
-                match res with
-                | None -> failwith "bad version"
-                | Some s -> [ Value.String s ])))
       | Cxx ->
         Need_full_expander
           (fun t ->
@@ -627,10 +612,31 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                        ]
                    | Ok s -> s)))
       | Coq_config ->
-          static (match (Coq_config.by_name s)
-        
-        
-        ))
+        Need_full_expander
+          (fun t ->
+            Without
+              (let open Memo.O in
+              let* bin =
+                Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc"
+              in
+              match bin with
+              | Ok bin -> (
+                let+ t = Coq_config.make ~bin in
+                match Coq_config.by_name t s with
+                | None ->
+                  User_error.raise
+                    ~loc:(Dune_lang.Template.Pform.loc source)
+                    [ Pp.textf "Unknown ocaml configuration variable %S" s ]
+                | Some v -> (
+                  match v with
+                  | Bool x -> string (string_of_bool x)
+                  | String x -> string x
+                  | Path x -> Value.L.paths [ x ]
+                  | Paths x -> Value.L.paths x
+                  | Version (major, minor, patch) ->
+                    strings (List.map ~f:string_of_int [ major; minor; patch ]))
+                )
+              | Error _ -> User_error.raise Pp.[ textf "coqc not found" ]))))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =

@@ -1,18 +1,6 @@
 open Import
 open Memo.O
 
-(*
-COQLIB=/mnt/sda1/.opam/coq.8.15.1/lib/coq/
-COQCORELIB=/mnt/sda1/.opam/coq.8.15.1/lib/coq/../coq-core/
-DOCDIR=/mnt/sda1/.opam/coq.8.15.1/doc/coq/
-OCAMLFIND=/mnt/sda1/.opam/coq.8.15.1/bin/ocamlfind
-CAMLFLAGS=-thread -rectypes -w -a+1..3-4+5..8-9+10..26-27+28..40-41-42+43-44-45+46..47-48+49..57-58+59..66-67-68+69-70   -safe-string -strict-sequence
-WARN=-warn-error +a-3
-HASNATDYNLINK=true
-COQ_SRC_SUBDIRS=boot config lib clib kernel library engine pretyping interp gramlib parsing proofs tactics toplevel printing ide stm vernac plugins/btauto plugins/cc plugins/derive plugins/extraction plugins/firstorder plugins/funind plugins/ltac plugins/ltac2 plugins/micromega plugins/nsatz plugins/ring plugins/rtauto plugins/ssr plugins/ssrmatching plugins/syntax
-COQ_NATIVE_COMPILER_DEFAULT=yes
-*)
-
 module Vars : sig
   type t
 
@@ -104,7 +92,7 @@ let make ~bin =
     | None ->
       User_error.raise
         Pp.[ textf "cannot get version of %s" (Path.to_string bin) ]
-  in
+  and+ config_lines = Memo.exec config_memo bin >>| String.split_lines in
   let version =
     match version_string |> String.split ~on:'.' with
     | major :: minor :: patch :: _ -> (
@@ -118,12 +106,10 @@ let make ~bin =
       User_error.raise
         Pp.[ textf "cannot get release version of %s" (Path.to_string bin) ]
   in
-
-  let+ config_lines = Memo.exec config_memo bin >>| String.split_lines in
-
   match Vars.of_lines config_lines with
   | Error msg ->
-    User_error.raise Pp.[ textf "cannot parse %s -config" (Path.to_string bin) ]
+    User_error.raise
+      Pp.[ textf "cannot parse %s -config: %s" (Path.to_string bin) msg ]
   | Ok vars ->
     let coqlib = Vars.get_path vars "COQLIB" in
     let coqcorelib = Vars.get_path vars "COQCORELIB" in
@@ -152,3 +138,46 @@ let make ~bin =
     ; coq_src_subdirs
     ; coq_native_compiler_default
     }
+
+let version ~bin =
+  let open Memo.O in
+  let+ t = make ~bin in
+  t.version
+
+module Value = struct
+  type t =
+    | Bool of bool
+    | String of string
+    | Path of Path.t
+    | Paths of Path.t list
+    | Version of int * int * int
+end
+
+let by_name
+    { version = (major, minor, patch)
+    ; version_string
+    ; ocaml_version_string
+    ; coqlib
+    ; coqcorelib
+    ; docdir
+    ; ocamlfind
+    ; camlflags
+    ; warn
+    ; hasnatdynlink
+    ; coq_src_subdirs
+    ; coq_native_compiler_default
+    } name : Value.t option =
+  match name with
+  | "version" -> Some (Version (major, minor, patch))
+  | "version_string" -> Some (String version_string)
+  | "ocaml_version" -> Some (String ocaml_version_string)
+  | "coqlib" -> Some (Path coqlib)
+  | "coqcorelib" -> Some (Path coqcorelib)
+  | "docdir" -> Some (Path docdir)
+  | "ocamlfind" -> Some (Path ocamlfind)
+  | "camlflags" -> Some (String camlflags)
+  | "warn" -> Some (String warn)
+  | "hasnatdynlink" -> Some (Bool hasnatdynlink)
+  | "coq_src_subdirs" -> Some (Paths coq_src_subdirs)
+  | "coq_native_compiler_default" -> Some (String coq_native_compiler_default)
+  | _ -> None

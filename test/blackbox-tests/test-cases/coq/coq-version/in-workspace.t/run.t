@@ -20,4 +20,9 @@
   > EOF
 
   $ dune build ./alwayspresent
+  File "sub/dune", line 2, characters 17-31:
+  2 |  (enabled_if (>= %{coq_version} 8.15))
+                       ^^^^^^^^^^^^^^
+  Error: Unknown variable %{coq_version}
+  [1]
 

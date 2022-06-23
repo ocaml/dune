@@ -461,6 +461,8 @@ module V1 : sig
 
       val compare : t -> t -> Ordering.t
 
+      val pid : t -> int
+
       val where : t -> Where.t
 
       val root : t -> string

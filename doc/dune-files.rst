@@ -378,7 +378,7 @@ language. The syntax is a list of the following elements:
    dep := name
         | (name <stage>)
         | (name <constr>)
-        | (name (<logop> (<stage> | <constr>)*))
+        | (name (<logop> (<stage> | <constr>))*)
 
    dep-specification = dep+
 

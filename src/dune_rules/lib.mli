@@ -136,7 +136,7 @@ module DB : sig
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)
   val get_compile_info :
-    t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t Memo.t
+    t -> ?allow_overlaps:bool -> Lib_name.t -> (lib * Compile.t) Memo.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
 

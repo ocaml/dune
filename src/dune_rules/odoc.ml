@@ -274,22 +274,15 @@ let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
           ; Dep (Path.build odoc_file.odoc_file)
           ])
 
-let setup_library_odoc_rules cctx (library : Library.t) =
+let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   let open Memo.O in
-  let* lib =
-    let scope = Compilation_context.scope cctx in
-    Library.best_name library
-    |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-    >>| Option.value_exn
-  in
-  let local_lib = Lib.Local.of_lib_exn lib in
   (* Using the proper package name doesn't actually work since odoc assumes that
      a package contains only 1 library *)
-  let pkg_or_lnu = pkg_or_lnu lib in
+  let pkg_or_lnu = pkg_or_lnu (Lib.Local.to_lib local_lib) in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let* requires = Compilation_context.requires_compile cctx in
-  let info = Lib.info lib in
+  let info = Lib.Local.info local_lib in
   let package = Lib_info.package info in
   let odoc_include_flags =
     Command.Args.memo (odoc_include_flags ctx package requires)

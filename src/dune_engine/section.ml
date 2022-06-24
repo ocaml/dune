@@ -65,6 +65,12 @@ Stringlike.Make (struct
 
   let description_of_valid_string = Some valid_format_doc
 
+  let is_valid_first_char = function
+    | 'A' .. 'Z' | 'a' .. 'z' -> true
+    | _ -> false
+
+  let has_valid_first_char s = is_valid_first_char s.[0]
+
   let hint_valid =
     Some
       (fun name ->
@@ -76,22 +82,10 @@ Stringlike.Make (struct
                 | '.' | '-' -> Some '_'
                 | _ -> None)
         in
-        match name.[0] with
-        | 'A' .. 'Z' | 'a' .. 'z' -> name
-        | _ -> "M" ^ name)
+        if has_valid_first_char name then name else "M" ^ name)
 
   let is_valid_module_name name =
-    match name with
-    | "" -> false
-    | s -> (
-      try
-        (match s.[0] with
-        | 'A' .. 'Z' | 'a' .. 'z' -> ()
-        | _ -> raise_notrace Exit);
-        String.iter s ~f:(fun c ->
-            if not (valid_char c) then raise_notrace Exit);
-        true
-      with Exit -> false)
+    name <> "" && has_valid_first_char name && String.for_all name ~f:valid_char
 
   let of_string_opt s = if is_valid_module_name s then Some (S.make s) else None
 end)

@@ -68,12 +68,17 @@ Stringlike.Make (struct
   let hint_valid =
     Some
       (fun name ->
-        String.filter_map name ~f:(fun c ->
-            if valid_char c then Some c
-            else
-              match c with
-              | '.' | '-' -> Some '_'
-              | _ -> None))
+        let name =
+          String.filter_map name ~f:(fun c ->
+              if valid_char c then Some c
+              else
+                match c with
+                | '.' | '-' -> Some '_'
+                | _ -> None)
+        in
+        match name.[0] with
+        | 'A' .. 'Z' | 'a' .. 'z' -> name
+        | _ -> "M" ^ name)
 
   let is_valid_module_name name =
     match name with

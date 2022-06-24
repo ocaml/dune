@@ -11,5 +11,5 @@
   Error: "03" is an invalid module name.
   Module names must be non-empty and composed only of the following characters:
   'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: 03 would be a correct module name
+  Hint: M03 would be a correct module name
   [1]

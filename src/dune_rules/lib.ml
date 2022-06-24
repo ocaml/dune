@@ -311,7 +311,11 @@ module T = struct
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
 
-  let to_dyn t = Lib_name.to_dyn t.name
+  let to_dyn t =
+    Dyn.record
+      [ ("name", Lib_name.to_dyn t.name)
+      ; ("loc", Loc.to_dyn_hum (Lib_info.loc t.info))
+      ]
 end
 
 include T

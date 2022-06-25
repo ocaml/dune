@@ -359,7 +359,8 @@ module Client = struct
               ]
           in
           Response.Error.create ~payload
-            ~message:"request sent while connection is dead" ~kind:Code_error ()
+            ~message:"request sent while connection is dead"
+            ~kind:Connection_dead ()
         in
         Error err
       | true ->
@@ -523,7 +524,7 @@ module Client = struct
       | `Connection_dead ->
         let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
         let error =
-          Response.Error.create ~kind:Code_error ~payload
+          Response.Error.create ~kind:Connection_dead ~payload
             ~message:
               "connection terminated. this request will never receive a \
                response"

@@ -52,6 +52,7 @@ module V1 : sig
       type kind =
         | Invalid_request
         | Code_error
+        | Connection_dead
 
       type t
 

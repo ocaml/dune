@@ -15,6 +15,7 @@ let client_term common f =
 let interpret_kind = function
   | Dune_rpc_private.Response.Error.Invalid_request -> "Invalid_request"
   | Code_error -> "Code_error"
+  | Connection_dead -> "Connection_dead"
 
 let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
   User_error.raise

@@ -271,7 +271,9 @@ module Client = struct
       ; requests :
           ( Id.t
           , [ `Cancelled
-            | `Pending of [ `Completed of Response.t | `Cancelled ] Fiber.Ivar.t
+            | `Pending of
+              [ `Completed of Response.t | `Connection_dead | `Cancelled ]
+              Fiber.Ivar.t
             ] )
           Table.t
       ; initialize : Initialize.Request.t
@@ -295,8 +297,8 @@ module Client = struct
       | true ->
         t.running <- false;
         let ivars = ref [] in
-        Table.filteri_inplace t.requests ~f:(fun ~key:id ~data:ivar ->
-            ivars := (id, ivar) :: !ivars;
+        Table.filteri_inplace t.requests ~f:(fun ~key:_ ~data:ivar ->
+            ivars := ivar :: !ivars;
             false);
         let ivars () =
           Fiber.return
@@ -309,19 +311,10 @@ module Client = struct
         Fiber.fork_and_join_unit
           (fun () -> Chan.write t.chan None)
           (fun () ->
-            Fiber.parallel_iter ivars ~f:(fun (id, status) ->
+            Fiber.parallel_iter ivars ~f:(fun status ->
                 match status with
                 | `Cancelled -> Fiber.return ()
-                | `Pending ivar ->
-                  let error =
-                    let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
-                    Response.Error.create ~kind:Code_error ~payload
-                      ~message:
-                        "connection terminated. this request will never \
-                         receive a response"
-                      ()
-                  in
-                  Fiber.Ivar.fill ivar (`Completed (Error error))))
+                | `Pending ivar -> Fiber.Ivar.fill ivar `Connection_dead))
 
     let terminate_with_error t message info =
       Fiber.fork_and_join_unit
@@ -414,11 +407,11 @@ module Client = struct
         V.Handler.prepare_notification handler decl
     end
 
-    let request ?id t ({ encode_req; decode_resp } : _ Versioned.request) req =
-      let id = gen_id t id in
+    let request t id ({ encode_req; decode_resp } : _ Versioned.request) req =
       let req = encode_req req in
       let* res = request_untyped t (id, req) in
       match res with
+      | `Connection_dead -> Fiber.return `Connection_dead
       | `Cancelled -> Fiber.return `Cancelled
       | `Completed res ->
         let+ res = parse_response t decode_resp res in
@@ -502,10 +495,10 @@ module Client = struct
           |> Id.make
         in
         t.pending_request_id <- Some id;
-        let+ res = request ~id t.client t.poll t.id in
+        let+ res = request t.client id t.poll t.id in
         t.pending_request_id <- None;
         match res with
-        | `Cancelled -> None
+        | `Connection_dead | `Cancelled -> None
         | `Completed (Ok res) -> res
         | `Completed (Error e) ->
           (* cwong: Should this really be a raise? *)
@@ -524,13 +517,24 @@ module Client = struct
           Fiber.fork_and_join_unit (fun () -> cancel t.client id) notify
     end
 
-    let no_cancel = function
+    let no_cancel_raise_connection_dead id = function
       | `Cancelled -> assert false
       | `Completed s -> s
+      | `Connection_dead ->
+        let payload = Sexp.record [ ("id", Id.to_sexp id) ] in
+        let error =
+          Response.Error.create ~kind:Code_error ~payload
+            ~message:
+              "connection terminated. this request will never receive a \
+               response"
+            ()
+        in
+        Error error
 
     let request ?id t spec req =
-      let+ res = request ?id t spec req in
-      no_cancel res
+      let id = gen_id t id in
+      let+ res = request t id spec req in
+      no_cancel_raise_connection_dead id res
 
     let poll ?id client sub =
       let* () = Fiber.return () in
@@ -558,15 +562,13 @@ module Client = struct
         let ivar = prepare_request' t.client (id, call) in
         match ivar with
         | Error e -> Fiber.return (Error e)
-        | Ok ivar -> (
+        | Ok ivar ->
           t.pending <- Packet.Query.Request (id, call) :: t.pending;
           let* res = Fiber.Ivar.read ivar in
-          match res with
-          | `Cancelled ->
-            (* currently impossible because there's no batching for polling and
-               cancellation is only available for polled requests *)
-            assert false
-          | `Completed res -> parse_response t.client decode_resp res)
+          (* currently impossible because there's no batching for polling and
+             cancellation is only available for polled requests *)
+          let res = no_cancel_raise_connection_dead id res in
+          parse_response t.client decode_resp res
 
       let submit t =
         let* () = Fiber.return () in
@@ -705,9 +707,10 @@ module Client = struct
         let* init =
           let id = Id.make (List [ Atom "initialize" ]) in
           let initialize = Initialize.Request.to_call initialize in
-          request_untyped client (id, initialize)
+          let+ res = request_untyped client (id, initialize) in
+          no_cancel_raise_connection_dead id res
         in
-        match no_cancel init with
+        match init with
         | Error e -> raise (Response.Error.E e)
         | Ok csexp ->
           let* menu =
@@ -727,7 +730,7 @@ module Client = struct
               in
               let+ resp = request_untyped client (id, supported_versions) in
               (* we don't allow cancelling negotiation *)
-              match no_cancel resp with
+              match no_cancel_raise_connection_dead id resp with
               | Error e -> raise (Response.Error.E e)
               | Ok sexp -> (
                 match

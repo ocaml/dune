@@ -31,7 +31,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Ignore (outputs, t) -> Ignore (outputs, f t ~dir)
     | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))
     | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
-    | Cat x -> Cat (f_path ~dir x)
+    | Cat xs -> Cat (List.map xs ~f:(f_path ~dir))
     | Copy (x, y) -> Copy (f_path ~dir x, f_target ~dir y)
     | Symlink (x, y) -> Symlink (f_path ~dir x, f_target ~dir y)
     | Hardlink (x, y) -> Hardlink (f_path ~dir x, f_target ~dir y)

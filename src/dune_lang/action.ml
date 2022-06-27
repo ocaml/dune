@@ -86,7 +86,7 @@ type t =
   | Ignore of Outputs.t * t
   | Progn of t list
   | Echo of String_with_vars.t list
-  | Cat of String_with_vars.t
+  | Cat of String_with_vars.t list
   | Copy of String_with_vars.t * String_with_vars.t
   | Symlink of String_with_vars.t * String_with_vars.t
   | Copy_and_add_line_directive of String_with_vars.t * String_with_vars.t
@@ -214,7 +214,16 @@ let decode =
           , let+ x = sw
             and+ xs = repeat sw in
             Echo (x :: xs) )
-        ; ("cat", sw >>| fun x -> Cat x)
+        ; ( "cat"
+          , let+ x = sw
+            and+ xs = repeat sw
+            and+ version = Syntax.get_exn Stanza.syntax
+            and+ loc = loc in
+            let minimum_version = (3, 4) in
+            if List.is_non_empty xs && version < minimum_version then
+              Syntax.Error.since loc Stanza.syntax minimum_version
+                ~what:"Passing several arguments to 'cat'";
+            Cat (x :: xs) )
         ; ( "copy"
           , let+ src = sw
             and+ dst = sw in
@@ -294,7 +303,7 @@ let rec encode =
     List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
   | Progn l -> List (atom "progn" :: List.map l ~f:encode)
   | Echo xs -> List (atom "echo" :: List.map xs ~f:sw)
-  | Cat x -> List [ atom "cat"; sw x ]
+  | Cat xs -> List (atom "cat" :: List.map xs ~f:sw)
   | Copy (x, y) -> List [ atom "copy"; sw x; sw y ]
   | Symlink (x, y) -> List [ atom "symlink"; sw x; sw y ]
   | Copy_and_add_line_directive (x, y) -> List [ atom "copy#"; sw x; sw y ]
@@ -378,7 +387,7 @@ let rec map_string_with_vars t ~f =
   | Ignore (o, t) -> Ignore (o, map_string_with_vars t ~f)
   | Progn xs -> Progn (List.map xs ~f:(map_string_with_vars ~f))
   | Echo xs -> Echo xs
-  | Cat sw -> Cat (f sw)
+  | Cat xs -> Cat (List.map ~f xs)
   | Copy (sw1, sw2) -> Copy (f sw1, f sw2)
   | Symlink (sw1, sw2) -> Symlink (f sw1, f sw2)
   | Copy_and_add_line_directive (sw1, sw2) ->

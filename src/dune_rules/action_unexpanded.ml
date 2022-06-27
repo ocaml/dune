@@ -398,9 +398,9 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     let+ l = A.all (List.map xs ~f:E.strings) in
     let l = List.concat l in
     O.Echo l
-  | Cat fn ->
-    let+ fn = E.dep fn in
-    O.Cat fn
+  | Cat xs ->
+    let+ xs = A.all (List.map xs ~f:E.dep) in
+    O.Cat xs
   | Copy (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in

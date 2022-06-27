@@ -20,11 +20,9 @@ The cat action supports several files.
   > EOF
 
   $ dune runtest
-  File "dune", line 8, characters 9-10:
-  8 |   (cat a b c)))
-               ^
-  Error: Too many argument for cat
-  [1]
+  file a
+  file b
+  file c
 
 This requires 3.4.
 
@@ -33,8 +31,10 @@ This requires 3.4.
   > EOF
 
   $ dune runtest
-  File "dune", line 8, characters 9-10:
+  File "dune", line 8, characters 2-13:
   8 |   (cat a b c)))
-               ^
-  Error: Too many argument for cat
+        ^^^^^^^^^^^
+  Error: Passing several arguments to 'cat' is only available since version 3.4
+  of the dune language. Please update your dune-project file to have (lang dune
+  3.4).
   [1]

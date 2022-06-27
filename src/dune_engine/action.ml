@@ -62,7 +62,7 @@ struct
       List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
     | Progn l -> List (atom "progn" :: List.map l ~f:encode)
     | Echo xs -> List (atom "echo" :: List.map xs ~f:string)
-    | Cat x -> List [ atom "cat"; path x ]
+    | Cat xs -> List (atom "cat" :: List.map xs ~f:path)
     | Copy (x, y) -> List [ atom "copy"; path x; target y ]
     | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
     | Hardlink (x, y) -> List [ atom "hardlink"; path x; target y ]
@@ -121,7 +121,7 @@ struct
 
   let echo s = Echo s
 
-  let cat path = Cat path
+  let cat ps = Cat ps
 
   let copy a b = Copy (a, b)
 

@@ -40,6 +40,7 @@ TEST_OCAMLVERSION := 4.14.0
 
 -include Makefile.dev
 
+.PHONY: help
 help:
 	@cat doc/make-help.txt
 
@@ -150,8 +151,6 @@ bench: release
 .PHONY: dune
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
-
-.PHONY: default
 
 # Use this target to make sure that we always run the in source dune when making
 # the release

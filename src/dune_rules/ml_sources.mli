@@ -33,6 +33,14 @@ val modules : t -> for_:for_ -> Modules.t
 (** Find out what buildable a module is part of *)
 val lookup_module : t -> Module_name.t -> Dune_file.Buildable.t option
 
+val lookup_stanza_module :
+     t
+  -> Module_name.t
+  -> [ `Library of Dune_file.Library.t
+     | `Executables of Dune_file.Executables.t
+     ]
+     option
+
 val empty : t
 
 (** This [lookup_vlib] argument is required for constructing the collection of

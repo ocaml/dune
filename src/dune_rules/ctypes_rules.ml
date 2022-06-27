@@ -58,24 +58,6 @@ module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
 module Ctypes = Ctypes_stanza
 
-let modules_of_list ~dir ~modules =
-  let name_map =
-    let build_dir = Path.build dir in
-    let modules =
-      List.map modules ~f:(fun name ->
-          let module_name = Module_name.of_string name in
-          let path =
-            Path.relative build_dir (Ctypes.ml_of_module_name module_name)
-          in
-          let impl = Module.File.make Dialect.ocaml path in
-          let source = Module.Source.make ~impl module_name in
-          Module.of_source ~visibility:Public ~kind:Impl source)
-    in
-    Module.Name_map.of_list_exn modules
-  in
-  Modules.exe_unwrapped name_map
-(* Modules.exe_wrapped ~src_dir:dir ~modules:name_map *)
-
 let pp_write_file path pp =
   Action_builder.write_file path @@ Format.asprintf "%a" Pp.to_fmt pp
 
@@ -111,38 +93,6 @@ let write_entry_point_module ~ctypes ~sctx ~dir ~filename
       ]
   in
   Super_context.add_rule ~loc:Loc.none sctx ~dir (pp_write_file path contents)
-
-let discover_gen ~external_library_name:lib ~cflags_sexp ~c_library_flags_sexp =
-  Pp.concat
-    [ verbatimf "module C = Configurator.V1"
-    ; verbatimf "let () ="
-    ; verbatimf "  C.main ~name:\"%s\" (fun c ->"
-        (External_lib_name.to_string lib)
-    ; verbatimf "    let default : C.Pkg_config.package_conf ="
-    ; verbatimf "      { libs   = [\"-l%s\"];" (External_lib_name.to_string lib)
-    ; verbatimf "        cflags = [\"-I/usr/include\"] }"
-    ; verbatimf "    in"
-    ; verbatimf "    let conf ="
-    ; verbatimf "      match C.Pkg_config.get c with"
-    ; verbatimf "      | None -> default"
-    ; verbatimf "      | Some pc ->"
-    ; verbatimf "        match C.Pkg_config.query pc ~package:\"%s\" with"
-        (External_lib_name.to_string lib)
-    ; verbatimf "        | None -> default"
-    ; verbatimf "        | Some deps -> deps"
-    ; verbatimf "    in"
-    ; verbatimf "    C.Flags.write_sexp \"%s\" conf.cflags;" cflags_sexp
-    ; verbatimf "    C.Flags.write_sexp \"%s\" conf.libs;" c_library_flags_sexp
-    ; verbatimf "  )"
-    ]
-
-let write_discover_script ~filename ~sctx ~dir ~external_library_name
-    ~cflags_sexp ~c_library_flags_sexp =
-  let path = Path.Build.relative dir filename in
-  let script =
-    discover_gen ~external_library_name ~cflags_sexp ~c_library_flags_sexp
-  in
-  Super_context.add_rule ~loc:Loc.none sctx ~dir (pp_write_file path script)
 
 let gen_headers ~expander (headers : Ctypes.Headers.t) =
   let open Action_builder.O in
@@ -249,7 +199,7 @@ let rule ?(deps = []) ?stdout_to ?(args = []) ?(targets = []) ~exe ~sctx ~dir ()
   Super_context.add_rule sctx ~dir build
 
 let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
-    ~cflags_sexp ~output ~deps () =
+    ~cflags:(cflags_file, cflags_format) ~output ~deps =
   let ctx = Super_context.context sctx in
   let open Memo.O in
   let* exe =
@@ -264,8 +214,6 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
       let+ lib =
         let ctypes = Lib_name.of_string "ctypes" in
         Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes)
-        (* | Ok lib -> lib | Error _res -> User_error.raise [ Pp.textf "the
-           'ctypes' library needs to be installed to use the ctypes stanza"] *)
       in
       Lib_flags.L.include_paths [ lib ] Mode.Native
       |> Path.Set.to_list |> List.map ~f:Path.to_string
@@ -291,25 +239,27 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
   in
   let build =
     let cflags_args =
-      let contents =
-        Action_builder.contents (Path.relative (Path.build dir) cflags_sexp)
-      in
-      Action_builder.map contents ~f:(fun sexp ->
-          let fail s = User_error.raise [ Pp.textf s ] in
-          let ast =
-            Dune_lang.Parser.parse_string ~mode:Dune_lang.Parser.Mode.Single
-              ~fname:cflags_sexp sexp
-          in
-          match ast with
-          | Atom (_loc, atom) -> [ Dune_lang.Atom.to_string atom ]
-          | Template _ -> fail "'template' not supported in ctypes c_flags"
-          | Quoted_string (_loc, s) -> [ s ]
-          | List (_loc, lst) ->
-            List.map lst ~f:(function
-              | Dune_lang.Ast.Atom (_loc, atom) -> Dune_lang.Atom.to_string atom
-              | Quoted_string (_loc, s) -> s
-              | Template _ -> fail "'template' not supported in ctypes c_flags"
-              | List _ -> fail "nested lists not supported in ctypes c_flags"))
+      let open Action_builder.O in
+      let file = Path.Build.relative dir cflags_file in
+      match cflags_format with
+      | `String_list -> Pkg_config.read_flags ~file
+      | `Sexp -> (
+        let+ contents = Action_builder.contents (Path.build file) in
+        let fail s = User_error.raise [ Pp.textf s ] in
+        let ast =
+          Dune_lang.Parser.parse_string ~mode:Dune_lang.Parser.Mode.Single
+            ~fname:cflags_file contents
+        in
+        match ast with
+        | Atom (_loc, atom) -> [ Dune_lang.Atom.to_string atom ]
+        | Template _ -> fail "'template' not supported in ctypes c_flags"
+        | Quoted_string (_loc, s) -> [ s ]
+        | List (_loc, lst) ->
+          List.map lst ~f:(function
+            | Dune_lang.Ast.Atom (_loc, atom) -> Dune_lang.Atom.to_string atom
+            | Quoted_string (_loc, s) -> s
+            | Template _ -> fail "'template' not supported in ctypes c_flags"
+            | List _ -> fail "nested lists not supported in ctypes c_flags"))
     in
     let absolute_path_hack p =
       (* These normal path builder things construct relative paths like
@@ -336,43 +286,12 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
   Super_context.add_rule sctx ~dir
     (Action_builder.With_targets.map ~f:Action.Full.make build)
 
-let cctx_with_substitutions ?(libraries = []) ~modules ~dir ~loc ~scope ~cctx ()
-    =
-  let compile_info =
-    let dune_version = Scope.project scope |> Dune_project.dune_version in
-    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-      [ (loc, "ctypes") ]
-      (Ctypes.lib_deps_of_strings ~loc libraries)
-      ~dune_version ~pps:[]
-  in
-  let modules = modules_of_list ~dir ~modules in
-  let module Cctx = Compilation_context in
-  Cctx.create ~super_context:(Cctx.super_context cctx) ~scope:(Cctx.scope cctx)
-    ~expander:(Cctx.expander cctx) ~js_of_ocaml:(Cctx.js_of_ocaml cctx)
-    ~package:(Cctx.package cctx) ~flags:(Cctx.flags cctx)
-    ~requires_compile:(Lib.Compile.direct_requires compile_info)
-    ~requires_link:(Lib.Compile.requires_link compile_info)
-    ~obj_dir:(Cctx.obj_dir cctx)
-    ~opaque:(Cctx.Explicit (Cctx.opaque cctx))
-    ~modules ()
-
 let program_of_module_and_dir ~dir program =
   let build_dir = Path.build dir in
   { Exe.Program.name = program
   ; main_module_name = Module_name.of_string program
   ; loc = Loc.in_file (Path.relative build_dir program)
   }
-
-let exe_build_and_link ?libraries ?(modules = []) ~scope ~loc ~dir ~cctx
-    ~sandbox program =
-  let open Memo.O in
-  let* cctx =
-    cctx_with_substitutions ?libraries ~loc ~scope ~dir ~cctx
-      ~modules:(program :: modules) ()
-  in
-  let program = program_of_module_and_dir ~dir program in
-  Exe.build_and_link ~program ~linkages:[ Exe.Linkage.native ] ~promote:None
-    ~sandbox cctx
 
 let exe_link_only ~dir ~shared_cctx ~sandbox program ~deps =
   let link_args =
@@ -431,12 +350,12 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
 
      https://dune.readthedocs.io/en/stable/quick-start.html#defining-a-library-with-c-stubs-using-pkg-config *)
   let c_library_flags_sexp = Ctypes.c_library_flags_sexp ctypes in
-  let cflags_sexp = Ctypes.cflags_sexp ctypes in
+  let cflags_file = Ctypes.cflags_sexp ctypes in
   let* () =
     match ctypes.build_flags_resolver with
     | Vendored { c_flags; c_library_flags } ->
       let* () =
-        write_osl_to_sexp_file ~sctx ~dir ~filename:cflags_sexp c_flags
+        write_osl_to_sexp_file ~sctx ~dir ~filename:cflags_file c_flags
           ~expand_flag:(fun ~expander flags ->
             Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:C)
       in
@@ -445,23 +364,20 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
           Expander.expand_and_eval_set expander flags
             ~standard:(Action_builder.return []))
     | Pkg_config ->
-      let cflags_sexp = Ctypes.cflags_sexp ctypes in
-      let discover_script =
-        sprintf "%s__ctypes_discover"
-          (ctypes.external_library_name |> External_lib_name.clean
-         |> External_lib_name.to_string)
+      let setup default query target =
+        let target = Path.Build.relative dir target in
+        let* res = Pkg_config.gen_rule sctx ~dir ~loc query ~target in
+        match res with
+        | Ok () -> Memo.return ()
+        | Error `Not_found ->
+          Action_builder.write_file target default
+          |> Super_context.add_rule sctx ~dir
       in
-      let* () =
-        write_discover_script ~sctx ~dir ~filename:(discover_script ^ ".ml")
-          ~cflags_sexp ~c_library_flags_sexp ~external_library_name
-      in
-      let* (_ : Exe.dep_graphs) =
-        exe_build_and_link ~scope ~loc ~dir ~cctx ~sandbox
-          ~libraries:[ "dune.configurator" ] discover_script
-      in
-      rule
-        ~targets:[ cflags_sexp; c_library_flags_sexp ]
-        ~exe:(discover_script ^ ".exe") ()
+      let lib = External_lib_name.to_string external_library_name in
+      let* () = setup "-I/usr/include" (Libs lib) c_library_flags_sexp in
+      setup
+        (sprintf "-l%s" (External_lib_name.to_string external_library_name))
+        (Cflags lib) cflags_file
   in
   let generated_entry_module = ctypes.generated_entry_point in
   let headers = ctypes.headers in
@@ -493,9 +409,14 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         ()
     in
     let* () =
-      build_c_program ~foreign_archives_deps ~sctx ~dir ~scope ~cflags_sexp
+      build_c_program ~foreign_archives_deps ~sctx ~dir ~scope
         ~source_files:[ c_generated_types_cout_c ]
-        ~output:c_generated_types_cout_exe ~deps ()
+        ~output:c_generated_types_cout_exe ~deps
+        ~cflags:
+          ( cflags_file
+          , match ctypes.build_flags_resolver with
+            | Pkg_config -> `String_list
+            | Vendored _ -> `Sexp )
     in
     rule
       ~stdout_to:(c_generated_types_module |> Ctypes.ml_of_module_name)
@@ -548,17 +469,20 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
 let ctypes_cclib_flags ~standard ~scope ~expander ~(buildable : Buildable.t) =
   match buildable.ctypes with
   | None -> standard
-  | Some ctypes ->
-    let ctypes_c_library_flags =
-      let path_to_sexp_file =
-        Ctypes_stubs.c_library_flags
-          ~external_library_name:ctypes.external_library_name
-      in
+  | Some ctypes -> (
+    let path_to_flags_file =
+      Ctypes_stubs.c_library_flags
+        ~external_library_name:ctypes.external_library_name
+    in
+    match ctypes.build_flags_resolver with
+    | Pkg_config ->
+      let dir = Expander.dir expander in
+      Pkg_config.read_flags ~file:(Path.Build.relative dir path_to_flags_file)
+    | Vendored _ ->
       let parsing_context =
         let project = Scope.project scope in
         Dune_project.parsing_context project
       in
       Ordered_set_lang.Unexpanded.include_single ~context:parsing_context
-        ~pos:("", 0, 0, 0) path_to_sexp_file
-    in
-    Expander.expand_and_eval_set expander ctypes_c_library_flags ~standard
+        ~pos:("", 0, 0, 0) path_to_flags_file
+      |> Expander.expand_and_eval_set expander ~standard)

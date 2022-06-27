@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let gen_select_rules t ~dir compile_info =
   let open Memo.O in
@@ -24,3 +25,45 @@ let with_lib_deps (t : Context.t) compile_info ~dir ~f =
     else Action_builder.return ()
   in
   Rules.prefix_rules prefix ~f
+
+let modules_rules sctx (buildable : Dune_file.Buildable.t) expander ~dir scope
+    modules ~lib_name ~empty_intf_modules =
+  let* pp =
+    let instrumentation_backend =
+      Lib.DB.instrumentation_backend (Scope.libs scope)
+    in
+    let* preprocess =
+      Resolve.Memo.read_memo
+        (Preprocess.Per_module.with_instrumentation buildable.preprocess
+           ~instrumentation_backend)
+    in
+    let* instrumentation_deps =
+      Resolve.Memo.read_memo
+        (Preprocess.Per_module.instrumentation_deps buildable.preprocess
+           ~instrumentation_backend)
+    in
+    Preprocessing.make sctx ~dir ~scope ~preprocess ~expander
+      ~preprocessor_deps:buildable.preprocessor_deps ~instrumentation_deps
+      ~lint:buildable.lint ~lib_name
+  in
+  let add_empty_intf =
+    let default = buildable.empty_module_interface_if_absent in
+    match empty_intf_modules with
+    | `Lib -> fun _ -> default
+    | `Exe_mains mains ->
+      if Dune_project.executables_implicit_empty_intf (Scope.project scope) then
+        let executable_names =
+          List.map mains ~f:Module_name.of_string_allow_invalid
+        in
+        fun name ->
+          default || List.mem executable_names name ~equal:Module_name.equal
+      else fun _ -> default
+  in
+  let+ modules =
+    Modules.map_user_written modules ~f:(fun m ->
+        let* m = Pp_spec.pp_module pp m in
+        if add_empty_intf (Module.name m) && not (Module.has m ~ml_kind:Intf)
+        then Module_compilation.with_empty_intf ~sctx ~dir m
+        else Memo.return m)
+  in
+  (modules, pp)

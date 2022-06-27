@@ -20,3 +20,14 @@ val with_lib_deps :
   -> dir:Path.Build.t
   -> f:(unit -> 'a Memo.t)
   -> 'a Memo.t
+
+val modules_rules :
+     Super_context.t
+  -> Dune_file.Buildable.t
+  -> Expander.t
+  -> dir:Path.Build.t
+  -> Scope.t
+  -> Modules.t
+  -> lib_name:Lib_name.Local.t option
+  -> empty_intf_modules:[ `Exe_mains of (Loc.t * string) list | `Lib ]
+  -> (Modules.t * Pp_spec.t) Memo.t

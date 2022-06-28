@@ -381,6 +381,13 @@ language. The syntax is a list of the following elements:
         | (name (<logop> (<stage> | <constr>))*)
 
    dep-specification = dep+
+   
+For example:
+
+.. code:: scheme
+
+    (depends ocaml  ( re (>=  1.10.4)  ) dune)
+
 
 Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to

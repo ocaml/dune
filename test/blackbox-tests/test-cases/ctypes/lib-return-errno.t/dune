@@ -1,3 +1,3 @@
 (executable
-  (name example)
-  (libraries integers examplelib))
+ (name example)
+ (libraries integers examplelib))

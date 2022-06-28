@@ -248,25 +248,35 @@ module Library = struct
 end
 
 module Source = struct
+  type kind =
+    | Stubs of Stubs.t
+    | Ctypes of Ctypes_stanza.t
+
   (* we store the entire [stubs] record even though [t] only describes an
      individual source file *)
   type t =
-    { stubs : Stubs.t
+    { kind : kind
     ; path : Path.Build.t
     }
 
-  let language t = t.stubs.language
-
-  let flags t = t.stubs.flags
+  let language t =
+    match t.kind with
+    | Stubs stubs -> stubs.language
+    | Ctypes _ -> C
 
   let path t = t.path
+
+  let mode t =
+    match t.kind with
+    | Stubs s -> s.mode
+    | Ctypes _ -> All
 
   let user_object_name t =
     t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
 
-  let object_name t = user_object_name t |> add_mode_suffix t.stubs.mode
+  let object_name t = user_object_name t |> add_mode_suffix (mode t)
 
-  let make ~stubs ~path = { stubs; path }
+  let make kind ~path = { kind; path }
 end
 
 module Sources = struct
@@ -278,7 +288,8 @@ module Sources = struct
 
   let has_cxx_sources (t : t) =
     String.Map.exists t ~f:(fun (_loc, source) ->
-        Foreign_language.(equal Cxx source.stubs.language))
+        let language = Source.language source in
+        Foreign_language.(equal Cxx language))
 
   module Unresolved = struct
     type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t

@@ -158,13 +158,11 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       in
       let+ flags = link_flags
       and+ ctypes_cclib_flags =
-        Ctypes_rules.ctypes_cclib_flags ~scope
-          ~standard:(Action_builder.return []) ~expander
-          ~buildable:exes.buildable
+        Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:exes.buildable
       in
       Command.Args.S
-        [ Command.Args.As flags
-        ; Command.Args.S
+        [ As flags
+        ; S
             (let ext_lib = ctx.lib_config.ext_lib in
              let foreign_archives =
                exes.buildable.foreign_archives |> List.map ~f:snd
@@ -179,8 +177,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                  Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
           (* XXX: don't these need the msvc hack being done in lib_rules? *)
           (* XXX: also the Command.quote_args being done in lib_rules? *)
-        ; Command.Args.As
-            (List.concat_map ctypes_cclib_flags ~f:(fun f -> [ "-cclib"; f ]))
+        ; As (List.concat_map ctypes_cclib_flags ~f:(fun f -> [ "-cclib"; f ]))
         ]
     in
     let* o_files =

@@ -10,8 +10,7 @@ val gen_rules :
   -> unit Memo.t
 
 val ctypes_cclib_flags :
-     standard:string list Action_builder.t
-  -> scope:Scope.t
+     Super_context.t
   -> expander:Expander.t
   -> buildable:Dune_file.Buildable.t
   -> string list Action_builder.t

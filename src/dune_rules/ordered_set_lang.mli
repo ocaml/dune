@@ -59,8 +59,6 @@ module Unexpanded : sig
   val include_single :
     context:Univ_map.t -> pos:string * int * int * int -> string -> t
 
-  val concat : context:Univ_map.t -> pos:string * int * int * int -> t -> t -> t
-
   val field :
        ?check:unit Dune_lang.Decoder.t
     -> string

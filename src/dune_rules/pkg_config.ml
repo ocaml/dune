@@ -5,7 +5,7 @@ module Query = struct
     | Libs of string
     | Cflags of string
 
-  let _file t ~dir =
+  let file t ~dir =
     let dir = Path.Build.relative dir ".pkg-config" in
     Path.Build.relative dir
     @@
@@ -19,9 +19,27 @@ module Query = struct
     (match t with
     | Libs lib -> [ A "--libs"; A lib ]
     | Cflags lib -> [ A "--cflags"; A lib ])
+
+  let default = function
+    | Libs lib -> [ sprintf "-l%s" lib ]
+    | Cflags _ -> [ "-I/usr/include" ]
+
+  let read t sctx ~dir =
+    let open Action_builder.O in
+    let* bin =
+      Action_builder.of_memo
+      @@ Super_context.resolve_program sctx ~loc:None ~dir "pkg-config"
+    in
+    match bin with
+    | Error _ -> Action_builder.return (default t)
+    | Ok _ ->
+      let file = file t ~dir in
+      let+ contents = Action_builder.contents (Path.build file) in
+      String.split_lines contents
+      |> List.hd |> String.extract_blank_separated_words
 end
 
-let gen_rule sctx ~loc ~dir query ~target =
+let gen_rule sctx ~loc ~dir query =
   let open Memo.O in
   let* bin =
     Super_context.resolve_program sctx ~loc:(Some loc) ~dir "pkg-config"
@@ -30,7 +48,7 @@ let gen_rule sctx ~loc ~dir query ~target =
   | Error _ -> Memo.return @@ Error `Not_found
   | Ok _ as bin ->
     let command =
-      Command.run ~dir:(Path.build dir) ~stdout_to:target bin
+      Command.run ~dir:(Path.build dir) ~stdout_to:(Query.file ~dir query) bin
         (Query.to_args query)
     in
     let+ () = Super_context.add_rule sctx ~loc ~dir command in

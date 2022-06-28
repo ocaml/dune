@@ -1,3 +1,11 @@
+Unreleased
+----------
+
+- [ctypes] always re-run `pkg-config` because we aren't tracking its external
+  dependencies (#6052)
+
+- [ctypes] remove dependency on configurator in the generated rules (#6052)
+
 3.5.0 (2022-10-19)
 ------------------
 

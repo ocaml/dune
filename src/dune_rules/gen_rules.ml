@@ -1,5 +1,4 @@
 open Import
-module Menhir_rules = Menhir
 module Toplevel_rules = Toplevel.Stanza
 open Dune_file
 open Memo.O

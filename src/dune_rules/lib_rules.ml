@@ -387,34 +387,11 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
   let ctx = Super_context.context sctx in
-  let instrumentation_backend =
-    Lib.DB.instrumentation_backend (Scope.libs scope)
-  in
-  let* preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-         ~instrumentation_backend)
-  in
-  let* instrumentation_deps =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
-         ~instrumentation_backend)
-  in
-  (* Preprocess before adding the alias module as it doesn't need
-     preprocessing *)
-  let* pp =
-    Preprocessing.make sctx ~dir ~scope ~preprocess ~expander
-      ~preprocessor_deps:lib.buildable.preprocessor_deps ~instrumentation_deps
-      ~lint:lib.buildable.lint
+  let* modules, pp =
+    Buildable_rules.modules_rules sctx lib.buildable expander ~dir scope
+      source_modules
       ~lib_name:(Some (snd lib.name))
-  in
-  let* modules =
-    let add_empty_intf = lib.buildable.empty_module_interface_if_absent in
-    Modules.map_user_written source_modules ~f:(fun m ->
-        let* m = Pp_spec.pp_module pp m in
-        if add_empty_intf && not (Module.has m ~ml_kind:Intf) then
-          Module_compilation.with_empty_intf ~sctx ~dir m
-        else Memo.return m)
+      ~empty_intf_modules:`Lib
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in

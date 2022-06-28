@@ -38,8 +38,9 @@ let valid_name language ~loc s =
       ]
   | _ -> s
 
-let eval_foreign_stubs foreign_stubs ~dune_version
-    ~(sources : Foreign.Sources.Unresolved.t) : Foreign.Sources.t =
+let eval_foreign_stubs foreign_stubs (ctypes : Ctypes_stanza.t option)
+    ~dune_version ~(sources : Foreign.Sources.Unresolved.t) : Foreign.Sources.t
+    =
   let multiple_sources_error ~name ~loc ~paths =
     User_error.raise ~loc
       [ Pp.textf "Multiple sources map to the same object name %S:" name
@@ -60,6 +61,17 @@ let eval_foreign_stubs foreign_stubs ~dune_version
              directories. Foreign archives can be defined using the \
              (foreign_library ...) stanza."
         ]
+  in
+  let find_source language (loc, name) =
+    let open Option.O in
+    let* candidates = String.Map.find sources name in
+    match
+      List.filter_map candidates ~f:(fun (l, path) ->
+          Option.some_if (Foreign_language.equal l language) path)
+    with
+    | [ path ] -> Some path
+    | [] -> None
+    | _ :: _ :: _ as paths -> multiple_sources_error ~name ~loc ~paths
   in
   let eval (stubs : Foreign.Stubs.t) =
     let language = stubs.language in
@@ -84,19 +96,8 @@ let eval_foreign_stubs foreign_stubs ~dune_version
                  To include sources in subdirectories, use the \
                  (include_subdirs ...) stanza."
             ];
-        let open Option.O in
-        let source =
-          let* candidates = String.Map.find sources name in
-          match
-            List.filter_map candidates ~f:(fun (l, path) ->
-                Option.some_if (Foreign_language.equal l language) path)
-          with
-          | [ path ] -> Some (loc, Foreign.Source.make ~stubs ~path)
-          | [] -> None
-          | _ :: _ :: _ as paths -> multiple_sources_error ~name ~loc ~paths
-        in
-        match source with
-        | Some source -> source
+        match find_source language (loc, name) with
+        | Some path -> (loc, Foreign.Source.make (Stubs stubs) ~path)
         | None ->
           User_error.raise ~loc
             [ Pp.textf "Object %S has no source; %s must be present." name
@@ -105,7 +106,29 @@ let eval_foreign_stubs foreign_stubs ~dune_version
                    |> List.map ~f:(fun s -> sprintf "%S" s)))
             ])
   in
-  let stub_maps = List.map foreign_stubs ~f:eval in
+  let stub_maps =
+    let init = List.map foreign_stubs ~f:eval in
+    match ctypes with
+    | None -> init
+    | Some ctypes ->
+      let ctypes =
+        List.fold_left ~init:String.Map.empty ctypes.function_description
+          ~f:(fun acc (fd : Ctypes_stanza.Function_description.t) ->
+            let loc = Loc.none (* TODO *) in
+            let fname = Ctypes_stanza.c_generated_functions_cout_c ctypes fd in
+            let name = Filename.chop_extension fname in
+            let path =
+              match find_source C (loc, name) with
+              | Some p -> p
+              | None ->
+                (* impossible b/c ctypes stanza generates this *)
+                assert false
+            in
+            let source = Foreign.Source.make (Ctypes ctypes) ~path in
+            String.Map.add_exn acc name (loc, source))
+      in
+      ctypes :: init
+  in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
       String.Map.union a b ~f:(fun name (loc, src1) (_, src2) ->
           multiple_sources_error ~name ~loc
@@ -128,12 +151,12 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
           | Library lib ->
             let all =
               eval_foreign_stubs ~dune_version lib.buildable.foreign_stubs
-                ~sources
+                lib.buildable.ctypes ~sources
             in
             ((lib, all) :: libs, foreign_libs, exes)
           | Foreign_library library ->
             let all =
-              eval_foreign_stubs ~dune_version [ library.stubs ] ~sources
+              eval_foreign_stubs ~dune_version [ library.stubs ] ~sources None
             in
             ( libs
             , (library.archive_name, (library.archive_name_loc, all))
@@ -142,7 +165,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
           | Executables exe | Tests { exes = exe; _ } ->
             let all =
               eval_foreign_stubs ~dune_version exe.buildable.foreign_stubs
-                ~sources
+                ~sources exe.buildable.ctypes
             in
             (libs, foreign_libs, (exe, all) :: exes)
           | _ -> acc)

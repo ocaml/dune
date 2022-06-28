@@ -15,7 +15,7 @@ let msvc_hack_cclibs =
 
 (* Build an OCaml library. *)
 let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
-    ~mode ~cm_files ~scope =
+    ~mode ~cm_files =
   let ctx = Super_context.context sctx in
   Memo.Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
@@ -55,8 +55,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Expander.expand_and_eval_set expander lib.library_flags ~standard
       in
       let ctypes_cclib_flags =
-        Ctypes_rules.ctypes_cclib_flags ~scope ~standard ~expander
-          ~buildable:lib.buildable
+        Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
         (let open Action_builder.With_targets.O in
@@ -300,7 +299,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
       Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
 
 let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
-    ~expander ~scope =
+    ~expander =
   let obj_dir = Compilation_context.obj_dir cctx in
   let dir = Compilation_context.dir cctx in
   let flags = Compilation_context.flags cctx in
@@ -358,7 +357,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
   in
   let* () =
     Mode.Dict.Set.iter_concurrently modes ~f:(fun mode ->
-        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~scope
+        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
           ~cm_files)
   and* () =
     (* Build *.cma.js *)
@@ -440,8 +439,7 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
   let+ () =
     Memo.when_
       (not (Library.is_virtual lib))
-      (fun () ->
-        setup_build_archives lib ~top_sorted_modules ~cctx ~expander ~scope)
+      (fun () -> setup_build_archives lib ~top_sorted_modules ~cctx ~expander)
   and+ () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     Memo.when_

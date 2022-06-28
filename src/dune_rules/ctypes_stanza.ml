@@ -184,13 +184,6 @@ let function_gen_script ctypes (fd : Function_description.t) =
     (module_name_lower_string fd.functor_)
     (module_name_lower_string fd.instance)
 
-let cflags_sexp ctypes =
-  Ctypes_stubs.cflags_sexp ~external_library_name:ctypes.external_library_name
-
-let c_library_flags_sexp ctypes =
-  sprintf "%s__c_library_flags.sexp"
-    (External_lib_name.to_string ctypes.external_library_name)
-
 let c_generated_types_module ctypes =
   sprintf "%s__c_generated_types"
     (ctypes.external_library_name |> External_lib_name.to_module_name
@@ -210,9 +203,6 @@ let c_generated_functions_cout_c ctypes (fd : Function_description.t) =
     (External_lib_name.to_string ctypes.external_library_name)
     (module_name_lower_string fd.functor_)
     (module_name_lower_string fd.instance)
-
-let lib_deps_of_strings ~loc lst =
-  List.map lst ~f:(fun lib -> Lib_dep.Direct (loc, Lib_name.of_string lib))
 
 let type_gen_script_module ctypes =
   type_gen_script ctypes |> Module_name.of_string

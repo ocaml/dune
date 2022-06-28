@@ -140,14 +140,16 @@ end
 (** A foreign source file that has a [path] and all information of the
     corresponding [Foreign.Stubs.t] declaration. *)
 module Source : sig
-  type t =
-    { stubs : Stubs.t
+  type kind =
+    | Stubs of Stubs.t
+    | Ctypes of Ctypes_stanza.t
+
+  type t = private
+    { kind : kind
     ; path : Path.Build.t
     }
 
   val language : t -> Foreign_language.t
-
-  val flags : t -> Ordered_set_lang.Unexpanded.t
 
   val path : t -> Path.Build.t
 
@@ -155,7 +157,7 @@ module Source : sig
      file [some/path/name.cpp]. *)
   val object_name : t -> string
 
-  val make : stubs:Stubs.t -> path:Path.Build.t -> t
+  val make : kind -> path:Path.Build.t -> t
 end
 
 (** A map from object names to the corresponding sources. *)

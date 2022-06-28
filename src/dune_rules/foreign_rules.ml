@@ -102,57 +102,70 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
              in
              Command.Args.S [ A "-I"; Path include_dir; dep_args ]))))
 
-let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
+let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
+    (loc, (src : Foreign.Source.t), dst) =
   let ctx = Super_context.context sctx in
   let* project = Scope.DB.find_by_dir dir >>| Scope.project in
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
   let base_flags =
     let cfg = ctx.ocaml_config in
     match kind with
-    | Foreign_language.C -> (
+    | Cxx -> Fdo.cxx_flags ctx
+    | C -> (
       match use_standard_flags with
+      | Some true -> Fdo.c_flags ctx
       | None | Some false ->
         (* In dune < 2.8 flags from ocamlc_config are always added *)
         List.concat
           [ Ocaml_config.ocamlc_cflags cfg
           ; Ocaml_config.ocamlc_cppflags cfg
           ; Fdo.c_flags ctx
-          ]
-      | Some true -> Fdo.c_flags ctx)
-    | Foreign_language.Cxx -> Fdo.cxx_flags ctx
+          ])
   in
   let open Memo.O in
   let* with_user_and_std_flags =
-    let flags = Foreign.Source.flags src in
-    (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
-       guide users toward this change we emit a warning when dune_lang is >=
-       1.8, [use_standard_c_and_cxx_flags] is not specified in the
-       [dune-project] file (thus defaulting to [true]), the [:standard] set of
-       flags has been overridden and we are not in a vendored project *)
-    let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
-    let+ is_vendored =
-      match Path.Build.drop_build_context dir with
-      | Some src_dir -> Dune_engine.Source_tree.is_vendored src_dir
-      | None -> Memo.return false
-    in
-    if
-      Dune_project.dune_version project >= (2, 8)
-      && Option.is_none use_standard_flags
-      && (not is_vendored) && not has_standard
-    then
-      User_warning.emit ~loc
-        [ Pp.text
-            "The flag set for these foreign sources overrides the `:standard` \
-             set of flags. However the flags in this standard set are still \
-             added to the compiler arguments by Dune. This might cause \
-             unexpected issues. You can disable this warning by defining the \
-             option `(use_standard_c_and_cxx_flags <bool>)` in your \
-             `dune-project` file. Setting this option to `true` will \
-             effectively prevent Dune from silently adding c-flags to the \
-             compiler arguments which is the new recommended behaviour."
-        ];
-    Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
-    |> Action_builder.map ~f:(List.append base_flags)
+    match src.kind with
+    | Ctypes stanza -> (
+      Memo.return
+      @@
+      match stanza.build_flags_resolver with
+      | Vendored { c_flags; c_library_flags = _ } ->
+        Super_context.foreign_flags sctx ~dir ~expander ~flags:c_flags
+          ~language:C
+      | Pkg_config ->
+        let dir = Path.Build.parent_exn dst in
+        let lib = External_lib_name.to_string stanza.external_library_name in
+        Pkg_config.Query.read ~dir (Cflags lib) sctx)
+    | Stubs { Foreign.Stubs.flags; _ } ->
+      (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
+         guide users toward this change we emit a warning when dune_lang is >=
+         1.8, [use_standard_c_and_cxx_flags] is not specified in the
+         [dune-project] file (thus defaulting to [true]), the [:standard] set of
+         flags has been overridden and we are not in a vendored project *)
+      let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
+      let+ is_vendored =
+        match Path.Build.drop_build_context dir with
+        | Some src_dir -> Dune_engine.Source_tree.is_vendored src_dir
+        | None -> Memo.return false
+      in
+      if
+        Dune_project.dune_version project >= (2, 8)
+        && Option.is_none use_standard_flags
+        && (not is_vendored) && not has_standard
+      then
+        User_warning.emit ~loc
+          [ Pp.text
+              "The flag set for these foreign sources overrides the \
+               `:standard` set of flags. However the flags in this standard \
+               set are still added to the compiler arguments by Dune. This \
+               might cause unexpected issues. You can disable this warning by \
+               defining the option `(use_standard_c_and_cxx_flags <bool>)` in \
+               your `dune-project` file. Setting this option to `true` will \
+               effectively prevent Dune from silently adding c-flags to the \
+               compiler arguments which is the new recommended behaviour."
+          ];
+      Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
+      |> Action_builder.map ~f:(List.append base_flags)
   and* c_compiler =
     Super_context.resolve_program ~loc:None ~dir sctx
       (Ocaml_config.c_compiler ctx.ocaml_config)
@@ -202,17 +215,22 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
           let+ libs = requires in
           Command.Args.S
             [ Lib_flags.L.c_include_flags libs
-            ; Hidden_deps
-                (Lib_file_deps.deps libs ~groups:[ Lib_file_deps.Group.Header ])
+            ; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Header ])
             ])
       ]
   in
-  String.Map.to_list_map foreign_sources ~f:(fun obj (loc, src) ->
+  String.Map.to_list_map foreign_sources
+    ~f:(fun obj (loc, (src : Foreign.Source.t)) ->
       let dst = Path.Build.relative dir (obj ^ ctx.lib_config.ext_obj) in
-      let stubs = src.Foreign.Source.stubs in
-      let extra_flags = include_dir_flags ~expander ~dir src.stubs in
+      let extra_flags =
+        match src.kind with
+        | Stubs stubs -> include_dir_flags ~expander ~dir stubs
+        | Ctypes _ -> Command.Args.empty
+      in
       let extra_deps, sandbox =
-        Dep_conf_eval.unnamed stubs.extra_deps ~expander
+        match src.kind with
+        | Stubs stubs -> Dep_conf_eval.unnamed stubs.extra_deps ~expander
+        | Ctypes _ -> (Action_builder.return (), Sandbox_config.default)
       in
       (* We don't sandbox the C compiler, see comment in [build_file] about
          this. *)
@@ -223,9 +241,9 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
       let include_flags =
         Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
       in
-      let build_file =
-        match Foreign.Source.language src with
-        | C -> build_c ~kind:Foreign_language.C
-        | Cxx -> build_c ~kind:Foreign_language.Cxx
-      in
-      build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst))
+      build_c
+        ~kind:
+          (match Foreign.Source.language src with
+          | C -> C
+          | Cxx -> Cxx)
+        ~sctx ~dir ~expander ~include_flags (loc, src, dst))

@@ -13,6 +13,8 @@
 
 - Fix hint when an invalid module name is found. (#5922, fixes #5273, @emillon)
 
+- The `(cat)` action now supports several files. (#5928, fixes #5795, @emillon)
+
 3.3.1 (19-06-2022)
 ------------------
 

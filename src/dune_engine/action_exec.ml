@@ -266,9 +266,10 @@ let rec exec t ~ectx ~eenv =
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
     Done
-  | Cat fn ->
-    Io.with_file_in fn ~f:(fun ic ->
-        Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to));
+  | Cat xs ->
+    List.iter xs ~f:(fun fn ->
+        Io.with_file_in fn ~f:(fun ic ->
+            Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to)));
     Fiber.return Done
   | Copy (src, dst) ->
     let dst = Path.build dst in

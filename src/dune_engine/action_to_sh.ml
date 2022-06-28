@@ -30,7 +30,7 @@ let echo s =
         ~f:(fun acc s -> Run ("echo", [ s ]) :: acc)
   else List.map lines ~f:(fun s -> Run ("echo", [ s ]))
 
-let cat fn = Run ("cat", [ fn ])
+let cat ps = Run ("cat", ps)
 
 let mkdir p = Run ("mkdir", [ "-p"; p ])
 

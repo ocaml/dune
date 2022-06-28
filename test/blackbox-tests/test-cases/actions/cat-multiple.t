@@ -1,8 +1,28 @@
-The cat action supports several files.
-
   $ cat > dune-project << EOF
   > (lang dune 3.4)
   > EOF
+
+It is an error to pass an empty list:
+
+  $ cat > dune << EOF
+  > (rule
+  >  (alias runtest)
+  >  (action
+  >   (cat result)))
+  > 
+  > (rule
+  >  (with-stdout-to result
+  >   (cat)))
+  > EOF
+
+  $ dune runtest
+  File "dune", line 8, characters 2-7:
+  8 |   (cat)))
+        ^^^^^
+  Error: Not enough arguments for cat
+  [1]
+
+The cat action supports several files.
 
   $ echo "file a" > a
   $ echo "file b" > b

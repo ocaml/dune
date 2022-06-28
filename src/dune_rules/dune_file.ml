@@ -162,7 +162,6 @@ module Buildable = struct
         :: foreign_stubs
     in
     let+ loc = loc
-    and+ project = Dune_project.get_exn ()
     and+ preprocess, preprocessor_deps = preprocess_fields
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ foreign_stubs =
@@ -275,22 +274,8 @@ module Buildable = struct
       in
       libraries @ ctypes_libraries
     in
-    let foreign_stubs =
-      match ctypes with
-      | None -> foreign_stubs
-      | Some (ctypes : Ctypes_stanza.t) ->
-        let init = foreign_stubs in
-        List.fold_left ctypes.function_description ~init
-          ~f:(fun foreign_stubs fd ->
-            Ctypes_stubs.add ~loc
-              ~parsing_context:(Dune_project.parsing_context project)
-              ~external_library_name:ctypes.external_library_name
-              ~functor_:fd.Ctypes_stanza.Function_description.functor_
-              ~instance:fd.Ctypes_stanza.Function_description.instance
-              ~add_stubs ~foreign_stubs)
-    in
-    let foreign_archives = Option.value ~default:[] foreign_archives in
     let foreign_archives =
+      let foreign_archives = Option.value ~default:[] foreign_archives in
       if
         version < (2, 0)
         && List.is_non_empty foreign_stubs
@@ -339,7 +324,8 @@ module Buildable = struct
   let has_foreign t =
     List.is_non_empty t.foreign_stubs
     || List.is_non_empty t.foreign_archives
-    || not (Foreign.Objects.is_empty t.extra_objects)
+    || (not (Foreign.Objects.is_empty t.extra_objects))
+    || Option.is_some t.ctypes
 
   let has_foreign_cxx t =
     List.exists
@@ -848,7 +834,10 @@ module Library = struct
   let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
   let stubs_archive t =
-    if List.is_empty t.buildable.foreign_stubs then None
+    if
+      List.is_empty t.buildable.foreign_stubs
+      && Option.is_none t.buildable.ctypes
+    then None
     else Some (Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)))
 
   let foreign_archives t = List.map ~f:snd t.buildable.foreign_archives

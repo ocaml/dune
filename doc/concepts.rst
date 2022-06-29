@@ -754,7 +754,7 @@ The following constructions are available:
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
-- ``(cat <file>)`` to print the contents of a file to stdout
+- ``(cat <file> ...)`` to sequentially print the contents of files to stdout
 - ``(copy <src> <dst>)`` to copy a file. If these files are OCaml sources you
   should follow the ``module_name.xxx.ml``
   :ref:`naming convention <merlin-filenames>` to preserve Merlin's

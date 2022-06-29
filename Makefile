@@ -40,9 +40,11 @@ TEST_OCAMLVERSION := 4.14.0
 
 -include Makefile.dev
 
+.PHONY: help
 help:
 	@cat doc/make-help.txt
 
+.PHONY: release
 release: $(BIN)
 	@$(BIN) build -p dune --profile dune-bootstrap
 
@@ -55,12 +57,15 @@ dev: $(BIN)
 all: $(BIN)
 	$(BIN) build
 
+.PHONY: install
 install:
 	$(BIN) install $(INSTALL_ARGS) dune
 
+.PHONY: uninstall
 uninstall:
 	$(BIN) uninstall $(INSTALL_ARGS) dune
 
+.PHONY: reinstall
 reinstall: uninstall install
 
 install-ocamlformat:
@@ -69,6 +74,7 @@ install-ocamlformat:
 dev-deps:
 	opam install -y $(TEST_DEPS)
 
+.PHONY: dev-switch
 dev-switch:
 	opam update
 # Ensuring that either a dev switch already exists or a new one is created
@@ -76,6 +82,7 @@ dev-switch:
 		opam switch create -y . $(TEST_OCAMLVERSION) --deps-only --with-test
 	opam install -y --update-invariant ocaml.$(TEST_OCAMLVERSION) $(TEST_DEPS) $(DEV_DEPS)
 
+.PHONY: test
 test: $(BIN)
 	$(BIN) runtest
 
@@ -91,20 +98,25 @@ test-coq: $(BIN)
 test-all: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq
 
+.PHONY: check
 check: $(BIN)
 	$(BIN) build @check
 
+.PHONY: fmt
 fmt: $(BIN)
 	$(BIN) fmt
 
+.PHONY: promote
 promote: $(BIN)
 	$(BIN) promote
 
+.PHONY: accept-corrections
 accept-corrections: promote
 
 all-supported-ocaml-versions: $(BIN)
 	$(BIN) build @install @runtest --workspace dune-workspace.dev --root .
 
+.PHONY: clean
 clean: $(BIN)
 	$(BIN) clean || true
 	rm -rf _boot dune.exe
@@ -112,6 +124,7 @@ clean: $(BIN)
 distclean: clean
 	rm -f src/dune_rules/setup.ml
 
+.PHONY: doc
 doc:
 	sphinx-build doc doc/_build
 
@@ -135,14 +148,13 @@ endif
 bench: release
 	@$(BIN) exec -- ./bench/bench.exe _build/default/dune.exe
 
+.PHONY: dune
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 
-.PHONY: default install uninstall reinstall clean test doc dev-switch
-.PHONY: promote accept-corrections release opam-release dune check fmt
-
 # Use this target to make sure that we always run the in source dune when making
 # the release
+.PHONY: opam-release
 opam-release: dev
 	$(BIN) exec -- $(MAKE) dune-release
 

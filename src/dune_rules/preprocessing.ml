@@ -557,7 +557,11 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
                [ Pp.text "Staged ppx rewriters cannot be used as linters." ];
            let corrected_suffix = ".lint-corrected" in
            let driver_and_flags =
-             Action_builder.memoize "ppx driver and flags"
+             Action_builder.memoize
+               ~cutoff:
+                 (Tuple.T3.equal Path.Build.equal (List.equal String.equal)
+                    (List.equal String.equal))
+               "ppx driver and flags"
                (let* () = Action_builder.return () in
                 let* exe, driver, flags =
                   ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags
@@ -649,7 +653,11 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
         if not staged then
           let corrected_suffix = ".ppx-corrected" in
           let driver_and_flags =
-            Action_builder.memoize "ppx driver and flags"
+            Action_builder.memoize
+              ~cutoff:
+                (Tuple.T3.equal Path.Build.equal (List.equal String.equal)
+                   (List.equal String.equal))
+              "ppx driver and flags"
               (let* () = Action_builder.return () in
                let* exe, driver, flags =
                  ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags
@@ -690,7 +698,8 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                             >>| Action.Full.add_sandbox sandbox))))
         else
           let dash_ppx_flag =
-            Action_builder.memoize "ppx command"
+            Action_builder.memoize ~cutoff:(List.equal String.equal)
+              "ppx command"
               (let* () = Action_builder.return () in
                let* exe, driver, flags =
                  ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags

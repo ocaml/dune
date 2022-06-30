@@ -304,7 +304,8 @@ let foreign_flags t ~dir ~expander ~flags ~language =
     let+ l = Expander.expand_and_eval_set expander flags ~standard:default in
     l @ ccg
   in
-  Action_builder.memoize (sprintf "%s flags" name) flags
+  Action_builder.memoize ~cutoff:(List.equal String.equal)
+    (sprintf "%s flags" name) flags
 
 let link_flags t ~dir (spec : Link_flags.Spec.t) =
   let* expander = Env_tree.expander t ~dir in
@@ -318,7 +319,7 @@ let menhir_flags t ~dir ~expander ~flags =
     Env_tree.get_node t ~dir >>| Env_node.menhir_flags
     |> Action_builder.of_memo_join
   in
-  Action_builder.memoize "menhir flags"
+  Action_builder.memoize ~cutoff:(List.equal String.equal) "menhir flags"
     (Expander.expand_and_eval_set expander flags ~standard:default)
 
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries

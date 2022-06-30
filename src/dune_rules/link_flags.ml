@@ -40,7 +40,10 @@ let default ~default_cxx_link_flags =
   { link_flags = Action_builder.return []; link_flags_cxx }
 
 let make ~spec ~default ~eval =
-  let f name x standard = Action_builder.memoize name (eval x ~standard) in
+  let f name x standard =
+    Action_builder.memoize ~cutoff:(List.equal String.equal) name
+      (eval x ~standard)
+  in
   { link_flags = f "link flags" spec.link_flags default.link_flags
   ; link_flags_cxx =
       f "link flags cxx" spec.link_flags_cxx default.link_flags_cxx

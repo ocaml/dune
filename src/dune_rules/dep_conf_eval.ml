@@ -251,7 +251,8 @@ and named_paths_builder ~expander l =
             (x :: builders, bindings)
           | None ->
             let x =
-              Action_builder.memoize ("dep " ^ name)
+              Action_builder.memoize ~cutoff:(List.equal Path.equal)
+                ("dep " ^ name)
                 (Action_builder.List.concat_map x ~f:to_action_builder)
             in
             let bindings =
@@ -274,7 +275,9 @@ let named ~expander l =
     let+ paths = builder in
     Dune_util.Value.L.paths paths
   in
-  let builder = Action_builder.memoize "deps" builder in
+  let builder =
+    Action_builder.memoize ~cutoff:(List.equal Value.equal) "deps" builder
+  in
   let bindings =
     Pform.Map.set bindings (Var Deps) (Expander.Deps.With builder)
   in

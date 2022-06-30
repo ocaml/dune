@@ -114,7 +114,10 @@ let default ~dune_version ~profile =
   }
 
 let make ~spec ~default ~eval =
-  let f name x standard = Action_builder.memoize name (eval x ~standard) in
+  let f name x standard =
+    Action_builder.memoize ~cutoff:(List.equal String.equal) name
+      (eval x ~standard)
+  in
   { common = f "common flags" spec.common default.common
   ; specific =
       { byte = f "ocamlc flags" spec.specific.byte default.specific.byte

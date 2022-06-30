@@ -1,12 +1,16 @@
 (env
  (_
-  (binaries ../utils/dune_cmd.exe)))
+  (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe)))
 
 (alias
  (name test-deps)
  (deps
   %{bin:dune_cmd}
   (package dune)))
+
+(cram
+ (applies_to pp-cwd)
+ (deps %{bin:dunepp}))
 
 (cram
  (applies_to :whole_subtree)

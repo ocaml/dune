@@ -172,7 +172,7 @@ end = struct
       | Unknown msg ->
         Merlin_conf.to_stdout (Merlin_conf.make_error msg);
         main ()
-      | Halt -> exit 0
+      | Halt -> Fiber.return ()
     in
     main ()
 end

@@ -15,6 +15,8 @@ let compare x y =
   | _, Dir _ -> Gt
   | Path x, Path y -> Path.compare x y
 
+let equal x y = Ordering.is_eq (compare x y)
+
 let to_dyn = function
   | String s -> Dyn.variant "string" [ String s ]
   | Path p -> Dyn.variant "path" [ Path.to_dyn p ]

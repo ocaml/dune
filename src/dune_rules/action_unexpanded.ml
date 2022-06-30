@@ -176,7 +176,7 @@ end = struct
 
   let set_env ~var ~value t env acc =
     let*! value, acc = value env acc in
-    let value = Action_builder.memoize "env var" value in
+    let value = Action_builder.memoize ~cutoff:String.equal "env var" value in
     let env =
       { env with
         expander = Expander.set_local_env_var env.expander ~var ~value
@@ -289,7 +289,9 @@ end = struct
         (let fn = Expander.expand_path env sw in
          if not env.infer then (fn, acc)
          else
-           let fn = Action_builder.memoize "dep_if_exists" fn in
+           let fn =
+             Action_builder.memoize ~cutoff:Path.equal "dep_if_exists" fn
+           in
            ( fn
            , { acc with
                deps_if_exist =

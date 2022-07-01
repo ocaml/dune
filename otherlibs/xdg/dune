@@ -1,7 +1,13 @@
+(rule
+ (with-stdout-to
+  c_library_flags.sexp
+  (run gen_flags/gen_flags.exe %{os_type})))
+
 (library
  (name xdg)
  (public_name xdg)
- (c_library_flags -lshell32 -lole32)
+ (c_library_flags
+  (:include c_library_flags.sexp))
  (foreign_stubs
   (language c)
   (names xdg_stubs))

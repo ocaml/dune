@@ -746,6 +746,9 @@ end = struct
   let execute_action_generic_stage2_memo =
     Memo.create "execute-action"
       ~input:(module Anonymous_action)
+      (* this memo doesn't need cutoff because the input's digests
+         fully determines the returned build path and we already compare the
+         input using this digest *)
       execute_action_generic_stage2_impl
 
   let execute_action_generic ~observing_facts (act : Rule.Anonymous_action.t)

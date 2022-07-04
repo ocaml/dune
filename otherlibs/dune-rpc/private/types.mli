@@ -68,6 +68,7 @@ module Response : sig
     type kind =
       | Invalid_request
       | Code_error
+      | Connection_dead
 
     type t =
       { payload : Sexp.t option

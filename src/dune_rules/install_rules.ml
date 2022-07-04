@@ -763,10 +763,9 @@ let packages =
       ~f:Package.Id.Set.add
   in
   let memo =
-    Memo.create "package-map"
+    Memo.create "package-map" f
       ~input:(module Super_context.As_memo_key)
       ~cutoff:(Path.Build.Map.equal ~equal:Package.Id.Set.equal)
-      f
   in
   fun sctx -> Memo.exec memo sctx
 

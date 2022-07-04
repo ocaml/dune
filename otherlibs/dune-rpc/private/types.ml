@@ -90,12 +90,14 @@ module Response = struct
     type kind =
       | Invalid_request
       | Code_error
+      | Connection_dead
 
     let dyn_of_kind =
       let open Dyn in
       function
       | Invalid_request -> variant "Invalid_request" []
       | Code_error -> variant "Code_error" []
+      | Connection_dead -> variant "Connection_dead" []
 
     type t =
       { payload : Sexp.t option

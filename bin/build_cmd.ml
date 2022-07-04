@@ -85,23 +85,18 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
   let open Fiber.O in
-  match Common.rpc common with
-  | None ->
-    Code_error.raise
-      "Attempted to start a passive polling mode without an RPC server" []
-  | Some rpc ->
-    Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
-      ~config (fun () ->
-        Scheduler.Run.poll_passive
-          ~get_build_request:
-            (let+ (Build (targets, ivar)) =
-               Dune_rpc_impl.Server.pending_build_action rpc
-             in
-             let request setup =
-               Target.interpret_targets (Common.root common) config setup
-                 targets
-             in
-             (run_build_system ~common ~request, ivar)))
+  let rpc = Common.rpc common in
+  Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
+    ~config (fun () ->
+      Scheduler.Run.poll_passive
+        ~get_build_request:
+          (let+ (Build (targets, ivar)) =
+             Dune_rpc_impl.Server.pending_build_action rpc
+           in
+           let request setup =
+             Target.interpret_targets (Common.root common) config setup targets
+           in
+           (run_build_system ~common ~request, ivar)))
 
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in

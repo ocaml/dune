@@ -16,6 +16,9 @@ _perf
 # vscode settings
 .vscode
 
+# git-ps hooks
+.git-ps
+
 .duneboot.*
 /boot/*.cm*
 dune.exe

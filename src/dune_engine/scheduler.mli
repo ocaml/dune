@@ -25,13 +25,8 @@ module Config : sig
   type t =
     { concurrency : int
     ; display : Display.t
-    ; rpc : Dune_rpc_private.Where.t option
     ; stats : Dune_stats.t option
     }
-
-  (** [add_to_env env] adds to [env] the environment variable that describes
-      where the current RPC server is listening (if it's running) *)
-  val add_to_env : t -> Env.t -> Env.t
 end
 
 module Run : sig

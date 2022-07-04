@@ -394,7 +394,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
       ~modules ~flags ~requires_compile ~requires_link ~opaque:(Explicit false)
       ~js_of_ocaml:None ~package:None ()
   in
-  let+ () =
+  let+ (_ : Exe.dep_graphs) =
     Exe.build_and_link cctx
       ~program:{ name; main_module_name; loc }
       ~link_args:(Action_builder.return (Command.Args.A "-linkall"))

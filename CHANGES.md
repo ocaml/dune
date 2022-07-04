@@ -1,12 +1,19 @@
 3.4.0 (Unreleased)
 ------------------
 
+- Building the `@check` alias should make sure the libraries and executables
+  don't have dependency cycles (#5892, @rgrinberg)
+
 - [ctypes] Add support for the `errno` parameter using the `errno_policy` field
   in the ctypes settings. (#5827, @droyo)
 
 - Fix `dune coq top` when it is invoked on files from a subdirectory of the
   directory containing the associated stanza (#5784, fixes #5552, @ejgallego,
   @rlepigre, @Alizter)
+
+- Fix hint when an invalid module name is found. (#5922, fixes #5273, @emillon)
+
+- The `(cat)` action now supports several files. (#5928, fixes #5795, @emillon)
 
 3.3.1 (19-06-2022)
 ------------------

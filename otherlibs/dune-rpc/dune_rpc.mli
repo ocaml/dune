@@ -52,6 +52,7 @@ module V1 : sig
       type kind =
         | Invalid_request
         | Code_error
+        | Connection_dead
 
       type t
 
@@ -460,6 +461,8 @@ module V1 : sig
       val to_dyn : t -> Dyn.t
 
       val compare : t -> t -> Ordering.t
+
+      val pid : t -> int
 
       val where : t -> Where.t
 

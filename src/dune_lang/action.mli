@@ -79,7 +79,7 @@ type t =
   | Ignore of Outputs.t * t
   | Progn of t list
   | Echo of String_with_vars.t list
-  | Cat of String_with_vars.t
+  | Cat of String_with_vars.t list
   | Copy of String_with_vars.t * String_with_vars.t
   | Symlink of String_with_vars.t * String_with_vars.t
   | Copy_and_add_line_directive of String_with_vars.t * String_with_vars.t

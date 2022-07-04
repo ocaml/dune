@@ -5,20 +5,43 @@ module SC = Super_context
 
 let ( ++ ) = Path.Build.relative
 
+let find_project_by_key =
+  let memo =
+    let make_map projects =
+      Dune_project.File_key.Map.of_list_map_exn projects ~f:(fun project ->
+          (Dune_project.file_key project, project))
+      |> Memo.return
+    in
+    let module Input = struct
+      type t = Dune_project.t list
+
+      let equal = List.equal Dune_project.equal
+
+      let hash = List.hash Dune_project.hash
+
+      let to_dyn = Dyn.list Dune_project.to_dyn
+    end in
+    Memo.create "project-by-keys" ~input:(module Input) make_map
+  in
+  fun key ->
+    let* { projects; _ } = Dune_load.load () in
+    let+ map = Memo.exec memo projects in
+    Dune_project.File_key.Map.find_exn map key
+
 module Scope_key : sig
-  val of_string : Super_context.t -> string -> Lib_name.t * Lib.DB.t
+  val of_string : Context.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
 
   val to_string : Lib_name.t -> Dune_project.t -> string
 end = struct
-  let of_string sctx s =
+  let of_string context s =
     match String.rsplit2 s ~on:'@' with
     | None ->
-      (Lib_name.parse_string_exn (Loc.none, s), Super_context.public_libs sctx)
+      let+ public_libs = Scope.DB.public_libs context in
+      (Lib_name.parse_string_exn (Loc.none, s), public_libs)
     | Some (lib, key) ->
-      let scope =
-        Dune_project.File_key.of_string key
-        |> Super_context.find_project_by_key sctx
-        |> Super_context.find_scope_by_project sctx
+      let+ scope =
+        let key = Dune_project.File_key.of_string key in
+        find_project_by_key key >>= Scope.DB.find_by_project context
       in
       (Lib_name.parse_string_exn (Loc.none, lib), Scope.libs scope)
 
@@ -274,22 +297,15 @@ let link_odoc_rules sctx (odoc_file : odoc_artefact) ~pkg ~requires =
           ; Dep (Path.build odoc_file.odoc_file)
           ])
 
-let setup_library_odoc_rules cctx (library : Library.t) =
+let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   let open Memo.O in
-  let* lib =
-    let scope = Compilation_context.scope cctx in
-    Library.best_name library
-    |> Lib.DB.find_even_when_hidden (Scope.libs scope)
-    >>| Option.value_exn
-  in
-  let local_lib = Lib.Local.of_lib_exn lib in
   (* Using the proper package name doesn't actually work since odoc assumes that
      a package contains only 1 library *)
-  let pkg_or_lnu = pkg_or_lnu lib in
+  let pkg_or_lnu = pkg_or_lnu (Lib.Local.to_lib local_lib) in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let* requires = Compilation_context.requires_compile cctx in
-  let info = Lib.info lib in
+  let info = Lib.Local.info local_lib in
   let package = Lib_info.package info in
   let odoc_include_flags =
     Command.Args.memo (odoc_include_flags ctx package requires)
@@ -399,20 +415,21 @@ let setup_toplevel_index_rule sctx =
   let ctx = Super_context.context sctx in
   add_rule sctx (Action_builder.write_file (Paths.toplevel_index ctx) html)
 
-let libs_of_pkg sctx ~pkg =
-  SC.lib_entries_of_package sctx pkg
-  |> (* Filter out all implementations of virtual libraries *)
-  List.filter_map ~f:(function
-    | Super_context.Lib_entry.Library lib ->
-      let is_impl =
-        Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements
-        |> Option.is_some
-      in
-      Option.some_if (not is_impl) lib
-    | Deprecated_library_name _ -> None)
+let libs_of_pkg ctx ~pkg =
+  let+ entries = Scope.DB.lib_entries_of_package ctx pkg in
+  (* Filter out all implementations of virtual libraries *)
+  List.filter_map entries ~f:(fun (entry : Scope.DB.Lib_entry.t) ->
+      match entry with
+      | Library lib ->
+        let is_impl =
+          Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements
+          |> Option.is_some
+        in
+        Option.some_if (not is_impl) lib
+      | Deprecated_library_name _ -> None)
 
 let load_all_odoc_rules_pkg sctx ~pkg =
-  let pkg_libs = libs_of_pkg sctx ~pkg in
+  let* pkg_libs = libs_of_pkg sctx ~pkg in
   let+ () =
     Memo.parallel_iter
       (Pkg pkg :: List.map pkg_libs ~f:(fun lib -> Lib lib))
@@ -429,11 +446,11 @@ let entry_modules_by_lib sctx lib =
   >>| Modules.entry_modules
 
 let entry_modules sctx ~pkg =
-  let l =
-    libs_of_pkg sctx ~pkg
-    |> List.filter ~f:(fun lib ->
-           Lib.Local.info lib |> Lib_info.status |> Lib_info.Status.is_private
-           |> not)
+  let* l =
+    libs_of_pkg (Super_context.context sctx) ~pkg
+    >>| List.filter ~f:(fun lib ->
+            Lib.Local.info lib |> Lib_info.status |> Lib_info.Status.is_private
+            |> not)
   in
   let+ l =
     Memo.parallel_map l ~f:(fun l ->
@@ -662,9 +679,11 @@ let setup_package_aliases sctx (pkg : Package.t) =
     let dir = Path.Build.append_source ctx.build_dir pkg_dir in
     Alias.doc ~dir
   in
-  Dep.html_alias ctx (Pkg name)
-  :: (libs_of_pkg sctx ~pkg:name
-     |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)))
+  let* libs =
+    libs_of_pkg ctx ~pkg:name
+    >>| List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib))
+  in
+  Dep.html_alias ctx (Pkg name) :: libs
   |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
   |> Action_builder.deps
   |> Rules.Produce.Alias.add_deps alias
@@ -801,9 +820,10 @@ let gen_rules sctx ~dir:_ rest =
     has_rules
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-       let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
+       let ctx = Super_context.context sctx in
+       let* lib, lib_db = Scope_key.of_string ctx lib_unique_name_or_pkg in
        let setup_pkg_odocl_rules pkg =
-         let* pkg_libs = load_all_odoc_rules_pkg sctx ~pkg in
+         let* pkg_libs = load_all_odoc_rules_pkg ctx ~pkg in
          setup_pkg_odocl_rules sctx ~pkg ~libs:pkg_libs
        in
        (* jeremiedimino: why isn't [None] some kind of error here? *)
@@ -838,9 +858,12 @@ let gen_rules sctx ~dir:_ rest =
     has_rules
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-       let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
+       let ctx = Super_context.context sctx in
+       let* lib, lib_db = Scope_key.of_string ctx lib_unique_name_or_pkg in
        let setup_pkg_html_rules pkg =
-         let* pkg_libs = load_all_odoc_rules_pkg sctx ~pkg in
+         let* pkg_libs =
+           load_all_odoc_rules_pkg (Super_context.context sctx) ~pkg
+         in
          setup_pkg_html_rules sctx ~pkg ~libs:pkg_libs
        in
        (* jeremiedimino: why isn't [None] some kind of error here? *)

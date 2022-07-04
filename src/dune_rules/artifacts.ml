@@ -44,9 +44,13 @@ module Bin = struct
     in
     { t with local_bins }
 
-  let create ~(context : Context.t) ~local_bins =
-    let local_bins =
-      Path.Build.Set.fold local_bins ~init:String.Map.empty ~f:(fun path acc ->
+  module Local = struct
+    type t = Path.Build.t String.Map.t
+
+    let equal = String.Map.equal ~equal:Path.Build.equal
+
+    let create =
+      Path.Build.Set.fold ~init:String.Map.empty ~f:(fun path acc ->
           let name = Path.Build.basename path in
           let key =
             if Sys.win32 then
@@ -55,8 +59,9 @@ module Bin = struct
             else name
           in
           String.Map.set acc key path)
-    in
-    { context; local_bins }
+  end
+
+  let create ~(context : Context.t) ~local_bins = { context; local_bins }
 end
 
 module Public_libs = struct

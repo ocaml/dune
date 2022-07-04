@@ -42,7 +42,7 @@ module type Ast = sig
     | Ignore of Outputs.t * t
     | Progn of t list
     | Echo of string list
-    | Cat of path
+    | Cat of path list
     | Copy of path * target
     | Symlink of path * target
     | Hardlink of path * target
@@ -94,7 +94,7 @@ module type Helpers = sig
 
   val echo : string list -> t
 
-  val cat : path -> t
+  val cat : path list -> t
 
   val copy : path -> target -> t
 

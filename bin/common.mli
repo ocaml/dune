@@ -4,7 +4,7 @@ val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
 
-val rpc : t -> Dune_rpc_impl.Server.t option
+val rpc : t -> Dune_rpc_impl.Server.t
 
 val stats : t -> Dune_stats.t option
 
@@ -75,5 +75,3 @@ module Let_syntax : sig
   val ( and+ ) :
     'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
 end
-
-val set_rpc : t -> Dune_rpc_impl.Server.t -> t

@@ -28,3 +28,9 @@ let add_files sctx ~dir files =
     let files = Path.Set.of_list files in
     Rules.Produce.Alias.add_deps alias (Action_builder.path_set files)
   else Memo.return ()
+
+let add_cycle_check sctx ~dir modules =
+  if (Super_context.context sctx).merlin then
+    let alias = Alias.check ~dir in
+    Rules.Produce.Alias.add_deps alias (Action_builder.ignore modules)
+  else Memo.return ()

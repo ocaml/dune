@@ -26,3 +26,5 @@ val packages_of_project : Dune_project.t -> Package.t Package.Name.Map.t Memo.t
 
 (** Apply the package mask to the stanzas in the workspace *)
 val filtered_stanzas : Context.t -> Dune_file.t list Memo.t
+
+val stanzas_in_dir : Path.Build.t -> Dune_file.t option Memo.t

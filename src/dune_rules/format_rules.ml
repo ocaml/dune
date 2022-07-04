@@ -129,7 +129,7 @@ let gen_rules sctx ~output_dir =
     (not (Format_config.is_empty config))
     (fun () ->
       let* expander = Super_context.expander sctx ~dir in
-      let scope = Super_context.find_scope_by_dir sctx output_dir in
+      let* scope = Scope.DB.find_by_dir output_dir in
       let project = Scope.project scope in
       let dialects = Dune_project.dialects project in
       let version = Dune_project.dune_version project in

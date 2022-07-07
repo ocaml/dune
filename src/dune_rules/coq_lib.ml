@@ -75,9 +75,14 @@ module Error = struct
   let annots =
     User_message.Annots.singleton User_message.Annots.needs_stack_trace ()
 
-  let duplicate_theory_name ~loc name =
-    let name = Coq_lib_name.to_string name in
-    User_error.raise ~loc [ Pp.textf "Duplicate theory name: %s" name ]
+  let duplicate_theory_name name1 name2 =
+    let loc1, name = name1 in
+    let loc2, _ = name2 in
+    User_error.raise
+      [ Pp.textf "Coq theory %s is defined twice:" (Coq_lib_name.to_string name)
+      ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+      ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+      ]
 
   let incompatible_boot id id' =
     let pp_lib (id : Id.t) = Pp.seq (Pp.text "- ") (Id.pp id) in
@@ -368,9 +373,8 @@ module DB = struct
               (snd theory.name, (theory, entry)))
         with
         | Ok m -> m
-        | Error (_name, _, (theory, _entry)) ->
-          let loc, name = theory.name in
-          Error.duplicate_theory_name ~loc name
+        | Error (_name, (theory1, _entry1), (theory2, _entry2)) ->
+          Error.duplicate_theory_name theory1.name theory2.name
       in
       fun name ->
         match Coq_lib_name.Map.find map name with

@@ -14,6 +14,21 @@ val directories : t -> name:Coq_lib_name.t -> Path.Build.t list
 
 val extract : t -> Extraction.t -> Coq_module.t
 
+val require_map :
+     t
+  -> [ `Theory of Coq_lib_name.t | `Extraction of Extraction.t ]
+  -> Coq_module.t Coq_require_map.t
+
+val modules_of_buildable :
+     t
+  -> [ `Theory of Theory.t | `Extraction of Extraction.t ]
+  -> Coq_module.t Coq_module.Path.Map.t
+
+val module_list_of_buildable :
+     t
+  -> [ `Theory of Coq_lib_name.t | `Extraction of Extraction.t ]
+  -> Coq_module.t list
+
 val of_dir :
      Stanza.t list
   -> dir:Path.Build.t

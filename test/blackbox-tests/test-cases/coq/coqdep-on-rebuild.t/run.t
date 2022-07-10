@@ -14,9 +14,6 @@
   > Definition doo := a.foo.
   > EOF
   $ dune build --display short --debug-dependency-path
-        coqdep a/a.v.d
-        coqdep b/b.v.d
-        coqdep b/d.v.d
           coqc a/.a.aux,a/a.{glob,vo}
           coqc b/.b.aux,b/b.{glob,vo}
           coqc b/.d.aux,b/d.{glob,vo}
@@ -26,5 +23,4 @@
   > Definition zoo := 4.
   > EOF
   $ dune build --display short --debug-dependency-path
-        coqdep b/b.v.d
           coqc b/.b.aux,b/b.{glob,vo}

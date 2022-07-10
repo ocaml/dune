@@ -8,8 +8,4 @@ dependency.
   Theory A not found
   -> required by theory B in B
   -> required by theory C in C
-  -> required by _build/default/C/c.v.d
-  -> required by _build/default/C/.c.aux
-  -> required by alias C/all
-  -> required by alias C/default
   [1]

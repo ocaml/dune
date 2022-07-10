@@ -26,7 +26,7 @@ let empty =
   ; rev_map = Coq_module.Map.empty
   }
 
-let coq_modules_of_files ~dirs =
+let coq_module_sources_of_files ~dirs : Coq_module.Source.t list =
   let filter_v_files (dir, local, files) =
     ( dir
     , local
@@ -34,10 +34,13 @@ let coq_modules_of_files ~dirs =
   in
   let dirs = List.map dirs ~f:filter_v_files in
   let build_mod_dir (dir, prefix, files) =
+    let prefix = Coq_module.Path.of_string_list prefix in
     String.Set.to_list_map files ~f:(fun file ->
         let name, _ = Filename.split_extension file in
         let name = Coq_module.Name.make name in
-        Coq_module.make ~source:(Path.Build.relative dir file) ~prefix ~name)
+        Coq_module.Source.make
+          ~source:(Path.Build.relative dir file)
+          ~prefix ~name)
   in
   List.concat_map ~f:build_mod_dir dirs
 
@@ -58,10 +61,20 @@ let extract t (stanza : Extraction.t) =
 
 let of_dir stanzas ~dir ~include_subdirs ~dirs =
   check_no_unqualified include_subdirs;
-  let modules = coq_modules_of_files ~dirs in
+  let module_sources = coq_module_sources_of_files ~dirs in
   List.fold_left stanzas ~init:empty ~f:(fun acc -> function
     | Theory.T coq ->
-      let modules = Coq_module.eval ~dir coq.modules ~standard:modules in
+      let modules =
+        let theory_prefix = snd coq.name |> Coq_module.Path.of_lib_name in
+        let modules =
+          List.map
+            ~f:(Coq_module.of_source ~obj_dir:dir ~theory:(snd coq.name))
+            module_sources
+        in
+
+        Coq_module.eval ~dir coq.modules ~standard:modules ~theory_prefix
+          ~obj_dir:dir
+      in
       let directories =
         Coq_lib_name.Map.add_exn acc.directories (snd coq.name)
           (List.map dirs ~f:(fun (d, _, _) -> d))
@@ -75,6 +88,13 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
       in
       { acc with directories; libraries; rev_map }
     | Extraction.T extr ->
+      let modules =
+        (* TODO: choose a proper theory prefix here *)
+        let theory = Coq_lib_name.of_string "TODOEXTRACTION" in
+        let () = assert false in
+        List.map ~f:(Coq_module.of_source ~obj_dir:dir ~theory) module_sources
+      in
+
       let loc, prelude = extr.prelude in
       let m =
         match
@@ -84,6 +104,7 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
         | Some m -> m
         | None ->
           User_error.raise ~loc
+            (* TODO what is this error about? *)
             [ Pp.text "no coq source corresponding to prelude field" ]
       in
       let extract = Loc.Map.add_exn acc.extract extr.buildable.loc m in
@@ -92,3 +113,19 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
     | _ -> acc)
 
 let lookup_module t m = Coq_module.Map.find t.rev_map m
+
+let modules_of_buildable t buildable =
+  match buildable with
+  | `Extraction _ -> assert false
+  | `Theory (theory : Theory.t) ->
+    let modules = Coq_lib_name.Map.find_exn t.libraries (snd theory.name) in
+    Coq_module.Path.Map.of_list_map_exn modules ~f:(fun m ->
+        (Coq_module.path m, m))
+
+let module_list_of_buildable t buildable =
+  match buildable with
+  | `Extraction _ -> assert false
+  | `Theory name -> Coq_lib_name.Map.find_exn t.libraries name
+
+let require_map t buildable : Coq_module.t Coq_require_map.t =
+  Coq_require_map.of_modules @@ module_list_of_buildable t buildable

@@ -1,8 +1,4 @@
   $ dune build --display short --debug-dependency-path @all
-        coqdep a/bar.v.d
-        coqdep b/foo.v.d
-        coqdep c/d/bar.v.d
-        coqdep c/ooo.v.d
           coqc b/.foo.aux,b/foo.{glob,vo}
           coqc c/d/.bar.aux,c/d/bar.{glob,vo}
           coqc c/.ooo.aux,c/ooo.{glob,vo}

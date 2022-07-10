@@ -1,0 +1,3 @@
+(library
+ (name my_plugin)
+ (public_name my-package.my-plugin))

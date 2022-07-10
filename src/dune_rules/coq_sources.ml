@@ -100,6 +100,7 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
         | Some m -> m
         | None ->
           User_error.raise ~loc
+            (* TODO what is this error about? *)
             [ Pp.text "no coq source corresponding to prelude field" ]
       in
       let extract = Loc.Map.add_exn acc.extract extr.buildable.loc m in
@@ -108,6 +109,22 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
     | _ -> acc)
 
 let lookup_module t m = Coq_module.Map.find t.rev_map m
+
+let modules_of_buildable t buildable =
+  match buildable with
+  | `Extraction _ -> assert false
+  | `Theory (theory : Theory.t) ->
+    let modules = Coq_lib_name.Map.find_exn t.libraries (snd theory.name) in
+    Coq_module.Path.Map.of_list_map_exn modules ~f:(fun m ->
+        (Coq_module.path m, m))
+
+let module_list_of_buildable t buildable =
+  match buildable with
+  | `Extraction _ -> assert false
+  | `Theory name -> Coq_lib_name.Map.find_exn t.libraries name
+
+let require_map t buildable : Coq_module.t Coq_require_map.t =
+  Coq_require_map.of_modules @@ module_list_of_buildable t buildable
 
 let mlg_files ~sctx ~dir ~modules =
   let open Memo.O in

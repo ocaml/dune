@@ -9,6 +9,29 @@ open Memo.O
 
 open Coq_stanza
 
+let deps_kind = `Coqmod
+
+module Require_map_db = struct
+  (* merge all the maps *)
+  let impl (requires, buildable_map) =
+    Memo.return @@ Coq_require_map.merge_all (buildable_map :: requires)
+
+  let memo =
+    let module Input = struct
+      type t =
+        Coq_module.t Coq_require_map.t list * Coq_module.t Coq_require_map.t
+
+      let equal = ( == )
+
+      let hash = Poly.hash
+
+      let to_dyn = Dyn.opaque
+    end in
+    Memo.create "coq-require-map-db" ~input:(module Input) impl
+
+  let exec ~requires map = Memo.exec memo (requires, map)
+end
+
 (* Coqdep / Coq expect the deps to the directory where the plugin cmxs file are.
    This seems to correspond to src_dir. *)
 module Util = struct
@@ -194,7 +217,8 @@ let rec resolve_first lib_db = function
 
 module Context = struct
   type 'a t =
-    { coqc_dir : Path.Build.t
+    { deps : [ `Coqdep | `Coqmod of Coq_module.t Coq_require_map.t ]
+    ; coqc_dir : Path.Build.t
     ; wrapper_name : string
     ; dir : Path.Build.t
     ; expander : Expander.t
@@ -319,8 +343,13 @@ module Context = struct
           in
           Resolve.return (Path.Build.Set.union_all (theory_dirs :: l)))
 
-  let create ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
-      (buildable : Buildable.t) =
+  let create ~deps_kind ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps
+      ~theory_dirs stanza =
+    let buildable =
+      match stanza with
+      | `Extraction (e : Extraction.t) -> e.buildable
+      | `Theory (t : Theory.t) -> t.buildable
+    in
     let use_stdlib = buildable.use_stdlib in
     let context = Super_context.context sctx |> Context.name in
     let* expander = Super_context.expander sctx ~dir in
@@ -338,8 +367,21 @@ module Context = struct
     in
     let+ native_theory_includes =
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs
+    and+ deps =
+      match deps_kind with
+      | `Coqdep -> Memo.return `Coqdep
+      | `Coqmod ->
+        let* dir_contents = Dir_contents.get sctx ~dir in
+        let+ coq_sources = Dir_contents.coq dir_contents in
+        let what =
+          match stanza with
+          | `Extraction e -> `Extraction e
+          | `Theory (t : Theory.t) -> `Theory (snd t.name)
+        in
+        `Coqmod (Coq_sources.require_map coq_sources what)
     and+ profile_flags = Super_context.coq sctx ~dir in
-    { coqc_dir
+    { deps
+    ; coqc_dir
     ; wrapper_name
     ; dir
     ; expander
@@ -412,22 +454,150 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module contents =
   in
   (for_ ".vo", for_ ".vos")
 
-let deps_of ~dir ~boot_type coq_module =
-  let stdout_to = Coq_module.dep_file coq_module in
-  let deps =
-    let open Action_builder.O in
-    let* boot_type = Resolve.Memo.read boot_type in
-    Action_builder.memoize
-      (Path.Build.to_string stdout_to)
-      (Action_builder.map
-         (Action_builder.lines_of (Path.build stdout_to))
-         ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
-  in
-  let deps f = Action_builder.map deps ~f |> Action_builder.dyn_paths_unit in
-  (deps fst, deps snd)
+let err_from_not_found ~loc from source =
+  User_error.raise ~loc
+  @@ (match Coqmod.From.prefix from with
+     | Some prefix ->
+       [ Pp.textf "could not find module %S with prefix %S"
+           (Coqmod.From.require from |> Coqmod.Module.name)
+           (prefix |> Coqmod.Module.name)
+       ]
+     | None ->
+       [ Pp.textf "could not find module %S."
+           (Coqmod.From.require from |> Coqmod.Module.name)
+       ])
+  @ [ Pp.textf "%s" @@ Dyn.to_string @@ Coq_require_map.to_dyn source ]
 
-let setup_coqdep_rule ~sctx ~dir ~loc (cctx : _ Context.t) ~source_rule
-    coq_module =
+let err_from_ambiguous ~loc _from source =
+  User_error.raise ~loc
+  @@ [ Pp.textf "TODO ambiguous paths"
+     ; Pp.textf "%s" @@ Dyn.to_string @@ Coq_require_map.to_dyn source
+     ]
+
+let err_undeclared_plugin ~loc libname =
+  User_error.raise ~loc
+    Pp.[ textf "TODO undelcared plugin %S" (Lib_name.to_string libname) ]
+
+let coq_require_map_of_theory ~sctx lib =
+  let name = Coq_lib.name lib in
+  let dir = Coq_lib.src_root lib in
+  let* dir_contents = Dir_contents.get sctx ~dir in
+  let+ coq_sources = Dir_contents.coq dir_contents in
+  Coq_sources.require_map coq_sources (`Theory name)
+
+module Deps = struct
+  let loc from_ coq_module =
+    let fname = Coq_module.source coq_module |> Path.Build.to_string in
+    Coqmod.From.require from_ |> Coqmod.Module.loc |> Coqmod.Loc.to_loc ~fname
+
+  let froms ~theories ~theory_rms ~sources ~coq_module t =
+    let f (from_ : Coqmod.From.t) =
+      let loc = loc from_ coq_module in
+      let prefix =
+        Option.map (Coqmod.From.prefix from_) ~f:(fun p ->
+            Coq_module.Path.of_string @@ Coqmod.Module.name p)
+      in
+      let suffix =
+        Coqmod.From.require from_ |> Coqmod.Module.name
+        |> Coq_module.Path.of_string
+      in
+      let open Memo.O in
+      let+ require_map =
+        let theories =
+          match prefix with
+          | Some prefix ->
+            List.filter theories ~f:(fun theory ->
+                Coq_module.Path.is_prefix ~prefix @@ Coq_lib.root_path theory)
+          | None ->
+            (* TODO this is incorrect, needs to include only current theory
+               and boot library if present *)
+            theories
+        in
+        let requires = List.map theories ~f:(Coq_lib.Map.find_exn theory_rms) in
+        Require_map_db.exec ~requires sources
+      in
+      let matches =
+        match prefix with
+        | Some prefix -> Coq_require_map.find_all ~prefix ~suffix require_map
+        | None ->
+          Coq_require_map.find_all ~prefix:Coq_module.Path.empty ~suffix
+            require_map
+      in
+      match matches with
+      | [] -> err_from_not_found ~loc from_ require_map
+      | [ m ] -> Path.build (Coq_module.vo_file m)
+      | _ -> err_from_ambiguous ~loc from_ require_map
+    in
+    Coqmod.froms t |> Memo.parallel_map ~f |> Action_builder.of_memo
+
+  let boot_deps ~boot_type =
+    let open Bootstrap in
+    let open Action_builder.O in
+    let+ boot_type = Resolve.Memo.read boot_type in
+    match boot_type with
+    | No_boot | Bootstrap_prelude -> []
+    | Bootstrap lib ->
+      [ Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo" ]
+
+  let loads ~dir t =
+    Coqmod.loads t
+    |> List.rev_map ~f:(fun file ->
+           let fname = Coqmod.Load.path file in
+           Path.build (Path.Build.relative dir fname))
+
+  let extradeps t =
+    Coqmod.extradeps t
+    |> List.rev_map ~f:(fun file ->
+           let fname = Coqmod.ExtraDep.file file in
+           let path =
+             Coqmod.ExtraDep.from file |> Coqmod.Module.name
+             |> Dune_re.replace_string Re.(compile @@ char '.') ~by:"/"
+             |> Path.Local.of_string |> Path.Build.of_local
+           in
+           Path.build (Path.Build.relative path fname))
+
+  let coqmod_deps ~theories ~sources ~dir ~theory_rms ~boot_type coq_module =
+    let open Action_builder.O in
+    let* t = Coqmod_rules.deps_of coq_module in
+    (* convert [Coqmod.t] to a list of paths repping the deps *)
+    let+ froms = froms ~theories ~theory_rms ~sources ~coq_module t
+    and+ boot_deps = boot_deps ~boot_type in
+    (* Add prelude deps for when stdlib is in scope and we are not actually
+       compiling the prelude *)
+    (* TODO: plugin deps *)
+    ignore err_undeclared_plugin;
+    List.concat [ froms; loads ~dir t; extradeps t; boot_deps ]
+
+  let of_ ~sctx ~theories ~kind ~dir ~boot_type coq_module =
+    match kind with
+    | `Coqmod sources ->
+      let+ theory_rms =
+        Memo.parallel_map theories ~f:(fun theory ->
+            let+ require_map = coq_require_map_of_theory ~sctx theory in
+            (theory, require_map))
+        |> Memo.map ~f:Coq_lib.Map.of_list_exn
+      in
+      ( coqmod_deps ~theories ~sources ~dir ~theory_rms ~boot_type coq_module
+        |> Action_builder.dyn_paths_unit
+      , Action_builder.dyn_paths_unit (Action_builder.return []) )
+    | `Coqdep ->
+      let stdout_to = Coq_module.dep_file coq_module in
+      let deps =
+        let open Action_builder.O in
+        let* boot_type = Resolve.Memo.read boot_type in
+        Action_builder.memoize
+          (Path.Build.to_string stdout_to)
+          (Action_builder.map
+             (Action_builder.lines_of (Path.build stdout_to))
+             ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
+      in
+      let deps f =
+        Action_builder.map deps ~f |> Action_builder.dyn_paths_unit
+      in
+      Memo.return @@ (deps fst, deps snd)
+end
+
+let coqdep_rule (cctx : _ Context.t) ~coqdep ~source_rule coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let source = Coq_module.source coq_module in
   let file_flags =
@@ -438,13 +608,11 @@ let setup_coqdep_rule ~sctx ~dir ~loc (cctx : _ Context.t) ~source_rule
     ]
   in
   let stdout_to = Coq_module.dep_file coq_module in
-  let* coqdep = Context.coqdep ~sctx cctx in
   (* Coqdep has to be called in the stanza's directory *)
-  Super_context.add_rule ~loc sctx ~dir
-    (let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets cctx.mlpack_rule
-    >>> Action_builder.(with_no_targets (goal source_rule))
-    >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to coqdep file_flags)
+  let open Action_builder.With_targets.O in
+  Action_builder.with_no_targets cctx.mlpack_rule
+  >>> Action_builder.(with_no_targets (goal source_rule))
+  >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to coqdep file_flags
 
 let coqc_rule (cctx : _ Context.t) ~file_flags ~coqc ~obj_files_mode coq_module
     =
@@ -558,19 +726,27 @@ let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~coqdoc ~file_flags ~mode
               Action.Progn [ Action.mkdir (Path.build doc_dir); coqdoc ]))
   |> Action_builder.With_targets.add_directories ~directory_targets:[ doc_dir ]
 
-let setup_coqc_rule ~loc ~dir ~sctx (cctx : _ Context.t) ~file_targets
-    coq_module =
-  (* Process coqdep and generate rules *)
-  let deps_of = deps_of ~dir:cctx.dir ~boot_type:cctx.boot_type coq_module in
+let setup_rule cctx ~sctx ~loc ~dir ~source_rule ~ml_targets coq_module =
   let file_flags = Context.coqc_file_flags cctx in
+  let* () =
+    match cctx.deps with
+    | `Coqmod _ -> Coqmod_rules.add_rule sctx coq_module
+    | `Coqdep ->
+      let* coqdep = Context.coqdep ~sctx cctx in
+      let rule = coqdep_rule cctx ~coqdep ~source_rule coq_module in
+      Super_context.add_rule ~loc ~dir sctx rule
+  in
+  (* Process coqdep and generate rules *)
+  let* deps_of =
+    let* theories = cctx.theories_deps in
+    let* theories = Resolve.read_memo theories in
+    Deps.of_ ~sctx ~theories ~kind:cctx.deps ~dir:cctx.dir
+      ~boot_type:cctx.boot_type coq_module
+  in
   let* coqc = Context.coqc ~sctx cctx in
-  Super_context.add_rules ~loc sctx ~dir
-    (coqc_rules cctx ~file_flags ~coqc ~deps_of ~file_targets coq_module)
-
-let setup_rule ~loc ~sctx ~dir ~source_rule ~file_targets cctx m =
-  let cctx = Context.for_module cctx m in
-  setup_coqc_rule ~file_targets ~sctx ~loc cctx m ~dir
-  >>> setup_coqdep_rule ~sctx ~loc cctx ~source_rule m ~dir
+  Super_context.add_rules ~loc ~dir sctx
+    (coqc_rules cctx ~file_flags ~coqc ~file_targets:ml_targets ~deps_of
+       coq_module)
 
 let coq_modules_of_theory ~sctx lib =
   Action_builder.of_memo
@@ -604,8 +780,8 @@ let setup_cctx_and_modules ~sctx ~dir ~dir_contents (s : Theory.t) theory =
   in
   let coqc_dir = (Super_context.context sctx).build_dir in
   let+ cctx =
-    Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
-      s.buildable
+    Context.create sctx ~deps_kind ~coqc_dir ~dir ~wrapper_name ~theories_deps
+      ~theory_dirs (`Theory s)
   in
   let coq_modules = Coq_sources.library coq_dir_contents ~name in
   (cctx, coq_modules)
@@ -622,8 +798,9 @@ let setup_vo_rules ~sctx ~dir ~(cctx : _ Context.t) (s : Theory.t) theory
     in
     source_rule ~sctx theories
   in
-  Memo.parallel_iter coq_modules
-    ~f:(setup_rule ~sctx ~loc cctx ~source_rule ~dir ~file_targets:[])
+  Memo.parallel_iter coq_modules ~f:(fun m ->
+      let cctx = Context.for_module cctx m in
+      setup_rule cctx ~sctx ~loc ~dir ~source_rule ~ml_targets:[] m)
 
 let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
   let loc, name = (s.buildable.loc, snd s.name) in
@@ -781,8 +958,8 @@ let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
     in
     let theory_dirs = Path.Build.Set.empty in
     let theories_deps = Resolve.Memo.lift theories_deps in
-    Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
-      ~theory_dirs s.buildable
+    Context.create sctx ~deps_kind ~coqc_dir:dir ~dir ~wrapper_name
+      ~theories_deps ~theory_dirs (`Extraction s)
   and+ coq = Dir_contents.coq dir_contents in
   (cctx, Coq_sources.extract coq s)
 
@@ -798,8 +975,8 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     let open Action_builder.O in
     theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
   in
-  setup_rule cctx ~dir ~sctx ~loc:s.buildable.loc ~file_targets:ml_targets
-    ~source_rule coq_module
+  setup_rule cctx ~sctx ~loc:s.buildable.loc ~dir ~source_rule coq_module
+    ~ml_targets
 
 let setup_ffi_rules ~sctx ~dir ({ loc; modules; library } : Ffi.t) =
   let* coqffi =
@@ -872,3 +1049,16 @@ let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let cctx = Context.for_module cctx coq_module in
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
   (Context.coqc_file_flags cctx, boot_type)
+
+let deps_of ~dir ~boot_type mod_ =
+  (* TODO fix *)
+  let kind = failwith "TODO dune coq top unsupported" in
+  let sctx = failwith "" in
+  ignore kind;
+  ignore sctx;
+  ignore dir;
+  ignore boot_type;
+  ignore mod_;
+  assert false
+(* Action_builder.of_memo_join
+   @@ Deps.of_ ~sctx ~theories:[] ~kind ~dir ~boot_type mod_ *)

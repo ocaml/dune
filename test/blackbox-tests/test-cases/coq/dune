@@ -3,7 +3,7 @@
 
 (cram
  (applies_to :whole_subtree)
- (deps %{bin:coqc} %{bin:coqdep})
+ (deps %{bin:coqc} %{bin:coqdep} %{bin:coqmod})
  (alias runtest-coq)
  (enabled_if
   (= %{env:DUNE_COQ_TEST=disable} enable)))
@@ -31,4 +31,5 @@
  (_
   (binaries
    (fakebin/coq_of_ocaml.exe as coq-of-ocaml)
-   (fakebin/coqffi.exe as coqffi))))
+   (fakebin/coqffi.exe as coqffi)
+   (../../../../src/coqmod/coqmod_main.exe as coqmod))))

@@ -6,6 +6,8 @@ open Import
 
 type t
 
+module Map : Map.S with type key = t
+
 val name : t -> Coq_lib_name.t
 
 val implicit : t -> bool
@@ -18,6 +20,8 @@ val src_root : t -> Path.Build.t
 val obj_root : t -> Path.Build.t
 
 val package : t -> Package.t option
+
+val root_path : t -> Coq_module.Path.t
 
 (** Return the list of dependencies needed for compiling this library *)
 val theories_closure : t -> t list Resolve.t

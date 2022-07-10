@@ -1,0 +1,11 @@
+(library
+ (name coqmod)
+ (modules :standard \ coqmod_main)
+ (libraries stdune csexp))
+
+(executable
+ (name coqmod_main)
+ (modules coqmod_main)
+ (libraries stdune dune_console csexp coqmod))
+
+(ocamllex lexer)

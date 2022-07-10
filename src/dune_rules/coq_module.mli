@@ -12,10 +12,14 @@ module Name : sig
   val equal : t -> t -> bool
 
   val to_dyn : t -> Dyn.t
+
+  module Map : Map.S with type key = t
 end
 
 module Path : sig
   type t
+
+  val empty : t
 
   val to_list : t -> Name.t list
 
@@ -27,11 +31,17 @@ module Path : sig
 
   val append_name : t -> Name.t -> t
 
+  val rev : t -> t
+
+  val of_string : string -> t
+
   val of_string_list : string list -> t
 
   val to_string_list : t -> string list
 
   val of_lib_name : Coq_lib_name.t -> t
+
+  module Map : Map.S with type key = t
 end
 
 module Source : sig
@@ -64,6 +74,10 @@ val prefix : t -> Path.t
 
 val name : t -> Name.t
 
+val path : t -> Path.t
+
+val obj_dir : t -> Stdune.Path.Build.t
+
 val theory_prefix : t -> Path.t
 
 val source : t -> Stdune.Path.Build.t
@@ -71,6 +85,8 @@ val source : t -> Stdune.Path.Build.t
 val dep_file : t -> Stdune.Path.Build.t
 
 val glob_file : t -> Stdune.Path.Build.t
+
+val vo_file : t -> Stdune.Path.Build.t
 
 type target =
   | Vo
@@ -90,6 +106,10 @@ val obj_files :
   -> mode:Coq_mode.t
   -> obj_files_mode:obj_files_mode
   -> (Stdune.Path.Build.t * string) list
+
+val to_dyn : t -> Dyn.t
+
+val equal : t -> t -> bool
 
 val eval :
      dir:Stdune.Path.Build.t

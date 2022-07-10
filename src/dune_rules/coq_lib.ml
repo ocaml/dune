@@ -41,7 +41,7 @@ module Id = struct
   let top_closure ~key ~deps xs = Top_closure.top_closure ~key ~deps xs
 end
 
-include struct
+module T = struct
   (* ocaml doesn't allow annotating the field directly *)
   [@@@ocaml.warning "-69"]
 
@@ -60,6 +60,20 @@ include struct
     ; package : Package.t option
     }
 end
+
+include T
+
+let root_path t = Coq_module.Path.of_lib_name t.id.name
+
+module C = Comparable.Make (struct
+  include T
+
+  let compare x y = Id.compare x.id y.id
+
+  let to_dyn x = Id.to_dyn x.id
+end)
+
+module Map = C.Map
 
 let name l = l.id.name
 

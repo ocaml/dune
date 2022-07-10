@@ -37,6 +37,10 @@ module Name = struct
 
     let to_list x = x
 
+    let rev = List.rev
+
+    let empty = []
+
     let append_name t name = t @ [ name ]
 
     let to_string_list t = List.map ~f:to_string t
@@ -108,7 +112,11 @@ let name x = x.source.name
 
 let theory_prefix x = x.theory_prefix
 
+let obj_dir x = x.obj_dir
+
 let source x = x.source.source
+
+let path x = x.theory_prefix @ x.source.prefix @ [ x.source.name ]
 
 let of_source source ~obj_dir ~theory =
   { source; theory_prefix = Name.Path.of_lib_name theory; obj_dir }
@@ -132,6 +140,10 @@ let dep_file x =
 let glob_file x =
   let vo_dir = build_vo_dir x in
   Path.Build.relative vo_dir (name x ^ ".glob")
+
+let vo_file x =
+  let vo_dir = build_vo_dir x in
+  Path.Build.relative vo_dir (name x ^ ".vo")
 
 type target =
   | Vo
@@ -166,6 +178,8 @@ let obj_files x ~wrapper_name ~mode ~obj_files_mode =
   List.map obj_files ~f:(fun fname ->
       (Path.Build.relative vo_dir fname, Filename.concat install_vo_dir fname))
   @ native_objs
+
+let equal x y = Ordering.is_eq (compare x y)
 
 let parse ~dir ~loc ~theory_prefix ~obj_dir s =
   (* TODO parsing incorrect, need to find out theory name *)

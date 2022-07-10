@@ -1,9 +1,7 @@
   $ dune build --profile=release --display short --debug-dependency-path @all
-        coqdep bar.v.d
-        coqdep foo.v.d
           coqc Nbasic_foo.{cmi,cmxs},foo.{glob,vo}
           coqc Nbasic_bar.{cmi,cmxs},bar.{glob,vo}
-
+  
   $ dune build --profile=release --debug-dependency-path @default
   lib: [
     "_build/install/default/lib/base/META"

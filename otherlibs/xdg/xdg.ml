@@ -14,7 +14,8 @@ type known_folder =
   | InternetCache
   | LocalAppData
 
-external get_known_folder_path : known_folder -> string option = "dune_xdg__get_known_folder_path"
+external get_known_folder_path : known_folder -> string option
+  = "dune_xdg__get_known_folder_path"
 
 let make t env_var unix_default win32_folder =
   let default =
@@ -39,8 +40,7 @@ let config_dir t =
 
 let data_dir t =
   let home = t.home_dir in
-  make t "XDG_DATA_HOME"
-    (home / ".local" / "share") LocalAppData
+  make t "XDG_DATA_HOME" (home / ".local" / "share") LocalAppData
 
 let create ?win32 ~env () =
   let win32 =

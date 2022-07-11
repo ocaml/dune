@@ -35,6 +35,11 @@
 - env stanza: warn if some rules are ignored because they appear after a
   wildcard rule. (#5898, fixes #5886, @emillon)
 
+- On Windows, XDG_CACHE_HOME is taken to be
+  `%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files` if unset, and
+  XDG_CONFIG_HOME and XDG_DATA_HOME are both taken to be %LOCALAPPDATA% if
+  unset.  (#5943, fixes #5808, @nojb)
+
 3.3.1 (19-06-2022)
 ------------------
 

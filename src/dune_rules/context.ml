@@ -486,8 +486,14 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               (vars, ocfg)
             | Error msg -> Error (Ocamlc_config, msg)))
     in
-    let findlib_paths = ocamlpath @ default_ocamlpath in
+    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let version = Ocaml.Version.of_ocaml_config ocfg in
+    let default_ocamlpath =
+      if Ocaml.Version.has_META_files version then
+        stdlib_dir :: default_ocamlpath
+      else default_ocamlpath
+    in
+    let findlib_paths = ocamlpath @ default_ocamlpath in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors. For versions
          where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
@@ -551,7 +557,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               (Option.map findlib_config ~f:Findlib.Config.env))
       |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
     in
-    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     let* ocamlopt = get_ocaml_tool "ocamlopt" in

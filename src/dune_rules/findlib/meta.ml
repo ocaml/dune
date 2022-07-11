@@ -159,7 +159,7 @@ let main_modules names =
   List.map ~f:String.capitalize_ascii names
   |> String.concat ~sep:" " |> rule "main_modules" [] Set
 
-let builtins ~stdlib_dir ~version:ocaml_version =
+let pre_ocaml_5_builtins ~stdlib_dir ~version:ocaml_version =
   let version = version "[distributed with OCaml]" in
   let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext deps
       =
@@ -301,6 +301,11 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       Option.map t.name ~f:(fun name ->
           (Lib_name.package_name name, simplify t)))
   |> Package.Name.Map.of_list_exn
+
+let builtins ~stdlib_dir ~version =
+  if Ocaml.Version.has_META_files version then
+    Memo.return Package.Name.Map.empty
+  else pre_ocaml_5_builtins ~stdlib_dir ~version
 
 let string_of_action = function
   | Set -> "="

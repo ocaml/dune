@@ -47,3 +47,5 @@ let has_bigarray_library version = version < (5, 0, 0)
 let supports_alerts version = version >= (4, 8, 0)
 
 let has_sandboxed_otherlibs version = version >= (5, 0, 0)
+
+let has_META_files version = version >= (5, 0, 0)

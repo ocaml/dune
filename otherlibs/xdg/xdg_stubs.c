@@ -12,7 +12,7 @@
 value dune_xdg__get_known_folder_path(value v_known_folder)
 {
   CAMLparam1(v_known_folder);
-  CAMLlocal1(v_res);
+  CAMLlocal2(v_res, v_path);
   WCHAR* wcp = NULL;
   HRESULT res;
   int wlen, len;
@@ -43,11 +43,14 @@ value dune_xdg__get_known_folder_path(value v_known_folder)
     caml_raise_not_found();
   }
 
-  v_res = caml_alloc_string(len);
+  v_path = caml_alloc_string(len);
 
   if (!WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wcp, wlen, (char *)String_val(v_res), len, NULL, NULL)) {
     CoTaskMemFree(wcp);
-    caml_raise_not_found();
+    v_res = Val_int(0);
+  } else {
+    v_res = caml_alloc_small(1, 0);
+    Store_field(v_res, 0, v_path);
   }
   CoTaskMemFree(wcp);
 

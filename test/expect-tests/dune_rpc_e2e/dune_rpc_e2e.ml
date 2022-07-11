@@ -164,6 +164,7 @@ let config =
   { Scheduler.Config.concurrency = 1
   ; display = { verbosity = Quiet; status_line = false }
   ; stats = None
+  ; insignificant_changes = `React
   }
 
 let run run =

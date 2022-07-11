@@ -127,13 +127,17 @@ module Scheduler = struct
 
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
-    let config = Dune_config.for_scheduler dune_config stats in
+    let config =
+      Dune_config.for_scheduler dune_config stats ~insignificant_changes:`React
+    in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
     let stats = Common.stats common in
-    let config = Dune_config.for_scheduler dune_config stats in
+    let config =
+      Dune_config.for_scheduler dune_config stats ~insignificant_changes:`React
+    in
     let file_watcher = Common.file_watcher common in
     let rpc = Common.rpc common in
     let run () =

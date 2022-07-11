@@ -8,6 +8,7 @@ let go f =
     { Scheduler.Config.concurrency = 1
     ; display = { verbosity = Short; status_line = false }
     ; stats = None
+    ; insignificant_changes = `React
     }
   in
   try

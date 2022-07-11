@@ -46,6 +46,7 @@ module Config = struct
     { concurrency : int
     ; display : Display.t
     ; stats : Dune_stats.t option
+    ; insignificant_changes : [ `Ignore | `React ]
     }
 end
 
@@ -712,11 +713,16 @@ type status =
     Standing_by of
       { invalidation : Memo.Invalidation.t
       ; saw_insignificant_changes : bool
-            (* Whether we saw build input changes that are insignificant for the
-               build. We need to track this because we still want to start a new
-               build in this case, even if we know it's going to be a no-op. We
-               do that so that RPC clients can observe that Dune reacted to the
-               change. *)
+            (* When [insignificant_changes = `Ignore], this field is always
+               false.
+
+               When [insignificant_changes = `React], we do the following:
+
+               Whether we saw build input changes that are insignificant for
+               the build. We need to track this because we still want to start
+               a new build in this case, even if we know it's going to be a
+               no-op. We do that so that RPC clients can observe that Dune
+               reacted to the change. *)
       }
   | (* Running a build *)
     Building of Fiber.Cancel.t
@@ -1042,8 +1048,11 @@ end = struct
         if Memo.Invalidation.is_empty invalidation then
           match !(t.status) with
           | Standing_by prev ->
-            t.status :=
-              Standing_by { prev with saw_insignificant_changes = true };
+            (match t.config.insignificant_changes with
+            | `Ignore -> ()
+            | `React ->
+              t.status :=
+                Standing_by { prev with saw_insignificant_changes = true });
             []
           | _ -> []
         else
@@ -1066,14 +1075,26 @@ end = struct
             t.status := Restarting_build invalidation;
             Fiber.Cancel.fire' cancellation
       in
-      match !(t.wait_for_build_input_change) with
-      | None -> (
-        match Nonempty_list.of_list fills with
-        | None -> iter t
-        | Some fills -> fills)
-      | Some ivar ->
-        t.wait_for_build_input_change := None;
-        Fill (ivar, ()) :: fills)
+      match
+        Nonempty_list.of_list
+        @@
+        match !(t.wait_for_build_input_change) with
+        | None -> fills
+        | Some ivar -> (
+          match
+            if Memo.Invalidation.is_empty invalidation then
+              match t.config.insignificant_changes with
+              | `Ignore -> `Keep_waiting
+              | `React -> `Fill_waiter
+            else `Fill_waiter
+          with
+          | `Keep_waiting -> fills
+          | `Fill_waiter ->
+            t.wait_for_build_input_change := None;
+            Fiber.Fill (ivar, ()) :: fills)
+      with
+      | None -> iter t
+      | Some fills -> fills)
     | Timer fill | Worker_task fill -> [ fill ]
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();

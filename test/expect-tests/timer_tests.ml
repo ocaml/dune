@@ -6,6 +6,7 @@ let config =
   { Scheduler.Config.concurrency = 1
   ; display = { verbosity = Short; status_line = false }
   ; stats = None
+  ; insignificant_changes = `React
   }
 
 let%expect_test "create and wait for timer" =

@@ -18,6 +18,8 @@ value dune_xdg__get_known_folder_path(value v_known_folder)
   int wlen, len;
   const KNOWNFOLDERID *rfid;
 
+  v_res = Val_int(0);
+
   switch (Int_val(v_known_folder)) {
     case 0:
       rfid = &FOLDERID_InternetCache;
@@ -31,29 +33,26 @@ value dune_xdg__get_known_folder_path(value v_known_folder)
   }
 
   res = SHGetKnownFolderPath(rfid, 0, NULL, &wcp);
-  if (res != S_OK) {
-    CoTaskMemFree(wcp);
-    caml_raise_not_found();
-  }
+
+  if (res != S_OK)
+    goto done;
 
   wlen = wcslen(wcp);
   len = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wcp, wlen, NULL, 0, NULL, NULL);
-  if (!len) {
-    CoTaskMemFree(wcp);
-    caml_raise_not_found();
-  }
+
+  if (!len)
+    goto done;
 
   v_path = caml_alloc_string(len);
 
-  if (!WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wcp, wlen, (char *)String_val(v_res), len, NULL, NULL)) {
-    CoTaskMemFree(wcp);
-    v_res = Val_int(0);
-  } else {
-    v_res = caml_alloc_small(1, 0);
-    Store_field(v_res, 0, v_path);
-  }
-  CoTaskMemFree(wcp);
+  if (!WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wcp, wlen, (char *)String_val(v_path), len, NULL, NULL))
+    goto done;
 
+  v_res = caml_alloc_small(1, 0);
+  Field(v_res, 0) = v_path;
+
+ done:
+  CoTaskMemFree(wcp);
   CAMLreturn(v_res);
 }
 

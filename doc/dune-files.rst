@@ -369,18 +369,21 @@ language. The syntax is a list of the following elements:
 
    op := '=' | '<' | '>' | '<>' | '>=' | '<='
 
-   stage := :with-test | :build | :dev
+   filter := :dev | :build | :with-test | :with-doc | :post
 
    constr := (<op> <version>)
 
    logop := or | and
 
    dep := name
-        | (name <stage>)
+        | (name <filter>)
         | (name <constr>)
-        | (name (<logop> (<stage> | <constr>))*)
+        | (name (<logop> (<filter> | <constr>))*)
 
    dep-specification = dep+
+
+Filters will expand to any opam variable name if prefixed by ``:``, not just the
+ones listed above.
 
 Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to

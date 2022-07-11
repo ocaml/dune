@@ -7,6 +7,7 @@
 
 #include <Windows.h>
 #include <Knownfolders.h>
+#include <Shlobj.h>
 
 value xdg__get_user_cache_dir(value v_unit)
 {

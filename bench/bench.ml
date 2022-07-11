@@ -127,6 +127,7 @@ let () =
     { Scheduler.Config.concurrency = 10
     ; display = { verbosity = Quiet; status_line = false }
     ; stats = None
+    ; insignificant_changes = `React
     }
   in
   let clean, zero =

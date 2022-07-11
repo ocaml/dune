@@ -436,7 +436,7 @@ let term =
   Log.init_disabled ();
   Dune_engine.Scheduler.Run.go
     ~on_event:(fun _ _ -> ())
-    (Dune_config.for_scheduler config None)
+    (Dune_config.for_scheduler config None ~insignificant_changes:`React)
     subst
 
 let command = (term, info)

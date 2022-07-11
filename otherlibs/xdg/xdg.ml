@@ -10,10 +10,16 @@ type t =
 
 let ( / ) = Filename.concat
 
-let make t env_var unix_default win32_var =
+type known_folder =
+  | InternetCache
+  | LocalAppData
+
+external get_known_folder_path : known_folder -> string option = "dune_xdg__get_known_folder_path"
+
+let make t env_var unix_default win32_folder =
   let default =
     if t.win32 then
-      match win32_var t.env with
+      match get_known_folder_path win32_folder with
       | None -> ""
       | Some s -> s
     else unix_default
@@ -23,24 +29,18 @@ let make t env_var unix_default win32_var =
   | Some s when Filename.is_relative s -> default
   | Some s -> s
 
-external get_user_cache_dir : unit -> string = "xdg__get_user_cache_dir"
-
 let cache_dir t =
   let home = t.home_dir in
-  make t "XDG_CACHE_HOME" (home / ".cache") (fun env ->
-      match get_user_cache_dir () with
-      | s -> Some s
-      | exception Not_found -> env "TEMP")
+  make t "XDG_CACHE_HOME" (home / ".cache") InternetCache
 
 let config_dir t =
   let home = t.home_dir in
-  make t "XDG_CONFIG_HOME" (home / ".config") (fun env -> env "LOCALAPPDATA")
+  make t "XDG_CONFIG_HOME" (home / ".config") LocalAppData
 
 let data_dir t =
   let home = t.home_dir in
   make t "XDG_DATA_HOME"
-    (home / ".local" / "share")
-    (fun env -> env "LOCALAPPDATA")
+    (home / ".local" / "share") LocalAppData
 
 let create ?win32 ~env () =
   let win32 =

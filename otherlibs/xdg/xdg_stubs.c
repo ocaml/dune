@@ -9,15 +9,28 @@
 #include <Knownfolders.h>
 #include <Shlobj.h>
 
-value xdg__get_user_cache_dir(value v_unit)
+value dune_xdg__get_known_folder_path(value v_known_folder)
 {
-  CAMLparam0();
+  CAMLparam1(v_known_folder);
   CAMLlocal1(v_res);
   WCHAR* wcp = NULL;
   HRESULT res;
   int wlen, len;
+  const KNOWNFOLDERID *rfid;
 
-  res = SHGetKnownFolderPath(&FOLDERID_InternetCache, 0, NULL, &wcp);
+  switch (Int_val(v_known_folder)) {
+    case 0:
+      rfid = &FOLDERID_InternetCache;
+      break;
+    case 1:
+      rfid = &FOLDERID_LocalAppData;
+      break;
+    default:
+      caml_invalid_argument("get_known_folder_path");
+      break;
+  }
+
+  res = SHGetKnownFolderPath(rfid, 0, NULL, &wcp);
   if (res != S_OK) {
     CoTaskMemFree(wcp);
     caml_raise_not_found();
@@ -43,9 +56,9 @@ value xdg__get_user_cache_dir(value v_unit)
 
 #else /* _WIN32 */
 
-value xdg__get_user_cache_dir(value v_unit)
+value dune_xdg__get_known_folder_path(value v_unit)
 {
-  caml_invalid_argument("xdg__get_user_cache_dir");
+  caml_invalid_argument("get_known_folder_path: not implemented");
 }
 
 #endif /* _WIN32 */

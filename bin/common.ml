@@ -49,6 +49,7 @@ type t =
   ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
   ; report_errors_config : Dune_engine.Report_errors_config.t
   ; require_dune_project_file : bool
+  ; insignificant_changes : [ `React | `Ignore ]
   }
 
 let capture_outputs t = t.capture_outputs
@@ -74,6 +75,8 @@ let prefix_target t s = t.root.reach_from_root_prefix ^ s
 let rpc t = Lazy.force t.rpc
 
 let stats t = t.stats
+
+let insignificant_changes t = t.insignificant_changes
 
 let set_print_directory t b = { t with no_print_directory = not b }
 
@@ -977,6 +980,17 @@ let term ~default_root_is_cwd =
              $(b,twice) - report each error twice: once as soon as the error \
              is discovered and then again at the end of the build, in a \
              deterministic order.")
+  and+ react_to_insignificant_changes =
+    Arg.(
+      value & flag
+      & info
+          [ "react-to-insignificant-changes" ]
+          ~doc:
+            "react to insignificant file system changes; this is only useful \
+             for benchmarking dune")
+  in
+  let insignificant_changes =
+    if react_to_insignificant_changes then `React else `Ignore
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root =
@@ -1032,6 +1046,7 @@ let term ~default_root_is_cwd =
   ; cache_debug_flags
   ; report_errors_config
   ; require_dune_project_file
+  ; insignificant_changes
   }
 
 let term_with_default_root_is_cwd = term ~default_root_is_cwd:true

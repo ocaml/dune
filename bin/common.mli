@@ -24,6 +24,8 @@ val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string
 
+val insignificant_changes : t -> [ `React | `Ignore ]
+
 (** [init] executes sequence of side-effecting actions to initialize Dune's
     working environment based on the options determined in a [Common.t]
     record.contents.

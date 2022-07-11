@@ -349,13 +349,6 @@ let parallel_iter_set (type a s)
     (module S : Set.S with type elt = a and type t = s) set ~(f : a -> unit t) =
   parallel_iter_seq (S.to_seq set) ~f
 
-let record_metrics t ~tag =
-  of_thunk (fun () ->
-      let timer = Metrics.Timer.start tag in
-      let+ res = t in
-      Metrics.Timer.stop timer;
-      res)
-
 module Make_map_traversals (Map : Map.S) = struct
   let parallel_iter t ~f =
     parallel_iter_seq (Map.to_seq t) ~f:(fun (k, v) -> f k v)

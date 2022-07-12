@@ -1,6 +1,12 @@
 open Stdune
 module Event = Chrome_trace.Event
 
+module Mac = struct
+  external open_fds : pid:int -> int = "dune_stats_open_fds"
+
+  external available : unit -> bool = "dune_stats_available"
+end
+
 module Json = struct
   include Chrome_trace.Json
 
@@ -160,23 +166,30 @@ module Fd_count = struct
 
   let how = ref `Unknown
 
+  let pid = lazy (Unix.getpid ())
+
   let get () =
     match !how with
     | `Disable -> Unknown
     | `Lsof -> lsof ()
     | `Proc_fs -> proc_fs ()
+    | `Mac -> This (Mac.open_fds ~pid:(Lazy.force pid))
     | `Unknown -> (
-      match proc_fs () with
-      | This _ as n ->
-        how := `Proc_fs;
-        n
-      | Unknown ->
-        let res = lsof () in
-        (how :=
-           match res with
-           | This _ -> `Lsof
-           | Unknown -> `Disable);
-        res)
+      if Mac.available () then (
+        how := `Mac;
+        This (Mac.open_fds ~pid:(Lazy.force pid)))
+      else
+        match proc_fs () with
+        | This _ as n ->
+          how := `Proc_fs;
+          n
+        | Unknown ->
+          let res = lsof () in
+          (how :=
+             match res with
+             | This _ -> `Lsof
+             | Unknown -> `Disable);
+          res)
 end
 
 let record_gc_and_fd stats =

@@ -1007,34 +1007,19 @@ The syntax is as follows:
 .. code:: scheme
 
     (rule
-     (target[s] <filenames>)
-     (action  <action>)
+     (action <action>)
      <optional-fields>)
-
-``<filenames>`` is a list of filenames (if defined with ``targets``)
-or exactly one filename (if defined with ``target``). Note that at this time,
-Dune officially only supports user rules with targets in the current directory.
-However, starting from Dune 3.0, we provide an experimental support for
-*directory targets*, where an action can produce a whole tree of build
-artifacts. To specify a directory target, you can use the ``(dir <dirname>)``
-syntax. For example, the following stanza describes a rule with a file
-target ``foo`` and a directory target ``bar``.
-
-.. code:: scheme
-
-    (rule
-     (targets foo (dir bar))
-     (action  <action>))
-
-To enable this experimental feature, add ``(using directory-targets 0.1)`` to
-your ``dune-project`` file. However note that currently rules with a directory
-target are always rebuilt. We are working on fixing this performance bug.
-
 
 ``<action>`` is what you run to produce the targets from the dependencies.
 See the :ref:`user-actions` section for more details.
 
 ``<optional-fields>`` are:
+
+- ``(target <filename>)`` or ``(targets <filenames>) ``<filenames>`` is a list
+  of filenames (if defined with ``targets``) or exactly one filename (if defined
+  with ``target``). Dune needs to statically know targets of each rule.
+  ``(targets)`` can be omitted if it can be inferred from the action. See
+  `inferred rules`_.
 
 - ``(deps <deps-conf list>)``, to specify the dependencies of the
   rule. See the :ref:`deps-field` section for more details.
@@ -1138,6 +1123,26 @@ stanza is rejected by Dune:
 .. code:: lisp
 
     (rule (copy a b.%{read:file}))
+
+Directory targets
+-----------------
+
+Note that at this time, Dune officially only supports user rules with targets in
+the current directory. However, starting from Dune 3.0, we provide an
+experimental support for *directory targets*, where an action can produce a
+whole tree of build artifacts. To specify a directory target, you can use the
+``(dir <dirname>)`` syntax. For example, the following stanza describes a rule
+with a file target ``foo`` and a directory target ``bar``.
+
+.. code:: scheme
+
+    (rule
+     (targets foo (dir bar))
+     (action  <action>))
+
+To enable this experimental feature, add ``(using directory-targets 0.1)`` to
+your ``dune-project`` file. However note that currently rules with a directory
+target are always rebuilt. We are working on fixing this performance bug.
 
 ocamllex
 --------

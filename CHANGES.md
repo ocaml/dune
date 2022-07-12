@@ -18,6 +18,9 @@
 - Dune no longer uses shimmed `META` files for OCaml 5.x, solely using the ones
   installed by the compiler. (#5916, @dra27)
 
+- Fix handling of the `(deps)` field in `(test)` stanzas when there is an
+  `.expected` file. (#5952, #5951, fixes #5950, @emillon)
+
 3.3.1 (19-06-2022)
 ------------------
 

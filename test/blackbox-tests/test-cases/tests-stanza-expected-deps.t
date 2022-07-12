@@ -24,8 +24,3 @@ This is visible when trying to build the `@all` alias. See #5950.
   $ cp data.txt t.expected
 
   $ dune build t.output
-  File "dune", line 2, characters 7-8:
-  2 |  (name t)
-             ^
-  Fatal error: exception Sys_error("data.txt: No such file or directory")
-  [1]

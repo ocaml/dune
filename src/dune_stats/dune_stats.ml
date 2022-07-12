@@ -210,3 +210,7 @@ let record_gc_and_fd stats =
       Event.counter common args
     in
     emit stats event
+
+module Private = struct
+  module Fd_count = Fd_count
+end

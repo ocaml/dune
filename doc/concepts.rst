@@ -363,14 +363,8 @@ to use the public name. For instance: ``(libraries base re)``.
 When resolving libraries, ones that are part of the workspace are always
 preferred to ones that are part of the installed world.
 
-.. _alternative-deps:
-
 Alternative Dependencies
 ------------------------
-
-In addition to direct dependencies, you can specify alternative dependencies.
-This is described in the :ref:`Alternative Dependencies <alternative-deps>`
-section.
 
 Sometimes, one doesn't want to depend on a specific library but rather 
 on whatever is already installed, e.g., to use a different

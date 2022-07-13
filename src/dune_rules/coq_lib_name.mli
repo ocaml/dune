@@ -30,4 +30,6 @@ val pp : t -> t Pp.t
 
 val to_dyn : t -> Dyn.t
 
+val of_string : string -> t
+
 module Map : Map.S with type key = t

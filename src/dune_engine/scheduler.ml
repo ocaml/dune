@@ -1040,61 +1040,7 @@ end = struct
       | Some ivar ->
         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
         [ Fill (ivar, ()) ])
-    | Build_inputs_changed events -> (
-      let invalidation =
-        (handle_invalidation_events events : Memo.Invalidation.t)
-      in
-      let fills =
-        if Memo.Invalidation.is_empty invalidation then
-          match !(t.status) with
-          | Standing_by prev ->
-            (match t.config.insignificant_changes with
-            | `Ignore -> ()
-            | `React ->
-              t.status :=
-                Standing_by { prev with saw_insignificant_changes = true });
-            []
-          | _ -> []
-        else
-          match !(t.status) with
-          | Restarting_build prev_invalidation ->
-            t.status :=
-              Restarting_build
-                (Memo.Invalidation.combine prev_invalidation invalidation);
-            []
-          | Standing_by prev ->
-            t.status :=
-              Standing_by
-                { prev with
-                  invalidation =
-                    Memo.Invalidation.combine prev.invalidation invalidation
-                };
-            []
-          | Building cancellation ->
-            t.handler t.config Build_interrupted;
-            t.status := Restarting_build invalidation;
-            Fiber.Cancel.fire' cancellation
-      in
-      match
-        Nonempty_list.of_list
-        @@
-        match !(t.wait_for_build_input_change) with
-        | None -> fills
-        | Some ivar -> (
-          match
-            if Memo.Invalidation.is_empty invalidation then
-              match t.config.insignificant_changes with
-              | `Ignore -> `Keep_waiting
-              | `React -> `Fill_waiter
-            else `Fill_waiter
-          with
-          | `Keep_waiting -> fills
-          | `Fill_waiter ->
-            t.wait_for_build_input_change := None;
-            Fiber.Fill (ivar, ()) :: fills)
-      with
-      | None -> iter t
-      | Some fills -> fills)
+    | Build_inputs_changed events -> build_input_change t events
     | Timer fill | Worker_task fill -> [ fill ]
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
@@ -1108,6 +1054,60 @@ end = struct
               (match signal with
               | Shutdown -> Requested
               | Signal s -> Signal s))
+
+  and build_input_change (t : t) events =
+    let invalidation = handle_invalidation_events events in
+    let fills =
+      if Memo.Invalidation.is_empty invalidation then
+        match !(t.status) with
+        | Standing_by prev ->
+          (match t.config.insignificant_changes with
+          | `Ignore -> ()
+          | `React ->
+            t.status :=
+              Standing_by { prev with saw_insignificant_changes = true });
+          []
+        | _ -> []
+      else
+        match !(t.status) with
+        | Restarting_build prev_invalidation ->
+          t.status :=
+            Restarting_build
+              (Memo.Invalidation.combine prev_invalidation invalidation);
+          []
+        | Standing_by prev ->
+          t.status :=
+            Standing_by
+              { prev with
+                invalidation =
+                  Memo.Invalidation.combine prev.invalidation invalidation
+              };
+          []
+        | Building cancellation ->
+          t.handler t.config Build_interrupted;
+          t.status := Restarting_build invalidation;
+          Fiber.Cancel.fire' cancellation
+    in
+    match
+      Nonempty_list.of_list
+      @@
+      match !(t.wait_for_build_input_change) with
+      | None -> fills
+      | Some ivar -> (
+        match
+          if Memo.Invalidation.is_empty invalidation then
+            match t.config.insignificant_changes with
+            | `Ignore -> `Keep_waiting
+            | `React -> `Fill_waiter
+          else `Fill_waiter
+        with
+        | `Keep_waiting -> fills
+        | `Fill_waiter ->
+          t.wait_for_build_input_change := None;
+          Fiber.Fill (ivar, ()) :: fills)
+    with
+    | None -> iter t
+    | Some fills -> fills
 
   let run t f : _ result =
     let fiber =

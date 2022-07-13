@@ -584,8 +584,9 @@ let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
       |> Path.build |> Action_builder.path
       |> Rules.Produce.Alias.add_deps (Coqdoc_mode.alias mode ~dir) ~loc
   in
-  let* () = rule Html in
-  rule Latex
+  let+ () = rule Html
+  and+ () = rule Latex in
+  ()
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let theory =
@@ -597,8 +598,8 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let* cctx, coq_modules =
     setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory
   in
-  let* () = setup_vo_rules ~sctx ~dir ~cctx s theory coq_modules in
-  let+ () = setup_coqdoc_rules ~sctx ~dir ~cctx s coq_modules in
+  let+ () = setup_vo_rules ~sctx ~dir ~cctx s theory coq_modules
+  and+ () = setup_coqdoc_rules ~sctx ~dir ~cctx s coq_modules in
   ()
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
@@ -716,7 +717,7 @@ let setup_coqpp_rules ~sctx ~dir (s : Coqpp.t) =
 
 let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
     (s : Extraction.t) =
-  let* cctx =
+  let+ cctx =
     let wrapper_name = "DuneExtraction" in
     let* theories_deps =
       let* scope = Scope.DB.find_by_dir dir in
@@ -728,8 +729,7 @@ let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
     let theories_deps = Resolve.Memo.lift theories_deps in
     Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
       ~theory_dirs s.buildable
-  in
-  let+ coq = Dir_contents.coq dir_contents in
+  and+ coq = Dir_contents.coq dir_contents in
   (cctx, Coq_sources.extract coq s)
 
 let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =

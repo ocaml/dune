@@ -1057,54 +1057,44 @@ end = struct
 
   and build_input_change (t : t) events =
     let invalidation = handle_invalidation_events events in
+    let significant_changes = not (Memo.Invalidation.is_empty invalidation) in
+    let insignificant_changes =
+      match t.config.insignificant_changes with
+      | `Ignore -> false
+      | `React -> not significant_changes
+    in
     let fills =
-      if Memo.Invalidation.is_empty invalidation then
-        match !(t.status) with
-        | Standing_by prev ->
-          (match t.config.insignificant_changes with
-          | `Ignore -> ()
-          | `React ->
-            t.status :=
-              Standing_by { prev with saw_insignificant_changes = true });
-          []
-        | _ -> []
-      else
-        match !(t.status) with
-        | Restarting_build prev_invalidation ->
-          t.status :=
-            Restarting_build
-              (Memo.Invalidation.combine prev_invalidation invalidation);
-          []
-        | Standing_by prev ->
-          t.status :=
-            Standing_by
-              { prev with
-                invalidation =
-                  Memo.Invalidation.combine prev.invalidation invalidation
-              };
-          []
-        | Building cancellation ->
+      match !(t.status) with
+      | Restarting_build prev_invalidation ->
+        t.status :=
+          Restarting_build
+            (Memo.Invalidation.combine prev_invalidation invalidation);
+        []
+      | Standing_by prev ->
+        t.status :=
+          Standing_by
+            { invalidation =
+                Memo.Invalidation.combine prev.invalidation invalidation
+            ; saw_insignificant_changes =
+                prev.saw_insignificant_changes || insignificant_changes
+            };
+        []
+      | Building cancellation -> (
+        match significant_changes with
+        | false -> []
+        | true ->
           t.handler t.config Build_interrupted;
           t.status := Restarting_build invalidation;
-          Fiber.Cancel.fire' cancellation
+          Fiber.Cancel.fire' cancellation)
     in
     match
       Nonempty_list.of_list
       @@
       match !(t.wait_for_build_input_change) with
-      | None -> fills
-      | Some ivar -> (
-        match
-          if Memo.Invalidation.is_empty invalidation then
-            match t.config.insignificant_changes with
-            | `Ignore -> `Keep_waiting
-            | `React -> `Fill_waiter
-          else `Fill_waiter
-        with
-        | `Keep_waiting -> fills
-        | `Fill_waiter ->
-          t.wait_for_build_input_change := None;
-          Fiber.Fill (ivar, ()) :: fills)
+      | Some ivar when significant_changes || insignificant_changes ->
+        t.wait_for_build_input_change := None;
+        Fiber.Fill (ivar, ()) :: fills
+      | _ -> fills
     with
     | None -> iter t
     | Some fills -> fills

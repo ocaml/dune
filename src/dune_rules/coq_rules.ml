@@ -615,6 +615,58 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
   (Context.coqc_file_flags cctx, boot_type)
 
+let setup_coqpp_rules ~sctx ~dir (s : Coqpp.t) =
+  let* coqpp = resolve_program sctx ~dir ~loc:s.loc "coqpp" in
+  let mlg_rule m =
+    let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
+    let target = Path.Build.relative dir (m ^ ".ml") in
+    let args = [ Command.Args.Dep source; Hidden_targets [ target ] ] in
+    let build_dir = (Super_context.context sctx).build_dir in
+    Command.run ~dir:(Path.build build_dir) coqpp args
+  in
+  List.rev_map ~f:mlg_rule s.modules
+  |> Super_context.add_rules ~loc:s.loc ~dir sctx
+
+let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
+    (s : Extraction.t) =
+  let+ cctx =
+    let wrapper_name = "DuneExtraction" in
+    let* theories_deps =
+      let* scope = Scope.DB.find_by_dir dir in
+      let coq_lib_db = Scope.coq_libs scope in
+      Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
+        ~coq_lang_version:s.buildable.coq_lang_version
+    in
+    let theory_dirs = Path.Build.Set.empty in
+    let theories_deps = Resolve.Memo.lift theories_deps in
+    Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
+      ~theory_dirs s.buildable
+  and+ coq = Dir_contents.coq dir_contents in
+  (cctx, Coq_sources.extract coq s)
+
+let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
+  let* cctx, coq_module =
+    setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
+  in
+  let ml_targets =
+    Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
+  in
+  let source_rule =
+    let theories = source_rule ~sctx cctx.theories_deps in
+    let open Action_builder.O in
+    theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
+  in
+  setup_rule cctx ~dir ~sctx ~loc:s.buildable.loc ~file_targets:ml_targets
+    ~source_rule coq_module
+
+let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
+  let* cctx, coq_module =
+    setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
+  in
+  let cctx = Context.for_module cctx coq_module in
+  let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
+  (Context.coqc_file_flags cctx, boot_type)
+
 (******************************************************************************)
 (* Install rules *)
 (******************************************************************************)
@@ -702,55 +754,3 @@ let install_rules ~sctx ~dir s =
            let vfile_dst = to_path vfile in
            make_entry vfile vfile_dst :: obj_files)
     |> List.rev_append coq_plugins_install_rules
-
-let setup_coqpp_rules ~sctx ~dir (s : Coqpp.t) =
-  let* coqpp = resolve_program sctx ~dir ~loc:s.loc "coqpp" in
-  let mlg_rule m =
-    let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
-    let target = Path.Build.relative dir (m ^ ".ml") in
-    let args = [ Command.Args.Dep source; Hidden_targets [ target ] ] in
-    let build_dir = (Super_context.context sctx).build_dir in
-    Command.run ~dir:(Path.build build_dir) coqpp args
-  in
-  List.rev_map ~f:mlg_rule s.modules
-  |> Super_context.add_rules ~loc:s.loc ~dir sctx
-
-let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
-    (s : Extraction.t) =
-  let+ cctx =
-    let wrapper_name = "DuneExtraction" in
-    let* theories_deps =
-      let* scope = Scope.DB.find_by_dir dir in
-      let coq_lib_db = Scope.coq_libs scope in
-      Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
-        ~coq_lang_version:s.buildable.coq_lang_version
-    in
-    let theory_dirs = Path.Build.Set.empty in
-    let theories_deps = Resolve.Memo.lift theories_deps in
-    Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
-      ~theory_dirs s.buildable
-  and+ coq = Dir_contents.coq dir_contents in
-  (cctx, Coq_sources.extract coq s)
-
-let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
-  let* cctx, coq_module =
-    setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
-  in
-  let ml_targets =
-    Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
-  in
-  let source_rule =
-    let theories = source_rule ~sctx cctx.theories_deps in
-    let open Action_builder.O in
-    theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
-  in
-  setup_rule cctx ~dir ~sctx ~loc:s.buildable.loc ~file_targets:ml_targets
-    ~source_rule coq_module
-
-let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
-  let* cctx, coq_module =
-    setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
-  in
-  let cctx = Context.for_module cctx coq_module in
-  let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
-  (Context.coqc_file_flags cctx, boot_type)

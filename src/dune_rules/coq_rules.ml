@@ -381,10 +381,11 @@ let deps_of ~dir ~boot_type coq_module =
       (Action_builder.lines_of (Path.build stdout_to))
       ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
 
-let coqdep_rule (cctx : _ Context.t) ~source_rule ~file_flags coq_module =
+let setup_coqdep_rule ~sctx ~loc (cctx : _ Context.t) ~source_rule coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let source = Coq_module.source coq_module in
   let file_flags =
+    let file_flags = Context.coqc_file_flags cctx in
     [ Command.Args.S file_flags
     ; As [ "-dyndep"; "opt" ]
     ; Dep (Path.build source)
@@ -392,10 +393,11 @@ let coqdep_rule (cctx : _ Context.t) ~source_rule ~file_flags coq_module =
   in
   let stdout_to = Coq_module.dep_file ~obj_dir:cctx.dir coq_module in
   (* Coqdep has to be called in the stanza's directory *)
-  let open Action_builder.With_targets.O in
-  Action_builder.with_no_targets cctx.mlpack_rule
-  >>> Action_builder.(with_no_targets (goal source_rule))
-  >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to cctx.coqdep file_flags
+  Super_context.add_rule ~loc sctx
+    (let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets cctx.mlpack_rule
+    >>> Action_builder.(with_no_targets (goal source_rule))
+    >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to cctx.coqdep file_flags)
 
 let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   let source = Coq_module.source coq_module in
@@ -494,28 +496,23 @@ let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~file_flags ~mode
               Action.Progn [ Action.mkdir (Path.build doc_dir); coqdoc ]))
   |> Action_builder.With_targets.add_directories ~directory_targets:[ doc_dir ]
 
-module Module_rule = struct
-  type t =
-    { coqdep : Action.Full.t Action_builder.With_targets.t
-    ; coqc : Action.Full.t Action_builder.With_targets.t
-    }
-end
-
-let setup_rule cctx ~source_rule coq_module =
+let setup_coqc_rule ~loc ~sctx (cctx : _ Context.t) ~file_targets coq_module =
   let open Action_builder.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.to_fmt
       (Dyn.pp (Coq_module.to_dyn coq_module));
-  let file_flags = Context.coqc_file_flags cctx in
-  let coqdep_rule = coqdep_rule cctx ~source_rule ~file_flags coq_module in
   (* Process coqdep and generate rules *)
   let deps_of = deps_of ~dir:cctx.dir ~boot_type:cctx.boot_type coq_module in
-  (* Rules for the files *)
-  { Module_rule.coqdep = coqdep_rule
-  ; coqc =
-      Action_builder.with_no_targets deps_of
-      >>> coqc_rule cctx ~file_flags coq_module
-  }
+  let file_flags = Context.coqc_file_flags cctx in
+  Super_context.add_rule ~loc sctx
+    (Action_builder.with_no_targets deps_of
+    >>> Action_builder.With_targets.add ~file_targets
+        @@ coqc_rule cctx ~file_flags coq_module)
+
+let setup_rule ~loc ~sctx ~dir ~source_rule ~file_targets cctx m =
+  let cctx = Context.for_module cctx m in
+  let* () = setup_coqc_rule ~file_targets ~sctx ~loc cctx m ~dir in
+  setup_coqdep_rule ~sctx ~loc cctx ~source_rule m ~dir
 
 let coq_modules_of_theory ~sctx lib =
   Action_builder.of_memo
@@ -567,11 +564,8 @@ let setup_vo_rules ~sctx ~dir ~(cctx : _ Context.t) (s : Theory.t) theory
     in
     source_rule ~sctx theories
   in
-  List.concat_map coq_modules ~f:(fun m ->
-      let cctx = Context.for_module cctx m in
-      let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
-      [ coqc; coqdep ])
-  |> Super_context.add_rules ~loc ~dir sctx
+  Memo.parallel_iter coq_modules
+    ~f:(setup_rule ~sctx ~loc cctx ~source_rule ~dir ~file_targets:[])
 
 let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
   let loc, name = (s.buildable.loc, snd s.name) in
@@ -753,9 +747,8 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     let open Action_builder.O in
     theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
   in
-  let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule coq_module in
-  let coqc = Action_builder.With_targets.add coqc ~file_targets:ml_targets in
-  [ coqdep; coqc ] |> Super_context.add_rules ~loc:s.buildable.loc ~dir sctx
+  setup_rule cctx ~dir ~sctx ~loc:s.buildable.loc ~file_targets:ml_targets
+    ~source_rule coq_module
 
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx =

@@ -609,20 +609,7 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
     Coq_lib.DB.resolve coq_lib_db name
       ~coq_lang_version:s.buildable.coq_lang_version
   in
-  let name = snd s.name in
-  let* coq_dir_contents = Dir_contents.coq dir_contents in
-  let* cctx =
-    let wrapper_name = Coq_lib_name.wrapper name in
-    let theories_deps =
-      Resolve.Memo.bind theory ~f:(fun theory ->
-          Resolve.Memo.lift @@ Coq_lib.theories_closure theory)
-    in
-    let theory_dirs = Coq_sources.directories coq_dir_contents ~name in
-    let theory_dirs = Path.Build.Set.of_list theory_dirs in
-    let coqc_dir = (Super_context.context sctx).build_dir in
-    Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
-      s.buildable
-  in
+  let* cctx, _ = setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory in
   let cctx = Context.for_module cctx coq_module in
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
   (Context.coqc_file_flags cctx, boot_type)
@@ -727,7 +714,8 @@ let setup_coqpp_rules ~sctx ~dir (s : Coqpp.t) =
   List.rev_map ~f:mlg_rule s.modules
   |> Super_context.add_rules ~loc:s.loc ~dir sctx
 
-let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
+let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
+    (s : Extraction.t) =
   let* cctx =
     let wrapper_name = "DuneExtraction" in
     let* theories_deps =
@@ -741,9 +729,12 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
       ~theory_dirs s.buildable
   in
-  let* coq_module =
-    let+ coq = Dir_contents.coq dir_contents in
-    Coq_sources.extract coq s
+  let+ coq = Dir_contents.coq dir_contents in
+  (cctx, Coq_sources.extract coq s)
+
+let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
+  let* cctx, coq_module =
+    setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
   in
   let ml_targets =
     Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
@@ -757,22 +748,8 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     ~source_rule coq_module
 
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
-  let* cctx =
-    let wrapper_name = "DuneExtraction" in
-    let* theories_deps =
-      let* scope = Scope.DB.find_by_dir dir in
-      let coq_lib_db = Scope.coq_libs scope in
-      Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
-        ~coq_lang_version:s.buildable.coq_lang_version
-    in
-    let theory_dirs = Path.Build.Set.empty in
-    let theories_deps = Resolve.Memo.lift theories_deps in
-    Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
-      ~theory_dirs s.buildable
-  in
-  let* coq_module =
-    let+ coq = Dir_contents.coq dir_contents in
-    Coq_sources.extract coq s
+  let* cctx, coq_module =
+    setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
   in
   let cctx = Context.for_module cctx coq_module in
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in

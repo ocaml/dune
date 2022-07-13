@@ -75,3 +75,17 @@ let%expect_test "cancelling a build: effect on other fibers" =
             | Error _ -> "FAIL: other fiber got cancelled");
           Scheduler.shutdown ()));
   [%expect {| PASS: we can still run things outside the build |}]
+
+let%expect_test "empty invalidation wakes up waiter" =
+  ( go @@ fun () ->
+    let await_invalidation () =
+      print_endline "awaiting invalidation";
+      let+ () = Scheduler.wait_for_build_input_change () in
+      print_endline "awaited invalidation"
+    in
+    Fiber.fork_and_join_unit
+      (fun () -> Scheduler.inject_memo_invalidation Memo.Invalidation.empty)
+      await_invalidation );
+  [%expect {|
+    awaiting invalidation
+    awaited invalidation |}]

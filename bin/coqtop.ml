@@ -110,7 +110,9 @@ let term =
               let* (_ : unit * Dep.Fact.t Dep.Map.t) =
                 let deps =
                   let boot_type = Resolve.Memo.return boot_type in
-                  Dune_rules.Coq_rules.deps_of ~dir ~boot_type coq_module
+                  let plugin_deps = Action_builder.return () in
+                  Dune_rules.Coq_rules.deps_of ~dir ~boot_type ~plugin_deps
+                    coq_module
                 in
                 Action_builder.run deps Eager
               in

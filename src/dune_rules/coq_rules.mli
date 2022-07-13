@@ -48,6 +48,7 @@ val setup_extraction_rules :
 val deps_of :
      dir:Path.Build.t
   -> boot_type:Bootstrap.t Resolve.Memo.t
+  -> plugin_deps:unit Action_builder.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 

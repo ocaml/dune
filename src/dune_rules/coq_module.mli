@@ -9,13 +9,35 @@ module Name : sig
 
   val make : string -> t
 
-  val compare : t -> t -> Ordering.t
-
   val equal : t -> t -> bool
 
   val to_dyn : t -> Dyn.t
+end
 
-  val to_string : t -> string
+module Path : sig
+  type t
+
+  val to_list : t -> Name.t list
+
+  (** Returns true if there is at least one segment of the prefix that is
+      shared. For instance A.B.C and A.B aggree*)
+  val is_prefix : t -> prefix:t -> bool
+
+  val to_dyn : t -> Dyn.t
+
+  val append_name : t -> Name.t -> t
+
+  val of_string_list : string list -> t
+
+  val to_string_list : t -> string list
+
+  val of_lib_name : Coq_lib_name.t -> t
+end
+
+module Source : sig
+  type t
+
+  val make : source:Stdune.Path.Build.t -> prefix:Path.t -> name:Name.t -> t
 end
 
 type t
@@ -24,23 +46,31 @@ module Map : Map.S with type key = t
 
 (** A Coq module [a.b.foo] defined in file [a/b/foo.v] *)
 val make :
-     source:Path.Build.t
+     source:Stdune.Path.Build.t
        (** file = .v source file; module name has to be the same so far *)
-  -> prefix:string list (** Library-local qualified prefix *)
+  -> prefix:Path.t (** Library-local qualified prefix *)
   -> name:Name.t (** Name of the module *)
+  -> theory_prefix:Path.t
+  -> obj_dir:Stdune.Path.Build.t
   -> t
+
+(* Change to take [Source.t] *)
+val of_source :
+  Source.t -> obj_dir:Stdune.Path.Build.t -> theory:Coq_lib_name.t -> t
 
 (** Coq does enforce some invariants wrt module vs file names *)
 
-val source : t -> Path.Build.t
-
-val prefix : t -> string list
+val prefix : t -> Path.t
 
 val name : t -> Name.t
 
-val dep_file : t -> obj_dir:Path.Build.t -> Path.Build.t
+val theory_prefix : t -> Path.t
 
-val glob_file : t -> obj_dir:Path.Build.t -> Path.Build.t
+val source : t -> Stdune.Path.Build.t
+
+val dep_file : t -> Stdune.Path.Build.t
+
+val glob_file : t -> Stdune.Path.Build.t
 
 (** Some of the object files should not be installed, we control this with the
     following parameter *)
@@ -52,12 +82,15 @@ type obj_files_mode =
     having a different install location *)
 val obj_files :
      t
-  -> wrapper_name:string
+  -> wrapper_name:string (* TODO: remove *)
   -> mode:Coq_mode.t
-  -> obj_dir:Path.Build.t
   -> obj_files_mode:obj_files_mode
-  -> (Path.Build.t * string) list
+  -> (Stdune.Path.Build.t * string) list
 
-val to_dyn : t -> Dyn.t
-
-val eval : dir:Path.Build.t -> standard:t list -> Ordered_set_lang.t -> t list
+val eval :
+     dir:Stdune.Path.Build.t
+  -> standard:t list
+  -> theory_prefix:Path.t
+  -> obj_dir:Stdune.Path.Build.t
+  -> Ordered_set_lang.t
+  -> t list

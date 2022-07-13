@@ -23,6 +23,8 @@ let dir x = to_dir x
 let decode : (Loc.t * t) Dune_lang.Decoder.t =
   Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, String.split ~on:'.' s))
 
+let of_string s = String.split ~on:'.' s
+
 let encode : t Dune_lang.Encoder.t =
  fun lib -> Dune_lang.Encoder.string (to_string lib)
 

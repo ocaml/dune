@@ -149,10 +149,10 @@ module Bootstrap = struct
     | Some (_loc, lib) -> (
       (* This is here as an optimization, TODO; replace with per_file flags *)
       let init =
+        let open Coq_module in
         String.equal (Coq_lib_name.wrapper (Coq_lib.name lib)) wrapper_name
-        && Option.equal String.equal
-             (List.hd_opt (Coq_module.prefix coq_module))
-             (Some "Init")
+        && Path.is_prefix (prefix coq_module)
+             ~prefix:(Path.of_string_list [ "Init" ])
       in
       match init with
       | false -> Bootstrap lib
@@ -412,9 +412,10 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
     let ff = List.hd @@ String.extract_blank_separated_words basename in
     let depname, _ = Filename.split_extension ff in
     let modname =
-      String.concat ~sep:"/"
-        Coq_module.(
-          prefix coq_module @ [ Coq_module.Name.to_string (name coq_module) ])
+      let name = Coq_module.name coq_module in
+      let prefix = Coq_module.prefix coq_module in
+      let path = Coq_module.Path.append_name prefix name in
+      String.concat ~sep:"/" (Coq_module.Path.to_string_list path)
     in
     if depname <> modname then invalid "basename";
     let deps = String.extract_blank_separated_words deps in
@@ -428,13 +429,13 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
       :: deps)
 
 let deps_of ~dir ~boot_type coq_module =
-  let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
-  Action_builder.dyn_paths_unit
-    (let open Action_builder.O in
-    let* boot_type = Resolve.Memo.read boot_type in
-    Action_builder.map
-      (Action_builder.lines_of (Path.build stdout_to))
-      ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
+  let stdout_to = Coq_module.dep_file coq_module in
+  let open Action_builder.O in
+  let* boot_type = Resolve.Memo.read boot_type in
+  Action_builder.map
+    (Action_builder.lines_of (Path.build stdout_to))
+    ~f:(parse_coqdep ~dir ~boot_type ~coq_module)
+  |> Action_builder.dyn_paths_unit
 
 let setup_coqdep_rule ~sctx ~loc (cctx : _ Context.t) ~source_rule coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
@@ -446,7 +447,7 @@ let setup_coqdep_rule ~sctx ~loc (cctx : _ Context.t) ~source_rule coq_module =
     ; Dep (Path.build source)
     ]
   in
-  let stdout_to = Coq_module.dep_file ~obj_dir:cctx.dir coq_module in
+  let stdout_to = Coq_module.dep_file coq_module in
   (* Coqdep has to be called in the stanza's directory *)
   Super_context.add_rule ~loc sctx
     (let open Action_builder.With_targets.O in
@@ -459,8 +460,8 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   let file_flags =
     let wrapper_name, mode = (cctx.wrapper_name, cctx.mode) in
     let objects_to =
-      Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:cctx.dir
-        ~obj_files_mode:Coq_module.Build coq_module
+      Coq_module.obj_files ~wrapper_name ~mode ~obj_files_mode:Coq_module.Build
+        coq_module
       |> List.map ~f:fst
     in
     let native_flags = Context.coqc_native_flags cctx in
@@ -540,7 +541,7 @@ let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~file_flags ~mode
     ; Dyn globs
     ; Hidden_deps
         (Dep.Set.of_files @@ List.map ~f:Path.build
-        @@ List.map ~f:(Coq_module.glob_file ~obj_dir) coq_modules)
+        @@ List.map ~f:Coq_module.glob_file coq_modules)
     ]
   in
   Command.run ~sandbox:Sandbox_config.needs_sandboxing
@@ -642,13 +643,14 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     Coq_lib.DB.resolve coq_lib_db ~coq_lang_version:s.buildable.coq_lang_version
       s.name
   in
-  let* cctx, coq_modules =
+  let* cctx, coq_module_sources =
     setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory
   in
-  setup_vo_rules ~sctx ~dir ~cctx s theory coq_modules
-  >>> setup_coqdoc_rules ~sctx ~dir ~cctx s coq_modules
+  setup_vo_rules ~sctx ~dir ~cctx s theory coq_module_sources
+  >>> setup_coqdoc_rules ~sctx ~dir ~cctx s coq_module_sources
 
-let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
+let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module_source
+    =
   let name = s.name in
   let* scope = Scope.DB.find_by_dir dir in
   let coq_lib_db = Scope.coq_libs scope in
@@ -657,7 +659,7 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
       ~coq_lang_version:s.buildable.coq_lang_version
   in
   let* cctx, _ = setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory in
-  let cctx = Context.for_module cctx coq_module in
+  let cctx = Context.for_module cctx coq_module_source in
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
   ( (let open Action_builder.O in
     let+ coq_flags = Context.coq_flags cctx in
@@ -743,7 +745,7 @@ let install_rules ~sctx ~dir s =
     coq_sources |> Coq_sources.library ~name
     |> List.concat_map ~f:(fun (vfile : Coq_module.t) ->
            let obj_files =
-             Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:dir
+             Coq_module.obj_files ~wrapper_name ~mode
                ~obj_files_mode:Coq_module.Install vfile
              |> List.map
                   ~f:(fun ((vo_file : Path.Build.t), (install_vo_file : string))

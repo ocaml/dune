@@ -26,7 +26,7 @@ let empty =
   ; rev_map = Coq_module.Map.empty
   }
 
-let coq_modules_of_files ~dirs =
+let coq_module_sources_of_files ~dirs : Coq_module.Source.t list =
   let filter_v_files (dir, local, files) =
     ( dir
     , local
@@ -34,10 +34,13 @@ let coq_modules_of_files ~dirs =
   in
   let dirs = List.map dirs ~f:filter_v_files in
   let build_mod_dir (dir, prefix, files) =
+    let prefix = Coq_module.Path.of_string_list prefix in
     String.Set.to_list_map files ~f:(fun file ->
         let name, _ = Filename.split_extension file in
         let name = Coq_module.Name.make name in
-        Coq_module.make ~source:(Path.Build.relative dir file) ~prefix ~name)
+        Coq_module.Source.make
+          ~source:(Path.Build.relative dir file)
+          ~prefix ~name)
   in
   List.concat_map ~f:build_mod_dir dirs
 
@@ -58,10 +61,19 @@ let extract t (stanza : Extraction.t) =
 
 let of_dir stanzas ~dir ~include_subdirs ~dirs =
   check_no_unqualified include_subdirs;
-  let modules = coq_modules_of_files ~dirs in
+  let module_sources = coq_module_sources_of_files ~dirs in
   List.fold_left stanzas ~init:empty ~f:(fun acc -> function
     | Theory.T coq ->
-      let modules = Coq_module.eval ~dir coq.modules ~standard:modules in
+      let modules =
+        let theory_prefix = snd coq.name |> Coq_module.Path.of_lib_name in
+        let modules =
+          List.map
+            ~f:(Coq_module.of_source ~obj_dir:dir ~theory:(snd coq.name))
+            module_sources
+        in
+        Coq_module.eval ~dir coq.modules ~standard:modules ~theory_prefix
+          ~obj_dir:dir
+      in
       let directories =
         Coq_lib_name.Map.add_exn acc.directories (snd coq.name)
           (List.map dirs ~f:(fun (d, _, _) -> d))
@@ -75,6 +87,10 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
       in
       { acc with directories; libraries; rev_map }
     | Extraction.T extr ->
+      let modules =
+        let theory = Coq_lib_name.of_string "DuneExtraction" in
+        List.map ~f:(Coq_module.of_source ~obj_dir:dir ~theory) module_sources
+      in
       let loc, prelude = extr.prelude in
       let m =
         match

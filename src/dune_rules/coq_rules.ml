@@ -9,8 +9,6 @@ open Memo.O
 
 open Coq_stanza
 
-let coq_debug = false
-
 (* Coqdep / Coq expect the deps to the directory where the plugin cmxs file are.
    This seems to correspond to src_dir. *)
 module Util = struct
@@ -326,7 +324,6 @@ end
 
 let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
     (lines : string list) =
-  if coq_debug then Format.eprintf "Parsing coqdep @\n%!";
   let source = Coq_module.source coq_module in
   let invalid phase =
     User_error.raise
@@ -354,15 +351,8 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
         Coq_module.(
           prefix coq_module @ [ Coq_module.Name.to_string (name coq_module) ])
     in
-    if coq_debug then
-      Format.eprintf "depname / modname: %s / %s@\n%!" depname modname;
     if depname <> modname then invalid "basename";
     let deps = String.extract_blank_separated_words deps in
-    if coq_debug then
-      Format.eprintf "deps for %s: %a@\n%!"
-        (Path.Build.to_string source)
-        (Format.pp_print_list Format.pp_print_string)
-        deps;
     (* Add prelude deps for when stdlib is in scope and we are not actually
        compiling the prelude *)
     let deps = List.map ~f:(Path.relative (Path.build dir)) deps in
@@ -498,9 +488,6 @@ let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~file_flags ~mode
 
 let setup_coqc_rule ~loc ~sctx (cctx : _ Context.t) ~file_targets coq_module =
   let open Action_builder.With_targets.O in
-  if coq_debug then
-    Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.to_fmt
-      (Dyn.pp (Coq_module.to_dyn coq_module));
   (* Process coqdep and generate rules *)
   let deps_of = deps_of ~dir:cctx.dir ~boot_type:cctx.boot_type coq_module in
   let file_flags = Context.coqc_file_flags cctx in

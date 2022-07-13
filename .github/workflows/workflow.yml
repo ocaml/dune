@@ -60,6 +60,9 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
           opam-depext: false
+          opam-repositories: |
+            default: https://github.com/ocaml/opam-repository.git
+            coq-core-dev: https://coq.inria.fr/opam/core-dev
 
       # git user needs to be configured for the following tests:
       # otherlibs/build-info/test/run.t

@@ -1,0 +1,27 @@
+(executable
+ (modes native byte_complete)
+ (modules stubs_exe)
+ (name stubs_exe)
+  (foreign_stubs
+   (language c)
+   (mode byte)
+   (names c_stubs))
+  (foreign_stubs
+   (language c)
+   (mode native)
+   (flags :standard -DNATIVE_CODE)
+   (names c_stubs)))
+
+(executable
+ (modes native byte_complete)
+ (modules stubs_lib)
+ (name stubs_lib)
+ (libraries mode_dep_stubs))
+
+(executable
+ (modes native byte_complete)
+ (modules stubs_same_exe)
+ (name stubs_same_exe)
+  (foreign_stubs
+   (language c)
+   (names c_stubs_same)))

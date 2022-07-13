@@ -1,0 +1,4 @@
+(executable
+ (name stubs_exe)
+  (modes native byte_complete)
+  (libraries stubs_lib stubs_liboth))

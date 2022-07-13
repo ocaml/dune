@@ -1,0 +1,12 @@
+(library
+ (name stubs_lib)
+ (modes byte native)
+ (foreign_stubs
+  (language c)
+  (mode byte)
+  (names c_stubs))
+ (foreign_stubs
+  (language c)
+  (mode native)
+  (flags :standard -DNATIVE_CODE)
+  (names c_stubs)))

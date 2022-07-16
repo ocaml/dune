@@ -142,6 +142,8 @@ let dune_build client what =
 
 let with_dune_watch ?env f =
   let root_dir = "." in
+  let xdg_runtime_dir = Filename.get_temp_dir_name () in
+  Unix.putenv "XDG_RUNTIME_DIR" xdg_runtime_dir;
   let pid, run_server, server_stdout, server_stderr =
     run_server ?env ~root_dir ()
   in

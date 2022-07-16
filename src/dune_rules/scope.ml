@@ -141,12 +141,13 @@ module DB = struct
       Lib.DB.Resolve_result.redirect (Some scope.db) (Loc.none, name)
     | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
-  let public_theories ~find_db coq_stanzas =
+  let public_theories ~installed_theories ~find_db coq_stanzas =
     List.filter_map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
         if Option.is_some stanza.package then
           Some (stanza, Coq_lib.DB.Theory dir)
         else None)
-    |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db ~parent:None
+    |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db
+         ~parent:(Some installed_theories)
 
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
@@ -267,8 +268,11 @@ module DB = struct
       let+ installed_libs = Lib.DB.installed context in
       public_libs t ~lib_config ~installed_libs stanzas
     in
-    let public_theories =
-      public_theories coq_stanzas ~find_db:(fun _ -> public_libs)
+    let* public_theories =
+      let+ installed_theories = Coq_lib.DB.installed ~public_libs context in
+      public_theories coq_stanzas
+        ~find_db:(fun _ -> public_libs)
+        ~installed_theories
     in
     let+ by_dir =
       scopes_by_dir ~build_dir ~lib_config ~projects ~public_libs

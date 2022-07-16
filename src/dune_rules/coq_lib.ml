@@ -421,6 +421,14 @@ module DB = struct
       Resolve.Memo.List.map theories ~f:(resolve ~coq_lang_version db)
     in
     Resolve.O.(theories >>= top_closure)
+
+  let installed (context : Context.t) ~public_libs : t Memo.t =
+    let boot = None in
+    let resolve _ = `Not_found in
+    let parent = None in
+    ignore context;
+    ignore public_libs;
+    Memo.return { boot; resolve; parent }
 end
 
 let theories_closure t = Lazy.force t.theories_closure

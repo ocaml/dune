@@ -60,4 +60,6 @@ module DB : sig
     -> (Loc.t * Coq_lib_name.t) list
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
     -> lib list Resolve.Memo.t
+
+  val installed : Context.t -> public_libs:Lib.DB.t -> t Memo.t
 end

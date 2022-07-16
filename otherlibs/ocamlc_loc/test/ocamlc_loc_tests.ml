@@ -286,4 +286,15 @@ Error: Some record fields are undefined: signal_watcher
     |> String.trim
   in
   Ocamlc_loc.parse raw_error |> Test.print_errors;
-  [%expect {| |}]
+  [%expect
+    {|
+    >> error 0
+    { loc =
+        { path = "test/expect-tests/timer_tests.ml"
+        ; line = Range 6,10
+        ; chars = Some (2, 3)
+        }
+    ; message = "Some record fields are undefined: signal_watcher"
+    ; related = []
+    ; severity = Error None
+    } |}]

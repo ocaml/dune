@@ -40,7 +40,9 @@ end = struct
         | sexp ->
           let msg = Printf.sprintf "Bad input: %s" (Sexp.to_string sexp) in
           Unknown msg)
-      | Error _ -> Halt
+      | Error err ->
+        Format.eprintf "Bad input: %s@." err;
+        Halt
   end
 
   (* [make_relative_to_root p] will check that [Path.root] is a prefix of the

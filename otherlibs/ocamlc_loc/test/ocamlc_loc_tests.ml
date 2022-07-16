@@ -271,3 +271,19 @@ Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
     ; related = []
     ; severity = Error Some "deprecated"
     } |}]
+
+let%expect_test "undefined fields" =
+  let raw_error =
+    {|
+File "test/expect-tests/timer_tests.ml", lines 6-10, characters 2-3:
+ 6 | ..{ Scheduler.Config.concurrency = 1
+ 7 |   ; display = { verbosity = Short; status_line = false }
+ 8 |   ; stats = None
+ 9 |   ; insignificant_changes = `React
+10 |   }
+Error: Some record fields are undefined: signal_watcher
+|}
+    |> String.trim
+  in
+  Ocamlc_loc.parse raw_error |> Test.print_errors;
+  [%expect {| |}]

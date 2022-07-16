@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module type Key = sig
   type t

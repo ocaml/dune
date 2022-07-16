@@ -21,6 +21,9 @@ module type S = sig
   (** [set_extension path ~ext] replaces extension of [path] by [ext] *)
   val set_extension : t -> ext:string -> t
 
+  (** [map_extension path ~f] replaces extension of [path] by [f extension]*)
+  val map_extension : t -> f:(string -> string) -> t
+
   val split_extension : t -> t * string
 
   val basename : t -> string
@@ -89,6 +92,9 @@ module type Local_gen = sig
   (** [set_extension path ~ext] replaces extension of [path] by [ext] *)
   val set_extension : 'w t -> ext:string -> 'w t
 
+  (** [map_extension path ~f] replaces extension of [path] by [f extension]*)
+  val map_extension : 'W t -> f:(string -> string) -> 'W t
+
   val split_extension : 'w t -> 'w t * string
 
   val basename : 'w t -> string
@@ -137,6 +143,9 @@ module type Local_gen = sig
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> 'w t -> string list -> 'w t
+
+    val relative_result :
+      'w t -> string list -> ('w t, [ `Outside_the_workspace ]) Result.t
   end
 
   val unlink_no_err : 'w t -> unit

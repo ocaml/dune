@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 module Name : sig
@@ -60,10 +59,11 @@ end = struct
 
   let decode =
     let open Dune_lang.Decoder in
-    let* syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+    let* syntax = Dune_lang.Syntax.get_exn Dune_lang.Stanza.syntax in
     plain_string (fun ~loc s -> parse_string_exn ~syntax (loc, s))
 
-  let parse_string_exn = parse_string_exn ~syntax:Stanza.latest_version
+  let parse_string_exn =
+    parse_string_exn ~syntax:Dune_lang.Stanza.latest_version
 
   let of_string s =
     match of_string_opt s with
@@ -208,12 +208,3 @@ let describe ?(loc = Loc.none) alias =
   in
   if Loc.is_none loc then pp
   else pp ++ Pp.textf " in %s" (Loc.to_file_colon_line loc)
-
-let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
-  let dir =
-    let dir = Package.dir pkg in
-    Path.Build.append_source context.build_dir dir
-  in
-  let name = Package.name pkg in
-  sprintf ".%s-files" (Package.Name.to_string name)
-  |> Name.of_string |> make ~dir

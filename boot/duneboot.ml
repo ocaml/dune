@@ -532,6 +532,8 @@ module Config : sig
   val ocaml_config : unit -> string StringMap.t Fiber.t
 
   val output_complete_obj_arg : string
+
+  val unix_library_flags : string list
 end = struct
   let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> (a, b))
 
@@ -600,6 +602,9 @@ end = struct
 
   let output_complete_obj_arg =
     if ocaml_version < (4, 10) then "-custom" else "-output-complete-exe"
+
+  let unix_library_flags =
+    if ocaml_version >= (5, 0) then [ "-I"; "+unix" ] else []
 end
 
 let insert_header fn ~header =
@@ -958,7 +963,7 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads.posix" ->
         ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
-      | "unix" -> ("unix" ^ Config.ocaml_archive_ext, [])
+      | "unix" -> ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
       | s -> fatal "unhandled external library %s" s
     in
     let externals = List.map ~f:convert external_libraries in
@@ -993,6 +998,8 @@ let common_build_args name ~external_includes ~external_libraries =
     ; external_libraries
     ]
 
+let allow_unstable_sources = [ "-alert"; "-unstable" ]
+
 let build ~ocaml_config ~dependencies ~c_files ~link_flags
     { target = name, main; external_libraries; _ } =
   let ext_obj =
@@ -1022,14 +1029,8 @@ let build ~ocaml_config ~dependencies ~c_files ~link_flags
              Fiber.parallel_iter deps ~f:build >>= fun () ->
              Process.run ~cwd:build_dir Config.compiler
                (List.concat
-                  [ [ "-c"
-                    ; "-g"
-                    ; "-no-alias-deps"
-                    ; "-w"
-                    ; "-49-6"
-                    ; "-alert"
-                    ; "-unstable"
-                    ]
+                  [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49-6" ]
+                  ; allow_unstable_sources
                   ; external_includes
                   ; [ file ]
                   ]))));
@@ -1057,7 +1058,9 @@ let build ~ocaml_config ~dependencies ~c_files ~link_flags
     (List.concat
        [ common_build_args name ~external_includes ~external_libraries
        ; obj_files
-       ; [ "-args"; "compiled_ml_files" ] @ link_flags
+       ; [ "-args"; "compiled_ml_files" ]
+       ; link_flags
+       ; allow_unstable_sources
        ])
 
 let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files ~link_flags
@@ -1072,6 +1075,7 @@ let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files ~link_flags
        ; [ "-no-alias-deps"; "-w"; "-49-6" ]
        ; c_files
        ; [ "-args"; "mods_list" ] @ link_flags
+       ; allow_unstable_sources
        ])
 
 let rec rm_rf fn =

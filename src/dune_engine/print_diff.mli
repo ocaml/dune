@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 (** Diff two files that are expected not to match. *)
 val print :

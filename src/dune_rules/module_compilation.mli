@@ -1,5 +1,4 @@
 (** OCaml module compilation *)
-open! Dune_engine
 
 open Import
 

@@ -159,9 +159,9 @@ let%expect_test "related error" =
       ; [ "message"
         ; [ "Verbatim"
           ; "The implementation foo.ml\n\
-            \       does not match the interface .foo.objs/byte/foo.cmi: \n\
-            \       Values do not match: val x : bool is not included in val x : int\n\
-            \       The type bool is not compatible with the type int\n\
+             does not match the interface .foo.objs/byte/foo.cmi: \n\
+             Values do not match: val x : bool is not included in val x : int\n\
+             The type bool is not compatible with the type int\n\
              "
           ]
         ]
@@ -205,7 +205,6 @@ let%expect_test "related error" =
                 ]
               ]
             ; [ "message"; [ "Verbatim"; "Actual declaration\n\
-                                          \n\
                                           " ] ]
             ]
           ]
@@ -455,8 +454,7 @@ let%expect_test "create and fix error" =
           ; [ "message"
             ; [ "Verbatim"
               ; "This expression has type int but an expression was expected of type\n\
-                \         string\n\
-                 \n\
+                \  string\n\
                  "
               ]
             ]
@@ -497,8 +495,7 @@ let%expect_test "create and fix error" =
           ; [ "message"
             ; [ "Verbatim"
               ; "This expression has type int but an expression was expected of type\n\
-                \         string\n\
-                 \n\
+                \  string\n\
                  "
               ]
             ]

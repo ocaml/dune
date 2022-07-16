@@ -1,7 +1,6 @@
 (** Dune representation of the source tree *)
-open! Stdune
 
-open! Import
+open Import
 
 module Dune_file : sig
   val fname : string

@@ -1,4 +1,3 @@
-open! Dune_engine
 open Import
 
 let mdx_version_required = "1.6.0"
@@ -69,22 +68,50 @@ module Deps = struct
       [ A "deps"; Dep (Path.build files.Files.src) ]
       ~stdout_to:files.Files.deps
 
-  let to_path ~dir str =
-    let local = Path.Local.of_string str in
-    let build = Path.Build.append_local dir local in
-    Path.build build
+  let path_escapes_dir str =
+    try
+      let (_ : Path.Local.t) = Path.Local.of_string str in
+      false
+    with User_error.E _ -> true
 
-  let dirs_and_files ~dir t_list =
-    List.partition_map t_list ~f:(function
-      | Dir d -> Left (to_path ~dir d)
-      | File f -> Right (to_path ~dir f))
+  let to_path ~version ~dir str =
+    if not (Filename.is_relative str) then Error (`Absolute str)
+    else
+      let path = Path.relative_to_source_in_build_or_external ~dir str in
+      match path with
+      | In_build_dir _ ->
+        if version < (0, 3) && path_escapes_dir str then
+          Error (`Escapes_dir str)
+        else Ok path
+      | _ -> Error (`Escapes_workspace str)
 
-  let to_dep_set ~dir t_list =
-    let open Memo.O in
-    let dirs, files = dirs_and_files ~dir t_list in
-    let dep_set = Dep.Set.of_files files in
-    let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
-    List.fold_left l ~init:dep_set ~f:Dep.Set.union
+  let add_acc (dirs, files) kind path =
+    match kind with
+    | `Dir -> (path :: dirs, files)
+    | `File -> (dirs, path :: files)
+
+  let dirs_and_files ~version ~dir t_list =
+    List.fold_left t_list
+      ~init:(Ok ([], []))
+      ~f:(fun acc df ->
+        let open Result.O in
+        let* acc = acc in
+        let kind, path =
+          match df with
+          | Dir d -> (`Dir, d)
+          | File f -> (`File, f)
+        in
+        let+ path = to_path ~version ~dir path in
+        add_acc acc kind path)
+
+  let to_dep_set ~version ~dir t_list =
+    match dirs_and_files ~version ~dir t_list with
+    | Error e -> Memo.return (Error e)
+    | Ok (dirs, files) ->
+      let open Memo.O in
+      let dep_set = Dep.Set.of_files files in
+      let+ l = Memo.parallel_map dirs ~f:(fun dir -> Dep.Set.source_tree dir) in
+      Ok (Dep.Set.union_all (dep_set :: l))
 end
 
 module Prelude = struct
@@ -129,6 +156,7 @@ type t =
   ; enabled_if : Blang.t
   ; package : Package.t option
   ; libraries : Lib_dep.t list
+  ; locks : Locks.t
   }
 
 let enabled_if t = t.enabled_if
@@ -139,7 +167,10 @@ let syntax =
   let name = "mdx" in
   let desc = "mdx extension to verify code blocks in .md files" in
   Dune_lang.Syntax.create ~name ~desc
-    [ ((0, 1), `Since (2, 4)); ((0, 2), `Since (3, 0)) ]
+    [ ((0, 1), `Since (2, 4))
+    ; ((0, 2), `Since (3, 0))
+    ; ((0, 3), `Since (3, 2))
+    ]
 
 let default_files =
   let has_extension ext s = String.equal ext (Filename.extension s) in
@@ -170,6 +201,8 @@ let decode =
        field "libraries" ~default:[]
          (Dune_lang.Syntax.since syntax (0, 2)
          >>> Dune_file.Lib_deps.decode Executable)
+     and+ locks =
+       Locks.field ~check:(Dune_lang.Syntax.since syntax (0, 3)) ()
      in
      { loc
      ; version
@@ -180,6 +213,7 @@ let decode =
      ; libraries
      ; enabled_if
      ; package
+     ; locks
      })
 
 let () =
@@ -210,21 +244,56 @@ let files_to_mdx t ~sctx ~dir =
     [stanza]. *)
 let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
     ~mdx_prog_gen src =
-  let loc = stanza.loc in
+  let { loc; version; _ } = stanza in
   let mdx_dir = Path.Build.relative dir ".mdx" in
   let files = Files.from_source_file ~mdx_dir src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
   let open Memo.O in
+  let* locks = Expander.expand_locks expander ~base:`Of_expander stanza.locks in
   let* () =
     Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
   and* () =
     (* Add the rule for generating the .corrected file using ocaml-mdx test *)
-    let mdx_action =
+    let mdx_action ~loc:_ =
       let open Action_builder.With_targets.O in
       let mdx_input_dependencies =
-        Action_builder.bind (Deps.read files) ~f:(fun dep_set ->
-            Action_builder.of_memo (Deps.to_dep_set dep_set ~dir))
+        let open Action_builder.O in
+        let* dep_set = Deps.read files in
+        Action_builder.of_memo
+          (let open Memo.O in
+          let+ dsr = Deps.to_dep_set dep_set ~version ~dir in
+          let src_path_msg =
+            Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src))
+          in
+          match dsr with
+          | Result.Ok r -> r
+          | Error (`Absolute str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files must be relative. This stanza \
+                   refers to the following absolute path:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ]
+          | Error (`Escapes_workspace str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files must stay within the \
+                   workspace. This stanza refers to the following path which \
+                   escapes:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ]
+          | Error (`Escapes_dir str) ->
+            User_error.raise ~loc
+              [ Pp.text
+                  "Paths referenced in mdx files cannot escape the directory. \
+                   This stanza refers to the following path which escapes:"
+              ; src_path_msg
+              ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+              ])
       in
+
       let dyn_deps =
         Action_builder.map mdx_input_dependencies ~f:(fun d -> ((), d))
       in
@@ -258,9 +327,10 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
       >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
       >>> Command.run ~dir:(Path.build dir) ~stdout_to:files.corrected
             executable command_line
+      >>| Action.Full.add_locks locks
       >>| Action.Full.add_sandbox sandbox
     in
-    Super_context.add_rule sctx ~loc ~dir mdx_action
+    Super_context.add_rule sctx ~loc ~dir (mdx_action ~loc)
   in
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action = Files.diff_action files in
@@ -285,7 +355,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
         | _ -> Resolve.Memo.return None)
     in
     let mode = Context.best_mode (Super_context.context sctx) in
-    let libs_include_paths = Lib.L.include_paths libs_to_include mode in
+    let libs_include_paths = Lib_flags.L.include_paths libs_to_include mode in
     let open Command.Args in
     let args =
       Path.Set.to_list libs_include_paths
@@ -324,7 +394,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
       ~modules ~flags ~requires_compile ~requires_link ~opaque:(Explicit false)
       ~js_of_ocaml:None ~package:None ()
   in
-  let+ () =
+  let+ (_ : Exe.dep_graphs) =
     Exe.build_and_link cctx
       ~program:{ name; main_module_name; loc }
       ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
@@ -352,7 +422,7 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
         (gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog
            ~mdx_prog_gen)
   in
-  let* only_packages = Only_packages.get () in
+  let* only_packages = Only_packages.get_mask () in
   let do_it =
     match (only_packages, t.package) with
     | None, _ | Some _, None -> true

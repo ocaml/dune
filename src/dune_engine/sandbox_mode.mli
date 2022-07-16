@@ -23,7 +23,7 @@
     don't use a separate directory and have rules that go and create/modify
     random files. *)
 
-open! Stdune
+open Import
 
 type some =
   | Symlink

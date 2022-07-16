@@ -1,4 +1,5 @@
 open! Import
+module Stanza = Dune_lang.Stanza
 
 let opam_ext = ".opam"
 
@@ -728,12 +729,18 @@ let default name dir =
   }
 
 let load_opam_file file name =
-  let open Option.O in
   let loc = Loc.in_file (Path.source file) in
-  let opam =
-    match Opam_file.load (Path.source file) with
-    | s -> Some s
-    | exception exn ->
+  let open Memo.O in
+  let+ opam =
+    let+ opam =
+      Path.source file
+      |> Fs_memo.with_lexbuf_from_file ~f:(fun lexbuf ->
+             try Ok (Opam_file.parse lexbuf)
+             with User_error.E _ as exn -> Error exn)
+    in
+    match opam with
+    | Ok s -> Some s
+    | Error exn ->
       User_warning.emit ~loc
         [ Pp.text
             "Unable to read opam file. Some information about this package \
@@ -742,6 +749,7 @@ let load_opam_file file name =
         ];
       None
   in
+  let open Option.O in
   let get_one name =
     let* opam = opam in
     let* value = Opam_file.get_field opam name in

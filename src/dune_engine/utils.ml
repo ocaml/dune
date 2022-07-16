@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 let system_shell_exn =
@@ -35,23 +34,6 @@ let program_not_found_message ?context ?hint ~loc prog =
 
 let program_not_found ?context ?hint ~loc prog =
   raise (User_error.E (program_not_found_message ?context ?hint ~loc prog))
-
-let library_not_found ?context ?hint lib =
-  raise (User_error.E (not_found "Library %s not found" ?context ?hint lib))
-
-let install_file ~(package : Package.Name.t) ~findlib_toolchain =
-  let package = Package.Name.to_string package in
-  match findlib_toolchain with
-  | None -> package ^ ".install"
-  | Some x -> sprintf "%s-%s.install" package (Context_name.to_string x)
-
-let line_directive ~filename:fn ~line_number =
-  let directive =
-    if Foreign_language.has_foreign_extension ~fn then "line" else ""
-  in
-  sprintf "#%s %d %S\n" directive line_number fn
-
-let local_bin p = Path.Build.relative p ".bin"
 
 let pp_command_hint command =
   let open Pp.O in

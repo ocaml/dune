@@ -174,7 +174,9 @@ Show errors when [chdir]ing outside of the build directory.
   File "dune", line 4, characters 17-26:
   4 |   (action (chdir ../../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
                        ^^^^^^^^^
-  Error: path outside the workspace: ../../dir from default
+  Error: Directory
+  $TESTCASE_ROOT/../../dir
+  is outside the build directory. This is not allowed.
   [1]
 
   $ cat > dune <<EOF
@@ -184,15 +186,12 @@ Show errors when [chdir]ing outside of the build directory.
   >   (action (chdir ../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
   > EOF
   $ dune build t
-  File "dune", line 1, characters 0-131:
-  1 | (rule
-  2 |   (targets t)
-  3 |   (deps (sandbox none))
+  File "dune", line 4, characters 17-23:
   4 |   (action (chdir ../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
-  Error: Rule has targets in different directories.
-  Targets:
-  - t
-  - . (context t)
+                       ^^^^^^
+  Error: Directory
+  $TESTCASE_ROOT/../dir
+  is outside the build directory. This is not allowed.
   [1]
 
 Sandboxing with hard links correctly resolves (follows) symbolic links.
@@ -237,19 +236,14 @@ be copied to the build directory.
   >   (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
-# CR-someday amokhov: Apparently, Dune thinks that [../link] points to the build
-# directory and raises a code error. Fix this.
-
+# CR-someday amokhov: The action observe a symlink. It should not be the case
+# since the symlink will surely not point to the right place.
   $ cat ../link
   hi
-  $ dune build t --sandbox hardlink 2>&1 | grep 'Internal error' -A 3
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Fs_memo.Watcher.watch called on a build path",
-    { path = In_build_dir "link" })
+  $ dune build t --sandbox hardlink
+  symbolic link
 
-Work around the above problem by using the absolute path [$PWD/../link].
-
+Using the absolute path [$PWD/../link].
   $ cat > dune <<EOF
   > (rule
   >   (targets t)
@@ -260,7 +254,6 @@ Work around the above problem by using the absolute path [$PWD/../link].
 Sandboxed actions can observe external dependencies as symbolic links.
 
   $ dune build t --sandbox hardlink
-  symbolic link
   $ cat _build/default/t
   hi
 

@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 module Buildable = Dune_file.Buildable
 
 module Virtual = struct

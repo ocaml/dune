@@ -15,6 +15,8 @@ let compare x y =
   | _, Dir _ -> Gt
   | Path x, Path y -> Path.compare x y
 
+let equal x y = Ordering.is_eq (compare x y)
+
 let to_dyn = function
   | String s -> Dyn.variant "string" [ String s ]
   | Path p -> Dyn.variant "path" [ Path.to_dyn p ]
@@ -38,6 +40,16 @@ let to_path ?error_loc t ~dir =
   match t with
   | String s -> Path.relative ?error_loc dir s
   | Dir p | Path p -> p
+
+let to_path_in_build_or_external ?error_loc t ~dir =
+  match t with
+  | String s -> Path.relative_to_source_in_build_or_external ?error_loc ~dir s
+  | Dir p | Path p ->
+    if Path.is_in_source_tree p then
+      Code_error.raise ?loc:error_loc
+        "to_path_in_build_or_external got a file in source directory"
+        [ ("path", Path.to_dyn p) ];
+    p
 
 module L = struct
   let to_dyn t = Dyn.List (List.map t ~f:to_dyn)

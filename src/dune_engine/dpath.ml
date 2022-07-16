@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 let install_dir_basename = "install"
 

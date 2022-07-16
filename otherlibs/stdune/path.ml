@@ -110,6 +110,10 @@ end = struct
     let base, _ = split_extension t in
     base ^ ext
 
+  let map_extension t ~f =
+    let base, ext = split_extension t in
+    base ^ f ext
+
   let cwd () = Sys.getcwd ()
 
   let initial_cwd = Fpath.initial_cwd
@@ -218,11 +222,9 @@ end = struct
         | [] -> Result.Ok t
         | "." :: rest -> loop t rest
         | ".." :: rest -> (
-          if is_root t then Result.Error ()
-          else
-            match parent t with
-            | None -> Error ()
-            | Some parent -> loop parent rest)
+          match parent t with
+          | None -> Result.Error `Outside_the_workspace
+          | Some parent -> loop parent rest)
         | fn :: rest ->
           if is_root t then loop fn rest else loop (t ^ "/" ^ fn) rest
       in
@@ -231,7 +233,7 @@ end = struct
     let relative ?error_loc t components =
       match relative_result t components with
       | Result.Ok t -> t
-      | Error () ->
+      | Error `Outside_the_workspace ->
         User_error.raise ?loc:error_loc
           [ Pp.textf "path outside the workspace: %s from %s"
               (String.concat ~sep:"/" components)
@@ -245,7 +247,7 @@ end = struct
         [ ("t", to_dyn t); ("path", String path) ];
     match L.relative_result t (explode_path path) with
     | Result.Ok t -> t
-    | Error () ->
+    | Error `Outside_the_workspace ->
       User_error.raise ?loc:error_loc
         [ Pp.textf "path outside the workspace: %s from %s" path t ]
 
@@ -343,6 +345,10 @@ end = struct
     let base, _ = split_extension t in
     base ^ ext
 
+  let map_extension t ~f =
+    let base, ext = split_extension t in
+    base ^ f ext
+
   module Prefix = struct
     type _ t =
       { len : int
@@ -421,6 +427,9 @@ module Local : sig
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
+
+    val relative_result :
+      t -> string list -> (t, [ `Outside_the_workspace ]) Result.t
   end
 
   val split_first_component : t -> (string * t) option
@@ -756,7 +765,15 @@ let relative ?error_loc t fn =
   | _ when not (Filename.is_relative fn) -> external_ (External.of_string fn)
   | _ -> (
     match t with
-    | In_source_tree p -> make_local_path (Local.relative p fn ?error_loc)
+    | In_source_tree p -> (
+      let fn' = explode_path fn in
+      match Local.L.relative_result p fn' with
+      | Ok l -> make_local_path l
+      | Error `Outside_the_workspace ->
+        external_
+          (External.relative
+             (External.of_string (Kind.to_absolute_filename (kind t)))
+             fn))
     | In_build_dir p -> in_build_dir (Local.relative p fn ?error_loc)
     | External s -> external_ (External.relative s fn))
 
@@ -989,6 +1006,17 @@ let explode_exn t =
   | Some s -> s
   | None -> Code_error.raise "Path.explode_exn" [ ("path", to_dyn t) ]
 
+let relative_to_source_in_build_or_external ?error_loc ~dir s =
+  match Build.extract_build_context dir with
+  | None -> relative ?error_loc (In_build_dir dir) s
+  | Some (bctxt, source) -> (
+    let path = relative ?error_loc (In_source_tree source) s in
+    match path with
+    | In_source_tree s ->
+      In_build_dir
+        (Build.relative (Build.of_string bctxt) (Source0.to_string s))
+    | In_build_dir _ | External _ -> path)
+
 let exists t = try Sys.file_exists (to_string t) with Sys_error _ -> false
 
 let readdir_unsorted t = Dune_filesystem_stubs.read_directory (to_string t)
@@ -1112,6 +1140,10 @@ let set_extension t ~ext =
   | External t -> external_ (External.set_extension t ~ext)
   | In_build_dir t -> in_build_dir (Local.set_extension t ~ext)
   | In_source_tree t -> in_source_tree (Local.set_extension t ~ext)
+
+let map_extension t ~f =
+  let base, ext = split_extension t in
+  extend_basename ~suffix:(f ext) base
 
 module O = Comparable.Make (T)
 module Map = O.Map

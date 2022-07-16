@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Dune_engine.Import
-open! Stdune
+open Import
 open Dune_file
 module SC = Super_context
 open Memo.O
@@ -53,7 +51,7 @@ let rule_kind ~(rule : Rule.t) ~(action : _ Action_builder.With_targets.t) =
     | Some target -> Alias_with_targets (alias, target))
 
 let interpret_and_add_locks ~expander locks action =
-  let+ locks = Memo.List.map locks ~f:(Expander.No_deps.expand_path expander) in
+  let+ locks = Expander.expand_locks expander ~base:`Of_expander locks in
   match locks with
   | [] -> action
   | _ ->
@@ -142,7 +140,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let* glob_in_src =
     let+ src_glob = Expander.No_deps.expand_str expander def.files in
     if Filename.is_relative src_glob then
-      Path.Source.relative src_dir src_glob ~error_loc:loc |> Path.source
+      Path.relative (Path.source src_dir) src_glob ~error_loc:loc
     else
       let since = (2, 7) in
       if def.syntax_version < since then
@@ -161,9 +159,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            (Path.to_string_maybe_quoted glob_in_src)
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.parent_exn glob_in_src in
-  let pred =
-    Path.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
-  in
+  let glob = Path.basename glob_in_src |> Glob.of_string_exn loc in
   let src_in_build =
     match Path.as_in_source_tree src_in_src with
     | None -> src_in_src
@@ -172,9 +168,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       Path.Build.append_source context.build_dir src_in_src |> Path.build
   in
   let* exists_or_generated =
-    match Path.as_in_source_tree src_in_src with
-    | None -> Memo.return (Path.exists src_in_src)
-    | Some src_in_src -> (
+    match src_in_src with
+    | In_build_dir _ -> assert false
+    | External _ -> Fs_memo.dir_exists src_in_src
+    | In_source_tree src_in_src -> (
       Source_tree.dir_exists src_in_src >>= function
       | true -> Memo.return true
       | false -> Load_rules.is_under_directory_target src_in_build)
@@ -190,7 +187,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       ];
   (* add rules *)
   let* files =
-    Build_system.eval_pred (File_selector.create ~dir:src_in_build pred)
+    Build_system.eval_pred (File_selector.of_glob ~dir:src_in_build glob)
   in
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
      add the corresponding rules, and then to convert the files to [targets]. To
@@ -203,8 +200,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         let basename = Path.basename file_src in
         let file_dst = Path.Build.relative dir basename in
         SC.add_rule sctx ~loc ~dir ~mode:def.mode
-          ((if def.add_line_directive then
-            Action_builder.copy_and_add_line_directive
+          ((if def.add_line_directive then Copy_line_directive.builder
            else Action_builder.copy)
              ~src:file_src ~dst:file_dst))
   in

@@ -1,11 +1,19 @@
-open! Dune_engine
-open Stdune
+open Import
 open Action_builder.O
 open Dep_conf
 
 let make_alias expander s =
   let loc = String_with_vars.loc s in
   Expander.expand_path expander s >>| Alias.of_user_written_path ~loc
+
+let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
+  let dir =
+    let dir = Package.dir pkg in
+    Path.Build.append_source context.build_dir dir
+  in
+  let name = Package.name pkg in
+  sprintf ".%s-files" (Package.Name.to_string name)
+  |> Alias.Name.of_string |> Alias.make ~dir
 
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Union (Path.Set))
@@ -132,12 +140,13 @@ let rec dep expander = function
     Other
       (let loc = String_with_vars.loc s in
        let* path = Expander.expand_path expander s in
-       let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
-       let dir = Path.parent_exn path in
-       let files_in dir =
-         Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
+       let files_in =
+         let glob = Path.basename path |> Glob.of_string_exn loc in
+         fun dir ->
+           Action_builder.paths_matching ~loc (File_selector.of_glob ~dir glob)
        in
        let+ files =
+         let dir = Path.parent_exn path in
          if recursive then collect_source_files_recursively dir ~f:files_in
          else files_in dir
        in
@@ -153,13 +162,11 @@ let rec dep expander = function
        let+ () =
          let pkg = Package.Name.of_string pkg in
          let context = Expander.context expander in
-         Action_builder.of_memo (Expander.find_package expander pkg)
-         >>= function
+         let sites = Expander.sites expander in
+         Action_builder.of_memo (Sites.find_package sites pkg) >>= function
          | Some (Local pkg) ->
            Action_builder.alias
-             (Alias.package_install
-                ~context:(Context.build_context context)
-                ~pkg)
+             (package_install ~context:(Context.build_context context) ~pkg)
          | Some (Installed pkg) ->
            let version =
              Dune_project.dune_version @@ Scope.project
@@ -244,7 +251,8 @@ and named_paths_builder ~expander l =
             (x :: builders, bindings)
           | None ->
             let x =
-              Action_builder.memoize ("dep " ^ name)
+              Action_builder.memoize ~cutoff:(List.equal Path.equal)
+                ("dep " ^ name)
                 (Action_builder.List.concat_map x ~f:to_action_builder)
             in
             let bindings =
@@ -267,7 +275,9 @@ let named ~expander l =
     let+ paths = builder in
     Dune_util.Value.L.paths paths
   in
-  let builder = Action_builder.memoize "deps" builder in
+  let builder =
+    Action_builder.memoize ~cutoff:(List.equal Value.equal) "deps" builder
+  in
   let bindings =
     Pform.Map.set bindings (Var Deps) (Expander.Deps.With builder)
   in

@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
   type map =
@@ -8,11 +8,12 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     -> f_string:(dir:Src.path -> Src.string -> Dst.string)
     -> f_path:(dir:Src.path -> Src.path -> Dst.path)
     -> f_target:(dir:Src.path -> Src.target -> Dst.target)
+    -> f_ext:(dir:Src.path -> Src.ext -> Dst.ext)
     -> Dst.t
 
-  let map_one_step f (t : Src.t) ~dir ~f_program ~f_string ~f_path ~f_target :
-      Dst.t =
-    let f t ~dir = f t ~dir ~f_program ~f_string ~f_path ~f_target in
+  let map_one_step f (t : Src.t) ~dir ~f_program ~f_string ~f_path ~f_target
+      ~f_ext : Dst.t =
+    let f t ~dir = f t ~dir ~f_program ~f_string ~f_path ~f_target ~f_ext in
     match t with
     | Run (prog, args) ->
       Run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
@@ -30,12 +31,10 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Ignore (outputs, t) -> Ignore (outputs, f t ~dir)
     | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))
     | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
-    | Cat x -> Cat (f_path ~dir x)
+    | Cat xs -> Cat (List.map xs ~f:(f_path ~dir))
     | Copy (x, y) -> Copy (f_path ~dir x, f_target ~dir y)
     | Symlink (x, y) -> Symlink (f_path ~dir x, f_target ~dir y)
     | Hardlink (x, y) -> Hardlink (f_path ~dir x, f_target ~dir y)
-    | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (f_path ~dir x, f_target ~dir y)
     | System x -> System (f_string ~dir x)
     | Bash x -> Bash (f_string ~dir x)
     | Write_file (x, perm, y) ->
@@ -52,10 +51,8 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
         , f_target ~dir target )
     | No_infer t -> No_infer (f t ~dir)
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(fun t -> f t ~dir))
-    | Format_dune_file (ver, src, dst) ->
-      Format_dune_file (ver, f_path ~dir src, f_target ~dir dst)
-    | Cram script -> Cram (f_path ~dir script)
+    | Extension ext -> Extension (f_ext ~dir ext)
 
-  let rec map t ~dir ~f_program ~f_string ~f_path ~f_target =
-    map_one_step map t ~dir ~f_program ~f_string ~f_path ~f_target
+  let rec map t ~dir ~f_program ~f_string ~f_path ~f_target ~f_ext =
+    map_one_step map t ~dir ~f_program ~f_string ~f_path ~f_target ~f_ext
 end

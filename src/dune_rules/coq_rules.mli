@@ -1,4 +1,4 @@
-open! Dune_engine
+open Import
 
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
@@ -7,7 +7,6 @@ open! Dune_engine
 
 (* Build rules for Coq's .v -> .vo files *)
 
-open! Stdune
 open Coq_stanza
 
 module Bootstrap : sig
@@ -18,12 +17,15 @@ module Bootstrap : sig
     | Bootstrap_prelude  (** We are compiling the prelude itself *)
 end
 
+val coqdoc_directory_targets :
+  dir:Path.Build.t -> Coq_stanza.Theory.t -> Loc.t Path.Build.Map.t
+
 val setup_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Theory.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.t
+  -> unit Memo.t
 
 val install_rules :
      sctx:Super_context.t
@@ -31,24 +33,21 @@ val install_rules :
   -> Theory.t
   -> Install.Entry.Sourced.t list Memo.t
 
-val coqpp_rules :
-     sctx:Super_context.t
-  -> dir:Path.Build.t
-  -> Coqpp.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.t
+val setup_coqpp_rules :
+  sctx:Super_context.t -> dir:Path.Build.t -> Coqpp.t -> unit Memo.t
 
-val extraction_rules :
+val setup_extraction_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Extraction.t
-  -> Action.Full.t Action_builder.With_targets.t list Memo.t
+  -> unit Memo.t
 
 (** [deps_of ~dir ~boot_type m] produces an action builder that can be run to
     build all dependencies of the Coq module [m]. *)
 val deps_of :
      dir:Path.Build.t
-  -> boot_type:Bootstrap.t
+  -> boot_type:Bootstrap.t Resolve.Memo.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 

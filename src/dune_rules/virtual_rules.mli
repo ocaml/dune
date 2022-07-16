@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 val setup_copy_rules_for_impl :
   sctx:Super_context.t -> dir:Path.Build.t -> Vimpl.t -> unit Memo.t

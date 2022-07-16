@@ -83,7 +83,6 @@ let () =
   | Some _ -> ());
   let oc = open_out out in
   let pr fmt = fprintf oc (fmt ^^ "\n") in
-  pr "open! Dune_engine\n";
   pr "let library_path = %s\n" ((list string) !library_path);
   pr "let roots : string option Install.Section.Paths.Roots.t =";
   pr "  { lib_root = %s" (option string !library_destdir);

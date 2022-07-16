@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type t = private
   | Env of Env.Var.t
@@ -97,11 +97,9 @@ module Facts : sig
       original [Files.t]. *)
   val group_paths_as_fact_files : t list -> Fact.Files.t
 
-  (** Dependencies on directory targets. *)
-  val dirs : t -> Path.Set.t
-
-  (** Parent directories of all dependencies. *)
-  val parent_dirs : t -> Path.Set.t
+  (** directory targets and parent directories of all dependencies in the build
+      directory. Needed for sandboxing *)
+  val necessary_dirs_for_sandboxing : t -> Path.Build.Set.t
 
   val digest : t -> env:Env.t -> Digest.t
 

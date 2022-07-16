@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 let toplevel_dir_prefix = ".toplevel."
 
@@ -100,7 +99,7 @@ let setup_module_rules t =
     Action_builder.write_file_dyn path
       (let* libs = Resolve.Memo.read requires_compile in
        let include_dirs =
-         Path.Set.to_list (Lib.L.include_paths libs Mode.Byte)
+         Path.Set.to_list (Lib_flags.L.include_paths libs Mode.Byte)
        in
        let* pp_ppx = pp_flags t in
        let pp_dirs = Source.pp_ml t.source ~include_dirs in
@@ -113,7 +112,7 @@ let setup_rules_and_return_exe_path t =
   let open Memo.O in
   let linkage = Exe.Linkage.custom (Compilation_context.context t.cctx) in
   let program = Source.program t.source in
-  let* () =
+  let* (_ : Exe.dep_graphs) =
     Exe.build_and_link t.cctx ~program ~linkages:[ linkage ]
       ~link_args:
         (Action_builder.return
@@ -137,7 +136,7 @@ module Stanza = struct
     let open Memo.O in
     let source = Source.of_stanza ~dir ~toplevel in
     let* expander = Super_context.expander sctx ~dir in
-    let scope = Super_context.find_scope_by_dir sctx dir in
+    let* scope = Scope.DB.find_by_dir dir in
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps =
       match toplevel.pps with

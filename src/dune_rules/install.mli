@@ -1,5 +1,5 @@
 (** Opam install file *)
-open! Stdune
+open Import
 
 module Dst : sig
   type t
@@ -111,7 +111,7 @@ module Entry : sig
   end
 
   val adjust_dst :
-       src:Dune_engine.String_with_vars.t
+       src:Dune_lang.String_with_vars.t
     -> dst:string option
     -> section:Section.t
     -> Dst.t
@@ -147,12 +147,8 @@ module Entry_with_site : sig
     }
 end
 
-module Metadata : sig
-  type 'src t =
-    | DefaultEntry of 'src Entry.t
-    | UserDefinedEntry of 'src Entry.t
-end
-
 val gen_install_file : Path.t Entry.t list -> string
 
+(** XXX what's this function doing here? it has nothing to do with generating
+    any rules *)
 val load_install_file : Path.t -> Path.t Entry.t list

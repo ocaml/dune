@@ -2,11 +2,11 @@ open Stdune
 open Dune_engine
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
+module Stanza = Dune_lang.Stanza
 module Super_context = Dune_rules.Super_context
 module Context = Dune_rules.Context
 module Config = Dune_util.Config
-module Local_install_path = Dune_engine.Local_install_path
-module Lib_name = Dune_engine.Lib_name
+module Lib_name = Dune_rules.Lib_name
 module Build_config = Dune_engine.Build_config
 module Build_system = Dune_engine.Build_system
 module Load_rules = Dune_engine.Load_rules
@@ -21,7 +21,6 @@ module Action_to_sh = Dune_engine.Action_to_sh
 module Dpath = Dune_engine.Dpath
 module Install = Dune_rules.Install
 module Section = Dune_engine.Section
-module Watermarks = Dune_rules.Watermarks
 module Diff_promotion = Dune_engine.Diff_promotion
 module Colors = Dune_rules.Colors
 module Dune_project = Dune_engine.Dune_project
@@ -29,6 +28,7 @@ module Workspace = Dune_rules.Workspace
 module Cached_digest = Dune_engine.Cached_digest
 module Targets = Dune_engine.Targets
 module Profile = Dune_rules.Profile
+module Resolve = Dune_rules.Resolve
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph
@@ -127,25 +127,23 @@ module Scheduler = struct
 
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
-    let config = Dune_config.for_scheduler dune_config None stats in
+    let config =
+      let insignificant_changes = Common.insignificant_changes common in
+      Dune_config.for_scheduler dune_config stats ~insignificant_changes
+    in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
     let stats = Common.stats common in
-    let rpc_where = Some (Dune_rpc_impl.Where.default ()) in
-    let config = Dune_config.for_scheduler dune_config rpc_where stats in
+    let config =
+      let insignificant_changes = Common.insignificant_changes common in
+      Dune_config.for_scheduler dune_config stats ~insignificant_changes
+    in
     let file_watcher = Common.file_watcher common in
-    let run =
-      match Common.rpc common with
-      | None -> run
-      | Some rpc ->
-        fun () ->
-          Fiber.fork_and_join_unit
-            (fun () ->
-              let rpc_config = Dune_rpc_impl.Server.config rpc in
-              Dune_rpc_impl.Run.run rpc_config config.stats)
-            run
+    let rpc = Common.rpc common in
+    let run () =
+      Fiber.fork_and_join_unit (fun () -> Dune_rpc_impl.Server.run rpc) run
     in
     Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end

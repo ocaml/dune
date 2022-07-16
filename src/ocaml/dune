@@ -1,0 +1,4 @@
+(library
+ (name ocaml)
+ ;; XXX drop the dependencies on memo
+ (libraries stdune dune_sexp ocaml_config memo))

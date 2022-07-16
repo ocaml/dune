@@ -27,8 +27,6 @@ module Clflags = struct
   let t () = Fdecl.get t
 end
 
-type t = Package.t Package.Name.Map.t option
-
 let conf =
   Memo.lazy_ (fun () ->
       match Clflags.t () with
@@ -64,10 +62,10 @@ let conf =
             Option.some_if (vendored || included) (name, pkg))
         >>| List.filter_opt >>| Package.Name.Map.of_list_exn >>| Option.some)
 
-let get () = Memo.Lazy.force conf
+let get_mask () = Memo.Lazy.force conf
 
 let packages_of_project project =
-  let+ t = get () in
+  let+ t = Memo.Lazy.force conf in
   let packages = Dune_project.packages project in
   match t with
   | None -> packages
@@ -76,3 +74,70 @@ let packages_of_project project =
         match (p, mask) with
         | Some _, Some _ -> p
         | _ -> None)
+
+let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
+  List.filter_map ~f:(fun stanza ->
+      let include_stanza =
+        match Dune_file.stanza_package stanza with
+        | None -> true
+        | Some package ->
+          let name = Package.name package in
+          Package.Name.Map.mem visible_pkgs name
+      in
+      if include_stanza then Some stanza
+      else
+        match stanza with
+        | Dune_file.Library l ->
+          let open Option.O in
+          let+ redirect = Dune_file.Library_redirect.Local.of_private_lib l in
+          Dune_file.Library_redirect redirect
+        | _ -> None)
+
+let filtered_stanzas_by_contexts =
+  Memo.lazy_ @@ fun () ->
+  let* contexts = Context.DB.all () in
+  let+ { Dune_load.dune_files; packages = _; projects = _ } =
+    Dune_load.load ()
+  in
+  Context_name.Map.of_list_map_exn contexts ~f:(fun context ->
+      ( context.name
+      , Memo.lazy_ @@ fun () ->
+        let* stanzas = Dune_load.Dune_files.eval ~context dune_files in
+        let+ only_packages = Memo.Lazy.force conf in
+        match only_packages with
+        | None -> stanzas
+        | Some visible_pkgs ->
+          List.map stanzas ~f:(fun (dir_conf : Dune_file.t) ->
+              { dir_conf with
+                stanzas =
+                  filter_out_stanzas_from_hidden_packages ~visible_pkgs
+                    dir_conf.stanzas
+              }) ))
+
+let filtered_stanzas (context : Context.t) =
+  let* map = Memo.Lazy.force filtered_stanzas_by_contexts in
+  Context_name.Map.find_exn map context.name |> Memo.Lazy.force
+
+let get () =
+  let* { Dune_load.dune_files = _; packages; projects = _ } =
+    Dune_load.load ()
+  in
+  let+ only_packages = Memo.Lazy.force conf in
+  Option.value only_packages ~default:packages
+
+let stanzas_in_dir dir =
+  if Path.Build.is_root dir then Memo.return None
+  else
+    let* dune_file = Dune_load.Dune_files.in_dir dir in
+    match dune_file with
+    | None -> Memo.return None
+    | Some dune_file ->
+      let* only_packages = Memo.Lazy.force conf in
+      let stanzas =
+        match only_packages with
+        | None -> dune_file.stanzas
+        | Some visible_pkgs ->
+          filter_out_stanzas_from_hidden_packages ~visible_pkgs
+            dune_file.stanzas
+      in
+      Memo.return (Some { dune_file with stanzas })

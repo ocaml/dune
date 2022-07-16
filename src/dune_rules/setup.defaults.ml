@@ -1,5 +1,3 @@
-open! Dune_engine
-
 let library_path = []
 
 let roots : string option Install.Section.Paths.Roots.t =

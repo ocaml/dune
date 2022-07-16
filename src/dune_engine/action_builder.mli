@@ -1,6 +1,5 @@
 (** Action builder *)
 
-open! Stdune
 open! Import
 
 include module type of Action_builder0
@@ -18,6 +17,8 @@ module With_targets : sig
   val return : 'a -> 'a t
 
   val add : 'a t -> file_targets:Path.Build.t list -> 'a t
+
+  val add_directories : 'a t -> directory_targets:Path.Build.t list -> 'a t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
@@ -164,9 +165,6 @@ val with_stdout_to :
   -> Action.Full.t With_targets.t
 
 val copy : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
-
-val copy_and_add_line_directive :
-  src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 
 val symlink : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 

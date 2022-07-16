@@ -1,7 +1,6 @@
-open! Stdune
+open Import
 open Fiber.O
 open Dune_rpc_server
-open Import
 module Initialize = Dune_rpc.Initialize
 module Public = Dune_rpc.Public
 module Versioned = Dune_rpc.Versioned
@@ -13,32 +12,122 @@ module Id = Dune_rpc.Id
 module Diagnostic = Dune_rpc.Diagnostic
 module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
+module Stanza = Dune_lang.Stanza
 module Source_tree = Dune_engine.Source_tree
 module Build_config = Dune_engine.Build_config
 module Dune_project = Dune_engine.Dune_project
 module Diff_promotion = Dune_engine.Diff_promotion
-module Build_system = Dune_engine.Build_system
 module Build_outcome = Decl.Build_outcome
+module String_with_vars = Dune_lang.String_with_vars
+module Pform = Dune_lang.Pform
 module Status = Decl.Status
+
+module Config = struct
+  type t =
+    { handler : Dune_rpc_server.t
+    ; pool : Fiber.Pool.t
+    ; backlog : int
+    ; root : string
+    ; where : Dune_rpc.Where.t
+    }
+end
+
+module Run = struct
+  module Registry = Dune_rpc_private.Registry
+  module Server = Dune_rpc_server.Make (Csexp_rpc.Session)
+
+  type t =
+    { server : Csexp_rpc.Server.t
+    ; handler : Dune_rpc_server.t
+    ; pool : Fiber.Pool.t
+    ; where : Dune_rpc.Where.t
+    ; stats : Dune_stats.t option
+    ; root : string
+    }
+
+  let t_var : t Fiber.Var.t = Fiber.Var.create ()
+
+  let of_config { Config.handler; backlog; pool; root; where } stats =
+    let server = Csexp_rpc.Server.create (Where.to_socket where) ~backlog in
+    { server; handler; stats; pool; root; where }
+
+  let run t =
+    Fiber.Var.set t_var t (fun () ->
+        let cleanup_registry = ref None in
+        let run_cleanup_registry () =
+          match !cleanup_registry with
+          | None -> ()
+          | Some path ->
+            Fpath.unlink_no_err path;
+            cleanup_registry := None
+        in
+        let with_print_errors f () =
+          Fiber.with_error_handler f ~on_error:(fun exn ->
+              Format.eprintf "%a@." Exn_with_backtrace.pp_uncaught exn;
+              Exn_with_backtrace.reraise exn)
+        in
+        Fiber.finalize
+          (with_print_errors (fun () ->
+               let open Fiber.O in
+               Fiber.fork_and_join_unit
+                 (fun () ->
+                   let* sessions = Csexp_rpc.Server.serve t.server in
+                   let () =
+                     let (`Caller_should_write { Registry.File.path; contents })
+                         =
+                       let registry_config =
+                         Registry.Config.create (Lazy.force Dune_util.xdg)
+                       in
+                       let dune =
+                         let pid = Unix.getpid () in
+                         let where =
+                           match t.where with
+                           | `Ip (host, port) -> `Ip (host, port)
+                           | `Unix a ->
+                             `Unix
+                               (if Filename.is_relative a then
+                                Filename.concat (Sys.getcwd ()) a
+                               else a)
+                         in
+                         Registry.Dune.create ~where ~root:t.root ~pid
+                       in
+                       Registry.Config.register registry_config dune
+                     in
+                     let (_ : Fpath.mkdir_p_result) =
+                       Fpath.mkdir_p (Filename.dirname path)
+                     in
+                     Io.String_path.write_file path contents;
+                     cleanup_registry := Some path;
+                     at_exit run_cleanup_registry
+                   in
+                   let* () = Server.serve sessions t.stats t.handler in
+                   Fiber.Pool.stop t.pool)
+                 (fun () -> Fiber.Pool.run t.pool)))
+          ~finally:(fun () ->
+            run_cleanup_registry ();
+            Fiber.return ()))
+
+  let stop () =
+    let open Fiber.O in
+    let* t = Fiber.Var.get t_var in
+    match t with
+    | None -> Code_error.raise "rpc not running" []
+    | Some s ->
+      Csexp_rpc.Server.stop s.server;
+      Fiber.return ()
+end
+
+let stop = Run.stop
 
 type pending_build_action =
   | Build of Dep_conf.t list * Build_outcome.t Fiber.Ivar.t
 
 (* TODO un-copy-paste from dune/bin/arg.ml *)
 let dep_parser =
-  let open Dune_engine in
   Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
     Dep_conf.decode
 
-module Client = struct
-  type t = { mutable next_id : int }
-
-  let create () = { next_id = 0 }
-
-  let to_dyn { next_id = _ } =
-    let open Dyn in
-    opaque ()
-end
+module Client = Stdune.Unit
 
 module Session_comparable = Comparable.Make (struct
   type t = Client.t Session.t
@@ -126,17 +215,17 @@ end = struct
 end
 
 type t =
-  { config : Run.Config.t
+  { config : Config.t
   ; pending_build_jobs :
       (Dep_conf.t list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
-  ; pool : Fiber.Pool.t
   ; mutable clients : Clients.t
+  ; stats : Dune_stats.t option
   }
 
 let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
-    let client = Client.create () in
+    let client = () in
     t.clients <- Clients.add_session t.clients session;
     Fiber.return client
   in
@@ -207,12 +296,11 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       let targets =
         List.map targets ~f:(fun s ->
             Dune_lang.Decoder.parse dep_parser
-              (Univ_map.set Univ_map.empty
-                 Dune_engine.String_with_vars.decoding_env_key
+              (Univ_map.set Univ_map.empty String_with_vars.decoding_env_key
                  (* CR-someday aalekseyev: hardcoding the version here is not
                     ideal, but it will do for now since this command is not
                     stable and we're only using it in tests. *)
-                 (Dune_engine.Pform.Env.initial (3, 0)))
+                 (Pform.Env.initial (3, 0)))
               (Dune_lang.Parser.parse_string ~fname:"dune rpc"
                  ~mode:Dune_lang.Parser.Mode.Single s))
       in
@@ -292,8 +380,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
           let project = Source_tree.Dir.project dir in
           Dune_project.dune_version project)
       in
-      let module Format_dune_lang = Dune_engine.Format_dune_lang in
-      Format_dune_lang.format_string ~version contents
+      Dune_lang.Format.format_string ~version contents
     in
     Handler.implement_request rpc Procedures.Public.format_dune_file f
   in
@@ -312,17 +399,24 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
   in
   rpc
 
-let create ~root =
+let create ~root stats =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t) in
   let pool = Fiber.Pool.create () in
-  let config = Run.Config.Server { handler; backlog = 10; pool; root } in
-  let res = { config; pending_build_jobs; clients = Clients.empty; pool } in
+  let where = Where.default () in
+  let config = { Config.handler; backlog = 10; pool; root; where } in
+  let res = { config; pending_build_jobs; clients = Clients.empty; stats } in
   Fdecl.set t res;
   res
 
-let config t = t.config
+let listening_address t = t.config.where
+
+let run t =
+  let* () = Fiber.return () in
+  Run.run (Run.of_config t.config t.stats)
+
+let stats (t : t) = t.stats
 
 let pending_build_action t =
   Job_queue.read t.pending_build_jobs

@@ -1,5 +1,7 @@
 include Stdlib.Filename
 
+type t = string
+
 let split_extension fn =
   let ext = extension fn in
   (String.sub fn ~pos:0 ~len:(String.length fn - String.length ext), ext)

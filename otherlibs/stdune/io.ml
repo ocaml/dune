@@ -271,6 +271,14 @@ struct
             aux ((string_of_int lnum, line) :: acc) (lnum + 1)
         in
         aux [] 1)
+
+  let cat ?binary ?dst fn =
+    let dst =
+      match dst with
+      | Some dst -> dst
+      | None -> stdout
+    in
+    with_file_in ?binary fn ~f:(fun ic -> copy_channels ic dst)
 end
 
 include Make (Path)

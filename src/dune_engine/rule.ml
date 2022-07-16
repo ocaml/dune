@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 module Action_builder = Action_builder0
 
@@ -36,7 +35,7 @@ module Promote = struct
   type t =
     { lifetime : Lifetime.t
     ; into : Into.t option
-    ; only : Predicate_lang.Glob.t option
+    ; only : Filename.t Predicate.t option
     }
 end
 

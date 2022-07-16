@@ -1,5 +1,4 @@
 {
-open Dune_engine
 open Import
 
 type t = Module_name.Unique.Set.t Ml_kind.Dict.t
@@ -39,24 +38,25 @@ and impls acc = parse
 {
 let parse s = ocamlobjinfo empty (Lexing.from_string s)
 
-let rules ~dir ~(ctx : Context.t) ~unit =
+let rules ~dir ~(ctx : Context.t) ~sandbox ~unit =
   let output =
     Path.Build.relative dir (Path.basename unit)
     |> Path.Build.extend_basename ~suffix:".ooi-deps"
   in
   let no_approx =
-    if Ocaml_version.ooi_supports_no_approx ctx.version then
+    if Ocaml.Version.ooi_supports_no_approx ctx.version then
       [Command.Args.A "-no-approx"]
     else
       []
   in
   let no_code =
-    if Ocaml_version.ooi_supports_no_code ctx.version then
+    if Ocaml.Version.ooi_supports_no_code ctx.version then
       [Command.Args.A "-no-code"]
     else
       []
   in
-  ( Command.run ~dir:(Path.build dir) ctx.ocamlobjinfo
+  ( Command.run ?sandbox
+      ~dir:(Path.build dir) ctx.ocamlobjinfo
       (List.concat
          [ no_approx
          ; no_code

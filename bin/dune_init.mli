@@ -1,5 +1,4 @@
 (** Initialize dune components *)
-open! Dune_engine
 
 open! Stdune
 
@@ -20,10 +19,10 @@ end
 module Init_context : sig
   type t =
     { dir : Path.t
-    ; project : Dune_project.t
+    ; project : Dune_engine.Dune_project.t
     }
 
-  val make : string option -> t
+  val make : string option -> t Memo.t
 end
 
 (** A [Component.t] is a set of files that can be built or included as part of a

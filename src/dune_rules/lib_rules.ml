@@ -1,7 +1,4 @@
-open! Dune_engine
-open! Stdune
 open Import
-open! No_io
 open Memo.O
 module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
@@ -43,11 +40,8 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
       let ocaml_flags = Ocaml_flags.get flags mode in
-      let standard =
-        let project =
-          Super_context.find_scope_by_dir sctx dir |> Scope.project
-        in
-
+      let* standard =
+        let+ project = Scope.DB.find_by_dir dir |> Memo.map ~f:Scope.project in
         match Dune_project.use_standard_c_and_cxx_flags project with
         | Some true when Buildable.has_foreign_cxx lib.buildable ->
           Cxx_flags.get_flags ~for_:Link ctx
@@ -205,10 +199,12 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     |> Memo.parallel_map ~f:(Memo.map ~f:Path.build)
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
-  let standard =
-    let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+  let* standard =
+    let+ project =
+      let+ scope = Scope.DB.find_by_dir dir in
+      Scope.project scope
+    in
     let ctx = Super_context.context sctx in
-
     match Dune_project.use_standard_c_and_cxx_flags project with
     | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
       Cxx_flags.get_flags ~for_:Link ctx
@@ -247,8 +243,8 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       modes.native && modes.byte
       && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
     in
-    let standard =
-      let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+    let* standard =
+      let+ project = Scope.DB.find_by_dir dir >>| Scope.project in
       match Dune_project.use_standard_c_and_cxx_flags project with
       | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
         Cxx_flags.get_flags ~for_:Link ctx
@@ -303,7 +299,8 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
       in
       Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
 
-let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
+let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
+    ~expander ~scope =
   let obj_dir = Compilation_context.obj_dir cctx in
   let dir = Compilation_context.dir cctx in
   let flags = Compilation_context.flags cctx in
@@ -314,7 +311,6 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
   let sctx = Compilation_context.super_context cctx in
   let ctx = Compilation_context.context cctx in
   let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.lib_config in
-  let impl_only = Modules.impl_only modules in
   let open Memo.O in
   let* () =
     Modules.exit_module modules
@@ -339,10 +335,6 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
                   Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc
                     (Action_builder.copy ~src ~dst)))
   in
-  let top_sorted_modules =
-    Dep_graph.top_closed_implementations
-      (Compilation_context.dep_graphs cctx).impl impl_only
-  in
   let modes = Compilation_context.modes cctx in
   (* The [dir] below is used as an object directory without going through
      [Obj_dir]. That's fragile and will break if the layout of the object
@@ -358,7 +350,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx ~expander ~scope =
       (* ctypes type_gen and function_gen scripts should not be included in the
          library. Otherwise they will spew stuff to stdout on library load. *)
       match lib.buildable.ctypes with
-      | Some ctypes -> Ctypes_rules.non_installable_modules ctypes
+      | Some ctypes -> Ctypes_stanza.non_installable_modules ctypes
       | None -> []
     in
     Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules
@@ -395,34 +387,11 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
   let ctx = Super_context.context sctx in
-  let instrumentation_backend =
-    Lib.DB.instrumentation_backend (Scope.libs scope)
-  in
-  let* preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-         ~instrumentation_backend)
-  in
-  let* instrumentation_deps =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.instrumentation_deps lib.buildable.preprocess
-         ~instrumentation_backend)
-  in
-  (* Preprocess before adding the alias module as it doesn't need
-     preprocessing *)
-  let* pp =
-    Preprocessing.make sctx ~dir ~scope ~preprocess ~expander
-      ~preprocessor_deps:lib.buildable.preprocessor_deps ~instrumentation_deps
-      ~lint:lib.buildable.lint
+  let* modules, pp =
+    Buildable_rules.modules_rules sctx lib.buildable expander ~dir scope
+      source_modules
       ~lib_name:(Some (snd lib.name))
-  in
-  let* modules =
-    let add_empty_intf = lib.buildable.empty_module_interface_if_absent in
-    Modules.map_user_written source_modules ~f:(fun m ->
-        let* m = Pp_spec.pp_module pp m in
-        if add_empty_intf && not (Module.has m ~ml_kind:Intf) then
-          Module_compilation.with_empty_intf ~sctx ~dir m
-        else Memo.return m)
+      ~empty_intf_modules:`Lib
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -440,8 +409,8 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)
     ?stdlib:lib.stdlib ~package ?vimpl ~modes
 
-let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
-    ~compile_info =
+let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
+    ~dir_contents ~compile_info =
   let source_modules =
     Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
   in
@@ -454,18 +423,25 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let stdlib_dir = (Compilation_context.context cctx).Context.stdlib_dir in
+  let top_sorted_modules =
+    let impl_only = Modules.impl_only modules in
+    Dep_graph.top_closed_implementations
+      (Compilation_context.dep_graphs cctx).impl impl_only
+  in
   let* () =
     Memo.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
+  let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir in
   let+ () =
     Memo.when_
       (not (Library.is_virtual lib))
-      (fun () -> setup_build_archives lib ~cctx ~expander ~scope)
+      (fun () ->
+        setup_build_archives lib ~top_sorted_modules ~cctx ~expander ~scope)
   and+ () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     Memo.when_
@@ -473,7 +449,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       (fun () ->
         build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
           ~dir_contents ~vlib_stubs_o_files)
-  and+ () = Odoc.setup_library_odoc_rules cctx lib
+  and+ () = Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =
     Sub_system.gen_rules
       { super_context = sctx
@@ -497,10 +473,12 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
       () )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
-  let* compile_info =
+  let buildable = lib.buildable in
+  let* local_lib, compile_info =
     Lib.DB.get_compile_info (Scope.libs scope) (Library.best_name lib)
-      ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
+      ~allow_overlaps:buildable.allow_overlapping_dependencies
   in
+  let local_lib = Lib.Local.of_lib_exn local_lib in
   let f () =
     let* source_modules =
       Dir_contents.ocaml dir_contents
@@ -510,14 +488,14 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info
     in
     let* () =
-      let buildable = lib.Library.buildable in
-      match buildable.Buildable.ctypes with
+      match buildable.ctypes with
       | None -> Memo.return ()
       | Some _ctypes ->
-        Ctypes_rules.gen_rules ~loc:(fst lib.Library.name) ~cctx ~buildable
-          ~sctx ~scope ~dir
+        Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope
+          ~dir
     in
-    library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
+    library_rules lib ~local_lib ~cctx ~source_modules ~dir_contents
+      ~compile_info
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps

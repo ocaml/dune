@@ -47,8 +47,8 @@ let run =
   let config =
     { Scheduler.Config.concurrency = 1
     ; display = { verbosity = Quiet; status_line = false }
-    ; rpc = None
     ; stats = None
+    ; insignificant_changes = `React
     }
   in
   fun run ->
@@ -124,5 +124,5 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
   run case;
   [%expect
     {|
-    $PATH/dune build --passive-watch-mode --root . returned 1
+    $PATH/dune build --passive-watch-mode --root . returned 130
     [PASS] found . at unix:path=%24CWD/_build/.rpc/dune |}]

@@ -67,7 +67,7 @@ let run t args =
   String.trim s
 
 let git_accept () =
-  Process.Accept (Predicate_lang.union [ Element 0; Element 128 ])
+  Process.Accept (Predicate.create (fun x -> Int.equal x 0 || Int.equal x 128))
 
 let run_git t args =
   let res =

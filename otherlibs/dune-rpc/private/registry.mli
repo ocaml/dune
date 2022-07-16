@@ -68,7 +68,7 @@ module Poll (Fiber : sig
 
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
   end
-end) (IO : sig
+end) (_ : sig
   val scandir : string -> (string list, exn) result Fiber.t
 
   val stat : string -> ([ `Mtime of float ], exn) result Fiber.t

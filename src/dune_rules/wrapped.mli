@@ -1,5 +1,3 @@
-open! Dune_engine
-
 type t =
   | Simple of bool
   | Yes_with_transition of string

@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 type t =
   { has_native : bool
@@ -15,7 +14,7 @@ type t =
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; profile : Profile.t
   ; ocaml_version_string : string
-  ; ocaml_version : Ocaml_version.t
+  ; ocaml_version : Ocaml.Version.t
   ; instrument_with : Lib_name.t list
   ; context_name : Context_name.t
   }
@@ -53,3 +52,5 @@ let linker_can_create_empty_archives t =
 let hash = Poly.hash
 
 let equal = Poly.equal
+
+let to_dyn = Dyn.opaque

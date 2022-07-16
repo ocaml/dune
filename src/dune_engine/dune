@@ -11,6 +11,7 @@
   dag
   memo
   xdg
+  ocaml
   dune_re
   threads.posix
   opam_file_format
@@ -35,5 +36,3 @@
   ocaml_inotify
   async_inotify_for_dune)
  (synopsis "Internal Dune library, do not use!"))
-
-(ocamllex dune_lexer)

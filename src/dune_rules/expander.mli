@@ -1,6 +1,5 @@
 (** An expander is able to expand any dune template. *)
 
-open! Dune_engine
 open Import
 
 type t
@@ -11,11 +10,6 @@ val dir : t -> Path.Build.t
 
 val context : t -> Context.t
 
-(** local or installed package *)
-type any_package =
-  | Local of Package.t
-  | Installed of Dune_package.t
-
 val make :
      scope:Scope.t
   -> scope_host:Scope.t
@@ -23,8 +17,7 @@ val make :
   -> lib_artifacts:Artifacts.Public_libs.t
   -> lib_artifacts_host:Artifacts.Public_libs.t
   -> bin_artifacts_host:Artifacts.Bin.t
-  -> find_package:(Package.Name.t -> any_package option Memo.t)
-  -> t
+  -> t Memo.t
 
 val set_foreign_flags :
      t
@@ -144,4 +137,7 @@ val map_exe : t -> Path.t -> Path.t
 
 val artifacts : t -> Artifacts.Bin.t
 
-val find_package : t -> Package.Name.t -> any_package option Memo.t
+val expand_locks :
+  base:[ `Of_expander | `This of Path.t ] -> t -> Locks.t -> Path.t list Memo.t
+
+val sites : t -> Sites.t

@@ -1,4 +1,4 @@
-open Stdune
+open Import
 open Memo.O
 
 (* CR-someday amokhov: We probably want to add a new variant [Dir] to provide
@@ -71,21 +71,25 @@ module Map = struct
   let has_universe t = mem t Universe
 end
 
+let as_in_build_dir_no_source = function
+  | Path.In_source_tree _ ->
+    Code_error.raise "we don't depend on paths from the source" []
+  | External _ -> None
+  | In_build_dir p -> Some p
+
 module Fact = struct
   (* CR-someday amokhov: Find a better name, perhaps, [Files_and_dirs]? *)
   module Files = struct
     type t =
       { files : Digest.t Path.Map.t
       ; dirs : Digest.t Path.Map.t (* Only for file selectors for now *)
-      ; parent_dirs : Path.Set.t
       ; digest : Digest.t
       }
 
-    let to_dyn { files; dirs; parent_dirs; digest } =
+    let to_dyn { files; dirs; digest } =
       Dyn.Record
         [ ("files", Path.Map.to_dyn Digest.to_dyn files)
         ; ("dirs", Path.Map.to_dyn Digest.to_dyn dirs)
-        ; ("parent_dirs", Path.Set.to_dyn parent_dirs)
         ; ("digest", Digest.to_dyn digest)
         ]
 
@@ -98,21 +102,22 @@ module Fact = struct
     let paths t = t.files
 
     let make ~files ~dirs =
-      let parent_dirs =
-        let f path (_ : Digest.t) acc =
-          Path.Set.add acc (Path.parent_exn path)
-        in
-        let init = Path.Map.foldi files ~init:Path.Set.empty ~f in
-        Path.Map.foldi files ~init ~f
-      in
       { files
       ; dirs
-      ; parent_dirs
       ; digest =
           Digest.generic
-            (Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d))
-            @ Path.Map.to_list_map dirs ~f:(fun p d -> (Path.to_string p, d)))
+            ( Path.Map.to_list_map files ~f:(fun p d -> (Path.to_string p, d))
+            , Path.Map.to_list_map dirs ~f:(fun p d -> (Path.to_string p, d)) )
       }
+
+    let necessary_dirs_for_sandboxing { files; dirs; digest = _ } =
+      let f (path : Path.t) (_ : Digest.t) acc =
+        match as_in_build_dir_no_source path with
+        | None -> acc
+        | Some p -> Path.Build.Set.add acc (Path.Build.parent_exn p)
+      in
+      let init = Path.Map.foldi files ~init:Path.Build.Set.empty ~f in
+      Path.Map.foldi dirs ~init ~f
 
     let empty = lazy (make ~files:Path.Map.empty ~dirs:Path.Map.empty)
 
@@ -142,9 +147,6 @@ module Fact = struct
                 Path.Map.union t.dirs acc ~f:(fun _ d1 d2 ->
                     assert (Digest.equal d1 d2);
                     Some d1))
-        ; parent_dirs =
-            List.fold_left l ~init:t.parent_dirs ~f:(fun acc t ->
-                Path.Set.union t.parent_dirs acc)
         ; digest = Digest.generic (List.map ts ~f:(fun t -> t.digest))
         }
   end
@@ -255,19 +257,24 @@ module Facts = struct
     in
     Fact.Files.group fact_files paths
 
-  let dirs t =
-    Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
-        match (fact : Fact.t) with
-        | Nothing | File _ -> acc
-        | File_selector (_, ps) | Alias ps ->
-          Path.Set.union acc (Path.Map.keys ps.dirs |> Path.Set.of_list))
-
-  let parent_dirs t =
-    Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
+  let necessary_dirs_for_sandboxing t =
+    Map.fold t ~init:Path.Build.Set.empty ~f:(fun fact acc ->
         match (fact : Fact.t) with
         | Nothing -> acc
-        | File (p, _) -> Path.Set.add acc (Path.parent_exn p)
-        | File_selector (_, ps) | Alias ps -> Path.Set.union acc ps.parent_dirs)
+        | File (p, _) -> (
+          match as_in_build_dir_no_source p with
+          | None -> acc
+          | Some p ->
+            let p = Path.Build.parent_exn p in
+            Path.Build.Set.add acc p)
+        | File_selector (_, ps) | Alias ps ->
+          Path.Build.Set.union_all
+            [ acc
+            ; Path.Map.keys ps.dirs
+              |> List.filter_map ~f:as_in_build_dir_no_source
+              |> Path.Build.Set.of_list
+            ; Fact.Files.necessary_dirs_for_sandboxing ps
+            ])
 
   let digest t ~env =
     let facts =
@@ -305,7 +312,8 @@ module Set = struct
      depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
      directories in directories that contain no file. *)
   let dir_without_files_dep dir =
-    file_selector (File_selector.create ~dir Predicate.false_)
+    file_selector
+      (File_selector.create ~dir File_selector.Predicate_with_id.false_)
 
   module Source_tree_map_reduce =
     Source_tree.Dir.Make_map_reduce (Memo) (Monoid.Union (M))
@@ -338,7 +346,9 @@ module Set = struct
           | File f -> Path.Set.add acc f
           | File_selector fs ->
             assert (
-              Predicate.equal (File_selector.predicate fs) Predicate.false_);
+              File_selector.Predicate_with_id.equal
+                (File_selector.predicate fs)
+                File_selector.Predicate_with_id.false_);
             acc
           | _ -> assert false)
     in

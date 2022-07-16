@@ -1,5 +1,5 @@
-open! Dune_engine
-open! Stdune
+open Import
+open Memo.O
 
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce
@@ -33,8 +33,8 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
            in
            Command.Args.Dyn
              (let open Action_builder.O in
-             let+ include_dir = include_dir in
-             let dep_args =
+             let* include_dir = include_dir in
+             let+ dep_args =
                match Path.extract_build_context_dir include_dir with
                | None ->
                  (* This branch corresponds to an external directory. The
@@ -44,15 +44,16 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                     this is to change [Build_system.Loaded.Non_build] so that it
                     contains not only files but also directories and traverse
                     them recursively in [Build_system.Exported.Pred]. *)
-                 let () =
+                 let+ () =
                    let error msg =
                      User_error.raise ~loc
                        [ Pp.textf "Unable to read the include directory."
                        ; Pp.textf "Reason: %s." msg
                        ]
                    in
-                   match Path.is_directory_with_error include_dir with
-                   | Error msg -> error msg
+                   Action_builder.of_memo @@ Fs_memo.is_directory include_dir
+                   >>| function
+                   | Error msg -> error (Unix_error.Detailed.to_string_hum msg)
                    | Ok false ->
                      error
                        (Printf.sprintf "%S is not a directory"
@@ -62,45 +63,48 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                  let deps =
                    Dep.Set.singleton
                      (Dep.file_selector
-                        (File_selector.create ~dir:include_dir Predicate.true_))
+                        (File_selector.create ~dir:include_dir
+                           Predicate_with_id.true_))
                  in
                  Command.Args.Hidden_deps deps
                | Some (build_dir, source_dir) ->
                  let open Action_builder.O in
-                 Command.Args.Dyn
-                   ((* This branch corresponds to a source directory. We track
-                       its contents recursively. *)
-                    Action_builder.of_memo (Source_tree.find_dir source_dir)
-                    >>= function
-                    | None ->
-                      User_error.raise ~loc
-                        [ Pp.textf "Include directory %S does not exist."
-                            (Path.reach ~from:(Path.build dir) include_dir)
-                        ]
-                    | Some dir ->
-                      let+ l =
-                        Source_tree_map_reduce.map_reduce dir
-                          ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
-                            let dir =
-                              Path.append_source build_dir
-                                (Source_tree.Dir.path t)
-                            in
-                            let deps =
-                              Dep.Set.singleton
-                                (Dep.file_selector
-                                   (File_selector.create ~dir Predicate.true_))
-                            in
-                            Action_builder.return
-                              (Appendable_list.singleton
-                                 (Command.Args.Hidden_deps deps)))
-                      in
-                      Command.Args.S (Appendable_list.to_list l))
+                 Action_builder.return
+                 @@ Command.Args.Dyn
+                      ((* This branch corresponds to a source directory. We
+                          track its contents recursively. *)
+                       Action_builder.of_memo (Source_tree.find_dir source_dir)
+                       >>= function
+                       | None ->
+                         User_error.raise ~loc
+                           [ Pp.textf "Include directory %S does not exist."
+                               (Path.reach ~from:(Path.build dir) include_dir)
+                           ]
+                       | Some dir ->
+                         let+ l =
+                           Source_tree_map_reduce.map_reduce dir
+                             ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
+                               let dir =
+                                 Path.append_source build_dir
+                                   (Source_tree.Dir.path t)
+                               in
+                               let deps =
+                                 Dep.Set.singleton
+                                   (Dep.file_selector
+                                      (File_selector.create ~dir
+                                         Predicate_with_id.true_))
+                               in
+                               Action_builder.return
+                                 (Appendable_list.singleton
+                                    (Command.Args.Hidden_deps deps)))
+                         in
+                         Command.Args.S (Appendable_list.to_list l))
              in
              Command.Args.S [ A "-I"; Path include_dir; dep_args ]))))
 
 let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let ctx = Super_context.context sctx in
-  let project = Super_context.find_scope_by_dir sctx dir |> Scope.project in
+  let* project = Scope.DB.find_by_dir dir >>| Scope.project in
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
   let base_flags =
     let cfg = ctx.ocaml_config in
@@ -197,7 +201,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
           (let open Resolve.O in
           let+ libs = requires in
           Command.Args.S
-            [ Lib.L.c_include_flags libs
+            [ Lib_flags.L.c_include_flags libs
             ; Hidden_deps
                 (Lib_file_deps.deps libs ~groups:[ Lib_file_deps.Group.Header ])
             ])

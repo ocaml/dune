@@ -1,7 +1,6 @@
 (** Command line arguments specification *)
-open! Dune_engine
 
-open! Stdune
+open Import
 
 (** This module implements a small DSL to specify the command line argument of a
     program as well as the dependencies and targets of the program at the same
@@ -18,8 +17,6 @@ open! Stdune
     ]}
 
     This DSL was inspired from the ocamlbuild API. *)
-
-open! Import
 
 (** [A] stands for "atom", it is for command line arguments that are neither
     dependencies nor targets.
@@ -60,7 +57,7 @@ module Args : sig
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> [> `Targets ] t
     | Dyn : without_targets t Action_builder.t -> _ t
-    | Fail : fail -> _ t
+    | Fail : Action_builder.fail -> _ t
     | Expand : expand -> _ t
 
   (** Create dynamic command line arguments. *)
@@ -82,6 +79,7 @@ end
    we can use the constructor [S] to concatenate lists instead. *)
 val run :
      dir:Path.t
+  -> ?sandbox:Sandbox_config.t
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
   -> Args.any Args.t list

@@ -1,5 +1,3 @@
-open! Dune_engine
-open! Stdune
 open Import
 
 module Paths = struct

@@ -1,7 +1,8 @@
 (** This module is responsible for handling [diff]-related file promotions.
 
     See [Target_promotion] for the logic that handles promotion of rule targets. *)
-open! Stdune
+
+open Import
 
 module Annot : sig
   type t =

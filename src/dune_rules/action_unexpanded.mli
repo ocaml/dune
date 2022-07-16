@@ -1,18 +1,12 @@
 (** Actions as they are written in dune files. *)
-open! Dune_engine
 
-open Stdune
+open Import
 
 include module type of struct
-    (** The type definition exists in [Action_dune_lang] and not here to break
-        cycles.*)
-    include Action_dune_lang
-  end
-  (* We don't want to leak ugly aliases *)
-  with type program := String_with_vars.t
-   and type string := String_with_vars.t
-   and type path := String_with_vars.t
-   and type target := String_with_vars.t
+  (** The type definition exists in [Action_dune_lang] and not here to break
+      cycles.*)
+  include Dune_lang.Action
+end
 
 val remove_locs : t -> t
 

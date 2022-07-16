@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 open Memo.O
 
@@ -97,7 +96,7 @@ module Dune_file = struct
         let* kind, ast =
           Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
               let kind, ast =
-                if Dune_lexer.is_script lb then (Ocaml_script, [])
+                if Dune_lang.Dune_lexer.is_script lb then (Ocaml_script, [])
                 else (Plain, Dune_lang.Parser.parse lb ~mode:Many)
               in
               (kind, ast))
@@ -581,11 +580,10 @@ end = struct
       | Ok dir -> dir
       | Error unix_error -> error_unable_to_load ~path unix_error
     in
-    let project =
-      match
-        Dune_project.load ~dir:path ~files:readdir.files
-          ~infer_from_opam_files:true ~dir_status
-      with
+    let* project =
+      Dune_project.load ~dir:path ~files:readdir.files
+        ~infer_from_opam_files:true ~dir_status
+      >>| function
       | None -> Dune_project.anonymous ~dir:path ()
       | Some p -> p
     in
@@ -639,13 +637,14 @@ end = struct
             | Ok dir -> dir
             | Error _ -> Readdir.empty path
         in
-        let project =
-          if dir_status = Data_only then parent_dir.project
+        let* project =
+          if dir_status = Data_only then Memo.return parent_dir.project
           else
-            Option.value
-              (Dune_project.load ~dir:path ~files:readdir.files
-                 ~infer_from_opam_files:false ~dir_status)
-              ~default:parent_dir.project
+            let+ project =
+              Dune_project.load ~dir:path ~files:readdir.files
+                ~infer_from_opam_files:false ~dir_status
+            in
+            Option.value project ~default:parent_dir.project
         in
         let* readdir = Readdir.filter_files readdir project in
         let vcs = get_vcs ~default:parent_dir.vcs ~readdir in

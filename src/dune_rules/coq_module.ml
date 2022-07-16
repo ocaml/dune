@@ -1,11 +1,8 @@
-open! Dune_engine
-
-(* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
 (* (c) INRIA 2020                              *)
 (* Written by: Emilio Jesús Gallego Arias *)
 
-open! Stdune
+open Import
 
 module Name = struct
   type t = string
@@ -63,7 +60,7 @@ let cmxs_of_mod ~wrapper_name x =
   let native_base =
     "N" ^ String.concat ~sep:"_" (wrapper_split @ x.prefix @ [ x.name ])
   in
-  [ native_base ^ ".cmi"; native_base ^ ".cmxs" ]
+  [ native_base ^ Cm_kind.ext Cmi; native_base ^ Mode.plugin_ext Native ]
 
 let dep_file x ~obj_dir =
   let vo_dir = build_vo_dir ~obj_dir x in
@@ -72,6 +69,10 @@ let dep_file x ~obj_dir =
 type obj_files_mode =
   | Build
   | Install
+
+let glob_file x ~obj_dir =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  Path.Build.relative vo_dir (x.name ^ ".glob")
 
 (* XXX: Remove the install .coq-native hack once rules can output targets in
    multiple subdirs *)

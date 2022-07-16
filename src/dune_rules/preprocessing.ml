@@ -1,6 +1,5 @@
-open! Dune_engine
-open! Stdune
 open Import
+open Memo.O
 module SC = Super_context
 
 (* Encoded representation of a set of library names + scope *)
@@ -108,7 +107,7 @@ let pped_module m ~f =
           Module.file pped ~ml_kind |> Option.value_exn
           |> Path.as_in_build_dir_exn
         in
-        let file = Path.as_in_build_dir_exn file.path in
+        let file = Path.as_in_build_dir_exn (Module.File.path file) in
         f ml_kind file pp_path)
   in
   pped
@@ -116,7 +115,7 @@ let pped_module m ~f =
 module Driver = struct
   module M = struct
     module Info = struct
-      let name = Sub_system_name.make "ppx.driver"
+      let name = Sub_system_name.of_string "ppx.driver"
 
       type t =
         { loc : Loc.t
@@ -277,8 +276,8 @@ module Driver = struct
                          Lib_name.to_string (Lib.name (lib t)))))))
 end
 
-let ppx_exe sctx ~key =
-  let build_dir = (Super_context.context sctx).build_dir in
+let ppx_exe (ctx : Context.t) ~key =
+  let build_dir = ctx.build_dir in
   Path.Build.relative build_dir (".ppx/" ^ key ^ "/ppx.exe")
 
 let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
@@ -334,11 +333,15 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
       ~requires_compile:(Memo.return requires_compile)
       ~requires_link ~opaque ~js_of_ocaml:None ~package:None ~bin_annot:false ()
   in
-  Exe.build_and_link ~program ~linkages cctx ~promote:None
+  let+ (_ : Exe.dep_graphs) =
+    Exe.build_and_link ~program ~linkages cctx ~promote:None
+  in
+  ()
 
 let get_rules sctx key =
-  let exe = ppx_exe sctx ~key in
-  let pp_names, scope =
+  let ctx = Super_context.context sctx in
+  let exe = ppx_exe ctx ~key in
+  let* pp_names, scope =
     match Digest.from_hex key with
     | None ->
       User_error.raise
@@ -347,14 +350,13 @@ let get_rules sctx key =
         ]
     | Some key ->
       let { Key.Decoded.pps; project_root } = Key.decode key in
-      let scope =
+      let+ scope =
         let dir =
           match project_root with
-          | None -> (Super_context.context sctx).build_dir
-          | Some dir ->
-            Path.Build.append_source (Super_context.context sctx).build_dir dir
+          | None -> ctx.build_dir
+          | Some dir -> Path.Build.append_source ctx.build_dir dir
         in
-        Super_context.find_scope_by_dir sctx dir
+        Scope.DB.find_by_dir dir
       in
       (pps, scope)
   in
@@ -370,12 +372,11 @@ let gen_rules sctx components =
   | [ key ] -> get_rules sctx key
   | _ -> Memo.return ()
 
-let ppx_driver_exe sctx libs =
+let ppx_driver_exe (ctx : Context.t) libs =
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
   (* Make sure to compile ppx.exe for the compiling host. See: #2252, #2286 and
      #3698 *)
-  let sctx = SC.host sctx in
-  ppx_exe sctx ~key
+  ppx_exe ~key (Context.host ctx)
 
 let get_cookies ~loc ~expander ~lib_name libs =
   let open Memo.O in
@@ -398,17 +399,14 @@ let get_cookies ~loc ~expander ~lib_name libs =
         match kind with
         | Normal -> Memo.return []
         | Ppx_rewriter { cookies } | Ppx_deriver { cookies } ->
-          Memo.List.map
+          Memo.List.map cookies
             ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
               let+ value = Expander.No_deps.expand_str expander value in
-              (name, (value, Lib.name t)))
-            cookies)
+              (name, (value, Lib.name t))))
   in
-  cookies
-  |> (fun l ->
-       match library_name_cookie with
-       | None -> l
-       | Some cookie -> cookie :: l)
+  (match library_name_cookie with
+  | None -> cookies
+  | Some cookie -> cookie :: cookies)
   |> String.Map.of_list_reducei
        ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
          if String.equal val1 val2 then res
@@ -425,22 +423,37 @@ let get_cookies ~loc ~expander ~lib_name libs =
          [ "--cookie"; sprintf "%s=%S" name value ])
   |> List.concat
 
-let ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs =
+let ppx_driver_and_flags_internal sctx ~dune_version ~loc ~expander ~lib_name
+    ~flags libs =
   let open Action_builder.O in
   let* flags =
-    Action_builder.List.map ~f:(Expander.expand_str expander) flags
+    if dune_version <= (3, 2) then
+      Action_builder.List.map ~f:(Expander.expand_str expander) flags
+    else
+      (* Allow list expansion *)
+      Action_builder.List.concat_map flags
+        ~f:(Expander.expand ~mode:Many expander)
+      |> Action_builder.map
+           ~f:
+             (List.map
+                ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
   in
   let+ cookies =
     Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
   in
-  let sctx = SC.host sctx in
-  (ppx_driver_exe sctx libs, flags @ cookies)
+  let ppx_driver_exe =
+    let ctx = Context.host (Super_context.context sctx) in
+    ppx_driver_exe ctx libs
+  in
+  (ppx_driver_exe, flags @ cookies)
 
 let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
   let open Action_builder.O in
   let* libs = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
   let* exe, flags =
-    ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
+    let dune_version = Scope.project scope |> Dune_project.dune_version in
+    ppx_driver_and_flags_internal sctx ~loc ~expander ~dune_version ~lib_name
+      ~flags libs
   in
   let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true) in
   let+ driver =
@@ -474,7 +487,7 @@ let promote_correction_with_target fn build ~suffix =
 
 let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
 
-let action_for_pp ~loc ~expander ~action ~src =
+let action_for_pp ~sandbox ~loc ~expander ~action ~src =
   let action = chdir action in
   let bindings =
     Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ]
@@ -484,27 +497,30 @@ let action_for_pp ~loc ~expander ~action ~src =
   Action_builder.path (Path.build src)
   >>> Action_unexpanded.expand_no_targets action ~loc ~expander ~deps:[]
         ~what:"preprocessing actions"
+  >>| Action.Full.add_sandbox sandbox
 
-let action_for_pp_with_target ~loc ~expander ~action ~src ~target =
-  let action = action_for_pp ~loc ~expander ~action ~src in
+let action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src ~target =
+  let action = action_for_pp ~sandbox ~loc ~expander ~action ~src in
   Action_builder.with_stdout_to target action
 
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)
-let setup_dialect_rules sctx ~dir ~expander (m : Module.t) =
+let setup_dialect_rules sctx ~sandbox ~dir ~expander (m : Module.t) =
   let open Memo.O in
   let ml = Module.ml_source m in
   let+ () =
     Module.iter m ~f:(fun ml_kind f ->
-        Memo.Option.iter (Dialect.preprocess f.dialect ml_kind)
+        Memo.Option.iter
+          (Dialect.preprocess (Module.File.dialect f) ml_kind)
           ~f:(fun (loc, action) ->
-            let src = Path.as_in_build_dir_exn f.path in
+            let src = Path.as_in_build_dir_exn (Module.File.path f) in
             let dst =
               Option.value_exn (Module.file ml ~ml_kind)
               |> Path.as_in_build_dir_exn
             in
             SC.add_rule sctx ~dir
-              (action_for_pp_with_target ~loc ~expander ~action ~src ~target:dst)))
+              (action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src
+                 ~target:dst)))
   in
   ml
 
@@ -518,7 +534,7 @@ let driver_flags expander ~corrected_suffix ~driver_flags ~standard =
   let expander = add_corrected_suffix_binding expander corrected_suffix in
   Expander.expand_and_eval_set expander driver_flags ~standard
 
-let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
+let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
   let open Action_builder.O in
   Staged.stage
     (let alias = Alias.lint ~dir in
@@ -532,16 +548,20 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
          | Action (loc, action) ->
            fun ~source ~ast:_ ->
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
-                 let src = Path.as_in_build_dir_exn src.path in
+                 let src = Path.as_in_build_dir_exn (Module.File.path src) in
                  add_alias ~loc:(Some loc)
-                   (action_for_pp ~loc ~expander ~action ~src))
+                   (action_for_pp ~sandbox ~loc ~expander ~action ~src))
          | Pps { loc; pps; flags; staged } ->
            if staged then
              User_error.raise ~loc
                [ Pp.text "Staged ppx rewriters cannot be used as linters." ];
            let corrected_suffix = ".lint-corrected" in
            let driver_and_flags =
-             Action_builder.memoize "ppx driver and flags"
+             Action_builder.memoize
+               ~cutoff:
+                 (Tuple.T3.equal Path.Build.equal (List.equal String.equal)
+                    (List.equal String.equal))
+               "ppx driver and flags"
                (let* () = Action_builder.return () in
                 let* exe, driver, flags =
                   ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags
@@ -556,7 +576,7 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
            in
            fun ~source ~ast ->
              Module.iter ast ~f:(fun ml_kind src ->
-                 add_alias ~loc:None
+                 add_alias ~loc:(Some loc)
                    (promote_correction ~suffix:corrected_suffix
                       (Path.as_in_build_dir_exn
                          (Option.value_exn (Module.file source ~ml_kind)))
@@ -568,7 +588,7 @@ let lint_module sctx ~dir ~expander ~lint ~lib_name ~scope =
                          (Ok (Path.build exe))
                          [ As args
                          ; Command.Ml_kind.ppx_driver_flag ml_kind
-                         ; Dep src.path
+                         ; Dep (Module.File.path src)
                          ; As flags
                          ]))))
      in
@@ -586,11 +606,23 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
   let preprocessor_deps, sandbox =
     Dep_conf_eval.unnamed preprocessor_deps ~expander
   in
+  let sandbox =
+    match
+      Sandbox_config.equal Sandbox_config.no_special_requirements sandbox
+    with
+    | false -> sandbox
+    | true ->
+      let project = Scope.project scope in
+      let dune_version = Dune_project.dune_version project in
+      if dune_version >= (3, 3) then Sandbox_config.needs_sandboxing
+      else sandbox
+  in
   let preprocessor_deps =
     Action_builder.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
-    Staged.unstage (lint_module sctx ~dir ~expander ~lint ~lib_name ~scope)
+    Staged.unstage
+      (lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope)
   in
   let open Action_builder.O in
   Module_name.Per_item.map preprocess ~f:(fun pp ->
@@ -598,7 +630,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
       | No_preprocessing ->
         fun m ~lint ->
           let open Memo.O in
-          let* ast = setup_dialect_rules sctx ~dir ~expander m in
+          let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
           let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
           ast
       | Action (loc, action) ->
@@ -607,15 +639,13 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           let* ast =
             pped_module m ~f:(fun _kind src dst ->
                 let action =
-                  action_for_pp_with_target ~loc ~expander ~action ~src
+                  action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src
                     ~target:dst
                 in
                 SC.add_rule sctx ~loc ~dir
                   (let open Action_builder.With_targets.O in
-                  Action_builder.with_no_targets preprocessor_deps
-                  >>> action
-                  >>| Action.Full.add_sandbox sandbox))
-            >>= setup_dialect_rules sctx ~dir ~expander
+                  Action_builder.with_no_targets preprocessor_deps >>> action))
+            >>= setup_dialect_rules sctx ~sandbox ~dir ~expander
           in
           let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
           ast
@@ -623,7 +653,11 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
         if not staged then
           let corrected_suffix = ".ppx-corrected" in
           let driver_and_flags =
-            Action_builder.memoize "ppx driver and flags"
+            Action_builder.memoize
+              ~cutoff:
+                (Tuple.T3.equal Path.Build.equal (List.equal String.equal)
+                   (List.equal String.equal))
+              "ppx driver and flags"
               (let* () = Action_builder.return () in
                let* exe, driver, flags =
                  ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags
@@ -638,7 +672,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           in
           fun m ~lint ->
             let open Memo.O in
-            let* ast = setup_dialect_rules sctx ~dir ~expander m in
+            let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
             let* () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
             pped_module ast ~f:(fun ml_kind src dst ->
                 SC.add_rule sctx ~loc ~dir
@@ -664,7 +698,8 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                             >>| Action.Full.add_sandbox sandbox))))
         else
           let dash_ppx_flag =
-            Action_builder.memoize "ppx command"
+            Action_builder.memoize ~cutoff:(List.equal String.equal)
+              "ppx command"
               (let* () = Action_builder.return () in
                let* exe, driver, flags =
                  ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags
@@ -694,7 +729,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
           let pp = Some (dash_ppx_flag, sandbox) in
           fun m ~lint ->
             let open Memo.O in
-            let* ast = setup_dialect_rules sctx ~dir ~expander m in
+            let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
             let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
             Module.set_pp ast pp)
   |> Pp_spec.make
@@ -702,7 +737,9 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
 let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Action_builder.O in
   let* libs = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps) in
-  ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
+  let dune_version = Scope.project scope |> Dune_project.dune_version in
+  ppx_driver_and_flags_internal sctx ~loc ~expander ~dune_version ~lib_name
+    ~flags libs
 
 let ppx_exe sctx ~scope pp =
   let open Resolve.Memo.O in

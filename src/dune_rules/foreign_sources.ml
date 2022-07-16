@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 open Dune_file
 module Library = Dune_file.Library
 
@@ -39,7 +38,7 @@ let valid_name language ~loc s =
       ]
   | _ -> s
 
-let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
+let eval_foreign_stubs foreign_stubs ~dune_version
     ~(sources : Foreign.Sources.Unresolved.t) : Foreign.Sources.t =
   let multiple_sources_error ~name ~loc ~paths =
     User_error.raise ~loc
@@ -102,8 +101,7 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
           User_error.raise ~loc
             [ Pp.textf "Object %S has no source; %s must be present." name
                 (String.enumerate_one_of
-                   (Foreign.possible_sources ~language name
-                      ~dune_version:d.dune_version
+                   (Foreign.possible_sources ~language name ~dune_version
                    |> List.map ~f:(fun s -> sprintf "%S" s)))
             ])
   in
@@ -120,27 +118,31 @@ let check_no_qualified (loc, include_subdirs) =
           "(include_subdirs qualified) is only meant for OCaml and Coq sources"
       ]
 
-let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
+let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
     ~(lib_config : Lib_config.t) =
   let libs, foreign_libs, exes =
     let libs, foreign_libs, exes =
-      List.fold_left d.data ~init:([], [], [])
+      List.fold_left stanzas ~init:([], [], [])
         ~f:(fun ((libs, foreign_libs, exes) as acc) stanza ->
           match (stanza : Stanza.t) with
           | Library lib ->
             let all =
-              eval_foreign_stubs d lib.buildable.foreign_stubs ~sources
+              eval_foreign_stubs ~dune_version lib.buildable.foreign_stubs
+                ~sources
             in
             ((lib, all) :: libs, foreign_libs, exes)
           | Foreign_library library ->
-            let all = eval_foreign_stubs d [ library.stubs ] ~sources in
+            let all =
+              eval_foreign_stubs ~dune_version [ library.stubs ] ~sources
+            in
             ( libs
             , (library.archive_name, (library.archive_name_loc, all))
               :: foreign_libs
             , exes )
           | Executables exe | Tests { exes = exe; _ } ->
             let all =
-              eval_foreign_stubs d exe.buildable.foreign_stubs ~sources
+              eval_foreign_stubs ~dune_version exe.buildable.foreign_stubs
+                ~sources
             in
             (libs, foreign_libs, (exe, all) :: exes)
           | _ -> acc)
@@ -214,10 +216,9 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
   in
   { libraries; archives; executables }
 
-let make (d : _ Dir_with_dune.t) ~include_subdirs ~(lib_config : Lib_config.t)
+let make stanzas ~dune_version ~include_subdirs ~(lib_config : Lib_config.t)
     ~dirs =
   check_no_qualified include_subdirs;
-  let dune_version = d.dune_version in
   let init = String.Map.empty in
   let sources =
     List.fold_left dirs ~init ~f:(fun acc (dir, _local, files) ->
@@ -226,4 +227,4 @@ let make (d : _ Dir_with_dune.t) ~include_subdirs ~(lib_config : Lib_config.t)
         in
         String.Map.Multi.rev_union sources acc)
   in
-  make d ~sources ~lib_config
+  make stanzas ~dune_version ~sources ~lib_config

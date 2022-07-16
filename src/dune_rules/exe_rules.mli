@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 val compile_info :
   scope:Scope.t -> Dune_file.Executables.t -> Lib.Compile.t Memo.t

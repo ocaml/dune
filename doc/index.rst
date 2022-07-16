@@ -25,6 +25,7 @@ Welcome to dune's documentation!
    formatting
    cross-compilation
    dune-libs
+   coq
    advanced-topics
    lexical-conventions
    faq

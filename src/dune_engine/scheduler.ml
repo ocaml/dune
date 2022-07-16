@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 open Fiber.O
 
@@ -46,21 +45,9 @@ module Config = struct
   type t =
     { concurrency : int
     ; display : Display.t
-    ; rpc : Dune_rpc.Where.t option
     ; stats : Dune_stats.t option
+    ; insignificant_changes : [ `Ignore | `React ]
     }
-
-  let add_to_env t env =
-    match t.rpc with
-    | None -> env
-    | Some where ->
-      if true then env
-      else
-        (* This is disabled because setting DUNE_RPC in tests breaks inner dune
-           invocations. We should come up with a better design for this feature,
-           or a way to cleanly work around it and prevent "unauthorized" access
-           where the test shuts down a dune that's running it. *)
-        Dune_rpc.Where.add_to_env where env
 end
 
 type job =
@@ -111,6 +98,18 @@ module Signal = struct
     |> Int.Map.find
 
   let name t = Signal.name (to_int t)
+end
+
+module Shutdown = struct
+  module Signal = Signal
+
+  module Reason = struct
+    type t =
+      | Requested
+      | Signal of Signal.t
+  end
+
+  exception E of Reason.t
 end
 
 module Thread : sig
@@ -714,11 +713,16 @@ type status =
     Standing_by of
       { invalidation : Memo.Invalidation.t
       ; saw_insignificant_changes : bool
-            (* Whether we saw build input changes that are insignificant for the
-               build. We need to track this because we still want to start a new
-               build in this case, even if we know it's going to be a no-op. We
-               do that so that RPC clients can observe that Dune reacted to the
-               change. *)
+            (* When [insignificant_changes = `Ignore], this field is always
+               false.
+
+               When [insignificant_changes = `React], we do the following:
+
+               Whether we saw build input changes that are insignificant for
+               the build. We need to track this because we still want to start
+               a new build in this case, even if we know it's going to be a
+               no-op. We do that so that RPC clients can observe that Dune
+               reacted to the change. *)
       }
   | (* Running a build *)
     Building of Fiber.Cancel.t
@@ -993,7 +997,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) =
 module Run_once : sig
   type run_error =
     | Already_reported
-    | Shutdown_requested
+    | Shutdown_requested of Shutdown.Reason.t
     | Exn of Exn_with_backtrace.t
 
   (** Run the build and clean up after it (kill any stray processes etc). *)
@@ -1001,7 +1005,7 @@ module Run_once : sig
 end = struct
   type run_error =
     | Already_reported
-    | Shutdown_requested
+    | Shutdown_requested of Shutdown.Reason.t
     | Exn of Exn_with_backtrace.t
 
   exception Abort of run_error
@@ -1036,56 +1040,64 @@ end = struct
       | Some ivar ->
         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
         [ Fill (ivar, ()) ])
-    | Build_inputs_changed events -> (
-      let invalidation =
-        (handle_invalidation_events events : Memo.Invalidation.t)
-      in
-      let fills =
-        if Memo.Invalidation.is_empty invalidation then
-          match !(t.status) with
-          | Standing_by prev ->
-            t.status :=
-              Standing_by { prev with saw_insignificant_changes = true };
-            []
-          | _ -> []
-        else
-          match !(t.status) with
-          | Restarting_build prev_invalidation ->
-            t.status :=
-              Restarting_build
-                (Memo.Invalidation.combine prev_invalidation invalidation);
-            []
-          | Standing_by prev ->
-            t.status :=
-              Standing_by
-                { prev with
-                  invalidation =
-                    Memo.Invalidation.combine prev.invalidation invalidation
-                };
-            []
-          | Building cancellation ->
-            t.handler t.config Build_interrupted;
-            t.status := Restarting_build invalidation;
-            Fiber.Cancel.fire' cancellation
-      in
-      match !(t.wait_for_build_input_change) with
-      | None -> (
-        match Nonempty_list.of_list fills with
-        | None -> iter t
-        | Some fills -> fills)
-      | Some ivar ->
-        t.wait_for_build_input_change := None;
-        Fill (ivar, ()) :: fills)
+    | Build_inputs_changed events -> build_input_change t events
     | Timer fill | Worker_task fill -> [ fill ]
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
     | Yield ivar -> [ Fill (ivar, ()) ]
-    | Shutdown signal -> (
+    | Shutdown signal ->
       got_signal signal;
-      match signal with
-      | Shutdown -> raise (Abort Shutdown_requested)
-      | _ -> raise (Abort Already_reported))
+      raise
+      @@ Abort
+           (Shutdown_requested
+              (match signal with
+              | Shutdown -> Requested
+              | Signal s -> Signal s))
+
+  and build_input_change (t : t) events =
+    let invalidation = handle_invalidation_events events in
+    let significant_changes = not (Memo.Invalidation.is_empty invalidation) in
+    let insignificant_changes =
+      match t.config.insignificant_changes with
+      | `Ignore -> false
+      | `React -> not significant_changes
+    in
+    let fills =
+      match !(t.status) with
+      | Restarting_build prev_invalidation ->
+        t.status :=
+          Restarting_build
+            (Memo.Invalidation.combine prev_invalidation invalidation);
+        []
+      | Standing_by prev ->
+        t.status :=
+          Standing_by
+            { invalidation =
+                Memo.Invalidation.combine prev.invalidation invalidation
+            ; saw_insignificant_changes =
+                prev.saw_insignificant_changes || insignificant_changes
+            };
+        []
+      | Building cancellation -> (
+        match significant_changes with
+        | false -> []
+        | true ->
+          t.handler t.config Build_interrupted;
+          t.status := Restarting_build invalidation;
+          Fiber.Cancel.fire' cancellation)
+    in
+    match
+      Nonempty_list.of_list
+      @@
+      match !(t.wait_for_build_input_change) with
+      | Some ivar when significant_changes || insignificant_changes ->
+        t.wait_for_build_input_change := None;
+        Fiber.Fill (ivar, ()) :: fills
+      | _ -> fills
+    with
+    | None -> iter t
+    | Some fills -> fills
 
   let run t f : _ result =
     let fiber =
@@ -1176,6 +1188,8 @@ let wait_for_build_input_change t =
 
 module Run = struct
   exception Build_cancelled = Build_cancelled
+
+  module Shutdown = Shutdown
 
   type file_watcher =
     | Automatic
@@ -1271,8 +1285,6 @@ module Run = struct
     in
     loop ()
 
-  exception Shutdown_requested
-
   let go config ?timeout ?(file_watcher = No_watcher)
       ~(on_event : Config.t -> Handler.Event.t -> unit) run =
     let events, prepare = prepare config ~handler:on_event in
@@ -1312,7 +1324,7 @@ module Run = struct
       in
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
-      | Error Shutdown_requested -> Error (Shutdown_requested, None)
+      | Error (Shutdown_requested reason) -> Error (Shutdown.E reason, None)
       | Error Already_reported ->
         Error (Dune_util.Report_error.Already_reported, None)
       | Error (Exn exn_with_bt) ->

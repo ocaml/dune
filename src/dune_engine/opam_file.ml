@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 open OpamParserTypes
 
@@ -12,12 +11,10 @@ let parse_gen entry (lb : Lexing.lexbuf) =
     User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text "Parse error" ]
 
 let parse =
-  parse_gen (fun lexer lexbuf ->
-      OpamBaseParser.main lexer lexbuf lexbuf.Lexing.lex_curr_p.pos_fname)
+  parse_gen (fun lexer (lexbuf : Lexing.lexbuf) ->
+      OpamBaseParser.main lexer lexbuf lexbuf.lex_curr_p.pos_fname)
 
 let parse_value = parse_gen OpamBaseParser.value
-
-let load fn = Io.Untracked.with_lexbuf_from_file fn ~f:parse
 
 let get_field t name =
   List.find_map t.file_contents ~f:(function

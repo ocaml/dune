@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Dune_engine.Import
-open! Stdune
+open Import
 
 module Sanitizer : sig
   [@@@ocaml.warning "-32"]
@@ -150,7 +148,7 @@ let run_expect_test file ~f =
     (* we only need to restore the test file so the diff doesn't fail *)
     let () = Io.write_file file file_contents in
     Io.write_file ~binary:false corrected_file expected
-  else if Path.exists corrected_file then Path.rm_rf corrected_file
+  else if Path.Untracked.exists corrected_file then Path.rm_rf corrected_file
 
 let fprln oc fmt = Printf.fprintf oc (fmt ^^ "\n")
 
@@ -192,7 +190,6 @@ type sh_script =
   { script : Path.t
   ; cram_to_output : block_result Cram_lexer.block list
   ; metadata_file : Path.t option
-  ; command_count : int
   }
 
 let read_exit_codes_and_prefix_maps file =
@@ -358,7 +355,8 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
       fprln oc {|printf "%%d\0%%s\0" $? "$%s" >> %s|}
-        Action_exec._BUILD_PATH_PREFIX_MAP metadata_file_sh_path;
+        Dune_util.Build_path_prefix_map._BUILD_PATH_PREFIX_MAP
+        metadata_file_sh_path;
       Cram_lexer.Command
         { command = lines
         ; output_file = user_shell_code_output_file
@@ -370,7 +368,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   close_out oc;
   let command_count = !i in
   let metadata_file = Option.some_if (command_count > 0) metadata_file in
-  { script; cram_to_output; metadata_file; command_count }
+  { script; cram_to_output; metadata_file }
 
 let _display_with_bars s =
   List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
@@ -396,7 +394,8 @@ let run ~env ~script lexbuf : string Fiber.t =
     let env = Env.add env ~var:"LC_ALL" ~value:"C" in
     let temp_dir = Path.relative temp_dir "tmp" in
     let env =
-      Action_exec.extend_build_path_prefix_map env `New_rules_have_precedence
+      Dune_util.Build_path_prefix_map.extend_build_path_prefix_map env
+        `New_rules_have_precedence
         [ Some
             { source = Path.to_absolute_filename cwd
             ; target = "$TESTCASE_ROOT"
@@ -437,6 +436,31 @@ let run ~env ~script lexbuf : string Fiber.t =
 let run ~env ~script =
   run_expect_test script ~f:(fun lexbuf -> run ~env ~script lexbuf)
 
-let () = Fdecl.set Action_exec.cram_run run
+module Spec = struct
+  type ('path, _) t = 'path
 
-let linkme = ()
+  let name = "cram"
+
+  let version = 1
+
+  let bimap path f _ = f path
+
+  let is_useful_to ~distribute:_ ~memoize:_ = true
+
+  let encode script path _ : Dune_lang.t =
+    List [ Dune_lang.atom_or_quoted_string "cram"; path script ]
+
+  let action script ~ectx:_ ~(eenv : Action.Ext.env) = run ~env:eenv.env ~script
+end
+
+let action script =
+  let module M = struct
+    type path = Path.t
+
+    type target = Path.Build.t
+
+    module Spec = Spec
+
+    let v = script
+  end in
+  Action.Extension (module M)

@@ -28,11 +28,11 @@ let pp ppf ~fields sexps =
       in
       if do_print then
         let version =
-          Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+          Dune_lang.Syntax.greatest_supported_version Stanza.syntax
         in
         Dune_lang.Ast.add_loc sexp ~loc:Loc.none
         |> Dune_lang.Cst.concrete |> List.singleton
-        |> Dune_engine.Format_dune_lang.pp_top_sexps ~version
+        |> Dune_lang.Format.pp_top_sexps ~version
         |> Format.fprintf ppf "%a@?" Pp.to_fmt)
 
 let term =

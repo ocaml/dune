@@ -339,8 +339,10 @@ module Entry = struct
     | Site { pkg; site; loc } ->
       let open Memo.O in
       let+ section = get_section ~loc ~pkg ~site in
-      let dst = adjust_dst' ~src ~dst ~section in
-      let dst = Dst.add_prefix (Section.Site.to_string site) dst in
+      let dst =
+        let dst = adjust_dst' ~src ~dst ~section in
+        Dst.add_prefix (Section.Site.to_string site) dst
+      in
       let dst_with_pkg_prefix =
         Dst.add_prefix (Package.Name.to_string pkg) dst
       in
@@ -396,12 +398,6 @@ module Entry_with_site = struct
     }
 end
 
-module Metadata = struct
-  type 'src t =
-    | DefaultEntry of 'src Entry.t
-    | UserDefinedEntry of 'src Entry.t
-end
-
 let group entries =
   List.map entries ~f:(fun (entry : _ Entry.t) -> (entry.section, entry))
   |> Section.Map.of_list_multi
@@ -439,7 +435,7 @@ let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function
 
 let load_install_file path =
   let open OpamParserTypes in
-  let file = Opam_file.load path in
+  let file = Io.Untracked.with_lexbuf_from_file path ~f:Opam_file.parse in
   let fail (fname, line, col) msg =
     let pos : Lexing.position =
       { pos_fname = fname; pos_lnum = line; pos_bol = 0; pos_cnum = col }

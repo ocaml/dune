@@ -47,7 +47,7 @@ module type S = sig
     (string -> (t, [> `Msg of string ]) result)
     * (Format.formatter -> t -> unit)
 
-  include Dune_lang.Conv.S with type t := t
+  include Dune_sexp.Conv.S with type t := t
 
-  val decode_loc : (Loc.t * t) Dune_lang.Decoder.t
+  val decode_loc : (Loc.t * t) Dune_sexp.Decoder.t
 end

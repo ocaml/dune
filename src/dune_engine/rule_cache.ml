@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 (* A type isomorphic to [Result], but without the negative connotations
@@ -331,6 +330,20 @@ module Shared = struct
       | Already_present targets_and_digests ->
         Log.info [ Pp.textf "cache store skipped [%s]: already present" hex ];
         update_cached_digests ~targets_and_digests
+      | Error (Unix.Unix_error (Unix.EXDEV, "link", file)) ->
+        (* We cannot hardlink accross partitions so we kindly let the user know
+           that they should use copy cache instead. *)
+        Log.info
+          [ Pp.concat
+              [ Pp.textf "cache store error [%s]:" hex
+              ; Pp.space
+              ; Pp.textf
+                  "cannot link %s between file systems. Use \
+                   (cache-storage-mode copy) instead."
+                  file
+              ]
+          ];
+        None
       | Error exn ->
         Log.info [ pp_error (Printexc.to_string exn) ];
         None

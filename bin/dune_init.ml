@@ -1,6 +1,9 @@
-open! Dune_engine
 open! Stdune
 module Dune_file = Dune_rules.Dune_file
+module Stanza = Dune_lang.Stanza
+module Dune_project = Dune_engine.Dune_project
+module Package = Dune_engine.Package
+module Dialect = Dune_engine.Dialect
 
 (** Because the dune_init utility deals with the addition of stanzas and fields
     to dune projects and files, we need to inspect and manipulate the concrete
@@ -80,7 +83,7 @@ module File = struct
       | _ -> false
 
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
-      let of_ast = Dune_file.Stanzas.of_ast project in
+      let of_ast = Dune_file.of_ast project in
       (let open Option.O in
       let* a_ast = Cst.abstract a in
       let+ b_ast = Cst.abstract b in
@@ -137,9 +140,9 @@ module File = struct
     let content =
       if not (Path.exists full_path) then []
       else
-        match Format_dune_lang.parse_file (Some full_path) with
-        | Format_dune_lang.Sexps content -> content
-        | Format_dune_lang.OCaml_syntax _ ->
+        match Io.with_lexbuf_from_file ~f:Dune_lang.Format.parse full_path with
+        | Dune_lang.Format.Sexps content -> content
+        | Dune_lang.Format.OCaml_syntax _ ->
           User_error.raise
             [ Pp.textf "Cannot load dune file %s because it uses OCaml syntax"
                 (Path.to_string_maybe_quoted full_path)
@@ -150,9 +153,14 @@ module File = struct
   let write_dune_file (dune_file : dune) =
     let path = Path.relative dune_file.path dune_file.name in
     let version =
-      Dune_lang.Syntax.greatest_supported_version Dune_engine.Stanza.syntax
+      Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax
     in
-    Format_dune_lang.write_file ~version ~path dune_file.content
+    Io.with_file_out ~binary:true
+      (* Why do we pass [~binary:true] but not anywhere else when formatting? *)
+      path ~f:(fun oc ->
+        let fmt = Format.formatter_of_out_channel oc in
+        Format.fprintf fmt "%a%!" Pp.to_fmt
+          (Dune_lang.Format.pp_top_sexps ~version dune_file.content))
 
   let write f =
     let path = full_path f in
@@ -171,11 +179,11 @@ module Init_context = struct
     }
 
   let make path =
-    let project =
-      match
-        Dune_project.load ~dir:Path.Source.root ~files:String.Set.empty
-          ~infer_from_opam_files:true ~dir_status:Normal
-      with
+    let open Memo.O in
+    let+ project =
+      Dune_project.load ~dir:Path.Source.root ~files:String.Set.empty
+        ~infer_from_opam_files:true ~dir_status:Normal
+      >>| function
       | Some p -> p
       | None -> Dune_project.anonymous ~dir:Path.Source.root ()
     in

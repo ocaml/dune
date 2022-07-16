@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 (** A cached file-system operation on a [Path.t] whose result type is ['a]. For

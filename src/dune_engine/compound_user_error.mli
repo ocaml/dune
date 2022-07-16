@@ -2,7 +2,7 @@
     retains more structure. This can be used to display the errors in richer
     form by RPC clients. *)
 
-open Stdune
+open Import
 
 type t = private
   { main : User_message.t

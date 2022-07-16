@@ -1,11 +1,12 @@
-open! Import
+open Import
+module Action = Dune_lang.Action
 
 module File_kind = struct
   type t =
     { kind : Ml_kind.t
     ; extension : string
-    ; preprocess : (Loc.t * Action_dune_lang.t) option
-    ; format : (Loc.t * Action_dune_lang.t * string list) option
+    ; preprocess : (Loc.t * Action.t) option
+    ; format : (Loc.t * Action.t * string list) option
     }
 
   let encode { kind; extension; preprocess; format } =
@@ -21,9 +22,8 @@ module File_kind = struct
       (kind
       :: record_fields
            [ field "extension" string extension
-           ; field_o "preprocess" Action_dune_lang.encode
-               (Option.map ~f:snd preprocess)
-           ; field_o "format" Action_dune_lang.encode
+           ; field_o "preprocess" Action.encode (Option.map ~f:snd preprocess)
+           ; field_o "format" Action.encode
                (Option.map ~f:(fun (_, x, _) -> x) format)
            ])
 
@@ -32,11 +32,10 @@ module File_kind = struct
     record
       [ ("kind", Ml_kind.to_dyn kind)
       ; ("extension", string extension)
-      ; ( "preprocess"
-        , option (fun (_, x) -> Action_dune_lang.to_dyn x) preprocess )
+      ; ("preprocess", option (fun (_, x) -> Action.to_dyn x) preprocess)
       ; ( "format"
         , option
-            (fun (_, x, y) -> pair Action_dune_lang.to_dyn (list string) (x, y))
+            (fun (_, x, y) -> pair Action.to_dyn (list string) (x, y))
             format )
       ]
 end
@@ -69,12 +68,10 @@ let decode =
   let open Dune_lang.Decoder in
   let kind kind =
     let+ loc, extension = field "extension" (located string)
-    and+ preprocess = field_o "preprocess" (located Action_dune_lang.decode)
+    and+ preprocess = field_o "preprocess" (located Action.decode)
     and+ format =
       field_o "format"
-        (map
-           ~f:(fun (loc, x) -> (loc, x, []))
-           (located Action_dune_lang.decode))
+        (map ~f:(fun (loc, x) -> (loc, x, [])) (located Action.decode))
     in
     let extension =
       if String.contains extension '.' then
@@ -108,9 +105,9 @@ let ocaml =
       | Intf -> "--intf"
     in
     let module S = String_with_vars in
-    Action_dune_lang.chdir
+    Action.chdir
       (S.make_pform Loc.none (Var Workspace_root))
-      (Action_dune_lang.run
+      (Action.run
          (S.make_text Loc.none "ocamlformat")
          [ S.make_text Loc.none (flag_of_kind kind)
          ; S.make_pform Loc.none (Var Input_file)
@@ -135,7 +132,7 @@ let reason =
   let file_kind kind extension =
     let module S = String_with_vars in
     let preprocess =
-      Action_dune_lang.run
+      Action.run
         (S.make_text Loc.none "refmt")
         [ S.make_text Loc.none "--print"
         ; S.make_text Loc.none "binary"
@@ -143,7 +140,7 @@ let reason =
         ]
     in
     let format =
-      Action_dune_lang.run
+      Action.run
         (S.make_text Loc.none "refmt")
         [ S.make_pform Loc.none (Var Input_file) ]
     in

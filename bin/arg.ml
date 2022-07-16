@@ -1,7 +1,11 @@
 open Stdune
-open Dune_engine
-open Dune_rules
 include Cmdliner.Arg
+module Stanza = Dune_lang.Stanza
+module Package = Dune_engine.Package
+module String_with_vars = Dune_lang.String_with_vars
+module Pform = Dune_lang.Pform
+module Dep_conf = Dune_rules.Dep_conf
+module Context_name = Dune_engine.Context_name
 
 let package_name = conv Package.Name.conv
 
@@ -115,6 +119,6 @@ let graph_format : Dune_graph.Graph.File_format.t conv =
 
 let context_name : Context_name.t conv = conv Context_name.conv
 
-let lib_name = conv Dune_engine.Lib_name.conv
+let lib_name = conv Dune_rules.Lib_name.conv
 
 let version = pair ~sep:'.' int int

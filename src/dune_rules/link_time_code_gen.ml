@@ -1,10 +1,9 @@
-open! Dune_engine
 open Import
 module CC = Compilation_context
 module SC = Super_context
 
 type t =
-  { to_link : Lib.Lib_and_module.t list
+  { to_link : Lib_flags.Lib_and_module.L.t
   ; force_linkall : bool
   }
 
@@ -144,7 +143,8 @@ let build_info_code cctx ~libs ~api_version =
             | Public (_, p) -> version_of_package placeholders p
             | Private _ ->
               let p =
-                Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
+                Lib.info lib |> Lib_info.obj_dir |> Obj_dir.dir
+                |> Path.drop_build_context_exn
               in
               placeholder placeholders p)
         in
@@ -222,7 +222,13 @@ let handle_special_libs cctx =
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
   let sctx = CC.super_context cctx in
   let ctx = Super_context.context sctx in
-  let module LM = Lib.Lib_and_module in
+  let open Memo.O in
+  let* builtins =
+    let+ findlib =
+      Findlib.create ~paths:ctx.findlib_paths ~lib_config:ctx.lib_config
+    in
+    Findlib.builtins findlib
+  in
   let rec process_libs ~to_link_rev ~force_linkall libs =
     match libs with
     | [] ->
@@ -230,9 +236,7 @@ let handle_special_libs cctx =
     | lib :: libs -> (
       match Lib_info.special_builtin_support (Lib.info lib) with
       | None ->
-        process_libs libs
-          ~to_link_rev:(LM.Lib lib :: to_link_rev)
-          ~force_linkall
+        process_libs libs ~to_link_rev:(Lib lib :: to_link_rev) ~force_linkall
       | Some special -> (
         match special with
         | Build_info { data_module; api_version } ->
@@ -245,7 +249,7 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~to_link_rev:(Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall
         | Findlib_dynload ->
           (* If findlib.dynload is linked, we stores in the binary the packages
@@ -254,7 +258,7 @@ let handle_special_libs cctx =
           let requires =
             (* This shouldn't fail since findlib.dynload depends on dynlink and
                findlib. That's why it's ok to use a dummy location. *)
-            let db = SC.public_libs sctx in
+            let* db = Scope.DB.public_libs (Super_context.context sctx) in
             let open Resolve.Memo.O in
             let+ dynlink =
               Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")
@@ -274,18 +278,15 @@ let handle_special_libs cctx =
               ~requires ~precompiled_cmi:false
           in
           process_libs libs
-            ~to_link_rev:(LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
+            ~to_link_rev:(Module (obj_dir, module_) :: Lib lib :: to_link_rev)
             ~force_linkall:true
         | Configurator _ ->
-          process_libs libs
-            ~to_link_rev:(LM.Lib lib :: to_link_rev)
-            ~force_linkall
+          process_libs libs ~to_link_rev:(Lib lib :: to_link_rev) ~force_linkall
         | Dune_site { data_module; plugins } ->
           let code =
             if plugins then
               Action_builder.return
-                (dune_site_plugins_code ~libs:all_libs
-                   ~builtins:(Findlib.builtins ctx.Context.findlib))
+                (dune_site_plugins_code ~libs:all_libs ~builtins)
             else Action_builder.return (dune_site_code ())
           in
           let& module_ =
@@ -294,7 +295,7 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~to_link_rev:(Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall:true))
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

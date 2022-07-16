@@ -1,9 +1,8 @@
 (** Loads dune files from the file system.
 
     Also responsible for evaluating dune files written in OCaml syntax. *)
-open! Dune_engine
 
-open! Stdune
+open Import
 
 module Dune_files : sig
   (** A partially evaluated dune file. The context's ocamlc is used to evaluate
@@ -11,6 +10,8 @@ module Dune_files : sig
   type t
 
   val eval : t -> context:Context.t -> Dune_file.t list Memo.t
+
+  val in_dir : Path.Build.t -> Dune_file.t option Memo.t
 end
 
 type conf = private

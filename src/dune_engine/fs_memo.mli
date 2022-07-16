@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 (** [init] must be called at initialization. Returns the set of nodes that need
@@ -14,6 +13,8 @@ val file_exists : Path.t -> bool Memo.t
 (** Check if a source or external directory exists and declare a dependency on
     it. *)
 val dir_exists : Path.t -> bool Memo.t
+
+val is_directory : Path.t -> (bool, Unix_error.Detailed.t) result Memo.t
 
 (** Call [Path.stat] on a path and declare a dependency on it. *)
 val path_stat :

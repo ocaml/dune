@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 
 module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
   include Stdune
@@ -160,7 +159,7 @@ let main_modules names =
   List.map ~f:String.capitalize_ascii names
   |> String.concat ~sep:" " |> rule "main_modules" [] Set
 
-let builtins ~stdlib_dir ~version:ocaml_version =
+let pre_ocaml_5_builtins ~stdlib_dir ~version:ocaml_version =
   let version = version "[distributed with OCaml]" in
   let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext deps
       =
@@ -199,6 +198,10 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     ; entries = [ version; main_modules [ name ] ]
     }
   in
+  let sandbox_if_necessary dir =
+    if Ocaml.Version.has_sandboxed_otherlibs ocaml_version then "+" ^ dir
+    else "+"
+  in
   let compiler_libs =
     let sub name ?kind ?exists_if_ext deps =
       Package
@@ -221,16 +224,20 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     }
   in
   let stdlib = dummy "stdlib" in
-  let str = simple "str" [] ~dir:"+" in
-  let unix = simple ~labels:true "unix" [] ~dir:"+" in
-  let bigarray =
-    if
-      Ocaml_version.stdlib_includes_bigarray ocaml_version
-      && not (Path.exists (Path.relative stdlib_dir "bigarray.cma"))
-    then dummy "bigarray"
-    else simple "bigarray" [ "unix" ] ~dir:"+"
+  let str = simple "str" [] ~dir:(sandbox_if_necessary "str") in
+  let unix = simple ~labels:true "unix" [] ~dir:(sandbox_if_necessary "unix") in
+  let open Memo.O in
+  let* bigarray =
+    let simple () = simple "bigarray" [ "unix" ] ~dir:"+" in
+    if not (Ocaml.Version.stdlib_includes_bigarray ocaml_version) then
+      Memo.return (simple ())
+    else
+      let+ cma =
+        Fs_memo.file_exists (Path.relative stdlib_dir "bigarray.cma")
+      in
+      if cma then simple () else dummy "bigarray"
   in
-  let dynlink = simple "dynlink" [] ~dir:"+" in
+  let dynlink = simple "dynlink" [] ~dir:(sandbox_if_necessary "dynlink") in
   let bytes = dummy "bytes" in
   let threads =
     { name = Some (Lib_name.of_string "threads")
@@ -249,7 +256,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
              (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
          ]
         @
-        if Ocaml_version.has_vmthreads ocaml_version then
+        if Ocaml.Version.has_vmthreads ocaml_version then
           [ Package
               (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
           ]
@@ -270,29 +277,35 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let ocamldoc =
     simple "ocamldoc" [ "compiler-libs" ] ~dir:"+ocamldoc" ~kind:[]
   in
-  let libs =
+  let+ libs =
     let base =
       [ stdlib; compiler_libs; str; unix; threads; dynlink; bytes; ocamldoc ]
     in
     let base =
-      if Ocaml_version.has_bigarray_library ocaml_version then bigarray :: base
+      if Ocaml.Version.has_bigarray_library ocaml_version then bigarray :: base
       else base
     in
-    let base =
-      if Path.exists (Path.relative stdlib_dir "graphics.cma") then
-        graphics :: base
-      else base
+    let* base =
+      let+ cma =
+        Fs_memo.file_exists (Path.relative stdlib_dir "graphics.cma")
+      in
+      if cma then graphics :: base else base
     in
     (* We do not rely on an "exists_if" ocamlfind variable, because it would
        produce an error message mentioning a "hidden" package (which could be
        confusing). *)
-    if Path.exists (Path.relative stdlib_dir "nums.cma") then num :: base
-    else base
+    let+ nums_cma = Fs_memo.file_exists (Path.relative stdlib_dir "nums.cma") in
+    if nums_cma then num :: base else base
   in
   List.filter_map libs ~f:(fun t ->
       Option.map t.name ~f:(fun name ->
           (Lib_name.package_name name, simplify t)))
   |> Package.Name.Map.of_list_exn
+
+let builtins ~stdlib_dir ~version =
+  if Ocaml.Version.has_META_files version then
+    Memo.return Package.Name.Map.empty
+  else pre_ocaml_5_builtins ~stdlib_dir ~version
 
 let string_of_action = function
   | Set -> "="

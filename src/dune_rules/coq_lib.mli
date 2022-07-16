@@ -1,10 +1,8 @@
-open! Dune_engine
+open Import
 
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
 (* Written by: Emilio Jesús Gallego Arias *)
-
-open! Stdune
 
 type t
 
@@ -12,11 +10,8 @@ val name : t -> Coq_lib_name.t
 
 val implicit : t -> bool
 
-(* this is not really a wrapper for the prefix path *)
-val wrapper : t -> string
-
 (** ml libraries *)
-val libraries : t -> (Loc.t * Lib_name.t) list
+val libraries : t -> (Loc.t * Lib.t) list Resolve.t
 
 val src_root : t -> Path.Build.t
 
@@ -24,24 +19,41 @@ val obj_root : t -> Path.Build.t
 
 val package : t -> Package.t option
 
+(** Return the list of dependencies needed for compiling this library *)
+val theories_closure : t -> t list Resolve.t
+
 module DB : sig
-  type lib
+  type lib := t
 
   type t
 
+  type entry =
+    | Theory of Path.Build.t
+    | Redirect of t
+
   val create_from_coqlib_stanzas :
-    (Path.Build.t * Coq_stanza.Theory.t) list -> t
+       parent:t option
+    -> find_db:(Path.Build.t -> Lib.DB.t)
+    -> (Coq_stanza.Theory.t * entry) list
+    -> t
 
-  val find_many : t -> loc:Loc.t -> Coq_lib_name.t list -> lib list Or_exn.t
+  val find_many :
+       t
+    -> (Loc.t * Coq_lib_name.t) list
+    -> coq_lang_version:Dune_sexp.Syntax.Version.t
+    -> lib list Resolve.Memo.t
 
-  val boot_library : t -> (Loc.t * lib) option
+  val boot_library : t -> (Loc.t * lib) option Resolve.Memo.t
 
-  val resolve : t -> Loc.t * Coq_lib_name.t -> lib Or_exn.t
-
-  (** Return the list of dependencies needed for compiling this library *)
-  val requires : t -> lib -> lib list Or_exn.t
+  val resolve :
+       t
+    -> coq_lang_version:Dune_sexp.Syntax.Version.t
+    -> Loc.t * Coq_lib_name.t
+    -> lib Resolve.Memo.t
 
   val requires_for_user_written :
-    t -> (Loc.t * Coq_lib_name.t) list -> lib list Or_exn.t
+       t
+    -> (Loc.t * Coq_lib_name.t) list
+    -> coq_lang_version:Dune_sexp.Syntax.Version.t
+    -> lib list Resolve.Memo.t
 end
-with type lib := t

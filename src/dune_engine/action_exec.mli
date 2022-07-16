@@ -1,7 +1,4 @@
-open! Stdune
-
-(* For registering the cram_exec function. *)
-val cram_run : (env:Env.t -> script:Path.t -> unit Fiber.t) Fdecl.t
+open Import
 
 (** Type for dependency requested by the dynamic action.
 
@@ -41,21 +38,3 @@ val exec :
   -> execution_parameters:Execution_parameters.t
   -> Action.t
   -> Exec_result.t Fiber.t
-
-(** The [BUILD_PATH_PREFIX_MAP] variable *)
-val _BUILD_PATH_PREFIX_MAP : string
-
-(** [extend_build_path_prefix_map env how map] extends the path rewriting rules
-    encoded in the [BUILD_PATH_PREFIX_MAP] variable.
-
-    Note that the rewriting rules are applied from right to left, so the last
-    rule of [map] will be tried first.
-
-    If the environment variable is already defined in [env], [how] explains
-    whether the rules in [map] should be tried before or after the existing
-    ones. *)
-val extend_build_path_prefix_map :
-     Env.t
-  -> [ `Existing_rules_have_precedence | `New_rules_have_precedence ]
-  -> Build_path_prefix_map.map
-  -> Env.t

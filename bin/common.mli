@@ -4,7 +4,7 @@ val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
 
-val rpc : t -> Dune_rpc_impl.Server.t option
+val rpc : t -> Dune_rpc_impl.Server.t
 
 val stats : t -> Dune_stats.t option
 
@@ -23,6 +23,8 @@ val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string
+
+val insignificant_changes : t -> [ `React | `Ignore ]
 
 (** [init] executes sequence of side-effecting actions to initialize Dune's
     working environment based on the options determined in a [Common.t]
@@ -75,5 +77,3 @@ module Let_syntax : sig
   val ( and+ ) :
     'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
 end
-
-val set_rpc : t -> Dune_rpc_impl.Server.t -> t

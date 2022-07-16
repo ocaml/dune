@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Stdune
-open! Import
+open Import
 
 (** Tie the knot between [Dune_engine] and [Dune_rules]. *)
 val init :

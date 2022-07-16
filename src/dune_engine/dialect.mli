@@ -1,4 +1,4 @@
-open! Import
+open Import
 
 (** Dialects
 
@@ -30,9 +30,9 @@ val decode : t Dune_lang.Decoder.t
 
 val extension : t -> Ml_kind.t -> string
 
-val preprocess : t -> Ml_kind.t -> (Loc.t * Action_dune_lang.t) option
+val preprocess : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t) option
 
-val format : t -> Ml_kind.t -> (Loc.t * Action_dune_lang.t * string list) option
+val format : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t * string list) option
 
 val ocaml : t
 

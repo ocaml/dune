@@ -1,10 +1,5 @@
-open! Dune_engine
 open Import
 open Action_builder.O
-
-type any_package =
-  | Local of Package.t
-  | Installed of Dune_package.t
 
 module Expanding_what = struct
   type t =
@@ -64,7 +59,7 @@ type t =
   ; foreign_flags :
          dir:Path.Build.t
       -> string list Action_builder.t Foreign_language.Dict.t Memo.t
-  ; find_package : Package.Name.t -> any_package option Memo.t
+  ; sites : Sites.t
   ; expanding_what : Expanding_what.t
   }
 
@@ -677,7 +672,9 @@ let expand t ~mode template =
     ~f:(expand_pform t)
 
 let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
-    ~lib_artifacts_host ~bin_artifacts_host ~find_package =
+    ~lib_artifacts_host ~bin_artifacts_host =
+  let open Memo.O in
+  let+ sites = Sites.create context in
   { dir = context.build_dir
   ; env = context.env
   ; local_env = Env.Var.Map.empty
@@ -694,7 +691,7 @@ let make ~scope ~scope_host ~(context : Context.t) ~lib_artifacts
       (fun ~dir ->
         Code_error.raise "foreign flags expander is not set"
           [ ("dir", Path.Build.to_dyn dir) ])
-  ; find_package
+  ; sites
   ; expanding_what = Nothing_special
   }
 
@@ -753,8 +750,8 @@ module With_deps_if_necessary = struct
   let expand_path t sw =
     let+ vs = expand t ~mode:Many sw in
     List.map vs ~f:(fun v ->
-        Value.to_path v ~error_loc:(String_with_vars.loc sw)
-          ~dir:(Path.build t.dir))
+        Value.to_path_in_build_or_external v
+          ~error_loc:(String_with_vars.loc sw) ~dir:t.dir)
 
   let expand_str t sw =
     let+ v = expand t ~mode:Single sw in
@@ -807,4 +804,15 @@ let expand_and_eval_set t set ~standard =
 let eval_blang t blang =
   Blang.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
 
-let find_package t pkg = t.find_package pkg
+let expand_lock ~base expander (Locks.Lock sw) =
+  let open Memo.O in
+  match base with
+  | `Of_expander -> No_deps.expand_path expander sw
+  | `This base ->
+    let+ str = No_deps.expand_str expander sw in
+    Path.relative base str
+
+let expand_locks ~base expander locks =
+  Memo.List.map locks ~f:(expand_lock ~base expander)
+
+let sites t = t.sites

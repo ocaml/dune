@@ -1,8 +1,6 @@
 (** Preprocessing of OCaml source files *)
-open! Dune_engine
 
-open! Stdune
-open! Import
+open Import
 
 val make :
      Super_context.t
@@ -32,7 +30,8 @@ val gen_rules : Super_context.t -> string list -> unit Memo.t
 val chdir : Action_unexpanded.t -> Action_unexpanded.t
 
 val action_for_pp_with_target :
-     loc:Loc.t
+     sandbox:Sandbox_config.t
+  -> loc:Loc.t
   -> expander:Expander.t
   -> action:Action_unexpanded.t
   -> src:Path.Build.t
@@ -40,4 +39,4 @@ val action_for_pp_with_target :
   -> Action.Full.t Action_builder.With_targets.t
 
 val ppx_exe :
-  Super_context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Resolve.Memo.t
+  Context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Resolve.Memo.t

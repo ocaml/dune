@@ -1,5 +1,4 @@
-open! Stdune
-open! Import
+open Import
 
 type 'a t
 
@@ -45,13 +44,19 @@ val push_stack_frame :
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 
+type fail = { fail : 'a. unit -> 'a }
+
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)
 val fail : fail -> _ t
 
-(** [memoize name t] is an action builder that behaves like [t] except that its
-    result is computed only once. *)
-val memoize : string -> 'a t -> 'a t
+(** [memoize ?cutoff name t] is an action builder that behaves like [t] except
+    that its result is computed only once.
+
+    If the caller provides the [cutoff] equality check, we will use it to check
+    if the result of the computation has changed. If it didn't, we will be able
+    to skip the recomputation of values that depend on it. *)
+val memoize : ?cutoff:('a -> 'a -> bool) -> string -> 'a t -> 'a t
 
 type ('input, 'output) memo
 

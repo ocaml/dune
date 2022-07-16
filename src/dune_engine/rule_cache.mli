@@ -1,7 +1,6 @@
 (** Workspace-local and shared caches for rules. *)
 
-open! Stdune
-open! Import
+open Import
 
 (** The workspace-local cache consists of two components:
 

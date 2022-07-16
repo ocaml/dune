@@ -1,6 +1,11 @@
-open! Stdune
 open Import
 open Dune_lang.Decoder
+
+let name = "ctypes"
+
+let syntax =
+  Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
+    [ ((0, 1), `Since (3, 0)); ((0, 2), `Since (3, 4)) ]
 
 module Build_flags_resolver = struct
   module Vendored = struct
@@ -50,6 +55,17 @@ module Concurrency_policy = struct
   let default = Sequential
 end
 
+module Errno_policy = struct
+  type t =
+    | Ignore_errno
+    | Return_errno
+
+  let decode =
+    enum [ ("ignore_errno", Ignore_errno); ("return_errno", Return_errno) ]
+
+  let default = Ignore_errno
+end
+
 module Headers = struct
   type t =
     | Include of Ordered_set_lang.Unexpanded.t
@@ -86,6 +102,7 @@ end
 module Function_description = struct
   type t =
     { concurrency : Concurrency_policy.t
+    ; errno_policy : Errno_policy.t
     ; functor_ : Module_name.t
     ; instance : Module_name.t
     }
@@ -94,17 +111,21 @@ module Function_description = struct
     let open Dune_lang.Decoder in
     fields
       (let+ concurrency = field_o "concurrency" Concurrency_policy.decode
+       and+ errno_policy =
+         field_o "errno_policy"
+           (Dune_lang.Syntax.since syntax (0, 2) >>> Errno_policy.decode)
        and+ functor_ = field "functor" Module_name.decode
        and+ instance = field "instance" Module_name.decode in
        { concurrency =
            Option.value concurrency ~default:Concurrency_policy.default
+       ; errno_policy = Option.value errno_policy ~default:Errno_policy.default
        ; functor_
        ; instance
        })
 end
 
 type t =
-  { external_library_name : string
+  { external_library_name : External_lib_name.t
   ; build_flags_resolver : Build_flags_resolver.t
   ; headers : Headers.t
   ; type_description : Type_description.t
@@ -114,13 +135,7 @@ type t =
   ; deps : Dep_conf.t list
   }
 
-let name = "ctypes"
-
 type Stanza.t += T of t
-
-let syntax =
-  Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
-    [ ((0, 1), `Since (3, 0)) ]
 
 let decode =
   let open Dune_lang.Decoder in
@@ -136,7 +151,7 @@ let decode =
      and+ generated_entry_point =
        field "generated_entry_point" Module_name.decode
      and+ deps = field_o "deps" (repeat Dep_conf.decode) in
-     { external_library_name
+     { external_library_name = External_lib_name.of_string external_library_name
      ; build_flags_resolver =
          Option.value build_flags_resolver ~default:Build_flags_resolver.default
      ; headers = Option.value headers ~default:Headers.default
@@ -153,3 +168,80 @@ let () =
   let open Dune_lang.Decoder in
   Dune_project.Extension.register_simple syntax
     (return [ (name, decode >>| fun x -> [ T x ]) ])
+
+let type_gen_script ctypes =
+  sprintf "%s__type_gen"
+    (ctypes.external_library_name |> External_lib_name.clean
+   |> External_lib_name.to_string)
+
+let module_name_lower_string module_name =
+  String.lowercase (Module_name.to_string module_name)
+
+let function_gen_script ctypes (fd : Function_description.t) =
+  sprintf "%s__function_gen__%s__%s"
+    (ctypes.external_library_name |> External_lib_name.clean
+   |> External_lib_name.to_string)
+    (module_name_lower_string fd.functor_)
+    (module_name_lower_string fd.instance)
+
+let cflags_sexp ctypes =
+  Ctypes_stubs.cflags_sexp ~external_library_name:ctypes.external_library_name
+
+let c_library_flags_sexp ctypes =
+  sprintf "%s__c_library_flags.sexp"
+    (External_lib_name.to_string ctypes.external_library_name)
+
+let c_generated_types_module ctypes =
+  sprintf "%s__c_generated_types"
+    (ctypes.external_library_name |> External_lib_name.to_module_name
+   |> Module_name.to_string)
+  |> Module_name.of_string
+
+let c_generated_functions_module ctypes (fd : Function_description.t) =
+  sprintf "%s__c_generated_functions__%s__%s"
+    (ctypes.external_library_name |> External_lib_name.clean
+   |> External_lib_name.to_string)
+    (module_name_lower_string fd.functor_)
+    (module_name_lower_string fd.instance)
+  |> Module_name.of_string
+
+let c_generated_functions_cout_c ctypes (fd : Function_description.t) =
+  sprintf "%s__c_cout_generated_functions__%s__%s.c"
+    (External_lib_name.to_string ctypes.external_library_name)
+    (module_name_lower_string fd.functor_)
+    (module_name_lower_string fd.instance)
+
+let lib_deps_of_strings ~loc lst =
+  List.map lst ~f:(fun lib -> Lib_dep.Direct (loc, Lib_name.of_string lib))
+
+let type_gen_script_module ctypes =
+  type_gen_script ctypes |> Module_name.of_string
+
+let function_gen_script_module ctypes function_description =
+  function_gen_script ctypes function_description |> Module_name.of_string
+
+let generated_modules ctypes =
+  List.concat_map ctypes.function_description ~f:(fun function_description ->
+      [ function_gen_script_module ctypes function_description
+      ; c_generated_functions_module ctypes function_description
+      ])
+  @ [ type_gen_script_module ctypes
+    ; c_generated_types_module ctypes
+    ; ctypes.generated_types
+    ; ctypes.generated_entry_point
+    ]
+
+let non_installable_modules ctypes =
+  type_gen_script_module ctypes
+  :: List.map ctypes.function_description ~f:(fun function_description ->
+         function_gen_script_module ctypes function_description)
+
+let ml_of_module_name mn = Module_name.to_string mn ^ ".ml" |> String.lowercase
+
+let generated_ml_and_c_files ctypes =
+  let ml_files = generated_modules ctypes |> List.map ~f:ml_of_module_name in
+  let c_files =
+    List.map ctypes.function_description ~f:(fun fd ->
+        c_generated_functions_cout_c ctypes fd)
+  in
+  ml_files @ c_files

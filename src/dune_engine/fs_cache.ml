@@ -1,5 +1,4 @@
-open! Stdune
-open! Import
+open Import
 
 (* CR-someday amokhov: Persistently store the caches of (some?) operations. *)
 

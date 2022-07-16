@@ -1,9 +1,9 @@
-open! Dune_engine
-open! Stdune
 open Import
 open Memo.O
 
 module Bin = struct
+  let local_bin p = Path.Build.relative p ".bin"
+
   type t =
     { context : Context.t
     ; (* Mapping from executable names to their actual path in the workspace.
@@ -18,7 +18,7 @@ module Bin = struct
       match String.Map.find t.local_bins name with
       | Some path -> Memo.return (Ok (Path.build path))
       | None -> (
-        t.context.which name >>| function
+        Context.which t.context name >>| function
         | Some p -> Ok p
         | None ->
           Error
@@ -32,23 +32,25 @@ module Bin = struct
       match String.Map.find t.local_bins name with
       | Some _ -> Memo.return true
       | None -> (
-        t.context.which name >>| function
+        Context.which t.context name >>| function
         | Some _ -> true
         | None -> false)
 
   let add_binaries t ~dir l =
     let local_bins =
       List.fold_left l ~init:t.local_bins ~f:(fun acc fb ->
-          let path =
-            File_binding.Expanded.dst_path fb ~dir:(Utils.local_bin dir)
-          in
+          let path = File_binding.Expanded.dst_path fb ~dir:(local_bin dir) in
           String.Map.set acc (Path.Build.basename path) path)
     in
     { t with local_bins }
 
-  let create ~(context : Context.t) ~local_bins =
-    let local_bins =
-      Path.Build.Set.fold local_bins ~init:String.Map.empty ~f:(fun path acc ->
+  module Local = struct
+    type t = Path.Build.t String.Map.t
+
+    let equal = String.Map.equal ~equal:Path.Build.equal
+
+    let create =
+      Path.Build.Set.fold ~init:String.Map.empty ~f:(fun path acc ->
           let name = Path.Build.basename path in
           let key =
             if Sys.win32 then
@@ -57,8 +59,9 @@ module Bin = struct
             else name
           in
           String.Map.set acc key path)
-    in
-    { context; local_bins }
+  end
+
+  let create ~(context : Context.t) ~local_bins = { context; local_bins }
 end
 
 module Public_libs = struct

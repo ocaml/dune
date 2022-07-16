@@ -1,0 +1,10 @@
+(library
+ (name b_lib)
+ (libraries
+  (re_export bigarray))
+ (modules b_lib))
+
+(executable
+ (name b)
+ (libraries b_lib)
+ (modules b))

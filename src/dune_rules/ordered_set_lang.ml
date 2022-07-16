@@ -1,5 +1,3 @@
-open! Stdune
-open! Dune_engine
 open Import
 
 module Ast = struct
@@ -263,6 +261,9 @@ module Unexpanded = struct
     ; loc = Some (Loc.of_pos pos)
     ; context
     }
+
+  let concat ~context ~pos a b =
+    { ast = Ast.Union [ a.ast; b.ast ]; loc = Some (Loc.of_pos pos); context }
 
   let field ?check name =
     let decode =

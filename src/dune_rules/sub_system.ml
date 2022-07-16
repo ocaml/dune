@@ -1,6 +1,4 @@
-open! Dune_engine
-open! Stdune
-open! Import
+open Import
 include Sub_system_intf
 open Memo.O
 
@@ -28,8 +26,7 @@ module Register_backend (M : Backend) = struct
 
     let to_dyn = Dyn.opaque
 
-    let compare a b =
-      Lib.Id.compare (Lib.unique_id (M.lib a)) (Lib.unique_id (M.lib b))
+    let compare a b = Lib.compare (M.lib a) (M.lib b)
   end)
 
   let resolve db (loc, name) =

@@ -1,7 +1,5 @@
 (** Integration with feedback-directed optimizations using ocamlfdo. *)
-open! Dune_engine
-
-open Stdune
+open Import
 
 type phase =
   | All

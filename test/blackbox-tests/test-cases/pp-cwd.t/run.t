@@ -15,7 +15,7 @@ First, we demonstrate that preprocessors run from the context root:
   > (test
   >  (name test)
   >  (preprocess
-  >   (action (run %{project_root}/pp/pp.exe %{input-file} $DIR))))
+  >   (action (run %{bin:dunepp} %{input-file} $DIR))))
   > EOF
   $ cat >$DIR/test.ml <<EOF
   > print_endline _STRING_
@@ -35,7 +35,7 @@ referencing processor dependencies quite awkward:
   >  (name test)
   >  (preprocessor_deps dep)
   >  (preprocess
-  >   (action (run %{project_root}/pp/pp.exe %{input-file} $DIR dep))))
+  >   (action (run %{bin:dunepp} %{input-file} $DIR dep))))
   > EOF
   $ cat >$DIR/test.ml <<EOF
   > print_endline _STRING_

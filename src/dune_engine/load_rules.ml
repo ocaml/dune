@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 open Memo.O
 module Action_builder = Action_builder0
@@ -279,7 +278,8 @@ let no_rule_found ~loc fn =
     Code_error.raise ?loc "Build_system.no_rule_found got anonymous action path"
       [ ("fn", Path.Build.to_dyn fn) ]
 
-let source_file_digest path =
+let source_or_external_file_digest path =
+  assert (not (Path.is_in_build_dir path));
   let report_user_error details =
     let+ loc = Current_rule_loc.get () in
     User_error.raise ?loc
@@ -305,7 +305,7 @@ let eval_source_file : type a. a Action_builder.eval_mode -> Path.t -> a Memo.t
   match mode with
   | Lazy -> Memo.return ()
   | Eager ->
-    let+ d = source_file_digest path in
+    let+ d = source_or_external_file_digest path in
     Dep.Fact.file path d
 
 module rec Load_rules : sig
@@ -630,6 +630,37 @@ end = struct
             && Subdir_set.mem build_dir_only_sub_dirs name
           then report_rule_internal_dir_conflict name loc);
       let* rules_produced = Memo.Lazy.force rules in
+      let () =
+        let real_directory_targets = Rules.directory_targets rules_produced in
+        if
+          not
+            (Path.Build.Map.equal real_directory_targets directory_targets
+               ~equal:(fun _ _ ->
+                 (* The locations should match if the declration knows which
+                    rule will generate the directory, but it it's not necessary
+                    as the rule's actual location has higher priority. *)
+                 true))
+        then
+          let mismatched_directories =
+            let error message loc =
+              Dyn.record
+                [ ("message", Dyn.string message); ("loc", Loc.to_dyn_hum loc) ]
+            in
+            Path.Build.Map.merge real_directory_targets directory_targets
+              ~f:(fun _ generated declared ->
+                match (generated, declared) with
+                | None, None | Some _, Some _ -> None
+                | Some loc, None -> Some (error "not declared" loc)
+                | None, Some loc -> Some (error "not generated" loc))
+          in
+          Code_error.raise
+            "gen_rules returned a set of directory targets that doesn't match \
+             the set of directory targets from returned rules"
+            [ ("dir", Path.Build.to_dyn dir)
+            ; ( "mismatched_directories"
+              , Path.Build.Map.to_dyn Fun.id mismatched_directories )
+            ]
+      in
       let rules =
         let dir = Path.build dir in
         Rules.find rules_produced dir
@@ -672,9 +703,8 @@ end = struct
                 | None -> targets.files
                 | Some pred ->
                   let is_promoted file =
-                    Predicate_lang.Glob.exec pred
+                    Predicate.test pred
                       (Path.reach (Path.build file) ~from:(Path.build dir))
-                      ~standard:Predicate_lang.any
                   in
                   Path.Build.Set.filter targets.files ~f:is_promoted
               in
@@ -783,20 +813,6 @@ end = struct
       in
       let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
       let rules_here = compile_rules ~dir ~source_dirs rules in
-      let real_directory_targets =
-        Path.Build.Set.of_keys rules_here.by_directory_targets
-      in
-      let directory_targets = Path.Build.Set.of_keys directory_targets in
-      if not (Path.Build.Set.equal directory_targets real_directory_targets)
-      then
-        Code_error.raise
-          "gen_rules returned a set of directory targets that doesn't match \
-           the set of directory targets from returned rules"
-          [ ("dir", Path.Build.to_dyn dir)
-          ; ("directory_targets", Path.Build.Set.to_dyn directory_targets)
-          ; ( "real_directory_targets"
-            , Path.Build.Set.to_dyn real_directory_targets )
-          ];
       remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
       remove_old_sub_dirs_in_anonymous_actions_dir
         ~dir:
@@ -875,7 +891,7 @@ let get_rule_or_source path =
       let* loc = Current_rule_loc.get () in
       no_rule_found ~loc path
   else
-    let+ d = source_file_digest path in
+    let+ d = source_or_external_file_digest path in
     Source d
 
 type target_type =
@@ -906,7 +922,7 @@ let all_direct_targets () =
           load_dir
             ~dir:
               (Path.build
-                 (Path.Build.append_source ctx.Build_context.build_dir
+                 (Path.Build.append_source ctx.build_dir
                     (Source_tree.Dir.path dir)))
           >>| function
           | External _ | Source _ -> All_targets.empty

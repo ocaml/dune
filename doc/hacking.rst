@@ -8,6 +8,38 @@ large project developed by many different people, it's important to follow
 these guidelines in order to keep the project in a good
 state and pleasant to work on for everybody.
 
+Bootstrapping
+=============
+
+In order to build itself, Dune uses a micro dune written as a single
+``boot/duneboot.ml`` file. This micro build system cannot read ``dune`` files
+and instead has the configuration hard-coded in ``boot/libs.ml``. This latter
+file is automatically updated during development when we modify the ``dune``
+files in the repository. ``boot/duneboot.ml`` itself is built with a single
+invocation of ``ocamlopt`` or ``ocamlc`` via the ``bootstrap.ml`` ocaml script.
+
+``boot/duneboot.ml`` builds a ``dune.exe`` binary at the root of the source
+tree and uses this binary to build everything else.
+
+``$ make dev`` takes care of bootstrapping if needed, but if you want to just
+run the bootstrapping step itself, build the ``dune.exe`` target with
+
+.. code:: sh
+
+   make dune.exe
+
+Once you've bootstrapped dune, you should be using it to develop dune itself.
+Here are the most common commands you'll be running:
+
+.. code:: sh
+
+   # to make sure everything compiles:
+   $ ./dune.exe build @check
+   # run all the tests
+   $ ./dune.exe runtest
+   # run a particular cram foo.t:
+   $ ./dune.exe build @foo
+
 Writing Tests
 =============
 
@@ -171,7 +203,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 
 .. code:: scheme
 
-   (lang dune 3.2)
+   (lang dune 3.4)
    (using coq 0.2)
 
 If such extensions are experimental, it's recommended that they pass
@@ -223,4 +255,27 @@ To adhere to this loading scheme, we must generate our rules as part
 of the callback that creates targets in that directory. See the ``Gen_rules``
 module for how this callback is constructed.
 
+Documentation
+=============
+
+User documentation lives in the ``./doc`` directory.
+
+In order to build the user documentation, you must install python-sphinx_ and
+sphinx_rtd_theme_.
+
+Build the documentation with
+
+.. code:: sh
+
+   $ make doc
+
+For automatically updated builds, you can install sphinx-autobuild, and run
+
+.. code:: sh
+
+   $ make livedoc
+
+.. _python-sphinx: http://www.sphinx-doc.org/en/master/usage/installation.html
+.. _sphinx_rtd_theme: https://sphinx-rtd-theme.readthedocs.io/en/stable/
+.. _sphinx-autobuild: https://pypi.org/project/sphinx-autobuild/
 .. _dune-release: https://github.com/ocamllabs/dune-release

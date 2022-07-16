@@ -1,5 +1,4 @@
 (** Dune sub-systems *)
-open! Dune_engine
 
 (** This module allows to define sub-systems. The aim is to define everything
     related to the sub-system, such as the parser for [dune] files, the metadata
@@ -14,8 +13,6 @@ open! Dune_engine
     For instance, for inline tests, the backend is what defines the inline tests
     framework. "ppx_inline_test" and "qtest" are examples of backends. An end
     point is any library that contains inline tests. *)
-
-open! Import
 
 include module type of struct
   include Sub_system_intf
@@ -34,7 +31,7 @@ module Register_backend (M : Backend) : Registered_backend with type t := M.t
     - connect the parser to the [dune] file parser
 
     - connect the rule generator to the rule generator for libraries *)
-module Register_end_point (M : End_point) : sig end
+module Register_end_point (_ : End_point) : sig end
 
 (** Scan the sub-systems used by the library and generate rules for all of the
     ones that needs it. *)

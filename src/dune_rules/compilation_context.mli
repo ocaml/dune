@@ -1,7 +1,5 @@
 (** High-level API for compiling OCaml files *)
-open! Dune_engine
 
-open! Stdune
 open Import
 
 (** Represent a compilation context.
@@ -39,6 +37,7 @@ val create :
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
   -> ?bin_annot:bool
+  -> ?loc:Loc.t
   -> unit
   -> t Memo.t
 
@@ -107,3 +106,5 @@ val root_module_entries : t -> Module_name.t list Action_builder.t
 val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 
 val ocamldep_modules_data : t -> Ocamldep.Modules_data.t
+
+val loc : t -> Loc.t option

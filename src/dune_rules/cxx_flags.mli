@@ -1,8 +1,7 @@
 (** This module contains a small database of flags that is used when compiling C
     and C++ stubs. *)
-open! Stdune
 
-open Dune_engine
+open Import
 
 type phase =
   | Compile

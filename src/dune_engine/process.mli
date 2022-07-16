@@ -8,7 +8,7 @@ val with_directory_annot : Path.t User_message.Annots.Key.t
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
       (** Fail if the process exits with anything else than [0] *)
-  | Accept : int Predicate_lang.t -> ('a, ('a, int) result) failure_mode
+  | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
       (** Accept the following non-zero exit codes, and return [Error code] if
           the process exists with one of these codes. *)
 

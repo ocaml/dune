@@ -1,8 +1,6 @@
 (** [Ordered_set_lang.t] is a sexp-based representation for an ordered list of
     strings, with some set like operations. *)
 
-open! Stdune
-open Dune_engine
 open Import
 
 type t
@@ -60,6 +58,8 @@ module Unexpanded : sig
 
   val include_single :
     context:Univ_map.t -> pos:string * int * int * int -> string -> t
+
+  val concat : context:Univ_map.t -> pos:string * int * int * int -> t -> t -> t
 
   val field :
        ?check:unit Dune_lang.Decoder.t

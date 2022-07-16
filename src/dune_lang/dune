@@ -1,6 +1,14 @@
 (library
  (name dune_lang)
  (synopsis "[Internal] S-expression library")
- (libraries stdune))
+ (libraries
+  stdune
+  dune_glob
+  dune_rpc_private
+  dune_util
+  memo
+  ocaml
+  ordering
+  (re_export dune_sexp)))
 
-(ocamllex lexer versioned_file_first_line)
+(ocamllex dune_lexer)

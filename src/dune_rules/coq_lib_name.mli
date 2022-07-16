@@ -1,16 +1,16 @@
-open! Dune_engine
+open Import
 
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
 (* (c) INRIA 2020                              *)
 (* Written by: Emilio Jesús Gallego Arias *)
 
-open! Stdune
-
 (* This is in its own file due to dependency issues *)
 
 (** A Coq library name is a dot-separated list of Coq module identifiers. *)
 type t
+
+val compare : t -> t -> Ordering.t
 
 (** Returns the wrapper name, a dot-separated list of Coq module identifies *)
 val wrapper : t -> string

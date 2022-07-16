@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 let encode_lang = function
   | Foreign_language.C -> "c"

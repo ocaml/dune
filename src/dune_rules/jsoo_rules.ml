@@ -1,7 +1,4 @@
-open! Dune_engine
-open! Stdune
 open Import
-open! No_io
 module SC = Super_context
 
 let install_jsoo_hint = "opam install js_of_ocaml-compiler"
@@ -37,6 +34,9 @@ let js_of_ocaml_rule sctx ~sub_command ~dir ~(flags : _ Js_of_ocaml.Flags.t)
     ; spec
     ]
 
+let jsoo_runtime_files =
+  List.concat_map ~f:(fun t -> Lib_info.jsoo_runtime (Lib.info t))
+
 let standalone_runtime_rule cc ~javascript_files ~target ~flags =
   let libs = Compilation_context.requires_link cc in
   let spec =
@@ -44,7 +44,7 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
       [ Resolve.Memo.args
           (let open Resolve.Memo.O in
           let+ libs = libs in
-          Command.Args.Deps (Lib.L.jsoo_runtime_files libs))
+          Command.Args.Deps (jsoo_runtime_files libs))
       ; Deps (List.map ~f:Path.build javascript_files)
       ]
   in
@@ -62,7 +62,7 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
       [ Resolve.Memo.args
           (let open Resolve.Memo.O in
           let+ libs = libs in
-          Command.Args.Deps (Lib.L.jsoo_runtime_files libs))
+          Command.Args.Deps (jsoo_runtime_files libs))
       ; Deps (List.map ~f:Path.build javascript_files)
       ; Dep (Path.build src)
       ]
@@ -137,7 +137,8 @@ let setup_separate_compilation_rules sctx components =
     let pkg = Lib_name.parse_string_exn (Loc.none, pkg) in
     let ctx = SC.context sctx in
     let open Memo.O in
-    Lib.DB.find (SC.installed_libs sctx) pkg >>= function
+    let* installed_libs = Lib.DB.installed ctx in
+    Lib.DB.find installed_libs pkg >>= function
     | None -> Memo.return ()
     | Some pkg ->
       let info = Lib.info pkg in
@@ -172,8 +173,8 @@ let setup_separate_compilation_rules sctx components =
           in
           SC.add_rule sctx ~dir action_with_targets))
 
-let build_exe cc ~in_context ~src ~(cm : Path.t list Action_builder.t) ~promote
-    ~link_time_code_gen =
+let build_exe cc ~loc ~in_context ~src ~(cm : Path.t list Action_builder.t)
+    ~promote ~link_time_code_gen =
   let { Js_of_ocaml.In_context.javascript_files; flags } = in_context in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
@@ -191,12 +192,12 @@ let build_exe cc ~in_context ~src ~(cm : Path.t list Action_builder.t) ~promote
   | Separate_compilation ->
     standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime
       ~flags
-    >>= SC.add_rule sctx ~dir
+    >>= SC.add_rule ~loc sctx ~dir
     >>> link_rule cc ~runtime:standalone_runtime ~target cm ~flags
           ~link_time_code_gen
-    >>= SC.add_rule sctx ~dir ~mode
+    >>= SC.add_rule sctx ~loc ~dir ~mode
   | Whole_program ->
     exe_rule cc ~javascript_files ~src ~target ~flags
-    >>= SC.add_rule sctx ~dir ~mode
+    >>= SC.add_rule sctx ~loc ~dir ~mode
 
 let runner = "node"

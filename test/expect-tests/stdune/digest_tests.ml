@@ -6,16 +6,9 @@ let%expect_test "directory digest version" =
 
      The expected value is kept ouside of the expect block on purpose so that it
      must be modified manually. *)
-  let expected = "921844ea7c28cccb9edf40c8fd0245a5" in
+  let expected = "a743ec66ce913ff6587a3816a8acc6ea" in
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
-  let stats =
-    { Digest.Stats_for_digest.st_kind = S_DIR
-    ; st_perm = 1
-    ; st_size = 1
-    ; st_mtime = 0.
-    ; st_ctime = 0.
-    }
-  in
+  let stats = { Digest.Stats_for_digest.st_kind = S_DIR; st_perm = 1 } in
   (match Digest.path_with_stats ~allow_dirs:true dir stats with
   | Ok digest ->
     let digest = Digest.to_string digest in
@@ -30,14 +23,7 @@ let%expect_test "directory digest version" =
 
 let%expect_test "reject directories with symlinks (for now)" =
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
-  let stats =
-    { Digest.Stats_for_digest.st_kind = S_DIR
-    ; st_perm = 1
-    ; st_size = 1
-    ; st_mtime = 0.
-    ; st_ctime = 0.
-    }
-  in
+  let stats = { Digest.Stats_for_digest.st_kind = S_DIR; st_perm = 1 } in
   Unix.symlink "bar" (Path.to_string (Path.relative dir "foo"));
   (match Digest.path_with_stats ~allow_dirs:true dir stats with
   | Ok _ -> print_endline "[FAIL] failure expected"

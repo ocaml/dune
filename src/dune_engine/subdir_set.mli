@@ -1,6 +1,6 @@
 (** A possibly infinite set of subdirectories *)
 
-open! Stdune
+open Import
 
 type t =
   | All

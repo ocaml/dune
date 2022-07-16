@@ -1,7 +1,6 @@
 (** Generate a META file *)
-open! Dune_engine
 
-open! Import
+open Import
 
 val requires : ?preds:Meta.predicate list -> Lib_name.Set.t -> Meta.entry
 
@@ -9,5 +8,5 @@ val requires : ?preds:Meta.predicate list -> Lib_name.Set.t -> Meta.entry
 val gen :
      package:Package.t
   -> add_directory_entry:bool
-  -> Super_context.Lib_entry.t list
+  -> Scope.DB.Lib_entry.t list
   -> Meta.t Memo.t

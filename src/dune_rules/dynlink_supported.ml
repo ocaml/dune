@@ -1,5 +1,3 @@
-open! Dune_engine
-
 module By_the_os = struct
   type t = bool
 

@@ -1,6 +1,4 @@
-open! Dune_engine
 open Import
-open! No_io
 open Memo.O
 module Executables = Dune_file.Executables
 module Buildable = Dune_file.Buildable
@@ -96,45 +94,14 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let ctx = Super_context.context sctx in
   let project = Scope.project scope in
-  let* pp =
-    let instrumentation_backend =
-      Lib.DB.instrumentation_backend (Scope.libs scope)
-    in
-    let* preprocess =
-      Resolve.Memo.read_memo
-        (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
-           ~instrumentation_backend)
-    in
-    let* instrumentation_deps =
-      Resolve.Memo.read_memo
-        (Preprocess.Per_module.instrumentation_deps exes.buildable.preprocess
-           ~instrumentation_backend)
-    in
-    Preprocessing.make sctx ~dir ~scope ~expander ~preprocess
-      ~preprocessor_deps:exes.buildable.preprocessor_deps ~instrumentation_deps
-      ~lint:exes.buildable.lint ~lib_name:None
-  in
-  let* modules =
-    let executable_names =
-      List.map exes.names ~f:Module_name.of_string_allow_invalid
-    in
-    let add_empty_intf = exes.buildable.empty_module_interface_if_absent in
-    Modules.map_user_written modules ~f:(fun m ->
-        let name = Module.name m in
-        let* m = Pp_spec.pp_module_as pp name m in
-        let add_empty_intf =
-          (add_empty_intf
-          || Dune_project.executables_implicit_empty_intf project
-             && List.mem executable_names name ~equal:Module_name.equal)
-          && not (Module.has m ~ml_kind:Intf)
-        in
-        if add_empty_intf then Module_compilation.with_empty_intf ~sctx ~dir m
-        else Memo.return m)
-  in
   let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
   let linkages = linkages ctx ~exes ~explicit_js_mode in
   let* flags = Super_context.ocaml_flags sctx ~dir exes.buildable.flags in
+  let* modules, pp =
+    Buildable_rules.modules_rules sctx exes.buildable expander ~dir scope
+      modules ~lib_name:None ~empty_intf_modules:(`Exe_mains exes.names)
+  in
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
@@ -146,9 +113,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         Option.some_if (List.exists linkages ~f:Exe.Linkage.is_js) js_of_ocaml
       else Some js_of_ocaml
     in
-    Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-      ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
-      ~js_of_ocaml ~opaque:Inherit_from_settings ~package:exes.package
+    Compilation_context.create () ~loc:exes.buildable.loc ~super_context:sctx
+      ~expander ~scope ~obj_dir ~modules ~flags ~requires_link ~requires_compile
+      ~preprocessing:pp ~js_of_ocaml ~opaque:Inherit_from_settings
+      ~package:exes.package
   in
   let stdlib_dir = ctx.Context.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
@@ -158,7 +126,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
-  let+ () =
+  let* dep_graphs =
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
     let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
@@ -206,8 +174,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         ~requires_compile
     in
     let* () = Check_rules.add_files sctx ~dir o_files in
-    let buildable = exes.Executables.buildable in
-    match buildable.Buildable.ctypes with
+    let buildable = exes.buildable in
+    match buildable.ctypes with
     | None ->
       Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
         ~promote:exes.promote ~embed_in_plugin_libraries ~sandbox
@@ -224,6 +192,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       let* () = Module_compilation.build_all cctx in
       Exe.link_many ~programs ~linkages ~link_args ~o_files
         ~promote:exes.promote ~embed_in_plugin_libraries cctx ~sandbox
+  in
+  let+ () =
+    Memo.parallel_iter dep_graphs.for_exes
+      ~f:(Check_rules.add_cycle_check sctx ~dir)
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

@@ -1,4 +1,0 @@
-(coq.theory
- (name b)
- (package csimple)
- (theories a))

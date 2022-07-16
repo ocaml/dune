@@ -1,5 +1,3 @@
-open! Dune_engine
-open! Stdune
 open Import
 
 module Args0 = struct
@@ -27,7 +25,7 @@ module Args0 = struct
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> [> `Targets ] t
     | Dyn : without_targets t Action_builder.t -> _ t
-    | Fail : fail -> _ t
+    | Fail : Action_builder.fail -> _ t
     | Expand : expand -> _ t
 
   let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))
@@ -99,7 +97,7 @@ let dep_prog = function
   | Ok p -> Action_builder.path p
   | Error _ -> Action_builder.return ()
 
-let run ~dir ?stdout_to prog args =
+let run ~dir ?sandbox ?stdout_to prog args =
   Action_builder.With_targets.add ~file_targets:(Option.to_list stdout_to)
     (let open Action_builder.With_targets.O in
     let+ () = Action_builder.with_no_targets (dep_prog prog)
@@ -110,7 +108,7 @@ let run ~dir ?stdout_to prog args =
       | None -> action
       | Some path -> Action.with_stdout_to path action
     in
-    Action.Full.make (Action.chdir dir action))
+    Action.Full.make ?sandbox (Action.chdir dir action))
 
 let run' ~dir prog args =
   let open Action_builder.O in

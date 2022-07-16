@@ -6,9 +6,6 @@
  (enabled_if
   (<> %{system} macosx)))
 
-; An alias that runs all Coq tests
-
 (cram
  (applies_to :whole_subtree)
- (alias all-coq-tests)
- (enabled_if %{bin-available:coqc}))
+ (deps %{bin:coqc} %{bin:coqdep}))

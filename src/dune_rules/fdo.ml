@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 module CC = Compilation_context
 
 type phase =
@@ -45,7 +44,9 @@ let get_flags var =
     Env.get ctx.env var |> Option.value ~default:""
     |> String.extract_blank_separated_words |> Memo.return
   in
-  let memo = Memo.create var ~input:(module Context) f in
+  let memo =
+    Memo.create var ~input:(module Context) ~cutoff:(List.equal String.equal) f
+  in
   Memo.exec memo
 
 let ocamlfdo_flags = get_flags "OCAMLFDO_FLAGS"
@@ -110,7 +111,10 @@ let get_profile =
     in
     if use_profile then Some path else None
   in
-  let memo = Memo.create Mode.var ~input:(module Context) f in
+  let memo =
+    Memo.create Mode.var f ~cutoff:(Option.equal Path.equal)
+      ~input:(module Context)
+  in
   Memo.exec memo
 
 let opt_rule cctx m =
@@ -189,7 +193,7 @@ module Linker_script = struct
     | Some fdo_target_exe ->
       if
         Path.equal name fdo_target_exe
-        && (Ocaml_version.supports_function_sections ctx.version
+        && (Ocaml.Version.supports_function_sections ctx.version
            || Ocaml_config.is_dev_version ctx.ocaml_config)
       then Some (linker_script_rule cctx fdo_target_exe)
       else None

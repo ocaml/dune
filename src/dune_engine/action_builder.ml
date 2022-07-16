@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 include Action_builder0
 open O
@@ -152,6 +151,15 @@ module With_targets = struct
           (Targets.Files.create (Path.Build.Set.of_list file_targets))
     }
 
+  let add_directories t ~directory_targets =
+    { build = t.build
+    ; targets =
+        Targets.combine t.targets
+          (Targets.create
+             ~dirs:(Path.Build.Set.of_list directory_targets)
+             ~files:Path.Build.Set.empty)
+    }
+
   let map { build; targets } ~f = { build = map build ~f; targets }
 
   let map2 x y ~f =
@@ -227,12 +235,6 @@ let with_stdout_to ?(perm = Action.File_perm.Normal) fn t =
 let copy ~src ~dst =
   with_file_targets ~file_targets:[ dst ]
     (path src >>> return (Action.Full.make (Action.Copy (src, dst))))
-
-let copy_and_add_line_directive ~src ~dst =
-  with_file_targets ~file_targets:[ dst ]
-    (path src
-    >>> return
-          (Action.Full.make (Action.Copy_and_add_line_directive (src, dst))))
 
 let symlink ~src ~dst =
   with_file_targets ~file_targets:[ dst ]

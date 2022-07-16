@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: scheme
 
-   (lang dune 3.2)
+   (lang dune 3.4)
 
 Additionally, they can contains the following stanzas.
 
@@ -142,6 +142,9 @@ interface files for executables and tests that don't already have them:
 .. code:: scheme
 
     (executables_implicit_empty_intf true)
+
+This option is enabled by default starting with Dune lang 3.0, so
+empty interface files are no longer needed.
 
 .. _explicit-js-mode:
 
@@ -369,18 +372,21 @@ language. The syntax is a list of the following elements:
 
    op := '=' | '<' | '>' | '<>' | '>=' | '<='
 
-   stage := :with-test | :build | :dev
+   filter := :dev | :build | :with-test | :with-doc | :post
 
    constr := (<op> <version>)
 
    logop := or | and
 
    dep := name
-        | (name <stage>)
+        | (name <filter>)
         | (name <constr>)
-        | (name (<logop> (<stage> | <constr>)*))
+        | (name (<logop> (<filter> | <constr>))*)
 
    dep-specification = dep+
+
+Filters will expand to any opam variable name if prefixed by ``:``, not just the
+ones listed above.
 
 Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to
@@ -1004,34 +1010,19 @@ The syntax is as follows:
 .. code:: scheme
 
     (rule
-     (target[s] <filenames>)
-     (action  <action>)
+     (action <action>)
      <optional-fields>)
-
-``<filenames>`` is a list of filenames (if defined with ``targets``)
-or exactly one filename (if defined with ``target``). Note that at this time,
-Dune officially only supports user rules with targets in the current directory.
-However, starting from Dune 3.0, we provide an experimental support for
-*directory targets*, where an action can produce a whole tree of build
-artifacts. To specify a directory target, you can use the ``(dir <dirname>)``
-syntax. For example, the following stanza describes a rule with a file
-target ``foo`` and a directory target ``bar``.
-
-.. code:: scheme
-
-    (rule
-     (targets foo (dir bar))
-     (action  <action>))
-
-To enable this experimental feature, add ``(using directory-targets 0.1)`` to
-your ``dune-project`` file. However note that currently rules with a directory
-target are always rebuilt. We are working on fixing this performance bug.
-
 
 ``<action>`` is what you run to produce the targets from the dependencies.
 See the :ref:`user-actions` section for more details.
 
 ``<optional-fields>`` are:
+
+- ``(target <filename>)`` or ``(targets <filenames>) ``<filenames>`` is a list
+  of filenames (if defined with ``targets``) or exactly one filename (if defined
+  with ``target``). Dune needs to statically know targets of each rule.
+  ``(targets)`` can be omitted if it can be inferred from the action. See
+  `inferred rules`_.
 
 - ``(deps <deps-conf list>)``, to specify the dependencies of the
   rule. See the :ref:`deps-field` section for more details.
@@ -1135,6 +1126,26 @@ stanza is rejected by Dune:
 .. code:: lisp
 
     (rule (copy a b.%{read:file}))
+
+Directory targets
+-----------------
+
+Note that at this time, Dune officially only supports user rules with targets in
+the current directory. However, starting from Dune 3.0, we provide an
+experimental support for *directory targets*, where an action can produce a
+whole tree of build artifacts. To specify a directory target, you can use the
+``(dir <dirname>)`` syntax. For example, the following stanza describes a rule
+with a file target ``foo`` and a directory target ``bar``.
+
+.. code:: scheme
+
+    (rule
+     (targets foo (dir bar))
+     (action  <action>))
+
+To enable this experimental feature, add ``(using directory-targets 0.1)`` to
+your ``dune-project`` file. However note that currently rules with a directory
+target are always rebuilt. We are working on fixing this performance bug.
 
 ocamllex
 --------
@@ -1769,185 +1780,17 @@ target will be created in ``a/b/bar``:
    (subdir foo (rule (with-stdout-to bar (echo baz))))
    (subdir a/b (rule (with-stdout-to bar (echo baz))))
 
+coq.theory
+~~~~~~~~~~
+
+See the documentation on the :ref:`coq-theory`, :ref:`coq-extraction`,
+:ref:`coq-pp`, and related stanzas.
+
+
 external_variant
 -----------------
 
 This stanza was experimental and removed in Dune 2.6. See :ref:`dune-variants`.
-
-.. _coq-theory:
-
-coq.theory
-----------
-
-Dune is also able to build Coq developments. A Coq project is a mix of
-Coq ``.v`` files and (optionally) OCaml libraries linking to the Coq
-API (in which case we say the project is a *Coq plugin*). To enable
-Coq support in a Dune project, the language version should be selected
-in the ``dune-project`` file. For example:
-
-.. code:: scheme
-
-    (using coq 0.2)
-
-This will enable support for the ``coq.theory`` stanza in the current project. If the
-language version is absent, Dune will automatically add this line with the
-latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
-
-The supported Coq language versions are:
-
-- ``0.1``: basic Coq theory support,
-- ``0.2``: support for the ``theories`` field, and composition of theories in the same scope,
-- ``0.3``: support for ``(mode native)``, requires Coq >= 8.10 (and dune >= 2.9 for Coq >= 8.14).
-
-Guarantees with respect to stability are not provided yet;
-however, as implementation of features progresses, we hope to reach
-``1.0`` soon. The ``1.0`` version will commit to a stable set of
-functionality; all the features below are expected to reach ``1.0``
-unchanged or minimally modified.
-
-The basic form for defining Coq libraries is very similar to the OCaml form:
-
-.. code:: scheme
-
-    (coq.theory
-     (name <module_prefix>)
-     (package <package>)
-     (synopsis <text>)
-     (modules <ordered_set_lang>)
-     (libraries <ocaml_libraries>)
-     (flags <coq_flags>)
-     (mode <coq_native_mode>)
-     (theories <coq_theories>))
-
-The stanza will build all ``.v`` files on the given directory. The semantics of fields are:
-
-- ``<module_prefix>`` is a dot-separated list of valid Coq module
-  names and determines the module scope under which the theory is
-  compiled [``-R`` option]. For example, if ``<module_prefix>`` is
-  ``foo.Bar``, the theory modules will be named as
-  ``foo.Bar.module1``, ``foo.Bar.module2``, etc. Note that modules
-  in the same theory don't see the ``foo.Bar`` prefix in the same
-  way that OCaml ``wrapped`` libraries do. For compatibility reasons,
-  the Coq v1.0 installs a theory named
-  ``foo.Bar`` under ``foo/Bar``. Also note that Coq supports composing
-  a module path from different theories, thus you can name a theory
-  ``foo.Bar`` and a second one ``foo.Baz``, and things will work
-  properly.
-- the ``modules`` field enables constraining the set of modules
-  included in the theory, similarly to its OCaml counterpart. Modules
-  are specified in Coq notation. That is to say, ``A/b.v`` is written
-  ``A.b`` in this field.
-- if ``package`` is present, Dune will generate install rules for the
-  ``.vo`` files on the theory. ``pkg_name`` must be a valid package
-  name. Note that Coq v1.0 uses the Coq legacy
-  install setup, where all packages share a common root namespace and
-  install directory, ``lib/coq/user-contrib/<module_prefix>``, as
-  customary in the Make-based Coq package ecosystem. For
-  compatibility, we also install under the ``user-contrib`` prefix the
-  ``.cmxs`` files that appear in ``<ocaml_libraries>``,
-- ``<coq_flags>`` will be passed to ``coqc`` as command-line
-  options. ``:standard`` is taken from the value set in the ``(coq (flags <flags>))``
-  field in ``env`` profile. See :ref:`dune-env` for more information.
-- the path to the ``<ocaml_libraries>`` installed locations will be passed to
-  ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
-  theory to depend on a ML plugin,
-- your Coq theory can depend on other theories by specifying them in
-  the ``<coq_theories>`` field. Dune will then pass to Coq the
-  corresponding flags for everything to compile correctly [ ``-Q``
-  ]. As of today, we only support composition with libraries defined
-  in the same scope (that is to say, under the same ``dune-project``
-  domain). We will lift this restriction in the future. Note that
-  composition with the Coq's standard library is supported, but in
-  this case the ``Coq`` prefix will be made available in a qualified
-  way, since Coq v0.2.
-- you can enable the production of Coq's native compiler object files
-  by setting ``<coq_native_mode>`` to ``native``. This will pass
-  ``-native-compiler on`` to Coq and install the corresponding object
-  files under ``.coq-native``, when in ``release`` profile. The regular
-  ``dev`` profile will skip native compilation to make the build
-  faster, available since Coq v0.3.
-
-  Please note: support for native compute is **experimental**, and requires Coq >= 8.12.1;
-  moreover, depending libraries *must* be built with ``(mode native)``
-  for this to work. Also, Coq must be configured to support native
-  compilation. Note that Dune will explicitly disable output of native
-  compilation objects when ``(mode vo)``, even if the default Coq's
-  configure flag enabled it. This will be improved in the future.
-
-Recursive Qualification of Modules
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-If you add:
-
-.. code:: scheme
-
-    (include_subdirs qualified)
-
-to a ``dune`` file, Dune will consider all the modules in the
-directory and its subdirectories, adding a prefix to the module name in the usual
-Coq style for subdirectories. For example, file ``A/b/C.v`` will be module
-``A.b.C``.
-
-Limitations
-~~~~~~~~~~~
-
-- ``.v`` files always depend on the native version of Coq / plugins,
-- a ``foo.mlpack`` file must the present in directories of locally
-  defined plugins for things to work. This is a limitation of
-  ``coqdep``. See the template at
-  <https://github.com/ejgallego/coq-plugin-template>
-
-coq.pp
-------
-
-Coq plugin writers usually need to write ``.mlg`` files to extend Coq
-grammar. Such files are pre-processed with `coqpp`; to help plugin
-writers avoid boilerplate, we provide a `(coqpp ...)` stanza:
-
-.. code:: scheme
-
-    (coq.pp (modules <mlg_list>))
-
-which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
-
-.. code:: lisp
-
-    (rule
-     (targets g_mod.ml)
-     (deps (:mlg-file g_mod.mlg))
-     (action (run coqpp %{mlg-file})))
-
-coq.extraction
---------------
-
-Coq may be instructed to *extract* OCaml sources as part of the compilation
-process by using the ``coq.extraction`` stanza:
-
-.. code:: lisp
-
-   (coq.extraction
-    (prelude <name>)
-    (extracted_modules <names>)
-    <optional-fields>)
-
-- ``(prelude <name>)`` refers to the Coq source that contains the extraction
-  commands.
-
-- ``(extracted_modules <names>)`` is an exhaustive list of OCaml modules
-  extracted.
-
-- ``<optional-fields>`` are ``flags``, ``theories``, and ``libraries``. All of
-  these fields have the same meaning as in the ``coq.theory`` stanza.
-
-The extracted sources can then be used in ``executable`` or ``library`` stanzas
-as any other sources.
-
-Note that the sources are extracted to the directory where the
-``prelude`` file is; thus the common placement for the ``OCaml``
-stanzas is in the same ``dune`` file. **Warning**: using Coq's ``Cd``
-command to workaround problems with the output directory isn't
-allowed when using extraction from Dune; moreover the ``Cd`` command
-will be deprecated in Coq v8.12.
 
 MDX (Since 2.4)
 ---------------
@@ -2002,6 +1845,9 @@ Where ``<optional-fields>`` are:
   ``-p`` is passed, ``(mdx)`` stanzas with another package will be ignored.
   Note that this feature is completely separate from ``(packages)``, which
   specifies some dependencies.
+
+- ``(locks <lock-names>)`` specifies that the action of running the tests
+  holds the specified locks.  See the :ref:`locks` section for more details.
 
 Upgrading from Version 0.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2132,7 +1978,7 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 3.2)
+    (lang dune 3.4)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

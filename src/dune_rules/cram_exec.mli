@@ -1,6 +1,3 @@
-open! Dune_engine
-open Stdune
+open Import
 
-val run : env:Env.t -> script:Path.t -> unit Fiber.t
-
-val linkme : unit
+val action : Path.t -> Action.t

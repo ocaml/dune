@@ -297,7 +297,10 @@ let set_exclusion_paths t ~paths =
   State.critical_section t (fun t ->
       match State.get t with
       | Stop _ -> Code_error.raise "Fsevents.set_exclusion_paths: stop" []
-      | Idle r | Start (r, _) -> Raw.set_exclusion_paths r paths)
+      | Idle r | Start (r, _) -> (
+        try Raw.set_exclusion_paths r paths
+        with Failure msg ->
+          Code_error.raise msg [ ("paths", Dyn.(list string) paths) ]))
 
 (* let flush_async t = *)
 (*   let res = flush_async t in *)

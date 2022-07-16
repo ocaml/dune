@@ -1,22 +1,20 @@
-open! Stdune
+open Import
 
-module Outputs = struct
+module Simplified = struct
+  type destination =
+    | Dev_null
+    | File of string
+
+  type source = string
+
   type t =
-    | Stdout
-    | Stderr
-    | Outputs  (** Both Stdout and Stderr *)
-end
-
-module Inputs = struct
-  type t = Stdin
-end
-
-module File_perm = struct
-  (** File mode, for when creating files. We only allow what Dune takes into
-      account when memoizing commands. *)
-  type t =
-    | Normal
-    | Executable
+    | Run of string * string list
+    | Chdir of string
+    | Setenv of string * string
+    | Redirect_out of t list * Outputs.t * destination
+    | Redirect_in of t list * Inputs.t * source
+    | Pipe of t list list * Outputs.t
+    | Sh of string
 end
 
 module type Ast = sig
@@ -27,6 +25,8 @@ module type Ast = sig
   type target
 
   type string
+
+  type ext
 
   type t =
     | Run of program * string list
@@ -42,11 +42,10 @@ module type Ast = sig
     | Ignore of Outputs.t * t
     | Progn of t list
     | Echo of string list
-    | Cat of path
+    | Cat of path list
     | Copy of path * target
     | Symlink of path * target
     | Hardlink of path * target
-    | Copy_and_add_line_directive of path * target
     | System of string
     | Bash of string
     | Write_file of target * File_perm.t * string
@@ -57,8 +56,7 @@ module type Ast = sig
     | Merge_files_into of path list * string list * target
     | No_infer of t
     | Pipe of Outputs.t * t list
-    | Format_dune_file of Dune_lang.Syntax.Version.t * path * target
-    | Cram of path
+    | Extension of ext
 end
 
 module type Helpers = sig
@@ -96,13 +94,11 @@ module type Helpers = sig
 
   val echo : string list -> t
 
-  val cat : path -> t
+  val cat : path list -> t
 
   val copy : path -> target -> t
 
   val symlink : path -> target -> t
-
-  val copy_and_add_line_directive : path -> target -> t
 
   val system : string -> t
 
@@ -117,7 +113,57 @@ module type Helpers = sig
   val mkdir : path -> t
 
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
+end
 
-  val format_dune_file :
-    version:Dune_lang.Syntax.Version.t -> path -> target -> t
+module Ext = struct
+  type context =
+    { targets : Targets.Validated.t option
+    ; context : Build_context.t option
+    ; purpose : Process.purpose
+    ; rule_loc : Loc.t
+    }
+
+  type env =
+    { working_dir : Path.t
+    ; env : Env.t
+    ; stdout_to : Process.Io.output Process.Io.t
+    ; stderr_to : Process.Io.output Process.Io.t
+    ; stdin_from : Process.Io.input Process.Io.t
+    ; exit_codes : int Predicate.t
+    }
+
+  module type Spec = sig
+    type ('path, 'target) t
+
+    val name : string
+
+    val version : int
+
+    val is_useful_to : distribute:bool -> memoize:bool -> bool
+
+    val encode :
+      ('p, 't) t -> ('p -> Dune_lang.t) -> ('t -> Dune_lang.t) -> Dune_lang.t
+
+    val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
+
+    val action :
+         (Path.t, Path.Build.t) t
+      -> ectx:context
+      -> eenv:env
+      -> (* cwong: For now, I think we should only worry about extensions with
+            known dependencies. In the future, we may generalize this to return
+            an [Action_exec.done_or_more_deps], but that may be trickier to get
+            right, and is a bridge we can cross when we get there. *)
+         unit Fiber.t
+  end
+
+  module type Instance = sig
+    type target
+
+    type path
+
+    module Spec : Spec
+
+    val v : (path, target) Spec.t
+  end
 end

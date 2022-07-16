@@ -1,7 +1,6 @@
 (** The core of the build system *)
 
-open! Stdune
-open! Import
+open Import
 module Action_builder := Action_builder0
 
 (** {1 Requests} *)
@@ -32,15 +31,6 @@ val files_of : dir:Path.t -> Path.Set.t Memo.t
     into account. *)
 val build_pred : File_selector.t -> Dep.Fact.Files.t Memo.t
 
-(** Assuming [files] is a set of files in [_build/install] that belong to a
-    package [pkg], [package_deps packages_of pkg files] is the set of direct
-    package dependencies of [package]. *)
-val package_deps :
-     packages_of:(Path.Build.t -> Package.Id.Set.t Memo.t)
-  -> Package.t
-  -> Path.Build.t list
-  -> Package.Id.Set.t Memo.t
-
 (** Execute an action. The execution is cached. *)
 val execute_action :
   observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> unit Memo.t
@@ -48,6 +38,13 @@ val execute_action :
 (** Execute an action and capture its stdout. The execution is cached. *)
 val execute_action_stdout :
   observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> string Memo.t
+
+type rule_execution_result =
+  { deps : Dep.Fact.t Dep.Map.t
+  ; targets : Digest.t Path.Build.Map.t
+  }
+
+val execute_rule : Rule.t -> rule_execution_result Memo.t
 
 val dep_on_alias_definition :
   Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t

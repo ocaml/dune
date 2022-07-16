@@ -1,14 +1,11 @@
-open! Dune_engine
-open! Stdune
 open Import
-module SC = Super_context
 
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Cm_kind.Dict.t
 
   let make ~project ~opaque ~requires : _ Cm_kind.Dict.t =
     let open Resolve.Memo.O in
-    let iflags libs mode = Lib.L.include_flags ~project libs mode in
+    let iflags libs mode = Lib_flags.L.include_flags ~project libs mode in
     let cmi_includes =
       Command.Args.memo
         (Resolve.Memo.args
@@ -49,7 +46,7 @@ let eval_opaque (context : Context.t) = function
   | Explicit b -> b
   | Inherit_from_settings ->
     Profile.is_dev context.profile
-    && Ocaml_version.supports_opaque_for_mli context.version
+    && Ocaml.Version.supports_opaque_for_mli context.version
 
 type modules =
   { modules : Modules.t
@@ -79,7 +76,10 @@ type t =
   ; modes : Mode.Dict.Set.t
   ; bin_annot : bool
   ; ocamldep_modules_data : Ocamldep.Modules_data.t
+  ; loc : Loc.t option
   }
+
+let loc t = t.loc
 
 let super_context t = t.super_context
 
@@ -129,7 +129,7 @@ let dep_graphs t = t.modules.dep_graphs
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
-    ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) () =
+    ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) ?loc () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =
@@ -154,6 +154,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   let opaque = eval_opaque (Super_context.context super_context) opaque in
   let ocamldep_modules_data : Ocamldep.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
+    ; sandbox
     ; obj_dir
     ; sctx = super_context
     ; vimpl
@@ -181,6 +182,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; modes
   ; bin_annot
   ; ocamldep_modules_data
+  ; loc
   }
 
 let for_alias_module t alias_module =
@@ -195,7 +197,7 @@ let for_alias_module t alias_module =
     (* If the compiler reads the cmi for module alias even with [-w -49
        -no-alias-deps], we must sandbox the build of the alias module since the
        modules it references are built after. *)
-    if Ocaml_version.always_reads_alias_cmi ctx.version then
+    if Ocaml.Version.always_reads_alias_cmi ctx.version then
       Sandbox_config.needs_sandboxing
     else Sandbox_config.no_special_requirements
   in
@@ -239,7 +241,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     (* Cmi's of link time generated modules are compiled with -opaque, hence
        their implementation must also be compiled with -opaque *)
     let ctx = Super_context.context cctx.super_context in
-    Ocaml_version.supports_opaque_for_mli ctx.version
+    Ocaml.Version.supports_opaque_for_mli ctx.version
   in
   let modules = singleton_modules module_ in
   { cctx with
@@ -262,11 +264,21 @@ let for_plugin_executable t ~embed_in_plugin_libraries =
 
 let without_bin_annot t = { t with bin_annot = false }
 
+let entry_module_names sctx t =
+  match Lib_info.entry_modules (Lib.info t) with
+  | External d -> Resolve.Memo.of_result d
+  | Local ->
+    let open Memo.O in
+    let+ modules = Dir_contents.modules_of_lib sctx t in
+    let modules = Option.value_exn modules in
+    Resolve.return (Modules.entry_modules modules |> List.map ~f:Module.name)
+
 let root_module_entries t =
   let open Action_builder.O in
   let* requires = Resolve.Memo.read t.requires_compile in
   let* l =
     Action_builder.List.map requires ~f:(fun lib ->
-        Action_builder.of_memo (Lib.entry_module_names lib) >>= Resolve.read)
+        Action_builder.of_memo (entry_module_names t.super_context lib)
+        >>= Resolve.read)
   in
   Action_builder.return (List.concat l)

@@ -1,7 +1,6 @@
 (** Representation of rules *)
 
-open! Stdune
-open! Import
+open Import
 module Action_builder := Action_builder0
 
 (** Information about the provenance of a build rule. *)
@@ -31,7 +30,7 @@ module Promote : sig
   type t =
     { lifetime : Lifetime.t
     ; into : Into.t option
-    ; only : Predicate_lang.Glob.t option
+    ; only : Filename.t Predicate.t option
     }
 end
 

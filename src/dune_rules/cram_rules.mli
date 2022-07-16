@@ -1,5 +1,4 @@
 (** Rules for setting up cram tests *)
-open! Dune_engine
 
 open Import
 

@@ -2,12 +2,13 @@
 
 open Stdune
 open Dune_engine
+module Caml = Stdlib
 
 let config =
   { Scheduler.Config.concurrency = 1
   ; display = { verbosity = Short; status_line = false }
-  ; rpc = None
   ; stats = None
+  ; insignificant_changes = `React
   }
 
 let setup =

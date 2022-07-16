@@ -1,7 +1,6 @@
 (** Linking modes for binaries *)
-open! Dune_engine
 
-open! Stdune
+open Import
 
 type t =
   | C

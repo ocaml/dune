@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 open Memo.O
 
 type ('src, 'dst) t =

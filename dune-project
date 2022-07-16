@@ -1,4 +1,4 @@
-(lang dune 3.0)
+(lang dune 3.3)
 ;          ^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
@@ -88,6 +88,7 @@ no stability guarantee.
  (synopsis "Helper library for gathering system configuration")
  (depends
   (ocaml (>= 4.04.0))
+  base-unix
   (csexp (>= 1.5.0)))
  (description "\
 dune-configurator is a small library that helps writing OCaml scripts that
@@ -108,7 +109,8 @@ Among other things, dune-configurator allows one to:
   (csexp (>= 1.5.0))
   (ppx_expect :with-test)
   (stdune (= :version))
-  (dune-private-libs (= :version)))
+  (dune-private-libs (= :version))
+  base-unix)
  (description "\
 
 This library is experimental. No backwards compatibility is implied.
@@ -148,7 +150,8 @@ understood by dune language."))
   (dune-rpc (= :version))
   (result (>= 1.5))
   (csexp (>= 1.5.0))
-  (lwt (>= 5.3.0)))
+  (lwt (>= 5.3.0))
+  base-unix)
  (description "Specialization of dune-rpc to Lwt"))
 
 (package
@@ -179,6 +182,7 @@ understood by dune language."))
  (synopsis "Dune's unstable standard library")
  (depends
   (ocaml (>= 4.08.0))
+  base-unix
   (dyn (= :version))
   (ordering (= :version))
   (pp (>= 1.1.0))
@@ -190,7 +194,6 @@ understood by dune language."))
  (synopsis "Parse ocaml compiler output into structured form")
  (depends
   (ocaml (>= 4.08.0))
-  (dune-private-libs (= :version))
   (dyn (= :version)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 

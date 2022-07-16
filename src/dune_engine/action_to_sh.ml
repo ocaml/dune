@@ -11,9 +11,9 @@ module Simplified = struct
     | Run of string * string list
     | Chdir of string
     | Setenv of string * string
-    | Redirect_out of t list * Action.Outputs.t * destination
-    | Redirect_in of t list * Action.Inputs.t * source
-    | Pipe of t list list * Action.Outputs.t
+    | Redirect_out of t list * Outputs.t * destination
+    | Redirect_in of t list * Inputs.t * source
+    | Pipe of t list list * Outputs.t
     | Sh of string
 end
 
@@ -30,7 +30,7 @@ let echo s =
         ~f:(fun acc s -> Run ("echo", [ s ]) :: acc)
   else List.map lines ~f:(fun s -> Run ("echo", [ s ]))
 
-let cat fn = Run ("cat", [ fn ])
+let cat ps = Run ("cat", ps)
 
 let mkdir p = Run ("mkdir", [ "-p"; p ])
 
@@ -55,18 +55,11 @@ let simplify act =
       Redirect_out (block act, outputs, Dev_null) :: acc
     | Progn l -> List.fold_left l ~init:acc ~f:(fun acc act -> loop act acc)
     | Echo xs -> echo (String.concat xs ~sep:"")
-    | Cram script -> echo (sprintf "cram %s" script)
     | Cat x -> cat x :: acc
     | Copy (x, y) -> Run ("cp", [ x; y ]) :: acc
     | Symlink (x, y) ->
       Run ("ln", [ "-s"; x; y ]) :: Run ("rm", [ "-f"; y ]) :: acc
     | Hardlink (x, y) -> Run ("ln", [ x; y ]) :: Run ("rm", [ "-f"; y ]) :: acc
-    | Copy_and_add_line_directive (x, y) ->
-      Redirect_out
-        ( echo (Utils.line_directive ~filename:x ~line_number:1) @ [ cat x ]
-        , Stdout
-        , File y )
-      :: acc
     | System x -> Sh x :: acc
     | Bash x -> Run ("bash", [ "-e"; "-u"; "-o"; "pipefail"; "-c"; x ]) :: acc
     | Write_file (x, perm, y) ->
@@ -95,19 +88,7 @@ let simplify act =
       :: acc
     | No_infer act -> loop act acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
-    | Format_dune_file (ver, src, dst) ->
-      Redirect_out
-        ( [ Run
-              ( "dune"
-              , [ "format-dune-file"
-                ; "--dune-version"
-                ; Dune_lang.Syntax.Version.to_string ver
-                ; src
-                ] )
-          ]
-        , Stdout
-        , File dst )
-      :: acc
+    | Extension _ -> Sh "# extensions are not supported" :: acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

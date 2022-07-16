@@ -24,7 +24,6 @@ let term =
   if not (Path.is_directory (Path.of_string dir)) then
     User_error.raise
       [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
-  let utop_target = Filename.concat dir Utop.utop_exe in
   let sctx, utop_path =
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
@@ -32,9 +31,9 @@ let term =
         Build_system.run_exn (fun () ->
             let open Memo.O in
             let* setup = setup in
-            let context = Import.Main.find_context_exn setup ~name:ctx_name in
-            let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
             let utop_target =
+              let context = Import.Main.find_context_exn setup ~name:ctx_name in
+              let utop_target = Filename.concat dir Utop.utop_exe in
               Path.build (Path.Build.relative context.build_dir utop_target)
             in
             Build_system.file_exists utop_target >>= function
@@ -44,7 +43,8 @@ let term =
                     (String.maybe_quoted dir)
                 ]
             | true ->
-              let+ _digest = Build_system.build_file utop_target in
+              let+ (_ : Digest.t) = Build_system.build_file utop_target in
+              let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
               (sctx, Path.to_string utop_target)))
   in
   Hooks.End_of_build.run ();

@@ -1,3 +1,7 @@
+open Dune_site_private
+
+let path_sep = path_sep
+
 module Location = struct
   type t = string
 end
@@ -6,27 +10,19 @@ let dirs : (string * Dune_section.t, string) Hashtbl.t = Hashtbl.create 10
 
 (* multi-bindings first is the one with least priority *)
 
-(* TODO already exists in stdue/bin.ml *)
-let path_sep = if Sys.win32 then ';' else ':'
-
 let () =
-  match Sys.getenv_opt "DUNE_DIR_LOCATIONS" with
+  match Sys.getenv_opt dune_dir_locations_env_var with
   | None -> ()
-  | Some s ->
-    let rec aux = function
-      | [] -> ()
-      | package :: section :: dir :: l ->
-        let section =
-          match Dune_section.of_string section with
-          | None -> invalid_arg ("Dune-site: Unknown section " ^ section)
-          | Some s -> s
-        in
-        Hashtbl.add dirs (package, section) dir;
-        aux l
-      | _ -> invalid_arg "Error parsing DUNE_DIR_LOCATIONS"
-    in
-    let l = String.split_on_char path_sep s in
-    aux l
+  | Some s -> (
+    match decode_dune_dir_locations s with
+    | None ->
+      invalid_arg
+        (Printf.sprintf "Invalid value %s=%S" dune_dir_locations_env_var s)
+    | Some entries ->
+      List.iter
+        (fun { package; section; dir } ->
+          Hashtbl.add dirs (package, section) dir)
+        entries)
 
 (* Parse the replacement format described in [artifact_substitution.ml]. *)
 let eval s =

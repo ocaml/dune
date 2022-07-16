@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
@@ -36,20 +35,11 @@ let dir t = t.dir
 let map_path t p = Path.Build.append t.dir p
 
 let create_dirs t ~deps ~rule_dir =
-  Path.Set.iter
-    (Path.Set.add
-       (Path.Set.union_all [ Dep.Facts.parent_dirs deps; Dep.Facts.dirs deps ])
-       (Path.build rule_dir))
-    ~f:(fun path ->
-      match Path.as_in_build_dir path with
-      | None ->
-        (* This [path] is not in the build directory, so we do not need to
-           create it. If it comes from [deps], it must exist already. *)
-        ()
-      | Some path ->
-        (* There is no point in using the memoized version [Fs.mkdir_p] since
-           these directories are not shared between actions. *)
-        Path.mkdir_p (Path.build (map_path t path)))
+  Path.Build.Set.add (Dep.Facts.necessary_dirs_for_sandboxing deps) rule_dir
+  |> Path.Build.Set.iter ~f:(fun path ->
+         (* There is no point in using the memoized version [Fs.mkdir_p] since
+            these directories are not shared between actions. *)
+         Path.mkdir_p (Path.build (map_path t path)))
 
 let link_function ~(mode : Sandbox_mode.some) =
   let win32_error mode =

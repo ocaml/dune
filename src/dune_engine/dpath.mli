@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Target_dir : sig
   type context_related =

@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 type 'a eval_mode =
@@ -137,9 +136,15 @@ let force_lazy_or_eager :
   | Lazy -> Memo.Lazy.force (Lazy.force lazy_)
   | Eager -> Memo.Lazy.force (Lazy.force eager)
 
-let memoize name t =
-  let lazy_ = lazy (Memo.lazy_ ~name (fun () -> t.f Lazy))
-  and eager = lazy (Memo.lazy_ ~name (fun () -> t.f Eager)) in
+let memoize ?cutoff name t =
+  let cutoff ~equal =
+    Option.map cutoff ~f:(fun eq -> Tuple.T2.equal eq (Dep.Map.equal ~equal))
+  in
+  let memo ~equal eval_mode =
+    Memo.lazy_ ?cutoff:(cutoff ~equal) ~name (fun () -> t.f eval_mode)
+  in
+  let lazy_ = lazy (memo ~equal:Unit.equal Lazy)
+  and eager = lazy (memo ~equal:Dep.Fact.equal Eager) in
   { f = (fun mode -> force_lazy_or_eager mode lazy_ eager) }
 
 let ignore x = map x ~f:ignore
@@ -168,6 +173,8 @@ let all_unit (xs : unit t list) =
         let deps = List.map res ~f:snd in
         ((), Deps_or_facts.union_all mode deps))
   }
+
+type fail = { fail : 'a. unit -> 'a }
 
 let fail x =
   let+ () = return () in

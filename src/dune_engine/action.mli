@@ -1,23 +1,30 @@
-open! Stdune
+(** Actions as defined an executed by the build system.
+
+    These executions correpsond to primitives that the build system knows how to
+    execute. These usually, but not necessarily correspond to actions written by
+    the user in [Action_dune_lang.t] *)
+
 open! Import
 
 module Outputs : sig
-  include module type of Action_intf.Outputs
-
-  val to_string : t -> string
+  include
+    module type of Dune_lang.Action.Outputs
+      with type t = Dune_lang.Action.Outputs.t
 end
 
-module Inputs : module type of struct
-  include Action_intf.Inputs
+module Inputs : sig
+  include
+    module type of Dune_lang.Action.Inputs
+      with type t = Dune_lang.Action.Inputs.t
 end
 
 module File_perm : sig
-  include module type of struct
-    include Action_intf.File_perm
-  end
-
-  val to_unix_perm : t -> int
+  include
+    module type of Dune_lang.Action.File_perm
+      with type t = Dune_lang.Action.File_perm.t
 end
+
+module Ext : module type of Action_intf.Ext
 
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
@@ -39,8 +46,6 @@ module Prog : sig
       -> t
 
     val raise : t -> _
-
-    val user_message : t -> User_message.t
   end
 
   type t = (Path.t, Not_found.t) result
@@ -56,6 +61,10 @@ include
     with type path := Path.t
     with type target := Path.Build.t
     with type string := string
+    with type ext :=
+      (module Ext.Instance
+         with type target = Path.Build.t
+          and type path = Path.t)
 
 include
   Action_intf.Helpers
@@ -74,6 +83,7 @@ module For_shell : sig
       with type path := string
       with type target := string
       with type string := string
+      with type ext := Dune_lang.t
 
   val encode : t Dune_lang.Encoder.t
 end
@@ -82,7 +92,7 @@ end
 val for_shell : t -> For_shell.t
 
 (** Return the list of directories the action chdirs to *)
-val chdirs : t -> Path.Set.t
+val chdirs : t -> Path.Build.Set.t
 
 (** The empty action that does nothing. *)
 val empty : t

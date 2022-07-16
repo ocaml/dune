@@ -1,7 +1,6 @@
 (** OCaml flags *)
-open! Dune_engine
 
-open! Stdune
+open! Import
 
 type t
 
@@ -37,6 +36,8 @@ val append_common : t -> string list -> t
 val prepend_common : string list -> t -> t
 
 val with_vendored_warnings : t -> t
+
+val with_vendored_alerts : t -> t
 
 val common : t -> string list Action_builder.t
 

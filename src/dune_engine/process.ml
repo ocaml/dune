@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 open Fiber.O
 module Json = Chrome_trace.Json
@@ -11,14 +10,11 @@ let with_directory_annot =
 
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
-  | Accept : int Predicate_lang.t -> ('a, ('a, int) result) failure_mode
+  | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
 
 let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
   | Strict -> Int.equal 0
-  | Accept exit_codes ->
-    fun i ->
-      Predicate_lang.exec exit_codes ~standard:(Predicate_lang.Element 0)
-        (Int.equal i)
+  | Accept exit_codes -> fun i -> Predicate.test exit_codes i
 
 let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
  fun mode t ~f ->
@@ -59,10 +55,6 @@ module Io = struct
     | In_chan ic -> Unix.descr_of_in_channel ic
     | Out_chan oc -> Unix.descr_of_out_channel oc
 
-  let mode_of_channel : type a. a channel -> a mode = function
-    | In_chan _ -> In
-    | Out_chan _ -> Out
-
   let channel_of_descr : type a. _ -> a mode -> a channel =
    fun fd mode ->
     match mode with
@@ -75,7 +67,6 @@ module Io = struct
 
   type 'a t =
     { kind : kind
-    ; mode : 'a mode
     ; fd : Unix.file_descr Lazy.t
     ; channel : 'a channel Lazy.t
     ; mutable status : status
@@ -84,7 +75,6 @@ module Io = struct
   let terminal ch output_on_success =
     let fd = descr_of_channel ch in
     { kind = Terminal output_on_success
-    ; mode = mode_of_channel ch
     ; fd = lazy fd
     ; channel = lazy ch
     ; status = Keep_open
@@ -109,7 +99,7 @@ module Io = struct
       | Out -> Config.dev_null_out
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
-    { kind = Null; mode; fd; channel; status = Keep_open }
+    { kind = Null; fd; channel; status = Keep_open }
 
   let file : type a. _ -> ?perm:int -> a mode -> a t =
    fun fn ?(perm = 0o666) mode ->
@@ -120,7 +110,7 @@ module Io = struct
     in
     let fd = lazy (Unix.openfile (Path.to_string fn) flags perm) in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
-    { kind = File fn; mode; fd; channel; status = Close_after_exec }
+    { kind = File fn; fd; channel; status = Close_after_exec }
 
   let flush : type a. a t -> unit =
    fun t ->
@@ -711,7 +701,6 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           | true -> Dtemp.add_to_env env
           | false -> env
         in
-        let env = env |> Scheduler.Config.add_to_env config in
         let env = Env.to_unix env |> Spawn.Env.of_list in
         let started_at, pid =
           (* jeremiedimino: I think we should do this just before the [execve]

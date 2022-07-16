@@ -1,7 +1,6 @@
 (** Representation of dune-package files *)
-open! Dune_engine
 
-open! Stdune
+open Import
 
 (** The filename of a dune-package file*)
 val fn : string
@@ -82,7 +81,7 @@ module Or_meta : sig
   val pp :
     dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
 
-  val load : Dpath.t -> t Or_exn.t
+  val load : Dpath.t -> t Or_exn.t Memo.t
 
   val to_dyn : t Dyn.builder
 end

@@ -1,7 +1,5 @@
 (** Generate rules for js_of_ocaml *)
-open! Dune_engine
 
-open! Stdune
 open Import
 
 val build_cm :
@@ -13,6 +11,7 @@ val build_cm :
 
 val build_exe :
      Compilation_context.t
+  -> loc:Loc.t
   -> in_context:Js_of_ocaml.In_context.t
   -> src:Path.Build.t
   -> cm:Path.t list Action_builder.t

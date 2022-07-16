@@ -1,13 +1,12 @@
 (** Raw library descriptions *)
-open! Dune_engine
+
+open Import
 
 (** This module regroup all information about a library. We call such
     descriptions "raw" as the names, such as the names of dependencies are plain
     unresolved library names.
 
     The [Lib] module takes care of resolving library names to actual libraries. *)
-
-open Stdune
 
 module Status : sig
   type t =

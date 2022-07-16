@@ -1,8 +1,6 @@
 (** META file parsing/printing *)
 
-open! Stdune
-open! Dune_engine
-open! Dune_engine.Import
+open Import
 
 type t =
   { name : Lib_name.t option
@@ -71,7 +69,7 @@ val load : Path.t -> name:Package.Name.t option -> Simplified.t Memo.t
     ocamlfind is not installed. *)
 val builtins :
      stdlib_dir:Path.t
-  -> version:Ocaml_version.t
-  -> Simplified.t Package.Name.Map.t
+  -> version:Ocaml.Version.t
+  -> Simplified.t Package.Name.Map.t Memo.t
 
 val pp : entry list -> unit Pp.t

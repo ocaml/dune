@@ -7,7 +7,7 @@
     in terms of sandboxing. For instance, a rule might not work correctly when
     it is not sandboxed, or the opposite. *)
 
-open! Stdune
+open Import
 
 (** A set of sandbox modes in which the rule is expected to work correctly. *)
 type t = Sandbox_mode.Set.t

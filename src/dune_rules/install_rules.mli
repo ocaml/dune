@@ -1,5 +1,7 @@
-open! Dune_engine
-open Stdune
+open Import
+
+val install_file :
+  package:Package.Name.t -> findlib_toolchain:Context_name.t option -> string
 
 val symlink_rules :
   Super_context.t -> dir:Path.Build.t -> (Subdir_set.t * Rules.t) Memo.t

@@ -1,5 +1,4 @@
-open! Dune_engine
-open Stdune
+open Import
 
 module Pps : sig
   type 'a t =
@@ -14,7 +13,7 @@ end
 
 type 'a t =
   | No_preprocessing
-  | Action of Loc.t * Action_dune_lang.t
+  | Action of Loc.t * Dune_lang.Action.t
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
@@ -45,7 +44,7 @@ val decode : Without_instrumentation.t t Dune_lang.Decoder.t
 module Without_future_syntax : sig
   type 'a t =
     | No_preprocessing
-    | Action of Loc.t * Action_dune_lang.t
+    | Action of Loc.t * Dune_lang.Action.t
     | Pps of 'a Pps.t
 end
 
@@ -60,7 +59,7 @@ end
 val remove_future_syntax :
      'a t
   -> for_:Pp_flag_consumer.t
-  -> Ocaml_version.t
+  -> Ocaml.Version.t
   -> 'a Without_future_syntax.t
 
 module Per_module : sig

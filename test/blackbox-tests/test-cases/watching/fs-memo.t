@@ -34,7 +34,8 @@ when necessary.
   >  (target result)
   >  (action (bash "\| echo Executing rule...
   >                "\| echo %{deps}       |
-  >                "\|   xargs -d' ' -n 1 |
+  >                "\|   tr ' ' '\n'      |
+  >                "\|   xargs -n 1       |
   >                "\|   grep -v dep      |
   >                "\|   xargs cat > result
   > )))

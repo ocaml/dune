@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Name : sig
   type t
@@ -76,6 +76,3 @@ val fmt : dir:Path.Build.t -> t
 val is_standard : Name.t -> bool
 
 val describe : ?loc:Loc.t -> t -> _ Pp.t
-
-(** Alias for all the files in [_build/install] that belong to this package *)
-val package_install : context:Build_context.t -> pkg:Package.t -> t

@@ -1,5 +1,4 @@
-open! Dune_engine
-open! Stdune
+open Import
 open Dune_lang.Decoder
 
 (* workspace files use the same version numbers as dune-project files for
@@ -620,7 +619,7 @@ let default_step1 clflags =
 
 let load_step1 clflags p =
   Fs_memo.with_lexbuf_from_file p ~f:(fun lb ->
-      if Dune_lexer.eof_reached lb then default_step1 clflags
+      if Dune_lang.Dune_lexer.eof_reached lb then default_step1 clflags
       else
         parse_contents lb ~f:(fun lang ->
             String_with_vars.set_decoding_env
@@ -653,8 +652,8 @@ let workspace_step1 =
     | None -> Memo.return (default_step1 clflags)
     | Some p -> load_step1 clflags p
   in
-  let memo = Memo.create "workspaces-internal" ~input:(module Unit) f in
-  Memo.exec memo
+  let memo = Memo.lazy_ ~name:"workspaces-internal" f in
+  fun () -> Memo.Lazy.force memo
 
 let workspace_config () =
   let open Memo.O in
@@ -667,8 +666,8 @@ let workspace =
     let+ step1 = workspace_step1 () in
     Lazy.force step1.t
   in
-  let memo = Memo.create "workspace" ~input:(module Unit) ~cutoff:equal f in
-  Memo.exec memo
+  let memo = Memo.lazy_ ~cutoff:equal ~name:"workspace" f in
+  fun () -> Memo.Lazy.force memo
 
 let update_execution_parameters t ep =
   ep

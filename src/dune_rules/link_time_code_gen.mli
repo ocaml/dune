@@ -1,10 +1,7 @@
 (** {1 Handle link time code generation} *)
-open! Dune_engine
-
-open! Stdune
 
 type t =
-  { to_link : Lib.Lib_and_module.L.t
+  { to_link : Lib_flags.Lib_and_module.L.t
   ; force_linkall : bool
   }
 

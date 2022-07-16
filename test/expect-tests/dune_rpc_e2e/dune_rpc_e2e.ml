@@ -8,10 +8,10 @@ module Client = Dune_rpc_impl.Client
 module Session = Csexp_rpc.Session
 module Config = Dune_util.Config
 
-let () = if false then Dune_util.Log.init ~file:(Out_channel stderr) ()
-
 (* enable to debug process stdout/stderr *)
 let debug = false
+
+let () = if debug then Dune_util.Log.init ~file:(Out_channel stderr) ()
 
 let dune_prog =
   lazy

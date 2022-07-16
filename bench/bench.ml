@@ -128,6 +128,7 @@ let () =
     ; display = { verbosity = Quiet; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
+    ; signal_watcher = `No
     }
   in
   let clean, zero =

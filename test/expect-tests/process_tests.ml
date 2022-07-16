@@ -8,6 +8,7 @@ let go =
     ; display = { verbosity = Short; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
+    ; signal_watcher = `Yes
     }
   in
   Scheduler.Run.go config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ())

@@ -8,6 +8,7 @@ let default =
   ; display = { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
+  ; signal_watcher = `No
   }
 
 let go ?(timeout = 0.3) ?(config = default) f =

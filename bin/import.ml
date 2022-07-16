@@ -130,6 +130,7 @@ module Scheduler = struct
     let config =
       let insignificant_changes = Common.insignificant_changes common in
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
+        ~signal_watcher:`Yes
     in
     Scheduler.Run.go config ~on_event:(on_event dune_config) f
 
@@ -139,6 +140,7 @@ module Scheduler = struct
     let config =
       let insignificant_changes = Common.insignificant_changes common in
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
+        ~signal_watcher:`Yes
     in
     let file_watcher = Common.file_watcher common in
     let rpc = Common.rpc common in

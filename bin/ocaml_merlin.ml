@@ -31,8 +31,9 @@ end = struct
       | Unknown of string
 
     let read_input in_channel =
-      match Csexp.input in_channel with
-      | Ok sexp -> (
+      match Csexp.input_opt in_channel with
+      | Ok None -> Halt
+      | Ok (Some sexp) -> (
         let open Sexp in
         match sexp with
         | Atom "Halt" -> Halt

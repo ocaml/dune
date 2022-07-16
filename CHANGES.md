@@ -25,6 +25,10 @@
   flashing errors on insignificant file system events such as changes in the
   `.git/` directory. (#5953, @rgrinberg)
 
+- Fix parsing more more error messages emitted by the OCaml compiler. In
+  particular, messages where the excerpt line number started with a blank
+  character were skipped. (#5981, @rgrinberg)
+
 3.3.1 (19-06-2022)
 ------------------
 

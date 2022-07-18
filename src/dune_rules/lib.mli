@@ -176,6 +176,14 @@ end
 
 val closure : t list -> linking:bool -> t list Resolve.Memo.t
 
+(** [descriptive_closure libs] computes the smallest set of libraries that
+    contains the libraries in the list [libs], and that is transitively closed.
+    The output list is guaranteed to have no duplicates and to be sorted. The
+    difference with [closure libs] is that the latter may raise an error when
+    overlapping implementations of virtual libraries are detected.
+    [descriptive_closure libs] makes no such check. *)
+val descriptive_closure : t list -> t list Memo.t
+
 (** {1 Sub-systems} *)
 
 module Sub_system : sig

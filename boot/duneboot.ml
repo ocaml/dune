@@ -604,7 +604,7 @@ end = struct
     if ocaml_version < (4, 10) then "-custom" else "-output-complete-exe"
 
   let unix_library_flags =
-    if ocaml_version >= (5, 0) then [ "-I"; "+unix" ] else []
+    if ocaml_version >= (5, 0) then [ "-I"; "+unix" ; "-cclib";"-lbsd"] else []
 end
 
 let insert_header fn ~header =

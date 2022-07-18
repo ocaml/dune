@@ -14,4 +14,6 @@
   (language c)
   (names wait3_stubs))
  (instrumentation
-  (backend bisect_ppx)))
+  (backend bisect_ppx))
+ (c_library_flags (-lbsd))
+ )

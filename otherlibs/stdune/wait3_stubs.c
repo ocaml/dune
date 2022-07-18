@@ -19,6 +19,10 @@ void dune_wait3(value flags) {
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#ifdef __HAIKU__
+#include <bsd/sys/wait.h>
+#endif
+
 #define TAG_WEXITED 0
 #define TAG_WSIGNALED 1
 #define TAG_WSTOPPED 2

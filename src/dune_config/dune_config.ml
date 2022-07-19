@@ -425,7 +425,7 @@ let auto_concurrency =
       in
       loop commands)
 
-let for_scheduler (t : t) stats =
+let for_scheduler (t : t) stats ~insignificant_changes =
   let concurrency =
     match t.concurrency with
     | Fixed i -> i
@@ -434,4 +434,8 @@ let for_scheduler (t : t) stats =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n
   in
-  { Scheduler.Config.concurrency; display = t.display; stats }
+  { Scheduler.Config.concurrency
+  ; display = t.display
+  ; stats
+  ; insignificant_changes
+  }

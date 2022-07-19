@@ -31,8 +31,9 @@ end = struct
       | Unknown of string
 
     let read_input in_channel =
-      match Csexp.input in_channel with
-      | Ok sexp -> (
+      match Csexp.input_opt in_channel with
+      | Ok None -> Halt
+      | Ok (Some sexp) -> (
         let open Sexp in
         match sexp with
         | Atom "Halt" -> Halt
@@ -40,7 +41,9 @@ end = struct
         | sexp ->
           let msg = Printf.sprintf "Bad input: %s" (Sexp.to_string sexp) in
           Unknown msg)
-      | Error _ -> Halt
+      | Error err ->
+        Format.eprintf "Bad input: %s@." err;
+        Halt
   end
 
   (* [make_relative_to_root p] will check that [Path.root] is a prefix of the

@@ -50,7 +50,7 @@ let digits = ['0' - '9']+
 let range = digits "-" digits
 
 rule skip_excerpt = parse
-  | digits " | " [^ '\n']* "\n"
+  | blank digits " | " [^ '\n']* "\n"
     { skip_excerpt lexbuf }
   | blank '^'+ blank "\n"
     { () }

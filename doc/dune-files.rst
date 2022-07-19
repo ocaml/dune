@@ -143,6 +143,9 @@ interface files for executables and tests that don't already have them:
 
     (executables_implicit_empty_intf true)
 
+This option is enabled by default starting with Dune lang 3.0, so
+empty interface files are no longer needed.
+
 .. _explicit-js-mode:
 
 explicit_js_mode

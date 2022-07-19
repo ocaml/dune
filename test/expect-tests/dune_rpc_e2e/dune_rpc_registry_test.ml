@@ -48,6 +48,7 @@ let run =
     { Scheduler.Config.concurrency = 1
     ; display = { verbosity = Quiet; status_line = false }
     ; stats = None
+    ; insignificant_changes = `React
     }
   in
   fun run ->

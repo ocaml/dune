@@ -21,6 +21,14 @@
 - Fix handling of the `(deps)` field in `(test)` stanzas when there is an
   `.expected` file. (#5952, #5951, fixes #5950, @emillon)
 
+- Ignore insignificant filesystem events. This stops RPC in watch mode from
+  flashing errors on insignificant file system events such as changes in the
+  `.git/` directory. (#5953, @rgrinberg)
+
+- Fix parsing more error messages emitted by the OCaml compiler. In
+  particular, messages where the excerpt line number started with a blank
+  character were skipped. (#5981, @rgrinberg)
+
 3.3.1 (19-06-2022)
 ------------------
 

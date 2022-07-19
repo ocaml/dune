@@ -268,7 +268,7 @@ let end_of_list (Values (loc, cstr, _)) =
     let loc = { loc with start = loc.stop } in
     User_error.raise ~loc [ Pp.text "Premature end of list" ]
   | Some s -> User_error.raise ~loc [ Pp.textf "Not enough arguments for %s" s ]
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let next f ctx sexps =
   match sexps with
@@ -577,7 +577,7 @@ let map_validate t ~f ctx state1 =
     field names: see [field_missing] and [field_present_too_many_times]. *)
 let field_missing loc name =
   User_error.raise ~loc [ Pp.textf "field %s missing" name ]
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let field_present_too_many_times _ name entries =
   match entries with
@@ -594,7 +594,7 @@ let multiple_occurrences ?(on_dup = field_present_too_many_times) uc name last =
     | Some prev -> collect acc prev
   in
   on_dup uc name (collect [] last)
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let find_single ?on_dup uc (state : Fields.t) name =
   let res = Name.Map.find state.unparsed name in
@@ -686,14 +686,14 @@ let fields_missing_need_exactly_one loc names =
     [ Pp.textf "fields %s are all missing (exactly one is needed)"
         (String.concat ~sep:", " names)
     ]
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutual_exclusion_violation loc names =
   User_error.raise ~loc
     [ Pp.textf "fields %s are mutually exclusive"
         (String.concat ~sep:", " names)
     ]
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutually_exclusive ?on_dup ?default fields
     ((Fields (loc, _, _) : _ context) as ctx) state =

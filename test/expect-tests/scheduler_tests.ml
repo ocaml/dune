@@ -99,3 +99,26 @@ let%expect_test "empty invalidation wakes up waiter" =
   test `Ignore;
   [%expect {|
     awaiting invalidation |}]
+
+let%expect_test "raise inside Scheduler.Run.go" =
+  (try
+     ( go @@ fun () ->
+       Fiber.fork_and_join_unit
+         (fun () ->
+           print_endline "t1";
+           Fiber.return ())
+         (fun () -> raise Exit) );
+     assert false
+   with Dune_util.Report_error.Already_reported ->
+     print_endline "--> exception observed");
+  [%expect
+    {|
+    t1
+    Error: exception Stdlib.Exit
+
+    I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+    little-death that brings total obliteration.  I will fully express my cases.
+    Execution will pass over me and through me.  And when it has gone past, I
+    will unwind the stack along its path.  Where the cases are handled there will
+    be nothing.  Only I will remain.
+    --> exception observed |}]

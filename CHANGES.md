@@ -1,4 +1,4 @@
-3.4.0 (Unreleased)
+3.4.0 (20-07-2022)
 ------------------
 
 - Make `dune describe` correctly handle overlapping implementations

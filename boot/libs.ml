@@ -63,4 +63,12 @@ let link_flags =
     ; "-cclib"
     ; "-framework CoreServices"
     ])
+  ; ("win32",
+    [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
+  ; ("win64",
+    [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
+  ; ("mingw32",
+    [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
+  ; ("mingw64",
+    [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
   ]

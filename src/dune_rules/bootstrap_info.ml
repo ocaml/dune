@@ -17,6 +17,9 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
         | None -> Right lib)
   in
   let link_flags =
+    let win_link_flags =
+      [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ]
+    in
     (* additional link flags keyed by the platform *)
     [ ( "macosx"
       , [ "-cclib"
@@ -24,6 +27,10 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
         ; "-cclib"
         ; "-framework CoreServices"
         ] )
+    ; ("win32", win_link_flags)
+    ; ("win64", win_link_flags)
+    ; ("mingw32", win_link_flags)
+    ; ("mingw64", win_link_flags)
     ]
   in
   let+ locals =

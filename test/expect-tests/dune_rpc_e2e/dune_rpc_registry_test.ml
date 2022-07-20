@@ -49,6 +49,7 @@ let run =
     ; display = { verbosity = Quiet; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
+    ; signal_watcher = `No
     }
   in
   fun run ->

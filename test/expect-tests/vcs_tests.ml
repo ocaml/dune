@@ -115,6 +115,7 @@ let run kind script =
     ; display = { verbosity = Short; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
+    ; signal_watcher = `No
     }
   in
   Scheduler.Run.go

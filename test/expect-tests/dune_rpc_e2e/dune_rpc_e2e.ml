@@ -167,6 +167,7 @@ let config =
   ; display = { verbosity = Quiet; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
+  ; signal_watcher = `No
   }
 
 let run run =

@@ -9,6 +9,7 @@ let config =
   ; display = { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
+  ; signal_watcher = `No
   }
 
 let setup =

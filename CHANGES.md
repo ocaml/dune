@@ -1,6 +1,9 @@
 3.4.0 (Unreleased)
 ------------------
 
+- Make `dune describe` correctly handle overlapping implementations
+  for virtual libraries (#5971, fixes #5747, @esope)
+
 - Building the `@check` alias should make sure the libraries and executables
   don't have dependency cycles (#5892, @rgrinberg)
 

@@ -1600,6 +1600,40 @@ let closure l ~linking =
     Resolve_names.compile_closure_with_overlap_checks None l
       ~forbidden_libraries
 
+let descriptive_closure (l : lib list) : lib list Memo.t =
+  (* [add_work todo l] adds the libraries in [l] to the list [todo],
+     that contains the libraries to handle next *)
+  let open Memo.O in
+  let add_work todo l = if List.is_empty l then todo else l :: todo in
+  (* [register_work todo l] reads the list of libraries [l] and adds
+     them to the todo list [todo] *)
+  let register_work todo l =
+    let+ l = Resolve.read_memo l in
+    add_work todo l
+  in
+  (* [work todo acc] adds the transitive-reflexive closure of the
+     libraries that are contained in the todo list [todo] and are not
+     in the set of libraries [acc] to the initial set of libraries
+     [acc] *)
+  let rec work (todo : lib list list) (acc : Set.t) =
+    match todo with
+    | [] -> Memo.return acc
+    | [] :: todo -> work todo acc
+    | (lib :: libs) :: todo ->
+      if Set.mem acc lib then work (add_work todo libs) acc
+      else
+        let todo = add_work todo libs
+        and acc = Set.add acc lib in
+        let* todo = register_work todo lib.pps in
+        let* todo = register_work todo lib.ppx_runtime_deps in
+        let* todo = register_work todo lib.requires in
+        work todo acc
+  in
+  (* we compute the transitive closure *)
+  let+ trans_closure = work [ l ] Set.empty in
+  (* and then convert it to a list *)
+  Set.to_list trans_closure
+
 module Compile = struct
   module Resolved_select = Resolved_select
 

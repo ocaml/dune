@@ -4,7 +4,24 @@ Quickstart
 
 This document gives simple usage examples of Dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
-examples of projects using Dune.
+examples of projects using Dune with [CRAM stanzas](https://ocaml.org/p/craml/1.0.0).
+
+
+Install Dune
+============
+
+The best way to install Dune is with opam: 
+
+.. code:: shell
+
+    opam install dune
+
+Then run ``eval $(opam env)`` to update the shell. When creating a new 
+directory or changing directories, run ``eval $(opam env)`` if you 
+get the `dune` command not found error.
+
+Now you're ready to create your first workspace and initialize projects. 
+
 
 Initializing Projects
 =====================
@@ -65,24 +82,26 @@ You can run your program with:
 
    dune exec project_name
 
+This simple project will print "Hello World" in your shell.
+
 The following itemization of the generated content isn't necessary to review at
 this point. But whenever you are ready, it will provide jump-off points from
 which you can dive deeper into Dune's capabilities:
 
 * The ``dune-project`` file specifies metadata about the project, including its
   name, packaging data (including dependencies), and information about the
-  authors and maintainers.  You should open this in your editor to fill in the
+  authors and maintainers. Open this in your editor to fill in the
   placeholder values. See :ref:`dune-project` for details.
 * The ``test`` directory contains a skeleton for your project's tests. Add to
   the tests by editing ``test/project_name.ml``. See :ref:`writing-tests` for
   details on testing.
-* The ``lib`` directory will hold the library you write to provide the core
-  functionality of your executable. Add modules to your library by creating new
+* The ``lib`` directory will hold the library you write to provide your executable's core
+  functionality. Add modules to your library by creating new
   ``.ml`` files in this directory. See :ref:`library` for details on specifying
   libraries manually.
 * The ``bin`` directory holds a skeleton for the executable program. Within the
   modules in this directory, you can access the modules in your ``lib`` under
-  the namespace ``Project_name.Mod``, where ``Project_name`` is replaced with
+  the namespace ``project_name.Mod``, where ``project_name`` is replaced with
   the name of your project and ``Mod`` corresponds to the name of the file in
   the ``lib`` directory. You can run the executable with ``dune exec
   project_name``.  See :ref:`hello-world-program` for an example of specifying
@@ -91,7 +110,7 @@ which you can dive deeper into Dune's capabilities:
   ``dune-project`` file whenever you build your project. You shouldn't need to
   worry about this, but you can see :ref:`opam-generation` for details.
 * The ``dune`` files in each directory specify the component to be built with
-  the files in that directory. For details on dune files, see :ref:`dune-files`.
+  the files in that directory. For details on ``dune`` files, see :ref:`dune-files`.
 
 Initializing a Library
 ----------------------
@@ -144,12 +163,13 @@ All of the subcomponents generated are the same as those described in
 
 .. _hello-world-program:
 
-Building a Hello World Program
-==============================
+Building a Hello World Program From Scratch
+===========================================
 
+Create a new directory within a Dune project (:ref:`initializing-an-executable`).
 Since OCaml is a compiled language, first create a ``dune`` file in Nano, Vim, 
 or your preferred text editor. Declare the ``hello_world`` executable by including following stanza 
-(shown below). Name this initial file ``dune`` and save it in a directory of your choice. 
+(shown below). Name this initial file ``dune`` and save it. 
 
 .. code:: scheme
 
@@ -169,18 +189,24 @@ Next, build your new program in a shell using this command:
 
     dune build hello_world.exe
 
-The executable will create a directory called "build" and create the 
+The will create a directory called``_build`` and build the 
 program: ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
 (including non-Windows systems). 
 
 Finally, run it with the following command to see that it worked. In 
 fact, the executable can both be built and run in a single
-step with ``dune exec ./hello_world.exe``.
+step:
+
+.. code:: bash
+
+    dune exec -- ./hello_world.exe
+
+Voila! This should print "Hello, world!" in the command line.
 
 Please note: if you have Dune, opam, and OCaml installed, but you 
 get an error that the ``dune`` command isn't recognized, it will be necessary 
-to run ``eval $(opam config env)`` to enable Dune in your directory. Find more 
+to run ``eval $(opam env)`` to enable Dune in your directory. Find more 
 information in the `Dune ReadMe  <https://github.com/ocaml/dune>`.
 
 Verify OCaml installation with ``ocaml -version``
@@ -190,7 +216,7 @@ If you still get an error that the ``dune`` command isn't recognized, try runnin
 the following in this order:
 ``opam switch create . ocaml-base-compiler``
 ``opam install merlin ocp-indent dune utop``
-Then run ``eval $(opam config env)`` again before trying to build and run 
+Then run ``eval $(opam env)`` again before trying to build and run 
 your new hello_world.exe program. 
 
 

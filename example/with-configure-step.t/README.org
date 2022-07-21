@@ -1,20 +1,20 @@
 This project shows how to add a configure step to a project using
-dune.
+Dune.
 
 In order to keep things composable, it offers several way to configure
 the project:
 
 1. with the classic =./configure <args...>=. When doing this, the configuration
-   script are run immediately and the resulting configuration is frozen for the
-   rest of the build
+   script are run immediately, and the resulting configuration is frozen for the
+   rest of the build.
 
 2. by copying =config.defaults= to =config= and editing it. The
    configuration scripts will be run as part of the build using what
    is written in =config=.  When =config= is edited, the configuration
-   scripts will be automatically re-run
+   scripts will be automatically rerun.
 
 3. by doing nothing. The configuration scripts will be run as part of the build
-   using the default values provided in =config.defaults=
+   using the default values provided in =config.defaults=.
 
 Technically this is how it works:
 
@@ -31,6 +31,6 @@ the toplevel =dune= file:
 - a rule to produce =config= by copying =config.default=
 - a rule to produce =config.full= by running =real_configure.ml=
 
-The reason it all work as described is because if Dune knows how
+This all works as described because if Dune knows how
 to build a file and this file is already present in the source tree,
-it will always prefer the file that's already there
+it will always prefer the file that's already there.

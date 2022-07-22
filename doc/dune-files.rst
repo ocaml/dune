@@ -401,7 +401,9 @@ language. The syntax is a list of the following elements:
    dep-specification = dep+
 
 Filters will expand to any opam variable name if prefixed by ``:``, not just the
-ones listed above.
+ones listed above. This also applies to version numbers. For example, to
+generate ``depends: [ pkg { = version } ]``, use ``(depends (pkg (=
+:version)))``.
 
 Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to

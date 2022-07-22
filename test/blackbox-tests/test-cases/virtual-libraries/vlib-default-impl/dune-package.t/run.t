@@ -1,22 +1,7 @@
-Test that trying to specify a default implementation for a non-virtual library results
-in an appropriate error message.
-  $ dune build --root default-impl-not-virtual-lib
-  Entering directory 'default-impl-not-virtual-lib'
-  File "dune", line 4, characters 25-33:
-  4 |  (default_implementation lib.impl))
-                               ^^^^^^^^
-  Error: Only virtual libraries can specify a default implementation.
-  [1]
-
-Basic sample selecting implementation according to default library.
-  $ dune build --root default-impl
-  Entering directory 'default-impl'
-  hi from lib.default
-
 Check that default implementation data is installed in the dune package file.
-  $ dune build --root dune-package
-  Entering directory 'dune-package'
-  $ dune_cmd cat dune-package/_build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
+
+  $ dune build @install
+  $ dune_cmd cat _build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name a)
   (sections (lib .) (libexec .))
@@ -93,14 +78,3 @@ Check that default implementation data is installed in the dune package file.
       (kind alias)
       (impl))
      (wrapped true))))
-
-Test default implementation for an external library
-
-First we create an external library and implementation
-  $ dune build --root external/lib @install
-  Entering directory 'external/lib'
-
-Then we make sure that it works fine.
-  $ env OCAMLPATH=external/lib/_build/install/default/lib dune build --root external/exe --debug-dependency-path
-  Entering directory 'external/exe'
-  hey

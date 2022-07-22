@@ -1409,7 +1409,7 @@ by using the form ``(<filename> as <destination>)`` in the
      (files   (mylib.el as emacs/site-lisp/mylib.el)))
 
 The mode of installed files is fully determined by the section they are
-installed in: if the section above is documented as "with the executable bit
+installed in. If the section above is documented as "with the executable bit
 set", they are installed with mode ``0o755`` (``rwxr-xr-x``); otherwise they are
 installed with mode ``0o644`` (``rw-r--r--``).
 

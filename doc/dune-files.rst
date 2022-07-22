@@ -310,13 +310,28 @@ defined in the project:
 
 - ``(maintainers <maintainer> ..)`` - maintainers as inline strings
 
-- ``(source <source>)`` - where the source is specified two ways:
-  ``(github <user/repo>)`` or ``(uri <uri>)``
+- ``(source <source>)`` - specifies where the source for the package can be
+  found. It can be specified as ``(uri <uri>)`` or using shortcuts for some
+  hosting services:
 
-- ``(bug_reports <url>)`` - where to report bugs. This defaults to the GitHub
-  issue tracker, if the source is specified as a GitHub repository.
+.. list-table::
 
-- ``(homepage <url>)`` - the homepage of the project
+  * - Service
+    - Syntax
+  * - `Github <https://github.com>`_
+    - ``(github user/repo)``
+  * - `Bitbucket <https://bitbucket.org>`_
+    - ``(bitbucket user/repo)``
+  * - `Gitlab <https://gitlab.com>`_
+    - ``(gitlab user/repo)``
+  * - `Sourcehut <https://sr.ht>`_
+    - ``(sourcehut user/repo)``
+
+- ``(bug_reports <url>)`` - where to report bugs. If a hosting service is used
+  in ``(source)``, a default value is provided.
+
+- ``(homepage <url>)`` - the homepage of the project. If a hosting service is
+  used in ``(source)``, a default value is provided.
 
 - ``(documentation <url>)`` - where the documentation is hosted
 

@@ -177,10 +177,6 @@ val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
     this long. *)
 val sleep : float -> unit Fiber.t
 
-(** Wait until all file system changes that happened so far have been
-    acknowledged by the scheduler. *)
-val flush_file_watcher : unit -> unit Fiber.t
-
 (** Wait for a build input to change. If a build input change was seen but
     hasn't been handled yet, return immediately.
 

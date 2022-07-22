@@ -1620,6 +1620,9 @@
   targets, and a switch `(explicit_js_mode)` to require this mode in order to
   declare JS targets corresponding to executables. (#1941, @nojb)
 
+- Allow unwrapped implementations of public libraries to introduce new public
+  modules (@rgrinberg)
+
 1.10.0 (04/06/2019)
 -------------------
 

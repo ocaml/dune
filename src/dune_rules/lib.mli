@@ -22,10 +22,6 @@ val info : t -> Path.t Lib_info.t
 
 val main_module_name : t -> Module_name.t option Resolve.Memo.t
 
-val entry_module_names : t -> Module_name.t list Resolve.Memo.t
-
-val src_dirs : t -> Path.Set.t Memo.t
-
 val wrapped : t -> Wrapped.t option Resolve.Memo.t
 
 (** Direct library dependencies of this library *)
@@ -44,8 +40,6 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 val project : t -> Dune_project.t option
-
-val modules : t -> Modules.t Memo.Lazy.t option
 
 (** Operations on list of libraries *)
 module L : sig
@@ -101,6 +95,8 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t
 
+  val installed : Context.t -> t Memo.t
+
   module Resolve_result : sig
     type t
 
@@ -126,18 +122,9 @@ module DB : sig
   val create :
        parent:t option
     -> resolve:(Lib_name.t -> Resolve_result.t Memo.t)
-    -> projects_by_package:Dune_project.t Package.Name.Map.t
     -> all:(unit -> Lib_name.t list Memo.t)
-    -> modules_of_lib:
-         (dir:Path.Build.t -> name:Lib_name.t -> Modules.t Memo.t) Fdecl.t
     -> lib_config:Lib_config.t
     -> unit
-    -> t
-
-  val create_from_findlib :
-       lib_config:Lib_config.t
-    -> projects_by_package:Dune_project.t Package.Name.Map.t
-    -> Findlib.t
     -> t
 
   val find : t -> Lib_name.t -> lib option Memo.t
@@ -149,7 +136,7 @@ module DB : sig
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)
   val get_compile_info :
-    t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t Memo.t
+    t -> ?allow_overlaps:bool -> Lib_name.t -> (lib * Compile.t) Memo.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
 
@@ -188,6 +175,14 @@ end
 (** {1 Transitive closure} *)
 
 val closure : t list -> linking:bool -> t list Resolve.Memo.t
+
+(** [descriptive_closure libs] computes the smallest set of libraries that
+    contains the libraries in the list [libs], and that is transitively closed.
+    The output list is guaranteed to have no duplicates and to be sorted. The
+    difference with [closure libs] is that the latter may raise an error when
+    overlapping implementations of virtual libraries are detected.
+    [descriptive_closure libs] makes no such check. *)
+val descriptive_closure : t list -> t list Memo.t
 
 (** {1 Sub-systems} *)
 

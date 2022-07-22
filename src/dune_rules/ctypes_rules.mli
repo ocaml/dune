@@ -1,9 +1,5 @@
 open Import
 
-val generated_ml_and_c_files : Ctypes_stanza.t -> string list
-
-val non_installable_modules : Ctypes_stanza.t -> Module_name.t list
-
 val gen_rules :
      cctx:Compilation_context.t
   -> buildable:Dune_file.Buildable.t

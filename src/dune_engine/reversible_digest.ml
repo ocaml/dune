@@ -1,4 +1,3 @@
-module Caml_digest = Stdlib.Digest
 open Import
 
 let digest_string string =
@@ -14,7 +13,7 @@ let digest_string string =
   | Error exn ->
     Log.info
       [ Pp.textf "error making digest reversible [%s]: %s"
-          (Stdune.Digest.to_string digest)
+          (Digest.to_string digest)
           (Dyn.to_string (Exn.to_dyn exn))
       ]);
   digest

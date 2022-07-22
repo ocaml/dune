@@ -485,4 +485,4 @@ And write this in ``mytoplevel.ml``
 
 .. code:: ocaml
 
-    let () = Topmain.main ()
+    let () = exit (Topmain.main ())

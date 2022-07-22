@@ -1,4 +1,4 @@
-open Stdune
+open Import
 open Sexpable_intf
 open Serializable_intf
 
@@ -63,7 +63,7 @@ module Context : sig
 
   val prepared_dependencies : t -> Dependency.Set.t
 
-  val targets : t -> Stdune.String.Set.t
+  val targets : t -> String.Set.t
 
   val respond : t -> Response.t -> unit
 end

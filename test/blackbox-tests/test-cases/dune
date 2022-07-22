@@ -1,12 +1,16 @@
 (env
  (_
-  (binaries ../utils/dune_cmd.exe)))
+  (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe)))
 
 (alias
  (name test-deps)
  (deps
   %{bin:dune_cmd}
   (package dune)))
+
+(cram
+ (applies_to pp-cwd)
+ (deps %{bin:dunepp}))
 
 (cram
  (applies_to :whole_subtree)
@@ -61,6 +65,13 @@
   (enabled_if false)))
 
 ; CONDITIONALLY DISABLED TESTS
+
+(cram
+ (applies_to signal-exit-code)
+ (enabled_if
+  (and
+   (<> %{env:CI=false} true) ;; in github action, CI=true
+   (= %{system} macosx))))
 
 (cram
  (applies_to github764)
@@ -124,14 +135,6 @@
  (executable
   (libraries stdune spawn)
   (name test)))
-
-(subdir
- watching
- ; see https://github.com/ocaml/dune/pull/4728
- (cram
-  (enabled_if
-   (<> "macosx" %{ocaml-config:system}))
-  (deps helpers.sh)))
 
 (subdir
  actions

@@ -8,8 +8,6 @@ open Import
 
     The [Lib] module takes care of resolving library names to actual libraries. *)
 
-open Stdune
-
 module Status : sig
   type t =
     | Installed_private

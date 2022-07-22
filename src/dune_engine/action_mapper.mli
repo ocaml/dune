@@ -8,6 +8,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) : sig
     -> f_string:(dir:Src.path -> Src.string -> Dst.string)
     -> f_path:(dir:Src.path -> Src.path -> Dst.path)
     -> f_target:(dir:Src.path -> Src.target -> Dst.target)
+    -> f_ext:(dir:Src.path -> Src.ext -> Dst.ext)
     -> Dst.t
 
   val map_one_step : map -> map

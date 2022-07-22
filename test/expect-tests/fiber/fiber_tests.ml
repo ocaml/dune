@@ -65,7 +65,7 @@ let%expect_test "basics" =
 
 let%expect_test "collect_errors" =
   test (backtrace_result unit) (Fiber.collect_errors (fun () -> raise Exit));
-  [%expect {| Error [ { exn = "Exit"; backtrace = "" } ] |}]
+  [%expect {| Error [ { exn = "Stdlib.Exit"; backtrace = "" } ] |}]
 
 let%expect_test "reraise_all" =
   let exns =
@@ -77,9 +77,9 @@ let%expect_test "reraise_all" =
   [%expect
     {|
     Error
-      [ { exn = "Exit"; backtrace = "" }
-      ; { exn = "Exit"; backtrace = "" }
-      ; { exn = "Exit"; backtrace = "" }
+      [ { exn = "Stdlib.Exit"; backtrace = "" }
+      ; { exn = "Stdlib.Exit"; backtrace = "" }
+      ; { exn = "Stdlib.Exit"; backtrace = "" }
       ] |}];
   test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
@@ -90,9 +90,9 @@ let%expect_test "reraise_all" =
     {|
     finally
     Error
-      [ { exn = "Exit"; backtrace = "" }
-      ; { exn = "Exit"; backtrace = "" }
-      ; { exn = "Exit"; backtrace = "" }
+      [ { exn = "Stdlib.Exit"; backtrace = "" }
+      ; { exn = "Stdlib.Exit"; backtrace = "" }
+      ; { exn = "Stdlib.Exit"; backtrace = "" }
       ] |}];
 
   test unit ~expect_never:true
@@ -162,44 +162,44 @@ let%expect_test "fill returns a fiber that executes before waiters are awoken" =
     waiter 2 resumed
     () |}]
 
-let%expect_test _ =
+let%expect_test "collect_errors catches one error" =
   test (backtrace_result unit) (Fiber.collect_errors failing_fiber);
   [%expect {|
-Error [ { exn = "Exit"; backtrace = "" } ]
+Error [ { exn = "Stdlib.Exit"; backtrace = "" } ]
 |}]
 
-let%expect_test _ =
+let%expect_test "collect_errors doesn't terminate on [never]" =
   test ~expect_never:true opaque (Fiber.collect_errors never_fiber);
   [%expect {|
 [PASS] Never raised as expected
 |}]
 
-let%expect_test _ =
+let%expect_test "failing_fiber doesn't terminate" =
   test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
          let* () = failing_fiber () in
          failing_fiber ()));
   [%expect {|
-Error [ { exn = "Exit"; backtrace = "" } ]
+Error [ { exn = "Stdlib.Exit"; backtrace = "" } ]
 |}]
 
-let%expect_test _ =
+let%expect_test "collect_errors fail one concurrent child fibers raises" =
   test
     (backtrace_result (pair unit unit))
     (Fiber.collect_errors (fun () ->
          Fiber.fork_and_join failing_fiber long_running_fiber));
   [%expect {|
-Error [ { exn = "Exit"; backtrace = "" } ]
+Error [ { exn = "Stdlib.Exit"; backtrace = "" } ]
 |}]
 
-let%expect_test _ =
+let%expect_test "collect_errors can run concurrently" =
   test
     (pair (backtrace_result unit) unit)
     (Fiber.fork_and_join
        (fun () -> Fiber.collect_errors failing_fiber)
        long_running_fiber);
   [%expect {|
-(Error [ { exn = "Exit"; backtrace = "" } ], ())
+(Error [ { exn = "Stdlib.Exit"; backtrace = "" } ], ())
 |}]
 
 let map_reduce_errors_unit ~on_error t =
@@ -218,16 +218,16 @@ let%expect_test "collect errors inside with_error_handler" =
          match res with
          | Ok () -> assert false
          | Error l ->
-           print_endline "got the error out of collect_errors";
+           printfn "got %d errors out of collect_errors" (List.length l);
            let* () = Fiber.reraise_all l in
            assert false));
   [%expect
     {|
-    got the error out of collect_errors
+    got 1 errors out of collect_errors
     captured the error
     Error () |}]
 
-let%expect_test "wait_errors restores the execution context properly" =
+let%expect_test "collect_errors restores the execution context properly" =
   let var = Fiber.Var.create () in
   test unit
     (Fiber.Var.set var "a" (fun () ->
@@ -243,7 +243,7 @@ let%expect_test "wait_errors restores the execution context properly" =
     a
     () |}]
 
-let%expect_test _ =
+let%expect_test "handlers bubble up errors to parent handlers" =
   test ~expect_never:false (unit_result unit)
     (Fiber.fork_and_join_unit long_running_fiber (fun () ->
          let log_error by (e : Exn_with_backtrace.t) =
@@ -262,9 +262,9 @@ let%expect_test _ =
                    failing_fiber))));
   [%expect
     {|
-    outer: raised Exit
-    inner: raised Exit
-    outer: raised Exit
+    outer: raised Stdlib.Exit
+    inner: raised Stdlib.Exit
+    outer: raised Stdlib.Exit
     Error () |}]
 
 let%expect_test "nested with_error_handler" =
@@ -378,7 +378,7 @@ let%expect_test "sequential_iter error handling" =
   test (unit_result unit) fiber ~expect_never:false;
   [%expect {|
     count: 1
-    exn: Exit
+    exn: Stdlib.Exit
     finally
     Error () |}]
 
@@ -408,7 +408,7 @@ let%expect_test _ =
              Fiber.return (setter ())));
   [%expect
     {|
-    Error [ { exn = "Exit"; backtrace = "" } ]
+    Error [ { exn = "Stdlib.Exit"; backtrace = "" } ]
     [PASS] Never raised as expected
     [PASS] flag set |}]
 
@@ -428,8 +428,8 @@ let%expect_test _ =
   [%expect
     {|
     Error
-      [ { exn = "(Failure 2)"; backtrace = "" }
-      ; { exn = "(Failure 4)"; backtrace = "" }
+      [ { exn = "Failure(\"2\")"; backtrace = "" }
+      ; { exn = "Failure(\"4\")"; backtrace = "" }
       ]
     [PASS] Never raised as expected
     [PASS] flag set |}]
@@ -697,8 +697,8 @@ let%expect_test "fork - exceptions always thrown" =
   [%expect
     {|
     Error
-      [ { exn = "(Failure left)"; backtrace = "" }
-      ; { exn = "(Failure right)"; backtrace = "" }
+      [ { exn = "Failure(\"left\")"; backtrace = "" }
+      ; { exn = "Failure(\"right\")"; backtrace = "" }
       ] |}]
 
 let test iter =
@@ -712,15 +712,15 @@ let%expect_test "parallel_iter - all exceptions raised" =
   [%expect
     {|
     Error
-      [ { exn = "(Failure 1)"; backtrace = "" }
-      ; { exn = "(Failure 2)"; backtrace = "" }
-      ; { exn = "(Failure 3)"; backtrace = "" }
+      [ { exn = "Failure(\"1\")"; backtrace = "" }
+      ; { exn = "Failure(\"2\")"; backtrace = "" }
+      ; { exn = "Failure(\"3\")"; backtrace = "" }
       ] |}]
 
 let%expect_test "sequential_iter - stop after first exception" =
   test Fiber.sequential_iter;
   [%expect {|
-    Error [ { exn = "(Failure 1)"; backtrace = "" } ] |}]
+    Error [ { exn = "Failure(\"1\")"; backtrace = "" } ] |}]
 
 let%expect_test "Stream: multiple readers is an error" =
   (* [stream] is so that the first element takes longer to be produced. An

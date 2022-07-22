@@ -1,9 +1,5 @@
 open Import
 
-(* cwong: This should probably go in a better place than here, but I'm not sure
-   where. Putting it in [Cram_test] creates dependency cycles. *)
-let () = Cram_exec.linkme
-
 type effective =
   { loc : Loc.t
   ; alias : Alias.Name.Set.t
@@ -65,7 +61,7 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
       in
       let action =
         Action.progn
-          [ Action.Cram (Path.build script)
+          [ Cram_exec.action (Path.build script)
           ; Diff
               { Diff.optional = true
               ; mode = Text
@@ -92,27 +88,32 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
           Alias_rules.add sctx ~alias ~loc cram))
 
 let rules ~sctx ~expander ~dir tests =
-  let stanzas =
+  let open Memo.O in
+  let* stanzas =
     let stanzas dir ~f =
-      match Super_context.stanzas_in sctx ~dir with
+      let+ stanzas = Only_packages.stanzas_in_dir dir in
+      match stanzas with
       | None -> []
-      | Some (d : Stanza.t list Dir_with_dune.t) ->
-        List.filter_map d.data ~f:(function
+      | Some (d : Dune_file.t) ->
+        List.filter_map d.stanzas ~f:(function
           | Dune_file.Cram c -> Option.some_if (f c) (dir, c)
           | _ -> None)
     in
     let rec collect_whole_subtree acc dir =
-      let acc =
-        stanzas dir ~f:(fun (s : Cram_stanza.t) -> s.applies_to = Whole_subtree)
-        :: acc
+      let* acc =
+        let+ cram =
+          stanzas dir ~f:(fun (s : Cram_stanza.t) ->
+              s.applies_to = Whole_subtree)
+        in
+        cram :: acc
       in
       match Path.Build.parent dir with
-      | None -> List.concat acc
+      | None -> Memo.return (List.concat acc)
       | Some dir -> collect_whole_subtree acc dir
     in
-    let acc = stanzas dir ~f:(fun _ -> true) in
+    let* acc = stanzas dir ~f:(fun _ -> true) in
     match Path.Build.parent dir with
-    | None -> acc
+    | None -> Memo.return acc
     | Some dir -> collect_whole_subtree [ acc ] dir
   in
   Memo.parallel_iter tests ~f:(fun test ->
@@ -174,7 +175,7 @@ let rules ~sctx ~expander ~dir tests =
               { acc with enabled_if; locks; deps; alias; packages; sandbox })
       in
       let test_rule () = test_rule ~sctx ~expander ~dir effective test in
-      Only_packages.get () >>= function
+      Only_packages.get_mask () >>= function
       | None -> test_rule ()
       | Some only ->
         let only = Package.Name.Map.keys only |> Package.Name.Set.of_list in

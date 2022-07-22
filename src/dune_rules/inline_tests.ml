@@ -170,7 +170,7 @@ include Sub_system.Register_end_point (struct
           | Byte -> Exe.Linkage.byte
           | Javascript -> Exe.Linkage.js)
     in
-    let* () =
+    let* (_ : Exe.dep_graphs) =
       let link_args =
         let open Action_builder.O in
         let+ link_args_info =

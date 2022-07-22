@@ -1,8 +1,15 @@
 (executable
  (name dune_cmd)
+ (modules dune_cmd)
  (libraries
   stdune
   dune-private-libs.dune_re
   dune-configurator
   build_path_prefix_map
   str))
+
+(ocamllex dunepp)
+
+(executable
+ (modules dunepp)
+ (name dunepp))

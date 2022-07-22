@@ -52,6 +52,7 @@ module V1 : sig
       type kind =
         | Invalid_request
         | Code_error
+        | Connection_dead
 
       type t
 
@@ -404,6 +405,8 @@ module V1 : sig
   end
 
   module Where : sig
+    (** represents the address where a dune rpc instance might be listening *)
+
     type t =
       [ `Unix of string
       | `Ip of [ `Host of string ] * [ `Port of int ]
@@ -424,6 +427,7 @@ module V1 : sig
       val default : ?win32:bool -> build_dir:string -> unit -> t
     end
 
+    (** obtain the address from the build directory and environment *)
     module Make (Fiber : sig
       type 'a t
 
@@ -434,7 +438,7 @@ module V1 : sig
 
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
-    end) (IO : sig
+    end) (_ : sig
       val read_file : string -> (string, exn) result Fiber.t
 
       val analyze_path :
@@ -443,12 +447,22 @@ module V1 : sig
   end
 
   module Registry : sig
+    (** The registry is where all running instances of dune rpc are stored.
+
+        It's used by clients to determine which dune rpc instance corresponds to
+        the workspace they're trying to edit. *)
+
     module Dune : sig
+      (** a registered instance of dune. supposedly running and listening to rpc
+          connections *)
+
       type t
 
       val to_dyn : t -> Dyn.t
 
       val compare : t -> t -> Ordering.t
+
+      val pid : t -> int
 
       val where : t -> Where.t
 
@@ -456,6 +470,8 @@ module V1 : sig
     end
 
     module Config : sig
+      (** The registy directory is located using xdg *)
+
       type t
 
       val create : Xdg.t -> t
@@ -467,9 +483,12 @@ module V1 : sig
 
     val create : Config.t -> t
 
+    (** currently detected running instances *)
     val current : t -> Dune.t list
 
     module Refresh : sig
+      (** the result of polling the registry *)
+
       type t
 
       val added : t -> Dune.t list
@@ -479,6 +498,7 @@ module V1 : sig
       val errored : t -> (string * exn) list
     end
 
+    (** we can poll the registry efficiently using the following functor *)
     module Poll (Fiber : sig
       type 'a t
 
@@ -491,7 +511,7 @@ module V1 : sig
 
         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
       end
-    end) (IO : sig
+    end) (_ : sig
       val scandir : string -> (string list, exn) result Fiber.t
 
       val stat : string -> ([ `Mtime of float ], exn) result Fiber.t

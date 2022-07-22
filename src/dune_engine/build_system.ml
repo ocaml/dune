@@ -2,32 +2,6 @@ open Import
 open Memo.O
 module Action_builder = Action_builder0
 
-module Fs : sig
-  (** A memoized version of [mkdir] that avoids calling [mkdir] multiple times
-      in the same directory. *)
-  val mkdir_p : Path.Build.t -> unit Memo.t
-end = struct
-  let mkdir_p_memo =
-    (* CR-someday amokhov: It's difficult to think about the correctness of this
-       memoized function. Right now, we never invalidate it, so if we delete a
-       stale build directory, we'll not be able to recreate it later. Perhaps,
-       we should create directories as part of running actions that need them.
-       That would be less efficient, as we'd call [mkdir] on the same directory
-       multiple times, but it would be easier to guarantee correctness.
-
-       Note: if we find a way to reliably invalidate this function, its output
-       should continue to have no cutoff because the callers might depend not
-       just on the existence of a directory but on its *continuous*
-       existence. *)
-    Memo.create "mkdir_p"
-      ~input:(module Path.Build)
-      (fun p ->
-        Path.mkdir_p (Path.build p);
-        Memo.return ())
-
-  let mkdir_p = Memo.exec mkdir_p_memo
-end
-
 module Progress = struct
   type t =
     { number_of_rules_discovered : int
@@ -460,7 +434,10 @@ end = struct
            all created files right in the build directory. *)
         if not (Path.Build.Set.is_empty targets.dirs) then
           User_error.raise ~loc
-            [ Pp.text "Rules with directory targets must be sandboxed." ];
+            [ Pp.text "Rules with directory targets must be sandboxed." ]
+            ~hints:
+              [ Pp.text "Add (sandbox always) to the (deps ) field of the rule."
+              ];
         action
       | Some sandbox -> Action.sandbox action sandbox
     in
@@ -475,18 +452,8 @@ end = struct
         if capture_stdout then Action.with_stdout_to stamp_file action
         else Action.progn [ action; Action.write_file stamp_file "" ]
     in
-    let* () =
-      let chdirs = Action.chdirs action in
-      Fiber.sequential_iter_seq (Path.Set.to_seq chdirs) ~f:(fun path ->
-          match Path.as_in_build_dir path with
-          | Some path -> Memo.run (Fs.mkdir_p path)
-          | None ->
-            Code_error.raise ~loc
-              (sprintf
-                 "Can't [chdir] to %S because it's outside the build directory"
-                 (Path.to_string path))
-              [])
-    in
+    Action.chdirs action
+    |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p));
     let root =
       match context with
       | None -> Path.Build.root
@@ -579,7 +546,7 @@ end = struct
     wrap_fiber (fun () ->
         let open Fiber.O in
         report_evaluated_rule_exn config;
-        let* () = Memo.run (Fs.mkdir_p dir) in
+        Path.mkdir_p (Path.build dir);
         let is_action_dynamic = Action.is_dynamic action.action in
         let sandbox_mode =
           match Action.is_useful_to_sandbox action.action with
@@ -779,6 +746,9 @@ end = struct
   let execute_action_generic_stage2_memo =
     Memo.create "execute-action"
       ~input:(module Anonymous_action)
+      (* this memo doesn't need cutoff because the input's digests
+         fully determines the returned build path and we already compare the
+         input using this digest *)
       execute_action_generic_stage2_impl
 
   let execute_action_generic ~observing_facts (act : Rule.Anonymous_action.t)

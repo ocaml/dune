@@ -17,6 +17,9 @@ module Bootstrap : sig
     | Bootstrap_prelude  (** We are compiling the prelude itself *)
 end
 
+val coqdoc_directory_targets :
+  dir:Path.Build.t -> Coq_stanza.Theory.t -> Loc.t Path.Build.Map.t
+
 val setup_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
@@ -44,7 +47,7 @@ val setup_extraction_rules :
     build all dependencies of the Coq module [m]. *)
 val deps_of :
      dir:Path.Build.t
-  -> boot_type:Bootstrap.t
+  -> boot_type:Bootstrap.t Resolve.Memo.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 

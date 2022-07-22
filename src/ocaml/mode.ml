@@ -20,7 +20,7 @@ let compare x y =
 let all = [ Byte; Native ]
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   enum [ ("byte", Byte); ("native", Native) ]
 
 let choose byte native = function
@@ -29,7 +29,7 @@ let choose byte native = function
 
 let to_string = choose "byte" "native"
 
-let encode t = Dune_lang.Encoder.string (to_string t)
+let encode t = Dune_sexp.Encoder.string (to_string t)
 
 let to_dyn t = Dyn.variant (to_string t) []
 
@@ -124,11 +124,11 @@ module Dict = struct
     let empty = { byte = []; native = [] }
 
     let encode f { byte; native } =
-      let open Dune_lang.Encoder in
+      let open Dune_sexp.Encoder in
       record_fields [ field_l "byte" f byte; field_l "native" f native ]
 
     let decode f =
-      let open Dune_lang.Decoder in
+      let open Dune_sexp.Decoder in
       fields
         (let+ byte = field ~default:[] "byte" (repeat f)
          and+ native = field ~default:[] "native" (repeat f) in

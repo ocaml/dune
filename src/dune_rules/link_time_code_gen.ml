@@ -222,6 +222,13 @@ let handle_special_libs cctx =
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
   let sctx = CC.super_context cctx in
   let ctx = Super_context.context sctx in
+  let open Memo.O in
+  let* builtins =
+    let+ findlib =
+      Findlib.create ~paths:ctx.findlib_paths ~lib_config:ctx.lib_config
+    in
+    Findlib.builtins findlib
+  in
   let rec process_libs ~to_link_rev ~force_linkall libs =
     match libs with
     | [] ->
@@ -251,7 +258,7 @@ let handle_special_libs cctx =
           let requires =
             (* This shouldn't fail since findlib.dynload depends on dynlink and
                findlib. That's why it's ok to use a dummy location. *)
-            let db = SC.public_libs sctx in
+            let* db = Scope.DB.public_libs (Super_context.context sctx) in
             let open Resolve.Memo.O in
             let+ dynlink =
               Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")
@@ -279,8 +286,7 @@ let handle_special_libs cctx =
           let code =
             if plugins then
               Action_builder.return
-                (dune_site_plugins_code ~libs:all_libs
-                   ~builtins:(Findlib.builtins ctx.Context.findlib))
+                (dune_site_plugins_code ~libs:all_libs ~builtins)
             else Action_builder.return (dune_site_code ())
           in
           let& module_ =

@@ -14,6 +14,16 @@ module Bin : sig
 
   val binary_available : t -> string -> bool Memo.t
 
+  module Local : sig
+    type t
+
+    val equal : t -> t -> bool
+
+    val create : Path.Build.Set.t -> t
+  end
+
+  val create : context:Context.t -> local_bins:Local.t -> t
+
   val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 end
 
@@ -34,5 +44,4 @@ type t = private
   ; bin : Bin.t
   }
 
-val create :
-  Context.t -> public_libs:Lib.DB.t -> local_bins:Path.Build.Set.t -> t
+val create : Context.t -> public_libs:Lib.DB.t -> local_bins:Bin.Local.t -> t

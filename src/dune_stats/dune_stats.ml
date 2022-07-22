@@ -1,6 +1,12 @@
 open Stdune
 module Event = Chrome_trace.Event
 
+module Mac = struct
+  external open_fds : pid:int -> int = "dune_stats_open_fds"
+
+  external available : unit -> bool = "dune_stats_available"
+end
+
 module Json = struct
   include Chrome_trace.Json
 
@@ -62,7 +68,6 @@ type dst =
 type t =
   { print : string -> unit
   ; close : unit -> unit
-  ; buffer : Buffer.t
   ; mutable after_first_event : bool
   }
 
@@ -83,8 +88,7 @@ let create dst =
     | Out out -> fun () -> Stdlib.close_out out
     | Custom c -> c.close
   in
-  let buffer = Buffer.create 1024 in
-  { print; close; after_first_event = false; buffer }
+  { print; close; after_first_event = false }
 
 let next_leading_char t =
   match t.after_first_event with
@@ -162,23 +166,30 @@ module Fd_count = struct
 
   let how = ref `Unknown
 
+  let pid = lazy (Unix.getpid ())
+
   let get () =
     match !how with
     | `Disable -> Unknown
     | `Lsof -> lsof ()
     | `Proc_fs -> proc_fs ()
+    | `Mac -> This (Mac.open_fds ~pid:(Lazy.force pid))
     | `Unknown -> (
-      match proc_fs () with
-      | This _ as n ->
-        how := `Proc_fs;
-        n
-      | Unknown ->
-        let res = lsof () in
-        (how :=
-           match res with
-           | This _ -> `Lsof
-           | Unknown -> `Disable);
-        res)
+      if Mac.available () then (
+        how := `Mac;
+        This (Mac.open_fds ~pid:(Lazy.force pid)))
+      else
+        match proc_fs () with
+        | This _ as n ->
+          how := `Proc_fs;
+          n
+        | Unknown ->
+          let res = lsof () in
+          (how :=
+             match res with
+             | This _ -> `Lsof
+             | Unknown -> `Disable);
+          res)
 end
 
 let record_gc_and_fd stats =
@@ -212,3 +223,7 @@ let record_gc_and_fd stats =
       Event.counter common args
     in
     emit stats event
+
+module Private = struct
+  module Fd_count = Fd_count
+end

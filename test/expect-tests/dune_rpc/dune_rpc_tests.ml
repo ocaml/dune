@@ -39,7 +39,7 @@ module Chan = struct
 end
 
 module Drpc = struct
-  module Client = Dune_rpc.Client.Make (Dune_rpc_impl.Client.Fiber) (Chan)
+  module Client = Dune_rpc.Client.Make (Dune_rpc_impl.Private.Fiber) (Chan)
   module Server = Dune_rpc_server.Make (Chan)
 end
 
@@ -54,14 +54,10 @@ let setup_client_server () =
   let connect () = Chan.connect client_chan server_chan in
   (client_chan, sessions, connect)
 
-let test ?(private_menu = []) ?no_real_methods ~client ~handler ~init () =
-  let () =
-    match no_real_methods with
-    | None ->
-      Handler.implement_notification handler Procedures.Public.shutdown
-        (fun _ _ -> raise (Failure "shutdown called"))
-    | Some () -> ()
-  in
+let test ?(private_menu = []) ?(real_methods = true) ~client ~handler ~init () =
+  if real_methods then
+    Handler.implement_notification handler Procedures.Public.shutdown
+      (fun _ _ -> failwith "shutdown called");
   let run =
     let client_chan, sessions, connect = setup_client_server () in
     let client () =
@@ -100,7 +96,7 @@ let%expect_test "initialize scheduler with rpc" =
 let%expect_test "no methods in common" =
   let handler = Handler.create ~on_init ~version:(2, 0) () in
   let init = init ~version:(2, 5) () in
-  test ~init ~no_real_methods:() ~client:(fun _ -> assert false) ~handler ();
+  test ~init ~real_methods:false ~client:(fun _ -> assert false) ~handler ();
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
@@ -376,6 +372,17 @@ let%test_module "long polling" =
       in
       rpc
 
+    let server_long_poll svar =
+      let rpc = rpc () in
+      let () =
+        Handler.implement_long_poll rpc sub_proc svar ~equal:Int.equal
+          ~diff:(fun ~last ~now ->
+            match last with
+            | None -> now
+            | Some last -> now - last)
+      in
+      rpc
+
     let%expect_test "long polling - client side termination" =
       let client client =
         let* poller = Client.poll client sub_decl in
@@ -407,6 +414,85 @@ let%test_module "long polling" =
     client: received 2
     server: polling cancelled
     server: finished. |}]
+
+    let%expect_test "long polling - server side termination" =
+      let client client =
+        printfn "client: long polling";
+        let* poller = Client.poll client sub_decl in
+        let poller =
+          match poller with
+          | Ok p -> p
+          | Error e -> raise (Version_error.E e)
+        in
+        let+ () =
+          Fiber.repeat_while ~init:() ~f:(fun () ->
+              let+ res = Client.Stream.next poller in
+              match res with
+              | None -> None
+              | Some a ->
+                printfn "client: received %d" a;
+                Some ())
+        in
+        printfn "client: subscription terminated"
+      in
+      let handler =
+        let state = ref 0 in
+        server (fun _poller ->
+            incr state;
+            Fiber.return (if !state = 3 then None else Some !state))
+      in
+      test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
+      [%expect
+        {|
+    client: long polling
+    client: received 1
+    client: received 2
+    client: subscription terminated
+    server: finished. |}]
+
+    let%expect_test "long polling - client cancels while request is in-flight" =
+      let ready_to_cancel : unit Fiber.Ivar.t = Fiber.Ivar.create () in
+      let svar = Fiber.Svar.create 0 in
+      let handler = server_long_poll svar in
+      let client client =
+        let* poller =
+          let+ poller = Client.poll client sub_decl in
+          match poller with
+          | Ok p -> p
+          | Error e -> raise (Version_error.E e)
+        in
+        let req () =
+          let+ res = Client.Stream.next poller in
+          match res with
+          | None -> printfn "client: no more values"
+          | Some a -> printfn "client: received %d" a
+        in
+        let* () = Fiber.Svar.write svar 1 in
+        let* () = req () in
+        Fiber.fork_and_join_unit
+          (fun () ->
+            let* () = Fiber.Ivar.read ready_to_cancel in
+            printfn "client: cancelling";
+            Client.Stream.cancel poller)
+          (fun () ->
+            printfn "client: waiting for second value (that will never come)";
+            let+ () =
+              Fiber.fork_and_join_unit req (Fiber.Ivar.fill ready_to_cancel)
+            in
+            printfn "client: finishing session")
+      in
+      test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
+      [%expect.unreachable]
+      [@@expect.uncaught_exn
+        {|
+      (Test_scheduler.Never)
+      Trailing output
+      ---------------
+      client: received 1
+      client: waiting for second value (that will never come)
+      client: cancelling
+      client: no more values
+      client: finishing session |}]
 
     let%expect_test "long polling - server side termination" =
       let client client =

@@ -1,4 +1,4 @@
-(** Inhabited type *)
+(** Uninhabited type *)
 
 type t = (int, string) Type_eq.t
 

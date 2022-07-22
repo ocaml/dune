@@ -15,15 +15,14 @@ module type Serializable = sig
   val deserialize : String.t -> (t, Deserialization_error.t) Result.t
 end
 
-module type T = Serializable
-
 module type S = sig
   include Sexpable
 
   val version : int
 end
 
-module Make (TypeToSerialize : S) : T with type t := TypeToSerialize.t = struct
+module Make (TypeToSerialize : S) :
+  Serializable with type t := TypeToSerialize.t = struct
   open TypeToSerialize
 
   let parsing_error_of_option :

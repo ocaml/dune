@@ -42,17 +42,17 @@ module Make (S : Stringlike_intf.S_base) = struct
     , fun fmt t -> Format.pp_print_string fmt (to_string t) )
 
   let decode =
-    let open Dune_lang.Decoder in
+    let open Dune_sexp.Decoder in
     map_validate (located string) ~f:of_string_user_error
 
   let decode_loc =
-    let open Dune_lang.Decoder in
+    let open Dune_sexp.Decoder in
     map_validate (located string) ~f:(fun ((loc, _) as s) ->
         let open Result.O in
         let+ t = of_string_user_error s in
         (loc, t))
 
-  let encode t = Dune_lang.Encoder.(string (to_string t))
+  let encode t = Dune_sexp.Encoder.(string (to_string t))
 
   let to_dyn t = Dyn.string (to_string t)
 end

@@ -140,14 +140,13 @@ let rec dep expander = function
     Other
       (let loc = String_with_vars.loc s in
        let* path = Expander.expand_path expander s in
-       let pred =
-         Path.basename path |> Glob.of_string_exn loc |> Glob.to_pred
-       in
-       let dir = Path.parent_exn path in
-       let files_in dir =
-         Action_builder.paths_matching ~loc (File_selector.create ~dir pred)
+       let files_in =
+         let glob = Path.basename path |> Glob.of_string_exn loc in
+         fun dir ->
+           Action_builder.paths_matching ~loc (File_selector.of_glob ~dir glob)
        in
        let+ files =
+         let dir = Path.parent_exn path in
          if recursive then collect_source_files_recursively dir ~f:files_in
          else files_in dir
        in
@@ -163,8 +162,8 @@ let rec dep expander = function
        let+ () =
          let pkg = Package.Name.of_string pkg in
          let context = Expander.context expander in
-         Action_builder.of_memo (Expander.find_package expander pkg)
-         >>= function
+         let sites = Expander.sites expander in
+         Action_builder.of_memo (Sites.find_package sites pkg) >>= function
          | Some (Local pkg) ->
            Action_builder.alias
              (package_install ~context:(Context.build_context context) ~pkg)
@@ -252,7 +251,8 @@ and named_paths_builder ~expander l =
             (x :: builders, bindings)
           | None ->
             let x =
-              Action_builder.memoize ("dep " ^ name)
+              Action_builder.memoize ~cutoff:(List.equal Path.equal)
+                ("dep " ^ name)
                 (Action_builder.List.concat_map x ~f:to_action_builder)
             in
             let bindings =
@@ -275,7 +275,9 @@ let named ~expander l =
     let+ paths = builder in
     Dune_util.Value.L.paths paths
   in
-  let builder = Action_builder.memoize "deps" builder in
+  let builder =
+    Action_builder.memoize ~cutoff:(List.equal Value.equal) "deps" builder
+  in
   let bindings =
     Pform.Map.set bindings (Var Deps) (Expander.Deps.With builder)
   in

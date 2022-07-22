@@ -47,7 +47,7 @@
       </group>
     </layout>
   </citation>
-  <bibliography>
+  <bibliography entry-spacing="1">
     <sort>
       <key macro="author-full-name"/>
       <key macro="issued-year"/>

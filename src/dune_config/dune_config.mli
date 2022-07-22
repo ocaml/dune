@@ -118,6 +118,7 @@ val equal : t -> t -> bool
 
 val for_scheduler :
      t
-  -> Dune_rpc_private.Where.t option
   -> Dune_stats.t option
+  -> insignificant_changes:[ `React | `Ignore ]
+  -> signal_watcher:[ `Yes | `No ]
   -> Dune_engine.Scheduler.Config.t

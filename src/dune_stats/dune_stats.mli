@@ -18,3 +18,13 @@ val emit : t -> Chrome_trace.Event.t -> unit
 val record_gc_and_fd : t -> unit
 
 val close : t -> unit
+
+module Private : sig
+  module Fd_count : sig
+    type t =
+      | Unknown
+      | This of int
+
+    val get : unit -> t
+  end
+end

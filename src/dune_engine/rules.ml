@@ -184,6 +184,18 @@ let of_rules rules =
         | None -> Some (Dir_rules.Nonempty.singleton (Rule rule))
         | Some acc -> Some (Dir_rules.Nonempty.add acc (Rule rule))))
 
+let directory_targets (rules : t) =
+  Path.Build.Map.fold ~init:Path.Build.Map.empty rules
+    ~f:(fun (dir_rules : Dir_rules.Nonempty.t) acc ->
+      (dir_rules :> Dir_rules.t)
+      |> Id.Map.fold ~init:acc ~f:(fun (data : Dir_rules.data) acc ->
+             match data with
+             | Alias _ -> acc
+             | Rule rule ->
+               Path.Build.Set.fold ~init:acc rule.targets.dirs
+                 ~f:(fun target acc ->
+                   Path.Build.Map.add_exn acc target rule.loc)))
+
 let collect f =
   let open Memo.O in
   let+ result, out = Memo.Implicit_output.collect implicit_output f in

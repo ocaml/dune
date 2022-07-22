@@ -1,6 +1,6 @@
 open Import
 
-type t =
+type t = Dune_section.t =
   | Lib
   | Lib_root
   | Libexec

@@ -6,6 +6,8 @@ module File = struct
     ; dialect : Dialect.t
     }
 
+  let dialect t = t.dialect
+
   let path t = t.path
 
   let set_src_dir t ~src_dir =

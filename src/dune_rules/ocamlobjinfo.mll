@@ -38,7 +38,7 @@ and impls acc = parse
 {
 let parse s = ocamlobjinfo empty (Lexing.from_string s)
 
-let rules ~dir ~(ctx : Context.t) ~unit =
+let rules ~dir ~(ctx : Context.t) ~sandbox ~unit =
   let output =
     Path.Build.relative dir (Path.basename unit)
     |> Path.Build.extend_basename ~suffix:".ooi-deps"
@@ -55,7 +55,8 @@ let rules ~dir ~(ctx : Context.t) ~unit =
     else
       []
   in
-  ( Command.run ~dir:(Path.build dir) ctx.ocamlobjinfo
+  ( Command.run ?sandbox
+      ~dir:(Path.build dir) ctx.ocamlobjinfo
       (List.concat
          [ no_approx
          ; no_code

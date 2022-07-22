@@ -4,8 +4,8 @@ module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
 module Stanza = Dune_lang.Stanza
 module Config = Dune_util.Config
-module String_with_vars = Dune_engine.String_with_vars
-module Pform = Dune_engine.Pform
+module String_with_vars = Dune_lang.String_with_vars
+module Pform = Dune_lang.Pform
 module Log = Dune_util.Log
 
 (* the configuration file use the same version numbers as dune-project files for
@@ -425,7 +425,7 @@ let auto_concurrency =
       in
       loop commands)
 
-let for_scheduler (t : t) rpc stats =
+let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
   let concurrency =
     match t.concurrency with
     | Fixed i -> i
@@ -434,4 +434,9 @@ let for_scheduler (t : t) rpc stats =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n
   in
-  { Scheduler.Config.concurrency; display = t.display; rpc; stats }
+  { Scheduler.Config.concurrency
+  ; display = t.display
+  ; stats
+  ; insignificant_changes
+  ; signal_watcher
+  }

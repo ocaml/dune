@@ -1,14 +1,8 @@
 module Meta_parser = Dune_meta_parser.Meta_parser.Make (struct
   module Loc = struct
-    type t =
-      { start : Lexing.position
-      ; stop : Lexing.position
-      }
+    type t = unit
 
-    let of_lexbuf lexbuf : t =
-      { start = Lexing.lexeme_start_p lexbuf
-      ; stop = Lexing.lexeme_end_p lexbuf
-      }
+    let of_lexbuf _ = ()
   end
 
   module Lib_name = struct

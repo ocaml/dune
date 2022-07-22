@@ -34,16 +34,13 @@ type t =
   ; build_dir : string
   ; no_print_directory : bool
   ; store_orig_src_dir : bool
-  ; (* Original arguments for the external-lib-deps hint *)
-    orig_args : string list
-  ; rpc : Dune_rpc_impl.Server.t option
+  ; rpc : Dune_rpc_impl.Server.t Lazy.t
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : Watch_mode_config.t
   ; print_metrics : bool
   ; dump_memo_graph_file : string option
   ; dump_memo_graph_format : Graph.File_format.t
   ; dump_memo_graph_with_timing : bool
-  ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
   ; stats : Dune_stats.t option
@@ -52,6 +49,7 @@ type t =
   ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
   ; report_errors_config : Dune_engine.Report_errors_config.t
   ; require_dune_project_file : bool
+  ; insignificant_changes : [ `React | `Ignore ]
   }
 
 let capture_outputs t = t.capture_outputs
@@ -74,9 +72,11 @@ let default_target t = t.default_target
 
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
-let rpc t = t.rpc
+let rpc t = Lazy.force t.rpc
 
 let stats t = t.stats
+
+let insignificant_changes t = t.insignificant_changes
 
 let set_print_directory t b = { t with no_print_directory = not b }
 
@@ -980,16 +980,22 @@ let term ~default_root_is_cwd =
              $(b,twice) - report each error twice: once as soon as the error \
              is discovered and then again at the end of the build, in a \
              deterministic order.")
+  and+ react_to_insignificant_changes =
+    Arg.(
+      value & flag
+      & info
+          [ "react-to-insignificant-changes" ]
+          ~doc:
+            "react to insignificant file system changes; this is only useful \
+             for benchmarking dune")
+  in
+  let insignificant_changes =
+    if react_to_insignificant_changes then `React else `Ignore
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root =
     Workspace_root.create ~default_is_cwd:default_root_is_cwd
       ~specified_by_user:root
-  in
-  let rpc =
-    match watch with
-    | Yes _ -> Some (Dune_rpc_impl.Server.create ~root:root.dir)
-    | No -> None
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->
@@ -997,6 +1003,7 @@ let term ~default_root_is_cwd =
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
+  let rpc = lazy (Dune_rpc_impl.Server.create ~root:root.dir stats) in
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();
@@ -1009,7 +1016,6 @@ let term ~default_root_is_cwd =
   ; wait_for_filesystem_clock
   ; capture_outputs = not no_buffer
   ; root
-  ; orig_args = []
   ; diff_command
   ; promote
   ; force
@@ -1025,7 +1031,6 @@ let term ~default_root_is_cwd =
   ; dump_memo_graph_file
   ; dump_memo_graph_format
   ; dump_memo_graph_with_timing
-  ; stats_trace_file
   ; always_show_command_line
   ; promote_install_files
   ; stats
@@ -1041,17 +1046,12 @@ let term ~default_root_is_cwd =
   ; cache_debug_flags
   ; report_errors_config
   ; require_dune_project_file
+  ; insignificant_changes
   }
 
-let set_rpc t rpc = { t with rpc = Some rpc }
+let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
 
-let term_with_default_root_is_cwd =
-  let+ t, orig_args = Term.with_used_args (term ~default_root_is_cwd:true) in
-  { t with orig_args }
-
-let term =
-  let+ t, orig_args = Term.with_used_args (term ~default_root_is_cwd:false) in
-  { t with orig_args }
+let term = term ~default_root_is_cwd:false
 
 let config_from_config_file = Options_implied_by_dash_p.config_term
 

@@ -1,6 +1,7 @@
 (** DSL to define sets that are defined by a membership : 'a -> bool function. *)
 
 open! Stdune
+open Dune_sexp
 
 type 'a t =
   | Element of 'a
@@ -57,8 +58,6 @@ module Glob : sig
   val of_glob : Glob.t -> t
 
   val of_pred : (string -> bool) -> t
-
-  val to_predicate : t -> standard:t -> Filename.t Predicate.t
 
   val of_string_set : String.Set.t -> t
 

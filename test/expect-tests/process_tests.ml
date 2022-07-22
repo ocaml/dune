@@ -6,8 +6,9 @@ let go =
   let config =
     { Scheduler.Config.concurrency = 1
     ; display = { verbosity = Short; status_line = false }
-    ; rpc = None
     ; stats = None
+    ; insignificant_changes = `React
+    ; signal_watcher = `Yes
     }
   in
   Scheduler.Run.go config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ())

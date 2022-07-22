@@ -1,15 +1,109 @@
+3.4.0 (20-07-2022)
+------------------
+
+- Make `dune describe` correctly handle overlapping implementations
+  for virtual libraries (#5971, fixes #5747, @esope)
+
+- Building the `@check` alias should make sure the libraries and executables
+  don't have dependency cycles (#5892, @rgrinberg)
+
+- [ctypes] Add support for the `errno` parameter using the `errno_policy` field
+  in the ctypes settings. (#5827, @droyo)
+
+- Fix `dune coq top` when it is invoked on files from a subdirectory of the
+  directory containing the associated stanza (#5784, fixes #5552, @ejgallego,
+  @rlepigre, @Alizter)
+
+- Fix hint when an invalid module name is found. (#5922, fixes #5273, @emillon)
+
+- The `(cat)` action now supports several files. (#5928, fixes #5795, @emillon)
+
+- Dune no longer uses shimmed `META` files for OCaml 5.x, solely using the ones
+  installed by the compiler. (#5916, @dra27)
+
+- Fix handling of the `(deps)` field in `(test)` stanzas when there is an
+  `.expected` file. (#5952, #5951, fixes #5950, @emillon)
+
+- Ignore insignificant filesystem events. This stops RPC in watch mode from
+  flashing errors on insignificant file system events such as changes in the
+  `.git/` directory. (#5953, @rgrinberg)
+
+- Fix parsing more error messages emitted by the OCaml compiler. In
+  particular, messages where the excerpt line number started with a blank
+  character were skipped. (#5981, @rgrinberg)
+
+- env stanza: warn if some rules are ignored because they appear after a
+  wildcard rule. (#5898, fixes #5886, @emillon)
+
+- On Windows, XDG_CACHE_HOME is taken to be the `FOLDERID_InternetCache` if
+  unset, and XDG_CONFIG_HOME and XDG_DATA_HOME are both taken to be
+  `FOLDERID_LocalAppData` if unset.  (#5943, fixes #5808, @nojb)
+
+3.3.1 (19-06-2022)
+------------------
+
+- Improve parsing of ocamlc errors. We now correctly strip excerpts and parse
+  alerts (#5879, @rgrinberg)
+
+- The `(libraries)` field of the `coq.theory` stanza has been renamed to
+  `(plugins)` and the Coq language version has been bumped to 0.5.
+
+3.3.0 (17-06-2022)
+------------------
+
+- Sandbox preprocessing, lint, and dialect rules by default. All these rules
+  now require precise dependency specifications (#5807, @rgrinberg)
+
+- Allow list expansion in the `pps` specification for preprocessing (#5820,
+  @Firobe)
+
+- Add warnings 67-69 to dune's default set of warnings. These are warnings of
+  the form "unused X.." (#5844, @rgrinbreg)
+
+- Introduce project "composition" for coq theories. Coq theories in separate
+  projects can now refer to each other when in the same workspace (#5784,
+  @Alizter, @rgrinberg)
+
+- Fix hint message for `data_only_dirs` that wrongly mentions the unknown
+  constructor `data_only` (#5803, @lambdaxdotx)
+
+- Fix creating sandbox directory trees by getting rid of buggy memoization
+  (@5794, @rgrinberg, @snowleopard)
+
+- Handle directory dependencies in sandboxed rules. Previously, the parents of
+  these directory dependencies weren't created. (#5754, @rgrinberg)
+
+- Set the exit code to 130 when dune is terminated with a signal (#5769, fixes
+  #5757)
+
+- Support new locations of unix, str, dynlink in OCaml >= 5.0 (#5582, @dra27)
+
+- The `coq.theory` stanza now produces rules for running `coqdoc`. Given a
+  theory named `mytheory`, the directory targets `mytheory.html/` and
+  `mytheory.tex/` or additionally the aliases `@doc` and `@doc-latex` will
+  build the HTML and LaTeX documentation repsectively. (#5695, fixes #3760,
+  @Alizter)
+
+- Coq theories marked as `(boot)` cannot depend on other theories
+  (#5867, @ejgallego)
+
+- Ignore `bigarray` in `(libraries)` with OCaml >= 5.0. (#5526, fixes #5494,
+  @moyodiallo)
+
+- Start with :standard when building the ctypes generated foreign stubs so that
+  we include important compiler flags, such as -fPIC (#5816, fixes #5809).
+
 3.2.0 (17-05-2022)
 ------------------
 
-- Fixed ``dune describe workspace --with-deps`` so that it correctly
-  handles Reason files, as well as files any other dialect. (#5701, @esope)
+- Fixed `dune describe workspace --with-deps` so that it correctly handles
+  Reason files, as well as files any other dialect. (#5701, @esope)
 
 - Disable alerts when compiling code in vendored directories (#5683,
   @NathanReb)
 
-- Fixed ``dune describe --with-deps``, that crashed when some
-  preprocessing was required in a dune file using ``per_module``.
-  (#5682, fixes #5680, @esope)
+- Fixed `dune describe --with-deps`, that crashed when some preprocessing was
+  required in a dune file using `per_module`. (#5682, fixes #5680, @esope)
 
 - Add `$ dune describe pp` to print the preprocssed ast of sources. (#5615,
   fixes #4470, @cannorin)
@@ -481,6 +575,9 @@
 
 - Do not generate META information for `bigarray` library in OCaml >= 5.0
   (#5421, @nojb)
+
+- Support new locations of unix, str, dynlink in OCaml >= 5.0
+  (#5582, @dra27)
 
 2.9.3 (26/01/2022)
 ------------------

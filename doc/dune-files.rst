@@ -1408,6 +1408,10 @@ by using the form ``(<filename> as <destination>)`` in the
      (section share_root)
      (files   (mylib.el as emacs/site-lisp/mylib.el)))
 
+The mode of installed files is fully determined by the section they are
+installed in. If the section above is documented as "with the executable bit
+set", they are installed with mode ``0o755`` (``rwxr-xr-x``); otherwise they are
+installed with mode ``0o644`` (``rw-r--r--``).
 
 Handling of the .exe Extension on Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

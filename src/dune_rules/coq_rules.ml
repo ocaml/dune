@@ -117,7 +117,8 @@ let rec resolve_first lib_db = function
 module Context = struct
   type 'a t =
     { coqdep : Action.Prog.t
-    ; coqc : Action.Prog.t * Path.Build.t
+    (* ; coqc : Action.Prog.t * Path.Build.t *)
+    ; coqc : Action.Prog.t
     ; coqdoc : Action.Prog.t
     ; wrapper_name : string
     ; dir : Path.Build.t
@@ -135,8 +136,8 @@ module Context = struct
     }
 
   let coqc ?stdout_to t args =
-    let dir = Path.build (snd t.coqc) in
-    Command.run ~dir ?stdout_to (fst t.coqc) args
+    (* let dir = Path.build (snd t.coqc) in *)
+    Command.run ~dir:(Path.build t.dir) ?stdout_to t.coqc args
 
   let coq_flags t =
     let standard = t.profile_flags in
@@ -257,7 +258,7 @@ module Context = struct
           in
           Resolve.return (Path.Build.Set.union_all (theory_dirs :: l)))
 
-  let create ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
+  let create sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
       (buildable : Buildable.t) =
     let loc = buildable.loc in
     let rr = resolve_program sctx ~dir ~loc in
@@ -296,7 +297,8 @@ module Context = struct
     and+ coqdoc = rr "coqdoc"
     and+ profile_flags = Super_context.coq sctx ~dir in
     { coqdep
-    ; coqc = (coqc, coqc_dir)
+    (* ; coqc = (coqc, coqc_dir) *)
+    ; coqc = coqc
     ; coqdoc
     ; wrapper_name
     ; dir
@@ -531,9 +533,9 @@ let setup_cctx_and_modules ~sctx ~dir ~dir_contents (s : Theory.t) theory =
   let theory_dirs =
     Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
   in
-  let coqc_dir = (Super_context.context sctx).build_dir in
+  (* let coqc_dir = (Super_context.context sctx).build_dir in *)
   let+ cctx =
-    Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
+    Context.create sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
       s.buildable
   in
   let coq_modules = Coq_sources.library coq_dir_contents ~name in
@@ -603,8 +605,8 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
     in
     let theory_dirs = Coq_sources.directories coq_dir_contents ~name in
     let theory_dirs = Path.Build.Set.of_list theory_dirs in
-    let coqc_dir = (Super_context.context sctx).build_dir in
-    Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps ~theory_dirs
+    (* let coqc_dir = (Super_context.context sctx).build_dir in *)
+    Context.create sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
       s.buildable
   in
   let cctx = Context.for_module cctx coq_module in
@@ -719,7 +721,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     in
     let theory_dirs = Path.Build.Set.empty in
     let theories_deps = Resolve.Memo.lift theories_deps in
-    Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
+    Context.create sctx ~dir ~wrapper_name ~theories_deps
       ~theory_dirs s.buildable
   in
   let* coq_module =
@@ -748,7 +750,7 @@ let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
     in
     let theory_dirs = Path.Build.Set.empty in
     let theories_deps = Resolve.Memo.lift theories_deps in
-    Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
+    Context.create sctx ~dir ~wrapper_name ~theories_deps
       ~theory_dirs s.buildable
   in
   let* coq_module =

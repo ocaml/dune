@@ -29,7 +29,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
         ] )
     ; ("win32", win_link_flags)
     ; ("win64", win_link_flags)
-    ; ("mingw32", win_link_flags)
+    ; ("mingw", win_link_flags)
     ; ("mingw64", win_link_flags)
     ]
   in

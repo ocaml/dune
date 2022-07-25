@@ -67,7 +67,7 @@ details.
 
    (cram <status>)
 
-Where status is either ``enabled`` or ``disabled``.
+Where status is either ``enable`` or ``disable``.
 
 .. _implicit_transitive_deps:
 

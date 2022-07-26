@@ -190,7 +190,6 @@ type sh_script =
   { script : Path.t
   ; cram_to_output : block_result Cram_lexer.block list
   ; metadata_file : Path.t option
-  ; command_count : int
   }
 
 let read_exit_codes_and_prefix_maps file =
@@ -369,7 +368,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
   close_out oc;
   let command_count = !i in
   let metadata_file = Option.some_if (command_count > 0) metadata_file in
-  { script; cram_to_output; metadata_file; command_count }
+  { script; cram_to_output; metadata_file }
 
 let _display_with_bars s =
   List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
@@ -437,6 +436,31 @@ let run ~env ~script lexbuf : string Fiber.t =
 let run ~env ~script =
   run_expect_test script ~f:(fun lexbuf -> run ~env ~script lexbuf)
 
-let () = Fdecl.set Action_exec.cram_run run
+module Spec = struct
+  type ('path, _) t = 'path
 
-let linkme = ()
+  let name = "cram"
+
+  let version = 1
+
+  let bimap path f _ = f path
+
+  let is_useful_to ~distribute:_ ~memoize:_ = true
+
+  let encode script path _ : Dune_lang.t =
+    List [ Dune_lang.atom_or_quoted_string "cram"; path script ]
+
+  let action script ~ectx:_ ~(eenv : Action.Ext.env) = run ~env:eenv.env ~script
+end
+
+let action script =
+  let module M = struct
+    type path = Path.t
+
+    type target = Path.Build.t
+
+    module Spec = Spec
+
+    let v = script
+  end in
+  Action.Extension (module M)

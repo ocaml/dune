@@ -1,3 +1,0 @@
-(rule
- (alias default)
- (action (echo "%{read:ccycle.install}")))

@@ -1,0 +1,11 @@
+(library
+  (name pkg1)
+  (modules pkg1)
+  (public_name pkg1)
+)
+
+(library
+  (name pkg2)
+  (modules pkg2)
+  (public_name pkg2)
+)

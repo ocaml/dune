@@ -176,7 +176,7 @@ end = struct
 
   let set_env ~var ~value t env acc =
     let*! value, acc = value env acc in
-    let value = Action_builder.memoize "env var" value in
+    let value = Action_builder.memoize ~cutoff:String.equal "env var" value in
     let env =
       { env with
         expander = Expander.set_local_env_var env.expander ~var ~value
@@ -289,7 +289,9 @@ end = struct
         (let fn = Expander.expand_path env sw in
          if not env.infer then (fn, acc)
          else
-           let fn = Action_builder.memoize "dep_if_exists" fn in
+           let fn =
+             Action_builder.memoize ~cutoff:Path.equal "dep_if_exists" fn
+           in
            ( fn
            , { acc with
                deps_if_exist =
@@ -348,7 +350,7 @@ end = struct
   end
 end
 
-let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
+let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   let module A = Action_expander in
   let module E = Action_expander.E in
   let open Action_expander.O in
@@ -398,9 +400,9 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     let+ l = A.all (List.map xs ~f:E.strings) in
     let l = List.concat l in
     O.Echo l
-  | Cat fn ->
-    let+ fn = E.dep fn in
-    O.Cat fn
+  | Cat xs ->
+    let+ xs = A.all (List.map xs ~f:E.dep) in
+    O.Cat xs
   | Copy (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
@@ -412,7 +414,7 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
   | Copy_and_add_line_directive (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
-    O.Copy_and_add_line_directive (x, y)
+    Copy_line_directive.action x y
   | System x ->
     let+ x = E.string x in
     O.System x
@@ -451,7 +453,7 @@ let rec expand (t : Action_dune_lang.t) : Action.t Action_expander.t =
     O.Pipe (outputs, l)
   | Cram script ->
     let+ script = E.dep script in
-    O.Cram script
+    Cram_exec.action script
 
 let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in
@@ -536,6 +538,6 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
   in
   Action_builder.with_targets ~targets build
 
-(* We re-export [Action_dune_lang] in the end to avoid polluting the inferred
+(* We re-export [Dune_lang.Action] in the end to avoid polluting the inferred
    types in this module with all the various t's *)
-include Action_dune_lang
+include Dune_lang.Action

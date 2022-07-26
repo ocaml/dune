@@ -6,7 +6,25 @@
 
 open! Import
 
-include module type of Action_types
+module Outputs : sig
+  include
+    module type of Dune_lang.Action.Outputs
+      with type t = Dune_lang.Action.Outputs.t
+end
+
+module Inputs : sig
+  include
+    module type of Dune_lang.Action.Inputs
+      with type t = Dune_lang.Action.Inputs.t
+end
+
+module File_perm : sig
+  include
+    module type of Dune_lang.Action.File_perm
+      with type t = Dune_lang.Action.File_perm.t
+end
+
+module Ext : module type of Action_intf.Ext
 
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
@@ -43,6 +61,10 @@ include
     with type path := Path.t
     with type target := Path.Build.t
     with type string := string
+    with type ext :=
+      (module Ext.Instance
+         with type target = Path.Build.t
+          and type path = Path.t)
 
 include
   Action_intf.Helpers
@@ -61,6 +83,7 @@ module For_shell : sig
       with type path := string
       with type target := string
       with type string := string
+      with type ext := Dune_lang.t
 
   val encode : t Dune_lang.Encoder.t
 end

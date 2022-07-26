@@ -28,11 +28,12 @@ let format_diagnostic (err : Dune_rpc_private.Diagnostic.t) : User_message.t =
     (directory @ formatted_loc
     @ [ Pp.map_tags ~f:(fun _ -> User_message.Style.Details) err.message ])
 
-let exec common =
+let exec () =
   let open Fiber.O in
-  let where = Rpc.wait_for_server common in
+  let where = Rpc.active_server () in
   let+ errors =
-    Dune_rpc_impl.Run.client where
+    let* connect = Dune_rpc_impl.Client.Connection.connect_exn where in
+    Dune_rpc_impl.Client.client connect
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "diagnostics_cmd")))
       ~f:(fun cli ->

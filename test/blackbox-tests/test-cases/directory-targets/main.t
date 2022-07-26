@@ -32,6 +32,7 @@ Directory targets are not allowed for non-sandboxed rules.
   2 |   (targets (dir output))
   3 |   (action (bash "true")))
   Error: Rules with directory targets must be sandboxed.
+  Hint: Add (sandbox always) to the (deps ) field of the rule.
   [1]
 
 Ensure directory targets are produced.

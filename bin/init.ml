@@ -134,9 +134,9 @@ let man =
             tests|}
         , {|dune init lib mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests|}
         )
-      ; ( {|Configure a library component named `mytest' in a dune file in the
+      ; ( {|Configure a test component named `mytest' in a dune file in the
             ./test directory that depends on `mylib'|}
-        , {|dune init test myexe test --libs mylib|} )
+        , {|dune init test mytest test --libs mylib|} )
       ]
   ]
 

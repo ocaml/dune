@@ -43,7 +43,9 @@ val empty : t
     with the correct [kind] *)
 
 val make :
-     Stanza.t list Dir_with_dune.t
+     Dune_file.t
+  -> dir:Path.Build.t
+  -> scope:Scope.t
   -> lib_config:Lib_config.t
   -> loc:Loc.t
   -> lookup_vlib:(dir:Path.Build.t -> t Memo.t)

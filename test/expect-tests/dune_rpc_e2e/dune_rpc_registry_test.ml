@@ -47,8 +47,9 @@ let run =
   let config =
     { Scheduler.Config.concurrency = 1
     ; display = { verbosity = Quiet; status_line = false }
-    ; rpc = None
     ; stats = None
+    ; insignificant_changes = `React
+    ; signal_watcher = `No
     }
   in
   fun run ->

@@ -1,0 +1,4 @@
+(coq.theory
+ (name foo))
+
+(include_subdirs qualified)

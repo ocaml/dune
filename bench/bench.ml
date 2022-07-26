@@ -97,7 +97,7 @@ let dune_build () =
   let open Fiber.O in
   let+ times =
     Process.run_with_times dune ~stdin_from ~stdout_to ~stderr_to
-      [ "build"; "@install"; "--root"; "." ]
+      [ "build"; "@install"; "--release" ]
   in
   times.elapsed_time
 
@@ -120,12 +120,15 @@ let () =
   Dune_util.Log.init ~file:No_log_file ();
   let dir = Temp.create Dir ~prefix:"dune" ~suffix:"bench" in
   Sys.chdir (Path.to_string dir);
+  Path.as_external dir |> Option.value_exn |> Path.set_root;
+  Path.Build.set_build_dir (Path.Build.Kind.of_string "_build");
   let module Scheduler = Dune_engine.Scheduler in
   let config =
     { Scheduler.Config.concurrency = 10
     ; display = { verbosity = Quiet; status_line = false }
-    ; rpc = None
     ; stats = None
+    ; insignificant_changes = `React
+    ; signal_watcher = `No
     }
   in
   let clean, zero =

@@ -166,9 +166,6 @@ val with_stdout_to :
 
 val copy : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 
-val copy_and_add_line_directive :
-  src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
-
 val symlink : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 
 val create_file :

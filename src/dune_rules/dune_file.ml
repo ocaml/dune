@@ -995,7 +995,6 @@ module Executables = struct
 
     val make :
          multi:bool
-      -> stanza:string
       -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
@@ -1010,10 +1009,6 @@ module Executables = struct
     type t =
       { names : (Loc.t * string) list
       ; public : public option
-      ; stanza : string
-      ; project : Dune_project.t
-      ; loc : Loc.t
-      ; multi : bool
       }
 
     let names t = t.names
@@ -1056,7 +1051,7 @@ module Executables = struct
 
     let pluralize s ~multi = if multi then s ^ "s" else s
 
-    let make ~multi ~stanza ~allow_omit_names_version =
+    let make ~multi ~allow_omit_names_version =
       let check_valid_name_version = (3, 0) in
       let+ names = if multi then multi_fields else single_fields
       and+ loc = loc
@@ -1068,7 +1063,6 @@ module Executables = struct
            (loc, pkg))
       and+ project = Dune_project.get_exn () in
       let names, public_names = names in
-      let stanza = pluralize stanza ~multi in
       let names =
         let open Dune_lang.Syntax.Version.Infix in
         if dune_syntax >= check_valid_name_version then
@@ -1139,7 +1133,7 @@ module Executables = struct
                 (pluralize "public_name" ~multi)
             ]
       in
-      { names; public; project; stanza; loc; multi }
+      { names; public }
 
     let install_conf t ~ext ~enabled_if =
       Option.map t.public ~f:(fun { package; public_names } ->
@@ -1452,10 +1446,9 @@ module Executables = struct
       }
 
   let single, multi =
-    let stanza = "executable" in
     let make multi =
       fields
-        (let+ names = Names.make ~multi ~stanza ~allow_omit_names_version:(1, 1)
+        (let+ names = Names.make ~multi ~allow_omit_names_version:(1, 1)
          and+ f = common in
          f names ~multi)
     in
@@ -1543,7 +1536,7 @@ module Rule = struct
   type t =
     { targets : String_with_vars.t Targets_spec.t
     ; deps : Dep_conf.t Bindings.t
-    ; action : Loc.t * Action_dune_lang.t
+    ; action : Loc.t * Dune_lang.Action.t
     ; mode : Rule.Mode.t
     ; patch_back_source_tree : bool
     ; locks : Locks.t
@@ -1592,7 +1585,7 @@ module Rule = struct
       ]
 
   let short_form =
-    let+ loc, action = located Action_dune_lang.decode in
+    let+ loc, action = located Dune_lang.Action.decode in
     { targets = Infer
     ; deps = Bindings.empty
     ; action = (loc, action)
@@ -1624,7 +1617,7 @@ module Rule = struct
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
-       and+ action = field "action" (located Action_dune_lang.decode)
+       and+ action = field "action" (located Dune_lang.Action.decode)
        and+ targets = Targets_spec.field ~allow_directory_targets
        and+ locks = Locks.field ()
        and+ () =
@@ -1816,13 +1809,22 @@ module Menhir = struct
   let () =
     Dune_project.Extension.register_simple Menhir_stanza.syntax
       (return [ ("menhir", decode >>| fun x -> [ T x ]) ])
+
+  let modules (stanza : t) : string list =
+    match stanza.merge_into with
+    | Some m -> [ m ]
+    | None -> stanza.modules
+
+  let targets (stanza : t) : string list =
+    let f m = [ m ^ ".ml"; m ^ ".mli" ] in
+    List.concat_map (modules stanza) ~f
 end
 
 module Alias_conf = struct
   type t =
     { name : Alias.Name.t
     ; deps : Dep_conf.t Bindings.t
-    ; action : (Loc.t * Action_dune_lang.t) option
+    ; action : (Loc.t * Dune_lang.Action.t) option
     ; locks : Locks.t
     ; package : Package.t option
     ; enabled_if : Blang.t
@@ -1845,7 +1847,7 @@ module Alias_conf = struct
                let* () =
                  Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
                in
-               located Action_dune_lang.decode)
+               located Dune_lang.Action.decode)
           and+ loc = loc
           and+ locks = Locks.field ()
           and+ enabled_if =
@@ -1861,7 +1863,7 @@ module Tests = struct
     ; package : Package.t option
     ; deps : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
-    ; action : Action_dune_lang.t option
+    ; action : Dune_lang.Action.t option
     }
 
   let gen_parse names =
@@ -1886,7 +1888,7 @@ module Tests = struct
           and+ action =
             field_o "action"
               (Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
-              >>> Action_dune_lang.decode)
+              >>> Dune_lang.Action.decode)
           and+ forbidden_libraries =
             field "forbidden_libraries"
               (Dune_lang.Syntax.since Stanza.syntax (2, 0)
@@ -2155,10 +2157,6 @@ type Stanza.t +=
 module Stanzas = struct
   type t = Stanza.t list
 
-  type syntax =
-    | OCaml
-    | Plain
-
   let rules l = List.map l ~f:(fun x -> Rule x)
 
   let execs exe = [ Executables exe ]
@@ -2347,12 +2345,34 @@ let parse sexps ~dir ~file ~project =
   in
   { dir; project; stanzas }
 
-let rec fold_stanzas l ~init ~f =
-  match l with
-  | [] -> init
-  | t :: l -> inner_fold t t.stanzas l ~init ~f
+module Make_fold (M : Monad.S) = struct
+  open M.O
 
-and inner_fold t inner_list l ~init ~f =
-  match inner_list with
-  | [] -> fold_stanzas l ~init ~f
-  | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
+  let rec fold_stanzas l ~init ~f =
+    match l with
+    | [] -> M.return init
+    | t :: l -> inner_fold t t.stanzas l ~init ~f
+
+  and inner_fold t inner_list l ~init ~f =
+    match inner_list with
+    | [] -> fold_stanzas l ~init ~f
+    | x :: inner_list ->
+      let* init = f t x init in
+      inner_fold t inner_list l ~init ~f
+end
+
+module Memo_fold = Make_fold (Memo)
+module Id_fold = Make_fold (Monad.Id)
+
+let fold_stanzas t ~init ~f = Id_fold.fold_stanzas t ~init ~f
+
+let equal t { dir; project; stanzas } =
+  Path.Source.equal t.dir dir
+  && Dune_project.equal t.project project
+  && List.equal ( == ) t.stanzas stanzas
+
+let hash = Poly.hash
+
+let to_dyn = Dyn.opaque
+
+let of_ast = Stanzas.of_ast

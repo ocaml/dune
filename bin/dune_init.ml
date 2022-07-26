@@ -83,7 +83,7 @@ module File = struct
       | _ -> false
 
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
-      let of_ast = Dune_file.Stanzas.of_ast project in
+      let of_ast = Dune_file.of_ast project in
       (let open Option.O in
       let* a_ast = Cst.abstract a in
       let+ b_ast = Cst.abstract b in

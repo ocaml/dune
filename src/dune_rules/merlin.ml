@@ -261,7 +261,7 @@ module Unprocessed = struct
 
   let pp_flag_of_action ~expander ~loc ~action :
       Processed.pp_flag option Action_builder.t =
-    match (action : Action_dune_lang.t) with
+    match (action : Dune_lang.Action.t) with
     | Run (exe, args) -> (
       match
         let open Option.O in
@@ -298,7 +298,7 @@ module Unprocessed = struct
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
         (Super_context.context sctx).version
     with
-    | Action (loc, (action : Action_dune_lang.t)) ->
+    | Action (loc, (action : Dune_lang.Action.t)) ->
       pp_flag_of_action ~expander ~loc ~action
     | No_preprocessing -> Action_builder.return None
     | Pps { loc; pps; flags; staged = _ } ->
@@ -311,6 +311,18 @@ module Unprocessed = struct
         encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags)
       in
       Some { Processed.flag = "-ppx"; args }
+
+  let src_dirs sctx lib =
+    let open Memo.O in
+    let info = Lib.info lib in
+    let obj_dir = Lib_info.obj_dir info in
+    match Path.is_managed (Obj_dir.byte_dir obj_dir) with
+    | false -> Memo.return (Path.Set.singleton (Lib_info.src_dir info))
+    | true ->
+      let+ modules = Dir_contents.modules_of_lib sctx lib in
+      let modules = Option.value_exn modules in
+      Path.Set.map ~f:Path.drop_optional_build_context
+        (Modules.source_dirs modules)
 
   let process
       { modules
@@ -333,7 +345,7 @@ module Unprocessed = struct
         Action_builder.of_memo
           (let open Memo.O in
           Memo.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
-              let+ dirs = Lib.src_dirs lib in
+              let+ dirs = src_dirs sctx lib in
               (lib, dirs))
           >>| List.fold_left
                 ~init:(Path.set_of_source_paths source_dirs, objs_dirs)

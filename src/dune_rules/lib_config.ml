@@ -52,3 +52,5 @@ let linker_can_create_empty_archives t =
 let hash = Poly.hash
 
 let equal = Poly.equal
+
+let to_dyn = Dyn.opaque

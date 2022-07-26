@@ -1,27 +1,21 @@
 open! Stdune
 open Import
 
-let wait_for_server common =
-  match (Dune_rpc_impl.Where.get (), Common.rpc common) with
-  | None, None -> User_error.raise [ Pp.text "rpc server not running" ]
-  | Some p, Some _ ->
-    User_error.raise
-      [ Pp.textf "cannot start rpc. It's already running at %s"
-          (Dune_rpc.Where.to_string p)
-      ]
-  | Some w, None -> w
-  | None, Some _ ->
-    User_error.raise [ Pp.text "failed to establish rpc connection " ]
+let active_server () =
+  match Dune_rpc_impl.Where.get () with
+  | Some p -> p
+  | None -> User_error.raise [ Pp.text "rpc server not running" ]
 
 let client_term common f =
   let common = Common.set_print_directory common false in
   let config = Common.init ~log_file:No_log_file common in
-  Scheduler.go ~common ~config (fun () -> f common)
+  Scheduler.go ~common ~config f
 
 (* cwong: Should we put this into [dune-rpc]? *)
 let interpret_kind = function
   | Dune_rpc_private.Response.Error.Invalid_request -> "Invalid_request"
   | Code_error -> "Code_error"
+  | Connection_dead -> "Connection_dead"
 
 let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
   User_error.raise
@@ -48,15 +42,15 @@ let retry_loop once =
   in
   loop ()
 
-let establish_connection_or_raise ~wait ~common once =
+let establish_connection_or_raise ~wait once =
   let open Fiber.O in
   if wait then retry_loop once
   else
     let+ res = once () in
     match res with
-    | Some (client, session) -> (client, session)
+    | Some conn -> conn
     | None ->
-      let (_ : Dune_rpc_private.Where.t) = wait_for_server common in
+      let (_ : Dune_rpc_private.Where.t) = active_server () in
       User_error.raise
         [ Pp.text
             "failed to establish connection even though server seems to be \
@@ -69,23 +63,21 @@ let wait_term =
   in
   Arg.(value & flag & info [ "wait" ] ~doc)
 
-let establish_client_session ~common ~wait =
+let establish_client_session ~wait =
   let open Fiber.O in
   let once () =
     let where = Dune_rpc_impl.Where.get () in
     match where with
     | None -> Fiber.return None
     | Some where -> (
-      let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
-      let+ session = Csexp_rpc.Client.connect client in
-      match session with
-      | Ok session -> Some (client, session)
-      | Error exn ->
-        Console.print
-          [ Pp.text "failed to connect:"; Exn_with_backtrace.pp exn ];
+      let+ connection = Dune_rpc_impl.Client.Connection.connect where in
+      match connection with
+      | Ok conn -> Some conn
+      | Error message ->
+        Console.print_user_message message;
         None)
   in
-  establish_connection_or_raise ~wait ~common once
+  establish_connection_or_raise ~wait once
 
 let report_error error =
   Printf.printf "Error: %s\n%!"
@@ -96,11 +88,13 @@ let witness = Dune_rpc_private.Decl.Request.witness
 module Status = struct
   let term =
     let+ (common : Common.t) = Common.term in
-    client_term common @@ fun common ->
-    let where = wait_for_server common in
+    client_term common @@ fun _common ->
+    let where = active_server () in
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "Connected clients (including this one):\n";
-    Dune_rpc_impl.Run.client where
+    let open Fiber.O in
+    let* conn = Dune_rpc_impl.Client.Connection.connect_exn where in
+    Dune_rpc_impl.Client.client conn
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
       ~f:(fun session ->
@@ -147,10 +141,10 @@ module Build = struct
     let+ (common : Common.t) = Common.term
     and+ wait = wait_term
     and+ targets = Arg.(value & pos_all string [] name_) in
-    client_term common @@ fun common ->
+    client_term common @@ fun _common ->
     let open Fiber.O in
-    let* _client, session = establish_client_session ~common ~wait in
-    Dune_rpc_impl.Run.client_with_session ~session
+    let* conn = establish_client_session ~wait in
+    Dune_rpc_impl.Client.client conn
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "build")))
       ~f:(fun session ->
@@ -186,11 +180,12 @@ module Ping = struct
     | Error e -> raise_rpc_error e
 
   let exec common =
-    let where = wait_for_server common in
-    Dune_rpc_impl.Run.client where
+    let open Fiber.O in
+    let where = active_server common in
+    let* conn = Dune_rpc_impl.Client.Connection.connect_exn where in
+    Dune_rpc_impl.Client.client conn ~f:send_ping
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "ping_cmd")))
-      ~f:send_ping
 
   let info =
     let doc = "Ping the build server running in the current directory" in

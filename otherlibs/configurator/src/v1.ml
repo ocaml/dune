@@ -5,7 +5,6 @@ let die = die
 type t =
   { name : string
   ; dest_dir : string
-  ; ocamlc : string
   ; log : string -> unit
   ; mutable counter : int
   ; ext_obj : string
@@ -319,7 +318,6 @@ let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
   let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in
   fill_in_fields_that_depends_on_ocamlc_config
     { name
-    ; ocamlc
     ; log
     ; dest_dir
     ; counter = 0
@@ -355,7 +353,6 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
     let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in
     let t =
       { name
-      ; ocamlc
       ; log
       ; dest_dir
       ; counter = 0

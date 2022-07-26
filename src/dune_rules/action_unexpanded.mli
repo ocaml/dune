@@ -5,7 +5,7 @@ open Import
 include module type of struct
   (** The type definition exists in [Action_dune_lang] and not here to break
       cycles.*)
-  include Action_dune_lang
+  include Dune_lang.Action
 end
 
 val remove_locs : t -> t

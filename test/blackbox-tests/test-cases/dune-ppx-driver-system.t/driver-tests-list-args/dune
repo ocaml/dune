@@ -1,0 +1,46 @@
+(library
+ (name driver_print_args)
+ (kind ppx_rewriter)
+ (modules ())
+ (ppx.driver (main "(fun () -> Array.iter print_endline Sys.argv)")))
+
+(rule (with-stdout-to test_ppx_args.ml (echo "")))
+
+(library
+ (name ppx_with_cookies_print_args)
+ (kind (ppx_rewriter
+   (cookies (italy "%{env:ITALY=undefined}")
+            (france "%{env:FRANCE=undefined}"))))
+ (modules ())
+ (libraries driver_print_args))
+
+(env (_ (env-vars (ITALY "Biscotti") (FRANCE "Petit Beurre") (AMERICA "Oreo") (ENGLAND "Snickerdoodle"))))
+
+(library
+ (name test_ppx_args)
+ (modules test_ppx_args)
+ (preprocess
+   (pps -arg1 driver_print_args ppx_with_cookies_print_args -arg2 -arg3=%{env:AMERICA=undefined} --
+    -foo bar %{env:ENGLAND=undefined} %{read-lines:ppx-args})))
+
+(library
+ (name driver_print_tool)
+ (public_name foo.driver_print_tool)
+ (kind ppx_rewriter)
+ (modules ())
+ (libraries compiler-libs.common)
+ (ppx.driver (main "\| (fun () ->
+                   "\|    Ast_mapper.run_main (fun argv ->
+                   "\|      Printf.eprintf "tool name: %s\nargs:%s\n"
+                   "\|        (Ast_mapper.tool_name ())
+                   "\|        (String.concat " " argv);
+                   "\|      Ast_mapper.default_mapper))
+                   )))
+
+(library
+ (name ppx_with_cookies_print_tool)
+ (kind (ppx_rewriter
+   (cookies (italy "%{env:ITALY=undefined}")
+            (france "%{env:FRANCE=undefined}"))))
+ (modules ())
+ (libraries driver_print_tool))

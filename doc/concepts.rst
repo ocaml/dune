@@ -363,14 +363,8 @@ to use the public name. For instance: ``(libraries base re)``.
 When resolving libraries, ones that are part of the workspace are always
 preferred to ones that are part of the installed world.
 
-.. _alternative-deps:
-
 Alternative Dependencies
 ------------------------
-
-In addition to direct dependencies, you can specify alternative dependencies.
-This is described in the :ref:`Alternative Dependencies <alternative-deps>`
-section.
 
 Sometimes, one doesn't want to depend on a specific library but rather 
 on whatever is already installed, e.g., to use a different
@@ -754,7 +748,7 @@ The following constructions are available:
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
-- ``(cat <file>)`` to print the contents of a file to stdout
+- ``(cat <file> ...)`` to sequentially print the contents of files to stdout
 - ``(copy <src> <dst>)`` to copy a file. If these files are OCaml sources you
   should follow the ``module_name.xxx.ml``
   :ref:`naming convention <merlin-filenames>` to preserve Merlin's

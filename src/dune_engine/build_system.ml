@@ -434,7 +434,10 @@ end = struct
            all created files right in the build directory. *)
         if not (Path.Build.Set.is_empty targets.dirs) then
           User_error.raise ~loc
-            [ Pp.text "Rules with directory targets must be sandboxed." ];
+            [ Pp.text "Rules with directory targets must be sandboxed." ]
+            ~hints:
+              [ Pp.text "Add (sandbox always) to the (deps ) field of the rule."
+              ];
         action
       | Some sandbox -> Action.sandbox action sandbox
     in
@@ -743,6 +746,9 @@ end = struct
   let execute_action_generic_stage2_memo =
     Memo.create "execute-action"
       ~input:(module Anonymous_action)
+      (* this memo doesn't need cutoff because the input's digests
+         fully determines the returned build path and we already compare the
+         input using this digest *)
       execute_action_generic_stage2_impl
 
   let execute_action_generic ~observing_facts (act : Rule.Anonymous_action.t)

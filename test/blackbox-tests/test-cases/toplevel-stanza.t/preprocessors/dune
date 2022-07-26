@@ -1,9 +1,9 @@
 (library
-(name fooppx)
-(modules fooppx)
-(libraries ppxlib)
-(kind ppx_rewriter))
+ (name fooppx)
+ (modules fooppx)
+ (libraries ppxlib)
+ (kind ppx_rewriter))
 
 (toplevel
-(name tt)
-(preprocess (pps fooppx)))
+ (name tt)
+ (preprocess (pps fooppx)))

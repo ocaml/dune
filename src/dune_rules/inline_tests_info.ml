@@ -31,7 +31,7 @@ module Backend = struct
          field "runner_libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ generate_runner =
-         field_o "generate_runner" (located Action_dune_lang.decode)
+         field_o "generate_runner" (located Dune_lang.Action.decode)
        and+ extends =
          field "extends" (repeat (located Lib_name.decode)) ~default:[]
        in
@@ -44,7 +44,7 @@ module Backend = struct
     , record_fields
       @@ [ field_l "runner_libraries" lib t.runner_libraries
          ; field_i "flags" Ordered_set_lang.Unexpanded.encode t.flags
-         ; field_o "generate_runner" Action_dune_lang.encode
+         ; field_o "generate_runner" Dune_lang.Action.encode
              (Option.map t.generate_runner ~f:snd)
          ; field_l "extends" lib t.extends
          ] )

@@ -13,7 +13,7 @@ end
 
 type 'a t =
   | No_preprocessing
-  | Action of Loc.t * Action_dune_lang.t
+  | Action of Loc.t * Dune_lang.Action.t
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
@@ -44,7 +44,7 @@ val decode : Without_instrumentation.t t Dune_lang.Decoder.t
 module Without_future_syntax : sig
   type 'a t =
     | No_preprocessing
-    | Action of Loc.t * Action_dune_lang.t
+    | Action of Loc.t * Dune_lang.Action.t
     | Pps of 'a Pps.t
 end
 

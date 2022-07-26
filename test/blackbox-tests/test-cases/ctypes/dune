@@ -21,10 +21,16 @@
   (package ctypes)))
 
 (cram
+ (applies_to lib-return-errno)
+ (deps
+  (package integers)))
+
+(cram
  (applies_to
   lib-pkg_config
   lib-pkg_config-multiple-fd
   lib-external-name-need-mangling
   exe-pkg_config-multiple-fd
+  lib-return-errno
   exe-pkg_config)
  (deps %{bin:pkg-config}))

@@ -10,7 +10,11 @@ module Lib_and_module : sig
     type nonrec t = t list
 
     val link_flags :
-      t -> lib_config:Lib_config.t -> mode:Link_mode.t -> _ Command.Args.t
+         Super_context.t
+      -> t
+      -> lib_config:Lib_config.t
+      -> mode:Link_mode.t
+      -> _ Command.Args.t
   end
 end
 
@@ -31,4 +35,4 @@ end
 
 (** The list of files that will be read by the compiler when linking an
     executable against this library *)
-val link_deps : Lib.t -> Link_mode.t -> Path.t list Memo.t
+val link_deps : Super_context.t -> Lib.t -> Link_mode.t -> Path.t list Memo.t

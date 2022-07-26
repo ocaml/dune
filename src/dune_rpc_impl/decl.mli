@@ -1,6 +1,7 @@
-open Dune_rpc_private
+open Import
+open Dune_rpc
 
-(* Internal RPC requests *)
+(** Internal RPC requests *)
 
 module Build_outcome : sig
   type t = Dune_engine.Scheduler.Run.Build_outcome.t =

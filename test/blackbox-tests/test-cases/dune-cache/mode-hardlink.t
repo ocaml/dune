@@ -37,7 +37,7 @@ never built [target1] before.
   Workspace-local cache miss: _build/default/source: never seen this target before
   Shared cache miss [46613c392d7e1d9e094764e41ad65596] (_build/default/source): not found in cache
   Workspace-local cache miss: _build/default/target1: never seen this target before
-  Shared cache miss [85cfda404207853df742b1c0edd00cb9] (_build/default/target1): not found in cache
+  Shared cache miss [ad917d574b21794a34fb1eb2c67ed0a6] (_build/default/target1): not found in cache
 
   $ dune_cmd stat hardlinks _build/default/source
   3

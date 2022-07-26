@@ -1,7 +1,0 @@
-(coq.theory
- (name Coq)
- (package cboot)
- (boot))
-
-(include_subdirs qualified)
-

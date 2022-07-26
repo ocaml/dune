@@ -1,4 +1,4 @@
-(lang dune 3.0)
+(lang dune 3.3)
 ;          ^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
@@ -194,7 +194,6 @@ understood by dune language."))
  (synopsis "Parse ocaml compiler output into structured form")
  (depends
   (ocaml (>= 4.08.0))
-  (dune-private-libs (= :version))
   (dyn (= :version)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 

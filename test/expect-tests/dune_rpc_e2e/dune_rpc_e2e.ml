@@ -8,10 +8,10 @@ module Client = Dune_rpc_impl.Client
 module Session = Csexp_rpc.Session
 module Config = Dune_util.Config
 
-let () = if false then Dune_util.Log.init ~file:(Out_channel stderr) ()
-
 (* enable to debug process stdout/stderr *)
 let debug = false
+
+let () = if debug then Dune_util.Log.init ~file:(Out_channel stderr) ()
 
 let dune_prog =
   lazy
@@ -26,9 +26,8 @@ let init_chan ~root_dir =
     | Error exn -> Exn.raise exn
     | Ok None -> Fiber.return None
     | Ok (Some where) -> (
-      let* client = Dune_rpc_impl.Run.Connect.csexp_client where in
-      let+ res = Csexp_rpc.Client.connect client in
-      match res with
+      let+ conn = Dune_rpc_impl.Client.Connection.connect where in
+      match conn with
       | Ok s -> Some s
       | Error _ -> None)
   in
@@ -64,10 +63,7 @@ let run_client ?handler f =
     let id = Dune_rpc.Id.make (Atom "test") in
     Dune_rpc.Initialize.Request.create ~id
   in
-  Client.connect_with_menu ?handler chan initialize
-    ~private_menu:
-      [ Request Dune_rpc_impl.Decl.build; Request Dune_rpc_impl.Decl.status ]
-    ~f:(fun client ->
+  Dune_rpc_impl.Client.client ?handler chan initialize ~f:(fun client ->
       Fiber.finalize
         (fun () -> f client)
         ~finally:(fun () ->
@@ -146,6 +142,8 @@ let dune_build client what =
 
 let with_dune_watch ?env f =
   let root_dir = "." in
+  let xdg_runtime_dir = Filename.get_temp_dir_name () in
+  Unix.putenv "XDG_RUNTIME_DIR" xdg_runtime_dir;
   let pid, run_server, server_stdout, server_stderr =
     run_server ?env ~root_dir ()
   in
@@ -167,8 +165,9 @@ let with_dune_watch ?env f =
 let config =
   { Scheduler.Config.concurrency = 1
   ; display = { verbosity = Quiet; status_line = false }
-  ; rpc = None
   ; stats = None
+  ; insignificant_changes = `React
+  ; signal_watcher = `No
   }
 
 let run run =

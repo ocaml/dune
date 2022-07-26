@@ -6,16 +6,13 @@ let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
   |> String.concat ~sep:"\n"
 
-let ooi_deps md ~dune_version ~vlib_obj_map ~(ml_kind : Ml_kind.t)
-    (m : Module.t) =
+let ooi_deps { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
+    ~dune_version ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let cm_kind =
     match ml_kind with
     | Intf -> Cm_kind.Cmi
-    | Impl -> md.vimpl |> Option.value_exn |> Vimpl.impl_cm_kind
+    | Impl -> vimpl |> Option.value_exn |> Vimpl.impl_cm_kind
   in
-  let sctx = md.sctx in
-  let dir = md.dir in
-  let obj_dir = md.obj_dir in
   let write, read =
     let ctx = Super_context.context sctx in
     let unit =
@@ -58,8 +55,8 @@ let deps_of_module md ~ml_kind m =
     Action_builder.return (List.singleton interface_module) |> Memo.return
   | _ -> Ocamldep.deps_of md ~ml_kind m
 
-let deps_of_vlib_module md ~ml_kind m =
-  let vimpl = Option.value_exn md.vimpl in
+let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
+  let vimpl = Option.value_exn vimpl in
   let vlib = Vimpl.vlib vimpl in
   match Lib.Local.of_lib vlib with
   | None ->
@@ -73,15 +70,10 @@ let deps_of_vlib_module md ~ml_kind m =
     let modules = Vimpl.vlib_modules vimpl in
     let info = Lib.Local.info lib in
     let vlib_obj_dir = Lib_info.obj_dir info in
-    let dir = md.dir in
     let src =
       Obj_dir.Module.dep vlib_obj_dir (Transitive (m, ml_kind)) |> Path.build
     in
-    let dst =
-      let obj_dir = md.obj_dir in
-      Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))
-    in
-    let sctx = md.sctx in
+    let dst = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
     let+ () =
       Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
     in
@@ -104,10 +96,12 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
       skip_if_source_absent (deps_of_vlib_module md ~ml_kind) m
     | Normal m -> skip_if_source_absent (deps_of_module md ~ml_kind) m
     | Impl_of_virtual_module impl_or_vlib -> (
+      deps_of md ~ml_kind
+      @@
       let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
       match ml_kind with
-      | Intf -> deps_of md ~ml_kind (Imported_from_vlib m)
-      | Impl -> deps_of md ~ml_kind (Normal m))
+      | Intf -> Imported_from_vlib m
+      | Impl -> Normal m)
 
 let dict_of_func_concurrently f =
   let+ impl = f ~ml_kind:Ml_kind.Impl

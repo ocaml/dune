@@ -562,16 +562,16 @@ let%expect_test "error handling and memo" =
     f 20 = Ok 20
     f 20 = Ok 20
     Calling f 42
-    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
-    f 42 = Error [ { exn = "(Failure 42)"; backtrace = "" } ]
+    f 42 = Error [ { exn = "Failure(\"42\")"; backtrace = "" } ]
+    f 42 = Error [ { exn = "Failure(\"42\")"; backtrace = "" } ]
     Calling f 84
     f 84 = Error
-             [ { exn = "(Failure left)"; backtrace = "" }
-             ; { exn = "(Failure right)"; backtrace = "" }
+             [ { exn = "Failure(\"left\")"; backtrace = "" }
+             ; { exn = "Failure(\"right\")"; backtrace = "" }
              ]
     f 84 = Error
-             [ { exn = "(Failure left)"; backtrace = "" }
-             ; { exn = "(Failure right)"; backtrace = "" }
+             [ { exn = "Failure(\"left\")"; backtrace = "" }
+             ; { exn = "Failure(\"right\")"; backtrace = "" }
              ] |}]
 
 (* A test function counting runs. *)
@@ -1465,17 +1465,17 @@ let%expect_test "error handling with diamonds" =
   test 0;
   [%expect {|
     Calling f 0
-    Error [ "(Failure \"reached 0\")" ]
+    Error [ "Failure(\"reached 0\")" ]
   |}];
   test 1;
   [%expect {|
     Calling f 1
-    Error [ "(Failure \"reached 0\")" ]
+    Error [ "Failure(\"reached 0\")" ]
   |}];
   test 2;
   [%expect {|
     Calling f 2
-    Error [ "(Failure \"reached 0\")" ]
+    Error [ "Failure(\"reached 0\")" ]
   |}]
 
 let%expect_test "error handling and duplicate exceptions" =
@@ -1512,7 +1512,7 @@ let%expect_test "error handling and duplicate exceptions" =
     Calling f 2
     Calling f 1
     Calling f 0
-    Error [ "(Failure 42)" ]
+    Error [ "Failure(\"42\")" ]
   |}]
 
 let%expect_test "reproducible errors are cached" =
@@ -1540,9 +1540,9 @@ let%expect_test "reproducible errors are cached" =
     Evaluated 5: 25
     f 5 = Ok 25
     Started evaluating -5
-    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    f -5 = Error [ { exn = "Failure(\"Negative input -5\")"; backtrace = "" } ]
     Started evaluating 0
-    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    f 0 = Error [ { exn = "Failure(\"Zero input\")"; backtrace = "" } ]
     Memo graph: 0/3 restored/computed nodes, 0 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
@@ -1556,8 +1556,8 @@ let%expect_test "reproducible errors are cached" =
   [%expect
     {|
     f 5 = Ok 25
-    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
-    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    f -5 = Error [ { exn = "Failure(\"Negative input -5\")"; backtrace = "" } ]
+    f 0 = Error [ { exn = "Failure(\"Zero input\")"; backtrace = "" } ]
     Memo graph: 0/0 restored/computed nodes, 0 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
@@ -1571,9 +1571,9 @@ let%expect_test "reproducible errors are cached" =
   [%expect
     {|
     f 5 = Ok 25
-    f -5 = Error [ { exn = "(Failure \"Negative input -5\")"; backtrace = "" } ]
+    f -5 = Error [ { exn = "Failure(\"Negative input -5\")"; backtrace = "" } ]
     Started evaluating 0
-    f 0 = Error [ { exn = "(Failure \"Zero input\")"; backtrace = "" } ]
+    f 0 = Error [ { exn = "Failure(\"Zero input\")"; backtrace = "" } ]
     Memo graph: 3/1 restored/computed nodes, 0 traversed edges
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}]

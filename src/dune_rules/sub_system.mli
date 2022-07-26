@@ -31,7 +31,7 @@ module Register_backend (M : Backend) : Registered_backend with type t := M.t
     - connect the parser to the [dune] file parser
 
     - connect the rule generator to the rule generator for libraries *)
-module Register_end_point (M : End_point) : sig end
+module Register_end_point (_ : End_point) : sig end
 
 (** Scan the sub-systems used by the library and generate rules for all of the
     ones that needs it. *)

@@ -421,6 +421,8 @@ Git, ``dune-release`` invokes this command to find out the version:
     $ git describe --always --dirty --abbrev=7
     1.0+beta9-79-g29e9b37
 
+If no VCS is detected, ``dune subst`` will do nothing.
+
 Projects using Dune usually only need ``dune-release`` for creating and
 publishing releases. However, they may still substitute the
 watermarks when the user pins the package. To help with this,

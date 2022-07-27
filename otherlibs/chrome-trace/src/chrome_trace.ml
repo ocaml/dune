@@ -18,10 +18,14 @@ module Timestamp : sig
   val to_json : t -> Json.t
 
   val of_float_seconds : float -> t
+
+  val to_float_seconds : t -> float
 end = struct
   type t = float
 
   let of_float_seconds x = x
+
+  let to_float_seconds x = x
 
   let to_json f =
     let n = int_of_float @@ (f *. 1_000_000.) in
@@ -92,6 +96,8 @@ module Event = struct
     { tts; cname; cat; ts; pid; tid; name; stackframe }
 
   let set_ts t ts = { t with ts }
+
+  let ts t = t.ts
 
   type scope =
     | Global

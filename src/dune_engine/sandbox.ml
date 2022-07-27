@@ -102,7 +102,15 @@ let snapshot t =
   in
   walk (Path.build t.dir) Path.Map.empty
 
-let create ~mode ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_aliases =
+let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest
+    ~expand_aliases =
+  let event =
+    Dune_stats.start dune_stats (fun () ->
+        let cat = Some [ "create-sandbox" ] in
+        let name = Loc.to_file_colon_line rule_loc in
+        let args = None in
+        { cat; name; args })
+  in
   init ();
   let sandbox_suffix = rule_digest |> Digest.to_string in
   let sandbox_dir = Path.Build.relative sandbox_dir sandbox_suffix in
@@ -116,6 +124,7 @@ let create ~mode ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_aliases =
   (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
      targets produced dynamically will be unavailable. *)
   link_deps t ~mode ~deps;
+  Dune_stats.finish event;
   match mode with
   | Patch_back_source_tree ->
     (* Only supported on Linux because we rely on the mtime changing to detect

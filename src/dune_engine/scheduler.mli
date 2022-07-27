@@ -177,6 +177,8 @@ val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
     this long. *)
 val sleep : float -> unit Fiber.t
 
+val stats : unit -> Dune_stats.t option Fiber.t
+
 (** Wait for a build input to change. If a build input change was seen but
     hasn't been handled yet, return immediately.
 

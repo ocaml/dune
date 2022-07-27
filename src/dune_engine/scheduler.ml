@@ -888,6 +888,10 @@ let t_opt () = Fiber.Var.get t
 
 let t () = Fiber.Var.get_exn t
 
+let stats () =
+  let+ t = t () in
+  t.config.stats
+
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
 let yield_if_there_are_pending_events () =

@@ -3,8 +3,6 @@
 open Import
 module Action_builder := Action_builder0
 
-(** {1 Requests} *)
-
 (** Build a file and return the digest of its contents. *)
 val build_file : Path.t -> Digest.t Memo.t
 

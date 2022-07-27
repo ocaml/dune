@@ -49,6 +49,8 @@ module Event : sig
     type t
 
     val of_float_seconds : float -> t
+
+    val to_float_seconds : t -> float
   end
 
   module Id : sig
@@ -70,6 +72,8 @@ module Event : sig
     -> name:string
     -> unit
     -> common_fields
+
+  val ts : common_fields -> Timestamp.t
 
   val set_ts : common_fields -> Timestamp.t -> common_fields
 

@@ -410,11 +410,13 @@ end = struct
         } =
       action
     in
+    let* dune_stats = Scheduler.stats () in
     let sandbox =
       match sandbox_mode with
       | Some mode ->
         Some
           (Sandbox.create ~mode ~deps ~rule_dir:dir ~rule_loc:loc ~rule_digest
+             ~dune_stats
              ~expand_aliases:
                (Execution_parameters.expand_aliases_in_sandbox
                   execution_parameters))

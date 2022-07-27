@@ -1,4 +1,5 @@
 open Stdune
+module Timestamp = Chrome_trace.Event.Timestamp
 module Event = Chrome_trace.Event
 
 module Mac = struct
@@ -102,6 +103,40 @@ let printf t format_string =
   Printf.ksprintf t.print ("%c" ^^ format_string ^^ "\n") c
 
 let emit t event = printf t "%s" (Json.to_string (Event.to_json event))
+
+type event_data =
+  { args : Chrome_trace.Event.args option
+  ; cat : string list option
+  ; name : string
+  }
+
+type event =
+  { t : t
+  ; event_data : event_data
+  ; start : float
+  }
+
+let start t k : event option =
+  match t with
+  | None -> None
+  | Some t ->
+    let event_data = k () in
+    let start = Unix.gettimeofday () in
+    Some { t; event_data; start }
+
+let finish event =
+  match event with
+  | None -> ()
+  | Some { t; start; event_data = { args; cat; name } } ->
+    let dur =
+      let stop = Unix.gettimeofday () in
+      Timestamp.of_float_seconds (stop -. start)
+    in
+    let common =
+      Event.common_fields ?cat ~name ~ts:(Timestamp.of_float_seconds start) ()
+    in
+    let event = Event.complete ?args common ~dur in
+    emit t event
 
 module Fd_count = struct
   type t =

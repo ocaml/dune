@@ -185,6 +185,28 @@ Setup
 
   $ touch re_lib1.re re_lib2.re re_lib2.rei
 
+  $ mkdir virtual
+  $ cat >virtual/dune <<EOF
+  > (library
+  >  (name virtual)
+  >  (virtual_modules virtual))
+  > EOF
+  $ touch virtual/virtual.mli
+  $ mkdir virtual_impl1
+  $ cat >virtual_impl1/dune <<EOF
+  > (library
+  >  (name virtual_impl1)
+  >  (implements virtual))
+  > EOF
+  $ touch virtual_impl1/virtual.ml
+  $ mkdir virtual_impl2
+  $ cat >virtual_impl2/dune <<EOF
+  > (library
+  >  (name virtual_impl2)
+  >  (implements virtual))
+  > EOF
+  $ touch virtual_impl2/virtual.ml
+
 Describe various things
 -----------------------
 
@@ -598,7 +620,60 @@ not stable across different setups.
      (requires ())
      (source_dir /FINDLIB//stdlib-shims)
      (modules ())
-     (include_dirs (/FINDLIB//stdlib-shims)))))
+     (include_dirs (/FINDLIB//stdlib-shims))))
+   (library
+    ((name virtual)
+     (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
+     (local true)
+     (requires ())
+     (source_dir _build/default/virtual)
+     (modules
+      (((name Virtual)
+        (impl ())
+        (intf (_build/default/virtual/virtual.mli))
+        (cmt ())
+        (cmti (_build/default/virtual/.virtual.objs/byte/virtual.cmti)))))
+     (include_dirs (_build/default/virtual/.virtual.objs/byte))))
+   (library
+    ((name virtual_impl1)
+     (uid 243949502d62f27969aff867fdfb0c6a)
+     (local true)
+     (requires (f0299ba46dc29b8d4bd2f5d1cf82587c))
+     (source_dir _build/default/virtual_impl1)
+     (modules
+      (((name Virtual)
+        (impl (_build/default/virtual_impl1/virtual.ml))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual.cmt))
+        (cmti ()))
+       ((name Virtual__virtual_impl1__)
+        (impl (_build/default/virtual_impl1/virtual__virtual_impl1__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual__virtual_impl1__.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
+   (library
+    ((name virtual_impl2)
+     (uid bfe8d16a00ac2473ce3fc5fc99d7c6cb)
+     (local true)
+     (requires (f0299ba46dc29b8d4bd2f5d1cf82587c))
+     (source_dir _build/default/virtual_impl2)
+     (modules
+      (((name Virtual)
+        (impl (_build/default/virtual_impl2/virtual.ml))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual.cmt))
+        (cmti ()))
+       ((name Virtual__virtual_impl2__)
+        (impl (_build/default/virtual_impl2/virtual__virtual_impl2__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual__virtual_impl2__.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
   $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests
   ((executables
@@ -1104,7 +1179,73 @@ not stable across different setups.
      (requires ())
      (source_dir /FINDLIB//stdlib-shims)
      (modules ())
-     (include_dirs (/FINDLIB//stdlib-shims)))))
+     (include_dirs (/FINDLIB//stdlib-shims))))
+   (library
+    ((name virtual)
+     (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
+     (local true)
+     (requires ())
+     (source_dir _build/default/virtual)
+     (modules
+      (((name Virtual)
+        (impl ())
+        (intf (_build/default/virtual/virtual.mli))
+        (cmt ())
+        (cmti (_build/default/virtual/.virtual.objs/byte/virtual.cmti))
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/virtual/.virtual.objs/byte))))
+   (library
+    ((name virtual_impl1)
+     (uid 243949502d62f27969aff867fdfb0c6a)
+     (local true)
+     (requires (f0299ba46dc29b8d4bd2f5d1cf82587c))
+     (source_dir _build/default/virtual_impl1)
+     (modules
+      (((name Virtual)
+        (impl (_build/default/virtual_impl1/virtual.ml))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Virtual__virtual_impl1__)
+        (impl (_build/default/virtual_impl1/virtual__virtual_impl1__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual__virtual_impl1__.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
+   (library
+    ((name virtual_impl2)
+     (uid bfe8d16a00ac2473ce3fc5fc99d7c6cb)
+     (local true)
+     (requires (f0299ba46dc29b8d4bd2f5d1cf82587c))
+     (source_dir _build/default/virtual_impl2)
+     (modules
+      (((name Virtual)
+        (impl (_build/default/virtual_impl2/virtual.ml))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Virtual__virtual_impl2__)
+        (impl (_build/default/virtual_impl2/virtual__virtual_impl2__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual__virtual_impl2__.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
 
 Test other formats

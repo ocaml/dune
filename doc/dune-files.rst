@@ -67,7 +67,7 @@ details.
 
    (cram <status>)
 
-Where status is either ``enabled`` or ``disabled``.
+Where status is either ``enable`` or ``disable``.
 
 .. _implicit_transitive_deps:
 
@@ -310,13 +310,28 @@ defined in the project:
 
 - ``(maintainers <maintainer> ..)`` - maintainers as inline strings
 
-- ``(source <source>)`` - where the source is specified two ways:
-  ``(github <user/repo>)`` or ``(uri <uri>)``
+- ``(source <source>)`` - specifies where the source for the package can be
+  found. It can be specified as ``(uri <uri>)`` or using shortcuts for some
+  hosting services:
 
-- ``(bug_reports <url>)`` - where to report bugs. This defaults to the GitHub
-  issue tracker, if the source is specified as a GitHub repository.
+.. list-table::
 
-- ``(homepage <url>)`` - the homepage of the project
+  * - Service
+    - Syntax
+  * - `Github <https://github.com>`_
+    - ``(github user/repo)``
+  * - `Bitbucket <https://bitbucket.org>`_
+    - ``(bitbucket user/repo)``
+  * - `Gitlab <https://gitlab.com>`_
+    - ``(gitlab user/repo)``
+  * - `Sourcehut <https://sr.ht>`_
+    - ``(sourcehut user/repo)``
+
+- ``(bug_reports <url>)`` - where to report bugs. If a hosting service is used
+  in ``(source)``, a default value is provided.
+
+- ``(homepage <url>)`` - the homepage of the project. If a hosting service is
+  used in ``(source)``, a default value is provided.
 
 - ``(documentation <url>)`` - where the documentation is hosted
 
@@ -386,7 +401,9 @@ language. The syntax is a list of the following elements:
    dep-specification = dep+
 
 Filters will expand to any opam variable name if prefixed by ``:``, not just the
-ones listed above.
+ones listed above. This also applies to version numbers. For example, to
+generate ``depends: [ pkg { = version } ]``, use ``(depends (pkg (=
+:version)))``.
 
 Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to
@@ -1391,6 +1408,10 @@ by using the form ``(<filename> as <destination>)`` in the
      (section share_root)
      (files   (mylib.el as emacs/site-lisp/mylib.el)))
 
+The mode of installed files is fully determined by the section they are
+installed in. If the section above is documented as "with the executable bit
+set", they are installed with mode ``0o755`` (``rwxr-xr-x``); otherwise they are
+installed with mode ``0o644`` (``rw-r--r--``).
 
 Handling of the .exe Extension on Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

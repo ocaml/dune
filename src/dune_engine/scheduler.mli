@@ -27,6 +27,7 @@ module Config : sig
     ; display : Display.t
     ; stats : Dune_stats.t option
     ; insignificant_changes : [ `Ignore | `React ]
+    ; signal_watcher : [ `Yes | `No ]
     }
 end
 

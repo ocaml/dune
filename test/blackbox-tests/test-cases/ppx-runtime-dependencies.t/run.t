@@ -85,8 +85,7 @@ Note the direct dependency b ---> ppx that separates pps and runtime dependencie
   >  (modules ppx)
   >  (kind ppx_rewriter)
   >  (libraries ppxlib)
-  >  (ppx_runtime_libraries c)
-  >  )
+  >  (ppx_runtime_libraries c))
   > (library
   >  (name c)
   >  (modules c)
@@ -138,14 +137,12 @@ Note that pps dependencies are separated by a runtime dependency.
   >  (modules ppx)
   >  (kind ppx_rewriter)
   >  (libraries ppxlib)
-  >  (ppx_runtime_libraries c)
-  >  )
+  >  (ppx_runtime_libraries c))
   > (library
   >  (name c)
   >  (modules c)
   >  (libraries ppxlib)
-  >  (preprocess (pps gen_c))
-  > )
+  >  (preprocess (pps gen_c)))
   > EOF
 
   $ cat >c.ml <<EOF

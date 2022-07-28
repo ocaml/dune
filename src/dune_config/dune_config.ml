@@ -425,7 +425,7 @@ let auto_concurrency =
       in
       loop commands)
 
-let for_scheduler (t : t) stats ~insignificant_changes =
+let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
   let concurrency =
     match t.concurrency with
     | Fixed i -> i
@@ -438,4 +438,5 @@ let for_scheduler (t : t) stats ~insignificant_changes =
   ; display = t.display
   ; stats
   ; insignificant_changes
+  ; signal_watcher
   }

@@ -162,19 +162,19 @@ let%expect_test "fill returns a fiber that executes before waiters are awoken" =
     waiter 2 resumed
     () |}]
 
-let%expect_test _ =
+let%expect_test "collect_errors catches one error" =
   test (backtrace_result unit) (Fiber.collect_errors failing_fiber);
   [%expect {|
 Error [ { exn = "Stdlib.Exit"; backtrace = "" } ]
 |}]
 
-let%expect_test _ =
+let%expect_test "collect_errors doesn't terminate on [never]" =
   test ~expect_never:true opaque (Fiber.collect_errors never_fiber);
   [%expect {|
 [PASS] Never raised as expected
 |}]
 
-let%expect_test _ =
+let%expect_test "failing_fiber doesn't terminate" =
   test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
          let* () = failing_fiber () in
@@ -183,7 +183,7 @@ let%expect_test _ =
 Error [ { exn = "Stdlib.Exit"; backtrace = "" } ]
 |}]
 
-let%expect_test _ =
+let%expect_test "collect_errors fail one concurrent child fibers raises" =
   test
     (backtrace_result (pair unit unit))
     (Fiber.collect_errors (fun () ->
@@ -192,7 +192,7 @@ let%expect_test _ =
 Error [ { exn = "Stdlib.Exit"; backtrace = "" } ]
 |}]
 
-let%expect_test _ =
+let%expect_test "collect_errors can run concurrently" =
   test
     (pair (backtrace_result unit) unit)
     (Fiber.fork_and_join
@@ -218,16 +218,16 @@ let%expect_test "collect errors inside with_error_handler" =
          match res with
          | Ok () -> assert false
          | Error l ->
-           print_endline "got the error out of collect_errors";
+           printfn "got %d errors out of collect_errors" (List.length l);
            let* () = Fiber.reraise_all l in
            assert false));
   [%expect
     {|
-    got the error out of collect_errors
+    got 1 errors out of collect_errors
     captured the error
     Error () |}]
 
-let%expect_test "wait_errors restores the execution context properly" =
+let%expect_test "collect_errors restores the execution context properly" =
   let var = Fiber.Var.create () in
   test unit
     (Fiber.Var.set var "a" (fun () ->
@@ -243,7 +243,7 @@ let%expect_test "wait_errors restores the execution context properly" =
     a
     () |}]
 
-let%expect_test _ =
+let%expect_test "handlers bubble up errors to parent handlers" =
   test ~expect_never:false (unit_result unit)
     (Fiber.fork_and_join_unit long_running_fiber (fun () ->
          let log_error by (e : Exn_with_backtrace.t) =

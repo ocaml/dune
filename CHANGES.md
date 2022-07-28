@@ -1,5 +1,13 @@
-3.4.0 (Unreleased)
+3.4.1 (26-07-2022)
 ------------------
+
+- Fix build on cygwin/i686-w64-mingw32 (#6008, @kit-ty-kate)
+
+3.4.0 (20-07-2022)
+------------------
+
+- Make `dune describe` correctly handle overlapping implementations
+  for virtual libraries (#5971, fixes #5747, @esope)
 
 - Building the `@check` alias should make sure the libraries and executables
   don't have dependency cycles (#5892, @rgrinberg)
@@ -25,9 +33,16 @@
   flashing errors on insignificant file system events such as changes in the
   `.git/` directory. (#5953, @rgrinberg)
 
-- Fix parsing more more error messages emitted by the OCaml compiler. In
+- Fix parsing more error messages emitted by the OCaml compiler. In
   particular, messages where the excerpt line number started with a blank
   character were skipped. (#5981, @rgrinberg)
+
+- env stanza: warn if some rules are ignored because they appear after a
+  wildcard rule. (#5898, fixes #5886, @emillon)
+
+- On Windows, XDG_CACHE_HOME is taken to be the `FOLDERID_InternetCache` if
+  unset, and XDG_CONFIG_HOME and XDG_DATA_HOME are both taken to be
+  `FOLDERID_LocalAppData` if unset.  (#5943, fixes #5808, @nojb)
 
 3.3.1 (19-06-2022)
 ------------------

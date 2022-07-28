@@ -590,7 +590,7 @@ let install_uninstall ~what =
             ; Pp.enumerate missing_install_files ~f:(fun p ->
                   Pp.text (Path.to_string p))
             ]
-            ~hints:[ Pp.text "try running: dune build @install" ];
+            ~hints:[ Pp.text "try running: dune build [-p <pkg>] @install" ];
         (match
            (contexts, prefix_from_command_line, libdir_from_command_line)
          with

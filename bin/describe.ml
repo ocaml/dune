@@ -404,16 +404,6 @@ module Crawl = struct
       in
       Some (Descr.Item.Library lib_descr)
 
-  (** [add_transitive_deps libs] returns the union of [libs] and of its
-      transitive dependencies *)
-  let add_transitive_deps (libs : Lib.t list) =
-    (* get the transitive closure using [Lib.closure] *)
-    Lib.closure libs ~linking:false
-    >>| Resolve.to_result >>| Result.value ~default:[]
-    >>| (* then, remove duplicates, and ensure the list is sorted, for
-           reproducibility concerns *)
-    Lib.Set.of_list >>| Lib.Set.to_list
-
   (** Builds a workspace description for the provided dune setup and context *)
   let workspace options
       ({ Dune_rules.Main.conf; contexts = _; scontexts } :
@@ -452,7 +442,7 @@ module Crawl = struct
     let+ libs =
       (* the executables' libraries, and the project's libraries *)
       Lib.Set.union exe_libs project_libs
-      |> Lib.Set.to_list |> add_transitive_deps
+      |> Lib.Set.to_list |> Lib.descriptive_closure
       >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_opt
     in

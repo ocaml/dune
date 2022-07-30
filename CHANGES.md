@@ -18,6 +18,9 @@
 - Do not ignore rules marked `(promote (until-clean))` when
   `--ignore-promoted-rules` (or `-p`) is passed. (#6010, fixes #4401, @emillon)
 
+- Dune no longer considers .aux files as targets during Coq compilation. This
+  means that .aux files are no longer cached. (#6024, fixes #6004, @alizter)
+
 - Cinaps actions are now sandboxed by default (#6062, @rgrinberg)
 
 - Allow rules producing directory targets to be not sandboxed (#6056,

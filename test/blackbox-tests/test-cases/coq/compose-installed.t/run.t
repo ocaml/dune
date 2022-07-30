@@ -13,7 +13,7 @@ TODO: Currently this is not supported so the output is garbage
   Theory B not found
   -> required by theory A in .
   -> required by _build/default/a.v.d
-  -> required by _build/default/.a.aux
+  -> required by _build/default/a.glob
   -> required by alias all
   -> required by alias default
   [1]

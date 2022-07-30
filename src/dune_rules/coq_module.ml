@@ -92,7 +92,7 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
   in
   let obj_files =
     match obj_files_mode with
-    | Build -> [ x.name ^ ".vo"; "." ^ x.name ^ ".aux"; x.name ^ ".glob" ]
+    | Build -> [ x.name ^ ".vo"; x.name ^ ".glob" ]
     | Install -> [ x.name ^ ".vo" ]
   in
   List.map obj_files ~f:(fun fname ->

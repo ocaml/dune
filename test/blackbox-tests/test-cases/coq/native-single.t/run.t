@@ -1,8 +1,8 @@
   $ dune build --profile=release --display short --debug-dependency-path @all
         coqdep bar.v.d
         coqdep foo.v.d
-          coqc .foo.aux,Nbasic_foo.{cmi,cmxs},foo.{glob,vo}
-          coqc .bar.aux,Nbasic_bar.{cmi,cmxs},bar.{glob,vo}
+          coqc Nbasic_foo.{cmi,cmxs},foo.{glob,vo}
+          coqc Nbasic_bar.{cmi,cmxs},bar.{glob,vo}
 
   $ dune build --profile=release --debug-dependency-path @default
   lib: [

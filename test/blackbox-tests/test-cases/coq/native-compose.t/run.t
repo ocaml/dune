@@ -2,9 +2,9 @@
         coqdep bar/bar.v.d
         coqdep foo/foo.v.d
         coqdep foo/a/a.v.d
-          coqc foo/.foo.aux,foo/Nfoo_foo.{cmi,cmxs},foo/foo.{glob,vo}
-          coqc foo/a/.a.aux,foo/a/Nfoo_a_a.{cmi,cmxs},foo/a/a.{glob,vo}
-          coqc bar/.bar.aux,bar/Nbar_baz_bar.{cmi,cmxs},bar/bar.{glob,vo}
+          coqc foo/Nfoo_foo.{cmi,cmxs},foo/foo.{glob,vo}
+          coqc foo/a/Nfoo_a_a.{cmi,cmxs},foo/a/a.{glob,vo}
+          coqc bar/Nbar_baz_bar.{cmi,cmxs},bar/bar.{glob,vo}
 
   $ dune build --profile=release --debug-dependency-path @default
   lib: [

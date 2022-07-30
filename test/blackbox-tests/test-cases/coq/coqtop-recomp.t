@@ -21,7 +21,7 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   $ dune coq top --display short --toplevel echo dir/bar.v
         coqdep dir/bar.v.d
         coqdep dir/foo.v.d
-          coqc dir/.foo.aux,dir/foo.{glob,vo}
+          coqc dir/foo.{glob,vo}
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -R $TESTCASE_ROOT/_build/default/dir basic
   $ dune coq top --display short --toplevel echo dir/bar.v
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -R $TESTCASE_ROOT/_build/default/dir basic
@@ -30,7 +30,7 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
   Entering directory '..'
         coqdep dir/bar.v.d
         coqdep dir/foo.v.d
-          coqc dir/.foo.aux,dir/foo.{glob,vo}
+          coqc dir/foo.{glob,vo}
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -R $TESTCASE_ROOT/_build/default/dir basic
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v)
   Entering directory '..'

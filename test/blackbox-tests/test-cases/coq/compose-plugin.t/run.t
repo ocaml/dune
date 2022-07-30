@@ -23,5 +23,5 @@
       ocamlopt src_b/ml_plugin_b.{a,cmxa}
       ocamlopt src_a/ml_plugin_a.cmxs
       ocamlopt src_b/ml_plugin_b.cmxs
-          coqc thy1/.a.aux,thy1/a.{glob,vo}
-          coqc thy2/.a.aux,thy2/a.{glob,vo}
+          coqc thy1/a.{glob,vo}
+          coqc thy2/a.{glob,vo}

@@ -22,7 +22,7 @@ are ignored. See #4401.
   -> required by alias runtest in dune:5
   [1]
 
-This is correctly ignored if dune-lang is bumped to 3.5.
+This is correctly ignored if `dune-lang` is bumped to 3.5.
 
   $ cat > dune-project << EOF
   > (lang dune 3.5)

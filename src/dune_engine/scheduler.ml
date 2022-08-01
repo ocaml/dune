@@ -1399,10 +1399,6 @@ let sleep duration =
     (* cancellation mechanism isn't exposed to the user *)
     assert false
 
-let flush_file_watcher () =
-  let* t = t () in
-  flush_file_watcher t
-
 let wait_for_build_input_change () =
   let* t = t () in
   wait_for_build_input_change t

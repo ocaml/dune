@@ -1892,7 +1892,7 @@ plugin (Since 2.8)
 
 Plugins are a way to load OCaml libraries at runtime. The ``plugin`` stanza
 allows you to declare the plugin's name, which :ref:`sites<sites>` should be
-present, and which libraries it will load.
+present and which libraries it will load.
 
 .. code:: lisp
 
@@ -1921,8 +1921,8 @@ generate_sites_module (Since 2.8)
 
 Dune proposes some facilities for dealing with :ref:`sites<sites>` in a program. The
 ``generate_sites_module`` stanza will generate code for looking up the correct locations
-of the sites directories and for loading plugins. It works after installation
-with or without the relocation mode, inside Dune rules, when using Dune executables.
+of the sites' directories and for loading plugins. It works after installation
+with or without the relocation mode, inside Dune rules, and when using Dune executables.
 For promotion, it works only if the generated modules are solely in the executable (or
 library statically linked) promoted; generated modules in plugins won't work.
 

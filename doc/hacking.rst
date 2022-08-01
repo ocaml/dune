@@ -203,7 +203,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 
 .. code:: scheme
 
-   (lang dune 3.4)
+   (lang dune 3.5)
    (using coq 0.2)
 
 If such extensions are experimental, it's recommended that they pass

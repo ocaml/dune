@@ -16,8 +16,8 @@ end
 module Promote : sig
   module Lifetime : sig
     type t =
-      | Unlimited  (** The promoted file will be deleted by [dune clean] *)
-      | Until_clean
+      | Unlimited
+      | Until_clean  (** The promoted file will be deleted by [dune clean] *)
   end
 
   module Into : sig
@@ -62,7 +62,7 @@ type t = private
   ; mode : Mode.t
   ; info : Info.t
   ; loc : Loc.t
-  ; (* Directory where all the targets are produced. *) dir : Path.Build.t
+  ; dir : Path.Build.t  (** Directory where all the targets are produced. *)
   }
 
 include Comparable_intf.S with type key := t

@@ -1,6 +1,10 @@
 3.5.0 (unreleased)
 ------------------
 
+- Disallow generating targets in sub direcories in inferred rules. The check to
+  forbid this was accidentally done only for manually specified targets (#6031,
+  @rgrinberg)
+
 - Do not ignore rules marked `(promote (until-clean))` when
   `--ignore-promoted-rules` (or `-p`) is passed. (#6010, fixes #4401, @emillon)
 

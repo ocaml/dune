@@ -4,6 +4,9 @@
 - Do not ignore rules marked `(promote (until-clean))` when
   `--ignore-promoted-rules` (or `-p`) is passed. (#6010, fixes #4401, @emillon)
 
+- Add `dune exec --prefix` to run a command through a wrapper like `time` or
+  `perf`. (#...., fixes #2691, @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

@@ -42,7 +42,13 @@ let term =
     Arg.(
       value & flag
       & info [ "no-build" ] ~doc:"don't rebuild target before executing")
-  and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
+  and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
+  and+ prefix =
+    Arg.(
+      value
+      & opt (list ~sep:' ' string) []
+      & info [ "prefix" ] ~doc:"run <prefix cmd> instead of <cmd>")
+  in
   let config = Common.init common in
   let prog, argv, env =
     Scheduler.go ~common ~config (fun () ->
@@ -126,8 +132,9 @@ let term =
                 | None -> not_found ()))
         in
         let prog = Path.to_string prog in
-        let argv = prog :: args in
+        let argv = prefix @ (prog :: args) in
         let env = Super_context.context_env sctx in
+        let prog = List.hd argv in
         Fiber.return (prog, argv, env))
   in
   restore_cwd_and_execve common prog argv env

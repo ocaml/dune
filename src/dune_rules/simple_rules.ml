@@ -12,8 +12,8 @@ module Alias_rules = struct
     add sctx ~loc ~alias action
 end
 
-let check_filename ~kind =
-  let not_in_dir ~error_loc s =
+let check_filename =
+  let not_in_dir ~kind ~error_loc s =
     User_error.raise ~loc:error_loc
       [ (match kind with
         | Targets_spec.Kind.File ->
@@ -22,19 +22,19 @@ let check_filename ~kind =
           Pp.textf "Directory targets must have exactly one path component.")
       ]
   in
-  fun ~error_loc ~dir -> function
+  fun ~kind ~error_loc ~dir -> function
     | Value.String ("." | "..") ->
       User_error.raise ~loc:error_loc
         [ Pp.text "'.' and '..' are not valid targets" ]
     | String s ->
       if Filename.dirname s <> Filename.current_dir_name then
-        not_in_dir ~error_loc s;
+        not_in_dir ~kind ~error_loc s;
       Path.Build.relative ~error_loc dir s
     | Path p -> (
       match Option.equal Path.equal (Path.parent p) (Some (Path.build dir)) with
       | true -> Path.as_in_build_dir_exn p
-      | false -> not_in_dir ~error_loc (Path.to_string p))
-    | Dir p -> not_in_dir ~error_loc (Path.to_string p)
+      | false -> not_in_dir ~kind ~error_loc (Path.to_string p))
+    | Dir p -> not_in_dir ~kind ~error_loc (Path.to_string p)
 
 type rule_kind =
   | Alias_only of Alias.Name.t
@@ -96,11 +96,10 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       | None -> expander
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
-    let action =
+    let* (action : _ Action_builder.With_targets.t) =
       Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
         ~expander ~deps:rule.deps ~targets ~targets_dir:dir
     in
-    let* action = action in
     let action =
       if rule.patch_back_source_tree then
         Action_builder.With_targets.map action ~f:(fun action ->

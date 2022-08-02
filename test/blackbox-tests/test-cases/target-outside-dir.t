@@ -15,6 +15,13 @@ The restriction on generating targets should be the same on both.
   > EOF
 
   $ dune build foo/bar.ml
+  File "dune", line 2, characters 17-27:
+  2 |  (with-stdout-to foo/bar.ml (echo "let foo = 42;;")))
+                       ^^^^^^^^^^
+  Error: This action has targets in a different directory than the current one,
+  this is not allowed by dune at the moment:
+  - foo/bar.ml
+  [1]
 
   $ cat >dune <<EOF
   > (rule

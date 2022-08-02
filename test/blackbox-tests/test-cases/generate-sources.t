@@ -2,19 +2,20 @@ Generate the source of an executable in a subdir:
 
   $ cat >dune-project <<EOF
   > (lang dune 3.2)
+  > (using directory-targets 0.1)
   > EOF
 
   $ cat >dune <<EOF
   > (rule
-  >  (with-stdout-to foo/bar.ml (echo "let foo = 42;;")))
+  >  (targets (dir foo))
+  >  (action (bash "mkdir foo && cat 'print_endline \"42\";;' > foo/bar.ml")))
   > (include_subdirs unqualified)
   > (executable (name bar))
   > EOF
 
   $ dune exec --display short ./bar.exe
-        ocamlc .bar.eobjs/byte/dune__exe__Bar.{cmi,cmti}
-  File "dune", line 4, characters 0-23:
-  4 | (executable (name bar))
-      ^^^^^^^^^^^^^^^^^^^^^^^
-  Error: No rule found for bar.ml
+  File "dune", line 5, characters 18-21:
+  5 | (executable (name bar))
+                        ^^^
+  Error: Module "Bar" doesn't exist.
   [1]

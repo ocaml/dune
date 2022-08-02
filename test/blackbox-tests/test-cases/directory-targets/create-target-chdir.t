@@ -16,16 +16,10 @@ Attempt to create a directory with chdir + with-stdout-to:
   > EOF
 
   $ dune build foobar/
-  File "dune", line 1, characters 0-130:
-  1 | (rule
-  2 |  (targets (dir output))
-  3 |  (deps (sandbox always))
-  4 |  (action
-  5 |   (progn
-  6 |    (chdir output
+  File "dune", line 7, characters 20-21:
   7 |     (with-stdout-to x (echo foobar))))))
-  Error: Rule has targets in different directories.
-  Targets:
+                          ^
+  Error: This action has targets in a different directory than the current one,
+  this is not allowed by dune at the moment:
   - output/x
-  - output
   [1]

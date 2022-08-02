@@ -160,10 +160,12 @@ let%expect_test "mli mismatch" =
     ; severity = Error None
     } |}]
 
+let test_error raw_error =
+  String.trim raw_error |> Ocamlc_loc.parse |> Test.print_errors
+
 let%expect_test "ml mli mismatch 2" =
-  let raw_error =
-    String.trim
-      {|
+  test_error
+    {|
 File "src/dune_rules/artifacts.ml", line 1:
 Error: The implementation src/dune_rules/artifacts.ml
        does not match the interface src/dune_rules/.dune_rules.objs/byte/dune_rules__Artifacts.cmi:
@@ -184,9 +186,7 @@ Error: The implementation src/dune_rules/artifacts.ml
          Expected declaration
        File "src/dune_rules/artifacts.ml", line 50, characters 8-13:
          Actual declaration
-         |}
-  in
-  Ocamlc_loc.parse raw_error |> Test.print_errors;
+         |};
   [%expect
     {|
     >> error 0
@@ -224,7 +224,7 @@ Error: The implementation src/dune_rules/artifacts.ml
     } |}]
 
 let%expect_test "" =
-  let raw_error =
+  test_error
     {|
 File "fooexe.ml", line 3, characters 0-7:
 3 | Bar.run ();;
@@ -241,10 +241,7 @@ File "fooexe.ml", line 7, characters 11-22:
                ^^^^^^^^^^^
 Error (alert deprecated): module Intf_only
 Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
-|}
-    |> String.trim
-  in
-  Ocamlc_loc.parse raw_error |> Test.print_errors;
+|};
   [%expect
     {|
     >> error 0
@@ -273,7 +270,7 @@ Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
     } |}]
 
 let%expect_test "undefined fields" =
-  let raw_error =
+  test_error
     {|
 File "test/expect-tests/timer_tests.ml", lines 6-10, characters 2-3:
  6 | ..{ Scheduler.Config.concurrency = 1
@@ -282,10 +279,7 @@ File "test/expect-tests/timer_tests.ml", lines 6-10, characters 2-3:
  9 |   ; insignificant_changes = `React
 10 |   }
 Error: Some record fields are undefined: signal_watcher
-|}
-    |> String.trim
-  in
-  Ocamlc_loc.parse raw_error |> Test.print_errors;
+|};
   [%expect
     {|
     >> error 0
@@ -295,6 +289,55 @@ Error: Some record fields are undefined: signal_watcher
         ; chars = Some (2, 3)
         }
     ; message = "Some record fields are undefined: signal_watcher"
+    ; related = []
+    ; severity = Error None
+    } |}]
+
+let%expect_test "ml/mli error" =
+  test_error
+    {|
+File "src/dune_engine/build_system.ml", line 1:
+Error: The implementation src/dune_engine/build_system.ml
+      does not match the interface src/dune_engine/.dune_engine.objs/byte/dune_engine__Build_system.cmi:
+        The value `dune_stats' is required but not provided
+      File "src/dune_engine/build_system.mli", line 8, characters 0-40:
+        Expected declaration
+        |};
+  [%expect
+    {|
+    >> error 0
+    { loc =
+        { path = "src/dune_engine/build_system.ml"
+        ; line = Single 1
+        ; chars = None
+        }
+    ; message =
+        "The implementation src/dune_engine/build_system.ml\n\
+         does not match the interface src/dune_engine/.dune_engine.objs/byte/dune_engine__Build_system.cmi:\n\
+        \  The value `dune_stats' is required but not provided"
+    ; related =
+        [ ({ path = "src/dune_engine/build_system.mli"
+           ; line = Single 8
+           ; chars = Some (0, 40)
+           },
+          "Expected declaration")
+        ]
+    ; severity = Error None
+    } |}]
+
+let%expect_test "ml/mli error" =
+  test_error
+    {|
+File "bin/common.ml", line 1004, characters 8-43:
+1004 |         Dune_engine.Build_system.dune_stats := Some stats;
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unbound value Dune_engine.Build_system.dune_stats
+          |};
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "bin/common.ml"; line = Single 1004; chars = Some (8, 43) }
+    ; message = "Unbound value Dune_engine.Build_system.dune_stats"
     ; related = []
     ; severity = Error None
     } |}]

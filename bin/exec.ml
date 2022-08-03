@@ -32,6 +32,35 @@ let man =
 
 let info = Term.info "exec" ~doc ~man
 
+type program_name =
+  | String of string
+  | Sw of Dune_lang.String_with_vars.t
+
+let parse_program_name s =
+  match Arg.conv_parser Arg.dep s with
+  | Ok (File sw) when String.starts_with ~prefix:"%" s -> Sw sw
+  | _ -> String s
+
+type cli_item =
+  | Program of program_name
+  | Argument of string
+
+(** Each item in the CLI is either interpreted as a program, or passed as a
+    plain argument.
+
+    The item in first position is always interpreted as a program, either in
+    pform syntax or in string syntax. The other items are only interpreted as
+    programs if they are in pform syntax. *)
+let build_cli_items prog args =
+  let prog = Program (parse_program_name prog) in
+  let args =
+    List.map args ~f:(fun s ->
+        match parse_program_name s with
+        | Sw _ as n -> Program n
+        | String s -> Argument s)
+  in
+  prog :: args
+
 let term =
   let+ common = Common.term
   and+ context =
@@ -87,48 +116,75 @@ let term =
           in
           User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
         in
-        let* prog =
-          let open Memo.O in
+        let cli_items = build_cli_items prog args in
+        let+ argv =
           Build_system.run_exn (fun () ->
-              match Filename.analyze_program_name prog with
-              | In_path -> (
-                Super_context.resolve_program sctx ~dir ~loc:None prog
-                >>= function
-                | Error (_ : Action.Prog.Not_found.t) -> not_found ()
-                | Ok prog -> build_prog prog)
-              | Relative_to_current_dir -> (
-                let path =
-                  Path.relative_to_source_in_build_or_external ~dir prog
-                in
-                (Build_system.file_exists path >>= function
-                 | true -> Memo.return (Some path)
-                 | false -> (
-                   if not (Filename.check_suffix prog ".exe") then
-                     Memo.return None
-                   else
-                     let path = Path.extend_basename path ~suffix:".exe" in
-                     Build_system.file_exists path >>= function
-                     | true -> Memo.return (Some path)
-                     | false -> Memo.return None))
-                >>= function
-                | Some path -> build_prog path
-                | None -> not_found ())
-              | Absolute -> (
-                match
-                  let prog = Path.of_string prog in
-                  if Path.exists prog then Some prog
-                  else if not Sys.win32 then None
-                  else
-                    let prog = Path.extend_basename prog ~suffix:Bin.exe in
-                    Option.some_if (Path.exists prog) prog
-                with
-                | Some prog -> Memo.return prog
-                | None -> not_found ()))
+              Memo.List.map cli_items ~f:(function
+                | Argument s -> Memo.return s
+                | Program n ->
+                  let open Memo.O in
+                  let* prog =
+                    match n with
+                    | Sw sw ->
+                      let+ path, _ =
+                        Action_builder.run
+                          (Target.expand_path_from_root (Common.root common)
+                             ~setup context sw)
+                          Eager
+                      in
+                      Path.to_string
+                        (Path.build
+                           (Path.Build.relative
+                              (Dune_engine.Context_name.build_dir
+                                 (Context.name context))
+                              path))
+                    | String s -> Memo.return s
+                  in
+                  let+ path =
+                    match Filename.analyze_program_name prog with
+                    | In_path -> (
+                      Super_context.resolve_program sctx ~dir ~loc:None prog
+                      >>= function
+                      | Error (_ : Action.Prog.Not_found.t) -> not_found ()
+                      | Ok prog -> build_prog prog)
+                    | Relative_to_current_dir -> (
+                      let path =
+                        Path.relative_to_source_in_build_or_external ~dir prog
+                      in
+                      (Build_system.file_exists path >>= function
+                       | true -> Memo.return (Some path)
+                       | false -> (
+                         if not (Filename.check_suffix prog ".exe") then
+                           Memo.return None
+                         else
+                           let path =
+                             Path.extend_basename path ~suffix:".exe"
+                           in
+                           Build_system.file_exists path >>= function
+                           | true -> Memo.return (Some path)
+                           | false -> Memo.return None))
+                      >>= function
+                      | Some path -> build_prog path
+                      | None -> not_found ())
+                    | Absolute -> (
+                      match
+                        let prog = Path.of_string prog in
+                        if Path.exists prog then Some prog
+                        else if not Sys.win32 then None
+                        else
+                          let prog =
+                            Path.extend_basename prog ~suffix:Bin.exe
+                          in
+                          Option.some_if (Path.exists prog) prog
+                      with
+                      | Some prog -> Memo.return prog
+                      | None -> not_found ())
+                  in
+                  Path.to_string path))
         in
-        let prog = Path.to_string prog in
-        let argv = prog :: args in
+        let prog = List.hd argv in
         let env = Super_context.context_env sctx in
-        Fiber.return (prog, argv, env))
+        (prog, argv, env))
   in
   restore_cwd_and_execve common prog argv env
 

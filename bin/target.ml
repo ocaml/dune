@@ -102,7 +102,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) =
     | Some res -> Memo.return (Ok res)
     | None -> can't_build path)
 
-let expand_path (root : Workspace_root.t)
+let expand_path_from_root (root : Workspace_root.t)
     ~(setup : Dune_rules.Main.build_system) ctx sv =
   let sctx =
     Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
@@ -118,7 +118,11 @@ let expand_path (root : Workspace_root.t)
     Dune_rules.Dir_contents.add_sources_to_expander sctx expander
   in
   let+ s = Dune_rules.Expander.expand_str expander sv in
-  Path.relative Path.root (root.reach_from_root_prefix ^ s)
+  root.reach_from_root_prefix ^ s
+
+let expand_path root ~setup ctx sv =
+  let+ s = expand_path_from_root root ~setup ctx sv in
+  Path.relative Path.root s
 
 let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
   match Dune_lang.String_with_vars.text_only sv with

@@ -103,10 +103,6 @@ jobs:
         run: opam exec -- make test-windows
         if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
 
-      - name: Test source is well formatted
-        run: opam exec -- make fmt
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.ocaml-compiler == '4.14.x' }}
-
       - name: Build configurator
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}

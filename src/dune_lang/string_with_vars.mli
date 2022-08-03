@@ -43,7 +43,10 @@ val make_text : ?quoted:bool -> Loc.t -> string -> t
 (** Concatenate a list of parts. *)
 val make : ?quoted:bool -> Loc.t -> [ `Text of string | `Pform of Pform.t ] list -> t
 
+(** [is_pform v p] holds when [v] is just the Pform [p] *)
 val is_pform : t -> Pform.t -> bool
+
+(** If [t] contains any variables *)
 val has_pforms : t -> bool
 
 (** If [t] contains no variable, returns the contents of [t]. *)

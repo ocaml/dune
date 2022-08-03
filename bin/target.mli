@@ -17,3 +17,9 @@ val interpret_targets
   -> Dune_rules.Main.build_system
   -> Arg.Dep.t list
   -> unit Dune_engine.Action_builder.t
+
+val expand_path_from_root
+  :  Workspace_root.t
+  -> Dune_rules.Super_context.t
+  -> Dune_lang.String_with_vars.t
+  -> string Dune_engine.Action_builder.t

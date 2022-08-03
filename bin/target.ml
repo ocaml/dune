@@ -165,8 +165,8 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
     | None -> can't_build path)
 ;;
 
-let expand_path (root : Workspace_root.t) ~(setup : Dune_rules.Main.build_system) ctx sv =
-  let sctx = Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx) in
+let expand_path_from_root (root : Workspace_root.t) sctx sv =
+  let ctx = Super_context.context sctx in
   let dir =
     Path.Build.relative
       ctx.Context.build_dir
@@ -175,7 +175,12 @@ let expand_path (root : Workspace_root.t) ~(setup : Dune_rules.Main.build_system
   let* expander = Action_builder.of_memo (Dune_rules.Super_context.expander sctx ~dir) in
   let expander = Dune_rules.Dir_contents.add_sources_to_expander sctx expander in
   let+ s = Dune_rules.Expander.expand_str expander sv in
-  Path.relative Path.root (root.reach_from_root_prefix ^ s)
+  root.reach_from_root_prefix ^ s
+;;
+
+let expand_path root sctx sv =
+  let+ s = expand_path_from_root root sctx sv in
+  Path.relative Path.root s
 ;;
 
 let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
@@ -199,7 +204,10 @@ let resolve_target root ~setup target =
          (resolve_alias root ~recursive:true sv ~setup))
   | File sv as dep ->
     let f ctx =
-      let* path = expand_path root ~setup ctx sv in
+      let sctx =
+        Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
+      in
+      let* path = expand_path root sctx sv in
       Action_builder.of_memo (resolve_path path ~setup)
       >>| Result.map_error ~f:(fun hints -> dep, hints)
     in

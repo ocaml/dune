@@ -30,13 +30,46 @@ let man =
 
 let info = Cmd.info "exec" ~doc ~man
 
+module Cmd_arg = struct
+  type t =
+    | Expandable of Dune_lang.String_with_vars.t * string
+    | Terminal of string
+
+  let parse s =
+    match Arg.conv_parser Arg.dep s with
+    | Ok (File sw) when Dune_lang.String_with_vars.has_pforms sw -> Expandable (sw, s)
+    | _ -> Terminal s
+  ;;
+
+  let pp pps = function
+    | Expandable (_, s) -> Format.fprintf pps "%s" s
+    | Terminal s -> Format.fprintf pps "%s" s
+  ;;
+
+  let expand t ~root ~sctx =
+    let open Memo.O in
+    match t with
+    | Terminal s -> Memo.return s
+    | Expandable (sw, _) ->
+      let+ path, _ =
+        Action_builder.run (Target.expand_path_from_root root sctx sw) Eager
+      in
+      let context = Dune_rules.Super_context.context sctx in
+      (* TODO Why are we stringifying this path? *)
+      Path.to_string (Path.build (Path.Build.relative context.build_dir path))
+  ;;
+
+  let conv = Arg.conv ((fun s -> Ok (parse s)), pp)
+end
+
 module Command_to_exec = struct
   (* A command to execute, which knows how to (re)build the program and then
-     run it with some arguments in an enivorment *)
+     run it with some arguments in an environment *)
 
   type t =
     { get_path_and_build_if_necessary :
-        unit -> (Path.t, [ `Already_reported ]) result Fiber.t
+        string -> (Path.t, [ `Already_reported ]) result Fiber.t
+    ; prog : string
     ; args : string list
     ; env : Env.t
     }
@@ -44,17 +77,19 @@ module Command_to_exec = struct
   (* Helper function to spawn a new process running a command in an
      environment, returning the new process' pid *)
   let spawn_process path ~args ~env =
-    let path = Path.to_string path in
-    let env = Env.to_unix env |> Spawn.Env.of_list in
-    let argv = path :: args in
-    let pid = Spawn.spawn ~prog:path ~env ~argv () in
+    let pid =
+      let path = Path.to_string path in
+      let env = Env.to_unix env |> Spawn.Env.of_list in
+      let argv = path :: args in
+      Spawn.spawn ~prog:path ~env ~argv ()
+    in
     Pid.of_int pid
   ;;
 
   (* Run the command, first (re)building the program which the command is
      invoking *)
-  let build_and_run_in_child_process { get_path_and_build_if_necessary; args; env } =
-    get_path_and_build_if_necessary ()
+  let build_and_run_in_child_process { get_path_and_build_if_necessary; prog; args; env } =
+    get_path_and_build_if_necessary prog
     |> Fiber.map ~f:(Result.map ~f:(spawn_process ~args ~env))
   ;;
 end
@@ -106,6 +141,7 @@ module Watch = struct
     let open Fiber.O in
     let* () = Fiber.return () in
     let* () = kill_currently_running_process state in
+    let* command_to_exec = command_to_exec () in
     Command_to_exec.build_and_run_in_child_process command_to_exec
     >>| Result.map ~f:(fun pid -> state.currently_running_pid := Some pid)
   ;;
@@ -195,63 +231,81 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
 
 module Exec_context = struct
   type t =
-    { common : Common.t
-    ; config : Dune_config.t
-    ; args : string list
-    ; env : Env.t Fiber.t
-    ; get_path_and_build_if_necessary : (unit -> Path.t Memo.t) Fiber.t
+    { prog : Cmd_arg.t
+    ; args : Cmd_arg.t list
+    ; env : Env.t Memo.t
+    ; sctx : Super_context.t Memo.t
+    ; get_path_and_build_if_necessary : prog:string -> Path.t Memo.t
     }
 
   let init ~common ~context ~no_rebuild ~prog ~args =
     (* The initialization of some fields is deferred until the fiber scheduler
        has been started. *)
-    let config = Common.init common in
+    let open Fiber.O in
+    let+ setup = Import.Main.setup () in
+    let open Memo.O in
     let sctx =
-      let open Fiber.O in
-      let* setup = Import.Main.setup () in
-      let+ setup = Memo.run setup in
+      let+ setup = setup in
       Import.Main.find_scontext_exn setup ~name:context
     in
     let dir =
-      Fiber.map sctx ~f:(fun sctx ->
-        let context = Dune_rules.Super_context.context sctx in
-        Path.Build.relative context.build_dir (Common.prefix_target common ""))
+      let+ sctx = sctx in
+      let context = Dune_rules.Super_context.context sctx in
+      Path.Build.relative context.build_dir (Common.prefix_target common "")
     in
-    let env = Fiber.map sctx ~f:Super_context.context_env in
-    let get_path_and_build_if_necessary =
-      let open Fiber.O in
-      let* sctx = sctx in
-      let+ dir = dir in
-      fun () -> get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
+    let env = Memo.map sctx ~f:Super_context.context_env in
+    let get_path_and_build_if_necessary ~prog =
+      let* sctx = sctx
+      and+ dir = dir in
+      get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
     in
-    { common; config; env; args; get_path_and_build_if_necessary }
+    { sctx; env; prog; args; get_path_and_build_if_necessary }
   ;;
 
-  let run_once { common; config; env; args; get_path_and_build_if_necessary; _ } =
+  let run_once t common config =
     Scheduler.go ~common ~config
     @@ fun () ->
     let open Fiber.O in
-    let* get_path_and_build_if_necessary = get_path_and_build_if_necessary in
-    let* env = env in
-    let+ path = Build_system.run_exn get_path_and_build_if_necessary in
+    let* path, args, env =
+      let* { sctx; env; prog; args; get_path_and_build_if_necessary } = t in
+      Build_system.run_exn (fun () ->
+        let open Memo.O in
+        let* env = env
+        and* sctx = sctx in
+        let root = Common.root common in
+        let* path =
+          let* prog = Cmd_arg.expand prog ~root ~sctx in
+          get_path_and_build_if_necessary ~prog
+        in
+        let+ args = Memo.parallel_map ~f:(Cmd_arg.expand ~root ~sctx) args in
+        path, args, env)
+    in
     let prog = Path.to_string path in
     let argv = prog :: args in
     restore_cwd_and_execve common prog argv env
   ;;
 
-  let run_eager_watch { common; config; env; args; get_path_and_build_if_necessary; _ } =
+  let run_eager_watch t common config =
     Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
     @@ fun () ->
-    let open Fiber.O in
-    let* get_path_and_build_if_necessary = get_path_and_build_if_necessary in
-    let* env = env in
-    let command_to_exec =
+    let command_to_exec () =
+      let open Fiber.O in
+      let* { sctx; env; prog; args; get_path_and_build_if_necessary } = t in
+      Memo.run
+      @@
+      let open Memo.O in
+      let* env = env
+      and* sctx = sctx in
+      let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
+      let* prog = expand prog in
+      let+ args = Memo.parallel_map args ~f:expand in
       { Command_to_exec.get_path_and_build_if_necessary =
-          (fun () ->
+          (fun prog ->
             (* TODO we should release the dune lock. But we aren't doing it
                because we don't unload the database files we've marshalled.
             *)
-            Build_system.run get_path_and_build_if_necessary)
+            Build_system.run (fun () -> get_path_and_build_if_necessary ~prog))
+      ; prog
       ; args
       ; env
       }
@@ -263,19 +317,23 @@ end
 let term =
   let+ common = Common.term
   and+ context = Common.context_arg ~doc:{|Run the command in this build context.|}
-  and+ prog = Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
+  and+ prog = Arg.(required & pos 0 (some Cmd_arg.conv) None (Arg.info [] ~docv:"PROG"))
   and+ no_rebuild =
     Arg.(value & flag & info [ "no-build" ] ~doc:"don't rebuild target before executing")
-  and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
+  and+ args = Arg.(value & pos_right 0 Cmd_arg.conv [] (Arg.info [] ~docv:"ARGS")) in
   (* TODO we should make sure to finalize the current backend before exiting dune.
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)
+  let config = Common.init common in
   let exec_context = Exec_context.init ~common ~context ~no_rebuild ~prog ~args in
-  match Common.watch common with
-  | Yes Passive ->
-    User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
-  | Yes Eager -> Exec_context.run_eager_watch exec_context
-  | No -> Exec_context.run_once exec_context
+  let f =
+    match Common.watch common with
+    | Yes Passive ->
+      User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
+    | Yes Eager -> Exec_context.run_eager_watch
+    | No -> Exec_context.run_once
+  in
+  f exec_context common config
 ;;
 
 let command = Cmd.v info term

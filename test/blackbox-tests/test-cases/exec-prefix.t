@@ -24,11 +24,11 @@ The executable just displays "Hello" and its arguments.
 The wrapper parses its own arguments and executes the rest.
 
   $ cat > wrap.sh << 'EOF'
-  > #!/bin/sh
+  > #!/bin/bash
   > while getopts "xy" o; do
   >   echo "Got option: $o"
-  >   shift $((OPTIND-1))
   > done
+  > shift $((OPTIND-1))
   > echo Before
   > "$@"
   > echo After

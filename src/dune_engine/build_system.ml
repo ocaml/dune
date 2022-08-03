@@ -509,6 +509,19 @@ end = struct
     | Promote promote, (Some Automatically | None) ->
       Target_promotion.promote ~dir ~targets ~promote ~promote_source
 
+  let execution_parameters_of_dir =
+    let f path =
+      let+ dir = Source_tree.nearest_dir path
+      and+ ep = Execution_parameters.default in
+      Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep
+    in
+    let memo =
+      Memo.create "execution-parameters-of-dir"
+        ~input:(module Path.Source)
+        ~cutoff:Execution_parameters.equal f
+    in
+    Memo.exec memo
+
   let execute_rule_impl ~rule_kind rule =
     let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
       rule
@@ -523,7 +536,7 @@ end = struct
       match Dpath.Target_dir.of_target dir with
       | Regular (With_context (_, dir))
       | Anonymous_action (With_context (_, dir)) ->
-        Source_tree.execution_parameters_of_dir dir
+        execution_parameters_of_dir dir
       | _ -> Execution_parameters.default
     in
     (* Note: we do not run the below in parallel with the above: if we fail to

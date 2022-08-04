@@ -276,7 +276,9 @@ let file_digest ?(force_update = false) path =
   Fs_cache.read Fs_cache.Untracked.file_digest path
 
 let dir_contents ?(force_update = false) path =
-  if force_update then Fs_cache.evict Fs_cache.Untracked.dir_contents path;
+  if force_update then (
+    Cached_digest.Untracked.invalidate_cached_timestamp path;
+    Fs_cache.evict Fs_cache.Untracked.dir_contents path);
   let+ () = Watcher.watch ~try_to_watch_via_parent:false path in
   Fs_cache.read Fs_cache.Untracked.dir_contents path
 

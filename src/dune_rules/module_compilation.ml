@@ -43,7 +43,8 @@ let copy_interface ~sctx ~dir ~obj_dir m =
            ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
 
-let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
+let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
+    ~(phase : Fdo.phase option) =
   let sctx = CC.super_context cctx in
   let dir = CC.dir cctx in
   let obj_dir = CC.obj_dir cctx in
@@ -80,8 +81,8 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
       (* If we're compiling an implementation, then the cmi is present *)
       let public_vlib_module = Module.kind m = Impl_vmodule in
       match phase with
-      | Some Fdo.Emit -> Memo.return ([], [], [])
-      | Some Fdo.Compile | Some Fdo.All | None -> (
+      | Some Emit -> Memo.return ([], [], [])
+      | Some Compile | Some All | None -> (
         match (cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module) with
         (* If there is no mli, [ocamlY -c file.ml] produces both the .cmY and
            .cmi. We choose to use ocamlc to produce the cmi and to produce the
@@ -102,9 +103,9 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     match cm_kind with
     | Cmx -> (
       match phase with
-      | Some Fdo.Compile -> linear :: other_targets
-      | Some Fdo.Emit -> other_targets
-      | Some Fdo.All | None -> obj :: other_targets)
+      | Some Compile -> linear :: other_targets
+      | Some Emit -> other_targets
+      | Some All | None -> obj :: other_targets)
     | Cmi | Cmo -> other_targets
   in
   let dep_graph = Ml_kind.Dict.get (CC.dep_graphs cctx) ml_kind in
@@ -144,14 +145,14 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   in
   let output =
     match phase with
-    | Some Fdo.Compile -> dst
-    | Some Fdo.Emit -> obj
-    | Some Fdo.All | None -> dst
+    | Some Compile -> dst
+    | Some Emit -> obj
+    | Some All | None -> dst
   in
   let src =
     match phase with
-    | Some Fdo.Emit -> Path.build linear_fdo
-    | Some Fdo.Compile | Some Fdo.All | None -> src
+    | Some Emit -> Path.build linear_fdo
+    | Some Compile | Some All | None -> src
   in
   let modules = Compilation_context.modules cctx in
   let obj_dirs =
@@ -201,11 +202,11 @@ let build_module ?(precompiled_cmi = false) cctx m =
     match (ctx.fdo_target_exe, can_split) with
     | None, _ -> build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:None
     | Some _, false ->
-      build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some Fdo.All)
+      build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some All)
     | Some _, true ->
-      build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some Fdo.Compile)
+      build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some Compile)
       >>> Fdo.opt_rule cctx m
-      >>> build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some Fdo.Emit)
+      >>> build_cm cctx m ~precompiled_cmi ~cm_kind:Cmx ~phase:(Some Emit)
   and* () =
     Memo.when_ (not precompiled_cmi) (fun () ->
         build_cm cctx m ~precompiled_cmi ~cm_kind:Cmi ~phase:None)

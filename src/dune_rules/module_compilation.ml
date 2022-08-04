@@ -1,6 +1,5 @@
 open Import
 module CC = Compilation_context
-module SC = Super_context
 
 (* Arguments for the compiler to prevent it from being too clever.
 
@@ -38,7 +37,7 @@ let copy_interface ~sctx ~dir ~obj_dir m =
     (Module.visibility m <> Visibility.Private
     && Obj_dir.need_dedicated_public_dir obj_dir)
     (fun () ->
-      SC.add_rule sctx ~dir
+      Super_context.add_rule sctx ~dir
         (Action_builder.symlink
            ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi))
            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
@@ -48,7 +47,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
   let sctx = CC.super_context cctx in
   let dir = CC.dir cctx in
   let obj_dir = CC.obj_dir cctx in
-  let ctx = SC.context sctx in
+  let ctx = Super_context.context sctx in
   let stdlib = CC.stdlib cctx in
   let mode = Mode.of_cm_kind cm_kind in
   let sandbox =
@@ -160,7 +159,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     |> List.concat_map ~f:(fun p ->
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
-  SC.add_rule sctx ~dir ?loc:(CC.loc cctx)
+  Super_context.add_rule sctx ~dir ?loc:(CC.loc cctx)
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)
     >>> Action_builder.with_no_targets other_cm_files
@@ -224,13 +223,13 @@ let build_module ?(precompiled_cmi = false) cctx m =
            let action_with_targets =
              Jsoo_rules.build_cm cctx ~in_context ~src ~target
            in
-           action_with_targets >>= SC.add_rule sctx ~dir)
+           action_with_targets >>= Super_context.add_rule sctx ~dir)
 
 let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
-  let ctx = SC.context sctx in
+  let ctx = Super_context.context sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
@@ -242,7 +241,7 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
   in
   let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
-  SC.add_rule sctx ~dir
+  Super_context.add_rule sctx ~dir
     (Action_builder.With_targets.add ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
        Action_builder.with_no_targets cm_deps

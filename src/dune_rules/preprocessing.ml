@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-module SC = Super_context
 
 (* Encoded representation of a set of library names + scope *)
 module Key : sig
@@ -282,7 +281,7 @@ let ppx_exe (ctx : Context.t) ~key =
 
 let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let open Memo.O in
-  let ctx = SC.context sctx in
+  let ctx = Super_context.context sctx in
   let* driver_and_libs =
     let ( let& ) t f = Resolve.Memo.bind t ~f in
     let& pps = Resolve.Memo.lift pps in
@@ -306,7 +305,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     |> Option.value_exn |> Path.as_in_build_dir_exn
   in
   let* () =
-    SC.add_rule sctx ~dir
+    Super_context.add_rule sctx ~dir
       (Action_builder.write_file_dyn ml_source
          (Resolve.read
             (let open Resolve.O in
@@ -518,7 +517,7 @@ let setup_dialect_rules sctx ~sandbox ~dir ~expander (m : Module.t) =
               Option.value_exn (Module.file ml ~ml_kind)
               |> Path.as_in_build_dir_exn
             in
-            SC.add_rule sctx ~dir
+            Super_context.add_rule sctx ~dir
               (action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src
                  ~target:dst)))
   in
@@ -538,7 +537,9 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
   let open Action_builder.O in
   Staged.stage
     (let alias = Alias.lint ~dir in
-     let add_alias build = SC.add_alias_action sctx alias build ~dir in
+     let add_alias build =
+       Super_context.add_alias_action sctx alias build ~dir
+     in
      let lint =
        Module_name.Per_item.map lint ~f:(function
          | Preprocess.No_preprocessing -> fun ~source:_ ~ast:_ -> Memo.return ()
@@ -642,7 +643,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                   action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src
                     ~target:dst
                 in
-                SC.add_rule sctx ~loc ~dir
+                Super_context.add_rule sctx ~loc ~dir
                   (let open Action_builder.With_targets.O in
                   Action_builder.with_no_targets preprocessor_deps >>> action))
             >>= setup_dialect_rules sctx ~sandbox ~dir ~expander
@@ -675,7 +676,7 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
             let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
             let* () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
             pped_module ast ~f:(fun ml_kind src dst ->
-                SC.add_rule sctx ~loc ~dir
+                Super_context.add_rule sctx ~loc ~dir
                   (promote_correction_with_target ~suffix:corrected_suffix
                      (Path.as_in_build_dir_exn
                         (Option.value_exn (Module.file m ~ml_kind)))
@@ -716,7 +717,8 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
                  List.map
                    (List.concat
                       [ [ Path.reach (Path.build exe)
-                            ~from:(Path.build (SC.context sctx).build_dir)
+                            ~from:
+                              (Path.build (Super_context.context sctx).build_dir)
                         ]
                       ; driver_flags
                       ; flags

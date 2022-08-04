@@ -1,6 +1,5 @@
 open Import
 open! Action_builder.O
-module SC = Super_context
 
 (* This module interprets [(menhir ...)] stanzas -- that is, it provides build
    rules for Menhir parsers. *)
@@ -94,7 +93,8 @@ module Run (P : PARAMS) = struct
   (* Rule generation. *)
 
   let menhir_binary =
-    SC.resolve_program sctx ~dir "menhir" ~loc:None ~hint:"opam install menhir"
+    Super_context.resolve_program sctx ~dir "menhir" ~loc:None
+      ~hint:"opam install menhir"
 
   (* Reminder (from command.mli):
 
@@ -113,7 +113,7 @@ module Run (P : PARAMS) = struct
 
   let rule ?(mode = stanza.mode) :
       Action.Full.t Action_builder.With_targets.t -> unit Memo.t =
-    SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
+    Super_context.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags = Super_context.menhir_flags sctx ~dir ~expander ~flags
 

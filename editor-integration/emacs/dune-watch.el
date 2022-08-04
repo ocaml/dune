@@ -69,8 +69,8 @@
 (defconst dune-watch-process-name "*dune-watch-process*"
   "Name of process used to run dune watch.")
 
-(defconst dune-watch-header "********** NEW BUILD **********"
-  "Header of dune watch output.")
+(defconst dune-watch-header "********** NEW BUILD"
+  "Prefix of the header of dune watch output.")
 
 (defconst dune-watch-read-prompt "dune task (default: %s): "
   "Prompt displayed to the user to dune task.")

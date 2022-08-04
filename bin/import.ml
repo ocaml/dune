@@ -5,6 +5,7 @@ module Metrics = Dune_metrics
 module Console = Dune_console
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
+module Cmd = Cmdliner.Cmd
 module Stanza = Dune_lang.Stanza
 module Super_context = Dune_rules.Super_context
 module Context = Dune_rules.Context
@@ -36,8 +37,6 @@ module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph
 include Common.Let_syntax
-
-let in_group (t, info) = (Term.Group.Term t, info)
 
 module Main : sig
   include module type of struct
@@ -165,9 +164,8 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
 
 (* Adapted from
    https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
-let command_alias cmd name =
-  let term, info = cmd in
-  let orig = Term.name info in
+let command_alias cmd term name =
+  let orig = Cmd.name cmd in
   let doc = Printf.sprintf "An alias for $(b,%s)." orig in
   let man =
     [ `S "DESCRIPTION"
@@ -178,4 +176,4 @@ let command_alias cmd name =
     ; `Blocks Common.help_secs
     ]
   in
-  (term, Term.info name ~docs:"COMMAND ALIASES" ~doc ~man)
+  Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term

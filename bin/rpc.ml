@@ -130,9 +130,9 @@ module Status = struct
 
   let info =
     let doc = "show active connections" in
-    Term.info "status" ~doc
+    Cmd.info "status" ~doc
 
-  let term = (Term.Group.Term term, info)
+  let cmd = Cmd.v info term
 end
 
 module Build = struct
@@ -163,9 +163,9 @@ module Build = struct
       "build a given target (requires dune to be running in passive watching \
        mode)"
     in
-    Term.info "build" ~doc
+    Cmd.info "build" ~doc
 
-  let term = (Term.Group.Term term, info)
+  let cmd = Cmd.v info term
 end
 
 module Ping = struct
@@ -189,13 +189,13 @@ module Ping = struct
 
   let info =
     let doc = "Ping the build server running in the current directory" in
-    Term.info "ping" ~doc
+    Cmd.info "ping" ~doc
 
   let term =
     let+ (common : Common.t) = Common.term in
     client_term common exec
 
-  let term = (Term.Group.Term term, info)
+  let cmd = Cmd.v info term
 end
 
 let info =
@@ -206,6 +206,6 @@ let info =
     ; `Blocks Common.help_secs
     ]
   in
-  Term.info "rpc" ~doc ~man
+  Cmd.info "rpc" ~doc ~man
 
-let group = (Term.Group.Group [ Status.term; Build.term; Ping.term ], info)
+let group = Cmd.group info [ Status.cmd; Build.cmd; Ping.cmd ]

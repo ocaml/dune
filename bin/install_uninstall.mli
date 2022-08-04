@@ -1,3 +1,5 @@
-val install : unit Cmdliner.Term.t * Cmdliner.Term.info
+open Import
 
-val uninstall : unit Cmdliner.Term.t * Cmdliner.Term.info
+val install : unit Cmd.t
+
+val uninstall : unit Cmd.t

@@ -12,7 +12,7 @@ let man =
            formatting" section in the manual.|}
   ]
 
-let info = Term.info "format-dune-file" ~doc ~man
+let info = Cmd.info "format-dune-file" ~doc ~man
 
 let format_file ~version ~input =
   let with_input =
@@ -50,4 +50,4 @@ let term =
   let input = Option.map ~f:Arg.Path.path path_opt in
   format_file ~version ~input
 
-let command = (term, info)
+let command = Cmd.v info term

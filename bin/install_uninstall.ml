@@ -369,7 +369,7 @@ module Sections = struct
     | All
     | Only of Section.Set.t
 
-  let sections_conv : Section.t list Cmdliner.Arg.converter =
+  let sections_conv =
     let all =
       Section.all |> Section.Set.to_list
       |> List.map ~f:(fun section -> (Section.to_string section, section))
@@ -432,7 +432,7 @@ let install_uninstall ~what =
         value
         & opt (some string) None
         & info [ "prefix" ]
-            ~env:(env_var "DUNE_INSTALL_PREFIX")
+            ~env:(Cmd.Env.info "DUNE_INSTALL_PREFIX")
             ~docv:"PREFIX"
             ~doc:
               "Directory where files are copied. For instance binaries are \
@@ -442,7 +442,7 @@ let install_uninstall ~what =
       Arg.(
         value
         & opt (some string) None
-        & info [ "destdir" ] ~env:(env_var "DESTDIR") ~docv:"PATH"
+        & info [ "destdir" ] ~env:(Cmd.Env.info "DESTDIR") ~docv:"PATH"
             ~doc:"This directory is prepended to all installed paths.")
     and+ libdir_from_command_line =
       Arg.(
@@ -740,9 +740,10 @@ let install_uninstall ~what =
         |> List.rev
         |> List.iter ~f:(Ops.remove_dir_if_exists ~if_non_empty:Warn))
   in
-  ( term
-  , Cmdliner.Term.info (cmd_what what) ~doc
-      ~man:Manpage.(`S s_synopsis :: (synopsis @ Common.help_secs)) )
+  Cmd.v
+    (Cmd.info (cmd_what what) ~doc
+       ~man:Manpage.(`S s_synopsis :: (synopsis @ Common.help_secs)))
+    term
 
 let install = install_uninstall ~what:Install
 

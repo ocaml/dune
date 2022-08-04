@@ -1,3 +1,3 @@
 open Import
 
-val command : unit Term.t * Term.info
+val command : unit Cmd.t

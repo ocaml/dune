@@ -1,3 +1,3 @@
 open Import
 
-val group : unit Term.Group.t
+val group : unit Cmd.t

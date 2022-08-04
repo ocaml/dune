@@ -1,258 +1,237 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
+(* Exit codes *)
 
-let new_id =       (* thread-safe UIDs, Oo.id (object end) was used before. *)
-  let c = ref 0 in
-  fun () ->
-    let id = !c in
-    incr c; if id > !c then assert false (* too many ids *) else id
+module Exit = struct
+  type code = int
 
-(* Environments *)
+  let ok = 0
+  let some_error = 123
+  let cli_error = 124
+  let internal_error = 125
 
-type env =                     (* information about an environment variable. *)
-  { env_id : int;                              (* unique id for the env var. *)
-    env_var : string;                                       (* the variable. *)
-    env_doc : string;                                               (* help. *)
-    env_docs : string; }              (* title of help section where listed. *)
+  type info =
+    { codes : code * code; (* min, max *)
+      doc : string; (* help. *)
+      docs : string; } (* title of help section where listed. *)
 
-let env
-    ?docs:(env_docs = Cmdliner_manpage.s_environment)
-    ?doc:(env_doc = "See option $(opt).") env_var =
-  { env_id = new_id (); env_var; env_doc; env_docs }
+  let info
+      ?(docs = Cmdliner_manpage.s_exit_status) ?(doc = "undocumented") ?max min
+    =
+    let max = match max with None -> min | Some max -> max in
+    { codes = (min, max); doc; docs }
 
-let env_var e = e.env_var
-let env_doc e = e.env_doc
-let env_docs e = e.env_docs
-
-
-module Env = struct
-  type t = env
-  let compare a0 a1 = (compare : int -> int -> int) a0.env_id a1.env_id
+  let info_codes i = i.codes
+  let info_code i = fst i.codes
+  let info_doc i = i.doc
+  let info_docs i = i.docs
+  let info_order i0 i1 = compare i0.codes i1.codes
+  let defaults =
+    [ info ok ~doc:"on success.";
+      info some_error
+        ~doc:"on indiscriminate errors reported on standard error.";
+      info cli_error ~doc:"on command line parsing errors.";
+      info internal_error ~doc:"on unexpected internal errors (bugs)."; ]
 end
 
-module Envs = Set.Make (Env)
-type envs = Envs.t
+(* Environment variables *)
+
+module Env = struct
+  type var = string
+  type info = (* information about an environment variable. *)
+    { id : int; (* unique id for the env var. *)
+      deprecated : string option;
+      var : string; (* the variable. *)
+      doc : string; (* help. *)
+      docs : string; } (* title of help section where listed. *)
+
+  let info
+      ?deprecated
+      ?(docs = Cmdliner_manpage.s_environment) ?(doc = "See option $(opt).") var
+    =
+    { id = Cmdliner_base.uid (); deprecated; var; doc; docs }
+
+  let info_deprecated i = i.deprecated
+  let info_var i = i.var
+  let info_doc i = i.doc
+  let info_docs i = i.docs
+  let info_compare i0 i1 = Int.compare i0.id i1.id
+
+  module Set = Set.Make (struct type t = info let compare = info_compare end)
+end
 
 (* Arguments *)
 
-type arg_absence = Err | Val of string Lazy.t
-type opt_kind = Flag | Opt | Opt_vopt of string
+module Arg = struct
+  type absence = Err | Val of string Lazy.t | Doc of string
+  type opt_kind = Flag | Opt | Opt_vopt of string
 
-type pos_kind =                  (* information about a positional argument. *)
-  { pos_rev : bool;         (* if [true] positions are counted from the end. *)
-    pos_start : int;                           (* start positional argument. *)
-    pos_len : int option }    (* number of arguments or [None] if unbounded. *)
+  type pos_kind = (* information about a positional argument. *)
+    { pos_rev : bool; (* if [true] positions are counted from the end. *)
+      pos_start : int; (* start positional argument. *)
+      pos_len : int option } (* number of arguments or [None] if unbounded. *)
 
-let pos ~rev:pos_rev ~start:pos_start ~len:pos_len =
-  { pos_rev; pos_start; pos_len}
+  let pos ~rev:pos_rev ~start:pos_start ~len:pos_len =
+    { pos_rev; pos_start; pos_len}
 
-let pos_rev p = p.pos_rev
-let pos_start p = p.pos_start
-let pos_len p = p.pos_len
+  let pos_rev p = p.pos_rev
+  let pos_start p = p.pos_start
+  let pos_len p = p.pos_len
 
-type arg =                     (* information about a command line argument. *)
-  { id : int;                                 (* unique id for the argument. *)
-    absent : arg_absence;                            (* behaviour if absent. *)
-    env : env option;                               (* environment variable. *)
-    doc : string;                                                   (* help. *)
-    docv : string;                (* variable name for the argument in help. *)
-    docs : string;                    (* title of help section where listed. *)
-    pos : pos_kind;                                  (* positional arg kind. *)
-    opt_kind : opt_kind;                               (* optional arg kind. *)
-    opt_names : string list;                        (* names (for opt args). *)
-    opt_all : bool;                            (* repeatable (for opt args). *)
-    opt_alias: string -> string option -> (string list, string) Result.t;
-    (* [opt_alias arg value], [arg] is the name of the argument,
+  type t = (* information about a command line argument. *)
+    { id : int; (* unique id for the argument. *)
+      deprecated : string option; (* deprecation message *)
+      absent : absence; (* behaviour if absent. *)
+      env : Env.info option; (* environment variable for default value. *)
+      doc : string; (* help. *)
+      docv : string; (* variable name for the argument in help. *)
+      docs : string; (* title of help section where listed. *)
+      pos : pos_kind; (* positional arg kind. *)
+      opt_kind : opt_kind; (* optional arg kind. *)
+      opt_names : string list; (* names (for opt args). *)
+      opt_all : bool; (* repeatable (for opt args). *)
+      opt_alias: string -> string option -> (string list, string) Result.t; (* [opt_alias arg value], [arg] is the name of the argument,
         and [value] is the possible value *)
-  }
+    }
 
-let dumb_pos = pos ~rev:false ~start:(-1) ~len:None
+  let dumb_pos = pos ~rev:false ~start:(-1) ~len:None
 
-let arg ?docs ?(docv = "") ?(doc = "") ?env names =
-  let dash n = if String.length n = 1 then "-" ^ n else "--" ^ n in
-  let opt_names = List.map dash names in
-  let docs = match docs with
-  | Some s -> s
-  | None ->
-      match names with
-      | [] -> Cmdliner_manpage.s_arguments
-      | _ -> Cmdliner_manpage.s_options
-  in
-  { id = new_id (); absent = Val (lazy ""); env; doc; docv; docs;
-    pos = dumb_pos; opt_kind = Flag; opt_names; opt_all = false;
+  let v ?deprecated ?(absent = "") ?docs ?(docv = "") ?(doc = "") ?env names =
+    let dash n = if String.length n = 1 then "-" ^ n else "--" ^ n in
+    let opt_names = List.map dash names in
+    let docs = match docs with
+    | Some s -> s
+    | None ->
+        match names with
+        | [] -> Cmdliner_manpage.s_arguments
+        | _ -> Cmdliner_manpage.s_options
+    in
+    { id = Cmdliner_base.uid (); deprecated; absent = Doc absent;
+      env; doc; docv; docs; pos = dumb_pos; opt_kind = Flag; opt_names;
+      opt_all = false;
     opt_alias = fun _ _ -> Ok [] }
 
-let arg_id a = a.id
-let arg_absent a = a.absent
-let arg_env a = a.env
-let arg_doc a = a.doc
-let arg_docv a = a.docv
-let arg_docs a = a.docs
-let arg_pos a = a.pos
-let arg_opt_kind a = a.opt_kind
-let arg_opt_names a = a.opt_names
-let arg_opt_all a = a.opt_all
-let arg_opt_name_sample a =
-  (* First long or short name (in that order) in the list; this
-     allows the client to control which name is shown *)
-  let rec find = function
-  | [] -> List.hd a.opt_names
-  | n :: ns -> if (String.length n) > 2 then n else find ns
-  in
-  find a.opt_names
-let arg_alias a = a.opt_alias
+  let id a = a.id
+  let deprecated a = a.deprecated
+  let absent a = a.absent
+  let env a = a.env
+  let doc a = a.doc
+  let docv a = a.docv
+  let docs a = a.docs
+  let pos_kind a = a.pos
+  let opt_kind a = a.opt_kind
+  let opt_names a = a.opt_names
+  let opt_all a = a.opt_all
+  let opt_name_sample a =
+    (* First long or short name (in that order) in the list; this
+       allows the client to control which name is shown *)
+    let rec find = function
+    | [] -> List.hd a.opt_names
+    | n :: ns -> if (String.length n) > 2 then n else find ns
+    in
+    find a.opt_names
+  let alias a = a.opt_alias
 
-let arg_make_req a = { a with absent = Err }
-let arg_make_all_opts a = { a with opt_all = true }
-let arg_make_opt ~absent ~kind:opt_kind a = { a with absent; opt_kind }
-let arg_make_opt_all ~absent ~kind:opt_kind a =
-  { a with absent; opt_kind; opt_all = true  }
+  let make_req a = { a with absent = Err }
+  let make_all_opts a = { a with opt_all = true }
+  let make_opt ~absent ~kind:opt_kind a = { a with absent; opt_kind }
+  let make_opt_all ~absent ~kind:opt_kind a =
+    { a with absent; opt_kind; opt_all = true  }
 
-let arg_make_pos ~pos a = { a with pos }
-let arg_make_pos_abs ~absent ~pos a = { a with absent; pos }
-let arg_aliases ~aliases a = { a with opt_alias = aliases }
+  let make_pos ~pos a = { a with pos }
+  let make_pos_abs ~absent ~pos a = { a with absent; pos }
+  let aliases ~aliases a = { a with opt_alias = aliases }
 
-let arg_is_opt a = a.opt_names <> []
-let arg_is_pos a = a.opt_names = []
-let arg_is_req a = a.absent = Err
+  let is_opt a = a.opt_names <> []
+  let is_pos a = a.opt_names = []
+  let is_req a = a.absent = Err
 
-let arg_pos_cli_order a0 a1 =              (* best-effort order on the cli. *)
-  let c = compare (a0.pos.pos_rev) (a1.pos.pos_rev) in
-  if c <> 0 then c else
-  if a0.pos.pos_rev
-  then compare a1.pos.pos_start a0.pos.pos_start
-  else compare a0.pos.pos_start a1.pos.pos_start
+  let pos_cli_order a0 a1 = (* best-effort order on the cli. *)
+    let c = compare (a0.pos.pos_rev) (a1.pos.pos_rev) in
+    if c <> 0 then c else
+    if a0.pos.pos_rev
+    then compare a1.pos.pos_start a0.pos.pos_start
+    else compare a0.pos.pos_start a1.pos.pos_start
 
-let rev_arg_pos_cli_order a0 a1 = arg_pos_cli_order a1 a0
+  let rev_pos_cli_order a0 a1 = pos_cli_order a1 a0
 
-module Arg = struct
-  type t = arg
-  let compare a0 a1 = (compare : int -> int -> int) a0.id a1.id
+  let compare a0 a1 = Int.compare a0.id a1.id
+  module Set = Set.Make (struct type nonrec t = t let compare = compare end)
 end
 
-module Args = Set.Make (Arg)
-type args = Args.t
+(* Commands *)
 
-(* Exit info *)
+module Cmd = struct
+  type t =
+    { name : string; (* name of the cmd. *)
+      version : string option; (* version (for --version). *)
+      deprecated : string option; (* deprecation message *)
+      doc : string; (* one line description of cmd. *)
+      docs : string; (* title of man section where listed (commands). *)
+      sdocs : string; (* standard options, title of section where listed. *)
+      exits : Exit.info list; (* exit codes for the cmd. *)
+      envs : Env.info list; (* env vars that influence the cmd. *)
+      man : Cmdliner_manpage.block list; (* man page text. *)
+      man_xrefs : Cmdliner_manpage.xref list; (* man cross-refs. *)
+      args : Arg.Set.t; (* Command arguments. *)
+      has_args : bool; (* [true] if has own parsing term. *)
+      children : t list; } (* Children, if any. *)
 
-type exit =
-  { exit_statuses : int * int;
-    exit_doc : string;
-    exit_docs : string; }
+  let v
+      ?deprecated ?(man_xrefs = [`Main]) ?(man = []) ?(envs = [])
+      ?(exits = Exit.defaults) ?(sdocs = Cmdliner_manpage.s_common_options)
+      ?(docs = Cmdliner_manpage.s_commands) ?(doc = "") ?version name
+    =
+    { name; version; deprecated; doc; docs; sdocs; exits;
+      envs; man; man_xrefs; args = Arg.Set.empty;
+      has_args = true; children = [] }
 
-let exit
-    ?docs:(exit_docs = Cmdliner_manpage.s_exit_status)
-    ?doc:(exit_doc = "undocumented") ?max min =
-  let max = match max with None -> min | Some max -> max in
-  { exit_statuses = (min, max); exit_doc; exit_docs }
+  let name t = t.name
+  let version t = t.version
+  let deprecated t = t.deprecated
+  let doc t = t.doc
+  let docs t = t.docs
+  let stdopts_docs t = t.sdocs
+  let exits t = t.exits
+  let envs t = t.envs
+  let man t = t.man
+  let man_xrefs t = t.man_xrefs
+  let args t = t.args
+  let has_args t = t.has_args
+  let children t = t.children
+  let add_args t args = { t with args = Arg.Set.union args t.args }
+  let with_children cmd ~args ~children =
+    let has_args, args = match args with
+    | None -> false, cmd.args
+    | Some args -> true, Arg.Set.union args cmd.args
+    in
+    { cmd with has_args; args; children }
+end
 
-let exit_statuses e = e.exit_statuses
-let exit_doc e = e.exit_doc
-let exit_docs e = e.exit_docs
-let exit_order e0 e1 = compare e0.exit_statuses e1.exit_statuses
+(* Evaluation *)
 
-(* Term info *)
+module Eval = struct
+  type t = (* information about the evaluation context. *)
+    { cmd : Cmd.t; (* cmd being evaluated. *)
+      parents : Cmd.t list; (* parents of cmd, root is last. *)
+      env : string -> string option; (* environment variable lookup. *)
+      err_ppf : Format.formatter (* error formatter *) }
 
-type term_info =
-  { term_name : string;                                 (* name of the term. *)
-    term_version : string option;                (* version (for --version). *)
-    term_doc : string;                      (* one line description of term. *)
-    term_docs : string;     (* title of man section where listed (commands). *)
-    term_sdocs : string; (* standard options, title of section where listed. *)
-    term_exits : exit list;                      (* exit codes for the term. *)
-    term_envs : env list;               (* env vars that influence the term. *)
-    term_man : Cmdliner_manpage.block list;                (* man page text. *)
-    term_man_xrefs : Cmdliner_manpage.xref list; }        (* man cross-refs. *)
+  let v ~cmd ~parents ~env ~err_ppf = { cmd; parents; env; err_ppf }
 
-type term =
-  { term_info : term_info;
-    term_args : args; }
-
-let term
-    ?args:(term_args = Args.empty) ?man_xrefs:(term_man_xrefs = [])
-    ?man:(term_man = []) ?envs:(term_envs = []) ?exits:(term_exits = [])
-    ?sdocs:(term_sdocs = Cmdliner_manpage.s_options)
-    ?docs:(term_docs = "COMMANDS") ?doc:(term_doc = "") ?version:term_version
-    term_name =
-  let term_info =
-    { term_name; term_version; term_doc; term_docs; term_sdocs; term_exits;
-      term_envs; term_man; term_man_xrefs }
-  in
-  { term_info; term_args }
-
-let term_name t = t.term_info.term_name
-let term_version t = t.term_info.term_version
-let term_doc t = t.term_info.term_doc
-let term_docs t = t.term_info.term_docs
-let term_stdopts_docs t = t.term_info.term_sdocs
-let term_exits t = t.term_info.term_exits
-let term_envs t = t.term_info.term_envs
-let term_man t = t.term_info.term_man
-let term_man_xrefs t = t.term_info.term_man_xrefs
-let term_args t = t.term_args
-
-let term_add_args t args =
-  { t with term_args = Args.union args t.term_args }
-
-type eval_kind =
-| Simple of term
-| Main of { term : term ; choices : term list }
-| Sub_command of { path : term list;
-                   main : term;
-                   sibling_terms : term list }
-
-(* Eval info *)
-
-type eval =                     (* information about the evaluation context. *)
-  { term : term;                                    (* term being evaluated. *)
-    main : term;                                               (* main term. *)
-    path : term list;
-    choices : term list;                                (* all term choices. *)
-    env : string -> string option }          (* environment variable lookup. *)
-
-let eval ~env kind =
-  let (main, term, path, choices) =
-    match kind with
-    | Simple term -> (term, term, [term], [])
-    | Main { term ; choices } -> (term, term, [term], choices)
-    | Sub_command { main ; path ; sibling_terms } ->
-        let term = List.hd path in
-        (main, term, path, sibling_terms)
-  in
-  { term; main; choices; env; path }
-
-let eval_term e = e.term
-let eval_main e = e.main
-let eval_term_path e = e.path
-let eval_choices e = e.choices
-let eval_env_var e v = e.env v
-
-let eval_kind ei =
-  (* subgroup *)
-  if ei.choices = [] then `Simple else
-  if (ei.term.term_info.term_name == ei.main.term_info.term_name)
-  then
-    match ei.path with
-    | [] -> assert false
-    | [_] -> `Multiple_main
-    | _ :: _ :: _ -> `Multiple_group
-  else `Multiple_sub
-
-let eval_terms_rev ei = ei.path
-
-let eval_with_term ei term = { ei with term }
-
-let eval_has_choice e cmd =
-  (* handle subgroup *)
-  let is_cmd t = t.term_info.term_name = cmd in
-  List.exists is_cmd e.choices
+  let cmd e = e.cmd
+  let parents e = e.parents
+  let env_var e v = e.env v
+  let err_ppf e = e.err_ppf
+  let main e = match List.rev e.parents with [] -> e.cmd | m :: _ -> m
+  let with_cmd ei cmd = { ei with cmd }
+end
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

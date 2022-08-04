@@ -11,11 +11,11 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "upgrade" ~doc ~man
+let info = Cmd.info "upgrade" ~doc ~man
 
 let term =
   let+ common = Common.term in
   let config = Common.init common in
   Scheduler.go ~common ~config (fun () -> Dune_upgrader.upgrade ())
 
-let command = (term, info)
+let command = Cmd.v info term

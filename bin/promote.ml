@@ -39,4 +39,4 @@ let command =
         in
         These (files, on_missing))
   in
-  (term, Term.info "promote" ~doc ~man)
+  Cmd.v (Cmd.info "promote" ~doc ~man) term

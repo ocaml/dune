@@ -1,12 +1,11 @@
 open Import
 
-let info = Term.info "ocaml"
+let info = Cmd.info "ocaml"
 
 let group =
-  ( Term.Group.Group
-      [ in_group Utop.command
-      ; in_group Ocaml_merlin.command
-      ; in_group Ocaml_merlin.Dump_dot_merlin.command
-      ; in_group Top.command
-      ]
-  , info )
+  Cmdliner.Cmd.group info
+    [ Utop.command
+    ; Ocaml_merlin.command
+    ; Ocaml_merlin.Dump_dot_merlin.command
+    ; Top.command
+    ]

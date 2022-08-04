@@ -15,7 +15,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "top" ~doc ~man
+let info = Cmd.info "top" ~doc ~man
 
 let term =
   let+ common = Common.term
@@ -137,4 +137,4 @@ let term =
   in
   restore_cwd_and_execve common coqtop argv env
 
-let command = (term, info)
+let command = Cmd.v info term

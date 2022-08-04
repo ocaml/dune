@@ -1,138 +1,147 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
-(** Terms, argument, env vars information.
+(** Exit codes, environment variabes, arguments, commands and eval information.
 
-    The following types keep untyped information about arguments and
-    terms. This data is used to parse the command line, report errors
-    and format man pages. *)
+    These information types gathers untyped data used to parse command
+    lines report errors and format man pages. *)
 
-(** {1:env Environment variables} *)
+(** Exit codes. *)
+module Exit : sig
+  type code = int
+  val ok : code
+  val some_error : code
+  val cli_error : code
+  val internal_error : code
 
-type env
-val env : ?docs:string -> ?doc:string -> string -> env
-val env_var : env -> string
-val env_doc : env -> string
-val env_docs : env -> string
+  type info
+  val info : ?docs:string -> ?doc:string -> ?max:code -> code -> info
+  val info_code : info -> code
+  val info_codes : info -> code * code
+  val info_doc : info -> string
+  val info_docs : info  -> string
+  val info_order : info -> info -> int
+  val defaults : info list
+end
 
-module Env : Set.OrderedType with type t = env
-module Envs : Set.S with type elt = env
-type envs = Envs.t
+(** Environment variables. *)
+module Env : sig
+  type var = string
+  type info
+  val info : ?deprecated:string -> ?docs:string -> ?doc:string -> var -> info
+  val info_var : info -> string
+  val info_doc : info -> string
+  val info_docs : info -> string
+  val info_deprecated : info -> string option
 
-(** {1:arg Arguments} *)
+  module Set : Set.S with type elt = info
+end
 
-type arg_absence =
-| Err  (** an error is reported. *)
-| Val of string Lazy.t (** if <> "", takes the given default value. *)
-(** The type for what happens if the argument is absent from the cli. *)
+(** Arguments *)
+module Arg : sig
 
-type opt_kind =
-| Flag (** without value, just a flag. *)
-| Opt  (** with required value. *)
-| Opt_vopt of string (** with optional value, takes given default. *)
-(** The type for optional argument kinds. *)
+  type absence =
+  | Err  (** an error is reported. *)
+  | Val of string Lazy.t (** if <> "", takes the given default value. *)
+  | Doc of string
+    (** if <> "", a doc string interpreted in the doc markup language. *)
+  (** The type for what happens if the argument is absent from the cli. *)
 
-type pos_kind
-val pos : rev:bool -> start:int -> len:int option -> pos_kind
-val pos_rev : pos_kind -> bool
-val pos_start : pos_kind -> int
-val pos_len : pos_kind -> int option
+  type opt_kind =
+  | Flag (** without value, just a flag. *)
+  | Opt  (** with required value. *)
+  | Opt_vopt of string (** with optional value, takes given default. *)
+  (** The type for optional argument kinds. *)
 
-type arg
-val arg :
-  ?docs:string -> ?docv:string -> ?doc:string -> ?env:env ->
-  string list -> arg
+  type pos_kind
+  val pos : rev:bool -> start:int -> len:int option -> pos_kind
+  val pos_rev : pos_kind -> bool
+  val pos_start : pos_kind -> int
+  val pos_len : pos_kind -> int option
 
-val arg_id : arg -> int
-val arg_absent : arg -> arg_absence
-val arg_env : arg -> env option
-val arg_doc : arg -> string
-val arg_docv : arg -> string
-val arg_docs : arg -> string
-val arg_opt_names : arg -> string list (* has dashes *)
-val arg_opt_name_sample : arg -> string (* warning must be an opt arg *)
-val arg_opt_kind : arg -> opt_kind
-val arg_pos : arg -> pos_kind
-val arg_alias : arg -> string -> string option -> (string list, string) Result.t
+  type t
+  val v :
+    ?deprecated:string -> ?absent:string -> ?docs:string -> ?docv:string ->
+    ?doc:string -> ?env:Env.info -> string list -> t
 
-val arg_make_req : arg -> arg
-val arg_make_all_opts : arg -> arg
-val arg_make_opt : absent:arg_absence -> kind:opt_kind -> arg -> arg
-val arg_make_opt_all : absent:arg_absence -> kind:opt_kind -> arg -> arg
-val arg_make_pos : pos:pos_kind -> arg -> arg
-val arg_make_pos_abs : absent:arg_absence -> pos:pos_kind -> arg -> arg
-val arg_aliases : aliases:(string -> string option -> (string list, string) Result.t) -> arg -> arg
+  val id : t -> int
+  val deprecated : t -> string option
+  val absent : t -> absence
+  val env : t -> Env.info option
+  val doc : t -> string
+  val docv : t -> string
+  val docs : t -> string
+  val opt_names : t -> string list (* has dashes *)
+  val opt_name_sample : t -> string (* warning must be an opt arg *)
+  val opt_kind : t -> opt_kind
+  val pos_kind : t -> pos_kind
+  val alias : t -> string -> string option -> (string list, string) Result.t
 
-val arg_is_opt : arg -> bool
-val arg_is_pos : arg -> bool
-val arg_is_req : arg -> bool
+  val make_req : t -> t
+  val make_all_opts : t -> t
+  val make_opt : absent:absence -> kind:opt_kind -> t -> t
+  val make_opt_all : absent:absence -> kind:opt_kind -> t -> t
+  val make_pos : pos:pos_kind -> t -> t
+  val make_pos_abs : absent:absence -> pos:pos_kind -> t -> t
+  val aliases : aliases:(string -> string option -> (string list, string) Result.t) -> t -> t
 
-val arg_pos_cli_order : arg -> arg -> int
-val rev_arg_pos_cli_order : arg -> arg -> int
+  val is_opt : t -> bool
+  val is_pos : t -> bool
+  val is_req : t -> bool
 
-module Arg : Set.OrderedType with type t = arg
-module Args : Set.S with type elt = arg
-type args = Args.t
+  val pos_cli_order : t -> t -> int
+  val rev_pos_cli_order : t -> t -> int
 
-(** {1:exit Exit status} *)
+  val compare : t -> t -> int
+  module Set : Set.S with type elt = t
+end
 
-type exit
-val exit : ?docs:string -> ?doc:string -> ?max:int -> int -> exit
-val exit_statuses : exit -> int * int
-val exit_doc : exit -> string
-val exit_docs : exit -> string
-val exit_order : exit -> exit -> int
+(** Commands. *)
+module Cmd : sig
+  type t
+  val v :
+    ?deprecated:string ->
+    ?man_xrefs:Cmdliner_manpage.xref list -> ?man:Cmdliner_manpage.block list ->
+    ?envs:Env.info list -> ?exits:Exit.info list ->
+    ?sdocs:string -> ?docs:string -> ?doc:string -> ?version:string ->
+    string -> t
 
-(** {1:term Term information} *)
+  val name : t -> string
+  val version : t -> string option
+  val deprecated : t -> string option
+  val doc : t -> string
+  val docs : t -> string
+  val stdopts_docs : t -> string
+  val exits : t -> Exit.info list
+  val envs : t -> Env.info list
+  val man : t -> Cmdliner_manpage.block list
+  val man_xrefs : t -> Cmdliner_manpage.xref list
+  val args : t -> Arg.Set.t
+  val has_args : t -> bool
+  val children : t -> t list
+  val add_args : t -> Arg.Set.t -> t
+  val with_children : t -> args:Arg.Set.t option -> children:t list -> t
+end
 
-type term
+(** Evaluation. *)
+module Eval : sig
+  type t
+  val v :
+    cmd:Cmd.t -> parents:Cmd.t list -> env:(string -> string option) ->
+    err_ppf:Format.formatter -> t
 
-val term :
-  ?args:args -> ?man_xrefs:Cmdliner_manpage.xref list ->
-  ?man:Cmdliner_manpage.block list -> ?envs:env list -> ?exits:exit list ->
-  ?sdocs:string -> ?docs:string -> ?doc:string -> ?version:string ->
-  string -> term
-
-val term_name : term -> string
-val term_version : term -> string option
-val term_doc : term -> string
-val term_docs : term -> string
-val term_stdopts_docs : term -> string
-val term_exits : term -> exit list
-val term_envs : term -> env list
-val term_man : term -> Cmdliner_manpage.block list
-val term_man_xrefs : term -> Cmdliner_manpage.xref list
-val term_args : term -> args
-
-val term_add_args : term -> args -> term
-
-(** {1:eval Evaluation information} *)
-
-type eval
-
-type eval_kind =
-| Simple of term
-| Main of { term : term ; choices : term list }
-| Sub_command of { path : term list;
-                   main : term;
-                   sibling_terms : term list }
-
-val eval : env:(string -> string option) -> eval_kind -> eval
-
-val eval_term : eval -> term
-val eval_main : eval -> term
-val eval_choices : eval -> term list
-val eval_env_var : eval -> string -> string option
-val eval_kind : eval -> [> `Multiple_main | `Multiple_group | `Multiple_sub | `Simple ]
-val eval_with_term : eval -> term -> eval
-val eval_has_choice : eval -> string -> bool
-val eval_terms_rev : eval -> term list
+  val cmd : t -> Cmd.t
+  val main : t -> Cmd.t
+  val parents : t -> Cmd.t list
+  val env_var : t -> string -> string option
+  val err_ppf : t -> Format.formatter
+  val with_cmd : t -> Cmd.t -> t
+end
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

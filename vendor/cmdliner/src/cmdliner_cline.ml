@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (* A command line stores pre-parsed information about the command
@@ -14,7 +13,7 @@
 
 let err_multi_opt_name_def name a a' =
   Cmdliner_base.err_multi_def
-    ~kind:"option name" name Cmdliner_info.arg_doc a a'
+    ~kind:"option name" name Cmdliner_info.Arg.doc a a'
 
 module Amap = Map.Make (Cmdliner_info.Arg)
 
@@ -42,18 +41,18 @@ let arg_info_indexes args =
   let rec loop optidx posidx cl = function
   | [] -> optidx, posidx, cl
   | a :: l ->
-      match Cmdliner_info.arg_is_pos a with
+      match Cmdliner_info.Arg.is_pos a with
       | true -> loop optidx (a :: posidx) (Amap.add a (P []) cl) l
       | false ->
           let add t name = match Cmdliner_trie.add t name a with
           | `New t -> t
           | `Replaced (a', _) -> invalid_arg (err_multi_opt_name_def name a a')
           in
-          let names = Cmdliner_info.arg_opt_names a in
+          let names = Cmdliner_info.Arg.opt_names a in
           let optidx = List.fold_left add optidx names in
           loop optidx posidx (Amap.add a (O []) cl) l
   in
-  loop Cmdliner_trie.empty [] Amap.empty (Cmdliner_info.Args.elements args)
+  loop Cmdliner_trie.empty [] Amap.empty (Cmdliner_info.Arg.Set.elements args)
 
 (* Optional argument parsing *)
 
@@ -82,7 +81,7 @@ let hint_matching_opt optidx s =
   let short_opt, _ = parse_opt_arg short_opt in
   let long_opt, _ = parse_opt_arg long_opt in
   let all = Cmdliner_trie.ambiguities optidx "-" in
-  match List.mem short_opt all, Cmdliner_suggest.value long_opt all with
+  match List.mem short_opt all, Cmdliner_base.suggest long_opt all with
   | false, [] -> []
   | false, l -> l
   | true, [] -> [short_opt]
@@ -100,11 +99,11 @@ let parse_opt_args ~peek_opts optidx cl args =
       let name, value = parse_opt_arg s in
       match Cmdliner_trie.find optidx name with
       | `Ok a ->
-          let value, args = match value, Cmdliner_info.arg_opt_kind a with
-          | Some v, (Cmdliner_info.Flag) when is_short_opt name ->
-            None, ("-" ^ v) :: args
+          let value, args = match value, Cmdliner_info.Arg.opt_kind a with
+          | Some v, Cmdliner_info.Arg.Flag when is_short_opt name ->
+              None, ("-" ^ v) :: args
           | Some _, _ -> value, args
-          | None, Cmdliner_info.Flag -> value, args
+          | None, Cmdliner_info.Arg.Flag -> value, args
           | None, _ ->
               match args with
               | [] -> None, args
@@ -112,7 +111,7 @@ let parse_opt_args ~peek_opts optidx cl args =
           in
           let arg = O ((k, name, value) :: opt_arg cl a) in
           let errs,args =
-            match Cmdliner_info.arg_alias a name value with
+            match Cmdliner_info.Arg.alias a name value with
             | Ok l -> errs,l@args
             | Error err -> err::errs,args
           in
@@ -125,7 +124,7 @@ let parse_opt_args ~peek_opts optidx cl args =
       | `Ambiguous ->
           let ambs = Cmdliner_trie.ambiguities optidx name in
           let ambs = List.sort compare ambs in
-          let err = Cmdliner_base.err_ambiguous "option" name ambs in
+          let err = Cmdliner_base.err_ambiguous ~kind:"option" name ~ambs in
           loop (err :: errs) (k + 1) cl pargs args
   in
   let errs, cl, pargs = loop [] 0 cl [] args in
@@ -148,7 +147,7 @@ let process_pos_args posidx cl pargs =
      in the list index posidx, is given a value according the list
      of positional arguments values [pargs]. *)
   if pargs = [] then
-    let misses = List.filter Cmdliner_info.arg_is_req posidx in
+    let misses = List.filter Cmdliner_info.Arg.is_req posidx in
     if misses = [] then Ok cl else
     Error (Cmdliner_msg.err_pos_misses misses, cl)
   else
@@ -157,18 +156,18 @@ let process_pos_args posidx cl pargs =
   let rec loop misses cl max_spec = function
   | [] -> misses, cl, max_spec
   | a :: al ->
-      let apos = Cmdliner_info.arg_pos a in
-      let rev = Cmdliner_info.pos_rev apos in
-      let start = pos rev (Cmdliner_info.pos_start apos) in
-      let stop = match Cmdliner_info.pos_len apos with
+      let apos = Cmdliner_info.Arg.pos_kind a in
+      let rev = Cmdliner_info.Arg.pos_rev apos in
+      let start = pos rev (Cmdliner_info.Arg.pos_start apos) in
+      let stop = match Cmdliner_info.Arg.pos_len apos with
       | None -> pos rev last
-      | Some n -> pos rev (Cmdliner_info.pos_start apos + n - 1)
+      | Some n -> pos rev (Cmdliner_info.Arg.pos_start apos + n - 1)
       in
       let start, stop = if rev then stop, start else start, stop in
       let args = take_range start stop pargs in
       let max_spec = max stop max_spec in
       let cl = Amap.add a (P args) cl in
-      let misses = match Cmdliner_info.arg_is_req a && args = [] with
+      let misses = match Cmdliner_info.Arg.is_req a && args = [] with
       | true -> a :: misses
       | false -> misses
       in
@@ -187,8 +186,29 @@ let create ?(peek_opts = false) al args =
   | Ok (cl, pargs) -> process_pos_args posidx cl pargs
   | Error (errs, cl, _) -> Error (errs, cl)
 
+let deprecated_msgs cl =
+  let add i arg acc = match Cmdliner_info.Arg.deprecated i with
+  | None -> acc
+  | Some msg ->
+      let plural l = if List.length l > 1 then "s " else " " in
+      match arg with
+      | O [] | P [] -> acc (* Should not happen *)
+      | O os ->
+          let plural = plural os in
+          let names = List.map (fun (_, n, _) -> n) os in
+          let names = String.concat " " (List.map Cmdliner_base.quote names) in
+          let msg = "option" :: plural :: names :: ": " :: msg :: [] in
+          String.concat "" msg :: acc
+      | P args ->
+          let plural = plural args in
+          let args = String.concat " " (List.map Cmdliner_base.quote args) in
+          let msg = "argument" :: plural :: args :: ": " :: msg :: [] in
+          String.concat "" msg :: acc
+  in
+  Amap.fold add cl []
+
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

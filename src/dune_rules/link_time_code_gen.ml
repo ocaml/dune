@@ -1,6 +1,5 @@
 open Import
 module CC = Compilation_context
-module SC = Super_context
 
 type t =
   { to_link : Lib_flags.Lib_and_module.L.t
@@ -32,7 +31,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
   in
   let open Memo.O in
   let* () =
-    SC.add_rule ~dir sctx
+    Super_context.add_rule ~dir sctx
       (let ml =
          Module.file module_ ~ml_kind:Impl
          |> Option.value_exn |> Path.as_in_build_dir_exn

@@ -1,12 +1,11 @@
 open Import
 open Dune_file
-module SC = Super_context
 open Memo.O
 
 module Alias_rules = struct
   let add sctx ~alias ~loc build =
     let dir = Alias.dir alias in
-    SC.add_alias_action sctx alias ~dir ~loc build
+    Super_context.add_alias_action sctx alias ~dir ~loc build
 
   let add_empty sctx ~loc ~alias =
     let action = Action_builder.return (Action.Full.make Action.empty) in
@@ -62,7 +61,8 @@ let add_user_rule sctx ~dir ~(rule : Rule.t)
     ~(action : _ Action_builder.With_targets.t) ~expander =
   let* build = interpret_and_add_locks ~expander rule.locks action.build in
   let action = { action with Action_builder.With_targets.build } in
-  SC.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc action
+  Super_context.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc
+    action
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   Expander.eval_blang expander rule.enabled_if >>= function
@@ -199,7 +199,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       ~f:(fun file_src ->
         let basename = Path.basename file_src in
         let file_dst = Path.Build.relative dir basename in
-        SC.add_rule sctx ~loc ~dir ~mode:def.mode
+        Super_context.add_rule sctx ~loc ~dir ~mode:def.mode
           ((if def.add_line_directive then Copy_line_directive.builder
            else Action_builder.copy)
              ~src:file_src ~dst:file_dst))

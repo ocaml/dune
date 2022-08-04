@@ -1,5 +1,4 @@
 open Import
-module SC = Super_context
 
 module Modules_data = struct
   type t =
@@ -75,13 +74,13 @@ let deps_of
     ~ml_kind unit =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
-  let context = SC.context sctx in
+  let context = Super_context.context sctx in
   let parse_module_names = parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate source) in
   let open Memo.O in
   let* () =
-    SC.add_rule sctx ~dir
+    Super_context.add_rule sctx ~dir
       (let open Action_builder.With_targets.O in
       let flags, sandbox =
         Option.value (Module.pp_flags unit)
@@ -130,7 +129,7 @@ let deps_of
        Action.Merge_files_into (sources, extras, all_deps_file))
   in
   let+ () =
-    SC.add_rule sctx ~dir
+    Super_context.add_rule sctx ~dir
       (Action_builder.With_targets.map ~f:Action.Full.make action)
   in
   let all_deps_file = Path.build all_deps_file in

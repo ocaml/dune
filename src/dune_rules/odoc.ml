@@ -1,7 +1,6 @@
 open Import
 open Dune_file
 open Memo.O
-module SC = Super_context
 
 let ( ++ ) = Path.Build.relative
 
@@ -189,7 +188,8 @@ end
 
 let odoc sctx =
   let dir = (Super_context.context sctx).build_dir in
-  SC.resolve_program sctx ~dir "odoc" ~loc:None ~hint:"opam install odoc"
+  Super_context.resolve_program sctx ~dir "odoc" ~loc:None
+    ~hint:"opam install odoc"
 
 let odoc_base_flags sctx build_dir =
   let open Memo.O in

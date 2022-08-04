@@ -1,5 +1,4 @@
 open Import
-module SC = Super_context
 
 module Backend = struct
   module M = struct
@@ -113,7 +112,7 @@ include Sub_system.Register_end_point (struct
     in
     (* Generate the runner file *)
     let* () =
-      SC.add_rule sctx ~dir ~loc
+      Super_context.add_rule sctx ~dir ~loc
         (let target =
            Module.file main_module ~ml_kind:Impl
            |> Option.value_exn |> Path.as_in_build_dir_exn
@@ -224,7 +223,7 @@ include Sub_system.Register_end_point (struct
           | Native | Best | Byte -> Memo.return Alias.Name.runtest
           | Javascript -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
         in
-        SC.add_alias_action sctx ~dir ~loc:(Some info.loc)
+        Super_context.add_alias_action sctx ~dir ~loc:(Some info.loc)
           (Alias.make ~dir runtest_alias)
           (let exe =
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))

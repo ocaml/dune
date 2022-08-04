@@ -1,6 +1,5 @@
 open Import
 module CC = Compilation_context
-module SC = Super_context
 
 module Program = struct
   type t =
@@ -134,7 +133,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
     ~promote ?(link_args = Action_builder.return Command.Args.empty)
     ?(o_files = []) ?(sandbox = Sandbox_config.default) cctx =
   let sctx = CC.super_context cctx in
-  let ctx = SC.context sctx in
+  let ctx = Super_context.context sctx in
   let dir = CC.dir cctx in
   let mode = Link_mode.mode linkage.mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
@@ -195,7 +194,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
           ]
     >>| Action.Full.add_sandbox sandbox
   in
-  SC.add_rule sctx ~loc ~dir
+  Super_context.add_rule sctx ~loc ~dir
     ~mode:
       (match promote with
       | None -> Standard
@@ -241,7 +240,7 @@ let link_many ?link_args ?o_files ?(embed_in_plugin_libraries = []) ?sandbox
         in
         let cm_files =
           let sctx = CC.super_context cctx in
-          let ctx = SC.context sctx in
+          let ctx = Super_context.context sctx in
           let obj_dir = CC.obj_dir cctx in
           Cm_files.make ~obj_dir ~modules ~top_sorted_modules
             ~ext_obj:ctx.lib_config.ext_obj ()

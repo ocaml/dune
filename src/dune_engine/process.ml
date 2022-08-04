@@ -591,7 +591,9 @@ let report_process_start stats ~metadata ~id ~pid ~prog ~args ~now =
     ; ("pid", `Int (Pid.to_int pid))
     ]
   in
-  let event = Event.async (Int id) ~args Start common in
+  let event =
+    Event.async (Chrome_trace.Id.create (`Int id)) ~args Start common
+  in
   Dune_stats.emit stats event;
   (common, args)
 

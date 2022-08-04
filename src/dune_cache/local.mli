@@ -16,7 +16,7 @@
    store the mtime in the metadata and complain if it's not what we expected. *)
 
 open Stdune
-module Restore_result := Dune_cache_storage.Restore_result
+open Import
 
 module Store_artifacts_result : sig
   (* Outcomes are ordered in the order of severity. *)

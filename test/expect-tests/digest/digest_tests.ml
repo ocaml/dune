@@ -1,4 +1,5 @@
 open Stdune
+module Digest = Dune_digest
 
 let%expect_test "directory digest version" =
   (* If this test fails with a new digest value, make sure to update to update

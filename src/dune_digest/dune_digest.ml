@@ -1,8 +1,11 @@
+open Stdune
+
 type t = string
 
 module D = Stdlib.Digest
 module Set = String.Set
 module Map = String.Map
+module Metrics = Dune_metrics
 
 module type Digest_impl = sig
   val file : string -> t

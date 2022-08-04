@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type t = private A of string [@@unboxed]
 

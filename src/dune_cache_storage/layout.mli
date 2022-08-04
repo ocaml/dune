@@ -6,6 +6,7 @@
    decision in 6 months. *)
 
 open Stdune
+open Import
 
 (** The path to the root directory of the cache. *)
 val root_dir : Path.t

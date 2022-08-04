@@ -1014,7 +1014,7 @@ let term ~default_root_is_cwd =
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();
-    Metrics.enable ());
+    Dune_metrics.enable ());
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces

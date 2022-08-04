@@ -11,6 +11,8 @@
   fiber
   stdune
   unix
+  dune_metrics
+  dune_digest
   dune_cache
   dune_cache_storage
   dune_graph

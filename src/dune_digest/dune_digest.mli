@@ -1,3 +1,5 @@
+open Stdune
+
 (** Digests (MD5) *)
 
 type t

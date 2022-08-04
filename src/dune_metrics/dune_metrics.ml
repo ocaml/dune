@@ -1,3 +1,5 @@
+open Stdune
+
 let enabled = ref false
 
 let enable () = enabled := true

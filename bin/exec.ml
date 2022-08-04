@@ -38,7 +38,7 @@ type program_name =
 
 let parse_program_name s =
   match Arg.conv_parser Arg.dep s with
-  | Ok (File sw) when String.starts_with ~prefix:"%" s -> Sw sw
+  | Ok (File sw) when Dune_lang.String_with_vars.has_pforms sw -> Sw sw
   | _ -> String s
 
 type cli_item =

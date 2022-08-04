@@ -38,6 +38,10 @@
 
 - Fix compilation of Dune under esy on Windows (#6109, fixes #6098, @nojb)
 
+- `dune exec`: support syntax like `%{bin:program}`. This can appear anywhere
+  in the command line, so things like `dune exec time %{bin:program}` now work.
+  (#6035, fixes #2691, @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

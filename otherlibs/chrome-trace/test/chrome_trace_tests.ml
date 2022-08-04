@@ -12,7 +12,7 @@ let c =
 
 let () =
   let module Event = Chrome_trace.Event in
-  let module Id = Event.Id in
+  let module Id = Chrome_trace.Id in
   let module Timestamp = Event.Timestamp in
   let events =
     [ Event.complete
@@ -26,7 +26,9 @@ let () =
            ~ts:(Timestamp.of_float_seconds 0.5)
            ~name:"cnt" ())
         [ ("bar", `Int 250) ]
-    ; Event.async (Id.String "foo") Event.Start
+    ; Event.async
+        (Id.create (`String "foo"))
+        Event.Start
         (Event.common_fields
            ~ts:(Timestamp.of_float_seconds 0.5)
            ~name:"async" ())

@@ -234,7 +234,7 @@ module Event = struct
             let ts = Event.Timestamp.of_float_seconds (Unix.gettimeofday ()) in
             Event.common_fields ~ts ~name ()
           in
-          let id = Event.Id.Int (Session.Id.to_int id) in
+          let id = Chrome_trace.Id.create (`Int (Session.Id.to_int id)) in
           Event.async ?args id kind common
         in
         Dune_stats.emit stats event)

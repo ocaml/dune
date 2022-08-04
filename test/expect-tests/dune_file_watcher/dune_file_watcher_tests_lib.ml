@@ -12,7 +12,7 @@ let init () =
   let () = try Unix.mkdir tmp_dir 0o777 with _ -> () in
   Unix.chdir tmp_dir;
   Path.set_root (Path.External.of_string tmp_dir);
-  Path.Build.set_build_dir (Path.Build.Kind.of_string "_build")
+  Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build")
 
 let now () = Unix.gettimeofday ()
 

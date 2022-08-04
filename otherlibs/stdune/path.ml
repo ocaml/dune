@@ -514,7 +514,7 @@ let abs_root, set_root =
   in
   (abs_root, set_root)
 
-module Kind = struct
+module Outside_build_dir = struct
   type t =
     | External of External.t
     | In_source_dir of Local.t
@@ -544,6 +544,8 @@ module Kind = struct
     match x with
     | In_source_dir x -> In_source_dir (Local.append x y)
     | External x -> External (External.relative x (Local.to_string y))
+
+  let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
 end
 
 module Permissions = struct
@@ -628,11 +630,11 @@ module Build = struct
       Code_error.raise "Path.Build.drop_build_context_maybe_sandboxed_exn"
         [ ("t", to_dyn t) ]
 
-  let build_dir = Fdecl.create Kind.to_dyn
+  let build_dir = Fdecl.create Outside_build_dir.to_dyn
 
   let build_dir_prefix = Fdecl.create Dyn.opaque
 
-  let set_build_dir (new_build_dir : Kind.t) =
+  let set_build_dir (new_build_dir : Outside_build_dir.t) =
     let new_build_dir_prefix =
       (match new_build_dir with
       | External _ -> ()
@@ -666,8 +668,6 @@ module Build = struct
   let lstat t = Unix.lstat (to_string t)
 
   let unlink_no_err t = Fpath.unlink_no_err (to_string t)
-
-  module Kind = Kind
 end
 
 module T : sig
@@ -733,10 +733,11 @@ let is_root = function
   | In_source_tree s -> Local.is_root s
   | In_build_dir _ | External _ -> false
 
-let kind = function
-  | In_build_dir p -> Kind.append_local (Fdecl.get Build.build_dir) p
-  | In_source_tree s -> Kind.In_source_dir s
-  | External s -> Kind.External s
+let local_or_external : t -> Outside_build_dir.t = function
+  | In_build_dir p ->
+    Outside_build_dir.append_local (Fdecl.get Build.build_dir) p
+  | In_source_tree s -> In_source_dir s
+  | External s -> External s
 
 let is_managed = function
   | In_build_dir _ | In_source_tree _ -> true
@@ -772,7 +773,8 @@ let relative ?error_loc t fn =
       | Error `Outside_the_workspace ->
         external_
           (External.relative
-             (External.of_string (Kind.to_absolute_filename (kind t)))
+             (External.of_string
+                (Outside_build_dir.to_absolute_filename (local_or_external t)))
              fn))
     | In_build_dir p -> in_build_dir (Local.relative p fn ?error_loc)
     | External s -> external_ (External.relative s fn))
@@ -799,7 +801,8 @@ let of_filename_relative_to_initial_cwd fn =
     (if Filename.is_relative fn then External.relative External.initial_cwd fn
     else External.of_string fn)
 
-let to_absolute_filename t = Kind.to_absolute_filename (kind t)
+let to_absolute_filename t =
+  Outside_build_dir.to_absolute_filename (local_or_external t)
 
 let external_of_local x ~root =
   External.to_string (External.relative root (Local.to_string x))
@@ -989,14 +992,14 @@ let drop_optional_build_context_src_exn t =
   | In_source_tree p -> p
 
 let split_first_component t =
-  match kind t with
+  match local_or_external t with
   | In_source_dir t ->
     Option.map (Local.split_first_component t) ~f:(fun (before, after) ->
         (before, after |> in_source_tree))
   | _ -> None
 
 let explode t =
-  match kind t with
+  match local_or_external t with
   | In_source_dir p when Local.is_root p -> Some []
   | In_source_dir s -> Some (String.split (Local.to_string s) ~on:'/')
   | External _ -> None
@@ -1046,7 +1049,7 @@ let build_dir_exists () = is_directory build_dir
 
 let ensure_build_dir_exists () =
   let perms = 0o777 in
-  match kind build_dir with
+  match local_or_external build_dir with
   | In_source_dir p -> Relative_to_source_root.mkdir_p p ~perms
   | External p -> (
     let p = External.to_string p in
@@ -1087,7 +1090,8 @@ let mkdir_p ?perms = function
   | External s -> External.mkdir_p s ?perms
   | In_source_tree s -> Relative_to_source_root.mkdir_p s ?perms
   | In_build_dir k ->
-    Kind.mkdir_p ?perms (Kind.append_local (Fdecl.get Build.build_dir) k)
+    Outside_build_dir.mkdir_p ?perms
+      (Outside_build_dir.append_local (Fdecl.get Build.build_dir) k)
 
 let touch ?(create = true) p =
   let p =
@@ -1095,7 +1099,8 @@ let touch ?(create = true) p =
     | External s -> External.to_string s
     | In_source_tree s -> Local_gen.to_string s
     | In_build_dir k ->
-      Kind.to_string (Kind.append_local (Fdecl.get Build.build_dir) k)
+      Outside_build_dir.to_string
+        (Outside_build_dir.append_local (Fdecl.get Build.build_dir) k)
   in
   let create =
     if create then fun () -> Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
@@ -1212,7 +1217,11 @@ let follow_symlink path =
 
 module Expert = struct
   let drop_absolute_prefix ~prefix p =
-    match String.drop_prefix ~prefix:(Kind.to_absolute_filename prefix) p with
+    match
+      String.drop_prefix
+        ~prefix:(Outside_build_dir.to_absolute_filename prefix)
+        p
+    with
     | None -> None
     | Some "" -> Some Local.root
     | Some p ->
@@ -1222,13 +1231,13 @@ module Expert = struct
     let p = External.to_string ext in
     match Fdecl.get Build.build_dir with
     | External s -> (
-      match drop_absolute_prefix ~prefix:(Kind.External s) p with
+      match drop_absolute_prefix ~prefix:(External s) p with
       | Some s -> Some (in_build_dir s)
       | None ->
-        drop_absolute_prefix ~prefix:(Kind.In_source_dir Local.root) p
+        drop_absolute_prefix ~prefix:(In_source_dir Local.root) p
         |> Option.map ~f:in_source_tree)
     | In_source_dir _ ->
-      drop_absolute_prefix ~prefix:(Kind.In_source_dir Local.root) p
+      drop_absolute_prefix ~prefix:(In_source_dir Local.root) p
       |> Option.map ~f:make_local_path
 
   let try_localize_external t =

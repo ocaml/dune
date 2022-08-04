@@ -4,7 +4,7 @@ module Re = Dune_re
 
 let () =
   Path.set_root (Path.External.cwd ());
-  Path.Build.set_build_dir (Path.Build.Kind.of_string "_build")
+  Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build")
 
 let fail fmt =
   Printf.ksprintf

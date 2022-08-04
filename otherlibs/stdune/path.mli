@@ -134,6 +134,16 @@ module Permissions : sig
   val remove : t -> int -> int
 end
 
+module Outside_build_dir : sig
+  type t =
+    | External of External.t
+    | In_source_dir of Source.t
+
+  val of_string : string -> t
+
+  val to_string_maybe_quoted : t -> string
+end
+
 module Build : sig
   type w
 
@@ -182,17 +192,9 @@ module Build : sig
       "righter" type. *)
   val extract_first_component : t -> (string * Local.t) option
 
-  module Kind : sig
-    type t = private
-      | External of External.t
-      | In_source_dir of Local.t
-
-    val of_string : string -> t
-  end
-
   (** Set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
-  val set_build_dir : Kind.t -> unit
+  val set_build_dir : Outside_build_dir.t -> unit
 
   val split_sandbox_root : t -> t option * t
 

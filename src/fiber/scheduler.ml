@@ -26,8 +26,9 @@ module Jobs = struct
     | Empty ->
       ivar.state <- Full x;
       jobs
-    | Empty_with_readers _ as readers ->
+    | Empty_with_readers (ctx, k, readers) ->
       ivar.state <- Full x;
+      let jobs = Job (ctx, k, x, jobs) in
       enqueue_readers readers x jobs
 
   let rec exec_fills fills acc =

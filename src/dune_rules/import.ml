@@ -1,6 +1,7 @@
 include Stdune
 open Dune_util
 module Digest = Dune_digest
+module Console = Dune_console
 module Config = Config
 module Log = Log
 module Persistent = Persistent

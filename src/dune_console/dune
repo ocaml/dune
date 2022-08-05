@@ -1,0 +1,3 @@
+(library
+ (name dune_console)
+ (libraries stdune))

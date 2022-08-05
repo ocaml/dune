@@ -3,6 +3,7 @@
  (libraries
   stdune
   xdg
+  dune_console
   dune_lang
   dune_cache
   dune_cache_storage

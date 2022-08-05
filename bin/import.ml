@@ -2,6 +2,7 @@ open Stdune
 open Dune_engine
 module Digest = Dune_digest
 module Metrics = Dune_metrics
+module Console = Dune_console
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
 module Stanza = Dune_lang.Stanza

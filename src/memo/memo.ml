@@ -1,6 +1,7 @@
 open! Stdune
 open Fiber.O
 module Graph = Dune_graph.Graph
+module Console = Dune_console
 
 module Debug = struct
   let track_locations_of_lazy_values = ref false

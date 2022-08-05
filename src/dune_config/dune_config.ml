@@ -2,6 +2,7 @@ open Stdune
 open Dune_lang.Decoder
 module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
+module Console = Dune_console
 module Stanza = Dune_lang.Stanza
 module Config = Dune_util.Config
 module String_with_vars = Dune_lang.String_with_vars

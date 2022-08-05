@@ -1,5 +1,6 @@
 open Stdune
 module Config = Dune_util.Config
+module Console = Dune_console
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph

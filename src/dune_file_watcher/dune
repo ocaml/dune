@@ -3,6 +3,7 @@
  (libraries
   spawn
   fsevents
+  dune_console
   unix
   stdune
   threads.posix

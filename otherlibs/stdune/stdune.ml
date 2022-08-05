@@ -10,7 +10,6 @@ module Array = Array
 module Bytes = Bytes
 module Char = Char
 module Comparator = Comparator
-module Console = Console
 module Either = Either
 module Exn = Exn
 module Exn_with_backtrace = Exn_with_backtrace

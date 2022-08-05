@@ -10,6 +10,7 @@
   dune_lang
   fiber
   stdune
+  dune_console
   unix
   dune_metrics
   dune_digest

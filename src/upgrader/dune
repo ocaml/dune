@@ -1,4 +1,11 @@
 (library
  (name dune_upgrader)
- (libraries stdune memo opam_file_format dune_lang dune_engine fiber)
+ (libraries
+  stdune
+  dune_console
+  memo
+  opam_file_format
+  dune_lang
+  dune_engine
+  fiber)
  (synopsis "Internal Dune library, do not use!"))

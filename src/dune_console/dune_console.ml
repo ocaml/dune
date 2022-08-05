@@ -1,3 +1,5 @@
+open Stdune
+
 module Backend = struct
   module type S = sig
     val print_user_message : User_message.t -> unit

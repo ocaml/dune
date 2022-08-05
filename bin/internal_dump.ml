@@ -1,4 +1,3 @@
-open Stdune
 open Import
 module Persistent = Dune_util.Persistent
 

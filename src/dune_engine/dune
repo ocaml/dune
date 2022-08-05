@@ -5,6 +5,7 @@
  (libraries
   unix
   stdune
+  dune_console
   dyn
   fiber
   incremental_cycles

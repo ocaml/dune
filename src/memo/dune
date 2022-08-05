@@ -1,4 +1,4 @@
 (library
  (name memo)
- (libraries stdune dyn dune_graph dag fiber unix)
+ (libraries stdune dyn dune_graph dag fiber dune_console unix)
  (synopsis "Incremental computation library that powers Dune"))

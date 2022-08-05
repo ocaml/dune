@@ -9,7 +9,7 @@
   memo
   ocaml
   dune_re
-  console
+  dune_console
   dune_digest
   opam_file_format
   dune_lang

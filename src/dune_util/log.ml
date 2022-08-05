@@ -1,4 +1,5 @@
 open Stdune
+module Console = Dune_console
 
 module File = struct
   type t =

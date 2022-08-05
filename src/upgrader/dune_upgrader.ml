@@ -4,6 +4,7 @@ open! Stdune
    engine *)
 module Dune_project = Dune_engine.Dune_project
 module Source_tree = Dune_engine.Source_tree
+module Console = Dune_console
 module Sub_dirs = Dune_engine.Sub_dirs
 
 type rename_and_edit =

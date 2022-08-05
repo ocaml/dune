@@ -14,6 +14,7 @@ let local_libraries =
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)
   ; ("src/fiber", Some "Fiber", false, None)
+  ; ("src/dune_console", Some "Dune_console", false, None)
   ; ("src/memo", Some "Memo", false, None)
   ; ("src/dune_metrics", Some "Dune_metrics", false, None)
   ; ("src/dune_digest", Some "Dune_digest", false, None)

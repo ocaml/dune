@@ -1,6 +1,10 @@
 3.5.0 (unreleased)
 ------------------
 
+- Add a terminal persistence mode that attempts to clear the terminal history.
+  It is enabled by setting terminal persistence to
+  `clear-on-rebuild-and-flush-history` (#6065, @rgrinberg)
+
 - Disallow generating targets in sub direcories in inferred rules. The check to
   forbid this was accidentally done only for manually specified targets (#6031,
   @rgrinberg)

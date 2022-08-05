@@ -22,6 +22,8 @@ module Backend : sig
 
     (** Reset the log output *)
     val reset : unit -> unit
+
+    val reset_flush_history : unit -> unit
   end
 
   type t = (module S)

@@ -9,6 +9,8 @@ module Backend = struct
     val print_if_no_status_line : User_message.Style.t Pp.t -> unit
 
     val reset : unit -> unit
+
+    val reset_flush_history : unit -> unit
   end
 
   type t = (module S)
@@ -28,6 +30,8 @@ module Backend = struct
         (Pp.seq (Pp.map_tags msg ~f:User_message.Print_config.default) Pp.cut)
 
     let reset () = prerr_string "\x1b[H\x1b[2J"
+
+    let reset_flush_history () = prerr_string "\x1bc"
   end
 
   module Dumb : S = struct
@@ -43,6 +47,10 @@ module Backend = struct
 
     let reset () =
       reset ();
+      flush stderr
+
+    let reset_flush_history () =
+      reset_flush_history ();
       flush stderr
   end
 
@@ -81,6 +89,8 @@ module Backend = struct
       flush stderr
 
     let reset () = Dumb.reset ()
+
+    let reset_flush_history () = Dumb.reset_flush_history ()
   end
 
   let dumb = (module Dumb : S)
@@ -108,6 +118,10 @@ module Backend = struct
       let reset () =
         A.reset ();
         B.reset ()
+
+      let reset_flush_history () =
+        A.reset_flush_history ();
+        B.reset_flush_history ()
     end : S)
 end
 
@@ -130,6 +144,10 @@ let print_if_no_status_line line =
 let reset () =
   let (module M : Backend.S) = !Backend.main in
   M.reset ()
+
+let reset_flush_history () =
+  let (module M : Backend.S) = !Backend.main in
+  M.reset_flush_history ()
 
 module Status_line = struct
   type t =

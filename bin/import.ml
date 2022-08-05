@@ -80,6 +80,7 @@ module Scheduler = struct
     | false -> (
       match dune_config.terminal_persistence with
       | Clear_on_rebuild -> Console.reset ()
+      | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ()
       | Preserve ->
         let message =
           sprintf "********** NEW BUILD (%s) **********"

@@ -115,7 +115,9 @@ module Config = struct
   let load path ~toolchain ~context =
     let path = Path.extend_basename path ~suffix:".d" in
     let conf_file = Path.relative path (toolchain ^ ".conf") in
-    let* conf_file_exists = Fs_memo.file_exists conf_file in
+    let* conf_file_exists =
+      Fs_memo.file_exists (Path.as_outside_build_dir_exn conf_file)
+    in
     if not conf_file_exists then
       User_error.raise
         [ Pp.textf "ocamlfind toolchain %s isn't defined in %s (context: %s)"
@@ -123,7 +125,9 @@ module Config = struct
             (Path.to_string_maybe_quoted path)
             context
         ];
-    let+ meta = Meta.load ~name:None conf_file in
+    let+ meta =
+      Meta.load ~name:None (Path.as_outside_build_dir_exn conf_file)
+    in
     { vars = String.Map.map meta.vars ~f:Rules.of_meta_rules
     ; preds = Ps.of_list [ P.make toolchain ]
     }
@@ -276,7 +280,8 @@ end = struct
       match exists_if with
       | _ :: _ ->
         Memo.List.for_all exists_if ~f:(fun fn ->
-            Fs_memo.file_exists (Path.relative t.dir fn))
+            Fs_memo.file_exists
+              (Path.as_outside_build_dir_exn (Path.relative t.dir fn)))
       | [] -> (
         if not is_builtin then Memo.return true
         else
@@ -291,7 +296,8 @@ end = struct
           match archives t with
           | { byte = []; native = [] } -> Memo.return true
           | { byte; native } ->
-            Memo.List.exists (byte @ native) ~f:Fs_memo.file_exists)
+            Memo.List.exists (byte @ native) ~f:(fun p ->
+                Path.as_outside_build_dir_exn p |> Fs_memo.file_exists))
 
     let to_dune_library t ~(lib_config : Lib_config.t) =
       let loc = Loc.in_file t.meta_file in
@@ -299,7 +305,9 @@ end = struct
       let dot_dune_file =
         Path.relative t.dir (sprintf "%s.dune" (Lib_name.to_string t.name))
       in
-      let* dot_dune_exists = Fs_memo.file_exists dot_dune_file in
+      let* dot_dune_exists =
+        Fs_memo.file_exists (Path.as_outside_build_dir_exn dot_dune_file)
+      in
       if dot_dune_exists then
         User_warning.emit
           ~loc:(Loc.in_file dot_dune_file)
@@ -354,7 +362,9 @@ end = struct
         let virtual_ = None in
         let default_implementation = None in
         let wrapped = None in
-        let+ dir_contents = Fs_memo.dir_contents t.dir in
+        let+ dir_contents =
+          Fs_memo.dir_contents (Path.as_outside_build_dir_exn t.dir)
+        in
         let foreign_archives, native_archives =
           (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
              be foreign archives, and all other files with the extension
@@ -496,7 +506,9 @@ end = struct
     }
 
   let load_and_convert db ~dir ~meta_file ~name =
-    let* meta = Meta.load meta_file ~name:(Some name) in
+    let* meta =
+      Meta.load (Path.as_outside_build_dir_exn meta_file) ~name:(Some name)
+    in
     dune_package_of_meta db ~dir ~meta_file ~meta
 
   let load_builtin db meta =
@@ -531,18 +543,24 @@ end = struct
         let meta_file =
           Path.relative dir (meta_fn ^ "." ^ Package.Name.to_string name)
         in
-        let* file_exists = Fs_memo.file_exists meta_file in
+        let* file_exists =
+          Fs_memo.file_exists (Path.as_outside_build_dir_exn meta_file)
+        in
         if file_exists then
           let+ p = load_and_convert db ~dir ~meta_file ~name in
           Ok p
         else
           let dir = Path.relative dir (Package.Name.to_string name) in
-          let* dir_exists = Fs_memo.dir_exists dir in
+          let* dir_exists =
+            Fs_memo.dir_exists (Path.as_outside_build_dir_exn dir)
+          in
           if not dir_exists then loop dirs
           else
             let dune = Path.relative dir Dune_package.fn in
             let* exists =
-              let* exists = Fs_memo.file_exists dune in
+              let* exists =
+                Fs_memo.file_exists (Path.as_outside_build_dir_exn dune)
+              in
               if exists then Dune_package.Or_meta.load dune
               else Memo.return (Ok Dune_package.Or_meta.Use_meta)
             in
@@ -552,7 +570,9 @@ end = struct
             | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Ok p)
             | Ok Use_meta ->
               let meta_file = Path.relative dir meta_fn in
-              let* meta_file_exists = Fs_memo.file_exists meta_file in
+              let* meta_file_exists =
+                Fs_memo.file_exists (Path.as_outside_build_dir_exn meta_file)
+              in
               if meta_file_exists then
                 let+ p = load_and_convert db ~dir ~meta_file ~name in
                 Ok p
@@ -601,7 +621,7 @@ let find t name =
 let root_packages (db : DB.t) =
   let+ pkgs =
     Memo.List.concat_map db.paths ~f:(fun dir ->
-        Fs_memo.dir_contents dir >>= function
+        Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir) >>= function
         | Error (ENOENT, _, _) -> Memo.return []
         | Error (unix_error, _, _) ->
           User_error.raise
@@ -613,7 +633,9 @@ let root_packages (db : DB.t) =
           let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
           Memo.List.filter_map dir_contents ~f:(fun (name, _) ->
               let+ exists =
-                Fs_memo.file_exists (Path.relative dir (name ^ "/" ^ meta_fn))
+                Fs_memo.file_exists
+                  (Path.as_outside_build_dir_exn
+                     (Path.relative dir (name ^ "/" ^ meta_fn)))
               in
               if exists then Some (Package.Name.of_string name) else None))
     >>| Package.Name.Set.of_list

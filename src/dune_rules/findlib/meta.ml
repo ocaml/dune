@@ -233,7 +233,9 @@ let pre_ocaml_5_builtins ~stdlib_dir ~version:ocaml_version =
       Memo.return (simple ())
     else
       let+ cma =
-        Fs_memo.file_exists (Path.relative stdlib_dir "bigarray.cma")
+        Fs_memo.file_exists
+          (Path.as_outside_build_dir_exn
+             (Path.relative stdlib_dir "bigarray.cma"))
       in
       if cma then simple () else dummy "bigarray"
   in
@@ -287,14 +289,19 @@ let pre_ocaml_5_builtins ~stdlib_dir ~version:ocaml_version =
     in
     let* base =
       let+ cma =
-        Fs_memo.file_exists (Path.relative stdlib_dir "graphics.cma")
+        Fs_memo.file_exists
+          (Path.as_outside_build_dir_exn
+             (Path.relative stdlib_dir "graphics.cma"))
       in
       if cma then graphics :: base else base
     in
     (* We do not rely on an "exists_if" ocamlfind variable, because it would
        produce an error message mentioning a "hidden" package (which could be
        confusing). *)
-    let+ nums_cma = Fs_memo.file_exists (Path.relative stdlib_dir "nums.cma") in
+    let+ nums_cma =
+      Fs_memo.file_exists
+        (Path.as_outside_build_dir_exn (Path.relative stdlib_dir "nums.cma"))
+    in
     if nums_cma then num :: base else base
   in
   List.filter_map libs ~f:(fun t ->

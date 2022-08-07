@@ -13,15 +13,16 @@ module Watcher : sig
      directly if there is no parent. This is an optimisation that allows us to
      reduce the number of watched paths: typically, the number of directories is
      a lot smaller than the number of files. *)
-  val watch : try_to_watch_via_parent:bool -> Path.t -> unit Memo.t
+  val watch :
+    try_to_watch_via_parent:bool -> Path.Outside_build_dir.t -> unit Memo.t
 
   (* Invalidate a path after receiving an event from the file watcher. *)
-  val invalidate : Path.t -> Memo.Invalidation.t
+  val invalidate : Path.Outside_build_dir.t -> Memo.Invalidation.t
 end = struct
   (* A record of a call to [watch] made while the file watcher was missing. *)
   type watch_record =
-    { accessed_path : Path.t
-    ; path_to_watch : Path.t
+    { accessed_path : Path.Outside_build_dir.t
+    ; path_to_watch : Path.Outside_build_dir.t
     }
 
   (* CR-someday amokhov: We should try to simplify the initialisation of the
@@ -97,6 +98,7 @@ end = struct
           ({ accessed_path; path_to_watch } :: watch_records)
     | No_file_watcher -> ()
     | File_watcher dune_file_watcher ->
+      let path_to_watch = Path.outside_build_dir path_to_watch in
       watch_path dune_file_watcher path_to_watch
 
   (* This comment applies to both memoization tables below.
@@ -108,32 +110,31 @@ end = struct
      on every computation is sometimes necessary. *)
   let memo_for_watching_directly =
     Memo.create "fs_memo_for_watching_directly"
-      ~input:(module Path)
+      ~input:(module Path.Outside_build_dir)
       (fun accessed_path ->
         watch_or_record_path ~accessed_path ~path_to_watch:accessed_path;
         Memo.return ())
 
   let memo_for_watching_via_parent =
     Memo.create "fs_memo_for_watching_via_parent"
-      ~input:(module Path)
+      ~input:(module Path.Outside_build_dir)
       (fun accessed_path ->
         let path_to_watch =
-          Option.value (Path.parent accessed_path) ~default:accessed_path
+          Option.value
+            (Path.Outside_build_dir.parent accessed_path)
+            ~default:accessed_path
         in
         watch_or_record_path ~accessed_path ~path_to_watch;
         Memo.return ())
 
   let watch ~try_to_watch_via_parent path =
-    if Path.is_in_build_dir path then
-      Code_error.raise "Fs_memo.Watcher.watch called on a build path"
-        [ ("path", Path.to_dyn path) ];
     match try_to_watch_via_parent with
     | false -> Memo.exec memo_for_watching_directly path
     | true -> Memo.exec memo_for_watching_via_parent path
 
   module Update_all = Monoid.Function (Path) (Fs_cache.Update_result)
 
-  let update_all : Path.t -> Fs_cache.Update_result.t =
+  let update_all : Path.Outside_build_dir.t -> Fs_cache.Update_result.t =
     let update t path =
       let result = Fs_cache.update t path in
       if !Clflags.debug_fs_cache then
@@ -146,11 +147,13 @@ end = struct
              ]);
       result
     in
-    Update_all.reduce
+    let all =
       [ update Fs_cache.Untracked.path_stat
       ; update Fs_cache.Untracked.file_digest
       ; update Fs_cache.Untracked.dir_contents
       ]
+    in
+    fun p -> Update_all.reduce all (Path.outside_build_dir p)
 
   (* CR-someday amokhov: We share Memo tables for tracking different file-system
      operations. This saves some memory, but leads to recomputing more memoized
@@ -161,13 +164,16 @@ end = struct
     match update_all path with
     | Skipped | Updated { changed = false } -> Memo.Invalidation.empty
     | Updated { changed = true } ->
+      let reason : Memo.Invalidation.Reason.t =
+        Path_changed (Path.outside_build_dir path)
+      in
       Memo.Invalidation.combine
         (Memo.Cell.invalidate
            (Memo.cell memo_for_watching_directly path)
-           ~reason:(Path_changed path))
+           ~reason)
         (Memo.Cell.invalidate
            (Memo.cell memo_for_watching_via_parent path)
-           ~reason:(Path_changed path))
+           ~reason)
 
   let init ~dune_file_watcher =
     match !state with
@@ -196,6 +202,7 @@ end = struct
         state := File_watcher watcher;
         Memo.Invalidation.map_reduce watch_records
           ~f:(fun { accessed_path; path_to_watch } ->
+            let path_to_watch = Path.outside_build_dir path_to_watch in
             watch_path watcher path_to_watch;
             invalidate accessed_path))
 end
@@ -207,7 +214,9 @@ end
    and re-traversed/re-watched again. *)
 let path_stat path =
   let* () = Watcher.watch ~try_to_watch_via_parent:true path in
-  match Fs_cache.read Fs_cache.Untracked.path_stat path with
+  match
+    Fs_cache.read Fs_cache.Untracked.path_stat (Path.outside_build_dir path)
+  with
   | Ok { st_dev = _; st_ino = _; st_kind } as result when st_kind = S_DIR ->
     (* If [path] is a directory, we conservatively watch it directly too,
        because its stats may change in a way that doesn't trigger an event in
@@ -270,15 +279,17 @@ let dir_exists path =
    of [file_digest] seems error-prone. We may need to rethink this decision. *)
 let file_digest ?(force_update = false) path =
   if force_update then (
+    let path = Path.outside_build_dir path in
     Cached_digest.Untracked.invalidate_cached_timestamp path;
     Fs_cache.evict Fs_cache.Untracked.file_digest path);
   let+ () = Watcher.watch ~try_to_watch_via_parent:true path in
-  Fs_cache.read Fs_cache.Untracked.file_digest path
+  Fs_cache.read Fs_cache.Untracked.file_digest (Path.outside_build_dir path)
 
 let dir_contents ?(force_update = false) path =
-  if force_update then Fs_cache.evict Fs_cache.Untracked.dir_contents path;
+  if force_update then
+    Fs_cache.evict Fs_cache.Untracked.dir_contents (Path.outside_build_dir path);
   let+ () = Watcher.watch ~try_to_watch_via_parent:false path in
-  Fs_cache.read Fs_cache.Untracked.dir_contents path
+  Fs_cache.read Fs_cache.Untracked.dir_contents (Path.outside_build_dir path)
 
 (* CR-someday amokhov: For now, we do not cache the result of this operation
    because the result's type depends on [f]. There are only two call sites of
@@ -290,23 +301,23 @@ let tracking_file_digest path =
      be recorded in the [Fs_cache.Untracked.file_digest], so the build will be
      restarted if the digest changes. *)
   let (_ : Cached_digest.Digest_result.t) =
-    Fs_cache.read Fs_cache.Untracked.file_digest path
+    Fs_cache.read Fs_cache.Untracked.file_digest (Path.outside_build_dir path)
   in
   ()
 
 let with_lexbuf_from_file path ~f =
   let+ () = tracking_file_digest path in
-  Io.Untracked.with_lexbuf_from_file path ~f
+  Io.Untracked.with_lexbuf_from_file (Path.outside_build_dir path) ~f
 
 let file_contents path =
   let+ () = tracking_file_digest path in
-  Io.read_file path
+  Io.read_file (Path.outside_build_dir path)
 
 (* When a file or directory is created or deleted, we need to also invalidate
    the parent directory, so that the [dir_contents] queries are re-executed. *)
 let invalidate_path_and_its_parent path =
   Memo.Invalidation.combine (Watcher.invalidate path)
-    (match Path.parent path with
+    (match Path.Outside_build_dir.parent path with
     | None -> Memo.Invalidation.empty
     | Some path -> Watcher.invalidate path)
 
@@ -326,6 +337,7 @@ let invalidate_path_and_its_parent path =
    directory should be added to or removed from the result. *)
 let handle_fs_event ({ kind; path } : Dune_file_watcher.Fs_memo_event.t) :
     Memo.Invalidation.t =
+  let path = Path.as_outside_build_dir_exn path in
   match kind with
   | File_changed -> Watcher.invalidate path
   | Created | Deleted | Unknown -> invalidate_path_and_its_parent path

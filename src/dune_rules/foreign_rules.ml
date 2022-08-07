@@ -105,7 +105,9 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                   ; Pp.textf "Reason: %s." msg
                   ]
               in
-              Action_builder.of_memo @@ Fs_memo.is_directory include_dir
+              Action_builder.of_memo
+              @@ Fs_memo.is_directory
+                   (Path.as_outside_build_dir_exn include_dir)
               >>| function
               | Error msg -> error (Unix_error.Detailed.to_string_hum msg)
               | Ok false ->

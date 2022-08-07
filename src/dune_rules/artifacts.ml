@@ -27,7 +27,8 @@ module Bin = struct
 
   let binary_available t name =
     if not (Filename.is_relative name) then
-      Fs_memo.file_exists (Path.of_filename_relative_to_initial_cwd name)
+      Path.of_filename_relative_to_initial_cwd name
+      |> Path.as_outside_build_dir_exn |> Fs_memo.file_exists
     else
       match String.Map.find t.local_bins name with
       | Some _ -> Memo.return true

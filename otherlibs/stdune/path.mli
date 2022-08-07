@@ -139,9 +139,19 @@ module Outside_build_dir : sig
     | External of External.t
     | In_source_dir of Source.t
 
+  val hash : t -> int
+
+  val equal : t -> t -> bool
+
+  val to_dyn : t -> Dyn.t
+
   val of_string : string -> t
 
+  val to_string : t -> string
+
   val to_string_maybe_quoted : t -> string
+
+  val parent : t -> t option
 end
 
 module Build : sig
@@ -215,6 +225,13 @@ type t = private
   | In_build_dir of Build.t
 
 include Path_intf.S with type t := t
+
+val as_outside_build_dir_exn : t -> Outside_build_dir.t
+
+val destruct_build_dir :
+  t -> [ `Inside of Build.t | `Outside of Outside_build_dir.t ]
+
+val outside_build_dir : Outside_build_dir.t -> t
 
 val hash : t -> int
 

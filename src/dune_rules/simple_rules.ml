@@ -169,7 +169,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let* exists_or_generated =
     match src_in_src with
     | In_build_dir _ -> assert false
-    | External _ -> Fs_memo.dir_exists src_in_src
+    | External ext -> Fs_memo.dir_exists (External ext)
     | In_source_tree src_in_src -> (
       Source_tree.dir_exists src_in_src >>= function
       | true -> Memo.return true

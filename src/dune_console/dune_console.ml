@@ -54,7 +54,7 @@ module Backend = struct
       flush stderr
   end
 
-  module Progress : S = struct
+  module Progress_no_flush : S = struct
     let status_line = ref Pp.nop
 
     let status_line_len = ref 0
@@ -69,24 +69,21 @@ module Backend = struct
       | None ->
         hide_status_line ();
         status_line := Pp.nop;
-        status_line_len := 0;
-        flush stderr
+        status_line_len := 0
       | Some line ->
         let line = Pp.map_tags line ~f:User_message.Print_config.default in
         let line_len = String.length (Format.asprintf "%a" Pp.to_fmt line) in
         hide_status_line ();
         status_line := line;
         status_line_len := line_len;
-        show_status_line ();
-        flush stderr
+        show_status_line ()
 
     let print_if_no_status_line _msg = ()
 
     let print_user_message msg =
       hide_status_line ();
       Dumb_no_flush.print_user_message msg;
-      show_status_line ();
-      flush stderr
+      show_status_line ()
 
     let reset () = Dumb.reset ()
 
@@ -94,8 +91,6 @@ module Backend = struct
   end
 
   let dumb = (module Dumb : S)
-
-  let progress = (module Progress : S)
 
   let main = ref dumb
 
@@ -123,6 +118,71 @@ module Backend = struct
         A.reset_flush_history ();
         B.reset_flush_history ()
     end : S)
+
+  let spawn_thread = Fdecl.create Dyn.opaque
+
+  let threaded (module Base : S) : (module S) =
+    let module T = struct
+      let mutex = Mutex.create ()
+
+      type state =
+        { messages : User_message.t Queue.t
+        ; mutable status_line : User_message.Style.t Pp.t option
+        }
+
+      let state = { messages = Queue.create (); status_line = None }
+
+      let print_user_message m =
+        Mutex.lock mutex;
+        Queue.push state.messages m;
+        Mutex.unlock mutex
+
+      let set_status_line sl =
+        Mutex.lock mutex;
+        state.status_line <- sl;
+        Mutex.unlock mutex
+
+      let print_if_no_status_line _msg = ()
+
+      let reset () =
+        Mutex.lock mutex;
+        Queue.clear state.messages;
+        state.status_line <- None;
+        Base.reset ();
+        Mutex.unlock mutex
+
+      let reset_flush_history () =
+        Mutex.lock mutex;
+        Queue.clear state.messages;
+        state.status_line <- None;
+        Base.reset_flush_history ();
+        Mutex.unlock mutex
+    end in
+    ( Fdecl.get spawn_thread @@ fun () ->
+      let open T in
+      let last = ref (Unix.gettimeofday ()) in
+      let frame_rate = 1. /. 60. in
+      while true do
+        Mutex.lock mutex;
+        while not (Queue.is_empty state.messages) do
+          Base.print_user_message (Queue.pop_exn state.messages)
+        done;
+        Base.set_status_line state.status_line;
+        flush stderr;
+        Mutex.unlock mutex;
+        let now = Unix.gettimeofday () in
+        let elapsed = now -. !last in
+        if elapsed >= frame_rate then last := now
+        else
+          let delta = frame_rate -. elapsed in
+          Unix.sleepf delta;
+          last := delta +. now
+      done );
+    (module T)
+
+  let progress =
+    let t = lazy (threaded (module Progress_no_flush)) in
+    fun () -> Lazy.force t
 end
 
 let print_user_message msg =

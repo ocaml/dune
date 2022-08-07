@@ -434,7 +434,13 @@ end = struct
            without sandboxing. We just need to make sure we clean up all stale
            directory targets before running the rule and then we can discover
            all created files right in the build directory. *)
-        if not (Path.Build.Set.is_empty targets.dirs) then
+        if
+          (not (Path.Build.Set.is_empty targets.dirs))
+          &&
+          match Action.is_useful_to_sandbox action with
+          | Clearly_not -> false
+          | Maybe -> true
+        then
           User_error.raise ~loc
             [ Pp.text "Rules with directory targets must be sandboxed." ]
             ~hints:
@@ -476,10 +482,12 @@ end = struct
           in
           let produced_targets =
             match sandbox with
-            | None ->
+            | None -> (
               (* Directory targets are not allowed for non-sandboxed actions, so
                  the call below should not raise. *)
-              Targets.Produced.of_validated_files_exn targets
+              match Targets.Produced.of_validated targets with
+              | Ok t -> t
+              | Error e -> Dune_filesystem_stubs.Unix_error.Detailed.raise e)
             | Some sandbox ->
               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)

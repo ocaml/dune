@@ -8,25 +8,7 @@ open Stdune
     application as well as composing backends. *)
 
 module Backend : sig
-  module type S = sig
-    (** Format and print a user message to the console *)
-    val print_user_message : User_message.t -> unit
-
-    (** Change the status line *)
-    val set_status_line : User_message.Style.t Pp.t option -> unit
-
-    (** Print a message if the backend does not display the status line. This is
-        needed so that the important status changes show up even when a [dumb]
-        terminal backend is used. *)
-    val print_if_no_status_line : User_message.Style.t Pp.t -> unit
-
-    (** Reset the log output *)
-    val reset : unit -> unit
-
-    val reset_flush_history : unit -> unit
-  end
-
-  type t = (module S)
+  type t
 
   val set : t -> unit
 
@@ -39,11 +21,21 @@ module Backend : sig
   val dumb : t
 
   (** A backend that just displays the status line in the terminal *)
-  val progress : t
+  val progress : unit -> t
+
+  val spawn_thread : ((unit -> unit) -> unit) Fdecl.t
+
+  val threaded : t -> t
 end
 
-(** The main backend for the application *)
-include Backend.S
+(** Format and print a user message to the console *)
+val print_user_message : User_message.t -> unit
+
+(** Reset the log output and (try) to remove the history *)
+val reset_flush_history : unit -> unit
+
+(** Reset the log output *)
+val reset : unit -> unit
 
 (** [print paragraphs] is a short-hand for:
 

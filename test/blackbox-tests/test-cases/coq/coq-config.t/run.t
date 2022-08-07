@@ -1,6 +1,8 @@
-We test the coq-config macro
+Testing the Coq macro
 
   $ dune build
 
-  $ diff  _build/default/config.output _build/default/config.expected
+  $ cd _build/default
 
+Testing the output of the version and configuration values
+  $ diff config.output config.expected

@@ -4,25 +4,26 @@
    config.output
    (progn
     (echo "COQLIB=%{coq:coqlib}\n")
-    (echo "COQCORELIB=%{coq:coqcorelib}\n")
-    (echo "DOCDIR=%{coq:docdir}\n")
-    (echo "OCAMLFIND=%{coq:ocamlfind}\n")
-    (echo "CAMLFLAGS=%{coq:camlflags}\n")
-    (echo "WARN=%{coq:warn}\n")
-    (echo "HASNATDYNLINK=%{coq:hasnatdynlink}\n")
-    (echo "COQ_SRC_SUBDIRS=%{coq:coq_src_subdirs}\n")
     (echo "COQ_NATIVE_COMPILER_DEFAULT=%{coq:coq_native_compiler_default}\n")
     (echo "")
-    (echo "The Coq Proof Assistant, version %{coq:version}\n")
-    (echo "compiled with OCaml %{coq:ocaml-version}\n")
-    (echo "The Coq Proof Assistant, version %{coq:version.major}.%{coq:version.minor}%{coq:version.suffix}\n")
-    (echo "compiled with OCaml %{coq:ocaml-version}\n")))))
+    (echo "%{coq:version} %{coq:ocaml-version}\n")
+    (echo
+     "%{coq:version.major}.%{coq:version.minor}%{coq:version.suffix} %{coq:ocaml-version}\n")))))
 
 (rule
  (action
   (with-outputs-to
    config.expected
    (progn
-    (run %{bin:coqc} --config)
-    (run %{bin:coqc} --version)
-    (run %{bin:coqc} --version)))))
+    (pipe-outputs
+     ; We need to scrub ignored config values
+     (run %{bin:coqc} --config)
+     (run sed "/^COQCORELIB=/d")
+     (run sed "/^DOCDIR=/d")
+     (run sed "/^OCAMLFIND=/d")
+     (run sed "/^CAMLFLAGS=/d")
+     (run sed "/^WARN=/d")
+     (run sed "/^HASNATDYNLINK=/d")
+     (run sed "/^COQ_SRC_SUBDIRS=/d"))
+    (run %{bin:coqc} -print-version)
+    (run %{bin:coqc} -print-version)))))

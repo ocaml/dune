@@ -5,7 +5,7 @@ module Jbuild_plugin : sig
   val create_plugin_wrapper :
        Context.t
     -> exec_dir:Path.t
-    -> plugin:Path.t
+    -> plugin:Path.Outside_build_dir.t
     -> wrapper:Path.Build.t
     -> target:Path.Build.t
     -> unit Memo.t
@@ -74,7 +74,8 @@ end = struct
     Printf.fprintf oc
       "module Jbuild_plugin : sig\n%s\nend = struct\n%s\nend\n# 1 %S\n%s"
       Assets.jbuild_plugin_mli (replace_in_template vars)
-      (Path.to_string plugin) plugin_contents
+      (Path.Outside_build_dir.to_string plugin)
+      plugin_contents
 
   let check_no_requires path str =
     List.iteri (String.split str ~on:'\n') ~f:(fun n line ->
@@ -106,7 +107,7 @@ end = struct
     let+ plugin_contents = Fs_memo.file_contents plugin in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
         write oc ~context ~target ~exec_dir ~plugin ~plugin_contents);
-    check_no_requires plugin plugin_contents
+    check_no_requires (Path.outside_build_dir plugin) plugin_contents
 end
 
 module Script = struct
@@ -141,7 +142,7 @@ module Script = struct
     ensure_parent_dir_exists generated_dune_file;
     let* () =
       Jbuild_plugin.create_plugin_wrapper context ~exec_dir:(Path.source dir)
-        ~plugin:(Path.source file) ~wrapper ~target:generated_dune_file
+        ~plugin:(In_source_dir file) ~wrapper ~target:generated_dune_file
     in
     let context = Option.value context.for_host ~default:context in
     let args =

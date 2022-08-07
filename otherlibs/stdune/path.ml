@@ -546,6 +546,25 @@ module Outside_build_dir = struct
     | External x -> External (External.relative x (Local.to_string y))
 
   let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
+
+  let equal (x : t) (y : t) =
+    match (x, y) with
+    | External x, External y -> External.equal x y
+    | External _, In_source_dir _ -> false
+    | In_source_dir x, In_source_dir y -> Local.equal x y
+    | In_source_dir _, External _ -> false
+
+  let hash = Poly.hash
+
+  let parent = function
+    | In_source_dir t -> (
+      match Local.parent t with
+      | None -> None
+      | Some s -> Some (In_source_dir s))
+    | External t -> (
+      match External.parent t with
+      | None -> None
+      | Some s -> Some (External s))
 end
 
 module Permissions = struct
@@ -903,6 +922,22 @@ let as_in_source_tree_exn t =
     Code_error.raise
       "[as_in_source_tree_exn] called on something not in source tree"
       [ ("t", to_dyn t) ]
+
+let as_outside_build_dir_exn : t -> Outside_build_dir.t = function
+  | In_source_tree s -> In_source_dir s
+  | External s -> External s
+  | In_build_dir path ->
+    Code_error.raise "as_outside_build_dir_exn" [ ("path", Build.to_dyn path) ]
+
+let destruct_build_dir :
+    t -> [ `Inside of Build.t | `Outside of Outside_build_dir.t ] = function
+  | In_source_tree p -> `Outside (In_source_dir p)
+  | External s -> `Outside (External s)
+  | In_build_dir s -> `Inside s
+
+let outside_build_dir : Outside_build_dir.t -> t = function
+  | In_source_dir d -> In_source_tree d
+  | External s -> External s
 
 let as_in_build_dir = function
   | In_build_dir b -> Some b

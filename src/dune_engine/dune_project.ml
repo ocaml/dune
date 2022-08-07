@@ -961,7 +961,7 @@ let load_dune_project ~dir opam_packages ~dir_status : t Memo.t =
   let file = Path.Source.relative dir filename in
   let open Memo.O in
   let* f =
-    Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lexbuf ->
+    Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lexbuf ->
         parse_contents lexbuf ~f:(fun lang ->
             parse ~dir ~lang ~file ~dir_status))
   in

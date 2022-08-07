@@ -27,8 +27,7 @@ module File = struct
 
   module Map = Map.Make (T)
 
-  let of_source_path p =
-    Fs_memo.path_stat (Path.source p) >>| Result.map ~f:of_stats
+  let of_source_path p = Fs_memo.path_stat p >>| Result.map ~f:of_stats
 end
 
 module Dune_file = struct
@@ -94,7 +93,7 @@ module Dune_file = struct
         (Plain, plain)
       | true ->
         let* kind, ast =
-          Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
+          Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lb ->
               let kind, ast =
                 if Dune_lang.Dune_lexer.is_script lb then (Ocaml_script, [])
                 else (Plain, Dune_lang.Parser.parse lb ~mode:Many)
@@ -166,7 +165,7 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path_impl path =
-    Fs_memo.dir_contents (Path.source path) >>= function
+    Fs_memo.dir_contents (In_source_dir path) >>= function
     | Error unix_error ->
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
@@ -191,11 +190,11 @@ end = struct
               let+ is_directory, file =
                 match kind with
                 | S_DIR -> (
-                  File.of_source_path path >>| function
+                  File.of_source_path (In_source_dir path) >>| function
                   | Ok file -> (true, file)
                   | Error _ -> (true, File.dummy))
                 | S_LNK -> (
-                  Fs_memo.path_stat (Path.source path) >>| function
+                  Fs_memo.path_stat (In_source_dir path) >>| function
                   | Ok ({ st_kind = S_DIR; _ } as st) -> (true, File.of_stats st)
                   | Ok _ | Error _ -> (false, File.dummy))
                 | _ -> Memo.return (false, File.dummy)
@@ -489,7 +488,8 @@ end = struct
         (fun (`Is_error is_error, project) ->
           let open Memo.O in
           let+ exists =
-            Dune_project.file project |> Path.source |> Fs_memo.file_exists
+            Path.Outside_build_dir.In_source_dir (Dune_project.file project)
+            |> Fs_memo.file_exists
           in
           if not exists then
             User_warning.emit ~is_error
@@ -590,7 +590,7 @@ end = struct
     let* readdir = Readdir.filter_files readdir project in
     let vcs = get_vcs ~default:Ancestor_vcs ~readdir in
     let* dirs_visited =
-      File.of_source_path path >>| function
+      File.of_source_path (In_source_dir path) >>| function
       | Ok file -> Dirs_visited.singleton path file
       | Error unix_error -> error_unable_to_load ~path unix_error
     in

@@ -82,7 +82,7 @@ let get_dir_triage ~dir =
     Dir_triage.Known (Source { files })
   | External dir_ext ->
     let+ files =
-      Fs_memo.dir_contents dir >>| function
+      Fs_memo.dir_contents (External dir_ext) >>| function
       | Error (Unix.ENOENT, _, _) -> Path.External.Set.empty
       | Error unix_error ->
         User_warning.emit
@@ -279,11 +279,12 @@ let no_rule_found ~loc fn =
       [ ("fn", Path.Build.to_dyn fn) ]
 
 let source_or_external_file_digest path =
-  assert (not (Path.is_in_build_dir path));
   let report_user_error details =
     let+ loc = Current_rule_loc.get () in
     User_error.raise ?loc
-      ([ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+      ([ Pp.textf "File unavailable: %s"
+           (Path.Outside_build_dir.to_string_maybe_quoted path)
+       ]
       @ details)
   in
   Fs_memo.file_digest path >>= function
@@ -302,10 +303,11 @@ let source_or_external_file_digest path =
 let eval_source_file : type a. a Action_builder.eval_mode -> Path.t -> a Memo.t
     =
  fun mode path ->
+  let path_outside_build_dir = Path.as_outside_build_dir_exn path in
   match mode with
   | Lazy -> Memo.return ()
   | Eager ->
-    let+ d = source_or_external_file_digest path in
+    let+ d = source_or_external_file_digest path_outside_build_dir in
     Dep.Fact.file path d
 
 module rec Load_rules : sig
@@ -886,17 +888,16 @@ type rule_or_source =
   | Rule of Path.Build.t * Rule.t
 
 let get_rule_or_source path =
-  let dir = Path.parent_exn path in
-  if Path.is_strict_descendant_of_build_dir dir then
-    let path = Path.as_in_build_dir_exn path in
+  match Path.destruct_build_dir path with
+  | `Outside path ->
+    let+ d = source_or_external_file_digest path in
+    Source d
+  | `Inside path -> (
     get_rule_internal path >>= function
     | Some rule -> Memo.return (Rule (path, rule))
     | None ->
       let* loc = Current_rule_loc.get () in
-      no_rule_found ~loc path
-  else
-    let+ d = source_or_external_file_digest path in
-    Source d
+      no_rule_found ~loc path)
 
 type target_type =
   | File

@@ -38,7 +38,7 @@ module Bin = struct
     let prog = add_exe prog in
     Memo.List.find_map path ~f:(fun dir ->
         let fn = Path.relative dir prog in
-        let+ exists = Fs_memo.file_exists fn in
+        let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn fn) in
         if exists then Some fn else None)
 end
 
@@ -51,7 +51,7 @@ module Program = struct
   let best_path dir program =
     let exe_path program =
       let fn = Path.relative dir (program ^ Bin.exe) in
-      let+ exists = Fs_memo.file_exists fn in
+      let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn fn) in
       if exists then Some fn else None
     in
     if List.mem programs_for_which_we_prefer_opt_ext program ~equal:String.equal

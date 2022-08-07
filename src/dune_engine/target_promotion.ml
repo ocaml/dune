@@ -128,7 +128,7 @@ let promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
       true
   in
   let+ dst_digest_result =
-    Memo.run (Fs_memo.file_digest ~force_update:promoted (Path.source dst))
+    Memo.run (Fs_memo.file_digest ~force_update:promoted (In_source_dir dst))
   in
   match Cached_digest.Digest_result.to_option dst_digest_result with
   | Some dst_digest ->
@@ -183,7 +183,7 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
             (User_message.Annots.singleton User_message.Annots.needs_stack_trace
                ())
       in
-      Memo.run (Fs_memo.path_kind (Path.source into_dir)) >>| function
+      Memo.run (Fs_memo.path_kind (In_source_dir into_dir)) >>| function
       | Ok S_DIR ->
         fun src -> Path.Source.relative into_dir (Path.Build.basename src)
       | Ok _other_kind -> promote_into_error (Pp.textf "%S is not a directory.")
@@ -249,11 +249,14 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
   (* There can be some files or directories left over from earlier builds, so we
      need to remove them from [targets.dirs]. *)
   let remove_stale_files_and_subdirectories ~dir ~expected_filenames =
-    let dst_dir = Path.source (relocate dir) in
+    let dst_dir = relocate dir in
     (* We use a tracked version to subscribe to the correct directory listing.
        In this way, if a user manually creates a file inside a directory target,
        this function will rerun and remove it. *)
-    Memo.run (Fs_memo.dir_contents ~force_update:true dst_dir) >>| function
+    Memo.run (Fs_memo.dir_contents ~force_update:true (In_source_dir dst_dir))
+    >>|
+    let dst_dir = Path.source dst_dir in
+    function
     | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
     | Ok dir_contents ->
       Fs_cache.Dir_contents.iter dir_contents ~f:(function

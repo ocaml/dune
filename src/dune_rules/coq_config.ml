@@ -17,8 +17,6 @@ module Vars : sig
 
   val get_path : t -> string -> Path.t
 
-  val get_bool : t -> ?default:bool -> string -> bool
-
   val of_lines : string list -> (t, User_message.Style.t Pp.t) result
 
   exception E of User_message.Style.t Pp.t
@@ -53,14 +51,6 @@ end = struct
     | None -> fail "Variable %S not found." var
 
   let get_path t var = get t var |> Path.of_string
-
-  let get_bool t ?(default = false) var =
-    match get_opt t var with
-    | None -> default
-    | Some s -> (
-      match String.uncapitalize s with
-      | "true" | "yes" | "1" -> true
-      | _ -> default)
 end
 
 module Version = struct
@@ -76,11 +66,7 @@ module Version = struct
       let regex =
         let open Re in
         seq
-          [ rep digit |> group
-          ; char '.'
-          ; rep digit |> group
-          ; rep any |> group
-          ]
+          [ rep digit |> group; char '.'; rep digit |> group; rep any |> group ]
         |> compile
       in
       let open Result.O in
@@ -102,7 +88,7 @@ module Version = struct
         | None -> Result.Error Pp.(textf "Could not parse int: %S." minor)
       in
       let suffix = Group.get groups 3 in
-      Result.Ok { major; minor; suffix}
+      Result.Ok { major; minor; suffix }
 
     let by_name { major; minor; suffix } name : Value.t option =
       match name with
@@ -160,13 +146,6 @@ end
 type t =
   { version_info : (Version.t, User_message.Style.t Pp.t) Result.t
   ; coqlib : Path.t
-  ; coqcorelib : Path.t
-  ; docdir : Path.t
-  ; ocamlfind : Path.t
-  ; camlflags : string
-  ; warn : string
-  ; hasnatdynlink : bool
-  ; coq_src_subdirs : string list
   ; coq_native_compiler_default : string
   }
 
@@ -197,44 +176,14 @@ let make ~bin =
         ]
   | Ok vars ->
     let coqlib = Vars.get_path vars "COQLIB" in
-    let coqcorelib = Vars.get_path vars "COQCORELIB" in
-    let docdir = Vars.get_path vars "DOCDIR" in
-    let ocamlfind = Vars.get_path vars "OCAMLFIND" in
-    let camlflags = Vars.get vars "CAMLFLAGS" in
-    let warn = Vars.get vars "WARN" in
-    let hasnatdynlink = Vars.get_bool vars "HASNATDYNLINK" in
-    let coq_src_subdirs =
-      Vars.get vars "COQ_SRC_SUBDIRS" |> String.split ~on:' '
-    in
     let coq_native_compiler_default =
       Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
     in
-    { version_info
-    ; coqlib
-    ; coqcorelib
-    ; docdir
-    ; ocamlfind
-    ; camlflags
-    ; warn
-    ; hasnatdynlink
-    ; coq_src_subdirs
-    ; coq_native_compiler_default
-    }
+    { version_info; coqlib; coq_native_compiler_default }
 
-let by_name
-    { version_info
-    ; coqlib
-    ; coqcorelib
-    ; docdir
-    ; ocamlfind
-    ; camlflags
-    ; warn
-    ; hasnatdynlink
-    ; coq_src_subdirs
-    ; coq_native_compiler_default
-    } name : Value.t option =
+let by_name { version_info; coqlib; coq_native_compiler_default } name :
+    Value.t option =
   match name with
-  (* TODO check names *)
   | "version.major"
   | "version.minor"
   | "version.revision"
@@ -242,12 +191,5 @@ let by_name
   | "version"
   | "ocaml-version" -> Version.by_name version_info name
   | "coqlib" -> Some (Path coqlib)
-  | "coqcorelib" -> Some (Path coqcorelib)
-  | "docdir" -> Some (Path docdir)
-  | "ocamlfind" -> Some (Path ocamlfind)
-  | "camlflags" -> Some (String camlflags)
-  | "warn" -> Some (String warn)
-  | "hasnatdynlink" -> Some (Bool hasnatdynlink)
-  | "coq_src_subdirs" -> Some (Strings coq_src_subdirs)
   | "coq_native_compiler_default" -> Some (String coq_native_compiler_default)
   | _ -> None

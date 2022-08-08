@@ -22,6 +22,8 @@ let debug_backtraces b =
   Dune_util.Report_error.report_backtraces b;
   Memo.Debug.track_locations_of_lazy_values := b
 
+let debug_load_dir = ref false
+
 let diff_command = ref None
 
 let promote = ref None

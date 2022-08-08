@@ -22,6 +22,7 @@ type t =
   ; debug_findlib : bool
   ; debug_backtraces : bool
   ; debug_artifact_substitution : bool
+  ; debug_load_dir : bool
   ; debug_digests : bool
   ; wait_for_filesystem_clock : bool
   ; root : Workspace_root.t
@@ -187,6 +188,7 @@ let init ?log_file c =
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
+  Clflags.debug_load_dir := c.debug_load_dir;
   Clflags.debug_digests := c.debug_digests;
   Clflags.debug_fs_cache := c.cache_debug_flags.fs_cache;
   Clflags.wait_for_filesystem_clock := c.wait_for_filesystem_clock;
@@ -745,6 +747,11 @@ let term ~default_root_is_cwd =
       & info
           [ "debug-artifact-substitution" ]
           ~docs ~doc:"Print debugging info about artifact substitution")
+  and+ debug_load_dir =
+    Arg.(
+      value & flag
+      & info [ "debug-load-dir" ] ~docs
+          ~doc:"Print debugging info about directory loading")
   and+ debug_digests =
     Arg.(
       value & flag
@@ -1012,6 +1019,7 @@ let term ~default_root_is_cwd =
   ; debug_findlib
   ; debug_backtraces
   ; debug_artifact_substitution
+  ; debug_load_dir
   ; debug_digests
   ; wait_for_filesystem_clock
   ; capture_outputs = not no_buffer

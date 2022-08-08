@@ -830,6 +830,10 @@ end = struct
         { Loaded.allowed_subdirs = descendants_to_keep; rules_here; aliases }
 
   let load_dir_impl ~dir : Loaded.t Memo.t =
+    if !Clflags.debug_load_dir then
+      Console.print_user_message
+        (User_message.make
+           [ Pp.textf "Loading build directory %s" (Path.to_string dir) ]);
     get_dir_triage ~dir >>= function
     | Known l -> Memo.return l
     | Build_directory x -> load_build_directory_exn x

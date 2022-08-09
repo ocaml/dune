@@ -135,8 +135,13 @@ Print rules: currently works only with Makefiles.
      'mkdir output; cat src_x > output/x; echo y > output/y'
 
   $ dune rules output
-  Error: Printing rules with directory targets is currently not supported
-  [1]
+  ((deps ((File (In_build_dir _build/default/src_x))))
+   (targets ((files ()) (directories (default/output))))
+   (context default)
+   (action
+    (chdir
+     _build/default
+     (bash "mkdir output; cat src_x > output/x; echo y > output/y"))))
 
 Error when requesting a missing subdirectory of a directory target.
 

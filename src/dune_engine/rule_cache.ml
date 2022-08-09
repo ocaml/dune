@@ -122,7 +122,7 @@ module Workspace_local = struct
   let compute_target_digests (targets : Targets.Validated.t) :
       (Digest.t Targets.Produced.t, Miss_reason.t) Result.t =
     match Targets.Produced.of_validated targets with
-    | Error unix_error ->
+    | Error (_, unix_error) ->
       Miss (Error_while_collecting_directory_targets unix_error)
     | Ok targets -> (
       match

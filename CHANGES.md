@@ -14,6 +14,9 @@
 
 - Cinaps actions are now sandboxed by default (#6062, @rgrinberg)
 
+- Allow rules producing directory targets to be not sandboxed (#6056,
+  @rgrinberg)
+
 3.4.1 (26-07-2022)
 ------------------
 

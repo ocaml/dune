@@ -103,7 +103,7 @@ module Produced = struct
   let of_validated =
     let rec collect dir : (unit String.Map.t Path.Build.Map.t, _) result =
       match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
-      | Error _ as error -> error
+      | Error e -> Error (`Directory dir, e)
       | Ok dir_contents ->
         let open Result.O in
         let+ filenames, dirs =
@@ -138,19 +138,22 @@ module Produced = struct
         in
         Ok { files; dirs }
 
-  let of_validated_files_exn (validated : Validated.t) =
-    let dirs =
-      match Path.Build.Set.is_empty validated.dirs with
-      | true -> Path.Build.Map.empty
-      | false ->
-        Code_error.raise
-          "Targets.Produced.of_validated_files_exn: Unexpected directory."
-          [ ("validated", Validated.to_dyn validated) ]
-    in
-    let files =
-      Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ())
-    in
-    { files; dirs }
+  let produced_after_rule_executed_exn ~loc targets =
+    match of_validated targets with
+    | Ok t -> t
+    | Error (`Directory dir, (Unix.ENOENT, _, _)) ->
+      User_error.raise ~loc
+        [ Pp.textf "Rule failed to produce directory %S"
+            (Path.Build.drop_build_context_maybe_sandboxed_exn dir
+            |> Path.Source.to_string_maybe_quoted)
+        ]
+    | Error (`Directory dir, (unix_error, _, _)) ->
+      User_error.raise ~loc
+        [ Pp.textf "Rule produced unreadable directory %S"
+            (Path.Build.drop_build_context_maybe_sandboxed_exn dir
+            |> Path.Source.to_string_maybe_quoted)
+        ; Pp.verbatim (Unix.error_message unix_error)
+        ]
 
   let of_file_list_exn list =
     { files = Path.Build.Map.of_list_exn list; dirs = Path.Build.Map.empty }

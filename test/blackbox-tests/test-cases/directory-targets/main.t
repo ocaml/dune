@@ -24,17 +24,6 @@ Directory targets require an extension.
   > (using directory-targets 0.1)
   > EOF
 
-Directory targets are not allowed for non-sandboxed rules.
-
-  $ dune build output/x
-  File "dune", line 1, characters 0-56:
-  1 | (rule
-  2 |   (targets (dir output))
-  3 |   (action (bash "true")))
-  Error: Rules with directory targets must be sandboxed.
-  Hint: Add (sandbox always) to the (deps ) field of the rule.
-  [1]
-
 Ensure directory targets are produced.
 
   $ cat > dune <<EOF
@@ -122,9 +111,7 @@ Hints for directory targets.
   Hint: did you mean output?
   [1]
 
-Print rules: currently works only with Makefiles.
-
-# CR-someday amokhov: Add support for printing Dune rules.
+Print rules:
 
   $ dune rules -m output | tr '\t' ' '
   _build/default/output: _build/default/src_x

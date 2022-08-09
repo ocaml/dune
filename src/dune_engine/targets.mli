@@ -73,11 +73,13 @@ module Produced : sig
 
   (** Expand [targets : Validated.t] by recursively traversing directory targets
       and collecting all contained files. *)
-  val of_validated : Validated.t -> (unit t, Unix_error.Detailed.t) result
+  val of_validated :
+       Validated.t
+    -> (unit t, [ `Directory of Path.Build.t ] * Unix_error.Detailed.t) result
 
-  (** Return [targets : Validated.t] with the empty map of [dirs]. Raises a code
-      error if [targets.dir] is not empty. *)
-  val of_validated_files_exn : Validated.t -> unit t
+  (** Like [of_validated] but assumes the targets have been just produced by a
+      rule. If some directory targets aren't readable, an error is raised *)
+  val produced_after_rule_executed_exn : loc:Loc.t -> Validated.t -> unit t
 
   (** Populates only the [files] field, leaving [dirs] empty. Raises a code
       error if the list contains duplicates. *)

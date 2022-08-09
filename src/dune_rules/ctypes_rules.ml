@@ -216,7 +216,7 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
         Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes)
       in
       Lib_flags.L.include_paths [ lib ] Mode.Native
-      |> Path.Set.to_list |> List.map ~f:Path.to_string
+      |> Path.Set.to_list_map ~f:Path.to_string
     in
     let include_dirs = ocaml_where :: ctypes_include_dirs in
     List.concat_map include_dirs ~f:(fun dir -> [ "-I"; dir ])

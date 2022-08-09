@@ -125,8 +125,7 @@ let setup_rules_and_return_exe_path t =
 let setup_rules t = Memo.map (setup_rules_and_return_exe_path t) ~f:ignore
 
 let print_toplevel_init_file ~include_paths ~files_to_load =
-  let includes = Path.Set.to_list include_paths in
-  List.iter includes ~f:(fun p ->
+  Path.Set.iter include_paths ~f:(fun p ->
       Printf.printf "#directory %S;;\n" (Path.to_absolute_filename p));
   List.iter files_to_load ~f:(fun p ->
       Printf.printf "#load %S;;\n" (Path.to_absolute_filename p))

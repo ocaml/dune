@@ -358,8 +358,8 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
     let libs_include_paths = Lib_flags.L.include_paths libs_to_include mode in
     let open Command.Args in
     let args =
-      Path.Set.to_list libs_include_paths
-      |> List.map ~f:(fun p -> S [ A "--directory"; Path p ])
+      Path.Set.to_list_map libs_include_paths ~f:(fun p ->
+          S [ A "--directory"; Path p ])
     in
     S args
   in

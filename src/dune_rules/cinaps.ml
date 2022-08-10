@@ -80,8 +80,14 @@ let gen_rules sctx t ~dir ~scope =
   let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
   let* () =
     (* Ask cinaps to produce a .ml file to build *)
+    let sandbox =
+      let project = Scope.project scope in
+      if Dune_project.dune_version project >= (3, 5) then
+        Sandbox_config.needs_sandboxing
+      else Sandbox_config.default
+    in
     Super_context.add_rule sctx ~loc:t.loc ~dir
-      (Command.run ~dir:(Path.build dir) prog
+      (Command.run ~dir:(Path.build dir) prog ~sandbox
          [ A "-staged"
          ; Target cinaps_ml
          ; Deps (List.map cinapsed_files ~f:Path.build)

@@ -25,5 +25,12 @@ Test creating directory targets by symlinking:
   Error: Rule produced a file with unrecognised kind "S_LNK"
   [1]
 
-  $ ls _build/default/symlinked
-
+  $ {
+  > if [ -e _build/default/symlinked ]
+  > then
+  >   echo symlink exists
+  > else
+  >   echo symlink does not exist
+  > fi
+  > }
+  symlink does not exist

@@ -58,6 +58,12 @@ module Run (P : PARAMS) = struct
 
   let expander = Compilation_context.expander cctx
 
+  let sandbox =
+    let scope = Compilation_context.scope cctx in
+    let project = Scope.project scope in
+    if Dune_project.dune_version project < (3, 5) then Sandbox_config.default
+    else Sandbox_config.needs_sandboxing
+
   (* ------------------------------------------------------------------------ *)
 
   (* Naming conventions. *)
@@ -109,7 +115,7 @@ module Run (P : PARAMS) = struct
   let menhir (args : 'a args) :
       Action.Full.t Action_builder.With_targets.t Memo.t =
     Memo.map menhir_binary ~f:(fun prog ->
-        Command.run ~dir:(Path.build build_dir) prog args)
+        Command.run ~sandbox ~dir:(Path.build build_dir) prog args)
 
   let rule ?(mode = stanza.mode) :
       Action.Full.t Action_builder.With_targets.t -> unit Memo.t =

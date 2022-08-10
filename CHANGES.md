@@ -20,6 +20,8 @@
 - Introduce a `dirs` field in the `install` stanza to install entire
   directories (#5097, fixes #5059, @rgrinberg)
 
+- Menhir rules are now sandboxed by default (#6076, @rgrinberg)
+
 - Allow rules producing directory targets to create symlinks (#6077, fixes
   #5945, @rgrinberg)
 

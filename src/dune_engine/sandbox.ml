@@ -158,18 +158,10 @@ let rename_optional_file ~src ~dst =
     | exception Unix.Unix_error (ENOENT, _, _) -> ()
     | () -> ())
 
-(* Recursively move regular files from [src] to [dst] and return the set of
-   moved files. *)
-let rename_dir_recursively ~loc ~src_dir ~dst_dir =
+(* Recursively collect regular files from [src] to [dst] and return the set of
+   of files collected. *)
+let collect_dir_recursively ~loc ~src_dir ~dst_dir =
   let rec loop ~src_dir ~dst_dir =
-    (match Fpath.mkdir (Path.Build.to_string dst_dir) with
-    | Created -> ()
-    | Already_exists ->
-      (* We clean up all targets (including directory targets) before running an
-         action, so this branch should be unreachable. *)
-      Code_error.raise "Stale directory target in the build directory"
-        [ ("dst_dir", Path.Build.to_dyn dst_dir) ]
-    | Missing_parent_directory -> assert false);
     match
       Dune_filesystem_stubs.read_directory_with_kinds
         (Path.Build.to_string src_dir)
@@ -177,11 +169,7 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
     | Ok files ->
       List.map files ~f:(fun (file, kind) ->
           match (kind : File_kind.t) with
-          | S_REG ->
-            let src = Path.Build.relative src_dir file in
-            let dst = Path.Build.relative dst_dir file in
-            Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
-            Appendable_list.singleton (dst_dir, file)
+          | S_REG -> Appendable_list.singleton (dst_dir, file)
           | S_DIR ->
             loop
               ~src_dir:(Path.Build.relative src_dir file)
@@ -245,7 +233,15 @@ let move_targets_to_build_dir t ~loc ~should_be_skipped
         rename_optional_file ~src:(map_path t target) ~dst:target);
   let discovered_targets =
     Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
-        rename_dir_recursively ~loc ~src_dir:(map_path t target) ~dst_dir:target)
+        let src_dir = map_path t target in
+        let files = collect_dir_recursively ~loc ~src_dir ~dst_dir:target in
+        if Path.Untracked.exists (Path.build target) then
+          (* We clean up all targets (including directory targets) before running an
+             action, so this branch should be unreachable. *)
+          Code_error.raise "Stale directory target in the build directory"
+            [ ("dst_dir", Path.Build.to_dyn target) ];
+        Path.rename (Path.build src_dir) (Path.build target);
+        files)
     |> Appendable_list.concat |> Appendable_list.to_list
   in
   Targets.Produced.expand_validated_exn targets discovered_targets

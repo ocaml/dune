@@ -12,6 +12,8 @@
 - Do not ignore rules marked `(promote (until-clean))` when
   `--ignore-promoted-rules` (or `-p`) is passed. (#6010, fixes #4401, @emillon)
 
+- Cinaps actions are now sandboxed by default (#6062, @rgrinberg)
+
 3.4.1 (26-07-2022)
 ------------------
 

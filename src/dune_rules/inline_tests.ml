@@ -229,7 +229,15 @@ include Sub_system.Register_end_point (struct
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in
            let open Action_builder.O in
-           let deps, sandbox = Dep_conf_eval.unnamed info.deps ~expander in
+           let deps, sandbox =
+             let sandbox =
+               let project = Scope.project scope in
+               if Dune_project.dune_version project < (3, 5) then
+                 Sandbox_config.no_special_requirements
+               else Sandbox_config.needs_sandboxing
+             in
+             Dep_conf_eval.unnamed ~sandbox info.deps ~expander
+           in
            let+ () = deps
            and+ () = Action_builder.paths source_files
            and+ () = Action_builder.path exe

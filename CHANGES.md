@@ -25,6 +25,8 @@
 - Allow rules producing directory targets to create symlinks (#6077, fixes
   #5945, @rgrinberg)
 
+- Inline tests are now sandboxed by default (#6079, @rgrinberg)
+
 3.4.1 (26-07-2022)
 ------------------
 

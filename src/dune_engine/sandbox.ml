@@ -169,6 +169,9 @@ let collect_dir_recursively ~loc ~src_dir ~dst_dir =
     | Ok files ->
       List.map files ~f:(fun (file, kind) ->
           match (kind : File_kind.t) with
+          | S_LNK
+            (* TODO symlinks outside of the sandbox are going to be broken,
+               but users shouldn't be doing this anyway. *)
           | S_REG -> Appendable_list.singleton (dst_dir, file)
           | S_DIR ->
             loop

@@ -16,21 +16,14 @@ Test creating directory targets by symlinking:
   $ mkdir bar && touch bar/foo
 
   $ dune build ./symlinked
-  File "dune", line 1, characters 0-156:
-  1 | (rule
-  2 |  (targets (dir symlinked))
-  3 |  ;; not exactly correcty, but it's just a test
-  4 |  (deps bar/foo (sandbox always))
-  5 |  (action (system "ln -s ./bar symlinked")))
-  Error: Rule produced a file with unrecognised kind "S_LNK"
-  [1]
 
   $ {
-  > if [ -e _build/default/symlinked ]
+  > path=_build/default/symlinked
+  > if [ -e $path ]
   > then
-  >   echo symlink exists
+  >   printf "symlink exists and points to: %s" "$(readlink $path)"
   > else
   >   echo symlink does not exist
   > fi
   > }
-  symlink does not exist
+  symlink exists and points to: ./bar

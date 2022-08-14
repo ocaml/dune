@@ -22,3 +22,12 @@ Test that (ignore_files ...) works with a wildcard pattern
   $ dune exec --root test2 ./test2.exe
   Entering directory 'test2'
   Hi :)
+
+Test that (ignore_files ...) works with unmatched wildcard patterns
+
+  $ dune build --root test3 test.exe
+  Entering directory 'test3'
+
+  $ dune exec --root test3 ./test.exe
+  Entering directory 'test3'
+  Hello world!

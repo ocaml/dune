@@ -1,0 +1,5 @@
+(ignore_files test.exe)
+(ignore_files *.o)
+
+(executable
+ (name test))

@@ -161,15 +161,17 @@ end = struct
               let context = Super_context.context sctx in
               Some (Path.Build.append_source context.build_dir file))
       in
-      let action =
-        Action_builder.With_targets.return (Action.Full.make Action.empty)
-        |> Action_builder.With_targets.add ~file_targets:files
-      in
-      let* () =
-        Super_context.add_rule ~loc ~fake_rule:true sctx
-          ~mode:Ignore_source_files ~dir action
-      in
-      Memo.return { merlin = None; cctx = None; js = None; source_dirs }
+      if List.is_empty files then Memo.return empty_none
+      else
+        let action =
+          Action_builder.With_targets.return (Action.Full.make Action.empty)
+          |> Action_builder.With_targets.add ~file_targets:files
+        in
+        let* () =
+          Super_context.add_rule ~loc ~fake_rule:true sctx
+            ~mode:Ignore_source_files ~dir action
+        in
+        Memo.return { merlin = None; cctx = None; js = None; source_dirs }
     | Install i ->
       let+ () = files_to_install i in
       empty_none

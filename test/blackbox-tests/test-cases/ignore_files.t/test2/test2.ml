@@ -1,0 +1,1 @@
+let () = Format.printf "Hi :)@."

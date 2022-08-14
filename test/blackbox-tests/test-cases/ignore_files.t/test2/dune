@@ -1,0 +1,9 @@
+(ignore_files *.exe)
+
+(executable
+ (name test)
+ (modules test))
+
+(executable
+ (name test2)
+ (modules test2))

@@ -1,0 +1,4 @@
+(ignore_files test.exe)
+
+(executable
+ (name test))

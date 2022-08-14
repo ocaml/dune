@@ -712,6 +712,8 @@ end = struct
               , String.Set.union acc_dirnames target_dirnames )
             | Standard | Fallback -> (acc_files, acc_dirnames))
       in
+      (* Filter out fake rules *)
+      let rules = List.filter rules ~f:(fun rule -> not rule.Rule.fake_rule) in
       (* Take into account the source files *)
       let* to_copy, source_dirs =
         match context_or_install with

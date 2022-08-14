@@ -63,6 +63,7 @@ type t = private
   ; info : Info.t
   ; loc : Loc.t
   ; dir : Path.Build.t  (** Directory where all the targets are produced. *)
+  ; fake_rule : bool  (** True if this rule should not be executed. *)
   }
 
 include Comparable_intf.S with type key := t
@@ -79,6 +80,7 @@ val make :
      ?mode:Mode.t
   -> context:Build_context.t option
   -> ?info:Info.t
+  -> ?fake_rule:bool
   -> targets:Targets.t
   -> Action.Full.t Action_builder.t
   -> t

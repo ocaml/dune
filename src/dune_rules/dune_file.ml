@@ -1995,6 +1995,22 @@ module Copy_files = struct
       }
 end
 
+module Ignore_files = struct
+  type t = { files : String_with_vars.t }
+
+  let long_form =
+    let check = Dune_lang.Syntax.since Stanza.syntax (3, 5) in
+    let+ files = field "files" (check >>> String_with_vars.decode) in
+    { files }
+
+  let decode =
+    peek_exn >>= function
+    | List _ -> fields long_form
+    | _ ->
+      let+ files = String_with_vars.decode in
+      { files }
+end
+
 module Documentation = struct
   type t =
     { loc : Loc.t
@@ -2144,6 +2160,7 @@ type Stanza.t +=
   | Install of Install_conf.t
   | Alias of Alias_conf.t
   | Copy_files of Copy_files.t
+  | Ignore_files of Ignore_files.t
   | Documentation of Documentation.t
   | Tests of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t
@@ -2202,6 +2219,9 @@ module Stanzas = struct
     ; ( "copy_files#"
       , let+ x = Copy_files.decode in
         [ Copy_files { x with add_line_directive = true } ] )
+    ; ( "ignore_files"
+      , let+ x = Ignore_files.decode in
+        [ Ignore_files x ] )
     ; ( "include"
       , let+ loc = loc
         and+ fn = relative_file in

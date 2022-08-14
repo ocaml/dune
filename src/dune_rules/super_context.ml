@@ -222,14 +222,15 @@ let extend_action t ~dir build =
        | Chdir _ as a -> a
        | a -> Chdir (Path.build (Env_tree.context t).build_dir, a))
 
-let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
+let make_rule t ?fake_rule ?mode ?loc ~dir
+    { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
-  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc)
+  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc) ?fake_rule
     ~context:(Some (Context.build_context (Env_tree.context t)))
     ~targets build
 
-let add_rule t ?mode ?loc ~dir build =
-  let rule = make_rule t ?mode ?loc ~dir build in
+let add_rule t ?fake_rule ?mode ?loc ~dir build =
+  let rule = make_rule t ?fake_rule ?mode ?loc ~dir build in
   Rules.Produce.rule rule
 
 let add_rule_get_targets t ?mode ?loc ~dir build =

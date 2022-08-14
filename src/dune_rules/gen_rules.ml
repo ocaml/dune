@@ -131,6 +131,27 @@ end = struct
         else None
       in
       Memo.return { merlin = None; cctx = None; js = None; source_dirs }
+    | Ignore_files { files = glob; _ } ->
+      let loc = String_with_vars.loc glob in
+      let* src_glob = Expander.No_deps.expand_str expander glob in
+      let source_dirs =
+        if Filename.is_relative src_glob then
+          match Path.relative (Path.source src_dir) src_glob ~error_loc:loc with
+          | In_source_tree s -> Some (Path.Source.parent_exn s)
+          | In_build_dir _ | External _ -> None
+        else None
+      in
+      let* path = Expander.No_deps.expand_path expander glob in
+      let action =
+        Action_builder.With_targets.return (Action.Full.make Action.empty)
+        |> Action_builder.With_targets.add
+             ~file_targets:[ Path.as_in_build_dir_exn path ]
+      in
+      let* () =
+        Super_context.add_rule ~loc ~fake_rule:true sctx
+          ~mode:Ignore_source_files ~dir action
+      in
+      Memo.return { merlin = None; cctx = None; js = None; source_dirs }
     | Install i ->
       let+ () = files_to_install i in
       empty_none

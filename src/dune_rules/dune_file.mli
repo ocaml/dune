@@ -301,6 +301,10 @@ module Copy_files : sig
     }
 end
 
+module Ignore_files : sig
+  type t = { files : String_with_vars.t }
+end
+
 module Rule : sig
   type t =
     { targets : String_with_vars.t Targets_spec.t
@@ -429,6 +433,7 @@ type Stanza.t +=
   | Install of Install_conf.t
   | Alias of Alias_conf.t
   | Copy_files of Copy_files.t
+  | Ignore_files of Ignore_files.t
   | Documentation of Documentation.t
   | Tests of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t

@@ -523,9 +523,19 @@ end = struct
     Memo.exec memo
 
   let execute_rule_impl ~rule_kind rule =
-    let { Rule.id = _; targets; dir; context; mode; action; info = _; loc } =
+    let { Rule.id = _
+        ; targets
+        ; dir
+        ; context
+        ; mode
+        ; action
+        ; info = _
+        ; loc
+        ; fake_rule
+        } =
       rule
     in
+    assert (not fake_rule);
     (* We run [State.start_rule_exn ()] entirely for its side effect, so one
        might be tempted to use [Memo.of_non_reproducible_fiber] here but that is
        wrong, because that would force us to rerun [execute_rule_impl] on every

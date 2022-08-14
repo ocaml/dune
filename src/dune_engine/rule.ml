@@ -59,6 +59,7 @@ module T = struct
     ; info : Info.t
     ; loc : Loc.t
     ; dir : Path.Build.t
+    ; fake_rule : bool
     }
 
   let compare a b = Id.compare a.id b.id
@@ -76,8 +77,8 @@ end
 include T
 include Comparable.Make (T)
 
-let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
-    action =
+let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal)
+    ?(fake_rule = false) ~targets action =
   let action = Action_builder.memoize "Rule.make" action in
   let report_error ?(extra_pp = []) message =
     match info with
@@ -113,7 +114,7 @@ let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
            (Path.build (Path.Build.relative dir "_unknown_")))
     | Source_file_copy p -> Loc.in_file (Path.source p)
   in
-  { id = Id.gen (); targets; context; action; mode; info; loc; dir }
+  { id = Id.gen (); targets; context; action; mode; info; loc; dir; fake_rule }
 
 let set_action t action =
   let action = Action_builder.memoize "Rule.set_action" action in

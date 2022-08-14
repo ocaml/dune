@@ -141,11 +141,29 @@ end = struct
           | In_build_dir _ | External _ -> None
         else None
       in
-      let* path = Expander.No_deps.expand_path expander glob in
+      let* glob_in_src =
+        let+ src_glob = Expander.No_deps.expand_str expander glob in
+        if Filename.is_relative src_glob then
+          Path.relative (Path.source src_dir) src_glob ~error_loc:loc
+        else Path.external_ (Path.External.of_string src_glob)
+      in
+      let src_in_src = Path.parent_exn glob_in_src in
+      let glob = Path.basename glob_in_src |> Glob.of_string_exn loc in
+      let* files =
+        Build_system.build_pred (File_selector.of_glob ~dir:src_in_src glob)
+      in
+      let files = Dep.Fact.Files.paths files |> Path.Map.keys in
+      let files =
+        List.filter_map files ~f:(fun file ->
+            match Path.as_in_source_tree file with
+            | None -> None
+            | Some file ->
+              let context = Super_context.context sctx in
+              Some (Path.Build.append_source context.build_dir file))
+      in
       let action =
         Action_builder.With_targets.return (Action.Full.make Action.empty)
-        |> Action_builder.With_targets.add
-             ~file_targets:[ Path.as_in_build_dir_exn path ]
+        |> Action_builder.With_targets.add ~file_targets:files
       in
       let* () =
         Super_context.add_rule ~loc ~fake_rule:true sctx

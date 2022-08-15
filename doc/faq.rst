@@ -120,5 +120,5 @@ file:
   val version : unit -> string
   val usage : unit -> unit
 
-The ``ocaml_print-intf`` program has special support for Dune, so it will
+The ``ocaml-print-intf`` program has special support for Dune, so it will
 automatically understand external dependencies.

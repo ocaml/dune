@@ -1,3 +1,5 @@
+(dirs :standard \ result)
+
 (rule
  (copy dune-private-libs.opam.template dune-configurator.opam.template))
 

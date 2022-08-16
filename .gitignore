@@ -24,5 +24,6 @@ _perf
 dune.exe
 Makefile.dev
 src/dune_rules/setup.ml
+result
 
 .DS_Store

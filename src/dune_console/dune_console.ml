@@ -31,7 +31,7 @@ module Backend = struct
 
     let reset () = prerr_string "\x1b[H\x1b[2J"
 
-    let reset_flush_history () = prerr_string "\x1bc"
+    let reset_flush_history () = prerr_string "\x1b[1;1H\x1b[2J\x1b[3J"
   end
 
   module Dumb : S = struct

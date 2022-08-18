@@ -1,0 +1,3 @@
+(cram
+ (applies_to envs-and-contexts)
+ (deps ${bin:opam}))

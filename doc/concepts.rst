@@ -1186,12 +1186,13 @@ an :ref:`install` stanza.
 
 .. _foreign-sources-and-archives:
 
-Foreign Sources and Archives
-============================
+Foreign Sources, Archives and Objects
+=====================================
 
 Dune provides basic support for including foreign source files as well
 as archives of foreign object files into OCaml projects via the
-``foreign_stubs`` and ``foreign_archives`` fields.
+``foreign_stubs`` and ``foreign_archives`` fields. Individual object
+files can also be included via the ``foreign_objects`` field.
 
 .. _foreign-stubs:
 
@@ -1312,6 +1313,39 @@ foreign archive is a bit like a foreign library, hence the name of the stanza.
 Foreign archives are particularly useful when embedding a library written in
 a foreign language and/or built with another build system. See
 :ref:`foreign-sandboxing` for more details.
+
+
+.. _foreign-objects:
+
+Foreign Objects
+---------------
+
+It's possible to specify native object files to be packaged with OCaml
+libraries or linked into OCaml executables. Do this by using the
+``foreign_objects`` field of the ``library`` or ``executable`` stanzas.
+For example:
+
+.. code:: scheme
+
+    (executable
+     (public_name main)
+     (foreign_objects foo bar))
+
+    (rule
+     (targets foo.o bar.o)
+     (deps foo.c bar.c)
+     (action (run ocamlopt %{deps})))
+
+This example builds an executable which is linked against a pair of native
+object files, ``foo.o`` and ``bar.o``. The ``foreign_objects`` field takes a
+list of object names, which correspond to the object file names with their path
+and extension omitted.
+
+In this example, the sources corresponding to the objects (``foo.c`` and
+``bar.c``)  are assumed to be present in the same directory as the OCaml source
+code, and a custom ``rule`` is used to compile the C source code into object
+files using ``ocamlopt``. This is not necessary; one can instead compile foreign
+object files manually and place them next to the OCaml source code.
 
 .. _flags-flow:
 

@@ -186,3 +186,15 @@ module Sources : sig
       -> t
   end
 end
+
+module Objects : sig
+  type t
+
+  val empty : t
+
+  val is_empty : t -> bool
+
+  val decode : t Dune_lang.Decoder.t
+
+  val build_paths : t -> ext_obj:string -> dir:Path.Build.t -> Path.Build.t list
+end

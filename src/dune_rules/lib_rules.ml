@@ -85,6 +85,10 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
               ; Dyn
                   (Action_builder.map ctypes_cclib_flags ~f:(fun x ->
                        Command.quote_args "-cclib" (map_cclibs x)))
+              ; Deps
+                  (Foreign.Objects.build_paths lib.buildable.foreign_objects
+                     ~ext_obj:ctx.lib_config.ext_obj ~dir
+                  |> List.map ~f:Path.build)
               ]))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
@@ -226,11 +230,17 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     let name = Library.best_name lib in
     Foreign_sources.for_lib foreign_sources ~name
   in
-  let* lib_o_files =
+  let* lib_built_o_files =
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires ~dir_contents
       ~foreign_sources
     |> Memo.parallel_map ~f:(Memo.map ~f:Path.build)
   in
+  let lib_foreign_o_files =
+    let { Lib_config.ext_obj; _ } = (Super_context.context sctx).lib_config in
+    Foreign.Objects.build_paths lib.buildable.foreign_objects ~ext_obj ~dir
+    |> List.map ~f:Path.build
+  in
+  let lib_o_files = lib_built_o_files @ lib_foreign_o_files in
   let* () = Check_rules.add_files sctx ~dir lib_o_files in
   match vlib_stubs_o_files @ lib_o_files with
   | [] -> Memo.return ()

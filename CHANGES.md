@@ -33,6 +33,9 @@
   directories to the include paths sourced from a file. (#6058, fixes #3993,
   @gridbugs)
 
+- Support `(foreign_objects ...)` field in `(executable ...)` and `(library
+  ...)` stanzas (#6084, fixes #4129, @gridbugs)
+
 3.4.1 (26-07-2022)
 ------------------
 

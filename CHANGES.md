@@ -27,6 +27,8 @@
 
 - Inline tests are now sandboxed by default (#6079, @rgrinberg)
 
+- Fix build-info version when used with flambda (#6089, fixes #6075, @jberdine)
+
 3.4.1 (26-07-2022)
 ------------------
 

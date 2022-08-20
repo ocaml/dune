@@ -101,7 +101,7 @@ let promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
      the tracked [Fs_memo.file_digest] to subscribe to the promotion result. *)
   let* promoted =
     match
-      Fs_cache.read Fs_cache.Untracked.file_digest (Path.source dst)
+      Fs_cache.read Fs_cache.Untracked.file_digest (In_source_dir dst)
       |> Cached_digest.Digest_result.to_option
     with
     | Some dst_digest when Digest.equal src_digest dst_digest ->
@@ -206,17 +206,18 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
         (User_message.Annots.singleton User_message.Annots.needs_stack_trace ())
   in
   let create_directory_if_needed ~dir =
-    let dst_dir = Path.source (relocate dir) in
+    let dst_dir = relocate dir in
     (* It is OK to use [Untracked.path_stat] on [dst_dir] here because below we
        will use [Fs_memo.dir_contents] to subscribe to [dst_dir]'s contents, so
        Dune will notice its deletion. Furthermore, if we used a tracked version,
        [Path.mkdir_p] below would generate an unnecessary file-system event. *)
-    match Fs_cache.(read Untracked.path_stat) dst_dir with
+    match Fs_cache.(read Untracked.path_stat) (In_source_dir dst_dir) with
     | Ok { st_kind; _ } when st_kind = S_DIR -> ()
-    | Error (ENOENT, _, _) -> Path.mkdir_p dst_dir
+    | Error (ENOENT, _, _) -> Path.mkdir_p (Path.source dst_dir)
     | Ok _ | Error _ -> (
       (* Try to delete any unexpected stuff out of the way. In future, we might
          want to make this aggressive cleaning behaviour conditional. *)
+      let dst_dir = Path.source dst_dir in
       match
         Unix_error.Detailed.catch
           (fun () ->

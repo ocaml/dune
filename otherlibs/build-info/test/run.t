@@ -100,9 +100,9 @@ Check what the generated build info module looks like:
       None
   [@@inline never]
   
-  let p1 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:a%%%%%%%%%%%%%%%%%%%%%%%%%%"
-  let p2 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:b%%%%%%%%%%%%%%%%%%%%%%%%%%"
-  let p0 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:c%%%%%%%%%%%%%%%%%%%%%%%%%%"
+  let p1 = eval (Sys.opaque_identity "%%DUNE_PLACEHOLDER:64:vcs-describe:1:a%%%%%%%%%%%%%%%%%%%%%%%%%%")
+  let p2 = eval (Sys.opaque_identity "%%DUNE_PLACEHOLDER:64:vcs-describe:1:b%%%%%%%%%%%%%%%%%%%%%%%%%%")
+  let p0 = eval (Sys.opaque_identity "%%DUNE_PLACEHOLDER:64:vcs-describe:1:c%%%%%%%%%%%%%%%%%%%%%%%%%%")
   
   let version = p0
   

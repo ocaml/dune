@@ -378,7 +378,6 @@ module Shared = struct
     | None -> (
       let missing, errors =
         let process_target target (missing, errors) =
-          let expected_syscall_path = Path.to_string (Path.build target) in
           match compute_digest target with
           | Ok (_ : Digest.t) -> (missing, errors)
           | No_such_file -> (target :: missing, errors)
@@ -401,13 +400,17 @@ module Shared = struct
             (missing, (target, Unix_error.Detailed.pp unix_error) :: errors)
           | Error exn ->
             let error =
-              match exn with
-              | Sys_error msg ->
-                Pp.verbatim
-                  (String.drop_prefix_if_exists
-                     ~prefix:(expected_syscall_path ^ ": ")
-                     msg)
-              | exn -> Pp.verbatim (Printexc.to_string exn)
+              Pp.verbatim
+                (match exn with
+                | Sys_error msg ->
+                  let prefix =
+                    let expected_syscall_path =
+                      Path.to_string (Path.build target)
+                    in
+                    expected_syscall_path ^ ": "
+                  in
+                  String.drop_prefix_if_exists ~prefix msg
+                | exn -> Printexc.to_string exn)
             in
             (missing, (target, error) :: errors)
         in

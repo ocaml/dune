@@ -1,7 +1,8 @@
 open Import
 
-(** A cached file-system operation on a [Path.t] whose result type is ['a]. For
-    example, an operation to check if a path exists returns ['a = bool].
+(** A cached file-system operation on a [Path.Outside_build_dir.t] whose result
+    type is ['a]. For example, an operation to check if a path exists returns
+    ['a = bool].
 
     Currently we do not expose a way to construct such cached operations; see
     the [Untracked] module for a few predefined ones. *)
@@ -10,10 +11,10 @@ type 'a t
 (** If the cache contains the result of applying an operation to a path, return
     it. Otherwise, perform the operation, store the result in the cache, and
     then return it. *)
-val read : 'a t -> Path.t -> 'a
+val read : 'a t -> Path.Outside_build_dir.t -> 'a
 
 (** Evict an entry from the cache. *)
-val evict : 'a t -> Path.t -> unit
+val evict : 'a t -> Path.Outside_build_dir.t -> unit
 
 (** Result of updating a cache entry. *)
 module Update_result : sig
@@ -30,7 +31,7 @@ module Update_result : sig
 end
 
 (** Perform an operation and update the result stored in the cache. *)
-val update : 'a t -> Path.t -> Update_result.t
+val update : 'a t -> Path.Outside_build_dir.t -> Update_result.t
 
 (** This module caches only a subset of fields of [Unix.stats] because other
     fields are currently unused.

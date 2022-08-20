@@ -152,6 +152,8 @@ module Outside_build_dir : sig
   val to_string_maybe_quoted : t -> string
 
   val parent : t -> t option
+
+  module Table : Hashtbl.S with type key = t
 end
 
 module Build : sig

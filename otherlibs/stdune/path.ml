@@ -565,6 +565,16 @@ module Outside_build_dir = struct
       match External.parent t with
       | None -> None
       | Some s -> Some (External s))
+
+  module Table = Hashtbl.Make (struct
+    type nonrec t = t
+
+    let hash = Poly.hash
+
+    let equal = Poly.equal
+
+    let to_dyn = to_dyn
+  end)
 end
 
 module Permissions = struct

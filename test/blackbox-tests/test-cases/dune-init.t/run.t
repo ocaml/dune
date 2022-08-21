@@ -466,13 +466,8 @@ In particular, the dune-project file has the expected content:
 
 We can build and install the project:
 
-  $ dune build --root test_lib_proj @install --display short
+  $ dune build --root test_lib_proj @install
   Entering directory 'test_lib_proj'
-        ocamlc lib/.test_lib_proj.objs/byte/test_lib_proj.{cmi,cmo,cmt}
-      ocamlopt lib/.test_lib_proj.objs/native/test_lib_proj.{cmx,o}
-        ocamlc lib/test_lib_proj.cma
-      ocamlopt lib/test_lib_proj.{a,cmxa}
-      ocamlopt lib/test_lib_proj.cmxs
 
 And the opam file will be generated as expected
 

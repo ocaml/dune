@@ -13,7 +13,7 @@ Generate the source of an executable in a subdir:
   > (executable (name bar))
   > EOF
 
-  $ dune exec --display short ./bar.exe
+  $ dune exec ./bar.exe
   File "dune", line 5, characters 18-21:
   5 | (executable (name bar))
                         ^^^

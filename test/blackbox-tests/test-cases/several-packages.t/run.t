@@ -5,10 +5,9 @@ displayed. This can happen for:
 
   $ dune build --root executable
   Entering directory 'executable'
-  File "dune", line 1, characters 0-43:
+  File "dune", line 1, characters 0-41:
   1 | (executable
-  2 |   (public_name an_executable)
-  3 | )
+  2 |  (public_name an_executable))
   Error: I can't determine automatically which package this stanza is for.
   I have the choice between these ones:
   - pkg1 (because of pkg1.opam)
@@ -34,11 +33,10 @@ displayed. This can happen for:
 
   $ dune build --root install
   Entering directory 'install'
-  File "dune", line 1, characters 0-44:
+  File "dune", line 1, characters 0-43:
   1 | (install
   2 |  (section etc)
-  3 |  (files file.conf)
-  4 | )
+  3 |  (files file.conf))
   Error: I can't determine automatically which package this stanza is for.
   I have the choice between these ones:
   - pkg1 (because of pkg1.opam)

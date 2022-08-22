@@ -1,3 +1,2 @@
 (executable
-  (public_name an_executable)
-)
+ (public_name an_executable))

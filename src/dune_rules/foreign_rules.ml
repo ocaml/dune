@@ -18,89 +18,90 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
     let+ lib = Lib.DB.resolve (Scope.libs scope) (loc, lib_name) in
     Lib_info.src_dir (Lib.info lib)
   in
-  Command.Args.S
-    (List.map stubs.include_dirs ~f:(fun include_dir ->
-         Resolve.Memo.args
-           (let open Resolve.Memo.O in
-           let+ loc, include_dir =
-             match (include_dir : Foreign.Stubs.Include_dir.t) with
-             | Dir dir ->
-               Resolve.Memo.return
-                 (String_with_vars.loc dir, Expander.expand_path expander dir)
-             | Lib (loc, lib_name) ->
-               let+ lib_dir = lib_dir loc lib_name in
-               (loc, Action_builder.return lib_dir)
-           in
-           Command.Args.Dyn
-             (let open Action_builder.O in
-             let* include_dir = include_dir in
-             let+ dep_args =
-               match Path.extract_build_context_dir include_dir with
-               | None ->
-                 (* This branch corresponds to an external directory. The
-                    current implementation tracks its contents
-                    NON-recursively. *)
-                 (* TODO: Track the contents recursively. One way to implement
-                    this is to change [Build_system.Loaded.Non_build] so that it
-                    contains not only files but also directories and traverse
-                    them recursively in [Build_system.Exported.Pred]. *)
-                 let+ () =
-                   let error msg =
-                     User_error.raise ~loc
-                       [ Pp.textf "Unable to read the include directory."
-                       ; Pp.textf "Reason: %s." msg
-                       ]
-                   in
-                   Action_builder.of_memo @@ Fs_memo.is_directory include_dir
-                   >>| function
-                   | Error msg -> error (Unix_error.Detailed.to_string_hum msg)
-                   | Ok false ->
-                     error
-                       (Printf.sprintf "%S is not a directory"
-                          (Path.to_string include_dir))
-                   | Ok true -> ()
-                 in
-                 let deps =
-                   Dep.Set.singleton
-                     (Dep.file_selector
-                        (File_selector.create ~dir:include_dir
-                           Predicate_with_id.true_))
-                 in
-                 Command.Args.Hidden_deps deps
-               | Some (build_dir, source_dir) ->
-                 let open Action_builder.O in
-                 Action_builder.return
-                 @@ Command.Args.Dyn
-                      ((* This branch corresponds to a source directory. We
-                          track its contents recursively. *)
-                       Action_builder.of_memo (Source_tree.find_dir source_dir)
-                       >>= function
-                       | None ->
-                         User_error.raise ~loc
-                           [ Pp.textf "Include directory %S does not exist."
-                               (Path.reach ~from:(Path.build dir) include_dir)
-                           ]
-                       | Some dir ->
-                         let+ l =
-                           Source_tree_map_reduce.map_reduce dir
-                             ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
-                               let dir =
-                                 Path.append_source build_dir
-                                   (Source_tree.Dir.path t)
-                               in
-                               let deps =
-                                 Dep.Set.singleton
-                                   (Dep.file_selector
-                                      (File_selector.create ~dir
-                                         Predicate_with_id.true_))
-                               in
-                               Action_builder.return
-                                 (Appendable_list.singleton
-                                    (Command.Args.Hidden_deps deps)))
-                         in
-                         Command.Args.S (Appendable_list.to_list l))
-             in
-             Command.Args.S [ A "-I"; Path include_dir; dep_args ]))))
+  let args_of_include_dir include_dir =
+    Resolve.Memo.args
+      (let open Resolve.Memo.O in
+      let+ loc, include_dir =
+        match (include_dir : Foreign.Stubs.Include_dir.t) with
+        | Dir dir ->
+          Resolve.Memo.return
+            (String_with_vars.loc dir, Expander.expand_path expander dir)
+        | Lib (loc, lib_name) ->
+          let+ lib_dir = lib_dir loc lib_name in
+          (loc, Action_builder.return lib_dir)
+      in
+      Command.Args.Dyn
+        (let open Action_builder.O in
+        let* include_dir = include_dir in
+        let+ dep_args =
+          match Path.extract_build_context_dir include_dir with
+          | None ->
+            (* This branch corresponds to an external directory. The
+               current implementation tracks its contents
+               NON-recursively. *)
+            (* TODO: Track the contents recursively. One way to implement
+               this is to change [Build_system.Loaded.Non_build] so that it
+               contains not only files but also directories and traverse
+               them recursively in [Build_system.Exported.Pred]. *)
+            let+ () =
+              let error msg =
+                User_error.raise ~loc
+                  [ Pp.textf "Unable to read the include directory."
+                  ; Pp.textf "Reason: %s." msg
+                  ]
+              in
+              Action_builder.of_memo @@ Fs_memo.is_directory include_dir
+              >>| function
+              | Error msg -> error (Unix_error.Detailed.to_string_hum msg)
+              | Ok false ->
+                error
+                  (Printf.sprintf "%S is not a directory"
+                     (Path.to_string include_dir))
+              | Ok true -> ()
+            in
+            let deps =
+              Dep.Set.singleton
+                (Dep.file_selector
+                   (File_selector.create ~dir:include_dir
+                      Predicate_with_id.true_))
+            in
+            Command.Args.Hidden_deps deps
+          | Some (build_dir, source_dir) ->
+            let open Action_builder.O in
+            Action_builder.return
+            @@ Command.Args.Dyn
+                 ((* This branch corresponds to a source directory. We
+                     track its contents recursively. *)
+                  Action_builder.of_memo (Source_tree.find_dir source_dir)
+                  >>= function
+                  | None ->
+                    User_error.raise ~loc
+                      [ Pp.textf "Include directory %S does not exist."
+                          (Path.reach ~from:(Path.build dir) include_dir)
+                      ]
+                  | Some dir ->
+                    let+ l =
+                      Source_tree_map_reduce.map_reduce dir
+                        ~traverse:Sub_dirs.Status.Set.all ~f:(fun t ->
+                          let dir =
+                            Path.append_source build_dir
+                              (Source_tree.Dir.path t)
+                          in
+                          let deps =
+                            Dep.Set.singleton
+                              (Dep.file_selector
+                                 (File_selector.create ~dir
+                                    Predicate_with_id.true_))
+                          in
+                          Action_builder.return
+                            (Appendable_list.singleton
+                               (Command.Args.Hidden_deps deps)))
+                    in
+                    Command.Args.S (Appendable_list.to_list l))
+        in
+        Command.Args.S [ A "-I"; Path include_dir; dep_args ]))
+  in
+  Command.Args.S (List.map stubs.include_dirs ~f:args_of_include_dir)
 
 let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let ctx = Super_context.context sctx in

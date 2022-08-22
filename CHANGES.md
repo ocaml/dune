@@ -29,6 +29,10 @@
 
 - Fix build-info version when used with flambda (#6089, fixes #6075, @jberdine)
 
+- Add an `(include <file>)` term to the `include_dirs` field for adding
+  directories to the include paths sourced from a file. (#6058, fixes #3993,
+  @gridbugs)
+
 3.4.1 (26-07-2022)
 ------------------
 

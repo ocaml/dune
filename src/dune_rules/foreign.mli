@@ -80,6 +80,10 @@ module Stubs : sig
     type t =
       | Dir of String_with_vars.t
       | Lib of Loc.t * Lib_name.t
+      | Include of
+          { context : Univ_map.t
+          ; path : String_with_vars.t
+          }
 
     val decode : t Dune_lang.Decoder.t
   end

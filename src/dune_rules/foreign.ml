@@ -92,6 +92,10 @@ module Stubs = struct
     type t =
       | Dir of String_with_vars.t
       | Lib of Loc.t * Lib_name.t
+      | Include of
+          { context : Univ_map.t
+          ; path : String_with_vars.t
+          }
 
     let decode : t Dune_lang.Decoder.t =
       let open Dune_lang.Decoder in
@@ -99,11 +103,19 @@ module Stubs = struct
         let+ s = String_with_vars.decode in
         Dir s
       in
-      let parse_lib =
-        let+ loc, lib_name = sum [ ("lib", located Lib_name.decode) ] in
-        Lib (loc, lib_name)
+      let parse_lib_or_include =
+        sum
+          [ ( "lib"
+            , let+ loc, lib_name = located Lib_name.decode in
+              Lib (loc, lib_name) )
+          ; ( "include"
+            , let+ () = Syntax.since Stanza.syntax (3, 5)
+              and+ context = get_all
+              and+ path = String_with_vars.decode in
+              Include { context; path } )
+          ]
       in
-      parse_lib <|> parse_dir
+      parse_dir <|> parse_lib_or_include
   end
 
   type t =

@@ -1239,9 +1239,23 @@ Here is a complete list of supported subfields:
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
   via the ``-I`` flag. You can use :ref:`variables` in this field and
   refer to a library source directory using the ``(lib library-name)`` syntax.
-  For example, ``(include_dirs dir1 (lib lib1) (lib lib2) dir2)`` specifies
+  Additionally, the syntax ``(include filename)`` can be used to specify a file
+  containing additional arguments to ``(include_dirs ...)``. The named file can
+  either contain a single path to be added to this list of include directories,
+  or an S-expression listing additional ``(include_dirs ...)`` arguments (the
+  ``(lib ...)`` and ``(include ...)`` syntax is also supported in files included
+  in this way).
+  For example, ``(include_dirs dir1 (lib lib1) (lib lib2) (include inc1) dir2)`` specifies
   the directory ``dir1``, the source directories of ``lib1`` and ``lib2``,
-  and the directory ``dir2``, in this order. The contents of included
+  the list of directories contained in the file ``inc1``,
+  and the directory ``dir2``, in this order.
+  Some examples of possible contents of the file ``inc1`` are:
+
+  - ``dir3`` which would add ``dir3`` to the list of include directories
+  - ``((lib lib3) dir4 (include inc2))`` which would add the source directory of
+    the library ``lib3``, the directory ``dir4``, and the result of recursively
+    including the contents of the file ``inc2``
+  The contents of included
   directories are tracked recursively, e.g., if you use ``(include_dir dir)``
   and have headers ``dir/base.h`` and ``dir/lib/lib.h``, they both will
   be tracked as dependencies.

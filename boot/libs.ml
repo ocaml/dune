@@ -48,6 +48,7 @@ let local_libraries =
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)
   ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false,
     None)
+  ; ("src/fswatch_win", Some "Fswatch_win", false, None)
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
   ; ("src/dune_config", Some "Dune_config", false, None)

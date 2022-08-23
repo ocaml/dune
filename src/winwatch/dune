@@ -1,0 +1,6 @@
+(library
+ (name winwatch)
+ (libraries stdune dune_util)
+ (foreign_stubs
+  (language c)
+  (names winwatch_stubs)))

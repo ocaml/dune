@@ -137,6 +137,12 @@ type kind =
       ; latency : float
       }
   | Inotify of Inotify_lib.t
+  | Winwatch of
+      { mutable external_ : Winwatch.t list
+      ; iocp : Winwatch.Iocp.t
+      ; scheduler : Scheduler.t
+      ; source : Winwatch.t
+      }
 
 type t =
   { kind : kind
@@ -203,6 +209,11 @@ let shutdown t =
         Fsevents.stop fsevents.sync;
         Watch_trie.to_list fsevents.external_
         |> List.iter ~f:(fun (_, fs) -> Fsevents.stop fs))
+  | Winwatch t ->
+    `Thunk
+      (fun () ->
+        List.iter ~f:Winwatch.stop t.external_;
+        Winwatch.stop t.source)
 
 let buffer_capacity = 65536
 
@@ -354,6 +365,7 @@ let select_watcher_backend () =
     assert (Ocaml_inotify.Inotify.supported_by_the_os ());
     `Inotify_lib)
   else if Fsevents.available () then `Fsevents
+  else if Sys.win32 then `Winwatch
   else fswatch_backend ()
 
 let prepare_sync () =
@@ -583,6 +595,88 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
   ; sync_table
   }
 
+let winwatch_patterns =
+  List.rev_map ~f:Re.Str.regexp_case_fold
+    [ {|^_opam|}
+    ; {|/_opam|}
+    ; {|^_esy|}
+    ; {|/_esy|}
+    ; {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
+    ; {|/\.#.*|}
+    ; {|~$|}
+    ; {|^#[^#]*#$|}
+    ; {|/#[^#]*#$|}
+    ; {|^4913$|} (* https://github.com/neovim/neovim/issues/3460 *)
+    ; {|/4913$|}
+    ; {|^.git|}
+    ; {|/.git|}
+    ; {|^.hg|}
+    ; {|/.hg|}
+    ; {|^c:/windows|}
+    ]
+
+let winwatch_filter path =
+  let path =
+    String.concat ~sep:"/"
+      (String.split_on_char ~sep:'\\'
+         (String.lowercase_ascii (Path.to_string path)))
+  in
+  List.for_all
+    ~f:(fun pattern ->
+      try
+        let _ = Re.Str.search_forward pattern path 0 in
+        false
+      with Not_found -> true)
+    winwatch_patterns
+
+let winwatch_callback ~(scheduler : Scheduler.t) ~sync_table ~dir action
+    filename =
+  let filename = Filename.concat dir filename in
+  let localized_path =
+    Path.Expert.try_localize_external (Path.of_string filename)
+  in
+  match localized_path with
+  | In_build_dir _ -> (
+    if Fs_sync.is_special_file_fsevents localized_path then
+      match action with
+      | Winwatch.Event.Added | Modified -> (
+        match Fs_sync.consume_event sync_table filename with
+        | None -> ()
+        | Some id ->
+          scheduler.thread_safe_send_emit_events_job (fun () -> [ Sync id ]))
+      | Removed | Renamed_new | Renamed_old -> ())
+  | path ->
+    if winwatch_filter path && not (Path.is_directory path) then
+      scheduler.thread_safe_send_emit_events_job (fun () ->
+          let kind =
+            match action with
+            | Winwatch.Event.Added | Renamed_new -> Fs_memo_event.Created
+            | Removed | Renamed_old -> Deleted
+            | Modified -> File_changed
+          in
+          [ Fs_memo_event { kind; path } ])
+
+let create_winwatch ~(scheduler : Scheduler.t) =
+  let sync_table = Table.create (module String) 64 in
+  let iocp = Winwatch.Iocp.create () in
+  let source =
+    let dir = Path.to_absolute_filename Path.root in
+    match
+      Winwatch.create dir ~f:(winwatch_callback ~scheduler ~sync_table ~dir)
+    with
+    | None -> assert false
+    | Some t -> t
+  in
+  Winwatch.start source iocp;
+  scheduler.spawn_thread (fun () ->
+      match Winwatch.Iocp.run iocp with
+      | Ok () -> ()
+      | Error _ -> (* Winwatch.Iocp.run never returns *) assert false);
+  { kind = Winwatch { external_ = []; iocp; scheduler; source }; sync_table }
+
+let create_winwatch ~debounce_interval ~scheduler =
+  with_buffering ~scheduler ~debounce_interval ~create:create_winwatch
+
 let create_external ~root ~debounce_interval ~scheduler ~backend =
   match debounce_interval with
   | None -> create_no_buffering ~root ~scheduler ~backend
@@ -598,11 +692,12 @@ let create_default ?fsevents_debounce ~scheduler () =
       ~debounce_interval:(Some 0.5 (* seconds *)) ~backend
   | `Fsevents -> create_fsevents ?latency:fsevents_debounce ~scheduler ()
   | `Inotify_lib -> create_inotifylib ~scheduler
+  | `Winwatch -> create_winwatch ~scheduler ~debounce_interval:0.5
 
 let wait_for_initial_watches_established_blocking t =
   match t.kind with
   | Fswatch c -> c.wait_for_watches_established ()
-  | Fsevents _ | Inotify _ ->
+  | Fsevents _ | Inotify _ | Winwatch _ ->
     (* no initial watches needed: all watches should be set up at the time just
        before file access *)
     ()
@@ -653,5 +748,40 @@ let add_watch t path =
   | Inotify inotify -> (
     try Ok (Inotify_lib.add inotify (Path.to_string path))
     with Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
+  | Winwatch w -> (
+    match path with
+    | In_build_dir _ ->
+      Code_error.raise "attempted to watch a directory in build" []
+    | Path.In_source_tree _ -> Ok ()
+    | External ext -> (
+      let ext =
+        let rec loop p =
+          if Path.is_directory (Path.external_ p) then Some ext
+          else
+            match Path.External.parent p with
+            | None ->
+              User_warning.emit
+                [ Pp.textf "Refusing to watch %s" (Path.External.to_string ext)
+                ];
+              None
+            | Some ext -> loop ext
+        in
+        loop ext
+      in
+      match ext with
+      | None -> Ok ()
+      | Some _ -> (
+        let dir = Path.to_absolute_filename path in
+        match
+          Winwatch.create dir
+            ~f:
+              (winwatch_callback ~scheduler:w.scheduler ~sync_table:t.sync_table
+                 ~dir)
+        with
+        | None -> (* dir does not exist *) Ok ()
+        | Some t ->
+          w.external_ <- t :: w.external_;
+          Winwatch.start t w.iocp;
+          Ok ())))
 
 let emit_sync = Fs_sync.emit

@@ -244,12 +244,25 @@ module Server = struct
       Socket.bind fd sockaddr;
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
-      Unix.set_nonblock r_interrupt_accept;
+      if not Sys.win32 then Unix.set_nonblock r_interrupt_accept;
       let buf = Bytes.make 1 '0' in
       { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
 
+    external peek_named_pipe : Unix.file_descr -> bool = "dune_peek_named_pipe"
+      [@@noalloc]
+
     let rec accept t =
-      match Unix.select [ t.r_interrupt_accept; t.fd ] [] [] (-1.0) with
+      let fds, timeout =
+        if Sys.win32 then ([ t.fd ], 0.1)
+        else ([ t.r_interrupt_accept; t.fd ], -1.0)
+      in
+      match Unix.select fds [] [] timeout with
+      | [], [], [] ->
+        (* Timeout *)
+        if peek_named_pipe t.r_interrupt_accept then (
+          print_endline "data available!";
+          None)
+        else accept t
       | r, [], [] ->
         let inter, accept =
           List.fold_left r ~init:(false, false) ~f:(fun (i, a) fd ->

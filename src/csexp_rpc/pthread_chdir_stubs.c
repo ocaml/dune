@@ -36,8 +36,8 @@ CAMLprim value dune_pthread_chdir(value dir) {
   CAMLparam1(dir);
   if (__pthread_chdir(String_val(dir))) {
     uerror("__pthread_chdir", Nothing);
-  } 
-  CAMLreturn (Val_unit); 
+  }
+  CAMLreturn (Val_unit);
 }
 
 #else
@@ -51,7 +51,25 @@ CAMLprim value dune_pthread_chdir_is_osx(value unit)
 CAMLprim value dune_pthread_chdir(value unit) {
   CAMLparam1(unit);
   caml_invalid_argument("__pthread_chdir not implemented");
-  CAMLreturn (Val_unit); 
+  CAMLreturn (Val_unit);
+}
+
+#endif
+
+#ifdef _WIN32
+
+value dune_peek_named_pipe(value fd)
+{
+  DWORD bytesAvail;
+  PeekNamedPipe(Handle_val(fd), NULL, 0, NULL, &bytesAvail, NULL);
+  return Val_bool(bytesAvail > 0);
+}
+
+#else
+
+value dune_peek_named_pipe(value fd)
+{
+  caml_invalid_argument("dune_peek_named_pipe: not implemented");
 }
 
 #endif

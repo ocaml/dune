@@ -486,21 +486,30 @@ let create_inotifylib ~scheduler =
   Inotify_lib.add inotify (Lazy.force Fs_sync.special_dir);
   { kind = Inotify inotify; sync_table }
 
-let fsevents_callback (scheduler : Scheduler.t) ~f events =
+let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
+  let skip_path =
+    (* excluding a [path] will exclude children under [path] but not [path]
+       itself. Hence we need to skip [path] manually *)
+    match exclusion_paths with
+    | None -> fun _ -> false
+    | Some paths -> fun p -> List.mem paths p ~equal:Path.equal
+  in
   scheduler.thread_safe_send_emit_events_job (fun () ->
       List.filter_map events ~f:(fun event ->
           let path =
             Fsevents.Event.path event |> Path.of_string
             |> Path.Expert.try_localize_external
           in
-          f event path))
+          if skip_path path then None else f event path))
 
 let fsevents ?exclusion_paths ~latency ~paths scheduler f =
   let paths = List.map paths ~f:Path.to_absolute_filename in
   let fsevents =
-    Fsevents.create ~latency ~paths ~f:(fsevents_callback scheduler ~f)
+    Fsevents.create ~latency ~paths
+      ~f:(fsevents_callback ?exclusion_paths scheduler ~f)
   in
   Option.iter exclusion_paths ~f:(fun paths ->
+      let paths = List.rev_map paths ~f:Path.to_absolute_filename in
       Fsevents.set_exclusion_paths fsevents ~paths);
   fsevents
 
@@ -543,7 +552,6 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
          |> List.rev_map ~f:(fun base ->
                 let path = Path.relative (Path.source Path.Source.root) base in
                 path))
-      |> List.rev_map ~f:Path.to_absolute_filename
     in
     fsevents ~latency scheduler ~exclusion_paths ~paths fsevents_standard_event
   in

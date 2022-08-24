@@ -66,7 +66,7 @@ let term =
                     prog
                 ]
           else
-            let+ _digest = Build_system.build_file p in
+            let+ () = Build_system.build_file p in
             p
         in
         let not_found () =

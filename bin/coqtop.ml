@@ -125,7 +125,7 @@ let term =
                 Super_context.resolve_program sctx ~dir ~loc:None coqtop
               in
               let prog = Action.Prog.ok_exn prog in
-              let+ (_ : Digest.t) = Build_system.build_file prog in
+              let+ () = Build_system.build_file prog in
               (Path.to_string prog, args))
         in
         let argv =

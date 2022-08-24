@@ -3,8 +3,8 @@
 open Import
 module Action_builder := Action_builder0
 
-(** Build a file and return the digest of its contents. *)
-val build_file : Path.t -> Digest.t Memo.t
+(** Build a file. *)
+val build_file : Path.t -> unit Memo.t
 
 (** Build a file and access its contents with [f]. *)
 val read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.t

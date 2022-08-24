@@ -59,11 +59,7 @@ let term =
             Dune_rules.Lib_flags.L.toplevel_include_paths requires
           in
           let* files = link_deps sctx requires in
-          let+ () =
-            Memo.parallel_iter files ~f:(fun file ->
-                let+ (_ : Digest.t) = Build_system.build_file file in
-                ())
-          in
+          let+ () = Memo.parallel_iter files ~f:Build_system.build_file in
           let files_to_load =
             List.filter files ~f:(fun p ->
                 let ext = Path.extension p in

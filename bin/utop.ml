@@ -43,7 +43,7 @@ let term =
                     (String.maybe_quoted dir)
                 ]
             | true ->
-              let+ (_ : Digest.t) = Build_system.build_file utop_target in
+              let+ () = Build_system.build_file utop_target in
               let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
               (sctx, Path.to_string utop_target)))
   in

@@ -1176,8 +1176,12 @@ let run_exn f =
   | Ok res -> res
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 
+let build_file p =
+  let+ (_ : Digest.t) = build_file p in
+  ()
+
 let read_file p ~f =
-  let+ _digest = build_file p in
+  let+ () = build_file p in
   f p
 
 let state = State.t

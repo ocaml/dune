@@ -578,7 +578,7 @@ module Preprocess = struct
     let pp_file = file |> Path.map_extension ~f:(fun ext -> ".pp" ^ ext) in
     Build_system.file_exists pp_file >>= function
     | true ->
-      let* _digest = Build_system.build_file pp_file in
+      let* () = Build_system.build_file pp_file in
       let+ project =
         Dune_engine.Source_tree.root () >>| Dune_engine.Source_tree.Dir.project
       in
@@ -586,7 +586,7 @@ module Preprocess = struct
     | false -> (
       Build_system.file_exists file >>= function
       | true ->
-        let+ _digest = Build_system.build_file file in
+        let+ () = Build_system.build_file file in
         Error file
       | false ->
         User_error.raise [ Pp.textf "%s does not exist" (Path.to_string file) ])

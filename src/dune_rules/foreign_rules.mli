@@ -7,4 +7,4 @@ val build_o_files :
   -> expander:Expander.t
   -> requires:Lib.t list Resolve.t
   -> dir_contents:Dir_contents.t
-  -> Path.t Foreign.O_file.t Memo.t list
+  -> Path.t Mode.MultiDict.t Memo.t

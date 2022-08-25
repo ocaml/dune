@@ -63,7 +63,8 @@ let programs ~modules ~(exes : Executables.t) =
 
 let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     ~requires_compile =
-  if not (Executables.has_foreign exes) then Memo.return []
+  if not (Executables.has_foreign exes) then
+    Memo.return @@ Mode.MultiDict.create ()
   else
     let what =
       if List.is_empty exes.buildable.Buildable.foreign_stubs then "archives"
@@ -82,16 +83,16 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
       let first_exe = first_exe exes in
       Foreign_sources.for_exes foreign_sources ~first_exe
     in
-    let+ built_o_files =
-      Foreign_rules.build_o_files ~sctx ~dir ~expander
-        ~requires:requires_compile ~dir_contents ~foreign_sources
-      |> Memo.all_concurrently
-    in
     let foreign_o_files =
       let { Lib_config.ext_obj; _ } = (Super_context.context sctx).lib_config in
       Foreign.Objects.build_paths exes.buildable.extra_objects ~ext_obj ~dir
     in
-    built_o_files @ foreign_o_files
+    let+ o_files =
+      Foreign_rules.build_o_files ~sctx ~dir ~expander
+        ~requires:requires_compile ~dir_contents ~foreign_sources
+    in
+    (* [foreign_o_files] are not mode-dependant *)
+    Mode.MultiDict.rev_append o_files All foreign_o_files
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
@@ -174,7 +175,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
              List.map foreign_archives ~f:(fun archive ->
                  let lib =
                    Foreign.Archive.lib_file ~archive ~dir ~ext_lib
-                     ~mode:Foreign.For.All
+                     ~mode:Mode.Select.All
                  in
                  Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
           (* XXX: don't these need the msvc hack being done in lib_rules? *)
@@ -187,7 +188,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents
         ~requires_compile
     in
-    let* () = Check_rules.add_files sctx ~dir @@ List.map o_files ~f:snd in
+    let* () = Check_rules.add_files sctx ~dir @@ Mode.MultiDict.all o_files in
     let buildable = exes.buildable in
     match buildable.ctypes with
     | None ->

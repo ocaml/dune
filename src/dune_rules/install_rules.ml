@@ -65,19 +65,7 @@ end = struct
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
         Foreign.Sources.object_files files ~dir ~ext_obj
-      else
-        Memo.return
-          (let d = Lib_info.foreign_archives lib in
-           List.fold_left ~init:d.byte
-             ~f:(fun acc path ->
-               if
-                 List.mem acc
-                   ~equal:(fun a b ->
-                     Dyn.equal (Path.Build.to_dyn a) (Path.Build.to_dyn b))
-                   path
-               then acc
-               else path :: acc)
-             d.native)
+      else Memo.return (Mode.MultiDict.all @@ Lib_info.foreign_archives lib)
     in
     List.concat_map
       ~f:(List.map ~f:(fun f -> (Section.Lib, f)))

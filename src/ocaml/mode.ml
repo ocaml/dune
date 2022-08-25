@@ -81,6 +81,8 @@ module Dict = struct
     f Byte t.byte;
     f Native t.native
 
+  let foldi t ~init ~f = f Native t.native @@ f Byte t.byte init
+
   let make_both x = { byte = x; native = x }
 
   let make ~byte ~native = { byte; native }
@@ -134,4 +136,135 @@ module Dict = struct
          and+ native = field ~default:[] "native" (repeat f) in
          { byte; native })
   end
+end
+
+module Select = struct
+  type mode = t
+
+  type nonrec t =
+    | Only of t
+    | All
+
+  let of_option = function
+    | None -> All
+    | Some m -> Only m
+
+  let is_not_all = function
+    | All -> false
+    | Only _ -> true
+
+  let equal t t' =
+    match (t, t') with
+    | Only m, Only m' -> equal m m'
+    | All, All -> true
+    | _, _ -> false
+
+  let hash = Poly.hash
+
+  let to_dyn t =
+    let open Dyn in
+    match t with
+    | All -> Variant ("All", [])
+    | Only m -> Variant ("Only", [ to_dyn m ])
+
+  let encode t =
+    let open Dune_sexp.Encoder in
+    match t with
+    | All -> string "all"
+    | Only m -> encode m
+
+  let decode =
+    let open Dune_sexp.Decoder in
+    let+ value = either (keyword "all") decode in
+    match value with
+    | Left () -> All
+    | Right mode -> Only mode
+end
+
+module MultiDict = struct
+  (* Here we use a Hashtbl to be able in the future to use more variants than
+     just "Byte, Native or All" *)
+  module Hashtbl = Hashtbl.Make (Select)
+
+  type mode = t
+
+  type 'a t = 'a list Hashtbl.t
+
+  let create () = Hashtbl.create 3
+
+  let create_for_all_modes l =
+    let tbl = create () in
+    Hashtbl.set tbl All l;
+    tbl
+
+  let for_all_modes t = Option.value ~default:[] @@ Hashtbl.find t All
+
+  let for_only ?(and_all = false) t mode =
+    let all = if and_all then for_all_modes t else [] in
+    Option.value ~default:[] @@ Hashtbl.find t (Only mode)
+    |> List.rev_append all
+
+  let all t = Hashtbl.fold t ~init:[] ~f:( @ )
+
+  let set = Hashtbl.set
+
+  let add t for_mode v =
+    let l = Option.value ~default:[] @@ Hashtbl.find t for_mode in
+    Hashtbl.set t for_mode (v :: l);
+    t
+
+  let rev_append t for_mode l' =
+    let l = Option.value ~default:[] @@ Hashtbl.find t for_mode in
+    Hashtbl.set t for_mode (List.rev_append l l');
+    t
+
+  let encode encoder t =
+    let open Dune_sexp.Encoder in
+    let fields =
+      Hashtbl.foldi t ~init:[] ~f:(fun for_ files acc ->
+          if List.is_empty files then acc
+          else
+            let field_for = field "for" Select.encode for_ in
+            let field_files = field_l "files" encoder files in
+            field_l "archives" Fun.id (record_fields [ field_for; field_files ])
+            :: acc)
+    in
+    record_fields fields
+
+  let decode decoder =
+    let open Dune_sexp.Decoder in
+    let+ fields =
+      fields
+      @@ multi_field "archives"
+           (fields
+              (let+ for_ = field "for" Select.decode
+               and+ files = field "files" (repeat decoder) in
+               (for_, files)))
+    in
+    let tbl = create () in
+    List.iter fields ~f:(fun (for_, paths) -> Hashtbl.set tbl for_ paths);
+    tbl
+
+  let to_dyn to_dyn t =
+    let open Dyn in
+    let l =
+      Hashtbl.foldi t ~init:[] ~f:(fun for_ files acc ->
+          Record
+            [ ("for_mode", Select.to_dyn for_); ("files", list to_dyn files) ]
+          :: acc)
+    in
+    List l
+
+  let to_assoc_list =
+    Hashtbl.foldi ~init:[] ~f:(fun for_ v acc -> (for_, v) :: acc)
+
+  let from_assoc_list l =
+    let tbl = create () in
+    List.iter l ~f:(fun (for_, v) -> set tbl for_ v);
+    tbl
+
+  let equal eq t t' =
+    List.equal
+      (fun (f1, p1) (f2, p2) -> Select.equal f1 f2 && List.equal eq p1 p2)
+      (to_assoc_list t) (to_assoc_list t')
 end

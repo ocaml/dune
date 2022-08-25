@@ -224,11 +224,15 @@ let link_js ~name ~loc ~cm_files ~promote ~link_time_code_gen cctx =
 
 type dep_graphs = { for_exes : Module.t list Action_builder.t list }
 
-let link_many ?(link_args = Action_builder.return Command.Args.empty)
-    ?(o_files : Path.t Foreign.O_file.t list = [])
+let link_many ?(link_args = Action_builder.return Command.Args.empty) ?o_files
     ?(embed_in_plugin_libraries = []) ?sandbox ~programs ~linkages ~promote cctx
     =
   let open Memo.O in
+  let o_files =
+    match o_files with
+    | None -> Mode.MultiDict.create ()
+    | Some o_files -> o_files
+  in
   let modules = Compilation_context.modules cctx in
   let* link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   let+ for_exes =
@@ -261,18 +265,13 @@ let link_many ?(link_args = Action_builder.return Command.Args.empty)
                     Link_time_code_gen.handle_special_libs cc
                 in
                 let link_args, o_files =
+                  let select_o_files =
+                    Mode.MultiDict.for_only ~and_all:true o_files
+                  in
                   match linkage.mode with
-                  | Native ->
-                    ( link_args
-                    , Foreign.(
-                        O_file.L.filter (For.Only Mode.Native) ~and_all:true
-                          o_files) )
+                  | Native -> (link_args, select_o_files Mode.Native)
                   | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in
-                    ->
-                    ( link_args
-                    , Foreign.(
-                        O_file.L.filter (For.Only Mode.Byte) ~and_all:true
-                          o_files) )
+                    -> (link_args, select_o_files Mode.Byte)
                 in
                 link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
                   ~promote ~link_args ~o_files ?sandbox)

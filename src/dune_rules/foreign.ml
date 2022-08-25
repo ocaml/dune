@@ -23,23 +23,9 @@ let possible_sources ~language obj ~dune_version =
         (Foreign_language.equal lang language && dune_version >= version)
         (obj ^ "." ^ ext))
 
-module For = struct
-  type t =
-    | Only of Mode.t
-    | All
-
-  let of_option = function
-    | None -> All
-    | Some m -> Only m
-
-  let not_all = function
-    | All -> false
-    | Only _ -> true
-end
-
 let add_mode_suffix mode s =
   match mode with
-  | For.All -> s
+  | Mode.Select.All -> s
   | Only mode -> String.concat ~sep:"_" [ s; Mode.to_string mode ]
 
 module Archive = struct
@@ -151,7 +137,7 @@ module Stubs = struct
     { loc : Loc.t
     ; language : Foreign_language.t
     ; names : Ordered_set_lang.t
-    ; mode : For.t
+    ; mode : Mode.Select.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; include_dirs : Include_dir.t list
     ; extra_deps : Dep_conf.t list
@@ -200,30 +186,14 @@ module Stubs = struct
           ]
       | _ -> ()
     in
-    let mode = For.of_option mode in
+    let mode = Mode.Select.of_option mode in
     { loc; language; names; mode; flags; include_dirs; extra_deps }
 
   let decode project =
     let mode_is_allowed = Dune_project.allow_mode_specific_stubs project in
     Dune_lang.Decoder.fields @@ decode_stubs ~mode_is_allowed
 
-  let is_mode_dependent t = For.not_all t.mode
-end
-
-module O_file = struct
-  type 'path t = For.t * 'path
-
-  module L = struct
-    type nonrec 'path t = 'path t list
-
-    let filter for_ ?(and_all = false) l =
-      List.filter_map l ~f:(fun (for_', p) ->
-          match (for_, for_') with
-          | For.All, For.All -> Some p
-          | _, For.All when and_all -> Some p
-          | For.Only m, For.Only m' when Mode.equal m m' -> Some p
-          | _ -> None)
-  end
+  let is_mode_dependent t = Mode.Select.is_not_all t.mode
 end
 
 module Objects = struct
@@ -258,9 +228,7 @@ module Objects = struct
   let build_paths t ~ext_obj ~dir =
     (* Foreign objects are not mode-dependent *)
     List.map t ~f:(fun (loc, name) ->
-        ( For.All
-        , Object_name.build_path name ~error_loc:loc ~ext_obj ~dir |> Path.build
-        ))
+        Object_name.build_path name ~error_loc:loc ~ext_obj ~dir |> Path.build)
 end
 
 module Library = struct

@@ -11,12 +11,6 @@ val possible_sources :
   -> dune_version:Dune_lang.Syntax.Version.t
   -> string list
 
-module For : sig
-  type t =
-    | Only of Mode.t
-    | All
-end
-
 (* CR-soon cwong: I'd really prefer to keep the convention that these functions
    are spelled [Foreign_language.encode] and [Foreign_language.decode], but due
    to some organizational reasons (see the rant at the top of
@@ -47,7 +41,7 @@ module Archive : sig
 
     val to_string : t -> string
 
-    val path : dir:Path.Build.t -> mode:For.t -> t -> Path.Build.t
+    val path : dir:Path.Build.t -> mode:Mode.Select.t -> t -> Path.Build.t
 
     val decode : t Dune_lang.Decoder.t
 
@@ -56,17 +50,25 @@ module Archive : sig
     val lib_file_prefix : string
 
     val lib_file :
-      t -> dir:Path.Build.t -> ext_lib:string -> mode:For.t -> Path.Build.t
+         t
+      -> dir:Path.Build.t
+      -> ext_lib:string
+      -> mode:Mode.Select.t
+      -> Path.Build.t
 
     val dll_file :
-      t -> dir:Path.Build.t -> ext_dll:string -> mode:For.t -> Path.Build.t
+         t
+      -> dir:Path.Build.t
+      -> ext_dll:string
+      -> mode:Mode.Select.t
+      -> Path.Build.t
   end
 
   type t
 
   val dir_path : dir:Path.Build.t -> t -> Path.Build.t
 
-  val name : mode:For.t -> t -> Name.t
+  val name : mode:Mode.Select.t -> t -> Name.t
 
   val stubs : string -> t
 
@@ -76,14 +78,14 @@ module Archive : sig
        archive:t
     -> dir:Path.Build.t
     -> ext_lib:string
-    -> mode:For.t
+    -> mode:Mode.Select.t
     -> Path.Build.t
 
   val dll_file :
        archive:t
     -> dir:Path.Build.t
     -> ext_dll:string
-    -> mode:For.t
+    -> mode:Mode.Select.t
     -> Path.Build.t
 end
 
@@ -116,7 +118,7 @@ module Stubs : sig
     { loc : Loc.t
     ; language : Foreign_language.t
     ; names : Ordered_set_lang.t
-    ; mode : For.t
+    ; mode : Mode.Select.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; include_dirs : Include_dir.t list
     ; extra_deps : Dep_conf.t list
@@ -127,7 +129,7 @@ module Stubs : sig
        loc:Loc.t
     -> language:Foreign_language.t
     -> names:Ordered_set_lang.t
-    -> mode:For.t
+    -> mode:Mode.Select.t
     -> flags:Ordered_set_lang.Unexpanded.t
     -> t
 
@@ -184,7 +186,7 @@ module Source : sig
   val path : t -> Path.Build.t
 
   (* The name of the corresponding object file; for example, [name] for a source
-     file [some/path/name.cpp]. *)
+     file [some/path/name.cpp]. [with_mode_suffix] defaults to true. *)
   val object_name : ?with_mode_suffix:bool -> t -> string
 
   val make : stubs:Stubs.t -> path:Path.Build.t -> t
@@ -215,16 +217,6 @@ module Sources : sig
   end
 end
 
-module O_file : sig
-  type 'path t = For.t * 'path
-
-  module L : sig
-    type nonrec 'path t = 'path t list
-
-    val filter : For.t -> ?and_all:bool -> 'path t -> 'path list
-  end
-end
-
 (** For the [(foreign_objects ...)] field.*)
 module Objects : sig
   type t
@@ -235,6 +227,5 @@ module Objects : sig
 
   val decode : t Dune_lang.Decoder.t
 
-  val build_paths :
-    t -> ext_obj:string -> dir:Path.Build.t -> Path.t O_file.t list
+  val build_paths : t -> ext_obj:string -> dir:Path.Build.t -> Path.t list
 end

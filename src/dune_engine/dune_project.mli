@@ -66,6 +66,10 @@ val set_generate_opam_files : bool -> t -> t
     compiler command line when building C stubs. *)
 val use_standard_c_and_cxx_flags : t -> bool option
 
+(** The option [allow_mode_specific_stubs] enables the use of a [mode] subfield
+    when defining foreign stubs. *)
+val allow_mode_specific_stubs : t -> bool
+
 val dialects : t -> Dialect.DB.t
 
 val set_dialects : Dialect.DB.t -> t -> t

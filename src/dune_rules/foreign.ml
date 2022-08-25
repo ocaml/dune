@@ -160,14 +160,18 @@ module Stubs = struct
   let make ~loc ~language ~names ~mode ~flags =
     { loc; language; names; mode; flags; include_dirs = []; extra_deps = [] }
 
-  let decode_stubs =
+  let decode_stubs ~mode_is_allowed =
     let open Dune_lang.Decoder in
-    let+ loc = loc
-    and+ loc_archive_name, archive_name =
+    let* loc = loc in
+    let+ loc_archive_name, archive_name =
       located (field_o "archive_name" string)
     and+ language = field "language" decode_lang
     and+ names = Ordered_set_lang.field "names"
-    and+ mode = field_o "mode" Mode.decode
+    and+ loc_mode, mode =
+      located
+        (field_o "mode"
+           (Dune_lang.Syntax.since Dune_lang.Stanza.syntax (3, 5)
+           >>> Mode.decode))
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ include_dirs =
       field ~default:[] "include_dirs" (repeat Include_dir.decode)
@@ -184,10 +188,24 @@ module Stubs = struct
                (foreign_library ...) stanza."
           ]
     in
+    let () =
+      match mode with
+      | Some _ when not mode_is_allowed ->
+        User_error.raise ~loc:loc_mode
+          [ Pp.textf
+              "The field \"mode\"\n\
+              \               must be enabled with the \
+               \"allow_mode_specific_stubs\" option in the \"dune-project\" \
+               file."
+          ]
+      | _ -> ()
+    in
     let mode = For.of_option mode in
     { loc; language; names; mode; flags; include_dirs; extra_deps }
 
-  let decode = Dune_lang.Decoder.fields decode_stubs
+  let decode project =
+    let mode_is_allowed = Dune_project.allow_mode_specific_stubs project in
+    Dune_lang.Decoder.fields @@ decode_stubs ~mode_is_allowed
 
   let is_mode_dependent t = For.not_all t.mode
 end
@@ -257,7 +275,7 @@ module Library = struct
     fields
       (let+ archive_name_loc, archive_name =
          located (field "archive_name" Archive.Name.decode)
-       and+ stubs = Stubs.decode_stubs in
+       and+ stubs = Stubs.decode_stubs ~mode_is_allowed:false in
        { archive_name; archive_name_loc; stubs })
 end
 

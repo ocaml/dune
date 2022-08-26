@@ -86,7 +86,7 @@ end = struct
     | Some st_dir -> (
       let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
       let build_dir_is_project_root =
-        Path.Build.drop_build_context_exn dir |> Path.Source.equal project_root
+        Source_tree.Dir.path st_dir |> Path.Source.equal project_root
       in
       Only_packages.stanzas_in_dir dir >>= function
       | None -> (

@@ -1,6 +1,10 @@
 3.5.0 (unreleased)
 ------------------
 
+- Allow dune describe workspace to accept directories as arguments.
+  The provided directories restrict the worskpace description to those
+  directories. (#6107, fixes #3893, @esope)
+
 - Add a terminal persistence mode that attempts to clear the terminal history.
   It is enabled by setting terminal persistence to
   `clear-on-rebuild-and-flush-history` (#6065, @rgrinberg)

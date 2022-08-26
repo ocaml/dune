@@ -404,14 +404,38 @@ module Crawl = struct
       in
       Some (Descr.Item.Library lib_descr)
 
+  (** [source_path_is_in_dirs dirs p] tests whether the source path [p] is a
+      descendant of some of the provided directory [dirs]. If [dirs = None],
+      then it always succeeds. If [dirs = Some l], then a matching directory is
+      search in the list [l]. *)
+  let source_path_is_in_dirs dirs (p : Path.Source.t) =
+    match dirs with
+    | None -> true
+    | Some dirs ->
+      List.exists ~f:(fun dir -> Path.Source.is_descendant p ~of_:dir) dirs
+
+  (** Tests whether a dune file is located in a path that is a descendant of
+      some directory *)
+  let dune_file_is_in_dirs dirs (dune_file : Dune_file.t) =
+    source_path_is_in_dirs dirs dune_file.dir
+
+  (** Tests whether a library is located in a path that is a descendant of some
+      directory *)
+  let lib_is_in_dirs dirs (lib : Lib.t) =
+    source_path_is_in_dirs dirs
+      (Path.drop_build_context_exn @@ Lib_info.best_src_dir @@ Lib.info lib)
+
   (** Builds a workspace description for the provided dune setup and context *)
-  let workspace options
+  let workspace options dirs
       ({ Dune_rules.Main.conf; contexts = _; scontexts } :
         Dune_rules.Main.build_system) (context : Context.t) :
       Descr.Workspace.t Memo.t =
     let sctx = Context_name.Map.find_exn scontexts context.name in
     let open Memo.O in
-    let* dune_files = Dune_load.Dune_files.eval conf.dune_files ~context in
+    let* dune_files =
+      Dune_load.Dune_files.eval conf.dune_files ~context
+      >>| List.filter ~f:(dune_file_is_in_dirs dirs)
+    in
     let* exes, exe_libs =
       (* the list of workspace items that describe executables, and the list of
          their direct library dependencies *)
@@ -438,7 +462,9 @@ module Crawl = struct
           let* scope = Scope.DB.find_by_project ctx project in
           Scope.libs scope |> Lib.DB.all)
       >>| Lib.Set.union_all
+      >>| Lib.Set.filter ~f:(lib_is_in_dirs dirs)
     in
+
     let+ libs =
       (* the executables' libraries, and the project's libraries *)
       Lib.Set.union exe_libs project_libs
@@ -610,11 +636,12 @@ end
    without hassle. *)
 module What = struct
   type t =
-    | Workspace
+    | Workspace of { dirs : string list option }
     | Opam_files
     | Pp of string
 
-  let default = Workspace
+  (** By default, describe the whole workspace *)
+  let default = Workspace { dirs = None }
 
   (* The list of command names, their args, their documentation, and their
      parser *)
@@ -622,9 +649,18 @@ module What = struct
       (string * string list * string * t Dune_lang.Decoder.t) list =
     let open Dune_lang.Decoder in
     [ ( "workspace"
-      , []
-      , "prints a description of the workspace's structure"
-      , return Workspace )
+      , [ "DIRS" ]
+      , "prints a description of the workspace's structure. If some \
+         directories DIRS are provided, then only those directories of the \
+         workspace are considered."
+      , let+ dirs = repeat relative_file in
+        (* [None] means that all directories should be accepted,
+           whereas [Some l] means that only the directories in the
+           list [l] should be accepted. The checks on whether the
+           paths exist and whether they are directories are performed
+           later in the [describe] function. *)
+        let dirs = if List.is_empty dirs then None else Some dirs in
+        Workspace { dirs } )
     ; ( "opam-files"
       , []
       , "prints information about the Opam files that have been discovered"
@@ -632,7 +668,8 @@ module What = struct
     ; ( "pp"
       , [ "FILE" ]
       , "builds a given FILE and prints the preprocessed output"
-      , filename >>| fun s -> Pp s )
+      , let+ s = filename in
+        Pp s )
     ]
 
   (* The list of documentation strings (one for each command) *)
@@ -666,14 +703,37 @@ module What = struct
       in
       Dune_lang.Decoder.parse parse Univ_map.empty ast
 
-  let describe t options setup super_context =
+  let describe t options (common : Common.t) setup super_context =
     let some = Memo.map ~f:(fun x -> Some x) in
     match t with
     | Opam_files -> Opam_files.get () |> some
-    | Workspace ->
+    | Workspace { dirs } ->
       let context = Super_context.context super_context in
       let open Memo.O in
-      Crawl.workspace options setup context
+      let* dirs =
+        (* prefix directories with the workspace root, so that the
+           command also works correctly when it is run from a
+           subdirectory *)
+        Memo.Option.map dirs
+          ~f:
+            (Memo.List.map ~f:(fun dir ->
+                 let p =
+                   Path.Source.(relative root) (Common.prefix_target common dir)
+                 in
+                 let s = Path.source p in
+                 if not @@ Path.exists s then
+                   User_error.raise
+                     [ Pp.textf "No such file or directory: %s"
+                         (Path.to_string s)
+                     ];
+                 if not @@ Path.is_directory s then
+                   User_error.raise
+                     [ Pp.textf "File exists, but is not a directory: %s"
+                         (Path.to_string s)
+                     ];
+                 Memo.return p))
+      in
+      Crawl.workspace options dirs setup context
       >>| Sanitize_for_tests.Workspace.sanitize context
       >>| Descr.Workspace.to_dyn options
       |> some
@@ -799,12 +859,12 @@ let term : unit Term.t =
         Import.Main.find_scontext_exn setup ~name:context_name
       in
       let+ res =
-        Build_system.run (fun () ->
-            What.describe what options setup super_context)
+        Build_system.run_exn (fun () ->
+            What.describe what options common setup super_context)
       in
       match res with
-      | Error `Already_reported | Ok None -> ()
-      | Ok (Some res) -> (
+      | None -> ()
+      | Some res -> (
         match format with
         | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
         | Sexp -> print_as_sexp res))

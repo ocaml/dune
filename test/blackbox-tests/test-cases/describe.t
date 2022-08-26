@@ -207,6 +207,14 @@ Setup
   > EOF
   $ touch virtual_impl2/virtual.ml
 
+  $ mkdir subdir
+  $ mkdir subdir/subfolder
+  $ cat >subdir/subfolder/dune <<EOF
+  > (library
+  >  (name subfolder_lib))
+  > EOF
+  $ touch subdir/subfolder/subfolder_lib.ml
+
 Describe various things
 -----------------------
 
@@ -621,6 +629,20 @@ not stable across different setups.
      (source_dir /FINDLIB//stdlib-shims)
      (modules ())
      (include_dirs (/FINDLIB//stdlib-shims))))
+   (library
+    ((name subfolder_lib)
+     (uid edb8ce3704b7983446d5ffb4cea0b51e)
+     (local true)
+     (requires ())
+     (source_dir _build/default/subdir/subfolder)
+     (modules
+      (((name Subfolder_lib)
+        (impl (_build/default/subdir/subfolder/subfolder_lib.ml))
+        (intf ())
+        (cmt
+         (_build/default/subdir/subfolder/.subfolder_lib.objs/byte/subfolder_lib.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/subdir/subfolder/.subfolder_lib.objs/byte))))
    (library
     ((name virtual)
      (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
@@ -1181,6 +1203,21 @@ not stable across different setups.
      (modules ())
      (include_dirs (/FINDLIB//stdlib-shims))))
    (library
+    ((name subfolder_lib)
+     (uid edb8ce3704b7983446d5ffb4cea0b51e)
+     (local true)
+     (requires ())
+     (source_dir _build/default/subdir/subfolder)
+     (modules
+      (((name Subfolder_lib)
+        (impl (_build/default/subdir/subfolder/subfolder_lib.ml))
+        (intf ())
+        (cmt
+         (_build/default/subdir/subfolder/.subfolder_lib.objs/byte/subfolder_lib.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/subdir/subfolder/.subfolder_lib.objs/byte))))
+   (library
     ((name virtual)
      (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
      (local true)
@@ -1247,6 +1284,20 @@ not stable across different setups.
           (for_impl ()))))))
      (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests virtual
+  ((library
+    ((name virtual)
+     (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
+     (local true)
+     (requires ())
+     (source_dir _build/default/virtual)
+     (modules
+      (((name Virtual)
+        (impl ())
+        (intf (_build/default/virtual/virtual.mli))
+        (cmt ())
+        (cmti (_build/default/virtual/.virtual.objs/byte/virtual.cmti)))))
+     (include_dirs (_build/default/virtual/.virtual.objs/byte)))))
 
 Test other formats
 ------------------
@@ -1263,7 +1314,12 @@ Test errors
   [1]
 
   $ dune describe --lang 0.1 workspace xxx
-  Error: Too many argument for workspace
+  Error: No such file or directory: xxx
+  [1]
+
+  $ touch yyy
+  $ dune describe --lang 0.1 workspace yyy
+  Error: File exists, but is not a directory: yyy
   [1]
 
   $ dune describe --lang 1.0

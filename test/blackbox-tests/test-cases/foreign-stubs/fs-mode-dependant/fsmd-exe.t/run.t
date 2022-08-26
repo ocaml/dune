@@ -1,3 +1,43 @@
+##############
+Project toggle
+##############
+
+Without the toggle we get an error message for using the new mode subfield
+  $ cat >dune-project <<EOF
+  > (lang dune 3.5)
+  > EOF
+
+  $ dune build 2>&1 | head -n 6
+  File "dune", line 11, characters 3-16:
+  11 |    (mode native)
+          ^^^^^^^^^^^^^
+  Error: The field "mode"
+                 must be enabled with the "allow_mode_specific_stubs" option in
+  the "dune-project" file.
+
+But the toggle only exists in Dune 3.5
+  $ cat >dune-project <<EOF
+  > (lang dune 3.1)
+  > (allow_mode_specific_stubs)
+  > EOF
+
+  $ dune build
+  File "dune-project", line 2, characters 0-27:
+  2 | (allow_mode_specific_stubs)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'allow_mode_specific_stubs' is only available since version 3.5 of the
+  dune language. Please update your dune-project file to have (lang dune 3.5).
+  [1]
+
+With Dune 3.5 no error is displayed
+  $ cat >dune-project <<EOF
+  > (lang dune 3.5)
+  > (allow_mode_specific_stubs)
+  > EOF
+
+  $ dune build
+  $ dune clean
+
 ###########
 Executables
 ###########

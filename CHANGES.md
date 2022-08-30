@@ -89,6 +89,8 @@
  Coq 8.16.0, Coq itself has some bugs preventing this to work yet. (#6167 ,
  workarounds #5767, @ejgallego)
 
+- Allow include statement in install stanza (#6139, fixes #256, @gridbugs)
+
 3.4.1 (26-07-2022)
 ------------------
 

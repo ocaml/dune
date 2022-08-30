@@ -63,44 +63,41 @@ module Unexpanded = struct
     in
     { src; dst }
 
-  module L = struct
-    let decode_file =
-      let open Dune_lang.Decoder in
-      let decode =
-        let+ is_atom =
-          peek_exn >>| function
-          | Atom _ -> true
-          | _ -> false
-        and+ s = String_with_vars.decode
-        and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
-        if (not is_atom) && version < (1, 6) then
-          let what =
-            (if String_with_vars.has_pforms s then "variables"
-            else "quoted strings")
-            |> sprintf "Using %s here"
-          in
-          Dune_lang.Syntax.Error.since (String_with_vars.loc s) Stanza.syntax
-            (1, 6) ~what
-        else s
-      in
-      peek_exn >>= function
-      | Atom _ | Quoted_string _ | Template _ ->
-        decode >>| fun src -> { src; dst = None }
-      | List (_, [ _; Atom (_, A "as"); _ ]) ->
-        enter
-          (let* src = decode in
-           keyword "as"
-           >>> let* dst = decode in
-               return { src; dst = Some dst })
-      | sexp ->
-        User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
-          [ Pp.text
-              "invalid format, <name> or (<name> as <install-as>) expected"
-          ]
-
+  let decode =
+    let open Dune_lang.Decoder in
     let decode =
-      let open Dune_lang.Decoder in
-      repeat decode_file
+      let+ is_atom =
+        peek_exn >>| function
+        | Atom _ -> true
+        | _ -> false
+      and+ s = String_with_vars.decode
+      and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+      if (not is_atom) && version < (1, 6) then
+        let what =
+          (if String_with_vars.has_pforms s then "variables"
+          else "quoted strings")
+          |> sprintf "Using %s here"
+        in
+        Dune_lang.Syntax.Error.since (String_with_vars.loc s) Stanza.syntax
+          (1, 6) ~what
+      else s
+    in
+    peek_exn >>= function
+    | Atom _ | Quoted_string _ | Template _ ->
+      decode >>| fun src -> { src; dst = None }
+    | List (_, [ _; Atom (_, A "as"); _ ]) ->
+      enter
+        (let* src = decode in
+         keyword "as"
+         >>> let* dst = decode in
+             return { src; dst = Some dst })
+    | sexp ->
+      User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
+        [ Pp.text "Invalid format, <name> or (<name> as <install-as>) expected"
+        ]
+
+  module L = struct
+    let decode = Dune_lang.Decoder.repeat decode
 
     let strings_with_vars { src; dst } = src :: Option.to_list dst
 

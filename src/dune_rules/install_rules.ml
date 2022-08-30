@@ -274,14 +274,13 @@ end = struct
         let open Dune_file in
         match (stanza : Stanza.t) with
         | Install i | Executables { install_conf = Some i; _ } ->
-          let path_expander =
-            File_binding.Unexpanded.expand ~dir
-              ~f:(Expander.No_deps.expand_str expander)
-          in
           let section = i.section in
+          let expand_str = Expander.No_deps.expand_str expander in
+          let* files_expanded =
+            Dune_file.Install_conf.expand_files i ~expand_str ~dir
+          in
           let* files =
-            Memo.List.map i.files ~f:(fun unexpanded ->
-                let* fb = path_expander unexpanded in
+            Memo.List.map files_expanded ~f:(fun fb ->
                 let loc = File_binding.Expanded.src_loc fb in
                 let src = File_binding.Expanded.src fb in
                 let dst = File_binding.Expanded.dst fb in
@@ -292,9 +291,11 @@ end = struct
                 in
                 Install.Entry.Sourced.create ~loc entry)
           in
+          let* dirs_expanded =
+            Dune_file.Install_conf.expand_dirs i ~expand_str ~dir
+          in
           let+ files_from_dirs =
-            Memo.List.map i.dirs ~f:(fun unexpanded ->
-                let* fb = path_expander unexpanded in
+            Memo.List.map dirs_expanded ~f:(fun fb ->
                 let loc = File_binding.Expanded.src_loc fb in
                 let src = File_binding.Expanded.src fb in
                 let dst = File_binding.Expanded.dst fb in

@@ -23,13 +23,7 @@
   type line = { indent : int ; contents : string }
 
   type token =
-    | Toplevel of
-      { indent : int
-      ; loc : loc
-      ; severity : severity
-      ; message : string
-      }
-    | Related of { indent : int ; loc : loc ; message: string }
+    | Loc of { indent : int ; loc : loc ; message : string }
     | Line of line
     | Eof
 
@@ -49,42 +43,47 @@ let digits = ['0' - '9']+
 
 let range = digits "-" digits
 
+let any = _ *
+
 rule skip_excerpt = parse
-  | blank digits " | " [^ '\n']* "\n"
-    { skip_excerpt lexbuf }
-  | blank '^'+ blank "\n"
-    { () }
-  | eof { () }
-  | "" { () }
+  | blank digits " | " [^ '\n']* "\n"?
+    { `Continue }
+  | blank '^'+ blank "\n"?
+    { `Continue }
+  | eof { `Stop }
+  | "" { `Stop }
 
 and severity = parse
-  | "Error:" blank { Error None }
-  | "Warning" blank (digits as code) blank "[" ([^ ']']+ as name) "]:" blank
-    { Warning (Code { code = int_of_string code ; name })
+  | "Error:"
+    (blank any as rest)
+    { Some (Error None, rest) }
+  | "Warning" blank (digits as code) blank "[" ([^ ']']+ as name) "]:"
+    (blank any as rest)
+    { Some (Warning (Code { code = int_of_string code ; name }), rest)
     }
   | "Error" blank
     "(warning" blank (digits as code) blank "[" ([^ ']']+ as name) "]):"
-    blank
-    { Error (Some (Code { code = int_of_string code ; name }))
+    (blank any as rest)
+    { Some (Error (Some (Code { code = int_of_string code ; name })), rest)
     }
   | (("Error" | "Warning") as kind) " (alert " ([^ ')']+ as alert) "):"
+    (blank any as rest)
     { let alert = Alert alert in
-      match kind with
-      | "Error" -> Error (Some alert)
-      | "Warning" -> Warning alert
-      | _ -> assert false
+      let res =
+        match kind with
+        | "Error" -> Error (Some alert)
+        | "Warning" -> Warning alert
+        | _ -> assert false
+      in
+      Some (res, rest)
     }
-  | "" { raise_notrace Unknown_format }
+  | "" { None }
 
 and line = parse
   | (blank as prefix) ([^ '\n']* as contents) blank newline?
     { Line { indent = String.length prefix ; contents }
     }
   | eof { Eof }
-
-and toplevel_message = parse
-  | blank ([^ '\n']* as message) blank '\n' { message }
-  | "" { "" }
 
 and token = parse
   | (blank as indent) "File \"" ([^ '"']* as path) "\", " blank
@@ -109,19 +108,7 @@ and token = parse
       in
       let indent = String.length indent in
       let loc = { lines ; path ; chars } in
-      let severity, message =
-        if indent > 0 then begin
-          (None, message)
-        end else begin 
-          skip_excerpt lexbuf;
-          let severity = severity lexbuf in
-          let message = toplevel_message lexbuf in
-          (Some severity, message)
-        end
-      in
-      match severity with
-      | None -> Related { loc ; indent ; message }
-      | Some severity -> Toplevel { loc ; severity; indent ; message }
+      Loc { loc ; indent ; message }
     }
   | eof { Eof }
   | "" { line lexbuf }

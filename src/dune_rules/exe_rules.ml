@@ -92,7 +92,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
         ~requires:requires_compile ~dir_contents ~foreign_sources
     in
     (* [foreign_o_files] are not mode-dependant *)
-    Mode.MultiDict.rev_append o_files All foreign_o_files
+    Mode.MultiDict.add_multiple o_files All foreign_o_files
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =

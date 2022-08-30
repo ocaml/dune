@@ -897,7 +897,7 @@ module Library = struct
           if enabled then
             let for_mode = Mode.Select.Only mode in
             let libs = foreign_lib_files conf ~dir ~ext_lib ~for_mode in
-            Mode.MultiDict.set tbl for_mode libs);
+            ignore @@ Mode.MultiDict.add_multiple tbl for_mode libs);
       tbl
     in
     let native_archives =

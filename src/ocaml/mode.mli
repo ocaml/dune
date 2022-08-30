@@ -137,15 +137,11 @@ module MultiDict : sig
   (** Creates an empty table and populate the [All] key with the given list *)
   val create_for_all_modes : 'a list -> 'a t
 
-  val set : 'a t -> Select.t -> 'a list -> unit
-
-  (** Adds a value for the given mode. If values are already present the new
-      value is prepended to the list. *)
+  (** Adds a value for the given mode. *)
   val add : 'a t -> Select.t -> 'a -> 'a t
 
-  (** Same as adds but concatenate the given list with the existing one using
-      [rev_append]. *)
-  val rev_append : 'a t -> Select.t -> 'a list -> 'a t
+  (** Adds multiple values for the given mode. *)
+  val add_multiple : 'a t -> Select.t -> 'a list -> 'a t
 
   (** Returns the list of values associated to the [All] key. *)
   val for_all_modes : 'a t -> 'a list
@@ -157,9 +153,7 @@ module MultiDict : sig
 
   val all : 'a t -> 'a list
 
-  val to_assoc_list : 'a t -> (Select.t * 'a list) list
-
-  val from_assoc_list : (Select.t * 'a list) list -> 'a t
-
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+
+  val remapi : f:('a -> 'b) -> 'a t -> 'b t
 end

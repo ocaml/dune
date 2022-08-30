@@ -259,7 +259,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires ~dir_contents
         ~foreign_sources
     in
-    Mode.MultiDict.rev_append tbl Mode.Select.All lib_foreign_o_files
+    Mode.MultiDict.add_multiple tbl Mode.Select.All lib_foreign_o_files
   in
   let all_o_files = Mode.MultiDict.all o_files in
   let* () = Check_rules.add_files sctx ~dir all_o_files in

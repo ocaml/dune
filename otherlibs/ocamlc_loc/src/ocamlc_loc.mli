@@ -31,4 +31,8 @@ type report =
 
 val dyn_of_report : report -> Dyn.t
 
+val dyn_of_raw : [ `Loc of loc | `Message of string ] list -> Dyn.t
+
+val parse_raw : string -> [ `Loc of loc | `Message of string ] list
+
 val parse : string -> report list

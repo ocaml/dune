@@ -27,18 +27,16 @@ type line =
   }
 
 type token =
-  | Toplevel of
-      { indent : int
-      ; loc : loc
-      ; severity : severity
-      ; message : string
-      }
-  | Related of
+  | Loc of
       { indent : int
       ; loc : loc
       ; message : string
       }
   | Line of line
   | Eof
+
+val severity : Lexing.lexbuf -> (severity * string) option
+
+val skip_excerpt : Lexing.lexbuf -> [ `Stop | `Continue ]
 
 val token : Lexing.lexbuf -> token

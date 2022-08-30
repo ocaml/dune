@@ -5,6 +5,11 @@
 
 #ifdef _WIN32
 
+/*  Windows Vista functions enabled */
+
+#undef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600
+
 #include <Windows.h>
 #include <Knownfolders.h>
 #include <Shlobj.h>

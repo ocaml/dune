@@ -977,36 +977,6 @@ module Install_conf = struct
        { section; dirs; files; package; enabled_if })
 end
 
-module Promote = struct
-  let into_decode =
-    let+ loc, dir = located relative_file in
-    { Rule.Promote.Into.loc; dir }
-
-  let decode : Rule.Promote.t Dune_lang.Decoder.t =
-    fields
-      (let+ until_clean =
-         field_b "until-clean"
-           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
-       and+ into =
-         field_o "into"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> into_decode)
-       and+ only =
-         field_o "only"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Predicate_lang.decode Glob.decode)
-       in
-       let only =
-         Option.map only ~f:(fun only ->
-             let only = Predicate_lang.map only ~f:Glob.to_predicate in
-             Predicate_lang.to_predicate only ~standard:Predicate_lang.any)
-       in
-       { Rule.Promote.lifetime =
-           (if until_clean then Until_clean else Unlimited)
-       ; into
-       ; only
-       })
-end
-
 module Executables = struct
   module Names : sig
     type t
@@ -1377,7 +1347,8 @@ module Executables = struct
       field_b "optional" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 0))
     and+ promote =
       field_o "promote"
-        (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
+        (Dune_lang.Syntax.since Stanza.syntax (1, 11)
+        >>> Rule_mode_decoder.Promote.decode)
     and+ () =
       map_validate
         (field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
@@ -1493,73 +1464,7 @@ end
 module Rule = struct
   module Mode = struct
     include Rule.Mode
-
-    let mode_decoders =
-      [ ("standard", return Rule.Mode.Standard)
-      ; ("fallback", return Rule.Mode.Fallback)
-      ; ( "promote"
-        , let+ p = Promote.decode in
-          Rule.Mode.Promote p )
-      ; ( "promote-until-clean"
-        , let+ () =
-            Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
-              ~extra_info:"Use the (promote (until-clean)) syntax instead."
-          in
-          Rule.Mode.Promote { lifetime = Until_clean; into = None; only = None }
-        )
-      ; ( "promote-into"
-        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
-          and+ () =
-            Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
-              ~extra_info:"Use the (promote (into <dir>)) syntax instead."
-          and+ into = Promote.into_decode in
-          Rule.Mode.Promote
-            { lifetime = Unlimited; into = Some into; only = None } )
-      ; ( "promote-until-clean-into"
-        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
-          and+ () =
-            Dune_lang.Syntax.deleted_in Stanza.syntax (3, 0)
-              ~extra_info:
-                "Use the (promote (until-clean) (into <dir>)) syntax instead."
-          and+ into = Promote.into_decode in
-          Rule.Mode.Promote
-            { lifetime = Until_clean; into = Some into; only = None } )
-      ]
-
-    module Extended = struct
-      type t =
-        | Normal of Rule.Mode.t
-        | Patch_back_source_tree
-
-      let patch_back_from_source_tree_syntax =
-        Dune_lang.Syntax.create ~experimental:true
-          ~name:"patch-back-source-tree"
-          ~desc:"experimental support for (mode patch-back-source-tree)"
-          [ ((0, 1), `Since (3, 0)) ]
-
-      let () =
-        Dune_project.Extension.register_simple
-          patch_back_from_source_tree_syntax
-          (Dune_lang.Decoder.return [])
-
-      let decode =
-        sum
-          (( "patch-back-source-tree"
-           , let+ () =
-               Dune_lang.Syntax.since patch_back_from_source_tree_syntax (0, 1)
-             in
-             Patch_back_source_tree )
-          :: List.map mode_decoders ~f:(fun (name, dec) ->
-                 ( name
-                 , let+ x = dec in
-                   Normal x )))
-
-      let field = field "mode" decode ~default:(Normal Standard)
-    end
-
-    let decode = sum mode_decoders
-
-    let field = field "mode" decode ~default:Rule.Mode.Standard
+    include Rule_mode_decoder
   end
 
   type t =
@@ -1800,53 +1705,6 @@ module Rule = struct
         ; alias = None
         ; package = None
         })
-end
-
-module Menhir = struct
-  type t =
-    { merge_into : string option
-    ; flags : Ordered_set_lang.Unexpanded.t
-    ; modules : string list
-    ; mode : Rule.Mode.t
-    ; loc : Loc.t
-    ; infer : bool
-    ; enabled_if : Blang.t
-    }
-
-  let decode =
-    fields
-      (let+ merge_into = field_o "merge_into" string
-       and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-       and+ modules = field "modules" (repeat string)
-       and+ mode = Rule.Mode.field
-       and+ infer =
-         field_o_b "infer"
-           ~check:(Dune_lang.Syntax.since Menhir_stanza.syntax (2, 0))
-       and+ menhir_syntax = Dune_lang.Syntax.get_exn Menhir_stanza.syntax
-       and+ enabled_if =
-         Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
-       and+ loc = loc in
-       let infer =
-         match infer with
-         | Some infer -> infer
-         | None -> menhir_syntax >= (2, 0)
-       in
-       { merge_into; flags; modules; mode; loc; infer; enabled_if })
-
-  type Stanza.t += T of t
-
-  let () =
-    Dune_project.Extension.register_simple Menhir_stanza.syntax
-      (return [ ("menhir", decode >>| fun x -> [ T x ]) ])
-
-  let modules (stanza : t) : string list =
-    match stanza.merge_into with
-    | Some m -> [ m ]
-    | None -> stanza.modules
-
-  let targets (stanza : t) : string list =
-    let f m = [ m ^ ".ml"; m ^ ".mli" ] in
-    List.concat_map (modules stanza) ~f
 end
 
 module Alias_conf = struct
@@ -2372,7 +2230,7 @@ let is_promoted_rule version rule =
     | _ -> false
   in
   match rule with
-  | Rule { mode; _ } | Menhir.T { mode; _ } -> is_promoted_mode mode
+  | Rule { mode; _ } | Menhir_stanza.T { mode; _ } -> is_promoted_mode mode
   | _ -> false
 
 let parse sexps ~dir ~file ~project =

@@ -230,7 +230,7 @@ let gen_rules sctx dir_contents cctxs expander
   let* () =
     Memo.parallel_iter stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
-        | Menhir.T m -> (
+        | Menhir_stanza.T m -> (
           Expander.eval_blang expander m.enabled_if >>= function
           | false -> Memo.return ()
           | true -> (
@@ -246,8 +246,7 @@ let gen_rules sctx dir_contents cctxs expander
               (* This happens often when passing a [-p ...] option that hides a
                  library *)
               let file_targets =
-                List.map
-                  (Dune_file.Menhir.targets m)
+                List.map (Menhir_stanza.targets m)
                   ~f:(Path.Build.relative ctx_dir)
               in
               Super_context.add_rule sctx ~dir:ctx_dir

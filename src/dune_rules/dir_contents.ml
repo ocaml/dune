@@ -141,7 +141,7 @@ end = struct
             Memo.return (List.map modules ~f:(fun m -> m ^ ".ml"))
           | Coq_stanza.Extraction.T s ->
             Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
-          | Menhir.T menhir -> Memo.return (Menhir.targets menhir)
+          | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)
           | Rule rule -> (
             Simple_rules.user_rule sctx rule ~dir ~expander >>| function
             | None -> []

@@ -23,7 +23,7 @@ open! Action_builder.O
 
 (* This signature describes the input of the functor [Run], which follows. *)
 
-type stanza = Dune_file.Menhir.t
+type stanza = Menhir_stanza.t
 
 module type PARAMS = sig
   (* [cctx] is the compilation context. *)
@@ -280,8 +280,8 @@ end
 
 (* The final glue. *)
 
-let module_names (stanza : Dune_file.Menhir.t) : Module_name.t list =
-  List.map (Dune_file.Menhir.modules stanza) ~f:(fun s ->
+let module_names (stanza : Menhir_stanza.t) : Module_name.t list =
+  List.map (Menhir_stanza.modules stanza) ~f:(fun s ->
       (* TODO the loc can improved here *)
       Module_name.of_string_allow_invalid (stanza.loc, s))
 

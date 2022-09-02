@@ -361,13 +361,13 @@ let renamed_in t ver ~to_ =
     let+ loc, what = desc () in
     Error.renamed_in loc t ver ~what ~to_
 
-let since ?(fatal = true) t ver =
+let since ?what ?(fatal = true) t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
   if current_ver >= ver then return ()
   else
-    desc () >>= function
-    | loc, what when fatal -> Error.since loc t ver ~what
-    | loc, what ->
-      User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
-      return ()
+    let* loc, what_ctx = desc () in
+    let what = Option.value what ~default:what_ctx in
+    if fatal then Error.since loc t ver ~what
+    else User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
+    return ()

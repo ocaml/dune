@@ -42,6 +42,9 @@
 
 - Fix compilation of Dune under esy on Windows (#6109, fixes #6098, @nojb)
 
+- Improve error message when parsing several licenses in `(license)` (#6114,
+  fixes #6103, @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

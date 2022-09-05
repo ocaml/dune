@@ -20,7 +20,6 @@ module For_stanza : sig
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
-    -> files_to_install:(Install_conf.t -> unit Memo.t)
     -> ( Merlin.t list
        , (Loc.t * Compilation_context.t) list
        , Path.Build.t list
@@ -61,8 +60,7 @@ end = struct
     ; source_dirs = List.rev t.source_dirs
     }
 
-  let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
-      ~files_to_install =
+  let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander =
     let dir = ctx_dir in
     match stanza with
     | Toplevel toplevel ->
@@ -94,7 +92,6 @@ end = struct
       Expander.eval_blang expander exes.enabled_if >>= function
       | false -> Memo.return empty_none
       | true ->
-        let* () = Memo.Option.iter exes.install_conf ~f:files_to_install in
         let+ cctx, merlin =
           Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
         in
@@ -131,9 +128,6 @@ end = struct
         else None
       in
       Memo.return { merlin = None; cctx = None; js = None; source_dirs }
-    | Install i ->
-      let+ () = files_to_install i in
-      empty_none
     | Plugin p ->
       let+ () = Plugin_rules.setup_rules ~sctx ~dir p in
       empty_none
@@ -149,10 +143,9 @@ end = struct
     | _ -> Memo.return empty_none
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents
-      ~expander ~files_to_install =
+      ~expander =
     let of_stanza =
       of_stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
-        ~files_to_install
     in
     let+ l = Memo.parallel_map stanzas ~f:of_stanza in
     List.fold_left l ~init:{ empty_list with cctx = cctxs } ~f:(fun acc x ->
@@ -200,17 +193,6 @@ let define_all_alias ~dir ~project ~js_targets =
 
 let gen_rules sctx dir_contents cctxs expander
     { Dune_file.dir = src_dir; stanzas; project } ~dir:ctx_dir =
-  let files_to_install
-      { Install_conf.section = _; files; package = _; enabled_if = _; dirs } =
-    let* files_and_dirs =
-      Memo.List.map (files @ dirs) ~f:(fun fb ->
-          File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
-            ~f:(Expander.No_deps.expand_str expander)
-          >>| Path.build)
-    in
-    Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
-      (Action_builder.paths files_and_dirs)
-  in
   let* { For_stanza.merlin = merlins
        ; cctx = cctxs
        ; js = js_targets
@@ -218,7 +200,7 @@ let gen_rules sctx dir_contents cctxs expander
        } =
     let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope
-      ~dir_contents ~expander ~files_to_install
+      ~dir_contents ~expander
   in
   let* () =
     Memo.sequential_iter merlins ~f:(fun merlin ->

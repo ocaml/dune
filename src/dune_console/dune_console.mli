@@ -37,6 +37,8 @@ val reset_flush_history : unit -> unit
 (** Reset the log output *)
 val reset : unit -> unit
 
+val finish : unit -> unit
+
 (** [print paragraphs] is a short-hand for:
 
     {[

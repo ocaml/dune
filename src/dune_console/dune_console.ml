@@ -11,11 +11,15 @@ module Backend = struct
     val reset : unit -> unit
 
     val reset_flush_history : unit -> unit
+
+    val finish : unit -> unit
   end
 
   type t = (module S)
 
   module Dumb_no_flush : S = struct
+    let finish () = ()
+
     let print_user_message msg =
       Option.iter msg.User_message.loc ~f:(fun loc ->
           Loc.render Format.err_formatter (Loc.pp loc));
@@ -56,6 +60,8 @@ module Backend = struct
 
   module Progress_no_flush : S = struct
     let status_line = ref Pp.nop
+
+    let finish () = ()
 
     let status_line_len = ref 0
 
@@ -106,6 +112,10 @@ module Backend = struct
         A.set_status_line x;
         B.set_status_line x
 
+      let finish () =
+        A.finish ();
+        B.finish ()
+
       let print_if_no_status_line msg =
         A.print_if_no_status_line msg;
         B.print_if_no_status_line msg
@@ -125,12 +135,29 @@ module Backend = struct
     let module T = struct
       let mutex = Mutex.create ()
 
+      let finish_cv = Condition.create ()
+
       type state =
         { messages : User_message.t Queue.t
+        ; mutable finish_requested : bool
+        ; mutable finished : bool
         ; mutable status_line : User_message.Style.t Pp.t option
         }
 
-      let state = { messages = Queue.create (); status_line = None }
+      let state =
+        { messages = Queue.create ()
+        ; status_line = None
+        ; finished = false
+        ; finish_requested = false
+        }
+
+      let finish () =
+        Mutex.lock mutex;
+        state.finish_requested <- true;
+        while not state.finished do
+          Condition.wait finish_cv mutex
+        done;
+        Mutex.unlock mutex
 
       let print_user_message m =
         Mutex.lock mutex;
@@ -162,22 +189,29 @@ module Backend = struct
       let open T in
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. 60. in
-      while true do
-        Mutex.lock mutex;
-        while not (Queue.is_empty state.messages) do
-          Base.print_user_message (Queue.pop_exn state.messages)
-        done;
-        Base.set_status_line state.status_line;
-        flush stderr;
-        Mutex.unlock mutex;
-        let now = Unix.gettimeofday () in
-        let elapsed = now -. !last in
-        if elapsed >= frame_rate then last := now
-        else
-          let delta = frame_rate -. elapsed in
-          Unix.sleepf delta;
-          last := delta +. now
-      done );
+      try
+        while true do
+          Mutex.lock mutex;
+          while not (Queue.is_empty state.messages) do
+            Base.print_user_message (Queue.pop_exn state.messages)
+          done;
+          Base.set_status_line state.status_line;
+          flush stderr;
+          let finish_requested = state.finish_requested in
+          if finish_requested then raise_notrace Exit;
+          Mutex.unlock mutex;
+          let now = Unix.gettimeofday () in
+          let elapsed = now -. !last in
+          if elapsed >= frame_rate then last := now
+          else
+            let delta = frame_rate -. elapsed in
+            Unix.sleepf delta;
+            last := delta +. now
+        done
+      with Exit ->
+        state.finished <- true;
+        Condition.broadcast finish_cv;
+        Mutex.unlock mutex );
     (module T)
 
   let progress =
@@ -208,6 +242,10 @@ let reset () =
 let reset_flush_history () =
   let (module M : Backend.S) = !Backend.main in
   M.reset_flush_history ()
+
+let finish () =
+  let (module M : Backend.S) = !Backend.main in
+  M.finish ()
 
 module Status_line = struct
   type t =

@@ -1,7 +1,7 @@
 Test alias module for wrapped libraries:
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.4)
+  > (lang dune 3.5)
   > EOF
 
   $ cat >dune <<EOF
@@ -16,3 +16,6 @@ Test alias module for wrapped libraries:
   
   (** @canonical Foo.Bar *)
   module Bar = Foo__Bar
+  
+  module Foo__ = struct end
+  [@@deprecated "this module is shadowed"]

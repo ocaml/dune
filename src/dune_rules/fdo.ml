@@ -88,18 +88,17 @@ let get_profile =
      detected automatically by Memo. *)
   let f (ctx : Context.t) =
     let path = ctx.fdo_target_exe |> Option.value_exn |> fdo_profile in
-    let profile_exists =
-      Memo.lazy_ (fun () ->
-          match Path.as_in_source_tree path with
-          | None -> Memo.return false
-          | Some path -> Source_tree.file_exists path)
-    in
     let open Memo.O in
-    let+ use_profile =
+    let+ profile_exists =
+      match Path.as_in_source_tree path with
+      | None -> Memo.return false
+      | Some path -> Source_tree.file_exists path
+    in
+    let use_profile =
       match Mode.of_context ctx with
-      | If_exists -> Memo.Lazy.force profile_exists
+      | If_exists -> profile_exists
+      | Never -> false
       | Always -> (
-        let+ profile_exists = Memo.Lazy.force profile_exists in
         match profile_exists with
         | true -> true
         | false ->
@@ -107,7 +106,6 @@ let get_profile =
             [ Pp.textf "%s=%s but profile file %s does not exist." Mode.var
                 (Mode.to_string Always) (Path.to_string path)
             ])
-      | Never -> Memo.return false
     in
     if use_profile then Some path else None
   in

@@ -361,7 +361,9 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
           let project = Scope.project scope in
           if Dune_project.wrapped_executables project then
             Modules_group.make_wrapped ~src_dir:dir ~modules `Exe
-          else Modules_group.exe_unwrapped modules
+          else
+            let modules = Module_trie.to_map modules in
+            Modules_group.exe_unwrapped modules
         in
         let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
         let modules =
@@ -398,30 +400,34 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
       | _ -> Memo.return `Skip)
   >>| filter_partition_map
 
-let check_no_qualified (loc, include_subdirs) =
-  if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
-    User_error.raise ~loc
-      [ Pp.text "(include_subdirs qualified) is not supported yet" ]
-
-let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib ~include_subdirs
+let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
+    ~include_subdirs:(_loc, (include_subdirs : Dune_file.Include_subdirs.t))
     ~dirs =
   let+ modules_of_stanzas =
-    check_no_qualified include_subdirs;
     let modules =
       let dialects = Dune_project.dialects (Scope.project scope) in
-      List.fold_left dirs ~init:Module_name.Map.empty
-        ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-          let modules = modules_of_files ~dialects ~dir ~files in
-          Module_name.Map.union acc modules ~f:(fun name x y ->
-              User_error.raise ~loc
-                [ Pp.textf "Module %S appears in several directories:"
-                    (Module_name.to_string name)
-                ; Pp.textf "- %s"
-                    (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                ; Pp.textf "- %s"
-                    (Path.to_string_maybe_quoted (Module.Source.src_dir y))
-                ; Pp.text "This is not allowed, please rename one of them."
-                ]))
+      match include_subdirs with
+      | Include Qualified ->
+        List.fold_left dirs ~init:Module_trie.empty
+          ~f:(fun acc ((dir : Path.Build.t), local, files) ->
+            let modules = modules_of_files ~dialects ~dir ~files in
+            let path = List.map local ~f:Module_name.of_string in
+            Module_trie.set_map acc path modules)
+      | No | Include Unqualified ->
+        List.fold_left dirs ~init:Module_name.Map.empty
+          ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+            let modules = modules_of_files ~dialects ~dir ~files in
+            Module_name.Map.union acc modules ~f:(fun name x y ->
+                User_error.raise ~loc
+                  [ Pp.textf "Module %S appears in several directories:"
+                      (Module_name.to_string name)
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                  ; Pp.text "This is not allowed, please rename one of them."
+                  ]))
+        |> Module_trie.of_map
     in
     modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
   in

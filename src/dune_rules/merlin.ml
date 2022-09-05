@@ -1,5 +1,15 @@
 open Import
 
+let remove_extension file =
+  let dir = Path.Build.parent_exn file in
+  let basename =
+    match Path.Build.basename file |> Filename.chop_extension with
+    | s -> s
+    | exception Code_error.E _ ->
+      Code_error.raise "opens" [ ("file", Path.Build.to_dyn file) ]
+  in
+  Path.Build.relative dir basename
+
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
      function from the unprocessed info gathered through [gen_rules]. The first
@@ -40,6 +50,7 @@ module Processed = struct
     { config : config
     ; modules : Module_name.t list
     ; pp_config : pp_flag option Module_name.Per_item.t
+    ; per_module_opens : Module_name.t list Path.Build.Map.t
     }
 
   module D = struct
@@ -47,7 +58,7 @@ module Processed = struct
 
     let name = "merlin-conf"
 
-    let version = 3
+    let version = 4
 
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
   end
@@ -68,7 +79,7 @@ module Processed = struct
 
   let serialize_path = Path.to_absolute_filename
 
-  let to_sexp ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
+  let to_sexp ~opens ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
@@ -92,6 +103,16 @@ module Processed = struct
         | flags ->
           [ make_directive "FLG"
               (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) flags))
+          ]
+      in
+      let flags =
+        match opens with
+        | [] -> flags
+        | flags ->
+          [ make_directive "FLG"
+              (Sexp.List
+                 (List.concat_map flags ~f:(fun name ->
+                      [ Sexp.Atom "-open"; Atom (Module_name.to_string name) ])))
           ]
       in
       match pp with
@@ -147,29 +168,36 @@ module Processed = struct
           print "\n");
     Buffer.contents b
 
-  let get { modules; pp_config; config } ~filename =
+  let opens per_module_opens file =
+    let file = remove_extension file in
+    Path.Build.Map.find per_module_opens file
+
+  let get { per_module_opens; modules; pp_config; config } ~file =
     (* We only match the first part of the filename : foo.ml -> foo foo.cppo.ml
        -> foo *)
     let fname =
+      let filename = Path.Build.basename file in
       String.lsplit2 filename ~on:'.'
       |> Option.map ~f:fst
       |> Option.value ~default:filename
       |> String.lowercase
     in
+    let opens = opens per_module_opens file in
     List.find_opt modules ~f:(fun name ->
         let fname' = Module_name.to_string name |> String.lowercase in
         String.equal fname fname')
     |> Option.map ~f:(fun name ->
            let pp = Module_name.Per_item.get pp_config name in
-           to_sexp ~pp config)
+           let opens = Option.value_exn opens in
+           to_sexp ~opens ~pp config)
 
   let print_file path =
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
-    | Ok { modules; pp_config; config } ->
+    | Ok { per_module_opens = _; modules; pp_config; config } ->
       let pp_one module_ =
         let pp = Module_name.Per_item.get pp_config module_ in
-        let sexp = to_sexp ~pp config in
+        let sexp = to_sexp ~opens:[] ~pp config in
         let open Pp.O in
         Pp.vbox (Pp.text (Module_name.to_string module_))
         ++ Pp.newline
@@ -196,6 +224,7 @@ module Processed = struct
                (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
                { modules = _
                ; pp_config
+               ; per_module_opens = _
                ; config =
                    { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
                }
@@ -264,16 +293,7 @@ module Unprocessed = struct
       Path.Set.singleton
       @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
     in
-    let flags =
-      Ocaml_flags.common
-      @@
-      match Modules.alias_module modules with
-      | None -> flags
-      | Some m ->
-        Ocaml_flags.prepend_common
-          [ "-open"; Module_name.to_string (Module.name m) ]
-          flags
-    in
+    let flags = Ocaml_flags.common flags in
     let extensions = Dialect.DB.extensions_for_merlin dialects in
     let config =
       { stdlib_dir
@@ -420,12 +440,22 @@ module Unprocessed = struct
       in
       { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
     and+ pp_config = pp_config t sctx ~expander in
+    let per_module_opens =
+      Modules.fold_no_vlib modules ~init:Path.Build.Map.empty ~f:(fun m init ->
+          Module.sources m
+          |> List.fold_left ~init ~f:(fun acc file ->
+                 let file = Path.as_in_build_dir_exn file |> remove_extension in
+                 let opens =
+                   Modules.alias_for modules m |> List.map ~f:Module.name
+                 in
+                 Path.Build.Map.set acc file opens))
+    in
     let modules =
       (* And copy for each module the resulting pp flags *)
       Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
           Module.name m :: acc)
     in
-    { Processed.modules; pp_config; config }
+    { Processed.modules; pp_config; config; per_module_opens }
 end
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =

@@ -1,8 +1,5 @@
 We are also allowed to write lib interface files at each level.
   $ dune build
-  File "lib/dune", line 1, characters 17-26:
-  1 | (include_subdirs qualified)
-                       ^^^^^^^^^
-  Error: Unknown value qualified
-  Hint: did you mean unqualified?
+  Error: No rule found for exe/test.exe
+  -> required by alias default in dune:1
   [1]

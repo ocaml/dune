@@ -100,7 +100,7 @@ module Stdlib = struct
           if
             Module.name m = main_module_name || special_compiler_module stdlib m
           then m
-          else Module.with_wrapper m ~main_module_name)
+          else Module.with_wrapper m ~main_module_name ~path:[])
     in
     let unwrapped = stdlib.modules_before_stdlib in
     let exit_module = stdlib.exit_module in
@@ -154,7 +154,7 @@ module Mangle = struct
   let of_lib ~lib_name ~implements ~main_module_name ~modules =
     let kind : Lib.kind =
       if implements then Implementation lib_name
-      else if Module_name.Map.mem modules main_module_name then
+      else if Module_trie.mem modules [ main_module_name ] then
         Has_lib_interface
       else Neither
     in
@@ -192,17 +192,19 @@ module Mangle = struct
   let wrap_modules t modules =
     let prefix = prefix t in
     let f =
+      (* TODO wrap all lib interfaces properly *)
       match t with
-      | Exe | Melange -> Module.with_wrapper ~main_module_name:prefix.public
+      | Exe | Melange ->
+        fun path m -> Module.set_path m ~main_module_name:prefix.public ~path
       | Lib { main_module_name; kind = _ } ->
-        fun m ->
+        fun path m ->
           if Module.name m = main_module_name then m
           else
             let visibility = Module.visibility m in
             let prefix = Visibility.Map.find prefix visibility in
-            Module.with_wrapper m ~main_module_name:prefix
+            Module.set_path m ~main_module_name:prefix ~path
     in
-    Module_name.Map.map modules ~f
+    Module_trie.mapi modules ~f
 end
 
 let impl_only_of_map m =
@@ -210,48 +212,167 @@ let impl_only_of_map m =
       if Module.has m ~ml_kind:Impl then m :: acc else acc)
 
 module Wrapped = struct
+  module Group = struct
+    type t =
+      { alias : Module.t
+      ; modules : node Module_name.Map.t
+      ; (* TODO rename *) path : Module_name.t
+      }
+
+    and node =
+      | Group of t
+      | Module of Module.t
+
+    let of_trie (trie : Module.t Module_trie.t) ~mangle ~src_dir : t =
+      let rec loop path trie =
+        { alias = Mangle.make_alias_module mangle ~src_dir
+        ; path
+        ; modules =
+            Module_name.Map.mapi trie ~f:(fun path (m : 'a Module_trie.node) ->
+                match m with
+                | Leaf m -> Module m
+                | Map m -> Group (loop path m))
+        }
+      in
+      loop (Mangle.prefix mangle).public trie
+
+    let rec relocate_alias_module t ~src_dir =
+      { t with
+        alias = Module.set_src_dir t.alias ~src_dir
+      ; modules =
+          Module_name.Map.map t.modules ~f:(function
+            | Module m -> Module m
+            | Group g -> Group (relocate_alias_module g ~src_dir))
+      }
+
+    let rec fold { alias; modules; path = _ } ~f ~init =
+      let init = f alias init in
+      Module_name.Map.fold modules ~init ~f:(fun node init ->
+          match node with
+          | Module m -> f m init
+          | Group t -> fold t ~f ~init)
+
+    let rec exists { alias; modules; path = _ } ~f =
+      f alias
+      || Module_name.Map.exists modules ~f:(function
+           | Module m -> f m
+           | Group p -> exists p ~f)
+
+    let rec to_dyn { alias; modules; path } =
+      let open Dyn in
+      record
+        [ ("alias", Module.to_dyn alias)
+        ; ("path", Module_name.to_dyn path)
+        ; ( "modules"
+          , Module_name.Map.to_dyn
+              (function
+                | Module m -> variant "module" [ Module.to_dyn m ]
+                | Group g -> variant "group" [ to_dyn g ])
+              modules )
+        ]
+
+    let rec map ({ alias; modules; path = _ } as t) ~f =
+      let alias = f alias in
+      let modules =
+        Module_name.Map.map modules ~f:(function
+          | Module m -> Module (f m)
+          | Group g -> Group (map g ~f))
+      in
+      { t with alias; modules }
+
+    let lib_interface t =
+      match Module_name.Map.find t.modules t.path with
+      | None | Some (Group _) -> t.alias
+      | Some (Module m) -> m
+
+    let decode ~src_dir:_ = assert false
+
+    let rec encode { alias; modules; path } =
+      let open Dune_lang.Encoder in
+      record_fields
+        [ field_l "alias" sexp (Module.encode alias)
+        ; field "path" Module_name.encode path
+        ; field_l "modules"
+            (fun x -> x)
+            (Module_name.Map.to_list_map modules ~f:(fun _ t ->
+                 Dune_lang.List
+                   (match t with
+                   | Group g -> Dune_lang.atom "group" :: encode g
+                   | Module m -> Dune_lang.atom "module" :: Module.encode m)))
+        ]
+
+    let parents t m =
+      let rec loop acc t = function
+        | [] -> acc
+        | p :: ps -> (
+          match Module_name.Map.find t.modules p with
+          | None -> assert false
+          | Some (Module _) ->
+            assert (ps = []);
+            acc
+          | Some (Group g) -> loop (g :: acc) g ps)
+      in
+      loop [ t ] t (List.tl (Module.path m))
+
+    module Memo_traversals = struct
+      let rec parallel_map ({ alias; modules; path = _ } as t) ~f =
+        let open Memo.O in
+        let+ alias, modules =
+          Memo.fork_and_join
+            (fun () -> f alias)
+            (fun () ->
+              Module_name.Map_traversals.parallel_map modules ~f:(fun _ n ->
+                  match n with
+                  | Module m ->
+                    let+ m = f m in
+                    Module m
+                  | Group g ->
+                    let+ g = parallel_map g ~f in
+                    Group g))
+        in
+        { t with alias; modules }
+    end
+  end
+
   type t =
-    { modules : Module.Name_map.t
+    { group : Group.t
     ; wrapped_compat : Module.Name_map.t
-    ; alias_module : Module.t
-    ; main_module_name : Module_name.t
     ; wrapped : Mode.t
     }
 
-  let encode
-      { modules; wrapped_compat; alias_module; main_module_name; wrapped } =
+  let lib_interface t = Group.lib_interface t.group
+
+  let for_alias t m =
+    assert (Module.kind m = Alias);
+    let neighbours = List.hd (Group.parents t.group m) in
+    Module_name.Map.remove neighbours.modules neighbours.path
+    |> Module_name.Map.map ~f:(fun (g : Group.node) ->
+           match g with
+           | Module m -> m
+           | Group g -> Group.lib_interface g)
+
+  let encode { group; wrapped_compat; wrapped } =
     let open Dune_lang.Encoder in
     let module E = Common.Encode in
     record_fields
-      [ E.main_module_name main_module_name
-      ; E.modules modules
-      ; field_l "alias_module" sexp (Module.encode alias_module)
-      ; field "wrapped" Wrapped.encode wrapped
+      [ field_l "group" (fun x -> x) (Group.encode group)
       ; E.modules ~name:"wrapped_compat" wrapped_compat
+      ; field "wrapped" Wrapped.encode wrapped
       ]
 
   let decode ~src_dir =
     let open Dune_lang.Decoder in
     let open Common.Decode in
     fields
-      (let+ main_module_name = main_module_name
-       and+ modules = modules ~src_dir ()
+      (let+ group = field "group" (Group.decode ~src_dir)
        and+ wrapped_compat = modules ~name:"wrapped_compat" ~src_dir ()
-       and+ alias_module = field "alias_module" (Module.decode ~src_dir)
        and+ wrapped = field "wrapped" Mode.decode in
-       { main_module_name; modules; wrapped_compat; alias_module; wrapped })
+       { group; wrapped_compat; wrapped })
 
-  let map
-      ({ modules
-       ; wrapped_compat
-       ; alias_module
-       ; main_module_name = _
-       ; wrapped = _
-       } as t) ~f =
+  let map ({ group; wrapped_compat; wrapped = _ } as t) ~f =
     { t with
-      modules = Module_name.Map.map modules ~f
+      group = Group.map group ~f
     ; wrapped_compat = Module_name.Map.map wrapped_compat ~f
-    ; alias_module = f alias_module
     }
 
   let make ~src_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped =
@@ -265,96 +386,50 @@ module Wrapped = struct
       | Simple true -> (wrapped_modules, Module_name.Map.empty)
       | Yes_with_transition _ ->
         ( wrapped_modules
-        , Module_name.Map.remove modules main_module_name
+        , Module_trie.remove modules [ main_module_name ]
+          |> Module_trie.toplevel_only
           |> Module_name.Map.filter_map ~f:(fun m ->
                  match Module.visibility m with
-                 | Public -> Some (Module.wrapped_compat m)
-                 | Private -> None) )
+                 | Private -> None
+                 | Public -> Some (Module.wrapped_compat m)) )
     in
-    let alias_module = Mangle.make_alias_module ~src_dir mangle in
-    { modules; alias_module; wrapped_compat; main_module_name; wrapped }
+    let group = Group.of_trie modules ~mangle ~src_dir in
+    { group; wrapped_compat; wrapped }
 
   let make_exe_or_melange ~src_dir ~modules mangle =
-    let alias_module = Mangle.make_alias_module mangle ~src_dir in
     let modules = Mangle.wrap_modules mangle modules in
-    { modules
-    ; wrapped_compat = Module_name.Map.empty
-    ; alias_module
-      (* XXX exe's don't have a main module, but this is harmless *)
-    ; main_module_name = Module.name alias_module
-    ; wrapped = Simple true
-    }
+    let group = Group.of_trie modules ~mangle ~src_dir in
+    { group; wrapped_compat = Module_name.Map.empty; wrapped = Simple true }
 
-  let obj_map
-      { modules
-      ; wrapped_compat
-      ; alias_module
-      ; main_module_name = _
-      ; wrapped = _
-      } ~f =
-    let init = Module.Obj_map.singleton alias_module (f alias_module) in
-    let acc =
-      Module_name.Map.fold ~f:(fun m acc -> Module.Obj_map.add_exn acc m (f m))
-    in
-    acc modules ~init:(acc wrapped_compat ~init)
+  let obj_map { group; wrapped_compat; wrapped = _ } ~f =
+    let add_module m acc = Module.Obj_map.add_exn acc m (f m) in
+    let init = Group.fold group ~init:Module.Obj_map.empty ~f:add_module in
+    Module_name.Map.fold ~init wrapped_compat ~f:add_module
 
-  let to_dyn
-      { modules; wrapped_compat; alias_module; main_module_name; wrapped } =
+  let to_dyn { group; wrapped_compat; wrapped } =
     let open Dyn in
     record
-      [ ("modules", Module.Name_map.to_dyn modules)
-      ; ("wrapped_compat", Module.Name_map.to_dyn wrapped_compat)
-      ; ("alias_module", Module.to_dyn alias_module)
-      ; ("main_module_name", Module_name.to_dyn main_module_name)
-      ; ("wrapped", Wrapped.to_dyn wrapped)
+      [ ("group", Group.to_dyn group)
+      ; ("wrapped_compat", Module_name.Map.to_dyn Module.to_dyn wrapped_compat)
+      ; ("wrapped", Mode.to_dyn wrapped)
       ]
 
-  let is_alias_name t name = Module.name t.alias_module = name
+  let impl_only { group; wrapped_compat; wrapped = _ } =
+    let init = Module_name.Map.values wrapped_compat in
+    Group.fold group ~init ~f:(fun v acc ->
+        if Module.has v ~ml_kind:Impl then v :: acc else acc)
 
-  let impl_only
-      { modules
-      ; wrapped_compat
-      ; alias_module
-      ; main_module_name = _
-      ; wrapped = _
-      } =
-    let modules =
-      impl_only_of_map modules @ Module_name.Map.values wrapped_compat
-    in
-    alias_module :: modules
-
-  let fold
-      { modules
-      ; wrapped_compat
-      ; alias_module
-      ; main_module_name = _
-      ; wrapped = _
-      } ~init ~f =
-    let init = f alias_module init in
-    let init = Module_name.Map.fold modules ~f ~init in
+  let fold { group; wrapped_compat; wrapped = _ } ~init ~f =
+    let init = Group.fold group ~f ~init in
     Module_name.Map.fold wrapped_compat ~f ~init
 
-  let exists
-      { modules
-      ; wrapped_compat
-      ; alias_module
-      ; main_module_name = _
-      ; wrapped = _
-      } ~f =
-    f alias_module
-    || Module_name.Map.exists modules ~f
-    || Module_name.Map.exists wrapped_compat ~f
-
-  let lib_interface t =
-    Module_name.Map.find t.modules t.main_module_name
-    |> Option.value ~default:t.alias_module
+  let exists { group; wrapped_compat; wrapped = _ } ~f =
+    Group.exists group ~f || Module_name.Map.exists wrapped_compat ~f
 
   let find t name =
-    if is_alias_name t name then Some t.alias_module
-    else
-      match Module_name.Map.find t.modules name with
-      | Some _ as m -> m
-      | None -> Module_name.Map.find t.wrapped_compat name
+    match Module_name.Map.find t.group.modules name with
+    | Some (Module m) -> Some m
+    | Some (Group _) | None -> None
 
   let find_dep t ~of_ name =
     match Module.kind of_ with
@@ -363,17 +438,32 @@ module Wrapped = struct
       let li = lib_interface t in
       Option.some_if (name = Module.name li) li
     | _ ->
-      if is_alias_name t name then Some t.alias_module
-      else Module_name.Map.find t.modules name
+      (* TODO don't recompute this  *)
+      let parents =
+        match Group.parents t.group of_ with
+        | [] -> assert false
+        | top :: rest as parents ->
+          if
+            Module_name.Unique.equal
+              (Module.obj_name @@ Group.lib_interface top)
+              (Module.obj_name of_)
+          then rest
+          else parents
+      in
+      List.find_map parents ~f:(fun parent ->
+          match Module_name.Map.find parent.modules name with
+          | None -> None
+          | Some (Module m) -> Some m
+          | Some (Group g) -> Some (Group.lib_interface g))
 
   let alias_for t m =
     match Module.kind m with
-    | Alias | Wrapped_compat -> None
-    | _ -> Some t.alias_module
+    | Alias | Wrapped_compat -> []
+    | _ -> Group.parents t.group m |> List.map ~f:(fun (s : Group.t) -> s.alias)
 
   let relocate_alias_module t ~src_dir =
-    let alias_module = Module.set_src_dir t.alias_module ~src_dir in
-    { t with alias_module }
+    let group = Group.relocate_alias_module t.group ~src_dir in
+    { t with group }
 end
 
 type t =
@@ -398,10 +488,6 @@ let rec encode t =
   | Wrapped m -> List (atom "wrapped" :: Wrapped.encode m)
   | Stdlib m -> List (atom "stdlib" :: Stdlib.encode m)
   | Impl { impl; _ } -> encode impl
-
-let as_singleton m =
-  if Module_name.Map.cardinal m <> 1 then None
-  else Module_name.Map.choose m |> Option.map ~f:snd
 
 let singleton m = Singleton m
 
@@ -445,7 +531,7 @@ let rec lib_interface = function
 let rec main_module_name = function
   | Singleton m -> Some (Module.name m)
   | Unwrapped _ -> None
-  | Wrapped w -> Some w.main_module_name
+  | Wrapped w -> Some w.group.path
   | Stdlib w -> Some w.main_module_name
   | Impl { vlib; impl = _ } -> main_module_name vlib
 
@@ -459,11 +545,14 @@ let lib ~src_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
   match stdlib with
   | Some stdlib ->
     let main_module_name = Option.value_exn main_module_name in
+    let modules = Module_trie.to_map modules in
     Stdlib (Stdlib.make ~stdlib ~modules ~main_module_name)
   | None -> (
-    match (wrapped, main_module_name, as_singleton modules) with
+    match (wrapped, main_module_name, Module_trie.as_singleton modules) with
     | Simple false, _, Some m -> Singleton m
-    | Simple false, _, None -> Unwrapped modules
+    | Simple false, _, None ->
+      (* TODO allow unwrapped modules to use [(include_subdirs qualified)] *)
+      Unwrapped (Module_trie.to_map modules)
     | (Yes_with_transition _ | Simple true), Some main_module_name, Some m ->
       if Module.name m = main_module_name && not implements then Singleton m
       else make_wrapped main_module_name
@@ -520,7 +609,7 @@ let rec find_dep t ~of_ name =
 let make_singleton m mangle =
   Singleton
     (let main_module_name = (Mangle.prefix mangle).public in
-     Module.with_wrapper m ~main_module_name)
+     Module.with_wrapper m ~main_module_name ~path:[])
 
 let singleton_exe m = make_singleton m Exe
 
@@ -532,7 +621,7 @@ let make_wrapped ~src_dir ~modules kind =
     | `Exe -> Exe
     | `Melange -> Melange
   in
-  match as_singleton modules with
+  match Module_trie.as_singleton modules with
   | Some m -> make_singleton m mangle
   | None -> Wrapped (Wrapped.make_exe_or_melange ~src_dir ~modules mangle)
 
@@ -589,22 +678,20 @@ let split_by_lib t =
 let compat_for_exn t m =
   match t with
   | Singleton _ | Stdlib _ | Unwrapped _ -> assert false
-  | Wrapped { modules; _ } ->
-    Module_name.Map.find modules (Module.name m) |> Option.value_exn
   | Impl _ -> Code_error.raise "wrapped compat not supported for vlib" []
+  | Wrapped { group; _ } -> (
+    match Module_name.Map.find group.modules (Module.name m) with
+    | None -> assert false
+    | Some (Module m) -> m
+    | Some (Group g) -> Wrapped.Group.lib_interface g)
 
-let rec for_alias = function
+let rec for_alias t m =
+  match t with
   | Stdlib _ | Singleton _ | Unwrapped _ -> Module_name.Map.empty
-  | Wrapped
-      { modules
-      ; main_module_name
-      ; alias_module = _
-      ; wrapped_compat = _
-      ; wrapped = _
-      } -> Module_name.Map.remove modules main_module_name
+  | Wrapped w -> Wrapped.for_alias w m
   | Impl { vlib; impl } ->
-    let impl = for_alias impl in
-    let vlib = for_alias vlib in
+    let impl = for_alias impl m in
+    let vlib = for_alias vlib m in
     Module_name.Map.merge impl vlib ~f:(fun _ impl vlib ->
         match (impl, vlib) with
         | None, None -> assert false
@@ -619,8 +706,8 @@ let rec fold_user_available t ~f ~init =
   match t with
   | Stdlib w -> Stdlib.fold w ~init ~f
   | Singleton m -> f m init
-  | Wrapped { modules; _ } | Unwrapped modules ->
-    Module_name.Map.fold modules ~init ~f
+  | Unwrapped modules -> Module_name.Map.fold modules ~init ~f
+  | Wrapped { group; _ } -> Wrapped.Group.fold group ~init ~f
   | Impl { impl; vlib = _ } ->
     (* XXX shouldn't we folding over [vlib] as well? *)
     fold_user_available impl ~f ~init
@@ -639,8 +726,8 @@ let rec fold_user_written t ~f ~init =
   match t with
   | Stdlib w -> Stdlib.fold w ~init ~f
   | Singleton m -> f m init
-  | Wrapped { modules; _ } | Unwrapped modules ->
-    Module_name.Map.fold modules ~init ~f
+  | Unwrapped modules -> Module_name.Map.fold modules ~init ~f
+  | Wrapped { group; _ } -> Wrapped.Group.fold group ~init ~f
   | Impl { impl; vlib = _ } -> fold_user_written impl ~f ~init
 
 let rec map_user_written t ~f =
@@ -656,17 +743,9 @@ let rec map_user_written t ~f =
   | Stdlib w ->
     let+ res = Stdlib.traverse w ~f in
     Stdlib res
-  | Wrapped
-      ({ modules
-       ; alias_module = _
-       ; main_module_name = _
-       ; wrapped_compat = _
-       ; wrapped = _
-       } as w) ->
-    let+ modules =
-      Module_name.Map_traversals.parallel_map modules ~f:(fun _ -> f)
-    in
-    Wrapped { w with modules }
+  | Wrapped ({ group; wrapped_compat = _; wrapped = _ } as w) ->
+    let+ group = Wrapped.Group.Memo_traversals.parallel_map group ~f in
+    Wrapped { w with group }
   | Impl t ->
     let+ vlib = map_user_written t.vlib ~f in
     Impl { t with vlib }
@@ -726,22 +805,18 @@ let entry_modules t =
     | Singleton m -> [ m ]
     | Unwrapped m -> Module_name.Map.values m
     | Wrapped m ->
-      (* we assume this is never called for implementations *)
-      [ Wrapped.lib_interface m ]
+      [ (* we assume this is never called for implementations *)
+        Wrapped.lib_interface m
+      ]
     | Impl i ->
       Code_error.raise "entry_modules: not defined for implementations"
         [ ("impl", dyn_of_impl i) ])
 
 let virtual_module_names =
-  fold_no_vlib ~init:Module_name.Set.empty ~f:(fun m acc ->
+  fold_no_vlib ~init:Module_name.Path.Set.empty ~f:(fun m acc ->
       match Module.kind m with
-      | Virtual -> Module_name.Set.add acc (Module.name m)
+      | Virtual -> Module_name.Path.Set.add acc [ Module.name m ]
       | _ -> acc)
-
-let rec alias_module = function
-  | Stdlib _ | Singleton _ | Unwrapped _ -> None
-  | Wrapped w -> Some w.alias_module
-  | Impl { impl; vlib = _ } -> alias_module impl
 
 let rec wrapped = function
   | Wrapped w -> w.wrapped
@@ -751,13 +826,15 @@ let rec wrapped = function
 
 let rec alias_for t m =
   match Module.kind m with
-  | Root -> None
+  | Root -> []
   | _ -> (
     match t with
-    | Singleton _ | Unwrapped _ -> None
+    | Singleton _ | Unwrapped _ -> []
     | Wrapped w -> Wrapped.alias_for w m
-    | Stdlib w -> Stdlib.alias_for w m
+    | Stdlib w -> Stdlib.alias_for w m |> Option.to_list
     | Impl { impl; vlib = _ } -> alias_for impl m)
+
+let local_open t m = alias_for t m |> List.map ~f:Module.name
 
 let is_stdlib_alias t m =
   match t with

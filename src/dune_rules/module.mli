@@ -51,6 +51,8 @@ val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 
 val name : t -> Module_name.t
 
+val path : t -> Module_name.Path.t
+
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 
 val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option
@@ -63,8 +65,13 @@ val iter : t -> f:(Ml_kind.t -> File.t -> unit Memo.t) -> unit Memo.t
 
 val has : t -> ml_kind:Ml_kind.t -> bool
 
-(** Prefix the object name with the library name. *)
-val with_wrapper : t -> main_module_name:Module_name.t -> t
+(** Prefix the object name with the library name and the module path for
+    qualified includes. *)
+val with_wrapper :
+  t -> main_module_name:Module_name.t -> path:Module_name.Path.t -> t
+
+val set_path :
+  t -> main_module_name:Module_name.t -> path:Module_name.Path.t -> t
 
 val add_file : t -> Ml_kind.t -> File.t -> t
 

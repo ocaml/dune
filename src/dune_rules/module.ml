@@ -116,9 +116,12 @@ type t =
   ; pp : (string list Action_builder.t * Sandbox_config.t) option
   ; visibility : Visibility.t
   ; kind : Kind.t
+  ; path : Module_name.Path.t
   }
 
 let name t = t.source.name
+
+let path t = t.path
 
 let kind t = t.kind
 
@@ -158,7 +161,7 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
       Module_name.Unique.of_path_assuming_needs_no_mangling_allow_invalid
         file.path
   in
-  { source; obj_name; pp = None; visibility; kind }
+  { source; obj_name; pp = None; visibility; kind; path = [] }
 
 let has t ~ml_kind =
   match (ml_kind : Ml_kind.t) with
@@ -175,8 +178,13 @@ let iter t ~f =
   Memo.parallel_iter Ml_kind.all ~f:(fun kind ->
       Memo.Option.iter (Ml_kind.Dict.get t.source.files kind) ~f:(f kind))
 
-let with_wrapper t ~main_module_name =
-  { t with obj_name = Module_name.wrap t.source.name ~with_:main_module_name }
+let with_wrapper t ~main_module_name ~path =
+  let with_ = main_module_name :: path in
+  { t with obj_name = Module_name.wrap t.source.name ~with_ }
+
+let set_path t ~main_module_name ~path =
+  assert (Module_name.equal (Option.value_exn (List.last path)) (name t));
+  { t with obj_name = Module_name.Path.wrap (main_module_name :: path); path }
 
 let add_file t kind file =
   let source = Source.add_file t.source kind file in
@@ -196,13 +204,14 @@ let src_dir t = Source.src_dir t.source
 
 let set_pp t pp = { t with pp }
 
-let to_dyn { source; obj_name; pp; visibility; kind } =
+let to_dyn { source; obj_name; pp; visibility; kind; path } =
   Dyn.record
     [ ("source", Source.to_dyn source)
     ; ("obj_name", Module_name.Unique.to_dyn obj_name)
     ; ("pp", Dyn.(option string) (Option.map ~f:(fun _ -> "has pp") pp))
     ; ("visibility", Visibility.to_dyn visibility)
     ; ("kind", Kind.to_dyn kind)
+    ; ("path", Module_name.Path.to_dyn path)
     ]
 
 let ml_gen = ".ml-gen"
@@ -248,8 +257,8 @@ end
 module Obj_map_traversals = Memo.Make_map_traversals (Obj_map)
 
 let encode
-    ({ source = { name; files = _ }; obj_name; pp = _; visibility; kind } as t)
-    =
+    ({ path; source = { name; files = _ }; obj_name; pp = _; visibility; kind }
+    as t) =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -262,6 +271,7 @@ let encode
   record_fields
     [ field "name" Module_name.encode name
     ; field "obj_name" Module_name.Unique.encode obj_name
+    ; field "path" Module_name.Path.encode path
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
     ; field_b "impl" has_impl
@@ -277,6 +287,7 @@ let decode ~src_dir =
   fields
     (let+ name = field "name" Module_name.decode
      and+ obj_name = field "obj_name" Module_name.Unique.decode
+     and+ path = field "path" Module_name.Path.decode
      and+ visibility = field "visibility" Visibility.decode
      and+ kind = field_o "kind" Kind.decode
      and+ impl = field_b "impl"
@@ -296,7 +307,8 @@ let decode ~src_dir =
      let intf = file intf Intf in
      let impl = file impl Impl in
      let source = Source.make ?impl ?intf name in
-     of_source ~obj_name ~visibility ~kind source)
+     let t = of_source ~obj_name ~visibility ~kind source in
+     { t with path })
 
 let pped =
   map_files ~f:(fun _kind (file : File.t) ->

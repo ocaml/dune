@@ -14,13 +14,8 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
    the mli is not present it is added as additional target to the .cmo
    generation *)
 
-let open_modules modules m =
-  match Modules.alias_for modules m with
-  | None -> []
-  | Some (m : Module.t) -> [ Module.name m ]
-
 let opens modules m =
-  match open_modules modules m with
+  match Modules.local_open modules m with
   | [] -> Command.Args.empty
   | modules ->
     Command.Args.S
@@ -402,7 +397,7 @@ module Alias_module = struct
   let of_modules project modules ~alias_module =
     let main_module = Modules.main_module_name modules |> Option.value_exn in
     let aliases =
-      Modules.for_alias modules
+      Modules.for_alias modules alias_module
       |> Module_name.Map.to_list_map ~f:(fun local_name m ->
              let obj_name = Module.obj_name m in
              { local_name; obj_name })

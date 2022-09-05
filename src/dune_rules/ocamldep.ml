@@ -66,8 +66,8 @@ let interpret_deps md ~unit deps =
                    (Module_name.to_string main_module_name)
                ]);
   match Modules.alias_for modules unit with
-  | None -> deps
-  | Some m -> m :: deps
+  | [] -> deps
+  | m -> m @ deps
 
 let deps_of
     ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)

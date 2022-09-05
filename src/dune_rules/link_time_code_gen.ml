@@ -28,7 +28,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
       let main_module_name = Option.value_exn main_module_name in
       (* XXX this is fishy. We shouldn't be introducing a toplevel module into a
          wrapped library with a single module *)
-      Module.with_wrapper gen_module ~main_module_name
+      Module.with_wrapper gen_module ~main_module_name ~path:[]
   in
   let open Memo.O in
   let* () =

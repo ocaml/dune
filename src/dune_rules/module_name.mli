@@ -66,7 +66,29 @@ module Unique : sig
   include Comparable_intf.S with type key := t
 end
 
-val wrap : t -> with_:t -> Unique.t
+module Path : sig
+  type nonrec t = t list
+
+  val compare : t -> t -> Ordering.t
+
+  val to_dyn : t -> Dyn.t
+
+  val to_string : t -> string
+
+  val uncapitalize : t -> string
+
+  module Map : Stdune.Map.S with type key = t
+
+  module Set : Stdune.Set.S with type elt = t and type 'a map = 'a Map.t
+
+  val wrap : t -> Unique.t
+
+  val encode : t -> Dune_lang.t
+
+  val decode : t Dune_lang.Decoder.t
+end
+
+val wrap : t -> with_:Path.t -> Unique.t
 
 include Comparable_intf.S with type key := t
 

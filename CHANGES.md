@@ -1,6 +1,8 @@
 3.5.0 (unreleased)
 ------------------
 
+- Shadow alias module `Foo__` when building a library `Foo` (#6126, @rgrinberg)
+
 - Allow dune describe workspace to accept directories as arguments.
   The provided directories restrict the worskpace description to those
   directories. (#6107, fixes #3893, @esope)

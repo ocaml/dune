@@ -28,22 +28,6 @@ CRAM sanitization
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
-  File
-  ((STDLIB /OCAMLC_WHERE)
-   (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="bar"'"))
-   (FLG (-open Bar -w -40)))
   Bar
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -59,27 +43,24 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-open Bar -w -40)))
-  Privmod
+   (FLG (-w -40)))
+  File
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
    (B
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
    (S
     $TESTCASE_ROOT/lib)
    (S
     $TESTCASE_ROOT/lib/subdir)
+   (FLG (-open Bar))
    (FLG
     (-ppx
      "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
      --as-ppx
      --cookie
-     'library-name="foo"'"))
-   (FLG (-open Foo -w -40)))
+     'library-name="bar"'"))
+   (FLG (-w -40)))
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -99,7 +80,28 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-open Foo -w -40)))
+   (FLG (-w -40)))
+  Privmod
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B lib/findlib)
+   (B /OCAMLC_WHERE)
+   (B
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
+   (S lib/findlib)
+   (S /OCAMLC_WHERE)
+   (S
+    $TESTCASE_ROOT/lib)
+   (S
+    $TESTCASE_ROOT/lib/subdir)
+   (FLG (-open Foo))
+   (FLG
+    (-ppx
+     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="foo"'"))
+   (FLG (-w -40)))
 
 Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
   $ dune ocaml merlin dump-config $PWD/lib | grep ppx > /dev/null
@@ -124,7 +126,7 @@ Make sure pp flag is correct and variables are expanded
 Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
   $ dune ocaml merlin dump-config $PWD/exes
-  Y
+  X
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -138,7 +140,7 @@ Check hash of executables names if more than one
      -strict-formats
      -short-paths
      -keep-locs)))
-  X
+  Y
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

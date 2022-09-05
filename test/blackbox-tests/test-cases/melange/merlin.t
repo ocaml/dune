@@ -21,14 +21,13 @@
   $ touch bar.ml $lib.ml
   $ dune build @check
   $ dune ocaml merlin dump-config "$PWD" | grep -i "$lib"
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (FLG (-open Foo__))
   Foo
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-     Foo__
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-     Foo__
+   (FLG (-open Foo__))
   Foo__
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-     Foo__
 
 All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
 

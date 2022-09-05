@@ -17,7 +17,7 @@ module Kind : sig
     | Intf_only
     | Virtual
     | Impl
-    | Alias
+    | Alias of Module_name.Path.t
     | Impl_vmodule
     | Wrapped_compat
     | Root
@@ -35,6 +35,8 @@ module Source : sig
 
   val has : t -> ml_kind:Ml_kind.t -> bool
 
+  val to_dyn : t -> Dyn.t
+
   val src_dir : t -> Path.t
 end
 
@@ -47,9 +49,16 @@ val to_dyn : t -> Dyn.t
 (** When you initially construct a [t] using [of_source], it assumes no wrapping
     (so reports an incorrect [obj_name] if wrapping is used) and you might need
     to fix it later with [with_wrapper]. *)
-val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
+val of_source :
+     ?path:Module_name.Path.t
+  -> visibility:Visibility.t
+  -> kind:Kind.t
+  -> Source.t
+  -> t
 
 val name : t -> Module_name.t
+
+val path : t -> Module_name.Path.t
 
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 
@@ -63,8 +72,9 @@ val iter : t -> f:(Ml_kind.t -> File.t -> unit Memo.t) -> unit Memo.t
 
 val has : t -> ml_kind:Ml_kind.t -> bool
 
-(** Prefix the object name with the library name. *)
-val with_wrapper : t -> main_module_name:Module_name.t -> t
+val set_obj_name : t -> Module_name.Unique.t -> t
+
+val set_path : t -> Module_name.Path.t -> t
 
 val add_file : t -> Ml_kind.t -> File.t -> t
 
@@ -132,6 +142,7 @@ val set_src_dir : t -> src_dir:Path.t -> t
     be used to create the rule to generate this file *)
 val generated :
      ?obj_name:Module_name.Unique.t
+  -> ?path:Module_name.Path.t
   -> kind:Kind.t
   -> src_dir:Path.Build.t
   -> Module_name.t

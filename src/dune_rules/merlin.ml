@@ -1,5 +1,10 @@
 open Import
 
+let remove_extension file =
+  let dir = Path.Build.parent_exn file in
+  let basename, _ext = String.lsplit2_exn (Path.Build.basename file) ~on:'.' in
+  Path.Build.relative dir basename
+
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
      function from the unprocessed info gathered through [gen_rules]. The first
@@ -12,6 +17,12 @@ module Processed = struct
       | Pp
       | Ppx
 
+    let to_dyn =
+      let open Dyn in
+      function
+      | Pp -> variant "Pp" []
+      | Ppx -> variant "Ppx" []
+
     let to_flag = function
       | Pp -> "-pp"
       | Ppx -> "-ppx"
@@ -21,6 +32,10 @@ module Processed = struct
     { flag : Pp_kind.t
     ; args : string
     }
+
+  let dyn_of_pp_flag { flag; args } =
+    let open Dyn in
+    record [ ("flag", Pp_kind.to_dyn flag); ("args", string args) ]
 
   let pp_kind x = x.flag
 
@@ -36,19 +51,53 @@ module Processed = struct
     ; melc_flags : string list
     }
 
+  let dyn_of_config
+      { stdlib_dir; obj_dirs; src_dirs; flags; extensions; melc_flags } =
+    let open Dyn in
+    record
+      [ ("stdlib_dir", option Path.to_dyn stdlib_dir)
+      ; ("obj_dirs", Path.Set.to_dyn obj_dirs)
+      ; ("src_dirs", Path.Set.to_dyn src_dirs)
+      ; ("flags", list string flags)
+      ; ("extensions", list (Ml_kind.Dict.to_dyn string) extensions)
+      ; ("melc_flags", list string melc_flags)
+      ]
+
+  type module_config =
+    { opens : Module_name.t list
+    ; module_ : Module.t
+    }
+
+  let dyn_of_module_config { opens; module_ } =
+    let open Dyn in
+    record
+      [ ("opens", list Module_name.to_dyn opens)
+      ; ("module_", Module.to_dyn module_)
+      ]
+
   (* ...but modules can have different preprocessing specifications*)
   type t =
     { config : config
-    ; modules : Module_name.t list
+    ; per_module_config : module_config Path.Build.Map.t
     ; pp_config : pp_flag option Module_name.Per_item.t
     }
+
+  let to_dyn { config; per_module_config; pp_config } =
+    let open Dyn in
+    record
+      [ ("config", dyn_of_config config)
+      ; ( "per_module_config"
+        , Path.Build.Map.to_dyn dyn_of_module_config per_module_config )
+      ; ( "pp_config"
+        , Module_name.Per_item.to_dyn (option dyn_of_pp_flag) pp_config )
+      ]
 
   module D = struct
     type nonrec t = t
 
     let name = "merlin-conf"
 
-    let version = 3
+    let version = 4
 
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
   end
@@ -69,7 +118,7 @@ module Processed = struct
 
   let serialize_path = Path.to_absolute_filename
 
-  let to_sexp ~pp
+  let to_sexp ~opens ~pp
       { stdlib_dir; obj_dirs; src_dirs; flags; extensions; melc_flags } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
@@ -104,11 +153,21 @@ module Processed = struct
             (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
           :: flags
       in
-      match melc_flags with
+      let flags =
+        match melc_flags with
+        | [] -> flags
+        | melc_flags ->
+          make_directive "FLG"
+            (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) melc_flags))
+          :: flags
+      in
+      match opens with
       | [] -> flags
-      | melc_flags ->
+      | opens ->
         make_directive "FLG"
-          (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) melc_flags))
+          (Sexp.List
+             (List.concat_map opens ~f:(fun name ->
+                  [ Sexp.Atom "-open"; Atom (Module_name.to_string name) ])))
         :: flags
     in
     let suffixes =
@@ -157,36 +216,41 @@ module Processed = struct
           print "\n");
     Buffer.contents b
 
-  let get { modules; pp_config; config } ~filename =
+  let get { per_module_config; pp_config; config } ~file =
     (* We only match the first part of the filename : foo.ml -> foo foo.cppo.ml
        -> foo *)
-    let fname =
-      String.lsplit2 filename ~on:'.'
-      |> Option.map ~f:fst
-      |> Option.value ~default:filename
-      |> String.lowercase
+    let open Option.O in
+    let+ { module_; opens } =
+      let find file =
+        let file_without_ext = remove_extension file in
+        Path.Build.Map.find per_module_config file_without_ext
+      in
+      match find file with
+      | Some _ as s -> s
+      | None -> Copy_line_directive.DB.follow_while file ~f:find
     in
-    List.find_opt modules ~f:(fun name ->
-        let fname' = Module_name.to_string name |> String.lowercase in
-        String.equal fname fname')
-    |> Option.map ~f:(fun name ->
-           let pp = Module_name.Per_item.get pp_config name in
-           to_sexp ~pp config)
+    let pp = Module_name.Per_item.get pp_config (Module.name module_) in
+    to_sexp ~opens ~pp config
 
   let print_file path =
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
-    | Ok { modules; pp_config; config } ->
-      let pp_one module_ =
-        let pp = Module_name.Per_item.get pp_config module_ in
-        let sexp = to_sexp ~pp config in
+    | Ok { per_module_config; pp_config; config } ->
+      let pp_one { module_; opens } =
         let open Pp.O in
-        Pp.vbox (Pp.text (Module_name.to_string module_))
+        let name = Module.name module_ in
+        let pp = Module_name.Per_item.get pp_config name in
+        let sexp = to_sexp ~opens ~pp config in
+        Pp.vbox (Pp.text (Module_name.to_string name))
         ++ Pp.newline
         ++ Pp.vbox (Sexp.pp sexp)
-        ++ Pp.newline
       in
-      Format.printf "%a%!" Pp.to_fmt (Pp.concat_map modules ~f:pp_one)
+      let pp =
+        Path.Build.Map.values per_module_config
+        |> Pp.concat_map ~sep:Pp.cut ~f:pp_one
+        |> Pp.vbox
+      in
+      Format.printf "%a@." Pp.to_fmt pp
 
   let print_generic_dot_merlin paths =
     match Result.List.map paths ~f:load_file with
@@ -205,7 +269,7 @@ module Processed = struct
             , init.config.melc_flags )
           ~f:(fun
                (acc_pp, acc_obj, acc_src, acc_flags, acc_ext, acc_melc_flags)
-               { modules = _
+               { per_module_config = _
                ; pp_config
                ; config =
                    { stdlib_dir = _
@@ -289,16 +353,7 @@ module Unprocessed = struct
       Path.Set.singleton
       @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
     in
-    let flags =
-      Ocaml_flags.common
-      @@
-      match Modules.alias_module modules with
-      | None -> flags
-      | Some m ->
-        Ocaml_flags.prepend_common
-          [ "-open"; Module_name.to_string (Module.name m) ]
-          flags
-    in
+    let flags = Ocaml_flags.common flags in
     let extensions = Dialect.DB.extensions_for_merlin dialects in
     let config =
       { stdlib_dir
@@ -465,12 +520,23 @@ module Unprocessed = struct
       ; melc_flags
       }
     and+ pp_config = pp_config t sctx ~expander in
-    let modules =
+    let per_module_config =
       (* And copy for each module the resulting pp flags *)
-      Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
-          Module.name m :: acc)
+      Modules.fold_no_vlib modules ~init:[] ~f:(fun m init ->
+          Module.sources m
+          |> Path.Build.Set.of_list_map ~f:(fun src ->
+                 Path.as_in_build_dir_exn src |> remove_extension)
+          |> Path.Build.Set.fold ~init ~f:(fun src acc ->
+                 let config =
+                   { Processed.module_ = Module.set_pp m None
+                   ; opens =
+                       Modules.alias_for modules m |> List.map ~f:Module.name
+                   }
+                 in
+                 (src, config) :: acc))
+      |> Path.Build.Map.of_list_exn
     in
-    { Processed.modules; pp_config; config }
+    { Processed.pp_config; config; per_module_config }
 end
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =

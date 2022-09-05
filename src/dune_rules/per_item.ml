@@ -10,6 +10,10 @@ module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
     ; values : 'a array
     }
 
+  let to_dyn f { map; values } =
+    let open Dyn in
+    record [ ("map", Map.to_dyn int map); ("values", array f values) ]
+
   let equal f t { values; map } =
     Array.equal f t.values values && Map.equal ~equal:Int.equal t.map map
 

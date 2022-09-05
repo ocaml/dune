@@ -190,9 +190,7 @@ module Module = struct
       let+ (pp, ppx), files_to_load = Memo.fork_and_join pps files_to_load in
       let code =
         let modules = Dune_rules.Compilation_context.modules cctx in
-        let opens_ =
-          Dune_rules.Module_compilation.open_modules modules module_
-        in
+        let opens_ = Dune_rules.Modules.local_open modules module_ in
         List.map opens_ ~f:(fun name ->
             sprintf "open %s" (Dune_rules.Module_name.to_string name))
       in

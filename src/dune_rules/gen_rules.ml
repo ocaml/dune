@@ -440,8 +440,8 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           in
           Memo.return (Rules.union rules rules')
         in
-        let subdirs = String.Set.of_keys automatic_sub_dirs_map in
         let subdirs =
+          let subdirs = String.Set.of_keys automatic_sub_dirs_map in
           match components with
           | [] ->
             String.Set.union subdirs

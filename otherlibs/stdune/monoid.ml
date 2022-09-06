@@ -14,7 +14,7 @@ module Make (M : Basic) : Monoid_intf.S with type t = M.t = struct
   let map_reduce ~f =
     List.fold_left ~init:empty ~f:(fun acc a -> combine acc (f a))
 end
-[@@inlined always]
+[@@inline always]
 
 module Exists = Make (struct
   type t = bool

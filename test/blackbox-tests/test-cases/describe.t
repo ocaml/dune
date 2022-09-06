@@ -225,7 +225,9 @@ are reproducible, and are kept consistent between different machines.
 not stable across different setups.
 
   $ dune describe workspace --lang 0.1 --sanitize-for-tests
-  ((executables
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (executables
     ((names (refmt))
      (requires ())
      (modules
@@ -698,7 +700,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
   $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests
-  ((executables
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (executables
     ((names (refmt))
      (requires ())
      (modules
@@ -1285,7 +1289,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
   $ dune describe workspace --lang 0.1 --sanitize-for-tests virtual
-  ((library
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (library
     ((name virtual)
      (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
      (local true)
@@ -1303,7 +1309,7 @@ Test other formats
 ------------------
 
   $ dune describe workspace --format csexp --lang 0.1 --sanitize-for-tests | cut -c 1-85
-  ((11:executables((5:names(5:refmt))(8:requires())(7:modules(((4:name5:Refmt)(4:impl(2
+  ((4:root15:/WORKSPACE_ROOT)(13:build_context14:_build/default)(11:executables((5:name
 
 Test errors
 -----------

@@ -8,6 +8,9 @@
 
 - Shadow alias module `Foo__` when building a library `Foo` (#6126, @rgrinberg)
 
+- Extend dune describe to include the root path of the workspace and the
+  relative path to the build directory. (#6136, @reubenrowe)
+
 - Allow dune describe workspace to accept directories as arguments.
   The provided directories restrict the worskpace description to those
   directories. (#6107, fixes #3893, @esope)

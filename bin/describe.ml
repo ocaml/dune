@@ -175,11 +175,15 @@ module Descr = struct
     type t =
       | Executables of Exe.t
       | Library of Lib.t
+      | Root of Path.t
+      | Build_context of Path.t
 
     let map_path t ~f =
       match t with
       | Executables exe -> Executables (Exe.map_path exe ~f)
       | Library lib -> Library (Lib.map_path lib ~f)
+      | Root r -> Root (f r)
+      | Build_context c -> Build_context (f c)
 
     (** Conversion to the [Dyn.t] type *)
     let to_dyn options : t -> Dyn.t = function
@@ -187,6 +191,9 @@ module Descr = struct
         Variant ("executables", [ Exe.to_dyn options exe_descr ])
       | Library lib_descr ->
         Variant ("library", [ Lib.to_dyn options lib_descr ])
+      | Root root -> Variant ("root", [ Path.to_dyn root ])
+      | Build_context build_ctxt ->
+        Variant ("build_context", [ Path.to_dyn build_ctxt ])
   end
 
   (** Description of a workspace: a list of items *)
@@ -425,6 +432,13 @@ module Crawl = struct
     source_path_is_in_dirs dirs
       (Path.drop_build_context_exn @@ Lib_info.best_src_dir @@ Lib.info lib)
 
+  (** Builds a workspace item for the root path *)
+  let root () = Descr.Item.Root Path.root
+
+  (** Builds a workspace item for the build directory path *)
+  let build_ctxt (context : Context.t) : Descr.Item.t =
+    Descr.Item.Build_context (Path.build context.build_dir)
+
   (** Builds a workspace description for the provided dune setup and context *)
   let workspace options dirs
       ({ Dune_rules.Main.conf; contexts = _; scontexts } :
@@ -472,7 +486,9 @@ module Crawl = struct
       >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_opt
     in
-    exes @ libs
+    let root = root () in
+    let build_ctxt = build_ctxt context in
+    root :: build_ctxt :: (exes @ libs)
 end
 
 (** The following module is responsible sanitizing the output of
@@ -509,8 +525,19 @@ module Sanitize_for_tests = struct
           with
           | None -> path
           | Some p -> p)
+        | Path.In_source_tree p ->
+          (* Replace the workspace root with a fixed string *)
+          let p =
+            if Path.Source.is_root p then
+              Filename.(concat dir_sep "WORKSPACE_ROOT")
+            else
+              Filename.(
+                concat dir_sep
+                @@ concat "WORKSPACE_ROOT" (Path.Source.to_string p))
+          in
+          Path.external_ (Path.External.of_string p)
         | path ->
-          (* if the path to rename is not external, it should not be changed *)
+          (* Otherwise, it should not be changed *)
           path
       in
       (* now, we rename the UIDs in the [requires] field , while reversing the

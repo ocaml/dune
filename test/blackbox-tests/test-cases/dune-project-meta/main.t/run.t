@@ -606,10 +606,11 @@ Reject multiple licences in version [1.9, 3.2)
   > EOF
 
   $ dune build
-  File "dune-project", line 4, characters 13-16:
+  File "dune-project", line 4, characters 0-17:
   4 | (license MIT ISC)
-                   ^^^
-  Error: Too many argument for license
+      ^^^^^^^^^^^^^^^^^
+  Error: Parsing several licenses is only available since version 3.2 of the
+  dune language. Please update your dune-project file to have (lang dune 3.2).
   [1]
 
 Allow multiple licences in version >= 3.2

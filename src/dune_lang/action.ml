@@ -215,15 +215,12 @@ let decode =
             and+ xs = repeat sw in
             Echo (x :: xs) )
         ; ( "cat"
-          , let+ x = sw
-            and+ xs = repeat sw
-            and+ version = Syntax.get_exn Stanza.syntax
-            and+ loc = loc in
-            let minimum_version = (3, 4) in
-            if List.is_non_empty xs && version < minimum_version then
-              Syntax.Error.since loc Stanza.syntax minimum_version
-                ~what:"Passing several arguments to 'cat'";
-            Cat (x :: xs) )
+          , let* xs = repeat1 sw in
+            (if List.length xs > 1 then
+             Syntax.since ~what:"Passing several arguments to 'cat'"
+               Stanza.syntax (3, 4)
+            else return ())
+            >>> return (Cat xs) )
         ; ( "copy"
           , let+ src = sw
             and+ dst = sw in

@@ -183,46 +183,45 @@ end
 
 module MultiDict = struct
   (* Here we use a Hashtbl to be able in the future to use more variants than
-     just "Byte, Native or All". Since values are always added and never deleted
-     or modified we take advantage of the fact that when using [add t key value]
-     previous bindings for [key] are not removed but simply hidden and that
-     [find_all] returns all these bindings to represent list of values with a
-     hashtbl for single values. *)
+     just "Byte, Native or All" *)
   module Hashtbl = Hashtbl.Make (Select)
 
   type mode = t
 
-  type 'a t = 'a Hashtbl.t
+  type 'a t = 'a list Hashtbl.t
 
-  let create () = Hashtbl.create 30
-
-  let add_multiple t for_mode l =
-    List.iter ~f:(Hashtbl.add_over t for_mode) l;
-    t
+  let create () = Hashtbl.create 3
 
   let create_for_all_modes l =
     let tbl = create () in
-    add_multiple tbl All l
+    Hashtbl.set tbl All l;
+    tbl
 
-  let for_all_modes t = Hashtbl.find_all t All
+  let for_all_modes t = Option.value ~default:[] @@ Hashtbl.find t All
 
   let for_only ?(and_all = false) t mode =
     let all = if and_all then for_all_modes t else [] in
-    Hashtbl.find_all t (Only mode) |> List.rev_append all
+    Option.value ~default:[] @@ Hashtbl.find t (Only mode)
+    |> List.rev_append all
 
-  let all t =
-    Hashtbl.to_seq_values t
-    |> Seq.fold_left ~init:[] ~f:(fun acc value -> value :: acc)
+  let all t = Hashtbl.fold t ~init:[] ~f:( @ )
+
+  let set = Hashtbl.set
 
   let add t for_mode v =
-    Hashtbl.add_over t for_mode v;
+    let l = Option.value ~default:[] @@ Hashtbl.find t for_mode in
+    Hashtbl.set t for_mode (v :: l);
+    t
+
+  let rev_append t for_mode l' =
+    let l = Option.value ~default:[] @@ Hashtbl.find t for_mode in
+    Hashtbl.set t for_mode (List.rev_append l l');
     t
 
   let encode encoder t =
     let open Dune_sexp.Encoder in
     let fields =
-      Hashtbl.foldi t ~init:[] ~f:(fun for_ _file acc ->
-          let files = Hashtbl.find_all t for_ in
+      Hashtbl.foldi t ~init:[] ~f:(fun for_ files acc ->
           if List.is_empty files then acc
           else
             let field_for = field "for" Select.encode for_ in
@@ -243,29 +242,29 @@ module MultiDict = struct
                (for_, files)))
     in
     let tbl = create () in
-    List.iter fields ~f:(fun (for_, paths) ->
-        ignore @@ add_multiple tbl for_ paths);
+    List.iter fields ~f:(fun (for_, paths) -> Hashtbl.set tbl for_ paths);
     tbl
 
   let to_dyn to_dyn t =
     let open Dyn in
     let l =
-      Hashtbl.foldi t ~init:[] ~f:(fun for_ _file acc ->
-          let files = Hashtbl.find_all t for_ in
+      Hashtbl.foldi t ~init:[] ~f:(fun for_ files acc ->
           Record
             [ ("for_mode", Select.to_dyn for_); ("files", list to_dyn files) ]
           :: acc)
     in
     List l
 
-  let equal eq t t' =
-    Seq.equal
-      (fun (f1, p1) (f2, p2) -> Select.equal f1 f2 && eq p1 p2)
-      (Hashtbl.to_seq t) (Hashtbl.to_seq t')
+  let to_assoc_list =
+    Hashtbl.foldi ~init:[] ~f:(fun for_ v acc -> (for_, v) :: acc)
 
-  let remapi ~f t =
-    let new_t = Hashtbl.create 30 in
-    Hashtbl.to_seq t
-    |> Seq.iter ~f:(fun (for_, value) -> ignore @@ add new_t for_ (f value));
-    new_t
+  let from_assoc_list l =
+    let tbl = create () in
+    List.iter l ~f:(fun (for_, v) -> set tbl for_ v);
+    tbl
+
+  let equal eq t t' =
+    List.equal
+      (fun (f1, p1) (f2, p2) -> Select.equal f1 f2 && List.equal eq p1 p2)
+      (to_assoc_list t) (to_assoc_list t')
 end

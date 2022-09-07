@@ -594,7 +594,10 @@ let map t ~path_kind ~f_path ~f_obj_dir =
   ; archives = mode_list t.archives
   ; plugins = mode_list t.plugins
   ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
-  ; foreign_archives = Mode.MultiDict.remapi ~f t.foreign_archives
+  ; foreign_archives =
+      Mode.MultiDict.to_assoc_list t.foreign_archives
+      |> List.map ~f:(fun (for_, l) -> (for_, List.map ~f l))
+      |> Mode.MultiDict.from_assoc_list
   ; foreign_dll_files = List.map ~f t.foreign_dll_files
   ; native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime

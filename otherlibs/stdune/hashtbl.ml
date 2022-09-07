@@ -8,8 +8,6 @@ end) =
 struct
   include MoreLabels.Hashtbl.Make (H)
 
-  let add_over t key data = add t ~key ~data
-
   let[@ocaml.warning "-32"] add = `Use_set
 
   let find = find_opt

@@ -23,5 +23,3 @@ val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 val fold_left : 'b t -> init:'a -> f:('a -> 'b -> 'a) -> 'a
 
 val iter : 'a t -> f:('a -> unit) -> unit
-
-val equal : ('a -> 'b -> bool) -> 'a t -> 'b t -> bool

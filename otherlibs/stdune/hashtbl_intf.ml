@@ -11,23 +11,17 @@ module type S = sig
 
   val remove : 'a t -> key -> unit
 
-  val to_seq : 'a t -> (key * 'a) Seq.t
-
   val to_seq_values : 'a t -> 'a Seq.t
 
   val iter : 'a t -> f:('a -> unit) -> unit
 
   val set : 'a t -> key -> 'a -> unit
 
-  val add_over : 'a t -> key -> 'a -> unit
-
   val add_exn : 'a t -> key -> 'a -> unit
 
   val add : 'a t -> key -> 'a -> (unit, 'a) Result.t
 
   val find : 'a t -> key -> 'a option
-
-  val find_all : 'a t -> key -> 'a list
 
   val find_exn : 'a t -> key -> 'a
 

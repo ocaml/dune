@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ cat >dune-project <<EOF
   > (lang dune 2.6)
   > EOF

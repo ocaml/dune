@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Check that dune <= 2.3 leaves write permissions alone.
 
   $ mkdir 2.3 2.4

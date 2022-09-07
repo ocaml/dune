@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune build --display short --debug-dependency-path @all
         coqdep thy1/a.v.d
         ocamlc src_b/.ml_plugin_b.objs/byte/ml_plugin_b.{cmi,cmo,cmt}

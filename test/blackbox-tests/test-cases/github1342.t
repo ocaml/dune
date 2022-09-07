@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Reproduction case for #1342. Check that when the user edits files in
 _build, things are rebuild as expected.
 

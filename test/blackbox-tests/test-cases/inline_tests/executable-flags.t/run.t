@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 This test ensures that compilation fails when an invalid option is supplied
 to flags field in executable field in inline_tests field.
 

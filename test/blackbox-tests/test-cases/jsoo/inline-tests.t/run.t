@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Run inline tests using node js
 
   $ cat >dune-project <<EOF

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 When a public executable is built in shared_object mode, a specific error
 message is displayed:
 

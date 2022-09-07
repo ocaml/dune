@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune build @install --display short
         ocamlc a1/.a.objs/byte/a.{cmi,cmo,cmt}
         ocamlc a2/.a.objs/byte/a.{cmi,cmo,cmt}

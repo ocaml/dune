@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 We build the coqdoc html target:
   $ dune build basic.html/
 

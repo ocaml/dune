@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ echo '(lang dune 1.0)' > dune-project
   $ cat >dune <<EOF
   > (executable

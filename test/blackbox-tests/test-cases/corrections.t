@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ echo '(lang dune 2.0)' > dune-project
   $ echo file-contents > text-file
 

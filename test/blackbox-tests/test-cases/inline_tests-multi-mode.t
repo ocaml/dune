@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test running inline tests in multiple modes at once
 
 Reproduction case for #3347

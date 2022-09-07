@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Generates targets when modes is set for binaries:
   $ dune build --root bins --display short @all 2>&1 | grep '\.bc\|\.exe'
         ocamlc byteandnative.bc

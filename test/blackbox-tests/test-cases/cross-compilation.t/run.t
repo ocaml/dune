@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf dune build --display short -x foo file @install --promote-install-files
       ocamldep bin/.blah.eobjs/blah.ml.d
         ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt}

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune build --display short file @install
       ocamldep .p.eobjs/p.ml.d
       ocamldep .p.eobjs/p.ml.d [cross]

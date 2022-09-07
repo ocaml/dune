@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Tests for (glob_files_rec <dir>/<glob>). This feature is not meat to
 be release as it. We plan to replace it by recursive globs for 3.0.0.
 

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 This issue demonstrates a bug when there's a library without any modules and an
 executable with a module with the same name as the library's entry point in the
 same directory.

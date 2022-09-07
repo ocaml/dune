@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test that we can implement external libraries.
 
 First we create an external library

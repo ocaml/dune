@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Regression test for installing mli only modules. Previously, the install step
 would fail because the .cmi wasn't correctly copied to the _build/install dir.
 

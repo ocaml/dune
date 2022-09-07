@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 The new pipe actions are only available since dune 2.7:
 
   $ cat >dune-project <<EOF

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ cat >dune-project <<EOF
   > (lang dune 2.5)
   > (using coq 0.2)

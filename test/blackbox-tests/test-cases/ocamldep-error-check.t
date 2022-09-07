@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Dune uses ocamldep to prevent a module from depending on itself.
 
   $ cat >dune-project <<EOF

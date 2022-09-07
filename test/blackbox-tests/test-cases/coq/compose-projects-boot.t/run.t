@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Testing composition of theories accross a dune workspace with a boot library. A
 boot library must have the following:
 

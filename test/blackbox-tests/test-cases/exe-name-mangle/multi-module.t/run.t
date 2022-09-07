@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 These tests show that (wrapped_executables true) addresses the problem of compilation
 units of exes colliding with libraries.
 

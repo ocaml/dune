@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune build prog.exe --trace-file trace.json
 
 This captures the commands that are being run:

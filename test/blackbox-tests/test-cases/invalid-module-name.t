@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Dune does not report an invalid module name as an error
   $ echo "(lang dune 2.2)" > dune-project
   $ cat >dune <<EOF

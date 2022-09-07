@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Reproduction case for #5264
 
 Before Dune 3.0, it was possible to abuse the

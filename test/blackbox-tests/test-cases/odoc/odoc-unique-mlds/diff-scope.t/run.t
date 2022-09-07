@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Duplicate mld's in different scope
   $ dune build @doc --display short
           odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 @all builds private libs
 
   $ dune build --display short @all

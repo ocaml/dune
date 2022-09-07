@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test that Dune mkdirs the right set of directories in the sandbox.
 
   $ . ./helpers.sh

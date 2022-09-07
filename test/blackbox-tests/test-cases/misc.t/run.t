@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune runtest --display short
           diff alias runtest
           diff alias runtest

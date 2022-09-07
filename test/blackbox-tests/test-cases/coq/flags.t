@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test cases to check Coq's flag setting is correct:
 
   $ cat > dune-project <<EOF

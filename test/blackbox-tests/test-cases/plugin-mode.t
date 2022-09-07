@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Testsuite for (mode plugin).
 
   $ cat > dune-project <<EOF

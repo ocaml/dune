@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 On the other hand, public libraries may have private preprocessors
   $ dune build --display short
         ocamlc .ppx_internal.objs/byte/ppx_internal.{cmi,cmo,cmt}

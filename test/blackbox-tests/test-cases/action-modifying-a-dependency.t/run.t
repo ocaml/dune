@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 In this test the "x" alias depends on the file "data" but the action
 associated to "x" appends a line to "data". The expected behavior is
 an error from Dune telling the user that this is not allowed, however

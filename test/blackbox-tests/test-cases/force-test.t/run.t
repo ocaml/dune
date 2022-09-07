@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Running a test and then forcing a re-run will only re-run the test exe:
 
   $ dune runtest

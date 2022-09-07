@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Unwrapped virtual library
   $ dune build
   Running from vlib_more

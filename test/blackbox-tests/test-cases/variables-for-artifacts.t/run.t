@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Most tests have two versions: one where the variable is used inside a dune file,
 and one where the same variables are used in the command line.
 

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 We have two theories, A and A_vendored both called A. We test which one a
 private plugin B and the public package C will pick up.
 

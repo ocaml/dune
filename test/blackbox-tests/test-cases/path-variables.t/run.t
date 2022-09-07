@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 dune files
 ==========
 

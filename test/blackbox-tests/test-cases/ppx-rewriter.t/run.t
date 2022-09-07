@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune build ./w_omp_driver.exe
   -arg: omp
 

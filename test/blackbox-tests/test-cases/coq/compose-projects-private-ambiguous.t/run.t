@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Testing ambiguous composition of private and public theories
 
 1. theory `A` is public belonging to `A/dune-project`

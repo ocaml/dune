@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ export BUILD_PATH_PREFIX_MAP=odoc=`command -v odoc`
 
 As configured in the `dune` file at the root, this should be an error:

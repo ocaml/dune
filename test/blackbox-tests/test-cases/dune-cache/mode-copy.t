@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test basic cache store/restore functionality in the [copy] mode.
 
 Dune supports setting the cache directory in two ways, via the [XDG_CACHE_HOME]

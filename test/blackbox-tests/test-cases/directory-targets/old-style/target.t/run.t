@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune build && cat _build/default/dir/*
   bar contents
   foo contents

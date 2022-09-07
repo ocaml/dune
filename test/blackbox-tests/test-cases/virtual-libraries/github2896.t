@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Reproduction of the issue in #2896
 
 We have a dependency cycle of the form impl <- lib <- vlib

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 @all builds private exe's
 
   $ dune build @all --display short

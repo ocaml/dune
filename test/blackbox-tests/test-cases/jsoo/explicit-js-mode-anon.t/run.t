@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Anonymous projects have explicit_js_mode enabled
 
   $ echo '(lang dune 2.8)' > dune-project

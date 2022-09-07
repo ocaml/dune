@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 tests stanza with jsoo
 
   $ dune build @default @runtest-js

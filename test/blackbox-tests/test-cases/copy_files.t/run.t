@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test that (copy_files ...) works
 
   $ dune build --root test1 test.exe .merlin-conf/lib-foo .merlin-conf/exe-test

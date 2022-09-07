@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 # Using a ppx in a cross-compiled build context makes dune try to build the ppx
 # in the target context instead of the host, then fail.
   $ dune build --debug-dependency-path

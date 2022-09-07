@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 When there are no interfaces, the situation is the same, but it
 is not possible to rely on these.
 

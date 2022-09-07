@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Check that Dune cache can cope with missing file/metadata entries.
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache

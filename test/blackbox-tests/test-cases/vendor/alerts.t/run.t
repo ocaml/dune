@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 When compiling vendored code, all alerts should be disabled
 
   $ cat > dune << EOF

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Compilation using jsoo
 
   $ dune build --display short bin/technologic.bc.js @install  2>&1 | \

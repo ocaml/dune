@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune runtest --display short 2>&1 | sed "s/ cmd /  sh /"
             sh stderr,stdout
             sh both

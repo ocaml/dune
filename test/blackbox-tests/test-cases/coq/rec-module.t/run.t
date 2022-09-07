@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ dune build --display short --debug-dependency-path @all
         coqdep a/bar.v.d
         coqdep b/foo.v.d

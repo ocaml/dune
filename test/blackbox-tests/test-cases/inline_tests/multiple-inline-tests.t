@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test for multiple libraries with inline_tests set in the same directory
 
   $ cat >dune-project <<EOF

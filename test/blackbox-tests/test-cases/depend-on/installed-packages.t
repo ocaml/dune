@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 # Test dependency on installed package
 
   $ mkdir a b prefix

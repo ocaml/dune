@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Executable that tries to build against a virtual library without an implementation
   $ dune build
   Error: No implementation found for virtual library "vlib" in

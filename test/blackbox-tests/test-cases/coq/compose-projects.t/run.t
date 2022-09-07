@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Testing composition of theories accross a dune workspace
   $ dune build B
   Hello

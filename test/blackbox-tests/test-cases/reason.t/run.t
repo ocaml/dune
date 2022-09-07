@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Tests for reason
 
 Build and run a reason binary:

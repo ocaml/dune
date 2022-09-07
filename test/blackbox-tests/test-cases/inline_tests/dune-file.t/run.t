@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 This test makes sure that inline_tests backends are functional when they are
 externally installed.
 

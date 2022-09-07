@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 When using dune exec, the external-lib-deps command refers to the executable:
 
   $ dune exec ./x.exe

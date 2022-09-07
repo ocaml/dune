@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Testing composition of theories with two private theories and a third public
 theory. As expected, the private theories build, but the public theory fails
 because a public theory cannot depend on a private theory. 

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 rules with dependencies outside the build dir are allowed
 
   $ mkdir -p a/b

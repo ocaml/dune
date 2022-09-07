@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Modify an input file during the build so that Dune interrupts the build once.
 
   $ . ./helpers.sh

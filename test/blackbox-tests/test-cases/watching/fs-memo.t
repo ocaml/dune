@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Tests for [Fs_memo] module.
 
   $ . ./helpers.sh

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test that `enabled_if` fields work as expected.
 
 This alias is disabled, building it should do nothing:

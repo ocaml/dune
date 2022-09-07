@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Tests for directory targets.
 
   $ cat > dune-project <<EOF

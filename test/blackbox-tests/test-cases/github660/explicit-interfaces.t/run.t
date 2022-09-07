@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 When there are explicit interfaces, modules must be rebuilt.
   $ echo 'let hello = "hello"' > lib_sub.ml
 

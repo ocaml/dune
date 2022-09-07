@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Basic test that we can use private binaries as public ones
   $ dune build --root private-bin-import
   Entering directory 'private-bin-import'

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 The @check alias should detect dependency cycles
 
   $ cat >dune-project <<EOF

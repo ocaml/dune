@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Executable that tries to use two implementations for the same virtual lib
   $ dune build
   Error: Conflicting implementations for virtual library "vlib" in

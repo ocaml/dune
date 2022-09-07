@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Tests for dynamic dependencies computed from the `%{read:...}` family of macros
 
   $ cat > dune-project <<EOF

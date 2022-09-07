@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 If there is an (action) field, it is used to invoke to the executable (in both
 regular and expect modes:
 

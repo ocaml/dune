@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Aliases without a (env) dependency are not rebuilt when the environment
 changes:
 

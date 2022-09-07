@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 No ppx driver found
 
   $ mkdir -p no-driver

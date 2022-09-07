@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test for --action-stdxxx-on-success
 ====================================
 

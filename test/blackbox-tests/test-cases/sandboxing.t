@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 If an action does not respect the dependency specification, it results in a broken
 build. Dune fails to detect that:
 

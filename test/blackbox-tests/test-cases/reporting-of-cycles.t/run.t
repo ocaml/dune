@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 These tests is a regression test for the detection of dynamic cycles.
 
 In all tests, we have a cycle that only becomes apparent after we

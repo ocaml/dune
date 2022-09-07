@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test reproducibility check
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache

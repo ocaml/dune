@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ env ORIG_PATH="$PATH" PATH="$PWD/ocaml-bin:$PATH" dune build @all --display short
         ocamlc bin/.toto.eobjs/byte/dune__exe__Toto.{cmi,cmo,cmt}
         ocamlc src/.foo.objs/byte/foo.{cmi,cmo,cmt}

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Basic sample selecting implementation according to default library.
 
   $ dune build

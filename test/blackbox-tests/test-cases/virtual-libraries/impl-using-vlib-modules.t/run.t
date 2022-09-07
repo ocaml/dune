@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Implementations may refer to virtual library's modules
   $ dune build
   bar from vlib

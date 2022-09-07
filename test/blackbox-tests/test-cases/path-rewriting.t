@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Check that Dune help commands that understand BUILD_PATH_PREFIX_MAP to
 rewrite the current working directory:
 

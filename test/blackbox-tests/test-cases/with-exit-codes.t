@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ cat > dune-project << EOF
   > (lang dune 2.0)
   > (using action-plugin 0.1)

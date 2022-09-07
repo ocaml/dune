@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 We test two different aspects of preprocessors:
 
 * The directory in which they run

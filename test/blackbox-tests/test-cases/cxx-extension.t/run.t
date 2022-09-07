@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ cat >dune <<EOF
   > (library
   >  (name foo)

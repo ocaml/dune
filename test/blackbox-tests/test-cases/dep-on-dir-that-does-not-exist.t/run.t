@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 # Here we test that actions depending on a glob correctly
 # depend on the directory existence as well.
 #

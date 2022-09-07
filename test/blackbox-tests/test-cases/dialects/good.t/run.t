@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test the (dialect ...) stanza inside the dune-project file.
 
   $ dune exec ./main.exe

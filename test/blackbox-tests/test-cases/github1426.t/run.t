@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Changing write permissions of a dependency doesn't cause a re-run
   $ chmod -w ./script.sh
   $ dune build a_target --display short

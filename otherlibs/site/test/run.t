@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test embedding of sites locations information
 -----------------------------------
 

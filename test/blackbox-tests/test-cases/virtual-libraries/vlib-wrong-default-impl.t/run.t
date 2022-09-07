@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Check that dune makes a proper error if the default implementation of a virtual
 library is not actually an implementation of the virtual library.
 

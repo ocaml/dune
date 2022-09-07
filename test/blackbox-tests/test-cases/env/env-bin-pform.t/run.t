@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 %{exe:foo.exe} should not be veisible if foo.exe is added to PATH via the
 binaries stanza. %{bin:foo} is visible on the other hand.
   $ dune build

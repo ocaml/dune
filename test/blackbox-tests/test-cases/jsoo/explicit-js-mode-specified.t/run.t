@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Check that .bc.js rule is generated only if js mode is used.
 
   $ dune build --display short a.bc.js

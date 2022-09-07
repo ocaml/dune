@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test cache configuration.
 
 Check that old cache configuration format works fine with an old language

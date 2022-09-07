@@ -1,3 +1,5 @@
+  $ export DUNE_CACHE=disabled
+
 In this test client choose what to depend
 on based on dependency from the previous stage.
 

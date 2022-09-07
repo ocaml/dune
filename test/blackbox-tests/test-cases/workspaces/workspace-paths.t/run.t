@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Duplicate hello.exe before writing to it, as modifying a produced file
 is prohibited.
 

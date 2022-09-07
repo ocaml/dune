@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Successes:
 
   $ dune build --display short --root foo --debug-dep

@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ mkdir b
   $ cat > b/dune <<EOF
   > (coq.theory

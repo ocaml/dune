@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
   $ echo '(lang dune 2.0)' > dune-project
   $ echo '(rule (target b) (deps a) (action (progn (echo "running") (with-stdout-to b (cat a)))))' >> dune
 

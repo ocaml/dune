@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Document how Dune displays various things
 =========================================
 

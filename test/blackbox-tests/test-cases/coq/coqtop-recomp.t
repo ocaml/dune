@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Check that dependencies are not recompiled when this is not necessary. This
 was initially an issue, and was reported by @MackieLoeffel in #5457 (see
 https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).

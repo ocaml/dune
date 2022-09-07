@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 These tests show how various pkg-config invocations get quotes:
   $ dune build 2>&1 | awk '/run:.*bin\/pkg-config/{a=1}/stderr/{a=0}a'
   run: $TESTCASE_ROOT/_build/install/default/bin/pkg-config --print-errors gtk+-quartz-3.0

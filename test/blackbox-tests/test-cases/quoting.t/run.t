@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 This behavior is surprising, we should get an error about the fact
 that ${@} is not quoted and doesn't contain exactly 1 element
 

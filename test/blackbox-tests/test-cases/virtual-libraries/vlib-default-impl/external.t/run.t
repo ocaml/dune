@@ -1,3 +1,5 @@
+  $ unset DUNE_CACHE
+
 Test default implementation for an external library
 
 First we create an external library and implementation

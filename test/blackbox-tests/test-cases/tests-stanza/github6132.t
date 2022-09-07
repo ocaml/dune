@@ -16,11 +16,7 @@
   > EOF
   $ touch missing_test.ml
 
-FIXME: both the missing_test and lib_not are disabled so this error could be
-ignored.
+The test [missing_test] depends on a library that is disabled, but that should
+not trigger any error since the test itself is disabled in the same way as the
+library it depends on.
   $ dune build @all
-  File "dune", line 9, characters 10-17:
-  9 |  (modules lib_not)
-                ^^^^^^^
-  Error: Module Lib_not doesn't exist.
-  [1]

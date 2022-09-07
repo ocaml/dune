@@ -1,4 +1,4 @@
-DECLARE PLUGIN "gram"
+DECLARE PLUGIN "cplugin.gram"
 
 {
 

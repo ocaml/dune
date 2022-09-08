@@ -1,6 +1,9 @@
 3.5.0 (unreleased)
 ------------------
 
+- Check if a `tests` stanza is disabled before generating the rules (#6134,
+  fixes #6132, @voodoos)
+
 - Shadow alias module `Foo__` when building a library `Foo` (#6126, @rgrinberg)
 
 - Allow dune describe workspace to accept directories as arguments.

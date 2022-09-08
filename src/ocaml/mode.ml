@@ -203,21 +203,6 @@ module Map = struct
     let for_only ?(and_all = false) t mode =
       let all = if and_all then for_all_modes t else [] in
       List.rev_append all @@ find t (Only mode)
-
-    let to_flat_list t = fold t ~init:[] ~f:List.rev_append
-
-    let map t ~f = map t ~f:(fun l -> List.map ~f l)
-
-    let parent_equal = equal
-
-    let equal t t' ~equal =
-      parent_equal
-        ~equal:(fun l l' ->
-          Result.value ~default:false @@ List.for_all2 ~f:equal l l')
-        t t'
-
-    let to_dyn a_to_dyn t =
-      to_dyn (fun l -> Dyn.List (List.map ~f:a_to_dyn l)) t
   end
 
   let encode encoder t =

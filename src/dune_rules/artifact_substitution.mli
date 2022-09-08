@@ -26,6 +26,8 @@ type conf = private
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
         (** Initial prefix of installation when relocatable chosen *)
+  ; sign_hook : (Path.t -> unit Fiber.t) option
+        (** Called on binary after if has been edited *)
   }
 
 val conf_of_context : Context.t option -> conf
@@ -35,6 +37,7 @@ val conf_for_install :
   -> default_ocamlpath:Path.t list
   -> stdlib_dir:Path.t
   -> roots:Path.t Install.Section.Paths.Roots.t
+  -> context:Context.t
   -> conf
 
 val conf_dummy : conf

@@ -73,6 +73,9 @@
   Coq's standard library by including `(stdlib no)`.
   (#6165 #6164, fixes #6163, @ejgallego @Alizter @LasseBlaauwbroek)
 
+- on macOS, sign executables produced by artifact substitution (#6137, fixes
+  #5650, @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

@@ -48,7 +48,21 @@ type conf =
   ; get_location : Section.t -> Package.Name.t -> Path.t
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
+  ; post_copy_hook : (Path.t -> unit Fiber.t) option
   }
+
+let mac_codesign_hook ~codesign path =
+  Process.run Strict codesign [ "--sign"; "-"; Path.to_string path ]
+
+let post_copy_hook_of_context (context : Context.t) =
+  let config = context.ocaml_config in
+  match (Ocaml_config.system config, Ocaml_config.architecture config) with
+  | "macosx", "arm64" -> (
+    let codesign_name = "codesign" in
+    match Bin.which ~path:context.path codesign_name with
+    | None -> Utils.program_not_found ~loc:None codesign_name
+    | Some codesign -> Some (mac_codesign_hook ~codesign))
+  | _ -> None
 
 let conf_of_context (context : Context.t option) =
   let get_vcs = Source_tree.nearest_vcs in
@@ -58,6 +72,7 @@ let conf_of_context (context : Context.t option) =
     ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
     ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
     ; hardcoded_ocaml_path = Hardcoded []
+    ; post_copy_hook = None
     }
   | Some context ->
     let get_location = Install.Section.Paths.get_local_location context.name in
@@ -70,13 +85,16 @@ let conf_of_context (context : Context.t option) =
       let install_dir = Path.build (Path.Build.relative install_dir "lib") in
       Hardcoded (install_dir :: context.default_ocamlpath)
     in
+    let post_copy_hook = post_copy_hook_of_context context in
     { get_vcs = Source_tree.nearest_vcs
     ; get_location
     ; get_config_path
     ; hardcoded_ocaml_path
+    ; post_copy_hook
     }
 
-let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots =
+let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
+    =
   let get_vcs = Source_tree.nearest_vcs in
   let hardcoded_ocaml_path =
     match relocatable with
@@ -91,13 +109,20 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots =
     | Sourceroot -> None
     | Stdlib -> Some stdlib_dir
   in
-  { get_location; get_vcs; get_config_path; hardcoded_ocaml_path }
+  let post_copy_hook = post_copy_hook_of_context context in
+  { get_location
+  ; get_vcs
+  ; get_config_path
+  ; hardcoded_ocaml_path
+  ; post_copy_hook
+  }
 
 let conf_dummy =
   { get_vcs = (fun _ -> Memo.return None)
   ; get_location = (fun _ _ -> Path.root)
   ; get_config_path = (fun _ -> None)
   ; hardcoded_ocaml_path = Hardcoded []
+  ; post_copy_hook = None
   }
 
 let to_dyn = function
@@ -561,7 +586,7 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
   Fiber.finalize
     (fun () ->
       let open Fiber.O in
-      let+ () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
+      let* () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
       let up_to_date =
         match Path.Untracked.stat dst with
         | Ok { st_kind; _ } when st_kind = S_DIR -> (
@@ -583,7 +608,15 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
       (* This is just an optimisation: skip the renaming if the destination
          exists and has the right digest. The optimisation is useful to avoid
          unnecessary retriggering of Dune and other file-watching systems. *)
-      if not up_to_date then Path.rename temp_file dst)
+      match up_to_date with
+      | true -> Fiber.return ()
+      | false ->
+        let+ () =
+          match conf.post_copy_hook with
+          | Some hook -> hook temp_file
+          | None -> Fiber.return ()
+        in
+        Path.rename temp_file dst)
     ~finally:(fun () ->
       Path.unlink_no_err temp_file;
       Fiber.return ())

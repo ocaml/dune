@@ -61,6 +61,9 @@
 - update vendored copy of cmdliner to 1.1.1. This improves the built-in
   documentation for command groups such as `dune ocaml`. (#6038, @emillon)
 
+- on macOS, sign executables produced by artifact substitution (#6137, fixes
+  #5650, @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

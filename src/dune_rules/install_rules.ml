@@ -931,11 +931,14 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let package_name = Package.name package in
   let roots = Install.Section.Paths.Roots.opam_from_prefix Path.root in
   let install_paths = Install.Section.Paths.make ~package:package_name ~roots in
-  let* entries = symlinked_entries sctx package >>| fst in
+  let entries =
+    Action_builder.of_memo (symlinked_entries sctx package >>| fst)
+  in
   let ctx = Super_context.context sctx in
   let pkg_build_dir = Package_paths.build_dir ctx package in
   let files =
-    List.map entries ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src)
+    Action_builder.map entries
+      ~f:(List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src))
   in
   let* dune_project =
     let+ scope = Scope.DB.find_by_dir pkg_build_dir in
@@ -944,6 +947,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let strict_package_deps = Dune_project.strict_package_deps dune_project in
   let packages =
     let open Action_builder.O in
+    let* files = files in
     let+ packages = Action_builder.of_memo (package_deps package files) in
     (match strict_package_deps with
     | false -> ()
@@ -967,6 +971,8 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     packages
   in
   let install_file_deps =
+    let open Action_builder.O in
+    let* files = files in
     Path.Set.of_list_map files ~f:Path.build |> Action_builder.path_set
   in
   let* () =
@@ -1000,7 +1006,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
         if strict_package_deps then
           Action_builder.map packages ~f:(fun (_ : Package.Id.Set.t) -> ())
         else Action_builder.return ()
-      in
+      and+ entries = entries in
       let entries =
         match ctx.findlib_toolchain with
         | None -> entries

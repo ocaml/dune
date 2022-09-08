@@ -143,7 +143,6 @@ type t =
   ; accept_alternative_dune_file_name : bool
   ; generate_opam_files : bool
   ; use_standard_c_and_cxx_flags : bool option
-  ; allow_mode_specific_stubs : bool
   ; file_key : File_key.t
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
@@ -183,8 +182,6 @@ let set_generate_opam_files generate_opam_files t =
 
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 
-let allow_mode_specific_stubs t = t.allow_mode_specific_stubs
-
 let dialects t = t.dialects
 
 let set_dialects dialects t = { t with dialects }
@@ -210,7 +207,6 @@ let to_dyn
     ; accept_alternative_dune_file_name
     ; generate_opam_files
     ; use_standard_c_and_cxx_flags
-    ; allow_mode_specific_stubs
     ; file_key
     ; dialects
     ; explicit_js_mode
@@ -238,7 +234,6 @@ let to_dyn
       , bool accept_alternative_dune_file_name )
     ; ("generate_opam_files", bool generate_opam_files)
     ; ("use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags)
-    ; ("allow_mode_specific_stubs", bool allow_mode_specific_stubs)
     ; ("file_key", string file_key)
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
@@ -531,7 +526,6 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; parsing_context
   ; generate_opam_files = false
   ; use_standard_c_and_cxx_flags = use_standard_c_and_cxx_flags_default ~lang
-  ; allow_mode_specific_stubs = false
   ; file_key
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
@@ -596,7 +590,6 @@ let encode : t -> Dune_lang.t list =
      ; accept_alternative_dune_file_name
      ; generate_opam_files
      ; use_standard_c_and_cxx_flags
-     ; allow_mode_specific_stubs
      ; dialects
      ; explicit_js_mode
      ; format_config
@@ -656,8 +649,6 @@ let encode : t -> Dune_lang.t list =
                  (use_standard_c_and_cxx_flags_default ~lang))
           then Some (constr "use_standard_c_and_cxx_flags" bool b)
           else None)
-      ; flag' "allow_mode_specific_stubs" allow_mode_specific_stubs
-          (fun ~lang:_ -> false)
       ; (if Bool.equal cram (cram_default ~lang) then None
         else Some (constr "cram" Toggle.encode (Toggle.of_bool cram)))
       ; flag "expand_aliases_in_sandbox" expand_aliases_in_sandbox
@@ -754,9 +745,6 @@ let parse ~dir ~lang ~file ~dir_status =
         and+ use_standard_c_and_cxx_flags =
           field_o_b "use_standard_c_and_cxx_flags"
             ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8))
-        and+ allow_mode_specific_stubs =
-          field_b "allow_mode_specific_stubs"
-            ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 5))
         and+ dialects =
           multi_field "dialect"
             (Dune_lang.Syntax.since Stanza.syntax (1, 11)
@@ -960,7 +948,6 @@ let parse ~dir ~lang ~file ~dir_status =
           ; accept_alternative_dune_file_name
           ; generate_opam_files
           ; use_standard_c_and_cxx_flags
-          ; allow_mode_specific_stubs
           ; dialects
           ; explicit_js_mode
           ; format_config

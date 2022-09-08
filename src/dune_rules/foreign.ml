@@ -146,7 +146,15 @@ module Stubs = struct
   let make ~loc ~language ~names ~mode ~flags =
     { loc; language; names; mode; flags; include_dirs = []; extra_deps = [] }
 
-  let decode_stubs ~mode_is_allowed =
+  let syntax =
+    let name = "mode_specific_stubs" in
+    let desc = "syntax extension for mode-specific foreign stubs" in
+    Dune_lang.Syntax.create ~name ~desc [ ((0, 1), `Since (3, 5)) ]
+
+  let () =
+    Dune_project.Extension.register_simple syntax (Dune_lang.Decoder.return [])
+
+  let decode_stubs ~for_library =
     let open Dune_lang.Decoder in
     let* loc = loc in
     let+ loc_archive_name, archive_name =
@@ -155,9 +163,7 @@ module Stubs = struct
     and+ names = Ordered_set_lang.field "names"
     and+ loc_mode, mode =
       located
-        (field_o "mode"
-           (Dune_lang.Syntax.since Dune_lang.Stanza.syntax (3, 5)
-           >>> Mode.decode))
+        (field_o "mode" (Dune_lang.Syntax.since syntax (0, 1) >>> Mode.decode))
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ include_dirs =
       field ~default:[] "include_dirs" (repeat Include_dir.decode)
@@ -176,22 +182,17 @@ module Stubs = struct
     in
     let () =
       match mode with
-      | Some _ when not mode_is_allowed ->
+      | Some _ when for_library ->
         User_error.raise ~loc:loc_mode
-          [ Pp.textf
-              "The field \"mode\"\n\
-              \               must be enabled with the \
-               \"allow_mode_specific_stubs\" option in the \"dune-project\" \
-               file."
+          [ Pp.textf "The field \"mode\" is not available for foreign_libraries"
           ]
       | _ -> ()
     in
     let mode = Mode.Select.of_option mode in
     { loc; language; names; mode; flags; include_dirs; extra_deps }
 
-  let decode project =
-    let mode_is_allowed = Dune_project.allow_mode_specific_stubs project in
-    Dune_lang.Decoder.fields @@ decode_stubs ~mode_is_allowed
+  let decode _project =
+    Dune_lang.Decoder.fields @@ decode_stubs ~for_library:false
 
   let is_mode_dependent t = Mode.Select.is_not_all t.mode
 end
@@ -243,7 +244,7 @@ module Library = struct
     fields
       (let+ archive_name_loc, archive_name =
          located (field "archive_name" Archive.Name.decode)
-       and+ stubs = Stubs.decode_stubs ~mode_is_allowed:false in
+       and+ stubs = Stubs.decode_stubs ~for_library:true in
        { archive_name; archive_name_loc; stubs })
 end
 

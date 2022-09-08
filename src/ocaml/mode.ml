@@ -145,6 +145,13 @@ module Select = struct
     | Only of t
     | All
 
+  let compare x y =
+    match (x, y) with
+    | All, All -> Eq
+    | All, _ -> Lt
+    | _, All -> Gt
+    | Only x, Only y -> compare x y
+
   let of_option = function
     | None -> All
     | Some m -> Only m
@@ -158,8 +165,6 @@ module Select = struct
     | Only m, Only m' -> equal m m'
     | All, All -> true
     | _, _ -> false
-
-  let hash = Poly.hash
 
   let to_dyn t =
     let open Dyn in
@@ -181,47 +186,44 @@ module Select = struct
     | Right mode -> Only mode
 end
 
-module MultiDict = struct
-  (* Here we use a Hashtbl to be able in the future to use more variants than
-     just "Byte, Native or All" *)
-  module Hashtbl = Hashtbl.Make (Select)
-
+module Map = struct
   type mode = t
 
-  type 'a t = 'a list Hashtbl.t
+  (* Here we use a Map to be able in the future to use more variants than
+     just "Byte, Native or All" *)
+  include Map.Make (Select)
 
-  let create () = Hashtbl.create 3
+  module Multi = struct
+    include Multi
 
-  let create_for_all_modes l =
-    let tbl = create () in
-    Hashtbl.set tbl All l;
-    tbl
+    let create_for_all_modes l = Multi.add_all empty All l
 
-  let for_all_modes t = Option.value ~default:[] @@ Hashtbl.find t All
+    let for_all_modes t = find t All
 
-  let for_only ?(and_all = false) t mode =
-    let all = if and_all then for_all_modes t else [] in
-    Option.value ~default:[] @@ Hashtbl.find t (Only mode)
-    |> List.rev_append all
+    let for_only ?(and_all = false) t mode =
+      let all = if and_all then for_all_modes t else [] in
+      List.rev_append all @@ find t (Only mode)
 
-  let all t = Hashtbl.fold t ~init:[] ~f:( @ )
+    let to_flat_list t = fold t ~init:[] ~f:List.rev_append
 
-  let set = Hashtbl.set
+    let map t ~f = map t ~f:(fun l -> List.map ~f l)
 
-  let add t for_mode v =
-    let l = Option.value ~default:[] @@ Hashtbl.find t for_mode in
-    Hashtbl.set t for_mode (v :: l);
-    t
+    let parent_equal = equal
 
-  let rev_append t for_mode l' =
-    let l = Option.value ~default:[] @@ Hashtbl.find t for_mode in
-    Hashtbl.set t for_mode (List.rev_append l l');
-    t
+    let equal t t' ~equal =
+      parent_equal
+        ~equal:(fun l l' ->
+          Result.value ~default:false @@ List.for_all2 ~f:equal l l')
+        t t'
+
+    let to_dyn a_to_dyn t =
+      to_dyn (fun l -> Dyn.List (List.map ~f:a_to_dyn l)) t
+  end
 
   let encode encoder t =
     let open Dune_sexp.Encoder in
     let fields =
-      Hashtbl.foldi t ~init:[] ~f:(fun for_ files acc ->
+      foldi t ~init:[] ~f:(fun for_ files acc ->
           if List.is_empty files then acc
           else
             let field_for = field "for" Select.encode for_ in
@@ -241,30 +243,5 @@ module MultiDict = struct
                and+ files = field "files" (repeat decoder) in
                (for_, files)))
     in
-    let tbl = create () in
-    List.iter fields ~f:(fun (for_, paths) -> Hashtbl.set tbl for_ paths);
-    tbl
-
-  let to_dyn to_dyn t =
-    let open Dyn in
-    let l =
-      Hashtbl.foldi t ~init:[] ~f:(fun for_ files acc ->
-          Record
-            [ ("for_mode", Select.to_dyn for_); ("files", list to_dyn files) ]
-          :: acc)
-    in
-    List l
-
-  let to_assoc_list =
-    Hashtbl.foldi ~init:[] ~f:(fun for_ v acc -> (for_, v) :: acc)
-
-  let from_assoc_list l =
-    let tbl = create () in
-    List.iter l ~f:(fun (for_, v) -> set tbl for_ v);
-    tbl
-
-  let equal eq t t' =
-    List.equal
-      (fun (f1, p1) (f2, p2) -> Select.equal f1 f2 && List.equal eq p1 p2)
-      (to_assoc_list t) (to_assoc_list t')
+    of_list_exn fields
 end

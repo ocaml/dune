@@ -889,16 +889,16 @@ module Library = struct
     in
     let virtual_library = is_virtual conf in
     let foreign_archives =
-      let tbl =
-        Mode.MultiDict.create_for_all_modes
+      let init =
+        Mode.Map.Multi.create_for_all_modes
         @@ foreign_lib_files conf ~dir ~ext_lib ~for_mode:All
       in
-      Mode.Dict.iteri modes ~f:(fun mode enabled ->
+      Mode.Dict.foldi modes ~init ~f:(fun mode enabled acc ->
           if enabled then
             let for_mode = Mode.Select.Only mode in
             let libs = foreign_lib_files conf ~dir ~ext_lib ~for_mode in
-            Mode.MultiDict.set tbl for_mode libs);
-      tbl
+            Mode.Map.Multi.add_all acc for_mode libs
+          else acc)
     in
     let native_archives =
       let archive = archive ext_lib in

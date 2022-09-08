@@ -22,7 +22,7 @@ module Link_params = struct
     (* Foreign archives [lib*.a] and [dll*.so] and native archives [lib*.a] are
        declared as hidden dependencies, and appropriate [-I] flags are provided
        separately to help the linker locate them. *)
-    let select_lib_files = Mode.MultiDict.for_only ~and_all:true lib_files in
+    let select_lib_files = Mode.Map.Multi.for_only ~and_all:true lib_files in
     let+ hidden_deps =
       match mode with
       | Byte | Byte_for_jsoo -> Memo.return dll_files

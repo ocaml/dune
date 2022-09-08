@@ -398,7 +398,7 @@ end = struct
                 else Skip)
         in
         let foreign_archives =
-          Mode.MultiDict.create_for_all_modes foreign_archives
+          Mode.Map.Multi.create_for_all_modes foreign_archives
         in
         let entry_modules =
           Lib_info.Source.External

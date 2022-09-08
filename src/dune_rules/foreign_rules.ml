@@ -246,5 +246,5 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
       (src.stubs.mode, Path.build build_file))
   |> Memo.all_concurrently
   >>| fun o_files ->
-  List.fold_left o_files ~init:(Mode.MultiDict.create ())
-    ~f:(fun tbl (for_mode, file) -> Mode.MultiDict.add tbl for_mode file)
+  List.fold_left o_files ~init:Mode.Map.empty ~f:(fun tbl (for_mode, file) ->
+      Mode.Map.Multi.cons tbl for_mode file)

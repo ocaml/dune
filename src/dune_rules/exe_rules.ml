@@ -63,8 +63,7 @@ let programs ~modules ~(exes : Executables.t) =
 
 let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     ~requires_compile =
-  if not (Executables.has_foreign exes) then
-    Memo.return @@ Mode.MultiDict.create ()
+  if not (Executables.has_foreign exes) then Memo.return @@ Mode.Map.empty
   else
     let what =
       if List.is_empty exes.buildable.Buildable.foreign_stubs then "archives"
@@ -92,7 +91,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
         ~requires:requires_compile ~dir_contents ~foreign_sources
     in
     (* [foreign_o_files] are not mode-dependant *)
-    Mode.MultiDict.rev_append o_files All foreign_o_files
+    Mode.Map.Multi.add_all o_files All foreign_o_files
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
@@ -188,7 +187,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents
         ~requires_compile
     in
-    let* () = Check_rules.add_files sctx ~dir @@ Mode.MultiDict.all o_files in
+    let* () =
+      Check_rules.add_files sctx ~dir @@ Mode.Map.Multi.to_flat_list o_files
+    in
     let buildable = exes.buildable in
     match buildable.ctypes with
     | None ->

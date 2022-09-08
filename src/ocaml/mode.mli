@@ -116,50 +116,31 @@ module Select : sig
   val is_not_all : t -> bool
 end
 
-(** [MultiDict] is a data-structure that can store lists of values that are
-    indexed by keys of the type [Select.t]. It is implemented with a hashtable.
-    The key [Select.All] is meant to store values that apply to any mode while
-    keys of the form [Select.Only _] designate list of values that apply to
-    specific modes. *)
-module MultiDict : sig
+(** [Map] is a data-structure that can store values that are indexed by keys of
+    the type [Select.t]. The key [Select.All] is meant to store values that
+    apply to any mode while keys of the form [Select.Only _] designate values
+    that apply to specific modes. *)
+module Map : sig
   type mode = t
 
-  type 'a t
+  include Map.S with type key = Select.t
 
-  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+  module Multi : sig
+    include module type of Multi
 
-  val encode : ('a -> Dune_sexp.t) -> 'a t -> Dune_sexp.t list
+    (** Creates an new map and populate the [All] key with the given list *)
+    val create_for_all_modes : 'a list -> 'a t
 
-  val decode : 'a Dune_sexp.Decoder.t -> 'a t Dune_sexp.Decoder.t
+    (** Returns the list of values associated to the [All] key. *)
+    val for_all_modes : 'a t -> 'a list
 
-  val create : unit -> 'a t
+    (** Returns the list of values associated to a specific mode. If the
+        [and_all] option (which defaults to [false]) is set to true then values
+        which are not associated to a specific mode are also returned. *)
+    val for_only : ?and_all:bool -> 'a t -> mode -> 'a list
+  end
 
-  (** Creates an empty table and populate the [All] key with the given list *)
-  val create_for_all_modes : 'a list -> 'a t
+  val encode : ('a -> Dune_sexp.t) -> 'a Multi.t -> Dune_sexp.t list
 
-  val set : 'a t -> Select.t -> 'a list -> unit
-
-  (** Adds a value for the given mode. If values are already present the new
-      value is prepended to the list. *)
-  val add : 'a t -> Select.t -> 'a -> 'a t
-
-  (** Same as adds but concatenate the given list with the existing one using
-      [rev_append]. *)
-  val rev_append : 'a t -> Select.t -> 'a list -> 'a t
-
-  (** Returns the list of values associated to the [All] key. *)
-  val for_all_modes : 'a t -> 'a list
-
-  (** Returns the list of values associated to a specific mode. If the [and_all]
-      option (which defaults to [false]) is set to true then values which are
-      not associated to a specific mode are also returned. *)
-  val for_only : ?and_all:bool -> 'a t -> mode -> 'a list
-
-  val all : 'a t -> 'a list
-
-  val to_assoc_list : 'a t -> (Select.t * 'a list) list
-
-  val from_assoc_list : (Select.t * 'a list) list -> 'a t
-
-  val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val decode : 'a Dune_sexp.Decoder.t -> 'a Multi.t Dune_sexp.Decoder.t
 end

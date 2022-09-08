@@ -230,7 +230,7 @@ let link_many ?(link_args = Action_builder.return Command.Args.empty) ?o_files
   let open Memo.O in
   let o_files =
     match o_files with
-    | None -> Mode.MultiDict.create ()
+    | None -> Mode.Map.empty
     | Some o_files -> o_files
   in
   let modules = Compilation_context.modules cctx in
@@ -266,7 +266,7 @@ let link_many ?(link_args = Action_builder.return Command.Args.empty) ?o_files
                 in
                 let link_args, o_files =
                   let select_o_files =
-                    Mode.MultiDict.for_only ~and_all:true o_files
+                    Mode.Map.Multi.for_only ~and_all:true o_files
                   in
                   match linkage.mode with
                   | Native -> (link_args, select_o_files Mode.Native)

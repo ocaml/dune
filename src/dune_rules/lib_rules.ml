@@ -219,7 +219,7 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
       Foreign_rules.build_o_files ~sctx ~dir ~expander
         ~requires:(Resolve.return []) ~dir_contents ~foreign_sources
     in
-    Mode.MultiDict.for_all_modes o_files_by_mode
+    Mode.Map.Multi.for_all_modes o_files_by_mode
     (* TODO mode-dependant stubs for foreign_libraries ? *)
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
@@ -259,9 +259,9 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires ~dir_contents
         ~foreign_sources
     in
-    Mode.MultiDict.rev_append tbl Mode.Select.All lib_foreign_o_files
+    Mode.Map.Multi.add_all tbl Mode.Select.All lib_foreign_o_files
   in
-  let all_o_files = Mode.MultiDict.all o_files in
+  let all_o_files = Mode.Map.Multi.to_flat_list o_files in
   let* () = Check_rules.add_files sctx ~dir all_o_files in
   if List.for_all ~f:List.is_empty [ all_o_files; vlib_stubs_o_files ] then
     Memo.return ()
@@ -284,7 +284,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     let c_library_flags =
       Expander.expand_and_eval_set expander lib.c_library_flags ~standard
     in
-    let lib_o_files_for_all_modes = Mode.MultiDict.for_all_modes o_files in
+    let lib_o_files_for_all_modes = Mode.Map.Multi.for_all_modes o_files in
     let for_all_modes =
       List.rev_append vlib_stubs_o_files lib_o_files_for_all_modes
     in
@@ -292,7 +292,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       Mode.Dict.foldi ~init:true
         ~f:(fun mode enabled res ->
           ((not enabled)
-          || (List.is_empty @@ Mode.MultiDict.for_only o_files mode))
+          || (List.is_empty @@ Mode.Map.Multi.for_only o_files mode))
           && res)
         modes
     then
@@ -305,7 +305,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
         Mode.Dict.foldi modes ~init:[] ~f:(fun mode active acc ->
             if active then
               ( List.rev_append for_all_modes
-                @@ Mode.MultiDict.for_only o_files mode
+                @@ Mode.Map.Multi.for_only o_files mode
               , Mode.Select.Only mode )
               :: acc
             else acc)

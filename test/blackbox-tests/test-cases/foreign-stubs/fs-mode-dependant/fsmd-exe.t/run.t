@@ -11,28 +11,31 @@ Without the toggle we get an error message for using the new mode subfield
   File "dune", line 11, characters 3-16:
   11 |    (mode native)
           ^^^^^^^^^^^^^
-  Error: The field "mode"
-                 must be enabled with the "allow_mode_specific_stubs" option in
-  the "dune-project" file.
+  Error: 'mode' is available only when mode_specific_stubs is enabled in the
+  dune-project file. You must enable it using (using mode_specific_stubs 0.1)
+  in your dune-project file.
 
 But the toggle only exists in Dune 3.5
   $ cat >dune-project <<EOF
   > (lang dune 3.1)
-  > (allow_mode_specific_stubs)
+  > (using mode_specific_stubs 0.1)
   > EOF
 
   $ dune build
-  File "dune-project", line 2, characters 0-27:
-  2 | (allow_mode_specific_stubs)
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'allow_mode_specific_stubs' is only available since version 3.5 of the
-  dune language. Please update your dune-project file to have (lang dune 3.5).
+  File "dune-project", line 2, characters 27-30:
+  2 | (using mode_specific_stubs 0.1)
+                                 ^^^
+  Error: Version 0.1 of syntax extension for mode-specific foreign stubs is not
+  supported until version 3.5 of the dune language.
+  There are no supported versions of this extension in version 3.1 of the dune
+  language.
+  
   [1]
 
 With Dune 3.5 no error is displayed
   $ cat >dune-project <<EOF
   > (lang dune 3.5)
-  > (allow_mode_specific_stubs)
+  > (using mode_specific_stubs 0.1)
   > EOF
 
   $ dune build

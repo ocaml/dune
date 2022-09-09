@@ -394,65 +394,24 @@ let as_singleton m =
   if Module_name.Map.cardinal m <> 1 then None
   else Module_name.Map.choose m |> Option.map ~f:snd
 
-(* Pre-1.11 encoding *)
-module Old_format = struct
-  let decode ~implements ~src_dir =
-    let open Dune_lang.Decoder in
-    fields
-      (let+ loc = loc
-       and+ alias_module = field_o "alias_module" (Module.decode ~src_dir)
-       and+ main_module_name = field_o "main_module_name" Module_name.decode
-       and+ modules =
-         field ~default:[] "modules" (repeat (enter (Module.decode ~src_dir)))
-       and+ wrapped = field "wrapped" Mode.decode in
-       let modules =
-         modules
-         |> List.map ~f:(fun m -> (Module.name m, m))
-         |> Module_name.Map.of_list_exn
-       in
-       match wrapped with
-       | Simple false -> (
-         match as_singleton modules with
-         | Some m -> Singleton m
-         | None -> Unwrapped modules)
-       | Yes_with_transition _ | Simple true -> (
-         match (main_module_name, alias_module, as_singleton modules) with
-         | Some main_module_name, _, Some m
-           when Module.name m = main_module_name && not implements ->
-           Singleton m
-         | Some main_module_name, Some alias_module, _ ->
-           Wrapped
-             { modules
-             ; wrapped_compat = Module_name.Map.empty
-             ; alias_module
-             ; main_module_name
-             ; wrapped
-             }
-         | None, _, _ | _, None, _ ->
-           User_error.raise ~loc
-             [ Pp.text "Cannot wrap without main module name or alias module" ]))
-end
-
 let singleton m = Singleton m
 
-let decode ~version ~src_dir ~implements =
-  if version <= (1, 10) then Old_format.decode ~implements ~src_dir
-  else
-    let open Dune_lang.Decoder in
-    sum
-      [ ( "singleton"
-        , let+ m = Module.decode ~src_dir in
-          Singleton m )
-      ; ( "unwrapped"
-        , let+ modules = Module.Name_map.decode ~src_dir in
-          Unwrapped modules )
-      ; ( "wrapped"
-        , let+ w = Wrapped.decode ~src_dir in
-          Wrapped w )
-      ; ( "stdlib"
-        , let+ stdlib = Stdlib.decode ~src_dir in
-          Stdlib stdlib )
-      ]
+let decode ~src_dir =
+  let open Dune_lang.Decoder in
+  sum
+    [ ( "singleton"
+      , let+ m = Module.decode ~src_dir in
+        Singleton m )
+    ; ( "unwrapped"
+      , let+ modules = Module.Name_map.decode ~src_dir in
+        Unwrapped modules )
+    ; ( "wrapped"
+      , let+ w = Wrapped.decode ~src_dir in
+        Wrapped w )
+    ; ( "stdlib"
+      , let+ stdlib = Stdlib.decode ~src_dir in
+        Stdlib stdlib )
+    ]
 
 let rec to_dyn =
   let open Dyn in

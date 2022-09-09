@@ -146,10 +146,7 @@ module Lib = struct
        and+ orig_src_dir = field_o "orig_src_dir" path
        and+ modules =
          let src_dir = Obj_dir.dir obj_dir in
-         field "modules"
-           (Modules.decode
-              ~implements:(Option.is_some implements)
-              ~src_dir ~version:lang.version)
+         field "modules" (Modules.decode ~src_dir)
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)

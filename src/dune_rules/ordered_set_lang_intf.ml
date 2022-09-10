@@ -5,7 +5,18 @@ module type Key = sig
 
   val compare : t -> t -> Ordering.t
 
-  module Map : Map.S with type key = t
+  module Map : sig
+    type key := t
+
+    type 'a t
+
+    val singleton : key -> 'a -> 'a t
+
+    val empty : 'a t
+
+    val merge :
+      'a t -> 'b t -> f:(key -> 'a option -> 'b option -> 'c option) -> 'c t
+  end
 end
 
 module type Unordered_eval = sig

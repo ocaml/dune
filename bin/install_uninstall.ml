@@ -303,20 +303,23 @@ module File_ops_real (W : Workspace) : File_operations = struct
   let copy_file ~src ~dst ~executable ~special_file ~package
       ~(conf : Dune_rules.Artifact_substitution.conf) =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
-    let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
-    Fiber.finalize
-      ~finally:(fun () ->
-        Io.close_both (ic, oc);
-        Fiber.return ())
-      (fun () ->
-        match (special_file : Special_file.t option) with
-        | Some META -> copy_special_file ~src ~package ~ic ~oc ~f:process_meta
-        | Some Dune_package ->
-          copy_special_file ~src ~package ~ic ~oc
-            ~f:(process_dune_package ~get_location:conf.get_location)
-        | None ->
-          Dune_rules.Artifact_substitution.copy ~conf ~input_file:src
-            ~input:(input ic) ~output:(output oc))
+    match (special_file : Special_file.t option) with
+    | Some sf ->
+      let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
+      Fiber.finalize
+        ~finally:(fun () ->
+          Io.close_both (ic, oc);
+          Fiber.return ())
+        (fun () ->
+          let f =
+            match sf with
+            | META -> process_meta
+            | Dune_package ->
+              process_dune_package ~get_location:conf.get_location
+          in
+          copy_special_file ~src ~package ~ic ~oc ~f)
+    | None ->
+      Dune_rules.Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
 
   let remove_file_if_exists dst =
     if Path.exists dst then (

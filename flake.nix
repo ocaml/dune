@@ -46,6 +46,7 @@
             # dev tools
             ocamlformat_0_21_0
             opam
+            coq_8_16
             nodejs-slim
             pkg-config
           ] ++ (builtins.map (s: builtins.getAttr s scope)

@@ -1,0 +1,4 @@
+(library
+ (name boot_plugin)
+ (public_name coq-boot.boot_plugin))
+

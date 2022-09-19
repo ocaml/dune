@@ -55,6 +55,9 @@
 
 - dune install: copy files in an atomic way (#6150, @emillon)
 
+- Add `%{coq:...}` macro for accessing data about the configuration about Coq.
+  For instance `%{coq:version}` (#6049, @Alizter)
+
 3.4.1 (26-07-2022)
 ------------------
 

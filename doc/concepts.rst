@@ -186,6 +186,7 @@ Dune supports the following variables:
   variable ``<var>``, or ``<default>`` if it does not exist.
   For example, ``%{env:BIN=/usr/bin}``.
   Available since Dune 1.4.0.
+- There are some Coq-specific variables detailed in :ref:`coq-variables`.
 
 In addition, ``(action ...)`` fields support the following special variables:
 

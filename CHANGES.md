@@ -53,6 +53,8 @@
 - odoc rules now about `ODOC_SYNTAX` and will re-run accordingly (#6010, fixes
   #1117, @emillon)
 
+- dune install: copy files in an atomic way (#6150, @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

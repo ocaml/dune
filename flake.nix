@@ -1,10 +1,11 @@
 {
   inputs = {
+    nixpkgs.follows = "opam-nix/nixpkgs";
     opam-nix.url = "github:tweag/opam-nix";
     flake-utils.url = "github:numtide/flake-utils";
     ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
-    opam-nix.follows = "ocamllsp/opam-nix";
-    nixpkgs.follows = "ocamllsp/nixpkgs";
+    ocamllsp.inputs.opam-nix.follows = "opam-nix";
+    ocamllsp.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp }@inputs:
     let package = "dune";

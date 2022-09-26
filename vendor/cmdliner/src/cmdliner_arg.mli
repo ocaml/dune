@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (** Command line arguments as terms. *)
@@ -15,6 +14,9 @@ val conv :
   ?docv:string -> (string -> ('a, [`Msg of string]) result) * 'a printer ->
   'a conv
 
+val conv' :
+  ?docv:string -> (string -> ('a, string) result) * 'a printer -> 'a conv
+
 val pconv : ?docv:string -> 'a parser * 'a printer -> 'a conv
 val conv_parser : 'a conv -> (string -> ('a, [`Msg of string]) result)
 val conv_printer : 'a conv -> 'a printer
@@ -25,15 +27,17 @@ val parser_of_kind_of_string :
   (string -> ('a, [`Msg of string]) result)
 
 val some : ?none:string -> 'a converter -> 'a option converter
+val some' : ?none:'a -> 'a converter -> 'a option converter
 
-type env = Cmdliner_info.env
-val env_var : ?docs:string -> ?doc:string -> string -> env
+type env = Cmdliner_info.Env.info
+val env_var : ?deprecated:string -> ?docs:string -> ?doc:string -> string -> env
 
 type 'a t = 'a Cmdliner_term.t
 
 type info
 val info :
-  ?docs:string -> ?docv:string -> ?doc:string -> ?env:env -> string list -> info
+  ?deprecated:string -> ?absent:string -> ?docs:string -> ?docv:string ->
+  ?doc:string -> ?env:env -> string list -> info
 
 val ( & ) : ('a -> 'b) -> 'a -> 'b
 
@@ -97,7 +101,7 @@ val doc_alts_enum : ?quoted:bool -> (string * 'a) list -> string
 
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

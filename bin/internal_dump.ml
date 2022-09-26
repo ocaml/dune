@@ -10,7 +10,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "dump" ~doc ~man
+let info = Cmd.info "dump" ~doc ~man
 
 let term =
   let+ common = Common.term
@@ -23,4 +23,4 @@ let term =
   in
   Console.print [ Dyn.pp (D.to_dyn data) ]
 
-let command = (term, info)
+let command = Cmd.v info term

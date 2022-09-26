@@ -115,7 +115,7 @@ let run_build_command ~(common : Common.t) ~config ~request =
   | No -> run_build_command_once)
     ~common ~config ~request
 
-let runtest =
+let runtest_info =
   let doc = "Run tests." in
   let man =
     [ `S "DESCRIPTION"
@@ -131,22 +131,24 @@ let runtest =
         ]
     ]
   in
+  Cmd.info "runtest" ~doc ~man
+
+let runtest_term =
   let name_ = Arg.info [] ~docv:"DIR" in
-  let term =
-    let+ common = Common.term
-    and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
-    let config = Common.init common in
-    let request (setup : Import.Main.build_system) =
-      Action_builder.all_unit
-        (List.map dirs ~f:(fun dir ->
-             let dir = Path.(relative root) (Common.prefix_target common dir) in
-             Alias.in_dir ~name:Dune_engine.Alias.Name.runtest ~recursive:true
-               ~contexts:setup.contexts dir
-             |> Alias.request))
-    in
-    run_build_command ~common ~config ~request
+  let+ common = Common.term
+  and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
+  let config = Common.init common in
+  let request (setup : Import.Main.build_system) =
+    Action_builder.all_unit
+      (List.map dirs ~f:(fun dir ->
+           let dir = Path.(relative root) (Common.prefix_target common dir) in
+           Alias.in_dir ~name:Dune_engine.Alias.Name.runtest ~recursive:true
+             ~contexts:setup.contexts dir
+           |> Alias.request))
   in
-  (term, Term.info "runtest" ~doc ~man)
+  run_build_command ~common ~config ~request
+
+let runtest = Cmd.v runtest_info runtest_term
 
 let build =
   let doc =
@@ -182,7 +184,7 @@ let build =
     in
     run_build_command ~common ~config ~request
   in
-  (term, Term.info "build" ~doc ~man)
+  Cmd.v (Cmd.info "build" ~doc ~man) term
 
 let fmt =
   let doc = "Format source code." in
@@ -207,4 +209,4 @@ let fmt =
     in
     run_build_command ~common ~config ~request
   in
-  (term, Term.info "fmt" ~doc ~man)
+  Cmd.v (Cmd.info "fmt" ~doc ~man) term

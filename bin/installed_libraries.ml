@@ -3,7 +3,7 @@ open Import
 
 let doc = "Print out libraries installed on the system."
 
-let info = Term.info "installed-libraries" ~doc
+let info = Cmd.info "installed-libraries" ~doc
 
 let term =
   let+ common = Common.term
@@ -71,4 +71,4 @@ let term =
      in
      fun () -> Memo.run (run ()))
 
-let command = (term, info)
+let command = Cmd.v info term

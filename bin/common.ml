@@ -6,6 +6,7 @@ module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph
 module Package = Dune_engine.Package
 module Profile = Dune_rules.Profile
+module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
 module Only_packages = Dune_rules.Only_packages
@@ -506,7 +507,7 @@ module Options_implied_by_dash_p = struct
         last
         & opt_all (some profile) [ None ]
         & info [ "profile" ] ~docs
-            ~env:(Arg.env_var ~doc "DUNE_PROFILE")
+            ~env:(Cmd.Env.info ~doc "DUNE_PROFILE")
             ~doc:
               (Printf.sprintf
                  "Select the build profile, for instance $(b,dev) or \
@@ -561,7 +562,7 @@ let shared_with_config_file =
       & opt (some (enum all)) None
       & info [ "sandbox" ]
           ~env:
-            (Arg.env_var
+            (Cmd.Env.info
                ~doc:"Sandboxing mode to use by default. (see --sandbox)"
                "DUNE_SANDBOX")
           ~doc:
@@ -597,7 +598,7 @@ let shared_with_config_file =
     Arg.(
       value
       & opt (some (enum Dune_config.Cache.Enabled.all)) None
-      & info [ "cache" ] ~docs ~env:(Arg.env_var ~doc "DUNE_CACHE") ~doc)
+      & info [ "cache" ] ~docs ~env:(Cmd.Env.info ~doc "DUNE_CACHE") ~doc)
   and+ cache_storage_mode =
     let doc =
       Printf.sprintf "Dune cache storage mode (%s). Default is `%s'."
@@ -609,7 +610,7 @@ let shared_with_config_file =
       value
       & opt (some (enum Dune_config.Cache.Storage_mode.all)) None
       & info [ "cache-storage-mode" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_CACHE_STORAGE_MODE")
+          ~env:(Cmd.Env.info ~doc "DUNE_CACHE_STORAGE_MODE")
           ~doc)
   and+ cache_check_probability =
     let doc =
@@ -625,7 +626,7 @@ let shared_with_config_file =
       & info
           [ "cache-check-probability" ]
           ~docs
-          ~env:(Arg.env_var ~doc "DUNE_CACHE_CHECK_PROBABILITY")
+          ~env:(Cmd.Env.info ~doc "DUNE_CACHE_CHECK_PROBABILITY")
           ~doc)
   and+ action_stdout_on_success =
     Arg.(
@@ -790,7 +791,7 @@ let term ~default_root_is_cwd =
       value
       & opt (some path) None
       & info [ "workspace" ] ~docs ~docv:"FILE" ~doc
-          ~env:(Arg.env_var ~doc "DUNE_WORKSPACE"))
+          ~env:(Cmd.Env.info ~doc "DUNE_WORKSPACE"))
   and+ promote =
     one_of
       (let+ auto =
@@ -804,7 +805,7 @@ let term ~default_root_is_cwd =
        Option.some_if auto Clflags.Promote.Automatically)
       (let+ disable =
          let doc = "Disable all promotion rules" in
-         let env = Arg.env_var ~doc "DUNE_DISABLE_PROMOTION" in
+         let env = Cmd.Env.info ~doc "DUNE_DISABLE_PROMOTION" in
          Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
        in
        Option.some_if disable Clflags.Promote.Never)
@@ -892,7 +893,7 @@ let term ~default_root_is_cwd =
       value
       & opt (some string) None
       & info [ "build-dir" ] ~docs ~docv:"FILE"
-          ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
+          ~env:(Cmd.Env.info ~doc "DUNE_BUILD_DIR")
           ~doc)
   and+ diff_command =
     let doc =
@@ -903,7 +904,7 @@ let term ~default_root_is_cwd =
       value
       & opt (some string) None
       & info [ "diff-command" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_DIFF_COMMAND")
+          ~env:(Cmd.Env.info ~doc "DUNE_DIFF_COMMAND")
           ~doc)
   and+ stats_trace_file =
     Arg.(
@@ -925,7 +926,7 @@ let term ~default_root_is_cwd =
       & info
           [ "store-orig-source-dir" ]
           ~docs
-          ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
+          ~env:(Cmd.Env.info ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
           ~doc)
   and+ () = build_info
   and+ instrument_with =
@@ -938,7 +939,7 @@ let term ~default_root_is_cwd =
       value
       & opt (some (list lib_name)) None
       & info [ "instrument-with" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_INSTRUMENT_WITH")
+          ~env:(Cmd.Env.info ~doc "DUNE_INSTRUMENT_WITH")
           ~docv:"BACKENDS" ~doc)
   and+ file_watcher =
     let doc =

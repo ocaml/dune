@@ -25,7 +25,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "rules" ~doc ~man
+let info = Cmd.info "rules" ~doc ~man
 
 let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
   let action =
@@ -137,4 +137,4 @@ let term =
           | None -> print stdout
           | Some fn -> Io.with_file_out fn ~f:print))
 
-let command = (term, info)
+let command = Cmd.v info term

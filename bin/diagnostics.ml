@@ -52,10 +52,10 @@ let exec () =
 
 let info =
   let doc = "fetch and return errors from the current build" in
-  Term.info "diagnostics" ~doc
+  Cmd.info "diagnostics" ~doc
 
 let term =
   let+ (common : Common.t) = Common.term in
   Rpc.client_term common exec
 
-let command = (term, info)
+let command = Cmd.v info term

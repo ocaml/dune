@@ -140,7 +140,7 @@ let man =
       ]
   ]
 
-let info = Term.info "init" ~doc ~man
+let info = Cmd.info "init" ~doc ~man
 
 let term =
   let+ common_term = Common.term_with_default_root_is_cwd
@@ -249,4 +249,4 @@ let term =
     init @@ Test { context; common; options = () });
   print_completion kind name
 
-let command = (term, info)
+let command = Cmd.v info term

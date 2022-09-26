@@ -15,7 +15,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "top" ~doc ~man
+let info = Cmd.info "top" ~doc ~man
 
 let link_deps sctx link =
   let open Memo.O in
@@ -69,4 +69,4 @@ let term =
           Dune_rules.Toplevel.print_toplevel_init_file ~include_paths
             ~files_to_load))
 
-let command = (term, info)
+let command = Cmd.v info term

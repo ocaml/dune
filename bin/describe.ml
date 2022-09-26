@@ -26,7 +26,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "describe" ~doc ~man
+let info = Cmd.info "describe" ~doc ~man
 
 (** whether to sanitize absolute paths of workspace items, and their UIDs, to
     ensure reproducible tests *)
@@ -869,4 +869,4 @@ let term : unit Term.t =
         | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
         | Sexp -> print_as_sexp res))
 
-let command : unit Term.t * Term.info = (term, info)
+let command = Cmd.v info term

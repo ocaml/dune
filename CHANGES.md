@@ -58,6 +58,9 @@
 - Add `%{coq:...}` macro for accessing data about the configuration about Coq.
   For instance `%{coq:version}` (#6049, @Alizter)
 
+- update vendored copy of cmdliner to 1.1.1. This improves the built-in
+  documentation for command groups such as `dune ocaml`. (#6038, @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

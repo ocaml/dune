@@ -5,7 +5,7 @@
 set -e -o pipefail
 
 CMDS=$(dune --help=plain | \
-           sed -n '/COMMANDS/,/OPTIONS/p' | sed -En 's/^       ([a-z-]+) ?.*/\1/p')
+           sed -n '/COMMAND ALIASES/,/COMMON OPTIONS/p' | sed -En 's/^       ([a-z-]+) ?.*/\1/p')
 
 for cmd in $CMDS; do
     cat <<EOF

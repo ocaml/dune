@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 let rev_compare n0 n1 = compare n1 n0
@@ -33,6 +32,10 @@ let conv ?docv (parse, print) =
   let parse s = match parse s with Ok v -> `Ok v | Error (`Msg e) -> `Error e in
   parse, print
 
+let conv' ?docv (parse, print) =
+  let parse s = match parse s with Ok v -> `Ok v | Error e -> `Error e in
+  parse, print
+
 let pconv ?docv conv = conv
 
 let conv_parser (parse, _) =
@@ -48,15 +51,16 @@ let parser_of_kind_of_string ~kind k_of_string =
   | Some v -> Ok v
 
 let some = Cmdliner_base.some
+let some' = Cmdliner_base.some'
 
 (* Argument information *)
 
-type env = Cmdliner_info.env
-let env_var = Cmdliner_info.env
+type env = Cmdliner_info.Env.info
+let env_var = Cmdliner_info.Env.info
 
 type 'a t = 'a Cmdliner_term.t
-type info = Cmdliner_info.arg
-let info = Cmdliner_info.arg
+type info = Cmdliner_info.Arg.t
+let info = Cmdliner_info.Arg.v
 
 (* Arguments *)
 
@@ -68,29 +72,37 @@ let parse_to_list parser s = match parser s with
 | `Ok v -> `Ok [v]
 | `Error _ as e -> e
 
-let try_env ei a parse ~absent = match Cmdliner_info.arg_env a with
+let report_deprecated_env ei e = match Cmdliner_info.Env.info_deprecated e with
+| None -> ()
+| Some msg ->
+    let var = Cmdliner_info.Env.info_var e in
+    let msg = String.concat "" ["environment variable "; var; ": "; msg ] in
+    let err_fmt = Cmdliner_info.Eval.err_ppf ei in
+    Cmdliner_msg.pp_err err_fmt ei ~err:msg
+
+let try_env ei a parse ~absent = match Cmdliner_info.Arg.env a with
 | None -> Ok absent
 | Some env ->
-    let var = Cmdliner_info.env_var env in
-    match Cmdliner_info.(eval_env_var ei var) with
+    let var = Cmdliner_info.Env.info_var env in
+    match Cmdliner_info.Eval.env_var ei var with
     | None -> Ok absent
     | Some v ->
         match parse v with
-        | `Ok v -> Ok v
         | `Error e -> err (Cmdliner_msg.err_env_parse env ~err:e)
+        | `Ok v -> report_deprecated_env ei env; Ok v
 
-let arg_to_args = Cmdliner_info.Args.singleton
+let arg_to_args = Cmdliner_info.Arg.Set.singleton
 let list_to_args f l =
-  let add acc v = Cmdliner_info.Args.add (f v) acc in
-  List.fold_left add Cmdliner_info.Args.empty l
+  let add acc v = Cmdliner_info.Arg.Set.add (f v) acc in
+  List.fold_left add Cmdliner_info.Arg.Set.empty l
 
 let alias_opt aliases a =
-  let a = Cmdliner_info.arg_make_opt ~absent:Err ~kind:Opt a in
+  let a = Cmdliner_info.Arg.make_opt ~absent:Err ~kind:Opt a in
   let aliases = (fun f -> function
     | None -> Error (Cmdliner_msg.err_opt_value_missing f)
     | Some o -> Ok (aliases o)) in
-  let a = Cmdliner_info.arg_aliases ~aliases a in
-  if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
+  let a = Cmdliner_info.Arg.aliases ~aliases a in
+  if Cmdliner_info.Arg.is_pos a then invalid_arg err_not_opt else
   let convert ei cl = match Cmdliner_cline.opt_arg cl a with
   | [] -> try_env ei a Cmdliner_base.env_bool_parse ~absent:false
   | [_, _, None] -> Ok true
@@ -103,8 +115,8 @@ let alias aliases a =
   let aliases = (fun f -> function
     | Some v -> Error (Cmdliner_msg.err_flag_value f v)
     | None -> Ok aliases) in
-  let a = Cmdliner_info.arg_aliases ~aliases a in
-  if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
+  let a = Cmdliner_info.Arg.aliases ~aliases a in
+  if Cmdliner_info.Arg.is_pos a then invalid_arg err_not_opt else
   let convert ei cl = match Cmdliner_cline.opt_arg cl a with
   | [] -> try_env ei a Cmdliner_base.env_bool_parse ~absent:false
   | [_, _, None] -> Ok true
@@ -114,7 +126,7 @@ let alias aliases a =
   arg_to_args a, convert
 
 let flag a =
-  if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
+  if Cmdliner_info.Arg.is_pos a then invalid_arg err_not_opt else
   let convert ei cl = match Cmdliner_cline.opt_arg cl a with
   | [] -> try_env ei a Cmdliner_base.env_bool_parse ~absent:false
   | [_, _, None] -> Ok true
@@ -124,8 +136,8 @@ let flag a =
   arg_to_args a, convert
 
 let flag_all a =
-  if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
-  let a = Cmdliner_info.arg_make_all_opts a in
+  if Cmdliner_info.Arg.is_pos a then invalid_arg err_not_opt else
+  let a = Cmdliner_info.Arg.make_all_opts a in
   let convert ei cl = match Cmdliner_cline.opt_arg cl a with
   | [] ->
       try_env ei a (parse_to_list Cmdliner_base.env_bool_parse) ~absent:[]
@@ -160,7 +172,7 @@ let vflag v l =
     try Ok (aux None l) with Failure e -> err e
   in
   let flag (_, a) =
-    if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else a
+    if Cmdliner_info.Arg.is_pos a then invalid_arg err_not_opt else a
   in
   list_to_args flag l, convert
 
@@ -183,23 +195,26 @@ let vflag_all v l =
     try Ok (aux [] l) with Failure e -> err e
   in
   let flag (_, a) =
-    if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
-    Cmdliner_info.arg_make_all_opts a
+    if Cmdliner_info.Arg.is_pos a then invalid_arg err_not_opt else
+    Cmdliner_info.Arg.make_all_opts a
   in
   list_to_args flag l, convert
 
 let parse_opt_value parse f v = match parse v with
 | `Ok v -> v
-| `Error e -> failwith (Cmdliner_msg.err_opt_parse f e)
+| `Error err -> failwith (Cmdliner_msg.err_opt_parse f ~err)
 
 let opt ?vopt (parse, print) v a =
-  if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
-  let absent = Cmdliner_info.Val (lazy (str_of_pp print v)) in
-  let kind = match vopt with
-  | None -> Cmdliner_info.Opt
-  | Some dv -> Cmdliner_info.Opt_vopt (str_of_pp print dv)
+  if Cmdliner_info.Arg.is_pos a then invalid_arg err_not_opt else
+  let absent = match Cmdliner_info.Arg.absent a with
+  | Cmdliner_info.Arg.Doc d as a when d <> "" -> a
+  | _ -> Cmdliner_info.Arg.Val (lazy (str_of_pp print v))
   in
-  let a = Cmdliner_info.arg_make_opt ~absent ~kind a in
+  let kind = match vopt with
+  | None -> Cmdliner_info.Arg.Opt
+  | Some dv -> Cmdliner_info.Arg.Opt_vopt (str_of_pp print dv)
+  in
+  let a = Cmdliner_info.Arg.make_opt ~absent ~kind a in
   let convert ei cl = match Cmdliner_cline.opt_arg cl a with
   | [] -> try_env ei a parse ~absent:v
   | [_, f, Some v] ->
@@ -214,13 +229,16 @@ let opt ?vopt (parse, print) v a =
   arg_to_args a, convert
 
 let opt_all ?vopt (parse, print) v a =
-  if Cmdliner_info.arg_is_pos a then invalid_arg err_not_opt else
-  let absent = Cmdliner_info.Val (lazy "") in
-  let kind = match vopt with
-  | None -> Cmdliner_info.Opt
-  | Some dv -> Cmdliner_info.Opt_vopt (str_of_pp print dv)
+  if Cmdliner_info.Arg.is_pos a then invalid_arg err_not_opt else
+  let absent = match Cmdliner_info.Arg.absent a with
+  | Cmdliner_info.Arg.Doc d as a when d <> "" -> a
+  | _ -> Cmdliner_info.Arg.Val (lazy "")
   in
-  let a = Cmdliner_info.arg_make_opt_all ~absent ~kind a in
+  let kind = match vopt with
+  | None -> Cmdliner_info.Arg.Opt
+  | Some dv -> Cmdliner_info.Arg.Opt_vopt (str_of_pp print dv)
+  in
+  let a = Cmdliner_info.Arg.make_opt_all ~absent ~kind a in
   let convert ei cl = match Cmdliner_cline.opt_arg cl a with
   | [] -> try_env ei a (parse_to_list parse) ~absent:v
   | l ->
@@ -240,13 +258,16 @@ let opt_all ?vopt (parse, print) v a =
 
 let parse_pos_value parse a v = match parse v with
 | `Ok v -> v
-| `Error e -> failwith (Cmdliner_msg.err_pos_parse a e)
+| `Error err -> failwith (Cmdliner_msg.err_pos_parse a ~err)
 
 let pos ?(rev = false) k (parse, print) v a =
-  if Cmdliner_info.arg_is_opt a then invalid_arg err_not_pos else
-  let absent = Cmdliner_info.Val (lazy (str_of_pp print v)) in
-  let pos = Cmdliner_info.pos ~rev ~start:k ~len:(Some 1) in
-  let a = Cmdliner_info.arg_make_pos_abs ~absent ~pos a in
+  if Cmdliner_info.Arg.is_opt a then invalid_arg err_not_pos else
+  let absent = match Cmdliner_info.Arg.absent a with
+  | Cmdliner_info.Arg.Doc d as a when d <> "" -> a
+  | _ -> Cmdliner_info.Arg.Val (lazy (str_of_pp print v))
+  in
+  let pos = Cmdliner_info.Arg.pos ~rev ~start:k ~len:(Some 1) in
+  let a = Cmdliner_info.Arg.make_pos_abs ~absent ~pos a in
   let convert ei cl = match Cmdliner_cline.pos_arg cl a with
   | [] -> try_env ei a parse ~absent:v
   | [v] ->
@@ -256,8 +277,8 @@ let pos ?(rev = false) k (parse, print) v a =
   arg_to_args a, convert
 
 let pos_list pos (parse, _) v a =
-  if Cmdliner_info.arg_is_opt a then invalid_arg err_not_pos else
-  let a = Cmdliner_info.arg_make_pos pos a in
+  if Cmdliner_info.Arg.is_opt a then invalid_arg err_not_pos else
+  let a = Cmdliner_info.Arg.make_pos ~pos a in
   let convert ei cl = match Cmdliner_cline.pos_arg cl a with
   | [] -> try_env ei a (parse_to_list parse) ~absent:v
   | l ->
@@ -266,32 +287,32 @@ let pos_list pos (parse, _) v a =
   in
   arg_to_args a, convert
 
-let all = Cmdliner_info.pos ~rev:false ~start:0 ~len:None
+let all = Cmdliner_info.Arg.pos ~rev:false ~start:0 ~len:None
 let pos_all c v a = pos_list all c v a
 
 let pos_left ?(rev = false) k =
   let start = if rev then k + 1 else 0 in
   let len = if rev then None else Some k in
-  pos_list (Cmdliner_info.pos ~rev ~start ~len)
+  pos_list (Cmdliner_info.Arg.pos ~rev ~start ~len)
 
 let pos_right ?(rev = false) k =
   let start = if rev then 0 else k + 1 in
   let len = if rev then Some k else None in
-  pos_list (Cmdliner_info.pos ~rev ~start ~len)
+  pos_list (Cmdliner_info.Arg.pos ~rev ~start ~len)
 
 (* Arguments as terms *)
 
 let absent_error args =
   let make_req a acc =
-    let req_a = Cmdliner_info.arg_make_req a in
-    Cmdliner_info.Args.add req_a acc
+    let req_a = Cmdliner_info.Arg.make_req a in
+    Cmdliner_info.Arg.Set.add req_a acc
   in
-  Cmdliner_info.Args.fold make_req args Cmdliner_info.Args.empty
+  Cmdliner_info.Arg.Set.fold make_req args Cmdliner_info.Arg.Set.empty
 
 let value a = a
 
 let err_arg_missing args =
-  err @@ Cmdliner_msg.err_arg_missing (Cmdliner_info.Args.choose args)
+  err @@ Cmdliner_msg.err_arg_missing (Cmdliner_info.Arg.Set.choose args)
 
 let required (args, convert) =
   let args = absent_error args in
@@ -319,14 +340,6 @@ let last (args, convert) =
   in
   args, convert
 
-let last_or_none (args, convert) =
-  let convert ei cl = match convert ei cl with
-  | Ok [] -> Ok None
-  | Ok l -> Ok (Some (List.hd (List.rev l)))
-  | Error _ as e -> e
-  in
-  args, convert
-
 (* Predefined arguments *)
 
 let man_fmts =
@@ -336,9 +349,9 @@ let man_fmt_docv = "FMT"
 let man_fmts_enum = Cmdliner_base.enum man_fmts
 let man_fmts_alts = doc_alts_enum man_fmts
 let man_fmts_doc kind =
-  strf "Show %s in format $(docv). The value $(docv) must be %s. With `auto',
-        the format is `pager` or `plain' whenever the $(b,TERM) env var is
-        `dumb' or undefined."
+  strf "Show %s in format $(docv). The value $(docv) must be %s. \
+        With $(b,auto), the format is $(b,pager) or $(b,plain) whenever \
+        the $(b,TERM) env var is $(b,dumb) or undefined."
     kind man_fmts_alts
 
 let man_format =
@@ -377,7 +390,7 @@ let t3 = Cmdliner_base.t3
 let t4 = Cmdliner_base.t4
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

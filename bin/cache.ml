@@ -18,7 +18,7 @@ let man =
 
 let doc = "Manage the shared cache of build artifacts"
 
-let info = Term.info name ~doc ~man
+let info = Cmd.info name ~doc ~man
 
 let trim ~trimmed_size ~size =
   Log.init_disabled ();
@@ -87,4 +87,4 @@ let term =
      | Some Start_deprecated | Some Stop_deprecated -> deprecated_error ()
      | None -> `Help (`Pager, Some name)
 
-let command = (term, info)
+let command = Cmd.v info term

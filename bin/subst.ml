@@ -418,7 +418,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "subst" ~doc ~man
+let info = Cmd.info "subst" ~doc ~man
 
 let term =
   let+ () = Common.build_info
@@ -441,4 +441,4 @@ let term =
        ~signal_watcher:`No)
     subst
 
-let command = (term, info)
+let command = Cmd.v info term

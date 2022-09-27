@@ -1,17 +1,58 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
+
+let strf = Printf.sprintf
+
+(* Unique ids *)
+
+let uid =
+  (* Thread-safe UIDs, Oo.id (object end) was used before.
+     Note this won't be thread-safe in multicore, we should use
+     Atomic but this is >= 4.12 and we have 4.08 for now. *)
+  let c = ref 0 in
+  fun () ->
+    let id = !c in
+    incr c; if id > !c then assert false (* too many ids *) else id
+
+(* Edit distance *)
+
+let edit_distance s0 s1 =
+  let minimum (a : int) (b : int) (c : int) : int = min a (min b c) in
+  let s0,s1 = if String.length s0 <= String.length s1 then s0,s1 else s1,s0 in
+  let m = String.length s0 and n = String.length s1 in
+  let rec rows row0 row i = match i > n with
+  | true -> row0.(m)
+  | false ->
+      row.(0) <- i;
+      for j = 1 to m do
+        if s0.[j - 1] = s1.[i - 1] then row.(j) <- row0.(j - 1) else
+        row.(j) <- minimum (row0.(j - 1) + 1) (row0.(j) + 1) (row.(j - 1) + 1)
+      done;
+      rows row row0 (i + 1)
+  in
+  rows (Array.init (m + 1) (fun x -> x)) (Array.make (m + 1) 0) 1
+
+let suggest s candidates =
+  let add (min, acc) name =
+    let d = edit_distance s name in
+    if d = min then min, (name :: acc) else
+    if d < min then d, [name] else
+    min, acc
+  in
+  let dist, suggs = List.fold_left add (max_int, []) candidates in
+  if dist < 3 (* suggest only if not too far *) then suggs else []
 
 (* Invalid argument strings *)
 
 let err_empty_list = "empty list"
-let err_incomplete_enum = "Incomplete enumeration for the type"
+let err_incomplete_enum ss =
+  strf "Arg.enum: missing printable string for a value, other strings are: %s"
+    (String.concat ", " ss)
 
 (* Formatting tools *)
 
-let strf = Printf.sprintf
 let pp = Format.fprintf
 let pp_sp = Format.pp_print_space
 let pp_str = Format.pp_print_string
@@ -58,9 +99,12 @@ let pp_tokens ~spaces ppf s = (* collapse white and hint spaces (maybe) *)
 
 (* Converter (end-user) error messages *)
 
-let quote s = strf "`%s'" s
-let alts_str ?(quoted = true) alts =
-  let quote = if quoted then quote else (fun s -> s) in
+let quote s = strf "'%s'" s
+let alts_str ?quoted alts =
+  let quote = match quoted with
+  | None -> strf "$(b,%s)"
+  | Some quoted -> if quoted then quote else (fun s -> s)
+  in
   match alts with
   | [] -> invalid_arg err_empty_list
   | [a] -> (quote a)
@@ -76,26 +120,27 @@ let err_multi_def ~kind name doc v v' =
     kind name (doc v) (doc v')
 
 let err_ambiguous ~kind s ~ambs =
-    strf "%s %s ambiguous and could be %s" kind (quote s) (alts_str ambs)
+  strf "%s %s ambiguous and could be %s" kind (quote s)
+    (alts_str ~quoted:true ambs)
 
-let err_unknown ?(hints = []) ~kind v =
-  let did_you_mean s = strf ", did you mean %s ?" s in
-  let hints = match hints with [] -> "." | hs -> did_you_mean (alts_str hs) in
+let err_unknown ?(dom = []) ?(hints = []) ~kind v =
+  let hints = match hints, dom with
+  | [], [] -> "."
+  | [], dom -> strf ", must be %s." (alts_str ~quoted:true dom)
+  | hints, _ -> strf ", did you mean %s?" (alts_str ~quoted:true hints)
+  in
   strf "unknown %s %s%s" kind (quote v) hints
-
-let err_no_sub_command =
-  "is a command group and requires a command argument."
 
 let err_no kind s = strf "no %s %s" (quote s) kind
 let err_not_dir s = strf "%s is not a directory" (quote s)
 let err_is_dir s = strf "%s is a directory" (quote s)
 let err_element kind s exp =
-  strf "invalid element in %s (`%s'): %s" kind s exp
+  strf "invalid element in %s ('%s'): %s" kind s exp
 
 let err_invalid kind s exp = strf "invalid %s %s, %s" kind (quote s) exp
 let err_invalid_val = err_invalid "value"
 let err_sep_miss sep s =
-  err_invalid_val s (strf "missing a `%c' separator" sep)
+  err_invalid_val s (strf "missing a '%c' separator" sep)
 
 (* Converters *)
 
@@ -104,12 +149,17 @@ type 'a printer = Format.formatter -> 'a -> unit
 type 'a conv = 'a parser * 'a printer
 
 let some ?(none = "") (parse, print) =
-  let parse s = match parse s with
-  | `Ok v -> `Ok (Some v)
-  | `Error _ as e -> e
-  in
+  let parse s = match parse s with `Ok v -> `Ok (Some v) | `Error _ as e -> e in
   let print ppf v = match v with
   | None -> Format.pp_print_string ppf none
+  | Some v -> print ppf v
+  in
+  parse, print
+
+let some' ?none (parse, print) =
+  let parse s = match parse s with `Ok v -> `Ok (Some v) | `Error _ as e -> e in
+  let print ppf = function
+  | None -> (match none with None -> () | Some v -> print ppf v)
   | Some v -> print ppf v
   in
   parse, print
@@ -117,7 +167,7 @@ let some ?(none = "") (parse, print) =
 let bool =
   let parse s = try `Ok (bool_of_string s) with
   | Invalid_argument _ ->
-      `Error (err_invalid_val s (alts_str ["true"; "false"]))
+      `Error (err_invalid_val s (alts_str ~quoted:true ["true"; "false"]))
   in
   parse, Format.pp_print_bool
 
@@ -158,15 +208,15 @@ let enum sl =
   | `Ok _ as r -> r
   | `Ambiguous ->
       let ambs = List.sort compare (Cmdliner_trie.ambiguities t s) in
-      `Error (err_ambiguous "enum value" s ambs)
+      `Error (err_ambiguous ~kind:"enum value" s ~ambs)
   | `Not_found ->
         let alts = List.rev (List.rev_map (fun (s, _) -> s) sl) in
-        `Error (err_invalid_val s ("expected " ^ (alts_str alts)))
+        `Error (err_invalid_val s ("expected " ^ (alts_str ~quoted:true alts)))
   in
   let print ppf v =
     let sl_inv = List.rev_map (fun (s,v) -> (v,s)) sl in
     try pp_str ppf (List.assoc v sl_inv)
-    with Not_found -> invalid_arg err_incomplete_enum
+    with Not_found -> invalid_arg (err_incomplete_enum (List.map fst sl))
   in
   parse, print
 
@@ -286,10 +336,12 @@ let t4 ?(sep = ',') (pa0, pr0) (pa1, pr1) (pa2, pr2) (pa3, pr3) =
 let env_bool_parse s = match String.lowercase_ascii s with
 | "" | "false" | "no" | "n" | "0" -> `Ok false
 | "true" | "yes" | "y" | "1" -> `Ok true
-| s -> `Error (err_invalid_val s (alts_str ["true"; "yes"; "false"; "no" ]))
+| s ->
+    let alts = alts_str ~quoted:true ["true"; "yes"; "false"; "no" ] in
+    `Error (err_invalid_val s alts)
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

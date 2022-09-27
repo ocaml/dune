@@ -14,7 +14,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "external-lib-deps" ~doc ~man
+let info = Cmd.info "external-lib-deps" ~doc ~man
 
 let term =
   Term.ret
@@ -25,4 +25,4 @@ let term =
      and+ _ = Arg.(value & flag & info [ "sexp" ] ~doc:{|unused|}) in
      `Error (false, "This subcommand is no longer implemented.")
 
-let command = (term, info)
+let command = Cmd.v info term

@@ -7,4 +7,4 @@ val active_server : unit -> Dune_rpc.Where.t
 
 val client_term : Common.t -> (unit -> 'a Fiber.t) -> 'a
 
-val group : unit Term.Group.t
+val group : unit Cmdliner.Cmd.t

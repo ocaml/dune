@@ -32,7 +32,7 @@ module Make (M : Basic) = struct
     let ( and* ) = ( and+ )
   end
 end
-[@@inlined always]
+[@@inline always]
 
 module Id = Make (struct
   type 'a t = 'a

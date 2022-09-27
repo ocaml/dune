@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 let strf = Printf.sprintf
@@ -14,7 +13,7 @@ let pp_lines = Cmdliner_base.pp_lines
 (* Environment variable errors *)
 
 let err_env_parse env ~err =
-  let var = Cmdliner_info.env_var env in
+  let var = Cmdliner_info.Env.info_var env in
   strf "environment variable %s: %s" (quote var) err
 
 (* Positional argument errors *)
@@ -23,7 +22,7 @@ let err_pos_excess excess =
   strf "too many arguments, don't know what to do with %s"
     (String.concat ", " (List.map quote excess))
 
-let err_pos_miss a = match Cmdliner_info.arg_docv a with
+let err_pos_miss a = match Cmdliner_info.Arg.docv a with
 | "" -> "a required argument is missing"
 | v -> strf "required argument %s is missing" v
 
@@ -31,21 +30,21 @@ let err_pos_misses = function
 | [] -> assert false
 | [a] -> err_pos_miss a
 | args ->
-    let add_arg acc a = match Cmdliner_info.arg_docv a with
+    let add_arg acc a = match Cmdliner_info.Arg.docv a with
     | "" -> "ARG" :: acc
     | argv -> argv :: acc
     in
-    let rev_args = List.sort Cmdliner_info.rev_arg_pos_cli_order args in
+    let rev_args = List.sort Cmdliner_info.Arg.rev_pos_cli_order args in
     let args = List.fold_left add_arg [] rev_args in
     let args = String.concat ", " args in
     strf "required arguments %s are missing" args
 
-let err_pos_parse a ~err = match Cmdliner_info.arg_docv a with
+let err_pos_parse a ~err = match Cmdliner_info.Arg.docv a with
 | "" -> err
 | argv ->
-    match Cmdliner_info.(pos_len @@ arg_pos a) with
+    match Cmdliner_info.Arg.(pos_len @@ pos_kind a) with
     | Some 1 -> strf "%s argument: %s" argv err
-    | None | Some _ -> strf "%s... arguments: %s" argv err
+    | None | Some _ -> strf "%s… arguments: %s" argv err
 
 (* Optional argument errors *)
 
@@ -63,32 +62,31 @@ let err_opt_repeated f f' =
 (* Argument errors *)
 
 let err_arg_missing a =
-  if Cmdliner_info.arg_is_pos a then err_pos_miss a else
-  strf "required option %s is missing" (Cmdliner_info.arg_opt_name_sample a)
+  if Cmdliner_info.Arg.is_pos a then err_pos_miss a else
+  strf "required option %s is missing" (Cmdliner_info.Arg.opt_name_sample a)
+
+let err_cmd_missing ~dom =
+  strf "required COMMAND name is missing, must be %s."
+    (Cmdliner_base.alts_str ~quoted:true dom)
 
 (* Other messages *)
 
-let exec_name_terms terms =
-  String.concat " " (List.rev_map Cmdliner_info.term_name terms)
-let exec_name ei = exec_name_terms (Cmdliner_info.eval_terms_rev ei)
+let exec_name ei = Cmdliner_info.Cmd.name @@ Cmdliner_info.Eval.main ei
 
-let pp_version ppf ei = match Cmdliner_info.(term_version @@ eval_main ei) with
-| None -> assert false
-| Some v -> pp ppf "@[%a@]@." Cmdliner_base.pp_text v
+let pp_version ppf ei =
+  match Cmdliner_info.Cmd.version @@ Cmdliner_info.Eval.main ei with
+  | None -> assert false
+  | Some v -> pp ppf "@[%a@]@." Cmdliner_base.pp_text v
 
-let pp_try_help ppf ei = match Cmdliner_info.eval_kind ei with
-| `Simple | `Multiple_main ->
-    pp ppf "@[<2>Try `%s --help' for more information.@]" (exec_name ei)
-| `Multiple_group
-| `Multiple_sub ->
-    let exec_cmd = Cmdliner_docgen.plain_invocation ei in
-    let parent =
-      Cmdliner_info.eval_terms_rev ei
-      |> List.tl
-      |> exec_name_terms
-    in
-    pp ppf "@[<2>Try `%s --help' or `%s --help' for more information.@]"
-      exec_cmd parent
+let pp_try_help ppf ei =
+  let rcmds = Cmdliner_info.Eval.(cmd ei :: parents ei) in
+  match List.rev_map Cmdliner_info.Cmd.name rcmds with
+  | [] -> assert false
+  | [n] -> pp ppf "@[<2>Try '%s --help' for more information.@]" n
+  | n :: _ as cmds ->
+      let cmds = String.concat " " cmds in
+      pp ppf "@[<2>Try '%s --help' or '%s --help' for more information.@]"
+        cmds n
 
 let pp_err ppf ei ~err = pp ppf "%s: @[%a@]@." (exec_name ei) pp_lines err
 
@@ -108,7 +106,7 @@ let pp_backtrace ppf ei e bt =
     (exec_name ei) pp_lines (strf "%s\n%s" (Printexc.to_string e) bt)
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

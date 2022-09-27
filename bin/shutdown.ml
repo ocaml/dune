@@ -22,10 +22,10 @@ let exec common =
 
 let info =
   let doc = "cancel and shutdown any builds in the current workspace" in
-  Term.info "shutdown" ~doc
+  Cmd.info "shutdown" ~doc
 
 let term =
   let+ (common : Common.t) = Common.term in
   Rpc.client_term common exec
 
-let command = (term, info)
+let command = Cmd.v info term

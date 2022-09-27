@@ -14,13 +14,13 @@
   [1]
 
   $ dune build "(fi"
-  dune build: TARGET... arguments: unclosed parenthesis at end of input
-  Usage: dune build [OPTION]... [TARGET]...
-  Try `dune build --help' or `dune --help' for more information.
+  dune: TARGET… arguments: unclosed parenthesis at end of input
+  Usage: dune build [OPTION]… [TARGET]…
+  Try 'dune build --help' or 'dune --help' for more information.
   [1]
 
   $ dune build "()"
-  dune build: TARGET... arguments: Unexpected list
-  Usage: dune build [OPTION]... [TARGET]...
-  Try `dune build --help' or `dune --help' for more information.
+  dune: TARGET… arguments: Unexpected list
+  Usage: dune build [OPTION]… [TARGET]…
+  Try 'dune build --help' or 'dune --help' for more information.
   [1]

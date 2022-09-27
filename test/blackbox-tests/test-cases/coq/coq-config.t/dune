@@ -1,0 +1,29 @@
+(rule
+ (action
+  (with-outputs-to
+   config.output
+   (progn
+    (echo "COQLIB=%{coq:coqlib}\n")
+    (echo "COQ_NATIVE_COMPILER_DEFAULT=%{coq:coq_native_compiler_default}\n")
+    (echo "")
+    (echo "%{coq:version} %{coq:ocaml-version}\n")
+    (echo
+     "%{coq:version.major}.%{coq:version.minor}%{coq:version.suffix} %{coq:ocaml-version}\n")))))
+
+(rule
+ (action
+  (with-outputs-to
+   config.expected
+   (progn
+    (pipe-outputs
+     ; We need to scrub ignored config values
+     (run %{bin:coqc} --config)
+     (run sed "/^COQCORELIB=/d")
+     (run sed "/^DOCDIR=/d")
+     (run sed "/^OCAMLFIND=/d")
+     (run sed "/^CAMLFLAGS=/d")
+     (run sed "/^WARN=/d")
+     (run sed "/^HASNATDYNLINK=/d")
+     (run sed "/^COQ_SRC_SUBDIRS=/d"))
+    (run %{bin:coqc} -print-version)
+    (run %{bin:coqc} -print-version)))))

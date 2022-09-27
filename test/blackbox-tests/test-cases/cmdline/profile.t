@@ -1,9 +1,9 @@
 # Bug #4632
 
   $ dune build -p
-  dune build: option `-p' needs an argument
-  Usage: dune build [OPTION]... [TARGET]...
-  Try `dune build --help' or `dune --help' for more information.
+  dune: option '-p' needs an argument
+  Usage: dune build [OPTION]… [TARGET]…
+  Try 'dune build --help' or 'dune --help' for more information.
   [1]
 
   $ dune build --root . --verbose 2>&1 | grep "; profile"

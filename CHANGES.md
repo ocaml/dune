@@ -53,6 +53,14 @@
 - odoc rules now about `ODOC_SYNTAX` and will rerun accordingly (#6010, fixes
   #1117, @emillon)
 
+- dune install: copy files in an atomic way (#6150, @emillon)
+
+- Add `%{coq:...}` macro for accessing data about the configuration about Coq.
+  For instance `%{coq:version}` (#6049, @Alizter)
+
+- update vendored copy of cmdliner to 1.1.1. This improves the built-in
+  documentation for command groups such as `dune ocaml`. (#6038, @emillon)
+
 3.4.1 (26-07-2022)
 ------------------
 

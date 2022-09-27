@@ -1,20 +1,17 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
-
-val plain_invocation : Cmdliner_info.eval -> string
 
 val pp_man :
   errs:Format.formatter -> Cmdliner_manpage.format -> Format.formatter ->
-  Cmdliner_info.eval -> unit
+  Cmdliner_info.Eval.t -> unit
 
 val pp_plain_synopsis :
-  errs:Format.formatter -> Format.formatter -> Cmdliner_info.eval -> unit
+  errs:Format.formatter -> Format.formatter -> Cmdliner_info.Eval.t -> unit
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

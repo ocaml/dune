@@ -102,7 +102,7 @@ let man =
   ; Common.footer
   ]
 
-let info = Term.info "help" ~doc ~man
+let info = Cmd.info "help" ~doc ~man
 
 let term =
   Term.ret
@@ -124,4 +124,4 @@ let term =
        |> String.concat ~sep:"\n" |> print_endline;
        `Ok ()
 
-let command = (term, info)
+let command = Cmd.v info term

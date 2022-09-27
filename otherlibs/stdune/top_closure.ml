@@ -26,7 +26,7 @@ module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) = struct
     | Ok (res, _visited) -> Monad.return (Ok (List.rev res))
     | Error elts -> Monad.return (Error elts)
 end
-[@@inlined always]
+[@@inline always]
 
 module Int = Make (Int.Set) (Monad.Id)
 module String = Make (String.Set) (Monad.Id)

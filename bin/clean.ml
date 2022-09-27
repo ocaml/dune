@@ -22,4 +22,4 @@ let command =
     |> Path.Set.iter ~f:Path.unlink_no_err;
     Path.rm_rf Path.build_dir
   in
-  (term, Term.info "clean" ~doc ~man)
+  Cmd.v (Cmd.info "clean" ~doc ~man) term

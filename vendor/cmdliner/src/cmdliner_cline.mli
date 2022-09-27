@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (** Command lines. *)
@@ -9,16 +8,19 @@
 type t
 
 val create :
-  ?peek_opts:bool -> Cmdliner_info.args -> string list ->
+  ?peek_opts:bool -> Cmdliner_info.Arg.Set.t -> string list ->
   (t, string * t) result
 
-val opt_arg : t -> Cmdliner_info.arg -> (int * string * (string option)) list
-val pos_arg : t -> Cmdliner_info.arg -> string list
-val actual_args : t -> Cmdliner_info.arg -> string list
+val opt_arg : t -> Cmdliner_info.Arg.t -> (int * string * (string option)) list
+val pos_arg : t -> Cmdliner_info.Arg.t -> string list
+val actual_args : t -> Cmdliner_info.Arg.t -> string list
 (** Actual command line arguments from the command line *)
 
+val is_opt : string -> bool
+val deprecated_msgs : t -> string list
+
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

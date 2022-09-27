@@ -543,3 +543,25 @@ Limitations
 * When new dependencies are added to a file (via a Coq ``Require`` vernacular
   command), it is in principle required to save the file and restart to Coq
   toplevel process.
+
+.. _coq-variables:
+
+Coq-Specific Variables
+----------------------
+
+There are some special variables that can be used to access data about the Coq
+configuration. These are:
+
+- ``%{coq:version}`` the version of Coq.
+- ``%{coq:version.major}`` the major version of Coq (e.g., ``8.15.2`` gives
+  ``8``).
+- ``%{coq:version.minor}`` the minor version of Coq (e.g., ``8.15.2`` gives
+  ``15``).
+- ``%{coq:version.suffix}`` the suffix version of Coq (e.g., ``8.15.2`` gives
+  ``.2`` and ``8.15+rc1`` gives ``+rc1``).
+- ``%{coq:ocaml-version}`` the version of OCaml used to compile Coq.
+- ``%{coq:coqlib}`` the output of ``COQLIB`` from ``coqc -config``.
+- ``%{coq:coq_native_compiler_default}`` the output of
+  ``COQ_NATIVE_COMPILER_DEFAULT`` from ``coqc -config``.
+
+See :ref:`variables` for more information on variables supported by Dune.

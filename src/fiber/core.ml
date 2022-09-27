@@ -98,7 +98,7 @@ let apply2 f x y =
     let exn = Exn_with_backtrace.capture exn in
     Reraise exn
 
-let[@inlined always] fork a b =
+let[@inline always] fork a b =
   match apply a () with
   | End_of_fiber () -> b ()
   | eff -> Fork (eff, b)

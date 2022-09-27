@@ -23,7 +23,7 @@ module Make (A : Applicative_intf.Basic) = struct
       and+ xs = all xs in
       x :: xs
 end
-[@@inlined always]
+[@@inline always]
 
 module Id = struct
   include Make (struct

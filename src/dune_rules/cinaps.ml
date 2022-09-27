@@ -6,6 +6,7 @@ type t =
   ; libraries : Lib_dep.t list
   ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
+  ; runtime_deps : Dep_conf.t list
   }
 
 let name = "cinaps"
@@ -14,7 +15,7 @@ type Stanza.t += T of t
 
 let syntax =
   Dune_lang.Syntax.create ~name ~desc:"the cinaps extension"
-    [ ((1, 0), `Since (1, 11)) ]
+    [ ((1, 0), `Since (1, 11)); ((1, 1), `Since (3, 5)) ]
 
 let alias = Alias.make (Alias.Name.of_string name)
 
@@ -27,9 +28,12 @@ let decode =
      and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
      and+ libraries =
        field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
+     and+ runtime_deps =
+       field ~default:[] "runtime_deps"
+         (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)
      (* TODO use this field? *)
      and+ _flags = Ocaml_flags.Spec.decode in
-     { loc; files; libraries; preprocess; preprocessor_deps })
+     { loc; files; libraries; preprocess; preprocessor_deps; runtime_deps })
 
 let () =
   let open Dune_lang.Decoder in
@@ -130,8 +134,12 @@ let gen_rules sctx t ~dir ~scope =
     let open Action_builder.O in
     let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
+    let runtime_deps, sandbox =
+      Dep_conf_eval.unnamed ~expander t.runtime_deps
+    in
+    let* () = runtime_deps in
     let+ () = Action_builder.path cinaps_exe in
-    Action.Full.make
+    Action.Full.make ~sandbox
     @@ A.chdir (Path.build dir)
          (A.progn
             (A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]

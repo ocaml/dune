@@ -50,7 +50,7 @@
 - Improve error message when parsing several licenses in `(license)` (#6114,
   fixes #6103, @emillon)
 
-- odoc rules now about `ODOC_SYNTAX` and will re-run accordingly (#6010, fixes
+- odoc rules now about `ODOC_SYNTAX` and will rerun accordingly (#6010, fixes
   #1117, @emillon)
 
 - dune install: copy files in an atomic way (#6150, @emillon)

@@ -88,7 +88,7 @@ module Bootstrap = struct
     let dir = Coq_lib.src_root lib in
     S
       (if coqdoc then [ A "--coqlib"; Path (Path.build dir) ]
-      else [ A "-boot"; Util.theory_coqc_flag lib ])
+      else [ A "-boot" ])
 
   let flags ~coqdoc t : _ Command.Args.t =
     match t with

@@ -112,7 +112,7 @@ module Bootstrap = struct
         (** We are compiling the prelude itself
             [should be replaced with (per_file ...) flags] *)
 
-  let get ~boot_lib ~wrapper_name coq_module =
+  let get_for_module ~boot_lib ~wrapper_name coq_module =
     match boot_lib with
     | None -> No_boot
     | Some (_loc, lib) -> (
@@ -126,6 +126,10 @@ module Bootstrap = struct
       match init with
       | false -> Bootstrap lib
       | true -> Bootstrap_prelude)
+
+  let get ~use_stdlib ~boot_lib ~wrapper_name coq_module =
+    if not use_stdlib then Bootstrap_prelude
+    else get_for_module ~boot_lib ~wrapper_name coq_module
 
   let boot_lib_flags ~coqdoc lib : _ Command.Args.t =
     let dir = Coq_lib.src_root lib in
@@ -171,6 +175,7 @@ module Context = struct
     ; ml_flags : 'a Command.Args.t Resolve.Memo.t
     ; scope : Scope.t
     ; boot_type : Bootstrap.t Resolve.Memo.t
+    ; use_stdlib : bool
     ; profile_flags : string list Action_builder.t
     ; mode : Coq_mode.t
     ; native_includes : Path.Set.t Resolve.t
@@ -283,6 +288,7 @@ module Context = struct
   let create ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
       (buildable : Buildable.t) =
     let loc = buildable.loc in
+    let use_stdlib = buildable.use_stdlib in
     let rr = resolve_program sctx ~dir ~loc in
     let* expander = Super_context.expander sctx ~dir in
     let* scope = Scope.DB.find_by_dir dir in
@@ -315,6 +321,7 @@ module Context = struct
     ; ml_flags
     ; scope
     ; boot_type = Resolve.Memo.return Bootstrap.No_boot
+    ; use_stdlib
     ; profile_flags
     ; mode
     ; native_includes
@@ -325,7 +332,8 @@ module Context = struct
     let boot_type =
       let open Resolve.Memo.O in
       let+ boot_lib = t.scope |> Scope.coq_libs |> Coq_lib.DB.boot_library in
-      Bootstrap.get ~boot_lib ~wrapper_name:t.wrapper_name coq_module
+      Bootstrap.get ~use_stdlib:t.use_stdlib ~boot_lib
+        ~wrapper_name:t.wrapper_name coq_module
     in
     { t with boot_type }
 end

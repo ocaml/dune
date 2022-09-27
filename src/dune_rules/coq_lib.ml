@@ -185,7 +185,7 @@ module DB = struct
         let open Memo.O in
         let* boot = if s.boot then Resolve.Memo.return None else boot coq_db in
         let allow_private_deps = Option.is_none s.package in
-        let use_stdlib = true in
+        let use_stdlib = s.buildable.use_stdlib in
         let+ libraries =
           Resolve.Memo.List.map s.buildable.plugins ~f:(fun (loc, lib) ->
               let open Resolve.Memo.O in

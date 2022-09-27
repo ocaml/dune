@@ -32,6 +32,7 @@ module Buildable = struct
     { flags : Ordered_set_lang.Unexpanded.t
     ; coq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Loc.t * Coq_mode.t
+    ; use_stdlib : bool
     ; plugins : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
@@ -60,6 +61,9 @@ module Buildable = struct
       located
         (field "mode" ~default
            (Dune_lang.Syntax.since coq_syntax (0, 3) >>> Coq_mode.decode))
+    and+ use_stdlib =
+      field ~default:true "stdlib"
+        Dune_lang.Decoder.(enum [ ("yes", true); ("no", false) ])
     and+ libraries =
       field "libraries" ~default:[]
         (Dune_sexp.Syntax.deprecated_in coq_syntax (0, 5)
@@ -73,7 +77,7 @@ module Buildable = struct
         ~default:[]
     in
     let plugins = merge_plugins_libraries ~plugins ~libraries in
-    { flags; mode; coq_lang_version; plugins; theories; loc }
+    { flags; mode; use_stdlib; coq_lang_version; plugins; theories; loc }
 end
 
 module Extraction = struct

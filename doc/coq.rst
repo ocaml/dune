@@ -30,7 +30,7 @@ version<coq-lang>` in the :ref:`dune-project` file. For example, adding
 
 .. code:: scheme
 
-    (using coq 0.4)
+    (using coq 0.6)
 
 to a :ref:`dune-project` file enables using the ``coq.theory`` stanza and other
 ``coq.*`` stanzas. See the :ref:`Dune Coq language<coq-lang>` section for more
@@ -53,6 +53,7 @@ stanza:
      (modules <ordered_set_lang>)
      (plugins <ocaml_plugins>)
      (flags <coq_flags>)
+     (stdlib <stdlib_included>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
 
@@ -97,6 +98,11 @@ The semantics of the fields are:
 - ``<coq_flags>`` are passed to ``coqc`` as command-line options. ``:standard``
   is taken from the value set in the ``(coq (flags <flags>))`` field in ``env``
   profile. See :ref:`dune-env` for more information.
+
+- ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
+  ``yes``. When set to ``no``, Coq's standard library won't be visible from this
+  theory, which means the ``Coq`` prefix won't be bound, and ``Coq.Init.Prelude``
+  won't be imported by default.
 
 - The path to the installed locations of the ``<ocaml_plugins>`` is passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag. This allows a Coq theory to
@@ -235,6 +241,8 @@ The supported Coq language versions (not the version of Coq) are:
 - ``0.3``: Support for ``(mode native)`` requires Coq >= 8.10 (and Dune >= 2.9
   for Coq >= 8.14).
 - ``0.4``: Support for interproject composition of theories.
+- ``0.5``: ``(libraries ...)`` field deprecated in favor of ``(plugins ...)`` field.
+- ``0.6``: Support for ``(stdlib no)``.
 
 .. _coq-lang-1.0:
 
@@ -267,7 +275,7 @@ process by using the ``coq.extraction`` stanza:
 - ``(extracted_modules <names>)`` is an exhaustive list of OCaml modules
   extracted.
 
-- ``<optional-fields>`` are ``flags``, ``theories``, and ``plugins``. All of
+- ``<optional-fields>`` are ``flags``, ``stdlib``, ``theories``, and ``plugins``. All of
   these fields have the same meaning as in the ``coq.theory`` stanza.
 
 The extracted sources can then be used in ``executable`` or ``library`` stanzas

@@ -25,6 +25,7 @@ let coq_syntax =
     ; ((0, 3), `Since (2, 8))
     ; ((0, 4), `Since (3, 3))
     ; ((0, 5), `Since (3, 4))
+    ; ((0, 6), `Since (3, 5))
     ]
 
 module Buildable = struct
@@ -63,7 +64,8 @@ module Buildable = struct
            (Dune_lang.Syntax.since coq_syntax (0, 3) >>> Coq_mode.decode))
     and+ use_stdlib =
       field ~default:true "stdlib"
-        Dune_lang.Decoder.(enum [ ("yes", true); ("no", false) ])
+        (Dune_lang.Syntax.since coq_syntax (0, 6)
+        >>> enum [ ("yes", true); ("no", false) ])
     and+ libraries =
       field "libraries" ~default:[]
         (Dune_sexp.Syntax.deprecated_in coq_syntax (0, 5)

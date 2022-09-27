@@ -1,0 +1,5 @@
+(coq.theory
+ (name basic)
+ (package no-stdlib)
+ (stdlib no)
+ (synopsis "Test Coq library"))

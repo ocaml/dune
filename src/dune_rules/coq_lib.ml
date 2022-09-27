@@ -50,6 +50,8 @@ include struct
     ; boot : t option Resolve.t
     ; id : Id.t
     ; implicit : bool (* Only useful for the stdlib *)
+    ; use_stdlib : bool
+          (* whether this theory uses the stdlib, eventually set to false for all libs *)
     ; src_root : Path.Build.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * t) list Resolve.t
@@ -183,6 +185,7 @@ module DB = struct
         let open Memo.O in
         let* boot = if s.boot then Resolve.Memo.return None else boot coq_db in
         let allow_private_deps = Option.is_none s.package in
+        let use_stdlib = true in
         let+ libraries =
           Resolve.Memo.List.map s.buildable.plugins ~f:(fun (loc, lib) ->
               let open Resolve.Memo.O in
@@ -237,8 +240,16 @@ module DB = struct
                   | Some _ -> Resolve.Memo.return ()
                   | None -> Error.private_deps_not_allowed ~loc theory_name
               in
-
               (loc, theory))
+        in
+        let theories =
+          let open Resolve.O in
+          let* boot = boot in
+          match boot with
+          | Some boot when use_stdlib && not s.boot ->
+            let+ theories = theories in
+            (boot.loc, boot) :: theories
+          | Some _ | None -> theories
         in
         let map_error x =
           let human_readable_description () = Id.pp id in
@@ -246,10 +257,10 @@ module DB = struct
         in
         let theories = map_error theories in
         let libraries = map_error libraries in
-
         { loc = s.buildable.loc
         ; boot
         ; id
+        ; use_stdlib
         ; implicit = s.boot
         ; obj_root = dir
         ; src_root = dir

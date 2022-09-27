@@ -1,0 +1,4 @@
+(coq.theory
+ (name A)
+ (package A)
+ (boot))

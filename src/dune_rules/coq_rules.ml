@@ -55,6 +55,49 @@ let resolve_program sctx ~loc ~dir prog =
   Super_context.resolve_program ~dir sctx prog ~loc:(Some loc)
     ~hint:"opam install coq"
 
+module Coq_plugin = struct
+  (* compute include flags and mlpack rules *)
+  let setup_ml_deps libs theories =
+    (* Pair of include flags and paths to mlpack *)
+    let libs =
+      let open Resolve.Memo.O in
+      let* theories = theories in
+      let* theories =
+        Resolve.Memo.lift
+        @@ Resolve.List.concat_map ~f:Coq_lib.libraries theories
+      in
+      let libs = libs @ theories in
+      Lib.closure ~linking:false (List.map ~f:snd libs)
+    in
+    let flags =
+      Resolve.Memo.args (Resolve.Memo.map libs ~f:Util.include_flags)
+    in
+    let open Action_builder.O in
+    ( flags
+    , let* libs = Resolve.Memo.read libs in
+      (* If the mlpack files don't exist, don't fail *)
+      Action_builder.paths_existing (List.concat_map ~f:Util.ml_pack_files libs)
+    )
+
+  let of_buildable ~lib_db ~theories_deps (buildable : Coq_stanza.Buildable.t) =
+    let res =
+      let open Resolve.Memo.O in
+      let+ libs =
+        Resolve.Memo.List.map buildable.plugins ~f:(fun (loc, name) ->
+            let+ lib = Lib.DB.resolve lib_db (loc, name) in
+            (loc, lib))
+      in
+      setup_ml_deps libs theories_deps
+    in
+    let ml_flags = Resolve.Memo.map res ~f:fst in
+    let mlpack_rule =
+      let open Action_builder.O in
+      let* _, mlpack_rule = Resolve.Memo.read res in
+      mlpack_rule
+    in
+    (ml_flags, mlpack_rule)
+end
+
 module Bootstrap = struct
   (* the internal boot flag determines if the Coq "standard library" is being
      built, in case we need to explicitly tell Coq where the build artifacts are
@@ -218,26 +261,6 @@ module Context = struct
     ; S file_flags
     ]
 
-  (* compute include flags and mlpack rules *)
-  let setup_ml_deps libs theories =
-    (* Pair of include flags and paths to mlpack *)
-    let libs =
-      let open Resolve.Memo.O in
-      let* theories = theories in
-      let* theories =
-        Resolve.Memo.lift
-        @@ Resolve.List.concat_map ~f:Coq_lib.libraries theories
-      in
-      let libs = libs @ theories in
-      Lib.closure ~linking:false (List.map ~f:snd libs)
-    in
-    ( Resolve.Memo.args (Resolve.Memo.map libs ~f:Util.include_flags)
-    , let open Action_builder.O in
-      let* libs = Resolve.Memo.read libs in
-      (* If the mlpack files don't exist, don't fail *)
-      Action_builder.paths_existing (List.concat_map ~f:Util.ml_pack_files libs)
-    )
-
   let directories_of_lib ~sctx lib =
     let name = Coq_lib.name lib in
     let dir = Coq_lib.src_root lib in
@@ -266,22 +289,7 @@ module Context = struct
     let lib_db = Scope.libs scope in
     (* ML-level flags for depending libraries *)
     let ml_flags, mlpack_rule =
-      let res =
-        let open Resolve.Memo.O in
-        let+ libs =
-          Resolve.Memo.List.map buildable.plugins ~f:(fun (loc, name) ->
-              let+ lib = Lib.DB.resolve lib_db (loc, name) in
-              (loc, lib))
-        in
-        setup_ml_deps libs theories_deps
-      in
-      let ml_flags = Resolve.Memo.map res ~f:fst in
-      let mlpack_rule =
-        let open Action_builder.O in
-        let* _, mlpack_rule = Resolve.Memo.read res in
-        mlpack_rule
-      in
-      (ml_flags, mlpack_rule)
+      Coq_plugin.of_buildable ~theories_deps ~lib_db buildable
     in
     let mode = select_native_mode ~sctx ~buildable in
     let* native_includes =

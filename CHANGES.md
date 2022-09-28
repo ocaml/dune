@@ -71,8 +71,8 @@
   #6169, @shonfeder)
 
 - The test suite for Coq now requires Coq >= 8.16 due to changes in the
-  plugin loading mechanism upstream (which now uses findlib).
-  
+  plugin loading mechanism upstream (which now uses `Findlib`).
+
 - Starting with Coq build language 0.6, theories can be built without importing
   Coq's standard library by including `(stdlib no)`.
   (#6165 #6164, fixes #6163, @ejgallego @Alizter @LasseBlaauwbroek)
@@ -81,7 +81,13 @@
   #5650, @emillon)
 
 - Added an (aliases ...) field to the (rules ...) stanza which allows the
-  specification of multiple aliases per rule (#6194, @Alizter) 
+  specification of multiple aliases per rule (#6194, @Alizter)
+
+- The `(coq.theory ...)` stanza will now ensure that for each declared `(plugin
+ ...)`, the `META` file for it is built before calling `coqdep`. This enables
+ the use of the new `Findlib`-based loading method in Coq 8.16; however as of
+ Coq 8.16.0, Coq itself has some bugs preventing this to work yet. (#6167 ,
+ workarounds #5767, @ejgallego)
 
 3.4.1 (26-07-2022)
 ------------------

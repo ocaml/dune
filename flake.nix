@@ -11,48 +11,49 @@
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
         devPackages = {
-          menhir = null;
-          lwt = null;
-          csexp = null;
-          core_bench = null;
-          bisect_ppx = null;
-          js_of_ocaml = null;
-          js_of_ocaml-compiler = null;
-          mdx = null;
-          merlin = null;
-          odoc = null;
-          ppx_expect = null;
-          ppxlib = null;
-          ctypes = null;
-          utop = null;
-          cinaps = null;
+          menhir = "*";
+          lwt = "*";
+          csexp = "*";
+          core_bench = "*";
+          bisect_ppx = "*";
+          js_of_ocaml = "*";
+          js_of_ocaml-compiler = "*";
+          mdx = "*";
+          merlin = "*";
+          odoc = "*";
+          ppx_expect = "*";
+          ppxlib = "*";
+          ctypes = "*";
+          utop = "*";
+          cinaps = "*";
           ocamlfind = "1.9.2";
         };
-        on = opam-nix.lib.${system};
-      in {
-        legacyPackages = let
-          scope = on.buildOpamProject { } package ./. devPackages;
-          overlay = self: super: { };
-        in scope.overrideScope' overlay;
+      in
+      {
+        packages =
+          let
+            scope = opam-nix.lib.${system}.buildOpamProject' { } ./.
+              (devPackages // { ocaml-base-compiler = "4.14.0"; });
+          in
+          scope // { default = self.packages.${system}.${package}; };
 
-        defaultPackage = self.legacyPackages.${system}.${package};
-
-        devShell = pkgs.mkShell {
-          nativeBuildInputs = let scope = self.legacyPackages.${system};
-          in with pkgs;
-          [
-            ocamllsp.outputs.defaultPackage.${system}
-            # dev tools
-            ocamlformat_0_21_0
-            opam
-            coq_8_16
-            nodejs-slim
-            pkg-config
-          ] ++ (builtins.map (s: builtins.getAttr s scope)
-            (builtins.attrNames devPackages));
-          inputsFrom = [ self.defaultPackage.${system} ];
-        };
+        devShell =
+          let
+            pkgs = nixpkgs.legacyPackages.${system};
+          in
+          pkgs.mkShell {
+            buildInputs = (with pkgs;
+              [
+                # dev tools
+                ocamlformat_0_21_0
+                opam
+                coq_8_16
+                nodejs-slim
+                pkg-config
+              ]) ++ [ ocamllsp.outputs.defaultPackage.${system} ] ++ (builtins.map (s: builtins.getAttr s self.packages.${system})
+              (builtins.attrNames devPackages));
+            inputsFrom = [ self.packages.${system}.default ];
+          };
       });
 }

@@ -50,9 +50,16 @@ let programs ~modules ~(exes : Executables.t) =
                 (Module_name.to_string mod_name)
             ]
       | None ->
-        User_error.raise ~loc
-          [ Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
-          ])
+        let msg =
+          match Ordered_set_lang.loc exes.buildable.modules with
+          | None ->
+            Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
+          | Some _ ->
+            Pp.textf
+              "The name %S is not listed in the (modules) field of this stanza."
+              (Module_name.to_string mod_name)
+        in
+        User_error.raise ~loc [ msg ])
 
 let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     ~requires_compile =

@@ -67,7 +67,8 @@
   For instance `%{coq:version}` (#6049, @Alizter)
 
 - update vendored copy of cmdliner to 1.1.1. This improves the built-in
-  documentation for command groups such as `dune ocaml`. (#6038, @emillon)
+  documentation for command groups such as `dune ocaml`. (#6038, @emillon,
+  #6169, @shonfeder)
 
 - The test suite for Coq now requires Coq >= 8.16 due to changes in the
   plugin loading mechanism upstream (which now uses findlib).

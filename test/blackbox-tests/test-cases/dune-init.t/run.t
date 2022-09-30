@@ -255,29 +255,10 @@ Will not create components with invalid names
         Library names must be non-empty and composed only of the
         following
         characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
-  Usage: dune init [OPTION]… COMPONENT NAME [PATH]
-  Try 'dune init --help' or 'dune --help' for more information.
+  Usage: dune init library [OPTION]… NAME [PATH]
+  Try 'dune init library --help' or 'dune --help' for more information.
   [1]
   $ test -f ./_test_lib
-  [1]
-
-Will fail and inform user when invalid component command is given
-
-  $ dune init foo blah
-  dune: COMPONENT argument: invalid value 'foo', expected one of 'executable',
-        'library', 'project' or 'test'
-  Usage: dune init [OPTION]… COMPONENT NAME [PATH]
-  Try 'dune init --help' or 'dune --help' for more information.
-  [1]
-
-Will fail and inform user when an invalid option is given to a component
-
-  $ dune init test test_foo --public
-  Error: The `test' component does not support the `--public' option
-  [1]
-  $ dune init exe test_exe --inline-tests
-  Error: The `executable' component does not support the `--inline-tests'
-  option
   [1]
 
 Adding fields to existing stanzas

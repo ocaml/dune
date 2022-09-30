@@ -16,7 +16,6 @@ let all : _ Cmdliner.Cmd.t list =
     ; Subst.command
     ; Print_rules.command
     ; Utop.command
-    ; Init.command
     ; Promote.command
     ; Printenv.command
     ; Help.command
@@ -30,7 +29,9 @@ let all : _ Cmdliner.Cmd.t list =
     ; Diagnostics.command
     ]
   in
-  let groups = [ Ocaml_cmd.group; Coq.group; Rpc.group; Internal.group ] in
+  let groups =
+    [ Ocaml_cmd.group; Coq.group; Rpc.group; Internal.group; Init.group ]
+  in
   terms @ groups
 
 (* Short reminders for the most used and useful commands *)

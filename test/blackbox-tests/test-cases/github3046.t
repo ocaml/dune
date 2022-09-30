@@ -9,8 +9,8 @@ are given as parameters
   $ dune init exe main --libs="str gsl"
   dune: option '--libs': invalid element in list ('str gsl'): expected a valid
         dune atom
-  Usage: dune init [OPTION]… COMPONENT NAME [PATH]
-  Try 'dune init --help' or 'dune --help' for more information.
+  Usage: dune init executable [OPTION]… NAME [PATH]
+  Try 'dune init executable --help' or 'dune --help' for more information.
   [1]
 
 `dune init lib foo --ppx="foo bar"` returns an informative parsing error
@@ -18,8 +18,8 @@ are given as parameters
   $ dune init lib foo --ppx="foo bar"
   dune: option '--ppx': invalid element in list ('foo bar'): expected a valid
         dune atom
-  Usage: dune init [OPTION]… COMPONENT NAME [PATH]
-  Try 'dune init --help' or 'dune --help' for more information.
+  Usage: dune init library [OPTION]… NAME [PATH]
+  Try 'dune init library --help' or 'dune --help' for more information.
   [1]
 
 `dune init lib foo --public="some/invalid&name!"` returns an informative parsing error
@@ -29,6 +29,6 @@ are given as parameters
         Library names must be non-empty and composed only of the
         following
         characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
-  Usage: dune init [OPTION]… COMPONENT NAME [PATH]
-  Try 'dune init --help' or 'dune --help' for more information.
+  Usage: dune init library [OPTION]… NAME [PATH]
+  Try 'dune init library --help' or 'dune --help' for more information.
   [1]

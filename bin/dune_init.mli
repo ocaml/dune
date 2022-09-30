@@ -2,19 +2,6 @@
 
 open! Stdune
 
-(** Supported kinds of components for initialization *)
-module Kind : sig
-  type t =
-    | Executable
-    | Library
-    | Project
-    | Test
-
-  val to_string : t -> string
-
-  val commands : (string * t) list
-end
-
 (** The context in which the initialization is executed *)
 module Init_context : sig
   type t =

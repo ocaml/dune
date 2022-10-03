@@ -1,6 +1,8 @@
 3.5.0 (unreleased)
 ------------------
 
+- Sandbox running cinaps actions starting from cinaps 1.1 (#6176, @rgrinberg)
+
 - Add a `runtime_deps` field in the `cinaps` stanza to specify runtime
   dependencies for running the cinaps preprocessing action (#6175, @rgrinberg)
 

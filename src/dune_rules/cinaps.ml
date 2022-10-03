@@ -7,6 +7,7 @@ type t =
   ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
   ; runtime_deps : Dep_conf.t list
+  ; cinaps_version : Syntax.Version.t
   }
 
 let name = "cinaps"
@@ -31,9 +32,17 @@ let decode =
      and+ runtime_deps =
        field ~default:[] "runtime_deps"
          (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)
+     and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
      (* TODO use this field? *)
      and+ _flags = Ocaml_flags.Spec.decode in
-     { loc; files; libraries; preprocess; preprocessor_deps; runtime_deps })
+     { loc
+     ; files
+     ; libraries
+     ; preprocess
+     ; preprocessor_deps
+     ; runtime_deps
+     ; cinaps_version
+     })
 
 let () =
   let open Dune_lang.Decoder in
@@ -85,9 +94,7 @@ let gen_rules sctx t ~dir ~scope =
   let* () =
     (* Ask cinaps to produce a .ml file to build *)
     let sandbox =
-      let project = Scope.project scope in
-      if Dune_project.dune_version project >= (3, 5) then
-        Sandbox_config.needs_sandboxing
+      if t.cinaps_version >= (1, 1) then Sandbox_config.needs_sandboxing
       else Sandbox_config.default
     in
     Super_context.add_rule sctx ~loc:t.loc ~dir
@@ -135,7 +142,11 @@ let gen_rules sctx t ~dir ~scope =
     let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
     let runtime_deps, sandbox =
-      Dep_conf_eval.unnamed ~expander t.runtime_deps
+      let sandbox =
+        if t.cinaps_version >= (1, 1) then Sandbox_config.needs_sandboxing
+        else Sandbox_config.no_special_requirements
+      in
+      Dep_conf_eval.unnamed ~sandbox ~expander t.runtime_deps
     in
     let* () = runtime_deps in
     let+ () = Action_builder.path cinaps_exe in

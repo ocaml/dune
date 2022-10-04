@@ -51,7 +51,7 @@
                 coq_8_16
                 nodejs-slim
                 pkg-config
-              ]) ++ [ ocamllsp.outputs.defaultPackage.${system} ]
+              ]) ++ [ ocamllsp.outputs.packages.${system}.ocaml-lsp-server ]
             ++ (builtins.map (s: builtins.getAttr s self.packages.${system})
               (builtins.attrNames devPackages));
             inputsFrom = [ self.packages.${system}.default ];

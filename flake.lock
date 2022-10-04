@@ -155,11 +155,11 @@
         "opam-repository": "opam-repository"
       },
       "locked": {
-        "lastModified": 1664586994,
-        "narHash": "sha256-ouBYfPjQ4bfdbwujTQ6Gd/bYlDhbtlyFAtHSR2w9fbA=",
+        "lastModified": 1664923990,
+        "narHash": "sha256-KntwCmtXnRVPYbEWUs1Cdq4PGmxljT8LD5vBuJ1nTC0=",
         "ref": "refs/heads/master",
-        "rev": "2bdc0a5284f2d18357fb464c8de82807f3f9d5c6",
-        "revCount": 1821,
+        "rev": "41a3071b59a0b06d529c16fe7d2b49b227a3d1e9",
+        "revCount": 1826,
         "submodules": true,
         "type": "git",
         "url": "https://www.github.com/ocaml/ocaml-lsp"
@@ -213,11 +213,11 @@
     "opam-repository": {
       "flake": false,
       "locked": {
-        "lastModified": 1664222087,
-        "narHash": "sha256-R+o5Wlqtap806v6uqcxa6+n9jlc0BNhfLpZkJCY9Glw=",
+        "lastModified": 1664888712,
+        "narHash": "sha256-lOsurp/727wZv1LQ1NEKE/lpxXkrRNi62RSjQuvdcRs=",
         "owner": "ocaml",
         "repo": "opam-repository",
-        "rev": "f3dcd527e82e83facb92cd2727651938cb9fecf9",
+        "rev": "127acdff77b608ce60174e2dbf2e17362f3688f8",
         "type": "github"
       },
       "original": {

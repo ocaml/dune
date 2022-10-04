@@ -214,8 +214,9 @@ end = struct
 
   let keep_if expander ~scope stanza =
     let+ keep =
+      let open Dune_file in
       match (stanza : Stanza.t) with
-      | Dune_file.Library lib ->
+      | Library lib ->
         let* enabled_if = Expander.eval_blang expander lib.enabled_if in
         if enabled_if then
           if lib.optional then
@@ -223,11 +224,10 @@ end = struct
               (Dune_file.Library.best_name lib)
           else Memo.return true
         else Memo.return false
-      | Dune_file.Documentation _ -> Memo.return true
-      | Dune_file.Install { enabled_if; _ } ->
-        Expander.eval_blang expander enabled_if
-      | Dune_file.Plugin _ -> Memo.return true
-      | Dune_file.Executables ({ install_conf = Some _; _ } as exes) -> (
+      | Documentation _ -> Memo.return true
+      | Install { enabled_if; _ } -> Expander.eval_blang expander enabled_if
+      | Plugin _ -> Memo.return true
+      | Executables ({ install_conf = Some _; _ } as exes) -> (
         Expander.eval_blang expander exes.enabled_if >>= function
         | false -> Memo.return false
         | true ->
@@ -271,9 +271,9 @@ end = struct
     | None -> Memo.return None
     | Some (stanza, package) ->
       let new_entries =
+        let open Dune_file in
         match (stanza : Stanza.t) with
-        | Dune_file.Install i
-        | Dune_file.Executables { install_conf = Some i; _ } ->
+        | Install i | Executables { install_conf = Some i; _ } ->
           let path_expander =
             File_binding.Unexpanded.expand ~dir
               ~f:(Expander.No_deps.expand_str expander)
@@ -306,13 +306,13 @@ end = struct
                 Install.Entry.Sourced.create ~loc entry)
           in
           files @ files_from_dirs
-        | Dune_file.Library lib ->
+        | Library lib ->
           let sub_dir = Dune_file.Library.sub_dir lib in
           let* dir_contents = Dir_contents.get sctx ~dir in
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
         | Coq_stanza.Theory.T coqlib ->
           Coq_rules.install_rules ~sctx ~dir coqlib
-        | Dune_file.Documentation d ->
+        | Documentation d ->
           let* dc = Dir_contents.get sctx ~dir in
           let+ mlds = Dir_contents.mlds dc d in
           List.map mlds ~f:(fun mld ->
@@ -322,7 +322,7 @@ end = struct
                   Section.Doc mld
               in
               Install.Entry.Sourced.create ~loc:d.loc entry)
-        | Dune_file.Plugin t -> Plugin_rules.install_rules ~sctx ~sites ~dir t
+        | Plugin t -> Plugin_rules.install_rules ~sctx ~sites ~dir t
         | _ -> Memo.return []
       in
       let name = Package.name package in

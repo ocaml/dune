@@ -1,6 +1,9 @@
 3.5.0 (unreleased)
 ------------------
 
+- Add a `runtime_deps` field in the `cinaps` stanza to specify runtime
+  dependencies for running the cinaps preprocessing action (#6175, @rgrinberg)
+
 - Shadow alias module `Foo__` when building a library `Foo` (#6126, @rgrinberg)
 
 - Allow dune describe workspace to accept directories as arguments.

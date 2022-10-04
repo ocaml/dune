@@ -61,6 +61,39 @@
         "type": "github"
       }
     },
+    "git-subrepo-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1598529383,
+        "narHash": "sha256-tOCAB4wV/ZSVqNJ01iuEqTdY2QNzuWnQmUoCg4ZsVWQ=",
+        "owner": "rgrinberg",
+        "repo": "git-subrepo",
+        "rev": "8fb6be3fb1500ab845081fc26ecdb950e9c0438c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rgrinberg",
+        "repo": "git-subrepo",
+        "rev": "8fb6be3fb1500ab845081fc26ecdb950e9c0438c",
+        "type": "github"
+      }
+    },
+    "mirage-opam-overlays": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1661959605,
+        "narHash": "sha256-CPTuhYML3F4J58flfp3ZbMNhkRkVFKmBEYBZY5tnQwA=",
+        "owner": "dune-universe",
+        "repo": "mirage-opam-overlays",
+        "rev": "05f1c1823d891ce4d8adab91f5db3ac51d86dc0b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dune-universe",
+        "repo": "mirage-opam-overlays",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1657802959,
@@ -96,20 +129,21 @@
     "ocamllsp": {
       "inputs": {
         "flake-utils": "flake-utils_2",
+        "git-subrepo-src": "git-subrepo-src",
         "nixpkgs": [
-          "ocamllsp",
-          "opam-nix",
           "nixpkgs"
         ],
-        "opam-nix": "opam-nix",
+        "opam-nix": [
+          "opam-nix"
+        ],
         "opam-repository": "opam-repository"
       },
       "locked": {
-        "lastModified": 1660949543,
-        "narHash": "sha256-U7g2ilKfd8EES1EDgy46LKkG/z1jwpd5LIkkqhe13iI=",
+        "lastModified": 1664294209,
+        "narHash": "sha256-bSUhAm/rZgrjVApSuBF1KtxYW3+A+9X084m7gVUNjhc=",
         "ref": "refs/heads/master",
-        "rev": "c961c46fc4705b18d336ac990b9c3b39354b9d7b",
-        "revCount": 1807,
+        "rev": "5c351061dfb72e8bf89b8f10a3fbe164a2e69276",
+        "revCount": 1819,
         "submodules": true,
         "type": "git",
         "url": "https://www.github.com/ocaml/ocaml-lsp"
@@ -124,19 +158,18 @@
       "inputs": {
         "flake-compat": "flake-compat",
         "flake-utils": "flake-utils_3",
+        "mirage-opam-overlays": "mirage-opam-overlays",
         "nixpkgs": "nixpkgs",
-        "opam-repository": [
-          "ocamllsp",
-          "opam-repository"
-        ],
+        "opam-overlays": "opam-overlays",
+        "opam-repository": "opam-repository_2",
         "opam2json": "opam2json"
       },
       "locked": {
-        "lastModified": 1660837757,
-        "narHash": "sha256-ZGg6xI8OYolc/hG7t2Lrp1zuG0RkeOLju2S+JwSljQM=",
+        "lastModified": 1663958540,
+        "narHash": "sha256-5IFRW65Bonu0KphZig1pT2EJvm4lLLUYddHGZiQTYDA=",
         "owner": "tweag",
         "repo": "opam-nix",
-        "rev": "a479ca027e9b28f595e4ed08f06c8ee56b96588a",
+        "rev": "c7430da9ade302bad75f7e4cfacd9eca12783cca",
         "type": "github"
       },
       "original": {
@@ -145,14 +178,46 @@
         "type": "github"
       }
     },
+    "opam-overlays": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1654162756,
+        "narHash": "sha256-RV68fUK+O3zTx61iiHIoS0LvIk0E4voMp+0SwRg6G6c=",
+        "owner": "dune-universe",
+        "repo": "opam-overlays",
+        "rev": "c8f6ef0fc5272f254df4a971a47de7848cc1c8a4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dune-universe",
+        "repo": "opam-overlays",
+        "type": "github"
+      }
+    },
     "opam-repository": {
       "flake": false,
       "locked": {
-        "lastModified": 1660756407,
-        "narHash": "sha256-s10L5d+svYS9fMI5tlEv1c5eqpgF/gwa2f8z8Bk+sTY=",
+        "lastModified": 1664222087,
+        "narHash": "sha256-R+o5Wlqtap806v6uqcxa6+n9jlc0BNhfLpZkJCY9Glw=",
         "owner": "ocaml",
         "repo": "opam-repository",
-        "rev": "0e5b7b689bf3ebefbada9b34aa35b9f0c86fed20",
+        "rev": "f3dcd527e82e83facb92cd2727651938cb9fecf9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ocaml",
+        "repo": "opam-repository",
+        "type": "github"
+      }
+    },
+    "opam-repository_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1661161626,
+        "narHash": "sha256-J3P+mXLwE2oEKTlMnx8sYRxwD/uNGSKM0AkAB7BNTxA=",
+        "owner": "ocaml",
+        "repo": "opam-repository",
+        "rev": "54e69ff0949a3aaec0d5e3d67898bb7f279ab09f",
         "type": "github"
       },
       "original": {
@@ -183,14 +248,11 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "nixpkgs": [
-          "ocamllsp",
+          "opam-nix",
           "nixpkgs"
         ],
         "ocamllsp": "ocamllsp",
-        "opam-nix": [
-          "ocamllsp",
-          "opam-nix"
-        ]
+        "opam-nix": "opam-nix"
       }
     }
   },

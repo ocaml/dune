@@ -44,11 +44,10 @@ The library provides an API to do the following:
 Connecting
 ==========
 
-To connect to dune's RPC server, ``$ dune rpc init`` must be ran. This command
-will initiate a new RPC session communicating over `stdin`, `stdout`. When
-instantiating the ``Client`` functor, a read/write ``Chan.t`` must be provided.
-This ``Chan.t`` value should represent read/write from stdin/stdout
-respectively.
+To connect to Dune's RPC server, it needs to be started in watch mode. It is
+possible to use ``dune build --passive-watch-mode`` to start an RPC server which
+will listen for requests without starting a build by itself. Then ``dune rpc
+build .`` will connect to it, trigger a build, and report status.
 
 .. _lwt: https://github.com/ocsigen/lwt
 .. _Dune_rpc: https://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/dune_rpc.mli

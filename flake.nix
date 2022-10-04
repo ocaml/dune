@@ -43,7 +43,7 @@
             pkgs = nixpkgs.legacyPackages.${system};
           in
           pkgs.mkShell {
-            buildInputs = (with pkgs;
+            nativeBuildInputs = (with pkgs;
               [
                 # dev tools
                 ocamlformat_0_21_0

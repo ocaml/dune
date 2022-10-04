@@ -1,0 +1,7 @@
+(rule
+ (targets (dir foo))
+ (action (run mkdir foo)))
+
+(rule
+ (targets (dir foo))
+ (action (run mkdir foo)))

@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.follows = "opam-nix/nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     opam-nix.url = "github:tweag/opam-nix";
     flake-utils.url = "github:numtide/flake-utils";
     ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
@@ -51,7 +51,8 @@
                 coq_8_16
                 nodejs-slim
                 pkg-config
-              ]) ++ [ ocamllsp.outputs.defaultPackage.${system} ] ++ (builtins.map (s: builtins.getAttr s self.packages.${system})
+              ]) ++ [ ocamllsp.outputs.defaultPackage.${system} ]
+            ++ (builtins.map (s: builtins.getAttr s self.packages.${system})
               (builtins.attrNames devPackages));
             inputsFrom = [ self.packages.${system}.default ];
           };

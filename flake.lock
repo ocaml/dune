@@ -96,6 +96,22 @@
     },
     "nixpkgs": {
       "locked": {
+        "lastModified": 1664847737,
+        "narHash": "sha256-Wxl0CtRH3Vo8+qEZ/PbCcx+9D8wEEi56tJPmROum2ss=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "de80d1d04ee691279e1302a1128c082bbda3ab01",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
         "lastModified": 1657802959,
         "narHash": "sha256-9+JWARSdlL8KiH3ymnKDXltE1vM+/WEJ78F5B1kjXys=",
         "owner": "nixos",
@@ -110,7 +126,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_2": {
+    "nixpkgs_3": {
       "locked": {
         "lastModified": 1640418986,
         "narHash": "sha256-a8GGtxn2iL3WAkY5H+4E0s3Q7XJt6bTOvos9qqxT5OQ=",
@@ -139,11 +155,11 @@
         "opam-repository": "opam-repository"
       },
       "locked": {
-        "lastModified": 1664294209,
-        "narHash": "sha256-bSUhAm/rZgrjVApSuBF1KtxYW3+A+9X084m7gVUNjhc=",
+        "lastModified": 1664586994,
+        "narHash": "sha256-ouBYfPjQ4bfdbwujTQ6Gd/bYlDhbtlyFAtHSR2w9fbA=",
         "ref": "refs/heads/master",
-        "rev": "5c351061dfb72e8bf89b8f10a3fbe164a2e69276",
-        "revCount": 1819,
+        "rev": "2bdc0a5284f2d18357fb464c8de82807f3f9d5c6",
+        "revCount": 1821,
         "submodules": true,
         "type": "git",
         "url": "https://www.github.com/ocaml/ocaml-lsp"
@@ -159,7 +175,7 @@
         "flake-compat": "flake-compat",
         "flake-utils": "flake-utils_3",
         "mirage-opam-overlays": "mirage-opam-overlays",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
         "opam-overlays": "opam-overlays",
         "opam-repository": "opam-repository_2",
         "opam2json": "opam2json"
@@ -228,7 +244,7 @@
     },
     "opam2json": {
       "inputs": {
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_3"
       },
       "locked": {
         "lastModified": 1651529032,
@@ -247,10 +263,7 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": [
-          "opam-nix",
-          "nixpkgs"
-        ],
+        "nixpkgs": "nixpkgs",
         "ocamllsp": "ocamllsp",
         "opam-nix": "opam-nix"
       }

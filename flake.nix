@@ -43,11 +43,11 @@
             pkgs = nixpkgs.legacyPackages.${system};
           in
           pkgs.mkShell {
+            nativeBuildInputs = [ pkgs.opam ];
             buildInputs = (with pkgs;
               [
                 # dev tools
                 ocamlformat_0_21_0
-                opam
                 coq_8_16
                 nodejs-slim
                 pkg-config

@@ -86,7 +86,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
                   (Action_builder.map ctypes_cclib_flags ~f:(fun x ->
                        Command.quote_args "-cclib" (map_cclibs x)))
               ; Deps
-                  (Foreign.Objects.build_paths lib.buildable.foreign_objects
+                  (Foreign.Objects.build_paths lib.buildable.extra_objects
                      ~ext_obj:ctx.lib_config.ext_obj ~dir
                   |> List.map ~f:Path.build)
               ]))
@@ -237,7 +237,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
   in
   let lib_foreign_o_files =
     let { Lib_config.ext_obj; _ } = (Super_context.context sctx).lib_config in
-    Foreign.Objects.build_paths lib.buildable.foreign_objects ~ext_obj ~dir
+    Foreign.Objects.build_paths lib.buildable.extra_objects ~ext_obj ~dir
     |> List.map ~f:Path.build
   in
   let lib_o_files = lib_built_o_files @ lib_foreign_o_files in

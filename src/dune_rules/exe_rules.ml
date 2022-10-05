@@ -89,7 +89,7 @@ let o_files sctx ~dir ~expander ~(exes : Executables.t) ~linkages ~dir_contents
     in
     let foreign_o_files =
       let { Lib_config.ext_obj; _ } = (Super_context.context sctx).lib_config in
-      Foreign.Objects.build_paths exes.buildable.foreign_objects ~ext_obj ~dir
+      Foreign.Objects.build_paths exes.buildable.extra_objects ~ext_obj ~dir
     in
     List.map (built_o_files @ foreign_o_files) ~f:Path.build
 

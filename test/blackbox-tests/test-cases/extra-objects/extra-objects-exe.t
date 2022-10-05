@@ -2,7 +2,7 @@
 Build an executable which depends on foreign object files.
 
 ----------------------------------------------------------------------------------
-* (foreign_objects ...) is unavailable before Dune 3.5.
+* (extra_objects ...) is unavailable before Dune 3.5.
 
   $ echo "(lang dune 3.4)" > dune-project
   $ mkdir -p bin
@@ -10,14 +10,14 @@ Build an executable which depends on foreign object files.
   $ cat >bin/dune <<EOF
   > (executable
   >  (name calc)
-  >  (foreign_objects add mul))
+  >  (extra_objects add mul))
   > EOF
 
   $ dune build
-  File "bin/dune", line 3, characters 1-26:
-  3 |  (foreign_objects add mul))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'foreign_objects' is only available since version 3.5 of the dune
+  File "bin/dune", line 3, characters 1-24:
+  3 |  (extra_objects add mul))
+       ^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'extra_objects' is only available since version 3.5 of the dune
   language. Please update your dune-project file to have (lang dune 3.5).
   [1]
 

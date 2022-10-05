@@ -6,7 +6,7 @@ Build an executable which depends on foreign object files compiled with a rule.
   $ cat >dune <<EOF
   > (executable
   >  (name calc)
-  >  (foreign_objects add mul))
+  >  (extra_objects add mul))
   > (rule
   >  (targets add.o mul.o)
   >  (deps add.c mul.c)

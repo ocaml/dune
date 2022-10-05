@@ -128,7 +128,7 @@ module Buildable = struct
     ; empty_module_interface_if_absent : bool
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
-    ; foreign_objects : Foreign.Objects.t
+    ; extra_objects : Foreign.Objects.t
     ; foreign_stubs : Foreign.Stubs.t list
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
@@ -171,8 +171,8 @@ module Buildable = struct
       field_o "foreign_archives"
         (Dune_lang.Syntax.since Stanza.syntax (2, 0)
         >>> repeat (located Foreign.Archive.decode))
-    and+ foreign_objects =
-      field_o "foreign_objects"
+    and+ extra_objects =
+      field_o "extra_objects"
         (Dune_lang.Syntax.since Stanza.syntax (3, 5) >>> Foreign.Objects.decode)
     and+ c_flags =
       only_in_library
@@ -314,8 +314,8 @@ module Buildable = struct
            the "lib" prefix, however, since standard linkers require it). *)
         | Some name -> (loc, Foreign.Archive.stubs name) :: foreign_archives
     in
-    let foreign_objects =
-      Option.value ~default:Foreign.Objects.empty foreign_objects
+    let extra_objects =
+      Option.value ~default:Foreign.Objects.empty extra_objects
     in
     { loc
     ; preprocess
@@ -326,7 +326,7 @@ module Buildable = struct
     ; empty_module_interface_if_absent
     ; foreign_stubs
     ; foreign_archives
-    ; foreign_objects
+    ; extra_objects
     ; libraries
     ; flags
     ; js_of_ocaml
@@ -338,7 +338,7 @@ module Buildable = struct
   let has_foreign t =
     List.is_non_empty t.foreign_stubs
     || List.is_non_empty t.foreign_archives
-    || not (Foreign.Objects.is_empty t.foreign_objects)
+    || not (Foreign.Objects.is_empty t.extra_objects)
 
   let has_foreign_cxx t =
     List.exists

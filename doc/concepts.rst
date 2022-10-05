@@ -1193,7 +1193,7 @@ Foreign Sources, Archives and Objects
 Dune provides basic support for including foreign source files as well
 as archives of foreign object files into OCaml projects via the
 ``foreign_stubs`` and ``foreign_archives`` fields. Individual object
-files can also be included via the ``foreign_objects`` field.
+files can also be included via the ``extra_objects`` field.
 
 .. _foreign-stubs:
 
@@ -1316,21 +1316,21 @@ a foreign language and/or built with another build system. See
 :ref:`foreign-sandboxing` for more details.
 
 
-.. _foreign-objects:
+.. _extra-objects:
 
-Foreign Objects
----------------
+Extra Objects
+-------------
 
 It's possible to specify native object files to be packaged with OCaml
 libraries or linked into OCaml executables. Do this by using the
-``foreign_objects`` field of the ``library`` or ``executable`` stanzas.
+``extra_objects`` field of the ``library`` or ``executable`` stanzas.
 For example:
 
 .. code:: scheme
 
     (executable
      (public_name main)
-     (foreign_objects foo bar))
+     (extra_objects foo bar))
 
     (rule
      (targets foo.o bar.o)
@@ -1338,7 +1338,7 @@ For example:
      (action (run ocamlopt %{deps})))
 
 This example builds an executable which is linked against a pair of native
-object files, ``foo.o`` and ``bar.o``. The ``foreign_objects`` field takes a
+object files, ``foo.o`` and ``bar.o``. The ``extra_objects`` field takes a
 list of object names, which correspond to the object file names with their path
 and extension omitted.
 

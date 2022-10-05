@@ -11,6 +11,7 @@ type ('a, 'b) failure_mode =
   | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
       (** Accept the following non-zero exit codes, and return [Error code] if
           the process exists with one of these codes. *)
+  | Capture : ('a, 'a * int) failure_mode
 
 module Io : sig
   (** Where to redirect stdout/stderr/stdin *)

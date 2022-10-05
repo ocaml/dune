@@ -57,15 +57,14 @@ module File = struct
   let do_promote ~correction_file ~dst =
     Path.Source.unlink_no_err dst;
     let chmod = Path.Permissions.add Path.Permissions.write in
-    Io.copy_file ~chmod
-      ~src:(Path.build correction_file)
-      ~dst:(Path.source dst) ()
+    Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) ()
 
-  let promote { src; staging; dst } =
-    let correction_file = Option.value staging ~default:src in
-    let correction_exists =
-      Path.Untracked.exists (Path.build correction_file)
-    in
+  let correction_file { src; staging; _ } =
+    Path.build (Option.value staging ~default:src)
+
+  let promote ({ src; staging; dst } as file) =
+    let correction_file = correction_file file in
+    let correction_exists = Path.Untracked.exists correction_file in
     Console.print
       [ Pp.box ~indent:2
           (if correction_exists then
@@ -179,3 +178,26 @@ let promote_files_registered_in_last_run files_to_promote =
   let db = load_db () in
   let db = do_promote db files_to_promote in
   dump_db db
+
+let diff_for_file (file : File.t) =
+  let msg = User_message.Annots.empty in
+  let a = Path.source file.dst in
+  let b = File.correction_file file in
+  Print_diff.get msg a b
+
+let filter_db files_to_promote db =
+  match files_to_promote with
+  | All -> db
+  | These (files, on_missing) ->
+    List.filter_map files ~f:(fun file ->
+        let r =
+          List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst file)
+        in
+        if Option.is_none r then on_missing file;
+        r)
+
+let display files_to_promote =
+  let open Fiber.O in
+  let files = load_db () |> filter_db files_to_promote |> List.rev in
+  let+ diff_opts = Fiber.sequential_map ~f:diff_for_file files in
+  List.iter diff_opts ~f:(Option.iter ~f:Print_diff.Diff.print)

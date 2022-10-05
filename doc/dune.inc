@@ -180,6 +180,15 @@
  (files   dune-promote.1))
 
 (rule
+ (with-stdout-to dune-promotion.1
+  (run dune promotion --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-promotion.1))
+
+(rule
  (with-stdout-to dune-rpc.1
   (run dune rpc --help=groff)))
 

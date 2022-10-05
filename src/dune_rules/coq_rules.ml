@@ -826,6 +826,20 @@ let setup_ffi_rules ~sctx ~dir ({ loc; modules; library } : Ffi.t) =
   in
   List.rev_map ~f:coqffi_rule modules |> Super_context.add_rules ~loc ~dir sctx
 
+let setup_of_ocaml_rules ~sctx ~dir ({ loc; modules } : Of_ocaml.t) =
+  let* coq_of_ocaml =
+    resolve_program sctx ~dir ~loc "coq-of-ocaml"
+      ~hint:"opam install coq-of-ocaml"
+  in
+  let coq_of_ocaml_rule m =
+    let source = Path.build (Path.Build.relative dir (m ^ ".ml")) in
+    let target = Path.Build.relative dir (m ^ ".v") in
+    let args = [ Command.Args.Dep source; A "-output"; Target target ] in
+    Command.run ~dir:(Path.build dir) coq_of_ocaml args
+  in
+  List.rev_map ~f:coq_of_ocaml_rule modules
+  |> Super_context.add_rules ~loc ~dir sctx
+
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx, coq_module =
     setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s

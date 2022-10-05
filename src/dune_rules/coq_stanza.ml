@@ -225,8 +225,29 @@ module Ffi = struct
   let p = ("coq.ffi", decode >>| fun x -> [ T x ])
 end
 
+module Of_ocaml = struct
+  type t =
+    { modules : string list
+    ; loc : Loc.t
+    }
+
+  let decode =
+    fields
+      (Dune_lang.Syntax.since coq_syntax (0, 7)
+      >>> let+ modules = field "modules" (repeat string)
+          and+ loc = loc in
+          { modules; loc })
+
+  type Stanza.t += T of t
+
+  let p = ("coq.of-ocaml", decode >>| fun x -> [ T x ])
+end
+
 let unit_stanzas =
-  let+ r = return [ Theory.coqlib_p; Theory.p; Coqpp.p; Extraction.p; Ffi.p ] in
+  let+ r =
+    return
+      [ Theory.coqlib_p; Theory.p; Coqpp.p; Extraction.p; Of_ocaml.p; Ffi.p ]
+  in
   ((), r)
 
 let key = Dune_project.Extension.register coq_syntax unit_stanzas Unit.to_dyn

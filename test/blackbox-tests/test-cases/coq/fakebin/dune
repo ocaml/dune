@@ -1,3 +1,7 @@
 (executable
  (name coqffi)
  (modules coqffi))
+
+(executable
+ (name coq_of_ocaml)
+ (modules coq_of_ocaml))

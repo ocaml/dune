@@ -278,6 +278,8 @@ let gen_rules sctx dir_contents cctxs expander
         | Coq_stanza.Coqpp.T m ->
           Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
         | Coq_stanza.Ffi.T m -> Coq_rules.setup_ffi_rules ~sctx ~dir:ctx_dir m
+        | Coq_stanza.Of_ocaml.T m ->
+          Coq_rules.setup_of_ocaml_rules ~sctx ~dir:ctx_dir m
         | _ -> Memo.return ())
   in
   let+ () = define_all_alias ~dir:ctx_dir ~project ~js_targets in

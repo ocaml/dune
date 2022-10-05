@@ -49,6 +49,15 @@ module Ffi : sig
   type Stanza.t += T of t
 end
 
+module Of_ocaml : sig
+  type t =
+    { modules : string list
+    ; loc : Loc.t
+    }
+
+  type Stanza.t += T of t
+end
+
 module Coqpp : sig
   type t =
     { modules : Predicate_lang.Glob.t

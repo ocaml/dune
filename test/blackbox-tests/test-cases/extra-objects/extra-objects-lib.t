@@ -2,7 +2,7 @@
 Build a library which depends on foreign object files.
 
 ----------------------------------------------------------------------------------
-* (foreign_objects ...) is unavailable before Dune 3.5.
+* (extra_objects ...) is unavailable before Dune 3.5.
 
   $ echo "(lang dune 3.4)" > dune-project
   $ mkdir -p lib
@@ -10,14 +10,14 @@ Build a library which depends on foreign object files.
   $ cat >lib/dune <<EOF
   > (library
   >  (name calc)
-  >  (foreign_objects add mul))
+  >  (extra_objects add mul))
   > EOF
 
   $ dune build
-  File "lib/dune", line 3, characters 1-26:
-  3 |  (foreign_objects add mul))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'foreign_objects' is only available since version 3.5 of the dune
+  File "lib/dune", line 3, characters 1-24:
+  3 |  (extra_objects add mul))
+       ^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'extra_objects' is only available since version 3.5 of the dune
   language. Please update your dune-project file to have (lang dune 3.5).
   [1]
 
@@ -37,15 +37,15 @@ Build a library which depends on foreign object files.
   > EOF
 
   $ dune build
-  File "lib/dune", line 1, characters 0-49:
+  File "lib/dune", line 1, characters 0-47:
   1 | (library
   2 |  (name calc)
-  3 |  (foreign_objects add mul))
+  3 |  (extra_objects add mul))
   Error: No rule found for lib/add.o
-  File "lib/dune", line 1, characters 0-49:
+  File "lib/dune", line 1, characters 0-47:
   1 | (library
   2 |  (name calc)
-  3 |  (foreign_objects add mul))
+  3 |  (extra_objects add mul))
   Error: No rule found for lib/mul.o
   [1]
 

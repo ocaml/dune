@@ -1,0 +1,8 @@
+(coq-of-ocaml
+ (modules hello))
+
+; Until we have composition with installed theories we cannot compile this file
+; (coq.theory
+;  (name test)
+;  (modules hello)
+;  (theories CoqOfOCaml))

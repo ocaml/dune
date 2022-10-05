@@ -314,6 +314,20 @@ authors avoid writing boilerplate, we provide a ``(coq.pp ...)`` stanza:
 This will run the ``coqpp`` binary on all the ``.mlg`` files in
 ``<ordered_set_lang>``.
 
+.. _coq-of-ocaml:
+
+coq.of-ocaml
+------------
+
+The ``coq.of-ocaml`` stanza allows the generation of Coq ``.v`` sources from
+OCaml ``.ml`` sources. This is useful for example to generate Coq bindings for
+OCaml libraries. The stanza will call the ``coq-of-ocaml`` binary to do this.
+
+.. code:: scheme
+
+    (coq.of-ocaml
+     (modules <ml_list>))
+
 .. _examples:
 
 Examples of Coq Projects

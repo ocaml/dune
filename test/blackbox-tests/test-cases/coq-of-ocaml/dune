@@ -1,0 +1,11 @@
+(cram
+ (alias runtest-coq)
+ (applies_to :whole_subtree)
+ (deps %{bin:coqc} %{bin:coqdep} %{bin:coq-of-ocaml})
+ (enabled_if
+  (= %{env:DUNE_COQ_TEST=disable} enable)))
+
+(env
+ (_
+  (binaries
+   (fakebin/coq_of_ocaml.exe as coq-of-ocaml))))

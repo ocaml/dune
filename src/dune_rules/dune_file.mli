@@ -292,7 +292,7 @@ module Rule : sig
     ; locks : Locks.t
     ; loc : Loc.t
     ; enabled_if : Blang.t
-    ; alias : Alias.Name.t option
+    ; aliases : Alias.Name.t list
     ; package : Package.t option
     }
 end

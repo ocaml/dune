@@ -79,6 +79,9 @@
 - on macOS, sign executables produced by artifact substitution (#6137, fixes
   #5650, @emillon)
 
+- Added an (aliases ...) field to the (rules ...) stanza which allows the
+  specification of multiple aliases per rule (#6194, @Alizter) 
+
 3.4.1 (26-07-2022)
 ------------------
 

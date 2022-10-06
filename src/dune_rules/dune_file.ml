@@ -1476,7 +1476,7 @@ module Rule = struct
     ; locks : Locks.t
     ; loc : Loc.t
     ; enabled_if : Blang.t
-    ; alias : Alias.Name.t option
+    ; aliases : Alias.Name.t list
     ; package : Package.t option
     }
 
@@ -1514,6 +1514,7 @@ module Rule = struct
       ; ("locks", Field)
       ; ("fallback", Field)
       ; ("mode", Field)
+      ; ("aliases", Field)
       ; ("alias", Field)
       ; ("enabled_if", Field)
       ]
@@ -1528,7 +1529,7 @@ module Rule = struct
     ; locks = []
     ; loc
     ; enabled_if = Blang.true_
-    ; alias = None
+    ; aliases = []
     ; package = None
     }
 
@@ -1577,6 +1578,23 @@ module Rule = struct
        and+ alias =
          field_o "alias"
            (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
+       and+ aliases =
+         field_o "aliases"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 5)
+           >>> repeat Alias.Name.decode)
+       in
+       let aliases =
+         match alias with
+         | None -> Option.value ~default:[] aliases
+         | Some alias -> (
+           match aliases with
+           | None -> [ alias ]
+           | Some _ ->
+             User_error.raise ~loc
+               [ Pp.text
+                   "The 'alias' and 'aliases' fields are mutually exclusive. \
+                    Please use only the 'aliases' field."
+               ])
        in
        let mode, patch_back_source_tree =
          match mode with
@@ -1602,7 +1620,7 @@ module Rule = struct
        ; locks
        ; loc
        ; enabled_if
-       ; alias
+       ; aliases
        ; package
        ; patch_back_source_tree
        })
@@ -1672,7 +1690,7 @@ module Rule = struct
         ; locks = []
         ; loc
         ; enabled_if
-        ; alias = None
+        ; aliases = []
         ; package = None
         })
 
@@ -1702,7 +1720,7 @@ module Rule = struct
         ; locks = []
         ; loc
         ; enabled_if
-        ; alias = None
+        ; aliases = []
         ; package = None
         })
 end

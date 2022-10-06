@@ -105,7 +105,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                 ; locks = t.locks
                 ; loc
                 ; enabled_if = t.enabled_if
-                ; alias = None
+                ; aliases = []
                 ; package = t.package
                 }
               in

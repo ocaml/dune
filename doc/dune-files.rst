@@ -1055,6 +1055,8 @@ See the :ref:`user-actions` section for more details.
 - ``(alias <alias-name>)`` specifies this rule's alias. Building this
   alias means building the targets of this rule.
 
+- ``(aliases <alias-name list>)`` specifies many aliases for this rule.
+
 - ``(package <package>)`` specifies this rule's package. This rule
   will be unavailable when installing other packages in release mode.
 

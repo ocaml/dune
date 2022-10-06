@@ -112,7 +112,48 @@ exception
 
 let directory_digest_version = 2
 
-let rec path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
+let rec inner_path_with_stats path (stats : Stats_for_digest.t) :
+    Path_digest_result.t =
+  match stats.st_kind with
+  | S_REG | S_LNK | S_BLK | S_CHR | S_FIFO | S_SOCK  ->
+    let executable =
+      Path.Permissions.test Path.Permissions.execute stats.st_perm
+    in
+    Dune_filesystem_stubs.Unix_error.Detailed.catch
+      (file_with_executable_bit ~executable)
+      path
+    |> Path_digest_result.of_result
+  | S_DIR -> (
+    (* CR-someday amokhov: The current digesting scheme has collisions for files
+       and directories. It's unclear if this is actually a problem. If it turns
+       out to be a problem, we should include [st_kind] into both digests. *)
+    match Path.readdir_unsorted path with
+    | Error e -> Path_digest_result.Unix_error e
+    | Ok listing -> (
+      match
+        List.rev_map listing ~f:(fun name ->
+            let path = Path.relative path name in
+            let stats =
+              match Path.lstat path with
+              | Error e -> raise_notrace (E (`Unix_error e))
+              | Ok stat -> Stats_for_digest.of_unix_stats stat
+            in
+            let digest =
+              match inner_path_with_stats path stats with
+              | Ok s -> s
+              | Unix_error e -> raise_notrace (E (`Unix_error e))
+              | Unexpected_kind -> raise_notrace (E `Unexpected_kind)
+            in
+            (name, digest))
+        |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
+      with
+      | exception E (`Unix_error e) -> Path_digest_result.Unix_error e
+      | exception E `Unexpected_kind -> Path_digest_result.Unexpected_kind
+      | contents ->
+        Ok (generic (directory_digest_version, contents, stats.st_perm))))
+  (* -> Unexpected_kind *)
+
+let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
     Path_digest_result.t =
   match stats.st_kind with
   | S_REG ->
@@ -139,7 +180,7 @@ let rec path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) :
               | Ok stat -> Stats_for_digest.of_unix_stats stat
             in
             let digest =
-              match path_with_stats ~allow_dirs path stats with
+              match inner_path_with_stats path stats with
               | Ok s -> s
               | Unix_error e -> raise_notrace (E (`Unix_error e))
               | Unexpected_kind -> raise_notrace (E `Unexpected_kind)

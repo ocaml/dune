@@ -790,8 +790,8 @@ end = struct
           not
             (Path.Build.Map.equal real_directory_targets directory_targets
                ~equal:(fun _ _ ->
-                 (* The locations should match if the declration knows which
-                    rule will generate the directory, but it it's not necessary
+                 (* The locations should match if the declaration knows which
+                    rule will generate the directory, but it's not necessary
                     as the rule's actual location has higher priority. *)
                  true))
         then

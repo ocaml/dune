@@ -632,37 +632,6 @@ end = struct
             && Subdir_set.mem build_dir_only_sub_dirs name
           then report_rule_internal_dir_conflict name loc);
       let* rules_produced = Memo.Lazy.force rules in
-      let () =
-        let real_directory_targets = Rules.directory_targets rules_produced in
-        if
-          not
-            (Path.Build.Map.equal real_directory_targets directory_targets
-               ~equal:(fun _ _ ->
-                 (* The locations should match if the declration knows which
-                    rule will generate the directory, but it it's not necessary
-                    as the rule's actual location has higher priority. *)
-                 true))
-        then
-          let mismatched_directories =
-            let error message loc =
-              Dyn.record
-                [ ("message", Dyn.string message); ("loc", Loc.to_dyn_hum loc) ]
-            in
-            Path.Build.Map.merge real_directory_targets directory_targets
-              ~f:(fun _ generated declared ->
-                match (generated, declared) with
-                | None, None | Some _, Some _ -> None
-                | Some loc, None -> Some (error "not declared" loc)
-                | None, Some loc -> Some (error "not generated" loc))
-          in
-          Code_error.raise
-            "gen_rules returned a set of directory targets that doesn't match \
-             the set of directory targets from returned rules"
-            [ ("dir", Path.Build.to_dyn dir)
-            ; ( "mismatched_directories"
-              , Path.Build.Map.to_dyn Fun.id mismatched_directories )
-            ]
-      in
       let rules =
         let dir = Path.build dir in
         Rules.find rules_produced dir
@@ -815,6 +784,37 @@ end = struct
       in
       let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
       let rules_here = compile_rules ~dir ~source_dirs rules in
+      let () =
+        let real_directory_targets = Rules.directory_targets rules_produced in
+        if
+          not
+            (Path.Build.Map.equal real_directory_targets directory_targets
+               ~equal:(fun _ _ ->
+                 (* The locations should match if the declration knows which
+                    rule will generate the directory, but it it's not necessary
+                    as the rule's actual location has higher priority. *)
+                 true))
+        then
+          let mismatched_directories =
+            let error message loc =
+              Dyn.record
+                [ ("message", Dyn.string message); ("loc", Loc.to_dyn_hum loc) ]
+            in
+            Path.Build.Map.merge real_directory_targets directory_targets
+              ~f:(fun _ generated declared ->
+                match (generated, declared) with
+                | None, None | Some _, Some _ -> None
+                | Some loc, None -> Some (error "not declared" loc)
+                | None, Some loc -> Some (error "not generated" loc))
+          in
+          Code_error.raise
+            "gen_rules returned a set of directory targets that doesn't match \
+             the set of directory targets from returned rules"
+            [ ("dir", Path.Build.to_dyn dir)
+            ; ( "mismatched_directories"
+              , Path.Build.Map.to_dyn Fun.id mismatched_directories )
+            ]
+      in
       remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
       remove_old_sub_dirs_in_anonymous_actions_dir
         ~dir:

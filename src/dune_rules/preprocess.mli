@@ -107,3 +107,8 @@ module Per_module : sig
     -> Dep_conf.t list Resolve.Memo.t
 end
 with type 'a preprocess := 'a t
+
+(** [preprocess] and [preprocessor_deps] fields *)
+val preprocess_fields :
+  (Without_instrumentation.t Per_module.t * Dep_conf.t list)
+  Dune_lang.Decoder.fields_parser

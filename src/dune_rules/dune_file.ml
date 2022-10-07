@@ -89,37 +89,6 @@ module Lib_deps = struct
   let of_pps pps = List.map pps ~f:(fun pp -> Lib_dep.direct (Loc.none, pp))
 end
 
-let preprocess_fields =
-  let+ preprocess =
-    field "preprocess" Preprocess.Per_module.decode
-      ~default:(Preprocess.Per_module.default ())
-  and+ preprocessor_deps =
-    field_o "preprocessor_deps"
-      (let+ loc = loc
-       and+ l = repeat Dep_conf.decode in
-       (loc, l))
-  and+ syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
-  let preprocessor_deps =
-    match preprocessor_deps with
-    | None -> []
-    | Some (loc, deps) ->
-      let deps_might_be_used =
-        Module_name.Per_item.exists preprocess ~f:(fun p ->
-            match (p : _ Preprocess.t) with
-            | Action _ | Pps _ -> true
-            | No_preprocessing | Future_syntax _ -> false)
-      in
-      if not deps_might_be_used then
-        User_warning.emit ~loc
-          ~is_error:(syntax >= (2, 0))
-          [ Pp.text
-              "This preprocessor_deps field will be ignored because no \
-               preprocessor that might use them is configured."
-          ];
-      deps
-  in
-  (preprocess, preprocessor_deps)
-
 module Buildable = struct
   type t =
     { loc : Loc.t
@@ -162,7 +131,7 @@ module Buildable = struct
     in
     let+ loc = loc
     and+ project = Dune_project.get_exn ()
-    and+ preprocess, preprocessor_deps = preprocess_fields
+    and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ foreign_stubs =
       multi_field "foreign_stubs"

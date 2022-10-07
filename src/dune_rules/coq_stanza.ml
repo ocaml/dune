@@ -36,6 +36,8 @@ module Buildable = struct
     ; use_stdlib : bool
     ; plugins : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
+    ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
+    ; preprocessor_deps : Dep_conf.t list
     ; loc : Loc.t
     }
 
@@ -77,9 +79,18 @@ module Buildable = struct
       field "theories"
         (Dune_lang.Syntax.since coq_syntax (0, 2) >>> repeat Coq_lib_name.decode)
         ~default:[]
-    in
+    and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields in
     let plugins = merge_plugins_libraries ~plugins ~libraries in
-    { flags; mode; use_stdlib; coq_lang_version; plugins; theories; loc }
+    { flags
+    ; mode
+    ; use_stdlib
+    ; coq_lang_version
+    ; plugins
+    ; theories
+    ; preprocess
+    ; preprocessor_deps
+    ; loc
+    }
 end
 
 module Extraction = struct

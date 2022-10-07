@@ -8,6 +8,8 @@ module Buildable : sig
     ; use_stdlib : bool
     ; plugins : (Loc.t * Lib_name.t) list  (** ocaml plugins *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
+    ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
+    ; preprocessor_deps : Dep_conf.t list
     ; loc : Loc.t
     }
 end

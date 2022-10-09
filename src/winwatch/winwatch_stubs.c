@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <caml/mlvalues.h>
 #include <caml/alloc.h>
 #include <caml/fail.h>

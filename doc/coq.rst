@@ -19,6 +19,9 @@ names share a common prefix. The module names reflect the directory hierarchy.
 A *Coq plugin* is an OCaml :ref:`library` that Coq can load dynamically at
 runtime. Plugins are typically linked with the Coq OCaml API.
 
+Since Coq 8.16, plugins need to be "public" libraries in Dune's terminology,
+that is to say, they must declare a ``public_name`` field.
+
 A *Coq project* is an informal term for a :ref:`dune-project` containing a
 collection of Coq theories and plugins.
 
@@ -84,16 +87,17 @@ The semantics of the fields are:
   the theory, similar to its OCaml counterpart. Modules are specified in Coq
   notation. That is to say, ``A/b.v`` is written ``A.b`` in this field.
 
-- If ``package`` is present, Dune generates install rules for the ``.vo`` files
-  of the theory. ``pkg_name`` must be a valid package name.
+- If the ``package`` field is present, Dune generates install rules for the
+  ``.vo`` files of the theory. ``pkg_name`` must be a valid package name.
 
   Note that :ref:`Coq lang 1.0<coq-lang-1.0>` will use the Coq legacy install
   setup, where all packages share a common root namespace and install directory,
   ``lib/coq/user-contrib/<module_prefix>``, as is customary in the Make-based
   Coq package ecosystem.
 
-  For compatibility, Dune also installs, under the ``user-contrib`` prefix, the
-  ``.cmxs`` files that appear in ``<ocaml_plugins>``.
+  For compatibility, Dune also installs, under the ``user-contrib``
+  prefix, the ``.cmxs`` files that appear in ``<ocaml_plugins>``. This
+  will be dropped in future versions.
 
 - ``<coq_flags>`` are passed to ``coqc`` as command-line options. ``:standard``
   is taken from the value set in the ``(coq (flags <flags>))`` field in ``env``
@@ -101,12 +105,14 @@ The semantics of the fields are:
 
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
   ``yes``. When set to ``no``, Coq's standard library won't be visible from this
-  theory, which means the ``Coq`` prefix won't be bound, and ``Coq.Init.Prelude``
-  won't be imported by default.
+  theory, which means the ``Coq`` prefix won't be bound, and
+  ``Coq.Init.Prelude`` won't be imported by default.
 
-- The path to the installed locations of the ``<ocaml_plugins>`` is passed to
-  ``coqdep`` and ``coqc`` using Coq's ``-I`` flag. This allows a Coq theory to
-  depend on OCaml plugins.
+- If the ``plugins`` field is present, Dune will pass the corresponding flags to
+  Coq so that ``coqdep`` and ``coqc`` can find the corresponding OCaml libraries
+  declared in ``<ocaml_plugins>``. This allows a Coq theory to depend on OCaml
+  plugins. Starting with ``(lang coq 0.6)``, ``<ocaml_plugins>`` must contain
+  public library names.
 
 - Your Coq theory can depend on other theories by specifying them in the
   ``<coq_theories>`` field. Dune then passes to Coq the corresponding flags for
@@ -118,13 +124,13 @@ The semantics of the fields are:
 
   Doing so can be as simple as placing a Coq project within the scope of
   another. This process is termed *composition*. See the :ref:`interproject
-  composition<example-interproject-theory>` example. 
-  
+  composition<example-interproject-theory>` example.
+
   Interproject composition allows for a fine granularity of dependencies. In
   practice, this means that Dune will only build the parts of a dependency that
   are needed. This means that building a project depending on another will not
   trigger a rebuild of the whole of the latter.
-  
+
   Interproject composition has been available since :ref:`Coq lang
   0.4<coq-lang>`.
 
@@ -220,10 +226,8 @@ Limitations
   plugin<example plugin>` or the `this template
   <https://github.com/ejgallego/coq-plugin-template>`_.
 
-- Building a theory and a plugin in the same directory can lead to issues with
-  the presence of the META file. We recommend the following:
-  - A separate directory for the files of each :ref:`coq-theory` stanza defined.
-  - A separate directory for source files of a plugin.
+  This limitation will be lifted soon, as newer ``coqdep`` can use
+  findlib's database to check the existence of OCaml libraries.
 
 .. _coq-lang:
 
@@ -572,7 +576,8 @@ file<dune-files>`:
 
 Here we define a library using the :ref:`library` stanza. Importantly, we
 declared which external libraries we rely on and gave the library a
-``public_name``, since this is how Coq will find it.
+``public_name``, as starting with Coq 8.16, Coq will identify plugins using
+their corresponding findlib public name.
 
 The :ref:`coq-pp` stanza allows ``src/syntax.mlg`` to be preprocessed, which for
 reference looks like:
@@ -591,12 +596,12 @@ Together with ``hello_world.ml``:
 
   let hello_world = "hello world!"
 
-They make up the plugin. There is one more important ingredient here, and that
-is the ``my_plugin.mlpack`` file. Only its existence is needed by ``coqdep``, so
-an empty file will suffice. See :ref:`this note on .mlpack
-files<limitation-mlpack>`.
+They make up the plugin. There is one more important ingredient here and that is
+the ``my_plugin.mlpack`` file, needed to signal ``coqdep`` the existence of
+``my_plugin`` in this directory. An empty file suffices. See :ref:`this note on
+.mlpack files<limitation-mlpack>`.
 
-The file for ``theories/`` is a standard :ref:`coq-theory` stanza, with an
+The file for ``theories/`` is a standard :ref:`coq-theory` stanza with an
 included ``libraries`` field allowing Dune to see ``my-coq-plugin.plugin`` as a
 dependency.
 

@@ -48,16 +48,16 @@ value winwatch_iocp_run(value v_iocp)
     CAMLparam1(v_iocp);
     CAMLlocal2(v_file_name, v_action);
     HANDLE iocp = (HANDLE)Nativeint_val(v_iocp);
-    DWORD num_bytes, name_len;
-    WCHAR* file_name;
+    DWORD numBytes;
     OVERLAPPED *overlapped;
     FILE_NOTIFY_INFORMATION *event;
+    int fileNameBytes;
     dune_t *t;
 
     while (TRUE)
     {
         caml_release_runtime_system();
-        BOOL ok = GetQueuedCompletionStatus(iocp, &num_bytes, (PULONG_PTR)&t, &overlapped, 100);
+        BOOL ok = GetQueuedCompletionStatus(iocp, &numBytes, (PULONG_PTR)&t, &overlapped, 100);
         caml_acquire_runtime_system();
 
         if (ok == FALSE && overlapped == NULL) /* Timeout */
@@ -89,11 +89,15 @@ value winwatch_iocp_run(value v_iocp)
                     break;
             }
 
-            name_len = event->FileNameLength / sizeof(WCHAR);
-            file_name = malloc(sizeof(WCHAR) * (name_len + 1));
-            memcpy(file_name, event->FileName, sizeof(WCHAR) * name_len);
-            file_name[name_len] = 0;
-            v_file_name = caml_copy_string_of_utf16(file_name);
+            fileNameBytes = WideCharToMultiByte(CP_UTF8, 0, event->FileName,
+                                                event->FileNameLength / sizeof(WCHAR),
+                                                NULL, 0, NULL, NULL);
+
+            v_file_name = caml_alloc_string(fileNameBytes);
+
+            WideCharToMultiByte(CP_UTF8, 0, event->FileName,
+                                event->FileNameLength / sizeof(WCHAR),
+                                Bytes_val(v_file_name), fileNameBytes, NULL, NULL);
 
             caml_callback2(t->func, v_action, v_file_name);
 

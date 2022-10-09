@@ -259,9 +259,7 @@ module Server = struct
       match Unix.select fds [] [] timeout with
       | [], [], [] ->
         (* Timeout *)
-        if peek_named_pipe t.r_interrupt_accept then (
-          print_endline "data available!";
-          None)
+        if peek_named_pipe t.r_interrupt_accept then None
         else accept t
       | r, [], [] ->
         let inter, accept =

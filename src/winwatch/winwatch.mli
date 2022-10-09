@@ -17,8 +17,8 @@ end
 
 type t
 
-(** return None if the file does not exit *)
 val create : string -> f:(Event.t -> string -> unit) -> t option
+(** return None if the file does not exit *)
 
 val start : t -> Iocp.t -> unit
 

@@ -63,16 +63,13 @@ value winwatch_iocp_run(value v_iocp)
         if (ok == FALSE && overlapped == NULL) /* Timeout */
             continue;
 
-        if (ok == FALSE)
-            /* Ignore errors */
+        if (ok == FALSE) /* Ignore errors */
             continue;
 
         event = (FILE_NOTIFY_INFORMATION*)t->buffer;
 
         for (;;)
         {
-            name_len = event->FileNameLength / sizeof(WCHAR);
-
             switch (event->Action)
             {
                 case FILE_ACTION_ADDED:
@@ -92,6 +89,7 @@ value winwatch_iocp_run(value v_iocp)
                     break;
             }
 
+            name_len = event->FileNameLength / sizeof(WCHAR);
             file_name = malloc(sizeof(WCHAR) * (name_len + 1));
             memcpy(file_name, event->FileName, sizeof(WCHAR) * name_len);
             file_name[name_len] = 0;
@@ -99,14 +97,9 @@ value winwatch_iocp_run(value v_iocp)
 
             caml_callback2(t->func, v_action, v_file_name);
 
-            if (event->NextEntryOffset)
-            {
-                *((char**)&event) += event->NextEntryOffset;
-            }
-            else
-            {
-                break;
-            }
+            if (event->NextEntryOffset == 0) break;
+
+            *((char**)&event) += event->NextEntryOffset;
         }
 
         winwatch_watch(t);

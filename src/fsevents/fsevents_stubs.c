@@ -288,7 +288,15 @@ CAMLprim value dune_fsevents_action(value v_flags) {
   } else if (flags & kFSEventStreamEventFlagItemModified) {
     v_action = Val_int(3);
   } else {
-    caml_failwith("fsevents: unexpected event action");
+    char* msg;
+    int len = asprintf(&msg, "fsevents: unexpected event action %x", Int32_val(v_flags));
+    if (len < 0) {
+      caml_raise_out_of_memory();
+    }
+    CAMLlocal1(v_msg);
+    v_msg = caml_copy_string(msg);
+    free(msg);
+    caml_failwith_value(v_msg);
   }
 
   CAMLreturn(v_action);

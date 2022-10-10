@@ -191,9 +191,9 @@ module Descr = struct
         Variant ("executables", [ Exe.to_dyn options exe_descr ])
       | Library lib_descr ->
         Variant ("library", [ Lib.to_dyn options lib_descr ])
-      | Root root -> Variant ("root", [ Path.to_dyn root ])
+      | Root root -> Variant ("root", [ String (Path.to_string root) ])
       | Build_context build_ctxt ->
-        Variant ("build_context", [ Path.to_dyn build_ctxt ])
+        Variant ("build_context", [ String (Path.to_string build_ctxt) ])
   end
 
   (** Description of a workspace: a list of items *)

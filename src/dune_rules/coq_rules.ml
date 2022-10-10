@@ -51,9 +51,8 @@ module Util = struct
       ]
 end
 
-let resolve_program sctx ~loc ~dir prog =
-  Super_context.resolve_program ~dir sctx prog ~loc:(Some loc)
-    ~hint:"opam install coq"
+let resolve_program sctx ~loc ~dir ?(hint = "opam install coq") prog =
+  Super_context.resolve_program ~dir sctx prog ~loc:(Some loc) ~hint
 
 module Coq_plugin = struct
   (* compute include flags and mlpack rules *)
@@ -703,8 +702,8 @@ let install_rules ~sctx ~dir s =
            make_entry vfile vfile_dst :: obj_files)
     |> List.rev_append coq_plugins_install_rules
 
-let setup_coqpp_rules ~sctx ~dir (s : Coqpp.t) =
-  let* coqpp = resolve_program sctx ~dir ~loc:s.loc "coqpp" in
+let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coqpp.t) =
+  let* coqpp = resolve_program sctx ~dir ~loc "coqpp" in
   let mlg_rule m =
     let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
     let target = Path.Build.relative dir (m ^ ".ml") in
@@ -712,8 +711,7 @@ let setup_coqpp_rules ~sctx ~dir (s : Coqpp.t) =
     let build_dir = (Super_context.context sctx).build_dir in
     Command.run ~dir:(Path.build build_dir) coqpp args
   in
-  List.rev_map ~f:mlg_rule s.modules
-  |> Super_context.add_rules ~loc:s.loc ~dir sctx
+  List.rev_map ~f:mlg_rule modules |> Super_context.add_rules ~loc ~dir sctx
 
 let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
     (s : Extraction.t) =

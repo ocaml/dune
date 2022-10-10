@@ -154,9 +154,9 @@ module V1 : sig
        encountered, which was required by the next element, and so on. *)
     val targets : t -> Target.t list
 
-    (* The directory from which the action producing the error was run, relative
-       to the workspace root. This is often, but not always, the directory of
-       the first target in [targets].
+    (* The directory from which the action producing the error was run. This is
+       often, but not always, the directory of the first target in [targets].
+       This path of this directory is absolute.
 
        If this is [None], then the error does not have an associated error (for
        example, if your opam installation is too old). *)

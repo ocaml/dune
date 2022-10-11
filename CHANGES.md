@@ -96,6 +96,10 @@
 - Handle CSI n K code in ANSI escape codes from commands. (#6214, fixes #5528,
   @emillon)
 
+- Add a new experimental feature `mode_specific_stubs` that allows the
+  specification of different flags and sources for foreign stubs depending on
+  the build mode (#5649, @voodoos)
+
 3.4.1 (26-07-2022)
 ------------------
 

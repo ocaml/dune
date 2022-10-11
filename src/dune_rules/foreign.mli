@@ -133,7 +133,7 @@ module Stubs : sig
     -> flags:Ordered_set_lang.Unexpanded.t
     -> t
 
-  val decode : Dune_project.t -> t Dune_lang.Decoder.t
+  val decode : t Dune_lang.Decoder.t
 
   val is_mode_dependent : t -> bool
 end

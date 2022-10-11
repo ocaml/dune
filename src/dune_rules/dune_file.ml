@@ -161,14 +161,13 @@ module Buildable = struct
         Foreign.Stubs.make ~loc ~language ~names ~mode:Mode.Select.All ~flags
         :: foreign_stubs
     in
-    let* loc = loc
-    and+ project = Dune_project.get_exn () in
-    let+ preprocess, preprocessor_deps = preprocess_fields
+    let+ loc = loc
+    and+ project = Dune_project.get_exn ()
+    and+ preprocess, preprocessor_deps = preprocess_fields
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ foreign_stubs =
       multi_field "foreign_stubs"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 0)
-        >>> Foreign.Stubs.decode project)
+        (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Foreign.Stubs.decode)
     and+ foreign_archives =
       field_o "foreign_archives"
         (Dune_lang.Syntax.since Stanza.syntax (2, 0)

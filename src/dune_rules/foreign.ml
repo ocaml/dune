@@ -191,8 +191,7 @@ module Stubs = struct
     let mode = Mode.Select.of_option mode in
     { loc; language; names; mode; flags; include_dirs; extra_deps }
 
-  let decode _project =
-    Dune_lang.Decoder.fields @@ decode_stubs ~for_library:false
+  let decode = Dune_lang.Decoder.fields @@ decode_stubs ~for_library:false
 
   let is_mode_dependent t = Mode.Select.is_not_all t.mode
 end

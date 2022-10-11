@@ -88,14 +88,10 @@ module Archive = struct
 end
 
 module Stubs = struct
-  module Include_dir = struct
+  module Include_dir_without_include = struct
     type t =
       | Dir of String_with_vars.t
       | Lib of Loc.t * Lib_name.t
-      | Include of
-          { context : Univ_map.t
-          ; path : String_with_vars.t
-          }
 
     let decode : t Dune_lang.Decoder.t =
       let open Dune_lang.Decoder in
@@ -103,19 +99,29 @@ module Stubs = struct
         let+ s = String_with_vars.decode in
         Dir s
       in
-      let parse_lib_or_include =
+      let parse_lib =
         sum
           [ ( "lib"
             , let+ loc, lib_name = located Lib_name.decode in
               Lib (loc, lib_name) )
-          ; ( "include"
-            , let+ () = Syntax.since Stanza.syntax (3, 5)
-              and+ context = get_all
-              and+ path = String_with_vars.decode in
-              Include { context; path } )
           ]
       in
-      parse_dir <|> parse_lib_or_include
+      parse_dir <|> parse_lib
+  end
+
+  module Include_dir = struct
+    include
+      Recursive_include.Make
+        (Include_dir_without_include)
+        (struct
+          let include_keyword = "include"
+
+          let include_allowed_in_versions = `Since (3, 5)
+
+          let non_sexp_behaviour = `Parse_as_base_term
+        end)
+
+    module Without_include = Include_dir_without_include
   end
 
   type t =

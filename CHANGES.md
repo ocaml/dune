@@ -1,5 +1,5 @@
-3.5.0 (unreleased)
-------------------
+3.5.0~alpha1 (2022-10-11)
+-------------------------
 
 - Sandbox running cinaps actions starting from cinaps 1.1 (#6176, @rgrinberg)
 

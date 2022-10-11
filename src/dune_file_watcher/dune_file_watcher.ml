@@ -514,10 +514,9 @@ let fsevents ?exclusion_paths ~latency ~paths scheduler f =
   fsevents
 
 let fsevents_standard_event event path =
-  let action = Fsevents.Event.action event in
   let kind =
-    match action with
-    | Unknown -> Fs_memo_event.Unknown
+    match Fsevents.Event.action event with
+    | Rename | Unknown -> Fs_memo_event.Unknown
     | Create -> Created
     | Remove -> Deleted
     | Modify ->
@@ -540,7 +539,7 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
         else
           match Fsevents.Event.action event with
           | Remove -> None
-          | Unknown | Create | Modify ->
+          | Rename | Unknown | Create | Modify ->
             Option.map (Fs_sync.consume_event sync_table path) ~f:(fun id ->
                 Event.Sync id))
   in

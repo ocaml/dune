@@ -290,12 +290,9 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       List.rev_append vlib_stubs_o_files lib_o_files_for_all_modes
     in
     if
-      Mode.Dict.foldi ~init:true
-        ~f:(fun mode enabled res ->
-          ((not enabled)
-          || (List.is_empty @@ Mode.Map.Multi.for_only o_files mode))
-          && res)
-        modes
+      Mode.Dict.Set.to_list modes
+      |> List.for_all ~f:(fun mode ->
+             List.is_empty @@ Mode.Map.Multi.for_only o_files mode)
     then
       (* if stubs are not mode dependent *)
       let o_files = for_all_modes in
@@ -303,13 +300,11 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
         ~c_library_flags ~build_targets_together ~stubs_mode:Mode.Select.All
     else
       let modes =
-        Mode.Dict.foldi modes ~init:[] ~f:(fun mode active acc ->
-            if active then
-              ( List.rev_append for_all_modes
-                @@ Mode.Map.Multi.for_only o_files mode
-              , Mode.Select.Only mode )
-              :: acc
-            else acc)
+        Mode.Dict.Set.to_list modes
+        |> List.map ~f:(fun mode ->
+               let o_files_for_mode = Mode.Map.Multi.for_only o_files mode in
+               ( List.rev_append for_all_modes o_files_for_mode
+               , Mode.Select.Only mode ))
       in
       Memo.parallel_iter modes ~f:(fun (o_files, stubs_mode) ->
           ocamlmklib ~archive_name ~loc:lib.buildable.loc ~sctx ~dir ~o_files

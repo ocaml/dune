@@ -798,6 +798,35 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   setup_rule cctx ~dir ~sctx ~loc:s.buildable.loc ~file_targets:ml_targets
     ~source_rule coq_module
 
+let setup_ffi_rules ~sctx ~dir ({ loc; modules; library; flags } : Ffi.t) =
+  let* coqffi =
+    resolve_program sctx ~dir ~loc "coqffi" ~hint:"opam install coq-coqffi"
+  in
+  let* lib = Coq_sources.Coqffi.lib ~dir ~library in
+  let* modules =
+    Coq_sources.Coqffi.modules_of ~loc ~lib ~modules
+      ~ml_sources:(Dir_contents.get sctx ~dir >>= Dir_contents.ocaml)
+  in
+  let action =
+    List.map modules ~f:(fun m ->
+        let flags =
+          Ordered_set_lang.eval flags ~eq:( = ) ~standard:[]
+            ~parse:(fun ~loc:_ flag -> flag)
+        in
+        let args =
+          [ Command.Args.Dep
+              (Obj_dir.Module.cm_file_exn
+                 (Lib_info.obj_dir (Lib.info lib))
+                 ~kind:(Ocaml Cmi) m)
+          ; A "-o"
+          ; Target (Coq_sources.Coqffi.target_of ~dir (Module.name m))
+          ; As flags
+          ]
+        in
+        Command.run ~dir:(Path.build dir) coqffi args)
+  in
+  Super_context.add_rules ~loc ~dir sctx action
+
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx, coq_module =
     setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s

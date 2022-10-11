@@ -201,8 +201,30 @@ module Theory = struct
   let p = ("coq.theory", decode >>| fun x -> [ T x ])
 end
 
+module Ffi = struct
+  type t =
+    { modules : Module_name.t list
+    ; loc : Loc.t
+    ; library : Loc.t * Lib_name.t
+    ; flags : Ordered_set_lang.t
+    }
+
+  let decode =
+    fields
+      (Dune_lang.Syntax.since coq_syntax (0, 7)
+      >>> let+ modules = field "modules" (repeat Module_name.decode)
+          and+ loc = loc
+          and+ library = field "library" (located Lib_name.decode)
+          and+ flags = Ordered_set_lang.field "flags" in
+          { modules; loc; library; flags })
+
+  type Stanza.t += T of t
+
+  let p = ("coq.ffi", decode >>| fun x -> [ T x ])
+end
+
 let unit_stanzas =
-  let+ r = return [ Theory.coqlib_p; Theory.p; Coqpp.p; Extraction.p ] in
+  let+ r = return [ Theory.coqlib_p; Theory.p; Coqpp.p; Extraction.p; Ffi.p ] in
   ((), r)
 
 let key = Dune_project.Extension.register coq_syntax unit_stanzas Unit.to_dyn

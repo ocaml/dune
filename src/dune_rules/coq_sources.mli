@@ -36,3 +36,21 @@ val mlg_files :
   -> dir:Path.Build.t
   -> modules:Ordered_set_lang.t
   -> Path.Build.t list Memo.t
+
+module Coqffi : sig
+  val lib : dir:Path.Build.t -> library:Loc.t * Lib_name.t -> Lib.t Memo.t
+
+  (** The target of the coqffi rule given a module name. *)
+  val target_of : dir:Path.Build.t -> Module_name.t -> Path.Build.t
+
+  (** Checks if the give list of module names are valid modules that can be
+      found. *)
+  val modules_of :
+       loc:Loc.t
+    -> lib:Lib.t
+    -> modules:Module_name.t list
+    -> ml_sources:Ml_sources.t Memo.t
+    -> Module.t list Memo.t
+
+  val targets : dir:Path.Build.t -> Ffi.t -> Path.Build.t list
+end

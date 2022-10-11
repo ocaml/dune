@@ -43,6 +43,9 @@ val setup_extraction_rules :
   -> Extraction.t
   -> unit Memo.t
 
+val setup_ffi_rules :
+  sctx:Super_context.t -> dir:Path.Build.t -> Ffi.t -> unit Memo.t
+
 (** [deps_of ~dir ~boot_type m] produces an action builder that can be run to
     build all dependencies of the Coq module [m]. *)
 val deps_of :

@@ -324,6 +324,7 @@ type 'path t =
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
   ; path_kind : 'path path
+  ; modules : Modules.t option Source.t
   }
 
 let equal (type a) (t : a t)
@@ -362,6 +363,7 @@ let equal (type a) (t : a t)
     ; exit_module
     ; instrumentation_backend
     ; path_kind
+    ; modules
     } =
   let path_equal : a -> a -> bool =
     match (path_kind : a path) with
@@ -417,6 +419,7 @@ let equal (type a) (t : a t)
        (Tuple.T2.equal Loc.equal Lib_name.equal)
        instrumentation_backend t.instrumentation_backend
   && Poly.equal path_kind t.path_kind
+  && Source.equal (Option.equal Modules.equal) modules t.modules
 
 let name t = t.name
 
@@ -449,6 +452,8 @@ let foreign_objects t = t.foreign_objects
 let exit_module t = t.exit_module
 
 let instrumentation_backend t = t.instrumentation_backend
+
+let modules t = t.modules
 
 let plugins t = t.plugins
 
@@ -536,7 +541,7 @@ let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
     ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled
     ~virtual_deps ~dune_version ~virtual_ ~entry_modules ~implements
     ~default_implementation ~modes ~wrapped ~special_builtin_support
-    ~exit_module ~instrumentation_backend =
+    ~exit_module ~instrumentation_backend ~modules =
   { loc
   ; name
   ; kind
@@ -572,6 +577,7 @@ let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
   ; exit_module
   ; instrumentation_backend
   ; path_kind
+  ; modules
   }
 
 type external_ = Path.t t
@@ -647,6 +653,7 @@ let to_dyn path
     ; exit_module
     ; instrumentation_backend
     ; entry_modules
+    ; modules
     } =
   let open Dyn in
   let snd f (_, x) = f x in
@@ -688,6 +695,7 @@ let to_dyn path
     ; ("exit_module", option Module_name.to_dyn exit_module)
     ; ( "instrumentation_backend"
       , option (snd Lib_name.to_dyn) instrumentation_backend )
+    ; ("modules", Source.to_dyn (Dyn.option Modules.to_dyn) modules)
     ]
 
 let package t =

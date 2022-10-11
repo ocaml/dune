@@ -39,6 +39,17 @@ module Theory : sig
   type Stanza.t += T of t
 end
 
+module Ffi : sig
+  type t =
+    { modules : Module_name.t list
+    ; loc : Loc.t
+    ; library : Loc.t * Lib_name.t
+    ; flags : Ordered_set_lang.t
+    }
+
+  type Stanza.t += T of t
+end
+
 module Coqpp : sig
   type t =
     { modules : Ordered_set_lang.t

@@ -5,7 +5,7 @@
   > EOF
 
 
-We can have one stub that is mode-dependant:
+We can have one stub that is mode-dependent:
   $ cat >dune <<EOF
   > (executable
   >  (modes native byte_complete)
@@ -99,7 +99,7 @@ But two foreign stubs for the same file and mode is an error:
   can be defined using the (foreign_library ...) stanza.
   [1]
 
-We can have some mode-dependant stubs and some non-dependent other stubs
+We can have some mode-dependent stubs and some non-dependent other stubs
   $ cat >dune <<EOF
   > (executable
   >  (modes native byte_complete)

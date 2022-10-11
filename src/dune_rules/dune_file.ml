@@ -945,72 +945,21 @@ end
 
 module Install_conf = struct
   module File_entry = struct
-    type t =
-      | Binding of File_binding.Unexpanded.t
-      | Include of
-          { context : Univ_map.t
-          ; path : String_with_vars.t
-          }
+    include
+      Recursive_include.Make
+        (File_binding.Unexpanded)
+        (struct
+          let include_keyword = "include"
 
-    let decode =
-      let open Dune_lang.Decoder in
-      let decode_binding =
-        let+ binding = File_binding.Unexpanded.decode in
-        Binding binding
-      in
-      let decode_include =
-        sum
-          [ ( "include"
-            , let+ () = Syntax.since Stanza.syntax (3, 5)
-              and+ context = get_all
-              and+ path = String_with_vars.decode in
-              Include { context; path } )
-          ]
-      in
-      decode_binding <|> decode_include
+          let include_allowed_in_versions = `Since (3, 5)
 
-    let load_included_file path ~context =
-      let open Memo.O in
-      let+ contents =
-        Build_system.read_file (Path.build path) ~f:Io.read_file
-      in
-      let ast =
-        Dune_lang.Parser.parse_string contents ~mode:Single
-          ~fname:(Path.Build.to_string path)
-      in
-      let parse = Dune_lang.Decoder.parse decode context in
-      match ast with
-      | List (_loc, terms) -> List.map terms ~f:parse
-      | other ->
-        let loc = Dune_sexp.Ast.loc other in
-        User_error.raise ~loc [ Pp.textf "Expected list, got:\n%s" contents ]
-
-    let expand_include t ~expand_str ~dir =
-      let rec expand_include t ~seen =
-        match t with
-        | Binding binding -> Memo.return [ binding ]
-        | Include { context; path = path_sw } ->
-          let open Memo.O in
-          let* path =
-            expand_str path_sw
-            >>| Path.Build.relative
-                  ~error_loc:(String_with_vars.loc path_sw)
-                  dir
-          in
-          if Path.Build.Set.mem seen path then
-            User_error.raise
-              ~loc:(String_with_vars.loc path_sw)
-              [ Pp.textf "Include loop detected via: %s"
-                  (Path.Build.to_string path)
-              ];
-          let seen = Path.Build.Set.add seen path in
-          let* contents = load_included_file path ~context in
-          Memo.List.concat_map contents ~f:(expand_include ~seen)
-      in
-      expand_include t ~seen:Path.Build.Set.empty
+          let non_sexp_behaviour = `User_error
+        end)
 
     let expand_include_multi ts ~expand_str ~dir =
       Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
+
+    let of_file_binding = of_base
 
     let expand t ~expand_str ~dir =
       let open Memo.O in
@@ -1216,7 +1165,7 @@ module Executables = struct
           let files =
             List.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
                 Option.map pub ~f:(fun pub ->
-                    Install_conf.File_entry.Binding
+                    Install_conf.File_entry.of_file_binding
                       (File_binding.Unexpanded.make
                          ~src:(locn, name ^ ext)
                          ~dst:(locp, pub))))

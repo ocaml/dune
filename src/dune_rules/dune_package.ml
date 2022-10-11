@@ -187,10 +187,11 @@ module Lib = struct
          let wrapped =
            Some (Lib_info.Inherited.This (Modules.wrapped modules))
          in
+         let modules = Lib_info.Source.External (Some modules) in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
          let modes = { Lib_mode.Map.ocaml = modes; melange = false } in
-         Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
-           ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
+         Lib_info.create ~modules ~path_kind:External ~loc ~name ~kind ~status
+           ~src_dir ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
            ~sub_systems ~requires ~foreign_objects ~plugins ~archives
            ~ppx_runtime_deps ~foreign_archives
            ~native_archives:(Files native_archives) ~foreign_dll_files:[]

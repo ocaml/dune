@@ -39,6 +39,16 @@ module Theory : sig
   type Stanza.t += T of t
 end
 
+module Ffi : sig
+  type t =
+    { modules : string list
+    ; loc : Loc.t
+    ; library : Loc.t * Lib_name.t
+    }
+
+  type Stanza.t += T of t
+end
+
 module Coqpp : sig
   type t =
     { modules : Predicate_lang.Glob.t

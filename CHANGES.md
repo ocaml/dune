@@ -27,6 +27,9 @@ Unreleased
 - Allow `:standard` in the `(modules)` field of the `coq.pp` stanza (#6229,
   fixes #2414, @Alizter)
 
+- Add support for `coqffi` with the `coq.ffi` stanza (#6248, fixes #3995,
+  @Alizter)
+
 3.5.0 (2022-10-19)
 ------------------
 

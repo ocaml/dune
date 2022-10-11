@@ -776,6 +776,56 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   setup_rule cctx ~dir ~sctx ~loc:s.buildable.loc ~file_targets:ml_targets
     ~source_rule coq_module
 
+let setup_ffi_rules ~sctx ~dir ({ loc; modules; library } : Ffi.t) =
+  let* coqffi =
+    resolve_program sctx ~dir ~loc "coqffi" ~hint:"opam install coq-ffi"
+  in
+  let coqffi_rule m =
+    let module_ lib_info =
+      let+ modules =
+        match Lib_info.modules lib_info with
+        | External (Some m) -> Memo.return m
+        | External None ->
+          User_error.raise ~loc
+            [ Pp.textf
+                "Library %S was not installed using Dune and therefore not \
+                 supported by coq.ffi."
+                (Lib_name.to_string (snd library))
+            ]
+        | Local ->
+          Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
+          >>| Ml_sources.modules_and_obj_dir ~for_:(Library (snd library))
+          >>| fst
+      in
+      match Modules.find modules (Module_name.of_string m) with
+      | Some m -> m
+      | None ->
+        User_error.raise ~loc
+          [ Pp.textf "Module %S was not found in library %S." m
+              (Lib_name.to_string (snd library))
+          ]
+    in
+    let cmi =
+      Resolve.Memo.read
+      @@
+      let open Resolve.Memo.O in
+      let* lib =
+        let* scope = Scope.DB.find_by_dir dir |> Resolve.Memo.lift_memo in
+        let lib_db = Scope.libs scope in
+        Lib.DB.resolve lib_db library
+      in
+      let info = Lib.info lib in
+      let obj_dir = Lib_info.obj_dir info in
+      let* module_ = module_ info |> Resolve.Memo.lift_memo in
+      let cmi = Obj_dir.Module.cm_file_exn obj_dir module_ ~kind:(Ocaml Cmi) in
+      Resolve.Memo.return @@ Command.Args.Dep cmi
+    in
+    let target = Path.Build.relative dir (m ^ ".v") in
+    let args = [ Command.Args.Dyn cmi; A "-o"; Target target ] in
+    Command.run ~dir:(Path.build dir) coqffi args
+  in
+  List.rev_map ~f:coqffi_rule modules |> Super_context.add_rules ~loc ~dir sctx
+
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx, coq_module =
     setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s

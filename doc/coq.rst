@@ -314,6 +314,25 @@ authors avoid writing boilerplate, we provide a ``(coq.pp ...)`` stanza:
 This will run the ``coqpp`` binary on all the ``.mlg`` files in
 ``<ordered_set_lang>``.
 
+.. _coq-ffi:
+
+coq.ffi
+-------
+
+The ``coq.ffi`` stanza allows the generation of Coq ``.v`` sources from OCaml
+``.cmi`` files. These can come from libraries in the workspace or those
+installed by Dune. The stanza will call the ``coqffi`` binary to do this. You
+can use a :ref:`coq-theory` stanza to compile these generated sources.
+
+.. code:: scheme
+
+    (coq.ffi
+     (modules <module_list>)
+     (library <library>))
+
+The ``<module_list>`` is a list of OCaml modules of the library ``<library>``
+that a FFI (Foreign Function Interface) will be generated for.
+
 .. _examples:
 
 Examples of Coq Projects

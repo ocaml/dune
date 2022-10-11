@@ -1,6 +1,8 @@
 3.5.0 (unreleased)
 ------------------
 
+- macOS: Handle unknown fsevents without crashing (#6217, @rgrinberg)
+
 - Enable file watching on MacOS SDK < 10.13. (#6218, @rgrinberg)
 
 - Sandbox running cinaps actions starting from cinaps 1.1 (#6176, @rgrinberg)

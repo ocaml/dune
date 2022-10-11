@@ -270,24 +270,16 @@ CAMLprim value dune_fsevents_action(value v_flags) {
   CAMLlocal1(v_action);
 
   uint32_t flags = Int32_val(v_flags) & action_mask;
-  int count = __builtin_popcount(flags);
-
-  flags = Int32_val(v_flags);
-  if (count >= 2 || flags & kFSEventStreamEventFlagItemRenamed) {
-    // we don't bother tracking renamed acurately for now. macos makes it
-    // tricky by not telling is which path is created and which one is deleted.
-    // it is possible to reverse engineer this from the chain of inodes in the
-    // events, but it's also error prone as inodes can be reused. so for now, we
-    // avoid this is and treat renamed as unknown
+  if (flags & kFSEventStreamEventFlagItemCreated) {
     v_action = Val_int(0);
-  } else if (flags & kFSEventStreamEventFlagItemCreated) {
-    v_action = Val_int(1);
   } else if (flags & kFSEventStreamEventFlagItemRemoved) {
-    v_action = Val_int(2);
+    v_action = Val_int(1);
   } else if (flags & kFSEventStreamEventFlagItemModified) {
+    v_action = Val_int(2);
+  } else if (flags & kFSEventStreamEventFlagItemRenamed) {
     v_action = Val_int(3);
   } else {
-    caml_failwith("fsevents: unexpected event action");
+    v_action = Val_int(4);
   }
 
   CAMLreturn(v_action);

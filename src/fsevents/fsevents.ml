@@ -194,10 +194,11 @@ module Event = struct
   let kind t = kind t.flags
 
   type action =
-    | Unknown
     | Create
     | Remove
     | Modify
+    | Rename
+    | Unknown
 
   external action : Int32.t -> action = "dune_fsevents_action"
 
@@ -209,7 +210,8 @@ module Event = struct
       | Create -> "Create"
       | Remove -> "Remove"
       | Modify -> "Modify"
-      | Unknown -> "Unknown")
+      | Unknown -> "Unknown"
+      | Rename -> "Rename")
 
   let to_dyn t =
     let open Dyn in

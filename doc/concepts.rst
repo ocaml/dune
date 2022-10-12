@@ -81,7 +81,7 @@ After an expression is evaluated, it must be exactly the string ``true`` or
 error.
 
 Below is a simple example of a condition expressing that the build
-has a flambda compiler, with the help of variable expansion, and is
+has a Flambda compiler, with the help of variable expansion, and is
 targeting OSX:
 
 .. code:: lisp
@@ -1306,15 +1306,15 @@ Here is a complete list of supported subfields:
   a parent directory like ``#include "../a.h"``.
 
 
-Mode-dependent Stubs
+Mode-Dependent Stubs
 ^^^^^^^^^^^^^^^^^^^^
 
-Since Dune 3.5 it is possible to use different foreign stubs when building in
-`native` or `byte` mode. This feature need to be activated by adding ``(using
+Since Dune 3.5, it is possible to use different foreign stubs when building in
+`native` or `byte` mode. This feature needs to be activated by adding ``(using
 mode_specific_stubs 0.1)`` in the ``dune-project`` file.
 
 Then it is allowed to use the ``mode`` field when describing ``foreign_stubs``.
-If the same stub is defined twice Dune will automatically chose the correct one.
+If the same stub is defined twice, Dune will automatically chose the correct one.
 This allows the use of different sets of flags or even different source files
 from which the stubs are built.
 

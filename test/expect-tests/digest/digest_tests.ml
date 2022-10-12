@@ -22,7 +22,7 @@ let%expect_test "directory digest version" =
     print_endline "[FAIL] unable to calculate digest");
   [%expect {| [PASS] |}]
 
-let%expect_test "reject directories with symlinks (for now)" =
+let%expect_test "directories with symlinks" =
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
   let stats = { Digest.Stats_for_digest.st_kind = S_DIR; st_perm = 1 } in
   let sub = Path.relative dir "sub" in
@@ -30,7 +30,7 @@ let%expect_test "reject directories with symlinks (for now)" =
   Unix.symlink "bar" (Path.to_string (Path.relative dir "foo"));
   Unix.symlink "bar" (Path.to_string (Path.relative sub "foo"));
   (match Digest.path_with_stats ~allow_dirs:true dir stats with
-  | Ok _ -> print_endline "[FAIL] failure expected"
-  | Unexpected_kind -> print_endline "[PASS]"
+  | Ok _ -> print_endline "[PASS]"
+  | Unexpected_kind -> print_endline "[FAIL] unexpected kind"
   | Unix_error _ -> print_endline "[FAIL] unable to calculate digest");
   [%expect {| [PASS] |}]

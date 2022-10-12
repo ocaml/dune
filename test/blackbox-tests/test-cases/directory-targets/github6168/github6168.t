@@ -16,14 +16,3 @@ Dune not recognizing it
   > EOF
 
   $ dune build @fakenode
-  File "dune", line 1, characters 0-92:
-  1 | (rule
-  2 |  (alias fakenode)
-  3 |  (targets
-  4 |   (dir fakenode_modules))
-  5 |  (action
-  6 |   (run ./fakenpm.exe)))
-  Error: This rule defines a directory target "fakenode_modules" that matches
-  the requested path "fakenode_modules" but the rule's action didn't produce it
-  -> required by alias fakenode
-  [1]

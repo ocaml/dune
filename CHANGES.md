@@ -1,6 +1,8 @@
 3.5.0 (unreleased)
 ------------------
 
+- Enable file watching on MacOS SDK < 10.13. (#6218, @rgrinberg)
+
 - Sandbox running cinaps actions starting from cinaps 1.1 (#6176, @rgrinberg)
 
 - Add a `runtime_deps` field in the `cinaps` stanza to specify runtime

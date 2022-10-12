@@ -1,5 +1,5 @@
 ##############
-Project toggle
+Project Toggle
 ##############
 
 Without the toggle, we get an error message for using the new mode subfield

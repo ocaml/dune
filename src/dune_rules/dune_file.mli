@@ -204,13 +204,41 @@ module Plugin : sig
 end
 
 module Install_conf : sig
+  module File_entry : sig
+    type t
+
+    val expand_include_multi :
+         t list
+      -> expand_str:(String_with_vars.t -> string Memo.t)
+      -> dir:Path.Build.t
+      -> File_binding.Unexpanded.t list Memo.t
+
+    val expand_multi :
+         t list
+      -> expand_str:(String_with_vars.t -> string Memo.t)
+      -> dir:Path.Build.t
+      -> File_binding.Expanded.t list Memo.t
+  end
+
   type t =
     { section : Install.Section_with_site.t
-    ; files : File_binding.Unexpanded.t list
-    ; dirs : File_binding.Unexpanded.t list
+    ; files : File_entry.t list
+    ; dirs : File_entry.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
+
+  val expand_files :
+       t
+    -> expand_str:(String_with_vars.t -> string Memo.t)
+    -> dir:Path.Build.t
+    -> File_binding.Expanded.t list Memo.t
+
+  val expand_dirs :
+       t
+    -> expand_str:(String_with_vars.t -> string Memo.t)
+    -> dir:Path.Build.t
+    -> File_binding.Expanded.t list Memo.t
 end
 
 module Executables : sig

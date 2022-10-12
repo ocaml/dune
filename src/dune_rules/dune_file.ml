@@ -944,10 +944,37 @@ module Plugin = struct
 end
 
 module Install_conf = struct
+  module File_entry = struct
+    include
+      Recursive_include.Make
+        (File_binding.Unexpanded)
+        (struct
+          let include_keyword = "include"
+
+          let include_allowed_in_versions = `Since (3, 5)
+
+          let non_sexp_behaviour = `User_error
+        end)
+
+    let expand_include_multi ts ~expand_str ~dir =
+      Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
+
+    let of_file_binding = of_base
+
+    let expand t ~expand_str ~dir =
+      let open Memo.O in
+      let* unexpanded = expand_include t ~expand_str ~dir in
+      Memo.List.map unexpanded
+        ~f:(File_binding.Unexpanded.expand ~dir ~f:expand_str)
+
+    let expand_multi ts ~expand_str ~dir =
+      Memo.List.concat_map ts ~f:(expand ~expand_str ~dir)
+  end
+
   type t =
     { section : Install.Section_with_site.t
-    ; files : File_binding.Unexpanded.t list
-    ; dirs : File_binding.Unexpanded.t list
+    ; files : File_entry.t list
+    ; dirs : File_entry.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
@@ -956,11 +983,11 @@ module Install_conf = struct
     fields
       (let+ loc = loc
        and+ section = field "section" Install.Section_with_site.decode
-       and+ files = field_o "files" File_binding.Unexpanded.L.decode
+       and+ files = field_o "files" (repeat File_entry.decode)
        and+ dirs =
          field_o "dirs"
            (Dune_lang.Syntax.since Stanza.syntax (3, 5)
-           >>> File_binding.Unexpanded.L.decode)
+           >>> repeat File_entry.decode)
        and+ package = Stanza_common.Pkg.field ~stanza:"install"
        and+ enabled_if =
          let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
@@ -975,6 +1002,10 @@ module Install_conf = struct
        in
 
        { section; dirs; files; package; enabled_if })
+
+  let expand_files t = File_entry.expand_multi t.files
+
+  let expand_dirs t = File_entry.expand_multi t.dirs
 end
 
 module Executables = struct
@@ -1134,9 +1165,10 @@ module Executables = struct
           let files =
             List.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
                 Option.map pub ~f:(fun pub ->
-                    File_binding.Unexpanded.make
-                      ~src:(locn, name ^ ext)
-                      ~dst:(locp, pub)))
+                    Install_conf.File_entry.of_file_binding
+                      (File_binding.Unexpanded.make
+                         ~src:(locn, name ^ ext)
+                         ~dst:(locp, pub))))
             |> List.filter_opt
           in
           { Install_conf.section = Section Bin

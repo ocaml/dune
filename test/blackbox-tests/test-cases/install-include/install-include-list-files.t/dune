@@ -1,0 +1,9 @@
+(install
+ (files (include resources.sexp))
+ (section share))
+
+(rule
+ (deps (source_tree resources) list_dir.ml)
+ (action
+  (with-stdout-to resources.sexp
+   (run ocaml list_dir.ml resources))))

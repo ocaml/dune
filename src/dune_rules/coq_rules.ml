@@ -55,8 +55,31 @@ let resolve_program sctx ~loc ~dir ?(hint = "opam install coq") prog =
   Super_context.resolve_program ~dir sctx prog ~loc:(Some loc) ~hint
 
 module Coq_plugin = struct
+  let meta_info ~coq_lang_version ~plugin_loc ~context (lib : Lib.t) =
+    let debug = false in
+    let name = Lib.name lib |> Lib_name.to_string in
+    if debug then Format.eprintf "Meta info for %s@\n" name;
+    match Lib_info.status (Lib.info lib) with
+    | Public (_, pkg) ->
+      let package = Package.name pkg in
+      let meta_i =
+        Path.Build.relative
+          (Local_install_path.lib_dir ~context ~package)
+          "META"
+      in
+      if debug then
+        Format.eprintf "Meta for %s: %s@\n" name (Path.Build.to_string meta_i);
+      Some (Path.build meta_i)
+    | Installed -> None
+    | Installed_private | Private _ ->
+      let is_error = coq_lang_version >= (0, 6) in
+      let text = if is_error then "not supported" else "deprecated" in
+      User_warning.emit ?loc:plugin_loc ~is_error
+        [ Pp.textf "Using private library %s as a Coq plugin is %s" name text ];
+      None
+
   (* compute include flags and mlpack rules *)
-  let setup_ml_deps libs theories =
+  let setup_ml_deps ~coq_lang_version ~context ~plugin_loc libs theories =
     (* Pair of include flags and paths to mlpack *)
     let libs =
       let open Resolve.Memo.O in
@@ -75,10 +98,17 @@ module Coq_plugin = struct
     ( flags
     , let* libs = Resolve.Memo.read libs in
       (* If the mlpack files don't exist, don't fail *)
-      Action_builder.paths_existing (List.concat_map ~f:Util.ml_pack_files libs)
-    )
+      Action_builder.all_unit
+        [ Action_builder.paths
+            (List.filter_map
+               ~f:(meta_info ~plugin_loc ~coq_lang_version ~context)
+               libs)
+        ; Action_builder.paths_existing
+            (List.concat_map ~f:Util.ml_pack_files libs)
+        ] )
 
-  let of_buildable ~lib_db ~theories_deps (buildable : Coq_stanza.Buildable.t) =
+  let of_buildable ~context ~lib_db ~theories_deps
+      (buildable : Coq_stanza.Buildable.t) =
     let res =
       let open Resolve.Memo.O in
       let+ libs =
@@ -86,7 +116,9 @@ module Coq_plugin = struct
             let+ lib = Lib.DB.resolve lib_db (loc, name) in
             (loc, lib))
       in
-      setup_ml_deps libs theories_deps
+      let coq_lang_version = buildable.coq_lang_version in
+      let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
+      setup_ml_deps ~plugin_loc ~coq_lang_version ~context libs theories_deps
     in
     let ml_flags = Resolve.Memo.map res ~f:fst in
     let mlpack_rule =
@@ -289,12 +321,13 @@ module Context = struct
     let loc = buildable.loc in
     let use_stdlib = buildable.use_stdlib in
     let rr = resolve_program sctx ~dir ~loc in
+    let context = Super_context.context sctx |> Context.name in
     let* expander = Super_context.expander sctx ~dir in
     let* scope = Scope.DB.find_by_dir dir in
     let lib_db = Scope.libs scope in
     (* ML-level flags for depending libraries *)
     let ml_flags, mlpack_rule =
-      Coq_plugin.of_buildable ~theories_deps ~lib_db buildable
+      Coq_plugin.of_buildable ~context ~theories_deps ~lib_db buildable
     in
     let mode = select_native_mode ~sctx ~buildable in
     let* native_includes =

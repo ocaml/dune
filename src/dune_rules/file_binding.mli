@@ -19,6 +19,8 @@ module Unexpanded : sig
 
   val make : src:Loc.t * string -> dst:Loc.t * string -> t
 
+  val decode : t Dune_lang.Decoder.t
+
   val expand :
        t
     -> dir:Path.Build.t

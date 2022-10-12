@@ -8,61 +8,6 @@ module Source_tree_map_reduce =
       type t = Command.Args.without_targets Command.Args.t
     end))
 
-module Include_dir_expanded = struct
-  (* An [Include_dir.t] without the [Include] constructor *)
-  type t =
-    | Dir of String_with_vars.t
-    | Lib of Loc.t * Lib_name.t
-
-  type include_t =
-    { context : Univ_map.t
-    ; path : String_with_vars.t
-    }
-
-  let of_include_dir include_dir =
-    match (include_dir : Foreign.Stubs.Include_dir.t) with
-    | Dir d -> Right (Dir d)
-    | Lib (loc, lib_name) -> Right (Lib (loc, lib_name))
-    | Include { context; path } -> Left { context; path }
-end
-
-(* Recursively expand all the (include ...) terms in an [Include_dir.t], returning
-   a list of [Include_dir_expanded.t] *)
-let expand_include_dir ~expander include_dir =
-  (* Parse a file at a specified path as a list of [Include_dir.t]s *)
-  let parse_include_dirs_file ~context path =
-    let open Action_builder.O in
-    let+ ast = Action_builder.read_sexp path in
-    let parse_single ast =
-      Dune_lang.Decoder.parse Foreign.Stubs.Include_dir.decode context ast
-    in
-    (* If the file contains a sexp list, parse each element of the list as an
-       [Include_dir.t].
-       Otherwise parse the entire file's contents as a single [Include_dir.t].
-    *)
-    match (ast : Dune_lang.Ast.t) with
-    | List (_loc, terms) -> List.map terms ~f:parse_single
-    | other -> [ parse_single other ]
-  in
-  let rec expand_include_dir ~seen include_dir =
-    match Include_dir_expanded.of_include_dir include_dir with
-    | Right include_dir_expanded ->
-      Action_builder.return [ include_dir_expanded ]
-    | Left { context; path } ->
-      expand_include_dir_include_statement ~seen ~context path
-  and expand_include_dir_include_statement ~seen ~context path_sw =
-    let open Action_builder.O in
-    let* path = Expander.expand_path expander path_sw in
-    if Path.Set.mem seen path then
-      User_error.raise
-        ~loc:(String_with_vars.loc path_sw)
-        [ Pp.textf "Include loop detected via: %s" (Path.to_string path) ];
-    let seen = Path.Set.add seen path in
-    let* include_dirs = parse_include_dirs_file ~context path in
-    Action_builder.List.concat_map include_dirs ~f:(expand_include_dir ~seen)
-  in
-  expand_include_dir ~seen:Path.Set.empty include_dir
-
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
    and track all files in specified directories as [Hidden_deps]
    dependencies. *)
@@ -77,7 +22,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
     Resolve.Memo.args
       (let open Resolve.Memo.O in
       let+ loc, include_dir =
-        match (include_dir : Include_dir_expanded.t) with
+        match (include_dir : Foreign.Stubs.Include_dir.Without_include.t) with
         | Dir dir ->
           Resolve.Memo.return
             (String_with_vars.loc dir, Expander.expand_path expander dir)
@@ -161,8 +106,10 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
   Command.Args.Dyn
     (let open Action_builder.O in
     let+ include_dirs_expanded =
-      Action_builder.List.concat_map stubs.include_dirs
-        ~f:(expand_include_dir ~expander)
+      let expand_str = Expander.No_deps.expand_str expander in
+      Memo.List.concat_map stubs.include_dirs
+        ~f:(Foreign.Stubs.Include_dir.expand_include ~expand_str ~dir)
+      |> Action_builder.of_memo
     in
     Command.Args.S (List.map include_dirs_expanded ~f:args_of_include_dir))
 

@@ -200,16 +200,24 @@ let define_all_alias ~dir ~project ~js_targets =
 
 let gen_rules sctx dir_contents cctxs expander
     { Dune_file.dir = src_dir; stanzas; project } ~dir:ctx_dir =
-  let files_to_install
-      { Install_conf.section = _; files; package = _; enabled_if = _; dirs } =
-    let* files_and_dirs =
-      Memo.List.map (files @ dirs) ~f:(fun fb ->
-          File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
-            ~f:(Expander.No_deps.expand_str expander)
-          >>| Path.build)
+  let files_to_install install_conf =
+    let expand_str = Expander.No_deps.expand_str expander in
+    let files_and_dirs =
+      let* files_expanded =
+        Install_conf.expand_files install_conf ~expand_str ~dir:ctx_dir
+      in
+      let+ dirs_expanded =
+        Install_conf.expand_dirs install_conf ~expand_str ~dir:ctx_dir
+      in
+      List.map (files_expanded @ dirs_expanded) ~f:(fun fb ->
+          File_binding.Expanded.src fb |> Path.build)
     in
-    Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
-      (Action_builder.paths files_and_dirs)
+    let action =
+      let open Action_builder.O in
+      let* files_and_dirs = Action_builder.of_memo files_and_dirs in
+      Action_builder.paths files_and_dirs
+    in
+    Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir) action
   in
   let* { For_stanza.merlin = merlins
        ; cctx = cctxs

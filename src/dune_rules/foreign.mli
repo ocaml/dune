@@ -77,15 +77,21 @@ module Stubs : sig
   (* Foreign sources can depend on a directly specified directory [Dir] or on a
      source directory of a library [Lib]. *)
   module Include_dir : sig
-    type t =
-      | Dir of String_with_vars.t
-      | Lib of Loc.t * Lib_name.t
-      | Include of
-          { context : Univ_map.t
-          ; path : String_with_vars.t
-          }
+    module Without_include : sig
+      type t =
+        | Dir of String_with_vars.t
+        | Lib of Loc.t * Lib_name.t
+    end
+
+    type t
 
     val decode : t Dune_lang.Decoder.t
+
+    val expand_include :
+         t
+      -> expand_str:(String_with_vars.t -> string Memo.t)
+      -> dir:Path.Build.t
+      -> Without_include.t list Memo.t
   end
 
   type t =

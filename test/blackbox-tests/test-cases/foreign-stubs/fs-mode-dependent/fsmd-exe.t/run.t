@@ -2,7 +2,7 @@
 Project toggle
 ##############
 
-Without the toggle we get an error message for using the new mode subfield
+Without the toggle, we get an error message for using the new mode subfield
   $ cat >dune-project <<EOF
   > (lang dune 3.5)
   > EOF

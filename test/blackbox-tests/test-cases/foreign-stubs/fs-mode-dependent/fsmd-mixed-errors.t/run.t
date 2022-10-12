@@ -29,7 +29,7 @@ We can have one stub that is mode-dependent:
   $ dune exec ./stubs_exe.bc.exe
   Byte (0) or native (1) ? 0
 
-If one of the two is not specified it will be used for both byte and native mode
+If one of the two is not specified, it will be used for both byte and native mode
 and then a dupliated symbol error will happen
   $ cat >dune <<EOF
   > (executable

@@ -7,10 +7,8 @@
 #include <caml/threads.h>
 
 #if defined(__APPLE__)
-#include <Availability.h>
-#endif
 
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
+#include <Availability.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 
@@ -89,9 +87,13 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
     if (!(interesting_flags & flags)) {
       continue;
     }
+    CFStringRef cf_path;
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
     CFDictionaryRef details = CFArrayGetValueAtIndex(eventPaths, i);
-    CFStringRef cf_path =
-        CFDictionaryGetValue(details, kFSEventStreamEventExtendedDataPathKey);
+    cf_path = CFDictionaryGetValue(details, kFSEventStreamEventExtendedDataPathKey);
+#else
+    cf_path = (CFStringRef) CFArrayGetValueAtIndex(eventPaths, i);
+#endif
     CFIndex len = CFStringGetLength(cf_path);
     CFIndex byte_len;
     CFIndex res =
@@ -152,7 +154,9 @@ CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
 
   const FSEventStreamEventFlags flags =
       kFSEventStreamCreateFlagNoDefer |
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
       kFSEventStreamCreateFlagUseExtendedData |
+#endif
       kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents;
 
   dune_fsevents_t *t;
@@ -316,7 +320,9 @@ static const FSEventStreamEventFlags all_flags[] = {
     kFSEventStreamEventFlagOwnEvent,
     kFSEventStreamEventFlagItemIsHardlink,
     kFSEventStreamEventFlagItemIsLastHardlink,
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
     kFSEventStreamEventFlagItemCloned,
+#endif
 };
 
 CAMLprim value dune_fsevents_raw(value v_flags) {
@@ -338,8 +344,7 @@ CAMLprim value dune_fsevents_available(value unit) {
 
 #else
 
-static char *unavailable_message =
-    "fsevents is only available on macos >= 10.13";
+static char *unavailable_message = "fsevents is only available on macos";
 
 CAMLprim value dune_fsevents_stop(value v_t) {
   caml_failwith(unavailable_message);

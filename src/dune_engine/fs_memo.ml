@@ -133,30 +133,16 @@ end = struct
     | true -> Memo.exec memo_for_watching_via_parent path
 
   module Update_all =
-    Monoid.Function (Path.Outside_build_dir) (Fs_cache.Update_result)
+    Monoid.Function (Path.Outside_build_dir) (Fs_cache_update_result)
 
-  let update_all : Path.Outside_build_dir.t -> Fs_cache.Update_result.t =
-    let update t path =
-      let result = Fs_cache.update t path in
-      if !Clflags.debug_fs_cache then
-        Console.print_user_message
-          (User_message.make
-             [ Pp.hbox
-                 (Pp.textf "Updating %s cache for %S: %s"
-                    (Fs_cache.Debug.name t)
-                    (Path.Outside_build_dir.to_string path)
-                    (Dyn.to_string (Fs_cache.Update_result.to_dyn result)))
-             ]);
-      result
+  let update_all : Path.Outside_build_dir.t -> Fs_cache_update_result.t =
+    let all =
+      [ Fs_cache.update Fs_cache.Untracked.path_stat
+      ; Cached_digest.Untracked.update
+      ; Fs_cache.update Fs_cache.Untracked.dir_contents
+      ]
     in
-    fun p ->
-      let all =
-        [ update Fs_cache.Untracked.path_stat
-        ; update Fs_cache.Untracked.file_digest
-        ; update Fs_cache.Untracked.dir_contents
-        ]
-      in
-      Update_all.reduce all p
+    fun p -> Update_all.reduce all p
 
   (* CR-someday amokhov: We share Memo tables for tracking different file-system
      operations. This saves some memory, but leads to recomputing more memoized
@@ -279,12 +265,9 @@ let dir_exists path =
    file system access functions in one place, and exposing an uncached version
    of [file_digest] seems error-prone. We may need to rethink this decision. *)
 let file_digest ?(force_update = false) path =
-  if force_update then (
-    Cached_digest.Untracked.invalidate_cached_timestamp
-      (Path.outside_build_dir path);
-    Fs_cache.evict Fs_cache.Untracked.file_digest path);
+  if force_update then Cached_digest.Untracked.invalidate_cached_timestamp path;
   let+ () = Watcher.watch ~try_to_watch_via_parent:true path in
-  Fs_cache.read Fs_cache.Untracked.file_digest path
+  Cached_digest.Untracked.source_or_external_file path
 
 let dir_contents ?(force_update = false) path =
   if force_update then Fs_cache.evict Fs_cache.Untracked.dir_contents path;
@@ -301,7 +284,7 @@ let tracking_file_digest path =
      be recorded in the [Fs_cache.Untracked.file_digest], so the build will be
      restarted if the digest changes. *)
   let (_ : Cached_digest.Digest_result.t) =
-    Fs_cache.read Fs_cache.Untracked.file_digest path
+    Cached_digest.Untracked.source_or_external_file path
   in
   ()
 

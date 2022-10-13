@@ -333,15 +333,35 @@ let remove path =
   Path.Table.remove cache.table path
 
 module Untracked = struct
-  let source_or_external_file = peek_or_refresh_file ~allow_dirs:false
+  let source_or_external_file path =
+    peek_or_refresh_file ~allow_dirs:false (Path.outside_build_dir path)
+
+  let update path =
+    let result =
+      let path = Path.outside_build_dir path in
+      let cache = Lazy.force cache in
+      match Path.Table.find cache.table path with
+      | None -> Fs_cache_update_result.Skipped
+      | Some old_result ->
+        let new_result =
+          refresh_without_removing_write_permissions ~allow_dirs:false path
+        in
+        let changed =
+          not (Digest_result.equal (Ok old_result.digest) new_result)
+        in
+        Updated { changed }
+    in
+    Fs_cache_update_result.log_update result ~name:"file_digest" path;
+    result
 
   let invalidate_cached_timestamp path =
+    let path = Path.outside_build_dir path in
     let cache = Lazy.force cache in
     match Path.Table.find cache.table path with
     | None -> ()
     | Some entry ->
-      (* Make [stats_checked] unequal to [cache.checked_key] so that [peek_file]
-         is forced to re-[stat] the [path]. *)
+      (* Make [stats_checked] unequal to [cache.checked_key] so that
+         [peek_file] is forced to re-[stat] the [path]. *)
       let entry = { entry with stats_checked = cache.checked_key - 1 } in
       Path.Table.set cache.table path entry
 end

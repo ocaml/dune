@@ -16,22 +16,8 @@ val read : 'a t -> Path.Outside_build_dir.t -> 'a
 (** Evict an entry from the cache. *)
 val evict : 'a t -> Path.Outside_build_dir.t -> unit
 
-(** Result of updating a cache entry. *)
-module Update_result : sig
-  type t =
-    | Skipped  (** No need to update a given entry because it has no readers *)
-    | Updated of { changed : bool }
-
-  (** [Skipped] is the "empty" update. *)
-  val empty : t
-
-  val combine : t -> t -> t
-
-  val to_dyn : t -> Dyn.t
-end
-
 (** Perform an operation and update the result stored in the cache. *)
-val update : 'a t -> Path.Outside_build_dir.t -> Update_result.t
+val update : 'a t -> Path.Outside_build_dir.t -> Fs_cache_update_result.t
 
 (** This module caches only a subset of fields of [Unix.stats] because other
     fields are currently unused.
@@ -69,8 +55,6 @@ end
     See [fs_memo.ml] for tracked versions of these operations. *)
 module Untracked : sig
   val path_stat : (Reduced_stats.t, Unix_error.Detailed.t) result t
-
-  val file_digest : Cached_digest.Digest_result.t t
 
   val dir_contents : (Dir_contents.t, Unix_error.Detailed.t) result t
 end

@@ -9,18 +9,10 @@ type 'a t =
   ; sample : Path.Outside_build_dir.t -> 'a
   ; cache : 'a Path.Outside_build_dir.Table.t
   ; equal : 'a -> 'a -> bool (* Used to implement cutoff *)
-  ; update_hook :
-         Path.Outside_build_dir.t
-      -> unit (* Run this hook before updating an entry. *)
   }
 
-let create ?(update_hook = fun _path -> ()) name ~sample ~equal : 'a t =
-  { name
-  ; sample
-  ; equal
-  ; cache = Path.Outside_build_dir.Table.create 128
-  ; update_hook
-  }
+let create name ~sample ~equal : 'a t =
+  { name; sample; equal; cache = Path.Outside_build_dir.Table.create 128 }
 
 let read { sample; cache; _ } path =
   match Path.Outside_build_dir.Table.find cache path with
@@ -32,36 +24,20 @@ let read { sample; cache; _ } path =
 
 let evict { cache; _ } path = Path.Outside_build_dir.Table.remove cache path
 
-module Update_result = struct
-  type t =
-    | Skipped (* No need to update a given entry because it has no readers *)
-    | Updated of { changed : bool }
-
-  let combine x y =
-    match (x, y) with
-    | Skipped, res | res, Skipped -> res
-    | Updated { changed = x }, Updated { changed = y } ->
-      Updated { changed = x || y }
-
-  let empty = Skipped
-
-  let to_dyn = function
-    | Skipped -> Dyn.Variant ("Skipped", [])
-    | Updated { changed } ->
-      Dyn.Variant ("Updated", [ Dyn.Record [ ("changed", Dyn.Bool changed) ] ])
-end
-
-let update { sample; cache; equal; update_hook; _ } path =
-  match Path.Outside_build_dir.Table.find cache path with
-  | None -> Update_result.Skipped
-  | Some old_result -> (
-    update_hook path;
-    let new_result = sample path in
-    match equal old_result new_result with
-    | true -> Updated { changed = false }
-    | false ->
-      Path.Outside_build_dir.Table.set cache path new_result;
-      Updated { changed = true })
+let update { sample; cache; equal; name } path =
+  let result =
+    match Path.Outside_build_dir.Table.find cache path with
+    | None -> Fs_cache_update_result.Skipped
+    | Some old_result -> (
+      let new_result = sample path in
+      match equal old_result new_result with
+      | true -> Updated { changed = false }
+      | false ->
+        Path.Outside_build_dir.Table.set cache path new_result;
+        Updated { changed = true })
+  in
+  Fs_cache_update_result.log_update result ~name path;
+  result
 
 module Reduced_stats = struct
   type t =
@@ -115,20 +91,6 @@ module Untracked = struct
     in
     create "path_stat" ~sample
       ~equal:(Result.equal Reduced_stats.equal Unix_error.Detailed.equal)
-
-  (* CR-someday amokhov: There is an overlap in functionality between this
-     module and [cached_digest.ml]. In particular, digests are stored twice, in
-     two separate tables. We should find a way to merge the tables into one. *)
-  let file_digest =
-    let sample p =
-      Cached_digest.Untracked.source_or_external_file (Path.outside_build_dir p)
-    in
-    let update_hook p =
-      Cached_digest.Untracked.invalidate_cached_timestamp
-        (Path.outside_build_dir p)
-    in
-    create "file_digest" ~sample ~update_hook
-      ~equal:Cached_digest.Digest_result.equal
 
   let dir_contents =
     create "dir_contents"

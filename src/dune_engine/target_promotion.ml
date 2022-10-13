@@ -97,7 +97,7 @@ let promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
      the tracked [Fs_memo.file_digest] to subscribe to the promotion result. *)
   let* promoted =
     match
-      Fs_cache.read Fs_cache.Untracked.file_digest (In_source_dir dst)
+      Cached_digest.Untracked.source_or_external_file (In_source_dir dst)
       |> Cached_digest.Digest_result.to_option
     with
     | Some dst_digest when Digest.equal src_digest dst_digest ->

@@ -30,3 +30,9 @@ val lookup_module :
      t
   -> Coq_module.t
   -> [ `Theory of Theory.t | `Extraction of Extraction.t ] option
+
+val mlg_files :
+     sctx:Super_context.t
+  -> dir:Path.Build.t
+  -> modules:Ordered_set_lang.t
+  -> Path.Build.t list Memo.t

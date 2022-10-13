@@ -40,6 +40,9 @@ Unreleased
 - Add `(glob_files <glob>)` and `(glob_files_rec <glob>)` terms to the `files`
   field of the `install` stanza (#6250, closes #6018, @gridbugs)
 
+- Allow `:standard` in the `(modules)` field of the `coq.pp` stanza (#6229,
+  fixes #2414, @Alizter)
+
 3.5.0 (2022-10-19)
 ------------------
 

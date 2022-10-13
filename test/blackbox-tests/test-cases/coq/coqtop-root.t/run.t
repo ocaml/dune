@@ -14,5 +14,5 @@ This test is currently broken due to the workspace resolution being faulty #5899
   1 | (coq.theory
   2 |  (name foo))
   Error: 'coq.theory' is available only when coq is enabled in the dune-project
-  file. You must enable it using (using coq 0.6) in your dune-project file.
+  file. You must enable it using (using coq 0.7) in your dune-project file.
   [1]

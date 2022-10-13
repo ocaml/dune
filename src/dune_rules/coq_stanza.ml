@@ -1,6 +1,17 @@
 open Import
 open Dune_lang.Decoder
 
+let coq_syntax =
+  Dune_lang.Syntax.create ~name:"coq" ~desc:"the Coq language"
+    [ ((0, 1), `Since (1, 9))
+    ; ((0, 2), `Since (2, 5))
+    ; ((0, 3), `Since (2, 8))
+    ; ((0, 4), `Since (3, 3))
+    ; ((0, 5), `Since (3, 4))
+    ; ((0, 6), `Since (3, 5))
+    ; ((0, 7), `Since (3, 6))
+    ]
+
 module Coqpp = struct
   type t =
     { modules : string list
@@ -17,16 +28,6 @@ module Coqpp = struct
 
   let p = ("coq.pp", decode >>| fun x -> [ T x ])
 end
-
-let coq_syntax =
-  Dune_lang.Syntax.create ~name:"coq" ~desc:"the Coq language"
-    [ ((0, 1), `Since (1, 9))
-    ; ((0, 2), `Since (2, 5))
-    ; ((0, 3), `Since (2, 8))
-    ; ((0, 4), `Since (3, 3))
-    ; ((0, 5), `Since (3, 4))
-    ; ((0, 6), `Since (3, 5))
-    ]
 
 module Buildable = struct
   type t =

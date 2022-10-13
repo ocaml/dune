@@ -14,7 +14,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: scheme
 
-   (lang dune 3.5)
+   (lang dune 3.6)
 
 Additionally, they can contains the following stanzas.
 
@@ -2032,7 +2032,7 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 3.5)
+    (lang dune 3.6)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

@@ -92,3 +92,20 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
     | _ -> acc)
 
 let lookup_module t m = Coq_module.Map.find t.rev_map m
+
+let mlg_files ~sctx ~dir ~modules =
+  let open Memo.O in
+  let filter_mlg p_orig =
+    let p, ext = Path.Source.split_extension p_orig in
+    if
+      ext = ".mlg"
+      && Predicate_lang.Glob.exec modules (Path.Source.basename p)
+           ~standard:Predicate_lang.any
+    then
+      Some
+        (Path.Build.append_source (Super_context.context sctx).build_dir p_orig)
+    else None
+  in
+  Source_tree.files_of (Path.Build.drop_build_context_exn dir)
+  >>| Path.Source.Set.to_list
+  >>| List.filter_map ~f:filter_mlg

@@ -1,0 +1,9 @@
+DECLARE PLUGIN "cplugin.ml_plugin_a"
+
+{
+
+(* We don't use any coqpp specific macros as to make the test more
+   resilient on different Coq versions *)
+let foo = 3
+
+}

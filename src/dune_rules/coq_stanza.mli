@@ -41,7 +41,7 @@ end
 
 module Coqpp : sig
   type t =
-    { modules : string list
+    { modules : Predicate_lang.Glob.t
     ; loc : Loc.t
     }
 

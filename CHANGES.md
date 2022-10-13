@@ -24,6 +24,9 @@ Unreleased
 - Create a fake socket file `_build/.rpc/dune` on windows to allow rpc clients
   to connect using the build directory. (#6329, @rgrinberg)
 
+- Allow `:standard` in the `(modules)` field of the `coq.pp` stanza (#6229,
+  fixes #2414, @Alizter)
+
 3.5.0 (2022-10-19)
 ------------------
 

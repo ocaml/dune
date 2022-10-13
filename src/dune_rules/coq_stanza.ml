@@ -14,13 +14,14 @@ let coq_syntax =
 
 module Coqpp = struct
   type t =
-    { modules : string list
+    { modules : Predicate_lang.Glob.t
     ; loc : Loc.t
     }
 
   let decode =
     fields
-      (let+ modules = field "modules" (repeat string)
+      (let+ modules =
+         field "modules" Predicate_lang.Glob.decode ~default:Predicate_lang.any
        and+ loc = loc in
        { modules; loc })
 

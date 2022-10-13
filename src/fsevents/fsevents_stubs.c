@@ -270,12 +270,7 @@ CAMLprim value dune_fsevents_action(value v_flags) {
   CAMLlocal1(v_action);
 
   uint32_t flags = Int32_val(v_flags) & action_mask;
-  // XXX slow
-  int count = 0;
-  while (flags) {
-    count += (flags & 1);
-    flags >>= 1;
-  }
+  int count = __builtin_popcount(flags);
 
   flags = Int32_val(v_flags);
   if (count >= 2 || flags & kFSEventStreamEventFlagItemRenamed) {

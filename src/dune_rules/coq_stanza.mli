@@ -41,7 +41,7 @@ end
 
 module Coqpp : sig
   type t =
-    { modules : string list
+    { modules : Ordered_set_lang.t
     ; loc : Loc.t
     }
 

@@ -735,15 +735,16 @@ let install_rules ~sctx ~dir s =
     |> List.rev_append coq_plugins_install_rules
 
 let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coqpp.t) =
-  let* coqpp = resolve_program sctx ~dir ~loc "coqpp" in
+  let* coqpp = resolve_program sctx ~dir ~loc "coqpp"
+  and* mlg_files = Coq_sources.mlg_files ~sctx ~dir ~modules in
   let mlg_rule m =
-    let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
-    let target = Path.Build.relative dir (m ^ ".ml") in
+    let source = Path.build m in
+    let target = Path.Build.set_extension m ~ext:".ml" in
     let args = [ Command.Args.Dep source; Hidden_targets [ target ] ] in
     let build_dir = (Super_context.context sctx).build_dir in
     Command.run ~dir:(Path.build build_dir) coqpp args
   in
-  List.rev_map ~f:mlg_rule modules |> Super_context.add_rules ~loc ~dir sctx
+  List.rev_map ~f:mlg_rule mlg_files |> Super_context.add_rules ~loc ~dir sctx
 
 let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
     (s : Extraction.t) =

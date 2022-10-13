@@ -92,3 +92,20 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
     | _ -> acc)
 
 let lookup_module t m = Coq_module.Map.find t.rev_map m
+
+let mlg_files ~sctx ~dir ~modules =
+  let open Memo.O in
+  let+ standard =
+    (* All .mlg files in the current directory *)
+    let filter_mlg file =
+      if Path.Source.extension file = ".mlg" then
+        Some
+          (Path.Build.append_source (Super_context.context sctx).build_dir file)
+      else None
+    in
+    Source_tree.files_of (Path.Build.drop_build_context_exn dir)
+    >>| Path.Source.Set.to_list
+    >>| List.filter_map ~f:filter_mlg
+  in
+  let parse ~loc:_ file = Path.Build.relative dir (file ^ ".mlg") in
+  Ordered_set_lang.eval modules ~standard ~parse ~eq:Path.Build.equal

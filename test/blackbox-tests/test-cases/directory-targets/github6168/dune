@@ -1,0 +1,11 @@
+(executable
+ (name fakenpm)
+ (modules fakenpm)
+ (libraries unix))
+
+(env
+ (_
+  (binaries fakenpm.exe)))
+
+(cram
+ (deps fakenpm.exe))

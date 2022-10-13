@@ -676,6 +676,46 @@ The glob syntax is interpreted as follows:
 - ``{<glob1>,<glob2>,...,<globn>}`` matches any string that is matched by one of
   ``<glob1>``, ``<glob2>``, etc.
 
+.. list-table:: Glob syntax examples
+   :header-rows: 1
+
+   * - Syntax
+     - Files matched
+     - Files not matched
+   * - ``x``
+     - ``x``
+     - ``y``
+   * - ``\*``
+     - ``*``
+     - ``x``
+   * - ``file*.txt``
+     - ``file1.txt``, ``file2.txt``
+     - ``f.txt``
+   * - ``*.txt``
+     - ``f.txt``
+     - ``.hidden.txt``
+   * - ``a**``
+     - ``aml``
+     - ``a.ml``
+   * - ``**``
+     - ``a/b``, ``a.b``
+     - (none)
+   * - ``a?.txt``
+     - ``a1.txt``, ``a2.txt``
+     - ``b1.txt``, ``a10.txt``
+   * - ``f[xyz].txt``
+     - ``fx.txt``, ``fy.txt``, ``fz.txt``
+     - ``f2.txt``, ``f.txt``
+   * - ``f[!xyz].txt``
+     - ``f2.txt``, ``fa.txt``
+     - ``fx.txt``, ``f.txt``
+   * - ``a.{ml,mli}``
+     - ``a.ml``, ``a.mli``
+     - ``a.txt``, ``b.ml``
+   * - ``../a.{ml,mli}``
+     - ``../a.ml``, ``../a.mli``
+     - ``a.ml``
+
 .. _ocaml-flags:
 
 OCaml Flags

@@ -33,7 +33,7 @@ version<coq-lang>` in the :ref:`dune-project` file. For example, adding
 
 .. code:: scheme
 
-    (using coq 0.6)
+    (using coq 0.7)
 
 to a :ref:`dune-project` file enables using the ``coq.theory`` stanza and other
 ``coq.*`` stanzas. See the :ref:`Dune Coq language<coq-lang>` section for more
@@ -239,7 +239,7 @@ file:
 
 .. code:: scheme
 
-    (using coq 0.6)
+    (using coq 0.7)
 
 The supported Coq language versions (not the version of Coq) are:
 
@@ -338,7 +338,7 @@ Let us start with a simple project. First, make sure we have a
 .. code:: scheme
 
   (lang dune 3.6)
-  (using coq 0.6)
+  (using coq 0.7)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:
 
@@ -551,7 +551,7 @@ otherwise Coq will not be able to find it.
 .. code:: scheme
 
   (lang dune 3.6)
-  (using coq 0.6)
+  (using coq 0.7)
 
   (package
    (name my-coq-plugin)

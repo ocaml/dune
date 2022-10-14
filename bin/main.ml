@@ -86,7 +86,7 @@ let exit_and_flush code =
   exit code
 
 let () =
-  Colors.setup_err_formatter_colors ();
+  Dune_rules.Colors.setup_err_formatter_colors ();
   try
     match Cmd.eval_value cmd ~catch:false with
     | Ok _ -> exit_and_flush 0

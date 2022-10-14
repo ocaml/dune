@@ -1,38 +1,49 @@
 open Stdune
-open Dune_engine
+
+include struct
+  open Dune_engine
+  module Build_config = Build_config
+  module Build_system = Build_system
+  module Load_rules = Load_rules
+  module Package = Package
+  module Hooks = Hooks
+  module Action_builder = Action_builder
+  module Action = Action
+  module Dep = Dep
+  module Action_to_sh = Action_to_sh
+  module Dpath = Dpath
+  module Findlib = Dune_rules.Findlib
+  module Dune_package = Dune_rules.Dune_package
+  module Install = Dune_rules.Install
+  module Section = Section
+  module Diff_promotion = Diff_promotion
+  module Dune_project = Dune_project
+  module Cached_digest = Cached_digest
+  module Targets = Targets
+end
+
+include struct
+  open Dune_rules
+  module Super_context = Super_context
+  module Context = Context
+  module Config = Dune_util.Config
+  module Lib_name = Lib_name
+  module Workspace = Workspace
+  module Profile = Profile
+  module Resolve = Resolve
+end
+
+include struct
+  open Cmdliner
+  module Term = Term
+  module Manpage = Manpage
+  module Cmd = Cmd
+end
+
 module Digest = Dune_digest
 module Metrics = Dune_metrics
 module Console = Dune_console
-module Term = Cmdliner.Term
-module Manpage = Cmdliner.Manpage
-module Cmd = Cmdliner.Cmd
 module Stanza = Dune_lang.Stanza
-module Super_context = Dune_rules.Super_context
-module Context = Dune_rules.Context
-module Config = Dune_util.Config
-module Lib_name = Dune_rules.Lib_name
-module Build_config = Dune_engine.Build_config
-module Build_system = Dune_engine.Build_system
-module Load_rules = Dune_engine.Load_rules
-module Findlib = Dune_rules.Findlib
-module Package = Dune_engine.Package
-module Dune_package = Dune_rules.Dune_package
-module Hooks = Dune_engine.Hooks
-module Action_builder = Dune_engine.Action_builder
-module Action = Dune_engine.Action
-module Dep = Dune_engine.Dep
-module Action_to_sh = Dune_engine.Action_to_sh
-module Dpath = Dune_engine.Dpath
-module Install = Dune_rules.Install
-module Section = Dune_engine.Section
-module Diff_promotion = Dune_engine.Diff_promotion
-module Colors = Dune_rules.Colors
-module Dune_project = Dune_engine.Dune_project
-module Workspace = Dune_rules.Workspace
-module Cached_digest = Dune_engine.Cached_digest
-module Targets = Dune_engine.Targets
-module Profile = Dune_rules.Profile
-module Resolve = Dune_rules.Resolve
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph
@@ -49,7 +60,7 @@ end = struct
 
   let setup () =
     let open Fiber.O in
-    let* scheduler = Scheduler.t () in
+    let* scheduler = Dune_engine.Scheduler.t () in
     Console.Status_line.set
       (Live
          (fun () ->
@@ -66,7 +77,7 @@ end = struct
                (sprintf "Done: %u%% (%u/%u, %u left) (jobs: %u)"
                   (if total = 0 then 0 else done_ * 100 / total)
                   done_ total (total - done_)
-                  (Scheduler.running_jobs_count scheduler))));
+                  (Dune_engine.Scheduler.running_jobs_count scheduler))));
     Fiber.return (Memo.of_thunk get)
 end
 
@@ -93,7 +104,7 @@ module Scheduler = struct
              ]))
 
   let on_event dune_config _config = function
-    | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
+    | Run.Event.Tick -> Console.Status_line.refresh ()
     | Source_files_changed { details_hum } ->
       maybe_clear_screen ~details_hum dune_config
     | Build_interrupted ->
@@ -133,7 +144,7 @@ module Scheduler = struct
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
         ~signal_watcher:`Yes
     in
-    Scheduler.Run.go config ~on_event:(on_event dune_config) f
+    Run.go config ~on_event:(on_event dune_config) f
 
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
@@ -148,7 +159,7 @@ module Scheduler = struct
     let run () =
       Fiber.fork_and_join_unit (fun () -> Dune_rpc_impl.Server.run rpc) run
     in
-    Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run
+    Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

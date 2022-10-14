@@ -50,6 +50,10 @@ module Server : sig
 
   val create : Unix.sockaddr -> backlog:int -> t
 
+  (** [ready t] returns a fiber that completes when clients can start connecting
+      to the server *)
+  val ready : t -> unit Fiber.t
+
   val stop : t -> unit
 
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t

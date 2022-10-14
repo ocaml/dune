@@ -279,16 +279,21 @@ module Server = struct
     { mutable transport : Transport.t option
     ; backlog : int
     ; sockaddr : Unix.sockaddr
+    ; ready : unit Fiber.Ivar.t
     }
 
-  let create sockaddr ~backlog = { sockaddr; backlog; transport = None }
+  let create sockaddr ~backlog =
+    { sockaddr; backlog; transport = None; ready = Fiber.Ivar.create () }
+
+  let ready t = Fiber.Ivar.read t.ready
 
   let serve (t : t) =
     let* async = Worker.create () in
-    let+ transport =
+    let* transport =
       Worker.task_exn async ~f:(fun () ->
           Transport.create t.sockaddr ~backlog:t.backlog)
     in
+    let+ () = Fiber.Ivar.fill t.ready () in
     t.transport <- Some transport;
     let accept () =
       Worker.task async ~f:(fun () ->

@@ -137,6 +137,13 @@ module Scheduler = struct
         (Constant
            (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 
+  let rpc common =
+    let rpc = Common.rpc common in
+    { Dune_engine.Rpc.run = Dune_rpc_impl.Server.run rpc
+    ; stop = Dune_rpc_impl.Server.stop rpc
+    ; ready = Dune_rpc_impl.Server.ready rpc
+    }
+
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config =
@@ -144,7 +151,9 @@ module Scheduler = struct
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
         ~signal_watcher:`Yes
     in
-    Run.go config ~on_event:(on_event dune_config) f
+    let server = rpc common in
+    Run.go config ~on_event:(on_event dune_config) (fun () ->
+        Dune_engine.Rpc.with_background_rpc server f)
 
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
@@ -155,9 +164,12 @@ module Scheduler = struct
         ~signal_watcher:`Yes
     in
     let file_watcher = Common.file_watcher common in
-    let rpc = Common.rpc common in
+    let server = rpc common in
     let run () =
-      Fiber.fork_and_join_unit (fun () -> Dune_rpc_impl.Server.run rpc) run
+      let open Fiber.O in
+      Dune_engine.Rpc.with_background_rpc server @@ fun () ->
+      let* () = Dune_engine.Rpc.ensure_ready () in
+      run ()
     in
     Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end

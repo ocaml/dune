@@ -1012,7 +1012,15 @@ let term ~default_root_is_cwd =
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
-  let rpc = lazy (Dune_rpc_impl.Server.create ~root:root.dir stats) in
+  let rpc =
+    lazy
+      (let registry =
+         match watch with
+         | Yes _ -> `Add
+         | No -> `Skip
+       in
+       Dune_rpc_impl.Server.create ~registry ~root:root.dir stats)
+  in
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();

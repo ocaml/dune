@@ -51,6 +51,8 @@ module Buildable : sig
 
   (** Check if the buildable has any c++ foreign stubs. *)
   val has_foreign_cxx : t -> bool
+
+  val has_mode_dependent_foreign_stubs : t -> bool
 end
 
 module Public_lib : sig
@@ -168,12 +170,17 @@ module Library : sig
   val has_foreign_cxx : t -> bool
 
   (** The list of all foreign archives, including the foreign stubs archive. *)
-  val foreign_archives : t -> Foreign.Archive.t list
+  val foreign_archives : t -> Foreign.Archive.t option * Foreign.Archive.t list
 
   (** The [lib*.a] files of all foreign archives, including foreign stubs. [dir]
-      is the directory the library is declared in. *)
+      is the directory the library is declared in. Only files relevant to the
+      [for_mode] selection will be returned. *)
   val foreign_lib_files :
-    t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
+       t
+    -> dir:Path.Build.t
+    -> ext_lib:string
+    -> for_mode:Mode.Select.t
+    -> Path.Build.t list
 
   (** The path to a library archive. [dir] is the directory the library is
       declared in. *)

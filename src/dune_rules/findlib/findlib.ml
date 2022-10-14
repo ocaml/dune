@@ -397,6 +397,9 @@ end = struct
                   else Right file
                 else Skip)
         in
+        let foreign_archives =
+          Mode.Map.Multi.create_for_all_modes foreign_archives
+        in
         let entry_modules =
           Lib_info.Source.External
             (match Vars.get_words t.vars "main_modules" Ps.empty with

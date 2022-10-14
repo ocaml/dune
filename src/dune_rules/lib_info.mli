@@ -92,8 +92,10 @@ val archives : 'path t -> 'path list Mode.Dict.t
 (* TODO: Rename [foreign_archives] to [foreign_lib_files] and [native_archives]
    to [native_lib_files] for consistent naming with [foreign_dll_files]. *)
 
-(** All the [lib*.a] files for stubs *)
-val foreign_archives : 'path t -> 'path list
+(** All the [lib*.a] files for stubs. A table indexed by [Mode.Select.t] is used
+    to account for mode-dependent archives. The special key [Mode.Select.All] is
+    used for archives that should be built in every modes. *)
+val foreign_archives : 'path t -> 'path Mode.Map.Multi.t
 
 type 'path native_archives =
   | Needs_module_info of 'path
@@ -220,7 +222,7 @@ val create :
   -> plugins:'a list Mode.Dict.t
   -> archives:'a list Mode.Dict.t
   -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
-  -> foreign_archives:'a list
+  -> foreign_archives:'a Mode.Map.Multi.t
   -> native_archives:'a native_archives
   -> foreign_dll_files:'a list
   -> jsoo_runtime:'a list

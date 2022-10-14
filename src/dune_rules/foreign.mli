@@ -41,7 +41,7 @@ module Archive : sig
 
     val to_string : t -> string
 
-    val path : dir:Path.Build.t -> t -> Path.Build.t
+    val path : dir:Path.Build.t -> mode:Mode.Select.t -> t -> Path.Build.t
 
     val decode : t Dune_lang.Decoder.t
 
@@ -49,24 +49,44 @@ module Archive : sig
 
     val lib_file_prefix : string
 
-    val lib_file : t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
+    val lib_file :
+         t
+      -> dir:Path.Build.t
+      -> ext_lib:string
+      -> mode:Mode.Select.t
+      -> Path.Build.t
 
-    val dll_file : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
+    val dll_file :
+         t
+      -> dir:Path.Build.t
+      -> ext_dll:string
+      -> mode:Mode.Select.t
+      -> Path.Build.t
   end
 
   type t
 
   val dir_path : dir:Path.Build.t -> t -> Path.Build.t
 
-  val name : t -> Name.t
+  val name : mode:Mode.Select.t -> t -> Name.t
 
   val stubs : string -> t
 
   val decode : t Dune_lang.Decoder.t
 
-  val lib_file : archive:t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
+  val lib_file :
+       archive:t
+    -> dir:Path.Build.t
+    -> ext_lib:string
+    -> mode:Mode.Select.t
+    -> Path.Build.t
 
-  val dll_file : archive:t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
+  val dll_file :
+       archive:t
+    -> dir:Path.Build.t
+    -> ext_dll:string
+    -> mode:Mode.Select.t
+    -> Path.Build.t
 end
 
 (** A type of foreign library "stubs", which includes all fields of the
@@ -98,6 +118,7 @@ module Stubs : sig
     { loc : Loc.t
     ; language : Foreign_language.t
     ; names : Ordered_set_lang.t
+    ; mode : Mode.Select.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; include_dirs : Include_dir.t list
     ; extra_deps : Dep_conf.t list
@@ -108,10 +129,13 @@ module Stubs : sig
        loc:Loc.t
     -> language:Foreign_language.t
     -> names:Ordered_set_lang.t
+    -> mode:Mode.Select.t
     -> flags:Ordered_set_lang.Unexpanded.t
     -> t
 
   val decode : t Dune_lang.Decoder.t
+
+  val is_mode_dependent : t -> bool
 end
 
 (** Foreign libraries.
@@ -162,8 +186,8 @@ module Source : sig
   val path : t -> Path.Build.t
 
   (* The name of the corresponding object file; for example, [name] for a source
-     file [some/path/name.cpp]. *)
-  val object_name : t -> string
+     file [some/path/name.cpp]. [with_mode_suffix] defaults to true. *)
+  val object_name : ?with_mode_suffix:bool -> t -> string
 
   val make : stubs:Stubs.t -> path:Path.Build.t -> t
 end
@@ -193,6 +217,7 @@ module Sources : sig
   end
 end
 
+(** For the [(foreign_objects ...)] field.*)
 module Objects : sig
   type t
 
@@ -202,5 +227,5 @@ module Objects : sig
 
   val decode : t Dune_lang.Decoder.t
 
-  val build_paths : t -> ext_obj:string -> dir:Path.Build.t -> Path.Build.t list
+  val build_paths : t -> ext_obj:string -> dir:Path.Build.t -> Path.t list
 end

@@ -163,5 +163,13 @@ module type S = sig
         that [f e = true]. If such an [e] is found then the function returns
         [Some (k,e)], otherwise it returns [None]. *)
     val find_elt : 'a t -> f:('a -> bool) -> (key * 'a) option
+
+    val to_flat_list : 'a t -> 'a list
+
+    val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
+
+    val map : 'a t -> f:('a -> 'b) -> 'b t
+
+    val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   end
 end

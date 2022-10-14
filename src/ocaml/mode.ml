@@ -81,6 +81,8 @@ module Dict = struct
     f Byte t.byte;
     f Native t.native
 
+  let foldi t ~init ~f = f Native t.native @@ f Byte t.byte init
+
   let make_both x = { byte = x; native = x }
 
   let make ~byte ~native = { byte; native }
@@ -134,4 +136,97 @@ module Dict = struct
          and+ native = field ~default:[] "native" (repeat f) in
          { byte; native })
   end
+end
+
+module Select = struct
+  type mode = t
+
+  type nonrec t =
+    | Only of t
+    | All
+
+  let compare x y =
+    match (x, y) with
+    | All, All -> Eq
+    | All, _ -> Lt
+    | _, All -> Gt
+    | Only x, Only y -> compare x y
+
+  let of_option = function
+    | None -> All
+    | Some m -> Only m
+
+  let is_not_all = function
+    | All -> false
+    | Only _ -> true
+
+  let equal t t' =
+    match (t, t') with
+    | Only m, Only m' -> equal m m'
+    | All, All -> true
+    | _, _ -> false
+
+  let to_dyn t =
+    let open Dyn in
+    match t with
+    | All -> Variant ("All", [])
+    | Only m -> Variant ("Only", [ to_dyn m ])
+
+  let encode t =
+    let open Dune_sexp.Encoder in
+    match t with
+    | All -> string "all"
+    | Only m -> encode m
+
+  let decode =
+    let open Dune_sexp.Decoder in
+    let+ value = either (keyword "all") decode in
+    match value with
+    | Left () -> All
+    | Right mode -> Only mode
+end
+
+module Map = struct
+  type mode = t
+
+  (* Here we use a Map to be able in the future to use more variants than
+     just "Byte, Native or All" *)
+  include Map.Make (Select)
+
+  module Multi = struct
+    include Multi
+
+    let create_for_all_modes l = Multi.add_all empty All l
+
+    let for_all_modes t = find t All
+
+    let for_only ?(and_all = false) t mode =
+      let all = if and_all then for_all_modes t else [] in
+      List.rev_append all @@ find t (Only mode)
+  end
+
+  let encode encoder t =
+    let open Dune_sexp.Encoder in
+    let fields =
+      foldi t ~init:[] ~f:(fun for_ files acc ->
+          if List.is_empty files then acc
+          else
+            let field_for = field "for" Select.encode for_ in
+            let field_files = field_l "files" encoder files in
+            field_l "archives" Fun.id (record_fields [ field_for; field_files ])
+            :: acc)
+    in
+    record_fields fields
+
+  let decode decoder =
+    let open Dune_sexp.Decoder in
+    let+ fields =
+      fields
+      @@ multi_field "archives"
+           (fields
+              (let+ for_ = field "for" Select.decode
+               and+ files = field "files" (repeat decoder) in
+               (for_, files)))
+    in
+    of_list_exn fields
 end

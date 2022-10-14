@@ -8,6 +8,8 @@ val equal : t -> t -> bool
 
 val compare : t -> t -> Ordering.t
 
+val encode : t -> Dune_sexp.t
+
 val decode : t Dune_sexp.Decoder.t
 
 val all : t list
@@ -69,6 +71,8 @@ module Dict : sig
 
   val iteri : 'a t -> f:(mode -> 'a -> unit) -> unit
 
+  val foldi : 'a t -> init:'b -> f:(mode -> 'a -> 'b -> 'b) -> 'b
+
   val make_both : 'a -> 'a t
 
   val make : byte:'a -> native:'a -> 'a t
@@ -94,3 +98,49 @@ module Dict : sig
   end
 end
 with type mode := t
+
+(** [Select] is a utility module that represents a mode selection. *)
+module Select : sig
+  type mode = t
+
+  type nonrec t =
+    | Only of t
+    | All
+
+  include Dune_sexp.Conv.S with type t := t
+
+  val of_option : mode option -> t
+
+  val equal : t -> t -> bool
+
+  val is_not_all : t -> bool
+end
+
+(** [Map] is a data-structure that can store values that are indexed by keys of
+    the type [Select.t]. The key [Select.All] is meant to store values that
+    apply to any mode while keys of the form [Select.Only _] designate values
+    that apply to specific modes. *)
+module Map : sig
+  type mode = t
+
+  include Map.S with type key = Select.t
+
+  module Multi : sig
+    include module type of Multi
+
+    (** Creates an new map and populate the [All] key with the given list *)
+    val create_for_all_modes : 'a list -> 'a t
+
+    (** Returns the list of values associated to the [All] key. *)
+    val for_all_modes : 'a t -> 'a list
+
+    (** Returns the list of values associated to a specific mode. If the
+        [and_all] option (which defaults to [false]) is set to true then values
+        which are not associated to a specific mode are also returned. *)
+    val for_only : ?and_all:bool -> 'a t -> mode -> 'a list
+  end
+
+  val encode : ('a -> Dune_sexp.t) -> 'a Multi.t -> Dune_sexp.t list
+
+  val decode : 'a Dune_sexp.Decoder.t -> 'a Multi.t Dune_sexp.Decoder.t
+end

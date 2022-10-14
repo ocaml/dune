@@ -77,7 +77,8 @@ module Lib = struct
        ; mode_paths "archives" archives
        ; mode_paths "plugins" plugins
        ; paths "foreign_objects" foreign_objects
-       ; paths "foreign_archives" (Lib_info.foreign_archives info)
+       ; field_i "foreign_archives" (Mode.Map.encode path)
+           (Lib_info.foreign_archives info)
        ; paths "native_archives" native_archives
        ; paths "jsoo_runtime" jsoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
@@ -133,10 +134,17 @@ module Lib = struct
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
        and+ foreign_archives =
-         if lang.version >= (2, 0) then paths "foreign_archives"
+         if lang.version >= (3, 5) then
+           let+ field_o = field_o "foreign_archives" (Mode.Map.decode path) in
+           match field_o with
+           | Some archives -> archives
+           | None -> Mode.Map.empty
+         else if lang.version >= (2, 0) then
+           let+ paths = paths "foreign_archives" in
+           Mode.Map.Multi.create_for_all_modes paths
          else
            let+ m = mode_paths "foreign_archives" in
-           m.byte
+           Mode.Map.Multi.create_for_all_modes m.byte
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)

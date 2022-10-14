@@ -15,8 +15,8 @@ Typically, any given project will define a single scope. Libraries and
 executables that aren't meant to be installed will be visible inside
 this scope only.
 
-Because scopes are exclusive, if you wish to include your current project's 
-dependencies in your workspace, you can copy them in a ``vendor`` directory, 
+Because scopes are exclusive, if you wish to include your current project's
+dependencies in your workspace, you can copy them in a ``vendor`` directory,
 or any name of your choice. Dune will look for them there rather than in the installed
 world, and there will be no overlap between the various scopes.
 
@@ -51,11 +51,11 @@ future so that one may write:
 
    (flags (if (>= %{ocaml_version} 4.06) ...))
 
-This restriction will allow you to add this feature without introducing 
+This restriction will allow you to add this feature without introducing
 breaking changes. If you want to write a list where the first element
 doesn't start with ``-``, you can simply quote it: ``("x" y z)``.
 
-Most fields using the ordered set language also support :ref:`variables`. 
+Most fields using the ordered set language also support :ref:`variables`.
 Variables are expanded after the set language is interpreted.
 
 .. _blang:
@@ -80,8 +80,8 @@ After an expression is evaluated, it must be exactly the string ``true`` or
 ``false`` to be considered as a Boolean. Any other value will be treated as an
 error.
 
-Below is a simple example of a condition expressing that the build 
-has a flambda compiler, with the help of variable expansion, and is 
+Below is a simple example of a condition expressing that the build
+has a Flambda compiler, with the help of variable expansion, and is
 targeting OSX:
 
 .. code:: lisp
@@ -141,7 +141,7 @@ Dune supports the following variables:
   the value of ``workspace_root`` isn't constant and depends on
   whether your project is vendored or not.
 -  ``CC`` is the C compiler command line (list made of the compiler
-   name followed by its flags) that will be used to compile foreign code. 
+   name followed by its flags) that will be used to compile foreign code.
    For more details about its content, please see :ref:`this section <flags-flow>`.
 -  ``CXX`` is the C++ compiler command line being used in the
    current build context.
@@ -207,11 +207,11 @@ In addition, ``(action ...)`` fields support the following special variables:
   ...)`` or ``(system ...)``.
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
-- ``lib:<public-library-name>:<file>`` expands to the file's installation path 
+- ``lib:<public-library-name>:<file>`` expands to the file's installation path
   ``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local
   file will be used, otherwise the one from the installed world will be used.
-- ``lib-private:<library-name>:<file>`` expands to the file's build path 
+- ``lib-private:<library-name>:<file>`` expands to the file's build path
   ``<file>`` in the library ``<library-name>``. Both public and private library
   names are allowed as long as they refer to libraries within the same project.
 - ``libexec:<public-library-name>:<file>`` is the same as ``lib:...``, except
@@ -367,7 +367,7 @@ preferred to ones that are part of the installed world.
 Alternative Dependencies
 ------------------------
 
-Sometimes, one doesn't want to depend on a specific library but rather 
+Sometimes, one doesn't want to depend on a specific library but rather
 on whatever is already installed, e.g., to use a different
 backend, depending on the target.
 
@@ -825,7 +825,7 @@ the destination file. More precisely, it inserts the following line:
 
     # 1 "<source file name>"
 
-Most languages recognize such lines and update their current location 
+Most languages recognize such lines and update their current location
 to report errors in the original file rather than the
 copy. This is important beause the copy exists only under the ``_build``
 directory, and in order for editors to jump to errors when parsing the
@@ -890,7 +890,7 @@ Sandboxing
 The user actions that run external commands (``run``, ``bash``, ``system``)
 are opaque to Dune, so Dune has to rely on manual specification of dependencies
 and targets. One problem with manual specification is that it's error-prone.
-It's often hard to know in advance what files the command will read, 
+It's often hard to know in advance what files the command will read,
 and knowing a correct set of dependencies is very important for build
 reproducibility and incremental build correctness.
 
@@ -1192,12 +1192,12 @@ Executables
 
 Similarly to libraries, to attach an executable to a package simply
 add a ``public_name`` field to your ``executable`` stanza or a
-``public_names`` field for ``executables`` stanzas. Designate this 
-name to match the available executables through the installed ``PATH`` 
-(i.e., the name users must type in their shell to execute 
+``public_names`` field for ``executables`` stanzas. Designate this
+name to match the available executables through the installed ``PATH``
+(i.e., the name users must type in their shell to execute
 the program), because Dune cannot guess an executable's relevant package
-from its public name. It's also necessary to add a ``package`` field 
-unless the project contains a single package, in which case the executable 
+from its public name. It's also necessary to add a ``package`` field
+unless the project contains a single package, in which case the executable
 will be attached to this package.
 
 For instance:
@@ -1305,6 +1305,36 @@ Here is a complete list of supported subfields:
   This is useful when dealing with ``#include`` statements that escape into
   a parent directory like ``#include "../a.h"``.
 
+
+Mode-Dependent Stubs
+^^^^^^^^^^^^^^^^^^^^
+
+Since Dune 3.5, it is possible to use different foreign stubs when building in
+`native` or `byte` mode. This feature needs to be activated by adding ``(using
+mode_specific_stubs 0.1)`` in the ``dune-project`` file.
+
+Then it is allowed to use the ``mode`` field when describing ``foreign_stubs``.
+If the same stub is defined twice, Dune will automatically chose the correct one.
+This allows the use of different sets of flags or even different source files
+from which the stubs are built.
+
+.. code:: scheme
+
+  (executable
+   (name main)
+   (modes native byte_complete)
+   (foreign_stubs
+     (language c)
+     (mode byte)
+     (names c_stubs))
+   (foreign_stubs
+     (language c)
+     (mode native)
+     (flags :standard -DNATIVE_CODE) ; A flag specific to native builds
+     (names c_stubs)))  ; This could be the name of an implementation
+                        ; specific to native builds
+
+Note that, as of version ``0.1`` of this extension, this mechanism does not work for ``foreign_archives``.
 
 .. _foreign-archives:
 

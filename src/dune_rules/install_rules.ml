@@ -65,7 +65,9 @@ end = struct
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
         Foreign.Sources.object_files files ~dir ~ext_obj
-      else Memo.return (Lib_info.foreign_archives lib)
+      else
+        Memo.return
+          (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
     in
     List.concat_map
       ~f:(List.map ~f:(fun f -> (Section.Lib, f)))

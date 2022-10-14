@@ -74,7 +74,7 @@ let eval_foreign_stubs foreign_stubs ~dune_version
       Ordered_set_lang.Unordered_string.eval_loc stubs.names ~key:Fun.id
         ~standard ~parse:(fun ~loc:_ -> Fun.id)
     in
-    String.Map.map names ~f:(fun (loc, s) ->
+    String.Map.fold names ~init:String.Map.empty ~f:(fun (loc, s) acc ->
         let name = valid_name language ~loc s in
         let basename = Filename.basename s in
         if name <> basename then
@@ -96,7 +96,9 @@ let eval_foreign_stubs foreign_stubs ~dune_version
           | _ :: _ :: _ as paths -> multiple_sources_error ~name ~loc ~paths
         in
         match source with
-        | Some source -> source
+        | Some (loc, src) ->
+          let new_key = Foreign.Source.object_name src in
+          String.Map.add_exn acc new_key (loc, src)
         | None ->
           User_error.raise ~loc
             [ Pp.textf "Object %S has no source; %s must be present." name
@@ -107,7 +109,10 @@ let eval_foreign_stubs foreign_stubs ~dune_version
   in
   let stub_maps = List.map foreign_stubs ~f:eval in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
-      String.Map.union a b ~f:(fun name (loc, src1) (_, src2) ->
+      String.Map.union a b ~f:(fun _name (loc, src1) (_, src2) ->
+          (* Added mode suffixes are an implementation detail, we don't display
+             them in user messages. *)
+          let name = Foreign.Source.object_name ~with_mode_suffix:false src1 in
           multiple_sources_error ~name ~loc
             ~paths:Foreign.Source.[ path src1; path src2 ]))
 

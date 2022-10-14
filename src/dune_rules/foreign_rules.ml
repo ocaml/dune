@@ -196,6 +196,7 @@ let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
    looks like it's a list of libraries we depend on. *)
 let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
     ~requires ~dir_contents =
+  let open Memo.O in
   let ctx = Super_context.context sctx in
   let all_dirs = Dir_contents.dirs dir_contents in
   let h_files =
@@ -239,4 +240,10 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
         | C -> build_c ~kind:Foreign_language.C
         | Cxx -> build_c ~kind:Foreign_language.Cxx
       in
-      build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst))
+      let+ build_file =
+        build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst)
+      in
+      (src.stubs.mode, Path.build build_file))
+  |> Memo.all_concurrently
+  >>| List.fold_left ~init:Mode.Map.empty ~f:(fun tbl (for_mode, file) ->
+          Mode.Map.Multi.cons tbl for_mode file)

@@ -220,8 +220,6 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
         ~requires:(Resolve.return []) ~dir_contents ~foreign_sources
     in
     Mode.Map.Multi.for_all_modes o_files_by_mode
-    (* TODO XXX in the future we could support the use of mode-dependent
-       foreign_libraries. Right now it is not the case *)
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
   let* standard =

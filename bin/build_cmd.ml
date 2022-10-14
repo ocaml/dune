@@ -77,8 +77,8 @@ let run_build_system ~common ~request =
       Fiber.return ())
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
-  Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
-    ~config (fun () -> Scheduler.Run.poll (run_build_system ~common ~request))
+  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
+    (fun () -> Scheduler.Run.poll (run_build_system ~common ~request))
 
 let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
     unit =
@@ -86,8 +86,8 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
      non-empty, but we can't check that here because [request] is a function.*)
   let open Fiber.O in
   let rpc = Common.rpc common in
-  Import.Scheduler.go_with_rpc_server_and_console_status_reporting ~common
-    ~config (fun () ->
+  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
+    (fun () ->
       Scheduler.Run.poll_passive
         ~get_build_request:
           (let+ (Build (targets, ivar)) =

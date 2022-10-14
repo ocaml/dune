@@ -417,14 +417,13 @@ let buf_len = max_len
 
 let buf = Bytes.create buf_len
 
-type _ mode =
-  | Test : bool mode
-  | Copy :
+type mode =
+  | Test
+  | Copy of
       { input_file : Path.t
       ; output : bytes -> int -> int -> unit
       ; conf : conf
       }
-      -> unit mode
 
 (** The copy algorithm works as follow:
 
@@ -464,10 +463,10 @@ output the replacement        |                                             |
  |                                                                          |
  \--------------------------------------------------------------------------/
     v} *)
-let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
- fun ~input ~mode ->
+let parse ~input ~mode =
   let open Fiber.O in
-  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data : a Fiber.t =
+  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data ~has_seen_subs
+      =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
     let placeholder_start =
       match scanner_state with
@@ -509,13 +508,14 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
           let s = encode_replacement ~len ~repl:s in
           output (Bytes.unsafe_of_string s) 0 len;
           let pos = placeholder_start + len in
-          loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data)
+          loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data
+            ~has_seen_subs:true)
       | None ->
         (* Restart just after [prefix] since we know for sure that a placeholder
            cannot start before that. *)
         loop Scan0 ~beginning_of_data:placeholder_start
           ~pos:(placeholder_start + prefix_len)
-          ~end_of_data)
+          ~end_of_data ~has_seen_subs)
     | scanner_state -> (
       (* We reached the end of the buffer: move the leftover data back to the
          beginning of [buf] and refill the buffer *)
@@ -538,6 +538,7 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
           (* There might still be another placeholder after this invalid one
              with a length that is too long *)
           loop Scan0 ~beginning_of_data:0 ~pos:prefix_len ~end_of_data:leftover
+            ~has_seen_subs
         | _ -> (
           match mode with
           | Test -> Fiber.return false
@@ -545,17 +546,15 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
             (* Nothing more to read; [leftover] is definitely not the beginning
                of a placeholder, send it and end the copy *)
             output buf 0 leftover;
-            Fiber.return ()))
+            Fiber.return has_seen_subs))
       | n ->
         loop scanner_state ~beginning_of_data:0 ~pos:leftover
-          ~end_of_data:(leftover + n))
+          ~end_of_data:(leftover + n) ~has_seen_subs)
   in
   match input buf 0 buf_len with
-  | 0 -> (
-    match mode with
-    | Test -> Fiber.return false
-    | Copy _ -> Fiber.return ())
-  | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
+  | 0 -> Fiber.return false
+  | n ->
+    loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n ~has_seen_subs:false
 
 let copy ~conf ~input_file ~input ~output =
   parse ~input ~mode:(Copy { conf; input_file; output })
@@ -612,7 +611,9 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
   Fiber.finalize
     (fun () ->
       let open Fiber.O in
-      let* () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
+      let* (_ : bool) =
+        copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file ()
+      in
       let+ () = run_sign_hook conf temp_file in
       replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->

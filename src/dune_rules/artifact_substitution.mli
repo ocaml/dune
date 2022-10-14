@@ -72,13 +72,15 @@ val copy_file :
     [output] functions from the OCaml standard library.
 
     [input_file] is used only for debugging purposes. It must be the name of the
-    source file. *)
+    source file.
+
+    Return whether a substitution happened. *)
 val copy :
      conf:conf
   -> input_file:Path.t
   -> input:(Bytes.t -> int -> int -> int)
   -> output:(Bytes.t -> int -> int -> unit)
-  -> unit Fiber.t
+  -> bool Fiber.t
 
 (** Produce the string that would replace the placeholder with the given value .*)
 val encode_replacement : len:int -> repl:string -> string

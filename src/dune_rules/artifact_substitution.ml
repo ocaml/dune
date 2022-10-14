@@ -568,10 +568,10 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
       Fiber.return ())
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
 
-let run_sign_hook conf file =
-  match conf.sign_hook with
-  | Some hook -> hook file
-  | None -> Fiber.return ()
+let run_sign_hook conf ~has_subst file =
+  match (conf.sign_hook, has_subst) with
+  | Some hook, true -> hook file
+  | _ -> Fiber.return ()
 
 (** This is just an optimisation: skip the renaming if the destination exists
     and has the right digest. The optimisation is useful to avoid unnecessary
@@ -611,10 +611,10 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
   Fiber.finalize
     (fun () ->
       let open Fiber.O in
-      let* (_ : bool) =
+      let* has_subst =
         copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file ()
       in
-      let+ () = run_sign_hook conf temp_file in
+      let+ () = run_sign_hook conf ~has_subst temp_file in
       replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
       Path.unlink_no_err temp_file;

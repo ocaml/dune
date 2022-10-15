@@ -28,6 +28,12 @@
   (deps %{bin:node})
   (alias runtest-js)))
 
+(subdir
+ melange
+ (cram
+  (deps %{bin:node})
+  (alias runtest-melange)))
+
 (cram
  (applies_to windows-diff)
  (alias runtest-windows))

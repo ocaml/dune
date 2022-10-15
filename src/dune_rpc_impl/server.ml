@@ -1,26 +1,35 @@
 open Import
 open Fiber.O
 open Dune_rpc_server
-module Initialize = Dune_rpc.Initialize
-module Public = Dune_rpc.Public
-module Versioned = Dune_rpc.Versioned
-module Server_notifications = Dune_rpc.Server_notifications
-module Sub = Dune_rpc.Sub
-module Progress = Dune_rpc.Progress
-module Procedures = Dune_rpc.Procedures
-module Id = Dune_rpc.Id
-module Diagnostic = Dune_rpc.Diagnostic
-module Conv = Dune_rpc.Conv
+
+include struct
+  open Dune_rpc
+  module Initialize = Initialize
+  module Public = Public
+  module Versioned = Versioned
+  module Server_notifications = Server_notifications
+  module Sub = Sub
+  module Progress = Progress
+  module Procedures = Procedures
+  module Id = Id
+  module Diagnostic = Diagnostic
+  module Conv = Conv
+end
+
+include struct
+  open Dune_engine
+  module Source_tree = Source_tree
+  module Build_config = Build_config
+  module Dune_project = Dune_project
+  module Diff_promotion = Diff_promotion
+end
+
 module Dep_conf = Dune_rules.Dep_conf
-module Stanza = Dune_lang.Stanza
-module Source_tree = Dune_engine.Source_tree
-module Build_config = Dune_engine.Build_config
-module Dune_project = Dune_engine.Dune_project
-module Diff_promotion = Dune_engine.Diff_promotion
 module Build_outcome = Decl.Build_outcome
+module Status = Decl.Status
+module Stanza = Dune_lang.Stanza
 module String_with_vars = Dune_lang.String_with_vars
 module Pform = Dune_lang.Pform
-module Status = Decl.Status
 
 module Config = struct
   type t =

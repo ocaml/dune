@@ -75,8 +75,9 @@ end = struct
                ; number_of_rules_failed = failed
                } ->
              Pp.verbatim
-               (sprintf "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
-                  (if total = 0 then 0 else done_ * 100 / total)
+               (sprintf "Done: %.2f%% (%u/%u, %u left%s) (jobs: %u)"
+                  (if total = 0 then 0.0
+                  else float_of_int done_ *. 100.0 /. float_of_int total)
                   done_ total (total - done_)
                   (if failed = 0 then "" else sprintf ", %u failed" failed)
                   (Dune_engine.Scheduler.running_jobs_count scheduler))));

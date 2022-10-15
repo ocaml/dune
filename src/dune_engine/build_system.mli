@@ -57,16 +57,15 @@ val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 (** {2 Misc} *)
 
 module Progress : sig
+  (** Measures for the progress of the build. *)
+
   type t =
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
     }
 
-  val equal : t -> t -> bool
-
-  val complete : t -> int
-
-  val remaining : t -> int
+  (** Initialize with zeros on all measures. *)
+  val init : t
 end
 
 module State : sig

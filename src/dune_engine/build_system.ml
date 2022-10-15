@@ -12,9 +12,7 @@ module Progress = struct
     Int.equal number_of_rules_discovered t.number_of_rules_discovered
     && Int.equal number_of_rules_executed t.number_of_rules_executed
 
-  let complete t = t.number_of_rules_executed
-
-  let remaining t = t.number_of_rules_discovered - t.number_of_rules_executed
+  let init = { number_of_rules_discovered = 0; number_of_rules_executed = 0 }
 end
 
 module Error = struct
@@ -150,10 +148,7 @@ module State = struct
   (* This mutex ensures that at most one [run] is running in parallel. *)
   let build_mutex = Fiber.Mutex.create ()
 
-  let progress_init =
-    { Progress.number_of_rules_discovered = 0; number_of_rules_executed = 0 }
-
-  let reset_progress () = Svar.write t (Building progress_init)
+  let reset_progress () = Svar.write t (Building Progress.init)
 
   let set what = Svar.write t what
 

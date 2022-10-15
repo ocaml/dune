@@ -277,8 +277,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         let remaining =
           now.number_of_rules_discovered - now.number_of_rules_executed
         in
-        let complete = now.number_of_rules_executed in
-        In_progress { complete; remaining }
+        In_progress { complete = now.number_of_rules_executed; remaining }
     in
     Handler.implement_long_poll rpc Procedures.Poll.progress Build_system.state
       ~equal:Build_system.State.equal ~diff

@@ -1,8 +1,8 @@
 .. _jsoo:
 
-**********************
-JavaScript Compilation
-**********************
+***************************************
+JavaScript Compilation With Js_of_ocaml
+***************************************
 
 Js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
 translating OCaml bytecode to JS files. The compiler can be installed with opam:

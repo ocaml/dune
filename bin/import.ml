@@ -106,9 +106,7 @@ module Scheduler = struct
                | Restarting_current_build
                | Build_succeeded__now_waiting_for_changes
                | Build_failed__now_waiting_for_changes ->
-                 { Build_system.Progress.number_of_rules_discovered = 0
-                 ; number_of_rules_executed = 0
-                 }
+                 Build_system.Progress.init
                | Building progress -> progress
              in
              Pp.seq

@@ -52,60 +52,59 @@ module Run = struct
     { server; handler; stats; pool; root; where }
 
   let run t =
-    Fiber.Var.set t_var t (fun () ->
-        let cleanup_registry = ref None in
-        let run_cleanup_registry () =
-          match !cleanup_registry with
-          | None -> ()
-          | Some path ->
-            Fpath.unlink_no_err path;
-            cleanup_registry := None
-        in
-        let with_print_errors f () =
-          Fiber.with_error_handler f ~on_error:(fun exn ->
-              Format.eprintf "%a@." Exn_with_backtrace.pp_uncaught exn;
-              Exn_with_backtrace.reraise exn)
-        in
-        Fiber.finalize
-          (with_print_errors (fun () ->
-               let open Fiber.O in
-               Fiber.fork_and_join_unit
-                 (fun () ->
-                   let* sessions = Csexp_rpc.Server.serve t.server in
-                   let () =
-                     let (`Caller_should_write { Registry.File.path; contents })
-                         =
-                       let registry_config =
-                         Registry.Config.create (Lazy.force Dune_util.xdg)
-                       in
-                       let dune =
-                         let pid = Unix.getpid () in
-                         let where =
-                           match t.where with
-                           | `Ip (host, port) -> `Ip (host, port)
-                           | `Unix a ->
-                             `Unix
-                               (if Filename.is_relative a then
-                                Filename.concat (Sys.getcwd ()) a
-                               else a)
-                         in
-                         Registry.Dune.create ~where ~root:t.root ~pid
-                       in
-                       Registry.Config.register registry_config dune
-                     in
-                     let (_ : Fpath.mkdir_p_result) =
-                       Fpath.mkdir_p (Filename.dirname path)
-                     in
-                     Io.String_path.write_file path contents;
-                     cleanup_registry := Some path;
-                     at_exit run_cleanup_registry
-                   in
-                   let* () = Server.serve sessions t.stats t.handler in
-                   Fiber.Pool.stop t.pool)
-                 (fun () -> Fiber.Pool.run t.pool)))
-          ~finally:(fun () ->
-            run_cleanup_registry ();
-            Fiber.return ()))
+    Fiber.Var.set t_var t @@ fun () ->
+    let cleanup_registry = ref None in
+    let run_cleanup_registry () =
+      match !cleanup_registry with
+      | None -> ()
+      | Some path ->
+        Fpath.unlink_no_err path;
+        cleanup_registry := None
+    in
+    let with_print_errors f () =
+      Fiber.with_error_handler f ~on_error:(fun exn ->
+          Format.eprintf "%a@." Exn_with_backtrace.pp_uncaught exn;
+          Exn_with_backtrace.reraise exn)
+    in
+    let run () =
+      let open Fiber.O in
+      Fiber.fork_and_join_unit
+        (fun () ->
+          let* sessions = Csexp_rpc.Server.serve t.server in
+          let () =
+            let (`Caller_should_write { Registry.File.path; contents }) =
+              let registry_config =
+                Registry.Config.create (Lazy.force Dune_util.xdg)
+              in
+              let dune =
+                let pid = Unix.getpid () in
+                let where =
+                  match t.where with
+                  | `Ip (host, port) -> `Ip (host, port)
+                  | `Unix a ->
+                    `Unix
+                      (if Filename.is_relative a then
+                       Filename.concat (Sys.getcwd ()) a
+                      else a)
+                in
+                Registry.Dune.create ~where ~root:t.root ~pid
+              in
+              Registry.Config.register registry_config dune
+            in
+            let (_ : Fpath.mkdir_p_result) =
+              Fpath.mkdir_p (Filename.dirname path)
+            in
+            Io.String_path.write_file path contents;
+            cleanup_registry := Some path;
+            at_exit run_cleanup_registry
+          in
+          let* () = Server.serve sessions t.stats t.handler in
+          Fiber.Pool.stop t.pool)
+        (fun () -> Fiber.Pool.run t.pool)
+    in
+    Fiber.finalize (with_print_errors run) ~finally:(fun () ->
+        run_cleanup_registry ();
+        Fiber.return ())
 
   let stop () =
     let open Fiber.O in

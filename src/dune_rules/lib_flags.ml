@@ -119,10 +119,11 @@ module L = struct
             else acc
           in
           match mode with
-          | Mode.Byte -> acc
-          | Native ->
+          | Lib_mode.Ocaml Byte -> acc
+          | Ocaml Native ->
             let native_dir = Obj_dir.native_dir obj_dir in
-            Path.Set.add acc native_dir)
+            Path.Set.add acc native_dir
+          | Melange -> Path.Set.add acc (Obj_dir.melange_dir obj_dir))
     in
     remove_stdlib dirs ts
 
@@ -146,7 +147,9 @@ module L = struct
           | [] -> false
           | _ -> true)
     in
-    Path.Set.union (include_paths ts Mode.Byte) (c_include_paths with_dlls)
+    Path.Set.union
+      (include_paths ts (Lib_mode.Ocaml Byte))
+      (c_include_paths with_dlls)
 end
 
 module Lib_and_module = struct
@@ -177,7 +180,7 @@ module Lib_and_module = struct
                    (Command.Args.S
                       (Dep
                          (Obj_dir.Module.cm_file_exn obj_dir m
-                            ~kind:(Mode.cm_kind (Link_mode.mode mode)))
+                            ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
                       ::
                       (match mode with
                       | Native ->

@@ -122,9 +122,11 @@ let opt_rule cctx m =
   let ctx = CC.context cctx in
   let dir = CC.dir cctx in
   let obj_dir = CC.obj_dir cctx in
-  let linear = Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:linear_ext in
+  let linear =
+    Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:linear_ext
+  in
   let linear_fdo =
-    Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:linear_fdo_ext
+    Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:linear_fdo_ext
   in
   let open Memo.O in
   let flags () =

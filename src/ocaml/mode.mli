@@ -24,8 +24,6 @@ val plugin_ext : t -> string
 
 val cm_kind : t -> Cm_kind.t
 
-val of_cm_kind : Cm_kind.t -> t
-
 val variant : t -> Variant.t
 
 val to_string : t -> string

@@ -521,6 +521,91 @@ module Mode_conf = struct
     let eval t ~has_native =
       eval_detailed t ~has_native |> Mode.Dict.map ~f:Option.is_some
   end
+
+  module Lib = struct
+    type mode_conf = t
+
+    type t =
+      | Ocaml of mode_conf
+      | Melange
+
+    let decode ~enable_melange =
+      enum
+        ([ ("byte", Ocaml Byte)
+         ; ("native", Ocaml Native)
+         ; ("best", Ocaml Best)
+         ]
+        @ if enable_melange then [ ("melange", Melange) ] else [])
+
+    let to_string = function
+      | Ocaml Byte -> "byte"
+      | Ocaml Native -> "native"
+      | Ocaml Best -> "best"
+      | Melange -> "melange"
+
+    let to_dyn t = Dyn.variant (to_string t) []
+
+    module Map = struct
+      type nonrec 'a t =
+        { ocaml : 'a Map.t
+        ; melange : 'a
+        }
+
+      let find t = function
+        | Ocaml a -> Map.find t.ocaml a
+        | Melange -> t.melange
+
+      let update t key ~f =
+        match key with
+        | Ocaml key -> { t with ocaml = Map.update t.ocaml key ~f }
+        | Melange -> { t with melange = f t.melange }
+
+      let make_one x = { ocaml = Map.make_one x; melange = x }
+    end
+
+    module Set = struct
+      type mode_conf = t
+
+      type nonrec t = Kind.t option Map.t
+
+      let empty : t = Map.make_one None
+
+      let of_list (input : (mode_conf * Kind.t) list) : t =
+        List.fold_left ~init:empty input ~f:(fun acc (key, kind) ->
+            Map.update acc key ~f:(function
+              | None -> Some kind
+              | Some (Kind.Requested loc) ->
+                User_error.raise ~loc [ Pp.textf "already configured" ]
+              | Some Inherited ->
+                (* this doesn't happen as inherited can't be manually specified *)
+                assert false))
+
+      let decode =
+        let* project = Dune_project.get_exn () in
+        let enable_melange =
+          Dune_project.is_extension_set project Melange.extension_key
+        in
+        let decode =
+          let+ loc, t = located (decode ~enable_melange) in
+          (t, Kind.Requested loc)
+        in
+        repeat decode >>| of_list
+
+      let default loc : t = { empty with ocaml = Set.default loc }
+
+      module Details = struct
+        type t = Kind.t option
+      end
+
+      let eval_detailed t ~has_native =
+        let get key : Details.t = Map.find t key in
+        let melange = get Melange in
+        { Lib_mode.Map.ocaml = Set.eval_detailed t.ocaml ~has_native; melange }
+
+      let eval t ~has_native =
+        eval_detailed t ~has_native |> Lib_mode.Map.map ~f:Option.is_some
+    end
+  end
 end
 
 module Library = struct
@@ -563,7 +648,7 @@ module Library = struct
     ; synopsis : string option
     ; install_c_headers : string list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
-    ; modes : Mode_conf.Set.t
+    ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
@@ -607,8 +692,8 @@ module Library = struct
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
-         field "modes" Mode_conf.Set.decode
-           ~default:(Mode_conf.Set.default stanza_loc)
+         field "modes" Mode_conf.Lib.Set.decode
+           ~default:(Mode_conf.Lib.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ optional = field_b "optional"
        and+ no_dynlink = field_b "no_dynlink"
@@ -869,9 +954,10 @@ module Library = struct
     let open Memo.O in
     let obj_dir = obj_dir ~dir conf in
     let archive ?(dir = dir) ext = archive conf ~dir ~ext in
-    let modes = Mode_conf.Set.eval ~has_native conf.modes in
+    let modes = Mode_conf.Lib.Set.eval ~has_native conf.modes in
     let archive_for_mode ~f_ext ~mode =
-      if Mode.Dict.get modes mode then Some (archive (f_ext mode)) else None
+      if Mode.Dict.get modes.ocaml mode then Some (archive (f_ext mode))
+      else None
     in
     let archives_for_mode ~f_ext =
       Mode.Dict.of_func (fun ~mode ->
@@ -892,7 +978,7 @@ module Library = struct
         Mode.Map.Multi.create_for_all_modes
         @@ foreign_lib_files conf ~dir ~ext_lib ~for_mode:All
       in
-      Mode.Dict.foldi modes ~init ~f:(fun mode enabled acc ->
+      Mode.Dict.foldi modes.ocaml ~init ~f:(fun mode enabled acc ->
           if enabled then
             let for_mode = Mode.Select.Only mode in
             let libs = foreign_lib_files conf ~dir ~ext_lib ~for_mode in
@@ -901,7 +987,7 @@ module Library = struct
     in
     let native_archives =
       let archive = archive ext_lib in
-      if virtual_library || not modes.native then Lib_info.Files []
+      if virtual_library || not modes.ocaml.native then Lib_info.Files []
       else if
         Option.is_some conf.implements
         || Lib_config.linker_can_create_empty_archives lib_config
@@ -915,7 +1001,8 @@ module Library = struct
     let jsoo_archive =
       (* XXX we shouldn't access the directory of the obj_dir directly. We
          should use something like [Obj_dir.Archive.obj] instead *)
-      if modes.byte then Some (archive ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
+      if modes.ocaml.byte then
+        Some (archive ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
       else None
     in
     let virtual_ =

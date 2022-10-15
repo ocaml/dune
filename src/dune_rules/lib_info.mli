@@ -148,7 +148,7 @@ val wrapped : _ t -> Wrapped.t Inherited.t option
 
 val special_builtin_support : _ t -> Special_builtin_support.t option
 
-val modes : _ t -> Mode.Dict.Set.t
+val modes : _ t -> Lib_mode.Map.Set.t
 
 val implements : _ t -> (Loc.t * Lib_name.t) option
 
@@ -235,7 +235,7 @@ val create :
   -> entry_modules:Module_name.t list Or_exn.t Source.t
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
-  -> modes:Mode.Dict.Set.t
+  -> modes:Lib_mode.Map.Set.t
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:Special_builtin_support.t option
   -> exit_module:Module_name.t option

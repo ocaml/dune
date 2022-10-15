@@ -77,6 +77,7 @@ type t = private
   ; ocamldep : Action.Prog.t
   ; ocamlmklib : Action.Prog.t
   ; ocamlobjinfo : Action.Prog.t
+  ; melc : Action.Prog.t
   ; env : Env.t
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option  (** Misc *)
@@ -106,7 +107,7 @@ val to_dyn_concise : t -> Dyn.t
 val compare : t -> t -> Ordering.t
 
 (** Return the compiler needed for this compilation mode *)
-val compiler : t -> Mode.t -> Action.Prog.t
+val compiler : t -> Lib_mode.t -> Action.Prog.t
 
 (** Return what [%{make}] should expand into *)
 val make : t -> Path.t option Memo.t

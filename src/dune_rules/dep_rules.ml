@@ -16,7 +16,7 @@ let ooi_deps { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
   let write, read =
     let ctx = Super_context.context sctx in
     let unit =
-      Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind |> Path.build
+      Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml cm_kind) |> Path.build
     in
     let sandbox =
       if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing

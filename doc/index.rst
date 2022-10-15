@@ -19,6 +19,7 @@ Welcome to Dune's Documentation!
    foreign-code
    documentation
    jsoo
+   melange
    sites
    opam
    variants

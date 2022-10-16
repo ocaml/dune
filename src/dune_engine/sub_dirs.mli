@@ -40,7 +40,7 @@ module Status : sig
   end
 end
 
-type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
+type subdir_stanzas
 
 val or_default : subdir_stanzas -> Predicate_lang.Glob.t Status.Map.t
 

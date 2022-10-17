@@ -153,11 +153,13 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
   let dir = ctx.build_dir in
   let flags, sandbox =
     let flags =
-      match mode with
-      | Ocaml m -> Ocaml_flags.get (CC.flags cctx) m
-      | Melange ->
-        (* TODO: define Melange default flags somewhere, should melange rules read from [flags] stanza as well? *)
-        Ocaml_flags.get (CC.flags cctx) Byte
+      Ocaml_flags.get (CC.flags cctx)
+        (match mode with
+        | Ocaml m -> m
+        | Melange ->
+          (* TODO: define Melange default flags somewhere, should melange rules
+             read from [flags] stanza as well? *)
+          Byte)
     in
     match Module.pp_flags m with
     | None -> (flags, sandbox)

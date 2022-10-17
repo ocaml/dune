@@ -189,6 +189,11 @@ module Source : sig
      file [some/path/name.cpp] of [name_mode] if the stub is mode-specific. *)
   val object_name : t -> string
 
+  (* The name of the corresponding object file without the mode suffix. This is
+     useful for messages where the internally suffixed name would be confusing.
+  *)
+  val user_object_name : t -> string
+
   val make : stubs:Stubs.t -> path:Path.Build.t -> t
 end
 

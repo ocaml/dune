@@ -40,9 +40,29 @@ let valid_name language ~loc s =
 
 let eval_foreign_stubs foreign_stubs ~dune_version
     ~(sources : Foreign.Sources.Unresolved.t) : Foreign.Sources.t =
-  let multiple_sources_error ~name ~loc ~paths =
+  let multiple_sources_error ~name ~mode ~loc ~paths =
+    let hints =
+      [ Pp.text
+          "You can also avoid the name clash by placing the objects into \
+           different foreign archives and building them in different \
+           directories. Foreign archives can be defined using the \
+           (foreign_library ...) stanza."
+      ]
+    in
+    let hints, for_mode =
+      match mode with
+      | Mode.Select.All -> (hints, "")
+      | Mode.Select.Only m ->
+        let mode_hint =
+          Pp.text
+            "You may be missing a mode field that would restrict this stub to \
+             some specific mode."
+        in
+        (mode_hint :: hints, Printf.sprintf " for mode %s" @@ Mode.to_string m)
+    in
     User_error.raise ~loc
-      [ Pp.textf "Multiple sources map to the same object name %S:" name
+      [ Pp.textf "Multiple sources map to the same object name %S%s:" name
+          for_mode
       ; Pp.enumerate (List.sort ~compare:Path.Build.compare paths)
           ~f:(fun path ->
             Pp.text
@@ -53,13 +73,7 @@ let eval_foreign_stubs foreign_stubs ~dune_version
            names."
           name
       ]
-      ~hints:
-        [ Pp.text
-            "You can also avoid the name clash by placing the objects into \
-             different foreign archives and building them in different \
-             directories. Foreign archives can be defined using the \
-             (foreign_library ...) stanza."
-        ]
+      ~hints
   in
   let eval (stubs : Foreign.Stubs.t) =
     let language = stubs.language in
@@ -93,7 +107,8 @@ let eval_foreign_stubs foreign_stubs ~dune_version
           with
           | [ path ] -> Some (loc, Foreign.Source.make ~stubs ~path)
           | [] -> None
-          | _ :: _ :: _ as paths -> multiple_sources_error ~name ~loc ~paths
+          | _ :: _ :: _ as paths ->
+            multiple_sources_error ~name ~mode:All ~loc ~paths
         in
         match source with
         | Some (loc, src) ->
@@ -110,8 +125,9 @@ let eval_foreign_stubs foreign_stubs ~dune_version
   let stub_maps = List.map foreign_stubs ~f:eval in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
       String.Map.union a b ~f:(fun _name (loc, src1) (_, src2) ->
-          let name = Foreign.Source.object_name src1 in
-          multiple_sources_error ~name ~loc
+          let name = Foreign.Source.user_object_name src1 in
+          let mode = src1.stubs.mode in
+          multiple_sources_error ~name ~loc ~mode
             ~paths:Foreign.Source.[ path src1; path src2 ]))
 
 let check_no_qualified (loc, include_subdirs) =

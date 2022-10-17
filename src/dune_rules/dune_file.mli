@@ -102,9 +102,9 @@ module Mode_conf : sig
       }
   end
 
-  module Set : sig
-    type mode_conf := t
+  type mode_conf := t
 
+  module Set : sig
     type nonrec t = Kind.t option Map.t
 
     val of_list : (mode_conf * Kind.t) list -> t
@@ -121,8 +121,6 @@ module Mode_conf : sig
   end
 
   module Lib : sig
-    type mode_conf := t
-
     type t =
       | Ocaml of mode_conf
       | Melange

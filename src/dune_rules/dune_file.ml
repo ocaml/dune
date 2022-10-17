@@ -459,9 +459,9 @@ module Mode_conf = struct
     let make_one x = { byte = x; native = x; best = x }
   end
 
-  module Set = struct
-    type mode_conf = t
+  type mode_conf = t
 
+  module Set = struct
     type nonrec t = Kind.t option Map.t
 
     let empty : t = Map.make_one None
@@ -523,8 +523,6 @@ module Mode_conf = struct
   end
 
   module Lib = struct
-    type mode_conf = t
-
     type t =
       | Ocaml of mode_conf
       | Melange

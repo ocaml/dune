@@ -75,10 +75,10 @@ But two foreign stubs for the same file and mode is an error:
   File "dune", line 9, characters 9-16:
   9 |   (names c_stubs))
                ^^^^^^^
-  Error: Multiple sources map to the same object name "c_stubs":
+  Error: Multiple sources map to the same object name "c_stubs_byte":
   - c_stubs.c
   - c_stubs.c
-  This is not allowed; please rename them or remove "c_stubs" from object
+  This is not allowed; please rename them or remove "c_stubs_byte" from object
   names.
   Hint: You can also avoid the name clash by placing the objects into different
   foreign archives and building them in different directories. Foreign archives
@@ -89,10 +89,10 @@ But two foreign stubs for the same file and mode is an error:
   File "dune", line 9, characters 9-16:
   9 |   (names c_stubs))
                ^^^^^^^
-  Error: Multiple sources map to the same object name "c_stubs":
+  Error: Multiple sources map to the same object name "c_stubs_byte":
   - c_stubs.c
   - c_stubs.c
-  This is not allowed; please rename them or remove "c_stubs" from object
+  This is not allowed; please rename them or remove "c_stubs_byte" from object
   names.
   Hint: You can also avoid the name clash by placing the objects into different
   foreign archives and building them in different directories. Foreign archives

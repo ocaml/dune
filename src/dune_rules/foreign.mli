@@ -186,8 +186,8 @@ module Source : sig
   val path : t -> Path.Build.t
 
   (* The name of the corresponding object file; for example, [name] for a source
-     file [some/path/name.cpp]. [with_mode_suffix] defaults to true. *)
-  val object_name : ?with_mode_suffix:bool -> t -> string
+     file [some/path/name.cpp] of [name_mode] if the stub is mode-specific. *)
+  val object_name : t -> string
 
   val make : stubs:Stubs.t -> path:Path.Build.t -> t
 end

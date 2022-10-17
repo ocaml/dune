@@ -261,9 +261,10 @@ module Source = struct
 
   let path t = t.path
 
-  let object_name t =
+  let user_object_name t =
     t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
-    |> add_mode_suffix t.stubs.mode
+
+  let object_name t = user_object_name t |> add_mode_suffix t.stubs.mode
 
   let make ~stubs ~path = { stubs; path }
 end

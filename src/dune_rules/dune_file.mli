@@ -169,8 +169,11 @@ module Library : sig
   (** Check if the library has any c++ foreign stubs. *)
   val has_foreign_cxx : t -> bool
 
-  (** The list of all foreign archives, including the foreign stubs archive. *)
-  val foreign_archives : t -> Foreign.Archive.t option * Foreign.Archive.t list
+  (** The foreign stubs archive. *)
+  val stubs_archive : t -> Foreign.Archive.t option
+
+  (** The list of foreign archives. *)
+  val foreign_archives : t -> Foreign.Archive.t list
 
   (** The [lib*.a] files of all foreign archives, including foreign stubs. [dir]
       is the directory the library is declared in. Only files relevant to the

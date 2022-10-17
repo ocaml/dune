@@ -20,7 +20,8 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
   Memo.Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
-        let lib_archive, foreign_archives = Library.foreign_archives lib in
+        let lib_archive = Library.stubs_archive lib in
+        let foreign_archives = Library.foreign_archives lib in
         let make_args ~stub_mode archive =
           let lname =
             "-l"

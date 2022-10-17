@@ -290,7 +290,8 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     if
       Mode.Dict.Set.to_list modes
       |> List.for_all ~f:(fun mode ->
-             List.is_empty @@ Mode.Map.Multi.for_only o_files mode)
+             List.is_empty
+             @@ Mode.Map.Multi.for_only ~and_all:false o_files mode)
     then
       (* if stubs are not mode dependent *)
       let o_files = for_all_modes in
@@ -300,7 +301,9 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       let modes =
         Mode.Dict.Set.to_list modes
         |> List.map ~f:(fun mode ->
-               let o_files_for_mode = Mode.Map.Multi.for_only o_files mode in
+               let o_files_for_mode =
+                 Mode.Map.Multi.for_only ~and_all:false o_files mode
+               in
                ( List.rev_append for_all_modes o_files_for_mode
                , Mode.Select.Only mode ))
       in

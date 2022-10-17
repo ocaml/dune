@@ -9,15 +9,6 @@ module Progress = struct
     ; number_of_rules_failed : int
     }
 
-  let equal
-      { number_of_rules_discovered
-      ; number_of_rules_executed
-      ; number_of_rules_failed
-      } t =
-    Int.equal number_of_rules_discovered t.number_of_rules_discovered
-    && Int.equal number_of_rules_executed t.number_of_rules_executed
-    && Int.equal number_of_rules_failed t.number_of_rules_failed
-
   let init =
     { number_of_rules_discovered = 0
     ; number_of_rules_executed = 0
@@ -134,21 +125,6 @@ module State = struct
     | Restarting_current_build
     | Build_succeeded__now_waiting_for_changes
     | Build_failed__now_waiting_for_changes
-
-  let equal x y =
-    match (x, y) with
-    | Building x, Building y -> Progress.equal x y
-    | Initializing, Initializing
-    | Restarting_current_build, Restarting_current_build
-    | ( Build_succeeded__now_waiting_for_changes
-      , Build_succeeded__now_waiting_for_changes )
-    | ( Build_failed__now_waiting_for_changes
-      , Build_failed__now_waiting_for_changes ) -> true
-    | Building _, _
-    | Initializing, _
-    | Restarting_current_build, _
-    | Build_succeeded__now_waiting_for_changes, _
-    | Build_failed__now_waiting_for_changes, _ -> false
 
   let t = Fiber.Svar.create Initializing
 

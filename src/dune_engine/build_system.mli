@@ -76,8 +76,6 @@ module State : sig
     | Restarting_current_build
     | Build_succeeded__now_waiting_for_changes
     | Build_failed__now_waiting_for_changes
-
-  val equal : t -> t -> bool
 end
 
 val state : State.t Fiber.Svar.t

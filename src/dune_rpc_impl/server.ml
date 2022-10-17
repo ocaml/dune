@@ -287,8 +287,28 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
         in
         In_progress { complete = now.number_of_rules_executed; remaining }
     in
+    (* we purposefully ignore the number of failed jobs in the build progress as
+    to not spam RPC messages for every build failure *)
+    let equal x y =
+      let open Build_system.State in
+      match (x, y) with
+      | Building x, Building y ->
+        Int.equal x.number_of_rules_discovered y.number_of_rules_discovered
+        && Int.equal x.number_of_rules_executed y.number_of_rules_executed
+      | Initializing, Initializing
+      | Restarting_current_build, Restarting_current_build
+      | ( Build_succeeded__now_waiting_for_changes
+        , Build_succeeded__now_waiting_for_changes )
+      | ( Build_failed__now_waiting_for_changes
+        , Build_failed__now_waiting_for_changes ) -> true
+      | Building _, _
+      | Initializing, _
+      | Restarting_current_build, _
+      | Build_succeeded__now_waiting_for_changes, _
+      | Build_failed__now_waiting_for_changes, _ -> false
+    in
     Handler.implement_long_poll rpc Procedures.Poll.progress Build_system.state
-      ~equal:Build_system.State.equal ~diff
+      ~equal ~diff
   in
   let () =
     Handler.declare_notification rpc Procedures.Server_side.abort;

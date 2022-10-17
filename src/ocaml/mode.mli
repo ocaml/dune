@@ -115,6 +115,7 @@ module Select : sig
 
   val is_not_all : t -> bool
 end
+with type mode := t
 
 (** [Map] is a data-structure that can store values that are indexed by keys of
     the type [Select.t]. The key [Select.All] is meant to store values that
@@ -144,3 +145,4 @@ module Map : sig
 
   val decode : 'a Dune_sexp.Decoder.t -> 'a Multi.t Dune_sexp.Decoder.t
 end
+with type mode := t

@@ -67,6 +67,10 @@ val copy_file :
   -> unit
   -> unit Fiber.t
 
+type status =
+  | Some_substitution
+  | No_substitution
+
 (** Generic version of [copy_file]. Rather than filenames, it takes an input and
     output functions. Their semantic must match the ones of the [input] and
     [output] functions from the OCaml standard library.
@@ -80,10 +84,10 @@ val copy :
   -> input_file:Path.t
   -> input:(Bytes.t -> int -> int -> int)
   -> output:(Bytes.t -> int -> int -> unit)
-  -> bool Fiber.t
+  -> status Fiber.t
 
 (** Produce the string that would replace the placeholder with the given value .*)
 val encode_replacement : len:int -> repl:string -> string
 
 (** Test if a file contains a substitution placeholder. *)
-val test_file : src:Path.t -> unit -> bool Fiber.t
+val test_file : src:Path.t -> unit -> status Fiber.t

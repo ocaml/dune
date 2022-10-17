@@ -696,9 +696,12 @@ let install_uninstall ~what =
                             match special_file with
                             | _ when not create_install_files ->
                               Fiber.return true
-                            | None ->
-                              Dune_rules.Artifact_substitution.test_file
-                                ~src:entry.src ()
+                            | None -> (
+                              let open Dune_rules.Artifact_substitution in
+                              let+ status = test_file ~src:entry.src () in
+                              match status with
+                              | Some_substitution -> true
+                              | No_substitution -> false)
                             | Some Special_file.META
                             | Some Special_file.Dune_package ->
                               Fiber.return true

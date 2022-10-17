@@ -145,7 +145,7 @@ let test input =
        to_copy
      in
      let output = Buffer.add_subbytes buf in
-     let+ (_ : bool) =
+     let+ (_ : Artifact_substitution.status) =
        Artifact_substitution.copy ~conf:Artifact_substitution.conf_dummy
          ~input_file:(Path.of_string "<memory>")
          ~input ~output

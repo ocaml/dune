@@ -425,6 +425,10 @@ type mode =
       ; conf : conf
       }
 
+type status =
+  | Some_substitution
+  | No_substitution
+
 (** The copy algorithm works as follow:
 
     {v
@@ -465,8 +469,7 @@ output the replacement        |                                             |
     v} *)
 let parse ~input ~mode =
   let open Fiber.O in
-  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data ~has_seen_subs
-      =
+  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data ~status =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
     let placeholder_start =
       match scanner_state with
@@ -492,7 +495,7 @@ let parse ~input ~mode =
       match decode placeholder with
       | Some t -> (
         match mode with
-        | Test -> Fiber.return true
+        | Test -> Fiber.return Some_substitution
         | Copy { output; input_file; conf } ->
           let* s = eval t ~conf in
           (if !Clflags.debug_artifact_substitution then
@@ -509,13 +512,13 @@ let parse ~input ~mode =
           output (Bytes.unsafe_of_string s) 0 len;
           let pos = placeholder_start + len in
           loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data
-            ~has_seen_subs:true)
+            ~status:Some_substitution)
       | None ->
         (* Restart just after [prefix] since we know for sure that a placeholder
            cannot start before that. *)
         loop Scan0 ~beginning_of_data:placeholder_start
           ~pos:(placeholder_start + prefix_len)
-          ~end_of_data ~has_seen_subs)
+          ~end_of_data ~status)
     | scanner_state -> (
       (* We reached the end of the buffer: move the leftover data back to the
          beginning of [buf] and refill the buffer *)
@@ -538,23 +541,24 @@ let parse ~input ~mode =
           (* There might still be another placeholder after this invalid one
              with a length that is too long *)
           loop Scan0 ~beginning_of_data:0 ~pos:prefix_len ~end_of_data:leftover
-            ~has_seen_subs
+            ~status
         | _ -> (
           match mode with
-          | Test -> Fiber.return false
+          | Test -> Fiber.return No_substitution
           | Copy { output; _ } ->
             (* Nothing more to read; [leftover] is definitely not the beginning
                of a placeholder, send it and end the copy *)
             output buf 0 leftover;
-            Fiber.return has_seen_subs))
+            Fiber.return status))
       | n ->
         loop scanner_state ~beginning_of_data:0 ~pos:leftover
-          ~end_of_data:(leftover + n) ~has_seen_subs)
+          ~end_of_data:(leftover + n) ~status)
   in
   match input buf 0 buf_len with
-  | 0 -> Fiber.return false
+  | 0 -> Fiber.return No_substitution
   | n ->
-    loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n ~has_seen_subs:false
+    loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
+      ~status:No_substitution
 
 let copy ~conf ~input_file ~input ~output =
   parse ~input ~mode:(Copy { conf; input_file; output })
@@ -570,8 +574,8 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
 
 let run_sign_hook conf ~has_subst file =
   match has_subst with
-  | false -> Fiber.return ()
-  | true -> (
+  | No_substitution -> Fiber.return ()
+  | Some_substitution -> (
     match Lazy.force conf.sign_hook with
     | Some hook -> hook file
     | None -> Fiber.return ())

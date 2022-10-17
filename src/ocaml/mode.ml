@@ -139,8 +139,6 @@ module Dict = struct
 end
 
 module Select = struct
-  type mode = t
-
   type nonrec t =
     | Only of t
     | All
@@ -187,8 +185,6 @@ module Select = struct
 end
 
 module Map = struct
-  type mode = t
-
   (* Here we use a Map to be able in the future to use more variants than
      just "Byte, Native or All" *)
   include Map.Make (Select)

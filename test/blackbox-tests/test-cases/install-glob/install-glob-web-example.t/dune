@@ -1,0 +1,5 @@
+(install
+ (files
+  (glob_files style/*.css)
+  (glob_files_rec content/*.html))
+ (section share))

@@ -14,7 +14,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
       let dir = Path.Build.append_source context.build_dir d.dir in
       let binaries_from_install files =
         let* unexpanded_file_bindings =
-          Dune_file.Install_conf.File_entry.expand_include_multi files
+          Dune_file.Install_conf.File_entry.to_file_bindings_unexpanded files
             ~expand_str:(expand_str ~dir) ~dir
         in
         Memo.List.map unexpanded_file_bindings ~f:(fun fb ->

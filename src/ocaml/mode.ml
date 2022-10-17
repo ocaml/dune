@@ -196,7 +196,7 @@ module Map = struct
 
     let for_all_modes t = find t All
 
-    let for_only ?(and_all = false) t mode =
+    let for_only ~and_all t mode =
       let all = if and_all then for_all_modes t else [] in
       List.rev_append all @@ find t (Only mode)
   end

@@ -125,8 +125,6 @@ module Mode_conf : sig
       | Ocaml of mode_conf
       | Melange
 
-    val decode : enable_melange:bool -> t Dune_lang.Decoder.t
-
     val to_dyn : t -> Dyn.t
 
     module Map : sig

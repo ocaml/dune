@@ -110,6 +110,7 @@ Among other things, dune-configurator allows one to:
   (ppx_expect :with-test)
   (stdune (= :version))
   (dune-private-libs (= :version))
+  (dune-rpc (= :version))
   base-unix)
  (description "\
 

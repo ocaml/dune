@@ -2,17 +2,7 @@ open Import
 
 let run_by_dune_env_variable = "DUNE_DYNAMIC_RUN_CLIENT"
 
-let sexp_of_list sexp_of_t list : Sexp.t = List (List.map ~f:sexp_of_t list)
-
-let list_of_sexp (t_of_sexp : Sexp.t -> 'a Option.t) : Sexp.t -> _ = function
-  | List sexps -> List.map sexps ~f:t_of_sexp |> Option.List.all
-  | _ -> None
-
-let sexp_of_string string : Sexp.t = Atom string
-
-let string_of_sexp : Sexp.t -> _ = function
-  | Atom string -> Some string
-  | _ -> None
+module Error = Sexpable_intf.Error
 
 module Dependency = struct
   module T = struct
@@ -24,16 +14,20 @@ module Dependency = struct
           ; glob : string
           }
 
-    let sexp_of_t : _ -> Sexp.t = function
-      | File path -> List [ Atom "file"; Atom path ]
-      | Directory path -> List [ Atom "directory"; Atom path ]
-      | Glob { path; glob } -> List [ Atom "glob"; Atom path; Atom glob ]
-
-    let t_of_sexp : Sexp.t -> _ = function
-      | List [ Atom "file"; Atom path ] -> Some (File path)
-      | List [ Atom "directory"; Atom path ] -> Some (Directory path)
-      | List [ Atom "glob"; Atom path; Atom glob ] -> Some (Glob { path; glob })
-      | _ -> None
+    let conv =
+      let open Conv in
+      let file = constr "File" string (fun s -> File s) in
+      let directory = constr "Directory" string (fun s -> Directory s) in
+      let glob_cstr =
+        constr "Glob" (pair string string) (fun (path, glob) ->
+            Glob { path; glob })
+      in
+      sum
+        [ econstr file; econstr directory; econstr glob_cstr ]
+        (function
+          | File s -> case s file
+          | Directory s -> case s directory
+          | Glob { path; glob } -> case (path, glob) glob_cstr)
 
     let compare x y =
       match (x, y) with
@@ -58,9 +52,7 @@ module Dependency = struct
   module Set = struct
     include O.Set
 
-    let sexp_of_t (t : t) = to_list t |> sexp_of_list T.sexp_of_t
-
-    let t_of_sexp sexp = Option.O.(list_of_sexp T.t_of_sexp sexp >>| of_list)
+    let conv : t Conv.value = Conv.iso (Conv.list conv) of_list to_list
   end
 end
 
@@ -71,19 +63,21 @@ module Greeting = struct
       ; response_fn : string
       }
 
-    let sexp_of_t { run_arguments_fn; response_fn } : Sexp.t =
-      List [ Atom run_arguments_fn; Atom response_fn ]
-
-    let t_of_sexp : Sexp.t -> _ = function
-      | List [ Atom run_arguments_fn; Atom response_fn ] ->
-        Some { run_arguments_fn; response_fn }
-      | _ -> None
+    let conv =
+      let open Conv in
+      let to_ (run_arguments_fn, response_fn) =
+        { run_arguments_fn; response_fn }
+      in
+      let from { run_arguments_fn; response_fn } =
+        (run_arguments_fn, response_fn)
+      in
+      iso (pair string string) to_ from
 
     let version = 0
   end
 
   include T
-  include Serializable_intf.Make (T)
+  include Sexpable_intf.Make (T)
 end
 
 module Run_arguments = struct
@@ -93,28 +87,24 @@ module Run_arguments = struct
       ; targets : String.Set.t
       }
 
-    let sexp_of_t { prepared_dependencies; targets } : Sexp.t =
-      List
-        [ Dependency.Set.sexp_of_t prepared_dependencies
-        ; targets |> String.Set.to_list |> sexp_of_list sexp_of_string
-        ]
-
-    let t_of_sexp : Sexp.t -> _ = function
-      | List [ prepared_dependencies; targets ] ->
-        let open Option.O in
-        let* prepared_dependencies =
-          Dependency.Set.t_of_sexp prepared_dependencies
-        in
-        let+ targets = list_of_sexp string_of_sexp targets in
-        let targets = String.Set.of_list targets in
+    let conv =
+      let from { prepared_dependencies; targets } =
+        (prepared_dependencies, targets)
+      in
+      let to_ (prepared_dependencies, targets) =
         { prepared_dependencies; targets }
-      | _ -> None
+      in
+      let string_set =
+        Conv.iso Conv.(list string) String.Set.of_list String.Set.to_list
+      in
+      let conv = Conv.pair Dependency.Set.conv string_set in
+      Conv.iso conv to_ from
 
     let version = 0
   end
 
   include T
-  include Serializable_intf.Make (T)
+  include Sexpable_intf.Make (T)
 end
 
 module Response = struct
@@ -123,22 +113,24 @@ module Response = struct
       | Done
       | Need_more_deps of Dependency.Set.t
 
-    let sexp_of_t : _ -> Sexp.t = function
-      | Done -> List [ Atom "done" ]
-      | Need_more_deps deps ->
-        List [ Atom "need_more_deps"; Dependency.Set.sexp_of_t deps ]
-
-    let t_of_sexp : Sexp.t -> _ = function
-      | List [ Atom "done" ] -> Some Done
-      | List [ Atom "need_more_deps"; sexp ] ->
-        Option.O.(Dependency.Set.t_of_sexp sexp >>| fun xs -> Need_more_deps xs)
-      | _ -> None
+    let conv =
+      let open Conv in
+      let done_ = constr "Done" unit (fun () -> Done) in
+      let need_more_deps =
+        constr "Need_more_deps" Dependency.Set.conv (fun deps ->
+            Need_more_deps deps)
+      in
+      sum
+        [ econstr done_; econstr need_more_deps ]
+        (function
+          | Done -> case () done_
+          | Need_more_deps deps -> case deps need_more_deps)
 
     let version = 0
   end
 
   include T
-  include Serializable_intf.Make (T)
+  include Sexpable_intf.Make (T)
 end
 
 module Context = struct
@@ -168,33 +160,39 @@ module Context = struct
     match Sys.getenv_opt run_by_dune_env_variable with
     | None -> Run_outside_of_dune
     | Some value -> (
-      match Greeting.deserialize value with
-      | Error (Version_mismatch _) -> version_mismatch_error
-      | Error Parse_error -> cannot_parse_error
-      | Ok greeting -> (
-        match
-          ( Result.try_with (fun () ->
-                Io.String_path.read_file greeting.run_arguments_fn)
-          , Sys.file_exists greeting.response_fn )
-        with
-        | _, false -> file_not_found_error
-        | Error _, _ -> cannot_read_file
-        | Ok data, true -> (
-          match Run_arguments.deserialize data with
-          | Error (Version_mismatch _) -> version_mismatch_error
-          | Error Parse_error -> cannot_parse_error
-          | Ok { prepared_dependencies; targets } ->
-            Ok
-              { response_fn = greeting.response_fn
-              ; prepared_dependencies
-              ; targets
-              })))
+      match Csexp.parse_string value with
+      | Error _ -> cannot_parse_error
+      | Ok sexp -> (
+        match Greeting.of_sexp sexp with
+        | Error (Version_mismatch _) -> version_mismatch_error
+        | Error Parse_error -> cannot_parse_error
+        | Ok greeting -> (
+          match
+            ( Result.try_with (fun () ->
+                  Io.String_path.read_file greeting.run_arguments_fn)
+            , Sys.file_exists greeting.response_fn )
+          with
+          | _, false -> file_not_found_error
+          | Error _, _ -> cannot_read_file
+          | Ok data, true -> (
+            match Csexp.parse_string data with
+            | Error _ -> cannot_parse_error
+            | Ok sexp -> (
+              match Run_arguments.of_sexp sexp with
+              | Error (Version_mismatch _) -> version_mismatch_error
+              | Error Parse_error -> cannot_parse_error
+              | Ok { prepared_dependencies; targets } ->
+                Ok
+                  { response_fn = greeting.response_fn
+                  ; prepared_dependencies
+                  ; targets
+                  })))))
 
   let prepared_dependencies (t : t) = t.prepared_dependencies
 
   let targets (t : t) = t.targets
 
   let respond (t : t) response =
-    let data = Response.serialize response in
+    let data = Response.to_sexp response |> Csexp.to_string in
     Io.String_path.write_file t.response_fn data
 end

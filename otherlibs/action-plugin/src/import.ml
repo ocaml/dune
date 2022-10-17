@@ -12,3 +12,5 @@ include struct
   module Result = Result
   module Map = Map
 end
+
+module Conv = Dune_rpc_private.Conv

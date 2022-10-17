@@ -4,6 +4,7 @@
  (name dune_engine)
  (libraries
   unix
+  csexp
   stdune
   dune_console
   dyn

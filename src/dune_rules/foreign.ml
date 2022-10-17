@@ -184,7 +184,7 @@ module Stubs = struct
       match mode with
       | Some _ when for_library ->
         User_error.raise ~loc:loc_mode
-          [ Pp.textf "The field \"mode\" is not available for foreign_libraries"
+          [ Pp.textf "The field \"mode\" is not available for foreign libraries"
           ]
       | _ -> ()
     in

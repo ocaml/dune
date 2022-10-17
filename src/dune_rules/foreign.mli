@@ -185,13 +185,13 @@ module Source : sig
 
   val path : t -> Path.Build.t
 
-  (* The name of the corresponding object file; for example, [name] for a source
-     file [some/path/name.cpp] of [name_mode] if the stub is mode-specific. *)
+  (** The name of the corresponding object file; for example, [name] for a
+      source file [some/path/name.cpp] of [name_mode] if the stub is
+      mode-specific. *)
   val object_name : t -> string
 
-  (* The name of the corresponding object file without the mode suffix. This is
-     useful for messages where the internally suffixed name would be confusing.
-  *)
+  (** The name of the corresponding object file without the mode suffix. This is
+      useful for messages where the internally suffixed name would be confusing. *)
   val user_object_name : t -> string
 
   val make : stubs:Stubs.t -> path:Path.Build.t -> t

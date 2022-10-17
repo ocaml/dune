@@ -48,7 +48,7 @@ type conf =
   ; get_location : Section.t -> Package.Name.t -> Path.t
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
-  ; sign_hook : (Path.t -> unit Fiber.t) option
+  ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
   }
 
 let mac_codesign_hook ~codesign path =
@@ -74,7 +74,7 @@ let conf_of_context (context : Context.t option) =
     ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
     ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
     ; hardcoded_ocaml_path = Hardcoded []
-    ; sign_hook = None
+    ; sign_hook = lazy None
     }
   | Some context ->
     let get_location = Install.Section.Paths.get_local_location context.name in
@@ -87,7 +87,7 @@ let conf_of_context (context : Context.t option) =
       let install_dir = Path.build (Path.Build.relative install_dir "lib") in
       Hardcoded (install_dir :: context.default_ocamlpath)
     in
-    let sign_hook = sign_hook_of_context context in
+    let sign_hook = lazy (sign_hook_of_context context) in
     { get_vcs = Source_tree.nearest_vcs
     ; get_location
     ; get_config_path
@@ -111,7 +111,7 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
     | Sourceroot -> None
     | Stdlib -> Some stdlib_dir
   in
-  let sign_hook = sign_hook_of_context context in
+  let sign_hook = lazy (sign_hook_of_context context) in
   { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
 
 let conf_dummy =
@@ -119,7 +119,7 @@ let conf_dummy =
   ; get_location = (fun _ _ -> Path.root)
   ; get_config_path = (fun _ -> None)
   ; hardcoded_ocaml_path = Hardcoded []
-  ; sign_hook = None
+  ; sign_hook = lazy None
   }
 
 let to_dyn = function
@@ -569,9 +569,12 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
 
 let run_sign_hook conf ~has_subst file =
-  match (conf.sign_hook, has_subst) with
-  | Some hook, true -> hook file
-  | _ -> Fiber.return ()
+  match has_subst with
+  | false -> Fiber.return ()
+  | true -> (
+    match Lazy.force conf.sign_hook with
+    | Some hook -> hook file
+    | None -> Fiber.return ())
 
 (** This is just an optimisation: skip the renaming if the destination exists
     and has the right digest. The optimisation is useful to avoid unnecessary

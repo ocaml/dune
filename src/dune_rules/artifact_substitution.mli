@@ -26,7 +26,7 @@ type conf = private
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
         (** Initial prefix of installation when relocatable chosen *)
-  ; sign_hook : (Path.t -> unit Fiber.t) option
+  ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
         (** Called on binary after if has been edited *)
   }
 

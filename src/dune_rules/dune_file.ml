@@ -527,13 +527,14 @@ module Mode_conf = struct
       | Ocaml of mode_conf
       | Melange
 
-    let decode ~enable_melange =
-      enum
-        ([ ("byte", Ocaml Byte)
-         ; ("native", Ocaml Native)
-         ; ("best", Ocaml Best)
-         ]
-        @ if enable_melange then [ ("melange", Melange) ] else [])
+    let decode =
+      enum'
+        [ ("byte", return @@ Ocaml Byte)
+        ; ("native", return @@ Ocaml Native)
+        ; ("best", return @@ Ocaml Best)
+        ; ( "melange"
+          , Dune_lang.Syntax.since Melange.syntax (0, 1) >>> return Melange )
+        ]
 
     let to_string = function
       | Ocaml Byte -> "byte"
@@ -579,12 +580,8 @@ module Mode_conf = struct
                 assert false))
 
       let decode =
-        let* project = Dune_project.get_exn () in
-        let enable_melange =
-          Dune_project.is_extension_set project Melange.extension_key
-        in
         let decode =
-          let+ loc, t = located (decode ~enable_melange) in
+          let+ loc, t = located decode in
           (t, Kind.Requested loc)
         in
         repeat decode >>| of_list

@@ -52,7 +52,8 @@
                 nodejs-slim
                 pkg-config
                 ccls
-              ]) ++ [ ocamllsp.outputs.packages.${system}.ocaml-lsp-server ]
+              ]) ++ [ if stdenv.isLinux then [ strace ] else [ ] ]
+            ++ [ ocamllsp.outputs.packages.${system}.ocaml-lsp-server ]
             ++ (builtins.map (s: builtins.getAttr s self.packages.${system})
               (builtins.attrNames devPackages));
             inputsFrom = [ self.packages.${system}.default ];

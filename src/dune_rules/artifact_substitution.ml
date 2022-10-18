@@ -48,7 +48,7 @@ type conf =
   ; get_location : Section.t -> Package.Name.t -> Path.t
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
-  ; sign_hook : (Path.t -> unit Fiber.t) option
+  ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
   }
 
 let mac_codesign_hook ~codesign path =
@@ -74,7 +74,7 @@ let conf_of_context (context : Context.t option) =
     ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
     ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
     ; hardcoded_ocaml_path = Hardcoded []
-    ; sign_hook = None
+    ; sign_hook = lazy None
     }
   | Some context ->
     let get_location = Install.Section.Paths.get_local_location context.name in
@@ -87,7 +87,7 @@ let conf_of_context (context : Context.t option) =
       let install_dir = Path.build (Path.Build.relative install_dir "lib") in
       Hardcoded (install_dir :: context.default_ocamlpath)
     in
-    let sign_hook = sign_hook_of_context context in
+    let sign_hook = lazy (sign_hook_of_context context) in
     { get_vcs = Source_tree.nearest_vcs
     ; get_location
     ; get_config_path
@@ -111,7 +111,7 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
     | Sourceroot -> None
     | Stdlib -> Some stdlib_dir
   in
-  let sign_hook = sign_hook_of_context context in
+  let sign_hook = lazy (sign_hook_of_context context) in
   { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
 
 let conf_dummy =
@@ -119,7 +119,7 @@ let conf_dummy =
   ; get_location = (fun _ _ -> Path.root)
   ; get_config_path = (fun _ -> None)
   ; hardcoded_ocaml_path = Hardcoded []
-  ; sign_hook = None
+  ; sign_hook = lazy None
   }
 
 let to_dyn = function
@@ -417,14 +417,17 @@ let buf_len = max_len
 
 let buf = Bytes.create buf_len
 
-type _ mode =
-  | Test : bool mode
-  | Copy :
+type mode =
+  | Test
+  | Copy of
       { input_file : Path.t
       ; output : bytes -> int -> int -> unit
       ; conf : conf
       }
-      -> unit mode
+
+type status =
+  | Some_substitution
+  | No_substitution
 
 (** The copy algorithm works as follow:
 
@@ -464,10 +467,9 @@ output the replacement        |                                             |
  |                                                                          |
  \--------------------------------------------------------------------------/
     v} *)
-let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
- fun ~input ~mode ->
+let parse ~input ~mode =
   let open Fiber.O in
-  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data : a Fiber.t =
+  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data ~status =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
     let placeholder_start =
       match scanner_state with
@@ -493,7 +495,7 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
       match decode placeholder with
       | Some t -> (
         match mode with
-        | Test -> Fiber.return true
+        | Test -> Fiber.return Some_substitution
         | Copy { output; input_file; conf } ->
           let* s = eval t ~conf in
           (if !Clflags.debug_artifact_substitution then
@@ -509,13 +511,14 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
           let s = encode_replacement ~len ~repl:s in
           output (Bytes.unsafe_of_string s) 0 len;
           let pos = placeholder_start + len in
-          loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data)
+          loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data
+            ~status:Some_substitution)
       | None ->
         (* Restart just after [prefix] since we know for sure that a placeholder
            cannot start before that. *)
         loop Scan0 ~beginning_of_data:placeholder_start
           ~pos:(placeholder_start + prefix_len)
-          ~end_of_data)
+          ~end_of_data ~status)
     | scanner_state -> (
       (* We reached the end of the buffer: move the leftover data back to the
          beginning of [buf] and refill the buffer *)
@@ -538,24 +541,24 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
           (* There might still be another placeholder after this invalid one
              with a length that is too long *)
           loop Scan0 ~beginning_of_data:0 ~pos:prefix_len ~end_of_data:leftover
+            ~status
         | _ -> (
           match mode with
-          | Test -> Fiber.return false
+          | Test -> Fiber.return No_substitution
           | Copy { output; _ } ->
             (* Nothing more to read; [leftover] is definitely not the beginning
                of a placeholder, send it and end the copy *)
             output buf 0 leftover;
-            Fiber.return ()))
+            Fiber.return status))
       | n ->
         loop scanner_state ~beginning_of_data:0 ~pos:leftover
-          ~end_of_data:(leftover + n))
+          ~end_of_data:(leftover + n) ~status)
   in
   match input buf 0 buf_len with
-  | 0 -> (
-    match mode with
-    | Test -> Fiber.return false
-    | Copy _ -> Fiber.return ())
-  | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
+  | 0 -> Fiber.return No_substitution
+  | n ->
+    loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
+      ~status:No_substitution
 
 let copy ~conf ~input_file ~input ~output =
   parse ~input ~mode:(Copy { conf; input_file; output })
@@ -569,10 +572,13 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
       Fiber.return ())
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
 
-let run_sign_hook conf file =
-  match conf.sign_hook with
-  | Some hook -> hook file
-  | None -> Fiber.return ()
+let run_sign_hook conf ~has_subst file =
+  match has_subst with
+  | No_substitution -> Fiber.return ()
+  | Some_substitution -> (
+    match Lazy.force conf.sign_hook with
+    | Some hook -> hook file
+    | None -> Fiber.return ())
 
 (** This is just an optimisation: skip the renaming if the destination exists
     and has the right digest. The optimisation is useful to avoid unnecessary
@@ -612,8 +618,10 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
   Fiber.finalize
     (fun () ->
       let open Fiber.O in
-      let* () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
-      let+ () = run_sign_hook conf temp_file in
+      let* has_subst =
+        copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file ()
+      in
+      let+ () = run_sign_hook conf ~has_subst temp_file in
       replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
       Path.unlink_no_err temp_file;

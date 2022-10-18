@@ -26,7 +26,7 @@ type conf = private
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
         (** Initial prefix of installation when relocatable chosen *)
-  ; sign_hook : (Path.t -> unit Fiber.t) option
+  ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
         (** Called on binary after if has been edited *)
   }
 
@@ -67,21 +67,27 @@ val copy_file :
   -> unit
   -> unit Fiber.t
 
+type status =
+  | Some_substitution
+  | No_substitution
+
 (** Generic version of [copy_file]. Rather than filenames, it takes an input and
     output functions. Their semantic must match the ones of the [input] and
     [output] functions from the OCaml standard library.
 
     [input_file] is used only for debugging purposes. It must be the name of the
-    source file. *)
+    source file.
+
+    Return whether a substitution happened. *)
 val copy :
      conf:conf
   -> input_file:Path.t
   -> input:(Bytes.t -> int -> int -> int)
   -> output:(Bytes.t -> int -> int -> unit)
-  -> unit Fiber.t
+  -> status Fiber.t
 
 (** Produce the string that would replace the placeholder with the given value .*)
 val encode_replacement : len:int -> repl:string -> string
 
 (** Test if a file contains a substitution placeholder. *)
-val test_file : src:Path.t -> unit -> bool Fiber.t
+val test_file : src:Path.t -> unit -> status Fiber.t

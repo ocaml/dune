@@ -184,7 +184,7 @@ module Stubs = struct
       match mode with
       | Some _ when for_library ->
         User_error.raise ~loc:loc_mode
-          [ Pp.textf "The field \"mode\" is not available for foreign_libraries"
+          [ Pp.textf "The field \"mode\" is not available for foreign libraries"
           ]
       | _ -> ()
     in
@@ -261,11 +261,10 @@ module Source = struct
 
   let path t = t.path
 
-  let object_name ?(with_mode_suffix = true) t =
-    let name =
-      t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
-    in
-    if with_mode_suffix then add_mode_suffix t.stubs.mode name else name
+  let user_object_name t =
+    t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
+
+  let object_name t = user_object_name t |> add_mode_suffix t.stubs.mode
 
   let make ~stubs ~path = { stubs; path }
 end

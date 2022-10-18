@@ -81,8 +81,8 @@
   Coq's standard library by including `(stdlib no)`.
   (#6165 #6164, fixes #6163, @ejgallego @Alizter @LasseBlaauwbroek)
 
-- on macOS, sign executables produced by artifact substitution (#6137, fixes
-  #5650, @emillon)
+- on macOS, sign executables produced by artifact substitution (#6137, #6231,
+  fixes #5650, fixes #6226, @emillon)
 
 - Added an (aliases ...) field to the (rules ...) stanza which allows the
   specification of multiple aliases per rule (#6194, @Alizter)

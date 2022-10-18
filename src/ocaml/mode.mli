@@ -115,6 +115,7 @@ module Select : sig
 
   val is_not_all : t -> bool
 end
+with type mode := t
 
 (** [Map] is a data-structure that can store values that are indexed by keys of
     the type [Select.t]. The key [Select.All] is meant to store values that
@@ -135,12 +136,13 @@ module Map : sig
     val for_all_modes : 'a t -> 'a list
 
     (** Returns the list of values associated to a specific mode. If the
-        [and_all] option (which defaults to [false]) is set to true then values
-        which are not associated to a specific mode are also returned. *)
-    val for_only : ?and_all:bool -> 'a t -> mode -> 'a list
+        [and_all] option is set to true then values associated to the [All] key
+        are also returned. *)
+    val for_only : and_all:bool -> 'a t -> mode -> 'a list
   end
 
   val encode : ('a -> Dune_sexp.t) -> 'a Multi.t -> Dune_sexp.t list
 
   val decode : 'a Dune_sexp.Decoder.t -> 'a Multi.t Dune_sexp.Decoder.t
 end
+with type mode := t

@@ -136,6 +136,7 @@ let test input =
   Fiber.run
     ~iter:(fun () -> assert false)
     (let ofs = ref 0 in
+     let open Fiber.O in
      let input buf pos len =
        let to_copy = min len (String.length input - !ofs) in
        Bytes.blit_string ~src:input ~dst:buf ~src_pos:!ofs ~dst_pos:pos
@@ -144,9 +145,12 @@ let test input =
        to_copy
      in
      let output = Buffer.add_subbytes buf in
-     Artifact_substitution.copy ~conf:Artifact_substitution.conf_dummy
-       ~input_file:(Path.of_string "<memory>")
-       ~input ~output);
+     let+ (_ : Artifact_substitution.status) =
+       Artifact_substitution.copy ~conf:Artifact_substitution.conf_dummy
+         ~input_file:(Path.of_string "<memory>")
+         ~input ~output
+     in
+     ());
   let result = Buffer.contents buf in
   if result <> expected then
     fail

@@ -767,12 +767,11 @@ module Library = struct
 
   let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
-  let foreign_archives t =
-    let lib_stubs =
-      if List.is_empty t.buildable.foreign_stubs then None
-      else Some (Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)))
-    in
-    (lib_stubs, List.map ~f:snd t.buildable.foreign_archives)
+  let stubs_archive t =
+    if List.is_empty t.buildable.foreign_stubs then None
+    else Some (Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)))
+
+  let foreign_archives t = List.map ~f:snd t.buildable.foreign_archives
 
   (* This function returns archives files for a given library and mode:
       - For "all" modes it returns:
@@ -782,7 +781,8 @@ module Library = struct
         - the lib's stubs archive for that mode if they are mode-dependent
   *)
   let foreign_lib_files t ~dir ~ext_lib ~for_mode =
-    let stubs_archive, foreign_archives = foreign_archives t in
+    let stubs_archive = stubs_archive t in
+    let foreign_archives = foreign_archives t in
     let stubs_are_mode_dependent =
       Buildable.has_mode_dependent_foreign_stubs t.buildable
     in
@@ -806,7 +806,8 @@ module Library = struct
     else Option.to_list stubs_archive
 
   let foreign_dll_files t ~dir ~ext_dll =
-    let lib_archive, foreign_archives = foreign_archives t in
+    let stubs_archive = stubs_archive t in
+    let foreign_archives = foreign_archives t in
     let mode =
       if Buildable.has_mode_dependent_foreign_stubs t.buildable then
         (* Shared object are never created in Native mode where everything is
@@ -821,8 +822,8 @@ module Library = struct
       List.map foreign_archives ~f:(dll_file ~mode:Mode.Select.All)
     in
     (* Stubs can have mode-dependent versions, not foreign archives *)
-    match lib_archive with
-    | Some lib_archive -> dll_file ~mode lib_archive :: foreign_archives
+    match stubs_archive with
+    | Some stubs_archive -> dll_file ~mode stubs_archive :: foreign_archives
     | None -> foreign_archives
 
   let archive_basename t ~ext = Lib_name.Local.to_string (snd t.name) ^ ext

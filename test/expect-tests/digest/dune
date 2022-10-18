@@ -1,5 +1,6 @@
 (library
  (name digest_unit_tests)
+ (inline_tests)
  (libraries
   stdune
   dune_digest

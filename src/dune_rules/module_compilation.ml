@@ -69,8 +69,20 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
       Sandbox_config.needs_sandboxing
     | _ -> default
   in
+  let open Memo.O in
+  let* compiler =
+    let+ compiler =
+      match mode with
+      | Ocaml mode -> Memo.return @@ Context.compiler ctx mode
+      | Melange ->
+        (* TODO loc should come from the mode field in the dune file *)
+        Super_context.resolve_program sctx ~loc:None ~dir
+          ~hint:"opam install melange" "melc"
+    in
+    Result.to_option compiler
+  in
   (let open Option.O in
-  let* compiler = Result.to_option (Context.compiler ctx mode) in
+  let* compiler = compiler in
   let ml_kind = Lib_mode.Cm_kind.source cm_kind in
   let+ src = Module.file m ~ml_kind in
   let dst = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in

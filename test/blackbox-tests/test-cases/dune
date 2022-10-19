@@ -18,11 +18,6 @@
   (alias test-deps)))
 
 (subdir
- coq
- (cram
-  (alias runtest-coq)))
-
-(subdir
  jsoo
  (cram
   (deps %{bin:node})

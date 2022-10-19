@@ -9,6 +9,7 @@
 
 (executable
  (name duneboot)
+ (modules :standard \ configure)
  (libraries unix))
 
 ;; For unused value warnings. We don't write a plain empty

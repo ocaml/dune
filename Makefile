@@ -96,7 +96,7 @@ test-js: $(BIN)
 	$(BIN) build @runtest-js
 
 test-coq: $(BIN)
-	$(BIN) build @runtest-coq
+	DUNE_COQ_TEST=enable $(BIN) build @runtest-coq
 
 test-melange: $(BIN)
 	$(BIN) build @runtest-melange

@@ -3,7 +3,7 @@ open Dune_lang.Decoder
 
 let syntax =
   Dune_lang.Syntax.create ~name:"melange" ~desc:"support for Melange compiler"
-    [ ((0, 1), `Since (3, 5)) ]
+    [ ((0, 1), `Since (3, 6)) ]
 
 let extension_key =
   Dune_project.Extension.register syntax (return ((), [])) Unit.to_dyn

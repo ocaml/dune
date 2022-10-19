@@ -2,9 +2,12 @@ Unreleased
 ----------
 
 - [ctypes] always re-run `pkg-config` because we aren't tracking its external
-  dependencies (#6052)
+  dependencies (#6052, @rgrinberg)
 
-- [ctypes] remove dependency on configurator in the generated rules (#6052)
+- [ctypes] remove dependency on configurator in the generated rules (#6052, @rgrinberg)
+
+- Introduce experimental support for the melange compiler (#6268, fixes #6230,
+  @jchavarri)
 
 3.5.0 (2022-10-19)
 ------------------

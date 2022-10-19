@@ -52,7 +52,7 @@
                 nodejs-slim
                 pkg-config
                 ccls
-              ]) ++ [ if stdenv.isLinux then [ strace ] else [ ] ]
+              ] ++ (if stdenv.isLinux then [ strace ] else [ ]))
             ++ [ ocamllsp.outputs.packages.${system}.ocaml-lsp-server ]
             ++ (builtins.map (s: builtins.getAttr s self.packages.${system})
               (builtins.attrNames devPackages));

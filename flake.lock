@@ -96,11 +96,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1664847737,
-        "narHash": "sha256-Wxl0CtRH3Vo8+qEZ/PbCcx+9D8wEEi56tJPmROum2ss=",
+        "lastModified": 1665830552,
+        "narHash": "sha256-qel2bZ9TqfW8WzWCWdjuCy4bVFhhGsEeqFv/bj1ka2s=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "de80d1d04ee691279e1302a1128c082bbda3ab01",
+        "rev": "26b7e6ab6a864c3e7e077bcb27a49f0480b9894a",
         "type": "github"
       },
       "original": {
@@ -126,22 +126,6 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
-      "locked": {
-        "lastModified": 1640418986,
-        "narHash": "sha256-a8GGtxn2iL3WAkY5H+4E0s3Q7XJt6bTOvos9qqxT5OQ=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "5c37ad87222cfc1ec36d6cd1364514a9efc2f7f2",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nixos",
-        "ref": "nixos-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "ocamllsp": {
       "inputs": {
         "flake-utils": "flake-utils_2",
@@ -155,11 +139,11 @@
         "opam-repository": "opam-repository"
       },
       "locked": {
-        "lastModified": 1664923990,
-        "narHash": "sha256-KntwCmtXnRVPYbEWUs1Cdq4PGmxljT8LD5vBuJ1nTC0=",
+        "lastModified": 1665845182,
+        "narHash": "sha256-KeK8THPZgwSKfVi7smdtqErQ8jkbDDC/hdUPEuBGC5s=",
         "ref": "refs/heads/master",
-        "rev": "41a3071b59a0b06d529c16fe7d2b49b227a3d1e9",
-        "revCount": 1826,
+        "rev": "138e9276d45025461ea82581fdebf9f11dee2819",
+        "revCount": 1833,
         "submodules": true,
         "type": "git",
         "url": "https://www.github.com/ocaml/ocaml-lsp"
@@ -181,11 +165,11 @@
         "opam2json": "opam2json"
       },
       "locked": {
-        "lastModified": 1663958540,
-        "narHash": "sha256-5IFRW65Bonu0KphZig1pT2EJvm4lLLUYddHGZiQTYDA=",
+        "lastModified": 1665577757,
+        "narHash": "sha256-WLrX/KwZvp2IsTesYxnRFuic+VNT3LCXelque6cC8l4=",
         "owner": "tweag",
         "repo": "opam-nix",
-        "rev": "c7430da9ade302bad75f7e4cfacd9eca12783cca",
+        "rev": "4e602e02a82a720c2f1d7324ea29dc9c7916a9c2",
         "type": "github"
       },
       "original": {
@@ -244,7 +228,10 @@
     },
     "opam2json": {
       "inputs": {
-        "nixpkgs": "nixpkgs_3"
+        "nixpkgs": [
+          "opam-nix",
+          "nixpkgs"
+        ]
       },
       "locked": {
         "lastModified": 1651529032,

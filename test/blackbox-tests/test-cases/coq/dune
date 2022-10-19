@@ -2,10 +2,12 @@
 ; TODO Enable tests when ready
 
 (cram
+ (alias runtest-coq)
  (applies_to native-compose native-single)
  (enabled_if
   (<> %{system} macosx)))
 
 (cram
+ (alias runtest-coq)
  (applies_to :whole_subtree)
  (deps %{bin:coqc} %{bin:coqdep}))

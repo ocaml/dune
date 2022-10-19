@@ -126,3 +126,25 @@ jobs:
       - name: Install ocamlformat
         run: opam exec -- make install-ocamlformat
       - run: opam exec -- make fmt
+
+  coq:
+    name: Coq 8.16.0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Use OCaml 4.14.x
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.14.x
+          opam-pin: false
+          opam-depext: false
+          dune-cache: true
+
+      - name: Install Coq
+        run: opam install coq.8.16.0 coq-native
+      
+      - run: opam exec -- make test-coq
+        env:
+          # We disable the Dune cache when running the tests
+          DUNE_CACHE: disabled

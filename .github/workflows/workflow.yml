@@ -64,6 +64,7 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
           opam-depext: false
+          dune-cache: ${{ matrix.os != 'windows-latest' }}
 
       # git user needs to be configured for the following tests:
       # otherlibs/build-info/test/run.t
@@ -102,6 +103,8 @@ jobs:
       - name: Run test suite on Unix
         run: opam exec -- make test
         if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
+        env:
+          DUNE_CACHE: disabled
 
       - name: Run test suite on Win32
         run: opam exec -- make test-windows

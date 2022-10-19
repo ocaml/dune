@@ -20,7 +20,6 @@ js_of_ocaml \
 js_of_ocaml-compiler \
 "mdx>=2.1.0" \
 menhir \
-"merlin>=3.4.0" \
 ocamlfind \
 ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
 "odoc>=2.0.1" \

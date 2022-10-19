@@ -36,7 +36,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   in
   let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
   let { Mode.Dict.byte; native } =
-    Dune_file.Mode_conf.Set.eval impl.modes ~has_native
+    Dune_file.Mode_conf.Set.eval impl.modes.ocaml ~has_native
   in
   let copy_obj_file m kind =
     let src = Obj_dir.Module.cm_file_exn vlib_obj_dir m ~kind in
@@ -45,7 +45,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   in
   let open Memo.O in
   let copy_objs src =
-    copy_obj_file src Cmi
+    copy_obj_file src (Ocaml Cmi)
     >>> Memo.when_
           (Module.visibility src = Public
           && Obj_dir.need_dedicated_public_dir impl_obj_dir)
@@ -58,9 +58,9 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
             in
             copy_to_obj_dir ~src ~dst)
     >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
-            Memo.when_ byte (fun () -> copy_obj_file src Cmo)
+            Memo.when_ byte (fun () -> copy_obj_file src (Ocaml Cmo))
             >>> Memo.when_ native (fun () ->
-                    copy_obj_file src Cmx
+                    copy_obj_file src (Ocaml Cmx)
                     >>>
                     let object_file dir =
                       Obj_dir.Module.o_file_exn dir src ~ext_obj

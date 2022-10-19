@@ -99,7 +99,7 @@ let setup_module_rules t =
     Action_builder.write_file_dyn path
       (let* libs = Resolve.Memo.read requires_compile in
        let include_dirs =
-         Path.Set.to_list (Lib_flags.L.include_paths libs Mode.Byte)
+         Path.Set.to_list (Lib_flags.L.include_paths libs (Ocaml Byte))
        in
        let* pp_ppx = pp_flags t in
        let pp_dirs = Source.pp_ml t.source ~include_dirs in

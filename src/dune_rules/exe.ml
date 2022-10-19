@@ -169,7 +169,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
        would provide a better fix for this issue. *)
     Action_builder.with_no_targets prefix
     >>> Command.run ~dir:(Path.build ctx.build_dir)
-          (Context.compiler ctx mode)
+          (Context.compiler ctx (Ocaml mode))
           [ Command.Args.dyn ocaml_flags
           ; A "-o"
           ; Target exe
@@ -213,7 +213,7 @@ let link_js ~name ~loc ~cm_files ~promote ~link_time_code_gen cctx =
       | Lib_flags.Lib_and_module.Lib lib -> `Lib lib
       | Module (obj_dir, m) ->
         let path =
-          Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Mode.cm_kind Byte)
+          Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml (Mode.cm_kind Byte))
         in
         `Mod path)
   in

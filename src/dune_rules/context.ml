@@ -117,6 +117,7 @@ type t =
   ; ocamldep : Action.Prog.t
   ; ocamlmklib : Action.Prog.t
   ; ocamlobjinfo : Action.Prog.t
+  ; melc : Action.Prog.t
   ; env : Env.t
   ; findlib_paths : Path.t list
   ; findlib_toolchain : Context_name.t option
@@ -609,6 +610,13 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             | Some _ as s -> Memo.return s
             | None -> Memo.Lazy.force make)
     in
+    let* melc =
+      let program = "melc" in
+      which program >>| function
+      | Some s -> Ok s
+      | None ->
+        Error (Action.Prog.Not_found.create ~context:name ~program ~loc:None ())
+    in
     let t =
       let build_context =
         Build_context.create ~name ~host:(Option.map host ~f:(fun c -> c.name))
@@ -635,6 +643,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocamldep
       ; ocamlmklib
       ; ocamlobjinfo
+      ; melc
       ; env
       ; findlib_paths
       ; findlib_toolchain
@@ -865,10 +874,11 @@ module DB = struct
     get context
 end
 
-let compiler t (mode : Mode.t) =
+let compiler t (mode : Lib_mode.t) =
   match mode with
-  | Byte -> Ok t.ocamlc
-  | Native -> t.ocamlopt
+  | Ocaml Byte -> Ok t.ocamlc
+  | Ocaml Native -> t.ocamlopt
+  | Melange -> t.melc
 
 let best_mode t : Mode.t =
   match t.ocamlopt with

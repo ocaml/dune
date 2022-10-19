@@ -236,7 +236,9 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
           ; As [ "--pkg"; pkg_or_lnu ]
           ; A "-o"
           ; Target odoc_file
-          ; Dep (Path.build (Obj_dir.Module.cmti_file obj_dir m))
+          ; Dep
+              (Path.build
+                 (Obj_dir.Module.cmti_file ~cm_kind:(Ocaml Cmi) obj_dir m))
           ]
       in
       let open Action_builder.With_targets.O in

@@ -71,7 +71,10 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
-dev-deps:
+melange:
+	opam pin add melange https://github.com/melange-re/melange.git#d97908651f5798855ff61922f1f9ca9513bc1f42
+
+dev-deps: melange
 	opam install -y $(TEST_DEPS)
 
 .PHONY: dev-switch
@@ -95,8 +98,11 @@ test-js: $(BIN)
 test-coq: $(BIN)
 	$(BIN) build @runtest-coq
 
+test-melange: $(BIN)
+	$(BIN) build @runtest-melange
+
 test-all: $(BIN)
-	$(BIN) build @runtest @runtest-js @runtest-coq
+	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
 
 .PHONY: check
 check: $(BIN)

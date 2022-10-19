@@ -319,7 +319,7 @@ type 'path t =
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; wrapped : Wrapped.t Inherited.t option
   ; main_module_name : Main_module_name.t
-  ; modes : Mode.Dict.Set.t
+  ; modes : Lib_mode.Map.Set.t
   ; special_builtin_support : Special_builtin_support.t option
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
@@ -409,7 +409,7 @@ let equal (type a) (t : a t)
        default_implementation t.default_implementation
   && Option.equal (Inherited.equal Wrapped.equal) wrapped t.wrapped
   && Main_module_name.equal main_module_name t.main_module_name
-  && Mode.Dict.Set.equal modes t.modes
+  && Lib_mode.Map.Set.equal modes t.modes
   && Option.equal Special_builtin_support.equal special_builtin_support
        t.special_builtin_support
   && Option.equal Module_name.equal exit_module t.exit_module
@@ -682,7 +682,7 @@ let to_dyn path
       , option (snd Lib_name.to_dyn) default_implementation )
     ; ("wrapped", option (Inherited.to_dyn Wrapped.to_dyn) wrapped)
     ; ("main_module_name", Main_module_name.to_dyn main_module_name)
-    ; ("modes", Mode.Dict.Set.to_dyn modes)
+    ; ("modes", Lib_mode.Map.Set.to_dyn modes)
     ; ( "special_builtin_support"
       , option Special_builtin_support.to_dyn special_builtin_support )
     ; ("exit_module", option Module_name.to_dyn exit_module)

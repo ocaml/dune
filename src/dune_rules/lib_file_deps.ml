@@ -1,22 +1,29 @@
 open Import
 
 module Group = struct
-  type t =
+  type ocaml =
     | Cmi
     | Cmx
+
+  type t =
+    | Ocaml of ocaml
+    | Melange of Melange.Cm_kind.t
     | Header
 
-  let all = [ Cmi; Cmx; Header ]
+  let all = [ Ocaml Cmi; Ocaml Cmx; Melange Cmi; Melange Cmj; Header ]
 
   let ext = function
-    | Cmi -> Cm_kind.ext Cmi
-    | Cmx -> Cm_kind.ext Cmx
+    | Ocaml Cmi -> Cm_kind.ext Cmi
+    | Ocaml Cmx -> Cm_kind.ext Cmx
+    | Melange Cmi -> Lib_mode.Cm_kind.ext (Melange Cmi)
+    | Melange Cmj -> Lib_mode.Cm_kind.ext (Melange Cmj)
     | Header -> Foreign_language.header_extension
 
   let obj_dir t obj_dir =
     match t with
-    | Cmi -> Obj_dir.public_cmi_dir obj_dir
-    | Cmx -> Obj_dir.native_dir obj_dir
+    | Ocaml Cmi -> Obj_dir.public_cmi_dir obj_dir
+    | Ocaml Cmx -> Obj_dir.native_dir obj_dir
+    | Melange (Cmi | Cmj) -> Obj_dir.melange_dir obj_dir
     | Header -> Obj_dir.dir obj_dir
 
   let to_predicate =

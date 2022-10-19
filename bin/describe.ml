@@ -295,7 +295,9 @@ module Crawl = struct
     let source ml_kind =
       Option.map (Module.source m ~ml_kind) ~f:Module.File.path
     in
-    let cmt ml_kind = Obj_dir.Module.cmt_file obj_dir m ~ml_kind in
+    let cmt ml_kind =
+      Obj_dir.Module.cmt_file obj_dir m ~ml_kind ~cm_kind:(Ocaml Cmi)
+    in
     { Descr.Mod.name = Module.name m
     ; impl = source Impl
     ; intf = source Intf

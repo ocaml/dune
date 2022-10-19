@@ -190,7 +190,7 @@ let expand_artifact ~source t a s =
           ~what:"Module"
           (Module_name.to_string name)
       | Some (t, m) -> (
-        match Obj_dir.Module.cm_file t m ~kind with
+        match Obj_dir.Module.cm_file t m ~kind:(Ocaml kind) with
         | None -> Action_builder.return [ Value.String "" ]
         | Some path -> dep (Path.build path)))
     | Lib mode -> (

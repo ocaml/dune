@@ -17,7 +17,7 @@ let msvc_hack_cclibs =
 let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
     ~mode ~cm_files ~scope =
   let ctx = Super_context.context sctx in
-  Memo.Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
+  Memo.Result.iter (Context.compiler ctx (Ocaml mode)) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
         let lib_archive = Library.stubs_archive lib in
@@ -271,7 +271,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     let archive_name = Foreign.Archive.Name.stubs lib_name in
     let modes = Compilation_context.modes cctx in
     let build_targets_together =
-      modes.native && modes.byte
+      modes.ocaml.native && modes.ocaml.byte
       && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
     in
     let* standard =
@@ -289,7 +289,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       List.rev_append vlib_stubs_o_files lib_o_files_for_all_modes
     in
     if
-      Mode.Dict.Set.to_list modes
+      Mode.Dict.Set.to_list modes.ocaml
       |> List.for_all ~f:(fun mode ->
              List.is_empty
              @@ Mode.Map.Multi.for_only ~and_all:false o_files mode)
@@ -300,7 +300,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
         ~c_library_flags ~build_targets_together ~stubs_mode:Mode.Select.All
     else
       let modes =
-        Mode.Dict.Set.to_list modes
+        Mode.Dict.Set.to_list modes.ocaml
         |> List.map ~f:(fun mode ->
                let o_files_for_mode =
                  Mode.Map.Multi.for_only ~and_all:false o_files mode
@@ -382,7 +382,8 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
            ]
            |> Memo.parallel_iter ~f:(fun (kind, ext) ->
                   let src =
-                    Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext)
+                    Path.build
+                      (Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml kind) ~ext)
                   in
                   let obj_name = Module.obj_name m in
                   let fname =
@@ -416,12 +417,12 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
       ~top_sorted_modules ()
   in
   let* () =
-    Mode.Dict.Set.iter_concurrently modes ~f:(fun mode ->
+    Mode.Dict.Set.iter_concurrently modes.ocaml ~f:(fun mode ->
         build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~scope
           ~cm_files)
   and* () =
     (* Build *.cma.js *)
-    Memo.when_ modes.byte (fun () ->
+    Memo.when_ modes.ocaml.byte (fun () ->
         let action_with_targets =
           let src =
             Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
@@ -437,7 +438,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
         >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
   in
   Memo.when_
-    (Dynlink_supported.By_the_os.get natdynlink_supported && modes.native)
+    (Dynlink_supported.By_the_os.get natdynlink_supported && modes.ocaml.native)
     (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
@@ -457,7 +458,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let requires_link = Lib.Compile.requires_link compile_info in
   let modes =
     let { Lib_config.has_native; _ } = ctx.lib_config in
-    Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
+    Dune_file.Mode_conf.Lib.Set.eval_detailed lib.modes ~has_native
   in
   let package = Dune_file.Library.package lib in
   let js_of_ocaml =

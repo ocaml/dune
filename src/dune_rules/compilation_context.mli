@@ -35,7 +35,7 @@ val create :
   -> js_of_ocaml:Js_of_ocaml.In_context.t option
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
-  -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
+  -> ?modes:Dune_file.Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
   -> unit
@@ -66,7 +66,8 @@ val requires_link : t -> Lib.t list Resolve.Memo.t
 
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 
-val includes : t -> Command.Args.without_targets Command.Args.t Cm_kind.Dict.t
+val includes :
+  t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
 val preprocessing : t -> Pp_spec.t
 
@@ -84,7 +85,7 @@ val package : t -> Package.t option
 
 val vimpl : t -> Vimpl.t option
 
-val modes : t -> Mode.Dict.Set.t
+val modes : t -> Lib_mode.Map.Set.t
 
 val for_wrapped_compat : t -> t
 

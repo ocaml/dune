@@ -134,7 +134,7 @@ end = struct
               make_entry Lib source ?dst))
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
-    let modes = Dune_file.Mode_conf.Set.eval lib.modes ~has_native in
+    let modes = Dune_file.Mode_conf.Set.eval lib.modes.ocaml ~has_native in
     let { Mode.Dict.byte; native } = modes in
     let module_files =
       let inside_subdir f =
@@ -147,14 +147,16 @@ end = struct
       in
       let cm_dir m cm_kind =
         let visibility = Module.visibility m in
-        let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
+        let dir' = Obj_dir.cm_dir external_obj_dir (Ocaml cm_kind) visibility in
         if Path.equal (Path.build dir) dir' then None
         else Path.basename dir' |> inside_subdir |> Option.some
       in
       let virtual_library = Library.is_virtual lib in
       let modules =
         let common m =
-          let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
+          let cm_file kind =
+            Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml kind)
+          in
           let if_ b (cm_kind, f) =
             if b then
               match f with
@@ -180,7 +182,10 @@ end = struct
               common m
               @ List.filter_map Ml_kind.all ~f:(fun ml_kind ->
                     let open Option.O in
-                    let+ cmt = Obj_dir.Module.cmt_file obj_dir m ~ml_kind in
+                    let+ cmt =
+                      Obj_dir.Module.cmt_file obj_dir m ~ml_kind
+                        ~cm_kind:(Ocaml Cmi)
+                    in
                     (Cm_kind.Cmi, cmt))
               |> set_dir m)
         in

@@ -1,0 +1,3 @@
+(cram
+ (deps %{bin:node} %{bin:melc})
+ (alias runtest-melange))

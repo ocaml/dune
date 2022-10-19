@@ -546,18 +546,23 @@ let sum ?(force_parens = false) cstrs =
         | Atom (s_loc, A s) ->
           find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args))
 
-let enum cstrs =
-  next (function
-    | Quoted_string (loc, _) | Template { loc; _ } | List (loc, _) ->
-      User_error.raise ~loc [ Pp.text "Atom expected" ]
-    | Atom (loc, A s) -> (
-      match List.assoc cstrs s with
-      | Some value -> value
-      | None ->
-        User_error.raise ~loc
-          [ Pp.textf "Unknown value %s" s ]
-          ~hints:
-            (User_message.did_you_mean s ~candidates:(List.map cstrs ~f:fst))))
+let enum' (type a) (cstrs : (string * a t) list) : a t =
+  next_with_user_context (fun uc sexp ->
+      match sexp with
+      | Quoted_string (loc, _) | Template { loc; _ } | List (loc, _) ->
+        User_error.raise ~loc [ Pp.text "Atom expected" ]
+      | Atom (loc, A s) -> (
+        match List.assoc cstrs s with
+        | Some k ->
+          let ctx = Values (loc, Some s, uc) in
+          result ctx (k ctx [])
+        | None ->
+          User_error.raise ~loc
+            [ Pp.textf "Unknown value %s" s ]
+            ~hints:
+              (User_message.did_you_mean s ~candidates:(List.map cstrs ~f:fst))))
+
+let enum cstrs = enum' (List.map cstrs ~f:(fun (name, v) -> (name, return v)))
 
 let bool = enum [ ("true", true); ("false", false) ]
 

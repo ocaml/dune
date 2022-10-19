@@ -22,7 +22,9 @@ let make ?(excluded_modules = []) ~obj_dir ~modules ~top_sorted_modules ~ext_obj
 let objects_and_cms t ~mode modules =
   let kind = Mode.cm_kind mode in
   let modules = filter_excluded_modules t modules in
-  let cm_files = Obj_dir.Module.L.cm_files t.obj_dir modules ~kind in
+  let cm_files =
+    Obj_dir.Module.L.cm_files t.obj_dir modules ~kind:(Ocaml kind)
+  in
   match mode with
   | Byte -> cm_files
   | Native ->
@@ -35,7 +37,7 @@ let top_sorted_cms t ~mode =
   let kind = Mode.cm_kind mode in
   Action_builder.map t.top_sorted_modules ~f:(fun modules ->
       let modules = filter_excluded_modules t modules in
-      Obj_dir.Module.L.cm_files t.obj_dir ~kind modules)
+      Obj_dir.Module.L.cm_files t.obj_dir ~kind:(Ocaml kind) modules)
 
 let top_sorted_objects_and_cms t ~mode =
   Action_builder.map t.top_sorted_modules ~f:(fun modules ->

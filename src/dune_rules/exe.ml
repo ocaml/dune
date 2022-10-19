@@ -171,7 +171,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
        would provide a better fix for this issue. *)
     Action_builder.with_no_targets prefix
     >>> Command.run ~dir:(Path.build ctx.build_dir)
-          (Context.compiler ctx (Ocaml mode))
+          (Context.compiler ctx mode)
           [ Command.Args.dyn ocaml_flags
           ; A "-o"
           ; Target exe

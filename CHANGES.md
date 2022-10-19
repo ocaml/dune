@@ -1,4 +1,4 @@
-3.5.0 (unreleased)
+3.5.0 (2022-10-19)
 ------------------
 
 - macOS: Handle unknown fsevents without crashing (#6217, @rgrinberg)

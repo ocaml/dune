@@ -20,7 +20,6 @@
           js_of_ocaml = "*";
           js_of_ocaml-compiler = "*";
           mdx = "*";
-          merlin = "*";
           odoc = "*";
           ppx_expect = "*";
           ppxlib = "*";

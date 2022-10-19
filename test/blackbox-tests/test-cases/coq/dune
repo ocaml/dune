@@ -8,4 +8,5 @@
 
 (cram
  (applies_to :whole_subtree)
+ (alias runtest-coq)
  (deps %{bin:coqc} %{bin:coqdep}))

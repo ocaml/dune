@@ -19,7 +19,7 @@ must declare the ``melange`` extension in your ``dune-project`` file:
 
 .. code:: scheme
 
-  (lang dune 3.5)
+  (lang dune 3.6)
   (using melange 0.1)
 
 Then, given this example:

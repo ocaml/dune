@@ -22,6 +22,7 @@ val v : info -> 'a Cmdliner_term.t -> 'a t
 val group : ?default:'a Cmdliner_term.t -> info -> 'a t list -> 'a t
 val name : 'a t -> string
 val get_info : 'a t -> info
+val inspect : 'a t -> 'a t
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cmdliner programmers

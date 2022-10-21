@@ -19,6 +19,12 @@ val actual_args : t -> Cmdliner_info.Arg.t -> string list
 val is_opt : string -> bool
 val deprecated_msgs : t -> string list
 
+type completion =
+  | Arg_value of { arg : Cmdliner_info.Arg.t; optional : bool; index : int }
+  | Flag_or_pos_arg of { index : int; pos_only : bool }
+
+val complete : t -> string list -> completion
+
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers
 

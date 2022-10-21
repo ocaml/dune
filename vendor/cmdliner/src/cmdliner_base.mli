@@ -32,7 +32,8 @@ val err_multi_def :
 
 type 'a parser = string -> [ `Ok of 'a | `Error of string ]
 type 'a printer = Format.formatter -> 'a -> unit
-type 'a conv = 'a parser * 'a printer
+type complete = string option -> string list
+type 'a conv = 'a parser * 'a printer * complete option
 
 val some : ?none:string -> 'a conv -> 'a option conv
 val some' : ?none:'a -> 'a conv -> 'a option conv

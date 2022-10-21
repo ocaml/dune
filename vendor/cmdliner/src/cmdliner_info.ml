@@ -90,6 +90,7 @@ module Arg = struct
       docv : string; (* variable name for the argument in help. *)
       docs : string; (* title of help section where listed. *)
       pos : pos_kind; (* positional arg kind. *)
+      complete: string option -> string list;
       opt_kind : opt_kind; (* optional arg kind. *)
       opt_names : string list; (* names (for opt args). *)
       opt_all : bool; (* repeatable (for opt args). *)
@@ -109,11 +110,14 @@ module Arg = struct
         | [] -> Cmdliner_manpage.s_arguments
         | _ -> Cmdliner_manpage.s_options
     in
+    let complete _ = [] in
     { id = Cmdliner_base.uid (); deprecated; absent = Doc absent;
       env; doc; docv; docs; pos = dumb_pos; opt_kind = Flag; opt_names;
+      complete;
       opt_all = false;
     opt_alias = fun _ _ -> Ok [] }
 
+  let complete a s = a.complete s
   let id a = a.id
   let deprecated a = a.deprecated
   let absent a = a.absent
@@ -140,6 +144,8 @@ module Arg = struct
   let make_opt ~absent ~kind:opt_kind a = { a with absent; opt_kind }
   let make_opt_all ~absent ~kind:opt_kind a =
     { a with absent; opt_kind; opt_all = true  }
+
+  let add_complete ~complete a = { a with complete }
 
   let make_pos ~pos a = { a with pos }
   let make_pos_abs ~absent ~pos a = { a with absent; pos }

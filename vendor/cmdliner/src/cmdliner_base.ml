@@ -146,61 +146,68 @@ let err_sep_miss sep s =
 
 type 'a parser = string -> [ `Ok of 'a | `Error of string ]
 type 'a printer = Format.formatter -> 'a -> unit
-type 'a conv = 'a parser * 'a printer
+type complete = string option -> string list
+type 'a conv = 'a parser * 'a printer * complete option
 
-let some ?(none = "") (parse, print) =
+let some ?(none = "") (parse, print, complete) =
   let parse s = match parse s with `Ok v -> `Ok (Some v) | `Error _ as e -> e in
   let print ppf v = match v with
   | None -> Format.pp_print_string ppf none
   | Some v -> print ppf v
   in
-  parse, print
+  parse, print, complete
 
-let some' ?none (parse, print) =
+let some' ?none (parse, print, complete) =
   let parse s = match parse s with `Ok v -> `Ok (Some v) | `Error _ as e -> e in
   let print ppf = function
   | None -> (match none with None -> () | Some v -> print ppf v)
   | Some v -> print ppf v
   in
-  parse, print
+  parse, print, complete
 
 let bool =
+  let values = ["true"; "false"] in
   let parse s = try `Ok (bool_of_string s) with
   | Invalid_argument _ ->
-      `Error (err_invalid_val s (alts_str ~quoted:true ["true"; "false"]))
+      `Error (err_invalid_val s (alts_str ~quoted:true values))
   in
-  parse, Format.pp_print_bool
+  let complete _ = values in
+  parse, Format.pp_print_bool, Some complete
 
 let char =
   let parse s = match String.length s = 1 with
   | true -> `Ok s.[0]
   | false -> `Error (err_invalid_val s "expected a character")
   in
-  parse, pp_char
+  parse, pp_char, None
 
 let parse_with t_of_str exp s =
   try `Ok (t_of_str s) with Failure _ -> `Error (err_invalid_val s exp)
 
 let int =
-  parse_with int_of_string "expected an integer", Format.pp_print_int
+  parse_with int_of_string "expected an integer", Format.pp_print_int, None
 
 let int32 =
   parse_with Int32.of_string "expected a 32-bit integer",
-  (fun ppf -> pp ppf "%ld")
+  (fun ppf -> pp ppf "%ld"),
+  None
 
 let int64 =
   parse_with Int64.of_string "expected a 64-bit integer",
-  (fun ppf -> pp ppf "%Ld")
+  (fun ppf -> pp ppf "%Ld"),
+  None
 
 let nativeint =
   parse_with Nativeint.of_string "expected a processor-native integer",
-  (fun ppf -> pp ppf "%nd")
+  (fun ppf -> pp ppf "%nd"),
+  None
 
 let float =
   parse_with float_of_string "expected a floating point number",
-  Format.pp_print_float
+  Format.pp_print_float,
+  None
 
-let string = (fun s -> `Ok s), pp_str
+let string = (fun s -> `Ok s), pp_str, None
 let enum sl =
   if sl = [] then invalid_arg err_empty_list else
   let t = Cmdliner_trie.of_list sl in
@@ -218,28 +225,31 @@ let enum sl =
     try pp_str ppf (List.assoc v sl_inv)
     with Not_found -> invalid_arg (err_incomplete_enum (List.map fst sl))
   in
-  parse, print
+  let complete _ =
+    List.map fst sl
+  in
+  parse, print, Some complete
 
 let file =
   let parse s = match Sys.file_exists s with
   | true -> `Ok s
   | false -> `Error (err_no "file or directory" s)
   in
-  parse, pp_str
+  parse, pp_str, None
 
 let dir =
   let parse s = match Sys.file_exists s with
   | true -> if Sys.is_directory s then `Ok s else `Error (err_not_dir s)
   | false -> `Error (err_no "directory" s)
   in
-  parse, pp_str
+  parse, pp_str, None
 
 let non_dir_file =
   let parse s = match Sys.file_exists s with
   | true -> if not (Sys.is_directory s) then `Ok s else `Error (err_is_dir s)
   | false -> `Error (err_no "file" s)
   in
-  parse, pp_str
+  parse, pp_str, None
 
 let split_and_parse sep parse s = (* raises [Failure] *)
   let parse sub = match parse sub with
@@ -257,7 +267,15 @@ let split_and_parse sep parse s = (* raises [Failure] *)
   in
   split [] (String.length s - 1)
 
-let list ?(sep = ',') (parse, pp_e) =
+let split_last s sep =
+  match String.rindex_opt s sep with
+  | None -> None
+  | Some i ->
+    let pre = String.sub s 0 (i + 1) in
+    let suf = String.sub s (i + 1) (String.length s - i - 1) in
+    Some (pre, suf)
+
+let list ?(sep = ',') (parse, pp_e, complete_e_o) =
   let parse s = try `Ok (split_and_parse sep parse s) with
   | Failure e -> `Error (err_element "list" s e)
   in
@@ -265,9 +283,22 @@ let list ?(sep = ',') (parse, pp_e) =
   | v :: l -> pp_e ppf v; if (l <> []) then (pp_char ppf sep; print ppf l)
   | [] -> ()
   in
-  parse, print
+  let complete = match complete_e_o with
+    | None -> None
+    | Some complete_e -> Some (fun prefix_opt ->
+      match prefix_opt with
+      | None -> complete_e None
+      | Some prefix ->
+        match split_last prefix sep with
+        | Some (pre, suf) ->
+          let completions = complete_e (Some suf) in
+          List.map (fun completion -> pre ^ completion) completions
+        | None -> complete_e (Some prefix)
+    )
+  in
+  parse, print, complete
 
-let array ?(sep = ',') (parse, pp_e) =
+let array ?(sep = ',') (parse, pp_e, _complete_e) =
   let parse s = try `Ok (Array.of_list (split_and_parse sep parse s)) with
   | Failure e -> `Error (err_element "array" s e)
   in
@@ -275,7 +306,7 @@ let array ?(sep = ',') (parse, pp_e) =
     let max = Array.length v - 1 in
     for i = 0 to max do pp_e ppf v.(i); if i <> max then pp_char ppf sep done
   in
-  parse, print
+  parse, print, None
 
 let split_left sep s =
   try
@@ -284,7 +315,7 @@ let split_left sep s =
     Some ((String.sub s 0 i), (String.sub s (i + 1) (len - i - 1)))
   with Not_found -> None
 
-let pair ?(sep = ',') (pa0, pr0) (pa1, pr1) =
+let pair ?(sep = ',') (pa0, pr0, _c0) (pa1, pr1, _c1) =
   let parser s = match split_left sep s with
   | None -> `Error (err_sep_miss sep s)
   | Some (v0, v1) ->
@@ -293,10 +324,10 @@ let pair ?(sep = ',') (pa0, pr0) (pa1, pr1) =
       | `Error e, _ | _, `Error e -> `Error (err_element "pair" s e)
   in
   let printer ppf (v0, v1) = pp ppf "%a%c%a" pr0 v0 sep pr1 v1 in
-  parser, printer
+  parser, printer, None
 
 let t2 = pair
-let t3 ?(sep = ',') (pa0, pr0) (pa1, pr1) (pa2, pr2) =
+let t3 ?(sep = ',') (pa0, pr0, _c0) (pa1, pr1, _c1) (pa2, pr2, _c2) =
   let parse s = match split_left sep s with
   | None -> `Error (err_sep_miss sep s)
   | Some (v0, s) ->
@@ -311,9 +342,9 @@ let t3 ?(sep = ',') (pa0, pr0) (pa1, pr1) (pa2, pr2) =
   let print ppf (v0, v1, v2) =
     pp ppf "%a%c%a%c%a" pr0 v0 sep pr1 v1 sep pr2 v2
   in
-  parse, print
+  parse, print, None
 
-let t4 ?(sep = ',') (pa0, pr0) (pa1, pr1) (pa2, pr2) (pa3, pr3) =
+let t4 ?(sep = ',') (pa0, pr0, _c0) (pa1, pr1, _c1) (pa2, pr2, _c2) (pa3, pr3, _c3) =
   let parse s = match split_left sep s with
   | None -> `Error (err_sep_miss sep s)
   | Some(v0, s) ->
@@ -331,7 +362,7 @@ let t4 ?(sep = ',') (pa0, pr0) (pa1, pr1) (pa2, pr2) (pa3, pr3) =
   let print ppf (v0, v1, v2, v3) =
     pp ppf "%a%c%a%c%a%c%a" pr0 v0 sep pr1 v1 sep pr2 v2 sep pr3 v3
   in
-  parse, print
+  parse, print, None
 
 let env_bool_parse s = match String.lowercase_ascii s with
 | "" | "false" | "no" | "n" | "0" -> `Ok false

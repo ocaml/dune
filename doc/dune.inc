@@ -45,6 +45,15 @@
  (files   dune-clean.1))
 
 (rule
+ (with-stdout-to dune-complete.1
+  (run dune complete --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-complete.1))
+
+(rule
  (with-stdout-to dune-coq.1
   (run dune coq --help=groff)))
 

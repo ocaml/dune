@@ -207,6 +207,52 @@ let deprecated_msgs cl =
   in
   Amap.fold add cl []
 
+type completion =
+  | Arg_value of { arg : Cmdliner_info.Arg.t; optional: bool; index : int }
+  | Flag_or_pos_arg of { index : int; pos_only : bool }
+
+let rec last_is_dash_dash =
+  function
+  | ["--"] -> true
+  | [] -> false
+  | _::l ->
+    last_is_dash_dash l
+
+let complete cline args =
+  let last_opt_arg, index =
+    Amap.fold (fun info arg (acc_opt, acc_pos) ->
+      match arg with
+      | O values ->
+          let acc_opt' =
+            List.fold_left
+              (fun acc (n, _, value) ->
+                 match acc with
+                 | Some (n', _, _) as a when n' > n -> a
+                 | None | Some _ ->
+                   Some (n, info, value)
+              )
+              acc_opt
+              values
+          in
+          (acc_opt', acc_pos)
+      | P values ->
+          let nvalues = List.length values in
+          let acc_pos' = acc_pos + nvalues in
+          (acc_opt, acc_pos'))
+      cline
+      (None, 0)
+  in
+  if last_is_dash_dash args then
+    Flag_or_pos_arg { index ; pos_only = true}
+  else
+    match last_opt_arg with
+    | Some (_, arg, None) -> (
+      match Cmdliner_info.Arg.opt_kind arg with
+        | Flag -> Flag_or_pos_arg { index ; pos_only = false }
+        | Opt -> Arg_value { index; arg; optional = false}
+        | Opt_vopt _ -> Arg_value { index; arg; optional = true})
+    | Some _ | None -> Flag_or_pos_arg { index ; pos_only = false }
+
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers
 

@@ -773,6 +773,8 @@ module Cmd : sig
       specification of the command line: we can't tell apart a
       positional argument from the value of an unknown optional
       argument.  *)
+
+  val inspect : 'a t -> 'a Cmdliner_cmd.t
 end
 
 (** Terms for command line arguments.
@@ -800,9 +802,11 @@ module Arg : sig
   type 'a printer = Format.formatter -> 'a -> unit
   (** The type for converted argument printers. *)
 
+  type complete = string option -> string list
+
   [@@@alert "-deprecated"] (* Need to be able to mention them ! *)
 
-  type 'a conv = 'a parser * 'a printer
+  type 'a conv
   (** The type for argument converters.
 
       {b Warning.} Do not use directly, use {!val-conv} or {!val-conv'}.
@@ -811,6 +815,7 @@ module Arg : sig
   [@@@alert "+deprecated"] (* Need to be able to mention them ! *)
 
   val conv :
+    ?complete:complete ->
     ?docv:string -> (string -> ('a, [`Msg of string]) result) * 'a printer ->
     'a conv
   (** [conv ~docv (parse, print)] is an argument converter
@@ -820,6 +825,7 @@ module Arg : sig
       ["VALUE"]. *)
 
   val conv' :
+    ?complete:complete ->
     ?docv:string -> (string -> ('a, string) result) * 'a printer ->
     'a conv
   (** [conv'] is like {!val-conv} but the [Error] case has an unlabelled

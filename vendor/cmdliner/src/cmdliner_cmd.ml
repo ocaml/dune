@@ -29,6 +29,8 @@ let group ?default i cmds =
 
 let name c = Cmdliner_info.Cmd.name (get_info c)
 
+let inspect c = c
+
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cmdliner programmers
 

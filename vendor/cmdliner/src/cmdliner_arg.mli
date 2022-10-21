@@ -7,14 +7,17 @@
 
 type 'a parser = string -> [ `Ok of 'a | `Error of string ]
 type 'a printer = Format.formatter -> 'a -> unit
-type 'a conv = 'a parser * 'a printer
+type complete = string option -> string list
+type 'a conv = 'a parser * 'a printer * complete option
 type 'a converter = 'a conv
 
 val conv :
+  ?complete:complete ->
   ?docv:string -> (string -> ('a, [`Msg of string]) result) * 'a printer ->
   'a conv
 
 val conv' :
+  ?complete:complete ->
   ?docv:string -> (string -> ('a, string) result) * 'a printer -> 'a conv
 
 val pconv : ?docv:string -> 'a parser * 'a printer -> 'a conv

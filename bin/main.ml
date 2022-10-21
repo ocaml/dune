@@ -27,6 +27,7 @@ let all : _ Cmdliner.Cmd.t list =
     ; Ocaml_merlin.command
     ; Shutdown.command
     ; Diagnostics.command
+    ; Complete.command
     ]
   in
   let groups =
@@ -85,7 +86,9 @@ let info =
           ]
       ]
 
-let cmd = Cmd.group info all
+let cmd =
+  Fdecl.set Complete.all all;
+  Cmd.group info all
 
 let exit_and_flush code =
   Console.finish ();

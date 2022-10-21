@@ -829,6 +829,8 @@ module What = struct
       , return External_lib_deps )
     ]
 
+  let parsers = List.map parsers_with_docs ~f:(fun (n, _, _, _) -> n)
+
   (* The list of documentation strings (one for each command) *)
   let docs =
     List.map parsers_with_docs ~f:(fun (stag, args, doc, _parser) ->
@@ -1001,10 +1003,15 @@ let print_as_sexp dyn =
     (Dune_lang.Format.pp_top_sexps ~version [ cst ])
 
 let term : unit Term.t =
+  let converter =
+    Arg.conv
+      ~complete:(fun _ -> What.parsers)
+      (Arg.conv_parser Arg.string, Arg.conv_printer Arg.string)
+  in
   let+ common = Common.term
   and+ what =
     Arg.(
-      value & pos_all string []
+      value & pos_all converter []
       & info [] ~docv:"STRING"
           ~doc:
             ("What to describe. The syntax of this description is tied to the \

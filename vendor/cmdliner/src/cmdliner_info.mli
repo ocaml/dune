@@ -67,6 +67,8 @@ module Arg : sig
     ?doc:string -> ?env:Env.info -> string list -> t
 
   val id : t -> int
+  val complete : t -> string option -> string list
+  val add_complete : complete:(string option -> string list) -> t -> t
   val deprecated : t -> string option
   val absent : t -> absence
   val env : t -> Env.info option

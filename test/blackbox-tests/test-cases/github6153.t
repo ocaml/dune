@@ -36,7 +36,4 @@
 
   $ touch ./bin/prog.ml
 
-  $ dune build 2>&1 | head -n 3
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Unexpected find result", { found = Not_found; lib.name = "dep" })
+  $ dune build 2>&1

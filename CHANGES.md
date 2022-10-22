@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fix broken overlap check (#6157 fixes #6153, @rgrinberg)
+
 - Allow `Byte_complete` binaries to be installable (#4873, @AltGr, @rgrinberg)
 
 - Revive `$ dune external-lib-deps` under `$ dune describe external-lib-deps`.

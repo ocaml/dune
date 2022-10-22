@@ -355,7 +355,7 @@ module Status = struct
     | Hidden of lib Hidden.t
     | Invalid of exn
 
-  let to_dyn t =
+  let[@ocaml.warning "-32"] to_dyn t =
     let open Dyn in
     match t with
     | Invalid e -> variant "Invalid" [ Exn.to_dyn e ]
@@ -1523,17 +1523,20 @@ end = struct
                 R.lift
                   (let open Memo.O in
                   find_internal db lib.name >>= function
-                  | Status.Found lib' ->
+                  | Found lib' ->
                     if lib = lib' then Resolve.Memo.return ()
                     else
                       let req_by = Dep_stack.to_required_by stack in
                       Error.overlap ~in_workspace:lib'.info
                         ~installed:(lib.info, req_by)
-                  | found ->
-                    Code_error.raise "Unexpected find result"
-                      [ ("found", Status.to_dyn found)
-                      ; ("lib.name", Lib_name.to_dyn lib.name)
-                      ]))
+                  | Hidden _
+                  (* XXX the check for an overlap with a library that is hidden
+                     is skipped. Seems a little loose *)
+                  | Invalid _
+                  | Not_found ->
+                    (* if the library isn't in our scope, then it cannot
+                       introduce an overlap with an installed library *)
+                    Resolve.Memo.return ()))
           in
           let* new_stack =
             R.lift (Dep_stack.push stack ~implements_via lib.unique_id)

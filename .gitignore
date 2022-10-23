@@ -27,3 +27,4 @@ src/dune_rules/setup.ml
 result
 
 .DS_Store
+nix/profiles/

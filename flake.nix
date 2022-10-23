@@ -50,6 +50,7 @@
                 coq_8_16
                 nodejs-slim
                 pkg-config
+                file
                 ccls
               ] ++ (if stdenv.isLinux then [ strace ] else [ ]))
             ++ [ ocamllsp.outputs.packages.${system}.ocaml-lsp-server ]

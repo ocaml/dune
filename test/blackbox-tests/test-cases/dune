@@ -59,6 +59,10 @@
   (applies_to error)
   (enabled_if false)))
 
+(cram
+ (applies_to sandboxing)
+ (deps %{bin:file}))
+
 ; CONDITIONALLY DISABLED TESTS
 
 (cram

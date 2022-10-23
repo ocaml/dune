@@ -89,21 +89,21 @@ Test that the cache stores all historical build results.
   > EOF
   $ cat > dune-v1 <<EOF
   > (rule
-  >   (targets t1)
-  >   (action (bash "echo running; echo v1 > t1")))
+  >  (targets t1)
+  >  (action (bash "echo running; echo v1 > t1")))
   > (rule
-  >   (deps t1)
-  >   (targets t2)
-  >   (action (bash "echo running; cat t1 t1 > t2")))
+  >  (deps t1)
+  >  (targets t2)
+  >  (action (bash "echo running; cat t1 t1 > t2")))
   > EOF
   $ cat > dune-v2 <<EOF
   > (rule
-  >   (targets t1)
-  >   (action (bash "echo running; echo v2 > t1")))
+  >  (targets t1)
+  >  (action (bash "echo running; echo v2 > t1")))
   > (rule
-  >   (deps t1)
-  >   (targets t2)
-  >   (action (bash "echo running; cat t1 t1 > t2")))
+  >  (deps t1)
+  >  (targets t2)
+  >  (action (bash "echo running; cat t1 t1 > t2")))
   > EOF
   $ cp dune-v1 dune
   $ dune build --config-file=config t2

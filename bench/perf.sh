@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Run this script simply as ./perf.sh from the root directory.
+# Run this script simply as ./bench/perf.sh from the root directory.
 
 set -e
 

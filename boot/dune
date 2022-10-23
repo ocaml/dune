@@ -12,6 +12,10 @@
  (modules :standard \ configure bootstrap)
  (libraries unix))
 
+(executable
+ (name bootstrap)
+ (modules bootstrap))
+
 ;; For unused value warnings. We don't write a plain empty
 ;; duneboot.mli to simplify ../bootstrap.ml
 

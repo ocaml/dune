@@ -10,10 +10,10 @@ Test directory target promotion in file-watching mode.
   > EOF
   $ cat > dune <<EOF
   > (rule
-  >   (mode promote)
-  >   (deps src (sandbox always))
-  >   (targets (dir d1))
-  >   (action (bash "mkdir -p d1/d2; cp src d1/a; cp src d1/b; cp src d1/d2/c")))
+  >  (mode promote)
+  >  (deps src (sandbox always))
+  >  (targets (dir d1))
+  >  (action (bash "mkdir -p d1/d2; cp src d1/a; cp src d1/b; cp src d1/d2/c")))
   > EOF
 
   $ echo -n "*" > src

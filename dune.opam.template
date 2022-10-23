@@ -1,5 +1,5 @@
 build: [
-  ["ocaml" "bootstrap.ml" "-j" jobs]
+  ["ocaml" "boot/bootstrap.ml" "-j" jobs]
   ["./dune.exe" "build" "dune.install" "--release" "--profile" "dune-bootstrap" "-j" jobs]
 ]
 depends: [

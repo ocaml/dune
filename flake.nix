@@ -28,6 +28,22 @@
           cinaps = "*";
           ocamlfind = "1.9.2";
         };
+        pkgs = nixpkgs.legacyPackages.${system};
+        ocamlformat =
+          let
+            ocamlformat_version =
+              let
+                lists = pkgs.lib.lists;
+                strings = pkgs.lib.strings;
+                ocamlformat_config = strings.splitString "\n" (builtins.readFile ./.ocamlformat);
+                prefix = "version=";
+                ocamlformat_version_pred = line: strings.hasPrefix prefix line;
+                version_line = lists.findFirst ocamlformat_version_pred "not_found" ocamlformat_config;
+                version = strings.removePrefix prefix version_line;
+              in
+              builtins.replaceStrings [ "." ] [ "_" ] version;
+          in
+          builtins.getAttr ("ocamlformat_" + ocamlformat_version) pkgs;
       in
       {
         packages =
@@ -38,15 +54,12 @@
           scope // { default = self.packages.${system}.${package}; };
 
         devShell =
-          let
-            pkgs = nixpkgs.legacyPackages.${system};
-          in
           pkgs.mkShell {
             nativeBuildInputs = [ pkgs.opam ];
             buildInputs = (with pkgs;
               [
                 # dev tools
-                ocamlformat_0_21_0
+                ocamlformat
                 coq_8_16
                 nodejs-slim
                 pkg-config

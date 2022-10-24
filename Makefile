@@ -45,8 +45,8 @@ help:
 release: $(BIN)
 	@$(BIN) build -p dune --profile dune-bootstrap
 
-dune.exe: bootstrap.ml boot/libs.ml boot/duneboot.ml
-	@ocaml bootstrap.ml
+dune.exe: boot/bootstrap.ml boot/libs.ml boot/duneboot.ml
+	@ocaml boot/bootstrap.ml
 
 dev: $(BIN)
 	$(BIN) build @install

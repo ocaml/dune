@@ -6,7 +6,7 @@ open Printf
 
 let min_supported_natively = (4, 08, 0)
 
-let verbose, keep_generated_files, debug =
+let _verbose, keep_generated_files, _debug =
   let anon s = raise (Arg.Bad (sprintf "don't know what to do with %s\n" s)) in
   let verbose = ref false in
   let keep_generated_files = ref false in

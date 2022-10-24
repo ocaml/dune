@@ -45,8 +45,8 @@ help:
 release: $(BIN)
 	@$(BIN) build -p dune --profile dune-bootstrap
 
-dune.exe: bootstrap.ml boot/libs.ml boot/duneboot.ml
-	@ocaml bootstrap.ml
+$(BIN): boot/bootstrap.ml boot/libs.ml boot/duneboot.ml
+	@ocaml boot/bootstrap.ml
 
 dev: $(BIN)
 	$(BIN) build @install
@@ -123,9 +123,8 @@ all-supported-ocaml-versions: $(BIN)
 	$(BIN) build @install @runtest --workspace dune-workspace.dev --root .
 
 .PHONY: clean
-clean: $(BIN)
-	$(BIN) clean || true
-	rm -rf _boot dune.exe
+clean:
+	rm -rf _boot _build $(BIN)
 
 distclean: clean
 	rm -f src/dune_rules/setup.ml
@@ -171,8 +170,3 @@ dune-release:
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose
 	dune-release opam pkg
 	dune-release opam submit
-
-# see nix/default.nix for details
-.PHONY: nix/opam-selection.nix
-nix/opam-selection.nix: Makefile
-	nix-shell -A resolve ./

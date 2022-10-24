@@ -10,7 +10,6 @@ BIN := ./dune.exe
 # when tested in CI
 TEST_DEPS := \
 lwt \
-bisect_ppx \
 cinaps \
 core_bench \
 "csexp>=1.3.0" \

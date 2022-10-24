@@ -30,11 +30,6 @@
 ; DISABLED TESTS
 
 (subdir
- bisect-ppx
- (cram
-  (enabled_if false)))
-
-(subdir
  env
  (cram
   (applies_to envs-and-contexts)

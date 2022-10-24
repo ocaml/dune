@@ -86,6 +86,7 @@
                 pkg-config
                 file
                 ccls
+                mercurial
               ] ++ (if stdenv.isLinux then [ strace ] else [ ]))
             ++ [
               ocamllsp.outputs.packages.${system}.ocaml-lsp-server

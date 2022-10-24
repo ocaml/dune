@@ -86,7 +86,6 @@ let simplify act =
            (List.map srcs ~f:String.quote_for_shell |> String.concat ~sep:" ")
            (String.quote_for_shell target))
       :: acc
-    | No_infer act -> loop act acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
     | Extension _ -> Sh "# extensions are not supported" :: acc
   and block act =

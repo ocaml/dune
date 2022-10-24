@@ -41,7 +41,7 @@ let run_coqtop ~sctx ~dir ~coqtop ~coq_file_arg ~coq_file_build () =
   let* (_ : unit * Dep.Fact.t Dep.Map.t) =
     let deps =
       let boot_type = Resolve.Memo.return boot_type in
-      Dune_rules.Coq_rules.deps_of ~dir ~boot_type coq_module
+      fst @@ Dune_rules.Coq_rules.deps_of ~dir ~boot_type coq_module
     in
     Action_builder.run deps Eager
   in

@@ -72,10 +72,14 @@ val dep_file : t -> Stdune.Path.Build.t
 
 val glob_file : t -> Stdune.Path.Build.t
 
+type target =
+  | Vo
+  | Vos
+
 (** Some of the object files should not be installed, we control this with the
     following parameter *)
 type obj_files_mode =
-  | Build
+  | Build of target
   | Install
 
 (** This returns a list of pairs [(obj_file, install_path)] due to native files

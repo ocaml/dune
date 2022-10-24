@@ -133,8 +133,12 @@ let glob_file x =
   let vo_dir = build_vo_dir x in
   Path.Build.relative vo_dir (name x ^ ".glob")
 
+type target =
+  | Vo
+  | Vos
+
 type obj_files_mode =
-  | Build
+  | Build of target
   | Install
 
 (* XXX: Remove the install .coq-native hack once rules can output targets in
@@ -155,7 +159,8 @@ let obj_files x ~wrapper_name ~mode ~obj_files_mode =
   in
   let obj_files =
     match obj_files_mode with
-    | Build -> [ name x ^ ".vo"; name x ^ ".glob" ]
+    | Build Vo -> [ name x ^ ".vo"; name x ^ ".glob" ]
+    | Build Vos -> [ name x ^ ".vos" ]
     | Install -> [ name x ^ ".vo" ]
   in
   List.map obj_files ~f:(fun fname ->

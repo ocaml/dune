@@ -12,8 +12,12 @@
       flake = false;
     };
     melange.url = "github:melange-re/melange";
+    coq = {
+      url = "github:coq/coq/V8.16.0";
+      flake = false;
+    };
   };
-  outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp, opam-repository, melange }@inputs:
+  outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp, opam-repository, melange, coq }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
       let
@@ -33,6 +37,7 @@
           utop = "*";
           cinaps = "*";
           ocamlfind = "1.9.2";
+          coq-core = "dev";
         };
         pkgs = nixpkgs.legacyPackages.${system};
         ocamlformat =
@@ -51,14 +56,32 @@
           in
           builtins.getAttr ("ocamlformat_" + ocamlformat_version) pkgs;
         scope =
-          opam-nix.lib.${system}.buildOpamProject'
-            {
-              inherit pkgs;
-              repos = [ opam-repository ];
-            } ./.
-            (devPackages // {
-              ocaml-base-compiler = "4.14.0";
-            });
+          let
+            scope =
+              let
+                overlay = final: prev: {
+                  ${package} = prev.${package}.overrideAttrs (_: {
+                    # Do not add share/nix-support, so that dependencies from
+                    # the scope don't leak into dependent derivations
+                    doNixSupport = false;
+                  });
+                };
+                scope = with opam-nix.lib.${system}; buildOpamProject'
+                  {
+                    inherit pkgs;
+                    repos =
+                      [
+                        (makeOpamRepo coq)
+                        opam-repository
+                      ];
+                  } ./.
+                  (devPackages // {
+                    ocaml-base-compiler = "4.14.0";
+                  });
+              in
+              scope.overrideScope' overlay;
+          in
+          scope // { default = self.packages.${system}.${package}; };
       in
       {
         packages.default = scope.dune;
@@ -70,7 +93,6 @@
               [
                 # dev tools
                 ocamlformat
-                coq_8_16
                 nodejs-slim
                 pkg-config
                 file

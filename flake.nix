@@ -63,6 +63,17 @@
       {
         packages.default = scope.dune;
 
+        devShells.doc =
+          pkgs.mkShell {
+            buildInputs = (with pkgs;
+              [
+                sphinx
+                sphinx-autobuild
+                python310Packages.sphinx-rtd-theme
+              ]
+            );
+          };
+
         devShells.default =
           pkgs.mkShell {
             nativeBuildInputs = [ pkgs.opam ];

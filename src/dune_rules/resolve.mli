@@ -5,7 +5,7 @@
 
     Indeed, in many places in the Dune codebase we eagerly resolve library names
     at "rule generation time". This means that if a library was missing, we
-    could fail right from the start if we are not caferul. What is more, we
+    could fail right from the start if we are not careful. What is more, we
     would fail even if we didn't need to build the item that depended on this
     library. This would not be good.
 

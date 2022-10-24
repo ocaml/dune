@@ -9,7 +9,7 @@ open Memo.O
 
 open Coq_stanza
 
-let deps_kind = `Coqmod
+let deps_kind = `Coqdep
 
 module Require_map_db = struct
   (* merge all the maps *)

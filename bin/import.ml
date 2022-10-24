@@ -72,11 +72,13 @@ end = struct
            | Building
                { Build_system.Progress.number_of_rules_executed = done_
                ; number_of_rules_discovered = total
+               ; number_of_rules_failed = failed
                } ->
              Pp.verbatim
-               (sprintf "Done: %u%% (%u/%u, %u left) (jobs: %u)"
+               (sprintf "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
                   (if total = 0 then 0 else done_ * 100 / total)
                   done_ total (total - done_)
+                  (if failed = 0 then "" else sprintf ", %u failed" failed)
                   (Dune_engine.Scheduler.running_jobs_count scheduler))));
     Fiber.return (Memo.of_thunk get)
 end

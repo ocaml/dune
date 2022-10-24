@@ -16,6 +16,8 @@ Unreleased
 - Introduce experimental support for the melange compiler (#6268, fixes #6230,
   @jchavarri)
 
+- Build progress status now shows number of failed jobs (#6242, @Alizter)
+
 3.5.0 (2022-10-19)
 ------------------
 

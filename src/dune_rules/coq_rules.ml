@@ -546,8 +546,8 @@ let setup_coqc_rule ~loc ~sctx (cctx : _ Context.t) ~file_targets coq_module =
 
 let setup_rule ~loc ~sctx ~dir ~source_rule ~file_targets cctx m =
   let cctx = Context.for_module cctx m in
-  let* () = setup_coqc_rule ~file_targets ~sctx ~loc cctx m ~dir in
-  setup_coqdep_rule ~sctx ~loc cctx ~source_rule m ~dir
+  setup_coqc_rule ~file_targets ~sctx ~loc cctx m ~dir
+  >>> setup_coqdep_rule ~sctx ~loc cctx ~source_rule m ~dir
 
 let coq_modules_of_theory ~sctx lib =
   Action_builder.of_memo
@@ -616,9 +616,7 @@ let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
       |> Path.build |> Action_builder.path
       |> Rules.Produce.Alias.add_deps (Coqdoc_mode.alias mode ~dir) ~loc
   in
-  let+ () = rule Html
-  and+ () = rule Latex in
-  ()
+  rule Html >>> rule Latex
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let theory =
@@ -630,9 +628,8 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let* cctx, coq_modules =
     setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory
   in
-  let+ () = setup_vo_rules ~sctx ~dir ~cctx s theory coq_modules
-  and+ () = setup_coqdoc_rules ~sctx ~dir ~cctx s coq_modules in
-  ()
+  setup_vo_rules ~sctx ~dir ~cctx s theory coq_modules
+  >>> setup_coqdoc_rules ~sctx ~dir ~cctx s coq_modules
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let name = s.name in

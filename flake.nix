@@ -11,8 +11,9 @@
       url = "github:ocaml/opam-repository";
       flake = false;
     };
+    melange.url = "github:melange-re/melange";
   };
-  outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp, opam-repository }@inputs:
+  outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp, opam-repository, melange }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
       let
@@ -75,7 +76,10 @@
                 file
                 ccls
               ] ++ (if stdenv.isLinux then [ strace ] else [ ]))
-            ++ [ ocamllsp.outputs.packages.${system}.ocaml-lsp-server ]
+            ++ [
+              ocamllsp.outputs.packages.${system}.ocaml-lsp-server
+              melange.outputs.packages.${system}.default
+            ]
             ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
             inputsFrom = [ self.packages.${system}.default ];
           };

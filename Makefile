@@ -45,7 +45,7 @@ help:
 release: $(BIN)
 	@$(BIN) build -p dune --profile dune-bootstrap
 
-dune.exe: boot/bootstrap.ml boot/libs.ml boot/duneboot.ml
+$(BIN): boot/bootstrap.ml boot/libs.ml boot/duneboot.ml
 	@ocaml boot/bootstrap.ml
 
 dev: $(BIN)
@@ -123,9 +123,8 @@ all-supported-ocaml-versions: $(BIN)
 	$(BIN) build @install @runtest --workspace dune-workspace.dev --root .
 
 .PHONY: clean
-clean: $(BIN)
-	$(BIN) clean || true
-	rm -rf _boot dune.exe
+clean:
+	rm -rf _boot _build $(BIN)
 
 distclean: clean
 	rm -f src/dune_rules/setup.ml

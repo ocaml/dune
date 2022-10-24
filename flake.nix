@@ -1,13 +1,18 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    opam-nix.url = "github:tweag/opam-nix";
     flake-utils.url = "github:numtide/flake-utils";
     ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
-    ocamllsp.inputs.opam-nix.follows = "opam-nix";
-    ocamllsp.inputs.nixpkgs.follows = "nixpkgs";
+    opam-nix = {
+      url = "github:tweag/opam-nix";
+      inputs.opam-repository.follows = "opam-repository";
+    };
+    opam-repository = {
+      url = "github:ocaml/opam-repository";
+      flake = false;
+    };
   };
-  outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp }@inputs:
+  outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp, opam-repository }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
       let
@@ -44,16 +49,20 @@
               builtins.replaceStrings [ "." ] [ "_" ] version;
           in
           builtins.getAttr ("ocamlformat_" + ocamlformat_version) pkgs;
+        scope =
+          opam-nix.lib.${system}.buildOpamProject'
+            {
+              inherit pkgs;
+              repos = [ opam-repository ];
+            } ./.
+            (devPackages // {
+              ocaml-base-compiler = "4.14.0";
+            });
       in
       {
-        packages =
-          let
-            scope = opam-nix.lib.${system}.buildOpamProject' { } ./.
-              (devPackages // { ocaml-base-compiler = "4.14.0"; });
-          in
-          scope // { default = self.packages.${system}.${package}; };
+        packages.default = scope.dune;
 
-        devShell =
+        devShells.default =
           pkgs.mkShell {
             nativeBuildInputs = [ pkgs.opam ];
             buildInputs = (with pkgs;
@@ -67,8 +76,7 @@
                 ccls
               ] ++ (if stdenv.isLinux then [ strace ] else [ ]))
             ++ [ ocamllsp.outputs.packages.${system}.ocaml-lsp-server ]
-            ++ (builtins.map (s: builtins.getAttr s self.packages.${system})
-              (builtins.attrNames devPackages));
+            ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
             inputsFrom = [ self.packages.${system}.default ];
           };
       });

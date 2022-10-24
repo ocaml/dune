@@ -370,27 +370,31 @@ module Context = struct
     { t with boot_type }
 end
 
-let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
-    (lines : string list) =
+let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module contents =
   let source = Coq_module.source coq_module in
-  let invalid phase =
+  let err_coqdep err =
     User_error.raise
-      [ Pp.textf "coqdep returned invalid output for %s / [phase: %s]"
+      [ Pp.textf "coqdep returned invalid output for %s"
           (Path.Build.to_string_maybe_quoted source)
-          phase
-      ; Pp.verbatim (String.concat ~sep:"\n" lines)
+      ; Pp.textf "error: %s" err
+      ; Pp.verbatim (String.concat ~sep:"\n" contents)
       ]
   in
-  let line =
-    match lines with
-    | [] | _ :: _ :: _ :: _ -> invalid "line"
-    | [ line ] -> line
-    | [ l1; _l2 ] ->
-      (* .vo is produced before .vio, this is fragile tho *)
-      l1
+  let deps =
+    List.map contents ~f:(fun line ->
+        match String.lsplit2 line ~on:':' with
+        | None -> err_coqdep "unable to parse targets"
+        | Some (targets, deps) ->
+          ( String.extract_blank_separated_words targets
+          , String.extract_blank_separated_words deps ))
   in
-  match String.lsplit2 line ~on:':' with
-  | None -> invalid "split"
+  let ext = ".vo" in
+  match
+    List.find_map deps ~f:(fun (targets, deps) ->
+        List.find_map targets ~f:(fun t ->
+            if Filename.check_suffix t ext then Some (t, deps) else None))
+  with
+  | None -> err_coqdep ".vo not found"
   | Some (basename, deps) -> (
     let ff = List.hd @@ String.extract_blank_separated_words basename in
     let depname, _ = Filename.split_extension ff in
@@ -399,15 +403,14 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
         Coq_module.(
           prefix coq_module @ [ Coq_module.Name.to_string (name coq_module) ])
     in
-    if depname <> modname then invalid "basename";
-    let deps = String.extract_blank_separated_words deps in
+    if depname <> modname then err_coqdep "basename is invalid";
     (* Add prelude deps for when stdlib is in scope and we are not actually
        compiling the prelude *)
     let deps = List.map ~f:(Path.relative (Path.build dir)) deps in
     match boot_type with
     | No_boot | Bootstrap_prelude -> deps
     | Bootstrap lib ->
-      Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo"
+      Path.relative (Path.build (Coq_lib.src_root lib)) ("Init/Prelude" ^ ext)
       :: deps)
 
 let deps_of ~dir ~boot_type coq_module =

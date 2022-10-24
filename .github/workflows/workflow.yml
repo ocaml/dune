@@ -99,6 +99,20 @@ jobs:
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}
 
+  nix:
+    name: Nix
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v18
+    - run: nix build
+
   lint-fmt:
     runs-on: ubuntu-latest
     steps:

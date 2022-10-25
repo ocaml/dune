@@ -18,6 +18,9 @@ Unreleased
 
 - Build progress status now shows number of failed jobs (#6242, @Alizter)
 
+- Allow absolute build directories to find public executables. For example,
+  those specified with `(deps %{bin:...})` (#6326, @anmonteiro)
+
 3.5.0 (2022-10-19)
 ------------------
 

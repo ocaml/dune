@@ -514,9 +514,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       else env
     in
     let env =
-      let cwd = Sys.getcwd () in
       let extend_var var ?(path_sep = Bin.path_sep) v =
-        let v = Filename.concat cwd (Path.Build.to_string v) in
+        let v = Path.to_absolute_filename (Path.build v) in
         match Env.get env var with
         | None -> (var, v)
         | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)

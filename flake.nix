@@ -22,7 +22,6 @@
           lwt = "*";
           csexp = "*";
           core_bench = "*";
-          bisect_ppx = "*";
           js_of_ocaml = "*";
           js_of_ocaml-compiler = "*";
           mdx = "*";

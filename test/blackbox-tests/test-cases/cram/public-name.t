@@ -28,13 +28,3 @@ Running `dune runtest` with a relative build directory works
 
   $ export NEW_BUILD_DIR="$PWD/_other_build"
   $ DUNE_BUILD_DIR="$NEW_BUILD_DIR" dune runtest --auto-promote
-  File "tests/run.t", line 1, characters 0-0:
-  Error: Files
-  $TESTCASE_ROOT/fresh/_other_build/default/tests/run.t
-  and
-  $TESTCASE_ROOT/fresh/_other_build/default/tests/run.t.corrected
-  differ.
-  Promoting
-    $TESTCASE_ROOT/fresh/_other_build/default/tests/run.t.corrected
-    to tests/run.t.
-  [1]

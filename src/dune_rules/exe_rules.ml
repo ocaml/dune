@@ -130,6 +130,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let stdlib_dir = ctx.lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
+  let* requires_link = Compilation_context.requires_link cctx in
   let* dep_graphs =
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
@@ -204,7 +205,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~f:(Check_rules.add_cycle_check sctx ~dir)
   in
   ( cctx
-  , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
+  , Merlin.make ~requires:requires_link ~stdlib_dir ~flags ~modules
       ~source_dirs:Path.Source.Set.empty ~libname:None ~obj_dir
       ~preprocess:
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)

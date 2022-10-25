@@ -500,6 +500,7 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
+  let* requires_link = Compilation_context.requires_link cctx in
   let stdlib_dir = (Compilation_context.context cctx).lib_config.stdlib_dir in
   let top_sorted_modules =
     let impl_only = Modules.impl_only modules in
@@ -545,7 +546,7 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
       }
   in
   ( cctx
-  , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
+  , Merlin.make ~requires:requires_link ~stdlib_dir ~flags ~modules
       ~source_dirs:Path.Source.Set.empty
       ~preprocess:
         (Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)

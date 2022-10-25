@@ -197,7 +197,7 @@ let executables_rules
   let lib_config = ocaml.lib_config in
   let stdlib_dir = lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let* requires_link = Compilation_context.requires_link cctx in
+  let* requires_hidden = Compilation_context.requires_hidden cctx in
   let* dep_graphs =
     (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
@@ -281,7 +281,8 @@ let executables_rules
   in
   ( cctx
   , Merlin.make
-      ~requires:requires_link
+      ~requires_compile
+      ~requires_hidden
       ~stdlib_dir
       ~flags
       ~modules

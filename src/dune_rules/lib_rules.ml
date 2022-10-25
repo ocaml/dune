@@ -572,7 +572,7 @@ let library_rules
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let ocaml = Compilation_context.ocaml cctx in
-  let* requires_link = Compilation_context.requires_link cctx in
+  let* requires_hidden = Compilation_context.requires_hidden cctx in
   let stdlib_dir = ocaml.lib_config.stdlib_dir in
   let top_sorted_modules =
     let impl_only = Modules.With_vlib.impl_only modules in
@@ -628,7 +628,8 @@ let library_rules
   in
   ( cctx
   , Merlin.make
-      ~requires:requires_link
+      ~requires_compile
+      ~requires_hidden
       ~stdlib_dir
       ~flags
       ~modules

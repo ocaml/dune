@@ -326,6 +326,7 @@ let setup_emit_cmj_rules
     in
     let* () = Module_compilation.build_all cctx in
     let* requires_compile = Compilation_context.requires_compile cctx in
+    let* requires_hidden = Compilation_context.requires_hidden cctx in
     let stdlib_dir = (Compilation_context.ocaml cctx).lib_config.stdlib_dir in
     let+ () =
       let emit_and_libs_deps =
@@ -354,7 +355,8 @@ let setup_emit_cmj_rules
     in
     ( cctx
     , Merlin.make
-        ~requires:requires_compile
+        ~requires_compile
+        ~requires_hidden
         ~stdlib_dir
         ~flags
         ~modules

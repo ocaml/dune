@@ -73,6 +73,12 @@
             );
           };
 
+        devShells.fmt =
+          pkgs.mkShell {
+            inputsFrom = [ pkgs.dune_3 ];
+            buildInputs = [ ocamlformat ];
+          };
+
         devShells.slim = with pkgs.ocamlPackages; pkgs.mkShell {
           inputsFrom = [ dune_3 ];
           nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];

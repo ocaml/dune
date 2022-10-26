@@ -116,21 +116,13 @@ jobs:
       - uses: cachix/install-nix-action@v18
       - run: nix build
 
-  lint-fmt:
+  fmt:
+    name: Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Use OCaml 4.14.x
-        uses: ocaml/setup-ocaml@v2
-        with:
-          ocaml-compiler: 4.14.x
-          opam-pin: false
-          opam-depext: false
-
-      - name: Install ocamlformat
-        run: opam exec -- make install-ocamlformat
-      - run: opam exec -- make fmt
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v18
+      - run: nix develop .#fmt -c make fmt
 
   doc:
     name: Documentation

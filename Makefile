@@ -130,7 +130,7 @@ distclean: clean
 
 .PHONY: doc
 doc:
-	sphinx-build doc doc/_build
+	sphinx-build -W doc doc/_build
 
 # livedoc-deps: you may need to [pip3 install sphinx-autobuild] and [pip3 install sphinx-rtd-theme]
 livedoc:

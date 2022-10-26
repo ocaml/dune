@@ -12,8 +12,12 @@
       flake = false;
     };
     melange.url = "github:melange-re/melange";
+    coq = {
+      url = "github:coq/coq/V8.16.0";
+      flake = false;
+    };
   };
-  outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp, opam-repository, melange }@inputs:
+  outputs = { self, flake-utils, opam-nix, nixpkgs, ocamllsp, opam-repository, melange, coq }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
       let
@@ -32,6 +36,10 @@
           utop = "*";
           cinaps = "*";
           ocamlfind = "1.9.2";
+        };
+        coqPackages = {
+          coq = "dev";
+          coq-native = "*";
         };
         pkgs = nixpkgs.legacyPackages.${system};
         ocamlformat =
@@ -58,6 +66,33 @@
             (devPackages // {
               ocaml-base-compiler = "4.14.0";
             });
+        scope-coq =
+          let
+            scope =
+              let
+                overlay = final: prev: {
+                  ${package} = prev.${package}.overrideAttrs (_: {
+                    # Do not add share/nix-support, so that dependencies from
+                    # the scope don't leak into dependent derivations
+                    doNixSupport = false;
+                  });
+                };
+                scope = with opam-nix.lib.${system}; buildOpamProject'
+                  {
+                    inherit pkgs;
+                    repos =
+                      [
+                        (makeOpamRepo coq)
+                        opam-repository
+                      ];
+                  } ./.
+                  (coqPackages // {
+                    ocaml-base-compiler = "4.14.0";
+                  });
+              in
+              scope.overrideScope' overlay;
+          in
+          scope // { default = self.packages.${system}.${package}; };
       in
       {
         packages.default = scope.dune;
@@ -90,6 +125,19 @@
           ];
         };
 
+        devShells.coq = with pkgs.ocamlPackages; pkgs.mkShell {
+          inputsFrom = [ dune_3 ];
+          nativeBuildInputs = [ ];
+          buildInputs = (with pkgs;
+            [
+              ocamlformat
+            ])
+          ++ [
+            ocamllsp.outputs.packages.${system}.ocaml-lsp-server
+          ]
+          ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames coqPackages) scope-coq;
+        };
+
         devShells.default =
           pkgs.mkShell {
             nativeBuildInputs = [ pkgs.opam ];
@@ -97,7 +145,6 @@
               [
                 # dev tools
                 ocamlformat
-                coq_8_16
                 nodejs-slim
                 pkg-config
                 file

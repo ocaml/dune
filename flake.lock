@@ -41,6 +41,23 @@
         "type": "github"
       }
     },
+    "coq": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1662357094,
+        "narHash": "sha256-3V6kL9j2rn5FHBxq1mtmWWTZS9X5cAyvtUsS6DaM+is=",
+        "owner": "coq",
+        "repo": "coq",
+        "rev": "146ae2f3c0d5b0e82a9f86527f794618b9c2e51c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "coq",
+        "ref": "V8.16.0",
+        "repo": "coq",
+        "type": "github"
+      }
+    },
     "crane": {
       "flake": false,
       "locked": {
@@ -730,6 +747,7 @@
     },
     "root": {
       "inputs": {
+        "coq": "coq",
         "flake-utils": "flake-utils",
         "melange": "melange",
         "nixpkgs": "nixpkgs_3",

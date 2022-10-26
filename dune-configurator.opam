@@ -18,7 +18,7 @@ homepage: "https://github.com/ocaml/dune"
 doc: "https://dune.readthedocs.io/"
 bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
-  "dune" {>= "3.3"}
+  "dune" {>= "3.5"}
   "ocaml" {>= "4.04.0"}
   "base-unix"
   "csexp" {>= "1.5.0"}

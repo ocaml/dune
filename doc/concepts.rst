@@ -1296,14 +1296,13 @@ Here is a complete list of supported subfields:
   - ``dir3`` which would add ``dir3`` to the list of include directories
   - ``((lib lib3) dir4 (include inc2))`` which would add the source directory of
     the library ``lib3``, the directory ``dir4``, and the result of recursively
-    including the contents of the file ``inc2``
-  The contents of included
-  directories are tracked recursively, e.g., if you use ``(include_dir dir)``
-  and have headers ``dir/base.h`` and ``dir/lib/lib.h``, they both will
-  be tracked as dependencies.
-- ``extra_deps`` specifies any other dependencies that should be tracked.
-  This is useful when dealing with ``#include`` statements that escape into
-  a parent directory like ``#include "../a.h"``.
+    including the contents of the file ``inc2``.
+    The contents of included directories are tracked recursively, e.g., if you
+    use ``(include_dir dir)`` and have headers ``dir/base.h`` and
+    ``dir/lib/lib.h``, they both will be tracked as dependencies.
+  - ``extra_deps`` specifies any other dependencies that should be tracked.
+    This is useful when dealing with ``#include`` statements that escape into
+    a parent directory like ``#include "../a.h"``.
 
 
 Mode-Dependent Stubs
@@ -1396,7 +1395,7 @@ libraries or linked into OCaml executables. Do this by using the
 ``extra_objects`` field of the ``library`` or ``executable`` stanzas.
 For example:
 
-.. code:: scheme
+.. code:: lisp
 
     (executable
      (public_name main)

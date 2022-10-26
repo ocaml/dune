@@ -133,6 +133,14 @@ jobs:
         run: opam exec -- make install-ocamlformat
       - run: opam exec -- make fmt
 
+  doc:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v18
+      - run: nix develop .#doc -c make doc
+
   coq:
     name: Coq 8.16.0
     runs-on: ubuntu-latest

@@ -662,6 +662,9 @@ Dune supports globbing files in a single directory via ``(glob_files
 - anything after the last ``/``, or everything if the glob contains no ``/``, is
   interpreted using the glob syntax
 
+Absolute paths are permitted in the ``(glob_files ...)`` term only. It's an error to pass
+an absolute path (i.e., a path beginning with a ``/``) to ``(glob_files_rec ...)```.
+
 The glob syntax is interpreted as follows:
 
 - ``\<char>`` matches exactly ``<char>``, even if it's a special character

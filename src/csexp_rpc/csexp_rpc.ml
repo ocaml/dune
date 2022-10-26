@@ -226,21 +226,9 @@ module Server = struct
       ; buf : Bytes.t
       }
 
-    let create sockaddr ~backlog =
-      let fd =
-        Unix.socket ~cloexec:true
-          (Unix.domain_of_sockaddr sockaddr)
-          Unix.SOCK_STREAM 0
-      in
-      Unix.setsockopt fd Unix.SO_REUSEADDR true;
+    let create fd sockaddr ~backlog =
       Unix.set_nonblock fd;
-      (match sockaddr with
-      | ADDR_UNIX p ->
-        let p = Path.of_string p in
-        Path.unlink_no_err p;
-        Path.mkdir_p (Path.parent_exn p);
-        at_exit (fun () -> Path.unlink_no_err p)
-      | _ -> ());
+      Unix.setsockopt fd Unix.SO_REUSEADDR true;
       Socket.bind fd sockaddr;
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
@@ -276,61 +264,77 @@ module Server = struct
   end
 
   type t =
-    { mutable transport : Transport.t option
+    { mutable state :
+        [ `Init of Unix.file_descr | `Running of Transport.t | `Closed ]
     ; backlog : int
     ; sockaddr : Unix.sockaddr
     }
 
-  let create sockaddr ~backlog = { sockaddr; backlog; transport = None }
+  let create sockaddr ~backlog =
+    let fd =
+      Unix.socket ~cloexec:true
+        (Unix.domain_of_sockaddr sockaddr)
+        Unix.SOCK_STREAM 0
+    in
+    { sockaddr; backlog; state = `Init fd }
 
   let serve (t : t) =
     let* async = Worker.create () in
-    let+ transport =
-      Worker.task_exn async ~f:(fun () ->
-          Transport.create t.sockaddr ~backlog:t.backlog)
-    in
-    t.transport <- Some transport;
-    let accept () =
-      Worker.task async ~f:(fun () ->
-          Transport.accept transport
-          |> Option.map ~f:(fun client ->
-                 let in_ = Unix.in_channel_of_descr client in
-                 let out = Unix.out_channel_of_descr client in
-                 (in_, out)))
-    in
-    let loop () =
-      let* accept = accept () in
-      match accept with
-      | Error `Stopped ->
-        Log.info [ Pp.text "RPC stopped accepting." ];
-        Fiber.return None
-      | Error (`Exn exn) ->
-        Log.info
-          [ Pp.text "RPC accept failed. Server will not accept new clients"
-          ; Exn_with_backtrace.pp exn
-          ];
-        Fiber.return None
-      | Ok None ->
-        Log.info
-          [ Pp.text
-              "RPC accepted the last client. No more clients will be accepted."
-          ];
-        Fiber.return None
-      | Ok (Some (in_, out)) ->
-        let+ session = Session.create ~socket:true in_ out in
-        Some session
-    in
-    Fiber.Stream.In.create loop
+    match t.state with
+    | `Closed -> Code_error.raise "already closed" []
+    | `Running _ -> Code_error.raise "already running" []
+    | `Init fd ->
+      let+ transport =
+        Worker.task_exn async ~f:(fun () ->
+            Transport.create fd t.sockaddr ~backlog:t.backlog)
+      in
+      t.state <- `Running transport;
+      let accept () =
+        Worker.task async ~f:(fun () ->
+            Transport.accept transport
+            |> Option.map ~f:(fun client ->
+                   let in_ = Unix.in_channel_of_descr client in
+                   let out = Unix.out_channel_of_descr client in
+                   (in_, out)))
+      in
+      let loop () =
+        let* accept = accept () in
+        match accept with
+        | Error `Stopped ->
+          Log.info [ Pp.text "RPC stopped accepting." ];
+          Fiber.return None
+        | Error (`Exn exn) ->
+          Log.info
+            [ Pp.text "RPC accept failed. Server will not accept new clients"
+            ; Exn_with_backtrace.pp exn
+            ];
+          Fiber.return None
+        | Ok None ->
+          Log.info
+            [ Pp.text
+                "RPC accepted the last client. No more clients will be \
+                 accepted."
+            ];
+          Fiber.return None
+        | Ok (Some (in_, out)) ->
+          let+ session = Session.create ~socket:true in_ out in
+          Some session
+      in
+      Fiber.Stream.In.create loop
 
   let stop t =
-    match t.transport with
-    | None -> Code_error.raise "server not running" []
-    | Some t -> Transport.stop t
+    let () =
+      match t.state with
+      | `Closed -> ()
+      | `Running t -> Transport.stop t
+      | `Init fd -> Unix.close fd
+    in
+    t.state <- `Closed
 
   let listening_address t =
-    match t.transport with
-    | None -> Code_error.raise "server not running" []
-    | Some t -> Unix.getsockname t.fd
+    match t.state with
+    | `Init fd | `Running { Transport.fd; _ } -> Unix.getsockname fd
+    | `Closed -> Code_error.raise "server is already closed" []
 end
 
 module Client = struct

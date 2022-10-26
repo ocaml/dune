@@ -9,7 +9,14 @@ type event =
   | Fill of Fiber.fill
   | Abort
 
-let server where = Server.create where ~backlog:10
+let server (where : Unix.sockaddr) =
+  (match where with
+  | ADDR_UNIX p ->
+    let p = Path.of_string p in
+    Path.unlink_no_err p;
+    Path.mkdir_p (Path.parent_exn p)
+  | _ -> ());
+  Server.create where ~backlog:10
 
 let client where = Csexp_rpc.Client.create where
 

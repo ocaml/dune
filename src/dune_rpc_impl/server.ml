@@ -57,6 +57,11 @@ module Run = struct
   let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
   let of_config { Config.handler; backlog; pool; root; where } stats =
+    let () =
+      let socket_file = Where.rpc_socket_file () in
+      Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
+      at_exit (fun () -> Path.Build.unlink_no_err socket_file)
+    in
     let server = Csexp_rpc.Server.create (Where.to_socket where) ~backlog in
     { server; handler; stats; pool; root; where }
 

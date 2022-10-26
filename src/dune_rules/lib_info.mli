@@ -120,6 +120,8 @@ val exit_module : _ t -> Module_name.t option
 
 val instrumentation_backend : _ t -> (Loc.t * Lib_name.t) option
 
+val modules : _ t -> Modules.t option Source.t
+
 val plugins : 'path t -> 'path list Mode.Dict.t
 
 val src_dir : 'path t -> 'path
@@ -240,6 +242,7 @@ val create :
   -> special_builtin_support:Special_builtin_support.t option
   -> exit_module:Module_name.t option
   -> instrumentation_backend:(Loc.t * Lib_name.t) option
+  -> modules:Modules.t option Source.t
   -> 'a t
 
 val package : _ t -> Package.Name.t option

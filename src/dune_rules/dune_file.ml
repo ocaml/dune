@@ -983,13 +983,14 @@ module Library = struct
     let special_builtin_support = conf.special_builtin_support in
     let instrumentation_backend = conf.instrumentation_backend in
     let entry_modules = Lib_info.Source.Local in
+    let modules = Lib_info.Source.Local in
     Lib_info.create ~loc ~path_kind:Local ~name ~kind ~status ~src_dir
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
       ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
       ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
       ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
       ~entry_modules ~implements ~default_implementation ~modes ~wrapped
-      ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~special_builtin_support ~exit_module ~instrumentation_backend ~modules
 end
 
 module Plugin = struct

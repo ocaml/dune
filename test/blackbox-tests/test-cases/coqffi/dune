@@ -1,0 +1,11 @@
+(cram
+ (alias runtest-coq)
+ (applies_to :whole_subtree)
+ (deps %{bin:coqc} %{bin:coqdep} %{bin:coqffi})
+ (enabled_if
+  (= %{env:DUNE_COQ_TEST=disable} enable)))
+
+(env
+ (_
+  (binaries
+   (fakebin/coqffi.exe as coqffi))))

@@ -314,6 +314,37 @@ authors avoid writing boilerplate, we provide a ``(coq.pp ...)`` stanza:
 This will run the ``coqpp`` binary on all the ``.mlg`` files in
 ``<ordered_set_lang>``.
 
+.. _coqffi:
+
+coqffi
+-------
+
+The ``coqffi`` stanza allows the generation of Coq ``.v`` sources from OCaml
+``.cmi`` files. These can come from libraries in the workspace or those
+installed by Dune. The stanza will call the ``coqffi`` binary to do this. You
+can use a :ref:`coq-theory` stanza to compile these generated sources.
+
+.. code:: scheme
+
+    (coqffi
+     (modules <module_list>)
+     (library <library>)
+     (flags <flag_list>))
+
+- ``<module_list>`` is a list of OCaml modules of the library to generate
+  bindings for.
+- ``<library>`` is the library from which the modules come from.
+- ``<flag_list>`` is an optional list of flags to pass to ``coqffi``.
+
+The `coqffi` stanza is available when:
+
+.. code:: scheme
+
+    (using coqffi 0.1)
+
+has been added to the :ref:`dune-project` file. Note that this is an independent
+from :ref:`coq-lang`.
+
 .. _examples:
 
 Examples of Coq Projects

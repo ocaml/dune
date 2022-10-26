@@ -143,6 +143,10 @@ end = struct
                 |> Path.Build.basename)
           | Coq_stanza.Extraction.T s ->
             Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
+          | Coqffi_stanza.T coqffi ->
+            Memo.return
+              (Coqffi_sources.targets ~dir coqffi
+              |> List.rev_map ~f:Path.Build.basename)
           | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)
           | Rule rule -> (
             Simple_rules.user_rule sctx rule ~dir ~expander >>| function

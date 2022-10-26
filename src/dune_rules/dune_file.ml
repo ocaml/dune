@@ -2259,7 +2259,12 @@ module Stanzas = struct
 
   let execs exe = [ Executables exe ]
 
-  type Stanza.t += Include of Loc.t * string
+  type Stanza.t +=
+    | Include of
+        { loc : Loc.t
+        ; relative : string
+        ; generation_authorized : bool
+        }
 
   type constructors = (string * Stanza.t list Dune_lang.Decoder.t) list
 
@@ -2302,8 +2307,10 @@ module Stanzas = struct
         [ Copy_files { x with add_line_directive = true } ] )
     ; ( "include"
       , let+ loc = loc
-        and+ fn = relative_file in
-        [ Include (loc, fn) ] )
+        and+ generation_authorized =
+          Dune_lang.Syntax.available Include_stanza.syntax (0, 1)
+        and+ relative = relative_file in
+        [ Include { loc; generation_authorized; relative } ] )
     ; ( "documentation"
       , let+ d = Documentation.decode in
         [ Documentation d ] )
@@ -2386,18 +2393,40 @@ module Stanzas = struct
   let rec parse_file_includes ~stanza_parser ~context sexps =
     List.concat_map sexps ~f:(parse stanza_parser)
     |> Memo.List.concat_map ~f:(function
-         | Include (loc, fn) ->
+         | Include { loc; relative; generation_authorized } as stanza -> (
            let open Memo.O in
-           let* sexps, context = Include_stanza.load_sexps ~context (loc, fn) in
-           parse_file_includes ~stanza_parser ~context sexps
+           let* load_sexps =
+             Include_stanza.load_sexps ~context ~generation_authorized
+               (loc, relative)
+           in
+           match load_sexps with
+           | Some (sexps, context) ->
+             parse_file_includes ~stanza_parser ~context sexps
+           | None -> Memo.return [ stanza ])
          | stanza -> Memo.return [ stanza ])
 
-  let parse ~file (project : Dune_project.t) sexps =
+  let rec parse_file_includes_generated ~stanza_parser ~context stanzas =
+    let open Memo.O in
+    let+ stanzas =
+      Memo.parallel_map stanzas ~f:(function
+        | Include { loc; relative; _ } ->
+          let* sexps, context =
+            Include_stanza.load_sexps_generated
+              ~file_exists:Source_tree.file_exists
+              ~read_file:Build_system.read_file ~context (loc, relative)
+          in
+          let stanzas = List.concat_map ~f:(parse stanza_parser) sexps in
+          parse_file_includes_generated ~stanza_parser ~context stanzas
+        | stanza -> Memo.return [ stanza ])
+    in
+    List.concat stanzas
+
+  let parse_common ~file ~f (project : Dune_project.t) sexps =
     let stanza_parser = parser project in
     let open Memo.O in
     let+ stanzas =
       let context = Include_stanza.in_file file in
-      parse_file_includes ~stanza_parser ~context sexps
+      f ~stanza_parser ~context sexps
     in
     let (_ : bool) =
       List.fold_left stanzas ~init:false ~f:(fun env stanza ->
@@ -2405,11 +2434,17 @@ module Stanzas = struct
           | Dune_env.T e ->
             if env then
               User_error.raise ~loc:e.loc
-                [ Pp.text "The 'env' stanza cannot appear more than once" ]
+                [ Pp.text "The 'env' stanza cannot appear more than once." ]
             else true
           | _ -> env)
     in
     stanzas
+
+  let parse ~file (project : Dune_project.t) sexps =
+    parse_common ~file ~f:parse_file_includes project sexps
+
+  let parse_generated ~file (project : Dune_project.t) sexps =
+    parse_common ~file ~f:parse_file_includes_generated project sexps
 end
 
 let stanza_package = function
@@ -2428,6 +2463,7 @@ type t =
   { dir : Path.Source.t
   ; project : Dune_project.t
   ; stanzas : Stanzas.t
+  ; file : Path.Source.t
   }
 
 let is_promoted_rule version rule =
@@ -2453,7 +2489,25 @@ let parse sexps ~dir ~file ~project =
       List.filter stanzas ~f:(fun s -> not (is_promoted_rule version s))
     else stanzas
   in
-  { dir; project; stanzas }
+  { dir; project; stanzas; file }
+
+let parse_generated ~context { dir; project; stanzas; file } =
+  let open Memo.O in
+  let file_build =
+    Path.Build.append_source (Context.build_context context).build_dir file
+  in
+  let+ stanzas = Stanzas.parse_generated ~file:file_build project stanzas in
+  let stanzas =
+    if !Clflags.ignore_promoted_rules then
+      List.filter stanzas ~f:(function
+        | Rule { mode = Rule.Mode.Promote { only = None; _ }; _ } ->
+          (* XXX more promoted rules here? *)
+          false
+        | _ -> true)
+    else
+      stanzas
+  in
+  { dir; project; stanzas; file }
 
 module Make_fold (M : Monad.S) = struct
   open M.O
@@ -2476,10 +2530,11 @@ module Id_fold = Make_fold (Monad.Id)
 
 let fold_stanzas t ~init ~f = Id_fold.fold_stanzas t ~init ~f
 
-let equal t { dir; project; stanzas } =
+let equal t { dir; project; stanzas; file } =
   Path.Source.equal t.dir dir
   && Dune_project.equal t.project project
   && List.equal ( == ) t.stanzas stanzas
+  && Path.Source.equal t.file file
 
 let hash = Poly.hash
 

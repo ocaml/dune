@@ -503,6 +503,7 @@ type t =
   { dir : Path.Source.t
   ; project : Dune_project.t
   ; stanzas : Stanza.t list
+  ; file : Path.Source.t
   }
 
 val equal : t -> t -> bool
@@ -511,12 +512,19 @@ val hash : t -> int
 
 val to_dyn : t -> Dyn.t
 
+(** [parse ~dir ~file ~project stanza_exprs] is a list of [Stanza.t]s derived
+    from decoding the [stanza_exprs] from [Dune_lang.Ast.t]s to [Stanza.t]s.
+    [file] is used to check for illegal recursive file inclusions and to anchor
+    file includes given as relative paths. The stanzas are parsed in the context
+    of the dune [project]. *)
 val parse :
      Dune_lang.Ast.t list
   -> dir:Path.Source.t
   -> file:Path.Source.t
   -> project:Dune_project.t
   -> t Memo.t
+
+val parse_generated : context:Context.t -> t -> t Memo.t
 
 val fold_stanzas :
   t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc

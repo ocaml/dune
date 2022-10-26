@@ -104,6 +104,9 @@ val renamed_in : t -> Version.t -> to_:string -> (unit, _) Decoder.parser
 val since :
   ?what:string -> ?fatal:bool -> t -> Version.t -> (unit, _) Decoder.parser
 
+(** Tests if the given version is available. *)
+val available : t -> Version.t -> (bool, _) Decoder.parser
+
 (** {2 Low-level functions} *)
 
 module Key : sig

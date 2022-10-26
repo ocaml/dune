@@ -1010,6 +1010,8 @@ let () =
 let dune_site_extension =
   Extension.register_unit Section.dune_site_syntax (return [])
 
+let () = Extension.register_simple Include_stanza.syntax (return [])
+
 let strict_package_deps t = t.strict_package_deps
 
 let cram t = t.cram

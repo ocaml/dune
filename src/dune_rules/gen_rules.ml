@@ -199,7 +199,7 @@ let define_all_alias ~dir ~project ~js_targets =
   Rules.Produce.Alias.add_deps (Alias.all ~dir) deps
 
 let gen_rules sctx dir_contents cctxs expander
-    { Dune_file.dir = src_dir; stanzas; project } ~dir:ctx_dir =
+    { Dune_file.dir = src_dir; stanzas; project; _ } ~dir:ctx_dir =
   let files_to_install install_conf =
     let expand_str = Expander.No_deps.expand_str expander in
     let files_and_dirs =

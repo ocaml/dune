@@ -128,7 +128,7 @@ end = struct
             [ ("dir", Path.Build.to_dyn dir) ]
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent)
     in
-    let+ config_stanza = get_env_stanza ~dir in
+    let config_stanza = Memo.lazy_ (fun () -> get_env_stanza ~dir) in
     let project = Scope.project scope in
     let default_context_flags = default_context_flags t.context ~project in
     let expander_for_artifacts =
@@ -145,10 +145,12 @@ end = struct
           extend_expander t ~dir ~expander_for_artifacts)
     in
     let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link t.context in
-    Env_node.make ~dir ~scope ~config_stanza ~inherit_from:(Some inherit_from)
-      ~profile:t.context.profile ~expander ~expander_for_artifacts
-      ~default_context_flags ~default_env:t.context_env
-      ~default_bin_artifacts:t.bin_artifacts ~default_cxx_link_flags
+    Memo.return
+    @@ Env_node.make ~dir ~scope ~config_stanza
+         ~inherit_from:(Some inherit_from) ~profile:t.context.profile ~expander
+         ~expander_for_artifacts ~default_context_flags
+         ~default_env:t.context_env ~default_bin_artifacts:t.bin_artifacts
+         ~default_cxx_link_flags
 
   (* Here we jump through some hoops to construct [t] as well as create a
      memoization table that has access to [t] and is used in [t.get_node].
@@ -463,9 +465,10 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
      is used as default at the root of every project in the workspace. *)
   let default_env =
     Memo.lazy_ (fun () ->
-        let make ~inherit_from ~config_stanza =
+        let make ~inherit_from ~(config_stanza : Dune_env.Stanza.t Memo.Lazy.t)
+            =
           let dir = context.build_dir in
-          let+ scope = Scope.DB.find_by_dir dir in
+          let* scope = Scope.DB.find_by_dir dir in
           let project = Scope.project scope in
           let default_context_flags = default_context_flags context ~project in
           let expander_for_artifacts =
@@ -474,20 +477,26 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
                   "[expander_for_artifacts] in [default_env] is undefined" [])
           in
           let profile = context.profile in
-          Dune_env.Stanza.fire_hooks config_stanza ~profile;
+          let* config_stanza_ = Memo.Lazy.force config_stanza in
+          Dune_env.Stanza.fire_hooks config_stanza_ ~profile;
           let default_cxx_link_flags = Cxx_flags.get_flags ~for_:Link context in
           let expander = Memo.Lazy.of_val root_expander in
-          Env_node.make ~dir ~scope ~inherit_from ~config_stanza ~profile
-            ~expander ~expander_for_artifacts ~default_context_flags
-            ~default_env:context_env ~default_bin_artifacts:artifacts.bin
-            ~default_cxx_link_flags
+          Memo.return
+          @@ Env_node.make ~dir ~scope ~inherit_from ~config_stanza ~profile
+               ~expander ~expander_for_artifacts ~default_context_flags
+               ~default_env:context_env ~default_bin_artifacts:artifacts.bin
+               ~default_cxx_link_flags
         in
-        make ~config_stanza:context.env_nodes.context
+        make
+          ~config_stanza:
+            (Memo.lazy_ (fun () -> Memo.return context.env_nodes.context))
           ~inherit_from:
             (Some
                (Memo.lazy_ (fun () ->
                     make ~inherit_from:None
-                      ~config_stanza:context.env_nodes.workspace))))
+                      ~config_stanza:
+                        (Memo.lazy_ (fun () ->
+                             Memo.return context.env_nodes.workspace))))))
   in
   Env_tree.create ~context ~default_env ~host_env_tree:host ~root_expander
     ~bin_artifacts:artifacts.bin ~context_env

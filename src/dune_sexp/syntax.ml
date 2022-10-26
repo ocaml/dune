@@ -371,3 +371,10 @@ let since ?what ?(fatal = true) t ver =
     if fatal then Error.since loc t ver ~what
     else User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
     return ()
+
+let available t ver =
+  let open Version.Infix in
+  let+ current_ver = get t.key in
+  match current_ver with
+  | Some (Active current_ver) -> current_ver >= ver
+  | Some (Inactive _) | None -> false

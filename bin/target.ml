@@ -174,7 +174,7 @@ let resolve_targets_exn root config setup user_targets =
   >>| List.concat_map ~f:(function
         | Error (dep, hints) ->
           User_error.raise
-            [ Pp.textf "Don't know how to build %s"
+            [ Pp.textf "Don't know how to build %S."
                 (Arg.Dep.to_string_maybe_quoted dep)
             ]
             ~hints

@@ -20,7 +20,7 @@ val make :
      dir:Path.Build.t
   -> inherit_from:t Memo.Lazy.t option
   -> scope:Scope.t
-  -> config_stanza:Dune_env.Stanza.t
+  -> config_stanza:Dune_env.Stanza.t Memo.Lazy.t
   -> profile:Profile.t
   -> expander:Expander.t Memo.Lazy.t
   -> expander_for_artifacts:Expander.t Memo.Lazy.t

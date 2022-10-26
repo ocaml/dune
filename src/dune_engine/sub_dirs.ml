@@ -356,12 +356,14 @@ let decode_includes ~context (decoder : decoder) =
       @@ let+ includes =
            multi_field "include"
              (let+ loc = loc
+              and+ generation_authorized =
+                Dune_lang.Syntax.available Include_stanza.syntax (0, 1)
               and+ fn = relative_file in
               let fn =
                 List.fold_left ~init:fn path ~f:(fun fn dir ->
                     Filename.concat dir fn)
               in
-              (loc, fn))
+              (loc, generation_authorized, fn))
          and+ subdirs =
            multi_field "subdir"
              (let+ loc = loc
@@ -374,11 +376,22 @@ let decode_includes ~context (decoder : decoder) =
     let+ includes, subdirs =
       Memo.fork_and_join
         (fun () ->
-          Memo.parallel_map includes ~f:(fun (loc, fn) ->
-              let* sexps, context =
-                Include_stanza.load_sexps ~context (loc, fn)
+          Memo.parallel_map includes ~f:(fun (loc, generation_authorized, fn) ->
+              let* load_sexps =
+                Include_stanza.load_sexps ~context ~generation_authorized
+                  (loc, fn)
               in
-              decode ~context ~path ~inside_include:true sexps))
+              match load_sexps with
+              | Some (sexps, context) ->
+                decode ~context ~path ~inside_include:true sexps
+              | None ->
+                Memo.return
+                  [ Dune_lang.Ast.List
+                      ( loc
+                      , [ Atom (Loc.none, Dune_lang.Atom.of_string "include")
+                        ; Atom (Loc.none, Dune_lang.Atom.of_string fn)
+                        ] )
+                  ]))
         (fun () ->
           Memo.parallel_map subdirs ~f:(fun (loc, sexps) ->
               subdir ~loc ~context ~path ~inside_include sexps))

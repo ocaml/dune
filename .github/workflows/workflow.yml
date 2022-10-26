@@ -1,4 +1,4 @@
-name: Main workflow
+name: CI
 
 on:
   - push
@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   build:
+    name: Build
     strategy:
       fail-fast: false
       matrix:
@@ -28,8 +29,6 @@ jobs:
         # 4.02.x and 4.07.x in other environments
         ocaml-compiler:
           - 4.14.x
-        skip_test:
-          - false
         include:
           - ocaml-compiler: 4.13.x
             os: ubuntu-latest

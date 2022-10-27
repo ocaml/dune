@@ -11,6 +11,7 @@ Welcome to Dune's Documentation!
    similarly.
 
 .. toctree::
+   :caption: Getting Started and Core Concepts
    :maxdepth: 3
 
    overview
@@ -19,6 +20,10 @@ Welcome to Dune's Documentation!
    concepts
    usage
 
+.. toctree::
+   :caption: Reference
+   :maxdepth: 3
+
    formatting
    coq
    cross-compilation
@@ -26,19 +31,24 @@ Welcome to Dune's Documentation!
    caching
    dune-libs
    rpc
-   faq
    documentation
-   goals
    sites
    instrumentation
    jsoo
    melange
-   known-issues
    lexical-conventions
-   migration
    opam
    advanced-topics
    toplevel-integration
    variants
-   hacking
    tests
+
+.. toctree::
+   :caption: Miscellaneous
+   :maxdepth: 3
+
+   faq
+   goals
+   known-issues
+   migration
+   hacking

@@ -212,7 +212,6 @@ let rec resolve_first lib_db = function
 module Context = struct
   type 'a t =
     { coqc : Action.Prog.t
-    ; coqdoc : Action.Prog.t
     ; coqc_dir : Path.Build.t
     ; wrapper_name : string
     ; dir : Path.Build.t
@@ -230,12 +229,16 @@ module Context = struct
     ; native_theory_includes : Path.Build.Set.t Resolve.t
     }
 
-  let coqdep ~sctx t =
-    resolve_program sctx ~dir:t.dir ~loc:t.buildable.loc "coqdep"
+  let resolve_program_general ~sctx ~name t =
+    resolve_program sctx ~dir:t.dir ~loc:t.buildable.loc name
+
+  let coqdep ~sctx t = resolve_program_general ~sctx ~name:"coqdep" t
 
   let coqc ?stdout_to t args =
     let dir = Path.build t.coqc_dir in
     Command.run ~dir ?stdout_to t.coqc args
+
+  let coqdoc ~sctx t = resolve_program_general ~sctx ~name:"coqdoc" t
 
   let coq_flags t =
     let standard = t.profile_flags in
@@ -358,10 +361,8 @@ module Context = struct
     let+ native_theory_includes =
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs
     and+ coqc = rr "coqc"
-    and+ coqdoc = rr "coqdoc"
     and+ profile_flags = Super_context.coq sctx ~dir in
     { coqc
-    ; coqdoc
     ; coqc_dir
     ; wrapper_name
     ; dir
@@ -513,7 +514,7 @@ let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
     ; (Coqdoc_mode.directory Latex obj_dir name, loc)
     ]
 
-let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~file_flags ~mode
+let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~coqdoc ~file_flags ~mode
     ~theories_deps coq_modules =
   let obj_dir = cctx.dir in
   let doc_dir = Coqdoc_mode.directory mode obj_dir name in
@@ -548,7 +549,7 @@ let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~file_flags ~mode
     ]
   in
   Command.run ~sandbox:Sandbox_config.needs_sandboxing
-    ~dir:(Path.build cctx.dir) cctx.coqdoc file_flags
+    ~dir:(Path.build cctx.dir) coqdoc file_flags
   |> Action_builder.With_targets.map
        ~f:
          (Action.Full.map ~f:(fun coqdoc ->
@@ -629,8 +630,9 @@ let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
     let file_flags = Context.coqdoc_file_flags cctx in
     fun mode ->
       let* () =
+        let* coqdoc = Context.coqdoc ~sctx cctx in
         coqdoc_rule cctx ~sctx ~mode ~theories_deps:cctx.theories_deps ~name
-          ~file_flags coq_modules
+          ~file_flags ~coqdoc coq_modules
         |> Super_context.add_rule ~loc ~dir sctx
       in
       Coqdoc_mode.directory mode cctx.dir name

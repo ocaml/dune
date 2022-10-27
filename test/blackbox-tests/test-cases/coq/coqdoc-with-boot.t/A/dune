@@ -1,0 +1,4 @@
+(coq.theory
+ (name A)
+ (stdlib no)
+ (theories Coq))

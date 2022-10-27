@@ -211,8 +211,7 @@ let rec resolve_first lib_db = function
 
 module Context = struct
   type 'a t =
-    { coqdep : Action.Prog.t
-    ; coqc : Action.Prog.t
+    { coqc : Action.Prog.t
     ; coqdoc : Action.Prog.t
     ; coqc_dir : Path.Build.t
     ; wrapper_name : string
@@ -230,6 +229,9 @@ module Context = struct
     ; native_includes : Path.Set.t Resolve.t
     ; native_theory_includes : Path.Build.Set.t Resolve.t
     }
+
+  let coqdep ~sctx t =
+    resolve_program sctx ~dir:t.dir ~loc:t.buildable.loc "coqdep"
 
   let coqc ?stdout_to t args =
     let dir = Path.build t.coqc_dir in
@@ -355,12 +357,10 @@ module Context = struct
     in
     let+ native_theory_includes =
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs
-    and+ coqdep = rr "coqdep"
     and+ coqc = rr "coqc"
     and+ coqdoc = rr "coqdoc"
     and+ profile_flags = Super_context.coq sctx ~dir in
-    { coqdep
-    ; coqc
+    { coqc
     ; coqdoc
     ; coqc_dir
     ; wrapper_name
@@ -438,7 +438,8 @@ let deps_of ~dir ~boot_type coq_module =
       (Action_builder.lines_of (Path.build stdout_to))
       ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
 
-let setup_coqdep_rule ~sctx ~loc (cctx : _ Context.t) ~source_rule coq_module =
+let setup_coqdep_rule ~sctx ~dir ~loc (cctx : _ Context.t) ~source_rule
+    coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let source = Coq_module.source coq_module in
   let file_flags =
@@ -449,12 +450,13 @@ let setup_coqdep_rule ~sctx ~loc (cctx : _ Context.t) ~source_rule coq_module =
     ]
   in
   let stdout_to = Coq_module.dep_file ~obj_dir:cctx.dir coq_module in
+  let* coqdep = Context.coqdep ~sctx cctx in
   (* Coqdep has to be called in the stanza's directory *)
-  Super_context.add_rule ~loc sctx
+  Super_context.add_rule ~loc sctx ~dir
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets cctx.mlpack_rule
     >>> Action_builder.(with_no_targets (goal source_rule))
-    >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to cctx.coqdep file_flags)
+    >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to coqdep file_flags)
 
 let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   let source = Coq_module.source coq_module in

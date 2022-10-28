@@ -24,6 +24,9 @@ Unreleased
 - Create a fake socket file `_build/.rpc/dune` on windows to allow rpc clients
   to connect using the build directory. (#6329, @rgrinberg)
 
+- Prevent crash if absolute paths are used in the install stanza and in
+  recursive globs. These cases now result in a user error. (#6331, @gridbugs)
+
 3.5.0 (2022-10-19)
 ------------------
 

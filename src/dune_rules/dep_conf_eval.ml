@@ -140,6 +140,9 @@ let rec dep expander = function
     Other
       (let loc = String_with_vars.loc s in
        let* path = Expander.expand_path expander s in
+       if recursive && not (Path.is_managed path) then
+         User_error.raise ~loc
+           [ Pp.textf "Absolute paths in recursive globs are not supported." ];
        let files_in =
          let glob = Path.basename path |> Glob.of_string_exn loc in
          fun dir ->

@@ -1076,6 +1076,16 @@ module Plugin = struct
 end
 
 module Install_conf = struct
+  (* Expands a [String_with_vars.t] with a given function, returning the result
+     unless the result is an absolute path in which case a user error is raised. *)
+  let expand_str_with_check_for_local_path ~expand_str sw =
+    Memo.map (expand_str sw) ~f:(fun str ->
+        (if not (Filename.is_relative str) then
+         let loc = String_with_vars.loc sw in
+         User_error.raise ~loc
+           [ Pp.textf "Absolute paths are not allowed in the install stanza." ]);
+        str)
+
   module File_entry = struct
     include
       Recursive_include.Make
@@ -1097,7 +1107,9 @@ module Install_conf = struct
       let open Memo.O in
       let* unexpanded = expand_include t ~expand_str ~dir in
       Memo.List.map unexpanded
-        ~f:(File_binding.Unexpanded.expand ~dir ~f:expand_str)
+        ~f:
+          (File_binding.Unexpanded.expand ~dir
+             ~f:(expand_str_with_check_for_local_path ~expand_str))
 
     let expand_multi ts ~expand_str ~dir =
       Memo.List.concat_map ts ~f:(expand ~expand_str ~dir)

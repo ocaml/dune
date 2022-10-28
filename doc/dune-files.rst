@@ -1416,6 +1416,9 @@ installed in. If the section above is documented as "with the executable bit
 set", they are installed with mode ``0o755`` (``rwxr-xr-x``); otherwise they are
 installed with mode ``0o644`` (``rw-r--r--``).
 
+Note that all files in the install stanza must be specified by relative paths only.
+It is an error to specify files by absolute paths.
+
 Including Files in the Install Stanza
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

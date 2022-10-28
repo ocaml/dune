@@ -5,25 +5,32 @@ module Group = struct
     | Cmi
     | Cmx
 
+  type melange =
+    | Cmi
+    | Cmj
+    | Js
+
   type t =
     | Ocaml of ocaml
-    | Melange of Melange.Cm_kind.t
+    | Melange of melange
     | Header
 
-  let all = [ Ocaml Cmi; Ocaml Cmx; Melange Cmi; Melange Cmj; Header ]
+  let all =
+    [ Ocaml Cmi; Ocaml Cmx; Melange Cmi; Melange Cmj; Melange Js; Header ]
 
   let ext = function
     | Ocaml Cmi -> Cm_kind.ext Cmi
     | Ocaml Cmx -> Cm_kind.ext Cmx
     | Melange Cmi -> Lib_mode.Cm_kind.ext (Melange Cmi)
     | Melange Cmj -> Lib_mode.Cm_kind.ext (Melange Cmj)
+    | Melange Js -> Melange.js_ext
     | Header -> Foreign_language.header_extension
 
   let obj_dir t obj_dir =
     match t with
     | Ocaml Cmi -> Obj_dir.public_cmi_dir obj_dir
     | Ocaml Cmx -> Obj_dir.native_dir obj_dir
-    | Melange (Cmi | Cmj) -> Obj_dir.melange_dir obj_dir
+    | Melange (Cmi | Cmj | Js) -> Obj_dir.melange_dir obj_dir
     | Header -> Obj_dir.dir obj_dir
 
   let to_predicate =

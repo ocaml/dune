@@ -1,3 +1,5 @@
 (library
  (name x)
  (modes melange))
+
+(melange.emit (target simple) (libraries x) (spec commonjs))

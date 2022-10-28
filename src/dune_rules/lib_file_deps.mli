@@ -5,10 +5,17 @@ module Group : sig
     | Cmi
     | Cmx
 
+  type melange =
+    | Cmi
+    | Cmj
+    | Js
+
   type t =
     | Ocaml of ocaml
-    | Melange of Melange.Cm_kind.t
+    | Melange of melange
     | Header
+
+  val to_predicate : t -> string Predicate_with_id.t
 end
 
 (** [deps t libs ~files] returns a list of path dependencies for all the files

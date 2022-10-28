@@ -1,0 +1,1 @@
+(melange.emit (target multilib) (libraries x lib) (spec commonjs))

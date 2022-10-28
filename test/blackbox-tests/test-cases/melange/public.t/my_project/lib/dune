@@ -1,0 +1,4 @@
+(library
+ (name lib)
+ (public_name pkg.lib)
+ (modes melange))

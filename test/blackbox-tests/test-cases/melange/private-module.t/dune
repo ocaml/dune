@@ -2,3 +2,5 @@
  (name x)
  (modes melange)
  (libraries lib))
+
+(melange.emit (target private-module) (libraries x lib) (spec commonjs))

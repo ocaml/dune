@@ -11,7 +11,7 @@ module CC = Compilation_context
 let force_read_cmi ~(cm_kind : Lib_mode.Cm_kind.t) source_file =
   let args = [ "-intf-suffix"; Path.extension source_file ] in
   match cm_kind with
-  | Melange Cmj -> "-bs-read-cmi" :: args
+  | Melange Cmj -> "--bs-read-cmi" :: args
   | Ocaml (Cmo | Cmx | Cmi) | Melange Cmi -> args
 
 (* Build the cm* if the corresponding source is present, in the case of cmi if
@@ -52,6 +52,18 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
              (Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
 
+let compiler ~ctx ~sctx ~dir mode =
+  let open Memo.O in
+  let+ compiler =
+    match mode with
+    | Lib_mode.Ocaml mode -> Memo.return @@ Context.compiler ctx mode
+    | Melange ->
+      (* TODO loc should come from the mode field in the dune file *)
+      Super_context.resolve_program sctx ~loc:None ~dir
+        ~hint:"opam install melange" "melc"
+  in
+  Result.to_option compiler
+
 let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     ~(phase : Fdo.phase option) =
   let sctx = CC.super_context cctx in
@@ -70,17 +82,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     | _ -> default
   in
   let open Memo.O in
-  let* compiler =
-    let+ compiler =
-      match mode with
-      | Ocaml mode -> Memo.return @@ Context.compiler ctx mode
-      | Melange ->
-        (* TODO loc should come from the mode field in the dune file *)
-        Super_context.resolve_program sctx ~loc:None ~dir
-          ~hint:"opam install melange" "melc"
-    in
-    Result.to_option compiler
-  in
+  let* compiler = compiler ~ctx ~sctx ~dir mode in
   (let open Option.O in
   let* compiler = compiler in
   let ml_kind = Lib_mode.Cm_kind.source cm_kind in
@@ -132,12 +134,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
       | Some Compile -> linear :: other_targets
       | Some Emit -> other_targets
       | Some All | None -> obj :: other_targets)
-    | Ocaml (Cmi | Cmo) | Melange Cmi -> other_targets
-    | Melange Cmj ->
-      let melange_js =
-        Obj_dir.Module.obj_file obj_dir m ~kind:(Melange Cmj) ~ext:".js"
-      in
-      melange_js :: other_targets
+    | Ocaml (Cmi | Cmo) | Melange (Cmi | Cmj) -> other_targets
   in
   let dep_graph = Ml_kind.Dict.get (CC.dep_graphs cctx) ml_kind in
   let opaque = CC.opaque cctx in
@@ -199,6 +196,21 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     |> List.concat_map ~f:(fun p ->
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
+  let melange_args =
+    match cm_kind with
+    | Melange Cmj ->
+      let pkg_name_args =
+        match CC.package cctx with
+        | None -> []
+        | Some pkg ->
+          [ "--bs-package-name"; Package.Name.to_string (Package.name pkg) ]
+      in
+      "--bs-stop-after-cmj" :: "--bs-package-output"
+      :: (* This should prob be Path.t or Path.Source.t *)
+         Path.Build.to_string (CC.dir cctx)
+      :: pkg_name_args
+    | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
+  in
   Super_context.add_rule sctx ~dir ?loc:(CC.loc cctx)
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)
@@ -210,6 +222,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
           ; Command.Args.as_any
               (Lib_mode.Cm_kind.Map.get (CC.includes cctx) cm_kind)
           ; As extra_args
+          ; As melange_args
           ; A "-no-alias-deps"
           ; opaque_arg
           ; As (Fdo.phase_flags phase)
@@ -228,6 +241,75 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
           ; Hidden_targets other_targets
           ]
     >>| Action.Full.add_sandbox sandbox))
+  |> Memo.Option.iter ~f:Fun.id
+
+let build_melange_js ~pkg_name ~js_modules ~dst_dir ~cctx m =
+  let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
+  let sctx = CC.super_context cctx in
+  let obj_dir = CC.obj_dir cctx in
+  let ctx = Super_context.context sctx in
+  let dir = ctx.build_dir in
+  let mode = Lib_mode.of_cm_kind cm_kind in
+  let ml_kind = Lib_mode.Cm_kind.source cm_kind in
+  let open Memo.O in
+  let* compiler = compiler ~ctx ~sctx ~dir mode in
+  (let open Option.O in
+  let+ compiler = compiler in
+  let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
+  let in_dir = Path.Build.relative dst_dir in
+  let output =
+    let name =
+      Module_name.Unique.artifact_filename (Module.obj_name m)
+        ~ext:Melange.js_ext
+    in
+    in_dir name
+  in
+  let obj_dirs =
+    Obj_dir.all_obj_dirs obj_dir ~mode
+    |> List.concat_map ~f:(fun p ->
+           [ Command.Args.A "-I"; Path (Path.build p) ])
+  in
+  let dep_graph = Ml_kind.Dict.get (CC.dep_graphs cctx) ml_kind in
+  let cmj_deps =
+    Action_builder.dyn_paths_unit
+      (let open Action_builder.O in
+      let+ deps = Dep_graph.deps_of dep_graph m in
+      List.concat_map deps ~f:(fun m ->
+          if Module.has m ~ml_kind:Impl && cm_kind = Melange Cmj then
+            let name =
+              Module_name.Unique.artifact_filename (Module.obj_name m)
+                ~ext:Melange.js_ext
+            in
+            [ Path.build (in_dir name) ]
+          else []))
+  in
+  let melange_package_args =
+    let pkg_name_args =
+      match pkg_name with
+      | None -> []
+      | Some pkg_name ->
+        [ "--bs-package-name"; Package.Name.to_string pkg_name ]
+    in
+
+    let js_modules_str = Melange.Spec.to_string js_modules in
+    "--bs-module-type" :: js_modules_str :: pkg_name_args
+  in
+  let melange_js_includes =
+    match CC.melange_js_includes cctx with
+    | None -> Command.Args.As []
+    | Some args -> Command.Args.as_any args
+  in
+  Super_context.add_rule sctx ~dir ?loc:(CC.loc cctx)
+    (let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets cmj_deps
+    >>> Command.run ~dir:(Path.build dir) (Ok compiler)
+          [ Command.Args.S obj_dirs
+          ; melange_js_includes
+          ; As melange_package_args
+          ; A "-o"
+          ; Target output
+          ; Dep (Path.build src)
+          ]))
   |> Memo.Option.iter ~f:Fun.id
 
 let build_module ?(precompiled_cmi = false) cctx m =

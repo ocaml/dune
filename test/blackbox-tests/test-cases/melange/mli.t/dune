@@ -1,0 +1,1 @@
+(melange.emit (target mli) (libraries x) (spec commonjs))

@@ -2,4 +2,5 @@
 
 (using melange 0.1)
 
-(package (allow_empty) (name x))
+(package
+ (name pkg))

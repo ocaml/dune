@@ -47,7 +47,7 @@ let common_commands_synopsis =
 
 let info =
   let doc = "composable build system for OCaml" in
-  Cmd.info "dune" ~doc
+  Cmd.info "dune" ~doc ~envs:Common.envs
     ~version:
       (match Build_info.V1.version () with
       | None -> "n/a"

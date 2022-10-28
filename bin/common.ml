@@ -1063,6 +1063,21 @@ let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
 
 let term = term ~default_root_is_cwd:false
 
+let envs =
+  Cmd.Env.
+    [ info
+        ~doc:
+          "If different than $(b,0), ANSI colors are supported and should be \
+           used when the program isn’t piped. If equal to $(b,0), don’t output \
+           ANSI color escape codes"
+        "CLICOLOR"
+    ; info
+        ~doc:
+          "If different than $(b,0), ANSI colors should be enabled no matter \
+           what."
+        "CLICOLOR_FORCE"
+    ]
+
 let config_from_config_file = Options_implied_by_dash_p.config_term
 
 let context_arg ~doc =

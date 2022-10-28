@@ -123,18 +123,28 @@ module Style = struct
     Printf.sprintf "\027[%sm" (String.concat l ~sep:";")
 end
 
-let term_supports_color =
-  lazy
-    (match Stdlib.Sys.getenv "TERM" with
+let supports_color fd =
+  let is_smart =
+    match Stdlib.Sys.getenv "TERM" with
     | exception Not_found -> false
     | "dumb" -> false
-    | _ -> true)
+    | _ -> true
+  and clicolor =
+    match Stdlib.Sys.getenv "CLICOLOR" with
+    | exception Not_found -> true
+    | "0" -> false
+    | _ -> true
+  and clicolor_force =
+    match Stdlib.Sys.getenv "CLICOLOR_FORCE" with
+    | exception Not_found -> false
+    | "0" -> false
+    | _ -> true
+  in
+  (is_smart && Unix.isatty fd && clicolor) || clicolor_force
 
-let stdout_supports_color =
-  lazy (Lazy.force term_supports_color && Unix.isatty Unix.stdout)
+let stdout_supports_color = lazy (supports_color Unix.stdout)
 
-let stderr_supports_color =
-  lazy (Lazy.force term_supports_color && Unix.isatty Unix.stderr)
+let stderr_supports_color = lazy (supports_color Unix.stderr)
 
 let rec tag_handler current_styles ppf styles pp =
   Format.pp_print_as ppf 0 (Style.escape_sequence_no_reset styles);

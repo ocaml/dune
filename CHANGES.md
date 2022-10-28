@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI
+  colors. (#6340, fixes #6323, @MisterDA).
+
 - Allow `Byte_complete` binaries to be installable (#4873, @AltGr, @rgrinberg)
 
 - Revive `$ dune external-lib-deps` under `$ dune describe external-lib-deps`.

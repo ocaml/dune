@@ -358,7 +358,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
       Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
 
 let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
-    ~expander =
+    ~expander ~lib_info =
   let obj_dir = Compilation_context.obj_dir cctx in
   let dir = Compilation_context.dir cctx in
   let flags = Compilation_context.flags cctx in
@@ -399,9 +399,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
      [Obj_dir]. That's fragile and will break if the layout of the object
      directory changes *)
   let dir = Obj_dir.dir obj_dir in
-  let* native_archives =
-    let lib_config = ctx.lib_config in
-    let+ lib_info = Library.to_lib_info lib ~dir ~lib_config in
+  let native_archives =
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let cm_files =
@@ -495,11 +493,16 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
-  and* expander = Super_context.expander sctx ~dir in
+  and* expander = Super_context.expander sctx ~dir
+  and* lib_info =
+    let lib_config = (Super_context.context sctx).lib_config in
+    Library.to_lib_info lib ~dir ~lib_config
+  in
   let+ () =
     Memo.when_
       (not (Library.is_virtual lib))
-      (fun () -> setup_build_archives lib ~top_sorted_modules ~cctx ~expander)
+      (fun () ->
+        setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
   and+ () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     Memo.when_
@@ -528,6 +531,7 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
       ~preprocess ~libname:(snd lib.name) ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
+      ~modes:(`Lib (Lib_info.modes lib_info))
       () )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =

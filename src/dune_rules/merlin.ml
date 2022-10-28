@@ -190,6 +190,20 @@ module Processed = struct
            extensions)
 end
 
+let obj_dir_of_lib kind modes obj_dir =
+  (if
+   match modes with
+   | `Exe -> false
+   | `Lib modes ->
+     Lib_mode.Map.Set.equal modes
+       { ocaml = Ocaml.Mode.Dict.make_both false; melange = true }
+  then Obj_dir.melange_dir
+  else
+    match kind with
+    | `Private -> Obj_dir.byte_dir
+    | `Public -> Obj_dir.public_cmi_dir)
+    obj_dir
+
 module Unprocessed = struct
   (* We store separate information for each "module". These informations do not
      reflect the actual content of the Merlin configuration yet but are needed
@@ -216,7 +230,7 @@ module Unprocessed = struct
   let make ?(requires = Resolve.return []) ~stdlib_dir ~flags
       ?(preprocess = Preprocess.Per_module.no_preprocessing ()) ?libname
       ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
-      () =
+      ~modes () =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
     let requires =
       match Resolve.peek requires with
@@ -224,7 +238,8 @@ module Unprocessed = struct
       | Error () -> Lib.Set.empty
     in
     let objs_dirs =
-      Obj_dir.byte_dir obj_dir |> Path.build |> Path.Set.singleton
+      Path.Set.singleton
+      @@ obj_dir_of_lib `Private modes (Obj_dir.of_local obj_dir)
     in
     let flags =
       Ocaml_flags.common
@@ -313,12 +328,14 @@ module Unprocessed = struct
       Some { Processed.flag = "-ppx"; args }
 
   let src_dirs sctx lib =
-    let open Memo.O in
     let info = Lib.info lib in
-    let obj_dir = Lib_info.obj_dir info in
-    match Path.is_managed (Obj_dir.byte_dir obj_dir) with
+    match
+      let obj_dir = Lib_info.obj_dir info in
+      Path.is_managed (Obj_dir.byte_dir obj_dir)
+    with
     | false -> Memo.return (Path.Set.singleton (Lib_info.src_dir info))
     | true ->
+      let open Memo.O in
       let+ modules = Dir_contents.modules_of_lib sctx lib in
       let modules = Option.value_exn modules in
       Path.Set.map ~f:Path.drop_optional_build_context
@@ -352,7 +369,10 @@ module Unprocessed = struct
                 ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
                   ( Path.Set.union src_dirs more_src_dirs
                   , let public_cmi_dir =
-                      Lib.info lib |> Lib_info.obj_dir |> Obj_dir.public_cmi_dir
+                      let info = Lib.info lib in
+                      obj_dir_of_lib `Public
+                        (`Lib (Lib_info.modes info))
+                        (Lib_info.obj_dir info)
                     in
                     Path.Set.add obj_dirs public_cmi_dir )))
       in

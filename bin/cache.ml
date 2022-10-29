@@ -45,7 +45,7 @@ let trim ~trimmed_size ~size =
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok { trimmed_bytes } ->
     User_message.print
-      (User_message.make [ Pp.textf "Freed %Li bytes" trimmed_bytes ])
+      (User_message.make [ Pp.textf "Freed %s" (Bytes_unit.pp trimmed_bytes) ])
 
 type mode =
   | Trim

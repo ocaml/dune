@@ -34,7 +34,7 @@ Function to reset build tree and cache.
 Check that trimming does not crash when the cache directory does not exist.
 
   $ dune cache trim --size 0B
-  Freed 0 bytes
+  Freed 0B
 
 Check that the digest scheme for executable and non-executable digests hasn't
 changed. If it has, make sure to increment the version of the cache. Note that
@@ -91,7 +91,7 @@ all metadata entries in [meta/v4] since they are broken: remember, we moved all
   $ find "$PWD/.xdg-cache/dune/db/meta/v4" -mindepth 2 -maxdepth 2 -type f | dune_cmd count-lines
   4
   $ dune cache trim --trimmed-size 1B
-  Freed 287 bytes
+  Freed 287B
   $ dune_cmd stat hardlinks _build/default/target_a
   2
   $ dune_cmd stat hardlinks _build/default/target_b
@@ -104,7 +104,7 @@ trimmed.
 
   $ rm -f _build/default/target_a _build/default/beacon_a _build/default/beacon_b
   $ dune cache trim --trimmed-size 1B
-  Freed 79 bytes
+  Freed 79B
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -150,7 +150,7 @@ by the existence of [beacon_b].
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_a _build/default/target_a
   $ dune cache trim --trimmed-size 1B
-  Freed 79 bytes
+  Freed 79B
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -170,7 +170,7 @@ thus making the trimmer delete [target_a] instead of [target_b] as above.
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_b _build/default/target_b
   $ dune cache trim --trimmed-size 1B
-  Freed 79 bytes
+  Freed 79B
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -188,7 +188,7 @@ are part of the same rule.
   $ dune build multi_a multi_b
   $ rm -f _build/default/multi_a _build/default/multi_b
   $ dune cache trim --trimmed-size 1B
-  Freed 123 bytes
+  Freed 123B
 
 TODO: Test trimming priority in the [copy] mode. In PR #4497 we added a test but
 it turned out to be flaky so we subsequently deleted it in #4511.

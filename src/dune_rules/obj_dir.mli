@@ -50,8 +50,11 @@ val melange_dir : 'path t -> 'path
 
 val all_cmis : 'path t -> 'path list
 
-(** The public compiled cmi file directory *)
-val public_cmi_dir : 'path t -> 'path
+(** The public compiled cmi file directory for ocaml *)
+val public_cmi_ocaml_dir : 'path t -> 'path
+
+(** The public compiled cmi file directory for melange *)
+val public_cmi_melange_dir : 'path t -> 'path
 
 val odoc_dir : 'path t -> 'path
 
@@ -99,7 +102,8 @@ module Module : sig
 
   val cm_file : 'path t -> Module.t -> kind:Lib_mode.Cm_kind.t -> 'path option
 
-  val cm_public_file : 'path t -> Module.t -> kind:Cm_kind.t -> 'path option
+  val cm_public_file :
+    'path t -> Module.t -> kind:Lib_mode.Cm_kind.t -> 'path option
 
   val cmt_file :
        'path t
@@ -119,7 +123,8 @@ module Module : sig
 
   val o_file_exn : 'path t -> Module.t -> ext_obj:string -> 'path
 
-  val cm_public_file_exn : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
+  val cm_public_file_exn :
+    'path t -> Module.t -> kind:Lib_mode.Cm_kind.t -> 'path
 
   (** Either the .cmti, or .cmt if the module has no interface *)
   val cmti_file : 'path t -> Module.t -> cm_kind:Lib_mode.Cm_kind.t -> 'path

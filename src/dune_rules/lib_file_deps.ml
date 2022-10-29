@@ -21,9 +21,10 @@ module Group = struct
 
   let obj_dir t obj_dir =
     match t with
-    | Ocaml Cmi -> Obj_dir.public_cmi_dir obj_dir
+    | Ocaml Cmi -> Obj_dir.public_cmi_ocaml_dir obj_dir
     | Ocaml Cmx -> Obj_dir.native_dir obj_dir
-    | Melange (Cmi | Cmj) -> Obj_dir.melange_dir obj_dir
+    | Melange Cmi -> Obj_dir.public_cmi_melange_dir obj_dir
+    | Melange Cmj -> Obj_dir.melange_dir obj_dir
     | Header -> Obj_dir.dir obj_dir
 
   let to_predicate =

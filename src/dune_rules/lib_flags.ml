@@ -94,40 +94,51 @@ module L = struct
     | [] -> dirs
     | lib :: _ -> Path.Set.remove dirs (Lib.lib_config lib).stdlib_dir
 
-  let include_paths ?project ts mode =
-    let visible_cmi =
-      match project with
-      | None -> fun _ -> true
-      | Some project -> (
-        let check_project lib =
-          match Lib.project lib with
-          | None -> false
-          | Some project' -> Dune_project.equal project project'
+  let include_paths =
+    let add_public_dir ~visible_cmi obj_dir acc mode =
+      match visible_cmi with
+      | false -> acc
+      | true ->
+        let public_cmi_dir =
+          (match mode with
+          | `Byte -> Obj_dir.public_cmi_ocaml_dir
+          | `Melange -> Obj_dir.public_cmi_melange_dir)
+            obj_dir
         in
-        fun lib ->
-          match Lib_info.status (Lib.info lib) with
-          | Private (_, Some _) | Installed_private -> check_project lib
-          | _ -> true)
+        Path.Set.add acc public_cmi_dir
     in
-    let dirs =
-      List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-          let obj_dir = Lib_info.obj_dir (Lib.info t) in
-          match mode with
-          | Lib_mode.Ocaml mode -> (
-            let acc =
-              if visible_cmi t then
-                let public_cmi_dir = Obj_dir.public_cmi_dir obj_dir in
-                Path.Set.add acc public_cmi_dir
-              else acc
-            in
+    fun ?project ts mode ->
+      let visible_cmi =
+        match project with
+        | None -> fun _ -> true
+        | Some project -> (
+          let check_project lib =
+            match Lib.project lib with
+            | None -> false
+            | Some project' -> Dune_project.equal project project'
+          in
+          fun lib ->
+            match Lib_info.status (Lib.info lib) with
+            | Private (_, Some _) | Installed_private -> check_project lib
+            | _ -> true)
+      in
+      let dirs =
+        List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
+            let obj_dir = Lib_info.obj_dir (Lib.info t) in
             match mode with
-            | Byte -> acc
-            | Native ->
-              let native_dir = Obj_dir.native_dir obj_dir in
-              Path.Set.add acc native_dir)
-          | Melange -> Path.Set.add acc (Obj_dir.melange_dir obj_dir))
-    in
-    remove_stdlib dirs ts
+            | Lib_mode.Ocaml mode -> (
+              let acc =
+                add_public_dir ~visible_cmi:(visible_cmi t) obj_dir acc `Byte
+              in
+              match mode with
+              | Byte -> acc
+              | Native ->
+                let native_dir = Obj_dir.native_dir obj_dir in
+                Path.Set.add acc native_dir)
+            | Melange ->
+              add_public_dir ~visible_cmi:(visible_cmi t) obj_dir acc `Melange)
+      in
+      remove_stdlib dirs ts
 
   let include_flags ?project ts mode =
     to_iflags (include_paths ?project ts mode)

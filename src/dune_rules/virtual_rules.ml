@@ -51,10 +51,12 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
           && Obj_dir.need_dedicated_public_dir impl_obj_dir)
           (fun () ->
             let dst =
-              Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind:Cmi
+              Obj_dir.Module.cm_public_file_exn impl_obj_dir src
+                ~kind:(Ocaml Cmi)
             in
             let src =
-              Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind:Cmi
+              Obj_dir.Module.cm_public_file_exn vlib_obj_dir src
+                ~kind:(Ocaml Cmi)
             in
             copy_to_obj_dir ~src ~dst)
     >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->

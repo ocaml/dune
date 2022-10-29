@@ -1450,6 +1450,38 @@ generates a file by listing all the files in a subdirectory ``resources``:
       (with-stdout-to foo.sexp
       (system "echo '(' resources/* ')'"))))
 
+Globs in the Install Stanza
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can use globs to specify files to install by using the terms
+``(glob_files <glob>)`` and ``(glob_files_rec <glob>)`` inside the ``files``
+field of the install stanza (but not inside the ``dirs`` field).
+See the :ref:`glob <glob>` for details of the glob syntax.
+The ``(glob_files <glob>)`` term will expand its argument within a single
+directory, whereas the ``(glob_files_rec <glob>)`` term will recursively expand
+its argument within all subdirectories.
+
+For example:
+
+.. code:: scheme
+
+    (install
+     (files (glob_files style/*.css) (glob_files_rec content/*.html))
+     (section share))
+
+This example will install:
+
+- all files matching ``*.css`` in the ``style`` directory
+
+- all files matching ``*.html`` in the ``content`` directory, or any of its
+  descendant subdirectories
+
+Note that the paths to files are preserved after installation. Suppose the
+source directory contained the files ``style/foo.css`` and
+``content/bar/baz.html``. The example above will place these files in
+``share/<package>/style/foo.css`` and ``share/<package>/content/bar/baz.html``
+respectively.
+
 Handling of the .exe Extension on Windows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

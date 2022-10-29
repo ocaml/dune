@@ -2380,7 +2380,7 @@ module Stanzas = struct
         and+ t = Plugin.decode in
         [ Plugin t ] )
     ; ( "melange.emit"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 6)
+      , let+ () = Dune_lang.Syntax.since Melange.syntax (0, 1)
         and+ t = Melange_stanzas.Emit.decode in
         [ Melange_emit t ] )
     ]

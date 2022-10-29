@@ -146,7 +146,7 @@ end = struct
       | true ->
         let+ () = Mdx.gen_rules ~sctx ~dir ~scope ~expander mdx in
         empty_none)
-    | Melange mel ->
+    | Melange_emit mel ->
       let melange_stanza_dir = dir in
       let all_libs_compile_info =
         let dune_version = Scope.project scope |> Dune_project.dune_version in
@@ -172,7 +172,7 @@ end = struct
           ~obj_dir ~modules ~flags ~requires_compile ~requires_link
           ~opaque:Inherit_from_settings ~js_of_ocaml ~package ~melange ?vimpl
       in
-      let rules (mel : Melange_stanza.t) ~sctx ~melange_stanza_dir ~scope
+      let rules (mel : Melange_stanzas.Emit.t) ~sctx ~melange_stanza_dir ~scope
           ~expander =
         let open Memo.O in
         let* libs = Lib.Compile.direct_requires all_libs_compile_info in

@@ -1,1 +1,1 @@
-(melange.emit (target multilib) (libraries x) (spec commonjs))
+(melange.emit (target multilib) (libraries x) (module_system commonjs))

@@ -2,4 +2,4 @@
  (name x)
  (modes melange))
 
-(melange.emit (target simple) (libraries x) (spec commonjs))
+(melange.emit (target simple) (libraries x) (module_system commonjs))

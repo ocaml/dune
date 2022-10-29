@@ -243,7 +243,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     >>| Action.Full.add_sandbox sandbox))
   |> Memo.Option.iter ~f:Fun.id
 
-let build_melange_js ~pkg_name ~js_modules ~dst_dir ~cctx m =
+let build_melange_js ~pkg_name ~module_system ~dst_dir ~cctx m =
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
@@ -291,7 +291,7 @@ let build_melange_js ~pkg_name ~js_modules ~dst_dir ~cctx m =
         [ "--bs-package-name"; Package.Name.to_string pkg_name ]
     in
 
-    let js_modules_str = Melange.Spec.to_string js_modules in
+    let js_modules_str = Melange.Module_system.to_string module_system in
     "--bs-module-type" :: js_modules_str :: pkg_name_args
   in
   let melange_js_includes =

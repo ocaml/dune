@@ -6,7 +6,7 @@ val extension_key : unit Dune_engine.Dune_project.Extension.t
 
 val js_ext : string
 
-module Spec : sig
+module Module_system : sig
   type t =
     | Es6
     | CommonJs
@@ -18,10 +18,11 @@ module In_context : sig
   type t =
     { lib_rel_path : string
     ; pkg_name : string
-    ; spec : Spec.t
+    ; module_system : Module_system.t
     }
 
-  val make : lib_rel_path:string -> pkg_name:string -> spec:Spec.t -> t
+  val make :
+    lib_rel_path:string -> pkg_name:string -> module_system:Module_system.t -> t
 end
 
 module Cm_kind : sig

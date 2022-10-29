@@ -10,7 +10,7 @@ let extension_key =
 
 let js_ext = ".js"
 
-module Spec = struct
+module Module_system = struct
   type t =
     | Es6
     | CommonJs
@@ -24,10 +24,11 @@ module In_context = struct
   type t =
     { lib_rel_path : string
     ; pkg_name : string
-    ; spec : Spec.t
+    ; module_system : Module_system.t
     }
 
-  let make ~lib_rel_path ~pkg_name ~spec = { lib_rel_path; pkg_name; spec }
+  let make ~lib_rel_path ~pkg_name ~module_system =
+    { lib_rel_path; pkg_name; module_system }
 end
 
 module Cm_kind = struct

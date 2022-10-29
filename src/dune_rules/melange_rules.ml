@@ -71,7 +71,7 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
         let pkg_name = Lib_info.package info in
         Memo.parallel_iter source_modules
           ~f:
-            (Module_compilation.build_melange_js ~pkg_name ~js_modules:mel.spec
-               ~dst_dir ~cctx))
+            (Module_compilation.build_melange_js ~pkg_name
+               ~module_system:mel.module_system ~dst_dir ~cctx))
   in
   rules mel ~sctx ~melange_stanza_dir ~scope ~expander

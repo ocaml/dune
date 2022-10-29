@@ -21,7 +21,7 @@ val with_empty_intf :
 
 val build_melange_js :
      pkg_name:Package.Name.t option
-  -> js_modules:Melange.Spec.t
+  -> module_system:Melange.Module_system.t
   -> dst_dir:Path.Build.t
   -> cctx:Compilation_context.t
   -> Module.t

@@ -5,7 +5,7 @@ module Emit = struct
   type t =
     { loc : Loc.t
     ; target : string
-    ; spec : Melange.Spec.t
+    ; module_system : Melange.Module_system.t
     ; libraries : Lib_dep.t list
     }
 
@@ -43,9 +43,9 @@ module Emit = struct
     fields
       (let+ loc = loc
        and+ target = field "target" string
-       and+ spec =
-         field "spec"
-           (enum [ ("es6", Melange.Spec.Es6); ("commonjs", CommonJs) ])
+       and+ module_system =
+         field "module_system"
+           (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
        and+ libraries = field "libraries" decode_lib ~default:[] in
-       { loc; target; spec; libraries })
+       { loc; target; module_system; libraries })
 end

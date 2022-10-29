@@ -362,7 +362,14 @@ let prepare_sync () =
   | Cleared -> ()
   | Directory_does_not_exist -> (
     match Fpath.mkdir_p dir with
-    | Already_exists | Created -> ())
+    | Already_exists | Created -> ()
+    | Already_exists_not_directory file ->
+      User_error.raise
+        [ Pp.textf
+            "Failed to create directory %S. File %S already exists but is not \
+             a directory."
+            dir file
+        ])
 
 let spawn_external_watcher ~root ~backend =
   prepare_sync ();

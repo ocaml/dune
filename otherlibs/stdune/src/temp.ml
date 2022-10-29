@@ -42,8 +42,8 @@ let create_temp_dir ?perms path =
   let dir = Path.to_string path in
   match Fpath.mkdir ?perms dir with
   | Created -> Ok ()
-  | Already_exists -> Error `Retry
-  | Missing_parent_directory ->
+  | Already_exists | Already_exists_not_directory -> Error `Retry
+  | Missing_parent_directory | Parent_not_directory ->
     Code_error.raise
       "[Temp.create_temp_dir] called in a nonexistent directory"
       [ "dir", Path.to_dyn path ]

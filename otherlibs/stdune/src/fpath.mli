@@ -1,17 +1,25 @@
 (** Functions on paths that are represented as strings *)
 
 type mkdir_result =
-  | Already_exists (** The directory already exists. No action was taken. *)
   | Created (** The directory was created. *)
+  | Already_exists (** The directory already exists. No action was taken. *)
+  | Already_exists_not_directory
+      (** The file already exists, but it was not a directory. *)
+  | Parent_not_directory (** The parent exists but is not a directory. *)
   | Missing_parent_directory
       (** No parent directory, use [mkdir_p] if you want to create it too. *)
 
+val dyn_of_mkdir_result : mkdir_result -> Dyn.t
 val mkdir : ?perms:int -> string -> mkdir_result
 
 type mkdir_p_result =
-  | Already_exists (** The directory already exists. No action was taken. *)
   | Created (** The directory was created. *)
+  | Already_exists (** The directory already exists. No action was taken. *)
+  | Already_exists_not_directory of string
+      (** A file with the same name as the [string] already exists but is not a
+          directory. *)
 
+val dyn_of_mkdir_p_result : mkdir_p_result -> Dyn.t
 val mkdir_p : ?perms:int -> string -> mkdir_p_result
 
 type follow_symlink_error =

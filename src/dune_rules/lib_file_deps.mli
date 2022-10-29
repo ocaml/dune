@@ -5,14 +5,9 @@ module Group : sig
     | Cmi
     | Cmx
 
-  type melange =
-    | Cmi
-    | Cmj
-    | Js
-
   type t =
     | Ocaml of ocaml
-    | Melange of melange
+    | Melange of Melange.Lib_file_deps_group.t
     | Header
 
   val to_predicate : t -> string Predicate_with_id.t

@@ -5,14 +5,9 @@ module Group = struct
     | Cmi
     | Cmx
 
-  type melange =
-    | Cmi
-    | Cmj
-    | Js
-
   type t =
     | Ocaml of ocaml
-    | Melange of melange
+    | Melange of Melange.Lib_file_deps_group.t
     | Header
 
   let all =

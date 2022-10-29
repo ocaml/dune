@@ -16,13 +16,11 @@ end
 
 module In_context : sig
   type t =
-    { lib_rel_path : string
-    ; pkg_name : string
-    ; module_system : Module_system.t
+    { target : string
+    ; melange_stanza_dir : Path.Build.t
     }
 
-  val make :
-    lib_rel_path:string -> pkg_name:string -> module_system:Module_system.t -> t
+  val make : target:string -> melange_stanza_dir:Path.Build.t -> t
 end
 
 module Cm_kind : sig

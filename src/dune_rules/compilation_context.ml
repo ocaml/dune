@@ -182,7 +182,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   let melange_js_includes =
     match melange with
     | None -> None
-    | Some (melange_stanza_dir, target_dir) ->
+    | Some { Melange.In_context.melange_stanza_dir; target } ->
       let open Resolve.Memo.O in
       Some
         (Command.Args.memo
@@ -194,8 +194,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
                  let info = Lib.Local.info lib in
                  let lib_dir = Lib_info.src_dir info in
                  let dst_dir =
-                   Melange.lib_output_dir ~melange_stanza_dir ~lib_dir
-                     ~target:target_dir
+                   Melange.lib_output_dir ~melange_stanza_dir ~lib_dir ~target
                  in
                  List.map groups ~f:(fun g ->
                      let dir = Path.build dst_dir in

@@ -20,7 +20,9 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
     let requires_link = Lib.Compile.requires_link compile_info in
     let package = None in
     let js_of_ocaml = None in
-    let melange = (melange_stanza_dir, mel.target) in
+    let melange =
+      Melange.In_context.make ~target:mel.target ~melange_stanza_dir
+    in
     (* modes and pp are not passed, not sure if this will cause issues *)
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_compile ~requires_link

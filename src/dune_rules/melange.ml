@@ -22,13 +22,11 @@ end
 
 module In_context = struct
   type t =
-    { lib_rel_path : string
-    ; pkg_name : string
-    ; module_system : Module_system.t
+    { target : string
+    ; melange_stanza_dir : Path.Build.t
     }
 
-  let make ~lib_rel_path ~pkg_name ~module_system =
-    { lib_rel_path; pkg_name; module_system }
+  let make ~target ~melange_stanza_dir = { target; melange_stanza_dir }
 end
 
 module Cm_kind = struct

@@ -34,7 +34,7 @@ val create :
   -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Js_of_ocaml.In_context.t option
   -> package:Package.t option
-  -> ?melange:Path.Build.t * string
+  -> ?melange:Melange.In_context.t
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool

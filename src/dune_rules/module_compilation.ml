@@ -50,7 +50,7 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
         (Action_builder.symlink
            ~src:
              (Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
-           ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
+           ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 
 let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     ~(phase : Fdo.phase option) =

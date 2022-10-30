@@ -191,17 +191,23 @@ module Processed = struct
 end
 
 let obj_dir_of_lib kind modes obj_dir =
-  (if
-   match modes with
-   | `Exe -> false
-   | `Lib modes ->
-     Lib_mode.Map.Set.equal modes
-       { ocaml = Ocaml.Mode.Dict.make_both false; melange = true }
-  then Obj_dir.melange_dir
-  else
-    match kind with
-    | `Private -> Obj_dir.byte_dir
-    | `Public -> Obj_dir.public_cmi_dir)
+  (match
+     let mode =
+       match modes with
+       | `Exe -> `Byte
+       | `Lib modes ->
+         if
+           Lib_mode.Map.Set.equal modes
+             { ocaml = Ocaml.Mode.Dict.make_both false; melange = true }
+         then `Melange
+         else `Byte
+     in
+     (kind, mode)
+   with
+  | `Private, `Byte -> Obj_dir.byte_dir
+  | `Public, `Byte -> Obj_dir.public_cmi_ocaml_dir
+  | `Private, `Melange -> Obj_dir.melange_dir
+  | `Public, `Melange -> Obj_dir.public_cmi_melange_dir)
     obj_dir
 
 module Unprocessed = struct

@@ -19,7 +19,7 @@ let command =
        https://github.com/ocaml/dune/issues/2964). *)
     let _config = Common.init common ~log_file:No_log_file in
     Dune_engine.Target_promotion.files_in_source_tree_to_delete ()
-    |> Path.Set.iter ~f:Path.unlink_no_err;
+    |> Path.Source.Set.iter ~f:(fun p -> Path.unlink_no_err (Path.source p));
     Path.rm_rf Path.build_dir
   in
   Cmd.v (Cmd.info "clean" ~doc ~man) term

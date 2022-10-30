@@ -139,6 +139,12 @@ module Scheduler = struct
         (Constant
            (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 
+  let rpc server =
+    { Dune_engine.Rpc.run = Dune_rpc_impl.Server.run server
+    ; stop = Dune_rpc_impl.Server.stop server
+    ; ready = Dune_rpc_impl.Server.ready server
+    }
+
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config =
@@ -146,10 +152,22 @@ module Scheduler = struct
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
         ~signal_watcher:`Yes
     in
+    let f =
+      match Common.rpc common with
+      | `Allow server ->
+        fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f
+      | `Forbid_builds -> f
+    in
     Run.go config ~on_event:(on_event dune_config) f
 
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
+    let server =
+      match Common.rpc common with
+      | `Allow server -> rpc server
+      | `Forbid_builds ->
+        Code_error.raise "rpc must be enabled in polling mode" []
+    in
     let stats = Common.stats common in
     let config =
       let insignificant_changes = Common.insignificant_changes common in
@@ -157,9 +175,11 @@ module Scheduler = struct
         ~signal_watcher:`Yes
     in
     let file_watcher = Common.file_watcher common in
-    let rpc = Common.rpc common in
     let run () =
-      Fiber.fork_and_join_unit (fun () -> Dune_rpc_impl.Server.run rpc) run
+      let open Fiber.O in
+      Dune_engine.Rpc.with_background_rpc server @@ fun () ->
+      let* () = Dune_engine.Rpc.ensure_ready () in
+      run ()
     in
     Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end

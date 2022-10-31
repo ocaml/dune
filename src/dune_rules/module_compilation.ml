@@ -11,7 +11,7 @@ module CC = Compilation_context
 let force_read_cmi ~(cm_kind : Lib_mode.Cm_kind.t) source_file =
   let args = [ "-intf-suffix"; Path.extension source_file ] in
   match cm_kind with
-  | Melange Cmj -> "-bs-read-cmi" :: args
+  | Melange Cmj -> "--bs-read-cmi" :: args
   | Ocaml (Cmo | Cmx | Cmi) | Melange Cmi -> args
 
 (* Build the cm* if the corresponding source is present, in the case of cmi if

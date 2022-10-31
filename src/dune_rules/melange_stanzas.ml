@@ -42,7 +42,25 @@ module Emit = struct
   let decode =
     fields
       (let+ loc = loc
-       and+ target = field "target" string
+       and+ target =
+         let of_string ~loc s =
+           match String.is_empty s with
+           | true ->
+             User_error.raise ~loc
+               [ Pp.textf "The field target can not be empty" ]
+           | false -> (
+             match Filename.dirname s with
+             | "." -> s
+             | _ ->
+               User_error.raise ~loc
+                 [ Pp.textf
+                     "The field target must use simple names and can not \
+                      include paths to other folders. To emit JavaScript files \
+                      in another folder, move the `melange.emit` stanza to \
+                      that folder"
+                 ])
+         in
+         field "target" (plain_string (fun ~loc s -> of_string ~loc s))
        and+ module_system =
          field "module_system"
            (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])

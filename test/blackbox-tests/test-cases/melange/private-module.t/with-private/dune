@@ -1,5 +1,4 @@
 (library
  (name lib)
- (wrapped false)
  (modes melange)
  (private_modules x))

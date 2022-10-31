@@ -1087,9 +1087,59 @@ module Install_conf = struct
         str)
 
   module File_entry = struct
+    module Without_include = struct
+      type t =
+        | File_binding of File_binding.Unexpanded.t
+        | Glob_files of Glob_files.t
+
+      let decode =
+        let open Dune_lang.Decoder in
+        let file_binding_decode =
+          let+ file_binding = File_binding.Unexpanded.decode in
+          File_binding file_binding
+        in
+        let glob_files_decode =
+          let version_check = Dune_lang.Syntax.since Stanza.syntax (3, 6) in
+          let+ glob_files =
+            sum
+              [ ( "glob_files"
+                , let+ glob = version_check >>> String_with_vars.decode in
+                  { Glob_files.glob; recursive = false } )
+              ; ( "glob_files_rec"
+                , let+ glob = version_check >>> String_with_vars.decode in
+                  { Glob_files.glob; recursive = true } )
+              ]
+          in
+          Glob_files glob_files
+        in
+        file_binding_decode <|> glob_files_decode
+
+      let to_file_bindings_unexpanded t ~expand_str ~dir =
+        match t with
+        | File_binding file_binding -> Memo.return [ file_binding ]
+        | Glob_files glob_files ->
+          let open Memo.O in
+          let+ paths =
+            Glob_files.Expand.memo glob_files ~f:expand_str ~base_dir:dir
+          in
+          let glob_loc = String_with_vars.loc glob_files.glob in
+          List.map paths ~f:(fun path ->
+              let src = (glob_loc, path) in
+              File_binding.Unexpanded.make ~src ~dst:src)
+
+      let to_file_bindings_expanded t ~expand_str ~dir =
+        to_file_bindings_unexpanded t ~expand_str ~dir
+        |> Memo.bind
+             ~f:
+               (Memo.List.map
+                  ~f:
+                    (File_binding.Unexpanded.expand ~dir
+                       ~f:(expand_str_with_check_for_local_path ~expand_str)))
+    end
+
     include
       Recursive_include.Make
-        (File_binding.Unexpanded)
+        (Without_include)
         (struct
           let include_keyword = "include"
 
@@ -1101,24 +1151,51 @@ module Install_conf = struct
     let expand_include_multi ts ~expand_str ~dir =
       Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
 
-    let of_file_binding = of_base
+    let of_file_binding file_binding =
+      of_base (Without_include.File_binding file_binding)
 
-    let expand t ~expand_str ~dir =
-      let open Memo.O in
-      let* unexpanded = expand_include t ~expand_str ~dir in
-      Memo.List.map unexpanded
-        ~f:
-          (File_binding.Unexpanded.expand ~dir
-             ~f:(expand_str_with_check_for_local_path ~expand_str))
+    let to_file_bindings_unexpanded ts ~expand_str ~dir =
+      expand_include_multi ts ~expand_str ~dir
+      |> Memo.bind
+           ~f:
+             (Memo.List.concat_map
+                ~f:
+                  (Without_include.to_file_bindings_unexpanded ~expand_str ~dir))
 
-    let expand_multi ts ~expand_str ~dir =
-      Memo.List.concat_map ts ~f:(expand ~expand_str ~dir)
+    let to_file_bindings_expanded ts ~expand_str ~dir =
+      expand_include_multi ts ~expand_str ~dir
+      |> Memo.bind
+           ~f:
+             (Memo.List.concat_map
+                ~f:(Without_include.to_file_bindings_expanded ~expand_str ~dir))
+  end
+
+  module Dir_entry = struct
+    include
+      Recursive_include.Make
+        (File_binding.Unexpanded)
+        (struct
+          let include_keyword = "include"
+
+          let include_allowed_in_versions = `Since (3, 5)
+
+          let non_sexp_behaviour = `User_error
+        end)
+
+    let to_file_bindings_expanded ts ~expand_str ~dir =
+      Memo.List.concat_map ts ~f:(expand_include ~expand_str ~dir)
+      |> Memo.bind
+           ~f:
+             (Memo.List.map
+                ~f:
+                  (File_binding.Unexpanded.expand ~dir
+                     ~f:(expand_str_with_check_for_local_path ~expand_str)))
   end
 
   type t =
     { section : Install.Section_with_site.t
     ; files : File_entry.t list
-    ; dirs : File_entry.t list
+    ; dirs : Dir_entry.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
@@ -1131,7 +1208,7 @@ module Install_conf = struct
        and+ dirs =
          field_o "dirs"
            (Dune_lang.Syntax.since Stanza.syntax (3, 5)
-           >>> repeat File_entry.decode)
+           >>> repeat Dir_entry.decode)
        and+ package = Stanza_common.Pkg.field ~stanza:"install"
        and+ enabled_if =
          let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
@@ -1147,9 +1224,9 @@ module Install_conf = struct
 
        { section; dirs; files; package; enabled_if })
 
-  let expand_files t = File_entry.expand_multi t.files
+  let expand_files t = File_entry.to_file_bindings_expanded t.files
 
-  let expand_dirs t = File_entry.expand_multi t.dirs
+  let expand_dirs t = Dir_entry.to_file_bindings_expanded t.dirs
 end
 
 module Executables = struct

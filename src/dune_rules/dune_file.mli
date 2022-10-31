@@ -250,23 +250,21 @@ module Install_conf : sig
   module File_entry : sig
     type t
 
-    val expand_include_multi :
+    val to_file_bindings_unexpanded :
          t list
       -> expand_str:(String_with_vars.t -> string Memo.t)
       -> dir:Path.Build.t
       -> File_binding.Unexpanded.t list Memo.t
+  end
 
-    val expand_multi :
-         t list
-      -> expand_str:(String_with_vars.t -> string Memo.t)
-      -> dir:Path.Build.t
-      -> File_binding.Expanded.t list Memo.t
+  module Dir_entry : sig
+    type t
   end
 
   type t =
     { section : Install.Section_with_site.t
     ; files : File_entry.t list
-    ; dirs : File_entry.t list
+    ; dirs : Dir_entry.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }

@@ -18,11 +18,3 @@ val build_all : Compilation_context.t -> unit Memo.t
 
 val with_empty_intf :
   sctx:Super_context.t -> dir:Path.Build.t -> Module.t -> Module.t Memo.t
-
-val build_melange_js :
-     pkg_name:Package.Name.t option
-  -> module_system:Melange.Module_system.t
-  -> dst_dir:Path.Build.t
-  -> cctx:Compilation_context.t
-  -> Module.t
-  -> unit Memo.t

@@ -1,4 +1,82 @@
 open Import
+module CC = Compilation_context
+
+let compiler ~sctx ~dir =
+  (* TODO loc should come from the mode field in the dune file *)
+  Super_context.resolve_program sctx ~loc:None ~dir ~hint:"opam install melange"
+    "melc"
+
+let build_js ~pkg_name ~module_system ~dst_dir ~cctx m =
+  let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
+  let sctx = CC.super_context cctx in
+  let obj_dir = CC.obj_dir cctx in
+  let ctx = Super_context.context sctx in
+  let dir = ctx.build_dir in
+  let mode = Lib_mode.of_cm_kind cm_kind in
+  let ml_kind = Lib_mode.Cm_kind.source cm_kind in
+  let open Memo.O in
+  let* compiler =
+    let+ compiler = compiler ~sctx ~dir in
+    Result.to_option compiler
+  in
+  (let open Option.O in
+  let+ compiler = compiler in
+  let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
+  let in_dir = Path.Build.relative dst_dir in
+  let output =
+    let name =
+      Module_name.Unique.artifact_filename (Module.obj_name m)
+        ~ext:Melange.js_ext
+    in
+    in_dir name
+  in
+  let obj_dirs =
+    Obj_dir.all_obj_dirs obj_dir ~mode
+    |> List.concat_map ~f:(fun p ->
+           [ Command.Args.A "-I"; Path (Path.build p) ])
+  in
+  let dep_graph = Ml_kind.Dict.get (CC.dep_graphs cctx) ml_kind in
+  let cmj_deps =
+    Action_builder.dyn_paths_unit
+      (let open Action_builder.O in
+      let+ deps = Dep_graph.deps_of dep_graph m in
+      List.concat_map deps ~f:(fun m ->
+          if Module.has m ~ml_kind:Impl && cm_kind = Melange Cmj then
+            let name =
+              Module_name.Unique.artifact_filename (Module.obj_name m)
+                ~ext:Melange.js_ext
+            in
+            [ Path.build (in_dir name) ]
+          else []))
+  in
+  let melange_package_args =
+    let pkg_name_args =
+      match pkg_name with
+      | None -> []
+      | Some pkg_name ->
+        [ "--bs-package-name"; Package.Name.to_string pkg_name ]
+    in
+
+    let js_modules_str = Melange.Module_system.to_string module_system in
+    "--bs-module-type" :: js_modules_str :: pkg_name_args
+  in
+  let melange_js_includes =
+    match CC.melange_js_includes cctx with
+    | None -> Command.Args.As []
+    | Some args -> Command.Args.as_any args
+  in
+  Super_context.add_rule sctx ~dir ?loc:(CC.loc cctx)
+    (let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets cmj_deps
+    >>> Command.run ~dir:(Path.build dir) (Ok compiler)
+          [ Command.Args.S obj_dirs
+          ; melange_js_includes
+          ; As melange_package_args
+          ; A "-o"
+          ; Target output
+          ; Dep (Path.build src)
+          ]))
+  |> Memo.Option.iter ~f:Fun.id
 
 let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
     (mel : Melange_stanzas.Emit.t) =
@@ -73,7 +151,6 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
         let pkg_name = Lib_info.package info in
         Memo.parallel_iter source_modules
           ~f:
-            (Module_compilation.build_melange_js ~pkg_name
-               ~module_system:mel.module_system ~dst_dir ~cctx))
+            (build_js ~pkg_name ~module_system:mel.module_system ~dst_dir ~cctx))
   in
   rules mel ~sctx ~melange_stanza_dir ~scope ~expander

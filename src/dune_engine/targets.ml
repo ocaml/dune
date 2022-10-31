@@ -172,7 +172,7 @@ module Produced = struct
         (Path.Build.Set.exists validated.dirs ~f:(fun validated_dir ->
              Path.Build.is_descendant dir ~of_:validated_dir))
     in
-    List.iter (Path.Build.Map.keys dirs) ~f:(fun dir ->
+    Path.Build.Map.iteri dirs ~f:(fun dir _ ->
         if is_unexpected dir then
           Code_error.raise
             "Targets.Produced.expand_validated_exn: Unexpected directory."

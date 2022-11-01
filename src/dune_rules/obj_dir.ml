@@ -19,7 +19,7 @@ module Paths = struct
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let executable_object_directory ~dir name =
-    Path.Build.relative dir ("." ^ name ^ ".eobjs")
+    Path.Build.relative dir ("." ^ name ^ ".objs")
 end
 
 module External = struct

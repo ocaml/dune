@@ -1,11 +1,6 @@
 open Import
 module CC = Compilation_context
 
-let compiler ~sctx ~dir =
-  (* TODO loc should come from the mode field in the dune file *)
-  Super_context.resolve_program sctx ~loc:None ~dir ~hint:"opam install melange"
-    "melc"
-
 let build_js ~pkg_name ~module_system ~dst_dir ~cctx m =
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let sctx = CC.super_context cctx in
@@ -16,7 +11,11 @@ let build_js ~pkg_name ~module_system ~dst_dir ~cctx m =
   let ml_kind = Lib_mode.Cm_kind.source cm_kind in
   let open Memo.O in
   let* compiler =
-    let+ compiler = compiler ~sctx ~dir in
+    let+ compiler =
+      (* TODO loc should come from the mode field in the dune file *)
+      Super_context.resolve_program sctx ~loc:None ~dir
+        ~hint:"opam install melange" "melc"
+    in
     Result.to_option compiler
   in
   (let open Option.O in
@@ -36,7 +35,7 @@ let build_js ~pkg_name ~module_system ~dst_dir ~cctx m =
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
   let dep_graph = Ml_kind.Dict.get (CC.dep_graphs cctx) ml_kind in
-  let cmj_deps =
+  let js_deps =
     Action_builder.dyn_paths_unit
       (let open Action_builder.O in
       let+ deps = Dep_graph.deps_of dep_graph m in
@@ -48,6 +47,12 @@ let build_js ~pkg_name ~module_system ~dst_dir ~cctx m =
             in
             [ Path.build (in_dir name) ]
           else []))
+  in
+  let cmj_own_dep =
+    Action_builder.dyn_paths_unit
+      (Action_builder.return
+         [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Melange Cmj))
+         ])
   in
   let melange_package_args =
     let pkg_name_args =
@@ -67,7 +72,8 @@ let build_js ~pkg_name ~module_system ~dst_dir ~cctx m =
   in
   Super_context.add_rule sctx ~dir ?loc:(CC.loc cctx)
     (let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets cmj_deps
+    Action_builder.with_no_targets js_deps
+    >>> Action_builder.with_no_targets cmj_own_dep
     >>> Command.run ~dir:(Path.build dir) (Ok compiler)
           [ Command.Args.S obj_dirs
           ; melange_js_includes
@@ -105,15 +111,48 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_compile ~requires_link
       ~opaque:Inherit_from_settings ~js_of_ocaml ~package ~melange ?vimpl
+      ~modes:
+        { ocaml = { byte = None; native = None }
+        ; melange = Some (Requested Loc.none)
+        }
   in
   let rules (mel : Melange_stanzas.Emit.t) ~sctx ~melange_stanza_dir ~scope
       ~expander =
     let open Memo.O in
-    let* libs =
-      Memo.Lazy.force (Lib.Compile.requires_link all_libs_compile_info)
-    in
-    let* libs = Resolve.read_memo libs in
-    Memo.List.iter libs ~f:(fun lib ->
+    (* let* libs =
+         Memo.Lazy.force (Lib.Compile.requires_link all_libs_compile_info)
+       in
+       let* libs = Resolve.read_memo libs in *)
+    Memo.List.iter mel.entries ~f:(function
+      | Folder _ -> Memo.return ()
+      | Module name ->
+        (* Module.generated ~src_dir:(Path.build melange_stanza_dir) m *)
+        let m =
+          let basename = String.uncapitalize (Module_name.to_string name) in
+          let src_dir = Path.build melange_stanza_dir in
+          let source =
+            let impl =
+              Module.File.make Dialect.ocaml
+                (* TODO: what about .re files *)
+                (Path.relative src_dir (basename ^ ".ml"))
+            in
+            Module.Source.make ~impl name
+          in
+          Module.of_source ~visibility:Private ~kind:Impl source
+        in
+        let obj_dir =
+          Obj_dir.make_exe ~dir:melange_stanza_dir ~name:mel.target
+        in
+        let modules_group = Modules.singleton m in
+        let* cctx =
+          lib_cctx ~sctx ~obj_dir ~modules:modules_group ~expander ~scope
+            ~compile_info:all_libs_compile_info
+        in
+        let pkg_name = None in
+        let dst_dir = Path.Build.relative melange_stanza_dir mel.target in
+        let* () = Module_compilation.build_all cctx in
+        build_js ~pkg_name ~module_system:mel.module_system ~dst_dir ~cctx m)
+    (* Memo.List.iter libs ~f:(fun lib ->
         let lib_name = Lib.name lib in
         let* lib, lib_compile_info =
           Lib.DB.get_compile_info (Scope.libs scope) lib_name
@@ -151,6 +190,6 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
         let pkg_name = Lib_info.package info in
         Memo.parallel_iter source_modules
           ~f:
-            (build_js ~pkg_name ~module_system:mel.module_system ~dst_dir ~cctx))
+            (build_js ~pkg_name ~module_system:mel.module_system ~dst_dir ~cctx)) *)
   in
   rules mel ~sctx ~melange_stanza_dir ~scope ~expander

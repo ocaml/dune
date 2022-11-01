@@ -1,11 +1,32 @@
 open Import
 open Dune_lang.Decoder
 
+module Entry = struct
+  type t =
+    | Module of Module_name.t
+    | Folder of Path.Source.t
+
+  let decode =
+    let open Dune_lang.Decoder in
+    sum ~force_parens:true
+      [ ( "module"
+        , let+ module_ = Module_name.decode in
+          Module module_ )
+      ; ( "folder"
+        , let+ str = string in
+          let t = Path.Source.of_string str in
+          Folder t )
+      ]
+    <|> let+ module_ = Module_name.decode in
+        Module module_
+end
+
 module Emit = struct
   type t =
     { loc : Loc.t
     ; target : string
     ; module_system : Melange.Module_system.t
+    ; entries : Entry.t list
     ; libraries : Lib_dep.t list
     }
 
@@ -64,6 +85,7 @@ module Emit = struct
        and+ module_system =
          field "module_system"
            (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
+       and+ entries = field "entries" (repeat Entry.decode)
        and+ libraries = field "libraries" decode_lib ~default:[] in
-       { loc; target; module_system; libraries })
+       { loc; target; module_system; entries; libraries })
 end

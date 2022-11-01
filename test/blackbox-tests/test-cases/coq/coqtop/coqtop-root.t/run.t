@@ -1,7 +1,7 @@
 All dune commands work when you run them in sub-directories, so this should be no exception.
 
   $ dune coq top --toplevel=echo -- theories/foo.v
-  -topfile $TESTCASE_ROOT/_build/default/theories/foo.v -R $TESTCASE_ROOT/_build/default/theories foo
+  -topfile $TESTCASE_ROOT/_build/default/theories/foo.v -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/theories foo
   $ cd theories
 
 This test is currently broken due to the workspace resolution being faulty #5899.

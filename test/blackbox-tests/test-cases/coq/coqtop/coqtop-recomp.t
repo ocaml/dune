@@ -22,17 +22,17 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
         coqdep dir/bar.v.d
         coqdep dir/foo.v.d
           coqc dir/foo.{glob,vo}
-  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -R $TESTCASE_ROOT/_build/default/dir basic
+  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
   $ dune coq top --display short --toplevel echo dir/bar.v
-  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -R $TESTCASE_ROOT/_build/default/dir basic
+  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
   $ dune clean
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v)
   Entering directory '..'
         coqdep dir/bar.v.d
         coqdep dir/foo.v.d
           coqc dir/foo.{glob,vo}
-  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -R $TESTCASE_ROOT/_build/default/dir basic
+  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v)
   Entering directory '..'
-  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -R $TESTCASE_ROOT/_build/default/dir basic
+  -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
 

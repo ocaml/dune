@@ -52,6 +52,8 @@ Unreleased
 - Allow `:standard` in the `(modules)` field of the `coq.pp` stanza (#6229,
   fixes #2414, @Alizter)
 
+- Fix passing of native flags to dune coq top (#6369, fixes #6366, @Alizter)
+
 - Extend the promotion CLI to a `dune promotion` group: `dune promote` is moved
   to `dune promotion apply` (the former still works) and the new `dune promotion
   diff` command can be used to just display the promotion without applying it.

@@ -14,9 +14,8 @@ let msvc_hack_cclibs =
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
 (* Build an OCaml library. *)
-let build_lib (lib : Library.t) ~native_archives ~cctx ~expander ~flags ~dir
+let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
     ~mode ~cm_files =
-  let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   Memo.Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
@@ -416,7 +415,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
   in
   let* () =
     Mode.Dict.Set.iter_concurrently modes.ocaml ~f:(fun mode ->
-        build_lib lib ~native_archives ~dir ~cctx ~expander ~flags ~mode
+        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
           ~cm_files)
   and* () =
     (* Build *.cma.js *)

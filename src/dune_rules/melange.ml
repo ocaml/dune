@@ -63,10 +63,3 @@ let lib_output_dir ~melange_stanza_dir ~lib_dir ~target =
     Path.reach (Path.build lib_dir) ~from:(Path.build melange_stanza_dir)
   in
   Path.Build.relative (Path.Build.relative melange_stanza_dir target) rel_path
-
-module Lib_file_deps_group = struct
-  type t =
-    | Cmi
-    | Cmj
-    | Js
-end

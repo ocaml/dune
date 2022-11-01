@@ -189,25 +189,23 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
            (Resolve.Memo.args
               (let+ libs = requires_compile in
                let project = Scope.project scope in
-               let deps_of_lib (lib : Lib.t) ~groups =
+               let deps_of_lib (lib : Lib.t) =
                  let lib = Lib.Local.of_lib_exn lib in
                  let info = Lib.Local.info lib in
                  let lib_dir = Lib_info.src_dir info in
                  let dst_dir =
                    Melange.lib_output_dir ~melange_stanza_dir ~lib_dir ~target
                  in
-                 List.map groups ~f:(fun g ->
-                     let dir = Path.build dst_dir in
-                     Lib_file_deps.Group.to_predicate g
-                     |> File_selector.create ~dir |> Dep.file_selector)
+                 [ (let dir = Path.build dst_dir in
+                    Glob.of_string_exn Loc.none ("*" ^ Melange.js_ext)
+                    |> File_selector.of_glob ~dir |> Dep.file_selector)
+                 ]
                  |> Dep.Set.of_list
                in
-               let deps libs ~groups =
-                 Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
-               in
+               let deps libs = Dep.Set.union_map libs ~f:deps_of_lib in
                Command.Args.S
                  [ Lib_flags.L.include_flags ~project libs Melange
-                 ; Hidden_deps (deps libs ~groups:[ Melange Js ])
+                 ; Hidden_deps (deps libs)
                  ])))
   in
   let+ dep_graphs = Dep_rules.rules ocamldep_modules_data in

@@ -48,13 +48,10 @@ end
 
 let deps_of_lib (lib : Lib.t) ~groups =
   let obj_dir = Lib.info lib |> Lib_info.obj_dir in
-  let l =
-    List.map groups ~f:(fun g ->
-        let dir = Group.obj_dir g obj_dir in
-        let fs = Group.to_predicate g |> File_selector.create ~dir in
-        fs |> Dep.file_selector)
-  in
-  Dep.Set.of_list l
+  List.map groups ~f:(fun g ->
+      let dir = Group.obj_dir g obj_dir in
+      Group.to_predicate g |> File_selector.create ~dir |> Dep.file_selector)
+  |> Dep.Set.of_list
 
 let deps_with_exts =
   Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)

@@ -719,9 +719,10 @@ module External_lib_deps = struct
   let external_resolved_libs setup super_context =
     let open Memo.O in
     let context = Super_context.context super_context in
-    let* public_libs = Scope.DB.public_libs context in
+    let* scope = Scope.DB.find_by_dir context.build_dir in
+    let db = Scope.libs scope in
     let* libs = libs context setup in
-    external_lib_deps public_libs libs
+    external_lib_deps db libs
 
   let to_dyn context_name external_resolved_libs =
     Dyn.Tuple

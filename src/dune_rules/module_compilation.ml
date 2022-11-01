@@ -183,7 +183,6 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     | Some Emit -> obj
     | Some All | None -> dst
   in
-  print_endline ("OUTPUT " ^ Path.Build.to_string output);
   let src =
     match phase with
     | Some Emit -> Path.build linear_fdo

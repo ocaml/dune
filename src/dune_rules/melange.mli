@@ -14,15 +14,6 @@ module Module_system : sig
   val to_string : t -> string
 end
 
-module In_context : sig
-  type t =
-    { target : string
-    ; melange_stanza_dir : Path.Build.t
-    }
-
-  val make : target:string -> melange_stanza_dir:Path.Build.t -> t
-end
-
 module Cm_kind : sig
   type t =
     | Cmi
@@ -45,7 +36,7 @@ module Cm_kind : sig
 end
 
 val lib_output_dir :
-     melange_stanza_dir:Path.Build.t
+     emit_stanza_dir:Path.Build.t
   -> lib_dir:Path.Build.t
   -> target:string
   -> Path.Build.t

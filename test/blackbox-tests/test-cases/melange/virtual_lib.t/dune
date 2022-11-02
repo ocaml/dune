@@ -1,1 +1,1 @@
-(melange.emit (target output) (libraries impl) (module_system es6))
+(melange.emit (target output) (entries c) (libraries impl) (module_system es6))

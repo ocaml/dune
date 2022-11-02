@@ -1,1 +1,1 @@
-(melange.emit (target output) (libraries app) (module_system commonjs))
+(melange.emit (package pkg) (target output) (entries c) (libraries app) (module_system commonjs))

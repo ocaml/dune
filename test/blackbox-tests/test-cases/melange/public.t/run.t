@@ -25,6 +25,8 @@ Js rules should include --bs-package-name
       pkg
 
 Build js files
-  $ dune build my_project/output/app/app__B.js
-  $ node _build/default/my_project/output/app/app__B.js
+  $ dune build my_project/output/c.js
+
+Path to app_B is non-relative (broken)
+  $ node _build/default/my_project/output/c.js
   buy it

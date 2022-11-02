@@ -19,6 +19,6 @@ Js rules should include module type
       es6
 
 Build js files
-  $ dune build inside/output/app/app__B.js
-  $ node _build/default/inside/output/app/app__B.js
+  $ dune build inside/output/c.js
+  $ node _build/default/inside/output/c.js
   buy it

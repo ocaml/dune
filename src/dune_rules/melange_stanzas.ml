@@ -1,12 +1,23 @@
 open Import
 open Dune_lang.Decoder
 
+module Entry = struct
+  type t = Module of Module_name.t
+
+  let decode =
+    let open Dune_lang.Decoder in
+    let+ module_ = Module_name.decode in
+    Module module_
+end
+
 module Emit = struct
   type t =
     { loc : Loc.t
     ; target : string
     ; module_system : Melange.Module_system.t
+    ; entries : Entry.t list
     ; libraries : Lib_dep.t list
+    ; package : Package.t option
     }
 
   let decode_lib =
@@ -64,6 +75,8 @@ module Emit = struct
        and+ module_system =
          field "module_system"
            (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
-       and+ libraries = field "libraries" decode_lib ~default:[] in
-       { loc; target; module_system; libraries })
+       and+ entries = field "entries" (repeat Entry.decode)
+       and+ libraries = field "libraries" decode_lib ~default:[]
+       and+ package = field_o "package" Stanza_common.Pkg.decode in
+       { loc; target; module_system; entries; libraries; package })
 end

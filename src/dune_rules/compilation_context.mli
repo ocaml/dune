@@ -34,7 +34,6 @@ val create :
   -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Js_of_ocaml.In_context.t option
   -> package:Package.t option
-  -> ?melange:Melange.In_context.t
   -> ?vimpl:Vimpl.t
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
@@ -69,9 +68,6 @@ val requires_compile : t -> Lib.t list Resolve.Memo.t
 
 val includes :
   t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
-
-val melange_js_includes :
-  t -> Command.Args.without_targets Command.Args.t option
 
 val preprocessing : t -> Pp_spec.t
 

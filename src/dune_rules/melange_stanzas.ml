@@ -2,23 +2,12 @@ open Import
 open Dune_lang.Decoder
 
 module Entry = struct
-  type t =
-    | Module of Module_name.t
-    | Folder of Path.Source.t
+  type t = Module of Module_name.t
 
   let decode =
     let open Dune_lang.Decoder in
-    sum ~force_parens:true
-      [ ( "module"
-        , let+ module_ = Module_name.decode in
-          Module module_ )
-      ; ( "folder"
-        , let+ str = string in
-          let t = Path.Source.of_string str in
-          Folder t )
-      ]
-    <|> let+ module_ = Module_name.decode in
-        Module module_
+    let+ module_ = Module_name.decode in
+    Module module_
 end
 
 module Emit = struct

@@ -1,9 +1,7 @@
 open Import
 
 module Entry : sig
-  type t =
-    | Module of Module_name.t
-    | Folder of Path.Source.t
+  type t = Module of Module_name.t
 end
 
 (** Stanza to produce JavaScript targets from Melange libraries *)

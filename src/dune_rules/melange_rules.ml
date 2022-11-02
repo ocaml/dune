@@ -80,9 +80,7 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
 
 let add_rules_for_entries ~sctx ~expander ~scope ~emit_stanza_dir ~compile_info
     ~requires_link (mel : Melange_stanzas.Emit.t) =
-  Memo.List.iter mel.entries ~f:(function
-    | Folder _ -> Memo.return ()
-    | Module name ->
+  Memo.List.iter mel.entries ~f:(function Module name ->
       let m =
         let basename = String.uncapitalize (Module_name.to_string name) in
         let src_dir = Path.build emit_stanza_dir in

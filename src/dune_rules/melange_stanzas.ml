@@ -28,6 +28,7 @@ module Emit = struct
     ; module_system : Melange.Module_system.t
     ; entries : Entry.t list
     ; libraries : Lib_dep.t list
+    ; package : Package.t option
     }
 
   let decode_lib =
@@ -86,6 +87,7 @@ module Emit = struct
          field "module_system"
            (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
        and+ entries = field "entries" (repeat Entry.decode)
-       and+ libraries = field "libraries" decode_lib ~default:[] in
-       { loc; target; module_system; entries; libraries })
+       and+ libraries = field "libraries" decode_lib ~default:[]
+       and+ package = field_o "package" Stanza_common.Pkg.decode in
+       { loc; target; module_system; entries; libraries; package })
 end

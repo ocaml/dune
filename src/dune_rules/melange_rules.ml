@@ -92,7 +92,7 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
       [ (mel.loc, mel.target) ]
       mel.libraries ~pps ~dune_version
   in
-  let lib_cctx ~sctx ~obj_dir ~modules ~expander ~scope ~compile_info =
+  let lib_cctx ~sctx ~obj_dir ~modules ~expander ~scope ~compile_info ~package =
     let flags = Ocaml_flags.empty in
     let vimpl =
       (* original impl in Lib_rules uses Virtual_rules.impl, will this break with virtual libs? *)
@@ -101,7 +101,6 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
     let modules = Vimpl.impl_modules vimpl modules in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
-    let package = None in
     let js_of_ocaml = None in
     (* modes and pp are not passed, not sure if this will cause issues *)
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
@@ -144,9 +143,9 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
           let modules_group = Modules.singleton m in
           let* cctx =
             lib_cctx ~sctx ~obj_dir ~modules:modules_group ~expander ~scope
-              ~compile_info:all_libs_compile_info
+              ~compile_info:all_libs_compile_info ~package:mel.package
           in
-          let pkg_name = None in
+          let pkg_name = Option.map mel.package ~f:Package.name in
           let dst_dir = Path.Build.relative melange_stanza_dir mel.target in
           let loc = mel.loc in
           let melange_js_includes =

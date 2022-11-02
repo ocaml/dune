@@ -14,6 +14,7 @@ module Emit : sig
     ; module_system : Melange.Module_system.t
     ; entries : Entry.t list
     ; libraries : Lib_dep.t list
+    ; package : Package.t option
     }
 
   val decode : t Dune_lang.Decoder.t

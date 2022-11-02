@@ -29,7 +29,6 @@ let js_includes ~emit_stanza_dir ~target ~requires_link ~scope =
 let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
     ~lib_deps_js_includes m =
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
-  let mode = Lib_mode.of_cm_kind cm_kind in
   let open Memo.O in
   let* compiler =
     let+ compiler =
@@ -50,10 +49,8 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
     in
     in_dir name
   in
-  let obj_dirs =
-    Obj_dir.all_obj_dirs obj_dir ~mode
-    |> List.concat_map ~f:(fun p ->
-           [ Command.Args.A "-I"; Path (Path.build p) ])
+  let obj_dir =
+    [ Command.Args.A "-I"; Path (Path.build (Obj_dir.melange_dir obj_dir)) ]
   in
   let melange_package_args =
     let pkg_name_args =
@@ -69,7 +66,7 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
   let lib_deps_js_includes = Command.Args.as_any lib_deps_js_includes in
   Super_context.add_rule sctx ~dir:build_dir ?loc
     (Command.run ~dir:(Path.build build_dir) (Ok compiler)
-       [ Command.Args.S obj_dirs
+       [ Command.Args.S obj_dir
        ; lib_deps_js_includes
        ; As melange_package_args
        ; A "-o"

@@ -162,13 +162,14 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
     let* requires_link = Resolve.read_memo requires_link in
     Memo.List.iter requires_link ~f:(fun lib ->
         let lib_name = Lib.name lib in
-        let* lib, _lib_compile_info =
+        let* lib, lib_compile_info =
           Lib.DB.get_compile_info (Scope.libs scope) lib_name
         in
         let lib = Lib.Local.of_lib_exn lib in
         let info = Lib.Local.info lib in
         let lib_dir = Lib_info.src_dir info in
         let obj_dir = Lib_info.obj_dir info in
+
         let () =
           if not (Path.Build.is_descendant lib_dir ~of_:melange_stanza_dir) then
             User_error.raise
@@ -191,9 +192,16 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
         in
         let* source_modules = modules_group >>| Modules.impl_only in
         let pkg_name = Lib_info.package info in
+        let requires_link =
+          Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
+        in
+        let melange_js_includes =
+          melange_js_includes ~melange_stanza_dir ~target:mel.target
+            ~requires_link ~scope
+        in
         Memo.parallel_iter source_modules
           ~f:
             (build_js ~pkg_name ~module_system:mel.module_system ~dst_dir
-               ~obj_dir ~sctx ~build_dir ~melange_js_includes:None))
+               ~obj_dir ~sctx ~build_dir ~melange_js_includes))
   in
   rules mel ~sctx ~melange_stanza_dir ~scope ~expander

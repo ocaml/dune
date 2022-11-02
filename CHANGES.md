@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- [ctypes] do not mangle user written names in the ctypes stanza (#6374, fixes
+  #5561, @rgrinberg)
+
 - Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI
   colors. (#6340, fixes #6323, @MisterDA).
 

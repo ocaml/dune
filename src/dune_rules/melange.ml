@@ -20,15 +20,6 @@ module Module_system = struct
     | CommonJs -> "commonjs"
 end
 
-module In_context = struct
-  type t =
-    { target : string
-    ; melange_stanza_dir : Path.Build.t
-    }
-
-  let make ~target ~melange_stanza_dir = { target; melange_stanza_dir }
-end
-
 module Cm_kind = struct
   type t =
     | Cmi

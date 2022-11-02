@@ -12,7 +12,7 @@ Unreleased
 - Revive `$ dune external-lib-deps` under `$ dune describe external-lib-deps`.
   (#6045, @moyodiallo)
 
-- Fix running inline tests in byteode mode (#5622, fixes #5515, @dariusf)
+- Fix running inline tests in bytecode mode (#5622, fixes #5515, @dariusf)
 
 - [ctypes] always re-run `pkg-config` because we aren't tracking its external
   dependencies (#6052, @rgrinberg)

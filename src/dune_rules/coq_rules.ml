@@ -21,7 +21,7 @@ module Util = struct
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let info = Lib.info t in
         (* We want the cmi files *)
-        let obj_dir = Obj_dir.public_cmi_dir (Lib_info.obj_dir info) in
+        let obj_dir = Obj_dir.public_cmi_ocaml_dir (Lib_info.obj_dir info) in
         Path.Set.add acc obj_dir)
 
   let include_flags ts = include_paths ts |> Lib_flags.L.to_iflags

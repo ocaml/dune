@@ -131,7 +131,7 @@ let runtest_info =
         ]
     ]
   in
-  Cmd.info "runtest" ~doc ~man
+  Cmd.info "runtest" ~doc ~man ~envs:Common.envs
 
 let runtest_term =
   let name_ = Arg.info [] ~docv:"DIR" in
@@ -184,7 +184,7 @@ let build =
     in
     run_build_command ~common ~config ~request
   in
-  Cmd.v (Cmd.info "build" ~doc ~man) term
+  Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
 
 let fmt =
   let doc = "Format source code." in
@@ -209,4 +209,4 @@ let fmt =
     in
     run_build_command ~common ~config ~request
   in
-  Cmd.v (Cmd.info "fmt" ~doc ~man) term
+  Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term

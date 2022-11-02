@@ -12,7 +12,7 @@ Test target promotion in file-watching mode.
   > (rule
   >  (deps promoted)
   >  (target result)
-  >  (action (bash "cat promoted promoted > result")))
+  >  (action (system "cat promoted promoted > result")))
   > EOF
   $ echo hi > original
 
@@ -71,7 +71,7 @@ Now switch the mode to standard. Dune reports an error about multiple rules for
   > (rule
   >  (deps promoted)
   >  (target result)
-  >  (action (bash "cat promoted promoted > result")))
+  >  (action (system "cat promoted promoted > result")))
   > EOF
 
   $ build result
@@ -102,7 +102,7 @@ Now use [fallback] to override the rule that generates [promoted].
   > (rule
   >  (deps promoted)
   >  (target result)
-  >  (action (bash "cat promoted promoted > result")))
+  >  (action (system "cat promoted promoted > result")))
   > EOF
 
 At first, we don't have the source, so the rule is used.
@@ -158,7 +158,7 @@ Now test file-system events generated during target promotion.
   > (rule
   >  (deps promoted)
   >  (target result)
-  >  (action (bash "cat promoted promoted > result")))
+  >  (action (system "cat promoted promoted > result")))
   > EOF
 
   $ cat promoted

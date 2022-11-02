@@ -241,7 +241,15 @@ let link_many ?(link_args = Action_builder.return Command.Args.empty) ?o_files
     Memo.parallel_map programs
       ~f:(fun { Program.name; main_module_name; loc } ->
         let top_sorted_modules =
-          let main = Option.value_exn (Modules.find modules main_module_name) in
+          let main =
+            match Modules.find modules main_module_name with
+            | Some m -> m
+            | None ->
+              Code_error.raise "link_many: unable to find module"
+                [ ("main_module_name", Module_name.to_dyn main_module_name)
+                ; ("modules", Modules.to_dyn modules)
+                ]
+          in
           Dep_graph.top_closed_implementations (CC.dep_graphs cctx).impl
             [ main ]
         in

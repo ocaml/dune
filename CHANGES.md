@@ -1,20 +1,24 @@
 Unreleased
 ----------
 
+- [ctypes] do not mangle user written names in the ctypes stanza (#6374, fixes
+  #5561, @rgrinberg)
+
+- Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI
+  colors. (#6340, fixes #6323, @MisterDA).
+
 - Allow `Byte_complete` binaries to be installable (#4873, @AltGr, @rgrinberg)
 
 - Revive `$ dune external-lib-deps` under `$ dune describe external-lib-deps`.
   (#6045, @moyodiallo)
 
-- Fix running inline tests in byteode mode (#5622, fixes #5515, @dariusf)
+- Fix running inline tests in bytecode mode (#5622, fixes #5515, @dariusf)
 
 - [ctypes] always re-run `pkg-config` because we aren't tracking its external
   dependencies (#6052, @rgrinberg)
 
-- [ctypes] remove dependency on configurator in the generated rules (#6052, @rgrinberg)
-
-- Introduce experimental support for the melange compiler (#6268, fixes #6230,
-  @jchavarri)
+- [ctypes] remove dependency on configurator in the generated rules (#6052,
+  @rgrinberg)
 
 - Build progress status now shows number of failed jobs (#6242, @Alizter)
 
@@ -23,6 +27,12 @@ Unreleased
 
 - Create a fake socket file `_build/.rpc/dune` on windows to allow rpc clients
   to connect using the build directory. (#6329, @rgrinberg)
+
+- Prevent crash if absolute paths are used in the install stanza and in
+  recursive globs. These cases now result in a user error. (#6331, @gridbugs)
+
+- Add `(glob_files <glob>)` and `(glob_files_rec <glob>)` terms to the `files`
+  field of the `install` stanza (#6250, closes #6018, @gridbugs)
 
 3.5.0 (2022-10-19)
 ------------------

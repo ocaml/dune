@@ -11,7 +11,7 @@ module CC = Compilation_context
 let force_read_cmi ~(cm_kind : Lib_mode.Cm_kind.t) source_file =
   let args = [ "-intf-suffix"; Path.extension source_file ] in
   match cm_kind with
-  | Melange Cmj -> "-bs-read-cmi" :: args
+  | Melange Cmj -> "--bs-read-cmi" :: args
   | Ocaml (Cmo | Cmx | Cmi) | Melange Cmi -> args
 
 (* Build the cm* if the corresponding source is present, in the case of cmi if
@@ -50,7 +50,7 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
         (Action_builder.symlink
            ~src:
              (Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
-           ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:Cmi)))
+           ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 
 let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     ~(phase : Fdo.phase option) =

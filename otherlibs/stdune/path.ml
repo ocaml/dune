@@ -690,6 +690,8 @@ module Build = struct
       if Local.is_root p then External.to_string b
       else Filename.concat (External.to_string b) (Local.to_string p)
 
+  let to_string_maybe_quoted p = String.maybe_quoted (to_string p)
+
   let of_local t = t
 
   let chmod t ~mode = Unix.chmod (to_string t) mode

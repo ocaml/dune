@@ -7,7 +7,7 @@ Test rules that copy source files in file-watching mode.
   > (rule
   >   (deps (glob_files *.txt))
   >   (target summary)
-  >   (action (bash "cat %{deps} > %{target}")))
+  >   (action (system "cat %{deps} > %{target}")))
   > EOF
   $ echo a > a.txt
 
@@ -35,7 +35,7 @@ consequence of using a glob in this directory, which forces all *.txt rules.
   > (rule
   >   (deps (glob_files *.txt))
   >   (target summary)
-  >   (action (bash "cat %{deps} > %{target}")))
+  >   (action (system "cat %{deps} > %{target}")))
   > (rule
   >   (target c.txt)
   >   (action (write-file %{target} "c\n")))

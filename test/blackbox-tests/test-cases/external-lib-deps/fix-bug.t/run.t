@@ -1,24 +1,8 @@
-Expected: To get all required and pps packages
+Expected: The dependency "inter_lib" in ./dune file was printed, the "inter_lib" lib is already
+an internal lib that declared in ./lib/dune file. The command "dune describe external-lib-deps"
+print only the external libraries by dir.
 
   $ dune describe external-lib-deps
   (default
-   ((.
-     ((a________ required)
-      (b________ required)
-      (c________ required)
-      (d________ required)
-      (e________ required)
-      (f________ required)
-      (h________ required)
-      (i________ required)
-      (j________ required)))
-    (internal
-     ((a________ required)
-      (b________ required)
-      (c________ required)
-      (d________ required)
-      (e________ required)
-      (f________ required)
-      (h________ required)
-      (i________ required)
-      (j________ required)))))
+   ((. ((a________ required)))
+    (lib ((a________ required)))))

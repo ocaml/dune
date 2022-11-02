@@ -148,8 +148,7 @@ end = struct
         empty_none)
     | Melange_emit mel ->
       let+ () =
-        Melange_rules.gen_rules ~melange_stanza_dir:dir ~scope ~sctx ~expander
-          mel
+        Melange_rules.gen_emit_rules ~stanza_dir:dir ~scope ~sctx ~expander mel
       in
       empty_none
     | _ -> Memo.return empty_none

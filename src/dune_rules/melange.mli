@@ -36,7 +36,7 @@ module Cm_kind : sig
 end
 
 val lib_output_dir :
-     melange_stanza_dir:Path.Build.t
+     emit_stanza_dir:Path.Build.t
   -> lib_dir:Path.Build.t
   -> target:string
   -> Path.Build.t

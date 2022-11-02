@@ -49,8 +49,8 @@ module Cm_kind = struct
   end
 end
 
-let lib_output_dir ~melange_stanza_dir ~lib_dir ~target =
+let lib_output_dir ~emit_stanza_dir ~lib_dir ~target =
   let rel_path =
-    Path.reach (Path.build lib_dir) ~from:(Path.build melange_stanza_dir)
+    Path.reach (Path.build lib_dir) ~from:(Path.build emit_stanza_dir)
   in
-  Path.Build.relative (Path.Build.relative melange_stanza_dir target) rel_path
+  Path.Build.relative (Path.Build.relative emit_stanza_dir target) rel_path

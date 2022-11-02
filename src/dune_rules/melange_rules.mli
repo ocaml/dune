@@ -1,7 +1,7 @@
 open Import
 
-val gen_rules :
-     melange_stanza_dir:Path.Build.t
+val gen_emit_rules :
+     stanza_dir:Path.Build.t
   -> scope:Scope.t
   -> sctx:Super_context.t
   -> expander:Expander.t

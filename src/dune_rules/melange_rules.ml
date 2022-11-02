@@ -102,7 +102,7 @@ let add_rules_for_entries ~sctx ~expander ~scope ~emit_stanza_dir ~compile_info
           (* original impl in Lib_rules uses Virtual_rules.impl, will this break with virtual libs? *)
           None
         in
-        let modules = Vimpl.impl_modules vimpl (Modules.singleton m) in
+        let modules = Vimpl.impl_modules vimpl (Modules.singleton_exe m) in
         let requires_compile = Lib.Compile.direct_requires compile_info in
         let requires_link = Lib.Compile.requires_link compile_info in
         let js_of_ocaml = None in
@@ -127,7 +127,7 @@ let add_rules_for_entries ~sctx ~expander ~scope ~emit_stanza_dir ~compile_info
       build_js ~loc ~pkg_name ~module_system:mel.module_system ~dst_dir ~obj_dir
         ~sctx ~build_dir ~lib_deps_js_includes m)
 
-let add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
+let _add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
     (mel : Melange_stanzas.Emit.t) =
   Memo.List.iter requires_link ~f:(fun lib ->
       let open Memo.O in
@@ -172,8 +172,8 @@ let add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
           (build_js ~pkg_name ~module_system:mel.module_system ~dst_dir ~obj_dir
              ~sctx ~build_dir ~lib_deps_js_includes))
 
-let gen_emit_rules ~stanza_dir:emit_stanza_dir ~scope ~sctx ~expander
-    (mel : Melange_stanzas.Emit.t) =
+let gen_emit_rules ~dir_contents ~stanza_dir:emit_stanza_dir ~scope ~sctx
+    ~expander (mel : Melange_stanzas.Emit.t) =
   let all_libs_compile_info =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps = [] in
@@ -185,10 +185,16 @@ let gen_emit_rules ~stanza_dir:emit_stanza_dir ~scope ~sctx ~expander
   let requires_link =
     Memo.Lazy.force (Lib.Compile.requires_link all_libs_compile_info)
   in
-  let* () =
-    add_rules_for_entries ~sctx ~expander ~scope ~emit_stanza_dir
-      ~compile_info:all_libs_compile_info ~requires_link mel
+  let* modules, obj_dir =
+    let first_exe = first_exe exes in
+    Dir_contents.ocaml dir_contents
+    >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
-  let* requires_link = requires_link in
-  let* requires_link = Resolve.read_memo requires_link in
-  add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link mel
+
+  (* let* () = *)
+  add_rules_for_entries ~sctx ~expander ~scope ~emit_stanza_dir
+    ~compile_info:all_libs_compile_info ~requires_link mel
+(* in *)
+(* let* requires_link = requires_link in *)
+(* let* requires_link = Resolve.read_memo requires_link in *)
+(* add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link mel *)

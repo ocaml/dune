@@ -19,6 +19,15 @@ type kind =
   | Implementation of Implementation.t
   | Exe_or_normal_lib
 
+val eval_no_buildable :
+     modules:Module.Source.t Module_name.Map.t
+  -> stanza_loc:Loc.t
+  -> modules_field:Ordered_set_lang.t
+  -> modules_without_implementation:Ordered_set_lang.t
+  -> private_modules:Ordered_set_lang.t
+  -> kind:kind
+  -> Module.t Module_name.Map.t
+
 val eval :
      modules:Module.Source.t Module_name.Map.t
   -> buildable:Dune_file.Buildable.t

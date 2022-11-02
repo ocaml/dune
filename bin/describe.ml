@@ -191,7 +191,8 @@ module Descr = struct
         Variant ("executables", [ Exe.to_dyn options exe_descr ])
       | Library lib_descr ->
         Variant ("library", [ Lib.to_dyn options lib_descr ])
-      | Root root -> Variant ("root", [ String (Path.to_string root) ])
+      | Root root ->
+        Variant ("root", [ String (Path.to_absolute_filename root) ])
       | Build_context build_ctxt ->
         Variant ("build_context", [ String (Path.to_string build_ctxt) ])
   end
@@ -530,12 +531,9 @@ module Sanitize_for_tests = struct
         | Path.In_source_tree p ->
           (* Replace the workspace root with a fixed string *)
           let p =
-            if Path.Source.is_root p then
-              Filename.(concat dir_sep "WORKSPACE_ROOT")
-            else
-              Filename.(
-                concat dir_sep
-                @@ concat "WORKSPACE_ROOT" (Path.Source.to_string p))
+            let new_root = Filename.(concat dir_sep "WORKSPACE_ROOT") in
+            if Path.Source.is_root p then new_root
+            else Filename.(concat new_root (Path.Source.to_string p))
           in
           Path.external_ (Path.External.of_string p)
         | path ->

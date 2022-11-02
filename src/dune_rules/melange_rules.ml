@@ -173,7 +173,7 @@ let gen_rules ~melange_stanza_dir ~scope ~sctx ~expander
           if not (Path.Build.is_descendant lib_dir ~of_:melange_stanza_dir) then
             User_error.raise
               [ Pp.textf
-                  "The library %s is used from a melange.emit stanza but the \
+                  "The library %s is used by a melange.emit stanza but the \
                    library folder %s is not a descendant of the stanza folder \
                    %s"
                   (Lib_name.to_string (Lib_info.name info))

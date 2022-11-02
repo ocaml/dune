@@ -1,5 +1,6 @@
 (library
- (name x)
+ (name lib)
+ (modules y)
  (modes melange))
 
-(melange.emit (target simple) (libraries x) (module_system commonjs))
+(melange.emit (target simple) (entries x) (libraries lib) (module_system commonjs))

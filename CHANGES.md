@@ -20,9 +20,6 @@ Unreleased
 - [ctypes] remove dependency on configurator in the generated rules (#6052,
   @rgrinberg)
 
-- Introduce experimental support for the melange compiler (#6268, fixes #6230,
-  @jchavarri)
-
 - Build progress status now shows number of failed jobs (#6242, @Alizter)
 
 - Allow absolute build directories to find public executables. For example,

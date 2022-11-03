@@ -169,3 +169,11 @@ dune-release:
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose
 	dune-release opam pkg
 	dune-release opam submit
+
+.PHONY: docker-build-image
+docker-build-image:
+	docker build -f docker/dev.Dockerfile -t dune .
+
+.PHONY: docker-compose
+docker-compose:
+	docker compose -f docker/dev.yml run dune bash

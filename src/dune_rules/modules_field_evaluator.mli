@@ -19,15 +19,12 @@ type kind =
   | Implementation of Implementation.t
   | Exe_or_normal_lib
 
-type melange_conf =
-  { stanza_loc : Loc.t
-  ; modules_field : Ordered_set_lang.t
-  ; modules_without_implementation : Ordered_set_lang.t
-  }
-
 val eval :
      modules:Module.Source.t Module_name.Map.t
-  -> conf:[ `Buildable of Dune_file.Buildable.t | `Melange of melange_conf ]
+  -> stanza_loc:Loc.t
+  -> modules_field:Ordered_set_lang.t
+  -> modules_without_implementation:Ordered_set_lang.t
+  -> root_module:('a * Module_name.t) option
   -> private_modules:Ordered_set_lang.t
   -> kind:kind
   -> src_dir:Path.Build.t

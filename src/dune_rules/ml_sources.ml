@@ -285,7 +285,16 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
       (kind, main_module_name, wrapped)
   in
   let modules =
-    Modules_field_evaluator.eval ~modules ~conf:(`Buildable lib.buildable) ~kind
+    let { Buildable.loc = stanza_loc
+        ; modules = modules_field
+        ; modules_without_implementation
+        ; root_module
+        ; _
+        } =
+      lib.buildable
+    in
+    Modules_field_evaluator.eval ~modules ~stanza_loc ~modules_field
+      ~modules_without_implementation ~root_module ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
       ~src_dir:dir
@@ -337,9 +346,17 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
         `Library (lib, modules, obj_dir)
       | Executables exes | Tests { exes; _ } ->
         let modules =
+          let { Buildable.loc = stanza_loc
+              ; modules = modules_field
+              ; modules_without_implementation
+              ; root_module
+              ; _
+              } =
+            exes.buildable
+          in
           let modules =
-            Modules_field_evaluator.eval ~modules
-              ~conf:(`Buildable exes.buildable)
+            Modules_field_evaluator.eval ~modules ~stanza_loc ~modules_field
+              ~modules_without_implementation ~root_module
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
           in
@@ -361,14 +378,10 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
       | Melange_emit mel ->
         let modules =
           let modules =
-            Modules_field_evaluator.eval ~modules
-              ~conf:
-                (`Melange
-                  { stanza_loc = mel.loc
-                  ; modules_field = mel.entries
-                  ; modules_without_implementation = Ordered_set_lang.standard
-                  })
-              ~kind:Modules_field_evaluator.Exe_or_normal_lib
+            Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
+              ~modules_field:mel.entries
+              ~modules_without_implementation:Ordered_set_lang.standard
+              ~root_module:None ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
           in
           Modules_group.melange_wrapped ~src_dir:dir ~modules

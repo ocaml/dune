@@ -141,7 +141,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
 
 let add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
     (mel : Melange_stanzas.Emit.t) =
-  Memo.List.iter requires_link ~f:(fun lib ->
+  Memo.parallel_iter requires_link ~f:(fun lib ->
       let open Memo.O in
       let lib_name = Lib.name lib in
       let* lib, lib_compile_info =
@@ -201,8 +201,10 @@ let gen_emit_rules ~dir_contents ~dir ~scope ~sctx ~expander
     add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
       ~requires_link ~direct_requires
       (mel : Melange_stanzas.Emit.t)
+  and* () =
+    let requires_link = Memo.Lazy.force requires_link in
+    let* requires_link = requires_link in
+    let* requires_link = Resolve.read_memo requires_link in
+    add_rules_for_libraries ~scope ~emit_stanza_dir:dir ~sctx ~requires_link mel
   in
-  let requires_link = Memo.Lazy.force requires_link in
-  let* requires_link = requires_link in
-  let* requires_link = Resolve.read_memo requires_link in
-  add_rules_for_libraries ~scope ~emit_stanza_dir:dir ~sctx ~requires_link mel
+  Memo.return ()

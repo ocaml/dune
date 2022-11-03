@@ -241,9 +241,21 @@ let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
       ]
       spurious_modules_virtual [])
 
-let eval_no_buildable ~modules:(all_modules : Module.Source.t Module_name.Map.t)
-    ~stanza_loc ~modules_field ~modules_without_implementation ~private_modules
-    ~kind =
+type melange_conf =
+  { stanza_loc : Loc.t
+  ; modules_field : Ordered_set_lang.t
+  ; modules_without_implementation : Ordered_set_lang.t
+  }
+
+let eval ~modules:all_modules
+    ~(conf : [ `Buildable of Buildable.t | `Melange of melange_conf ])
+    ~private_modules ~kind ~src_dir =
+  let stanza_loc, modules_field, modules_without_implementation =
+    match conf with
+    | `Buildable b -> (b.loc, b.modules, b.modules_without_implementation)
+    | `Melange { stanza_loc; modules_field; modules_without_implementation } ->
+      (stanza_loc, modules_field, modules_without_implementation)
+  in
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let fake_modules = ref Module_name.Map.empty in
@@ -277,31 +289,26 @@ let eval_no_buildable ~modules:(all_modules : Module.Source.t Module_name.Map.t)
   check_invalid_module_listing ~stanza_loc ~modules_without_implementation
     ~intf_only ~modules ~virtual_modules ~private_modules
     ~existing_virtual_modules ~allow_new_public_modules;
-  Module_name.Map.map modules ~f:(fun (_, m) ->
-      let name = Module.Source.name m in
-      let visibility =
-        if Module_name.Map.mem private_modules name then Visibility.Private
-        else Public
-      in
-      let kind =
-        if Module_name.Map.mem virtual_modules name then Module.Kind.Virtual
-        else if Module.Source.has m ~ml_kind:Impl then
-          let name = Module.Source.name m in
-          if Module_name.Set.mem existing_virtual_modules name then Impl_vmodule
-          else Impl
-        else Intf_only
-      in
-      Module.of_source m ~kind ~visibility)
-
-let eval ~modules ~buildable:(conf : Buildable.t) ~private_modules ~kind
-    ~src_dir =
   let all_modules =
-    eval_no_buildable ~modules ~stanza_loc:conf.loc ~modules_field:conf.modules
-      ~modules_without_implementation:conf.modules_without_implementation
-      ~private_modules ~kind
+    Module_name.Map.map modules ~f:(fun (_, m) ->
+        let name = Module.Source.name m in
+        let visibility =
+          if Module_name.Map.mem private_modules name then Visibility.Private
+          else Public
+        in
+        let kind =
+          if Module_name.Map.mem virtual_modules name then Module.Kind.Virtual
+          else if Module.Source.has m ~ml_kind:Impl then
+            let name = Module.Source.name m in
+            if Module_name.Set.mem existing_virtual_modules name then
+              Impl_vmodule
+            else Impl
+          else Intf_only
+        in
+        Module.of_source m ~kind ~visibility)
   in
-  match conf.root_module with
-  | None -> all_modules
-  | Some (_, name) ->
+  match conf with
+  | `Melange _ | `Buildable { root_module = None; _ } -> all_modules
+  | `Buildable { root_module = Some (_, name); _ } ->
     let module_ = Module.generated_root ~src_dir name in
     Module_name.Map.set all_modules name module_

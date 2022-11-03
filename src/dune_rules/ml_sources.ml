@@ -274,7 +274,7 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
       (kind, main_module_name, wrapped)
   in
   let modules =
-    Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
+    Modules_field_evaluator.eval ~modules ~conf:(`Buildable lib.buildable) ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
       ~src_dir:dir
@@ -327,7 +327,8 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
       | Executables exes | Tests { exes; _ } ->
         let modules =
           let modules =
-            Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
+            Modules_field_evaluator.eval ~modules
+              ~conf:(`Buildable exes.buildable)
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
           in
@@ -349,11 +350,15 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
       | Melange_emit mel ->
         let modules =
           let modules =
-            Modules_field_evaluator.eval_no_buildable ~modules
-              ~stanza_loc:mel.loc ~modules_field:mel.entries
-              ~modules_without_implementation:Ordered_set_lang.standard
+            Modules_field_evaluator.eval ~modules
+              ~conf:
+                (`Melange
+                  { stanza_loc = mel.loc
+                  ; modules_field = mel.entries
+                  ; modules_without_implementation = Ordered_set_lang.standard
+                  })
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
-              ~private_modules:Ordered_set_lang.standard
+              ~private_modules:Ordered_set_lang.standard ~src_dir:dir
           in
           Modules_group.melange_wrapped ~src_dir:dir ~modules
         in

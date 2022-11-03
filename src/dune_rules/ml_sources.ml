@@ -3,13 +3,23 @@ open Dune_file
 open Memo.O
 module Modules_group = Modules
 
+module Origin = struct
+  type t =
+    | Buildable of Buildable.t
+    | Melange of Melange_stanzas.Emit.t
+
+  let loc = function
+    | Buildable b -> b.loc
+    | Melange mel -> mel.loc
+end
+
 module Modules = struct
   type t =
     { libraries : (Modules.t * Path.Build.t Obj_dir.t) Lib_name.Map.t
     ; executables : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; melange_emits : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
-    ; (* Map from modules to the buildable they are part of *)
-      rev_map : Loc.t Module_name.Map.t
+    ; (* Map from modules to the origin they are part of *)
+      rev_map : Origin.t Module_name.Map.t
     }
 
   let empty =
@@ -66,19 +76,20 @@ module Modules = struct
     in
     let rev_map =
       let rev_modules =
-        let by_name loc =
+        let by_name origin =
           Modules.fold_user_available ~init:[] ~f:(fun m acc ->
-              (Module.name m, loc) :: acc)
+              (Module.name m, origin) :: acc)
         in
         let libs_and_exes =
           List.rev_append
             (List.concat_map libs ~f:(fun (l, m, _) ->
-                 by_name l.buildable.loc m))
+                 by_name (Origin.Buildable l.buildable) m))
             (List.concat_map exes ~f:(fun (e, m, _) ->
-                 by_name e.buildable.loc m))
+                 by_name (Origin.Buildable e.buildable) m))
         in
         List.rev_append
-          (List.concat_map emits ~f:(fun (mel, m, _) -> by_name mel.loc m))
+          (List.concat_map emits ~f:(fun (l, m, _) ->
+               by_name (Origin.Melange l) m))
           libs_and_exes
       in
       match Module_name.Map.of_list rev_modules with
@@ -86,8 +97,8 @@ module Modules = struct
       | Error (name, _, _) ->
         let open Module_name.Infix in
         let locs =
-          List.filter_map rev_modules ~f:(fun (n, loc) ->
-              Option.some_if (n = name) loc)
+          List.filter_map rev_modules ~f:(fun (n, origin) ->
+              Option.some_if (n = name) (Origin.loc origin))
           |> List.sort ~compare:Loc.compare
         in
         User_error.raise

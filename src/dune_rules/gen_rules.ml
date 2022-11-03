@@ -252,9 +252,11 @@ let gen_rules sctx dir_contents cctxs expander
             match
               List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
                   Option.bind (Ml_sources.lookup_module ml_sources name)
-                    ~f:(fun loc_1 ->
-                      List.find_map cctxs ~f:(fun (loc_2, cctx) ->
-                          Option.some_if (Loc.equal loc_2 loc_1) cctx)))
+                    ~f:(fun origin ->
+                      List.find_map cctxs ~f:(fun (loc, cctx) ->
+                          Option.some_if
+                            (Loc.equal loc (Ml_sources.Origin.loc origin))
+                            cctx)))
             with
             | None ->
               (* This happens often when passing a [-p ...] option that hides a

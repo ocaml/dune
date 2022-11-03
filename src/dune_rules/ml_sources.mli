@@ -5,6 +5,14 @@
 
 open Import
 
+module Origin : sig
+  type t =
+    | Buildable of Dune_file.Buildable.t
+    | Melange of Melange_stanzas.Emit.t
+
+  val loc : t -> Loc.t
+end
+
 module Artifacts : sig
   type t
 
@@ -31,8 +39,8 @@ val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
 (** Modules attached to a library, executable, or melange.emit stanza.*)
 val modules : t -> for_:for_ -> Modules.t
 
-(** Find out the loc of the stanza for a given module *)
-val lookup_module : t -> Module_name.t -> Loc.t option
+(** Find out the origin of the stanza for a given module *)
+val lookup_module : t -> Module_name.t -> Origin.t option
 
 val empty : t
 

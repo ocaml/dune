@@ -3,13 +3,26 @@ open Dune_file
 open Memo.O
 module Modules_group = Modules
 
+module Origin = struct
+  type t =
+    | Buildable of Buildable.t
+    | Melange of
+        { loc : Loc.t
+        ; target : string
+        }
+
+  let loc = function
+    | Buildable b -> b.loc
+    | Melange { loc; target = _ } -> loc
+end
+
 module Modules = struct
   type t =
     { libraries : (Modules.t * Path.Build.t Obj_dir.t) Lib_name.Map.t
     ; executables : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; melange_emits : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; (* Map from modules to the buildable they are part of *)
-      rev_map : Buildable.t Module_name.Map.t
+      rev_map : Origin.t Module_name.Map.t
     }
 
   let empty =
@@ -19,7 +32,7 @@ module Modules = struct
     ; rev_map = Module_name.Map.empty
     }
 
-  let make ~melange_emits (libs, exes) =
+  let make ~melange_emits:emits (libs, exes) =
     let libraries =
       match
         Lib_name.Map.of_list_map libs ~f:(fun (lib, m, obj_dir) ->
@@ -46,7 +59,7 @@ module Modules = struct
     in
     let melange_emits =
       match
-        String.Map.of_list_map melange_emits ~f:(fun (target, m, obj_dir) ->
+        String.Map.of_list_map emits ~f:(fun (target, m, obj_dir) ->
             (snd target, (m, obj_dir)))
       with
       | Ok x -> x
@@ -58,21 +71,33 @@ module Modules = struct
     in
     let rev_map =
       let rev_modules =
-        let by_name buildable =
+        let by_name_buildable buildable =
           Modules.fold_user_available ~init:[] ~f:(fun m acc ->
-              (Module.name m, buildable) :: acc)
+              (Module.name m, Origin.Buildable buildable) :: acc)
+        in
+        let by_name_melange (loc, target) =
+          Modules.fold_user_available ~init:[] ~f:(fun m acc ->
+              (Module.name m, Origin.Melange { loc; target }) :: acc)
+        in
+        let libs_and_exes =
+          List.rev_append
+            (List.concat_map libs ~f:(fun (l, m, _) ->
+                 by_name_buildable l.buildable m))
+            (List.concat_map exes ~f:(fun (e, m, _) ->
+                 by_name_buildable e.buildable m))
         in
         List.rev_append
-          (List.concat_map libs ~f:(fun (l, m, _) -> by_name l.buildable m))
-          (List.concat_map exes ~f:(fun (e, m, _) -> by_name e.buildable m))
+          (List.concat_map emits ~f:(fun (loc_and_target, m, _) ->
+               by_name_melange loc_and_target m))
+          libs_and_exes
       in
       match Module_name.Map.of_list rev_modules with
       | Ok x -> x
       | Error (name, _, _) ->
         let open Module_name.Infix in
         let locs =
-          List.filter_map rev_modules ~f:(fun (n, b) ->
-              Option.some_if (n = name) b.loc)
+          List.filter_map rev_modules ~f:(fun (n, origin) ->
+              Option.some_if (n = name) (Origin.loc origin))
           |> List.sort ~compare:Loc.compare
         in
         User_error.raise

@@ -8,7 +8,11 @@ module Modules = struct
     { libraries : (Modules.t * Path.Build.t Obj_dir.t) Lib_name.Map.t
     ; executables : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; (* Map from modules to the buildable they are part of *)
-      rev_map : Buildable.t Module_name.Map.t
+      rev_map :
+        [ `Library of Dune_file.Library.t
+        | `Executables of Dune_file.Executables.t
+        ]
+        Module_name.Map.t
     }
 
   let empty =
@@ -32,8 +36,9 @@ module Modules = struct
     in
     let executables =
       match
-        String.Map.of_list_map exes ~f:(fun (exes, m, obj_dir) ->
-            (snd (List.hd exes.Executables.names), (m, obj_dir)))
+        String.Map.of_list_map exes
+          ~f:(fun ((exes : Executables.t), m, obj_dir) ->
+            (snd (List.hd exes.names), (m, obj_dir)))
       with
       | Ok x -> x
       | Error (name, _, (exes2, _, _)) ->
@@ -49,8 +54,8 @@ module Modules = struct
               (Module.name m, buildable) :: acc)
         in
         List.rev_append
-          (List.concat_map libs ~f:(fun (l, m, _) -> by_name l.buildable m))
-          (List.concat_map exes ~f:(fun (e, m, _) -> by_name e.buildable m))
+          (List.concat_map libs ~f:(fun (l, m, _) -> by_name (`Library l) m))
+          (List.concat_map exes ~f:(fun (e, m, _) -> by_name (`Executables e) m))
       in
       match Module_name.Map.of_list rev_modules with
       | Ok x -> x
@@ -58,7 +63,12 @@ module Modules = struct
         let open Module_name.Infix in
         let locs =
           List.filter_map rev_modules ~f:(fun (n, b) ->
-              Option.some_if (n = name) b.loc)
+              let buildable : Dune_file.Buildable.t =
+                match b with
+                | `Library l -> l.buildable
+                | `Executables e -> e.buildable
+              in
+              Option.some_if (n = name) buildable.loc)
           |> List.sort ~compare:Loc.compare
         in
         User_error.raise
@@ -176,7 +186,14 @@ let modules_and_obj_dir t ~for_ =
 
 let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 
-let lookup_module (t : t) name = Module_name.Map.find t.modules.rev_map name
+let lookup_stanza_module (t : t) name =
+  Module_name.Map.find t.modules.rev_map name
+
+let lookup_module t name =
+  lookup_stanza_module t name
+  |> Option.map ~f:(function
+       | `Library (l : Dune_file.Library.t) -> l.buildable
+       | `Executables (e : Dune_file.Executables.t) -> e.buildable)
 
 let virtual_modules lookup_vlib vlib =
   let info = Lib.info vlib in

@@ -7,10 +7,24 @@ module Processed = struct
      one represents a list of preprocessors described by a preprocessing flag
      and its arguments. *)
 
+  module Pp_kind = struct
+    type t =
+      | Pp
+      | Ppx
+
+    let to_flag = function
+      | Pp -> "-pp"
+      | Ppx -> "-ppx"
+  end
+
   type pp_flag =
-    { flag : string
+    { flag : Pp_kind.t
     ; args : string
     }
+
+  let pp_kind x = x.flag
+
+  let pp_args x = x.args
 
   (* Most of the configuration is shared accros a same lib/exe... *)
   type config =
@@ -33,7 +47,7 @@ module Processed = struct
 
     let name = "merlin-conf"
 
-    let version = 2
+    let version = 3
 
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
   end
@@ -79,7 +93,9 @@ module Processed = struct
       match pp with
       | None -> flags
       | Some { flag; args } ->
-        make_directive "FLG" (Sexp.List [ Atom flag; Atom args ]) :: flags
+        make_directive "FLG"
+          (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
+        :: flags
     in
     let suffixes =
       List.map extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
@@ -116,7 +132,8 @@ module Processed = struct
       ~f:
         (Module_name.Per_item.fold ~init:() ~f:(fun pp () ->
              Option.iter pp ~f:(fun { flag; args } ->
-                 printf "# FLG %s\n" (flag ^ " " ^ quote_for_dot_merlin args))));
+                 printf "# FLG %s\n"
+                   (Pp_kind.to_flag flag ^ " " ^ quote_for_dot_merlin args))));
     List.iter flags ~f:(fun flags ->
         match flags with
         | [] -> ()
@@ -302,7 +319,7 @@ module Unprocessed = struct
           | Error _ -> None
           | Ok bin ->
             let args = encode_command ~bin ~args in
-            Some { Processed.flag = "-pp"; args }
+            Some { Processed.flag = Processed.Pp_kind.Pp; args }
         in
         Action_builder.map action ~f:(fun act ->
             match act.action with
@@ -312,9 +329,8 @@ module Unprocessed = struct
             | _ -> None))
     | _ -> Action_builder.return None
 
-  let pp_flags sctx ~expander libname preprocess :
+  let pp_flags sctx ~expander lib_name preprocess :
       Processed.pp_flag option Action_builder.t =
-    let scope = Expander.scope expander in
     match
       Preprocess.remove_future_syntax preprocess ~for_:Merlin
         (Super_context.context sctx).version
@@ -325,13 +341,14 @@ module Unprocessed = struct
     | Pps { loc; pps; flags; staged = _ } ->
       let open Action_builder.O in
       let+ exe, flags =
-        Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname
-          ~flags ~scope pps
+        let scope = Expander.scope expander in
+        Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name ~flags ~scope
+          pps
       in
       let args =
         encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags)
       in
-      Some { Processed.flag = "-ppx"; args }
+      Some { Processed.flag = Processed.Pp_kind.Ppx; args }
 
   let src_dirs sctx lib =
     let info = Lib.info lib in
@@ -347,20 +364,24 @@ module Unprocessed = struct
       Path.Set.map ~f:Path.drop_optional_build_context
         (Modules.source_dirs modules)
 
+  let pp_config t sctx ~expander =
+    Module_name.Per_item.map_action_builder t.config.preprocess
+      ~f:(pp_flags sctx ~expander t.config.libname)
+
   let process
-      { modules
-      ; ident = _
-      ; config =
-          { stdlib_dir
-          ; extensions
-          ; flags
-          ; objs_dirs
-          ; source_dirs
-          ; requires
-          ; preprocess
-          ; libname
-          }
-      } sctx ~more_src_dirs ~expander =
+      ({ modules
+       ; ident = _
+       ; config =
+           { stdlib_dir
+           ; extensions
+           ; flags
+           ; objs_dirs
+           ; source_dirs
+           ; requires
+           ; preprocess = _
+           ; libname = _
+           }
+       } as t) sctx ~more_src_dirs ~expander =
     let open Action_builder.O in
     let+ config =
       let+ flags = flags
@@ -387,10 +408,7 @@ module Unprocessed = struct
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
       { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
-    and+ pp_config =
-      Module_name.Per_item.map_action_builder preprocess
-        ~f:(pp_flags sctx ~expander libname)
-    in
+    and+ pp_config = pp_config t sctx ~expander in
     let modules =
       (* And copy for each module the resulting pp flags *)
       Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->

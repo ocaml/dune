@@ -24,3 +24,7 @@ val ccomp_type : Context.t -> ccomp_type Action_builder.t
 (** [get_flags for_:phase ctx] returns the necessary flags to turn this compiler
     into a c++ compiler for some of the most common compilers *)
 val get_flags : for_:phase -> Context.t -> string list Action_builder.t
+
+(** [fdiagnostics_color cc] returns the flags activating color diagnostics for
+    the C/C++ compiler, if supported. *)
+val fdiagnostics_color : ccomp_type -> string list

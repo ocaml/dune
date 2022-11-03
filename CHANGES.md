@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Use colored output with GCC and Clang when compiling C stubs. The
+  flag `-fdiagnostics-color=always` is added to the `:standard` set of
+  flags. (#4083, @MisterDA)
+
 - Fix the parsing of decimal and hexadecimal escape literals in `dune`,
   `dune-package`, and other dune s-expression based files (#6710, @shym)
 

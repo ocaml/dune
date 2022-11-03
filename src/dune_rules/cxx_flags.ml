@@ -20,6 +20,11 @@ let base_cxx_flags ~for_ cc =
   | Msvc, Link -> []
   | Other _, (Link | Compile) -> []
 
+let fdiagnostics_color = function
+  | (Gcc | Clang) when Lazy.force Ansi_color.stderr_supports_color ->
+    [ "-fdiagnostics-color=always" ]
+  | _ -> []
+
 let preprocessed_filename = "ccomp"
 
 let ccomp_type build_dir =

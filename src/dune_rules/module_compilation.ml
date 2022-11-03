@@ -201,11 +201,12 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
         match CC.package cctx with
         | None -> []
         | Some pkg ->
-          [ "--bs-package-name"; Package.Name.to_string (Package.name pkg) ]
+          [ Command.Args.A "--bs-package-name"
+          ; A (Package.Name.to_string (Package.name pkg))
+          ]
       in
-      "--bs-stop-after-cmj" :: "--bs-package-output"
-      :: (* This should prob be Path.t or Path.Source.t *)
-         Path.Build.to_string (CC.dir cctx)
+      Command.Args.A "--bs-stop-after-cmj" :: A "--bs-package-output"
+      :: Command.Args.Path (Path.build (CC.dir cctx))
       :: pkg_name_args
     | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
   in
@@ -220,7 +221,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
           ; Command.Args.as_any
               (Lib_mode.Cm_kind.Map.get (CC.includes cctx) cm_kind)
           ; As extra_args
-          ; As melange_args
+          ; S melange_args
           ; A "-no-alias-deps"
           ; opaque_arg
           ; As (Fdo.phase_flags phase)

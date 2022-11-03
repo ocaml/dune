@@ -5,17 +5,6 @@
 
 open Import
 
-module Origin : sig
-  type t =
-    | Buildable of Dune_file.Buildable.t
-    | Melange of
-        { loc : Loc.t
-        ; target : string
-        }
-
-  val loc : t -> Loc.t
-end
-
 module Artifacts : sig
   type t
 
@@ -42,8 +31,8 @@ val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
 (** Modules attached to a library or executable.*)
 val modules : t -> for_:for_ -> Modules.t
 
-(** Find out what buildable a module is part of *)
-val lookup_module : t -> Module_name.t -> Origin.t option
+(** Find out the loc of the stanza for a given module *)
+val lookup_module : t -> Module_name.t -> Loc.t option
 
 val empty : t
 

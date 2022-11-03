@@ -3,26 +3,13 @@ open Dune_file
 open Memo.O
 module Modules_group = Modules
 
-module Origin = struct
-  type t =
-    | Buildable of Buildable.t
-    | Melange of
-        { loc : Loc.t
-        ; target : string
-        }
-
-  let loc = function
-    | Buildable b -> b.loc
-    | Melange { loc; target = _ } -> loc
-end
-
 module Modules = struct
   type t =
     { libraries : (Modules.t * Path.Build.t Obj_dir.t) Lib_name.Map.t
     ; executables : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; melange_emits : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; (* Map from modules to the buildable they are part of *)
-      rev_map : Origin.t Module_name.Map.t
+      rev_map : Loc.t Module_name.Map.t
     }
 
   let empty =
@@ -71,13 +58,13 @@ module Modules = struct
     in
     let rev_map =
       let rev_modules =
-        let by_name_buildable buildable =
+        let by_name_buildable (buildable : Buildable.t) =
           Modules.fold_user_available ~init:[] ~f:(fun m acc ->
-              (Module.name m, Origin.Buildable buildable) :: acc)
+              (Module.name m, buildable.loc) :: acc)
         in
-        let by_name_melange (loc, target) =
+        let by_name_melange (loc, _target) =
           Modules.fold_user_available ~init:[] ~f:(fun m acc ->
-              (Module.name m, Origin.Melange { loc; target }) :: acc)
+              (Module.name m, loc) :: acc)
         in
         let libs_and_exes =
           List.rev_append
@@ -96,8 +83,8 @@ module Modules = struct
       | Error (name, _, _) ->
         let open Module_name.Infix in
         let locs =
-          List.filter_map rev_modules ~f:(fun (n, origin) ->
-              Option.some_if (n = name) (Origin.loc origin))
+          List.filter_map rev_modules ~f:(fun (n, loc) ->
+              Option.some_if (n = name) loc)
           |> List.sort ~compare:Loc.compare
         in
         User_error.raise

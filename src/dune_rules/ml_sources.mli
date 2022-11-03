@@ -28,7 +28,7 @@ type for_ =
 
 val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
 
-(** Modules attached to a library or executable.*)
+(** Modules attached to a library, executable, or melange.emit stanza.*)
 val modules : t -> for_:for_ -> Modules.t
 
 (** Find out the loc of the stanza for a given module *)

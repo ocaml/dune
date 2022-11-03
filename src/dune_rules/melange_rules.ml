@@ -1,30 +1,48 @@
 open Import
 module CC = Compilation_context
 
-let js_includes ~emit_stanza_dir ~target ~requires_link ~scope =
+let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
   let open Resolve.Memo.O in
   Command.Args.memo
     (Resolve.Memo.args
-       (let+ (libs : Lib.t list) = requires_link in
+       (let* (libs : Lib.t list) = requires_link in
         let project = Scope.project scope in
         let deps_of_lib (lib : Lib.t) =
+          let lib_name = Lib.name lib in
           let lib = Lib.Local.of_lib_exn lib in
           let info = Lib.Local.info lib in
           let lib_dir = Lib_info.src_dir info in
           let dst_dir =
             Melange.lib_output_dir ~emit_stanza_dir ~lib_dir ~target
           in
-          [ (let dir = Path.build dst_dir in
-             Glob.of_string_exn Loc.none ("*" ^ Melange.js_ext)
-             |> File_selector.of_glob ~dir |> Dep.file_selector)
-          ]
-          |> Dep.Set.of_list
+          let open Memo.O in
+          let modules_group =
+            Dir_contents.get sctx ~dir:lib_dir
+            >>= Dir_contents.ocaml
+            >>| Ml_sources.modules ~for_:(Library lib_name)
+          in
+          let* source_modules = modules_group >>| Modules.impl_only in
+          let of_module m =
+            let in_dir = Path.Build.relative dst_dir in
+            let output =
+              let name =
+                Module_name.Unique.artifact_filename (Module.obj_name m)
+                  ~ext:Melange.js_ext
+              in
+              in_dir name
+            in
+            Dep.file (Path.build output)
+          in
+          Resolve.Memo.return
+            (List.map source_modules ~f:of_module |> Dep.Set.of_list)
         in
-        let deps libs = Dep.Set.union_map libs ~f:deps_of_lib in
-        Command.Args.S
-          [ Lib_flags.L.include_flags ~project libs Melange
-          ; Hidden_deps (deps libs)
-          ]))
+        let* hidden_libs = Resolve.Memo.List.map libs ~f:deps_of_lib in
+        let hidden_deps = Dep.Set.union_all hidden_libs in
+        Resolve.Memo.return
+          (Command.Args.S
+             [ Lib_flags.L.include_flags ~project libs Melange
+             ; Hidden_deps hidden_deps
+             ])))
 
 let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
     ~lib_deps_js_includes m =
@@ -109,7 +127,8 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   let loc = mel.loc in
   let requires_link = Memo.Lazy.force requires_link in
   let lib_deps_js_includes =
-    js_includes ~emit_stanza_dir:dir ~target:mel.target ~requires_link ~scope
+    js_includes ~sctx ~emit_stanza_dir:dir ~target:mel.target ~requires_link
+      ~scope
   in
   let build_dir = (Super_context.context sctx).build_dir in
   let* () = Module_compilation.build_all cctx in
@@ -157,7 +176,8 @@ let add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
         Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
       in
       let lib_deps_js_includes =
-        js_includes ~emit_stanza_dir ~target:mel.target ~requires_link ~scope
+        js_includes ~sctx ~emit_stanza_dir ~target:mel.target ~requires_link
+          ~scope
       in
       let build_dir = (Super_context.context sctx).build_dir in
       Memo.parallel_iter source_modules

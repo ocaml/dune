@@ -1,7 +1,8 @@
 open Import
 
 val gen_emit_rules :
-     stanza_dir:Path.Build.t
+     dir_contents:Dir_contents.t
+  -> dir:Path.Build.t
   -> scope:Scope.t
   -> sctx:Super_context.t
   -> expander:Expander.t

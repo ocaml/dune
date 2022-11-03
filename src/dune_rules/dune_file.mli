@@ -20,12 +20,6 @@ module Lib_deps : sig
   val decode : for_ -> t Dune_lang.Decoder.t
 end
 
-(** [preprocess] and [preprocessor_deps] fields *)
-val preprocess_fields :
-  (Preprocess.Without_instrumentation.t Preprocess.Per_module.t
-  * Dep_conf.t list)
-  Dune_lang.Decoder.fields_parser
-
 module Buildable : sig
   type t =
     { loc : Loc.t

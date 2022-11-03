@@ -9,6 +9,9 @@ module Emit = struct
     ; entries : Ordered_set_lang.t
     ; libraries : Lib_dep.t list
     ; package : Package.t option
+    ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
+    ; preprocessor_deps : Dep_conf.t list
+    ; flags : Ocaml_flags.Spec.t
     }
 
   let decode_lib =
@@ -68,6 +71,29 @@ module Emit = struct
            (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
        and+ entries = Stanza_common.modules_field "entries"
        and+ libraries = field "libraries" decode_lib ~default:[]
-       and+ package = field_o "package" Stanza_common.Pkg.decode in
-       { loc; target; module_system; entries; libraries; package })
+       and+ package = field_o "package" Stanza_common.Pkg.decode
+       and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
+       and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
+       and+ flags = Ocaml_flags.Spec.decode in
+       let preprocess =
+         let init =
+           let f libname = Preprocess.With_instrumentation.Ordinary libname in
+           Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
+         in
+         List.fold_left instrumentation
+           ~f:(fun accu ((backend, flags), deps) ->
+             Preprocess.Per_module.add_instrumentation accu
+               ~loc:loc_instrumentation ~flags ~deps backend)
+           ~init
+       in
+       { loc
+       ; target
+       ; module_system
+       ; entries
+       ; libraries
+       ; package
+       ; preprocess
+       ; preprocessor_deps
+       ; flags
+       })
 end

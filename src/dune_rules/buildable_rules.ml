@@ -26,30 +26,31 @@ let with_lib_deps (t : Context.t) compile_info ~dir ~f =
   in
   Rules.prefix_rules prefix ~f
 
-let modules_rules sctx (buildable : Dune_file.Buildable.t) expander ~dir scope
-    modules ~lib_name ~empty_intf_modules =
+let modules_rules_no_buildable ~preprocess ~preprocessor_deps ~lint
+    ~empty_module_interface_if_absent sctx expander ~dir scope modules ~lib_name
+    ~empty_intf_modules =
   let* pp =
     let instrumentation_backend =
       Lib.DB.instrumentation_backend (Scope.libs scope)
     in
-    let* preprocess =
+    let* preprocess_with_instrumentation =
       Resolve.Memo.read_memo
-        (Preprocess.Per_module.with_instrumentation buildable.preprocess
+        (Preprocess.Per_module.with_instrumentation preprocess
            ~instrumentation_backend)
     in
     let* instrumentation_deps =
       Resolve.Memo.read_memo
-        (Preprocess.Per_module.instrumentation_deps buildable.preprocess
+        (Preprocess.Per_module.instrumentation_deps preprocess
            ~instrumentation_backend)
     in
-    Preprocessing.make sctx ~dir ~scope ~preprocess ~expander
-      ~preprocessor_deps:buildable.preprocessor_deps ~instrumentation_deps
-      ~lint:buildable.lint ~lib_name
+    Preprocessing.make sctx ~dir ~scope
+      ~preprocess:preprocess_with_instrumentation ~expander ~preprocessor_deps
+      ~instrumentation_deps ~lint ~lib_name
   in
   let add_empty_intf =
-    let default = buildable.empty_module_interface_if_absent in
+    let default = empty_module_interface_if_absent in
     match empty_intf_modules with
-    | `Lib -> fun _ -> default
+    | `Lib | `Melange_emit -> fun _ -> default
     | `Exe_mains mains ->
       if Dune_project.executables_implicit_empty_intf (Scope.project scope) then
         let executable_names =
@@ -67,3 +68,10 @@ let modules_rules sctx (buildable : Dune_file.Buildable.t) expander ~dir scope
         else Memo.return m)
   in
   (modules, pp)
+
+let modules_rules sctx (buildable : Dune_file.Buildable.t) expander ~dir scope
+    modules ~lib_name ~empty_intf_modules =
+  modules_rules_no_buildable ~preprocess:buildable.preprocess
+    ~preprocessor_deps:buildable.preprocessor_deps ~lint:buildable.lint
+    ~empty_module_interface_if_absent:buildable.empty_module_interface_if_absent
+    sctx expander ~dir scope modules ~lib_name ~empty_intf_modules

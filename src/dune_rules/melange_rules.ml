@@ -75,59 +75,52 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
        ]))
   |> Memo.Option.iter ~f:Fun.id
 
-let add_rules_for_entries ~sctx ~expander ~scope ~emit_stanza_dir ~compile_info
-    ~requires_link (mel : Melange_stanzas.Emit.t) =
-  Memo.List.iter mel.entries ~f:(function Module name ->
-      let m =
-        let basename = String.uncapitalize (Module_name.to_string name) in
-        let src_dir = Path.build emit_stanza_dir in
-        let source =
-          let impl =
-            Module.File.make Dialect.ocaml
-              (* TODO: what about .re files? *)
-              (Path.relative src_dir (basename ^ ".ml"))
-          in
-          Module.Source.make ~impl name
-        in
-        Module.of_source ~visibility:Private ~kind:Impl source
-      in
-      let obj_dir =
-        (* Maybe we should have a separate objdir for melange objs, .mobjs? *)
-        Obj_dir.make_exe ~dir:emit_stanza_dir ~name:mel.target
-      in
-      let open Memo.O in
-      let* cctx =
-        let flags = Ocaml_flags.empty in
-        let vimpl =
-          (* original impl in Lib_rules uses Virtual_rules.impl, will this break with virtual libs? *)
-          None
-        in
-        let modules = Vimpl.impl_modules vimpl (Modules.singleton_exe m) in
-        let requires_compile = Lib.Compile.direct_requires compile_info in
-        let requires_link = Lib.Compile.requires_link compile_info in
-        let js_of_ocaml = None in
-        (* modes and pp are not passed, not sure if this will cause issues *)
-        Compilation_context.create () ~super_context:sctx ~expander ~scope
-          ~obj_dir ~modules ~flags ~requires_compile ~requires_link
-          ~opaque:Inherit_from_settings ~js_of_ocaml ~package:mel.package ?vimpl
-          ~modes:
-            { ocaml = { byte = None; native = None }
-            ; melange = Some (Requested Loc.none)
-            }
-      in
-      let pkg_name = Option.map mel.package ~f:Package.name in
-      let dst_dir = Path.Build.relative emit_stanza_dir mel.target in
-      let loc = mel.loc in
-      let lib_deps_js_includes =
-        js_includes ~emit_stanza_dir ~target:mel.target ~requires_link ~scope
-      in
-      let build_dir = (Super_context.context sctx).build_dir in
-      (* TODO: build_all should go outside Memo.List.iter, or maybe call a version of build_cm but without cctx *)
-      let* () = Module_compilation.build_all cctx in
+let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
+    ~requires_link ~direct_requires (mel : Melange_stanzas.Emit.t) =
+  let open Memo.O in
+  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
+     of the same name *)
+  let* modules, obj_dir =
+    Dir_contents.ocaml dir_contents
+    >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
+  in
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
+  let* flags = Super_context.ocaml_flags sctx ~dir mel.flags in
+  let* modules, pp =
+    Buildable_rules.modules_rules_no_buildable ~preprocess:mel.preprocess
+      ~preprocessor_deps:mel.preprocessor_deps
+      ~lint:(Preprocess.Per_module.default ())
+      ~empty_module_interface_if_absent:false sctx expander ~dir scope modules
+      ~lib_name:None ~empty_intf_modules:`Melange_emit
+  in
+  let* cctx =
+    let js_of_ocaml = None in
+    Compilation_context.create () ~loc:mel.loc ~super_context:sctx ~expander
+      ~scope ~obj_dir ~modules ~flags ~requires_link
+      ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml
+      ~opaque:Inherit_from_settings ~package:mel.package
+      ~modes:
+        { ocaml = { byte = None; native = None }
+        ; melange = Some (Requested Loc.none)
+        }
+  in
+  let pkg_name = Option.map mel.package ~f:Package.name in
+  let dst_dir = Path.Build.relative dir mel.target in
+  let loc = mel.loc in
+  let requires_link = Memo.Lazy.force requires_link in
+  let lib_deps_js_includes =
+    js_includes ~emit_stanza_dir:dir ~target:mel.target ~requires_link ~scope
+  in
+  let build_dir = (Super_context.context sctx).build_dir in
+  let* () = Module_compilation.build_all cctx in
+  Memo.parallel_iter
+    (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
+    ~f:(fun m ->
+      (* Should we check module kind? *)
       build_js ~loc ~pkg_name ~module_system:mel.module_system ~dst_dir ~obj_dir
         ~sctx ~build_dir ~lib_deps_js_includes m)
 
-let _add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
+let add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
     (mel : Melange_stanzas.Emit.t) =
   Memo.List.iter requires_link ~f:(fun lib ->
       let open Memo.O in
@@ -172,9 +165,9 @@ let _add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
           (build_js ~pkg_name ~module_system:mel.module_system ~dst_dir ~obj_dir
              ~sctx ~build_dir ~lib_deps_js_includes))
 
-let gen_emit_rules ~dir_contents ~stanza_dir:emit_stanza_dir ~scope ~sctx
-    ~expander (mel : Melange_stanzas.Emit.t) =
-  let all_libs_compile_info =
+let gen_emit_rules ~dir_contents ~dir ~scope ~sctx ~expander
+    (mel : Melange_stanzas.Emit.t) =
+  let compile_info =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps = [] in
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
@@ -182,19 +175,14 @@ let gen_emit_rules ~dir_contents ~stanza_dir:emit_stanza_dir ~scope ~sctx
       mel.libraries ~pps ~dune_version
   in
   let open Memo.O in
-  let requires_link =
-    Memo.Lazy.force (Lib.Compile.requires_link all_libs_compile_info)
+  let requires_link = Lib.Compile.requires_link compile_info in
+  let* () =
+    let direct_requires = Lib.Compile.direct_requires compile_info in
+    add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
+      ~requires_link ~direct_requires
+      (mel : Melange_stanzas.Emit.t)
   in
-  let* modules, obj_dir =
-    let first_exe = first_exe exes in
-    Dir_contents.ocaml dir_contents
-    >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
-  in
-
-  (* let* () = *)
-  add_rules_for_entries ~sctx ~expander ~scope ~emit_stanza_dir
-    ~compile_info:all_libs_compile_info ~requires_link mel
-(* in *)
-(* let* requires_link = requires_link in *)
-(* let* requires_link = Resolve.read_memo requires_link in *)
-(* add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link mel *)
+  let requires_link = Memo.Lazy.force requires_link in
+  let* requires_link = requires_link in
+  let* requires_link = Resolve.read_memo requires_link in
+  add_rules_for_libraries ~scope ~emit_stanza_dir:dir ~sctx ~requires_link mel

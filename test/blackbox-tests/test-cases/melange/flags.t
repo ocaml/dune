@@ -1,4 +1,4 @@
-Test (preprocess) field on melange.emit stanza
+Test (flags) field on melange.emit stanza
 
   $ cat > dune-project <<EOF
   > (lang dune 3.6)
@@ -14,6 +14,7 @@ Test (preprocess) field on melange.emit stanza
   > EOF
 
 The code in main contains unused var (warning 26) and illegal backlash (warning 14)
+
   $ cat > main.ml <<EOF
   > let t = "\e\n" in
   > print_endline "hello"

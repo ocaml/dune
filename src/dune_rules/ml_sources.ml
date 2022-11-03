@@ -324,11 +324,12 @@ let melange_emits dune_file ~dir ~scope ~modules =
               ~private_modules:Ordered_set_lang.standard
           in
           let project = Scope.project scope in
+          (* TODO: melange should check some other config flag, not exe one *)
           if Dune_project.wrapped_executables project then
-            Modules_group.exe_wrapped ~src_dir:dir ~modules
-          else Modules_group.exe_unwrapped modules
+            Modules_group.melange_wrapped ~src_dir:dir ~modules
+          else Modules_group.melange_unwrapped modules
         in
-        let obj_dir = Obj_dir.make_exe ~dir ~name:mel.target in
+        let obj_dir = Obj_dir.make_melange ~dir ~name:mel.target in
         let modules =
           let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
           (* We need to relocate the source of the alias module to its own

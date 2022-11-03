@@ -15,7 +15,7 @@ Basic tests for the file-watching mode.
   > (rule
   >  (target y)
   >  (deps x)
-  >  (action (bash "cat x > y")))
+  >  (action (system "cat x > y")))
   > EOF
 
   $ start_dune
@@ -62,18 +62,18 @@ Basic tests for the file-watching mode.
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
-  File "dune", line 1, characters 0-57:
+  File "dune", line 1, characters 0-59:
   1 | (rule
   2 |  (target y)
   3 |  (deps x)
-  4 |  (action (bash "cat x > y")))
+  4 |  (action (system "cat x > y")))
   Error: No rule found for x
   Had errors, waiting for filesystem changes...
-  File "dune", line 1, characters 0-57:
+  File "dune", line 1, characters 0-59:
   1 | (rule
   2 |  (target y)
   3 |  (deps x)
-  4 |  (action (bash "cat x > y")))
+  4 |  (action (system "cat x > y")))
   Error: No rule found for x
   Had errors, waiting for filesystem changes...
   Success, waiting for filesystem changes...

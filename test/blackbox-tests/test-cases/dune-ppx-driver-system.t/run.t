@@ -55,12 +55,12 @@ Same, but with error pointing to .ppx
 
   $ dune build --root driver-tests .ppx/foo.ppx1+foo.ppx2/ppx.exe
   Entering directory 'driver-tests'
-  Error: invalid ppx key for default/.ppx/foo.ppx1+foo.ppx2/ppx.exe
+  Error: invalid ppx key for _build/default/.ppx/foo.ppx1+foo.ppx2/ppx.exe
   [1]
 
   $ dune build --root driver-tests .ppx/foo.ppx-other/ppx.exe
   Entering directory 'driver-tests'
-  Error: invalid ppx key for default/.ppx/foo.ppx-other/ppx.exe
+  Error: invalid ppx key for _build/default/.ppx/foo.ppx-other/ppx.exe
   [1]
 
 Test the argument syntax

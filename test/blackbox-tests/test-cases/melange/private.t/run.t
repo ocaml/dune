@@ -19,6 +19,6 @@ Js rules should include module type
       es6
 
 Build js files
-  $ dune rules inside/output/c.js
-$ node _build/default/inside/output/c.js
-buy it
+  $ dune build inside/output/melange__C.js
+  $ node _build/default/inside/output/melange__C.js
+  buy it

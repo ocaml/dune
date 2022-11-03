@@ -1,4 +1,4 @@
 Compilation using melange, with interface files
-  $ dune build mli/x.js
-  $ node ./_build/default/mli/x.js
+  $ dune build mli/melange__X.js
+  $ node ./_build/default/mli/melange__X.js
   buy it

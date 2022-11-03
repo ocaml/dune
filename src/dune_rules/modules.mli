@@ -45,8 +45,6 @@ val exe_unwrapped : Module.Name_map.t -> t
 
 val exe_wrapped : src_dir:Path.Build.t -> modules:Module.Name_map.t -> t
 
-val melange_unwrapped : Module.Name_map.t -> t
-
 val melange_wrapped : src_dir:Path.Build.t -> modules:Module.Name_map.t -> t
 
 (** For wrapped libraries, this is the user written entry module for the

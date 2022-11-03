@@ -546,8 +546,6 @@ let singleton_melange m =
      let main_module_name = (Mangle.prefix mangle).public in
      Module.with_wrapper m ~main_module_name)
 
-let melange_unwrapped m = Unwrapped m
-
 let melange_wrapped ~src_dir ~modules =
   match as_singleton modules with
   | Some m -> singleton_melange m

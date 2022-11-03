@@ -355,11 +355,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard
           in
-          let project = Scope.project scope in
-          (* TODO: melange should check some other config flag, not exe one *)
-          if Dune_project.wrapped_executables project then
-            Modules_group.melange_wrapped ~src_dir:dir ~modules
-          else Modules_group.melange_unwrapped modules
+          Modules_group.melange_wrapped ~src_dir:dir ~modules
         in
         let obj_dir = Obj_dir.make_melange ~dir ~name:mel.target in
         let modules =

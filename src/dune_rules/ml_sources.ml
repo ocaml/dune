@@ -221,7 +221,7 @@ let modules_and_obj_dir t ~for_ =
 
 let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 
-let lookup_module (t : t) name = Module_name.Map.find t.modules.rev_map name
+let find_origin (t : t) name = Module_name.Map.find t.modules.rev_map name
 
 let virtual_modules lookup_vlib vlib =
   let info = Lib.info vlib in

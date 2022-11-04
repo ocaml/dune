@@ -254,7 +254,7 @@ let gen_rules sctx dir_contents cctxs expander
             let* ml_sources = Dir_contents.ocaml dir_contents in
             match
               List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
-                  Option.bind (Ml_sources.lookup_module ml_sources name)
+                  Option.bind (Ml_sources.find_origin ml_sources name)
                     ~f:(fun origin ->
                       List.find_map cctxs ~f:(fun (loc, cctx) ->
                           Option.some_if

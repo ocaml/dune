@@ -41,7 +41,7 @@ val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
 val modules : t -> for_:for_ -> Modules.t
 
 (** Find out the origin of the stanza for a given module *)
-val lookup_module : t -> Module_name.t -> Origin.t option
+val find_origin : t -> Module_name.t -> Origin.t option
 
 val empty : t
 

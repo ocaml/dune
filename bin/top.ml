@@ -112,7 +112,7 @@ module Module = struct
     in
     let* ocaml = Dune_rules.Dir_contents.ocaml dir_contents in
     let stanza =
-      match Dune_rules.Ml_sources.lookup_module ocaml module_name with
+      match Dune_rules.Ml_sources.find_origin ocaml module_name with
       | None -> User_error.raise [ Pp.text "stanza not found for module" ]
       | Some m -> m
     in

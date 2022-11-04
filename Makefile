@@ -71,7 +71,7 @@ dev-depext:
 	opam depext -y $(TEST_DEPS)
 
 melange:
-	opam pin add melange https://github.com/melange-re/melange.git#4025c75e765db00d9d353bf67530132709b7901c
+	opam pin add melange https://github.com/melange-re/melange.git#922953e9b4ed30e080d9c08b3b6bffc6b1d11c63
 
 dev-deps: melange
 	opam install -y $(TEST_DEPS)

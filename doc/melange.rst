@@ -155,8 +155,8 @@ Next we need a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
 .. code:: scheme
 
   (melange.emit
-    (target output)
-    (module_system es6))
+   (target output)
+   (module_system es6))
 
 Finally, we need some ``.ml`` file:
 

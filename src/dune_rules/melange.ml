@@ -8,6 +8,18 @@ let syntax =
 let extension_key =
   Dune_project.Extension.register syntax (return ((), [])) Unit.to_dyn
 
+let js_ext = ".js"
+
+module Module_system = struct
+  type t =
+    | Es6
+    | CommonJs
+
+  let to_string = function
+    | Es6 -> "es6"
+    | CommonJs -> "commonjs"
+end
+
 module Cm_kind = struct
   type t =
     | Cmi
@@ -36,3 +48,9 @@ module Cm_kind = struct
     let make_all x = { cmi = x; cmj = x }
   end
 end
+
+let lib_output_dir ~emit_stanza_dir ~lib_dir ~target =
+  let rel_path =
+    Path.reach (Path.build lib_dir) ~from:(Path.build emit_stanza_dir)
+  in
+  Path.Build.relative (Path.Build.relative emit_stanza_dir target) rel_path

@@ -212,6 +212,7 @@ let obj_dir_of_lib kind modes obj_dir =
      let mode =
        match modes with
        | `Exe -> `Byte
+       | `Melange_emit -> `Melange
        | `Lib modes ->
          if
            Lib_mode.Map.Set.equal modes

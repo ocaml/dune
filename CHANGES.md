@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Make dune describe workspace return the correct root path
+  (#6380, fixes #6379, @esope)
+
 - Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI
   colors. (#6340, fixes #6323, @MisterDA).
 

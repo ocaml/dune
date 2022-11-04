@@ -149,7 +149,8 @@ module Module = struct
         in
         compile
       | Melange _ ->
-          User_error.raise [ Pp.text "cannot load melange only modules into the top level" ]
+        User_error.raise
+          [ Pp.text "cannot load melange only modules into the top level" ]
     in
     let* requires =
       let* requires =

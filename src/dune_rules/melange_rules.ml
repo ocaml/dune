@@ -107,11 +107,16 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   let requires_link = Lib.Compile.requires_link compile_info in
   let direct_requires = Lib.Compile.direct_requires compile_info in
   let* modules, pp =
-    Buildable_rules.modules_rules_no_buildable ~preprocess:mel.preprocess
-      ~preprocessor_deps:mel.preprocessor_deps
-      ~lint:(Preprocess.Per_module.default ())
-      ~empty_module_interface_if_absent:false sctx expander ~dir scope modules
-      ~lib_name:None ~empty_intf_modules:`Melange_emit
+    Buildable_rules.modules_rules sctx
+      (Melange
+         { preprocess = mel.preprocess
+         ; preprocessor_deps = mel.preprocessor_deps
+         ; (* TODO still needed *)
+           lint = Preprocess.Per_module.default ()
+         ; (* why is this always false? *)
+           empty_module_interface_if_absent = false
+         })
+      expander ~dir scope modules
   in
   let* cctx =
     let js_of_ocaml = None in

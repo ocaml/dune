@@ -26,7 +26,17 @@ let with_lib_deps (t : Context.t) compile_info ~dir ~f =
   in
   Rules.prefix_rules prefix ~f
 
-let modules_rules_no_buildable ~preprocess ~preprocessor_deps ~lint
+type kind =
+  | Executables of Dune_file.Buildable.t * (Loc.t * string) list
+  | Library of Dune_file.Buildable.t * Lib_name.Local.t
+  | Melange of
+      { preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
+      ; preprocessor_deps : Dep_conf.t list
+      ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
+      ; empty_module_interface_if_absent : bool
+      }
+
+let modules_rules ~preprocess ~preprocessor_deps ~lint
     ~empty_module_interface_if_absent sctx expander ~dir scope modules ~lib_name
     ~empty_intf_modules =
   let* pp =
@@ -50,8 +60,8 @@ let modules_rules_no_buildable ~preprocess ~preprocessor_deps ~lint
   let add_empty_intf =
     let default = empty_module_interface_if_absent in
     match empty_intf_modules with
-    | `Lib | `Melange_emit -> fun _ -> default
-    | `Exe_mains mains ->
+    | None -> fun _ -> default
+    | Some mains ->
       if Dune_project.executables_implicit_empty_intf (Scope.project scope) then
         let executable_names =
           List.map mains ~f:Module_name.of_string_allow_invalid
@@ -69,9 +79,32 @@ let modules_rules_no_buildable ~preprocess ~preprocessor_deps ~lint
   in
   (modules, pp)
 
-let modules_rules sctx (buildable : Dune_file.Buildable.t) expander ~dir scope
-    modules ~lib_name ~empty_intf_modules =
-  modules_rules_no_buildable ~preprocess:buildable.preprocess
-    ~preprocessor_deps:buildable.preprocessor_deps ~lint:buildable.lint
-    ~empty_module_interface_if_absent:buildable.empty_module_interface_if_absent
-    sctx expander ~dir scope modules ~lib_name ~empty_intf_modules
+let modules_rules sctx kind expander ~dir scope modules =
+  let preprocess, preprocessor_deps, lint, empty_module_interface_if_absent =
+    match kind with
+    | Executables (buildable, _) | Library (buildable, _) ->
+      ( buildable.preprocess
+      , buildable.preprocessor_deps
+      , buildable.lint
+      , buildable.empty_module_interface_if_absent )
+    | Melange
+        { preprocess
+        ; preprocessor_deps
+        ; lint
+        ; empty_module_interface_if_absent
+        } ->
+      (preprocess, preprocessor_deps, lint, empty_module_interface_if_absent)
+  in
+  let lib_name =
+    match kind with
+    | Executables _ | Melange _ -> None
+    | Library (_, name) -> Some name
+  in
+  let empty_intf_modules =
+    match kind with
+    | Executables (_, modules) -> Some modules
+    | Library _ | Melange _ -> None
+  in
+  modules_rules ~preprocess ~preprocessor_deps ~lint
+    ~empty_module_interface_if_absent sctx expander ~dir scope modules ~lib_name
+    ~empty_intf_modules

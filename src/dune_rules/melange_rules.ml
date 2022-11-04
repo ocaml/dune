@@ -222,12 +222,11 @@ let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let* cctx_and_merlin =
     add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
       ~compile_info mel
-  and* () =
-    let requires_link =
+  and+ () =
+    let* requires_link =
       Memo.Lazy.force (Lib.Compile.requires_link compile_info)
     in
-    let* requires_link = requires_link in
     let* requires_link = Resolve.read_memo requires_link in
     add_rules_for_libraries ~scope ~emit_stanza_dir:dir ~sctx ~requires_link mel
   in
-  Memo.return cctx_and_merlin
+  cctx_and_merlin

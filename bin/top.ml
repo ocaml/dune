@@ -148,7 +148,8 @@ module Module = struct
             ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
         in
         compile
-      | Melange mel -> Dune_rules.Melange_rules.compile_info ~scope mel
+      | Melange _ ->
+          User_error.raise [ Pp.text "cannot load melange only modules into the top level" ]
     in
     let* requires =
       let* requires =

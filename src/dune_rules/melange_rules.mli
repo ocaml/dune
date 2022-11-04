@@ -1,8 +1,5 @@
 open Import
 
-val compile_info :
-  scope:Scope.t -> Melange_stanzas.Emit.t -> Lib.Compile.t Memo.t
-
 val emit_rules :
      dir_contents:Dir_contents.t
   -> dir:Path.Build.t

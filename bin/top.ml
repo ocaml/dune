@@ -118,17 +118,22 @@ module Module = struct
     in
     let* scope = Dune_rules.Scope.DB.find_by_dir dir in
     let* expander = Super_context.expander sctx ~dir in
+    let stanza =
+      match stanza with
+      | Executables exes -> `Executables exes
+      | Library lib -> `Library lib
+      | Melange _ ->
+        User_error.raise
+          [ Pp.text "melange modules cannot be loaded into toplevel" ]
+    in
     let* cctx, merlin =
       drop_rules @@ fun () ->
       match stanza with
-      | Executables exes ->
+      | `Executables exes ->
         Dune_rules.Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander
           exes
-      | Library lib ->
+      | `Library lib ->
         Dune_rules.Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
-      | Melange mel ->
-        Dune_rules.Melange_rules.emit_rules mel ~sctx ~dir_contents ~dir
-          ~expander ~scope
     in
     let modules = Dune_rules.Compilation_context.modules cctx in
     let module_ =
@@ -139,8 +144,8 @@ module Module = struct
     let obj_dir = Dune_rules.Compilation_context.obj_dir cctx in
     let* compile =
       match stanza with
-      | Executables exes -> Dune_rules.Exe_rules.compile_info ~scope exes
-      | Library lib ->
+      | `Executables exes -> Dune_rules.Exe_rules.compile_info ~scope exes
+      | `Library lib ->
         let libs = Dune_rules.Scope.libs scope in
         let+ _, compile =
           Dune_rules.Lib.DB.get_compile_info libs
@@ -148,9 +153,6 @@ module Module = struct
             ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
         in
         compile
-      | Melange _ ->
-        User_error.raise
-          [ Pp.text "cannot load melange only modules into the top level" ]
     in
     let* requires =
       let* requires =
@@ -162,9 +164,8 @@ module Module = struct
       let key =
         ( Dune_rules.Module.source module_ ~ml_kind:Impl
         , match stanza with
-          | Executables exes -> `Executables exes.names
-          | Library lib -> `Library lib.name
-          | Melange mel -> `Melange (mel.loc, mel.target) )
+          | `Executables exes -> `Executables exes.names
+          | `Library lib -> `Library lib.name )
       in
       let key = String.take (Digest.generic key |> Digest.to_string) 12 in
       Path.Build.(relative root)

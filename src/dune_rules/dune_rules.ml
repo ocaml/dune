@@ -16,7 +16,6 @@ module Lib_info = Lib_info
 module Modules = Modules
 module Exe_rules = Exe_rules
 module Lib_rules = Lib_rules
-module Melange_rules = Melange_rules
 module Obj_dir = Obj_dir
 module Merlin_ident = Merlin_ident
 module Merlin = Merlin

@@ -49,15 +49,10 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let open Memo.O in
   let* compiler =
-    let+ compiler =
       (* TODO loc should come from the mode field in the dune file *)
       Super_context.resolve_program sctx ~loc:None ~dir:build_dir
         ~hint:"opam install melange" "melc"
-    in
-    Result.to_option compiler
   in
-  (let open Option.O in
-  let+ compiler = compiler in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
   let in_dir = Path.Build.relative dst_dir in
   let output =
@@ -83,15 +78,14 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
   in
   let lib_deps_js_includes = Command.Args.as_any lib_deps_js_includes in
   Super_context.add_rule sctx ~dir:build_dir ?loc
-    (Command.run ~dir:(Path.build build_dir) (Ok compiler)
+    (Command.run ~dir:(Path.build build_dir) compiler
        [ Command.Args.S obj_dir
        ; lib_deps_js_includes
        ; As melange_package_args
        ; A "-o"
        ; Target output
        ; Dep (Path.build src)
-       ]))
-  |> Memo.Option.iter ~f:Fun.id
+       ])
 
 let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     ~compile_info (mel : Melange_stanzas.Emit.t) =

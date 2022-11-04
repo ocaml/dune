@@ -1,0 +1,4 @@
+(library
+ (name vlib)
+ (modes melange)
+ (virtual_modules vlib))

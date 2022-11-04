@@ -1,4 +1,1 @@
-(library
- (name x)
- (modes melange)
- (libraries lib))
+(melange.emit (target private-module) (entries foo) (libraries lib) (module_system commonjs))

@@ -26,7 +26,7 @@ let decode =
     (let+ loc = loc
      and+ files =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
-     and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
+     and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
      and+ libraries =
        field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
      and+ runtime_deps =

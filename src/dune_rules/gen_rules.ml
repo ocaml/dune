@@ -146,6 +146,15 @@ end = struct
       | true ->
         let+ () = Mdx.gen_rules ~sctx ~dir ~scope ~expander mdx in
         empty_none)
+    | Melange_emit mel ->
+      let+ cctx, merlin =
+        Melange_rules.emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel
+      in
+      { merlin = Some merlin
+      ; cctx = Some (mel.loc, cctx)
+      ; js = None
+      ; source_dirs = None
+      }
     | _ -> Memo.return empty_none
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents
@@ -245,10 +254,12 @@ let gen_rules sctx dir_contents cctxs expander
             let* ml_sources = Dir_contents.ocaml dir_contents in
             match
               List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
-                  Option.bind (Ml_sources.lookup_module ml_sources name)
-                    ~f:(fun buildable ->
+                  Option.bind (Ml_sources.find_origin ml_sources name)
+                    ~f:(fun origin ->
                       List.find_map cctxs ~f:(fun (loc, cctx) ->
-                          Option.some_if (Loc.equal loc buildable.loc) cctx)))
+                          Option.some_if
+                            (Loc.equal loc (Ml_sources.Origin.loc origin))
+                            cctx)))
             with
             | None ->
               (* This happens often when passing a [-p ...] option that hides a

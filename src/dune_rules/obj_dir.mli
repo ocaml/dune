@@ -84,6 +84,8 @@ val to_dyn : _ t -> Dyn.t
 
 val make_exe : dir:Path.Build.t -> name:string -> Path.Build.t t
 
+val make_melange_emit : dir:Path.Build.t -> name:string -> Path.Build.t t
+
 val for_pp : dir:Path.Build.t -> Path.Build.t t
 
 val as_local_exn : Path.t t -> Path.Build.t t

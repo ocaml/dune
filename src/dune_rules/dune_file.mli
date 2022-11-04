@@ -20,12 +20,6 @@ module Lib_deps : sig
   val decode : for_ -> t Dune_lang.Decoder.t
 end
 
-(** [preprocess] and [preprocessor_deps] fields *)
-val preprocess_fields :
-  (Preprocess.Without_instrumentation.t Preprocess.Per_module.t
-  * Dep_conf.t list)
-  Dune_lang.Decoder.fields_parser
-
 module Buildable : sig
   type t =
     { loc : Loc.t
@@ -488,6 +482,7 @@ type Stanza.t +=
   | Cram of Cram_stanza.t
   | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
+  | Melange_emit of Melange_stanzas.Emit.t
 
 val stanza_package : Stanza.t -> Package.t option
 

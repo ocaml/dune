@@ -147,6 +147,7 @@ module Mangle = struct
   type t =
     | Lib of Lib.t
     | Exe
+    | Melange
 
   let of_lib ~lib_name ~implements ~main_module_name ~modules =
     let kind : Lib.kind =
@@ -172,6 +173,8 @@ module Mangle = struct
         })
     | Exe ->
       sprintf "dune__exe" |> Module_name.of_string |> Visibility.Map.make_both
+    | Melange ->
+      sprintf "melange" |> Module_name.of_string |> Visibility.Map.make_both
 
   let make_alias_module t ~src_dir =
     let prefix = prefix t in
@@ -273,6 +276,22 @@ module Wrapped = struct
     ; wrapped_compat = Module_name.Map.empty
     ; alias_module
       (* XXX exe's don't have a main module, but this is harmless *)
+    ; main_module_name = Module.name alias_module
+    ; wrapped = Simple true
+    }
+
+  let melange ~src_dir ~modules =
+    let mangle = Mangle.Melange in
+    let prefix = Mangle.prefix mangle in
+    let alias_module = Mangle.make_alias_module mangle ~src_dir in
+    let modules =
+      Module_name.Map.map modules ~f:(fun m ->
+          Module.with_wrapper m ~main_module_name:prefix.public)
+    in
+    { modules
+    ; wrapped_compat = Module_name.Map.empty
+    ; alias_module
+      (* XXX melange's don't have a main module, but this is harmless *)
     ; main_module_name = Module.name alias_module
     ; wrapped = Simple true
     }
@@ -520,6 +539,17 @@ let exe_wrapped ~src_dir ~modules =
   match as_singleton modules with
   | Some m -> singleton_exe m
   | None -> Wrapped (Wrapped.exe ~src_dir ~modules)
+
+let singleton_melange m =
+  Singleton
+    (let mangle = Mangle.Melange in
+     let main_module_name = (Mangle.prefix mangle).public in
+     Module.with_wrapper m ~main_module_name)
+
+let melange_wrapped ~src_dir ~modules =
+  match as_singleton modules with
+  | Some m -> singleton_melange m
+  | None -> Wrapped (Wrapped.melange ~src_dir ~modules)
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w

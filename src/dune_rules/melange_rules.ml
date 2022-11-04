@@ -96,7 +96,7 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
 let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     ~compile_info (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
-  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
+  (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let* modules, obj_dir =
     Dir_contents.ocaml dir_contents

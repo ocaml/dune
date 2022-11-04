@@ -23,13 +23,12 @@ let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
           in
           let* source_modules = modules_group >>| Modules.impl_only in
           let of_module m =
-            let in_dir = Path.Build.relative dst_dir in
             let output =
               let name =
                 Module_name.Unique.artifact_filename (Module.obj_name m)
                   ~ext:Melange.js_ext
               in
-              in_dir name
+              Path.Build.relative dst_dir name
             in
             Dep.file (Path.build output)
           in
@@ -49,18 +48,17 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let open Memo.O in
   let* compiler =
-      (* TODO loc should come from the mode field in the dune file *)
-      Super_context.resolve_program sctx ~loc:None ~dir:build_dir
-        ~hint:"opam install melange" "melc"
+    (* TODO loc should come from the mode field in the dune file *)
+    Super_context.resolve_program sctx ~loc:None ~dir:build_dir
+      ~hint:"opam install melange" "melc"
   in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
-  let in_dir = Path.Build.relative dst_dir in
   let output =
     let name =
       Module_name.Unique.artifact_filename (Module.obj_name m)
         ~ext:Melange.js_ext
     in
-    in_dir name
+    Path.Build.relative dst_dir name
   in
   let obj_dir =
     [ Command.Args.A "-I"; Path (Path.build (Obj_dir.melange_dir obj_dir)) ]

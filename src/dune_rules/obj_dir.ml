@@ -256,7 +256,7 @@ module Local = struct
       ~melange_dir:(Paths.library_melange_dir ~obj_dir)
       ~public_cmi_ocaml_dir:None ~public_cmi_melange_dir:None ~private_lib:false
 
-  let make_melange ~dir ~name =
+  let make_melange_emit ~dir ~name =
     let obj_dir = Paths.melange_object_directory ~dir name in
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
@@ -394,7 +394,7 @@ let as_local_exn (t : Path.t t) =
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
 
-let make_melange ~dir ~name = Local (Local.make_melange ~dir ~name)
+let make_melange_emit ~dir ~name = Local (Local.make_melange_emit ~dir ~name)
 
 let for_pp ~dir =
   Local

@@ -389,7 +389,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
           in
           Modules_group.melange_wrapped ~src_dir:dir ~modules
         in
-        let obj_dir = Obj_dir.make_melange ~dir ~name:mel.target in
+        let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
         let modules =
           let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
           (* We need to relocate the source of the alias module to its own

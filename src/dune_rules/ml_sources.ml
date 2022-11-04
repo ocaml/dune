@@ -5,11 +5,13 @@ module Modules_group = Modules
 
 module Origin = struct
   type t =
-    | Buildable of Buildable.t
+    | Library of Dune_file.Library.t
+    | Executables of Dune_file.Executables.t
     | Melange of Melange_stanzas.Emit.t
 
   let loc = function
-    | Buildable b -> b.loc
+    | Library l -> l.buildable.loc
+    | Executables e -> e.buildable.loc
     | Melange mel -> mel.loc
 end
 
@@ -52,8 +54,9 @@ module Modules = struct
     in
     let executables =
       match
-        String.Map.of_list_map exes ~f:(fun (exes, m, obj_dir) ->
-            (snd (List.hd exes.Executables.names), (m, obj_dir)))
+        String.Map.of_list_map exes
+          ~f:(fun ((exes : Executables.t), m, obj_dir) ->
+            (snd (List.hd exes.names), (m, obj_dir)))
       with
       | Ok x -> x
       | Error (name, _, (exes2, _, _)) ->
@@ -83,9 +86,9 @@ module Modules = struct
         let libs_and_exes =
           List.rev_append
             (List.concat_map libs ~f:(fun (l, m, _) ->
-                 by_name (Origin.Buildable l.buildable) m))
+                 by_name (Origin.Library l) m))
             (List.concat_map exes ~f:(fun (e, m, _) ->
-                 by_name (Origin.Buildable e.buildable) m))
+                 by_name (Origin.Executables e) m))
         in
         List.rev_append
           (List.concat_map emits ~f:(fun (l, m, _) ->

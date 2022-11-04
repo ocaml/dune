@@ -147,11 +147,14 @@ end = struct
         let+ () = Mdx.gen_rules ~sctx ~dir ~scope ~expander mdx in
         empty_none)
     | Melange_emit mel ->
-      let+ () =
-        Melange_rules.gen_emit_rules ~dir_contents ~dir ~scope ~sctx ~expander
-          mel
+      let+ cctx, merlin =
+        Melange_rules.emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel
       in
-      empty_none
+      { merlin = Some merlin
+      ; cctx = Some (mel.loc, cctx)
+      ; js = None
+      ; source_dirs = None
+      }
     | _ -> Memo.return empty_none
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents

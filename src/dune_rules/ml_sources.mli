@@ -7,7 +7,8 @@ open Import
 
 module Origin : sig
   type t =
-    | Buildable of Dune_file.Buildable.t
+    | Library of Dune_file.Library.t
+    | Executables of Dune_file.Executables.t
     | Melange of Melange_stanzas.Emit.t
 
   val loc : t -> Loc.t

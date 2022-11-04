@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Introduce a `$ dune ocaml top-module` subcommand to load modules directly
+  without sealing them behind the signature. (#5940, @rgrinberg)
+
 - [ctypes] do not mangle user written names in the ctypes stanza (#6374, fixes
   #5561, @rgrinberg)
 

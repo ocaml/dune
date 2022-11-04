@@ -1,0 +1,3 @@
+(cram
+ (applies_to load-with-pp)
+ (deps %{bin:dunepp}))

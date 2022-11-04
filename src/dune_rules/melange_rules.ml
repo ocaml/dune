@@ -94,7 +94,7 @@ let build_js ?loc ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx ~build_dir
   |> Memo.Option.iter ~f:Fun.id
 
 let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
-    ~requires_link ~direct_requires (mel : Melange_stanzas.Emit.t) =
+    ~compile_info (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
@@ -104,6 +104,8 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let* flags = Super_context.ocaml_flags sctx ~dir mel.flags in
+  let requires_link = Lib.Compile.requires_link compile_info in
+  let direct_requires = Lib.Compile.direct_requires compile_info in
   let* modules, pp =
     Buildable_rules.modules_rules_no_buildable ~preprocess:mel.preprocess
       ~preprocessor_deps:mel.preprocessor_deps
@@ -132,12 +134,30 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   in
   let build_dir = (Super_context.context sctx).build_dir in
   let* () = Module_compilation.build_all cctx in
-  Memo.parallel_iter
-    (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
-    ~f:(fun m ->
-      (* Should we check module kind? *)
-      build_js ~loc ~pkg_name ~module_system:mel.module_system ~dst_dir ~obj_dir
-        ~sctx ~build_dir ~lib_deps_js_includes m)
+  let* () =
+    Memo.parallel_iter
+      (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
+      ~f:(fun m ->
+        (* Should we check module kind? *)
+        build_js ~loc ~pkg_name ~module_system:mel.module_system ~dst_dir
+          ~obj_dir ~sctx ~build_dir ~lib_deps_js_includes m)
+  in
+  let ctx = Super_context.context sctx in
+  let stdlib_dir = ctx.Context.stdlib_dir in
+  let* requires_compile = Compilation_context.requires_compile cctx in
+  let* preprocess =
+    Resolve.Memo.read_memo
+      (Preprocess.Per_module.with_instrumentation mel.preprocess
+         ~instrumentation_backend:
+           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+  in
+  Memo.return
+    ( cctx
+    , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
+        ~preprocess ~obj_dir
+        ~dialects:(Dune_project.dialects (Scope.project scope))
+        ~ident:(Lib.Compile.merlin_ident compile_info)
+        ~modes:`Melange_emit () )
 
 let add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
     (mel : Melange_stanzas.Emit.t) =
@@ -185,26 +205,32 @@ let add_rules_for_libraries ~scope ~emit_stanza_dir ~sctx ~requires_link
           (build_js ~pkg_name ~module_system:mel.module_system ~dst_dir ~obj_dir
              ~sctx ~build_dir ~lib_deps_js_includes))
 
-let gen_emit_rules ~dir_contents ~dir ~scope ~sctx ~expander
-    (mel : Melange_stanzas.Emit.t) =
-  let compile_info =
-    let dune_version = Scope.project scope |> Dune_project.dune_version in
-    let pps = [] in
-    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-      [ (mel.loc, mel.target) ]
-      mel.libraries ~pps ~dune_version
-  in
+let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
-  let requires_link = Lib.Compile.requires_link compile_info in
-  let* () =
-    let direct_requires = Lib.Compile.direct_requires compile_info in
+  let dune_version = Scope.project scope |> Dune_project.dune_version in
+  let+ pps =
+    Resolve.Memo.read_memo
+      (Preprocess.Per_module.with_instrumentation mel.preprocess
+         ~instrumentation_backend:
+           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+    >>| Preprocess.Per_module.pps
+  in
+  Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+    [ (mel.loc, mel.target) ]
+    mel.libraries ~pps ~dune_version
+
+let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
+  let open Memo.O in
+  let* compile_info = compile_info ~scope mel in
+  let* cctx_and_merlin =
     add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
-      ~requires_link ~direct_requires
-      (mel : Melange_stanzas.Emit.t)
+      ~compile_info mel
   and* () =
-    let requires_link = Memo.Lazy.force requires_link in
+    let requires_link =
+      Memo.Lazy.force (Lib.Compile.requires_link compile_info)
+    in
     let* requires_link = requires_link in
     let* requires_link = Resolve.read_memo requires_link in
     add_rules_for_libraries ~scope ~emit_stanza_dir:dir ~sctx ~requires_link mel
   in
-  Memo.return ()
+  Memo.return cctx_and_merlin

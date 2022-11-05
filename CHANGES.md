@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Make dune describe workspace return the correct root path
+  (#6380, fixes #6379, @esope)
+
 - Introduce a `$ dune ocaml top-module` subcommand to load modules directly
   without sealing them behind the signature. (#5940, @rgrinberg)
 

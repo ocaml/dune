@@ -1,4 +1,4 @@
-*.ml*             text eol=lf
+*.ml*             text eol=lf linguist-language=OCaml
 *.rst             text eol=lf
 *.c               text eol=lf
 dune              text eol=lf

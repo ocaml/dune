@@ -1,9 +1,5 @@
-Compilation using melange
-  $ dune build lib/.x.objs/melange/x.js
-  $ node ./_build/default/lib/.x.objs/melange/x.js
-  buy it
+Using `melange.emit` inside the same folder as the library works fine
 
-Rebuilding same project (js artifacts are tracked correctly)
-  $ dune build lib/.x.objs/melange/x.js
-  $ node ./_build/default/lib/.x.objs/melange/x.js
+  $ dune build lib/simple/melange__X.js
+  $ node _build/default/lib/simple/melange__X.js
   buy it

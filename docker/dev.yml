@@ -1,0 +1,13 @@
+volumes:
+  _build:
+  _boot:
+services:
+  dune:
+    image: dune
+    user: opam
+    tty: true
+    stdin_open: true
+    volumes:
+      - ../:/home/opam/dune
+      - _build:/home/opam/dune/_build/
+      - _boot:/home/opam/dune/_boot/

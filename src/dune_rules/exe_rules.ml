@@ -110,8 +110,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let linkages = linkages ctx ~exes ~explicit_js_mode in
   let* flags = Super_context.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =
-    Buildable_rules.modules_rules sctx exes.buildable expander ~dir scope
-      modules ~lib_name:None ~empty_intf_modules:(`Exe_mains exes.names)
+    Buildable_rules.modules_rules sctx
+      (Executables (exes.buildable, exes.names))
+      expander ~dir scope modules
   in
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in

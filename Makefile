@@ -71,7 +71,7 @@ dev-depext:
 	opam depext -y $(TEST_DEPS)
 
 melange:
-	opam pin add melange https://github.com/melange-re/melange.git#246e6df78fe3b6cc124cb48e5a37fdffd99379ed
+	opam pin add melange https://github.com/melange-re/melange.git#922953e9b4ed30e080d9c08b3b6bffc6b1d11c63
 
 dev-deps: melange
 	opam install -y $(TEST_DEPS)
@@ -169,3 +169,11 @@ dune-release:
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose
 	dune-release opam pkg
 	dune-release opam submit
+
+.PHONY: docker-build-image
+docker-build-image:
+	docker build -f docker/dev.Dockerfile -t dune .
+
+.PHONY: docker-compose
+docker-compose:
+	docker compose -f docker/dev.yml run dune bash

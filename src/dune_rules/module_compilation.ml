@@ -132,12 +132,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
       | Some Compile -> linear :: other_targets
       | Some Emit -> other_targets
       | Some All | None -> obj :: other_targets)
-    | Ocaml (Cmi | Cmo) | Melange Cmi -> other_targets
-    | Melange Cmj ->
-      let melange_js =
-        Obj_dir.Module.obj_file obj_dir m ~kind:(Melange Cmj) ~ext:".js"
-      in
-      melange_js :: other_targets
+    | Ocaml (Cmi | Cmo) | Melange (Cmi | Cmj) -> other_targets
   in
   let dep_graph = Ml_kind.Dict.get (CC.dep_graphs cctx) ml_kind in
   let opaque = CC.opaque cctx in
@@ -199,6 +194,22 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
     |> List.concat_map ~f:(fun p ->
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
+  let melange_args =
+    match cm_kind with
+    | Melange Cmj ->
+      let pkg_name_args =
+        match CC.package cctx with
+        | None -> []
+        | Some pkg ->
+          [ Command.Args.A "--bs-package-name"
+          ; A (Package.Name.to_string (Package.name pkg))
+          ]
+      in
+      Command.Args.A "--bs-stop-after-cmj" :: A "--bs-package-output"
+      :: Command.Args.Path (Path.build (CC.dir cctx))
+      :: pkg_name_args
+    | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
+  in
   Super_context.add_rule sctx ~dir ?loc:(CC.loc cctx)
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)
@@ -210,6 +221,7 @@ let build_cm cctx ~precompiled_cmi ~cm_kind (m : Module.t)
           ; Command.Args.as_any
               (Lib_mode.Cm_kind.Map.get (CC.includes cctx) cm_kind)
           ; As extra_args
+          ; S melange_args
           ; A "-no-alias-deps"
           ; opaque_arg
           ; As (Fdo.phase_flags phase)

@@ -195,8 +195,9 @@ let rec resolve_first lib_db = function
 module Context = struct
   type 'a t =
     { coqdep : Action.Prog.t
-    ; coqc : Action.Prog.t * Path.Build.t
+    ; coqc : Action.Prog.t
     ; coqdoc : Action.Prog.t
+    ; coqc_dir : Path.Build.t
     ; wrapper_name : string
     ; dir : Path.Build.t
     ; expander : Expander.t
@@ -214,8 +215,8 @@ module Context = struct
     }
 
   let coqc ?stdout_to t args =
-    let dir = Path.build (snd t.coqc) in
-    Command.run ~dir ?stdout_to (fst t.coqc) args
+    let dir = Path.build t.coqc_dir in
+    Command.run ~dir ?stdout_to t.coqc args
 
   let coq_flags t =
     let standard = t.profile_flags in
@@ -342,8 +343,9 @@ module Context = struct
     and+ coqdoc = rr "coqdoc"
     and+ profile_flags = Super_context.coq sctx ~dir in
     { coqdep
-    ; coqc = (coqc, coqc_dir)
+    ; coqc
     ; coqdoc
+    ; coqc_dir
     ; wrapper_name
     ; dir
     ; expander

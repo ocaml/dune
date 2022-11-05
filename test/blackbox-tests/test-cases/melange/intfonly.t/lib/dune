@@ -1,0 +1,4 @@
+(library
+ (name lib)
+ (modules_without_implementation a)
+ (modes melange))

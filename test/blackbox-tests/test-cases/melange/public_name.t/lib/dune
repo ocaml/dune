@@ -1,4 +1,0 @@
-(library
- (name x)
- (public_name a_pkg.x)
- (modes melange))

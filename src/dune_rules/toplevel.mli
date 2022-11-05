@@ -23,7 +23,12 @@ val make :
   -> t
 
 val print_toplevel_init_file :
-  include_paths:Path.Set.t -> files_to_load:Path.t list -> unit
+     include_paths:Path.Set.t
+  -> files_to_load:Path.t list
+  -> uses:Path.t list
+  -> pp:string option
+  -> ppx:string option
+  -> unit
 
 module Stanza : sig
   val setup :

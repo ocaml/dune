@@ -4,6 +4,12 @@ Unreleased
 - Make dune describe workspace return the correct root path
   (#6380, fixes #6379, @esope)
 
+- Introduce a `$ dune ocaml top-module` subcommand to load modules directly
+  without sealing them behind the signature. (#5940, @rgrinberg)
+
+- [ctypes] do not mangle user written names in the ctypes stanza (#6374, fixes
+  #5561, @rgrinberg)
+
 - Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI
   colors. (#6340, fixes #6323, @MisterDA).
 
@@ -12,16 +18,13 @@ Unreleased
 - Revive `$ dune external-lib-deps` under `$ dune describe external-lib-deps`.
   (#6045, @moyodiallo)
 
-- Fix running inline tests in byteode mode (#5622, fixes #5515, @dariusf)
+- Fix running inline tests in bytecode mode (#5622, fixes #5515, @dariusf)
 
 - [ctypes] always re-run `pkg-config` because we aren't tracking its external
   dependencies (#6052, @rgrinberg)
 
 - [ctypes] remove dependency on configurator in the generated rules (#6052,
   @rgrinberg)
-
-- Introduce experimental support for the melange compiler (#6268, fixes #6230,
-  @jchavarri)
 
 - Build progress status now shows number of failed jobs (#6242, @Alizter)
 

@@ -5,18 +5,12 @@ type mkdir_result =
   | Created  (** The directory was created. *)
   | Missing_parent_directory
       (** No parent directory, use [mkdir_p] if you want to create it too. *)
-  | Parent_not_directory  (** The parent exists but is not a directory. *)
 
 val mkdir : ?perms:int -> string -> mkdir_result
 
 type mkdir_p_result =
   | Already_exists  (** The directory already exists. No action was taken. *)
   | Created  (** The directory was created. *)
-  | Already_exists_not_directory of string
-      (** A file with the same name as the [string] already exists but is not a
-          directory. *)
-
-val dyn_of_mkdir_p_result : mkdir_p_result -> Dyn.t
 
 val mkdir_p : ?perms:int -> string -> mkdir_p_result
 

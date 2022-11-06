@@ -2,6 +2,191 @@
 Stanza Reference
 ****************
 
+.. _config:
+
+config
+======
+
+This file is used to set global configuration of Dune (applicable across
+projects and workspaces).
+
+The configuration file is normally ``~/.config/dune/config`` on Unix systems and
+``%LOCALAPPDATA%/dune/config`` on Windows. However, it is possible to specify an
+alternative configuration file with the ``--config-file`` option.
+
+Command-line flags take precedence over the contents of the config file.
+
+If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
+
+It can contain the following stanzas:
+
+.. _display:
+
+display
+-------
+
+Specify the amount of verbosity of Dune.
+
+.. code:: scheme
+
+    (display <setting>)
+
+where ``<setting>`` is one of:
+
+- ``progress`` Dune shows and update a status line as build goals are being
+  completed (this is the default).
+
+- ``verbose`` print the full command lines of programs being executed by Dune,
+  with some colors to help differentiate programs.
+
+- ``short`` print one line per command being executed, with the binary name on
+  the left and the reason it is being executed for on the right.
+
+- ``quiet`` only display errors.
+
+.. _concurrency:
+
+concurrency
+-----------
+
+Number of cores Dune is allowed to utilize.
+
+.. code:: scheme
+
+    (concurrency <setting>)
+
+where ``<setting>`` is one of:
+
+- ``auto``, auto-detect maximum number of cores.
+
+- ``<number>``, a positive integer specifying the maximum number of cores Dune
+  may use simultaneously.
+
+.. _terminal-persistence:
+
+terminal-persistence
+--------------------
+
+Specify how Dune handles the terminal when a rebuild is triggered in watch mode.
+
+.. code:: scheme
+
+    (terminal-persistence <setting>)
+
+where ``<setting>`` is one of:
+
+- ``preserve`` do not clear terminal screen beteween rebuilds.
+
+- ``clear-on-rebuild`` clear terminal screen between rebuilds.
+
+- ``clear-on-rebuild-and-flush-history`` clear terminal between rebuilds, and
+  also delete everything in the scrollback buffer.
+
+.. _sandboxing_preference:
+
+sandboxing_preference
+---------------------
+
+Your preferred sandboxing setting. Individual rules may specify different
+preferences, Dune will try to utilize a setting satisfying both conditions.
+
+.. code:: scheme
+
+    (sandboxing_preference <setting> <setting> ...)
+
+where each ``<setting>`` can be one of:
+
+- ``none``, no sandboxing allowed.
+
+- ``symlink``, using symbolic links.
+
+- ``copy``, using file copies.
+
+- ``hardlink``, using hard links.
+
+.. _cache:
+
+cache
+-----
+
+Specify whether to utilize the Dune cache.
+
+.. code:: scheme
+
+    (cache <setting>)
+
+where ``<setting>`` is one of:
+
+- ``enabled``, enable Dune cache.
+
+- ``disabled``, disble Dune cache.
+
+.. _cache_check_probability:
+
+cache-check-probability
+-----------------------
+
+While the main purpose of Dune cache is to speed up build times, it can also be
+used to check build reproducibility. It is possible to enable a probabilistic
+check in which Dune will re-execute randomly chosen build rules and compare
+their results with those stored in the cache. If the results differ, the rule is
+not reproducible and Dune will print out a corresponding warning.
+
+.. code:: scheme
+
+    (cache-check-probability <number>)
+
+where ``<number>`` is a floating-point number between 0 and 1 (inclusive). 0
+means never to check for reproducibility, and 1 means to always perform the
+check.
+
+.. _cache_storage_mode:
+
+cache-storage-mode
+------------------
+
+Specify the mechanism used by the Dune cache storage layer.
+
+.. code:: scheme
+
+    (cache-storage-mode <setting>)
+
+where ``<setting>`` is one of:
+
+- ``auto``, Dune decides the best mechanism to use.
+
+- ``hardlink``, use hard links.
+
+- ``copy``, use file copies; this is less efficient than using hard links.
+
+.. _action_stdout_on_success:
+
+action_stdout_on_success
+------------------------
+
+Specify how Dune should handle the standard output of actions when they succeed.
+This cane be used to reduce the noise of large builds.
+
+.. code:: scheme
+
+    (action_stdout_on_success <setting>)
+
+where ``<setting>`` is one of:
+
+- ``print``, print the output on the terminal (this is the default).
+
+- ``swallow``, ignore the output and do not print it on the terminal.
+
+- ``must-be-empty``, enforce that the output should be empty. If it is not, Dune will fail.
+
+.. _action_stderr_on_success:
+
+action_stderr_on_success
+------------------------
+
+Same as :ref:`action_stdout_on_success`, but applying to standard error instead
+of standard output.
+
 .. _dune-project:
 
 dune-project
@@ -20,8 +205,8 @@ Additionally, they can contains the following stanzas.
 
 .. _using:
 
-`using`
--------
+using
+-----
 
 The language of configuration files read by Dune can be extended to support
 additional stanzas (eg., ``menhir``, ``coq.theory``, ``mdx``). This is done by
@@ -1373,7 +1558,7 @@ The following sections are available:
 - ``etc`` installs by default to ``<prefix>/etc/<pkgname>/``.
 - ``stublibs`` installs by default to ``<prefix>/lib/stublibs/`` with the
   executable bit set.
-- ``doc`` installs by default to ``<prefix>/doc/<pkgname>/``. 
+- ``doc`` installs by default to ``<prefix>/doc/<pkgname>/``.
 - ``man`` installs by default, relative to ``<prefix>/man`` with the destination
   directory extracted from the source file extension. For example, installing
   ``foo.1`` is equivalent to a destination of ``man1/foo.1``.
@@ -1641,7 +1826,7 @@ Fields supported in ``<settings>`` are:
 
 - ``(js_of_ocaml (compilation_mode <mode>))`` controls whether to use separate
   compilation or not where ``<mode>`` is either ``whole_program`` or
-  ``separate``. 
+  ``separate``.
 
 - ``(js_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
   :ref:`inline_tests` and tests (`tests-stanza`_) run for the `js` mode.
@@ -2157,3 +2342,10 @@ artifacts of a single context. Usually, you should use the artifacts from the
 For rare cases where this is not what you want, you can force Dune to use a
 different build contexts for Merlin by adding the field ``(merlin)`` to this
 context.
+
+config stanzas
+--------------
+
+Moreover, starting in Dune 3.0, any of the stanzas from the :ref:`config` file
+can be used in the ``dune-workspace`` file. In this case, the configuration
+stanza will only affect the current workspace.

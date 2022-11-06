@@ -44,7 +44,7 @@ let create_temp_dir ?perms path =
   match Fpath.mkdir ?perms dir with
   | Created -> Ok ()
   | Already_exists -> Error `Retry
-  | Missing_parent_directory | Parent_not_directory ->
+  | Missing_parent_directory ->
     Code_error.raise "[Temp.create_temp_dir] called in a non-existing directory"
       []
 

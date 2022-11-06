@@ -313,10 +313,7 @@ let rec exec t ~ectx ~eenv =
     Path.rm_rf (Path.build path);
     Fiber.return Done
   | Mkdir path ->
-    if Path.is_in_build_dir path then Path.mkdir_p path
-    else
-      Code_error.raise "Action_exec.exec: mkdir on non build dir"
-        [ ("path", Path.to_dyn path) ];
+    Path.mkdir_p (Path.build path);
     Fiber.return Done
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =

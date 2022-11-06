@@ -533,7 +533,7 @@ let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~file_flags ~mode
   |> Action_builder.With_targets.map
        ~f:
          (Action.Full.map ~f:(fun coqdoc ->
-              Action.Progn [ Action.mkdir (Path.build doc_dir); coqdoc ]))
+              Action.Progn [ Action.mkdir doc_dir; coqdoc ]))
   |> Action_builder.With_targets.add_directories ~directory_targets:[ doc_dir ]
 
 let setup_coqc_rule ~loc ~sctx (cctx : _ Context.t) ~file_targets coq_module =

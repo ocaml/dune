@@ -6,6 +6,4 @@ module Glob = Glob
 module String_with_vars = String_with_vars
 module Pform = Pform
 module Action = Action
-
-(* TODO remove the [Dune] prefix *)
-module Dune_lexer = Dune_lexer
+module Dune_file_script = Dune_file_script

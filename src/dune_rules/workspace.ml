@@ -619,7 +619,7 @@ let default_step1 clflags =
 
 let load_step1 clflags p =
   Fs_memo.with_lexbuf_from_file p ~f:(fun lb ->
-      if Dune_lang.Dune_lexer.eof_reached lb then default_step1 clflags
+      if Dune_lang.Dune_file_script.eof_reached lb then default_step1 clflags
       else
         parse_contents lb ~f:(fun lang ->
             String_with_vars.set_decoding_env

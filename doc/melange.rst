@@ -129,7 +129,7 @@ Limitations
 
 - Libraries that are part of the installed world are not supported as
   dependencies in ``melange.emit`` stanzas. Only libraries defined in the
-  current scope can be used, either using their real name or the public name.
+  current scope can be used, either using their ``name`` or ``public_name``.
 
 Simple Project
 --------------

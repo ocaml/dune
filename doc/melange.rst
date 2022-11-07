@@ -136,8 +136,8 @@ Simple Project
 
 Let's look at building a simple project with Melange and Dune.
 
-First, make sure we have a :ref:`dune-project` file with a Melange lang stanza
-present:
+First, make sure that the :ref:`dune-project` file contains a
+``(using melange 0.1)`` stanza:
 
 .. code:: scheme
 

@@ -91,7 +91,7 @@ values allowed are ``es6`` and ``commonjs``.
   letter. For instance, to exclude module ``Foo``, use ``(entries (:standard \
   foo))``
 
-- ``(libraries <library-dependencies>)`` specifies the library's dependencies.
+- ``(libraries <library-dependencies>)`` specifies Melange library dependencies.
   Melange libraries can only use the simple form, like
   ``(libraries foo pkg.bar)``. Keep in mind the following limitations:
   - The ``re_export`` and ``select`` forms are not

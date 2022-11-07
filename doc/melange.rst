@@ -118,7 +118,7 @@ values allowed are ``es6`` and ``commonjs``.
   ``<flags>`` is described in detail in the :ref:`ordered-set-language` section. It also supports
   ``(:include ...)`` forms. The default value for this field is taken from the environment and,
   as a result, it's recommended to write ``(flags ...)`` fields as
-  follows: ``(flags (:standard <my options>))``
+  follows: ``(flags :standard <my options>)``
 
 Limitations
 ===========

@@ -445,19 +445,20 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     let+ fn = E.target fn
     and+ s = E.string s in
     O.Write_file (fn, perm, s)
-  | Mkdir x ->
+  | Mkdir x -> (
     (* This code path should in theory be unreachable too, but we don't delete
        it to remember about the check in in case we expose [mkdir] in the syntax
        one day. *)
     let+ path = E.path x in
-    if not (Path.is_managed path) then
+    match Path.as_in_build_dir path with
+    | Some path -> O.Mkdir path
+    | None ->
       User_error.raise ~loc:(String_with_vars.loc x)
         [ Pp.text
             "(mkdir ...) is not supported for paths outside of the workspace:"
         ; Pp.seq (Pp.verbatim "  ")
             (Dune_lang.pp (List [ Dune_lang.atom "mkdir"; Dpath.encode path ]))
-        ];
-    O.Mkdir path
+        ])
   | Diff { optional; file1; file2; mode } ->
     let+ file1 = E.dep_if_exists file1
     and+ file2 =

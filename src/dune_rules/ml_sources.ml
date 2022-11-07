@@ -378,7 +378,8 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
             Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
               ~modules_field:mel.entries
               ~modules_without_implementation:Ordered_set_lang.standard
-              ~root_module:None ~kind:Modules_field_evaluator.Exe_or_normal_lib
+              ~root_module:mel.root_module
+              ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
           in
           Modules_group.melange_wrapped ~src_dir:dir ~modules

@@ -259,7 +259,7 @@ module V2 = struct
       let fn = Path.Source.relative path Source_tree.Dune_file.fname in
       if
         Io.with_lexbuf_from_file (Path.source fn)
-          ~f:Dune_lang.Dune_lexer.is_script
+          ~f:Dune_lang.Dune_file_script.is_script
       then
         User_warning.emit
           ~loc:(Loc.in_file (Path.source fn))

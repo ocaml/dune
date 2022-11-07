@@ -304,21 +304,15 @@ coq.pp
 
 Authors of Coq plugins often need to write ``.mlg`` files to extend the Coq
 grammar. Such files are preprocessed with the ``coqpp`` binary. To help plugin
-authors avoid writing boilerplate, we provide a ``(coqpp ...)`` stanza:
+authors avoid writing boilerplate, we provide a ``(coq.pp ...)`` stanza:
 
 .. code:: scheme
 
-    (coq.pp (modules <mlg_list>))
+    (coq.pp
+     (modules <ordered_set_lang>))
 
-which, for each ``g_mod`` in ``<mlg_list>``, is equivalent to the following
-rule:
-
-.. code:: lisp
-
-    (rule
-     (targets g_mod.ml)
-     (deps (:mlg-file g_mod.mlg))
-     (action (run coqpp %{mlg-file})))
+This will run the ``coqpp`` binary on all the ``.mlg`` files in
+``<ordered_set_lang>``.
 
 .. _examples:
 

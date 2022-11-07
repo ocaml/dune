@@ -364,7 +364,7 @@ let setup_html sctx (odoc_file : odoc_artefact) =
              (Action.Full.make
                 (Action.Progn
                    [ Action.Remove_tree to_remove
-                   ; Action.Mkdir (Path.build odoc_file.html_dir)
+                   ; Action.Mkdir odoc_file.html_dir
                    ])))
        :: run_odoc :: dummy))
 

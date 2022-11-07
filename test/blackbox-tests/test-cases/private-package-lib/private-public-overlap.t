@@ -17,4 +17,10 @@ private library
   >  (modules))
   > EOF
 
-  $ dune build foo.cma
+  $ dune build @install
+  File "dune", line 3, characters 12-15:
+  3 |  (libraries bar)
+                  ^^^
+  Error: Library "bar" is private, it cannot be a dependency of a private
+  library attached to a package. You need to give "bar" a public name.
+  [1]

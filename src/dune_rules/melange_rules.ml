@@ -1,6 +1,15 @@
 open Import
 module CC = Compilation_context
 
+let make_js_name m =
+  match Module.file ~ml_kind:Impl m with
+  | Some s ->
+    Path.basename (Path.map_extension s ~f:(fun _ext -> Melange.js_ext))
+  | None ->
+    Code_error.raise
+      "trying to create js rule but could not find module source file"
+      [ ("module", Module.to_dyn m) ]
+
 let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
   let open Resolve.Memo.O in
   Command.Args.memo
@@ -24,10 +33,7 @@ let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
           let* source_modules = modules_group >>| Modules.impl_only in
           let of_module m =
             let output =
-              let name =
-                Module_name.Unique.artifact_filename (Module.obj_name m)
-                  ~ext:Melange.js_ext
-              in
+              let name = make_js_name m in
               Path.Build.relative dst_dir name
             in
             Dep.file (Path.build output)
@@ -54,10 +60,7 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
   in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
   let output =
-    let name =
-      Module_name.Unique.artifact_filename (Module.obj_name m)
-        ~ext:Melange.js_ext
-    in
+    let name = make_js_name m in
     Path.Build.relative dst_dir name
   in
   let obj_dir =

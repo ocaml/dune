@@ -12,6 +12,7 @@ module Emit : sig
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; flags : Ocaml_flags.Spec.t
+    ; root_module : (Loc.t * Module_name.t) option
     }
 
   val decode : t Dune_lang.Decoder.t

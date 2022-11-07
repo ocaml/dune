@@ -144,7 +144,7 @@ First, make sure that the :ref:`dune-project` file contains a
   (lang dune 3.6)
   (using melange 0.1)
 
-Next we need a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
+Next, write a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
 
 .. code:: scheme
 

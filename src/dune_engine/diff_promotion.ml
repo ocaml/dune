@@ -25,6 +25,13 @@ module File = struct
     ; dst : Path.Source.t
     }
 
+  let compare { src; staging; dst } t =
+    let open Ordering.O in
+    let= () = Path.Build.compare src t.src in
+    let= () = Option.compare Path.Build.compare staging t.staging in
+    let= () = Path.Source.compare dst t.dst in
+    Eq
+
   let in_staging_area source = Path.Build.append_source staging_area source
 
   let to_dyn { src; staging; dst } =
@@ -198,6 +205,12 @@ let filter_db files_to_promote db =
 
 let display files_to_promote =
   let open Fiber.O in
-  let files = load_db () |> filter_db files_to_promote |> List.rev in
-  let+ diff_opts = Fiber.sequential_map ~f:diff_for_file files in
-  List.iter diff_opts ~f:(Option.iter ~f:Print_diff.Diff.print)
+  let files = load_db () |> filter_db files_to_promote in
+  let module FileMap = Map.Make (File) in
+  let+ diff_opts =
+    Fiber.parallel_map files ~f:(fun file ->
+        let+ diff_opt = diff_for_file file in
+        Option.map diff_opt ~f:(fun diff -> (file, diff)))
+  in
+  diff_opts |> List.filter_opt |> FileMap.of_list_exn
+  |> FileMap.iter ~f:Print_diff.Diff.print

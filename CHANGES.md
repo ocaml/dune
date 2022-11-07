@@ -13,6 +13,9 @@ Unreleased
 - Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI
   colors. (#6340, fixes #6323, @MisterDA).
 
+- Forbid private libraries with `(package ..)` set from depending on private
+  libraries that don't belong to a package (#6385, fixes #6153, @rgrinberg)
+
 - Allow `Byte_complete` binaries to be installable (#4873, @AltGr, @rgrinberg)
 
 - Revive `$ dune external-lib-deps` under `$ dune describe external-lib-deps`.

@@ -52,6 +52,17 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
     Super_context.resolve_program sctx ~loc:None ~dir:build_dir
       ~hint:"opam install melange" "melc"
   in
+  let compiler =
+    match compiler with
+    | Ok _ -> compiler
+    | Error _ ->
+      User_error.raise
+        [ Pp.text
+            "Melange is being used in some dune stanzas but the melange \
+             compiler could not be found. Install it by running [opam install \
+             melange]."
+        ]
+  in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
   let output =
     let name =

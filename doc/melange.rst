@@ -152,7 +152,7 @@ Next, write a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
    (target output)
    (module_system es6))
 
-Finally, we need some ``.ml`` file:
+Finally, add a ``.ml`` source file to build:
 
 .. code:: bash
 

@@ -1,6 +1,7 @@
 *.ml*             text eol=lf linguist-language=OCaml
 *.rst             text eol=lf
 *.c               text eol=lf
+*.t               text eol=lf -linguist-detectable
 dune              text eol=lf
 dune.inc          text eol=lf
 .gitignore        text eol=lf

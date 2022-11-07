@@ -114,7 +114,7 @@ values allowed are ``es6`` and ``commonjs``.
   section.
 
 - ``(flags <flags>)`` specifies compilation flags to be passed to ``melc``, the
-  command line tool for the Melange compiler that produces the ``.js`` artifacts.
+  Melange compiler that produces the ``.js`` artifacts.
   ``<flags>`` is specified in the :ref:`ordered-set-language`. It also supports
   ``(:include ...)`` forms. The default value for is taken from the environment,
   as a result it's recommended to write ``(flags ...)`` fields as

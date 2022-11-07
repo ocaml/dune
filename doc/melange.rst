@@ -170,7 +170,7 @@ Now, run ``dune build output/melange__Hello.js``. Dune produces the following st
   ├── dune-project
   └── hello.ml
 
-One can then run the ``.js`` target:
+The resulting ``.js`` target can now be run:
 
 .. code:: bash
 

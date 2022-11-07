@@ -109,7 +109,7 @@ values allowed are ``es6`` and ``commonjs``.
   in the :ref:`preprocessing-spec` section.
 
 - ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor
-  dependencies preprocessor, i.e., if the preprocessor reads a generated file.
+  dependencies, e.g. if the preprocessor reads a generated file.
   The specification of dependencies is described in the :ref:`deps-field`
   section.
 

@@ -45,8 +45,8 @@ projects:
      (module_system <module_system>)
      <optional-fields>)
 
-``<target>`` is the name of the target folder that will be used to place or the
-JavaScript artifacts resulting from the build. In particular, the folder will be
+``<target>`` is the name of the folder where resulting JavaScript artifacts will
+be placed. In particular, the folder will be
 placed under ``_build/default/$path-to-directory-of-melange-emit-stanza``.
 
 The JavaScript artifacts will be placed following the file layout of the source

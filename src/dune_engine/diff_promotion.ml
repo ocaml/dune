@@ -181,9 +181,9 @@ let promote_files_registered_in_last_run files_to_promote =
 
 let diff_for_file (file : File.t) =
   let msg = User_message.Annots.empty in
-  let a = Path.source file.dst in
-  let b = File.correction_file file in
-  Print_diff.get msg a b
+  let original = Path.source file.dst in
+  let correction = File.correction_file file in
+  Print_diff.get msg original correction
 
 let filter_db files_to_promote db =
   match files_to_promote with

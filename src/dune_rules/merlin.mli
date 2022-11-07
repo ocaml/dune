@@ -52,7 +52,7 @@ val make :
   -> obj_dir:Path.Build.t Obj_dir.t
   -> dialects:Dialect.DB.t
   -> ident:Merlin_ident.t
-  -> modes:[ `Lib of Lib_mode.Map.Set.t | `Exe ]
+  -> modes:[ `Lib of Lib_mode.Map.Set.t | `Exe | `Melange_emit ]
   -> unit
   -> t
 

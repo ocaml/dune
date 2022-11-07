@@ -136,9 +136,11 @@ end = struct
     let+ generated_files =
       Memo.parallel_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
-          (* XXX What about mli files? *)
           | Coq_stanza.Coqpp.T { modules; _ } ->
-            Memo.return (List.map modules ~f:(fun m -> m ^ ".ml"))
+            let+ mlg_files = Coq_sources.mlg_files ~sctx ~dir ~modules in
+            List.rev_map mlg_files ~f:(fun mlg_file ->
+                Path.Build.set_extension mlg_file ~ext:".ml"
+                |> Path.Build.basename)
           | Coq_stanza.Extraction.T s ->
             Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
           | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)

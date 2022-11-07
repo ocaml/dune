@@ -445,10 +445,9 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let obj_dir = Library.obj_dir ~dir lib in
   let ctx = Super_context.context sctx in
   let* modules, pp =
-    Buildable_rules.modules_rules sctx lib.buildable expander ~dir scope
-      source_modules
-      ~lib_name:(Some (snd lib.name))
-      ~empty_intf_modules:`Lib
+    Buildable_rules.modules_rules sctx
+      (Library (lib.buildable, snd lib.name))
+      expander ~dir scope source_modules
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in

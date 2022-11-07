@@ -112,12 +112,20 @@ module Module = struct
     in
     let* ocaml = Dune_rules.Dir_contents.ocaml dir_contents in
     let stanza =
-      match Dune_rules.Ml_sources.lookup_stanza_module ocaml module_name with
+      match Dune_rules.Ml_sources.find_origin ocaml module_name with
       | None -> User_error.raise [ Pp.text "stanza not found for module" ]
       | Some m -> m
     in
     let* scope = Dune_rules.Scope.DB.find_by_dir dir in
     let* expander = Super_context.expander sctx ~dir in
+    let stanza =
+      match stanza with
+      | Executables exes -> `Executables exes
+      | Library lib -> `Library lib
+      | Melange _ ->
+        User_error.raise
+          [ Pp.text "melange modules cannot be loaded into toplevel" ]
+    in
     let* cctx, merlin =
       drop_rules @@ fun () ->
       match stanza with

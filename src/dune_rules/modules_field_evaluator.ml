@@ -119,9 +119,9 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
   in
   { errors; unimplemented_virt_modules }
 
-let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
-    ~virtual_modules ~private_modules ~existing_virtual_modules
-    ~allow_new_public_modules =
+let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
+    ~intf_only ~modules ~virtual_modules ~private_modules
+    ~existing_virtual_modules ~allow_new_public_modules =
   let { errors; unimplemented_virt_modules } =
     find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       ~existing_virtual_modules ~allow_new_public_modules
@@ -204,12 +204,12 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
     print
       [ Pp.text "These modules are declared virtual, but are missing." ]
       (unimplemented_virt_modules |> Module_name.Set.to_list
-      |> List.map ~f:(fun name -> (buildable.loc, name)))
+      |> List.map ~f:(fun name -> (stanza_loc, name)))
       [ Pp.text "You must provide an implementation for all of these modules." ];
     (if missing_intf_only <> [] then
-     match Ordered_set_lang.loc buildable.modules_without_implementation with
+     match Ordered_set_lang.loc modules_without_implementation with
      | None ->
-       User_error.raise ~loc:buildable.loc
+       User_error.raise ~loc:stanza_loc
          [ Pp.text "Some modules don't have an implementation."
          ; Pp.text "You need to add the following field to this stanza:"
          ; Pp.nop
@@ -241,15 +241,16 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
       ]
       spurious_modules_virtual [])
 
-let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
-    ~buildable:(conf : Buildable.t) ~private_modules ~kind ~src_dir =
+let eval ~modules:all_modules ~stanza_loc ~modules_field
+    ~modules_without_implementation ~root_module ~private_modules ~kind ~src_dir
+    =
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let fake_modules = ref Module_name.Map.empty in
-  let eval = eval ~loc:conf.loc ~fake_modules ~all_modules in
-  let modules = eval ~standard:all_modules conf.modules in
+  let eval = eval ~loc:stanza_loc ~fake_modules ~all_modules in
+  let modules = eval ~standard:all_modules modules_field in
   let intf_only =
-    eval ~standard:Module_name.Map.empty conf.modules_without_implementation
+    eval ~standard:Module_name.Map.empty modules_without_implementation
   in
   let allow_new_public_modules =
     match kind with
@@ -273,9 +274,9 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
         [ Pp.textf "Module %s is excluded but it doesn't exist."
             (Module_name.to_string m)
         ]);
-  check_invalid_module_listing ~buildable:conf ~intf_only ~modules
-    ~virtual_modules ~private_modules ~existing_virtual_modules
-    ~allow_new_public_modules;
+  check_invalid_module_listing ~stanza_loc ~modules_without_implementation
+    ~intf_only ~modules ~virtual_modules ~private_modules
+    ~existing_virtual_modules ~allow_new_public_modules;
   let all_modules =
     Module_name.Map.map modules ~f:(fun (_, m) ->
         let name = Module.Source.name m in
@@ -294,7 +295,7 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
         in
         Module.of_source m ~kind ~visibility)
   in
-  match conf.root_module with
+  match root_module with
   | None -> all_modules
   | Some (_, name) ->
     let module_ = Module.generated_root ~src_dir name in

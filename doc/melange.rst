@@ -110,7 +110,7 @@ values allowed are ``es6`` and ``commonjs``.
 
 - ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor
   dependencies, e.g. if the preprocessor reads a generated file.
-  The specification of dependencies is described in the :ref:`deps-field`
+  Dependency specification is described in the :ref:`deps-field`
   section.
 
 - ``(flags <flags>)`` specifies compilation flags to be passed to ``melc``, the

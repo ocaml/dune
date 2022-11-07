@@ -69,7 +69,7 @@ end = struct
   let rec capture = function
     | Run { dir; metadata; prog; args } -> (
       let+ output, code =
-        Process.run_capture ~dir ~env:Env.initial Capture prog args ~metadata
+        Process.run_capture ~dir ~env:Env.initial Return prog args ~metadata
       in
       match code with
       | 0 -> None

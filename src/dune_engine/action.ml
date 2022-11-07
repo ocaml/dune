@@ -72,7 +72,7 @@ struct
       List [ atom ("write-file" ^ File_perm.suffix perm); target x; string y ]
     | Rename (x, y) -> List [ atom "rename"; target x; target y ]
     | Remove_tree x -> List [ atom "remove-tree"; target x ]
-    | Mkdir x -> List [ atom "mkdir"; path x ]
+    | Mkdir x -> List [ atom "mkdir"; target x ]
     | Diff { optional; file1; file2; mode = Binary } ->
       assert (not optional);
       List [ atom "cmp"; path file1; target file2 ]

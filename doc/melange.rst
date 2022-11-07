@@ -49,7 +49,7 @@ projects:
 be placed. In particular, the folder will be
 placed under ``_build/default/$path-to-directory-of-melange-emit-stanza``.
 
-The JavaScript artifacts will be placed following the file layout of the source
+The result of building a  ``melange.emit`` stanza will match the file structure of the source
 tree. For example, given the following source tree:
 
 .. code:: bash

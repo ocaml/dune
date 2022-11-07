@@ -120,6 +120,10 @@ values allowed are ``es6`` and ``commonjs``.
   as a result, it's recommended to write ``(flags ...)`` fields as
   follows: ``(flags :standard <my options>)``
 
+- ``(root_module <module>)`` specifies a ``root_module`` that collects all
+  listed dependencies in ``libraries``. See the documentation for
+  ``root_module`` in the :ref:`library` stanza.
+
 Limitations
 ===========
 

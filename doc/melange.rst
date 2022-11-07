@@ -97,8 +97,8 @@ values allowed are ``es6`` and ``commonjs``.
   - The ``re_export`` and ``select`` forms are not
   supported.
 
-- ``(package <package>)`` allows to define to which JavaScript package the
-  artifacts produced by the ``melange.emit`` stanza will belong to. This is
+- ``(package <package>)`` allows to define the JavaScript package to which the 
+  artifacts produced by the ``melange.emit`` stanza will belong. This is
   useful when the ``libraries`` field includes a public library, as it helps
   making sure that the modules from the ``libraries`` and the ``entries`` fields that are part
   of the ``melange.emit`` stanza belong to the same resulting JavaScript

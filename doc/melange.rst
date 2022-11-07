@@ -134,7 +134,7 @@ Limitations
 Simple Project
 --------------
 
-Let see how a simple project with Melange and Dune would look like.
+Let's look at building a simple project with Melange and Dune.
 
 First, make sure we have a :ref:`dune-project` file with a Melange lang stanza
 present:

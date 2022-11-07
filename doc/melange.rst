@@ -123,12 +123,6 @@ values allowed are ``es6`` and ``commonjs``.
 Limitations
 ===========
 
-- JavaScript "monorepos" are not supported, so the use case of having multiple
-  JavaScript packages produced by Melange in a single project (i.e.
-  `Yarn <https://classic.yarnpkg.com/blog/2017/08/02/introducing-workspaces/>`_
-  or `npm <https://docs.npmjs.com/cli/v7/using-npm/workspaces>`_ workspaces) is
-  not guaranteed to work.
-
 - Libraries that are placed above the directory where the ``melange.emit``
   stanza is located can not be used, due to the file layout requirements
   mentioned above in the ``target`` field description.

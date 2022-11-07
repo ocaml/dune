@@ -71,7 +71,7 @@ The resulting layout in ``_build/default`` will be as follows:
         ├── lib__Helper.js
         └── lib.js
 
-``<module_system>`` specifies the JavaScript import and export formats used. The
+``<module_system>`` specifies the JavaScript import and export format used. The
 values allowed are ``es6`` and ``commonjs``.
 
   - ``es6`` will follow `JavaScript modules <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules>`_,

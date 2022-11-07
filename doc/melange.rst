@@ -100,7 +100,7 @@ values allowed are ``es6`` and ``commonjs``.
 - ``(package <package>)`` allows to define to which JavaScript package the
   artifacts produced by the ``melange.emit`` stanza will belong to. This is
   useful when the ``libraries`` field includes a public library, as it helps
-  making  sure the modules from the library and the entry modules that are part
+  making sure that the modules from the ``libraries`` and the ``entries`` fields that are part
   of the ``melange.emit`` stanza belong to the same resulting JavaScript
   package.
 

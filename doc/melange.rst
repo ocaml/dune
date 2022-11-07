@@ -34,7 +34,7 @@ to a :ref:`dune-project` file enables using the ``melange.emit`` stanza and the
 melange.emit
 ------------
 
-The Melange emit stanza allows to generate JavaScript from Melange libraries and
+The ``melange.emit`` stanza allows to generate JavaScript from Melange libraries and
 modules. It could be seen as the OCaml :ref:`executable` stanza, but for Melange
 projects:
 

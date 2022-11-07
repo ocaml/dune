@@ -35,7 +35,7 @@ melange.emit
 ------------
 
 The ``melange.emit`` stanza allows to generate JavaScript from Melange libraries and
-modules. It could be seen as the OCaml :ref:`executable` stanza, but for Melange
+modules. It's analogous to the OCaml :ref:`executable` stanza, but for Melange
 projects:
 
 .. code:: scheme

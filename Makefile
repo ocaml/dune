@@ -45,7 +45,7 @@ help:
 release: $(BIN)
 	@$(BIN) build -p dune --profile dune-bootstrap
 
-$(BIN): boot/bootstrap.ml boot/libs.ml boot/duneboot.ml
+$(BIN):
 	@ocaml boot/bootstrap.ml
 
 dev: $(BIN)
@@ -103,15 +103,15 @@ test-all: $(BIN)
 
 .PHONY: check
 check: $(BIN)
-	$(BIN) build @check
+	@$(BIN) build @check
 
 .PHONY: fmt
 fmt: $(BIN)
-	$(BIN) fmt
+	@$(BIN) fmt
 
 .PHONY: promote
 promote: $(BIN)
-	$(BIN) promote
+	@$(BIN) promote
 
 .PHONY: accept-corrections
 accept-corrections: promote

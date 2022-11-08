@@ -12,6 +12,7 @@ module Emit = struct
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; flags : Ocaml_flags.Spec.t
+    ; root_module : (Loc.t * Module_name.t) option
     }
 
   let decode_lib =
@@ -74,7 +75,8 @@ module Emit = struct
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
-       and+ flags = Ocaml_flags.Spec.decode in
+       and+ flags = Ocaml_flags.Spec.decode
+       and+ root_module = field_o "root_module" Module_name.decode_loc in
        let preprocess =
          let init =
            let f libname = Preprocess.With_instrumentation.Ordinary libname in
@@ -95,5 +97,6 @@ module Emit = struct
        ; preprocess
        ; preprocessor_deps
        ; flags
+       ; root_module
        })
 end

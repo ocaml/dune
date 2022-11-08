@@ -1077,7 +1077,8 @@ repository. You can use the following workflow to update your test:
 - Update the code of your test.
 - Run ``dune runtest``. The diff action will fail and a diff will
   be printed.
-- Check the diff to make sure it's what you expect.
+- Check the diff to make sure it's what you expect. This diff can be displayed
+  again by running ``dune promotion diff``.
 - Run ``dune promote``. This will copy the generated ``data.out``
   file to ``data.expected`` directly in the source tree.
 

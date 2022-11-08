@@ -16,7 +16,9 @@ let server (where : Unix.sockaddr) =
     Path.unlink_no_err p;
     Path.mkdir_p (Path.parent_exn p)
   | _ -> ());
-  Server.create where ~backlog:10
+  match Server.create where ~backlog:10 with
+  | Ok t -> t
+  | Error `Already_in_use -> assert false
 
 let client where = Csexp_rpc.Client.create where
 

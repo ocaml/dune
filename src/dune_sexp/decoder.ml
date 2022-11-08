@@ -474,7 +474,8 @@ let triple a b c =
 let unit_number_generic ~of_string ~mul name suffixes =
   let unit_number_of_string ~loc s =
     let possible_suffixes () =
-      String.concat ~sep:", " (List.map ~f:fst suffixes)
+      (* We take the first suffix in the list to be the suggestion *)
+      String.concat ~sep:", " (List.map ~f:(fun x -> List.hd @@ fst x) suffixes)
     in
     let n, suffix =
       let f c = not (Char.is_digit c) in
@@ -483,6 +484,10 @@ let unit_number_generic ~of_string ~mul name suffixes =
         User_error.raise ~loc
           [ Pp.textf "missing suffix, use one of %s" (possible_suffixes ()) ]
       | Some i -> String.split_n s i
+    in
+    let suffixes =
+      List.map ~f:(fun (xs, y) -> List.map ~f:(fun x -> (x, y)) xs) suffixes
+      |> List.flatten
     in
     let factor =
       match List.assoc suffixes suffix with
@@ -502,17 +507,10 @@ let unit_number_int64 =
   let of_string s = Int64.of_string_opt s in
   unit_number_generic ~of_string ~mul:Int64.mul
 
-let duration = unit_number "Duration" [ ("s", 1); ("m", 60); ("h", 60 * 60) ]
+let duration =
+  unit_number "Duration" [ ([ "s" ], 1); ([ "m" ], 60); ([ "h" ], 60 * 60) ]
 
-(* CR-someday amokhov: Add KiB, MiB, GiB. *)
-let bytes_unit =
-  unit_number_int64 "Byte amount"
-    [ ("B", 1L)
-    ; ("kB", 1000L)
-    ; ("KB", 1000L)
-    ; ("MB", 1000_000L)
-    ; ("GB", 1000_000_000L)
-    ]
+let bytes_unit = unit_number_int64 "Byte amount" Bytes_unit.conversion_table
 
 let maybe t = t >>| Option.some <|> return None
 

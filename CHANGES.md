@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow promoting into source directories specified by `subdir` (#6404, fixes
+  #3502, @rgrinberg)
+
 - Make dune describe workspace return the correct root path
   (#6380, fixes #6379, @esope)
 
@@ -12,6 +15,9 @@ Unreleased
 
 - Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI
   colors. (#6340, fixes #6323, @MisterDA).
+
+- Forbid private libraries with `(package ..)` set from depending on private
+  libraries that don't belong to a package (#6385, fixes #6153, @rgrinberg)
 
 - Allow `Byte_complete` binaries to be installable (#4873, @AltGr, @rgrinberg)
 
@@ -39,6 +45,14 @@ Unreleased
 
 - Add `(glob_files <glob>)` and `(glob_files_rec <glob>)` terms to the `files`
   field of the `install` stanza (#6250, closes #6018, @gridbugs)
+
+- Allow `:standard` in the `(modules)` field of the `coq.pp` stanza (#6229,
+  fixes #2414, @Alizter)
+
+- Extend the promotion CLI to a `dune promotion` group: `dune promote` is moved
+  to `dune promotion apply` (the former still works) and the new `dune promotion
+  diff` command can be used to just display the promotion without applying it.
+  (#6160, fixes #5368, @emillon)
 
 3.5.0 (2022-10-19)
 ------------------

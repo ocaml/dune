@@ -44,3 +44,5 @@ type files_to_promote =
   | These of Path.Source.t list * (Path.Source.t -> unit)
 
 val promote_files_registered_in_last_run : files_to_promote -> unit
+
+val display : files_to_promote -> unit Fiber.t

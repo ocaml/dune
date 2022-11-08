@@ -618,6 +618,7 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
   Fiber.finalize
     (fun () ->
       let open Fiber.O in
+      Path.parent dst |> Option.iter ~f:Path.mkdir_p;
       let* has_subst =
         copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file ()
       in

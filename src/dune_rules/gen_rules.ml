@@ -445,9 +445,11 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
                 in
                 let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
                 Memo.parallel_iter subdirs ~f:(fun dc ->
-                    gen_rules sctx dir_contents cctxs ~source_dir
-                      ~dir:(Dir_contents.dir dc)
-                    >>| ignore))
+                    let+ (_ : (Loc.t * Compilation_context.t) list) =
+                      gen_rules sctx dir_contents cctxs ~source_dir
+                        ~dir:(Dir_contents.dir dc)
+                    in
+                    ()))
           in
           Memo.return (Rules.union rules rules')
         in

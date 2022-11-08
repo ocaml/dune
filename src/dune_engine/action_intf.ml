@@ -51,7 +51,7 @@ module type Ast = sig
     | Write_file of target * File_perm.t * string
     | Rename of target * target
     | Remove_tree of target
-    | Mkdir of path
+    | Mkdir of target
     | Diff of (path, target) Diff.t
     | Merge_files_into of path list * string list * target
     | Pipe of Outputs.t * t list
@@ -109,7 +109,7 @@ module type Helpers = sig
 
   val remove_tree : target -> t
 
-  val mkdir : path -> t
+  val mkdir : target -> t
 
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
 end

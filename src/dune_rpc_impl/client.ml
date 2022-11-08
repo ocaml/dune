@@ -16,7 +16,8 @@ module Connection = struct
     | Error exn ->
       Error
         (User_error.make
-           [ Pp.text "failed to connect to RPC server %s"
+           [ Pp.textf "failed to connect to RPC server %s"
+               (Where.to_string where)
            ; Exn_with_backtrace.pp exn
            ])
 

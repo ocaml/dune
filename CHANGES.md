@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow promoting into source directories specified by `subdir` (#6404, fixes
+  #3502, @rgrinberg)
+
 - Make dune describe workspace return the correct root path
   (#6380, fixes #6379, @esope)
 

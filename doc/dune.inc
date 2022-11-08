@@ -1,5 +1,14 @@
 
 (rule
+ (with-stdout-to dune-promote.1
+  (run dune promote --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-promote.1))
+
+(rule
  (with-stdout-to dune-test.1
   (run dune test --help=groff)))
 
@@ -169,15 +178,6 @@
  (section man)
  (package dune)
  (files   dune-printenv.1))
-
-(rule
- (with-stdout-to dune-promote.1
-  (run dune promote --help=groff)))
-
-(install
- (section man)
- (package dune)
- (files   dune-promote.1))
 
 (rule
  (with-stdout-to dune-promotion.1

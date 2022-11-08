@@ -195,8 +195,12 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
 
 (* Adapted from
    https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
-let command_alias cmd term name =
-  let orig = Cmd.name cmd in
+let command_alias ?orig_name cmd term name =
+  let orig =
+    match orig_name with
+    | Some s -> s
+    | None -> Cmd.name cmd
+  in
   let doc = Printf.sprintf "An alias for $(b,%s)." orig in
   let man =
     [ `S "DESCRIPTION"

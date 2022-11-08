@@ -17,23 +17,14 @@ let files_to_promote ~common files : Diff_promotion.files_to_promote =
     in
     These (files, on_missing)
 
-module Promote = struct
-  let term =
-    let+ common = Common.term
-    and+ files =
-      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE")
-    in
-    let _config = Common.init common in
-    let files_to_promote = files_to_promote ~common files in
-    Diff_promotion.promote_files_registered_in_last_run files_to_promote
-
-  let command =
+module Apply = struct
+  let info =
     let doc = "Promote files from the last run" in
     let man =
       [ `S "DESCRIPTION"
       ; `P
           {|Considering all actions of the form $(b,(diff a b)) that failed
-           in the last run of dune, $(b,dune promote) does the following:
+           in the last run of dune, $(b,dune promotion apply) does the following:
 
            If $(b,a) is present in the source tree but $(b,b) isn't, $(b,b) is
            copied over to $(b,a) in the source tree. The idea behind this is that
@@ -43,13 +34,18 @@ module Promote = struct
       ; `Blocks Common.help_secs
       ]
     in
-    Cmd.v (Cmd.info "promote" ~doc ~man) term
-end
+    Cmd.info ~doc ~man "apply"
 
-module Apply = struct
-  let info = Cmd.info "apply"
+  let term =
+    let+ common = Common.term
+    and+ files =
+      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE")
+    in
+    let _config = Common.init common in
+    let files_to_promote = files_to_promote ~common files in
+    Diff_promotion.promote_files_registered_in_last_run files_to_promote
 
-  let command = Cmd.v info Promote.term
+  let command = Cmd.v info term
 end
 
 module Diff = struct
@@ -72,4 +68,5 @@ let info = Cmd.info "promotion"
 
 let group = Cmd.group info [ Apply.command; Diff.command ]
 
-let promote = Promote.command
+let promote =
+  command_alias ~orig_name:"promotion apply" Apply.command Apply.term "promote"

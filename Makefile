@@ -25,7 +25,8 @@ ppx_inline_test \
 ppxlib \
 result \
 ctypes \
-"utop>=2.6.0"
+"utop>=2.6.0" \
+ "melange>=0.3.0"
 
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
@@ -70,10 +71,7 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
-melange:
-	opam pin add melange https://github.com/melange-re/melange.git#922953e9b4ed30e080d9c08b3b6bffc6b1d11c63
-
-dev-deps: melange
+dev-deps:
 	opam install -y $(TEST_DEPS)
 
 .PHONY: dev-switch

@@ -33,7 +33,7 @@ module Buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
     ; coq_lang_version : Dune_sexp.Syntax.Version.t
-    ; mode : Loc.t * Coq_mode.t
+    ; mode : Coq_mode.t option
     ; use_stdlib : bool
     ; plugins : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
@@ -57,12 +57,9 @@ module Buildable = struct
     let+ loc = loc
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ mode =
-      let default =
-        if coq_lang_version < (0, 3) then Coq_mode.Legacy else Coq_mode.VoOnly
-      in
-      located
-        (field "mode" ~default
-           (Dune_lang.Syntax.since coq_syntax (0, 3) >>> Coq_mode.decode))
+      field_o "mode"
+        (Dune_lang.Syntax.since coq_syntax (0, 3)
+        >>> Coq_mode.decode ~coq_syntax)
     and+ use_stdlib =
       field ~default:true "stdlib"
         (Dune_lang.Syntax.since coq_syntax (0, 6)

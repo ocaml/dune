@@ -35,50 +35,41 @@ type command =
   }
 
 module Job : sig
-  type _ t
+  type t
 
-  val run : command -> unit t
+  val fail : User_message.t -> t
 
-  val fail : User_message.t -> _ t
+  val ( <|> ) : command -> t -> t
 
-  val ( <|> ) : unit t -> 'a t -> 'a t
+  val exec : t -> _ Fiber.t
 
-  val exec : 'a t -> 'a Fiber.t
-
-  val capture : unit t -> Diff.t option Fiber.t
+  val capture : t -> Diff.t option Fiber.t
 end = struct
-  type _ t =
-    | Run : command -> unit t
-    | Fail : User_message.t -> _ t
-    | Or : (unit t * 'a t) -> 'a t
+  type t =
+    { commands : command list
+    ; error : User_message.t
+    }
 
-  let run c = Run c
+  let ( <|> ) command { commands; error } =
+    { commands = command :: commands; error }
 
-  let fail e = Fail e
+  let fail error = { commands = []; error }
 
-  let ( <|> ) a b = Or (a, b)
-
-  let rec exec : type a. a t -> a Fiber.t = function
-    | Run { dir; metadata; prog; args } ->
-      Process.run ~dir ~env:Env.initial Strict prog args ~metadata
-    | Fail e -> raise (User_error.E e)
-    | Or (a, b) ->
-      let* () = exec a in
-      exec b
+  let rec exec = function
+    | { commands = []; error } -> raise (User_error.E error)
+    | { commands = { dir; metadata; prog; args } :: commands; error } ->
+      let* () = Process.run ~dir ~env:Env.initial Strict prog args ~metadata in
+      exec { commands; error }
 
   let rec capture = function
-    | Run { dir; metadata; prog; args } -> (
-      let+ output, code =
+    | { commands = []; error = _ } -> Fiber.return None
+    | { commands = { dir; metadata; prog; args } :: commands; error } -> (
+      let* output, code =
         Process.run_capture ~dir ~env:Env.initial Return prog args ~metadata
       in
       match code with
-      | 0 -> None
-      | 1 -> Some { Diff.output; loc = metadata.loc }
-      | _ -> None)
-    | Fail _ -> Fiber.return None
-    | Or (a, b) ->
-      let* r = capture a in
-      if Option.is_some r then Fiber.return r else capture b
+      | 1 -> Fiber.return (Some { Diff.output; loc = metadata.loc })
+      | _ -> capture { commands; error })
 end
 
 let prepare ~skip_trailing_cr annots path1 path2 =
@@ -97,7 +88,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
       ?(metadata =
         Process.create_metadata ~purpose:Internal_job ~loc ~annots ()) prog args
       =
-    run { dir; prog; args; metadata }
+    { dir; prog; args; metadata }
   in
   let file1, file2 = Path.(to_string file1, to_string file2) in
   let fallback =

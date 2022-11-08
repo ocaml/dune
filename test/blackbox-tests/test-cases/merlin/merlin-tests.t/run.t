@@ -14,7 +14,7 @@ CRAM sanitization
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
    (B
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
    (S lib/findlib)
    (S /OCAMLC_WHERE)
    (S

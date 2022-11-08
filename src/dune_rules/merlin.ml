@@ -207,25 +207,20 @@ module Processed = struct
            extensions)
 end
 
-let obj_dir_of_lib kind modes obj_dir =
+let obj_dir_of_lib modes obj_dir =
   (match
-     let mode =
-       match modes with
-       | `Exe -> `Byte
-       | `Melange_emit -> `Melange
-       | `Lib modes ->
-         if
-           Lib_mode.Map.Set.equal modes
-             { ocaml = Ocaml.Mode.Dict.make_both false; melange = true }
-         then `Melange
-         else `Byte
-     in
-     (kind, mode)
+     match modes with
+     | `Exe -> `Byte
+     | `Melange_emit -> `Melange
+     | `Lib modes ->
+       if
+         Lib_mode.Map.Set.equal modes
+           { ocaml = Ocaml.Mode.Dict.make_both false; melange = true }
+       then `Melange
+       else `Byte
    with
-  | `Private, `Byte -> Obj_dir.byte_dir
-  | `Public, `Byte -> Obj_dir.public_cmi_ocaml_dir
-  | `Private, `Melange -> Obj_dir.melange_dir
-  | `Public, `Melange -> Obj_dir.public_cmi_melange_dir)
+  | `Byte -> Obj_dir.byte_dir
+  | `Melange -> Obj_dir.melange_dir)
     obj_dir
 
 module Unprocessed = struct
@@ -262,8 +257,7 @@ module Unprocessed = struct
       | Error () -> Lib.Set.empty
     in
     let objs_dirs =
-      Path.Set.singleton
-      @@ obj_dir_of_lib `Private modes (Obj_dir.of_local obj_dir)
+      Path.Set.singleton @@ obj_dir_of_lib modes (Obj_dir.of_local obj_dir)
     in
     let flags =
       Ocaml_flags.common
@@ -398,7 +392,7 @@ module Unprocessed = struct
                   ( Path.Set.union src_dirs more_src_dirs
                   , let public_cmi_dir =
                       let info = Lib.info lib in
-                      obj_dir_of_lib `Public
+                      obj_dir_of_lib
                         (`Lib (Lib_info.modes info))
                         (Lib_info.obj_dir info)
                     in

@@ -46,6 +46,10 @@ Unreleased
 - Allow `:standard` in the `(modules)` field of the `coq.pp` stanza (#6229,
   fixes #2414, @Alizter)
 
+- Fix merlin integration when private modules are used. Expose the private
+  directory to merlin which contains all cmt and cmti files. (#6405, fixes
+  #4892, @rgrinberg)
+
 3.5.0 (2022-10-19)
 ------------------
 

@@ -34,12 +34,12 @@ type command =
   ; args : string list
   }
 
-module Job : sig
+module With_fallback : sig
   type t
 
   val fail : User_message.t -> t
 
-  val ( <|> ) : command -> t -> t
+  val run : command -> fallback:t -> t
 
   val exec : t -> _ Fiber.t
 
@@ -50,7 +50,7 @@ end = struct
     ; error : User_message.t
     }
 
-  let ( <|> ) command { commands; error } =
+  let run command ~fallback:{ commands; error } =
     { commands = command :: commands; error }
 
   let fail error = { commands = []; error }
@@ -83,16 +83,15 @@ let prepare ~skip_trailing_cr annots path1 path2 =
     | _ -> (Path.root, path1, path2)
   in
   let loc = Loc.in_file file1 in
-  let open Job in
-  let command ?(dir = dir)
+  let run ?(dir = dir)
       ?(metadata =
         Process.create_metadata ~purpose:Internal_job ~loc ~annots ()) prog args
-      =
-    { dir; prog; args; metadata }
+      ~fallback =
+    With_fallback.run { dir; prog; args; metadata } ~fallback
   in
   let file1, file2 = Path.(to_string file1, to_string file2) in
   let fallback =
-    fail
+    With_fallback.fail
       (User_error.make ~loc ~annots
          [ Pp.textf "Files %s and %s differ."
              (Path.to_string_maybe_quoted
@@ -134,7 +133,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
         if skip_trailing_cr then args @ [ skip_trailing_cr_arg ] else args
       in
       let args = args @ files in
-      command ~dir path args <|> fallback
+      run ~dir path args ~fallback
   in
   match !Clflags.diff_command with
   | Some "-" -> fallback
@@ -145,23 +144,24 @@ let prepare ~skip_trailing_cr annots path1 path2 =
         (String.quote_for_shell file1)
         (String.quote_for_shell file2)
     in
-    command sh [ arg; cmd ]
-    <|> fail
-          (User_error.make ~loc ~annots
-             [ Pp.textf "command reported no differences: %s"
-                 (if Path.is_root dir then cmd
-                 else
-                   sprintf "cd %s && %s"
-                     (String.quote_for_shell (Path.to_string dir))
-                     cmd)
-             ])
+    run sh [ arg; cmd ]
+      ~fallback:
+        (With_fallback.fail
+           (User_error.make ~loc ~annots
+              [ Pp.textf "command reported no differences: %s"
+                  (if Path.is_root dir then cmd
+                  else
+                    sprintf "cd %s && %s"
+                      (String.quote_for_shell (Path.to_string dir))
+                      cmd)
+              ]))
   | None -> (
     if Config.inside_dune then fallback
     else
       match Bin.which ~path:(Env.path Env.initial) "patdiff" with
       | None -> normal_diff ()
       | Some prog ->
-        command prog
+        run prog
           ([ "-keep-whitespace"; "-location-style"; "omake" ]
           @ (if Lazy.force Ansi_color.stderr_supports_color then []
             else [ "-ascii" ])
@@ -179,13 +179,14 @@ let prepare ~skip_trailing_cr annots path1 path2 =
                  (User_message.Annots.set annots
                     User_message.Annots.has_embedded_location ())
                ())
-        <|> (* Use "diff" if "patdiff" reported no differences *)
-        normal_diff ())
+          ~fallback:
+            ((* Use "diff" if "patdiff" reported no differences *)
+             normal_diff ()))
 
 let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
   let p = prepare ~skip_trailing_cr annots path1 path2 in
-  Job.exec p
+  With_fallback.exec p
 
 let get ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
   let p = prepare ~skip_trailing_cr annots path1 path2 in
-  Job.capture p
+  With_fallback.capture p

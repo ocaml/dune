@@ -13,7 +13,8 @@ with_timeout () {
     exit_code=$?
     if [ "$exit_code" = 124 ]
     then
-        printf "Timed out"
+        echo Timed out
+        cat .#dune-output
     else
         return "$exit_code"
     fi

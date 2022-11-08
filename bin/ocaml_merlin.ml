@@ -207,7 +207,9 @@ let term =
              debugging purposes only and should not be considered as a stable \
              output.")
   in
-  let common = Common.set_print_directory common false in
+  let common =
+    Common.set_print_directory common false |> Common.forbid_builds
+  in
   let config = Common.init common ~log_file:No_log_file in
   Scheduler.go ~common ~config (fun () ->
       match dump_config with

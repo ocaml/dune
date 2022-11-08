@@ -4,7 +4,15 @@ val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
 
-val rpc : t -> Dune_rpc_impl.Server.t
+val rpc :
+     t
+  -> [ `Allow of Dune_rpc_impl.Server.t
+       (** Will run rpc if in watch mode and acquire the build lock *)
+     | `Forbid_builds
+       (** Promise not to build anything. For now, this isn't checked *)
+     ]
+
+val forbid_builds : t -> t
 
 val stats : t -> Dune_stats.t option
 

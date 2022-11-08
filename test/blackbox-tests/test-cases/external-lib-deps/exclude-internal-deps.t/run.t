@@ -4,5 +4,5 @@ print only the external libraries by dir.
 
   $ dune describe external-lib-deps
   (default
-   ((. ((a________ required)))
-    (lib ((a________ required)))))
+   ((. ((a required)))
+    (lib ((a required)))))

@@ -21,7 +21,7 @@ module Apply = struct
   let info =
     let doc = "Promote files from the last run" in
     let man =
-      [ `S "DESCRIPTION"
+      [ `S Cmdliner.Manpage.s_description
       ; `P
           {|Considering all actions of the form $(b,(diff a b)) that failed
            in the last run of dune, $(b,dune promotion apply) does the following:
@@ -49,7 +49,7 @@ module Apply = struct
 end
 
 module Diff = struct
-  let info = Cmd.info "diff"
+  let info = Cmd.info ~doc:"List promotions to be applied" "diff"
 
   let term =
     let+ common = Common.term
@@ -64,7 +64,9 @@ module Diff = struct
   let command = Cmd.v info term
 end
 
-let info = Cmd.info "promotion"
+let info =
+  Cmd.info ~doc:"Control how changes are propagated back to source code."
+    "promotion"
 
 let group = Cmd.group info [ Apply.command; Diff.command ]
 

@@ -58,9 +58,9 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
     | Error _ ->
       User_error.raise
         [ Pp.text
-            "Melange is being used in some dune stanzas but the melange \
-             compiler could not be found. Install it by running [opam install \
-             melange]."
+            "A melange.emit stanza was found, but the melange compiler melc is \
+             not available. Either install it by running [opam install \
+             melange], or remove the melange.emit stanzas from the project."
         ]
   in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in

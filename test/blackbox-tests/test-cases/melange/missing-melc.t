@@ -22,8 +22,9 @@ For melange.emit stanzas
   $ melc_path_tmp="$melc_path.tmp"
   $ mv $melc_path $melc_path_tmp
   $ dune build output/melange__Main.js
-  Error: Melange is being used in some dune stanzas but the melange compiler
-  could not be found. Install it by running [opam install melange].
+  Error: A melange.emit stanza was found, but the melange compiler melc is not
+  available. Either install it by running [opam install melange], or remove the
+  melange.emit stanzas from the project.
   [1]
   $ mv $melc_path_tmp $melc_path
 
@@ -85,7 +86,8 @@ But if melange.emit stanza is found, build will fail eagerly
   $ melc_path_tmp="$melc_path.tmp"
   $ mv $melc_path $melc_path_tmp
   $ dune exec ./main.exe
-  Error: Melange is being used in some dune stanzas but the melange compiler
-  could not be found. Install it by running [opam install melange].
+  Error: A melange.emit stanza was found, but the melange compiler melc is not
+  available. Either install it by running [opam install melange], or remove the
+  melange.emit stanzas from the project.
   [1]
   $ mv $melc_path_tmp $melc_path

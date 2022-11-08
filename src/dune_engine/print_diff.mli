@@ -19,4 +19,4 @@ val get :
   -> User_message.Annots.t
   -> Path.t
   -> Path.t
-  -> Diff.t option Fiber.t
+  -> (Diff.t, User_message.t) result Fiber.t

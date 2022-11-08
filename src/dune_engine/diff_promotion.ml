@@ -210,7 +210,9 @@ let display files_to_promote =
   let+ diff_opts =
     Fiber.parallel_map files ~f:(fun file ->
         let+ diff_opt = diff_for_file file in
-        Option.map diff_opt ~f:(fun diff -> (file, diff)))
+        match diff_opt with
+        | Ok diff -> Some (file, diff)
+        | Error _ -> None)
   in
   diff_opts |> List.filter_opt |> FileMap.of_list_exn
   |> FileMap.iter ~f:Print_diff.Diff.print

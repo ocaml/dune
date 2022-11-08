@@ -43,7 +43,7 @@ module Job : sig
 
   val exec : t -> _ Fiber.t
 
-  val capture : t -> Diff.t option Fiber.t
+  val capture : t -> (Diff.t, User_message.t) result Fiber.t
 end = struct
   type t =
     { commands : command list
@@ -62,13 +62,13 @@ end = struct
       exec { commands; error }
 
   let rec capture = function
-    | { commands = []; error = _ } -> Fiber.return None
+    | { commands = []; error } -> Fiber.return (Error error)
     | { commands = { dir; metadata; prog; args } :: commands; error } -> (
       let* output, code =
         Process.run_capture ~dir ~env:Env.initial Return prog args ~metadata
       in
       match code with
-      | 1 -> Fiber.return (Some { Diff.output; loc = metadata.loc })
+      | 1 -> Fiber.return (Ok { Diff.output; loc = metadata.loc })
       | _ -> capture { commands; error })
 end
 

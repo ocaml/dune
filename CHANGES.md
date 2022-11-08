@@ -49,6 +49,11 @@ Unreleased
 - Allow `:standard` in the `(modules)` field of the `coq.pp` stanza (#6229,
   fixes #2414, @Alizter)
 
+- Extend the promotion CLI to a `dune promotion` group: `dune promote` is moved
+  to `dune promotion apply` (the former still works) and the new `dune promotion
+  diff` command can be used to just display the promotion without applying it.
+  (#6160, fixes #5368, @emillon)
+
 3.5.0 (2022-10-19)
 ------------------
 

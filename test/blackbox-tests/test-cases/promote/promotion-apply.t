@@ -24,7 +24,7 @@
   [1]
   $ cat a.expected
   Expected
-  $ dune promotion run
+  $ dune promotion apply
   Promoting _build/default/a.actual to a.expected.
   $ cat a.expected
   Actual

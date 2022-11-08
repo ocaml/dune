@@ -46,8 +46,8 @@ module Promote = struct
     Cmd.v (Cmd.info "promote" ~doc ~man) term
 end
 
-module Run = struct
-  let info = Cmd.info "run"
+module Apply = struct
+  let info = Cmd.info "apply"
 
   let command = Cmd.v info Promote.term
 end
@@ -70,6 +70,6 @@ end
 
 let info = Cmd.info "promotion"
 
-let group = Cmd.group info [ Run.command; Diff.command ]
+let group = Cmd.group info [ Apply.command; Diff.command ]
 
 let promote = Promote.command

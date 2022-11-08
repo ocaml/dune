@@ -589,7 +589,7 @@ to use the :ref:`include_subdirs` stanza.
   when writing libraries for the OCaml toplevel. It can also be used to define
   libraries that should be compiled with Melange (see :ref:`melange_main`). The
   following modes are available: ``byte``, ``native``, ``best``, and ``melange``.
-  ``best`` is ``native`` or ``byte`` when native compilation isn't available. 
+  ``best`` is ``native`` or ``byte`` when native compilation isn't available.
 
 - ``(no_dynlink)`` disables dynamic linking of the library. This is for
   advanced use only. By default, you shouldn't set this option.
@@ -1899,7 +1899,7 @@ Note that this feature is still experimental and needs to be enabled in your
 
 .. code:: scheme
 
-  (using mdx 0.2)
+  (using mdx 0.3)
 
 .. note:: Version ``0.2`` of the stanza requires mdx ``1.9.0``.
 
@@ -1938,6 +1938,7 @@ Where ``<optional-fields>`` are:
 
 - ``(locks <lock-names>)`` specifies that the action of running the tests
   holds the specified locks.  See the :ref:`locks` section for more details.
+  This requires version 0.3 of the stanza.
 
 Upgrading from Version 0.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

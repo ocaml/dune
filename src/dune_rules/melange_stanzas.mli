@@ -7,7 +7,7 @@ module Emit : sig
     ; target : string
     ; module_system : Melange.Module_system.t
     ; entries : Ordered_set_lang.t
-    ; libraries : Lib_dep.t list
+    ; libraries : Loc.t * Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list

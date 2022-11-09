@@ -179,6 +179,23 @@ let add_rules_for_libraries ~dir ~scope ~emit_stanza_dir ~sctx ~requires_link
                 (Path.Build.to_string emit_stanza_dir)
             ]
       in
+      let () =
+        let modes = Lib_info.modes info in
+        match modes.melange with
+        | false ->
+          User_error.raise ~loc:(fst mel.libraries)
+            [ Pp.textf
+                "The library '%s' was added as a dependency of the \
+                 melange.emit stanza with target '%s', but this library is not \
+                 compatible with melange. To fix this, either:\n\
+                 - add (modes melange) to the library stanza\n\
+                 - or remove the library from the libraries field in the \
+                 melange.emit stanza"
+                (Lib_name.to_string (Lib_info.name info))
+                mel.target
+            ]
+        | true -> ()
+      in
       let dst_dir =
         Melange.lib_output_dir ~emit_stanza_dir ~lib_dir ~target:mel.target
       in
@@ -214,7 +231,7 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   in
   Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
     [ (mel.loc, mel.target) ]
-    mel.libraries ~pps ~dune_version
+    (snd mel.libraries) ~pps ~dune_version
 
 let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let open Memo.O in

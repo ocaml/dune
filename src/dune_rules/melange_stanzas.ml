@@ -7,7 +7,7 @@ module Emit = struct
     ; target : string
     ; module_system : Melange.Module_system.t
     ; entries : Ordered_set_lang.t
-    ; libraries : Lib_dep.t list
+    ; libraries : Loc.t * Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
@@ -71,7 +71,7 @@ module Emit = struct
          field "module_system"
            (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
        and+ entries = Stanza_common.modules_field "entries"
-       and+ libraries = field "libraries" decode_lib ~default:[]
+       and+ libraries = located (field "libraries" decode_lib ~default:[])
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation

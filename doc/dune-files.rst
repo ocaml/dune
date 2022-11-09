@@ -14,7 +14,7 @@ The configuration file is normally ``~/.config/dune/config`` on Unix systems and
 ``%LOCALAPPDATA%/dune/config`` on Windows. However, it is possible to specify an
 alternative configuration file with the ``--config-file`` option.
 
-Command-line flags take precedence over the contents of the config file.
+Command-line flags take precedence over the contents of the ``config`` file.
 
 If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
 
@@ -25,7 +25,7 @@ It can contain the following stanzas:
 display
 -------
 
-Specify the amount of verbosity of Dune.
+Specify the amount of Dune’s verbosity.
 
 .. code:: scheme
 
@@ -33,13 +33,13 @@ Specify the amount of verbosity of Dune.
 
 where ``<setting>`` is one of:
 
-- ``progress`` Dune shows and update a status line as build goals are being
+- ``progress``, Dune shows and updates a status line as build goals are being
   completed (this is the default).
 
-- ``verbose`` print the full command lines of programs being executed by Dune,
+- ``verbose`` prints the full command lines of programs being executed by Dune,
   with some colors to help differentiate programs.
 
-- ``short`` print one line per command being executed, with the binary name on
+- ``short`` prints one line per executed command, with the binary name on
   the left and the reason it is being executed for on the right.
 
 - ``quiet`` only display errors.
@@ -67,7 +67,7 @@ where ``<setting>`` is one of:
 terminal-persistence
 --------------------
 
-Specify how Dune handles the terminal when a rebuild is triggered in watch mode.
+Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
 
 .. code:: scheme
 
@@ -75,20 +75,20 @@ Specify how Dune handles the terminal when a rebuild is triggered in watch mode.
 
 where ``<setting>`` is one of:
 
-- ``preserve`` do not clear terminal screen beteween rebuilds.
+- ``preserve`` does not clear the terminal screen beteween rebuilds.
 
-- ``clear-on-rebuild`` clear terminal screen between rebuilds.
+- ``clear-on-rebuild`` clears the terminal screen between rebuilds.
 
-- ``clear-on-rebuild-and-flush-history`` clear terminal between rebuilds, and
-  also delete everything in the scrollback buffer.
+- ``clear-on-rebuild-and-flush-history`` clears the terminal between rebuilds, and
+it also deletes everything in the scrollback buffer.
 
 .. _sandboxing_preference:
 
 sandboxing_preference
 ---------------------
 
-Your preferred sandboxing setting. Individual rules may specify different
-preferences, Dune will try to utilize a setting satisfying both conditions.
+The preferred sandboxing setting. Individual rules may specify different
+preferences. Dune will try to utilize a setting satisfying both conditions.
 
 .. code:: scheme
 
@@ -96,20 +96,20 @@ preferences, Dune will try to utilize a setting satisfying both conditions.
 
 where each ``<setting>`` can be one of:
 
-- ``none``, no sandboxing allowed.
+- ``none``, no sandboxing allowed
 
-- ``symlink``, using symbolic links.
+- ``symlink``, using symbolic links
 
-- ``copy``, using file copies.
+- ``copy``, using file copies
 
-- ``hardlink``, using hard links.
+- ``hardlink``, using hard links
 
 .. _cache:
 
 cache
 -----
 
-Specify whether to utilize the Dune cache.
+Specifies whether to utilize the Dune cache.
 
 .. code:: scheme
 
@@ -117,9 +117,9 @@ Specify whether to utilize the Dune cache.
 
 where ``<setting>`` is one of:
 
-- ``enabled``, enable Dune cache.
+- ``enabled`` enables Dune cache.
 
-- ``disabled``, disble Dune cache.
+- ``disabled`` disables Dune cache.
 
 .. _cache_check_probability:
 
@@ -128,9 +128,9 @@ cache-check-probability
 
 While the main purpose of Dune cache is to speed up build times, it can also be
 used to check build reproducibility. It is possible to enable a probabilistic
-check in which Dune will re-execute randomly chosen build rules and compare
+check, in which Dune will re-execute randomly chosen build rules and compare
 their results with those stored in the cache. If the results differ, the rule is
-not reproducible and Dune will print out a corresponding warning.
+not reproducible, and Dune will print out a corresponding warning.
 
 .. code:: scheme
 
@@ -155,17 +155,17 @@ where ``<setting>`` is one of:
 
 - ``auto``, Dune decides the best mechanism to use.
 
-- ``hardlink``, use hard links.
+- ``hardlink``, using hard links.
 
-- ``copy``, use file copies; this is less efficient than using hard links.
+- ``copy``, using file copies; this is less efficient than using hard links.
 
 .. _action_stdout_on_success:
 
 action_stdout_on_success
 ------------------------
 
-Specify how Dune should handle the standard output of actions when they succeed.
-This cane be used to reduce the noise of large builds.
+Specifies how Dune should handle the standard output of actions when they succeed.
+This can be used to reduce the noise of large builds.
 
 .. code:: scheme
 
@@ -173,18 +173,18 @@ This cane be used to reduce the noise of large builds.
 
 where ``<setting>`` is one of:
 
-- ``print``, print the output on the terminal (this is the default).
+- ``print`` prints the output on the terminal (this is the default).
 
-- ``swallow``, ignore the output and do not print it on the terminal.
+- ``swallow`` ignores the output and does not print it on the terminal.
 
-- ``must-be-empty``, enforce that the output should be empty. If it is not, Dune will fail.
+- ``must-be-empty`` enforces that the output should be empty. If it is not, Dune will fail.
 
 .. _action_stderr_on_success:
 
 action_stderr_on_success
 ------------------------
 
-Same as :ref:`action_stdout_on_success`, but applying to standard error instead
+Same as :ref:`action_stdout_on_success`, but applies to standard error instead
 of standard output.
 
 .. _dune-project:

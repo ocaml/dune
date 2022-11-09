@@ -636,12 +636,12 @@ Unreleased
   workspace file (#4426, @jeremiedimino)
 
 - Add CLI flags `--action-<outputs>-on-success ...` (where `<outputs>` is
-  `stdout` or `stderr`) to control how Dune should handle stdout and stderr of
-  actions when they succeed. It is now possible to ask Dune to ignore the stdout
-  of actions when they succeed or to request that the stderr of actions must be
+  `stdout` or `stderr`) to control how Dune should handle `stdout` and `stderr` of
+  actions when they succeed. It is now possible to ask Dune to ignore the `stdout`
+  of actions when they succeed or to request that the `stderr` of actions must be
   empty. It is also possible to set these options in the `config` and/or
   `dune-workspace` files with `(action_<outputs>_on_success ...)`. This feature
-  allows to reduce the noise of large builds (#4422, #4515, @jeremiedimino)
+  allows you to reduce the noise of large builds (#4422, #4515, @jeremiedimino)
 
 - The `@all` alias no longer depends directly on copies of files from the source
   directory (#4461, @nojb)

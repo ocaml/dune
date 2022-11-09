@@ -35,7 +35,6 @@ Welcome to Dune's Documentation!
    sites
    instrumentation
    jsoo
-   melange
    lexical-conventions
    opam
    advanced-topics

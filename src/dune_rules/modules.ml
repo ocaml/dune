@@ -644,7 +644,7 @@ let is_user_written m =
   match Module.kind m with
   | Root -> false
   | Wrapped_compat | Alias ->
-    (* Logically, this shold be [acc]. But this is unreachable these are stored
+    (* Logically, this should be [acc]. But this is unreachable these are stored
        separately *)
     assert false
   | _ -> true

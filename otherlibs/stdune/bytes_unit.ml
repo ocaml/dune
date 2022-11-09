@@ -10,7 +10,7 @@ let conversion_table =
 let pp x =
   (* We go through the list to find the first unit that is greater than the
      number of bytes and take the predecessor as the units for printing. For the
-     special base case where no conversion is necessery we don't print as a
+     special base case where no conversion is necessary we don't print as a
      float. *)
   let suffix, value =
     let rec loop = function

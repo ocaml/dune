@@ -427,7 +427,7 @@ end
 (** {1 Fiber cancellation} *)
 module Cancel : sig
   (** This module provides a way to cancel long running computations.
-      Cancellation is fully explicit and fibers must explicitely check for it at
+      Cancellation is fully explicit and fibers must explicitly check for it at
       strategic points. *)
 
   type t

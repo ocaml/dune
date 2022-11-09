@@ -848,10 +848,10 @@ end = struct
     Mutex.unlock t.mutex
 end
 
-(** All fields of [t] must be immutable. This is because we re-create [t]
-    everytime we start a new build to locally set the [cancel] field. However,
-    all instances of [t] must share all other fields, in particular the
-    references such as [status].
+(** All fields of [t] must be immutable. This is because we re-create [t] every
+    time we start a new build to locally set the [cancel] field. However, all
+    instances of [t] must share all other fields, in particular the references
+    such as [status].
 
     Another option would be to split [t] in two records such as:
 

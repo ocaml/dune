@@ -125,7 +125,7 @@ However, re-executing the second action was not necessary given that
 its stdout was empty. Dune could have recorded the fact that the
 second action had an empty stdout and so was unaffected by the status
 of --action-stdout-on-success. Dune could also cache the
-stdout/stderr of actions accross builds and only re-print them rather
+stdout/stderr of actions across builds and only re-print them rather
 than re-execute actions entirely.
 
 In case of errors

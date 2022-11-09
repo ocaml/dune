@@ -31,5 +31,5 @@ both package and public_name field is an error
                     ^^^
   Error: Cannot both use 'package' and 'public_name', please remove
   'public_name' as it has been deprecated since version 0.5 of the Coq
-  langugage. It will be removed before version 1.0.
+  language. It will be removed before version 1.0.
   [1]

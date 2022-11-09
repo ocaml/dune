@@ -328,7 +328,7 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     []
 
 (* To be called once per project, when we are generating the rules for the root
-   diretory of the project *)
+   directory of the project *)
 let gen_project_rules sctx project =
   let+ () = Opam_create.add_rules sctx project
   and+ () = Install_rules.gen_project_rules sctx project

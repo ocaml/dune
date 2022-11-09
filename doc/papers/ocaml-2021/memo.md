@@ -135,7 +135,7 @@ are keen to investigate how far we can take it in practice.
 Memo is still in active development and we welcome feedback from the OCaml
 community on how to make it better. While the current implementation is tied to
 Dune's lightweight concurrency library Fiber, the core functionality can be made
-available as a functor over an arbitrary concurrency monad, making it useable
+available as a functor over an arbitrary concurrency monad, making it usable
 with Async and Lwt.
 
 ## Acknowledgements

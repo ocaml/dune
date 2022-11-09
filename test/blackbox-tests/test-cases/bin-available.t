@@ -11,7 +11,7 @@ Test for %{bin-available:...}
   >   (progn
   >    (echo "dune: %{bin-available:dune}\n")
   >    (echo "local program foo: %{bin-available:foo}\n")
-  >    (echo "non existant program: %{bin-available:*}\n"))))
+  >    (echo "non existent program: %{bin-available:*}\n"))))
   > 
   > (executable (public_name foo))
   > EOF
@@ -20,4 +20,4 @@ Test for %{bin-available:...}
   $ dune build
   dune: true
   local program foo: true
-  non existant program: false
+  non existent program: false

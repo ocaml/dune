@@ -255,7 +255,7 @@ module Fs_sync : sig
   val is_special_file : path_as_reported_by_file_watcher:string -> bool
 
   (** fsevents always reports absolute paths. therefore, we need callers to make
-      an effort to determine if an abosulte path is in fact in the build dir *)
+      an effort to determine if an absolute path is in fact in the build dir *)
   val is_special_file_fsevents : Path.t -> bool
 
   val consume_event : (string, 'a) Table.t -> string -> 'a option

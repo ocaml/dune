@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Forbid multiple instances of dune running concurrently in the same workspace.
+  (#6360, fixes #236, @rgrinberg)
+
 - Allow promoting into source directories specified by `subdir` (#6404, fixes
   #3502, @rgrinberg)
 

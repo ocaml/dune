@@ -80,7 +80,7 @@ where ``<setting>`` is one of:
 - ``clear-on-rebuild`` clears the terminal screen between rebuilds.
 
 - ``clear-on-rebuild-and-flush-history`` clears the terminal between rebuilds, and
-it also deletes everything in the scrollback buffer.
+  it also deletes everything in the scrollback buffer.
 
 .. _sandboxing_preference:
 

@@ -209,7 +209,7 @@ using
 -----
 
 The language of configuration files read by Dune can be extended to support
-additional stanzas (eg., ``menhir``, ``coq.theory``, ``mdx``). This is done by
+additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``). This is done by
 adding a line in the ``dune-project`` file, such as:
 
 .. code:: scheme

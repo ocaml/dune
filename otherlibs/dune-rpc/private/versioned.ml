@@ -97,7 +97,7 @@ module Make (Fiber : Fiber_intf.S) = struct
        externally-retrievable way. This is because when invoking an RPC of type
        [('req, 'resp)], we are *given* a value of type ['req], so the object
        being stored in the map cannot have its type erased. Instead, we use a
-       [Univ_map] (with the key being stored in the [Decl.t]) so we can retreive
+       [Univ_map] (with the key being stored in the [Decl.t]) so we can retrieve
        a correctly-typed [Generation.t] mapping later.
 
        However, unlike a string table, the use of a [Univ_map.t] means that we

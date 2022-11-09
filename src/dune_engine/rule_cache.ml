@@ -331,7 +331,7 @@ module Shared = struct
         Log.info [ Pp.textf "cache store skipped [%s]: already present" hex ];
         update_cached_digests ~targets_and_digests
       | Error (Unix.Unix_error (Unix.EXDEV, "link", file)) ->
-        (* We cannot hardlink accross partitions so we kindly let the user know
+        (* We cannot hardlink across partitions so we kindly let the user know
            that they should use copy cache instead. *)
         Log.info
           [ Pp.concat

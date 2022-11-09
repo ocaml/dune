@@ -316,7 +316,7 @@ let chdirs =
       | Chdir (dir, _) -> (
         match Path.as_in_build_dir dir with
         | None ->
-          Code_error.raise "chdir ouside the build directory"
+          Code_error.raise "chdir outside the build directory"
             [ ("dir", Path.to_dyn dir) ]
         | Some dir -> Path.Build.Set.add acc dir)
       | _ -> acc

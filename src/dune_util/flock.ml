@@ -9,17 +9,17 @@ type lock =
   | Shared
   | Exclusive
 
-let is_exculsive = function
+let is_exclusive = function
   | Exclusive -> true
   | Shared -> false
 
 let lock_block t lock =
-  match gen_lock t ~block:true ~exclusive:(is_exculsive lock) with
+  match gen_lock t ~block:true ~exclusive:(is_exclusive lock) with
   | () -> Ok ()
   | exception Unix.Unix_error (err, _, _) -> Error err
 
 let lock_non_block t lock =
-  match gen_lock t ~block:false ~exclusive:(is_exculsive lock) with
+  match gen_lock t ~block:false ~exclusive:(is_exclusive lock) with
   | () -> Ok `Success
   | exception Unix.Unix_error ((EWOULDBLOCK | EAGAIN), _, _) -> Ok `Failure
   | exception Unix.Unix_error (err, _, _) -> Error err

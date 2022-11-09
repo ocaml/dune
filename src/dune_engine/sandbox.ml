@@ -13,7 +13,7 @@ let init =
        Io.write_file (Path.relative dir ".git") "";
        (* We create a [.hg/requires] file to prevent hg from escaping the
           sandbox. It will complain that "Escaping the Dune sandbox" is an
-          unkown feature. *)
+          unknown feature. *)
        Io.write_file
          (Path.relative dir ".hg/requires")
          "Escaping the Dune sandbox")

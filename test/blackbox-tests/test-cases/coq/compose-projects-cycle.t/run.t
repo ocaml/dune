@@ -1,4 +1,4 @@
-Testing composition of theories accross a dune workspace with cyclic
+Testing composition of theories across a dune workspace with cyclic
 dependencies.
 
   $ dune build A

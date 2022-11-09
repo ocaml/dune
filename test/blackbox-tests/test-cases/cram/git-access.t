@@ -1,4 +1,4 @@
-Check that actions don't have access to the outter git repository.
+Check that actions don't have access to the outer git repository.
 
   $ mkdir git
   $ cd git

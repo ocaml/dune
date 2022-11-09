@@ -132,8 +132,7 @@ doc:
 
 # livedoc-deps: you may need to [pip3 install sphinx-autobuild] and [pip3 install sphinx-rtd-theme]
 livedoc:
-	cd doc && sphinx-autobuild . _build \
-	  --port 8888 -q  --host 0.0.0.0 --re-ignore '\.#.*'
+	cd doc && sphinx-autobuild . _build --port 8888 -q --re-ignore '\.#.*'
 
 update-jbuilds: $(BIN)
 	$(BIN) build @doc/runtest --auto-promote

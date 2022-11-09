@@ -31,8 +31,8 @@ Test cases building libraries with modules in upper case names
   File "dune", line 3, characters 1-16:
   3 |  (libraries foo)
        ^^^^^^^^^^^^^^^
-  Error: The library 'foo' was added as a dependency of the melange.emit stanza
-  with target 'output', but this library is not compatible with melange. To fix
+  Error: The library "foo" was added as a dependency of the melange.emit stanza
+  with target "output", but this library is not compatible with melange. To fix
   this, either:
   - add (modes melange) to the library stanza
   - or remove the library from the libraries field in the melange.emit stanza

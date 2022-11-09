@@ -26,8 +26,8 @@ Load a module that requires ppx
   > let () = ()
   > EOF
   $ dune ocaml top-module foo.ml
-  #directory "$TESTCASE_ROOT/_build/.top/Foo.4432bc70375b";;
+  #directory "$TESTCASE_ROOT/_build/default/.topmod/foo.ml";;
+  #load "$TESTCASE_ROOT/_build/default/.topmod/foo.ml/foo.cmo";;
   #ppx "$TESTCASE_ROOT/_build/default/.ppx/d464a1bb671660981248d354c1722d5f/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'";;
-  #use "$TESTCASE_ROOT/_build/default/foo.ml";;
   $ basename $(ls _build/default/.ppx/*/*.exe)
   ppx.exe

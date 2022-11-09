@@ -67,8 +67,14 @@ let term =
             Dune_rules.Lib_flags.L.toplevel_include_paths requires
           in
           let+ files_to_load = files_to_load_of_requires sctx requires in
-          Dune_rules.Toplevel.print_toplevel_init_file ~include_paths
-            ~files_to_load ~uses:[] ~pp:None ~ppx:None))
+          Dune_rules.Toplevel.print_toplevel_init_file
+            { include_paths
+            ; files_to_load
+            ; uses = []
+            ; pp = None
+            ; ppx = None
+            ; code = []
+            }))
 
 let command = Cmd.v info term
 
@@ -101,161 +107,101 @@ module Module = struct
       | Ok s -> s
       | Error e -> raise (User_error.E e)
     in
-    let drop_rules f =
-      let+ res, _ =
-        Memo.Implicit_output.collect Dune_engine.Rules.implicit_output f
-      in
-      res
-    in
-    let* dir_contents =
-      drop_rules @@ fun () -> Dune_rules.Dir_contents.get sctx ~dir
-    in
-    let* ocaml = Dune_rules.Dir_contents.ocaml dir_contents in
-    let stanza =
-      match Dune_rules.Ml_sources.find_origin ocaml module_name with
-      | None -> User_error.raise [ Pp.text "stanza not found for module" ]
-      | Some m -> m
-    in
-    let* scope = Dune_rules.Scope.DB.find_by_dir dir in
     let* expander = Super_context.expander sctx ~dir in
-    let stanza =
-      match stanza with
-      | Executables exes -> `Executables exes
-      | Library lib -> `Library lib
-      | Melange _ ->
-        User_error.raise
-          [ Pp.text "melange modules cannot be loaded into toplevel" ]
-    in
-    let* cctx, merlin =
-      drop_rules @@ fun () ->
-      match stanza with
-      | `Executables exes ->
-        Dune_rules.Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander
-          exes
-      | `Library lib ->
-        Dune_rules.Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
-    in
-    let modules = Dune_rules.Compilation_context.modules cctx in
-    let module_ =
-      match Dune_rules.Modules.find modules module_name with
-      | Some m -> m
-      | None -> User_error.raise [ Pp.textf "module not found" ]
-    in
-    let obj_dir = Dune_rules.Compilation_context.obj_dir cctx in
-    let* compile =
-      match stanza with
-      | `Executables exes -> Dune_rules.Exe_rules.compile_info ~scope exes
-      | `Library lib ->
-        let libs = Dune_rules.Scope.libs scope in
-        let+ _, compile =
-          Dune_rules.Lib.DB.get_compile_info libs
-            (Dune_rules.Dune_file.Library.best_name lib)
-            ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
-        in
-        compile
-    in
-    let* requires =
+    let* top_module_info = Dune_rules.Top_module.find_module sctx mod_ in
+    match top_module_info with
+    | None -> User_error.raise [ Pp.text "no module found" ]
+    | Some (module_, cctx, merlin) ->
+      let module Compilation_context = Dune_rules.Compilation_context in
+      let module Obj_dir = Dune_rules.Obj_dir in
+      let module Top_module = Dune_rules.Top_module in
       let* requires =
-        Dune_rules.Lib.Compile.requires_link compile |> Memo.Lazy.force
+        let* requires = Compilation_context.requires_link cctx in
+        Dune_rules.Resolve.read_memo requires
       in
-      Dune_rules.Resolve.read_memo requires
-    in
-    let private_cm_dir =
-      let key =
-        ( Dune_rules.Module.source module_ ~ml_kind:Impl
-        , match stanza with
-          | `Executables exes -> `Executables exes.names
-          | `Library lib -> `Library lib.name )
+      let private_obj_dir = Top_module.private_obj_dir ctx mod_ in
+      let include_paths =
+        let libs = Dune_rules.Lib_flags.L.toplevel_include_paths requires in
+        Path.Set.add libs (Path.build (Obj_dir.byte_dir private_obj_dir))
       in
-      let key = String.take (Digest.generic key |> Digest.to_string) 12 in
-      Path.Build.(relative root)
-        (sprintf ".top/%s.%s"
-           (Dune_rules.Module_name.to_string module_name)
-           key)
-    in
-    let include_paths =
-      let libs = Dune_rules.Lib_flags.L.toplevel_include_paths requires in
-      Path.Set.add libs (Path.build private_cm_dir)
-    in
-    let source_deps =
-      (* We this explicit dep for two reasons:
-
-         - to copy the source file to the build dir if ocamldep doesn't require
-         it to compute the deps (single module exes for example)
-
-         - To force building the preprocessor so that the repl can use it. It's
-         kind of a hack since we don't need to preprocess the source, but it's
-         the easiest way to do it
-      *)
-      match Dune_rules.Module.file module_ ~ml_kind:Impl with
-      | None -> User_error.raise [ Pp.textf "cannot loads mli only module" ]
-      | Some f -> fun () -> Build_system.build_file f
-    in
-    let files_to_load () =
-      let+ libs, modules =
-        Memo.fork_and_join
-          (fun () -> files_to_load_of_requires sctx requires)
-          (fun () ->
-            let dep_graph =
-              let dg = Dune_rules.Compilation_context.dep_graphs cctx in
-              Ocaml.Ml_kind.Dict.get dg Impl
-            in
-            let* module_deps =
-              let action = Dune_rules.Dep_graph.deps_of dep_graph module_ in
-              let+ graph, _ = Action_builder.run action Eager in
-              graph
-            in
-            let files =
-              List.filter_map module_deps ~f:(fun module_ ->
-                  Dune_rules.Obj_dir.Module.cm_file obj_dir module_
-                    ~kind:(Ocaml Cmo)
-                  |> Option.map ~f:Path.build)
-            in
-            let+ () = Memo.parallel_iter files ~f:Build_system.build_file in
-            (* now we copy these files to a special temp dir to prevent the
-               toplevel from peaking where it shouldn't
-
-               if the copmiler ever supports pointing at individual cmi's, these hacks
-               will not be needed. *)
-            Path.mkdir_p (Path.build private_cm_dir);
-            let (_ : Fpath.clear_dir_result) =
-              Path.clear_dir (Path.build private_cm_dir)
-            in
-            let copy =
-              if Sys.win32 then fun ~src ~dst -> Io.copy_file ~src ~dst ()
-              else fun ~src ~dst -> Path.link src dst
-            in
-            List.iter module_deps ~f:(fun module_ ->
-                let file =
-                  Dune_rules.Obj_dir.Module.cm_file_exn obj_dir module_
-                    ~kind:(Ocaml Cmi)
+      let files_to_load () =
+        let+ libs, modules =
+          Memo.fork_and_join
+            (fun () -> files_to_load_of_requires sctx requires)
+            (fun () ->
+              let cmis () =
+                let glob =
+                  Dune_engine.File_selector.of_glob
+                    ~dir:(Path.build (Obj_dir.byte_dir private_obj_dir))
+                    (Dune_lang.Glob.of_string_exn Loc.none "*.cmi")
                 in
-                let new_file =
-                  Path.Build.relative private_cm_dir (Path.Build.basename file)
+                let+ (_ : Dep.Fact.Files.t) = Build_system.build_pred glob in
+                ()
+              in
+              let cmos () =
+                let obj_dir = Compilation_context.obj_dir cctx in
+                let dep_graph = (Compilation_context.dep_graphs cctx).impl in
+                let* modules =
+                  let graph =
+                    Dune_rules.Dep_graph.top_closed_implementations dep_graph
+                      [ module_ ]
+                  in
+                  let+ modules, _ = Action_builder.run graph Eager in
+                  modules
                 in
-                copy ~src:(Path.build file) ~dst:(Path.build new_file));
-            files)
+                let cmos =
+                  let module Module = Dune_rules.Module in
+                  let module Module_name = Dune_rules.Module_name in
+                  let module_obj_name = Module.obj_name module_ in
+                  List.filter_map modules ~f:(fun m ->
+                      let obj_dir =
+                        if
+                          Module_name.Unique.equal module_obj_name
+                            (Module.obj_name m)
+                        then private_obj_dir
+                        else obj_dir
+                      in
+                      Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo)
+                      |> Option.map ~f:Path.build)
+                in
+                let+ (_ : Dep.Facts.t) =
+                  Build_system.build_deps (Dep.Set.of_files cmos)
+                in
+                cmos
+              in
+              Memo.fork_and_join_unit cmis cmos)
+        in
+        libs @ modules
       in
-      libs @ modules
-    in
-    let pps () =
-      let module Merlin = Dune_rules.Merlin in
-      let pps = Merlin.pp_config merlin sctx ~expander in
-      let+ pps, _ = Action_builder.run pps Eager in
-      let pp = Dune_rules.Module_name.Per_item.get pps module_name in
-      match pp with
-      | None -> (None, None)
-      | Some pp_flags -> (
-        let args = Merlin.Processed.pp_args pp_flags in
-        match Merlin.Processed.pp_kind pp_flags with
-        | Pp -> (Some args, None)
-        | Ppx -> (None, Some args))
-    in
-    let+ (pp, ppx), files_to_load =
-      Memo.fork_and_join pps (fun () ->
-          Memo.fork_and_join_unit source_deps files_to_load)
-    in
-    (include_paths, files_to_load, src, pp, ppx)
+      let pps () =
+        let module Merlin = Dune_rules.Merlin in
+        let pps = Merlin.pp_config merlin sctx ~expander in
+        let+ pps, _ = Action_builder.run pps Eager in
+        let pp = Dune_rules.Module_name.Per_item.get pps module_name in
+        match pp with
+        | None -> (None, None)
+        | Some pp_flags -> (
+          let args = Merlin.Processed.pp_args pp_flags in
+          match Merlin.Processed.pp_kind pp_flags with
+          | Pp -> (Some args, None)
+          | Ppx -> (None, Some args))
+      in
+      let+ (pp, ppx), files_to_load = Memo.fork_and_join pps files_to_load in
+      let code =
+        let modules = Dune_rules.Compilation_context.modules cctx in
+        let opens_ =
+          Dune_rules.Module_compilation.open_modules modules module_
+        in
+        List.map opens_ ~f:(fun name ->
+            sprintf "open %s" (Dune_rules.Module_name.to_string name))
+      in
+      { Dune_rules.Toplevel.files_to_load
+      ; pp
+      ; ppx
+      ; include_paths
+      ; uses = []
+      ; code
+      }
 
   let term =
     let+ common = Common.term
@@ -275,7 +221,7 @@ module Module = struct
               Dune_engine.Context_name.Map.find setup.scontexts ctx_name
               |> Option.value_exn
             in
-            let+ include_paths, files_to_load, use, pp, ppx =
+            let+ directives =
               let module_path =
                 let root = Common.root common in
                 Path.Source.relative Path.Source.root
@@ -283,10 +229,7 @@ module Module = struct
               in
               module_directives sctx module_path
             in
-            Dune_rules.Toplevel.print_toplevel_init_file ~include_paths
-              ~files_to_load
-              ~uses:[ Path.build use ]
-              ~pp ~ppx))
+            Dune_rules.Toplevel.print_toplevel_init_file directives))
 end
 
 let module_command = Cmd.v Module.info Module.term

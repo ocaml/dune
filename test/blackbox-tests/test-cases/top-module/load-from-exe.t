@@ -18,10 +18,18 @@ We try to load a module defined in an executable
   > EOF
 
   $ dune ocaml top-module foo.ml
-  #directory "$TESTCASE_ROOT/_build/.top/Foo.a6bb488f1a99";;
-  #load "$TESTCASE_ROOT/_build/default/.foo.eobjs/byte/dune__exe__Bar.cmo";;
+  #directory "$TESTCASE_ROOT/_build/default/.topmod/foo.ml";;
   #load "$TESTCASE_ROOT/_build/default/.foo.eobjs/byte/dune__exe.cmo";;
-  #use "$TESTCASE_ROOT/_build/default/foo.ml";;
+  #load "$TESTCASE_ROOT/_build/default/.foo.eobjs/byte/dune__exe__Bar.cmo";;
+  #load "$TESTCASE_ROOT/_build/default/.topmod/foo.ml/dune__exe__Foo.cmo";;
+  open Dune__exe
+  ;;
+
+  $ ls _build/default/.topmod/foo.ml/
+  dune__exe.cmi
+  dune__exe__Bar.cmi
+  dune__exe__Foo.cmi
+  dune__exe__Foo.cmo
 
   $ dir=_build/default/.foo.eobjs/byte/
   $ ls $dir/*.cmi

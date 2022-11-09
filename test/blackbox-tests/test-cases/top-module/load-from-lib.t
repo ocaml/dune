@@ -34,16 +34,20 @@ We try to load a module defined in a library with a dependnecy
   $ cd ..
 
   $ dune ocaml top-module foo/foo.ml
-  #directory "$TESTCASE_ROOT/_build/.top/Foo.c1f1fc8a0f56";;
+  #directory "$TESTCASE_ROOT/_build/default/.topmod/foo/foo.ml";;
   #directory "$TESTCASE_ROOT/_build/default/mydummylib/.mydummylib.objs/byte";;
   #load "$TESTCASE_ROOT/_build/default/mydummylib/mydummylib.cma";;
-  #load "$TESTCASE_ROOT/_build/default/foo/.foo.objs/byte/foo__Bar.cmo";;
   #load "$TESTCASE_ROOT/_build/default/foo/.foo.objs/byte/foo__.cmo";;
-  #use "$TESTCASE_ROOT/_build/default/foo/foo.ml";;
+  #load "$TESTCASE_ROOT/_build/default/foo/.foo.objs/byte/foo__Bar.cmo";;
+  #load "$TESTCASE_ROOT/_build/default/.topmod/foo/foo.ml/foo.cmo";;
+  open Foo__
+  ;;
 
-  $ ls _build/.top/Foo.c1f1fc8a0f56/*.cmi
-  _build/.top/Foo.c1f1fc8a0f56/foo__.cmi
-  _build/.top/Foo.c1f1fc8a0f56/foo__Bar.cmi
+  $ ls _build/default/.topmod/foo/foo.ml
+  foo.cmi
+  foo.cmo
+  foo__.cmi
+  foo__Bar.cmi
 
   $ ls _build/default/mydummylib/.mydummylib.objs/byte/*.cmi
   _build/default/mydummylib/.mydummylib.objs/byte/mydummylib.cmi
@@ -52,11 +56,3 @@ We try to load a module defined in a library with a dependnecy
 
   $ ls _build/default/mydummylib/*.cma
   _build/default/mydummylib/mydummylib.cma
-
-  $ dir=_build/default/foo/.foo.objs/byte
-  $ ls $dir/*.cmi
-  _build/default/foo/.foo.objs/byte/foo__.cmi
-  _build/default/foo/.foo.objs/byte/foo__Bar.cmi
-  $ ls $dir/*.cmo
-  _build/default/foo/.foo.objs/byte/foo__.cmo
-  _build/default/foo/.foo.objs/byte/foo__Bar.cmo

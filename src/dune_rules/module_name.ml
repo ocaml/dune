@@ -77,6 +77,8 @@ module Unique = struct
 
   include T
 
+  let equal x y = Ordering.is_eq (compare x y)
+
   (* We make sure that obj's start with a lowercase letter to make it harder to
      confuse them with a proper module name *)
   let of_name_assuming_needs_no_mangling name = String.uncapitalize_ascii name

@@ -118,7 +118,7 @@ let normalize_path path =
 
 let print_entering_message c =
   let cwd = Path.to_absolute_filename Path.root in
-  if cwd <> Fpath.initial_cwd && not c.no_print_directory then
+  if cwd <> Fpath.initial_cwd && not c.no_print_directory then (
     (* Editors such as Emacs parse the output of the build system and interpret
        filenames in error messages relative to where the build system was
        started.
@@ -151,7 +151,10 @@ let print_entering_message c =
             in
             loop ".." (Filename.dirname s)))
     in
-    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
+    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
+    at_exit (fun () ->
+        flush stdout;
+        Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
 
 let init ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;

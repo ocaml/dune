@@ -9,6 +9,7 @@ an appropriate error message.
   > EOF
   $ dune build --root external @install
   Entering directory 'external'
+  Leaving directory 'external'
   $ mkdir test
   $ echo "(lang dune 2.5)" > test/dune-project
   $ cat >test/dune <<EOF
@@ -20,4 +21,5 @@ an appropriate error message.
   1 | (library (implements foodummy) (name bar))
                            ^^^^^^^^
   Error: Library "foodummy" is not virtual. It cannot be implemented by "bar".
+  Leaving directory 'test'
   [1]

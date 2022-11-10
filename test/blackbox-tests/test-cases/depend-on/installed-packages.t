@@ -17,12 +17,14 @@
 
   $ dune build --root a
   Entering directory 'a'
+  Leaving directory 'a'
 
   $ dune install --root a --prefix $(pwd)/prefix
   Entering directory 'a'
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
   Installing $TESTCASE_ROOT/prefix/share/a/CATME
+  Leaving directory 'a'
 
   $ cat >b/dune-project <<EOF
   > (lang dune 2.9)
@@ -36,9 +38,11 @@
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
   Miaou
+  Leaving directory 'b'
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
+  Leaving directory 'b'
 
   $ rm a/CATME
   $ cat >a/CATME <<EOF
@@ -47,6 +51,7 @@
 
   $ dune build --root a
   Entering directory 'a'
+  Leaving directory 'a'
 
   $ dune install --root a --prefix $(pwd)/prefix
   Entering directory 'a'
@@ -56,13 +61,16 @@
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
   Deleting $TESTCASE_ROOT/prefix/share/a/CATME
   Installing $TESTCASE_ROOT/prefix/share/a/CATME
+  Leaving directory 'a'
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
   Ouaf
+  Leaving directory 'b'
 
   $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
+  Leaving directory 'b'
 
   $ cat >b/dune-project <<EOF
   > (lang dune 2.8)
@@ -75,4 +83,5 @@
   1 | (rule (alias runtest) (deps (package a)) (action (run cat $TESTCASE_ROOT/prefix/share/a/CATME)))
                                            ^
   Error: Dependency on an installed package requires at least (lang dune 2.9)
+  Leaving directory 'b'
   [1]

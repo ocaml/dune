@@ -7,6 +7,7 @@ to be successful.
   $ dune runtest valid_options --root ./test-project
   Entering directory 'test-project'
   backend_foo
+  Leaving directory 'test-project'
 
 Lastly, we pass an invalid option to flags field expecting compilation
 to fail.

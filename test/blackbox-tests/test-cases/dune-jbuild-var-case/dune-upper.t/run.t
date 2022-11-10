@@ -1,10 +1,6 @@
 All builtin variables are lower cased in Dune:
 
-  $ dune runtest --root dune-lower
-  Entering directory 'dune-lower'
-
-  $ dune runtest --root dune-upper
-  Entering directory 'dune-upper'
+  $ dune runtest
   File "dune", line 3, characters 39-46:
   3 |  (action (with-stdout-to %{null} (echo %{MAKE}))))
                                              ^^^^^^^

@@ -799,7 +799,8 @@ module rec Resolve_names : sig
     }
 
   val resolve_deps_and_add_runtime_deps :
-       db
+       ?modes:Lib_mode.Map.Set.t
+    -> db
     -> Lib_dep.t list
     -> private_deps:private_deps
     -> pps:(Loc.t * Lib_name.t) list
@@ -1198,7 +1199,7 @@ end = struct
           in
           Some (Select { select with choices }))
 
-  let resolve_complex_deps db deps ~private_deps : resolved_deps Memo.t =
+  let resolve_complex_deps ?modes db deps ~private_deps : resolved_deps Memo.t =
     let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
       let open Memo.O in
       let+ res, src_fn =
@@ -1248,8 +1249,26 @@ end = struct
           | Re_export lib ->
             let+ lib = resolve_dep db lib ~private_deps in
             add_re_exports acc lib
-          | Direct lib ->
+          | Direct ((lib_dep_loc, _) as lib) ->
             let+ lib = resolve_dep db lib ~private_deps in
+            let lib =
+              match modes with
+              | None -> lib
+              | Some (modes : Lib_mode.Map.Set.t) ->
+                Resolve.map lib ~f:(fun lib ->
+                    let lib_modes = Lib_info.modes lib.info in
+                    match modes.melange && not lib_modes.melange with
+                    | true ->
+                      User_error.raise ~loc:lib_dep_loc
+                        [ Pp.textf
+                            "The library %S was added as a dependency of a \
+                             melange.emit stanza, but this library is not \
+                             compatible with melange. To fix this, add (modes \
+                             melange) to the library stanza."
+                            (Lib_name.to_string (Lib_info.name lib.info))
+                        ]
+                    | false -> lib)
+            in
             add_resolved acc lib
           | Select select ->
             let+ resolved, select = resolve_select select in
@@ -1320,10 +1339,10 @@ end = struct
     and+ pps = pps in
     { requires; pps; selects; re_exports }
 
-  let resolve_deps_and_add_runtime_deps db deps ~private_deps ~pps ~dune_version
-      =
+  let resolve_deps_and_add_runtime_deps ?modes db deps ~private_deps ~pps
+      ~dune_version =
     let open Memo.O in
-    resolve_complex_deps db ~private_deps deps
+    resolve_complex_deps ?modes db ~private_deps deps
     >>= add_pp_runtime_deps db ~private_deps ~dune_version ~pps
 
   (* Compute transitive closure of libraries to figure which ones will trigger
@@ -1801,11 +1820,11 @@ module DB = struct
         [ ("name", Lib_name.to_dyn name) ]
     | Some lib -> (lib, Compile.for_lib ~allow_overlaps t lib)
 
-  let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
+  let resolve_user_written_deps_for_exes ?modes t exes ?(allow_overlaps = false)
       ?(forbidden_libraries = []) deps ~pps ~dune_version =
     let resolved =
       Memo.lazy_ (fun () ->
-          Resolve_names.resolve_deps_and_add_runtime_deps t deps ~pps
+          Resolve_names.resolve_deps_and_add_runtime_deps ?modes t deps ~pps
             ~private_deps:Allow_all ~dune_version:(Some dune_version))
     in
     let requires_link =

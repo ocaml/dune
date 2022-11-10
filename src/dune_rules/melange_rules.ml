@@ -85,7 +85,7 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
        ; Dep (Path.build src)
        ])
 
-let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
+let add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
     ~compile_info (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
@@ -115,11 +115,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     Compilation_context.create () ~loc:mel.loc ~super_context:sctx ~expander
       ~scope ~obj_dir ~modules ~flags ~requires_link
       ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml
-      ~opaque:Inherit_from_settings ~package:mel.package
-      ~modes:
-        { ocaml = { byte = None; native = None }
-        ; melange = Some (Requested Loc.none)
-        }
+      ~opaque:Inherit_from_settings ~package:mel.package ~modes
   in
   let pkg_name = Option.map mel.package ~f:Package.name in
   let dst_dir = Path.Build.relative dir mel.target in
@@ -202,7 +198,7 @@ let add_rules_for_libraries ~dir ~scope ~emit_stanza_dir ~sctx ~requires_link
           (build_js ~loc:None ~dir ~pkg_name ~module_system:mel.module_system
              ~dst_dir ~obj_dir ~sctx ~build_dir ~lib_deps_js_includes))
 
-let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
+let compile_info ~modes ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
@@ -212,15 +208,22 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
     >>| Preprocess.Per_module.pps
   in
-  Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+  Lib.DB.resolve_user_written_deps_for_exes ~modes (Scope.libs scope)
     [ (mel.loc, mel.target) ]
     (snd mel.libraries) ~pps ~dune_version
 
 let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let open Memo.O in
-  let* compile_info = compile_info ~scope mel in
+  let modes =
+    { Lib_mode.Map.ocaml = { byte = None; native = None }
+    ; melange = Some (Dune_file.Mode_conf.Kind.Requested Loc.none)
+    }
+  in
+  let* compile_info =
+    compile_info ~modes:(Lib_mode.Map.map ~f:Option.is_some modes) ~scope mel
+  in
   let+ cctx_and_merlin =
-    add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
+    add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
       ~compile_info mel
   and+ () =
     let* requires_link =

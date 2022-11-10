@@ -151,7 +151,8 @@ module DB : sig
 
       This function is for executables stanzas. *)
   val resolve_user_written_deps_for_exes :
-       t
+       ?modes:Lib_mode.Map.Set.t
+    -> t
     -> (Loc.t * string) list
     -> ?allow_overlaps:bool
     -> ?forbidden_libraries:(Loc.t * Lib_name.t) list

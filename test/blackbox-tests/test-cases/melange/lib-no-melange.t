@@ -29,12 +29,12 @@ Test what happens when melange.emit stanza depends on non-Melange libraries
   > EOF
 
   $ dune build output/melange__Main.js
-  File "main.ml", line 1, characters 8-17:
-  1 | let t = Foo_Bar.t
-              ^^^^^^^^^
-  Error: Unbound module Foo_Bar
-  File "output/lib/_unknown_", line 1, characters 0-0:
-  Error: No rule found for lib/.foo.objs/melange/foo_Bar.cmj
+  File "dune", line 3, characters 12-15:
+  3 |  (libraries foo)
+                  ^^^
+  Error: The library "foo" was added as a dependency of a melange.emit stanza,
+  but this library is not compatible with melange. To fix this, add (modes
+  melange) to the library stanza.
   [1]
 
 Now we check a similar error but for executables

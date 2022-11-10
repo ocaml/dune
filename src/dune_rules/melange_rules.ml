@@ -179,24 +179,6 @@ let add_rules_for_libraries ~dir ~scope ~emit_stanza_dir ~sctx ~requires_link
                 (Path.Build.to_string emit_stanza_dir)
             ]
       in
-      let () =
-        let modes = Lib_info.modes info in
-        match modes.melange with
-        | false ->
-          User_error.raise ~loc:(fst mel.libraries)
-            [ Pp.textf
-                "The library %S was added as a dependency of the melange.emit \
-                 stanza with target %S, but this library is not compatible \
-                 with melange. To fix this, either:"
-                (Lib_name.to_string (Lib_info.name info))
-                mel.target
-            ; Pp.textf "- add (modes melange) to the library stanza"
-            ; Pp.textf
-                "- or remove the library from the libraries field in the \
-                 melange.emit stanza"
-            ]
-        | true -> ()
-      in
       let dst_dir =
         Melange.lib_output_dir ~emit_stanza_dir ~lib_dir ~target:mel.target
       in

@@ -4,6 +4,6 @@
  (modules :standard)
  (synopsis "Test Coq library"))
 
-(alias
- (name default)
+(rule
+ (alias default)
  (action (echo "%{read:base.install}")))

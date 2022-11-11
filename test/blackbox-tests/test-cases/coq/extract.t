@@ -1,6 +1,6 @@
   $ cat >dune-project <<EOF
-  > (lang dune 2.5)
-  > (using coq 0.2)
+  > (lang dune 2.8)
+  > (using coq 0.3)
   > EOF
 
   $ cat >extract.v <<EOF

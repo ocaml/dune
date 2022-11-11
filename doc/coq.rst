@@ -134,10 +134,10 @@ The semantics of the fields are:
   Interproject composition has been available since :ref:`Coq lang
   0.4<coq-lang>`.
 
-  As of today, Dune cannot depend on installed Coq theories. This restriction
-  will be lifted in the future. Note that composition with the Coq standard
-  library is supported, but in this case the ``Coq`` prefix has been made
-  available in a qualified way, since :ref:`Coq lang 0.2<coq-lang>`.
+  As of today, Dune cannot depend on installed Coq theories. This
+  restriction will be lifted in the future. Note that composition with
+  the Coq standard library is supported, but in this case the ``Coq``
+  prefix is available in a qualified way.
 
   You may still use installed libraries in your Coq project, but there is
   currently no way for Dune to know about it.
@@ -260,7 +260,6 @@ Deprecated and removed experimental Coq language versions are:
 
 - ``0.1``: Basic Coq theory support.
 - ``0.2``: Support for the ``theories`` field and composition of theories in the
-  same scope.
 - ``0.3``: Support for ``(mode native)`` requires Coq >= 8.10 (and Dune >= 2.9
   for Coq >= 8.14).
 - ``0.4``: Support for interproject composition of theories.
@@ -270,6 +269,9 @@ Deprecated and removed experimental Coq language versions are:
 - ``0.7``: ``(mode )`` is automatically detected from the configuration of Coq
   and ``(mode native)`` is deprecated. The ``dev`` profile also no longer
   disables native compilation.
+
+Coq language versions ``0.1`` and ``0.2`` have been deprecated in
+Dune 3.6, and removed in Dune 3.7.
 
 .. _coq-lang-1.0:
 

@@ -14,7 +14,6 @@ val deps_of :
   -> use_stdlib:bool
   -> wrapper_name:string
   -> mode:Coq_mode.t
-  -> coq_lang_version:Dune_sexp.Syntax.Version.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 

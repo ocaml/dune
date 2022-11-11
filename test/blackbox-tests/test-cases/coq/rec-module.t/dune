@@ -6,6 +6,6 @@
 
 (include_subdirs qualified)
 
-(alias
- (name default)
+(rule
+ (alias default)
  (action (echo "%{read:rec.install}")))

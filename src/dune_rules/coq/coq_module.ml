@@ -88,7 +88,7 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
           ( Path.Build.relative vo_dir x
           , Filename.(concat (concat install_vo_dir ".coq-native") x) ))
         cmxs_obj
-    | VoOnly | VosOnly | Legacy -> []
+    | VoOnly | VosOnly -> []
   in
   let obj_files =
     match obj_files_mode with

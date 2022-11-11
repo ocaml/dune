@@ -7,7 +7,6 @@
    where mode was not supported, this allows us support older Coq compiler
    versions with coq-lang < 0.3 *)
 type t =
-  | Legacy
   | VoOnly
   | Native
   | VosOnly

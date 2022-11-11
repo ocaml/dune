@@ -1,4 +1,10 @@
-Unreleased
+Unreleased (3.9)
+----------
+
+- Coq build language versions 0.1 to 0.7 have been removed; in
+  consequence Coq < 8.10 is not supported anymore (#6445, @ejgallego)
+
+Unreleased (3.8)
 ----------
 
 - When a rule's action is interrupted, delete any leftover directory targets.

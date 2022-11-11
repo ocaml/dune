@@ -47,11 +47,7 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
     ~build_dir ~lib_deps_js_includes m =
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let open Memo.O in
-  let* compiler =
-    (* TODO loc should come from the mode field in the dune file *)
-    Super_context.resolve_program sctx ~loc:None ~dir:build_dir
-      ~hint:"opam install melange" "melc"
-  in
+  let* compiler = Melange_binary.melc sctx ~dir:build_dir in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
   let output = make_js_name ~dst_dir m in
   let obj_dir =
@@ -146,8 +142,6 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
       in
       Rules.Produce.Alias.add_deps alias deps
   in
-  let ctx = Super_context.context sctx in
-  let stdlib_dir = ctx.Context.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* preprocess =
     Resolve.Memo.read_memo
@@ -155,6 +149,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
+  let stdlib_dir = (Super_context.context sctx).stdlib_dir in
   Memo.return
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

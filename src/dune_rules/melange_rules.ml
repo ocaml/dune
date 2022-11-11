@@ -1,6 +1,12 @@
 open Import
 module CC = Compilation_context
 
+let make_js_name ~dst_dir m =
+  let name =
+    Module_name.Unique.artifact_filename (Module.obj_name m) ~ext:Melange.js_ext
+  in
+  Path.Build.relative dst_dir name
+
 let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
   let open Resolve.Memo.O in
   Command.Args.memo
@@ -23,13 +29,7 @@ let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
           in
           let* source_modules = modules_group >>| Modules.impl_only in
           let of_module m =
-            let output =
-              let name =
-                Module_name.Unique.artifact_filename (Module.obj_name m)
-                  ~ext:Melange.js_ext
-              in
-              Path.Build.relative dst_dir name
-            in
+            let output = make_js_name ~dst_dir m in
             Dep.file (Path.build output)
           in
           Resolve.Memo.return
@@ -53,13 +53,7 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
       ~hint:"opam install melange" "melc"
   in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
-  let output =
-    let name =
-      Module_name.Unique.artifact_filename (Module.obj_name m)
-        ~ext:Melange.js_ext
-    in
-    Path.Build.relative dst_dir name
-  in
+  let output = make_js_name ~dst_dir m in
   let obj_dir =
     [ Command.Args.A "-I"; Path (Path.build (Obj_dir.melange_dir obj_dir)) ]
   in
@@ -131,13 +125,26 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   in
   let build_dir = (Super_context.context sctx).build_dir in
   let* () = Module_compilation.build_all cctx in
+  let module_list =
+    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc)
+  in
   let* () =
-    Memo.parallel_iter
-      (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
-      ~f:(fun m ->
+    Memo.parallel_iter module_list ~f:(fun m ->
         (* Should we check module kind? *)
         build_js ~dir ~loc:(Some loc) ~pkg_name ~module_system:mel.module_system
           ~dst_dir ~obj_dir ~sctx ~build_dir ~lib_deps_js_includes m)
+  in
+  let* () =
+    match mel.alias with
+    | None -> Memo.return ()
+    | Some alias_name ->
+      let alias = Alias.make alias_name ~dir in
+      let deps =
+        List.rev_map module_list ~f:(fun m ->
+            make_js_name ~dst_dir m |> Path.build)
+        |> Action_builder.paths
+      in
+      Rules.Produce.Alias.add_deps alias deps
   in
   let ctx = Super_context.context sctx in
   let stdlib_dir = ctx.Context.stdlib_dir in

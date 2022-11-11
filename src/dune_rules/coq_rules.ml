@@ -644,7 +644,12 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let* cctx, _ = setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory in
   let cctx = Context.for_module cctx coq_module in
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
-  (Context.coqc_file_flags cctx, boot_type)
+  ( (let open Action_builder.O in
+    let+ coq_flags = Context.coq_flags cctx in
+    Command.Args.As coq_flags
+    :: Command.Args.S [ Context.coqc_native_flags cctx ]
+    :: Context.coqc_file_flags cctx)
+  , boot_type )
 
 (******************************************************************************)
 (* Install rules *)
@@ -784,4 +789,9 @@ let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   in
   let cctx = Context.for_module cctx coq_module in
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
-  (Context.coqc_file_flags cctx, boot_type)
+  ( (let open Action_builder.O in
+    let+ coq_flags = Context.coq_flags cctx in
+    Command.Args.As coq_flags
+    :: Command.Args.S [ Context.coqc_native_flags cctx ]
+    :: Context.coqc_file_flags cctx)
+  , boot_type )

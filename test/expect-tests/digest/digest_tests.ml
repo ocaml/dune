@@ -5,7 +5,7 @@ let%expect_test "directory digest version" =
   (* If this test fails with a new digest value, make sure to update to update
      [directory_digest_version] in digest.ml.
 
-     The expected value is kept ouside of the expect block on purpose so that it
+     The expected value is kept outside of the expect block on purpose so that it
      must be modified manually. *)
   let expected = "a743ec66ce913ff6587a3816a8acc6ea" in
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in

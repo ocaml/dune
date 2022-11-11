@@ -16,7 +16,7 @@ let all : _ Cmdliner.Cmd.t list =
     ; Subst.command
     ; Print_rules.command
     ; Utop.command
-    ; Promote.command
+    ; Promotion.promote
     ; Printenv.command
     ; Help.command
     ; Format_dune_file.command
@@ -30,7 +30,13 @@ let all : _ Cmdliner.Cmd.t list =
     ]
   in
   let groups =
-    [ Ocaml_cmd.group; Coq.group; Rpc.group; Internal.group; Init.group ]
+    [ Ocaml_cmd.group
+    ; Coq.group
+    ; Rpc.group
+    ; Internal.group
+    ; Init.group
+    ; Promotion.group
+    ]
   in
   terms @ groups
 

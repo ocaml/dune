@@ -28,7 +28,7 @@ let digest =
   Printf.sprintf "$%d" idx
 
 let () =
-  print_endline "runnning...";
+  print_endline "running...";
   let out = open_out "target" in
   output_string out "target";
   close_out out;

@@ -11,10 +11,12 @@ let with_directory_annot =
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
   | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
+  | Return : ('a, 'a * int) failure_mode
 
 let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
   | Strict -> Int.equal 0
   | Accept exit_codes -> fun i -> Predicate.test exit_codes i
+  | Return -> fun _ -> true
 
 let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
  fun mode t ~f ->
@@ -24,6 +26,7 @@ let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
     match t with
     | 0 -> Ok (f ())
     | n -> Error n)
+  | Return -> (f (), t)
 
 module Io = struct
   type input = Input

@@ -53,7 +53,7 @@ let%expect_test "cancelling a build" =
   [%expect {| PASS: build was cancelled |}]
 
 (* CR-soon jeremiedimino: currently cancelling a build cancels not only this
-   build but also all runing fibers, including ones that are unrelated. *)
+   build but also all running fibers, including ones that are unrelated. *)
 let%expect_test "cancelling a build: effect on other fibers" =
   let build_started = Fiber.Ivar.create () in
   go (fun () ->

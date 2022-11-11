@@ -26,7 +26,7 @@ module Processed = struct
 
   let pp_args x = x.args
 
-  (* Most of the configuration is shared accros a same lib/exe... *)
+  (* Most of the configuration is shared across a same lib/exe... *)
   type config =
     { stdlib_dir : Path.t
     ; obj_dirs : Path.Set.t
@@ -229,7 +229,7 @@ let obj_dir_of_lib kind modes obj_dir =
     obj_dir
 
 module Unprocessed = struct
-  (* We store separate information for each "module". These informations do not
+  (* We store separate information for each "module". These information do not
      reflect the actual content of the Merlin configuration yet but are needed
      for it's elaboration via the function [process : Unprocessed.t ... ->
      Processed.t] *)

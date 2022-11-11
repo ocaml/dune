@@ -8,7 +8,7 @@ module Library = Dune_file.Library
    Before this module is removed, there should be a good way to handle new types
    of source files without shoving everything into [Dir_contents].
 
-   Furthemore, this module is also responsible for details such as handling file
+   Furthermore, this module is also responsible for details such as handling file
    extensions and validating filenames. *)
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t

@@ -271,7 +271,7 @@ let%expect_test "nested with_error_handler" =
   let fiber =
     Fiber.with_error_handler
       ~on_error:(fun exn ->
-        print_endline "outter handler";
+        print_endline "outer handler";
         Exn_with_backtrace.reraise exn)
       (fun () ->
         Fiber.with_error_handler
@@ -283,7 +283,7 @@ let%expect_test "nested with_error_handler" =
   (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
   [%expect {|
      inner handler
-     outter handler
+     outer handler
      [PASS] got Exit |}]
 
 let must_set_flag f =
@@ -324,7 +324,7 @@ let%expect_test "finalize" =
 let%expect_test "nested finalize" =
   let fiber =
     Fiber.finalize
-      ~finally:(fun () -> Fiber.return (print_endline "outter finally"))
+      ~finally:(fun () -> Fiber.return (print_endline "outer finally"))
       (fun () ->
         Fiber.finalize
           ~finally:(fun () -> Fiber.return (print_endline "inner finally"))
@@ -333,7 +333,7 @@ let%expect_test "nested finalize" =
   (try test unit fiber with Exit -> print_endline "[PASS] got Exit");
   [%expect {|
     inner finally
-    outter finally
+    outer finally
     [PASS] got Exit |}]
 
 let%expect_test "context switch and raise inside finalize" =

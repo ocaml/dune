@@ -227,9 +227,6 @@ module Server = struct
       }
 
     let create fd sockaddr ~backlog =
-      Unix.set_nonblock fd;
-      Unix.setsockopt fd Unix.SO_REUSEADDR true;
-      Socket.bind fd sockaddr;
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
       Unix.set_nonblock r_interrupt_accept;
@@ -268,6 +265,7 @@ module Server = struct
         [ `Init of Unix.file_descr | `Running of Transport.t | `Closed ]
     ; backlog : int
     ; sockaddr : Unix.sockaddr
+    ; ready : unit Fiber.Ivar.t
     }
 
   let create sockaddr ~backlog =
@@ -276,7 +274,14 @@ module Server = struct
         (Unix.domain_of_sockaddr sockaddr)
         Unix.SOCK_STREAM 0
     in
-    { sockaddr; backlog; state = `Init fd }
+    Unix.set_nonblock fd;
+    Unix.setsockopt fd Unix.SO_REUSEADDR true;
+    match Socket.bind fd sockaddr with
+    | exception Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
+    | () ->
+      Ok { sockaddr; backlog; state = `Init fd; ready = Fiber.Ivar.create () }
+
+  let ready t = Fiber.Ivar.read t.ready
 
   let serve (t : t) =
     let* async = Worker.create () in
@@ -284,11 +289,12 @@ module Server = struct
     | `Closed -> Code_error.raise "already closed" []
     | `Running _ -> Code_error.raise "already running" []
     | `Init fd ->
-      let+ transport =
+      let* transport =
         Worker.task_exn async ~f:(fun () ->
             Transport.create fd t.sockaddr ~backlog:t.backlog)
       in
       t.state <- `Running transport;
+      let+ () = Fiber.Ivar.fill t.ready () in
       let accept () =
         Worker.task async ~f:(fun () ->
             Transport.accept transport

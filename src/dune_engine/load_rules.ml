@@ -578,7 +578,7 @@ end = struct
         match Dir_triage.Build_directory.parent d with
         | None ->
           Code_error.raise
-            "[gen_rules] returned Redirect_to_parent on a root direcoty"
+            "[gen_rules] returned Redirect_to_parent on a root directory"
             [ ( "context_or_install"
               , Context_or_install.to_dyn context_or_install )
             ]

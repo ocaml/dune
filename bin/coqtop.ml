@@ -119,7 +119,12 @@ let term =
           let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
             let args =
               let dir = Path.external_ Path.External.initial_cwd in
-              Dune_rules.Command.expand ~dir (S args)
+              let args =
+                Action_builder.map
+                  ~f:(fun x -> Dune_rules.Command.Args.S x)
+                  args
+              in
+              Dune_rules.Command.expand ~dir (Dyn args)
             in
             Action_builder.run args.build Eager
           in

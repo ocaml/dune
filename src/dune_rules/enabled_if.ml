@@ -7,7 +7,7 @@ type allowed_vars =
 
 (* The following variables are the ones allowed in the enabled_if fields of
    libraries, executables and install stanzas. While allowed variables for
-   theses stanzas are the same, the version at which they were allowed
+   these stanzas are the same, the version at which they were allowed
    differs. *)
 let common_vars_list =
   [ "architecture"

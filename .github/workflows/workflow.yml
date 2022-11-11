@@ -78,7 +78,7 @@ jobs:
       - run: opam exec -- make dune.exe
 
       # Ensure Dune can build itself
-      - run: opam exec -- ./dune.exe build -p dune --profile dune-bootstrap
+      - run: opam exec -- ./dune.exe build @install -p dune --profile dune-bootstrap
 
       - name: Install deps on Unix
         run: |

@@ -1,12 +1,3 @@
 (cram
  (deps %{bin:node} %{bin:melc})
- (applies_to missing-melc)
- ; missing-melc renames the melc executable temporarily, locking to avoid breaking other tests
- (locks m)
- (alias runtest-melange))
-
-(cram
- (deps %{bin:node} %{bin:melc})
- (applies_to * \ missing-melc)
- (locks m)
  (alias runtest-melange))

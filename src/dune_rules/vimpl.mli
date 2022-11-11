@@ -26,6 +26,6 @@ val vlib : t -> Lib.t
     the implementation and virtual library.*)
 val vlib_stubs_o_files : t option -> Path.t list
 
-val impl_cm_kind : t -> Cm_kind.t
+val impl_cm_kind : t -> Lib_mode.Cm_kind.t
 
 val vlib_obj_map : t -> Module.t Module_name.Unique.Map.t

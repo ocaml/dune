@@ -5,7 +5,7 @@ type t =
   ; impl : Dune_file.Library.t
   ; vlib_modules : Modules.t
   ; vlib_foreign_objects : Path.t list
-  ; impl_cm_kind : Cm_kind.t
+  ; impl_cm_kind : Lib_mode.Cm_kind.t
   ; vlib_obj_map : Module.t Module_name.Unique.Map.t
   }
 
@@ -25,10 +25,11 @@ let impl_modules t m =
 let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =
   let impl_cm_kind =
     let vlib_info = Lib.info vlib in
-    let { Lib_mode.Map.ocaml = { byte; native = _ }; melange = _ } =
+    let { Lib_mode.Map.ocaml = { byte = _; native = _ }; melange = _ } =
       Lib_info.modes vlib_info
     in
-    Mode.cm_kind (if byte then Byte else Native)
+    (* todo : fix *)
+    Lib_mode.Cm_kind.Melange Cmj
   in
   let vlib_obj_map =
     Modules.obj_map vlib_modules ~f:(function

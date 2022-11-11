@@ -1,1 +1,1 @@
-let run () = Js.log "running implementation"
+let run () = Js.log "hello from melange"

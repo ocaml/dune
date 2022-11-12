@@ -1,6 +1,12 @@
 open Import
 module CC = Compilation_context
 
+let lib_output_dir ~emit_stanza_dir ~lib_dir ~target =
+  let rel_path =
+    Path.reach (Path.build lib_dir) ~from:(Path.build emit_stanza_dir)
+  in
+  Path.Build.relative (Path.Build.relative emit_stanza_dir target) rel_path
+
 let make_js_name ~dst_dir m =
   let name =
     Module_name.Unique.artifact_filename (Module.obj_name m) ~ext:Melange.js_ext
@@ -18,9 +24,7 @@ let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
           let lib = Lib.Local.of_lib_exn lib in
           let info = Lib.Local.info lib in
           let lib_dir = Lib_info.src_dir info in
-          let dst_dir =
-            Melange.lib_output_dir ~emit_stanza_dir ~lib_dir ~target
-          in
+          let dst_dir = lib_output_dir ~emit_stanza_dir ~lib_dir ~target in
           let open Memo.O in
           let modules_group =
             Dir_contents.get sctx ~dir:lib_dir
@@ -182,7 +186,7 @@ let add_rules_for_libraries ~dir ~scope ~emit_stanza_dir ~sctx ~requires_link
             ]
       in
       let dst_dir =
-        Melange.lib_output_dir ~emit_stanza_dir ~lib_dir ~target:mel.target
+        lib_output_dir ~emit_stanza_dir ~lib_dir ~target:mel.target
       in
       let modules_group =
         Dir_contents.get sctx ~dir:lib_dir

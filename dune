@@ -1,4 +1,6 @@
-(dirs :standard \ result)
+(dirs _boot :standard \ result)
+
+(data_only_dirs _boot)
 
 (rule
  (copy dune-private-libs.opam.template dune-configurator.opam.template))

@@ -75,10 +75,10 @@ jobs:
 
       # dune doesn't have any additional dependencies so we can build it right
       # away this makes it possible to see build errors as soon as possible
-      - run: opam exec -- make dune.exe
+      - run: opam exec -- make _boot/dune.exe
 
       # Ensure Dune can build itself
-      - run: opam exec -- ./dune.exe build @install -p dune --profile dune-bootstrap
+      - run: opam exec -- make bootstrap
 
       - name: Install deps on Unix
         run: |

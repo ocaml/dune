@@ -30,7 +30,7 @@ run the bootstrapping step itself, build the ``dune.exe`` target with
 
 .. code:: sh
 
-   make dune.exe
+   make dev
 
 Once you've bootstrapped dune, you should be using it to develop dune itself.
 Here are the most common commands you'll be running:

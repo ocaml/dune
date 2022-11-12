@@ -5,9 +5,9 @@ Test cases when melc is not available
   > (using melange 0.1)
   > EOF
 
-  $ cat > main.ml <<EOF
+  $ cat > main_melange.ml <<EOF
   > let () =
-  >   print_endline "hello"
+  >   print_endline "hello from melange"
   > EOF
 
 Set up some fake environment without melc
@@ -22,19 +22,21 @@ For melange.emit stanzas, an error is shown
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (entries main_melange)
   >  (module_system commonjs))
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . output/melange__Main.js)
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . output/melange__Main_melange.js)
   Error: Program melc not found in the tree or in PATH
    (context: default)
-  -> required by _build/default/output/melange__Main.js
+  -> required by _build/default/output/melange__Main_melange.js
   Hint: opam install melange
-  File "dune", line 1, characters 0-57:
+  File "dune", line 1, characters 0-81:
   1 | (melange.emit
   2 |  (target output)
-  3 |  (module_system commonjs))
-  Error: No rule found for .output.mobjs/melange/melange__Main.cmj
+  3 |  (entries main_melange)
+  4 |  (module_system commonjs))
+  Error: No rule found for .output.mobjs/melange/melange__Main_melange.cmj
   [1]
 
 For libraries, if no melange.emit stanza is found, build does not fail
@@ -42,38 +44,38 @@ For libraries, if no melange.emit stanza is found, build does not fail
   $ cat > dune <<EOF
   > (library
   >  (name lib1)
-  >  (modules :standard \ main)
+  >  (modules :standard \ main_native)
   >  (modes byte melange))
   > (executable
-  >  (name main)
-  >  (modules main)
+  >  (name main_native)
+  >  (modules main_native)
   >  (modes exe byte)
   >  (libraries lib1))
   > EOF
 
-  $ cat > main.ml <<EOF
+  $ cat > main_native.ml <<EOF
   > let () =
   >   print_endline Lib1.Lib.t
   > EOF
 
   $ cat > lib.ml <<EOF
-  > let t = "hello"
+  > let t = "hello from native"
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main.bc)
-  $ dune exec ./main.bc
-  hello
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main_native.bc)
+  $ dune exec ./main_native.bc
+  hello from native
 
 If melange.emit stanza is found, but no rules are executed, build does not fail
 
   $ cat > dune <<EOF
   > (library
   >  (name lib1)
-  >  (modules :standard \ main main_melange)
+  >  (modules :standard \ main_native main_melange)
   >  (modes byte melange))
   > (executable
-  >  (name main)
-  >  (modules main)
+  >  (name main_native)
+  >  (modules main_native)
   >  (modes exe byte)
   >  (libraries lib1))
   > (melange.emit
@@ -83,11 +85,26 @@ If melange.emit stanza is found, but no rules are executed, build does not fail
   >  (module_system commonjs))
   > EOF
 
-  $ cat > main_melange.ml <<EOF
-  > let () =
-  >   print_endline Lib1.Lib.t
-  > EOF
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main_native.bc)
+  $ dune exec ./main_native.bc
+  hello from native
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main.bc)
-  $ dune exec ./main.bc
-  hello
+But trying to build any melange artifacts will fail
+
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . output/melange__Main_melange.js)
+  Error: Program melc not found in the tree or in PATH
+   (context: default)
+  -> required by _build/default/output/melange__Main_melange.js
+  Hint: opam install melange
+  File "dune", line 10, characters 0-99:
+  10 | (melange.emit
+  11 |  (target output)
+  12 |  (entries main_melange)
+  13 |  (libraries lib1)
+  14 |  (module_system commonjs))
+  Error: No rule found for .output.mobjs/melange/melange__Main_melange.cmj
+  File "output/_unknown_", line 1, characters 0-0:
+  Error: No rule found for .lib1.objs/melange/lib1.cmj
+  File "output/_unknown_", line 1, characters 0-0:
+  Error: No rule found for .lib1.objs/melange/lib1__Lib.cmj
+  [1]

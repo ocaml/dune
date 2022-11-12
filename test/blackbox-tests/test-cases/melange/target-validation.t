@@ -12,13 +12,16 @@ Target should not be empty
   > (library
   >  (name $lib)
   >  (modes melange))
-  > (melange.emit (target "") (libraries $foo) (module_system es6))
+  > (melange.emit
+  >  (target "")
+  >  (libraries $foo)
+  >  (module_system es6))
   > EOF
 
   $ dune build
-  File "dune", line 4, characters 22-24:
-  4 | (melange.emit (target "") (libraries ) (module_system es6))
-                            ^^
+  File "dune", line 5, characters 9-11:
+  5 |  (target "")
+               ^^
   Error: The field target can not be empty
   [1]
 
@@ -28,13 +31,16 @@ Target should not try to descend into subdirectories
   > (library
   >  (name $lib)
   >  (modes melange))
-  > (melange.emit (target foo/bar) (libraries $foo) (module_system es6))
+  > (melange.emit
+  >  (target foo/bar)
+  >  (libraries $foo)
+  >  (module_system es6))
   > EOF
 
   $ dune build
-  File "dune", line 4, characters 22-29:
-  4 | (melange.emit (target foo/bar) (libraries ) (module_system es6))
-                            ^^^^^^^
+  File "dune", line 5, characters 9-16:
+  5 |  (target foo/bar)
+               ^^^^^^^
   Error: The field target must use simple names and can not include paths to
   other folders. To emit JavaScript files in another folder, move the
   `melange.emit` stanza to that folder
@@ -55,13 +61,16 @@ Target should not try to escape into parent directories
   > (library
   >  (name $lib)
   >  (modes melange))
-  > (melange.emit (target ../bar) (libraries $foo) (module_system es6))
+  > (melange.emit
+  >  (target ../bar)
+  >  (libraries $foo)
+  >  (module_system es6))
   > EOF
 
   $ dune build
-  File "foo/dune", line 4, characters 22-28:
-  4 | (melange.emit (target ../bar) (libraries ) (module_system es6))
-                            ^^^^^^
+  File "foo/dune", line 5, characters 9-15:
+  5 |  (target ../bar)
+               ^^^^^^
   Error: The field target must use simple names and can not include paths to
   other folders. To emit JavaScript files in another folder, move the
   `melange.emit` stanza to that folder

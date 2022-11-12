@@ -39,7 +39,7 @@ Test what happens when melange.emit stanza depends on non-Melange libraries
   > EOF
 
   $ dune build output/melange__Main_melange.js
-  File "dune", line 3, characters 12-15:
+  File "dune", line 4, characters 12-15:
   3 |  (libraries foo)
                   ^^^
   Error: The library "foo" was added as a dependency of a melange.emit stanza,
@@ -50,3 +50,10 @@ Test what happens when melange.emit stanza depends on non-Melange libraries
 But building the native executable does not fail
 
   $ dune build ./main_native.exe
+  File "dune", line 4, characters 12-15:
+  4 |  (libraries foo)
+                  ^^^
+  Error: The library "foo" was added as a dependency of a melange.emit stanza,
+  but this library is not compatible with melange. To fix this, add (modes
+  melange) to the library stanza.
+  [1]

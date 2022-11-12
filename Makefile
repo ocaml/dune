@@ -4,7 +4,7 @@ PREFIX_ARG := $(if $(PREFIX),--prefix $(PREFIX),)
 LIBDIR_ARG := $(if $(LIBDIR),--libdir $(LIBDIR),)
 DESTDIR_ARG := $(if $(DESTDIR),--destdir $(DESTDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG) $(DESTDIR_ARG)
-BIN := ./dune.exe
+BIN := ./_boot/dune.exe
 
 # Dependencies used for testing dune, when developed locally and
 # when tested in CI
@@ -26,7 +26,7 @@ ppxlib \
 result \
 ctypes \
 "utop>=2.6.0" \
- "melange>=0.3.0"
+"melange>=0.3.0"
 
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
@@ -43,7 +43,7 @@ help:
 
 .PHONY: release
 release: $(BIN)
-	@$(BIN) build -p dune --profile dune-bootstrap
+	@$(BIN) build @install -p dune --profile dune-bootstrap
 
 $(BIN):
 	@ocaml boot/bootstrap.ml
@@ -146,8 +146,8 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
 endif
 
 .PHONY: bench
-bench: release
-	@$(BIN) exec -- ./bench/bench.exe _build/default/dune.exe
+bench: $(BIN)
+	@$(BIN) exec -- ./bench/bench.exe $(BIN)
 
 .PHONY: dune
 dune: $(BIN)
@@ -174,3 +174,7 @@ docker-build-image:
 .PHONY: docker-compose
 docker-compose:
 	docker compose -f docker/dev.yml run dune bash
+
+.PHONY: bootstrap
+bootstrap:
+	$(BIN) build @install -p dune --profile dune-bootstrap

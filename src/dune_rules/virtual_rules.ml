@@ -35,8 +35,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)
   in
   let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
-  let { Mode.Dict.byte; native } =
-    Dune_file.Mode_conf.Set.eval impl.modes.ocaml ~has_native
+  let { Lib_mode.Map.ocaml = { byte; native }; melange } =
+    Dune_file.Mode_conf.Lib.Set.eval impl.modes ~has_native
   in
   let copy_obj_file m kind =
     let src = Obj_dir.Module.cm_file_exn vlib_obj_dir m ~kind in
@@ -44,23 +44,24 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     copy_to_obj_dir ~src ~dst
   in
   let open Memo.O in
+  let copy_interface_to_impl ~src kind () =
+    let dst = Obj_dir.Module.cm_public_file_exn impl_obj_dir src ~kind in
+    let src = Obj_dir.Module.cm_public_file_exn vlib_obj_dir src ~kind in
+    copy_to_obj_dir ~src ~dst
+  in
   let copy_objs src =
-    copy_obj_file src (Ocaml Cmi)
+    Memo.when_ (byte || native) (fun () -> copy_obj_file src (Ocaml Cmi))
+    >>> Memo.when_ melange (fun () -> copy_obj_file src (Melange Cmi))
     >>> Memo.when_
           (Module.visibility src = Public
           && Obj_dir.need_dedicated_public_dir impl_obj_dir)
           (fun () ->
-            let dst =
-              Obj_dir.Module.cm_public_file_exn impl_obj_dir src
-                ~kind:(Ocaml Cmi)
-            in
-            let src =
-              Obj_dir.Module.cm_public_file_exn vlib_obj_dir src
-                ~kind:(Ocaml Cmi)
-            in
-            copy_to_obj_dir ~src ~dst)
+            Memo.when_ (byte || native)
+              (copy_interface_to_impl ~src (Ocaml Cmi))
+            >>> Memo.when_ melange (copy_interface_to_impl ~src (Melange Cmi)))
     >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
             Memo.when_ byte (fun () -> copy_obj_file src (Ocaml Cmo))
+            >>> Memo.when_ melange (fun () -> copy_obj_file src (Melange Cmj))
             >>> Memo.when_ native (fun () ->
                     copy_obj_file src (Ocaml Cmx)
                     >>>

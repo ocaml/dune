@@ -85,10 +85,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
     let+ compiler =
       match mode with
       | Ocaml mode -> Memo.return @@ Context.compiler ctx mode
-      | Melange ->
-        (* TODO loc should come from the mode field in the dune file *)
-        Super_context.resolve_program sctx ~loc:None ~dir
-          ~hint:"opam install melange" "melc"
+      | Melange -> Melange_binary.melc sctx ~dir
     in
     Result.to_option compiler
   in

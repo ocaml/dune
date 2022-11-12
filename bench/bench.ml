@@ -152,7 +152,7 @@ let () =
           ]
       }
     ; { Output.name = "Misc"
-      ; metrics = [ ("Size of dune.exe", `Int size, "bytes") ]
+      ; metrics = [ ("Size of _boot/dune.exe", `Int size, "bytes") ]
       }
     ]
   in

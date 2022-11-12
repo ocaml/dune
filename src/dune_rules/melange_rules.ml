@@ -216,7 +216,7 @@ let compile_info ~modes ~scope (mel : Melange_stanzas.Emit.t) =
   in
   Lib.DB.resolve_user_written_deps_for_exes ~modes (Scope.libs scope)
     [ (mel.loc, mel.target) ]
-    (snd mel.libraries) ~pps ~dune_version
+    mel.libraries ~pps ~dune_version
 
 let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let open Memo.O in

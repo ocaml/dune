@@ -8,7 +8,7 @@ module Emit : sig
     ; alias : Alias.Name.t option
     ; module_system : Melange.Module_system.t
     ; entries : Ordered_set_lang.t
-    ; libraries : Loc.t * Lib_dep.t list
+    ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list

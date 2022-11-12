@@ -1,5 +1,0 @@
-(melange.emit
- (target output)
- (entries c)
- (libraries lib)
- (module_system es6))

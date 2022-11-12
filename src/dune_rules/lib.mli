@@ -160,6 +160,21 @@ module DB : sig
     -> dune_version:Dune_lang.Syntax.Version.t
     -> Compile.t
 
+  (** Resolve libraries written by the user in a [dune] file. The resulting list
+      of libraries is transitively closed and sorted by the order of
+      dependencies.
+
+      This function is for melange.emit stanzas. *)
+  val resolve_user_written_deps_for_melange :
+       t
+    -> (Loc.t * string) list
+    -> ?allow_overlaps:bool
+    -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
+    -> Lib_dep.t list
+    -> pps:(Loc.t * Lib_name.t) list
+    -> dune_version:Dune_lang.Syntax.Version.t
+    -> Compile.t
+
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> lib list Resolve.Memo.t
 
   (** Return the list of all libraries in this database. If [recursive] is true,

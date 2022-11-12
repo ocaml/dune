@@ -218,22 +218,27 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
     >>| Preprocess.Per_module.pps
   in
-  Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+  Lib.DB.resolve_user_written_deps_for_melange (Scope.libs scope)
     [ (mel.loc, mel.target) ]
     mel.libraries ~pps ~dune_version
 
 let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let open Memo.O in
   let* compile_info = compile_info ~scope mel in
-  let+ cctx_and_merlin =
-    add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
-      ~compile_info mel
-  and+ () =
-    let* requires_link =
-      Memo.Lazy.force (Lib.Compile.requires_link compile_info)
+  let f () =
+    let+ cctx_and_merlin =
+      add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
+        ~compile_info mel
+    and+ () =
+      let* requires_link =
+        Memo.Lazy.force (Lib.Compile.requires_link compile_info)
+      in
+      let* requires_link = Resolve.read_memo requires_link in
+      add_rules_for_libraries ~dir ~scope ~emit_stanza_dir:dir ~sctx
+        ~requires_link mel
     in
-    let* requires_link = Resolve.read_memo requires_link in
-    add_rules_for_libraries ~dir ~scope ~emit_stanza_dir:dir ~sctx
-      ~requires_link mel
+    cctx_and_merlin
   in
-  cctx_and_merlin
+  Buildable_rules.with_lib_deps
+    (Super_context.context sctx)
+    compile_info ~dir ~f

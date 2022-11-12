@@ -3,10 +3,13 @@ open Import
 type t =
   | Lib of Lib_name.t
   | Exes of string list
+  | Melange_entries of string list
 
 let for_lib l = Lib l
 
 let for_exes ~names = Exes names
+
+let for_melange ~names = Melange_entries names
 
 (* For debug purposes we use the name of one library or executable and the hash
    of the others if there are multiple executables to name the merlin file *)
@@ -15,7 +18,10 @@ let to_string = function
   | Exes [ name ] -> sprintf "exe-%s" name
   | Exes (name :: names) ->
     sprintf "exe-%s-%s" name Digest.(generic names |> to_string)
-  | Exes [] -> assert false
+  | Melange_entries [ name ] -> sprintf "melange-%s" name
+  | Melange_entries (name :: names) ->
+    sprintf "melange-%s-%s" name Digest.(generic names |> to_string)
+  | Exes [] | Melange_entries [] -> assert false
 
 let merlin_folder_name = ".merlin-conf"
 

@@ -15,6 +15,7 @@ Set up some fake environment without melc
   $ mkdir _path
   $ ln -s $(command -v dune) _path/
   $ ln -s $(command -v ocamlc) _path/
+  $ ln -s $(command -v ocamldep) _path/
 
 For melange.emit stanzas, an error is shown
 
@@ -24,10 +25,16 @@ For melange.emit stanzas, an error is shown
   >  (module_system commonjs))
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune runtest --always-show-command-line --root .)
-  Error: A melange.emit stanza was found, but the melange compiler melc is not
-  available. Either install it by running [opam install melange], or remove the
-  melange.emit stanzas from the project.
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . output/melange__Main.js)
+  Error: Program melc not found in the tree or in PATH
+   (context: default)
+  -> required by _build/default/output/melange__Main.js
+  Hint: opam install melange
+  File "dune", line 1, characters 0-57:
+  1 | (melange.emit
+  2 |  (target output)
+  3 |  (module_system commonjs))
+  Error: No rule found for .output.mobjs/melange/melange__Main.cmj
   [1]
 
 For libraries, if no melange.emit stanza is found, build does not fail
@@ -53,9 +60,11 @@ For libraries, if no melange.emit stanza is found, build does not fail
   > let t = "hello"
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune runtest --always-show-command-line --root .)
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main.bc)
+  $ dune exec ./main.bc
+  hello
 
-But if melange.emit stanza is found, build will fail
+If melange.emit stanza is found, but no rules are executed, build does not fail
 
   $ cat > dune <<EOF
   > (library
@@ -79,8 +88,6 @@ But if melange.emit stanza is found, build will fail
   >   print_endline Lib1.Lib.t
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune runtest --always-show-command-line --root .)
-  Error: A melange.emit stanza was found, but the melange compiler melc is not
-  available. Either install it by running [opam install melange], or remove the
-  melange.emit stanzas from the project.
-  [1]
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main.bc)
+  $ dune exec ./main.bc
+  hello

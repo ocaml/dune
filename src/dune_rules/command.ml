@@ -95,7 +95,9 @@ and expand_no_targets ~dir (t : without_targets t) =
 
 let dep_prog = function
   | Ok p -> Action_builder.path p
-  | Error _ -> Action_builder.return ()
+  | Error not_found ->
+    Action_builder.fail
+      { fail = (fun () -> Action.Prog.Not_found.raise not_found) }
 
 let run ~dir ?sandbox ?stdout_to prog args =
   Action_builder.With_targets.add ~file_targets:(Option.to_list stdout_to)

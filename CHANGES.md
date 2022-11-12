@@ -52,6 +52,8 @@ Unreleased
 - Allow `:standard` in the `(modules)` field of the `coq.pp` stanza (#6229,
   fixes #2414, @Alizter)
 
+- Fix passing of native flags to dune coq top (#6369, fixes #6366, @Alizter)
+
 - Extend the promotion CLI to a `dune promotion` group: `dune promote` is moved
   to `dune promotion apply` (the former still works) and the new `dune promotion
   diff` command can be used to just display the promotion without applying it.
@@ -82,7 +84,7 @@ Unreleased
   It is enabled by setting terminal persistence to
   `clear-on-rebuild-and-flush-history` (#6065, @rgrinberg)
 
-- Disallow generating targets in sub direcories in inferred rules. The check to
+- Disallow generating targets in sub directories in inferred rules. The check to
   forbid this was accidentally done only for manually specified targets (#6031,
   @rgrinberg)
 
@@ -249,7 +251,7 @@ Unreleased
 - The `coq.theory` stanza now produces rules for running `coqdoc`. Given a
   theory named `mytheory`, the directory targets `mytheory.html/` and
   `mytheory.tex/` or additionally the aliases `@doc` and `@doc-latex` will
-  build the HTML and LaTeX documentation repsectively. (#5695, fixes #3760,
+  build the HTML and LaTeX documentation respectively. (#5695, fixes #3760,
   @Alizter)
 
 - Coq theories marked as `(boot)` cannot depend on other theories
@@ -576,7 +578,7 @@ Unreleased
   simpler and more reproducible (#4281, @jeremiedimino)
 
 - Remove the `external-lib-deps` command. This command was only
-  approximative and the cost of maintainance was getting too high. We
+  approximative and the cost of maintenance was getting too high. We
   removed it to make room for new more important features (#4298,
   @jeremiedimino)
 
@@ -1558,7 +1560,7 @@ Unreleased
   variable. (#2588, fix #2568, @rgrinberg)
 
 - Add a `forbidden_libraries` field to prevent some library from being
-  linked in an executable. This help detecting who accidently pulls in
+  linked in an executable. This help detecting who accidentally pulls in
   `unix` for instance (#2570, @diml)
 
 - Fix incorrect error message when a variable is expanded in static context:
@@ -1571,7 +1573,7 @@ Unreleased
 
 - Drop support for `jbuild` and `jbuild-ignore` files (#2607, @diml)
 
-- Add a `dune-action-plugin` library for describing dependencies direcly in
+- Add a `dune-action-plugin` library for describing dependencies directly in
   the executable source. Programs that use this feature can be run by a new
   action (dynamic-run <progn> ...). (#2635, @staronj, @aalekseyev)
 
@@ -1857,7 +1859,7 @@ Unreleased
 - Fix `chdir` on external and source paths. Dune will also fail gracefully if
   the external or source path does not exist (#2165, fixes #2158, @rgrinberg)
 
-- Support the `.cc` extension fro C++ sources (#2195, fixes #83, @rgrinberg)
+- Support the `.cc` extension for C++ sources (#2195, fixes #83, @rgrinberg)
 
 - Run `ocamlformat` relative to the context root. This improves the locations of
   errors. (#2196, fixes #1370, @rgrinberg)

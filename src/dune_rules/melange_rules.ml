@@ -1,6 +1,18 @@
 open Import
 module CC = Compilation_context
 
+let lib_output_dir ~emit_stanza_dir ~lib_dir ~target =
+  let rel_path =
+    Path.reach (Path.build lib_dir) ~from:(Path.build emit_stanza_dir)
+  in
+  Path.Build.relative (Path.Build.relative emit_stanza_dir target) rel_path
+
+let make_js_name ~dst_dir m =
+  let name =
+    Module_name.Unique.artifact_filename (Module.obj_name m) ~ext:Melange.js_ext
+  in
+  Path.Build.relative dst_dir name
+
 let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
   let open Resolve.Memo.O in
   Command.Args.memo
@@ -12,9 +24,7 @@ let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
           let lib = Lib.Local.of_lib_exn lib in
           let info = Lib.Local.info lib in
           let lib_dir = Lib_info.src_dir info in
-          let dst_dir =
-            Melange.lib_output_dir ~emit_stanza_dir ~lib_dir ~target
-          in
+          let dst_dir = lib_output_dir ~emit_stanza_dir ~lib_dir ~target in
           let open Memo.O in
           let modules_group =
             Dir_contents.get sctx ~dir:lib_dir
@@ -23,13 +33,7 @@ let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
           in
           let* source_modules = modules_group >>| Modules.impl_only in
           let of_module m =
-            let output =
-              let name =
-                Module_name.Unique.artifact_filename (Module.obj_name m)
-                  ~ext:Melange.js_ext
-              in
-              Path.Build.relative dst_dir name
-            in
+            let output = make_js_name ~dst_dir m in
             Dep.file (Path.build output)
           in
           Resolve.Memo.return
@@ -47,19 +51,9 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
     ~build_dir ~lib_deps_js_includes m =
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let open Memo.O in
-  let* compiler =
-    (* TODO loc should come from the mode field in the dune file *)
-    Super_context.resolve_program sctx ~loc:None ~dir:build_dir
-      ~hint:"opam install melange" "melc"
-  in
+  let* compiler = Melange_binary.melc sctx ~dir:build_dir in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
-  let output =
-    let name =
-      Module_name.Unique.artifact_filename (Module.obj_name m)
-        ~ext:Melange.js_ext
-    in
-    Path.Build.relative dst_dir name
-  in
+  let output = make_js_name ~dst_dir m in
   let obj_dir =
     [ Command.Args.A "-I"; Path (Path.build (Obj_dir.melange_dir obj_dir)) ]
   in
@@ -127,16 +121,27 @@ let add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
   in
   let build_dir = (Super_context.context sctx).build_dir in
   let* () = Module_compilation.build_all cctx in
+  let module_list =
+    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc)
+  in
   let* () =
-    Memo.parallel_iter
-      (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
-      ~f:(fun m ->
+    Memo.parallel_iter module_list ~f:(fun m ->
         (* Should we check module kind? *)
         build_js ~dir ~loc:(Some loc) ~pkg_name ~module_system:mel.module_system
           ~dst_dir ~obj_dir ~sctx ~build_dir ~lib_deps_js_includes m)
   in
-  let ctx = Super_context.context sctx in
-  let stdlib_dir = ctx.Context.stdlib_dir in
+  let* () =
+    match mel.alias with
+    | None -> Memo.return ()
+    | Some alias_name ->
+      let alias = Alias.make alias_name ~dir in
+      let deps =
+        List.rev_map module_list ~f:(fun m ->
+            make_js_name ~dst_dir m |> Path.build)
+        |> Action_builder.paths
+      in
+      Rules.Produce.Alias.add_deps alias deps
+  in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* preprocess =
     Resolve.Memo.read_memo
@@ -144,6 +149,7 @@ let add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
          ~instrumentation_backend:
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
+  let stdlib_dir = (Super_context.context sctx).stdlib_dir in
   Memo.return
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
@@ -176,7 +182,7 @@ let add_rules_for_libraries ~dir ~scope ~emit_stanza_dir ~sctx ~requires_link
             ]
       in
       let dst_dir =
-        Melange.lib_output_dir ~emit_stanza_dir ~lib_dir ~target:mel.target
+        lib_output_dir ~emit_stanza_dir ~lib_dir ~target:mel.target
       in
       let modules_group =
         Dir_contents.get sctx ~dir:lib_dir

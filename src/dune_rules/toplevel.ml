@@ -124,7 +124,17 @@ let setup_rules_and_return_exe_path t =
 
 let setup_rules t = Memo.map (setup_rules_and_return_exe_path t) ~f:ignore
 
-let print_toplevel_init_file ~include_paths ~files_to_load ~uses ~pp ~ppx =
+type directives =
+  { include_paths : Path.Set.t
+  ; files_to_load : Path.t list
+  ; uses : Path.t list
+  ; pp : string option
+  ; ppx : string option
+  ; code : string list
+  }
+
+let print_toplevel_init_file
+    { include_paths; files_to_load; uses; pp; ppx; code } =
   Path.Set.iter include_paths ~f:(fun p ->
       Printf.printf "#directory %S;;\n" (Path.to_absolute_filename p));
   List.iter files_to_load ~f:(fun p ->
@@ -132,7 +142,12 @@ let print_toplevel_init_file ~include_paths ~files_to_load ~uses ~pp ~ppx =
   Option.iter pp ~f:(Printf.printf "#pp %S;;\n");
   Option.iter ppx ~f:(Printf.printf "#ppx %S;;\n");
   List.iter uses ~f:(fun p ->
-      Printf.printf "#use %S;;\n" (Path.to_absolute_filename p))
+      Printf.printf "#use %S;;\n" (Path.to_absolute_filename p));
+  match code with
+  | [] -> ()
+  | code ->
+    List.iter code ~f:print_endline;
+    print_endline ";;"
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =

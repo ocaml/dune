@@ -611,7 +611,7 @@ Dependencies in ``dune`` files can be specified using one of the following:
   - ``none``: the action must run in the build directory
   - ``preserve_file_kind``: the action needs the files it reads to look
     like normal files (so Dune won't use symlinks for sandboxing)
-- ``(include <file>)`` read the s-expression in ``<file>`` and intepret it as
+- ``(include <file>)`` read the s-expression in ``<file>`` and interpret it as
   additional dependencies. The s-expression is expected to be a list of the
   same constructs enumerated here.
 
@@ -830,7 +830,7 @@ the destination file. More precisely, it inserts the following line:
 
 Most languages recognize such lines and update their current location
 to report errors in the original file rather than the
-copy. This is important beause the copy exists only under the ``_build``
+copy. This is important because the copy exists only under the ``_build``
 directory, and in order for editors to jump to errors when parsing the
 output of the build system, errors must point to files that exist in
 the source tree. In the beta versions of Dune, ``copy#`` was

@@ -8,7 +8,7 @@ Test creating directory targets by symlinking:
   $ cat >dune <<EOF
   > (rule
   >  (targets (dir symlinked))
-  >  ;; not exactly correcty, but it's just a test
+  >  ;; not exactly correctly, but it's just a test
   >  (deps bar/foo (sandbox always))
   >  (action (system "ln -s ./bar symlinked")))
   > EOF

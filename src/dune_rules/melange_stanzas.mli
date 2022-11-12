@@ -5,6 +5,7 @@ module Emit : sig
   type t =
     { loc : Loc.t
     ; target : string
+    ; alias : Alias.Name.t option
     ; module_system : Melange.Module_system.t
     ; entries : Ordered_set_lang.t
     ; libraries : Loc.t * Lib_dep.t list

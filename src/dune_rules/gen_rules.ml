@@ -328,7 +328,7 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     []
 
 (* To be called once per project, when we are generating the rules for the root
-   diretory of the project *)
+   directory of the project *)
 let gen_project_rules sctx project =
   let+ () = Opam_create.add_rules sctx project
   and+ () = Install_rules.gen_project_rules sctx project
@@ -396,6 +396,12 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
       | _ -> S.empty)
       (fun () -> Jsoo_rules.setup_separate_compilation_rules sctx rest)
   | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
+  | ".topmod" :: comps ->
+    has_rules
+      (match comps with
+      | [] -> S.All
+      | _ -> S.empty)
+      (fun () -> Top_module.gen_rules sctx ~dir ~comps)
   | ".ppx" :: rest ->
     has_rules
       (match rest with
@@ -458,7 +464,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           match components with
           | [] ->
             String.Set.union subdirs
-              (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
+              (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
           | _ -> subdirs
         in
         let+ directory_targets =

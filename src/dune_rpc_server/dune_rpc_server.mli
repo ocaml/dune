@@ -27,7 +27,7 @@ module Session : sig
       the state after [on_terminate] finishes. *)
   val get : 'a t -> 'a
 
-  (** [get session a] sets the curent state to [a].*)
+  (** [get session a] sets the current state to [a].*)
   val set : 'a t -> 'a -> unit
 
   val active : _ t -> bool

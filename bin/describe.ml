@@ -110,7 +110,7 @@ module Descr = struct
   (** Description of executables *)
   module Exe = struct
     type t =
-      { names : string list  (** names of the executble *)
+      { names : string list  (** names of the executable *)
       ; requires : Digest.t list
             (** list of direct dependencies to libraries, identified by their
                 digests *)
@@ -541,7 +541,7 @@ module Sanitize_for_tests = struct
           path
       in
       (* now, we rename the UIDs in the [requires] field , while reversing the
-         list of items, so taht we get back the original ordering *)
+         list of items, so that we get back the original ordering *)
       List.map ~f:(Descr.Item.map_path ~f:rename_path) items
 
     (** Sanitizes a workspace description when options ask to do so, or performs

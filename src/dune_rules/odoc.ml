@@ -340,7 +340,7 @@ let setup_html sctx (odoc_file : odoc_artefact) =
     match odoc_file.source with
     | Mld -> (odoc_file.html_file, [])
     | Module ->
-      (* Dummy target so that the bellow rule as at least one target. We do this
+      (* Dummy target so that the below rule as at least one target. We do this
          because we don't know the targets of odoc in this case. The proper way
          to support this would be to have directory targets. *)
       let dummy = Action_builder.create_file (odoc_file.html_dir ++ ".dummy") in

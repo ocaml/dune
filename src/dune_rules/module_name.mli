@@ -57,6 +57,8 @@ module Unique : sig
 
   val compare : t -> t -> Ordering.t
 
+  val equal : t -> t -> bool
+
   val artifact_filename : t -> ext:string -> string
 
   include Dune_lang.Conv.S with type t := t

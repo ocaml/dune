@@ -5,6 +5,7 @@ module Emit = struct
   type t =
     { loc : Loc.t
     ; target : string
+    ; alias : Alias.Name.t option
     ; module_system : Melange.Module_system.t
     ; entries : Ordered_set_lang.t
     ; libraries : Loc.t * Lib_dep.t list
@@ -67,6 +68,7 @@ module Emit = struct
                  ])
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
+       and+ alias = field_o "alias" Alias.Name.decode
        and+ module_system =
          field "module_system"
            (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
@@ -90,6 +92,7 @@ module Emit = struct
        in
        { loc
        ; target
+       ; alias
        ; module_system
        ; entries
        ; libraries

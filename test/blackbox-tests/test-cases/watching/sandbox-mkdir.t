@@ -23,7 +23,7 @@ Test that Dune mkdirs the right set of directories in the sandbox.
   $ cat test/target
   hello
 
-Now force a rebuild. This suceeds (in the past it could fail due to [mkdir]
+Now force a rebuild. This succeeds (in the past it could fail due to [mkdir]
 memoization).
 
   $ rm _build/default/test/target test/target

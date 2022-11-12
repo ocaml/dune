@@ -52,7 +52,7 @@ for free.
 
 (package
  (name dune-build-info)
- (synopsis "Embed build informations inside executable")
+ (synopsis "Embed build information inside executable")
  (depends
   (ocaml (>= 4.08)))
  (description "\
@@ -134,7 +134,7 @@ understood by dune language."))
 
 (package
  (name dune-site)
- (synopsis "Embed locations informations inside executable and libraries")
+ (synopsis "Embed locations information inside executable and libraries")
  (depends (dune-private-libs (= :version)))
  (description ""))
 

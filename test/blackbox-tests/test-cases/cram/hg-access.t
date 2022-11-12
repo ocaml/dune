@@ -1,4 +1,4 @@
-Check that actions don't have access to the outter hg repository.
+Check that actions don't have access to the outer hg repository.
 
   $ mkdir hg
   $ cd hg

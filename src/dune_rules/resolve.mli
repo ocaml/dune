@@ -120,7 +120,7 @@ val args : 'a Command.Args.t t -> 'a Command.Args.t
 (** Same as [read] but in the memo build monad. Use with caution! *)
 val read_memo : 'a t -> 'a Memo.t
 
-(** Read the value immediatly, ignoring actual errors. *)
+(** Read the value immediately, ignoring actual errors. *)
 val peek : 'a t -> ('a, unit) result
 
 (** [is_ok t] is the same as [Result.is_ok (peek t)] *)
@@ -199,7 +199,7 @@ module Memo : sig
 
   val of_result : ('a, exn) result -> 'a t
 
-  (** Read the value immediatly, ignoring actual errors. *)
+  (** Read the value immediately, ignoring actual errors. *)
   val peek : 'a t -> ('a, unit) result Memo.t
 end
 with type 'a resolve := 'a t

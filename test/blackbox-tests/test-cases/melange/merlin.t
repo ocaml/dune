@@ -14,7 +14,7 @@
   > EOF
 
   $ touch bar.ml $lib.ml
-  $ dune build .merlin-conf/lib-"$lib"
+  $ dune build @check
   $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "$lib"
   Foo
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
@@ -34,6 +34,6 @@
   > EOF
 
   $ touch main.ml
-  $ dune build .merlin-conf/melange-"$target"
+  $ dune build @check
   $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "$target"
     $TESTCASE_ROOT/_build/default/.output.mobjs/melange)

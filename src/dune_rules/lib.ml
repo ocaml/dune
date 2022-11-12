@@ -1801,7 +1801,7 @@ module DB = struct
         [ ("name", Lib_name.to_dyn name) ]
     | Some lib -> (lib, Compile.for_lib ~allow_overlaps t lib)
 
-  let resolve_user_written_deps t modules ?(allow_overlaps = false)
+  let resolve_user_written_deps t targets ?(allow_overlaps = false)
       ?(forbidden_libraries = []) deps ~pps ~dune_version ~merlin_ident =
     let resolved =
       Memo.lazy_ (fun () ->
@@ -1835,10 +1835,11 @@ module DB = struct
                 (Option.some_if (not allow_overlaps) t)
                 ~forbidden_libraries res)
             ~human_readable_description:(fun () ->
-              match modules with
-              | [ (loc, name) ] ->
+              match targets with
+              | `Melange name -> Pp.textf "melange target %s" name
+              | `Exe [ (loc, name) ] ->
                 Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
-              | names ->
+              | `Exe names ->
                 let loc, _ = List.hd names in
                 Pp.textf "executables %s in %s"
                   (String.enumerate_and (List.map ~f:snd names))
@@ -1866,20 +1867,6 @@ module DB = struct
     ; sub_systems = Sub_system_name.Map.empty
     ; merlin_ident
     }
-
-  let resolve_user_written_deps_for_exes t exes ?allow_overlaps
-      ?forbidden_libraries deps ~pps ~dune_version =
-    let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes) in
-    resolve_user_written_deps t exes ?allow_overlaps ?forbidden_libraries deps
-      ~pps ~dune_version ~merlin_ident
-
-  let resolve_user_written_deps_for_melange t entries ?allow_overlaps
-      ?forbidden_libraries deps ~pps ~dune_version =
-    let merlin_ident =
-      Merlin_ident.for_melange ~names:(List.map ~f:snd entries)
-    in
-    resolve_user_written_deps t entries ?allow_overlaps ?forbidden_libraries
-      deps ~pps ~dune_version ~merlin_ident
 
   (* Here we omit the [only_ppx_deps_allowed] check because by the time we reach
      this point, all preprocess dependencies should have been checked

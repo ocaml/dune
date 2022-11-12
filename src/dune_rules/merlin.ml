@@ -28,7 +28,7 @@ module Processed = struct
 
   (* Most of the configuration is shared across a same lib/exe... *)
   type config =
-    { stdlib_dir : Path.t
+    { stdlib_dir : Path.t option
     ; obj_dirs : Path.Set.t
     ; src_dirs : Path.Set.t
     ; flags : string list
@@ -73,7 +73,11 @@ module Processed = struct
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
     in
-    let stdlib_dir = [ make_directive_of_path "STDLIB" stdlib_dir ] in
+    let stdlib_dir =
+      match stdlib_dir with
+      | None -> []
+      | Some stdlib_dir -> [ make_directive_of_path "STDLIB" stdlib_dir ]
+    in
     let exclude_query_dir = [ Sexp.List [ Atom "EXCLUDE_QUERY_DIR" ] ] in
     let obj_dirs =
       Path.Set.to_list_map obj_dirs ~f:(make_directive_of_path "B")
@@ -122,7 +126,8 @@ module Processed = struct
     let print = Buffer.add_string b in
     Buffer.clear b;
     print "EXCLUDE_QUERY_DIR\n";
-    printf "STDLIB %s\n" (serialize_path stdlib_dir);
+    Option.iter stdlib_dir ~f:(fun stdlib_dir ->
+        printf "STDLIB %s\n" (serialize_path stdlib_dir));
     Path.Set.iter obj_dirs ~f:(fun p -> printf "B %s\n" (serialize_path p));
     Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
     List.iter extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
@@ -207,24 +212,11 @@ module Processed = struct
            extensions)
 end
 
-let obj_dir_of_lib kind modes obj_dir =
-  (match
-     let mode =
-       match modes with
-       | `Exe -> `Byte
-       | `Melange_emit -> `Melange
-       | `Lib modes ->
-         if
-           Lib_mode.Map.Set.equal modes
-             { ocaml = Ocaml.Mode.Dict.make_both false; melange = true }
-         then `Melange
-         else `Byte
-     in
-     (kind, mode)
-   with
-  | `Private, `Byte -> Obj_dir.byte_dir
-  | `Public, `Byte -> Obj_dir.public_cmi_ocaml_dir
+let obj_dir_of_lib kind mode obj_dir =
+  (match (kind, mode) with
+  | `Private, `Ocaml -> Obj_dir.byte_dir
   | `Private, `Melange -> Obj_dir.melange_dir
+  | `Public, `Ocaml -> Obj_dir.public_cmi_ocaml_dir
   | `Public, `Melange -> Obj_dir.public_cmi_melange_dir)
     obj_dir
 
@@ -243,6 +235,7 @@ module Unprocessed = struct
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
     ; extensions : string Ml_kind.Dict.t list
+    ; mode : [ `Ocaml | `Melange ]
     }
 
   type t =
@@ -256,6 +249,14 @@ module Unprocessed = struct
       ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
       ~modes () =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
+    let mode =
+      match modes with
+      | `Exe -> `Ocaml
+      | `Melange_emit -> `Melange
+      | `Lib (m : Lib_mode.Map.Set.t) ->
+        if m.melange && (not m.ocaml.byte) && not m.ocaml.native then `Melange
+        else `Ocaml
+    in
     let requires =
       match Resolve.peek requires with
       | Ok l -> Lib.Set.of_list l
@@ -263,7 +264,7 @@ module Unprocessed = struct
     in
     let objs_dirs =
       Path.Set.singleton
-      @@ obj_dir_of_lib `Private modes (Obj_dir.of_local obj_dir)
+      @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
     in
     let flags =
       Ocaml_flags.common
@@ -278,6 +279,7 @@ module Unprocessed = struct
     let extensions = Dialect.DB.extensions_for_merlin dialects in
     let config =
       { stdlib_dir
+      ; mode
       ; requires
       ; flags
       ; preprocess
@@ -381,10 +383,18 @@ module Unprocessed = struct
            ; requires
            ; preprocess = _
            ; libname = _
+           ; mode
            }
-       } as t) sctx ~more_src_dirs ~expander =
+       } as t) sctx ~dir ~more_src_dirs ~expander =
     let open Action_builder.O in
     let+ config =
+      let* stdlib_dir =
+        Action_builder.of_memo
+        @@
+        match t.config.mode with
+        | `Ocaml -> Memo.return (Some stdlib_dir)
+        | `Melange -> Melange_binary.where sctx ~dir
+      in
       let+ flags = flags
       and+ src_dirs, obj_dirs =
         Action_builder.of_memo
@@ -398,9 +408,7 @@ module Unprocessed = struct
                   ( Path.Set.union src_dirs more_src_dirs
                   , let public_cmi_dir =
                       let info = Lib.info lib in
-                      obj_dir_of_lib `Public
-                        (`Lib (Lib_info.modes info))
-                        (Lib_info.obj_dir info)
+                      obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
                     in
                     Path.Set.add obj_dirs public_cmi_dir )))
       in
@@ -426,7 +434,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
       (Action_builder.path (Path.build merlin_file))
   in
   let action =
-    let merlin = Unprocessed.process t sctx ~more_src_dirs ~expander in
+    let merlin = Unprocessed.process t sctx ~dir ~more_src_dirs ~expander in
     Action_builder.With_targets.write_file_dyn merlin_file
       (Action_builder.with_no_targets
          (Action_builder.map ~f:Processed.Persist.to_string merlin))

@@ -1,4 +1,4 @@
-open Import
+open! Import
 
 val syntax : Dune_lang.Syntax.t
 
@@ -34,9 +34,3 @@ module Cm_kind : sig
     val make_all : 'a -> 'a t
   end
 end
-
-val lib_output_dir :
-     emit_stanza_dir:Path.Build.t
-  -> lib_dir:Path.Build.t
-  -> target:string
-  -> Path.Build.t

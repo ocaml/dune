@@ -325,6 +325,8 @@ let menhir_flags t ~dir ~expander ~flags =
 
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
 
+let env_node = Env_tree.get_node
+
 let odoc t ~dir = Env_tree.get_node t ~dir >>= Env_node.odoc
 
 let coq t ~dir = Env_tree.get_node t ~dir >>= Env_node.coq

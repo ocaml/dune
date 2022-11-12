@@ -990,7 +990,7 @@ let sort_files dependencies ~main =
 
 let common_build_args name ~external_includes ~external_libraries =
   List.concat
-    [ [ "-o"; Filename.concat ".." (name ^ ".exe"); "-g" ]
+    [ [ "-o"; Filename.concat "../_boot" (name ^ ".exe"); "-g" ]
     ; (match Config.mode with
       | Byte -> [ Config.output_complete_obj_arg ]
       | Native -> [])

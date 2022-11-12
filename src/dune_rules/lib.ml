@@ -1255,19 +1255,20 @@ end = struct
               match modes with
               | None -> lib
               | Some (modes : Lib_mode.Map.Set.t) ->
-                Resolve.map lib ~f:(fun lib ->
+                Resolve.bind lib ~f:(fun lib ->
                     let lib_modes = Lib_info.modes lib.info in
                     match modes.melange && not lib_modes.melange with
                     | true ->
-                      User_error.raise ~loc:lib_dep_loc
-                        [ Pp.textf
-                            "The library %S was added as a dependency of a \
-                             melange.emit stanza, but this library is not \
-                             compatible with melange. To fix this, add (modes \
-                             melange) to the library stanza."
-                            (Lib_name.to_string (Lib_info.name lib.info))
-                        ]
-                    | false -> lib)
+                      Resolve.fail
+                        (User_error.make ~loc:lib_dep_loc
+                           [ Pp.textf
+                               "The library %S was added as a dependency of a \
+                                melange.emit stanza, but this library is not \
+                                compatible with melange. To fix this, add \
+                                (modes melange) to the library stanza."
+                               (Lib_name.to_string (Lib_info.name lib.info))
+                           ])
+                    | false -> Resolve.return lib)
             in
             add_resolved acc lib
           | Select select ->

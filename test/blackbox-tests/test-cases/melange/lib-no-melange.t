@@ -8,11 +8,21 @@ Test what happens when melange.emit stanza depends on non-Melange libraries
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (entries main_melange)
   >  (libraries foo)
   >  (module_system commonjs))
+  > (executable
+  >  (name main_native)
+  >  (modules main_native)
+  >  (libraries foo)
+  >  (modes native byte_complete))
   > EOF
 
-  $ cat > main.ml <<EOF
+  $ cat > main_melange.ml <<EOF
+  > let t = Foo_Bar.t
+  > EOF
+
+  $ cat > main_native.ml <<EOF
   > let t = Foo_Bar.t
   > EOF
 
@@ -28,7 +38,7 @@ Test what happens when melange.emit stanza depends on non-Melange libraries
   > let t = "Hello World"
   > EOF
 
-  $ dune build output/melange__Main.js
+  $ dune build output/melange__Main_melange.js
   File "dune", line 3, characters 12-15:
   3 |  (libraries foo)
                   ^^^
@@ -37,25 +47,6 @@ Test what happens when melange.emit stanza depends on non-Melange libraries
   melange) to the library stanza.
   [1]
 
-Now we check a similar error but for executables
+But building the native executable does not fail
 
-  $ cat > dune <<EOF
-  > (executable
-  >  (name main)
-  >  (libraries foo)
-  >  (modes native byte_complete))
-  > EOF
-
-  $ cat > lib/dune <<EOF
-  > (library
-  >  (name foo)
-  >  (modes melange)
-  >  (wrapped false))
-  > EOF
-
-  $ dune build ./main.exe
-  File "main.ml", line 1, characters 8-17:
-  1 | let t = Foo_Bar.t
-              ^^^^^^^^^
-  Error: Unbound module Foo_Bar
-  [1]
+  $ dune build ./main_native.exe

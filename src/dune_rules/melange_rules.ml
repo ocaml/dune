@@ -204,7 +204,7 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
     >>| Preprocess.Per_module.pps
   in
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
-  Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange mel.target)
+  Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange_emit mel.target)
     mel.libraries ~pps ~dune_version ~merlin_ident
 
 let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =

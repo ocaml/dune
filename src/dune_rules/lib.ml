@@ -1836,7 +1836,7 @@ module DB = struct
                 ~forbidden_libraries res)
             ~human_readable_description:(fun () ->
               match targets with
-              | `Melange name -> Pp.textf "melange target %s" name
+              | `Melange_emit name -> Pp.textf "melange target %s" name
               | `Exe [ (loc, name) ] ->
                 Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
               | `Exe names ->

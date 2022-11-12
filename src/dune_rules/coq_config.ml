@@ -1,15 +1,6 @@
 open Import
 open Memo.O
 
-module Value = struct
-  type t =
-    | Bool of bool
-    | Int of int
-    | String of string
-    | Strings of string list
-    | Path of Path.t
-end
-
 module Vars : sig
   type t
 
@@ -90,11 +81,11 @@ module Version = struct
       let suffix = Group.get groups 3 in
       Result.Ok { major; minor; suffix }
 
-    let by_name { major; minor; suffix } name : Value.t option =
+    let by_name { major; minor; suffix } name =
       match name with
-      | "major" -> Some (Int major)
-      | "minor" -> Some (Int minor)
-      | "suffix" -> Some (String suffix)
+      | "major" -> Some (`Int major)
+      | "minor" -> Some (`Int minor)
+      | "suffix" -> Some (`String suffix)
       | _ -> None
   end
 
@@ -128,7 +119,7 @@ module Version = struct
     let* version_num = Num.make version_string in
     Result.ok { version_num; version_string; ocaml_version_string }
 
-  let by_name t name : Value.t option =
+  let by_name t name =
     match t with
     | Error msg ->
       User_error.raise Pp.[ textf "Could not parse coqc version: "; msg ]
@@ -138,8 +129,8 @@ module Version = struct
       | "version.minor" -> Num.by_name version_num "minor"
       | "version.revision" -> Num.by_name version_num "revision"
       | "version.suffix" -> Num.by_name version_num "suffix"
-      | "version" -> Some (String version_string)
-      | "ocaml-version" -> Some (String ocaml_version_string)
+      | "version" -> Some (`String version_string)
+      | "ocaml-version" -> Some (`String ocaml_version_string)
       | _ -> None)
 end
 
@@ -181,8 +172,7 @@ let make ~bin =
     in
     { version_info; coqlib; coq_native_compiler_default }
 
-let by_name { version_info; coqlib; coq_native_compiler_default } name :
-    Value.t option =
+let by_name { version_info; coqlib; coq_native_compiler_default } name =
   match name with
   | "version.major"
   | "version.minor"
@@ -190,6 +180,6 @@ let by_name { version_info; coqlib; coq_native_compiler_default } name :
   | "version.suffix"
   | "version"
   | "ocaml-version" -> Version.by_name version_info name
-  | "coqlib" -> Some (Path coqlib)
-  | "coq_native_compiler_default" -> Some (String coq_native_compiler_default)
+  | "coqlib" -> Some (`Path coqlib)
+  | "coq_native_compiler_default" -> Some (`String coq_native_compiler_default)
   | _ -> None

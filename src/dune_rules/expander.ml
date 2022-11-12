@@ -629,11 +629,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                     [ Pp.textf "Unknown Coq configuration variable %S" s ]
                 | Some v -> (
                   match v with
-                  | Bool x -> string (string_of_bool x)
-                  | Int x -> string (string_of_int x)
-                  | String x -> string x
-                  | Strings x -> strings x
-                  | Path x -> Value.L.paths [ x ]))
+                  | `Int x -> string (string_of_int x)
+                  | `String x -> string x
+                  | `Path x -> Value.L.paths [ x ]))
               | Error _ -> User_error.raise Pp.[ textf "coqc not found." ]))))
 
 (* Make sure to delay exceptions *)

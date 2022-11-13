@@ -4,7 +4,7 @@ PREFIX_ARG := $(if $(PREFIX),--prefix $(PREFIX),)
 LIBDIR_ARG := $(if $(LIBDIR),--libdir $(LIBDIR),)
 DESTDIR_ARG := $(if $(DESTDIR),--destdir $(DESTDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG) $(DESTDIR_ARG)
-BIN := ./dune.exe
+BIN := ./_boot/dune.exe
 
 # Dependencies used for testing dune, when developed locally and
 # when tested in CI
@@ -25,7 +25,8 @@ ppx_inline_test \
 ppxlib \
 result \
 ctypes \
-"utop>=2.6.0"
+"utop>=2.6.0" \
+"melange>=0.3.0"
 
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
@@ -42,9 +43,9 @@ help:
 
 .PHONY: release
 release: $(BIN)
-	@$(BIN) build -p dune --profile dune-bootstrap
+	@$(BIN) build @install -p dune --profile dune-bootstrap
 
-$(BIN): boot/bootstrap.ml boot/libs.ml boot/duneboot.ml
+$(BIN):
 	@ocaml boot/bootstrap.ml
 
 dev: $(BIN)
@@ -70,10 +71,7 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
-melange:
-	opam pin add melange https://github.com/melange-re/melange.git#922953e9b4ed30e080d9c08b3b6bffc6b1d11c63
-
-dev-deps: melange
+dev-deps:
 	opam install -y $(TEST_DEPS)
 
 .PHONY: dev-switch
@@ -105,15 +103,15 @@ test-all: $(BIN)
 
 .PHONY: check
 check: $(BIN)
-	$(BIN) build @check
+	@$(BIN) build @check
 
 .PHONY: fmt
 fmt: $(BIN)
-	$(BIN) fmt
+	@$(BIN) fmt
 
 .PHONY: promote
 promote: $(BIN)
-	$(BIN) promote
+	@$(BIN) promote
 
 .PHONY: accept-corrections
 accept-corrections: promote
@@ -134,8 +132,7 @@ doc:
 
 # livedoc-deps: you may need to [pip3 install sphinx-autobuild] and [pip3 install sphinx-rtd-theme]
 livedoc:
-	cd doc && sphinx-autobuild . _build \
-	  --port 8888 -q  --host 0.0.0.0 --re-ignore '\.#.*'
+	cd doc && sphinx-autobuild . _build --port 8888 -q --re-ignore '\.#.*'
 
 update-jbuilds: $(BIN)
 	$(BIN) build @doc/runtest --auto-promote
@@ -149,8 +146,8 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
 endif
 
 .PHONY: bench
-bench: release
-	@$(BIN) exec -- ./bench/bench.exe _build/default/dune.exe
+bench: $(BIN)
+	@$(BIN) exec -- ./bench/bench.exe $(BIN)
 
 .PHONY: dune
 dune: $(BIN)
@@ -177,3 +174,7 @@ docker-build-image:
 .PHONY: docker-compose
 docker-compose:
 	docker compose -f docker/dev.yml run dune bash
+
+.PHONY: bootstrap
+bootstrap:
+	$(BIN) build @install -p dune --profile dune-bootstrap

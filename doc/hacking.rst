@@ -30,7 +30,7 @@ run the bootstrapping step itself, build the ``dune.exe`` target with
 
 .. code:: sh
 
-   make dune.exe
+   make dev
 
 Once you've bootstrapped dune, you should be using it to develop dune itself.
 Here are the most common commands you'll be running:
@@ -141,7 +141,7 @@ And to load the profile:
 nix develop nix/profiles/dune
 ```
 
-This profile might need to be updated from time to time, since the boostrapped
+This profile might need to be updated from time to time, since the bootstrapped
 version of Dune may become stale. This can be done by running the first command.
 
 You may also use `nix develop .#slim` for a dev environment with less
@@ -313,5 +313,5 @@ For automatically updated builds, you can install sphinx-autobuild, and run
 .. _sphinx-autobuild: https://pypi.org/project/sphinx-autobuild/
 .. _dune-release: https://github.com/ocamllabs/dune-release
 
-Nix users may drop into a development shell with the necessery dependencies for
+Nix users may drop into a development shell with the necessary dependencies for
 building docs ``nix develop .#doc``.

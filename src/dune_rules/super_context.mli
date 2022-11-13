@@ -64,6 +64,8 @@ val menhir_flags :
 val local_binaries :
   t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t
 
+val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
+
 (** odoc config in the corresponding [(env)] stanza. *)
 val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t Memo.t
 

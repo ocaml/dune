@@ -139,7 +139,7 @@ not currently checked.
 
 Next is a version of the initial handshake protocol to be used. This
 takes the form of a single `int`. In the future, if the initial
-negotation protocol changes, this value can be adjusted and checked to
+negotiation protocol changes, this value can be adjusted and checked to
 account for this.
 
 ### Error handling

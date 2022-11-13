@@ -101,6 +101,11 @@ module Source = struct
     | Ml_kind.Impl -> { t with files = { t.files with impl = Some file } }
     | Intf -> { t with files = { t.files with intf = Some file } }
 
+  let set_source t ml_kind file =
+    match ml_kind with
+    | Ml_kind.Impl -> { t with files = { t.files with impl = file } }
+    | Intf -> { t with files = { t.files with intf = file } }
+
   let src_dir t = Path.parent_exn (choose_file t).path
 
   let map_files t ~f =
@@ -177,6 +182,10 @@ let with_wrapper t ~main_module_name =
 
 let add_file t kind file =
   let source = Source.add_file t.source kind file in
+  { t with source }
+
+let set_source t kind file =
+  let source = Source.set_source t.source kind file in
   { t with source }
 
 let map_files t ~f =

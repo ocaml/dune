@@ -54,7 +54,7 @@ module Event : sig
 
   val dyn_of_action : action -> Dyn.t
 
-  (** [action t] describes the action occured to [path t] *)
+  (** [action t] describes the action occurred to [path t] *)
   val action : t -> action
 end
 

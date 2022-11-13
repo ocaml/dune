@@ -37,7 +37,7 @@ type t =
   ; build_dir : string
   ; no_print_directory : bool
   ; store_orig_src_dir : bool
-  ; rpc : Dune_rpc_impl.Server.t Lazy.t
+  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : Watch_mode_config.t
   ; print_metrics : bool
@@ -75,7 +75,12 @@ let default_target t = t.default_target
 
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
-let rpc t = Lazy.force t.rpc
+let rpc t =
+  match t.rpc with
+  | `Forbid_builds -> `Forbid_builds
+  | `Allow rpc -> `Allow (Lazy.force rpc)
+
+let forbid_builds t = { t with rpc = `Forbid_builds }
 
 let stats t = t.stats
 
@@ -1012,7 +1017,22 @@ let term ~default_root_is_cwd =
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
-  let rpc = lazy (Dune_rpc_impl.Server.create ~root:root.dir stats) in
+  let rpc =
+    `Allow
+      (lazy
+        (let registry =
+           match watch with
+           | Yes _ -> `Add
+           | No -> `Skip
+         in
+         let lock_timeout =
+           match watch with
+           | Yes Passive -> Some 1.0
+           | _ -> None
+         in
+         Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
+           stats))
+  in
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();

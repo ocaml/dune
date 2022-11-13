@@ -25,6 +25,13 @@ module File = struct
     ; dst : Path.Source.t
     }
 
+  let compare { src; staging; dst } t =
+    let open Ordering.O in
+    let= () = Path.Build.compare src t.src in
+    let= () = Option.compare Path.Build.compare staging t.staging in
+    let= () = Path.Source.compare dst t.dst in
+    Eq
+
   let in_staging_area source = Path.Build.append_source staging_area source
 
   let to_dyn { src; staging; dst } =
@@ -57,15 +64,14 @@ module File = struct
   let do_promote ~correction_file ~dst =
     Path.Source.unlink_no_err dst;
     let chmod = Path.Permissions.add Path.Permissions.write in
-    Io.copy_file ~chmod
-      ~src:(Path.build correction_file)
-      ~dst:(Path.source dst) ()
+    Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) ()
 
-  let promote { src; staging; dst } =
-    let correction_file = Option.value staging ~default:src in
-    let correction_exists =
-      Path.Untracked.exists (Path.build correction_file)
-    in
+  let correction_file { src; staging; _ } =
+    Path.build (Option.value staging ~default:src)
+
+  let promote ({ src; staging; dst } as file) =
+    let correction_file = correction_file file in
+    let correction_exists = Path.Untracked.exists correction_file in
     Console.print
       [ Pp.box ~indent:2
           (if correction_exists then
@@ -179,3 +185,34 @@ let promote_files_registered_in_last_run files_to_promote =
   let db = load_db () in
   let db = do_promote db files_to_promote in
   dump_db db
+
+let diff_for_file (file : File.t) =
+  let msg = User_message.Annots.empty in
+  let original = Path.source file.dst in
+  let correction = File.correction_file file in
+  Print_diff.get msg original correction
+
+let filter_db files_to_promote db =
+  match files_to_promote with
+  | All -> db
+  | These (files, on_missing) ->
+    List.filter_map files ~f:(fun file ->
+        let r =
+          List.find db ~f:(fun (f : File.t) -> Path.Source.equal f.dst file)
+        in
+        if Option.is_none r then on_missing file;
+        r)
+
+let display files_to_promote =
+  let open Fiber.O in
+  let files = load_db () |> filter_db files_to_promote in
+  let module FileMap = Map.Make (File) in
+  let+ diff_opts =
+    Fiber.parallel_map files ~f:(fun file ->
+        let+ diff_opt = diff_for_file file in
+        match diff_opt with
+        | Ok diff -> Some (file, diff)
+        | Error _ -> None)
+  in
+  diff_opts |> List.filter_opt |> FileMap.of_list_exn
+  |> FileMap.iter ~f:Print_diff.Diff.print

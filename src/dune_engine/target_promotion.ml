@@ -9,21 +9,19 @@ open! Import
    in the source tree, or creates a new file with the same name. *)
 module To_delete = struct
   module P = Dune_util.Persistent.Make (struct
-    (* CR-someday amokhov: This should really be a [Path.Source.Set.t] but
-       changing it now would require bumping the [version]. Should we do it? *)
-    type t = Path.Set.t
+    type t = Path.Source.Set.t
 
     let name = "PROMOTED-TO-DELETE"
 
-    let version = 1
+    let version = 2
 
-    let to_dyn = Path.Set.to_dyn
+    let to_dyn = Path.Source.Set.to_dyn
   end)
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
 
   (* [db] is used to accumulate promoted files from rules. *)
-  let db = lazy (ref (Option.value ~default:Path.Set.empty (P.load fn)))
+  let db = lazy (ref (Option.value ~default:Path.Source.Set.empty (P.load fn)))
 
   let get_db () = !(Lazy.force db)
 
@@ -39,23 +37,21 @@ module To_delete = struct
       needs_dumping := true
 
   let add p =
-    let p = Path.source p in
     modify_db (fun db ->
-        if Path.Set.mem db p then None else Some (Path.Set.add db p))
+        if Path.Source.Set.mem db p then None
+        else Some (Path.Source.Set.add db p))
 
   let remove p =
-    let p = Path.source p in
     modify_db (fun db ->
-        if Path.Set.mem db p then Some (Path.Set.remove db p) else None)
+        if Path.Source.Set.mem db p then Some (Path.Source.Set.remove db p)
+        else None)
 
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
       get_db () |> P.dump fn)
 
-  let mem p =
-    let p = Path.source p in
-    Path.Set.mem !(Lazy.force db) p
+  let mem p = Path.Source.Set.mem !(Lazy.force db) p
 
   let () = Hooks.End_of_build.always dump
 end

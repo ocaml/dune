@@ -8,4 +8,4 @@ Test the "dune internal dump" command.
   > EOF
   $ dune build x
   $ dune internal dump _build/.to-delete-in-source-tree
-  set { In_source_tree "x" }
+  set { "x" }

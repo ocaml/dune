@@ -13,6 +13,6 @@
   > EOF
 
   $ dune ocaml top-module foo.ml | sed 's/"[^"]*dunepp"/$dunepp/g'
-  #directory "$TESTCASE_ROOT/_build/.top/Foo.da70377c0cf9";;
+  #directory "$TESTCASE_ROOT/_build/default/.topmod/foo.ml";;
+  #load "$TESTCASE_ROOT/_build/default/.topmod/foo.ml/foo.cmo";;
   #pp $dunepp;;
-  #use "$TESTCASE_ROOT/_build/default/foo.ml";;

@@ -295,3 +295,7 @@ let root_module_entries t =
         >>= Resolve.read)
   in
   Action_builder.return (List.concat l)
+
+let set_obj_dir t obj_dir = { t with obj_dir }
+
+let set_modes t ~modes = { t with modes }

@@ -68,6 +68,8 @@ val with_wrapper : t -> main_module_name:Module_name.t -> t
 
 val add_file : t -> Ml_kind.t -> File.t -> t
 
+val set_source : t -> Ml_kind.t -> File.t option -> t
+
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 (** Set preprocessing flags *)

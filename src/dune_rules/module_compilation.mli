@@ -4,7 +4,13 @@ open Import
 
 (** Setup rules to build a single module.*)
 val build_module :
-  ?precompiled_cmi:bool -> Compilation_context.t -> Module.t -> unit Memo.t
+     ?force_write_cmi:bool
+  -> ?precompiled_cmi:bool
+  -> Compilation_context.t
+  -> Module.t
+  -> unit Memo.t
+
+val open_modules : Modules.t -> Module.t -> Module_name.t list
 
 val ocamlc_i :
      ?flags:string list

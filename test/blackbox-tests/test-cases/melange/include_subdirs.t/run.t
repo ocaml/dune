@@ -1,6 +1,8 @@
-Test that libs using `(include_subdirs unqualified) work well with `melange.emit` stanza
+Test that libs using `(include_subdirs unqualified) work well with
+`melange.emit` stanza
 
 Build js files
-  $ dune build inside/output/c.js
-  $ node _build/default/inside/output/c.js
+  $ output=inside/output
+  $ dune build $output/inside/c.js
+  $ node _build/default/$output/inside/c.js
   buy it

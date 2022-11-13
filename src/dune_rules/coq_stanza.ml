@@ -151,7 +151,7 @@ module Theory = struct
         [ Pp.text
             "Cannot both use 'package' and 'public_name', please remove \
              'public_name' as it has been deprecated since version 0.5 of the \
-             Coq langugage. It will be removed before version 1.0."
+             Coq language. It will be removed before version 1.0."
         ]
 
   let boot_has_deps loc =

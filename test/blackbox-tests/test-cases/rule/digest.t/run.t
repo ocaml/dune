@@ -14,7 +14,7 @@ Test that rule digest doesn't depend on irrelevant details of the dune file
   > EOF
 
   $ dune build target
-  runnning...
+  running...
   digest: $1
 
 Let's add a comment to the dune file. It shouldn't affect the rule digest.
@@ -32,7 +32,7 @@ Let's add a comment to the dune file. It shouldn't affect the rule digest.
 
   $ rm _build/default/target target
   $ dune build @default
-  runnning...
+  running...
   digest: $1
 
 Now the same but with an alias.
@@ -45,7 +45,7 @@ Now the same but with an alias.
   > EOF
 
   $ dune build @default
-  runnning...
+  running...
   digest: $2
 
 Let's add a comment to the dune file. One might think that it doesn't affect
@@ -66,5 +66,5 @@ make them more resilient to non semantic changes.
 # need to update it when rule digest version changes.
 
   $ dune build @default
-  runnning...
+  running...
   digest: $3

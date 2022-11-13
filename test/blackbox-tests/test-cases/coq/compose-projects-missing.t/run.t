@@ -1,4 +1,4 @@
-Testing composition of theories accross a dune workspace with a missing
+Testing composition of theories across a dune workspace with a missing
 dependency.
 
   $ dune build C

@@ -71,7 +71,11 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
-dev-deps:
+.PHONY: melange
+melange:
+	opam pin add melange https://github.com/melange-re/melange.git#c73a34394560ce78dbb43d0777abfc1d913f1667
+
+dev-deps: melange
 	opam install -y $(TEST_DEPS)
 
 .PHONY: dev-switch

@@ -34,3 +34,5 @@ module Cm_kind : sig
     val make_all : 'a -> 'a t
   end
 end
+
+val make_module_name : Module.t -> string

@@ -48,3 +48,10 @@ module Cm_kind = struct
     let make_all x = { cmi = x; cmj = x }
   end
 end
+
+let make_module_name m =
+  match Module.file ~ml_kind:Impl m with
+  | Some s -> Path.basename (fst (Path.split_extension s))
+  | None ->
+    Code_error.raise "could not find melange source from module"
+      [ ("module", Module.to_dyn m) ]

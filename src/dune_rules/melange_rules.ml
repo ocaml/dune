@@ -6,15 +6,7 @@ let lib_output_dir ~target_dir ~lib_dir =
     (Path.Build.drop_build_context_exn lib_dir)
 
 let make_js_name ~dst_dir m =
-  let name =
-    match Module.file ~ml_kind:Impl m with
-    | Some s ->
-      Path.basename (Path.map_extension s ~f:(fun _ext -> Melange.js_ext))
-    | None ->
-      Code_error.raise
-        "trying to create js rule but could not find module source file"
-        [ ("module", Module.to_dyn m) ]
-  in
+  let name = Melange.make_module_name m ^ Melange.js_ext in
   Path.Build.relative dst_dir name
 
 let js_includes ~sctx ~target_dir ~requires_link ~scope =

@@ -35,4 +35,4 @@ module Cm_kind : sig
   end
 end
 
-val make_module_name : Module.t -> string
+val js_basename : Module.t -> Filename.t

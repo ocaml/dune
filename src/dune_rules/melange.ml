@@ -49,7 +49,7 @@ module Cm_kind = struct
   end
 end
 
-let make_module_name m =
+let js_basename m =
   match Module.file ~ml_kind:Impl m with
   | Some s -> (
     (* we aren't using Filename.extension because we want to handle

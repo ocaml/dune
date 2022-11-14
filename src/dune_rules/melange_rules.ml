@@ -6,7 +6,7 @@ let lib_output_dir ~target_dir ~lib_dir =
     (Path.Build.drop_build_context_exn lib_dir)
 
 let make_js_name ~dst_dir m =
-  let name = Melange.make_module_name m ^ Melange.js_ext in
+  let name = Melange.js_basename m ^ Melange.js_ext in
   Path.Build.relative dst_dir name
 
 let js_includes ~sctx ~target_dir ~requires_link ~scope =

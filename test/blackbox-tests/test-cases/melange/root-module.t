@@ -68,7 +68,7 @@ The same for melange.emit:
   $ cat >foo.ml <<EOF
   > print_endline Lib1.greeting
   > EOF
-  $ dune build output/melange__Foo.js
+  $ dune build output/foo.js
   File "foo.ml", line 1, characters 14-27:
   1 | print_endline Lib1.greeting
                     ^^^^^^^^^^^^^
@@ -81,6 +81,6 @@ Use root_module to fix:
   $ cat >foo.ml <<EOF
   > print_endline Root.Lib1.greeting
   > EOF
-  $ dune build output/melange__Foo.js
-  $ node _build/default/output/melange__Foo.js
+  $ dune build output/foo.js
+  $ node _build/default/output/foo.js
   Hello World

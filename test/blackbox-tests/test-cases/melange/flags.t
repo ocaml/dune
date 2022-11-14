@@ -22,7 +22,7 @@ The code in main contains unused var (warning 26) and illegal backlash (warning 
 
 Building should not fail as warnings are silenced
 
-  $ dune build output/melange__Main.js
-  $ node _build/default/output/melange__Main.js
+  $ dune build output/main.js
+  $ node _build/default/output/main.js
   hello
 

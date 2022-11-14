@@ -19,8 +19,8 @@ Can use extension with dots
   >  (javascript_extension bs.js))
   > EOF
 
-  $ dune build output/melange__Hello.bs.js
-  $ node _build/default/output/melange__Hello.bs.js
+  $ dune build output/hello.bs.js
+  $ node _build/default/output/hello.bs.js
   hello
 
 Errors out if extension starts with dot
@@ -32,7 +32,7 @@ Errors out if extension starts with dot
   >  (javascript_extension .bs.js))
   > EOF
 
-  $ dune build output/melange__Hello.js
+  $ dune build output/hello.js
   File "dune", line 4, characters 23-29:
   4 |  (javascript_extension .bs.js))
                              ^^^^^^

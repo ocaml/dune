@@ -1801,8 +1801,8 @@ module DB = struct
         [ ("name", Lib_name.to_dyn name) ]
     | Some lib -> (lib, Compile.for_lib ~allow_overlaps t lib)
 
-  let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~dune_version =
+  let resolve_user_written_deps t targets ?(allow_overlaps = false)
+      ?(forbidden_libraries = []) deps ~pps ~dune_version ~merlin_ident =
     let resolved =
       Memo.lazy_ (fun () ->
           Resolve_names.resolve_deps_and_add_runtime_deps t deps ~pps
@@ -1835,16 +1835,16 @@ module DB = struct
                 (Option.some_if (not allow_overlaps) t)
                 ~forbidden_libraries res)
             ~human_readable_description:(fun () ->
-              match exes with
-              | [ (loc, name) ] ->
+              match targets with
+              | `Melange_emit name -> Pp.textf "melange target %s" name
+              | `Exe [ (loc, name) ] ->
                 Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
-              | names ->
+              | `Exe names ->
                 let loc, _ = List.hd names in
                 Pp.textf "executables %s in %s"
                   (String.enumerate_and (List.map ~f:snd names))
                   (Loc.to_file_colon_line loc)))
     in
-    let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes) in
     let pps =
       let open Memo.O in
       let+ resolved = Memo.Lazy.force resolved in

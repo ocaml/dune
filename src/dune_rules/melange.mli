@@ -32,3 +32,5 @@ module Cm_kind : sig
     val make_all : 'a -> 'a t
   end
 end
+
+val js_basename : Module.t -> Filename.t

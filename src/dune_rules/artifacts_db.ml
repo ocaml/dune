@@ -58,7 +58,9 @@ let get_installed_binaries ~(context : Context.t) stanzas =
                            (Lib.DB.instrumentation_backend (Scope.libs scope)))
                     >>| Preprocess.Per_module.pps
                   in
-                  let merlin_ident = Merlin_ident.for_exes ~names:exes.names in
+                  let merlin_ident =
+                    Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
+                  in
                   Lib.DB.resolve_user_written_deps (Scope.libs scope)
                     (`Exe exes.names) exes.buildable.libraries ~pps
                     ~dune_version

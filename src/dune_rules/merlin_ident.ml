@@ -7,7 +7,7 @@ type t =
 
 let for_lib l = Lib l
 
-let for_exes ~names = Exes (List.map ~f:snd names)
+let for_exes ~names = Exes names
 
 let for_melange ~target = Melange_entries target
 

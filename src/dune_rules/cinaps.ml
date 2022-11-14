@@ -116,7 +116,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let names = [ (t.loc, name) ] in
-  let merlin_ident = Merlin_ident.for_exes ~names in
+  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
   let compile_info =
     Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)

@@ -384,7 +384,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
   let flags = Ocaml_flags.default ~dune_version ~profile:Release in
   let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
   let names = [ (t.loc, name) ] in
-  let merlin_ident = Merlin_ident.for_exes ~names in
+  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
   let compile_info =
     Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
       (lib "mdx.test" :: lib "mdx.top" :: t.libraries)

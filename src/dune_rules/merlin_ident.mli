@@ -6,7 +6,7 @@ type t
 
 val for_lib : Lib_name.t -> t
 
-val for_exes : names:('a * string) list -> t
+val for_exes : names:string list -> t
 
 val for_melange : target:string -> t
 

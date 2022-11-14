@@ -173,7 +173,7 @@ module Stanza = struct
         Lib_name.parse_string_exn (source.loc, "compiler-libs.toplevel")
       in
       let names = [ (source.loc, source.name) ] in
-      let merlin_ident = Merlin_ident.for_exes ~names in
+      let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
       Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
         (Lib_dep.Direct (source.loc, compiler_libs)
         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))

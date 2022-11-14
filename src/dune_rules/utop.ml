@@ -100,7 +100,9 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                            (Lib.DB.instrumentation_backend (Scope.libs scope)))
                     >>| Preprocess.Per_module.pps
                   in
-                  let merlin_ident = Merlin_ident.for_exes ~names:exes.names in
+                  let merlin_ident =
+                    Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
+                  in
                   Lib.DB.resolve_user_written_deps db (`Exe exes.names)
                     exes.buildable.libraries ~pps ~dune_version
                     ~allow_overlaps:

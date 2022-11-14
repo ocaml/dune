@@ -1,1 +1,3 @@
-(executable (name test))
+(executable
+ (name test)
+ (libraries foolib))

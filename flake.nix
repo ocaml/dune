@@ -96,6 +96,15 @@
           ];
         };
 
+        devShells.coq =
+          pkgs.mkShell {
+            inputsFrom = [ pkgs.dune_3 ];
+            buildInputs = with pkgs; [
+              coq_8_16
+              coq_8_16.ocamlPackages.findlib
+            ];
+          };
+
         devShells.default =
           pkgs.mkShell {
             nativeBuildInputs = [ pkgs.opam ];

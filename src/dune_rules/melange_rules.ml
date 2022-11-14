@@ -1,11 +1,9 @@
 open Import
 module CC = Compilation_context
 
-let lib_output_dir ~emit_stanza_dir ~lib_dir ~target =
-  let rel_path =
-    Path.reach (Path.build lib_dir) ~from:(Path.build emit_stanza_dir)
-  in
-  Path.Build.relative (Path.Build.relative emit_stanza_dir target) rel_path
+let lib_output_dir ~target_dir ~lib_dir =
+  Path.Build.append_source target_dir
+    (Path.Build.drop_build_context_exn lib_dir)
 
 let make_js_name ~dst_dir m =
   let name =
@@ -13,7 +11,7 @@ let make_js_name ~dst_dir m =
   in
   Path.Build.relative dst_dir name
 
-let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
+let js_includes ~sctx ~target_dir ~requires_link ~scope =
   let open Resolve.Memo.O in
   Command.Args.memo
     (Resolve.Memo.args
@@ -24,7 +22,7 @@ let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
           let lib = Lib.Local.of_lib_exn lib in
           let info = Lib.Local.info lib in
           let lib_dir = Lib_info.src_dir info in
-          let dst_dir = lib_output_dir ~emit_stanza_dir ~lib_dir ~target in
+          let dst_dir = lib_output_dir ~target_dir ~lib_dir in
           let open Memo.O in
           let modules_group =
             Dir_contents.get sctx ~dir:lib_dir
@@ -48,10 +46,10 @@ let js_includes ~sctx ~emit_stanza_dir ~target ~requires_link ~scope =
              ])))
 
 let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
-    ~build_dir ~lib_deps_js_includes m =
+    ~lib_deps_js_includes m =
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let open Memo.O in
-  let* compiler = Melange_binary.melc sctx ~dir:build_dir in
+  let* compiler = Melange_binary.melc sctx ~dir in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
   let output = make_js_name ~dst_dir m in
   let obj_dir =
@@ -70,7 +68,9 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
   in
   let lib_deps_js_includes = Command.Args.as_any lib_deps_js_includes in
   Super_context.add_rule sctx ~dir ?loc
-    (Command.run ~dir:(Path.build build_dir) compiler
+    (Command.run
+       ~dir:(Path.build (Super_context.context sctx).build_dir)
+       compiler
        [ Command.Args.S obj_dir
        ; lib_deps_js_includes
        ; As melange_package_args
@@ -80,7 +80,7 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
        ])
 
 let add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
-    ~compile_info (mel : Melange_stanzas.Emit.t) =
+    ~compile_info ~target_dir (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
@@ -112,23 +112,23 @@ let add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
       ~opaque:Inherit_from_settings ~package:mel.package ~modes
   in
   let pkg_name = Option.map mel.package ~f:Package.name in
-  let dst_dir = Path.Build.relative dir mel.target in
   let loc = mel.loc in
   let requires_link = Memo.Lazy.force requires_link in
   let lib_deps_js_includes =
-    js_includes ~sctx ~emit_stanza_dir:dir ~target:mel.target ~requires_link
-      ~scope
+    js_includes ~sctx ~target_dir ~requires_link ~scope
   in
-  let build_dir = (Super_context.context sctx).build_dir in
   let* () = Module_compilation.build_all cctx in
   let module_list =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc)
+  in
+  let dst_dir =
+    Path.Build.append_source target_dir (Path.Build.drop_build_context_exn dir)
   in
   let* () =
     Memo.parallel_iter module_list ~f:(fun m ->
         (* Should we check module kind? *)
         build_js ~dir ~loc:(Some loc) ~pkg_name ~module_system:mel.module_system
-          ~dst_dir ~obj_dir ~sctx ~build_dir ~lib_deps_js_includes m)
+          ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes m)
   in
   let* () =
     match mel.alias with
@@ -158,7 +158,7 @@ let add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
         ~ident:(Lib.Compile.merlin_ident compile_info)
         ~modes:`Melange_emit () )
 
-let add_rules_for_libraries ~dir ~scope ~emit_stanza_dir ~sctx ~requires_link
+let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
     (mel : Melange_stanzas.Emit.t) =
   Memo.parallel_iter requires_link ~f:(fun lib ->
       let open Memo.O in
@@ -170,20 +170,7 @@ let add_rules_for_libraries ~dir ~scope ~emit_stanza_dir ~sctx ~requires_link
       let info = Lib.Local.info lib in
       let lib_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
-      let () =
-        if not (Path.Build.is_descendant lib_dir ~of_:emit_stanza_dir) then
-          User_error.raise
-            [ Pp.textf
-                "The library %s is used by a melange.emit stanza but the \
-                 library folder %s is not a descendant of the stanza folder %s"
-                (Lib_name.to_string (Lib_info.name info))
-                (Path.Build.to_string lib_dir)
-                (Path.Build.to_string emit_stanza_dir)
-            ]
-      in
-      let dst_dir =
-        lib_output_dir ~emit_stanza_dir ~lib_dir ~target:mel.target
-      in
+      let dst_dir = lib_output_dir ~target_dir ~lib_dir in
       let modules_group =
         Dir_contents.get sctx ~dir:lib_dir
         >>= Dir_contents.ocaml
@@ -195,14 +182,12 @@ let add_rules_for_libraries ~dir ~scope ~emit_stanza_dir ~sctx ~requires_link
         Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
       in
       let lib_deps_js_includes =
-        js_includes ~sctx ~emit_stanza_dir ~target:mel.target ~requires_link
-          ~scope
+        js_includes ~sctx ~target_dir ~requires_link ~scope
       in
-      let build_dir = (Super_context.context sctx).build_dir in
       Memo.parallel_iter source_modules
         ~f:
           (build_js ~loc:None ~dir ~pkg_name ~module_system:mel.module_system
-             ~dst_dir ~obj_dir ~sctx ~build_dir ~lib_deps_js_includes))
+             ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes))
 
 let compile_info ~modes ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
@@ -228,15 +213,15 @@ let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let* compile_info =
     compile_info ~modes:(Lib_mode.Map.map ~f:Option.is_some modes) ~scope mel
   in
+  let target_dir = Path.Build.relative dir mel.target in
   let+ cctx_and_merlin =
     add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
-      ~compile_info mel
+      ~compile_info ~target_dir mel
   and+ () =
     let* requires_link =
       Memo.Lazy.force (Lib.Compile.requires_link compile_info)
     in
     let* requires_link = Resolve.read_memo requires_link in
-    add_rules_for_libraries ~dir ~scope ~emit_stanza_dir:dir ~sctx
-      ~requires_link mel
+    add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link mel
   in
   cctx_and_merlin

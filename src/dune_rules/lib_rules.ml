@@ -527,11 +527,12 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-      ~preprocess ~libname:(snd lib.name) ~obj_dir
+      ~source_dirs:Path.Source.Set.empty ~preprocess
+      ~libname:(Some (snd lib.name))
+      ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
-      ~modes:(`Lib (Lib_info.modes lib_info))
-      () )
+      ~modes:(`Lib (Lib_info.modes lib_info)) )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
   let buildable = lib.buildable in

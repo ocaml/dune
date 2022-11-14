@@ -244,10 +244,8 @@ module Unprocessed = struct
     ; modules : Modules.t
     }
 
-  let make ?(requires = Resolve.return []) ~stdlib_dir ~flags
-      ?(preprocess = Preprocess.Per_module.no_preprocessing ()) ?libname
-      ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
-      ~modes () =
+  let make ~requires ~stdlib_dir ~flags ~preprocess ~libname ~source_dirs
+      ~modules ~obj_dir ~dialects ~ident ~modes =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
     let mode =
       match modes with

@@ -213,10 +213,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-      ~preprocess ~obj_dir
+      ~source_dirs:Path.Source.Set.empty ~libname:None ~preprocess ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
-      ~modes:`Exe () )
+      ~modes:`Exe )
 
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in

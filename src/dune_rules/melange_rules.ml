@@ -155,10 +155,10 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   Memo.return
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-        ~preprocess ~obj_dir
-        ~dialects:(Dune_project.dialects (Scope.project scope))
+        ~source_dirs:Path.Source.Set.empty ~libname:None ~preprocess ~obj_dir
         ~ident:(Lib.Compile.merlin_ident compile_info)
-        ~modes:`Melange_emit () )
+        ~dialects:(Dune_project.dialects (Scope.project scope))
+        ~modes:`Melange_emit )
 
 let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
     (mel : Melange_stanzas.Emit.t) =

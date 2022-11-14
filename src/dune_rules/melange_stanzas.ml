@@ -49,13 +49,10 @@ module Emit = struct
 
   let decode =
     let extension_field name =
-      let+ field = field_o name (located string) in
-      match field with
-      | None -> ".js"
-      | Some (loc, extension) ->
-        if String.contains extension '.' then
-          User_error.raise ~loc [ Pp.textf "extension must not contain '.'" ];
-        "." ^ extension
+      let+ loc, extension = located (field name ~default:"js" string) in
+      if String.contains extension '.' then
+        User_error.raise ~loc [ Pp.textf "extension must not contain '.'" ];
+      "." ^ extension
     in
     fields
       (let+ loc = loc

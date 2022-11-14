@@ -207,9 +207,7 @@ end = struct
     let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
   end
 
-  let lookup_vlib sctx ~dir =
-    let* t = Load.get sctx ~dir in
-    Memo.Lazy.force t.ml
+  let lookup_vlib sctx ~dir = Load.get sctx ~dir >>= ocaml
 
   let collect_group ~st_dir ~dir =
     let rec walk st_dir ~dir ~local =

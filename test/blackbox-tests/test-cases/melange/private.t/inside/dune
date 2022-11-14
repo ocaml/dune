@@ -2,4 +2,5 @@
  (target output)
  (entries c)
  (libraries app)
- (module_system es6))
+ (module_system es6)
+ (javascript_extension mjs))

@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.6.0 (2022-11-14)
+------------------
 
 - Forbid multiple instances of dune running concurrently in the same workspace.
   (#6360, fixes #236, @rgrinberg)

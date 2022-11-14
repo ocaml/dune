@@ -24,3 +24,16 @@
   Foo__
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
      Foo__
+
+  $ target=output
+  $ cat >dune <<EOF
+  > (melange.emit
+  >  (target "$target")
+  >  (entries main)
+  >  (module_system commonjs))
+  > EOF
+
+  $ touch main.ml
+  $ dune build @check
+  $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "$target"
+    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)

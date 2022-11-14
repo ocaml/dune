@@ -115,12 +115,13 @@ let gen_rules sctx t ~dir ~scope =
     |> Modules.map_user_written ~f:(Pp_spec.pp_module preprocess)
   in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
+  let names = [ (t.loc, name) ] in
+  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
   let compile_info =
-    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-      [ (t.loc, name) ]
+    Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~pps:(Preprocess.Per_module.pps t.preprocess)
-      ~dune_version
+      ~dune_version ~merlin_ident
   in
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
   let* cctx =

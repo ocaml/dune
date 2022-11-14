@@ -227,10 +227,13 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
     >>| Preprocess.Per_module.pps
   in
-  Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
+  let merlin_ident =
+    Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
+  in
+  Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe exes.names)
     exes.buildable.libraries ~pps ~dune_version
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-    ~forbidden_libraries:exes.forbidden_libraries
+    ~forbidden_libraries:exes.forbidden_libraries ~merlin_ident
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =

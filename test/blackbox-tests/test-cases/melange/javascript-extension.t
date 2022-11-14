@@ -33,8 +33,8 @@ Errors out if extension starts with dot
   > EOF
 
   $ dune build output/melange__Hello.js
-  File "dune", line 4, characters 1-30:
+  File "dune", line 4, characters 23-29:
   4 |  (javascript_extension .bs.js))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             ^^^^^^
   Error: extension must not start with '.'
   [1]

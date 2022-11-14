@@ -14,7 +14,7 @@ module Emit = struct
     ; preprocessor_deps : Dep_conf.t list
     ; flags : Ocaml_flags.Spec.t
     ; root_module : (Loc.t * Module_name.t) option
-    ; js_ext : string
+    ; javascript_extension : string
     }
 
   let decode_lib =
@@ -89,7 +89,7 @@ module Emit = struct
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
        and+ flags = Ocaml_flags.Spec.decode
        and+ root_module = field_o "root_module" Module_name.decode_loc
-       and+ js_ext = extension_field "js_ext" in
+       and+ javascript_extension = extension_field "javascript_extension" in
        let preprocess =
          let init =
            let f libname = Preprocess.With_instrumentation.Ordinary libname in
@@ -112,6 +112,6 @@ module Emit = struct
        ; preprocessor_deps
        ; flags
        ; root_module
-       ; js_ext
+       ; javascript_extension
        })
 end

@@ -117,9 +117,10 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   in
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
+  let js_ext = mel.javascript_extension in
   let requires_link = Memo.Lazy.force requires_link in
   let lib_deps_js_includes =
-    js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext:mel.js_ext
+    js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext
   in
   let* () = Module_compilation.build_all cctx in
   let module_list =
@@ -132,7 +133,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     Memo.parallel_iter module_list ~f:(fun m ->
         (* Should we check module kind? *)
         build_js ~dir ~loc:(Some loc) ~pkg_name ~module_system:mel.module_system
-          ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext:mel.js_ext m)
+          ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext m)
   in
   let* () =
     match mel.alias with
@@ -141,7 +142,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
       let alias = Alias.make alias_name ~dir in
       let deps =
         List.rev_map module_list ~f:(fun m ->
-            make_js_name ~js_ext:mel.js_ext ~dst_dir m |> Path.build)
+            make_js_name ~js_ext ~dst_dir m |> Path.build)
         |> Action_builder.paths
       in
       Rules.Produce.Alias.add_deps alias deps
@@ -185,13 +186,14 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
       let requires_link =
         Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
       in
+      let js_ext = mel.javascript_extension in
       let lib_deps_js_includes =
-        js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext:mel.js_ext
+        js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext
       in
       Memo.parallel_iter source_modules
         ~f:
           (build_js ~loc:None ~dir ~pkg_name ~module_system:mel.module_system
-             ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext:mel.js_ext))
+             ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext))
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in

@@ -3,4 +3,4 @@
  (entries c)
  (libraries app)
  (module_system es6)
- (js_ext mjs))
+ (javascript_extension mjs))

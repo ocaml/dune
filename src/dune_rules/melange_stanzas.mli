@@ -14,7 +14,7 @@ module Emit : sig
     ; preprocessor_deps : Dep_conf.t list
     ; flags : Ocaml_flags.Spec.t
     ; root_module : (Loc.t * Module_name.t) option
-    ; js_ext : string
+    ; javascript_extension : string
     }
 
   val decode : t Dune_lang.Decoder.t

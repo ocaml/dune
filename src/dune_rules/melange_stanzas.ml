@@ -50,7 +50,7 @@ module Emit = struct
   let decode =
     let extension_field name =
       let+ loc, extension = located (field name ~default:"js" string) in
-      if String.starts_with ~prefix:"." extension then
+      if String.is_prefix ~prefix:"." extension then
         User_error.raise ~loc [ Pp.textf "extension must not start with '.'" ];
       "." ^ extension
     in

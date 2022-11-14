@@ -2,6 +2,12 @@ open Import
 
 let mdx_version_required = "1.6.0"
 
+let color_always : _ Command.Args.t Lazy.t =
+  lazy
+    (if Lazy.force Ansi_color.stderr_supports_color then
+     S [ A "--color=always" ]
+    else S [])
+
 module Files = struct
   type t =
     { src : Path.Build.t
@@ -63,10 +69,12 @@ module Deps = struct
             mdx_version_required
         ]
 
-  let rule ~dir ~mdx_prog files =
-    Command.run ~dir:(Path.build dir) mdx_prog
-      [ A "deps"; Dep (Path.build files.Files.src) ]
-      ~stdout_to:files.Files.deps
+  let rule ~dir ~mdx_prog (files : Files.t) =
+    Command.run ~dir:(Path.build dir) mdx_prog ~stdout_to:files.deps
+      [ Command.Args.A "deps"
+      ; Lazy.force color_always
+      ; Dep (Path.build files.Files.src)
+      ]
 
   let path_escapes_dir str =
     try
@@ -305,8 +313,8 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
       in
       let mdx_generic_deps = Bindings.to_list stanza.deps in
       let executable, command_line =
-        (*The old mdx stanza calls the [ocaml-mdx] executable, new ones the
-          generated executable *)
+        (* The old mdx stanza calls the [ocaml-mdx] executable, new ones the
+           generated executable *)
         let open Command.Args in
         match mdx_prog_gen with
         | Some prog -> (Ok (Path.build prog), [ Dep (Path.build files.src) ])
@@ -315,8 +323,13 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog
             List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
           in
           ( mdx_prog
-          , [ A "test" ] @ prelude_args
-            @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ] )
+          , [ A "test"
+            ; S prelude_args
+            ; Lazy.force color_always
+            ; A "-o"
+            ; Target files.corrected
+            ; Dep (Path.build files.src)
+            ] )
       in
       let deps, sandbox =
         Dep_conf_eval.unnamed ~expander (mdx_package_deps @ mdx_generic_deps)
@@ -365,13 +378,16 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
     in
     S args
   in
-  let prelude_args =
-    Command.Args.S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir))
-  in
+  let open Command.Args in
+  let prelude_args = S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir)) in
   (* We call mdx to generate the testing executable source *)
   let action =
     Command.run ~dir:(Path.build dir) mdx_prog ~stdout_to:file
-      [ A "dune-gen"; prelude_args; Resolve.Memo.args directory_args ]
+      [ A "dune-gen"
+      ; prelude_args
+      ; Resolve.Memo.args directory_args
+      ; Lazy.force color_always
+      ]
   in
   let open Memo.O in
   let* () = Super_context.add_rule sctx ~loc ~dir action in

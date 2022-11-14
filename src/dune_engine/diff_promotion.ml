@@ -206,7 +206,6 @@ let filter_db files_to_promote db =
 let display files_to_promote =
   let open Fiber.O in
   let files = load_db () |> filter_db files_to_promote in
-  let module FileMap = Map.Make (File) in
   let+ diff_opts =
     Fiber.parallel_map files ~f:(fun file ->
         let+ diff_opt = diff_for_file file in
@@ -214,5 +213,6 @@ let display files_to_promote =
         | Ok diff -> Some (file, diff)
         | Error _ -> None)
   in
-  diff_opts |> List.filter_opt |> FileMap.of_list_exn
-  |> FileMap.iter ~f:Print_diff.Diff.print
+  diff_opts |> List.filter_opt
+  |> List.sort ~compare:(fun (file, _) (file', _) -> File.compare file file')
+  |> List.iter ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)

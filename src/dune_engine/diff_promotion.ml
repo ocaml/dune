@@ -158,9 +158,9 @@ let do_promote db files_to_promote =
     Path.Source.Map.iteri by_targets ~f:promote_one;
     []
   | These (files, on_missing) ->
-    let files = Path.Source.Set.of_list files |> Path.Source.Set.to_list in
     let by_targets =
-      List.fold_left files ~init:by_targets ~f:(fun map fn ->
+      let files = Path.Source.Set.of_list files in
+      Path.Source.Set.fold files ~init:by_targets ~f:(fun fn map ->
           match Path.Source.Map.find by_targets fn with
           | None ->
             on_missing fn;

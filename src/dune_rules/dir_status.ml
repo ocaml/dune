@@ -72,14 +72,14 @@ module rec DB : sig
   val get : dir:Path.Build.t -> t Memo.t
 end = struct
   open DB
+  open Memo.O
+
+  let enclosing_group ~dir =
+    match Path.Build.parent dir with
+    | None -> Memo.return No_group
+    | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
 
   let get_impl dir =
-    let open Memo.O in
-    let enclosing_group ~dir =
-      match Path.Build.parent dir with
-      | None -> Memo.return No_group
-      | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
-    in
     (match Path.Build.drop_build_context dir with
     | None -> Memo.return None
     | Some dir -> Source_tree.find_dir dir)
@@ -91,8 +91,10 @@ end = struct
       | Group_root group_root ->
         Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
     | Some st_dir -> (
-      let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
       let build_dir_is_project_root =
+        let project_root =
+          Source_tree.Dir.project st_dir |> Dune_project.root
+        in
         Source_tree.Dir.path st_dir |> Path.Source.equal project_root
       in
       Only_packages.stanzas_in_dir dir >>= function

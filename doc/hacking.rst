@@ -22,8 +22,9 @@ file is automatically updated during development when we modify the ``dune``
 files in the repository. ``boot/duneboot.ml`` itself is built with a single
 invocation of ``ocamlopt`` or ``ocamlc`` via the ``bootstrap.ml`` OCaml script.
 
-``boot/duneboot.ml`` builds a ``dune.exe`` binary at the root of the source tree
-and uses this binary to build everything else.
+``boot/duneboot.ml`` builds a ``dune.exe`` binary in the ``_boot`` directory
+and uses this binary to build everything else. As a convenience, ``dune.exe``
+at the root of the source tree executes this binary.
 
 ``$ make dev`` takes care of bootstrapping if needed, but if you want to just
 run the bootstrapping step itself, build the ``dune.exe`` target with

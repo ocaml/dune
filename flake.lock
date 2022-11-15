@@ -222,6 +222,21 @@
     },
     "flake-utils_4": {
       "locked": {
+        "lastModified": 1667395993,
+        "narHash": "sha256-nuEHfE/LcWyuSWnS8t12N1wc105Qtau+/OdUAjtQ0rA=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "5aed5285a952e0b949eb3ba02c12fa4fcfef535f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "flake-utils_5": {
+      "locked": {
         "lastModified": 1638122382,
         "narHash": "sha256-sQzZzAbvKEqN9s0bzWuYmRaA03v40gaJ4+iL1LXjaeI=",
         "owner": "numtide",
@@ -235,7 +250,7 @@
         "type": "github"
       }
     },
-    "flake-utils_5": {
+    "flake-utils_6": {
       "locked": {
         "lastModified": 1638122382,
         "narHash": "sha256-sQzZzAbvKEqN9s0bzWuYmRaA03v40gaJ4+iL1LXjaeI=",
@@ -334,6 +349,25 @@
         "type": "github"
       }
     },
+    "melange-compiler-libs": {
+      "inputs": {
+        "flake-utils": "flake-utils_3",
+        "nixpkgs": "nixpkgs_3"
+      },
+      "locked": {
+        "lastModified": 1668541767,
+        "narHash": "sha256-FzNuf4AJJo2y7GXSLvfGXVgfvvIE3wYTvzQws1U5+dk=",
+        "owner": "melange-re",
+        "repo": "melange-compiler-libs",
+        "rev": "911e17f814430b5ea4c9e065884a53c323ae52bd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "melange-re",
+        "repo": "melange-compiler-libs",
+        "type": "github"
+      }
+    },
     "mirage-opam-overlays": {
       "flake": false,
       "locked": {
@@ -420,6 +454,44 @@
       }
     },
     "nixpkgs_3": {
+      "inputs": {
+        "flake-utils": [
+          "melange-compiler-libs",
+          "flake-utils"
+        ],
+        "nixpkgs": "nixpkgs_4"
+      },
+      "locked": {
+        "lastModified": 1668178266,
+        "narHash": "sha256-/M082iOiNcE9PkFghgPUtFSJ96Pd/uhh+5dKZ4pUGgQ=",
+        "owner": "nix-ocaml",
+        "repo": "nix-overlays",
+        "rev": "133c9b1724a34f509b40da1f9d1aced660aa1947",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-ocaml",
+        "repo": "nix-overlays",
+        "type": "github"
+      }
+    },
+    "nixpkgs_4": {
+      "locked": {
+        "lastModified": 1668085575,
+        "narHash": "sha256-iat6K2SCxUhaf4dcpYKNPx8TlXdqZapEv2vAn8fx9u4=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "0533be43f1ce89c51ce9720386258ea5c19fcb1d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "0533be43f1ce89c51ce9720386258ea5c19fcb1d",
+        "type": "github"
+      }
+    },
+    "nixpkgs_5": {
       "locked": {
         "lastModified": 1668505710,
         "narHash": "sha256-DulcfsGjpSXL9Ma0iQIsb3HRbARCDcA+CNH67pPyMQ0=",
@@ -435,7 +507,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_4": {
+    "nixpkgs_6": {
       "locked": {
         "lastModified": 1667639549,
         "narHash": "sha256-frqZKSG/933Ctwl9voSZnXDwo8CqddXcjQhnCzwNqaM=",
@@ -451,7 +523,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_5": {
+    "nixpkgs_7": {
       "locked": {
         "lastModified": 1657802959,
         "narHash": "sha256-9+JWARSdlL8KiH3ymnKDXltE1vM+/WEJ78F5B1kjXys=",
@@ -467,7 +539,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_6": {
+    "nixpkgs_8": {
       "locked": {
         "lastModified": 1657802959,
         "narHash": "sha256-9+JWARSdlL8KiH3ymnKDXltE1vM+/WEJ78F5B1kjXys=",
@@ -485,8 +557,8 @@
     },
     "ocamllsp": {
       "inputs": {
-        "flake-utils": "flake-utils_3",
-        "nixpkgs": "nixpkgs_4",
+        "flake-utils": "flake-utils_4",
+        "nixpkgs": "nixpkgs_6",
         "opam-nix": "opam-nix",
         "opam-repository": "opam-repository"
       },
@@ -509,9 +581,9 @@
     "opam-nix": {
       "inputs": {
         "flake-compat": "flake-compat",
-        "flake-utils": "flake-utils_4",
+        "flake-utils": "flake-utils_5",
         "mirage-opam-overlays": "mirage-opam-overlays",
-        "nixpkgs": "nixpkgs_5",
+        "nixpkgs": "nixpkgs_7",
         "opam-overlays": "opam-overlays",
         "opam-repository": [
           "ocamllsp",
@@ -536,9 +608,9 @@
     "opam-nix_2": {
       "inputs": {
         "flake-compat": "flake-compat_2",
-        "flake-utils": "flake-utils_5",
+        "flake-utils": "flake-utils_6",
         "mirage-opam-overlays": "mirage-opam-overlays_2",
-        "nixpkgs": "nixpkgs_6",
+        "nixpkgs": "nixpkgs_8",
         "opam-overlays": "opam-overlays_2",
         "opam-repository": [
           "opam-repository"
@@ -714,7 +786,8 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "melange": "melange",
-        "nixpkgs": "nixpkgs_3",
+        "melange-compiler-libs": "melange-compiler-libs",
+        "nixpkgs": "nixpkgs_5",
         "ocamllsp": "ocamllsp",
         "opam-nix": "opam-nix_2",
         "opam-repository": "opam-repository_2"

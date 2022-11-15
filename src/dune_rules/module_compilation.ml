@@ -311,7 +311,7 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       Memo.when_ (not precompiled_cmi) (fun () ->
           build_cm ~cm_kind:(Melange Cmi) ~phase:None))
 
-let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
+let ocamlc_i ~deps cctx (m : Module.t) ~output =
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
@@ -340,7 +340,6 @@ let ocamlc_i ?(flags = []) ~deps cctx (m : Module.t) ~output =
              ; Command.Args.as_any
                  (Lib_mode.Cm_kind.Map.get (CC.includes cctx) (Ocaml Cmo))
              ; opens modules m
-             ; As flags
              ; A "-short-paths"
              ; A "-i"
              ; Command.Ml_kind.flag Impl

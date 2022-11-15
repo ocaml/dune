@@ -33,6 +33,7 @@ module Processed = struct
     ; src_dirs : Path.Set.t
     ; flags : string list
     ; extensions : string Ml_kind.Dict.t list
+    ; mode : [ `Ocaml | `Melange ]
     }
 
   (* ...but modules can have different preprocessing specifications*)
@@ -68,7 +69,7 @@ module Processed = struct
 
   let serialize_path = Path.to_absolute_filename
 
-  let to_sexp ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
+  let to_sexp ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions; mode } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
@@ -94,11 +95,20 @@ module Processed = struct
               (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) flags))
           ]
       in
-      match pp with
-      | None -> flags
-      | Some { flag; args } ->
+      let flags =
+        match pp with
+        | None -> flags
+        | Some { flag; args } ->
+          make_directive "FLG"
+            (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
+          :: flags
+      in
+      match mode with
+      | `Ocaml -> flags
+      | `Melange ->
         make_directive "FLG"
-          (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
+          (Sexp.List
+             [ Atom (Pp_kind.to_flag Ppx); Atom "melc -as-ppx -bs-jsx 3" ])
         :: flags
     in
     let suffixes =
@@ -120,7 +130,8 @@ module Processed = struct
     in
     if String.need_quoting s then Filename.quote s else s
 
-  let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions =
+  let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions
+      (* TODO print melange flag *) _mode =
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
     let print = Buffer.add_string b in
@@ -184,7 +195,7 @@ module Processed = struct
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok [] -> Printf.eprintf "No merlin configuration found.\n"
     | Ok (init :: tl) ->
-      let pp_configs, obj_dirs, src_dirs, flags, extensions =
+      let pp_configs, obj_dirs, src_dirs, flags, extensions, mode =
         (* We merge what is easy to merge and ignore the rest *)
         List.fold_left tl
           ~init:
@@ -192,24 +203,34 @@ module Processed = struct
             , init.config.obj_dirs
             , init.config.src_dirs
             , [ init.config.flags ]
-            , init.config.extensions )
+            , init.config.extensions
+            , init.config.mode )
           ~f:(fun
-               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
+               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext, acc_mode)
                { modules = _
                ; pp_config
                ; config =
-                   { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
+                   { stdlib_dir = _
+                   ; obj_dirs
+                   ; src_dirs
+                   ; flags
+                   ; extensions
+                   ; mode
+                   }
                }
              ->
             ( pp_config :: acc_pp
             , Path.Set.union acc_obj obj_dirs
             , Path.Set.union acc_src src_dirs
             , flags :: acc_flags
-            , extensions @ acc_ext ))
+            , extensions @ acc_ext
+            , match acc_mode with
+              | `Melange -> `Melange
+              | `Ocaml -> mode ))
       in
       Printf.printf "%s\n"
         (to_dot_merlin init.config.stdlib_dir pp_configs flags obj_dirs src_dirs
-           extensions)
+           extensions mode)
 end
 
 let obj_dir_of_lib kind mode obj_dir =
@@ -414,7 +435,7 @@ module Unprocessed = struct
         Path.Set.union src_dirs
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
-      { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
+      { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions; mode }
     and+ pp_config = pp_config t sctx ~expander in
     let modules =
       (* And copy for each module the resulting pp flags *)

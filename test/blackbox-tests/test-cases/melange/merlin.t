@@ -10,6 +10,7 @@
   > (library
   >  (name $lib)
   >  (private_modules bar)
+  >  (flags :standard -bs-jsx 3)
   >  (modes melange))
   > EOF
 
@@ -25,6 +26,13 @@
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
      Foo__
 
+All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
+
+  $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "ppx"
+   (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
+   (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
+   (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
+
   $ target=output
   $ cat >dune <<EOF
   > (melange.emit
@@ -37,3 +45,8 @@
   $ dune build @check
   $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "$target"
     $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+
+The melange.emit entry contains a ppx directive
+
+  $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "ppx"
+   (FLG (-ppx "melc -as-ppx -bs-jsx 3"))

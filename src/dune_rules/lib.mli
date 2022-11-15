@@ -149,15 +149,16 @@ module DB : sig
       of libraries is transitively closed and sorted by the order of
       dependencies.
 
-      This function is for executables stanzas. *)
-  val resolve_user_written_deps_for_exes :
+      This function is for executables or melange.emit stanzas. *)
+  val resolve_user_written_deps :
        t
-    -> (Loc.t * string) list
+    -> [ `Exe of (Import.Loc.t * string) list | `Melange_emit of string ]
     -> ?allow_overlaps:bool
     -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t
+    -> merlin_ident:Merlin_ident.t
     -> Compile.t
 
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> lib list Resolve.Memo.t

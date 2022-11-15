@@ -264,8 +264,7 @@ module Wrapped = struct
     let alias_module = Mangle.make_alias_module ~src_dir mangle in
     { modules; alias_module; wrapped_compat; main_module_name; wrapped }
 
-  let exe ~src_dir ~modules =
-    let mangle = Mangle.Exe in
+  let make_exe_or_melange ~src_dir ~modules mangle =
     let prefix = Mangle.prefix mangle in
     let alias_module = Mangle.make_alias_module mangle ~src_dir in
     let modules =
@@ -276,22 +275,6 @@ module Wrapped = struct
     ; wrapped_compat = Module_name.Map.empty
     ; alias_module
       (* XXX exe's don't have a main module, but this is harmless *)
-    ; main_module_name = Module.name alias_module
-    ; wrapped = Simple true
-    }
-
-  let melange ~src_dir ~modules =
-    let mangle = Mangle.Melange in
-    let prefix = Mangle.prefix mangle in
-    let alias_module = Mangle.make_alias_module mangle ~src_dir in
-    let modules =
-      Module_name.Map.map modules ~f:(fun m ->
-          Module.with_wrapper m ~main_module_name:prefix.public)
-    in
-    { modules
-    ; wrapped_compat = Module_name.Map.empty
-    ; alias_module
-      (* XXX melange's don't have a main module, but this is harmless *)
     ; main_module_name = Module.name alias_module
     ; wrapped = Simple true
     }
@@ -527,29 +510,24 @@ let rec find_dep t ~of_ name =
     | Impl_or_lib -> Some m
     | Vlib -> Option.some_if (Module.visibility m = Public) m
 
-let singleton_exe m =
+let make_singleton m mangle =
   Singleton
-    (let mangle = Mangle.Exe in
-     let main_module_name = (Mangle.prefix mangle).public in
+    (let main_module_name = (Mangle.prefix mangle).public in
      Module.with_wrapper m ~main_module_name)
+
+let singleton_exe m = make_singleton m Exe
 
 let exe_unwrapped m = Unwrapped m
 
-let exe_wrapped ~src_dir ~modules =
+let make_wrapped ~src_dir ~modules kind =
+  let mangle : Mangle.t =
+    match kind with
+    | `Exe -> Exe
+    | `Melange -> Melange
+  in
   match as_singleton modules with
-  | Some m -> singleton_exe m
-  | None -> Wrapped (Wrapped.exe ~src_dir ~modules)
-
-let singleton_melange m =
-  Singleton
-    (let mangle = Mangle.Melange in
-     let main_module_name = (Mangle.prefix mangle).public in
-     Module.with_wrapper m ~main_module_name)
-
-let melange_wrapped ~src_dir ~modules =
-  match as_singleton modules with
-  | Some m -> singleton_melange m
-  | None -> Wrapped (Wrapped.melange ~src_dir ~modules)
+  | Some m -> make_singleton m mangle
+  | None -> Wrapped (Wrapped.make_exe_or_melange ~src_dir ~modules mangle)
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w

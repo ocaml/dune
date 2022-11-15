@@ -20,6 +20,6 @@ Test (preprocess) field on melange.emit stanza
   >   print_endline "hello"
   > EOF
 
-  $ dune build output/melange__Main.js
-  $ node _build/default/output/melange__Main.js
+  $ dune build output/main.js
+  $ node _build/default/output/main.js
   hello

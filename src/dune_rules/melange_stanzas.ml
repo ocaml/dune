@@ -14,6 +14,7 @@ module Emit = struct
     ; preprocessor_deps : Dep_conf.t list
     ; flags : Ocaml_flags.Spec.t
     ; root_module : (Loc.t * Module_name.t) option
+    ; javascript_extension : string
     }
 
   let decode_lib =
@@ -47,6 +48,14 @@ module Emit = struct
     t
 
   let decode =
+    let extension_field name =
+      let+ loc, extension =
+        field name ~default:(Loc.none, "js") (located string)
+      in
+      if String.is_prefix ~prefix:"." extension then
+        User_error.raise ~loc [ Pp.textf "extension must not start with '.'" ];
+      "." ^ extension
+    in
     fields
       (let+ loc = loc
        and+ target =
@@ -78,7 +87,8 @@ module Emit = struct
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
        and+ flags = Ocaml_flags.Spec.decode
-       and+ root_module = field_o "root_module" Module_name.decode_loc in
+       and+ root_module = field_o "root_module" Module_name.decode_loc
+       and+ javascript_extension = extension_field "javascript_extension" in
        let preprocess =
          let init =
            let f libname = Preprocess.With_instrumentation.Ordinary libname in
@@ -101,5 +111,6 @@ module Emit = struct
        ; preprocessor_deps
        ; flags
        ; root_module
+       ; javascript_extension
        })
 end

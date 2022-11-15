@@ -26,11 +26,11 @@ module type S = sig
 
   val split_extension : t -> t * string
 
-  val basename : t -> string
+  val basename : t -> Filename.t
 
-  val basename_opt : t -> string option
+  val basename_opt : t -> Filename.t option
 
-  val extend_basename : t -> suffix:string -> t
+  val extend_basename : t -> suffix:Filename.t -> t
 
   module Map : Map.S with type key = t
 
@@ -97,9 +97,9 @@ module type Local_gen = sig
 
   val split_extension : 'w t -> 'w t * string
 
-  val basename : 'w t -> string
+  val basename : 'w t -> Filename.t
 
-  val extend_basename : 'w t -> suffix:string -> 'w t
+  val extend_basename : 'w t -> suffix:Filename.t -> 'w t
 
   module Fix_root (Root : sig
     type w
@@ -111,7 +111,7 @@ module type Local_gen = sig
 
       val to_dyn : t Dyn.builder
 
-      val of_listing : dir:elt -> filenames:string list -> t
+      val of_listing : dir:elt -> filenames:Filename.t list -> t
     end
 
     module Table : Hashtbl.S with type key = Root.w t
@@ -129,7 +129,7 @@ module type Local_gen = sig
 
   val parent : 'w t -> 'w t option
 
-  val explode : 'w t -> string list
+  val explode : 'w t -> Filename.t list
 
   val root : 'w t
 
@@ -139,7 +139,7 @@ module type Local_gen = sig
 
   val reach : 'w t -> from:'w t -> string
 
-  val split_first_component : 'w t -> (string * Unspecified.w t) option
+  val split_first_component : 'w t -> (Filename.t * Unspecified.w t) option
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> 'w t -> string list -> 'w t

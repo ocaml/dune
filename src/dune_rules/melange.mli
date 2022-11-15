@@ -4,8 +4,6 @@ val syntax : Dune_lang.Syntax.t
 
 val extension_key : unit Dune_engine.Dune_project.Extension.t
 
-val js_ext : string
-
 module Module_system : sig
   type t =
     | Es6
@@ -34,3 +32,5 @@ module Cm_kind : sig
     val make_all : 'a -> 'a t
   end
 end
+
+val js_basename : Module.t -> Filename.t

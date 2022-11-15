@@ -3,6 +3,6 @@ Test that libs using `(include_subdirs unqualified) work well with
 
 Build js files
   $ output=inside/output
-  $ dune build $output/inside/melange__C.js
-  $ node _build/default/$output/inside/melange__C.js
+  $ dune build $output/inside/c.js
+  $ node _build/default/$output/inside/c.js
   buy it

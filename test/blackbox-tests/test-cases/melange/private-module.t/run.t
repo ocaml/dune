@@ -1,5 +1,5 @@
 X is not accessible as it is private
-  $ dune build private-module/melange__Foo.js
+  $ dune build private-module/foo.js
   File "foo.ml", line 1, characters 0-9:
   1 | Lib.X.run ();;
       ^^^^^^^^^

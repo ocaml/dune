@@ -218,6 +218,8 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
       in
       Command.Args.A "--bs-stop-after-cmj" :: A "--bs-package-output"
       :: Command.Args.Path (Path.build (CC.dir cctx))
+      :: A "--bs-module-name"
+      :: A (Melange.js_basename m)
       :: pkg_name_args
     | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
   in

@@ -47,20 +47,26 @@ let get_include_subdirs stanzas =
         Some (loc, x)
       | _ -> acc)
 
-let check_no_module_consumer stanzas =
-  List.iter stanzas ~f:(fun stanza ->
+let find_module_stanza stanzas =
+  List.find_map stanzas ~f:(fun stanza ->
       match stanza with
       | Melange_emit { loc; _ }
       | Library { buildable = { loc; _ }; _ }
       | Executables { buildable = { loc; _ }; _ }
-      | Tests { exes = { buildable = { loc; _ }; _ }; _ } ->
-        User_error.raise ~loc
-          [ Pp.text
-              "This stanza is not allowed in a sub-directory of directory with \
-               (include_subdirs unqualified)."
-          ]
-          ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
-      | _ -> ())
+      | Tests { exes = { buildable = { loc; _ }; _ }; _ } -> Some loc
+      | _ -> None)
+
+let error_no_module_consumer ~loc
+    (qualification : Include_subdirs.qualification) =
+  User_error.raise ~loc
+    ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
+    [ Pp.textf
+        "This stanza is not allowed in a sub-directory of directory with \
+         (include_subdirs %s)."
+        (match qualification with
+        | Unqualified -> "unqualified"
+        | Qualified -> "qualified")
+    ]
 
 module rec DB : sig
   val get : dir:Path.Build.t -> t Memo.t
@@ -107,13 +113,24 @@ end = struct
         | None -> (
           if build_dir_is_project_root then Memo.return (Standalone (st_dir, d))
           else
-            let+ enclosing_group = enclosing_group ~dir in
+            let* enclosing_group = enclosing_group ~dir in
             match enclosing_group with
+            | No_group -> Memo.return @@ Standalone (st_dir, d)
             | Group_root group_root ->
-              check_no_module_consumer d.stanzas;
+              let+ () =
+                match find_module_stanza d.stanzas with
+                | None -> Memo.return ()
+                | Some loc -> (
+                  let+ group = get ~dir:group_root in
+                  match group with
+                  | Group_root (_, (_, qualification), _) ->
+                    error_no_module_consumer ~loc qualification
+                  | _ ->
+                    Code_error.raise "impossible as we looked up a group root"
+                      [])
+              in
               Is_component_of_a_group_but_not_the_root
-                { stanzas = Some d; group_root }
-            | No_group -> Standalone (st_dir, d))))
+                { stanzas = Some d; group_root })))
 
   let get =
     let memo =

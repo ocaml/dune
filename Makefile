@@ -134,7 +134,7 @@ distclean: clean
 doc:
 	sphinx-build -W doc doc/_build
 
-# livedoc-deps: you may need to [pip3 install sphinx-autobuild] and [pip3 install sphinx-rtd-theme]
+# livedoc-deps: you may need to [pip3 install sphinx-autobuild] and [pip3 install -r doc/requirements.txt]
 livedoc:
 	cd doc && sphinx-autobuild . _build --port 8888 -q --re-ignore '\.#.*'
 

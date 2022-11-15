@@ -68,6 +68,7 @@
               [
                 sphinx
                 sphinx-autobuild
+                python310Packages.sphinx-copybutton
                 python310Packages.sphinx-rtd-theme
               ]
             );

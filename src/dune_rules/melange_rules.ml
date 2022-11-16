@@ -9,7 +9,17 @@ let make_js_name ~js_ext ~dst_dir m =
   let name = Melange.js_basename m ^ js_ext in
   Path.Build.relative dst_dir name
 
-let js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext =
+let local_of_lib ~loc lib =
+  match Lib.Local.of_lib lib with
+  | Some s -> s
+  | None ->
+    let lib_name = Lib.name lib in
+    User_error.raise ~loc
+      [ Pp.textf "The external library %s cannot be used"
+          (Lib_name.to_string lib_name)
+      ]
+
+let js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext =
   let open Resolve.Memo.O in
   Command.Args.memo
     (Resolve.Memo.args
@@ -17,7 +27,7 @@ let js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext =
         let project = Scope.project scope in
         let deps_of_lib (lib : Lib.t) =
           let lib_name = Lib.name lib in
-          let lib = Lib.Local.of_lib_exn lib in
+          let lib = local_of_lib ~loc lib in
           let info = Lib.Local.info lib in
           let lib_dir = Lib_info.src_dir info in
           let dst_dir = lib_output_dir ~target_dir ~lib_dir in
@@ -118,7 +128,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   let js_ext = mel.javascript_extension in
   let requires_link = Memo.Lazy.force requires_link in
   let lib_deps_js_includes =
-    js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext
+    js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
   in
   let* () = Module_compilation.build_all cctx in
   let module_list =
@@ -169,7 +179,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
       let* lib, lib_compile_info =
         Lib.DB.get_compile_info (Scope.libs scope) lib_name
       in
-      let lib = Lib.Local.of_lib_exn lib in
+      let lib = local_of_lib ~loc:mel.loc lib in
       let info = Lib.Local.info lib in
       let lib_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
@@ -186,7 +196,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
       in
       let js_ext = mel.javascript_extension in
       let lib_deps_js_includes =
-        js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext
+        js_includes ~loc:mel.loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
       in
       Memo.parallel_iter source_modules
         ~f:

@@ -78,7 +78,7 @@ type t = private
   ; ocamlmklib : Action.Prog.t
   ; ocamlobjinfo : Action.Prog.t
   ; env : Env.t
-  ; findlib_paths : Path.t list
+  ; findlib_paths : Path.Outside_build_dir.t list
   ; findlib_toolchain : Context_name.t option  (** Misc *)
   ; default_ocamlpath : Path.t list
   ; arch_sixtyfour : bool

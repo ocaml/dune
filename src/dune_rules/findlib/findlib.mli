@@ -7,12 +7,13 @@ type t
 
 val meta_fn : string
 
-val create : paths:Path.t list -> lib_config:Lib_config.t -> t Memo.t
+val create :
+  paths:Path.Outside_build_dir.t list -> lib_config:Lib_config.t -> t Memo.t
 
 val lib_config : t -> Lib_config.t
 
 (** The search path for this DB *)
-val paths : t -> Path.t list
+val paths : t -> Path.Outside_build_dir.t list
 
 (** The builtins packages *)
 val builtins : t -> Meta.Simplified.t Package.Name.Map.t

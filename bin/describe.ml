@@ -505,7 +505,7 @@ module Sanitize_for_tests = struct
     let really_sanitize (context : Context.t) items =
       let rename_path =
         let findlib_paths =
-          context.findlib_paths |> List.map ~f:Path.to_string
+          context.findlib_paths |> List.map ~f:Path.Outside_build_dir.to_string
         in
         function
         (* we have found a path for OCaml's root: let's define the renaming

@@ -131,6 +131,7 @@
               ocamlformat
               coq_8_16
               nodejs-slim
+              patdiff
               pkg-config
               file
               ccls

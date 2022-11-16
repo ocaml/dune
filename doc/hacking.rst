@@ -370,8 +370,8 @@ Good:
 
    let foo t = bar t |> baz
 
-  If ``bar`` and ``baz`` are already public, then there's no need to add yet
-  another helper to save the caller a line of code.
+If ``bar`` and ``baz`` are already public, then there's no need to add yet
+another helper to save the caller a line of code.
 
 - Define bindings as close to their use site as possible. When they're far
   apart, reading code requires scrolling and IDE tools to understand the code.

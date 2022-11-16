@@ -87,6 +87,7 @@ module Processed = struct
       Path.Set.to_list_map src_dirs ~f:(make_directive_of_path "S")
     in
     let flags =
+      let compiler_flags = flags in
       let flags =
         match flags with
         | [] -> []
@@ -108,7 +109,9 @@ module Processed = struct
       | `Melange ->
         make_directive "FLG"
           (Sexp.List
-             [ Atom (Pp_kind.to_flag Ppx); Atom "melc -as-ppx -bs-jsx 3" ])
+             (Atom (Pp_kind.to_flag Ppx)
+             :: Atom "melc" :: Atom "-as-ppx"
+             :: List.map ~f:(fun s -> Sexp.Atom s) compiler_flags))
         :: flags
     in
     let suffixes =

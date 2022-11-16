@@ -118,7 +118,7 @@ type t =
   ; ocamlmklib : Action.Prog.t
   ; ocamlobjinfo : Action.Prog.t
   ; env : Env.t
-  ; findlib_paths : Path.t list
+  ; findlib_paths : Path.Outside_build_dir.t list
   ; findlib_toolchain : Context_name.t option
   ; default_ocamlpath : Path.t list
   ; arch_sixtyfour : bool
@@ -159,7 +159,7 @@ let to_dyn t : Dyn.t =
     ; ("ocamldep", Action.Prog.to_dyn t.ocamldep)
     ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
     ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
-    ; ("findlib_paths", list path t.findlib_paths)
+    ; ("findlib_paths", list Path.Outside_build_dir.to_dyn t.findlib_paths)
     ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
     ; ( "natdynlink_supported"
       , Bool (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
@@ -493,7 +493,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         stdlib_dir :: default_ocamlpath
       else default_ocamlpath
     in
-    let findlib_paths = ocamlpath @ default_ocamlpath in
+    let findlib_paths =
+      List.map ~f:Path.as_outside_build_dir_exn (ocamlpath @ default_ocamlpath)
+    in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors. For versions
          where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use

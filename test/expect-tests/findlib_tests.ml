@@ -40,8 +40,7 @@ let findlib =
     ; context_name = Context_name.of_string "default"
     }
   in
-  Memo.lazy_ (fun () ->
-      Findlib.create ~paths:[ Path.outside_build_dir db_path ] ~lib_config)
+  Memo.lazy_ (fun () -> Findlib.create ~paths:[ db_path ] ~lib_config)
 
 let resolve_pkg s =
   (let lib_name = Lib_name.of_string s in

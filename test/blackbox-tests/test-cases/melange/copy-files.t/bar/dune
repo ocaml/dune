@@ -1,0 +1,4 @@
+(library
+ (name bar))
+
+(copy_files foo/*)

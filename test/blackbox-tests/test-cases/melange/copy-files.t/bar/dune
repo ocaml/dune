@@ -1,4 +1,5 @@
 (library
- (name bar))
+ (name bar)
+ (modes best melange))
 
 (copy_files foo/*)

@@ -153,47 +153,50 @@ end = struct
       in
       let virtual_library = Library.is_virtual lib in
       let modules =
-        let common m =
-          let cm_file kind =
-            Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml kind)
+        if not (byte || native) then
+          (* melange-only lib, does not support installation yet *) []
+        else
+          let common m =
+            let cm_file kind =
+              Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml kind)
+            in
+            let if_ b (cm_kind, f) =
+              if b then
+                match f with
+                | None -> []
+                | Some f -> [ (cm_kind, f) ]
+              else []
+            in
+            let open Cm_kind in
+            [ if_ true (Cmi, cm_file Cmi)
+            ; if_ native (Cmx, cm_file Cmx)
+            ; if_ (byte && virtual_library) (Cmo, cm_file Cmo)
+            ; if_
+                (native && virtual_library)
+                (Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
+            ]
+            |> List.concat
           in
-          let if_ b (cm_kind, f) =
-            if b then
-              match f with
-              | None -> []
-              | Some f -> [ (cm_kind, f) ]
-            else []
+          let set_dir m =
+            List.map ~f:(fun (cm_kind, p) -> (cm_dir m cm_kind, p))
           in
-          let open Cm_kind in
-          [ if_ true (Cmi, cm_file Cmi)
-          ; if_ native (Cmx, cm_file Cmx)
-          ; if_ (byte && virtual_library) (Cmo, cm_file Cmo)
-          ; if_
-              (native && virtual_library)
-              (Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
-          ]
-          |> List.concat
-        in
-        let set_dir m =
-          List.map ~f:(fun (cm_kind, p) -> (cm_dir m cm_kind, p))
-        in
-        let modules_impl =
-          List.concat_map installable_modules.impl ~f:(fun m ->
-              common m
-              @ List.filter_map Ml_kind.all ~f:(fun ml_kind ->
-                    let open Option.O in
-                    let+ cmt =
-                      Obj_dir.Module.cmt_file obj_dir m ~ml_kind
-                        ~cm_kind:(Ocaml Cmi)
-                    in
-                    (Cm_kind.Cmi, cmt))
-              |> set_dir m)
-        in
-        let modules_vlib =
-          List.concat_map installable_modules.vlib ~f:(fun m ->
-              if Module.kind m = Virtual then [] else common m |> set_dir m)
-        in
-        modules_vlib @ modules_impl
+          let modules_impl =
+            List.concat_map installable_modules.impl ~f:(fun m ->
+                common m
+                @ List.filter_map Ml_kind.all ~f:(fun ml_kind ->
+                      let open Option.O in
+                      let+ cmt =
+                        Obj_dir.Module.cmt_file obj_dir m ~ml_kind
+                          ~cm_kind:(Ocaml Cmi)
+                      in
+                      (Cm_kind.Cmi, cmt))
+                |> set_dir m)
+          in
+          let modules_vlib =
+            List.concat_map installable_modules.vlib ~f:(fun m ->
+                if Module.kind m = Virtual then [] else common m |> set_dir m)
+          in
+          modules_vlib @ modules_impl
       in
       modules
     in

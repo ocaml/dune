@@ -17,9 +17,9 @@
         coqdep a/a.v.d
         coqdep b/b.v.d
         coqdep b/d.v.d
-          coqc a/a.{glob,vo}
-          coqc b/b.{glob,vo}
-          coqc b/d.{glob,vo}
+          coqc a/Na_a.{cmi,cmxs},a/a.{glob,vo}
+          coqc b/Nb_b.{cmi,cmxs},b/b.{glob,vo}
+          coqc b/Nb_d.{cmi,cmxs},b/d.{glob,vo}
   $ cat > b/b.v <<EOF
   > From a Require Import a.
   > Definition bar := a.foo.
@@ -27,4 +27,4 @@
   > EOF
   $ dune build --display short --debug-dependency-path
         coqdep b/b.v.d
-          coqc b/b.{glob,vo}
+          coqc b/Nb_b.{cmi,cmxs},b/b.{glob,vo}

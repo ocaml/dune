@@ -142,19 +142,15 @@ The semantics of the fields are:
   You may still use installed libraries in your Coq project, but there is
   currently no way for Dune to know about it.
 
-- You can enable the production of Coq's native compiler object files by setting
-  ``<coq_native_mode>`` to ``native``. This passes ``-native-compiler on`` to
-  Coq and install the corresponding object files under ``.coq-native``, when in
-  the ``release`` profile. The regular ``dev`` profile skips native compilation
-  to make the build faster. This has been available since :ref:`Coq lang
-  0.3<coq-lang>`.
+- From version :ref:`Coq lang 0.7<coq-lang>` onwards, if Coq has been configured
+  with ``-native-compiler yes`` or ``ondemand``, Dune will always build the
+  ``cmxs`` files together with the ``vo`` files.
+  
+  You may override this by specifying ``(mode native)`` or ``(mode vo)``. Before
+  :ref:`Coq lang 0.7<coq-lang>`, the native mode had to be manually specified.
 
-  Please note: support for ``native_compute`` is **experimental** and requires a
-  version of Coq later than 8.12.1. Furthermore, dependent theories *must* be
-  built with the ``(mode native)`` enabled. In addition to that, Coq must be
-  configured to support native compilation. Dune explicitly disables the
-  generation of native compilation objects when ``(mode vo)`` is enabled,
-  irrespective of the configuration of Coq. This will be improved in the future.
+  Previous versions of Dune before 3.7 would disable the native rules depending
+  on whether or not the ``dev`` profile was selected.
 
 Coq Documentation
 ~~~~~~~~~~~~~~~~~
@@ -249,8 +245,12 @@ The supported Coq language versions (not the version of Coq) are:
 - ``0.3``: Support for ``(mode native)`` requires Coq >= 8.10 (and Dune >= 2.9
   for Coq >= 8.14).
 - ``0.4``: Support for interproject composition of theories.
-- ``0.5``: ``(libraries ...)`` field deprecated in favor of ``(plugins ...)`` field.
+- ``0.5``: ``(libraries ...)`` field deprecated in favor of ``(plugins ...)``
+  field.
 - ``0.6``: Support for ``(stdlib no)``.
+- ``0.7``: ``(mode )`` is automatically detected from the configuration of Coq
+  and ``(mode native)`` is deprecated. The ``dev`` profile also no longer
+  disables native compilation.
 
 .. _coq-lang-1.0:
 

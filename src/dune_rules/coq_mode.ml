@@ -11,4 +11,14 @@ type t =
   | VoOnly
   | Native
 
-let decode = Dune_lang.Decoder.(enum [ ("vo", VoOnly); ("native", Native) ])
+let decode ~coq_syntax =
+  Dune_lang.Decoder.(
+    enum'
+      [ ("vo", return VoOnly)
+      ; ( "native"
+        , Dune_sexp.Syntax.deprecated_in coq_syntax (0, 7)
+            ~extra_info:
+              "Since Coq lang 0.7 native mode is automatically inferred from \
+               the configuration of Coq."
+          >>> return Native )
+      ])

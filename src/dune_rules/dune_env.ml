@@ -205,7 +205,10 @@ module Stanza = struct
     and+ coq = coq_field
     and+ format_config =
       Format_config.Generic.field ~since:(2, 8)
-        ~files:(fields @@ field ~default:Ordered_set_lang.standard "files" Ordered_set_lang.decode)
+      ~default_files:Ordered_set_lang.standard
+        ~files:
+          (field ~default:Ordered_set_lang.standard "files"
+             Ordered_set_lang.decode)
     in
     { flags
     ; foreign_flags

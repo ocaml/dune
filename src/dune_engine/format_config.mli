@@ -15,14 +15,15 @@ module Generic : sig
 
   val field :
        since:Dune_lang.Syntax.Version.t
-    -> files:('files, Dune_lang.Decoder.values) Dune_lang.Decoder.parser
+    -> default_files:'files
+    -> files:('files, Dune_lang.Decoder.fields) Dune_lang.Decoder.parser
     -> 'files t option Dune_lang.Decoder.fields_parser
 
   val equal : files:('files -> 'files -> bool) -> 'files t -> 'files t -> bool
 
   val set_files : 'files1 t -> 'files2 -> 'files2 t
 
-  val files : 'files t -> 'files  
+  val files : 'files t -> 'files
 end
 
 type t = unit Generic.t

@@ -105,12 +105,6 @@ let dparse_args =
   and+ enabled_for = fields Enabled_for.field_ext in
   ({ loc; enabled_for; files = () }, [])
 
-let dune2_record_syntax =
-  let+ ef = Enabled_for.field in
-  match ef with
-  | Some l -> Enabled_for.Only (Language.Set.of_list l)
-  | None -> All
-
 let enabled_for_all =
   { loc = Loc.none; enabled_for = Enabled_for.All; files = () }
 
@@ -123,22 +117,29 @@ let disabled =
 module Generic = struct
   type 'files t = 'files generic_t
 
-  let dune2_dec ~files =
+  let dune2_record_syntax ~files =
+    let+ files = files
+    and+ ef = Enabled_for.field in
+    ( files
+    , match ef with
+      | Some l -> Enabled_for.Only (Language.Set.of_list l)
+      | None -> All )
+
+  let dune2_dec ~default_files ~files =
     let+ loc = loc
-    and+ files = files
-    and+ enabled_for =
-      (peek_exn >>= function
-      | List _ -> fields dune2_record_syntax
-      | _ ->
+    and+ files, enabled_for =
+      peek_exn >>= function
+      | Atom (_, _) ->
         keyword "disabled"
-        >>> return (Enabled_for.Only Language.Set.empty))
-        <|> return Enabled_for.All
+        >>> return (default_files, Enabled_for.Only Language.Set.empty)
+      | _ -> fields (dune2_record_syntax ~files)
     in
     { loc; enabled_for; files }
 
-  let field ~since ~files =
+  let field ~since ~default_files ~files =
     field_o "formatting"
-      (Dune_lang.Syntax.since Dune_lang.Stanza.syntax since >>> dune2_dec ~files)
+      (Dune_lang.Syntax.since Dune_lang.Stanza.syntax since
+      >>> dune2_dec ~default_files ~files)
 
   let equal ~files t1 t2 =
     Enabled_for.equal t1.enabled_for t2.enabled_for && files t1.files t2.files
@@ -148,7 +149,7 @@ module Generic = struct
   let set_files t files = { t with files }
 end
 
-let dune2_dec = Generic.dune2_dec ~files:(return ())
+let dune2_dec = Generic.dune2_dec ~default_files:() ~files:(return ())
 
 let field ~since =
   field_o "formatting"

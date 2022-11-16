@@ -54,6 +54,6 @@ val coq : t -> Coq.t Action_builder.t Memo.t
 
 val menhir_flags : t -> string list Action_builder.t
 
-val format_config : t -> Format_config.t Memo.t
+val format_config : t -> Ordered_set_lang.t Format_config.Generic.t Memo.t
 
-val set_format_config : t -> Format_config.t -> t
+val set_format_config : t -> Ordered_set_lang.t Format_config.Generic.t -> t

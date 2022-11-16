@@ -118,6 +118,10 @@ end = struct
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope) then
         let format_config = Dune_project.format_config (Scope.project scope) in
+        let format_config =
+          Format_config.Generic.set_files format_config
+            Ordered_set_lang.standard
+        in
         Memo.lazy_ (fun () ->
             let+ default_env = Memo.Lazy.force t.default_env in
             Env_node.set_format_config default_env format_config)

@@ -79,7 +79,7 @@ module Stanza = struct
     ; odoc : Odoc.t
     ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
     ; coq : Ordered_set_lang.Unexpanded.t
-    ; format_config : Format_config.t option
+    ; format_config : Ordered_set_lang.t Format_config.Generic.t option
     ; error_on_use : User_message.t option
     ; warn_on_load : User_message.t option
     }
@@ -109,7 +109,9 @@ module Stanza = struct
     && Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
     && Odoc.equal odoc t.odoc
     && Ordered_set_lang.Unexpanded.equal coq t.coq
-    && Option.equal Format_config.equal format_config t.format_config
+    && Option.equal
+         (Format_config.Generic.equal ~files:Ordered_set_lang.equal)
+         format_config t.format_config
     && Js_of_ocaml.Env.equal js_of_ocaml t.js_of_ocaml
     && Option.equal User_message.equal error_on_use t.error_on_use
     && Option.equal User_message.equal warn_on_load t.warn_on_load
@@ -201,7 +203,10 @@ module Stanza = struct
     and+ odoc = odoc_field
     and+ js_of_ocaml = js_of_ocaml_field
     and+ coq = coq_field
-    and+ format_config = Format_config.field ~since:(2, 8) in
+    and+ format_config =
+      Format_config.Generic.field ~since:(2, 8)
+        ~files:(fields @@ field ~default:Ordered_set_lang.standard "files" Ordered_set_lang.decode)
+    in
     { flags
     ; foreign_flags
     ; link_flags

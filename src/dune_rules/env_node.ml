@@ -25,7 +25,7 @@ type t =
   ; odoc : Odoc.t Memo.Lazy.t
   ; js_of_ocaml : string list Action_builder.t Js_of_ocaml.Env.t Memo.Lazy.t
   ; coq : Coq.t Action_builder.t Memo.Lazy.t
-  ; format_config : Format_config.t Memo.Lazy.t
+  ; format_config : Ordered_set_lang.t Format_config.Generic.t Memo.Lazy.t
   }
 
 let scope t = t.scope

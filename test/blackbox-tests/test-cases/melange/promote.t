@@ -19,9 +19,7 @@ Test melange.emit promotion
   >   print_endline "hello"
   > EOF
 
-  $ dune build @dist --display=short
-          melc .dist.mobjs/melange/melange__Hello.{cmi,cmj,cmt}
-          melc dist/hello.js
+  $ dune build @dist
 
 Targets are promoted to the source tree
 
@@ -31,8 +29,7 @@ Targets are promoted to the source tree
   $ node ./dist/hello.js
   hello
 
-`(until-clean)` causes targets to be deleted after calling `dune clean`
+(until-clean) causes targets to be deleted after calling dune clean
 
   $ dune clean
   $ ls ./dist
-

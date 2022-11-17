@@ -9,7 +9,6 @@ Test melange.emit promotion
   > (melange.emit
   >  (alias dist)
   >  (entries hello)
-  >  (promote (until-clean))
   >  (target dist)
   >  (module_system commonjs))
   > EOF

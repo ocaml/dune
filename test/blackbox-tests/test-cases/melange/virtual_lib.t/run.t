@@ -1,12 +1,13 @@
-Virtual library with a single module are supported by melange libs
+Test virtual lib in an exe / melange environment
 
-  $ dune build output/c.js
-  $ node _build/default/output/c.js
-  hello from melange
+Executable implementation works fine
 
-Implementation modules in the virtual library are supported
+  $ dune build native.exe
+  $ dune exec ./native.exe
+  Hello from native
 
-  $ touch vlib/shared.ml
-  $ dune build output/c.js
-  $ node _build/default/output/c.js
-  hello from melange
+Melange implementation works as well
+
+  $ dune build output/mel.js
+  $ node _build/default/output/mel.js
+  Hello from melange

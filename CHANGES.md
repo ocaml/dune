@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fix status line enabled when ANSI colors are forced. (#6503, @MisterDA)
+
 - Coq native mode is now automatically detected by Dune starting with Coq lang
   0.7. `(mode native)` has been deprecated in favour of detection from the
   configuration of Coq. (#6409, @Alizter)

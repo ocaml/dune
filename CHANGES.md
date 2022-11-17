@@ -178,6 +178,8 @@ Unreleased
 3.4.0 (20-07-2022)
 ------------------
 
+- Do not ignore `C-c` when running `$ dune subst` (#5892, @rgrinberg)
+
 - Make `dune describe` correctly handle overlapping implementations
   for virtual libraries (#5971, fixes #5747, @esope)
 

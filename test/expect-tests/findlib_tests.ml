@@ -10,8 +10,10 @@ requires = "bar"
 requires(ppx_driver) = "baz"
 |}
 
-let db_path =
-  Path.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db"
+let db_path : Path.Outside_build_dir.t =
+  External
+    (Path.External.of_filename_relative_to_initial_cwd
+       "../unit-tests/findlib-db")
 
 let print_pkg ppf pkg =
   let info = Dune_package.Lib.info pkg in
@@ -38,7 +40,8 @@ let findlib =
     ; context_name = Context_name.of_string "default"
     }
   in
-  Memo.lazy_ (fun () -> Findlib.create ~paths:[ db_path ] ~lib_config)
+  Memo.lazy_ (fun () ->
+      Findlib.create ~paths:[ Path.outside_build_dir db_path ] ~lib_config)
 
 let resolve_pkg s =
   (let lib_name = Lib_name.of_string s in
@@ -49,7 +52,7 @@ let resolve_pkg s =
   |> Test_scheduler.(run (create ()))
 
 let elide_db_path path =
-  let prefix = Path.to_string db_path in
+  let prefix = Path.Outside_build_dir.to_string db_path in
   let path = Path.to_string path in
   String.drop_prefix_if_exists path ~prefix
 
@@ -126,7 +129,7 @@ let%expect_test _ =
 
 let conf () =
   Findlib.Config.load
-    (Path.relative db_path "../toolchain")
+    (Path.Outside_build_dir.relative db_path "../toolchain")
     ~toolchain:"tlc" ~context:"<context>"
   |> Memo.run
   |> Test_scheduler.(run (create ()))

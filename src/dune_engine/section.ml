@@ -114,7 +114,3 @@ let dune_site_syntax =
   Dune_lang.Syntax.create ~name:"dune_site" ~experimental:true
     ~desc:"the sites locations extension (experimental)"
     [ ((0, 1), `Since (2, 8)) ]
-
-let melange_syntax =
-  Dune_lang.Syntax.create ~name:"melange" ~desc:"support for Melange compiler"
-    [ ((0, 1), `Since (3, 6)) ]

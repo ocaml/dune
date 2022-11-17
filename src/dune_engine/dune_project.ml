@@ -343,8 +343,12 @@ module Extension = struct
           | Extension e -> Not_selected e :: acc))
 end
 
+let melange_syntax =
+  Dune_lang.Syntax.create ~name:"melange" ~desc:"support for Melange compiler"
+    [ ((0, 1), `Since (3, 6)) ]
+
 let melange_extension =
-  Extension.register Section.melange_syntax (return ((), [])) Unit.to_dyn
+  Extension.register melange_syntax (return ((), [])) Unit.to_dyn
 
 let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
     =

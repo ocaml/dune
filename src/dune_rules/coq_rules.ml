@@ -222,8 +222,7 @@ let coq_flags ~dir ~stanza_flags ~expander ~sctx =
 
 module Context = struct
   type 'a t =
-    { wrapper_name : string
-    ; mlpack_rule : unit Action_builder.t
+    { mlpack_rule : unit Action_builder.t
     ; ml_flags : 'a Command.Args.t Resolve.Memo.t
     ; boot_type : Bootstrap.t Resolve.Memo.t
     ; native_includes : Path.Set.t Resolve.t
@@ -236,13 +235,13 @@ module Context = struct
       let+ libs = theories_deps in
       Command.Args.S (List.map ~f:Util.theory_coqc_flag libs))
 
-  let coqc_file_flags ~dir ~theories_deps cctx =
+  let coqc_file_flags ~dir ~theories_deps ~wrapper_name cctx =
     let file_flags : _ Command.Args.t list =
       [ Dyn (Resolve.Memo.read cctx.ml_flags)
       ; theories_flags ~theories_deps
       ; A "-R"
       ; Path (Path.build dir)
-      ; A cctx.wrapper_name
+      ; A wrapper_name
       ]
     in
     ([ Dyn
@@ -290,12 +289,12 @@ module Context = struct
       in
       Resolve.args args
 
-  let coqdoc_file_flags ~dir ~theories_deps cctx =
+  let coqdoc_file_flags ~dir ~theories_deps ~wrapper_name cctx =
     let file_flags =
       [ theories_flags ~theories_deps
       ; A "-R"
       ; Path (Path.build dir)
-      ; A cctx.wrapper_name
+      ; A wrapper_name
       ]
     in
     [ Command.Args.Dyn
@@ -325,8 +324,7 @@ module Context = struct
           in
           Resolve.return (Path.Build.Set.union_all (theory_dirs :: l)))
 
-  let create sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
-      (buildable : Buildable.t) =
+  let create sctx ~dir ~theories_deps ~theory_dirs (buildable : Buildable.t) =
     let context = Super_context.context sctx |> Context.name in
     let* scope = Scope.DB.find_by_dir dir in
     let lib_db = Scope.libs scope in
@@ -343,21 +341,19 @@ module Context = struct
       let* mode = select_native_mode ~sctx ~dir buildable in
       setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs
     in
-    { wrapper_name
-    ; mlpack_rule
+    { mlpack_rule
     ; ml_flags
     ; boot_type = Resolve.Memo.return Bootstrap.No_boot
     ; native_includes
     ; native_theory_includes
     }
 
-  let for_module ~dir ~use_stdlib t coq_module =
+  let for_module ~dir ~use_stdlib ~wrapper_name t coq_module =
     let boot_type =
       let* scope = Scope.DB.find_by_dir dir in
       let open Resolve.Memo.O in
       let+ boot_lib = scope |> Scope.coq_libs |> Coq_lib.DB.boot_library in
-      Bootstrap.get ~use_stdlib ~boot_lib ~wrapper_name:t.wrapper_name
-        coq_module
+      Bootstrap.get ~use_stdlib ~boot_lib ~wrapper_name coq_module
     in
     { t with boot_type }
 end
@@ -419,13 +415,13 @@ let deps_of ~dir ~boot_type coq_module =
       (Action_builder.lines_of (Path.build stdout_to))
       ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
 
-let setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps (cctx : _ Context.t)
-    ~source_rule coq_module =
+let setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
+    (cctx : _ Context.t) ~source_rule coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let source = Coq_module.source coq_module in
   let file_flags =
     let file_flags = Context.coqc_file_flags cctx in
-    [ Command.Args.S (file_flags ~dir ~theories_deps)
+    [ Command.Args.S (file_flags ~dir ~theories_deps ~wrapper_name)
     ; As [ "-dyndep"; "opt" ]
     ; Dep (Path.build source)
     ]
@@ -440,11 +436,10 @@ let setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps (cctx : _ Context.t)
     >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep file_flags)
 
 let coqc_rule (cctx : _ Context.t) ~dir ~coq_flags ~file_flags ~coqc ~coqc_dir
-    ~mode coq_module =
+    ~mode ~wrapper_name coq_module =
   let source = Coq_module.source coq_module in
   let native_flags = Context.coqc_native_flags ~mode cctx in
   let file_flags =
-    let wrapper_name = cctx.wrapper_name in
     let objects_to =
       Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:dir
         ~obj_files_mode:Coq_module.Build coq_module
@@ -537,11 +532,13 @@ let coqdoc_rule ~dir ~sctx ~name ~coqdoc ~file_flags ~mode ~theories_deps
   |> Action_builder.With_targets.add_directories ~directory_targets:[ doc_dir ]
 
 let setup_coqc_rule ~loc ~dir ~sctx (cctx : _ Context.t) ~coqc_dir ~file_targets
-    ~stanza_flags ~theories_deps ~mode coq_module =
+    ~stanza_flags ~theories_deps ~mode ~wrapper_name coq_module =
   let open Action_builder.With_targets.O in
   (* Process coqdep and generate rules *)
   let deps_of = deps_of ~dir ~boot_type:cctx.boot_type coq_module in
-  let file_flags = Context.coqc_file_flags ~dir ~theories_deps cctx in
+  let file_flags =
+    Context.coqc_file_flags ~dir ~theories_deps ~wrapper_name cctx
+  in
   let* coqc = coqc ~loc ~dir ~sctx in
   let* expander = Super_context.expander sctx ~dir in
   let coq_flags = coq_flags ~expander ~dir ~stanza_flags ~sctx in
@@ -549,14 +546,15 @@ let setup_coqc_rule ~loc ~dir ~sctx (cctx : _ Context.t) ~coqc_dir ~file_targets
     (Action_builder.with_no_targets deps_of
     >>> Action_builder.With_targets.add ~file_targets
         @@ coqc_rule cctx ~dir ~file_flags ~coqc ~coqc_dir ~coq_flags ~mode
-             coq_module)
+             ~wrapper_name coq_module)
 
 let setup_rule ~loc ~sctx ~dir ~source_rule ~coqc_dir ~file_targets
-    ~stanza_flags ~theories_deps ~use_stdlib ~mode cctx m =
-  let cctx = Context.for_module ~dir ~use_stdlib cctx m in
+    ~stanza_flags ~theories_deps ~use_stdlib ~mode ~wrapper_name cctx m =
+  let cctx = Context.for_module ~dir ~use_stdlib ~wrapper_name cctx m in
   setup_coqc_rule ~file_targets ~stanza_flags ~sctx ~loc ~coqc_dir cctx m ~dir
-    ~theories_deps ~mode
+    ~theories_deps ~mode ~wrapper_name
   >>> setup_coqdep_rule ~sctx ~loc cctx ~source_rule m ~dir ~theories_deps
+        ~wrapper_name
 
 let coq_modules_of_theory ~sctx lib =
   Action_builder.of_memo
@@ -577,23 +575,22 @@ let source_rule ~sctx theories =
     in
     List.concat l |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m)))
 
-let setup_cctx_and_modules ~sctx ~dir ~theories_deps ~dir_contents
-    (s : Theory.t) =
+let setup_cctx_and_modules_and_wrapper_name ~sctx ~dir ~theories_deps
+    ~dir_contents (s : Theory.t) =
   let name = snd s.name in
-  let wrapper_name = Coq_lib_name.wrapper name in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
   let theory_dirs =
     Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
   in
   let+ cctx =
-    Context.create sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
-      s.buildable
+    Context.create sctx ~dir ~theories_deps ~theory_dirs s.buildable
   in
   let coq_modules = Coq_sources.library coq_dir_contents ~name in
-  (cctx, coq_modules)
+  let wrapper_name = Coq_lib_name.wrapper name in
+  (cctx, coq_modules, wrapper_name)
 
 let setup_vo_rules ~sctx ~dir ~theories_deps ~use_stdlib ~(cctx : _ Context.t)
-    (s : Theory.t) theory coq_modules =
+    ~wrapper_name (s : Theory.t) theory coq_modules =
   let loc = s.buildable.loc in
   let coqc_dir = (Super_context.context sctx).build_dir in
   let open Resolve.Memo.O in
@@ -610,13 +607,16 @@ let setup_vo_rules ~sctx ~dir ~theories_deps ~use_stdlib ~(cctx : _ Context.t)
   Memo.parallel_iter coq_modules
     ~f:
       (setup_rule ~sctx ~loc cctx ~source_rule ~dir ~file_targets:[] ~coqc_dir
-         ~theories_deps ~stanza_flags:s.buildable.flags ~use_stdlib ~mode)
+         ~theories_deps ~stanza_flags:s.buildable.flags ~use_stdlib ~mode
+         ~wrapper_name)
 
-let setup_coqdoc_rules ~sctx ~dir ~cctx ~theories_deps (s : Theory.t)
-    coq_modules =
+let setup_coqdoc_rules ~sctx ~dir ~cctx ~theories_deps ~wrapper_name
+    (s : Theory.t) coq_modules =
   let loc, name = (s.buildable.loc, snd s.name) in
   let rule =
-    let file_flags = Context.coqdoc_file_flags ~dir ~theories_deps cctx in
+    let file_flags =
+      Context.coqdoc_file_flags ~dir ~theories_deps ~wrapper_name cctx
+    in
     fun mode ->
       let* () =
         let* coqdoc = coqdoc ~loc ~dir ~sctx in
@@ -641,22 +641,26 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     Resolve.Memo.bind theory ~f:(fun theory ->
         Resolve.Memo.lift @@ Coq_lib.theories_closure theory)
   in
-  let* cctx, coq_module_sources =
-    setup_cctx_and_modules ~sctx ~dir ~dir_contents ~theories_deps s
+  let* cctx, coq_module_sources, wrapper_name =
+    setup_cctx_and_modules_and_wrapper_name ~sctx ~dir ~dir_contents
+      ~theories_deps s
   in
   setup_vo_rules ~sctx ~dir ~cctx ~theories_deps
-    ~use_stdlib:s.buildable.use_stdlib s theory coq_module_sources
+    ~use_stdlib:s.buildable.use_stdlib ~wrapper_name s theory coq_module_sources
   >>> setup_coqdoc_rules ~sctx ~dir ~cctx ~theories_deps s coq_module_sources
+        ~wrapper_name
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let theories_deps =
     theories_deps_requires_for_user_written ~dir s.buildable
   in
-  let* cctx, _ =
-    setup_cctx_and_modules ~sctx ~dir ~dir_contents ~theories_deps s
+  let* cctx, _, wrapper_name =
+    setup_cctx_and_modules_and_wrapper_name ~sctx ~dir ~dir_contents
+      ~theories_deps s
   in
   let cctx =
     Context.for_module ~use_stdlib:s.buildable.use_stdlib ~dir cctx coq_module
+      ~wrapper_name
   in
   let* expander = Super_context.expander sctx ~dir in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
@@ -667,7 +671,7 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
     in
     Command.Args.As coq_flags
     :: Command.Args.S [ Context.coqc_native_flags ~mode cctx ]
-    :: Context.coqc_file_flags ~dir ~theories_deps cctx)
+    :: Context.coqc_file_flags ~dir ~theories_deps ~wrapper_name cctx)
   , boot_type )
 
 (******************************************************************************)
@@ -770,23 +774,23 @@ let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coqpp.t) =
   in
   List.rev_map ~f:mlg_rule mlg_files |> Super_context.add_rules ~loc ~dir sctx
 
-let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
+let setup_extraction_cctx_and_modules_and_wrapper_name ~sctx ~dir ~dir_contents
     (s : Extraction.t) =
+  let wrapper_name = "DuneExtraction" in
   let+ cctx =
-    let wrapper_name = "DuneExtraction" in
     let* theories_deps =
       theories_deps_requires_for_user_written ~dir s.buildable
     in
     let theories_deps = Resolve.Memo.lift theories_deps in
     let theory_dirs = Path.Build.Set.empty in
-    Context.create sctx ~dir ~wrapper_name ~theories_deps ~theory_dirs
-      s.buildable
+    Context.create sctx ~dir ~theories_deps ~theory_dirs s.buildable
   and+ coq = Dir_contents.coq dir_contents in
-  (cctx, Coq_sources.extract coq s)
+  (cctx, Coq_sources.extract coq s, wrapper_name)
 
 let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
-  let* cctx, coq_module =
-    setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
+  let* cctx, coq_module, wrapper_name =
+    setup_extraction_cctx_and_modules_and_wrapper_name ~sctx ~dir ~dir_contents
+      s
   in
   let ml_targets =
     Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
@@ -802,17 +806,19 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   setup_rule cctx ~dir ~sctx ~loc:s.buildable.loc ~file_targets:ml_targets
     ~source_rule ~coqc_dir:dir ~stanza_flags:s.buildable.flags ~theories_deps
-    ~use_stdlib:s.buildable.use_stdlib coq_module ~mode
+    ~use_stdlib:s.buildable.use_stdlib coq_module ~mode ~wrapper_name
 
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
-  let* cctx, coq_module =
-    setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
+  let* cctx, coq_module, wrapper_name =
+    setup_extraction_cctx_and_modules_and_wrapper_name ~sctx ~dir ~dir_contents
+      s
   in
   let theories_deps =
     theories_deps_requires_for_user_written ~dir s.buildable
   in
   let cctx =
-    Context.for_module ~dir ~use_stdlib:s.buildable.use_stdlib cctx coq_module
+    Context.for_module ~dir ~use_stdlib:s.buildable.use_stdlib ~wrapper_name
+      cctx coq_module
   in
   let* expander = Super_context.expander sctx ~dir in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
@@ -823,5 +829,5 @@ let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
     in
     Command.Args.As coq_flags
     :: Command.Args.S [ Context.coqc_native_flags ~mode cctx ]
-    :: Context.coqc_file_flags ~dir ~theories_deps cctx)
+    :: Context.coqc_file_flags ~dir ~theories_deps ~wrapper_name cctx)
   , boot_type )

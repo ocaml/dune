@@ -54,6 +54,8 @@ end
 
 val dune_site_syntax : Dune_lang.Syntax.t
 
+val melange_syntax : Dune_lang.Syntax.t
+
 module Modulelike (S : sig
   type t
 

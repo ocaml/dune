@@ -268,5 +268,5 @@ module DB = struct
 
   let to_dyn { by_name; _ } = String.Map.to_dyn to_dyn by_name
 
-  let builtin = of_list [ ocaml; reason; rescript ]
+  let builtin = of_list [ ocaml; reason ]
 end

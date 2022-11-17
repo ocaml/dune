@@ -343,6 +343,9 @@ module Extension = struct
           | Extension e -> Not_selected e :: acc))
 end
 
+let melange_extension =
+  Extension.register Section.melange_syntax (return ((), [])) Unit.to_dyn
+
 let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
     =
   match
@@ -908,6 +911,11 @@ let parse ~dir ~lang ~file ~dir_status =
           let root = dir in
           let file_key = File_key.make ~name ~root in
           let dialects =
+            let dialects =
+              match Univ_map.find extension_args melange_extension with
+              | Some () -> (Loc.none, Dialect.rescript) :: dialects
+              | None -> dialects
+            in
             List.fold_left
               ~f:(fun dialects (loc, dialect) ->
                 Dialect.DB.add dialects ~loc dialect)

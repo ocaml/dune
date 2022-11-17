@@ -10,6 +10,9 @@ Unreleased
 - Print "Leaving Directory" whenever "Entering Directory" is printed. (#6149,
   fixes #138, @cpitclaudel, @rgrinberg)
 
+- Allow `$ dune ocaml dump-dot-merlin` to run in watch mode. Also this command
+  shouldn't print "Entering Directory" mesages. (#6497, @rgrinberg)
+
 3.6.0 (2022-11-14)
 ------------------
 

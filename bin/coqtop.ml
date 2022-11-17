@@ -97,21 +97,31 @@ let term =
           let stanza =
             Dune_rules.Coq_sources.lookup_module coq_src coq_module
           in
-          let* args, boot_type =
+          let args, boot_type =
             match stanza with
             | None ->
               User_error.raise
                 [ Pp.textf "file not part of any stanza: %s" coq_file_arg ]
             | Some (`Theory theory) ->
-              Dune_rules.Coq_rules.coqtop_args_theory ~sctx ~dir
-                ~dir_contents:dc theory coq_module
+              ( Dune_rules.Coq_rules.coqtop_args_theory ~sctx ~dir
+                  ~dir_contents:dc theory coq_module
+              , let wrapper_name =
+                  Dune_rules.Coq_lib_name.wrapper (snd theory.name)
+                in
+                Dune_rules.Coq_rules.boot_type ~dir
+                  ~use_stdlib:theory.buildable.use_stdlib ~wrapper_name
+                  coq_module )
             | Some (`Extraction extr) ->
-              Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir
-                ~dir_contents:dc extr
+              ( Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir
+                  ~dir_contents:dc extr coq_module
+              , 
+              let wrapper_name = "DuneExtraction" in
+              Dune_rules.Coq_rules.boot_type ~dir
+                  ~use_stdlib:extr.buildable.use_stdlib ~wrapper_name coq_module
+              )
           in
           let* (_ : unit * Dep.Fact.t Dep.Map.t) =
             let deps =
-              let boot_type = Resolve.Memo.return boot_type in
               Dune_rules.Coq_rules.deps_of ~dir ~boot_type coq_module
             in
             Action_builder.run deps Eager

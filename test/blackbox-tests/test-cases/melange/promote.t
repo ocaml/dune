@@ -9,7 +9,7 @@ Test melange.emit promotion
   > (melange.emit
   >  (alias dist)
   >  (entries hello)
-  >  (promote until-clean)
+  >  (promote (until-clean))
   >  (target dist)
   >  (module_system commonjs))
   > EOF
@@ -22,7 +22,17 @@ Test melange.emit promotion
   $ dune build @dist --display=short
           melc .dist.mobjs/melange/melange__Hello.{cmi,cmj,cmt}
           melc dist/hello.js
+
+Targets are promoted to the source tree
+
+  $ ls ./dist
+  hello.js
+
   $ node ./dist/hello.js
   hello
 
+`(until-clean)` causes targets to be deleted after calling `dune clean`
+
+  $ dune clean
+  $ ls ./dist
 

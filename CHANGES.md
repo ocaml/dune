@@ -1,3 +1,8 @@
+3.6.1 (unreleased)
+------------------
+
+- Fix status line enabled when ANSI colors are forced. (#6503, @MisterDA)
+
 3.6.0 (2022-11-14)
 ------------------
 

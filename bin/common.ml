@@ -82,6 +82,13 @@ let rpc t =
 
 let forbid_builds t = { t with rpc = `Forbid_builds }
 
+let signal_watcher t =
+  match t.rpc with
+  | `Allow _ -> `Yes
+  | `Forbid_builds ->
+    (* if we aren't building anything, then we don't mind interrupting dune immediately *)
+    `No
+
 let stats t = t.stats
 
 let insignificant_changes t = t.insignificant_changes

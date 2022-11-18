@@ -15,6 +15,7 @@ No ppx driver found
   5 |  (preprocess (pps)))
                    ^^^^^
   Error: You must specify at least one ppx rewriter.
+  Leaving directory 'no-driver'
   [1]
 
 Too many drivers
@@ -26,6 +27,7 @@ Too many drivers
                    ^^^^^^^^^^^^^^^
   Error: Too many incompatible ppx drivers were found: foo.driver1 and
   foo.driver2.
+  Leaving directory 'driver-tests'
   [1]
 
 Not compatible with Dune
@@ -38,6 +40,7 @@ Not compatible with Dune
   Error: No ppx driver were found. It seems that ppx_other is not compatible
   with Dune. Examples of ppx rewriters that are compatible with Dune are ones
   using ocaml-migrate-parsetree, ppxlib or ppx_driver.
+  Leaving directory 'driver-tests'
   [1]
 
 Incompatible Cookies
@@ -49,6 +52,7 @@ Incompatible Cookies
                     ^^^^^^^^^^^^^^^
   Error: foo.ppx3 and foo.ppx4 have inconsistent requests for cookie "germany";
   foo.ppx3 requests "spritzgeback" and foo.ppx4 requests "lebkuchen"
+  Leaving directory 'driver-tests'
   [1]
 
 Same, but with error pointing to .ppx
@@ -56,11 +60,13 @@ Same, but with error pointing to .ppx
   $ dune build --root driver-tests .ppx/foo.ppx1+foo.ppx2/ppx.exe
   Entering directory 'driver-tests'
   Error: invalid ppx key for _build/default/.ppx/foo.ppx1+foo.ppx2/ppx.exe
+  Leaving directory 'driver-tests'
   [1]
 
   $ dune build --root driver-tests .ppx/foo.ppx-other/ppx.exe
   Entering directory 'driver-tests'
   Error: invalid ppx key for _build/default/.ppx/foo.ppx-other/ppx.exe
+  Leaving directory 'driver-tests'
   [1]
 
 Test the argument syntax
@@ -90,6 +96,7 @@ Test the argument syntax
   95 |     -foo bar %{env:ENGLAND=undefined})))
   Error: Rule failed to generate the following targets:
   - test_ppx_args.pp.ml
+  Leaving directory 'driver-tests'
   [1]
 
 Test the argument syntax with list expansion allowed (dune > 3.2)
@@ -123,6 +130,7 @@ Test the argument syntax with list expansion allowed (dune > 3.2)
   24 |     -foo bar %{env:ENGLAND=undefined} %{read-lines:ppx-args})))
   Error: Rule failed to generate the following targets:
   - test_ppx_args.pp.ml
+  Leaving directory 'driver-tests-list-args'
   [1]
 
 Test that going through the -ppx option of the compiler works
@@ -131,11 +139,13 @@ Test that going through the -ppx option of the compiler works
   Entering directory 'driver-tests'
   tool name: ocamlc
   args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"
+  Leaving directory 'driver-tests'
 
 Test using installed drivers
 
   $ dune build --root driver @install
   Entering directory 'driver'
+  Leaving directory 'driver'
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
   Entering directory 'use-external-driver'
   .ppx/35d69311d5da258d073875db2b34f33b/ppx.exe
@@ -155,6 +165,7 @@ Test using installed drivers
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
+  Leaving directory 'use-external-driver'
   [1]
 
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root replaces driveruser.cma
@@ -177,10 +188,12 @@ Test using installed drivers
                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
+  Leaving directory 'replaces'
   [1]
 
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root driver-replaces @install
   Entering directory 'driver-replaces'
+  Leaving directory 'driver-replaces'
   $ OCAMLPATH=driver/_build/install/default/lib:driver-replaces/_build/install/default/lib dune build --root replaces-external driveruser.cma
   Entering directory 'replaces-external'
   replacesdriver
@@ -201,4 +214,5 @@ Test using installed drivers
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
+  Leaving directory 'replaces-external'
   [1]

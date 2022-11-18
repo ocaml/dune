@@ -21,4 +21,5 @@
   4 |  (foreign_stubs (language c) (names stubs)))
   Error: Pure bytecode executables cannot contain foreign stubs.
   Hint: If you only need to build a native executable use "(modes exe)".
+  Leaving directory 'err'
   [1]

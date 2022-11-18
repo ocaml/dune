@@ -6,4 +6,5 @@ Duplicating a field in a dune file is an error:
   4 |  (action (echo bar)))
        ^^^^^^^^^^^^^^^^^^^
   Error: Field "action" is present too many times
+  Leaving directory 'dune'
   [1]

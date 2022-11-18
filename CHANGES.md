@@ -19,6 +19,9 @@ Unreleased
   remove the `.lock` file. Also, bring the implementation of the global lock
   under Windows closer to that of Unix. (#6523, @nojb)
 
+- Remove "Entering Directory" messages for `$ dune install`. (#6513,
+  @rgrinberg)
+
 3.6.0 (2022-11-14)
 ------------------
 

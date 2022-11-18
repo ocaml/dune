@@ -80,7 +80,7 @@ let rpc t =
   | `Forbid_builds -> `Forbid_builds
   | `Allow rpc -> `Allow (Lazy.force rpc)
 
-let forbid_builds t = { t with rpc = `Forbid_builds }
+let forbid_builds t = { t with rpc = `Forbid_builds; no_print_directory = true }
 
 let signal_watcher t =
   match t.rpc with
@@ -92,8 +92,6 @@ let signal_watcher t =
 let stats t = t.stats
 
 let insignificant_changes t = t.insignificant_changes
-
-let set_print_directory t b = { t with no_print_directory = not b }
 
 let set_promote t v = { t with promote = Some v }
 

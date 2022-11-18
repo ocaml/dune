@@ -18,7 +18,7 @@ library also has more than one src dir.
   $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build lib2/.merlin-conf/lib-lib2
-  $ dune ocaml-merlin --dump-config=$PWD/lib2
+  $ dune ocaml merlin dump-config $PWD/lib2
   Lib2
   ((STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)

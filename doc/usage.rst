@@ -558,7 +558,7 @@ purposes:
 
 ::
 
-    $ dune ocaml-merlin --dump-config
+    $ dune ocaml merlin dump-config
 
 This command prints the distinct configuration of each module present in the
 current directory. This directory must be in a Dune workspace and the project

@@ -124,7 +124,6 @@ module Processed = struct
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
     let print = Buffer.add_string b in
-    Buffer.clear b;
     print "EXCLUDE_QUERY_DIR\n";
     Option.iter stdlib_dir ~f:(fun stdlib_dir ->
         printf "STDLIB %s\n" (serialize_path stdlib_dir));

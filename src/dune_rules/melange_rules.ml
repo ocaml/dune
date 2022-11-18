@@ -9,32 +9,27 @@ let make_js_name ~js_ext ~dst_dir m =
   let name = Melange.js_basename m ^ js_ext in
   Path.Build.relative dst_dir name
 
-let virtual_dst_dir_and_modules sctx ~target_dir ~implements ~scope =
+let virtual_dst_dir_and_modules sctx ~target_dir ~implements =
   let open Memo.O in
   match implements with
   | None -> Memo.return None
-  | Some (loc, implements) -> (
-    Lib.DB.find (Scope.libs scope) implements >>= function
-    | None ->
-      User_error.raise ~loc
-        [ Pp.textf "Cannot implement %s as that library isn't available"
-            (Lib_name.to_string implements)
-        ]
-    | Some vlib ->
-      let name = Lib.name vlib in
-      let vlib = Lib.Local.of_lib_exn vlib in
-      let info = Lib.Local.info vlib in
-      let* dir_contents =
-        let dir = Lib_info.src_dir info in
-        Dir_contents.get sctx ~dir
-      in
-      let* modules =
-        Dir_contents.ocaml dir_contents
-        >>| Ml_sources.modules ~for_:(Library name)
-      in
-      let lib_dir = Lib_info.src_dir info in
-      let dst_dir = lib_output_dir ~target_dir ~lib_dir in
-      Memo.return (Some (dst_dir, modules)))
+  | Some vlib ->
+    let* vlib = vlib in
+    let* vlib = Resolve.read_memo vlib in
+    let name = Lib.name vlib in
+    let vlib = Lib.Local.of_lib_exn vlib in
+    let info = Lib.Local.info vlib in
+    let* dir_contents =
+      let dir = Lib_info.src_dir info in
+      Dir_contents.get sctx ~dir
+    in
+    let* modules =
+      Dir_contents.ocaml dir_contents
+      >>| Ml_sources.modules ~for_:(Library name)
+    in
+    let lib_dir = Lib_info.src_dir info in
+    let dst_dir = lib_output_dir ~target_dir ~lib_dir in
+    Memo.return (Some (dst_dir, modules))
 
 let local_of_lib ~loc lib =
   match Lib.Local.of_lib lib with
@@ -54,8 +49,10 @@ let js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext =
         let project = Scope.project scope in
         let deps_of_lib (lib : Lib.t) =
           let lib_name = Lib.name lib in
-          let lib = local_of_lib ~loc lib in
-          let info = Lib.Local.info lib in
+          let info =
+            let lib = local_of_lib ~loc lib in
+            Lib.Local.info lib
+          in
           match Lib_info.virtual_ info with
           | Some _ ->
             (* Js rules for virtual libs are added by their implementations *)
@@ -74,10 +71,11 @@ let js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext =
               let output = make_js_name ~js_ext ~dst_dir m in
               Dep.file (Path.build output)
             in
-            let implements = Lib_info.implements info in
-            let* virtual_modules =
-              virtual_dst_dir_and_modules sctx ~target_dir ~implements ~scope
+            let virtual_modules =
+              let implements = Lib.implements lib in
+              virtual_dst_dir_and_modules sctx ~target_dir ~implements
             in
+            let* virtual_modules = virtual_modules in
             let virtual_deps =
               match virtual_modules with
               | None -> []
@@ -223,9 +221,10 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
       let* lib, lib_compile_info =
         Lib.DB.get_compile_info (Scope.libs scope) lib_name
       in
-      let lib = local_of_lib ~loc:mel.loc lib in
-      let info = Lib.Local.info lib in
-      let implements = Lib_info.implements info in
+      let info =
+        let lib = local_of_lib ~loc:mel.loc lib in
+        Lib.Local.info lib
+      in
       let lib_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
       let dst_dir = lib_output_dir ~target_dir ~lib_dir in
@@ -244,7 +243,8 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
       in
       let* () =
         let* virtual_modules =
-          virtual_dst_dir_and_modules sctx ~target_dir ~implements ~scope
+          let implements = Lib.implements lib in
+          virtual_dst_dir_and_modules sctx ~target_dir ~implements
         in
         match virtual_modules with
         | None -> Memo.return ()

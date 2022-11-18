@@ -166,6 +166,8 @@ let install = make_standard Name.install
 
 let doc = make_standard (Name.of_string "doc")
 
+let doc_latex = make_standard (Name.of_string "doc-latex")
+
 let private_doc = make_standard (Name.of_string "doc-private")
 
 let lint = make_standard (Name.of_string "lint")

@@ -63,6 +63,8 @@ val install : dir:Path.Build.t -> t
 
 val doc : dir:Path.Build.t -> t
 
+val doc_latex : dir:Path.Build.t -> t
+
 val private_doc : dir:Path.Build.t -> t
 
 val lint : dir:Path.Build.t -> t

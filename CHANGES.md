@@ -7,6 +7,9 @@ Unreleased
   0.7. `(mode native)` has been deprecated in favour of detection from the
   configuration of Coq. (#6409, @Alizter)
 
+- Print "Leaving Directory" whenever "Entering Directory" is printed. (#6149,
+  fixes #138, @cpitclaudel, @rgrinberg)
+
 3.6.0 (2022-11-14)
 ------------------
 
@@ -3065,7 +3068,7 @@ Unreleased
 
 - Print `Entering directory '...'` when the workspace root is not the
   current directory. This allows Emacs and Vim to know where relative
-  filenames should be interpreted from. Fixes #138
+  filenames should be interpreted from. (fixes #138, @jeremiedimino)
 
 - Fix a bug related to `menhir` stanzas: `menhir` stanzas with a
   `merge_into` field that were in `jbuild` files in sub-directories

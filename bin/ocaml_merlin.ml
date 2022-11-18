@@ -50,9 +50,9 @@ end = struct
      absolute path [p] and remove it if that is the case. Under Windows and
      Cygwin environment both paths are lowarcased before the comparison *)
   let make_relative_to_root p =
-    let prefix = Path.(to_absolute_filename root) in
-    let p = Path.(to_absolute_filename p) in
+    let p = Path.to_absolute_filename p in
     let prefix, p =
+      let prefix = Path.(to_absolute_filename root) in
       if Sys.win32 || Sys.cygwin then
         (String.lowercase_ascii prefix, String.lowercase_ascii p)
       else (prefix, p)
@@ -60,6 +60,46 @@ end = struct
     String.drop_prefix ~prefix p
     (* After dropping the prefix we need to remove the leading path separator *)
     |> Option.map ~f:(fun s -> String.drop s 1)
+
+  (* Given a path [p] relative to the workspace root, [get_merlin_files_paths p]
+     navigates to the [_build] directory and reaches this path from the correct
+     context. Then it returns the list of available Merlin configurations for
+     this directory. *)
+  let get_merlin_files_paths dir =
+    let merlin_path =
+      Path.Build.relative dir Dune_rules.Merlin_ident.merlin_folder_name
+    in
+    Path.build merlin_path |> Path.readdir_unsorted |> Result.value ~default:[]
+    |> List.sort ~compare:String.compare
+    |> List.map ~f:(fun f -> Path.Build.relative merlin_path f |> Path.build)
+
+  module Merlin = Dune_rules.Merlin
+
+  let load_merlin_file file =
+    (* We search for an appropriate merlin configuration in the current
+       directory and its parents *)
+    let filename = String.lowercase_ascii (Path.Build.basename file) in
+    let rec find_closest path =
+      match
+        get_merlin_files_paths path
+        |> List.find_map ~f:(fun file_path ->
+               match Merlin.Processed.load_file file_path with
+               | Error msg -> Some (Merlin_conf.make_error msg)
+               | Ok config -> Merlin.Processed.get config ~filename)
+      with
+      | Some p -> Some p
+      | None -> (
+        match Path.Build.parent path with
+        | None -> None
+        | Some dir -> find_closest dir)
+    in
+    match find_closest (Path.Build.parent_exn file) with
+    | Some x -> x
+    | None ->
+      Path.Build.drop_build_context_exn file
+      |> Path.Source.to_string_maybe_quoted
+      |> Printf.sprintf "No config found for file %s. Try calling `dune build`."
+      |> Merlin_conf.make_error
 
   (* [to_local p] makes path [p] relative to the project's root. [p] can be: -
      An absolute path - A path relative to [Path.initial_cwd] *)
@@ -79,103 +119,56 @@ end = struct
         Ok (Path.drop_optional_build_context path |> Path.local_part)
       with User_error.E mess -> User_message.to_string mess |> error)
     | None ->
-      Printf.sprintf "Path %S is not in dune workspace (%S)." file_path
-        Path.(to_absolute_filename Path.root)
+      Printf.sprintf "Path %s is not in dune workspace (%s)."
+        (String.maybe_quoted file_path)
+        (String.maybe_quoted @@ Path.(to_absolute_filename Path.root))
       |> error
 
-  (* Given a path [p] relative to the workspace root, [get_merlin_files_paths p]
-     navigates to the [_build] directory and reaches this path from the correct
-     context. Then it returns the list of available Merlin configurations for
-     this directory. *)
-  let get_merlin_files_paths local_path =
-    let module Context_name = Dune_engine.Context_name in
-    let+ workspace = Memo.run (Workspace.workspace ()) in
-    let merlin_path =
-      let ctx_root =
-        let context =
-          Option.value ~default:Context_name.default workspace.merlin_context
-        in
-        let ctx = Context_name.to_string context in
-        Path.Build.(relative root ctx)
-      in
-      let dir_path = Path.Build.(append_local ctx_root local_path) in
-      Path.Build.relative dir_path Dune_rules.Merlin_ident.merlin_folder_name
-    in
-    Path.build merlin_path |> Path.readdir_unsorted |> Result.value ~default:[]
-    |> List.sort ~compare:String.compare
-    |> List.map ~f:(fun f -> Path.Build.relative merlin_path f |> Path.build)
-
-  module Merlin = Dune_rules.Merlin
-
-  let load_merlin_file local_path file =
-    (* We search for an appropriate merlin configuration in the current
-       directory and its parents *)
-    let rec find_closest path =
-      let filename = String.lowercase_ascii file in
-      let* file_paths = get_merlin_files_paths path in
-      let result =
-        List.find_map file_paths ~f:(fun file_path ->
-            if Path.exists file_path then
-              match Merlin.Processed.load_file file_path with
-              | Ok config -> Merlin.Processed.get config ~filename
-              | Error msg -> Some (Merlin_conf.make_error msg)
-            else None)
-      in
-      match result with
-      | Some p -> Fiber.return (Some p)
-      | None -> (
-        match
-          if Path.Local.is_root path then None else Path.Local.parent path
-        with
-        | None -> Fiber.return None
-        | Some dir -> find_closest dir)
-    in
-    let default =
-      Printf.sprintf
-        "No config found for file %S in %S. Try calling `dune build`." file
-        (Path.Local.to_string local_path)
-      |> Merlin_conf.make_error
-    in
-    find_closest local_path >>| function
-    | None -> default
-    | Some x -> x
+  let to_local file =
+    match to_local file with
+    | Error s -> Fiber.return (Error s)
+    | Ok file -> (
+      let+ workspace = Memo.run (Workspace.workspace ()) in
+      let module Context_name = Dune_engine.Context_name in
+      match workspace.merlin_context with
+      | None -> Error "no merlin context configured"
+      | Some context ->
+        Ok (Path.Build.append_local (Context_name.build_dir context) file))
 
   let print_merlin_conf file =
-    let dir, file = Filename.(dirname file, basename file) in
     let+ answer =
-      match to_local dir with
-      | Ok p -> load_merlin_file p file
-      | Error s -> Fiber.return (Merlin_conf.make_error s)
+      let+ file = to_local file in
+      match file with
+      | Error s -> Merlin_conf.make_error s
+      | Ok file -> load_merlin_file file
     in
     Merlin_conf.to_stdout answer
 
   let dump s =
-    match to_local s with
+    let+ file = to_local s in
+    match file with
+    | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path ->
-      get_merlin_files_paths path >>| List.iter ~f:Merlin.Processed.print_file
-    | Error mess ->
-      Printf.eprintf "%s\n%!" mess;
-      Fiber.return ()
+      get_merlin_files_paths path |> List.iter ~f:Merlin.Processed.print_file
 
   let dump_dot_merlin s =
-    match to_local s with
+    let+ file = to_local s in
+    match file with
+    | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path ->
-      let+ files = get_merlin_files_paths path in
+      let files = get_merlin_files_paths path in
       Merlin.Processed.print_generic_dot_merlin files
-    | Error mess ->
-      Printf.eprintf "%s\n%!" mess;
-      Fiber.return ()
 
   let start () =
     let rec main () =
       match Commands.read_input stdin with
+      | Halt -> Fiber.return ()
       | File path ->
         let* () = print_merlin_conf path in
         main ()
       | Unknown msg ->
         Merlin_conf.to_stdout (Merlin_conf.make_error msg);
         main ()
-      | Halt -> Fiber.return ()
     in
     main ()
 end

@@ -3,7 +3,7 @@
 
   $ FILE=$PWD/main.ml
   $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin
-  ((5:ERROR68:No config found for file "main.ml" in ".". Try calling `dune build`.))
+  ((5:ERROR59:No config found for file main.ml. Try calling `dune build`.))
 
   $ dune build @check
 

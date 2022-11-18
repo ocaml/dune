@@ -9,48 +9,6 @@ open Memo.O
 
 open Coq_stanza
 
-(* Coqdep / Coq expect the deps to the directory where the plugin cmxs file are.
-   This seems to correspond to src_dir. *)
-module Util = struct
-  let include_paths ts =
-    Path.Set.of_list_map ts ~f:(fun t ->
-        let info = Lib.info t in
-        Lib_info.src_dir info)
-
-  let coq_nativelib_cmi_dirs ts =
-    List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-        let info = Lib.info t in
-        (* We want the cmi files *)
-        let obj_dir = Obj_dir.public_cmi_ocaml_dir (Lib_info.obj_dir info) in
-        Path.Set.add acc obj_dir)
-
-  let include_flags ts = include_paths ts |> Lib_flags.L.to_iflags
-
-  (* coqdep expects an mlpack file next to the sources otherwise it
-   * will omit the cmxs deps *)
-  let ml_pack_files lib =
-    let plugins =
-      let info = Lib.info lib in
-      let plugins = Lib_info.plugins info in
-      Mode.Dict.get plugins Native
-    in
-    let to_mlpack file =
-      [ Path.set_extension file ~ext:".mlpack"
-      ; Path.set_extension file ~ext:".mllib"
-      ]
-    in
-    List.concat_map plugins ~f:to_mlpack
-
-  let theory_coqc_flag lib =
-    let dir = Coq_lib.src_root lib in
-    let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
-    Command.Args.S
-      [ A binding_flag
-      ; Path (Path.build dir)
-      ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
-      ]
-end
-
 module Coq_plugin = struct
   let meta_info ~coq_lang_version ~plugin_loc ~context (lib : Lib.t) =
     let debug = false in
@@ -89,19 +47,38 @@ module Coq_plugin = struct
       Lib.closure ~linking:false (List.map ~f:snd libs)
     in
     let flags =
-      Resolve.Memo.args (Resolve.Memo.map libs ~f:Util.include_flags)
+      Resolve.Memo.args
+        (Resolve.Memo.map libs ~f:(fun libs ->
+             Path.Set.of_list_map libs ~f:(fun t ->
+                 let info = Lib.info t in
+                 Lib_info.src_dir info)
+             |> Lib_flags.L.to_iflags))
     in
     let open Action_builder.O in
     ( flags
     , let* libs = Resolve.Memo.read libs in
+      (* coqdep expects an mlpack file next to the sources otherwise it will
+         omit the cmxs deps *)
+      let ml_pack_files lib =
+        let plugins =
+          let info = Lib.info lib in
+          let plugins = Lib_info.plugins info in
+          Mode.Dict.get plugins Native
+        in
+        let to_mlpack file =
+          [ Path.set_extension file ~ext:".mlpack"
+          ; Path.set_extension file ~ext:".mllib"
+          ]
+        in
+        List.concat_map plugins ~f:to_mlpack
+      in
       (* If the mlpack files don't exist, don't fail *)
       Action_builder.all_unit
         [ Action_builder.paths
             (List.filter_map
                ~f:(meta_info ~plugin_loc ~coq_lang_version ~context)
                libs)
-        ; Action_builder.paths_existing
-            (List.concat_map ~f:Util.ml_pack_files libs)
+        ; Action_builder.paths_existing (List.concat_map ~f:ml_pack_files libs)
         ] )
 
   let of_buildable ~context ~lib_db ~theories_deps
@@ -232,10 +209,19 @@ module Context = struct
     }
 
   let theories_flags ~theories_deps =
+    let theory_coqc_flag lib =
+      let dir = Coq_lib.src_root lib in
+      let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
+      Command.Args.S
+        [ A binding_flag
+        ; Path (Path.build dir)
+        ; A (Coq_lib.name lib |> Coq_lib_name.wrapper)
+        ]
+    in
     Resolve.Memo.args
       (let open Resolve.Memo.O in
       let+ libs = theories_deps in
-      Command.Args.S (List.map ~f:Util.theory_coqc_flag libs))
+      Command.Args.S (List.map ~f:theory_coqc_flag libs))
 
   let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~use_stdlib cctx
       coq_module =
@@ -298,7 +284,19 @@ module Context = struct
     let+ coq_sources = Dir_contents.coq dir_contents in
     Coq_sources.directories coq_sources ~name
 
-  let setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs =
+  let native_includes ~dir =
+    let* scope = Scope.DB.find_by_dir dir in
+    let lib_db = Scope.libs scope in
+    (* We want the cmi files *)
+    Resolve.Memo.map ~f:(fun lib ->
+        let info = Lib.info lib in
+        let obj_dir = Obj_dir.public_cmi_ocaml_dir (Lib_info.obj_dir info) in
+        Path.Set.singleton obj_dir)
+    @@ resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ]
+
+  let setup_native_theory_includes ~sctx ~dir ~theories_deps ~theory_dirs
+      buildable =
+    let* mode = select_native_mode ~sctx ~dir buildable in
     match (mode : Coq_mode.t) with
     | VoOnly | Legacy -> Memo.return (Resolve.return Path.Build.Set.empty)
     | Native ->
@@ -318,13 +316,10 @@ module Context = struct
     let ml_flags, mlpack_rule =
       Coq_plugin.of_buildable ~context ~theories_deps ~lib_db buildable
     in
-    let* native_includes =
-      Resolve.Memo.map ~f:(fun lib -> Util.coq_nativelib_cmi_dirs [ lib ])
-      @@ resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ]
-    in
+    let* native_includes = native_includes ~dir in
     let+ native_theory_includes =
-      let* mode = select_native_mode ~sctx ~dir buildable in
-      setup_native_theory_includes ~sctx ~mode ~theories_deps ~theory_dirs
+      setup_native_theory_includes ~sctx ~dir ~theories_deps ~theory_dirs
+        buildable
     in
     { mlpack_rule; ml_flags; native_includes; native_theory_includes }
 end

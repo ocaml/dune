@@ -319,9 +319,8 @@ module Context = struct
       Coq_plugin.of_buildable ~context ~theories_deps ~lib_db buildable
     in
     let* native_includes =
-      let open Resolve.Memo.O in
-      resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ] >>| fun lib ->
-      Util.coq_nativelib_cmi_dirs [ lib ]
+      Resolve.Memo.map ~f:(fun lib -> Util.coq_nativelib_cmi_dirs [ lib ])
+      @@ resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ]
     in
     let+ native_theory_includes =
       let* mode = select_native_mode ~sctx ~dir buildable in

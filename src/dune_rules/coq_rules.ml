@@ -291,18 +291,6 @@ module Context = struct
       in
       Resolve.args args
 
-  let coqdoc_file_flags ~dir ~theories_deps ~wrapper_name =
-    let file_flags =
-      [ theories_flags ~theories_deps
-      ; A "-R"
-      ; Path (Path.build dir)
-      ; A wrapper_name
-      ]
-    in
-    (* TODO: we were passing No_boot before and now we have made it explicit. We
-       probably want to do something better here. *)
-    [ Bootstrap.flags ~coqdoc:true Bootstrap.No_boot; S file_flags ]
-
   let directories_of_lib ~sctx lib =
     let name = Coq_lib.name lib in
     let dir = Coq_lib.src_root lib in
@@ -447,78 +435,6 @@ let coqc_rule (cctx : _ Context.t) ~dir ~coq_flags ~file_flags ~coqc ~coqc_dir
     (Command.Args.dyn coq_flags :: file_flags)
   >>| Action.Full.add_sandbox sandbox
 
-module Coqdoc_mode = struct
-  type t =
-    | Html
-    | Latex
-
-  let flag = function
-    | Html -> "--html"
-    | Latex -> "--latex"
-
-  let directory t obj_dir (theory : Coq_lib_name.t) =
-    Path.Build.relative obj_dir
-      (Coq_lib_name.to_string theory
-      ^
-      match t with
-      | Html -> ".html"
-      | Latex -> ".tex")
-
-  let alias t ~dir =
-    match t with
-    | Html -> Alias.doc ~dir
-    | Latex -> Alias.make (Alias.Name.of_string "doc-latex") ~dir
-end
-
-let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
-  let loc = theory.buildable.loc in
-  let name = snd theory.name in
-  Path.Build.Map.of_list_exn
-    [ (Coqdoc_mode.directory Html obj_dir name, loc)
-    ; (Coqdoc_mode.directory Latex obj_dir name, loc)
-    ]
-
-let coqdoc_rule ~dir ~sctx ~name ~coqdoc ~file_flags ~mode ~theories_deps
-    coq_modules =
-  let doc_dir = Coqdoc_mode.directory mode dir name in
-  let file_flags =
-    let globs =
-      let open Action_builder.O in
-      let* theories_deps = Resolve.Memo.read theories_deps in
-      Action_builder.of_memo
-      @@
-      let open Memo.O in
-      let+ deps =
-        Memo.parallel_map theories_deps ~f:(fun theory ->
-            let+ theory_dirs = Context.directories_of_lib ~sctx theory in
-            Dep.Set.of_list_map theory_dirs ~f:(fun dir ->
-                (* TODO *)
-                Glob.of_string_exn Loc.none "*.glob"
-                |> File_selector.of_glob ~dir:(Path.build dir)
-                |> Dep.file_selector))
-      in
-      Command.Args.Hidden_deps (Dep.Set.union_all deps)
-    in
-    [ Command.Args.S file_flags
-    ; A "--toc"
-    ; A Coqdoc_mode.(flag mode)
-    ; A "-d"
-    ; Path (Path.build doc_dir)
-    ; Deps (List.map ~f:Path.build @@ List.map ~f:Coq_module.source coq_modules)
-    ; Dyn globs
-    ; Hidden_deps
-        (Dep.Set.of_files @@ List.map ~f:Path.build
-        @@ List.map ~f:(Coq_module.glob_file ~obj_dir:dir) coq_modules)
-    ]
-  in
-  Command.run ~sandbox:Sandbox_config.needs_sandboxing ~dir:(Path.build dir)
-    coqdoc file_flags
-  |> Action_builder.With_targets.map
-       ~f:
-         (Action.Full.map ~f:(fun coqdoc ->
-              Action.Progn [ Action.mkdir doc_dir; coqdoc ]))
-  |> Action_builder.With_targets.add_directories ~directory_targets:[ doc_dir ]
-
 let setup_coqc_rule ~loc ~dir ~sctx (cctx : _ Context.t) ~coqc_dir ~file_targets
     ~stanza_flags ~theories_deps ~mode ~wrapper_name ~use_stdlib coq_module =
   let open Action_builder.With_targets.O in
@@ -600,12 +516,52 @@ let setup_vo_rules ~sctx ~dir ~theories_deps ~use_stdlib ~(cctx : _ Context.t)
          ~theories_deps ~stanza_flags:s.buildable.flags ~use_stdlib ~mode
          ~wrapper_name)
 
+module Coqdoc_mode = struct
+  type t =
+    | Html
+    | Latex
+
+  let flag = function
+    | Html -> "--html"
+    | Latex -> "--latex"
+
+  let directory t obj_dir (theory : Coq_lib_name.t) =
+    Path.Build.relative obj_dir
+      (Coq_lib_name.to_string theory
+      ^
+      match t with
+      | Html -> ".html"
+      | Latex -> ".tex")
+
+  let alias t ~dir =
+    match t with
+    | Html -> Alias.doc ~dir
+    | Latex -> Alias.make (Alias.Name.of_string "doc-latex") ~dir
+end
+
+let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
+  let loc = theory.buildable.loc in
+  let name = snd theory.name in
+  Path.Build.Map.of_list_exn
+    [ (Coqdoc_mode.directory Html obj_dir name, loc)
+    ; (Coqdoc_mode.directory Latex obj_dir name, loc)
+    ]
+
 let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name (s : Theory.t)
     coq_modules =
   let loc, name = (s.buildable.loc, snd s.name) in
   let rule =
     let file_flags =
-      Context.coqdoc_file_flags ~dir ~theories_deps ~wrapper_name
+      let file_flags =
+        [ Context.theories_flags ~theories_deps
+        ; A "-R"
+        ; Path (Path.build dir)
+        ; A wrapper_name
+        ]
+      in
+      (* BUG: we were passing No_boot before and now we have made it explicit. We
+          probably want to do something better here. *)
+      [ Bootstrap.flags ~coqdoc:true Bootstrap.No_boot; S file_flags ]
     in
     fun mode ->
       let* () =
@@ -613,8 +569,47 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name (s : Theory.t)
           Super_context.resolve_program sctx "coqdoc" ~dir ~loc:(Some loc)
             ~hint:"opam install coq"
         in
-        coqdoc_rule ~dir ~sctx ~mode ~theories_deps ~name ~file_flags ~coqdoc
-          coq_modules
+        (let doc_dir = Coqdoc_mode.directory mode dir name in
+         let file_flags =
+           let globs =
+             let open Action_builder.O in
+             let* theories_deps = Resolve.Memo.read theories_deps in
+             Action_builder.of_memo
+             @@
+             let open Memo.O in
+             let+ deps =
+               Memo.parallel_map theories_deps ~f:(fun theory ->
+                   let+ theory_dirs = Context.directories_of_lib ~sctx theory in
+                   Dep.Set.of_list_map theory_dirs ~f:(fun dir ->
+                       (* TODO *)
+                       Glob.of_string_exn Loc.none "*.glob"
+                       |> File_selector.of_glob ~dir:(Path.build dir)
+                       |> Dep.file_selector))
+             in
+             Command.Args.Hidden_deps (Dep.Set.union_all deps)
+           in
+           [ Command.Args.S file_flags
+           ; A "--toc"
+           ; A Coqdoc_mode.(flag mode)
+           ; A "-d"
+           ; Path (Path.build doc_dir)
+           ; Deps
+               (List.map ~f:Path.build
+               @@ List.map ~f:Coq_module.source coq_modules)
+           ; Dyn globs
+           ; Hidden_deps
+               (Dep.Set.of_files @@ List.map ~f:Path.build
+               @@ List.map ~f:(Coq_module.glob_file ~obj_dir:dir) coq_modules)
+           ]
+         in
+         Command.run ~sandbox:Sandbox_config.needs_sandboxing
+           ~dir:(Path.build dir) coqdoc file_flags
+         |> Action_builder.With_targets.map
+              ~f:
+                (Action.Full.map ~f:(fun coqdoc ->
+                     Action.Progn [ Action.mkdir doc_dir; coqdoc ]))
+         |> Action_builder.With_targets.add_directories
+              ~directory_targets:[ doc_dir ])
         |> Super_context.add_rule ~loc ~dir sctx
       in
       Coqdoc_mode.directory mode dir name

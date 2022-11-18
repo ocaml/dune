@@ -245,6 +245,9 @@ module Dump_dot_merlin = struct
               "The path to the folder of which the configuration should be \
                printed. Defaults to the current directory.")
     in
+    let common =
+      Common.set_print_directory common false |> Common.forbid_builds
+    in
     let config = Common.init common ~log_file:No_log_file in
     Scheduler.go ~common ~config (fun () ->
         match path with

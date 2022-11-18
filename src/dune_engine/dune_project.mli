@@ -201,4 +201,6 @@ val encode : t -> Dune_lang.t list
 
 val dune_site_extension : unit Extension.t
 
-val melange_syntax : Dune_lang.Syntax.t
+module Melange_syntax : sig
+  val t : Dune_lang.Syntax.t
+end

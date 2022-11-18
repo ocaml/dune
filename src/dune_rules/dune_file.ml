@@ -2103,7 +2103,6 @@ module Copy_files = struct
     ; syntax_version
     }
 
-    (* POI *)
   let decode =
     peek_exn >>= function
     | List _ -> fields long_form

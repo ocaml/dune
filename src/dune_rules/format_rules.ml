@@ -105,13 +105,13 @@ let gen_rules_output sctx (config : Ordered_set_lang.t Format_config.Generic.t)
   in
   let* () =
     let osl = Format_config.Generic.files config in
-    (let+ files = Source_tree.files_of source_dir in
-     Ordered_set_lang.eval
-       ~parse:(fun ~loc name -> Path.Source.parse_string_exn ~loc name)
-       ~eq:Path.Source.equal
-       ~standard:(Path.Source.Set.to_list files)
-       osl)
-    >>= Memo.parallel_iter ~f:setup_formatting
+    let* files =
+      let+ standard_set = Source_tree.files_of source_dir in
+      let standard = Path.Source.Set.to_list standard_set in
+      let parse ~loc name = Path.Source.parse_string_exn ~loc name in
+      Ordered_set_lang.eval ~parse ~eq:Path.Source.equal ~standard osl
+    in
+    Memo.parallel_iter ~f:setup_formatting files
   in
   let* () =
     match Format_config.includes config Dune with

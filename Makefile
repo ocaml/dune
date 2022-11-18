@@ -125,7 +125,7 @@ all-supported-ocaml-versions: $(BIN)
 
 .PHONY: clean
 clean:
-	rm -rf _boot _build $(BIN)
+	rm -rf _boot _build
 
 distclean: clean
 	rm -f src/dune_rules/setup.ml

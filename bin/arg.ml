@@ -60,8 +60,14 @@ module Dep = struct
       let pos, recursive =
         if String.length s >= 2 && s.[1] = '@' then (2, false) else (1, true)
       in
-      let s = String_with_vars.make_text Loc.none (String.drop s pos) in
-      Some (if recursive then Dep_conf.Alias_rec s else Dep_conf.Alias s)
+      let s = String.drop s pos in
+      Some (s, recursive)
+
+  let parse_alias_dep s =
+    let open Option.O in
+    let+ s, recursive = parse_alias s in
+    let sw = String_with_vars.make_text Loc.none s in
+    if recursive then Dep_conf.Alias_rec sw else Alias sw
 
   let dep_parser =
     Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
@@ -70,7 +76,7 @@ module Dep = struct
          Dep_conf.decode)
 
   let parser s =
-    match parse_alias s with
+    match parse_alias_dep s with
     | Some dep -> Ok dep
     | None -> (
       match

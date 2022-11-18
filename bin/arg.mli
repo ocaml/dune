@@ -32,6 +32,8 @@ module Dep : sig
   val alias_rec : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t
 
   val to_string_maybe_quoted : t -> string
+
+  val parse_alias : string -> (string * bool) option
 end
 
 val bytes : int64 conv

@@ -324,6 +324,14 @@ Completion of targets:
   > 
   > (rule
   >  (write-file target contents))
+  > 
+  > (subdir src
+  >  (rule
+  >   (write-file target contents)))
+  > 
+  > (subdir src/sub
+  >  (rule
+  >   (write-file target contents)))
   > EOF
 
   $ touch e.ml
@@ -333,3 +341,35 @@ Completion of targets:
 
   $ ./test 'dune build tar'
   target
+
+  $ ./test 'dune build src/tar'
+  src/target
+
+  $ ./test 'dune build /'
+  
+
+  $ ./test 'dune build ..'
+  
+  $ ./test 'dune build @'
+  @all
+  @default
+  @fmt
+  @runtest
+  @src/
+
+  $ ./test 'dune build @src/'
+  @src/all
+  @src/default
+  @src/fmt
+  @src/runtest
+  @src/sub/
+
+  $ ./test 'dune build @src/a'
+  @src/all
+
+  $ ./test 'dune build @@'
+  @@all
+  @@default
+  @@fmt
+  @@runtest
+  @@src/

@@ -1,11 +1,43 @@
 open Stdune
 open Import
+module Source_tree = Dune_engine.Source_tree
 
-let complete _ =
+let complete s_opt =
   let common = Common.default () in
   let config = Common.init common in
+  let complete_path path = Target.target_candidates path in
+  let best_dir dir =
+    let open Memo.O in
+    let* diropt = Source_tree.find_dir dir in
+    match diropt with
+    | None -> Source_tree.nearest_dir dir
+    | Some d -> Memo.return d
+  in
   Scheduler.go ~common ~config (fun () ->
-      Build_system.run_exn (fun () -> Target.target_candidates Path.root))
+      Build_system.run_exn (fun () ->
+          match s_opt with
+          | None -> complete_path Path.root
+          | Some s -> (
+            match Arg.Dep.parse_alias s with
+            | None -> (
+              match Path.of_string s with
+              | p when Path.is_managed p -> complete_path p
+              | _ | (exception User_error.E _) -> Memo.return [])
+            | Some (alias, recursive) ->
+              let open Memo.O in
+              let+ src_dir = best_dir (Path.Source.of_string alias) in
+              let dir = Source_tree.Dir.path src_dir in
+              let subdirs =
+                Source_tree.Dir.sub_dir_names src_dir |> String.Set.to_list
+              in
+              let prefix = if recursive then "@" else "@@" in
+              let prefixed s =
+                prefix ^ Path.Source.to_string (Path.Source.relative dir s)
+              in
+              (* TODO compute the list of aliases defined in a directory *)
+              let alias_names = [ "all"; "runtest"; "default"; "fmt" ] in
+              List.map subdirs ~f:(fun subdir -> prefixed subdir ^ "/")
+              @ List.map alias_names ~f:(fun alias -> prefixed alias))))
 
 (* TODO: move to Arg, but this requires solving a dependency cycle between Arg
    and Common *)

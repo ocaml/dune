@@ -426,13 +426,12 @@ let coqc_rule (cctx : _ Context.t) ~dir ~coq_flags ~file_flags ~coqc ~coqc_dir
     ; Dep (Path.build source)
     ]
   in
-  (* The way we handle the transitive dependencies of .vo files is not safe for
-     sandboxing *)
-  let sandbox = Sandbox_config.no_sandboxing in
   let open Action_builder.With_targets.O in
   Command.run ~dir:(Path.build coqc_dir) coqc
     (Command.Args.dyn coq_flags :: file_flags)
-  >>| Action.Full.add_sandbox sandbox
+  (* The way we handle the transitive dependencies of .vo files is not safe for
+     sandboxing *)
+  >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing
 
 let setup_coqc_rule ~loc ~dir ~sctx (cctx : _ Context.t) ~coqc_dir ~file_targets
     ~stanza_flags ~theories_deps ~mode ~wrapper_name ~use_stdlib coq_module =

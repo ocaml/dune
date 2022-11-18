@@ -51,15 +51,6 @@ module Util = struct
       ]
 end
 
-let resolve_program sctx ~loc ~dir ?(hint = "opam install coq") prog =
-  Super_context.resolve_program ~dir sctx prog ~loc:(Some loc) ~hint
-
-let coqdep ~loc ~dir ~sctx = resolve_program sctx ~dir ~loc "coqdep"
-
-let coqc ~loc ~dir ~sctx = resolve_program sctx ~dir ~loc "coqc"
-
-let coqdoc ~loc ~dir ~sctx = resolve_program sctx ~dir ~loc "coqdoc"
-
 module Coq_plugin = struct
   let meta_info ~coq_lang_version ~plugin_loc ~context (lib : Lib.t) =
     let debug = false in
@@ -184,6 +175,10 @@ end
 (* get_libraries from Coq's ML dependencies *)
 let libs_of_coq_deps ~lib_db = Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db)
 
+let coqc ~loc ~dir ~sctx =
+  Super_context.resolve_program sctx "coqc" ~dir ~loc:(Some loc)
+    ~hint:"opam install coq"
+
 let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
   match buildable.mode with
   | Some x ->
@@ -196,7 +191,7 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
     if buildable.coq_lang_version < (0, 3) then Memo.return Coq_mode.Legacy
     else if buildable.coq_lang_version < (0, 7) then Memo.return Coq_mode.VoOnly
     else
-      let* coqc = resolve_program sctx ~dir ~loc:buildable.loc "coqc" in
+      let* coqc = coqc ~sctx ~dir ~loc:buildable.loc in
       let+ config = Coq_config.make_opt ~coqc in
       match config with
       | None -> Coq_mode.VoOnly
@@ -417,7 +412,10 @@ let setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name ~use_stdlib
     ]
   in
   let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
-  let* coqdep = coqdep ~loc ~dir ~sctx in
+  let* coqdep =
+    Super_context.resolve_program sctx "coqdep" ~dir ~loc:(Some loc)
+      ~hint:"opam install coq"
+  in
   (* Coqdep has to be called in the stanza's directory *)
   Super_context.add_rule ~loc sctx ~dir
     (let open Action_builder.With_targets.O in
@@ -611,7 +609,10 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name (s : Theory.t)
     in
     fun mode ->
       let* () =
-        let* coqdoc = coqdoc ~loc ~dir ~sctx in
+        let* coqdoc =
+          Super_context.resolve_program sctx "coqdoc" ~dir ~loc:(Some loc)
+            ~hint:"opam install coq"
+        in
         coqdoc_rule ~dir ~sctx ~mode ~theories_deps ~name ~file_flags ~coqdoc
           coq_modules
         |> Super_context.add_rule ~loc ~dir sctx
@@ -753,7 +754,9 @@ let install_rules ~sctx ~dir s =
     |> List.rev_append coq_plugins_install_rules
 
 let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coqpp.t) =
-  let* coqpp = resolve_program sctx ~dir ~loc "coqpp"
+  let* coqpp =
+    Super_context.resolve_program sctx "coqpp" ~dir ~loc:(Some loc)
+      ~hint:"opam install coq"
   and* mlg_files = Coq_sources.mlg_files ~sctx ~dir ~modules in
   let mlg_rule m =
     let source = Path.build m in

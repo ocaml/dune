@@ -2172,12 +2172,10 @@ This file is used to set global configuration of Dune (applicable across
 projects and workspaces).
 
 The configuration file is normally ``~/.config/dune/config`` on Unix systems and
-``%LOCALAPPDATA%/dune/config`` on Windows. However, it is possible to specify an
-alternative configuration file with the ``--config-file`` option.
-
-Command-line flags take precedence over the contents of the ``config`` file.
-
-If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
+``%LOCALAPPDATA%/dune/config`` on Windows. However, for most Dune commands it is
+possible to specify an alternative configuration file with the ``--config-file``
+option. Command-line flags take precedence over the contents of the ``config``
+file.  If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
 
 It can contain the following stanzas:
 

@@ -2216,7 +2216,7 @@ Maximum number of concurrent jobs Dune is allowed to have.
 
 where ``<setting>`` is one of:
 
-- ``auto``, auto-detect maximum number of cores.
+- ``auto``, auto-detect maximum number of cores. This is the default value.
 
 - ``<number>``, a positive integer specifying the maximum number of cores Dune
   may use simultaneously.

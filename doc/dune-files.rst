@@ -2,191 +2,6 @@
 Stanza Reference
 ****************
 
-.. _config:
-
-``config``
-==========
-
-This file is used to set global configuration of Dune (applicable across
-projects and workspaces).
-
-The configuration file is normally ``~/.config/dune/config`` on Unix systems and
-``%LOCALAPPDATA%/dune/config`` on Windows. However, it is possible to specify an
-alternative configuration file with the ``--config-file`` option.
-
-Command-line flags take precedence over the contents of the ``config`` file.
-
-If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
-
-It can contain the following stanzas:
-
-.. _display:
-
-``display``
------------
-
-Specify the amount of Dune’s verbosity.
-
-.. code:: scheme
-
-    (display <setting>)
-
-where ``<setting>`` is one of:
-
-- ``progress``, Dune shows and updates a status line as build goals are being
-  completed (this is the default).
-
-- ``verbose`` prints the full command lines of programs being executed by Dune,
-  with some colors to help differentiate programs.
-
-- ``short`` prints one line per executed command, with the binary name on
-  the left and the reason it is being executed for on the right.
-
-- ``quiet`` only display errors.
-
-.. _concurrency:
-
-``concurrency``
----------------
-
-Number of cores Dune is allowed to utilize.
-
-.. code:: scheme
-
-    (concurrency <setting>)
-
-where ``<setting>`` is one of:
-
-- ``auto``, auto-detect maximum number of cores.
-
-- ``<number>``, a positive integer specifying the maximum number of cores Dune
-  may use simultaneously.
-
-.. _terminal-persistence:
-
-``terminal-persistence``
-------------------------
-
-Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
-
-.. code:: scheme
-
-    (terminal-persistence <setting>)
-
-where ``<setting>`` is one of:
-
-- ``preserve`` does not clear the terminal screen beteween rebuilds.
-
-- ``clear-on-rebuild`` clears the terminal screen between rebuilds.
-
-- ``clear-on-rebuild-and-flush-history`` clears the terminal between rebuilds, and
-  it also deletes everything in the scrollback buffer.
-
-.. _sandboxing_preference:
-
-``sandboxing_preference``
--------------------------
-
-The preferred sandboxing setting. Individual rules may specify different
-preferences. Dune will try to utilize a setting satisfying both conditions.
-
-.. code:: scheme
-
-    (sandboxing_preference <setting> <setting> ...)
-
-where each ``<setting>`` can be one of:
-
-- ``none``, no sandboxing allowed
-
-- ``symlink``, using symbolic links
-
-- ``copy``, using file copies
-
-- ``hardlink``, using hard links
-
-.. _cache:
-
-``cache``
----------
-
-Specifies whether to utilize the Dune cache.
-
-.. code:: scheme
-
-    (cache <setting>)
-
-where ``<setting>`` is one of:
-
-- ``enabled`` enables Dune cache.
-
-- ``disabled`` disables Dune cache.
-
-.. _cache_check_probability:
-
-``cache-check-probability``
----------------------------
-
-While the main purpose of Dune cache is to speed up build times, it can also be
-used to check build reproducibility. It is possible to enable a probabilistic
-check, in which Dune will re-execute randomly chosen build rules and compare
-their results with those stored in the cache. If the results differ, the rule is
-not reproducible, and Dune will print out a corresponding warning.
-
-.. code:: scheme
-
-    (cache-check-probability <number>)
-
-where ``<number>`` is a floating-point number between 0 and 1 (inclusive). 0
-means never to check for reproducibility, and 1 means to always perform the
-check.
-
-.. _cache_storage_mode:
-
-``cache-storage-mode``
-----------------------
-
-Specify the mechanism used by the Dune cache storage layer.
-
-.. code:: scheme
-
-    (cache-storage-mode <setting>)
-
-where ``<setting>`` is one of:
-
-- ``auto``, Dune decides the best mechanism to use.
-
-- ``hardlink``, using hard links.
-
-- ``copy``, using file copies; this is less efficient than using hard links.
-
-.. _action_stdout_on_success:
-
-``action_stdout_on_success``
-----------------------------
-
-Specifies how Dune should handle the standard output of actions when they succeed.
-This can be used to reduce the noise of large builds.
-
-.. code:: scheme
-
-    (action_stdout_on_success <setting>)
-
-where ``<setting>`` is one of:
-
-- ``print`` prints the output on the terminal (this is the default).
-
-- ``swallow`` ignores the output and does not print it on the terminal.
-
-- ``must-be-empty`` enforces that the output should be empty. If it is not, Dune will fail.
-
-.. _action_stderr_on_success:
-
-``action_stderr_on_success``
-----------------------------
-
-Same as :ref:`action_stdout_on_success`, but applies to standard error instead
-of standard output.
-
 .. _dune-project:
 
 ``dune-project``
@@ -2347,3 +2162,188 @@ context.
 Moreover, starting in Dune 3.0, any of the stanzas from the :ref:`config` file
 can be used in the ``dune-workspace`` file. In this case, the configuration
 stanza will only affect the current workspace.
+
+.. _config:
+
+``config``
+==========
+
+This file is used to set global configuration of Dune (applicable across
+projects and workspaces).
+
+The configuration file is normally ``~/.config/dune/config`` on Unix systems and
+``%LOCALAPPDATA%/dune/config`` on Windows. However, it is possible to specify an
+alternative configuration file with the ``--config-file`` option.
+
+Command-line flags take precedence over the contents of the ``config`` file.
+
+If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
+
+It can contain the following stanzas:
+
+.. _display:
+
+``display``
+-----------
+
+Specify the amount of Dune’s verbosity.
+
+.. code:: scheme
+
+    (display <setting>)
+
+where ``<setting>`` is one of:
+
+- ``progress``, Dune shows and updates a status line as build goals are being
+  completed (this is the default).
+
+- ``verbose`` prints the full command lines of programs being executed by Dune,
+  with some colors to help differentiate programs.
+
+- ``short`` prints one line per executed command, with the binary name on
+  the left and the reason it is being executed for on the right.
+
+- ``quiet`` only display errors.
+
+.. _concurrency:
+
+``concurrency``
+---------------
+
+Number of cores Dune is allowed to utilize.
+
+.. code:: scheme
+
+    (concurrency <setting>)
+
+where ``<setting>`` is one of:
+
+- ``auto``, auto-detect maximum number of cores.
+
+- ``<number>``, a positive integer specifying the maximum number of cores Dune
+  may use simultaneously.
+
+.. _terminal-persistence:
+
+``terminal-persistence``
+------------------------
+
+Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
+
+.. code:: scheme
+
+    (terminal-persistence <setting>)
+
+where ``<setting>`` is one of:
+
+- ``preserve`` does not clear the terminal screen beteween rebuilds.
+
+- ``clear-on-rebuild`` clears the terminal screen between rebuilds.
+
+- ``clear-on-rebuild-and-flush-history`` clears the terminal between rebuilds, and
+  it also deletes everything in the scrollback buffer.
+
+.. _sandboxing_preference:
+
+``sandboxing_preference``
+-------------------------
+
+The preferred sandboxing setting. Individual rules may specify different
+preferences. Dune will try to utilize a setting satisfying both conditions.
+
+.. code:: scheme
+
+    (sandboxing_preference <setting> <setting> ...)
+
+where each ``<setting>`` can be one of:
+
+- ``none``, no sandboxing allowed
+
+- ``symlink``, using symbolic links
+
+- ``copy``, using file copies
+
+- ``hardlink``, using hard links
+
+.. _cache:
+
+``cache``
+---------
+
+Specifies whether to utilize the Dune cache.
+
+.. code:: scheme
+
+    (cache <setting>)
+
+where ``<setting>`` is one of:
+
+- ``enabled`` enables Dune cache.
+
+- ``disabled`` disables Dune cache.
+
+.. _cache_check_probability:
+
+``cache-check-probability``
+---------------------------
+
+While the main purpose of Dune cache is to speed up build times, it can also be
+used to check build reproducibility. It is possible to enable a probabilistic
+check, in which Dune will re-execute randomly chosen build rules and compare
+their results with those stored in the cache. If the results differ, the rule is
+not reproducible, and Dune will print out a corresponding warning.
+
+.. code:: scheme
+
+    (cache-check-probability <number>)
+
+where ``<number>`` is a floating-point number between 0 and 1 (inclusive). 0
+means never to check for reproducibility, and 1 means to always perform the
+check.
+
+.. _cache_storage_mode:
+
+``cache-storage-mode``
+----------------------
+
+Specify the mechanism used by the Dune cache storage layer.
+
+.. code:: scheme
+
+    (cache-storage-mode <setting>)
+
+where ``<setting>`` is one of:
+
+- ``auto``, Dune decides the best mechanism to use.
+
+- ``hardlink``, using hard links.
+
+- ``copy``, using file copies; this is less efficient than using hard links.
+
+.. _action_stdout_on_success:
+
+``action_stdout_on_success``
+----------------------------
+
+Specifies how Dune should handle the standard output of actions when they succeed.
+This can be used to reduce the noise of large builds.
+
+.. code:: scheme
+
+    (action_stdout_on_success <setting>)
+
+where ``<setting>`` is one of:
+
+- ``print`` prints the output on the terminal (this is the default).
+
+- ``swallow`` ignores the output and does not print it on the terminal.
+
+- ``must-be-empty`` enforces that the output should be empty. If it is not, Dune will fail.
+
+.. _action_stderr_on_success:
+
+``action_stderr_on_success``
+----------------------------
+
+Same as :ref:`action_stdout_on_success`, but applies to standard error instead
+of standard output.

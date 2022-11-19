@@ -605,7 +605,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name (s : Theory.t)
   in
   rule Html >>> rule Latex
 
-let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
+let setup_theory_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let theory =
     let* scope = Scope.DB.find_by_dir dir in
     let coq_lib_db = Scope.coq_libs scope in

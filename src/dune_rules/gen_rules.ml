@@ -283,7 +283,8 @@ let gen_rules sctx dir_contents cctxs expander
         | Coq_stanza.Theory.T m -> (
           Expander.eval_blang expander m.enabled_if >>= function
           | false -> Memo.return ()
-          | true -> Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m)
+          | true ->
+            Coq_rules.setup_theory_rules ~sctx ~dir:ctx_dir ~dir_contents m)
         | Coq_stanza.Extraction.T m ->
           Coq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
         | Coq_stanza.Coqpp.T m ->

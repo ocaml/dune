@@ -15,7 +15,7 @@
 
   $ touch bar.ml $lib.ml
   $ dune build @check
-  $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "$lib"
+  $ dune ocaml-merlin --dump-config="$PWD" | grep -i "$lib"
   Foo
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
      Foo__
@@ -35,5 +35,5 @@
 
   $ touch main.ml
   $ dune build @check
-  $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "$target"
+  $ dune ocaml-merlin --dump-config="$PWD" | grep -i "$target"
     $TESTCASE_ROOT/_build/default/.output.mobjs/melange)

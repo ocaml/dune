@@ -12,7 +12,7 @@ rules with dependencies outside the build dir are allowed
   $ cat >a/b/dune <<EOF
   > (rule
   >  (alias test)
-  >  (action (with-stdin-from "$(pwd)/external.txt" (run cat -))))
+  >  (action (with-stdin-from "$PWD/external.txt" (run cat -))))
   > EOF
 
   $ cat >external.txt <<EOF
@@ -42,7 +42,7 @@ rules with dependencies outside the build dir are allowed
   > (rule
   >  (alias test)
   >  (action (with-stdin-from "external.txt" (run cat -))))
-  > (copy_files "$(pwd)/external.txt")
+  > (copy_files "$PWD/external.txt")
   > EOF
 
   $ cat >external.txt <<EOF
@@ -204,7 +204,7 @@ rules with dependencies outside the build dir are allowed
 
   $ chmod u+x a/script.sh
 
-  $ dune exec --root=a/b -- $(pwd)/a/script.sh
+  $ dune exec --root=a/b -- $PWD/a/script.sh
   Entering directory 'a/b'
   Leaving directory 'a/b'
   txt1

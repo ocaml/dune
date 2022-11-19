@@ -2255,13 +2255,13 @@ preferences. Dune will try to utilize a setting satisfying both conditions.
 
 where each ``<setting>`` can be one of:
 
-- ``none``, no sandboxing allowed
+- ``none``, no sandboxing allowed.
 
-- ``symlink``, using symbolic links
+- ``symlink``, using symbolic links.
 
-- ``copy``, using file copies
+- ``copy``, using file copies.
 
-- ``hardlink``, using hard links
+- ``hardlink``, using hard links.
 
 .. _cache:
 

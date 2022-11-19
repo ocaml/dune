@@ -2208,7 +2208,7 @@ where ``<setting>`` is one of:
 ``concurrency``
 ---------------
 
-Number of cores Dune is allowed to utilize.
+Maximum number of concurrent jobs Dune is allowed to have.
 
 .. code:: scheme
 

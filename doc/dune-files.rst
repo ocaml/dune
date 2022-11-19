@@ -2255,13 +2255,13 @@ preferences. Dune will try to utilize a setting satisfying both conditions.
 
 where each ``<setting>`` can be one of:
 
-- ``none``, disables sandboxing.
+- ``none`` disables sandboxing.
 
-- ``symlink``, using symbolic links.
+- ``symlink`` uses symbolic links for sandboxing.
 
-- ``copy``, using file copies.
+- ``copy``, using file copies. This is the default under Windows.
 
-- ``hardlink``, using hard links.
+- ``hardlink``, using hard links. This is the default under Linux.
 
 .. _cache:
 

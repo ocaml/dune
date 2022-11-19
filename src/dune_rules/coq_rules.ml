@@ -443,8 +443,9 @@ let setup_coqc_rule ~loc ~dir ~sctx (cctx : _ Context.t) ~coqc_dir ~file_targets
         @@ coqc_rule cctx ~dir ~file_flags ~coqc ~coqc_dir ~coq_flags ~mode
              ~wrapper_name coq_module)
 
-let setup_rule ~loc ~sctx ~dir ~source_rule ~coqc_dir ~file_targets
-    ~stanza_flags ~theories_deps ~use_stdlib ~mode ~wrapper_name cctx m =
+let setup_coqdep_and_coqc_rule ~loc ~sctx ~dir ~source_rule ~coqc_dir
+    ~file_targets ~stanza_flags ~theories_deps ~use_stdlib ~mode ~wrapper_name
+    cctx m =
   setup_coqc_rule ~file_targets ~stanza_flags ~sctx ~loc ~coqc_dir cctx m ~dir
     ~theories_deps ~mode ~wrapper_name ~use_stdlib
   >>> setup_coqdep_rule ~sctx ~loc cctx ~source_rule m ~dir ~theories_deps
@@ -481,27 +482,6 @@ let setup_cctx_and_modules ~sctx ~dir ~theories_deps ~dir_contents
   in
   let coq_modules = Coq_sources.library coq_dir_contents ~name in
   (cctx, coq_modules)
-
-let setup_vo_rules ~sctx ~dir ~theories_deps ~use_stdlib ~(cctx : _ Context.t)
-    ~wrapper_name (s : Theory.t) theory coq_modules =
-  let loc = s.buildable.loc in
-  let coqc_dir = (Super_context.context sctx).build_dir in
-  let open Resolve.Memo.O in
-  let source_rule =
-    let theories =
-      let+ theory = theory
-      and+ theories = theories_deps in
-      theory :: theories
-    in
-    source_rule ~sctx theories
-  in
-  let open Memo.O in
-  let* mode = select_native_mode ~sctx ~dir s.buildable in
-  Memo.parallel_iter coq_modules
-    ~f:
-      (setup_rule ~sctx ~loc cctx ~source_rule ~dir ~file_targets:[] ~coqc_dir
-         ~theories_deps ~stanza_flags:s.buildable.flags ~use_stdlib ~mode
-         ~wrapper_name)
 
 module Coqdoc_mode = struct
   type t =
@@ -617,13 +597,28 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
         Resolve.Memo.lift @@ Coq_lib.theories_closure theory)
   in
   let wrapper_name = Coq_lib_name.wrapper (snd s.name) in
-  let* cctx, coq_module_sources =
+  let* cctx, coq_modules =
     setup_cctx_and_modules ~sctx ~dir ~dir_contents ~theories_deps s
   in
-  setup_vo_rules ~sctx ~dir ~cctx ~theories_deps
-    ~use_stdlib:s.buildable.use_stdlib ~wrapper_name s theory coq_module_sources
-  >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_module_sources
-        ~wrapper_name
+  let loc = s.buildable.loc in
+  let source_rule =
+    let theories =
+      let open Resolve.Memo.O in
+      let+ theory = theory
+      and+ theories = theories_deps in
+      theory :: theories
+    in
+    source_rule ~sctx theories
+  in
+  let coqc_dir = (Super_context.context sctx).build_dir in
+
+  let* mode = select_native_mode ~sctx ~dir s.buildable in
+  Memo.parallel_iter coq_modules
+    ~f:
+      (setup_coqdep_and_coqc_rule ~sctx ~loc cctx ~source_rule ~dir ~coqc_dir
+         ~file_targets:[] ~theories_deps ~stanza_flags:s.buildable.flags
+         ~use_stdlib:s.buildable.use_stdlib ~mode ~wrapper_name)
+  >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules ~wrapper_name
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let theories_deps =
@@ -780,8 +775,9 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
-  setup_rule cctx ~dir ~sctx ~loc:s.buildable.loc ~file_targets:ml_targets
-    ~source_rule ~coqc_dir:dir ~stanza_flags:s.buildable.flags ~theories_deps
+  setup_coqdep_and_coqc_rule cctx ~dir ~sctx ~loc:s.buildable.loc
+    ~file_targets:ml_targets ~source_rule ~coqc_dir:dir
+    ~stanza_flags:s.buildable.flags ~theories_deps
     ~use_stdlib:s.buildable.use_stdlib coq_module ~mode ~wrapper_name
 
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t)

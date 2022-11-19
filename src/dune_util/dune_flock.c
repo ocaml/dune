@@ -8,7 +8,7 @@
 #define FD_val(value) Handle_val(value)
 
 CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
-  CAMLparam2(v_fd, v_block);
+  CAMLparam3(v_fd, v_block, v_exclusive);
   OVERLAPPED overlapped = { 0 };
   DWORD ok, dwFlags = 0;
   if (Bool_val(v_exclusive)) {
@@ -50,7 +50,7 @@ CAMLprim value dune_flock_unlock(value v_fd) {
 #define FD_val(value) Int_val(value)
 
 CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
-  CAMLparam2(v_fd, v_block);
+  CAMLparam3(v_fd, v_block, v_exclusive);
   int flags = 0;
   if (Bool_val(v_exclusive)) {
     flags |= LOCK_EX;

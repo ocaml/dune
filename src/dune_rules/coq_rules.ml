@@ -617,25 +617,24 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules ~wrapper_name
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
+  Action_builder.of_memo_join
+  @@
   let theories_deps =
     theories_deps_requires_for_user_written ~dir s.buildable
   in
   let wrapper_name = Coq_lib_name.wrapper (snd s.name) in
-  let open Action_builder.O in
   let* cctx, _ =
-    Action_builder.of_memo
-    @@ setup_cctx_and_modules ~sctx ~dir ~dir_contents ~theories_deps s
+    setup_cctx_and_modules ~sctx ~dir ~dir_contents ~theories_deps s
   in
   let context = Super_context.context sctx |> Old_context.name in
-  let* scope = Action_builder.of_memo @@ Scope.DB.find_by_dir dir in
+  let* scope = Scope.DB.find_by_dir dir in
   let ml_flags, _ =
     let lib_db = Scope.libs scope in
     Coq_plugin.of_buildable ~context ~theories_deps ~lib_db s.buildable
   in
-  let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
-  let* mode =
-    Action_builder.of_memo @@ select_native_mode ~sctx ~dir s.buildable
-  in
+  let* expander = Super_context.expander sctx ~dir in
+  let+ mode = select_native_mode ~sctx ~dir s.buildable in
+  let open Action_builder.O in
   let+ coq_flags =
     coq_flags ~expander ~dir ~stanza_flags:s.buildable.flags ~sctx
   in
@@ -792,26 +791,23 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
 
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t)
     coq_module =
+  Action_builder.of_memo_join
+  @@
   let theories_deps =
     theories_deps_requires_for_user_written ~dir s.buildable
   in
   let use_stdlib = s.buildable.use_stdlib in
   let wrapper_name = "DuneExtraction" in
-  let open Action_builder.O in
-  let* cctx, _ =
-    Action_builder.of_memo
-    @@ setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
-  in
+  let* cctx, _ = setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s in
   let context = Super_context.context sctx |> Old_context.name in
-  let* scope = Action_builder.of_memo @@ Scope.DB.find_by_dir dir in
+  let* scope = Scope.DB.find_by_dir dir in
   let ml_flags, _ =
     let lib_db = Scope.libs scope in
     Coq_plugin.of_buildable ~context ~theories_deps ~lib_db s.buildable
   in
-  let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
-  let* mode =
-    Action_builder.of_memo @@ select_native_mode ~sctx ~dir s.buildable
-  in
+  let* expander = Super_context.expander sctx ~dir in
+  let+ mode = select_native_mode ~sctx ~dir s.buildable in
+  let open Action_builder.O in
   let+ coq_flags =
     coq_flags ~expander ~dir ~stanza_flags:s.buildable.flags ~sctx
   in

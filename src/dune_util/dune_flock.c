@@ -20,12 +20,10 @@ CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
   caml_release_runtime_system();
   ok = LockFileEx(FD_val(v_fd), dwFlags, 0, MAXDWORD, MAXDWORD, &overlapped);
   caml_acquire_runtime_system();
-
   if (!ok) {
     win32_maperr(GetLastError());
     uerror("LockFileEx", Nothing);
   }
-
   CAMLreturn(Val_unit);
 }
 

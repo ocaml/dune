@@ -27,14 +27,19 @@ module Lock = struct
        let fd =
          Unix.openfile
            (Path.Build.to_string lock_file)
-           [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE ] 0o600
+           [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE ]
+           0o600
        in
        Unix.set_close_on_exec fd;
        Flock.create fd)
 
   let or_raise_unix ~name = function
     | Ok s -> s
-    | Error error -> Code_error.raise "lock" [ ("name", Dyn.string name); ("error", Dyn.string (Unix.error_message error)) ]
+    | Error error ->
+      Code_error.raise "lock"
+        [ ("name", Dyn.string name)
+        ; ("error", Dyn.string (Unix.error_message error))
+        ]
 
   let lock () =
     let t = Lazy.force t in

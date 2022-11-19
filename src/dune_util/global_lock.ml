@@ -27,7 +27,7 @@ module Lock = struct
        let fd =
          Unix.openfile
            (Path.Build.to_string lock_file)
-           [ Unix.O_CREAT; O_WRONLY ] 0o600
+           [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE ] 0o600
        in
        Unix.set_close_on_exec fd;
        Flock.create fd)

@@ -431,14 +431,6 @@ let setup_coqc_rule ~loc ~dir ~sctx (cctx : Context.t) ~coqc_dir ~file_targets
         @@ coqc_rule cctx ~dir ~file_flags ~coqc ~coqc_dir ~coq_flags ~mode
              ~wrapper_name coq_module)
 
-let setup_coqdep_and_coqc_rule ~loc ~sctx ~dir ~source_rule ~coqc_dir
-    ~file_targets ~stanza_flags ~theories_deps ~use_stdlib ~mode ~wrapper_name
-    ~ml_flags ~mlpack_rule cctx m =
-  setup_coqc_rule ~file_targets ~stanza_flags ~sctx ~loc ~coqc_dir cctx m ~dir
-    ~theories_deps ~mode ~wrapper_name ~use_stdlib ~ml_flags
-  >>> setup_coqdep_rule ~sctx ~loc ~source_rule ~dir ~theories_deps
-        ~wrapper_name ~use_stdlib ~ml_flags ~mlpack_rule m
-
 let coq_modules_of_theory ~sctx lib =
   Action_builder.of_memo
     (let name = Coq_lib.name lib in
@@ -608,12 +600,13 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let coqc_dir = (Super_context.context sctx).build_dir in
 
   let* mode = select_native_mode ~sctx ~dir s.buildable in
-  Memo.parallel_iter coq_modules
-    ~f:
-      (setup_coqdep_and_coqc_rule ~sctx ~loc cctx ~source_rule ~dir ~coqc_dir
-         ~file_targets:[] ~theories_deps ~stanza_flags:s.buildable.flags
-         ~use_stdlib:s.buildable.use_stdlib ~mode ~wrapper_name ~ml_flags
-         ~mlpack_rule)
+  Memo.parallel_iter coq_modules ~f:(fun coq_module ->
+      setup_coqdep_rule ~sctx ~loc ~source_rule ~dir ~theories_deps
+        ~wrapper_name ~use_stdlib:s.buildable.use_stdlib ~ml_flags ~mlpack_rule
+        coq_module
+      >>> setup_coqc_rule ~file_targets:[] ~stanza_flags:s.buildable.flags ~sctx
+            ~loc ~coqc_dir cctx coq_module ~dir ~theories_deps ~mode
+            ~wrapper_name ~use_stdlib:s.buildable.use_stdlib ~ml_flags)
   >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules ~wrapper_name
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
@@ -764,7 +757,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* cctx, coq_module =
     setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents s
   in
-  let ml_targets =
+  let file_targets =
     Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
   in
   let theories_deps =
@@ -783,11 +776,12 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     Coq_plugin.of_buildable ~context ~theories_deps ~lib_db s.buildable
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
-  setup_coqdep_and_coqc_rule cctx ~dir ~sctx ~loc:s.buildable.loc
-    ~file_targets:ml_targets ~source_rule ~coqc_dir:dir
-    ~stanza_flags:s.buildable.flags ~theories_deps
-    ~use_stdlib:s.buildable.use_stdlib coq_module ~mode ~wrapper_name ~ml_flags
-    ~mlpack_rule
+  setup_coqdep_rule ~sctx ~loc:s.buildable.loc ~source_rule ~dir ~theories_deps
+    ~wrapper_name ~use_stdlib:s.buildable.use_stdlib ~ml_flags ~mlpack_rule
+    coq_module
+  >>> setup_coqc_rule ~file_targets ~stanza_flags:s.buildable.flags ~sctx
+        ~loc:s.buildable.loc ~coqc_dir:dir cctx coq_module ~dir ~theories_deps
+        ~mode ~wrapper_name ~use_stdlib:s.buildable.use_stdlib ~ml_flags
 
 let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t)
     coq_module =

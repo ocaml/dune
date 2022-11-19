@@ -2257,11 +2257,11 @@ where each ``<setting>`` can be one of:
 
 - ``none`` disables sandboxing.
 
-- ``symlink`` uses symbolic links for sandboxing.
+- ``hardlink`` uses hard links for sandboxing. This is the default under Linux.
 
 - ``copy`` copies files for sandboxing. This is the default under Windows.
 
-- ``hardlink``, using hard links. This is the default under Linux.
+- ``symlink`` uses symbolic links for sandboxing.
 
 .. _cache:
 

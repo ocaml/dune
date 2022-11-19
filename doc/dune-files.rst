@@ -2255,7 +2255,7 @@ preferences. Dune will try to utilize a setting satisfying both conditions.
 
 where each ``<setting>`` can be one of:
 
-- ``none``, no sandboxing allowed.
+- ``none``, disables sandboxing.
 
 - ``symlink``, using symbolic links.
 

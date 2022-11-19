@@ -13,6 +13,8 @@ Unreleased
 - Allow `$ dune ocaml dump-dot-merlin` to run in watch mode. Also this command
   shouldn't print "Entering Directory" mesages. (#6497, @rgrinberg)
 
+- Fix build with MSVC compiler (#6517, @nojb)
+
 3.6.0 (2022-11-14)
 ------------------
 

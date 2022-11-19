@@ -12,6 +12,7 @@
 CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
 #ifdef _WIN32
   caml_failwith("no flock on win32");
+  return Val_unit;
 #else
   CAMLparam2(v_fd, v_block);
   int flags = 0;
@@ -35,6 +36,7 @@ CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
 CAMLprim value dune_flock_unlock(value v_fd) {
 #ifdef _WIN32
   caml_failwith("no flock on win32");
+  return Val_unit;
 #else
   CAMLparam1(v_fd);
   caml_release_runtime_system();

@@ -19,7 +19,7 @@
   Entering directory 'a'
   Leaving directory 'a'
 
-  $ dune install --root a --prefix $(pwd)/prefix
+  $ dune install --root a --prefix $PWD/prefix
   Entering directory 'a'
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
@@ -32,15 +32,15 @@
   > EOF
 
   $ cat >b/dune <<EOF
-  > (rule (alias runtest) (deps (package a)) (action (run cat $(pwd)/prefix/share/a/CATME)))
+  > (rule (alias runtest) (deps (package a)) (action (run cat $PWD/prefix/share/a/CATME)))
   > EOF
 
-  $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
   Miaou
   Leaving directory 'b'
 
-  $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
   Leaving directory 'b'
 
@@ -53,7 +53,7 @@
   Entering directory 'a'
   Leaving directory 'a'
 
-  $ dune install --root a --prefix $(pwd)/prefix
+  $ dune install --root a --prefix $PWD/prefix
   Entering directory 'a'
   Deleting $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/META
@@ -63,12 +63,12 @@
   Installing $TESTCASE_ROOT/prefix/share/a/CATME
   Leaving directory 'a'
 
-  $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
   Ouaf
   Leaving directory 'b'
 
-  $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
   Leaving directory 'b'
 
@@ -77,7 +77,7 @@
   > (package (name b))
   > EOF
 
-  $ OCAMLPATH=$(pwd)/prefix/lib/:$OCAMLPATH dune build --root b @runtest
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'
   File "dune", line 1, characters 37-38:
   1 | (rule (alias runtest) (deps (package a)) (action (run cat $TESTCASE_ROOT/prefix/share/a/CATME)))

@@ -464,7 +464,6 @@ let source_rule ~sctx theories =
      tree to produce correct dependencies, including those of dependencies *)
   Action_builder.dyn_paths_unit
     (let open Action_builder.O in
-    let* theories = Resolve.Memo.read theories in
     let+ l =
       Action_builder.List.map theories ~f:(coq_modules_of_theory ~sctx)
     in
@@ -608,6 +607,8 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
       and+ theories = theories_deps in
       theory :: theories
     in
+    let open Action_builder.O in
+    let* theories = Resolve.Memo.read theories in
     source_rule ~sctx theories
   in
   let coqc_dir = (Super_context.context sctx).build_dir in
@@ -770,9 +771,10 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
     theories_deps_requires_for_user_written ~dir s.buildable
   in
   let source_rule =
-    let theories = source_rule ~sctx theories_deps in
     let open Action_builder.O in
-    theories >>> Action_builder.path (Path.build (Coq_module.source coq_module))
+    let* theories_deps = Resolve.Memo.read theories_deps in
+    source_rule ~sctx theories_deps
+    >>> Action_builder.path (Path.build (Coq_module.source coq_module))
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   setup_coqdep_and_coqc_rule cctx ~dir ~sctx ~loc:s.buildable.loc

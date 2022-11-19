@@ -149,9 +149,6 @@ module Bootstrap = struct
     | Bootstrap_prelude -> As [ "-boot"; "-noinit" ]
 end
 
-(* get_libraries from Coq's ML dependencies *)
-let libs_of_coq_deps ~lib_db = Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db)
-
 let coqc ~loc ~dir ~sctx =
   Super_context.resolve_program sctx "coqc" ~dir ~loc:(Some loc)
     ~hint:"opam install coq"
@@ -662,7 +659,9 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
 let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
   let lib_db = Scope.libs scope in
   let+ ml_libs =
-    Resolve.Memo.read_memo (libs_of_coq_deps ~lib_db s.buildable.plugins)
+    (* get_libraries from Coq's ML dependencies *)
+    Resolve.Memo.read_memo
+      (Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db) s.buildable.plugins)
   in
   let rules_for_lib lib =
     let info = Lib.info lib in

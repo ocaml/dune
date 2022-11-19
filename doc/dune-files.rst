@@ -2259,7 +2259,7 @@ where each ``<setting>`` can be one of:
 
 - ``symlink`` uses symbolic links for sandboxing.
 
-- ``copy``, using file copies. This is the default under Windows.
+- ``copy`` copies files for sandboxing. This is the default under Windows.
 
 - ``hardlink``, using hard links. This is the default under Linux.
 

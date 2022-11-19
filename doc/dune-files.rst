@@ -2313,7 +2313,7 @@ Specify the mechanism used by the Dune cache for storage.
 
 where ``<setting>`` is one of:
 
-- ``auto``, Dune decides the best mechanism to use.
+- ``auto`` lets Dune decide the best mechanism to use.
 
 - ``hardlink``, using hard links.
 

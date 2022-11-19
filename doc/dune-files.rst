@@ -2268,7 +2268,8 @@ where each ``<setting>`` can be one of:
 ``cache``
 ---------
 
-Specifies whether to utilize the Dune cache.
+Specifies whether Dune is allowed to store and fetch build targets from the Dune
+cache.
 
 .. code:: scheme
 

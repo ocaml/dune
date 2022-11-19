@@ -132,16 +132,13 @@ module Bootstrap = struct
         if init then Bootstrap_prelude else Bootstrap lib
     else Bootstrap_prelude
 
-  let boot_lib_flags ~coqdoc lib : _ Command.Args.t =
-    let dir = Coq_lib.src_root lib in
-    S
-      (if coqdoc then [ A "--coqlib"; Path (Path.build dir) ]
-      else [ A "-boot" ])
-
   let flags ~coqdoc t : _ Command.Args.t =
     match t with
-    | No_boot -> As []
-    | Bootstrap lib -> boot_lib_flags ~coqdoc lib
+    | No_boot -> Command.Args.empty
+    | Bootstrap lib ->
+      if coqdoc then
+        S [ A "--coqlib"; Path (Path.build @@ Coq_lib.src_root lib) ]
+      else A "-boot"
     | Bootstrap_prelude -> As [ "-boot"; "-noinit" ]
 end
 

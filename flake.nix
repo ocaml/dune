@@ -12,7 +12,6 @@
       flake = false;
     };
     melange.url = "github:melange-re/melange";
-    melange-compiler-libs.url = "github:melange-re/melange-compiler-libs";
   };
   outputs =
     { self
@@ -22,7 +21,6 @@
     , ocamllsp
     , opam-repository
     , melange
-    , melange-compiler-libs
     }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
@@ -47,7 +45,6 @@
         (self: super: {
           ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
         })
-        melange-compiler-libs.overlays.default
         melange.overlays.default
       ];
       ocamlformat =

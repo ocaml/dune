@@ -2334,7 +2334,7 @@ This can be used to reduce the noise of large builds.
 
 where ``<setting>`` is one of:
 
-- ``print`` prints the output on the terminal (this is the default).
+- ``print`` prints the output on the terminal. This is the default.
 
 - ``swallow`` ignores the output and does not print it on the terminal.
 

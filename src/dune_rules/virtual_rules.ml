@@ -91,12 +91,12 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
       let virtual_ =
         let virtual_ = Lib_info.virtual_ info in
         match virtual_ with
+        | Some v -> v
         | None ->
           User_error.raise ~loc:lib.buildable.loc
             [ Pp.textf "Library %s isn't virtual and cannot be implemented"
                 (Lib_name.to_string implements)
             ]
-        | Some v -> v
       in
       let+ vlib_modules, vlib_foreign_objects =
         let foreign_objects = Lib_info.foreign_objects info in
@@ -111,14 +111,14 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             let dir = Lib_info.src_dir info in
             Dir_contents.get sctx ~dir
           in
-          let* preprocess =
-            Resolve.Memo.read_memo
-              (Preprocess.Per_module.with_instrumentation
-                 lib.buildable.preprocess
-                 ~instrumentation_backend:
-                   (Lib.DB.instrumentation_backend (Scope.libs scope)))
-          in
           let* modules =
+            let* preprocess =
+              Resolve.Memo.read_memo
+                (Preprocess.Per_module.with_instrumentation
+                   lib.buildable.preprocess
+                   ~instrumentation_backend:
+                     (Lib.DB.instrumentation_backend (Scope.libs scope)))
+            in
             let pp_spec =
               Pp_spec.make preprocess (Super_context.context sctx).version
             in

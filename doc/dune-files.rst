@@ -2193,7 +2193,7 @@ Specify the amount of Dune’s verbosity.
 where ``<setting>`` is one of:
 
 - ``progress``, Dune shows and updates a status line as build goals are being
-  completed (this is the default).
+  completed. This is the default value.
 
 - ``verbose`` prints the full command lines of programs being executed by Dune,
   with some colors to help differentiate programs.

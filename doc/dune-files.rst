@@ -2305,7 +2305,7 @@ check.
 ``cache-storage-mode``
 ----------------------
 
-Specify the mechanism used by the Dune cache storage layer.
+Specify the mechanism used by the Dune cache for storage.
 
 .. code:: scheme
 

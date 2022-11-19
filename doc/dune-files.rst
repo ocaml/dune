@@ -2198,8 +2198,8 @@ where ``<setting>`` is one of:
 - ``verbose`` prints the full command lines of programs being executed by Dune,
   with some colors to help differentiate programs.
 
-- ``short`` prints one line per executed command, with the binary name on
-  the left and the reason it is being executed for on the right.
+- ``short`` prints a line for each program executed with the binary name on the
+  left and the targets of the action on the right.
 
 - ``quiet`` only display errors.
 

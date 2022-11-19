@@ -117,24 +117,20 @@ module Bootstrap = struct
         (** We are compiling the prelude itself
             [should be replaced with (per_file ...) flags] *)
 
-  let get_for_module ~boot_lib ~wrapper_name coq_module =
-    match boot_lib with
-    | None -> No_boot
-    | Some (_loc, lib) -> (
-      (* This is here as an optimization, TODO; replace with per_file flags *)
-      let init =
-        String.equal (Coq_lib_name.wrapper (Coq_lib.name lib)) wrapper_name
-        && Option.equal String.equal
-             (List.hd_opt (Coq_module.prefix coq_module))
-             (Some "Init")
-      in
-      match init with
-      | false -> Bootstrap lib
-      | true -> Bootstrap_prelude)
-
   let get ~use_stdlib ~boot_lib ~wrapper_name coq_module =
-    if not use_stdlib then Bootstrap_prelude
-    else get_for_module ~boot_lib ~wrapper_name coq_module
+    if use_stdlib then
+      match boot_lib with
+      | None -> No_boot
+      | Some (_loc, lib) ->
+        (* This is here as an optimization, TODO; replace with per_file flags *)
+        let init =
+          String.equal (Coq_lib_name.wrapper (Coq_lib.name lib)) wrapper_name
+          && Option.equal String.equal
+               (List.hd_opt (Coq_module.prefix coq_module))
+               (Some "Init")
+        in
+        if init then Bootstrap_prelude else Bootstrap lib
+    else Bootstrap_prelude
 
   let boot_lib_flags ~coqdoc lib : _ Command.Args.t =
     let dir = Coq_lib.src_root lib in

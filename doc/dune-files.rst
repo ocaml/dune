@@ -2315,9 +2315,10 @@ where ``<setting>`` is one of:
 
 - ``auto`` lets Dune decide the best mechanism to use.
 
-- ``hardlink``, using hard links.
+- ``hardlink`` uses hard links for entries in the cache.
 
-- ``copy``, using file copies; this is less efficient than using hard links.
+- ``copy`` copies entries to the cache. This is less efficient than using hard
+  links.
 
 .. _action_stdout_on_success:
 

@@ -23,9 +23,7 @@ module Source = struct
 
   let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
 
-  let modules t pp =
-    let open Memo.O in
-    main_module t |> Pp_spec.pp_module pp >>| Modules.singleton_exe
+  let modules t = main_module t |> Modules.singleton_exe
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }
 
@@ -188,7 +186,7 @@ module Stanza = struct
         (Ocaml_flags.default ~dune_version ~profile)
         [ "-w"; "-24" ]
     in
-    let* modules = Source.modules source preprocessing in
+    let modules = Source.modules source in
     let* cctx =
       Compilation_context.create () ~super_context:sctx ~scope ~obj_dir
         ~expander ~modules ~opaque:(Explicit false) ~requires_compile

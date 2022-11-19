@@ -159,7 +159,7 @@ let setup sctx ~dir =
   let source = source ~dir in
   let obj_dir = Toplevel.Source.obj_dir source in
   let loc = Toplevel.Source.loc source in
-  let* modules = Toplevel.Source.modules source preprocessing in
+  let modules = Toplevel.Source.modules source in
   let requires =
     let open Resolve.Memo.O in
     (loc, Lib_name.of_string "utop")

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow compilation rules to be impacted by `(env ..)` stanzas that modify the
+  environment or set binaries. (#6527, @rgrinberg)
+
 - Fix status line enabled when ANSI colors are forced. (#6503, @MisterDA)
 
 - Coq native mode is now automatically detected by Dune starting with Coq lang

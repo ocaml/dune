@@ -747,3 +747,15 @@ let ppx_exe sctx ~scope pp =
   let open Resolve.Memo.O in
   let+ libs = Lib.DB.resolve_pps (Scope.libs scope) [ (Loc.none, pp) ] in
   ppx_driver_exe sctx libs
+
+let pped_modules_map preprocess v =
+  let map =
+    Module_name.Per_item.map preprocess ~f:(fun pp ->
+        match Preprocess.remove_future_syntax ~for_:Compiler pp v with
+        | No_preprocessing -> Module.ml_source
+        | Action (_, _) -> fun m -> Module.ml_source (Module.pped m)
+        | Pps { loc = _; pps = _; flags = _; staged } ->
+          if staged then Module.ml_source
+          else fun m -> Module.pped (Module.ml_source m))
+  in
+  Staged.stage (fun m -> Module_name.Per_item.get map (Module.name m) m)

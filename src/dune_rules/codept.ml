@@ -141,6 +141,7 @@ let deps_of
   let dep = Obj_dir.Module.dep obj_dir in
   let parse_module_names = parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
+  let ocamldep_output = dep (Immediate source) in
   let open Memo.O in
   let build_paths dependencies =
     let dependency_file_path m =
@@ -158,12 +159,9 @@ let deps_of
   let action =
     let open Action_builder.O in
     let paths =
-      let+ lines = Action_builder.lines_of (Path.build (Path.Build.relative (Obj_dir.obj_dir obj_dir) ("cod.txt"))) in
-      let a = Module.File.path source |> Path.to_string |> Filename.basename in
+      let+ lines = Action_builder.lines_of (Path.build ocamldep_output) in
       let modules =
-        parse_deps_exn' lines
-        |> List.assoc_opt a
-        |> Option.value_exn
+        parse_deps_exn ~file:(Module.File.path source) lines
         |> interpret_deps md ~unit
       in
       ( build_paths modules

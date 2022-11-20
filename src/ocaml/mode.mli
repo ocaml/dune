@@ -31,7 +31,7 @@ val to_string : t -> string
 val to_dyn : t -> Dyn.t
 
 module Dict : sig
-  type mode = t
+  type mode := t
 
   type 'a t =
     { byte : 'a
@@ -45,7 +45,7 @@ module Dict : sig
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
   module List : sig
-    type 'a dict
+    type 'a dict := 'a t
 
     type 'a t = 'a list dict
 
@@ -55,7 +55,6 @@ module Dict : sig
 
     val encode : 'a Dune_sexp.Encoder.t -> 'a t -> Dune_sexp.t list
   end
-  with type 'a dict := 'a t
 
   val get : 'a t -> mode -> 'a
 
@@ -95,11 +94,10 @@ module Dict : sig
     val iter_concurrently : t -> f:(mode -> unit Memo.t) -> unit Memo.t
   end
 end
-with type mode := t
 
 (** [Select] is a utility module that represents a mode selection. *)
 module Select : sig
-  type mode = t
+  type mode := t
 
   type nonrec t =
     | Only of t
@@ -113,14 +111,13 @@ module Select : sig
 
   val is_not_all : t -> bool
 end
-with type mode := t
 
 (** [Map] is a data-structure that can store values that are indexed by keys of
     the type [Select.t]. The key [Select.All] is meant to store values that
     apply to any mode while keys of the form [Select.Only _] designate values
     that apply to specific modes. *)
 module Map : sig
-  type mode = t
+  type mode := t
 
   include Map.S with type key = Select.t
 
@@ -143,4 +140,3 @@ module Map : sig
 
   val decode : 'a Dune_sexp.Decoder.t -> 'a Multi.t Dune_sexp.Decoder.t
 end
-with type mode := t

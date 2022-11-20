@@ -78,7 +78,7 @@ val set_pp : t -> (string list Action_builder.t * Sandbox_config.t) option -> t
 val wrapped_compat : t -> t
 
 module Name_map : sig
-  type module_
+  type module_ := t
 
   type t = module_ Module_name.Map.t
 
@@ -94,16 +94,14 @@ module Name_map : sig
 
   val add : t -> module_ -> t
 end
-with type module_ := t
 
 module Obj_map : sig
-  type module_
+  type module_ := t
 
   include Map.S with type key = module_
 
   val find_exn : 'a t -> module_ -> 'a
 end
-with type module_ := t
 
 module Obj_map_traversals : sig
   val parallel_iter : 'a Obj_map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t

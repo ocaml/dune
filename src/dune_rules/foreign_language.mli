@@ -17,7 +17,7 @@ val proper_name : t -> string
 module Map : Map.S with type key = t
 
 module Dict : sig
-  type language
+  type language := t
 
   type 'a t =
     { c : 'a
@@ -44,7 +44,6 @@ module Dict : sig
 
   val get : 'a t -> language -> 'a
 end
-with type language := t
 
 val source_extensions : (t * (int * int)) String.Map.t
 

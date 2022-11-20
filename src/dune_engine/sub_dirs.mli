@@ -15,7 +15,7 @@ module Status : sig
   end
 
   module Map : sig
-    type status
+    type status := t
 
     type 'a t =
       { data_only : 'a
@@ -29,7 +29,6 @@ module Status : sig
 
     val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   end
-  with type status := t
 
   module Set : sig
     type t = bool Map.t

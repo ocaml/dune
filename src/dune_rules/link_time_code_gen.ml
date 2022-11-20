@@ -12,9 +12,9 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
     let gen_module =
       let src_dir =
         let obj_dir = Compilation_context.obj_dir cctx in
-        Path.build (Obj_dir.obj_dir obj_dir)
+        Obj_dir.obj_dir obj_dir
       in
-      Module.generated ~src_dir name
+      Module.generated ~kind:Impl ~src_dir name
     in
     let* wrapped = Lib.wrapped lib in
     match wrapped with
@@ -291,6 +291,7 @@ let handle_special_libs cctx =
             ~to_link_rev:(Module (obj_dir, module_) :: Lib lib :: to_link_rev)
             ~force_linkall:true
         | Configurator _ ->
+          (* TODO introduce a runtime dependency or replace with DAP *)
           process_libs libs ~to_link_rev:(Lib lib :: to_link_rev) ~force_linkall
         | Dune_site { data_module; plugins } ->
           let code =

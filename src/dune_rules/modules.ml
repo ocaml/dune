@@ -187,7 +187,7 @@ module Mangle = struct
       | Lib { kind = Implementation _; _ } -> prefix.private_
       | _ -> prefix.public
     in
-    Module.generated_alias ~src_dir name
+    Module.generated ~kind:Alias ~src_dir name
 end
 
 let impl_only_of_map m =

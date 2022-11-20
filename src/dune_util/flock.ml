@@ -2,9 +2,6 @@ type t = Unix.file_descr
 
 let create x = x
 
-external gen_lock : t -> block:bool -> exclusive:bool -> unit
-  = "dune_flock_lock"
-
 type lock =
   | Shared
   | Exclusive
@@ -14,21 +11,19 @@ let is_exclusive = function
   | Shared -> false
 
 let lock_block t lock =
-  match gen_lock t ~block:true ~exclusive:(is_exclusive lock) with
+  match Unix.lockf t (if is_exclusive lock then F_LOCK else F_RLOCK) 0 with
   | () -> Ok ()
   | exception Unix.Unix_error (err, _, _) -> Error err
 
 let lock_non_block t lock =
-  match gen_lock t ~block:false ~exclusive:(is_exclusive lock) with
+  match Unix.lockf t (if is_exclusive lock then F_TLOCK else F_TRLOCK) 0 with
   | () -> Ok `Success
   | exception Unix.Unix_error ((EWOULDBLOCK | EAGAIN | EACCES), _, _) ->
     Ok `Failure
   | exception Unix.Unix_error (err, _, _) -> Error err
 
-external unlock : t -> unit = "dune_flock_unlock"
-
 let unlock t =
-  match unlock t with
+  match Unix.lockf t F_ULOCK 0 with
   | () -> Ok ()
   | exception Unix.Unix_error (err, _, _) -> Error err
 

@@ -15,6 +15,10 @@ Unreleased
 
 - Fix build with MSVC compiler (#6517, @nojb)
 
+- `dune clean` should no longer fail under Windows due to the inability to
+  remove the `.lock` file. Also, bring the implementation of the global lock
+  under Windows closer to that of Unix. (#6523, @nojb)
+
 3.6.0 (2022-11-14)
 ------------------
 

@@ -21,7 +21,8 @@ let lock_block t lock =
 let lock_non_block t lock =
   match gen_lock t ~block:false ~exclusive:(is_exclusive lock) with
   | () -> Ok `Success
-  | exception Unix.Unix_error ((EWOULDBLOCK | EAGAIN), _, _) -> Ok `Failure
+  | exception Unix.Unix_error ((EWOULDBLOCK | EAGAIN | EACCES), _, _) ->
+    Ok `Failure
   | exception Unix.Unix_error (err, _, _) -> Error err
 
 external unlock : t -> unit = "dune_flock_unlock"

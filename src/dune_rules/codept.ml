@@ -99,6 +99,39 @@ let codept_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } a
         ]
       >>| Action.Full.add_sandbox sandbox)
   in
+  let* () =
+    Super_context.add_rule sctx ~dir (
+      let open Action_builder.O in
+      let a =
+        let+ lines = Action_builder.lines_of (Path.build @@ Path.Build.relative (Obj_dir.obj_dir obj_dir) ("cod.txt")) in
+        let ms = parse_deps_exn' lines in
+          ms
+      in
+      Action_builder.with_file_targets ~file_targets:(
+        List.map ~f:(fun p -> Path.Build.relative  (Obj_dir.obj_dir obj_dir) (Path.basename p ^ ".d")) (Path.Set.to_list sources)
+      ) (
+        let+ ms = a in
+        let ms' = List.map ms ~f:(fun (x, ds) ->
+          let tar = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Filename.basename x ^ ".d") in
+          (* Action_builder.with_file_targets ~file_targets:[tar] ( *)
+            Action.write_file tar (x ^ ": " ^ String.concat ~sep:" " ds)
+          (* ) *)
+        )
+        in
+        Action.reduce ms'
+      )
+      |> Action_builder.With_targets.map ~f:Action.Full.make
+      (* Action_builder.
+      Action_builder.With_targets.all ms'
+      |> Action_builder.With_targets.map ~f:Action.Full.reduce *)
+      (* |> Action_builder.return *)
+      (* Action_builder.With_targets. *)
+      (* Action_builder.with_file_targets ~file_targets:[] (
+        Action_builder.al
+      ) *)
+      (* >>| Action.Full.add_sandbox sandbox *)
+    )
+in
   Memo.return ()
 
 let deps_of

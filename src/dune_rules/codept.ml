@@ -92,6 +92,8 @@ let codept_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } a
         ~dir:(Path.build context.build_dir)
         ~stdout_to:(Path.Build.relative (Obj_dir.obj_dir obj_dir) ("cod.txt"))
         [ A "-modules"
+        ; As ["-verbosity"; "critical"]
+        ; A "-k"
         ; Command.Args.dyn flags
         ; Deps (Path.Set.to_list sources)
         ]

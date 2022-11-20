@@ -2161,17 +2161,17 @@ context.
 ``config`` stanzas
 ------------------
 
-Moreover, starting in Dune 3.0, any of the stanzas from the :ref:`config` file
-can be used in the ``dune-workspace`` file. In this case, the configuration
-stanza will only affect the current workspace.
+Starting in Dune 3.0, any of the stanzas from the :ref:`config` file can be used
+in the ``dune-workspace`` file. In this case, the configuration stanza will only
+affect the current workspace.
 
 .. _config:
 
 config
 ======
 
-This file is used to set global configuration of Dune (applicable across
-projects and workspaces).
+This file is used to set the global configuration of Dune which is applicable
+across projects and workspaces.
 
 The configuration file is normally ``~/.config/dune/config`` on Unix systems and
 ``%LOCALAPPDATA%/dune/config`` on Windows. However, for most Dune commands it is
@@ -2179,7 +2179,7 @@ possible to specify an alternative configuration file with the ``--config-file``
 option. Command-line flags take precedence over the contents of the ``config``
 file.  If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
 
-It can contain the following stanzas:
+The ``config`` file can contain the following stanzas:
 
 .. _display:
 

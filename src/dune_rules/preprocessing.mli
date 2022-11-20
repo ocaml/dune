@@ -2,6 +2,11 @@
 
 open Import
 
+val pped_modules_map :
+     Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+  -> Ocaml.Version.t
+  -> (Module.t -> Module.t) Staged.t
+
 val make :
      Super_context.t
   -> dir:Path.Build.t

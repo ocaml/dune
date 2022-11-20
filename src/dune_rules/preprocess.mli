@@ -63,7 +63,7 @@ val remove_future_syntax :
   -> 'a Without_future_syntax.t
 
 module Per_module : sig
-  type 'a preprocess = 'a t
+  type 'a preprocess := 'a t
 
   type 'a t = 'a preprocess Module_name.Per_item.t
 
@@ -106,4 +106,3 @@ module Per_module : sig
          (Loc.t * Lib_name.t -> Without_instrumentation.t option Resolve.Memo.t)
     -> Dep_conf.t list Resolve.Memo.t
 end
-with type 'a preprocess := 'a t

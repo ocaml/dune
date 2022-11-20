@@ -318,11 +318,11 @@ Test compiling an external plugin
   > Lorem
   > EOF
 
-  $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune build --root=e
+  $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH dune build --root=e
   Entering directory 'e'
   Leaving directory 'e'
 
-  $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH PATH=$(pwd)/_install/bin:$PATH dune exec  --root=e -- c
+  $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH PATH=$PWD/_install/bin:$PATH dune exec  --root=e -- c
   Entering directory 'e'
   Leaving directory 'e'
   run a
@@ -339,7 +339,7 @@ Test compiling an external plugin
   info.txt is found: true
   run c: registered:e,b.
 
-  $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune install --root=e --prefix $(pwd)/_install 2> /dev/null
+  $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH dune install --root=e --prefix $PWD/_install 2> /dev/null
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/c
   run a
@@ -398,7 +398,7 @@ Test %{version:installed-pkg}
   $ OCAMLPATH=_install/lib:$OCAMLPATH dune build --root=f
   Entering directory 'f'
   Leaving directory 'f'
-  $ cat $(pwd)/f/_build/default/test.target
+  $ cat $PWD/f/_build/default/test.target
   a = 0.a
   e = 
 

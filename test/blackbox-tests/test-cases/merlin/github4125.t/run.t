@@ -20,7 +20,7 @@ We call `$(opam switch show)` so that this test always uses an existing switch
   ..
   lib-foo
 
-  $ dune ocaml-merlin --dump-config="$(pwd)"
+  $ dune ocaml-merlin --dump-config="$PWD"
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)

@@ -6,7 +6,7 @@
 We dump the config for Foo and Bar modules but the pp.exe preprocessor
 should appear only once since only Foo is using it.
 
-  $ dune ocaml-merlin --dump-config=$(pwd)
+  $ dune ocaml-merlin --dump-config=$PWD
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)

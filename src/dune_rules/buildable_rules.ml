@@ -48,7 +48,7 @@ let modules_rules ~preprocess ~preprocessor_deps ~lint
         (Preprocess.Per_module.with_instrumentation preprocess
            ~instrumentation_backend)
     in
-    let* instrumentation_deps =
+    let+ instrumentation_deps =
       Resolve.Memo.read_memo
         (Preprocess.Per_module.instrumentation_deps preprocess
            ~instrumentation_backend)

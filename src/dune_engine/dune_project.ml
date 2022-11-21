@@ -510,7 +510,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   let name = default_name ~dir ~packages in
   let project_file = Path.Source.relative dir filename in
   let parsing_context, stanza_parser, extension_args =
-    interpret_lang_and_extensions ~lang ~explicit_extensions:File_key.Map.empty
+    interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
@@ -925,16 +925,13 @@ let parse ~dir ~lang ~file ~dir_status =
           let file_key = File_key.make ~name ~root in
           let dialects =
             let dialects =
-              match
-                File_key.Map.find explicit_extensions Melange_syntax.name
-              with
+              match String.Map.find explicit_extensions Melange_syntax.name with
               | Some extension -> (extension.loc, Dialect.rescript) :: dialects
               | None -> dialects
             in
-            List.fold_left
+            List.fold_left dialects ~init:Dialect.DB.builtin
               ~f:(fun dialects (loc, dialect) ->
                 Dialect.DB.add dialects ~loc dialect)
-              ~init:Dialect.DB.builtin dialects
           in
           let () =
             match name with

@@ -151,6 +151,33 @@ let reason =
   let impl = file_kind Ml_kind.Impl ".re" in
   { name = "reason"; file_kinds = Ml_kind.Dict.make ~intf ~impl }
 
+let rescript =
+  let file_kind kind extension =
+    let module S = String_with_vars in
+    let exe_name = "rescript_syntax" in
+    let preprocess =
+      Action.run
+        (S.make_text Loc.none exe_name)
+        [ S.make_text Loc.none "-print"
+        ; S.make_text Loc.none "binary"
+        ; S.make_pform Loc.none (Var Input_file)
+        ]
+    in
+    let format =
+      Action.run
+        (S.make_text Loc.none exe_name)
+        [ S.make_pform Loc.none (Var Input_file) ]
+    in
+    { File_kind.kind
+    ; extension
+    ; preprocess = Some (Loc.none, preprocess)
+    ; format = Some (Loc.none, format, [])
+    }
+  in
+  let intf = file_kind Ml_kind.Intf ".resi" in
+  let impl = file_kind Ml_kind.Impl ".res" in
+  { name = "rescript"; file_kinds = Ml_kind.Dict.make ~intf ~impl }
+
 let ml_suffix { file_kinds = { Ml_kind.Dict.intf; impl }; _ } ml_kind =
   match (ml_kind, intf.preprocess, impl.preprocess) with
   | Ml_kind.Intf, None, _ | Impl, _, None -> None

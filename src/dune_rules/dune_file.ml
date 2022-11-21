@@ -455,7 +455,8 @@ module Mode_conf = struct
         ; ("native", return @@ Ocaml Native)
         ; ("best", return @@ Ocaml Best)
         ; ( "melange"
-          , Dune_lang.Syntax.since Melange.syntax (0, 1) >>> return Melange )
+          , Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
+            >>> return Melange )
         ]
 
     let to_string = function
@@ -2393,7 +2394,7 @@ module Stanzas = struct
         and+ t = Plugin.decode in
         [ Plugin t ] )
     ; ( "melange.emit"
-      , let+ () = Dune_lang.Syntax.since Melange.syntax (0, 1)
+      , let+ () = Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
         and+ t = Melange_stanzas.Emit.decode in
         [ Melange_emit t ] )
     ]

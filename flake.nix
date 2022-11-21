@@ -137,6 +137,7 @@
           ++ [
             ocamllsp.outputs.packages.${system}.ocaml-lsp-server
             pkgs.ocamlPackages.melange
+            pkgs.ocamlPackages.mel
           ]
           ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
           inputsFrom = [ self.packages.${system}.default ];

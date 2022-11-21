@@ -38,6 +38,8 @@ val ocaml : t
 
 val reason : t
 
+val rescript : t
+
 val ml_suffix : t -> Ml_kind.t -> string option
 
 module DB : sig

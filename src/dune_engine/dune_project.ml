@@ -343,8 +343,17 @@ module Extension = struct
           | Extension e -> Not_selected e :: acc))
 end
 
-let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
-    =
+module Melange_syntax = struct
+  let name = "melange"
+
+  let t =
+    Dune_lang.Syntax.create ~name ~desc:"support for Melange compiler"
+      [ ((0, 1), `Since (3, 6)) ]
+
+  let () = Extension.register_simple t (return [])
+end
+
+let explicit_extensions_map explicit_extensions =
   match
     String.Map.of_list
       (List.map explicit_extensions ~f:(fun (e : Extension.instance) ->
@@ -357,80 +366,84 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
   | Error (name, _, ext) ->
     User_error.raise ~loc:ext.loc
       [ Pp.textf "Extension %S specified for the second time." name ]
-  | Ok map ->
-    let extensions = Extension.automatic ~explicitly_selected:map in
-    let parsing_context =
-      let init =
-        Univ_map.singleton
-          (Dune_lang.Syntax.key lang.syntax)
-          (Active lang.version)
-      in
-      let init =
-        Univ_map.set init String_with_vars.decoding_env_key
-          (Pform.Env.initial lang.version)
-      in
-      List.fold_left extensions ~init ~f:(fun acc (ext : Extension.automatic) ->
-          let syntax =
-            let (Extension.Packed ext) =
-              match ext with
-              | Selected e -> e.extension
-              | Not_selected e -> e
-            in
-            ext.syntax
-          in
-          let status : Dune_lang.Syntax.Key.t =
+  | Ok map -> map
+
+let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
+    =
+  let extensions =
+    Extension.automatic ~explicitly_selected:explicit_extensions
+  in
+  let parsing_context =
+    let init =
+      Univ_map.singleton
+        (Dune_lang.Syntax.key lang.syntax)
+        (Active lang.version)
+    in
+    let init =
+      Univ_map.set init String_with_vars.decoding_env_key
+        (Pform.Env.initial lang.version)
+    in
+    List.fold_left extensions ~init ~f:(fun acc (ext : Extension.automatic) ->
+        let syntax =
+          let (Extension.Packed ext) =
             match ext with
-            | Selected ext -> Active ext.version
-            | Not_selected (Packed e) ->
-              Inactive
-                { lang = e.syntax; dune_lang_ver = lang.Lang.Instance.version }
+            | Selected e -> e.extension
+            | Not_selected e -> e
           in
-          Univ_map.set acc (Dune_lang.Syntax.key syntax) status)
-    in
-    let extension_args, extension_stanzas =
-      List.fold_left extensions ~init:(Univ_map.empty, [])
-        ~f:(fun (args_acc, stanzas_acc) (ext : Extension.automatic) ->
+          ext.syntax
+        in
+        let status : Dune_lang.Syntax.Key.t =
           match ext with
+          | Selected ext -> Active ext.version
           | Not_selected (Packed e) ->
-            let stanzas =
-              let open Dune_lang.Decoder in
-              let _arg, stanzas =
-                let parsing_context =
-                  (* Temporarily mark the extension as active so that we can
-                     call the parser and extract the list of stanza names this
-                     extension registers *)
-                  Univ_map.set parsing_context
-                    (Dune_lang.Syntax.key e.syntax)
-                    (Active
-                       (Dune_lang.Syntax.greatest_supported_version e.syntax))
-                in
-                parse (enter e.stanzas) parsing_context
-                  (List (Loc.of_pos __POS__, []))
+            Inactive
+              { lang = e.syntax; dune_lang_ver = lang.Lang.Instance.version }
+        in
+        Univ_map.set acc (Dune_lang.Syntax.key syntax) status)
+  in
+  let extension_args, extension_stanzas =
+    List.fold_left extensions ~init:(Univ_map.empty, [])
+      ~f:(fun (args_acc, stanzas_acc) (ext : Extension.automatic) ->
+        match ext with
+        | Not_selected (Packed e) ->
+          let stanzas =
+            let open Dune_lang.Decoder in
+            let _arg, stanzas =
+              let parsing_context =
+                (* Temporarily mark the extension as active so that we can
+                   call the parser and extract the list of stanza names this
+                   extension registers *)
+                Univ_map.set parsing_context
+                  (Dune_lang.Syntax.key e.syntax)
+                  (Active (Dune_lang.Syntax.greatest_supported_version e.syntax))
               in
-              List.map stanzas ~f:(fun (name, _) ->
-                  ( name
-                  , let+ _ = Dune_lang.Syntax.get_exn e.syntax in
-                    (* The above [get_exn] will raise because the extension is
-                       inactive *)
-                    assert false ))
+              parse (enter e.stanzas) parsing_context
+                (List (Loc.of_pos __POS__, []))
             in
-            (args_acc, stanzas :: stanzas_acc)
-          | Selected instance ->
-            let (Packed e) = instance.extension in
-            let args =
-              let+ arg, stanzas =
-                Dune_lang.Decoder.set_many parsing_context e.stanzas
-              in
-              (Univ_map.set args_acc e.key arg, stanzas)
+            List.map stanzas ~f:(fun (name, _) ->
+                ( name
+                , let+ _ = Dune_lang.Syntax.get_exn e.syntax in
+                  (* The above [get_exn] will raise because the extension is
+                     inactive *)
+                  assert false ))
+          in
+          (args_acc, stanzas :: stanzas_acc)
+        | Selected instance ->
+          let (Packed e) = instance.extension in
+          let args =
+            let+ arg, stanzas =
+              Dune_lang.Decoder.set_many parsing_context e.stanzas
             in
-            let args_acc, stanzas = instance.parse_args args in
-            (args_acc, stanzas :: stanzas_acc))
-    in
-    let stanzas = List.concat (lang.data :: extension_stanzas) in
-    let stanza_parser =
-      Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
-    in
-    (parsing_context, stanza_parser, extension_args)
+            (Univ_map.set args_acc e.key arg, stanzas)
+          in
+          let args_acc, stanzas = instance.parse_args args in
+          (args_acc, stanzas :: stanzas_acc))
+  in
+  let stanzas = List.concat (lang.data :: extension_stanzas) in
+  let stanza_parser =
+    Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
+  in
+  (parsing_context, stanza_parser, extension_args)
 
 let key = Univ_map.Key.create ~name:"dune-project" to_dyn
 
@@ -497,7 +510,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   let name = default_name ~dir ~packages in
   let project_file = Path.Source.relative dir filename in
   let parsing_context, stanza_parser, extension_args =
-    interpret_lang_and_extensions ~lang ~explicit_extensions:[]
+    interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
@@ -864,6 +877,9 @@ let parse ~dir ~lang ~file ~dir_status =
             | Some n -> n
             | None -> default_name ~dir ~packages
           in
+          let explicit_extensions =
+            explicit_extensions_map explicit_extensions
+          in
           let parsing_context, stanza_parser, extension_args =
             interpret_lang_and_extensions ~lang ~explicit_extensions
           in
@@ -908,10 +924,14 @@ let parse ~dir ~lang ~file ~dir_status =
           let root = dir in
           let file_key = File_key.make ~name ~root in
           let dialects =
-            List.fold_left
+            let dialects =
+              match String.Map.find explicit_extensions Melange_syntax.name with
+              | Some extension -> (extension.loc, Dialect.rescript) :: dialects
+              | None -> dialects
+            in
+            List.fold_left dialects ~init:Dialect.DB.builtin
               ~f:(fun dialects (loc, dialect) ->
                 Dialect.DB.add dialects ~loc dialect)
-              ~init:Dialect.DB.builtin dialects
           in
           let () =
             match name with

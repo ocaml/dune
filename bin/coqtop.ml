@@ -112,11 +112,10 @@ let term =
                   ~use_stdlib:theory.buildable.use_stdlib ~wrapper_name
                   coq_module )
             | Some (`Extraction extr) ->
-              ( Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir
-                  ~dir_contents:dc extr coq_module
-              , 
-              let wrapper_name = "DuneExtraction" in
-              Dune_rules.Coq_rules.boot_type ~dir
+              ( Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir extr
+                  coq_module
+              , let wrapper_name = "DuneExtraction" in
+                Dune_rules.Coq_rules.boot_type ~dir
                   ~use_stdlib:extr.buildable.use_stdlib ~wrapper_name coq_module
               )
           in

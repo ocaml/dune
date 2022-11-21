@@ -62,7 +62,6 @@ val setup_extraction_rules :
 val coqtop_args_extraction :
      sctx:Super_context.t
   -> dir:Path.Build.t
-  -> dir_contents:Dir_contents.t
   -> Coq_stanza.Extraction.t
   -> Coq_module.t
   -> 'a Command.Args.t list Action_builder.t

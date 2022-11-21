@@ -52,13 +52,11 @@ Check that dune >= 2.4 removes target write permissions.
   $ dune_cmd stat permissions 2.4/_build/default/foo.exe | head -c1
   5
   $ dune install --root 2.4 --prefix ./
-  Entering directory '2.4'
   Installing lib/foo/META
   Installing lib/foo/dune-package
   Installing bin/foo
   Installing bin/foo.exe
   Installing share/foo/target
-  Leaving directory '2.4'
   $ dune_cmd stat permissions 2.4/bin/foo.exe | head -c1
   7
   $ dune_cmd stat permissions 2.4/share/foo/target | head -c1

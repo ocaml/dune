@@ -355,8 +355,6 @@ Test compiling an external plugin
   run c: registered:e,b.
 
   $ OCAMLPATH=$(pwd)/_install/lib:$OCAMLPATH dune install --root=e --prefix $(pwd)/_install 2>&1 | sed -e "/^Installing/d"
-  Entering directory 'e'
-  Leaving directory 'e'
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/c
   run a

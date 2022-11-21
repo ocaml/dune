@@ -64,9 +64,6 @@ val term_with_default_root_is_cwd : t Cmdliner.Term.t
 
 val envs : Cmdliner.Cmd.Env.info list
 
-(** Set whether Dune should print the "Entering directory '<dir>'" message *)
-val set_print_directory : t -> bool -> t
-
 val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
 
 val debug_backtraces : bool Cmdliner.Term.t

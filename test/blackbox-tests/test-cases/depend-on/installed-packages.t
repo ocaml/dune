@@ -20,11 +20,9 @@
   Leaving directory 'a'
 
   $ dune install --root a --prefix $PWD/prefix
-  Entering directory 'a'
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
   Installing $TESTCASE_ROOT/prefix/share/a/CATME
-  Leaving directory 'a'
 
   $ cat >b/dune-project <<EOF
   > (lang dune 2.9)
@@ -54,14 +52,12 @@
   Leaving directory 'a'
 
   $ dune install --root a --prefix $PWD/prefix
-  Entering directory 'a'
   Deleting $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Deleting $TESTCASE_ROOT/prefix/lib/a/dune-package
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
   Deleting $TESTCASE_ROOT/prefix/share/a/CATME
   Installing $TESTCASE_ROOT/prefix/share/a/CATME
-  Leaving directory 'a'
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
   Entering directory 'b'

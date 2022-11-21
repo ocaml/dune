@@ -352,14 +352,11 @@ module Name_map = struct
     Module_name.Map.of_list_map_exn ~f:(fun m -> (name m, m)) modules
 
   let encode t =
-    Module_name.Map.values t |> List.map ~f:(fun x -> Dune_lang.List (encode x))
-
-  let impl_only =
-    Module_name.Map.fold ~init:[] ~f:(fun m acc ->
-        if has m ~ml_kind:Impl then m :: acc else acc)
+    Module_name.Map.to_list_map t ~f:(fun _ x -> Dune_lang.List (encode x))
 
   let of_list_exn modules =
-    List.map modules ~f:(fun m -> (name m, m)) |> Module_name.Map.of_list_exn
+    List.rev_map modules ~f:(fun m -> (name m, m))
+    |> Module_name.Map.of_list_exn
 
   let add t module_ = Module_name.Map.set t (name module_) module_
 end

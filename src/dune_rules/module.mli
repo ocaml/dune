@@ -88,8 +88,6 @@ module Name_map : sig
 
   val to_dyn : t -> Dyn.t
 
-  val impl_only : t -> module_ list
-
   val of_list_exn : module_ list -> t
 
   val add : t -> module_ -> t

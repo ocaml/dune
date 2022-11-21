@@ -103,21 +103,24 @@ module Version = struct
   let version_memo =
     Memo.create "coq-and-ocaml-version" ~input:(module Path) impl_version
 
-  let make ~bin =
-    let open Memo.O in
-    let+ coq_and_ocaml_version = Memo.exec version_memo bin in
-    let sbin = Path.to_string bin in
-    let open Result.O in
-    let* version_string, ocaml_version_string =
-      String.lsplit2 ~on:' ' coq_and_ocaml_version |> function
-      | Some (version_string, ocaml_version_string) ->
-        Result.ok (version_string, ocaml_version_string)
-      | None ->
-        Result.Error
-          Pp.(textf "Unable to parse output of %s --print-version." sbin)
-    in
-    let* version_num = Num.make version_string in
-    Result.ok { version_num; version_string; ocaml_version_string }
+  let make ~(coqc : Action.Prog.t) =
+    match coqc with
+    | Ok coqc_path ->
+      let open Memo.O in
+      let+ coq_and_ocaml_version = Memo.exec version_memo coqc_path in
+      let sbin = Path.to_string coqc_path in
+      let open Result.O in
+      let* version_string, ocaml_version_string =
+        String.lsplit2 ~on:' ' coq_and_ocaml_version |> function
+        | Some (version_string, ocaml_version_string) ->
+          Result.ok (version_string, ocaml_version_string)
+        | None ->
+          Result.Error
+            Pp.(textf "Unable to parse output of %s --print-version." sbin)
+      in
+      let* version_num = Num.make version_string in
+      Result.ok { version_num; version_string; ocaml_version_string }
+    | Error e -> Action.Prog.Not_found.raise e
 
   let by_name t name =
     match t with
@@ -147,30 +150,34 @@ let impl_config bin =
 
 let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
 
-let version ~bin =
+let version ~coqc =
   let open Memo.O in
-  let+ t = Version.make ~bin in
+  let+ t = Version.make ~coqc in
   let open Result.O in
   let+ t = t in
   t.version_string
 
-let make ~bin =
-  let open Memo.O in
-  let+ config_lines = Memo.exec config_memo bin
-  and+ version_info = Version.make ~bin in
-  match Vars.of_lines config_lines with
-  | Error msg ->
-    User_error.raise
-      Pp.
-        [ textf "cannot parse output of %S --config:" (Path.to_string bin)
-        ; msg
-        ]
-  | Ok vars ->
-    let coqlib = Vars.get_path vars "COQLIB" in
-    let coq_native_compiler_default =
-      Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
-    in
-    { version_info; coqlib; coq_native_compiler_default }
+let make ~(coqc : Action.Prog.t) =
+  match coqc with
+  | Ok coqc_path -> (
+    let open Memo.O in
+    let+ config_lines = Memo.exec config_memo coqc_path
+    and+ version_info = Version.make ~coqc in
+    match Vars.of_lines config_lines with
+    | Ok vars ->
+      let coqlib = Vars.get_path vars "COQLIB" in
+      let coq_native_compiler_default =
+        Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
+      in
+      { version_info; coqlib; coq_native_compiler_default }
+    | Error msg ->
+      User_error.raise
+        Pp.
+          [ textf "cannot parse output of %S --config:"
+              (Path.to_string coqc_path)
+          ; msg
+          ])
+  | Error e -> Action.Prog.Not_found.raise e
 
 let by_name { version_info; coqlib; coq_native_compiler_default } name =
   match name with

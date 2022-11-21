@@ -299,7 +299,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
   let main_module_name =
     Module_name.of_string_allow_invalid (Loc.none, "_ppx")
   in
-  let module_ = Module.generated ~src_dir:(Path.build dir) main_module_name in
+  let module_ = Module.generated ~kind:Impl ~src_dir:dir main_module_name in
   let ml_source =
     Module.file ~ml_kind:Impl module_
     |> Option.value_exn |> Path.as_in_build_dir_exn

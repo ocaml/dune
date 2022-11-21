@@ -14,8 +14,7 @@ module Source = struct
     let main_module_name =
       Module_name.of_string_allow_invalid (t.loc, t.name)
     in
-    let src_dir = Path.build t.dir in
-    Module.generated ~src_dir main_module_name
+    Module.generated ~kind:Impl ~src_dir:t.dir main_module_name
 
   let source_path t =
     Module.file (main_module t) ~ml_kind:Impl

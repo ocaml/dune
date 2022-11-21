@@ -298,5 +298,5 @@ let eval ~modules:all_modules ~stanza_loc ~modules_field
   match root_module with
   | None -> all_modules
   | Some (_, name) ->
-    let module_ = Module.generated_root ~src_dir name in
+    let module_ = Module.generated ~kind:Root ~src_dir name in
     Module_name.Map.set all_modules name module_

@@ -509,17 +509,16 @@ let setup_dialect_rules sctx ~sandbox ~dir ~expander (m : Module.t) =
   let ml = Module.ml_source m in
   let+ () =
     Module.iter m ~f:(fun ml_kind f ->
-        Memo.Option.iter
-          (Dialect.preprocess (Module.File.dialect f) ml_kind)
-          ~f:(fun (loc, action) ->
-            let src = Path.as_in_build_dir_exn (Module.File.path f) in
-            let dst =
-              Option.value_exn (Module.file ml ~ml_kind)
-              |> Path.as_in_build_dir_exn
-            in
-            Super_context.add_rule sctx ~dir
-              (action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src
-                 ~target:dst)))
+        Dialect.preprocess (Module.File.dialect f) ml_kind
+        |> Memo.Option.iter ~f:(fun (loc, action) ->
+               let src = Path.as_in_build_dir_exn (Module.File.path f) in
+               let dst =
+                 Module.file ml ~ml_kind |> Option.value_exn
+                 |> Path.as_in_build_dir_exn
+               in
+               Super_context.add_rule sctx ~dir
+                 (action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src
+                    ~target:dst)))
   in
   ml
 

@@ -34,7 +34,7 @@ val coqtop_args_theory :
   -> dir_contents:Dir_contents.t
   -> Coq_stanza.Theory.t
   -> Coq_module.t
-  -> 'a Command.Args.t list Action_builder.t
+  -> 'a Command.Args.t list Memo.t
 
 (** coq.extraction stanza rules *)
 val setup_extraction_rules :
@@ -50,7 +50,7 @@ val coqtop_args_extraction :
   -> dir:Path.Build.t
   -> Coq_stanza.Extraction.t
   -> Coq_module.t
-  -> 'a Command.Args.t list Action_builder.t
+  -> 'a Command.Args.t list Memo.t
 
 val setup_coqpp_rules :
   sctx:Super_context.t -> dir:Path.Build.t -> Coq_stanza.Coqpp.t -> unit Memo.t

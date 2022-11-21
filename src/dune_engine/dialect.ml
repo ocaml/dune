@@ -86,17 +86,14 @@ let decode =
      and+ intf = field "interface" (fields (kind Ml_kind.Intf)) in
      { name; file_kinds = Ml_kind.Dict.make ~intf ~impl })
 
-let extension { file_kinds = { Ml_kind.Dict.intf; impl }; _ } = function
-  | Ml_kind.Intf -> intf.extension
-  | Impl -> impl.extension
+let extension { file_kinds; _ } ml_kind =
+  (Ml_kind.Dict.get file_kinds ml_kind).extension
 
-let preprocess { file_kinds = { Ml_kind.Dict.intf; impl }; _ } = function
-  | Ml_kind.Intf -> intf.preprocess
-  | Impl -> impl.preprocess
+let preprocess { file_kinds; _ } ml_kind =
+  (Ml_kind.Dict.get file_kinds ml_kind).preprocess
 
-let format { file_kinds = { Ml_kind.Dict.intf; impl }; _ } = function
-  | Ml_kind.Intf -> intf.format
-  | Impl -> impl.format
+let format { file_kinds; _ } ml_kind =
+  (Ml_kind.Dict.get file_kinds ml_kind).format
 
 let ocaml =
   let format kind =

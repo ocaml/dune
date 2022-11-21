@@ -112,7 +112,9 @@ module Stdlib = struct
 
   let impl_only t =
     Module_name.Map.values t.modules
-    |> List.filter ~f:(fun m -> Some (Module.name m) <> t.exit_module)
+    |> List.filter ~f:(fun m ->
+           (* TODO what about checking for implementations? *)
+           Some (Module.name m) <> t.exit_module)
 
   let find t = Module_name.Map.find t.modules
 
@@ -187,6 +189,10 @@ module Mangle = struct
     in
     Module.generated_alias ~src_dir name
 end
+
+let impl_only_of_map m =
+  Module_name.Map.fold m ~init:[] ~f:(fun m acc ->
+      if Module.has m ~ml_kind:Impl then m :: acc else acc)
 
 module Wrapped = struct
   type t =
@@ -313,7 +319,7 @@ module Wrapped = struct
       ; wrapped = _
       } =
     let modules =
-      Module.Name_map.impl_only modules @ Module_name.Map.values wrapped_compat
+      impl_only_of_map modules @ Module_name.Map.values wrapped_compat
     in
     alias_module :: modules
 
@@ -532,7 +538,7 @@ let make_wrapped ~src_dir ~modules kind =
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w
   | Singleton m -> if Module.has ~ml_kind:Impl m then [ m ] else []
-  | Unwrapped m -> Module.Name_map.impl_only m
+  | Unwrapped m -> impl_only_of_map m
   | Wrapped w -> Wrapped.impl_only w
   | Impl { vlib; impl } -> impl_only impl @ impl_only vlib
 

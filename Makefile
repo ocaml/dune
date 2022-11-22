@@ -155,6 +155,8 @@ update-jbuilds: $(BIN)
 update-dkml: $(BIN)
 	opam exec -- generate-setup-dkml-scaffold
 	$(BIN) build @gen-dkml --auto-promote || $(BIN) build @gen-dkml --auto-promote
+	rm -rf ci/setup-dkml/gh-darwin ci/setup-dkml/gh-linux ci/setup-dkml/gl
+	rm -rf ci/setup-dkml/pc/setup-dkml-darwin_*.sh ci/setup-dkml/pc/setup-dkml-linux_*.sh
 	$(BIN) build @ci/fmt --auto-promote || $(BIN) build @ci/fmt --auto-promote
 
 # assumes MSYS2 or Cygwin, and Visual Studio. Do not use 'with-dkml make ...'

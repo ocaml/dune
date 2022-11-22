@@ -22,6 +22,8 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
+- Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
+
 3.6.0 (2022-11-14)
 ------------------
 

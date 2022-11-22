@@ -80,7 +80,7 @@ melange:
 dev-deps: melange
 	opam install -y $(TEST_DEPS)
 
-.PHONE: dev-deps-sans-melange
+.PHONY: dev-deps-sans-melange
 dev-deps-sans-melange:
 	opam install -y $(TEST_DEPS)
 

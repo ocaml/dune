@@ -33,7 +33,7 @@ type for_ =
       { first_exe : string
             (** Name of first executable appearing in executables stanza *)
       }
-  | Melange of { target : string }
+  | Melange of { emit_dir : Path.Source.t }
 
 val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
 

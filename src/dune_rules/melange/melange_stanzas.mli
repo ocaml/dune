@@ -4,7 +4,6 @@ open Import
 module Emit : sig
   type t =
     { loc : Loc.t
-    ; target : string
     ; alias : Alias.Name.t option
     ; module_system : Melange.Module_system.t
     ; modules : Stanza_common.Modules_settings.t

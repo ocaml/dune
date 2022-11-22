@@ -1,7 +1,5 @@
 open Import
 
-val emit_target_dir : Melange_stanzas.Emit.t -> dir:Path.Build.t -> Path.Build.t
-
 val setup_emit_cmj_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t

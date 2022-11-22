@@ -5,14 +5,16 @@ Test (entries) field can be left empty
   > (using melange 0.1)
   > EOF
 
-  $ cat > dune <<EOF
+  $ mkdir ./dist
+  $ cat > dist/dune <<EOF
   > (melange.emit
   >  (alias melange-dist)
-  >  (target dist)
   >  (module_system commonjs))
   > EOF
 
-Create the dist folder
+  $ dune build @melange-dist --display=short
+          melc dist/.dist.mobjs/melange/melange.{cmi,cmj,cmt}
+          melc dist/dist/melange.js
 
   $ mkdir ./dist
 

@@ -73,8 +73,11 @@ module Modules = struct
     in
     let melange_emits =
       match
-        String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir) ->
-            (mel.target, (m, obj_dir)))
+        String.Map.of_list_map emits ~f:(fun (_mel, _, m, obj_dir) ->
+            let emit_dir =
+              Path.Build.drop_build_context_exn (Obj_dir.dir obj_dir)
+            in
+            (Path.Source.to_string emit_dir, (m, obj_dir)))
       with
       | Ok x -> x
       | Error (name, _, (mel, _, _, _)) ->
@@ -231,7 +234,7 @@ let modules_of_files ~path ~dialects ~dir ~files =
 type for_ =
   | Library of Lib_name.t
   | Exe of { first_exe : string }
-  | Melange of { target : string }
+  | Melange of { emit_dir : Path.Source.t }
 
 let dyn_of_for_ =
   let open Dyn in
@@ -239,15 +242,16 @@ let dyn_of_for_ =
   | Library n -> variant "Library" [ Lib_name.to_dyn n ]
   | Exe { first_exe } ->
     variant "Exe" [ record [ ("first_exe", string first_exe) ] ]
-  | Melange { target } ->
-    variant "Melange" [ record [ ("target", string target) ] ]
+  | Melange { emit_dir } ->
+    variant "Melange" [ record [ ("emit_dir", Path.Source.to_dyn emit_dir) ] ]
 
 let modules_and_obj_dir t ~for_ =
   match
     match for_ with
     | Library name -> Lib_name.Map.find t.modules.libraries name
     | Exe { first_exe } -> String.Map.find t.modules.executables first_exe
-    | Melange { target } -> String.Map.find t.modules.melange_emits target
+    | Melange { emit_dir } ->
+      String.Map.find t.modules.melange_emits (Path.Source.to_string emit_dir)
   with
   | Some s -> s
   | None ->
@@ -431,7 +435,11 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
         in
         Memo.return (`Executables (exes, sources, modules, obj_dir))
       | Melange_stanzas.Emit.T mel ->
-        let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
+        let obj_dir =
+          Obj_dir.make_melange_emit ~dir
+            ~name:
+              (Path.Build.drop_build_context_exn dir |> Path.Source.to_string)
+        in
         let sources, modules =
           Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
             ~kind:Modules_field_evaluator.Exe_or_normal_lib

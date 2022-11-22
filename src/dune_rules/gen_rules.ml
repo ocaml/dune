@@ -397,9 +397,7 @@ let rec under_melange_emit_target ~dir =
     | Some stanzas -> (
       match
         List.find_map stanzas.stanzas ~f:(function
-          | Melange_stanzas.Emit.T mel ->
-            let target_dir = Melange_rules.emit_target_dir ~dir:parent mel in
-            Option.some_if (Path.Build.equal target_dir dir) mel
+          | Melange_stanzas.Emit.T mel -> Some mel
           | _ -> None)
       with
       | None -> under_melange_emit_target ~dir:parent
@@ -418,9 +416,10 @@ let melange_emit_rules sctx { stanza_dir; stanza } =
   ; rules
   }
 
-let gen_melange_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
-  if Path.Build.equal dir (Melange_rules.emit_target_dir ~dir:stanza_dir stanza)
-  then Some (melange_emit_rules sctx for_melange)
+let gen_melange_emit_rules sctx ~dir ({ stanza_dir; stanza = _ } as for_melange)
+    =
+  if Path.Build.equal dir stanza_dir then
+    Some (melange_emit_rules sctx for_melange)
   else None
 
 let gen_melange_emit_rules_or_empty_redirect sctx ~dir = function
@@ -523,18 +522,8 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
           in
           Rules.union rules rules'
         in
-        let* subdirs =
-          let+ subdirs =
-            let subdirs = String.Set.of_keys automatic_sub_dirs_map in
-            let+ stanzas = Only_packages.stanzas_in_dir dir in
-            match stanzas with
-            | None -> subdirs
-            | Some stanzas ->
-              List.filter_map stanzas.stanzas ~f:(function
-                | Melange_stanzas.Emit.T mel -> Some mel.target
-                | _ -> None)
-              |> String.Set.of_list |> String.Set.union subdirs
-          in
+        let subdirs =
+          let subdirs = String.Set.of_keys automatic_sub_dirs_map in
           match components with
           | [] ->
             String.Set.union subdirs

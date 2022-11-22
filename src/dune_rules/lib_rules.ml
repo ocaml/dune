@@ -519,11 +519,11 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
       ; source_modules
       ; compile_info
       }
-  and+ preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-         ~instrumentation_backend:
-           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+  in
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

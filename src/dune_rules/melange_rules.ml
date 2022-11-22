@@ -157,11 +157,10 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
       Rules.Produce.Alias.add_deps alias deps
   in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let* preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation mel.preprocess
-         ~instrumentation_backend:
-           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation mel.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   let stdlib_dir = (Super_context.context sctx).stdlib_dir in
   Memo.return

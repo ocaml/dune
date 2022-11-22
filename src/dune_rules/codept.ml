@@ -80,59 +80,62 @@ let codept_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } a
     Module.sources m
     |> List.fold_left ~init:acc ~f:Path.Set.add)
   in
-  let open Memo.O in
-  let* codept = Context.which context "codept" in
-  let codept = Ok (match codept with Some p -> p | None -> assert false) in
-  let* () =
-    Super_context.add_rule sctx ~dir
-      (let open Action_builder.With_targets.O in
-      let flags, sandbox = Action_builder.return [], sandbox
-      in
-      Command.run codept
-        ~dir:(Path.build context.build_dir)
-        ~stdout_to:(Path.Build.relative (Obj_dir.obj_dir obj_dir) ("cod.txt"))
-        [ A "-modules"
-        ; As ["-verbosity"; "critical"]
-        ; A "-k"
-        ; Command.Args.dyn flags
-        ; Deps (Path.Set.to_list sources)
-        ]
-      >>| Action.Full.add_sandbox sandbox)
-  in
-  let* () =
-    Super_context.add_rule sctx ~dir (
-      let open Action_builder.O in
-      let a =
-        let+ lines = Action_builder.lines_of (Path.build @@ Path.Build.relative (Obj_dir.obj_dir obj_dir) ("cod.txt")) in
-        let ms = parse_deps_exn' lines in
-          ms
-      in
-      Action_builder.with_file_targets ~file_targets:(
-        List.map ~f:(fun p -> Path.Build.relative  (Obj_dir.obj_dir obj_dir) (Path.basename p ^ ".d")) (Path.Set.to_list sources)
-      ) (
-        let+ ms = a in
-        let ms' = List.map ms ~f:(fun (x, ds) ->
-          let tar = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Filename.basename x ^ ".d") in
-          (* Action_builder.with_file_targets ~file_targets:[tar] ( *)
-            Action.write_file tar (x ^ ": " ^ String.concat ~sep:" " ds)
-          (* ) *)
-        )
+  if Path.Set.is_empty sources then
+    Memo.return ()
+  else
+    let open Memo.O in
+    let* codept = Context.which context "codept" in
+    let codept = Ok (match codept with Some p -> p | None -> assert false) in
+    let* () =
+      Super_context.add_rule sctx ~dir
+        (let open Action_builder.With_targets.O in
+        let flags, sandbox = Action_builder.return [], sandbox
         in
-        Action.reduce ms'
+        Command.run codept
+          ~dir:(Path.build context.build_dir)
+          ~stdout_to:(Path.Build.relative (Obj_dir.obj_dir obj_dir) ("cod.txt"))
+          [ A "-modules"
+          ; As ["-verbosity"; "critical"]
+          ; A "-k"
+          ; Command.Args.dyn flags
+          ; Deps (Path.Set.to_list sources)
+          ]
+        >>| Action.Full.add_sandbox sandbox)
+    in
+    let* () =
+      Super_context.add_rule sctx ~dir (
+        let open Action_builder.O in
+        let a =
+          let+ lines = Action_builder.lines_of (Path.build @@ Path.Build.relative (Obj_dir.obj_dir obj_dir) ("cod.txt")) in
+          let ms = parse_deps_exn' lines in
+            ms
+        in
+        Action_builder.with_file_targets ~file_targets:(
+          List.map ~f:(fun p -> Path.Build.relative  (Obj_dir.obj_dir obj_dir) (Path.basename p ^ ".d")) (Path.Set.to_list sources)
+        ) (
+          let+ ms = a in
+          let ms' = List.map ms ~f:(fun (x, ds) ->
+            let tar = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Filename.basename x ^ ".d") in
+            (* Action_builder.with_file_targets ~file_targets:[tar] ( *)
+              Action.write_file tar (x ^ ": " ^ String.concat ~sep:" " ds)
+            (* ) *)
+          )
+          in
+          Action.reduce ms'
+        )
+        |> Action_builder.With_targets.map ~f:Action.Full.make
+        (* Action_builder.
+        Action_builder.With_targets.all ms'
+        |> Action_builder.With_targets.map ~f:Action.Full.reduce *)
+        (* |> Action_builder.return *)
+        (* Action_builder.With_targets. *)
+        (* Action_builder.with_file_targets ~file_targets:[] (
+          Action_builder.al
+        ) *)
+        (* >>| Action.Full.add_sandbox sandbox *)
       )
-      |> Action_builder.With_targets.map ~f:Action.Full.make
-      (* Action_builder.
-      Action_builder.With_targets.all ms'
-      |> Action_builder.With_targets.map ~f:Action.Full.reduce *)
-      (* |> Action_builder.return *)
-      (* Action_builder.With_targets. *)
-      (* Action_builder.with_file_targets ~file_targets:[] (
-        Action_builder.al
-      ) *)
-      (* >>| Action.Full.add_sandbox sandbox *)
-    )
-in
-  Memo.return ()
+    in
+    Memo.return ()
 
 let deps_of
     ({ sandbox = _; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)

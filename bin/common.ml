@@ -158,6 +158,9 @@ let init ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.build_dir);
+  (* Once we have the build directory set, initialise the logging. We can't do
+     this earlier, because the build log typically goes into [_build/log]. *)
+  Dune_util.Log.init () ?file:log_file;
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;
@@ -173,7 +176,6 @@ let init ?log_file c =
       ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
   in
   Dune_config.init config;
-  Dune_util.Log.init () ?file:log_file;
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
     let+ w = Dune_rules.Workspace.workspace () in

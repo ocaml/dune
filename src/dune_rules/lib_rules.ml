@@ -392,7 +392,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
                      file explicitly *)
                   let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
                   Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc
-                    (Action_builder.copy ~src ~dst)))
+                    (Action_builder.symlink ~src ~dst)))
   in
   let modes = Compilation_context.modes cctx in
   (* The [dir] below is used as an object directory without going through

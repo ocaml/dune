@@ -1,3 +1,8 @@
+3.6.2 (unreleased)
+------------------
+
+- Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
+
 3.6.1 (2022-11-24)
 ------------------
 

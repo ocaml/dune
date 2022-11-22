@@ -76,10 +76,19 @@ let interpret_deps md ~unit deps =
 
 let codept_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as _md) =
   let context = Super_context.context sctx in
-  let sources = Modules.fold_user_written modules ~init:Path.Set.empty ~f:(fun m acc ->
-    Module.sources m
+  let impl_sources = Modules.fold_user_available modules ~init:Path.Set.empty ~f:(fun m acc ->
+    Module.source m ~ml_kind:Impl
+    |> Option.map ~f:Module.File.path
+    |> Option.to_list
     |> List.fold_left ~init:acc ~f:Path.Set.add)
   in
+  let intf_sources = Modules.fold_user_available modules ~init:Path.Set.empty ~f:(fun m acc ->
+    Module.source m ~ml_kind:Intf
+    |> Option.map ~f:Module.File.path
+    |> Option.to_list
+    |> List.fold_left ~init:acc ~f:Path.Set.add)
+  in
+  let sources = Path.Set.union impl_sources intf_sources in
   if Path.Set.is_empty sources then
     Memo.return ()
   else
@@ -91,15 +100,27 @@ let codept_of ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } a
         (let open Action_builder.With_targets.O in
         let flags, sandbox = Action_builder.return [], sandbox
         in
+        let impl_args =
+          Path.Set.to_list impl_sources
+          |> List.concat_map ~f:(fun impl_source ->
+              Command.Args.[A "-impl"; Dep impl_source]
+            )
+        in
+        let intf_args =
+          Path.Set.to_list intf_sources
+          |> List.concat_map ~f:(fun intf_source ->
+              Command.Args.[A "-intf"; Dep intf_source]
+            )
+        in
         Command.run codept
           ~dir:(Path.build context.build_dir)
           ~stdout_to:(Path.Build.relative (Obj_dir.obj_dir obj_dir) ("cod.txt"))
-          [ A "-modules"
+          (Command.Args.[ A "-modules"
           ; A "-k"
           ; As ["-verbosity"; "critical"] (* must be after -k *)
           ; Command.Args.dyn flags
-          ; Deps (Path.Set.to_list sources)
-          ]
+          (* ; Deps (Path.Set.to_list sources) *)
+          ] @ impl_args @ intf_args)
         >>| Action.Full.add_sandbox sandbox)
     in
     let* () =

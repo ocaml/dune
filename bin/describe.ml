@@ -237,11 +237,11 @@ module Crawl = struct
       let+ deps_for_intf =
         (* compute the dependencies for the interface part *)
         let ml_kind = Ocaml.Ml_kind.Intf in
-        Codept2.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+        Codept.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
       and+ deps_for_impl =
         (* compute the dependencies for the implementation part *)
         let ml_kind = Ocaml.Ml_kind.Impl in
-        Codept2.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+        Codept.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
       in
       (deps_for_intf, deps_for_impl)
 

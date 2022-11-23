@@ -140,7 +140,8 @@ let deps_of
       (* let+ paths = Action_builder.with_no_targets paths in *)
       let dir = Path.build context.build_dir in
       let args =
-        [ Command.Args.dyn flags
+        [ Command.Args.As ["-verbosity"; "error"] (* avoid unresolved module notifications *)
+        ; Command.Args.dyn flags
         (* ; Command.Ml_kind.flag ml_kind *)
         ; Dep (Path.build m2l_file)
         ; Dyn paths

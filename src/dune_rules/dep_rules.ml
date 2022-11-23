@@ -2,6 +2,8 @@ open Import
 open Memo.O
 open Dep_gen.Modules_data
 
+module Current_dep_gen: Dep_gen.S = Codept (* TODO: make dynamic *)
+
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
   |> String.concat ~sep:"\n"
@@ -53,7 +55,7 @@ let deps_of_module md ~ml_kind m =
       | None -> Modules.compat_for_exn modules m
     in
     Action_builder.return (List.singleton interface_module) |> Memo.return
-  | _ -> Codept.deps_of md ~ml_kind m
+  | _ -> Current_dep_gen.deps_of md ~ml_kind m
 
 let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
   let vimpl = Option.value_exn vimpl in
@@ -77,7 +79,7 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
     let+ () =
       Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
     in
-    Codept.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
+    Current_dep_gen.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 
 let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =
@@ -112,7 +114,6 @@ let for_module md module_ =
   dict_of_func_concurrently (deps_of md (Normal module_))
 
 let rules md =
-  (* let* () = Codept.codept_of md in *)
   let modules = md.modules in
   match Modules.as_singleton modules with
   | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)

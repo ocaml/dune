@@ -2,6 +2,8 @@
 
 open Import
 
+module Current_dep_gen: Dep_gen.S
+
 val for_module :
      Dep_gen.Modules_data.t
   -> Module.t

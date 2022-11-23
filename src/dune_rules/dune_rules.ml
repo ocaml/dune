@@ -33,8 +33,6 @@ module Toplevel = Toplevel
 module Global = Global
 module Only_packages = Only_packages
 module Resolve = Resolve
-module Ocamldep = Ocamldep
-module Codept = Codept
 module Preprocess = Preprocess
 module Coq_rules = Coq_rules
 module Coq_module = Coq_module
@@ -48,6 +46,10 @@ module Diff = Dune_lang.Action.Diff
 
 module Install_rules = struct
   let install_file = Install_rules.install_file
+end
+
+module Dep_rules = struct
+  module Current_dep_gen = Dep_rules.Current_dep_gen
 end
 
 (* Only for tests *)

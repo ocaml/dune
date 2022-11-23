@@ -30,6 +30,8 @@ let parse_deps_exn ~file lines =
 let interpret_deps md ~unit deps =
   let dir = md.dir in
   let modules = md.modules in
+  (* codept still finds self-cycle from a single m2l *)
+  (* let deps = List.filter ~f:(fun d -> Module_name.to_string (Module.name unit) <> d) deps in *)
   let deps = parse_module_names ~unit ~modules deps in
   if Option.is_none md.stdlib then
     Modules.main_module_name modules
@@ -142,7 +144,7 @@ let deps_of
       (* let+ paths = Action_builder.with_no_targets paths in *)
       let dir = Path.build context.build_dir in
       let args =
-        [ Command.Args.As ["-verbosity"; "error"] (* avoid unresolved module notifications *)
+        [ Command.Args.As ["-k"; "-verbosity"; "error"] (* avoid self-cycle errors and unresolved module notifications *)
         ; Command.Args.dyn flags
         (* ; Command.Ml_kind.flag ml_kind *)
         ; Dep (Path.build m2l_file)

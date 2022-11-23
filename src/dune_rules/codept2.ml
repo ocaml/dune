@@ -67,7 +67,7 @@ let deps_of
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate source) in
   (* let m2l_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Path.basename (Module.File.path source) ^ ".m2l") in *)
-  let m2l_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Module_name.to_string (Module.name unit) ^ ".m2l") in
+  let m2l_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Module_name.to_string (Module.name unit) ^ Ml_kind.choose ~impl:".m2l" ~intf:".m2li" ml_kind) in
   let approx_dep_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Path.basename (Module.File.path source) ^ ".approx-d") in
   let sig_file m =
     Path.Build.relative (Obj_dir.obj_dir obj_dir) (Module_name.to_string (Module.name m) ^ ".sig")

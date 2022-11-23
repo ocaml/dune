@@ -81,7 +81,6 @@ let deps_of
   in
   let open Memo.O in
   let* codept = Context.which context "codept" in
-  let codept' = Option.value_exn codept in
   let codept = Ok (Option.value_exn codept) in
   let* () =
     Super_context.add_rule sctx ~dir
@@ -142,9 +141,9 @@ let deps_of
           ~default:(Action_builder.return [], sandbox)
       in
       (* let+ paths = Action_builder.with_no_targets paths in *)
-      let dir = Path.build context.build_dir in
-      let args =
-        [ Command.Args.As ["-k"; "-verbosity"; "error"] (* avoid self-cycle errors and unresolved module notifications *)
+      Command.run codept
+        ~dir:(Path.build context.build_dir)
+        [ As ["-k"; "-verbosity"; "error"] (* avoid self-cycle errors and unresolved module notifications *)
         ; Command.Args.dyn flags
         (* ; Command.Ml_kind.flag ml_kind *)
         ; Dep (Path.build m2l_file)
@@ -159,25 +158,7 @@ let deps_of
         ; Target ocamldep_output
         ; A "-modules"
         ]
-      in
-      (* Command.run codept
-        ~dir:(Path.build context.build_dir)
-        [ Command.Args.dyn flags
-        ; Command.Ml_kind.flag ml_kind
-        ; Dep (Path.build m2l_file)
-        ; Deps paths
-        ; A "-o"
-        ; Target (sig_file unit)
-        ; A "-sig"
-        ; A "-o"
-        ; Target ocamldep_output
-        ; A "-modules"
-        ]
-      >>| Action.Full.add_sandbox sandbox) *)
-      let+ () = Action_builder.with_no_targets (Action_builder.path codept')
-      and+ args = Command.expand ~dir (S args) in
-      let action = Action.run codept args in
-      Action.Full.make ~sandbox (Action.chdir dir action))
+      >>| Action.Full.add_sandbox sandbox)
     in
     Super_context.add_rule sctx ~dir action
   in

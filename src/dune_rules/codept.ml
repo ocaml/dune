@@ -1,6 +1,10 @@
 open Import
 open Dep_gen.Modules_data
 
+let codept_prog ~dir sctx =
+  Super_context.resolve_program sctx ~dir ~loc:None "codept"
+    ~hint:"opam install codept"
+
 let deps_of
     ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
     ~ml_kind unit =
@@ -22,8 +26,7 @@ let deps_of
     | Impl -> not (Module.has unit ~ml_kind:Intf)
   in
   let open Memo.O in
-  let* codept = Context.which context "codept" in
-  let codept = Ok (Option.value_exn codept) in
+  let* codept = codept_prog ~dir sctx in
   let* () =
     Super_context.add_rule sctx ~dir
       (let open Action_builder.With_targets.O in

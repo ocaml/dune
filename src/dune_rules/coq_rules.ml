@@ -401,23 +401,17 @@ let setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name ~use_stdlib
 
 let coqc_rule (cctx : _ Context.t) ~dir ~coq_flags ~file_flags ~coqc ~coqc_dir
     ~mode ~wrapper_name coq_module =
-  let source = Coq_module.source coq_module in
-  let native_flags = Context.coqc_native_flags ~mode cctx in
-  let file_flags =
-    let objects_to =
-      Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:dir
-        ~obj_files_mode:Coq_module.Build coq_module
-      |> List.map ~f:fst
-    in
-    [ Command.Args.Hidden_targets objects_to
-    ; native_flags
-    ; S file_flags
-    ; Dep (Path.build source)
-    ]
-  in
   let open Action_builder.With_targets.O in
   Command.run ~dir:(Path.build coqc_dir) coqc
-    (Command.Args.dyn coq_flags :: file_flags)
+    [ Command.Args.dyn coq_flags
+    ; Command.Args.Hidden_targets
+        (Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:dir
+           ~obj_files_mode:Coq_module.Build coq_module
+        |> List.map ~f:fst)
+    ; Context.coqc_native_flags ~mode cctx
+    ; S file_flags
+    ; Dep (Path.build @@ Coq_module.source coq_module)
+    ]
   (* The way we handle the transitive dependencies of .vo files is not safe for
      sandboxing *)
   >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing

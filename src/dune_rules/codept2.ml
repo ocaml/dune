@@ -105,7 +105,12 @@ let deps_of
   in
   let* () =
     let build_paths dependencies =
-      List.map dependencies ~f:sig_file
+      List.filter_map dependencies ~f:(fun dependency ->
+          if Module.kind dependency = Alias then
+            None
+          else
+            Some (sig_file dependency)
+        )
     in
     let action =
       let paths =

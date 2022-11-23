@@ -1,6 +1,5 @@
 open Import
-
-open Ocamldep.Modules_data
+open Dep_gen.Modules_data
 
 let parse_module_names ~(unit : Module.t) ~modules words =
   List.filter_map words ~f:(fun m ->

@@ -75,7 +75,7 @@ type t =
   ; vimpl : Vimpl.t option
   ; modes : Mode.Dict.Set.t
   ; bin_annot : bool
-  ; ocamldep_modules_data : Ocamldep.Modules_data.t
+  ; ocamldep_modules_data : Dep_gen.Modules_data.t
   ; loc : Loc.t option
   }
 
@@ -152,7 +152,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     Option.value ~default modes |> Mode.Dict.map ~f:Option.is_some
   in
   let opaque = eval_opaque (Super_context.context super_context) opaque in
-  let ocamldep_modules_data : Ocamldep.Modules_data.t =
+  let ocamldep_modules_data : Dep_gen.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
     ; sandbox
     ; obj_dir

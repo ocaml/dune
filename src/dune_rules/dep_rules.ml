@@ -1,6 +1,6 @@
 open Import
 open Memo.O
-open Ocamldep.Modules_data
+open Dep_gen.Modules_data
 
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))

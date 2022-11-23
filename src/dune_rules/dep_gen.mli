@@ -16,3 +16,9 @@ module Modules_data : sig
     ; sandbox : Sandbox_config.t
     }
 end
+
+val parse_module_names: unit:Module.t -> modules:Modules.t -> string list -> Module.t list
+
+val parse_deps_exn: file:Path.t -> string list -> string list
+
+val interpret_deps: Modules_data.t -> unit:Module.t -> string list -> Module.t list

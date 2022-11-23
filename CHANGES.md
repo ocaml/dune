@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Move `$ dune ocaml-merlin -dump-config=$dir` to `$ dune ocaml merlin
+  dump-config $dir`. (#6547, @rgrinberg)
+
 - Allow compilation rules to be impacted by `(env ..)` stanzas that modify the
   environment or set binaries. (#6527, @rgrinberg)
 

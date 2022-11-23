@@ -1,29 +1,5 @@
 open Import
 
-module Pp_spec : sig
-  type t
-
-  val make :
-       Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
-    -> Ocaml.Version.t
-    -> t
-
-  val pped_module : t -> Module.t -> Module.t
-end = struct
-  type t = (Module.t -> Module.t) Module_name.Per_item.t
-
-  let make preprocess v =
-    Module_name.Per_item.map preprocess ~f:(fun pp ->
-        match Preprocess.remove_future_syntax ~for_:Compiler pp v with
-        | No_preprocessing -> Module.ml_source
-        | Action (_, _) -> fun m -> Module.ml_source (Module.pped m)
-        | Pps { loc = _; pps = _; flags = _; staged } ->
-          if staged then Module.ml_source
-          else fun m -> Module.pped (Module.ml_source m))
-
-  let pped_module (t : t) m = Module_name.Per_item.get t (Module.name m) m
-end
-
 let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
   let vlib = Vimpl.vlib vimpl in
@@ -91,12 +67,12 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
       let virtual_ =
         let virtual_ = Lib_info.virtual_ info in
         match virtual_ with
+        | Some v -> v
         | None ->
           User_error.raise ~loc:lib.buildable.loc
             [ Pp.textf "Library %s isn't virtual and cannot be implemented"
                 (Lib_name.to_string implements)
             ]
-        | Some v -> v
       in
       let+ vlib_modules, vlib_foreign_objects =
         let foreign_objects = Lib_info.foreign_objects info in
@@ -111,21 +87,22 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             let dir = Lib_info.src_dir info in
             Dir_contents.get sctx ~dir
           in
-          let* preprocess =
-            Resolve.Memo.read_memo
-              (Preprocess.Per_module.with_instrumentation
-                 lib.buildable.preprocess
-                 ~instrumentation_backend:
-                   (Lib.DB.instrumentation_backend (Scope.libs scope)))
-          in
           let* modules =
+            let* preprocess =
+              Resolve.Memo.read_memo
+                (Preprocess.Per_module.with_instrumentation
+                   lib.buildable.preprocess
+                   ~instrumentation_backend:
+                     (Lib.DB.instrumentation_backend (Scope.libs scope)))
+            in
             let pp_spec =
-              Pp_spec.make preprocess (Super_context.context sctx).version
+              Staged.unstage
+                (Preprocessing.pped_modules_map preprocess
+                   (Super_context.context sctx).version)
             in
             Dir_contents.ocaml dir_contents
             >>| Ml_sources.modules ~for_:(Library name)
-            >>= Modules.map_user_written ~f:(fun m ->
-                    Memo.return (Pp_spec.pped_module pp_spec m))
+            >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
           in
           let+ foreign_objects =
             let ext_obj = (Super_context.context sctx).lib_config.ext_obj in

@@ -12,7 +12,7 @@ rules with dependencies outside the build dir are allowed
   $ cat >a/b/dune <<EOF
   > (rule
   >  (alias test)
-  >  (action (with-stdin-from "$(pwd)/external.txt" (run cat -))))
+  >  (action (with-stdin-from "$PWD/external.txt" (run cat -))))
   > EOF
 
   $ cat >external.txt <<EOF
@@ -22,9 +22,11 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
   $ dune build --root=a/b @test
   Entering directory 'a/b'
+  Leaving directory 'a/b'
 
   $ cat >external.txt <<EOF
   > txt2
@@ -33,13 +35,14 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt2
+  Leaving directory 'a/b'
 
 ## Test copy files absolute
   $ cat >a/b/dune <<EOF
   > (rule
   >  (alias test)
   >  (action (with-stdin-from "external.txt" (run cat -))))
-  > (copy_files "$(pwd)/external.txt")
+  > (copy_files "$PWD/external.txt")
   > EOF
 
   $ cat >external.txt <<EOF
@@ -49,10 +52,12 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
   Entering directory 'a/b'
+  Leaving directory 'a/b'
 
   $ cat >external.txt <<EOF
   > txt2
@@ -61,6 +66,7 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt2
+  Leaving directory 'a/b'
 
 ### 1 level below
 
@@ -78,10 +84,12 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
   Entering directory 'a/b'
+  Leaving directory 'a/b'
 
   $ cat >a/external.txt <<EOF
   > txt2
@@ -90,6 +98,7 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt2
+  Leaving directory 'a/b'
 
 ## Test copy files 1 level below
   $ cat >a/b/dune <<EOF
@@ -106,10 +115,12 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
   Entering directory 'a/b'
+  Leaving directory 'a/b'
 
   $ cat >a/external.txt <<EOF
   > txt2
@@ -118,6 +129,7 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt2
+  Leaving directory 'a/b'
 
 ### 2 level below
 
@@ -137,10 +149,12 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
   Entering directory 'a/b'
+  Leaving directory 'a/b'
 
   $ cat >external.txt <<EOF
   > txt2
@@ -149,6 +163,7 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt2
+  Leaving directory 'a/b'
 
 ## Test copy files 2 level below
   $ cat >a/b/dune <<EOF
@@ -165,10 +180,12 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt1
+  Leaving directory 'a/b'
 
 # Check that nothing is done when nothing change
   $ dune build --root=a/b @test
   Entering directory 'a/b'
+  Leaving directory 'a/b'
 
   $ cat >external.txt <<EOF
   > txt2
@@ -177,6 +194,7 @@ rules with dependencies outside the build dir are allowed
   $ dune build --root=a/b @test
   Entering directory 'a/b'
   txt2
+  Leaving directory 'a/b'
 
 ## Test dune exec absolute
   $ cat >a/script.sh <<EOF
@@ -186,13 +204,15 @@ rules with dependencies outside the build dir are allowed
 
   $ chmod u+x a/script.sh
 
-  $ dune exec --root=a/b -- $(pwd)/a/script.sh
+  $ dune exec --root=a/b -- $PWD/a/script.sh
   Entering directory 'a/b'
+  Leaving directory 'a/b'
   txt1
 
 ## Test dune exec 1 level below
   $ dune exec --root=a/b -- ../script.sh
   Entering directory 'a/b'
+  Leaving directory 'a/b'
   txt1
 
 ## Test dune exec 2 level below
@@ -200,10 +220,12 @@ rules with dependencies outside the build dir are allowed
 
   $ dune exec --root=a/b -- ../../script.sh
   Entering directory 'a/b'
+  Leaving directory 'a/b'
   txt1
 
 # Regression test for #5572
   $ dune exec --root=a/b -- ../
   Entering directory 'a/b'
   Error: Program "../" not found!
+  Leaving directory 'a/b'
   [1]

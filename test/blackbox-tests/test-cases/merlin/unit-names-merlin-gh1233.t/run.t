@@ -4,7 +4,7 @@
   $ dune exec ./foo.exe
   42
 
-  $ dune ocaml-merlin --dump-config=$(pwd)
+  $ dune ocaml-merlin --dump-config=$PWD
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -24,7 +24,7 @@
      -short-paths
      -keep-locs)))
 
-  $ dune ocaml-merlin --dump-config=$(pwd)/foo
+  $ dune ocaml-merlin --dump-config=$PWD/foo
   Bar
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)

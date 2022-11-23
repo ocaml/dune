@@ -377,8 +377,7 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
     in
     fill_in_fields_that_depends_on_ocamlc_config { t with ocamlc_config }
 
-let need_to_compile_and_link_separately t =
-  (* Vague memory from writing the discover.ml script for Lwt... *)
+let is_msvc t =
   match t.ccomp_type with
   | "msvc" -> true
   | _ -> false
@@ -388,7 +387,6 @@ let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
   Unix.mkdir dir 0o777;
   let base = dir ^/ "test" in
   let c_fname = base ^ ".c" in
-  let obj_fname = base ^ t.ext_obj in
   let exe_fname = base ^ ".exe" in
   Io.write_file c_fname code;
   logf t "compiling c program:";
@@ -396,18 +394,19 @@ let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
   let run_ok args =
     Process.run_command_ok t ~dir (Process.command_args t.c_compiler args)
   in
+  let output_flag =
+    if is_msvc t then [ "-Fe" ^ exe_fname ] else [ "-o"; exe_fname ]
+  in
   let ok =
-    if need_to_compile_and_link_separately t then
-      run_ok (c_flags @ [ "-I"; t.stdlib_dir; "-c"; c_fname ])
-      && run_ok (("-o" :: exe_fname :: obj_fname :: t.c_libraries) @ link_flags)
-    else
-      run_ok
-        (List.concat
-           [ c_flags
-           ; [ "-I"; t.stdlib_dir; "-o"; exe_fname; c_fname ]
-           ; t.c_libraries
-           ; link_flags
-           ])
+    run_ok
+      (List.concat
+         [ c_flags
+         ; [ "-I"; t.stdlib_dir ]
+         ; output_flag
+         ; [ c_fname ]
+         ; t.c_libraries
+         ; link_flags
+         ])
   in
   if ok then Ok () else Error ()
 
@@ -421,11 +420,18 @@ let compile_c_prog t ?(c_flags = []) code =
   logf t "compiling c program:";
   List.iter (String.split_lines code) ~f:(logf t " | %s");
   let ok =
+    let output_flag =
+      if is_msvc t then [ "-Fo" ^ obj_fname ] else [ "-o"; obj_fname ]
+    in
     Process.run_command_ok t ~dir
       (Process.command_args t.c_compiler
-         (c_flags
-         @ "-I" :: t.stdlib_dir :: "-o" :: obj_fname :: "-c" :: c_fname
-           :: t.c_libraries))
+         (List.concat
+            [ c_flags
+            ; [ "-I"; t.stdlib_dir ]
+            ; output_flag
+            ; [ "-c"; c_fname ]
+            ; t.c_libraries
+            ]))
   in
   if ok then Ok obj_fname else Error ()
 

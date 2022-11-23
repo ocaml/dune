@@ -226,9 +226,10 @@ module Dirs_visited : sig
 
   module Per_fn : sig
     (** Stores the directories visited per node (basename) *)
-    type t
 
-    type dirs_visited
+    type dirs_visited := t
+
+    type t
 
     val init : t
 
@@ -236,7 +237,6 @@ module Dirs_visited : sig
 
     val add : t -> dirs_visited -> string * Path.Source.t * File.t -> t
   end
-  with type dirs_visited := t
 end = struct
   type t = Path.Source.t File.Map.t
 

@@ -225,7 +225,6 @@ module Crawl = struct
   module Deps : sig
     val read :
          options:options
-      -> use_pp:bool
       -> obj_dir:Path.Build.t Obj_dir.t
       -> modules:Modules.t
       -> Module.t
@@ -255,23 +254,11 @@ module Crawl = struct
         subject to a preprocessing phase. Two lists are returned. The first list
         contains the direct dependencies of the interface file, whereas the
         second list contains the direct dependencies of the implementation file. *)
-    let read ~options ~use_pp ~obj_dir ~modules unit =
+    let read ~options ~obj_dir ~modules unit =
       let no_deps = ([], []) in
       match options.with_deps with
       | false -> Memo.return (Action_builder.return no_deps)
       | true -> (
-        let unit =
-          (* This translation is necessary to handle files that are not in the
-             "ocaml" dialect, such as Reason files *)
-          Module.ml_source unit
-        in
-        let unit =
-          (* For files that are subject to a preprocessing phase, only the
-             preprocessed files have an attached ocamldep rule: the source files
-             have no such rule attached. In such a case, we refer to the
-             preprocessed module instead of the source module. *)
-          if use_pp then Module.pped unit else unit
-        in
         Memo.return
         @@
         match Module.kind unit with
@@ -323,23 +310,6 @@ module Crawl = struct
         in
         module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
 
-  (** [module_uses_pp per_module_pp module_] tells whether the module [module_]
-      needs some pre-processing stage, according to the per-module information
-      [per_module_pp]. The per-module information can be retrieved from the
-      library or executable [module_] belongs to. *)
-  let module_uses_pp
-      (per_module_pp :
-        Preprocess.With_instrumentation.t Preprocess.Per_module.t)
-      (module_ : Module.t) : bool =
-    let open Preprocess in
-    match
-      Per_module.find (Module.name module_)
-        (Per_module.without_instrumentation per_module_pp)
-    with
-    | No_preprocessing -> false
-    | Future_syntax _ | Action _ -> true
-    | Pps pps -> not @@ List.is_empty @@ pps.Pps.pps
-
   (** Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t) :
       (Descr.Item.t * Lib.Set.t) option Memo.t =
@@ -348,9 +318,18 @@ module Crawl = struct
       Dir_contents.get sctx ~dir >>= Dir_contents.ocaml
       >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
     in
+
+    let pp_map =
+      Staged.unstage
+      @@
+      let version = (Super_context.context sctx).version in
+      Preprocessing.pped_modules_map
+        (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
+        version
+    in
     let deps_of module_ =
-      let use_pp = module_uses_pp exes.buildable.preprocess module_ in
-      Deps.read ~options ~use_pp ~obj_dir ~modules:modules_ module_
+      let module_ = pp_map module_ in
+      Deps.read ~options ~obj_dir ~modules:modules_ module_
     in
     let obj_dir = Obj_dir.of_local obj_dir in
     let* scope =
@@ -392,12 +371,18 @@ module Crawl = struct
           >>= Dir_contents.ocaml
           >>| Ml_sources.modules_and_obj_dir ~for_:(Library name)
           >>= fun (modules_, obj_dir_) ->
+          let pp_map =
+            Staged.unstage
+            @@
+            let version = (Super_context.context sctx).version in
+            Preprocessing.pped_modules_map
+              (Preprocess.Per_module.without_instrumentation
+                 (Lib_info.preprocess info))
+              version
+          in
           let deps_of module_ =
-            let use_pp =
-              module_uses_pp (Lib_info.preprocess @@ Lib.info lib) module_
-            in
-            Deps.read ~options ~use_pp ~obj_dir:obj_dir_ ~modules:modules_
-              module_
+            Deps.read ~options ~obj_dir:obj_dir_ ~modules:modules_
+              (pp_map module_)
           in
           modules ~obj_dir ~deps_of modules_
       in

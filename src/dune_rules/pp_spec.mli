@@ -6,7 +6,7 @@ type t
 val dummy : t
 
 val make :
-  (Module.t -> lint:bool -> Module.t Memo.t) Module_name.Per_item.t -> t Memo.t
+  (Module.t -> lint:bool -> Module.t Memo.t) Module_name.Per_item.t -> t
 
 (** Setup the preprocessing rules for the following modules and returns the
     translated modules *)

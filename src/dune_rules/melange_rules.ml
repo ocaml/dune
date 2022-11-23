@@ -9,7 +9,17 @@ let make_js_name ~js_ext ~dst_dir m =
   let name = Melange.js_basename m ^ js_ext in
   Path.Build.relative dst_dir name
 
-let js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext =
+let local_of_lib ~loc lib =
+  match Lib.Local.of_lib lib with
+  | Some s -> s
+  | None ->
+    let lib_name = Lib.name lib in
+    User_error.raise ~loc
+      [ Pp.textf "The external library %s cannot be used"
+          (Lib_name.to_string lib_name)
+      ]
+
+let js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext =
   let open Resolve.Memo.O in
   Command.Args.memo
     (Resolve.Memo.args
@@ -17,7 +27,7 @@ let js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext =
         let project = Scope.project scope in
         let deps_of_lib (lib : Lib.t) =
           let lib_name = Lib.name lib in
-          let lib = Lib.Local.of_lib_exn lib in
+          let lib = local_of_lib ~loc lib in
           let info = Lib.Local.info lib in
           let lib_dir = Lib_info.src_dir info in
           let dst_dir = lib_output_dir ~target_dir ~lib_dir in
@@ -43,7 +53,7 @@ let js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext =
              ; Hidden_deps hidden_deps
              ])))
 
-let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
+let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
     ~lib_deps_js_includes ~js_ext m =
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let open Memo.O in
@@ -65,7 +75,7 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
     "--bs-module-type" :: js_modules_str :: pkg_name_args
   in
   let lib_deps_js_includes = Command.Args.as_any lib_deps_js_includes in
-  Super_context.add_rule sctx ~dir ?loc
+  Super_context.add_rule sctx ~dir ?loc ~mode
     (Command.run
        ~dir:(Path.build (Super_context.context sctx).build_dir)
        compiler
@@ -78,7 +88,7 @@ let build_js ~loc ~dir ~pkg_name ~module_system ~dst_dir ~obj_dir ~sctx
        ])
 
 let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
-    ~compile_info ~target_dir (mel : Melange_stanzas.Emit.t) =
+    ~compile_info ~target_dir ~mode (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
@@ -118,7 +128,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   let js_ext = mel.javascript_extension in
   let requires_link = Memo.Lazy.force requires_link in
   let lib_deps_js_includes =
-    js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext
+    js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
   in
   let* () = Module_compilation.build_all cctx in
   let module_list =
@@ -130,8 +140,9 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   let* () =
     Memo.parallel_iter module_list ~f:(fun m ->
         (* Should we check module kind? *)
-        build_js ~dir ~loc:(Some loc) ~pkg_name ~module_system:mel.module_system
-          ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext m)
+        build_js ~dir ~loc:(Some loc) ~pkg_name ~mode
+          ~module_system:mel.module_system ~dst_dir ~obj_dir ~sctx
+          ~lib_deps_js_includes ~js_ext m)
   in
   let* () =
     match mel.alias with
@@ -146,11 +157,10 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
       Rules.Produce.Alias.add_deps alias deps
   in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let* preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation mel.preprocess
-         ~instrumentation_backend:
-           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation mel.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   let stdlib_dir = (Super_context.context sctx).stdlib_dir in
   Memo.return
@@ -161,7 +171,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
         ~dialects:(Dune_project.dialects (Scope.project scope))
         ~modes:`Melange_emit )
 
-let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
+let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
     (mel : Melange_stanzas.Emit.t) =
   Memo.parallel_iter requires_link ~f:(fun lib ->
       let open Memo.O in
@@ -169,7 +179,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
       let* lib, lib_compile_info =
         Lib.DB.get_compile_info (Scope.libs scope) lib_name
       in
-      let lib = Lib.Local.of_lib_exn lib in
+      let lib = local_of_lib ~loc:mel.loc lib in
       let info = Lib.Local.info lib in
       let lib_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
@@ -186,12 +196,13 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link
       in
       let js_ext = mel.javascript_extension in
       let lib_deps_js_includes =
-        js_includes ~sctx ~target_dir ~requires_link ~scope ~js_ext
+        js_includes ~loc:mel.loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
       in
       Memo.parallel_iter source_modules
         ~f:
-          (build_js ~loc:None ~dir ~pkg_name ~module_system:mel.module_system
-             ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext))
+          (build_js ~loc:None ~dir ~pkg_name ~mode
+             ~module_system:mel.module_system ~dst_dir ~obj_dir ~sctx
+             ~lib_deps_js_includes ~js_ext))
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
@@ -211,16 +222,22 @@ let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let open Memo.O in
   let* compile_info = compile_info ~scope mel in
   let target_dir = Path.Build.relative dir mel.target in
+  let mode =
+    match mel.promote with
+    | None -> Rule.Mode.Standard
+    | Some p -> Promote p
+  in
   let f () =
     let+ cctx_and_merlin =
       add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
-        ~compile_info ~target_dir mel
+        ~compile_info ~target_dir ~mode mel
     and+ () =
       let* requires_link =
         Memo.Lazy.force (Lib.Compile.requires_link compile_info)
       in
       let* requires_link = Resolve.read_memo requires_link in
-      add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link mel
+      add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
+        mel
     in
     cctx_and_merlin
   in

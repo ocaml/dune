@@ -231,8 +231,15 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
     |> List.concat_map ~f:(fun p ->
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
-  Super_context.add_rule sctx (* TODO should be [~dir] *)
-    ~dir:ctx.build_dir ?loc:(CC.loc cctx)
+  Super_context.add_rule sctx
+    ~dir:
+      (let dune_version =
+         Compilation_context.scope cctx
+         |> Scope.project |> Dune_project.dune_version
+       in
+       (* TODO DUNE4 get rid of the old behavior *)
+       if dune_version >= (3, 7) then dir else ctx.build_dir)
+    ?loc:(CC.loc cctx)
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)
     >>> Action_builder.with_no_targets other_cm_files

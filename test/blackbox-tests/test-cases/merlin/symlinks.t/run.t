@@ -10,8 +10,8 @@ directory in these tests.
 
 Absolute path with symlinks won't match with Dune's root path in which symlinks
 are resolved:
-  $ dune ocaml-merlin --dump-config="$(pwd)/realsrc" --root="."
-  Path "$TESTCASE_ROOT/linkroot/realsrc" is not in dune workspace ("$TESTCASE_ROOT/realroot").
+  $ dune ocaml-merlin --dump-config="$PWD/realsrc" --root="."
+  Path $TESTCASE_ROOT/linkroot/realsrc is not in dune workspace ($TESTCASE_ROOT/realroot).
 
 Absolute path with resolved symlinks will match with Dune's root path:
   $ dune ocaml-merlin \

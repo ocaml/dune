@@ -12,6 +12,7 @@ module Emit = struct
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
+    ; promote : Rule.Promote.t option
     ; flags : Ocaml_flags.Spec.t
     ; root_module : (Loc.t * Module_name.t) option
     ; javascript_extension : string
@@ -85,6 +86,7 @@ module Emit = struct
        and+ libraries = field "libraries" decode_lib ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
+       and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
        and+ flags = Ocaml_flags.Spec.decode
        and+ root_module = field_o "root_module" Module_name.decode_loc
@@ -94,11 +96,10 @@ module Emit = struct
            let f libname = Preprocess.With_instrumentation.Ordinary libname in
            Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
          in
-         List.fold_left instrumentation
+         List.fold_left instrumentation ~init
            ~f:(fun accu ((backend, flags), deps) ->
              Preprocess.Per_module.add_instrumentation accu
                ~loc:loc_instrumentation ~flags ~deps backend)
-           ~init
        in
        { loc
        ; target
@@ -109,6 +110,7 @@ module Emit = struct
        ; package
        ; preprocess
        ; preprocessor_deps
+       ; promote
        ; flags
        ; root_module
        ; javascript_extension

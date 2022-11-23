@@ -149,8 +149,9 @@ module Scheduler = struct
     let stats = Common.stats common in
     let config =
       let insignificant_changes = Common.insignificant_changes common in
+      let signal_watcher = Common.signal_watcher common in
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
-        ~signal_watcher:`Yes
+        ~signal_watcher
     in
     let f =
       match Common.rpc common with
@@ -170,9 +171,10 @@ module Scheduler = struct
     in
     let stats = Common.stats common in
     let config =
+      let signal_watcher = Common.signal_watcher common in
       let insignificant_changes = Common.insignificant_changes common in
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
-        ~signal_watcher:`Yes
+        ~signal_watcher
     in
     let file_watcher = Common.file_watcher common in
     let run () =

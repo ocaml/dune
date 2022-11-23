@@ -392,6 +392,9 @@ module Module = struct
     type t =
       | Immediate of Module.File.t
       | Transitive of Module.t * Ml_kind.t
+      | M2l of Module.t * Ml_kind.t
+      | Immediate_approx of Module.File.t
+      | Sig of Module.t
 
     let basename = function
       | Immediate f -> Path.basename (Module.File.path f) ^ ".d"
@@ -399,6 +402,11 @@ module Module = struct
         let ext = sprintf ".%s.all-deps" (Ml_kind.to_string ml_kind) in
         let obj = Module.obj_name m in
         Module_name.Unique.artifact_filename obj ~ext
+      | M2l (m, ml_kind) ->
+        Module_name.to_string (Module.name m) ^ Ml_kind.choose ~impl:".m2l" ~intf:".m2li" ml_kind
+      | Immediate_approx f -> Path.basename (Module.File.path f) ^ ".d-approx"
+      | Sig m ->
+        Module_name.to_string (Module.name m) ^ ".sig"
   end
 
   let dep t dep =

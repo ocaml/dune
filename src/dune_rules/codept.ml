@@ -14,12 +14,9 @@ let deps_of
   let parse_module_names = Dep_gen.parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate source) in
-  (* let m2l_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Path.basename (Module.File.path source) ^ ".m2l") in *)
-  let m2l_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Module_name.to_string (Module.name unit) ^ Ml_kind.choose ~impl:".m2l" ~intf:".m2li" ml_kind) in
-  let approx_dep_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Path.basename (Module.File.path source) ^ ".approx-d") in
-  let sig_file m =
-    Path.Build.relative (Obj_dir.obj_dir obj_dir) (Module_name.to_string (Module.name m) ^ ".sig")
-  in
+  let m2l_file = dep (M2l (unit, ml_kind)) in
+  let approx_dep_file = dep (Immediate_approx source) in
+  let sig_file m = dep (Sig m) in
   let gen_sig =
     match ml_kind with
     | Intf -> true
@@ -180,7 +177,7 @@ let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =
   | None -> Action_builder.return []
   | Some source ->
     let ocamldep_output = Obj_dir.Module.dep obj_dir (Immediate source) in
-    let m2l_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Module_name.to_string (Module.name unit) ^ Ml_kind.choose ~impl:".m2l" ~intf:".m2li" ml_kind) in
+    let m2l_file = Obj_dir.Module.dep obj_dir (M2l (unit, ml_kind)) in
     Action_builder.memoize
       (Path.Build.to_string ocamldep_output)
       (Action_builder.map

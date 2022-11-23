@@ -127,6 +127,9 @@ module Module : sig
     type t =
       | Immediate of Module.File.t
       | Transitive of Module.t * Ml_kind.t
+      | M2l of Module.t * Ml_kind.t
+      | Immediate_approx of Module.File.t
+      | Sig of Module.t
   end
 
   val dep : Path.Build.t t -> Dep.t -> Path.Build.t

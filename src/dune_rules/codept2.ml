@@ -10,7 +10,7 @@ let parse_module_names ~(unit : Module.t) ~modules words =
 let parse_deps_exn ~file lines =
   let invalid () =
     User_error.raise
-      [ Pp.textf "ocamldep returned unexpected output for %s:"
+      [ Pp.textf "codept returned unexpected output for %s:"
           (Path.to_string_maybe_quoted file)
       ; Pp.vbox
           (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
@@ -254,10 +254,11 @@ let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =
   | None -> Action_builder.return []
   | Some source ->
     let ocamldep_output = Obj_dir.Module.dep obj_dir (Immediate source) in
+    let m2l_file = Path.Build.relative (Obj_dir.obj_dir obj_dir) (Module_name.to_string (Module.name unit) ^ Ml_kind.choose ~impl:".m2l" ~intf:".m2li" ml_kind) in
     Action_builder.memoize
       (Path.Build.to_string ocamldep_output)
       (Action_builder.map
          ~f:(fun lines ->
-           parse_deps_exn ~file:(Module.File.path source) lines
+           parse_deps_exn ~file:(Path.build m2l_file) lines
            |> parse_module_names ~unit ~modules)
          (Action_builder.lines_of (Path.build ocamldep_output)))

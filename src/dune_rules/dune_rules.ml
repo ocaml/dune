@@ -34,6 +34,7 @@ module Global = Global
 module Only_packages = Only_packages
 module Resolve = Resolve
 module Ocamldep = Ocamldep
+module Codept2 = Codept2
 module Preprocess = Preprocess
 module Coq_rules = Coq_rules
 module Coq_module = Coq_module

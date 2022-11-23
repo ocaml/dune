@@ -77,7 +77,7 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
     let+ () =
       Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
     in
-    Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
+    Codept2.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 
 let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =

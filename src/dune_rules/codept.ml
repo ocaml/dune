@@ -50,7 +50,6 @@ let deps_of
     let {Modules.vlib = vlib_modules; _} = Modules.split_by_lib modules in
     let build_paths dependencies =
       List.filter_map dependencies ~f:(fun dependency ->
-          (* Format.printf "%a\n" Pp.to_fmt (Dyn.pp (Module.to_dyn dependency)); *)
           if Module.kind dependency = Alias || List.exists ~f:(fun m -> Module_name.Unique.compare (Module.obj_name m) (Module.obj_name dependency) = Eq) vlib_modules then
             None
           else
@@ -69,25 +68,15 @@ let deps_of
         |> List.map ~f:Path.build
         |> (fun x -> Command.Args.Deps x)
       in
-      (* let paths = List.map ~f:Path.build paths in *)
-      (* Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
-        (let+ sources, extras =
-          Action_builder.dyn_paths
-            (let+ sources, extras = paths in
-              ((sources, extras), sources))
-        in
-        Action.Merge_files_into (sources, extras, all_deps_file)) *)
       (let open Action_builder.With_targets.O in
       let flags, sandbox =
         Option.value (Module.pp_flags unit)
           ~default:(Action_builder.return [], sandbox)
       in
-      (* let+ paths = Action_builder.with_no_targets paths in *)
       Command.run codept
         ~dir:(Path.build context.build_dir)
         [ As ["-k"; "-verbosity"; "error"] (* avoid self-cycle errors and unresolved module notifications *)
         ; Command.Args.dyn flags
-        (* ; Command.Ml_kind.flag ml_kind *)
         ; Dep (Path.build m2l_file)
         ; Dyn paths
         ; S (if gen_sig then
@@ -104,23 +93,6 @@ let deps_of
     in
     Super_context.add_rule sctx ~dir action
   in
-  (* let* () =
-    Super_context.add_rule sctx ~dir
-      (let open Action_builder.With_targets.O in
-      let flags, sandbox =
-        Option.value (Module.pp_flags unit)
-          ~default:(Action_builder.return [], sandbox)
-      in
-      Command.run context.ocamldep
-        ~dir:(Path.build context.build_dir)
-        ~stdout_to:ocamldep_output
-        [ A "-modules"
-        ; Command.Args.dyn flags
-        ; Command.Ml_kind.flag ml_kind
-        ; Dep (Module.File.path source)
-        ]
-      >>| Action.Full.add_sandbox sandbox)
-  in *)
   let build_paths dependencies =
     let dependency_file_path m =
       let ml_kind m =

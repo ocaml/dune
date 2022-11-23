@@ -104,9 +104,11 @@ let deps_of
       >>| Action.Full.add_sandbox sandbox)
   in
   let* () =
+    let {Modules.vlib = vlib_modules; _} = Modules.split_by_lib modules in
     let build_paths dependencies =
       List.filter_map dependencies ~f:(fun dependency ->
-          if Module.kind dependency = Alias then
+          (* Format.printf "%a\n" Pp.to_fmt (Dyn.pp (Module.to_dyn dependency)); *)
+          if Module.kind dependency = Alias || List.exists ~f:(fun m -> Module_name.Unique.compare (Module.obj_name m) (Module.obj_name dependency) = Eq) vlib_modules then
             None
           else
             Some (sig_file dependency)

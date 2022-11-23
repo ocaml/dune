@@ -292,7 +292,7 @@ module Context = struct
       buildable =
     let* mode = select_native_mode ~sctx ~dir buildable in
     match (mode : Coq_mode.t) with
-    | VoOnly | Legacy -> Memo.return (Resolve.return Path.Build.Set.empty)
+    | VoOnly | Legacy -> Resolve.Memo.return Path.Build.Set.empty
     | Native ->
       Resolve.Memo.bind theories_deps ~f:(fun theories_deps ->
           let+ l =

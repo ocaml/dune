@@ -72,6 +72,11 @@ let deps_of
   let sig_file m =
     Path.Build.relative (Obj_dir.obj_dir obj_dir) (Module_name.to_string (Module.name m) ^ ".sig")
   in
+  let gen_sig =
+    match ml_kind with
+    | Intf -> true
+    | Impl -> not (Module.has unit ~ml_kind:Intf)
+  in
   let open Memo.O in
   let* codept = Context.which context "codept" in
   let codept' = Option.value_exn codept in
@@ -134,9 +139,12 @@ let deps_of
         (* ; Command.Ml_kind.flag ml_kind *)
         ; Dep (Path.build m2l_file)
         ; Dyn paths
-        ; A "-o"
-        ; Target (sig_file unit)
-        ; A "-sig"
+        ; S (if gen_sig then
+          [ A "-o"
+          ; Target (sig_file unit)
+          ; A "-sig"
+          ]
+          else [])
         ; A "-o"
         ; Target ocamldep_output
         ; A "-modules"

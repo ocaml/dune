@@ -22,8 +22,9 @@ file is automatically updated during development when we modify the ``dune``
 files in the repository. ``boot/duneboot.ml`` itself is built with a single
 invocation of ``ocamlopt`` or ``ocamlc`` via the ``bootstrap.ml`` OCaml script.
 
-``boot/duneboot.ml`` builds a ``dune.exe`` binary at the root of the source tree
-and uses this binary to build everything else.
+``boot/duneboot.ml`` builds a ``dune.exe`` binary in the ``_boot`` directory
+and uses this binary to build everything else. As a convenience, ``dune.exe``
+at the root of the source tree executes this binary.
 
 ``$ make dev`` takes care of bootstrapping if needed, but if you want to just
 run the bootstrapping step itself, build the ``dune.exe`` target with
@@ -236,7 +237,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 
 .. code:: scheme
 
-   (lang dune 3.6)
+   (lang dune 3.7)
    (using coq 0.2)
 
 If such extensions are experimental, it's recommended that they pass
@@ -315,3 +316,179 @@ For automatically updated builds, you can install sphinx-autobuild, and run
 
 Nix users may drop into a development shell with the necessary dependencies for
 building docs ``nix develop .#doc``.
+
+General Guidelines
+==================
+
+Dune has grown to be a fairly large project that over time has acquired its own
+style. Below is an attempt to enumerate some important points of this style.
+These rules aren't axioms and we may break them when justified. However, we
+should have a good reason in mind when breaking them. Finally, the list isn't
+exhaustive by any means and is subject to change. Feel free to discuss anything
+in particular with the team.
+
+- Parameter signatures should be self descriptive. Use labels when the types
+  alone aren't sufficient to make the signature readable.
+
+Bad:
+
+.. code:: ocaml
+
+   val display_name : string -> string -> _ Pp.t
+
+Good:
+
+.. code:: ocaml
+
+   val display_name : first_name:string -> last_name:string -> _ Pp.t
+
+- Avoid type aliases when possible. Yes, they might make some type signatures
+  more readable, but they make the code harder to grep and make Merlin's
+  inferred types more confusing.
+
+- Every ``.ml`` file must have a corresponding ``.mli``. The only exception to
+  this rule is ``.ml`` files with only type definitions.
+
+- Do not write ``.mli`` only modules. They offer no advantages to ``.ml``
+  modules with type definitions and one cannot define exceptions in ``.mli``
+  only modules
+
+- Every module should have toplevel documentation that describes the module
+  briefly. This is a good place to discuss its purpose, invariants, etc.
+
+- Keep interfaces short & sweet. The less functions, types, etc. there are, the
+  easier it is for users to understand, use, and ultimately modify the
+  interface correctly. Instead of creating elaborate interfaces with the hope
+  of future-proofing every use case, embrace change and make it easier to throw
+  out or replace the interface.
+
+  Ideally the interface should have one obvious way to use it. A particularly
+  annoying violator of this principle is the "logic-less chain of functions"
+  helper. For example:
+
+.. code:: ocaml
+
+   let foo t = bar t |> baz
+
+If ``bar`` and ``baz`` are already public, then there's no need to add yet
+another helper to save the caller a line of code.
+
+- Define bindings as close to their use site as possible. When they're far
+  apart, reading code requires scrolling and IDE tools to understand the code.
+
+Bad:
+
+.. code:: ocaml
+
+   let dir = .. in
+   (* 50 odd lines or so that don't use [dir] *)
+   f dir
+
+Good:
+
+.. code:: ocaml
+
+  let dir = .. in
+  f dir
+
+- A corollary to the previous guideline: keep the scope of bindings as small as
+  possible.
+
+Bad:
+
+.. code:: ocaml
+
+   let x1 = f foo in let x2 = f bar in
+   let y1 = g foo in let y2 = g bar in
+   let dx = x2 -. x1 in
+   let dy = y2 -. y1 in
+   dx^2 +. dy^2
+
+Good:
+
+.. code:: ocaml
+
+   let dx =
+     let x1 = f foo in let x2 = f bar in
+     x2 -. x1
+   in
+   let dy =
+     let y1 = g foo in let y2 = g bar in
+     y2 -. y1
+   in
+   dx^2 +. dy^2
+
+- Prefer ``Code_error.raise`` instead of ``assert false``. The reader often has
+  no idea what invariant is broken by the ``assert false``. Kindly describe it
+  to the reader in the error message.
+
+- Avoid meangingless names like `x`, `a`, `b`, `f`. Try to find a more
+  descriptive name or just inline it altogether.
+
+- If a module ``Foo`` has a module type ``Foo.S`` and you'd like to avoid
+  repeating its definition in the implementation and the signature, introduce
+  an ``.ml``-only module ``Foo_intf`` and write the ``S`` only once in there.
+
+- Instead of introducing a type ``foo``, consider introducing a module ``Foo``
+  with a type ``t``. This is often the place to put functions related to
+  ``foo``.
+
+- Avoid optional arguments. They increase brevity at the expense of readability
+  and are annoying to grep. Further more, they encourage callers not to think
+  at all about these optional arguments even if they often should.
+
+- Stage functions explicitly with the ``Staged`` module.
+
+- Do not raise ``Invalid_argument``. Instead, raise with ``Code_error.raise``
+  which allows to attach more informative payloads than just strings.
+
+Subjective Style Points
+-----------------------
+
+There's some stylistic decisions we made that don't have logical justification
+and are basically a matter of taste. Nevertheless, it's useful to follow them
+to keep the code consistent.
+
+- Match patterns should be sorted by the length of their RHS when possible.
+  Keep the shorter clauses near the top.
+
+- If a module ``Foo`` defines a type ``t``, all functions that take ``t`` in
+  this module should have ``t`` as their first argument. This is the "t comes
+  first" rule.
+
+- Do not mix ``|>`` and ``@@`` in the same expression.
+
+- Introduce bindings that will allow opportunities for record or label punning.
+
+- Do not write inverted if-else expressions. 
+
+Bad:
+
+.. code:: ocaml
+
+   (* try reading this out loud without short circuiting your brain *)
+   if not x then foo else bar
+
+Good:
+
+.. code:: ocaml
+
+   if x then bar else foo
+
+- We prefer snake_casing identifiers. This includes the names of modules and
+  module types.
+
+- Avoid qualifying constructors and record fields. Instead, add type
+  annotations to the type being matched on or being constructed. E.g.
+
+Bad:
+
+.. code:: ocaml
+
+   let foo = Command.Args.S []
+
+Good:
+
+.. code:: ocaml
+
+   let (foo : _ Command.Args.t) = S []

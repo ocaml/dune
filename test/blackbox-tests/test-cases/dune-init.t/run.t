@@ -346,6 +346,7 @@ We can build the project:
 
   $ dune build --root test_exec_proj
   Entering directory 'test_exec_proj'
+  Leaving directory 'test_exec_proj'
 
 And the opam file will be generated as expected
 
@@ -363,7 +364,7 @@ And the opam file will be generated as expected
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
-    $dune {>= "3.6"}
+    $dune {>= "3.7"}
     "odoc" {with-doc}
   ]
   build: [
@@ -386,12 +387,14 @@ We can build and run the resulting executable:
 
   $ dune exec --root test_exec_proj ./bin/main.exe
   Entering directory 'test_exec_proj'
+  Leaving directory 'test_exec_proj'
   Hello, World!
 
 We can build and run the project's tests:
 
   $ dune exec --root test_exec_proj ./test/test_exec_proj.exe
   Entering directory 'test_exec_proj'
+  Leaving directory 'test_exec_proj'
 
 Initializing library projects
 ================================
@@ -448,6 +451,7 @@ We can build and install the project:
 
   $ dune build --root test_lib_proj @install
   Entering directory 'test_lib_proj'
+  Leaving directory 'test_lib_proj'
 
 And the opam file will be generated as expected
 
@@ -465,7 +469,7 @@ And the opam file will be generated as expected
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
-    "dune" {>= "3.6"}
+    "dune" {>= "3.7"}
     "odoc" {with-doc}
   ]
   build: [
@@ -492,6 +496,7 @@ And we we can run the tests:
       ocamlopt test/.test_lib_proj.eobjs/native/dune__exe__Test_lib_proj.{cmx,o}
       ocamlopt test/test_lib_proj.exe
   test_lib_proj alias test/runtest
+  Leaving directory 'test_lib_proj'
 
 Initializing projects using Esy
 ===============================

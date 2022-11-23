@@ -98,9 +98,9 @@ module DB : sig
   val installed : Context.t -> t Memo.t
 
   module Resolve_result : sig
-    type t
+    type db := t
 
-    type db
+    type t
 
     val not_found : t
 
@@ -110,7 +110,6 @@ module DB : sig
 
     val redirect : db option -> Loc.t * Lib_name.t -> t
   end
-  with type db := t
 
   (** Create a new library database. [resolve] is used to resolve library names
       in this database.
@@ -149,16 +148,16 @@ module DB : sig
       of libraries is transitively closed and sorted by the order of
       dependencies.
 
-      This function is for executables stanzas. *)
-  val resolve_user_written_deps_for_exes :
-       ?modes:Lib_mode.Map.Set.t
-    -> t
-    -> (Loc.t * string) list
+      This function is for executables or melange.emit stanzas. *)
+  val resolve_user_written_deps :
+  ?modes:Lib_mode.Map.Set.t -> t
+    -> [ `Exe of (Import.Loc.t * string) list | `Melange_emit of string ]
     -> ?allow_overlaps:bool
     -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t
+    -> merlin_ident:Merlin_ident.t
     -> Compile.t
 
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> lib list Resolve.Memo.t

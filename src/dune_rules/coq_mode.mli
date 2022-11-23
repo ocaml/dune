@@ -11,4 +11,4 @@ type t =
   | VoOnly
   | Native
 
-val decode : t Dune_lang.Decoder.t
+val decode : coq_syntax:Dune_lang.Syntax.t -> t Dune_lang.Decoder.t

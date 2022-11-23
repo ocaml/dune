@@ -15,12 +15,12 @@ Cmj rules should not include --bs-package-name
   $ output=inside/output
 
 Js rules should include module type
-  $ dune rules $output/inside/app/app__B.js | 
+  $ dune rules $output/inside/app/b.mjs | 
   > grep -e "--bs-module-type" --after-context=1 
       --bs-module-type
       es6
 
 Build js files
-  $ dune build $output/inside/melange__C.js
-  $ node _build/default/$output/inside/melange__C.js
+  $ dune build $output/inside/c.mjs
+  $ node _build/default/$output/inside/c.mjs
   buy it

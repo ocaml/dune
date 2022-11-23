@@ -1,6 +1,35 @@
 Unreleased
 ----------
 
+- Allow compilation rules to be impacted by `(env ..)` stanzas that modify the
+  environment or set binaries. (#6527, @rgrinberg)
+
+- Fix status line enabled when ANSI colors are forced. (#6503, @MisterDA)
+
+- Coq native mode is now automatically detected by Dune starting with Coq lang
+  0.7. `(mode native)` has been deprecated in favour of detection from the
+  configuration of Coq. (#6409, @Alizter)
+
+- Print "Leaving Directory" whenever "Entering Directory" is printed. (#6149,
+  fixes #138, @cpitclaudel, @rgrinberg)
+
+- Allow `$ dune ocaml dump-dot-merlin` to run in watch mode. Also this command
+  shouldn't print "Entering Directory" mesages. (#6497, @rgrinberg)
+
+- Fix build with MSVC compiler (#6517, @nojb)
+
+- `dune clean` should no longer fail under Windows due to the inability to
+  remove the `.lock` file. Also, bring the implementation of the global lock
+  under Windows closer to that of Unix. (#6523, @nojb)
+
+- Remove "Entering Directory" messages for `$ dune install`. (#6513,
+  @rgrinberg)
+
+- Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
+
+3.6.0 (2022-11-14)
+------------------
+
 - Forbid multiple instances of dune running concurrently in the same workspace.
   (#6360, fixes #236, @rgrinberg)
 
@@ -170,6 +199,8 @@ Unreleased
 
 3.4.0 (20-07-2022)
 ------------------
+
+- Do not ignore `C-c` when running `$ dune subst` (#5892, @rgrinberg)
 
 - Make `dune describe` correctly handle overlapping implementations
   for virtual libraries (#5971, fixes #5747, @esope)
@@ -616,11 +647,13 @@ Unreleased
 - Fields allowed in the config file are now also allowed in the
   workspace file (#4426, @jeremiedimino)
 
-- Add options to control how Dune should handle stdout and stderr of
-  actions when then succeed. It is now possible to ask Dune to ignore
-  the stdout of actions when they succeed or to request that the
-  stderr of actions must be empty. This allows to reduce the noise of
-  large builds (#4422, #4515, @jeremiedimino)
+- Add CLI flags `--action-<outputs>-on-success ...` (where `<outputs>` is
+  `stdout` or `stderr`) to control how Dune should handle `stdout` and `stderr` of
+  actions when they succeed. It is now possible to ask Dune to ignore the `stdout`
+  of actions when they succeed or to request that the `stderr` of actions must be
+  empty. It is also possible to set these options in the `config` and/or
+  `dune-workspace` files with `(action_<outputs>_on_success ...)`. This feature
+  allows you to reduce the noise of large builds (#4422, #4515, @jeremiedimino)
 
 - The `@all` alias no longer depends directly on copies of files from the source
   directory (#4461, @nojb)
@@ -3054,7 +3087,7 @@ Unreleased
 
 - Print `Entering directory '...'` when the workspace root is not the
   current directory. This allows Emacs and Vim to know where relative
-  filenames should be interpreted from. Fixes #138
+  filenames should be interpreted from. (fixes #138, @jeremiedimino)
 
 - Fix a bug related to `menhir` stanzas: `menhir` stanzas with a
   `merge_into` field that were in `jbuild` files in sub-directories

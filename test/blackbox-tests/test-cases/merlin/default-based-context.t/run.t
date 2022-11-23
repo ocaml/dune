@@ -21,7 +21,7 @@ If Merlin field is absent, default context is chosen
   ..
   lib-foo
 
-  $ dune ocaml-merlin --dump-config="$(pwd)"
+  $ dune ocaml-merlin --dump-config="$PWD"
   Foo
   ((STDLIB OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
@@ -58,7 +58,7 @@ If Merlin field is present, this context is chosen
   $ [ ! -d _build/default/.merlin-conf ] && echo "No config in default"
   No config in default
 
-  $ dune ocaml-merlin --dump-config="$(pwd)"
+  $ dune ocaml-merlin --dump-config="$PWD"
   Foo
   ((STDLIB OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)

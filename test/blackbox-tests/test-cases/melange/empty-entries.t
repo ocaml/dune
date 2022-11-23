@@ -16,6 +16,6 @@ Test (entries) field can be left empty
   >   print_endline "hello"
   > EOF
 
-  $ dune build output/melange__Hello.js
-  $ node _build/default/output/melange__Hello.js
+  $ dune build output/hello.js
+  $ node _build/default/output/hello.js
   hello

@@ -78,6 +78,8 @@ module External : sig
   val relative : t -> string -> t
 
   val mkdir_p : ?perms:int -> t -> unit
+
+  val of_filename_relative_to_initial_cwd : string -> t
 end
 
 (** In the source section of the current workspace. *)
@@ -134,6 +136,10 @@ module Outside_build_dir : sig
     | In_source_dir of Source.t
 
   val hash : t -> int
+
+  val relative : t -> string -> t
+
+  val extend_basename : t -> suffix:string -> t
 
   val equal : t -> t -> bool
 
@@ -317,9 +323,9 @@ val drop_optional_sandbox_root : t -> t
     otherwise fail. *)
 val drop_optional_build_context_src_exn : t -> Source.t
 
-val explode : t -> string list option
+val explode : t -> Filename.t list option
 
-val explode_exn : t -> string list
+val explode_exn : t -> Filename.t list
 
 (** The build directory *)
 val build_dir : t

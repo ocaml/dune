@@ -392,7 +392,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
                      file explicitly *)
                   let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
                   Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc
-                    (Action_builder.copy ~src ~dst)))
+                    (Action_builder.symlink ~src ~dst)))
   in
   let modes = Compilation_context.modes cctx in
   (* The [dir] below is used as an object directory without going through
@@ -519,19 +519,20 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
       ; source_modules
       ; compile_info
       }
-  and+ preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-         ~instrumentation_backend:
-           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+  in
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-      ~preprocess ~libname:(snd lib.name) ~obj_dir
+      ~source_dirs:Path.Source.Set.empty ~preprocess
+      ~libname:(Some (snd lib.name))
+      ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
-      ~modes:(`Lib (Lib_info.modes lib_info))
-      () )
+      ~modes:(`Lib (Lib_info.modes lib_info)) )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
   let buildable = lib.buildable in

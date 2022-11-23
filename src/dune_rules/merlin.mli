@@ -41,19 +41,19 @@ module Processed : sig
 end
 
 val make :
-     ?requires:Lib.t list Resolve.t
+     requires:Lib.t list Resolve.t
   -> stdlib_dir:Path.t
   -> flags:Ocaml_flags.t
-  -> ?preprocess:
+  -> preprocess:
        Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
-  -> ?libname:Lib_name.Local.t
-  -> ?source_dirs:Path.Source.Set.t
+       Resolve.Memo.t
+  -> libname:Lib_name.Local.t option
+  -> source_dirs:Path.Source.Set.t
   -> modules:Modules.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> dialects:Dialect.DB.t
   -> ident:Merlin_ident.t
   -> modes:[ `Lib of Lib_mode.Map.Set.t | `Exe | `Melange_emit ]
-  -> unit
   -> t
 
 (** Add rules for generating the merlin configuration of a specific stanza

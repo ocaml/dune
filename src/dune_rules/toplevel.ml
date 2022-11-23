@@ -14,8 +14,7 @@ module Source = struct
     let main_module_name =
       Module_name.of_string_allow_invalid (t.loc, t.name)
     in
-    let src_dir = Path.build t.dir in
-    Module.generated ~src_dir main_module_name
+    Module.generated ~kind:Impl ~src_dir:t.dir main_module_name
 
   let source_path t =
     Module.file (main_module t) ~ml_kind:Impl
@@ -162,8 +161,8 @@ module Stanza = struct
       | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
       | No_preprocessing -> []
     in
-    let preprocess = Module_name.Per_item.for_all toplevel.pps in
-    let* preprocessing =
+    let preprocessing =
+      let preprocess = Module_name.Per_item.for_all toplevel.pps in
       Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
         ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
         ~instrumentation_deps:[]
@@ -172,11 +171,12 @@ module Stanza = struct
       let compiler_libs =
         Lib_name.parse_string_exn (source.loc, "compiler-libs.toplevel")
       in
-      Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-        [ (source.loc, source.name) ]
+      let names = [ (source.loc, source.name) ] in
+      let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
+      Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
         (Lib_dep.Direct (source.loc, compiler_libs)
         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))
-        ~pps ~dune_version ~allow_overlaps:false
+        ~pps ~dune_version ~allow_overlaps:false ~merlin_ident
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in

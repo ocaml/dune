@@ -12,8 +12,10 @@ module Emit : sig
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
+    ; promote : Rule.Promote.t option
     ; flags : Ocaml_flags.Spec.t
     ; root_module : (Loc.t * Module_name.t) option
+    ; javascript_extension : string
     }
 
   val decode : t Dune_lang.Decoder.t

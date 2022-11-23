@@ -78,7 +78,7 @@ val set_pp : t -> (string list Action_builder.t * Sandbox_config.t) option -> t
 val wrapped_compat : t -> t
 
 module Name_map : sig
-  type module_
+  type module_ := t
 
   type t = module_ Module_name.Map.t
 
@@ -88,22 +88,18 @@ module Name_map : sig
 
   val to_dyn : t -> Dyn.t
 
-  val impl_only : t -> module_ list
-
   val of_list_exn : module_ list -> t
 
   val add : t -> module_ -> t
 end
-with type module_ := t
 
 module Obj_map : sig
-  type module_
+  type module_ := t
 
   include Map.S with type key = module_
 
   val find_exn : 'a t -> module_ -> 'a
 end
-with type module_ := t
 
 module Obj_map_traversals : sig
   val parallel_iter : 'a Obj_map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
@@ -134,9 +130,4 @@ val set_src_dir : t -> src_dir:Path.t -> t
 
     XXX should this return the path of the source as well? it will almost always
     be used to create the rule to generate this file *)
-val generated : src_dir:Path.t -> Module_name.t -> t
-
-(** Represent the generated alias module. *)
-val generated_alias : src_dir:Path.Build.t -> Module_name.t -> t
-
-val generated_root : src_dir:Path.Build.t -> Module_name.t -> t
+val generated : kind:Kind.t -> src_dir:Path.Build.t -> Module_name.t -> t

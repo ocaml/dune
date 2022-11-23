@@ -124,7 +124,6 @@ module Processed = struct
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
     let print = Buffer.add_string b in
-    Buffer.clear b;
     print "EXCLUDE_QUERY_DIR\n";
     Option.iter stdlib_dir ~f:(fun stdlib_dir ->
         printf "STDLIB %s\n" (serialize_path stdlib_dir));
@@ -231,6 +230,7 @@ module Unprocessed = struct
     ; flags : string list Action_builder.t
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+        Resolve.Memo.t
     ; libname : Lib_name.Local.t option
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
@@ -244,10 +244,8 @@ module Unprocessed = struct
     ; modules : Modules.t
     }
 
-  let make ?(requires = Resolve.return []) ~stdlib_dir ~flags
-      ?(preprocess = Preprocess.Per_module.no_preprocessing ()) ?libname
-      ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir ~dialects ~ident
-      ~modes () =
+  let make ~requires ~stdlib_dir ~flags ~preprocess ~libname ~source_dirs
+      ~modules ~obj_dir ~dialects ~ident ~modes =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
     let mode =
       match modes with
@@ -368,7 +366,11 @@ module Unprocessed = struct
         (Modules.source_dirs modules)
 
   let pp_config t sctx ~expander =
-    Module_name.Per_item.map_action_builder t.config.preprocess
+    Action_builder.of_memo_join
+    @@
+    let open Memo.O in
+    let+ preprocess = Resolve.Memo.read_memo t.config.preprocess in
+    Module_name.Per_item.map_action_builder preprocess
       ~f:(pp_flags sctx ~expander t.config.libname)
 
   let process

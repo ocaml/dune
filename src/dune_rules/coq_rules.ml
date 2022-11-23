@@ -178,9 +178,23 @@ end
 (* get_libraries from Coq's ML dependencies *)
 let libs_of_coq_deps ~lib_db = Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db)
 
-let select_native_mode ~sctx ~(buildable : Buildable.t) : Coq_mode.t =
-  let profile = (Super_context.context sctx).profile in
-  if Profile.is_dev profile then VoOnly else snd buildable.mode
+let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
+  match buildable.mode with
+  | Some x ->
+    if
+      buildable.coq_lang_version < (0, 7)
+      && Profile.is_dev (Super_context.context sctx).profile
+    then Memo.return Coq_mode.VoOnly
+    else Memo.return x
+  | None -> (
+    if buildable.coq_lang_version < (0, 3) then Memo.return Coq_mode.Legacy
+    else if buildable.coq_lang_version < (0, 7) then Memo.return Coq_mode.VoOnly
+    else
+      let* coqc = resolve_program sctx ~dir ~loc:buildable.loc "coqc" in
+      let+ config = Coq_config.make ~bin:(Action.Prog.ok_exn coqc) in
+      match Coq_config.by_name config "coq_native_compiler_default" with
+      | Some (`String "yes") | Some (`String "ondemand") -> Coq_mode.Native
+      | _ -> Coq_mode.VoOnly)
 
 let rec resolve_first lib_db = function
   | [] -> assert false
@@ -330,7 +344,7 @@ module Context = struct
     let ml_flags, mlpack_rule =
       Coq_plugin.of_buildable ~context ~theories_deps ~lib_db buildable
     in
-    let mode = select_native_mode ~sctx ~buildable in
+    let* mode = select_native_mode ~sctx ~dir buildable in
     let* native_includes =
       let open Resolve.Memo.O in
       resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ] >>| fun lib ->
@@ -692,8 +706,8 @@ let install_rules ~sctx ~dir s =
   match s with
   | { Theory.package = None; _ } -> Memo.return []
   | { Theory.package = Some package; buildable; _ } ->
-    let mode = select_native_mode ~sctx ~buildable in
     let loc = s.buildable.loc in
+    let* mode = select_native_mode ~sctx ~dir buildable in
     let* scope = Scope.DB.find_by_dir dir in
     let* dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in

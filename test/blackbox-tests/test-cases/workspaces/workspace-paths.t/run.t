@@ -23,4 +23,5 @@ is prohibited.
   4 |    (paths (FOO a) (FOO b))))
                          ^^^
   Error: the variable "FOO" can appear at most once in this stanza.
+  Leaving directory 'sub'
   [1]

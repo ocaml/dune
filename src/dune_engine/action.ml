@@ -157,6 +157,8 @@ module Prog = struct
       let hint =
         match program with
         | "refmt" -> Some (Option.value ~default:"opam install reason" hint)
+        | "rescript_syntax" ->
+          Some (Option.value ~default:"opam install mel" hint)
         | _ -> hint
       in
       Utils.program_not_found_message ?hint ~loc ~context program

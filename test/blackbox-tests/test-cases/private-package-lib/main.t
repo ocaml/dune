@@ -157,6 +157,7 @@ Now we make sure such libraries are transitively usable when installed:
   $ export OCAMLPATH=$PWD/_build/install/default/lib
   $ dune exec --root use -- ./run.exe
   Entering directory 'use'
+  Leaving directory 'use'
   Using library foo: from library foo secret string
 
 But we cannot use such libraries directly:
@@ -170,4 +171,5 @@ But we cannot use such libraries directly:
   1 | print_endline ("direct access attempt: " ^ Secret.secret)
                                                  ^^^^^^^^^^^^^
   Error: Unbound module Secret
+  Leaving directory 'use'
   [1]

@@ -113,21 +113,19 @@ module Config = struct
       ]
 
   let load path ~toolchain ~context =
-    let path = Path.extend_basename path ~suffix:".d" in
-    let conf_file = Path.relative path (toolchain ^ ".conf") in
-    let* conf_file_exists =
-      Fs_memo.file_exists (Path.as_outside_build_dir_exn conf_file)
+    let path = Path.Outside_build_dir.extend_basename path ~suffix:".d" in
+    let conf_file =
+      Path.Outside_build_dir.relative path (toolchain ^ ".conf")
     in
+    let* conf_file_exists = Fs_memo.file_exists conf_file in
     if not conf_file_exists then
       User_error.raise
         [ Pp.textf "ocamlfind toolchain %s isn't defined in %s (context: %s)"
             toolchain
-            (Path.to_string_maybe_quoted path)
+            (Path.Outside_build_dir.to_string_maybe_quoted path)
             context
         ];
-    let+ meta =
-      Meta.load ~name:None (Path.as_outside_build_dir_exn conf_file)
-    in
+    let+ meta = Meta.load ~name:None conf_file in
     { vars = String.Map.map meta.vars ~f:Rules.of_meta_rules
     ; preds = Ps.of_list [ P.make toolchain ]
     }

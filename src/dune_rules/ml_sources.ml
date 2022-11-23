@@ -359,7 +359,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
           in
           let project = Scope.project scope in
           if Dune_project.wrapped_executables project then
-            Modules_group.exe_wrapped ~src_dir:dir ~modules
+            Modules_group.make_wrapped ~src_dir:dir ~modules `Exe
           else Modules_group.exe_unwrapped modules
         in
         let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
@@ -382,7 +382,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
           in
-          Modules_group.melange_wrapped ~src_dir:dir ~modules
+          Modules_group.make_wrapped ~src_dir:dir ~modules `Melange
         in
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
         let modules =

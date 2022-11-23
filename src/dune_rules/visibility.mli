@@ -11,15 +11,14 @@ val is_private : t -> bool
 val to_dyn : t -> Dyn.t
 
 module Map : sig
+  type visibility := t
+
   type 'a t =
     { public : 'a
     ; private_ : 'a
     }
 
-  type visibility
-
   val make_both : 'a -> 'a t
 
   val find : 'a t -> visibility -> 'a
 end
-with type visibility := t

@@ -26,7 +26,8 @@ ppxlib \
 result \
 ctypes \
 "utop>=2.6.0" \
-"melange>=0.3.0"
+"melange>=0.3.0" \
+"mel>=0.3.0" \
 
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
@@ -71,7 +72,11 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
-dev-deps:
+.PHONY: melange
+melange:
+	opam pin add melange https://github.com/melange-re/melange.git#2f7a184400fd5d62c9160528a7ab4ce81874c024
+
+dev-deps: melange
 	opam install -y $(TEST_DEPS)
 
 .PHONY: dev-switch
@@ -121,7 +126,7 @@ all-supported-ocaml-versions: $(BIN)
 
 .PHONY: clean
 clean:
-	rm -rf _boot _build $(BIN)
+	rm -rf _boot _build
 
 distclean: clean
 	rm -f src/dune_rules/setup.ml
@@ -130,7 +135,7 @@ distclean: clean
 doc:
 	sphinx-build -W doc doc/_build
 
-# livedoc-deps: you may need to [pip3 install sphinx-autobuild] and [pip3 install sphinx-rtd-theme]
+# livedoc-deps: you may need to [pip3 install sphinx-autobuild] and [pip3 install -r doc/requirements.txt]
 livedoc:
 	cd doc && sphinx-autobuild . _build --port 8888 -q --re-ignore '\.#.*'
 

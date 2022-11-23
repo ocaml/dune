@@ -12,6 +12,7 @@ let deps_of
   let ocamldep_output = dep (Immediate source) in
   let open Memo.O in
   let* () =
+    (* 1. Generate immediate from source. *)
     Super_context.add_rule sctx ~dir
       (let open Action_builder.With_targets.O in
       let flags, sandbox =
@@ -28,6 +29,7 @@ let deps_of
         ]
       >>| Action.Full.add_sandbox sandbox)
   in
+  (* 2. Merge transitives. *)
   let build_paths dependencies =
     let dependency_file_path m =
       let ml_kind m =

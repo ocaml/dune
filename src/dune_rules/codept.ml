@@ -13,7 +13,7 @@ let deps_of
   let context = Super_context.context sctx in
   let parse_module_names = Dep_gen.parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
-  let ocamldep_output = dep (Immediate source) in
+  let immediate_file = dep (Immediate source) in
   let m2l_file = dep (M2l (unit, ml_kind)) in
   let approx_dep_file = dep (Immediate_approx source) in
   let sig_file m = dep (Sig m) in
@@ -22,15 +22,16 @@ let deps_of
     | Intf -> true
     | Impl -> not (Module.has unit ~ml_kind:Intf)
   in
+  let flags, sandbox =
+    Option.value (Module.pp_flags unit)
+      ~default:(Action_builder.return [], sandbox)
+  in
   let open Memo.O in
   let* codept = codept_prog ~dir sctx in
   let* () =
+    (* 1. Generate m2l and approx immediate from source. *)
     Super_context.add_rule sctx ~dir
       (let open Action_builder.With_targets.O in
-      let flags, sandbox =
-        Option.value (Module.pp_flags unit)
-          ~default:(Action_builder.return [], sandbox)
-      in
       Command.run codept
         ~dir:(Path.build context.build_dir)
         [ As ["-k"; "-verbosity"; "error"]
@@ -47,52 +48,59 @@ let deps_of
       >>| Action.Full.add_sandbox sandbox)
   in
   let* () =
+    (* 2. Generate immediate and sig from m2l and approx immediate sigs. *)
     let {Modules.vlib = vlib_modules; _} = Modules.split_by_lib modules in
-    let build_paths dependencies =
-      List.filter_map dependencies ~f:(fun dependency ->
-          if Module.kind dependency = Alias || List.exists ~f:(fun m -> Module_name.Unique.compare (Module.obj_name m) (Module.obj_name dependency) = Eq) vlib_modules then
-            None
-          else
-            Some (sig_file dependency)
+    let is_vlib_module m = (* TODO: better way to check this? or could include vlib modules? *)
+      List.exists vlib_modules ~f:(fun vm ->
+          Module_name.Unique.compare (Module.obj_name vm) (Module.obj_name m) = Eq
         )
     in
+    let build_paths dependencies =
+      let dependency_file_path m =
+        if Module.kind m = Alias || is_vlib_module m then
+          None
+        else
+          Some (Path.build (sig_file m))
+      in
+      List.filter_map dependencies ~f:dependency_file_path
+    in
     let action =
+      let open Action_builder.O in
       let paths =
-        let open Action_builder.O in
         let+ lines = Action_builder.lines_of (Path.build approx_dep_file) in
-        let modules =
-          lines
-          |> Dep_gen.interpret_deps md ~unit
-        in
+        let modules = Dep_gen.interpret_deps md ~unit lines in
         build_paths modules
-        |> List.map ~f:Path.build
-        |> (fun x -> Command.Args.Deps x)
+      in
+      let path_args =
+        let+ paths = paths in
+        Command.Args.Deps paths
+      in
+      let sig_args: _ Command.Args.t list =
+        if gen_sig then
+          [ A "-o"
+          ; Target (sig_file unit)
+          ; A "-sig"
+          ]
+        else
+          []
       in
       (let open Action_builder.With_targets.O in
-      let flags, sandbox =
-        Option.value (Module.pp_flags unit)
-          ~default:(Action_builder.return [], sandbox)
-      in
       Command.run codept
         ~dir:(Path.build context.build_dir)
         [ As ["-k"; "-verbosity"; "error"] (* avoid self-cycle errors and unresolved module notifications *)
         ; Command.Args.dyn flags
         ; Dep (Path.build m2l_file)
-        ; Dyn paths
-        ; S (if gen_sig then
-          [ A "-o"
-          ; Target (sig_file unit)
-          ; A "-sig"
-          ]
-          else [])
+        ; Dyn path_args
+        ; S sig_args
         ; A "-o"
-        ; Target ocamldep_output
+        ; Target immediate_file
         ; A "-modules"
         ]
       >>| Action.Full.add_sandbox sandbox)
     in
     Super_context.add_rule sctx ~dir action
   in
+  (* 3. Merge transitives. *)
   let build_paths dependencies =
     let dependency_file_path m =
       let ml_kind m =
@@ -109,9 +117,8 @@ let deps_of
   let action =
     let open Action_builder.O in
     let paths =
-      let+ lines = Action_builder.lines_of (Path.build ocamldep_output) in
+      let+ lines = Action_builder.lines_of (Path.build immediate_file) in
       let modules =
-        (* parse_deps_exn ~file:(Module.File.path source) lines *)
         Dep_gen.parse_deps_exn ~file:(Path.build m2l_file) lines
         |> Dep_gen.interpret_deps md ~unit
       in
@@ -148,12 +155,12 @@ let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =
   match Module.source ~ml_kind unit with
   | None -> Action_builder.return []
   | Some source ->
-    let ocamldep_output = Obj_dir.Module.dep obj_dir (Immediate source) in
+    let immediate_file = Obj_dir.Module.dep obj_dir (Immediate source) in
     let m2l_file = Obj_dir.Module.dep obj_dir (M2l (unit, ml_kind)) in
     Action_builder.memoize
-      (Path.Build.to_string ocamldep_output)
+      (Path.Build.to_string immediate_file)
       (Action_builder.map
          ~f:(fun lines ->
            Dep_gen.parse_deps_exn ~file:(Path.build m2l_file) lines
            |> Dep_gen.parse_module_names ~unit ~modules)
-         (Action_builder.lines_of (Path.build ocamldep_output)))
+         (Action_builder.lines_of (Path.build immediate_file)))

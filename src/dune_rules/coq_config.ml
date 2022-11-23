@@ -146,7 +146,7 @@ type t =
 let impl_config bin =
   let* _ = Build_system.build_file bin in
   Memo.of_reproducible_fiber
-  @@ Process.run_capture_lines Process.Strict bin [ "--config" ]
+  @@ Process.run_capture_lines Process.Return bin [ "--config" ]
 
 let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
 
@@ -157,27 +157,45 @@ let version ~coqc =
   let+ t = t in
   t.version_string
 
-let make ~(coqc : Action.Prog.t) =
+let make_res ~(coqc : Action.Prog.t) =
   match coqc with
   | Ok coqc_path -> (
     let open Memo.O in
     let+ config_lines = Memo.exec config_memo coqc_path
     and+ version_info = Version.make ~coqc in
-    match Vars.of_lines config_lines with
-    | Ok vars ->
-      let coqlib = Vars.get_path vars "COQLIB" in
-      let coq_native_compiler_default =
-        Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
-      in
-      { version_info; coqlib; coq_native_compiler_default }
-    | Error msg ->
-      User_error.raise
-        Pp.
-          [ textf "cannot parse output of %S --config:"
-              (Path.to_string coqc_path)
-          ; msg
-          ])
+    let config_lines, exit_code = config_lines in
+    if exit_code <> 0 then Error (coqc_path, exit_code, config_lines)
+    else
+      match Vars.of_lines config_lines with
+      | Ok vars ->
+        let coqlib = Vars.get_path vars "COQLIB" in
+        let coq_native_compiler_default =
+          Vars.get vars "COQ_NATIVE_COMPILER_DEFAULT"
+        in
+        Ok { version_info; coqlib; coq_native_compiler_default }
+      | Error msg ->
+        User_error.raise
+          Pp.
+            [ textf "cannot parse output of %s --config:"
+                (Path.to_string coqc_path)
+            ; msg
+            ])
   | Error e -> Action.Prog.Not_found.raise e
+
+let make_opt ~coqc = Memo.map ~f:Result.to_option (make_res ~coqc)
+
+let make ~coqc =
+  let open Memo.O in
+  let+ result = make_res ~coqc in
+  match result with
+  | Ok t -> t
+  | Error (coqc_path, exit_code, config_lines) ->
+    User_error.raise
+      Pp.
+        [ textf "Error while running %s --config" (Path.to_string coqc_path)
+        ; textf "Exit code: %d" exit_code
+        ; textf "Output:\n%s" (String.concat ~sep:"\n" config_lines)
+        ]
 
 let by_name { version_info; coqlib; coq_native_compiler_default } name =
   match name with

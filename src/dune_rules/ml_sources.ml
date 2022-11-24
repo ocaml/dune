@@ -217,7 +217,7 @@ let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 
 let find_origin (t : t) name = Module_name.Map.find t.modules.rev_map name
 
-let virtual_modules lookup_vlib vlib =
+let virtual_modules ~lookup_vlib vlib =
   let info = Lib.info vlib in
   let+ modules =
     match Option.value_exn (Lib_info.virtual_ info) with
@@ -277,7 +277,7 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
       let* wrapped = Lib.wrapped resolved in
       let wrapped = Option.value_exn wrapped in
       let* main_module_name = Lib.main_module_name resolved in
-      let+ impl = Resolve.Memo.lift_memo (virtual_modules lookup_vlib vlib) in
+      let+ impl = Resolve.Memo.lift_memo (virtual_modules ~lookup_vlib vlib) in
       let kind : Modules_field_evaluator.kind = Implementation impl in
       (kind, main_module_name, wrapped)
   in
@@ -335,6 +335,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
            the library is not built. We should change this to carry the
            [Or_exn.t] a bit longer. *)
         let+ modules =
+          let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
           make_lib_modules ~dir ~libs:(Scope.libs scope) ~lookup_vlib ~modules
             ~lib
           >>= Resolve.read_memo

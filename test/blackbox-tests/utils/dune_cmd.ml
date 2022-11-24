@@ -1,12 +1,11 @@
 open Stdune
 module Re = Dune_re
 
-let commands = Table.create (module String) 10
+let ( let+ ) x k = Cmdliner.Term.(const k $ x)
 
-let register name of_args run =
-  Table.add_exn commands name (fun args ->
-      let t = of_args args in
-      run t)
+let ( and+ ) a b = Cmdliner.Term.(const (fun x y -> (x, y)) $ a $ b)
+
+let string_arg n = Cmdliner.Arg.(required & pos n (some string) None & info [])
 
 (* Doesn't follow the symlinks! *)
 module Stat = struct
@@ -41,28 +40,28 @@ module Stat = struct
 
   let name = "stat"
 
-  let of_args = function
-    | [ data; file ] ->
-      let data = data_of_string data in
-      let file = Path.of_filename_relative_to_initial_cwd file in
-      { file; data }
-    | _ -> raise (Arg.Bad (sprintf "2 arguments must be provided"))
+  let args =
+    let+ data_s = string_arg 0
+    and+ file_s = string_arg 1 in
+    let data = data_of_string data_s in
+    let file = Path.of_filename_relative_to_initial_cwd file_s in
+    { file; data }
 
-  let run { file; data } =
+  let term =
+    let+ { file; data } = args in
     let stats = Path.lstat_exn file in
     print_endline (pp_stats data stats)
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info name
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Wait_for_fs_clock_to_advance = struct
   let name = "wait-for-fs-clock-to-advance"
 
-  let of_args = function
-    | [] -> ()
-    | _ -> raise (Arg.Bad ("Usage: dune_cmd " ^ name))
-
-  let run () =
+  let term =
+    let+ () = Cmdliner.Term.const () in
     let fn = "." ^ name ^ ".tmp" in
     let fstime () =
       Unix.close (Unix.openfile fn [ O_WRONLY; O_CREAT; O_TRUNC ] 0o644);
@@ -75,43 +74,35 @@ module Wait_for_fs_clock_to_advance = struct
       Unix.sleepf 0.01
     done
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info name
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Cat = struct
-  let name = "cat"
+  let term =
+    let+ p = string_arg 0 in
+    print_string (Io.String_path.read_file p)
 
-  let of_args = function
-    | [ file ] -> file
-    | _ -> raise (Arg.Bad "Usage: dune_cmd cat <file>")
+  let info = Cmdliner.Cmd.info "cat"
 
-  let run p = print_string (Io.String_path.read_file p)
-
-  let () = register name of_args run
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Exists = struct
-  type t = Path of Path.t
+  let term =
+    let+ path_s = string_arg 0 in
+    let path = Path.of_filename_relative_to_initial_cwd path_s in
+    print_string (Path.exists path |> Bool.to_string)
 
-  let name = "exists"
+  let info = Cmdliner.Cmd.info "exists"
 
-  let of_args = function
-    | [ path ] -> Path (Path.of_filename_relative_to_initial_cwd path)
-    | _ -> raise (Arg.Bad "Usage: dune_cmd exists <path>")
-
-  let run (Path path) = print_string (Path.exists path |> Bool.to_string)
-
-  let () = register name of_args run
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Expand_lines = struct
-  let name = "expand_lines"
-
-  let of_args = function
-    | [] -> ()
-    | _ -> raise (Arg.Bad ("Usage: dune_cmd " ^ name))
-
-  let run () =
+  let term =
+    let+ () = Cmdliner.Term.const () in
     let re = Re.compile (Re.str "\\n") in
     set_binary_mode_in stdin true;
     set_binary_mode_out stdout true;
@@ -124,7 +115,9 @@ module Expand_lines = struct
     in
     loop ()
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info "expand_lines"
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Sanitizer = struct
@@ -157,13 +150,8 @@ module Sanitizer = struct
           let s = Re.Group.get g 0 in
           sprintf "%c%s" s.[0] (String.Map.find_exn map (String.drop s 1)))
 
-  let name = "sanitize"
-
-  let of_args = function
-    | [] -> ()
-    | _ -> raise (Arg.Bad "Usage: dune_cmd sanitize takes no arguments")
-
-  let run () =
+  let term =
+    let+ () = Cmdliner.Term.const () in
     let config = Configurator.create "sanitizer" in
     let sanitize = make_ext_replace config in
     let rec loop () =
@@ -175,15 +163,15 @@ module Sanitizer = struct
     in
     loop ()
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info "sanitize"
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Count_lines = struct
   type t =
     | Stdin
     | File of Path.t
-
-  let name = "count-lines"
 
   let count_lines ic =
     let rec loop n =
@@ -193,12 +181,14 @@ module Count_lines = struct
     in
     loop 0
 
-  let of_args = function
-    | [] -> Stdin
-    | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
-    | _ -> raise (Arg.Bad "Usage: dune_cmd count-lines <file>")
+  let kind =
+    let+ file_opt = Cmdliner.Arg.(value & pos 0 (some string) None & info []) in
+    match file_opt with
+    | None -> Stdin
+    | Some file -> File (Path.of_filename_relative_to_initial_cwd file)
 
-  let run t =
+  let term =
+    let+ t = kind in
     let n =
       match t with
       | Stdin -> count_lines stdin
@@ -206,18 +196,13 @@ module Count_lines = struct
     in
     Printf.printf "%d\n%!" n
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info "count-lines"
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Override_on = struct
   module Configurator = Configurator.V1
-
-  type t =
-    { system_to_override_on : string
-    ; desired_output : string
-    }
-
-  let name = "override-on"
 
   let copy_stdin () =
     let rec loop () =
@@ -229,51 +214,35 @@ module Override_on = struct
     in
     loop ()
 
-  let of_args = function
-    | [ system_to_override_on; desired_output ] ->
-      { system_to_override_on; desired_output }
-    | _ ->
-      raise
-        (Arg.Bad
-           "Usage: dune_cmd override-on <system-to-override-on> \
-            <desired-output>")
-
-  let run { system_to_override_on; desired_output } =
+  let term =
+    let+ system_to_override_on = string_arg 0
+    and+ desired_output = string_arg 1 in
     let config = Configurator.create "override-on" in
     match Configurator.ocaml_config_var config "system" with
     | Some system when String.equal system system_to_override_on ->
       print_endline desired_output
     | _ -> copy_stdin ()
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info "override-on"
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Rewrite_path = struct
-  let name = "rewrite-path"
-
-  let of_args = function
-    | [ path ] -> path
-    | _ -> raise (Arg.Bad "Usage: dune_cmd rewrite-path <path>")
-
-  let run path =
+  let term =
+    let+ path = string_arg 0 in
     match
       Build_path_prefix_map.decode_map (Sys.getenv "BUILD_PATH_PREFIX_MAP")
     with
     | Error msg -> failwith msg
     | Ok map -> print_string (Build_path_prefix_map.rewrite map path)
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info "rewrite-path"
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Find_by_contents = struct
-  let name = "find-file-by-contents-regexp"
-
-  let of_args = function
-    | [ path; contents_regexp ] -> (path, Str.regexp contents_regexp)
-    | _ ->
-      raise
-        (Arg.Bad "Usage: dune_cmd find-files-by-contents-regexp <path> <regexp>")
-
   let rec find_files ~dir regexp : _ list =
     List.concat_map
       (List.sort (Sys.readdir dir |> Array.to_list) ~compare:String.compare)
@@ -288,7 +257,10 @@ module Find_by_contents = struct
           else []
         | _other -> [])
 
-  let run (dir, regexp) =
+  let term =
+    let+ dir = string_arg 0
+    and+ regexp_s = string_arg 1 in
+    let regexp = Str.regexp regexp_s in
     match find_files ~dir regexp with
     | [] ->
       Format.eprintf "No files found matching pattern@.%!";
@@ -299,39 +271,39 @@ module Find_by_contents = struct
       List.iter files ~f:(fun file -> Printf.printf "%s\n%!" file);
       exit 1
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info "find-file-by-contents-regexp"
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
 module Wait_for_file_to_appear = struct
-  type t = { file : Path.t }
-
-  let name = "wait-for-file-to-appear"
-
-  let of_args = function
-    | [ file ] ->
-      let file = Path.of_filename_relative_to_initial_cwd file in
-      { file }
-    | _ -> raise (Arg.Bad (sprintf "1 argument must be provided"))
-
-  let run { file } =
+  let term =
+    let+ s = string_arg 0 in
+    let file = Path.of_filename_relative_to_initial_cwd s in
     while not (Path.exists file) do
       Unix.sleepf 0.01
     done
 
-  let () = register name of_args run
+  let info = Cmdliner.Cmd.info "wait-for-file-to-appear"
+
+  let cmd = Cmdliner.Cmd.v info term
 end
 
-let () =
-  let name, args =
-    match Array.to_list Sys.argv with
-    | _ :: name :: args -> (name, args)
-    | [] -> assert false
-    | [ _ ] ->
-      Format.eprintf "No arguments passed@.%!";
-      exit 1
-  in
-  match Table.find commands name with
-  | None ->
-    Format.eprintf "No command %S name found" name;
-    exit 1
-  | Some run -> run args
+let info = Cmdliner.Cmd.info "dune-cmd"
+
+let cmd =
+  Cmdliner.Cmd.group info
+    [ Stat.cmd
+    ; Wait_for_fs_clock_to_advance.cmd
+    ; Cat.cmd
+    ; Exists.cmd
+    ; Expand_lines.cmd
+    ; Sanitizer.cmd
+    ; Count_lines.cmd
+    ; Override_on.cmd
+    ; Rewrite_path.cmd
+    ; Find_by_contents.cmd
+    ; Wait_for_file_to_appear.cmd
+    ]
+
+let () = Cmdliner.Cmd.eval cmd |> Stdlib.exit

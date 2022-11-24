@@ -6,7 +6,8 @@
   dune-private-libs.dune_re
   dune-configurator
   build_path_prefix_map
-  str))
+  str
+  cmdliner))
 
 (ocamllex dunepp)
 

@@ -31,14 +31,19 @@ module Kind = struct
     | Wrapped_compat
     | Root
 
-  let to_string = function
-    | Intf_only -> "intf_only"
-    | Virtual -> "virtual"
-    | Impl -> "impl"
-    | Alias -> "alias"
-    | Impl_vmodule -> "impl_vmodule"
-    | Wrapped_compat -> "wrapped_compat"
-    | Root -> "root"
+  let all =
+    [ (Intf_only, "intf_only")
+    ; (Virtual, "virtual")
+    ; (Impl, "impl")
+    ; (Alias, "alias")
+    ; (Impl_vmodule, "impl_vmodule")
+    ; (Wrapped_compat, "wrapped_compat")
+    ; (Root, "root")
+    ]
+
+  let rev_all = List.rev_map ~f:(fun (x, y) -> (y, x)) all
+
+  let to_string s = Option.value_exn (List.assoc all s)
 
   let to_dyn t = Dyn.string (to_string t)
 
@@ -46,15 +51,7 @@ module Kind = struct
 
   let decode =
     let open Dune_lang.Decoder in
-    enum
-      [ ("intf_only", Intf_only)
-      ; ("virtual", Virtual)
-      ; ("impl", Impl)
-      ; ("alias", Alias)
-      ; ("impl_vmodule", Impl_vmodule)
-      ; ("wrapped_compat", Wrapped_compat)
-      ; ("root", Root)
-      ]
+    enum rev_all
 
   let has_impl = function
     | Alias | Impl_vmodule | Wrapped_compat | Root | Impl -> true

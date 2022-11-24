@@ -238,7 +238,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
          |> Scope.project |> Dune_project.dune_version
        in
        (* TODO DUNE4 get rid of the old behavior *)
-       if dune_version >= (3, 7) then dir else ctx.build_dir)
+       if dune_version >= (3, 7) || mode = Melange then dir else ctx.build_dir)
     ?loc:(CC.loc cctx)
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)

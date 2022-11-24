@@ -64,6 +64,7 @@ The next test tries to build a module that does not exist.
   3 |  (deps %{cmo:foo}))
              ^^^^^^^^^^
   Error: Module Foo does not exist.
+  Leaving directory 'ex1'
   [1]
 
 Command line version; note that the error message is slightly different.
@@ -105,6 +106,7 @@ This test tries to build a non-existent .cma.
   3 |  (deps %{cma:bar}))
              ^^^^^^^^^^
   Error: Library bar does not exist.
+  Leaving directory 'ex2'
   [1]
 
 Command line version.
@@ -244,6 +246,7 @@ This test is no longer failing. It should fail because
   3 |  (deps %{cmo:x2})
              ^^^^^^^^^
   Error: Module X2 does not exist.
+  Leaving directory 'deps-fail'
   [1]
 
 The above restriction also applies to other stanzas. Any stanzas that introduces
@@ -258,4 +261,5 @@ new files for Dir_contents, for example copy_files:
   1 | (copy_files "%{cmo:x2}")
                    ^^^^^^^^^
   Error: %{cmo:..} isn't allowed in this position.
+  Leaving directory 'deps-fail'
   [1]

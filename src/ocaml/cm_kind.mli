@@ -16,7 +16,7 @@ val source : t -> Ml_kind.t
 val to_dyn : t -> Dyn.t
 
 module Dict : sig
-  type cm_kind = t
+  type cm_kind := t
 
   type 'a t =
     { cmi : 'a
@@ -30,4 +30,3 @@ module Dict : sig
 
   val make_all : 'a -> 'a t
 end
-with type cm_kind := t

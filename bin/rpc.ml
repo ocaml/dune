@@ -8,7 +8,6 @@ let active_server () =
 
 let client_term common f =
   let common = Common.forbid_builds common in
-  let common = Common.set_print_directory common false in
   let config = Common.init ~log_file:No_log_file common in
   Scheduler.go ~common ~config f
 

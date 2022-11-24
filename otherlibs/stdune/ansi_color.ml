@@ -146,6 +146,8 @@ let stdout_supports_color = lazy (supports_color Unix.stdout)
 
 let stderr_supports_color = lazy (supports_color Unix.stderr)
 
+let output_is_a_tty = lazy (Unix.isatty Unix.stderr)
+
 let rec tag_handler current_styles ppf styles pp =
   Format.pp_print_as ppf 0 (Style.escape_sequence_no_reset styles);
   Pp.to_fmt_with_tags ppf pp

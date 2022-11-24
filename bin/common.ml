@@ -80,13 +80,18 @@ let rpc t =
   | `Forbid_builds -> `Forbid_builds
   | `Allow rpc -> `Allow (Lazy.force rpc)
 
-let forbid_builds t = { t with rpc = `Forbid_builds }
+let forbid_builds t = { t with rpc = `Forbid_builds; no_print_directory = true }
+
+let signal_watcher t =
+  match t.rpc with
+  | `Allow _ -> `Yes
+  | `Forbid_builds ->
+    (* if we aren't building anything, then we don't mind interrupting dune immediately *)
+    `No
 
 let stats t = t.stats
 
 let insignificant_changes t = t.insignificant_changes
-
-let set_print_directory t b = { t with no_print_directory = not b }
 
 let set_promote t v = { t with promote = Some v }
 
@@ -111,7 +116,7 @@ let normalize_path path =
 
 let print_entering_message c =
   let cwd = Path.to_absolute_filename Path.root in
-  if cwd <> Fpath.initial_cwd && not c.no_print_directory then
+  if cwd <> Fpath.initial_cwd && not c.no_print_directory then (
     (* Editors such as Emacs parse the output of the build system and interpret
        filenames in error messages relative to where the build system was
        started.
@@ -144,12 +149,18 @@ let print_entering_message c =
             in
             loop ".." (Filename.dirname s)))
     in
-    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
+    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
+    at_exit (fun () ->
+        flush stdout;
+        Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
 
 let init ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.build_dir);
+  (* Once we have the build directory set, initialise the logging. We can't do
+     this earlier, because the build log typically goes into [_build/log]. *)
+  Dune_util.Log.init () ?file:log_file;
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;
@@ -162,10 +173,9 @@ let init ?log_file c =
   in
   let config =
     Dune_config.adapt_display config
-      ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
+      ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
   in
   Dune_config.init config;
-  Dune_util.Log.init () ?file:log_file;
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
     let+ w = Dune_rules.Workspace.workspace () in

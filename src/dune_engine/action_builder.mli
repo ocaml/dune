@@ -5,7 +5,7 @@ open! Import
 include module type of Action_builder0
 
 module With_targets : sig
-  type 'a build
+  type 'a build := 'a t
 
   type nonrec 'a t =
     { build : 'a t
@@ -43,7 +43,6 @@ module With_targets : sig
     val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
   end
 end
-with type 'a build := 'a t
 
 (** Add targets to an action builder, turning a target-less [Action_builder.t]
     into [Action_builder.With_targets.t]. *)

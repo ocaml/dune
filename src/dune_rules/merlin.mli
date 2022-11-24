@@ -46,6 +46,7 @@ val make :
   -> flags:Ocaml_flags.t
   -> preprocess:
        Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+       Resolve.Memo.t
   -> libname:Lib_name.Local.t option
   -> source_dirs:Path.Source.Set.t
   -> modules:Modules.t

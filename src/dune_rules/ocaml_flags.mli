@@ -29,7 +29,7 @@ val empty : t
 
 val of_list : string list -> t
 
-val get : t -> Mode.t -> string list Action_builder.t
+val get : t -> Lib_mode.t -> string list Action_builder.t
 
 val append_common : t -> string list -> t
 

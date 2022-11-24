@@ -3,6 +3,8 @@
 
 - Fix status line enabled when ANSI colors are forced. (#6503, @MisterDA)
 
+- Fix build with MSVC compiler (#6517, @nojb)
+
 3.6.0 (2022-11-14)
 ------------------
 

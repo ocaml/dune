@@ -6,7 +6,7 @@ We build the project
   bar
 
 Verify that merlin configuration was generated...
-  $ dune ocaml-merlin --dump-config=$PWD
+  $ dune ocaml merlin dump-config $PWD
   Test
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -43,7 +43,7 @@ Verify that merlin configuration was generated...
      -keep-locs)))
 
 ...but not in the sub-folder whose content was copied
-  $ dune ocaml-merlin --dump-config=$PWD/411
+  $ dune ocaml merlin dump-config $PWD/411
 
 Now we check that both querying from the root and the subfolder works
   $ FILE=$PWD/foo.ml

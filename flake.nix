@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nix-overlays.url = "github:anmonteiro/nix-overlays";
     flake-utils.url = "github:numtide/flake-utils";
     ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
     opam-nix = {
@@ -21,6 +22,7 @@
     , ocamllsp
     , opam-repository
     , melange
+    , nix-overlays
     }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
@@ -93,22 +95,26 @@
           buildInputs = [ ocamlformat ];
         };
 
-      devShells.slim = with pkgs.ocamlPackages; pkgs.mkShell {
-        inputsFrom = [ dune_3 ];
-        nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];
-        buildInputs = [
-          merlin
-          ocamlformat
-          ppx_expect
-          ctypes
-          integers
-          mdx
-          cinaps
-          menhir
-          odoc
-          lwt
-        ];
-      };
+      devShells.slim =
+        let pkgs = nix-overlays.legacyPackages.${system};
+        in
+        pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];
+          inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+          buildInputs = with pkgs.ocamlPackages; [
+            dune_3
+            merlin
+            ocamlformat
+            ppx_expect
+            ctypes
+            integers
+            mdx
+            cinaps
+            menhir
+            odoc
+            lwt
+          ];
+        };
 
       devShells.coq =
         pkgs.mkShell {

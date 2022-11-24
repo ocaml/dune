@@ -191,9 +191,9 @@ module Event : sig
     | Timer of Fiber.fill
 
   module Queue : sig
-    type t
+    type event := t
 
-    type event
+    type t
 
     val create : Dune_stats.t option -> t
 
@@ -232,7 +232,6 @@ module Event : sig
 
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
-  with type event := t
 end = struct
   type build_input_change =
     | Fs_event of Dune_file_watcher.Fs_memo_event.t

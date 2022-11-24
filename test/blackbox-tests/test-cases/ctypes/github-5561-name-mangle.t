@@ -14,7 +14,7 @@
   >    (functor Type_description))))
   > EOF
 
-  $ dune build
+  $ bash -c 'set -o pipefail; dune build 2>&1 | head -n 20'
   File "fooBar__type_gen.ml", line 3, characters 12-34:
   3 |     (module Type_description.Types)
                   ^^^^^^^^^^^^^^^^^^^^^^
@@ -35,5 +35,4 @@
   Package fooBar was not found in the pkg-config search path.
   Perhaps you should add the directory containing `fooBar.pc'
   to the PKG_CONFIG_PATH environment variable
-  No package 'fooBar' found
   [1]

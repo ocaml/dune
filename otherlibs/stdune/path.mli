@@ -78,6 +78,8 @@ module External : sig
   val relative : t -> string -> t
 
   val mkdir_p : ?perms:int -> t -> unit
+
+  val of_filename_relative_to_initial_cwd : string -> t
 end
 
 (** In the source section of the current workspace. *)
@@ -134,6 +136,10 @@ module Outside_build_dir : sig
     | In_source_dir of Source.t
 
   val hash : t -> int
+
+  val relative : t -> string -> t
+
+  val extend_basename : t -> suffix:string -> t
 
   val equal : t -> t -> bool
 

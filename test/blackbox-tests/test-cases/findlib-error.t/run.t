@@ -7,4 +7,5 @@ We are dropping support for findlib in dune
                              ^^^^^^^^^^^^^^
   Error: %{findlib:..} was renamed to '%{lib:..}' in the 1.0 version of the
   dune language
+  Leaving directory 'in-dune'
   [1]

@@ -14,6 +14,8 @@ val rpc :
 
 val forbid_builds : t -> t
 
+val signal_watcher : t -> [ `Yes | `No ]
+
 val stats : t -> Dune_stats.t option
 
 val print_metrics : t -> bool
@@ -61,9 +63,6 @@ val term : t Cmdliner.Term.t
 val term_with_default_root_is_cwd : t Cmdliner.Term.t
 
 val envs : Cmdliner.Cmd.Env.info list
-
-(** Set whether Dune should print the "Entering directory '<dir>'" message *)
-val set_print_directory : t -> bool -> t
 
 val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
 

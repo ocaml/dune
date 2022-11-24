@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nix-overlays.url = "github:anmonteiro/nix-overlays";
     flake-utils.url = "github:numtide/flake-utils";
     ocamllsp.url = "git+https://www.github.com/ocaml/ocaml-lsp?submodules=1";
     opam-nix = {
@@ -12,7 +13,6 @@
       flake = false;
     };
     melange.url = "github:melange-re/melange";
-    melange-compiler-libs.url = "github:melange-re/melange-compiler-libs";
   };
   outputs =
     { self
@@ -22,7 +22,7 @@
     , ocamllsp
     , opam-repository
     , melange
-    , melange-compiler-libs
+    , nix-overlays
     }@inputs:
     let package = "dune";
     in flake-utils.lib.eachDefaultSystem (system:
@@ -47,7 +47,6 @@
         (self: super: {
           ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
         })
-        melange-compiler-libs.overlays.default
         melange.overlays.default
       ];
       ocamlformat =
@@ -96,22 +95,26 @@
           buildInputs = [ ocamlformat ];
         };
 
-      devShells.slim = with pkgs.ocamlPackages; pkgs.mkShell {
-        inputsFrom = [ dune_3 ];
-        nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];
-        buildInputs = [
-          merlin
-          ocamlformat
-          ppx_expect
-          ctypes
-          integers
-          mdx
-          cinaps
-          menhir
-          odoc
-          lwt
-        ];
-      };
+      devShells.slim =
+        let pkgs = nix-overlays.legacyPackages.${system};
+        in
+        pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];
+          inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+          buildInputs = with pkgs.ocamlPackages; [
+            dune_3
+            merlin
+            ocamlformat
+            ppx_expect
+            ctypes
+            integers
+            mdx
+            cinaps
+            menhir
+            odoc
+            lwt
+          ];
+        };
 
       devShells.coq =
         pkgs.mkShell {
@@ -131,6 +134,7 @@
               ocamlformat
               coq_8_16
               nodejs-slim
+              patdiff
               pkg-config
               file
               ccls
@@ -139,6 +143,7 @@
           ++ [
             ocamllsp.outputs.packages.${system}.ocaml-lsp-server
             pkgs.ocamlPackages.melange
+            pkgs.ocamlPackages.mel
           ]
           ++ nixpkgs.lib.attrsets.attrVals (builtins.attrNames devPackages) scope;
           inputsFrom = [ self.packages.${system}.default ];

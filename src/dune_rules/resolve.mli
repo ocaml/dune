@@ -157,7 +157,7 @@ module Option : sig
 end
 
 module Memo : sig
-  type 'a resolve
+  type 'a resolve := 'a t
 
   type 'a t = 'a resolve Memo.t
 
@@ -202,4 +202,3 @@ module Memo : sig
   (** Read the value immediately, ignoring actual errors. *)
   val peek : 'a t -> ('a, unit) result Memo.t
 end
-with type 'a resolve := 'a t

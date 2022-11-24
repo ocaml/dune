@@ -9,4 +9,5 @@ let group =
     ; Ocaml_merlin.Dump_dot_merlin.command
     ; Top.command
     ; Top.module_command
+    ; Ocaml_merlin.group
     ]

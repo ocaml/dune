@@ -98,9 +98,9 @@ module DB : sig
   val installed : Context.t -> t Memo.t
 
   module Resolve_result : sig
-    type t
+    type db := t
 
-    type db
+    type t
 
     val not_found : t
 
@@ -110,7 +110,6 @@ module DB : sig
 
     val redirect : db option -> Loc.t * Lib_name.t -> t
   end
-  with type db := t
 
   (** Create a new library database. [resolve] is used to resolve library names
       in this database.

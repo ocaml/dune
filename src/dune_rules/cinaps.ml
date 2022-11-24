@@ -84,7 +84,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let main_module_name = Module_name.of_string name in
   let module_ =
-    Module.generated main_module_name ~src_dir:(Path.build cinaps_dir)
+    Module.generated ~kind:Impl main_module_name ~src_dir:cinaps_dir
   in
   let cinaps_ml =
     Module.source ~ml_kind:Ml_kind.Impl module_
@@ -104,7 +104,7 @@ let gen_rules sctx t ~dir ~scope =
          ; Deps (List.map cinapsed_files ~f:Path.build)
          ])
   and* expander = Super_context.expander sctx ~dir in
-  let* preprocess =
+  let preprocess =
     Preprocessing.make sctx ~dir ~expander
       ~lint:(Preprocess.Per_module.no_preprocessing ())
       ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps

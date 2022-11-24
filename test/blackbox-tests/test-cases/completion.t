@@ -310,10 +310,6 @@ List completion:
 
 Completion of targets:
 
-  $ dune complete target
-  complete.sh
-  test
-
   $ cat > dune-project << EOF
   > (lang dune 3.0)
   > EOF

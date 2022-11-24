@@ -131,7 +131,7 @@ module Processed = struct
     if String.need_quoting s then Filename.quote s else s
 
   let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions
-      (* TODO print melange flag *) _mode =
+      mode =
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
     let print = Buffer.add_string b in
@@ -156,6 +156,11 @@ module Processed = struct
           print "# FLG";
           List.iter flags ~f:(fun f -> printf " %s" (quote_for_dot_merlin f));
           print "\n");
+    let () =
+      match mode with
+      | `Ocaml -> ()
+      | `Melange -> print "# FLG -ppx melc -as-ppx -bs-jsx 3\n"
+    in
     Buffer.contents b
 
   let get { modules; pp_config; config } ~filename =

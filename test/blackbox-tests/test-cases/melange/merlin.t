@@ -10,7 +10,6 @@
   > (library
   >  (name $lib)
   >  (private_modules bar)
-  >  (flags :standard -bs-jsx 3)
   >  (modes melange))
   > EOF
 

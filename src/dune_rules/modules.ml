@@ -203,8 +203,6 @@ module Wrapped = struct
     ; wrapped : Mode.t
     }
 
-  let empty t = Module_name.Map.is_empty t.modules
-
   let encode
       { modules; wrapped_compat; alias_module; main_module_name; wrapped } =
     let open Dune_lang.Encoder in
@@ -773,11 +771,6 @@ let relocate_alias_module t ~src_dir =
   match t with
   | Wrapped t -> Wrapped (Wrapped.relocate_alias_module t ~src_dir)
   | s -> s
-
-let is_empty = function
-  | Stdlib _ | Impl _ | Singleton _ -> false
-  | Unwrapped w -> Module_name.Map.is_empty w
-  | Wrapped w -> Wrapped.empty w
 
 let as_singleton = function
   | Singleton m -> Some m

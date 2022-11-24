@@ -69,6 +69,8 @@ module Processed = struct
 
   let serialize_path = Path.to_absolute_filename
 
+  let melc_ppx_flg = "melc -as-ppx -bs-jsx 3"
+
   let to_sexp ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions; mode } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
@@ -107,8 +109,7 @@ module Processed = struct
       | `Ocaml -> flags
       | `Melange ->
         make_directive "FLG"
-          (Sexp.List
-             [ Atom (Pp_kind.to_flag Ppx); Atom "melc -as-ppx -bs-jsx 3" ])
+          (Sexp.List [ Atom (Pp_kind.to_flag Ppx); Atom melc_ppx_flg ])
         :: flags
     in
     let suffixes =
@@ -159,7 +160,8 @@ module Processed = struct
     let () =
       match mode with
       | `Ocaml -> ()
-      | `Melange -> print "# FLG -ppx melc -as-ppx -bs-jsx 3\n"
+      | `Melange ->
+        print ("# FLG -ppx " ^ quote_for_dot_merlin melc_ppx_flg ^ "\n")
     in
     Buffer.contents b
 

@@ -56,4 +56,4 @@ The melange.emit entry contains a ppx directive
   B $TESTCASE_ROOT/_build/default/.output.mobjs/melange
   S $TESTCASE_ROOT
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs
-  # FLG -ppx melc -as-ppx -bs-jsx 3
+  # FLG -ppx 'melc -as-ppx -bs-jsx 3'

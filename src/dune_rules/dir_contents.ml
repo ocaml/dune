@@ -207,7 +207,15 @@ end = struct
     let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
   end
 
-  let lookup_vlib sctx ~dir = Load.get sctx ~dir >>= ocaml
+  let lookup_vlib sctx ~current_dir ~loc ~dir =
+    match Path.Build.equal current_dir dir with
+    | true ->
+      User_error.raise ~loc
+        [ Pp.text
+            "Virtual library and its implementation(s) cannot be defined in \
+             the same directory"
+        ]
+    | false -> Load.get sctx ~dir >>= ocaml
 
   let collect_group ~st_dir ~dir =
     let rec walk st_dir ~dir ~local =
@@ -302,7 +310,7 @@ end = struct
                    let dirs = [ (dir, [], files) ] in
                    let ml =
                      Memo.lazy_ (fun () ->
-                         let lookup_vlib = lookup_vlib sctx in
+                         let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
                          let loc = loc_of_dune_file st_dir in
                          let* scope = Scope.DB.find_by_dir dir in
                          Ml_sources.make d ~dir ~scope ~lib_config ~loc
@@ -372,7 +380,7 @@ end = struct
             let dirs = (dir, [], files) :: subdirs in
             let ml =
               Memo.lazy_ (fun () ->
-                  let lookup_vlib = lookup_vlib sctx in
+                  let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
                   let* scope = Scope.DB.find_by_dir dir in
                   Ml_sources.make d ~dir ~scope ~lib_config ~loc ~lookup_vlib
                     ~include_subdirs ~dirs)

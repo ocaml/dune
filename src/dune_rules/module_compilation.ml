@@ -407,7 +407,10 @@ module Alias_module = struct
              { local_name; obj_name })
     in
     let shadowed =
-      if Dune_project.dune_version project < (3, 5) then []
+      if
+        Dune_project.dune_version project < (3, 5)
+        || Modules.lib_interface modules = None
+      then []
       else
         match Modules.alias_module modules with
         | None -> []

@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Do not shadow library interface modules (#6549, fixes #6545, @rgrinberg)
+
 - Move `$ dune ocaml-merlin -dump-config=$dir` to `$ dune ocaml merlin
   dump-config $dir`. (#6547, @rgrinberg)
 

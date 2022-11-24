@@ -28,7 +28,7 @@
 
 All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
 
-  $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "ppx"
+  $ dune ocaml merlin dump-config $PWD | grep -i "ppx"
    (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
    (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
    (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
@@ -43,10 +43,10 @@ All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
 
   $ touch main.ml
   $ dune build @check
-  $ dune ocaml merlin dump-config "$PWD" | grep -i "$target"
+  $ dune ocaml merlin dump-config $PWD | grep -i "$target"
     $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
 
 The melange.emit entry contains a ppx directive
 
-  $ dune ocaml-merlin --dump-config="$(pwd)" | grep -i "ppx"
+  $ dune ocaml merlin dump-config $PWD | grep -i "ppx"
    (FLG (-ppx "melc -as-ppx -bs-jsx 3"))

@@ -87,7 +87,9 @@ let contents_impl p =
 
 let contents =
   let memo =
-    create_memo "file-contents" ~input:(module Path) ~cutoff:String.equal contents_impl
+    create_memo "file-contents"
+      ~input:(module Path)
+      ~cutoff:String.equal contents_impl
   in
   fun path -> exec_memo memo path
 

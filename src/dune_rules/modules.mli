@@ -106,8 +106,6 @@ val exit_module : t -> Module.t option
     module to [src_dir]. Only works if [t] is wrapped. *)
 val relocate_alias_module : t -> src_dir:Path.t -> t
 
-val is_empty : t -> bool
-
 val as_singleton : t -> Module.t option
 
 val source_dirs : t -> Path.Set.t

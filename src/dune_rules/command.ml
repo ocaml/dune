@@ -94,7 +94,7 @@ and expand_no_targets ~dir (t : without_targets t) =
   build
 
 let dep_prog = function
-  | Ok p -> (Action_builder.path p)
+  | Ok p -> Action_builder.path p
   | Error _ -> Action_builder.return ()
 
 let run ~dir ?sandbox ?stdout_to prog args =

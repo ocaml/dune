@@ -1,0 +1,5 @@
+(lang dune 3.0)
+(generate_opam_files true)
+(package
+  (allow_empty)
+  (name root_project))

@@ -1,0 +1,2 @@
+(dirs :standard)
+(subdir b (dirs :standard \ a))

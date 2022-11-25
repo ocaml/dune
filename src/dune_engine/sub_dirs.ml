@@ -109,6 +109,20 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
 
 type status_map = Status.t String.Map.t
 
+let is_normal statuses =
+  statuses
+  |> List.filter ~f:(function
+       | Status.Normal -> true
+       | _ -> false)
+  |> List.is_empty |> not
+
+let is_data_only statuses =
+  statuses
+  |> List.filter ~f:(function
+       | Status.Data_only -> true
+       | _ -> false)
+  |> List.is_empty |> not
+
 let eval (t : _ Status.Map.t) ~dirs =
   (* This function defines the unexpected behavior of: (dirs foo)
      (data_only_dirs bar)
@@ -123,9 +137,7 @@ let eval (t : _ Status.Map.t) ~dirs =
                Predicate_lang.Glob.exec pred ~standard dir)
            |> Status.Set.to_list
          in
-         match statuses with
-         | [] -> None
-         | statuses -> (
+         if is_normal statuses then
            (* If a directory has a status other than [Normal], then the [Normal]
               status is irrelevant so we just filter it out. *)
            match
@@ -136,16 +148,19 @@ let eval (t : _ Status.Map.t) ~dirs =
            | [] -> Some Normal
            | [ status ] -> Some status
            | statuses ->
-             User_error.raise
-               [ Pp.textf
-                   "Directory %s was marked as %s, it can't be marked as %s."
-                   dir
-                   (String.enumerate_and
-                      (List.map statuses ~f:Status.to_string))
-                   (match List.length statuses with
-                   | 2 -> "both"
-                   | _ -> "all these")
-               ]))
+             if is_data_only statuses then Some Status.Data_only
+             else
+               User_error.raise
+                 [ Pp.textf
+                     "Directory %s was marked as %s, it can't be marked as %s."
+                     dir
+                     (String.enumerate_and
+                        (List.map statuses ~f:Status.to_string))
+                     (match List.length statuses with
+                     | 2 -> "both"
+                     | _ -> "all these")
+                 ]
+         else None)
 
 type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
 

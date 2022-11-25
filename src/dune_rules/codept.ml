@@ -5,6 +5,9 @@ let codept_prog ~dir sctx =
   Super_context.resolve_program sctx ~dir ~loc:None "codept"
     ~hint:"opam install codept"
 
+let codept_o_arg name target : _ Command.Args.t list =
+  [ A "-o"; Target target; A name ]
+
 let deps_of
     ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
     ~ml_kind unit =
@@ -36,12 +39,8 @@ let deps_of
         ; Command.Args.dyn flags
         ; Command.Ml_kind.flag ml_kind
         ; Dep (Module.File.path source)
-        ; A "-o"
-        ; Target m2l_file
-        ; A "-m2l"
-        ; A "-o"
-        ; Target approx_dep_file
-        ; A "-nl-modules"
+        ; S (codept_o_arg "-m2l" m2l_file)
+        ; S (codept_o_arg "-nl-modules" approx_dep_file)
         ]
       >>| Action.Full.add_sandbox sandbox)
   in
@@ -73,7 +72,7 @@ let deps_of
         Command.Args.Deps paths
       in
       let sig_args : _ Command.Args.t list =
-        if gen_sig then [ A "-o"; Target (sig_file unit); A "-sig" ] else []
+        if gen_sig then codept_o_arg "-sig" (sig_file unit) else []
       in
       let open Action_builder.With_targets.O in
       Command.run codept
@@ -84,9 +83,7 @@ let deps_of
         ; Dep (Path.build m2l_file)
         ; Dyn path_args
         ; S sig_args
-        ; A "-o"
-        ; Target immediate_file
-        ; A "-modules"
+        ; S (codept_o_arg "-modules" immediate_file)
         ]
       >>| Action.Full.add_sandbox sandbox
     in

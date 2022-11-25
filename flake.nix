@@ -96,7 +96,13 @@
         };
 
       devShells.slim =
-        let pkgs = nix-overlays.legacyPackages.${system};
+        let
+          pkgs = nix-overlays.legacyPackages.${system}.appendOverlays [
+            (self: super: {
+              ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
+            })
+            melange.overlays.default
+          ];
         in
         pkgs.mkShell {
           nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];

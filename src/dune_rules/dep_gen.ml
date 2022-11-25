@@ -90,7 +90,7 @@ let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
        (Action_builder.lines_of (Path.build immediate_file)))
 
 let transitive_of_immediate_rule
-    ({ sandbox = _; modules = _; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as
+    ({ sctx; dir; obj_dir; sandbox = _; modules = _; vimpl = _; stdlib = _ } as
     md) ~ml_kind ~source ~file unit =
   let dep = Obj_dir.Module.dep obj_dir in
   let immediate_file = dep (Immediate source) in

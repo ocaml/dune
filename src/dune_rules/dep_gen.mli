@@ -23,6 +23,13 @@ val parse_deps_exn: file:Path.t -> string list -> string list
 
 val interpret_deps: Modules_data.t -> unit:Module.t -> string list -> Module.t list
 
+val read_deps_of :
+     obj_dir:Path.Build.t Obj_dir.t
+  -> modules:Modules.t
+  -> ml_kind:Ml_kind.t
+  -> Module.t
+  -> Module.t list Action_builder.t
+
 module type S =
 sig
   val deps_of :
@@ -30,13 +37,6 @@ sig
     -> ml_kind:Ml_kind.t
     -> Module.t
     -> Module.t list Action_builder.t Memo.t
-
-  val read_deps_of :
-       obj_dir:Path.Build.t Obj_dir.t
-    -> modules:Modules.t
-    -> ml_kind:Ml_kind.t
-    -> Module.t
-    -> Module.t list Action_builder.t
 
   (** [read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit] returns the
       immediate dependencies found in the modules of [modules] for the file with

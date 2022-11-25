@@ -70,6 +70,15 @@ let interpret_deps md ~unit deps =
   | Some m -> m :: deps
 
 
+let read_deps_of ~obj_dir ~modules ~ml_kind unit =
+  let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
+  Action_builder.memoize
+    (Path.Build.to_string all_deps_file)
+    (Action_builder.map
+        ~f:(parse_module_names ~unit ~modules)
+        (Action_builder.lines_of (Path.build all_deps_file)))
+
+
 module type S =
 sig
   val deps_of :
@@ -77,13 +86,6 @@ sig
     -> ml_kind:Ml_kind.t
     -> Module.t
     -> Module.t list Action_builder.t Memo.t
-
-  val read_deps_of :
-        obj_dir:Path.Build.t Obj_dir.t
-    -> modules:Modules.t
-    -> ml_kind:Ml_kind.t
-    -> Module.t
-    -> Module.t list Action_builder.t
 
   val read_immediate_deps_of :
         obj_dir:Path.Build.t Obj_dir.t

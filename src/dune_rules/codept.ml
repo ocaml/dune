@@ -11,7 +11,6 @@ let deps_of
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
   let context = Super_context.context sctx in
-  let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let immediate_file = dep (Immediate source) in
   let m2l_file = dep (M2l (unit, ml_kind)) in
   let approx_dep_file = dep (Immediate_approx source) in
@@ -99,42 +98,10 @@ let deps_of
     in
     Super_context.add_rule sctx ~dir action
   in
-  (* 3. Merge transitives. *)
-  let build_paths dependencies =
-    let dependency_file_path m =
-      let ml_kind m =
-        if Module.kind m = Alias then None
-        else if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf
-        else Some Impl
-      in
-      ml_kind m
-      |> Option.map ~f:(fun ml_kind ->
-             Path.build (dep (Transitive (m, ml_kind))))
-    in
-    List.filter_map dependencies ~f:dependency_file_path
-  in
-  let action =
-    let open Action_builder.O in
-    let paths =
-      let+ lines = Action_builder.lines_of (Path.build immediate_file) in
-      let modules =
-        Dep_gen.parse_deps_exn ~file:(Path.build m2l_file) lines
-        |> Dep_gen.interpret_deps md ~unit
-      in
-      ( build_paths modules
-      , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) )
-    in
-    Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
-      (let+ sources, extras =
-         Action_builder.dyn_paths
-           (let+ sources, extras = paths in
-            ((sources, extras), sources))
-       in
-       Action.Merge_files_into (sources, extras, all_deps_file))
-  in
   let+ () =
-    Super_context.add_rule sctx ~dir
-      (Action_builder.With_targets.map ~f:Action.Full.make action)
+    (* 3. Merge transitives. *)
+    let file = Path.build m2l_file in
+    Dep_gen.transitive_of_immediate_rule md ~ml_kind ~source ~file unit
   in
   Dep_gen.read_deps_of ~obj_dir ~modules ~ml_kind unit
 

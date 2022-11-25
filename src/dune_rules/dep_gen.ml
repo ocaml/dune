@@ -88,6 +88,44 @@ let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
           |> parse_module_names ~unit ~modules)
         (Action_builder.lines_of (Path.build immediate_file)))
 
+let transitive_of_immediate_rule ({ sandbox = _; modules = _; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md) ~ml_kind ~source ~file unit =
+  let immediate_file = Obj_dir.Module.dep obj_dir (Immediate source) in
+  let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
+  let build_paths dependencies =
+    let dependency_file_path m =
+      let ml_kind m =
+        if Module.kind m = Alias then None
+        else if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf
+        else Some Impl
+      in
+      ml_kind m
+      |> Option.map ~f:(fun ml_kind ->
+             Path.build (Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))))
+    in
+    List.filter_map dependencies ~f:dependency_file_path
+  in
+  let action =
+    let open Action_builder.O in
+    let paths =
+      let+ lines = Action_builder.lines_of (Path.build immediate_file) in
+      let modules =
+        parse_deps_exn ~file lines
+        |> interpret_deps md ~unit
+      in
+      ( build_paths modules
+      , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) )
+    in
+    Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
+      (let+ sources, extras =
+         Action_builder.dyn_paths
+           (let+ sources, extras = paths in
+            ((sources, extras), sources))
+       in
+       Action.Merge_files_into (sources, extras, all_deps_file))
+  in
+  Super_context.add_rule sctx ~dir
+    (Action_builder.With_targets.map ~f:Action.Full.make action)
+
 
 module type S =
 sig

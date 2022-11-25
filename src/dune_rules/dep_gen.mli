@@ -38,6 +38,14 @@ val read_immediate_deps_of_source :
   -> Module.t
   -> Module.t list Action_builder.t
 
+val transitive_of_immediate_rule :
+     Modules_data.t
+  -> ml_kind:Ml_kind.t
+  -> source:Module.File.t
+  -> file:Path.t
+  -> Module.t
+  -> unit Memo.t
+
 module type S =
 sig
   val deps_of :

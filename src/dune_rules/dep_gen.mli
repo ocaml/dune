@@ -30,6 +30,14 @@ val read_deps_of :
   -> Module.t
   -> Module.t list Action_builder.t
 
+val read_immediate_deps_of_source :
+     obj_dir:Path.Build.t Obj_dir.t
+  -> modules:Modules.t
+  -> source:Module.File.t
+  -> file:Path.t
+  -> Module.t
+  -> Module.t list Action_builder.t
+
 module type S =
 sig
   val deps_of :

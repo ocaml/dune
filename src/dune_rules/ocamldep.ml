@@ -76,11 +76,5 @@ let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =
   match Module.source ~ml_kind unit with
   | None -> Action_builder.return []
   | Some source ->
-    let ocamldep_output = Obj_dir.Module.dep obj_dir (Immediate source) in
-    Action_builder.memoize
-      (Path.Build.to_string ocamldep_output)
-      (Action_builder.map
-         ~f:(fun lines ->
-           Dep_gen.parse_deps_exn ~file:(Module.File.path source) lines
-           |> Dep_gen.parse_module_names ~unit ~modules)
-         (Action_builder.lines_of (Path.build ocamldep_output)))
+    let file = Module.File.path source in
+    Dep_gen.read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit

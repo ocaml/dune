@@ -78,6 +78,16 @@ let read_deps_of ~obj_dir ~modules ~ml_kind unit =
         ~f:(parse_module_names ~unit ~modules)
         (Action_builder.lines_of (Path.build all_deps_file)))
 
+let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
+  let immediate_file = Obj_dir.Module.dep obj_dir (Immediate source) in
+  Action_builder.memoize
+    (Path.Build.to_string immediate_file)
+    (Action_builder.map
+        ~f:(fun lines ->
+          parse_deps_exn ~file lines
+          |> parse_module_names ~unit ~modules)
+        (Action_builder.lines_of (Path.build immediate_file)))
+
 
 module type S =
 sig

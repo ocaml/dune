@@ -32,7 +32,9 @@ For melange.emit stanzas, an error is shown
   2 |  (target output)
   3 |  (entries main_melange)
   4 |  (module_system commonjs))
-  Error: No rule found for .output.mobjs/melange/melange__Main_melange.cmj
+  Error: Program melc not found in the tree or in PATH
+   (context: default)
+  Hint: opam install melange
   [1]
 
 For libraries, if no melange.emit stanza is found, build does not fail
@@ -88,15 +90,8 @@ If melange.emit stanza is found, but no rules are executed, build does not fail
 But trying to build any melange artifacts will fail
 
   $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . output/main_melange.js)
-  File "dune", line 10, characters 0-99:
-  10 | (melange.emit
-  11 |  (target output)
-  12 |  (entries main_melange)
-  13 |  (libraries lib1)
-  14 |  (module_system commonjs))
-  Error: No rule found for .output.mobjs/melange/melange__Main_melange.cmj
-  File "output/_unknown_", line 1, characters 0-0:
-  Error: No rule found for .lib1.objs/melange/lib1__Lib.cmj
-  File "output/_unknown_", line 1, characters 0-0:
-  Error: No rule found for .lib1.objs/melange/lib1.cmj
+  File ".lib1.objs/melange/_unknown_", line 1, characters 0-0:
+  Error: Program melc not found in the tree or in PATH
+   (context: default)
+  Hint: opam install melange
   [1]

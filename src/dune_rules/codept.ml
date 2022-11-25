@@ -11,7 +11,6 @@ let deps_of
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
   let context = Super_context.context sctx in
-  let parse_module_names = Dep_gen.parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let immediate_file = dep (Immediate source) in
   let m2l_file = dep (M2l (unit, ml_kind)) in
@@ -137,11 +136,7 @@ let deps_of
     Super_context.add_rule sctx ~dir
       (Action_builder.With_targets.map ~f:Action.Full.make action)
   in
-  let all_deps_file = Path.build all_deps_file in
-  Action_builder.memoize
-    (Path.to_string all_deps_file)
-    (Action_builder.map ~f:(parse_module_names ~unit)
-       (Action_builder.lines_of all_deps_file))
+  Dep_gen.read_deps_of ~obj_dir ~modules ~ml_kind unit
 
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =
   match Module.source ~ml_kind unit with

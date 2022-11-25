@@ -32,7 +32,7 @@ let deps_of
       (let open Action_builder.With_targets.O in
       Command.run codept
         ~dir:(Path.build context.build_dir)
-        [ As ["-k"; "-verbosity"; "error"]
+        [ As [ "-k"; "-verbosity"; "error" ]
         ; Command.Args.dyn flags
         ; Command.Ml_kind.flag ml_kind
         ; Dep (Module.File.path source)
@@ -47,18 +47,17 @@ let deps_of
   in
   let* () =
     (* 2. Generate immediate and sig from m2l and approx immediate sigs. *)
-    let {Modules.vlib = vlib_modules; _} = Modules.split_by_lib modules in
-    let is_vlib_module m = (* TODO: better way to check this? or could include vlib modules? *)
+    let { Modules.vlib = vlib_modules; _ } = Modules.split_by_lib modules in
+    let is_vlib_module m =
+      (* TODO: better way to check this? or could include vlib modules? *)
       List.exists vlib_modules ~f:(fun vm ->
-          Module_name.Unique.compare (Module.obj_name vm) (Module.obj_name m) = Eq
-        )
+          Module_name.Unique.compare (Module.obj_name vm) (Module.obj_name m)
+          = Eq)
     in
     let build_paths dependencies =
       let dependency_file_path m =
-        if Module.kind m = Alias || is_vlib_module m then
-          None
-        else
-          Some (Path.build (sig_file m))
+        if Module.kind m = Alias || is_vlib_module m then None
+        else Some (Path.build (sig_file m))
       in
       List.filter_map dependencies ~f:dependency_file_path
     in
@@ -73,19 +72,14 @@ let deps_of
         let+ paths = paths in
         Command.Args.Deps paths
       in
-      let sig_args: _ Command.Args.t list =
-        if gen_sig then
-          [ A "-o"
-          ; Target (sig_file unit)
-          ; A "-sig"
-          ]
-        else
-          []
+      let sig_args : _ Command.Args.t list =
+        if gen_sig then [ A "-o"; Target (sig_file unit); A "-sig" ] else []
       in
-      (let open Action_builder.With_targets.O in
+      let open Action_builder.With_targets.O in
       Command.run codept
         ~dir:(Path.build context.build_dir)
-        [ As ["-k"; "-verbosity"; "error"] (* avoid self-cycle errors and unresolved module notifications *)
+        [ As [ "-k"; "-verbosity"; "error" ]
+          (* avoid self-cycle errors and unresolved module notifications *)
         ; Command.Args.dyn flags
         ; Dep (Path.build m2l_file)
         ; Dyn path_args
@@ -94,7 +88,7 @@ let deps_of
         ; Target immediate_file
         ; A "-modules"
         ]
-      >>| Action.Full.add_sandbox sandbox)
+      >>| Action.Full.add_sandbox sandbox
     in
     Super_context.add_rule sctx ~dir action
   in

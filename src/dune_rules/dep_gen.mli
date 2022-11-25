@@ -17,11 +17,13 @@ module Modules_data : sig
     }
 end
 
-val parse_module_names: unit:Module.t -> modules:Modules.t -> string list -> Module.t list
+val parse_module_names :
+  unit:Module.t -> modules:Modules.t -> string list -> Module.t list
 
-val parse_deps_exn: file:Path.t -> string list -> string list
+val parse_deps_exn : file:Path.t -> string list -> string list
 
-val interpret_deps: Modules_data.t -> unit:Module.t -> string list -> Module.t list
+val interpret_deps :
+  Modules_data.t -> unit:Module.t -> string list -> Module.t list
 
 val read_deps_of :
      obj_dir:Path.Build.t Obj_dir.t
@@ -46,8 +48,7 @@ val transitive_of_immediate_rule :
   -> Module.t
   -> unit Memo.t
 
-module type S =
-sig
+module type S = sig
   val deps_of :
        Modules_data.t
     -> ml_kind:Ml_kind.t

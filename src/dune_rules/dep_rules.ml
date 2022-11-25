@@ -2,7 +2,7 @@ open Import
 open Memo.O
 open Dep_gen.Modules_data
 
-module Current_dep_gen: Dep_gen.S = Codept (* TODO: make dynamic *)
+module Current_dep_gen : Dep_gen.S = Codept (* TODO: make dynamic *)
 
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))

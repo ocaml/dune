@@ -22,7 +22,8 @@ let parse_module_names ~(unit : Module.t) ~modules words =
 let parse_deps_exn ~file lines =
   let invalid () =
     User_error.raise
-      [ Pp.textf "ocamldep returned unexpected output for %s:" (* TODO: generalize *)
+      [ Pp.textf
+          "ocamldep returned unexpected output for %s:" (* TODO: generalize *)
           (Path.to_string_maybe_quoted file)
       ; Pp.vbox
           (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
@@ -69,15 +70,14 @@ let interpret_deps md ~unit deps =
   | None -> deps
   | Some m -> m :: deps
 
-
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
   let dep = Obj_dir.Module.dep obj_dir in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   Action_builder.memoize
     (Path.Build.to_string all_deps_file)
     (Action_builder.map
-        ~f:(parse_module_names ~unit ~modules)
-        (Action_builder.lines_of (Path.build all_deps_file)))
+       ~f:(parse_module_names ~unit ~modules)
+       (Action_builder.lines_of (Path.build all_deps_file)))
 
 let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
   let dep = Obj_dir.Module.dep obj_dir in
@@ -85,12 +85,13 @@ let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
   Action_builder.memoize
     (Path.Build.to_string immediate_file)
     (Action_builder.map
-        ~f:(fun lines ->
-          parse_deps_exn ~file lines
-          |> parse_module_names ~unit ~modules)
-        (Action_builder.lines_of (Path.build immediate_file)))
+       ~f:(fun lines ->
+         parse_deps_exn ~file lines |> parse_module_names ~unit ~modules)
+       (Action_builder.lines_of (Path.build immediate_file)))
 
-let transitive_of_immediate_rule ({ sandbox = _; modules = _; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md) ~ml_kind ~source ~file unit =
+let transitive_of_immediate_rule
+    ({ sandbox = _; modules = _; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as
+    md) ~ml_kind ~source ~file unit =
   let dep = Obj_dir.Module.dep obj_dir in
   let immediate_file = dep (Immediate source) in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
@@ -111,10 +112,7 @@ let transitive_of_immediate_rule ({ sandbox = _; modules = _; sctx; dir; obj_dir
     let open Action_builder.O in
     let paths =
       let+ lines = Action_builder.lines_of (Path.build immediate_file) in
-      let modules =
-        parse_deps_exn ~file lines
-        |> interpret_deps md ~unit
-      in
+      let modules = parse_deps_exn ~file lines |> interpret_deps md ~unit in
       ( build_paths modules
       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) )
     in
@@ -129,17 +127,15 @@ let transitive_of_immediate_rule ({ sandbox = _; modules = _; sctx; dir; obj_dir
   Super_context.add_rule sctx ~dir
     (Action_builder.With_targets.map ~f:Action.Full.make action)
 
-
-module type S =
-sig
+module type S = sig
   val deps_of :
-        Modules_data.t
+       Modules_data.t
     -> ml_kind:Ml_kind.t
     -> Module.t
     -> Module.t list Action_builder.t Memo.t
 
   val read_immediate_deps_of :
-        obj_dir:Path.Build.t Obj_dir.t
+       obj_dir:Path.Build.t Obj_dir.t
     -> modules:Modules.t
     -> ml_kind:Ml_kind.t
     -> Module.t

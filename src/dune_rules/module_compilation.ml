@@ -94,12 +94,17 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
   in
   let open Memo.O in
   let* compiler =
-    let+ compiler =
-      match mode with
-      | Ocaml mode -> Memo.return @@ Context.compiler ctx mode
-      | Melange -> Melange_binary.melc sctx ~dir
-    in
-    Result.to_option compiler
+    match mode with
+    | Melange ->
+      let+ melc = Melange_binary.melc sctx ~dir in
+      Some melc
+    | Ocaml mode ->
+      Memo.return
+        (let compiler = Context.compiler ctx mode in
+         (* TODO one day remove this silly optimization *)
+         match compiler with
+         | Ok _ as s -> Some s
+         | Error _ -> None)
   in
   (let open Option.O in
   let* compiler = compiler in
@@ -239,7 +244,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)
     >>> Action_builder.with_no_targets other_cm_files
-    >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)
+    >>> Command.run ~dir:(Path.build ctx.build_dir) compiler
           [ Command.Args.dyn flags
           ; cmt_args
           ; Command.Args.S obj_dirs

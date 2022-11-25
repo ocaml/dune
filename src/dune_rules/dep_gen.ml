@@ -71,7 +71,8 @@ let interpret_deps md ~unit deps =
 
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
-  let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
+  let dep = Obj_dir.Module.dep obj_dir in
+  let all_deps_file = dep (Transitive (unit, ml_kind)) in
   Action_builder.memoize
     (Path.Build.to_string all_deps_file)
     (Action_builder.map
@@ -79,7 +80,8 @@ let read_deps_of ~obj_dir ~modules ~ml_kind unit =
         (Action_builder.lines_of (Path.build all_deps_file)))
 
 let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
-  let immediate_file = Obj_dir.Module.dep obj_dir (Immediate source) in
+  let dep = Obj_dir.Module.dep obj_dir in
+  let immediate_file = dep (Immediate source) in
   Action_builder.memoize
     (Path.Build.to_string immediate_file)
     (Action_builder.map
@@ -89,8 +91,9 @@ let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
         (Action_builder.lines_of (Path.build immediate_file)))
 
 let transitive_of_immediate_rule ({ sandbox = _; modules = _; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md) ~ml_kind ~source ~file unit =
-  let immediate_file = Obj_dir.Module.dep obj_dir (Immediate source) in
-  let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
+  let dep = Obj_dir.Module.dep obj_dir in
+  let immediate_file = dep (Immediate source) in
+  let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let build_paths dependencies =
     let dependency_file_path m =
       let ml_kind m =
@@ -100,7 +103,7 @@ let transitive_of_immediate_rule ({ sandbox = _; modules = _; sctx; dir; obj_dir
       in
       ml_kind m
       |> Option.map ~f:(fun ml_kind ->
-             Path.build (Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))))
+             Path.build (dep (Transitive (m, ml_kind))))
     in
     List.filter_map dependencies ~f:dependency_file_path
   in

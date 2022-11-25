@@ -109,5 +109,6 @@ let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =
   match Module.source ~ml_kind unit with
   | None -> Action_builder.return []
   | Some source ->
-    let file = Path.build (Obj_dir.Module.dep obj_dir (M2l (unit, ml_kind))) in
+    let dep = Obj_dir.Module.dep obj_dir in
+    let file = Path.build (dep (M2l (unit, ml_kind))) in
     Dep_gen.read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit

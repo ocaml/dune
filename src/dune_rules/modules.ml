@@ -355,10 +355,6 @@ module Wrapped = struct
   let find_dep t ~of_ name =
     match Module.kind of_ with
     | Alias -> None
-    | Wrapped_compat -> (
-      match lib_interface t with
-      | Some li -> Option.some_if (name = Module.name li) li
-      | None -> Module_name.Map.find t.modules name)
     | _ ->
       if is_alias_name t name then Some t.alias_module
       else Module_name.Map.find t.modules name

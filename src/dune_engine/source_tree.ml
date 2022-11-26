@@ -38,9 +38,14 @@ module Dune_file = struct
       }
   end
 
-  let fname = "dune"
+  let default_fname = "dune"
 
   let alternative_fname = "dune-file"
+
+  let fname project =
+    if Dune_project.accept_alternative_dune_file_name project then
+      alternative_fname
+    else default_fname
 
   type kind =
     | Plain
@@ -177,7 +182,7 @@ end = struct
             (Path.Source.to_string_maybe_quoted
                (Path.Source.relative
                   (Path.Source.parent_exn path)
-                  Dune_file.fname))
+                  Dune_file.default_fname))
         ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
         ];
       Memo.return (Error unix_error)
@@ -513,12 +518,9 @@ end = struct
   let dune_file ~(dir_status : Sub_dirs.Status.t) ~path ~files ~project =
     let file_exists =
       if dir_status = Data_only then None
-      else if
-        Dune_project.accept_alternative_dune_file_name project
-        && String.Set.mem files Dune_file.alternative_fname
-      then Some Dune_file.alternative_fname
-      else if String.Set.mem files Dune_file.fname then Some Dune_file.fname
-      else None
+      else
+        let dune_fname = Dune_file.fname project in
+        Option.some_if (String.Set.mem files dune_fname) dune_fname
     in
     let* from_parent =
       match Path.Source.parent path with

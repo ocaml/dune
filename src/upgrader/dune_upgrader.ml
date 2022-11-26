@@ -252,11 +252,11 @@ module V2 = struct
     let new_file_contents = string_of_sexps ~version new_ast comments in
     todo.to_edit <- (fn, new_file_contents) :: todo.to_edit
 
-  let upgrade_dune_files todo dir =
-    if String.Set.mem (Source_tree.Dir.files dir) Source_tree.Dune_file.fname
-    then
+  let upgrade_dune_files ~project todo dir =
+    let dune_fname = Source_tree.Dune_file.fname project in
+    if String.Set.mem (Source_tree.Dir.files dir) dune_fname then
       let path = Source_tree.Dir.path dir in
-      let fn = Path.Source.relative path Source_tree.Dune_file.fname in
+      let fn = Path.Source.relative path dune_fname in
       if
         Io.with_lexbuf_from_file (Path.source fn)
           ~f:Dune_lang.Dune_file_script.is_script
@@ -306,7 +306,7 @@ language. Use the (foreign_archives ...) field instead.|}
     if Dune_project.root project = Source_tree.Dir.path dir then
       ensure_project_file_exists project ~lang_version;
     update_project_file todo project;
-    upgrade_dune_files todo dir
+    upgrade_dune_files ~project todo dir
 end
 
 let detect_project_version project dir =
@@ -326,7 +326,7 @@ let detect_project_version project dir =
     let open Dune_lang.Syntax.Version.Infix in
     if project_dune_version >= (2, 0) then Dune2_project
     else if project_dune_version >= (1, 0) then Dune1_project
-    else if in_tree Source_tree.Dune_file.fname then Dune1_project
+    else if in_tree (Source_tree.Dune_file.fname project) then Dune1_project
     else Unknown
 
 let upgrade () =

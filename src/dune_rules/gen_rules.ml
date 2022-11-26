@@ -374,8 +374,6 @@ let has_rules subdirs f =
        ; rules
        })
 
-(* Walk up the parent directories to check if one of them declares a
-   `melange.emit` stanza *)
 let rec is_under_melange_emit dir =
   match Path.Build.parent dir with
   | None -> Memo.return false

@@ -3,7 +3,9 @@
 open Import
 
 module Dune_file : sig
-  val fname : Dune_project.t -> string
+  val fname : string
+
+  val possible_fnames : Dune_project.t -> string list
 
   type kind = private
     | Plain

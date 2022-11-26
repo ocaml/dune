@@ -65,15 +65,19 @@ let gen_rules_output sctx (config : Format_config.t) ~project ~version ~dialects
   let source_dir = Path.Build.drop_build_context_exn dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
   let depend_on_files named = depend_on_files ~named (Path.build dir) in
-  let open Memo.O in
   let setup_formatting file =
     let input_basename = Path.Source.basename file in
     let input = Path.Build.relative dir input_basename in
     let output = Path.Build.relative output_dir input_basename in
     let formatter =
       let input = Path.build input in
-      let dune_fname = Source_tree.Dune_file.fname project in
-      match String.equal (Path.Source.basename file) dune_fname with
+      let possible_dune_filenames =
+        Source_tree.Dune_file.possible_fnames project
+      in
+      match
+        List.exists possible_dune_filenames
+          ~f:(String.equal (Path.Source.basename file))
+      with
       | true when Format_config.includes config Dune ->
         Option.some
         @@ Action_builder.with_file_targets ~file_targets:[ output ]
@@ -111,10 +115,12 @@ let gen_rules_output sctx (config : Format_config.t) ~project ~version ~dialects
               ~target:output
     in
     Memo.Option.iter formatter ~f:(fun action ->
+        let open Memo.O in
         Super_context.add_rule sctx ~mode:Standard ~loc ~dir action
         >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
               ~output)
   in
+  let open Memo.O in
   let* () =
     Source_tree.files_of source_dir
     >>= Memo.parallel_iter_set (module Path.Source.Set) ~f:setup_formatting

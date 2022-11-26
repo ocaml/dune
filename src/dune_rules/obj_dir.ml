@@ -404,12 +404,9 @@ module Module = struct
         Module_name.Unique.artifact_filename obj ~ext
       | M2l (m, ml_kind) ->
         let ext = Ml_kind.choose ~impl:".m2l" ~intf:".m2li" ml_kind in
-        let obj = Module.obj_name m in
-        Module_name.Unique.artifact_filename obj ~ext
+        Module_name.to_string (Module.name m) ^ ext
       | Immediate_approx f -> Path.basename (Module.File.path f) ^ ".d-approx"
-      | Sig m ->
-        let obj = Module.obj_name m in
-        Module_name.Unique.artifact_filename obj ~ext:".sig"
+      | Sig m -> Module_name.to_string (Module.name m) ^ ".sig"
   end
 
   let dep t dep =

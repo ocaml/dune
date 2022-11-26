@@ -408,14 +408,15 @@ module Alias_module = struct
              { local_name; obj_name })
     in
     let shadowed =
-      if
-        Dune_project.dune_version project < (3, 5)
-        || Modules.lib_interface modules = None
-      then []
+      if Dune_project.dune_version project < (3, 5) then []
       else
         match Modules.alias_module modules with
         | None -> []
-        | Some alias_module -> [ Module.name alias_module ]
+        | Some alias_module -> (
+          match Modules.lib_interface modules with
+          | None -> []
+          | Some m ->
+            if Module.kind m = Alias then [] else [ Module.name alias_module ])
     in
     { main_module; aliases; shadowed }
 end

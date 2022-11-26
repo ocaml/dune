@@ -13,11 +13,13 @@ module Dune_file : sig
 
   type t
 
+  val to_dyn : t -> Dyn.t
+
   val get_static_sexp : t -> Dune_lang.Ast.t list
 
   val kind : t -> kind
 
-  val path : t -> Path.Source.t
+  val path : t -> Path.Source.t option
 end
 
 module Dir : sig

@@ -116,20 +116,22 @@ let gen_rules_output sctx (config : Format_config.t) ~version ~dialects
       | Some source_dir -> (
         match Source_tree.Dir.dune_file source_dir with
         | None -> Memo.return ()
-        | Some f ->
-          let path = Source_tree.Dune_file.path f in
-          let input_basename = Path.Source.basename path in
-          let input = Path.Build.relative dir input_basename in
-          let output = Path.Build.relative output_dir input_basename in
-          Super_context.add_rule sctx ~mode:Standard ~loc ~dir
-            (Action_builder.with_file_targets ~file_targets:[ output ]
-            @@
-            let open Action_builder.O in
-            let input = Path.build input in
-            let+ () = Action_builder.path input in
-            Action.Full.make (action ~version input output))
-          >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
-                ~output))
+        | Some f -> (
+          match Source_tree.Dune_file.path f with
+          | None -> Memo.return ()
+          | Some path ->
+            let input_basename = Path.Source.basename path in
+            let input = Path.Build.relative dir input_basename in
+            let output = Path.Build.relative output_dir input_basename in
+            Super_context.add_rule sctx ~mode:Standard ~loc ~dir
+              (Action_builder.with_file_targets ~file_targets:[ output ]
+              @@
+              let open Action_builder.O in
+              let input = Path.build input in
+              let+ () = Action_builder.path input in
+              Action.Full.make (action ~version input output))
+            >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
+                  ~output)))
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 

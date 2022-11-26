@@ -1,6 +1,16 @@
 open Import
 open Dep_gen.Modules_data
 
+let codept_syntax =
+  Dune_lang.Syntax.create ~name:"codept"
+    ~desc:"the codept extension (experimental)" ~experimental:true
+    [ ((0, 1), `Since (3, 5)) ]
+(* TODO: correct since *)
+
+let () =
+  Dune_project.Extension.register_simple codept_syntax
+    (Dune_lang.Decoder.return [])
+
 let codept_prog ~dir sctx =
   Super_context.resolve_program sctx ~dir ~loc:None "codept"
     ~hint:"opam install codept"

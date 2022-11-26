@@ -14,6 +14,7 @@ module Modules_data : sig
     ; modules : Modules.t
     ; stdlib : Ocaml_stdlib.t option
     ; sandbox : Sandbox_config.t
+    ; project : Dune_project.t
     }
 end
 

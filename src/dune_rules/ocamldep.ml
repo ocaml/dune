@@ -2,8 +2,15 @@ open Import
 open Dep_gen.Modules_data
 
 let deps_of
-    ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
-    ~ml_kind unit =
+    ({ sandbox
+     ; modules
+     ; sctx
+     ; dir
+     ; obj_dir
+     ; vimpl = _
+     ; stdlib = _
+     ; project = _
+     } as md) ~ml_kind unit =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
   let context = Super_context.context sctx in

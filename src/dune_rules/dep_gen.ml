@@ -9,6 +9,7 @@ module Modules_data = struct
     ; modules : Modules.t
     ; stdlib : Ocaml_stdlib.t option
     ; sandbox : Sandbox_config.t
+    ; project : Dune_project.t
     }
 end
 
@@ -90,8 +91,15 @@ let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
        (Action_builder.lines_of (Path.build immediate_file)))
 
 let transitive_of_immediate_rule
-    ({ sctx; dir; obj_dir; sandbox = _; modules = _; vimpl = _; stdlib = _ } as
-    md) ~ml_kind ~source ~file unit =
+    ({ sctx
+     ; dir
+     ; obj_dir
+     ; sandbox = _
+     ; modules = _
+     ; vimpl = _
+     ; stdlib = _
+     ; project = _
+     } as md) ~ml_kind ~source ~file unit =
   let dep = Obj_dir.Module.dep obj_dir in
   let immediate_file = dep (Immediate source) in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in

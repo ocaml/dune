@@ -8,8 +8,16 @@ let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
   |> String.concat ~sep:"\n"
 
-let ooi_deps { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
-    ~dune_version ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
+let ooi_deps
+    { vimpl
+    ; sctx
+    ; dir
+    ; obj_dir
+    ; modules = _
+    ; stdlib = _
+    ; sandbox = _
+    ; project = _
+    } ~dune_version ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let cm_kind =
     match ml_kind with
     | Intf -> Cm_kind.Cmi

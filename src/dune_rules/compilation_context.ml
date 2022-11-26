@@ -160,6 +160,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ; vimpl
     ; modules
     ; stdlib
+    ; project
     }
   in
   let+ dep_graphs = Dep_rules.rules ocamldep_modules_data in

@@ -375,8 +375,6 @@ module Crawl = struct
 
   (** Builds a workspace item for the provided library object *)
   let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
-    let project = Option.value_exn (Lib.project lib) in
-    (* TODO: safe? *)
     let* requires = Lib.requires lib in
     match Resolve.peek requires with
     | Error () -> Memo.return None
@@ -389,6 +387,7 @@ module Crawl = struct
         match Lib.is_local lib with
         | false -> Memo.return []
         | true ->
+          let project = Option.value_exn (Lib.project lib) in
           Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
           >>= Dir_contents.ocaml
           >>| Ml_sources.modules_and_obj_dir ~for_:(Library name)

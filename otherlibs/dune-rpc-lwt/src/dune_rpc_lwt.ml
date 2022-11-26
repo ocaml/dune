@@ -84,8 +84,12 @@ module V1 = struct
     Where.Make
       (Fiber)
       (struct
+        let lwt_result_catch f =
+          Lwt.catch (fun () -> Lwt_result.ok (f ())) Lwt_result.fail
+
         let read_file s : (string, exn) result Lwt.t =
-          Lwt_result.catch (Lwt_io.with_file ~mode:Input s Lwt_io.read)
+          lwt_result_catch (fun () ->
+              Lwt_io.with_file ~mode:Input s Lwt_io.read)
 
         let analyze_path s =
           Lwt.try_bind

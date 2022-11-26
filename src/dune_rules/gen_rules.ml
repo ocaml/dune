@@ -374,34 +374,22 @@ let has_rules subdirs f =
        ; rules
        })
 
-let is_under_melange_emit dir =
-  let all_parents dir =
-    let rec inner acc dir =
-      match Path.Build.parent dir with
-      | None -> acc
-      | Some dir -> inner (dir :: acc) dir
-    in
-    inner [] dir
-  in
-
-  (* Walk up the parent directories to check if one of them declares a
-     `melange.emit` stanza *)
-  let rec does_parent_have_melange_emit = function
-    | [] -> Memo.return false
-    | dir :: rest -> (
-      Only_packages.stanzas_in_dir dir >>= function
-      | None -> does_parent_have_melange_emit rest
-      | Some { Dune_file.stanzas; dir = _; project = _ } -> (
-        match
-          List.exists stanzas ~f:(function
-            | Melange_emit _ -> true
-            | _ -> false)
-        with
-        | true -> Memo.return true
-        | false -> does_parent_have_melange_emit rest))
-  in
-
-  does_parent_have_melange_emit (List.rev (all_parents dir))
+(* Walk up the parent directories to check if one of them declares a
+   `melange.emit` stanza *)
+let rec is_under_melange_emit dir =
+  match Path.Build.parent dir with
+  | None -> Memo.return false
+  | Some dir -> (
+    Only_packages.stanzas_in_dir dir >>= function
+    | None -> is_under_melange_emit dir
+    | Some { Dune_file.stanzas; dir = _; project = _ } -> (
+      match
+        List.exists stanzas ~f:(function
+          | Melange_emit _ -> true
+          | _ -> false)
+      with
+      | true -> Memo.return true
+      | false -> is_under_melange_emit dir))
 
 let redirect_to_parent = Memo.return Build_config.Redirect_to_parent
 

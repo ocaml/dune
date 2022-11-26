@@ -118,13 +118,6 @@ module Extension : sig
 
   (** A simple version where the arguments are not used through
       [find_extension_args]. *)
-  val register_unit :
-       Dune_lang.Syntax.t
-    -> Dune_lang.Stanza.Parser.t list Dune_lang.Decoder.t
-    -> unit t
-
-  (** A simple version where the arguments are not used through
-      [find_extension_args]. *)
   val register_simple :
        Dune_lang.Syntax.t
     -> Dune_lang.Stanza.Parser.t list Dune_lang.Decoder.t

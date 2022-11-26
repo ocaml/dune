@@ -1,33 +1,43 @@
 open Import
 open Dep_gen.Modules_data
 
+type t = { loc : Loc.t }
+
 let codept_syntax =
   Dune_lang.Syntax.create ~name:"codept"
     ~desc:"the codept extension (experimental)" ~experimental:true
     [ ((0, 1), `Since (3, 5)) ]
 (* TODO: correct since *)
 
-let codept_extension =
-  Dune_project.Extension.register_unit codept_syntax
-    (Dune_lang.Decoder.return [])
+let codept_decode : t Dune_lang.Decoder.t =
+  let open Dune_lang.Decoder in
+  let+ loc = loc in
+  { loc }
 
-let codept_prog ~dir sctx =
-  Super_context.resolve_program sctx ~dir ~loc:None "codept"
+let codept_to_dyn { loc } =
+  let open Dyn in
+  record [ ("loc", Loc.to_dyn loc) ]
+
+let codept_extension =
+  let open Dune_lang.Decoder in
+  Dune_project.Extension.register codept_syntax
+    (let+ x = codept_decode in
+     (x, []))
+    codept_to_dyn
+
+let codept_prog ~project ~dir sctx =
+  let { loc } =
+    Option.value_exn (Dune_project.find_extension_args project codept_extension)
+  in
+  Super_context.resolve_program sctx ~dir ~loc:(Some loc) "codept"
     ~hint:"opam install codept"
 
 let codept_o_arg name target : _ Command.Args.t list =
   [ A "-o"; Target target; A name ]
 
 let deps_of
-    ({ sandbox
-     ; modules
-     ; sctx
-     ; dir
-     ; obj_dir
-     ; vimpl = _
-     ; stdlib = _
-     ; project = _
-     } as md) ~ml_kind unit =
+    ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _; project } as
+    md) ~ml_kind unit =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
   let context = Super_context.context sctx in
@@ -45,7 +55,7 @@ let deps_of
       ~default:(Action_builder.return [], sandbox)
   in
   let open Memo.O in
-  let* codept = codept_prog ~dir sctx in
+  let* codept = codept_prog ~project ~dir sctx in
   let* () =
     (* 1. Generate m2l and approx immediate from source. *)
     Super_context.add_rule sctx ~dir

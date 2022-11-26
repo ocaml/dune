@@ -1,0 +1,1 @@
+module C = struct end

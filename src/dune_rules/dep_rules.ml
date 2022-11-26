@@ -2,7 +2,10 @@ open Import
 open Memo.O
 open Dep_gen.Modules_data
 
-module Current_dep_gen : Dep_gen.S = Codept (* TODO: make dynamic *)
+let current ~project =
+  if Dune_project.is_extension_set project Codept.codept_extension then
+    (module Codept : Dep_gen.S)
+  else (module Ocamldep : Dep_gen.S)
 
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
@@ -63,7 +66,9 @@ let deps_of_module md ~ml_kind m =
       | None -> Modules.compat_for_exn modules m
     in
     Action_builder.return (List.singleton interface_module) |> Memo.return
-  | _ -> Current_dep_gen.deps_of md ~ml_kind m
+  | _ ->
+    let module Current = (val current ~project:md.project) in
+    Current.deps_of md ~ml_kind m
 
 let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
   let vimpl = Option.value_exn vimpl in

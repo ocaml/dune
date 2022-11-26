@@ -224,6 +224,7 @@ module Crawl = struct
   module Deps : sig
     val read :
          options:options
+      -> project:Dune_project.t
       -> use_pp:bool
       -> obj_dir:Path.Build.t Obj_dir.t
       -> modules:Modules.t
@@ -232,18 +233,17 @@ module Crawl = struct
   end = struct
     (** Reads the dependencies of the compilation unit [unit] (for its interface
         and its implementation, if any) *)
-    let read_deps_of_unit ~obj_dir ~modules unit =
+    let read_deps_of_unit ~project ~obj_dir ~modules unit =
+      let module Current = (val Dep_rules.current ~project) in
       let open Action_builder.O in
       let+ deps_for_intf =
         (* compute the dependencies for the interface part *)
         let ml_kind = Ocaml.Ml_kind.Intf in
-        Dep_rules.Current_dep_gen.read_immediate_deps_of ~obj_dir ~modules
-          ~ml_kind unit
+        Current.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
       and+ deps_for_impl =
         (* compute the dependencies for the implementation part *)
         let ml_kind = Ocaml.Ml_kind.Impl in
-        Dep_rules.Current_dep_gen.read_immediate_deps_of ~obj_dir ~modules
-          ~ml_kind unit
+        Current.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
       in
       (deps_for_intf, deps_for_impl)
 
@@ -256,7 +256,7 @@ module Crawl = struct
         subject to a preprocessing phase. Two lists are returned. The first list
         contains the direct dependencies of the interface file, whereas the
         second list contains the direct dependencies of the implementation file. *)
-    let read ~options ~use_pp ~obj_dir ~modules unit =
+    let read ~options ~project ~use_pp ~obj_dir ~modules unit =
       let no_deps = ([], []) in
       match options.with_deps with
       | false -> Memo.return (Action_builder.return no_deps)
@@ -288,7 +288,7 @@ module Crawl = struct
                FIXME: remove this restriction on singleton modules if/when
                https://github.com/ocaml/dune/pull/4659 is merged *)
             Action_builder.return no_deps
-          else read_deps_of_unit ~obj_dir ~modules unit)
+          else read_deps_of_unit ~project ~obj_dir ~modules unit)
   end
 
   (** Builds the description of a module from a module and its object directory *)
@@ -349,7 +349,7 @@ module Crawl = struct
     in
     let deps_of module_ =
       let use_pp = module_uses_pp exes.buildable.preprocess module_ in
-      Deps.read ~options ~use_pp ~obj_dir ~modules:modules_ module_
+      Deps.read ~options ~project ~use_pp ~obj_dir ~modules:modules_ module_
     in
     let obj_dir = Obj_dir.of_local obj_dir in
     let* scope =
@@ -375,6 +375,8 @@ module Crawl = struct
 
   (** Builds a workspace item for the provided library object *)
   let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
+    let project = Option.value_exn (Lib.project lib) in
+    (* TODO: safe? *)
     let* requires = Lib.requires lib in
     match Resolve.peek requires with
     | Error () -> Memo.return None
@@ -395,8 +397,8 @@ module Crawl = struct
             let use_pp =
               module_uses_pp (Lib_info.preprocess @@ Lib.info lib) module_
             in
-            Deps.read ~options ~use_pp ~obj_dir:obj_dir_ ~modules:modules_
-              module_
+            Deps.read ~options ~project ~use_pp ~obj_dir:obj_dir_
+              ~modules:modules_ module_
           in
           modules ~obj_dir ~deps_of modules_
       in

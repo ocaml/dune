@@ -7,8 +7,8 @@ let codept_syntax =
     [ ((0, 1), `Since (3, 5)) ]
 (* TODO: correct since *)
 
-let () =
-  Dune_project.Extension.register_simple codept_syntax
+let codept_extension =
+  Dune_project.Extension.register_unit codept_syntax
     (Dune_lang.Decoder.return [])
 
 let codept_prog ~dir sctx =

@@ -342,13 +342,11 @@ type automatic_sub_dir =
   | Formatted
   | Bin
 
-let bin_dir_basename = ".bin"
-
 let automatic_sub_dirs_map =
   String.Map.of_list_exn
     [ (Utop.utop_dir_basename, Utop)
     ; (Format_rules.formatted_dir_basename, Formatted)
-    ; (bin_dir_basename, Bin)
+    ; (Artifacts.Bin.bin_dir_basename, Bin)
     ]
 
 let gen_rules_for_automatic_sub_dir ~sctx ~dir kind =

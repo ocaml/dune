@@ -407,7 +407,9 @@ module Module = struct
         let obj = Module.obj_name m in
         Module_name.Unique.artifact_filename obj ~ext
       | Immediate_approx f -> Path.basename (Module.File.path f) ^ ".d-approx"
-      | Sig m -> Module_name.to_string (Module.name m) ^ ".sig"
+      | Sig m ->
+        let obj = Module.obj_name m in
+        Module_name.Unique.artifact_filename obj ~ext:".sig"
   end
 
   let dep t dep =

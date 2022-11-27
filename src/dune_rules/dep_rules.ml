@@ -43,17 +43,23 @@ let ooi_deps { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
   in
   read
 
-let deps_of_module md ~ml_kind m =
+let deps_of_module ({ modules; _ } as md) ~ml_kind m =
   match Module.kind m with
   | Wrapped_compat ->
-    let modules = md.modules in
     let interface_module =
       match Modules.lib_interface modules with
       | Some m -> m
       | None -> Modules.compat_for_exn modules m
     in
     Action_builder.return (List.singleton interface_module) |> Memo.return
-  | _ -> Ocamldep.deps_of md ~ml_kind m
+  | _ -> (
+    let+ deps = Ocamldep.deps_of md ~ml_kind m in
+    match Modules.alias_for modules m with
+    | [] -> deps
+    | aliases ->
+      let open Action_builder.O in
+      let+ deps = deps in
+      aliases @ deps)
 
 let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
   let vimpl = Option.value_exn vimpl in

@@ -1,22 +1,16 @@
 (env
  (_
-  (binaries ../utils/dune_cmd.exe)))
+  (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe)))
 
-(alias
- (name test-deps)
- (deps
-  %{bin:dune_cmd}
-  (package dune)))
+(cram
+ (applies_to pp-cwd)
+ (deps %{bin:dunepp}))
 
 (cram
  (applies_to :whole_subtree)
  (deps
-  (alias test-deps)))
-
-(subdir
- coq
- (cram
-  (alias runtest-coq)))
+  %{bin:dune_cmd}
+  (package dune)))
 
 (subdir
  jsoo
@@ -29,11 +23,6 @@
  (alias runtest-windows))
 
 ; DISABLED TESTS
-
-(subdir
- bisect-ppx
- (cram
-  (enabled_if false)))
 
 (subdir
  env
@@ -59,6 +48,10 @@
  (cram
   (applies_to error)
   (enabled_if false)))
+
+(cram
+ (applies_to sandboxing)
+ (deps %{bin:file}))
 
 ; CONDITIONALLY DISABLED TESTS
 
@@ -131,14 +124,6 @@
  (executable
   (libraries stdune spawn)
   (name test)))
-
-(subdir
- watching
- ; see https://github.com/ocaml/dune/pull/4728
- (cram
-  (enabled_if
-   (<> "macosx" %{ocaml-config:system}))
-  (deps helpers.sh)))
 
 (subdir
  actions

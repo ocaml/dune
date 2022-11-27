@@ -4,7 +4,9 @@
  (name dune_engine)
  (libraries
   unix
+  csexp
   stdune
+  dune_console
   dyn
   fiber
   incremental_cycles
@@ -34,5 +36,7 @@
   dune_file_watcher
   dune_filesystem_stubs
   ocaml_inotify
+  dune_digest
+  dune_metrics
   async_inotify_for_dune)
  (synopsis "Internal Dune library, do not use!"))

@@ -1,0 +1,11 @@
+(library
+ (name lib_with_md_stubs)
+  (foreign_stubs
+    (language c)
+    (mode byte)
+    (names c_stubs_lib))
+  (foreign_stubs
+    (language c)
+    (mode native)
+    (flags :standard -DNATIVE_CODE)
+    (names c_stubs_lib)))

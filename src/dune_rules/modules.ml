@@ -112,7 +112,9 @@ module Stdlib = struct
 
   let impl_only t =
     Module_name.Map.values t.modules
-    |> List.filter ~f:(fun m -> Some (Module.name m) <> t.exit_module)
+    |> List.filter ~f:(fun m ->
+           (* TODO what about checking for implementations? *)
+           Some (Module.name m) <> t.exit_module)
 
   let find t = Module_name.Map.find t.modules
 
@@ -147,6 +149,7 @@ module Mangle = struct
   type t =
     | Lib of Lib.t
     | Exe
+    | Melange
 
   let of_lib ~lib_name ~implements ~main_module_name ~modules =
     let kind : Lib.kind =
@@ -172,6 +175,8 @@ module Mangle = struct
         })
     | Exe ->
       sprintf "dune__exe" |> Module_name.of_string |> Visibility.Map.make_both
+    | Melange ->
+      sprintf "melange" |> Module_name.of_string |> Visibility.Map.make_both
 
   let make_alias_module t ~src_dir =
     let prefix = prefix t in
@@ -182,8 +187,12 @@ module Mangle = struct
       | Lib { kind = Implementation _; _ } -> prefix.private_
       | _ -> prefix.public
     in
-    Module.generated_alias ~src_dir name
+    Module.generated ~kind:Alias ~src_dir name
 end
+
+let impl_only_of_map m =
+  Module_name.Map.fold m ~init:[] ~f:(fun m acc ->
+      if Module.has m ~ml_kind:Impl then m :: acc else acc)
 
 module Wrapped = struct
   type t =
@@ -193,8 +202,6 @@ module Wrapped = struct
     ; main_module_name : Module_name.t
     ; wrapped : Mode.t
     }
-
-  let empty t = Module_name.Map.is_empty t.modules
 
   let encode
       { modules; wrapped_compat; alias_module; main_module_name; wrapped } =
@@ -261,8 +268,7 @@ module Wrapped = struct
     let alias_module = Mangle.make_alias_module ~src_dir mangle in
     { modules; alias_module; wrapped_compat; main_module_name; wrapped }
 
-  let exe ~src_dir ~modules =
-    let mangle = Mangle.Exe in
+  let make_exe_or_melange ~src_dir ~modules mangle =
     let prefix = Mangle.prefix mangle in
     let alias_module = Mangle.make_alias_module mangle ~src_dir in
     let modules =
@@ -311,7 +317,7 @@ module Wrapped = struct
       ; wrapped = _
       } =
     let modules =
-      Module.Name_map.impl_only modules @ Module_name.Map.values wrapped_compat
+      impl_only_of_map modules @ Module_name.Map.values wrapped_compat
     in
     alias_module :: modules
 
@@ -349,10 +355,6 @@ module Wrapped = struct
   let find_dep t ~of_ name =
     match Module.kind of_ with
     | Alias -> None
-    | Wrapped_compat -> (
-      match lib_interface t with
-      | Some li -> Option.some_if (name = Module.name li) li
-      | None -> Module_name.Map.find t.modules name)
     | _ ->
       if is_alias_name t name then Some t.alias_module
       else Module_name.Map.find t.modules name
@@ -394,65 +396,24 @@ let as_singleton m =
   if Module_name.Map.cardinal m <> 1 then None
   else Module_name.Map.choose m |> Option.map ~f:snd
 
-(* Pre-1.11 encoding *)
-module Old_format = struct
-  let decode ~implements ~src_dir =
-    let open Dune_lang.Decoder in
-    fields
-      (let+ loc = loc
-       and+ alias_module = field_o "alias_module" (Module.decode ~src_dir)
-       and+ main_module_name = field_o "main_module_name" Module_name.decode
-       and+ modules =
-         field ~default:[] "modules" (repeat (enter (Module.decode ~src_dir)))
-       and+ wrapped = field "wrapped" Mode.decode in
-       let modules =
-         modules
-         |> List.map ~f:(fun m -> (Module.name m, m))
-         |> Module_name.Map.of_list_exn
-       in
-       match wrapped with
-       | Simple false -> (
-         match as_singleton modules with
-         | Some m -> Singleton m
-         | None -> Unwrapped modules)
-       | Yes_with_transition _ | Simple true -> (
-         match (main_module_name, alias_module, as_singleton modules) with
-         | Some main_module_name, _, Some m
-           when Module.name m = main_module_name && not implements ->
-           Singleton m
-         | Some main_module_name, Some alias_module, _ ->
-           Wrapped
-             { modules
-             ; wrapped_compat = Module_name.Map.empty
-             ; alias_module
-             ; main_module_name
-             ; wrapped
-             }
-         | None, _, _ | _, None, _ ->
-           User_error.raise ~loc
-             [ Pp.text "Cannot wrap without main module name or alias module" ]))
-end
-
 let singleton m = Singleton m
 
-let decode ~version ~src_dir ~implements =
-  if version <= (1, 10) then Old_format.decode ~implements ~src_dir
-  else
-    let open Dune_lang.Decoder in
-    sum
-      [ ( "singleton"
-        , let+ m = Module.decode ~src_dir in
-          Singleton m )
-      ; ( "unwrapped"
-        , let+ modules = Module.Name_map.decode ~src_dir in
-          Unwrapped modules )
-      ; ( "wrapped"
-        , let+ w = Wrapped.decode ~src_dir in
-          Wrapped w )
-      ; ( "stdlib"
-        , let+ stdlib = Stdlib.decode ~src_dir in
-          Stdlib stdlib )
-      ]
+let decode ~src_dir =
+  let open Dune_lang.Decoder in
+  sum
+    [ ( "singleton"
+      , let+ m = Module.decode ~src_dir in
+        Singleton m )
+    ; ( "unwrapped"
+      , let+ modules = Module.Name_map.decode ~src_dir in
+        Unwrapped modules )
+    ; ( "wrapped"
+      , let+ w = Wrapped.decode ~src_dir in
+        Wrapped w )
+    ; ( "stdlib"
+      , let+ stdlib = Stdlib.decode ~src_dir in
+        Stdlib stdlib )
+    ]
 
 let rec to_dyn =
   let open Dyn in
@@ -549,23 +510,29 @@ let rec find_dep t ~of_ name =
     | Impl_or_lib -> Some m
     | Vlib -> Option.some_if (Module.visibility m = Public) m
 
-let singleton_exe m =
+let make_singleton m mangle =
   Singleton
-    (let mangle = Mangle.Exe in
-     let main_module_name = (Mangle.prefix mangle).public in
+    (let main_module_name = (Mangle.prefix mangle).public in
      Module.with_wrapper m ~main_module_name)
+
+let singleton_exe m = make_singleton m Exe
 
 let exe_unwrapped m = Unwrapped m
 
-let exe_wrapped ~src_dir ~modules =
+let make_wrapped ~src_dir ~modules kind =
+  let mangle : Mangle.t =
+    match kind with
+    | `Exe -> Exe
+    | `Melange -> Melange
+  in
   match as_singleton modules with
-  | Some m -> singleton_exe m
-  | None -> Wrapped (Wrapped.exe ~src_dir ~modules)
+  | Some m -> make_singleton m mangle
+  | None -> Wrapped (Wrapped.make_exe_or_melange ~src_dir ~modules mangle)
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w
   | Singleton m -> if Module.has ~ml_kind:Impl m then [ m ] else []
-  | Unwrapped m -> Module.Name_map.impl_only m
+  | Unwrapped m -> impl_only_of_map m
   | Wrapped w -> Wrapped.impl_only w
   | Impl { vlib; impl } -> impl_only impl @ impl_only vlib
 
@@ -655,7 +622,7 @@ let is_user_written m =
   match Module.kind m with
   | Root -> false
   | Wrapped_compat | Alias ->
-    (* Logically, this shold be [acc]. But this is unreachable these are stored
+    (* Logically, this should be [acc]. But this is unreachable these are stored
        separately *)
     assert false
   | _ -> true
@@ -800,11 +767,6 @@ let relocate_alias_module t ~src_dir =
   match t with
   | Wrapped t -> Wrapped (Wrapped.relocate_alias_module t ~src_dir)
   | s -> s
-
-let is_empty = function
-  | Stdlib _ | Impl _ | Singleton _ -> false
-  | Unwrapped w -> Module_name.Map.is_empty w
-  | Wrapped w -> Wrapped.empty w
 
 let as_singleton = function
   | Singleton m -> Some m

@@ -1,8 +1,7 @@
 open Stdune
 open Dune_cache_storage.Layout
 open Fiber.O
-module Store_result = Dune_cache_storage.Store_result
-module Restore_result = Dune_cache_storage.Restore_result
+open Import
 
 module Store_artifacts_result = struct
   type t =
@@ -199,16 +198,8 @@ module Artifacts = struct
         let result = store_metadata ~mode ~rule_digest ~metadata:[] artifacts in
         Store_artifacts_result.of_store_result ~artifacts result)
 
-  let rec fold_list_result l ~init ~f =
-    match l with
-    | [] -> Ok init
-    | x :: xs -> (
-      match f init x with
-      | Ok acc -> fold_list_result xs ~init:acc ~f
-      | Error e -> Error e)
-
   let create_all_or_nothing ~create ~destroy list =
-    fold_list_result list ~init:[] ~f:(fun acc x ->
+    Result.List.fold_left list ~init:[] ~f:(fun acc x ->
         match create x with
         | Error e ->
           List.iter acc ~f:destroy;

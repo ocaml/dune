@@ -23,8 +23,12 @@ module Jobs = struct
   let fill_ivar ivar x jobs =
     match ivar.state with
     | Full _ -> failwith "Fiber.Ivar.fill"
-    | (Empty | Empty_with_readers _) as readers ->
+    | Empty ->
       ivar.state <- Full x;
+      jobs
+    | Empty_with_readers (ctx, k, readers) ->
+      ivar.state <- Full x;
+      let jobs = Job (ctx, k, x, jobs) in
       enqueue_readers readers x jobs
 
   let rec exec_fills fills acc =

@@ -179,14 +179,19 @@ module Error = struct
               (Path.to_string_maybe_quoted dir))
       ]
 
-  let private_deps_not_allowed ~loc private_dep =
+  let private_deps_not_allowed ~kind ~loc private_dep =
     let name = Lib_info.name private_dep in
+
     User_error.E
       (User_error.make ~loc
          [ Pp.textf
-             "Library %S is private, it cannot be a dependency of a public \
-              library. You need to give %S a public name."
-             (Lib_name.to_string name) (Lib_name.to_string name)
+             "Library %S is private, it cannot be a dependency of a %s. You \
+              need to give %S a public name."
+             (Lib_name.to_string name)
+             (match kind with
+             | `Private_package -> "private library attached to a package"
+             | `Public -> "public library")
+             (Lib_name.to_string name)
          ])
 
   let only_ppx_deps_allowed ~loc dep =
@@ -246,8 +251,6 @@ module Id : sig
 
   val to_dep_path_lib : t -> Dep_path.Entry.Lib.t
 
-  val hash : t -> int
-
   val compare : t -> t -> Ordering.t
 
   include Comparator.OPS with type t := t
@@ -281,8 +284,6 @@ end = struct
 
   include (Comparator.Operators (T) : Comparator.OPS with type t := T.t)
 
-  let hash { path; name } = Tuple.T2.hash Path.hash Lib_name.hash (path, name)
-
   let make ~path ~name = { path; name }
 
   include Comparable.Make (T)
@@ -311,7 +312,11 @@ module T = struct
 
   let compare (x : t) (y : t) = Id.compare x.unique_id y.unique_id
 
-  let to_dyn t = Lib_name.to_dyn t.name
+  let to_dyn t =
+    Dyn.record
+      [ ("name", Lib_name.to_dyn t.name)
+      ; ("loc", Loc.to_dyn_hum (Lib_info.loc t.info))
+      ]
 end
 
 include T
@@ -427,9 +432,10 @@ let wrapped t =
       assert false (* will always be specified in dune package *)
     | Some (This x) -> Some x)
 
-let equal l1 l2 = Ordering.is_eq (compare l1 l2)
+(* We can't write a structural equality because of all the lazy fields *)
+let equal = ( == )
 
-let hash t = Id.hash t.unique_id
+let hash = Poly.hash
 
 include Comparable.Make (T)
 
@@ -596,16 +602,17 @@ end = struct
 end
 
 type private_deps =
-  | From_same_project
+  | From_same_project of [ `Public | `Private_package ]
   | Allow_all
 
 let check_private_deps lib ~loc ~(private_deps : private_deps) =
   match private_deps with
   | Allow_all -> Ok lib
-  | From_same_project -> (
+  | From_same_project kind -> (
     match Lib_info.status lib.info with
     | Private (_, Some _) -> Ok lib
-    | Private (_, None) -> Error (Error.private_deps_not_allowed ~loc lib.info)
+    | Private (_, None) ->
+      Error (Error.private_deps_not_allowed ~kind ~loc lib.info)
     | _ -> Ok lib)
 
 module Vlib : sig
@@ -834,8 +841,9 @@ end = struct
       (* [Allow_all] is used for libraries that are installed because we don't
          have to check it again. It has been checked when compiling the
          libraries before their installation *)
-      | Installed_private | Private _ | Installed -> Allow_all
-      | Public (_, _) -> From_same_project
+      | Installed_private | Private (_, None) | Installed -> Allow_all
+      | Private (_, Some _) -> From_same_project `Private_package
+      | Public (_, _) -> From_same_project `Public
     in
     let resolve name = resolve_dep db name ~private_deps in
     let* resolved =
@@ -1596,6 +1604,40 @@ let closure l ~linking =
     Resolve_names.compile_closure_with_overlap_checks None l
       ~forbidden_libraries
 
+let descriptive_closure (l : lib list) : lib list Memo.t =
+  (* [add_work todo l] adds the libraries in [l] to the list [todo],
+     that contains the libraries to handle next *)
+  let open Memo.O in
+  let add_work todo l = if List.is_empty l then todo else l :: todo in
+  (* [register_work todo l] reads the list of libraries [l] and adds
+     them to the todo list [todo] *)
+  let register_work todo l =
+    let+ l = Resolve.read_memo l in
+    add_work todo l
+  in
+  (* [work todo acc] adds the transitive-reflexive closure of the
+     libraries that are contained in the todo list [todo] and are not
+     in the set of libraries [acc] to the initial set of libraries
+     [acc] *)
+  let rec work (todo : lib list list) (acc : Set.t) =
+    match todo with
+    | [] -> Memo.return acc
+    | [] :: todo -> work todo acc
+    | (lib :: libs) :: todo ->
+      if Set.mem acc lib then work (add_work todo libs) acc
+      else
+        let todo = add_work todo libs
+        and acc = Set.add acc lib in
+        let* todo = register_work todo lib.pps in
+        let* todo = register_work todo lib.ppx_runtime_deps in
+        let* todo = register_work todo lib.requires in
+        work todo acc
+  in
+  (* we compute the transitive closure *)
+  let+ trans_closure = work [ l ] Set.empty in
+  (* and then convert it to a list *)
+  Set.to_list trans_closure
+
 module Compile = struct
   module Resolved_select = Resolved_select
 
@@ -1757,10 +1799,10 @@ module DB = struct
     | None ->
       Code_error.raise "Lib.DB.get_compile_info got library that doesn't exist"
         [ ("name", Lib_name.to_dyn name) ]
-    | Some lib -> Compile.for_lib ~allow_overlaps t lib
+    | Some lib -> (lib, Compile.for_lib ~allow_overlaps t lib)
 
-  let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~dune_version =
+  let resolve_user_written_deps t targets ?(allow_overlaps = false)
+      ?(forbidden_libraries = []) deps ~pps ~dune_version ~merlin_ident =
     let resolved =
       Memo.lazy_ (fun () ->
           Resolve_names.resolve_deps_and_add_runtime_deps t deps ~pps
@@ -1793,16 +1835,16 @@ module DB = struct
                 (Option.some_if (not allow_overlaps) t)
                 ~forbidden_libraries res)
             ~human_readable_description:(fun () ->
-              match exes with
-              | [ (loc, name) ] ->
+              match targets with
+              | `Melange_emit name -> Pp.textf "melange target %s" name
+              | `Exe [ (loc, name) ] ->
                 Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
-              | names ->
+              | `Exe names ->
                 let loc, _ = List.hd names in
                 Pp.textf "executables %s in %s"
                   (String.enumerate_and (List.map ~f:snd names))
                   (Loc.to_file_colon_line loc)))
     in
-    let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes) in
     let pps =
       let open Memo.O in
       let+ resolved = Memo.Lazy.force resolved in

@@ -2,6 +2,7 @@
     local and cloud caches. *)
 
 open Stdune
+open Import
 module Layout = Layout
 module Mode = Mode
 module Util = Util

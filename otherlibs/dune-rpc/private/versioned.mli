@@ -1,7 +1,6 @@
 (** The main logic for the runtime versioning protocol for the Dune RPC. For a
     high-level explanation and rationale, see [doc/dev/rpc-versioning.ml]. *)
 
-open Stdune
 open Types
 
 module Version_error : sig
@@ -23,7 +22,7 @@ module Staged : sig
   type 'payload notification = { encode : 'payload -> Call.t }
 end
 
-module Make (Fiber : Fiber) : sig
+module Make (Fiber : Fiber_intf.S) : sig
   module Handler : sig
     type 'state t
 

@@ -1,5 +1,4 @@
 open Import
-module Menhir_rules = Menhir
 module Toplevel_rules = Toplevel.Stanza
 open Dune_file
 open Memo.O
@@ -147,6 +146,15 @@ end = struct
       | true ->
         let+ () = Mdx.gen_rules ~sctx ~dir ~scope ~expander mdx in
         empty_none)
+    | Melange_emit mel ->
+      let+ cctx, merlin =
+        Melange_rules.emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel
+      in
+      { merlin = Some merlin
+      ; cctx = Some (mel.loc, cctx)
+      ; js = None
+      ; source_dirs = None
+      }
     | _ -> Memo.return empty_none
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents
@@ -173,7 +181,7 @@ let lib_src_dirs ~dir_contents =
 
 (* Stanza *)
 
-let define_all_alias ~dir ~scope ~js_targets =
+let define_all_alias ~dir ~project ~js_targets =
   let deps =
     let pred =
       let id =
@@ -185,8 +193,7 @@ let define_all_alias ~dir ~scope ~js_targets =
       List.iter js_targets ~f:(fun js_target ->
           assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
       let f =
-        if Dune_project.explicit_js_mode (Scope.project scope) then fun _ ->
-          true
+        if Dune_project.explicit_js_mode project then fun _ -> true
         else fun basename ->
           not
             (List.exists js_targets ~f:(fun js_target ->
@@ -194,32 +201,39 @@ let define_all_alias ~dir ~scope ~js_targets =
       in
       Predicate_with_id.create ~id ~f
     in
-    let only_generated_files =
-      Dune_project.dune_version (Scope.project scope) >= (3, 0)
-    in
+    let only_generated_files = Dune_project.dune_version project >= (3, 0) in
     File_selector.create ~dir:(Path.build dir) ~only_generated_files pred
     |> Action_builder.paths_matching_unit ~loc:Loc.none
   in
   Rules.Produce.Alias.add_deps (Alias.all ~dir) deps
 
 let gen_rules sctx dir_contents cctxs expander
-    { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
-    =
-  let files_to_install
-      { Install_conf.section = _; files; package = _; enabled_if = _ } =
-    Memo.List.map files ~f:(fun fb ->
-        File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
-          ~f:(Expander.No_deps.expand_str expander)
-        >>| Path.build)
-    >>= fun files ->
-    Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
-      (Action_builder.paths files)
+    { Dune_file.dir = src_dir; stanzas; project } ~dir:ctx_dir =
+  let files_to_install install_conf =
+    let expand_str = Expander.No_deps.expand_str expander in
+    let files_and_dirs =
+      let* files_expanded =
+        Install_conf.expand_files install_conf ~expand_str ~dir:ctx_dir
+      in
+      let+ dirs_expanded =
+        Install_conf.expand_dirs install_conf ~expand_str ~dir:ctx_dir
+      in
+      List.map (files_expanded @ dirs_expanded) ~f:(fun fb ->
+          File_binding.Expanded.src fb |> Path.build)
+    in
+    let action =
+      let open Action_builder.O in
+      let* files_and_dirs = Action_builder.of_memo files_and_dirs in
+      Action_builder.paths files_and_dirs
+    in
+    Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir) action
   in
   let* { For_stanza.merlin = merlins
        ; cctx = cctxs
        ; js = js_targets
        ; source_dirs
        } =
+    let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope
       ~dir_contents ~expander ~files_to_install
   in
@@ -233,24 +247,25 @@ let gen_rules sctx dir_contents cctxs expander
   let* () =
     Memo.parallel_iter stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
-        | Menhir.T m -> (
+        | Menhir_stanza.T m -> (
           Expander.eval_blang expander m.enabled_if >>= function
           | false -> Memo.return ()
           | true -> (
             let* ml_sources = Dir_contents.ocaml dir_contents in
             match
               List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
-                  Option.bind (Ml_sources.lookup_module ml_sources name)
-                    ~f:(fun buildable ->
+                  Option.bind (Ml_sources.find_origin ml_sources name)
+                    ~f:(fun origin ->
                       List.find_map cctxs ~f:(fun (loc, cctx) ->
-                          Option.some_if (Loc.equal loc buildable.loc) cctx)))
+                          Option.some_if
+                            (Loc.equal loc (Ml_sources.Origin.loc origin))
+                            cctx)))
             with
             | None ->
               (* This happens often when passing a [-p ...] option that hides a
                  library *)
               let file_targets =
-                List.map
-                  (Dune_file.Menhir.targets m)
+                List.map (Menhir_stanza.targets m)
                   ~f:(Path.Build.relative ctx_dir)
               in
               Super_context.add_rule sctx ~dir:ctx_dir
@@ -275,14 +290,14 @@ let gen_rules sctx dir_contents cctxs expander
           Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
         | _ -> Memo.return ())
   in
-  let+ () = define_all_alias ~dir:ctx_dir ~scope ~js_targets in
+  let+ () = define_all_alias ~dir:ctx_dir ~project ~js_targets in
   cctxs
 
-let collect_directory_targets sctx ~init ~dir =
-  match Super_context.stanzas_in sctx ~dir with
+let collect_directory_targets ~init ~dir =
+  Only_packages.stanzas_in_dir dir >>| function
   | None -> init
-  | Some { Dir_with_dune.data = stanzas; ctx_dir = dir; _ } ->
-    List.fold_left stanzas ~init ~f:(fun acc stanza ->
+  | Some d ->
+    List.fold_left d.stanzas ~init ~f:(fun acc stanza ->
         match stanza with
         | Coq_stanza.Theory.T m ->
           Coq_rules.coqdoc_directory_targets ~dir m
@@ -304,17 +319,16 @@ let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
   and* tests = Source_tree.Dir.cram_tests source_dir in
   let* () = Cram_rules.rules ~sctx ~expander ~dir tests in
   let* () = Format_rules.setup_alias sctx ~dir in
-  match Super_context.stanzas_in sctx ~dir with
-  | Some d -> gen_rules sctx dir_contents cctxs expander d
+  Only_packages.stanzas_in_dir dir >>= function
+  | Some d -> gen_rules sctx dir_contents cctxs expander d ~dir
   | None ->
-    let+ () =
-      define_all_alias ~dir ~js_targets:[]
-        ~scope:(Super_context.find_scope_by_dir sctx dir)
-    in
+    let* scope = Scope.DB.find_by_dir dir in
+    let project = Scope.project scope in
+    let+ () = define_all_alias ~dir ~js_targets:[] ~project in
     []
 
 (* To be called once per project, when we are generating the rules for the root
-   diretory of the project *)
+   directory of the project *)
 let gen_project_rules sctx project =
   let+ () = Opam_create.add_rules sctx project
   and+ () = Install_rules.gen_project_rules sctx project
@@ -328,13 +342,11 @@ type automatic_sub_dir =
   | Formatted
   | Bin
 
-let bin_dir_basename = ".bin"
-
 let automatic_sub_dirs_map =
   String.Map.of_list_exn
     [ (Utop.utop_dir_basename, Utop)
     ; (Format_rules.formatted_dir_basename, Formatted)
-    ; (bin_dir_basename, Bin)
+    ; (Artifacts.Bin.bin_dir_basename, Bin)
     ]
 
 let gen_rules_for_automatic_sub_dir ~sctx ~dir kind =
@@ -382,6 +394,12 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
       | _ -> S.empty)
       (fun () -> Jsoo_rules.setup_separate_compilation_rules sctx rest)
   | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
+  | ".topmod" :: comps ->
+    has_rules
+      (match comps with
+      | [] -> S.All
+      | _ -> S.empty)
+      (fun () -> Top_module.gen_rules sctx ~dir ~comps)
   | ".ppx" :: rest ->
     has_rules
       (match rest with
@@ -431,27 +449,30 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
                 in
                 let* cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
                 Memo.parallel_iter subdirs ~f:(fun dc ->
-                    gen_rules sctx dir_contents cctxs ~source_dir
-                      ~dir:(Dir_contents.dir dc)
-                    >>| ignore))
+                    let+ (_ : (Loc.t * Compilation_context.t) list) =
+                      gen_rules sctx dir_contents cctxs ~source_dir
+                        ~dir:(Dir_contents.dir dc)
+                    in
+                    ()))
           in
           Memo.return (Rules.union rules rules')
         in
-        let subdirs = String.Set.of_keys automatic_sub_dirs_map in
         let subdirs =
+          let subdirs = String.Set.of_keys automatic_sub_dirs_map in
           match components with
           | [] ->
             String.Set.union subdirs
-              (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
+              (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
           | _ -> subdirs
         in
-        Memo.return
-          (Build_config.Rules
-             { build_dir_only_sub_dirs = S.These subdirs
-             ; directory_targets =
-                 collect_directory_targets sctx ~dir ~init:directory_targets
-             ; rules
-             })))
+        let+ directory_targets =
+          collect_directory_targets ~dir ~init:directory_targets
+        in
+        Build_config.Rules
+          { build_dir_only_sub_dirs = S.These subdirs
+          ; directory_targets
+          ; rules
+          }))
 
 let with_context ctx ~f =
   Super_context.find ctx >>= function
@@ -463,9 +484,10 @@ let gen_rules ctx_or_install ~dir components =
   | Install ctx ->
     with_context ctx ~f:(fun sctx ->
         let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
+        let directory_targets = Rules.directory_targets rules in
         Build_config.Rules
           { build_dir_only_sub_dirs = subdirs
-          ; directory_targets = Path.Build.Map.empty
+          ; directory_targets
           ; rules = Memo.return rules
           })
   | Context ctx ->

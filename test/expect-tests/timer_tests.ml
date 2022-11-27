@@ -5,8 +5,9 @@ module Scheduler = Dune_engine.Scheduler
 let config =
   { Scheduler.Config.concurrency = 1
   ; display = { verbosity = Short; status_line = false }
-  ; rpc = None
   ; stats = None
+  ; insignificant_changes = `React
+  ; signal_watcher = `No
   }
 
 let%expect_test "create and wait for timer" =

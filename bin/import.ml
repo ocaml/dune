@@ -1,40 +1,53 @@
 open Stdune
-open Dune_engine
-module Term = Cmdliner.Term
-module Manpage = Cmdliner.Manpage
+
+include struct
+  open Dune_engine
+  module Build_config = Build_config
+  module Build_system = Build_system
+  module Load_rules = Load_rules
+  module Package = Package
+  module Hooks = Hooks
+  module Action_builder = Action_builder
+  module Action = Action
+  module Dep = Dep
+  module Action_to_sh = Action_to_sh
+  module Dpath = Dpath
+  module Findlib = Dune_rules.Findlib
+  module Dune_package = Dune_rules.Dune_package
+  module Install = Dune_rules.Install
+  module Section = Section
+  module Diff_promotion = Diff_promotion
+  module Dune_project = Dune_project
+  module Cached_digest = Cached_digest
+  module Targets = Targets
+end
+
+include struct
+  open Dune_rules
+  module Super_context = Super_context
+  module Context = Context
+  module Config = Dune_util.Config
+  module Lib_name = Lib_name
+  module Workspace = Workspace
+  module Profile = Profile
+  module Resolve = Resolve
+end
+
+include struct
+  open Cmdliner
+  module Term = Term
+  module Manpage = Manpage
+  module Cmd = Cmd
+end
+
+module Digest = Dune_digest
+module Metrics = Dune_metrics
+module Console = Dune_console
 module Stanza = Dune_lang.Stanza
-module Super_context = Dune_rules.Super_context
-module Context = Dune_rules.Context
-module Config = Dune_util.Config
-module Lib_name = Dune_rules.Lib_name
-module Build_config = Dune_engine.Build_config
-module Build_system = Dune_engine.Build_system
-module Load_rules = Dune_engine.Load_rules
-module Findlib = Dune_rules.Findlib
-module Package = Dune_engine.Package
-module Dune_package = Dune_rules.Dune_package
-module Hooks = Dune_engine.Hooks
-module Action_builder = Dune_engine.Action_builder
-module Action = Dune_engine.Action
-module Dep = Dune_engine.Dep
-module Action_to_sh = Dune_engine.Action_to_sh
-module Dpath = Dune_engine.Dpath
-module Install = Dune_rules.Install
-module Section = Dune_engine.Section
-module Diff_promotion = Dune_engine.Diff_promotion
-module Colors = Dune_rules.Colors
-module Dune_project = Dune_engine.Dune_project
-module Workspace = Dune_rules.Workspace
-module Cached_digest = Dune_engine.Cached_digest
-module Targets = Dune_engine.Targets
-module Profile = Dune_rules.Profile
-module Resolve = Dune_rules.Resolve
 module Log = Dune_util.Log
 module Dune_rpc = Dune_rpc_private
 module Graph = Dune_graph.Graph
 include Common.Let_syntax
-
-let in_group (t, info) = (Term.Group.Term t, info)
 
 module Main : sig
   include module type of struct
@@ -47,7 +60,7 @@ end = struct
 
   let setup () =
     let open Fiber.O in
-    let* scheduler = Scheduler.t () in
+    let* scheduler = Dune_engine.Scheduler.t () in
     Console.Status_line.set
       (Live
          (fun () ->
@@ -59,12 +72,14 @@ end = struct
            | Building
                { Build_system.Progress.number_of_rules_executed = done_
                ; number_of_rules_discovered = total
+               ; number_of_rules_failed = failed
                } ->
              Pp.verbatim
-               (sprintf "Done: %u%% (%u/%u, %u left) (jobs: %u)"
+               (sprintf "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
                   (if total = 0 then 0 else done_ * 100 / total)
                   done_ total (total - done_)
-                  (Scheduler.running_jobs_count scheduler))));
+                  (if failed = 0 then "" else sprintf ", %u failed" failed)
+                  (Dune_engine.Scheduler.running_jobs_count scheduler))));
     Fiber.return (Memo.of_thunk get)
 end
 
@@ -77,6 +92,7 @@ module Scheduler = struct
     | false -> (
       match dune_config.terminal_persistence with
       | Clear_on_rebuild -> Console.reset ()
+      | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ()
       | Preserve ->
         let message =
           sprintf "********** NEW BUILD (%s) **********"
@@ -90,7 +106,7 @@ module Scheduler = struct
              ]))
 
   let on_event dune_config _config = function
-    | Scheduler.Run.Event.Tick -> Console.Status_line.refresh ()
+    | Run.Event.Tick -> Console.Status_line.refresh ()
     | Source_files_changed { details_hum } ->
       maybe_clear_screen ~details_hum dune_config
     | Build_interrupted ->
@@ -103,9 +119,7 @@ module Scheduler = struct
                | Restarting_current_build
                | Build_succeeded__now_waiting_for_changes
                | Build_failed__now_waiting_for_changes ->
-                 { Build_system.Progress.number_of_rules_discovered = 0
-                 ; number_of_rules_executed = 0
-                 }
+                 Build_system.Progress.init
                | Building progress -> progress
              in
              Pp.seq
@@ -125,29 +139,51 @@ module Scheduler = struct
         (Constant
            (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 
+  let rpc server =
+    { Dune_engine.Rpc.run = Dune_rpc_impl.Server.run server
+    ; stop = Dune_rpc_impl.Server.stop server
+    ; ready = Dune_rpc_impl.Server.ready server
+    }
+
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
-    let config = Dune_config.for_scheduler dune_config None stats in
-    Scheduler.Run.go config ~on_event:(on_event dune_config) f
+    let config =
+      let insignificant_changes = Common.insignificant_changes common in
+      let signal_watcher = Common.signal_watcher common in
+      Dune_config.for_scheduler dune_config stats ~insignificant_changes
+        ~signal_watcher
+    in
+    let f =
+      match Common.rpc common with
+      | `Allow server ->
+        fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f
+      | `Forbid_builds -> f
+    in
+    Run.go config ~on_event:(on_event dune_config) f
 
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
-    let stats = Common.stats common in
-    let rpc_where = Some (Dune_rpc_impl.Where.default ()) in
-    let config = Dune_config.for_scheduler dune_config rpc_where stats in
-    let file_watcher = Common.file_watcher common in
-    let run =
+    let server =
       match Common.rpc common with
-      | None -> run
-      | Some rpc ->
-        fun () ->
-          Fiber.fork_and_join_unit
-            (fun () ->
-              let rpc_config = Dune_rpc_impl.Server.config rpc in
-              Dune_rpc_impl.Run.run rpc_config config.stats)
-            run
+      | `Allow server -> rpc server
+      | `Forbid_builds ->
+        Code_error.raise "rpc must be enabled in polling mode" []
     in
-    Scheduler.Run.go config ~file_watcher ~on_event:(on_event dune_config) run
+    let stats = Common.stats common in
+    let config =
+      let signal_watcher = Common.signal_watcher common in
+      let insignificant_changes = Common.insignificant_changes common in
+      Dune_config.for_scheduler dune_config stats ~insignificant_changes
+        ~signal_watcher
+    in
+    let file_watcher = Common.file_watcher common in
+    let run () =
+      let open Fiber.O in
+      Dune_engine.Rpc.with_background_rpc server @@ fun () ->
+      let* () = Dune_engine.Rpc.ensure_ready () in
+      run ()
+    in
+    Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =
@@ -161,9 +197,12 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
 
 (* Adapted from
    https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
-let command_alias cmd name =
-  let term, info = cmd in
-  let orig = Term.name info in
+let command_alias ?orig_name cmd term name =
+  let orig =
+    match orig_name with
+    | Some s -> s
+    | None -> Cmd.name cmd
+  in
   let doc = Printf.sprintf "An alias for $(b,%s)." orig in
   let man =
     [ `S "DESCRIPTION"
@@ -174,4 +213,4 @@ let command_alias cmd name =
     ; `Blocks Common.help_secs
     ]
   in
-  (term, Term.info name ~docs:"COMMAND ALIASES" ~doc ~man)
+  Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term

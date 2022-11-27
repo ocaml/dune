@@ -95,8 +95,10 @@ let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
     | Valid { parent_dir; targets } -> (parent_dir, targets)
     | No_targets -> report_error "Rule has no targets specified"
     | Inconsistent_parent_dir ->
-      report_error "Rule has targets in different directories."
-        ~extra_pp:[ Pp.text "Targets:"; Targets.pp targets ]
+      (* user written actions have their own validation step that also works
+         with the target inference mechanism *)
+      Code_error.raise "Rule has targets in different directories."
+        [ ("targets", Targets.to_dyn targets) ]
     | File_and_directory_target_with_the_same_name path ->
       report_error
         (sprintf "%S is declared as both a file and a directory target."

@@ -15,18 +15,6 @@ let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
   sprintf ".%s-files" (Package.Name.to_string name)
   |> Alias.Name.of_string |> Alias.make ~dir
 
-module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (Action_builder) (Monoid.Union (Path.Set))
-
-let collect_source_files_recursively dir ~f =
-  let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-  Action_builder.of_memo (Source_tree.find_dir dir) >>= function
-  | None -> Action_builder.return Path.Set.empty
-  | Some dir ->
-    Source_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
-      ~f:(fun dir ->
-        f (Path.append_source prefix_with (Source_tree.Dir.path dir)))
-
 type dep_evaluation_result =
   | Simple of Path.t list Memo.t
   | Other of Path.t list Action_builder.t
@@ -136,21 +124,15 @@ let rec dep expander = function
       (let* a = make_alias expander s in
        let+ () = dep_on_alias_rec ~loc:(String_with_vars.loc s) a in
        [])
-  | Glob_files { glob = s; recursive } ->
+  | Glob_files glob_files ->
     Other
-      (let loc = String_with_vars.loc s in
-       let* path = Expander.expand_path expander s in
-       let files_in =
-         let glob = Path.basename path |> Glob.of_string_exn loc in
-         fun dir ->
-           Action_builder.paths_matching ~loc (File_selector.of_glob ~dir glob)
-       in
-       let+ files =
-         let dir = Path.parent_exn path in
-         if recursive then collect_source_files_recursively dir ~f:files_in
-         else files_in dir
-       in
-       Path.Set.to_list files)
+      (Glob_files.Expand.action_builder glob_files
+         ~f:(Expander.expand_str expander)
+         ~base_dir:(Expander.dir expander)
+      >>| List.map ~f:(fun path ->
+              if Filename.is_relative path then
+                Path.Build.relative (Expander.dir expander) path |> Path.build
+              else Path.of_string path))
   | Source_tree s ->
     Other
       (let* path = Expander.expand_path expander s in
@@ -251,7 +233,8 @@ and named_paths_builder ~expander l =
             (x :: builders, bindings)
           | None ->
             let x =
-              Action_builder.memoize ("dep " ^ name)
+              Action_builder.memoize ~cutoff:(List.equal Path.equal)
+                ("dep " ^ name)
                 (Action_builder.List.concat_map x ~f:to_action_builder)
             in
             let bindings =
@@ -274,7 +257,9 @@ let named ~expander l =
     let+ paths = builder in
     Dune_util.Value.L.paths paths
   in
-  let builder = Action_builder.memoize "deps" builder in
+  let builder =
+    Action_builder.memoize ~cutoff:(List.equal Value.equal) "deps" builder
+  in
   let bindings =
     Pform.Map.set bindings (Var Deps) (Expander.Deps.With builder)
   in
@@ -287,11 +272,10 @@ let named ~expander l =
         | Unnamed dep -> add_sandbox_config acc dep
         | Named (_, l) -> List.fold_left l ~init:acc ~f:add_sandbox_config) )
 
-let unnamed ~expander l =
+let unnamed ?(sandbox = Sandbox_config.no_special_requirements) ~expander l =
   let expander = prepare_expander expander in
   ( List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
         let+ () = acc
         and+ _x = to_action_builder (dep expander x) in
         ())
-  , List.fold_left l ~init:Sandbox_config.no_special_requirements
-      ~f:add_sandbox_config )
+  , List.fold_left l ~init:sandbox ~f:add_sandbox_config )

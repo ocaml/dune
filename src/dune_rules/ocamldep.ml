@@ -1,5 +1,4 @@
 open Import
-module SC = Super_context
 
 module Modules_data = struct
   type t =
@@ -70,32 +69,31 @@ let interpret_deps md ~unit deps =
   | None -> deps
   | Some m -> m :: deps
 
-let deps_of md ~ml_kind unit =
-  let modules = md.modules in
-  let sctx = md.sctx in
+let deps_of
+    ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
+    ~ml_kind unit =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
-  let dir = md.dir in
-  let dep = Obj_dir.Module.dep md.obj_dir in
-  let context = SC.context sctx in
+  let dep = Obj_dir.Module.dep obj_dir in
+  let context = Super_context.context sctx in
   let parse_module_names = parse_module_names ~modules in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate source) in
   let open Memo.O in
   let* () =
-    SC.add_rule sctx ~dir
+    Super_context.add_rule sctx ~dir
       (let open Action_builder.With_targets.O in
       let flags, sandbox =
         Option.value (Module.pp_flags unit)
-          ~default:(Action_builder.return [], md.sandbox)
+          ~default:(Action_builder.return [], sandbox)
       in
       Command.run context.ocamldep
         ~dir:(Path.build context.build_dir)
+        ~stdout_to:ocamldep_output
         [ A "-modules"
         ; Command.Args.dyn flags
         ; Command.Ml_kind.flag ml_kind
         ; Dep (Module.File.path source)
         ]
-        ~stdout_to:ocamldep_output
       >>| Action.Full.add_sandbox sandbox)
   in
   let build_paths dependencies =
@@ -115,10 +113,10 @@ let deps_of md ~ml_kind unit =
     let open Action_builder.O in
     let paths =
       let+ lines = Action_builder.lines_of (Path.build ocamldep_output) in
-      lines
-      |> parse_deps_exn ~file:(Module.File.path source)
-      |> interpret_deps md ~unit
-      |> fun modules ->
+      let modules =
+        parse_deps_exn ~file:(Module.File.path source) lines
+        |> interpret_deps md ~unit
+      in
       ( build_paths modules
       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) )
     in
@@ -131,7 +129,7 @@ let deps_of md ~ml_kind unit =
        Action.Merge_files_into (sources, extras, all_deps_file))
   in
   let+ () =
-    SC.add_rule sctx ~dir
+    Super_context.add_rule sctx ~dir
       (Action_builder.With_targets.map ~f:Action.Full.make action)
   in
   let all_deps_file = Path.build all_deps_file in

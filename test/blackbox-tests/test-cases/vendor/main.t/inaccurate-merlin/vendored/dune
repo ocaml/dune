@@ -1,9 +1,0 @@
-(library
- (name a)
- (modules a)
- (preprocess (action (bash "some_command"))))
-
-(library
- (name b)
- (modules b)
- (preprocess (action (bash "some_other_command"))))

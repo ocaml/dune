@@ -1,4 +1,5 @@
 open Stdune
+open Import
 
 type t = A of string [@@unboxed]
 

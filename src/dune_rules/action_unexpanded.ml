@@ -16,6 +16,15 @@ let as_in_build_dir ~what ~loc p =
           (Path.to_string_maybe_quoted p)
       ]
 
+let validate_target_dir ~targets_dir ~loc targets path =
+  if Path.Build.(parent_exn path <> targets_dir) then
+    User_error.raise ~loc
+      [ Pp.text
+          "This action has targets in a different directory than the current \
+           one, this is not allowed by dune at the moment:"
+      ; Targets.pp targets
+      ]
+
 module Action_expander : sig
   (* An applicative to help write action expansion. It is similar to
      [Action_builder.With_targets.t] but with some differences. The differences
@@ -40,7 +49,10 @@ module Action_expander : sig
   val set_env : var:string -> value:string t -> (value:string -> 'a) t -> 'a t
 
   val run :
-    'a t -> expander:Expander.t -> 'a Action_builder.With_targets.t Memo.t
+       'a t
+    -> targets_dir:Path.Build.t option
+    -> expander:Expander.t
+    -> 'a Action_builder.With_targets.t Memo.t
 
   (* String with vars expansion *)
   module E : sig
@@ -85,7 +97,7 @@ end = struct
   type deps = Path.Set.t Action_builder.t
 
   type collector =
-    { file_targets : Path.Build.Set.t  (** We only infer file targets *)
+    { file_targets : Loc.t Path.Build.Map.t  (** We only infer file targets *)
     ; deps : deps
     ; deps_if_exist : deps
     }
@@ -121,10 +133,10 @@ end = struct
     in
     fun l env acc -> loop [] l env acc
 
-  let run t ~expander =
+  let run t ~targets_dir ~expander =
     let deps = Action_builder.return Path.Set.empty in
     let acc =
-      { file_targets = Path.Build.Set.empty; deps; deps_if_exist = deps }
+      { file_targets = Path.Build.Map.empty; deps; deps_if_exist = deps }
     in
     let env = { expander; infer = true; dir = Expander.dir expander } in
     Memo.map (t env acc) ~f:(fun (b, acc) ->
@@ -135,7 +147,7 @@ end = struct
            {[ (progn (copy a b) (copy b c)) ]} *)
         let remove_targets =
           let file_targets =
-            Path.Build.Set.to_list file_targets
+            Path.Build.Map.keys file_targets
             |> Path.Set.of_list_map ~f:Path.build
           in
           fun deps -> Path.Set.diff deps file_targets
@@ -149,7 +161,13 @@ end = struct
               >>> Action_builder.if_file_exists f ~then_:(Action_builder.path f)
                     ~else_:(Action_builder.return ()))
         in
-        let targets = Targets.Files.create file_targets in
+        let targets =
+          let file_targets = Path.Build.Set.of_keys file_targets in
+          Targets.Files.create file_targets
+        in
+        Option.iter targets_dir ~f:(fun targets_dir ->
+            Path.Build.Map.iteri file_targets ~f:(fun path loc ->
+                validate_target_dir ~targets_dir ~loc targets path));
         Action_builder.with_targets ~targets
           (let+ () = deps >>= Action_builder.path_set
            and+ () = deps_if_exist >>= action_builder_path_set_if_exist
@@ -176,7 +194,7 @@ end = struct
 
   let set_env ~var ~value t env acc =
     let*! value, acc = value env acc in
-    let value = Action_builder.memoize "env var" value in
+    let value = Action_builder.memoize ~cutoff:String.equal "env var" value in
     let env =
       { env with
         expander = Expander.set_local_env_var env.expander ~var ~value
@@ -289,7 +307,9 @@ end = struct
         (let fn = Expander.expand_path env sw in
          if not env.infer then (fn, acc)
          else
-           let fn = Action_builder.memoize "dep_if_exists" fn in
+           let fn =
+             Action_builder.memoize ~cutoff:Path.equal "dep_if_exists" fn
+           in
            ( fn
            , { acc with
                deps_if_exist =
@@ -306,14 +326,16 @@ end = struct
           , acc )
       else
         let+! p = Expander.No_deps.expand_path env sw in
-        let p = as_in_build_dir p ~what ~loc:(loc sw) in
+        let loc = loc sw in
+        let p = as_in_build_dir p ~what ~loc in
         ( Action_builder.return p
-        , { acc with file_targets = f acc.file_targets p } )
+        , { acc with file_targets = f acc.file_targets p loc } )
 
     let consume_file =
-      add_or_remove_target ~what:"File" ~f:Path.Build.Set.remove
+      add_or_remove_target ~what:"File" ~f:(fun map p _loc ->
+          Path.Build.Map.remove map p)
 
-    let target = add_or_remove_target ~what:"Target" ~f:Path.Build.Set.add
+    let target = add_or_remove_target ~what:"Target" ~f:Path.Build.Map.set
 
     let prog_and_args sw env acc =
       let b =
@@ -398,9 +420,9 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     let+ l = A.all (List.map xs ~f:E.strings) in
     let l = List.concat l in
     O.Echo l
-  | Cat fn ->
-    let+ fn = E.dep fn in
-    O.Cat fn
+  | Cat xs ->
+    let+ xs = A.all (List.map xs ~f:E.dep) in
+    O.Cat xs
   | Copy (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
@@ -423,19 +445,20 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     let+ fn = E.target fn
     and+ s = E.string s in
     O.Write_file (fn, perm, s)
-  | Mkdir x ->
+  | Mkdir x -> (
     (* This code path should in theory be unreachable too, but we don't delete
        it to remember about the check in in case we expose [mkdir] in the syntax
        one day. *)
     let+ path = E.path x in
-    if not (Path.is_managed path) then
+    match Path.as_in_build_dir path with
+    | Some path -> O.Mkdir path
+    | None ->
       User_error.raise ~loc:(String_with_vars.loc x)
         [ Pp.text
             "(mkdir ...) is not supported for paths outside of the workspace:"
         ; Pp.seq (Pp.verbatim "  ")
             (Dune_lang.pp (List [ Dune_lang.atom "mkdir"; Dpath.encode path ]))
-        ];
-    O.Mkdir path
+        ])
   | Diff { optional; file1; file2; mode } ->
     let+ file1 = E.dep_if_exists file1
     and+ file2 =
@@ -462,7 +485,8 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
     Expander.set_expanding_what expander (User_action_without_targets { what })
   in
   let* { Action_builder.With_targets.build; targets } =
-    Action_builder.of_memo (Action_expander.run (expand t) ~expander)
+    Action_builder.of_memo
+      (Action_expander.run (expand t) ~targets_dir:None ~expander)
   in
   if not (Targets.is_empty targets) then
     User_error.raise ~loc
@@ -505,7 +529,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
   let+! { Action_builder.With_targets.build; targets } =
-    Action_expander.run (expand t) ~expander
+    Action_expander.run (expand t) ~targets_dir:(Some targets_dir) ~expander
   in
   let targets =
     match (targets_written_by_user : _ Targets_spec.t) with
@@ -513,13 +537,7 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     | Static { targets = targets_written_by_user; multiplicity = _ } ->
       let files, dirs =
         List.partition_map targets_written_by_user ~f:(fun (path, kind) ->
-            if Path.Build.(parent_exn path <> targets_dir) then
-              User_error.raise ~loc
-                [ Pp.text
-                    "This action has targets in a different directory than the \
-                     current one, this is not allowed by dune at the moment:"
-                ; Targets.pp targets
-                ];
+            validate_target_dir ~targets_dir ~loc targets path;
             match kind with
             | File -> Left path
             | Directory -> Right path)

@@ -1,4 +1,4 @@
-Testing composition of theories accross a dune workspace
+Testing composition of theories across a dune workspace
   $ dune build B
   Hello
        : Set

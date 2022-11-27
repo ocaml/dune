@@ -1,5 +1,6 @@
 open! Stdune
 module Inotify_lib = Async_inotify_for_dune.Async_inotify
+module Console = Dune_console
 
 module Fs_memo_event = struct
   type kind =
@@ -254,7 +255,7 @@ module Fs_sync : sig
   val is_special_file : path_as_reported_by_file_watcher:string -> bool
 
   (** fsevents always reports absolute paths. therefore, we need callers to make
-      an effort to determine if an abosulte path is in fact in the build dir *)
+      an effort to determine if an absolute path is in fact in the build dir *)
   val is_special_file_fsevents : Path.t -> bool
 
   val consume_event : (string, 'a) Table.t -> string -> 'a option
@@ -485,29 +486,37 @@ let create_inotifylib ~scheduler =
   Inotify_lib.add inotify (Lazy.force Fs_sync.special_dir);
   { kind = Inotify inotify; sync_table }
 
-let fsevents_callback (scheduler : Scheduler.t) ~f events =
+let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
+  let skip_path =
+    (* excluding a [path] will exclude children under [path] but not [path]
+       itself. Hence we need to skip [path] manually *)
+    match exclusion_paths with
+    | None -> fun _ -> false
+    | Some paths -> fun p -> List.mem paths p ~equal:Path.equal
+  in
   scheduler.thread_safe_send_emit_events_job (fun () ->
       List.filter_map events ~f:(fun event ->
           let path =
             Fsevents.Event.path event |> Path.of_string
             |> Path.Expert.try_localize_external
           in
-          f event path))
+          if skip_path path then None else f event path))
 
 let fsevents ?exclusion_paths ~latency ~paths scheduler f =
   let paths = List.map paths ~f:Path.to_absolute_filename in
   let fsevents =
-    Fsevents.create ~latency ~paths ~f:(fsevents_callback scheduler ~f)
+    Fsevents.create ~latency ~paths
+      ~f:(fsevents_callback ?exclusion_paths scheduler ~f)
   in
   Option.iter exclusion_paths ~f:(fun paths ->
+      let paths = List.rev_map paths ~f:Path.to_absolute_filename in
       Fsevents.set_exclusion_paths fsevents ~paths);
   fsevents
 
 let fsevents_standard_event event path =
-  let action = Fsevents.Event.action event in
   let kind =
-    match action with
-    | Unknown -> Fs_memo_event.Unknown
+    match Fsevents.Event.action event with
+    | Rename | Unknown -> Fs_memo_event.Unknown
     | Create -> Created
     | Remove -> Deleted
     | Modify ->
@@ -530,7 +539,7 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
         else
           match Fsevents.Event.action event with
           | Remove -> None
-          | Unknown | Create | Modify ->
+          | Rename | Unknown | Create | Modify ->
             Option.map (Fs_sync.consume_event sync_table path) ~f:(fun id ->
                 Event.Sync id))
   in
@@ -542,7 +551,6 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
          |> List.rev_map ~f:(fun base ->
                 let path = Path.relative (Path.source Path.Source.root) base in
                 path))
-      |> List.rev_map ~f:Path.to_absolute_filename
     in
     fsevents ~latency scheduler ~exclusion_paths ~paths fsevents_standard_event
   in

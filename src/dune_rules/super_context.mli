@@ -19,24 +19,6 @@ val context : t -> Context.t
 (** Context env with additional variables computed from packages *)
 val context_env : t -> Env.t
 
-val stanzas : t -> Dune_file.Stanzas.t Dir_with_dune.t list
-
-val stanzas_in :
-  t -> dir:Path.Build.t -> Dune_file.Stanzas.t Dir_with_dune.t option
-
-val host : t -> t
-
-module Lib_entry : sig
-  type t =
-    | Library of Lib.Local.t
-    | Deprecated_library_name of Dune_file.Deprecated_library_name.t
-end
-
-val lib_entries_of_package : t -> Package.Name.t -> Lib_entry.t list
-
-(** All public libraries of the workspace *)
-val public_libs : t -> Lib.DB.t
-
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
 val ocaml_flags :
@@ -52,6 +34,12 @@ val js_of_ocaml_flags :
   -> dir:Path.Build.t
   -> Js_of_ocaml.Flags.Spec.t
   -> string list Action_builder.t Js_of_ocaml.Flags.t Memo.t
+
+val default_foreign_flags :
+     t
+  -> dir:Path.Build.t
+  -> language:Foreign_language.t
+  -> string list Action_builder.t
 
 val foreign_flags :
      t
@@ -76,6 +64,8 @@ val menhir_flags :
 val local_binaries :
   t -> dir:Path.Build.t -> File_binding.Expanded.t list Memo.t
 
+val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
+
 (** odoc config in the corresponding [(env)] stanza. *)
 val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t Memo.t
 
@@ -87,12 +77,6 @@ val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.t
 
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
-
-val find_scope_by_dir : t -> Path.Build.t -> Scope.t
-
-val find_scope_by_project : t -> Dune_project.t -> Scope.t
-
-val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
 
 val add_rule :
      t
@@ -141,8 +125,6 @@ val resolve_program :
   -> Action.Prog.t Memo.t
 
 val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
-
-val dir_status_db : t -> Dir_status.DB.t
 
 module As_memo_key : sig
   include Memo.Input with type t = t

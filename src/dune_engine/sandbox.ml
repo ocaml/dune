@@ -13,7 +13,7 @@ let init =
        Io.write_file (Path.relative dir ".git") "";
        (* We create a [.hg/requires] file to prevent hg from escaping the
           sandbox. It will complain that "Escaping the Dune sandbox" is an
-          unkown feature. *)
+          unknown feature. *)
        Io.write_file
          (Path.relative dir ".hg/requires")
          "Escaping the Dune sandbox")
@@ -102,7 +102,15 @@ let snapshot t =
   in
   walk (Path.build t.dir) Path.Map.empty
 
-let create ~mode ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_aliases =
+let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest
+    ~expand_aliases =
+  let event =
+    Dune_stats.start dune_stats (fun () ->
+        let cat = Some [ "create-sandbox" ] in
+        let name = Loc.to_file_colon_line rule_loc in
+        let args = None in
+        { cat; name; args })
+  in
   init ();
   let sandbox_suffix = rule_digest |> Digest.to_string in
   let sandbox_dir = Path.Build.relative sandbox_dir sandbox_suffix in
@@ -116,6 +124,7 @@ let create ~mode ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_aliases =
   (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
      targets produced dynamically will be unavailable. *)
   link_deps t ~mode ~deps;
+  Dune_stats.finish event;
   match mode with
   | Patch_back_source_tree ->
     (* Only supported on Linux because we rely on the mtime changing to detect
@@ -149,18 +158,10 @@ let rename_optional_file ~src ~dst =
     | exception Unix.Unix_error (ENOENT, _, _) -> ()
     | () -> ())
 
-(* Recursively move regular files from [src] to [dst] and return the set of
-   moved files. *)
-let rename_dir_recursively ~loc ~src_dir ~dst_dir =
+(* Recursively collect regular files from [src] to [dst] and return the set of
+   of files collected. *)
+let collect_dir_recursively ~loc ~src_dir ~dst_dir =
   let rec loop ~src_dir ~dst_dir =
-    (match Fpath.mkdir (Path.Build.to_string dst_dir) with
-    | Created -> ()
-    | Already_exists ->
-      (* We clean up all targets (including directory targets) before running an
-         action, so this branch should be unreachable. *)
-      Code_error.raise "Stale directory target in the build directory"
-        [ ("dst_dir", Path.Build.to_dyn dst_dir) ]
-    | Missing_parent_directory -> assert false);
     match
       Dune_filesystem_stubs.read_directory_with_kinds
         (Path.Build.to_string src_dir)
@@ -168,11 +169,10 @@ let rename_dir_recursively ~loc ~src_dir ~dst_dir =
     | Ok files ->
       List.map files ~f:(fun (file, kind) ->
           match (kind : File_kind.t) with
-          | S_REG ->
-            let src = Path.Build.relative src_dir file in
-            let dst = Path.Build.relative dst_dir file in
-            Unix.rename (Path.Build.to_string src) (Path.Build.to_string dst);
-            Appendable_list.singleton (dst_dir, file)
+          | S_LNK
+            (* TODO symlinks outside of the sandbox are going to be broken,
+               but users shouldn't be doing this anyway. *)
+          | S_REG -> Appendable_list.singleton (dst_dir, file)
           | S_DIR ->
             loop
               ~src_dir:(Path.Build.relative src_dir file)
@@ -236,7 +236,15 @@ let move_targets_to_build_dir t ~loc ~should_be_skipped
         rename_optional_file ~src:(map_path t target) ~dst:target);
   let discovered_targets =
     Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
-        rename_dir_recursively ~loc ~src_dir:(map_path t target) ~dst_dir:target)
+        let src_dir = map_path t target in
+        let files = collect_dir_recursively ~loc ~src_dir ~dst_dir:target in
+        if Path.Untracked.exists (Path.build target) then
+          (* We clean up all targets (including directory targets) before running an
+             action, so this branch should be unreachable. *)
+          Code_error.raise "Stale directory target in the build directory"
+            [ ("dst_dir", Path.Build.to_dyn target) ];
+        Path.rename (Path.build src_dir) (Path.build target);
+        files)
     |> Appendable_list.concat |> Appendable_list.to_list
   in
   Targets.Produced.expand_validated_exn targets discovered_targets

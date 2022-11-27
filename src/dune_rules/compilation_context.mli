@@ -35,8 +35,9 @@ val create :
   -> js_of_ocaml:Js_of_ocaml.In_context.t option
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
-  -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
+  -> ?modes:Dune_file.Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
+  -> ?loc:Loc.t
   -> unit
   -> t Memo.t
 
@@ -65,7 +66,8 @@ val requires_link : t -> Lib.t list Resolve.Memo.t
 
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 
-val includes : t -> Command.Args.without_targets Command.Args.t Cm_kind.Dict.t
+val includes :
+  t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
 val preprocessing : t -> Pp_spec.t
 
@@ -83,7 +85,7 @@ val package : t -> Package.t option
 
 val vimpl : t -> Vimpl.t option
 
-val modes : t -> Mode.Dict.Set.t
+val modes : t -> Lib_mode.Map.Set.t
 
 val for_wrapped_compat : t -> t
 
@@ -105,3 +107,9 @@ val root_module_entries : t -> Module_name.t list Action_builder.t
 val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 
 val ocamldep_modules_data : t -> Ocamldep.Modules_data.t
+
+val loc : t -> Loc.t option
+
+val set_obj_dir : t -> Path.Build.t Obj_dir.t -> t
+
+val set_modes : t -> modes:Lib_mode.Map.Set.t -> t

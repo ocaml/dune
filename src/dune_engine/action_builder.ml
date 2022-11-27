@@ -76,7 +76,7 @@ let env_var s = deps (Dep.Set.singleton (Dep.env s))
 
 let alias a = dep (Dep.alias a)
 
-let contents p =
+let contents_impl p =
   of_thunk
     { f =
         (fun _mode ->
@@ -84,6 +84,14 @@ let contents p =
           let+ x = Build_system.read_file p ~f:Io.read_file in
           (x, Dep.Map.empty))
     }
+
+let contents =
+  let memo =
+    create_memo "file-contents"
+      ~input:(module Path)
+      ~cutoff:String.equal contents_impl
+  in
+  fun path -> exec_memo memo path
 
 let lines_of p =
   of_thunk
@@ -238,6 +246,13 @@ let copy ~src ~dst =
 
 let symlink ~src ~dst =
   with_file_targets ~file_targets:[ dst ]
+    (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
+
+let symlink_dir ~src ~dst =
+  with_targets
+    ~targets:
+      (Targets.create ~files:Path.Build.Set.empty
+         ~dirs:(Path.Build.Set.singleton dst))
     (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
 
 let create_file ?(perm = Action.File_perm.Normal) fn =

@@ -10,27 +10,6 @@ module Dialect = Dune_engine.Dialect
     syntax tree (CST) a good deal. *)
 module Cst = Dune_lang.Cst
 
-module Kind = struct
-  type t =
-    | Executable
-    | Library
-    | Project
-    | Test
-
-  let to_string = function
-    | Executable -> "executable"
-    | Library -> "library"
-    | Project -> "project"
-    | Test -> "test"
-
-  let commands =
-    [ ("executable", Executable)
-    ; ("library", Library)
-    ; ("project", Project)
-    ; ("test", Test)
-    ]
-end
-
 (** Abstractions around the kinds of files handled during initialization *)
 module File = struct
   type dune =
@@ -83,7 +62,7 @@ module File = struct
       | _ -> false
 
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
-      let of_ast = Dune_file.Stanzas.of_ast project in
+      let of_ast = Dune_file.of_ast project in
       (let open Option.O in
       let* a_ast = Cst.abstract a in
       let+ b_ast = Cst.abstract b in

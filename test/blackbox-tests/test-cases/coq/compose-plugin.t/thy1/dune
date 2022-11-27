@@ -2,5 +2,5 @@
  (name thy1)
  (package cplugin)
  (synopsis "Test Plugin")
- (libraries cplugin.ml_plugin_b)
+ (plugins cplugin.ml_plugin_b)
  (modules :standard))

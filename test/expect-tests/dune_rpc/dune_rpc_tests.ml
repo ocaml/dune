@@ -39,7 +39,7 @@ module Chan = struct
 end
 
 module Drpc = struct
-  module Client = Dune_rpc.Client.Make (Dune_rpc_impl.Client.Fiber) (Chan)
+  module Client = Dune_rpc.Client.Make (Dune_rpc_impl.Private.Fiber) (Chan)
   module Server = Dune_rpc_server.Make (Chan)
 end
 

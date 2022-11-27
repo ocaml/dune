@@ -303,20 +303,23 @@ module File_ops_real (W : Workspace) : File_operations = struct
   let copy_file ~src ~dst ~executable ~special_file ~package
       ~(conf : Dune_rules.Artifact_substitution.conf) =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
-    let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
-    Fiber.finalize
-      ~finally:(fun () ->
-        Io.close_both (ic, oc);
-        Fiber.return ())
-      (fun () ->
-        match (special_file : Special_file.t option) with
-        | Some META -> copy_special_file ~src ~package ~ic ~oc ~f:process_meta
-        | Some Dune_package ->
-          copy_special_file ~src ~package ~ic ~oc
-            ~f:(process_dune_package ~get_location:conf.get_location)
-        | None ->
-          Dune_rules.Artifact_substitution.copy ~conf ~input_file:src
-            ~input:(input ic) ~output:(output oc))
+    match (special_file : Special_file.t option) with
+    | Some sf ->
+      let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
+      Fiber.finalize
+        ~finally:(fun () ->
+          Io.close_both (ic, oc);
+          Fiber.return ())
+        (fun () ->
+          let f =
+            match sf with
+            | META -> process_meta
+            | Dune_package ->
+              process_dune_package ~get_location:conf.get_location
+          in
+          copy_special_file ~src ~package ~ic ~oc ~f)
+    | None ->
+      Dune_rules.Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
 
   let remove_file_if_exists dst =
     if Path.exists dst then (
@@ -366,7 +369,7 @@ module Sections = struct
     | All
     | Only of Section.Set.t
 
-  let sections_conv : Section.t list Cmdliner.Arg.converter =
+  let sections_conv =
     let all =
       Section.all |> Section.Set.to_list
       |> List.map ~f:(fun section -> (Section.to_string section, section))
@@ -429,7 +432,7 @@ let install_uninstall ~what =
         value
         & opt (some string) None
         & info [ "prefix" ]
-            ~env:(env_var "DUNE_INSTALL_PREFIX")
+            ~env:(Cmd.Env.info "DUNE_INSTALL_PREFIX")
             ~docv:"PREFIX"
             ~doc:
               "Directory where files are copied. For instance binaries are \
@@ -439,7 +442,7 @@ let install_uninstall ~what =
       Arg.(
         value
         & opt (some string) None
-        & info [ "destdir" ] ~env:(env_var "DESTDIR") ~docv:"PATH"
+        & info [ "destdir" ] ~env:(Cmd.Env.info "DESTDIR") ~docv:"PATH"
             ~doc:"This directory is prepended to all installed paths.")
     and+ libdir_from_command_line =
       Arg.(
@@ -544,6 +547,7 @@ let install_uninstall ~what =
               "Select context to install from. By default, install files from \
                all defined contexts.")
     and+ sections = Sections.term in
+    let common = Common.forbid_builds common in
     let config = Common.init ~log_file:No_log_file common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in
@@ -590,7 +594,7 @@ let install_uninstall ~what =
             ; Pp.enumerate missing_install_files ~f:(fun p ->
                   Pp.text (Path.to_string p))
             ]
-            ~hints:[ Pp.text "try running: dune build @install" ];
+            ~hints:[ Pp.text "try running: dune build [-p <pkg>] @install" ];
         (match
            (contexts, prefix_from_command_line, libdir_from_command_line)
          with
@@ -674,7 +678,7 @@ let install_uninstall ~what =
               let conf =
                 Dune_rules.Artifact_substitution.conf_for_install ~relocatable
                   ~default_ocamlpath:context.default_ocamlpath
-                  ~stdlib_dir:context.stdlib_dir ~roots
+                  ~stdlib_dir:context.stdlib_dir ~roots ~context
               in
               Fiber.sequential_iter entries_per_package
                 ~f:(fun (package, entries) ->
@@ -693,9 +697,12 @@ let install_uninstall ~what =
                             match special_file with
                             | _ when not create_install_files ->
                               Fiber.return true
-                            | None ->
-                              Dune_rules.Artifact_substitution.test_file
-                                ~src:entry.src ()
+                            | None -> (
+                              let open Dune_rules.Artifact_substitution in
+                              let+ status = test_file ~src:entry.src () in
+                              match status with
+                              | Some_substitution -> true
+                              | No_substitution -> false)
                             | Some Special_file.META
                             | Some Special_file.Dune_package ->
                               Fiber.return true
@@ -737,9 +744,10 @@ let install_uninstall ~what =
         |> List.rev
         |> List.iter ~f:(Ops.remove_dir_if_exists ~if_non_empty:Warn))
   in
-  ( term
-  , Cmdliner.Term.info (cmd_what what) ~doc
-      ~man:Manpage.(`S s_synopsis :: (synopsis @ Common.help_secs)) )
+  Cmd.v
+    (Cmd.info (cmd_what what) ~doc
+       ~man:Manpage.(`S s_synopsis :: (synopsis @ Common.help_secs)))
+    term
 
 let install = install_uninstall ~what:Install
 

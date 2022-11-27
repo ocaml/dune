@@ -3,10 +3,8 @@
 open Import
 module Action_builder := Action_builder0
 
-(** {1 Requests} *)
-
-(** Build a file and return the digest of its contents. *)
-val build_file : Path.t -> Digest.t Memo.t
+(** Build a file. *)
+val build_file : Path.t -> unit Memo.t
 
 (** Build a file and access its contents with [f]. *)
 val read_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.t
@@ -59,16 +57,16 @@ val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 (** {2 Misc} *)
 
 module Progress : sig
+  (** Measures for the progress of the build. *)
+
   type t =
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
+    ; number_of_rules_failed : int
     }
 
-  val equal : t -> t -> bool
-
-  val complete : t -> int
-
-  val remaining : t -> int
+  (** Initialize with zeros on all measures. *)
+  val init : t
 end
 
 module State : sig

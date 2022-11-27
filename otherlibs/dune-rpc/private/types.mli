@@ -19,7 +19,7 @@ module Id : sig
 
   val to_sexp : t -> Sexp.t
 
-  include Stdune.Comparable_intf.S with type key := t
+  include Comparable_intf.S with type key := t
 end
 
 module Version : sig
@@ -35,8 +35,8 @@ module Method_name : sig
 
   val sexp : t Conv.value
 
-  module Map = Stdune.String.Map
-  module Table = Stdune.String.Table
+  module Map = String.Map
+  module Table = String.Table
 end
 
 module Method_version : sig
@@ -44,8 +44,8 @@ module Method_version : sig
 
   val sexp : t Conv.value
 
-  module Set = Stdune.Int.Set
-  module Map = Stdune.Int.Map
+  module Set = Int.Set
+  module Map = Int.Map
 end
 
 module Call : sig
@@ -68,6 +68,7 @@ module Response : sig
     type kind =
       | Invalid_request
       | Code_error
+      | Connection_dead
 
     type t =
       { payload : Sexp.t option
@@ -207,7 +208,7 @@ end
 module Decl : sig
   type 'gen t =
     { method_ : Method_name.t
-    ; key : 'gen Int.Map.t Stdune.Univ_map.Key.t
+    ; key : 'gen Int.Map.t Univ_map.Key.t
     }
 
   module Generation : sig
@@ -289,49 +290,4 @@ module Decl : sig
   type ('a, 'b) request = ('a, 'b) Request.t
 
   type 'a notification = 'a Notification.t
-end
-
-module type Fiber = sig
-  type 'a t
-
-  val return : 'a -> 'a t
-
-  val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
-  val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-  val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
-
-  module O : sig
-    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-  end
-
-  module Ivar : sig
-    type 'a fiber
-
-    type 'a t
-
-    val create : unit -> 'a t
-
-    val read : 'a t -> 'a fiber
-
-    val fill : 'a t -> 'a -> unit fiber
-  end
-  with type 'a fiber := 'a t
-end
-
-module type Sys = sig
-  type 'a fiber
-
-  val getenv : string -> string option
-
-  val is_win32 : unit -> bool
-
-  val read_file : string -> string fiber
-
-  val readlink : string -> string option fiber
-
-  val analyze_path : string -> [ `Unix_socket | `Normal_file | `Other ] fiber
 end

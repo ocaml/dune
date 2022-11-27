@@ -251,34 +251,14 @@ Comments in dune files are preserved
 Will not create components with invalid names
 
   $ dune init lib invalid-component-name ./_test_lib
-  dune init: NAME argument: invalid component name
-             `invalid-component-name'
-             Library names must be non-empty and composed only of the
-             following
-             characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
-  Usage: dune init [OPTION]... COMPONENT NAME [PATH]
-  Try `dune init --help' or `dune --help' for more information.
+  dune: NAME argument: invalid component name `invalid-component-name'
+        Library names must be non-empty and composed only of the
+        following
+        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  Usage: dune init library [OPTION]… NAME [PATH]
+  Try 'dune init library --help' or 'dune --help' for more information.
   [1]
   $ test -f ./_test_lib
-  [1]
-
-Will fail and inform user when invalid component command is given
-
-  $ dune init foo blah
-  dune init: COMPONENT argument: invalid value `foo', expected one of
-             `executable', `library', `project' or `test'
-  Usage: dune init [OPTION]... COMPONENT NAME [PATH]
-  Try `dune init --help' or `dune --help' for more information.
-  [1]
-
-Will fail and inform user when an invalid option is given to a component
-
-  $ dune init test test_foo --public
-  Error: The `test' component does not support the `--public' option
-  [1]
-  $ dune init exe test_exe --inline-tests
-  Error: The `executable' component does not support the `--inline-tests'
-  option
   [1]
 
 Adding fields to existing stanzas
@@ -366,6 +346,7 @@ We can build the project:
 
   $ dune build --root test_exec_proj
   Entering directory 'test_exec_proj'
+  Leaving directory 'test_exec_proj'
 
 And the opam file will be generated as expected
 
@@ -383,7 +364,7 @@ And the opam file will be generated as expected
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
-    $dune {>= "3.4"}
+    $dune {>= "3.7"}
     "odoc" {with-doc}
   ]
   build: [
@@ -406,12 +387,14 @@ We can build and run the resulting executable:
 
   $ dune exec --root test_exec_proj ./bin/main.exe
   Entering directory 'test_exec_proj'
+  Leaving directory 'test_exec_proj'
   Hello, World!
 
 We can build and run the project's tests:
 
   $ dune exec --root test_exec_proj ./test/test_exec_proj.exe
   Entering directory 'test_exec_proj'
+  Leaving directory 'test_exec_proj'
 
 Initializing library projects
 ================================
@@ -466,13 +449,9 @@ In particular, the dune-project file has the expected content:
 
 We can build and install the project:
 
-  $ dune build --root test_lib_proj @install --display short
+  $ dune build --root test_lib_proj @install
   Entering directory 'test_lib_proj'
-        ocamlc lib/.test_lib_proj.objs/byte/test_lib_proj.{cmi,cmo,cmt}
-      ocamlopt lib/.test_lib_proj.objs/native/test_lib_proj.{cmx,o}
-        ocamlc lib/test_lib_proj.cma
-      ocamlopt lib/test_lib_proj.{a,cmxa}
-      ocamlopt lib/test_lib_proj.cmxs
+  Leaving directory 'test_lib_proj'
 
 And the opam file will be generated as expected
 
@@ -490,7 +469,7 @@ And the opam file will be generated as expected
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
     "ocaml"
-    "dune" {>= "3.4"}
+    "dune" {>= "3.7"}
     "odoc" {with-doc}
   ]
   build: [
@@ -517,6 +496,7 @@ And we we can run the tests:
       ocamlopt test/.test_lib_proj.eobjs/native/dune__exe__Test_lib_proj.{cmx,o}
       ocamlopt test/test_lib_proj.exe
   test_lib_proj alias test/runtest
+  Leaving directory 'test_lib_proj'
 
 Initializing projects using Esy
 ===============================

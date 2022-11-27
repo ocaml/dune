@@ -5,10 +5,7 @@ type t =
   | File of String_with_vars.t
   | Alias of String_with_vars.t
   | Alias_rec of String_with_vars.t
-  | Glob_files of
-      { glob : String_with_vars.t
-      ; recursive : bool
-      }
+  | Glob_files of Glob_files.t
   | Source_tree of String_with_vars.t
   | Package of String_with_vars.t
   | Universe
@@ -51,11 +48,12 @@ let decode =
       ; ("alias", sw >>| fun x -> Alias x)
       ; ("alias_rec", sw >>| fun x -> Alias_rec x)
       ; ( "glob_files"
-        , sw >>| fun x -> Glob_files { glob = x; recursive = false } )
+        , sw >>| fun glob -> Glob_files { Glob_files.glob; recursive = false }
+        )
       ; ( "glob_files_rec"
         , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 0)
-          and+ x = sw in
-          Glob_files { glob = x; recursive = true } )
+          and+ glob = sw in
+          Glob_files { Glob_files.glob; recursive = true } )
       ; ("package", sw >>| fun x -> Package x)
       ; ("universe", return Universe)
       ; ( "files_recursively_in"

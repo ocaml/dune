@@ -42,7 +42,7 @@ val field :
 val equal : t -> t -> bool
 
 module Unexpanded : sig
-  type expanded = t
+  type expanded := t
 
   type t
 
@@ -58,8 +58,6 @@ module Unexpanded : sig
 
   val include_single :
     context:Univ_map.t -> pos:string * int * int * int -> string -> t
-
-  val concat : context:Univ_map.t -> pos:string * int * int * int -> t -> t -> t
 
   val field :
        ?check:unit Dune_lang.Decoder.t
@@ -90,7 +88,6 @@ module Unexpanded : sig
   val fold_strings :
     t -> init:'a -> f:(position -> String_with_vars.t -> 'a -> 'a) -> 'a
 end
-with type expanded := t
 
 module Unordered_string :
   Ordered_set_lang_intf.Unordered_eval with type t = t and module Key := String

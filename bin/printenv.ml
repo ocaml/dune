@@ -9,7 +9,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "printenv" ~doc ~man
+let info = Cmd.info "printenv" ~doc ~man
 
 let dump sctx ~dir =
   let open Action_builder.O in
@@ -88,4 +88,4 @@ let term =
               (Dune_engine.Context_name.to_string name)
               (pp ~fields) env))
 
-let command = (term, info)
+let command = Cmd.v info term

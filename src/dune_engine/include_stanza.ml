@@ -36,7 +36,7 @@ let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
   let dir = Path.Source.parent_exn current_file in
   let current_file = Path.Source.relative dir fn in
   let open Memo.O in
-  let* exists = Fs_memo.file_exists (Path.source current_file) in
+  let* exists = Fs_memo.file_exists (In_source_dir current_file) in
   if not exists then
     User_error.raise ~loc
       [ Pp.textf "File %s doesn't exist."
@@ -47,7 +47,7 @@ let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
         Path.Source.equal f current_file)
   then error { current_file; include_stack };
   let+ sexps =
-    Path.source current_file
-    |> Fs_memo.with_lexbuf_from_file ~f:(Dune_lang.Parser.parse ~mode:Many)
+    Fs_memo.with_lexbuf_from_file (In_source_dir current_file)
+      ~f:(Dune_lang.Parser.parse ~mode:Many)
   in
   (sexps, { current_file; include_stack })

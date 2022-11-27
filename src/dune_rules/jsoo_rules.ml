@@ -1,5 +1,4 @@
 open Import
-module SC = Super_context
 
 let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 
@@ -7,7 +6,8 @@ let in_build_dir ~ctx args =
   Path.Build.L.relative ctx.Context.build_dir (".js" :: args)
 
 let jsoo ~dir sctx =
-  SC.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint "js_of_ocaml"
+  Super_context.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint
+    "js_of_ocaml"
 
 type sub_command =
   | Compile
@@ -135,7 +135,7 @@ let setup_separate_compilation_rules sctx components =
   | [] | _ :: _ :: _ -> Memo.return ()
   | [ pkg ] -> (
     let pkg = Lib_name.parse_string_exn (Loc.none, pkg) in
-    let ctx = SC.context sctx in
+    let ctx = Super_context.context sctx in
     let open Memo.O in
     let* installed_libs = Lib.DB.installed ctx in
     Lib.DB.find installed_libs pkg >>= function
@@ -171,7 +171,7 @@ let setup_separate_compilation_rules sctx components =
             js_of_ocaml_rule sctx ~sub_command:Compile ~dir
               ~flags:Js_of_ocaml.Flags.standard ~spec ~target
           in
-          SC.add_rule sctx ~dir action_with_targets))
+          Super_context.add_rule sctx ~dir action_with_targets))
 
 let build_exe cc ~loc ~in_context ~src ~(cm : Path.t list Action_builder.t)
     ~promote ~link_time_code_gen =
@@ -192,12 +192,12 @@ let build_exe cc ~loc ~in_context ~src ~(cm : Path.t list Action_builder.t)
   | Separate_compilation ->
     standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime
       ~flags
-    >>= SC.add_rule ~loc sctx ~dir
+    >>= Super_context.add_rule ~loc sctx ~dir
     >>> link_rule cc ~runtime:standalone_runtime ~target cm ~flags
           ~link_time_code_gen
-    >>= SC.add_rule sctx ~loc ~dir ~mode
+    >>= Super_context.add_rule sctx ~loc ~dir ~mode
   | Whole_program ->
     exe_rule cc ~javascript_files ~src ~target ~flags
-    >>= SC.add_rule sctx ~loc ~dir ~mode
+    >>= Super_context.add_rule sctx ~loc ~dir ~mode
 
 let runner = "node"

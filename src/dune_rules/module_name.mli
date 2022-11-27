@@ -31,7 +31,7 @@ val of_local_lib_name : Loc.t * Lib_name.Local.t -> t
 val to_local_lib_name : t -> Lib_name.Local.t
 
 module Unique : sig
-  type name
+  type name := t
 
   (** We use [Unique] module names for OCaml unit names. These must be unique
       across all libraries within a given linkage, so these names often involve
@@ -57,13 +57,14 @@ module Unique : sig
 
   val compare : t -> t -> Ordering.t
 
+  val equal : t -> t -> bool
+
   val artifact_filename : t -> ext:string -> string
 
   include Dune_lang.Conv.S with type t := t
 
   include Comparable_intf.S with type key := t
 end
-with type name := t
 
 val wrap : t -> with_:t -> Unique.t
 

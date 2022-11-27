@@ -1,5 +1,12 @@
 open Stdune
+module Timestamp = Chrome_trace.Event.Timestamp
 module Event = Chrome_trace.Event
+
+module Mac = struct
+  external open_fds : pid:int -> int = "dune_stats_open_fds"
+
+  external available : unit -> bool = "dune_stats_available"
+end
 
 module Json = struct
   include Chrome_trace.Json
@@ -97,6 +104,40 @@ let printf t format_string =
 
 let emit t event = printf t "%s" (Json.to_string (Event.to_json event))
 
+type event_data =
+  { args : Chrome_trace.Event.args option
+  ; cat : string list option
+  ; name : string
+  }
+
+type event =
+  { t : t
+  ; event_data : event_data
+  ; start : float
+  }
+
+let start t k : event option =
+  match t with
+  | None -> None
+  | Some t ->
+    let event_data = k () in
+    let start = Unix.gettimeofday () in
+    Some { t; event_data; start }
+
+let finish event =
+  match event with
+  | None -> ()
+  | Some { t; start; event_data = { args; cat; name } } ->
+    let dur =
+      let stop = Unix.gettimeofday () in
+      Timestamp.of_float_seconds (stop -. start)
+    in
+    let common =
+      Event.common_fields ?cat ~name ~ts:(Timestamp.of_float_seconds start) ()
+    in
+    let event = Event.complete ?args common ~dur in
+    emit t event
+
 module Fd_count = struct
   type t =
     | Unknown
@@ -160,23 +201,30 @@ module Fd_count = struct
 
   let how = ref `Unknown
 
+  let pid = lazy (Unix.getpid ())
+
   let get () =
     match !how with
     | `Disable -> Unknown
     | `Lsof -> lsof ()
     | `Proc_fs -> proc_fs ()
+    | `Mac -> This (Mac.open_fds ~pid:(Lazy.force pid))
     | `Unknown -> (
-      match proc_fs () with
-      | This _ as n ->
-        how := `Proc_fs;
-        n
-      | Unknown ->
-        let res = lsof () in
-        (how :=
-           match res with
-           | This _ -> `Lsof
-           | Unknown -> `Disable);
-        res)
+      if Mac.available () then (
+        how := `Mac;
+        This (Mac.open_fds ~pid:(Lazy.force pid)))
+      else
+        match proc_fs () with
+        | This _ as n ->
+          how := `Proc_fs;
+          n
+        | Unknown ->
+          let res = lsof () in
+          (how :=
+             match res with
+             | This _ -> `Lsof
+             | Unknown -> `Disable);
+          res)
 end
 
 let record_gc_and_fd stats =
@@ -210,3 +258,7 @@ let record_gc_and_fd stats =
       Event.counter common args
     in
     emit stats event
+
+module Private = struct
+  module Fd_count = Fd_count
+end

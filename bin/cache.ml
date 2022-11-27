@@ -13,12 +13,21 @@ let man =
         functionality soon. |}
   ; `S "ACTIONS"
   ; `P {|$(b,trim) trim the shared cache to free space.|}
+  ; `S "EXAMPLES"
+  ; `Pre
+      {|Trimming the Dune cache to 1 GB.
+        
+        \$ dune cache trim --trimmed-size=1GB |}
+  ; `Pre
+      {|Trimming 500 MB from the Dune cache.
+        
+        \$ dune cache trim --size=500MB |}
   ; `Blocks Common.help_secs
   ]
 
 let doc = "Manage the shared cache of build artifacts"
 
-let info = Term.info name ~doc ~man
+let info = Cmd.info name ~doc ~man
 
 let trim ~trimmed_size ~size =
   Log.init_disabled ();
@@ -36,7 +45,7 @@ let trim ~trimmed_size ~size =
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok { trimmed_bytes } ->
     User_message.print
-      (User_message.make [ Pp.textf "Freed %Li bytes" trimmed_bytes ])
+      (User_message.make [ Pp.textf "Freed %s" (Bytes_unit.pp trimmed_bytes) ])
 
 type mode =
   | Trim
@@ -75,16 +84,16 @@ let term =
          value
          & opt (some bytes) None
          & info ~docv:"BYTES" [ "trimmed-size" ]
-             ~doc:"size to trim from the cache")
+             ~doc:"Size to trim from the cache.")
      and+ size =
        Arg.(
          value
          & opt (some bytes) None
-         & info ~docv:"BYTES" [ "size" ] ~doc:"size to trim the cache to")
+         & info ~docv:"BYTES" [ "size" ] ~doc:"Size to trim the cache to.")
      in
      match mode with
      | Some Trim -> `Ok (trim ~trimmed_size ~size)
      | Some Start_deprecated | Some Stop_deprecated -> deprecated_error ()
      | None -> `Help (`Pager, Some name)
 
-let command = (term, info)
+let command = Cmd.v info term

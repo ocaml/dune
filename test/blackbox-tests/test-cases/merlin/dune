@@ -5,3 +5,7 @@
 (cram
  (applies_to merlin-tests)
  (deps %{bin:ocamlfind}))
+
+(cram
+ (applies_to github4125)
+ (deps %{bin:opam}))

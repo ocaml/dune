@@ -11,7 +11,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "utop" ~doc ~man
+let info = Cmd.info "utop" ~doc ~man
 
 let term =
   let+ common = Common.term
@@ -43,7 +43,7 @@ let term =
                     (String.maybe_quoted dir)
                 ]
             | true ->
-              let+ (_ : Digest.t) = Build_system.build_file utop_target in
+              let+ () = Build_system.build_file utop_target in
               let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
               (sctx, Path.to_string utop_target)))
   in
@@ -51,4 +51,4 @@ let term =
   restore_cwd_and_execve common utop_path (utop_path :: args)
     (Super_context.context_env sctx)
 
-let command = (term, info)
+let command = Cmd.v info term

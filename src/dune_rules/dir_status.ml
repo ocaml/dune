@@ -4,7 +4,7 @@ open Dune_file
 module T = struct
   type is_component_of_a_group_but_not_the_root =
     { group_root : Path.Build.t
-    ; stanzas : Stanza.t list Dir_with_dune.t option
+    ; stanzas : Dune_file.t option
     }
 
   type t =
@@ -12,12 +12,12 @@ module T = struct
     | Source_only of Source_tree.Dir.t
     | (* Directory not part of a multi-directory group *)
       Standalone of
-        Source_tree.Dir.t * Stanza.t list Dir_with_dune.t
+        Source_tree.Dir.t * Dune_file.t
     | (* Directory with [(include_subdirs x)] where [x] is not [no] *)
       Group_root of
         Source_tree.Dir.t
         * (Loc.t * Include_subdirs.qualification)
-        * Stanza.t list Dir_with_dune.t
+        * Dune_file.t
     | (* Sub-directory of a [Group_root _] *)
       Is_component_of_a_group_but_not_the_root of
         is_component_of_a_group_but_not_the_root
@@ -47,36 +47,39 @@ let get_include_subdirs stanzas =
         Some (loc, x)
       | _ -> acc)
 
-let check_no_module_consumer stanzas =
-  List.iter stanzas ~f:(fun stanza ->
+let find_module_stanza stanzas =
+  List.find_map stanzas ~f:(fun stanza ->
       match stanza with
-      | Library { buildable; _ }
-      | Executables { buildable; _ }
-      | Tests { exes = { buildable; _ }; _ } ->
-        User_error.raise ~loc:buildable.loc
-          [ Pp.text
-              "This stanza is not allowed in a sub-directory of directory with \
-               (include_subdirs unqualified)."
-          ]
-          ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
-      | _ -> ())
+      | Melange_emit { loc; _ }
+      | Library { buildable = { loc; _ }; _ }
+      | Executables { buildable = { loc; _ }; _ }
+      | Tests { exes = { buildable = { loc; _ }; _ }; _ } -> Some loc
+      | _ -> None)
 
-module DB = struct
-  type nonrec t =
-    { stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
-    ; fn : (Path.Build.t, t) Memo.Table.t
-    }
+let error_no_module_consumer ~loc
+    (qualification : Include_subdirs.qualification) =
+  User_error.raise ~loc
+    ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
+    [ Pp.textf
+        "This stanza is not allowed in a sub-directory of directory with \
+         (include_subdirs %s)."
+        (match qualification with
+        | Unqualified -> "unqualified"
+        | Qualified -> "qualified")
+    ]
 
-  let stanzas_in db ~dir = Path.Build.Map.find db.stanzas_per_dir dir
+module rec DB : sig
+  val get : dir:Path.Build.t -> t Memo.t
+end = struct
+  open DB
+  open Memo.O
 
-  let get db ~dir =
-    let open Memo.O in
-    let get ~dir = Memo.exec db.fn dir in
-    let enclosing_group ~dir =
-      match Path.Build.parent dir with
-      | None -> Memo.return No_group
-      | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
-    in
+  let enclosing_group ~dir =
+    match Path.Build.parent dir with
+    | None -> Memo.return No_group
+    | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
+
+  let get_impl dir =
     (match Path.Build.drop_build_context dir with
     | None -> Memo.return None
     | Some dir -> Source_tree.find_dir dir)
@@ -88,11 +91,13 @@ module DB = struct
       | Group_root group_root ->
         Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
     | Some st_dir -> (
-      let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
       let build_dir_is_project_root =
-        Path.Build.drop_build_context_exn dir |> Path.Source.equal project_root
+        let project_root =
+          Source_tree.Dir.project st_dir |> Dune_project.root
+        in
+        Source_tree.Dir.path st_dir |> Path.Source.equal project_root
       in
-      match stanzas_in db ~dir with
+      Only_packages.stanzas_in_dir dir >>= function
       | None -> (
         if build_dir_is_project_root then Memo.return (Source_only st_dir)
         else
@@ -103,42 +108,35 @@ module DB = struct
             Is_component_of_a_group_but_not_the_root
               { stanzas = None; group_root })
       | Some d -> (
-        match get_include_subdirs d.data with
+        match get_include_subdirs d.stanzas with
         | Some (loc, Include mode) ->
           Memo.return (T.Group_root (st_dir, (loc, mode), d))
         | Some (_, No) -> Memo.return (Standalone (st_dir, d))
         | None -> (
           if build_dir_is_project_root then Memo.return (Standalone (st_dir, d))
           else
-            let+ enclosing_group = enclosing_group ~dir in
+            let* enclosing_group = enclosing_group ~dir in
             match enclosing_group with
+            | No_group -> Memo.return @@ Standalone (st_dir, d)
             | Group_root group_root ->
-              check_no_module_consumer d.data;
+              let+ () =
+                match find_module_stanza d.stanzas with
+                | None -> Memo.return ()
+                | Some loc -> (
+                  let+ group = get ~dir:group_root in
+                  match group with
+                  | Group_root (_, (_, qualification), _) ->
+                    error_no_module_consumer ~loc qualification
+                  | _ ->
+                    Code_error.raise "impossible as we looked up a group root"
+                      [])
+              in
               Is_component_of_a_group_but_not_the_root
-                { stanzas = Some d; group_root }
-            | No_group -> Standalone (st_dir, d))))
+                { stanzas = Some d; group_root })))
 
-  let make ~stanzas_per_dir =
-    (* CR-someday aalekseyev: This local recursive module is a bit awkward. In
-       the future the plan is to move the memo to the top-level to make it less
-       awkward (and to dissolve the [DB] datatype). *)
-    let module M = struct
-      module rec Res : sig
-        val t : t
-      end = struct
-        let t =
-          { stanzas_per_dir
-          ; fn = Memo.create "get-dir-status" ~input:(module Path.Build) Fn.get
-          }
-      end
-
-      and Fn : sig
-        val get : Path.Build.t -> T.t Memo.t
-      end = struct
-        let get dir = get Res.t ~dir
-      end
-    end in
-    M.Res.t
-
-  let get db ~dir = Memo.exec db.fn dir
+  let get =
+    let memo =
+      Memo.create "get-dir-status" ~input:(module Path.Build) get_impl
+    in
+    fun ~dir -> Memo.exec memo dir
 end

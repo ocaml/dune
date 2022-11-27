@@ -50,6 +50,8 @@ include struct
     ; boot : t option Resolve.t
     ; id : Id.t
     ; implicit : bool (* Only useful for the stdlib *)
+    ; use_stdlib : bool
+          (* whether this theory uses the stdlib, eventually set to false for all libs *)
     ; src_root : Path.Build.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * t) list Resolve.t
@@ -75,9 +77,14 @@ module Error = struct
   let annots =
     User_message.Annots.singleton User_message.Annots.needs_stack_trace ()
 
-  let duplicate_theory_name ~loc name =
-    let name = Coq_lib_name.to_string name in
-    User_error.raise ~loc [ Pp.textf "Duplicate theory name: %s" name ]
+  let duplicate_theory_name name1 name2 =
+    let loc1, name = name1 in
+    let loc2, _ = name2 in
+    User_error.raise
+      [ Pp.textf "Coq theory %s is defined twice:" (Coq_lib_name.to_string name)
+      ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+      ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+      ]
 
   let incompatible_boot id id' =
     let pp_lib (id : Id.t) = Pp.seq (Pp.text "- ") (Id.pp id) in
@@ -178,8 +185,9 @@ module DB = struct
         let open Memo.O in
         let* boot = if s.boot then Resolve.Memo.return None else boot coq_db in
         let allow_private_deps = Option.is_none s.package in
+        let use_stdlib = s.buildable.use_stdlib in
         let+ libraries =
-          Resolve.Memo.List.map s.buildable.libraries ~f:(fun (loc, lib) ->
+          Resolve.Memo.List.map s.buildable.plugins ~f:(fun (loc, lib) ->
               let open Resolve.Memo.O in
               let* lib = Lib.DB.resolve db (loc, lib) in
               let+ () =
@@ -232,19 +240,16 @@ module DB = struct
                   | Some _ -> Resolve.Memo.return ()
                   | None -> Error.private_deps_not_allowed ~loc theory_name
               in
-
               (loc, theory))
         in
         let theories =
           let open Resolve.O in
           let* boot = boot in
           match boot with
-          | None -> theories
-          | Some boot ->
+          | Some boot when use_stdlib && not s.boot ->
             let+ theories = theories in
-            (* TODO: if lib is boot, don't add boot dep *)
-            (* maybe use the loc for boot? *)
-            (Loc.none, boot) :: theories
+            (boot.loc, boot) :: theories
+          | Some _ | None -> theories
         in
         let map_error x =
           let human_readable_description () = Id.pp id in
@@ -252,10 +257,10 @@ module DB = struct
         in
         let theories = map_error theories in
         let libraries = map_error libraries in
-
         { loc = s.buildable.loc
         ; boot
         ; id
+        ; use_stdlib
         ; implicit = s.boot
         ; obj_root = dir
         ; src_root = dir
@@ -379,9 +384,8 @@ module DB = struct
               (snd theory.name, (theory, entry)))
         with
         | Ok m -> m
-        | Error (_name, _, (theory, _entry)) ->
-          let loc, name = theory.name in
-          Error.duplicate_theory_name ~loc name
+        | Error (_name, (theory1, _entry1), (theory2, _entry2)) ->
+          Error.duplicate_theory_name theory1.name theory2.name
       in
       fun name ->
         match Coq_lib_name.Map.find map name with

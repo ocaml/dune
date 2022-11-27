@@ -159,7 +159,7 @@ let main_modules names =
   List.map ~f:String.capitalize_ascii names
   |> String.concat ~sep:" " |> rule "main_modules" [] Set
 
-let builtins ~stdlib_dir ~version:ocaml_version =
+let pre_ocaml_5_builtins ~stdlib_dir ~version:ocaml_version =
   let version = version "[distributed with OCaml]" in
   let simple name ?(labels = false) ?dir ?archive_name ?kind ?exists_if_ext deps
       =
@@ -233,7 +233,9 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       Memo.return (simple ())
     else
       let+ cma =
-        Fs_memo.file_exists (Path.relative stdlib_dir "bigarray.cma")
+        Fs_memo.file_exists
+          (Path.as_outside_build_dir_exn
+             (Path.relative stdlib_dir "bigarray.cma"))
       in
       if cma then simple () else dummy "bigarray"
   in
@@ -287,20 +289,30 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     in
     let* base =
       let+ cma =
-        Fs_memo.file_exists (Path.relative stdlib_dir "graphics.cma")
+        Fs_memo.file_exists
+          (Path.as_outside_build_dir_exn
+             (Path.relative stdlib_dir "graphics.cma"))
       in
       if cma then graphics :: base else base
     in
     (* We do not rely on an "exists_if" ocamlfind variable, because it would
        produce an error message mentioning a "hidden" package (which could be
        confusing). *)
-    let+ nums_cma = Fs_memo.file_exists (Path.relative stdlib_dir "nums.cma") in
+    let+ nums_cma =
+      Fs_memo.file_exists
+        (Path.as_outside_build_dir_exn (Path.relative stdlib_dir "nums.cma"))
+    in
     if nums_cma then num :: base else base
   in
   List.filter_map libs ~f:(fun t ->
       Option.map t.name ~f:(fun name ->
           (Lib_name.package_name name, simplify t)))
   |> Package.Name.Map.of_list_exn
+
+let builtins ~stdlib_dir ~version =
+  if Ocaml.Version.has_META_files version then
+    Memo.return Package.Name.Map.empty
+  else pre_ocaml_5_builtins ~stdlib_dir ~version
 
 let string_of_action = function
   | Set -> "="

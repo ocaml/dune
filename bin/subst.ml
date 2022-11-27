@@ -418,7 +418,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "subst" ~doc ~man
+let info = Cmd.info "subst" ~doc ~man
 
 let term =
   let+ () = Common.build_info
@@ -431,12 +431,14 @@ let term =
   in
   Dune_engine.Clflags.debug_backtraces debug_backtraces;
   Path.set_root (Path.External.cwd ());
-  Path.Build.set_build_dir (Path.Build.Kind.of_string Common.default_build_dir);
+  Path.Build.set_build_dir
+    (Path.Outside_build_dir.of_string Common.default_build_dir);
   Dune_config.init config;
   Log.init_disabled ();
   Dune_engine.Scheduler.Run.go
     ~on_event:(fun _ _ -> ())
-    (Dune_config.for_scheduler config None None)
+    (Dune_config.for_scheduler config None ~insignificant_changes:`React
+       ~signal_watcher:`No)
     subst
 
-let command = (term, info)
+let command = Cmd.v info term

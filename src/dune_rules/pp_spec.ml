@@ -1,6 +1,6 @@
 type t = (Module.t -> lint:bool -> Module.t Memo.t) Module_name.Per_item.t
 
-let make x = Memo.return x
+let make x = x
 
 let dummy : t = Module_name.Per_item.for_all (fun m ~lint:_ -> Memo.return m)
 

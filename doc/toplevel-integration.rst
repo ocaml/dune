@@ -25,6 +25,17 @@ you type in the toplevel will be rewritten with these PPX rewriters.
 
 This command became available with Dune 2.5.0.
 
+It's also possible to load individual modules (since dune 3.4.0) for
+interactive development. Use the following dune command:
+
+.. code:: ocaml
+
+  # #use_output "dune ocaml top-module foo.ml";;
+
+This will print directives that will load ``foo.ml`` without sealing it behind
+``foo.mli``. This is particularly useful for peeking and prodding at a module's
+internals.
+
 Note that the ``#use_output`` directive has only been available since OCaml 4.11. You
 can add the following snippet to your ``~/.ocamlinit`` file to make it available
 in older versions of OCaml:

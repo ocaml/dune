@@ -137,14 +137,17 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
     ; targets
     }
   in
-  Io.write_file run_arguments_fn (DAP.Run_arguments.serialize run_arguments);
+  DAP.Run_arguments.to_sexp run_arguments
+  |> Csexp.to_string
+  |> Io.write_file run_arguments_fn;
   let env =
     let value =
       DAP.Greeting.(
-        serialize
+        to_sexp
           { run_arguments_fn = Path.to_absolute_filename run_arguments_fn
           ; response_fn = Path.to_absolute_filename response_fn
           })
+      |> Csexp.to_string
     in
     Env.add eenv.env ~var:DAP.run_by_dune_env_variable ~value
   in
@@ -153,12 +156,17 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       ~stderr_to:eenv.stderr_to ~stdin_from:eenv.stdin_from
       ~metadata:ectx.metadata prog args
   in
-  let response = Io.read_file response_fn in
+  let response_raw = Io.read_file response_fn in
   Temp.destroy File run_arguments_fn;
   Temp.destroy File response_fn;
+  let response =
+    match Csexp.parse_string response_raw with
+    | Ok s -> DAP.Response.of_sexp s
+    | Error _ -> Error DAP.Error.Parse_error
+  in
   let prog_name = Path.reach ~from:eenv.working_dir prog in
-  match DAP.Response.deserialize response with
-  | Error _ when String.is_empty response ->
+  match response with
+  | Error _ when String.is_empty response_raw ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
           "Executable '%s' declared as using dune-action-plugin (declared with \
@@ -266,9 +274,10 @@ let rec exec t ~ectx ~eenv =
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
     Done
-  | Cat fn ->
-    Io.with_file_in fn ~f:(fun ic ->
-        Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to));
+  | Cat xs ->
+    List.iter xs ~f:(fun fn ->
+        Io.with_file_in fn ~f:(fun ic ->
+            Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to)));
     Fiber.return Done
   | Copy (src, dst) ->
     let dst = Path.build dst in
@@ -304,10 +313,7 @@ let rec exec t ~ectx ~eenv =
     Path.rm_rf (Path.build path);
     Fiber.return Done
   | Mkdir path ->
-    if Path.is_in_build_dir path then Path.mkdir_p path
-    else
-      Code_error.raise "Action_exec.exec: mkdir on non build dir"
-        [ ("path", Path.to_dyn path) ];
+    Path.mkdir_p (Path.build path);
     Fiber.return Done
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
@@ -382,7 +388,6 @@ let rec exec t ~ectx ~eenv =
     let target = Path.build target in
     Io.write_lines target (String.Set.to_list lines);
     Fiber.return Done
-  | No_infer t -> exec t ~ectx ~eenv
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Extension (module A) ->
     let* () =

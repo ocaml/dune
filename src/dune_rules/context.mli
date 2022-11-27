@@ -106,7 +106,7 @@ val to_dyn_concise : t -> Dyn.t
 val compare : t -> t -> Ordering.t
 
 (** Return the compiler needed for this compilation mode *)
-val compiler : t -> Mode.t -> Action.Prog.t
+val compiler : t -> Ocaml.Mode.t -> Action.Prog.t
 
 (** Return what [%{make}] should expand into *)
 val make : t -> Path.t option Memo.t
@@ -141,8 +141,12 @@ val gen_configurator_rules : t -> unit Memo.t
 (** Force the files required by configurator at runtime to be produced. *)
 val force_configurator_files : unit Memo.Lazy.t
 
+val host : t -> t
+
 module DB : sig
   val get : Context_name.t -> t Memo.t
 
   val all : unit -> t list Memo.t
+
+  val by_dir : Path.Build.t -> t Memo.t
 end

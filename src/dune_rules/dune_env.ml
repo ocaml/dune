@@ -226,10 +226,26 @@ module Stanza = struct
        and+ configs = fields config in
        (pat, configs))
 
+  let check_rules ~version ~loc rules =
+    let rec has_after_any = function
+      | [ (Any, _) ] | [] -> false
+      | (Any, _) :: _ :: _ -> true
+      | (Profile _, _) :: rules -> has_after_any rules
+    in
+    if has_after_any rules then
+      let is_error = version >= (3, 4) in
+      User_warning.emit ~loc ~is_error
+        [ Pp.text
+            "This env stanza contains rules after a wildcard rule. These are \
+             going to be ignored."
+        ]
+
   let decode =
     let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
     and+ loc = loc
-    and+ rules = repeat rule in
+    and+ rules = repeat rule
+    and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    check_rules ~version ~loc rules;
     { loc; rules }
 
   let empty = { loc = Loc.none; rules = [] }

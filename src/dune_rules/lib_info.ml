@@ -301,7 +301,7 @@ type 'path t =
   ; archives : 'path list Mode.Dict.t
   ; plugins : 'path list Mode.Dict.t
   ; foreign_objects : 'path list Source.t
-  ; foreign_archives : 'path list
+  ; foreign_archives : 'path Mode.Map.Multi.t
   ; native_archives : 'path native_archives
   ; foreign_dll_files : 'path list
   ; jsoo_runtime : 'path list
@@ -319,7 +319,7 @@ type 'path t =
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; wrapped : Wrapped.t Inherited.t option
   ; main_module_name : Main_module_name.t
-  ; modes : Mode.Dict.Set.t
+  ; modes : Lib_mode.Map.Set.t
   ; special_builtin_support : Special_builtin_support.t option
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
@@ -379,7 +379,7 @@ let equal (type a) (t : a t)
   && Mode.Dict.equal (List.equal path_equal) archives t.archives
   && Mode.Dict.equal (List.equal path_equal) plugins t.plugins
   && Source.equal (List.equal path_equal) foreign_objects t.foreign_objects
-  && List.equal path_equal foreign_archives t.foreign_archives
+  && Mode.Map.Multi.equal ~equal:path_equal foreign_archives t.foreign_archives
   && equal_native_archives path_equal native_archives t.native_archives
   && List.equal path_equal foreign_dll_files t.foreign_dll_files
   && List.equal path_equal jsoo_runtime t.jsoo_runtime
@@ -409,7 +409,7 @@ let equal (type a) (t : a t)
        default_implementation t.default_implementation
   && Option.equal (Inherited.equal Wrapped.equal) wrapped t.wrapped
   && Main_module_name.equal main_module_name t.main_module_name
-  && Mode.Dict.Set.equal modes t.modes
+  && Lib_mode.Map.Set.equal modes t.modes
   && Option.equal Special_builtin_support.equal special_builtin_support
        t.special_builtin_support
   && Option.equal Module_name.equal exit_module t.exit_module
@@ -594,7 +594,7 @@ let map t ~path_kind ~f_path ~f_obj_dir =
   ; archives = mode_list t.archives
   ; plugins = mode_list t.plugins
   ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
-  ; foreign_archives = List.map ~f t.foreign_archives
+  ; foreign_archives = Mode.Map.Multi.map t.foreign_archives ~f
   ; foreign_dll_files = List.map ~f t.foreign_dll_files
   ; native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
@@ -663,7 +663,7 @@ let to_dyn path
     ; ("archives", Mode.Dict.to_dyn (list path) archives)
     ; ("plugins", Mode.Dict.to_dyn (list path) plugins)
     ; ("foreign_objects", Source.to_dyn (list path) foreign_objects)
-    ; ("foreign_archives", list path foreign_archives)
+    ; ("foreign_archives", Mode.Map.Multi.to_dyn path foreign_archives)
     ; ("native_archives", dyn_of_native_archives path native_archives)
     ; ("foreign_dll_files", list path foreign_dll_files)
     ; ("jsoo_runtime", list path jsoo_runtime)
@@ -682,7 +682,7 @@ let to_dyn path
       , option (snd Lib_name.to_dyn) default_implementation )
     ; ("wrapped", option (Inherited.to_dyn Wrapped.to_dyn) wrapped)
     ; ("main_module_name", Main_module_name.to_dyn main_module_name)
-    ; ("modes", Mode.Dict.Set.to_dyn modes)
+    ; ("modes", Lib_mode.Map.Set.to_dyn modes)
     ; ( "special_builtin_support"
       , option Special_builtin_support.to_dyn special_builtin_support )
     ; ("exit_module", option Module_name.to_dyn exit_module)

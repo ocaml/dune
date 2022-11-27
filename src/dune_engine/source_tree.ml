@@ -27,8 +27,7 @@ module File = struct
 
   module Map = Map.Make (T)
 
-  let of_source_path p =
-    Fs_memo.path_stat (Path.source p) >>| Result.map ~f:of_stats
+  let of_source_path p = Fs_memo.path_stat p >>| Result.map ~f:of_stats
 end
 
 module Dune_file = struct
@@ -37,6 +36,13 @@ module Dune_file = struct
       { contents : Sub_dirs.Dir_map.per_dir
       ; for_subdirs : Sub_dirs.Dir_map.t
       }
+
+    let to_dyn { contents; for_subdirs } =
+      let open Dyn in
+      record
+        [ ("contents", Sub_dirs.Dir_map.dyn_of_per_dir contents)
+        ; ("for_subdirs", Sub_dirs.Dir_map.to_dyn for_subdirs)
+        ]
   end
 
   let fname = "dune"
@@ -47,12 +53,24 @@ module Dune_file = struct
     | Plain
     | Ocaml_script
 
+  let dyn_of_kind = function
+    | Plain -> Dyn.variant "Plain" []
+    | Ocaml_script -> Dyn.variant "Ocaml_script" []
+
   type t =
-    { path : Path.Source.t
+    { path : Path.Source.t option
     ; kind : kind
     ; (* for [kind = Ocaml_script], this is the part inserted with subdir *)
       plain : Plain.t
     }
+
+  let to_dyn { path; kind; plain } =
+    let open Dyn in
+    record
+      [ ("path", option Path.Source.to_dyn path)
+      ; ("kind", dyn_of_kind kind)
+      ; ("plain", Plain.to_dyn plain)
+      ]
 
   let get_static_sexp t = t.plain.contents.sexps
 
@@ -68,15 +86,18 @@ module Dune_file = struct
   let load_plain sexps ~file ~from_parent ~project =
     let+ active =
       let+ parsed =
-        let decoder =
-          { Sub_dirs.decode =
-              (fun ast d ->
-                let d = Dune_project.set_parsing_context project d in
-                Dune_lang.Decoder.parse d Univ_map.empty
-                  (Dune_lang.Ast.List (Loc.none, ast)))
-          }
-        in
-        Sub_dirs.decode ~file decoder sexps
+        match file with
+        | None -> Memo.return Sub_dirs.Dir_map.empty
+        | Some file ->
+          let decoder =
+            { Sub_dirs.decode =
+                (fun ast d ->
+                  let d = Dune_project.set_parsing_context project d in
+                  Dune_lang.Decoder.parse d Univ_map.empty
+                    (Dune_lang.Ast.List (Loc.none, ast)))
+            }
+          in
+          Sub_dirs.decode ~file decoder sexps
       in
       match from_parent with
       | None -> parsed
@@ -85,18 +106,19 @@ module Dune_file = struct
     let contents = Sub_dirs.Dir_map.root active in
     { Plain.contents; for_subdirs = active }
 
-  let load file ~file_exists ~from_parent ~project =
+  let load file ~from_parent ~project =
     let+ kind, plain =
       let load_plain = load_plain ~file ~from_parent ~project in
-      match file_exists with
-      | false ->
+      match file with
+      | None ->
         let+ plain = load_plain [] in
         (Plain, plain)
-      | true ->
+      | Some file ->
         let* kind, ast =
-          Fs_memo.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
+          Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lb ->
               let kind, ast =
-                if Dune_lang.Dune_lexer.is_script lb then (Ocaml_script, [])
+                if Dune_lang.Dune_file_script.is_script lb then
+                  (Ocaml_script, [])
                 else (Plain, Dune_lang.Parser.parse lb ~mode:Many)
               in
               (kind, ast))
@@ -166,7 +188,7 @@ end = struct
     { t with files = String.Set.filter t.files ~f:(fun fn -> f t.path fn) }
 
   let of_source_path_impl path =
-    Fs_memo.dir_contents (Path.source path) >>= function
+    Fs_memo.dir_contents (In_source_dir path) >>= function
     | Error unix_error ->
       User_warning.emit
         [ Pp.textf "Unable to read directory %s. Ignoring."
@@ -191,11 +213,11 @@ end = struct
               let+ is_directory, file =
                 match kind with
                 | S_DIR -> (
-                  File.of_source_path path >>| function
+                  File.of_source_path (In_source_dir path) >>| function
                   | Ok file -> (true, file)
                   | Error _ -> (true, File.dummy))
                 | S_LNK -> (
-                  Fs_memo.path_stat (Path.source path) >>| function
+                  Fs_memo.path_stat (In_source_dir path) >>| function
                   | Ok ({ st_kind = S_DIR; _ } as st) -> (true, File.of_stats st)
                   | Ok _ | Error _ -> (false, File.dummy))
                 | _ -> Memo.return (false, File.dummy)
@@ -226,9 +248,10 @@ module Dirs_visited : sig
 
   module Per_fn : sig
     (** Stores the directories visited per node (basename) *)
-    type t
 
-    type dirs_visited
+    type dirs_visited := t
+
+    type t
 
     val init : t
 
@@ -236,7 +259,6 @@ module Dirs_visited : sig
 
     val add : t -> dirs_visited -> string * Path.Source.t * File.t -> t
   end
-  with type dirs_visited := t
 end = struct
   type t = Path.Source.t File.Map.t
 
@@ -489,7 +511,8 @@ end = struct
         (fun (`Is_error is_error, project) ->
           let open Memo.O in
           let+ exists =
-            Dune_project.file project |> Path.source |> Fs_memo.file_exists
+            Path.Outside_build_dir.In_source_dir (Dune_project.file project)
+            |> Fs_memo.file_exists
           in
           if not exists then
             User_warning.emit ~is_error
@@ -510,7 +533,7 @@ end = struct
       | Error -> Memo.exec memo (`Is_error true, inp)
 
   let dune_file ~(dir_status : Sub_dirs.Status.t) ~path ~files ~project =
-    let file_exists =
+    let file =
       if dir_status = Data_only then None
       else if
         Dune_project.accept_alternative_dune_file_name project
@@ -533,18 +556,15 @@ end = struct
         in
         (dune_file.path, dir_map)
     in
-    let file =
-      match (file_exists, from_parent) with
-      | None, None -> None
-      | Some fname, _ -> Some (Path.Source.relative path fname)
-      | None, Some (path, _) -> Some path
-    in
-    Memo.Option.map file ~f:(fun file ->
-        let open Memo.O in
-        let* () = ensure_dune_project_file_exists project in
-        let file_exists = Option.is_some file_exists in
-        let from_parent = Option.map from_parent ~f:snd in
-        Dune_file.load file ~file_exists ~project ~from_parent)
+    let open Memo.O in
+    match (from_parent, file) with
+    | None, None -> Memo.return None
+    | _, _ ->
+      let* () = ensure_dune_project_file_exists project in
+      let file = Option.map file ~f:(Path.Source.relative path) in
+      let from_parent = Option.map from_parent ~f:snd in
+      let+ dune_file = Dune_file.load file ~project ~from_parent in
+      Some dune_file
 
   let contents { Readdir.path; dirs; files } ~dirs_visited ~project
       ~(dir_status : Sub_dirs.Status.t) =
@@ -590,7 +610,7 @@ end = struct
     let* readdir = Readdir.filter_files readdir project in
     let vcs = get_vcs ~default:Ancestor_vcs ~readdir in
     let* dirs_visited =
-      File.of_source_path path >>| function
+      File.of_source_path (In_source_dir path) >>| function
       | Ok file -> Dirs_visited.singleton path file
       | Error unix_error -> error_unable_to_load ~path unix_error
     in
@@ -692,19 +712,6 @@ let nearest_dir path =
   let components = Path.Source.explode path in
   let* root = root () in
   nearest_dir root components
-
-let execution_parameters_of_dir =
-  let f path =
-    let+ dir = nearest_dir path
-    and+ ep = Execution_parameters.default in
-    Dune_project.update_execution_parameters (Dir0.project dir) ep
-  in
-  let memo =
-    Memo.create "execution-parameters-of-dir"
-      ~input:(module Path.Source)
-      ~cutoff:Execution_parameters.equal f
-  in
-  Memo.exec memo
 
 let nearest_vcs path =
   let* dir = nearest_dir path in

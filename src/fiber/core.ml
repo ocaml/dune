@@ -98,7 +98,7 @@ let apply2 f x y =
     let exn = Exn_with_backtrace.capture exn in
     Reraise exn
 
-let[@inlined always] fork a b =
+let[@inline always] fork a b =
   match apply a () with
   | End_of_fiber () -> b ()
   | eff -> Fork (eff, b)
@@ -348,13 +348,6 @@ let rec sequential_iter_seq (seq : _ Seq.t) ~f =
 let parallel_iter_set (type a s)
     (module S : Set.S with type elt = a and type t = s) set ~(f : a -> unit t) =
   parallel_iter_seq (S.to_seq set) ~f
-
-let record_metrics t ~tag =
-  of_thunk (fun () ->
-      let timer = Metrics.Timer.start tag in
-      let+ res = t in
-      Metrics.Timer.stop timer;
-      res)
 
 module Make_map_traversals (Map : Map.S) = struct
   let parallel_iter t ~f =

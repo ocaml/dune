@@ -21,6 +21,9 @@ module Linkage : sig
   (** Native compilation, extension [.exe] *)
   val native : t
 
+  (** like [custom] but allows for a custom extension *)
+  val custom_with_ext : ext:string -> Context.t -> t
+
   (** Byte compilation with stubs statically linked in, extension [.exe] *)
   val custom : Context.t -> t
 
@@ -40,6 +43,8 @@ module Linkage : sig
     Context.t -> loc:Loc.t -> Dune_file.Executables.Link_mode.t -> t
 end
 
+type dep_graphs = { for_exes : Module.t list Action_builder.t list }
+
 (** {1 High-level functions} *)
 
 (** Build and link one or more executables *)
@@ -48,36 +53,36 @@ end
    between executables without requiring an intermediate library. *)
 val link_many :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
-  -> ?o_files:Path.t list
+  -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit Memo.t
+  -> dep_graphs Memo.t
 
 val build_and_link :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
-  -> ?o_files:Path.t list
+  -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
   -> program:Program.t
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit Memo.t
+  -> dep_graphs Memo.t
 
 val build_and_link_many :
      ?link_args:Command.Args.without_targets Command.Args.t Action_builder.t
-  -> ?o_files:Path.t list
+  -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Rule.Promote.t option
   -> Compilation_context.t
-  -> unit Memo.t
+  -> dep_graphs Memo.t
 
 val exe_path :
      Compilation_context.t

@@ -74,15 +74,7 @@ val generated_ml_and_c_files : t -> string list
 
 val c_generated_functions_module : t -> Function_description.t -> Module_name.t
 
-val lib_deps_of_strings : loc:Loc.t -> string list -> Lib_dep.t list
-
 val c_generated_types_module : t -> Module_name.t
-
-val c_library_flags_sexp : t -> string
-
-val cflags_sexp : t -> string
-
-val type_gen_script_module : t -> Module_name.t
 
 val type_gen_script : t -> string
 

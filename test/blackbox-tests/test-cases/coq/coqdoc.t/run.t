@@ -9,7 +9,7 @@ Now we inspect it:
   index.html
   toc.html
 
-We buuild the coqdoc latex target:
+We build the coqdoc latex target:
   $ dune build basic.tex/
 
 Now we inspect it:

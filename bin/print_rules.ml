@@ -25,7 +25,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "rules" ~doc ~man
+let info = Cmd.info "rules" ~doc ~man
 
 let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
   let action =
@@ -50,21 +50,18 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let sexp_of_action action =
     Action.for_shell action |> Action.For_shell.encode
   in
-  let paths ps = Dune_lang.Encoder.list Dpath.encode (Path.Set.to_list ps) in
-  let file_targets = rule.targets.files in
-  if not (Path.Build.Set.is_empty rule.targets.dirs) then
-    User_error.raise
-      [ Pp.text
-          "Printing rules with directory targets is currently not supported"
-      ];
+  let paths ps =
+    Dune_lang.Encoder.list Dpath.Build.encode (Path.Build.Set.to_list ps)
+  in
   let sexp =
     Dune_lang.Encoder.record
       (List.concat
          [ [ ("deps", Dep.Set.encode rule.deps)
            ; ( "targets"
-             , paths
-                 (Path.Build.Set.to_list file_targets
-                 |> Path.set_of_build_paths_list) )
+             , Dune_lang.Encoder.record
+                 [ ("files", paths rule.targets.files)
+                 ; ("directories", paths rule.targets.dirs)
+                 ] )
            ]
          ; (match rule.context with
            | None -> []
@@ -140,4 +137,4 @@ let term =
           | None -> print stdout
           | Some fn -> Io.with_file_out fn ~f:print))
 
-let command = (term, info)
+let command = Cmd.v info term

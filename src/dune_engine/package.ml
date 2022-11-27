@@ -498,10 +498,14 @@ module Info = struct
         (Dune_lang.Syntax.since Stanza.syntax (v (1, 9)) >>> repeat string)
     and+ license =
       field_o "license"
-        (Dune_lang.Syntax.since Stanza.syntax (v (3, 2))
-        >>> repeat1 string
-        <|> ( Dune_lang.Syntax.since Stanza.syntax (v (1, 9)) >>> string
-            >>| fun s -> [ s ] ))
+        (Dune_lang.Syntax.since Stanza.syntax (v (1, 9))
+        >>> let* l = repeat1 string in
+            (if List.length l > 1 then
+             Dune_lang.Syntax.since ~what:"Parsing several licenses"
+               Stanza.syntax
+               (v (3, 2))
+            else return ())
+            >>> return l)
     and+ homepage =
       field_o "homepage"
         (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
@@ -733,10 +737,9 @@ let load_opam_file file name =
   let open Memo.O in
   let+ opam =
     let+ opam =
-      Path.source file
-      |> Fs_memo.with_lexbuf_from_file ~f:(fun lexbuf ->
-             try Ok (Opam_file.parse lexbuf)
-             with User_error.E _ as exn -> Error exn)
+      Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lexbuf ->
+          try Ok (Opam_file.parse lexbuf)
+          with User_error.E _ as exn -> Error exn)
     in
     match opam with
     | Ok s -> Some s

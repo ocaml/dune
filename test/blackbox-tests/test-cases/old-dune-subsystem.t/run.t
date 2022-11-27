@@ -13,4 +13,5 @@ we understand the old files.
   3 |   (inline_tests (backend dune_inline_tests)))
                                ^^^^^^^^^^^^^^^^^
   Error: dune_inline_tests is not an inline tests backend
+  Leaving directory 'example'
   [1]

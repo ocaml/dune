@@ -4,7 +4,17 @@ val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
 
-val rpc : t -> Dune_rpc_impl.Server.t option
+val rpc :
+     t
+  -> [ `Allow of Dune_rpc_impl.Server.t
+       (** Will run rpc if in watch mode and acquire the build lock *)
+     | `Forbid_builds
+       (** Promise not to build anything. For now, this isn't checked *)
+     ]
+
+val forbid_builds : t -> t
+
+val signal_watcher : t -> [ `Yes | `No ]
 
 val stats : t -> Dune_stats.t option
 
@@ -23,6 +33,8 @@ val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string
+
+val insignificant_changes : t -> [ `React | `Ignore ]
 
 (** [init] executes sequence of side-effecting actions to initialize Dune's
     working environment based on the options determined in a [Common.t]
@@ -50,8 +62,7 @@ val term : t Cmdliner.Term.t
 
 val term_with_default_root_is_cwd : t Cmdliner.Term.t
 
-(** Set whether Dune should print the "Entering directory '<dir>'" message *)
-val set_print_directory : t -> bool -> t
+val envs : Cmdliner.Cmd.Env.info list
 
 val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
 
@@ -75,5 +86,3 @@ module Let_syntax : sig
   val ( and+ ) :
     'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
 end
-
-val set_rpc : t -> Dune_rpc_impl.Server.t -> t

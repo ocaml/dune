@@ -1,4 +1,4 @@
-open Stdune
+open Import
 open Types
 
 module Version_error = struct
@@ -28,7 +28,7 @@ module Staged = struct
   type 'payload notification = { encode : 'payload -> Call.t }
 end
 
-module Make (Fiber : Fiber) = struct
+module Make (Fiber : Fiber_intf.S) = struct
   module Handler = struct
     type 'state t =
       { menu : Menu.t
@@ -97,7 +97,7 @@ module Make (Fiber : Fiber) = struct
        externally-retrievable way. This is because when invoking an RPC of type
        [('req, 'resp)], we are *given* a value of type ['req], so the object
        being stored in the map cannot have its type erased. Instead, we use a
-       [Univ_map] (with the key being stored in the [Decl.t]) so we can retreive
+       [Univ_map] (with the key being stored in the [Decl.t]) so we can retrieve
        a correctly-typed [Generation.t] mapping later.
 
        However, unlike a string table, the use of a [Univ_map.t] means that we
@@ -284,27 +284,23 @@ module Make (Fiber : Fiber) = struct
         ~registry_key:(proc.Request.decl.method_, proc.Request.decl.key)
         ~other_key:proc.Request.decl.method_ ~pack:(fun rc -> rc)
 
-    let declare_notification t proc =
-      register_generic t ~method_:proc.Notification.decl.method_
-        ~generations:proc.Notification.generations ~registry:Declared_notifs
-        ~other:Impl_notifs
-        ~registry_key:
-          (proc.Notification.decl.method_, proc.Notification.decl.key)
-        ~other_key:proc.Notification.decl.method_ ~pack:(fun nc -> nc)
+    let declare_notification t (proc : _ notification) =
+      register_generic t ~method_:proc.decl.method_
+        ~generations:proc.generations ~registry:Declared_notifs
+        ~other:Impl_notifs ~registry_key:(proc.decl.method_, proc.decl.key)
+        ~other_key:proc.decl.method_ ~pack:(fun nc -> nc)
 
-    let implement_request t proc f =
-      register_generic t ~method_:proc.Request.decl.method_
-        ~generations:proc.Request.generations ~registry:Impl_requests
-        ~other:Declared_requests ~registry_key:proc.Request.decl.method_
-        ~other_key:(proc.Request.decl.method_, proc.Request.decl.key)
-        ~pack:(fun r -> R (f, r))
+    let implement_request t (proc : _ request) f =
+      register_generic t ~method_:proc.decl.method_
+        ~generations:proc.generations ~registry:Impl_requests
+        ~other:Declared_requests ~registry_key:proc.decl.method_
+        ~other_key:(proc.decl.method_, proc.decl.key) ~pack:(fun r -> R (f, r))
 
-    let implement_notification t proc f =
-      register_generic t ~method_:proc.Notification.decl.method_
-        ~generations:proc.Notification.generations ~registry:Impl_notifs
-        ~other:Declared_notifs ~registry_key:proc.Notification.decl.method_
-        ~other_key:(proc.Notification.decl.method_, proc.Notification.decl.key)
-        ~pack:(fun n -> N (f, n))
+    let implement_notification t (proc : _ notification) f =
+      register_generic t ~method_:proc.decl.method_
+        ~generations:proc.generations ~registry:Impl_notifs
+        ~other:Declared_notifs ~registry_key:proc.decl.method_
+        ~other_key:(proc.decl.method_, proc.decl.key) ~pack:(fun n -> N (f, n))
 
     let lookup_method_generic t ~menu ~table ~key ~method_ k s =
       match (get t table key, Method_name.Map.find menu method_) with

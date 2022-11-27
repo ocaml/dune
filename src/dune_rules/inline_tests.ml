@@ -1,5 +1,4 @@
 open Import
-module SC = Super_context
 
 module Backend = struct
   module M = struct
@@ -91,8 +90,7 @@ include Sub_system.Register_end_point (struct
     in
     let main_module =
       let name = Module_name.of_string name in
-      let src_dir = Path.build inline_test_dir in
-      Module.generated ~src_dir name
+      Module.generated ~kind:Impl ~src_dir:inline_test_dir name
     in
     let open Memo.O in
     let modules = Modules.singleton_exe main_module in
@@ -113,7 +111,7 @@ include Sub_system.Register_end_point (struct
     in
     (* Generate the runner file *)
     let* () =
-      SC.add_rule sctx ~dir ~loc
+      Super_context.add_rule sctx ~dir ~loc
         (let target =
            Module.file main_module ~ml_kind:Impl
            |> Option.value_exn |> Path.as_in_build_dir_exn
@@ -167,10 +165,11 @@ include Sub_system.Register_end_point (struct
           match mode with
           | Native -> Exe.Linkage.native
           | Best -> Exe.Linkage.native_or_custom (Super_context.context sctx)
-          | Byte -> Exe.Linkage.byte
+          | Byte ->
+            Exe.Linkage.custom_with_ext ~ext:".bc" (Super_context.context sctx)
           | Javascript -> Exe.Linkage.js)
     in
-    let* () =
+    let* (_ : Exe.dep_graphs) =
       let link_args =
         let open Action_builder.O in
         let+ link_args_info =
@@ -224,13 +223,21 @@ include Sub_system.Register_end_point (struct
           | Native | Best | Byte -> Memo.return Alias.Name.runtest
           | Javascript -> Super_context.js_of_ocaml_runtest_alias sctx ~dir
         in
-        SC.add_alias_action sctx ~dir ~loc:(Some info.loc)
+        Super_context.add_alias_action sctx ~dir ~loc:(Some info.loc)
           (Alias.make ~dir runtest_alias)
           (let exe =
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in
            let open Action_builder.O in
-           let deps, sandbox = Dep_conf_eval.unnamed info.deps ~expander in
+           let deps, sandbox =
+             let sandbox =
+               let project = Scope.project scope in
+               if Dune_project.dune_version project < (3, 5) then
+                 Sandbox_config.no_special_requirements
+               else Sandbox_config.needs_sandboxing
+             in
+             Dep_conf_eval.unnamed ~sandbox info.deps ~expander
+           in
            let+ () = deps
            and+ () = Action_builder.paths source_files
            and+ () = Action_builder.path exe

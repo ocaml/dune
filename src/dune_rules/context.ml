@@ -38,7 +38,7 @@ module Bin = struct
     let prog = add_exe prog in
     Memo.List.find_map path ~f:(fun dir ->
         let fn = Path.relative dir prog in
-        let+ exists = Fs_memo.file_exists fn in
+        let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn fn) in
         if exists then Some fn else None)
 end
 
@@ -51,7 +51,7 @@ module Program = struct
   let best_path dir program =
     let exe_path program =
       let fn = Path.relative dir (program ^ Bin.exe) in
-      let+ exists = Fs_memo.file_exists fn in
+      let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn fn) in
       if exists then Some fn else None
     in
     if List.mem programs_for_which_we_prefer_opt_ext program ~equal:String.equal
@@ -257,7 +257,11 @@ end = struct
       let to_dyn (env, root, switch) =
         Dyn.Tuple [ Env.to_dyn env; Dyn.(option string root); String switch ]
     end in
-    let memo = Memo.create "opam-env" ~input:(module Input) impl in
+    let memo =
+      Memo.create "opam-env" impl
+        ~cutoff:(Env.Map.equal ~equal:String.equal)
+        ~input:(module Input)
+    in
     fun ~env ~root ~switch -> Memo.exec memo (env, root, switch)
 end
 
@@ -355,7 +359,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     | Some x -> x
   in
   let findlib_config_path =
-    Memo.lazy_ ~cutoff:Path.equal (fun () ->
+    Memo.lazy_ ~cutoff:Path.External.equal (fun () ->
         let* fn = which_exn "ocamlfind" in
         (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the
            contents of the variable, but "ocamlfind printconf conf" still prints
@@ -366,7 +370,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         | None ->
           Memo.of_reproducible_fiber
             (Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]))
-        >>| Path.of_filename_relative_to_initial_cwd)
+        >>| Path.External.of_filename_relative_to_initial_cwd)
   in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
       ~merlin =
@@ -377,7 +381,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let* path = Memo.Lazy.force findlib_config_path in
         let toolchain = Context_name.to_string toolchain in
         let context = Context_name.to_string name in
-        let+ config = Findlib.Config.load path ~toolchain ~context in
+        let+ config = Findlib.Config.load (External path) ~toolchain ~context in
         Some config
     in
     let get_tool_using_findlib_config prog =
@@ -482,8 +486,14 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               (vars, ocfg)
             | Error msg -> Error (Ocamlc_config, msg)))
     in
-    let findlib_paths = ocamlpath @ default_ocamlpath in
+    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let version = Ocaml.Version.of_ocaml_config ocfg in
+    let default_ocamlpath =
+      if Ocaml.Version.has_META_files version then
+        stdlib_dir :: default_ocamlpath
+      else default_ocamlpath
+    in
+    let findlib_paths = ocamlpath @ default_ocamlpath in
     let env =
       (* See comment in ansi_color.ml for setup_env_for_colors. For versions
          where OCAML_COLOR is not supported, but 'color' is in OCAMLPARAM, use
@@ -504,9 +514,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       else env
     in
     let env =
-      let cwd = Sys.getcwd () in
       let extend_var var ?(path_sep = Bin.path_sep) v =
-        let v = Filename.concat cwd (Path.Build.to_string v) in
+        let v = Path.to_absolute_filename (Path.build v) in
         match Env.get env var with
         | None -> (var, v)
         | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
@@ -547,7 +556,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
               (Option.map findlib_config ~f:Findlib.Config.env))
       |> Env.extend_env (Env_nodes.extra_env ~profile env_nodes)
     in
-    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     let* ocamlopt = get_ocaml_tool "ocamlopt" in
@@ -841,9 +849,22 @@ module DB = struct
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in
     Memo.exec memo
+
+  let by_dir dir =
+    let context =
+      match Dune_engine.Dpath.analyse_dir (Path.build dir) with
+      | Build
+          ( Install (With_context (name, _))
+          | Regular (With_context (name, _))
+          | Anonymous_action (With_context (name, _)) ) -> name
+      | _ ->
+        Code_error.raise "directory does not have an associated context"
+          [ ("dir", Path.Build.to_dyn dir) ]
+    in
+    get context
 end
 
-let compiler t (mode : Mode.t) =
+let compiler t (mode : Ocaml.Mode.t) =
   match mode with
   | Byte -> Ok t.ocamlc
   | Native -> t.ocamlopt
@@ -873,6 +894,8 @@ let map_exe (context : t) =
       | Some (dir, exe) when Path.equal dir (Path.build context.build_dir) ->
         Path.append_source (Path.build host.build_dir) exe
       | _ -> exe)
+
+let host t = Option.value ~default:t t.for_host
 
 let roots t =
   let module Roots = Install.Section.Paths.Roots in
@@ -955,7 +978,6 @@ let force_configurator_files =
         List.concat_map ctxs ~f:(fun t ->
             [ Path.build (configurator_v1 t); Path.build (configurator_v2 t) ])
       in
-      Memo.parallel_iter files ~f:(fun file ->
-          Build_system.build_file file >>| ignore))
+      Memo.parallel_iter files ~f:Build_system.build_file)
 
 let make t = Memo.Lazy.force t.make

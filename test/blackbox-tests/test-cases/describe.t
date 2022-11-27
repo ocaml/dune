@@ -185,6 +185,36 @@ Setup
 
   $ touch re_lib1.re re_lib2.re re_lib2.rei
 
+  $ mkdir virtual
+  $ cat >virtual/dune <<EOF
+  > (library
+  >  (name virtual)
+  >  (virtual_modules virtual))
+  > EOF
+  $ touch virtual/virtual.mli
+  $ mkdir virtual_impl1
+  $ cat >virtual_impl1/dune <<EOF
+  > (library
+  >  (name virtual_impl1)
+  >  (implements virtual))
+  > EOF
+  $ touch virtual_impl1/virtual.ml
+  $ mkdir virtual_impl2
+  $ cat >virtual_impl2/dune <<EOF
+  > (library
+  >  (name virtual_impl2)
+  >  (implements virtual))
+  > EOF
+  $ touch virtual_impl2/virtual.ml
+
+  $ mkdir subdir
+  $ mkdir subdir/subfolder
+  $ cat >subdir/subfolder/dune <<EOF
+  > (library
+  >  (name subfolder_lib))
+  > EOF
+  $ touch subdir/subfolder/subfolder_lib.ml
+
 Describe various things
 -----------------------
 
@@ -195,7 +225,9 @@ are reproducible, and are kept consistent between different machines.
 not stable across different setups.
 
   $ dune describe workspace --lang 0.1 --sanitize-for-tests
-  ((executables
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (executables
     ((names (refmt))
      (requires ())
      (modules
@@ -598,10 +630,79 @@ not stable across different setups.
      (requires ())
      (source_dir /FINDLIB//stdlib-shims)
      (modules ())
-     (include_dirs (/FINDLIB//stdlib-shims)))))
+     (include_dirs (/FINDLIB//stdlib-shims))))
+   (library
+    ((name subfolder_lib)
+     (uid edb8ce3704b7983446d5ffb4cea0b51e)
+     (local true)
+     (requires ())
+     (source_dir _build/default/subdir/subfolder)
+     (modules
+      (((name Subfolder_lib)
+        (impl (_build/default/subdir/subfolder/subfolder_lib.ml))
+        (intf ())
+        (cmt
+         (_build/default/subdir/subfolder/.subfolder_lib.objs/byte/subfolder_lib.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/subdir/subfolder/.subfolder_lib.objs/byte))))
+   (library
+    ((name virtual)
+     (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
+     (local true)
+     (requires ())
+     (source_dir _build/default/virtual)
+     (modules
+      (((name Virtual)
+        (impl ())
+        (intf (_build/default/virtual/virtual.mli))
+        (cmt ())
+        (cmti (_build/default/virtual/.virtual.objs/byte/virtual.cmti)))))
+     (include_dirs (_build/default/virtual/.virtual.objs/byte))))
+   (library
+    ((name virtual_impl1)
+     (uid 243949502d62f27969aff867fdfb0c6a)
+     (local true)
+     (requires (f0299ba46dc29b8d4bd2f5d1cf82587c))
+     (source_dir _build/default/virtual_impl1)
+     (modules
+      (((name Virtual)
+        (impl (_build/default/virtual_impl1/virtual.ml))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual.cmt))
+        (cmti ()))
+       ((name Virtual__virtual_impl1__)
+        (impl (_build/default/virtual_impl1/virtual__virtual_impl1__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual__virtual_impl1__.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
+   (library
+    ((name virtual_impl2)
+     (uid bfe8d16a00ac2473ce3fc5fc99d7c6cb)
+     (local true)
+     (requires (f0299ba46dc29b8d4bd2f5d1cf82587c))
+     (source_dir _build/default/virtual_impl2)
+     (modules
+      (((name Virtual)
+        (impl (_build/default/virtual_impl2/virtual.ml))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual.cmt))
+        (cmti ()))
+       ((name Virtual__virtual_impl2__)
+        (impl (_build/default/virtual_impl2/virtual__virtual_impl2__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual__virtual_impl2__.cmt))
+        (cmti ()))))
+     (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
   $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests
-  ((executables
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (executables
     ((names (refmt))
      (requires ())
      (modules
@@ -1104,14 +1205,111 @@ not stable across different setups.
      (requires ())
      (source_dir /FINDLIB//stdlib-shims)
      (modules ())
-     (include_dirs (/FINDLIB//stdlib-shims)))))
+     (include_dirs (/FINDLIB//stdlib-shims))))
+   (library
+    ((name subfolder_lib)
+     (uid edb8ce3704b7983446d5ffb4cea0b51e)
+     (local true)
+     (requires ())
+     (source_dir _build/default/subdir/subfolder)
+     (modules
+      (((name Subfolder_lib)
+        (impl (_build/default/subdir/subfolder/subfolder_lib.ml))
+        (intf ())
+        (cmt
+         (_build/default/subdir/subfolder/.subfolder_lib.objs/byte/subfolder_lib.cmt))
+        (cmti ())
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/subdir/subfolder/.subfolder_lib.objs/byte))))
+   (library
+    ((name virtual)
+     (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
+     (local true)
+     (requires ())
+     (source_dir _build/default/virtual)
+     (modules
+      (((name Virtual)
+        (impl ())
+        (intf (_build/default/virtual/virtual.mli))
+        (cmt ())
+        (cmti (_build/default/virtual/.virtual.objs/byte/virtual.cmti))
+        (module_deps ((for_intf ()) (for_impl ()))))))
+     (include_dirs (_build/default/virtual/.virtual.objs/byte))))
+   (library
+    ((name virtual_impl1)
+     (uid 243949502d62f27969aff867fdfb0c6a)
+     (local true)
+     (requires (f0299ba46dc29b8d4bd2f5d1cf82587c))
+     (source_dir _build/default/virtual_impl1)
+     (modules
+      (((name Virtual)
+        (impl (_build/default/virtual_impl1/virtual.ml))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Virtual__virtual_impl1__)
+        (impl (_build/default/virtual_impl1/virtual__virtual_impl1__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual__virtual_impl1__.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
+   (library
+    ((name virtual_impl2)
+     (uid bfe8d16a00ac2473ce3fc5fc99d7c6cb)
+     (local true)
+     (requires (f0299ba46dc29b8d4bd2f5d1cf82587c))
+     (source_dir _build/default/virtual_impl2)
+     (modules
+      (((name Virtual)
+        (impl (_build/default/virtual_impl2/virtual.ml))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))
+       ((name Virtual__virtual_impl2__)
+        (impl (_build/default/virtual_impl2/virtual__virtual_impl2__.ml-gen))
+        (intf ())
+        (cmt
+         (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual__virtual_impl2__.cmt))
+        (cmti ())
+        (module_deps
+         ((for_intf ())
+          (for_impl ()))))))
+     (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests virtual
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (library
+    ((name virtual)
+     (uid f0299ba46dc29b8d4bd2f5d1cf82587c)
+     (local true)
+     (requires ())
+     (source_dir _build/default/virtual)
+     (modules
+      (((name Virtual)
+        (impl ())
+        (intf (_build/default/virtual/virtual.mli))
+        (cmt ())
+        (cmti (_build/default/virtual/.virtual.objs/byte/virtual.cmti)))))
+     (include_dirs (_build/default/virtual/.virtual.objs/byte)))))
 
 Test other formats
 ------------------
 
   $ dune describe workspace --format csexp --lang 0.1 --sanitize-for-tests | cut -c 1-85
-  ((11:executables((5:names(5:refmt))(8:requires())(7:modules(((4:name5:Refmt)(4:impl(2
+  ((4:root15:/WORKSPACE_ROOT)(13:build_context14:_build/default)(11:executables((5:name
 
 Test errors
 -----------
@@ -1122,16 +1320,21 @@ Test errors
   [1]
 
   $ dune describe --lang 0.1 workspace xxx
-  Error: Too many argument for workspace
+  Error: No such file or directory: xxx
+  [1]
+
+  $ touch yyy
+  $ dune describe --lang 0.1 workspace yyy
+  Error: File exists, but is not a directory: yyy
   [1]
 
   $ dune describe --lang 1.0
-  dune describe: Only --lang 0.1 is available at the moment as this command is not yet
-                 stabilised. If you would like to release a software that relies on the output
-                 of 'dune describe', please open a ticket on
-                 https://github.com/ocaml/dune.
-  Usage: dune describe [OPTION]... [STRING]...
-  Try `dune describe --help' or `dune --help' for more information.
+  dune: Only --lang 0.1 is available at the moment as this command is not yet
+        stabilised. If you would like to release a software that relies on the output
+        of 'dune describe', please open a ticket on
+        https://github.com/ocaml/dune.
+  Usage: dune describe [OPTION]… [STRING]…
+  Try 'dune describe --help' or 'dune --help' for more information.
   [1]
 
 opam file listing

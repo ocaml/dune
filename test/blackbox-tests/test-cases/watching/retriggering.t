@@ -10,10 +10,10 @@ Bad rule! You are not supposed to modify the source tree. No ice-cream for you!
   $ echo '(lang dune 3.0)' > dune-project
   $ cat > dune <<EOF
   > (rule
-  >   (deps (glob_files *.txt) (sandbox none))
-  >   (alias default)
-  >   (action (bash "\| echo "I'm seeing: %{deps}" >> ../../../output
-  >                 "\| touch ../../new-source.txt
+  >  (deps (glob_files *.txt) (sandbox none))
+  >  (alias default)
+  >  (action (system "\| echo "I'm seeing: %{deps}" >> ../../../output
+  >                  "\| touch ../../new-source.txt
   > )))
   > EOF
 

@@ -6,6 +6,8 @@ type t =
   ; libraries : Lib_dep.t list
   ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
+  ; runtime_deps : Dep_conf.t list
+  ; cinaps_version : Syntax.Version.t
   }
 
 let name = "cinaps"
@@ -14,7 +16,7 @@ type Stanza.t += T of t
 
 let syntax =
   Dune_lang.Syntax.create ~name ~desc:"the cinaps extension"
-    [ ((1, 0), `Since (1, 11)) ]
+    [ ((1, 0), `Since (1, 11)); ((1, 1), `Since (3, 5)) ]
 
 let alias = Alias.make (Alias.Name.of_string name)
 
@@ -24,12 +26,23 @@ let decode =
     (let+ loc = loc
      and+ files =
        field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
-     and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
+     and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
      and+ libraries =
        field "libraries" (Dune_file.Lib_deps.decode Executable) ~default:[]
+     and+ runtime_deps =
+       field ~default:[] "runtime_deps"
+         (Dune_lang.Syntax.since syntax (1, 1) >>> repeat Dep_conf.decode)
+     and+ cinaps_version = Dune_lang.Syntax.get_exn syntax
      (* TODO use this field? *)
      and+ _flags = Ocaml_flags.Spec.decode in
-     { loc; files; libraries; preprocess; preprocessor_deps })
+     { loc
+     ; files
+     ; libraries
+     ; preprocess
+     ; preprocessor_deps
+     ; runtime_deps
+     ; cinaps_version
+     })
 
 let () =
   let open Dune_lang.Decoder in
@@ -71,7 +84,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let main_module_name = Module_name.of_string name in
   let module_ =
-    Module.generated main_module_name ~src_dir:(Path.build cinaps_dir)
+    Module.generated ~kind:Impl main_module_name ~src_dir:cinaps_dir
   in
   let cinaps_ml =
     Module.source ~ml_kind:Ml_kind.Impl module_
@@ -80,14 +93,18 @@ let gen_rules sctx t ~dir ~scope =
   let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
   let* () =
     (* Ask cinaps to produce a .ml file to build *)
+    let sandbox =
+      if t.cinaps_version >= (1, 1) then Sandbox_config.needs_sandboxing
+      else Sandbox_config.default
+    in
     Super_context.add_rule sctx ~loc:t.loc ~dir
-      (Command.run ~dir:(Path.build dir) prog
+      (Command.run ~dir:(Path.build dir) prog ~sandbox
          [ A "-staged"
          ; Target cinaps_ml
          ; Deps (List.map cinapsed_files ~f:Path.build)
          ])
   and* expander = Super_context.expander sctx ~dir in
-  let* preprocess =
+  let preprocess =
     Preprocessing.make sctx ~dir ~expander
       ~lint:(Preprocess.Per_module.no_preprocessing ())
       ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps
@@ -98,12 +115,13 @@ let gen_rules sctx t ~dir ~scope =
     |> Modules.map_user_written ~f:(Pp_spec.pp_module preprocess)
   in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
+  let names = [ (t.loc, name) ] in
+  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
   let compile_info =
-    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-      [ (t.loc, name) ]
+    Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~pps:(Preprocess.Per_module.pps t.preprocess)
-      ~dune_version
+      ~dune_version ~merlin_ident
   in
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
   let* cctx =
@@ -114,7 +132,7 @@ let gen_rules sctx t ~dir ~scope =
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
       ~js_of_ocaml:None ~package:None
   in
-  let* () =
+  let* (_ : Exe.dep_graphs) =
     Exe.build_and_link cctx
       ~program:{ name; main_module_name; loc }
       ~linkages:[ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
@@ -124,8 +142,16 @@ let gen_rules sctx t ~dir ~scope =
     let open Action_builder.O in
     let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
+    let runtime_deps, sandbox =
+      let sandbox =
+        if t.cinaps_version >= (1, 1) then Sandbox_config.needs_sandboxing
+        else Sandbox_config.no_special_requirements
+      in
+      Dep_conf_eval.unnamed ~sandbox ~expander t.runtime_deps
+    in
+    let* () = runtime_deps in
     let+ () = Action_builder.path cinaps_exe in
-    Action.Full.make
+    Action.Full.make ~sandbox
     @@ A.chdir (Path.build dir)
          (A.progn
             (A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]

@@ -256,7 +256,8 @@ let refresh_and_remove_write_permissions ~allow_dirs path =
             Path.Permissions.remove Path.Permissions.write stats.st_perm
           in
           Path.chmod ~mode:perm path;
-          refresh ~allow_dirs { stats with st_perm = perm } path
+          (* we know it's a file, so we don't allow directories for safety *)
+          refresh ~allow_dirs:false { stats with st_perm = perm } path
         | _ ->
           (* CR-someday amokhov: Shall we proceed if [stats.st_kind = S_DIR]?
              What about stranger kinds like [S_SOCK]? *)

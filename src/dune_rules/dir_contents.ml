@@ -9,8 +9,13 @@ open Memo.O
 let loc_of_dune_file st_dir =
   Loc.in_file
     (Path.source
-       (match Source_tree.Dir.dune_file st_dir with
-       | Some d -> Source_tree.Dune_file.path d
+       (match
+          let open Option.O in
+          let* dune_file = Source_tree.Dir.dune_file st_dir in
+          (* TODO not really correct. we need to know the [(subdir ..)] that introduced this *)
+          Source_tree.Dune_file.path dune_file
+        with
+       | Some s -> s
        | None -> Path.Source.relative (Source_tree.Dir.path st_dir) "_unknown_"))
 
 type t =
@@ -18,7 +23,7 @@ type t =
   ; dir : Path.Build.t
   ; text_files : String.Set.t
   ; foreign_sources : Foreign_sources.t Memo.Lazy.t
-  ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
+  ; mlds : (Documentation.t * Path.Build.t list) list Memo.Lazy.t
   ; coq : Coq_sources.t Memo.Lazy.t
   ; ml : Ml_sources.t Memo.Lazy.t
   }
@@ -136,12 +141,14 @@ end = struct
     let+ generated_files =
       Memo.parallel_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
-          (* XXX What about mli files? *)
           | Coq_stanza.Coqpp.T { modules; _ } ->
-            Memo.return (List.map modules ~f:(fun m -> m ^ ".ml"))
+            let+ mlg_files = Coq_sources.mlg_files ~sctx ~dir ~modules in
+            List.rev_map mlg_files ~f:(fun mlg_file ->
+                Path.Build.set_extension mlg_file ~ext:".ml"
+                |> Path.Build.basename)
           | Coq_stanza.Extraction.T s ->
             Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
-          | Menhir.T menhir -> Memo.return (Menhir.targets menhir)
+          | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)
           | Rule rule -> (
             Simple_rules.user_rule sctx rule ~dir ~expander >>| function
             | None -> []
@@ -205,14 +212,19 @@ end = struct
     let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
   end
 
-  let lookup_vlib sctx ~dir =
-    let* t = Load.get sctx ~dir in
-    Memo.Lazy.force t.ml
+  let lookup_vlib sctx ~current_dir ~loc ~dir =
+    match Path.Build.equal current_dir dir with
+    | true ->
+      User_error.raise ~loc
+        [ Pp.text
+            "Virtual library and its implementation(s) cannot be defined in \
+             the same directory"
+        ]
+    | false -> Load.get sctx ~dir >>= ocaml
 
-  let collect_group sctx ~st_dir ~dir =
-    let dir_status_db = Super_context.dir_status_db sctx in
+  let collect_group ~st_dir ~dir =
     let rec walk st_dir ~dir ~local =
-      let* status = Dir_status.DB.get dir_status_db ~dir in
+      let* status = Dir_status.DB.get ~dir in
       match status with
       | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
         let+ l = walk_children st_dir ~dir ~local in
@@ -265,10 +277,9 @@ end = struct
         | _ -> acc)
 
   let get0_impl (sctx, dir) : result0 Memo.t =
-    let dir_status_db = Super_context.dir_status_db sctx in
     let ctx = Super_context.context sctx in
     let lib_config = (Super_context.context sctx).lib_config in
-    let* status = Dir_status.DB.get dir_status_db ~dir in
+    let* status = Dir_status.DB.get ~dir in
     let human_readable_description () =
       Pp.textf "Computing directory contents of %s"
         (Path.to_string_maybe_quoted (Path.build dir))
@@ -289,24 +300,26 @@ end = struct
                      })
            })
     | Standalone (st_dir, d) ->
+      let src_dir = d.dir in
+      let dune_version = Dune_project.dune_version d.project in
       Memo.return
         (Here
-           { directory_targets = extract_directory_targets ~dir d.data
+           { directory_targets = extract_directory_targets ~dir d.stanzas
            ; contents =
                Memo.lazy_ ~human_readable_description (fun () ->
                    let include_subdirs = (Loc.none, Include_subdirs.No) in
                    let+ files, rules =
                      Rules.collect (fun () ->
-                         load_text_files sctx st_dir d.data ~src_dir:d.src_dir
-                           ~dir:d.ctx_dir)
+                         load_text_files sctx st_dir d.stanzas ~src_dir ~dir)
                    in
                    let dirs = [ (dir, [], files) ] in
                    let ml =
                      Memo.lazy_ (fun () ->
-                         let lookup_vlib = lookup_vlib sctx in
+                         let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
                          let loc = loc_of_dune_file st_dir in
-                         Ml_sources.make d ~lib_config ~loc ~include_subdirs
-                           ~lookup_vlib ~dirs)
+                         let* scope = Scope.DB.find_by_dir dir in
+                         Ml_sources.make d ~dir ~scope ~lib_config ~loc
+                           ~include_subdirs ~lookup_vlib ~dirs)
                    in
                    { t =
                        { kind = Standalone
@@ -315,17 +328,16 @@ end = struct
                        ; ml
                        ; mlds =
                            Memo.lazy_ (fun () ->
-                               build_mlds_map d.data ~dir:d.ctx_dir ~files)
+                               build_mlds_map d.stanzas ~dir ~files)
                        ; foreign_sources =
                            Memo.lazy_ (fun () ->
-                               Foreign_sources.make d.data
-                                 ~dune_version:d.dune_version
+                               Foreign_sources.make d.stanzas ~dune_version
                                  ~lib_config:ctx.lib_config ~include_subdirs
                                  ~dirs
                                |> Memo.return)
                        ; coq =
                            Memo.lazy_ (fun () ->
-                               Coq_sources.of_dir d.data ~dir:d.ctx_dir
+                               Coq_sources.of_dir d.stanzas ~dir
                                  ~include_subdirs ~dirs
                                |> Memo.return)
                        }
@@ -337,18 +349,19 @@ end = struct
       let loc = loc_of_dune_file st_dir in
       let include_subdirs =
         let loc, qualif_mode = qualif_mode in
-        (loc, Dune_file.Include_subdirs.Include qualif_mode)
+        (loc, Include_subdirs.Include qualif_mode)
       in
-      let* subdirs = collect_group sctx ~st_dir ~dir in
+      let* subdirs = collect_group ~st_dir ~dir in
       let directory_targets =
         let dirs = (dir, [], st_dir, Some d) :: subdirs in
         List.fold_left dirs ~init:Path.Build.Map.empty
           ~f:(fun acc (dir, _, _, d) ->
             match d with
             | None -> acc
-            | Some (d : _ Dir_with_dune.t) ->
-              Path.Build.Map.union acc (extract_directory_targets ~dir d.data)
-                ~f:(fun _ _ x -> Some x))
+            | Some (d : Dune_file.t) ->
+              Path.Build.Map.union acc
+                (extract_directory_targets ~dir d.stanzas) ~f:(fun _ _ x ->
+                  Some x))
       in
       let contents =
         Memo.lazy_ ~human_readable_description (fun () ->
@@ -356,8 +369,7 @@ end = struct
               Rules.collect (fun () ->
                   Memo.fork_and_join
                     (fun () ->
-                      load_text_files sctx st_dir d.data ~src_dir:d.src_dir
-                        ~dir:d.ctx_dir)
+                      load_text_files sctx st_dir d.stanzas ~src_dir:d.dir ~dir)
                     (fun () ->
                       Memo.parallel_map subdirs
                         ~f:(fun (dir, local, st_dir, stanzas) ->
@@ -365,28 +377,29 @@ end = struct
                             match stanzas with
                             | None -> Memo.return (Source_tree.Dir.files st_dir)
                             | Some d ->
-                              load_text_files sctx st_dir d.data
-                                ~src_dir:d.src_dir ~dir:d.ctx_dir
+                              load_text_files sctx st_dir d.stanzas
+                                ~src_dir:d.dir ~dir
                           in
                           (dir, local, files))))
             in
             let dirs = (dir, [], files) :: subdirs in
             let ml =
               Memo.lazy_ (fun () ->
-                  let lookup_vlib = lookup_vlib sctx in
-                  Ml_sources.make d ~lib_config ~loc ~lookup_vlib
+                  let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
+                  let* scope = Scope.DB.find_by_dir dir in
+                  Ml_sources.make d ~dir ~scope ~lib_config ~loc ~lookup_vlib
                     ~include_subdirs ~dirs)
             in
+            let dune_version = Dune_project.dune_version d.project in
             let foreign_sources =
               Memo.lazy_ (fun () ->
-                  Foreign_sources.make d.data ~dune_version:d.dune_version
-                    ~include_subdirs ~lib_config:ctx.lib_config ~dirs
+                  Foreign_sources.make d.stanzas ~dune_version ~include_subdirs
+                    ~lib_config:ctx.lib_config ~dirs
                   |> Memo.return)
             in
             let coq =
               Memo.lazy_ (fun () ->
-                  Coq_sources.of_dir d.data ~dir:d.ctx_dir ~dirs
-                    ~include_subdirs
+                  Coq_sources.of_dir d.stanzas ~dir ~dirs ~include_subdirs
                   |> Memo.return)
             in
             let subdirs =
@@ -398,7 +411,7 @@ end = struct
                   ; foreign_sources
                   ; mlds =
                       Memo.lazy_ (fun () ->
-                          build_mlds_map d.data ~dir:d.ctx_dir ~files)
+                          build_mlds_map d.stanzas ~dir ~files)
                   ; coq
                   })
             in
@@ -409,8 +422,7 @@ end = struct
               ; ml
               ; foreign_sources
               ; mlds =
-                  Memo.lazy_ (fun () ->
-                      build_mlds_map d.data ~dir:d.ctx_dir ~files)
+                  Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
               ; coq
               }
             in
@@ -423,12 +435,11 @@ end = struct
       Memo.return (Here { directory_targets; contents })
 
   let memo0 =
-    Memo.create "dir-contents-get0"
+    Memo.create "dir-contents-get0" get0_impl
       ~input:(module Key)
       ~human_readable_description:(fun (_, dir) ->
         Pp.textf "Computing directory contents of %s"
           (Path.to_string_maybe_quoted (Path.build dir)))
-      get0_impl
 
   let get sctx ~dir =
     Memo.exec memo0 (sctx, dir) >>= function

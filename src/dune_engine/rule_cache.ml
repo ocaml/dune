@@ -122,7 +122,7 @@ module Workspace_local = struct
   let compute_target_digests (targets : Targets.Validated.t) :
       (Digest.t Targets.Produced.t, Miss_reason.t) Result.t =
     match Targets.Produced.of_validated targets with
-    | Error unix_error ->
+    | Error (_, unix_error) ->
       Miss (Error_while_collecting_directory_targets unix_error)
     | Ok targets -> (
       match
@@ -331,7 +331,7 @@ module Shared = struct
         Log.info [ Pp.textf "cache store skipped [%s]: already present" hex ];
         update_cached_digests ~targets_and_digests
       | Error (Unix.Unix_error (Unix.EXDEV, "link", file)) ->
-        (* We cannot hardlink accross partitions so we kindly let the user know
+        (* We cannot hardlink across partitions so we kindly let the user know
            that they should use copy cache instead. *)
         Log.info
           [ Pp.concat
@@ -378,7 +378,6 @@ module Shared = struct
     | None -> (
       let missing, errors =
         let process_target target (missing, errors) =
-          let expected_syscall_path = Path.to_string (Path.build target) in
           match compute_digest target with
           | Ok (_ : Digest.t) -> (missing, errors)
           | No_such_file -> (target :: missing, errors)
@@ -401,13 +400,17 @@ module Shared = struct
             (missing, (target, Unix_error.Detailed.pp unix_error) :: errors)
           | Error exn ->
             let error =
-              match exn with
-              | Sys_error msg ->
-                Pp.verbatim
-                  (String.drop_prefix_if_exists
-                     ~prefix:(expected_syscall_path ^ ": ")
-                     msg)
-              | exn -> Pp.verbatim (Printexc.to_string exn)
+              Pp.verbatim
+                (match exn with
+                | Sys_error msg ->
+                  let prefix =
+                    let expected_syscall_path =
+                      Path.to_string (Path.build target)
+                    in
+                    expected_syscall_path ^ ": "
+                  in
+                  String.drop_prefix_if_exists ~prefix msg
+                | exn -> Printexc.to_string exn)
             in
             (missing, (target, error) :: errors)
         in

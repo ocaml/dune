@@ -15,8 +15,8 @@ Typically, any given project will define a single scope. Libraries and
 executables that aren't meant to be installed will be visible inside
 this scope only.
 
-Because scopes are exclusive, if you wish to include your current project's 
-dependencies in your workspace, you can copy them in a ``vendor`` directory, 
+Because scopes are exclusive, if you wish to include your current project's
+dependencies in your workspace, you can copy them in a ``vendor`` directory,
 or any name of your choice. Dune will look for them there rather than in the installed
 world, and there will be no overlap between the various scopes.
 
@@ -51,11 +51,11 @@ future so that one may write:
 
    (flags (if (>= %{ocaml_version} 4.06) ...))
 
-This restriction will allow you to add this feature without introducing 
+This restriction will allow you to add this feature without introducing
 breaking changes. If you want to write a list where the first element
 doesn't start with ``-``, you can simply quote it: ``("x" y z)``.
 
-Most fields using the ordered set language also support :ref:`variables`. 
+Most fields using the ordered set language also support :ref:`variables`.
 Variables are expanded after the set language is interpreted.
 
 .. _blang:
@@ -80,8 +80,8 @@ After an expression is evaluated, it must be exactly the string ``true`` or
 ``false`` to be considered as a Boolean. Any other value will be treated as an
 error.
 
-Below is a simple example of a condition expressing that the build 
-has a flambda compiler, with the help of variable expansion, and is 
+Below is a simple example of a condition expressing that the build
+has a Flambda compiler, with the help of variable expansion, and is
 targeting OSX:
 
 .. code:: lisp
@@ -141,7 +141,7 @@ Dune supports the following variables:
   the value of ``workspace_root`` isn't constant and depends on
   whether your project is vendored or not.
 -  ``CC`` is the C compiler command line (list made of the compiler
-   name followed by its flags) that will be used to compile foreign code. 
+   name followed by its flags) that will be used to compile foreign code.
    For more details about its content, please see :ref:`this section <flags-flow>`.
 -  ``CXX`` is the C++ compiler command line being used in the
    current build context.
@@ -186,6 +186,7 @@ Dune supports the following variables:
   variable ``<var>``, or ``<default>`` if it does not exist.
   For example, ``%{env:BIN=/usr/bin}``.
   Available since Dune 1.4.0.
+- There are some Coq-specific variables detailed in :ref:`coq-variables`.
 
 In addition, ``(action ...)`` fields support the following special variables:
 
@@ -206,11 +207,11 @@ In addition, ``(action ...)`` fields support the following special variables:
   ...)`` or ``(system ...)``.
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
-- ``lib:<public-library-name>:<file>`` expands to the file's installation path 
+- ``lib:<public-library-name>:<file>`` expands to the file's installation path
   ``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local
   file will be used, otherwise the one from the installed world will be used.
-- ``lib-private:<library-name>:<file>`` expands to the file's build path 
+- ``lib-private:<library-name>:<file>`` expands to the file's build path
   ``<file>`` in the library ``<library-name>``. Both public and private library
   names are allowed as long as they refer to libraries within the same project.
 - ``libexec:<public-library-name>:<file>`` is the same as ``lib:...``, except
@@ -363,16 +364,10 @@ to use the public name. For instance: ``(libraries base re)``.
 When resolving libraries, ones that are part of the workspace are always
 preferred to ones that are part of the installed world.
 
-.. _alternative-deps:
-
 Alternative Dependencies
 ------------------------
 
-In addition to direct dependencies, you can specify alternative dependencies.
-This is described in the :ref:`Alternative Dependencies <alternative-deps>`
-section.
-
-Sometimes, one doesn't want to depend on a specific library but rather 
+Sometimes, one doesn't want to depend on a specific library but rather
 on whatever is already installed, e.g., to use a different
 backend, depending on the target.
 
@@ -616,7 +611,7 @@ Dependencies in ``dune`` files can be specified using one of the following:
   - ``none``: the action must run in the build directory
   - ``preserve_file_kind``: the action needs the files it reads to look
     like normal files (so Dune won't use symlinks for sandboxing)
-- ``(include <file>)`` read the s-expression in ``<file>`` and intepret it as
+- ``(include <file>)`` read the s-expression in ``<file>`` and interpret it as
   additional dependencies. The s-expression is expected to be a list of the
   same constructs enumerated here.
 
@@ -667,6 +662,9 @@ Dune supports globbing files in a single directory via ``(glob_files
 - anything after the last ``/``, or everything if the glob contains no ``/``, is
   interpreted using the glob syntax
 
+Absolute paths are permitted in the ``(glob_files ...)`` term only. It's an error to pass
+an absolute path (i.e., a path beginning with a ``/``) to ``(glob_files_rec ...)```.
+
 The glob syntax is interpreted as follows:
 
 - ``\<char>`` matches exactly ``<char>``, even if it's a special character
@@ -680,6 +678,46 @@ The glob syntax is interpreted as follows:
 - ``[!<set>]`` matches any character that is not part of ``<set>``.
 - ``{<glob1>,<glob2>,...,<globn>}`` matches any string that is matched by one of
   ``<glob1>``, ``<glob2>``, etc.
+
+.. list-table:: Glob syntax examples
+   :header-rows: 1
+
+   * - Syntax
+     - Files matched
+     - Files not matched
+   * - ``x``
+     - ``x``
+     - ``y``
+   * - ``\*``
+     - ``*``
+     - ``x``
+   * - ``file*.txt``
+     - ``file1.txt``, ``file2.txt``
+     - ``f.txt``
+   * - ``*.txt``
+     - ``f.txt``
+     - ``.hidden.txt``
+   * - ``a**``
+     - ``aml``
+     - ``a.ml``
+   * - ``**``
+     - ``a/b``, ``a.b``
+     - (none)
+   * - ``a?.txt``
+     - ``a1.txt``, ``a2.txt``
+     - ``b1.txt``, ``a10.txt``
+   * - ``f[xyz].txt``
+     - ``fx.txt``, ``fy.txt``, ``fz.txt``
+     - ``f2.txt``, ``f.txt``
+   * - ``f[!xyz].txt``
+     - ``f2.txt``, ``fa.txt``
+     - ``fx.txt``, ``f.txt``
+   * - ``a.{ml,mli}``
+     - ``a.ml``, ``a.mli``
+     - ``a.txt``, ``b.ml``
+   * - ``../a.{ml,mli}``
+     - ``../a.ml``, ``../a.mli``
+     - ``a.ml``
 
 .. _ocaml-flags:
 
@@ -754,7 +792,7 @@ The following constructions are available:
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
-- ``(cat <file>)`` to print the contents of a file to stdout
+- ``(cat <file> ...)`` to sequentially print the contents of files to stdout
 - ``(copy <src> <dst>)`` to copy a file. If these files are OCaml sources you
   should follow the ``module_name.xxx.ml``
   :ref:`naming convention <merlin-filenames>` to preserve Merlin's
@@ -790,9 +828,9 @@ the destination file. More precisely, it inserts the following line:
 
     # 1 "<source file name>"
 
-Most languages recognize such lines and update their current location 
+Most languages recognize such lines and update their current location
 to report errors in the original file rather than the
-copy. This is important beause the copy exists only under the ``_build``
+copy. This is important because the copy exists only under the ``_build``
 directory, and in order for editors to jump to errors when parsing the
 output of the build system, errors must point to files that exist in
 the source tree. In the beta versions of Dune, ``copy#`` was
@@ -855,7 +893,7 @@ Sandboxing
 The user actions that run external commands (``run``, ``bash``, ``system``)
 are opaque to Dune, so Dune has to rely on manual specification of dependencies
 and targets. One problem with manual specification is that it's error-prone.
-It's often hard to know in advance what files the command will read, 
+It's often hard to know in advance what files the command will read,
 and knowing a correct set of dependencies is very important for build
 reproducibility and incremental build correctness.
 
@@ -1039,7 +1077,8 @@ repository. You can use the following workflow to update your test:
 - Update the code of your test.
 - Run ``dune runtest``. The diff action will fail and a diff will
   be printed.
-- Check the diff to make sure it's what you expect.
+- Check the diff to make sure it's what you expect. This diff can be displayed
+  again by running ``dune promotion diff``.
 - Run ``dune promote``. This will copy the generated ``data.out``
   file to ``data.expected`` directly in the source tree.
 
@@ -1157,12 +1196,12 @@ Executables
 
 Similarly to libraries, to attach an executable to a package simply
 add a ``public_name`` field to your ``executable`` stanza or a
-``public_names`` field for ``executables`` stanzas. Designate this 
-name to match the available executables through the installed ``PATH`` 
-(i.e., the name users must type in their shell to execute 
+``public_names`` field for ``executables`` stanzas. Designate this
+name to match the available executables through the installed ``PATH``
+(i.e., the name users must type in their shell to execute
 the program), because Dune cannot guess an executable's relevant package
-from its public name. It's also necessary to add a ``package`` field 
-unless the project contains a single package, in which case the executable 
+from its public name. It's also necessary to add a ``package`` field
+unless the project contains a single package, in which case the executable
 will be attached to this package.
 
 For instance:
@@ -1192,12 +1231,13 @@ an :ref:`install` stanza.
 
 .. _foreign-sources-and-archives:
 
-Foreign Sources and Archives
-============================
+Foreign Sources, Archives and Objects
+=====================================
 
 Dune provides basic support for including foreign source files as well
 as archives of foreign object files into OCaml projects via the
-``foreign_stubs`` and ``foreign_archives`` fields.
+``foreign_stubs`` and ``foreign_archives`` fields. Individual object
+files can also be included via the ``extra_objects`` field.
 
 .. _foreign-stubs:
 
@@ -1245,16 +1285,59 @@ Here is a complete list of supported subfields:
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
   via the ``-I`` flag. You can use :ref:`variables` in this field and
   refer to a library source directory using the ``(lib library-name)`` syntax.
-  For example, ``(include_dirs dir1 (lib lib1) (lib lib2) dir2)`` specifies
+  Additionally, the syntax ``(include filename)`` can be used to specify a file
+  containing additional arguments to ``(include_dirs ...)``. The named file can
+  either contain a single path to be added to this list of include directories,
+  or an S-expression listing additional ``(include_dirs ...)`` arguments (the
+  ``(lib ...)`` and ``(include ...)`` syntax is also supported in files included
+  in this way).
+  For example, ``(include_dirs dir1 (lib lib1) (lib lib2) (include inc1) dir2)`` specifies
   the directory ``dir1``, the source directories of ``lib1`` and ``lib2``,
-  and the directory ``dir2``, in this order. The contents of included
-  directories are tracked recursively, e.g., if you use ``(include_dir dir)``
-  and have headers ``dir/base.h`` and ``dir/lib/lib.h``, they both will
-  be tracked as dependencies.
-- ``extra_deps`` specifies any other dependencies that should be tracked.
-  This is useful when dealing with ``#include`` statements that escape into
-  a parent directory like ``#include "../a.h"``.
+  the list of directories contained in the file ``inc1``,
+  and the directory ``dir2``, in this order.
+  Some examples of possible contents of the file ``inc1`` are:
 
+  - ``dir3`` which would add ``dir3`` to the list of include directories
+  - ``((lib lib3) dir4 (include inc2))`` which would add the source directory of
+    the library ``lib3``, the directory ``dir4``, and the result of recursively
+    including the contents of the file ``inc2``.
+    The contents of included directories are tracked recursively, e.g., if you
+    use ``(include_dir dir)`` and have headers ``dir/base.h`` and
+    ``dir/lib/lib.h``, they both will be tracked as dependencies.
+  - ``extra_deps`` specifies any other dependencies that should be tracked.
+    This is useful when dealing with ``#include`` statements that escape into
+    a parent directory like ``#include "../a.h"``.
+
+
+Mode-Dependent Stubs
+^^^^^^^^^^^^^^^^^^^^
+
+Since Dune 3.5, it is possible to use different foreign stubs when building in
+`native` or `byte` mode. This feature needs to be activated by adding ``(using
+mode_specific_stubs 0.1)`` in the ``dune-project`` file.
+
+Then it is allowed to use the ``mode`` field when describing ``foreign_stubs``.
+If the same stub is defined twice, Dune will automatically chose the correct one.
+This allows the use of different sets of flags or even different source files
+from which the stubs are built.
+
+.. code:: scheme
+
+  (executable
+   (name main)
+   (modes native byte_complete)
+   (foreign_stubs
+     (language c)
+     (mode byte)
+     (names c_stubs))
+   (foreign_stubs
+     (language c)
+     (mode native)
+     (flags :standard -DNATIVE_CODE) ; A flag specific to native builds
+     (names c_stubs)))  ; This could be the name of an implementation
+                        ; specific to native builds
+
+Note that, as of version ``0.1`` of this extension, this mechanism does not work for ``foreign_archives``.
 
 .. _foreign-archives:
 
@@ -1304,6 +1387,39 @@ foreign archive is a bit like a foreign library, hence the name of the stanza.
 Foreign archives are particularly useful when embedding a library written in
 a foreign language and/or built with another build system. See
 :ref:`foreign-sandboxing` for more details.
+
+
+.. _extra-objects:
+
+Extra Objects
+-------------
+
+It's possible to specify native object files to be packaged with OCaml
+libraries or linked into OCaml executables. Do this by using the
+``extra_objects`` field of the ``library`` or ``executable`` stanzas.
+For example:
+
+.. code:: lisp
+
+    (executable
+     (public_name main)
+     (extra_objects foo bar))
+
+    (rule
+     (targets foo.o bar.o)
+     (deps foo.c bar.c)
+     (action (run ocamlopt %{deps})))
+
+This example builds an executable which is linked against a pair of native
+object files, ``foo.o`` and ``bar.o``. The ``extra_objects`` field takes a
+list of object names, which correspond to the object file names with their path
+and extension omitted.
+
+In this example, the sources corresponding to the objects (``foo.c`` and
+``bar.c``)  are assumed to be present in the same directory as the OCaml source
+code, and a custom ``rule`` is used to compile the C source code into object
+files using ``ocamlopt``. This is not necessary; one can instead compile foreign
+object files manually and place them next to the OCaml source code.
 
 .. _flags-flow:
 

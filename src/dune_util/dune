@@ -1,8 +1,12 @@
 (library
  (name dune_util)
+ (foreign_stubs
+  (language c)
+  (names dune_flock))
  (libraries
   stdune
   xdg
+  dune_console
   build_path_prefix_map
   dune_sexp
   memo

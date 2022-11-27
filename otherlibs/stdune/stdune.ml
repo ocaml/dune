@@ -10,7 +10,6 @@ module Array = Array
 module Bytes = Bytes
 module Char = Char
 module Comparator = Comparator
-module Console = Console
 module Either = Either
 module Exn = Exn
 module Exn_with_backtrace = Exn_with_backtrace
@@ -44,7 +43,6 @@ module Proc = Proc
 module Type_eq = Type_eq
 module Nothing = Nothing
 module Bin = Bin
-module Digest = Digest
 module Fdecl = Fdecl
 module Unit = Unit
 module Monad = Monad
@@ -68,9 +66,9 @@ module Seq = Seq
 module Temp = Temp
 module Queue = Queue
 module Caller_id = Caller_id
-module Metrics = Metrics
 module Dune_filesystem_stubs = Dune_filesystem_stubs
 module Predicate = Predicate
+module Bytes_unit = Bytes_unit
 
 module Unix_error = struct
   include Dune_filesystem_stubs.Unix_error

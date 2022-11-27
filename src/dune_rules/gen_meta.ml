@@ -179,7 +179,7 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
     | Some s -> [ rule "version" [] Set s ]
   in
   let+ pkgs =
-    Memo.parallel_map entries ~f:(fun (e : Super_context.Lib_entry.t) ->
+    Memo.parallel_map entries ~f:(fun (e : Scope.DB.Lib_entry.t) ->
         match e with
         | Library lib -> (
           let info = Lib.Local.info lib in

@@ -2,7 +2,9 @@ open Import
 open Memo.O
 
 module Bin = struct
-  let local_bin p = Path.Build.relative p ".bin"
+  let bin_dir_basename = ".bin"
+
+  let local_bin p = Path.Build.relative p bin_dir_basename
 
   type t =
     { context : Context.t
@@ -27,7 +29,8 @@ module Bin = struct
 
   let binary_available t name =
     if not (Filename.is_relative name) then
-      Fs_memo.file_exists (Path.of_filename_relative_to_initial_cwd name)
+      Path.of_filename_relative_to_initial_cwd name
+      |> Path.as_outside_build_dir_exn |> Fs_memo.file_exists
     else
       match String.Map.find t.local_bins name with
       | Some _ -> Memo.return true
@@ -44,9 +47,13 @@ module Bin = struct
     in
     { t with local_bins }
 
-  let create ~(context : Context.t) ~local_bins =
-    let local_bins =
-      Path.Build.Set.fold local_bins ~init:String.Map.empty ~f:(fun path acc ->
+  module Local = struct
+    type t = Path.Build.t String.Map.t
+
+    let equal = String.Map.equal ~equal:Path.Build.equal
+
+    let create =
+      Path.Build.Set.fold ~init:String.Map.empty ~f:(fun path acc ->
           let name = Path.Build.basename path in
           let key =
             if Sys.win32 then
@@ -55,8 +62,9 @@ module Bin = struct
             else name
           in
           String.Map.set acc key path)
-    in
-    { context; local_bins }
+  end
+
+  let create ~(context : Context.t) ~local_bins = { context; local_bins }
 end
 
 module Public_libs = struct

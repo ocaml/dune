@@ -1,6 +1,0 @@
-(alias
- (name inaccurate-merlins-are-ok)
- (deps vendored/a.ml)
- (action (echo "There should be no inaccurate .merlin warning above!")))
-
-(vendored_dirs vendored)

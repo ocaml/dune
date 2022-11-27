@@ -85,6 +85,7 @@ module Macro : sig
     | Read_lines
     | Path_no_dep
     | Ocaml_config
+    | Coq_config
     | Env
     | Artifact of Artifact.t
 
@@ -117,7 +118,7 @@ val describe_kind : t -> string
 module Map : Map.S with type key = t
 
 module Env : sig
-  type pform = t
+  type pform := t
 
   (** Decoding environment *)
   type t
@@ -148,4 +149,3 @@ module Env : sig
 
   val to_dyn : t -> Dyn.t
 end
-with type pform := t

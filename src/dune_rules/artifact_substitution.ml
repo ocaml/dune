@@ -48,7 +48,23 @@ type conf =
   ; get_location : Section.t -> Package.Name.t -> Path.t
   ; get_config_path : configpath -> Path.t option
   ; hardcoded_ocaml_path : hardcoded_ocaml_path
+  ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
   }
+
+let mac_codesign_hook ~codesign path =
+  Process.run Strict codesign [ "-s"; "-"; Path.to_string path ]
+
+let sign_hook_of_context (context : Context.t) =
+  let config = context.ocaml_config in
+  match (Ocaml_config.system config, Ocaml_config.architecture config) with
+  | "macosx", "arm64" -> (
+    let codesign_name = "codesign" in
+    match Bin.which ~path:context.path codesign_name with
+    | None ->
+      Utils.program_not_found ~loc:None
+        ~hint:"codesign should be part of the macOS installation" codesign_name
+    | Some codesign -> Some (mac_codesign_hook ~codesign))
+  | _ -> None
 
 let conf_of_context (context : Context.t option) =
   let get_vcs = Source_tree.nearest_vcs in
@@ -58,6 +74,7 @@ let conf_of_context (context : Context.t option) =
     ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
     ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
     ; hardcoded_ocaml_path = Hardcoded []
+    ; sign_hook = lazy None
     }
   | Some context ->
     let get_location = Install.Section.Paths.get_local_location context.name in
@@ -70,13 +87,16 @@ let conf_of_context (context : Context.t option) =
       let install_dir = Path.build (Path.Build.relative install_dir "lib") in
       Hardcoded (install_dir :: context.default_ocamlpath)
     in
+    let sign_hook = lazy (sign_hook_of_context context) in
     { get_vcs = Source_tree.nearest_vcs
     ; get_location
     ; get_config_path
     ; hardcoded_ocaml_path
+    ; sign_hook
     }
 
-let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots =
+let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
+    =
   let get_vcs = Source_tree.nearest_vcs in
   let hardcoded_ocaml_path =
     match relocatable with
@@ -91,13 +111,15 @@ let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots =
     | Sourceroot -> None
     | Stdlib -> Some stdlib_dir
   in
-  { get_location; get_vcs; get_config_path; hardcoded_ocaml_path }
+  let sign_hook = lazy (sign_hook_of_context context) in
+  { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
 
 let conf_dummy =
   { get_vcs = (fun _ -> Memo.return None)
   ; get_location = (fun _ _ -> Path.root)
   ; get_config_path = (fun _ -> None)
   ; hardcoded_ocaml_path = Hardcoded []
+  ; sign_hook = lazy None
   }
 
 let to_dyn = function
@@ -395,14 +417,17 @@ let buf_len = max_len
 
 let buf = Bytes.create buf_len
 
-type _ mode =
-  | Test : bool mode
-  | Copy :
+type mode =
+  | Test
+  | Copy of
       { input_file : Path.t
       ; output : bytes -> int -> int -> unit
       ; conf : conf
       }
-      -> unit mode
+
+type status =
+  | Some_substitution
+  | No_substitution
 
 (** The copy algorithm works as follow:
 
@@ -442,10 +467,9 @@ output the replacement        |                                             |
  |                                                                          |
  \--------------------------------------------------------------------------/
     v} *)
-let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
- fun ~input ~mode ->
+let parse ~input ~mode =
   let open Fiber.O in
-  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data : a Fiber.t =
+  let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data ~status =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
     let placeholder_start =
       match scanner_state with
@@ -471,7 +495,7 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
       match decode placeholder with
       | Some t -> (
         match mode with
-        | Test -> Fiber.return true
+        | Test -> Fiber.return Some_substitution
         | Copy { output; input_file; conf } ->
           let* s = eval t ~conf in
           (if !Clflags.debug_artifact_substitution then
@@ -487,13 +511,14 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
           let s = encode_replacement ~len ~repl:s in
           output (Bytes.unsafe_of_string s) 0 len;
           let pos = placeholder_start + len in
-          loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data)
+          loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data
+            ~status:Some_substitution)
       | None ->
         (* Restart just after [prefix] since we know for sure that a placeholder
            cannot start before that. *)
         loop Scan0 ~beginning_of_data:placeholder_start
           ~pos:(placeholder_start + prefix_len)
-          ~end_of_data)
+          ~end_of_data ~status)
     | scanner_state -> (
       (* We reached the end of the buffer: move the leftover data back to the
          beginning of [buf] and refill the buffer *)
@@ -516,24 +541,24 @@ let parse : type a. input:_ -> mode:a mode -> a Fiber.t =
           (* There might still be another placeholder after this invalid one
              with a length that is too long *)
           loop Scan0 ~beginning_of_data:0 ~pos:prefix_len ~end_of_data:leftover
+            ~status
         | _ -> (
           match mode with
-          | Test -> Fiber.return false
+          | Test -> Fiber.return No_substitution
           | Copy { output; _ } ->
             (* Nothing more to read; [leftover] is definitely not the beginning
                of a placeholder, send it and end the copy *)
             output buf 0 leftover;
-            Fiber.return ()))
+            Fiber.return status))
       | n ->
         loop scanner_state ~beginning_of_data:0 ~pos:leftover
-          ~end_of_data:(leftover + n))
+          ~end_of_data:(leftover + n) ~status)
   in
   match input buf 0 buf_len with
-  | 0 -> (
-    match mode with
-    | Test -> Fiber.return false
-    | Copy _ -> Fiber.return ())
-  | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
+  | 0 -> Fiber.return No_substitution
+  | n ->
+    loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
+      ~status:No_substitution
 
 let copy ~conf ~input_file ~input ~output =
   parse ~input ~mode:(Copy { conf; input_file; output })
@@ -546,6 +571,38 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
       Io.close_both (ic, oc);
       Fiber.return ())
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
+
+let run_sign_hook conf ~has_subst file =
+  match has_subst with
+  | No_substitution -> Fiber.return ()
+  | Some_substitution -> (
+    match Lazy.force conf.sign_hook with
+    | Some hook -> hook file
+    | None -> Fiber.return ())
+
+(** This is just an optimisation: skip the renaming if the destination exists
+    and has the right digest. The optimisation is useful to avoid unnecessary
+    retriggering of Dune and other file-watching systems. *)
+let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
+  let up_to_date =
+    match Path.Untracked.stat dst with
+    | Ok { st_kind; _ } when st_kind = S_DIR -> (
+      match delete_dst_if_it_is_a_directory with
+      | true ->
+        Path.rm_rf dst;
+        false
+      | false ->
+        User_error.raise
+          [ Pp.textf "Cannot copy artifact to %S because it is a directory"
+              (Path.to_string dst)
+          ])
+    | Error (_ : Unix_error.Detailed.t) -> false
+    | Ok (_ : Unix.stats) ->
+      let temp_file_digest = Digest.file src in
+      let dst_digest = Digest.file dst in
+      Digest.equal temp_file_digest dst_digest
+  in
+  if not up_to_date then Path.rename src dst
 
 let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
     () =
@@ -561,29 +618,12 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
   Fiber.finalize
     (fun () ->
       let open Fiber.O in
-      let+ () = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
-      let up_to_date =
-        match Path.Untracked.stat dst with
-        | Ok { st_kind; _ } when st_kind = S_DIR -> (
-          match delete_dst_if_it_is_a_directory with
-          | true ->
-            Path.rm_rf dst;
-            false
-          | false ->
-            User_error.raise
-              [ Pp.textf "Cannot copy artifact to %S because it is a directory"
-                  (Path.to_string dst)
-              ])
-        | Error (_ : Unix_error.Detailed.t) -> false
-        | Ok (_ : Unix.stats) ->
-          let temp_file_digest = Digest.file temp_file in
-          let dst_digest = Digest.file dst in
-          Digest.equal temp_file_digest dst_digest
+      Path.parent dst |> Option.iter ~f:Path.mkdir_p;
+      let* has_subst =
+        copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file ()
       in
-      (* This is just an optimisation: skip the renaming if the destination
-         exists and has the right digest. The optimisation is useful to avoid
-         unnecessary retriggering of Dune and other file-watching systems. *)
-      if not up_to_date then Path.rename temp_file dst)
+      let+ () = run_sign_hook conf ~has_subst temp_file in
+      replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
       Path.unlink_no_err temp_file;
       Fiber.return ())

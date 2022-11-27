@@ -28,13 +28,14 @@ when necessary.
   > (rule
   >  (alias default)
   >  (deps dep
-  >        (glob_files file-?)
-  >        (glob_files dir/file-?)
-  >        (glob_files dir/subdir/file-?))
+  >   (glob_files file-?)
+  >   (glob_files dir/file-?)
+  >   (glob_files dir/subdir/file-?))
   >  (target result)
-  >  (action (bash "\| echo Executing rule...
+  >  (action (system "\| echo Executing rule...
   >                "\| echo %{deps}       |
-  >                "\|   xargs -d' ' -n 1 |
+  >                "\|   tr ' ' '\n'      |
+  >                "\|   xargs -n 1       |
   >                "\|   grep -v dep      |
   >                "\|   xargs cat > result
   > )))

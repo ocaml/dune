@@ -42,7 +42,7 @@ module type Ast = sig
     | Ignore of Outputs.t * t
     | Progn of t list
     | Echo of string list
-    | Cat of path
+    | Cat of path list
     | Copy of path * target
     | Symlink of path * target
     | Hardlink of path * target
@@ -51,10 +51,9 @@ module type Ast = sig
     | Write_file of target * File_perm.t * string
     | Rename of target * target
     | Remove_tree of target
-    | Mkdir of path
+    | Mkdir of target
     | Diff of (path, target) Diff.t
     | Merge_files_into of path list * string list * target
-    | No_infer of t
     | Pipe of Outputs.t * t list
     | Extension of ext
 end
@@ -94,7 +93,7 @@ module type Helpers = sig
 
   val echo : string list -> t
 
-  val cat : path -> t
+  val cat : path list -> t
 
   val copy : path -> target -> t
 
@@ -110,7 +109,7 @@ module type Helpers = sig
 
   val remove_tree : target -> t
 
-  val mkdir : path -> t
+  val mkdir : target -> t
 
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
 end

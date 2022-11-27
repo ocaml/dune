@@ -1,10 +1,12 @@
-(lang dune 3.3)
+(lang dune 3.5)
 ;          ^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
 (name dune)
 
 (generate_opam_files true)
+
+(accept_alternative_dune_file_name)
 
 (strict_package_deps false)
 
@@ -52,7 +54,7 @@ for free.
 
 (package
  (name dune-build-info)
- (synopsis "Embed build informations inside executable")
+ (synopsis "Embed build information inside executable")
  (depends
   (ocaml (>= 4.08)))
  (description "\
@@ -110,6 +112,7 @@ Among other things, dune-configurator allows one to:
   (ppx_expect :with-test)
   (stdune (= :version))
   (dune-private-libs (= :version))
+  (dune-rpc (= :version))
   base-unix)
  (description "\
 
@@ -133,7 +136,7 @@ understood by dune language."))
 
 (package
  (name dune-site)
- (synopsis "Embed locations informations inside executable and libraries")
+ (synopsis "Embed locations information inside executable and libraries")
  (depends (dune-private-libs (= :version)))
  (description ""))
 

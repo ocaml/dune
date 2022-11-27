@@ -18,32 +18,38 @@ module Timestamp : sig
   val to_json : t -> Json.t
 
   val of_float_seconds : float -> t
+
+  val to_float_seconds : t -> float
 end = struct
   type t = float
 
   let of_float_seconds x = x
+
+  let to_float_seconds x = x
 
   let to_json f =
     let n = int_of_float @@ (f *. 1_000_000.) in
     `Int n
 end
 
+module Id = struct
+  type t =
+    [ `Int of int
+    | `String of string
+    ]
+
+  let create x = x
+
+  let to_string = function
+    | `String s -> s
+    | `Int i -> string_of_int i
+
+  let to_json (t : t) = (t :> Json.t)
+
+  let field id = ("id", to_json id)
+end
+
 module Stack_frame = struct
-  module Id = struct
-    type t =
-      [ `String of string
-      | `Int of int
-      ]
-
-    let to_json (t : t) : Json.t = (t :> Json.t)
-
-    let to_string = function
-      | `String s -> s
-      | `Int i -> string_of_int i
-
-    let create x : t = x
-  end
-
   module Raw = struct
     type t = string list
 
@@ -83,8 +89,7 @@ module Event = struct
     ; pid : int
     ; tid : int
     ; cname : string option
-    ; stackframe :
-        [ `Id of Stack_frame.Id.t | `Raw of Stack_frame.Raw.t ] option
+    ; stackframe : [ `Id of Id.t | `Raw of Stack_frame.Raw.t ] option
     }
 
   let common_fields ?tts ?cname ?(cat = []) ?(pid = 0) ?(tid = 0) ?stackframe
@@ -92,6 +97,8 @@ module Event = struct
     { tts; cname; cat; ts; pid; tid; name; stackframe }
 
   let set_ts t ts = { t with ts }
+
+  let ts t = t.ts
 
   type scope =
     | Global
@@ -104,18 +111,6 @@ module Event = struct
     | End
 
   type args = (string * Json.t) list
-
-  module Id = struct
-    type t =
-      | Int of int
-      | String of string
-
-    let to_json = function
-      | Int i -> `Int i
-      | String s -> `String s
-
-    let field id = ("id", to_json id)
-  end
 
   type object_kind =
     | New
@@ -207,7 +202,7 @@ module Event = struct
     add_field_opt
       (fun stackframe ->
         match stackframe with
-        | `Id id -> ("sf", Stack_frame.Id.to_json id)
+        | `Id id -> ("sf", Id.to_json id)
         | `Raw r -> ("stack", Stack_frame.Raw.to_json r))
       stackframe fields
 
@@ -321,7 +316,7 @@ module Output_object = struct
   type t =
     { displayTimeUnit : [ `Ms | `Ns ] option
     ; traceEvents : Event.t list
-    ; stackFrames : (Stack_frame.Id.t * Stack_frame.t) list option
+    ; stackFrames : (Id.t * Stack_frame.t) list option
     ; extra_fields : (string * Json.t) list option
     }
 
@@ -346,7 +341,7 @@ module Output_object = struct
       | Some frames ->
         let frames =
           List.map frames ~f:(fun (id, frame) ->
-              let id = Stack_frame.Id.to_string id in
+              let id = Id.to_string id in
               (id, Stack_frame.to_json frame))
         in
         ("stackFrames", `Assoc frames) :: json

@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (* Manpages *)
@@ -40,14 +39,16 @@ let s_examples = "EXAMPLES"
 let s_bugs = "BUGS"
 let s_authors = "AUTHORS"
 let s_see_also = "SEE ALSO"
+let s_none = "cmdliner-none"
 
 (* Section order *)
 
 let s_created = ""
 let order =
   [| s_name; s_synopsis; s_description; s_created; s_commands;
-     s_command_aliases; s_arguments; s_options; s_common_options; s_exit_status;
-     s_environment; s_files; s_examples; s_bugs; s_authors; s_see_also; |]
+     s_arguments; s_options; s_common_options; s_exit_status;
+     s_environment; s_files; s_examples; s_bugs; s_authors; s_see_also;
+     s_none; |]
 
 let order_synopsis = 1
 let order_created = 3
@@ -95,14 +96,16 @@ let smap_to_blocks smap = (* N.B. this leaves `Blocks content untouched. *)
   let rec loop acc smap s = function
   | b :: rbs -> loop (b :: acc) smap s rbs
   | [] ->
-      let acc =  if s = "" then acc else `S s :: acc in
+      let acc = if s = "" then acc else `S s :: acc in
       match smap with
-      | (s, (_, rbs)) :: smap -> loop acc smap s rbs
       | [] -> acc
+      | (_, (_, [])) :: smap -> loop acc smap "" [] (* skip empty section *)
+      | (s, (_, rbs)) :: smap ->
+          if s = s_none
+          then loop acc smap "" [] (* skip *)
+          else loop acc smap s rbs
   in
-  match smap with
-  | [] -> []
-  | (s, (_, rbs)) :: smap -> loop [] smap s rbs
+  loop [] smap "" []
 
 let smap_has_section smap ~sec = List.exists (fun (s, _) -> sec = s) smap
 let smap_append_block smap ~sec b =
@@ -145,12 +148,12 @@ let pp_tokens = Cmdliner_base.pp_tokens
 
 let err e fmt = pf e ("cmdliner error: " ^^ fmt ^^ "@.")
 let err_unescaped ~errs c s = err errs "unescaped %C in %S" c s
-let err_malformed ~errs s = err errs "Malformed $(...) in %S" s
-let err_unclosed ~errs s = err errs "Unclosed $(...) in %S" s
+let err_malformed ~errs s = err errs "Malformed $(…) in %S" s
+let err_unclosed ~errs s = err errs "Unclosed $(…) in %S" s
 let err_undef ~errs id s = err errs "Undefined variable $(%s) in %S" id s
 let err_illegal_esc ~errs c s = err errs "Illegal escape char %C in %S" c s
 let err_markup ~errs dir s =
-  err errs "Unknown cmdliner markup $(%c,...) in %S" dir s
+  err errs "Unknown cmdliner markup $(%c,…) in %S" dir s
 
 let is_markup_dir = function 'i' | 'b' -> true | _ -> false
 let is_markup_esc = function '$' | '\\' | '(' | ')' -> true | _ -> false
@@ -411,7 +414,7 @@ let pp_groff_blocks ~errs subst ppf text =
   List.iter pp_block text
 
 let pp_groff_page ~errs subst ppf ((n, s, a1, a2, a3), t) =
-  pf ppf ".\\\" Pipe this output to groff -Tutf8 | less@\n\
+  pf ppf ".\\\" Pipe this output to groff -m man -K utf8 -T utf8 | less -R@\n\
           .\\\"@\n\
           .mso an.tmac@\n\
           .TH \"%s\" %d \"%s\" \"%s\" \"%s\"@\n\
@@ -436,34 +439,42 @@ let pp_to_temp_file pp_v v =
 let find_cmd cmds =
   let test, null = match Sys.os_type with
   | "Win32" -> "where", " NUL"
-  | _ -> "type", "/dev/null"
+  | _ -> "command -v", "/dev/null"
   in
-  let cmd c = Sys.command (strf "%s %s 1>%s 2>%s" test c null null) = 0 in
+  let cmd (c, _) = Sys.command (strf "%s %s 1>%s 2>%s" test c null null) = 0 in
   try Some (List.find cmd cmds) with Not_found -> None
 
 let pp_to_pager print ppf v =
   let pager =
-    let cmds = ["less"; "more"] in
-    let cmds = try (Sys.getenv "PAGER") :: cmds with Not_found -> cmds in
-    let cmds = try (Sys.getenv "MANPAGER") :: cmds with Not_found -> cmds in
+    let cmds = ["less"," -R"; "more", ""] in
+    (* Fundamentally env var lookups should try to cut the exec name. *)
+    let cmds = try (Sys.getenv "PAGER", "") :: cmds with Not_found -> cmds in
+    let cmds = try (Sys.getenv "MANPAGER", "") :: cmds with Not_found -> cmds in
     find_cmd cmds
   in
   match pager with
   | None -> print `Plain ppf v
-  | Some pager ->
-      let cmd = match (find_cmd ["groff"; "nroff"]) with
+  | Some (pager, opts) ->
+      let pager = pager ^ opts in
+      let groffer =
+        let cmds =
+          ["mandoc", " -m man -K utf-8 -T utf8";
+           "groff", " -m man -K utf8 -T utf8";
+           "nroff", ""]
+        in
+        find_cmd cmds
+      in
+      let cmd = match groffer with
       | None ->
           begin match pp_to_temp_file (print `Plain) v with
           | None -> None
           | Some f -> Some (strf "%s < %s" pager f)
           end
-      | Some c ->
+      | Some (groffer, opts) ->
+          let groffer = groffer ^ opts in
           begin match pp_to_temp_file (print `Groff) v with
           | None -> None
-          | Some f ->
-              (* TODO use -Tutf8, but annoyingly maps U+002D to U+2212. *)
-              let xroff = if c = "groff" then c ^ " -Tascii -P-c" else c in
-              Some (strf "%s < %s | %s" xroff f pager)
+          | Some f -> Some (strf "%s < %s | %s" groffer f pager)
           end
       in
       match cmd with
@@ -487,7 +498,7 @@ let rec print
       | Some _ -> print ~errs ~subst `Pager ppf page
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

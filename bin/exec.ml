@@ -30,7 +30,7 @@ let man =
       ]
   ]
 
-let info = Term.info "exec" ~doc ~man
+let info = Cmd.info "exec" ~doc ~man
 
 let term =
   let+ common = Common.term
@@ -66,7 +66,7 @@ let term =
                     prog
                 ]
           else
-            let+ _digest = Build_system.build_file p in
+            let+ () = Build_system.build_file p in
             p
         in
         let not_found () =
@@ -132,4 +132,4 @@ let term =
   in
   restore_cwd_and_execve common prog argv env
 
-let command = (term, info)
+let command = Cmd.v info term

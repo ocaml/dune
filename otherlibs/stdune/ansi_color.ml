@@ -123,18 +123,30 @@ module Style = struct
     Printf.sprintf "\027[%sm" (String.concat l ~sep:";")
 end
 
-let term_supports_color =
-  lazy
-    (match Stdlib.Sys.getenv "TERM" with
+let supports_color fd =
+  let is_smart =
+    match Stdlib.Sys.getenv "TERM" with
     | exception Not_found -> false
     | "dumb" -> false
-    | _ -> true)
+    | _ -> true
+  and clicolor =
+    match Stdlib.Sys.getenv "CLICOLOR" with
+    | exception Not_found -> true
+    | "0" -> false
+    | _ -> true
+  and clicolor_force =
+    match Stdlib.Sys.getenv "CLICOLOR_FORCE" with
+    | exception Not_found -> false
+    | "0" -> false
+    | _ -> true
+  in
+  (is_smart && Unix.isatty fd && clicolor) || clicolor_force
 
-let stdout_supports_color =
-  lazy (Lazy.force term_supports_color && Unix.isatty Unix.stdout)
+let stdout_supports_color = lazy (supports_color Unix.stdout)
 
-let stderr_supports_color =
-  lazy (Lazy.force term_supports_color && Unix.isatty Unix.stderr)
+let stderr_supports_color = lazy (supports_color Unix.stderr)
+
+let output_is_a_tty = lazy (Unix.isatty Unix.stderr)
 
 let rec tag_handler current_styles ppf styles pp =
   Format.pp_print_as ppf 0 (Style.escape_sequence_no_reset styles);
@@ -162,22 +174,35 @@ let prerr =
 let strip str =
   let len = String.length str in
   let buf = Buffer.create len in
-  let rec loop i =
-    if i = len then Buffer.contents buf
+  let rec loop start i =
+    if i = len then (
+      if i - start > 0 then Buffer.add_substring buf str start (i - start);
+      Buffer.contents buf)
     else
-      match str.[i] with
-      | '\027' -> skip (i + 1)
-      | c ->
-        Buffer.add_char buf c;
-        loop (i + 1)
+      match String.unsafe_get str i with
+      | '\027' ->
+        if i - start > 0 then Buffer.add_substring buf str start (i - start);
+        skip (i + 1)
+      | _ -> loop start (i + 1)
   and skip i =
     if i = len then Buffer.contents buf
     else
-      match str.[i] with
-      | 'm' -> loop (i + 1)
+      match String.unsafe_get str i with
+      | 'm' -> loop (i + 1) (i + 1)
       | _ -> skip (i + 1)
   in
-  loop 0
+  loop 0 0
+
+let index_from_any str start chars =
+  let n = String.length str in
+  let rec go i =
+    if i >= n then None
+    else
+      match List.find chars ~f:(fun c -> Char.equal str.[i] c) with
+      | None -> go (i + 1)
+      | Some c -> Some (i, c)
+  in
+  go start
 
 let parse_line str styles =
   let len = String.length str in
@@ -201,9 +226,9 @@ let parse_line str styles =
       let seq_start = seq_start + 2 in
       if seq_start >= len || str.[seq_start - 1] <> '[' then (styles, acc)
       else
-        match String.index_from str seq_start 'm' with
+        match index_from_any str seq_start [ 'm'; 'K' ] with
         | None -> (styles, acc)
-        | Some seq_end ->
+        | Some (seq_end, 'm') ->
           let styles =
             if seq_start = seq_end then
               (* Some commands output "\027[m", which seems to be interpreted
@@ -223,7 +248,8 @@ let parse_line str styles =
                      else s :: styles)
               |> List.rev
           in
-          loop styles (seq_end + 1) acc)
+          loop styles (seq_end + 1) acc
+        | Some (seq_end, _) -> loop styles (seq_end + 1) acc)
   in
   loop styles 0 Pp.nop
 

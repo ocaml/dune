@@ -1,0 +1,2 @@
+(coq.theory
+ (name foo))

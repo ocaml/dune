@@ -1,4 +1,7 @@
 include Stdune
+module Digest = Dune_digest
+module Console = Dune_console
+module Metrics = Dune_metrics
 module Log = Dune_util.Log
 module Re = Dune_re
 module Stringlike = Dune_util.Stringlike

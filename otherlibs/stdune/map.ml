@@ -220,6 +220,20 @@ module Make (Key : Key) : S with type key = Key.t = struct
     | (_ : _ t) -> true
     | exception Exit -> false
 
+  exception Found of Key.t
+
+  let find_key t ~f =
+    match
+      iteri t ~f:(fun key _ -> if f key then raise_notrace (Found key) else ())
+    with
+    | () -> None
+    | exception Found e -> Some e
+
+  let to_dyn f t =
+    Dyn.Map (to_list t |> List.map ~f:(fun (k, v) -> (Key.to_dyn k, f v)))
+
+  let to_seq = to_seq
+
   module Multi = struct
     type nonrec 'a t = 'a list t
 
@@ -250,19 +264,20 @@ module Make (Key : Key) : S with type key = Key.t = struct
         iteri ~f:(fun k -> List.iter ~f:(check_found k)) m;
         None
       with Found p -> Some p
+
+    let to_flat_list t = fold t ~init:[] ~f:List.rev_append
+
+    let map t ~f = map t ~f:(fun l -> List.map ~f l)
+
+    let parent_equal = equal
+
+    let equal t t' ~equal =
+      parent_equal
+        ~equal:(fun l l' ->
+          Result.value ~default:false @@ List.for_all2 ~f:equal l l')
+        t t'
+
+    let to_dyn a_to_dyn t =
+      to_dyn (fun l -> Dyn.List (List.map ~f:a_to_dyn l)) t
   end
-
-  exception Found of Key.t
-
-  let find_key t ~f =
-    match
-      iteri t ~f:(fun key _ -> if f key then raise_notrace (Found key) else ())
-    with
-    | () -> None
-    | exception Found e -> Some e
-
-  let to_dyn f t =
-    Dyn.Map (to_list t |> List.map ~f:(fun (k, v) -> (Key.to_dyn k, f v)))
-
-  let to_seq = to_seq
 end

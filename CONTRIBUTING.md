@@ -4,10 +4,13 @@ developed at [Jane Street][js] and is now maintained by Jane Street,
 community.
 
 Contributions to Dune are welcome and should be submitted via GitHub
-pull requests against the `main` branch. Dune is distributed under
-the MIT license and contributors are required to sign their work in
-order to certify that they have the right to submit it under this
-license. See the following section for more details.
+pull requests against the `main` branch. See [./doc/hacking.rst][hack]
+for a guide to getting started on the code base.
+
+Dune is distributed under the MIT license and contributors are
+required to sign their work in order to certify that they have the
+right to submit it under this license. See the following section for
+more details.
 
 Signing contributions
 ---------------------
@@ -71,6 +74,7 @@ your commit automatically with `git commit -s`.
 [dco]: http://developercertificate.org/
 [js]: https://www.janestreet.com/
 [ocl]: http://ocamllabs.io/
+[hack]: ./doc/hacking.rst
 
 Coding style
 ------------

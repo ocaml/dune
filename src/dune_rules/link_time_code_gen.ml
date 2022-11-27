@@ -1,6 +1,4 @@
 open Import
-module CC = Compilation_context
-module SC = Super_context
 
 type t =
   { to_link : Lib_flags.Lib_and_module.L.t
@@ -9,14 +7,16 @@ type t =
 
 let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
     =
-  let sctx = CC.super_context cctx in
-  let obj_dir = CC.obj_dir cctx in
-  let dir = CC.dir cctx in
   let open Resolve.Memo.O in
-  let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
-  let gen_module = Module.generated ~src_dir name in
-  let* wrapped = Lib.wrapped lib in
   let* module_ =
+    let gen_module =
+      let src_dir =
+        let obj_dir = Compilation_context.obj_dir cctx in
+        Obj_dir.obj_dir obj_dir
+      in
+      Module.generated ~kind:Impl ~src_dir name
+    in
+    let* wrapped = Lib.wrapped lib in
     match wrapped with
     | None -> Resolve.Memo.return gen_module
     | Some (Yes_with_transition _) ->
@@ -32,18 +32,22 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
   in
   let open Memo.O in
   let* () =
-    SC.add_rule ~dir sctx
+    let sctx = Compilation_context.super_context cctx in
+    let dir = Compilation_context.dir cctx in
+    Super_context.add_rule ~dir sctx
       (let ml =
          Module.file module_ ~ml_kind:Impl
          |> Option.value_exn |> Path.as_in_build_dir_exn
        in
        Action_builder.write_file_dyn ml code)
   in
-  let cctx =
-    Compilation_context.for_module_generated_at_link_time cctx ~requires
-      ~module_
+  let+ () =
+    let cctx =
+      Compilation_context.for_module_generated_at_link_time cctx ~requires
+        ~module_
+    in
+    Module_compilation.build_module ~precompiled_cmi cctx module_
   in
-  let+ () = Module_compilation.build_module ~precompiled_cmi cctx module_ in
   Resolve.return module_
 
 let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n")
@@ -65,12 +69,10 @@ let prvariants buf name preds =
       pr buf "%S" (Variant.to_string v))
 
 let sorted_public_lib_names libs =
-  List.filter_map
-    ~f:(fun lib ->
+  List.filter_map libs ~f:(fun lib ->
       let info = Lib.info lib in
       let status = Lib_info.status info in
       if Lib_info.Status.is_private status then None else Some (Lib.name lib))
-    libs
   |> List.sort ~compare:Lib_name.compare
 
 let findlib_init_code ~preds ~libs =
@@ -91,13 +93,6 @@ let build_info_code cctx ~libs ~api_version =
   let open Memo.O in
   (match api_version with
   | Lib_info.Special_builtin_support.Build_info.V1 -> ());
-  (* [placeholders] is a mapping from source path to variable names. For each
-     binding [(p, v)], we will generate the following code:
-
-     {[ let v = Placeholder "%%DUNE_PLACEHOLDER:...:vcs-describe:...:p%%" ]} *)
-  let gen_placeholder_var placeholders =
-    sprintf "p%d" (Path.Source.Map.cardinal placeholders)
-  in
   let placeholder placeholders p =
     Source_tree.nearest_vcs p >>| function
     | None -> ("None", placeholders)
@@ -114,6 +109,13 @@ let build_info_code cctx ~libs ~api_version =
       match Path.Source.Map.find placeholders p with
       | Some var -> (var, placeholders)
       | None ->
+        (* [placeholders] is a mapping from source path to variable names. For each
+           binding [(p, v)], we will generate the following code:
+
+           {[ let v = Placeholder "%%DUNE_PLACEHOLDER:...:vcs-describe:...:p%%" ]} *)
+        let gen_placeholder_var placeholders =
+          sprintf "p%d" (Path.Source.Map.cardinal placeholders)
+        in
         let var = gen_placeholder_var placeholders in
         let placeholders = Path.Source.Map.set placeholders p var in
         (var, placeholders))
@@ -123,12 +125,14 @@ let build_info_code cctx ~libs ~api_version =
     | Some v -> Memo.return (sprintf "Some %S" v, placeholders)
     | None -> placeholder placeholders (Package.dir p)
   in
-  let placeholders = Path.Source.Map.empty in
   let* version, placeholders =
+    let placeholders = Path.Source.Map.empty in
     match Compilation_context.package cctx with
     | Some p -> version_of_package placeholders p
     | None ->
-      let p = Path.Build.drop_build_context_exn (CC.dir cctx) in
+      let p =
+        Path.Build.drop_build_context_exn (Compilation_context.dir cctx)
+      in
       placeholder placeholders p
   in
   let+ libs, placeholders =
@@ -151,6 +155,8 @@ let build_info_code cctx ~libs ~api_version =
         ((Lib.name lib, v) :: libs, placeholders))
   in
   let libs = List.rev libs in
+  let context = Compilation_context.context cctx in
+  let ocaml_version = Ocaml.Version.of_ocaml_config context.ocaml_config in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   pr buf
@@ -168,7 +174,11 @@ let build_info_code cctx ~libs ~api_version =
     None
 [@@inline never]
 |ocaml};
-  let fmt_eval : _ format6 = "let %s = eval %S" in
+  let fmt_eval : _ format6 =
+    if Ocaml.Version.has_sys_opaque_identity ocaml_version then
+      "let %s = eval (Sys.opaque_identity %S)"
+    else "let %s = eval %S"
+  in
   Path.Source.Map.iteri placeholders ~f:(fun path var ->
       pr buf fmt_eval var
         (Artifact_substitution.encode ~min_len:64 (Vcs_describe path)));
@@ -218,9 +228,9 @@ let findlib_predicates_set_by_dune pred =
 
 let handle_special_libs cctx =
   let ( let& ) m f = Resolve.Memo.bind m ~f in
-  let& all_libs = CC.requires_link cctx in
+  let& all_libs = Compilation_context.requires_link cctx in
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
-  let sctx = CC.super_context cctx in
+  let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let open Memo.O in
   let* builtins =
@@ -258,7 +268,7 @@ let handle_special_libs cctx =
           let requires =
             (* This shouldn't fail since findlib.dynload depends on dynlink and
                findlib. That's why it's ok to use a dummy location. *)
-            let db = SC.public_libs sctx in
+            let* db = Scope.DB.public_libs ctx in
             let open Resolve.Memo.O in
             let+ dynlink =
               Lib.DB.resolve db (Loc.none, Lib_name.of_string "dynlink")
@@ -281,6 +291,7 @@ let handle_special_libs cctx =
             ~to_link_rev:(Module (obj_dir, module_) :: Lib lib :: to_link_rev)
             ~force_linkall:true
         | Configurator _ ->
+          (* TODO introduce a runtime dependency or replace with DAP *)
           process_libs libs ~to_link_rev:(Lib lib :: to_link_rev) ~force_linkall
         | Dune_site { data_module; plugins } ->
           let code =

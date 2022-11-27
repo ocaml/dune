@@ -1,10 +1,16 @@
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
+   Copyright (c) 2011 The cmdliner programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   cmdliner v1.0.4-31-gb5d6161
   ---------------------------------------------------------------------------*)
 
 (** A few helpful base definitions. *)
+
+val uid : unit -> int
+(** [uid ()] is new unique for the program run. *)
+
+val suggest : string -> string list -> string list
+(** [suggest near candidates]  suggest values from [candidates]
+    not too far from [near]. *)
 
 (** {1:fmt Formatting helpers} *)
 
@@ -17,10 +23,10 @@ val pp_tokens : spaces:bool -> Format.formatter -> string -> unit
 val quote : string -> string
 val alts_str : ?quoted:bool -> string list -> string
 val err_ambiguous : kind:string -> string -> ambs:string list -> string
-val err_unknown : ?hints:string list -> kind:string -> string -> string
+val err_unknown :
+  ?dom:string list -> ?hints:string list -> kind:string -> string -> string
 val err_multi_def :
   kind:string -> string -> ('b -> string) -> 'b -> 'b -> string
- val err_no_sub_command : string
 
 (** {1:conv Textual OCaml value converters} *)
 
@@ -29,6 +35,7 @@ type 'a printer = Format.formatter -> 'a -> unit
 type 'a conv = 'a parser * 'a printer
 
 val some : ?none:string -> 'a conv -> 'a option conv
+val some' : ?none:'a -> 'a conv -> 'a option conv
 val bool : bool conv
 val char : char conv
 val int : int conv
@@ -53,7 +60,7 @@ val t4 :
 val env_bool_parse : bool parser
 
 (*---------------------------------------------------------------------------
-   Copyright (c) 2011 Daniel C. Bünzli
+   Copyright (c) 2011 The cmdliner programmers
 
    Permission to use, copy, modify, and/or distribute this software for any
    purpose with or without fee is hereby granted, provided that the above

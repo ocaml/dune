@@ -743,6 +743,7 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune exec ./main.exe --root=some/dir
   Entering directory 'some/dir'
+  Leaving directory 'some/dir'
   Answer = 42
 
 ----------------------------------------------------------------------------------
@@ -791,6 +792,7 @@ Testsuite for the (foreign_library ...) stanza.
   2 |  (archive_name some/path/id)
                      ^^^^^^^^^^^^
   Error: Path separators are not allowed in archive names.
+  Leaving directory 'github2914/dir'
   [1]
 
 ----------------------------------------------------------------------------------
@@ -902,5 +904,6 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
   $ dune build --root stubs_in_libs
   Entering directory 'stubs_in_libs'
+  Leaving directory 'stubs_in_libs'
   $ stubs_in_libs/_build/default/main.exe
   12

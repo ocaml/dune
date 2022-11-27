@@ -3,8 +3,6 @@ _build
 /_boot
 _perf
 *.install
-.merlin
-*.corrected
 
 # vim swap files
 *.swp
@@ -16,10 +14,13 @@ _perf
 # vscode settings
 .vscode
 
+# git-ps hooks
+.git-ps
+
 .duneboot.*
-/boot/*.cm*
-dune.exe
 Makefile.dev
 src/dune_rules/setup.ml
+result
 
 .DS_Store
+nix/profiles/

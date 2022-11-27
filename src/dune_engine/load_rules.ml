@@ -82,7 +82,7 @@ let get_dir_triage ~dir =
     Dir_triage.Known (Source { files })
   | External dir_ext ->
     let+ files =
-      Fs_memo.dir_contents dir >>| function
+      Fs_memo.dir_contents (External dir_ext) >>| function
       | Error (Unix.ENOENT, _, _) -> Path.External.Set.empty
       | Error unix_error ->
         User_warning.emit
@@ -279,11 +279,12 @@ let no_rule_found ~loc fn =
       [ ("fn", Path.Build.to_dyn fn) ]
 
 let source_or_external_file_digest path =
-  assert (not (Path.is_in_build_dir path));
   let report_user_error details =
     let+ loc = Current_rule_loc.get () in
     User_error.raise ?loc
-      ([ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
+      ([ Pp.textf "File unavailable: %s"
+           (Path.Outside_build_dir.to_string_maybe_quoted path)
+       ]
       @ details)
   in
   Fs_memo.file_digest path >>= function
@@ -302,10 +303,11 @@ let source_or_external_file_digest path =
 let eval_source_file : type a. a Action_builder.eval_mode -> Path.t -> a Memo.t
     =
  fun mode path ->
+  let path_outside_build_dir = Path.as_outside_build_dir_exn path in
   match mode with
   | Lazy -> Memo.return ()
   | Eager ->
-    let+ d = source_or_external_file_digest path in
+    let+ d = source_or_external_file_digest path_outside_build_dir in
     Dep.Fact.file path d
 
 module rec Load_rules : sig
@@ -576,7 +578,7 @@ end = struct
         match Dir_triage.Build_directory.parent d with
         | None ->
           Code_error.raise
-            "[gen_rules] returned Redirect_to_parent on a root direcoty"
+            "[gen_rules] returned Redirect_to_parent on a root directory"
             [ ( "context_or_install"
               , Context_or_install.to_dyn context_or_install )
             ]
@@ -630,37 +632,6 @@ end = struct
             && Subdir_set.mem build_dir_only_sub_dirs name
           then report_rule_internal_dir_conflict name loc);
       let* rules_produced = Memo.Lazy.force rules in
-      let () =
-        let real_directory_targets = Rules.directory_targets rules_produced in
-        if
-          not
-            (Path.Build.Map.equal real_directory_targets directory_targets
-               ~equal:(fun _ _ ->
-                 (* The locations should match if the declration knows which
-                    rule will generate the directory, but it it's not necessary
-                    as the rule's actual location has higher priority. *)
-                 true))
-        then
-          let mismatched_directories =
-            let error message loc =
-              Dyn.record
-                [ ("message", Dyn.string message); ("loc", Loc.to_dyn_hum loc) ]
-            in
-            Path.Build.Map.merge real_directory_targets directory_targets
-              ~f:(fun _ generated declared ->
-                match (generated, declared) with
-                | None, None | Some _, Some _ -> None
-                | Some loc, None -> Some (error "not declared" loc)
-                | None, Some loc -> Some (error "not generated" loc))
-          in
-          Code_error.raise
-            "gen_rules returned a set of directory targets that doesn't match \
-             the set of directory targets from returned rules"
-            [ ("dir", Path.Build.to_dyn dir)
-            ; ( "mismatched_directories"
-              , Path.Build.Map.to_dyn Fun.id mismatched_directories )
-            ]
-      in
       let rules =
         let dir = Path.build dir in
         Rules.find rules_produced dir
@@ -813,6 +784,37 @@ end = struct
       in
       let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
       let rules_here = compile_rules ~dir ~source_dirs rules in
+      let () =
+        let real_directory_targets = Rules.directory_targets rules_produced in
+        if
+          not
+            (Path.Build.Map.equal real_directory_targets directory_targets
+               ~equal:(fun _ _ ->
+                 (* The locations should match if the declaration knows which
+                    rule will generate the directory, but it's not necessary
+                    as the rule's actual location has higher priority. *)
+                 true))
+        then
+          let mismatched_directories =
+            let error message loc =
+              Dyn.record
+                [ ("message", Dyn.string message); ("loc", Loc.to_dyn_hum loc) ]
+            in
+            Path.Build.Map.merge real_directory_targets directory_targets
+              ~f:(fun _ generated declared ->
+                match (generated, declared) with
+                | None, None | Some _, Some _ -> None
+                | Some loc, None -> Some (error "not declared" loc)
+                | None, Some loc -> Some (error "not generated" loc))
+          in
+          Code_error.raise
+            "gen_rules returned a set of directory targets that doesn't match \
+             the set of directory targets from returned rules"
+            [ ("dir", Path.Build.to_dyn dir)
+            ; ( "mismatched_directories"
+              , Path.Build.Map.to_dyn Fun.id mismatched_directories )
+            ]
+      in
       remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
       remove_old_sub_dirs_in_anonymous_actions_dir
         ~dir:
@@ -830,6 +832,10 @@ end = struct
         { Loaded.allowed_subdirs = descendants_to_keep; rules_here; aliases }
 
   let load_dir_impl ~dir : Loaded.t Memo.t =
+    if !Clflags.debug_load_dir then
+      Console.print_user_message
+        (User_message.make
+           [ Pp.textf "Loading build directory %s" (Path.to_string dir) ]);
     get_dir_triage ~dir >>= function
     | Known l -> Memo.return l
     | Build_directory x -> load_build_directory_exn x
@@ -882,17 +888,16 @@ type rule_or_source =
   | Rule of Path.Build.t * Rule.t
 
 let get_rule_or_source path =
-  let dir = Path.parent_exn path in
-  if Path.is_strict_descendant_of_build_dir dir then
-    let path = Path.as_in_build_dir_exn path in
+  match Path.destruct_build_dir path with
+  | `Outside path ->
+    let+ d = source_or_external_file_digest path in
+    Source d
+  | `Inside path -> (
     get_rule_internal path >>= function
     | Some rule -> Memo.return (Rule (path, rule))
     | None ->
       let* loc = Current_rule_loc.get () in
-      no_rule_found ~loc path
-  else
-    let+ d = source_or_external_file_digest path in
-    Source d
+      no_rule_found ~loc path)
 
 type target_type =
   | File

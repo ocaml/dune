@@ -1,0 +1,4 @@
+(library
+ (name lib)
+ (modes melange)
+ (private_modules x))

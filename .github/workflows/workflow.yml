@@ -1,11 +1,20 @@
-name: Main workflow
+name: CI
 
 on:
   - push
   - pull_request
+  - workflow_dispatch
+
+concurrency:
+  group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build
     strategy:
       fail-fast: false
       matrix:
@@ -20,22 +29,8 @@ jobs:
         # 4.02.x and 4.07.x in other environments
         ocaml-compiler:
           - 4.14.x
-        skip_test:
-          - false
         include:
           - ocaml-compiler: 4.13.x
-            os: ubuntu-latest
-            skip_test: true
-          - ocaml-compiler: 4.12.x
-            os: ubuntu-latest
-            skip_test: true
-          - ocaml-compiler: 4.11.x
-            os: ubuntu-latest
-            skip_test: true
-          - ocaml-compiler: 4.10.x
-            os: ubuntu-latest
-            skip_test: true
-          - ocaml-compiler: 4.09.x
             os: ubuntu-latest
             skip_test: true
           - ocaml-compiler: 4.08.x
@@ -81,10 +76,10 @@ jobs:
 
       # dune doesn't have any additional dependencies so we can build it right
       # away this makes it possible to see build errors as soon as possible
-      - run: opam exec -- make dune.exe
+      - run: opam exec -- make _boot/dune.exe
 
       # Ensure Dune can build itself
-      - run: opam exec -- ./dune.exe build -p dune --profile dune-bootstrap
+      - run: opam exec -- make bootstrap
 
       - name: Install deps on Unix
         run: |
@@ -104,10 +99,58 @@ jobs:
         run: opam exec -- make test-windows
         if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
 
-      - name: Test source is well formatted
-        run: opam exec -- make fmt
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.ocaml-compiler == '4.14.x' }}
-
       - name: Build configurator
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}
+
+  nix:
+    name: Nix
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v18
+      - run: nix build
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v18
+      - run: nix develop .#fmt -c make fmt
+
+  doc:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v18
+      - run: nix develop .#doc -c make doc
+
+  coq:
+    name: Coq 8.16.0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Use OCaml 4.14.x
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.14.x
+          opam-pin: false
+          opam-depext: false
+          dune-cache: true
+
+      - name: Install Coq
+        run: opam install coq.8.16.0 coq-native
+
+      - run: opam exec -- make test-coq
+        env:
+          # We disable the Dune cache when running the tests
+          DUNE_CACHE: disabled

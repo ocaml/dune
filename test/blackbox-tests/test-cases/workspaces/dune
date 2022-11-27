@@ -1,0 +1,3 @@
+(cram
+ (applies_to multiple-merlin-contexts opam)
+ (deps %{bin:opam}))

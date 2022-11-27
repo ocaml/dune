@@ -77,7 +77,8 @@ module Lib = struct
        ; mode_paths "archives" archives
        ; mode_paths "plugins" plugins
        ; paths "foreign_objects" foreign_objects
-       ; paths "foreign_archives" (Lib_info.foreign_archives info)
+       ; field_i "foreign_archives" (Mode.Map.encode path)
+           (Lib_info.foreign_archives info)
        ; paths "native_archives" native_archives
        ; paths "jsoo_runtime" jsoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
@@ -86,7 +87,7 @@ module Lib = struct
        ; field_o "default_implementation" (no_loc Lib_name.encode)
            default_implementation
        ; field_o "main_module_name" Module_name.encode main_module_name
-       ; field_l "modes" sexp (Mode.Dict.Set.encode modes)
+       ; field_l "modes" sexp (Mode.Dict.Set.encode modes.ocaml)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
        ; field_o "modules" Modules.encode modules
        ; field_o "special_builtin_support"
@@ -133,10 +134,17 @@ module Lib = struct
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
        and+ foreign_archives =
-         if lang.version >= (2, 0) then paths "foreign_archives"
+         if lang.version >= (3, 5) then
+           let+ field_o = field_o "foreign_archives" (Mode.Map.decode path) in
+           match field_o with
+           | Some archives -> archives
+           | None -> Mode.Map.empty
+         else if lang.version >= (2, 0) then
+           let+ paths = paths "foreign_archives" in
+           Mode.Map.Multi.create_for_all_modes paths
          else
            let+ m = mode_paths "foreign_archives" in
-           m.byte
+           Mode.Map.Multi.create_for_all_modes m.byte
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
@@ -146,10 +154,7 @@ module Lib = struct
        and+ orig_src_dir = field_o "orig_src_dir" path
        and+ modules =
          let src_dir = Obj_dir.dir obj_dir in
-         field "modules"
-           (Modules.decode
-              ~implements:(Option.is_some implements)
-              ~src_dir ~version:lang.version)
+         field "modules" (Modules.decode ~src_dir)
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
@@ -183,6 +188,7 @@ module Lib = struct
            Some (Lib_info.Inherited.This (Modules.wrapped modules))
          in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
+         let modes = { Lib_mode.Map.ocaml = modes; melange = false } in
          Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
            ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
            ~sub_systems ~requires ~foreign_objects ~plugins ~archives
@@ -415,13 +421,14 @@ module Or_meta = struct
 
   let load file =
     let dir = Path.parent_exn file in
-    Fs_memo.with_lexbuf_from_file file ~f:(fun lexbuf ->
-        (* XXX stop catching code errors, invalid args, etc. *)
-        Result.try_with (fun () ->
-            Vfile.parse_contents lexbuf ~f:(fun lang ->
-                String_with_vars.set_decoding_env
-                  (Pform.Env.initial lang.version)
-                  (decode ~lang ~dir))))
+    Path.as_outside_build_dir_exn file
+    |> Fs_memo.with_lexbuf_from_file ~f:(fun lexbuf ->
+           (* XXX stop catching code errors, invalid args, etc. *)
+           Result.try_with (fun () ->
+               Vfile.parse_contents lexbuf ~f:(fun lang ->
+                   String_with_vars.set_decoding_env
+                     (Pform.Env.initial lang.version)
+                     (decode ~lang ~dir))))
 
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in

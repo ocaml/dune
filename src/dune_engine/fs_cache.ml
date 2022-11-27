@@ -6,24 +6,31 @@ open Import
 
 type 'a t =
   { name : string (* For debugging *)
-  ; sample : Path.t -> 'a
-  ; cache : 'a Path.Table.t
+  ; sample : Path.Outside_build_dir.t -> 'a
+  ; cache : 'a Path.Outside_build_dir.Table.t
   ; equal : 'a -> 'a -> bool (* Used to implement cutoff *)
-  ; update_hook : Path.t -> unit (* Run this hook before updating an entry. *)
+  ; update_hook :
+         Path.Outside_build_dir.t
+      -> unit (* Run this hook before updating an entry. *)
   }
 
-let create ?(update_hook = fun _path -> ()) name ~sample ~equal =
-  { name; sample; equal; cache = Path.Table.create 128; update_hook }
+let create ?(update_hook = fun _path -> ()) name ~sample ~equal : 'a t =
+  { name
+  ; sample
+  ; equal
+  ; cache = Path.Outside_build_dir.Table.create 128
+  ; update_hook
+  }
 
 let read { sample; cache; _ } path =
-  match Path.Table.find cache path with
+  match Path.Outside_build_dir.Table.find cache path with
   | Some cached_result -> cached_result
   | None ->
     let result = sample path in
-    Path.Table.add_exn cache path result;
+    Path.Outside_build_dir.Table.add_exn cache path result;
     result
 
-let evict { cache; _ } path = Path.Table.remove cache path
+let evict { cache; _ } path = Path.Outside_build_dir.Table.remove cache path
 
 module Update_result = struct
   type t =
@@ -45,7 +52,7 @@ module Update_result = struct
 end
 
 let update { sample; cache; equal; update_hook; _ } path =
-  match Path.Table.find cache path with
+  match Path.Outside_build_dir.Table.find cache path with
   | None -> Update_result.Skipped
   | Some old_result -> (
     update_hook path;
@@ -53,7 +60,7 @@ let update { sample; cache; equal; update_hook; _ } path =
     match equal old_result new_result with
     | true -> Updated { changed = false }
     | false ->
-      Path.Table.set cache path new_result;
+      Path.Outside_build_dir.Table.set cache path new_result;
       Updated { changed = true })
 
 module Reduced_stats = struct
@@ -102,7 +109,9 @@ end
 module Untracked = struct
   let path_stat =
     let sample path =
-      Path.Untracked.stat path |> Result.map ~f:Reduced_stats.of_unix_stats
+      Path.outside_build_dir path
+      |> Path.Untracked.stat
+      |> Result.map ~f:Reduced_stats.of_unix_stats
     in
     create "path_stat" ~sample
       ~equal:(Result.equal Reduced_stats.equal Unix_error.Detailed.equal)
@@ -111,15 +120,20 @@ module Untracked = struct
      module and [cached_digest.ml]. In particular, digests are stored twice, in
      two separate tables. We should find a way to merge the tables into one. *)
   let file_digest =
-    let sample = Cached_digest.Untracked.source_or_external_file in
-    let update_hook = Cached_digest.Untracked.invalidate_cached_timestamp in
+    let sample p =
+      Cached_digest.Untracked.source_or_external_file (Path.outside_build_dir p)
+    in
+    let update_hook p =
+      Cached_digest.Untracked.invalidate_cached_timestamp
+        (Path.outside_build_dir p)
+    in
     create "file_digest" ~sample ~update_hook
       ~equal:Cached_digest.Digest_result.equal
 
   let dir_contents =
     create "dir_contents"
       ~sample:(fun path ->
-        Path.Untracked.readdir_unsorted_with_kinds path
+        Path.Untracked.readdir_unsorted_with_kinds (Path.outside_build_dir path)
         |> Result.map ~f:Dir_contents.of_list)
       ~equal:(Result.equal Dir_contents.equal Unix_error.Detailed.equal)
 end

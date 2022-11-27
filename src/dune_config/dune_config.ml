@@ -2,6 +2,7 @@ open Stdune
 open Dune_lang.Decoder
 module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
+module Console = Dune_console
 module Stanza = Dune_lang.Stanza
 module Config = Dune_util.Config
 module String_with_vars = Dune_lang.String_with_vars
@@ -16,15 +17,21 @@ module Terminal_persistence = struct
   type t =
     | Preserve
     | Clear_on_rebuild
+    | Clear_on_rebuild_and_flush_history
 
-  let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
+  let all =
+    [ ("preserve", Preserve)
+    ; ("clear-on-rebuild", Clear_on_rebuild)
+    ; ("clear-on-rebuild-and-flush-history", Clear_on_rebuild_and_flush_history)
+    ]
 
   let to_dyn = function
     | Preserve -> Dyn.Variant ("Preserve", [])
     | Clear_on_rebuild -> Dyn.Variant ("Clear_on_rebuild", [])
+    | Clear_on_rebuild_and_flush_history ->
+      Variant ("Clear_on_rebuild_and_flush_history", [])
 
-  let decode =
-    enum [ ("perserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
+  let decode = enum all
 end
 
 module Concurrency = struct
@@ -425,7 +432,7 @@ let auto_concurrency =
       in
       loop commands)
 
-let for_scheduler (t : t) rpc stats =
+let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
   let concurrency =
     match t.concurrency with
     | Fixed i -> i
@@ -434,4 +441,9 @@ let for_scheduler (t : t) rpc stats =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n
   in
-  { Scheduler.Config.concurrency; display = t.display; rpc; stats }
+  { Scheduler.Config.concurrency
+  ; display = t.display
+  ; stats
+  ; insignificant_changes
+  ; signal_watcher
+  }

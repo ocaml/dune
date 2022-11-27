@@ -9,21 +9,19 @@ open! Import
    in the source tree, or creates a new file with the same name. *)
 module To_delete = struct
   module P = Dune_util.Persistent.Make (struct
-    (* CR-someday amokhov: This should really be a [Path.Source.Set.t] but
-       changing it now would require bumping the [version]. Should we do it? *)
-    type t = Path.Set.t
+    type t = Path.Source.Set.t
 
     let name = "PROMOTED-TO-DELETE"
 
-    let version = 1
+    let version = 2
 
-    let to_dyn = Path.Set.to_dyn
+    let to_dyn = Path.Source.Set.to_dyn
   end)
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
 
   (* [db] is used to accumulate promoted files from rules. *)
-  let db = lazy (ref (Option.value ~default:Path.Set.empty (P.load fn)))
+  let db = lazy (ref (Option.value ~default:Path.Source.Set.empty (P.load fn)))
 
   let get_db () = !(Lazy.force db)
 
@@ -39,23 +37,21 @@ module To_delete = struct
       needs_dumping := true
 
   let add p =
-    let p = Path.source p in
     modify_db (fun db ->
-        if Path.Set.mem db p then None else Some (Path.Set.add db p))
+        if Path.Source.Set.mem db p then None
+        else Some (Path.Source.Set.add db p))
 
   let remove p =
-    let p = Path.source p in
     modify_db (fun db ->
-        if Path.Set.mem db p then Some (Path.Set.remove db p) else None)
+        if Path.Source.Set.mem db p then Some (Path.Source.Set.remove db p)
+        else None)
 
   let dump () =
     if !needs_dumping && Path.build_dir_exists () then (
       needs_dumping := false;
       get_db () |> P.dump fn)
 
-  let mem p =
-    let p = Path.source p in
-    Path.Set.mem !(Lazy.force db) p
+  let mem p = Path.Source.Set.mem !(Lazy.force db) p
 
   let () = Hooks.End_of_build.always dump
 end
@@ -101,7 +97,7 @@ let promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
      the tracked [Fs_memo.file_digest] to subscribe to the promotion result. *)
   let* promoted =
     match
-      Fs_cache.read Fs_cache.Untracked.file_digest (Path.source dst)
+      Fs_cache.read Fs_cache.Untracked.file_digest (In_source_dir dst)
       |> Cached_digest.Digest_result.to_option
     with
     | Some dst_digest when Digest.equal src_digest dst_digest ->
@@ -128,7 +124,7 @@ let promote_target_if_not_up_to_date ~src ~src_digest ~dst ~promote_source
       true
   in
   let+ dst_digest_result =
-    Memo.run (Fs_memo.file_digest ~force_update:promoted (Path.source dst))
+    Memo.run (Fs_memo.file_digest ~force_update:promoted (In_source_dir dst))
   in
   match Cached_digest.Digest_result.to_option dst_digest_result with
   | Some dst_digest ->
@@ -183,7 +179,7 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
             (User_message.Annots.singleton User_message.Annots.needs_stack_trace
                ())
       in
-      Memo.run (Fs_memo.path_kind (Path.source into_dir)) >>| function
+      Memo.run (Fs_memo.path_kind (In_source_dir into_dir)) >>| function
       | Ok S_DIR ->
         fun src -> Path.Source.relative into_dir (Path.Build.basename src)
       | Ok _other_kind -> promote_into_error (Pp.textf "%S is not a directory.")
@@ -206,17 +202,18 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
         (User_message.Annots.singleton User_message.Annots.needs_stack_trace ())
   in
   let create_directory_if_needed ~dir =
-    let dst_dir = Path.source (relocate dir) in
+    let dst_dir = relocate dir in
     (* It is OK to use [Untracked.path_stat] on [dst_dir] here because below we
        will use [Fs_memo.dir_contents] to subscribe to [dst_dir]'s contents, so
        Dune will notice its deletion. Furthermore, if we used a tracked version,
        [Path.mkdir_p] below would generate an unnecessary file-system event. *)
-    match Fs_cache.(read Untracked.path_stat) dst_dir with
+    match Fs_cache.(read Untracked.path_stat) (In_source_dir dst_dir) with
     | Ok { st_kind; _ } when st_kind = S_DIR -> ()
-    | Error (ENOENT, _, _) -> Path.mkdir_p dst_dir
+    | Error (ENOENT, _, _) -> Path.mkdir_p (Path.source dst_dir)
     | Ok _ | Error _ -> (
       (* Try to delete any unexpected stuff out of the way. In future, we might
          want to make this aggressive cleaning behaviour conditional. *)
+      let dst_dir = Path.source dst_dir in
       match
         Unix_error.Detailed.catch
           (fun () ->
@@ -249,11 +246,14 @@ let promote ~dir ~(targets : _ Targets.Produced.t) ~promote ~promote_source =
   (* There can be some files or directories left over from earlier builds, so we
      need to remove them from [targets.dirs]. *)
   let remove_stale_files_and_subdirectories ~dir ~expected_filenames =
-    let dst_dir = Path.source (relocate dir) in
+    let dst_dir = relocate dir in
     (* We use a tracked version to subscribe to the correct directory listing.
        In this way, if a user manually creates a file inside a directory target,
        this function will rerun and remove it. *)
-    Memo.run (Fs_memo.dir_contents ~force_update:true dst_dir) >>| function
+    Memo.run (Fs_memo.dir_contents ~force_update:true (In_source_dir dst_dir))
+    >>|
+    let dst_dir = Path.source dst_dir in
+    function
     | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
     | Ok dir_contents ->
       Fs_cache.Dir_contents.iter dir_contents ~f:(function

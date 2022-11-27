@@ -1,0 +1,18 @@
+(library
+ (name foo)
+ (modules :standard \ prog)
+ (libraries a________ b________ c________)
+ (preprocess (pps d________ e________ f________)))
+
+(rule
+ (with-stdout-to file.ml
+  (echo %{lib-available:optional})))
+
+(rule (with-stdout-to foo.ml (run prog)))
+
+(executable
+ (name prog)
+ (modules prog)
+ (libraries h________ i________ j________))
+
+(rule (with-stdout-to prog.ml (echo "")))

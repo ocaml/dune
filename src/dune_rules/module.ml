@@ -31,14 +31,19 @@ module Kind = struct
     | Wrapped_compat
     | Root
 
-  let to_string = function
-    | Intf_only -> "intf_only"
-    | Virtual -> "virtual"
-    | Impl -> "impl"
-    | Alias -> "alias"
-    | Impl_vmodule -> "impl_vmodule"
-    | Wrapped_compat -> "wrapped_compat"
-    | Root -> "root"
+  let all =
+    [ (Intf_only, "intf_only")
+    ; (Virtual, "virtual")
+    ; (Impl, "impl")
+    ; (Alias, "alias")
+    ; (Impl_vmodule, "impl_vmodule")
+    ; (Wrapped_compat, "wrapped_compat")
+    ; (Root, "root")
+    ]
+
+  let rev_all = List.rev_map ~f:(fun (x, y) -> (y, x)) all
+
+  let to_string s = Option.value_exn (List.assoc all s)
 
   let to_dyn t = Dyn.string (to_string t)
 
@@ -46,15 +51,7 @@ module Kind = struct
 
   let decode =
     let open Dune_lang.Decoder in
-    enum
-      [ ("intf_only", Intf_only)
-      ; ("virtual", Virtual)
-      ; ("impl", Impl)
-      ; ("alias", Alias)
-      ; ("impl_vmodule", Impl_vmodule)
-      ; ("wrapped_compat", Wrapped_compat)
-      ; ("root", Root)
-      ]
+    enum rev_all
 
   let has_impl = function
     | Alias | Impl_vmodule | Wrapped_compat | Root | Impl -> true
@@ -101,6 +98,11 @@ module Source = struct
     | Ml_kind.Impl -> { t with files = { t.files with impl = Some file } }
     | Intf -> { t with files = { t.files with intf = Some file } }
 
+  let set_source t ml_kind file =
+    match ml_kind with
+    | Ml_kind.Impl -> { t with files = { t.files with impl = file } }
+    | Intf -> { t with files = { t.files with intf = file } }
+
   let src_dir t = Path.parent_exn (choose_file t).path
 
   let map_files t ~f =
@@ -125,6 +127,7 @@ let pp_flags t = t.pp
 let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match (kind, visibility) with
   | (Alias | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
+  | Root, Private
   | (Impl | Intf_only), _ -> ()
   | _, _ ->
     Code_error.raise "Module.of_source: invalid kind, visibility combination"
@@ -177,6 +180,10 @@ let with_wrapper t ~main_module_name =
 
 let add_file t kind file =
   let source = Source.add_file t.source kind file in
+  { t with source }
+
+let set_source t kind file =
+  let source = Source.set_source t.source kind file in
   { t with source }
 
 let map_files t ~f =
@@ -308,27 +315,23 @@ let ml_source =
 
 let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
-let generated ~src_dir name =
-  let basename = String.uncapitalize (Module_name.to_string name) in
+let generated ~(kind : Kind.t) ~src_dir name =
   let obj_name = Module_name.Unique.of_name_assuming_needs_no_mangling name in
   let source =
     let impl =
+      let basename = String.uncapitalize (Module_name.to_string name) in
       (* XXX should we use the obj_name here? *)
-      File.make Dialect.ocaml (Path.relative src_dir (basename ^ ml_gen))
+      Path.Build.relative src_dir (basename ^ ml_gen)
+      |> Path.build |> File.make Dialect.ocaml
     in
     Source.make ~impl name
   in
-  of_source ~visibility:Public ~kind:Impl ~obj_name source
-
-let generated_alias ~src_dir name =
-  let src_dir = Path.build src_dir in
-  let t = generated ~src_dir name in
-  { t with kind = Alias }
-
-let generated_root ~src_dir name =
-  let src_dir = Path.build src_dir in
-  let t = generated ~src_dir name in
-  { t with kind = Root; visibility = Private }
+  let visibility : Visibility.t =
+    match kind with
+    | Root -> Private
+    | _ -> Public
+  in
+  of_source ~visibility ~kind ~obj_name source
 
 let of_source ~visibility ~kind source = of_source ~visibility ~kind source
 
@@ -343,14 +346,11 @@ module Name_map = struct
     Module_name.Map.of_list_map_exn ~f:(fun m -> (name m, m)) modules
 
   let encode t =
-    Module_name.Map.values t |> List.map ~f:(fun x -> Dune_lang.List (encode x))
-
-  let impl_only =
-    Module_name.Map.fold ~init:[] ~f:(fun m acc ->
-        if has m ~ml_kind:Impl then m :: acc else acc)
+    Module_name.Map.to_list_map t ~f:(fun _ x -> Dune_lang.List (encode x))
 
   let of_list_exn modules =
-    List.map modules ~f:(fun m -> (name m, m)) |> Module_name.Map.of_list_exn
+    List.rev_map modules ~f:(fun m -> (name m, m))
+    |> Module_name.Map.of_list_exn
 
   let add t module_ = Module_name.Map.set t (name module_) module_
 end

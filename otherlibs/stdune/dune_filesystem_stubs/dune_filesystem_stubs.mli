@@ -11,6 +11,8 @@ module Unix_error : sig
   module Detailed : sig
     type nonrec t = t * string * string
 
+    val raise : t -> 'a
+
     val create : Unix.error -> syscall:string -> arg:string -> t
 
     (** Apply a function to an argument, catching a detailed Unix error. *)

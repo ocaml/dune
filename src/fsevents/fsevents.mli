@@ -44,17 +44,17 @@ module Event : sig
   val kind : t -> kind
 
   type action =
+    | Create (* [path t] guaranteed to exist *)
+    | Remove (* [path t] guaranteed to be absent *)
+    | Modify (* [path t] guaranteed to exist *)
+    | Rename
     | Unknown
         (** multiple actions merged into one by debouncing or an uninformative
             "rename". inspect the FS to see what happened *)
-    | Create (* [path t] guaranteed to exist *)
-    | Remove (* [path t] guaranteed to be absent *)
-    | Modify
-  (* [path t] guaranteed to exist *)
 
   val dyn_of_action : action -> Dyn.t
 
-  (** [action t] describes the action occured to [path t] *)
+  (** [action t] describes the action occurred to [path t] *)
   val action : t -> action
 end
 

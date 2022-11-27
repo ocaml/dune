@@ -619,7 +619,7 @@ let default_step1 clflags =
 
 let load_step1 clflags p =
   Fs_memo.with_lexbuf_from_file p ~f:(fun lb ->
-      if Dune_lang.Dune_lexer.eof_reached lb then default_step1 clflags
+      if Dune_lang.Dune_file_script.eof_reached lb then default_step1 clflags
       else
         parse_contents lb ~f:(fun lang ->
             String_with_vars.set_decoding_env
@@ -636,10 +636,10 @@ let workspace_step1 =
       match clflags.workspace_file with
       | None ->
         let p = Path.of_string filename in
-        let+ exists = Fs_memo.file_exists p in
+        let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn p) in
         Option.some_if exists p
       | Some p -> (
-        Fs_memo.file_exists p >>| function
+        Fs_memo.file_exists (Path.as_outside_build_dir_exn p) >>| function
         | true -> Some p
         | false ->
           User_error.raise
@@ -650,7 +650,9 @@ let workspace_step1 =
     let clflags = { clflags with workspace_file } in
     match workspace_file with
     | None -> Memo.return (default_step1 clflags)
-    | Some p -> load_step1 clflags p
+    | Some p ->
+      let p = Path.as_outside_build_dir_exn p in
+      load_step1 clflags p
   in
   let memo = Memo.lazy_ ~name:"workspaces-internal" f in
   fun () -> Memo.Lazy.force memo

@@ -114,13 +114,6 @@ val parallel_iter_set :
 
 val sequential_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 
-(** Returns a fiber which wraps the given fiber with calls to
-    Metrics.Timer.start/stop.
-
-    Note: This will measure the wall clock time between when the fiber starts
-    and finishes, including any time that it is inactive *)
-val record_metrics : 'a t -> tag:string -> 'a t
-
 (** Provide efficient parallel iter/map functions for maps. *)
 module Make_map_traversals (Map : Map.S) : sig
   val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
@@ -434,7 +427,7 @@ end
 (** {1 Fiber cancellation} *)
 module Cancel : sig
   (** This module provides a way to cancel long running computations.
-      Cancellation is fully explicit and fibers must explicitely check for it at
+      Cancellation is fully explicit and fibers must explicitly check for it at
       strategic points. *)
 
   type t

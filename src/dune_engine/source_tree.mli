@@ -13,11 +13,13 @@ module Dune_file : sig
 
   type t
 
+  val to_dyn : t -> Dyn.t
+
   val get_static_sexp : t -> Dune_lang.Ast.t list
 
   val kind : t -> kind
 
-  val path : t -> Path.Source.t
+  val path : t -> Path.Source.t option
 end
 
 module Dir : sig
@@ -94,9 +96,6 @@ val is_vendored : Path.Source.t -> bool Memo.t
 
 (** [true] iff the path is a file *)
 val file_exists : Path.Source.t -> bool Memo.t
-
-(** Return the execution parameters for the following directory *)
-val execution_parameters_of_dir : Path.Source.t -> Execution_parameters.t Memo.t
 
 (**/**)
 

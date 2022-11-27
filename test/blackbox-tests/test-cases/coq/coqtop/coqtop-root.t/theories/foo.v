@@ -1,0 +1,1 @@
+Definition answer := 42.

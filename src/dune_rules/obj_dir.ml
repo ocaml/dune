@@ -8,19 +8,29 @@ module Paths = struct
 
   let library_byte_dir ~obj_dir = Path.Build.relative obj_dir "byte"
 
-  let library_public_cmi_dir ~obj_dir = Path.Build.relative obj_dir "public_cmi"
+  let library_melange_dir ~obj_dir = Path.Build.relative obj_dir "melange"
+
+  let library_public_cmi_ocaml_dir ~obj_dir =
+    Path.Build.relative obj_dir "public_cmi"
+
+  let library_public_cmi_melange_dir ~obj_dir =
+    Path.Build.relative obj_dir "public_cmi_melange"
 
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let executable_object_directory ~dir name =
     Path.Build.relative dir ("." ^ name ^ ".eobjs")
+
+  let melange_object_directory ~dir name =
+    Path.Build.relative dir ("." ^ name ^ ".mobjs")
 end
 
 module External = struct
   type t =
     { public_dir : Path.t
     ; private_dir : Path.t option
-    ; public_cmi_dir : Path.t option
+    ; public_cmi_ocaml_dir : Path.t option
+    ; public_cmi_melange_dir : Path.t option
     }
 
   let equal : t -> t -> bool = Poly.equal
@@ -29,39 +39,60 @@ module External = struct
     let private_dir =
       if has_private_modules then Some (Path.relative dir ".private") else None
     in
-    let public_cmi_dir =
+    let public_cmi_ocaml_dir =
       if private_lib then Some (Path.relative dir ".public_cmi") else None
     in
-    { public_dir = dir; private_dir; public_cmi_dir }
+    let public_cmi_melange_dir =
+      if private_lib then Some (Path.relative dir ".public_cmi_melange")
+      else None
+    in
+    { public_dir = dir
+    ; private_dir
+    ; public_cmi_ocaml_dir
+    ; public_cmi_melange_dir
+    }
 
-  let public_cmi_dir t = Option.value ~default:t.public_dir t.public_cmi_dir
+  let public_cmi_ocaml_dir t =
+    Option.value ~default:t.public_dir t.public_cmi_ocaml_dir
 
-  let to_dyn { public_dir; private_dir; public_cmi_dir } =
+  let public_cmi_melange_dir t =
+    Option.value ~default:t.public_dir t.public_cmi_melange_dir
+
+  let to_dyn
+      { public_dir; private_dir; public_cmi_ocaml_dir; public_cmi_melange_dir }
+      =
     let open Dyn in
     record
       [ ("public_dir", Path.to_dyn public_dir)
       ; ("private_dir", option Path.to_dyn private_dir)
-      ; ("public_cmi_dir", option Path.to_dyn public_cmi_dir)
+      ; ("public_cmi_ocaml_dir", option Path.to_dyn public_cmi_ocaml_dir)
+      ; ("public_cmi_melange_dir", option Path.to_dyn public_cmi_melange_dir)
       ]
 
-  let cm_dir t (cm_kind : Cm_kind.t) (visibility : Visibility.t) =
+  let cm_dir t (cm_kind : Lib_mode.Cm_kind.t) (visibility : Visibility.t) =
     match (cm_kind, visibility, t.private_dir) with
-    | Cmi, Private, Some p -> p
-    | Cmi, Private, None ->
+    | (Ocaml Cmi | Melange Cmi), Private, Some p -> p
+    | (Ocaml Cmi | Melange Cmi), Private, None ->
       Code_error.raise "External.cm_dir" [ ("t", to_dyn t) ]
-    | Cmi, Public, _ -> public_cmi_dir t
-    | (Cmo | Cmx), _, _ -> t.public_dir
+    | Ocaml Cmi, Public, _ -> public_cmi_ocaml_dir t
+    | Melange Cmi, Public, _ -> public_cmi_melange_dir t
+    | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _ -> t.public_dir
 
-  let encode { public_dir; private_dir; public_cmi_dir } =
+  let encode
+      { public_dir
+      ; private_dir
+      ; public_cmi_ocaml_dir
+      ; public_cmi_melange_dir = _
+      } =
     let open Dune_lang.Encoder in
     let extract d =
       Path.descendant ~of_:public_dir d |> Option.value_exn |> Path.to_string
     in
     let private_dir = Option.map ~f:extract private_dir in
-    let public_cmi_dir = Option.map ~f:extract public_cmi_dir in
+    let public_cmi_ocaml_dir = Option.map ~f:extract public_cmi_ocaml_dir in
     record_fields
       [ field_o "private_dir" string private_dir
-      ; field_o "public_cmi_dir" string public_cmi_dir
+      ; field_o "public_cmi_dir" string public_cmi_ocaml_dir
       ]
 
   let decode ~dir =
@@ -69,14 +100,22 @@ module External = struct
     let open Dune_lang.Decoder in
     fields
       (let+ private_dir = field_o "private_dir" string
-       and+ public_cmi_dir = field_o "public_cmi_dir" string in
+       and+ public_cmi_ocaml_dir = field_o "public_cmi_dir" string in
        let private_dir = Option.map ~f:(Path.relative dir) private_dir in
-       let public_cmi_dir = Option.map ~f:(Path.relative dir) public_cmi_dir in
-       { public_dir; private_dir; public_cmi_dir })
+       let public_cmi_ocaml_dir =
+         Option.map ~f:(Path.relative dir) public_cmi_ocaml_dir
+       in
+       { public_dir
+       ; private_dir
+       ; public_cmi_ocaml_dir
+       ; public_cmi_melange_dir = None
+       })
 
   let byte_dir t = t.public_dir
 
   let native_dir t = t.public_dir
+
+  let melange_dir t = t.public_dir
 
   let dir t = t.public_dir
 
@@ -86,14 +125,26 @@ module External = struct
 
   let all_obj_dirs t ~mode:_ = [ t.public_dir ]
 
-  let all_cmis { public_dir; private_dir; public_cmi_dir } =
-    List.filter_opt [ Some public_dir; private_dir; public_cmi_dir ]
+  let all_cmis
+      { public_dir
+      ; private_dir
+      ; public_cmi_ocaml_dir
+      ; public_cmi_melange_dir = _
+      } =
+    List.filter_opt
+      [ Some public_dir
+      ; private_dir
+      ; public_cmi_ocaml_dir
+        (* TODO: might need to pass mode to conditionally include public_cmi_melange_dir *)
+      ]
 
-  let cm_public_dir t (cm_kind : Cm_kind.t) =
+  let cm_public_dir t (cm_kind : Lib_mode.Cm_kind.t) =
     match cm_kind with
-    | Cmx -> native_dir t
-    | Cmo -> byte_dir t
-    | Cmi -> public_cmi_dir t
+    | Ocaml Cmx -> native_dir t
+    | Ocaml Cmo -> byte_dir t
+    | Ocaml Cmi -> public_cmi_ocaml_dir t
+    | Melange Cmj -> melange_dir t
+    | Melange Cmi -> public_cmi_melange_dir t
 end
 
 module Local = struct
@@ -102,30 +153,58 @@ module Local = struct
     ; obj_dir : Path.Build.t
     ; native_dir : Path.Build.t
     ; byte_dir : Path.Build.t
-    ; public_cmi_dir : Path.Build.t option
+    ; melange_dir : Path.Build.t
+    ; public_cmi_ocaml_dir : Path.Build.t option
+    ; public_cmi_melange_dir : Path.Build.t option
     ; private_lib : bool
     }
 
   let equal : t -> t -> bool = Poly.equal
 
-  let to_dyn { dir; obj_dir; native_dir; byte_dir; public_cmi_dir; private_lib }
-      =
+  let to_dyn
+      { dir
+      ; obj_dir
+      ; native_dir
+      ; byte_dir
+      ; melange_dir
+      ; public_cmi_ocaml_dir
+      ; public_cmi_melange_dir
+      ; private_lib
+      } =
     let open Dyn in
     record
       [ ("dir", Path.Build.to_dyn dir)
       ; ("obj_dir", Path.Build.to_dyn obj_dir)
       ; ("native_dir", Path.Build.to_dyn native_dir)
       ; ("byte_dir", Path.Build.to_dyn byte_dir)
-      ; ("public_cmi_dir", option Path.Build.to_dyn public_cmi_dir)
+      ; ("melange_dir", Path.Build.to_dyn melange_dir)
+      ; ("public_cmi_ocaml_dir", option Path.Build.to_dyn public_cmi_ocaml_dir)
+      ; ( "public_cmi_melange_dir"
+        , option Path.Build.to_dyn public_cmi_melange_dir )
       ; ("private_lib", bool private_lib)
       ]
 
-  let make ~dir ~obj_dir ~native_dir ~byte_dir ~public_cmi_dir ~private_lib =
-    { dir; obj_dir; native_dir; byte_dir; public_cmi_dir; private_lib }
+  let make ~dir ~obj_dir ~native_dir ~byte_dir ~melange_dir
+      ~public_cmi_ocaml_dir ~public_cmi_melange_dir ~private_lib =
+    { dir
+    ; obj_dir
+    ; native_dir
+    ; byte_dir
+    ; melange_dir
+    ; public_cmi_ocaml_dir
+    ; public_cmi_melange_dir
+    ; private_lib
+    }
 
-  let need_dedicated_public_dir t = Option.is_some t.public_cmi_dir
+  let need_dedicated_public_dir t =
+    Option.is_some t.public_cmi_ocaml_dir
+    || Option.is_some t.public_cmi_melange_dir
 
-  let public_cmi_dir t = Option.value ~default:t.byte_dir t.public_cmi_dir
+  let public_cmi_ocaml_dir t =
+    Option.value ~default:t.byte_dir t.public_cmi_ocaml_dir
+
+  let public_cmi_melange_dir t =
+    Option.value ~default:t.melange_dir t.public_cmi_melange_dir
 
   let dir t = t.dir
 
@@ -135,44 +214,69 @@ module Local = struct
 
   let native_dir t = t.native_dir
 
+  let melange_dir t = t.melange_dir
+
   let odoc_dir t = t.byte_dir
 
-  let all_obj_dirs t ~(mode : Mode.t) =
-    let dirs = [ t.byte_dir; public_cmi_dir t ] in
-    let dirs =
-      match mode with
-      | Byte -> dirs
-      | Native -> t.native_dir :: dirs
-    in
-    Path.Build.Set.of_list dirs |> Path.Build.Set.to_list
+  let all_obj_dirs t ~(mode : Lib_mode.t) =
+    match mode with
+    | Ocaml mode ->
+      let dirs = [ t.byte_dir; public_cmi_ocaml_dir t ] in
+      let dirs =
+        match mode with
+        | Byte -> dirs
+        | Native -> t.native_dir :: dirs
+      in
+      Path.Build.Set.of_list dirs |> Path.Build.Set.to_list
+    | Melange ->
+      [ t.melange_dir; public_cmi_melange_dir t ]
+      |> Path.Build.Set.of_list |> Path.Build.Set.to_list
 
   let make_lib ~dir ~has_private_modules ~private_lib lib_name =
     let obj_dir = Paths.library_object_directory ~dir lib_name in
-    let public_cmi_dir =
-      Option.some_if has_private_modules (Paths.library_public_cmi_dir ~obj_dir)
+    let public_cmi_ocaml_dir =
+      Option.some_if has_private_modules
+        (Paths.library_public_cmi_ocaml_dir ~obj_dir)
+    in
+    let public_cmi_melange_dir =
+      Option.some_if has_private_modules
+        (Paths.library_public_cmi_melange_dir ~obj_dir)
     in
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
       ~byte_dir:(Paths.library_byte_dir ~obj_dir)
-      ~public_cmi_dir ~private_lib
+      ~melange_dir:(Paths.library_melange_dir ~obj_dir)
+      ~public_cmi_ocaml_dir ~public_cmi_melange_dir ~private_lib
 
   let make_exe ~dir ~name =
     let obj_dir = Paths.executable_object_directory ~dir name in
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
       ~byte_dir:(Paths.library_byte_dir ~obj_dir)
-      ~public_cmi_dir:None ~private_lib:false
+      ~melange_dir:(Paths.library_melange_dir ~obj_dir)
+      ~public_cmi_ocaml_dir:None ~public_cmi_melange_dir:None ~private_lib:false
 
-  let cm_dir t cm_kind _ =
-    match cm_kind with
-    | Cm_kind.Cmx -> native_dir t
-    | Cmo | Cmi -> byte_dir t
+  let make_melange_emit ~dir ~name =
+    let obj_dir = Paths.melange_object_directory ~dir name in
+    make ~dir ~obj_dir
+      ~native_dir:(Paths.library_native_dir ~obj_dir)
+      ~byte_dir:(Paths.library_byte_dir ~obj_dir)
+      ~melange_dir:(Paths.library_melange_dir ~obj_dir)
+      ~public_cmi_ocaml_dir:None ~public_cmi_melange_dir:None ~private_lib:false
 
-  let cm_public_dir t (cm_kind : Cm_kind.t) =
+  let cm_dir t (cm_kind : Lib_mode.Cm_kind.t) _ =
     match cm_kind with
-    | Cmx -> native_dir t
-    | Cmo -> byte_dir t
-    | Cmi -> public_cmi_dir t
+    | Ocaml Cmx -> native_dir t
+    | Ocaml (Cmo | Cmi) -> byte_dir t
+    | Melange (Cmj | Cmi) -> melange_dir t
+
+  let cm_public_dir t (cm_kind : Lib_mode.Cm_kind.t) =
+    match cm_kind with
+    | Ocaml Cmx -> native_dir t
+    | Ocaml Cmo -> byte_dir t
+    | Ocaml Cmi -> public_cmi_ocaml_dir t
+    | Melange Cmj -> melange_dir t
+    | Melange Cmi -> public_cmi_melange_dir t
 end
 
 type _ t =
@@ -222,11 +326,17 @@ let get_path :
   | Local l' -> l l'
   | Local_as_path l' -> Path.build (l l')
 
-let public_cmi_dir = get_path ~l:Local.public_cmi_dir ~e:External.public_cmi_dir
+let public_cmi_ocaml_dir =
+  get_path ~l:Local.public_cmi_ocaml_dir ~e:External.public_cmi_ocaml_dir
+
+let public_cmi_melange_dir =
+  get_path ~l:Local.public_cmi_melange_dir ~e:External.public_cmi_melange_dir
 
 let byte_dir = get_path ~l:Local.byte_dir ~e:External.byte_dir
 
 let native_dir = get_path ~l:Local.native_dir ~e:External.native_dir
+
+let melange_dir = get_path ~l:Local.melange_dir ~e:External.melange_dir
 
 let dir = get_path ~l:Local.dir ~e:External.dir
 
@@ -284,10 +394,13 @@ let as_local_exn (t : Path.t t) =
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
 
+let make_melange_emit ~dir ~name = Local (Local.make_melange_emit ~dir ~name)
+
 let for_pp ~dir =
   Local
-    (Local.make ~dir ~obj_dir:dir ~native_dir:dir ~byte_dir:dir
-       ~public_cmi_dir:None ~private_lib:false)
+    (Local.make ~dir ~obj_dir:dir ~native_dir:dir ~byte_dir:dir ~melange_dir:dir
+       ~public_cmi_ocaml_dir:None ~public_cmi_melange_dir:None
+       ~private_lib:false)
 
 let to_local (t : Path.t t) =
   match t with
@@ -316,28 +429,28 @@ module Module = struct
     let dir = cm_dir t kind visibility in
     relative t dir obj_name
 
-  let has_impl_if_needed m ~kind =
-    match (kind : Cm_kind.t) with
-    | Cmo | Cmx -> Module.has m ~ml_kind:Impl
-    | Cmi -> true
+  let has_impl_if_needed m ~(kind : Lib_mode.Cm_kind.t) =
+    match kind with
+    | Ocaml (Cmo | Cmx) | Melange Cmj -> Module.has m ~ml_kind:Impl
+    | Ocaml Cmi | Melange Cmi -> true
 
   let raise_no_impl m ~kind =
     Code_error.raise "module has no implementation"
-      [ ("m", Module.to_dyn m); ("kind", Cm_kind.to_dyn kind) ]
+      [ ("m", Module.to_dyn m); ("kind", Lib_mode.Cm_kind.to_dyn kind) ]
 
   let o_file t m ~ext_obj =
-    let kind = Cm_kind.Cmx in
-    if Module.has m ~ml_kind:Impl then Some (obj_file t m ~kind ~ext:ext_obj)
+    if Module.has m ~ml_kind:Impl then
+      Some (obj_file t m ~kind:(Ocaml Cmx) ~ext:ext_obj)
     else None
 
   let o_file_exn t m ~ext_obj =
     match o_file t m ~ext_obj with
     | Some o -> o
-    | None -> raise_no_impl m ~kind:Cmx
+    | None -> raise_no_impl m ~kind:(Ocaml Cmx)
 
-  let cm_file t m ~(kind : Cm_kind.t) =
+  let cm_file t m ~(kind : Lib_mode.Cm_kind.t) =
     if has_impl_if_needed m ~kind then
-      let ext = Cm_kind.ext kind in
+      let ext = Lib_mode.Cm_kind.ext kind in
       Some (obj_file t m ~kind ~ext)
     else None
 
@@ -346,15 +459,15 @@ module Module = struct
     | Some s -> s
     | None -> raise_no_impl m ~kind
 
-  let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) :
+  let cm_public_file (type path) (t : path t) m ~(kind : Lib_mode.Cm_kind.t) :
       path option =
     let is_private = Module.visibility m = Private in
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
-    | (Cmx | Cmo) when not has_impl -> None
-    | Cmi when is_private -> None
+    | (Ocaml (Cmx | Cmo) | Melange Cmj) when not has_impl -> None
+    | (Ocaml Cmi | Melange Cmi) when is_private -> None
     | _ ->
-      let ext = Cm_kind.ext kind in
+      let ext = Lib_mode.Cm_kind.ext kind in
       let base = cm_public_dir t kind in
       let obj_name = Module.obj_name m in
       let fname = Module_name.Unique.artifact_filename obj_name ~ext in
@@ -367,21 +480,23 @@ module Module = struct
       Code_error.raise
         "cm_public_file_exn: invalid access. module has no implementation or \
          is private"
-        [ ("m", Module.to_dyn m); ("kind", Cm_kind.to_dyn kind) ]
+        [ ("m", Module.to_dyn m); ("kind", Lib_mode.Cm_kind.to_dyn kind) ]
 
-  let cmt_file t m ~(ml_kind : Ml_kind.t) =
+  let cmt_file t m ~(ml_kind : Ml_kind.t) ~cm_kind =
     let file = Module.file m ~ml_kind in
     let ext = Ml_kind.cmt_ext ml_kind in
-    Option.map file ~f:(fun _ -> obj_file t m ~kind:Cmi ~ext)
+    let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
+    Option.map file ~f:(fun _ -> obj_file t m ~kind:cmi_kind ~ext)
 
-  let cmti_file t m =
+  let cmti_file t m ~cm_kind =
     let ext =
       Ml_kind.cmt_ext
         (match Module.file m ~ml_kind:Intf with
         | None -> Impl
         | Some _ -> Intf)
     in
-    obj_file t m ~kind:Cmi ~ext
+    let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
+    obj_file t m ~kind:cmi_kind ~ext
 
   let odoc t m =
     let obj_name = Module.obj_name m in
@@ -410,7 +525,7 @@ module Module = struct
     let o_files t modules ~ext_obj =
       List.filter_map modules ~f:(fun m ->
           if Module.has m ~ml_kind:Impl then
-            Some (path_of_build t (obj_file t m ~kind:Cmx ~ext:ext_obj))
+            Some (path_of_build t (obj_file t m ~kind:(Ocaml Cmx) ~ext:ext_obj))
           else None)
 
     let cm_files t modules ~kind =

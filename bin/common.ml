@@ -1,10 +1,12 @@
 open Stdune
 module Config = Dune_util.Config
+module Console = Dune_console
 module Colors = Dune_rules.Colors
 module Clflags = Dune_engine.Clflags
 module Graph = Dune_graph.Graph
 module Package = Dune_engine.Package
 module Profile = Dune_rules.Profile
+module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
 module Only_packages = Dune_rules.Only_packages
@@ -22,6 +24,7 @@ type t =
   ; debug_findlib : bool
   ; debug_backtraces : bool
   ; debug_artifact_substitution : bool
+  ; debug_load_dir : bool
   ; debug_digests : bool
   ; wait_for_filesystem_clock : bool
   ; root : Workspace_root.t
@@ -34,7 +37,7 @@ type t =
   ; build_dir : string
   ; no_print_directory : bool
   ; store_orig_src_dir : bool
-  ; rpc : Dune_rpc_impl.Server.t option
+  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : Watch_mode_config.t
   ; print_metrics : bool
@@ -49,6 +52,7 @@ type t =
   ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
   ; report_errors_config : Dune_engine.Report_errors_config.t
   ; require_dune_project_file : bool
+  ; insignificant_changes : [ `React | `Ignore ]
   }
 
 let capture_outputs t = t.capture_outputs
@@ -71,11 +75,23 @@ let default_target t = t.default_target
 
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
-let rpc t = t.rpc
+let rpc t =
+  match t.rpc with
+  | `Forbid_builds -> `Forbid_builds
+  | `Allow rpc -> `Allow (Lazy.force rpc)
+
+let forbid_builds t = { t with rpc = `Forbid_builds; no_print_directory = true }
+
+let signal_watcher t =
+  match t.rpc with
+  | `Allow _ -> `Yes
+  | `Forbid_builds ->
+    (* if we aren't building anything, then we don't mind interrupting dune immediately *)
+    `No
 
 let stats t = t.stats
 
-let set_print_directory t b = { t with no_print_directory = not b }
+let insignificant_changes t = t.insignificant_changes
 
 let set_promote t v = { t with promote = Some v }
 
@@ -100,7 +116,7 @@ let normalize_path path =
 
 let print_entering_message c =
   let cwd = Path.to_absolute_filename Path.root in
-  if cwd <> Fpath.initial_cwd && not c.no_print_directory then
+  if cwd <> Fpath.initial_cwd && not c.no_print_directory then (
     (* Editors such as Emacs parse the output of the build system and interpret
        filenames in error messages relative to where the build system was
        started.
@@ -133,12 +149,18 @@ let print_entering_message c =
             in
             loop ".." (Filename.dirname s)))
     in
-    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
+    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
+    at_exit (fun () ->
+        flush stdout;
+        Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
 
 let init ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
-  Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir);
+  Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.build_dir);
+  (* Once we have the build directory set, initialise the logging. We can't do
+     this earlier, because the build log typically goes into [_build/log]. *)
+  Dune_util.Log.init () ?file:log_file;
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;
@@ -151,10 +173,9 @@ let init ?log_file c =
   in
   let config =
     Dune_config.adapt_display config
-      ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
+      ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
   in
   Dune_config.init config;
-  Dune_util.Log.init () ?file:log_file;
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
     let+ w = Dune_rules.Workspace.workspace () in
@@ -184,6 +205,7 @@ let init ?log_file c =
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
   Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
+  Clflags.debug_load_dir := c.debug_load_dir;
   Clflags.debug_digests := c.debug_digests;
   Clflags.debug_fs_cache := c.cache_debug_flags.fs_cache;
   Clflags.wait_for_filesystem_clock := c.wait_for_filesystem_clock;
@@ -500,7 +522,7 @@ module Options_implied_by_dash_p = struct
         last
         & opt_all (some profile) [ None ]
         & info [ "profile" ] ~docs
-            ~env:(Arg.env_var ~doc "DUNE_PROFILE")
+            ~env:(Cmd.Env.info ~doc "DUNE_PROFILE")
             ~doc:
               (Printf.sprintf
                  "Select the build profile, for instance $(b,dev) or \
@@ -555,7 +577,7 @@ let shared_with_config_file =
       & opt (some (enum all)) None
       & info [ "sandbox" ]
           ~env:
-            (Arg.env_var
+            (Cmd.Env.info
                ~doc:"Sandboxing mode to use by default. (see --sandbox)"
                "DUNE_SANDBOX")
           ~doc:
@@ -591,7 +613,7 @@ let shared_with_config_file =
     Arg.(
       value
       & opt (some (enum Dune_config.Cache.Enabled.all)) None
-      & info [ "cache" ] ~docs ~env:(Arg.env_var ~doc "DUNE_CACHE") ~doc)
+      & info [ "cache" ] ~docs ~env:(Cmd.Env.info ~doc "DUNE_CACHE") ~doc)
   and+ cache_storage_mode =
     let doc =
       Printf.sprintf "Dune cache storage mode (%s). Default is `%s'."
@@ -603,7 +625,7 @@ let shared_with_config_file =
       value
       & opt (some (enum Dune_config.Cache.Storage_mode.all)) None
       & info [ "cache-storage-mode" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_CACHE_STORAGE_MODE")
+          ~env:(Cmd.Env.info ~doc "DUNE_CACHE_STORAGE_MODE")
           ~doc)
   and+ cache_check_probability =
     let doc =
@@ -619,7 +641,7 @@ let shared_with_config_file =
       & info
           [ "cache-check-probability" ]
           ~docs
-          ~env:(Arg.env_var ~doc "DUNE_CACHE_CHECK_PROBABILITY")
+          ~env:(Cmd.Env.info ~doc "DUNE_CACHE_CHECK_PROBABILITY")
           ~doc)
   and+ action_stdout_on_success =
     Arg.(
@@ -742,6 +764,11 @@ let term ~default_root_is_cwd =
       & info
           [ "debug-artifact-substitution" ]
           ~docs ~doc:"Print debugging info about artifact substitution")
+  and+ debug_load_dir =
+    Arg.(
+      value & flag
+      & info [ "debug-load-dir" ] ~docs
+          ~doc:"Print debugging info about directory loading")
   and+ debug_digests =
     Arg.(
       value & flag
@@ -779,7 +806,7 @@ let term ~default_root_is_cwd =
       value
       & opt (some path) None
       & info [ "workspace" ] ~docs ~docv:"FILE" ~doc
-          ~env:(Arg.env_var ~doc "DUNE_WORKSPACE"))
+          ~env:(Cmd.Env.info ~doc "DUNE_WORKSPACE"))
   and+ promote =
     one_of
       (let+ auto =
@@ -793,7 +820,7 @@ let term ~default_root_is_cwd =
        Option.some_if auto Clflags.Promote.Automatically)
       (let+ disable =
          let doc = "Disable all promotion rules" in
-         let env = Arg.env_var ~doc "DUNE_DISABLE_PROMOTION" in
+         let env = Cmd.Env.info ~doc "DUNE_DISABLE_PROMOTION" in
          Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
        in
        Option.some_if disable Clflags.Promote.Never)
@@ -881,7 +908,7 @@ let term ~default_root_is_cwd =
       value
       & opt (some string) None
       & info [ "build-dir" ] ~docs ~docv:"FILE"
-          ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
+          ~env:(Cmd.Env.info ~doc "DUNE_BUILD_DIR")
           ~doc)
   and+ diff_command =
     let doc =
@@ -892,7 +919,7 @@ let term ~default_root_is_cwd =
       value
       & opt (some string) None
       & info [ "diff-command" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_DIFF_COMMAND")
+          ~env:(Cmd.Env.info ~doc "DUNE_DIFF_COMMAND")
           ~doc)
   and+ stats_trace_file =
     Arg.(
@@ -914,7 +941,7 @@ let term ~default_root_is_cwd =
       & info
           [ "store-orig-source-dir" ]
           ~docs
-          ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
+          ~env:(Cmd.Env.info ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
           ~doc)
   and+ () = build_info
   and+ instrument_with =
@@ -927,7 +954,7 @@ let term ~default_root_is_cwd =
       value
       & opt (some (list lib_name)) None
       & info [ "instrument-with" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_INSTRUMENT_WITH")
+          ~env:(Cmd.Env.info ~doc "DUNE_INSTRUMENT_WITH")
           ~docv:"BACKENDS" ~doc)
   and+ file_watcher =
     let doc =
@@ -977,16 +1004,22 @@ let term ~default_root_is_cwd =
              $(b,twice) - report each error twice: once as soon as the error \
              is discovered and then again at the end of the build, in a \
              deterministic order.")
+  and+ react_to_insignificant_changes =
+    Arg.(
+      value & flag
+      & info
+          [ "react-to-insignificant-changes" ]
+          ~doc:
+            "react to insignificant file system changes; this is only useful \
+             for benchmarking dune")
+  in
+  let insignificant_changes =
+    if react_to_insignificant_changes then `React else `Ignore
   in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root =
     Workspace_root.create ~default_is_cwd:default_root_is_cwd
       ~specified_by_user:root
-  in
-  let rpc =
-    match watch with
-    | Yes _ -> Some (Dune_rpc_impl.Server.create ~root:root.dir)
-    | No -> None
   in
   let stats =
     Option.map stats_trace_file ~f:(fun f ->
@@ -994,14 +1027,31 @@ let term ~default_root_is_cwd =
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
+  let rpc =
+    `Allow
+      (lazy
+        (let registry =
+           match watch with
+           | Yes _ -> `Add
+           | No -> `Skip
+         in
+         let lock_timeout =
+           match watch with
+           | Yes Passive -> Some 1.0
+           | _ -> None
+         in
+         Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
+           stats))
+  in
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();
-    Metrics.enable ());
+    Dune_metrics.enable ());
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
   ; debug_artifact_substitution
+  ; debug_load_dir
   ; debug_digests
   ; wait_for_filesystem_clock
   ; capture_outputs = not no_buffer
@@ -1036,13 +1086,27 @@ let term ~default_root_is_cwd =
   ; cache_debug_flags
   ; report_errors_config
   ; require_dune_project_file
+  ; insignificant_changes
   }
-
-let set_rpc t rpc = { t with rpc = Some rpc }
 
 let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
 
 let term = term ~default_root_is_cwd:false
+
+let envs =
+  Cmd.Env.
+    [ info
+        ~doc:
+          "If different than $(b,0), ANSI colors are supported and should be \
+           used when the program isn’t piped. If equal to $(b,0), don’t output \
+           ANSI color escape codes"
+        "CLICOLOR"
+    ; info
+        ~doc:
+          "If different than $(b,0), ANSI colors should be enabled no matter \
+           what."
+        "CLICOLOR_FORCE"
+    ]
 
 let config_from_config_file = Options_implied_by_dash_p.config_term
 

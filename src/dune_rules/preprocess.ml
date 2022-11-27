@@ -255,7 +255,7 @@ module Per_module = struct
   let without_instrumentation t =
     let f = function
       | With_instrumentation.Ordinary libname -> Some libname
-      | With_instrumentation.Instrumentation_backend _ -> None
+      | Instrumentation_backend _ -> None
     in
     Per_module.map t ~f:(filter_map ~f)
 
@@ -263,13 +263,11 @@ module Per_module = struct
     let f = function
       | With_instrumentation.Ordinary libname ->
         Resolve.Memo.return (Some (libname, []))
-      | With_instrumentation.Instrumentation_backend { libname; flags; _ } ->
-        Resolve.Memo.map
-          ~f:(fun backend ->
+      | Instrumentation_backend { libname; flags; _ } ->
+        Resolve.Memo.map (instrumentation_backend libname) ~f:(fun backend ->
             match backend with
             | None -> None
             | Some backend -> Some (backend, flags))
-          (instrumentation_backend libname)
     in
     Per_module.map_resolve t ~f:(filter_map_resolve ~f)
 
@@ -277,8 +275,7 @@ module Per_module = struct
     let open Resolve.Memo.O in
     let f = function
       | With_instrumentation.Ordinary _ -> Resolve.Memo.return []
-      | With_instrumentation.Instrumentation_backend
-          { libname; deps; flags = _ } -> (
+      | Instrumentation_backend { libname; deps; flags = _ } -> (
         instrumentation_backend libname >>| function
         | Some _ -> deps
         | None -> [])

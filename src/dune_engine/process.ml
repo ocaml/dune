@@ -11,10 +11,12 @@ let with_directory_annot =
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
   | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
+  | Return : ('a, 'a * int) failure_mode
 
 let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
   | Strict -> Int.equal 0
   | Accept exit_codes -> fun i -> Predicate.test exit_codes i
+  | Return -> fun _ -> true
 
 let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
  fun mode t ~f ->
@@ -24,6 +26,7 @@ let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
     match t with
     | 0 -> Ok (f ())
     | n -> Error n)
+  | Return -> (f (), t)
 
 module Io = struct
   type input = Input
@@ -591,7 +594,9 @@ let report_process_start stats ~metadata ~id ~pid ~prog ~args ~now =
     ; ("pid", `Int (Pid.to_int pid))
     ]
   in
-  let event = Event.async (Int id) ~args Start common in
+  let event =
+    Event.async (Chrome_trace.Id.create (`Int id)) ~args Start common
+  in
   Dune_stats.emit stats event;
   (common, args)
 
@@ -701,7 +706,6 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           | true -> Dtemp.add_to_env env
           | false -> env
         in
-        let env = env |> Scheduler.Config.add_to_env config in
         let env = Env.to_unix env |> Spawn.Env.of_list in
         let started_at, pid =
           (* jeremiedimino: I think we should do this just before the [execve]

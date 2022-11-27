@@ -13,6 +13,15 @@ let%bench_fun "bind" =
      in
      loop n)
 
+let%bench_fun "create ivar and immediately read" =
+ fun () ->
+  let ivar = Fiber.Ivar.create () in
+  Fiber.run
+    ~iter:(fun () ->
+      let open Nonempty_list in
+      [ Fiber.Fill (ivar, ()) ])
+    (Fiber.Ivar.read ivar)
+
 let%bench_fun "ivar" =
  fun () ->
   let ivar = ref (Fiber.Ivar.create ()) in

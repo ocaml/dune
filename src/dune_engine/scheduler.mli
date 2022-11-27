@@ -25,13 +25,10 @@ module Config : sig
   type t =
     { concurrency : int
     ; display : Display.t
-    ; rpc : Dune_rpc_private.Where.t option
     ; stats : Dune_stats.t option
+    ; insignificant_changes : [ `Ignore | `React ]
+    ; signal_watcher : [ `Yes | `No ]
     }
-
-  (** [add_to_env env] adds to [env] the environment variable that describes
-      where the current RPC server is listening (if it's running) *)
-  val add_to_env : t -> Env.t -> Env.t
 end
 
 module Run : sig
@@ -180,9 +177,7 @@ val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
     this long. *)
 val sleep : float -> unit Fiber.t
 
-(** Wait until all file system changes that happened so far have been
-    acknowledged by the scheduler. *)
-val flush_file_watcher : unit -> unit Fiber.t
+val stats : unit -> Dune_stats.t option Fiber.t
 
 (** Wait for a build input to change. If a build input change was seen but
     hasn't been handled yet, return immediately.

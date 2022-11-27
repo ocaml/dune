@@ -4,8 +4,9 @@ module Buildable : sig
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
     ; coq_lang_version : Dune_sexp.Syntax.Version.t
-    ; mode : Loc.t * Coq_mode.t
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
+    ; mode : Coq_mode.t option
+    ; use_stdlib : bool
+    ; plugins : (Loc.t * Lib_name.t) list  (** ocaml plugins *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
     }
@@ -40,7 +41,7 @@ end
 
 module Coqpp : sig
   type t =
-    { modules : string list
+    { modules : Ordered_set_lang.t
     ; loc : Loc.t
     }
 

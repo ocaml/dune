@@ -10,7 +10,10 @@
   dune_lang
   fiber
   stdune
+  dune_console
   unix
+  dune_metrics
+  dune_digest
   dune_cache
   dune_cache_storage
   dune_graph
@@ -47,7 +50,7 @@
 
 (rule
  (action
-  (copy ../dune.exe dune.exe))
+  (copy ../_boot/dune.exe dune.exe))
  (enabled_if
   (= %{profile} dune-bootstrap)))
 

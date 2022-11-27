@@ -8,7 +8,7 @@ type dune_file =
   | Sexps of Cst.t list
 
 let parse lb =
-  if Dune_lexer.is_script lb then OCaml_syntax (Loc.of_lexbuf lb)
+  if Dune_file_script.is_script lb then OCaml_syntax (Loc.of_lexbuf lb)
   else Sexps (Parser.parse lb ~mode:Cst)
 
 let can_be_displayed_wrapped =

@@ -1,4 +1,5 @@
 open Stdune
+open Import
 
 let default_root_dir () =
   let cache_dir = Xdg.cache_dir (Lazy.force Dune_util.xdg) in

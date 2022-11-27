@@ -268,7 +268,7 @@ let end_of_list (Values (loc, cstr, _)) =
     let loc = { loc with start = loc.stop } in
     User_error.raise ~loc [ Pp.text "Premature end of list" ]
   | Some s -> User_error.raise ~loc [ Pp.textf "Not enough arguments for %s" s ]
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let next f ctx sexps =
   match sexps with
@@ -474,7 +474,8 @@ let triple a b c =
 let unit_number_generic ~of_string ~mul name suffixes =
   let unit_number_of_string ~loc s =
     let possible_suffixes () =
-      String.concat ~sep:", " (List.map ~f:fst suffixes)
+      (* We take the first suffix in the list to be the suggestion *)
+      String.concat ~sep:", " (List.map ~f:(fun x -> List.hd @@ fst x) suffixes)
     in
     let n, suffix =
       let f c = not (Char.is_digit c) in
@@ -483,6 +484,10 @@ let unit_number_generic ~of_string ~mul name suffixes =
         User_error.raise ~loc
           [ Pp.textf "missing suffix, use one of %s" (possible_suffixes ()) ]
       | Some i -> String.split_n s i
+    in
+    let suffixes =
+      List.map ~f:(fun (xs, y) -> List.map ~f:(fun x -> (x, y)) xs) suffixes
+      |> List.flatten
     in
     let factor =
       match List.assoc suffixes suffix with
@@ -502,17 +507,10 @@ let unit_number_int64 =
   let of_string s = Int64.of_string_opt s in
   unit_number_generic ~of_string ~mul:Int64.mul
 
-let duration = unit_number "Duration" [ ("s", 1); ("m", 60); ("h", 60 * 60) ]
+let duration =
+  unit_number "Duration" [ ([ "s" ], 1); ([ "m" ], 60); ([ "h" ], 60 * 60) ]
 
-(* CR-someday amokhov: Add KiB, MiB, GiB. *)
-let bytes_unit =
-  unit_number_int64 "Byte amount"
-    [ ("B", 1L)
-    ; ("kB", 1000L)
-    ; ("KB", 1000L)
-    ; ("MB", 1000_000L)
-    ; ("GB", 1000_000_000L)
-    ]
+let bytes_unit = unit_number_int64 "Byte amount" Bytes_unit.conversion_table
 
 let maybe t = t >>| Option.some <|> return None
 
@@ -546,18 +544,23 @@ let sum ?(force_parens = false) cstrs =
         | Atom (s_loc, A s) ->
           find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args))
 
-let enum cstrs =
-  next (function
-    | Quoted_string (loc, _) | Template { loc; _ } | List (loc, _) ->
-      User_error.raise ~loc [ Pp.text "Atom expected" ]
-    | Atom (loc, A s) -> (
-      match List.assoc cstrs s with
-      | Some value -> value
-      | None ->
-        User_error.raise ~loc
-          [ Pp.textf "Unknown value %s" s ]
-          ~hints:
-            (User_message.did_you_mean s ~candidates:(List.map cstrs ~f:fst))))
+let enum' (type a) (cstrs : (string * a t) list) : a t =
+  next_with_user_context (fun uc sexp ->
+      match sexp with
+      | Quoted_string (loc, _) | Template { loc; _ } | List (loc, _) ->
+        User_error.raise ~loc [ Pp.text "Atom expected" ]
+      | Atom (loc, A s) -> (
+        match List.assoc cstrs s with
+        | Some k ->
+          let ctx = Values (loc, Some s, uc) in
+          result ctx (k ctx [])
+        | None ->
+          User_error.raise ~loc
+            [ Pp.textf "Unknown value %s" s ]
+            ~hints:
+              (User_message.did_you_mean s ~candidates:(List.map cstrs ~f:fst))))
+
+let enum cstrs = enum' (List.map cstrs ~f:(fun (name, v) -> (name, return v)))
 
 let bool = enum [ ("true", true); ("false", false) ]
 
@@ -577,7 +580,7 @@ let map_validate t ~f ctx state1 =
     field names: see [field_missing] and [field_present_too_many_times]. *)
 let field_missing loc name =
   User_error.raise ~loc [ Pp.textf "field %s missing" name ]
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let field_present_too_many_times _ name entries =
   match entries with
@@ -594,7 +597,7 @@ let multiple_occurrences ?(on_dup = field_present_too_many_times) uc name last =
     | Some prev -> collect acc prev
   in
   on_dup uc name (collect [] last)
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let find_single ?on_dup uc (state : Fields.t) name =
   let res = Name.Map.find state.unparsed name in
@@ -686,14 +689,14 @@ let fields_missing_need_exactly_one loc names =
     [ Pp.textf "fields %s are all missing (exactly one is needed)"
         (String.concat ~sep:", " names)
     ]
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutual_exclusion_violation loc names =
   User_error.raise ~loc
     [ Pp.textf "fields %s are mutually exclusive"
         (String.concat ~sep:", " names)
     ]
-  [@@inline never]
+  [@@inline never] [@@specialise never] [@@local never]
 
 let fields_mutually_exclusive ?on_dup ?default fields
     ((Fields (loc, _, _) : _ context) as ctx) state =

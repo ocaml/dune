@@ -563,14 +563,6 @@ let rec fold_no_vlib t ~init ~f =
   | Wrapped w -> Wrapped.fold w ~init ~f
   | Impl { vlib = _; impl } -> fold_no_vlib impl ~f ~init
 
-let rec map t ~f =
-  match t with
-  | Stdlib w -> Stdlib (Stdlib.map w ~f)
-  | Singleton m -> Singleton (f m)
-  | Unwrapped m -> Unwrapped (Module_name.Map.map m ~f)
-  | Wrapped w -> Wrapped (Wrapped.map w ~f)
-  | Impl { vlib; impl } -> Impl { vlib = map vlib ~f; impl = map impl ~f }
-
 type split_by_lib =
   { vlib : Module.t list
   ; impl : Module.t list

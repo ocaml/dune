@@ -27,7 +27,7 @@ result \
 ctypes \
 "utop>=2.6.0" \
 "melange>=0.3.0" \
-"mel>=0.3.0" \
+"mel>=0.3.0"
 
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI

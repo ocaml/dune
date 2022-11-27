@@ -374,20 +374,24 @@ let has_rules subdirs f =
        ; rules
        })
 
-let rec is_under_melange_emit dir =
+let rec has_melange_emit_parent dir =
   match Path.Build.parent dir with
   | None -> Memo.return false
-  | Some dir -> (
-    Only_packages.stanzas_in_dir dir >>= function
-    | None -> is_under_melange_emit dir
+  | Some parent_dir -> (
+    Only_packages.stanzas_in_dir parent_dir >>= function
+    | None -> has_melange_emit_parent parent_dir
     | Some { Dune_file.stanzas; dir = _; project = _ } -> (
       match
         List.exists stanzas ~f:(function
-          | Melange_emit _ -> true
+          | Melange_emit mel ->
+            (* current dir, e.g. `_build/default/lib/output must be equal to
+               melange.emit target, e.g. `_build/default/lib` with
+               `(melange.emit (target output))` *)
+            Path.Build.equal (Path.Build.relative parent_dir mel.target) dir
           | _ -> false)
       with
       | true -> Memo.return true
-      | false -> is_under_melange_emit dir))
+      | false -> has_melange_emit_parent parent_dir))
 
 let redirect_to_parent = Memo.return Build_config.Redirect_to_parent
 
@@ -484,9 +488,9 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
         in
         let* directory_targets =
           collect_directory_targets ~dir ~init:directory_targets
-        and* is_child_of_melange_emit = is_under_melange_emit dir in
+        and* has_melange_emit_parent = has_melange_emit_parent dir in
 
-        if is_child_of_melange_emit then
+        if has_melange_emit_parent then
           (* The `melange.emit` stanza can generate rules in its sub-directories
              if they declare melange libraries. As such, in the cases where a
              parent declares a `melange.emit` stanza, this function needs to

@@ -343,7 +343,9 @@ module Wrapped = struct
     || Module_name.Map.exists modules ~f
     || Module_name.Map.exists wrapped_compat ~f
 
-  let lib_interface t = Module_name.Map.find t.modules t.main_module_name
+  let lib_interface t =
+    Module_name.Map.find t.modules t.main_module_name
+    |> Option.value ~default:t.alias_module
 
   let find t name =
     if is_alias_name t name then Some t.alias_module
@@ -355,6 +357,9 @@ module Wrapped = struct
   let find_dep t ~of_ name =
     match Module.kind of_ with
     | Alias -> None
+    | Wrapped_compat ->
+      let li = lib_interface t in
+      Option.some_if (name = Module.name li) li
     | _ ->
       if is_alias_name t name then Some t.alias_module
       else Module_name.Map.find t.modules name
@@ -431,7 +436,7 @@ and dyn_of_impl { impl; vlib } =
 let rec lib_interface = function
   | Singleton m -> Some m
   | Unwrapped _ -> None
-  | Wrapped w -> Wrapped.lib_interface w
+  | Wrapped w -> Some (Wrapped.lib_interface w)
   | Stdlib w -> Stdlib.lib_interface w
   | Impl { impl = _; vlib } -> lib_interface vlib
 
@@ -718,11 +723,9 @@ let entry_modules t =
     | Stdlib w -> Stdlib.lib_interface w |> Option.to_list
     | Singleton m -> [ m ]
     | Unwrapped m -> Module_name.Map.values m
-    | Wrapped m -> (
+    | Wrapped m ->
       (* we assume this is never called for implementations *)
-      match Wrapped.lib_interface m with
-      | Some m -> [ m ]
-      | None -> [ m.alias_module ])
+      [ Wrapped.lib_interface m ]
     | Impl i ->
       Code_error.raise "entry_modules: not defined for implementations"
         [ ("impl", dyn_of_impl i) ])

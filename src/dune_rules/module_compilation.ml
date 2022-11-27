@@ -399,7 +399,7 @@ module Alias_module = struct
           (Module_name.to_string shadowed));
     Buffer.contents b
 
-  let of_modules project modules =
+  let of_modules project modules ~alias_module =
     let main_module = Modules.main_module_name modules |> Option.value_exn in
     let aliases =
       Modules.for_alias modules
@@ -410,13 +410,10 @@ module Alias_module = struct
     let shadowed =
       if Dune_project.dune_version project < (3, 5) then []
       else
-        match Modules.alias_module modules with
+        match Modules.lib_interface modules with
         | None -> []
-        | Some alias_module -> (
-          match Modules.lib_interface modules with
-          | None -> []
-          | Some m ->
-            if Module.kind m = Alias then [] else [ Module.name alias_module ])
+        | Some m ->
+          if Module.kind m = Alias then [] else [ Module.name alias_module ]
     in
     { main_module; aliases; shadowed }
 end
@@ -425,7 +422,7 @@ let build_alias_module cctx alias_module =
   let modules = Compilation_context.modules cctx in
   let alias_file () =
     let project = Compilation_context.scope cctx |> Scope.project in
-    Alias_module.of_modules project modules |> Alias_module.to_ml
+    Alias_module.of_modules project modules ~alias_module |> Alias_module.to_ml
   in
   let cctx = Compilation_context.for_alias_module cctx alias_module in
   let sctx = Compilation_context.super_context cctx in

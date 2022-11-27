@@ -23,7 +23,6 @@ ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
 "ppx_expect.v0.15.0" \
 ppx_inline_test \
 ppxlib \
-result \
 ctypes \
 "utop>=2.6.0" \
 "melange>=0.3.0" \

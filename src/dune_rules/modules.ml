@@ -188,6 +188,21 @@ module Mangle = struct
       | _ -> prefix.public
     in
     Module.generated ~kind:Alias ~src_dir name
+
+  let wrap_modules t modules =
+    let prefix = prefix t in
+    let f =
+      match t with
+      | Exe | Melange -> Module.with_wrapper ~main_module_name:prefix.public
+      | Lib { main_module_name; kind = _ } ->
+        fun m ->
+          if Module.name m = main_module_name then m
+          else
+            let visibility = Module.visibility m in
+            let prefix = Visibility.Map.find prefix visibility in
+            Module.with_wrapper m ~main_module_name:prefix
+    in
+    Module_name.Map.map modules ~f
 end
 
 let impl_only_of_map m =
@@ -239,21 +254,12 @@ module Wrapped = struct
     ; alias_module = f alias_module
     }
 
-  let wrap_modules prefix ~main_module_name ~modules =
-    Module_name.Map.map modules ~f:(fun (m : Module.t) ->
-        if Module.name m = main_module_name then m
-        else
-          let visibility = Module.visibility m in
-          let prefix = Visibility.Map.find prefix visibility in
-          Module.with_wrapper m ~main_module_name:prefix)
-
   let make ~src_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped =
     let mangle =
       Mangle.of_lib ~main_module_name ~lib_name ~implements ~modules
     in
     let modules, wrapped_compat =
-      let prefix = Mangle.prefix mangle in
-      let wrapped_modules = wrap_modules prefix ~main_module_name ~modules in
+      let wrapped_modules = Mangle.wrap_modules mangle modules in
       match (wrapped : Mode.t) with
       | Simple false -> assert false
       | Simple true -> (wrapped_modules, Module_name.Map.empty)
@@ -269,12 +275,8 @@ module Wrapped = struct
     { modules; alias_module; wrapped_compat; main_module_name; wrapped }
 
   let make_exe_or_melange ~src_dir ~modules mangle =
-    let prefix = Mangle.prefix mangle in
     let alias_module = Mangle.make_alias_module mangle ~src_dir in
-    let modules =
-      Module_name.Map.map modules ~f:(fun m ->
-          Module.with_wrapper m ~main_module_name:prefix.public)
-    in
+    let modules = Mangle.wrap_modules mangle modules in
     { modules
     ; wrapped_compat = Module_name.Map.empty
     ; alias_module

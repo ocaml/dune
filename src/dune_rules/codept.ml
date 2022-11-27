@@ -107,7 +107,8 @@ let deps_of
         [ As [ "-k"; "-verbosity"; "error" ]
           (* avoid self-cycle errors and unresolved module notifications *)
         ; Command.Args.dyn flags
-        ; Dep (Path.build m2l_file)
+        ; Concat (":", [ Dep (Path.build m2l_file); A (Module_name.to_string (Module.name unit)) ])
+        (* ; Dep (Path.build m2l_file) *)
         ; Dyn path_args
         ; S sig_args
         ; S (codept_o_arg "-modules" immediate_file)

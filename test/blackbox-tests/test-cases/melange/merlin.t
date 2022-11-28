@@ -47,7 +47,7 @@ All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
 
   $ touch output/main.ml
   $ dune build @check
-  $ dune ocaml merlin dump-config $PWD/output | grep -i output
+  $ dune ocaml merlin dump-config "$PWD/output" | grep -i output
     $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
 
 The melange.emit entry contains a ppx directive

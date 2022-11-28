@@ -23,6 +23,15 @@ val make :
         -> string list Action_builder.t)
   -> t
 
+val make_with_melange :
+     melange:Ordered_set_lang.Unexpanded.t
+  -> default:t
+  -> eval:
+       (   Ordered_set_lang.Unexpanded.t
+        -> standard:string list Action_builder.t
+        -> string list Action_builder.t)
+  -> t
+
 val default : dune_version:Dune_lang.Syntax.Version.t -> profile:Profile.t -> t
 
 val empty : t

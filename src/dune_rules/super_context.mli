@@ -24,6 +24,9 @@ val context_env : t -> Env.t
 val ocaml_flags :
   t -> dir:Path.Build.t -> Ocaml_flags.Spec.t -> Ocaml_flags.t Memo.t
 
+val ocaml_flags_with_melange :
+  t -> dir:Path.Build.t -> Ordered_set_lang.Unexpanded.t -> Ocaml_flags.t Memo.t
+
 val js_of_ocaml_runtest_alias : t -> dir:Path.Build.t -> Alias.Name.t Memo.t
 
 val js_of_ocaml_compilation_mode :

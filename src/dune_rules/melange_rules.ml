@@ -97,7 +97,9 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
-  let* flags = Super_context.ocaml_flags sctx ~dir mel.flags in
+  let* flags =
+    Super_context.ocaml_flags_with_melange sctx ~dir mel.compile_flags
+  in
   let requires_link = Lib.Compile.requires_link compile_info in
   let direct_requires = Lib.Compile.direct_requires compile_info in
   let* modules, pp =

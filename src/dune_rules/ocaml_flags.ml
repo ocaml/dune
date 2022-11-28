@@ -93,7 +93,11 @@ module Spec = struct
     let+ common = field_oslu "flags"
     and+ byte = field_oslu "ocamlc_flags"
     and+ native = field_oslu "ocamlopt_flags"
-    and+ melange = field_oslu "melc_flags" in
+    and+ melange =
+      field_oslu
+        ~check:(Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1))
+        "melange.compile_flags"
+    in
     let specific = Lib_mode.Map.make ~byte ~native ~melange in
     { common; specific }
 end
@@ -132,7 +136,21 @@ let make ~spec ~default ~eval =
               f "ocamlopt flags" spec.specific.ocaml.native
                 default.specific.ocaml.native
           }
-      ; melange = f "melc flags" spec.specific.melange default.specific.melange
+      ; melange =
+          f "melange compile_flags" spec.specific.melange
+            default.specific.melange
+      }
+  }
+
+let make_with_melange ~melange ~default ~eval =
+  let f name x standard =
+    Action_builder.memoize ~cutoff:(List.equal String.equal) name
+      (eval x ~standard)
+  in
+  { common = default.common
+  ; specific =
+      { ocaml = default.specific.ocaml
+      ; melange = f "melange compile_flags" melange default.specific.melange
       }
   }
 
@@ -168,5 +186,5 @@ let dump t =
     [ ("flags", common)
     ; ("ocamlc_flags", byte)
     ; ("ocamlopt_flags", native)
-    ; ("melc_flags", melange)
+    ; ("melange.compile_flags", melange)
     ]

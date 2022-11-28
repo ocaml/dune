@@ -270,6 +270,19 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
     with_vendored_flags ~ocaml_version flags
   | false -> flags
 
+let ocaml_flags_with_melange t ~dir melange =
+  let* expander = Env_tree.expander t ~dir in
+  let* flags =
+    let+ ocaml_flags = Env_tree.get_node t ~dir >>= Env_node.ocaml_flags in
+    Ocaml_flags.make_with_melange ~melange ~default:ocaml_flags
+      ~eval:(Expander.expand_and_eval_set expander)
+  in
+  build_dir_is_vendored dir >>| function
+  | true ->
+    let ocaml_version = (Env_tree.context t).version in
+    with_vendored_flags ~ocaml_version flags
+  | false -> flags
+
 let js_of_ocaml_runtest_alias t ~dir =
   let+ js_of_ocaml = Env_tree.get_node t ~dir >>= Env_node.js_of_ocaml in
   match js_of_ocaml.runtest_alias with

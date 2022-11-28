@@ -10,7 +10,6 @@ Test error message for modules belonging to melange.emit and another stanza
   >  (name lib)
   >  (modes melange))
   > (melange.emit
-  >  (target output)
   >  (module_system commonjs))
   > EOF
 
@@ -19,7 +18,7 @@ Test error message for modules belonging to melange.emit and another stanza
   >   print_endline "hello"
   > EOF
 
-  $ dune build output/main.js
+  $ dune build main.js
   File "dune", line 1, characters 0-0:
   Error: Module "Main" is used in several stanzas:
   - dune:1

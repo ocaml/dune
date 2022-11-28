@@ -1,0 +1,5 @@
+(melange.emit
+ (entries c)
+ (alias melange-emit)
+ (libraries app)
+ (module_system commonjs))

@@ -4,6 +4,10 @@
   (package dune-configurator)))
 
 (cram
+ (applies_to pkg-config-quoting)
+ (deps %{bin:pkg-config}))
+
+(cram
  (enabled_if
   (<> %{ocaml-config:system} win))
  (applies_to configurator.t))

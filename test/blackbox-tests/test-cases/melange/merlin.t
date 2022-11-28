@@ -1,5 +1,8 @@
  Temporary special merlin support for melange only libs
 
+  $ melc_where="$(melc -where)"
+  $ export BUILD_PATH_PREFIX_MAP="/MELC_WHERE=$melc_where:$BUILD_PATH_PREFIX_MAP"
+
   $ cat >dune-project <<EOF
   > (lang dune 3.6)
   > (using melange 0.1)
@@ -52,8 +55,9 @@ The melange.emit entry contains a ppx directive
 
   $ dune ocaml dump-dot-merlin $PWD
   EXCLUDE_QUERY_DIR
-  STDLIB /home/me/code/dune/_opam/lib/melange
+  STDLIB /MELC_WHERE
   B $TESTCASE_ROOT/_build/default/.output.mobjs/melange
   S $TESTCASE_ROOT
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs
   # FLG -ppx 'melc -as-ppx -bs-jsx 3'
+  

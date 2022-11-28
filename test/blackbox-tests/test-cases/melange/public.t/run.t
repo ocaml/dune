@@ -30,7 +30,7 @@ Build js files
   $ dune build @melange
 
 Path to app_B is non-relative (broken)
-  $ node _build/default/$output/my_project/c.js
+  $ node _build/default/$output/my_project/output/c.js
   buy it
 
   $ dune clean

@@ -1,5 +1,5 @@
 (melange.emit
- (target output)
+ (package pkg)
  (entries c)
  (alias melange)
  (libraries app)

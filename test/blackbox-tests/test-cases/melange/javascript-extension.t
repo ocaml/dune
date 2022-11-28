@@ -5,16 +5,16 @@ Test (javascript_extension) field on melange.emit stanzas
   > (using melange 0.1)
   > EOF
 
-  $ cat > hello.ml <<EOF
+  $ mkdir output
+  $ cat > output/hello.ml <<EOF
   > let () =
   >   print_endline "hello"
   > EOF
 
 Can use extension with dots
 
-  $ cat > dune <<EOF
+  $ cat > output/dune <<EOF
   > (melange.emit
-  >  (target output)
   >  (alias melange)
   >  (module_system commonjs)
   >  (javascript_extension bs.js))
@@ -26,9 +26,8 @@ Can use extension with dots
 
 Errors out if extension starts with dot
 
-  $ cat > dune <<EOF
+  $ cat > output/dune <<EOF
   > (melange.emit
-  >  (target output)
   >  (alias melange)
   >  (module_system commonjs)
   >  (javascript_extension .bs.js))

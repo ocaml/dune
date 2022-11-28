@@ -9,7 +9,6 @@ Test melange.emit promotion
   > (melange.emit
   >  (alias dist)
   >  (entries hello)
-  >  (target dist)
   >  (module_system commonjs))
   > EOF
 
@@ -18,5 +17,5 @@ Test melange.emit promotion
   > EOF
 
   $ dune build @dist
-  $ node ./_build/default/dist/hello.js
+  $ node ./_build/default/hello.js
   hello

@@ -1,5 +1,4 @@
 (melange.emit
- (target mli)
  (entries x)
  (libraries lib)
  (alias melange)

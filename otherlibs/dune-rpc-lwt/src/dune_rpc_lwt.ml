@@ -85,7 +85,10 @@ module V1 = struct
       (Fiber)
       (struct
         let read_file s : (string, exn) result Lwt.t =
-          Lwt_result.catch (Lwt_io.with_file ~mode:Input s Lwt_io.read)
+          Lwt.catch
+            (fun () ->
+              Lwt_result.ok (Lwt_io.with_file ~mode:Input s Lwt_io.read))
+            Lwt_result.fail
 
         let analyze_path s =
           Lwt.try_bind

@@ -1,3 +1,4 @@
+Directories with spaces
 
   $ cat <<EOF >dune-project
   > (lang dune 3.0)

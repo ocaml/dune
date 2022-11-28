@@ -7,9 +7,9 @@ Test flags and compile_flags fields on melange.emit stanza
 
 Using flags field in melange.emit stanzas is not supported
 
-  $ cat > dune <<EOF
+  $ mkdir output
+  $ cat > output/dune <<EOF
   > (melange.emit
-  >  (target output)
   >  (entries main)
   >  (module_system commonjs)
   >  (flags -w -14-26))
@@ -29,9 +29,8 @@ Adds a module that contains unused var (warning 26) and illegal backlash (warnin
   > print_endline "hello"
   > EOF
 
-  $ cat > dune <<EOF
+  $ cat > output/dune <<EOF
   > (melange.emit
-  >  (target output)
   >  (entries main)
   >  (alias melange)
   >  (module_system commonjs))

@@ -38,22 +38,21 @@ All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
    (FLG (-ppx "/MELC_COMPILER -as-ppx -bs-jsx 3"))
    (FLG (-ppx "/MELC_COMPILER -as-ppx -bs-jsx 3"))
 
-  $ target=output
-  $ cat >dune <<EOF
+  $ mkdir output
+  $ cat > output/dune <<EOF
   > (melange.emit
-  >  (target "$target")
   >  (entries main)
   >  (module_system commonjs))
   > EOF
 
-  $ touch main.ml
+  $ touch output/main.ml
   $ dune build @check
-  $ dune ocaml merlin dump-config $PWD | grep -i "$target"
+  $ dune ocaml merlin dump-config $PWD/output | grep -i output
     $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
 
 The melange.emit entry contains a ppx directive
 
-  $ dune ocaml merlin dump-config $PWD | grep -i "ppx"
+  $ dune ocaml merlin dump-config $PWD/output | grep -i "ppx"
    (FLG (-ppx "/MELC_COMPILER -as-ppx -bs-jsx 3"))
 
 Dump-dot-merlin includes the melange flags
@@ -65,20 +64,20 @@ Dump-dot-merlin includes the melange flags
   S $TESTCASE_ROOT
   # FLG -ppx '/MELC_COMPILER -as-ppx -bs-jsx 3'
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs
-  
+
 
 Check for flag directives ordering when another preprocessor is defined
 
   $ cat >fooppx.ml <<EOF
   > open Ppxlib
-  > 
+  >
   > let rules =
   >   let extension =
   >     Extension.declare "test" Expression Ast_pattern.__ (fun ~loc ~path:_ _ ->
   >       Ast_builder.Default.eint ~loc 42)
   >   in
   >   [ Context_free.Rule.extension extension ]
-  > 
+  >
   > let () = Ppxlib.Driver.register_transformation "rules" ~rules
   > EOF
 

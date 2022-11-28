@@ -7,7 +7,6 @@ Test (preprocess) field on melange.emit stanza
 
   $ cat > dune <<EOF
   > (melange.emit
-  >  (target output)
   >  (alias app)
   >  (module_system commonjs))
   > EOF
@@ -18,5 +17,5 @@ Test (preprocess) field on melange.emit stanza
   > EOF
 
   $ dune build @app
-  $ node _build/default/output/main.js
+  $ node _build/default/main.js
   hello

@@ -5,26 +5,27 @@ Test unmangling of js files
   > (using melange 0.1)
   > EOF
 
-  $ cat > dune <<EOF
+  $ mkdir output
+  $ cat > output/dune <<EOF
   > (melange.emit
-  >  (target output)
   >  (alias melange)
   >  (module_system commonjs))
   > EOF
 
 Using uppercase produces uppercase artifacts
 
-  $ cat > Upper.ml <<EOF
+  $ cat > output/Upper.ml <<EOF
   > print_endline "hello"
   > EOF
 
-  $ dune build output/Upper.js
-  $ node _build/default/output/Upper.js
+  $ output=output/output
+  $ dune build $output/Upper.js
+  $ node _build/default/$output/Upper.js
   hello
 
 Using lowercase produces uppercase artifacts
 
-  $ cat > lower.ml <<EOF
+  $ cat > output/lower.ml <<EOF
   > print_endline "hello"
   > EOF
 

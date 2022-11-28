@@ -143,14 +143,13 @@ let make ~spec ~default ~eval =
   }
 
 let make_with_melange ~melange ~default ~eval =
-  let f name x standard =
-    Action_builder.memoize ~cutoff:(List.equal String.equal) name
-      (eval x ~standard)
-  in
   { common = default.common
   ; specific =
       { ocaml = default.specific.ocaml
-      ; melange = f "melange compile_flags" melange default.specific.melange
+      ; melange =
+          Action_builder.memoize ~cutoff:(List.equal String.equal)
+            "melange compile_flags"
+            (eval melange ~standard:default.specific.melange)
       }
   }
 

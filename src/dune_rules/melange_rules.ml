@@ -57,7 +57,7 @@ let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
     ~lib_deps_js_includes ~js_ext m =
   let cm_kind = Lib_mode.Cm_kind.Melange Cmj in
   let open Memo.O in
-  let* compiler = Melange_binary.melc sctx ~dir in
+  let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind in
   let output = make_js_name ~js_ext ~dst_dir m in
   let obj_dir =
@@ -75,7 +75,7 @@ let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
     "--bs-module-type" :: js_modules_str :: pkg_name_args
   in
   let lib_deps_js_includes = Command.Args.as_any lib_deps_js_includes in
-  Super_context.add_rule sctx ~dir ?loc ~mode
+  Super_context.add_rule sctx ~dir ~loc ~mode
     (Command.run
        ~dir:(Path.build (Super_context.context sctx).build_dir)
        compiler
@@ -140,9 +140,8 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   let* () =
     Memo.parallel_iter module_list ~f:(fun m ->
         (* Should we check module kind? *)
-        build_js ~dir ~loc:(Some loc) ~pkg_name ~mode
-          ~module_system:mel.module_system ~dst_dir ~obj_dir ~sctx
-          ~lib_deps_js_includes ~js_ext m)
+        build_js ~dir ~loc ~pkg_name ~mode ~module_system:mel.module_system
+          ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext m)
   in
   let* () =
     match mel.alias with
@@ -181,6 +180,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       in
       let lib = local_of_lib ~loc:mel.loc lib in
       let info = Lib.Local.info lib in
+      let loc = Lib_info.loc info in
       let lib_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
       let dst_dir = lib_output_dir ~target_dir ~lib_dir in
@@ -200,9 +200,8 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       in
       Memo.parallel_iter source_modules
         ~f:
-          (build_js ~loc:None ~dir ~pkg_name ~mode
-             ~module_system:mel.module_system ~dst_dir ~obj_dir ~sctx
-             ~lib_deps_js_includes ~js_ext))
+          (build_js ~loc ~dir ~pkg_name ~mode ~module_system:mel.module_system
+             ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext))
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in

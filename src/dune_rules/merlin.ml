@@ -33,8 +33,7 @@ module Processed = struct
     ; src_dirs : Path.Set.t
     ; flags : string list
     ; extensions : string Ml_kind.Dict.t list
-    ; mode : [ `Ocaml | `Melange ]
-    ; melc_compiler : Action.Prog.t
+    ; melc_flags : string list option
     }
 
   (* ...but modules can have different preprocessing specifications*)
@@ -71,8 +70,7 @@ module Processed = struct
   let serialize_path = Path.to_absolute_filename
 
   let to_sexp ~pp
-      { stdlib_dir; obj_dirs; src_dirs; flags; extensions; mode; melc_compiler }
-      =
+      { stdlib_dir; obj_dirs; src_dirs; flags; extensions; melc_flags } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
@@ -106,21 +104,12 @@ module Processed = struct
             (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
           :: flags
       in
-      match mode with
-      | `Ocaml -> flags
-      | `Melange -> (
-        match melc_compiler with
-        | Error _ -> flags
-        | Ok path ->
-          make_directive "FLG"
-            (Sexp.List
-               [ Atom (Pp_kind.to_flag Ppx)
-               ; Atom (serialize_path path)
-               ; Atom "-as-ppx"
-               ; Atom "-bs-jsx"
-               ; Atom "3"
-               ])
-          :: flags)
+      match melc_flags with
+      | None -> flags
+      | Some melc_flags ->
+        make_directive "FLG"
+          (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) melc_flags))
+        :: flags
     in
     let suffixes =
       List.map extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
@@ -142,7 +131,7 @@ module Processed = struct
     if String.need_quoting s then Filename.quote s else s
 
   let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions
-      mode =
+      melc_flags =
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
     let print = Buffer.add_string b in
@@ -168,11 +157,12 @@ module Processed = struct
           List.iter flags ~f:(fun f -> printf " %s" (quote_for_dot_merlin f));
           print "\n");
     let () =
-      match mode with
-      | `Ocaml -> ()
-      | `Melange ->
-        print
-          ("# FLG -ppx " ^ quote_for_dot_merlin "melc -as-ppx -bs-jsx 3" ^ "\n")
+      match melc_flags with
+      | None -> ()
+      | Some melc_flags ->
+        print "# FLG";
+        List.iter melc_flags ~f:(fun f -> printf " %s" (quote_for_dot_merlin f));
+        print "\n"
     in
     Buffer.contents b
 
@@ -212,7 +202,7 @@ module Processed = struct
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok [] -> Printf.eprintf "No merlin configuration found.\n"
     | Ok (init :: tl) ->
-      let pp_configs, obj_dirs, src_dirs, flags, extensions, mode =
+      let pp_configs, obj_dirs, src_dirs, flags, extensions, melc_flags =
         (* We merge what is easy to merge and ignore the rest *)
         List.fold_left tl
           ~init:
@@ -221,9 +211,9 @@ module Processed = struct
             , init.config.src_dirs
             , [ init.config.flags ]
             , init.config.extensions
-            , init.config.mode )
+            , init.config.melc_flags )
           ~f:(fun
-               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext, acc_mode)
+               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext, acc_melc_flags)
                { modules = _
                ; pp_config
                ; config =
@@ -232,8 +222,7 @@ module Processed = struct
                    ; src_dirs
                    ; flags
                    ; extensions
-                   ; mode
-                   ; melc_compiler = _
+                   ; melc_flags
                    }
                }
              ->
@@ -242,13 +231,13 @@ module Processed = struct
             , Path.Set.union acc_src src_dirs
             , flags :: acc_flags
             , extensions @ acc_ext
-            , match acc_mode with
-              | `Melange -> `Melange
-              | `Ocaml -> mode ))
+            , match acc_melc_flags with
+              | Some _ -> acc_melc_flags
+              | None -> melc_flags ))
       in
       Printf.printf "%s\n"
         (to_dot_merlin init.config.stdlib_dir pp_configs flags obj_dirs src_dirs
-           extensions mode)
+           extensions melc_flags)
 end
 
 let obj_dir_of_lib kind mode obj_dir =
@@ -460,13 +449,24 @@ module Unprocessed = struct
         Path.Set.union src_dirs
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
+      let melc_flags =
+        match melc_compiler with
+        | Error _ -> None
+        | Ok path ->
+          Some
+            [ Processed.Pp_kind.to_flag Ppx
+            ; Processed.serialize_path path
+            ; "-as-ppx"
+            ; "-bs-jsx"
+            ; "3"
+            ]
+      in
       { Processed.stdlib_dir
       ; src_dirs
       ; obj_dirs
       ; flags
       ; extensions
-      ; mode
-      ; melc_compiler
+      ; melc_flags
       }
     and+ pp_config = pp_config t sctx ~expander in
     let modules =

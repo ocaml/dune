@@ -443,7 +443,7 @@ module Unprocessed = struct
                     in
                     Path.Set.add obj_dirs public_cmi_dir )))
       and+ melc_compiler =
-        Action_builder.of_memo (Melange_binary.melc sctx ~dir)
+        Action_builder.of_memo (Melange_binary.melc sctx ~loc:None ~dir)
       in
       let src_dirs =
         Path.Set.union src_dirs

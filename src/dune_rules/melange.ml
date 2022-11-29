@@ -39,6 +39,10 @@ module Cm_kind = struct
   end
 end
 
+module Install = struct
+  let dir = "melange"
+end
+
 let js_basename m =
   match Module.file ~ml_kind:Impl m with
   | Some s -> (

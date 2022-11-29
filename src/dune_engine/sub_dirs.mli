@@ -59,6 +59,12 @@ module Dir_map : sig
     ; subdir_status : subdir_stanzas
     }
 
+  val dyn_of_per_dir : per_dir -> Dyn.t
+
+  val to_dyn : t -> Dyn.t
+
+  val empty : t
+
   val descend : t -> string -> t option
 
   val sub_dirs : t -> string list

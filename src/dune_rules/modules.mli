@@ -57,8 +57,6 @@ val fold_user_written : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 
 val map_user_written : t -> f:(Module.t -> Module.t Memo.t) -> t Memo.t
 
-val map : t -> f:(Module.t -> Module.t) -> t
-
 val fold_user_available : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 
 (** Returns all the compatibility modules. *)
@@ -105,8 +103,6 @@ val exit_module : t -> Module.t option
 (** [relocate_alias_module t ~src_dir] sets the source directory of the alias
     module to [src_dir]. Only works if [t] is wrapped. *)
 val relocate_alias_module : t -> src_dir:Path.t -> t
-
-val is_empty : t -> bool
 
 val as_singleton : t -> Module.t option
 

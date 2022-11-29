@@ -23,11 +23,10 @@ ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
 "ppx_expect.v0.15.0" \
 ppx_inline_test \
 ppxlib \
-result \
 ctypes \
 "utop>=2.6.0" \
-"melange>=0.3.0" \
-"mel>=0.3.0" \
+"melange>=0.3.1" \
+"mel>=0.3.1"
 
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
@@ -75,7 +74,8 @@ dev-depext:
 
 .PHONY: melange
 melange:
-	opam pin add melange https://github.com/melange-re/melange.git#2f7a184400fd5d62c9160528a7ab4ce81874c024
+	opam pin add melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#426463a77d0b70ecf0108c98e6a86d325cd01472
+	opam pin add melange https://github.com/melange-re/melange.git#685e546e290d317a884a4d48c7835467422c6426
 
 dev-deps: melange
 	opam install -y $(TEST_DEPS)

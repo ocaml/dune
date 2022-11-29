@@ -9,8 +9,13 @@ open Memo.O
 let loc_of_dune_file st_dir =
   Loc.in_file
     (Path.source
-       (match Source_tree.Dir.dune_file st_dir with
-       | Some d -> Source_tree.Dune_file.path d
+       (match
+          let open Option.O in
+          let* dune_file = Source_tree.Dir.dune_file st_dir in
+          (* TODO not really correct. we need to know the [(subdir ..)] that introduced this *)
+          Source_tree.Dune_file.path dune_file
+        with
+       | Some s -> s
        | None -> Path.Source.relative (Source_tree.Dir.path st_dir) "_unknown_"))
 
 type t =

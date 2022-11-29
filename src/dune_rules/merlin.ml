@@ -130,8 +130,7 @@ module Processed = struct
     in
     if String.need_quoting s then Filename.quote s else s
 
-  let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions
-      melc_flags =
+  let to_dot_merlin stdlib_dir pp_configs flags obj_dirs src_dirs extensions =
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
     let print = Buffer.add_string b in
@@ -156,14 +155,6 @@ module Processed = struct
           print "# FLG";
           List.iter flags ~f:(fun f -> printf " %s" (quote_for_dot_merlin f));
           print "\n");
-    let () =
-      match melc_flags with
-      | None -> ()
-      | Some melc_flags ->
-        print "# FLG";
-        List.iter melc_flags ~f:(fun f -> printf " %s" (quote_for_dot_merlin f));
-        print "\n"
-    in
     Buffer.contents b
 
   let get { modules; pp_config; config } ~filename =
@@ -235,9 +226,14 @@ module Processed = struct
               | Some _ -> acc_melc_flags
               | None -> melc_flags ))
       in
+      let flags =
+        match melc_flags with
+        | None -> flags
+        | Some melc -> melc :: flags
+      in
       Printf.printf "%s\n"
         (to_dot_merlin init.config.stdlib_dir pp_configs flags obj_dirs src_dirs
-           extensions melc_flags)
+           extensions)
 end
 
 let obj_dir_of_lib kind mode obj_dir =

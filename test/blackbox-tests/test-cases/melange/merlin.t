@@ -2,6 +2,8 @@
 
   $ melc_where="$(melc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/MELC_WHERE=$melc_where:$BUILD_PATH_PREFIX_MAP"
+  $ melc_compiler="$(which melc)"
+  $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
 
   $ cat >dune-project <<EOF
   > (lang dune 3.6)
@@ -31,9 +33,9 @@
 All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
 
   $ dune ocaml merlin dump-config $PWD | grep -i "ppx"
-   (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
-   (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
-   (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
+   (FLG (-ppx /MELC_COMPILER -as-ppx -bs-jsx 3))
+   (FLG (-ppx /MELC_COMPILER -as-ppx -bs-jsx 3))
+   (FLG (-ppx /MELC_COMPILER -as-ppx -bs-jsx 3))
 
   $ target=output
   $ cat >dune <<EOF
@@ -51,7 +53,7 @@ All 3 entries (Foo, Foo__ and Bar) contain a ppx directive
 The melange.emit entry contains a ppx directive
 
   $ dune ocaml merlin dump-config $PWD | grep -i "ppx"
-   (FLG (-ppx "melc -as-ppx -bs-jsx 3"))
+   (FLG (-ppx /MELC_COMPILER -as-ppx -bs-jsx 3))
 
   $ dune ocaml dump-dot-merlin $PWD
   EXCLUDE_QUERY_DIR

@@ -34,6 +34,7 @@ module Processed = struct
     ; flags : string list
     ; extensions : string Ml_kind.Dict.t list
     ; mode : [ `Ocaml | `Melange ]
+    ; melc_compiler : Action.Prog.t
     }
 
   (* ...but modules can have different preprocessing specifications*)
@@ -69,9 +70,9 @@ module Processed = struct
 
   let serialize_path = Path.to_absolute_filename
 
-  let melc_ppx_flg = "melc -as-ppx -bs-jsx 3"
-
-  let to_sexp ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions; mode } =
+  let to_sexp ~pp
+      { stdlib_dir; obj_dirs; src_dirs; flags; extensions; mode; melc_compiler }
+      =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
@@ -107,10 +108,19 @@ module Processed = struct
       in
       match mode with
       | `Ocaml -> flags
-      | `Melange ->
-        make_directive "FLG"
-          (Sexp.List [ Atom (Pp_kind.to_flag Ppx); Atom melc_ppx_flg ])
-        :: flags
+      | `Melange -> (
+        match melc_compiler with
+        | Error _ -> flags
+        | Ok path ->
+          make_directive "FLG"
+            (Sexp.List
+               [ Atom (Pp_kind.to_flag Ppx)
+               ; Atom (serialize_path path)
+               ; Atom "-as-ppx"
+               ; Atom "-bs-jsx"
+               ; Atom "3"
+               ])
+          :: flags)
     in
     let suffixes =
       List.map extensions ~f:(fun { Ml_kind.Dict.impl; intf } ->
@@ -161,7 +171,8 @@ module Processed = struct
       match mode with
       | `Ocaml -> ()
       | `Melange ->
-        print ("# FLG -ppx " ^ quote_for_dot_merlin melc_ppx_flg ^ "\n")
+        print
+          ("# FLG -ppx " ^ quote_for_dot_merlin "melc -as-ppx -bs-jsx 3" ^ "\n")
     in
     Buffer.contents b
 
@@ -222,6 +233,7 @@ module Processed = struct
                    ; flags
                    ; extensions
                    ; mode
+                   ; melc_compiler = _
                    }
                }
              ->
@@ -441,12 +453,21 @@ module Unprocessed = struct
                       obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
                     in
                     Path.Set.add obj_dirs public_cmi_dir )))
+      and+ melc_compiler =
+        Action_builder.of_memo (Melange_binary.melc sctx ~dir)
       in
       let src_dirs =
         Path.Set.union src_dirs
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
-      { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions; mode }
+      { Processed.stdlib_dir
+      ; src_dirs
+      ; obj_dirs
+      ; flags
+      ; extensions
+      ; mode
+      ; melc_compiler
+      }
     and+ pp_config = pp_config t sctx ~expander in
     let modules =
       (* And copy for each module the resulting pp flags *)

@@ -1,6 +1,27 @@
+open Stdune
+
 type t =
   | Ocaml of Ocaml.Mode.t
   | Melange
+
+let equal x y =
+  match (x, y) with
+  | Ocaml o1, Ocaml o2 -> Ocaml.Mode.equal o1 o2
+  | Ocaml _, _ | _, Ocaml _ -> false
+  | Melange, Melange -> true
+
+let decode =
+  let open Dune_sexp.Decoder in
+  enum [ ("byte", Ocaml Byte); ("native", Ocaml Native); ("melange", Melange) ]
+
+let choose byte native melange = function
+  | Ocaml Byte -> byte
+  | Ocaml Native -> native
+  | Melange -> melange
+
+let to_string = choose "byte" "native" "melange"
+
+let encode t = Dune_sexp.Encoder.string (to_string t)
 
 module Cm_kind = struct
   type t =
@@ -51,6 +72,8 @@ let of_cm_kind : Cm_kind.t -> t = function
   | Melange (Cmi | Cmj) -> Melange
 
 module Map = struct
+  let mode_equal = equal
+
   type 'a t =
     { ocaml : 'a Ocaml.Mode.Dict.t
     ; melange : 'a
@@ -82,6 +105,23 @@ module Map = struct
     type nonrec t = bool t
 
     let equal = equal Bool.equal
+
+    let to_list (t : t) =
+      let l = [] in
+      let l = if t.ocaml.native then Ocaml Native :: l else l in
+      let l = if t.ocaml.byte then Ocaml Byte :: l else l in
+      let l = if t.melange then Melange :: l else l in
+      l
+
+    let encode t = List.map ~f:encode (to_list t)
+
+    let of_list l =
+      { ocaml =
+          { byte = List.mem l (Ocaml Byte) ~equal:mode_equal
+          ; native = List.mem l (Ocaml Native) ~equal:mode_equal
+          }
+      ; melange = List.mem l Melange ~equal:mode_equal
+      }
 
     let to_dyn { ocaml; melange } =
       let open Dyn in

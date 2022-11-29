@@ -1,4 +1,4 @@
-# Test that .cmxs are installed with the executable bit set
+Test that we can install melange mode libraries
 
   $ cat >dune-project <<EOF
   > (lang dune 3.6)
@@ -37,5 +37,14 @@
    (name foo)
    (kind normal)
    (main_module_name Foo)
+   (modes melange)
    (modules (singleton (name Foo) (obj_name foo) (visibility public) (impl))))
+
+  $ dune install --prefix prefix
+  Installing prefix/lib/foo/META
+  Installing prefix/lib/foo/dune-package
+  Installing prefix/lib/foo/foo.ml
+  Installing prefix/lib/foo/melange/foo.cmi
+  Installing prefix/lib/foo/melange/foo.cmj
+  Installing prefix/lib/foo/melange/foo.cmt
 

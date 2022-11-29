@@ -1,5 +1,5 @@
   $ cat > dune-project << EOF
-  > (lang dune 3.5)
+  > (lang dune 3.7)
   > EOF
 
   $ cat > dune << EOF

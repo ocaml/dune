@@ -118,7 +118,7 @@ module Generic = struct
   type 'files t = 'files generic_t
 
   let dune2_record_syntax ~files =
-    let+ files = Dune_lang.Syntax.since Dune_lang.Stanza.syntax (3, 5) >>> files
+    let+ files = Dune_lang.Syntax.since Dune_lang.Stanza.syntax (3, 7) >>> files
     and+ ef = Enabled_for.field in
     ( files
     , match ef with

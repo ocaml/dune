@@ -33,7 +33,7 @@ module Processed = struct
     ; src_dirs : Path.Set.t
     ; flags : string list
     ; extensions : string Ml_kind.Dict.t list
-    ; melc_flags : string list option
+    ; melc_flags : string list
     }
 
   (* ...but modules can have different preprocessing specifications*)
@@ -105,8 +105,8 @@ module Processed = struct
           :: flags
       in
       match melc_flags with
-      | None -> flags
-      | Some melc_flags ->
+      | [] -> flags
+      | melc_flags ->
         make_directive "FLG"
           (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) melc_flags))
         :: flags
@@ -223,13 +223,13 @@ module Processed = struct
             , flags :: acc_flags
             , extensions @ acc_ext
             , match acc_melc_flags with
-              | Some _ -> acc_melc_flags
-              | None -> melc_flags ))
+              | [] -> melc_flags
+              | acc_melc_flags -> acc_melc_flags ))
       in
       let flags =
         match melc_flags with
-        | None -> flags
-        | Some melc -> melc :: flags
+        | [] -> flags
+        | melc -> melc :: flags
       in
       Printf.printf "%s\n"
         (to_dot_merlin init.config.stdlib_dir pp_configs flags obj_dirs src_dirs
@@ -447,15 +447,14 @@ module Unprocessed = struct
       in
       let melc_flags =
         match melc_compiler with
-        | Error _ -> None
+        | Error _ -> []
         | Ok path ->
-          Some
-            [ Processed.Pp_kind.to_flag Ppx
-            ; Processed.serialize_path path
-            ; "-as-ppx"
-            ; "-bs-jsx"
-            ; "3"
-            ]
+          [ Processed.Pp_kind.to_flag Ppx
+          ; Processed.serialize_path path
+          ; "-as-ppx"
+          ; "-bs-jsx"
+          ; "3"
+          ]
       in
       { Processed.stdlib_dir
       ; src_dirs

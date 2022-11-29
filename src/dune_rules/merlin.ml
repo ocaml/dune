@@ -395,7 +395,7 @@ module Unprocessed = struct
         @@
         match t.config.mode with
         | `Ocaml -> Memo.return (Some stdlib_dir)
-        | `Melange -> Melange_binary.where sctx ~dir
+        | `Melange -> Melange_binary.where sctx ~loc:None ~dir
       in
       let+ flags = flags
       and+ src_dirs, obj_dirs =

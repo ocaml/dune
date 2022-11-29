@@ -96,7 +96,8 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
   let* compiler =
     match mode with
     | Melange ->
-      let+ melc = Melange_binary.melc sctx ~dir in
+      let loc = CC.loc cctx in
+      let+ melc = Melange_binary.melc sctx ~loc ~dir in
       Some melc
     | Ocaml mode ->
       Memo.return

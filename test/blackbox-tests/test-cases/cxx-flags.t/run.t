@@ -119,10 +119,10 @@ With use_standard_c_and_cxx_flags = true
 (this also works with sandbox=symlink, #6415)
 
   $ dune exec --sandbox symlink ./main.exe
-  File ".dune/ccomp/_unknown_", line 1, characters 0-0:
-  cc1: fatal error: $TESTCASE_ROOT/_build/default/.dune/ccomp/header_check.h: No such file or directory
-  compilation terminated.
-  [1]
+  2046
+  4096
+  Hello World Baz!
+  Hello World Bazexe!
 
 ccomp is not computed if not required
 =====================================

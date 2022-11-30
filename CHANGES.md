@@ -33,6 +33,8 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
+- Add CI testing with MSVC (#6540, fixes #6535, @jonahbeckford)
+
 - Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
 
 3.6.0 (2022-11-14)

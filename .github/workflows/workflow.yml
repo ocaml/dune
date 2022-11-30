@@ -102,6 +102,36 @@ jobs:
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}
 
+  dkml:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gh_os: windows-2019
+            abi_pattern: win32-windows_x86
+            dkml_host_abi: windows_x86
+          - gh_os: windows-2019
+            abi_pattern: win32-windows_x86_64
+            dkml_host_abi: windows_x86_64
+    runs-on: ${{ matrix.gh_os }}
+    name: MSVC / ${{ matrix.dkml_host_abi }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup DKML on a Windows host
+        if: startsWith(matrix.dkml_host_abi, 'windows_')
+        uses: ./ci/setup-dkml/gh-windows/pre
+
+      - name: Build and test the package on Windows host
+        if: startsWith(matrix.dkml_host_abi, 'windows_')
+        shell: msys2 {0}
+        run: ci/build-test.sh
+
+      - name: Teardown DKML on a Windows host
+        if: startsWith(matrix.dkml_host_abi, 'windows_')
+        uses: ./ci/setup-dkml/gh-windows/post
+
   nix:
     name: Nix
     strategy:

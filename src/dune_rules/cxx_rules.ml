@@ -31,7 +31,7 @@ let rules ~sctx ~dir =
     [ (match Ocaml_config.ccomp_type ocfg with
       | Msvc -> A "/EP"
       | Other _ -> As [ "-E"; "-P" ])
-    ; A Path.(to_absolute_filename (build header_file))
+    ; Path (Path.build header_file)
     ]
   in
   let action =

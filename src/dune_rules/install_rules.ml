@@ -93,7 +93,7 @@ end = struct
     let lib_config = ctx.lib_config in
     let* info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
     let obj_dir = Lib_info.obj_dir info in
-    let make_entry section ?sub_dir_segments ?dst fn =
+    let make_entry section ?sub_dir ?dst fn =
       let entry =
         Install.Entry.make section fn ~kind:`File
           ~dst:
@@ -103,9 +103,9 @@ end = struct
                | None -> Path.Build.basename fn
              in
              let sub_dir =
-               match sub_dir_segments with
-               | None | Some [] -> lib_subdir
-               | Some segments -> Some (String.concat ~sep:"/" segments)
+               match sub_dir with
+               | Some _ -> sub_dir
+               | None -> lib_subdir
              in
              match sub_dir with
              | None -> dst
@@ -148,13 +148,8 @@ end = struct
       let cm_dir m cm_kind =
         let visibility = Module.visibility m in
         let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
-        let cm_dir_segments =
-          if Path.equal (Path.build dir) dir' then []
-          else [ Path.basename dir' |> inside_subdir ]
-        in
-        match cm_kind with
-        | Ocaml _ -> cm_dir_segments
-        | Melange _ -> Melange.Install.dir :: cm_dir_segments
+        if Path.equal (Path.build dir) dir' then None
+        else Path.basename dir' |> inside_subdir |> Option.some
       in
       let virtual_library = Library.is_virtual lib in
       let if_ b (cm_kind, f) =
@@ -224,9 +219,8 @@ end = struct
     in
     List.concat
       [ sources
-      ; List.map module_files
-          ~f:(fun ((sub_dir_segments : string list), file) ->
-            make_entry ~sub_dir_segments Lib file)
+      ; List.map module_files ~f:(fun (sub_dir, file) ->
+            make_entry ?sub_dir Lib file)
       ; List.map lib_files ~f:(fun (section, file) -> make_entry section file)
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dll_files ~f:(fun a ->

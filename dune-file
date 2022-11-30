@@ -48,4 +48,5 @@
  (_
   (flags :standard -alert -unstable)
   (env-vars
+   ; Workaround for #6607
    (CLICOLOR_FORCE 0))))

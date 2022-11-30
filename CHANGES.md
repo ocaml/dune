@@ -37,6 +37,9 @@ Unreleased
 
 - Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
 
+- Fix missing dependencies when detecting the kind of C compiler we're using
+  (#6610, fixes #6415, @emillon)
+
 3.6.0 (2022-11-14)
 ------------------
 

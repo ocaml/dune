@@ -116,6 +116,13 @@ With use_standard_c_and_cxx_flags = true
 
   $ [ -f _build/default/.dune/ccomp/ccomp ]
 
+(this also works with sandbox=symlink, #6415)
+
+  $ dune exec --sandbox symlink ./main.exe
+  2046
+  4096
+  Hello World Baz!
+  Hello World Bazexe!
 
 ccomp is not computed if not required
 =====================================

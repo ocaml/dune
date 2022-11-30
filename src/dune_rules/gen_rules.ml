@@ -253,20 +253,22 @@ let gen_rules sctx dir_contents cctxs expander
           | true -> (
             let* ml_sources = Dir_contents.ocaml dir_contents in
             match
-              List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
-                  Option.bind (Ml_sources.find_origin ml_sources name)
-                    ~f:(fun origin ->
-                      List.find_map cctxs ~f:(fun (loc, cctx) ->
-                          Option.some_if
-                            (Loc.equal loc (Ml_sources.Origin.loc origin))
-                            cctx)))
+              Menhir_rules.module_names m
+              |> List.find_map ~f:(fun name ->
+                     let open Option.O in
+                     let* origin = Ml_sources.find_origin ml_sources name in
+                     List.find_map cctxs ~f:(fun (loc, cctx) ->
+                         Option.some_if
+                           (Loc.equal loc (Ml_sources.Origin.loc origin))
+                           cctx))
             with
+            | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir
             | None ->
               (* This happens often when passing a [-p ...] option that hides a
                  library *)
               let file_targets =
-                List.map (Menhir_stanza.targets m)
-                  ~f:(Path.Build.relative ctx_dir)
+                Menhir_stanza.targets m
+                |> List.map ~f:(Path.Build.relative ctx_dir)
               in
               Super_context.add_rule sctx ~dir:ctx_dir
                 (Action_builder.fail
@@ -278,8 +280,7 @@ let gen_rules sctx dir_contents cctxs expander
                                 files produced by this stanza are part of."
                            ])
                    }
-                |> Action_builder.with_file_targets ~file_targets)
-            | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir))
+                |> Action_builder.with_file_targets ~file_targets)))
         | Coq_stanza.Theory.T m -> (
           Expander.eval_blang expander m.enabled_if >>= function
           | false -> Memo.return ()

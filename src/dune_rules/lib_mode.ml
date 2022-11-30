@@ -66,8 +66,17 @@ module Map = struct
       ; ("melange", to_dyn melange)
       ]
 
+  let get t = function
+    | Ocaml k -> Ocaml.Mode.Dict.get t.ocaml k
+    | Melange -> t.melange
+
   let map t ~f =
     { ocaml = Ocaml.Mode.Dict.map ~f t.ocaml; melange = f t.melange }
+
+  let make_all x = { ocaml = Ocaml.Mode.Dict.make_both x; melange = x }
+
+  let make ~byte ~native ~melange =
+    { ocaml = Ocaml.Mode.Dict.make ~byte ~native; melange }
 
   module Set = struct
     type nonrec t = bool t

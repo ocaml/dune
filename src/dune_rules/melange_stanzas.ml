@@ -13,7 +13,7 @@ module Emit = struct
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; promote : Rule.Promote.t option
-    ; flags : Ocaml_flags.Spec.t
+    ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; root_module : (Loc.t * Module_name.t) option
     ; javascript_extension : string
     }
@@ -88,7 +88,7 @@ module Emit = struct
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
-       and+ flags = Ocaml_flags.Spec.decode
+       and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
        and+ root_module = field_o "root_module" Module_name.decode_loc
        and+ javascript_extension = extension_field "javascript_extension" in
        let preprocess =
@@ -111,7 +111,7 @@ module Emit = struct
        ; preprocess
        ; preprocessor_deps
        ; promote
-       ; flags
+       ; compile_flags
        ; root_module
        ; javascript_extension
        })

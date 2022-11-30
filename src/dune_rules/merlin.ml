@@ -422,8 +422,8 @@ module Unprocessed = struct
         | `Ocaml -> Memo.return (Some stdlib_dir)
         | `Melange -> Melange_binary.where sctx ~loc:None ~dir
       in
-      let+ flags = flags
-      and+ src_dirs, obj_dirs =
+      let* flags = flags
+      and* src_dirs, obj_dirs =
         Action_builder.of_memo
           (let open Memo.O in
           Memo.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
@@ -438,23 +438,27 @@ module Unprocessed = struct
                       obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
                     in
                     Path.Set.add obj_dirs public_cmi_dir )))
-      and+ melc_compiler =
-        Action_builder.of_memo (Melange_binary.melc sctx ~loc:None ~dir)
       in
       let src_dirs =
         Path.Set.union src_dirs
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
-      let melc_flags =
-        match melc_compiler with
-        | Error _ -> []
-        | Ok path ->
-          [ Processed.Pp_kind.to_flag Ppx
-          ; Processed.serialize_path path
-          ; "-as-ppx"
-          ; "-bs-jsx"
-          ; "3"
-          ]
+      let+ melc_flags =
+        match t.config.mode with
+        | `Ocaml -> Action_builder.return []
+        | `Melange -> (
+          let+ melc_compiler =
+            Action_builder.of_memo (Melange_binary.melc sctx ~loc:None ~dir)
+          in
+          match melc_compiler with
+          | Error _ -> []
+          | Ok path ->
+            [ Processed.Pp_kind.to_flag Ppx
+            ; Processed.serialize_path path
+            ; "-as-ppx"
+            ; "-bs-jsx"
+            ; "3"
+            ])
       in
       { Processed.stdlib_dir
       ; src_dirs

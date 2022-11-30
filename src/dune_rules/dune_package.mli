@@ -8,8 +8,6 @@ val fn : string
 module Lib : sig
   type t
 
-  val modules : t -> Modules.t option
-
   val main_module_name : t -> Module_name.t option
 
   val dir_of_name : Lib_name.t -> Path.Local.t
@@ -21,10 +19,7 @@ module Lib : sig
   val of_findlib : Path.t Lib_info.t -> t
 
   val of_dune_lib :
-       info:Path.t Lib_info.t
-    -> main_module_name:Module_name.t option
-    -> modules:Modules.t
-    -> t
+    info:Path.t Lib_info.t -> main_module_name:Module_name.t option -> t
 
   val to_dyn : t Dyn.builder
 end

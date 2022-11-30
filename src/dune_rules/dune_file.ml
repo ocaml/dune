@@ -988,8 +988,8 @@ module Library = struct
       ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
       ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
       ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
-      ~entry_modules ~implements ~default_implementation ~modes ~wrapped
-      ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~entry_modules ~implements ~default_implementation ~modes ~modules:Local
+      ~wrapped ~special_builtin_support ~exit_module ~instrumentation_backend
 end
 
 module Plugin = struct

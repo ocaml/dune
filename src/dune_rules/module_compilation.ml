@@ -190,15 +190,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
     else Command.Args.empty
   in
   let flags, sandbox =
-    let flags =
-      Ocaml_flags.get (CC.flags cctx)
-        (match mode with
-        | Ocaml m -> m
-        | Melange ->
-          (* TODO: define Melange default flags somewhere, should melange rules
-             read from [flags] stanza as well? *)
-          Byte)
-    in
+    let flags = Ocaml_flags.get (CC.flags cctx) mode in
     match Module.pp_flags m with
     | None -> (flags, sandbox)
     | Some (pp, sandbox') ->
@@ -335,7 +327,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
           [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi))
           ]))
   in
-  let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
+  let ocaml_flags = Ocaml_flags.get (CC.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
   Super_context.add_rule sctx ~dir
     (Action_builder.With_targets.add ~file_targets:[ output ]

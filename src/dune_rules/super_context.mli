@@ -19,6 +19,11 @@ val context : t -> Context.t
 (** Context env with additional variables computed from packages *)
 val context_env : t -> Env.t
 
+val build_dir_is_vendored : Path.Build.t -> bool Memo.t
+
+val with_vendored_flags :
+  ocaml_version:Version.t -> Ocaml_flags.t -> Ocaml_flags.t
+
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
 val ocaml_flags :

@@ -13,7 +13,7 @@ module Emit : sig
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; promote : Rule.Promote.t option
-    ; flags : Ocaml_flags.Spec.t
+    ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; root_module : (Loc.t * Module_name.t) option
     ; javascript_extension : string
     }

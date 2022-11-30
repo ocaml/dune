@@ -9,29 +9,27 @@ let fn = "dune-package"
 module Lib = struct
   type t =
     { info : Path.t Lib_info.t
-    ; modules : Modules.t option
     ; main_module_name : Module_name.t option
     }
 
-  let make ~info ~main_module_name ~modules =
+  let make ~info ~main_module_name =
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
       if Path.is_managed p then Path.relative dir (Path.basename p) else p
     in
     let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name; modules }
+    { info; main_module_name }
 
-  let of_dune_lib ~info ~main_module_name ~modules =
-    make ~info ~main_module_name ~modules:(Some modules)
+  let of_dune_lib ~info ~main_module_name = make ~info ~main_module_name
 
-  let of_findlib info = make ~info ~main_module_name:None ~modules:None
+  let of_findlib info = make ~info ~main_module_name:None
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
-  let encode ~package_root { info; main_module_name; modules } =
+  let encode ~package_root { info; main_module_name } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -58,6 +56,11 @@ module Lib = struct
       match Lib_info.foreign_objects info with
       | External e -> e
       | Local -> assert false
+    in
+    let modules =
+      match Lib_info.modules info with
+      | External ms -> ms
+      | Local -> None
     in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
@@ -189,6 +192,7 @@ module Lib = struct
          in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
          let modes = { Lib_mode.Map.ocaml = modes; melange = false } in
+         let modules = Lib_info.Source.External (Some modules) in
          Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
            ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
            ~sub_systems ~requires ~foreign_objects ~plugins ~archives
@@ -196,24 +200,24 @@ module Lib = struct
            ~native_archives:(Files native_archives) ~foreign_dll_files:[]
            ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
            ~dune_version ~virtual_ ~entry_modules ~implements
-           ~default_implementation ~modes ~wrapped ~special_builtin_support
-           ~exit_module:None ~instrumentation_backend
+           ~default_implementation ~modes ~modules ~wrapped
+           ~special_builtin_support ~exit_module:None ~instrumentation_backend
        in
-       { info; main_module_name; modules = Some modules })
-
-  let modules t = t.modules
+       { info; main_module_name })
 
   let main_module_name t = t.main_module_name
 
-  let wrapped t = Option.map t.modules ~f:Modules.wrapped
+  let wrapped t =
+    match Lib_info.modules t.info with
+    | External modules -> Option.map modules ~f:Modules.wrapped
+    | Local -> None
 
   let info dp = dp.info
 
-  let to_dyn { info; modules; main_module_name } =
+  let to_dyn { info; main_module_name } =
     let open Dyn in
     record
       [ ("info", Lib_info.to_dyn Path.to_dyn info)
-      ; ("modules", option Modules.to_dyn modules)
       ; ("main_module_name", option Module_name.to_dyn main_module_name)
       ]
 end

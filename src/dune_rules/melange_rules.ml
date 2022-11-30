@@ -1,6 +1,21 @@
 open Import
 module CC = Compilation_context
 
+let ocaml_flags sctx ~dir melange =
+  let open Memo.O in
+  let open Super_context in
+  let* expander = expander sctx ~dir in
+  let* flags =
+    let+ ocaml_flags = env_node sctx ~dir >>= Env_node.ocaml_flags in
+    Ocaml_flags.make_with_melange ~melange ~default:ocaml_flags
+      ~eval:(Expander.expand_and_eval_set expander)
+  in
+  build_dir_is_vendored dir >>| function
+  | true ->
+    let ocaml_version = (context sctx).version in
+    with_vendored_flags ~ocaml_version flags
+  | false -> flags
+
 let lib_output_dir ~target_dir ~lib_dir =
   Path.Build.append_source target_dir
     (Path.Build.drop_build_context_exn lib_dir)
@@ -97,7 +112,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
-  let* flags = Super_context.ocaml_flags sctx ~dir mel.flags in
+  let* flags = ocaml_flags sctx ~dir mel.compile_flags in
   let requires_link = Lib.Compile.requires_link compile_info in
   let direct_requires = Lib.Compile.direct_requires compile_info in
   let* modules, pp =

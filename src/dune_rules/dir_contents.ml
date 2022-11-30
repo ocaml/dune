@@ -468,10 +468,11 @@ end
 include Load
 
 let modules_of_lib sctx lib =
-  let dir = Lib_info.src_dir (Lib.info lib) in
-  match Path.as_in_build_dir dir with
-  | None -> Memo.return None
-  | Some dir ->
+  let info = Lib.info lib in
+  match Lib_info.modules info with
+  | External modules -> Memo.return modules
+  | Local ->
+    let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
     let* t = get sctx ~dir in
     let+ ml_sources = ocaml t in
     let name = Lib.name lib in

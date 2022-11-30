@@ -116,6 +116,13 @@ With use_standard_c_and_cxx_flags = true
 
   $ [ -f _build/default/.dune/ccomp/ccomp ]
 
+(this also works with sandbox=symlink, #6415)
+
+  $ dune exec --sandbox symlink ./main.exe
+  File ".dune/ccomp/_unknown_", line 1, characters 0-0:
+  cc1: fatal error: $TESTCASE_ROOT/_build/default/.dune/ccomp/header_check.h: No such file or directory
+  compilation terminated.
+  [1]
 
 ccomp is not computed if not required
 =====================================

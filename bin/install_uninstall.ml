@@ -419,11 +419,12 @@ let install_uninstall ~what =
   let doc = Format.asprintf "%a packages." pp_what what in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let absolute_path =
-    ( (fun path ->
-        if Filename.is_relative path then
-          `Error "the path must be absolute to avoid ambiguity"
-        else `Ok path)
-    , snd Arg.string )
+    Arg.conv'
+      ( (fun path ->
+          if Filename.is_relative path then
+            Error "the path must be absolute to avoid ambiguity"
+          else Ok path)
+      , Arg.conv_printer Arg.string )
   in
   let term =
     let+ common = Common.term

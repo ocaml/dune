@@ -150,8 +150,8 @@ let setup sctx ~dir =
     if List.is_empty pps then Preprocess.No_preprocessing
     else Preprocess.Pps { loc = Loc.none; pps; flags = []; staged = false }
   in
-  let preprocess = Module_name.Per_item.for_all pps in
-  let* preprocessing =
+  let preprocessing =
+    let preprocess = Module_name.Per_item.for_all pps in
     Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
       ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
       ~instrumentation_deps:[]

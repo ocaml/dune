@@ -202,6 +202,7 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to an external library.
+  Leaving directory 'src'
   [1]
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a-from-target --root=src --workspace=./dune-workspace
@@ -212,6 +213,7 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to an external library.
+  Leaving directory 'src'
   [1]
 
 ----------------------------------------------------------------------------------

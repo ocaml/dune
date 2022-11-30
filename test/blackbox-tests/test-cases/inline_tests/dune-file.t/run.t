@@ -28,3 +28,4 @@ package:
   $ export OCAMLPATH=$PWD/_install/lib; dune runtest --root dune-file-user
   Entering directory 'dune-file-user'
   414243
+  Leaving directory 'dune-file-user'

@@ -14,76 +14,32 @@ let with_timeout ~timeout f =
   in
   loop ()
 
-module type S = sig
-  val lock : unit -> [ `Success | `Failure ]
-
-  val unlock : unit -> unit
-end
-
 let write_pid fd =
   let pid = Int.to_string (Unix.getpid ()) in
   let len = String.length pid in
   let res = Unix.write fd (Bytes.of_string pid) 0 len in
   assert (res = len)
 
-module Win () : S = struct
-  let t = ref None
-
-  let create () =
-    Path.ensure_build_dir_exists ();
-    match
-      Unix.openfile
-        (Path.Build.to_string lock_file)
-        [ O_CREAT; O_EXCL; O_WRONLY ]
-        0o600
-    with
-    | exception _ -> None
-    | fd ->
-      Unix.set_close_on_exec fd;
-      write_pid fd;
-      Some fd
-
-  let () =
-    at_exit (fun () ->
-        match !t with
-        | None -> ()
-        | Some fd ->
-          Unix.close fd;
-          Path.rm_rf (Path.build lock_file))
-
-  let lock () =
-    match !t with
-    | Some _ -> `Success
-    | None -> (
-      match create () with
-      | None -> `Failure
-      | Some fd ->
-        t := Some fd;
-        `Success)
-
-  let unlock () =
-    match !t with
-    | None -> ()
-    | Some fd ->
-      Unix.close fd;
-      Path.rm_rf (Path.build lock_file)
-end
-
-module Unix () : S = struct
+module Lock = struct
   let t =
     lazy
       (Path.ensure_build_dir_exists ();
        let fd =
          Unix.openfile
            (Path.Build.to_string lock_file)
-           [ Unix.O_CREAT; O_WRONLY ] 0o600
+           [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE ]
+           0o600
        in
        Unix.set_close_on_exec fd;
        Flock.create fd)
 
   let or_raise_unix ~name = function
     | Ok s -> s
-    | Error _unix -> Code_error.raise "lock" [ ("name", Dyn.string name) ]
+    | Error error ->
+      Code_error.raise "lock"
+        [ ("name", Dyn.string name)
+        ; ("error", Dyn.string (Unix.error_message error))
+        ]
 
   let lock () =
     let t = Lazy.force t in
@@ -97,8 +53,6 @@ module Unix () : S = struct
 
   let unlock () = Lazy.force t |> Flock.unlock |> or_raise_unix ~name:"unlock"
 end
-
-module Lock = (val if Sys.win32 then (module Win ()) else (module Unix ()) : S)
 
 let locked = ref false
 

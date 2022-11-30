@@ -193,11 +193,10 @@ module Buildable = struct
         let f libname = Preprocess.With_instrumentation.Ordinary libname in
         Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
       in
-      List.fold_left instrumentation
+      List.fold_left instrumentation ~init
         ~f:(fun accu ((backend, flags), deps) ->
           Preprocess.Per_module.add_instrumentation accu
             ~loc:loc_instrumentation ~flags ~deps backend)
-        ~init
     in
     let foreign_stubs =
       foreign_stubs
@@ -456,7 +455,8 @@ module Mode_conf = struct
         ; ("native", return @@ Ocaml Native)
         ; ("best", return @@ Ocaml Best)
         ; ( "melange"
-          , Dune_lang.Syntax.since Melange.syntax (0, 1) >>> return Melange )
+          , Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
+            >>> return Melange )
         ]
 
     let to_string = function
@@ -2394,7 +2394,7 @@ module Stanzas = struct
         and+ t = Plugin.decode in
         [ Plugin t ] )
     ; ( "melange.emit"
-      , let+ () = Dune_lang.Syntax.since Melange.syntax (0, 1)
+      , let+ () = Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
         and+ t = Melange_stanzas.Emit.decode in
         [ Melange_emit t ] )
     ]
@@ -2422,11 +2422,19 @@ module Stanzas = struct
            parse_file_includes ~stanza_parser ~context sexps
          | stanza -> Memo.return [ stanza ])
 
-  let parse ~file (project : Dune_project.t) sexps =
+  let parse ~file ~dir (project : Dune_project.t) sexps =
     let stanza_parser = parser project in
     let open Memo.O in
     let+ stanzas =
-      let context = Include_stanza.in_file file in
+      let context =
+        Include_stanza.in_file
+        @@
+        match file with
+        | Some f -> f
+        | None ->
+          (* TODO this is wrong *)
+          Path.Source.relative dir Source_tree.Dune_file.fname
+      in
       parse_file_includes ~stanza_parser ~context sexps
     in
     let (_ : bool) =
@@ -2476,7 +2484,7 @@ let is_promoted_rule version rule =
 
 let parse sexps ~dir ~file ~project =
   let open Memo.O in
-  let+ stanzas = Stanzas.parse ~file project sexps in
+  let+ stanzas = Stanzas.parse ~file ~dir project sexps in
   let stanzas =
     if !Clflags.ignore_promoted_rules then
       let version = Dune_project.dune_version project in

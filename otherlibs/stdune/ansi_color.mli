@@ -95,6 +95,8 @@ val stdout_supports_color : bool Lazy.t
 
 val stderr_supports_color : bool Lazy.t
 
+val output_is_a_tty : bool Lazy.t
+
 (** Filter out escape sequences in a string *)
 val strip : string -> string
 

@@ -130,4 +130,9 @@ val set_src_dir : t -> src_dir:Path.t -> t
 
     XXX should this return the path of the source as well? it will almost always
     be used to create the rule to generate this file *)
-val generated : kind:Kind.t -> src_dir:Path.Build.t -> Module_name.t -> t
+val generated :
+     ?obj_name:Module_name.Unique.t
+  -> kind:Kind.t
+  -> src_dir:Path.Build.t
+  -> Module_name.t
+  -> t

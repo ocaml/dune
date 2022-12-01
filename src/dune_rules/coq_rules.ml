@@ -21,13 +21,10 @@ module Bootstrap = struct
         (** We are compiling the prelude itself
             [should be replaced with (per_file ...) flags] *)
 
-  let flags ~coqdoc t : _ Command.Args.t =
+  let flags t : _ Command.Args.t =
     match t with
     | No_boot -> Command.Args.empty
-    | Bootstrap lib ->
-      if coqdoc then
-        S [ A "--coqlib"; Path (Path.build @@ Coq_lib.src_root lib) ]
-      else A "-boot"
+    | Bootstrap _ -> A "-boot"
     | Bootstrap_prelude -> As [ "-boot"; "-noinit" ]
 end
 
@@ -100,7 +97,7 @@ let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags :
     ; A wrapper_name
     ]
   in
-  [ Bootstrap.flags ~coqdoc:false boot_type; S file_flags ]
+  [ Bootstrap.flags boot_type; S file_flags ]
 
 let native_includes ~dir =
   let* scope = Scope.DB.find_by_dir dir in
@@ -426,16 +423,13 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name
   let loc, name = (s.buildable.loc, snd s.name) in
   let rule =
     let file_flags =
-      let file_flags =
-        [ theories_flags ~theories_deps
-        ; A "-R"
-        ; Path (Path.build dir)
-        ; A wrapper_name
-        ]
-      in
-      (* BUG: we were passing No_boot before and now we have made it explicit. We
-          probably want to do something better here. *)
-      [ Bootstrap.flags ~coqdoc:true Bootstrap.No_boot; S file_flags ]
+      (* BUG: We need to pass --coqlib depending on the boot_type otherwise
+         coqdoc will not work. *)
+      [ theories_flags ~theories_deps
+      ; A "-R"
+      ; Path (Path.build dir)
+      ; A wrapper_name
+      ]
     in
     fun mode ->
       let* () =

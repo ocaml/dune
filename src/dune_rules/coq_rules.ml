@@ -7,89 +7,6 @@ open Memo.O
 (* Written by: Emilio Jesús Gallego Arias *)
 (* Written by: Rudi Grinberg *)
 
-(* compute include flags and mlpack rules *)
-let plugins_of_buildable ~context ~lib_db ~theories_deps
-    (buildable : Coq_stanza.Buildable.t) =
-  let res =
-    let open Resolve.Memo.O in
-    let+ libs =
-      Resolve.Memo.List.map buildable.plugins ~f:(fun (loc, name) ->
-          let+ lib = Lib.DB.resolve lib_db (loc, name) in
-          (loc, lib))
-    in
-    let coq_lang_version = buildable.coq_lang_version in
-    let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
-    (* Pair of include flags and paths to mlpack *)
-    let libs =
-      let* theories = theories_deps in
-      let* theories =
-        Resolve.Memo.lift
-        @@ Resolve.List.concat_map ~f:Coq_lib.libraries theories
-      in
-      let libs = libs @ theories in
-      Lib.closure ~linking:false (List.map ~f:snd libs)
-    in
-    let flags =
-      Resolve.Memo.args
-        (Resolve.Memo.map libs ~f:(fun libs ->
-             Path.Set.of_list_map libs ~f:(fun t ->
-                 let info = Lib.info t in
-                 Lib_info.src_dir info)
-             |> Lib_flags.L.to_iflags))
-    in
-    let open Action_builder.O in
-    ( flags
-    , let* libs = Resolve.Memo.read libs in
-      (* coqdep expects an mlpack file next to the sources otherwise it will
-         omit the cmxs deps *)
-      let ml_pack_files lib =
-        let plugins =
-          let info = Lib.info lib in
-          let plugins = Lib_info.plugins info in
-          Mode.Dict.get plugins Native
-        in
-        let to_mlpack file =
-          [ Path.set_extension file ~ext:".mlpack"
-          ; Path.set_extension file ~ext:".mllib"
-          ]
-        in
-        List.concat_map plugins ~f:to_mlpack
-      in
-      let meta_info (lib : Lib.t) =
-        let name = Lib.name lib |> Lib_name.to_string in
-        match Lib_info.status (Lib.info lib) with
-        | Public (_, pkg) ->
-          let package = Package.name pkg in
-          let meta_i =
-            Path.Build.relative
-              (Local_install_path.lib_dir ~context ~package)
-              "META"
-          in
-          Some (Path.build meta_i)
-        | Installed -> None
-        | Installed_private | Private _ ->
-          let is_error = coq_lang_version >= (0, 6) in
-          let text = if is_error then "not supported" else "deprecated" in
-          User_warning.emit ?loc:plugin_loc ~is_error
-            [ Pp.textf "Using private library %s as a Coq plugin is %s" name
-                text
-            ];
-          None
-      in
-      (* If the mlpack files don't exist, don't fail *)
-      Action_builder.all_unit
-        [ Action_builder.paths (List.filter_map ~f:meta_info libs)
-        ; Action_builder.paths_existing (List.concat_map ~f:ml_pack_files libs)
-        ] )
-  in
-  let ml_flags = Resolve.Memo.map res ~f:fst in
-  let mlpack_rule =
-    let open Action_builder.O in
-    let* _, mlpack_rule = Resolve.Memo.read res in
-    mlpack_rule
-  in
-  (ml_flags, mlpack_rule)
-
 module Bootstrap = struct
   (* the internal boot flag determines if the Coq "standard library" is being
      built, in case we need to explicitly tell Coq where the build artifacts are
@@ -287,6 +204,89 @@ let theories_deps_requires_for_user_written ~dir
   let coq_lib_db = Scope.coq_libs scope in
   Coq_lib.DB.requires_for_user_written coq_lib_db buildable.theories
     ~coq_lang_version:buildable.coq_lang_version
+
+(* compute include flags and mlpack rules *)
+let plugins_of_buildable ~context ~lib_db ~theories_deps
+    (buildable : Coq_stanza.Buildable.t) =
+  let res =
+    let open Resolve.Memo.O in
+    let+ libs =
+      Resolve.Memo.List.map buildable.plugins ~f:(fun (loc, name) ->
+          let+ lib = Lib.DB.resolve lib_db (loc, name) in
+          (loc, lib))
+    in
+    let coq_lang_version = buildable.coq_lang_version in
+    let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
+    (* Pair of include flags and paths to mlpack *)
+    let libs =
+      let* theories = theories_deps in
+      let* theories =
+        Resolve.Memo.lift
+        @@ Resolve.List.concat_map ~f:Coq_lib.libraries theories
+      in
+      let libs = libs @ theories in
+      Lib.closure ~linking:false (List.map ~f:snd libs)
+    in
+    let flags =
+      Resolve.Memo.args
+        (Resolve.Memo.map libs ~f:(fun libs ->
+             Path.Set.of_list_map libs ~f:(fun t ->
+                 let info = Lib.info t in
+                 Lib_info.src_dir info)
+             |> Lib_flags.L.to_iflags))
+    in
+    let open Action_builder.O in
+    ( flags
+    , let* libs = Resolve.Memo.read libs in
+      (* coqdep expects an mlpack file next to the sources otherwise it will
+         omit the cmxs deps *)
+      let ml_pack_files lib =
+        let plugins =
+          let info = Lib.info lib in
+          let plugins = Lib_info.plugins info in
+          Mode.Dict.get plugins Native
+        in
+        let to_mlpack file =
+          [ Path.set_extension file ~ext:".mlpack"
+          ; Path.set_extension file ~ext:".mllib"
+          ]
+        in
+        List.concat_map plugins ~f:to_mlpack
+      in
+      let meta_info (lib : Lib.t) =
+        let name = Lib.name lib |> Lib_name.to_string in
+        match Lib_info.status (Lib.info lib) with
+        | Public (_, pkg) ->
+          let package = Package.name pkg in
+          let meta_i =
+            Path.Build.relative
+              (Local_install_path.lib_dir ~context ~package)
+              "META"
+          in
+          Some (Path.build meta_i)
+        | Installed -> None
+        | Installed_private | Private _ ->
+          let is_error = coq_lang_version >= (0, 6) in
+          let text = if is_error then "not supported" else "deprecated" in
+          User_warning.emit ?loc:plugin_loc ~is_error
+            [ Pp.textf "Using private library %s as a Coq plugin is %s" name
+                text
+            ];
+          None
+      in
+      (* If the mlpack files don't exist, don't fail *)
+      Action_builder.all_unit
+        [ Action_builder.paths (List.filter_map ~f:meta_info libs)
+        ; Action_builder.paths_existing (List.concat_map ~f:ml_pack_files libs)
+        ] )
+  in
+  let ml_flags = Resolve.Memo.map res ~f:fst in
+  let mlpack_rule =
+    let open Action_builder.O in
+    let* _, mlpack_rule = Resolve.Memo.read res in
+    mlpack_rule
+  in
+  (ml_flags, mlpack_rule)
 
 let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
     (lines : string list) =

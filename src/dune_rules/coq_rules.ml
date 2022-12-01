@@ -512,15 +512,15 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
     plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
   in
   let wrapper_name = Coq_lib_name.wrapper (snd s.name) in
-
   let name = snd s.name in
+  let loc = s.buildable.loc in
+  let use_stdlib = s.buildable.use_stdlib in
+  let stanza_flags = s.buildable.flags in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
   let theory_dirs =
     Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
   in
   let coq_modules = Coq_sources.library coq_dir_contents ~name in
-
-  let loc = s.buildable.loc in
   let source_rule =
     let theories =
       let open Resolve.Memo.O in
@@ -537,13 +537,13 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   Memo.parallel_iter coq_modules
     ~f:
-      (setup_coqdep_rule ~sctx ~loc ~source_rule ~dir ~theories_deps
-         ~wrapper_name ~use_stdlib:s.buildable.use_stdlib ~ml_flags ~mlpack_rule)
+      (setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
+         ~use_stdlib ~source_rule ~ml_flags ~mlpack_rule)
   >>> Memo.parallel_iter coq_modules
         ~f:
-          (setup_coqc_rule ~file_targets:[] ~stanza_flags:s.buildable.flags
-             ~sctx ~loc ~coqc_dir ~dir ~theories_deps ~mode ~wrapper_name
-             ~use_stdlib:s.buildable.use_stdlib ~ml_flags ~theory_dirs)
+          (setup_coqc_rule ~loc ~dir ~sctx ~file_targets:[] ~stanza_flags
+             ~coqc_dir ~theories_deps ~mode ~wrapper_name ~use_stdlib ~ml_flags
+             ~theory_dirs)
   >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules ~wrapper_name
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t)

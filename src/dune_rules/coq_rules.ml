@@ -416,8 +416,8 @@ let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
     ; (coqdoc_directory ~mode:`Latex ~obj_dir ~name, loc)
     ]
 
-let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name
-    (s : Coq_stanza.Theory.t) coq_modules =
+let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t)
+    coq_modules =
   let loc, name = (s.buildable.loc, snd s.name) in
   let rule =
     let file_flags =
@@ -426,7 +426,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name
       [ theories_flags ~theories_deps
       ; A "-R"
       ; Path (Path.build dir)
-      ; A wrapper_name
+      ; A (Coq_lib_name.wrapper (snd s.name))
       ]
     in
     fun mode ->
@@ -544,7 +544,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
           (setup_coqc_rule ~loc ~dir ~sctx ~file_targets:[] ~stanza_flags
              ~coqc_dir ~theories_deps ~mode ~wrapper_name ~use_stdlib ~ml_flags
              ~theory_dirs)
-  >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules ~wrapper_name
+  >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t)
     coq_module =

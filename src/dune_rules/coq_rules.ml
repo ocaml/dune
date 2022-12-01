@@ -10,29 +10,6 @@ open Memo.O
 open Coq_stanza
 
 module Coq_plugin = struct
-  let meta_info ~coq_lang_version ~plugin_loc ~context (lib : Lib.t) =
-    let debug = false in
-    let name = Lib.name lib |> Lib_name.to_string in
-    if debug then Format.eprintf "Meta info for %s@\n" name;
-    match Lib_info.status (Lib.info lib) with
-    | Public (_, pkg) ->
-      let package = Package.name pkg in
-      let meta_i =
-        Path.Build.relative
-          (Local_install_path.lib_dir ~context ~package)
-          "META"
-      in
-      if debug then
-        Format.eprintf "Meta for %s: %s@\n" name (Path.Build.to_string meta_i);
-      Some (Path.build meta_i)
-    | Installed -> None
-    | Installed_private | Private _ ->
-      let is_error = coq_lang_version >= (0, 6) in
-      let text = if is_error then "not supported" else "deprecated" in
-      User_warning.emit ?loc:plugin_loc ~is_error
-        [ Pp.textf "Using private library %s as a Coq plugin is %s" name text ];
-      None
-
   (* compute include flags and mlpack rules *)
   let setup_ml_deps ~coq_lang_version ~context ~plugin_loc libs theories =
     (* Pair of include flags and paths to mlpack *)
@@ -72,12 +49,30 @@ module Coq_plugin = struct
         in
         List.concat_map plugins ~f:to_mlpack
       in
+      let meta_info (lib : Lib.t) =
+        let name = Lib.name lib |> Lib_name.to_string in
+        match Lib_info.status (Lib.info lib) with
+        | Public (_, pkg) ->
+          let package = Package.name pkg in
+          let meta_i =
+            Path.Build.relative
+              (Local_install_path.lib_dir ~context ~package)
+              "META"
+          in
+          Some (Path.build meta_i)
+        | Installed -> None
+        | Installed_private | Private _ ->
+          let is_error = coq_lang_version >= (0, 6) in
+          let text = if is_error then "not supported" else "deprecated" in
+          User_warning.emit ?loc:plugin_loc ~is_error
+            [ Pp.textf "Using private library %s as a Coq plugin is %s" name
+                text
+            ];
+          None
+      in
       (* If the mlpack files don't exist, don't fail *)
       Action_builder.all_unit
-        [ Action_builder.paths
-            (List.filter_map
-               ~f:(meta_info ~plugin_loc ~coq_lang_version ~context)
-               libs)
+        [ Action_builder.paths (List.filter_map ~f:meta_info libs)
         ; Action_builder.paths_existing (List.concat_map ~f:ml_pack_files libs)
         ] )
 

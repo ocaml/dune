@@ -9,13 +9,21 @@ open Memo.O
 
 open Coq_stanza
 
-module Coq_plugin = struct
-  (* compute include flags and mlpack rules *)
-  let setup_ml_deps ~coq_lang_version ~context ~plugin_loc libs theories =
+(* compute include flags and mlpack rules *)
+let plugins_of_buildable ~context ~lib_db ~theories_deps
+    (buildable : Coq_stanza.Buildable.t) =
+  let res =
+    let open Resolve.Memo.O in
+    let+ libs =
+      Resolve.Memo.List.map buildable.plugins ~f:(fun (loc, name) ->
+          let+ lib = Lib.DB.resolve lib_db (loc, name) in
+          (loc, lib))
+    in
+    let coq_lang_version = buildable.coq_lang_version in
+    let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
     (* Pair of include flags and paths to mlpack *)
     let libs =
-      let open Resolve.Memo.O in
-      let* theories = theories in
+      let* theories = theories_deps in
       let* theories =
         Resolve.Memo.lift
         @@ Resolve.List.concat_map ~f:Coq_lib.libraries theories
@@ -75,28 +83,14 @@ module Coq_plugin = struct
         [ Action_builder.paths (List.filter_map ~f:meta_info libs)
         ; Action_builder.paths_existing (List.concat_map ~f:ml_pack_files libs)
         ] )
-
-  let of_buildable ~context ~lib_db ~theories_deps
-      (buildable : Coq_stanza.Buildable.t) =
-    let res =
-      let open Resolve.Memo.O in
-      let+ libs =
-        Resolve.Memo.List.map buildable.plugins ~f:(fun (loc, name) ->
-            let+ lib = Lib.DB.resolve lib_db (loc, name) in
-            (loc, lib))
-      in
-      let coq_lang_version = buildable.coq_lang_version in
-      let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
-      setup_ml_deps ~plugin_loc ~coq_lang_version ~context libs theories_deps
-    in
-    let ml_flags = Resolve.Memo.map res ~f:fst in
-    let mlpack_rule =
-      let open Action_builder.O in
-      let* _, mlpack_rule = Resolve.Memo.read res in
-      mlpack_rule
-    in
-    (ml_flags, mlpack_rule)
-end
+  in
+  let ml_flags = Resolve.Memo.map res ~f:fst in
+  let mlpack_rule =
+    let open Action_builder.O in
+    let* _, mlpack_rule = Resolve.Memo.read res in
+    mlpack_rule
+  in
+  (ml_flags, mlpack_rule)
 
 module Bootstrap = struct
   (* the internal boot flag determines if the Coq "standard library" is being
@@ -545,7 +539,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   (* ML-level flags for depending libraries *)
   let ml_flags, mlpack_rule =
     let lib_db = Scope.libs scope in
-    Coq_plugin.of_buildable ~context ~theories_deps ~lib_db s.buildable
+    plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
   in
   let wrapper_name = Coq_lib_name.wrapper (snd s.name) in
 
@@ -592,7 +586,7 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let* scope = Scope.DB.find_by_dir dir in
   let ml_flags, _ =
     let lib_db = Scope.libs scope in
-    Coq_plugin.of_buildable ~context ~theories_deps ~lib_db s.buildable
+    plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
   in
   let* expander = Super_context.expander sctx ~dir in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
@@ -738,7 +732,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let* scope = Scope.DB.find_by_dir dir in
   let ml_flags, mlpack_rule =
     let lib_db = Scope.libs scope in
-    Coq_plugin.of_buildable ~context ~theories_deps ~lib_db s.buildable
+    plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   setup_coqdep_rule ~sctx ~loc:s.buildable.loc ~source_rule ~dir ~theories_deps
@@ -761,7 +755,7 @@ let coqtop_args_extraction ~sctx ~dir (s : Extraction.t) coq_module =
   let* scope = Scope.DB.find_by_dir dir in
   let ml_flags, _ =
     let lib_db = Scope.libs scope in
-    Coq_plugin.of_buildable ~context ~theories_deps ~lib_db s.buildable
+    plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
   in
   let* expander = Super_context.expander sctx ~dir in
   let+ mode = select_native_mode ~sctx ~dir s.buildable in

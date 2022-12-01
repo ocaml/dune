@@ -459,6 +459,15 @@ module Mode_conf = struct
 
     let to_dyn t = Dyn.variant (to_string t) []
 
+    let equal x y =
+      match (x, y) with
+      | Ocaml o1, Ocaml o2 -> (
+        match compare o1 o2 with
+        | Eq -> true
+        | _ -> false)
+      | Ocaml _, _ | _, Ocaml _ -> false
+      | Melange, Melange -> true
+
     module Map = struct
       type nonrec 'a t =
         { ocaml : 'a Map.t
@@ -601,9 +610,7 @@ module Library = struct
          Ordered_set_lang.Unexpanded.field "c_library_flags"
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
-       and+ modes =
-         field "modes" Mode_conf.Lib.Set.decode
-           ~default:(Mode_conf.Lib.Set.default stanza_loc)
+       and+ modes = field_o "modes" Ordered_set_lang.decode
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ optional = field_b "optional"
        and+ no_dynlink = field_b "no_dynlink"
@@ -703,6 +710,25 @@ module Library = struct
                   package %s"
                  (Package.Name.to_string (Package.name public.package))
              ]
+       in
+       let modes =
+         match modes with
+         | None -> Mode_conf.Lib.Set.default stanza_loc
+         | Some modes ->
+           let modes =
+             Ordered_set_lang.eval modes
+               ~parse:(fun ~loc s ->
+                 let mode =
+                   Dune_lang.Decoder.parse Mode_conf.Lib.decode
+                     (Dune_project.parsing_context project)
+                     (Atom (loc, Dune_lang.Atom.of_string s))
+                 in
+                 (mode, Mode_conf.Kind.Requested loc))
+               ~eq:(fun (a, _) (b, _) -> Mode_conf.Lib.equal a b)
+               ~standard:[ (Ocaml Best, Mode_conf.Kind.Requested stanza_loc) ]
+           in
+           let modes = Mode_conf.Lib.Set.of_list modes in
+           modes
        in
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->

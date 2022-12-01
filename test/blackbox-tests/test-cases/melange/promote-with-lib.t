@@ -8,7 +8,7 @@ Test melange.emit promotion
   $ mkdir lib
   $ cat > lib/dune <<EOF
   > (library
-  >  (modes melange)
+  >  (modes :standard melange)
   >  (name mylib))
   > EOF
 
@@ -33,6 +33,11 @@ Test melange.emit promotion
   > EOF
 
   $ dune build @dist
+
+Library has `(modes :standard)` so it also builds for bytecode / native
+
+  $ dune build lib/.mylib.objs/byte/mylib.cmo
+  $ dune build lib/.mylib.objs/native/mylib.cmx
 
 Targets are promoted to the source tree
 

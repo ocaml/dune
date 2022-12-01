@@ -58,12 +58,21 @@ module Dependency : sig
         | Var of string
     end
 
+    module Kind : sig
+      type t =
+        | Bvar of Var.t
+        | Uop of Op.t * Var.t
+        | Bop of Op.t * Var.t * Var.t
+        | And of t list
+        | Or of t list
+
+      val equal : t -> t -> bool
+    end
+
     type t =
-      | Bvar of Var.t
-      | Uop of Op.t * Var.t
-      | Bop of Op.t * Var.t * Var.t
-      | And of t list
-      | Or of t list
+      { kind : Kind.t
+      ; loc : Loc.t option
+      }
   end
 
   type t =

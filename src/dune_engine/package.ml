@@ -139,70 +139,91 @@ module Dependency = struct
         | Var v -> Dyn.String (":" ^ v)
     end
 
-    type t =
-      | Bvar of Var.t
-      | Uop of Op.t * Var.t
-      | Bop of Op.t * Var.t * Var.t
-      | And of t list
-      | Or of t list
+    module Kind = struct
+      type t =
+        | Bvar of Var.t
+        | Uop of Op.t * Var.t
+        | Bop of Op.t * Var.t * Var.t
+        | And of t list
+        | Or of t list
 
-    let rec encode c =
-      let open Dune_lang.Encoder in
-      match c with
-      | Bvar x -> Var.encode x
-      | Uop (op, x) -> pair Op.encode Var.encode (op, x)
-      | Bop (op, x, y) -> triple Op.encode Var.encode Var.encode (op, x, y)
-      | And conjuncts -> list sexp (string "and" :: List.map ~f:encode conjuncts)
-      | Or disjuncts -> list sexp (string "or" :: List.map ~f:encode disjuncts)
+      let rec encode c =
+        let open Dune_lang.Encoder in
+        match c with
+        | Bvar x -> Var.encode x
+        | Uop (op, x) -> pair Op.encode Var.encode (op, x)
+        | Bop (op, x, y) -> triple Op.encode Var.encode Var.encode (op, x, y)
+        | And conjuncts ->
+          list sexp (string "and" :: List.map ~f:encode conjuncts)
+        | Or disjuncts -> list sexp (string "or" :: List.map ~f:encode disjuncts)
+
+      let decode =
+        let open Dune_lang.Decoder in
+        let ops =
+          List.map Op.map ~f:(fun (name, op) ->
+              ( name
+              , let+ x = Var.decode
+                and+ y = maybe Var.decode
+                and+ loc = loc
+                and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+                match y with
+                | None -> Uop (op, x)
+                | Some y ->
+                  if version < (2, 1) then
+                    Dune_lang.Syntax.Error.since loc Stanza.syntax (2, 1)
+                      ~what:(sprintf "Passing two arguments to %s" name);
+                  Bop (op, x, y) ))
+        in
+        let ops =
+          ( "!="
+          , let+ loc = loc in
+            User_error.raise ~loc [ Pp.text "Use <> instead of !=" ] )
+          :: ops
+        in
+        fix (fun t ->
+            let logops =
+              [ ( "and"
+                , let+ x = repeat t in
+                  And x )
+              ; ( "or"
+                , let+ x = repeat t in
+                  Or x )
+              ]
+            in
+            peek_exn >>= function
+            | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
+              let+ () = junk in
+              Bvar (Var (String.drop s 1))
+            | _ -> sum (ops @ logops))
+
+      let rec to_dyn =
+        let open Dyn in
+        function
+        | Bvar v -> variant "Bvar" [ Var.to_dyn v ]
+        | Uop (b, x) -> variant "Uop" [ Op.to_dyn b; Var.to_dyn x ]
+        | Bop (b, x, y) ->
+          variant "Bop" [ Op.to_dyn b; Var.to_dyn x; Var.to_dyn y ]
+        | And t -> variant "And" (List.map ~f:to_dyn t)
+        | Or t -> variant "Or" (List.map ~f:to_dyn t)
+
+      let equal a b = Dyn.equal (to_dyn a) (to_dyn b)
+    end
+
+    type t =
+      { kind : Kind.t
+      ; loc : Loc.t option
+      }
+
+    let encode { kind; loc = _ } = Kind.encode kind
 
     let decode =
       let open Dune_lang.Decoder in
-      let ops =
-        List.map Op.map ~f:(fun (name, op) ->
-            ( name
-            , let+ x = Var.decode
-              and+ y = maybe Var.decode
-              and+ loc = loc
-              and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
-              match y with
-              | None -> Uop (op, x)
-              | Some y ->
-                if version < (2, 1) then
-                  Dune_lang.Syntax.Error.since loc Stanza.syntax (2, 1)
-                    ~what:(sprintf "Passing two arguments to %s" name);
-                Bop (op, x, y) ))
-      in
-      let ops =
-        ( "!="
-        , let+ loc = loc in
-          User_error.raise ~loc [ Pp.text "Use <> instead of !=" ] )
-        :: ops
-      in
-      fix (fun t ->
-          let logops =
-            [ ( "and"
-              , let+ x = repeat t in
-                And x )
-            ; ( "or"
-              , let+ x = repeat t in
-                Or x )
-            ]
-          in
-          peek_exn >>= function
-          | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
-            let+ () = junk in
-            Bvar (Var (String.drop s 1))
-          | _ -> sum (ops @ logops))
+      let+ loc, kind = located Kind.decode in
+      { kind; loc = Some loc }
 
-    let rec to_dyn =
-      let open Dyn in
-      function
-      | Bvar v -> variant "Bvar" [ Var.to_dyn v ]
-      | Uop (b, x) -> variant "Uop" [ Op.to_dyn b; Var.to_dyn x ]
-      | Bop (b, x, y) ->
-        variant "Bop" [ Op.to_dyn b; Var.to_dyn x; Var.to_dyn y ]
-      | And t -> variant "And" (List.map ~f:to_dyn t)
-      | Or t -> variant "Or" (List.map ~f:to_dyn t)
+    let to_dyn { kind; loc } =
+      Dyn.record
+        [ ("kind", Kind.to_dyn kind); ("loc", Dyn.option Loc.to_dyn loc) ]
   end
 
   type t =
@@ -227,7 +248,7 @@ module Dependency = struct
     <|> let+ name = Name.decode in
         { name; constraint_ = None }
 
-  let rec opam_constraint : Constraint.t -> OpamParserTypes.value =
+  let rec opam_constraint_kind : Constraint.Kind.t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
     function
     | Bvar v -> Constraint.Var.to_opam v
@@ -239,13 +260,15 @@ module Dependency = struct
         , Op.to_relop op
         , Constraint.Var.to_opam x
         , Constraint.Var.to_opam y )
-    | And [ c ] -> opam_constraint c
+    | And [ c ] -> opam_constraint_kind c
     | And (c :: cs) ->
-      Logop (nopos, `And, opam_constraint c, opam_constraint (And cs))
-    | Or [ c ] -> opam_constraint c
+      Logop (nopos, `And, opam_constraint_kind c, opam_constraint_kind (And cs))
+    | Or [ c ] -> opam_constraint_kind c
     | Or (c :: cs) ->
-      Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
+      Logop (nopos, `Or, opam_constraint_kind c, opam_constraint_kind (And cs))
     | And [] | Or [] -> Code_error.raise "opam_constraint" []
+
+  let opam_constraint (c : Constraint.t) = opam_constraint_kind c.kind
 
   let opam_depend : t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
@@ -260,7 +283,7 @@ module Dependency = struct
     let open Dyn in
     record
       [ ("name", Name.to_dyn name)
-      ; ("constr", Dyn.Option (Option.map ~f:Constraint.to_dyn constraint_))
+      ; ("constr", Dyn.option Constraint.to_dyn constraint_)
       ]
 end
 

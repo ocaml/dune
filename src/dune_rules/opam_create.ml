@@ -140,10 +140,19 @@ let dune_name = Package.Name.of_string "dune"
 
 let odoc_name = Package.Name.of_string "odoc"
 
+let redundancy_warning (new_ : Package.Dependency.Constraint.t)
+    (existing : Package.Dependency.Constraint.t) =
+  match (new_, existing) with
+  | { kind = ka; loc = Some loc }, { kind = kb; _ }
+    when Package.Dependency.Constraint.Kind.equal ka kb ->
+    User_warning.emit ~loc
+      [ Pp.text "This constraint is redundant with the project's (lang dune)." ]
+  | _ -> ()
+
 let insert_dune_dep depends dune_version =
   let constraint_ : Package.Dependency.Constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
-    Uop (Gte, QVar dune_version)
+    { kind = Uop (Gte, QVar dune_version); loc = None }
   in
   let rec loop acc = function
     | [] ->
@@ -161,7 +170,9 @@ let insert_dune_dep depends dune_version =
                 Some
                   (match dep.constraint_ with
                   | None -> constraint_
-                  | Some c -> And [ constraint_; c ])
+                  | Some c ->
+                    redundancy_warning c constraint_;
+                    { kind = And [ c.kind; constraint_.kind ]; loc = None })
             }
         in
         List.rev_append acc (dep :: rest)
@@ -169,15 +180,20 @@ let insert_dune_dep depends dune_version =
   in
   loop [] depends
 
-let rec already_requires_odoc : Package.Dependency.Constraint.t -> bool =
-  function
+let rec already_requires_odoc_kind :
+    Package.Dependency.Constraint.Kind.t -> bool = function
   | Bvar (Var "with-doc" | Var "build" | Var "post") | Uop _ | Bop _ -> true
   | Bvar _ -> false
-  | And l -> List.for_all ~f:already_requires_odoc l
-  | Or l -> List.exists ~f:already_requires_odoc l
+  | And l -> List.for_all ~f:already_requires_odoc_kind l
+  | Or l -> List.exists ~f:already_requires_odoc_kind l
+
+let already_requires_odoc (c : Package.Dependency.Constraint.t) =
+  already_requires_odoc_kind c.kind
 
 let insert_odoc_dep depends =
-  let with_doc : Package.Dependency.Constraint.t = Bvar (Var "with-doc") in
+  let with_doc : Package.Dependency.Constraint.t =
+    { kind = Bvar (Var "with-doc"); loc = None }
+  in
   let odoc_dep =
     { Package.Dependency.name = odoc_name; constraint_ = Some with_doc }
   in

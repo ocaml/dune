@@ -18,13 +18,13 @@ val boot_type :
   -> use_stdlib:bool
   -> wrapper_name:string
   -> Coq_module.t
-  -> Bootstrap.t Action_builder.t
+  -> Bootstrap.t Memo.t
 
 (** [deps_of ~dir ~boot_type m] produces an action builder that can be run to
     build all dependencies of the Coq module [m]. *)
 val deps_of :
      dir:Path.Build.t
-  -> boot_type:Bootstrap.t Action_builder.t
+  -> boot_type:Bootstrap.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 

@@ -119,6 +119,7 @@ let term =
                   ~use_stdlib:extr.buildable.use_stdlib ~wrapper_name coq_module
               )
           in
+          let* boot_type = boot_type in
           let* (_ : unit * Dep.Fact.t Dep.Map.t) =
             let deps =
               Dune_rules.Coq_rules.deps_of ~dir ~boot_type coq_module

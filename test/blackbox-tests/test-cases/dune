@@ -140,3 +140,9 @@
  (applies_to patch-back-source-tree)
  (enabled_if
   (<> %{system} macosx)))
+
+(cram
+ (applies_to github6607)
+ (deps
+  (package stdune)
+  (package ppx_expect)))

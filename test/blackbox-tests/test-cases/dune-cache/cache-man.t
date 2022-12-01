@@ -5,39 +5,18 @@ Here we observe the documentation for the dune cache commands.
          dune-cache - Manage the shared cache of build artifacts
   
   SYNOPSIS
-         dune cache [--size=BYTES] [--trimmed-size=BYTES] [OPTION]… [ACTION]
+         dune cache COMMAND …
   
   DESCRIPTION
          Dune can share build artifacts between workspaces. Currently, the only
          action supported by this command is `trim`, but we plan to provide
-         more functionality soon. 
+         more functionality soon.
   
-  ACTIONS
-         trim trim the shared cache to free space.
-  
-  ARGUMENTS
-         ACTION
-             The cache action to perform (trim)
-  
-  OPTIONS
-         --size=BYTES
-             Size to trim the cache to.
-  
-         --trimmed-size=BYTES
-             Size to trim from the cache.
-  
-  EXAMPLES
-         Trimming the Dune cache to 1 GB.
-                 
-                 $ dune cache trim --trimmed-size=1GB 
-  
-         Trimming 500 MB from the Dune cache.
-                 
-                 $ dune cache trim --size=500MB 
+  COMMANDS
+         trim [--size=BYTES] [--trimmed-size=BYTES] [OPTION]…
+             Trim the Dune cache
   
   COMMON OPTIONS
-         These options are common to all commands.
-  
          --help[=FMT] (default=auto)
              Show this help in format FMT. The value FMT must be one of auto,
              pager, groff or plain. With auto, the format is pager or plain
@@ -45,9 +24,6 @@ Here we observe the documentation for the dune cache commands.
   
          --version
              Show version information.
-  
-  MORE HELP
-         Use `dune COMMAND --help' for help on a single command.
   
   EXIT STATUS
          cache exits with the following status:
@@ -60,23 +36,9 @@ Here we observe the documentation for the dune cache commands.
   
          125 on unexpected internal errors (bugs).
   
-  BUGS
-         Check bug reports at https://github.com/ocaml/dune/issues
-  
   SEE ALSO
          dune(1)
   
-Test the error message when using removed subcommands [start] and [stop].
-
-  $ dune cache start
-  Error: Dune no longer uses the cache daemon, and so the `start` and `stop`
-  subcommands of `dune cache` were removed.
-  [1]
-
-  $ dune cache stop
-  Error: Dune no longer uses the cache daemon, and so the `start` and `stop`
-  subcommands of `dune cache` were removed.
-  [1]
 
 Man pages of the deprecated start and stop commands.
 
@@ -85,39 +47,18 @@ Man pages of the deprecated start and stop commands.
          dune-cache - Manage the shared cache of build artifacts
   
   SYNOPSIS
-         dune cache [--size=BYTES] [--trimmed-size=BYTES] [OPTION]… [ACTION]
+         dune cache COMMAND …
   
   DESCRIPTION
          Dune can share build artifacts between workspaces. Currently, the only
          action supported by this command is `trim`, but we plan to provide
-         more functionality soon. 
+         more functionality soon.
   
-  ACTIONS
-         trim trim the shared cache to free space.
-  
-  ARGUMENTS
-         ACTION
-             The cache action to perform (trim)
-  
-  OPTIONS
-         --size=BYTES
-             Size to trim the cache to.
-  
-         --trimmed-size=BYTES
-             Size to trim from the cache.
-  
-  EXAMPLES
-         Trimming the Dune cache to 1 GB.
-                 
-                 $ dune cache trim --trimmed-size=1GB 
-  
-         Trimming 500 MB from the Dune cache.
-                 
-                 $ dune cache trim --size=500MB 
+  COMMANDS
+         trim [--size=BYTES] [--trimmed-size=BYTES] [OPTION]…
+             Trim the Dune cache
   
   COMMON OPTIONS
-         These options are common to all commands.
-  
          --help[=FMT] (default=auto)
              Show this help in format FMT. The value FMT must be one of auto,
              pager, groff or plain. With auto, the format is pager or plain
@@ -125,9 +66,6 @@ Man pages of the deprecated start and stop commands.
   
          --version
              Show version information.
-  
-  MORE HELP
-         Use `dune COMMAND --help' for help on a single command.
   
   EXIT STATUS
          cache exits with the following status:
@@ -139,9 +77,6 @@ Man pages of the deprecated start and stop commands.
          124 on command line parsing errors.
   
          125 on unexpected internal errors (bugs).
-  
-  BUGS
-         Check bug reports at https://github.com/ocaml/dune/issues
   
   SEE ALSO
          dune(1)
@@ -152,39 +87,18 @@ Man pages of the deprecated start and stop commands.
          dune-cache - Manage the shared cache of build artifacts
   
   SYNOPSIS
-         dune cache [--size=BYTES] [--trimmed-size=BYTES] [OPTION]… [ACTION]
+         dune cache COMMAND …
   
   DESCRIPTION
          Dune can share build artifacts between workspaces. Currently, the only
          action supported by this command is `trim`, but we plan to provide
-         more functionality soon. 
+         more functionality soon.
   
-  ACTIONS
-         trim trim the shared cache to free space.
-  
-  ARGUMENTS
-         ACTION
-             The cache action to perform (trim)
-  
-  OPTIONS
-         --size=BYTES
-             Size to trim the cache to.
-  
-         --trimmed-size=BYTES
-             Size to trim from the cache.
-  
-  EXAMPLES
-         Trimming the Dune cache to 1 GB.
-                 
-                 $ dune cache trim --trimmed-size=1GB 
-  
-         Trimming 500 MB from the Dune cache.
-                 
-                 $ dune cache trim --size=500MB 
+  COMMANDS
+         trim [--size=BYTES] [--trimmed-size=BYTES] [OPTION]…
+             Trim the Dune cache
   
   COMMON OPTIONS
-         These options are common to all commands.
-  
          --help[=FMT] (default=auto)
              Show this help in format FMT. The value FMT must be one of auto,
              pager, groff or plain. With auto, the format is pager or plain
@@ -192,9 +106,6 @@ Man pages of the deprecated start and stop commands.
   
          --version
              Show version information.
-  
-  MORE HELP
-         Use `dune COMMAND --help' for help on a single command.
   
   EXIT STATUS
          cache exits with the following status:
@@ -206,9 +117,6 @@ Man pages of the deprecated start and stop commands.
          124 on command line parsing errors.
   
          125 on unexpected internal errors (bugs).
-  
-  BUGS
-         Check bug reports at https://github.com/ocaml/dune/issues
   
   SEE ALSO
          dune(1)
@@ -218,22 +126,12 @@ Testing the output of dune cache trim.
 
   $ dune cache trim --help=plain
   NAME
-         dune-cache - Manage the shared cache of build artifacts
+         dune-cache-trim - Trim the Dune cache
   
   SYNOPSIS
-         dune cache [--size=BYTES] [--trimmed-size=BYTES] [OPTION]… [ACTION]
+         dune cache trim [--size=BYTES] [--trimmed-size=BYTES] [OPTION]…
   
-  DESCRIPTION
-         Dune can share build artifacts between workspaces. Currently, the only
-         action supported by this command is `trim`, but we plan to provide
-         more functionality soon. 
-  
-  ACTIONS
-         trim trim the shared cache to free space.
-  
-  ARGUMENTS
-         ACTION
-             The cache action to perform (trim)
+         Trim the Dune cache to a specified size or by a specified amount.
   
   OPTIONS
          --size=BYTES
@@ -242,18 +140,7 @@ Testing the output of dune cache trim.
          --trimmed-size=BYTES
              Size to trim from the cache.
   
-  EXAMPLES
-         Trimming the Dune cache to 1 GB.
-                 
-                 $ dune cache trim --trimmed-size=1GB 
-  
-         Trimming 500 MB from the Dune cache.
-                 
-                 $ dune cache trim --size=500MB 
-  
   COMMON OPTIONS
-         These options are common to all commands.
-  
          --help[=FMT] (default=auto)
              Show this help in format FMT. The value FMT must be one of auto,
              pager, groff or plain. With auto, the format is pager or plain
@@ -262,11 +149,8 @@ Testing the output of dune cache trim.
          --version
              Show version information.
   
-  MORE HELP
-         Use `dune COMMAND --help' for help on a single command.
-  
   EXIT STATUS
-         cache exits with the following status:
+         trim exits with the following status:
   
          0   on success.
   
@@ -276,8 +160,14 @@ Testing the output of dune cache trim.
   
          125 on unexpected internal errors (bugs).
   
-  BUGS
-         Check bug reports at https://github.com/ocaml/dune/issues
+  EXAMPLES
+         Trimming the Dune cache to 1 GB.
+         
+                    $ dune cache trim --trimmed-size=1GB 
+  
+         Trimming 500 MB from the Dune cache.
+         
+                    $ dune cache trim --size=500MB 
   
   SEE ALSO
          dune(1)

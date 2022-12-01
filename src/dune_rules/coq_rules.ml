@@ -420,35 +420,20 @@ let source_rule ~sctx theories =
     in
     List.concat l |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m)))
 
-module Coqdoc_mode = struct
-  type t =
-    | Html
-    | Latex
-
-  let flag = function
-    | Html -> "--html"
-    | Latex -> "--latex"
-
-  let directory t obj_dir (theory : Coq_lib_name.t) =
-    Path.Build.relative obj_dir
-      (Coq_lib_name.to_string theory
-      ^
-      match t with
-      | Html -> ".html"
-      | Latex -> ".tex")
-
-  let alias t ~dir =
-    match t with
-    | Html -> Alias.doc ~dir
-    | Latex -> Alias.make (Alias.Name.of_string "doc-latex") ~dir
-end
+let coqdoc_directory ~mode ~obj_dir ~name =
+  Path.Build.relative obj_dir
+    (Coq_lib_name.to_string name
+    ^
+    match mode with
+    | `Html -> ".html"
+    | `Latex -> ".tex")
 
 let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
   let loc = theory.buildable.loc in
   let name = snd theory.name in
   Path.Build.Map.of_list_exn
-    [ (Coqdoc_mode.directory Html obj_dir name, loc)
-    ; (Coqdoc_mode.directory Latex obj_dir name, loc)
+    [ (coqdoc_directory ~mode:`Html ~obj_dir ~name, loc)
+    ; (coqdoc_directory ~mode:`Latex ~obj_dir ~name, loc)
     ]
 
 let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name
@@ -473,7 +458,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name
           Super_context.resolve_program sctx "coqdoc" ~dir ~loc:(Some loc)
             ~hint:"opam install coq"
         in
-        (let doc_dir = Coqdoc_mode.directory mode dir name in
+        (let doc_dir = coqdoc_directory ~mode ~obj_dir:dir ~name in
          let file_flags =
            let globs =
              let open Action_builder.O in
@@ -492,9 +477,14 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name
              in
              Command.Args.Hidden_deps (Dep.Set.union_all deps)
            in
+           let mode_flag =
+             match mode with
+             | `Html -> "--html"
+             | `Latex -> "--latex"
+           in
            [ Command.Args.S file_flags
            ; A "--toc"
-           ; A Coqdoc_mode.(flag mode)
+           ; A mode_flag
            ; A "-d"
            ; Path (Path.build doc_dir)
            ; Deps
@@ -516,11 +506,16 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name
               ~directory_targets:[ doc_dir ])
         |> Super_context.add_rule ~loc ~dir sctx
       in
-      Coqdoc_mode.directory mode dir name
+      let alias =
+        match mode with
+        | `Html -> Alias.doc ~dir
+        | `Latex -> Alias.make (Alias.Name.of_string "doc-latex") ~dir
+      in
+      coqdoc_directory ~mode ~obj_dir:dir ~name
       |> Path.build |> Action_builder.path
-      |> Rules.Produce.Alias.add_deps (Coqdoc_mode.alias mode ~dir) ~loc
+      |> Rules.Produce.Alias.add_deps alias ~loc
   in
-  rule Html >>> rule Latex
+  rule `Html >>> rule `Latex
 
 let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let context = Super_context.context sctx |> Context.name in

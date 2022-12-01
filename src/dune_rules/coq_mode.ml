@@ -10,6 +10,7 @@ type t =
   | Legacy
   | VoOnly
   | Native
+  | Native_split
 
 let decode ~coq_syntax =
   Dune_lang.Decoder.(
@@ -21,4 +22,5 @@ let decode ~coq_syntax =
               "Since Coq lang 0.7 native mode is automatically inferred from \
                the configuration of Coq."
           >>> return Native )
+      ; ("native-split", return Native_split)
       ])

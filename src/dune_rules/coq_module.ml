@@ -66,7 +66,12 @@ let dep_file x ~obj_dir =
   let vo_dir = build_vo_dir ~obj_dir x in
   Path.Build.relative vo_dir (x.name ^ ".v.d")
 
+let vo_file x ~obj_dir =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  Path.Build.relative vo_dir (name x ^ ".vo")
+
 type obj_files_mode =
+  | No_obj
   | Build
   | Install
 
@@ -81,7 +86,7 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
   let install_vo_dir = String.concat ~sep:"/" x.prefix in
   let native_objs =
     match mode with
-    | Coq_mode.Native ->
+    | Coq_mode.Native | Native_split ->
       let cmxs_obj = cmxs_of_mod ~wrapper_name x in
       List.map
         ~f:(fun x ->
@@ -94,6 +99,7 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
     match obj_files_mode with
     | Build -> [ x.name ^ ".vo"; x.name ^ ".glob" ]
     | Install -> [ x.name ^ ".vo" ]
+    | No_obj -> []
   in
   List.map obj_files ~f:(fun fname ->
       (Path.Build.relative vo_dir fname, Filename.concat install_vo_dir fname))

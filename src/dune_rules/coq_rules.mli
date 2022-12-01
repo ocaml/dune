@@ -5,26 +5,12 @@ open Import
 (* (c) INRIA 2020                              *)
 (* Written by: Emilio Jesús Gallego Arias *)
 
-module Bootstrap : sig
-  type t =
-    | No_boot  (** Coq's stdlib is installed globally *)
-    | Bootstrap of Coq_lib.t
-        (** Coq's stdlib is in scope of the composed build *)
-    | Bootstrap_prelude  (** We are compiling the prelude itself *)
-end
-
-val boot_type :
+(** [deps_of ~dir ~use_stdlib ~wrapper_name m] produces an action builder that
+    can be run to build all dependencies of the Coq module [m]. *)
+val deps_of :
      dir:Path.Build.t
   -> use_stdlib:bool
   -> wrapper_name:string
-  -> Coq_module.t
-  -> Bootstrap.t Memo.t
-
-(** [deps_of ~dir ~boot_type m] produces an action builder that can be run to
-    build all dependencies of the Coq module [m]. *)
-val deps_of :
-     dir:Path.Build.t
-  -> boot_type:Bootstrap.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 

@@ -7,27 +7,6 @@ open Memo.O
 (* Written by: Emilio Jesús Gallego Arias *)
 (* Written by: Rudi Grinberg *)
 
-module Bootstrap = struct
-  (* the internal boot flag determines if the Coq "standard library" is being
-     built, in case we need to explicitly tell Coq where the build artifacts are
-     and add `Init.Prelude.vo` as a dependency; there is a further special case
-     when compiling the prelude, in this case we also need to tell Coq not to
-     try to load the prelude. *)
-  type t =
-    | No_boot  (** Coq's stdlib is installed globally *)
-    | Bootstrap of Coq_lib.t
-        (** Coq's stdlib is in scope of the composed build *)
-    | Bootstrap_prelude
-        (** We are compiling the prelude itself
-            [should be replaced with (per_file ...) flags] *)
-
-  let flags t : _ Command.Args.t =
-    match t with
-    | No_boot -> Command.Args.empty
-    | Bootstrap _ -> A "-boot"
-    | Bootstrap_prelude -> As [ "-boot"; "-noinit" ]
-end
-
 let coqc ~loc ~dir ~sctx =
   Super_context.resolve_program sctx "coqc" ~dir ~loc:(Some loc)
     ~hint:"opam install coq"
@@ -87,6 +66,21 @@ let theories_flags ~theories_deps =
     let+ libs = theories_deps in
     Command.Args.S (List.map ~f:theory_coqc_flag libs))
 
+let boot_flags t : _ Command.Args.t =
+  (* the internal boot flag determines if the Coq "standard library" is being
+     built, in case we need to explicitly tell Coq where the build artifacts are
+     and add `Init.Prelude.vo` as a dependency; there is a further special case
+     when compiling the prelude, in this case we also need to tell Coq not to
+     try to load the prelude. *)
+  match t with
+  (* Coq's stdlib is installed globally *)
+  | `No_boot -> Command.Args.empty
+  (* Coq's stdlib is in scope of the composed build *)
+  | `Bootstrap _ -> A "-boot"
+  (* We are compiling the prelude itself
+      [should be replaced with (per_file ...) flags] *)
+  | `Bootstrap_prelude -> As [ "-boot"; "-noinit" ]
+
 let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags :
     _ Command.Args.t list =
   let file_flags : _ Command.Args.t list =
@@ -97,7 +91,7 @@ let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags :
     ; A wrapper_name
     ]
   in
-  [ Bootstrap.flags boot_type; S file_flags ]
+  [ boot_flags boot_type; S file_flags ]
 
 let native_includes ~dir =
   let* scope = Scope.DB.find_by_dir dir in
@@ -256,8 +250,7 @@ let plugins_of_buildable ~context ~lib_db ~theories_deps
   in
   (ml_flags, mlpack_rule)
 
-let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
-    (lines : string list) =
+let parse_coqdep ~dir ~boot_type ~coq_module (lines : string list) =
   let source = Coq_module.source coq_module in
   let invalid phase =
     User_error.raise
@@ -291,8 +284,8 @@ let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
        compiling the prelude *)
     let deps = List.map ~f:(Path.relative (Path.build dir)) deps in
     match boot_type with
-    | No_boot | Bootstrap_prelude -> deps
-    | Bootstrap lib ->
+    | `No_boot | `Bootstrap_prelude -> deps
+    | `Bootstrap lib ->
       Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo"
       :: deps)
 
@@ -303,7 +296,7 @@ let boot_type ~dir ~use_stdlib ~wrapper_name coq_module =
   in
   if use_stdlib then
     match boot_lib with
-    | None -> Bootstrap.No_boot
+    | None -> `No_boot
     | Some (_loc, lib) ->
       (* This is here as an optimization, TODO; replace with per_file flags *)
       let init =
@@ -312,8 +305,8 @@ let boot_type ~dir ~use_stdlib ~wrapper_name coq_module =
              (List.hd_opt (Coq_module.prefix coq_module))
              (Some "Init")
       in
-      if init then Bootstrap.Bootstrap_prelude else Bootstrap lib
-  else Bootstrap.Bootstrap_prelude
+      if init then `Bootstrap_prelude else `Bootstrap lib
+  else `Bootstrap_prelude
 
 let setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name ~use_stdlib
     ~source_rule ~ml_flags ~mlpack_rule coq_module =
@@ -358,8 +351,13 @@ let coqc_rule ~sctx ~theories_deps ~theory_dirs ~dir ~coq_flags ~file_flags
      sandboxing *)
   >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing
 
-let deps_of ~dir ~boot_type coq_module =
+let deps_of ~dir ~use_stdlib ~wrapper_name coq_module =
   let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
+  let open Action_builder.O in
+  let* boot_type =
+    Action_builder.of_memo
+    @@ boot_type ~dir ~use_stdlib ~wrapper_name coq_module
+  in
   Action_builder.dyn_paths_unit
     (Action_builder.map
        (Action_builder.lines_of (Path.build stdout_to))
@@ -370,7 +368,7 @@ let setup_coqc_rule ~loc ~dir ~sctx ~coqc_dir ~file_targets ~stanza_flags
     coq_module =
   (* Process coqdep and generate rules *)
   let* boot_type = boot_type ~dir ~use_stdlib ~wrapper_name coq_module in
-  let deps_of = deps_of ~dir ~boot_type coq_module in
+  let deps_of = deps_of ~dir ~use_stdlib ~wrapper_name coq_module in
   let file_flags =
     coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags
   in

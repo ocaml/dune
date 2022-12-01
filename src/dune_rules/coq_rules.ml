@@ -21,21 +21,6 @@ module Bootstrap = struct
         (** We are compiling the prelude itself
             [should be replaced with (per_file ...) flags] *)
 
-  let get ~use_stdlib ~boot_lib ~wrapper_name coq_module =
-    if use_stdlib then
-      match boot_lib with
-      | None -> No_boot
-      | Some (_loc, lib) ->
-        (* This is here as an optimization, TODO; replace with per_file flags *)
-        let init =
-          String.equal (Coq_lib_name.wrapper (Coq_lib.name lib)) wrapper_name
-          && Option.equal String.equal
-               (List.hd_opt (Coq_module.prefix coq_module))
-               (Some "Init")
-        in
-        if init then Bootstrap_prelude else Bootstrap lib
-    else Bootstrap_prelude
-
   let flags ~coqdoc t : _ Command.Args.t =
     match t with
     | No_boot -> Command.Args.empty
@@ -96,7 +81,19 @@ let boot_type ~dir ~use_stdlib ~wrapper_name coq_module =
   let+ boot_lib =
     scope |> Scope.coq_libs |> Coq_lib.DB.boot_library |> Resolve.Memo.read
   in
-  Bootstrap.get ~use_stdlib ~boot_lib ~wrapper_name coq_module
+  if use_stdlib then
+    match boot_lib with
+    | None -> Bootstrap.No_boot
+    | Some (_loc, lib) ->
+      (* This is here as an optimization, TODO; replace with per_file flags *)
+      let init =
+        String.equal (Coq_lib_name.wrapper (Coq_lib.name lib)) wrapper_name
+        && Option.equal String.equal
+             (List.hd_opt (Coq_module.prefix coq_module))
+             (Some "Init")
+      in
+      if init then Bootstrap.Bootstrap_prelude else Bootstrap lib
+  else Bootstrap.Bootstrap_prelude
 
 let theories_flags ~theories_deps =
   let theory_coqc_flag lib =

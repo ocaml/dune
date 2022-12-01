@@ -7,8 +7,6 @@ open Memo.O
 (* Written by: Emilio Jesús Gallego Arias *)
 (* Written by: Rudi Grinberg *)
 
-open Coq_stanza
-
 (* compute include flags and mlpack rules *)
 let plugins_of_buildable ~context ~lib_db ~theories_deps
     (buildable : Coq_stanza.Buildable.t) =
@@ -453,8 +451,8 @@ let coqdoc_directory_targets ~dir:obj_dir (theory : Coq_stanza.Theory.t) =
     ; (Coqdoc_mode.directory Latex obj_dir name, loc)
     ]
 
-let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name (s : Theory.t)
-    coq_modules =
+let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name
+    (s : Coq_stanza.Theory.t) coq_modules =
   let loc, name = (s.buildable.loc, snd s.name) in
   let rule =
     let file_flags =
@@ -524,7 +522,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps ~wrapper_name (s : Theory.t)
   in
   rule Html >>> rule Latex
 
-let setup_theory_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
+let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let context = Super_context.context sctx |> Context.name in
   let* scope = Scope.DB.find_by_dir dir in
   let theory =
@@ -575,7 +573,8 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   Memo.parallel_iter coq_modules ~f:setup_coqdep_and_coqc_rule
   >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules ~wrapper_name
 
-let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
+let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t)
+    coq_module =
   Action_builder.of_memo_join
   @@
   let theories_deps =
@@ -612,7 +611,8 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
 
 (* This is here for compatibility with Coq < 8.11, which expects plugin files to
    be in the folder containing the `.vo` files *)
-let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
+let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Coq_stanza.Theory.t)
+    =
   let lib_db = Scope.libs scope in
   let+ ml_libs =
     (* get_libraries from Coq's ML dependencies *)
@@ -647,8 +647,8 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
 
 let install_rules ~sctx ~dir s =
   match s with
-  | { Theory.package = None; _ } -> Memo.return []
-  | { Theory.package = Some package; buildable; _ } ->
+  | { Coq_stanza.Theory.package = None; _ } -> Memo.return []
+  | { Coq_stanza.Theory.package = Some package; buildable; _ } ->
     let loc = s.buildable.loc in
     let* mode = select_native_mode ~sctx ~dir buildable in
     let* scope = Scope.DB.find_by_dir dir in
@@ -696,7 +696,7 @@ let install_rules ~sctx ~dir s =
            make_entry vfile vfile_dst :: obj_files)
     |> List.rev_append coq_plugins_install_rules
 
-let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coqpp.t) =
+let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coq_stanza.Coqpp.t) =
   let* coqpp =
     Super_context.resolve_program sctx "coqpp" ~dir ~loc:(Some loc)
       ~hint:"opam install coq"
@@ -710,14 +710,16 @@ let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coqpp.t) =
   in
   List.rev_map ~f:mlg_rule mlg_files |> Super_context.add_rules ~loc ~dir sctx
 
-let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
+let setup_extraction_rules ~sctx ~dir ~dir_contents
+    (s : Coq_stanza.Extraction.t) =
   let wrapper_name = "DuneExtraction" in
   let* coq_module =
     let+ coq = Dir_contents.coq dir_contents in
     Coq_sources.extract coq s
   in
   let file_targets =
-    Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
+    Coq_stanza.Extraction.ml_target_fnames s
+    |> List.map ~f:(Path.Build.relative dir)
   in
   let theories_deps =
     theories_deps_requires_for_user_written ~dir s.buildable
@@ -743,7 +745,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
         ~wrapper_name ~use_stdlib:s.buildable.use_stdlib ~ml_flags
         ~theory_dirs:Path.Build.Set.empty
 
-let coqtop_args_extraction ~sctx ~dir (s : Extraction.t) coq_module =
+let coqtop_args_extraction ~sctx ~dir (s : Coq_stanza.Extraction.t) coq_module =
   Action_builder.of_memo_join
   @@
   let theories_deps =

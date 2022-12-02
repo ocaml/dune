@@ -37,94 +37,98 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
   >>= function
   | None -> Memo.return ([], [])
   | Some dir ->
-    Source_tree_map_reduce.map_reduce dir
-      ~traverse:{ data_only = false; vendored = true; normal = true }
-      ~f:(fun dir ->
-        let dir =
-          Path.Build.append_source (Super_context.context sctx).build_dir
-            (Source_tree.Dir.path dir)
-        in
-        Only_packages.stanzas_in_dir dir >>= function
-        | None -> Memo.return Libs_and_ppxs.empty
-        | Some (d : Dune_file.t) ->
-          Memo.List.fold_left d.stanzas ~init:Libs_and_ppxs.empty
-            ~f:(fun (acc, pps) -> function
-            | Dune_file.Library l -> (
-              let+ lib =
-                let open Memo.O in
-                let+ resolve =
-                  Lib.DB.resolve_when_exists db
-                    (l.buildable.loc, Dune_file.Library.best_name l)
-                in
-                Option.map resolve ~f:Resolve.peek
-                (* external lib with a name matching our private name *)
-              in
-              match lib with
-              | None | Some (Error ()) ->
-                (acc, pps)
-                (* library is defined but outside our scope or is disabled *)
-              | Some (Ok lib) ->
-                (* still need to make sure that it's not coming from an external
-                   source *)
-                let info = Lib.info lib in
-                let src_dir = Lib_info.src_dir info in
-                (* Only select libraries that are not implementations.
-                   Implementations are selected using the default implementation
-                   feature. *)
-                let not_impl = Option.is_none (Lib_info.implements info) in
-                if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
-                then
-                  match Lib_info.kind info with
-                  | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
-                    ( Appendable_list.cons lib acc
-                    , Appendable_list.cons
-                        (Lib_info.loc info, Lib_info.name info)
-                        pps )
-                  | Normal -> (Appendable_list.cons lib acc, pps)
-                else (acc, pps))
-            | Dune_file.Executables exes -> (
-              let* libs =
-                let open Memo.O in
-                let* compile_info =
-                  let* scope = Scope.DB.find_by_dir dir in
-                  let project = Scope.project scope in
-                  let dune_version = Dune_project.dune_version project in
-                  let+ pps =
-                    Resolve.Memo.read_memo
-                      (Preprocess.Per_module.with_instrumentation
-                         exes.buildable.preprocess
-                         ~instrumentation_backend:
-                           (Lib.DB.instrumentation_backend (Scope.libs scope)))
-                    >>| Preprocess.Per_module.pps
+    let+ libs, pps =
+      Source_tree_map_reduce.map_reduce
+        dir (* TODO this is wrong under [(subdir ..)] *)
+        ~traverse:{ data_only = false; vendored = true; normal = true }
+        ~f:(fun dir ->
+          let dir =
+            Path.Build.append_source (Super_context.context sctx).build_dir
+              (Source_tree.Dir.path dir)
+          in
+          Only_packages.stanzas_in_dir dir >>= function
+          | None -> Memo.return Libs_and_ppxs.empty
+          | Some (d : Dune_file.t) ->
+            Memo.List.fold_left d.stanzas ~init:Libs_and_ppxs.empty
+              ~f:(fun (acc, pps) -> function
+              | Dune_file.Library l -> (
+                let+ lib =
+                  let open Memo.O in
+                  let+ resolve =
+                    Lib.DB.resolve_when_exists db
+                      (l.buildable.loc, Dune_file.Library.best_name l)
                   in
-                  let merlin_ident =
-                    Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
-                  in
-                  Lib.DB.resolve_user_written_deps db (`Exe exes.names)
-                    exes.buildable.libraries ~pps ~dune_version
-                    ~allow_overlaps:
-                      exes.buildable.allow_overlapping_dependencies
-                    ~forbidden_libraries:exes.forbidden_libraries ~merlin_ident
+                  Option.map resolve ~f:Resolve.peek
+                  (* external lib with a name matching our private name *)
                 in
-                let+ available = Lib.Compile.direct_requires compile_info in
-                Resolve.peek available
-              in
-              match libs with
-              | Error () -> Memo.return (acc, pps)
-              | Ok libs ->
-                Memo.List.fold_left libs ~init:(acc, pps)
-                  ~f:(fun (acc, pps) lib ->
-                    let info = Lib.info lib in
+                match lib with
+                | None | Some (Error ()) ->
+                  (acc, pps)
+                  (* library is defined but outside our scope or is disabled *)
+                | Some (Ok lib) ->
+                  (* still need to make sure that it's not coming from an external
+                     source *)
+                  let info = Lib.info lib in
+                  let src_dir = Lib_info.src_dir info in
+                  (* Only select libraries that are not implementations.
+                     Implementations are selected using the default implementation
+                     feature. *)
+                  let not_impl = Option.is_none (Lib_info.implements info) in
+                  if
+                    not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
+                  then
                     match Lib_info.kind info with
-                    | Normal -> Memo.return (Appendable_list.cons lib acc, pps)
-                    | Ppx_rewriter _ | Ppx_deriver _ ->
-                      Memo.return
+                    | Normal -> (Appendable_list.cons lib acc, pps)
+                    | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
+                      ( Appendable_list.cons lib acc
+                      , Appendable_list.cons
+                          (Lib_info.loc info, Lib_info.name info)
+                          pps )
+                  else (acc, pps))
+              | Dune_file.Executables exes -> (
+                let+ libs =
+                  let open Memo.O in
+                  let* compile_info =
+                    let* scope = Scope.DB.find_by_dir dir in
+                    let dune_version =
+                      let project = Scope.project scope in
+                      Dune_project.dune_version project
+                    in
+                    let+ pps =
+                      Resolve.Memo.read_memo
+                        (Preprocess.Per_module.with_instrumentation
+                           exes.buildable.preprocess
+                           ~instrumentation_backend:
+                             (Lib.DB.instrumentation_backend (Scope.libs scope)))
+                      >>| Preprocess.Per_module.pps
+                    in
+                    let merlin_ident =
+                      Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
+                    in
+                    Lib.DB.resolve_user_written_deps db (`Exe exes.names)
+                      exes.buildable.libraries ~pps ~dune_version
+                      ~allow_overlaps:
+                        exes.buildable.allow_overlapping_dependencies
+                      ~forbidden_libraries:exes.forbidden_libraries
+                      ~merlin_ident
+                  in
+                  let+ available = Lib.Compile.direct_requires compile_info in
+                  Resolve.peek available
+                in
+                match libs with
+                | Error () -> (acc, pps)
+                | Ok libs ->
+                  List.fold_left libs ~init:(acc, pps) ~f:(fun (acc, pps) lib ->
+                      let info = Lib.info lib in
+                      match Lib_info.kind info with
+                      | Normal -> (Appendable_list.cons lib acc, pps)
+                      | Ppx_rewriter _ | Ppx_deriver _ ->
                         ( Appendable_list.cons lib acc
                         , Appendable_list.cons
                             (Lib_info.loc info, Lib_info.name info)
                             pps )))
-            | _ -> Memo.return (acc, pps)))
-    >>| fun (libs, pps) ->
+              | _ -> Memo.return (acc, pps)))
+    in
     (Appendable_list.to_list libs, Appendable_list.to_list pps)
 
 let libs_under_dir sctx ~db ~dir = libs_and_ppx_under_dir sctx ~db ~dir >>| fst

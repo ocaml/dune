@@ -77,8 +77,13 @@ melange:
 	opam pin add melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#426463a77d0b70ecf0108c98e6a86d325cd01472
 	opam pin add melange https://github.com/melange-re/melange.git#685e546e290d317a884a4d48c7835467422c6426
 
+.PHONY: dev-deps
 dev-deps: melange
 	opam install -y $(TEST_DEPS)
+
+.PHONY: coverage-deps
+coverage-deps:
+	opam install -y bisect_ppx
 
 .PHONY: dev-deps-sans-melange
 dev-deps-sans-melange:
@@ -113,6 +118,10 @@ test-all: $(BIN)
 
 test-all-sans-melange: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq
+
+test-coverage: $(BIN)
+	- $(BIN) build --instrument-with bisect_ppx --force @runtest
+	bisect-ppx-report send-to Coveralls
 
 .PHONY: check
 check: $(BIN)

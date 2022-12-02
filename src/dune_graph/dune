@@ -1,3 +1,5 @@
 (library
  (name dune_graph)
- (libraries stdune))
+ (libraries stdune)
+ (instrumentation
+  (backend bisect_ppx)))

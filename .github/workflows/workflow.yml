@@ -177,7 +177,8 @@ jobs:
           dune-cache: true
 
       - name: Install Coq
-        run: opam install coq.8.16.0 coq-native
+        run: |
+          opam install ./dune.opam coq.8.16.0 coq-native
 
       - run: opam exec -- make test-coq
         env:

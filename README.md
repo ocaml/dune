@@ -1,6 +1,9 @@
 Dune - A Composable Build System
 ================================
 
+[![Main workflow][workflow-badge]][workflow]
+[![Release][release-img]][release]
+
 Dune is a build system designed for OCaml/Reason projects only. It focuses on
 providing the user with a consistent experience and takes care of most low-level
 details of OCaml compilations. It's merely necessary to provide a description of
@@ -15,10 +18,6 @@ too much, look at the [quick start guide][quick-start] or watch [this
 introduction video][video].
 
 The [example][example] directory contains examples of projects using dune.
-
-[![Main workflow][workflow-badge]][workflow]
-[![AppVeyor status][appveyor-img]][appveyor]
-[![Release][release-img]][release]
 
 [manual]:         https://dune.readthedocs.io/en/latest/
 [quick-start]:    https://dune.readthedocs.io/en/latest/quick-start.html
@@ -67,7 +66,6 @@ The magic invocation is:
 ```sh
 $ dune build --only-packages <package-name> @install
 ```
-
 ### Building Against Several Configurations at Once
 
 Dune can build a given source code repository against several configurations
@@ -129,7 +127,6 @@ Support
 If you have questions about Dune, you can send an email to
 ocaml-core@googlegroups.com or [open a ticket on GitHub][issues].
 
-
 Migration from Jbuilder
 -----------------------
 
@@ -143,8 +140,6 @@ Dune is fairly stable and used by the majority of packages on Opam. Note that
 Dune retains backward compatibility with Jbuilder, and in particular, existing
 Jbuilder projects will continue to be buildable with Dune.
 
-[appveyor]:       https://ci.appveyor.com/project/diml/dune/branch/master
-[appveyor-img]:   https://ci.appveyor.com/api/projects/status/rsxayce22e8f2jkp?svg=true
 [workflow-badge]: https://github.com/ocaml/dune/actions/workflows/workflow.yml/badge.svg
 [workflow]:       https://github.com/ocaml/dune/actions/workflows/workflow.yml
 [release]:        https://github.com/ocaml/dune/releases

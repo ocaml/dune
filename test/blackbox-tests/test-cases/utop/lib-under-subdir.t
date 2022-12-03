@@ -22,8 +22,4 @@ dune utop should read libraries in (subdir ..)
   > EOF
 
   $ dune utop . -- foo.ml
-  File "foo.ml", line 1, characters 0-9:
-  1 | Foolib.hw ()
-      ^^^^^^^^^
-  Error: Unbound module Foolib
-  [2]
+  foolib

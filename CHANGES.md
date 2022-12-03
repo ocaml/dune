@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Allow `$ dune utop` to load libraries defined in data only directories
+  defined using `(subdir ..)` (#6631, @rgrinberg)
+
 - Format dune files when they are named `dune-file`. This occurs when we enable
   the alternative file names project option. (#6566, @rgrinberg)
 

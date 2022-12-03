@@ -76,14 +76,11 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                 then
                   match Lib_info.kind info with
                   | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
-                    ( Appendable_list.( @ ) (Appendable_list.singleton lib) acc
-                    , Appendable_list.( @ )
-                        (Appendable_list.singleton
-                           (Lib_info.loc info, Lib_info.name info))
+                    ( Appendable_list.cons lib acc
+                    , Appendable_list.cons
+                        (Lib_info.loc info, Lib_info.name info)
                         pps )
-                  | Normal ->
-                    ( Appendable_list.( @ ) (Appendable_list.singleton lib) acc
-                    , pps )
+                  | Normal -> (Appendable_list.cons lib acc, pps)
                 else (acc, pps))
             | Dune_file.Executables exes -> (
               let* libs =
@@ -119,21 +116,13 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                   ~f:(fun (acc, pps) lib ->
                     let info = Lib.info lib in
                     match Lib_info.kind info with
-                    | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
+                    | Normal -> Memo.return (Appendable_list.cons lib acc, pps)
+                    | Ppx_rewriter _ | Ppx_deriver _ ->
                       Memo.return
-                        ( Appendable_list.( @ )
-                            (Appendable_list.singleton lib)
-                            acc
-                        , Appendable_list.( @ )
-                            (Appendable_list.singleton
-                               (Lib_info.loc info, Lib_info.name info))
-                            pps )
-                    | Normal ->
-                      Memo.return
-                        ( Appendable_list.( @ )
-                            (Appendable_list.singleton lib)
-                            acc
-                        , pps )))
+                        ( Appendable_list.cons lib acc
+                        , Appendable_list.cons
+                            (Lib_info.loc info, Lib_info.name info)
+                            pps )))
             | _ -> Memo.return (acc, pps)))
     >>| fun (libs, pps) ->
     (Appendable_list.to_list libs, Appendable_list.to_list pps)

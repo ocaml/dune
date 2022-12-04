@@ -1,0 +1,11 @@
+(executable
+ (name man_rules)
+ (libraries dune_bin cmdliner stdune dune_rules))
+
+; (rule
+;  (mode promote)
+;  (aliases default doc check)
+;  (action
+;   (with-stdout-to
+;    dune.1
+;    (run %{bin:dune} --help=plain))))

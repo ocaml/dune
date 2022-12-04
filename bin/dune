@@ -1,10 +1,43 @@
+(library
+ (name dune_bin)
+ (modules :standard \ main)
+ (libraries
+  memo
+  ocaml
+  dune_lang
+  fiber
+  stdune
+  dune_console
+  unix
+  dune_metrics
+  dune_digest
+  dune_cache
+  dune_cache_storage
+  dune_graph
+  dune_rules
+  dune_engine
+  dune_util
+  dune_upgrader
+  cmdliner
+  threads.posix
+  build_info
+  dune_config
+  chrome_trace
+  dune_stats
+  csexp
+  csexp_rpc
+  dune_rpc_impl
+  dune_rpc_private))
+
 (executable
  (name main)
  (public_name dune)
  (package dune)
+ (modules main)
  (enabled_if
   (<> %{profile} dune-bootstrap))
  (libraries
+  dune_bin
   memo
   ocaml
   dune_lang

@@ -57,6 +57,7 @@ let local_libraries =
     Some "Build_info_data")
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
+  ; ("bin", Some "Dune_bin", false, None)
   ]
 
 let link_flags =

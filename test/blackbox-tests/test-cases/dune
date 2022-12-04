@@ -94,12 +94,6 @@
  (enabled_if
   (>= %{ocaml_version} 4.05.0)))
 
-(subdir
- utop
- (cram
-  (enabled_if
-   (>= %{ocaml_version} 4.05.0))))
-
 (cram
  (applies_to wrapped-transition)
  (enabled_if

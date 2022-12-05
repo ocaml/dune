@@ -69,7 +69,7 @@ val is_target : Path.t -> is_target Memo.t
 val is_under_directory_target : Path.t -> bool Memo.t
 
 (** List of all buildable direct targets. This does not include files and
-    directory produced under a directory target.
+    directories produced under a directory target.
 
     If argument is [None], load the root, otherwise only load targets from the
     nearest subdirectory. *)

@@ -320,6 +320,7 @@ type 'path t =
   ; wrapped : Wrapped.t Inherited.t option
   ; main_module_name : Main_module_name.t
   ; modes : Lib_mode.Map.Set.t
+  ; modules : Modules.t option Source.t
   ; special_builtin_support : Special_builtin_support.t option
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
@@ -358,6 +359,7 @@ let equal (type a) (t : a t)
     ; wrapped
     ; main_module_name
     ; modes
+    ; modules
     ; special_builtin_support
     ; exit_module
     ; instrumentation_backend
@@ -410,6 +412,7 @@ let equal (type a) (t : a t)
   && Option.equal (Inherited.equal Wrapped.equal) wrapped t.wrapped
   && Main_module_name.equal main_module_name t.main_module_name
   && Lib_mode.Map.Set.equal modes t.modes
+  && Source.equal (Option.equal Modules.equal) modules t.modules
   && Option.equal Special_builtin_support.equal special_builtin_support
        t.special_builtin_support
   && Option.equal Module_name.equal exit_module t.exit_module
@@ -435,6 +438,8 @@ let ppx_runtime_deps t = t.ppx_runtime_deps
 let sub_systems t = t.sub_systems
 
 let modes t = t.modes
+
+let modules t = t.modules
 
 let archives t = t.archives
 
@@ -513,6 +518,7 @@ let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
   let native_archives =
     Files (eval_native_archives_exn t ~modules:(Some modules))
   in
+  let modules = Source.External (Some modules) in
   { t with
     ppx_runtime_deps
   ; name
@@ -524,6 +530,7 @@ let for_dune_package t ~name ~ppx_runtime_deps ~requires ~foreign_objects
   ; sub_systems
   ; orig_src_dir
   ; native_archives
+  ; modules
   }
 
 let user_written_deps t =
@@ -535,7 +542,7 @@ let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
     ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
     ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled
     ~virtual_deps ~dune_version ~virtual_ ~entry_modules ~implements
-    ~default_implementation ~modes ~wrapped ~special_builtin_support
+    ~default_implementation ~modes ~modules ~wrapped ~special_builtin_support
     ~exit_module ~instrumentation_backend =
   { loc
   ; name
@@ -567,6 +574,7 @@ let create ~loc ~path_kind ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
   ; implements
   ; default_implementation
   ; modes
+  ; modules
   ; wrapped
   ; special_builtin_support
   ; exit_module
@@ -642,6 +650,7 @@ let to_dyn path
     ; implements
     ; default_implementation
     ; modes
+    ; modules
     ; wrapped
     ; special_builtin_support
     ; exit_module
@@ -683,6 +692,7 @@ let to_dyn path
     ; ("wrapped", option (Inherited.to_dyn Wrapped.to_dyn) wrapped)
     ; ("main_module_name", Main_module_name.to_dyn main_module_name)
     ; ("modes", Lib_mode.Map.Set.to_dyn modes)
+    ; ("modules", Source.to_dyn (Dyn.option Modules.to_dyn) modules)
     ; ( "special_builtin_support"
       , option Special_builtin_support.to_dyn special_builtin_support )
     ; ("exit_module", option Module_name.to_dyn exit_module)

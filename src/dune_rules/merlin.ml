@@ -33,6 +33,7 @@ module Processed = struct
     ; src_dirs : Path.Set.t
     ; flags : string list
     ; extensions : string Ml_kind.Dict.t list
+    ; melc_flags : string list
     }
 
   (* ...but modules can have different preprocessing specifications*)
@@ -68,7 +69,8 @@ module Processed = struct
 
   let serialize_path = Path.to_absolute_filename
 
-  let to_sexp ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
+  let to_sexp ~pp
+      { stdlib_dir; obj_dirs; src_dirs; flags; extensions; melc_flags } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
@@ -94,11 +96,19 @@ module Processed = struct
               (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) flags))
           ]
       in
-      match pp with
-      | None -> flags
-      | Some { flag; args } ->
+      let flags =
+        match pp with
+        | None -> flags
+        | Some { flag; args } ->
+          make_directive "FLG"
+            (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
+          :: flags
+      in
+      match melc_flags with
+      | [] -> flags
+      | melc_flags ->
         make_directive "FLG"
-          (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
+          (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) melc_flags))
         :: flags
     in
     let suffixes =
@@ -183,7 +193,7 @@ module Processed = struct
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok [] -> Printf.eprintf "No merlin configuration found.\n"
     | Ok (init :: tl) ->
-      let pp_configs, obj_dirs, src_dirs, flags, extensions =
+      let pp_configs, obj_dirs, src_dirs, flags, extensions, melc_flags =
         (* We merge what is easy to merge and ignore the rest *)
         List.fold_left tl
           ~init:
@@ -191,20 +201,35 @@ module Processed = struct
             , init.config.obj_dirs
             , init.config.src_dirs
             , [ init.config.flags ]
-            , init.config.extensions )
+            , init.config.extensions
+            , init.config.melc_flags )
           ~f:(fun
-               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
+               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext, acc_melc_flags)
                { modules = _
                ; pp_config
                ; config =
-                   { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
+                   { stdlib_dir = _
+                   ; obj_dirs
+                   ; src_dirs
+                   ; flags
+                   ; extensions
+                   ; melc_flags
+                   }
                }
              ->
             ( pp_config :: acc_pp
             , Path.Set.union acc_obj obj_dirs
             , Path.Set.union acc_src src_dirs
             , flags :: acc_flags
-            , extensions @ acc_ext ))
+            , extensions @ acc_ext
+            , match acc_melc_flags with
+              | [] -> melc_flags
+              | acc_melc_flags -> acc_melc_flags ))
+      in
+      let flags =
+        match melc_flags with
+        | [] -> flags
+        | melc -> melc :: flags
       in
       Printf.printf "%s\n"
         (to_dot_merlin init.config.stdlib_dir pp_configs flags obj_dirs src_dirs
@@ -395,10 +420,10 @@ module Unprocessed = struct
         @@
         match t.config.mode with
         | `Ocaml -> Memo.return (Some stdlib_dir)
-        | `Melange -> Melange_binary.where sctx ~dir
+        | `Melange -> Melange_binary.where sctx ~loc:None ~dir
       in
-      let+ flags = flags
-      and+ src_dirs, obj_dirs =
+      let* flags = flags
+      and* src_dirs, obj_dirs =
         Action_builder.of_memo
           (let open Memo.O in
           Memo.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
@@ -418,7 +443,27 @@ module Unprocessed = struct
         Path.Set.union src_dirs
           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
-      { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
+      let+ melc_flags =
+        match t.config.mode with
+        | `Ocaml -> Action_builder.return []
+        | `Melange -> (
+          let+ melc_compiler =
+            Action_builder.of_memo (Melange_binary.melc sctx ~loc:None ~dir)
+          in
+          match melc_compiler with
+          | Error _ -> []
+          | Ok path ->
+            [ Processed.Pp_kind.to_flag Ppx
+            ; Processed.serialize_path path ^ " -as-ppx -bs-jsx 3"
+            ])
+      in
+      { Processed.stdlib_dir
+      ; src_dirs
+      ; obj_dirs
+      ; flags
+      ; extensions
+      ; melc_flags
+      }
     and+ pp_config = pp_config t sctx ~expander in
     let modules =
       (* And copy for each module the resulting pp flags *)

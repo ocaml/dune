@@ -94,12 +94,6 @@
  (enabled_if
   (>= %{ocaml_version} 4.05.0)))
 
-(subdir
- utop
- (cram
-  (enabled_if
-   (>= %{ocaml_version} 4.05.0))))
-
 (cram
  (applies_to wrapped-transition)
  (enabled_if
@@ -140,3 +134,9 @@
  (applies_to patch-back-source-tree)
  (enabled_if
   (<> %{system} macosx)))
+
+(cram
+ (applies_to github6607)
+ (deps
+  (package stdune)
+  (package ppx_expect)))

@@ -31,14 +31,19 @@ module Kind = struct
     | Wrapped_compat
     | Root
 
-  let to_string = function
-    | Intf_only -> "intf_only"
-    | Virtual -> "virtual"
-    | Impl -> "impl"
-    | Alias -> "alias"
-    | Impl_vmodule -> "impl_vmodule"
-    | Wrapped_compat -> "wrapped_compat"
-    | Root -> "root"
+  let all =
+    [ (Intf_only, "intf_only")
+    ; (Virtual, "virtual")
+    ; (Impl, "impl")
+    ; (Alias, "alias")
+    ; (Impl_vmodule, "impl_vmodule")
+    ; (Wrapped_compat, "wrapped_compat")
+    ; (Root, "root")
+    ]
+
+  let rev_all = List.rev_map ~f:(fun (x, y) -> (y, x)) all
+
+  let to_string s = Option.value_exn (List.assoc all s)
 
   let to_dyn t = Dyn.string (to_string t)
 
@@ -46,15 +51,7 @@ module Kind = struct
 
   let decode =
     let open Dune_lang.Decoder in
-    enum
-      [ ("intf_only", Intf_only)
-      ; ("virtual", Virtual)
-      ; ("impl", Impl)
-      ; ("alias", Alias)
-      ; ("impl_vmodule", Impl_vmodule)
-      ; ("wrapped_compat", Wrapped_compat)
-      ; ("root", Root)
-      ]
+    enum rev_all
 
   let has_impl = function
     | Alias | Impl_vmodule | Wrapped_compat | Root | Impl -> true
@@ -318,8 +315,12 @@ let ml_source =
 
 let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
-let generated ~(kind : Kind.t) ~src_dir name =
-  let obj_name = Module_name.Unique.of_name_assuming_needs_no_mangling name in
+let generated ?obj_name ~(kind : Kind.t) ~src_dir name =
+  let obj_name =
+    match obj_name with
+    | Some obj_name -> obj_name
+    | None -> Module_name.Unique.of_name_assuming_needs_no_mangling name
+  in
   let source =
     let impl =
       let basename = String.uncapitalize (Module_name.to_string name) in

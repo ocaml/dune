@@ -192,15 +192,3 @@ are part of the same rule.
 
 TODO: Test trimming priority in the [copy] mode. In PR #4497 we added a test but
 it turned out to be flaky so we subsequently deleted it in #4511.
-
-Test the error message when using removed subcommands [start] and [stop].
-
-  $ dune cache start
-  Error: Dune no longer uses the cache daemon, and so the `start` and `stop`
-  subcommands of `dune cache` were removed.
-  [1]
-
-  $ dune cache stop
-  Error: Dune no longer uses the cache daemon, and so the `start` and `stop`
-  subcommands of `dune cache` were removed.
-  [1]

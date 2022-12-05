@@ -7,32 +7,22 @@ type t =
 
 let generate_and_compile_module cctx ~precompiled_cmi ~name ~lib ~code ~requires
     =
-  let open Resolve.Memo.O in
-  let* module_ =
-    let gen_module =
-      let src_dir =
-        let obj_dir = Compilation_context.obj_dir cctx in
-        Obj_dir.obj_dir obj_dir
-      in
-      Module.generated ~kind:Impl ~src_dir name
-    in
-    let* wrapped = Lib.wrapped lib in
-    match wrapped with
-    | None -> Resolve.Memo.return gen_module
-    | Some (Yes_with_transition _) ->
-      (* XXX this needs a comment. Why is this impossible? *)
-      assert false
-    | Some (Simple false) -> Resolve.Memo.return gen_module
-    | Some (Simple true) ->
-      let+ main_module_name = Lib.main_module_name lib in
-      let main_module_name = Option.value_exn main_module_name in
-      (* XXX this is fishy. We shouldn't be introducing a toplevel module into a
-         wrapped library with a single module *)
-      Module.with_wrapper gen_module ~main_module_name
-  in
+  let sctx = Compilation_context.super_context cctx in
   let open Memo.O in
+  let* module_ =
+    let+ modules = Dir_contents.modules_of_lib sctx lib in
+    let obj_name =
+      Option.map modules ~f:(fun modules ->
+          let mli_only = Modules.find modules name |> Option.value_exn in
+          Module.obj_name mli_only)
+    in
+    let src_dir =
+      let obj_dir = Compilation_context.obj_dir cctx in
+      Obj_dir.obj_dir obj_dir
+    in
+    Module.generated ?obj_name ~kind:Impl ~src_dir name
+  in
   let* () =
-    let sctx = Compilation_context.super_context cctx in
     let dir = Compilation_context.dir cctx in
     Super_context.add_rule ~dir sctx
       (let ml =

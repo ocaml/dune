@@ -58,7 +58,7 @@ val make :
   -> scope:Scope.t
   -> lib_config:Lib_config.t
   -> loc:Loc.t
-  -> lookup_vlib:(dir:Path.Build.t -> t Memo.t)
+  -> lookup_vlib:(loc:Loc.t -> dir:Path.Build.t -> t Memo.t)
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
   -> dirs:(Path.Build.t * 'a list * String.Set.t) list
   -> t Memo.t

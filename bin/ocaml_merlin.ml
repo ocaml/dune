@@ -173,6 +173,25 @@ end = struct
     main ()
 end
 
+module Dump_config = struct
+  let info =
+    Cmd.info
+      ~doc:
+        "Prints the entire content of the merlin configuration for the given \
+         folder in a user friendly form. This is for testing and debugging \
+         purposes only and should not be considered as a stable output."
+      "dump-config"
+
+  let term =
+    let+ common = Common.term
+    and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH") in
+    let common = Common.forbid_builds common in
+    let config = Common.init ~log_file:No_log_file common in
+    Scheduler.go ~common ~config (fun () -> Server.dump dir)
+
+  let command = Cmd.v info term
+end
+
 let doc = "Start a merlin configuration server"
 
 let man =
@@ -185,29 +204,15 @@ let man =
   ; Common.footer
   ]
 
-let info = Cmd.info "ocaml-merlin" ~doc ~man
+let start_session_info name = Cmd.info name ~doc ~man
 
-let term =
-  let+ common = Common.term
-  and+ dump_config =
-    Arg.(
-      value
-      & opt ~vopt:(Some ".") (some string) None
-      & info [ "dump-config" ]
-          ~doc:
-            "Prints the entire content of the merlin configuration for the \
-             given folder in a user friendly form. This is for testing and \
-             debugging purposes only and should not be considered as a stable \
-             output.")
-  in
+let start_session_term =
+  let+ common = Common.term in
   let common = Common.forbid_builds common in
   let config = Common.init common ~log_file:No_log_file in
-  Scheduler.go ~common ~config (fun () ->
-      match dump_config with
-      | Some s -> Server.dump s
-      | None -> Server.start ())
+  Scheduler.go ~common ~config Server.start
 
-let command = Cmd.v info term
+let command = Cmd.v (start_session_info "ocaml-merlin") start_session_term
 
 module Dump_dot_merlin = struct
   let doc = "Print Merlin configuration"
@@ -245,3 +250,9 @@ module Dump_dot_merlin = struct
 
   let command = Cmd.v info term
 end
+
+let group =
+  Cmdliner.Cmd.group (Cmd.info "merlin")
+    [ Dump_config.command
+    ; Cmd.v (start_session_info "start-session") start_session_term
+    ]

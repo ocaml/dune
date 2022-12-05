@@ -191,10 +191,13 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
     else if buildable.coq_lang_version < (0, 7) then Memo.return Coq_mode.VoOnly
     else
       let* coqc = resolve_program sctx ~dir ~loc:buildable.loc "coqc" in
-      let+ config = Coq_config.make ~bin:(Action.Prog.ok_exn coqc) in
-      match Coq_config.by_name config "coq_native_compiler_default" with
-      | Some (`String "yes") | Some (`String "ondemand") -> Coq_mode.Native
-      | _ -> Coq_mode.VoOnly)
+      let+ config = Coq_config.make_opt ~coqc in
+      match config with
+      | None -> Coq_mode.VoOnly
+      | Some config -> (
+        match Coq_config.by_name config "coq_native_compiler_default" with
+        | Some (`String "yes") | Some (`String "ondemand") -> Coq_mode.Native
+        | _ -> Coq_mode.VoOnly))
 
 let rec resolve_first lib_db = function
   | [] -> assert false

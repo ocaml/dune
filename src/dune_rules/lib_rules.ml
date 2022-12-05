@@ -56,7 +56,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
       let obj_deps =
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
-      let ocaml_flags = Ocaml_flags.get flags mode in
+      let ocaml_flags = Ocaml_flags.get flags (Ocaml mode) in
       let* standard =
         let+ project = Scope.DB.find_by_dir dir |> Memo.map ~f:Scope.project in
         match Dune_project.use_standard_c_and_cxx_flags project with
@@ -339,7 +339,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
                   ~for_mode:Mode.Select.All
              |> List.map ~f:Path.build))
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
-              [ Command.Args.dyn (Ocaml_flags.get flags Native)
+              [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml Native))
               ; A "-shared"
               ; A "-linkall"
               ; A "-I"

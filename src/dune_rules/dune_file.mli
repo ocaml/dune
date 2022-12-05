@@ -507,7 +507,7 @@ val to_dyn : t -> Dyn.t
 val parse :
      Dune_lang.Ast.t list
   -> dir:Path.Source.t
-  -> file:Path.Source.t
+  -> file:Path.Source.t option
   -> project:Dune_project.t
   -> t Memo.t
 

@@ -1,6 +1,14 @@
 Unreleased
 ----------
 
+- Format dune files when they are named `dune-file`. This occurs when we enable
+  the alternative file names project option. (#6566, @rgrinberg)
+
+- Do not shadow library interface modules (#6549, fixes #6545, @rgrinberg)
+
+- Move `$ dune ocaml-merlin -dump-config=$dir` to `$ dune ocaml merlin
+  dump-config $dir`. (#6547, @rgrinberg)
+
 - Allow compilation rules to be impacted by `(env ..)` stanzas that modify the
   environment or set binaries. (#6527, @rgrinberg)
 
@@ -25,7 +33,12 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
+- Add CI testing with MSVC (#6540, fixes #6535, @jonahbeckford)
+
 - Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
+
+- Fix missing dependencies when detecting the kind of C compiler we're using
+  (#6610, fixes #6415, @emillon)
 
 3.6.0 (2022-11-14)
 ------------------

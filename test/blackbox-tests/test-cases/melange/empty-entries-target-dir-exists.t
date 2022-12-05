@@ -17,6 +17,5 @@ Create the dist folder
   $ mkdir ./dist
 
   $ dune build @melange-dist
-  Error: No rule found for dist/melange.js
-  -> required by alias melange-dist
-  [1]
+  $ ls _build/default/dist
+  melange.js

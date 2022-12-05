@@ -23,15 +23,15 @@ ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
 "ppx_expect.v0.15.0" \
 ppx_inline_test \
 ppxlib \
-result \
 ctypes \
 "utop>=2.6.0" \
-"melange>=0.3.0" \
-"mel>=0.3.0" \
+"melange>=0.3.1" \
+"mel>=0.3.1"
 
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
+"dkml-workflows>=1.1.0" \
 patdiff
 
 TEST_OCAMLVERSION := 4.14.0
@@ -74,9 +74,14 @@ dev-depext:
 
 .PHONY: melange
 melange:
-	opam pin add melange https://github.com/melange-re/melange.git#2f7a184400fd5d62c9160528a7ab4ce81874c024
+	opam pin add melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#426463a77d0b70ecf0108c98e6a86d325cd01472
+	opam pin add melange https://github.com/melange-re/melange.git#685e546e290d317a884a4d48c7835467422c6426
 
 dev-deps: melange
+	opam install -y $(TEST_DEPS)
+
+.PHONY: dev-deps-sans-melange
+dev-deps-sans-melange:
 	opam install -y $(TEST_DEPS)
 
 .PHONY: dev-switch
@@ -105,6 +110,9 @@ test-melange: $(BIN)
 
 test-all: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
+
+test-all-sans-melange: $(BIN)
+	$(BIN) build @runtest @runtest-js @runtest-coq
 
 .PHONY: check
 check: $(BIN)
@@ -141,6 +149,39 @@ livedoc:
 
 update-jbuilds: $(BIN)
 	$(BIN) build @doc/runtest --auto-promote
+
+# you will need to use a dev-switch or do opam install dkml-workflows.
+# we run --auto-promote twice since first may fail (ex. missing files with Unable to resolve symlink)
+update-dkml: $(BIN)
+	opam exec -- generate-setup-dkml-scaffold
+	$(BIN) build @gen-dkml --auto-promote || $(BIN) build @gen-dkml --auto-promote
+	rm -rf ci/setup-dkml/gh-darwin ci/setup-dkml/gh-linux ci/setup-dkml/gl
+	rm -rf ci/setup-dkml/pc/setup-dkml-darwin_*.sh ci/setup-dkml/pc/setup-dkml-linux_*.sh
+	$(BIN) build @ci/fmt --auto-promote || $(BIN) build @ci/fmt --auto-promote
+
+# assumes MSYS2 or Cygwin, and Visual Studio. Do not use 'with-dkml make ...'
+desktop-ci-windows_x86:
+	if command -v pwsh; then \
+	  pwsh ./ci/setup-dkml/pc/setup-dkml-windows_x86.ps1; \
+	else \
+	  powershell ./ci/setup-dkml/pc/setup-dkml-windows_x86.ps1; \
+	fi
+	/usr/bin/env PATH=/usr/bin \
+	  dkml_host_abi=windows_x86 abi_pattern=win32-windows_x86_64; \
+	  opam_root=.ci/o exe_ext=.exe \
+	  /bin/sh ci/build-test.sh
+
+# assumes MSYS2 or Cygwin, and Visual Studio. Do not use 'with-dkml make ...'
+desktop-ci-windows_x86_64:
+	if command -v pwsh; then \
+	  pwsh ./ci/setup-dkml/pc/setup-dkml-windows_x86_64.ps1; \
+	else \
+	  powershell ./ci/setup-dkml/pc/setup-dkml-windows_x86_64.ps1; \
+	fi
+	/usr/bin/env PATH=/usr/bin \
+	  dkml_host_abi=windows_x86 abi_pattern=win32-windows_x86_64 \
+	  opam_root=.ci/o exe_ext=.exe \
+	  /bin/sh ci/build-test.sh
 
 # If the first argument is "run"...
 ifeq (dune,$(firstword $(MAKECMDGOALS)))

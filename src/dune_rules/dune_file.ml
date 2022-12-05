@@ -988,8 +988,8 @@ module Library = struct
       ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
       ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
       ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
-      ~entry_modules ~implements ~default_implementation ~modes ~wrapped
-      ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~entry_modules ~implements ~default_implementation ~modes ~modules:Local
+      ~wrapped ~special_builtin_support ~exit_module ~instrumentation_backend
 end
 
 module Plugin = struct
@@ -2422,11 +2422,19 @@ module Stanzas = struct
            parse_file_includes ~stanza_parser ~context sexps
          | stanza -> Memo.return [ stanza ])
 
-  let parse ~file (project : Dune_project.t) sexps =
+  let parse ~file ~dir (project : Dune_project.t) sexps =
     let stanza_parser = parser project in
     let open Memo.O in
     let+ stanzas =
-      let context = Include_stanza.in_file file in
+      let context =
+        Include_stanza.in_file
+        @@
+        match file with
+        | Some f -> f
+        | None ->
+          (* TODO this is wrong *)
+          Path.Source.relative dir Source_tree.Dune_file.fname
+      in
       parse_file_includes ~stanza_parser ~context sexps
     in
     let (_ : bool) =
@@ -2476,7 +2484,7 @@ let is_promoted_rule version rule =
 
 let parse sexps ~dir ~file ~project =
   let open Memo.O in
-  let+ stanzas = Stanzas.parse ~file project sexps in
+  let+ stanzas = Stanzas.parse ~file ~dir project sexps in
   let stanzas =
     if !Clflags.ignore_promoted_rules then
       let version = Dune_project.dune_version project in

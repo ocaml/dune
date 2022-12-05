@@ -1,3 +1,7 @@
 (cram
  (deps %{bin:node} %{bin:melc})
  (alias runtest-melange))
+
+(cram
+ (deps %{bin:rescript_syntax})
+ (applies_to rescript_syntax))

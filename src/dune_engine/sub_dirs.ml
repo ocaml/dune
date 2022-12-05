@@ -233,8 +233,10 @@ let strict_subdir field_name =
           [ Pp.textf "only immediate sub-directories may be specified." ]
         in
         let hints =
-          [ Pp.textf "to ignore %s, write \"(%s %s)\" in %s/dune" dn field_name
-              (Filename.basename dn) (Filename.dirname dn)
+          [ Pp.textf
+              "to ignore %s, write \"(%s %s)\" in %s/dune or use the \
+               \"(subdirs)\" stanza."
+              dn field_name (Filename.basename dn) (Filename.dirname dn)
           ]
         in
         User_error.raise ~loc ~hints msg
@@ -276,8 +278,7 @@ let decode =
   in
   let dirs =
     located
-      (Dune_lang.Syntax.since Stanza.syntax (1, 6)
-      >>> Predicate_lang.Glob.decode)
+      (Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> strict_subdir_glob "dirs")
   in
   let data_only_dirs =
     located

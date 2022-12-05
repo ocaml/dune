@@ -20,7 +20,6 @@ let request targets =
       | Alias a -> Alias.request a)
 
 let target_hint (_setup : Dune_rules.Main.build_system) path =
-  assert (Path.is_managed path);
   let open Memo.O in
   let sub_dir = Option.value ~default:path (Path.parent path) in
   (* CR-someday amokhov:
@@ -29,7 +28,9 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
      indicate whether a hint corresponds to a file or to a directory target. *)
   let root =
     match sub_dir with
-    | External _ -> (* checked above *) assert false
+    | External e ->
+      Code_error.raise "target_hint: external path"
+        [ ("path", Path.External.to_dyn e) ]
     | In_source_tree d -> d
     | In_build_dir d -> Path.Build.drop_build_context_exn d
   in

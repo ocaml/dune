@@ -57,6 +57,7 @@ let term =
               let+ scope = Dune_rules.Scope.DB.find_by_dir dir in
               Dune_rules.Scope.libs scope
             in
+            (* TODO why don't we read ppx as well?*)
             Dune_rules.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir)
           in
           let* requires =

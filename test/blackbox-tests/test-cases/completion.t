@@ -247,6 +247,15 @@ expect to see the list of commands that start with 'bui' (ie, just "build")
   --debug-load-dir
   --debug-store-digest-preimage
 
+  $ ./test 'dune build --sandbox=symlink --debug'
+  --debug-artifact-substitution
+  --debug-backtraces
+  --debug-cache
+  --debug-dependency-path
+  --debug-digests
+  --debug-load-dir
+  --debug-store-digest-preimage
+
   $ ./test 'dune build --promote-install-files '
   false
   true

@@ -150,8 +150,7 @@ module DB : sig
 
       This function is for executables or melange.emit stanzas. *)
   val resolve_user_written_deps :
-       ?modes:Lib_mode.Map.Set.t
-    -> t
+       t
     -> [ `Exe of (Import.Loc.t * string) list | `Melange_emit of string ]
     -> ?allow_overlaps:bool
     -> ?forbidden_libraries:(Loc.t * Lib_name.t) list

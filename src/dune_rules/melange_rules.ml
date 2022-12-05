@@ -102,7 +102,7 @@ let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
        ; Dep (Path.build src)
        ])
 
-let add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
+let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     ~compile_info ~target_dir ~mode (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
@@ -132,7 +132,12 @@ let add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
     Compilation_context.create () ~loc:mel.loc ~super_context:sctx ~expander
       ~scope ~obj_dir ~modules ~flags ~requires_link
       ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml
-      ~opaque:Inherit_from_settings ~package:mel.package ~modes
+      ~opaque:Inherit_from_settings
+      ~modes:
+        { ocaml = { byte = None; native = None }
+        ; melange = Some (Requested Loc.none)
+        }
+      ~package:mel.package
   in
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
@@ -194,6 +199,19 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       let loc = Lib_info.loc info in
       let lib_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
+      let () =
+        let modes = Lib_info.modes info in
+        match modes.melange with
+        | false ->
+          User_error.raise ~loc:(fst mel.libraries)
+            [ Pp.textf
+                "The library %S was added as a dependency of a melange.emit \
+                 stanza, but this library is not compatible with melange. To \
+                 fix this, add (modes melange) to the library stanza."
+                (Lib_name.to_string (Lib_info.name info))
+            ]
+        | true -> ()
+      in
       let dst_dir = lib_output_dir ~target_dir ~lib_dir in
       let modules_group =
         Dir_contents.get sctx ~dir:lib_dir
@@ -214,7 +232,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
           (build_js ~loc ~dir ~pkg_name ~mode ~module_system:mel.module_system
              ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext))
 
-let compile_info ~modes ~scope (mel : Melange_stanzas.Emit.t) =
+let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
@@ -225,19 +243,12 @@ let compile_info ~modes ~scope (mel : Melange_stanzas.Emit.t) =
     >>| Preprocess.Per_module.pps
   in
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
-  Lib.DB.resolve_user_written_deps ~modes (Scope.libs scope)
-    (`Melange_emit mel.target) mel.libraries ~pps ~dune_version ~merlin_ident
+  Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange_emit mel.target)
+    (snd mel.libraries) ~pps ~dune_version ~merlin_ident
 
 let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let open Memo.O in
-  let modes =
-    { Lib_mode.Map.ocaml = { byte = None; native = None }
-    ; melange = Some (Dune_file.Mode_conf.Kind.Requested Loc.none)
-    }
-  in
-  let* compile_info =
-    compile_info ~modes:(Lib_mode.Map.map ~f:Option.is_some modes) ~scope mel
-  in
+  let* compile_info = compile_info ~scope mel in
   let target_dir = Path.Build.relative dir mel.target in
   let mode =
     match mel.promote with
@@ -246,7 +257,7 @@ let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   in
   let f () =
     let+ cctx_and_merlin =
-      add_rules_for_entries ~modes ~sctx ~dir ~expander ~dir_contents ~scope
+      add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
         ~compile_info ~target_dir ~mode mel
     and+ () =
       let* requires_link =

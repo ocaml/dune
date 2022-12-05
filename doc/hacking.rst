@@ -442,6 +442,30 @@ Good:
 - Do not raise ``Invalid_argument``. Instead, raise with ``Code_error.raise``
   which allows to attach more informative payloads than just strings.
 
+- To write a ``to_dyn`` function on a record type, use the following pattern. It
+  ensures that the pattern matching will break when a field is added. To ignore
+  a field, add ``; d = _``, not ``; _``.
+
+.. code:: ocaml
+
+    let to_dyn {a; b; c} =
+      Dyn.record
+        [ ("a", A.to_dyn a)
+        ; ("b", B.to_dyn b)
+        ; ("c", C.to_dyn c)
+        ]
+
+- To write an equality function, use the following pattern (this applies to
+  other kinds of binary functions). The same remarks about about pattern
+  matching and ignoring fields apply.
+
+.. code:: ocaml
+
+    let equal {a; b; c} t =
+      A.equal a t.a &&
+      B.equal b t.b &&
+      C.equal c t.c
+
 Subjective Style Points
 -----------------------
 

@@ -257,11 +257,15 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     Ocaml.Version.supports_opaque_for_mli ctx.version
   in
   let modules = singleton_modules module_ in
+  let includes =
+    Includes.make ~project:(Scope.project cctx.scope) ~opaque ~requires
+  in
   { cctx with
     opaque
   ; flags = Ocaml_flags.empty
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
+  ; includes
   ; modules
   }
 

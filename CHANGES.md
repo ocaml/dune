@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix the compilation of modules generated at link time when
+  `implicit_transitive_deps` is enabled (#6642, @rgrinberg)
+
 - Allow `$ dune utop` to load libraries defined in data only directories
   defined using `(subdir ..)` (#6631, @rgrinberg)
 

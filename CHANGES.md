@@ -53,6 +53,9 @@ Unreleased
   `copy#` and `copy_files#`. The old heuristic of looking for a module in
   parent directories is removed (#6594, @rgrinberg)
 
+- Fix inline tests with js_of_ocaml and whole program compilation mode enabled
+  (#6645, @hhugo)
+
 3.6.0 (2022-11-14)
 ------------------
 

@@ -36,8 +36,6 @@ patdiff
 
 TEST_OCAMLVERSION := 4.14.0
 
--include Makefile.dev
-
 .PHONY: help
 help:
 	@cat doc/make-help.txt

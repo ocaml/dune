@@ -1,0 +1,56 @@
+NAME
+       dune-help - Additional Dune help
+
+SYNOPSIS
+       dune help [--build-info] [--man-format=FMT] [OPTION]… [TOPIC]
+
+DESCRIPTION
+       dune help TOPIC provides additional help on the given topic. The
+       following topics are available:
+
+       config
+           dune-config
+OPTIONS
+       --build-info
+           Show build information.
+
+       --man-format=FMT (absent=pager)
+           Show output in format FMT. The value FMT must be one of auto,
+           pager, groff or plain. With auto, the format is pager or plain
+           whenever the TERM env var is dumb or undefined.
+
+COMMON OPTIONS
+       --help[=FMT] (default=auto)
+           Show this help in format FMT. The value FMT must be one of auto,
+           pager, groff or plain. With auto, the format is pager or plain
+           whenever the TERM env var is dumb or undefined.
+
+       --version
+           Show version information.
+
+EXIT STATUS
+       help exits with the following status:
+
+       0   on success.
+
+       123 on indiscriminate errors reported on standard error.
+
+       124 on command line parsing errors.
+
+       125 on unexpected internal errors (bugs).
+
+ENVIRONMENT
+       These environment variables affect the execution of help:
+
+       CLICOLOR
+           If different than 0, ANSI colors are supported and should be used
+           when the program isn’t piped. If equal to 0, don’t output ANSI
+           color escape codes
+
+       CLICOLOR_FORCE
+           If different than 0, ANSI colors should be enabled no matter what.
+
+BUGS
+       Check bug reports at https://github.com/ocaml/dune/issues
+
+SEE ALSO

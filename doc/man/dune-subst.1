@@ -1,0 +1,79 @@
+NAME
+       dune-subst - Substitute watermarks in source files.
+
+SYNOPSIS
+       dune subst [--build-info] [OPTION]…
+
+DESCRIPTION
+       Substitute %%ID%% strings in source files, in a similar fashion to
+       what topkg does in the default configuration.
+
+       This command is only meant to be called when a user pins a package to
+       its development version. Especially it replaces %%VERSION%% strings by
+       the version obtained from the vcs. Currently only git is supported and
+       the version is obtained from the output of:
+
+         $ git describe --always --dirty --abbrev=7
+
+       dune subst substitutes the variables that topkg substitutes with the
+       default configuration:
+       - %%NAME%%, the name of the project (from the dune-project file)
+       - %%VERSION%%, output of git describe --always --dirty --abbrev=7
+       - %%VERSION_NUM%%, same as %%VERSION%% but with a potential leading
+       'v' or 'V' dropped
+       - %%VCS_COMMIT_ID%%, commit hash from the vcs
+       - %%PKG_MAINTAINER%%, contents of the maintainer: field from the opam
+       file
+       - %%PKG_AUTHORS%%, contents of the authors: field from the opam file
+       - %%PKG_HOMEPAGE%%, contents of the homepage: field from the opam file
+       - %%PKG_ISSUES%%, contents of the issues: field from the opam file
+       - %%PKG_DOC%%, contents of the doc: field from the opam file
+       - %%PKG_LICENSE%%, contents of the license: field from the opam file
+       - %%PKG_REPO%%, contents of the repo: field from the opam file
+
+       In order to call dune subst when your package is pinned, add this line
+       to the build: field of your opam file:
+
+         [dune "subst"] {pinned}
+
+       Note that this command is meant to be called only from opam files and
+       behaves a bit differently from other dune commands. In particular it
+       doesn't try to detect the root and must be called from the root of the
+       project.
+
+OPTIONS
+       --build-info
+           Show build information.
+
+COMMON OPTIONS
+       These options are common to all commands.
+
+       --debug-backtraces
+           Always print exception backtraces.
+
+       --help[=FMT] (default=auto)
+           Show this help in format FMT. The value FMT must be one of auto,
+           pager, groff or plain. With auto, the format is pager or plain
+           whenever the TERM env var is dumb or undefined.
+
+       --version
+           Show version information.
+
+MORE HELP
+       Use `dune COMMAND --help' for help on a single command.
+
+EXIT STATUS
+       subst exits with the following status:
+
+       0   on success.
+
+       123 on indiscriminate errors reported on standard error.
+
+       124 on command line parsing errors.
+
+       125 on unexpected internal errors (bugs).
+
+BUGS
+       Check bug reports at https://github.com/ocaml/dune/issues
+
+SEE ALSO

@@ -1,0 +1,41 @@
+NAME
+       dune-format-dune-file - Format dune files
+
+SYNOPSIS
+       dune format-dune-file [--dune-version=VERSION] [OPTION]… [FILE]
+
+DESCRIPTION
+       dune format-dune-file reads a dune file and outputs a formatted
+       version. This is a low-level command, meant to implement editor
+       support for example. To reformat a dune project, see the "Automatic
+       formatting" section in the manual.
+
+ARGUMENTS
+       FILE
+           Path to the dune file to parse.
+
+OPTIONS
+       --dune-version=VERSION (absent=3.7)
+           Which version of Dune language to use.
+
+COMMON OPTIONS
+       --help[=FMT] (default=auto)
+           Show this help in format FMT. The value FMT must be one of auto,
+           pager, groff or plain. With auto, the format is pager or plain
+           whenever the TERM env var is dumb or undefined.
+
+       --version
+           Show version information.
+
+EXIT STATUS
+       format-dune-file exits with the following status:
+
+       0   on success.
+
+       123 on indiscriminate errors reported on standard error.
+
+       124 on command line parsing errors.
+
+       125 on unexpected internal errors (bugs).
+
+SEE ALSO

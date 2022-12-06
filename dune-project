@@ -10,6 +10,8 @@
 
 (strict_package_deps false)
 
+(using directory-targets 0.1)
+
 ; Reserved for Dune itself. This is to help with the bootstrap
 (using dune-bootstrap-info 0.1)
 

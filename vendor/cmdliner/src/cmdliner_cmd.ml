@@ -29,6 +29,8 @@ let group ?default i cmds =
 
 let name c = Cmdliner_info.Cmd.name (get_info c)
 
+let get_subcommands = function Cmd _ -> [] | Group (_, (_, cs)) -> cs
+
 (*---------------------------------------------------------------------------
    Copyright (c) 2022 The cmdliner programmers
 

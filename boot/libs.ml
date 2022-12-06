@@ -1,4 +1,4 @@
-let executables = [ "main" ]
+let executables = [ "main"; "man_page_gen" ]
 
 let external_libraries = [ "unix"; "threads.posix" ]
 

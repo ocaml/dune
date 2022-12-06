@@ -773,6 +773,12 @@ module Cmd : sig
       specification of the command line: we can't tell apart a
       positional argument from the value of an unknown optional
       argument.  *)
+
+  val get_subcommands : 'a t -> 'a t list
+  (** [get_subcommands cmd] returns the list of subcommands of [cmd].
+
+      We use this in Dune so that we can crawl all the subcommands of a
+      command and automatically generate the man pages for them. *)
 end
 
 (** Terms for command line arguments.

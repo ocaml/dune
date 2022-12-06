@@ -29,3 +29,14 @@
   (with-stdout-to
    dune.inc
    (run bash %{dep:update-jbuild.sh}))))
+
+(rule
+ (aliases runtest man)
+ (mode promote)
+ (targets
+  (dir man))
+ (action
+  (progn
+   (chdir
+    man
+    (run ../../bin/man_page_gen.exe)))))

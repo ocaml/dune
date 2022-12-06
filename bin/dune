@@ -1,7 +1,5 @@
-(executable
- (name main)
- (public_name dune)
- (package dune)
+(executables
+ (names main man_page_gen)
  (enabled_if
   (<> %{profile} dune-bootstrap))
  (libraries
@@ -32,6 +30,14 @@
   dune_rpc_impl
   dune_rpc_private)
  (bootstrap_info bootstrap-info))
+
+(install
+ (section bin)
+ (enabled_if
+  (<> %{profile} dune-bootstrap))
+ (files
+  (main.exe as dune))
+ (package dune))
 
 ; Installing the dune binary depends on the kind of build:
 ; - for bootstrap builds, dune.exe is copied from ../dune.exe

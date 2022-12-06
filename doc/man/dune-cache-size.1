@@ -1,0 +1,34 @@
+NAME
+       dune-cache-size - Query the size of the Dune cache
+
+SYNOPSIS
+       dune cache size [--machine-readable] [OPTION]…
+
+       Queries the size of the Dune cache and outputs a human-readable
+       result.
+
+OPTIONS
+       --machine-readable
+           Outputs size as a plain number of bytes.
+
+COMMON OPTIONS
+       --help[=FMT] (default=auto)
+           Show this help in format FMT. The value FMT must be one of auto,
+           pager, groff or plain. With auto, the format is pager or plain
+           whenever the TERM env var is dumb or undefined.
+
+       --version
+           Show version information.
+
+EXIT STATUS
+       size exits with the following status:
+
+       0   on success.
+
+       123 on indiscriminate errors reported on standard error.
+
+       124 on command line parsing errors.
+
+       125 on unexpected internal errors (bugs).
+
+SEE ALSO

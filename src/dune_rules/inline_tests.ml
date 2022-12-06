@@ -161,13 +161,17 @@ include Sub_system.Register_end_point (struct
           Mode_conf.Set.add info.modes Byte
         else info.modes
       in
-      List.map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
+      List.concat_map (Mode_conf.Set.to_list modes)
+        ~f:(fun (mode : Mode_conf.t) ->
           match mode with
-          | Native -> Exe.Linkage.native
-          | Best -> Exe.Linkage.native_or_custom (Super_context.context sctx)
+          | Native -> [ Exe.Linkage.native ]
+          | Best ->
+            [ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
           | Byte ->
-            Exe.Linkage.custom_with_ext ~ext:".bc" (Super_context.context sctx)
-          | Javascript -> Exe.Linkage.js)
+            [ Exe.Linkage.custom_with_ext ~ext:".bc"
+                (Super_context.context sctx)
+            ]
+          | Javascript -> [ Exe.Linkage.js; Exe.Linkage.byte_for_jsoo ])
     in
     let* (_ : Exe.dep_graphs) =
       let link_args =

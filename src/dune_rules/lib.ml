@@ -179,14 +179,19 @@ module Error = struct
               (Path.to_string_maybe_quoted dir))
       ]
 
-  let private_deps_not_allowed ~loc private_dep =
+  let private_deps_not_allowed ~kind ~loc private_dep =
     let name = Lib_info.name private_dep in
+
     User_error.E
       (User_error.make ~loc
          [ Pp.textf
-             "Library %S is private, it cannot be a dependency of a public \
-              library. You need to give %S a public name."
-             (Lib_name.to_string name) (Lib_name.to_string name)
+             "Library %S is private, it cannot be a dependency of a %s. You \
+              need to give %S a public name."
+             (Lib_name.to_string name)
+             (match kind with
+             | `Private_package -> "private library attached to a package"
+             | `Public -> "public library")
+             (Lib_name.to_string name)
          ])
 
   let only_ppx_deps_allowed ~loc dep =
@@ -597,16 +602,17 @@ end = struct
 end
 
 type private_deps =
-  | From_same_project
+  | From_same_project of [ `Public | `Private_package ]
   | Allow_all
 
 let check_private_deps lib ~loc ~(private_deps : private_deps) =
   match private_deps with
   | Allow_all -> Ok lib
-  | From_same_project -> (
+  | From_same_project kind -> (
     match Lib_info.status lib.info with
     | Private (_, Some _) -> Ok lib
-    | Private (_, None) -> Error (Error.private_deps_not_allowed ~loc lib.info)
+    | Private (_, None) ->
+      Error (Error.private_deps_not_allowed ~kind ~loc lib.info)
     | _ -> Ok lib)
 
 module Vlib : sig
@@ -835,8 +841,9 @@ end = struct
       (* [Allow_all] is used for libraries that are installed because we don't
          have to check it again. It has been checked when compiling the
          libraries before their installation *)
-      | Installed_private | Private _ | Installed -> Allow_all
-      | Public (_, _) -> From_same_project
+      | Installed_private | Private (_, None) | Installed -> Allow_all
+      | Private (_, Some _) -> From_same_project `Private_package
+      | Public (_, _) -> From_same_project `Public
     in
     let resolve name = resolve_dep db name ~private_deps in
     let* resolved =
@@ -1794,8 +1801,8 @@ module DB = struct
         [ ("name", Lib_name.to_dyn name) ]
     | Some lib -> (lib, Compile.for_lib ~allow_overlaps t lib)
 
-  let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~dune_version =
+  let resolve_user_written_deps t targets ?(allow_overlaps = false)
+      ?(forbidden_libraries = []) deps ~pps ~dune_version ~merlin_ident =
     let resolved =
       Memo.lazy_ (fun () ->
           Resolve_names.resolve_deps_and_add_runtime_deps t deps ~pps
@@ -1828,16 +1835,16 @@ module DB = struct
                 (Option.some_if (not allow_overlaps) t)
                 ~forbidden_libraries res)
             ~human_readable_description:(fun () ->
-              match exes with
-              | [ (loc, name) ] ->
+              match targets with
+              | `Melange_emit name -> Pp.textf "melange target %s" name
+              | `Exe [ (loc, name) ] ->
                 Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
-              | names ->
+              | `Exe names ->
                 let loc, _ = List.hd names in
                 Pp.textf "executables %s in %s"
                   (String.enumerate_and (List.map ~f:snd names))
                   (Loc.to_file_colon_line loc)))
     in
-    let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes) in
     let pps =
       let open Memo.O in
       let+ resolved = Memo.Lazy.force resolved in
@@ -1938,7 +1945,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
       ~modules
   in
-  Dune_package.Lib.of_dune_lib ~info ~modules ~main_module_name
+  Dune_package.Lib.of_dune_lib ~info ~main_module_name
 
 module Local : sig
   type t = private lib

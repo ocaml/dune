@@ -4,10 +4,7 @@ type t =
   | File of String_with_vars.t
   | Alias of String_with_vars.t
   | Alias_rec of String_with_vars.t
-  | Glob_files of
-      { glob : String_with_vars.t
-      ; recursive : bool
-      }
+  | Glob_files of Glob_files.t
   | Source_tree of String_with_vars.t
   | Package of String_with_vars.t
   | Universe

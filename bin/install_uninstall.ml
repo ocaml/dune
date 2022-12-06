@@ -419,11 +419,12 @@ let install_uninstall ~what =
   let doc = Format.asprintf "%a packages." pp_what what in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let absolute_path =
-    ( (fun path ->
-        if Filename.is_relative path then
-          `Error "the path must be absolute to avoid ambiguity"
-        else `Ok path)
-    , snd Arg.string )
+    Arg.conv'
+      ( (fun path ->
+          if Filename.is_relative path then
+            Error "the path must be absolute to avoid ambiguity"
+          else Ok path)
+      , Arg.conv_printer Arg.string )
   in
   let term =
     let+ common = Common.term
@@ -547,6 +548,7 @@ let install_uninstall ~what =
               "Select context to install from. By default, install files from \
                all defined contexts.")
     and+ sections = Sections.term in
+    let common = Common.forbid_builds common in
     let config = Common.init ~log_file:No_log_file common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in

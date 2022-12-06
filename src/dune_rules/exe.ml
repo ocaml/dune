@@ -32,12 +32,14 @@ module Linkage = struct
 
   let is_byte x = x.mode = Byte && not (is_js x)
 
-  let custom context =
+  let custom_with_ext ~ext context =
     { mode = Byte_with_stubs_statically_linked_in
-    ; ext = ".exe"
+    ; ext
     ; flags =
         [ Ocaml.Version.custom_or_output_complete_exe context.Context.version ]
     }
+
+  let custom = custom_with_ext ~ext:".exe"
 
   let native_or_custom (context : Context.t) =
     match context.ocamlopt with
@@ -140,7 +142,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
   let open Memo.O in
   let* action_with_targets =
-    let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
+    let ocaml_flags = Ocaml_flags.get (CC.flags cctx) (Ocaml mode) in
     let prefix =
       Cm_files.top_sorted_objects_and_cms cm_files ~mode
       |> Action_builder.dyn_paths_unit
@@ -213,7 +215,7 @@ let link_js ~name ~loc ~cm_files ~promote ~link_time_code_gen cctx =
       | Lib_flags.Lib_and_module.Lib lib -> `Lib lib
       | Module (obj_dir, m) ->
         let path =
-          Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Mode.cm_kind Byte)
+          Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml (Mode.cm_kind Byte))
         in
         `Mod path)
   in
@@ -239,7 +241,15 @@ let link_many ?(link_args = Action_builder.return Command.Args.empty) ?o_files
     Memo.parallel_map programs
       ~f:(fun { Program.name; main_module_name; loc } ->
         let top_sorted_modules =
-          let main = Option.value_exn (Modules.find modules main_module_name) in
+          let main =
+            match Modules.find modules main_module_name with
+            | Some m -> m
+            | None ->
+              Code_error.raise "link_many: unable to find module"
+                [ ("main_module_name", Module_name.to_dyn main_module_name)
+                ; ("modules", Modules.to_dyn modules)
+                ]
+          in
           Dep_graph.top_closed_implementations (CC.dep_graphs cctx).impl
             [ main ]
         in

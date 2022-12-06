@@ -17,7 +17,7 @@ module Kind : sig
     | Intf_only
     | Virtual
     | Impl
-    | Alias
+    | Alias of Module_name.Path.t
     | Impl_vmodule
     | Wrapped_compat
     | Root
@@ -35,6 +35,8 @@ module Source : sig
 
   val has : t -> ml_kind:Ml_kind.t -> bool
 
+  val to_dyn : t -> Dyn.t
+
   val src_dir : t -> Path.t
 end
 
@@ -47,9 +49,16 @@ val to_dyn : t -> Dyn.t
 (** When you initially construct a [t] using [of_source], it assumes no wrapping
     (so reports an incorrect [obj_name] if wrapping is used) and you might need
     to fix it later with [with_wrapper]. *)
-val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
+val of_source :
+     ?path:Module_name.Path.t
+  -> visibility:Visibility.t
+  -> kind:Kind.t
+  -> Source.t
+  -> t
 
 val name : t -> Module_name.t
+
+val path : t -> Module_name.Path.t
 
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 
@@ -63,10 +72,13 @@ val iter : t -> f:(Ml_kind.t -> File.t -> unit Memo.t) -> unit Memo.t
 
 val has : t -> ml_kind:Ml_kind.t -> bool
 
-(** Prefix the object name with the library name. *)
-val with_wrapper : t -> main_module_name:Module_name.t -> t
+val set_obj_name : t -> Module_name.Unique.t -> t
+
+val set_path : t -> Module_name.Path.t -> t
 
 val add_file : t -> Ml_kind.t -> File.t -> t
+
+val set_source : t -> Ml_kind.t -> File.t option -> t
 
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
@@ -76,7 +88,7 @@ val set_pp : t -> (string list Action_builder.t * Sandbox_config.t) option -> t
 val wrapped_compat : t -> t
 
 module Name_map : sig
-  type module_
+  type module_ := t
 
   type t = module_ Module_name.Map.t
 
@@ -86,22 +98,18 @@ module Name_map : sig
 
   val to_dyn : t -> Dyn.t
 
-  val impl_only : t -> module_ list
-
   val of_list_exn : module_ list -> t
 
   val add : t -> module_ -> t
 end
-with type module_ := t
 
 module Obj_map : sig
-  type module_
+  type module_ := t
 
   include Map.S with type key = module_
 
   val find_exn : 'a t -> module_ -> 'a
 end
-with type module_ := t
 
 module Obj_map_traversals : sig
   val parallel_iter : 'a Obj_map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t
@@ -132,9 +140,10 @@ val set_src_dir : t -> src_dir:Path.t -> t
 
     XXX should this return the path of the source as well? it will almost always
     be used to create the rule to generate this file *)
-val generated : src_dir:Path.t -> Module_name.t -> t
-
-(** Represent the generated alias module. *)
-val generated_alias : src_dir:Path.Build.t -> Module_name.t -> t
-
-val generated_root : src_dir:Path.Build.t -> Module_name.t -> t
+val generated :
+     ?obj_name:Module_name.Unique.t
+  -> ?path:Module_name.Path.t
+  -> kind:Kind.t
+  -> src_dir:Path.Build.t
+  -> Module_name.t
+  -> t

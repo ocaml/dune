@@ -110,8 +110,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let linkages = linkages ctx ~exes ~explicit_js_mode in
   let* flags = Super_context.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =
-    Buildable_rules.modules_rules sctx exes.buildable expander ~dir scope
-      modules ~lib_name:None ~empty_intf_modules:(`Exe_mains exes.names)
+    Buildable_rules.modules_rules sctx
+      (Executables (exes.buildable, exes.names))
+      expander ~dir scope modules
   in
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in
@@ -131,11 +132,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let stdlib_dir = ctx.Context.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let* preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
-         ~instrumentation_backend:
-           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   let* dep_graphs =
     (* Building an archive for foreign stubs, we link the corresponding object
@@ -158,13 +158,11 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       in
       let+ flags = link_flags
       and+ ctypes_cclib_flags =
-        Ctypes_rules.ctypes_cclib_flags ~scope
-          ~standard:(Action_builder.return []) ~expander
-          ~buildable:exes.buildable
+        Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:exes.buildable
       in
       Command.Args.S
-        [ Command.Args.As flags
-        ; Command.Args.S
+        [ As flags
+        ; S
             (let ext_lib = ctx.lib_config.ext_lib in
              let foreign_archives =
                exes.buildable.foreign_archives |> List.map ~f:snd
@@ -179,8 +177,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                  Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
           (* XXX: don't these need the msvc hack being done in lib_rules? *)
           (* XXX: also the Command.quote_args being done in lib_rules? *)
-        ; Command.Args.As
-            (List.concat_map ctypes_cclib_flags ~f:(fun f -> [ "-cclib"; f ]))
+        ; As (List.concat_map ctypes_cclib_flags ~f:(fun f -> [ "-cclib"; f ]))
         ]
     in
     let* o_files =
@@ -215,10 +212,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-      ~preprocess ~obj_dir
+      ~source_dirs:Path.Source.Set.empty ~libname:None ~preprocess ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
-      () )
+      ~modes:`Exe )
 
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
@@ -229,10 +226,13 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
            (Lib.DB.instrumentation_backend (Scope.libs scope)))
     >>| Preprocess.Per_module.pps
   in
-  Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
+  let merlin_ident =
+    Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
+  in
+  Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe exes.names)
     exes.buildable.libraries ~pps ~dune_version
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-    ~forbidden_libraries:exes.forbidden_libraries
+    ~forbidden_libraries:exes.forbidden_libraries ~merlin_ident
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =

@@ -73,7 +73,7 @@ let drop_prefix_if_exists s ~prefix =
 
 let drop_suffix s ~suffix =
   if is_suffix s ~suffix then
-    if length s = length suffix then Some s
+    if length s = length suffix then Some ""
     else Some (sub s ~pos:0 ~len:(length s - length suffix))
   else None
 

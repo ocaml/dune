@@ -363,6 +363,15 @@ all libraries that will be loaded. ``<args>`` will be passed as arguments to the
 start ``utop``, with the libraries defined in ``lib`` and implicit bindings for
 toplevel expressions.
 
+Dune also supports loading individual modules unsealed by their signatures into
+the toplevel. This is accomplished by launching a toplevel and then asking dune
+to return the toplevel directives needed to evaluate the module:
+
+.. code:: bash
+
+   $ utop
+   # use_output "dune top-module path/to/module.ml";;
+
 Requirements & Limitations
 --------------------------
 
@@ -549,7 +558,7 @@ purposes:
 
 ::
 
-    $ dune ocaml-merlin --dump-config
+    $ dune ocaml merlin dump-config
 
 This command prints the distinct configuration of each module present in the
 current directory. This directory must be in a Dune workspace and the project

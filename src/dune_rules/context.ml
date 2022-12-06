@@ -359,7 +359,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     | Some x -> x
   in
   let findlib_config_path =
-    Memo.lazy_ ~cutoff:Path.equal (fun () ->
+    Memo.lazy_ ~cutoff:Path.External.equal (fun () ->
         let* fn = which_exn "ocamlfind" in
         (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the
            contents of the variable, but "ocamlfind printconf conf" still prints
@@ -370,7 +370,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         | None ->
           Memo.of_reproducible_fiber
             (Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]))
-        >>| Path.of_filename_relative_to_initial_cwd)
+        >>| Path.External.of_filename_relative_to_initial_cwd)
   in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
       ~merlin =
@@ -381,7 +381,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let* path = Memo.Lazy.force findlib_config_path in
         let toolchain = Context_name.to_string toolchain in
         let context = Context_name.to_string name in
-        let+ config = Findlib.Config.load path ~toolchain ~context in
+        let+ config = Findlib.Config.load (External path) ~toolchain ~context in
         Some config
     in
     let get_tool_using_findlib_config prog =
@@ -514,9 +514,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       else env
     in
     let env =
-      let cwd = Sys.getcwd () in
       let extend_var var ?(path_sep = Bin.path_sep) v =
-        let v = Filename.concat cwd (Path.Build.to_string v) in
+        let v = Path.to_absolute_filename (Path.build v) in
         match Env.get env var with
         | None -> (var, v)
         | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
@@ -865,7 +864,7 @@ module DB = struct
     get context
 end
 
-let compiler t (mode : Mode.t) =
+let compiler t (mode : Ocaml.Mode.t) =
   match mode with
   | Byte -> Ok t.ocamlc
   | Native -> t.ocamlopt

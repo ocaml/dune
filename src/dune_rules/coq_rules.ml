@@ -21,7 +21,7 @@ module Util = struct
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let info = Lib.info t in
         (* We want the cmi files *)
-        let obj_dir = Obj_dir.public_cmi_dir (Lib_info.obj_dir info) in
+        let obj_dir = Obj_dir.public_cmi_ocaml_dir (Lib_info.obj_dir info) in
         Path.Set.add acc obj_dir)
 
   let include_flags ts = include_paths ts |> Lib_flags.L.to_iflags
@@ -32,7 +32,7 @@ module Util = struct
     let plugins =
       let info = Lib.info lib in
       let plugins = Lib_info.plugins info in
-      Mode.Dict.get plugins Mode.Native
+      Mode.Dict.get plugins Native
     in
     let to_mlpack file =
       [ Path.set_extension file ~ext:".mlpack"
@@ -178,9 +178,26 @@ end
 (* get_libraries from Coq's ML dependencies *)
 let libs_of_coq_deps ~lib_db = Resolve.Memo.List.map ~f:(Lib.DB.resolve lib_db)
 
-let select_native_mode ~sctx ~(buildable : Buildable.t) : Coq_mode.t =
-  let profile = (Super_context.context sctx).profile in
-  if Profile.is_dev profile then VoOnly else snd buildable.mode
+let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
+  match buildable.mode with
+  | Some x ->
+    if
+      buildable.coq_lang_version < (0, 7)
+      && Profile.is_dev (Super_context.context sctx).profile
+    then Memo.return Coq_mode.VoOnly
+    else Memo.return x
+  | None -> (
+    if buildable.coq_lang_version < (0, 3) then Memo.return Coq_mode.Legacy
+    else if buildable.coq_lang_version < (0, 7) then Memo.return Coq_mode.VoOnly
+    else
+      let* coqc = resolve_program sctx ~dir ~loc:buildable.loc "coqc" in
+      let+ config = Coq_config.make_opt ~coqc in
+      match config with
+      | None -> Coq_mode.VoOnly
+      | Some config -> (
+        match Coq_config.by_name config "coq_native_compiler_default" with
+        | Some (`String "yes") | Some (`String "ondemand") -> Coq_mode.Native
+        | _ -> Coq_mode.VoOnly))
 
 let rec resolve_first lib_db = function
   | [] -> assert false
@@ -195,8 +212,9 @@ let rec resolve_first lib_db = function
 module Context = struct
   type 'a t =
     { coqdep : Action.Prog.t
-    ; coqc : Action.Prog.t * Path.Build.t
+    ; coqc : Action.Prog.t
     ; coqdoc : Action.Prog.t
+    ; coqc_dir : Path.Build.t
     ; wrapper_name : string
     ; dir : Path.Build.t
     ; expander : Expander.t
@@ -214,8 +232,8 @@ module Context = struct
     }
 
   let coqc ?stdout_to t args =
-    let dir = Path.build (snd t.coqc) in
-    Command.run ~dir ?stdout_to (fst t.coqc) args
+    let dir = Path.build t.coqc_dir in
+    Command.run ~dir ?stdout_to t.coqc args
 
   let coq_flags t =
     let standard = t.profile_flags in
@@ -329,7 +347,7 @@ module Context = struct
     let ml_flags, mlpack_rule =
       Coq_plugin.of_buildable ~context ~theories_deps ~lib_db buildable
     in
-    let mode = select_native_mode ~sctx ~buildable in
+    let* mode = select_native_mode ~sctx ~dir buildable in
     let* native_includes =
       let open Resolve.Memo.O in
       resolve_first lib_db [ "coq-core.kernel"; "coq.kernel" ] >>| fun lib ->
@@ -342,8 +360,9 @@ module Context = struct
     and+ coqdoc = rr "coqdoc"
     and+ profile_flags = Super_context.coq sctx ~dir in
     { coqdep
-    ; coqc = (coqc, coqc_dir)
+    ; coqc
     ; coqdoc
+    ; coqc_dir
     ; wrapper_name
     ; dir
     ; expander
@@ -531,7 +550,7 @@ let coqdoc_rule (cctx : _ Context.t) ~sctx ~name ~file_flags ~mode
   |> Action_builder.With_targets.map
        ~f:
          (Action.Full.map ~f:(fun coqdoc ->
-              Action.Progn [ Action.mkdir (Path.build doc_dir); coqdoc ]))
+              Action.Progn [ Action.mkdir doc_dir; coqdoc ]))
   |> Action_builder.With_targets.add_directories ~directory_targets:[ doc_dir ]
 
 let setup_coqc_rule ~loc ~sctx (cctx : _ Context.t) ~file_targets coq_module =
@@ -546,8 +565,8 @@ let setup_coqc_rule ~loc ~sctx (cctx : _ Context.t) ~file_targets coq_module =
 
 let setup_rule ~loc ~sctx ~dir ~source_rule ~file_targets cctx m =
   let cctx = Context.for_module cctx m in
-  let* () = setup_coqc_rule ~file_targets ~sctx ~loc cctx m ~dir in
-  setup_coqdep_rule ~sctx ~loc cctx ~source_rule m ~dir
+  setup_coqc_rule ~file_targets ~sctx ~loc cctx m ~dir
+  >>> setup_coqdep_rule ~sctx ~loc cctx ~source_rule m ~dir
 
 let coq_modules_of_theory ~sctx lib =
   Action_builder.of_memo
@@ -616,9 +635,7 @@ let setup_coqdoc_rules ~sctx ~dir ~cctx (s : Theory.t) coq_modules =
       |> Path.build |> Action_builder.path
       |> Rules.Produce.Alias.add_deps (Coqdoc_mode.alias mode ~dir) ~loc
   in
-  let+ () = rule Html
-  and+ () = rule Latex in
-  ()
+  rule Html >>> rule Latex
 
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let theory =
@@ -630,9 +647,8 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let* cctx, coq_modules =
     setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory
   in
-  let+ () = setup_vo_rules ~sctx ~dir ~cctx s theory coq_modules
-  and+ () = setup_coqdoc_rules ~sctx ~dir ~cctx s coq_modules in
-  ()
+  setup_vo_rules ~sctx ~dir ~cctx s theory coq_modules
+  >>> setup_coqdoc_rules ~sctx ~dir ~cctx s coq_modules
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let name = s.name in
@@ -645,7 +661,12 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Theory.t) coq_module =
   let* cctx, _ = setup_cctx_and_modules ~sctx ~dir ~dir_contents s theory in
   let cctx = Context.for_module cctx coq_module in
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
-  (Context.coqc_file_flags cctx, boot_type)
+  ( (let open Action_builder.O in
+    let+ coq_flags = Context.coq_flags cctx in
+    Command.Args.As coq_flags
+    :: Command.Args.S [ Context.coqc_native_flags cctx ]
+    :: Context.coqc_file_flags cctx)
+  , boot_type )
 
 (******************************************************************************)
 (* Install rules *)
@@ -667,7 +688,7 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
     then
       let loc = Lib_info.loc info in
       let plugins = Lib_info.plugins info in
-      Mode.Dict.get plugins Mode.Native
+      Mode.Dict.get plugins Native
       |> List.map ~f:(fun plugin_file ->
              (* Safe because all coq libraries are local for now *)
              let plugin_file = Path.as_in_build_dir_exn plugin_file in
@@ -688,8 +709,8 @@ let install_rules ~sctx ~dir s =
   match s with
   | { Theory.package = None; _ } -> Memo.return []
   | { Theory.package = Some package; buildable; _ } ->
-    let mode = select_native_mode ~sctx ~buildable in
     let loc = s.buildable.loc in
+    let* mode = select_native_mode ~sctx ~dir buildable in
     let* scope = Scope.DB.find_by_dir dir in
     let* dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
@@ -736,15 +757,16 @@ let install_rules ~sctx ~dir s =
     |> List.rev_append coq_plugins_install_rules
 
 let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coqpp.t) =
-  let* coqpp = resolve_program sctx ~dir ~loc "coqpp" in
+  let* coqpp = resolve_program sctx ~dir ~loc "coqpp"
+  and* mlg_files = Coq_sources.mlg_files ~sctx ~dir ~modules in
   let mlg_rule m =
-    let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
-    let target = Path.Build.relative dir (m ^ ".ml") in
+    let source = Path.build m in
+    let target = Path.Build.set_extension m ~ext:".ml" in
     let args = [ Command.Args.Dep source; Hidden_targets [ target ] ] in
     let build_dir = (Super_context.context sctx).build_dir in
     Command.run ~dir:(Path.build build_dir) coqpp args
   in
-  List.rev_map ~f:mlg_rule modules |> Super_context.add_rules ~loc ~dir sctx
+  List.rev_map ~f:mlg_rule mlg_files |> Super_context.add_rules ~loc ~dir sctx
 
 let setup_extraction_cctx_and_modules ~sctx ~dir ~dir_contents
     (s : Extraction.t) =
@@ -784,4 +806,9 @@ let coqtop_args_extraction ~sctx ~dir ~dir_contents (s : Extraction.t) =
   in
   let cctx = Context.for_module cctx coq_module in
   let+ boot_type = Resolve.Memo.read_memo cctx.boot_type in
-  (Context.coqc_file_flags cctx, boot_type)
+  ( (let open Action_builder.O in
+    let+ coq_flags = Context.coq_flags cctx in
+    Command.Args.As coq_flags
+    :: Command.Args.S [ Context.coqc_native_flags cctx ]
+    :: Context.coqc_file_flags cctx)
+  , boot_type )

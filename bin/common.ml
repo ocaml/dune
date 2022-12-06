@@ -37,7 +37,7 @@ type t =
   ; build_dir : string
   ; no_print_directory : bool
   ; store_orig_src_dir : bool
-  ; rpc : Dune_rpc_impl.Server.t Lazy.t
+  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
   ; default_target : Arg.Dep.t (* For build & runtest only *)
   ; watch : Watch_mode_config.t
   ; print_metrics : bool
@@ -75,13 +75,23 @@ let default_target t = t.default_target
 
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
-let rpc t = Lazy.force t.rpc
+let rpc t =
+  match t.rpc with
+  | `Forbid_builds -> `Forbid_builds
+  | `Allow rpc -> `Allow (Lazy.force rpc)
+
+let forbid_builds t = { t with rpc = `Forbid_builds; no_print_directory = true }
+
+let signal_watcher t =
+  match t.rpc with
+  | `Allow _ -> `Yes
+  | `Forbid_builds ->
+    (* if we aren't building anything, then we don't mind interrupting dune immediately *)
+    `No
 
 let stats t = t.stats
 
 let insignificant_changes t = t.insignificant_changes
-
-let set_print_directory t b = { t with no_print_directory = not b }
 
 let set_promote t v = { t with promote = Some v }
 
@@ -106,7 +116,7 @@ let normalize_path path =
 
 let print_entering_message c =
   let cwd = Path.to_absolute_filename Path.root in
-  if cwd <> Fpath.initial_cwd && not c.no_print_directory then
+  if cwd <> Fpath.initial_cwd && not c.no_print_directory then (
     (* Editors such as Emacs parse the output of the build system and interpret
        filenames in error messages relative to where the build system was
        started.
@@ -139,12 +149,18 @@ let print_entering_message c =
             in
             loop ".." (Filename.dirname s)))
     in
-    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ]
+    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
+    at_exit (fun () ->
+        flush stdout;
+        Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
 
 let init ?log_file c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.build_dir);
+  (* Once we have the build directory set, initialise the logging. We can't do
+     this earlier, because the build log typically goes into [_build/log]. *)
+  Dune_util.Log.init () ?file:log_file;
   (* We need to print this before reading the workspace file, so that the editor
      can interpret errors in the workspace file. *)
   print_entering_message c;
@@ -157,10 +173,9 @@ let init ?log_file c =
   in
   let config =
     Dune_config.adapt_display config
-      ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
+      ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
   in
   Dune_config.init config;
-  Dune_util.Log.init () ?file:log_file;
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
     let+ w = Dune_rules.Workspace.workspace () in
@@ -1012,7 +1027,22 @@ let term ~default_root_is_cwd =
         at_exit (fun () -> Dune_stats.close stats);
         stats)
   in
-  let rpc = lazy (Dune_rpc_impl.Server.create ~root:root.dir stats) in
+  let rpc =
+    `Allow
+      (lazy
+        (let registry =
+           match watch with
+           | Yes _ -> `Add
+           | No -> `Skip
+         in
+         let lock_timeout =
+           match watch with
+           | Yes Passive -> Some 1.0
+           | _ -> None
+         in
+         Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
+           stats))
+  in
   if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if print_metrics then (
     Memo.Perf_counters.enable ();
@@ -1062,6 +1092,21 @@ let term ~default_root_is_cwd =
 let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
 
 let term = term ~default_root_is_cwd:false
+
+let envs =
+  Cmd.Env.
+    [ info
+        ~doc:
+          "If different than $(b,0), ANSI colors are supported and should be \
+           used when the program isn’t piped. If equal to $(b,0), don’t output \
+           ANSI color escape codes"
+        "CLICOLOR"
+    ; info
+        ~doc:
+          "If different than $(b,0), ANSI colors should be enabled no matter \
+           what."
+        "CLICOLOR_FORCE"
+    ]
 
 let config_from_config_file = Options_implied_by_dash_p.config_term
 

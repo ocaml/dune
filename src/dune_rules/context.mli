@@ -106,7 +106,7 @@ val to_dyn_concise : t -> Dyn.t
 val compare : t -> t -> Ordering.t
 
 (** Return the compiler needed for this compilation mode *)
-val compiler : t -> Mode.t -> Action.Prog.t
+val compiler : t -> Ocaml.Mode.t -> Action.Prog.t
 
 (** Return what [%{make}] should expand into *)
 val make : t -> Path.t option Memo.t

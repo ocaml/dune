@@ -1,23 +1,6 @@
 open Import
 open Dune_lang.Decoder
 
-module Coqpp = struct
-  type t =
-    { modules : string list
-    ; loc : Loc.t
-    }
-
-  let decode =
-    fields
-      (let+ modules = field "modules" (repeat string)
-       and+ loc = loc in
-       { modules; loc })
-
-  type Stanza.t += T of t
-
-  let p = ("coq.pp", decode >>| fun x -> [ T x ])
-end
-
 let coq_syntax =
   Dune_lang.Syntax.create ~name:"coq" ~desc:"the Coq language"
     [ ((0, 1), `Since (1, 9))
@@ -26,13 +9,31 @@ let coq_syntax =
     ; ((0, 4), `Since (3, 3))
     ; ((0, 5), `Since (3, 4))
     ; ((0, 6), `Since (3, 5))
+    ; ((0, 7), `Since (3, 7))
     ]
+
+module Coqpp = struct
+  type t =
+    { modules : Ordered_set_lang.t
+    ; loc : Loc.t
+    }
+
+  let decode =
+    fields
+      (let+ modules = Ordered_set_lang.field "modules"
+       and+ loc = loc in
+       { modules; loc })
+
+  type Stanza.t += T of t
+
+  let p = ("coq.pp", decode >>| fun x -> [ T x ])
+end
 
 module Buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
     ; coq_lang_version : Dune_sexp.Syntax.Version.t
-    ; mode : Loc.t * Coq_mode.t
+    ; mode : Coq_mode.t option
     ; use_stdlib : bool
     ; plugins : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
@@ -56,12 +57,9 @@ module Buildable = struct
     let+ loc = loc
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ mode =
-      let default =
-        if coq_lang_version < (0, 3) then Coq_mode.Legacy else Coq_mode.VoOnly
-      in
-      located
-        (field "mode" ~default
-           (Dune_lang.Syntax.since coq_syntax (0, 3) >>> Coq_mode.decode))
+      field_o "mode"
+        (Dune_lang.Syntax.since coq_syntax (0, 3)
+        >>> Coq_mode.decode ~coq_syntax)
     and+ use_stdlib =
       field ~default:true "stdlib"
         (Dune_lang.Syntax.since coq_syntax (0, 6)
@@ -150,7 +148,7 @@ module Theory = struct
         [ Pp.text
             "Cannot both use 'package' and 'public_name', please remove \
              'public_name' as it has been deprecated since version 0.5 of the \
-             Coq langugage. It will be removed before version 1.0."
+             Coq language. It will be removed before version 1.0."
         ]
 
   let boot_has_deps loc =

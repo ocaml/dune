@@ -291,16 +291,17 @@ let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
   Js_of_ocaml.Flags.make ~spec ~default:js_of_ocaml.flags
     ~eval:(Expander.expand_and_eval_set expander)
 
+let default_foreign_flags t ~dir ~language =
+  Env_tree.get_node t ~dir >>| Env_node.foreign_flags
+  >>| (fun dict -> Foreign_language.Dict.get dict language)
+  |> Action_builder.of_memo_join
+
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g (Env_tree.context t) in
-  let default =
-    Env_tree.get_node t ~dir >>| Env_node.foreign_flags >>| fun dict ->
-    Foreign_language.Dict.get dict language
-  in
+  let default = default_foreign_flags t ~dir ~language in
   let open Action_builder.O in
   let name = Foreign_language.proper_name language in
   let flags =
-    let* default = Action_builder.of_memo default in
     let+ l = Expander.expand_and_eval_set expander flags ~standard:default in
     l @ ccg
   in
@@ -323,6 +324,8 @@ let menhir_flags t ~dir ~expander ~flags =
     (Expander.expand_and_eval_set expander flags ~standard:default)
 
 let local_binaries t ~dir = Env_tree.get_node t ~dir >>= Env_node.local_binaries
+
+let env_node = Env_tree.get_node
 
 let odoc t ~dir = Env_tree.get_node t ~dir >>= Env_node.odoc
 

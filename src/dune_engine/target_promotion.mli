@@ -17,7 +17,7 @@ val promote :
   -> unit Fiber.t
 
 (** The set of files created in the source tree that need to be deleted. *)
-val files_in_source_tree_to_delete : unit -> Path.Set.t
+val files_in_source_tree_to_delete : unit -> Path.Source.Set.t
 
 val delete_stale_dot_merlin_file :
      dir:Path.Build.t

@@ -355,7 +355,9 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
         | _ -> Resolve.Memo.return None)
     in
     let mode = Context.best_mode (Super_context.context sctx) in
-    let libs_include_paths = Lib_flags.L.include_paths libs_to_include mode in
+    let libs_include_paths =
+      Lib_flags.L.include_paths libs_to_include (Ocaml mode)
+    in
     let open Command.Args in
     let args =
       Path.Set.to_list_map libs_include_paths ~f:(fun p ->
@@ -377,15 +379,16 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
      field *)
   let obj_dir = Obj_dir.make_exe ~dir ~name in
   let main_module_name = Module_name.of_string name in
-  let module_ = Module.generated ~src_dir:(Path.build dir) main_module_name in
+  let module_ = Module.generated ~kind:Impl ~src_dir:dir main_module_name in
   let modules = Modules.singleton_exe module_ in
   let flags = Ocaml_flags.default ~dune_version ~profile:Release in
   let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
+  let names = [ (t.loc, name) ] in
+  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
   let compile_info =
-    Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-      [ (t.loc, name) ]
+    Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
       (lib "mdx.test" :: lib "mdx.top" :: t.libraries)
-      ~pps:[] ~dune_version
+      ~pps:[] ~dune_version ~merlin_ident
   in
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info

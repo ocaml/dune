@@ -236,7 +236,9 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
           ; As [ "--pkg"; pkg_or_lnu ]
           ; A "-o"
           ; Target odoc_file
-          ; Dep (Path.build (Obj_dir.Module.cmti_file obj_dir m))
+          ; Dep
+              (Path.build
+                 (Obj_dir.Module.cmti_file ~cm_kind:(Ocaml Cmi) obj_dir m))
           ]
       in
       let open Action_builder.With_targets.O in
@@ -338,7 +340,7 @@ let setup_html sctx (odoc_file : odoc_artefact) =
     match odoc_file.source with
     | Mld -> (odoc_file.html_file, [])
     | Module ->
-      (* Dummy target so that the bellow rule as at least one target. We do this
+      (* Dummy target so that the below rule as at least one target. We do this
          because we don't know the targets of odoc in this case. The proper way
          to support this would be to have directory targets. *)
       let dummy = Action_builder.create_file (odoc_file.html_dir ++ ".dummy") in
@@ -362,7 +364,7 @@ let setup_html sctx (odoc_file : odoc_artefact) =
              (Action.Full.make
                 (Action.Progn
                    [ Action.Remove_tree to_remove
-                   ; Action.Mkdir (Path.build odoc_file.html_dir)
+                   ; Action.Mkdir odoc_file.html_dir
                    ])))
        :: run_odoc :: dummy))
 

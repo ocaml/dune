@@ -55,11 +55,12 @@
  (mode promote)
  (alias runtest)
  (targets setup.defaults.ml)
- (deps %{project_root}/configure.ml)
+ (deps
+  (:configure %{project_root}/boot/configure.ml))
  (action
   (chdir
    %{project_root}
    (setenv
     DUNE_CONFIGURE_OUTPUT
     "src/dune_rules/setup.defaults.ml"
-    (run %{ocaml} configure.ml)))))
+    (run %{ocaml} %{configure})))))

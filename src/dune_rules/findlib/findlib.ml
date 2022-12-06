@@ -113,21 +113,19 @@ module Config = struct
       ]
 
   let load path ~toolchain ~context =
-    let path = Path.extend_basename path ~suffix:".d" in
-    let conf_file = Path.relative path (toolchain ^ ".conf") in
-    let* conf_file_exists =
-      Fs_memo.file_exists (Path.as_outside_build_dir_exn conf_file)
+    let path = Path.Outside_build_dir.extend_basename path ~suffix:".d" in
+    let conf_file =
+      Path.Outside_build_dir.relative path (toolchain ^ ".conf")
     in
+    let* conf_file_exists = Fs_memo.file_exists conf_file in
     if not conf_file_exists then
       User_error.raise
         [ Pp.textf "ocamlfind toolchain %s isn't defined in %s (context: %s)"
             toolchain
-            (Path.to_string_maybe_quoted path)
+            (Path.Outside_build_dir.to_string_maybe_quoted path)
             context
         ];
-    let+ meta =
-      Meta.load ~name:None (Path.as_outside_build_dir_exn conf_file)
-    in
+    let+ meta = Meta.load ~name:None conf_file in
     { vars = String.Map.map meta.vars ~f:Rules.of_meta_rules
     ; preds = Ps.of_list [ P.make toolchain ]
     }
@@ -318,12 +316,15 @@ end = struct
           ];
       let archives = archives t in
       let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
-      let modes : Mode.Dict.Set.t =
+      let modes : Lib_mode.Map.Set.t =
         (* libraries without archives are compatible with all modes. mainly a
            hack for compiler-libs which doesn't have any archives *)
         let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
-        if Mode.Dict.Set.is_empty discovered then Mode.Dict.Set.all
-        else discovered
+        let modes =
+          if Mode.Dict.Set.is_empty discovered then Mode.Dict.Set.all
+          else discovered
+        in
+        { Lib_mode.Map.ocaml = modes; melange = false }
       in
       let+ (info : Path.t Lib_info.t) =
         let kind = kind t in
@@ -437,6 +438,7 @@ end = struct
                         | Ok s -> Ok (Some s)
                         | Error e -> Error (User_error.E e)))))
         in
+        let modules = Lib_info.Source.External None in
         Lib_info.create ~path_kind:External ~loc ~name:t.name ~kind ~status
           ~src_dir ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
           ~sub_systems ~requires ~foreign_objects ~plugins ~archives
@@ -444,7 +446,7 @@ end = struct
           ~native_archives:(Files native_archives) ~foreign_dll_files:[]
           ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
           ~dune_version ~virtual_ ~implements ~default_implementation ~modes
-          ~wrapped ~special_builtin_support ~exit_module:None
+          ~modules ~wrapped ~special_builtin_support ~exit_module:None
           ~instrumentation_backend:None ~entry_modules
       in
       Dune_package.Lib.of_findlib info

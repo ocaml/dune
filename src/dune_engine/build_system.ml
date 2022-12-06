@@ -6,13 +6,23 @@ module Progress = struct
   type t =
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
+    ; number_of_rules_failed : int
     }
 
-  let equal { number_of_rules_discovered; number_of_rules_executed } t =
+  let equal
+      { number_of_rules_discovered
+      ; number_of_rules_executed
+      ; number_of_rules_failed
+      } t =
     Int.equal number_of_rules_discovered t.number_of_rules_discovered
     && Int.equal number_of_rules_executed t.number_of_rules_executed
+    && Int.equal number_of_rules_failed t.number_of_rules_failed
 
-  let init = { number_of_rules_discovered = 0; number_of_rules_executed = 0 }
+  let init =
+    { number_of_rules_discovered = 0
+    ; number_of_rules_executed = 0
+    ; number_of_rules_failed = 0
+    }
 end
 
 module Error = struct
@@ -152,38 +162,31 @@ module State = struct
 
   let set what = Svar.write t what
 
-  let incr_rule_done_exn () =
+  let update_build_progress_exn ~f =
     let current = Svar.read t in
     match current with
-    | Building current ->
-      Svar.write t
-        (Building
-           { current with
-             number_of_rules_executed = current.number_of_rules_executed + 1
-           })
+    | Building current -> Svar.write t @@ Building (f current)
     | _ -> assert false
 
+  let incr_rule_done_exn () =
+    update_build_progress_exn ~f:(fun p ->
+        { p with number_of_rules_executed = p.number_of_rules_executed + 1 })
+
   let start_rule_exn () =
-    let current = Svar.read t in
-    match current with
-    | Building current ->
-      Svar.write t
-        (Building
-           { current with
-             number_of_rules_discovered = current.number_of_rules_discovered + 1
-           })
-    | _ -> assert false
+    update_build_progress_exn ~f:(fun p ->
+        { p with number_of_rules_discovered = p.number_of_rules_discovered + 1 })
 
   let errors = Svar.create Error.Set.empty
 
   let reset_errors () = Svar.write errors Error.Set.empty
 
   let add_error error =
-    let set =
-      let set = Svar.read errors in
-      Error.Set.add set error
+    let open Fiber.O in
+    let* () =
+      update_build_progress_exn ~f:(fun p ->
+          { p with number_of_rules_failed = p.number_of_rules_failed + 1 })
     in
-    Svar.write errors set
+    Svar.write errors @@ Error.Set.add (Svar.read errors) error
 end
 
 let rec with_locks ~f = function

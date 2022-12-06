@@ -990,7 +990,7 @@ let sort_files dependencies ~main =
 
 let common_build_args name ~external_includes ~external_libraries =
   List.concat
-    [ [ "-o"; Filename.concat ".." (name ^ ".exe"); "-g" ]
+    [ [ "-o"; Filename.concat "../_boot" (name ^ ".exe"); "-g" ]
     ; (match Config.mode with
       | Byte -> [ Config.output_complete_obj_arg ]
       | Native -> [])
@@ -1081,15 +1081,18 @@ let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files ~link_flags
 let rec rm_rf fn =
   match Unix.lstat fn with
   | { st_kind = S_DIR; _ } ->
-    List.iter (readdir fn) ~f:rm_rf;
+    clear fn;
     Unix.rmdir fn
   | _ -> Unix.unlink fn
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
 
+and clear dir = List.iter (readdir dir) ~f:rm_rf
+
 (** {2 Bootstrap process} *)
 let main () =
-  rm_rf build_dir;
-  Unix.mkdir build_dir 0o777;
+  (try clear build_dir with Sys_error _ -> ());
+  (try Unix.mkdir build_dir 0o777
+   with Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   Config.ocaml_config () >>= fun ocaml_config ->
   assemble_libraries task >>= fun libraries ->
   let c_files =

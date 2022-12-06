@@ -3,6 +3,8 @@ open Import
 module Expanded : sig
   type t
 
+  val to_dyn : t -> Dyn.t
+
   val src : t -> Path.Build.t
 
   val dst : t -> string option
@@ -14,6 +16,8 @@ end
 
 module Unexpanded : sig
   type t
+
+  val to_dyn : t -> Dyn.t
 
   val equal : t -> t -> bool
 

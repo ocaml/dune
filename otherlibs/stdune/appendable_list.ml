@@ -8,6 +8,8 @@ let to_list l = l []
 
 let ( @ ) a b k = a (b k)
 
+let cons x xs = singleton x @ xs
+
 let rec concat l k =
   match l with
   | [] -> k

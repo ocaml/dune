@@ -611,7 +611,7 @@ Dependencies in ``dune`` files can be specified using one of the following:
   - ``none``: the action must run in the build directory
   - ``preserve_file_kind``: the action needs the files it reads to look
     like normal files (so Dune won't use symlinks for sandboxing)
-- ``(include <file>)`` read the s-expression in ``<file>`` and intepret it as
+- ``(include <file>)`` read the s-expression in ``<file>`` and interpret it as
   additional dependencies. The s-expression is expected to be a list of the
   same constructs enumerated here.
 
@@ -661,6 +661,9 @@ Dune supports globbing files in a single directory via ``(glob_files
 - anything before the last ``/`` is taken as a literal path
 - anything after the last ``/``, or everything if the glob contains no ``/``, is
   interpreted using the glob syntax
+
+Absolute paths are permitted in the ``(glob_files ...)`` term only. It's an error to pass
+an absolute path (i.e., a path beginning with a ``/``) to ``(glob_files_rec ...)```.
 
 The glob syntax is interpreted as follows:
 
@@ -827,7 +830,7 @@ the destination file. More precisely, it inserts the following line:
 
 Most languages recognize such lines and update their current location
 to report errors in the original file rather than the
-copy. This is important beause the copy exists only under the ``_build``
+copy. This is important because the copy exists only under the ``_build``
 directory, and in order for editors to jump to errors when parsing the
 output of the build system, errors must point to files that exist in
 the source tree. In the beta versions of Dune, ``copy#`` was
@@ -1074,7 +1077,8 @@ repository. You can use the following workflow to update your test:
 - Update the code of your test.
 - Run ``dune runtest``. The diff action will fail and a diff will
   be printed.
-- Check the diff to make sure it's what you expect.
+- Check the diff to make sure it's what you expect. This diff can be displayed
+  again by running ``dune promotion diff``.
 - Run ``dune promote``. This will copy the generated ``data.out``
   file to ``data.expected`` directly in the source tree.
 
@@ -1296,14 +1300,13 @@ Here is a complete list of supported subfields:
   - ``dir3`` which would add ``dir3`` to the list of include directories
   - ``((lib lib3) dir4 (include inc2))`` which would add the source directory of
     the library ``lib3``, the directory ``dir4``, and the result of recursively
-    including the contents of the file ``inc2``
-  The contents of included
-  directories are tracked recursively, e.g., if you use ``(include_dir dir)``
-  and have headers ``dir/base.h`` and ``dir/lib/lib.h``, they both will
-  be tracked as dependencies.
-- ``extra_deps`` specifies any other dependencies that should be tracked.
-  This is useful when dealing with ``#include`` statements that escape into
-  a parent directory like ``#include "../a.h"``.
+    including the contents of the file ``inc2``.
+    The contents of included directories are tracked recursively, e.g., if you
+    use ``(include_dir dir)`` and have headers ``dir/base.h`` and
+    ``dir/lib/lib.h``, they both will be tracked as dependencies.
+  - ``extra_deps`` specifies any other dependencies that should be tracked.
+    This is useful when dealing with ``#include`` statements that escape into
+    a parent directory like ``#include "../a.h"``.
 
 
 Mode-Dependent Stubs
@@ -1396,7 +1399,7 @@ libraries or linked into OCaml executables. Do this by using the
 ``extra_objects`` field of the ``library`` or ``executable`` stanzas.
 For example:
 
-.. code:: scheme
+.. code:: lisp
 
     (executable
      (public_name main)

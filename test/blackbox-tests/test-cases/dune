@@ -2,12 +2,6 @@
  (_
   (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe)))
 
-(alias
- (name test-deps)
- (deps
-  %{bin:dune_cmd}
-  (package dune)))
-
 (cram
  (applies_to pp-cwd)
  (deps %{bin:dunepp}))
@@ -15,12 +9,8 @@
 (cram
  (applies_to :whole_subtree)
  (deps
-  (alias test-deps)))
-
-(subdir
- coq
- (cram
-  (alias runtest-coq)))
+  %{bin:dune_cmd}
+  (package dune)))
 
 (subdir
  jsoo
@@ -33,11 +23,6 @@
  (alias runtest-windows))
 
 ; DISABLED TESTS
-
-(subdir
- bisect-ppx
- (cram
-  (enabled_if false)))
 
 (subdir
  env
@@ -63,6 +48,10 @@
  (cram
   (applies_to error)
   (enabled_if false)))
+
+(cram
+ (applies_to sandboxing)
+ (deps %{bin:file}))
 
 ; CONDITIONALLY DISABLED TESTS
 
@@ -105,12 +94,6 @@
  (enabled_if
   (>= %{ocaml_version} 4.05.0)))
 
-(subdir
- utop
- (cram
-  (enabled_if
-   (>= %{ocaml_version} 4.05.0))))
-
 (cram
  (applies_to wrapped-transition)
  (enabled_if
@@ -151,3 +134,14 @@
  (applies_to patch-back-source-tree)
  (enabled_if
   (<> %{system} macosx)))
+
+(cram
+ (applies_to github6607)
+ (deps
+  (package stdune)
+  (package ppx_expect)))
+
+(cram
+ (applies_to link-time-transitive-deps)
+ (deps
+  (package dune-build-info)))

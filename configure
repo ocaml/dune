@@ -1,2 +1,2 @@
 #!/bin/sh
-exec ocaml configure.ml "$@"
+exec ocaml boot/configure.ml "$@"

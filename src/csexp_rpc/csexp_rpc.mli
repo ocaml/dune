@@ -48,7 +48,11 @@ module Server : sig
   (** RPC Server *)
   type t
 
-  val create : Unix.sockaddr -> backlog:int -> t
+  val create : Unix.sockaddr -> backlog:int -> (t, [ `Already_in_use ]) result
+
+  (** [ready t] returns a fiber that completes when clients can start connecting
+      to the server *)
+  val ready : t -> unit Fiber.t
 
   val stop : t -> unit
 

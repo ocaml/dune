@@ -82,8 +82,9 @@ let deps_of
     in
     let build_paths dependencies =
       let dependency_file_path m =
-        if Module.kind m = Alias || is_vlib_module m then None
-        else Some (Path.build (sig_file m))
+        match Module.kind m with
+        | Alias _ -> None
+        | _ -> if is_vlib_module m then None else Some (Path.build (sig_file m))
       in
       List.filter_map dependencies ~f:dependency_file_path
     in
@@ -91,7 +92,9 @@ let deps_of
       let open Action_builder.O in
       let paths =
         let+ lines = Action_builder.lines_of (Path.build approx_dep_file) in
-        let modules = Dep_gen.interpret_deps md ~unit lines in
+        let modules =
+          Dep_gen.parse_module_names ~dir:md.dir ~unit ~modules lines
+        in
         build_paths modules
       in
       let path_args =
@@ -114,7 +117,8 @@ let deps_of
               ] )
         ; Dyn path_args
         ; S sig_args
-        ; S (codept_o_arg "-modules" immediate_file) (* TODO: -inner-modules, must add .sig-s for virtual libraries *)
+        ; S (codept_o_arg "-modules" immediate_file)
+          (* TODO: -inner-modules, must add .sig-s for virtual libraries *)
         ]
       >>| Action.Full.add_sandbox sandbox
     in

@@ -1,1 +1,1 @@
-Inductive Begining := Of | The | Universe.
+Inductive Beginning := Of | The | Universe.

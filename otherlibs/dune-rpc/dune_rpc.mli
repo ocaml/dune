@@ -470,7 +470,7 @@ module V1 : sig
     end
 
     module Config : sig
-      (** The registy directory is located using xdg *)
+      (** The registry directory is located using xdg *)
 
       type t
 

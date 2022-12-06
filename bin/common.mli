@@ -4,7 +4,17 @@ val capture_outputs : t -> bool
 
 val root : t -> Workspace_root.t
 
-val rpc : t -> Dune_rpc_impl.Server.t
+val rpc :
+     t
+  -> [ `Allow of Dune_rpc_impl.Server.t
+       (** Will run rpc if in watch mode and acquire the build lock *)
+     | `Forbid_builds
+       (** Promise not to build anything. For now, this isn't checked *)
+     ]
+
+val forbid_builds : t -> t
+
+val signal_watcher : t -> [ `Yes | `No ]
 
 val stats : t -> Dune_stats.t option
 
@@ -52,8 +62,7 @@ val term : t Cmdliner.Term.t
 
 val term_with_default_root_is_cwd : t Cmdliner.Term.t
 
-(** Set whether Dune should print the "Entering directory '<dir>'" message *)
-val set_print_directory : t -> bool -> t
+val envs : Cmdliner.Cmd.Env.info list
 
 val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
 

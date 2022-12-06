@@ -11,4 +11,4 @@
   ordering
   (re_export dune_sexp)))
 
-(ocamllex dune_lexer)
+(ocamllex dune_file_script)

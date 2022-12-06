@@ -3,8 +3,6 @@ _build
 /_boot
 _perf
 *.install
-.merlin
-*.corrected
 
 # vim swap files
 *.swp
@@ -20,10 +18,13 @@ _perf
 .git-ps
 
 .duneboot.*
-/boot/*.cm*
-dune.exe
 Makefile.dev
 src/dune_rules/setup.ml
 result
 
 .DS_Store
+nix/profiles/
+
+# dkml desktop CI
+/msys64
+/.ci

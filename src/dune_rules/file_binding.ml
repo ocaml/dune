@@ -11,6 +11,13 @@ let equal f g { src; dst } t = f src t.src && Option.equal g dst t.dst
 module Expanded = struct
   type nonrec t = (Loc.t * Path.Build.t, Loc.t * string) t
 
+  let to_dyn { src; dst } =
+    let open Dyn in
+    record
+      [ ("src", pair Loc.to_dyn Path.Build.to_dyn src)
+      ; ("dst", option (pair Loc.to_dyn string) dst)
+      ]
+
   let src t = snd t.src
 
   let dst t = Option.map ~f:snd t.dst
@@ -30,6 +37,13 @@ end
 
 module Unexpanded = struct
   type nonrec t = (String_with_vars.t, String_with_vars.t) t
+
+  let to_dyn { src; dst } =
+    let open Dyn in
+    record
+      [ ("src", String_with_vars.to_dyn src)
+      ; ("dst", option String_with_vars.to_dyn dst)
+      ]
 
   let equal = equal String_with_vars.equal_no_loc String_with_vars.equal_no_loc
 

@@ -82,3 +82,24 @@ Check that generated directories are ignored
 
   $ dune build @x
 
+Check that we get a nice error message if we pass and absolute path to `glob_files_rec`
+---------------------------------------------------------------------------------------
+
+Put $PWD in a file that can be read with the %{read:...} pform, so the underline
+in the error message is of consistent length on different systems.
+  $ printf $PWD > pwd
+
+  $ cat > dune <<EOF
+  > (rule
+  >  (alias x)
+  >  (deps (glob_files_rec %{read:pwd}/*))
+  >  (action (echo %{deps})))
+  > EOF
+
+  $ dune build @x
+  File "dune", line 3, characters 23-36:
+  3 |  (deps (glob_files_rec %{read:pwd}/*))
+                             ^^^^^^^^^^^^^
+  Error: Absolute paths in recursive globs are not supported.
+  [1]
+

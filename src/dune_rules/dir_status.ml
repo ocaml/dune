@@ -47,32 +47,39 @@ let get_include_subdirs stanzas =
         Some (loc, x)
       | _ -> acc)
 
-let check_no_module_consumer stanzas =
-  List.iter stanzas ~f:(fun stanza ->
+let find_module_stanza stanzas =
+  List.find_map stanzas ~f:(fun stanza ->
       match stanza with
-      | Library { buildable; _ }
-      | Executables { buildable; _ }
-      | Tests { exes = { buildable; _ }; _ } ->
-        User_error.raise ~loc:buildable.loc
-          [ Pp.text
-              "This stanza is not allowed in a sub-directory of directory with \
-               (include_subdirs unqualified)."
-          ]
-          ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
-      | _ -> ())
+      | Melange_emit { loc; _ }
+      | Library { buildable = { loc; _ }; _ }
+      | Executables { buildable = { loc; _ }; _ }
+      | Tests { exes = { buildable = { loc; _ }; _ }; _ } -> Some loc
+      | _ -> None)
+
+let error_no_module_consumer ~loc
+    (qualification : Include_subdirs.qualification) =
+  User_error.raise ~loc
+    ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
+    [ Pp.textf
+        "This stanza is not allowed in a sub-directory of directory with \
+         (include_subdirs %s)."
+        (match qualification with
+        | Unqualified -> "unqualified"
+        | Qualified -> "qualified")
+    ]
 
 module rec DB : sig
   val get : dir:Path.Build.t -> t Memo.t
 end = struct
   open DB
+  open Memo.O
+
+  let enclosing_group ~dir =
+    match Path.Build.parent dir with
+    | None -> Memo.return No_group
+    | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
 
   let get_impl dir =
-    let open Memo.O in
-    let enclosing_group ~dir =
-      match Path.Build.parent dir with
-      | None -> Memo.return No_group
-      | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
-    in
     (match Path.Build.drop_build_context dir with
     | None -> Memo.return None
     | Some dir -> Source_tree.find_dir dir)
@@ -84,8 +91,10 @@ end = struct
       | Group_root group_root ->
         Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
     | Some st_dir -> (
-      let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
       let build_dir_is_project_root =
+        let project_root =
+          Source_tree.Dir.project st_dir |> Dune_project.root
+        in
         Source_tree.Dir.path st_dir |> Path.Source.equal project_root
       in
       Only_packages.stanzas_in_dir dir >>= function
@@ -106,13 +115,24 @@ end = struct
         | None -> (
           if build_dir_is_project_root then Memo.return (Standalone (st_dir, d))
           else
-            let+ enclosing_group = enclosing_group ~dir in
+            let* enclosing_group = enclosing_group ~dir in
             match enclosing_group with
+            | No_group -> Memo.return @@ Standalone (st_dir, d)
             | Group_root group_root ->
-              check_no_module_consumer d.stanzas;
+              let+ () =
+                match find_module_stanza d.stanzas with
+                | None -> Memo.return ()
+                | Some loc -> (
+                  let+ group = get ~dir:group_root in
+                  match group with
+                  | Group_root (_, (_, qualification), _) ->
+                    error_no_module_consumer ~loc qualification
+                  | _ ->
+                    Code_error.raise "impossible as we looked up a group root"
+                      [])
+              in
               Is_component_of_a_group_but_not_the_root
-                { stanzas = Some d; group_root }
-            | No_group -> Standalone (st_dir, d))))
+                { stanzas = Some d; group_root })))
 
   let get =
     let memo =

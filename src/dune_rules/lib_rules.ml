@@ -15,7 +15,7 @@ let msvc_hack_cclibs =
 
 (* Build an OCaml library. *)
 let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
-    ~mode ~cm_files ~scope =
+    ~mode ~cm_files =
   let ctx = Super_context.context sctx in
   Memo.Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
@@ -56,7 +56,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
       let obj_deps =
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
-      let ocaml_flags = Ocaml_flags.get flags mode in
+      let ocaml_flags = Ocaml_flags.get flags (Ocaml mode) in
       let* standard =
         let+ project = Scope.DB.find_by_dir dir |> Memo.map ~f:Scope.project in
         match Dune_project.use_standard_c_and_cxx_flags project with
@@ -72,8 +72,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
         Expander.expand_and_eval_set expander lib.library_flags ~standard
       in
       let ctypes_cclib_flags =
-        Ctypes_rules.ctypes_cclib_flags ~scope ~standard ~expander
-          ~buildable:lib.buildable
+        Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
         (let open Action_builder.With_targets.O in
@@ -271,7 +270,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     let archive_name = Foreign.Archive.Name.stubs lib_name in
     let modes = Compilation_context.modes cctx in
     let build_targets_together =
-      modes.native && modes.byte
+      modes.ocaml.native && modes.ocaml.byte
       && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
     in
     let* standard =
@@ -289,7 +288,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
       List.rev_append vlib_stubs_o_files lib_o_files_for_all_modes
     in
     if
-      Mode.Dict.Set.to_list modes
+      Mode.Dict.Set.to_list modes.ocaml
       |> List.for_all ~f:(fun mode ->
              List.is_empty
              @@ Mode.Map.Multi.for_only ~and_all:false o_files mode)
@@ -300,7 +299,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
         ~c_library_flags ~build_targets_together ~stubs_mode:Mode.Select.All
     else
       let modes =
-        Mode.Dict.Set.to_list modes
+        Mode.Dict.Set.to_list modes.ocaml
         |> List.map ~f:(fun mode ->
                let o_files_for_mode =
                  Mode.Map.Multi.for_only ~and_all:false o_files mode
@@ -340,7 +339,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
                   ~for_mode:Mode.Select.All
              |> List.map ~f:Path.build))
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
-              [ Command.Args.dyn (Ocaml_flags.get flags Native)
+              [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml Native))
               ; A "-shared"
               ; A "-linkall"
               ; A "-I"
@@ -359,7 +358,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
       Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
 
 let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
-    ~expander ~scope =
+    ~expander ~lib_info =
   let obj_dir = Compilation_context.obj_dir cctx in
   let dir = Compilation_context.dir cctx in
   let flags = Compilation_context.flags cctx in
@@ -382,7 +381,8 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
            ]
            |> Memo.parallel_iter ~f:(fun (kind, ext) ->
                   let src =
-                    Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext)
+                    Path.build
+                      (Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml kind) ~ext)
                   in
                   let obj_name = Module.obj_name m in
                   let fname =
@@ -392,16 +392,14 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
                      file explicitly *)
                   let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
                   Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc
-                    (Action_builder.copy ~src ~dst)))
+                    (Action_builder.symlink ~src ~dst)))
   in
   let modes = Compilation_context.modes cctx in
   (* The [dir] below is used as an object directory without going through
      [Obj_dir]. That's fragile and will break if the layout of the object
      directory changes *)
   let dir = Obj_dir.dir obj_dir in
-  let* native_archives =
-    let lib_config = ctx.lib_config in
-    let+ lib_info = Library.to_lib_info lib ~dir ~lib_config in
+  let native_archives =
     Lib_info.eval_native_archives_exn lib_info ~modules:(Some modules)
   in
   let cm_files =
@@ -416,12 +414,12 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
       ~top_sorted_modules ()
   in
   let* () =
-    Mode.Dict.Set.iter_concurrently modes ~f:(fun mode ->
-        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~scope
+    Mode.Dict.Set.iter_concurrently modes.ocaml ~f:(fun mode ->
+        build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode
           ~cm_files)
   and* () =
     (* Build *.cma.js *)
-    Memo.when_ modes.byte (fun () ->
+    Memo.when_ modes.ocaml.byte (fun () ->
         let action_with_targets =
           let src =
             Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
@@ -437,7 +435,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
         >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
   in
   Memo.when_
-    (Dynlink_supported.By_the_os.get natdynlink_supported && modes.native)
+    (Dynlink_supported.By_the_os.get natdynlink_supported && modes.ocaml.native)
     (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
@@ -447,17 +445,16 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let obj_dir = Library.obj_dir ~dir lib in
   let ctx = Super_context.context sctx in
   let* modules, pp =
-    Buildable_rules.modules_rules sctx lib.buildable expander ~dir scope
-      source_modules
-      ~lib_name:(Some (snd lib.name))
-      ~empty_intf_modules:`Lib
+    Buildable_rules.modules_rules sctx
+      (Library (lib.buildable, snd lib.name))
+      expander ~dir scope source_modules
   in
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
   let modes =
     let { Lib_config.has_native; _ } = ctx.lib_config in
-    Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
+    Dune_file.Mode_conf.Lib.Set.eval_detailed lib.modes ~has_native
   in
   let package = Dune_file.Library.package lib in
   let js_of_ocaml =
@@ -495,12 +492,16 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
-  and* expander = Super_context.expander sctx ~dir in
+  and* expander = Super_context.expander sctx ~dir
+  and* lib_info =
+    let lib_config = (Super_context.context sctx).lib_config in
+    Library.to_lib_info lib ~dir ~lib_config
+  in
   let+ () =
     Memo.when_
       (not (Library.is_virtual lib))
       (fun () ->
-        setup_build_archives lib ~top_sorted_modules ~cctx ~expander ~scope)
+        setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
   and+ () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     Memo.when_
@@ -518,18 +519,20 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
       ; source_modules
       ; compile_info
       }
-  and+ preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-         ~instrumentation_backend:
-           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+  in
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-      ~preprocess ~libname:(snd lib.name) ~obj_dir
+      ~source_dirs:Path.Source.Set.empty ~preprocess
+      ~libname:(Some (snd lib.name))
+      ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Lib.Compile.merlin_ident compile_info)
-      () )
+      ~modes:(`Lib (Lib_info.modes lib_info)) )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
   let buildable = lib.buildable in

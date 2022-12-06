@@ -370,11 +370,12 @@ end = struct
   end
 end
 
-let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
+let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   let module A = Action_expander in
   let module E = Action_expander.E in
   let open Action_expander.O in
   let module O (* [O] for "outcome" *) = Action in
+  let expand = expand ~context in
   let expand_run prog args =
     let+ args = A.all (List.map args ~f:E.strings)
     and+ prog, more_args = E.prog_and_args prog in
@@ -434,7 +435,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   | Copy_and_add_line_directive (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
-    Copy_line_directive.action x y
+    Copy_line_directive.action context ~src:x ~dst:y
   | System x ->
     let+ x = E.string x in
     O.System x
@@ -445,19 +446,20 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     let+ fn = E.target fn
     and+ s = E.string s in
     O.Write_file (fn, perm, s)
-  | Mkdir x ->
+  | Mkdir x -> (
     (* This code path should in theory be unreachable too, but we don't delete
        it to remember about the check in in case we expose [mkdir] in the syntax
        one day. *)
     let+ path = E.path x in
-    if not (Path.is_managed path) then
+    match Path.as_in_build_dir path with
+    | Some path -> O.Mkdir path
+    | None ->
       User_error.raise ~loc:(String_with_vars.loc x)
         [ Pp.text
             "(mkdir ...) is not supported for paths outside of the workspace:"
         ; Pp.seq (Pp.verbatim "  ")
             (Dune_lang.pp (List [ Dune_lang.atom "mkdir"; Dpath.encode path ]))
-        ];
-    O.Mkdir path
+        ])
   | Diff { optional; file1; file2; mode } ->
     let+ file1 = E.dep_if_exists file1
     and+ file2 =
@@ -484,8 +486,9 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
     Expander.set_expanding_what expander (User_action_without_targets { what })
   in
   let* { Action_builder.With_targets.build; targets } =
+    let context = Expander.context expander in
     Action_builder.of_memo
-      (Action_expander.run (expand t) ~targets_dir:None ~expander)
+      (Action_expander.run (expand ~context t) ~targets_dir:None ~expander)
   in
   if not (Targets.is_empty targets) then
     User_error.raise ~loc
@@ -528,7 +531,9 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
   let+! { Action_builder.With_targets.build; targets } =
-    Action_expander.run (expand t) ~targets_dir:(Some targets_dir) ~expander
+    let context = Expander.context expander in
+    Action_expander.run (expand ~context t) ~targets_dir:(Some targets_dir)
+      ~expander
   in
   let targets =
     match (targets_written_by_user : _ Targets_spec.t) with

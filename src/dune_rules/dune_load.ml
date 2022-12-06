@@ -166,7 +166,7 @@ module Script = struct
     Path.build generated_dune_file
     |> Io.Untracked.with_lexbuf_from_file ~f:(Dune_lang.Parser.parse ~mode:Many)
     |> List.rev_append from_parent
-    |> Dune_file.parse ~dir ~file ~project
+    |> Dune_file.parse ~dir ~file:(Some file) ~project
 
   let eval_one =
     let module Input = struct
@@ -196,7 +196,16 @@ module Dune_files = struct
       match Source_tree.Dune_file.kind dune_file with
       | Ocaml_script ->
         Memo.return
-          (Script { script = { dir; project; file }; from_parent = static })
+          (Script
+             { script =
+                 { dir
+                 ; project
+                 ; file =
+                     (* we can't introduce ocaml syntax with [(sudir ..)] *)
+                     Option.value_exn file
+                 }
+             ; from_parent = static
+             })
       | Plain ->
         let open Memo.O in
         let+ stanzas = Dune_file.parse static ~dir ~file ~project in

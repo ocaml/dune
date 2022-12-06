@@ -6,33 +6,48 @@
 Welcome to Dune's Documentation!
 ================================
 
+.. We include the titles of the pages here to make sure they are in
+   alphabetical order. Eventually we should name the files and titles
+   similarly.
+
 .. toctree::
+   :caption: Getting Started and Core Concepts
    :maxdepth: 3
 
    overview
    quick-start
-   usage
    dune-files
    concepts
-   tests
-   instrumentation
-   foreign-code
-   documentation
-   jsoo
-   sites
-   opam
-   variants
+   usage
+
+.. toctree::
+   :caption: Reference
+   :maxdepth: 3
+
    formatting
-   cross-compilation
-   dune-libs
    coq
-   advanced-topics
+   cross-compilation
+   foreign-code
+   caching
+   dune-libs
+   rpc
+   documentation
+   sites
+   instrumentation
+   jsoo
    lexical-conventions
+   opam
+   advanced-topics
+   toplevel-integration
+   variants
+   tests
+
+.. toctree::
+   :caption: Miscellaneous
+   :maxdepth: 3
+
    faq
+   goals
    known-issues
    migration
-   caching
-   toplevel-integration
-   rpc
-   goals
    hacking

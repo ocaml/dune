@@ -105,3 +105,27 @@ let%expect_test _ =
   [%expect {|
 "foo"
 |}]
+
+let%expect_test _ =
+  String.drop_suffix "foobar" ~suffix:"bar" |> option string |> print_dyn;
+  [%expect {|
+Some "foo"
+|}]
+
+let%expect_test _ =
+  String.drop_suffix "foobar" ~suffix:"foobar" |> option string |> print_dyn;
+  [%expect {|
+Some ""
+|}]
+
+let%expect_test _ =
+  String.drop_suffix "foobar" ~suffix:"" |> option string |> print_dyn;
+  [%expect {|
+Some "foobar"
+|}]
+
+let%expect_test _ =
+  String.drop_suffix "foobar" ~suffix:"foo" |> option string |> print_dyn;
+  [%expect {|
+None
+|}]

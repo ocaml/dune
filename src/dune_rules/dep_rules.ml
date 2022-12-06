@@ -29,7 +29,7 @@ let ooi_deps
   let write, read =
     let ctx = Super_context.context sctx in
     let unit =
-      Obj_dir.Module.cm_file_exn obj_dir m ~kind:cm_kind |> Path.build
+      Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml cm_kind) |> Path.build
     in
     let sandbox =
       if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing
@@ -56,19 +56,24 @@ let ooi_deps
   in
   read
 
-let deps_of_module md ~ml_kind m =
+let deps_of_module ({ modules; _ } as md) ~ml_kind m =
   match Module.kind m with
   | Wrapped_compat ->
-    let modules = md.modules in
     let interface_module =
       match Modules.lib_interface modules with
       | Some m -> m
       | None -> Modules.compat_for_exn modules m
     in
-    Action_builder.return (List.singleton interface_module) |> Memo.return
-  | _ ->
+    List.singleton interface_module |> Action_builder.return |> Memo.return
+  | _ -> (
     let module Current = (val current ~project:md.project) in
-    Current.deps_of md ~ml_kind m
+    let+ deps = Current.deps_of md ~ml_kind m in
+    match Modules.alias_for modules m with
+    | [] -> deps
+    | aliases ->
+      let open Action_builder.O in
+      let+ deps = deps in
+      aliases @ deps)
 
 let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
   let vimpl = Option.value_exn vimpl in
@@ -97,8 +102,11 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
 let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =
     match m with
-    | Imported_from_vlib m | Normal m -> Module.kind m = Alias
     | Impl_of_virtual_module _ -> false
+    | Imported_from_vlib m | Normal m -> (
+      match Module.kind m with
+      | Alias _ -> true
+      | _ -> false)
   in
   if is_alias then Memo.return (Action_builder.return [])
   else

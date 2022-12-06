@@ -313,10 +313,7 @@ let rec exec t ~ectx ~eenv =
     Path.rm_rf (Path.build path);
     Fiber.return Done
   | Mkdir path ->
-    if Path.is_in_build_dir path then Path.mkdir_p path
-    else
-      Code_error.raise "Action_exec.exec: mkdir on non build dir"
-        [ ("path", Path.to_dyn path) ];
+    Path.mkdir_p (Path.build path);
     Fiber.return Done
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
@@ -391,7 +388,6 @@ let rec exec t ~ectx ~eenv =
     let target = Path.build target in
     Io.write_lines target (String.Set.to_list lines);
     Fiber.return Done
-  | No_infer t -> exec t ~ectx ~eenv
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Extension (module A) ->
     let* () =

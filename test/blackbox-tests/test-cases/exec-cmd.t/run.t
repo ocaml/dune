@@ -23,6 +23,7 @@
 
   $ (cd test; dune exec --root .. -- dunetestbar)
   Entering directory '..'
+  Leaving directory '..'
   Bar
 
   $ ls -a test/_build

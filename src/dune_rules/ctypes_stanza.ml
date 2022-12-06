@@ -170,26 +170,15 @@ let () =
     (return [ (name, decode >>| fun x -> [ T x ]) ])
 
 let type_gen_script ctypes =
-  sprintf "%s__type_gen"
-    (ctypes.external_library_name |> External_lib_name.clean
-   |> External_lib_name.to_string)
-
-let module_name_lower_string module_name =
-  String.lowercase (Module_name.to_string module_name)
+  ctypes.external_library_name |> External_lib_name.clean
+  |> External_lib_name.to_string |> sprintf "%s__type_gen"
 
 let function_gen_script ctypes (fd : Function_description.t) =
   sprintf "%s__function_gen__%s__%s"
     (ctypes.external_library_name |> External_lib_name.clean
    |> External_lib_name.to_string)
-    (module_name_lower_string fd.functor_)
-    (module_name_lower_string fd.instance)
-
-let cflags_sexp ctypes =
-  Ctypes_stubs.cflags_sexp ~external_library_name:ctypes.external_library_name
-
-let c_library_flags_sexp ctypes =
-  sprintf "%s__c_library_flags.sexp"
-    (External_lib_name.to_string ctypes.external_library_name)
+    (Module_name.to_string fd.functor_)
+    (Module_name.to_string fd.instance)
 
 let c_generated_types_module ctypes =
   sprintf "%s__c_generated_types"
@@ -201,18 +190,15 @@ let c_generated_functions_module ctypes (fd : Function_description.t) =
   sprintf "%s__c_generated_functions__%s__%s"
     (ctypes.external_library_name |> External_lib_name.clean
    |> External_lib_name.to_string)
-    (module_name_lower_string fd.functor_)
-    (module_name_lower_string fd.instance)
+    (Module_name.to_string fd.functor_)
+    (Module_name.to_string fd.instance)
   |> Module_name.of_string
 
 let c_generated_functions_cout_c ctypes (fd : Function_description.t) =
   sprintf "%s__c_cout_generated_functions__%s__%s.c"
     (External_lib_name.to_string ctypes.external_library_name)
-    (module_name_lower_string fd.functor_)
-    (module_name_lower_string fd.instance)
-
-let lib_deps_of_strings ~loc lst =
-  List.map lst ~f:(fun lib -> Lib_dep.Direct (loc, Lib_name.of_string lib))
+    (Module_name.to_string fd.functor_)
+    (Module_name.to_string fd.instance)
 
 let type_gen_script_module ctypes =
   type_gen_script ctypes |> Module_name.of_string
@@ -236,7 +222,8 @@ let non_installable_modules ctypes =
   :: List.map ctypes.function_description ~f:(fun function_description ->
          function_gen_script_module ctypes function_description)
 
-let ml_of_module_name mn = Module_name.to_string mn ^ ".ml" |> String.lowercase
+let ml_of_module_name mn =
+  Module_name.to_string mn ^ ".ml" |> String.uncapitalize_ascii
 
 let generated_ml_and_c_files ctypes =
   let ml_files = generated_modules ctypes |> List.map ~f:ml_of_module_name in

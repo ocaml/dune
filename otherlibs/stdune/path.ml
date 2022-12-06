@@ -37,6 +37,8 @@ module External : sig
   val cwd : unit -> t
 
   val as_local : t -> string
+
+  val of_filename_relative_to_initial_cwd : string -> t
 end = struct
   module Table = String.Table
 
@@ -121,6 +123,9 @@ end = struct
   let as_local t =
     let s = t in
     "." ^ s
+
+  let of_filename_relative_to_initial_cwd fn =
+    if Filename.is_relative fn then relative initial_cwd fn else of_string fn
 
   include (
     Comparator.Operators (struct
@@ -540,6 +545,16 @@ module Outside_build_dir = struct
     | In_source_dir t -> Relative_to_source_root.mkdir_p ?perms t
     | External t -> External.mkdir_p ?perms t
 
+  let relative t s =
+    match t with
+    | In_source_dir t -> In_source_dir (Local.relative t s)
+    | External t -> External (External.relative t s)
+
+  let extend_basename t ~suffix =
+    match t with
+    | In_source_dir t -> In_source_dir (Local.extend_basename t ~suffix)
+    | External t -> External (External.extend_basename t ~suffix)
+
   let append_local x y =
     match x with
     | In_source_dir x -> In_source_dir (Local.append x y)
@@ -690,6 +705,8 @@ module Build = struct
       if Local.is_root p then External.to_string b
       else Filename.concat (External.to_string b) (Local.to_string p)
 
+  let to_string_maybe_quoted p = String.maybe_quoted (to_string p)
+
   let of_local t = t
 
   let chmod t ~mode = Unix.chmod (to_string t) mode
@@ -707,6 +724,9 @@ module T : sig
 
   val to_dyn : t -> Dyn.t
 
+  (** [External _] < [In_source_tree _] < [In_build_dir _]
+
+      Path of the same kind are compared using the standard lexical order *)
   val compare : t -> t -> Ordering.t
 
   val equal : t -> t -> bool
@@ -730,8 +750,8 @@ end = struct
     | External _, _ -> Lt
     | _, External _ -> Gt
     | In_source_tree x, In_source_tree y -> Local.compare x y
-    | In_source_tree _, _ -> Lt
-    | _, In_source_tree _ -> Gt
+    | In_source_tree _, In_build_dir _ -> Lt
+    | In_build_dir _, In_source_tree _ -> Gt
     | In_build_dir x, In_build_dir y -> Local.compare x y
 
   let equal (x : t) (y : t) = x = y
@@ -826,9 +846,7 @@ let to_dyn =
   | External s -> variant "External" [ External.to_dyn s ]
 
 let of_filename_relative_to_initial_cwd fn =
-  external_
-    (if Filename.is_relative fn then External.relative External.initial_cwd fn
-    else External.of_string fn)
+  external_ (External.of_filename_relative_to_initial_cwd fn)
 
 let to_absolute_filename t =
   Outside_build_dir.to_absolute_filename (local_or_external t)

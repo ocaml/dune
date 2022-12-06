@@ -155,10 +155,24 @@ module Dir_map = struct
     ; subdir_status : subdir_stanzas
     }
 
+  let dyn_of_per_dir { sexps; subdir_status = _ } =
+    let open Dyn in
+    record
+      [ ( "sexps"
+        , list Dune_lang.to_dyn (List.map ~f:Dune_lang.Ast.remove_locs sexps) )
+      ]
+
   type t =
     { data : per_dir
     ; nodes : t String.Map.t
     }
+
+  let rec to_dyn { data; nodes } =
+    let open Dyn in
+    record
+      [ ("data", dyn_of_per_dir data)
+      ; ("nodes", String.Map.to_dyn to_dyn nodes)
+      ]
 
   let empty_per_dir =
     { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> None) }

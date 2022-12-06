@@ -85,7 +85,12 @@ let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ :
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
   let open Fiber.O in
-  let rpc = Common.rpc common in
+  let rpc =
+    match Common.rpc common with
+    | `Allow server -> server
+    | `Forbid_builds ->
+      Code_error.raise "rpc server must be allowed in passive mode" []
+  in
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
     (fun () ->
       Scheduler.Run.poll_passive
@@ -131,7 +136,7 @@ let runtest_info =
         ]
     ]
   in
-  Cmd.info "runtest" ~doc ~man
+  Cmd.info "runtest" ~doc ~man ~envs:Common.envs
 
 let runtest_term =
   let name_ = Arg.info [] ~docv:"DIR" in
@@ -184,7 +189,7 @@ let build =
     in
     run_build_command ~common ~config ~request
   in
-  Cmd.v (Cmd.info "build" ~doc ~man) term
+  Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
 
 let fmt =
   let doc = "Format source code." in
@@ -209,4 +214,4 @@ let fmt =
     in
     run_build_command ~common ~config ~request
   in
-  Cmd.v (Cmd.info "fmt" ~doc ~man) term
+  Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term

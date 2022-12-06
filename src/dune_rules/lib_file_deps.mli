@@ -1,9 +1,13 @@
 open Import
 
 module Group : sig
-  type t =
+  type ocaml =
     | Cmi
     | Cmx
+
+  type t =
+    | Ocaml of ocaml
+    | Melange of Melange.Cm_kind.t
     | Header
 end
 

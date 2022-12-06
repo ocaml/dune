@@ -1,0 +1,3 @@
+(library
+ (name foo)
+ (libraries inter_lib a))

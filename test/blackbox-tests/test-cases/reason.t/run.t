@@ -24,3 +24,4 @@ We make sure to install reason source files:
 virtual libraries in reason
   $ PATH="_build/install/default/bin:$PATH" dune build --root vlib-impl @all
   Entering directory 'vlib-impl'
+  Leaving directory 'vlib-impl'

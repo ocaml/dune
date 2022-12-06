@@ -3,21 +3,43 @@ open Dune_file
 open Memo.O
 module Modules_group = Modules
 
+module Origin = struct
+  type t =
+    | Library of Dune_file.Library.t
+    | Executables of Dune_file.Executables.t
+    | Melange of Melange_stanzas.Emit.t
+
+  let loc = function
+    | Library l -> l.buildable.loc
+    | Executables e -> e.buildable.loc
+    | Melange mel -> mel.loc
+end
+
 module Modules = struct
   type t =
     { libraries : (Modules.t * Path.Build.t Obj_dir.t) Lib_name.Map.t
     ; executables : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
-    ; (* Map from modules to the buildable they are part of *)
-      rev_map : Buildable.t Module_name.Map.t
+    ; melange_emits : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
+    ; (* Map from modules to the origin they are part of *)
+      rev_map : Origin.t Module_name.Path.Map.t
     }
 
   let empty =
     { libraries = Lib_name.Map.empty
     ; executables = String.Map.empty
-    ; rev_map = Module_name.Map.empty
+    ; melange_emits = String.Map.empty
+    ; rev_map = Module_name.Path.Map.empty
     }
 
-  let make (libs, exes) =
+  type groups =
+    { libraries : (Library.t * Modules_group.t * Path.Build.t Obj_dir.t) list
+    ; executables :
+        (Executables.t * Modules_group.t * Path.Build.t Obj_dir.t) list
+    ; melange_emits :
+        (Melange_stanzas.Emit.t * Modules_group.t * Path.Build.t Obj_dir.t) list
+    }
+
+  let make { libraries = libs; executables = exes; melange_emits = emits } =
     let libraries =
       match
         Lib_name.Map.of_list_map libs ~f:(fun (lib, m, obj_dir) ->
@@ -32,8 +54,9 @@ module Modules = struct
     in
     let executables =
       match
-        String.Map.of_list_map exes ~f:(fun (exes, m, obj_dir) ->
-            (snd (List.hd exes.Executables.names), (m, obj_dir)))
+        String.Map.of_list_map exes
+          ~f:(fun ((exes : Executables.t), m, obj_dir) ->
+            (snd (List.hd exes.names), (m, obj_dir)))
       with
       | Ok x -> x
       | Error (name, _, (exes2, _, _)) ->
@@ -42,29 +65,44 @@ module Modules = struct
               "Executable %S appears for the second time in this directory" name
           ]
     in
-    let rev_map =
-      let rev_modules =
-        let by_name buildable =
-          Modules.fold_user_available ~init:[] ~f:(fun m acc ->
-              (Module.name m, buildable) :: acc)
-        in
-        List.rev_append
-          (List.concat_map libs ~f:(fun (l, m, _) -> by_name l.buildable m))
-          (List.concat_map exes ~f:(fun (e, m, _) -> by_name e.buildable m))
-      in
-      match Module_name.Map.of_list rev_modules with
+    let melange_emits =
+      match
+        String.Map.of_list_map emits ~f:(fun (mel, m, obj_dir) ->
+            (mel.target, (m, obj_dir)))
+      with
       | Ok x -> x
-      | Error (name, _, _) ->
-        let open Module_name.Infix in
+      | Error (name, _, (mel, _, _)) ->
+        User_error.raise ~loc:mel.loc
+          [ Pp.textf "Target %S appears for the second time in this directory"
+              name
+          ]
+    in
+    let rev_map =
+      let modules =
+        let by_path (origin : Origin.t) =
+          Modules.fold_user_available ~init:[] ~f:(fun m acc ->
+              (Module.path m, origin) :: acc)
+        in
+        List.concat
+          [ List.concat_map libs ~f:(fun (l, m, _) -> by_path (Library l) m)
+          ; List.concat_map exes ~f:(fun (e, m, _) -> by_path (Executables e) m)
+          ; List.concat_map emits ~f:(fun (l, m, _) -> by_path (Melange l) m)
+          ]
+      in
+      match Module_name.Path.Map.of_list modules with
+      | Ok x -> x
+      | Error (path, _, _) ->
         let locs =
-          List.filter_map rev_modules ~f:(fun (n, b) ->
-              Option.some_if (n = name) b.loc)
+          List.filter_map modules ~f:(fun (n, origin) ->
+              Option.some_if
+                (Ordering.is_eq (Module_name.Path.compare n path))
+                (Origin.loc origin))
           |> List.sort ~compare:Loc.compare
         in
         User_error.raise
           ~loc:(Loc.drop_position (List.hd locs))
           [ Pp.textf "Module %S is used in several stanzas:"
-              (Module_name.to_string name)
+              (Module_name.Path.to_string path)
           ; Pp.enumerate locs ~f:(fun loc ->
                 Pp.verbatim (Loc.to_file_colon_line loc))
           ; Pp.text
@@ -75,7 +113,7 @@ module Modules = struct
                or executable."
           ]
     in
-    { libraries; executables; rev_map }
+    { libraries; executables; melange_emits; rev_map }
 end
 
 module Artifacts = struct
@@ -91,7 +129,7 @@ module Artifacts = struct
 
   let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
-  let make ~dir ~lib_config (libs, exes) =
+  let make ~dir ~lib_config ~libs ~exes =
     let+ libraries =
       Memo.List.map libs ~f:(fun (lib, _, _) ->
           let name = Lib_name.of_local lib.Library.name in
@@ -168,17 +206,21 @@ let modules_of_files ~dialects ~dir ~files =
 type for_ =
   | Library of Lib_name.t
   | Exe of { first_exe : string }
+  | Melange of { target : string }
 
 let modules_and_obj_dir t ~for_ =
   match for_ with
   | Library name -> Lib_name.Map.find_exn t.modules.libraries name
   | Exe { first_exe } -> String.Map.find_exn t.modules.executables first_exe
+  | Melange { target } -> String.Map.find_exn t.modules.melange_emits target
 
 let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 
-let lookup_module (t : t) name = Module_name.Map.find t.modules.rev_map name
+let find_origin (t : t) name =
+  (* TODO generalize to any path *)
+  Module_name.Path.Map.find t.modules.rev_map [ name ]
 
-let virtual_modules lookup_vlib vlib =
+let virtual_modules ~lookup_vlib vlib =
   let info = Lib.info vlib in
   let+ modules =
     match Option.value_exn (Lib_info.virtual_ info) with
@@ -238,12 +280,21 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
       let* wrapped = Lib.wrapped resolved in
       let wrapped = Option.value_exn wrapped in
       let* main_module_name = Lib.main_module_name resolved in
-      let+ impl = Resolve.Memo.lift_memo (virtual_modules lookup_vlib vlib) in
+      let+ impl = Resolve.Memo.lift_memo (virtual_modules ~lookup_vlib vlib) in
       let kind : Modules_field_evaluator.kind = Implementation impl in
       (kind, main_module_name, wrapped)
   in
   let modules =
-    Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
+    let { Buildable.loc = stanza_loc
+        ; modules = modules_field
+        ; modules_without_implementation
+        ; root_module
+        ; _
+        } =
+      lib.buildable
+    in
+    Modules_field_evaluator.eval ~modules ~stanza_loc ~modules_field
+      ~modules_without_implementation ~root_module ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
       ~src_dir:dir
@@ -254,7 +305,31 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
   Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir:dir ~modules
     ~main_module_name ~wrapped
 
-let libs_and_exes dune_file ~dir ~scope ~lookup_vlib ~modules =
+let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
+  let rev_filter_partition =
+    let rec loop l (acc : Modules.groups) =
+      match l with
+      | [] -> acc
+      | x :: l -> (
+        match x with
+        | `Skip -> loop l acc
+        | `Library y -> loop l { acc with libraries = y :: acc.libraries }
+        | `Executables y ->
+          loop l { acc with executables = y :: acc.executables }
+        | `Melange_emit y ->
+          loop l { acc with melange_emits = y :: acc.melange_emits })
+    in
+    fun l -> loop l { libraries = []; executables = []; melange_emits = [] }
+  in
+  let filter_partition_map l =
+    let { Modules.libraries; executables; melange_emits } =
+      rev_filter_partition l
+    in
+    { Modules.libraries = List.rev libraries
+    ; executables = List.rev executables
+    ; melange_emits = List.rev melange_emits
+    }
+  in
   Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
@@ -263,23 +338,35 @@ let libs_and_exes dune_file ~dir ~scope ~lookup_vlib ~modules =
            the library is not built. We should change this to carry the
            [Or_exn.t] a bit longer. *)
         let+ modules =
+          let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
           make_lib_modules ~dir ~libs:(Scope.libs scope) ~lookup_vlib ~modules
             ~lib
           >>= Resolve.read_memo
         in
         let obj_dir = Library.obj_dir lib ~dir in
-        List.Left (lib, modules, obj_dir)
+        `Library (lib, modules, obj_dir)
       | Executables exes | Tests { exes; _ } ->
         let modules =
+          let { Buildable.loc = stanza_loc
+              ; modules = modules_field
+              ; modules_without_implementation
+              ; root_module
+              ; _
+              } =
+            exes.buildable
+          in
           let modules =
-            Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
+            Modules_field_evaluator.eval ~modules ~stanza_loc ~modules_field
+              ~modules_without_implementation ~root_module
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
           in
           let project = Scope.project scope in
           if Dune_project.wrapped_executables project then
-            Modules_group.exe_wrapped ~src_dir:dir ~modules
-          else Modules_group.exe_unwrapped modules
+            Modules_group.make_wrapped ~src_dir:dir ~modules `Exe
+          else
+            let modules = Module_trie.to_map modules in
+            Modules_group.exe_unwrapped modules
         in
         let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
         let modules =
@@ -290,39 +377,67 @@ let libs_and_exes dune_file ~dir ~scope ~lookup_vlib ~modules =
              there are multiple executable stanzas in the same directory *)
           Modules_group.relocate_alias_module modules ~src_dir
         in
-        Memo.return (List.Right (exes, modules, obj_dir))
-      | _ -> Memo.return List.Skip)
-  >>| List.filter_partition_map ~f:Fun.id
+        Memo.return (`Executables (exes, modules, obj_dir))
+      | Melange_emit mel ->
+        let modules =
+          let modules =
+            Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
+              ~modules_field:mel.entries
+              ~modules_without_implementation:Ordered_set_lang.standard
+              ~root_module:mel.root_module
+              ~kind:Modules_field_evaluator.Exe_or_normal_lib
+              ~private_modules:Ordered_set_lang.standard ~src_dir:dir
+          in
+          Modules_group.make_wrapped ~src_dir:dir ~modules `Melange
+        in
+        let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
+        let modules =
+          let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
+          (* We need to relocate the source of the alias module to its own
+             directory for executables. This module always has the same name for
+             executables, therefore it might collide with ether alias modules if
+             there are multiple executable stanzas in the same directory *)
+          Modules_group.relocate_alias_module modules ~src_dir
+        in
+        Memo.return (`Melange_emit (mel, modules, obj_dir))
+      | _ -> Memo.return `Skip)
+  >>| filter_partition_map
 
-let check_no_qualified (loc, include_subdirs) =
-  if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
-    User_error.raise ~loc
-      [ Pp.text "(include_subdirs qualified) is not supported yet" ]
-
-let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib ~include_subdirs
+let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
+    ~include_subdirs:(_loc, (include_subdirs : Dune_file.Include_subdirs.t))
     ~dirs =
-  let+ libs_and_exes =
-    check_no_qualified include_subdirs;
+  let+ modules_of_stanzas =
     let modules =
       let dialects = Dune_project.dialects (Scope.project scope) in
-      List.fold_left dirs ~init:Module_name.Map.empty
-        ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-          let modules = modules_of_files ~dialects ~dir ~files in
-          Module_name.Map.union acc modules ~f:(fun name x y ->
-              User_error.raise ~loc
-                [ Pp.textf "Module %S appears in several directories:"
-                    (Module_name.to_string name)
-                ; Pp.textf "- %s"
-                    (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                ; Pp.textf "- %s"
-                    (Path.to_string_maybe_quoted (Module.Source.src_dir y))
-                ; Pp.text "This is not allowed, please rename one of them."
-                ]))
+      match include_subdirs with
+      | Include Qualified ->
+        List.fold_left dirs ~init:Module_trie.empty
+          ~f:(fun acc ((dir : Path.Build.t), local, files) ->
+            let modules = modules_of_files ~dialects ~dir ~files in
+            let path = List.map local ~f:Module_name.of_string in
+            Module_trie.set_map acc path modules)
+      | No | Include Unqualified ->
+        List.fold_left dirs ~init:Module_name.Map.empty
+          ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+            let modules = modules_of_files ~dialects ~dir ~files in
+            Module_name.Map.union acc modules ~f:(fun name x y ->
+                User_error.raise ~loc
+                  [ Pp.textf "Module %S appears in several directories:"
+                      (Module_name.to_string name)
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                  ; Pp.text "This is not allowed, please rename one of them."
+                  ]))
+        |> Module_trie.of_map
     in
-    libs_and_exes dune_file ~dir ~scope ~lookup_vlib ~modules
+    modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
   in
-  let modules = Modules.make libs_and_exes in
+  let modules = Modules.make modules_of_stanzas in
   let artifacts =
-    Memo.lazy_ (fun () -> Artifacts.make ~dir ~lib_config libs_and_exes)
+    Memo.lazy_ (fun () ->
+        Artifacts.make ~dir ~lib_config ~libs:modules_of_stanzas.libraries
+          ~exes:modules_of_stanzas.executables)
   in
   { modules; artifacts }

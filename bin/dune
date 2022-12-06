@@ -50,7 +50,7 @@
 
 (rule
  (action
-  (copy ../dune.exe dune.exe))
+  (copy ../_boot/dune.exe dune.exe))
  (enabled_if
   (= %{profile} dune-bootstrap)))
 

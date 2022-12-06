@@ -5,6 +5,8 @@ type t =
   | `Ip of [ `Host of string ] * [ `Port of int ]
   ]
 
+val rpc_socket_relative_to_build_dir : string
+
 val to_string : t -> string
 
 val compare : t -> t -> Ordering.t

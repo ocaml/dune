@@ -16,7 +16,7 @@ let all : _ Cmdliner.Cmd.t list =
     ; Subst.command
     ; Print_rules.command
     ; Utop.command
-    ; Promote.command
+    ; Promotion.promote
     ; Printenv.command
     ; Help.command
     ; Format_dune_file.command
@@ -30,7 +30,13 @@ let all : _ Cmdliner.Cmd.t list =
     ]
   in
   let groups =
-    [ Ocaml_cmd.group; Coq.group; Rpc.group; Internal.group; Init.group ]
+    [ Ocaml_cmd.group
+    ; Coq.group
+    ; Rpc.group
+    ; Internal.group
+    ; Init.group
+    ; Promotion.group
+    ]
   in
   terms @ groups
 
@@ -47,7 +53,7 @@ let common_commands_synopsis =
 
 let info =
   let doc = "composable build system for OCaml" in
-  Cmd.info "dune" ~doc
+  Cmd.info "dune" ~doc ~envs:Common.envs
     ~version:
       (match Build_info.V1.version () with
       | None -> "n/a"

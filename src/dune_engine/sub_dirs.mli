@@ -15,7 +15,7 @@ module Status : sig
   end
 
   module Map : sig
-    type status
+    type status := t
 
     type 'a t =
       { data_only : 'a
@@ -29,7 +29,6 @@ module Status : sig
 
     val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   end
-  with type status := t
 
   module Set : sig
     type t = bool Map.t
@@ -40,7 +39,7 @@ module Status : sig
   end
 end
 
-type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
+type subdir_stanzas
 
 val or_default : subdir_stanzas -> Predicate_lang.Glob.t Status.Map.t
 
@@ -59,6 +58,12 @@ module Dir_map : sig
     { sexps : Dune_lang.Ast.t list
     ; subdir_status : subdir_stanzas
     }
+
+  val dyn_of_per_dir : per_dir -> Dyn.t
+
+  val to_dyn : t -> Dyn.t
+
+  val empty : t
 
   val descend : t -> string -> t option
 

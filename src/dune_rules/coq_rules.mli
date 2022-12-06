@@ -57,11 +57,11 @@ val coqtop_args_theory :
   -> dir_contents:Dir_contents.t
   -> Theory.t
   -> Coq_module.t
-  -> ('a Command.Args.t list * Bootstrap.t) Memo.t
+  -> ('a Command.Args.t list Action_builder.t * Bootstrap.t) Memo.t
 
 val coqtop_args_extraction :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Extraction.t
-  -> ('a Command.Args.t list * Bootstrap.t) Memo.t
+  -> ('a Command.Args.t list Action_builder.t * Bootstrap.t) Memo.t

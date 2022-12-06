@@ -48,3 +48,11 @@ let to_socket = function
 let to_string = function
   | `Unix p -> sprintf "unix://%s" p
   | `Ip (`Host host, `Port port) -> sprintf "%s:%d" host port
+
+let rpc_socket_file =
+  let f =
+    lazy
+      (Path.Build.(relative root)
+         Dune_rpc_private.Where.rpc_socket_relative_to_build_dir)
+  in
+  fun () -> Lazy.force f

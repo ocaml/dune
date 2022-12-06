@@ -102,7 +102,7 @@ let man =
   ; Common.footer
   ]
 
-let info = Cmd.info "help" ~doc ~man
+let info = Cmd.info "help" ~doc ~man ~envs:Common.envs
 
 let term =
   Term.ret

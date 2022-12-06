@@ -20,6 +20,12 @@ same directory.
   $ touch foo.mli
 
   $ dune build ./bar.exe
-  File "foo.ml-gen", line 1:
-  Error: Could not find the .cmi file for interface foo.mli.
+  File "dune", line 1, characters 0-0:
+  Error: Module "Foo" is used in several stanzas:
+  - dune:1
+  - dune:4
+  To fix this error, you must specify an explicit "modules" field in every
+  library, executable, and executables stanzas in this dune file. Note that
+  each module cannot appear in more than one "modules" field - it must belong
+  to a single library or executable.
   [1]

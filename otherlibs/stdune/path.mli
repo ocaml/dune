@@ -63,8 +63,6 @@ module Local : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
 
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
-
   val split_first_component : t -> (string * t) option
 
   val explode : t -> string list
@@ -80,6 +78,8 @@ module External : sig
   val relative : t -> string -> t
 
   val mkdir_p : ?perms:int -> t -> unit
+
+  val of_filename_relative_to_initial_cwd : string -> t
 end
 
 (** In the source section of the current workspace. *)
@@ -97,10 +97,6 @@ module Source : sig
   end
 
   val of_local : Local.t -> t
-
-  (** [relative dir s] if s can be ".." it could escape the working directory.
-      {!Path.relative} should be used instead. *)
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
 
   val split_first_component : t -> (string * Local.t) option
 
@@ -141,6 +137,10 @@ module Outside_build_dir : sig
 
   val hash : t -> int
 
+  val relative : t -> string -> t
+
+  val extend_basename : t -> suffix:string -> t
+
   val equal : t -> t -> bool
 
   val to_dyn : t -> Dyn.t
@@ -175,8 +175,6 @@ module Build : sig
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
   end
-
-  val relative : ?error_loc:Loc0.t -> t -> string -> t
 
   val split_first_component : t -> (string * Local.t) option
 
@@ -247,8 +245,6 @@ val external_ : External.t -> t
 val is_root : t -> bool
 
 val is_managed : t -> bool
-
-val relative : ?error_loc:Loc0.t -> t -> string -> t
 
 (** [relative_to_source_in_build ~dir s] compute the path [s] relative to the
     source directory corresponding to [dir] *)
@@ -327,9 +323,9 @@ val drop_optional_sandbox_root : t -> t
     otherwise fail. *)
 val drop_optional_build_context_src_exn : t -> Source.t
 
-val explode : t -> string list option
+val explode : t -> Filename.t list option
 
-val explode_exn : t -> string list
+val explode_exn : t -> Filename.t list
 
 (** The build directory *)
 val build_dir : t

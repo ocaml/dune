@@ -72,11 +72,13 @@ end = struct
            | Building
                { Build_system.Progress.number_of_rules_executed = done_
                ; number_of_rules_discovered = total
+               ; number_of_rules_failed = failed
                } ->
              Pp.verbatim
-               (sprintf "Done: %u%% (%u/%u, %u left) (jobs: %u)"
+               (sprintf "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
                   (if total = 0 then 0 else done_ * 100 / total)
                   done_ total (total - done_)
+                  (if failed = 0 then "" else sprintf ", %u failed" failed)
                   (Dune_engine.Scheduler.running_jobs_count scheduler))));
     Fiber.return (Memo.of_thunk get)
 end
@@ -137,27 +139,49 @@ module Scheduler = struct
         (Constant
            (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 
+  let rpc server =
+    { Dune_engine.Rpc.run = Dune_rpc_impl.Server.run server
+    ; stop = Dune_rpc_impl.Server.stop server
+    ; ready = Dune_rpc_impl.Server.ready server
+    }
+
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config =
       let insignificant_changes = Common.insignificant_changes common in
+      let signal_watcher = Common.signal_watcher common in
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
-        ~signal_watcher:`Yes
+        ~signal_watcher
+    in
+    let f =
+      match Common.rpc common with
+      | `Allow server ->
+        fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f
+      | `Forbid_builds -> f
     in
     Run.go config ~on_event:(on_event dune_config) f
 
   let go_with_rpc_server_and_console_status_reporting ~(common : Common.t)
       ~config:dune_config run =
+    let server =
+      match Common.rpc common with
+      | `Allow server -> rpc server
+      | `Forbid_builds ->
+        Code_error.raise "rpc must be enabled in polling mode" []
+    in
     let stats = Common.stats common in
     let config =
+      let signal_watcher = Common.signal_watcher common in
       let insignificant_changes = Common.insignificant_changes common in
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
-        ~signal_watcher:`Yes
+        ~signal_watcher
     in
     let file_watcher = Common.file_watcher common in
-    let rpc = Common.rpc common in
     let run () =
-      Fiber.fork_and_join_unit (fun () -> Dune_rpc_impl.Server.run rpc) run
+      let open Fiber.O in
+      Dune_engine.Rpc.with_background_rpc server @@ fun () ->
+      let* () = Dune_engine.Rpc.ensure_ready () in
+      run ()
     in
     Run.go config ~file_watcher ~on_event:(on_event dune_config) run
 end
@@ -173,8 +197,12 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
 
 (* Adapted from
    https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
-let command_alias cmd term name =
-  let orig = Cmd.name cmd in
+let command_alias ?orig_name cmd term name =
+  let orig =
+    match orig_name with
+    | Some s -> s
+    | None -> Cmd.name cmd
+  in
   let doc = Printf.sprintf "An alias for $(b,%s)." orig in
   let man =
     [ `S "DESCRIPTION"

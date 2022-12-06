@@ -72,7 +72,7 @@ struct
       List [ atom ("write-file" ^ File_perm.suffix perm); target x; string y ]
     | Rename (x, y) -> List [ atom "rename"; target x; target y ]
     | Remove_tree x -> List [ atom "remove-tree"; target x ]
-    | Mkdir x -> List [ atom "mkdir"; path x ]
+    | Mkdir x -> List [ atom "mkdir"; target x ]
     | Diff { optional; file1; file2; mode = Binary } ->
       assert (not optional);
       List [ atom "cmp"; path file1; target file2 ]
@@ -87,7 +87,6 @@ struct
         ; List (List.map ~f:string extras)
         ; target into
         ]
-    | No_infer r -> List [ atom "no-infer"; encode r ]
     | Pipe (outputs, l) ->
       List
         (atom (sprintf "pipe-%s" (Outputs.to_string outputs))
@@ -158,6 +157,8 @@ module Prog = struct
       let hint =
         match program with
         | "refmt" -> Some (Option.value ~default:"opam install reason" hint)
+        | "rescript_syntax" ->
+          Some (Option.value ~default:"opam install mel" hint)
         | _ -> hint
       in
       Utils.program_not_found_message ?hint ~loc ~context program
@@ -287,8 +288,7 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
-  | With_accepted_exit_codes (_, t)
-  | No_infer t -> f acc t
+  | With_accepted_exit_codes (_, t) -> f acc t
   | Progn l | Pipe (_, l) -> List.fold_left l ~init:acc ~f
   | Run _
   | Dynamic_run _
@@ -318,7 +318,7 @@ let chdirs =
       | Chdir (dir, _) -> (
         match Path.as_in_build_dir dir with
         | None ->
-          Code_error.raise "chdir ouside the build directory"
+          Code_error.raise "chdir outside the build directory"
             [ ("dir", Path.to_dyn dir) ]
         | Some dir -> Path.Build.Set.add acc dir)
       | _ -> acc
@@ -336,8 +336,7 @@ let rec is_dynamic = function
   | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
-  | With_accepted_exit_codes (_, t)
-  | No_infer t -> is_dynamic t
+  | With_accepted_exit_codes (_, t) -> is_dynamic t
   | Progn l | Pipe (_, l) -> List.exists l ~f:is_dynamic
   | Run _
   | System _
@@ -386,7 +385,7 @@ let is_useful_to distribute memoize =
     | Setenv (_, _, t) -> loop t
     | Redirect_out (_, _, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
-    | Ignore (_, t) | With_accepted_exit_codes (_, t) | No_infer t -> loop t
+    | Ignore (_, t) | With_accepted_exit_codes (_, t) -> loop t
     | Progn l | Pipe (_, l) -> List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> memoize

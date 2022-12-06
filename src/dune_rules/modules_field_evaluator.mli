@@ -9,7 +9,7 @@ end
 
 module Implementation : sig
   type t =
-    { existing_virtual_modules : Module_name.Set.t
+    { existing_virtual_modules : Module_name.Path.Set.t
     ; allow_new_public_modules : bool
     }
 end
@@ -20,9 +20,12 @@ type kind =
   | Exe_or_normal_lib
 
 val eval :
-     modules:Module.Source.t Module_name.Map.t
-  -> buildable:Dune_file.Buildable.t
+     modules:Module.Source.t Module_trie.t
+  -> stanza_loc:Loc.t
+  -> modules_field:Ordered_set_lang.t
+  -> modules_without_implementation:Ordered_set_lang.t
+  -> root_module:('a * Module_name.t) option
   -> private_modules:Ordered_set_lang.t
   -> kind:kind
   -> src_dir:Path.Build.t
-  -> Module.Name_map.t
+  -> Module.t Module_trie.t

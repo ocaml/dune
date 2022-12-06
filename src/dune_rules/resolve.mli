@@ -5,7 +5,7 @@
 
     Indeed, in many places in the Dune codebase we eagerly resolve library names
     at "rule generation time". This means that if a library was missing, we
-    could fail right from the start if we are not caferul. What is more, we
+    could fail right from the start if we are not careful. What is more, we
     would fail even if we didn't need to build the item that depended on this
     library. This would not be good.
 
@@ -120,7 +120,7 @@ val args : 'a Command.Args.t t -> 'a Command.Args.t
 (** Same as [read] but in the memo build monad. Use with caution! *)
 val read_memo : 'a t -> 'a Memo.t
 
-(** Read the value immediatly, ignoring actual errors. *)
+(** Read the value immediately, ignoring actual errors. *)
 val peek : 'a t -> ('a, unit) result
 
 (** [is_ok t] is the same as [Result.is_ok (peek t)] *)
@@ -157,7 +157,7 @@ module Option : sig
 end
 
 module Memo : sig
-  type 'a resolve
+  type 'a resolve := 'a t
 
   type 'a t = 'a resolve Memo.t
 
@@ -199,7 +199,6 @@ module Memo : sig
 
   val of_result : ('a, exn) result -> 'a t
 
-  (** Read the value immediatly, ignoring actual errors. *)
+  (** Read the value immediately, ignoring actual errors. *)
   val peek : 'a t -> ('a, unit) result Memo.t
 end
-with type 'a resolve := 'a t

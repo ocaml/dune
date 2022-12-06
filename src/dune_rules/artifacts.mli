@@ -3,6 +3,8 @@ open Import
 module Bin : sig
   type t
 
+  val bin_dir_basename : Filename.t
+
   (** [local_bin dir] The directory which contains the local binaries viewed by
       rules defined in [dir] *)
   val local_bin : Path.Build.t -> Path.Build.t

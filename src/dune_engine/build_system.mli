@@ -62,6 +62,7 @@ module Progress : sig
   type t =
     { number_of_rules_discovered : int
     ; number_of_rules_executed : int
+    ; number_of_rules_failed : int
     }
 
   (** Initialize with zeros on all measures. *)

@@ -20,12 +20,6 @@ module Lib_deps : sig
   val decode : for_ -> t Dune_lang.Decoder.t
 end
 
-(** [preprocess] and [preprocessor_deps] fields *)
-val preprocess_fields :
-  (Preprocess.Without_instrumentation.t Preprocess.Per_module.t
-  * Dep_conf.t list)
-  Dune_lang.Decoder.fields_parser
-
 module Buildable : sig
   type t =
     { loc : Loc.t
@@ -102,9 +96,9 @@ module Mode_conf : sig
       }
   end
 
-  module Set : sig
-    type mode_conf = t
+  type mode_conf := t
 
+  module Set : sig
     type nonrec t = Kind.t option Map.t
 
     val of_list : (mode_conf * Kind.t) list -> t
@@ -119,6 +113,39 @@ module Mode_conf : sig
 
     val eval : t -> has_native:bool -> Mode.Dict.Set.t
   end
+
+  module Lib : sig
+    type t =
+      | Ocaml of mode_conf
+      | Melange
+
+    val to_dyn : t -> Dyn.t
+
+    module Map : sig
+      type nonrec 'a t =
+        { ocaml : 'a Map.t
+        ; melange : 'a
+        }
+    end
+
+    module Set : sig
+      type mode_conf := t
+
+      type nonrec t = Kind.t option Map.t
+
+      val of_list : (mode_conf * Kind.t) list -> t
+
+      val decode : t Dune_lang.Decoder.t
+
+      module Details : sig
+        type t = Kind.t option
+      end
+
+      val eval_detailed : t -> has_native:bool -> Details.t Lib_mode.Map.t
+
+      val eval : t -> has_native:bool -> Lib_mode.Map.Set.t
+    end
+  end
 end
 
 module Library : sig
@@ -132,7 +159,7 @@ module Library : sig
     ; synopsis : string option
     ; install_c_headers : string list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
-    ; modes : Mode_conf.Set.t
+    ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
           (* TODO: It may be worth remaming [c_library_flags] to
              [link_time_flags_for_c_compiler] and [library_flags] to
@@ -217,23 +244,21 @@ module Install_conf : sig
   module File_entry : sig
     type t
 
-    val expand_include_multi :
+    val to_file_bindings_unexpanded :
          t list
       -> expand_str:(String_with_vars.t -> string Memo.t)
       -> dir:Path.Build.t
       -> File_binding.Unexpanded.t list Memo.t
+  end
 
-    val expand_multi :
-         t list
-      -> expand_str:(String_with_vars.t -> string Memo.t)
-      -> dir:Path.Build.t
-      -> File_binding.Expanded.t list Memo.t
+  module Dir_entry : sig
+    type t
   end
 
   type t =
     { section : Install.Section_with_site.t
     ; files : File_entry.t list
-    ; dirs : File_entry.t list
+    ; dirs : Dir_entry.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
@@ -457,6 +482,7 @@ type Stanza.t +=
   | Cram of Cram_stanza.t
   | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
+  | Melange_emit of Melange_stanzas.Emit.t
 
 val stanza_package : Stanza.t -> Package.t option
 
@@ -481,7 +507,7 @@ val to_dyn : t -> Dyn.t
 val parse :
      Dune_lang.Ast.t list
   -> dir:Path.Source.t
-  -> file:Path.Source.t
+  -> file:Path.Source.t option
   -> project:Dune_project.t
   -> t Memo.t
 

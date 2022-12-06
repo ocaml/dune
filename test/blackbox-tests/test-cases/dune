@@ -140,3 +140,8 @@
  (deps
   (package stdune)
   (package ppx_expect)))
+
+(cram
+ (applies_to link-time-transitive-deps)
+ (deps
+  (package dune-build-info)))

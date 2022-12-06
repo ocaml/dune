@@ -17,8 +17,9 @@ open Modules_data
 
 let parse_module_names ~(unit : Module.t) ~modules words =
   List.filter_map words ~f:(fun m ->
-      let m = Module_name.of_string m in
-      Modules.find_dep modules ~of_:unit m)
+      match Module_name.of_string_opt m with (* TODO: codept -nl-modules may output "Stdlib.Format" *)
+      | Some m -> Modules.find_dep modules ~of_:unit m
+      | None -> None)
 
 let parse_deps_exn ~file lines =
   let invalid () =

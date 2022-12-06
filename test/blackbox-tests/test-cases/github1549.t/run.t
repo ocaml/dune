@@ -31,13 +31,15 @@ Reproduction case for #1549: too many parentheses in installed .dune files
    (modes byte native)
    (modules
     (wrapped
-     (main_module_name Simple_tests)
-     (alias_module
-      (name Simple_tests)
-      (obj_name simple_tests)
-      (visibility public)
-      (kind alias)
-      (impl))
+     (group
+      (alias
+       (name Simple_tests)
+       (obj_name simple_tests)
+       (path Simple_tests)
+       (visibility public)
+       (kind alias)
+       (impl))
+      (name Simple_tests))
      (wrapped true)))
    (inline_tests.backend
     (flags :standard)

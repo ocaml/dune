@@ -7,4 +7,4 @@
  (modules test)
  (libraries foo))
 
-(copy_files 411/test.ml)
+(copy_files# 411/test.ml)

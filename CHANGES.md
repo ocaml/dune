@@ -43,6 +43,13 @@ Unreleased
 - Fix missing dependencies when detecting the kind of C compiler we're using
   (#6610, fixes #6415, @emillon)
 
+- Allow `(include_subdirs qualified)` for OCaml projects. (#6594, fixes #1084,
+  @rgrinberg)
+
+- Accurately determine merlin configuration for all sources selected with
+  `copy#` and `copy_files#`. The old heuristic of looking for a module in
+  parent directories is removed (#6594, @rgrinberg)
+
 3.6.0 (2022-11-14)
 ------------------
 

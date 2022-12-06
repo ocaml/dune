@@ -138,22 +138,23 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       in
       None)
 
-let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
-  let loc = String_with_vars.loc def.files in
+let copy_files' sctx ~dir ~expander ~src_dir ~add_line_directive ~alias ~mode
+    ~files ~syntax_version =
+  let loc = String_with_vars.loc files in
   let* glob_in_src =
-    let+ src_glob = Expander.No_deps.expand_str expander def.files in
+    let+ src_glob = Expander.No_deps.expand_str expander files in
     if Filename.is_relative src_glob then
       Path.relative (Path.source src_dir) src_glob ~error_loc:loc
     else
       let since = (2, 7) in
-      if def.syntax_version < since then
+      if syntax_version < since then
         Dune_lang.Syntax.Error.since loc Stanza.syntax since
           ~what:(sprintf "%s is an absolute path. This" src_glob);
       Path.external_ (Path.External.of_string src_glob)
   in
   let since = (1, 3) in
   if
-    def.syntax_version < since
+    syntax_version < since
     && not (Path.is_descendant glob_in_src ~of_:(Path.source src_dir))
   then
     Dune_lang.Syntax.Error.since loc Stanza.syntax since
@@ -203,8 +204,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         let basename = Path.basename file_src in
         let file_dst = Path.Build.relative dir basename in
         let context = Super_context.context sctx in
-        Super_context.add_rule sctx ~loc ~dir ~mode:def.mode
-          ((if def.add_line_directive then Copy_line_directive.builder context
+        Super_context.add_rule sctx ~loc ~dir ~mode
+          ((if add_line_directive then Copy_line_directive.builder context
            else Action_builder.copy)
              ~src:file_src ~dst:file_dst))
   in
@@ -216,16 +217,26 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         Path.build file_dst)
   in
   let+ () =
-    Memo.Option.iter def.alias ~f:(fun alias ->
+    Memo.Option.iter alias ~f:(fun alias ->
         let alias = Alias.make alias ~dir in
         Rules.Produce.Alias.add_deps alias (Action_builder.path_set targets))
   in
   targets
 
+let copy_files sctx ~dir ~expander ~src_dir
+    ({ add_line_directive; alias; mode; files; syntax_version; _ } :
+      Copy_files.t) =
+  copy_files' sctx ~dir ~expander ~src_dir ~add_line_directive ~alias ~mode
+    ~files ~syntax_version
+
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   Expander.eval_blang expander def.enabled_if >>= function
   | true -> copy_files sctx ~dir ~expander ~src_dir def
   | false -> Memo.return Path.Set.empty
+
+let extra_files_melange sctx ~dir ~expander ~src_dir files =
+  copy_files' sctx ~dir ~expander ~src_dir ~add_line_directive:false ~alias:None
+    ~mode:Standard ~files ~syntax_version:(3, 7)
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in

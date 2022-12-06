@@ -33,6 +33,14 @@ val copy_files :
   -> Copy_files.t
   -> Path.Set.t Memo.t
 
+val extra_files_melange :
+     Super_context.t
+  -> dir:Path.Build.t
+  -> expander:Expander.t
+  -> src_dir:Path.Source.t
+  -> String_with_vars.t
+  -> Path.Set.t Memo.t
+
 (** Interpret an [(alias ...)] stanza. *)
 val alias :
      Super_context.t

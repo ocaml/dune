@@ -586,6 +586,7 @@ module Library = struct
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; melange_extra_files : String_with_vars.t option
     }
 
   let decode =
@@ -664,6 +665,10 @@ module Library = struct
          field_o "package"
            (Dune_lang.Syntax.since Stanza.syntax (2, 8)
            >>> located Stanza_common.Pkg.decode)
+       and+ melange_extra_files =
+         field_o "melange.extra_files"
+           (Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
+           >>> String_with_vars.decode)
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -751,6 +756,7 @@ module Library = struct
        ; special_builtin_support
        ; enabled_if
        ; instrumentation_backend
+       ; melange_extra_files
        })
 
   let package t =

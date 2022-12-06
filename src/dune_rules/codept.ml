@@ -114,7 +114,7 @@ let deps_of
               ] )
         ; Dyn path_args
         ; S sig_args
-        ; S (codept_o_arg "-modules" immediate_file)
+        ; S (codept_o_arg "-inner-modules" immediate_file)
         ]
       >>| Action.Full.add_sandbox sandbox
     in

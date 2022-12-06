@@ -146,19 +146,19 @@ module Processed = struct
           ]
       in
       let flags =
-        match pp with
-        | None -> flags
-        | Some { flag; args } ->
-          make_directive "FLG"
-            (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
-          :: flags
-      in
-      let flags =
         match melc_flags with
         | [] -> flags
         | melc_flags ->
           make_directive "FLG"
             (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) melc_flags))
+          :: flags
+      in
+      let flags =
+        match pp with
+        | None -> flags
+        | Some { flag; args } ->
+          make_directive "FLG"
+            (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
           :: flags
       in
       match opens with

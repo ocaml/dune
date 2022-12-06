@@ -16,22 +16,9 @@ end
 open Modules_data
 
 let parse_module_names ~(unit : Module.t) ~modules words =
-  (* TODO: move this codept thing out *)
-  let um = Modules.fold_user_available modules ~f:(fun m acc ->
-      match Modules.find_dep modules ~of_:unit (Module.name m) with (* FIXME: stupid way to find all deps *)
-      | Some _ ->
-        Module_name.Unique.Map.add_exn acc (Module.obj_name m) m
-      | None -> acc
-    ) ~init:Module_name.Unique.Map.empty
-  in
   List.filter_map words ~f:(fun m ->
-      let s = m in
       let m = Module_name.of_string m in
-      match Modules.find_dep modules ~of_:unit m with
-      | Some d -> Some d
-      | None ->
-        let u = Module_name.Unique.of_string s in
-        Module_name.Unique.Map.find um u)
+      Modules.find_dep modules ~of_:unit m)
 
 let parse_deps_exn ~file lines =
   let invalid () =

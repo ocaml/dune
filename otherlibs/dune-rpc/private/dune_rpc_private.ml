@@ -115,9 +115,9 @@ module Client = struct
       ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
     module Batch : sig
-      type t
+      type client := t
 
-      type client
+      type t
 
       val create : client -> t
 
@@ -132,7 +132,6 @@ module Client = struct
 
       val submit : t -> unit fiber
     end
-    with type client := t
 
     module Handler : sig
       type t
@@ -183,7 +182,7 @@ module Client = struct
     end
 
     module Ivar : sig
-      type 'a fiber
+      type 'a fiber := 'a t
 
       type 'a t
 
@@ -193,7 +192,6 @@ module Client = struct
 
       val fill : 'a t -> 'a -> unit fiber
     end
-    with type 'a fiber := 'a t
   end) (Chan : sig
     type t
 

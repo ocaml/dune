@@ -11,3 +11,9 @@ Run inline tests using node js
   inline tests (JS)
   inline tests (Native)
   inline tests (Native)
+
+  $ dune runtest --profile release
+  inline tests (JS)
+  inline tests (JS)
+  inline tests (Native)
+  inline tests (Native)

@@ -149,12 +149,8 @@ module Session = struct
 
   let id t = t.base.id
 
-  let of_stage1 base handler menu =
-    let () =
-      match base.Stage1.on_upgrade with
-      | Some f -> f menu
-      | None -> ()
-    in
+  let of_stage1 (base : _ Stage1.t) handler menu =
+    let () = Option.iter base.on_upgrade ~f:(fun f -> f menu) in
     { base; handler; pollers = Dune_rpc_private.Id.Map.empty }
 
   let notification t decl n =

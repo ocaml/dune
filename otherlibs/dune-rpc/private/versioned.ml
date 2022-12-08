@@ -28,6 +28,19 @@ module Staged = struct
   type 'payload notification = { encode : 'payload -> Call.t }
 end
 
+let raise_version_bug ~method_ ~selected ~verb ~known =
+  Code_error.raise "bug with version negotiation; selected bad method version"
+    [ ("message", Dyn.String ("version is " ^ verb))
+    ; ("method", Dyn.String method_)
+    ; ("implemented versions", Dyn.List (List.map ~f:(fun i -> Dyn.Int i) known))
+    ; ("selected version", Dyn.Int selected)
+    ]
+
+(* Pack a universal map key. See below. We can afford to erase the type of
+   the key, because we only care about the keyset of the stored generation
+   listing. *)
+type packed = T : 'a Method_version.Map.t Univ_map.Key.t -> packed
+
 module Make (Fiber : Fiber_intf.S) = struct
   module Handler = struct
     type 'state t =
@@ -80,11 +93,6 @@ module Make (Fiber : Fiber_intf.S) = struct
       | N :
           ('s -> 'payload -> unit Fiber.t) * ('payload, unit) Decl.Generation.t
           -> 's n_handler
-
-    (* Pack a universal map key. See below. We can afford to erase the type of
-       the key, because we only care about the keyset of the stored generation
-       listing. *)
-    type packed = T : 'a Method_version.Map.t Univ_map.Key.t -> packed
 
     (* The declarations and implementations serve dual purposes with dual
        requirements.
@@ -201,14 +209,14 @@ module Make (Fiber : Fiber_intf.S) = struct
             let generations =
               List.fold_left keys ~init:[] ~f:(fun acc (T key) ->
                   match Univ_map.find declaration_table key with
+                  | Some listing -> Method_version.Map.keys listing @ acc
                   | None ->
                     Code_error.raise
                       "versioning: method found in versioning table without \
                        actually being declared"
                       [ ("method_", Dyn.String name)
                       ; ("table", Dyn.String ("known_" ^ which ^ "_table"))
-                      ]
-                  | Some listing -> Method_version.Map.keys listing @ acc)
+                      ])
             in
             (name, generations) :: acc)
       in
@@ -249,16 +257,14 @@ module Make (Fiber : Fiber_intf.S) = struct
     let register_generic t ~method_ ~generations ~registry ~registry_key ~other
         ~other_key ~pack =
       let () =
-        match get t other other_key with
-        | None -> ()
-        | Some _ ->
-          Code_error.raise "attempted to implement and declare method"
-            [ ("method", Dyn.String method_) ]
+        get t other other_key
+        |> Option.iter ~f:(fun _ ->
+               Code_error.raise "attempted to implement and declare method"
+                 [ ("method", Dyn.String method_) ])
       in
       let prior_registered_generations =
-        match get t registry registry_key with
-        | None -> Method_version.Map.empty
-        | Some s -> s
+        get t registry registry_key
+        |> Option.value ~default:Method_version.Map.empty
       in
       let all_generations, duplicate_generations =
         List.fold_left generations
@@ -304,6 +310,7 @@ module Make (Fiber : Fiber_intf.S) = struct
 
     let lookup_method_generic t ~menu ~table ~key ~method_ k s =
       match (get t table key, Method_name.Map.find menu method_) with
+      | Some subtable, Some version -> s (subtable, version)
       | None, _ ->
         let payload = Sexp.record [ ("method", Atom method_) ] in
         k (Version_error.create ~message:"invalid method" ~payload ())
@@ -313,17 +320,6 @@ module Make (Fiber : Fiber_intf.S) = struct
           (Version_error.create
              ~message:"remote and local have no common version for method"
              ~payload ())
-      | Some subtable, Some version -> s (subtable, version)
-
-    let raise_version_bug ~method_ ~selected ~verb ~known =
-      Code_error.raise
-        "bug with version negotiation; selected bad method version"
-        [ ("message", Dyn.String ("version is " ^ verb))
-        ; ("method", Dyn.String method_)
-        ; ( "implemented versions"
-          , Dyn.List (List.map ~f:(fun i -> Dyn.Int i) known) )
-        ; ("selected version", Dyn.Int selected)
-        ]
 
     let to_handler t ~session_version =
       let open Fiber.O in

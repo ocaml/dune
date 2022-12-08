@@ -1,0 +1,11 @@
+(library
+  (synopsis "Notty Unix IO")
+  (name dune_notty_unix)
+  (wrapped false)
+  (foreign_stubs
+    (flags (-Wall -Wextra -O3))
+    (language c)
+    (names winsize))
+  (libraries dune_notty unix))
+
+(include_subdirs unqualified)

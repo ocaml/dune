@@ -31,7 +31,7 @@ Building should not fail as warnings are silenced
   Error: Unknown field flags
   [1]
 
-Should use compile_flags
+Can pass flags from compile_flags field in melange.emit 
 
   $ cat > dune <<EOF
   > (melange.emit
@@ -39,6 +39,22 @@ Should use compile_flags
   >  (entries main)
   >  (module_system commonjs)
   >  (compile_flags -w -14-26))
+  > EOF
+
+  $ dune build output/main.js
+  $ node _build/default/output/main.js
+  hello
+
+Can also pass flags from env
+
+  $ cat > dune <<EOF
+  > (env
+  >  (_
+  >   (melange.compile_flags -w -14-26)))
+  > (melange.emit
+  >  (target output)
+  >  (entries main)
+  >  (module_system commonjs))
   > EOF
 
   $ dune build output/main.js

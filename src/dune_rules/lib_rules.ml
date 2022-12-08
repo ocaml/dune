@@ -56,7 +56,7 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
       let obj_deps =
         Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
       in
-      let ocaml_flags = Ocaml_flags.get flags mode in
+      let ocaml_flags = Ocaml_flags.get flags (Ocaml mode) in
       let* standard =
         let+ project = Scope.DB.find_by_dir dir |> Memo.map ~f:Scope.project in
         match Dune_project.use_standard_c_and_cxx_flags project with
@@ -339,7 +339,7 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
                   ~for_mode:Mode.Select.All
              |> List.map ~f:Path.build))
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
-              [ Command.Args.dyn (Ocaml_flags.get flags Native)
+              [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml Native))
               ; A "-shared"
               ; A "-linkall"
               ; A "-I"
@@ -392,7 +392,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
                      file explicitly *)
                   let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
                   Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc
-                    (Action_builder.copy ~src ~dst)))
+                    (Action_builder.symlink ~src ~dst)))
   in
   let modes = Compilation_context.modes cctx in
   (* The [dir] below is used as an object directory without going through
@@ -519,11 +519,11 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
       ; source_modules
       ; compile_info
       }
-  and+ preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
-         ~instrumentation_backend:
-           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+  in
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   ( cctx
   , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

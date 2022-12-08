@@ -31,8 +31,10 @@ https://github.com/ocaml/dune/pull/5457#issuecomment-1084161587).
         coqdep dir/bar.v.d
         coqdep dir/foo.v.d
           coqc dir/foo.{glob,vo}
+  Leaving directory '..'
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
   $ (cd dir && dune coq top --root .. --display short --toplevel echo dir/bar.v)
   Entering directory '..'
+  Leaving directory '..'
   -topfile $TESTCASE_ROOT/_build/default/dir/bar.v -q -w -deprecated-native-compiler-option -w -native-compiler-disabled -native-compiler ondemand -R $TESTCASE_ROOT/_build/default/dir basic
 

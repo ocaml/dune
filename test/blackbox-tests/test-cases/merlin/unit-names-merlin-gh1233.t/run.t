@@ -4,7 +4,7 @@
   $ dune exec ./foo.exe
   42
 
-  $ dune ocaml-merlin --dump-config=$(pwd)
+  $ dune ocaml merlin dump-config $PWD
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -24,7 +24,7 @@
      -short-paths
      -keep-locs)))
 
-  $ dune ocaml-merlin --dump-config=$(pwd)/foo
+  $ dune ocaml merlin dump-config $PWD/foo
   Bar
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -32,10 +32,9 @@
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
    (S
     $TESTCASE_ROOT/foo)
+   (FLG (-open Foo))
    (FLG
-    (-open
-     Foo
-     -w
+    (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40
      -strict-sequence
      -strict-formats
@@ -49,9 +48,7 @@
    (S
     $TESTCASE_ROOT/foo)
    (FLG
-    (-open
-     Foo
-     -w
+    (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40
      -strict-sequence
      -strict-formats

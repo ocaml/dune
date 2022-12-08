@@ -150,6 +150,8 @@ val special_builtin_support : _ t -> Special_builtin_support.t option
 
 val modes : _ t -> Lib_mode.Map.Set.t
 
+val modules : _ t -> Modules.t option Source.t
+
 val implements : _ t -> (Loc.t * Lib_name.t) option
 
 val requires : _ t -> Lib_dep.t list
@@ -236,6 +238,7 @@ val create :
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> modes:Lib_mode.Map.Set.t
+  -> modules:Modules.t option Source.t
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:Special_builtin_support.t option
   -> exit_module:Module_name.t option

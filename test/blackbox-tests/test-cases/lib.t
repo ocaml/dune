@@ -177,6 +177,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
   Error: The variable "lib-private" can only refer to libraries within the same
   project. The current project's name is "test-lib", but the reference is to an
   external library.
+  Leaving directory 'src'
   [1]
 
 ----------------------------------------------------------------------------------

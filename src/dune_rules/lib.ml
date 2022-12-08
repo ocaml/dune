@@ -1945,7 +1945,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :
       ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
       ~modules
   in
-  Dune_package.Lib.of_dune_lib ~info ~modules ~main_module_name
+  Dune_package.Lib.of_dune_lib ~info ~main_module_name
 
 module Local : sig
   type t = private lib

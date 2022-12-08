@@ -13,6 +13,13 @@
  (libraries unix))
 
 (executable
+ (name configure)
+ (preprocess
+  (action
+   (run tail -n +2 %{input-file})))
+ (modules configure))
+
+(executable
  (name bootstrap)
  (modules bootstrap))
 

@@ -1,11 +1,60 @@
 Unreleased
 ----------
 
+- Fix the compilation of modules generated at link time when
+  `implicit_transitive_deps` is enabled (#6642, @rgrinberg)
+
+- Allow `$ dune utop` to load libraries defined in data only directories
+  defined using `(subdir ..)` (#6631, @rgrinberg)
+
+- Format dune files when they are named `dune-file`. This occurs when we enable
+  the alternative file names project option. (#6566, @rgrinberg)
+
+- Do not shadow library interface modules (#6549, fixes #6545, @rgrinberg)
+
+- Move `$ dune ocaml-merlin -dump-config=$dir` to `$ dune ocaml merlin
+  dump-config $dir`. (#6547, @rgrinberg)
+
+- Allow compilation rules to be impacted by `(env ..)` stanzas that modify the
+  environment or set binaries. (#6527, @rgrinberg)
+
 - Fix status line enabled when ANSI colors are forced. (#6503, @MisterDA)
 
 - Coq native mode is now automatically detected by Dune starting with Coq lang
   0.7. `(mode native)` has been deprecated in favour of detection from the
   configuration of Coq. (#6409, @Alizter)
+
+- Print "Leaving Directory" whenever "Entering Directory" is printed. (#6149,
+  fixes #138, @cpitclaudel, @rgrinberg)
+
+- Allow `$ dune ocaml dump-dot-merlin` to run in watch mode. Also this command
+  shouldn't print "Entering Directory" mesages. (#6497, @rgrinberg)
+
+- Fix build with MSVC compiler (#6517, @nojb)
+
+- `dune clean` should no longer fail under Windows due to the inability to
+  remove the `.lock` file. Also, bring the implementation of the global lock
+  under Windows closer to that of Unix. (#6523, @nojb)
+
+- Remove "Entering Directory" messages for `$ dune install`. (#6513,
+  @rgrinberg)
+
+- Add CI testing with MSVC (#6540, fixes #6535, @jonahbeckford)
+
+- Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
+
+- Fix missing dependencies when detecting the kind of C compiler we're using
+  (#6610, fixes #6415, @emillon)
+
+- Allow `(include_subdirs qualified)` for OCaml projects. (#6594, fixes #1084,
+  @rgrinberg)
+
+- Accurately determine merlin configuration for all sources selected with
+  `copy#` and `copy_files#`. The old heuristic of looking for a module in
+  parent directories is removed (#6594, @rgrinberg)
+
+- Fix inline tests with js_of_ocaml and whole program compilation mode enabled
+  (#6645, @hhugo)
 
 3.6.0 (2022-11-14)
 ------------------
@@ -627,11 +676,13 @@ Unreleased
 - Fields allowed in the config file are now also allowed in the
   workspace file (#4426, @jeremiedimino)
 
-- Add options to control how Dune should handle stdout and stderr of
-  actions when then succeed. It is now possible to ask Dune to ignore
-  the stdout of actions when they succeed or to request that the
-  stderr of actions must be empty. This allows to reduce the noise of
-  large builds (#4422, #4515, @jeremiedimino)
+- Add CLI flags `--action-<outputs>-on-success ...` (where `<outputs>` is
+  `stdout` or `stderr`) to control how Dune should handle `stdout` and `stderr` of
+  actions when they succeed. It is now possible to ask Dune to ignore the `stdout`
+  of actions when they succeed or to request that the `stderr` of actions must be
+  empty. It is also possible to set these options in the `config` and/or
+  `dune-workspace` files with `(action_<outputs>_on_success ...)`. This feature
+  allows you to reduce the noise of large builds (#4422, #4515, @jeremiedimino)
 
 - The `@all` alias no longer depends directly on copies of files from the source
   directory (#4461, @nojb)
@@ -3065,7 +3116,7 @@ Unreleased
 
 - Print `Entering directory '...'` when the workspace root is not the
   current directory. This allows Emacs and Vim to know where relative
-  filenames should be interpreted from. Fixes #138
+  filenames should be interpreted from. (fixes #138, @jeremiedimino)
 
 - Fix a bug related to `menhir` stanzas: `menhir` stanzas with a
   `merge_into` field that were in `jbuild` files in sub-directories

@@ -8,23 +8,14 @@ module CC = Compilation_context
    extension is not .ml or when the .ml and .mli are in different directories.
    This flags makes the compiler think there is a .mli file and will the read
    the cmi file rather than create it. *)
-let force_read_cmi ~(cm_kind : Lib_mode.Cm_kind.t) source_file =
-  let args = [ "-intf-suffix"; Path.extension source_file ] in
-  match cm_kind with
-  | Melange Cmj -> "--bs-read-cmi" :: args
-  | Ocaml (Cmo | Cmx | Cmi) | Melange Cmi -> args
+let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
 
 (* Build the cm* if the corresponding source is present, in the case of cmi if
    the mli is not present it is added as additional target to the .cmo
    generation *)
 
-let open_modules modules m =
-  match Modules.alias_for modules m with
-  | None -> []
-  | Some (m : Module.t) -> [ Module.name m ]
-
 let opens modules m =
-  match open_modules modules m with
+  match Modules.local_open modules m with
   | [] -> Command.Args.empty
   | modules ->
     Command.Args.S
@@ -98,12 +89,18 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
   in
   let open Memo.O in
   let* compiler =
-    let+ compiler =
-      match mode with
-      | Ocaml mode -> Memo.return @@ Context.compiler ctx mode
-      | Melange -> Melange_binary.melc sctx ~dir
-    in
-    Result.to_option compiler
+    match mode with
+    | Melange ->
+      let loc = CC.loc cctx in
+      let+ melc = Melange_binary.melc sctx ~loc ~dir in
+      Some melc
+    | Ocaml mode ->
+      Memo.return
+        (let compiler = Context.compiler ctx mode in
+         (* TODO one day remove this silly optimization *)
+         match compiler with
+         | Ok _ as s -> Some s
+         | Error _ -> None)
   in
   (let open Option.O in
   let* compiler = compiler in
@@ -116,7 +113,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
   in
   let open Memo.O in
   let* extra_args, extra_deps, other_targets =
-    if precompiled_cmi then Memo.return (force_read_cmi ~cm_kind src, [], [])
+    if precompiled_cmi then Memo.return (force_read_cmi src, [], [])
     else
       (* If we're compiling an implementation, then the cmi is present *)
       let public_vlib_module = Module.kind m = Impl_vmodule in
@@ -138,7 +135,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
         | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _ ->
           let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
           Memo.return
-            ( force_read_cmi ~cm_kind src
+            ( force_read_cmi src
             , [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind)
               ]
             , [] )
@@ -188,15 +185,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
     else Command.Args.empty
   in
   let flags, sandbox =
-    let flags =
-      Ocaml_flags.get (CC.flags cctx)
-        (match mode with
-        | Ocaml m -> m
-        | Melange ->
-          (* TODO: define Melange default flags somewhere, should melange rules
-             read from [flags] stanza as well? *)
-          Byte)
-    in
+    let flags = Ocaml_flags.get (CC.flags cctx) mode in
     match Module.pp_flags m with
     | None -> (flags, sandbox)
     | Some (pp, sandbox') ->
@@ -231,12 +220,19 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
     |> List.concat_map ~f:(fun p ->
            [ Command.Args.A "-I"; Path (Path.build p) ])
   in
-  Super_context.add_rule sctx (* TODO should be [~dir] *)
-    ~dir:ctx.build_dir ?loc:(CC.loc cctx)
+  Super_context.add_rule sctx
+    ~dir:
+      (let dune_version =
+         Compilation_context.scope cctx
+         |> Scope.project |> Dune_project.dune_version
+       in
+       (* TODO DUNE4 get rid of the old behavior *)
+       if dune_version >= (3, 7) then dir else ctx.build_dir)
+    ?loc:(CC.loc cctx)
     (let open Action_builder.With_targets.O in
     Action_builder.with_no_targets (Action_builder.paths extra_deps)
     >>> Action_builder.with_no_targets other_cm_files
-    >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)
+    >>> Command.run ~dir:(Path.build ctx.build_dir) compiler
           [ Command.Args.dyn flags
           ; cmt_args
           ; Command.Args.S obj_dirs
@@ -326,7 +322,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
           [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi))
           ]))
   in
-  let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
+  let ocaml_flags = Ocaml_flags.get (CC.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
   Super_context.add_rule sctx ~dir
     (Action_builder.With_targets.add ~file_targets:[ output ]
@@ -391,29 +387,32 @@ module Alias_module = struct
           (Module_name.to_string shadowed));
     Buffer.contents b
 
-  let of_modules project modules =
+  let of_modules project modules ~alias_module ~group =
     let main_module = Modules.main_module_name modules |> Option.value_exn in
     let aliases =
-      Modules.for_alias modules
-      |> Module_name.Map.to_list_map ~f:(fun local_name m ->
-             let obj_name = Module.obj_name m in
-             { local_name; obj_name })
+      Module_name.Map.to_list_map group ~f:(fun local_name m ->
+          let obj_name = Module.obj_name m in
+          { local_name; obj_name })
     in
     let shadowed =
       if Dune_project.dune_version project < (3, 5) then []
       else
-        match Modules.alias_module modules with
+        match Modules.lib_interface modules with
         | None -> []
-        | Some alias_module -> [ Module.name alias_module ]
+        | Some m -> (
+          match Module.kind m with
+          | Alias _ -> []
+          | _ -> [ Module.name alias_module ])
     in
     { main_module; aliases; shadowed }
 end
 
-let build_alias_module cctx alias_module =
+let build_alias_module cctx alias_module group =
   let modules = Compilation_context.modules cctx in
   let alias_file () =
     let project = Compilation_context.scope cctx |> Scope.project in
-    Alias_module.of_modules project modules |> Alias_module.to_ml
+    Alias_module.of_modules project modules ~alias_module ~group
+    |> Alias_module.to_ml
   in
   let cctx = Compilation_context.for_alias_module cctx alias_module in
   let sctx = Compilation_context.super_context cctx in
@@ -457,23 +456,27 @@ let build_all cctx =
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Memo.parallel_iter
-    (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
-    ~f:(fun m ->
-      match Module.kind m with
-      | Root -> build_root_module cctx m
-      | Alias -> build_alias_module cctx m
-      | Wrapped_compat ->
-        let cctx = Lazy.force for_wrapped_compat in
-        build_module cctx m
-      | _ ->
-        let cctx =
-          if Modules.is_stdlib_alias modules m then
-            (* XXX it would probably be simpler if the flags were just for this
-               module in the definition of the stanza *)
-            Compilation_context.for_alias_module cctx m
-          else cctx
-        in
-        build_module cctx m)
+    (Modules.fold_no_vlib_with_aliases modules ~init:[]
+       ~normal:(fun x acc -> `Normal x :: acc)
+       ~alias:(fun m group acc -> `Alias (m, group) :: acc))
+    ~f:(function
+      | `Alias (m, group) -> build_alias_module cctx m group
+      | `Normal m -> (
+        match Module.kind m with
+        | Alias _ -> assert false
+        | Root -> build_root_module cctx m
+        | Wrapped_compat ->
+          let cctx = Lazy.force for_wrapped_compat in
+          build_module cctx m
+        | _ ->
+          let cctx =
+            if Modules.is_stdlib_alias modules m then
+              (* XXX it would probably be simpler if the flags were just for this
+                 module in the definition of the stanza *)
+              Compilation_context.for_alias_module cctx m
+            else cctx
+          in
+          build_module cctx m))
 
 let with_empty_intf ~sctx ~dir module_ =
   let name =

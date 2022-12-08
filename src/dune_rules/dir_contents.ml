@@ -9,8 +9,13 @@ open Memo.O
 let loc_of_dune_file st_dir =
   Loc.in_file
     (Path.source
-       (match Source_tree.Dir.dune_file st_dir with
-       | Some d -> Source_tree.Dune_file.path d
+       (match
+          let open Option.O in
+          let* dune_file = Source_tree.Dir.dune_file st_dir in
+          (* TODO not really correct. we need to know the [(subdir ..)] that introduced this *)
+          Source_tree.Dune_file.path dune_file
+        with
+       | Some s -> s
        | None -> Path.Source.relative (Source_tree.Dir.path st_dir) "_unknown_"))
 
 type t =
@@ -207,7 +212,15 @@ end = struct
     let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
   end
 
-  let lookup_vlib sctx ~dir = Load.get sctx ~dir >>= ocaml
+  let lookup_vlib sctx ~current_dir ~loc ~dir =
+    match Path.Build.equal current_dir dir with
+    | true ->
+      User_error.raise ~loc
+        [ Pp.text
+            "Virtual library and its implementation(s) cannot be defined in \
+             the same directory"
+        ]
+    | false -> Load.get sctx ~dir >>= ocaml
 
   let collect_group ~st_dir ~dir =
     let rec walk st_dir ~dir ~local =
@@ -302,7 +315,7 @@ end = struct
                    let dirs = [ (dir, [], files) ] in
                    let ml =
                      Memo.lazy_ (fun () ->
-                         let lookup_vlib = lookup_vlib sctx in
+                         let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
                          let loc = loc_of_dune_file st_dir in
                          let* scope = Scope.DB.find_by_dir dir in
                          Ml_sources.make d ~dir ~scope ~lib_config ~loc
@@ -372,7 +385,7 @@ end = struct
             let dirs = (dir, [], files) :: subdirs in
             let ml =
               Memo.lazy_ (fun () ->
-                  let lookup_vlib = lookup_vlib sctx in
+                  let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
                   let* scope = Scope.DB.find_by_dir dir in
                   Ml_sources.make d ~dir ~scope ~lib_config ~loc ~lookup_vlib
                     ~include_subdirs ~dirs)
@@ -455,10 +468,11 @@ end
 include Load
 
 let modules_of_lib sctx lib =
-  let dir = Lib_info.src_dir (Lib.info lib) in
-  match Path.as_in_build_dir dir with
-  | None -> Memo.return None
-  | Some dir ->
+  let info = Lib.info lib in
+  match Lib_info.modules info with
+  | External modules -> Memo.return modules
+  | Local ->
+    let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
     let* t = get sctx ~dir in
     let+ ml_sources = ocaml t in
     let name = Lib.name lib in

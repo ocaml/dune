@@ -11,14 +11,17 @@ library also has more than one src dir.
   $ touch lib1/bar.ml
   $ mkdir lib2
   $ cat >lib2/dune <<EOF
-  > (library (name lib2) (libraries lib1) (modules ()))
+  > (library
+  >  (name lib2)
+  >  (libraries lib1)
+  >  (modules ()))
   > EOF
 
   $ opam_prefix="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build lib2/.merlin-conf/lib-lib2
-  $ dune ocaml-merlin --dump-config=$(pwd)/lib2
+  $ dune ocaml merlin dump-config $PWD/lib2
   Lib2
   ((STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
@@ -33,9 +36,7 @@ library also has more than one src dir.
    (S
     $TESTCASE_ROOT/lib2)
    (FLG
-    (-open
-     Lib2
-     -w
+    (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40
      -strict-sequence
      -strict-formats

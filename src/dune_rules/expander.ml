@@ -616,23 +616,20 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
           (fun t ->
             Without
               (let open Memo.O in
-              let* bin =
+              let* coqc =
                 Artifacts.Bin.binary t.bin_artifacts_host ~loc:None "coqc"
               in
-              match bin with
-              | Ok bin -> (
-                let+ t = Coq_config.make ~bin in
-                match Coq_config.by_name t s with
-                | None ->
-                  User_error.raise
-                    ~loc:(Dune_lang.Template.Pform.loc source)
-                    [ Pp.textf "Unknown Coq configuration variable %S" s ]
-                | Some v -> (
-                  match v with
-                  | `Int x -> string (string_of_int x)
-                  | `String x -> string x
-                  | `Path x -> Value.L.paths [ x ]))
-              | Error _ -> User_error.raise Pp.[ textf "coqc not found." ]))))
+              let+ t = Coq_config.make ~coqc in
+              match Coq_config.by_name t s with
+              | None ->
+                User_error.raise
+                  ~loc:(Dune_lang.Template.Pform.loc source)
+                  [ Pp.textf "Unknown Coq configuration variable %S" s ]
+              | Some v -> (
+                match v with
+                | `Int x -> string (string_of_int x)
+                | `String x -> string x
+                | `Path x -> Value.L.paths [ x ])))))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =

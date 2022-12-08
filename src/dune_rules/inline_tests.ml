@@ -90,8 +90,7 @@ include Sub_system.Register_end_point (struct
     in
     let main_module =
       let name = Module_name.of_string name in
-      let src_dir = Path.build inline_test_dir in
-      Module.generated ~src_dir name
+      Module.generated ~kind:Impl ~src_dir:inline_test_dir name
     in
     let open Memo.O in
     let modules = Modules.singleton_exe main_module in
@@ -162,13 +161,17 @@ include Sub_system.Register_end_point (struct
           Mode_conf.Set.add info.modes Byte
         else info.modes
       in
-      List.map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
+      List.concat_map (Mode_conf.Set.to_list modes)
+        ~f:(fun (mode : Mode_conf.t) ->
           match mode with
-          | Native -> Exe.Linkage.native
-          | Best -> Exe.Linkage.native_or_custom (Super_context.context sctx)
+          | Native -> [ Exe.Linkage.native ]
+          | Best ->
+            [ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
           | Byte ->
-            Exe.Linkage.custom_with_ext ~ext:".bc" (Super_context.context sctx)
-          | Javascript -> Exe.Linkage.js)
+            [ Exe.Linkage.custom_with_ext ~ext:".bc"
+                (Super_context.context sctx)
+            ]
+          | Javascript -> [ Exe.Linkage.js; Exe.Linkage.byte_for_jsoo ])
     in
     let* (_ : Exe.dep_graphs) =
       let link_args =

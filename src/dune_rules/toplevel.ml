@@ -14,8 +14,7 @@ module Source = struct
     let main_module_name =
       Module_name.of_string_allow_invalid (t.loc, t.name)
     in
-    let src_dir = Path.build t.dir in
-    Module.generated ~src_dir main_module_name
+    Module.generated ~kind:Impl ~src_dir:t.dir main_module_name
 
   let source_path t =
     Module.file (main_module t) ~ml_kind:Impl
@@ -162,8 +161,8 @@ module Stanza = struct
       | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
       | No_preprocessing -> []
     in
-    let preprocess = Module_name.Per_item.for_all toplevel.pps in
-    let* preprocessing =
+    let preprocessing =
+      let preprocess = Module_name.Per_item.for_all toplevel.pps in
       Preprocessing.make sctx ~dir ~expander ~scope ~lib_name:None
         ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
         ~instrumentation_deps:[]

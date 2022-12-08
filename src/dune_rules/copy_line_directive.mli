@@ -1,6 +1,13 @@
 open Import
 
-val action : Path.t -> Path.Build.t -> Action.t
+module DB : sig
+  val follow_while : Path.Build.t -> f:(Path.Build.t -> 'a option) -> 'a option
+end
+
+val action : Context.t -> src:Path.t -> dst:Path.Build.t -> Action.t
 
 val builder :
-  src:Path.t -> dst:Path.Build.t -> Action.Full.t Action_builder.With_targets.t
+     Context.t
+  -> src:Path.t
+  -> dst:Path.Build.t
+  -> Action.Full.t Action_builder.With_targets.t

@@ -18,7 +18,7 @@ val to_dyn : t -> Dyn.t
 val cmt_ext : t -> string
 
 module Dict : sig
-  type kind = t
+  type kind := t
 
   type 'a t =
     { impl : 'a
@@ -43,4 +43,3 @@ module Dict : sig
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 end
-with type kind := t

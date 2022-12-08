@@ -370,11 +370,12 @@ end = struct
   end
 end
 
-let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
+let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   let module A = Action_expander in
   let module E = Action_expander.E in
   let open Action_expander.O in
   let module O (* [O] for "outcome" *) = Action in
+  let expand = expand ~context in
   let expand_run prog args =
     let+ args = A.all (List.map args ~f:E.strings)
     and+ prog, more_args = E.prog_and_args prog in
@@ -434,7 +435,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   | Copy_and_add_line_directive (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
-    Copy_line_directive.action x y
+    Copy_line_directive.action context ~src:x ~dst:y
   | System x ->
     let+ x = E.string x in
     O.System x
@@ -485,8 +486,9 @@ let expand_no_targets t ~loc ~deps:deps_written_by_user ~expander ~what =
     Expander.set_expanding_what expander (User_action_without_targets { what })
   in
   let* { Action_builder.With_targets.build; targets } =
+    let context = Expander.context expander in
     Action_builder.of_memo
-      (Action_expander.run (expand t) ~targets_dir:None ~expander)
+      (Action_expander.run (expand ~context t) ~targets_dir:None ~expander)
   in
   if not (Targets.is_empty targets) then
     User_error.raise ~loc
@@ -529,7 +531,9 @@ let expand t ~loc ~deps:deps_written_by_user ~targets_dir
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
   let+! { Action_builder.With_targets.build; targets } =
-    Action_expander.run (expand t) ~targets_dir:(Some targets_dir) ~expander
+    let context = Expander.context expander in
+    Action_expander.run (expand ~context t) ~targets_dir:(Some targets_dir)
+      ~expander
   in
   let targets =
     match (targets_written_by_user : _ Targets_spec.t) with

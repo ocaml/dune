@@ -200,3 +200,7 @@ val update_execution_parameters :
 val encode : t -> Dune_lang.t list
 
 val dune_site_extension : unit Extension.t
+
+module Melange_syntax : sig
+  val t : Dune_lang.Syntax.t
+end

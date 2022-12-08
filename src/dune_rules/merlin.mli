@@ -15,6 +15,8 @@ module Processed : sig
   (** Type of "processed" merlin information *)
   type t
 
+  val to_dyn : t -> Dyn.t
+
   module Pp_kind : sig
     type t =
       | Pp
@@ -37,7 +39,7 @@ module Processed : sig
       print the resulting configuration in dot-merlin syntax. *)
   val print_generic_dot_merlin : Path.t list -> unit
 
-  val get : t -> filename:string -> Sexp.t option
+  val get : t -> file:Path.Build.t -> Sexp.t option
 end
 
 val make :
@@ -46,6 +48,7 @@ val make :
   -> flags:Ocaml_flags.t
   -> preprocess:
        Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+       Resolve.Memo.t
   -> libname:Lib_name.Local.t option
   -> source_dirs:Path.Source.Set.t
   -> modules:Modules.t

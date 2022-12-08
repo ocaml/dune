@@ -6,6 +6,8 @@
 
 (generate_opam_files true)
 
+(accept_alternative_dune_file_name)
+
 (strict_package_deps false)
 
 ; Reserved for Dune itself. This is to help with the bootstrap

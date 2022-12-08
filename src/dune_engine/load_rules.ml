@@ -918,8 +918,11 @@ end
 module Source_tree_map_reduce =
   Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
 
-let all_direct_targets () =
-  let* root = Source_tree.root ()
+let all_direct_targets dir =
+  let* root =
+    match dir with
+    | None -> Source_tree.root ()
+    | Some dir -> Source_tree.nearest_dir dir
   and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
   Memo.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
       Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all

@@ -5,6 +5,8 @@ module type S = sig
 
   type 'a t
 
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
   (** Create a mapping where all keys map to the same value *)

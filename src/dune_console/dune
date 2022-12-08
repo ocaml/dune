@@ -1,5 +1,5 @@
 (library
  (name dune_console)
- (libraries stdune threads.posix)
+ (libraries stdune dune_notty dune_notty_unix threads.posix)
  (instrumentation
   (backend bisect_ppx)))

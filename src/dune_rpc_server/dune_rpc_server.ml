@@ -426,9 +426,9 @@ module H = struct
           ~menu
       in
       let known_versions =
-        String.Map.of_list_map_exn
-          ~f:(fun (name, gens) -> (name, Int.Set.of_list gens))
-          (V.Builder.registered_procedures builder)
+        V.Builder.registered_procedures builder
+        |> String.Map.of_list_map_exn ~f:(fun (name, gens) ->
+               (name, Int.Set.of_list gens))
       in
       { to_handler; base = { on_init; on_terminate; version }; known_versions }
 
@@ -455,7 +455,7 @@ module H = struct
             match res with
             | Some _ -> ()
             | None ->
-              let _ = Session.cancel_poller session id in
+              let (_ : Poller.t option) = Session.cancel_poller session id in
               ()
           in
           res

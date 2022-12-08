@@ -627,7 +627,7 @@ module Client = struct
       | Notification : 'a Decl.notification -> proc
       | Poll : 'a Procedures.Poll.t -> proc
 
-    let setup_versioning ?(private_menu = []) ~(handler : Handler.t) () =
+    let setup_versioning ~private_menu ~(handler : Handler.t) =
       let module Builder = V.Builder in
       let t : unit Builder.t = Builder.create () in
       (* CR-soon cwong: It is a *huge* footgun that you have to remember to
@@ -670,11 +670,13 @@ module Client = struct
             | Error e -> raise (Abort (Invalid_session e))
             | Ok message -> message)
       in
-      let builder = setup_versioning ~handler ~private_menu () in
-      let on_preemptive_abort = handler.abort in
+      let builder = setup_versioning ~handler ~private_menu in
       let handler_var = Fiber.Ivar.create () in
-      let handler = Fiber.Ivar.read handler_var in
-      let client = create ~initialize ~chan ~handler ~on_preemptive_abort in
+      let client =
+        let on_preemptive_abort = handler.abort in
+        let handler = Fiber.Ivar.read handler_var in
+        create ~initialize ~chan ~handler ~on_preemptive_abort
+      in
       let run () =
         let* init =
           let id = Id.make (List [ Atom "initialize" ]) in

@@ -180,10 +180,10 @@ end = struct
           | Generate_sites_module def ->
             let+ res = Generate_sites_module_rules.setup_rules sctx ~dir def in
             [ res ]
-          | Library { buildable; melange_extra_files; _ } ->
+          | Library { buildable; melange_runtime_deps; _ } ->
             let files = buildable_files buildable in
             let* melange_files =
-              match melange_extra_files with
+              match melange_runtime_deps with
               | None -> Memo.return []
               | Some files ->
                 let+ ps =

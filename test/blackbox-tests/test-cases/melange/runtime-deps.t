@@ -1,4 +1,4 @@
-Test extra_files field
+Test runtime_deps field
 
   $ cat > dune-project <<EOF
   > (lang dune 3.6)
@@ -16,7 +16,7 @@ Test extra_files field
   >  (name lib)
   >  (modules lib)
   >  (modes melange)
-  >  (melange.extra_files assets/file.txt))
+  >  (melange.runtime_deps assets/file.txt))
   > EOF
 
   $ cat > lib.ml <<EOF

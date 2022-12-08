@@ -309,7 +309,7 @@ module Make (Fiber : Fiber_intf.S) = struct
         ~other_key:(proc.decl.method_, proc.decl.key) ~pack:(fun n -> N (f, n))
 
     let lookup_method_generic t ~menu ~table ~key ~method_ k s =
-      match (get t table key, Method_name.Map.find menu method_) with
+      match (get t table key, Menu.find menu method_) with
       | Some subtable, Some version -> s (subtable, version)
       | None, _ ->
         let payload = Sexp.record [ ("method", Atom method_) ] in

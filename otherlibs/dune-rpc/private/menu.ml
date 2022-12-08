@@ -23,6 +23,8 @@ type t = Method_version.t Method_name.Map.t
 
 let default = compatibility_menu
 
+let find = Method_name.Map.find
+
 let select_common ~local_versions ~remote_versions =
   let selected_versions =
     List.filter_map remote_versions ~f:(fun (method_, remote_versions) ->

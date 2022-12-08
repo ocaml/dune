@@ -1,8 +1,10 @@
 open Types
 
-type t = Method_version.t Method_name.Map.t
+type t
 
 val default : t
+
+val find : t -> Method_name.t -> Method_version.t option
 
 (** For each method known by both local and remote, choose the highest common
     version number. Returns [None] if the resulting menu would be empty. *)

@@ -158,6 +158,7 @@ module Session = struct
     { base; handler; pollers = Dune_rpc_private.Id.Map.empty }
 
   let notification t decl n =
+    let* () = Fiber.return () in
     match V.Handler.prepare_notification t.handler decl with
     | Error _ ->
       (* cwong: What to do here? *)

@@ -38,9 +38,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
   | None -> Memo.return ([], [])
   | Some dir ->
     let+ libs, pps =
-      Source_tree_map_reduce.map_reduce
-        dir (* TODO this is wrong under [(subdir ..)] *)
-        ~traverse:{ data_only = false; vendored = true; normal = true }
+      Source_tree_map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all
         ~f:(fun dir ->
           let dir =
             Path.Build.append_source (Super_context.context sctx).build_dir

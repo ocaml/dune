@@ -78,14 +78,13 @@ end = struct
   let load_merlin_file file =
     (* We search for an appropriate merlin configuration in the current
        directory and its parents *)
-    let filename = String.lowercase_ascii (Path.Build.basename file) in
     let rec find_closest path =
       match
         get_merlin_files_paths path
         |> List.find_map ~f:(fun file_path ->
                match Merlin.Processed.load_file file_path with
                | Error msg -> Some (Merlin_conf.make_error msg)
-               | Ok config -> Merlin.Processed.get config ~filename)
+               | Ok config -> Merlin.Processed.get config ~file)
       with
       | Some p -> Some p
       | None -> (

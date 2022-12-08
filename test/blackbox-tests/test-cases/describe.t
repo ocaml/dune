@@ -53,9 +53,9 @@ Setup
   >  (modules_without_implementation main2_aux4))
   > 
   > (executable
-  >   (name main3)
-  >   (libraries cmdliner)
-  >   (modules main3))
+  >  (name main3)
+  >  (libraries cmdliner)
+  >  (modules main3))
   > 
   > (library
   >  (name per_module_pp_lib)

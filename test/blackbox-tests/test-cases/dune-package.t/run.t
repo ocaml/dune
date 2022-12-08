@@ -56,14 +56,17 @@
    (modes byte native)
    (modules
     (wrapped
-     (main_module_name A)
-     (modules ((name X) (obj_name a__X) (visibility public) (impl)))
-     (alias_module
+     (group
+      (alias
+       (name A)
+       (obj_name a)
+       (path A)
+       (visibility public)
+       (kind alias)
+       (impl))
       (name A)
-      (obj_name a)
-      (visibility public)
-      (kind alias)
-      (impl))
+      (modules
+       (module (name X) (obj_name a__X) (path X) (visibility public) (impl))))
      (wrapped true))))
   (library
    (name a.b.c)
@@ -76,14 +79,23 @@
    (obj_dir (private_dir .private))
    (modules
     (wrapped
-     (main_module_name C)
-     (modules ((name Y) (obj_name c__Y) (visibility private) (impl) (intf)))
-     (alias_module
+     (group
+      (alias
+       (name C)
+       (obj_name c)
+       (path C)
+       (visibility public)
+       (kind alias)
+       (impl))
       (name C)
-      (obj_name c)
-      (visibility public)
-      (kind alias)
-      (impl))
+      (modules
+       (module
+        (name Y)
+        (obj_name c__Y)
+        (path Y)
+        (visibility private)
+        (impl)
+        (intf))))
      (wrapped true))))
   (library
    (name a.byte_only)
@@ -94,14 +106,17 @@
    (modes byte)
    (modules
     (wrapped
-     (main_module_name D)
-     (modules ((name Z) (obj_name d__Z) (visibility public) (impl)))
-     (alias_module
+     (group
+      (alias
+       (name D)
+       (obj_name d)
+       (path D)
+       (visibility public)
+       (kind alias)
+       (impl))
       (name D)
-      (obj_name d)
-      (visibility public)
-      (kind alias)
-      (impl))
+      (modules
+       (module (name Z) (obj_name d__Z) (path Z) (visibility public) (impl))))
      (wrapped true))))
 
 Build with "--store-orig-source-dir" profile

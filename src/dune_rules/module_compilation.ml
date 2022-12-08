@@ -14,13 +14,8 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
    the mli is not present it is added as additional target to the .cmo
    generation *)
 
-let open_modules modules m =
-  match Modules.alias_for modules m with
-  | None -> []
-  | Some (m : Module.t) -> [ Module.name m ]
-
 let opens modules m =
-  match open_modules modules m with
+  match Modules.local_open modules m with
   | [] -> Command.Args.empty
   | modules ->
     Command.Args.S
@@ -392,30 +387,32 @@ module Alias_module = struct
           (Module_name.to_string shadowed));
     Buffer.contents b
 
-  let of_modules project modules ~alias_module =
+  let of_modules project modules ~alias_module ~group =
     let main_module = Modules.main_module_name modules |> Option.value_exn in
     let aliases =
-      Modules.for_alias modules
-      |> Module_name.Map.to_list_map ~f:(fun local_name m ->
-             let obj_name = Module.obj_name m in
-             { local_name; obj_name })
+      Module_name.Map.to_list_map group ~f:(fun local_name m ->
+          let obj_name = Module.obj_name m in
+          { local_name; obj_name })
     in
     let shadowed =
       if Dune_project.dune_version project < (3, 5) then []
       else
         match Modules.lib_interface modules with
         | None -> []
-        | Some m ->
-          if Module.kind m = Alias then [] else [ Module.name alias_module ]
+        | Some m -> (
+          match Module.kind m with
+          | Alias _ -> []
+          | _ -> [ Module.name alias_module ])
     in
     { main_module; aliases; shadowed }
 end
 
-let build_alias_module cctx alias_module =
+let build_alias_module cctx alias_module group =
   let modules = Compilation_context.modules cctx in
   let alias_file () =
     let project = Compilation_context.scope cctx |> Scope.project in
-    Alias_module.of_modules project modules ~alias_module |> Alias_module.to_ml
+    Alias_module.of_modules project modules ~alias_module ~group
+    |> Alias_module.to_ml
   in
   let cctx = Compilation_context.for_alias_module cctx alias_module in
   let sctx = Compilation_context.super_context cctx in
@@ -459,23 +456,27 @@ let build_all cctx =
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Memo.parallel_iter
-    (Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc))
-    ~f:(fun m ->
-      match Module.kind m with
-      | Root -> build_root_module cctx m
-      | Alias -> build_alias_module cctx m
-      | Wrapped_compat ->
-        let cctx = Lazy.force for_wrapped_compat in
-        build_module cctx m
-      | _ ->
-        let cctx =
-          if Modules.is_stdlib_alias modules m then
-            (* XXX it would probably be simpler if the flags were just for this
-               module in the definition of the stanza *)
-            Compilation_context.for_alias_module cctx m
-          else cctx
-        in
-        build_module cctx m)
+    (Modules.fold_no_vlib_with_aliases modules ~init:[]
+       ~normal:(fun x acc -> `Normal x :: acc)
+       ~alias:(fun m group acc -> `Alias (m, group) :: acc))
+    ~f:(function
+      | `Alias (m, group) -> build_alias_module cctx m group
+      | `Normal m -> (
+        match Module.kind m with
+        | Alias _ -> assert false
+        | Root -> build_root_module cctx m
+        | Wrapped_compat ->
+          let cctx = Lazy.force for_wrapped_compat in
+          build_module cctx m
+        | _ ->
+          let cctx =
+            if Modules.is_stdlib_alias modules m then
+              (* XXX it would probably be simpler if the flags were just for this
+                 module in the definition of the stanza *)
+              Compilation_context.for_alias_module cctx m
+            else cctx
+          in
+          build_module cctx m))
 
 let with_empty_intf ~sctx ~dir module_ =
   let name =

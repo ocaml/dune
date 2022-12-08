@@ -42,15 +42,23 @@ Check that default implementation data is installed in the dune package file.
    (modes byte native)
    (modules
     (wrapped
-     (main_module_name A)
-     (modules
-      ((name X) (obj_name a__X) (visibility public) (kind virtual) (intf)))
-     (alias_module
+     (group
+      (alias
+       (name A)
+       (obj_name a)
+       (path A)
+       (visibility public)
+       (kind alias)
+       (impl))
       (name A)
-      (obj_name a)
-      (visibility public)
-      (kind alias)
-      (impl))
+      (modules
+       (module
+        (name X)
+        (obj_name a__X)
+        (path X)
+        (visibility public)
+        (kind virtual)
+        (intf))))
      (wrapped true))))
   (library
    (name a.default-impl)
@@ -68,13 +76,21 @@ Check that default implementation data is installed in the dune package file.
    (modes byte native)
    (modules
     (wrapped
-     (main_module_name A)
-     (modules
-      ((name X) (obj_name a__X) (visibility public) (kind impl_vmodule) (impl)))
-     (alias_module
-      (name A__a_default__)
-      (obj_name a__a_default__)
-      (visibility public)
-      (kind alias)
-      (impl))
+     (group
+      (alias
+       (name A__a_default__)
+       (obj_name a__a_default__)
+       (path A__a_default__)
+       (visibility public)
+       (kind alias)
+       (impl))
+      (name A)
+      (modules
+       (module
+        (name X)
+        (obj_name a__X)
+        (path X)
+        (visibility public)
+        (kind impl_vmodule)
+        (impl))))
      (wrapped true))))

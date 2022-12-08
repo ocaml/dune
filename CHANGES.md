@@ -1,6 +1,12 @@
 Unreleased
 ----------
 
+- Fix the compilation of modules generated at link time when
+  `implicit_transitive_deps` is enabled (#6642, @rgrinberg)
+
+- Allow `$ dune utop` to load libraries defined in data only directories
+  defined using `(subdir ..)` (#6631, @rgrinberg)
+
 - Format dune files when they are named `dune-file`. This occurs when we enable
   the alternative file names project option. (#6566, @rgrinberg)
 
@@ -39,6 +45,16 @@ Unreleased
 
 - Fix missing dependencies when detecting the kind of C compiler we're using
   (#6610, fixes #6415, @emillon)
+
+- Allow `(include_subdirs qualified)` for OCaml projects. (#6594, fixes #1084,
+  @rgrinberg)
+
+- Accurately determine merlin configuration for all sources selected with
+  `copy#` and `copy_files#`. The old heuristic of looking for a module in
+  parent directories is removed (#6594, @rgrinberg)
+
+- Fix inline tests with js_of_ocaml and whole program compilation mode enabled
+  (#6645, @hhugo)
 
 3.6.0 (2022-11-14)
 ------------------

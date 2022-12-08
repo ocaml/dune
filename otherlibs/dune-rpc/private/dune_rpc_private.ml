@@ -164,41 +164,14 @@ module Client = struct
       -> 'a fiber
   end
 
-  module Make (Fiber : sig
-    type 'a t
+  module Make
+      (Fiber : Fiber_intf.S) (Chan : sig
+        type t
 
-    val return : 'a -> 'a t
+        val write : t -> Sexp.t list option -> unit Fiber.t
 
-    val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
-    val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-    val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
-
-    module O : sig
-      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-    end
-
-    module Ivar : sig
-      type 'a fiber := 'a t
-
-      type 'a t
-
-      val create : unit -> 'a t
-
-      val read : 'a t -> 'a fiber
-
-      val fill : 'a t -> 'a -> unit fiber
-    end
-  end) (Chan : sig
-    type t
-
-    val write : t -> Sexp.t list option -> unit Fiber.t
-
-    val read : t -> Sexp.t option Fiber.t
-  end) =
+        val read : t -> Sexp.t option Fiber.t
+      end) =
   struct
     open Fiber.O
     module V = Versioned.Make (Fiber)

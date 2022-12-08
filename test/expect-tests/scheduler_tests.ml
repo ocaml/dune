@@ -5,7 +5,7 @@ open Fiber.O
 
 let default =
   { Scheduler.Config.concurrency = 1
-  ; display = { verbosity = Short; status_line = false }
+  ; display = Simple { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No

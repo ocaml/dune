@@ -17,15 +17,16 @@ module Backend : sig
   val compose : t -> t -> t
 
   (** A dumb backend that hides the status line and simply dump the messages to
-      the terminal *)
+      the terminal. *)
   val dumb : t
 
-  (** A backend that just displays the status line in the terminal *)
+  (** A backend that just displays the status line in the terminal. *)
   val progress : unit -> t
 
-  val spawn_thread : ((unit -> unit) -> unit) Fdecl.t
+  (** A backend that uses Notty to display the status line in the terminal. *)
+  val tui : unit -> t
 
-  val threaded : t -> t
+  val spawn_thread : ((unit -> unit) -> unit) Fdecl.t
 end
 
 (** Format and print a user message to the console *)

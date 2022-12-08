@@ -161,7 +161,8 @@ let resolve_targets root (config : Dune_config.t)
     let+ targets =
       Action_builder.List.map user_targets ~f:(resolve_target root ~setup)
     in
-    if config.display.verbosity = Verbose then
+    (match config.display with
+    | Simple { verbosity = Verbose; _ } ->
       Log.info
         [ Pp.text "Actual targets:"
         ; Pp.enumerate
@@ -171,7 +172,8 @@ let resolve_targets root (config : Dune_config.t)
             ~f:(function
               | File p -> Pp.verbatim (Path.to_string_maybe_quoted p)
               | Alias a -> Alias.pp a)
-        ];
+        ]
+    | _ -> ());
     targets
 
 let resolve_targets_exn root config setup user_targets =

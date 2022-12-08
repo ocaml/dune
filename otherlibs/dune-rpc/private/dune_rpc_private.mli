@@ -332,9 +332,9 @@ module Client : sig
       ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
     module Batch : sig
-      type t
+      type client := t
 
-      type client
+      type t
 
       val create : client -> t
 
@@ -349,7 +349,6 @@ module Client : sig
 
       val submit : t -> unit fiber
     end
-    with type client := t
 
     module Handler : sig
       type t

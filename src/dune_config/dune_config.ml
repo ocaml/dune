@@ -262,7 +262,7 @@ let hash = Poly.hash
 let equal a b = Poly.equal a b
 
 let default =
-  { display = { verbosity = Quiet; status_line = not Config.inside_dune }
+  { display = Simple { verbosity = Quiet; status_line = not Config.inside_dune }
   ; concurrency = (if Config.inside_dune then Fixed 1 else Auto)
   ; terminal_persistence = Clear_on_rebuild
   ; sandboxing_preference = []
@@ -370,11 +370,11 @@ let adapt_display config ~output_is_a_tty =
   (* Progress isn't meaningful if inside a terminal (or emacs), so disable it if
      the output is getting piped to a file or something. *)
   let config =
-    if
-      config.display.status_line && (not output_is_a_tty)
-      && not Config.inside_emacs
-    then { config with display = { config.display with status_line = false } }
-    else config
+    match config.display with
+    | Simple { verbosity; _ }
+      when (not output_is_a_tty) && not Config.inside_emacs ->
+      { config with display = Simple { verbosity; status_line = false } }
+    | _ -> config
   in
   (* Similarly, terminal clearing is meaningless if stderr doesn't support ANSI
      codes, so revert-back to Preserve in that case *)
@@ -384,7 +384,10 @@ let adapt_display config ~output_is_a_tty =
 
 let init t =
   Console.Backend.set (Display.console_backend t.display);
-  Log.verbose := t.display.verbosity = Verbose
+  Log.verbose :=
+    match t.display with
+    | Simple { verbosity = Verbose; _ } -> true
+    | _ -> false
 
 let auto_concurrency =
   lazy

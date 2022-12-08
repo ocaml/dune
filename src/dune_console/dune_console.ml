@@ -2,6 +2,8 @@ open Stdune
 
 module Backend = struct
   module type S = sig
+    val start : unit -> unit
+
     val print_user_message : User_message.t -> unit
 
     val set_status_line : User_message.Style.t Pp.t option -> unit
@@ -18,6 +20,8 @@ module Backend = struct
   type t = (module S)
 
   module Dumb_no_flush : S = struct
+    let start () = ()
+
     let finish () = ()
 
     let print_user_message msg =
@@ -61,7 +65,7 @@ module Backend = struct
   module Progress_no_flush : S = struct
     let status_line = ref Pp.nop
 
-    let finish () = ()
+    let start () = ()
 
     let status_line_len = ref 0
 
@@ -93,7 +97,62 @@ module Backend = struct
 
     let reset () = Dumb.reset ()
 
+    let finish () = set_status_line None
+
     let reset_flush_history () = Dumb.reset_flush_history ()
+  end
+
+  type state =
+    { messages : User_message.t Queue.t
+    ; mutable finish_requested : bool
+    ; mutable finished : bool
+    ; mutable status_line : User_message.Style.t Pp.t option
+    }
+
+  module Tui () = struct
+    module Term = Notty_unix.Term
+
+    let term = Term.create ~nosig:false ()
+
+    let start () = Unix.set_nonblock Unix.stdin
+
+    let image ~status_line ~messages =
+      let status =
+        match (status_line : User_message.Style.t Pp.t option) with
+        | None -> []
+        | Some message ->
+          [ Notty_console.image_of_user_message_style_pp message ]
+      in
+      let messages =
+        List.map messages ~f:(fun msg ->
+            Notty_console.image_of_user_message_style_pp (User_message.pp msg))
+      in
+      Notty.I.vcat (messages @ status)
+
+    let render state =
+      let messages = Queue.to_list state.messages in
+      let image = image ~status_line:state.status_line ~messages in
+      Term.image term image
+
+    let handle_user_events ~now ~timeout mutex =
+      let input_fds, _, _ = Unix.select [ Unix.stdin ] [] [] timeout in
+      match input_fds with
+      | [] -> now +. timeout
+      | _ :: _ ->
+        Mutex.lock mutex;
+        (try
+           match Term.event term with
+           | `Key (`ASCII 'q', _) -> Unix.kill (Unix.getpid ()) Sys.sigterm
+           | _ -> ()
+         with Unix.Unix_error ((EAGAIN | EWOULDBLOCK), _, _) -> ());
+        Mutex.unlock mutex;
+        Unix.gettimeofday ()
+
+    let reset () = ()
+
+    let reset_flush_history () = ()
+
+    let finish () = Notty_unix.Term.release term
   end
 
   let dumb = (module Dumb : S)
@@ -104,6 +163,10 @@ module Backend = struct
 
   let compose (module A : S) (module B : S) : (module S) =
     (module struct
+      let start () =
+        A.start ();
+        B.start ()
+
       let print_user_message msg =
         A.print_user_message msg;
         B.print_user_message msg
@@ -131,18 +194,55 @@ module Backend = struct
 
   let spawn_thread = Fdecl.create Dyn.opaque
 
-  let threaded (module Base : S) : (module S) =
+  (** [Threaded] is the interface for user interfaces that are rendered in a
+      separate thread. *)
+  module type Threaded = sig
+    (** [start] is called by the main thread to start broadcasting the user
+        interface. Any initial setup should be performed here. *)
+    val start : unit -> unit
+
+    (** [render state] is called by the main thread to render the current state
+        of the user interface. *)
+    val render : state -> unit
+
+    (** [handle_user_events ~now ~timeout mutex] is called by the main thread to
+        handle user events such as keypresses. The function should return the
+        time at which the next event should be handled. A [mutex] is provided in
+        order to lock the state of the UI.*)
+    val handle_user_events : now:float -> timeout:float -> Mutex.t -> float
+
+    (** [reset] is called by the main thread to reset the user interface. *)
+    val reset : unit -> unit
+
+    (** [reset_flush_history] is called by the main thread to reset and flush
+        the user interface. *)
+    val reset_flush_history : unit -> unit
+
+    (** [finish] is called finally by the main thread to finish broadcasting the
+        user interface. Any locks on the terminal should be released here. *)
+    val finish : unit -> unit
+  end
+
+  module Progress_no_flush_threaded : Threaded = struct
+    include Progress_no_flush
+
+    let render state =
+      while not (Queue.is_empty state.messages) do
+        print_user_message (Queue.pop_exn state.messages)
+      done;
+      set_status_line state.status_line;
+      flush stderr
+
+    let handle_user_events ~now ~timeout _ =
+      Unix.sleepf timeout;
+      now +. timeout
+  end
+
+  let threaded (module Base : Threaded) : (module S) =
     let module T = struct
       let mutex = Mutex.create ()
 
       let finish_cv = Condition.create ()
-
-      type state =
-        { messages : User_message.t Queue.t
-        ; mutable finish_requested : bool
-        ; mutable finished : bool
-        ; mutable status_line : User_message.Style.t Pp.t option
-        }
 
       let state =
         { messages = Queue.create ()
@@ -150,6 +250,11 @@ module Backend = struct
         ; finished = false
         ; finish_requested = false
         }
+
+      let start () =
+        Mutex.lock mutex;
+        Base.start ();
+        Mutex.unlock mutex
 
       let finish () =
         Mutex.lock mutex;
@@ -189,33 +294,45 @@ module Backend = struct
       let open T in
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. 60. in
+      let cleanup () =
+        state.finished <- true;
+        Base.finish ();
+        Condition.broadcast finish_cv;
+        Mutex.unlock mutex
+      in
       try
+        Base.start ();
         while true do
           Mutex.lock mutex;
-          while not (Queue.is_empty state.messages) do
-            Base.print_user_message (Queue.pop_exn state.messages)
-          done;
-          Base.set_status_line state.status_line;
-          flush stderr;
           let finish_requested = state.finish_requested in
           if finish_requested then raise_notrace Exit;
+          Base.render state;
           Mutex.unlock mutex;
           let now = Unix.gettimeofday () in
           let elapsed = now -. !last in
-          if elapsed >= frame_rate then last := now
-          else
-            let delta = frame_rate -. elapsed in
-            Unix.sleepf delta;
-            last := delta +. now
+          let new_time =
+            if elapsed >= frame_rate then
+              Base.handle_user_events ~now ~timeout:0.0 mutex
+            else
+              let delta = frame_rate -. elapsed in
+              Base.handle_user_events ~now ~timeout:delta mutex
+          in
+          last := new_time
         done
-      with Exit ->
-        state.finished <- true;
-        Condition.broadcast finish_cv;
-        Mutex.unlock mutex );
+      with
+      | Exit -> cleanup ()
+      | exn ->
+        let exn = Exn_with_backtrace.capture exn in
+        cleanup ();
+        Exn_with_backtrace.reraise exn );
     (module T)
 
   let progress =
-    let t = lazy (threaded (module Progress_no_flush)) in
+    let t = lazy (threaded (module Progress_no_flush_threaded)) in
+    fun () -> Lazy.force t
+
+  let tui =
+    let t = lazy (threaded (module Tui ())) in
     fun () -> Lazy.force t
 end
 

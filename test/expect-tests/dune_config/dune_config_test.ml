@@ -20,7 +20,7 @@ let%expect_test "cache-check-probability 0.1" =
   parse "(cache-check-probability 0.1)";
   [%expect
     {|
-    { display = { status_line = false; verbosity = Quiet }
+    { display = { verbosity = Quiet; status_line = false }
     ; concurrency = Fixed 1
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
@@ -36,7 +36,7 @@ let%expect_test "cache-storage-mode copy" =
   parse "(cache-storage-mode copy)";
   [%expect
     {|
-    { display = { status_line = false; verbosity = Quiet }
+    { display = { verbosity = Quiet; status_line = false }
     ; concurrency = Fixed 1
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
@@ -52,7 +52,7 @@ let%expect_test "cache-storage-mode hardlink" =
   parse "(cache-storage-mode hardlink)";
   [%expect
     {|
-    { display = { status_line = false; verbosity = Quiet }
+    { display = { verbosity = Quiet; status_line = false }
     ; concurrency = Fixed 1
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []

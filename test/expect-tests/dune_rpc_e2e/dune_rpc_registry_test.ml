@@ -46,7 +46,7 @@ let run =
   let cwd = Sys.getcwd () in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = { verbosity = Quiet; status_line = false }
+    ; display = Simple { verbosity = Quiet; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No

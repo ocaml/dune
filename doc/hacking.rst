@@ -422,7 +422,7 @@ Good:
   no idea what invariant is broken by the ``assert false``. Kindly describe it
   to the reader in the error message.
 
-- Avoid meangingless names like `x`, `a`, `b`, `f`. Try to find a more
+- Avoid meaningless names like `x`, `a`, `b`, `f`. Try to find a more
   descriptive name or just inline it altogether.
 
 - If a module ``Foo`` has a module type ``Foo.S`` and you'd like to avoid
@@ -441,6 +441,17 @@ Good:
 
 - Do not raise ``Invalid_argument``. Instead, raise with ``Code_error.raise``
   which allows to attach more informative payloads than just strings.
+
+- When ignoring the value of a let binding ``let _ = ...``,  we add type
+  annotations to the ignored value ``let (_ : t) = ...``. We do this convention
+  because:
+  
+ * We need to make sure we never ignore ``Fiber.t`` accidentally. Functions that
+   return ``Fiber.t`` are always free of side effects so we need to bind on the
+   result to force the side effect.
+
+ * Whenever a function is changed to return an error via its return value, we
+   want the compiler to notify all the callers that need to be updated.
 
 - To write a ``to_dyn`` function on a record type, use the following pattern. It
   ensures that the pattern matching will break when a field is added. To ignore

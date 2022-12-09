@@ -9,28 +9,9 @@ include Types
 include Exported_types
 module Version_error = Versioned.Version_error
 module Decl = Decl
+module Sub = Sub
 
 module type Fiber = Fiber_intf.S
-
-module Sub = struct
-  type 'a t =
-    { poll : (Id.t, 'a option) Decl.Request.witness
-    ; cancel : Id.t Decl.Notification.witness
-    ; id : Procedures.Poll.Name.t
-    }
-
-  let of_procedure p =
-    let open Procedures.Poll in
-    { poll = (poll p).decl; cancel = (cancel p).decl; id = name p }
-
-  let poll t = t.poll
-
-  let poll_cancel t = t.cancel
-
-  module Id = Procedures.Poll.Name
-
-  let id t = t.id
-end
 
 module Public = struct
   module Request = struct

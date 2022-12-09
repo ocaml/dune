@@ -30,35 +30,37 @@ module Version : sig
   val sexp : t Conv.value
 end
 
-module Method_name : sig
-  type t = string
+module Method : sig
+  module Name : sig
+    type t = string
 
-  val sexp : t Conv.value
+    val sexp : t Conv.value
 
-  module Map = String.Map
-  module Table = String.Table
-end
+    module Map = String.Map
+    module Table = String.Table
+  end
 
-module Method_version : sig
-  type t = int
+  module Version : sig
+    type t = int
 
-  val sexp : t Conv.value
+    val sexp : t Conv.value
 
-  module Set = Int.Set
-  module Map = Int.Map
+    module Set = Int.Set
+    module Map = Int.Map
+  end
 end
 
 module Call : sig
   (** Represents a single rpc call. Request or notification. *)
 
   type t =
-    { method_ : Method_name.t
+    { method_ : Method.Name.t
     ; params : Sexp.t
     }
 
   val to_dyn : t -> Dyn.t
 
-  val create : ?params:Sexp.t -> method_:Method_name.t -> unit -> t
+  val create : ?params:Sexp.t -> method_:Method.Name.t -> unit -> t
 
   val fields : (t, Conv.fields) Conv.t
 end
@@ -207,7 +209,7 @@ end
 
 module Decl : sig
   type 'gen t =
-    { method_ : Method_name.t
+    { method_ : Method.Name.t
     ; key : 'gen Int.Map.t Univ_map.Key.t
     }
 
@@ -228,7 +230,7 @@ module Decl : sig
   end
 
   module Request : sig
-    type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
+    type ('req, 'resp) gen = Method.Version.t * ('req, 'resp) Generation.t
 
     val make_gen :
          req:'wire_req Conv.value
@@ -237,13 +239,13 @@ module Decl : sig
       -> downgrade_req:('req -> 'wire_req)
       -> upgrade_resp:('wire_resp -> 'resp)
       -> downgrade_resp:('resp -> 'wire_resp)
-      -> version:Method_version.t
+      -> version:Method.Version.t
       -> ('req, 'resp) gen
 
     val make_current_gen :
          req:'req Conv.value
       -> resp:'resp Conv.value
-      -> version:Method_version.t
+      -> version:Method.Version.t
       -> ('req, 'resp) gen
 
     type ('req, 'resp) witness = ('req, 'resp) Generation.t t
@@ -254,7 +256,7 @@ module Decl : sig
       }
 
     val make :
-         method_:Method_name.t
+         method_:Method.Name.t
       -> generations:('req, 'resp) gen list
       -> ('req, 'resp) t
 
@@ -262,17 +264,17 @@ module Decl : sig
   end
 
   module Notification : sig
-    type 'payload gen = Method_version.t * ('payload, unit) Generation.t
+    type 'payload gen = Method.Version.t * ('payload, unit) Generation.t
 
     val make_gen :
          conv:'wire Conv.value
       -> upgrade:('wire -> 'model)
       -> downgrade:('model -> 'wire)
-      -> version:Method_version.t
+      -> version:Method.Version.t
       -> 'model gen
 
     val make_current_gen :
-      conv:'model Conv.value -> version:Method_version.t -> 'model gen
+      conv:'model Conv.value -> version:Method.Version.t -> 'model gen
 
     type 'payload witness = ('payload, unit) Generation.t t
 
@@ -282,7 +284,7 @@ module Decl : sig
       }
 
     val make :
-      method_:Method_name.t -> generations:'payload gen list -> 'payload t
+      method_:Method.Name.t -> generations:'payload gen list -> 'payload t
 
     val witness : 'a t -> 'a witness
   end

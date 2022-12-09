@@ -290,7 +290,11 @@ module Client = struct
     let terminate_with_error t message info =
       Fiber.fork_and_join_unit
         (fun () -> terminate t)
-        (fun () -> Code_error.raise message info)
+        (fun () ->
+          (* TODO stop using code error here. If [terminate_with_error] is
+             called, it's because the other side is doing something unexpected,
+             not because we have a bug *)
+          Code_error.raise message info)
 
     let send conn (packet : Packet.Query.t list option) =
       let sexps =
@@ -699,7 +703,7 @@ module Client = struct
                 in
                 Version_negotiation.Request.to_call request
               in
-              let+ resp = request_untyped client (id, supported_versions) in
+              let* resp = request_untyped client (id, supported_versions) in
               (* we don't allow cancelling negotiation *)
               match no_cancel_raise_connection_dead id resp with
               | Error e -> raise (Response.Error.E e)
@@ -711,9 +715,9 @@ module Client = struct
                 | Error e -> raise (Abort (Invalid_session e))
                 | Ok (Selected methods) -> (
                   match Menu.of_list methods with
-                  | Ok m -> m
+                  | Ok m -> Fiber.return m
                   | Error (method_, a, b) ->
-                    Code_error.raise
+                    terminate_with_error client
                       "server responded with invalid version menu"
                       [ ( "duplicated"
                         , Dyn.Tuple [ Dyn.String method_; Dyn.Int a; Dyn.Int b ]

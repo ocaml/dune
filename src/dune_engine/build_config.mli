@@ -110,12 +110,14 @@ type t = private
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
+  ; action_runner : Action_exec.input -> Action_runner.t option
   }
 
 (** Initialise the build system. This must be called before running the build
     system and only once. *)
 val set :
-     stats:Dune_stats.t option
+     action_runner:(Action_exec.input -> Action_runner.t option)
+  -> stats:Dune_stats.t option
   -> contexts:Build_context.t list Memo.Lazy.t
   -> promote_source:
        (   chmod:(int -> int)

@@ -39,7 +39,8 @@ let execution_parameters =
   in
   fun ~dir -> Memo.exec memo dir
 
-let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags : unit =
+let init ?(action_runner = fun _ -> None) ~stats ~sandboxing_preference
+    ~cache_config ~cache_debug_flags () : unit =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst ctx =
     let open Fiber.O in
     let* ctx =
@@ -62,6 +63,7 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags : unit =
     ~rule_generator:(module Gen_rules)
     ~implicit_default_alias ~execution_parameters
     ~source_tree:(module Source_tree)
+    ~action_runner
 
 let get () =
   let open Memo.O in

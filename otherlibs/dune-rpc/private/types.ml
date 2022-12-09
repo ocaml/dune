@@ -251,7 +251,7 @@ end
 
 module Version_negotiation = struct
   module Request = struct
-    type t = Menu of (string * int list) list
+    type t = Menu of (Method.Name.t * Method.Version.t list) list
 
     let method_name = "version_menu"
 
@@ -260,7 +260,7 @@ module Version_negotiation = struct
     let sexp =
       Conv.(
         iso
-          (list (pair string (list int)))
+          (list (pair Method.Name.sexp (list Method.Version.sexp)))
           (fun x -> Menu x)
           (function
             | Menu x -> x))
@@ -279,12 +279,12 @@ module Version_negotiation = struct
   end
 
   module Response = struct
-    type t = Selected of (string * int) list
+    type t = Selected of (Method.Name.t * Method.Version.t) list
 
     let sexp =
       Conv.(
         iso
-          (list (pair string int))
+          (list (pair Method.Name.sexp Method.Version.sexp))
           (fun x -> Selected x)
           (function
             | Selected x -> x))
@@ -391,7 +391,7 @@ end
 module Decl = struct
   type 'gen t =
     { method_ : Method.Name.t
-    ; key : 'gen Int.Map.t Univ_map.Key.t
+    ; key : 'gen Method.Version.Map.t Univ_map.Key.t
     }
 
   module Generation = struct

@@ -287,14 +287,15 @@ module Make (Fiber : Fiber_intf.S) = struct
       register_generic t ~method_:proc.Request.decl.method_
         ~generations:proc.Request.generations ~registry:Declared_requests
         ~other:Impl_requests
-        ~registry_key:(proc.Request.decl.method_, proc.Request.decl.key)
-        ~other_key:proc.Request.decl.method_ ~pack:(fun rc -> rc)
+        ~registry_key:(proc.Request.decl.method_, proc.decl.key)
+        ~other_key:proc.Request.decl.method_ ~pack:Fun.id
 
     let declare_notification t (proc : _ notification) =
       register_generic t ~method_:proc.decl.method_
         ~generations:proc.generations ~registry:Declared_notifs
-        ~other:Impl_notifs ~registry_key:(proc.decl.method_, proc.decl.key)
-        ~other_key:proc.decl.method_ ~pack:(fun nc -> nc)
+        ~other:Impl_notifs
+        ~registry_key:(proc.decl.method_, proc.decl.key)
+        ~other_key:proc.decl.method_ ~pack:Fun.id
 
     let implement_request t (proc : _ request) f =
       register_generic t ~method_:proc.decl.method_
@@ -363,7 +364,7 @@ module Make (Fiber : Fiber_intf.S) = struct
       in
       let prepare_request (type a b) menu (decl : (a, b) Decl.Request.witness) :
           ((a, b) Staged.request, Version_error.t) result =
-        let method_ = decl.Decl.method_ in
+        let method_ = decl.method_ in
         lookup_method_generic t ~menu ~table:Declared_requests
           ~key:(method_, decl.key) ~method_
           (fun e -> Error e)
@@ -388,7 +389,7 @@ module Make (Fiber : Fiber_intf.S) = struct
       let prepare_notification (type a) menu
           (decl : a Decl.Notification.witness) :
           (a Staged.notification, Version_error.t) result =
-        let method_ = decl.Decl.method_ in
+        let method_ = decl.method_ in
         lookup_method_generic t ~menu ~table:Declared_notifs
           ~key:(method_, decl.key) ~method_
           (fun e -> Error e)

@@ -424,9 +424,8 @@ module Decl = struct
           } )
 
     let make_current_gen ~req ~resp ~version =
-      let id x = x in
-      make_gen ~req ~resp ~upgrade_req:id ~downgrade_req:id ~upgrade_resp:id
-        ~downgrade_resp:id ~version
+      make_gen ~req ~resp ~upgrade_req:Fun.id ~downgrade_req:Fun.id
+        ~upgrade_resp:Fun.id ~downgrade_resp:Fun.id ~version
 
     let gen_to_dyn _ = Dyn.String "<generation>"
 
@@ -453,20 +452,18 @@ module Decl = struct
 
     let make_gen (type a b) ~(conv : a Conv.value) ~(upgrade : a -> b)
         ~(downgrade : b -> a) ~version : b gen =
-      let id x = x in
       ( version
       , Generation.T
           { req = conv
           ; resp = Conv.unit
           ; upgrade_req = upgrade
           ; downgrade_req = downgrade
-          ; upgrade_resp = id
-          ; downgrade_resp = id
+          ; upgrade_resp = Fun.id
+          ; downgrade_resp = Fun.id
           } )
 
     let make_current_gen (type a) ~(conv : a Conv.value) ~version : a gen =
-      let id x = x in
-      make_gen ~conv ~upgrade:id ~downgrade:id ~version
+      make_gen ~conv ~upgrade:Fun.id ~downgrade:Fun.id ~version
 
     let gen_to_dyn _ = Dyn.String "<generation>"
 

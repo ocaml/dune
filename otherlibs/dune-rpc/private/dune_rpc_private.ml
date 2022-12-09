@@ -403,10 +403,7 @@ module Client = struct
       | true -> k call
       | false ->
         let err =
-          let payload =
-            Sexp.record
-              [ ("method", Atom call.method_); ("params", call.params) ]
-          in
+          let payload = Conv.to_sexp (Conv.record Call.fields) call in
           Response.Error.create ~payload
             ~message:"notification sent while connection is dead"
             ~kind:Code_error ()

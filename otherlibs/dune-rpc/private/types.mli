@@ -146,9 +146,9 @@ end
 
 module Version_negotiation : sig
   module Request : sig
-    type t = private Menu of (string * int list) list
+    type t = private Menu of (Method.Name.t * Method.Version.t list) list
 
-    val create : (string * int list) list -> t
+    val create : (Method.Name.t * Method.Version.t list) list -> t
 
     val sexp : t Conv.value
 
@@ -210,7 +210,7 @@ end
 module Decl : sig
   type 'gen t =
     { method_ : Method.Name.t
-    ; key : 'gen Int.Map.t Univ_map.Key.t
+    ; key : 'gen Method.Version.Map.t Univ_map.Key.t
     }
 
   module Generation : sig

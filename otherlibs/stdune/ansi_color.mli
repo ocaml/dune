@@ -1,83 +1,45 @@
 module Style : sig
-  type t
+  type t =
+    | Fg_default
+    | Fg_black
+    | Fg_red
+    | Fg_green
+    | Fg_yellow
+    | Fg_blue
+    | Fg_magenta
+    | Fg_cyan
+    | Fg_white
+    | Fg_bright_black
+    | Fg_bright_red
+    | Fg_bright_green
+    | Fg_bright_yellow
+    | Fg_bright_blue
+    | Fg_bright_magenta
+    | Fg_bright_cyan
+    | Fg_bright_white
+    | Bg_default
+    | Bg_black
+    | Bg_red
+    | Bg_green
+    | Bg_yellow
+    | Bg_blue
+    | Bg_magenta
+    | Bg_cyan
+    | Bg_white
+    | Bg_bright_black
+    | Bg_bright_red
+    | Bg_bright_green
+    | Bg_bright_yellow
+    | Bg_bright_blue
+    | Bg_bright_magenta
+    | Bg_bright_cyan
+    | Bg_bright_white
+    | Bold
+    | Dim
+    | Italic
+    | Underline
 
   val to_dyn : t -> Dyn.t
-
-  val fg_default : t
-
-  val fg_black : t
-
-  val fg_red : t
-
-  val fg_green : t
-
-  val fg_yellow : t
-
-  val fg_blue : t
-
-  val fg_magenta : t
-
-  val fg_cyan : t
-
-  val fg_white : t
-
-  val fg_bright_black : t
-
-  val fg_bright_red : t
-
-  val fg_bright_green : t
-
-  val fg_bright_yellow : t
-
-  val fg_bright_blue : t
-
-  val fg_bright_magenta : t
-
-  val fg_bright_cyan : t
-
-  val fg_bright_white : t
-
-  val bg_default : t
-
-  val bg_black : t
-
-  val bg_red : t
-
-  val bg_green : t
-
-  val bg_yellow : t
-
-  val bg_blue : t
-
-  val bg_magenta : t
-
-  val bg_cyan : t
-
-  val bg_white : t
-
-  val bg_bright_black : t
-
-  val bg_bright_red : t
-
-  val bg_bright_green : t
-
-  val bg_bright_yellow : t
-
-  val bg_bright_blue : t
-
-  val bg_bright_magenta : t
-
-  val bg_bright_cyan : t
-
-  val bg_bright_white : t
-
-  val bold : t
-
-  val dim : t
-
-  val italic : t
-
-  val underlined : t
 
   (** Ansi escape sequence that set the terminal style to exactly these styles *)
   val escape_sequence : t list -> string

@@ -26,20 +26,18 @@ end
 module Print_config = struct
   type t = Style.t -> Ansi_color.Style.t list
 
-  open Ansi_color.Style
-
-  let default : Style.t -> _ = function
-    | Loc -> [ bold ]
-    | Error -> [ bold; fg_red ]
-    | Warning -> [ bold; fg_magenta ]
-    | Kwd -> [ bold; fg_blue ]
-    | Id -> [ bold; fg_yellow ]
-    | Prompt -> [ bold; fg_green ]
-    | Hint -> [ italic; fg_white ]
-    | Details -> [ dim; fg_white ]
-    | Ok -> [ dim; fg_green ]
-    | Debug -> [ underlined; fg_bright_cyan ]
-    | Success -> [ bold; fg_green ]
+  let default : t = function
+    | Loc -> [ Bold ]
+    | Error -> [ Bold; Fg_red ]
+    | Warning -> [ Bold; Fg_magenta ]
+    | Kwd -> [ Bold; Fg_blue ]
+    | Id -> [ Bold; Fg_yellow ]
+    | Prompt -> [ Bold; Fg_green ]
+    | Hint -> [ Italic; Fg_white ]
+    | Details -> [ Dim; Fg_white ]
+    | Ok -> [ Dim; Fg_green ]
+    | Debug -> [ Underline; Fg_bright_cyan ]
+    | Success -> [ Bold; Fg_green ]
     | Ansi_styles l -> l
 end
 

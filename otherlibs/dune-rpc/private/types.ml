@@ -42,27 +42,29 @@ module Version = struct
     pair int int
 end
 
-module Method_name = struct
-  type t = string
+module Method = struct
+  module Name = struct
+    type t = string
 
-  let sexp : t Conv.value = Conv.string
+    let sexp : t Conv.value = Conv.string
 
-  module Map = String.Map
-  module Table = String.Table
-end
+    module Map = String.Map
+    module Table = String.Table
+  end
 
-module Method_version = struct
-  type t = int
+  module Version = struct
+    type t = int
 
-  let sexp = Conv.int
+    let sexp = Conv.int
 
-  module Set = Int.Set
-  module Map = Int.Map
+    module Set = Int.Set
+    module Map = Int.Map
+  end
 end
 
 module Call = struct
   type t =
-    { method_ : Method_name.t
+    { method_ : Method.Name.t
     ; params : Sexp.t
     }
 
@@ -76,7 +78,7 @@ module Call = struct
     let open Conv in
     let to_ (method_, params) = { method_; params } in
     let from { method_; params } = (method_, params) in
-    let method_ = field "method" (required Method_name.sexp) in
+    let method_ = field "method" (required Method.Name.sexp) in
     let params = field "params" (required sexp) in
     iso (both method_ params) to_ from
 end
@@ -388,7 +390,7 @@ end
 
 module Decl = struct
   type 'gen t =
-    { method_ : Method_name.t
+    { method_ : Method.Name.t
     ; key : 'gen Int.Map.t Univ_map.Key.t
     }
 
@@ -409,7 +411,7 @@ module Decl = struct
   end
 
   module Request = struct
-    type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
+    type ('req, 'resp) gen = Method.Version.t * ('req, 'resp) Generation.t
 
     let make_gen ~req ~resp ~upgrade_req ~downgrade_req ~upgrade_resp
         ~downgrade_resp ~version =
@@ -448,7 +450,7 @@ module Decl = struct
   end
 
   module Notification = struct
-    type 'payload gen = Method_version.t * ('payload, unit) Generation.t
+    type 'payload gen = Method.Version.t * ('payload, unit) Generation.t
 
     let make_gen (type a b) ~(conv : a Conv.value) ~(upgrade : a -> b)
         ~(downgrade : b -> a) ~version : b gen =

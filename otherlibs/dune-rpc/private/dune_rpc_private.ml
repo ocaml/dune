@@ -544,10 +544,12 @@ module Client = struct
                   n.params
               with
               | Ok msg -> t.on_preemptive_abort msg
-              | Error _ ->
-                Code_error.raise
+              | Error error ->
+                terminate_with_error t
                   "fatal: server aborted connection, but couldn't parse reason"
-                  [ ("reason", Sexp.to_dyn n.params) ]
+                  [ ("reason", Sexp.to_dyn n.params)
+                  ; ("error", Conv.dyn_of_error error)
+                  ]
             else
               let* handler = t.handler in
               let* result = V.Handler.handle_notification handler () n in

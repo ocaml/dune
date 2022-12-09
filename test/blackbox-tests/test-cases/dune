@@ -145,3 +145,7 @@
  (applies_to link-time-transitive-deps)
  (deps
   (package dune-build-info)))
+
+(cram
+ (applies_to version-corruption)
+ (deps %{bin:od} %{bin:git} %{bin:cmp} %{bin:sed} %{bin:chmod}))

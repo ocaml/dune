@@ -10,6 +10,22 @@ module type Fiber = Fiber_intf.S
 
 include module type of Exported_types
 
+module Method : sig
+  module Name : sig
+    type t = string
+
+    module Map = String.Map
+    module Table = String.Table
+  end
+
+  module Version : sig
+    type t = int
+
+    module Set = Int.Set
+    module Map = Int.Map
+  end
+end
+
 module Id : sig
   type t
 
@@ -34,7 +50,7 @@ module Call : sig
     ; params : Csexp.t
     }
 
-  val create : ?params:Csexp.t -> method_:string -> unit -> t
+  val create : ?params:Csexp.t -> method_:Method.Name.t -> unit -> t
 end
 
 module Version_error : sig
@@ -114,9 +130,9 @@ end
 
 module Version_negotiation : sig
   module Request : sig
-    type t = private Menu of (string * int list) list
+    type t = private Menu of (Method.Name.t * Method.Version.t list) list
 
-    val create : (string * int list) list -> t
+    val create : (Method.Name.t * Method.Version.t list) list -> t
 
     val sexp : t Conv.value
 
@@ -126,7 +142,7 @@ module Version_negotiation : sig
   module Response : sig
     type t
 
-    val create : (string * int) list -> t
+    val create : (Method.Name.t * Method.Version.t) list -> t
 
     val sexp : t Conv.value
   end
@@ -143,19 +159,21 @@ module Decl : sig
       -> downgrade_req:('req -> 'wire_req)
       -> upgrade_resp:('wire_resp -> 'resp)
       -> downgrade_resp:('resp -> 'wire_resp)
-      -> version:int
+      -> version:Method.Version.t
       -> ('req, 'resp) gen
 
     val make_current_gen :
          req:'req Conv.value
       -> resp:'resp Conv.value
-      -> version:int
+      -> version:Method.Version.t
       -> ('req, 'resp) gen
 
     type ('a, 'b) t
 
     val make :
-      method_:string -> generations:('req, 'resp) gen list -> ('req, 'resp) t
+         method_:Method.Name.t
+      -> generations:('req, 'resp) gen list
+      -> ('req, 'resp) t
 
     type ('a, 'b) witness
 
@@ -169,14 +187,16 @@ module Decl : sig
          conv:'wire Conv.value
       -> upgrade:('wire -> 'model)
       -> downgrade:('model -> 'wire)
-      -> version:int
+      -> version:Method.Version.t
       -> 'model gen
 
-    val make_current_gen : conv:'a Conv.value -> version:int -> 'a gen
+    val make_current_gen :
+      conv:'a Conv.value -> version:Method.Version.t -> 'a gen
 
     type 'a t
 
-    val make : method_:string -> generations:'payload gen list -> 'payload t
+    val make :
+      method_:Method.Name.t -> generations:'payload gen list -> 'payload t
 
     type 'a witness
 
@@ -421,13 +441,15 @@ module Menu : sig
   (** For each method known by both local and remote, choose the highest common
       version number. Returns [None] if the resulting menu would be empty. *)
   val select_common :
-       local_versions:Int.Set.t String.Map.t
-    -> remote_versions:(string * int list) list
+       local_versions:Method.Version.Set.t Method.Name.Map.t
+    -> remote_versions:(Method.Name.t * Method.Version.t list) list
     -> t option
 
-  val of_list : (string * int) list -> (t, string * int * int) result
+  val of_list :
+       (Method.Name.t * Method.Version.t) list
+    -> (t, Method.Name.t * Method.Version.t * Method.Version.t) result
 
-  val to_list : t -> (string * int) list
+  val to_list : t -> (Method.Name.t * Method.Version.t) list
 
   val to_dyn : t -> Dyn.t
 end
@@ -473,7 +495,8 @@ module Versioned : sig
 
       val create : unit -> 'state t
 
-      val registered_procedures : 'a t -> (string * int list) list
+      val registered_procedures :
+        'a t -> (Method.Name.t * Method.Version.t list) list
 
       (** A *declaration* of a procedure is a claim that this side of the
           session is able to *initiate* that procedure. Correspondingly,

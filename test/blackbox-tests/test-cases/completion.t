@@ -382,3 +382,9 @@ Completion of targets:
   @@default
   @@fmt
   @@src/
+
+  $ ./test 'dune runtest '
+  src
+
+  $ ./test 'dune runtest src/'
+  src/sub

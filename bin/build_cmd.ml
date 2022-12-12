@@ -193,10 +193,32 @@ let runtest_info =
   in
   Cmd.info "runtest" ~doc ~man ~envs:Common.envs
 
+let dir' =
+  let open Stdune in
+  let complete prefix_opt =
+    let base =
+      match prefix_opt with
+      | None -> Path.Source.root
+      | Some prefix -> Path.Source.of_string prefix
+    in
+    let common = Common.default () in
+    let config = Common.init common in
+    Scheduler.go ~common ~config (fun () ->
+        Build_system.run_exn (fun () ->
+            let open Memo.O in
+            let+ dir = Source_tree.nearest_dir base in
+            Source_tree.Dir.sub_dir_paths dir
+            |> Path.Source.Set.to_list_map ~f:Path.Source.to_string))
+  in
+  let open Arg in
+  let string_parser = conv_parser string in
+  let string_printer = conv_printer string in
+  conv ~complete (string_parser, string_printer)
+
 let runtest_term =
   let name_ = Arg.info [] ~docv:"DIR" in
   let+ common = Common.term
-  and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
+  and+ dirs = Arg.(value & pos_all dir' [ "." ] name_) in
   let config = Common.init common in
   let request (setup : Import.Main.build_system) =
     Action_builder.all_unit

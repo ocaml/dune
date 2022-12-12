@@ -3,4 +3,6 @@
  (foreign_stubs
   (language c)
   (names dune_stats_stubs))
- (libraries stdune chrome_trace spawn unix))
+ (libraries stdune chrome_trace spawn unix)
+ (instrumentation
+  (backend bisect_ppx)))

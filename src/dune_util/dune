@@ -10,4 +10,6 @@
   build_path_prefix_map
   dune_sexp
   memo
-  (re_export unix)))
+  (re_export unix))
+ (instrumentation
+  (backend bisect_ppx)))

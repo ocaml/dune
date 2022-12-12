@@ -2,4 +2,6 @@
  (name ocaml_config)
  (public_name dune-private-libs.ocaml-config)
  (libraries stdune)
- (synopsis "[Internal] Interpret the output of 'ocamlc -config'"))
+ (synopsis "[Internal] Interpret the output of 'ocamlc -config'")
+ (instrumentation
+  (backend bisect_ppx)))

@@ -3,6 +3,7 @@ Dune - A Composable Build System
 
 [![Main workflow][workflow-badge]][workflow]
 [![Release][release-img]][release]
+[![Coverage Status][coverall-badge]][coverall]
 
 Dune is a build system for OCaml. It provides a consistent experience and takes
 care of the low-level details of OCaml compilation. You need only to provide a
@@ -140,5 +141,8 @@ Jbuilder projects will continue to be buildable with Dune.
 
 [workflow-badge]: https://github.com/ocaml/dune/actions/workflows/workflow.yml/badge.svg
 [workflow]:       https://github.com/ocaml/dune/actions/workflows/workflow.yml
+[coverall-badge]: https://coveralls.io/repos/github/ocaml/dune/badge.svg?branch=main
+[coverall]:       https://coveralls.io/github/ocaml/dune?branch=main
+
 [release]:        https://github.com/ocaml/dune/releases
 [release-img]:    https://img.shields.io/github/release/ocaml/dune.svg

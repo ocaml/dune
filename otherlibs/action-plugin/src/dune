@@ -3,4 +3,6 @@
  (public_name dune-action-plugin)
  (libraries stdune csexp dune-glob unix dune-rpc.private)
  (synopsis
-  "[Internal] Monadic interface for defining scripts with dynamic or complex sets of dependencies."))
+  "[Internal] Monadic interface for defining scripts with dynamic or complex sets of dependencies.")
+ (instrumentation
+  (backend bisect_ppx)))

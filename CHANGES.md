@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix binary corruption when installing or promoting in parallel (#6669, fixes
+  #6668, @edwintorok)
+
 - Fix running the RPC server on windows (#6721 fixes #6720, @rgrinberg)
 
 - Use colored output with GCC and Clang when compiling C stubs. The

@@ -95,8 +95,6 @@ shared buffer):
   > EOF
 
   $ rm -f gen_lifecycle.bc gen_lifecycle.exe && dune clean && dune build && ./gen_lifecycle.exe >/dev/null
-  Segmentation fault
-  [139]
   $ cp _build/default/gen_lifecycle.exe gen_lifecycle.old
 
   $ dune install -j16 --prefix=./_install 2>/dev/null
@@ -115,8 +113,10 @@ shared buffer):
   - evaluates to: "v0.0.1"
 
   $ ./compare.sh gen_lifecycle.old ./gen_lifecycle.exe
-  28362
+  100
 
   $ ./gen_lifecycle.exe
-  Segmentation fault
-  [139]
+  0.0.1
+  0.0.1
+  0.0.1
+  0.0.1

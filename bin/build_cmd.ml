@@ -35,7 +35,9 @@ let complete s_opt =
                 prefix ^ Path.Source.to_string (Path.Source.relative dir s)
               in
               (* TODO compute the list of aliases defined in a directory *)
-              let alias_names = [ "all"; "runtest"; "default"; "fmt" ] in
+              let alias_names =
+                [ "all"; "runtest"; "default"; "fmt"; "install" ]
+              in
               List.map subdirs ~f:(fun subdir -> prefixed subdir ^ "/")
               @ List.map alias_names ~f:(fun alias -> prefixed alias))))
 

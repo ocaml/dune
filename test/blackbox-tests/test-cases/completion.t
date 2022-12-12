@@ -359,6 +359,7 @@ Completion of targets:
   @all
   @default
   @fmt
+  @install
   @runtest
   @src/
 
@@ -366,6 +367,7 @@ Completion of targets:
   @src/all
   @src/default
   @src/fmt
+  @src/install
   @src/runtest
   @src/sub/
 
@@ -376,5 +378,6 @@ Completion of targets:
   @@all
   @@default
   @@fmt
+  @@install
   @@runtest
   @@src/

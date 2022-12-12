@@ -58,7 +58,8 @@ There is an error when adding runtime_deps to a non-Melange library
   File "dune", line 10, characters 23-38:
   10 |  (melange.runtime_deps assets/file.txt))
                               ^^^^^^^^^^^^^^^
-  Error: Library "lib" is using "melange.runtime_deps", but it is not a Melange
-  library. To fix this error, you must add "melange" to "modes", or remove
-  "melange.runtime_deps".
+  Error: Library "lib" is using the field melange.runtime_deps, but it is not a
+  Melange library.
+  Hint: Add "melange" to modes field
+  Hint: Remove melange.runtime_deps
   [1]

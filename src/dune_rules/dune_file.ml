@@ -586,7 +586,7 @@ module Library = struct
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
-    ; melange_runtime_deps : (Loc.t * String_with_vars.t) option
+    ; melange_runtime_deps : String_with_vars.t option
     }
 
   let decode =
@@ -731,6 +731,24 @@ module Library = struct
                "Only virtual libraries can specify a default implementation."
            ]
        | _ -> ());
+       let melange_runtime_deps =
+         match melange_runtime_deps with
+         | None -> None
+         | Some (loc, melange_runtime_deps) -> (
+           match modes.melange with
+           | None ->
+             User_error.raise ~loc
+               ~hints:
+                 [ Pp.text "Add \"melange\" to modes field"
+                 ; Pp.text "Remove melange.runtime_deps"
+                 ]
+               [ Pp.textf
+                   "Library %S is using the field melange.runtime_deps, but it \
+                    is not a Melange library."
+                   (Lib_name.Local.to_string (snd name))
+               ]
+           | Some _ -> Some melange_runtime_deps)
+       in
        { name
        ; visibility
        ; synopsis

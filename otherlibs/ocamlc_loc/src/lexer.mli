@@ -4,16 +4,18 @@ type lines =
   | Single of int
   | Range of int * int
 
+type code =
+  { code : int
+  ; name : string
+  }
+
 type source =
-  | Code of
-      { code : int
-      ; name : string
-      }
+  | Code of code
   | Alert of string
 
 type severity =
   | Error of source option
-  | Warning of source
+  | Warning of code
   | Alert of
       { name : string
       ; source : string

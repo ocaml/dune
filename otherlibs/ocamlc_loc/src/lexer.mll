@@ -6,13 +6,18 @@
     | Single of int
     | Range of int * int
 
+  type code =
+    { code : int
+    ; name : string
+    }
+
   type source =
-    | Code of { code : int ; name : string }
+    | Code of code
     | Alert of string
 
   type severity =
     | Error of source option
-    | Warning of source
+    | Warning of code
     | Alert of { name : string ; source : string }
 
   type loc =
@@ -62,7 +67,7 @@ and severity = parse
     { Some (Error None, rest) }
   | "Warning" blank (digits as code) blank "[" ([^ ']']+ as name) "]:"
     (blank any as rest)
-    { Some (Warning (Code { code = int_of_string code ; name }), rest)
+    { Some (Warning { code = int_of_string code ; name }, rest)
     }
   | "Error" blank
     "(warning" blank (digits as code) blank "[" ([^ ']']+ as name) "]):"
@@ -74,11 +79,10 @@ and severity = parse
     }
   | (("Error" | "Warning") as kind) " (alert " ([^ ')']+ as alert) "):"
     (blank any as rest)
-    { let alert : source = Alert alert in
-      let res =
+    { let res =
         match kind with
-        | "Error" -> Error (Some alert)
-        | "Warning" -> Warning alert
+        | "Error" -> Error (Some (Alert alert))
+        | "Warning" -> Alert { name = alert ; source = "" }
         | _ -> assert false
       in
       Some (res, rest)

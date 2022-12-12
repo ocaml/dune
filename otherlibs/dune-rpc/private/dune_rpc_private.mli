@@ -400,21 +400,12 @@ module Client : sig
 end
 
 module Packet : sig
-  module Reply : sig
-    type t =
-      | Response of (Id.t * Response.t)
-      | Notification of Call.t
+  type t =
+    | Request of Request.t
+    | Response of (Id.t * Response.t)
+    | Notification of Call.t
 
-    val sexp : t Conv.value
-  end
-
-  module Query : sig
-    type t =
-      | Request of Request.t
-      | Notification of Call.t
-
-    val sexp : t Conv.value
-  end
+  val sexp : t Conv.value
 end
 
 module Version : sig

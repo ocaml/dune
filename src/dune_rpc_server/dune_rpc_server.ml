@@ -43,9 +43,9 @@ module Session = struct
 
   module Stage1 = struct
     type 'a t =
-      { queries : Packet.Query.t Fiber.Stream.In.t
+      { queries : Packet.t Fiber.Stream.In.t
       ; id : Id.t
-      ; send : Packet.Reply.t list option -> unit Fiber.t
+      ; send : Packet.t list option -> unit Fiber.t
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
       ; mutable on_upgrade : (Menu.t -> unit) option
@@ -325,18 +325,16 @@ module H = struct
     let open Fiber.O in
     let* () =
       Fiber.Stream.In.parallel_iter (Session.queries session)
-        ~f:(fun (message : Packet.Query.t) ->
-          let meth_ =
-            match message with
-            | Notification c | Request (_, c) -> c.method_
-          in
+        ~f:(fun (message : Packet.t) ->
           match message with
+          | Response _ ->
+            Code_error.raise "the server is unable to make requests yet" []
           | Notification n ->
             Fiber.Pool.task session.base.pool
-              ~f:(dispatch_notification t stats session meth_ n)
+              ~f:(dispatch_notification t stats session n.method_ n)
           | Request (id, r) ->
             Fiber.Pool.task session.base.pool
-              ~f:(dispatch_request t stats session meth_ r id))
+              ~f:(dispatch_request t stats session r.method_ r id))
     in
     let* () = Session.request_close session in
     let+ () = t.base.on_terminate session in
@@ -349,7 +347,10 @@ module H = struct
     match query with
     | None -> session.send None
     | Some client_versions -> (
-      match (client_versions : Packet.Query.t) with
+      match (client_versions : Packet.t) with
+      | Response _ ->
+        abort session
+          ~message:"Response unexpected. No requests before negotiation"
       | Notification _ ->
         abort session
           ~message:
@@ -384,7 +385,9 @@ module H = struct
     match query with
     | None -> session.send None
     | Some init -> (
-      match (init : Packet.Query.t) with
+      match (init : Packet.t) with
+      | Response _ ->
+        abort session ~message:"Response unexpected. You must initialize first."
       | Notification _ ->
         abort session
           ~message:"Notification unexpected. You must initialize first."
@@ -568,13 +571,13 @@ struct
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
         let session =
           let send packets =
-            Option.map packets ~f:(List.map ~f:(Conv.to_sexp Packet.Reply.sexp))
+            Option.map packets ~f:(List.map ~f:(Conv.to_sexp Packet.sexp))
             |> S.write session
           in
           let queries =
             create_sequence
               (fun () -> S.read session)
-              ~version:(version server) Packet.Query.sexp
+              ~version:(version server) Packet.sexp
           in
           new_session server stats ~queries ~send
         in

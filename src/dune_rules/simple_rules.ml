@@ -234,7 +234,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   | true -> copy_files sctx ~dir ~expander ~src_dir def
   | false -> Memo.return Path.Set.empty
 
-let extra_files_melange sctx ~dir ~expander ~src_dir files =
+let melange_runtime_deps sctx ~dir ~expander ~src_dir files =
   copy_files' sctx ~dir ~expander ~src_dir ~add_line_directive:false ~alias:None
     ~mode:Standard ~files ~syntax_version:(3, 7)
 

@@ -198,7 +198,7 @@ end = struct
                     ]
                 | Some _ ->
                   let+ ps =
-                    Simple_rules.extra_files_melange sctx files ~src_dir ~dir
+                    Simple_rules.melange_runtime_deps sctx files ~src_dir ~dir
                       ~expander
                   in
                   Path.Set.to_list_map ps ~f:Path.basename)

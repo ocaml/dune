@@ -33,7 +33,9 @@ val copy_files :
   -> Copy_files.t
   -> Path.Set.t Memo.t
 
-val extra_files_melange :
+(** Interpret a [(melange.runtime_deps ...)] stanza and return the targets it
+    produces. *)
+val melange_runtime_deps :
      Super_context.t
   -> dir:Path.Build.t
   -> expander:Expander.t

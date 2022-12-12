@@ -28,23 +28,17 @@ let virtual_dst_dir_and_modules sctx ~target_dir ~implements =
   let open Memo.O in
   match implements with
   | None -> Memo.return None
-  | Some vlib ->
+  | Some vlib -> (
     let* vlib = vlib in
     let* vlib = Resolve.read_memo vlib in
-    let name = Lib.name vlib in
+    let* modules = Dir_contents.modules_of_lib sctx vlib in
     let vlib = Lib.Local.of_lib_exn vlib in
     let info = Lib.Local.info vlib in
-    let* dir_contents =
-      let dir = Lib_info.src_dir info in
-      Dir_contents.get sctx ~dir
-    in
-    let* modules =
-      Dir_contents.ocaml dir_contents
-      >>| Ml_sources.modules ~for_:(Library name)
-    in
     let lib_dir = Lib_info.src_dir info in
     let dst_dir = lib_output_dir ~target_dir ~lib_dir in
-    Memo.return (Some (dst_dir, modules))
+    match modules with
+    | None -> Memo.return None
+    | Some modules -> Memo.return (Some (dst_dir, modules)))
 
 let local_of_lib ~loc lib =
   match Lib.Local.of_lib lib with
@@ -86,13 +80,13 @@ let js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext =
               let output = make_js_name ~js_ext ~dst_dir m in
               Dep.file (Path.build output)
             in
-            let virtual_modules =
+            let dst_dir_and_virtual_modules =
               let implements = Lib.implements lib in
               virtual_dst_dir_and_modules sctx ~target_dir ~implements
             in
-            let* virtual_modules = virtual_modules in
+            let* dst_dir_and_virtual_modules = dst_dir_and_virtual_modules in
             let virtual_deps =
-              match virtual_modules with
+              match dst_dir_and_virtual_modules with
               | None -> []
               | Some (dst_dir, virtual_modules) ->
                 let source_modules = Modules.impl_only virtual_modules in
@@ -257,11 +251,11 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
         js_includes ~loc:mel.loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
       in
       let* () =
-        let* virtual_modules =
+        let* virtual_dst_dir_and_modules =
           let implements = Lib.implements lib in
           virtual_dst_dir_and_modules sctx ~target_dir ~implements
         in
-        match virtual_modules with
+        match virtual_dst_dir_and_modules with
         | None -> Memo.return ()
         | Some (dst_dir, virtual_modules) ->
           let source_modules = Modules.impl_only virtual_modules in

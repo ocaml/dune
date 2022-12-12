@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix the parsing of alerts. They will now show up in diagnostics correctly.
+  (#6678, @rginberg)
+
 - Fix the compilation of modules generated at link time when
   `implicit_transitive_deps` is enabled (#6642, @rgrinberg)
 

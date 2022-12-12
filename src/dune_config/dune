@@ -12,4 +12,6 @@
   dune_stats
   dune_util
   spawn)
- (synopsis "Internal Dune library, do not use!"))
+ (synopsis "Internal Dune library, do not use!")
+ (instrumentation
+  (backend bisect_ppx)))

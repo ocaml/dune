@@ -1,3 +1,5 @@
 (library
  (name async_inotify_for_dune)
- (libraries stdune unix ocaml_inotify threads.posix))
+ (libraries stdune unix ocaml_inotify threads.posix)
+ (instrumentation
+  (backend bisect_ppx)))

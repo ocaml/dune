@@ -4,4 +4,6 @@
  (libraries unix)
  (foreign_stubs
   (language c)
-  (names readdir)))
+  (names readdir))
+ (instrumentation
+  (backend bisect_ppx)))

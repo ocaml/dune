@@ -1,6 +1,8 @@
 (library
  (name dune_sexp)
  (synopsis "[Internal] S-expression library")
- (libraries dune_digest stdune))
+ (libraries dune_digest stdune)
+ (instrumentation
+  (backend bisect_ppx)))
 
 (ocamllex lexer versioned_file_first_line)

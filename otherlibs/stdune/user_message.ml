@@ -85,9 +85,10 @@ let pp { loc; paragraphs; hints; annots = _ } =
     | Some { Loc0.start; stop } ->
       let start_c = start.pos_cnum - start.pos_bol in
       let stop_c = stop.pos_cnum - start.pos_bol in
-      Pp.tag Style.Loc
-        (Pp.textf "File %S, line %d, characters %d-%d:" start.pos_fname
-           start.pos_lnum start_c stop_c)
+      Pp.box
+        (Pp.tag Style.Loc
+           (Pp.textf "File %S, line %d, characters %d-%d:" start.pos_fname
+              start.pos_lnum start_c stop_c))
       :: paragraphs
   in
   Pp.vbox (Pp.concat_map paragraphs ~sep:Pp.nop ~f:(fun pp -> Pp.seq pp Pp.cut))

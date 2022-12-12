@@ -14,4 +14,6 @@
   dune_engine
   dune_rules
   dune_lang)
- (synopsis "Dune's rpc server + a usable client"))
+ (synopsis "Dune's rpc server + a usable client")
+ (instrumentation
+  (backend bisect_ppx)))

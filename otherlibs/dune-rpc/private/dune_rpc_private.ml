@@ -9,28 +9,9 @@ include Types
 include Exported_types
 module Version_error = Versioned.Version_error
 module Decl = Decl
+module Sub = Sub
 
 module type Fiber = Fiber_intf.S
-
-module Sub = struct
-  type 'a t =
-    { poll : (Id.t, 'a option) Decl.Request.witness
-    ; cancel : Id.t Decl.Notification.witness
-    ; id : Procedures.Poll.Name.t
-    }
-
-  let of_procedure p =
-    let open Procedures.Poll in
-    { poll = (poll p).decl; cancel = (cancel p).decl; id = name p }
-
-  let poll t = t.poll
-
-  let poll_cancel t = t.cancel
-
-  module Id = Procedures.Poll.Name
-
-  let id t = t.id
-end
 
 module Public = struct
   module Request = struct
@@ -164,41 +145,14 @@ module Client = struct
       -> 'a fiber
   end
 
-  module Make (Fiber : sig
-    type 'a t
+  module Make
+      (Fiber : Fiber_intf.S) (Chan : sig
+        type t
 
-    val return : 'a -> 'a t
+        val write : t -> Sexp.t list option -> unit Fiber.t
 
-    val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
-
-    val parallel_iter : (unit -> 'a option t) -> f:('a -> unit t) -> unit t
-
-    val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
-
-    module O : sig
-      val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-
-      val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-    end
-
-    module Ivar : sig
-      type 'a fiber := 'a t
-
-      type 'a t
-
-      val create : unit -> 'a t
-
-      val read : 'a t -> 'a fiber
-
-      val fill : 'a t -> 'a -> unit fiber
-    end
-  end) (Chan : sig
-    type t
-
-    val write : t -> Sexp.t list option -> unit Fiber.t
-
-    val read : t -> Sexp.t option Fiber.t
-  end) =
+        val read : t -> Sexp.t option Fiber.t
+      end) =
   struct
     open Fiber.O
     module V = Versioned.Make (Fiber)
@@ -317,7 +271,11 @@ module Client = struct
     let terminate_with_error t message info =
       Fiber.fork_and_join_unit
         (fun () -> terminate t)
-        (fun () -> Code_error.raise message info)
+        (fun () ->
+          (* TODO stop using code error here. If [terminate_with_error] is
+             called, it's because the other side is doing something unexpected,
+             not because we have a bug *)
+          Code_error.raise message info)
 
     let send conn (packet : Packet.Query.t list option) =
       let sexps =
@@ -430,10 +388,7 @@ module Client = struct
       | true -> k call
       | false ->
         let err =
-          let payload =
-            Sexp.record
-              [ ("method", Atom call.method_); ("params", call.params) ]
-          in
+          let payload = Conv.to_sexp (Conv.record Call.fields) call in
           Response.Error.create ~payload
             ~message:"notification sent while connection is dead"
             ~kind:Code_error ()
@@ -589,10 +544,12 @@ module Client = struct
                   n.params
               with
               | Ok msg -> t.on_preemptive_abort msg
-              | Error _ ->
-                Code_error.raise
+              | Error error ->
+                terminate_with_error t
                   "fatal: server aborted connection, but couldn't parse reason"
-                  [ ("reason", Sexp.to_dyn n.params) ]
+                  [ ("reason", Sexp.to_dyn n.params)
+                  ; ("error", Conv.dyn_of_error error)
+                  ]
             else
               let* handler = t.handler in
               let* result = V.Handler.handle_notification handler () n in
@@ -654,7 +611,7 @@ module Client = struct
       | Notification : 'a Decl.notification -> proc
       | Poll : 'a Procedures.Poll.t -> proc
 
-    let setup_versioning ?(private_menu = []) ~(handler : Handler.t) () =
+    let setup_versioning ~private_menu ~(handler : Handler.t) =
       let module Builder = V.Builder in
       let t : unit Builder.t = Builder.create () in
       (* CR-soon cwong: It is a *huge* footgun that you have to remember to
@@ -697,11 +654,13 @@ module Client = struct
             | Error e -> raise (Abort (Invalid_session e))
             | Ok message -> message)
       in
-      let builder = setup_versioning ~handler ~private_menu () in
-      let on_preemptive_abort = handler.abort in
+      let builder = setup_versioning ~handler ~private_menu in
       let handler_var = Fiber.Ivar.create () in
-      let handler = Fiber.Ivar.read handler_var in
-      let client = create ~initialize ~chan ~handler ~on_preemptive_abort in
+      let client =
+        let on_preemptive_abort = handler.abort in
+        let handler = Fiber.Ivar.read handler_var in
+        create ~initialize ~chan ~handler ~on_preemptive_abort
+      in
       let run () =
         let* init =
           let id = Id.make (List [ Atom "initialize" ]) in
@@ -727,7 +686,7 @@ module Client = struct
                 in
                 Version_negotiation.Request.to_call request
               in
-              let+ resp = request_untyped client (id, supported_versions) in
+              let* resp = request_untyped client (id, supported_versions) in
               (* we don't allow cancelling negotiation *)
               match no_cancel_raise_connection_dead id resp with
               | Error e -> raise (Response.Error.E e)
@@ -739,9 +698,9 @@ module Client = struct
                 | Error e -> raise (Abort (Invalid_session e))
                 | Ok (Selected methods) -> (
                   match Menu.of_list methods with
-                  | Ok m -> m
+                  | Ok m -> Fiber.return m
                   | Error (method_, a, b) ->
-                    Code_error.raise
+                    terminate_with_error client
                       "server responded with invalid version menu"
                       [ ( "duplicated"
                         , Dyn.Tuple [ Dyn.String method_; Dyn.Int a; Dyn.Int b ]

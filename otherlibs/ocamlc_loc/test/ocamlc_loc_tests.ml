@@ -390,3 +390,23 @@ Error: Unbound value Dune_engine.Build_system.dune_stats
     ; related = []
     ; severity = Error None
     } |}]
+
+let%expect_test "alert" =
+  test_error
+    {|
+File "foo.ml", line 8, characters 9-12:
+8 | let () = A.f
+             ^^^
+Alert deprecated: A.f
+foo
+  |};
+  [%expect {||}];
+  test_error
+    {|
+File "foo.ml", line 8, characters 9-12:
+8 | let () = A.f
+             ^^^
+Alert foobar: A.f
+blah
+|};
+  [%expect {||}]

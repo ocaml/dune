@@ -54,7 +54,7 @@ module Make (Fiber : Fiber_intf.S) : sig
     val create : unit -> 'state t
 
     val registered_procedures :
-      'a t -> (Method_name.t * Method_version.t list) list
+      'a t -> (Method.Name.t * Method.Version.t list) list
 
     (** A *declaration* of a procedure is a claim that this side of the session
         is able to *initiate* that procedure. Correspondingly, *implementing* a

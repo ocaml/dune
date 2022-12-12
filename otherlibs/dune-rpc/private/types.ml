@@ -42,27 +42,29 @@ module Version = struct
     pair int int
 end
 
-module Method_name = struct
-  type t = string
+module Method = struct
+  module Name = struct
+    type t = string
 
-  let sexp : t Conv.value = Conv.string
+    let sexp : t Conv.value = Conv.string
 
-  module Map = String.Map
-  module Table = String.Table
-end
+    module Map = String.Map
+    module Table = String.Table
+  end
 
-module Method_version = struct
-  type t = int
+  module Version = struct
+    type t = int
 
-  let sexp = Conv.int
+    let sexp = Conv.int
 
-  module Set = Int.Set
-  module Map = Int.Map
+    module Set = Int.Set
+    module Map = Int.Map
+  end
 end
 
 module Call = struct
   type t =
-    { method_ : Method_name.t
+    { method_ : Method.Name.t
     ; params : Sexp.t
     }
 
@@ -76,7 +78,7 @@ module Call = struct
     let open Conv in
     let to_ (method_, params) = { method_; params } in
     let from { method_; params } = (method_, params) in
-    let method_ = field "method" (required Method_name.sexp) in
+    let method_ = field "method" (required Method.Name.sexp) in
     let params = field "params" (required sexp) in
     iso (both method_ params) to_ from
 end
@@ -249,7 +251,7 @@ end
 
 module Version_negotiation = struct
   module Request = struct
-    type t = Menu of (string * int list) list
+    type t = Menu of (Method.Name.t * Method.Version.t list) list
 
     let method_name = "version_menu"
 
@@ -258,7 +260,7 @@ module Version_negotiation = struct
     let sexp =
       Conv.(
         iso
-          (list (pair string (list int)))
+          (list (pair Method.Name.sexp (list Method.Version.sexp)))
           (fun x -> Menu x)
           (function
             | Menu x -> x))
@@ -277,12 +279,12 @@ module Version_negotiation = struct
   end
 
   module Response = struct
-    type t = Selected of (string * int) list
+    type t = Selected of (Method.Name.t * Method.Version.t) list
 
     let sexp =
       Conv.(
         iso
-          (list (pair string int))
+          (list (pair Method.Name.sexp Method.Version.sexp))
           (fun x -> Selected x)
           (function
             | Selected x -> x))
@@ -388,8 +390,8 @@ end
 
 module Decl = struct
   type 'gen t =
-    { method_ : Method_name.t
-    ; key : 'gen Int.Map.t Univ_map.Key.t
+    { method_ : Method.Name.t
+    ; key : 'gen Method.Version.Map.t Univ_map.Key.t
     }
 
   module Generation = struct
@@ -409,7 +411,7 @@ module Decl = struct
   end
 
   module Request = struct
-    type ('req, 'resp) gen = Method_version.t * ('req, 'resp) Generation.t
+    type ('req, 'resp) gen = Method.Version.t * ('req, 'resp) Generation.t
 
     let make_gen ~req ~resp ~upgrade_req ~downgrade_req ~upgrade_resp
         ~downgrade_resp ~version =
@@ -424,9 +426,8 @@ module Decl = struct
           } )
 
     let make_current_gen ~req ~resp ~version =
-      let id x = x in
-      make_gen ~req ~resp ~upgrade_req:id ~downgrade_req:id ~upgrade_resp:id
-        ~downgrade_resp:id ~version
+      make_gen ~req ~resp ~upgrade_req:Fun.id ~downgrade_req:Fun.id
+        ~upgrade_resp:Fun.id ~downgrade_resp:Fun.id ~version
 
     let gen_to_dyn _ = Dyn.String "<generation>"
 
@@ -449,24 +450,22 @@ module Decl = struct
   end
 
   module Notification = struct
-    type 'payload gen = Method_version.t * ('payload, unit) Generation.t
+    type 'payload gen = Method.Version.t * ('payload, unit) Generation.t
 
     let make_gen (type a b) ~(conv : a Conv.value) ~(upgrade : a -> b)
         ~(downgrade : b -> a) ~version : b gen =
-      let id x = x in
       ( version
       , Generation.T
           { req = conv
           ; resp = Conv.unit
           ; upgrade_req = upgrade
           ; downgrade_req = downgrade
-          ; upgrade_resp = id
-          ; downgrade_resp = id
+          ; upgrade_resp = Fun.id
+          ; downgrade_resp = Fun.id
           } )
 
     let make_current_gen (type a) ~(conv : a Conv.value) ~version : a gen =
-      let id x = x in
-      make_gen ~conv ~upgrade:id ~downgrade:id ~version
+      make_gen ~conv ~upgrade:Fun.id ~downgrade:Fun.id ~version
 
     let gen_to_dyn _ = Dyn.String "<generation>"
 

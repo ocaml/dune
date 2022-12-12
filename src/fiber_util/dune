@@ -1,4 +1,6 @@
 (library
  (name fiber_util)
  (libraries stdune fiber)
- (synopsis "Utilities for working with the Fiber library"))
+ (synopsis "Utilities for working with the Fiber library")
+ (instrumentation
+  (backend bisect_ppx)))

@@ -12,4 +12,6 @@
   (re_export dune_filesystem_stubs))
  (foreign_stubs
   (language c)
-  (names wait3_stubs)))
+  (names wait3_stubs))
+ (instrumentation
+  (backend bisect_ppx)))

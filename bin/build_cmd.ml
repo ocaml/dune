@@ -25,7 +25,7 @@ let complete s_opt =
               | _ | (exception User_error.E _) -> Memo.return [])
             | Some (alias, recursive) ->
               let open Memo.O in
-              let+ src_dir = best_dir (Path.Source.of_string alias) in
+              let* src_dir = best_dir (Path.Source.of_string alias) in
               let dir = Source_tree.Dir.path src_dir in
               let subdirs =
                 Source_tree.Dir.sub_dir_names src_dir |> String.Set.to_list
@@ -34,9 +34,16 @@ let complete s_opt =
               let prefixed s =
                 prefix ^ Path.Source.to_string (Path.Source.relative dir s)
               in
-              (* TODO compute the list of aliases defined in a directory *)
+              let build_dir =
+                Path.Build.append_source (Path.Build.of_string "default") dir
+              in
+              let+ loaded = Load_rules.load_dir ~dir:(Path.build build_dir) in
               let alias_names =
-                [ "all"; "runtest"; "default"; "fmt"; "install" ]
+                match loaded with
+                | Build { aliases; _ } ->
+                  Dune_engine.Alias.Name.Map.keys aliases
+                  |> List.map ~f:Dune_engine.Alias.Name.to_string
+                | _ -> Code_error.raise "load_dir should return a Build" []
               in
               List.map subdirs ~f:(fun subdir -> prefixed subdir ^ "/")
               @ List.map alias_names ~f:(fun alias -> prefixed alias))))

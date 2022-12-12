@@ -332,7 +332,11 @@ Completion of targets:
   > 
   > (subdir src
   >  (rule
-  >   (write-file target contents)))
+  >   (write-file target contents))
+  > 
+  >  (rule
+  >   (alias custom)
+  >   (action (progn))))
   > 
   > (subdir src/sub
   >  (rule
@@ -357,18 +361,16 @@ Completion of targets:
   
   $ ./test 'dune build @'
   @all
+  @check
   @default
   @fmt
-  @install
-  @runtest
   @src/
 
   $ ./test 'dune build @src/'
   @src/all
+  @src/custom
   @src/default
   @src/fmt
-  @src/install
-  @src/runtest
   @src/sub/
 
   $ ./test 'dune build @src/a'
@@ -376,8 +378,7 @@ Completion of targets:
 
   $ ./test 'dune build @@'
   @@all
+  @@check
   @@default
   @@fmt
-  @@install
-  @@runtest
   @@src/

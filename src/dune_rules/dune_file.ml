@@ -586,7 +586,7 @@ module Library = struct
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
-    ; melange_runtime_deps : String_with_vars.t option
+    ; melange_runtime_deps : (Loc.t * String_with_vars.t) option
     }
 
   let decode =
@@ -668,7 +668,7 @@ module Library = struct
        and+ melange_runtime_deps =
          field_o "melange.runtime_deps"
            (Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
-           >>> String_with_vars.decode)
+           >>> located String_with_vars.decode)
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support

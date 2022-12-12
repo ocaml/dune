@@ -180,17 +180,28 @@ end = struct
           | Generate_sites_module def ->
             let+ res = Generate_sites_module_rules.setup_rules sctx ~dir def in
             [ res ]
-          | Library { buildable; melange_runtime_deps; _ } ->
+          | Library { buildable; melange_runtime_deps; modes; name; _ } ->
             let files = buildable_files buildable in
             let* melange_files =
               match melange_runtime_deps with
               | None -> Memo.return []
-              | Some files ->
-                let+ ps =
-                  Simple_rules.extra_files_melange sctx files ~src_dir ~dir
-                    ~expander
-                in
-                Path.Set.to_list_map ps ~f:Path.basename
+              | Some (loc, files) -> (
+                match modes.melange with
+                | None ->
+                  User_error.raise ~loc
+                    [ Pp.textf
+                        "Library %S is using \"melange.runtime_deps\", but it \
+                         is not a Melange library. To fix this error, you must \
+                         add \"melange\" to \"modes\", or remove \
+                         \"melange.runtime_deps\"."
+                        (Lib_name.Local.to_string (snd name))
+                    ]
+                | Some _ ->
+                  let+ ps =
+                    Simple_rules.extra_files_melange sctx files ~src_dir ~dir
+                      ~expander
+                  in
+                  Path.Set.to_list_map ps ~f:Path.basename)
             in
             Memo.return (files @ melange_files)
           | Executables { buildable; _ } ->

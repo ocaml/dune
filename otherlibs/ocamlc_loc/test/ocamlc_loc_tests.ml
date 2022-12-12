@@ -406,7 +406,7 @@ foo
     { loc = { path = "foo.ml"; line = Single 8; chars = Some (9, 12) }
     ; message = "foo"
     ; related = []
-    ; severity = Alert { name = "deprecated"; source = " A.f" }
+    ; severity = Alert { name = "deprecated"; source = "A.f" }
     } |}];
   test_error
     {|
@@ -422,7 +422,7 @@ blah
     { loc = { path = "foo.ml"; line = Single 8; chars = Some (9, 12) }
     ; message = "blah"
     ; related = []
-    ; severity = Alert { name = "foobar"; source = " A.f" }
+    ; severity = Alert { name = "foobar"; source = "A.f" }
     } |}]
 
 let%expect_test "multiple errors in one file" =
@@ -450,17 +450,17 @@ foo
     { loc = { path = "foo.ml"; line = Single 8; chars = Some (8, 11) }
     ; message = "foo"
     ; related = []
-    ; severity = Alert { name = "deprecated"; source = " A.f" }
+    ; severity = Alert { name = "deprecated"; source = "A.f" }
     }
     >> error 1
     { loc = { path = "foo.ml"; line = Single 9; chars = Some (8, 11) }
     ; message = "foo"
     ; related = []
-    ; severity = Alert { name = "deprecated"; source = " A.f" }
+    ; severity = Alert { name = "deprecated"; source = "A.f" }
     }
     >> error 2
     { loc = { path = "foo.ml"; line = Single 10; chars = Some (8, 11) }
     ; message = "foo"
     ; related = []
-    ; severity = Alert { name = "deprecated"; source = " A.f" }
+    ; severity = Alert { name = "deprecated"; source = "A.f" }
     } |}]

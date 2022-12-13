@@ -41,18 +41,18 @@ let js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext =
        (let* (libs : Lib.t list) = requires_link in
         let project = Scope.project scope in
         let deps_of_lib (lib : Lib.t) =
-          let lib_name = Lib.name lib in
-          let lib = local_of_lib ~loc lib in
-          let info = Lib.Local.info lib in
-          let lib_dir = Lib_info.src_dir info in
-          let dst_dir = lib_output_dir ~target_dir ~lib_dir in
-          let open Memo.O in
-          let modules_group =
-            Dir_contents.get sctx ~dir:lib_dir
-            >>= Dir_contents.ocaml
-            >>| Ml_sources.modules ~for_:(Library lib_name)
+          let dst_dir =
+            let lib_dir =
+              let info = local_of_lib ~loc lib |> Lib.Local.info in
+              Lib_info.src_dir info
+            in
+            lib_output_dir ~target_dir ~lib_dir
           in
-          let* source_modules = modules_group >>| Modules.impl_only in
+          let open Memo.O in
+          let* source_modules =
+            Dir_contents.modules_of_lib sctx lib
+            >>| Option.value_exn >>| Modules.impl_only
+          in
           let of_module m =
             let output = make_js_name ~js_ext ~dst_dir m in
             Dep.file (Path.build output)
@@ -193,18 +193,17 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       let* lib, lib_compile_info =
         Lib.DB.get_compile_info (Scope.libs scope) lib_name
       in
-      let lib = local_of_lib ~loc:mel.loc lib in
-      let info = Lib.Local.info lib in
+      let info = local_of_lib ~loc:mel.loc lib |> Lib.Local.info in
       let loc = Lib_info.loc info in
-      let lib_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
-      let dst_dir = lib_output_dir ~target_dir ~lib_dir in
-      let modules_group =
-        Dir_contents.get sctx ~dir:lib_dir
-        >>= Dir_contents.ocaml
-        >>| Ml_sources.modules ~for_:(Library lib_name)
+      let dst_dir =
+        let lib_dir = Lib_info.src_dir info in
+        lib_output_dir ~target_dir ~lib_dir
       in
-      let* source_modules = modules_group >>| Modules.impl_only in
+      let* source_modules =
+        Dir_contents.modules_of_lib sctx lib
+        >>| Option.value_exn >>| Modules.impl_only
+      in
       let pkg_name = Lib_info.package info in
       let requires_link =
         Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)

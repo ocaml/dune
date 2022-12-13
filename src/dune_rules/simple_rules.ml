@@ -235,8 +235,70 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   | false -> Memo.return Path.Set.empty
 
 let melange_runtime_deps sctx ~dir ~expander ~src_dir files =
-  copy_files' sctx ~dir ~expander ~src_dir ~add_line_directive:false ~alias:None
-    ~mode:Standard ~files ~syntax_version:(3, 7)
+  let loc = String_with_vars.loc files in
+  let* glob_in_src =
+    let+ src_glob = Expander.No_deps.expand_str expander files in
+    if Filename.is_relative src_glob then
+      Path.relative (Path.source src_dir) src_glob ~error_loc:loc
+    else Path.external_ (Path.External.of_string src_glob)
+  in
+  let src_in_src = Path.parent_exn glob_in_src in
+  let glob = Path.basename glob_in_src |> Glob.of_string_exn loc in
+  let src_in_build =
+    match Path.as_in_source_tree src_in_src with
+    | None -> src_in_src
+    | Some src_in_src ->
+      (* HACK / TODO: pick target from melange.emit *)
+      Path.Build.append_source (Path.Build.relative dir "output") src_in_src
+      |> Path.build
+  in
+  let* exists_or_generated =
+    match src_in_src with
+    | In_build_dir _ -> assert false
+    | External ext -> Fs_memo.dir_exists (External ext)
+    | In_source_tree src_in_src -> (
+      Source_tree.dir_exists src_in_src >>= function
+      | true -> Memo.return true
+      | false -> Load_rules.is_under_directory_target src_in_build)
+  in
+  if not exists_or_generated then
+    User_error.raise ~loc
+      [ Pp.textf "Cannot find directory: %s" (Path.to_string src_in_src) ];
+  if Path.equal src_in_src (Path.source src_dir) then
+    User_error.raise ~loc
+      [ Pp.textf
+          "Cannot copy files onto themselves. The format is <dir>/<glob> where \
+           <dir> is not the current directory."
+      ];
+  (* add rules *)
+  let* files =
+    Build_system.eval_pred (File_selector.of_glob ~dir:src_in_build glob)
+  in
+  let dir = Path.as_in_build_dir_exn src_in_build in
+  (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
+     add the corresponding rules, and then to convert the files to [targets]. To
+     do only one traversal we need [Memo.parallel_map_set]. *)
+  let+ () =
+    Memo.parallel_iter_set
+      (module Path.Set)
+      files
+      ~f:(fun file_src ->
+        let basename = Path.basename file_src in
+        let file_dst = Path.Build.relative dir basename in
+        Super_context.add_rule sctx ~loc ~dir
+          ~mode:Dune_engine.Rule.Mode.Standard
+          (Action_builder.copy ~src:file_src ~dst:file_dst))
+  in
+  let targets =
+    Path.Set.map files ~f:(fun file_src ->
+        let basename = Path.basename file_src in
+        let file_dst = Path.Build.relative dir basename in
+        print_endline
+          (Printf.sprintf "file_dst!!! %s" (Path.Build.to_string file_dst));
+
+        Path.build file_dst)
+  in
+  targets
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in

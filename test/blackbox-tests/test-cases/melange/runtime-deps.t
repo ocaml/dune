@@ -20,8 +20,9 @@ Test runtime_deps field
   > EOF
 
   $ cat > lib.ml <<EOF
+  > let dirname = [%bs.raw "__dirname"]
   > let file_path = "assets/file.txt"
-  > let file_content = Node.Fs.readFileSync file_path \`utf8
+  > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let print_file () = Js.log file_content
   > EOF
 
@@ -36,9 +37,33 @@ Test runtime_deps field
 
   $ dune build output/main.js
 
+  $ dune rules _build/default/assets/file.txt
   $ node _build/default/output/main.js
   hello from file
   
+Can use more glob functionality to copy assets
+
+  $ touch assets/foo.png
+  $ touch assets/bar.png
+
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (target output)
+  >  (entries main)
+  >  (libraries lib)
+  >  (module_system commonjs))
+  > 
+  > (library
+  >  (name lib)
+  >  (modules lib)
+  >  (modes melange)
+  >  (melange.runtime_deps assets/*.png assets/file.txt))
+  > EOF
+
+  $ dune build output/main.js
+
+  $ ls _build/default/output
+
 There is an error when adding runtime_deps to a non-Melange library
 
   $ cat > dune <<EOF

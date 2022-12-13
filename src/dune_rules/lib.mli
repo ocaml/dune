@@ -55,11 +55,15 @@ end
 (** See {!Sub_system} *)
 type sub_system = ..
 
+type db
+
 (** For compiling a library or executable *)
 module Compile : sig
   type lib := t
 
   type t
+
+  val for_lib : allow_overlaps:bool -> db -> lib -> t
 
   (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> lib list Resolve.t Memo.Lazy.t
@@ -93,7 +97,7 @@ module DB : sig
   type lib := t
 
   (** A database allow to resolve library names *)
-  type t
+  type t = db
 
   val installed : Context.t -> t Memo.t
 

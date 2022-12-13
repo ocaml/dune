@@ -293,9 +293,6 @@ let melange_runtime_deps sctx ~dir ~expander ~src_dir files =
     Path.Set.map files ~f:(fun file_src ->
         let basename = Path.basename file_src in
         let file_dst = Path.Build.relative dir basename in
-        print_endline
-          (Printf.sprintf "file_dst!!! %s" (Path.Build.to_string file_dst));
-
         Path.build file_dst)
   in
   targets

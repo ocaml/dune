@@ -36,8 +36,12 @@ Test runtime_deps field
   > EOF
 
   $ dune build output/main.js
+  Error: Dependency cycle between:
+     Computing directory contents of _build/default
+  -> Evaluating predicate in directory _build/default/output/assets
+  -> Computing directory contents of _build/default
+  [1]
 
-  $ dune rules _build/default/assets/file.txt
   $ node _build/default/output/main.js
   hello from file
   

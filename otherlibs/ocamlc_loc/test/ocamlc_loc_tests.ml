@@ -400,7 +400,14 @@ File "foo.ml", line 8, characters 9-12:
 Alert deprecated: A.f
 foo
   |};
-  [%expect {||}];
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "foo.ml"; line = Single 8; chars = Some (9, 12) }
+    ; message = "foo"
+    ; related = []
+    ; severity = Alert { name = "deprecated"; source = " A.f" }
+    } |}];
   test_error
     {|
 File "foo.ml", line 8, characters 9-12:
@@ -409,4 +416,11 @@ File "foo.ml", line 8, characters 9-12:
 Alert foobar: A.f
 blah
 |};
-  [%expect {||}]
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "foo.ml"; line = Single 8; chars = Some (9, 12) }
+    ; message = "blah"
+    ; related = []
+    ; severity = Alert { name = "foobar"; source = " A.f" }
+    } |}]

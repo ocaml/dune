@@ -21,6 +21,10 @@ type loc =
 type severity =
   | Error of source option
   | Warning of source
+  | Alert of
+      { name : string
+      ; source : string
+      }
 
 type report =
   { loc : loc

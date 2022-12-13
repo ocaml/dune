@@ -14,6 +14,10 @@ type source =
 type severity =
   | Error of source option
   | Warning of source
+  | Alert of
+      { name : string
+      ; source : string
+      }
 
 type loc =
   { chars : (int * int) option

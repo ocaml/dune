@@ -39,6 +39,7 @@ module Fpath = Fpath
 module Univ_map = Univ_map
 module Loc = Loc
 module Env = Env
+module Env_path = Env_path
 module Proc = Proc
 module Type_eq = Type_eq
 module Nothing = Nothing

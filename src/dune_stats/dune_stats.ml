@@ -144,7 +144,7 @@ module Fd_count = struct
     | This of int
 
   let lsof =
-    let prog = lazy (Bin.which ~path:(Env.path Env.initial) "lsof") in
+    let prog = lazy (Bin.which ~path:(Env_path.path Env.initial) "lsof") in
     (* note: we do not use the Process module here, because it would create a
        circular dependency *)
     fun () ->

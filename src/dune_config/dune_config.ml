@@ -401,7 +401,7 @@ let auto_concurrency =
       let rec loop = function
         | [] -> 1
         | (prog, args) :: rest -> (
-          match Bin.which ~path:(Env.path Env.initial) prog with
+          match Bin.which ~path:(Env_path.path Env.initial) prog with
           | None -> loop rest
           | Some prog -> (
             let prog = Path.to_string prog in

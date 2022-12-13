@@ -20,7 +20,7 @@ let descr s f =
   res
 
 let sh =
-  let path = Env.path Env.initial in
+  let path = Env_path.path Env.initial in
   Option.value_exn (Bin.which ~path "sh")
 
 let in_dir name f =

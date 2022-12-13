@@ -203,7 +203,7 @@ let exec_echo stdout_to str =
   Fiber.return (output_string (Process.Io.out_channel stdout_to) str)
 
 let bash_exn =
-  let bin = lazy (Bin.which ~path:(Env.path Env.initial) "bash") in
+  let bin = lazy (Bin.which ~path:(Env_path.path Env.initial) "bash") in
   fun ~loc ~needed_to ->
     match Lazy.force bin with
     | Some path -> path

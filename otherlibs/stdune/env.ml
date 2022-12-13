@@ -95,13 +95,4 @@ let of_string_map m =
 
 let iter t = Map.iteri t.vars
 
-let cons_path t ~dir =
-  make
-    (Map.update t.vars "PATH" ~f:(fun _PATH -> Some (Bin.cons_path dir ~_PATH)))
-
-let path env =
-  match get env "PATH" with
-  | None -> []
-  | Some s -> Bin.parse_path s
-
 let to_map t = t.vars

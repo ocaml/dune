@@ -341,7 +341,7 @@ let command ~root ~backend =
 let fswatch_backend () =
   let try_fswatch () =
     Option.map
-      (Bin.which ~path:(Env.path Env.initial) "fswatch")
+      (Bin.which ~path:(Env_path.path Env.initial) "fswatch")
       ~f:(fun fswatch -> `Fswatch fswatch)
   in
   match try_fswatch () with

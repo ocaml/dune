@@ -1,0 +1,13 @@
+(cram
+ (deps %{bin:node} %{bin:js_of_ocaml})
+ (alias runtest-js))
+
+(cram
+ (applies_to inline-tests)
+ (deps
+  (package ppx_expect)))
+
+(cram
+ (applies_to build-info)
+ (deps
+  (package dune-build-info)))

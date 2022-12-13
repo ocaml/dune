@@ -13,6 +13,7 @@
   type severity =
     | Error of source option
     | Warning of source
+    | Alert of { name : string ; source : string }
 
   type loc =
     { chars : (int * int) option
@@ -45,6 +46,8 @@ let range = digits "-" digits
 
 let any = _ *
 
+let alert_name = ['a' - 'z'] ['A' - 'Z' 'a' - 'z' '0' - '9' '_']*
+
 rule skip_excerpt = parse
   | blank digits " | " [^ '\n']* "\n"?
     { `Continue }
@@ -66,9 +69,12 @@ and severity = parse
     (blank any as rest)
     { Some (Error (Some (Code { code = int_of_string code ; name })), rest)
     }
+    | "Alert " blank (alert_name as name) ":" (any as source)
+    {  Some (Alert { name ; source }, "")
+    }
   | (("Error" | "Warning") as kind) " (alert " ([^ ')']+ as alert) "):"
     (blank any as rest)
-    { let alert = Alert alert in
+    { let alert : source = Alert alert in
       let res =
         match kind with
         | "Error" -> Error (Some alert)

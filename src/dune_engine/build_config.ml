@@ -11,16 +11,36 @@ module Context_or_install = struct
     | Context s -> Context_name.to_dyn s
 end
 
-type rules =
-  { build_dir_only_sub_dirs : Subdir_set.t
-  ; directory_targets : Loc.t Path.Build.Map.t
-  ; rules : Rules.t Memo.t
-  }
+module Rules = struct
+  type t =
+    { build_dir_only_sub_dirs : Subdir_set.t
+    ; directory_targets : Loc.t Path.Build.Map.t
+    ; rules : Rules.t Memo.t
+    }
+
+  let empty =
+    { build_dir_only_sub_dirs = Subdir_set.empty
+    ; directory_targets = Path.Build.Map.empty
+    ; rules = Memo.return Rules.empty
+    }
+
+  let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
+    { build_dir_only_sub_dirs =
+        Subdir_set.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+    ; directory_targets =
+        Path.Build.Map.union_exn r.directory_targets directory_targets
+    ; rules =
+        (let open Memo.O in
+        let+ r = r.rules
+        and+ r' = rules in
+        Rules.union r r')
+    }
+end
 
 type gen_rules_result =
-  | Rules of rules
+  | Rules of Rules.t
   | Unknown_context_or_install
-  | Redirect_to_parent
+  | Redirect_to_parent of Rules.t
 
 module type Rule_generator = sig
   val gen_rules :

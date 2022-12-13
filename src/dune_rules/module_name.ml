@@ -94,6 +94,8 @@ module Unique = struct
 
   let of_string s = of_name_assuming_needs_no_mangling (of_string s)
 
+  let to_string s = s
+
   let decode =
     let open Dune_lang.Decoder in
     let+ s = Dune_lang.Decoder.string in
@@ -117,5 +119,33 @@ module Unique = struct
   module Set = Set
 end
 
-let wrap t ~with_ =
-  sprintf "%s__%s" (Unique.of_name_assuming_needs_no_mangling with_) t
+module Path = struct
+  module T = struct
+    type nonrec t = t list
+
+    let to_dyn = Dyn.list to_dyn
+
+    let compare = List.compare ~compare
+
+    let to_string t = List.map ~f:to_string t |> String.concat ~sep:"."
+  end
+
+  include T
+
+  let uncapitalize s = to_string s |> String.uncapitalize
+
+  module C = Comparable.Make (T)
+  module Set = C.Set
+  module Map = C.Map
+
+  let wrap path =
+    Unique.of_name_assuming_needs_no_mangling @@ String.concat ~sep:"__" path
+
+  let append_double_underscore t = t @ [ "" ]
+
+  let encode (t : t) = List.map t ~f:encode
+
+  let decode = Dune_lang.Decoder.(repeat decode)
+end
+
+let wrap t ~with_ = Path.wrap (t :: with_)

@@ -12,33 +12,40 @@ module Context_or_install : sig
   val to_dyn : t -> Dyn.t
 end
 
-(** Rules for a given directory. This type is structured so that all generated
-    sub-directories (either directory targets or internal generated directories
-    such as [.ppx]) are known immediately, while the actual build rules are
-    computed in a second stage. The staging is to avoid computation cycles
-    created during the computation of the rules. *)
-type rules =
-  { build_dir_only_sub_dirs : Subdir_set.t
-        (** Sub-directories that don't exist in the source tree but exists in
-            the build directory. This is for internal directories such as
-            [.dune] or [.ppx]. *)
-  ; directory_targets : Loc.t Path.Build.Map.t
-        (** Directories that are target of a rule. For each directory target,
-            give the location of the rule that generates it. The keys in this
-            map must correspond exactly to the set of directory targets that
-            will be produces by [rules]. The values should be the locations of
-            the rules that are going to produce these targets. However, it's ok
-            to have an approximate location as the rule that produces the target
-            will be responsible for producing the final location*)
-  ; rules : Rules.t Memo.t
-  }
+module Rules : sig
+  (** Rules for a given directory. This type is structured so that all generated
+      sub-directories (either directory targets or internal generated
+      directories such as [.ppx]) are known immediately, while the actual build
+      rules are computed in a second stage. The staging is to avoid computation
+      cycles created during the computation of the rules. *)
+
+  type t =
+    { build_dir_only_sub_dirs : Subdir_set.t
+          (** Sub-directories that don't exist in the source tree but exists in
+              the build directory. This is for internal directories such as
+              [.dune] or [.ppx]. *)
+    ; directory_targets : Loc.t Path.Build.Map.t
+          (** Directories that are target of a rule. For each directory target,
+              give the location of the rule that generates it. The keys in this
+              map must correspond exactly to the set of directory targets that
+              will be produces by [rules]. The values should be the locations of
+              the rules that are going to produce these targets. However, it's
+              ok to have an approximate location as the rule that produces the
+              target will be responsible for producing the final location*)
+    ; rules : Rules.t Memo.t
+    }
+
+  val empty : t
+
+  (** Raises a code error if there are multiple rules for the same target. *)
+  val combine_exn : t -> t -> t
+end
 
 type gen_rules_result =
-  | Rules of rules
+  | Rules of Rules.t
   | Unknown_context_or_install
-  | Redirect_to_parent
-      (** [Redirect_to_parent] means that the parent will generate the rules for
-          this directory. *)
+  | Redirect_to_parent of Rules.t
+      (** [Redirect_to_parent rules] lets the parent add more rules to [rules]. *)
 
 module type Rule_generator = sig
   (** The rule generator.

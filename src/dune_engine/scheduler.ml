@@ -1184,6 +1184,8 @@ module Worker = struct
     | Error (`Exn e) -> Exn_with_backtrace.reraise e
 end
 
+let () = Fdecl.set Csexp_rpc.worker (module Worker)
+
 let flush_file_watcher t =
   match t.file_watcher with
   | None -> Fiber.return ()

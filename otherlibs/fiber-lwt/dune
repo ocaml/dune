@@ -1,3 +1,5 @@
 (library
  (name fiber_lwt)
- (libraries stdune lwt fiber))
+ (libraries stdune lwt fiber)
+ (instrumentation
+  (backend bisect_ppx)))

@@ -2143,11 +2143,16 @@ module Include_subdirs = struct
     | Include of qualification
 
   let decode ~enable_qualified =
-    let opts_list =
-      [ ("no", No); ("unqualified", Include Unqualified) ]
-      @ if enable_qualified then [ ("qualified", Include Qualified) ] else []
-    in
-    enum opts_list
+    sum
+      [ ("no", return No)
+      ; ("unqualified", return (Include Unqualified))
+      ; ( "qualified"
+        , let+ () =
+            if enable_qualified then return ()
+            else Syntax.since Stanza.syntax (3, 7)
+          in
+          Include Qualified )
+      ]
 end
 
 module Library_redirect = struct

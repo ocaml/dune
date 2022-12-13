@@ -11,7 +11,10 @@ library also has more than one src dir.
   $ touch lib1/bar.ml
   $ mkdir lib2
   $ cat >lib2/dune <<EOF
-  > (library (name lib2) (libraries lib1) (modules ()))
+  > (library
+  >  (name lib2)
+  >  (libraries lib1)
+  >  (modules ()))
   > EOF
 
   $ opam_prefix="$(ocamlc -where)"
@@ -33,9 +36,7 @@ library also has more than one src dir.
    (S
     $TESTCASE_ROOT/lib2)
    (FLG
-    (-open
-     Lib2
-     -w
+    (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40
      -strict-sequence
      -strict-formats

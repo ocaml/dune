@@ -6,6 +6,7 @@ module Style = struct
     | Kwd
     | Id
     | Prompt
+    | Hint
     | Details
     | Ok
     | Debug
@@ -34,6 +35,7 @@ module Print_config = struct
     | Kwd -> [ bold; fg_blue ]
     | Id -> [ bold; fg_yellow ]
     | Prompt -> [ bold; fg_green ]
+    | Hint -> [ italic; fg_white ]
     | Details -> [ dim; fg_white ]
     | Ok -> [ dim; fg_green ]
     | Debug -> [ underlined; fg_bright_cyan ]
@@ -73,7 +75,8 @@ let pp { loc; paragraphs; hints; annots = _ } =
     | [] -> paragraphs
     | _ ->
       List.append paragraphs
-        (List.map hints ~f:(fun hint -> Pp.verbatim "Hint:" ++ Pp.space ++ hint))
+        (List.map hints ~f:(fun hint ->
+             Pp.tag Style.Hint (Pp.verbatim "Hint:") ++ Pp.space ++ hint))
   in
   let paragraphs = List.map paragraphs ~f:Pp.box in
   let paragraphs =

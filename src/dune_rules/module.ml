@@ -18,7 +18,10 @@ module File = struct
 
   let to_dyn { path; dialect } =
     let open Dyn in
-    record [ ("path", Path.to_dyn path); ("dialect", Dialect.to_dyn dialect) ]
+    record
+      [ ("path", Path.to_dyn path)
+      ; ("dialect", Dyn.string @@ Dialect.name dialect)
+      ]
 end
 
 module Kind = struct
@@ -26,35 +29,58 @@ module Kind = struct
     | Intf_only
     | Virtual
     | Impl
-    | Alias
+    | Alias of Module_name.Path.t
     | Impl_vmodule
     | Wrapped_compat
     | Root
 
-  let all =
-    [ (Intf_only, "intf_only")
-    ; (Virtual, "virtual")
-    ; (Impl, "impl")
-    ; (Alias, "alias")
-    ; (Impl_vmodule, "impl_vmodule")
-    ; (Wrapped_compat, "wrapped_compat")
-    ; (Root, "root")
-    ]
+  let to_dyn =
+    let open Dyn in
+    function
+    | Intf_only -> variant "Intf_only" []
+    | Virtual -> variant "Virtual" []
+    | Impl -> variant "Impl" []
+    | Alias path -> variant "Alias" [ Module_name.Path.to_dyn path ]
+    | Impl_vmodule -> variant "Impl_vmodule" []
+    | Wrapped_compat -> variant "Wrapped_compat" []
+    | Root -> variant "Root" []
 
-  let rev_all = List.rev_map ~f:(fun (x, y) -> (y, x)) all
-
-  let to_string s = Option.value_exn (List.assoc all s)
-
-  let to_dyn t = Dyn.string (to_string t)
-
-  let encode t = Dune_lang.Encoder.string (to_string t)
+  let encode =
+    let open Dune_lang.Encoder in
+    function
+    | Intf_only -> string "intf_only"
+    | Virtual -> string "virtual"
+    | Impl -> string "impl"
+    | Alias path -> (
+      match path with
+      | [] -> string "alias"
+      | _ :: _ ->
+        constr "alias" (fun x -> List (Module_name.Path.encode x)) path)
+    | Impl_vmodule -> string "impl_vmodule"
+    | Wrapped_compat -> string "wrapped_compat"
+    | Root -> string "root"
 
   let decode =
     let open Dune_lang.Decoder in
-    enum rev_all
+    sum
+      [ ("intf_only", return Intf_only)
+      ; ("virtual", return Virtual)
+      ; ("impl", return Impl)
+      ; ("impl_vmodule", return Impl_vmodule)
+      ; ("wrapped_compat", return Wrapped_compat)
+      ; ("root", return Root)
+      ; ( "alias"
+        , let* next = peek in
+          (* TODO remove this once everyone recompiles *)
+          match next with
+          | None -> return (Alias [])
+          | Some _ ->
+            let+ path = Module_name.Path.decode in
+            Alias path )
+      ]
 
   let has_impl = function
-    | Alias | Impl_vmodule | Wrapped_compat | Root | Impl -> true
+    | Alias _ | Impl_vmodule | Wrapped_compat | Root | Impl -> true
     | Intf_only | Virtual -> false
 end
 
@@ -116,17 +142,20 @@ type t =
   ; pp : (string list Action_builder.t * Sandbox_config.t) option
   ; visibility : Visibility.t
   ; kind : Kind.t
+  ; path : Module_name.Path.t
   }
 
 let name t = t.source.name
+
+let path t = t.path
 
 let kind t = t.kind
 
 let pp_flags t = t.pp
 
-let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
+let of_source ~path ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match (kind, visibility) with
-  | (Alias | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
+  | (Alias _ | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
   | Root, Private
   | (Impl | Intf_only), _ -> ()
   | _, _ ->
@@ -136,8 +165,8 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
       ; ("visibility", Visibility.to_dyn visibility)
       ]);
   (match (kind, source.files.impl, source.files.intf) with
-  | (Alias | Impl_vmodule | Impl | Wrapped_compat), None, _
-  | (Alias | Impl_vmodule | Wrapped_compat), Some _, Some _
+  | (Alias _ | Impl_vmodule | Impl | Wrapped_compat), None, _
+  | (Alias _ | Impl_vmodule | Wrapped_compat), Some _, Some _
   | (Intf_only | Virtual), Some _, _
   | (Intf_only | Virtual), _, None ->
     let open Dyn in
@@ -158,7 +187,8 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
       Module_name.Unique.of_path_assuming_needs_no_mangling_allow_invalid
         file.path
   in
-  { source; obj_name; pp = None; visibility; kind }
+  let path = Option.value ~default:[ source.name ] path in
+  { source; obj_name; pp = None; visibility; kind; path }
 
 let has t ~ml_kind =
   match (ml_kind : Ml_kind.t) with
@@ -175,8 +205,9 @@ let iter t ~f =
   Memo.parallel_iter Ml_kind.all ~f:(fun kind ->
       Memo.Option.iter (Ml_kind.Dict.get t.source.files kind) ~f:(f kind))
 
-let with_wrapper t ~main_module_name =
-  { t with obj_name = Module_name.wrap t.source.name ~with_:main_module_name }
+let set_obj_name t obj_name = { t with obj_name }
+
+let set_path t path = { t with path }
 
 let add_file t kind file =
   let source = Source.add_file t.source kind file in
@@ -196,13 +227,14 @@ let src_dir t = Source.src_dir t.source
 
 let set_pp t pp = { t with pp }
 
-let to_dyn { source; obj_name; pp; visibility; kind } =
+let to_dyn { source; obj_name; pp; visibility; kind; path } =
   Dyn.record
     [ ("source", Source.to_dyn source)
     ; ("obj_name", Module_name.Unique.to_dyn obj_name)
     ; ("pp", Dyn.(option string) (Option.map ~f:(fun _ -> "has pp") pp))
     ; ("visibility", Visibility.to_dyn visibility)
     ; ("kind", Kind.to_dyn kind)
+    ; ("path", Module_name.Path.to_dyn path)
     ]
 
 let ml_gen = ".ml-gen"
@@ -248,20 +280,26 @@ end
 module Obj_map_traversals = Memo.Make_map_traversals (Obj_map)
 
 let encode
-    ({ source = { name; files = _ }; obj_name; pp = _; visibility; kind } as t)
-    =
+    ({ path; source = { name; files = _ }; obj_name; pp = _; visibility; kind }
+    as t) =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
     match kind with
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
-    | Root | Wrapped_compat | Impl_vmodule | Alias | Impl | Virtual | Intf_only
-      -> Some kind
+    | Root
+    | Wrapped_compat
+    | Impl_vmodule
+    | Alias _
+    | Impl
+    | Virtual
+    | Intf_only -> Some kind
   in
   record_fields
     [ field "name" Module_name.encode name
     ; field "obj_name" Module_name.Unique.encode obj_name
+    ; field_l "path" (fun x -> x) (Module_name.Path.encode path)
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
     ; field_b "impl" has_impl
@@ -277,6 +315,7 @@ let decode ~src_dir =
   fields
     (let+ name = field "name" Module_name.decode
      and+ obj_name = field "obj_name" Module_name.Unique.decode
+     and+ path = field ~default:[] "path" Module_name.Path.decode
      and+ visibility = field "visibility" Visibility.decode
      and+ kind = field_o "kind" Kind.decode
      and+ impl = field_b "impl"
@@ -296,7 +335,8 @@ let decode ~src_dir =
      let intf = file intf Intf in
      let impl = file impl Impl in
      let source = Source.make ?impl ?intf name in
-     of_source ~obj_name ~visibility ~kind source)
+     of_source ~path:(Some path) ~obj_name:(Some obj_name) ~visibility ~kind
+       source)
 
 let pped =
   map_files ~f:(fun _kind (file : File.t) ->
@@ -315,7 +355,7 @@ let ml_source =
 
 let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
-let generated ?obj_name ~(kind : Kind.t) ~src_dir name =
+let generated ?obj_name ?path ~(kind : Kind.t) ~src_dir name =
   let obj_name =
     match obj_name with
     | Some obj_name -> obj_name
@@ -324,7 +364,6 @@ let generated ?obj_name ~(kind : Kind.t) ~src_dir name =
   let source =
     let impl =
       let basename = String.uncapitalize (Module_name.to_string name) in
-      (* XXX should we use the obj_name here? *)
       Path.Build.relative src_dir (basename ^ ml_gen)
       |> Path.build |> File.make Dialect.ocaml
     in
@@ -335,9 +374,10 @@ let generated ?obj_name ~(kind : Kind.t) ~src_dir name =
     | Root -> Private
     | _ -> Public
   in
-  of_source ~visibility ~kind ~obj_name source
+  of_source ~path ~visibility ~kind ~obj_name:(Some obj_name) source
 
-let of_source ~visibility ~kind source = of_source ~visibility ~kind source
+let of_source ?path ~visibility ~kind source =
+  of_source ~obj_name:None ~path ~visibility ~kind source
 
 module Name_map = struct
   type nonrec t = t Module_name.Map.t

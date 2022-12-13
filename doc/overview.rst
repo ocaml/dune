@@ -50,11 +50,11 @@ Terminology
 ===========
 
 -  **root**: the top-most directory in a GitHub repo, workspace, and project,
-   differentiated by variables such as `%{workspace_root}` and `%{project_root`.
-   Dune builds things from this directory. It knows how to build targets that
-   are descendants of the root. Anything outside of the tree starting from the
-   root is considered part of the **installed world**. Refer to
-   :ref:`finding-root` to learn how the workspace root is determined.
+   differentiated by variables such as `%{workspace_root}` and
+   `%{project_root}`. Dune builds things from this directory. It knows how to
+   build targets that are descendants of the root. Anything outside of the tree
+   starting from the root is considered part of the **installed world**. Refer
+   to :ref:`finding-root` to learn how the workspace root is determined.
 
 -  **workspace**: the subtree starting from each root. It can contain any number
    of projects that will be built simultaneously by Dune, and it must contain a

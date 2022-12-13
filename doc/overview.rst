@@ -40,7 +40,7 @@ provides a few additional ones that separate it from the crowd:
    your project, simply point to a specific Git tag (named revision). Of course,
    you can add some release steps if you'd like, but it isn't necessary. For
    more information, please refer to `dune-release
-   <https://github.com/samoht/dune-release>`_.
+   <https://github.com/tarides/dune-release>`_.
 
 The first section below defines some terms used in this manual. The second
 section specifies the Dune metadata format, and the third one describes how to

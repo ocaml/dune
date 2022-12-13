@@ -15,6 +15,7 @@ module Style : sig
     | Kwd
     | Id
     | Prompt
+    | Hint
     | Details
     | Ok
     | Debug

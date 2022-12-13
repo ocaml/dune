@@ -75,6 +75,8 @@ module Style : sig
 
   val dim : t
 
+  val italic : t
+
   val underlined : t
 
   (** Ansi escape sequence that set the terminal style to exactly these styles *)

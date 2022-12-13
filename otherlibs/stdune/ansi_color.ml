@@ -1,127 +1,182 @@
 module Style = struct
-  type t = string
+  type t =
+    | Fg_default
+    | Fg_black
+    | Fg_red
+    | Fg_green
+    | Fg_yellow
+    | Fg_blue
+    | Fg_magenta
+    | Fg_cyan
+    | Fg_white
+    | Fg_bright_black
+    | Fg_bright_red
+    | Fg_bright_green
+    | Fg_bright_yellow
+    | Fg_bright_blue
+    | Fg_bright_magenta
+    | Fg_bright_cyan
+    | Fg_bright_white
+    | Bg_default
+    | Bg_black
+    | Bg_red
+    | Bg_green
+    | Bg_yellow
+    | Bg_blue
+    | Bg_magenta
+    | Bg_cyan
+    | Bg_white
+    | Bg_bright_black
+    | Bg_bright_red
+    | Bg_bright_green
+    | Bg_bright_yellow
+    | Bg_bright_blue
+    | Bg_bright_magenta
+    | Bg_bright_cyan
+    | Bg_bright_white
+    | Bold
+    | Dim
+    | Italic
+    | Underline
 
-  let to_dyn s = Dyn.string s
+  let to_ansi_int = function
+    | Fg_default -> 39
+    | Fg_black -> 30
+    | Fg_red -> 31
+    | Fg_green -> 32
+    | Fg_yellow -> 33
+    | Fg_blue -> 34
+    | Fg_magenta -> 35
+    | Fg_cyan -> 36
+    | Fg_white -> 37
+    | Fg_bright_black -> 90
+    | Fg_bright_red -> 91
+    | Fg_bright_green -> 92
+    | Fg_bright_yellow -> 93
+    | Fg_bright_blue -> 94
+    | Fg_bright_magenta -> 95
+    | Fg_bright_cyan -> 96
+    | Fg_bright_white -> 97
+    | Bg_default -> 49
+    | Bg_black -> 40
+    | Bg_red -> 41
+    | Bg_green -> 42
+    | Bg_yellow -> 43
+    | Bg_blue -> 44
+    | Bg_magenta -> 45
+    | Bg_cyan -> 46
+    | Bg_white -> 47
+    | Bg_bright_black -> 100
+    | Bg_bright_red -> 101
+    | Bg_bright_green -> 102
+    | Bg_bright_yellow -> 103
+    | Bg_bright_blue -> 104
+    | Bg_bright_magenta -> 105
+    | Bg_bright_cyan -> 106
+    | Bg_bright_white -> 107
+    | Bold -> 1
+    | Dim -> 2
+    | Italic -> 3
+    | Underline -> 4
 
-  let fg_black = "30"
+  (* TODO use constructor names *)
+  let to_dyn s = Dyn.int (to_ansi_int s)
 
-  let fg_red = "31"
+  module Of_ansi_code = struct
+    type nonrec t =
+      | Clear
+      | Unknown
+      | Style of t
+  end
 
-  let fg_green = "32"
+  let of_ansi_code : int -> Of_ansi_code.t = function
+    | 39 -> Style Fg_default
+    | 30 -> Style Fg_black
+    | 31 -> Style Fg_red
+    | 32 -> Style Fg_green
+    | 33 -> Style Fg_yellow
+    | 34 -> Style Fg_blue
+    | 35 -> Style Fg_magenta
+    | 36 -> Style Fg_cyan
+    | 37 -> Style Fg_white
+    | 90 -> Style Fg_bright_black
+    | 91 -> Style Fg_bright_red
+    | 92 -> Style Fg_bright_green
+    | 93 -> Style Fg_bright_yellow
+    | 94 -> Style Fg_bright_blue
+    | 95 -> Style Fg_bright_magenta
+    | 96 -> Style Fg_bright_cyan
+    | 97 -> Style Fg_bright_white
+    | 49 -> Style Bg_default
+    | 40 -> Style Bg_black
+    | 41 -> Style Bg_red
+    | 42 -> Style Bg_green
+    | 43 -> Style Bg_yellow
+    | 44 -> Style Bg_blue
+    | 45 -> Style Bg_magenta
+    | 46 -> Style Bg_cyan
+    | 47 -> Style Bg_white
+    | 100 -> Style Bg_bright_black
+    | 101 -> Style Bg_bright_red
+    | 102 -> Style Bg_bright_green
+    | 103 -> Style Bg_bright_yellow
+    | 104 -> Style Bg_bright_blue
+    | 105 -> Style Bg_bright_magenta
+    | 106 -> Style Bg_bright_cyan
+    | 107 -> Style Bg_bright_white
+    | 1 -> Style Bold
+    | 2 -> Style Dim
+    | 3 -> Style Italic
+    | 4 -> Style Underline
+    | 0 -> Clear
+    | _ -> Unknown
 
-  let fg_yellow = "33"
+  let is_not_fg = function
+    | Fg_default
+    | Fg_black
+    | Fg_red
+    | Fg_green
+    | Fg_yellow
+    | Fg_blue
+    | Fg_magenta
+    | Fg_cyan
+    | Fg_white
+    | Fg_bright_black
+    | Fg_bright_red
+    | Fg_bright_green
+    | Fg_bright_yellow
+    | Fg_bright_blue
+    | Fg_bright_magenta
+    | Fg_bright_cyan
+    | Fg_bright_white -> false
+    | _ -> true
 
-  let fg_blue = "34"
-
-  let fg_magenta = "35"
-
-  let fg_cyan = "36"
-
-  let fg_white = "37"
-
-  let fg_default = "39"
-
-  let fg_bright_black = "90"
-
-  let fg_bright_red = "91"
-
-  let fg_bright_green = "92"
-
-  let fg_bright_yellow = "93"
-
-  let fg_bright_blue = "94"
-
-  let fg_bright_magenta = "95"
-
-  let fg_bright_cyan = "96"
-
-  let fg_bright_white = "97"
-
-  let fg_all =
-    [ fg_black
-    ; fg_green
-    ; fg_yellow
-    ; fg_blue
-    ; fg_magenta
-    ; fg_cyan
-    ; fg_white
-    ; fg_bright_black
-    ; fg_bright_red
-    ; fg_bright_green
-    ; fg_bright_yellow
-    ; fg_bright_blue
-    ; fg_bright_magenta
-    ; fg_bright_cyan
-    ; fg_bright_white
-    ]
-
-  let bg_black = "40"
-
-  let bg_red = "41"
-
-  let bg_green = "42"
-
-  let bg_yellow = "43"
-
-  let bg_blue = "44"
-
-  let bg_magenta = "45"
-
-  let bg_cyan = "46"
-
-  let bg_white = "47"
-
-  let bg_default = "49"
-
-  let bg_bright_black = "100"
-
-  let bg_bright_red = "101"
-
-  let bg_bright_green = "102"
-
-  let bg_bright_yellow = "103"
-
-  let bg_bright_blue = "104"
-
-  let bg_bright_magenta = "105"
-
-  let bg_bright_cyan = "106"
-
-  let bg_bright_white = "107"
-
-  let bg_all =
-    [ bg_black
-    ; bg_red
-    ; bg_green
-    ; bg_yellow
-    ; bg_blue
-    ; bg_magenta
-    ; bg_cyan
-    ; bg_white
-    ; bg_default
-    ; bg_bright_black
-    ; bg_bright_red
-    ; bg_bright_green
-    ; bg_bright_yellow
-    ; bg_bright_blue
-    ; bg_bright_magenta
-    ; bg_bright_cyan
-    ; bg_bright_white
-    ]
-
-  let bold = "1"
-
-  let dim = "2"
-
-  let italic = "3"
-
-  let underlined = "4"
+  let is_not_bg = function
+    | Bg_default
+    | Bg_black
+    | Bg_red
+    | Bg_green
+    | Bg_yellow
+    | Bg_blue
+    | Bg_magenta
+    | Bg_cyan
+    | Bg_white
+    | Bg_bright_black
+    | Bg_bright_red
+    | Bg_bright_green
+    | Bg_bright_yellow
+    | Bg_bright_blue
+    | Bg_bright_magenta
+    | Bg_bright_cyan
+    | Bg_bright_white -> false
+    | _ -> true
 
   let escape_sequence l =
-    let l = "0" :: l in
+    let l = "0" :: List.map l ~f:(fun s -> string_of_int (to_ansi_int s)) in
     Printf.sprintf "\027[%sm" (String.concat l ~sep:";")
 
   let escape_sequence_no_reset l =
+    let l = List.map l ~f:(fun s -> string_of_int (to_ansi_int s)) in
     Printf.sprintf "\027[%sm" (String.concat l ~sep:";")
 end
 
@@ -219,7 +274,7 @@ let parse_line str styles =
       in
       Pp.seq acc s
   in
-  let rec loop styles i acc =
+  let rec loop (styles : Style.t list) i acc =
     match String.index_from str i '\027' with
     | None -> (styles, add_chunk acc ~styles ~pos:i ~len:(len - i))
     | Some seq_start -> (
@@ -240,14 +295,19 @@ let parse_line str styles =
               String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
               |> String.split ~on:';'
               |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-                     if s = Style.fg_default then
-                       List.filter styles ~f:(fun s ->
-                           not (List.mem Style.fg_all s ~equal:String.equal))
-                     else if s = Style.bg_default then
-                       List.filter styles ~f:(fun s ->
-                           not (List.mem Style.bg_all s ~equal:String.equal))
-                     else if s = "0" then []
-                     else s :: styles)
+                     match Int.of_string s with
+                     | None -> styles
+                     | Some code -> (
+                       match Style.of_ansi_code code with
+                       | Clear -> []
+                       | Unknown -> styles
+                       (* If the foreground is set to default, we filter out any
+                          other foreground modifiers. Same for background. *)
+                       | Style Fg_default ->
+                         List.filter styles ~f:Style.is_not_fg
+                       | Style Bg_default ->
+                         List.filter styles ~f:Style.is_not_bg
+                       | Style s -> s :: styles))
               |> List.rev
           in
           loop styles (seq_end + 1) acc

@@ -113,6 +113,8 @@ module Style = struct
 
   let dim = "2"
 
+  let italic = "3"
+
   let underlined = "4"
 
   let escape_sequence l =

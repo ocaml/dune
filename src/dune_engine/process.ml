@@ -252,15 +252,14 @@ module Fancy = struct
     s
 
   let color_combos =
-    let open Ansi_color.Style in
-    [| [ Fg_blue; Bg_bright_green ]
-     ; [ Fg_red; Bg_bright_yellow ]
-     ; [ Fg_yellow; Bg_blue ]
-     ; [ Fg_magenta; Bg_bright_cyan ]
-     ; [ Fg_bright_green; Bg_blue ]
-     ; [ Fg_bright_yellow; Bg_red ]
-     ; [ Fg_blue; Bg_yellow ]
-     ; [ Fg_bright_cyan; Bg_magenta ]
+    [| [ `Fg_blue; `Bg_bright_green ]
+     ; [ `Fg_red; `Bg_bright_yellow ]
+     ; [ `Fg_yellow; `Bg_blue ]
+     ; [ `Fg_magenta; `Bg_bright_cyan ]
+     ; [ `Fg_bright_green; `Bg_blue ]
+     ; [ `Fg_bright_yellow; `Bg_red ]
+     ; [ `Fg_blue; `Bg_yellow ]
+     ; [ `Fg_bright_cyan; `Bg_magenta ]
     |]
 
   let colorize_prog s =
@@ -281,7 +280,7 @@ module Fancy = struct
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
       :: Pp.tag
-           (User_message.Style.Ansi_styles Ansi_color.Style.[ Bold; Fg_green ])
+           (User_message.Style.Ansi_styles [ `Bold; `Fg_green ])
            (Pp.verbatim (String.quote_for_shell fn))
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest

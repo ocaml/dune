@@ -464,3 +464,22 @@ foo
     ; related = []
     ; severity = Alert { name = "deprecated"; source = "A.f" }
     } |}]
+
+let%expect_test "fatal alert" =
+  test_error
+    {|
+File "foo.ml", line 8, characters 8-11:
+8 | let f = A.f
+            ^^^
+Error (alert foobar): A.f
+testing
+|};
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "foo.ml"; line = Single 8; chars = Some (8, 11) }
+    ; message = "A.f\n\
+                 testing"
+    ; related = []
+    ; severity = Error Some "foobar"
+    } |}]

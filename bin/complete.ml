@@ -57,18 +57,48 @@ module Command = struct
     | None -> true
     | Some l -> i < start + l
 
+  let split_once s c =
+    match String.index s c with
+    | Some i -> Some (String.split_n s i)
+    | None -> None
+
+  (** Complete [--arg=value] *)
+  let complete_equal all_args arg_name value_prefix =
+    let cmd_opt =
+      List.find all_args ~f:(fun arg ->
+          List.mem
+            (Cmdliner_info.Arg.opt_names arg)
+            arg_name ~equal:String.equal)
+    in
+    match cmd_opt with
+    | None -> []
+    | Some arg ->
+      Cmdliner_info.Arg.complete arg (Some value_prefix)
+      |> List.map ~f:(fun c -> Printf.sprintf "%s=%s" arg_name c)
+
   let complete_args cmd ~pos_only ~index word =
-    let opt_args, pos_args =
+    let all_args =
       cmd |> Cmdliner_cmd.get_info |> Cmdliner_info.Cmd.args
       |> Cmdliner_info.Arg.Set.elements
-      |> List.partition ~f:Cmdliner_info.Arg.is_opt
     in
-    (if pos_only then []
-    else List.concat_map ~f:Cmdliner_info.Arg.opt_names opt_args)
-    @ List.concat_map pos_args ~f:(fun arg ->
-          let pos_kind = Cmdliner_info.Arg.pos_kind arg in
-          if arg_fits pos_kind index then Cmdliner_info.Arg.complete arg word
-          else [])
+    let opt_args, pos_args =
+      all_args |> List.partition ~f:Cmdliner_info.Arg.is_opt
+    in
+    let eq_syntax =
+      match word with
+      | None -> None
+      | Some w -> split_once w '='
+    in
+    match eq_syntax with
+    | Some (arg_name, value_prefix) ->
+      complete_equal all_args arg_name value_prefix
+    | None ->
+      (if pos_only then []
+      else List.concat_map ~f:Cmdliner_info.Arg.opt_names opt_args)
+      @ List.concat_map pos_args ~f:(fun arg ->
+            let pos_kind = Cmdliner_info.Arg.pos_kind arg in
+            if arg_fits pos_kind index then Cmdliner_info.Arg.complete arg word
+            else [])
 
   let rec find_cmd cmdline cmds =
     match cmdline with

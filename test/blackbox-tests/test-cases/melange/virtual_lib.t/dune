@@ -3,8 +3,3 @@
  (entries mel)
  (libraries impl_melange)
  (module_system commonjs))
-
-(executable
- (name native)
- (modules native)
- (libraries impl_native))

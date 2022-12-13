@@ -3,7 +3,7 @@ open Import
 module Source_tree = Dune_engine.Source_tree
 
 let complete s_opt =
-  let common = Common.default () in
+  let common = Common.for_complete () in
   let config = Common.init common in
   let complete_path path = Target.target_candidates path in
   let best_dir dir =
@@ -201,7 +201,7 @@ let dir' =
       | None -> Path.Source.root
       | Some prefix -> Path.Source.of_string prefix
     in
-    let common = Common.default () in
+    let common = Common.for_complete () in
     let config = Common.init common in
     Scheduler.go ~common ~config (fun () ->
         Build_system.run_exn (fun () ->

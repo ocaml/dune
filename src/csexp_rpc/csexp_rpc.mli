@@ -15,6 +15,31 @@
 
 open Stdune
 
+module type Worker = sig
+  (** [Csexp_rpc] relies on background threads for all blocking operations.
+
+      This is the signature for all the operation it needs for such background
+      threads. *)
+
+  (** A worker doing tasks in a background thread *)
+  type t
+
+  (** Create a worker doing tasks in a new background thread *)
+  val create : unit -> t Fiber.t
+
+  (** Stop the worker. Tasks that aren't yet started will not be completed. *)
+  val stop : t -> unit
+
+  (** [task t ~f] enqueue task [f] for worker [t] *)
+  val task :
+       t
+    -> f:(unit -> 'a)
+    -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
+end
+
+(** Hack until we move [Dune_engine.Scheduler] into own library *)
+val worker : (module Worker) Fdecl.t
+
 module Session : sig
   (** Rpc session backed by two threads. One thread for reading, and another for
       writing *)

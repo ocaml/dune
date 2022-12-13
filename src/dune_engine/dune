@@ -28,6 +28,7 @@
   dune_util
   build_path_prefix_map
   dune_section
+  csexp_rpc
   dune_rpc_private
   dune_rpc_server
   thread_worker

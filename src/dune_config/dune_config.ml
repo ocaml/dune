@@ -261,7 +261,8 @@ let hash = Poly.hash
 let equal a b = Poly.equal a b
 
 let default =
-  { display = { verbosity = Quiet; status_line = not Config.inside_dune }
+  { display =
+      Scheduler.Config.Display.(if Config.inside_dune then quiet else progress)
   ; concurrency = (if Config.inside_dune then Fixed 1 else Auto)
   ; terminal_persistence = Clear_on_rebuild
   ; sandboxing_preference = []
@@ -372,7 +373,10 @@ let adapt_display config ~output_is_a_tty =
     if
       config.display.status_line && (not output_is_a_tty)
       && not Config.inside_emacs
-    then { config with display = { config.display with status_line = false } }
+    then
+      { config with
+        display = Scheduler.Config.Display.no_status_line config.display
+      }
     else config
   in
   (* Similarly, terminal clearing is meaningless if stderr doesn't support ANSI

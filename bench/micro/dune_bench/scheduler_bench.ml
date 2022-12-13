@@ -6,7 +6,7 @@ module Caml = Stdlib
 
 let config =
   { Scheduler.Config.concurrency = 1
-  ; display = { verbosity = Short; status_line = false }
+  ; display = Scheduler.Config.Display.(no_status_line short)
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No

@@ -543,7 +543,7 @@ let display_term =
          & info [ "verbose" ] ~docs:copts_sect
              ~doc:"Same as $(b,--display verbose)")
      in
-     Option.some_if verbose { Display.verbosity = Verbose; status_line = true })
+     Option.some_if verbose Display.verbose)
     Arg.(
       value
       & opt (some (enum Display.all)) None

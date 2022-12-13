@@ -9,10 +9,26 @@ module Config : sig
       | Short  (** One line per command *)
       | Verbose  (** Display all commands fully *)
 
-    type t =
+    type t = private
       { status_line : bool
       ; verbosity : verbosity
       }
+
+    (** Displays a status line and any errors. *)
+    val progress : t
+
+    (** Only display errors, no status line. *)
+    val quiet : t
+
+    (** Display a short synopsis of the main process of an action run during the
+        build, together with a status line. *)
+    val short : t
+
+    (** Verbose output together with progress bar. *)
+    val verbose : t
+
+    (** Disable the status line. *)
+    val no_status_line : t -> t
 
     val all : (string * t) list
 

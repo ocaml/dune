@@ -125,7 +125,7 @@ let () =
   let module Scheduler = Dune_engine.Scheduler in
   let config =
     { Scheduler.Config.concurrency = 10
-    ; display = { verbosity = Quiet; status_line = false }
+    ; display = Scheduler.Config.Display.quiet
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No

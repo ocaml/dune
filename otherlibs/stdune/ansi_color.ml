@@ -204,30 +204,28 @@ module Style = struct
     escape_sequence_buf (Buffer.create 16) (l :> Of_ansi_code.t list)
 end
 
-let supports_color fd =
+let supports_color isatty =
   let is_smart =
-    match Stdlib.Sys.getenv "TERM" with
-    | exception Not_found -> false
-    | "dumb" -> false
+    match Env.(get initial) "TERM" with
+    | Some "dumb" -> false
     | _ -> true
   and clicolor =
-    match Stdlib.Sys.getenv "CLICOLOR" with
-    | exception Not_found -> true
-    | "0" -> false
+    match Env.(get initial) "CLICOLOR" with
+    | Some "0" -> false
     | _ -> true
   and clicolor_force =
-    match Stdlib.Sys.getenv "CLICOLOR_FORCE" with
-    | exception Not_found -> false
-    | "0" -> false
+    match Env.(get initial) "CLICOLOR_FORCE" with
+    | Some "0" -> false
     | _ -> true
   in
-  (is_smart && Unix.isatty fd && clicolor) || clicolor_force
+  clicolor_force || (is_smart && clicolor && Lazy.force isatty)
 
-let stdout_supports_color = lazy (supports_color Unix.stdout)
-
-let stderr_supports_color = lazy (supports_color Unix.stderr)
+let stdout_supports_color =
+  lazy (supports_color (lazy (Unix.isatty Unix.stdout)))
 
 let output_is_a_tty = lazy (Unix.isatty Unix.stderr)
+
+let stderr_supports_color = lazy (supports_color output_is_a_tty)
 
 let rec tag_handler buf current_styles ppf (styles : Style.t list) pp =
   Format.pp_print_as ppf 0 (Style.escape_sequence_no_reset buf styles);

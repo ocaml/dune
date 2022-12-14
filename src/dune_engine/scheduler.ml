@@ -454,8 +454,6 @@ end = struct
   end
 end
 
-module Event_queue = Event.Queue
-
 let kill_process_group pid signal =
   match Sys.win32 with
   | false -> (

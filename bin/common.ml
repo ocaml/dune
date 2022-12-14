@@ -535,7 +535,7 @@ module Options_implied_by_dash_p = struct
 end
 
 let display_term =
-  let module Display = Dune_engine.Scheduler.Config.Display in
+  let module Display = Dune_engine.Display in
   one_of
     (let+ verbose =
        Arg.(

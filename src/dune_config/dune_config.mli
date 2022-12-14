@@ -59,7 +59,7 @@ module type S = sig
   type 'a field
 
   type t =
-    { display : Dune_engine.Scheduler.Config.Display.t field
+    { display : Dune_engine.Display.t field
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field

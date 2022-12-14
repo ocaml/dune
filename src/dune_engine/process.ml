@@ -430,7 +430,7 @@ module Handle_exit_status : sig
 
   val non_verbose :
        ('a, error) result
-    -> verbosity:Scheduler.Config.Display.verbosity
+    -> verbosity:Display.verbosity
     -> metadata:metadata
     -> output:string
     -> prog:string
@@ -522,9 +522,8 @@ end = struct
            ++ Pp.char ' ' ++ command_line
         :: pp_output output)
 
-  let non_verbose t ~(verbosity : Scheduler.Config.Display.verbosity) ~metadata
-      ~output ~prog ~command_line ~dir ~has_unexpected_stdout
-      ~has_unexpected_stderr =
+  let non_verbose t ~(verbosity : Display.verbosity) ~metadata ~output ~prog
+      ~command_line ~dir ~has_unexpected_stdout ~has_unexpected_stderr =
     let output = parse_output output in
     let show_command =
       !Clflags.always_show_command_line

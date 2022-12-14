@@ -1,5 +1,6 @@
 open Stdune
 open Dune_lang.Decoder
+module Display = Dune_engine.Display
 module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
 module Console = Dune_console
@@ -128,7 +129,7 @@ module type S = sig
   type 'a field
 
   type t =
-    { display : Scheduler.Config.Display.t field
+    { display : Display.t field
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
@@ -186,7 +187,7 @@ struct
       ; action_stderr_on_success
       } =
     Dyn.record
-      [ ("display", field Scheduler.Config.Display.to_dyn display)
+      [ ("display", field Display.to_dyn display)
       ; ("concurrency", field Concurrency.to_dyn concurrency)
       ; ( "terminal_persistence"
         , field Terminal_persistence.to_dyn terminal_persistence )
@@ -278,7 +279,7 @@ let decode_generic ~min_dune_version =
     Dune_lang.Syntax.since Stanza.syntax ver
   in
   let field_o n v d = field_o n (check v >>> d) in
-  let+ display = field_o "display" (1, 0) (enum Scheduler.Config.Display.all)
+  let+ display = field_o "display" (1, 0) (enum Display.all)
   and+ concurrency = field_o "jobs" (1, 0) Concurrency.decode
   and+ terminal_persistence =
     field_o "terminal-persistence" (1, 0) Terminal_persistence.decode
@@ -382,7 +383,7 @@ let adapt_display config ~output_is_a_tty =
   else config
 
 let init t =
-  Console.Backend.set (Scheduler.Config.Display.console_backend t.display);
+  Console.Backend.set (Display.console_backend t.display);
   Log.verbose := t.display.verbosity = Verbose
 
 let auto_concurrency =

@@ -70,7 +70,7 @@ val debug_backtraces : bool Cmdliner.Term.t
 
 val config_from_config_file : Dune_config.Partial.t Cmdliner.Term.t
 
-val display_term : Dune_engine.Scheduler.Config.Display.t option Cmdliner.Term.t
+val display_term : Dune_engine.Display.t option Cmdliner.Term.t
 
 val context_arg : doc:string -> Dune_engine.Context_name.t Cmdliner.Term.t
 

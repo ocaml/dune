@@ -163,15 +163,15 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
   in
   let* () = Module_compilation.build_all cctx in
-  let module_list =
-    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc)
+  let modules_for_js =
+    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
+        if Module.has x ~ml_kind:Impl then x :: acc else acc)
   in
   let dst_dir =
     Path.Build.append_source target_dir (Path.Build.drop_build_context_exn dir)
   in
   let* () =
-    Memo.parallel_iter module_list ~f:(fun m ->
-        (* Should we check module kind? *)
+    Memo.parallel_iter modules_for_js ~f:(fun m ->
         build_js ~dir ~loc ~pkg_name ~mode ~module_system:mel.module_system
           ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext m)
   in
@@ -181,7 +181,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     | Some alias_name ->
       let alias = Alias.make alias_name ~dir in
       let deps =
-        List.rev_map module_list ~f:(fun m ->
+        List.rev_map modules_for_js ~f:(fun m ->
             make_js_name ~js_ext ~dst_dir m |> Path.build)
         |> Action_builder.paths
       in

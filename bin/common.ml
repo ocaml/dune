@@ -740,91 +740,92 @@ All available cache layers: %s.|}
   in
   value initial
 
-type builder =
-  { debug_dep_path : bool
-  ; debug_findlib : bool
-  ; debug_backtraces : bool
-  ; debug_artifact_substitution : bool
-  ; debug_load_dir : bool
-  ; debug_digests : bool
-  ; store_digest_preimage : bool
-  ; wait_for_filesystem_clock : bool
-  ; root : string option
-  ; only_packages : Only_packages.Clflags.t
-  ; capture_outputs : bool
-  ; diff_command : string option
-  ; promote : Clflags.Promote.t option
-  ; force : bool
-  ; ignore_promoted_rules : bool
-  ; build_dir : string option
-  ; no_print_directory : bool
-  ; store_orig_src_dir : bool
-  ; default_target : Arg.Dep.t (* For build & runtest only *)
-  ; watch : Watch_mode_config.t
-  ; print_metrics : bool
-  ; dump_memo_graph_file : string option
-  ; dump_memo_graph_format : Graph.File_format.t
-  ; dump_memo_graph_with_timing : bool
-  ; always_show_command_line : bool
-  ; promote_install_files : bool
-  ; stats_trace_file : string option
-  ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
-  ; workspace_config : Dune_rules.Workspace.Clflags.t
-  ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
-  ; report_errors_config : Dune_engine.Report_errors_config.t
-  ; require_dune_project_file : bool
-  ; react_to_insignificant_changes : bool
-  }
+module Builder = struct
+  type t =
+    { debug_dep_path : bool
+    ; debug_findlib : bool
+    ; debug_backtraces : bool
+    ; debug_artifact_substitution : bool
+    ; debug_load_dir : bool
+    ; debug_digests : bool
+    ; store_digest_preimage : bool
+    ; wait_for_filesystem_clock : bool
+    ; root : string option
+    ; only_packages : Only_packages.Clflags.t
+    ; capture_outputs : bool
+    ; diff_command : string option
+    ; promote : Clflags.Promote.t option
+    ; force : bool
+    ; ignore_promoted_rules : bool
+    ; build_dir : string option
+    ; no_print_directory : bool
+    ; store_orig_src_dir : bool
+    ; default_target : Arg.Dep.t (* For build & runtest only *)
+    ; watch : Watch_mode_config.t
+    ; print_metrics : bool
+    ; dump_memo_graph_file : string option
+    ; dump_memo_graph_format : Graph.File_format.t
+    ; dump_memo_graph_with_timing : bool
+    ; always_show_command_line : bool
+    ; promote_install_files : bool
+    ; stats_trace_file : string option
+    ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
+    ; workspace_config : Dune_rules.Workspace.Clflags.t
+    ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
+    ; report_errors_config : Dune_engine.Report_errors_config.t
+    ; require_dune_project_file : bool
+    ; react_to_insignificant_changes : bool
+    }
 
-let builder_term : builder Term.t =
-  let docs = copts_sect in
-  let+ config_from_command_line = shared_with_config_file
-  and+ debug_dep_path =
-    Arg.(
-      value & flag
-      & info
-          [ "debug-dependency-path" ]
-          ~docs
-          ~doc:
-            {|In case of error, print the dependency path from
+  let term =
+    let docs = copts_sect in
+    let+ config_from_command_line = shared_with_config_file
+    and+ debug_dep_path =
+      Arg.(
+        value & flag
+        & info
+            [ "debug-dependency-path" ]
+            ~docs
+            ~doc:
+              {|In case of error, print the dependency path from
                     the targets on the command line to the rule that failed.
                   |})
-  and+ debug_findlib =
-    Arg.(
-      value & flag
-      & info [ "debug-findlib" ] ~docs ~doc:{|Debug the findlib sub-system.|})
-  and+ debug_backtraces = debug_backtraces
-  and+ debug_artifact_substitution =
-    Arg.(
-      value & flag
-      & info
-          [ "debug-artifact-substitution" ]
-          ~docs ~doc:"Print debugging info about artifact substitution")
-  and+ debug_load_dir =
-    Arg.(
-      value & flag
-      & info [ "debug-load-dir" ] ~docs
-          ~doc:"Print debugging info about directory loading")
-  and+ debug_digests =
-    Arg.(
-      value & flag
-      & info [ "debug-digests" ] ~docs
-          ~doc:"Explain why Dune decides to re-digest some files")
-  and+ store_digest_preimage =
-    Arg.(
-      value & flag
-      & info
-          [ "debug-store-digest-preimage" ]
-          ~docs
-          ~doc:
-            "Store digest preimage for all computed digests, so that it's \
-             possible to reverse them later, for debugging. The digests are \
-             stored in the shared cache (see --cache flag) as values, even if \
-             cache is otherwise disabled. This should be used only for \
-             debugging, since it's slow and it litters the shared cache.")
-  and+ no_buffer =
-    let doc =
-      {|Do not buffer the output of commands executed by dune. By default dune
+    and+ debug_findlib =
+      Arg.(
+        value & flag
+        & info [ "debug-findlib" ] ~docs ~doc:{|Debug the findlib sub-system.|})
+    and+ debug_backtraces = debug_backtraces
+    and+ debug_artifact_substitution =
+      Arg.(
+        value & flag
+        & info
+            [ "debug-artifact-substitution" ]
+            ~docs ~doc:"Print debugging info about artifact substitution")
+    and+ debug_load_dir =
+      Arg.(
+        value & flag
+        & info [ "debug-load-dir" ] ~docs
+            ~doc:"Print debugging info about directory loading")
+    and+ debug_digests =
+      Arg.(
+        value & flag
+        & info [ "debug-digests" ] ~docs
+            ~doc:"Explain why Dune decides to re-digest some files")
+    and+ store_digest_preimage =
+      Arg.(
+        value & flag
+        & info
+            [ "debug-store-digest-preimage" ]
+            ~docs
+            ~doc:
+              "Store digest preimage for all computed digests, so that it's \
+               possible to reverse them later, for debugging. The digests are \
+               stored in the shared cache (see --cache flag) as values, even \
+               if cache is otherwise disabled. This should be used only for \
+               debugging, since it's slow and it litters the shared cache.")
+    and+ no_buffer =
+      let doc =
+        {|Do not buffer the output of commands executed by dune. By default dune
         buffers the output of subcommands, in order to prevent interleaving when
         multiple commands are executed in parallel. However, this can be an
         issue when debugging long running tests. With $(b,--no-buffer), commands
@@ -834,307 +835,307 @@ let builder_term : builder Term.t =
         You should use this option in conjunction with $(b,-j 1), to avoid
         interleaving. Additionally you should use $(b,--verbose) as well, to
         make sure that commands are printed before they are being executed.|}
-    in
-    Arg.(value & flag & info [ "no-buffer" ] ~docs ~docv:"DIR" ~doc)
-  and+ workspace_file =
-    let doc = "Use this specific workspace file instead of looking it up." in
-    Arg.(
-      value
-      & opt (some path) None
-      & info [ "workspace" ] ~docs ~docv:"FILE" ~doc
-          ~env:(Cmd.Env.info ~doc "DUNE_WORKSPACE"))
-  and+ promote =
-    one_of
-      (let+ auto =
-         Arg.(
-           value & flag
-           & info [ "auto-promote" ] ~docs
-               ~doc:
-                 "Automatically promote files. This is similar to running\n\
-                 \                   $(b,dune promote) after the build.")
-       in
-       Option.some_if auto Clflags.Promote.Automatically)
-      (let+ disable =
-         let doc = "Disable all promotion rules" in
-         let env = Cmd.Env.info ~doc "DUNE_DISABLE_PROMOTION" in
-         Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
-       in
-       Option.some_if disable Clflags.Promote.Never)
-  and+ force =
-    Arg.(
-      value & flag
-      & info [ "force"; "f" ]
-          ~doc:
-            "Force actions associated to aliases to be re-executed even\n\
-            \                   if their dependencies haven't changed.")
-  and+ watch =
-    let+ res =
+      in
+      Arg.(value & flag & info [ "no-buffer" ] ~docs ~docv:"DIR" ~doc)
+    and+ workspace_file =
+      let doc = "Use this specific workspace file instead of looking it up." in
+      Arg.(
+        value
+        & opt (some path) None
+        & info [ "workspace" ] ~docs ~docv:"FILE" ~doc
+            ~env:(Cmd.Env.info ~doc "DUNE_WORKSPACE"))
+    and+ promote =
       one_of
-        (let+ watch =
+        (let+ auto =
            Arg.(
              value & flag
-             & info [ "watch"; "w" ]
+             & info [ "auto-promote" ] ~docs
                  ~doc:
-                   "Instead of terminating build after completion, wait \
-                    continuously for file changes.")
+                   "Automatically promote files. This is similar to running\n\
+                   \                   $(b,dune promote) after the build.")
          in
-         if watch then Some Watch_mode_config.Eager else None)
-        (let+ watch =
-           Arg.(
-             value & flag
-             & info [ "passive-watch-mode" ]
-                 ~doc:
-                   "Similar to [--watch], but only start a build when \
-                    instructed externally by an RPC.")
+         Option.some_if auto Clflags.Promote.Automatically)
+        (let+ disable =
+           let doc = "Disable all promotion rules" in
+           let env = Cmd.Env.info ~doc "DUNE_DISABLE_PROMOTION" in
+           Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
          in
-         if watch then Some Watch_mode_config.Passive else None)
-    in
-    match res with
-    | None -> Watch_mode_config.No
-    | Some mode -> Watch_mode_config.Yes mode
-  and+ print_metrics =
-    Arg.(
-      value & flag
-      & info [ "print-metrics" ] ~docs
-          ~doc:"Print out various performance metrics after every build")
-  and+ dump_memo_graph_file =
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "dump-memo-graph" ] ~docs ~docv:"FILE"
-          ~doc:
-            "Dumps the dependency graph to a file after the build is complete")
-  and+ dump_memo_graph_format =
-    Arg.(
-      value & opt graph_format Gexf
-      & info
-          [ "dump-memo-graph-format" ]
-          ~docs ~docv:"FORMAT"
-          ~doc:"File format to be used when dumping dependency graph")
-  and+ dump_memo_graph_with_timing =
-    Arg.(
-      value & flag
-      & info
-          [ "dump-memo-graph-with-timing" ]
-          ~docs
-          ~doc:
-            "With $(b,--dump-memo-graph), will re-run each cached node in the \
-             Memo graph after building and include the runtime in the output. \
-             Since all nodes contain a cached value, this will measure just \
-             the runtime of each node")
-  and+ { Options_implied_by_dash_p.root
-       ; only_packages
-       ; ignore_promoted_rules
-       ; config_from_config_file
-       ; profile
-       ; default_target
-       ; always_show_command_line
-       ; promote_install_files
-       ; require_dune_project_file
-       } =
-    Options_implied_by_dash_p.term
-  and+ x =
-    Arg.(
-      value
-      & opt (some Arg.context_name) None
-      & info [ "x" ] ~docs ~doc:{|Cross-compile using this toolchain.|})
-  and+ build_dir =
-    let doc = "Specified build directory. _build if unspecified" in
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "build-dir" ] ~docs ~docv:"FILE"
-          ~env:(Cmd.Env.info ~doc "DUNE_BUILD_DIR")
-          ~doc)
-  and+ diff_command =
-    let doc =
-      "Shell command to use to diff files.\n\
-      \                   Use - to disable printing the diff."
-    in
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "diff-command" ] ~docs
-          ~env:(Cmd.Env.info ~doc "DUNE_DIFF_COMMAND")
-          ~doc)
-  and+ stats_trace_file =
-    Arg.(
-      value
-      & opt (some string) None
-      & info [ "trace-file" ] ~docs ~docv:"FILE"
-          ~doc:
-            "Output trace data in catapult format\n\
-            \                   (compatible with chrome://tracing)")
-  and+ no_print_directory =
-    Arg.(
-      value & flag
-      & info [ "no-print-directory" ] ~docs
-          ~doc:"Suppress \"Entering directory\" messages")
-  and+ store_orig_src_dir =
-    let doc = "Store original source location in dune-package metadata" in
-    Arg.(
-      value & flag
-      & info
-          [ "store-orig-source-dir" ]
-          ~docs
-          ~env:(Cmd.Env.info ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
-          ~doc)
-  and+ () = build_info
-  and+ instrument_with =
-    let doc =
-      {|"Enable instrumentation by $(b,BACKENDS).
+         Option.some_if disable Clflags.Promote.Never)
+    and+ force =
+      Arg.(
+        value & flag
+        & info [ "force"; "f" ]
+            ~doc:
+              "Force actions associated to aliases to be re-executed even\n\
+              \                   if their dependencies haven't changed.")
+    and+ watch =
+      let+ res =
+        one_of
+          (let+ watch =
+             Arg.(
+               value & flag
+               & info [ "watch"; "w" ]
+                   ~doc:
+                     "Instead of terminating build after completion, wait \
+                      continuously for file changes.")
+           in
+           if watch then Some Watch_mode_config.Eager else None)
+          (let+ watch =
+             Arg.(
+               value & flag
+               & info [ "passive-watch-mode" ]
+                   ~doc:
+                     "Similar to [--watch], but only start a build when \
+                      instructed externally by an RPC.")
+           in
+           if watch then Some Watch_mode_config.Passive else None)
+      in
+      match res with
+      | None -> Watch_mode_config.No
+      | Some mode -> Watch_mode_config.Yes mode
+    and+ print_metrics =
+      Arg.(
+        value & flag
+        & info [ "print-metrics" ] ~docs
+            ~doc:"Print out various performance metrics after every build")
+    and+ dump_memo_graph_file =
+      Arg.(
+        value
+        & opt (some string) None
+        & info [ "dump-memo-graph" ] ~docs ~docv:"FILE"
+            ~doc:
+              "Dumps the dependency graph to a file after the build is complete")
+    and+ dump_memo_graph_format =
+      Arg.(
+        value & opt graph_format Gexf
+        & info
+            [ "dump-memo-graph-format" ]
+            ~docs ~docv:"FORMAT"
+            ~doc:"File format to be used when dumping dependency graph")
+    and+ dump_memo_graph_with_timing =
+      Arg.(
+        value & flag
+        & info
+            [ "dump-memo-graph-with-timing" ]
+            ~docs
+            ~doc:
+              "With $(b,--dump-memo-graph), will re-run each cached node in \
+               the Memo graph after building and include the runtime in the \
+               output. Since all nodes contain a cached value, this will \
+               measure just the runtime of each node")
+    and+ { Options_implied_by_dash_p.root
+         ; only_packages
+         ; ignore_promoted_rules
+         ; config_from_config_file
+         ; profile
+         ; default_target
+         ; always_show_command_line
+         ; promote_install_files
+         ; require_dune_project_file
+         } =
+      Options_implied_by_dash_p.term
+    and+ x =
+      Arg.(
+        value
+        & opt (some Arg.context_name) None
+        & info [ "x" ] ~docs ~doc:{|Cross-compile using this toolchain.|})
+    and+ build_dir =
+      let doc = "Specified build directory. _build if unspecified" in
+      Arg.(
+        value
+        & opt (some string) None
+        & info [ "build-dir" ] ~docs ~docv:"FILE"
+            ~env:(Cmd.Env.info ~doc "DUNE_BUILD_DIR")
+            ~doc)
+    and+ diff_command =
+      let doc =
+        "Shell command to use to diff files.\n\
+        \                   Use - to disable printing the diff."
+      in
+      Arg.(
+        value
+        & opt (some string) None
+        & info [ "diff-command" ] ~docs
+            ~env:(Cmd.Env.info ~doc "DUNE_DIFF_COMMAND")
+            ~doc)
+    and+ stats_trace_file =
+      Arg.(
+        value
+        & opt (some string) None
+        & info [ "trace-file" ] ~docs ~docv:"FILE"
+            ~doc:
+              "Output trace data in catapult format\n\
+              \                   (compatible with chrome://tracing)")
+    and+ no_print_directory =
+      Arg.(
+        value & flag
+        & info [ "no-print-directory" ] ~docs
+            ~doc:"Suppress \"Entering directory\" messages")
+    and+ store_orig_src_dir =
+      let doc = "Store original source location in dune-package metadata" in
+      Arg.(
+        value & flag
+        & info
+            [ "store-orig-source-dir" ]
+            ~docs
+            ~env:(Cmd.Env.info ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
+            ~doc)
+    and+ () = build_info
+    and+ instrument_with =
+      let doc =
+        {|"Enable instrumentation by $(b,BACKENDS).
         $(b,BACKENDS) is a comma-separated list of library names,
         each one of which must declare an instrumentation backend.|}
-    in
-    Arg.(
-      value
-      & opt (some (list lib_name)) None
-      & info [ "instrument-with" ] ~docs
-          ~env:(Cmd.Env.info ~doc "DUNE_INSTRUMENT_WITH")
-          ~docv:"BACKENDS" ~doc)
-  and+ file_watcher =
-    let doc =
-      {|Mechanism to detect changes in the source. Automatic to make dune run an
+      in
+      Arg.(
+        value
+        & opt (some (list lib_name)) None
+        & info [ "instrument-with" ] ~docs
+            ~env:(Cmd.Env.info ~doc "DUNE_INSTRUMENT_WITH")
+            ~docv:"BACKENDS" ~doc)
+    and+ file_watcher =
+      let doc =
+        {|Mechanism to detect changes in the source. Automatic to make dune run an
         external program to detect changes. Manual to notify dune that files
         have changed manually."|}
+      in
+      Arg.(
+        value
+        & opt
+            (enum
+               [ ("automatic", Dune_engine.Scheduler.Run.Automatic)
+               ; ("manual", No_watcher)
+               ])
+            Automatic
+        & info [ "file-watcher" ] ~doc)
+    and+ wait_for_filesystem_clock =
+      Arg.(
+        value & flag
+        & info
+            [ "wait-for-filesystem-clock" ]
+            ~doc:
+              "Dune digest file contents for better incrementally. These \
+               digests are themselves cached. In some cases, Dune needs to \
+               drop some digest cache entries in order for things to be \
+               reliable. This option makes Dune wait for the file system clock \
+               to advance so that it doesn't need to drop anything. You should \
+               probably not care about this option; it is mostly useful for \
+               Dune developers to make Dune tests of the digest cache more \
+               reproducible.")
+    and+ cache_debug_flags = cache_debug_flags_term
+    and+ report_errors_config =
+      Arg.(
+        value
+        & opt
+            (enum
+               [ ("early", Dune_engine.Report_errors_config.Early)
+               ; ("deterministic", Deterministic)
+               ; ("twice", Twice)
+               ])
+            Dune_engine.Report_errors_config.default
+        & info [ "error-reporting" ]
+            ~doc:
+              "Controls when the build errors are reported.\n\
+               $(b,early) - report errors as soon as they are discovered.\n\
+               $(b,deterministic) - report errors at the end of the build in a \
+               deterministic order.\n\
+               $(b,twice) - report each error twice: once as soon as the error \
+               is discovered and then again at the end of the build, in a \
+               deterministic order.")
+    and+ react_to_insignificant_changes =
+      Arg.(
+        value & flag
+        & info
+            [ "react-to-insignificant-changes" ]
+            ~doc:
+              "react to insignificant file system changes; this is only useful \
+               for benchmarking dune")
     in
-    Arg.(
-      value
-      & opt
-          (enum
-             [ ("automatic", Dune_engine.Scheduler.Run.Automatic)
-             ; ("manual", No_watcher)
-             ])
-          Automatic
-      & info [ "file-watcher" ] ~doc)
-  and+ wait_for_filesystem_clock =
-    Arg.(
-      value & flag
-      & info
-          [ "wait-for-filesystem-clock" ]
-          ~doc:
-            "Dune digest file contents for better incrementally. These digests \
-             are themselves cached. In some cases, Dune needs to drop some \
-             digest cache entries in order for things to be reliable. This \
-             option makes Dune wait for the file system clock to advance so \
-             that it doesn't need to drop anything. You should probably not \
-             care about this option; it is mostly useful for Dune developers \
-             to make Dune tests of the digest cache more reproducible.")
-  and+ cache_debug_flags = cache_debug_flags_term
-  and+ report_errors_config =
-    Arg.(
-      value
-      & opt
-          (enum
-             [ ("early", Dune_engine.Report_errors_config.Early)
-             ; ("deterministic", Deterministic)
-             ; ("twice", Twice)
-             ])
-          Dune_engine.Report_errors_config.default
-      & info [ "error-reporting" ]
-          ~doc:
-            "Controls when the build errors are reported.\n\
-             $(b,early) - report errors as soon as they are discovered.\n\
-             $(b,deterministic) - report errors at the end of the build in a \
-             deterministic order.\n\
-             $(b,twice) - report each error twice: once as soon as the error \
-             is discovered and then again at the end of the build, in a \
-             deterministic order.")
-  and+ react_to_insignificant_changes =
-    Arg.(
-      value & flag
-      & info
-          [ "react-to-insignificant-changes" ]
-          ~doc:
-            "react to insignificant file system changes; this is only useful \
-             for benchmarking dune")
-  in
-  { debug_dep_path
-  ; debug_findlib
-  ; debug_backtraces
-  ; debug_artifact_substitution
-  ; debug_load_dir
-  ; debug_digests
-  ; store_digest_preimage
-  ; wait_for_filesystem_clock
-  ; capture_outputs = not no_buffer
-  ; diff_command
-  ; promote
-  ; force
-  ; ignore_promoted_rules
-  ; build_dir
-  ; root
-  ; only_packages
-  ; no_print_directory
-  ; store_orig_src_dir
-  ; default_target
-  ; watch
-  ; print_metrics
-  ; dump_memo_graph_file
-  ; dump_memo_graph_format
-  ; dump_memo_graph_with_timing
-  ; always_show_command_line
-  ; promote_install_files
-  ; stats_trace_file
-  ; file_watcher
-  ; workspace_config =
-      { x
-      ; profile
-      ; instrument_with
-      ; workspace_file = Option.map workspace_file ~f:Arg.Path.path
-      ; config_from_command_line
-      ; config_from_config_file
-      }
-  ; cache_debug_flags
-  ; report_errors_config
-  ; require_dune_project_file
-  ; react_to_insignificant_changes
-  }
+    { debug_dep_path
+    ; debug_findlib
+    ; debug_backtraces
+    ; debug_artifact_substitution
+    ; debug_load_dir
+    ; debug_digests
+    ; store_digest_preimage
+    ; wait_for_filesystem_clock
+    ; capture_outputs = not no_buffer
+    ; diff_command
+    ; promote
+    ; force
+    ; ignore_promoted_rules
+    ; build_dir
+    ; root
+    ; only_packages
+    ; no_print_directory
+    ; store_orig_src_dir
+    ; default_target
+    ; watch
+    ; print_metrics
+    ; dump_memo_graph_file
+    ; dump_memo_graph_format
+    ; dump_memo_graph_with_timing
+    ; always_show_command_line
+    ; promote_install_files
+    ; stats_trace_file
+    ; file_watcher
+    ; workspace_config =
+        { x
+        ; profile
+        ; instrument_with
+        ; workspace_file = Option.map workspace_file ~f:Arg.Path.path
+        ; config_from_command_line
+        ; config_from_config_file
+        }
+    ; cache_debug_flags
+    ; report_errors_config
+    ; require_dune_project_file
+    ; react_to_insignificant_changes
+    }
+end
 
-let build builder ~default_root_is_cwd =
-  let { debug_dep_path
-      ; debug_findlib
-      ; debug_backtraces
-      ; debug_artifact_substitution
-      ; debug_load_dir
-      ; debug_digests
-      ; store_digest_preimage
-      ; wait_for_filesystem_clock
-      ; capture_outputs
-      ; diff_command
-      ; promote
-      ; force
-      ; ignore_promoted_rules
-      ; build_dir
-      ; root
-      ; only_packages
-      ; no_print_directory
-      ; store_orig_src_dir
-      ; default_target
-      ; watch
-      ; print_metrics
-      ; dump_memo_graph_file
-      ; dump_memo_graph_format
-      ; dump_memo_graph_with_timing
-      ; always_show_command_line
-      ; promote_install_files
-      ; stats_trace_file
-      ; file_watcher
-      ; workspace_config =
-          { x
-          ; profile
-          ; instrument_with
-          ; workspace_file
-          ; config_from_command_line
-          ; config_from_config_file
-          }
-      ; cache_debug_flags
-      ; report_errors_config
-      ; require_dune_project_file
-      ; react_to_insignificant_changes
-      } =
-    builder
-  in
+let build
+    { Builder.debug_dep_path
+    ; debug_findlib
+    ; debug_backtraces
+    ; debug_artifact_substitution
+    ; debug_load_dir
+    ; debug_digests
+    ; store_digest_preimage
+    ; wait_for_filesystem_clock
+    ; capture_outputs
+    ; diff_command
+    ; promote
+    ; force
+    ; ignore_promoted_rules
+    ; build_dir
+    ; root
+    ; only_packages
+    ; no_print_directory
+    ; store_orig_src_dir
+    ; default_target
+    ; watch
+    ; print_metrics
+    ; dump_memo_graph_file
+    ; dump_memo_graph_format
+    ; dump_memo_graph_with_timing
+    ; always_show_command_line
+    ; promote_install_files
+    ; stats_trace_file
+    ; file_watcher
+    ; workspace_config =
+        { x
+        ; profile
+        ; instrument_with
+        ; workspace_file
+        ; config_from_command_line
+        ; config_from_config_file
+        }
+    ; cache_debug_flags
+    ; report_errors_config
+    ; require_dune_project_file
+    ; react_to_insignificant_changes
+    } ~default_root_is_cwd =
   let insignificant_changes =
     if react_to_insignificant_changes then `React else `Ignore
   in
@@ -1212,7 +1213,7 @@ let build builder ~default_root_is_cwd =
   }
 
 let term ~default_root_is_cwd =
-  let+ builder = builder_term in
+  let+ builder = Builder.term in
   build builder ~default_root_is_cwd
 
 let term_with_default_root_is_cwd = term ~default_root_is_cwd:true

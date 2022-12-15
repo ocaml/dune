@@ -23,10 +23,8 @@ let lib_output_dir ~target_dir lib =
     | None ->
       let package_name = Option.value_exn (Lib_info.package info) in
       let bctx, _ = Path.Build.extract_build_context_dir_exn target_dir in
-      Path.Build.(
-        relative
-          ((relative bctx) "node_modules")
-          (Package.Name.to_string package_name))
+      Path.Build.L.relative bctx
+        [ "node_modules"; Package.Name.to_string package_name ]
     | Some lib ->
       let info = Lib.Local.info lib in
       Lib_info.src_dir info

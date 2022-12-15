@@ -63,7 +63,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
                   in
                   Lib.DB.resolve_user_written_deps (Scope.libs scope)
                     (`Exe exes.names) exes.buildable.libraries ~pps
-                    ~dune_version
+                    ~dune_version ~forbidden_libraries:exes.forbidden_libraries
                     ~allow_overlaps:
                       exes.buildable.allow_overlapping_dependencies
                     ~merlin_ident

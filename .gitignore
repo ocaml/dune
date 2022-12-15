@@ -1,7 +1,8 @@
 _opam
 _build
-/_boot
+_boot
 _perf
+_coverage
 *.install
 
 # vim swap files

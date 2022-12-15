@@ -181,7 +181,7 @@ module Opam : sig
 end = struct
   let opam =
     Memo.Lazy.create ~name:"context-opam" (fun () ->
-        Bin.which ~path:(Env.path Env.initial) "opam" >>= function
+        Bin.which ~path:(Env_path.path Env.initial) "opam" >>= function
         | None -> Utils.program_not_found "opam" ~loc:None
         | Some opam -> (
           let+ version =
@@ -688,7 +688,7 @@ let extend_paths t ~env =
   let t =
     let f (var, t) =
       let parse ~loc:_ s = s in
-      let standard = Env.path env |> List.map ~f:Path.to_string in
+      let standard = Env_path.path env |> List.map ~f:Path.to_string in
       (var, Ordered_set_lang.eval t ~parse ~standard ~eq:String.equal)
     in
     List.map ~f t
@@ -706,7 +706,7 @@ let extend_paths t ~env =
 
 let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
-  let path = Env.path env in
+  let path = Env_path.path env in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with
 
@@ -724,7 +724,7 @@ let create_for_opam ~loc ~root ~env ~env_nodes ~targets ~profile ~switch ~name
       ];
   let path =
     match Env.Map.find vars "PATH" with
-    | None -> Env.path env
+    | None -> Env_path.path env
     | Some s -> Bin.parse_path s
   in
   let env = Env.extend env ~vars in

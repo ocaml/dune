@@ -1,4 +1,6 @@
 (library
  (name dune_site_private)
  (libraries dune-private-libs.dune-section)
- (public_name dune-site.private))
+ (public_name dune-site.private)
+ (instrumentation
+  (backend bisect_ppx)))

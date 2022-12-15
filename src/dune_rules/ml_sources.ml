@@ -21,14 +21,14 @@ module Modules = struct
     ; executables : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; melange_emits : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
     ; (* Map from modules to the origin they are part of *)
-      rev_map : Origin.t Module_name.Map.t
+      rev_map : Origin.t Module_name.Path.Map.t
     }
 
   let empty =
     { libraries = Lib_name.Map.empty
     ; executables = String.Map.empty
     ; melange_emits = String.Map.empty
-    ; rev_map = Module_name.Map.empty
+    ; rev_map = Module_name.Path.Map.empty
     }
 
   type groups =
@@ -79,29 +79,30 @@ module Modules = struct
     in
     let rev_map =
       let modules =
-        let by_name (origin : Origin.t) =
+        let by_path (origin : Origin.t) =
           Modules.fold_user_available ~init:[] ~f:(fun m acc ->
-              (Module.name m, origin) :: acc)
+              (Module.path m, origin) :: acc)
         in
         List.concat
-          [ List.concat_map libs ~f:(fun (l, m, _) -> by_name (Library l) m)
-          ; List.concat_map exes ~f:(fun (e, m, _) -> by_name (Executables e) m)
-          ; List.concat_map emits ~f:(fun (l, m, _) -> by_name (Melange l) m)
+          [ List.concat_map libs ~f:(fun (l, m, _) -> by_path (Library l) m)
+          ; List.concat_map exes ~f:(fun (e, m, _) -> by_path (Executables e) m)
+          ; List.concat_map emits ~f:(fun (l, m, _) -> by_path (Melange l) m)
           ]
       in
-      match Module_name.Map.of_list modules with
+      match Module_name.Path.Map.of_list modules with
       | Ok x -> x
-      | Error (name, _, _) ->
-        let open Module_name.Infix in
+      | Error (path, _, _) ->
         let locs =
           List.filter_map modules ~f:(fun (n, origin) ->
-              Option.some_if (n = name) (Origin.loc origin))
+              Option.some_if
+                (Ordering.is_eq (Module_name.Path.compare n path))
+                (Origin.loc origin))
           |> List.sort ~compare:Loc.compare
         in
         User_error.raise
           ~loc:(Loc.drop_position (List.hd locs))
           [ Pp.textf "Module %S is used in several stanzas:"
-              (Module_name.to_string name)
+              (Module_name.Path.to_string path)
           ; Pp.enumerate locs ~f:(fun loc ->
                 Pp.verbatim (Loc.to_file_colon_line loc))
           ; Pp.text
@@ -215,7 +216,9 @@ let modules_and_obj_dir t ~for_ =
 
 let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 
-let find_origin (t : t) name = Module_name.Map.find t.modules.rev_map name
+let find_origin (t : t) name =
+  (* TODO generalize to any path *)
+  Module_name.Path.Map.find t.modules.rev_map [ name ]
 
 let virtual_modules ~lookup_vlib vlib =
   let info = Lib.info vlib in
@@ -361,7 +364,9 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
           let project = Scope.project scope in
           if Dune_project.wrapped_executables project then
             Modules_group.make_wrapped ~src_dir:dir ~modules `Exe
-          else Modules_group.exe_unwrapped modules
+          else
+            let modules = Module_trie.to_map modules in
+            Modules_group.exe_unwrapped modules
         in
         let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
         let modules =
@@ -398,30 +403,34 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
       | _ -> Memo.return `Skip)
   >>| filter_partition_map
 
-let check_no_qualified (loc, include_subdirs) =
-  if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
-    User_error.raise ~loc
-      [ Pp.text "(include_subdirs qualified) is not supported yet" ]
-
-let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib ~include_subdirs
+let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
+    ~include_subdirs:(_loc, (include_subdirs : Dune_file.Include_subdirs.t))
     ~dirs =
   let+ modules_of_stanzas =
-    check_no_qualified include_subdirs;
     let modules =
       let dialects = Dune_project.dialects (Scope.project scope) in
-      List.fold_left dirs ~init:Module_name.Map.empty
-        ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-          let modules = modules_of_files ~dialects ~dir ~files in
-          Module_name.Map.union acc modules ~f:(fun name x y ->
-              User_error.raise ~loc
-                [ Pp.textf "Module %S appears in several directories:"
-                    (Module_name.to_string name)
-                ; Pp.textf "- %s"
-                    (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                ; Pp.textf "- %s"
-                    (Path.to_string_maybe_quoted (Module.Source.src_dir y))
-                ; Pp.text "This is not allowed, please rename one of them."
-                ]))
+      match include_subdirs with
+      | Include Qualified ->
+        List.fold_left dirs ~init:Module_trie.empty
+          ~f:(fun acc ((dir : Path.Build.t), local, files) ->
+            let modules = modules_of_files ~dialects ~dir ~files in
+            let path = List.map local ~f:Module_name.of_string in
+            Module_trie.set_map acc path modules)
+      | No | Include Unqualified ->
+        List.fold_left dirs ~init:Module_name.Map.empty
+          ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+            let modules = modules_of_files ~dialects ~dir ~files in
+            Module_name.Map.union acc modules ~f:(fun name x y ->
+                User_error.raise ~loc
+                  [ Pp.textf "Module %S appears in several directories:"
+                      (Module_name.to_string name)
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                  ; Pp.text "This is not allowed, please rename one of them."
+                  ]))
+        |> Module_trie.of_map
     in
     modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
   in

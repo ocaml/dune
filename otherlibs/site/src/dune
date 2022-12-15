@@ -6,4 +6,6 @@
  (special_builtin_support
   (dune_site
    (data_module dune_site_data)))
- (libraries dune-private-libs.dune-section dune-site.private))
+ (libraries dune-private-libs.dune-section dune-site.private)
+ (instrumentation
+  (backend bisect_ppx)))

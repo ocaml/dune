@@ -1,13 +1,7 @@
 We can nested modules virtual
   $ dune build @all
-  File "impl/dune", line 1, characters 17-26:
-  1 | (include_subdirs qualified)
-                       ^^^^^^^^^
-  Error: Unknown value qualified
-  Hint: did you mean unqualified?
-  File "vlib/dune", line 1, characters 17-26:
-  1 | (include_subdirs qualified)
-                       ^^^^^^^^^
-  Error: Unknown value qualified
-  Hint: did you mean unqualified?
+  File "vlib/dune", line 5, characters 18-26:
+  5 |  (virtual_modules bar/virt))
+                        ^^^^^^^^
+  Error: Module Bar/virt doesn't exist.
   [1]

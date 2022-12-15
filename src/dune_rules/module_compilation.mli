@@ -10,8 +10,6 @@ val build_module :
   -> Module.t
   -> unit Memo.t
 
-val open_modules : Modules.t -> Module.t -> Module_name.t list
-
 val ocamlc_i :
      deps:Module.t list Action_builder.t Ml_kind.Dict.t
   -> Compilation_context.t

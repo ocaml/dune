@@ -1,3 +1,5 @@
+(rule (copy# foobar/lib3.foobar.ml lib3.ml))
+
 (library
  (name mylib)
  (modules lib))

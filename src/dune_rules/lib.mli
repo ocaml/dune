@@ -55,11 +55,15 @@ end
 (** See {!Sub_system} *)
 type sub_system = ..
 
+type db
+
 (** For compiling a library or executable *)
 module Compile : sig
   type lib := t
 
   type t
+
+  val for_lib : allow_overlaps:bool -> db -> lib -> t
 
   (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> lib list Resolve.t Memo.Lazy.t
@@ -93,7 +97,7 @@ module DB : sig
   type lib := t
 
   (** A database allow to resolve library names *)
-  type t
+  type t = db
 
   val installed : Context.t -> t Memo.t
 
@@ -135,7 +139,7 @@ module DB : sig
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)
   val get_compile_info :
-    t -> ?allow_overlaps:bool -> Lib_name.t -> (lib * Compile.t) Memo.t
+    t -> allow_overlaps:bool -> Lib_name.t -> (lib * Compile.t) Memo.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
 
@@ -152,8 +156,8 @@ module DB : sig
   val resolve_user_written_deps :
        t
     -> [ `Exe of (Import.Loc.t * string) list | `Melange_emit of string ]
-    -> ?allow_overlaps:bool
-    -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
+    -> allow_overlaps:bool
+    -> forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t

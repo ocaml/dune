@@ -8,6 +8,10 @@ type report =
   ; related : (loc * string) list
   }
 
+let dyn_of_code { code; name } =
+  let open Dyn in
+  record [ ("code", int code); ("name", string name) ]
+
 let dyn_of_source =
   let open Dyn in
   function
@@ -18,7 +22,10 @@ let dyn_of_severity =
   let open Dyn in
   function
   | Error w -> variant "Error" [ option dyn_of_source w ]
-  | Warning w -> variant "Warning" [ dyn_of_source w ]
+  | Warning w -> variant "Warning" [ dyn_of_code w ]
+  | Alert { name; source } ->
+    variant "Alert"
+      [ record [ ("name", string name); ("source", string source) ] ]
 
 let dyn_of_loc { path; lines; chars } =
   let open Dyn in
@@ -86,6 +93,8 @@ end
 let indent_of_severity = function
   | Error _ -> String.length "Error: "
   | Warning _ -> String.length "Warning: "
+  | Alert { name; source } ->
+    String.length "Alert :" + String.length name + String.length source + 1
 
 let severity tokens =
   match Tokens.peek tokens with

@@ -11,4 +11,6 @@
  (foreign_stubs
   (language c)
   (names xdg_stubs))
- (synopsis "[Internal] XDG base directories specification implementation"))
+ (synopsis "[Internal] XDG base directories specification implementation")
+ (instrumentation
+  (backend bisect_ppx)))

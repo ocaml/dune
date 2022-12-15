@@ -7,5 +7,7 @@ val version :
 
 val make : coqc:Action.Prog.t -> t Memo.t
 
+val make_opt : coqc:Action.Prog.t -> t Option.t Memo.t
+
 val by_name :
-  t -> string -> [> `Int of int | `Path of Path.t | `String of string ] option
+  t -> string -> [> `Int of int | `Path of Path.t | `String of string ] Option.t

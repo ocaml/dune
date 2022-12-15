@@ -12,4 +12,6 @@
   base
   ppx_inline_test.config)
  (preprocess
-  (pps ppx_expect)))
+  (pps ppx_expect))
+ (instrumentation
+  (backend bisect_ppx)))

@@ -13,7 +13,8 @@ let go =
   in
   Scheduler.Run.go config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ())
 
-let true_ = Bin.which "true" ~path:(Env.path Env.initial) |> Option.value_exn
+let true_ =
+  Bin.which "true" ~path:(Env_path.path Env.initial) |> Option.value_exn
 
 let%expect_test "null input" =
   let stdin_from = Process.(Io.null In) in

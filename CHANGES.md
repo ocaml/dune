@@ -1,18 +1,23 @@
 Unreleased
 ----------
 
+- Fix the parsing of alerts. They will now show up in diagnostics correctly.
+  (#6678, @rginberg)
+
+- Fix the compilation of modules generated at link time when
+  `implicit_transitive_deps` is enabled (#6642, @rgrinberg)
+
+- Allow `$ dune utop` to load libraries defined in data only directories
+  defined using `(subdir ..)` (#6631, @rgrinberg)
+
 - Format dune files when they are named `dune-file`. This occurs when we enable
   the alternative file names project option. (#6566, @rgrinberg)
-
-- Do not shadow library interface modules (#6549, fixes #6545, @rgrinberg)
 
 - Move `$ dune ocaml-merlin -dump-config=$dir` to `$ dune ocaml merlin
   dump-config $dir`. (#6547, @rgrinberg)
 
 - Allow compilation rules to be impacted by `(env ..)` stanzas that modify the
   environment or set binaries. (#6527, @rgrinberg)
-
-- Fix status line enabled when ANSI colors are forced. (#6503, @MisterDA)
 
 - Coq native mode is now automatically detected by Dune starting with Coq lang
   0.7. `(mode native)` has been deprecated in favour of detection from the
@@ -23,8 +28,6 @@ Unreleased
 
 - Allow `$ dune ocaml dump-dot-merlin` to run in watch mode. Also this command
   shouldn't print "Entering Directory" mesages. (#6497, @rgrinberg)
-
-- Fix build with MSVC compiler (#6517, @nojb)
 
 - `dune clean` should no longer fail under Windows due to the inability to
   remove the `.lock` file. Also, bring the implementation of the global lock
@@ -39,6 +42,25 @@ Unreleased
 
 - Fix missing dependencies when detecting the kind of C compiler we're using
   (#6610, fixes #6415, @emillon)
+
+- Allow `(include_subdirs qualified)` for OCaml projects. (#6594, fixes #1084,
+  @rgrinberg)
+
+- Accurately determine merlin configuration for all sources selected with
+  `copy#` and `copy_files#`. The old heuristic of looking for a module in
+  parent directories is removed (#6594, @rgrinberg)
+
+- Fix inline tests with js_of_ocaml and whole program compilation mode enabled
+  (#6645, @hhugo)
+
+3.6.1 (2022-11-24)
+------------------
+
+- Fix status line enabled when ANSI colors are forced. (#6503, @MisterDA)
+
+- Fix build with MSVC compiler (#6517, @nojb)
+
+- Do not shadow library interface modules (#6549, fixes #6545, @rgrinberg)
 
 3.6.0 (2022-11-14)
 ------------------

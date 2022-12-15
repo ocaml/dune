@@ -28,3 +28,5 @@ val field_i : string -> ('a -> T.t list) -> 'a -> field
 val record_fields : field list -> T.t list
 
 val unknown : _ t
+
+val enum : (string * 'a) list -> 'a t

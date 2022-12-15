@@ -131,6 +131,8 @@ type error =
       ; payload : (string * Sexp.t) list
       }
 
+val error : error -> 'a
+
 val dyn_of_error : error -> Dyn.t
 
 val to_sexp : ('a, values) t -> 'a -> Sexp.t

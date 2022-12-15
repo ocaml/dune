@@ -102,7 +102,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   in
   let normal_diff () =
     let diff =
-      let which prog = Bin.which ~path:(Env.path Env.initial) prog in
+      let which prog = Bin.which ~path:(Env_path.path Env.initial) prog in
       match which "git" with
       | Some path ->
         let dir =
@@ -158,7 +158,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   | None -> (
     if Config.inside_dune then fallback
     else
-      match Bin.which ~path:(Env.path Env.initial) "patdiff" with
+      match Bin.which ~path:(Env_path.path Env.initial) "patdiff" with
       | None -> normal_diff ()
       | Some prog ->
         run prog

@@ -68,3 +68,8 @@ let record_fields (l : field list) =
     | Inlined_list (name, l) -> Some (List (Atom (Atom.of_string name) :: l)))
 
 let unknown _ = atom "<unknown>"
+
+let enum xs x =
+  match List.find_map xs ~f:(fun (s, x') -> Option.some_if (x = x') s) with
+  | None -> Code_error.raise "Encoder.enum: invalid definition" []
+  | Some s -> atom_or_quoted_string s

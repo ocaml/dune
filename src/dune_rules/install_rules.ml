@@ -182,16 +182,13 @@ end = struct
               let cmt_files =
                 List.concat_map Ml_kind.all ~f:(fun ml_kind ->
                     let open Lib_mode.Cm_kind in
-                    [ if_ (native || byte)
-                        ( Ocaml Cmi
-                        , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
-                            ~cm_kind:(Ocaml Cmi) )
-                    ; if_ melange
-                        ( Melange Cmi
-                        , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
-                            ~cm_kind:(Melange Cmi) )
-                    ]
-                    |> List.concat)
+                    List.concat_map
+                      [ (native || byte, Ocaml Cmi); (melange, Melange Cmi) ]
+                      ~f:(fun (condition, kind) ->
+                        if_ condition
+                          ( kind
+                          , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
+                              ~cm_kind:kind )))
               in
 
               common m @ cmt_files |> set_dir m)

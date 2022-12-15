@@ -740,7 +740,43 @@ All available cache layers: %s.|}
   in
   value initial
 
-let term ~default_root_is_cwd =
+type builder =
+  { debug_dep_path : bool
+  ; debug_findlib : bool
+  ; debug_backtraces : bool
+  ; debug_artifact_substitution : bool
+  ; debug_load_dir : bool
+  ; debug_digests : bool
+  ; store_digest_preimage : bool
+  ; wait_for_filesystem_clock : bool
+  ; root : string option
+  ; only_packages : Only_packages.Clflags.t
+  ; capture_outputs : bool
+  ; diff_command : string option
+  ; promote : Clflags.Promote.t option
+  ; force : bool
+  ; ignore_promoted_rules : bool
+  ; build_dir : string option
+  ; no_print_directory : bool
+  ; store_orig_src_dir : bool
+  ; default_target : Arg.Dep.t (* For build & runtest only *)
+  ; watch : Watch_mode_config.t
+  ; print_metrics : bool
+  ; dump_memo_graph_file : string option
+  ; dump_memo_graph_format : Graph.File_format.t
+  ; dump_memo_graph_with_timing : bool
+  ; always_show_command_line : bool
+  ; promote_install_files : bool
+  ; stats_trace_file : string option
+  ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
+  ; workspace_config : Dune_rules.Workspace.Clflags.t
+  ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
+  ; report_errors_config : Dune_engine.Report_errors_config.t
+  ; require_dune_project_file : bool
+  ; react_to_insignificant_changes : bool
+  }
+
+let builder_term : builder Term.t =
   let docs = copts_sect in
   let+ config_from_command_line = shared_with_config_file
   and+ debug_dep_path =
@@ -1013,6 +1049,92 @@ let term ~default_root_is_cwd =
             "react to insignificant file system changes; this is only useful \
              for benchmarking dune")
   in
+  { debug_dep_path
+  ; debug_findlib
+  ; debug_backtraces
+  ; debug_artifact_substitution
+  ; debug_load_dir
+  ; debug_digests
+  ; store_digest_preimage
+  ; wait_for_filesystem_clock
+  ; capture_outputs = not no_buffer
+  ; diff_command
+  ; promote
+  ; force
+  ; ignore_promoted_rules
+  ; build_dir
+  ; root
+  ; only_packages
+  ; no_print_directory
+  ; store_orig_src_dir
+  ; default_target
+  ; watch
+  ; print_metrics
+  ; dump_memo_graph_file
+  ; dump_memo_graph_format
+  ; dump_memo_graph_with_timing
+  ; always_show_command_line
+  ; promote_install_files
+  ; stats_trace_file
+  ; file_watcher
+  ; workspace_config =
+      { x
+      ; profile
+      ; instrument_with
+      ; workspace_file = Option.map workspace_file ~f:Arg.Path.path
+      ; config_from_command_line
+      ; config_from_config_file
+      }
+  ; cache_debug_flags
+  ; report_errors_config
+  ; require_dune_project_file
+  ; react_to_insignificant_changes
+  }
+
+let build builder ~default_root_is_cwd =
+  let { debug_dep_path
+      ; debug_findlib
+      ; debug_backtraces
+      ; debug_artifact_substitution
+      ; debug_load_dir
+      ; debug_digests
+      ; store_digest_preimage
+      ; wait_for_filesystem_clock
+      ; capture_outputs
+      ; diff_command
+      ; promote
+      ; force
+      ; ignore_promoted_rules
+      ; build_dir
+      ; root
+      ; only_packages
+      ; no_print_directory
+      ; store_orig_src_dir
+      ; default_target
+      ; watch
+      ; print_metrics
+      ; dump_memo_graph_file
+      ; dump_memo_graph_format
+      ; dump_memo_graph_with_timing
+      ; always_show_command_line
+      ; promote_install_files
+      ; stats_trace_file
+      ; file_watcher
+      ; workspace_config =
+          { x
+          ; profile
+          ; instrument_with
+          ; workspace_file
+          ; config_from_command_line
+          ; config_from_config_file
+          }
+      ; cache_debug_flags
+      ; report_errors_config
+      ; require_dune_project_file
+      ; react_to_insignificant_changes
+      } =
+    builder
+  in
   let insignificant_changes =
     if react_to_insignificant_changes then `React else `Ignore
   in
@@ -1054,7 +1176,7 @@ let term ~default_root_is_cwd =
   ; debug_load_dir
   ; debug_digests
   ; wait_for_filesystem_clock
-  ; capture_outputs = not no_buffer
+  ; capture_outputs
   ; root
   ; diff_command
   ; promote
@@ -1079,7 +1201,7 @@ let term ~default_root_is_cwd =
       { x
       ; profile
       ; instrument_with
-      ; workspace_file = Option.map workspace_file ~f:Arg.Path.path
+      ; workspace_file
       ; config_from_command_line
       ; config_from_config_file
       }
@@ -1088,6 +1210,10 @@ let term ~default_root_is_cwd =
   ; require_dune_project_file
   ; insignificant_changes
   }
+
+let term ~default_root_is_cwd =
+  let+ builder = builder_term in
+  build builder ~default_root_is_cwd
 
 let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
 

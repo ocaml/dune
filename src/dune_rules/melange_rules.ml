@@ -129,9 +129,6 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
-  let* flags = ocaml_flags sctx ~dir mel.compile_flags in
-  let requires_link = Lib.Compile.requires_link compile_info in
-  let direct_requires = Lib.Compile.direct_requires compile_info in
   let* modules, pp =
     Buildable_rules.modules_rules sctx
       (Melange
@@ -144,8 +141,11 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
          })
       expander ~dir scope modules
   in
+  let requires_link = Lib.Compile.requires_link compile_info in
+  let* flags = ocaml_flags sctx ~dir mel.compile_flags in
   let* cctx =
     let js_of_ocaml = None in
+    let direct_requires = Lib.Compile.direct_requires compile_info in
     Compilation_context.create () ~loc:mel.loc ~super_context:sctx ~expander
       ~scope ~obj_dir ~modules ~flags ~requires_link
       ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml

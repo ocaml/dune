@@ -192,6 +192,18 @@ let%expect_test _ =
 Ok [ "bar%foo" ]
 |}]
 
+let%expect_test _ =
+  parse {|"\0000"|};
+  [%expect {|
+Error "unterminated decimal escape sequence"
+|}]
+
+let%expect_test _ =
+  parse {|"\x000"|};
+  [%expect {|
+Error "unterminated hexadecimal escape sequence"
+|}]
+
 (* Printing tests *)
 
 let loc = Loc.none

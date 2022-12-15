@@ -777,6 +777,8 @@ module Builder = struct
     ; react_to_insignificant_changes : bool
     }
 
+  let set_root t root = { t with root = Some root }
+
   let term =
     let docs = copts_sect in
     let+ config_from_command_line = shared_with_config_file
@@ -1219,6 +1221,8 @@ let term ~default_root_is_cwd =
 let term_with_default_root_is_cwd = term ~default_root_is_cwd:true
 
 let term = term ~default_root_is_cwd:false
+
+let build = build ~default_root_is_cwd:false
 
 let envs =
   Cmd.Env.

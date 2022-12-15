@@ -462,12 +462,9 @@ module Component = struct
       in
       lib_target @ test_target
 
-    let proj
-        ({ context; common; options } as opts : Options.Project.t Options.t) =
+    let proj ({ common; options; _ } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
-      let dir =
-        Path.relative context.dir (Dune_lang.Atom.to_string common.name)
-      in
+      let dir = Path.root in
       let name =
         Package.Name.parse_string_exn
           (Loc.none, Dune_lang.Atom.to_string common.name)

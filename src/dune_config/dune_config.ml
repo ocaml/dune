@@ -446,7 +446,6 @@ let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
       n
   in
   { Scheduler.Config.concurrency
-  ; display = t.display
   ; stats
   ; insignificant_changes
   ; signal_watcher

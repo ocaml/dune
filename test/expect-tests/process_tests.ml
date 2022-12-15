@@ -2,16 +2,19 @@ open Stdune
 open! Dune_tests_common
 open Dune_engine
 
-let go =
+let go run =
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = Simple { verbosity = Short; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `Yes
     }
   in
-  Scheduler.Run.go config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ())
+  let run () =
+    Process.with_execution_context ~f:run
+      ~display:(Simple { verbosity = Short; status_line = false })
+  in
+  Scheduler.Run.go config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ()) run
 
 let true_ =
   Bin.which "true" ~path:(Env_path.path Env.initial) |> Option.value_exn

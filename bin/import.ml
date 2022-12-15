@@ -153,11 +153,13 @@ module Scheduler = struct
       Dune_config.for_scheduler dune_config stats ~insignificant_changes
         ~signal_watcher
     in
-    let f =
-      match Common.rpc common with
-      | `Allow server ->
-        fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f
-      | `Forbid_builds -> f
+    let f () =
+      Dune_engine.Process.with_execution_context ~display:dune_config.display
+        ~f:
+          (match Common.rpc common with
+          | `Allow server ->
+            fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f
+          | `Forbid_builds -> f)
     in
     Run.go config ~on_event:(on_event dune_config) f
 

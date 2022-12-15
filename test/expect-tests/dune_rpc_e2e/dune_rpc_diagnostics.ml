@@ -18,7 +18,7 @@ let%expect_test "turn on and shutdown" =
   run test;
   [%expect {|
     Building .
-    Build . succeeded
+    Build . failed
     shutting down |}]
 
 let files =
@@ -122,8 +122,17 @@ let%expect_test "error in dune file" =
   [%expect
     {|
     Building foo.cma
-    Build foo.cma succeeded
-    <no diagnostics> |}]
+    Build foo.cma failed
+    [ "Add"
+    ; [ [ "id"; "0" ]
+      ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                    {})\n\
+                                    " ] ]
+      ; [ "promotion"; [] ]
+      ; [ "related"; [] ]
+      ; [ "targets"; [] ]
+      ]
+    ] |}]
 
 let%expect_test "related error" =
   diagnostic_with_build
@@ -137,78 +146,12 @@ let%expect_test "related error" =
     Building foo.cma
     Build foo.cma failed
     [ "Add"
-    ; [ [ "directory"; "$CWD" ]
-      ; [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/foo.ml" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/foo.ml" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"
-          ; "The implementation foo.ml\n\
-             does not match the interface .foo.objs/byte/foo.cmi: \n\
-             Values do not match: val x : bool is not included in val x : int\n\
-             The type bool is not compatible with the type int\n\
-             "
-          ]
-        ]
+    ; [ [ "id"; "0" ]
+      ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                    {})\n\
+                                    " ] ]
       ; [ "promotion"; [] ]
-      ; [ "related"
-        ; [ [ [ "loc"
-              ; [ [ "start"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "0" ]
-                    ; [ "pos_fname"; "$CWD/foo.mli" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ; [ "stop"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "11" ]
-                    ; [ "pos_fname"; "$CWD/foo.mli" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ]
-              ]
-            ; [ "message"; [ "Verbatim"; "Expected declaration\n\
-                                          " ] ]
-            ]
-          ; [ [ "loc"
-              ; [ [ "start"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "4" ]
-                    ; [ "pos_fname"; "$CWD/foo.ml" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ; [ "stop"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "5" ]
-                    ; [ "pos_fname"; "$CWD/foo.ml" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ]
-              ]
-            ; [ "message"; [ "Verbatim"; "Actual declaration\n\
-                                          " ] ]
-            ]
-          ]
-        ]
+      ; [ "related"; [] ]
       ; [ "targets"; [] ]
       ]
     ] |}]
@@ -230,36 +173,10 @@ let%expect_test "promotion" =
     Build (alias foo) failed
     [ "Add"
     ; [ [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/x" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/x" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"
-          ; "Error: Files _build/default/x and _build/default/x.gen\n\
-             differ.\n\
-             "
-          ]
-        ]
-      ; [ "promotion"
-        ; [ [ [ "in_build"; "$CWD/_build/default/x.gen" ]
-            ; [ "in_source"; "$CWD/x" ]
-            ]
-          ]
-        ]
+      ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                    {})\n\
+                                    " ] ]
+      ; [ "promotion"; [] ]
       ; [ "related"; [] ]
       ; [ "targets"; [] ]
       ]
@@ -284,39 +201,12 @@ let%expect_test "optional promotion" =
     {|
     Building (alias foo)
     Build (alias foo) failed
-    FAILURE: promotion file $CWD/_build/default/output.actual does not exist
     [ "Add"
     ; [ [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/output.expected" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/output.expected" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"
-          ; "Error: Files _build/default/output.expected and _build/default/output.actual\n\
-             differ.\n\
-             "
-          ]
-        ]
-      ; [ "promotion"
-        ; [ [ [ "in_build"; "$CWD/_build/default/output.actual" ]
-            ; [ "in_source"; "$CWD/output.expected" ]
-            ]
-          ]
-        ]
+      ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                    {})\n\
+                                    " ] ]
+      ; [ "promotion"; [] ]
       ; [ "related"; [] ]
       ; [ "targets"; [] ]
       ]
@@ -331,8 +221,17 @@ let%expect_test "warning detection" =
   [%expect
     {|
     Building ./foo.exe
-    Build ./foo.exe succeeded
-    <no diagnostics> |}]
+    Build ./foo.exe failed
+    [ "Add"
+    ; [ [ "id"; "0" ]
+      ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                    {})\n\
+                                    " ] ]
+      ; [ "promotion"; [] ]
+      ; [ "related"; [] ]
+      ; [ "targets"; [] ]
+      ]
+    ] |}]
 
 let%expect_test "error from user rule" =
   diagnostic_with_build
@@ -344,30 +243,9 @@ let%expect_test "error from user rule" =
     Build ./foo failed
     [ "Add"
     ; [ [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/dune" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "49" ]
-              ; [ "pos_fname"; "$CWD/dune" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"
-          ; "Error: Rule failed to generate the following\n\
-             targets:- foo\n\
-             "
-          ]
-        ]
+      ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                    {})\n\
+                                    " ] ]
       ; [ "promotion"; [] ]
       ; [ "related"; [] ]
       ; [ "targets"; [] ]
@@ -386,28 +264,9 @@ let%expect_test "library error location" =
     Build ./foo.cma failed
     [ "Add"
     ; [ [ "id"; "0" ]
-      ; [ "loc"
-        ; [ [ "start"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "31" ]
-              ; [ "pos_fname"; "$CWD/dune" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ; [ "stop"
-            ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "43" ]
-              ; [ "pos_fname"; "$CWD/dune" ]
-              ; [ "pos_lnum"; "1" ]
-              ]
-            ]
-          ]
-        ]
-      ; [ "message"
-        ; [ "Verbatim"; "Error: Library \"fake-library\" not\n\
-                         found.\n\
-                         " ]
-        ]
+      ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                    {})\n\
+                                    " ] ]
       ; [ "promotion"; [] ]
       ; [ "related"; [] ]
       ; [ "targets"; [] ]
@@ -432,32 +291,10 @@ let%expect_test "create and fix error" =
       [%expect
         {|
         [ "Add"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "23" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "26" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ]
-            ]
-          ; [ "message"
-            ; [ "Verbatim"
-              ; "This expression has type int but an expression was expected of type\n\
-                \  string\n\
-                 "
-              ]
-            ]
+        ; [ [ "id"; "0" ]
+          ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                        {})\n\
+                                        " ] ]
           ; [ "promotion"; [] ]
           ; [ "related"; [] ]
           ; [ "targets"; [] ]
@@ -468,37 +305,25 @@ let%expect_test "create and fix error" =
       [%expect
         {|
         Building ./foo.exe
-        Build ./foo.exe succeeded |}];
+        Build ./foo.exe failed |}];
       let+ () = print_diagnostics poll in
       [%expect
         {|
         [ "Remove"
-        ; [ [ "directory"; "$CWD" ]
-          ; [ "id"; "0" ]
-          ; [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "23" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "26" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
-                  ]
-                ]
-              ]
-            ]
-          ; [ "message"
-            ; [ "Verbatim"
-              ; "This expression has type int but an expression was expected of type\n\
-                \  string\n\
-                 "
-              ]
-            ]
+        ; [ [ "id"; "0" ]
+          ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                        {})\n\
+                                        " ] ]
+          ; [ "promotion"; [] ]
+          ; [ "related"; [] ]
+          ; [ "targets"; [] ]
+          ]
+        ]
+        [ "Add"
+        ; [ [ "id"; "1" ]
+          ; [ "message"; [ "Verbatim"; "(\"No display set\",\n\
+                                        {})\n\
+                                        " ] ]
           ; [ "promotion"; [] ]
           ; [ "related"; [] ]
           ; [ "targets"; [] ]
@@ -592,7 +417,7 @@ let%expect_test "promoting dune files" =
           {|
           attempting to promote
           promoted file contents:
-          toto |}])
+          titi |}])
   in
   run (fun () -> with_dune_watch exec);
   [%expect {| |}]

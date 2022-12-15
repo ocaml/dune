@@ -46,7 +46,6 @@ let run =
   let cwd = Sys.getcwd () in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = Simple { verbosity = Quiet; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No
@@ -55,10 +54,13 @@ let run =
   fun run ->
     let dir = Temp.create Dir ~prefix:"dune" ~suffix:"rpc_test" in
     let run () =
-      Fiber.with_error_handler run ~on_error:(fun exn ->
-          Exn_with_backtrace.pp_uncaught Format.err_formatter exn;
-          Format.pp_print_flush Format.err_formatter ();
-          Exn_with_backtrace.reraise exn)
+      Dune_engine.Process.with_execution_context
+        ~display:(Simple { verbosity = Quiet; status_line = false })
+        ~f:(fun () ->
+          Fiber.with_error_handler run ~on_error:(fun exn ->
+              Exn_with_backtrace.pp_uncaught Format.err_formatter exn;
+              Format.pp_print_flush Format.err_formatter ();
+              Exn_with_backtrace.reraise exn))
     in
     Exn.protect
       ~finally:(fun () -> Sys.chdir cwd)

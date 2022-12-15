@@ -606,11 +606,26 @@ let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
 
 let set_temp_dir_when_running_actions = ref true
 
+module Execution_context = struct
+  type t = { display : Display.t }
+
+  let var : t Fiber.Var.t = Fiber.Var.create ()
+
+  let run t f = Fiber.Var.set var t f
+end
+
+let with_execution_context ~display ~f = Execution_context.run { display } f
+
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ?(env = Env.initial)
     ?(metadata = default_metadata) fail_mode prog args =
   Scheduler.with_job_slot (fun cancel (config : Scheduler.Config.t) ->
-      let display = config.display in
+      let* display = Fiber.Var.get Execution_context.var in
+      let display =
+        match display with
+        | Some { display } -> display
+        | None -> Code_error.raise "No display set" []
+      in
       let dir =
         match dir with
         | None -> dir

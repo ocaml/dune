@@ -5,7 +5,6 @@ open Fiber.O
 
 let default =
   { Scheduler.Config.concurrency = 1
-  ; display = Simple { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
@@ -58,27 +57,30 @@ let%expect_test "cancelling a build" =
 let%expect_test "cancelling a build: effect on other fibers" =
   let build_started = Fiber.Ivar.create () in
   go (fun () ->
-      Fiber.fork_and_join_unit
-        (fun () ->
-          Scheduler.Run.poll
-            (let* () = Fiber.Ivar.fill build_started () in
-             Fiber.never))
-        (fun () ->
-          let* () = Fiber.Ivar.read build_started in
-          let* () =
-            Scheduler.inject_memo_invalidation
-              (Memo.Cell.invalidate cell ~reason:Unknown)
-          in
-          let* () = Scheduler.wait_for_build_input_change () in
-          let* res =
-            Fiber.collect_errors (fun () ->
-                Scheduler.with_job_slot (fun _ _ -> Fiber.return ()))
-          in
-          print_endline
-            (match res with
-            | Ok () -> "PASS: we can still run things outside the build"
-            | Error _ -> "FAIL: other fiber got cancelled");
-          Scheduler.shutdown ()));
+      Process.with_execution_context
+        ~display:(Simple { verbosity = Short; status_line = false })
+        ~f:(fun () ->
+          Fiber.fork_and_join_unit
+            (fun () ->
+              Scheduler.Run.poll
+                (let* () = Fiber.Ivar.fill build_started () in
+                 Fiber.never))
+            (fun () ->
+              let* () = Fiber.Ivar.read build_started in
+              let* () =
+                Scheduler.inject_memo_invalidation
+                  (Memo.Cell.invalidate cell ~reason:Unknown)
+              in
+              let* () = Scheduler.wait_for_build_input_change () in
+              let* res =
+                Fiber.collect_errors (fun () ->
+                    Scheduler.with_job_slot (fun _ _ -> Fiber.return ()))
+              in
+              print_endline
+                (match res with
+                | Ok () -> "PASS: we can still run things outside the build"
+                | Error _ -> "FAIL: other fiber got cancelled");
+              Scheduler.shutdown ())));
   [%expect {| PASS: we can still run things outside the build |}]
 
 let%expect_test "empty invalidation wakes up waiter" =

@@ -209,7 +209,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       let lib_name = Lib.name lib in
       let* lib, lib_compile_info =
         Lib.DB.get_compile_info (Scope.libs scope) lib_name
-          ~allow_overlaps:false
+          ~allow_overlaps:mel.allow_overlapping_dependencies
       in
       let info = local_of_lib ~loc:mel.loc lib |> Lib.Local.info in
       let loc = Lib_info.loc info in
@@ -235,7 +235,9 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
           in
           let* lib_deps_js_includes =
             let+ requires_link =
-              Lib.Compile.for_lib ~allow_overlaps:false (Scope.libs scope) vlib
+              Lib.Compile.for_lib
+                ~allow_overlaps:mel.allow_overlapping_dependencies
+                (Scope.libs scope) vlib
               |> Lib.Compile.requires_link |> Memo.Lazy.force
             in
             js_includes ~loc:mel.loc ~sctx ~target_dir ~requires_link ~scope
@@ -270,8 +272,8 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   in
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
   Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange_emit mel.target)
-    ~allow_overlaps:false ~forbidden_libraries:[] mel.libraries ~pps
-    ~dune_version ~merlin_ident
+    ~allow_overlaps:mel.allow_overlapping_dependencies ~forbidden_libraries:[]
+    mel.libraries ~pps ~dune_version ~merlin_ident
 
 let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
   let open Memo.O in

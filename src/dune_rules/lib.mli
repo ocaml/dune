@@ -139,7 +139,7 @@ module DB : sig
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)
   val get_compile_info :
-    t -> ?allow_overlaps:bool -> Lib_name.t -> (lib * Compile.t) Memo.t
+    t -> allow_overlaps:bool -> Lib_name.t -> (lib * Compile.t) Memo.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
 
@@ -156,8 +156,8 @@ module DB : sig
   val resolve_user_written_deps :
        t
     -> [ `Exe of (Import.Loc.t * string) list | `Melange_emit of string ]
-    -> ?allow_overlaps:bool
-    -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
+    -> allow_overlaps:bool
+    -> forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t

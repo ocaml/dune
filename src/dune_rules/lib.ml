@@ -1792,7 +1792,7 @@ module DB = struct
 
   let available t name = Resolve_names.available_internal t name
 
-  let get_compile_info t ?(allow_overlaps = false) name =
+  let get_compile_info t ~allow_overlaps name =
     let open Memo.O in
     let+ find = find_even_when_hidden t name in
     match find with
@@ -1801,8 +1801,8 @@ module DB = struct
         [ ("name", Lib_name.to_dyn name) ]
     | Some lib -> (lib, Compile.for_lib ~allow_overlaps t lib)
 
-  let resolve_user_written_deps t targets ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~dune_version ~merlin_ident =
+  let resolve_user_written_deps t targets ~allow_overlaps ~forbidden_libraries
+      deps ~pps ~dune_version ~merlin_ident =
     let resolved =
       Memo.lazy_ (fun () ->
           Resolve_names.resolve_deps_and_add_runtime_deps t deps ~pps

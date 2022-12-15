@@ -124,6 +124,13 @@ module Function_description = struct
        })
 end
 
+let c_generated_functions_cout_c_of_lib ~external_library_name
+    (fd : Function_description.t) =
+  sprintf "%s__c_cout_generated_functions__%s__%s.c"
+    (External_lib_name.to_string external_library_name)
+    (Module_name.to_string fd.functor_)
+    (Module_name.to_string fd.instance)
+
 type t =
   { external_library_name : External_lib_name.t
   ; build_flags_resolver : Build_flags_resolver.t
@@ -144,14 +151,32 @@ let decode =
      and+ build_flags_resolver =
        field_o "build_flags_resolver" Build_flags_resolver.decode
      and+ type_description = field "type_description" Type_description.decode
-     and+ function_description =
-       multi_field "function_description" Function_description.decode
+     and+ loc_fd, function_description =
+       located (multi_field "function_description" Function_description.decode)
      and+ headers = field_o "headers" Headers.decode
      and+ generated_types = field_o "generated_types" Module_name.decode
      and+ generated_entry_point =
        field "generated_entry_point" Module_name.decode
      and+ deps = field_o "deps" (repeat Dep_conf.decode) in
-     { external_library_name = External_lib_name.of_string external_library_name
+     let external_library_name =
+       External_lib_name.of_string external_library_name
+     in
+     (match
+        String.Map.of_list_map function_description ~f:(fun fd ->
+            let key =
+              c_generated_functions_cout_c_of_lib ~external_library_name fd
+            in
+            (key, ()))
+      with
+     | Ok _ -> ()
+     | Error (_, a, _) ->
+       User_error.raise ~loc:loc_fd
+         [ Pp.textf
+             "Only a single (function_description) can instantiate %s as %s."
+             (Module_name.to_string a.functor_)
+             (Module_name.to_string a.instance)
+         ]);
+     { external_library_name
      ; build_flags_resolver =
          Option.value build_flags_resolver ~default:Build_flags_resolver.default
      ; headers = Option.value headers ~default:Headers.default
@@ -194,11 +219,8 @@ let c_generated_functions_module ctypes (fd : Function_description.t) =
     (Module_name.to_string fd.instance)
   |> Module_name.of_string
 
-let c_generated_functions_cout_c ctypes (fd : Function_description.t) =
-  sprintf "%s__c_cout_generated_functions__%s__%s.c"
-    (External_lib_name.to_string ctypes.external_library_name)
-    (Module_name.to_string fd.functor_)
-    (Module_name.to_string fd.instance)
+let c_generated_functions_cout_c { external_library_name; _ } fd =
+  c_generated_functions_cout_c_of_lib ~external_library_name fd
 
 let type_gen_script_module ctypes =
   type_gen_script ctypes |> Module_name.of_string

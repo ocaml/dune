@@ -255,7 +255,8 @@ end = struct
                 Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
               in
               Lib.DB.resolve_user_written_deps (Scope.libs scope)
-                (`Exe exes.names) exes.buildable.libraries ~pps ~dune_version
+                ~forbidden_libraries:[] (`Exe exes.names)
+                exes.buildable.libraries ~pps ~dune_version
                 ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
                 ~merlin_ident
             in

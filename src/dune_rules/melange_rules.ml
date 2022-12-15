@@ -1,20 +1,20 @@
 open Import
-module CC = Compilation_context
 
 let ocaml_flags sctx ~dir melange =
   let open Memo.O in
-  let open Super_context in
-  let* expander = expander sctx ~dir in
+  let* expander = Super_context.expander sctx ~dir in
   let* flags =
-    let+ ocaml_flags = env_node sctx ~dir >>= Env_node.ocaml_flags in
+    let+ ocaml_flags =
+      Super_context.env_node sctx ~dir >>= Env_node.ocaml_flags
+    in
     Ocaml_flags.make_with_melange ~melange ~default:ocaml_flags
       ~eval:(Expander.expand_and_eval_set expander)
   in
-  build_dir_is_vendored dir >>| function
-  | true ->
-    let ocaml_version = (context sctx).version in
-    with_vendored_flags ~ocaml_version flags
+  Super_context.build_dir_is_vendored dir >>| function
   | false -> flags
+  | true ->
+    let ocaml_version = (Super_context.context sctx).version in
+    Super_context.with_vendored_flags ~ocaml_version flags
 
 let lib_output_dir ~target_dir ~lib_dir =
   Path.Build.append_source target_dir

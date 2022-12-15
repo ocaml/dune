@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Report an error if `dune init ...` would create a "dune" file in a location
+  which already contains a "dune" directory (#6705, @gridbugs)
+
 - Fix the parsing of alerts. They will now show up in diagnostics correctly.
   (#6678, @rginberg)
 

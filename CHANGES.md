@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix the parsing of decimal and hexadecimal escape literals in `dune`,
+  `dune-package`, and other dune s-expression based files (#6710, @shym)
+
 - Report an error if `dune init ...` would create a "dune" file in a location
   which already contains a "dune" directory (#6705, @gridbugs)
 

@@ -195,13 +195,13 @@ Ok [ "bar%foo" ]
 let%expect_test _ =
   parse {|"\0000"|};
   [%expect {|
-Error "unterminated decimal escape sequence"
+Ok [ "\0000" ]
 |}]
 
 let%expect_test _ =
   parse {|"\x000"|};
   [%expect {|
-Error "unterminated hexadecimal escape sequence"
+Ok [ "\0000" ]
 |}]
 
 (* Printing tests *)

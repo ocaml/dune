@@ -988,8 +988,6 @@ let extract_build_context = function
   | In_build_dir p when Local.is_root p -> None
   | In_build_dir t -> Build.extract_build_context t
 
-let extract_build_dir_first_component = extract_build_context
-
 let extract_build_context_exn t =
   match extract_build_context t with
   | Some t -> t

@@ -445,9 +445,4 @@ let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n
   in
-  { Scheduler.Config.concurrency
-  ; display = t.display
-  ; stats
-  ; insignificant_changes
-  ; signal_watcher
-  }
+  { Scheduler.Config.concurrency; stats; insignificant_changes; signal_watcher }

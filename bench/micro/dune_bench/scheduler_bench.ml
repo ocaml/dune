@@ -6,7 +6,6 @@ module Caml = Stdlib
 
 let config =
   { Scheduler.Config.concurrency = 1
-  ; display = Simple { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
@@ -19,7 +18,10 @@ let setup =
 
 let prog = Option.value_exn (Bin.which ~path:(Env_path.path Env.initial) "true")
 
-let run () = Process.run ~env:Env.initial Strict prog []
+let run () =
+  Process.with_execution_context
+    ~display:(Simple { verbosity = Short; status_line = false })
+    ~f:(fun () -> Process.run ~env:Env.initial Strict prog [])
 
 let go ~jobs fiber =
   Scheduler.Run.go

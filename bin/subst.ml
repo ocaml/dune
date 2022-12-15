@@ -424,10 +424,7 @@ let term =
   let+ () = Common.build_info
   and+ debug_backtraces = Common.debug_backtraces in
   let config : Dune_config.t =
-    { Dune_config.default with
-      display = Simple { verbosity = Quiet; status_line = false }
-    ; concurrency = Fixed 1
-    }
+    { Dune_config.default with concurrency = Fixed 1 }
   in
   Dune_engine.Clflags.debug_backtraces debug_backtraces;
   Path.set_root (Path.External.cwd ());
@@ -435,10 +432,12 @@ let term =
     (Path.Outside_build_dir.of_string Common.default_build_dir);
   Dune_config.init config;
   Log.init_disabled ();
-  Dune_engine.Scheduler.Run.go
+  Dune_engine.Scheduler.Run.go ?timeout:None ?file_watcher:None
     ~on_event:(fun _ _ -> ())
     (Dune_config.for_scheduler config None ~insignificant_changes:`React
        ~signal_watcher:`No)
-    subst
+  @@ fun () ->
+  Dune_engine.Process.with_execution_context ~f:subst
+    ~display:(Simple { verbosity = Quiet; status_line = false })
 
 let command = Cmd.v info term

@@ -83,6 +83,12 @@ val create_metadata :
    this behaviour by setting [set_temp_dir_when_running_actions = false]. *)
 val set_temp_dir_when_running_actions : bool ref
 
+(** [with_execution_context ~display ~f] executes [f] where:
+
+    - [display] is the display provider *)
+val with_execution_context :
+  display:Display.t -> f:(unit -> 'a Fiber.t) -> 'a Fiber.t
+
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)
 val run :

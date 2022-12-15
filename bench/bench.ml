@@ -125,7 +125,6 @@ let () =
   let module Scheduler = Dune_engine.Scheduler in
   let config =
     { Scheduler.Config.concurrency = 10
-    ; display = Simple { verbosity = Quiet; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No
@@ -135,9 +134,12 @@ let () =
     Scheduler.Run.go config
       ~on_event:(fun _ _ -> ())
       (fun () ->
-        let open Fiber.O in
-        let* () = prepare_workspace () in
-        run_bench ())
+        Process.with_execution_context
+          ~display:(Simple { verbosity = Quiet; status_line = false })
+          ~f:(fun () ->
+            let open Fiber.O in
+            let* () = prepare_workspace () in
+            run_bench ()))
   in
   let zero = List.map zero ~f:(fun t -> `Float t) in
   let size =

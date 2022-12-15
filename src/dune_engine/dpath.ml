@@ -117,6 +117,8 @@ let analyse_dir (fn : Path.t) =
 
 type t = Path.t
 
+let to_dyn = Path.to_dyn
+
 let encode p =
   let make constr arg =
     Dune_lang.List

@@ -58,16 +58,19 @@ let notification_exn client witness n =
   Client.notification client staged n
 
 let run_client ?handler f =
-  let* chan = init_chan ~root_dir:"." in
-  let initialize =
-    let id = Dune_rpc.Id.make (Atom "test") in
-    Dune_rpc.Initialize.Request.create ~id
-  in
-  Dune_rpc_impl.Client.client ?handler chan initialize ~f:(fun client ->
-      Fiber.finalize
-        (fun () -> f client)
-        ~finally:(fun () ->
-          notification_exn client Dune_rpc.Public.Notification.shutdown ()))
+  Dune_engine.Process.with_execution_context
+    ~display:(Simple { verbosity = Quiet; status_line = false })
+    ~f:(fun () ->
+      let* chan = init_chan ~root_dir:"." in
+      let initialize =
+        let id = Dune_rpc.Id.make (Atom "test") in
+        Dune_rpc.Initialize.Request.create ~id
+      in
+      Dune_rpc_impl.Client.client ?handler chan initialize ~f:(fun client ->
+          Fiber.finalize
+            (fun () -> f client)
+            ~finally:(fun () ->
+              notification_exn client Dune_rpc.Public.Notification.shutdown ())))
 
 let read_lines in_ =
   let* reader = Scheduler.Worker.create () in
@@ -164,7 +167,6 @@ let with_dune_watch ?env f =
 
 let config =
   { Scheduler.Config.concurrency = 1
-  ; display = Simple { verbosity = Quiet; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
@@ -174,10 +176,13 @@ let run run =
   let cwd = Sys.getcwd () in
   let dir = Temp.create Dir ~prefix:"dune" ~suffix:"rpc_test" in
   let run () =
-    Fiber.with_error_handler run ~on_error:(fun exn ->
-        Exn_with_backtrace.pp_uncaught Format.err_formatter exn;
-        Format.pp_print_flush Format.err_formatter ();
-        Exn_with_backtrace.reraise exn)
+    Dune_engine.Process.with_execution_context
+      ~display:(Simple { verbosity = Quiet; status_line = false })
+      ~f:(fun () ->
+        Fiber.with_error_handler run ~on_error:(fun exn ->
+            Exn_with_backtrace.pp_uncaught Format.err_formatter exn;
+            Format.pp_print_flush Format.err_formatter ();
+            Exn_with_backtrace.reraise exn))
   in
   Exn.protect
     ~finally:(fun () -> Sys.chdir cwd)

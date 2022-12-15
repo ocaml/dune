@@ -112,7 +112,6 @@ let run kind script =
   let vcs = { Vcs.kind; root = temp_dir } in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = Simple { verbosity = Short; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No
@@ -121,7 +120,10 @@ let run kind script =
   Scheduler.Run.go
     ~on_event:(fun _ _ -> ())
     config
-    (fun () -> Fiber.sequential_iter script ~f:(run_action vcs))
+    (fun () ->
+      Process.with_execution_context
+        ~display:(Simple { verbosity = Short; status_line = false })
+        ~f:(fun () -> Fiber.sequential_iter script ~f:(run_action vcs)))
 
 let script =
   [ Init

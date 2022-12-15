@@ -42,6 +42,8 @@ val describe_path : Path.t -> string
 
 include Dune_lang.Conv.S with type t = Path.t
 
+val to_dyn : t -> Dyn.t
+
 module Local : sig
   val encode : dir:Path.t -> Path.t Dune_lang.Encoder.t
 

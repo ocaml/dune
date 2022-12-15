@@ -606,11 +606,32 @@ let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
 
 let set_temp_dir_when_running_actions = ref true
 
+module Execution_context = struct
+  type t = { display : Display.t }
+
+  let var : t Fiber.Var.t = Fiber.Var.create ()
+
+  let run t f = Fiber.Var.set var t f
+end
+
+let with_execution_context ~display ~f = Execution_context.run { display } f
+
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.null In) ?(env = Env.initial)
     ?(metadata = default_metadata) fail_mode prog args =
   Scheduler.with_job_slot (fun cancel (config : Scheduler.Config.t) ->
-      let display = config.display in
+      let* execution_context = Fiber.Var.get Execution_context.var in
+      let execution_context =
+        match execution_context with
+        | Some execution_context -> execution_context
+        | None ->
+          Code_error.raise
+            "The execution context has not been set during a Process.run. \
+             Please surround the fiber with with_execution_context near the \
+             call site of Scheduler.Run.go. The execution context allows \
+             fibers to access a display for printing."
+            [ ("prog", Dpath.to_dyn prog); ("args", Dyn.list Dyn.string args) ]
+      in
       let dir =
         match dir with
         | None -> dir
@@ -623,7 +644,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
       in
       let fancy_command_line =
-        match display with
+        match execution_context.display with
         | Simple { verbosity = Verbose; _ } ->
           let open Pp.O in
           let cmdline =
@@ -808,7 +829,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let output = stdout ^ stderr in
         Log.command ~command_line ~output ~exit_status:process_info.status;
         let res =
-          match (display, exit_status', output) with
+          match (execution_context.display, exit_status', output) with
           | Simple { verbosity = Quiet; _ }, Ok n, "" ->
             n (* Optimisation for the common case *)
           | Simple { verbosity = Verbose; _ }, _, _ ->

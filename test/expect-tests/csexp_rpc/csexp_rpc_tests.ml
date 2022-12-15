@@ -79,9 +79,12 @@ let%expect_test "csexp server life cycle" =
         in
         log "sessions finished")
   in
+  let run () =
+    Dune_engine.Process.with_execution_context ~f:run
+      ~display:(Simple { verbosity = Quiet; status_line = false })
+  in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = Simple { verbosity = Quiet; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No

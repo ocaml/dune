@@ -42,8 +42,6 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
-- Add CI testing with MSVC (#6540, fixes #6535, @jonahbeckford)
-
 - Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
 
 - Fix missing dependencies when detecting the kind of C compiler we're using
@@ -56,8 +54,8 @@ Unreleased
   `copy#` and `copy_files#`. The old heuristic of looking for a module in
   parent directories is removed (#6594, @rgrinberg)
 
-- Fix inline tests with js_of_ocaml and whole program compilation mode enabled
-  (#6645, @hhugo)
+- Fix inline tests with *js_of_ocaml* and whole program compilation mode
+  enabled (#6645, @hhugo)
 
 3.6.1 (2022-11-24)
 ------------------

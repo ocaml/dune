@@ -57,6 +57,8 @@ module Client = struct
 
     type chan
 
+    module V : Versioned.S with type 'a fiber := 'a fiber
+
     module Versioned : sig
       type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
 
@@ -116,6 +118,8 @@ module Client = struct
 
     module Handler : sig
       type t
+
+      val of_builder : ?abort:(Message.t -> unit fiber) -> unit V.Builder.t -> t
 
       val create :
            ?log:(Message.t -> unit fiber)
@@ -568,10 +572,19 @@ module Client = struct
       terminate t
 
     module Handler = struct
-      type nonrec t =
+      type classic =
         { log : Message.t -> unit Fiber.t
         ; abort : Message.t -> unit Fiber.t
         }
+
+      type builder =
+        { abort : Message.t -> unit Fiber.t
+        ; builder : unit V.Builder.t
+        }
+
+      type nonrec t =
+        | Classic of classic
+        | Builder of builder
 
       let log { Message.payload; message } =
         let+ () = Fiber.return () in
@@ -583,6 +596,9 @@ module Client = struct
       let abort m = raise (Abort (Server_aborted m))
 
       let default = { log; abort }
+
+      let of_builder ?(abort = default.abort) builder =
+        Builder { abort; builder }
 
       let create ?log ?abort () =
         let t =
@@ -596,7 +612,9 @@ module Client = struct
           | None -> t
           | Some abort -> { t with abort }
         in
-        t
+        Classic t
+
+      let default = Classic default
     end
 
     type proc =
@@ -604,7 +622,7 @@ module Client = struct
       | Notification : 'a Decl.notification -> proc
       | Poll : 'a Procedures.Poll.t -> proc
 
-    let setup_versioning ~private_menu ~(handler : Handler.t) =
+    let setup_versioning ~private_menu ~(handler : Handler.classic) =
       let module Builder = V.Builder in
       let t : unit Builder.t = Builder.create () in
       (* CR-soon cwong: It is a *huge* footgun that you have to remember to
@@ -646,10 +664,18 @@ module Client = struct
             | Error e -> raise (Abort (Invalid_session e))
             | Ok message -> message)
       in
-      let builder = setup_versioning ~handler ~private_menu in
+      let builder =
+        match handler with
+        | Builder (c : Handler.builder) -> c.builder
+        | Classic handler -> setup_versioning ~handler ~private_menu
+      in
       let handler_var = Fiber.Ivar.create () in
       let client =
-        let on_preemptive_abort = handler.abort in
+        let on_preemptive_abort =
+          match handler with
+          | Classic a -> a.abort
+          | Builder a -> a.abort
+        in
         let handler = Fiber.Ivar.read handler_var in
         create ~initialize ~chan ~handler ~on_preemptive_abort
       in

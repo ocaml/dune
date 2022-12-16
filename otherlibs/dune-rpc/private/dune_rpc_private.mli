@@ -428,6 +428,8 @@ module Client : sig
 
     type chan
 
+    module V : Versioned.S with type 'a fiber := 'a fiber
+
     module Versioned : sig
       type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
 
@@ -487,6 +489,8 @@ module Client : sig
 
     module Handler : sig
       type t
+
+      val of_builder : ?abort:(Message.t -> unit fiber) -> unit V.Builder.t -> t
 
       val create :
            ?log:(Message.t -> unit fiber)

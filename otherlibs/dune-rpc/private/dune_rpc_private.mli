@@ -293,112 +293,6 @@ module Public : sig
   end
 end
 
-module Client : sig
-  module type S = sig
-    type t
-
-    type 'a fiber
-
-    type chan
-
-    module Versioned : sig
-      type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
-
-      type 'a notification = 'a Versioned.Staged.notification
-
-      val prepare_request :
-           t
-        -> ('a, 'b) Decl.Request.witness
-        -> (('a, 'b) request, Version_error.t) result fiber
-
-      val prepare_notification :
-           t
-        -> 'a Decl.Notification.witness
-        -> ('a notification, Version_error.t) result fiber
-    end
-
-    val request :
-         ?id:Id.t
-      -> t
-      -> ('a, 'b) Versioned.request
-      -> 'a
-      -> ('b, Response.Error.t) result fiber
-
-    val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
-
-    val disconnected : t -> unit fiber
-
-    module Stream : sig
-      type 'a t
-
-      val cancel : _ t -> unit fiber
-
-      val next : 'a t -> 'a option fiber
-    end
-
-    val poll :
-      ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
-
-    module Batch : sig
-      type client := t
-
-      type t
-
-      val create : client -> t
-
-      val request :
-           ?id:Id.t
-        -> t
-        -> ('a, 'b) Versioned.request
-        -> 'a
-        -> ('b, Response.Error.t) result fiber
-
-      val notification : t -> 'a Versioned.notification -> 'a -> unit
-
-      val submit : t -> unit fiber
-    end
-
-    module Handler : sig
-      type t
-
-      val create :
-           ?log:(Message.t -> unit fiber)
-        -> ?abort:(Message.t -> unit fiber)
-        -> unit
-        -> t
-    end
-
-    type proc =
-      | Request : ('a, 'b) Decl.request -> proc
-      | Notification : 'a Decl.notification -> proc
-      | Poll : 'a Procedures.Poll.t -> proc
-
-    val connect_with_menu :
-         ?handler:Handler.t
-      -> private_menu:proc list
-      -> chan
-      -> Initialize.Request.t
-      -> f:(t -> 'a fiber)
-      -> 'a fiber
-
-    val connect :
-         ?handler:Handler.t
-      -> chan
-      -> Initialize.Request.t
-      -> f:(t -> 'a fiber)
-      -> 'a fiber
-  end
-
-  module Make
-      (Fiber : Fiber) (Chan : sig
-        type t
-
-        val write : t -> Csexp.t list option -> unit Fiber.t
-
-        val read : t -> Csexp.t option Fiber.t
-      end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
-end
-
 module Packet : sig
   type t =
     | Request of Request.t
@@ -524,6 +418,112 @@ module Versioned : sig
   end
 
   module Make (Fiber : Fiber) : S with type 'a fiber := 'a Fiber.t
+end
+
+module Client : sig
+  module type S = sig
+    type t
+
+    type 'a fiber
+
+    type chan
+
+    module Versioned : sig
+      type ('a, 'b) request = ('a, 'b) Versioned.Staged.request
+
+      type 'a notification = 'a Versioned.Staged.notification
+
+      val prepare_request :
+           t
+        -> ('a, 'b) Decl.Request.witness
+        -> (('a, 'b) request, Version_error.t) result fiber
+
+      val prepare_notification :
+           t
+        -> 'a Decl.Notification.witness
+        -> ('a notification, Version_error.t) result fiber
+    end
+
+    val request :
+         ?id:Id.t
+      -> t
+      -> ('a, 'b) Versioned.request
+      -> 'a
+      -> ('b, Response.Error.t) result fiber
+
+    val notification : t -> 'a Versioned.notification -> 'a -> unit fiber
+
+    val disconnected : t -> unit fiber
+
+    module Stream : sig
+      type 'a t
+
+      val cancel : _ t -> unit fiber
+
+      val next : 'a t -> 'a option fiber
+    end
+
+    val poll :
+      ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
+
+    module Batch : sig
+      type client := t
+
+      type t
+
+      val create : client -> t
+
+      val request :
+           ?id:Id.t
+        -> t
+        -> ('a, 'b) Versioned.request
+        -> 'a
+        -> ('b, Response.Error.t) result fiber
+
+      val notification : t -> 'a Versioned.notification -> 'a -> unit
+
+      val submit : t -> unit fiber
+    end
+
+    module Handler : sig
+      type t
+
+      val create :
+           ?log:(Message.t -> unit fiber)
+        -> ?abort:(Message.t -> unit fiber)
+        -> unit
+        -> t
+    end
+
+    type proc =
+      | Request : ('a, 'b) Decl.request -> proc
+      | Notification : 'a Decl.notification -> proc
+      | Poll : 'a Procedures.Poll.t -> proc
+
+    val connect_with_menu :
+         ?handler:Handler.t
+      -> private_menu:proc list
+      -> chan
+      -> Initialize.Request.t
+      -> f:(t -> 'a fiber)
+      -> 'a fiber
+
+    val connect :
+         ?handler:Handler.t
+      -> chan
+      -> Initialize.Request.t
+      -> f:(t -> 'a fiber)
+      -> 'a fiber
+  end
+
+  module Make
+      (Fiber : Fiber) (Chan : sig
+        type t
+
+        val write : t -> Csexp.t list option -> unit Fiber.t
+
+        val read : t -> Csexp.t option Fiber.t
+      end) : S with type 'a fiber := 'a Fiber.t and type chan := Chan.t
 end
 
 module Server_notifications : sig

@@ -37,7 +37,7 @@ the ``default`` build context:
 
 .. code:: scheme
 
-    (context (default (targets (native windows android))))
+    (context (default (targets native windows android)))
 
 This configuration defines three build contexts:
 
@@ -59,7 +59,7 @@ file:
 
 .. code:: scheme
 
-   (context (default (targets (foo))))
+   (context (default (targets foo)))
 
 If you have a ``dune-workspace`` and pass a ``-x foo`` option, ``foo`` will be
 added as target of all context stanzas.

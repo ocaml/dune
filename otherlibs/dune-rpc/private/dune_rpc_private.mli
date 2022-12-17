@@ -421,6 +421,11 @@ module Versioned : sig
 end
 
 module Client : sig
+  type proc =
+    | Request : ('a, 'b) Decl.request -> proc
+    | Notification : 'a Decl.notification -> proc
+    | Poll : 'a Procedures.Poll.t -> proc
+
   module type S = sig
     type t
 
@@ -494,11 +499,6 @@ module Client : sig
         -> unit
         -> t
     end
-
-    type proc =
-      | Request : ('a, 'b) Decl.request -> proc
-      | Notification : 'a Decl.notification -> proc
-      | Poll : 'a Procedures.Poll.t -> proc
 
     val connect_with_menu :
          ?handler:Handler.t

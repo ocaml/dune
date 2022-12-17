@@ -50,6 +50,11 @@ module Server_notifications = struct
 end
 
 module Client = struct
+  type proc =
+    | Request : ('a, 'b) Decl.request -> proc
+    | Notification : 'a Decl.notification -> proc
+    | Poll : 'a Procedures.Poll.t -> proc
+
   module type S = sig
     type t
 
@@ -123,11 +128,6 @@ module Client = struct
         -> unit
         -> t
     end
-
-    type proc =
-      | Request : ('a, 'b) Decl.request -> proc
-      | Notification : 'a Decl.notification -> proc
-      | Poll : 'a Procedures.Poll.t -> proc
 
     val connect_with_menu :
          ?handler:Handler.t
@@ -598,11 +598,6 @@ module Client = struct
         in
         t
     end
-
-    type proc =
-      | Request : ('a, 'b) Decl.request -> proc
-      | Notification : 'a Decl.notification -> proc
-      | Poll : 'a Procedures.Poll.t -> proc
 
     let setup_versioning ~private_menu ~(handler : Handler.t) =
       let module Builder = V.Builder in

@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fix running the RPC server on windows (#6721 fixes #6720, @rgrinberg)
+
 - Use colored output with GCC and Clang when compiling C stubs. The
   flag `-fdiagnostics-color=always` is added to the `:standard` set of
   flags. (#4083, @MisterDA)

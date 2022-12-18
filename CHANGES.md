@@ -1,6 +1,13 @@
 Unreleased
 ----------
 
+- Make `dune describe workspace` return consistent dependencies for
+  executables and for libraries. By default, compile-time dependencies
+  towards PPX-rewriters are from now not taken into account (but
+  runtime dependencies always are). Compile-time dependencies towards
+  PPX-rewriters can be taken into account by providing the
+  `--with-pps` flag. (#6727, fixes #6486, @esope)
+
 - Fix the parsing of alerts. They will now show up in diagnostics correctly.
   (#6678, @rginberg)
 

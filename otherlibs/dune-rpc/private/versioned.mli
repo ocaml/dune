@@ -22,14 +22,16 @@ module Staged : sig
   type 'payload notification = { encode : 'payload -> Call.t }
 end
 
-module Make (Fiber : Fiber_intf.S) : sig
+module type S = sig
+  type 'a fiber
+
   module Handler : sig
     type 'state t
 
-    val handle_request : 'state t -> 'state -> Request.t -> Response.t Fiber.t
+    val handle_request : 'state t -> 'state -> Request.t -> Response.t fiber
 
     val handle_notification :
-      'state t -> 'state -> Call.t -> (unit, Response.Error.t) result Fiber.t
+      'state t -> 'state -> Call.t -> (unit, Response.Error.t) result fiber
 
     val prepare_request :
          'a t
@@ -76,13 +78,15 @@ module Make (Fiber : Fiber_intf.S) : sig
     val implement_notification :
          'state t
       -> 'payload Decl.notification
-      -> ('state -> 'payload -> unit Fiber.t)
+      -> ('state -> 'payload -> unit fiber)
       -> unit
 
     val implement_request :
          'state t
       -> ('req, 'resp) Decl.request
-      -> ('state -> 'req -> 'resp Fiber.t)
+      -> ('state -> 'req -> 'resp fiber)
       -> unit
   end
 end
+
+module Make (Fiber : Fiber_intf.S) : S with type 'a fiber := 'a Fiber.t

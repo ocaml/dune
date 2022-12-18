@@ -118,6 +118,11 @@ module File = struct
     let full_path = Path.relative path name in
     let content =
       if not (Path.exists full_path) then []
+      else if Path.is_directory full_path then
+        User_error.raise
+          [ Pp.textf "\"%s\" already exists and is a directory"
+              (Path.to_absolute_filename full_path)
+          ]
       else
         match Io.with_lexbuf_from_file ~f:Dune_lang.Format.parse full_path with
         | Dune_lang.Format.Sexps content -> content

@@ -320,7 +320,7 @@ and escape_sequence = parse
   | digit digit digit
     { error lexbuf "escape sequence in quoted string out of range" ~delta:(-1);
     }
-  | digit*
+  | digit digit?
     { error lexbuf "unterminated decimal escape sequence" ~delta:(-1);
     }
   | 'x' (hexdigit as c1) (hexdigit as c2)
@@ -328,7 +328,7 @@ and escape_sequence = parse
       Template.Buffer.add_text_c (Char.chr v);
       Other
     }
-  | 'x' hexdigit*
+  | 'x' hexdigit?
     { error lexbuf "unterminated hexadecimal escape sequence" ~delta:(-1);
     }
   | _

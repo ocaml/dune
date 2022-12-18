@@ -112,7 +112,7 @@ let run kind script =
   let vcs = { Vcs.kind; root = temp_dir } in
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = { verbosity = Short; status_line = false }
+    ; display = Simple { verbosity = Short; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No

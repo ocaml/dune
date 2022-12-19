@@ -192,7 +192,7 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
         in
         let alias = Alias.make alias_name ~dir in
         let* () = Rules.Produce.Alias.add_deps alias deps in
-        Rules.Produce.Alias.add_deps alias
+        Action_builder.memoize "melange-js-deps"
           (let open Action_builder.O in
           let* deps =
             Resolve.Memo.read
@@ -202,6 +202,7 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
             >>= js_deps ~loc:mel.loc ~target_dir ~js_ext
           in
           Action_builder.deps deps)
+        |> Rules.Produce.Alias.add_deps alias
     in
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

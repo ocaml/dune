@@ -65,7 +65,7 @@ end = struct
       User_error.raise ~loc [ Pp.textf "path %s is not absolute" t ];
     t
 
-  let to_dyn t = Dyn.String t
+  let to_dyn t = Dyn.variant "External" [ Dyn.string t ]
 
   (* let rec cd_dot_dot t = match Unix.readlink t with | exception _ ->
      Filename.dirname t | t -> cd_dot_dot t
@@ -497,7 +497,11 @@ module Relative_to_source_root = struct
     ignore (Fpath.mkdir_p ?perms (Local.to_string path) : Fpath.mkdir_p_result)
 end
 
-module Source0 = Local
+module Source0 = struct
+  include Local
+
+  let to_dyn s = Dyn.variant "In_source_tree" [ to_dyn s ]
+end
 
 let abs_root, set_root =
   let root_dir = ref None in
@@ -535,7 +539,9 @@ module Outside_build_dir = struct
     | In_source_dir t -> Local.to_string t
     | External t -> External.to_string t
 
-  let to_dyn t = Dyn.String (to_string t)
+  let to_dyn = function
+    | In_source_dir t -> Source0.to_dyn t
+    | External t -> External.to_dyn t
 
   let of_string s =
     if Filename.is_relative s then In_source_dir (Local.of_string s)
@@ -714,6 +720,8 @@ module Build = struct
   let lstat t = Unix.lstat (to_string t)
 
   let unlink_no_err t = Fpath.unlink_no_err (to_string t)
+
+  let to_dyn s = Dyn.variant "In_build_dir" [ to_dyn s ]
 end
 
 module T : sig
@@ -764,12 +772,10 @@ end = struct
 
   let external_ e = External e
 
-  let to_dyn t =
-    let open Dyn in
-    match t with
-    | In_build_dir s -> Variant ("In_build_dir", [ Local.to_dyn s ])
-    | In_source_tree s -> Variant ("In_source_tree", [ Local.to_dyn s ])
-    | External s -> Variant ("External", [ External.to_dyn s ])
+  let to_dyn = function
+    | In_build_dir s -> Build.to_dyn s
+    | In_source_tree s -> Source0.to_dyn s
+    | External s -> External.to_dyn s
 end
 
 include T
@@ -837,13 +843,6 @@ let parse_string_exn ~loc s =
     else external_ (External.parse_string_exn ~loc s)
 
 let of_string s = parse_string_exn ~loc:Loc0.none s
-
-let to_dyn =
-  let open Dyn in
-  function
-  | In_build_dir s -> variant "In_build_dir" [ Local.to_dyn s ]
-  | In_source_tree s -> variant "In_source_tree" [ Local.to_dyn s ]
-  | External s -> variant "External" [ External.to_dyn s ]
 
 let of_filename_relative_to_initial_cwd fn =
   external_ (External.of_filename_relative_to_initial_cwd fn)

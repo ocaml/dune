@@ -492,11 +492,7 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
   and* lib_info =
     let lib_config = (Super_context.context sctx).lib_config in
     let* info = Library.to_lib_info lib ~dir ~lib_config in
-    let mode =
-      match Lib_info.modes info with
-      | { ocaml = { byte = false; native = _ }; melange = true } -> `Melange
-      | _ -> `Bytecode
-    in
+    let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
     info
   in

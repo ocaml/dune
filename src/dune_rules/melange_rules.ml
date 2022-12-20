@@ -129,9 +129,6 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir in
-  let* flags = ocaml_flags sctx ~dir mel.compile_flags in
-  let requires_link = Lib.Compile.requires_link compile_info in
-  let direct_requires = Lib.Compile.direct_requires compile_info in
   let* modules, pp =
     Buildable_rules.modules_rules sctx
       (Melange
@@ -144,8 +141,11 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
          })
       expander ~dir scope modules
   in
+  let requires_link = Lib.Compile.requires_link compile_info in
+  let* flags = ocaml_flags sctx ~dir mel.compile_flags in
   let* cctx =
     let js_of_ocaml = None in
+    let direct_requires = Lib.Compile.direct_requires compile_info in
     Compilation_context.create () ~loc:mel.loc ~super_context:sctx ~expander
       ~scope ~obj_dir ~modules ~flags ~requires_link
       ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml
@@ -163,15 +163,15 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
   in
   let* () = Module_compilation.build_all cctx in
-  let module_list =
-    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc -> x :: acc)
+  let modules_for_js =
+    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
+        if Module.has x ~ml_kind:Impl then x :: acc else acc)
   in
   let dst_dir =
     Path.Build.append_source target_dir (Path.Build.drop_build_context_exn dir)
   in
   let* () =
-    Memo.parallel_iter module_list ~f:(fun m ->
-        (* Should we check module kind? *)
+    Memo.parallel_iter modules_for_js ~f:(fun m ->
         build_js ~dir ~loc ~pkg_name ~mode ~module_system:mel.module_system
           ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext m)
   in
@@ -181,7 +181,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     | Some alias_name ->
       let alias = Alias.make alias_name ~dir in
       let deps =
-        List.rev_map module_list ~f:(fun m ->
+        List.rev_map modules_for_js ~f:(fun m ->
             make_js_name ~js_ext ~dst_dir m |> Path.build)
         |> Action_builder.paths
       in

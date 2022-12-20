@@ -15,6 +15,7 @@ module Emit : sig
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; root_module : (Loc.t * Module_name.t) option
+    ; modules_without_implementation : Ordered_set_lang.t
     ; allow_overlapping_dependencies : bool
     ; javascript_extension : string
     }

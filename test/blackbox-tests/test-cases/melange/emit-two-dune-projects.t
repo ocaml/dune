@@ -44,6 +44,21 @@ Test dependency on installed package
   $ node _build/default/dist/bar.js
   foo
 
+Move inner lib to a subfolder inside its dune-project
+
+  $ cd xyz
+  $ mkdir inner
+  $ mv dune-project inner
+  $ mv dune inner
+  $ mv foo.ml inner
+  $ cd -
+  $TESTCASE_ROOT
+
+  $ dune build @dist
+
+  $ node _build/default/dist/bar.js
+  foo
+
 Move everything except the workspace to a subfolder
 
   $ mkdir abc
@@ -56,3 +71,16 @@ Move everything except the workspace to a subfolder
   $ node _build/default/abc/dist/abc/bar.js
   foo
 
+Move back inner lib to main folder
+
+  $ cd xyz/inner
+  $ mv dune-project ..
+  $ mv dune ..
+  $ mv foo.ml ..
+  $ cd -
+  $TESTCASE_ROOT
+
+  $ dune build @dist
+
+  $ node _build/default/abc/dist/abc/bar.js
+  foo

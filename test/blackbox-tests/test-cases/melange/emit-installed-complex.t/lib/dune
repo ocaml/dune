@@ -1,0 +1,5 @@
+(library
+ (modes melange)
+ (name lib)
+ (libraries pkg1.lib1 pkg1.lib2)
+ (public_name pkg2.lib))

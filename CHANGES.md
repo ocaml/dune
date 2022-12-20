@@ -5,8 +5,6 @@
 
 - Fix build with MSVC compiler (#6517, @nojb)
 
-- Do not shadow library interface modules (#6549, fixes #6545, @rgrinberg)
-
 3.6.0 (2022-11-14)
 ------------------
 

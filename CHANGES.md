@@ -3,6 +3,8 @@
 
 - Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
 
+- Fix running the RPC server on windows (#6721 fixes #6720, @rgrinberg)
+
 3.6.1 (2022-11-24)
 ------------------
 

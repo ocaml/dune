@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Print missing newline after `$ dune exec`. (#6654, fixes #6700, @rgrinberg,
+  @Alizter)
+
 - Fix binary corruption when installing or promoting in parallel (#6669, fixes
   #6668, @edwintorok)
 

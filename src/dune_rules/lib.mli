@@ -189,7 +189,7 @@ val closure : t list -> linking:bool -> t list Resolve.Memo.t
     sorted. The difference with [closure libs] is that the latter may raise an
     error when overlapping implementations of virtual libraries are detected.
     [descriptive_closure libs] makes no such check. *)
-val descriptive_closure : with_pps:bool -> t list -> t list Memo.t
+val descriptive_closure : t list -> with_pps:bool -> t list Memo.t
 
 (** {1 Sub-systems} *)
 

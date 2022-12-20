@@ -1604,7 +1604,7 @@ let closure l ~linking =
     Resolve_names.compile_closure_with_overlap_checks None l
       ~forbidden_libraries
 
-let descriptive_closure ~with_pps (l : lib list) : lib list Memo.t =
+let descriptive_closure (l : lib list) ~with_pps : lib list Memo.t =
   (* [add_work todo l] adds the libraries in [l] to the list [todo],
      that contains the libraries to handle next *)
   let open Memo.O in

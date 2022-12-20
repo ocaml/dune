@@ -41,24 +41,6 @@ let impl_only_modules_defined_in_this_lib sctx lib =
   (Modules.split_by_lib modules).impl
   |> List.filter ~f:(Module.has ~ml_kind:Impl)
 
-let js_deps libs ~loc ~target_dir ~js_ext =
-  let glob = Glob.of_string_exn Loc.none ("*" ^ js_ext) in
-  let of_lib lib =
-    let lib_dir = local_of_lib ~loc lib |> Lib.Local.info |> Lib_info.src_dir in
-    let dir = Path.build @@ lib_output_dir ~target_dir ~lib_dir in
-    Dep.file_selector @@ File_selector.of_glob ~dir glob
-  in
-  Resolve.Memo.List.concat_map libs ~f:(fun lib ->
-      let for_lib = [ of_lib lib ] in
-      match Lib.implements lib with
-      | None -> Resolve.Memo.return for_lib
-      | Some vlib ->
-        let open Resolve.Memo.O in
-        let+ vlib = vlib in
-        let for_vlib = of_lib vlib in
-        for_vlib :: for_lib)
-  |> Resolve.Memo.map ~f:Dep.Set.of_list
-
 let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
 
 let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
@@ -92,6 +74,33 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange_emit mel.target)
     ~allow_overlaps:mel.allow_overlapping_dependencies ~forbidden_libraries:[]
     mel.libraries ~pps ~dune_version ~merlin_ident
+
+let js_targets_of_modules modules ~js_ext ~dst_dir =
+  Modules.fold_no_vlib modules ~init:Path.Set.empty ~f:(fun m acc ->
+      if Module.has m ~ml_kind:Impl then
+        let target = Path.build @@ make_js_name ~js_ext ~dst_dir m in
+        Path.Set.add acc target
+      else acc)
+
+let js_targets_of_libs sctx libs ~js_ext ~loc ~target_dir =
+  let of_lib lib =
+    let open Memo.O in
+    let+ modules = impl_only_modules_defined_in_this_lib sctx lib in
+    let lib_dir = local_of_lib ~loc lib |> Lib.Local.info |> Lib_info.src_dir in
+    let dst_dir = lib_output_dir ~target_dir ~lib_dir in
+    List.rev_map modules ~f:(fun m ->
+        Path.build @@ make_js_name ~js_ext ~dst_dir m)
+  in
+  Resolve.Memo.List.concat_map libs ~f:(fun lib ->
+      let open Memo.O in
+      let* base = of_lib lib in
+      match Lib.implements lib with
+      | None -> Resolve.Memo.return base
+      | Some vlib ->
+        let open Resolve.Memo.O in
+        let* vlib = vlib in
+        let+ for_vlib = Resolve.Memo.lift_memo (of_lib vlib) in
+        List.rev_append for_vlib base)
 
 let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
     ~includes ~js_ext m =
@@ -178,30 +187,25 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
       | Some alias_name ->
         let js_ext = mel.javascript_extension in
         let deps =
-          let modules_for_js =
-            Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
-                if Module.has x ~ml_kind:Impl then x :: acc else acc)
-          in
           let dst_dir =
             Path.Build.append_source target_dir
               (Path.Build.drop_build_context_exn dir)
           in
-          List.rev_map modules_for_js ~f:(fun m ->
-              make_js_name ~js_ext ~dst_dir m |> Path.build)
-          |> Action_builder.paths
+          js_targets_of_modules ~js_ext ~dst_dir modules
+          |> Action_builder.path_set
         in
         let alias = Alias.make alias_name ~dir in
         let* () = Rules.Produce.Alias.add_deps alias deps in
-        Rules.Produce.Alias.add_deps alias
-          (let open Action_builder.O in
-          let* deps =
-            Resolve.Memo.read
-            @@
-            let open Resolve.Memo.O in
-            Compilation_context.requires_link cctx
-            >>= js_deps ~loc:mel.loc ~target_dir ~js_ext
-          in
-          Action_builder.deps deps)
+        (let open Action_builder.O in
+        let* deps =
+          Resolve.Memo.read
+          @@
+          let open Resolve.Memo.O in
+          Compilation_context.requires_link cctx
+          >>= js_targets_of_libs sctx ~js_ext ~loc:mel.loc ~target_dir
+        in
+        Action_builder.paths deps)
+        |> Rules.Produce.Alias.add_deps alias
     in
     ( cctx
     , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules

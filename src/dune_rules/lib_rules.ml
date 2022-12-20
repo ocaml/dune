@@ -485,14 +485,20 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     Memo.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir
   and* lib_info =
     let lib_config = (Super_context.context sctx).lib_config in
-    Library.to_lib_info lib ~dir ~lib_config
+    let* info = Library.to_lib_info lib ~dir ~lib_config in
+    let mode =
+      match Lib_info.modes info with
+      | { ocaml = { byte = false; native = _ }; melange = true } -> `Melange
+      | _ -> `Bytecode
+    in
+    let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
+    info
   in
   let+ () =
     Memo.when_

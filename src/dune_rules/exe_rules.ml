@@ -102,7 +102,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir `Bytecode in
   let ctx = Super_context.context sctx in
   let project = Scope.project scope in
   let programs = programs ~modules ~exes in

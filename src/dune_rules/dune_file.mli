@@ -464,7 +464,6 @@ type Stanza.t +=
   | Toplevel of Toplevel.t
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
-  | Cram of Cram_stanza.t
   | Plugin of Plugin.t
 
 val stanza_package : Stanza.t -> Package.t option

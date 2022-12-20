@@ -2245,7 +2245,6 @@ type Stanza.t +=
   | Toplevel of Toplevel.t
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
-  | Cram of Cram_stanza.t
   | Plugin of Plugin.t
 
 module Stanzas = struct
@@ -2354,7 +2353,7 @@ module Stanzas = struct
                   "You can enable cram tests by adding (cram enable) to your \
                    dune-project file."
               ];
-        [ Cram t ] )
+        [ Cram_stanza.T t ] )
     ; ( "generate_sites_module"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
         and+ t = Generate_sites_module_stanza.decode in

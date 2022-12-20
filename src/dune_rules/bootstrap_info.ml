@@ -49,7 +49,8 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           | _ -> false
         in
         Dyn.Tuple
-          [ Path.Source.to_dyn (Path.Build.drop_build_context_exn dir)
+          [ Path.Build.drop_build_context_exn dir
+            |> Path.Source.to_local |> Path.Local.to_dyn
           ; Dyn.option Module_name.to_dyn
               (match Lib_info.main_module_name info with
               | From _ -> None

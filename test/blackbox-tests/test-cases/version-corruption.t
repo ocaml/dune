@@ -106,10 +106,10 @@ shared buffer):
 
   $ dune build --debug-artifact-substitution
   Found placeholder in _build/default/gen_lifecycle.exe:
-  - placeholder: Vcs_describe "."
+  - placeholder: Vcs_describe In_source_tree "."
   - evaluates to: "v0.0.1"
   Found placeholder in _build/default/gen_lifecycle.bc:
-  - placeholder: Vcs_describe "."
+  - placeholder: Vcs_describe In_source_tree "."
   - evaluates to: "v0.0.1"
 
   $ ./compare.sh gen_lifecycle.old ./gen_lifecycle.exe

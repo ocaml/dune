@@ -6,11 +6,11 @@ let in_build_dir ~ctx args =
   Path.Build.L.relative ctx.Context.build_dir (".js" :: args)
 
 let in_obj_dir ~obj_dir args =
-  let dir = Obj_dir.obj_dir obj_dir in
+  let dir = Obj_dir.jsoo_dir obj_dir in
   Path.Build.L.relative dir args
 
 let in_obj_dir' ~obj_dir args =
-  let dir = Obj_dir.obj_dir obj_dir in
+  let dir = Obj_dir.jsoo_dir obj_dir in
   Path.L.relative dir args
 
 let jsoo ~dir sctx =
@@ -88,8 +88,8 @@ let jsoo_archives ~ctx lib =
   match Lib.is_local lib with
   | true ->
     let obj_dir = Lib_info.obj_dir info in
-    [ Path.relative (Obj_dir.obj_dir obj_dir)
-        (Lib_name.to_string (Lib.name lib) ^ Js_of_ocaml.Ext.cma)
+    [ in_obj_dir' ~obj_dir
+        [ Lib_name.to_string (Lib.name lib) ^ Js_of_ocaml.Ext.cma ]
     ]
   | false ->
     let archives = Lib_info.archives info in
@@ -132,17 +132,20 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~link_time_code_gen =
             List.map cm ~f:(fun m ->
                 Path.build (in_obj_dir ~obj_dir [ mod_name m ]))
           in
+          let std_exit =
+            Path.build
+              (in_build_dir ~ctx [ "stdlib"; "std_exit" ^ Js_of_ocaml.Ext.cmo ])
+          in
           Command.Args.Deps
             (List.concat
-               [ [ stdlib ]; special_units; all_libs; all_other_modules ])))
+               [ [ stdlib ]
+               ; special_units
+               ; all_libs
+               ; all_other_modules
+               ; [ std_exit ]
+               ])))
   in
-  let spec =
-    let std_exit =
-      Path.build
-        (in_build_dir ~ctx [ "stdlib"; "std_exit" ^ Js_of_ocaml.Ext.cmo ])
-    in
-    Command.Args.S [ Dep (Path.build runtime); Dyn get_all; Dep std_exit ]
-  in
+  let spec = Command.Args.S [ Dep (Path.build runtime); Dyn get_all ] in
   js_of_ocaml_rule sctx ~sub_command:Link ~dir ~spec ~target ~flags
 
 let build_cm cc ~dir:_ ~in_context ~src ~obj_dir =
@@ -202,9 +205,13 @@ let build_exe cc ~loc ~in_context ~src ~obj_dir ~top_sorted_modules ~promote
   let { Js_of_ocaml.In_context.javascript_files; flags } = in_context in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
-  let mk_target ext = Path.Build.set_extension src ~ext in
-  let target = mk_target Js_of_ocaml.Ext.exe in
-  let standalone_runtime = mk_target Js_of_ocaml.Ext.runtime in
+  let target = Path.Build.set_extension src ~ext:Js_of_ocaml.Ext.exe in
+  let standalone_runtime =
+    in_obj_dir ~obj_dir
+      [ Path.Build.basename
+          (Path.Build.set_extension src ~ext:Js_of_ocaml.Ext.runtime)
+      ]
+  in
   let mode : Rule.Mode.t =
     match promote with
     | None -> Standard

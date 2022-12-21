@@ -297,8 +297,8 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
                  let sctx = CC.super_context cctx in
                  let dir = CC.dir cctx in
                  let action_with_targets =
-                   Jsoo_rules.build_cm cctx ~dir ~in_context
-                     ~src:(Path.build src) ~obj_dir
+                   Jsoo_rules.build_cm sctx ~dir ~in_context
+                     ~src:(Path.build src) ~obj_dir ~config:None
                  in
                  action_with_targets >>= Super_context.add_rule sctx ~dir))
   in

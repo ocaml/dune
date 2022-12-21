@@ -292,6 +292,7 @@ module H = struct
 
   let dispatch_request (type a) (t : a t) stats (session : a Session.t) meth_ r
       id () =
+    let* () = Fiber.return () in
     let kind = Request id in
     Event.emit
       (Message { kind; meth_; stage = Start })

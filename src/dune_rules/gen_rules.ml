@@ -103,9 +103,7 @@ end = struct
         ; js =
             Some
               (List.concat_map exes.names ~f:(fun (_, exe) ->
-                   List.map
-                     [ exe ^ ".bc.js"; exe ^ ".bc.runtime.js" ]
-                     ~f:(Path.Build.relative dir)))
+                   List.map [ exe ^ ".bc.js" ] ~f:(Path.Build.relative dir)))
         ; source_dirs = None
         })
     | Alias alias ->

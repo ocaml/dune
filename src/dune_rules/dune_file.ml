@@ -920,13 +920,6 @@ module Library = struct
     in
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
-    let jsoo_archive =
-      (* XXX we shouldn't access the directory of the obj_dir directly. We
-         should use something like [Obj_dir.Archive.obj] instead *)
-      if modes.ocaml.byte then
-        Some (archive ~dir:(Obj_dir.obj_dir obj_dir) Js_of_ocaml.Ext.cma)
-      else None
-    in
     let virtual_ =
       Option.map conf.virtual_modules ~f:(fun _ -> Lib_info.Source.Local)
     in
@@ -987,9 +980,9 @@ module Library = struct
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
       ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
       ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
-      ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
-      ~entry_modules ~implements ~default_implementation ~modes ~modules:Local
-      ~wrapped ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
+      ~implements ~default_implementation ~modes ~modules:Local ~wrapped
+      ~special_builtin_support ~exit_module ~instrumentation_backend
 end
 
 module Plugin = struct

@@ -215,54 +215,6 @@ Setup
   > EOF
   $ touch subdir/subfolder/subfolder_lib.ml
 
-  $ mkdir ppx_test
-  $ cd ppx_test
-  $ mkdir static_lib
-  $ cd static_lib
-  $ cat >dune <<EOF
-  > (library
-  >  (name static_lib))
-  > EOF
-  $ touch static_lib.ml
-  $ cd ..
-  $ mkdir dummy_ppx2
-  $ cd dummy_ppx2
-  $ cat >dune <<EOF
-  > (library
-  >  (name dummy_ppx2)
-  >  (kind ppx_rewriter)
-  >  (libraries ppxlib static_lib))
-  > EOF
-  $ cat >dummy_ppx2.ml <<EOF
-  > (* dummy PPX rewriter, for use in tests *)
-  > (* artificial static dependency on library static_lib *)
-  > module M = Static_lib
-  > let () =
-  >   Ppxlib.Driver.register_transformation
-  >     "dummy2"
-  >     ~impl:(fun s -> s)
-  > EOF
-  $ cd ..
-  $ mkdir lib
-  $ cd lib
-  $ cat >dune <<EOF
-  > (library
-  >  (name lib)
-  >  (preprocess (pps dummy_ppx2)))
-  > EOF
-  $ touch lib.ml
-  $ cd ..
-  $ mkdir exe
-  $ cd exe
-  $ cat >dune <<EOF
-  > (executable
-  >  (name exe)
-  >  (preprocess (pps dummy_ppx2)))
-  > EOF
-  $ touch exe.ml
-  $ cd ..
-  $ cd ..
-
 
 Describe various things
 -----------------------
@@ -394,16 +346,6 @@ not stable across different setups.
         (cmt (_build/default/.re_exe.eobjs/byte/dune__exe.cmt))
         (cmti ()))))
      (include_dirs (_build/default/.re_exe.eobjs/byte))))
-   (executables
-    ((names (exe))
-     (requires ())
-     (modules
-      (((name Exe)
-        (impl (_build/default/ppx_test/exe/exe.ml))
-        (intf ())
-        (cmt (_build/default/ppx_test/exe/.exe.eobjs/byte/dune__exe__Exe.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/exe/.exe.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -458,23 +400,6 @@ not stable across different setups.
         (cmti ()))))
      (include_dirs (_build/default/.dummy_ppx.objs/byte))))
    (library
-    ((name dummy_ppx2)
-     (uid 34092a1f12a1a8d87bac7784c8590fc1)
-     (local true)
-     (requires
-      (ba85adfb1c97e7d7af3df35b16b2fc0d
-       2c61db8e94cb08e0fe642152aee8121a
-       9c5709907e46bdda5f866859771338cd))
-     (source_dir _build/default/ppx_test/dummy_ppx2)
-     (modules
-      (((name Dummy_ppx2)
-        (impl (_build/default/ppx_test/dummy_ppx2/dummy_ppx2.ml))
-        (intf ())
-        (cmt
-         (_build/default/ppx_test/dummy_ppx2/.dummy_ppx2.objs/byte/dummy_ppx2.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/dummy_ppx2/.dummy_ppx2.objs/byte))))
-   (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
      (local true)
@@ -500,19 +425,6 @@ not stable across different setups.
         (cmt (_build/default/.foo_x.objs/byte/foo_x.cmt))
         (cmti ()))))
      (include_dirs (_build/default/.foo_x.objs/byte))))
-   (library
-    ((name lib)
-     (uid f90dcb06e284585a23036b13f27ff456)
-     (local true)
-     (requires ())
-     (source_dir _build/default/ppx_test/lib)
-     (modules
-      (((name Lib)
-        (impl (_build/default/ppx_test/lib/lib.ml))
-        (intf ())
-        (cmt (_build/default/ppx_test/lib/.lib.objs/byte/lib.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/lib/.lib.objs/byte))))
    (library
     ((name ocaml-compiler-libs.common)
      (uid 1f2b5eb300ea716920494385a31bb5fb)
@@ -712,20 +624,6 @@ not stable across different setups.
      (source_dir /FINDLIB//sexplib0)
      (modules ())
      (include_dirs (/FINDLIB//sexplib0))))
-   (library
-    ((name static_lib)
-     (uid 9c5709907e46bdda5f866859771338cd)
-     (local true)
-     (requires ())
-     (source_dir _build/default/ppx_test/static_lib)
-     (modules
-      (((name Static_lib)
-        (impl (_build/default/ppx_test/static_lib/static_lib.ml))
-        (intf ())
-        (cmt
-         (_build/default/ppx_test/static_lib/.static_lib.objs/byte/static_lib.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/static_lib/.static_lib.objs/byte))))
    (library
     ((name stdlib-shims)
      (uid 249b2edaf3cc552a247667041bb5f015)
@@ -971,17 +869,6 @@ not stable across different setups.
          ((for_intf ())
           (for_impl ()))))))
      (include_dirs (_build/default/.re_exe.eobjs/byte))))
-   (executables
-    ((names (exe))
-     (requires ())
-     (modules
-      (((name Exe)
-        (impl (_build/default/ppx_test/exe/exe.ml))
-        (intf ())
-        (cmt (_build/default/ppx_test/exe/.exe.eobjs/byte/dune__exe__Exe.cmt))
-        (cmti ())
-        (module_deps ((for_intf ()) (for_impl ()))))))
-     (include_dirs (_build/default/ppx_test/exe/.exe.eobjs/byte))))
    (library
     ((name bar)
      (uid 97586d5adea44246d88d31b0f6e340ed)
@@ -1046,24 +933,6 @@ not stable across different setups.
         (module_deps ((for_intf ()) (for_impl ()))))))
      (include_dirs (_build/default/.dummy_ppx.objs/byte))))
    (library
-    ((name dummy_ppx2)
-     (uid 34092a1f12a1a8d87bac7784c8590fc1)
-     (local true)
-     (requires
-      (ba85adfb1c97e7d7af3df35b16b2fc0d
-       2c61db8e94cb08e0fe642152aee8121a
-       9c5709907e46bdda5f866859771338cd))
-     (source_dir _build/default/ppx_test/dummy_ppx2)
-     (modules
-      (((name Dummy_ppx2)
-        (impl (_build/default/ppx_test/dummy_ppx2/dummy_ppx2.ml))
-        (intf ())
-        (cmt
-         (_build/default/ppx_test/dummy_ppx2/.dummy_ppx2.objs/byte/dummy_ppx2.cmt))
-        (cmti ())
-        (module_deps ((for_intf ()) (for_impl ()))))))
-     (include_dirs (_build/default/ppx_test/dummy_ppx2/.dummy_ppx2.objs/byte))))
-   (library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
      (local true)
@@ -1091,20 +960,6 @@ not stable across different setups.
         (cmti ())
         (module_deps ((for_intf ()) (for_impl ()))))))
      (include_dirs (_build/default/.foo_x.objs/byte))))
-   (library
-    ((name lib)
-     (uid f90dcb06e284585a23036b13f27ff456)
-     (local true)
-     (requires ())
-     (source_dir _build/default/ppx_test/lib)
-     (modules
-      (((name Lib)
-        (impl (_build/default/ppx_test/lib/lib.ml))
-        (intf ())
-        (cmt (_build/default/ppx_test/lib/.lib.objs/byte/lib.cmt))
-        (cmti ())
-        (module_deps ((for_intf ()) (for_impl ()))))))
-     (include_dirs (_build/default/ppx_test/lib/.lib.objs/byte))))
    (library
     ((name ocaml-compiler-libs.common)
      (uid 1f2b5eb300ea716920494385a31bb5fb)
@@ -1345,21 +1200,6 @@ not stable across different setups.
      (modules ())
      (include_dirs (/FINDLIB//sexplib0))))
    (library
-    ((name static_lib)
-     (uid 9c5709907e46bdda5f866859771338cd)
-     (local true)
-     (requires ())
-     (source_dir _build/default/ppx_test/static_lib)
-     (modules
-      (((name Static_lib)
-        (impl (_build/default/ppx_test/static_lib/static_lib.ml))
-        (intf ())
-        (cmt
-         (_build/default/ppx_test/static_lib/.static_lib.objs/byte/static_lib.cmt))
-        (cmti ())
-        (module_deps ((for_intf ()) (for_impl ()))))))
-     (include_dirs (_build/default/ppx_test/static_lib/.static_lib.objs/byte))))
-   (library
     ((name stdlib-shims)
      (uid 249b2edaf3cc552a247667041bb5f015)
      (local false)
@@ -1466,359 +1306,6 @@ not stable across different setups.
         (cmti (_build/default/virtual/.virtual.objs/byte/virtual.cmti)))))
      (include_dirs (_build/default/virtual/.virtual.objs/byte)))))
 
-  $ dune describe workspace --lang 0.1 --sanitize-for-tests ppx_test/exe
-  ((root /WORKSPACE_ROOT)
-   (build_context _build/default)
-   (executables
-    ((names (exe))
-     (requires ())
-     (modules
-      (((name Exe)
-        (impl (_build/default/ppx_test/exe/exe.ml))
-        (intf ())
-        (cmt (_build/default/ppx_test/exe/.exe.eobjs/byte/dune__exe__Exe.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/exe/.exe.eobjs/byte)))))
-
-  $ dune describe workspace --lang 0.1 --sanitize-for-tests ppx_test/lib
-  ((root /WORKSPACE_ROOT)
-   (build_context _build/default)
-   (library
-    ((name lib)
-     (uid f90dcb06e284585a23036b13f27ff456)
-     (local true)
-     (requires ())
-     (source_dir _build/default/ppx_test/lib)
-     (modules
-      (((name Lib)
-        (impl (_build/default/ppx_test/lib/lib.ml))
-        (intf ())
-        (cmt (_build/default/ppx_test/lib/.lib.objs/byte/lib.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/lib/.lib.objs/byte)))))
-
-  $ dune describe workspace --lang 0.1 --sanitize-for-tests --with-pps ppx_test/exe
-  ((root /WORKSPACE_ROOT)
-   (build_context _build/default)
-   (executables
-    ((names (exe))
-     (requires
-      (c9367091ddd9a70d99fc22ede348f17c
-       1f2b5eb300ea716920494385a31bb5fb
-       5014e215e204cf8da6c32644cda1b31e
-       249b2edaf3cc552a247667041bb5f015
-       ba85adfb1c97e7d7af3df35b16b2fc0d
-       2363fd46dac995a1c79679dfa1a9881b
-       43b7cbe1f93f4f502ec614971027cff9
-       e68a558facd1546b51c7abdbf6aed1cb
-       24f4eb12e3ff51b310dbf7443c6087be
-       449445be7a24ce51e119d57e9e255d3f
-       5ae836dcdead11d5c16815297c5a1ae6
-       2c61db8e94cb08e0fe642152aee8121a
-       9c5709907e46bdda5f866859771338cd
-       34092a1f12a1a8d87bac7784c8590fc1))
-     (modules
-      (((name Exe)
-        (impl (_build/default/ppx_test/exe/exe.ml))
-        (intf ())
-        (cmt (_build/default/ppx_test/exe/.exe.eobjs/byte/dune__exe__Exe.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/exe/.exe.eobjs/byte))))
-   (library
-    ((name compiler-libs.common)
-     (uid c9367091ddd9a70d99fc22ede348f17c)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ocaml/compiler-libs)
-     (modules ())
-     (include_dirs (/FINDLIB//ocaml/compiler-libs))))
-   (library
-    ((name dummy_ppx2)
-     (uid 34092a1f12a1a8d87bac7784c8590fc1)
-     (local true)
-     (requires
-      (ba85adfb1c97e7d7af3df35b16b2fc0d
-       2c61db8e94cb08e0fe642152aee8121a
-       9c5709907e46bdda5f866859771338cd))
-     (source_dir _build/default/ppx_test/dummy_ppx2)
-     (modules
-      (((name Dummy_ppx2)
-        (impl (_build/default/ppx_test/dummy_ppx2/dummy_ppx2.ml))
-        (intf ())
-        (cmt
-         (_build/default/ppx_test/dummy_ppx2/.dummy_ppx2.objs/byte/dummy_ppx2.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/dummy_ppx2/.dummy_ppx2.objs/byte))))
-   (library
-    ((name ocaml-compiler-libs.common)
-     (uid 1f2b5eb300ea716920494385a31bb5fb)
-     (local false)
-     (requires (c9367091ddd9a70d99fc22ede348f17c))
-     (source_dir /FINDLIB//ocaml-compiler-libs/common)
-     (modules ())
-     (include_dirs (/FINDLIB//ocaml-compiler-libs/common))))
-   (library
-    ((name ocaml-compiler-libs.shadow)
-     (uid 2363fd46dac995a1c79679dfa1a9881b)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ocaml-compiler-libs/shadow)
-     (modules ())
-     (include_dirs (/FINDLIB//ocaml-compiler-libs/shadow))))
-   (library
-    ((name ppx_derivers)
-     (uid e68a558facd1546b51c7abdbf6aed1cb)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ppx_derivers)
-     (modules ())
-     (include_dirs (/FINDLIB//ppx_derivers))))
-   (library
-    ((name ppxlib)
-     (uid 2c61db8e94cb08e0fe642152aee8121a)
-     (local false)
-     (requires
-      (ba85adfb1c97e7d7af3df35b16b2fc0d
-       2363fd46dac995a1c79679dfa1a9881b
-       5014e215e204cf8da6c32644cda1b31e
-       43b7cbe1f93f4f502ec614971027cff9
-       e68a558facd1546b51c7abdbf6aed1cb
-       24f4eb12e3ff51b310dbf7443c6087be
-       5ae836dcdead11d5c16815297c5a1ae6
-       249b2edaf3cc552a247667041bb5f015
-       449445be7a24ce51e119d57e9e255d3f))
-     (source_dir /FINDLIB//ppxlib)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib))))
-   (library
-    ((name ppxlib.ast)
-     (uid ba85adfb1c97e7d7af3df35b16b2fc0d)
-     (local false)
-     (requires
-      (5014e215e204cf8da6c32644cda1b31e 249b2edaf3cc552a247667041bb5f015))
-     (source_dir /FINDLIB//ppxlib/ast)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/ast))))
-   (library
-    ((name ppxlib.astlib)
-     (uid 5014e215e204cf8da6c32644cda1b31e)
-     (local false)
-     (requires
-      (1f2b5eb300ea716920494385a31bb5fb c9367091ddd9a70d99fc22ede348f17c))
-     (source_dir /FINDLIB//ppxlib/astlib)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/astlib))))
-   (library
-    ((name ppxlib.print_diff)
-     (uid 43b7cbe1f93f4f502ec614971027cff9)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ppxlib/print_diff)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/print_diff))))
-   (library
-    ((name ppxlib.stdppx)
-     (uid 5ae836dcdead11d5c16815297c5a1ae6)
-     (local false)
-     (requires
-      (449445be7a24ce51e119d57e9e255d3f 249b2edaf3cc552a247667041bb5f015))
-     (source_dir /FINDLIB//ppxlib/stdppx)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/stdppx))))
-   (library
-    ((name ppxlib.traverse_builtins)
-     (uid 24f4eb12e3ff51b310dbf7443c6087be)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ppxlib/traverse_builtins)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/traverse_builtins))))
-   (library
-    ((name sexplib0)
-     (uid 449445be7a24ce51e119d57e9e255d3f)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//sexplib0)
-     (modules ())
-     (include_dirs (/FINDLIB//sexplib0))))
-   (library
-    ((name static_lib)
-     (uid 9c5709907e46bdda5f866859771338cd)
-     (local true)
-     (requires ())
-     (source_dir _build/default/ppx_test/static_lib)
-     (modules
-      (((name Static_lib)
-        (impl (_build/default/ppx_test/static_lib/static_lib.ml))
-        (intf ())
-        (cmt
-         (_build/default/ppx_test/static_lib/.static_lib.objs/byte/static_lib.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/static_lib/.static_lib.objs/byte))))
-   (library
-    ((name stdlib-shims)
-     (uid 249b2edaf3cc552a247667041bb5f015)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//stdlib-shims)
-     (modules ())
-     (include_dirs (/FINDLIB//stdlib-shims)))))
-
-  $ dune describe workspace --lang 0.1 --sanitize-for-tests --with-pps ppx_test/lib
-  ((root /WORKSPACE_ROOT)
-   (build_context _build/default)
-   (library
-    ((name compiler-libs.common)
-     (uid c9367091ddd9a70d99fc22ede348f17c)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ocaml/compiler-libs)
-     (modules ())
-     (include_dirs (/FINDLIB//ocaml/compiler-libs))))
-   (library
-    ((name dummy_ppx2)
-     (uid 34092a1f12a1a8d87bac7784c8590fc1)
-     (local true)
-     (requires
-      (ba85adfb1c97e7d7af3df35b16b2fc0d
-       2c61db8e94cb08e0fe642152aee8121a
-       9c5709907e46bdda5f866859771338cd))
-     (source_dir _build/default/ppx_test/dummy_ppx2)
-     (modules
-      (((name Dummy_ppx2)
-        (impl (_build/default/ppx_test/dummy_ppx2/dummy_ppx2.ml))
-        (intf ())
-        (cmt
-         (_build/default/ppx_test/dummy_ppx2/.dummy_ppx2.objs/byte/dummy_ppx2.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/dummy_ppx2/.dummy_ppx2.objs/byte))))
-   (library
-    ((name lib)
-     (uid f90dcb06e284585a23036b13f27ff456)
-     (local true)
-     (requires ())
-     (source_dir _build/default/ppx_test/lib)
-     (modules
-      (((name Lib)
-        (impl (_build/default/ppx_test/lib/lib.ml))
-        (intf ())
-        (cmt (_build/default/ppx_test/lib/.lib.objs/byte/lib.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/lib/.lib.objs/byte))))
-   (library
-    ((name ocaml-compiler-libs.common)
-     (uid 1f2b5eb300ea716920494385a31bb5fb)
-     (local false)
-     (requires (c9367091ddd9a70d99fc22ede348f17c))
-     (source_dir /FINDLIB//ocaml-compiler-libs/common)
-     (modules ())
-     (include_dirs (/FINDLIB//ocaml-compiler-libs/common))))
-   (library
-    ((name ocaml-compiler-libs.shadow)
-     (uid 2363fd46dac995a1c79679dfa1a9881b)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ocaml-compiler-libs/shadow)
-     (modules ())
-     (include_dirs (/FINDLIB//ocaml-compiler-libs/shadow))))
-   (library
-    ((name ppx_derivers)
-     (uid e68a558facd1546b51c7abdbf6aed1cb)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ppx_derivers)
-     (modules ())
-     (include_dirs (/FINDLIB//ppx_derivers))))
-   (library
-    ((name ppxlib)
-     (uid 2c61db8e94cb08e0fe642152aee8121a)
-     (local false)
-     (requires
-      (ba85adfb1c97e7d7af3df35b16b2fc0d
-       2363fd46dac995a1c79679dfa1a9881b
-       5014e215e204cf8da6c32644cda1b31e
-       43b7cbe1f93f4f502ec614971027cff9
-       e68a558facd1546b51c7abdbf6aed1cb
-       24f4eb12e3ff51b310dbf7443c6087be
-       5ae836dcdead11d5c16815297c5a1ae6
-       249b2edaf3cc552a247667041bb5f015
-       449445be7a24ce51e119d57e9e255d3f))
-     (source_dir /FINDLIB//ppxlib)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib))))
-   (library
-    ((name ppxlib.ast)
-     (uid ba85adfb1c97e7d7af3df35b16b2fc0d)
-     (local false)
-     (requires
-      (5014e215e204cf8da6c32644cda1b31e 249b2edaf3cc552a247667041bb5f015))
-     (source_dir /FINDLIB//ppxlib/ast)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/ast))))
-   (library
-    ((name ppxlib.astlib)
-     (uid 5014e215e204cf8da6c32644cda1b31e)
-     (local false)
-     (requires
-      (1f2b5eb300ea716920494385a31bb5fb c9367091ddd9a70d99fc22ede348f17c))
-     (source_dir /FINDLIB//ppxlib/astlib)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/astlib))))
-   (library
-    ((name ppxlib.print_diff)
-     (uid 43b7cbe1f93f4f502ec614971027cff9)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ppxlib/print_diff)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/print_diff))))
-   (library
-    ((name ppxlib.stdppx)
-     (uid 5ae836dcdead11d5c16815297c5a1ae6)
-     (local false)
-     (requires
-      (449445be7a24ce51e119d57e9e255d3f 249b2edaf3cc552a247667041bb5f015))
-     (source_dir /FINDLIB//ppxlib/stdppx)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/stdppx))))
-   (library
-    ((name ppxlib.traverse_builtins)
-     (uid 24f4eb12e3ff51b310dbf7443c6087be)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//ppxlib/traverse_builtins)
-     (modules ())
-     (include_dirs (/FINDLIB//ppxlib/traverse_builtins))))
-   (library
-    ((name sexplib0)
-     (uid 449445be7a24ce51e119d57e9e255d3f)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//sexplib0)
-     (modules ())
-     (include_dirs (/FINDLIB//sexplib0))))
-   (library
-    ((name static_lib)
-     (uid 9c5709907e46bdda5f866859771338cd)
-     (local true)
-     (requires ())
-     (source_dir _build/default/ppx_test/static_lib)
-     (modules
-      (((name Static_lib)
-        (impl (_build/default/ppx_test/static_lib/static_lib.ml))
-        (intf ())
-        (cmt
-         (_build/default/ppx_test/static_lib/.static_lib.objs/byte/static_lib.cmt))
-        (cmti ()))))
-     (include_dirs (_build/default/ppx_test/static_lib/.static_lib.objs/byte))))
-   (library
-    ((name stdlib-shims)
-     (uid 249b2edaf3cc552a247667041bb5f015)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB//stdlib-shims)
-     (modules ())
-     (include_dirs (/FINDLIB//stdlib-shims)))))
 
 Test other formats
 ------------------

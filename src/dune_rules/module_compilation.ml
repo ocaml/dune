@@ -296,11 +296,9 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
                  (* Build *.cmo.js *)
                  let sctx = CC.super_context cctx in
                  let dir = CC.dir cctx in
-                 let target =
-                   Path.Build.set_extension src ~ext:Js_of_ocaml.Ext.cmo
-                 in
                  let action_with_targets =
-                   Jsoo_rules.build_cm cctx ~in_context ~src ~target
+                   Jsoo_rules.build_cm cctx ~dir ~in_context
+                     ~src:(Path.build src) ~obj_dir
                  in
                  action_with_targets >>= Super_context.add_rule sctx ~dir))
   in

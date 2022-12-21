@@ -11,7 +11,7 @@ Check that .bc.js rule is generated only if js mode is used.
    js_of_ocaml .js/stdlib/std_exit.cmo.js
         ocamlc .b.eobjs/byte/b.{cmi,cmo,cmt}
    js_of_ocaml .js/stdlib/stdlib.cma.js
-   js_of_ocaml .b.eobjs/byte/b.cmo.js
+   js_of_ocaml .b.eobjs/b.cmo.js
    js_of_ocaml b.bc.js
 
 We also check that .cmo.js rules are not generated if not specified.
@@ -39,10 +39,10 @@ specify js mode (#1940).
    js_of_ocaml .js/stdlib/std_exit.cmo.js
    js_of_ocaml e.bc.runtime.js
    js_of_ocaml .js/stdlib/stdlib.cma.js
-   js_of_ocaml .b.eobjs/byte/b.cmo.js
+   js_of_ocaml .b.eobjs/b.cmo.js
    js_of_ocaml b.bc.js
    js_of_ocaml .foo.objs/foo.cma.js
-   js_of_ocaml .e.eobjs/byte/e.cmo.js
+   js_of_ocaml .e.eobjs/e.cmo.js
    js_of_ocaml e.bc.js
 
 Check that building a JS-enabled executable that depends on a library works.
@@ -58,6 +58,6 @@ Check that building a JS-enabled executable that depends on a library works.
         ocamlc .foo.objs/byte/foo__C.{cmi,cmo,cmt}
         ocamlc .e.eobjs/byte/e.{cmi,cmo,cmt}
         ocamlc foo.cma
-   js_of_ocaml .e.eobjs/byte/e.cmo.js
+   js_of_ocaml .e.eobjs/e.cmo.js
    js_of_ocaml .foo.objs/foo.cma.js
    js_of_ocaml e.bc.js

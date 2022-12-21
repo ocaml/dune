@@ -5,6 +5,14 @@ let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 let in_build_dir ~ctx args =
   Path.Build.L.relative ctx.Context.build_dir (".js" :: args)
 
+let in_obj_dir ~obj_dir args =
+  let dir = Obj_dir.obj_dir obj_dir in
+  Path.Build.L.relative dir args
+
+let in_obj_dir' ~obj_dir args =
+  let dir = Obj_dir.obj_dir obj_dir in
+  Path.L.relative dir args
+
 let jsoo ~dir sctx =
   Super_context.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint
     "js_of_ocaml"
@@ -92,18 +100,15 @@ let jsoo_archives ~ctx lib =
              ; with_js_ext (Path.basename archive)
              ]))
 
-let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
-  let open Memo.O in
+let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~link_time_code_gen =
   let sctx = Compilation_context.super_context cc in
   let ctx = Compilation_context.context cc in
   let dir = Compilation_context.dir cc in
   let requires = Compilation_context.requires_link cc in
-  let special_units =
-    Action_builder.of_memo
-      (let+ pre = link_time_code_gen in
-       List.concat_map pre ~f:(function
-         | `Mod path -> [ Path.set_extension ~ext:Js_of_ocaml.Ext.cmo path ]
-         | `Lib _ -> []))
+  let special_units = Action_builder.of_memo link_time_code_gen in
+  let mod_name m =
+    Module_name.Unique.artifact_filename (Module.obj_name m)
+      ~ext:Js_of_ocaml.Ext.cmo
   in
   let get_all =
     Action_builder.map (Action_builder.both cm special_units)
@@ -118,8 +123,14 @@ let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
             Path.build
               (in_build_dir ~ctx [ "stdlib"; "stdlib" ^ Js_of_ocaml.Ext.cma ])
           in
+          let special_units =
+            List.concat_map special_units ~f:(function
+              | Lib_flags.Lib_and_module.Lib _lib -> []
+              | Module (obj_dir, m) -> [ in_obj_dir' ~obj_dir [ mod_name m ] ])
+          in
           let all_other_modules =
-            List.map cm ~f:(Path.set_extension ~ext:Js_of_ocaml.Ext.cmo)
+            List.map cm ~f:(fun m ->
+                Path.build (in_obj_dir ~obj_dir [ mod_name m ]))
           in
           Command.Args.Deps
             (List.concat
@@ -134,10 +145,12 @@ let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
   in
   js_of_ocaml_rule sctx ~sub_command:Link ~dir ~spec ~target ~flags
 
-let build_cm cc ~in_context ~src ~target =
+let build_cm cc ~dir:_ ~in_context ~src ~obj_dir =
   let sctx = Compilation_context.super_context cc in
+  let name = with_js_ext (Path.basename src) in
+  let target = in_obj_dir ~obj_dir [ name ] in
   let dir = Compilation_context.dir cc in
-  let spec = Command.Args.Dep (Path.build src) in
+  let spec = Command.Args.Dep src in
   let flags = in_context.Js_of_ocaml.In_context.flags in
   js_of_ocaml_rule sctx ~sub_command:Compile ~dir ~flags ~spec ~target
 
@@ -184,8 +197,8 @@ let setup_separate_compilation_rules sctx components =
           in
           Super_context.add_rule sctx ~dir action_with_targets))
 
-let build_exe cc ~loc ~in_context ~src ~(cm : Path.t list Action_builder.t)
-    ~promote ~link_time_code_gen =
+let build_exe cc ~loc ~in_context ~src ~obj_dir ~top_sorted_modules ~promote
+    ~link_time_code_gen =
   let { Js_of_ocaml.In_context.javascript_files; flags } = in_context in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
@@ -204,8 +217,8 @@ let build_exe cc ~loc ~in_context ~src ~(cm : Path.t list Action_builder.t)
     standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime
       ~flags
     >>= Super_context.add_rule ~loc sctx ~dir
-    >>> link_rule cc ~runtime:standalone_runtime ~target cm ~flags
-          ~link_time_code_gen
+    >>> link_rule cc ~runtime:standalone_runtime ~target ~obj_dir
+          top_sorted_modules ~flags ~link_time_code_gen
     >>= Super_context.add_rule sctx ~loc ~dir ~mode
   | Whole_program ->
     exe_rule cc ~javascript_files ~src ~target ~flags

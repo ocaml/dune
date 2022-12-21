@@ -69,6 +69,12 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
   in
   js_of_ocaml_rule sctx ~sub_command:Compile ~dir ~spec ~target ~flags
 
+let with_js_ext s =
+  match Filename.split_extension s with
+  | name, ".cma" -> name ^ Js_of_ocaml.Ext.cma
+  | name, ".cmo" -> name ^ Js_of_ocaml.Ext.cmo
+  | _ -> assert false
+
 let jsoo_archives ~ctx lib =
   let info = Lib.info lib in
   let jsoo_archive = Lib_info.jsoo_archive info in
@@ -80,7 +86,7 @@ let jsoo_archives ~ctx lib =
         Path.build
           (in_build_dir ~ctx
              [ Lib_name.to_string (Lib.name lib)
-             ; Path.basename archive ^ ".js"
+             ; with_js_ext (Path.basename archive)
              ]))
 
 let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
@@ -93,7 +99,7 @@ let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
     Action_builder.of_memo
       (let+ pre = link_time_code_gen in
        List.concat_map pre ~f:(function
-         | `Mod path -> [ Path.extend_basename ~suffix:".js" path ]
+         | `Mod path -> [ Path.set_extension ~ext:Js_of_ocaml.Ext.cmo path ]
          | `Lib _ -> []))
   in
   let get_all =
@@ -106,10 +112,11 @@ let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
           (* Special case for the stdlib because it is not referenced in the
              META *)
           let stdlib =
-            Path.build (in_build_dir ~ctx [ "stdlib"; "stdlib.cma.js" ])
+            Path.build
+              (in_build_dir ~ctx [ "stdlib"; "stdlib" ^ Js_of_ocaml.Ext.cma ])
           in
           let all_other_modules =
-            List.map cm ~f:(Path.extend_basename ~suffix:".js")
+            List.map cm ~f:(Path.set_extension ~ext:Js_of_ocaml.Ext.cmo)
           in
           Command.Args.Deps
             (List.concat
@@ -117,7 +124,8 @@ let link_rule cc ~runtime ~target cm ~flags ~link_time_code_gen =
   in
   let spec =
     let std_exit =
-      Path.build (in_build_dir ~ctx [ "stdlib"; "std_exit.cmo.js" ])
+      Path.build
+        (in_build_dir ~ctx [ "stdlib"; "std_exit" ^ Js_of_ocaml.Ext.cmo ])
     in
     Command.Args.S [ Dep (Path.build runtime); Dyn get_all; Dep std_exit ]
   in
@@ -159,7 +167,7 @@ let setup_separate_compilation_rules sctx components =
 
       Memo.parallel_iter archives ~f:(fun fn ->
           let name = Path.basename fn in
-          let target = in_build_dir ~ctx [ lib_name; sprintf "%s.js" name ] in
+          let target = in_build_dir ~ctx [ lib_name; with_js_ext name ] in
           let spec =
             let src_dir = Lib_info.src_dir info in
             let src = Path.relative src_dir name in
@@ -179,8 +187,8 @@ let build_exe cc ~loc ~in_context ~src ~(cm : Path.t list Action_builder.t)
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let mk_target ext = Path.Build.set_extension src ~ext in
-  let target = mk_target ".bc.js" in
-  let standalone_runtime = mk_target ".bc.runtime.js" in
+  let target = mk_target Js_of_ocaml.Ext.exe in
+  let standalone_runtime = mk_target Js_of_ocaml.Ext.runtime in
   let mode : Rule.Mode.t =
     match promote with
     | None -> Standard

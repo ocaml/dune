@@ -427,7 +427,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
           let target =
             Path.Build.relative (Obj_dir.obj_dir obj_dir)
               (Path.Build.basename src)
-            |> Path.Build.extend_basename ~suffix:".js"
+            |> Path.Build.set_extension ~ext:Js_of_ocaml.Ext.cma
           in
           Jsoo_rules.build_cm cctx ~in_context:js_of_ocaml ~src ~target
         in

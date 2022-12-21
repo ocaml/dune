@@ -21,10 +21,10 @@ Compilation using jsoo
         ocamlc lib/x.cma
       ocamlopt lib/x.{a,cmxa}
         ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
-   js_of_ocaml bin/.technologic.eobjs/byte/z.cmo.js
+   js_of_ocaml bin/.technologic.eobjs/z.cmo.js
    js_of_ocaml lib/.x.objs/x.cma.js
       ocamlopt lib/x.cmxs
-   js_of_ocaml bin/.technologic.eobjs/byte/technologic.cmo.js
+   js_of_ocaml bin/.technologic.eobjs/technologic.cmo.js
    js_of_ocaml bin/technologic.bc.js
   $ node ./_build/default/bin/technologic.bc.js
   buy it

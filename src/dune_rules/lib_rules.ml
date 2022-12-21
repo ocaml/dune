@@ -420,16 +420,12 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
   and* () =
     (* Build *.cma.js *)
     Memo.when_ modes.ocaml.byte (fun () ->
+        let src =
+          Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
+        in
         let action_with_targets =
-          let src =
-            Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
-          in
-          let target =
-            Path.Build.relative (Obj_dir.obj_dir obj_dir)
-              (Path.Build.basename src)
-            |> Path.Build.set_extension ~ext:Js_of_ocaml.Ext.cma
-          in
-          Jsoo_rules.build_cm cctx ~in_context:js_of_ocaml ~src ~target
+          Jsoo_rules.build_cm cctx ~dir ~in_context:js_of_ocaml
+            ~src:(Path.build src) ~obj_dir
         in
         action_with_targets
         >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)

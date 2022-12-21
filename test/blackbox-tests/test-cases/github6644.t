@@ -26,8 +26,5 @@ Regression test for #6644
   > EOF
   $ touch foo.ml
 
-  $ dune build foo.cma
-  File ".foo.objs/byte/_unknown_", line 1, characters 0-0:
-  Error: This rule forbids all sandboxing modes (but it also requires
-  sandboxing)
-  [1]
+  $ dune build foo.cma 2>&1 | grep Assert_failure | sed 's/\(.* Assert_failure\).*/\1/g'
+  Fatal error: exception Assert_failure

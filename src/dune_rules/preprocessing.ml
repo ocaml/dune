@@ -486,6 +486,9 @@ let promote_correction_with_target fn build ~suffix =
 
 let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
 
+let sandbox_of_setting = function
+  | `Set_by_user d | `Default d -> d
+
 let action_for_pp ~sandbox ~loc ~expander ~action ~src =
   let action = chdir action in
   let bindings =
@@ -599,13 +602,17 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
   | No_preprocessing ->
     Staged.stage @@ fun m ~lint ->
     let open Memo.O in
-    let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
+    let* ast =
+      let sandbox = sandbox_of_setting sandbox in
+      setup_dialect_rules sctx ~sandbox ~dir ~expander m
+    in
     let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
     ast
   | Action (loc, action) ->
     Staged.stage @@ fun m ~lint ->
     let open Memo.O in
     let* ast =
+      let sandbox = sandbox_of_setting sandbox in
       pped_module m ~f:(fun _kind src dst ->
           let action =
             action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src
@@ -637,7 +644,7 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
            in
            let driver_flags = driver_flags in
            let command =
-             List.map
+             List.map ~f:String.quote_for_shell
                (List.concat
                   [ [ Path.reach (Path.build exe)
                         ~from:
@@ -646,12 +653,19 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
                   ; driver_flags
                   ; flags
                   ])
-               ~f:String.quote_for_shell
              |> String.concat ~sep:" "
            in
            [ "-ppx"; command ])
       in
-      let pp = Some (dash_ppx_flag, sandbox) in
+      let pp =
+        let sandbox =
+          match sandbox with
+          | `Set_by_user d -> d
+          | `Default _ -> Sandbox_config.no_special_requirements
+        in
+        Some (dash_ppx_flag, sandbox)
+      in
+      let sandbox = sandbox_of_setting sandbox in
       fun m ~lint ->
         let open Memo.O in
         let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
@@ -677,6 +691,7 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
            in
            (exe, ppx_flags, flags))
       in
+      let sandbox = sandbox_of_setting sandbox in
       fun m ~lint ->
         let open Memo.O in
         let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
@@ -719,17 +734,19 @@ let make sctx ~dir ~expander ~lint ~preprocess ~preprocessor_deps
     match
       Sandbox_config.equal Sandbox_config.no_special_requirements sandbox
     with
-    | false -> sandbox
+    | false -> `Set_by_user sandbox
     | true ->
       let project = Scope.project scope in
       let dune_version = Dune_project.dune_version project in
-      if dune_version >= (3, 3) then Sandbox_config.needs_sandboxing
-      else sandbox
+      `Default
+        (if dune_version >= (3, 3) then Sandbox_config.needs_sandboxing
+        else sandbox)
   in
   let preprocessor_deps =
     Action_builder.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
+    let sandbox = sandbox_of_setting sandbox in
     Staged.unstage
       (lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope)
   in

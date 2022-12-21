@@ -2,12 +2,19 @@
 
 open Import
 
+module Config : sig
+  type t
+
+  val all : t list
+end
+
 val build_cm :
-     Compilation_context.t
+     Super_context.t
   -> dir:Path.Build.t
   -> in_context:Js_of_ocaml.In_context.t
   -> src:Path.t
   -> obj_dir:Path.Build.t Obj_dir.t
+  -> config:Config.t option
   -> Action.Full.t Action_builder.With_targets.t Memo.t
 
 val build_exe :

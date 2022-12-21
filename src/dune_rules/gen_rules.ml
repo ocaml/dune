@@ -102,10 +102,8 @@ end = struct
         ; cctx = Some (exes.buildable.loc, cctx)
         ; js =
             Some
-              (List.concat_map exes.names ~f:(fun (_, exe) ->
-                   List.map
-                     [ exe ^ Js_of_ocaml.Ext.exe ]
-                     ~f:(Path.Build.relative dir)))
+              (List.map exes.names ~f:(fun (_, exe) ->
+                   Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe)))
         ; source_dirs = None
         })
     | Alias alias ->

@@ -76,6 +76,9 @@ Unreleased
 - Fix inline tests with *js_of_ocaml* and whole program compilation mode
   enabled (#6645, @hhugo)
 
+- Fix *js_of_ocaml* separate compilation rules when `--enable=effects`
+  or `--enable=use-js-string` is used. (#6714, @hhugo)
+
 3.6.1 (2022-11-24)
 ------------------
 

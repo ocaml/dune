@@ -424,11 +424,12 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
           Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
         in
         let action_with_targets =
-          Jsoo_rules.build_cm cctx ~dir ~in_context:js_of_ocaml
-            ~src:(Path.build src) ~obj_dir
+          List.map Jsoo_rules.Config.all ~f:(fun config ->
+              Jsoo_rules.build_cm sctx ~dir ~in_context:js_of_ocaml
+                ~config:(Some config) ~src:(Path.build src) ~obj_dir)
         in
-        action_with_targets
-        >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
+        Memo.parallel_iter action_with_targets ~f:(fun rule ->
+            rule >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc))
   in
   Memo.when_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.ocaml.native)

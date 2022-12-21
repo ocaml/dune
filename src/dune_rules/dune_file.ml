@@ -924,7 +924,7 @@ module Library = struct
       (* XXX we shouldn't access the directory of the obj_dir directly. We
          should use something like [Obj_dir.Archive.obj] instead *)
       if modes.ocaml.byte then
-        Some (archive ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
+        Some (archive ~dir:(Obj_dir.obj_dir obj_dir) Js_of_ocaml.Ext.cma)
       else None
     in
     let virtual_ =
@@ -1449,7 +1449,7 @@ module Executables = struct
         | Byte, Shared_object -> ".bc" ^ ext_dll
         | Native, Shared_object -> ext_dll
         | mode, Plugin -> Mode.plugin_ext mode
-        | Byte, Js -> ".bc.js"
+        | Byte, Js -> Js_of_ocaml.Ext.exe
         | Native, Js ->
           User_error.raise ~loc
             [ Pp.text "Javascript generation only supports bytecode!" ])

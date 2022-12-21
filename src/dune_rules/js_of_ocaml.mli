@@ -1,5 +1,17 @@
 open Import
 
+module Ext : sig
+  type t = string
+
+  val exe : t
+
+  val cmo : t
+
+  val cma : t
+
+  val runtime : t
+end
+
 module Flags : sig
   type 'flags t =
     { build_runtime : 'flags

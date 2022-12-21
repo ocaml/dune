@@ -35,7 +35,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
         Memo.parallel_iter runtest_modes ~f:(fun runtest_mode ->
             let ext =
               match runtest_mode with
-              | `js -> ".bc.js"
+              | `js -> Js_of_ocaml.Ext.exe
               | `bc -> ".bc"
               | `exe -> ".exe"
             in

@@ -28,7 +28,7 @@ module Linkage = struct
 
   let is_native x = x.mode = Native
 
-  let is_js x = x.mode = Byte && x.ext = ".bc.js"
+  let is_js x = x.mode = Byte && x.ext = Js_of_ocaml.Ext.exe
 
   let is_byte x = x.mode = Byte && not (is_js x)
 
@@ -46,7 +46,7 @@ module Linkage = struct
     | Error _ -> custom context
     | Ok _ -> native
 
-  let js = { mode = Byte; ext = ".bc.js"; flags = [] }
+  let js = { mode = Byte; ext = Js_of_ocaml.Ext.exe; flags = [] }
 
   let is_plugin t =
     List.mem (List.map ~f:Mode.plugin_ext Mode.all) t.ext ~equal:String.equal

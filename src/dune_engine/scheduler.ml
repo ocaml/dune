@@ -858,11 +858,6 @@ let stats () =
 
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
-let yield_if_there_are_pending_events () =
-  t_opt () >>= function
-  | None -> Fiber.return ()
-  | Some t -> Event.Queue.yield_if_there_are_pending_events t.events
-
 exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)

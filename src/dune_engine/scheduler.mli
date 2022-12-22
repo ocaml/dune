@@ -32,14 +32,6 @@ module Run : sig
     | No_watcher
 
   module Shutdown : sig
-    module Signal : sig
-      (* TODO move this stuff into stdune? *)
-      type t =
-        | Int
-        | Quit
-        | Term
-    end
-
     module Reason : sig
       type t =
         | Requested

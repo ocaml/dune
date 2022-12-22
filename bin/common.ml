@@ -19,219 +19,6 @@ end
 
 open Let_syntax
 
-type t =
-  { debug_dep_path : bool
-  ; debug_findlib : bool
-  ; debug_backtraces : bool
-  ; debug_artifact_substitution : bool
-  ; debug_load_dir : bool
-  ; debug_digests : bool
-  ; wait_for_filesystem_clock : bool
-  ; root : Workspace_root.t
-  ; only_packages : Only_packages.Clflags.t
-  ; capture_outputs : bool
-  ; diff_command : string option
-  ; promote : Clflags.Promote.t option
-  ; force : bool
-  ; ignore_promoted_rules : bool
-  ; build_dir : string
-  ; no_print_directory : bool
-  ; store_orig_src_dir : bool
-  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
-  ; default_target : Arg.Dep.t (* For build & runtest only *)
-  ; watch : Watch_mode_config.t
-  ; print_metrics : bool
-  ; dump_memo_graph_file : string option
-  ; dump_memo_graph_format : Graph.File_format.t
-  ; dump_memo_graph_with_timing : bool
-  ; always_show_command_line : bool
-  ; promote_install_files : bool
-  ; stats : Dune_stats.t option
-  ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
-  ; workspace_config : Dune_rules.Workspace.Clflags.t
-  ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
-  ; report_errors_config : Dune_engine.Report_errors_config.t
-  ; require_dune_project_file : bool
-  ; insignificant_changes : [ `React | `Ignore ]
-  }
-
-let capture_outputs t = t.capture_outputs
-
-let root t = t.root
-
-let watch t = t.watch
-
-let print_metrics t = t.print_metrics
-
-let dump_memo_graph_file t = t.dump_memo_graph_file
-
-let dump_memo_graph_format t = t.dump_memo_graph_format
-
-let dump_memo_graph_with_timing t = t.dump_memo_graph_with_timing
-
-let file_watcher t = t.file_watcher
-
-let default_target t = t.default_target
-
-let prefix_target t s = t.root.reach_from_root_prefix ^ s
-
-let rpc t =
-  match t.rpc with
-  | `Forbid_builds -> `Forbid_builds
-  | `Allow rpc -> `Allow (Lazy.force rpc)
-
-let forbid_builds t = { t with rpc = `Forbid_builds; no_print_directory = true }
-
-let signal_watcher t =
-  match t.rpc with
-  | `Allow _ -> `Yes
-  | `Forbid_builds ->
-    (* if we aren't building anything, then we don't mind interrupting dune immediately *)
-    `No
-
-let stats t = t.stats
-
-let insignificant_changes t = t.insignificant_changes
-
-let set_promote t v = { t with promote = Some v }
-
-(* To avoid needless recompilations under Windows, where the case of
-   [Sys.getcwd] can vary between different invocations of [dune], normalize to
-   lowercase. *)
-let normalize_path path =
-  if Sys.win32 then
-    let src = Path.External.to_string path in
-    let is_letter = function
-      | 'a' .. 'z' | 'A' .. 'Z' -> true
-      | _ -> false
-    in
-    if String.length src >= 2 && is_letter src.[0] && src.[1] = ':' then (
-      let dst = Bytes.create (String.length src) in
-      Bytes.set dst 0 (Char.uppercase_ascii src.[0]);
-      Bytes.blit_string ~src ~src_pos:1 ~dst ~dst_pos:1
-        ~len:(String.length src - 1);
-      Path.External.of_string (Bytes.unsafe_to_string dst))
-    else path
-  else path
-
-let print_entering_message c =
-  let cwd = Path.to_absolute_filename Path.root in
-  if cwd <> Fpath.initial_cwd && not c.no_print_directory then (
-    (* Editors such as Emacs parse the output of the build system and interpret
-       filenames in error messages relative to where the build system was
-       started.
-
-       If the build system changes directory, the editor will not be able to
-       correctly locate files. However, such editors also understand messages of
-       the form "Entering directory '<dir>'" that the "make" command prints.
-
-       This is why Dune also prints such a message; this way people running Dune
-       through such an editor will be able to use the "jump to error" feature of
-       their editor. *)
-    let dir =
-      match Config.inside_dune with
-      | false -> cwd
-      | true -> (
-        let descendant_simple p ~of_ =
-          match String.drop_prefix p ~prefix:of_ with
-          | None | Some "" -> None
-          | Some s -> Some (String.drop s 1)
-        in
-        match descendant_simple cwd ~of_:Fpath.initial_cwd with
-        | Some s -> s
-        | None -> (
-          match descendant_simple Fpath.initial_cwd ~of_:cwd with
-          | None -> cwd
-          | Some s ->
-            let rec loop acc dir =
-              if dir = Filename.current_dir_name then acc
-              else loop (Filename.concat acc "..") (Filename.dirname dir)
-            in
-            loop ".." (Filename.dirname s)))
-    in
-    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
-    at_exit (fun () ->
-        flush stdout;
-        Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
-
-let init ?log_file c =
-  if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
-  Path.set_root (normalize_path (Path.External.cwd ()));
-  Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.build_dir);
-  (* Once we have the build directory set, initialise the logging. We can't do
-     this earlier, because the build log typically goes into [_build/log]. *)
-  Dune_util.Log.init () ?file:log_file;
-  (* We need to print this before reading the workspace file, so that the editor
-     can interpret errors in the workspace file. *)
-  print_entering_message c;
-  Dune_rules.Workspace.Clflags.set c.workspace_config;
-  let config =
-    (* Here we make the assumption that this computation doesn't yield. *)
-    Fiber.run
-      (Memo.run (Dune_rules.Workspace.workspace_config ()))
-      ~iter:(fun () -> assert false)
-  in
-  let config =
-    Dune_config.adapt_display config
-      ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
-  in
-  Dune_config.init config;
-  Dune_engine.Execution_parameters.init
-    (let open Memo.O in
-    let+ w = Dune_rules.Workspace.workspace () in
-    Dune_engine.Execution_parameters.builtin_default
-    |> Dune_rules.Workspace.update_execution_parameters w);
-  Dune_rules.Global.init ~capture_outputs:c.capture_outputs;
-  let cache_config =
-    match config.cache_enabled with
-    | Disabled -> Dune_cache.Config.Disabled
-    | Enabled ->
-      Enabled
-        { storage_mode =
-            Option.value config.cache_storage_mode ~default:Hardlink
-        ; reproducibility_check = config.cache_reproducibility_check
-        }
-  in
-  Dune_util.Log.info
-    [ Pp.textf "Shared cache: %s"
-        (Dune_config.Cache.Enabled.to_string config.cache_enabled)
-    ];
-  Dune_rules.Main.init ~stats:c.stats
-    ~sandboxing_preference:config.sandboxing_preference ~cache_config
-    ~cache_debug_flags:c.cache_debug_flags;
-  Only_packages.Clflags.set c.only_packages;
-  Dune_util.Report_error.print_memo_stacks := c.debug_dep_path;
-  Clflags.report_errors_config := c.report_errors_config;
-  Clflags.debug_findlib := c.debug_findlib;
-  Clflags.debug_backtraces c.debug_backtraces;
-  Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
-  Clflags.debug_load_dir := c.debug_load_dir;
-  Clflags.debug_digests := c.debug_digests;
-  Clflags.debug_fs_cache := c.cache_debug_flags.fs_cache;
-  Clflags.wait_for_filesystem_clock := c.wait_for_filesystem_clock;
-  Clflags.capture_outputs := c.capture_outputs;
-  Clflags.diff_command := c.diff_command;
-  Clflags.promote := c.promote;
-  Clflags.force := c.force;
-  Clflags.no_print_directory := c.no_print_directory;
-  Clflags.store_orig_src_dir := c.store_orig_src_dir;
-  Clflags.promote_install_files := c.promote_install_files;
-  Clflags.always_show_command_line := c.always_show_command_line;
-  Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
-  Clflags.on_missing_dune_project_file :=
-    if c.require_dune_project_file then Error else Warn;
-  Dune_util.Log.info
-    [ Pp.textf "Workspace root: %s"
-        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
-    ];
-  config
-
-let footer =
-  `Blocks
-    [ `S "BUGS"
-    ; `P "Check bug reports at https://github.com/ocaml/dune/issues"
-    ]
-
 let copts_sect = "COMMON OPTIONS"
 
 let debug_backtraces =
@@ -239,40 +26,6 @@ let debug_backtraces =
     value & flag
     & info [ "debug-backtraces" ] ~docs:copts_sect
         ~doc:{|Always print exception backtraces.|})
-
-let examples = function
-  | [] -> `Blocks []
-  | _ :: _ as examples ->
-    let block_of_example index (intro, ex) =
-      let prose = `I (Int.to_string (index + 1) ^ ".", String.trim intro ^ ":")
-      and code_lines =
-        ex |> String.trim |> String.split_lines
-        |> List.concat_map ~f:(fun codeline ->
-               [ `Noblank; `Pre ("      " ^ codeline) ])
-        (* suppress initial blank *)
-        |> List.tl
-      in
-      `Blocks (prose :: code_lines)
-    in
-    let example_blocks = examples |> List.mapi ~f:block_of_example in
-    `Blocks (`S Cmdliner.Manpage.s_examples :: example_blocks)
-
-(* Short reminders for the most used and useful commands *)
-let command_synopsis commands =
-  let format_command c acc =
-    `Noblank :: `P (Printf.sprintf "$(b,dune %s)" c) :: acc
-  in
-  [ `S "SYNOPSIS"
-  ; `Blocks (List.fold_right ~init:[] ~f:format_command commands)
-  ]
-
-let help_secs =
-  [ `S copts_sect
-  ; `P "These options are common to all commands."
-  ; `S "MORE HELP"
-  ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
-  ; footer
-  ]
 
 let default_build_dir = "_build"
 
@@ -748,16 +501,13 @@ module Builder = struct
     ; debug_artifact_substitution : bool
     ; debug_load_dir : bool
     ; debug_digests : bool
-    ; store_digest_preimage : bool
     ; wait_for_filesystem_clock : bool
-    ; root : string option
     ; only_packages : Only_packages.Clflags.t
     ; capture_outputs : bool
     ; diff_command : string option
     ; promote : Clflags.Promote.t option
-    ; force : bool
     ; ignore_promoted_rules : bool
-    ; build_dir : string option
+    ; force : bool
     ; no_print_directory : bool
     ; store_orig_src_dir : bool
     ; default_target : Arg.Dep.t (* For build & runtest only *)
@@ -768,13 +518,16 @@ module Builder = struct
     ; dump_memo_graph_with_timing : bool
     ; always_show_command_line : bool
     ; promote_install_files : bool
-    ; stats_trace_file : string option
     ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
     ; workspace_config : Dune_rules.Workspace.Clflags.t
     ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
     ; report_errors_config : Dune_engine.Report_errors_config.t
     ; require_dune_project_file : bool
-    ; react_to_insignificant_changes : bool
+    ; insignificant_changes : [ `React | `Ignore ]
+    ; build_dir : string
+    ; store_digest_preimage : bool
+    ; root : string option
+    ; stats_trace_file : string option
     }
 
   let set_root t root = { t with root = Some root }
@@ -1059,16 +812,13 @@ module Builder = struct
     ; debug_artifact_substitution
     ; debug_load_dir
     ; debug_digests
-    ; store_digest_preimage
     ; wait_for_filesystem_clock
+    ; only_packages
     ; capture_outputs = not no_buffer
     ; diff_command
     ; promote
-    ; force
     ; ignore_promoted_rules
-    ; build_dir
-    ; root
-    ; only_packages
+    ; force
     ; no_print_directory
     ; store_orig_src_dir
     ; default_target
@@ -1079,7 +829,6 @@ module Builder = struct
     ; dump_memo_graph_with_timing
     ; always_show_command_line
     ; promote_install_files
-    ; stats_trace_file
     ; file_watcher
     ; workspace_config =
         { x
@@ -1092,62 +841,245 @@ module Builder = struct
     ; cache_debug_flags
     ; report_errors_config
     ; require_dune_project_file
-    ; react_to_insignificant_changes
+    ; insignificant_changes =
+        (if react_to_insignificant_changes then `React else `Ignore)
+    ; build_dir = Option.value ~default:default_build_dir build_dir
+    ; store_digest_preimage
+    ; root
+    ; stats_trace_file
     }
 end
 
-let build
-    { Builder.debug_dep_path
-    ; debug_findlib
-    ; debug_backtraces
-    ; debug_artifact_substitution
-    ; debug_load_dir
-    ; debug_digests
-    ; store_digest_preimage
-    ; wait_for_filesystem_clock
-    ; capture_outputs
-    ; diff_command
-    ; promote
-    ; force
-    ; ignore_promoted_rules
-    ; build_dir
-    ; root
-    ; only_packages
-    ; no_print_directory
-    ; store_orig_src_dir
-    ; default_target
-    ; watch
-    ; print_metrics
-    ; dump_memo_graph_file
-    ; dump_memo_graph_format
-    ; dump_memo_graph_with_timing
-    ; always_show_command_line
-    ; promote_install_files
-    ; stats_trace_file
-    ; file_watcher
-    ; workspace_config =
-        { x
-        ; profile
-        ; instrument_with
-        ; workspace_file
-        ; config_from_command_line
-        ; config_from_config_file
-        }
-    ; cache_debug_flags
-    ; report_errors_config
-    ; require_dune_project_file
-    ; react_to_insignificant_changes
-    } ~default_root_is_cwd =
-  let insignificant_changes =
-    if react_to_insignificant_changes then `React else `Ignore
+type t =
+  { builder : Builder.t
+  ; root : Workspace_root.t
+  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+  ; stats : Dune_stats.t option
+  }
+
+let capture_outputs t = t.builder.capture_outputs
+
+let root t = t.root
+
+let watch t = t.builder.watch
+
+let print_metrics t = t.builder.print_metrics
+
+let dump_memo_graph_file t = t.builder.dump_memo_graph_file
+
+let dump_memo_graph_format t = t.builder.dump_memo_graph_format
+
+let dump_memo_graph_with_timing t = t.builder.dump_memo_graph_with_timing
+
+let file_watcher t = t.builder.file_watcher
+
+let default_target t = t.builder.default_target
+
+let prefix_target t s = t.root.reach_from_root_prefix ^ s
+
+let rpc t =
+  match t.rpc with
+  | `Forbid_builds -> `Forbid_builds
+  | `Allow rpc -> `Allow (Lazy.force rpc)
+
+let forbid_builds t =
+  { t with
+    rpc = `Forbid_builds
+  ; builder = { t.builder with no_print_directory = true }
+  }
+
+let signal_watcher t =
+  match t.rpc with
+  | `Allow _ -> `Yes
+  | `Forbid_builds ->
+    (* if we aren't building anything, then we don't mind interrupting dune immediately *)
+    `No
+
+let stats t = t.stats
+
+let insignificant_changes t = t.builder.insignificant_changes
+
+let set_promote t v = { t with builder = { t.builder with promote = Some v } }
+
+(* To avoid needless recompilations under Windows, where the case of
+   [Sys.getcwd] can vary between different invocations of [dune], normalize to
+   lowercase. *)
+let normalize_path path =
+  if Sys.win32 then
+    let src = Path.External.to_string path in
+    let is_letter = function
+      | 'a' .. 'z' | 'A' .. 'Z' -> true
+      | _ -> false
+    in
+    if String.length src >= 2 && is_letter src.[0] && src.[1] = ':' then (
+      let dst = Bytes.create (String.length src) in
+      Bytes.set dst 0 (Char.uppercase_ascii src.[0]);
+      Bytes.blit_string ~src ~src_pos:1 ~dst ~dst_pos:1
+        ~len:(String.length src - 1);
+      Path.External.of_string (Bytes.unsafe_to_string dst))
+    else path
+  else path
+
+let print_entering_message c =
+  let cwd = Path.to_absolute_filename Path.root in
+  if cwd <> Fpath.initial_cwd && not c.builder.no_print_directory then (
+    (* Editors such as Emacs parse the output of the build system and interpret
+       filenames in error messages relative to where the build system was
+       started.
+
+       If the build system changes directory, the editor will not be able to
+       correctly locate files. However, such editors also understand messages of
+       the form "Entering directory '<dir>'" that the "make" command prints.
+
+       This is why Dune also prints such a message; this way people running Dune
+       through such an editor will be able to use the "jump to error" feature of
+       their editor. *)
+    let dir =
+      match Config.inside_dune with
+      | false -> cwd
+      | true -> (
+        let descendant_simple p ~of_ =
+          match String.drop_prefix p ~prefix:of_ with
+          | None | Some "" -> None
+          | Some s -> Some (String.drop s 1)
+        in
+        match descendant_simple cwd ~of_:Fpath.initial_cwd with
+        | Some s -> s
+        | None -> (
+          match descendant_simple Fpath.initial_cwd ~of_:cwd with
+          | None -> cwd
+          | Some s ->
+            let rec loop acc dir =
+              if dir = Filename.current_dir_name then acc
+              else loop (Filename.concat acc "..") (Filename.dirname dir)
+            in
+            loop ".." (Filename.dirname s)))
+    in
+    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
+    at_exit (fun () ->
+        flush stdout;
+        Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
+
+let init ?log_file c =
+  if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
+  Path.set_root (normalize_path (Path.External.cwd ()));
+  Path.Build.set_build_dir
+    (Path.Outside_build_dir.of_string c.builder.build_dir);
+  (* Once we have the build directory set, initialise the logging. We can't do
+     this earlier, because the build log typically goes into [_build/log]. *)
+  Dune_util.Log.init () ?file:log_file;
+  (* We need to print this before reading the workspace file, so that the editor
+     can interpret errors in the workspace file. *)
+  print_entering_message c;
+  Dune_rules.Workspace.Clflags.set c.builder.workspace_config;
+  let config =
+    (* Here we make the assumption that this computation doesn't yield. *)
+    Fiber.run
+      (Memo.run (Dune_rules.Workspace.workspace_config ()))
+      ~iter:(fun () -> assert false)
   in
-  let build_dir = Option.value ~default:default_build_dir build_dir in
+  let config =
+    Dune_config.adapt_display config
+      ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
+  in
+  Dune_config.init config;
+  Dune_engine.Execution_parameters.init
+    (let open Memo.O in
+    let+ w = Dune_rules.Workspace.workspace () in
+    Dune_engine.Execution_parameters.builtin_default
+    |> Dune_rules.Workspace.update_execution_parameters w);
+  Dune_rules.Global.init ~capture_outputs:c.builder.capture_outputs;
+  let cache_config =
+    match config.cache_enabled with
+    | Disabled -> Dune_cache.Config.Disabled
+    | Enabled ->
+      Enabled
+        { storage_mode =
+            Option.value config.cache_storage_mode ~default:Hardlink
+        ; reproducibility_check = config.cache_reproducibility_check
+        }
+  in
+  Dune_util.Log.info
+    [ Pp.textf "Shared cache: %s"
+        (Dune_config.Cache.Enabled.to_string config.cache_enabled)
+    ];
+  Dune_rules.Main.init ~stats:c.stats
+    ~sandboxing_preference:config.sandboxing_preference ~cache_config
+    ~cache_debug_flags:c.builder.cache_debug_flags;
+  Only_packages.Clflags.set c.builder.only_packages;
+  Dune_util.Report_error.print_memo_stacks := c.builder.debug_dep_path;
+  Clflags.report_errors_config := c.builder.report_errors_config;
+  Clflags.debug_findlib := c.builder.debug_findlib;
+  Clflags.debug_backtraces c.builder.debug_backtraces;
+  Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
+  Clflags.debug_load_dir := c.builder.debug_load_dir;
+  Clflags.debug_digests := c.builder.debug_digests;
+  Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
+  Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
+  Clflags.capture_outputs := c.builder.capture_outputs;
+  Clflags.diff_command := c.builder.diff_command;
+  Clflags.promote := c.builder.promote;
+  Clflags.force := c.builder.force;
+  Clflags.no_print_directory := c.builder.no_print_directory;
+  Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
+  Clflags.promote_install_files := c.builder.promote_install_files;
+  Clflags.always_show_command_line := c.builder.always_show_command_line;
+  Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
+  Clflags.on_missing_dune_project_file :=
+    if c.builder.require_dune_project_file then Error else Warn;
+  Dune_util.Log.info
+    [ Pp.textf "Workspace root: %s"
+        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
+    ];
+  config
+
+let footer =
+  `Blocks
+    [ `S "BUGS"
+    ; `P "Check bug reports at https://github.com/ocaml/dune/issues"
+    ]
+
+let examples = function
+  | [] -> `Blocks []
+  | _ :: _ as examples ->
+    let block_of_example index (intro, ex) =
+      let prose = `I (Int.to_string (index + 1) ^ ".", String.trim intro ^ ":")
+      and code_lines =
+        ex |> String.trim |> String.split_lines
+        |> List.concat_map ~f:(fun codeline ->
+               [ `Noblank; `Pre ("      " ^ codeline) ])
+        (* suppress initial blank *)
+        |> List.tl
+      in
+      `Blocks (prose :: code_lines)
+    in
+    let example_blocks = examples |> List.mapi ~f:block_of_example in
+    `Blocks (`S Cmdliner.Manpage.s_examples :: example_blocks)
+
+(* Short reminders for the most used and useful commands *)
+let command_synopsis commands =
+  let format_command c acc =
+    `Noblank :: `P (Printf.sprintf "$(b,dune %s)" c) :: acc
+  in
+  [ `S "SYNOPSIS"
+  ; `Blocks (List.fold_right ~init:[] ~f:format_command commands)
+  ]
+
+let help_secs =
+  [ `S copts_sect
+  ; `P "These options are common to all commands."
+  ; `S "MORE HELP"
+  ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
+  ; footer
+  ]
+
+let build (builder : Builder.t) ~default_root_is_cwd =
   let root =
     Workspace_root.create ~default_is_cwd:default_root_is_cwd
-      ~specified_by_user:root
+      ~specified_by_user:builder.root
   in
   let stats =
-    Option.map stats_trace_file ~f:(fun f ->
+    Option.map builder.stats_trace_file ~f:(fun f ->
         let stats = Dune_stats.create (Out (open_out f)) in
         at_exit (fun () -> Dune_stats.close stats);
         stats)
@@ -1156,63 +1088,23 @@ let build
     `Allow
       (lazy
         (let registry =
-           match watch with
+           match builder.watch with
            | Yes _ -> `Add
            | No -> `Skip
          in
          let lock_timeout =
-           match watch with
+           match builder.watch with
            | Yes Passive -> Some 1.0
            | _ -> None
          in
          Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir
            stats))
   in
-  if store_digest_preimage then Dune_engine.Reversible_digest.enable ();
-  if print_metrics then (
+  if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
+  if builder.print_metrics then (
     Memo.Perf_counters.enable ();
     Dune_metrics.enable ());
-  { debug_dep_path
-  ; debug_findlib
-  ; debug_backtraces
-  ; debug_artifact_substitution
-  ; debug_load_dir
-  ; debug_digests
-  ; wait_for_filesystem_clock
-  ; capture_outputs
-  ; root
-  ; diff_command
-  ; promote
-  ; force
-  ; ignore_promoted_rules
-  ; only_packages
-  ; rpc
-  ; build_dir
-  ; no_print_directory
-  ; store_orig_src_dir
-  ; default_target
-  ; watch
-  ; print_metrics
-  ; dump_memo_graph_file
-  ; dump_memo_graph_format
-  ; dump_memo_graph_with_timing
-  ; always_show_command_line
-  ; promote_install_files
-  ; stats
-  ; file_watcher
-  ; workspace_config =
-      { x
-      ; profile
-      ; instrument_with
-      ; workspace_file
-      ; config_from_command_line
-      ; config_from_config_file
-      }
-  ; cache_debug_flags
-  ; report_errors_config
-  ; require_dune_project_file
-  ; insignificant_changes
-  }
+  { builder; root; rpc; stats }
 
 let term ~default_root_is_cwd =
   let+ builder = Builder.term in

@@ -32,10 +32,12 @@ let lib_output_dir ~sctx ~scope ~target_dir lib =
       | false ->
         let package_name = Option.value_exn (Lib_info.package info) in
         let bctx = (Super_context.context sctx).build_dir in
+        let info = Lib.info lib in
+        let src_dir = Lib_info.src_dir info in
         Path.Build.L.relative bctx
           [ "node_modules"
           ; Package.Name.to_string package_name
-          ; Path.Source.to_string (Dune_project.root project)
+          ; Path.Source.to_string (Path.drop_build_context_exn src_dir)
           ])
     | Installed | Installed_private ->
       let package_name = Option.value_exn (Lib_info.package info) in

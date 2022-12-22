@@ -1,1 +1,1 @@
-let x = "foo"
+let x = "foo" ^ Npm.f

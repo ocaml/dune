@@ -23,7 +23,9 @@ library also has more than one src dir.
   $ dune build lib2/.merlin-conf/lib-lib2
   $ dune ocaml merlin dump-config $PWD/lib2
   Lib2
-  ((STDLIB /OPAM_PREFIX)
+  ((BUILD_DIR
+    $TESTCASE_ROOT/_build/default)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)

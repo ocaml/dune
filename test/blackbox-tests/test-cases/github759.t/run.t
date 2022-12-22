@@ -4,7 +4,9 @@
   $ dune build foo.cma --profile release
   $ dune ocaml merlin dump-config $PWD
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((BUILD_DIR
+    $TESTCASE_ROOT/_build/default)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -16,7 +18,9 @@
   $ dune build foo.cma --profile release
   $ dune ocaml merlin dump-config $PWD
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((BUILD_DIR
+    $TESTCASE_ROOT/_build/default)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -28,7 +32,9 @@
   $ dune build foo.cma --profile release
   $ dune ocaml merlin dump-config $PWD
   Foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((BUILD_DIR
+    $TESTCASE_ROOT/_build/default)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

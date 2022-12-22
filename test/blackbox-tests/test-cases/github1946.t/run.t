@@ -7,7 +7,9 @@ in the same dune file, but require different ppx specifications
   $ dune build @all --profile release
   $ dune ocaml merlin dump-config $PWD
   Usesppx1
-  ((STDLIB /OCAMLC_WHERE)
+  ((BUILD_DIR
+    $TESTCASE_ROOT/_build/default)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
@@ -21,7 +23,9 @@ in the same dune file, but require different ppx specifications
      'library-name="usesppx1"'"))
    (FLG (-w -40 -g)))
   Usesppx2
-  ((STDLIB /OCAMLC_WHERE)
+  ((BUILD_DIR
+    $TESTCASE_ROOT/_build/default)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)

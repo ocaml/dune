@@ -119,8 +119,6 @@ val wait_for_process :
   -> Pid.t
   -> Proc.Process_info.t Fiber.t
 
-val yield_if_there_are_pending_events : unit -> unit Fiber.t
-
 (** If the current build was cancelled, raise
     [Memo.Non_reproducible Run.Build_cancelled]. *)
 val abort_if_build_was_cancelled : unit Fiber.t

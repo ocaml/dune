@@ -18,51 +18,6 @@ type job =
   ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
-module Signal = struct
-  type t =
-    | Int
-    | Quit
-    | Term
-
-  let to_dyn t : Dyn.t =
-    match t with
-    | Int -> Variant ("Int", [])
-    | Quit -> Variant ("Quit", [])
-    | Term -> Variant ("Term", [])
-
-  let compare x y =
-    match (x, y) with
-    | Int, Int -> Eq
-    | Int, _ -> Lt
-    | _, Int -> Gt
-    | Quit, Quit -> Eq
-    | Quit, _ -> Lt
-    | _, Quit -> Gt
-    | Term, Term -> Eq
-
-  include Comparable.Make (struct
-    type nonrec t = t
-
-    let compare = compare
-
-    let to_dyn = to_dyn
-  end)
-
-  let all = [ Int; Quit; Term ]
-
-  let to_int = function
-    | Int -> Sys.sigint
-    | Quit -> Sys.sigquit
-    | Term -> Sys.sigterm
-
-  let of_int =
-    List.map all ~f:(fun t -> (to_int t, t))
-    |> Int.Map.of_list_reduce ~f:(fun _ t -> t)
-    |> Int.Map.find
-
-  let name t = Signal.name (to_int t)
-end
-
 module Shutdown = struct
   module Signal = Signal
 
@@ -75,6 +30,8 @@ module Shutdown = struct
   exception E of Reason.t
 end
 
+let blocked_signals : Signal.t list = [ Int; Quit; Term ]
+
 module Thread : sig
   val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> 'a) -> unit
 
@@ -86,7 +43,7 @@ end = struct
 
   let block_signals =
     lazy
-      (let signos = List.map Signal.all ~f:Signal.to_int in
+      (let signos = List.map blocked_signals ~f:Signal.to_int in
        ignore (Unix.sigprocmask SIG_BLOCK signos : int list))
 
   let create ~signal_watcher =
@@ -619,7 +576,7 @@ end
 module Signal_watcher : sig
   val init : Event.Queue.t -> unit
 end = struct
-  let signos = List.map Signal.all ~f:Signal.to_int
+  let signos = List.map blocked_signals ~f:Signal.to_int
 
   let warning =
     {|
@@ -641,9 +598,7 @@ end = struct
       Staged.stage (fun () ->
           assert (Unix.read r buf 0 1 = 1);
           Signal.Int))
-    else
-      Staged.stage (fun () ->
-          Thread.wait_signal signos |> Signal.of_int |> Option.value_exn)
+    else Staged.stage (fun () -> Thread.wait_signal signos |> Signal.of_int)
 
   let run q =
     let last_exit_signals = Queue.create () in
@@ -665,6 +620,7 @@ end = struct
         let n = Queue.length last_exit_signals in
         if n = 2 then prerr_endline warning;
         if n = 3 then sys_exit 1
+      | _ -> (* we only blocked the signals above *) assert false
     done
 
   let init q = Thread.spawn ~signal_watcher:`Yes (fun () -> run q)

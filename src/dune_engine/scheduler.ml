@@ -146,11 +146,8 @@ module Event : sig
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
-    | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
-    | Worker_task of Fiber.fill
-    | Yield of unit Fiber.Ivar.t
-    | Timer of Fiber.fill
+    | Fiber_fill_ivar of Fiber.fill
 
   module Queue : sig
     type event := t
@@ -204,11 +201,8 @@ end = struct
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
-    | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
-    | Worker_task of Fiber.fill
-    | Yield of unit Fiber.Ivar.t
-    | Timer of Fiber.fill
+    | Fiber_fill_ivar of Fiber.fill
 
   module Invalidation_event = struct
     type t =
@@ -365,20 +359,20 @@ end = struct
         Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
             q.pending_jobs <- q.pending_jobs - 1;
             assert (q.pending_jobs >= 0);
-            Job_completed (job, proc_info))
+            Fiber_fill_ivar (Fill (job.ivar, proc_info)))
 
       let worker_tasks_completed q =
         Option.map (Queue.pop q.worker_tasks_completed) ~f:(fun fill ->
             q.pending_worker_tasks <- q.pending_worker_tasks - 1;
-            Worker_task fill)
+            Fiber_fill_ivar fill)
 
       let yield q =
         Option.map q.yield ~f:(fun ivar ->
             q.yield <- None;
-            Yield ivar)
+            Fiber_fill_ivar (Fill (ivar, ())))
 
       let timers q =
-        Option.map (Queue.pop q.timers) ~f:(fun timer -> Timer timer)
+        Option.map (Queue.pop q.timers) ~f:(fun timer -> Fiber_fill_ivar timer)
 
       let chain list q = List.find_map list ~f:(fun f -> f q)
     end
@@ -1002,7 +996,6 @@ end = struct
   let rec iter (t : t) : Fiber.fill Nonempty_list.t =
     t.handler t.config Tick;
     match Event.Queue.next t.events with
-    | Job_completed (job, proc_info) -> [ Fill (job.ivar, proc_info) ]
     | File_watcher_task job ->
       let events = job () in
       Event.Queue.send_file_watcher_events t.events events;
@@ -1014,11 +1007,10 @@ end = struct
         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
         [ Fill (ivar, ()) ])
     | Build_inputs_changed events -> build_input_change t events
-    | Timer fill | Worker_task fill -> [ fill ]
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
-    | Yield ivar -> [ Fill (ivar, ()) ]
+    | Fiber_fill_ivar fill -> [ fill ]
     | Shutdown signal ->
       got_signal signal;
       raise

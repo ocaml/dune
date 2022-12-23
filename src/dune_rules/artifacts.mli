@@ -3,6 +3,11 @@ open Import
 module Bin : sig
   type t
 
+  (** Force the computation of the internal list of binaries. This is exposed as
+      some error checking is only performed during this computation and some
+      errors will go unreported unless this computation takes place. *)
+  val force : t -> unit Memo.t
+
   val bin_dir_basename : Filename.t
 
   (** [local_bin dir] The directory which contains the local binaries viewed by
@@ -24,7 +29,7 @@ module Bin : sig
     val create : Path.Build.Set.t -> t
   end
 
-  val create : context:Context.t -> local_bins:Local.t -> t
+  val create : context:Context.t -> local_bins:Local.t Memo.Lazy.t -> t
 
   val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 end
@@ -46,4 +51,5 @@ type t = private
   ; bin : Bin.t
   }
 
-val create : Context.t -> public_libs:Lib.DB.t -> local_bins:Bin.Local.t -> t
+val create :
+  Context.t -> public_libs:Lib.DB.t -> local_bins:Bin.Local.t Memo.Lazy.t -> t

@@ -9,6 +9,10 @@ type t
 
 val all : t Context_name.Map.t Memo.Lazy.t
 
+(** In order to break circular dependencies within [all], some initialization is
+    deferred *)
+val all_init_deferred : unit -> unit Memo.t
+
 (** Find a super context by name. *)
 val find : Context_name.t -> t option Memo.t
 

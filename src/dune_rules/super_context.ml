@@ -30,6 +30,8 @@ let default_context_flags (ctx : Context.t) ~project =
 module Env_tree : sig
   type t
 
+  val force_bin_artifacts : t -> unit Memo.t
+
   val context : t -> Context.t
 
   val get_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
@@ -60,6 +62,9 @@ end = struct
     ; bin_artifacts : Artifacts.Bin.t
     ; get_node : Path.Build.t -> Env_node.t Memo.t
     }
+
+  let force_bin_artifacts { bin_artifacts; _ } =
+    Artifacts.Bin.force bin_artifacts
 
   let context t = t.context
 
@@ -502,7 +507,7 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
     ~bin_artifacts:artifacts.bin ~context_env
 
 let all =
-  Memo.lazy_ (fun () ->
+  Memo.lazy_ ~name:"Super_context.all" (fun () ->
       let open Memo.O in
       let* packages = Only_packages.get ()
       and* contexts = Context.DB.all () in
@@ -537,6 +542,11 @@ let find name =
   let open Memo.O in
   let+ all = Memo.Lazy.force all in
   Context_name.Map.find all name
+
+let all_init_deferred () =
+  let* all = Memo.Lazy.force all in
+  Context_name.Map.values all
+  |> Memo.parallel_iter ~f:Env_tree.force_bin_artifacts
 
 module As_memo_key = struct
   type nonrec t = t

@@ -10,6 +10,7 @@ Create dune file that uses melange.compile_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (alias melange)
   >  (entries main)
   >  (module_system commonjs)
   >  (compile_flags -w -14-26))
@@ -24,7 +25,7 @@ The code in main contains unused var (warning 26) and illegal backlash (warning 
 
 Building does not fail, warnings are silenced
 
-  $ dune build output/main.js
+  $ dune build @melange
   $ node _build/default/output/main.js
   hello
 

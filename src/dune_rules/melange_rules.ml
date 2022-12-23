@@ -41,54 +41,45 @@ let impl_only_modules_defined_in_this_lib sctx lib =
   (Modules.split_by_lib modules).impl
   |> List.filter ~f:(Module.has ~ml_kind:Impl)
 
-let js_includes ~loc ~sctx ~target_dir ~(requires_link : Lib.t list Resolve.t)
-    ~scope ~js_ext =
-  let project = Scope.project scope in
-  let deps_of_lib =
-    let of_module m ~dst_dir = make_js_name ~js_ext ~dst_dir m |> Path.build in
-    fun lib ->
-      let lib_dir =
-        local_of_lib ~loc lib |> Lib.Local.info |> Lib_info.src_dir
-      in
-      let open Memo.O in
-      let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
-      let open Resolve.Memo.O in
-      let+ virtual_deps =
-        match Lib.implements lib with
-        | None -> Resolve.Memo.return []
-        | Some vlib ->
-          let* vlib = vlib in
-          let dst_dir =
-            let lib_dir =
-              local_of_lib ~loc vlib |> Lib.Local.info |> Lib_info.src_dir
-            in
-            lib_output_dir ~target_dir ~lib_dir
-          in
-          let+ modules =
-            Resolve.Memo.lift_memo
-            @@ impl_only_modules_defined_in_this_lib sctx vlib
-          in
-          List.rev_map modules ~f:(of_module ~dst_dir)
-      in
-      let impl_deps =
-        let dst_dir = lib_output_dir ~target_dir ~lib_dir in
-        List.rev_map source_modules ~f:(of_module ~dst_dir)
-      in
-      List.rev_append virtual_deps impl_deps |> Dep.Set.of_files
+let js_deps libs ~loc ~target_dir ~js_ext =
+  let glob = Glob.of_string_exn Loc.none ("*" ^ js_ext) in
+  let of_lib lib =
+    let lib_dir = local_of_lib ~loc lib |> Lib.Local.info |> Lib_info.src_dir in
+    let dir = Path.build @@ lib_output_dir ~target_dir ~lib_dir in
+    Dep.file_selector @@ File_selector.of_glob ~dir glob
   in
-  let open Resolve.Memo.O in
-  Command.Args.memo @@ Resolve.Memo.args
-  @@ let* requires_link = Memo.return requires_link in
-     let+ deps =
-       Resolve.Memo.List.map requires_link ~f:deps_of_lib >>| Dep.Set.union_all
-     in
+  Resolve.Memo.List.concat_map libs ~f:(fun lib ->
+      let for_lib = [ of_lib lib ] in
+      match Lib.implements lib with
+      | None -> Resolve.Memo.return for_lib
+      | Some vlib ->
+        let open Resolve.Memo.O in
+        let+ vlib = vlib in
+        let for_vlib = of_lib vlib in
+        for_vlib :: for_lib)
+  |> Resolve.Memo.map ~f:Dep.Set.of_list
+
+let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
+
+let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
+  let project = Scope.project scope in
+  let deps_of_lib lib =
+    let info = Lib.info lib in
+    let obj_dir = Lib_info.obj_dir info in
+    let dir = Obj_dir.melange_dir obj_dir in
+    Dep.file_selector @@ File_selector.of_glob ~dir cmj_glob
+  in
+  let open Resolve.O in
+  Command.Args.memo @@ Resolve.args
+  @@ let+ requires_link = requires_link in
+     let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
      Command.Args.S
        [ Lib_flags.L.include_flags ~project requires_link Melange
        ; Hidden_deps deps
        ]
 
 let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
-    ~lib_deps_js_includes ~js_ext m =
+    ~includes ~js_ext m =
   let open Memo.O in
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Melange Cmj) in
@@ -106,13 +97,12 @@ let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
     let js_modules_str = Melange.Module_system.to_string module_system in
     "--bs-module-type" :: js_modules_str :: pkg_name_args
   in
-  let lib_deps_js_includes = Command.Args.as_any lib_deps_js_includes in
   Super_context.add_rule sctx ~dir ~loc ~mode
     (Command.run
        ~dir:(Path.build (Super_context.context sctx).build_dir)
        compiler
        [ Command.Args.S obj_dir
-       ; lib_deps_js_includes
+       ; Command.Args.as_any includes
        ; As melange_package_args
        ; A "-o"
        ; Target output
@@ -158,10 +148,8 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
   let js_ext = mel.javascript_extension in
-  let* lib_deps_js_includes =
-    let+ requires_link = Memo.Lazy.force requires_link in
-    js_includes ~loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
-  in
+  let* requires_link = Memo.Lazy.force requires_link in
+  let includes = cmj_includes ~requires_link ~scope in
   let* () = Module_compilation.build_all cctx in
   let modules_for_js =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
@@ -173,7 +161,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
   let* () =
     Memo.parallel_iter modules_for_js ~f:(fun m ->
         build_js ~dir ~loc ~pkg_name ~mode ~module_system:mel.module_system
-          ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext m)
+          ~dst_dir ~obj_dir ~sctx ~includes ~js_ext m)
   in
   let* () =
     match mel.alias with
@@ -185,7 +173,14 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
             make_js_name ~js_ext ~dst_dir m |> Path.build)
         |> Action_builder.paths
       in
-      Rules.Produce.Alias.add_deps alias deps
+      let* () = Rules.Produce.Alias.add_deps alias deps in
+      Rules.Produce.Alias.add_deps alias
+        (let open Action_builder.O in
+        let* requires = Resolve.read requires_link in
+        let* deps =
+          Resolve.Memo.read @@ js_deps requires ~loc:mel.loc ~target_dir ~js_ext
+        in
+        Action_builder.deps deps)
   in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let preprocess =
@@ -216,11 +211,11 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       let obj_dir = Lib_info.obj_dir info in
       let pkg_name = Lib_info.package info in
       let js_ext = mel.javascript_extension in
-      let* lib_deps_js_includes =
+      let* includes =
         let+ requires_link =
           Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
         in
-        js_includes ~loc:mel.loc ~sctx ~target_dir ~requires_link ~scope ~js_ext
+        cmj_includes ~requires_link ~scope
       in
       let* () =
         match Lib.implements lib with
@@ -233,22 +228,21 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
             in
             lib_output_dir ~target_dir ~lib_dir
           in
-          let* lib_deps_js_includes =
+          let* includes =
             let+ requires_link =
               Lib.Compile.for_lib
                 ~allow_overlaps:mel.allow_overlapping_dependencies
                 (Scope.libs scope) vlib
               |> Lib.Compile.requires_link |> Memo.Lazy.force
             in
-            js_includes ~loc:mel.loc ~sctx ~target_dir ~requires_link ~scope
-              ~js_ext
+            cmj_includes ~requires_link ~scope
           in
           impl_only_modules_defined_in_this_lib sctx vlib
           >>= Memo.parallel_iter
                 ~f:
                   (build_js ~loc ~dir ~pkg_name ~mode
                      ~module_system:mel.module_system ~dst_dir ~obj_dir ~sctx
-                     ~lib_deps_js_includes ~js_ext)
+                     ~includes ~js_ext)
       in
       let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
       let dst_dir =
@@ -258,7 +252,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       Memo.parallel_iter source_modules
         ~f:
           (build_js ~loc ~dir ~pkg_name ~mode ~module_system:mel.module_system
-             ~dst_dir ~obj_dir ~sctx ~lib_deps_js_includes ~js_ext))
+             ~dst_dir ~obj_dir ~sctx ~includes ~js_ext))
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in

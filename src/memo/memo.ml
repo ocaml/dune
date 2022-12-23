@@ -1303,33 +1303,33 @@ end = struct
 
   let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
    fun dep_node ->
-    Fiber.of_thunk (fun () ->
-        let* result =
-          consider_and_restore_from_cache_without_adding_dep dep_node
-          >>= function
-          | Ok cached_value -> Fiber.return (Ok cached_value)
-          | Failure (Cancelled { dependency_cycle }) ->
-            (* If restoring from cache failed with a cycle error, and the node's
-               function is deterministic (as it should be), then we will hit the
-               same cycle when trying to recompute the result. We therefore
-               return the cycle error as is. Note that apart from saving some
-               work, this also helps us work around the limitation of the cycle
-               detection library that can't detect the same cycle twice. *)
-            dep_node.state <-
-              Cached_value (Cached_value.create_cancelled ~dependency_cycle);
-            Fiber.return (Error dependency_cycle)
-          | Failure (Out_of_date _) ->
-            consider_and_compute_without_adding_dep dep_node
-        in
-        match result with
-        | Ok res ->
-          let* () = Call_stack.add_dep_from_caller dep_node in
-          let stack_frame = Dep_node_without_state.T dep_node.without_state in
-          Value.get_exn res.value ~stack_frame
-        | Error cycle_error -> raise (Cycle_error.E cycle_error))
+    let* result =
+      consider_and_restore_from_cache_without_adding_dep dep_node >>= function
+      | Ok cached_value -> Fiber.return (Ok cached_value)
+      | Failure (Cancelled { dependency_cycle }) ->
+        (* If restoring from cache failed with a cycle error, and the node's
+           function is deterministic (as it should be), then we will hit the
+           same cycle when trying to recompute the result. We therefore
+           return the cycle error as is. Note that apart from saving some
+           work, this also helps us work around the limitation of the cycle
+           detection library that can't detect the same cycle twice. *)
+        dep_node.state <-
+          Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+        Fiber.return (Error dependency_cycle)
+      | Failure (Out_of_date _) ->
+        consider_and_compute_without_adding_dep dep_node
+    in
+    match result with
+    | Ok res ->
+      let* () = Call_stack.add_dep_from_caller dep_node in
+      let stack_frame = Dep_node_without_state.T dep_node.without_state in
+      Value.get_exn res.value ~stack_frame
+    | Error cycle_error -> raise (Cycle_error.E cycle_error)
 end
 
-let exec (type i o) (t : (i, o) Table.t) i = Exec.exec_dep_node (dep_node t i)
+let exec (type i o) (t : (i, o) Table.t) i =
+  let* () = Fiber.return () in
+  Exec.exec_dep_node (dep_node t i)
 
 let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
   let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =
@@ -1562,7 +1562,9 @@ module Cell = struct
 
   let input (t : (_, _) t) = t.without_state.input
 
-  let read = Exec.exec_dep_node
+  let read t =
+    let* () = Fiber.return () in
+    Exec.exec_dep_node t
 
   let invalidate = Invalidation.invalidate_node
 end

@@ -455,7 +455,7 @@ module Mode_conf = struct
         ; ("native", return @@ Ocaml Native)
         ; ("best", return @@ Ocaml Best)
         ; ( "melange"
-          , Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
+          , Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
             >>> return Melange )
         ]
 
@@ -2274,7 +2274,6 @@ type Stanza.t +=
   | Cram of Cram_stanza.t
   | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
-  | Melange_emit of Melange_stanzas.Emit.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2391,10 +2390,6 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in
         [ Plugin t ] )
-    ; ( "melange.emit"
-      , let+ () = Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
-        and+ t = Melange_stanzas.Emit.decode in
-        [ Melange_emit t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas

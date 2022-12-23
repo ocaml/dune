@@ -20,6 +20,8 @@ module Emit = struct
     ; javascript_extension : string
     }
 
+  type Stanza.t += T of t
+
   let decode_lib =
     let+ loc = loc
     and+ t =
@@ -125,3 +127,12 @@ module Emit = struct
        ; modules_without_implementation
        })
 end
+
+let syntax =
+  Dune_lang.Syntax.create ~name:Dune_project.Melange_syntax.name
+    ~desc:"support for Melange compiler"
+    [ ((0, 1), `Since (3, 6)) ]
+
+let () =
+  Dune_project.Extension.register_simple syntax
+    (return [ ("melange.emit", Emit.decode >>| fun x -> [ Emit.T x ]) ])

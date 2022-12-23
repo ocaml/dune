@@ -16,7 +16,7 @@ let ocaml_flags sctx ~dir melange =
     with_vendored_flags ~ocaml_version flags
   | false -> flags
 
-let lib_output_dir ~sctx ~scope ~target_dir lib =
+let lib_output_dir ~sctx ~target_dir lib =
   let info = Lib.info lib in
   let local () =
     let lib = Lib.Local.of_lib_exn lib in
@@ -26,19 +26,16 @@ let lib_output_dir ~sctx ~scope ~target_dir lib =
   let lib_dir =
     match Lib_info.status info with
     | Private _ -> local ()
-    | Public (project, _) -> (
-      match Dune_project.equal project (Scope.project scope) with
-      | true -> local ()
-      | false ->
-        let package_name = Option.value_exn (Lib_info.package info) in
-        let bctx = (Super_context.context sctx).build_dir in
-        let info = Lib.info lib in
-        let src_dir = Lib_info.src_dir info in
-        Path.Build.L.relative bctx
-          [ "node_modules"
-          ; Package.Name.to_string package_name
-          ; Path.Source.to_string (Path.drop_build_context_exn src_dir)
-          ])
+    | Public _ ->
+      let package_name = Option.value_exn (Lib_info.package info) in
+      let bctx = (Super_context.context sctx).build_dir in
+      let info = Lib.info lib in
+      let src_dir = Lib_info.src_dir info in
+      Path.Build.L.relative bctx
+        [ "node_modules"
+        ; Package.Name.to_string package_name
+        ; Path.Source.to_string (Path.drop_build_context_exn src_dir)
+        ]
     | Installed | Installed_private ->
       let package_name = Option.value_exn (Lib_info.package info) in
       let bctx = (Super_context.context sctx).build_dir in
@@ -73,7 +70,7 @@ let js_includes ~sctx ~target_dir ~(requires_link : Lib.t list Resolve.t) ~scope
         | None -> Resolve.Memo.return []
         | Some vlib ->
           let* vlib = vlib in
-          let dst_dir = lib_output_dir ~sctx ~scope ~target_dir vlib in
+          let dst_dir = lib_output_dir ~sctx ~target_dir vlib in
           let+ modules =
             Resolve.Memo.lift_memo
             @@ impl_only_modules_defined_in_this_lib sctx vlib
@@ -81,7 +78,7 @@ let js_includes ~sctx ~target_dir ~(requires_link : Lib.t list Resolve.t) ~scope
           List.rev_map modules ~f:(of_module ~dst_dir)
       in
       let impl_deps =
-        let dst_dir = lib_output_dir ~sctx ~scope ~target_dir lib in
+        let dst_dir = lib_output_dir ~sctx ~target_dir lib in
         List.rev_map source_modules ~f:(of_module ~dst_dir)
       in
       List.rev_append virtual_deps impl_deps |> Dep.Set.of_files
@@ -224,7 +221,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       let info = Lib.info lib in
       let loc = Lib_info.loc info in
       let obj_dir = Lib_info.obj_dir info in
-      let dst_dir = lib_output_dir ~sctx ~scope ~target_dir lib in
+      let dst_dir = lib_output_dir ~sctx ~target_dir lib in
       let pkg_name = Lib_info.package info in
       let js_ext = mel.javascript_extension in
       let* lib_deps_js_includes =
@@ -238,7 +235,7 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
         | None -> Memo.return ()
         | Some vlib ->
           let* vlib = Resolve.Memo.read_memo vlib in
-          let dst_dir = lib_output_dir ~sctx ~scope ~target_dir vlib in
+          let dst_dir = lib_output_dir ~sctx ~target_dir vlib in
           let* lib_deps_js_includes =
             let+ requires_link =
               Lib.Compile.for_lib ~allow_overlaps:false (Scope.libs scope) vlib

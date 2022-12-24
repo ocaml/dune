@@ -199,6 +199,7 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
 
 let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
     (mel : Melange_stanzas.Emit.t) =
+  let build_js = build_js ~sctx ~mode ~js_ext:mel.javascript_extension in
   Memo.parallel_iter requires_link ~f:(fun lib ->
       let open Memo.O in
       let lib_name = Lib.name lib in
@@ -208,9 +209,11 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       in
       let info = local_of_lib ~loc:mel.loc lib |> Lib.Local.info in
       let loc = Lib_info.loc info in
-      let obj_dir = Lib_info.obj_dir info in
-      let pkg_name = Lib_info.package info in
-      let js_ext = mel.javascript_extension in
+      let build_js =
+        let obj_dir = Lib_info.obj_dir info in
+        let pkg_name = Lib_info.package info in
+        build_js ~loc ~pkg_name ~module_system:mel.module_system ~obj_dir
+      in
       let* includes =
         let+ requires_link =
           Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
@@ -238,21 +241,14 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
             cmj_includes ~requires_link ~scope
           in
           impl_only_modules_defined_in_this_lib sctx vlib
-          >>= Memo.parallel_iter
-                ~f:
-                  (build_js ~loc ~dir ~pkg_name ~mode
-                     ~module_system:mel.module_system ~dst_dir ~obj_dir ~sctx
-                     ~includes ~js_ext)
+          >>= Memo.parallel_iter ~f:(build_js ~dir ~dst_dir ~includes)
       in
       let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
       let dst_dir =
         let lib_dir = Lib_info.src_dir info in
         lib_output_dir ~target_dir ~lib_dir
       in
-      Memo.parallel_iter source_modules
-        ~f:
-          (build_js ~loc ~dir ~pkg_name ~mode ~module_system:mel.module_system
-             ~dst_dir ~obj_dir ~sctx ~includes ~js_ext))
+      Memo.parallel_iter source_modules ~f:(build_js ~dir ~dst_dir ~includes))
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in

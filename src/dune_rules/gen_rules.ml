@@ -146,7 +146,8 @@ end = struct
         empty_none)
     | Melange_emit mel ->
       let+ cctx, merlin =
-        Melange_rules.emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel
+        Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx
+          ~expander mel
       in
       { merlin = Some merlin
       ; cctx = Some (mel.loc, cctx)
@@ -371,27 +372,40 @@ let has_rules subdirs f =
        ; rules
        })
 
-let rec has_melange_emit_parent dir =
-  match Path.Build.parent dir with
-  | None -> Memo.return false
-  | Some parent_dir -> (
-    Only_packages.stanzas_in_dir parent_dir >>= function
-    | None -> has_melange_emit_parent parent_dir
-    | Some { Dune_file.stanzas; dir = _; project = _ } -> (
-      match
-        List.exists stanzas ~f:(function
-          | Melange_emit mel ->
-            (* current dir, e.g. `_build/default/lib/output must be equal to
-               melange.emit target, e.g. `_build/default/lib` with
-               `(melange.emit (target output))` *)
-            Path.Build.equal (Path.Build.relative parent_dir mel.target) dir
-          | _ -> false)
-      with
-      | true -> Memo.return true
-      | false -> has_melange_emit_parent parent_dir))
+let under_melange_emit_target ~dir =
+  let parent = Path.Build.parent_exn dir in
+  let+ stanzas = Only_packages.stanzas_in_dir parent in
+  match stanzas with
+  | None -> None
+  | Some stanzas ->
+    List.find_map stanzas.stanzas ~f:(function
+      | Melange_emit mel ->
+        let target_dir = Path.Build.relative parent mel.target in
+        Option.some_if (Path.Build.equal target_dir dir) mel
+      | _ -> None)
 
-let redirect_to_parent =
-  Memo.return (Build_config.Redirect_to_parent Build_config.Rules.empty)
+let melange_emit_rules sctx ~dir stanza =
+  match stanza with
+  | None -> None
+  | Some stanza ->
+    let rules =
+      let parent = Path.Build.parent_exn dir in
+      Rules.collect_unit (fun () ->
+          let* dir_contents = Dir_contents.get sctx ~dir:parent in
+          let* scope = Scope.DB.find_by_dir dir in
+          Melange_rules.setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx
+            stanza)
+    in
+    Some
+      { Build_config.Rules.build_dir_only_sub_dirs = Subdir_set.empty
+      ; directory_targets = Path.Build.Map.empty
+      ; rules
+      }
+
+let gen_melange_emit_rules sctx ~dir stanza =
+  match melange_emit_rules sctx ~dir stanza with
+  | None -> Build_config.(Redirect_to_parent Rules.empty)
+  | Some r -> Build_config.Rules r
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [redirect_to_parent] *)
@@ -426,6 +440,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
       | _ -> S.empty)
       (fun () -> Preprocessing.gen_rules sctx rest)
   | _ -> (
+    let* under_melange_emit_target = under_melange_emit_target ~dir in
     let src_dir = Path.Build.drop_build_context_exn dir in
     Source_tree.find_dir src_dir >>= function
     | None -> (
@@ -433,27 +448,33 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
          we are in this branch *)
       let parent = Path.Source.parent_exn src_dir in
       Source_tree.find_dir parent >>= function
-      | None -> redirect_to_parent
+      | None ->
+        Memo.return
+        @@ gen_melange_emit_rules sctx ~dir under_melange_emit_target
       | Some _ -> (
         match
           String.Map.find automatic_sub_dirs_map (Path.Source.basename src_dir)
         with
-        | None -> redirect_to_parent
         | Some kind ->
           has_rules Subdir_set.empty (fun () ->
-              gen_rules_for_automatic_sub_dir ~sctx ~dir kind)))
+              gen_rules_for_automatic_sub_dir ~sctx ~dir kind)
+        | None ->
+          Memo.return
+          @@ gen_melange_emit_rules sctx ~dir under_melange_emit_target))
     | Some source_dir -> (
       (* This interprets "rule" and "copy_files" stanzas. *)
       Dir_contents.triage sctx ~dir
       >>= function
-      | Group_part _ -> redirect_to_parent
-      | Standalone_or_root { directory_targets; contents } ->
+      | Group_part _ ->
+        Memo.return
+        @@ gen_melange_emit_rules sctx ~dir under_melange_emit_target
+      | Standalone_or_root { directory_targets; contents } -> (
         let rules =
           let* () = Memo.Lazy.force Context.force_configurator_files in
           let* { Dir_contents.root = dir_contents; subdirs; rules } =
             Memo.Lazy.force contents
           in
-          let* rules' =
+          let+ rules' =
             Rules.collect_unit (fun () ->
                 let* () =
                   let project = Source_tree.Dir.project source_dir in
@@ -474,34 +495,40 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
                     in
                     ()))
           in
-          Memo.return (Rules.union rules rules')
+          Rules.union rules rules'
         in
-        let subdirs =
-          let subdirs = String.Set.of_keys automatic_sub_dirs_map in
+        let* subdirs =
+          let+ subdirs =
+            let subdirs = String.Set.of_keys automatic_sub_dirs_map in
+            let+ stanzas = Only_packages.stanzas_in_dir dir in
+            match stanzas with
+            | None -> subdirs
+            | Some stanzas ->
+              List.filter_map stanzas.stanzas ~f:(function
+                | Melange_emit mel -> Some mel.target
+                | _ -> None)
+              |> String.Set.of_list |> String.Set.union subdirs
+          in
           match components with
           | [] ->
             String.Set.union subdirs
               (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune"; ".topmod" ])
           | _ -> subdirs
         in
-        let* directory_targets =
+        let+ directory_targets =
           collect_directory_targets ~dir ~init:directory_targets
-        and* has_melange_emit_parent = has_melange_emit_parent dir in
-
-        if has_melange_emit_parent then
-          (* The `melange.emit` stanza can generate rules in its sub-directories
-             if they declare melange libraries. As such, in the cases where a
-             parent declares a `melange.emit` stanza, this function needs to
-             augment the rules generated for the current directory with the
-             rules generated by `melange.emit` in the (possibly grand-)parent. *)
-          redirect_to_parent
-        else
-          Memo.return
-            (Build_config.Rules
-               { Build_config.Rules.build_dir_only_sub_dirs = S.These subdirs
-               ; directory_targets
-               ; rules
-               })))
+        in
+        let build_config =
+          { Build_config.Rules.build_dir_only_sub_dirs = S.These subdirs
+          ; directory_targets
+          ; rules
+          }
+        in
+        match melange_emit_rules sctx ~dir under_melange_emit_target with
+        | None -> Build_config.Rules build_config
+        | Some emit ->
+          Build_config.Rules (Build_config.Rules.combine_exn build_config emit))
+      ))
 
 let with_context ctx ~f =
   Super_context.find ctx >>= function

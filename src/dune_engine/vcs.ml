@@ -41,7 +41,7 @@ include T
 let git, hg =
   let get prog =
     lazy
-      (match Bin.which ~path:(Env.path Env.initial) prog with
+      (match Bin.which ~path:(Env_path.path Env.initial) prog with
       | Some x -> x
       | None -> Utils.program_not_found prog ~loc:None)
   in

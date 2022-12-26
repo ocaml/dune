@@ -497,17 +497,26 @@ end = struct
         ~subdir:(Path.Build.basename dir)
   end
 
-  type gen_rules_result =
-    | Under_directory_target of { directory_target_ancestor : Path.Build.t }
-    | Normal of
-        { build_dir_only_sub_dirs : Subdir_set.t
-        ; directory_targets : Loc.t Path.Build.Map.t
-        ; rules : Rules.t Memo.Lazy.t
-        }
+  module Normal = struct
+    type t =
+      { build_dir_only_sub_dirs : Subdir_set.t
+      ; directory_targets : Loc.t Path.Build.Map.t
+      ; rules : Rules.t Memo.Lazy.t
+      }
 
-  module rec Gen_rules : sig
-    val gen_rules : Dir_triage.Build_directory.t -> gen_rules_result Memo.t
-  end = struct
+    let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
+      { build_dir_only_sub_dirs =
+          Subdir_set.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+      ; directory_targets =
+          Path.Build.Map.union_exn r.directory_targets directory_targets
+      ; rules =
+          Memo.lazy_ (fun () ->
+              let open Memo.O in
+              let+ r = Memo.Lazy.force r.rules
+              and+ r' = Memo.Lazy.force rules in
+              Rules.union r r')
+      }
+
     let check_all_directory_targets_are_descendant ~of_:dir directory_targets =
       Path.Build.Map.iteri directory_targets ~f:(fun p _loc ->
           if not (Path.Build.is_descendant p ~of_:dir) then
@@ -553,6 +562,35 @@ end = struct
                       ] )) )
           ]
 
+    let make_rules_gen_result ~of_
+        { Build_config.Rules.build_dir_only_sub_dirs; directory_targets; rules }
+        =
+      check_all_directory_targets_are_descendant ~of_ directory_targets;
+      let rules =
+        Memo.lazy_ (fun () ->
+            let+ rules = rules in
+            check_all_rules_are_descendant ~of_ rules;
+            rules)
+      in
+      { build_dir_only_sub_dirs; directory_targets; rules }
+  end
+
+  type gen_rules_result =
+    | Under_directory_target of { directory_target_ancestor : Path.Build.t }
+    | Normal of Normal.t
+
+  module rec Gen_rules : sig
+    val gen_rules : Dir_triage.Build_directory.t -> gen_rules_result Memo.t
+  end = struct
+    let combine_gen_rules_result ~parent ~child =
+      match parent with
+      | Under_directory_target { directory_target_ancestor } ->
+        Code_error.raise "rules under a directory target aren't allowed"
+          [ ( "directory_target_ancestor"
+            , Path.Build.to_dyn directory_target_ancestor )
+          ]
+      | Normal r -> Normal (Normal.combine_exn r child)
+
     let call_rules_generator
         ({ Dir_triage.Build_directory.dir; context_or_install; sub_dir } as d) =
       let (module RG : Build_config.Rule_generator) =
@@ -560,21 +598,13 @@ end = struct
       in
       let sub_dir_components = Path.Source.explode sub_dir in
       RG.gen_rules context_or_install ~dir sub_dir_components >>= function
-      | Rules { build_dir_only_sub_dirs; directory_targets; rules } ->
-        check_all_directory_targets_are_descendant ~of_:dir directory_targets;
-        let rules =
-          Memo.lazy_ (fun () ->
-              let+ rules = rules in
-              check_all_rules_are_descendant ~of_:dir rules;
-              rules)
-        in
-        Memo.return
-          (Normal { build_dir_only_sub_dirs; directory_targets; rules })
+      | Rules rules ->
+        Memo.return @@ Normal (Normal.make_rules_gen_result ~of_:dir rules)
       | Unknown_context_or_install ->
         Code_error.raise "[gen_rules] did not specify rules for the context"
           [ ("context_or_install", Context_or_install.to_dyn context_or_install)
           ]
-      | Redirect_to_parent -> (
+      | Redirect_to_parent child -> (
         match Dir_triage.Build_directory.parent d with
         | None ->
           Code_error.raise
@@ -582,7 +612,10 @@ end = struct
             [ ( "context_or_install"
               , Context_or_install.to_dyn context_or_install )
             ]
-        | Some d' -> Gen_rules.gen_rules d')
+        | Some parent ->
+          let child = Normal.make_rules_gen_result ~of_:dir child in
+          let+ parent = Gen_rules.gen_rules parent in
+          combine_gen_rules_result ~parent ~child)
 
     let gen_rules_impl d =
       match Dir_triage.Build_directory.parent d with

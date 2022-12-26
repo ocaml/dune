@@ -33,19 +33,43 @@ end)
 module Session = struct
   module Id = Session_id
 
+  module Close = struct
+    type t =
+      { ivar : unit Fiber.Ivar.t
+      ; mutable state : [ `Open | `Closed ]
+      }
+
+    let create () = { ivar = Fiber.Ivar.create (); state = `Open }
+
+    let to_dyn { state; ivar = _ } =
+      let name =
+        match state with
+        | `Open -> "Open"
+        | `Closed -> "Closed"
+      in
+      Dyn.variant name []
+
+    let close t =
+      match t.state with
+      | `Closed -> Fiber.return ()
+      | `Open ->
+        t.state <- `Closed;
+        Fiber.Ivar.fill t.ivar ()
+  end
+
   type 'a state =
-    | Uninitialized
+    | Uninitialized of Close.t
     | Initialized of
         { init : Initialize.Request.t
         ; state : 'a
-        ; closed : bool
+        ; close : Close.t
         }
 
   module Stage1 = struct
     type 'a t =
-      { queries : Packet.Query.t Fiber.Stream.In.t
+      { queries : Packet.t Fiber.Stream.In.t
       ; id : Id.t
-      ; send : Packet.Reply.t list option -> unit Fiber.t
+      ; send : Packet.t list option -> unit Fiber.t
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
       ; mutable on_upgrade : (Menu.t -> unit) option
@@ -54,27 +78,23 @@ module Session = struct
     let set t state =
       match t.state with
       | Initialized s -> t.state <- Initialized { s with state }
-      | Uninitialized -> Code_error.raise "set: state not available" []
+      | Uninitialized _ -> Code_error.raise "set: state not available" []
 
     let get t =
       match t.state with
       | Initialized s -> s.state
-      | Uninitialized -> Code_error.raise "get: state not available" []
-
-    let active t =
-      match t.state with
-      | Uninitialized -> true
-      | Initialized s -> s.closed
+      | Uninitialized _ -> Code_error.raise "get: state not available" []
 
     let initialize t =
       match t.state with
       | Initialized s -> s.init
-      | Uninitialized -> Code_error.raise "initialize: request not available" []
+      | Uninitialized _ ->
+        Code_error.raise "initialize: request not available" []
 
     let create ~queries ~send =
       { queries
       ; send
-      ; state = Uninitialized
+      ; state = Uninitialized (Close.create ())
       ; id = Id.gen ()
       ; on_upgrade = None
       ; pool = Fiber.Pool.create ()
@@ -84,14 +104,7 @@ module Session = struct
 
     let close t =
       match t.state with
-      | Uninitialized -> assert false
-      | Initialized s -> t.state <- Initialized { s with closed = true }
-
-    let closed t =
-      match t.state with
-      | Uninitialized ->
-        Code_error.raise "closed: called on uninitialized session" []
-      | Initialized { closed; _ } -> closed
+      | Uninitialized c | Initialized { close = c; _ } -> Close.close c
 
     let id t = t.id
 
@@ -102,13 +115,13 @@ module Session = struct
     let dyn_of_state f =
       let open Dyn in
       function
-      | Uninitialized -> variant "Uninitialized" []
-      | Initialized { init; state; closed } ->
+      | Uninitialized close -> variant "Uninitialized" [ Close.to_dyn close ]
+      | Initialized { init; state; close } ->
         let record =
           record
             [ ("init", opaque init)
             ; ("state", f state)
-            ; ("closed", bool closed)
+            ; ("close", Close.to_dyn close)
             ]
         in
         variant "Initialized" [ record ]
@@ -131,15 +144,16 @@ module Session = struct
 
   let set t = Stage1.set t.base
 
-  let active t = Stage1.active t.base
-
   let initialize t = Stage1.initialize t.base
 
   let close t = Stage1.close t.base
 
-  let request_close t = Stage1.request_close t.base
+  let closed t =
+    match t.base.state with
+    | Uninitialized close | Initialized { close; _ } ->
+      Fiber.Ivar.read close.ivar
 
-  let closed t = Stage1.closed t.base
+  let request_close t = Stage1.request_close t.base
 
   let compare x y = Stage1.compare x.base y.base
 
@@ -149,15 +163,12 @@ module Session = struct
 
   let id t = t.base.id
 
-  let of_stage1 base handler menu =
-    let () =
-      match base.Stage1.on_upgrade with
-      | Some f -> f menu
-      | None -> ()
-    in
+  let of_stage1 (base : _ Stage1.t) handler menu =
+    let () = Option.iter base.on_upgrade ~f:(fun f -> f menu) in
     { base; handler; pollers = Dune_rpc_private.Id.Map.empty }
 
   let notification t decl n =
+    let* () = Fiber.return () in
     match V.Handler.prepare_notification t.handler decl with
     | Error _ ->
       (* cwong: What to do here? *)
@@ -321,28 +332,32 @@ module H = struct
     Event.emit
       (Message { kind; meth_; stage = Stop })
       stats (Session.id session);
-    if Session.closed session then Fiber.return ()
-    else Session.send session (Some [ Response (id, response) ])
+    match
+      (match session.base.state with
+      | Initialized { close; _ } -> close
+      | Uninitialized close -> close)
+        .state
+    with
+    | `Closed -> Fiber.return ()
+    | `Open -> Session.send session (Some [ Response (id, response) ])
 
   let run_session (type a) (t : a t) stats (session : a Session.t) =
     let open Fiber.O in
     let* () =
       Fiber.Stream.In.parallel_iter (Session.queries session)
-        ~f:(fun (message : Packet.Query.t) ->
-          let meth_ =
-            match message with
-            | Notification c | Request (_, c) -> c.method_
-          in
+        ~f:(fun (message : Packet.t) ->
           match message with
+          | Response _ ->
+            Code_error.raise "the server is unable to make requests yet" []
           | Notification n ->
             Fiber.Pool.task session.base.pool
-              ~f:(dispatch_notification t stats session meth_ n)
+              ~f:(dispatch_notification t stats session n.method_ n)
           | Request (id, r) ->
             Fiber.Pool.task session.base.pool
-              ~f:(dispatch_request t stats session meth_ r id))
+              ~f:(dispatch_request t stats session r.method_ r id))
     in
     let* () = Session.request_close session in
-    let+ () = t.base.on_terminate session in
+    let* () = t.base.on_terminate session in
     Session.close session
 
   let negotiate_version (type a) (t : a stage1) stats
@@ -352,7 +367,10 @@ module H = struct
     match query with
     | None -> session.send None
     | Some client_versions -> (
-      match (client_versions : Packet.Query.t) with
+      match (client_versions : Packet.t) with
+      | Response _ ->
+        abort session
+          ~message:"Response unexpected. No requests before negotiation"
       | Notification _ ->
         abort session
           ~message:
@@ -383,11 +401,20 @@ module H = struct
 
   let handle (type a) (t : a stage1) stats (session : a Session.Stage1.t) =
     let open Fiber.O in
+    let* () = Fiber.return () in
+    let close =
+      match session.state with
+      | Uninitialized c -> c
+      | Initialized _ -> assert false
+    in
+    Fiber.finalize ~finally:(fun () -> Session.Close.close close) @@ fun () ->
     let* query = Fiber.Stream.In.read session.queries in
     match query with
     | None -> session.send None
     | Some init -> (
-      match (init : Packet.Query.t) with
+      match (init : Packet.t) with
+      | Response _ ->
+        abort session ~message:"Response unexpected. You must initialize first."
       | Notification _ ->
         abort session
           ~message:"Notification unexpected. You must initialize first."
@@ -401,9 +428,7 @@ module H = struct
               ~message:"The server and client use incompatible protocols."
           else
             let* a = t.base.on_init session init in
-            let () =
-              session.state <- Initialized { init; state = a; closed = false }
-            in
+            let () = session.state <- Initialized { init; state = a; close } in
             let* () =
               let response =
                 Ok
@@ -429,9 +454,9 @@ module H = struct
           ~menu
       in
       let known_versions =
-        String.Map.of_list_map_exn
-          ~f:(fun (name, gens) -> (name, Int.Set.of_list gens))
-          (V.Builder.registered_procedures builder)
+        V.Builder.registered_procedures builder
+        |> String.Map.of_list_map_exn ~f:(fun (name, gens) ->
+               (name, Int.Set.of_list gens))
       in
       { to_handler; base = { on_init; on_terminate; version }; known_versions }
 
@@ -458,7 +483,7 @@ module H = struct
             match res with
             | Some _ -> ()
             | None ->
-              let _ = Session.cancel_poller session id in
+              let (_ : Poller.t option) = Session.cancel_poller session id in
               ()
           in
           res
@@ -571,13 +596,13 @@ struct
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
         let session =
           let send packets =
-            Option.map packets ~f:(List.map ~f:(Conv.to_sexp Packet.Reply.sexp))
+            Option.map packets ~f:(List.map ~f:(Conv.to_sexp Packet.sexp))
             |> S.write session
           in
           let queries =
             create_sequence
               (fun () -> S.read session)
-              ~version:(version server) Packet.Query.sexp
+              ~version:(version server) Packet.sexp
           in
           new_session server stats ~queries ~send
         in

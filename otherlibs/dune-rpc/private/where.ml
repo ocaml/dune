@@ -18,6 +18,11 @@ type error = Invalid_where of string
 
 exception E of error
 
+let () =
+  Printexc.register_printer (function
+    | E (Invalid_where w) -> Some (Printf.sprintf "Invalid RPC address: %s" w)
+    | _ -> None)
+
 let of_dbus { Dbus_address.name; args } =
   match name with
   | "unix" -> (

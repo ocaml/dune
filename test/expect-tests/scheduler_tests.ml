@@ -5,7 +5,7 @@ open Fiber.O
 
 let default =
   { Scheduler.Config.concurrency = 1
-  ; display = { verbosity = Short; status_line = false }
+  ; display = Simple { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
@@ -18,7 +18,8 @@ let go ?(timeout = 0.3) ?(config = default) f =
       f
   with Scheduler.Run.Shutdown.E Requested -> ()
 
-let true_ = Bin.which "true" ~path:(Env.path Env.initial) |> Option.value_exn
+let true_ =
+  Bin.which "true" ~path:(Env_path.path Env.initial) |> Option.value_exn
 
 let cell = Memo.lazy_cell Memo.return
 

@@ -13,7 +13,10 @@ let local_libraries =
   ; ("src/dune_graph", Some "Dune_graph", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)
-  ; ("src/fiber", Some "Fiber", false, None)
+  ; ("otherlibs/fiber", Some "Fiber", false, None)
+  ; ("vendor/uutf", None, false, None)
+  ; ("vendor/notty/src", None, true, None)
+  ; ("vendor/notty/src-unix", None, true, None)
   ; ("src/dune_console", Some "Dune_console", false, None)
   ; ("src/memo", Some "Memo", false, None)
   ; ("src/dune_metrics", Some "Dune_metrics", false, None)
@@ -40,6 +43,7 @@ let local_libraries =
   ; ("src/section", Some "Dune_section", false, None)
   ; ("otherlibs/site/src/private", Some "Dune_site_private", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
+  ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/thread_worker", Some "Thread_worker", false, None)
   ; ("otherlibs/ocamlc_loc/src", Some "Ocamlc_loc", false, None)
@@ -55,7 +59,6 @@ let local_libraries =
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
-  ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ]
 

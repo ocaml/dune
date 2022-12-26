@@ -105,7 +105,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         @@
         if have_binaries then
           let dir = Artifacts.Bin.local_bin dir |> Path.build in
-          Env.cons_path env ~dir
+          Env_path.cons env ~dir
         else env)
   in
   let bin_artifacts =

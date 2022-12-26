@@ -16,7 +16,7 @@ module type S = sig
   end
 
   module Ivar : sig
-    type 'a fiber
+    type 'a fiber := 'a t
 
     type 'a t
 
@@ -26,5 +26,4 @@ module type S = sig
 
     val fill : 'a t -> 'a -> unit fiber
   end
-  with type 'a fiber := 'a t
 end

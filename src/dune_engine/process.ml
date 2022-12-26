@@ -214,7 +214,7 @@ let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
 module Exit_status = struct
   type error =
     | Failed of int
-    | Signaled of string
+    | Signaled of Signal.t
 
   type t = (int, error) result
 end
@@ -252,15 +252,14 @@ module Fancy = struct
     s
 
   let color_combos =
-    let open Ansi_color.Style in
-    [| [ fg_blue; bg_bright_green ]
-     ; [ fg_red; bg_bright_yellow ]
-     ; [ fg_yellow; bg_blue ]
-     ; [ fg_magenta; bg_bright_cyan ]
-     ; [ fg_bright_green; bg_blue ]
-     ; [ fg_bright_yellow; bg_red ]
-     ; [ fg_blue; bg_yellow ]
-     ; [ fg_bright_cyan; bg_magenta ]
+    [| [ `Fg_blue; `Bg_bright_green ]
+     ; [ `Fg_red; `Bg_bright_yellow ]
+     ; [ `Fg_yellow; `Bg_blue ]
+     ; [ `Fg_magenta; `Bg_bright_cyan ]
+     ; [ `Fg_bright_green; `Bg_blue ]
+     ; [ `Fg_bright_yellow; `Bg_red ]
+     ; [ `Fg_blue; `Bg_yellow ]
+     ; [ `Fg_bright_cyan; `Bg_magenta ]
     |]
 
   let colorize_prog s =
@@ -281,7 +280,7 @@ module Fancy = struct
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
       :: Pp.tag
-           (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
+           (User_message.Style.Ansi_styles [ `Bold; `Fg_green ])
            (Pp.verbatim (String.quote_for_shell fn))
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
@@ -382,7 +381,7 @@ end = struct
     let open Pp.O in
     let msg =
       match error with
-      | Signaled signame -> sprintf "(got signal %s)" signame
+      | Signaled signame -> sprintf "(got signal %s)" (Signal.name signame)
       | Failed n -> (
         let unexpected_outputs =
           List.filter_map
@@ -430,7 +429,7 @@ module Handle_exit_status : sig
 
   val non_verbose :
        ('a, error) result
-    -> verbosity:Scheduler.Config.Display.verbosity
+    -> verbosity:Display.Verbosity.t
     -> metadata:metadata
     -> output:string
     -> prog:string
@@ -512,7 +511,7 @@ end = struct
       let msg =
         match err with
         | Failed n -> sprintf "exited with code %d" n
-        | Signaled signame -> sprintf "got signal %s" signame
+        | Signaled signame -> sprintf "got signal %s" (Signal.name signame)
       in
       let loc, annots = get_loc_and_annots ~dir ~metadata ~output in
       fail ~loc ~annots
@@ -522,9 +521,8 @@ end = struct
            ++ Pp.char ' ' ++ command_line
         :: pp_output output)
 
-  let non_verbose t ~(verbosity : Scheduler.Config.Display.verbosity) ~metadata
-      ~output ~prog ~command_line ~dir ~has_unexpected_stdout
-      ~has_unexpected_stderr =
+  let non_verbose t ~(verbosity : Display.Verbosity.t) ~metadata ~output ~prog
+      ~command_line ~dir ~has_unexpected_stdout ~has_unexpected_stderr =
     let output = parse_output output in
     let show_command =
       !Clflags.always_show_command_line
@@ -574,7 +572,7 @@ end = struct
               match error with
               | Failed n -> [ Pp.textf "Command exited with code %d." n ]
               | Signaled signame ->
-                [ Pp.textf "Command got signal %s." signame ]))
+                [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
       fail ~loc ~annots paragraphs
 end
@@ -625,8 +623,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
       in
       let fancy_command_line =
-        match display.verbosity with
-        | Verbose ->
+        match display with
+        | Simple { verbosity = Verbose; _ } ->
           let open Pp.O in
           let cmdline =
             Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
@@ -769,7 +767,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
                && (not has_unexpected_stderr)
                && ok_codes n -> Ok n
         | WEXITED n -> Error (Failed n)
-        | WSIGNALED n -> Error (Signaled (Signal.name n))
+        | WSIGNALED n -> Error (Signaled (Signal.of_int n))
         | WSTOPPED _ -> assert false
       in
       let success = Result.is_ok exit_status' in
@@ -810,14 +808,21 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let output = stdout ^ stderr in
         Log.command ~command_line ~output ~exit_status:process_info.status;
         let res =
-          match (display.verbosity, exit_status', output) with
-          | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
-          | Verbose, _, _ ->
+          match (display, exit_status', output) with
+          | Simple { verbosity = Quiet; _ }, Ok n, "" ->
+            n (* Optimisation for the common case *)
+          | Simple { verbosity = Verbose; _ }, _, _ ->
             Handle_exit_status.verbose exit_status' ~id ~metadata ~dir
               ~command_line:fancy_command_line ~output
-          | _ ->
+          | Simple { verbosity; _ }, _, _ ->
+            (* If we have verbosity we preserve it *)
             Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
-              ~command_line ~output ~metadata ~verbosity:display.verbosity
+              ~command_line ~output ~metadata ~verbosity ~has_unexpected_stdout
+              ~has_unexpected_stderr
+          | _ ->
+            (* Otherwise we default to Quiet *)
+            Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
+              ~command_line ~output ~metadata ~verbosity:Display.Verbosity.Quiet
               ~has_unexpected_stdout ~has_unexpected_stderr
         in
         (res, times))

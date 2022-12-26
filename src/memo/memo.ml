@@ -1592,10 +1592,8 @@ module Lazy = struct
   end
 
   let create ?cutoff ?name ?human_readable_description f =
-    let (_ : (unit, 'a) Cell.t), t =
-      Expert.create ?cutoff ?name ?human_readable_description f
-    in
-    t
+    let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
+    fun () -> Cell.read cell
 
   let force f = f ()
 

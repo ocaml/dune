@@ -192,6 +192,18 @@ let%expect_test _ =
 Ok [ "bar%foo" ]
 |}]
 
+let%expect_test _ =
+  parse {|"\0000"|};
+  [%expect {|
+Ok [ "\0000" ]
+|}]
+
+let%expect_test _ =
+  parse {|"\x000"|};
+  [%expect {|
+Ok [ "\0000" ]
+|}]
+
 (* Printing tests *)
 
 let loc = Loc.none

@@ -1,6 +1,8 @@
 (library
  (name ocamlc_loc)
  (public_name ocamlc-loc)
- (libraries dyn))
+ (libraries dyn)
+ (instrumentation
+  (backend bisect_ppx)))
 
 (ocamllex lexer)

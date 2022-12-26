@@ -387,6 +387,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~expander ~mdx_prog =
   let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
   let compile_info =
     Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
+      ~allow_overlaps:false ~forbidden_libraries:[]
       (lib "mdx.test" :: lib "mdx.top" :: t.libraries)
       ~pps:[] ~dune_version ~merlin_ident
   in

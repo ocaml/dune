@@ -6,6 +6,7 @@ module Style = struct
     | Kwd
     | Id
     | Prompt
+    | Hint
     | Details
     | Ok
     | Debug
@@ -25,19 +26,18 @@ end
 module Print_config = struct
   type t = Style.t -> Ansi_color.Style.t list
 
-  open Ansi_color.Style
-
-  let default : Style.t -> _ = function
-    | Loc -> [ bold ]
-    | Error -> [ bold; fg_red ]
-    | Warning -> [ bold; fg_magenta ]
-    | Kwd -> [ bold; fg_blue ]
-    | Id -> [ bold; fg_yellow ]
-    | Prompt -> [ bold; fg_green ]
-    | Details -> [ dim; fg_white ]
-    | Ok -> [ dim; fg_green ]
-    | Debug -> [ underlined; fg_bright_cyan ]
-    | Success -> [ bold; fg_green ]
+  let default : t = function
+    | Loc -> [ `Bold ]
+    | Error -> [ `Bold; `Fg_red ]
+    | Warning -> [ `Bold; `Fg_magenta ]
+    | Kwd -> [ `Bold; `Fg_blue ]
+    | Id -> [ `Bold; `Fg_yellow ]
+    | Prompt -> [ `Bold; `Fg_green ]
+    | Hint -> [ `Italic; `Fg_white ]
+    | Details -> [ `Dim; `Fg_white ]
+    | Ok -> [ `Dim; `Fg_green ]
+    | Debug -> [ `Underline; `Fg_bright_cyan ]
+    | Success -> [ `Bold; `Fg_green ]
     | Ansi_styles l -> l
 end
 
@@ -73,7 +73,8 @@ let pp { loc; paragraphs; hints; annots = _ } =
     | [] -> paragraphs
     | _ ->
       List.append paragraphs
-        (List.map hints ~f:(fun hint -> Pp.verbatim "Hint:" ++ Pp.space ++ hint))
+        (List.map hints ~f:(fun hint ->
+             Pp.tag Style.Hint (Pp.verbatim "Hint:") ++ Pp.space ++ hint))
   in
   let paragraphs = List.map paragraphs ~f:Pp.box in
   let paragraphs =
@@ -82,9 +83,10 @@ let pp { loc; paragraphs; hints; annots = _ } =
     | Some { Loc0.start; stop } ->
       let start_c = start.pos_cnum - start.pos_bol in
       let stop_c = stop.pos_cnum - start.pos_bol in
-      Pp.tag Style.Loc
-        (Pp.textf "File %S, line %d, characters %d-%d:" start.pos_fname
-           start.pos_lnum start_c stop_c)
+      Pp.box
+        (Pp.tag Style.Loc
+           (Pp.textf "File %S, line %d, characters %d-%d:" start.pos_fname
+              start.pos_lnum start_c stop_c))
       :: paragraphs
   in
   Pp.vbox (Pp.concat_map paragraphs ~sep:Pp.nop ~f:(fun pp -> Pp.seq pp Pp.cut))

@@ -6,13 +6,19 @@
     | Single of int
     | Range of int * int
 
+  type code =
+    { code : int
+    ; name : string
+    }
+
   type source =
-    | Code of { code : int ; name : string }
+    | Code of code
     | Alert of string
 
   type severity =
     | Error of source option
-    | Warning of source
+    | Warning of code
+    | Alert of { name : string ; source : string }
 
   type loc =
     { chars : (int * int) option
@@ -45,6 +51,8 @@ let range = digits "-" digits
 
 let any = _ *
 
+let alert_name = ['a' - 'z'] ['A' - 'Z' 'a' - 'z' '0' - '9' '_']*
+
 rule skip_excerpt = parse
   | blank digits " | " [^ '\n']* "\n"?
     { `Continue }
@@ -59,20 +67,22 @@ and severity = parse
     { Some (Error None, rest) }
   | "Warning" blank (digits as code) blank "[" ([^ ']']+ as name) "]:"
     (blank any as rest)
-    { Some (Warning (Code { code = int_of_string code ; name }), rest)
+    { Some (Warning { code = int_of_string code ; name }, rest)
     }
   | "Error" blank
     "(warning" blank (digits as code) blank "[" ([^ ']']+ as name) "]):"
     (blank any as rest)
     { Some (Error (Some (Code { code = int_of_string code ; name })), rest)
     }
+    | "Alert " blank (alert_name as name) ":" blank (any as source)
+    {  Some (Alert { name ; source }, "")
+    }
   | (("Error" | "Warning") as kind) " (alert " ([^ ')']+ as alert) "):"
     (blank any as rest)
-    { let alert = Alert alert in
-      let res =
+    { let res =
         match kind with
-        | "Error" -> Error (Some alert)
-        | "Warning" -> Warning alert
+        | "Error" -> Error (Some (Alert alert))
+        | "Warning" -> Alert { name = alert ; source = "" }
         | _ -> assert false
       in
       Some (res, rest)

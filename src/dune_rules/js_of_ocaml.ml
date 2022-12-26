@@ -1,6 +1,18 @@
 open Import
 open Dune_lang.Decoder
 
+module Ext = struct
+  type t = string
+
+  let exe = ".bc.js"
+
+  let cmo = ".cmo.js"
+
+  let cma = ".cma.js"
+
+  let runtime = ".bc.runtime.js"
+end
+
 let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
 module Flags = struct

@@ -1,4 +1,4 @@
 (library
- (name impl)
+ (name impl_melange)
  (modes melange)
  (implements vlib))

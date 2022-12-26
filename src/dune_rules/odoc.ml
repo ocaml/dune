@@ -899,4 +899,4 @@ let gen_rules sctx ~dir:_ rest =
            setup_pkg_html_rules name
        in
        ())
-  | _ -> Memo.return Build_config.Redirect_to_parent
+  | _ -> Memo.return (Build_config.Redirect_to_parent Build_config.Rules.empty)

@@ -15,6 +15,8 @@ module Emit = struct
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; root_module : (Loc.t * Module_name.t) option
+    ; modules_without_implementation : Ordered_set_lang.t
+    ; allow_overlapping_dependencies : bool
     ; javascript_extension : string
     }
 
@@ -90,7 +92,12 @@ module Emit = struct
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
        and+ root_module = field_o "root_module" Module_name.decode_loc
-       and+ javascript_extension = extension_field "javascript_extension" in
+       and+ javascript_extension = extension_field "javascript_extension"
+       and+ allow_overlapping_dependencies =
+         field_b "allow_overlapping_dependencies"
+       and+ modules_without_implementation =
+         Stanza_common.modules_field "modules_without_implementation"
+       in
        let preprocess =
          let init =
            let f libname = Preprocess.With_instrumentation.Ordinary libname in
@@ -114,5 +121,7 @@ module Emit = struct
        ; compile_flags
        ; root_module
        ; javascript_extension
+       ; allow_overlapping_dependencies
+       ; modules_without_implementation
        })
 end

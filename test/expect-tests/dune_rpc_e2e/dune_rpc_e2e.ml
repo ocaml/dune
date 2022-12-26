@@ -15,7 +15,7 @@ let () = if debug then Dune_util.Log.init ~file:(Out_channel stderr) ()
 
 let dune_prog =
   lazy
-    (let path = Env.path Env.initial in
+    (let path = Env_path.path Env.initial in
      Bin.which ~path "dune" |> Option.value_exn |> Path.to_absolute_filename)
 
 let init_chan ~root_dir =
@@ -164,7 +164,7 @@ let with_dune_watch ?env f =
 
 let config =
   { Scheduler.Config.concurrency = 1
-  ; display = { verbosity = Quiet; status_line = false }
+  ; display = Simple { verbosity = Quiet; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No

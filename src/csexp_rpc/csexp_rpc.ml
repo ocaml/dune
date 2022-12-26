@@ -2,8 +2,39 @@ open Stdune
 open Fiber.O
 module Log = Dune_util.Log
 
+module type Worker = sig
+  type t
+
+  val create : unit -> t Fiber.t
+
+  val stop : t -> unit
+
+  val task :
+       t
+    -> f:(unit -> 'a)
+    -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
+end
+
+let worker = Fdecl.create Dyn.opaque
+
 module Worker = struct
-  include Dune_engine.Scheduler.Worker
+  type t =
+    { stop : unit -> unit
+    ; task :
+        'a.
+           (unit -> 'a)
+        -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
+    }
+
+  let create () =
+    let open Fiber.O in
+    let (module Worker : Worker) = Fdecl.get worker in
+    let+ w = Worker.create () in
+    { stop = (fun () -> Worker.stop w); task = (fun f -> Worker.task w ~f) }
+
+  let stop t = t.stop ()
+
+  let task t ~f = t.task f
 
   let task_exn t ~f =
     let+ res = task t ~f in
@@ -229,7 +260,7 @@ module Server = struct
     let create fd sockaddr ~backlog =
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
-      Unix.set_nonblock r_interrupt_accept;
+      if not Sys.win32 then Unix.set_nonblock r_interrupt_accept;
       let buf = Bytes.make 1 '0' in
       { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
 

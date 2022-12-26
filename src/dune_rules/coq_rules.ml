@@ -168,7 +168,7 @@ let theories_deps_requires_for_user_written ~dir
     ~coq_lang_version:buildable.coq_lang_version
 
 (* compute include flags and mlpack rules *)
-let plugins_of_buildable ~context ~lib_db ~theories_deps
+let ml_flags_and_ml_pack_rule ~context ~lib_db ~theories_deps
     (buildable : Coq_stanza.Buildable.t) =
   let res =
     let open Resolve.Memo.O in
@@ -523,7 +523,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   (* ML-level flags for depending libraries *)
   let ml_flags, mlpack_rule =
     let lib_db = Scope.libs scope in
-    plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
+    ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db s.buildable
   in
   let wrapper_name = Coq_lib_name.wrapper (snd s.name) in
   let name = snd s.name in
@@ -570,7 +570,7 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t)
   let* scope = Scope.DB.find_by_dir dir in
   let ml_flags, _ =
     let lib_db = Scope.libs scope in
-    plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
+    ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db s.buildable
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   let name = snd s.name in
@@ -714,7 +714,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents
   let* scope = Scope.DB.find_by_dir dir in
   let ml_flags, mlpack_rule =
     let lib_db = Scope.libs scope in
-    plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
+    ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db s.buildable
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   setup_coqdep_rule ~sctx ~loc:s.buildable.loc ~source_rule ~dir ~theories_deps
@@ -734,7 +734,7 @@ let coqtop_args_extraction ~sctx ~dir (s : Coq_stanza.Extraction.t) coq_module =
   let* scope = Scope.DB.find_by_dir dir in
   let ml_flags, _ =
     let lib_db = Scope.libs scope in
-    plugins_of_buildable ~context ~theories_deps ~lib_db s.buildable
+    ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db s.buildable
   in
   let* boot_type =
     boot_type ~dir ~use_stdlib:s.buildable.use_stdlib ~wrapper_name coq_module

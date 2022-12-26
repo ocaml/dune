@@ -26,7 +26,8 @@ ppxlib \
 ctypes \
 "utop>=2.6.0" \
 "melange>=0.3.1" \
-"mel>=0.3.1"
+"mel>=0.3.1" \
+codept
 
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
@@ -77,8 +78,12 @@ melange:
 	opam pin add melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#426463a77d0b70ecf0108c98e6a86d325cd01472
 	opam pin add melange https://github.com/melange-re/melange.git#685e546e290d317a884a4d48c7835467422c6426
 
+.PHONY: codept
+codept:
+	opam pin add codept https://github.com/Octachron/codept.git#017c2d93cb45e96d2703dc2734a1b7679d4e9ccb
+
 .PHONY: dev-deps
-dev-deps: melange
+dev-deps: melange codept
 	opam install -y $(TEST_DEPS)
 
 .PHONY: coverage-deps

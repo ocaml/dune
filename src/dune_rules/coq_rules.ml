@@ -331,13 +331,6 @@ let setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name ~use_stdlib
     >>> Action_builder.(with_no_targets (goal source_rule))
     >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep file_flags)
 
-let coqc_rule ~coqc ~coqc_dir ~args =
-  let open Action_builder.With_targets.O in
-  Command.run ~dir:(Path.build coqc_dir) coqc args
-  (* The way we handle the transitive dependencies of .vo files is not safe for
-     sandboxing *)
-  >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing
-
 let deps_of ~dir ~use_stdlib ~wrapper_name coq_module =
   let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
   let open Action_builder.O in
@@ -393,7 +386,10 @@ let setup_coqc_rule ~loc ~dir ~sctx ~coqc_dir ~file_targets ~stanza_flags
   Super_context.add_rule ~loc ~dir sctx
     (Action_builder.with_no_targets deps_of
     >>> Action_builder.With_targets.add ~file_targets
-        @@ coqc_rule ~coqc ~coqc_dir ~args:(target_obj_files :: args))
+        @@ Command.run ~dir:(Path.build coqc_dir) coqc (target_obj_files :: args)
+    (* The way we handle the transitive dependencies of .vo files is not safe for
+       sandboxing *)
+    >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
 
 let coq_modules_of_theory ~sctx lib =
   Action_builder.of_memo

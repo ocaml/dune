@@ -106,7 +106,7 @@ val root_module_entries : t -> Module_name.t list Action_builder.t
 (** The dependency graph for the modules of the library. *)
 val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 
-val ocamldep_modules_data : t -> Dep_gen.Modules_data.t (* TODO: rename *)
+val dep_modules_data : t -> Dep_gen.Modules_data.t
 
 val loc : t -> Loc.t option
 

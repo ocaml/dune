@@ -211,7 +211,7 @@ module Run (P : PARAMS) = struct
     in
     let* deps =
       Dep_rules.for_module
-        (Compilation_context.ocamldep_modules_data cctx)
+        (Compilation_context.dep_modules_data cctx)
         mock_module
     in
     let* () =

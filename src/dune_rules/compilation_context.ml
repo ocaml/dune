@@ -85,7 +85,7 @@ type t =
   ; vimpl : Vimpl.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
-  ; ocamldep_modules_data : Dep_gen.Modules_data.t
+  ; dep_modules_data : Dep_gen.Modules_data.t
   ; loc : Loc.t option
   }
 
@@ -133,7 +133,7 @@ let bin_annot t = t.bin_annot
 
 let context t = Super_context.context t.super_context
 
-let ocamldep_modules_data t = t.ocamldep_modules_data
+let dep_modules_data t = t.dep_modules_data
 
 let dep_graphs t = t.modules.dep_graphs
 
@@ -165,7 +165,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     Option.value ~default modes |> Lib_mode.Map.map ~f:Option.is_some
   in
   let opaque = eval_opaque (Super_context.context super_context) opaque in
-  let ocamldep_modules_data : Dep_gen.Modules_data.t =
+  let dep_modules_data : Dep_gen.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
     ; sandbox
     ; obj_dir
@@ -176,7 +176,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ; project
     }
   in
-  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data in
+  let+ dep_graphs = Dep_rules.rules dep_modules_data in
   { super_context
   ; scope
   ; expander
@@ -195,7 +195,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; vimpl
   ; modes
   ; bin_annot
-  ; ocamldep_modules_data
+  ; dep_modules_data
   ; loc
   }
 

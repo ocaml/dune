@@ -36,11 +36,8 @@ module Toplevel = Toplevel
 module Top_module = Top_module
 module Global = Global
 module Only_packages = Only_packages
-module Dep_rules = Dep_rules
 module Resolve = Resolve
-
-(* module Ocamldep = Ocamldep *)
-(* module Dep_rules = Dep_rules *)
+module Dep_rules = Dep_rules
 module Dep_graph = Dep_graph
 module Preprocess = Preprocess
 module Preprocessing = Preprocessing

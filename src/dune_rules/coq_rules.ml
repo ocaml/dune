@@ -167,6 +167,23 @@ let theories_deps_requires_for_user_written ~dir
   Coq_lib.DB.requires_for_user_written coq_lib_db buildable.theories
     ~coq_lang_version:buildable.coq_lang_version
 
+let meta_info ~loc ~version ~context (lib : Lib.t) =
+  let name = Lib.name lib |> Lib_name.to_string in
+  match Lib_info.status (Lib.info lib) with
+  | Public (_, pkg) ->
+    let package = Package.name pkg in
+    let meta_i =
+      Path.Build.relative (Local_install_path.lib_dir ~context ~package) "META"
+    in
+    Some (Path.build meta_i)
+  | Installed -> None
+  | Installed_private | Private _ ->
+    let is_error = version >= (0, 6) in
+    let text = if is_error then "not supported" else "deprecated" in
+    User_warning.emit ?loc ~is_error
+      [ Pp.textf "Using private library %s as a Coq plugin is %s" name text ];
+    None
+
 (* compute include flags and mlpack rules *)
 let ml_flags_and_ml_pack_rule ~context ~lib_db ~theories_deps
     (buildable : Coq_stanza.Buildable.t) =
@@ -215,26 +232,8 @@ let ml_flags_and_ml_pack_rule ~context ~lib_db ~theories_deps
         in
         List.concat_map plugins ~f:to_mlpack
       in
-      let meta_info (lib : Lib.t) =
-        let name = Lib.name lib |> Lib_name.to_string in
-        match Lib_info.status (Lib.info lib) with
-        | Public (_, pkg) ->
-          let package = Package.name pkg in
-          let meta_i =
-            Path.Build.relative
-              (Local_install_path.lib_dir ~context ~package)
-              "META"
-          in
-          Some (Path.build meta_i)
-        | Installed -> None
-        | Installed_private | Private _ ->
-          let is_error = coq_lang_version >= (0, 6) in
-          let text = if is_error then "not supported" else "deprecated" in
-          User_warning.emit ?loc:plugin_loc ~is_error
-            [ Pp.textf "Using private library %s as a Coq plugin is %s" name
-                text
-            ];
-          None
+      let meta_info =
+        meta_info ~loc:plugin_loc ~version:coq_lang_version ~context
       in
       (* If the mlpack files don't exist, don't fail *)
       Action_builder.all_unit

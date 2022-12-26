@@ -55,8 +55,7 @@ let parse_compilation_units ~modules =
 let parse_deps_exn ~file lines =
   let invalid () =
     User_error.raise
-      [ Pp.textf
-          "unexpected dependencies output for %s:"
+      [ Pp.textf "unexpected dependencies output for %s:"
           (Path.to_string_maybe_quoted file)
       ; Pp.vbox
           (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->

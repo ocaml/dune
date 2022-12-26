@@ -174,8 +174,12 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
         | Some (`String "yes") | Some (`String "ondemand") -> Coq_mode.Native
         | _ -> Coq_mode.VoOnly))
 
+(* CR alizter: move this to Lib.DB *)
+
+(** Given a list of library names, we try to resolve them in order, returning
+    the first one that exists. *)
 let rec resolve_first lib_db = function
-  | [] -> assert false
+  | [] -> Code_error.raise "resolve_first: empty list" []
   | [ n ] -> Lib.DB.resolve lib_db (Loc.none, Lib_name.of_string n)
   | n :: l -> (
     let open Memo.O in

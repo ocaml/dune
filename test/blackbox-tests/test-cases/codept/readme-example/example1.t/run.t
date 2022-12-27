@@ -4,7 +4,7 @@ Create project here, so we have permissions to append below.
   > (lang dune 3.7)
   > EOF
 
-With ``ocamldep``, module A depends on B, C and D,
+With ``ocamldep``, module A depends on B, C, and D,
 but C and D are spurious.
 
   $ dune describe workspace --with-deps --sanitize-for-tests

@@ -16,27 +16,34 @@ module Backend : sig
       backends. *)
   val compose : t -> t -> t
 
-  (** A dumb backend that hides the status line and simply dump the messages to
-      the terminal *)
+  (** A dumb backend that hides the status line and simply dumps the messages to
+      the terminal. *)
   val dumb : t
 
-  (** A backend that just displays the status line in the terminal *)
-  val progress : unit -> t
+  (** A backend that displays the status line in the terminal. *)
+  val progress : t
 
+  (** A backend that displays the status line in the terminal, with the
+      processing logic happening in a separate thread. *)
+  val progress_threaded : unit -> t
+
+  (** [spawn_thread f] is called by the main thread to spawn a new thread. The
+      thread should call [f] to start the user interface. This forward
+      declaration allows the function to be set much later in the scheduler when
+      the operation is defined. This is only useful for threaded backends. *)
   val spawn_thread : ((unit -> unit) -> unit) Fdecl.t
-
-  val threaded : t -> t
 end
 
-(** Format and print a user message to the console *)
+(** Format and print a user message to the console. *)
 val print_user_message : User_message.t -> unit
 
-(** Reset the log output and (try) to remove the history *)
+(** Reset the log output and (try) to remove the history. *)
 val reset_flush_history : unit -> unit
 
-(** Reset the log output *)
+(** Reset the log output. *)
 val reset : unit -> unit
 
+(** Finish outputting to the console. *)
 val finish : unit -> unit
 
 (** [print paragraphs] is a short-hand for:
@@ -59,7 +66,7 @@ val printf : ('a, unit, string, unit) format4 -> 'a
 module Status_line : sig
   (** Status line management *)
 
-  (** The current status line *)
+  (** The current status line. *)
   type t =
     | Live of (unit -> User_message.Style.t Pp.t)
         (** A "live" value that's updated continuously, such as a progress
@@ -71,7 +78,7 @@ module Status_line : sig
 
   val set : t -> unit
 
-  (** Clear the current status line *)
+  (** Clear the current status line. *)
   val clear : unit -> unit
 
   type overlay

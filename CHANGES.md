@@ -79,6 +79,9 @@ Unreleased
 - Remove spurious build dir created when running `dune init proj ...` (#6707,
   fixes #5429, @gridbugs)
 
+- Allow `--sandbox` to affect `ocamldep` invocations. Previously, they were
+  wrongly marked as incompatible (#6749, @rgrinberg)
+
 3.6.1 (2022-11-24)
 ------------------
 

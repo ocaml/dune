@@ -4,7 +4,7 @@ Create project here, so we have permissions to append below.
   > (lang dune 3.5)
   > EOF
 
-With ocamldep, module A depends on B, which is spurious.
+With ``ocamldep``, module A depends on B, which is spurious.
 
   $ dune describe workspace --with-deps --sanitize-for-tests
   ((root /WORKSPACE_ROOT)
@@ -34,13 +34,13 @@ With ocamldep, module A depends on B, which is spurious.
           (for_impl (B)))))))
      (include_dirs (_build/default/.example.objs/byte)))))
 
-Enable codept.
+Enable ``codept``.
 
   $ cat >>dune-project <<EOF
   > (using codept 0.1)
   > EOF
 
-Even with codept, module A depends on B, which is spurious.
+Even with ``codept``, module A depends on B, which is spurious.
 
   $ dune describe workspace --with-deps --sanitize-for-tests
   ((root /WORKSPACE_ROOT)

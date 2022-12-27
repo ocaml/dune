@@ -1,5 +1,5 @@
-Wrapping prefixes module object names, which must be removed for codept.
-Otherwise codept will not resolve the right signatures and just overapproximate.
+Wrapping prefixes module object names, which must be removed for ``codept``.
+Otherwise ``codept`` will not resolve the right signatures and just overapproximate.
 
 Create project here, so we have permissions to append below.
 
@@ -7,7 +7,7 @@ Create project here, so we have permissions to append below.
   > (lang dune 3.5)
   > EOF
 
-With ocamldep, module A depends on B, C, D and E,
+With ``ocamldep``, module A depends on B, C, D and E,
 but C is spurious.
 
   $ dune describe workspace --with-deps --sanitize-for-tests
@@ -71,13 +71,13 @@ but C is spurious.
           (for_impl ()))))))
      (include_dirs (_build/default/.example.objs/byte)))))
 
-Enable codept.
+Enable ``codept``.
 
   $ cat >>dune-project <<EOF
   > (using codept 0.1)
   > EOF
 
-With codept, module A should only depend on B, D and E,
+With ``codept``, module A should only depend on B, D and E,
 but not C, which is spurious.
 
   $ dune describe workspace --with-deps --sanitize-for-tests

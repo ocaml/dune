@@ -236,11 +236,12 @@ Below is an example where we build ``my.cmxs`` containing ``foo.cmxa`` and
      (targets my.cmxs)
      (action (run %{ocamlopt} -shared -o %{targets} %{cmxa:foo} %{cmx:d})))
 
-Codept integration
+Codept Integration
 ==================
 
 By default, Dune uses ``ocamldep`` to determine module file dependencies.
-`Codept <https://github.com/Octachron/codept>`_ is an alternative dependency generator, which aims to be more precise. To use it with Dune, you must declare
+`Codept <https://github.com/Octachron/codept>`_ is an alternative dependency
+generator, which aims to be more precise. To use it with Dune, you must declare
 the ``codept`` extension in your ``dune-project`` file:
 
 .. code:: scheme

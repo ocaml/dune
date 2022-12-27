@@ -96,7 +96,6 @@ module Session = struct
       ; send : Packet.t list option -> unit Fiber.t
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
-      ; mutable on_upgrade : (Menu.t -> unit) option
       }
 
     let set t state =
@@ -120,7 +119,6 @@ module Session = struct
       ; send
       ; state = Uninitialized (Close.create ())
       ; id = Id.gen ()
-      ; on_upgrade = None
       ; pool = Fiber.Pool.create ()
       }
 
@@ -150,12 +148,9 @@ module Session = struct
         in
         variant "Initialized" [ record ]
 
-    let to_dyn f { id; state; queries = _; send = _; on_upgrade = _; pool = _ }
-        =
+    let to_dyn f { id; state; queries = _; send = _; pool = _ } =
       let open Dyn in
       record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
-
-    let register_upgrade_callback t f = t.on_upgrade <- Some f
   end
 
   type 'a t =
@@ -187,8 +182,7 @@ module Session = struct
 
   let id t = t.base.id
 
-  let of_stage1 (base : _ Stage1.t) handler menu =
-    let () = Option.iter base.on_upgrade ~f:(fun f -> f menu) in
+  let of_stage1 (base : _ Stage1.t) handler =
     { base; handler; pollers = Dune_rpc_private.Id.Map.empty }
 
   let notification t decl n =
@@ -279,6 +273,7 @@ module H = struct
   type 'a base =
     { on_init : 'a Session.Stage1.t -> Initialize.Request.t -> 'a Fiber.t
     ; on_terminate : 'a Session.t -> unit Fiber.t
+    ; on_upgrade : 'a Session.t -> Menu.t -> unit Fiber.t
     ; version : int * int
     }
 
@@ -410,6 +405,9 @@ module H = struct
             Menu.select_common ~remote_versions:client_versions
               ~local_versions:t.known_versions
           with
+          | None ->
+            abort session
+              ~message:"Server and client have no method versions in common"
           | Some menu ->
             let response =
               Version_negotiation.(
@@ -417,11 +415,9 @@ module H = struct
             in
             let* () = session.send (Some [ Response (id, Ok response) ]) in
             let handler = t.to_handler menu in
-            run_session { base = t.base; handler } stats
-              (Session.of_stage1 session handler menu)
-          | None ->
-            abort session
-              ~message:"Server and client have no method versions in common")))
+            let session = Session.of_stage1 session handler in
+            let* () = t.base.on_upgrade session menu in
+            run_session { base = t.base; handler } stats session)))
 
   let handle (type a) (t : a stage1) stats (session : a Session.Stage1.t) =
     let open Fiber.O in
@@ -468,10 +464,11 @@ module H = struct
       { builder : 's Session.t V.Builder.t
       ; on_terminate : 's Session.t -> unit Fiber.t
       ; on_init : 's Session.Stage1.t -> Initialize.Request.t -> 's Fiber.t
+      ; on_upgrade : 's Session.t -> Menu.t -> unit Fiber.t
       ; version : int * int
       }
 
-    let to_handler { builder; on_terminate; on_init; version } =
+    let to_handler { builder; on_terminate; on_init; version; on_upgrade } =
       let to_handler menu =
         V.Builder.to_handler builder
           ~session_version:(fun s -> (Session.initialize s).dune_version)
@@ -482,10 +479,19 @@ module H = struct
         |> String.Map.of_list_map_exn ~f:(fun (name, gens) ->
                (name, Int.Set.of_list gens))
       in
-      { to_handler; base = { on_init; on_terminate; version }; known_versions }
+      { to_handler
+      ; base = { on_init; on_terminate; on_upgrade; version }
+      ; known_versions
+      }
 
-    let create ?(on_terminate = fun _ -> Fiber.return ()) ~on_init ~version () =
-      { builder = V.Builder.create (); on_init; on_terminate; version }
+    let create ?(on_terminate = fun _ -> Fiber.return ()) ~on_init
+        ?(on_upgrade = fun _ _ -> Fiber.return ()) ~version () =
+      { builder = V.Builder.create ()
+      ; on_init
+      ; on_terminate
+      ; version
+      ; on_upgrade
+      }
 
     let implement_request (t : _ t) = V.Builder.implement_request t.builder
 

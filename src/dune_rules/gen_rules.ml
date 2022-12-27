@@ -144,7 +144,7 @@ end = struct
       | true ->
         let+ () = Mdx.gen_rules ~sctx ~dir ~scope ~expander mdx in
         empty_none)
-    | Melange_emit mel ->
+    | Melange_stanzas.Emit.T mel ->
       let+ cctx, merlin =
         Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx
           ~expander mel
@@ -380,7 +380,7 @@ let under_melange_emit_target ~dir =
   | None -> None
   | Some stanzas ->
     List.find_map stanzas.stanzas ~f:(function
-      | Melange_emit mel ->
+      | Melange_stanzas.Emit.T mel ->
         let target_dir = Path.Build.relative parent mel.target in
         Option.some_if (Path.Build.equal target_dir dir) mel
       | _ -> None)
@@ -506,7 +506,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
             | None -> subdirs
             | Some stanzas ->
               List.filter_map stanzas.stanzas ~f:(function
-                | Melange_emit mel -> Some mel.target
+                | Melange_stanzas.Emit.T mel -> Some mel.target
                 | _ -> None)
               |> String.Set.of_list |> String.Set.union subdirs
           in

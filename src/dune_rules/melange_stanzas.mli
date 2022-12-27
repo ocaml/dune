@@ -20,5 +20,9 @@ module Emit : sig
     ; javascript_extension : string
     }
 
+  type Stanza.t += T of t
+
   val decode : t Dune_lang.Decoder.t
 end
+
+val syntax : Syntax.t

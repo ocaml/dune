@@ -304,9 +304,9 @@ module Backend = struct
         Base.start ();
         while true do
           Mutex.lock mutex;
+          Base.render state;
           let finish_requested = state.finish_requested in
           if finish_requested then raise_notrace Exit;
-          Base.render state;
           Mutex.unlock mutex;
           let now = Unix.gettimeofday () in
           let elapsed = now -. !last in

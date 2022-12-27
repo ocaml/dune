@@ -6,8 +6,7 @@ type t = { loc : Loc.t }
 let codept_syntax =
   Dune_lang.Syntax.create ~name:"codept"
     ~desc:"the codept extension (experimental)" ~experimental:true
-    [ ((0, 1), `Since (3, 5)) ]
-(* TODO: correct since *)
+    [ ((0, 1), `Since (3, 7)) ]
 
 let codept_decode : t Dune_lang.Decoder.t =
   let open Dune_lang.Decoder in

@@ -1,7 +1,7 @@
 Create project here, so we have permissions to append below.
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.5)
+  > (lang dune 3.7)
   > EOF
 
 With ``ocamldep``, module B depends on A and C,

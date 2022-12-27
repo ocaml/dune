@@ -246,5 +246,5 @@ the ``codept`` extension in your ``dune-project`` file:
 
 .. code:: scheme
 
-  (lang dune 3.5) ; TODO: update to match codept.ml
+  (lang dune 3.7)
   (using codept 0.1)

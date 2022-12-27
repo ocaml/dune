@@ -4,7 +4,7 @@ Otherwise ``codept`` will not resolve the right signatures and just overapproxim
 Create project here, so we have permissions to append below.
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.5)
+  > (lang dune 3.7)
   > EOF
 
 With ``ocamldep``, module A depends on B, C, D and E,

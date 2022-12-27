@@ -3,7 +3,7 @@ open Memo.O
 open Dep_gen.Modules_data
 
 let current ~project =
-  if Dune_project.is_extension_set project Codept.codept_extension then
+  if Dune_project.is_extension_set project Codept.extension then
     (module Codept : Dep_gen.S)
   else (module Ocamldep : Dep_gen.S)
 

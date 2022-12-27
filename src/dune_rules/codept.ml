@@ -3,30 +3,28 @@ open Dep_gen.Modules_data
 
 type t = { loc : Loc.t }
 
-let codept_syntax =
+let syntax =
   Dune_lang.Syntax.create ~name:"codept"
     ~desc:"the codept extension (experimental)" ~experimental:true
     [ ((0, 1), `Since (3, 7)) ]
 
-let codept_decode : t Dune_lang.Decoder.t =
+let decode : t Dune_lang.Decoder.t =
   let open Dune_lang.Decoder in
   let+ loc = loc in
   { loc }
 
-let codept_to_dyn { loc } =
-  let open Dyn in
-  record [ ("loc", Loc.to_dyn loc) ]
+let to_dyn { loc } = Dyn.record [ ("loc", Loc.to_dyn loc) ]
 
-let codept_extension =
+let extension =
   let open Dune_lang.Decoder in
-  Dune_project.Extension.register codept_syntax
-    (let+ x = codept_decode in
+  Dune_project.Extension.register syntax
+    (let+ x = decode in
      (x, []))
-    codept_to_dyn
+    to_dyn
 
 let codept_prog ~project ~dir sctx =
   let { loc } =
-    Option.value_exn (Dune_project.find_extension_args project codept_extension)
+    Option.value_exn (Dune_project.find_extension_args project extension)
   in
   Super_context.resolve_program sctx ~dir ~loc:(Some loc) "codept"
     ~hint:"opam install codept"

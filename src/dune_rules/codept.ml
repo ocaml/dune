@@ -5,7 +5,8 @@ type t = { loc : Loc.t }
 
 let syntax =
   Dune_lang.Syntax.create ~name:"codept"
-    ~desc:"the codept extension (experimental)" ~experimental:true
+    ~desc:"determine module dependencies using codept (experimental)"
+    ~experimental:true
     [ ((0, 1), `Since (3, 7)) ]
 
 let decode : t Dune_lang.Decoder.t =

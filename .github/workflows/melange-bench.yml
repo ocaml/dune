@@ -81,7 +81,9 @@ jobs:
           output-file-path: pupilfirst/melange-benchmark-result.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
-          alert-threshold: "5%"
+          # Ratio indicating how worse the current benchmark result is.
+          # 150% means if last build took 40s and current takes 50s, it will trigger an alert
+          alert-threshold: "150%"
           fail-on-alert: true
           # Enable alert commit comment
           comment-on-alert: true

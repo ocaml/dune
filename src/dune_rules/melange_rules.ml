@@ -18,14 +18,12 @@ let ocaml_flags sctx ~dir melange =
 
 let lib_output_dir ~sctx ~target_dir lib =
   let info = Lib.info lib in
-  let local () =
-    let lib = Lib.Local.of_lib_exn lib in
-    let info = Lib.Local.info lib in
-    Lib_info.src_dir info
-  in
   let lib_dir =
     match Lib_info.status info with
-    | Private _ -> local ()
+    | Private _ ->
+      let lib = Lib.Local.of_lib_exn lib in
+      let info = Lib.Local.info lib in
+      Lib_info.src_dir info
     | Public _ ->
       let package_name = Option.value_exn (Lib_info.package info) in
       let bctx = (Super_context.context sctx).build_dir in

@@ -82,6 +82,9 @@ Unreleased
 - Allow `--sandbox` to affect `ocamldep` invocations. Previously, they were
   wrongly marked as incompatible (#6749, @rgrinberg)
 
+- Validate the command line arguments for `$ dune ocaml top-module`. This
+  command requires one positional argument (#6796, fixes #6793, @rgrinberg)
+
 3.6.1 (2022-11-24)
 ------------------
 

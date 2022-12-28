@@ -50,7 +50,7 @@ let get_include_subdirs stanzas =
 let find_module_stanza stanzas =
   List.find_map stanzas ~f:(fun stanza ->
       match stanza with
-      | Melange_emit { loc; _ }
+      | Melange_stanzas.Emit.T { loc; _ }
       | Library { buildable = { loc; _ }; _ }
       | Executables { buildable = { loc; _ }; _ }
       | Tests { exes = { buildable = { loc; _ }; _ }; _ } -> Some loc

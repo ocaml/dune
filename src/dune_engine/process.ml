@@ -429,7 +429,7 @@ module Handle_exit_status : sig
 
   val non_verbose :
        ('a, error) result
-    -> verbosity:Display.Verbosity.t
+    -> verbosity:Display.verbosity
     -> metadata:metadata
     -> output:string
     -> prog:string
@@ -521,7 +521,7 @@ end = struct
            ++ Pp.char ' ' ++ command_line
         :: pp_output output)
 
-  let non_verbose t ~(verbosity : Display.Verbosity.t) ~metadata ~output ~prog
+  let non_verbose t ~(verbosity : Display.verbosity) ~metadata ~output ~prog
       ~command_line ~dir ~has_unexpected_stdout ~has_unexpected_stderr =
     let output = parse_output output in
     let show_command =
@@ -623,8 +623,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
       in
       let fancy_command_line =
-        match display with
-        | Simple { verbosity = Verbose; _ } ->
+        match display.verbosity with
+        | Verbose ->
           let open Pp.O in
           let cmdline =
             Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
@@ -808,21 +808,14 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let output = stdout ^ stderr in
         Log.command ~command_line ~output ~exit_status:process_info.status;
         let res =
-          match (display, exit_status', output) with
-          | Simple { verbosity = Quiet; _ }, Ok n, "" ->
-            n (* Optimisation for the common case *)
-          | Simple { verbosity = Verbose; _ }, _, _ ->
+          match (display.verbosity, exit_status', output) with
+          | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
+          | Verbose, _, _ ->
             Handle_exit_status.verbose exit_status' ~id ~metadata ~dir
               ~command_line:fancy_command_line ~output
-          | Simple { verbosity; _ }, _, _ ->
-            (* If we have verbosity we preserve it *)
-            Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
-              ~command_line ~output ~metadata ~verbosity ~has_unexpected_stdout
-              ~has_unexpected_stderr
           | _ ->
-            (* Otherwise we default to Quiet *)
             Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
-              ~command_line ~output ~metadata ~verbosity:Display.Verbosity.Quiet
+              ~command_line ~output ~metadata ~verbosity:display.verbosity
               ~has_unexpected_stdout ~has_unexpected_stderr
         in
         (res, times))

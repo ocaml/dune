@@ -78,6 +78,21 @@ let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
        ; Hidden_deps deps
        ]
 
+let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
+  let open Memo.O in
+  let dune_version = Scope.project scope |> Dune_project.dune_version in
+  let+ pps =
+    Resolve.Memo.read_memo
+      (Preprocess.Per_module.with_instrumentation mel.preprocess
+         ~instrumentation_backend:
+           (Lib.DB.instrumentation_backend (Scope.libs scope)))
+    >>| Preprocess.Per_module.pps
+  in
+  let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
+  Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange_emit mel.target)
+    ~allow_overlaps:mel.allow_overlapping_dependencies ~forbidden_libraries:[]
+    mel.libraries ~pps ~dune_version ~merlin_ident
+
 let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
     ~includes ~js_ext m =
   let open Memo.O in
@@ -109,8 +124,96 @@ let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
        ; Dep (Path.build src)
        ])
 
-let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
-    ~compile_info ~target_dir ~mode (mel : Melange_stanzas.Emit.t) =
+let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
+    (mel : Melange_stanzas.Emit.t) =
+  let open Memo.O in
+  let* compile_info = compile_info ~scope mel in
+  let ctx = Super_context.context sctx in
+  let f () =
+    (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
+       of the same name *)
+    let* modules, obj_dir =
+      Dir_contents.ocaml dir_contents
+      >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
+    in
+    let* () = Check_rules.add_obj_dir sctx ~obj_dir in
+    let* modules, pp =
+      Buildable_rules.modules_rules sctx
+        (Melange
+           { preprocess = mel.preprocess
+           ; preprocessor_deps = mel.preprocessor_deps
+           ; (* TODO still needed *)
+             lint = Preprocess.Per_module.default ()
+           ; (* why is this always false? *)
+             empty_module_interface_if_absent = false
+           })
+        expander ~dir scope modules
+    in
+    let requires_link = Lib.Compile.requires_link compile_info in
+    let* flags = ocaml_flags sctx ~dir mel.compile_flags in
+    let* cctx =
+      let js_of_ocaml = None in
+      let direct_requires = Lib.Compile.direct_requires compile_info in
+      Compilation_context.create () ~loc:mel.loc ~super_context:sctx ~expander
+        ~scope ~obj_dir ~modules ~flags ~requires_link
+        ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml
+        ~opaque:Inherit_from_settings ~package:mel.package
+        ~modes:
+          { ocaml = { byte = None; native = None }
+          ; melange = Some (Requested Loc.none)
+          }
+    in
+    let* () = Module_compilation.build_all cctx in
+    let* requires_compile = Compilation_context.requires_compile cctx in
+    let preprocess =
+      Preprocess.Per_module.with_instrumentation mel.preprocess
+        ~instrumentation_backend:
+          (Lib.DB.instrumentation_backend (Scope.libs scope))
+    in
+    let stdlib_dir = ctx.stdlib_dir in
+    let+ () =
+      let target_dir = Path.Build.relative dir mel.target in
+      match mel.alias with
+      | None -> Memo.return ()
+      | Some alias_name ->
+        let js_ext = mel.javascript_extension in
+        let deps =
+          let modules_for_js =
+            Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
+                if Module.has x ~ml_kind:Impl then x :: acc else acc)
+          in
+          let dst_dir =
+            Path.Build.append_source target_dir
+              (Path.Build.drop_build_context_exn dir)
+          in
+          List.rev_map modules_for_js ~f:(fun m ->
+              make_js_name ~js_ext ~dst_dir m |> Path.build)
+          |> Action_builder.paths
+        in
+        let alias = Alias.make alias_name ~dir in
+        let* () = Rules.Produce.Alias.add_deps alias deps in
+        Rules.Produce.Alias.add_deps alias
+          (let open Action_builder.O in
+          let* deps =
+            Resolve.Memo.read
+            @@
+            let open Resolve.Memo.O in
+            Compilation_context.requires_link cctx
+            >>= js_deps ~loc:mel.loc ~target_dir ~js_ext
+          in
+          Action_builder.deps deps)
+    in
+    ( cctx
+    , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
+        ~source_dirs:Path.Source.Set.empty ~libname:None ~preprocess ~obj_dir
+        ~ident:(Lib.Compile.merlin_ident compile_info)
+        ~dialects:(Dune_project.dialects (Scope.project scope))
+        ~modes:`Melange_emit )
+  in
+  Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
+
+let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
+    ~mode (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
   (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
@@ -118,86 +221,38 @@ let add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
-  let* modules, pp =
-    Buildable_rules.modules_rules sctx
-      (Melange
-         { preprocess = mel.preprocess
-         ; preprocessor_deps = mel.preprocessor_deps
-         ; (* TODO still needed *)
-           lint = Preprocess.Per_module.default ()
-         ; (* why is this always false? *)
-           empty_module_interface_if_absent = false
-         })
-      expander ~dir scope modules
+  let* modules =
+    let version = (Super_context.context sctx).version in
+    let* preprocess =
+      Resolve.Memo.read_memo
+        (Preprocess.Per_module.with_instrumentation mel.preprocess
+           ~instrumentation_backend:
+             (Lib.DB.instrumentation_backend (Scope.libs scope)))
+    in
+    let pped_map =
+      Staged.unstage (Preprocessing.pped_modules_map preprocess version)
+    in
+    Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
   in
   let requires_link = Lib.Compile.requires_link compile_info in
-  let* flags = ocaml_flags sctx ~dir mel.compile_flags in
-  let* cctx =
-    let js_of_ocaml = None in
-    let direct_requires = Lib.Compile.direct_requires compile_info in
-    Compilation_context.create () ~loc:mel.loc ~super_context:sctx ~expander
-      ~scope ~obj_dir ~modules ~flags ~requires_link
-      ~requires_compile:direct_requires ~preprocessing:pp ~js_of_ocaml
-      ~opaque:Inherit_from_settings ~package:mel.package
-      ~modes:
-        { ocaml = { byte = None; native = None }
-        ; melange = Some (Requested Loc.none)
-        }
-  in
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
   let js_ext = mel.javascript_extension in
   let* requires_link = Memo.Lazy.force requires_link in
   let includes = cmj_includes ~requires_link ~scope in
-  let* () = Module_compilation.build_all cctx in
   let modules_for_js =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
         if Module.has x ~ml_kind:Impl then x :: acc else acc)
   in
   let dst_dir =
-    Path.Build.append_source target_dir (Path.Build.drop_build_context_exn dir)
+    Path.Build.append_source target_dir
+      (Path.Build.drop_build_context_exn (Dir_contents.dir dir_contents))
   in
-  let* () =
-    Memo.parallel_iter modules_for_js ~f:(fun m ->
-        build_js ~dir ~loc ~pkg_name ~mode ~module_system:mel.module_system
-          ~dst_dir ~obj_dir ~sctx ~includes ~js_ext m)
-  in
-  let* () =
-    match mel.alias with
-    | None -> Memo.return ()
-    | Some alias_name ->
-      let alias = Alias.make alias_name ~dir in
-      let deps =
-        List.rev_map modules_for_js ~f:(fun m ->
-            make_js_name ~js_ext ~dst_dir m |> Path.build)
-        |> Action_builder.paths
-      in
-      let* () = Rules.Produce.Alias.add_deps alias deps in
-      Rules.Produce.Alias.add_deps alias
-        (let open Action_builder.O in
-        let* requires = Resolve.read requires_link in
-        let* deps =
-          Resolve.Memo.read @@ js_deps requires ~loc:mel.loc ~target_dir ~js_ext
-        in
-        Action_builder.deps deps)
-  in
-  let* requires_compile = Compilation_context.requires_compile cctx in
-  let preprocess =
-    Preprocess.Per_module.with_instrumentation mel.preprocess
-      ~instrumentation_backend:
-        (Lib.DB.instrumentation_backend (Scope.libs scope))
-  in
-  let stdlib_dir = (Super_context.context sctx).stdlib_dir in
-  Memo.return
-    ( cctx
-    , Merlin.make ~requires:requires_compile ~stdlib_dir ~flags ~modules
-        ~source_dirs:Path.Source.Set.empty ~libname:None ~preprocess ~obj_dir
-        ~ident:(Lib.Compile.merlin_ident compile_info)
-        ~dialects:(Dune_project.dialects (Scope.project scope))
-        ~modes:`Melange_emit )
+  Memo.parallel_iter modules_for_js ~f:(fun m ->
+      build_js ~dir ~loc ~pkg_name ~mode ~module_system:mel.module_system
+        ~dst_dir ~obj_dir ~sctx ~includes ~js_ext m)
 
-let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
+let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
     (mel : Melange_stanzas.Emit.t) =
   let build_js = build_js ~sctx ~mode ~js_ext:mel.javascript_extension in
   Memo.parallel_iter requires_link ~f:(fun lib ->
@@ -250,44 +305,24 @@ let add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       in
       Memo.parallel_iter source_modules ~f:(build_js ~dir ~dst_dir ~includes))
 
-let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
-  let open Memo.O in
-  let dune_version = Scope.project scope |> Dune_project.dune_version in
-  let+ pps =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation mel.preprocess
-         ~instrumentation_backend:
-           (Lib.DB.instrumentation_backend (Scope.libs scope)))
-    >>| Preprocess.Per_module.pps
-  in
-  let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
-  Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Melange_emit mel.target)
-    ~allow_overlaps:mel.allow_overlapping_dependencies ~forbidden_libraries:[]
-    mel.libraries ~pps ~dune_version ~merlin_ident
-
-let emit_rules ~dir_contents ~dir ~scope ~sctx ~expander mel =
+let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
   let open Memo.O in
   let* compile_info = compile_info ~scope mel in
-  let target_dir = Path.Build.relative dir mel.target in
+  let target_dir =
+    Path.Build.relative (Dir_contents.dir dir_contents) mel.target
+  in
   let mode =
     match mel.promote with
     | None -> Rule.Mode.Standard
     | Some p -> Promote p
   in
-  let f () =
-    let+ cctx_and_merlin =
-      add_rules_for_entries ~sctx ~dir ~expander ~dir_contents ~scope
-        ~compile_info ~target_dir ~mode mel
-    and+ () =
-      let* requires_link =
-        Memo.Lazy.force (Lib.Compile.requires_link compile_info)
-      in
-      let* requires_link = Resolve.read_memo requires_link in
-      add_rules_for_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
-        mel
+  let* () =
+    let* requires_link =
+      Lib.Compile.requires_link compile_info
+      |> Memo.Lazy.force >>= Resolve.read_memo
     in
-    cctx_and_merlin
+    setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
+      mel
   in
-  Buildable_rules.with_lib_deps
-    (Super_context.context sctx)
-    compile_info ~dir ~f
+  setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
+    ~mode mel

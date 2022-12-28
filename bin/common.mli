@@ -86,3 +86,13 @@ module Let_syntax : sig
   val ( and+ ) :
     'a Cmdliner.Term.t -> 'b Cmdliner.Term.t -> ('a * 'b) Cmdliner.Term.t
 end
+
+module Builder : sig
+  type t
+
+  val set_root : t -> string -> t
+
+  val term : t Cmdliner.Term.t
+end
+
+val build : Builder.t -> t

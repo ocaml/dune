@@ -95,7 +95,7 @@ module Spec = struct
     and+ native = field_oslu "ocamlopt_flags"
     and+ melange =
       field_oslu
-        ~check:(Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1))
+        ~check:(Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1))
         "melange.compile_flags"
     in
     let specific = Lib_mode.Map.make ~byte ~native ~melange in

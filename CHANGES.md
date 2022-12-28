@@ -8,9 +8,6 @@ Unreleased
   PPX-rewriters can be taken into account by providing the
   `--with-pps` flag. (#6727, fixes #6486, @esope)
 
-- Print missing newline after `$ dune exec`. (#6654, fixes #6700, @rgrinberg,
-  @Alizter)
-
 - Fix binary corruption when installing or promoting in parallel (#6669, fixes
   #6668, @edwintorok)
 
@@ -78,6 +75,12 @@ Unreleased
 
 - Fix *js_of_ocaml* separate compilation rules when `--enable=effects`
   or `--enable=use-js-string` is used. (#6714, @hhugo)
+
+- Remove spurious build dir created when running `dune init proj ...` (#6707,
+  fixes #5429, @gridbugs)
+
+- Allow `--sandbox` to affect `ocamldep` invocations. Previously, they were
+  wrongly marked as incompatible (#6749, @rgrinberg)
 
 3.6.1 (2022-11-24)
 ------------------

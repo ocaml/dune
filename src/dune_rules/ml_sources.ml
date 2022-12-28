@@ -378,7 +378,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
           Modules_group.relocate_alias_module modules ~src_dir
         in
         Memo.return (`Executables (exes, modules, obj_dir))
-      | Melange_emit mel ->
+      | Melange_stanzas.Emit.T mel ->
         let modules =
           let modules =
             Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc

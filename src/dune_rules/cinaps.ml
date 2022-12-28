@@ -121,7 +121,7 @@ let gen_rules sctx t ~dir ~scope =
     Lib.DB.resolve_user_written_deps (Scope.libs scope) (`Exe names)
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~pps:(Preprocess.Per_module.pps t.preprocess)
-      ~dune_version ~merlin_ident
+      ~dune_version ~merlin_ident ~allow_overlaps:false ~forbidden_libraries:[]
   in
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
   let* cctx =

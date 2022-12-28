@@ -214,7 +214,7 @@ include Sub_system.Register_end_point (struct
         let ext =
           match mode with
           | Native | Best -> ".exe"
-          | Javascript -> ".bc.js"
+          | Javascript -> Js_of_ocaml.Ext.exe
           | Byte -> ".bc"
         in
         let custom_runner =

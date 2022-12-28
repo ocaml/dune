@@ -1604,7 +1604,7 @@ let closure l ~linking =
     Resolve_names.compile_closure_with_overlap_checks None l
       ~forbidden_libraries
 
-let descriptive_closure (l : lib list) : lib list Memo.t =
+let descriptive_closure (l : lib list) ~with_pps : lib list Memo.t =
   (* [add_work todo l] adds the libraries in [l] to the list [todo],
      that contains the libraries to handle next *)
   let open Memo.O in
@@ -1628,7 +1628,9 @@ let descriptive_closure (l : lib list) : lib list Memo.t =
       else
         let todo = add_work todo libs
         and acc = Set.add acc lib in
-        let* todo = register_work todo lib.pps in
+        let* todo =
+          if with_pps then register_work todo lib.pps else Memo.return todo
+        in
         let* todo = register_work todo lib.ppx_runtime_deps in
         let* todo = register_work todo lib.requires in
         work todo acc
@@ -1792,7 +1794,7 @@ module DB = struct
 
   let available t name = Resolve_names.available_internal t name
 
-  let get_compile_info t ?(allow_overlaps = false) name =
+  let get_compile_info t ~allow_overlaps name =
     let open Memo.O in
     let+ find = find_even_when_hidden t name in
     match find with
@@ -1801,8 +1803,8 @@ module DB = struct
         [ ("name", Lib_name.to_dyn name) ]
     | Some lib -> (lib, Compile.for_lib ~allow_overlaps t lib)
 
-  let resolve_user_written_deps t targets ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~dune_version ~merlin_ident =
+  let resolve_user_written_deps t targets ~allow_overlaps ~forbidden_libraries
+      deps ~pps ~dune_version ~merlin_ident =
     let resolved =
       Memo.lazy_ (fun () ->
           Resolve_names.resolve_deps_and_add_runtime_deps t deps ~pps

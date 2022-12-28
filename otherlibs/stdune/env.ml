@@ -1,3 +1,5 @@
+module Sys = Stdlib.Sys
+
 module Var = struct
   module T = struct
     type t = string

@@ -36,6 +36,9 @@ let sanitize_for_tests = ref false
 type options =
   { with_deps : bool
         (** whether to compute direct dependencies between modules *)
+  ; with_pps : bool
+        (** whether to include the dependencies to ppx-rewriters (that are used
+            at compile time) *)
   }
 
 (** The module [Descr] is a typed representation of the description of a
@@ -338,7 +341,12 @@ module Crawl = struct
     let* modules_ = modules ~obj_dir ~deps_of modules_ in
     let+ requires =
       let* compile_info = Exe_rules.compile_info ~scope exes in
-      Lib.Compile.direct_requires compile_info
+      let open Resolve.Memo.O in
+      let* requires = Lib.Compile.direct_requires compile_info in
+      if options.with_pps then
+        let+ pps = Lib.Compile.pps compile_info in
+        pps @ requires
+      else Resolve.Memo.return requires
     in
     match Resolve.peek requires with
     | Error () -> None
@@ -470,7 +478,8 @@ module Crawl = struct
     let+ libs =
       (* the executables' libraries, and the project's libraries *)
       Lib.Set.union exe_libs project_libs
-      |> Lib.Set.to_list |> Lib.descriptive_closure
+      |> Lib.Set.to_list
+      |> Lib.descriptive_closure ~with_pps:options.with_pps
       >>= Memo.parallel_map ~f:(library ~options sctx)
       >>| List.filter_opt
     in
@@ -935,6 +944,14 @@ module Options = struct
           "Whether the dependencies between modules should be printed (for the \
            $(b,workspace) command only)."
 
+  let arg_with_pps =
+    let open Arg in
+    value & flag
+    & info [ "with-pps" ]
+        ~doc:
+          "Whether the dependencies towards ppx-rewriters (that are called at \
+           compile time) should be taken into account."
+
   let arg_sanitize_for_tests =
     let open Arg in
     value & flag
@@ -946,9 +963,10 @@ module Options = struct
 
   let arg : t Term.t =
     let+ with_deps = arg_with_deps
+    and+ with_pps = arg_with_pps
     and+ sanitize_for_tests_value = arg_sanitize_for_tests in
     sanitize_for_tests := sanitize_for_tests_value;
-    { with_deps }
+    { with_deps; with_pps }
 end
 
 module Format = struct

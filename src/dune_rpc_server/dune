@@ -5,6 +5,8 @@
   fiber
   stdune
   chrome_trace
+  dyn
+  ordering
   dune_stats
   dune_util
   dune_rpc_private

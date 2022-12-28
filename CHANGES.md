@@ -1,6 +1,28 @@
 Unreleased
 ----------
 
+- Make `dune describe workspace` return consistent dependencies for
+  executables and for libraries. By default, compile-time dependencies
+  towards PPX-rewriters are from now not taken into account (but
+  runtime dependencies always are). Compile-time dependencies towards
+  PPX-rewriters can be taken into account by providing the
+  `--with-pps` flag. (#6727, fixes #6486, @esope)
+
+- Fix binary corruption when installing or promoting in parallel (#6669, fixes
+  #6668, @edwintorok)
+
+- Fix running the RPC server on windows (#6721 fixes #6720, @rgrinberg)
+
+- Use colored output with GCC and Clang when compiling C stubs. The
+  flag `-fdiagnostics-color=always` is added to the `:standard` set of
+  flags. (#4083, @MisterDA)
+
+- Fix the parsing of decimal and hexadecimal escape literals in `dune`,
+  `dune-package`, and other dune s-expression based files (#6710, @shym)
+
+- Report an error if `dune init ...` would create a "dune" file in a location
+  which already contains a "dune" directory (#6705, @gridbugs)
+
 - Fix the parsing of alerts. They will now show up in diagnostics correctly.
   (#6678, @rginberg)
 
@@ -36,8 +58,6 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
-- Add CI testing with MSVC (#6540, fixes #6535, @jonahbeckford)
-
 - Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
 
 - Fix missing dependencies when detecting the kind of C compiler we're using
@@ -50,8 +70,17 @@ Unreleased
   `copy#` and `copy_files#`. The old heuristic of looking for a module in
   parent directories is removed (#6594, @rgrinberg)
 
-- Fix inline tests with js_of_ocaml and whole program compilation mode enabled
-  (#6645, @hhugo)
+- Fix inline tests with *js_of_ocaml* and whole program compilation mode
+  enabled (#6645, @hhugo)
+
+- Fix *js_of_ocaml* separate compilation rules when `--enable=effects`
+  or `--enable=use-js-string` is used. (#6714, @hhugo)
+
+- Remove spurious build dir created when running `dune init proj ...` (#6707,
+  fixes #5429, @gridbugs)
+
+- Allow `--sandbox` to affect `ocamldep` invocations. Previously, they were
+  wrongly marked as incompatible (#6749, @rgrinberg)
 
 3.6.1 (2022-11-24)
 ------------------

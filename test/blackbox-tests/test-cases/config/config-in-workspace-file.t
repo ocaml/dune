@@ -53,7 +53,9 @@ fields:
   > EOF
 
   $ dune init project foo
+  Entering directory 'foo'
   Success: initialized project component named foo
+  Leaving directory 'foo'
 
 But if we do the build we do get an error:
 

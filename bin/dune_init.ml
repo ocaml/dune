@@ -118,6 +118,11 @@ module File = struct
     let full_path = Path.relative path name in
     let content =
       if not (Path.exists full_path) then []
+      else if Path.is_directory full_path then
+        User_error.raise
+          [ Pp.textf "\"%s\" already exists and is a directory"
+              (Path.to_absolute_filename full_path)
+          ]
       else
         match Io.with_lexbuf_from_file ~f:Dune_lang.Format.parse full_path with
         | Dune_lang.Format.Sexps content -> content
@@ -457,12 +462,9 @@ module Component = struct
       in
       lib_target @ test_target
 
-    let proj
-        ({ context; common; options } as opts : Options.Project.t Options.t) =
+    let proj ({ common; options; _ } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
-      let dir =
-        Path.relative context.dir (Dune_lang.Atom.to_string common.name)
-      in
+      let dir = Path.root in
       let name =
         Package.Name.parse_string_exn
           (Loc.none, Dune_lang.Atom.to_string common.name)

@@ -50,6 +50,8 @@ module Call : sig
     ; params : Csexp.t
     }
 
+  val to_dyn : t -> Dyn.t
+
   val create : ?params:Csexp.t -> method_:Method.Name.t -> unit -> t
 end
 

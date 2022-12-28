@@ -120,7 +120,7 @@ let plugins_code packages buf pkg sites =
       pr buf "    module %s : %s.S = %s.Make(struct let paths = Sites.%s end)"
         (String.capitalize site) plugins plugins site)
 
-let setup_rules sctx ~dir (def : Dune_file.Generate_sites_module.t) =
+let setup_rules sctx ~dir (def : Generate_sites_module_stanza.t) =
   let open Memo.O in
   let* packages = Only_packages.get () in
   let impl () =

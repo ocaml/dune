@@ -2231,32 +2231,6 @@ module Deprecated_library_name = struct
        { Library_redirect.loc; project; old_name; new_public_name })
 end
 
-module Generate_sites_module = struct
-  type t =
-    { loc : Loc.t
-    ; module_ : Module_name.t
-    ; sourceroot : bool
-    ; relocatable : bool
-    ; sites : (Loc.t * Package.Name.t) list
-    ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
-    }
-
-  let decode =
-    fields
-      (let+ loc = loc
-       and+ module_ = field "module" Module_name.decode
-       and+ sourceroot = field_b "sourceroot"
-       and+ relocatable = field_b "relocatable"
-       and+ sites =
-         field "sites" ~default:[] (repeat (located Package.Name.decode))
-       and+ plugins =
-         field "plugins" ~default:[]
-           (repeat
-              (located (pair Package.Name.decode (located Section.Site.decode))))
-       in
-       { loc; module_; sourceroot; relocatable; sites; plugins })
-end
-
 type Stanza.t +=
   | Library of Library.t
   | Foreign_library of Foreign.Library.t
@@ -2272,7 +2246,6 @@ type Stanza.t +=
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Cram of Cram_stanza.t
-  | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
 
 module Stanzas = struct
@@ -2384,8 +2357,8 @@ module Stanzas = struct
         [ Cram t ] )
     ; ( "generate_sites_module"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
-        and+ t = Generate_sites_module.decode in
-        [ Generate_sites_module t ] )
+        and+ t = Generate_sites_module_stanza.decode in
+        [ Generate_sites_module_stanza.T t ] )
     ; ( "plugin"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in

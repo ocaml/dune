@@ -450,21 +450,6 @@ module Deprecated_library_name : sig
   val old_public_name : t -> Lib_name.t
 end
 
-(** Stanza which generate a module for getting information from dune *)
-module Generate_sites_module : sig
-  type t =
-    { loc : Loc.t
-    ; module_ : Module_name.t  (** name of the module to generate *)
-    ; sourceroot : bool  (** should the sourceroot of the project be provided *)
-    ; relocatable : bool
-          (** should the fact that the installation use the relocatable mode *)
-    ; sites : (Loc.t * Package.Name.t) list
-          (** list of the sites whose location should be given *)
-    ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
-          (** list of the sites for which a plugin system must be provided *)
-    }
-end
-
 type Stanza.t +=
   | Library of Library.t
   | Foreign_library of Foreign.Library.t
@@ -480,7 +465,6 @@ type Stanza.t +=
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Cram of Cram_stanza.t
-  | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
 
 val stanza_package : Stanza.t -> Package.t option

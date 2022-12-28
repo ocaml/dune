@@ -15,7 +15,7 @@ Using flags field in melange.emit stanzas is not supported
   >  (flags -w -14-26))
   > EOF
 
-  $ dune build output/main.js
+  $ dune build @melange
   File "dune", line 5, characters 2-7:
   5 |  (flags -w -14-26))
         ^^^^^
@@ -33,12 +33,13 @@ Adds a module that contains unused var (warning 26) and illegal backlash (warnin
   > (melange.emit
   >  (target output)
   >  (entries main)
+  >  (alias melange)
   >  (module_system commonjs))
   > EOF
 
 Trying to build triggers both warnings
 
-  $ dune build output/main.js
+  $ dune build @melange
   File "main.ml", line 1, characters 9-11:
   1 | let t = "\e\n" in
                ^^
@@ -55,11 +56,12 @@ Let's ignore them using compile_flags
   > (melange.emit
   >  (target output)
   >  (entries main)
+  >  (alias melange)
   >  (module_system commonjs)
   >  (compile_flags -w -14-26))
   > EOF
 
-  $ dune build output/main.js
+  $ dune build @melange
   $ node _build/default/output/main.js
   hello
 
@@ -69,10 +71,11 @@ Can also pass flags from the env stanza. Let's go back to failing state:
   > (melange.emit
   >  (target output)
   >  (entries main)
+  >  (alias melange)
   >  (module_system commonjs))
   > EOF
 
-  $ dune build output/main.js
+  $ dune build @melange
   File "main.ml", line 1, characters 9-11:
   1 | let t = "\e\n" in
                ^^
@@ -90,11 +93,12 @@ Adding env stanza with both warnings silenced allows the build to pass successfu
   >  (_
   >   (melange.compile_flags -w -14-26)))
   > (melange.emit
+  >  (alias melange)
   >  (target output)
   >  (entries main)
   >  (module_system commonjs))
   > EOF
 
-  $ dune build output/main.js
+  $ dune build @melange
   $ node _build/default/output/main.js
   hello

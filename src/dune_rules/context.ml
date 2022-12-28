@@ -972,7 +972,7 @@ let gen_configurator_rules t =
                  ])))))
 
 let force_configurator_files =
-  Memo.lazy_ (fun () ->
+  Memo.lazy_ ~name:"force-configuration-files" (fun () ->
       let* ctxs = DB.all () in
       let files =
         List.concat_map ctxs ~f:(fun t ->

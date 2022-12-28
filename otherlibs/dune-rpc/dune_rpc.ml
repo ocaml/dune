@@ -72,9 +72,9 @@ module V1 = struct
         ?id:Id.t -> t -> 'a Sub.t -> ('a Stream.t, Version_error.t) result fiber
 
       module Batch : sig
-        type t
+        type client := t
 
-        type client
+        type t
 
         val create : client -> t
 
@@ -89,7 +89,6 @@ module V1 = struct
 
         val submit : t -> unit fiber
       end
-      with type client := t
 
       val connect :
            ?handler:Handler.t

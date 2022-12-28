@@ -18,51 +18,6 @@ type job =
   ; ivar : Proc.Process_info.t Fiber.Ivar.t
   }
 
-module Signal = struct
-  type t =
-    | Int
-    | Quit
-    | Term
-
-  let to_dyn t : Dyn.t =
-    match t with
-    | Int -> Variant ("Int", [])
-    | Quit -> Variant ("Quit", [])
-    | Term -> Variant ("Term", [])
-
-  let compare x y =
-    match (x, y) with
-    | Int, Int -> Eq
-    | Int, _ -> Lt
-    | _, Int -> Gt
-    | Quit, Quit -> Eq
-    | Quit, _ -> Lt
-    | _, Quit -> Gt
-    | Term, Term -> Eq
-
-  include Comparable.Make (struct
-    type nonrec t = t
-
-    let compare = compare
-
-    let to_dyn = to_dyn
-  end)
-
-  let all = [ Int; Quit; Term ]
-
-  let to_int = function
-    | Int -> Sys.sigint
-    | Quit -> Sys.sigquit
-    | Term -> Sys.sigterm
-
-  let of_int =
-    List.map all ~f:(fun t -> (to_int t, t))
-    |> Int.Map.of_list_reduce ~f:(fun _ t -> t)
-    |> Int.Map.find
-
-  let name t = Signal.name (to_int t)
-end
-
 module Shutdown = struct
   module Signal = Signal
 
@@ -75,6 +30,8 @@ module Shutdown = struct
   exception E of Reason.t
 end
 
+let blocked_signals : Signal.t list = [ Int; Quit; Term ]
+
 module Thread : sig
   val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> 'a) -> unit
 
@@ -86,7 +43,7 @@ end = struct
 
   let block_signals =
     lazy
-      (let signos = List.map Signal.all ~f:Signal.to_int in
+      (let signos = List.map blocked_signals ~f:Signal.to_int in
        ignore (Unix.sigprocmask SIG_BLOCK signos : int list))
 
   let create ~signal_watcher =
@@ -146,11 +103,8 @@ module Event : sig
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
-    | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
-    | Worker_task of Fiber.fill
-    | Yield of unit Fiber.Ivar.t
-    | Timer of Fiber.fill
+    | Fiber_fill_ivar of Fiber.fill
 
   module Queue : sig
     type event := t
@@ -204,11 +158,8 @@ end = struct
     | Build_inputs_changed of build_input_change Nonempty_list.t
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
-    | Job_completed of job * Proc.Process_info.t
     | Shutdown of Shutdown_reason.t
-    | Worker_task of Fiber.fill
-    | Yield of unit Fiber.Ivar.t
-    | Timer of Fiber.fill
+    | Fiber_fill_ivar of Fiber.fill
 
   module Invalidation_event = struct
     type t =
@@ -365,20 +316,20 @@ end = struct
         Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
             q.pending_jobs <- q.pending_jobs - 1;
             assert (q.pending_jobs >= 0);
-            Job_completed (job, proc_info))
+            Fiber_fill_ivar (Fill (job.ivar, proc_info)))
 
       let worker_tasks_completed q =
         Option.map (Queue.pop q.worker_tasks_completed) ~f:(fun fill ->
             q.pending_worker_tasks <- q.pending_worker_tasks - 1;
-            Worker_task fill)
+            Fiber_fill_ivar fill)
 
       let yield q =
         Option.map q.yield ~f:(fun ivar ->
             q.yield <- None;
-            Yield ivar)
+            Fiber_fill_ivar (Fill (ivar, ())))
 
       let timers q =
-        Option.map (Queue.pop q.timers) ~f:(fun timer -> Timer timer)
+        Option.map (Queue.pop q.timers) ~f:(fun timer -> Fiber_fill_ivar timer)
 
       let chain list q = List.find_map list ~f:(fun f -> f q)
     end
@@ -625,7 +576,7 @@ end
 module Signal_watcher : sig
   val init : Event.Queue.t -> unit
 end = struct
-  let signos = List.map Signal.all ~f:Signal.to_int
+  let signos = List.map blocked_signals ~f:Signal.to_int
 
   let warning =
     {|
@@ -647,9 +598,7 @@ end = struct
       Staged.stage (fun () ->
           assert (Unix.read r buf 0 1 = 1);
           Signal.Int))
-    else
-      Staged.stage (fun () ->
-          Thread.wait_signal signos |> Signal.of_int |> Option.value_exn)
+    else Staged.stage (fun () -> Thread.wait_signal signos |> Signal.of_int)
 
   let run q =
     let last_exit_signals = Queue.create () in
@@ -671,6 +620,7 @@ end = struct
         let n = Queue.length last_exit_signals in
         if n = 2 then prerr_endline warning;
         if n = 3 then sys_exit 1
+      | _ -> (* we only blocked the signals above *) assert false
     done
 
   let init q = Thread.spawn ~signal_watcher:`Yes (fun () -> run q)
@@ -858,11 +808,6 @@ let stats () =
 
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
-let yield_if_there_are_pending_events () =
-  t_opt () >>= function
-  | None -> Fiber.return ()
-  | Some t -> Event.Queue.yield_if_there_are_pending_events t.events
-
 exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
@@ -1007,7 +952,6 @@ end = struct
   let rec iter (t : t) : Fiber.fill Nonempty_list.t =
     t.handler t.config Tick;
     match Event.Queue.next t.events with
-    | Job_completed (job, proc_info) -> [ Fill (job.ivar, proc_info) ]
     | File_watcher_task job ->
       let events = job () in
       Event.Queue.send_file_watcher_events t.events events;
@@ -1019,11 +963,10 @@ end = struct
         Dune_file_watcher.Sync_id.Table.remove t.fs_syncs id;
         [ Fill (ivar, ()) ])
     | Build_inputs_changed events -> build_input_change t events
-    | Timer fill | Worker_task fill -> [ fill ]
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
-    | Yield ivar -> [ Fill (ivar, ()) ]
+    | Fiber_fill_ivar fill -> [ fill ]
     | Shutdown signal ->
       got_signal signal;
       raise

@@ -65,6 +65,8 @@ let command ~command_line ~output ~exit_status =
     (match (exit_status : Unix.process_status) with
     | WEXITED 0 -> ()
     | WEXITED n -> Printf.fprintf oc "[%d]\n" n
-    | WSIGNALED n -> Printf.fprintf oc "[got signal %s]\n" (Signal.name n)
+    | WSIGNALED n ->
+      let name = Signal.of_int n |> Signal.name in
+      Printf.fprintf oc "[got signal %s]\n" name
     | WSTOPPED _ -> assert false);
     flush oc

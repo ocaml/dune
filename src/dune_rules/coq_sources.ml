@@ -71,7 +71,13 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
       in
       let rev_map =
         List.fold_left modules ~init:acc.rev_map ~f:(fun acc m ->
-            Coq_module.Map.add_exn acc m (`Theory coq))
+            Coq_module.Map.add acc m (`Theory coq) |> function
+            | Ok acc -> acc
+            | Error _ ->
+              User_error.raise ~loc:coq.buildable.loc
+                [ Pp.textf "Duplicate Coq module %S."
+                    (Coq_module.name m |> Coq_module.Name.to_string)
+                ])
       in
       { acc with directories; libraries; rev_map }
     | Extraction.T extr ->

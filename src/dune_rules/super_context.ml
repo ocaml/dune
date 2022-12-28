@@ -7,16 +7,23 @@ let default_context_flags (ctx : Context.t) ~project =
   in
   let c, cxx =
     match Dune_project.use_standard_c_and_cxx_flags project with
-    | None | Some false ->
-      (Action_builder.return cflags, Action_builder.return cxxflags)
+    | None | Some false -> Action_builder.(return cflags, return cxxflags)
     | Some true ->
-      let c = cflags @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config in
-      let cxx =
-        let open Action_builder.O in
-        let+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
-        db_flags @ cxxflags
+      let open Action_builder.O in
+      let c =
+        let+ cc = Cxx_flags.ccomp_type ctx in
+        let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
+        cflags
+        @ Ocaml_config.ocamlc_cppflags ctx.ocaml_config
+        @ fdiagnostics_color
       in
-      (Action_builder.return c, cxx)
+      let cxx =
+        let+ cc = Cxx_flags.ccomp_type ctx
+        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
+        let fdiagnostics_color = Cxx_flags.fdiagnostics_color cc in
+        db_flags @ cxxflags @ fdiagnostics_color
+      in
+      (c, cxx)
   in
   Foreign_language.Dict.make ~c ~cxx
 

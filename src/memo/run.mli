@@ -10,7 +10,7 @@ open Stdune
 
     Upon [restart], all previously created [Run.t] values stop being current, so
     the subsequent calls of [is_current] on these values will return [false]. *)
-type t
+type t [@@immediate]
 
 val to_dyn : t -> Dyn.t
 

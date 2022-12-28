@@ -293,8 +293,6 @@ val extract_build_context : t -> (string * Source.t) option
 
 val extract_build_context_exn : t -> string * Source.t
 
-val extract_build_dir_first_component : t -> (string * Local.t) option
-
 (** Same as [extract_build_context] but return the build context as a path:
 
     {[

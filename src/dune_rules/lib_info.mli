@@ -134,8 +134,6 @@ val synopsis : _ t -> string option
 
 val jsoo_runtime : 'path t -> 'path list
 
-val jsoo_archive : 'path t -> 'path option
-
 val obj_dir : 'path t -> 'path Obj_dir.t
 
 val virtual_ : _ t -> Modules.t Source.t option
@@ -228,7 +226,6 @@ val create :
   -> native_archives:'a native_archives
   -> foreign_dll_files:'a list
   -> jsoo_runtime:'a list
-  -> jsoo_archive:'a option
   -> preprocess:Preprocess.With_instrumentation.t Preprocess.Per_module.t
   -> enabled:Enabled_status.t
   -> virtual_deps:(Loc.t * Lib_name.t) list

@@ -180,13 +180,16 @@ end
 
 val closure : t list -> linking:bool -> t list Resolve.Memo.t
 
-(** [descriptive_closure libs] computes the smallest set of libraries that
-    contains the libraries in the list [libs], and that is transitively closed.
-    The output list is guaranteed to have no duplicates and to be sorted. The
-    difference with [closure libs] is that the latter may raise an error when
-    overlapping implementations of virtual libraries are detected.
+(** [descriptive_closure ~with_pps libs] computes the smallest set of libraries
+    that contains the libraries in the list [libs], and that is transitively
+    closed. If [with_pps = true], then the dependencies towards ppx-rewriters
+    are also taken into account (note that runtime dependendies of ppx-rewriters
+    are always taken into account, regardless of the value of the flag
+    [with_pps]). The output list is guaranteed to have no duplicates and to be
+    sorted. The difference with [closure libs] is that the latter may raise an
+    error when overlapping implementations of virtual libraries are detected.
     [descriptive_closure libs] makes no such check. *)
-val descriptive_closure : t list -> t list Memo.t
+val descriptive_closure : t list -> with_pps:bool -> t list Memo.t
 
 (** {1 Sub-systems} *)
 

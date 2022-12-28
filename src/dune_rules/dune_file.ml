@@ -455,7 +455,7 @@ module Mode_conf = struct
         ; ("native", return @@ Ocaml Native)
         ; ("best", return @@ Ocaml Best)
         ; ( "melange"
-          , Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
+          , Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
             >>> return Melange )
         ]
 
@@ -920,13 +920,6 @@ module Library = struct
     in
     let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
     let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
-    let jsoo_archive =
-      (* XXX we shouldn't access the directory of the obj_dir directly. We
-         should use something like [Obj_dir.Archive.obj] instead *)
-      if modes.ocaml.byte then
-        Some (archive ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
-      else None
-    in
     let virtual_ =
       Option.map conf.virtual_modules ~f:(fun _ -> Lib_info.Source.Local)
     in
@@ -987,9 +980,9 @@ module Library = struct
       ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems
       ~requires ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
       ~foreign_archives ~native_archives ~foreign_dll_files ~jsoo_runtime
-      ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_
-      ~entry_modules ~implements ~default_implementation ~modes ~modules:Local
-      ~wrapped ~special_builtin_support ~exit_module ~instrumentation_backend
+      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~entry_modules
+      ~implements ~default_implementation ~modes ~modules:Local ~wrapped
+      ~special_builtin_support ~exit_module ~instrumentation_backend
 end
 
 module Plugin = struct
@@ -1449,7 +1442,7 @@ module Executables = struct
         | Byte, Shared_object -> ".bc" ^ ext_dll
         | Native, Shared_object -> ext_dll
         | mode, Plugin -> Mode.plugin_ext mode
-        | Byte, Js -> ".bc.js"
+        | Byte, Js -> Js_of_ocaml.Ext.exe
         | Native, Js ->
           User_error.raise ~loc
             [ Pp.text "Javascript generation only supports bytecode!" ])
@@ -2281,7 +2274,6 @@ type Stanza.t +=
   | Cram of Cram_stanza.t
   | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
-  | Melange_emit of Melange_stanzas.Emit.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2398,10 +2390,6 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in
         [ Plugin t ] )
-    ; ( "melange.emit"
-      , let+ () = Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
-        and+ t = Melange_stanzas.Emit.decode in
-        [ Melange_emit t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas

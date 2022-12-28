@@ -260,7 +260,7 @@ module Server = struct
     let create fd sockaddr ~backlog =
       Unix.listen fd backlog;
       let r_interrupt_accept, w_interrupt_accept = Unix.pipe ~cloexec:true () in
-      Unix.set_nonblock r_interrupt_accept;
+      if not Sys.win32 then Unix.set_nonblock r_interrupt_accept;
       let buf = Bytes.make 1 '0' in
       { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
 

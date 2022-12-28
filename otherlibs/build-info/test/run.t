@@ -132,7 +132,7 @@ craft an example with a single placeholder to make the output stable:
   $ dune build d/d.install
   $ dune install d --prefix _install --debug-artifact-substitution 2>&1|grep -v '^\(Installing\|Deleting\)'
   Found placeholder in _build/install/default/bin/d:
-  - placeholder: Vcs_describe "d"
+  - placeholder: Vcs_describe In_source_tree "d"
   - evaluates to: "1.0+d"
 
 Test substitution when promoting

@@ -214,7 +214,7 @@ let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
 module Exit_status = struct
   type error =
     | Failed of int
-    | Signaled of string
+    | Signaled of Signal.t
 
   type t = (int, error) result
 end
@@ -381,7 +381,7 @@ end = struct
     let open Pp.O in
     let msg =
       match error with
-      | Signaled signame -> sprintf "(got signal %s)" signame
+      | Signaled signame -> sprintf "(got signal %s)" (Signal.name signame)
       | Failed n -> (
         let unexpected_outputs =
           List.filter_map
@@ -511,7 +511,7 @@ end = struct
       let msg =
         match err with
         | Failed n -> sprintf "exited with code %d" n
-        | Signaled signame -> sprintf "got signal %s" signame
+        | Signaled signame -> sprintf "got signal %s" (Signal.name signame)
       in
       let loc, annots = get_loc_and_annots ~dir ~metadata ~output in
       fail ~loc ~annots
@@ -572,7 +572,7 @@ end = struct
               match error with
               | Failed n -> [ Pp.textf "Command exited with code %d." n ]
               | Signaled signame ->
-                [ Pp.textf "Command got signal %s." signame ]))
+                [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
       fail ~loc ~annots paragraphs
 end
@@ -767,7 +767,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
                && (not has_unexpected_stderr)
                && ok_codes n -> Ok n
         | WEXITED n -> Error (Failed n)
-        | WSIGNALED n -> Error (Signaled (Signal.name n))
+        | WSIGNALED n -> Error (Signaled (Signal.of_int n))
         | WSTOPPED _ -> assert false
       in
       let success = Result.is_ok exit_status' in

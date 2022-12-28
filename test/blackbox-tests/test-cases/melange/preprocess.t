@@ -9,6 +9,7 @@ Test (preprocess) field on melange.emit stanza
   > (melange.emit
   >  (target output)
   >  (entries main)
+  >  (alias melange)
   >  (module_system commonjs)
   >  (preprocess
   >   (action
@@ -20,6 +21,6 @@ Test (preprocess) field on melange.emit stanza
   >   print_endline "hello"
   > EOF
 
-  $ dune build output/main.js
+  $ dune build @melange
   $ node _build/default/output/main.js
   hello

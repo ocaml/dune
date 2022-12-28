@@ -30,8 +30,6 @@ module Session : sig
   (** [get session a] sets the current state to [a].*)
   val set : 'a t -> 'a -> unit
 
-  val active : _ t -> bool
-
   (** [notification session n a] Send notification [a] defined by [n] to
       [session] *)
   val notification : _ t -> 'a Decl.Notification.witness -> 'a -> unit Fiber.t
@@ -43,6 +41,8 @@ module Session : sig
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 
   val has_poller : _ t -> Poller.t -> bool
+
+  val closed : _ t -> unit Fiber.t
 
   (** A ['a Session.Stage1.t] represents a session prior to version negotiation.
 
@@ -57,8 +57,6 @@ module Session : sig
     val get : 'a t -> 'a
 
     val set : 'a t -> 'a -> unit
-
-    val active : _ t -> bool
 
     val compare : 'a t -> 'a t -> Ordering.t
 

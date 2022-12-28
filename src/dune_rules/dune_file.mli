@@ -482,7 +482,6 @@ type Stanza.t +=
   | Cram of Cram_stanza.t
   | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
-  | Melange_emit of Melange_stanzas.Emit.t
 
 val stanza_package : Stanza.t -> Package.t option
 

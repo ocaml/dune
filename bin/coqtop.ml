@@ -97,34 +97,34 @@ let term =
           let stanza =
             Dune_rules.Coq_sources.lookup_module coq_src coq_module
           in
-          let* args, boot_type =
+          let args, use_stdlib, wrapper_name =
             match stanza with
             | None ->
               User_error.raise
                 [ Pp.textf "file not part of any stanza: %s" coq_file_arg ]
             | Some (`Theory theory) ->
-              Dune_rules.Coq_rules.coqtop_args_theory ~sctx ~dir
-                ~dir_contents:dc theory coq_module
+              ( Dune_rules.Coq_rules.coqtop_args_theory ~sctx ~dir
+                  ~dir_contents:dc theory coq_module
+              , theory.buildable.use_stdlib
+              , Dune_rules.Coq_lib_name.wrapper (snd theory.name) )
             | Some (`Extraction extr) ->
-              Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir
-                ~dir_contents:dc extr
+              ( Dune_rules.Coq_rules.coqtop_args_extraction ~sctx ~dir extr
+                  coq_module
+              , extr.buildable.use_stdlib
+              , "DuneExtraction" )
           in
           let* (_ : unit * Dep.Fact.t Dep.Map.t) =
             let deps =
-              let boot_type = Resolve.Memo.return boot_type in
-              Dune_rules.Coq_rules.deps_of ~dir ~boot_type coq_module
+              Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name
+                coq_module
             in
             Action_builder.run deps Eager
           in
           let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
-            let args =
+            let* args =
               let dir = Path.external_ Path.External.initial_cwd in
-              let args =
-                Action_builder.map
-                  ~f:(fun x -> Dune_rules.Command.Args.S x)
-                  args
-              in
-              Dune_rules.Command.expand ~dir (Dyn args)
+              let+ args = args in
+              Dune_rules.Command.expand ~dir (S args)
             in
             Action_builder.run args.build Eager
           in

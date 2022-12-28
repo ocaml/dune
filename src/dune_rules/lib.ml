@@ -1604,7 +1604,7 @@ let closure l ~linking =
     Resolve_names.compile_closure_with_overlap_checks None l
       ~forbidden_libraries
 
-let descriptive_closure (l : lib list) : lib list Memo.t =
+let descriptive_closure (l : lib list) ~with_pps : lib list Memo.t =
   (* [add_work todo l] adds the libraries in [l] to the list [todo],
      that contains the libraries to handle next *)
   let open Memo.O in
@@ -1628,7 +1628,9 @@ let descriptive_closure (l : lib list) : lib list Memo.t =
       else
         let todo = add_work todo libs
         and acc = Set.add acc lib in
-        let* todo = register_work todo lib.pps in
+        let* todo =
+          if with_pps then register_work todo lib.pps else Memo.return todo
+        in
         let* todo = register_work todo lib.ppx_runtime_deps in
         let* todo = register_work todo lib.requires in
         work todo acc

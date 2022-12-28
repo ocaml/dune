@@ -28,6 +28,13 @@ module Shutdown = struct
   end
 
   exception E of Reason.t
+
+  let () =
+    Printexc.register_printer (function
+      | E Requested -> Some "shutdown: requested"
+      | E (Signal s) ->
+        Some (sprintf "shutdown: signal %s received" (Signal.name s))
+      | _ -> None)
 end
 
 let blocked_signals : Signal.t list = [ Int; Quit; Term ]

@@ -60,6 +60,8 @@ module Version_error : sig
 
   val message : t -> string
 
+  val to_dyn : t -> Dyn.t
+
   exception E of t
 end
 

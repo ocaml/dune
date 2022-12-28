@@ -4,6 +4,30 @@ open Fiber.O
 
 module Session_id = Stdune.Id.Make ()
 
+type error =
+  { message : User_message.t
+  ; details : (string * Dyn.t) list
+  }
+
+exception Invalid_session of error
+
+let () =
+  Printexc.register_printer (function
+    | Invalid_session { message; details } ->
+      let message =
+        let paragraphs =
+          message.paragraphs
+          @ [ Pp.text "details:"; Dyn.pp (Dyn.record details) ]
+        in
+        { message with paragraphs }
+      in
+      Some (User_message.to_string message)
+    | _ -> None)
+
+let raise_invalid_session message details =
+  let message = User_message.make [ Pp.text message ] in
+  raise (Invalid_session { message; details })
+
 module Poller = struct
   module Id = Stdune.Id.Make ()
 
@@ -570,15 +594,15 @@ let new_session (Server handler) stats ~queries ~send =
           Fiber.Pool.stop session.pool)
   end
 
-exception Invalid_session of Conv.error
-
 let create_sequence f ~version conv =
   let read () =
     let+ read = f () in
     Option.map read ~f:(fun sexp ->
         match Conv.of_sexp conv ~version sexp with
-        | Error e -> raise (Invalid_session e)
-        | Ok message -> message)
+        | Ok message -> message
+        | Error error ->
+          raise_invalid_session "unexpected csexp"
+            [ ("error", Conv.dyn_of_error error) ])
   in
   Fiber.Stream.In.create read
 

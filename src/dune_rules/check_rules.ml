@@ -11,10 +11,15 @@ let dev_files =
       let ext = Filename.extension p in
       List.mem exts ext ~equal:String.equal)
 
-let add_obj_dir sctx ~obj_dir =
+let add_obj_dir sctx ~obj_dir mode =
   if (Super_context.context sctx).merlin then
     let dir_glob =
-      let dir = Path.build (Obj_dir.byte_dir obj_dir) in
+      let dir =
+        Path.build
+          (match mode with
+          | `Melange -> Obj_dir.melange_dir obj_dir
+          | `Bytecode -> Obj_dir.byte_dir obj_dir)
+      in
       File_selector.create ~dir dev_files
     in
     Rules.Produce.Alias.add_deps

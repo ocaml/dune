@@ -81,3 +81,9 @@ jobs:
           output-file-path: pupilfirst/melange-benchmark-result.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
+          alert-threshold: "5%"
+          fail-on-alert: true
+          # Enable alert commit comment
+          comment-on-alert: true
+          # Mention @jchavarri in the commit comment
+          alert-comment-cc-users: '@jchavarri'

@@ -205,10 +205,22 @@ module Module = struct
   let term =
     let+ common = Common.term
     and+ module_path =
-      Arg.(value & pos 0 string "" & Arg.info [] ~docv:"MODULE")
+      Arg.(value & pos 0 string "__No_module" & Arg.info [] ~docv:"MODULE")
     and+ ctx_name =
       Common.context_arg ~doc:{|Select context where to build/run utop.|}
     in
+    let module_path =
+      match module_path with
+      | "__No_module" -> User_error.raise [ Pp.text "No .ml file provided." ]
+      | s ->
+        if Filename.check_suffix s ".ml" then s
+        else
+          User_error.raise
+            [ Pp.textf "Invalid file name: %s." s
+            ; Pp.text "Only .ml files may be given to dune ocaml top-module."
+            ]
+    in
+    Printf.printf "module_path: %s\n" module_path;
     let config = Common.init common in
     Scheduler.go ~common ~config (fun () ->
         let open Fiber.O in

@@ -21,19 +21,19 @@ name="${3}"
 
 hyperfine "${command}" \
     --show-output \
-    --warmup 1 \
+    --warmup 2 \
     --runs 3 \
-    --prepare "${clean_command}"
+    --prepare "${clean_command}" \
     --export-json bench.json \
     > /dev/null
 
-mean_time=$(cat bench.json | jq '.results[0].mean * 1000 | tostring')
+mean_time=$(cat bench.json | jq '.results[0].mean | tostring')
 
 cat<<EOF
 [
     {
         "name": "${name}",
-        "unit": "millisecond",
+        "unit": "seconds",
         "value": ${mean_time}
     }
 ]

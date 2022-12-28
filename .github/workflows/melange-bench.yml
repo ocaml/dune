@@ -56,11 +56,21 @@ jobs:
 
       - name: Install all deps
         working-directory: pupilfirst
-        run: make install
+        run: |
+          yarn install
+          opam install -y reason
+          opam pin add -y graphql_ppx https://github.com/jchavarri/graphql-ppx.git\#2598910886f1d2d3869406ae7eb787341d8dce6b
+          opam pin add -y melange https://github.com/melange-re/melange.git\#2dec6b553c36027b6550ee323f264f7d4662d966
+          rm -rf node_modules/melange && ln -sfn $(opam var melange:lib)/runtime node_modules/melange
 
       - name: Run pupilfirst benchmark
+        working-directory: pupilfirst
+        run: ../bench/gen-melange-benchmark.sh 'opam exec -- ../_boot/dune.exe build --root=. @main' 'opam exec -- ../_boot/dune.exe clean --root=.' 'pupilfirst build time (${{ runner.os }})' > melange-benchmark-result.json
+
+      - name: Print pupilfirst benchmark results
+        working-directory: pupilfirst
         run: |
-          ./ci/gen-melange-benchmark.sh 'make build' 'make clean' 'pupilfirst build time (${{ runner.os }})' > melange-benchmark-result.json
+          cat bench.json
           cat melange-benchmark-result.json
 
       - name: Store melange benchmark result
@@ -68,6 +78,6 @@ jobs:
         with:
           name: Melange Benchmark
           tool: "customSmallerIsBetter"
-          output-file-path: melange-benchmark-result.json
+          output-file-path: pupilfirst/melange-benchmark-result.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true

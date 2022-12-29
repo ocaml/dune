@@ -132,23 +132,15 @@ end)
 module Session_set = Session_comparable.Set
 
 module Clients = struct
-  type entry =
-    { session : Client.t Session.Stage1.t
-    ; mutable menu : Dune_rpc.Menu.t option
-    }
+  type entry = { session : Client.t Session.Stage1.t }
 
   type t = entry Session.Id.Map.t
-
-  let set_menu t id menu =
-    match Session.Id.Map.find t id with
-    | None -> ()
-    | Some entry -> entry.menu <- Some menu
 
   let empty = Session.Id.Map.empty
 
   let add_session t (session : _ Session.Stage1.t) =
     let id = Session.Stage1.id session in
-    let result = { menu = None; session } in
+    let result = { session } in
     Session.Id.Map.add_exn t id result
 
   let remove_session t (session : _ Session.t) =
@@ -233,18 +225,13 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
     t.clients <- Clients.add_session t.clients session;
     Fiber.return client
   in
-  let on_upgrade session menu =
-    let+ () = Fiber.return () in
-    let t = Fdecl.get t in
-    Clients.set_menu t.clients (Session.id session) menu
-  in
   let on_terminate session =
     let t = Fdecl.get t in
     t.clients <- Clients.remove_session t.clients session;
     Fiber.return ()
   in
   let rpc =
-    Handler.create ~on_terminate ~on_init ~on_upgrade
+    Handler.create ~on_terminate ~on_init
       ~version:Dune_rpc_private.Version.latest ()
   in
   let () =
@@ -349,7 +336,7 @@ let handler (t : t Fdecl.t) : 'a Dune_rpc_server.Handler.t =
       let clients =
         Clients.to_list_map t.clients ~f:(fun _id (entry : Clients.entry) ->
             ( Initialize.Request.id (Session.Stage1.initialize entry.session)
-            , match entry.menu with
+            , match Session.Stage1.menu entry.session with
               | None -> Status.Menu.Uninitialized
               | Some menu -> Menu (Dune_rpc.Menu.to_list menu) ))
       in

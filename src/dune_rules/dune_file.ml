@@ -667,7 +667,7 @@ module Library = struct
            >>> located Stanza_common.Pkg.decode)
        and+ melange_runtime_deps =
          field_o "melange.runtime_deps"
-           (Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
+           (Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
            >>> located String_with_vars.decode)
        in
        let wrapped =

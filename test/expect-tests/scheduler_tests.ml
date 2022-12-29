@@ -98,8 +98,13 @@ let%expect_test "empty invalidation wakes up waiter" =
     awaiting invalidation
     awaited invalidation |}];
   test `Ignore;
-  [%expect {|
-    awaiting invalidation |}]
+  [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+  ("shutdown: timeout")
+  Trailing output
+  ---------------
+  awaiting invalidation |}]
 
 let%expect_test "raise inside Scheduler.Run.go" =
   (try

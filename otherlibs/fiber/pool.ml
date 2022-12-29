@@ -45,9 +45,13 @@ let task t ~f k =
 let stop t k =
   match t.status with
   | Closed -> k ()
-  | Open ->
+  | Open -> (
     t.status <- Closed;
-    write t Done k
+    match t.reader with
+    | None -> k ()
+    | Some r ->
+      t.reader <- None;
+      resume r Done (fun () -> k ()))
 
 let run t k =
   let n = ref 1 in

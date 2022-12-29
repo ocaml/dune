@@ -49,34 +49,35 @@ let stop t k =
     t.status <- Closed;
     write t Done k
 
-let read t k =
-  match t.value with
-  | None ->
-    suspend
-      (fun k ->
-        assert (t.reader = None);
-        t.reader <- Some k)
-      k
-  | Some v -> (
-    match Queue.pop t.writers with
-    | None ->
-      t.value <- None;
-      k v
-    | Some (v', w) ->
-      t.value <- Some v';
-      resume w () (fun () -> k v))
-
 let run t k =
   let n = ref 1 in
-  let k () =
+  let done_fiber () =
     decr n;
     if !n = 0 then k () else end_of_fiber
   in
-  let rec loop t =
-    read t (function
-      | Done -> k ()
-      | Task x ->
-        incr n;
-        fork (fun () -> x () k) (fun () -> loop t))
+  let rec read t =
+    match t.value with
+    | None -> on_finish t
+    | Some v -> (
+      match Queue.pop t.writers with
+      | None ->
+        t.value <- None;
+        on_read v
+      | Some (v', w) ->
+        t.value <- Some v';
+        resume w () (fun () -> on_read v))
+  and suspend_k k =
+    assert (t.reader = None);
+    t.reader <- Some k
+  and on_finish t =
+    match t.status with
+    | Closed -> done_fiber ()
+    | Open -> suspend suspend_k on_read
+  and read_delayed () = read t
+  and on_read = function
+    | Done -> done_fiber ()
+    | Task x ->
+      incr n;
+      fork (fun () -> x () done_fiber) read_delayed
   in
-  loop t
+  read t

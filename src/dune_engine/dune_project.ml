@@ -345,12 +345,6 @@ end
 
 module Melange_syntax = struct
   let name = "melange"
-
-  let t =
-    Dune_lang.Syntax.create ~name ~desc:"support for Melange compiler"
-      [ ((0, 1), `Since (3, 6)) ]
-
-  let () = Extension.register_simple t (return [])
 end
 
 let explicit_extensions_map explicit_extensions =

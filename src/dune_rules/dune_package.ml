@@ -180,7 +180,6 @@ module Lib = struct
          let version = None in
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
-         let jsoo_archive = None in
          let preprocess = Preprocess.Per_module.no_preprocessing () in
          let virtual_deps = [] in
          let dune_version = None in
@@ -198,10 +197,10 @@ module Lib = struct
            ~sub_systems ~requires ~foreign_objects ~plugins ~archives
            ~ppx_runtime_deps ~foreign_archives
            ~native_archives:(Files native_archives) ~foreign_dll_files:[]
-           ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
-           ~dune_version ~virtual_ ~entry_modules ~implements
-           ~default_implementation ~modes ~modules ~wrapped
-           ~special_builtin_support ~exit_module:None ~instrumentation_backend
+           ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
+           ~virtual_ ~entry_modules ~implements ~default_implementation ~modes
+           ~modules ~wrapped ~special_builtin_support ~exit_module:None
+           ~instrumentation_backend
        in
        { info; main_module_name })
 

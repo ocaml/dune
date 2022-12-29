@@ -346,46 +346,47 @@ module Persistent = struct
 end
 
 module Packet = struct
-  module Query = struct
-    type t =
-      | Request of Request.t
-      | Notification of Call.t
+  type t =
+    | Request of Request.t
+    | Response of (Id.t * Response.t)
+    | Notification of Call.t
 
-    let sexp =
-      let open Conv in
-      let to_ (id, payload) =
-        match id with
-        | None -> Notification payload
-        | Some id -> Request (id, payload)
-      in
-      let from = function
-        | Request (id, payload) -> (Some id, payload)
-        | Notification payload -> (None, payload)
-      in
-      record
-        (iso
-           (let id = Id.optional_field in
-            both id Call.fields)
-           to_ from)
-  end
-
-  module Reply = struct
-    type t =
-      | Response of (Id.t * Response.t)
-      | Notification of Call.t
-
-    let sexp =
-      let f = function
-        | Either.Left (id, resp) -> Response (id, resp)
-        | Right y -> Notification y
-      in
-      let t = function
-        | Response (id, resp) -> Either.Left (id, resp)
-        | Notification r -> Right r
-      in
-      let open Conv in
-      record (iso (either Response.fields Call.fields) f t)
-  end
+  let sexp =
+    let open Conv in
+    let to_ (id, result, call) =
+      match (id, result, call) with
+      | Some id, None, Some call -> Request (id, call)
+      | None, None, Some call -> Notification call
+      | Some id, Some result, None -> Response (id, result)
+      | _, _, _ ->
+        Conv.error (Parse_error { message = "invalid packet"; payload = [] })
+    in
+    let from = function
+      | Request (id, payload) -> (Some id, None, Some payload)
+      | Response (id, response) -> (Some id, Some response, None)
+      | Notification call -> (None, None, Some call)
+    in
+    record
+    @@ iso
+         (let id = Id.optional_field in
+          let result = field "result" (optional Response.result) in
+          let method_ = field "method" (optional Method.Name.sexp) in
+          let params = field "params" (optional sexp) in
+          let call =
+            iso (both method_ params)
+              (fun (method_, params) ->
+                match (method_, params) with
+                | Some method_, Some params -> Some { Call.method_; params }
+                | None, None -> None
+                | Some _, None | None, Some _ ->
+                  Conv.error
+                    (Parse_error { message = "invalid call"; payload = [] }))
+              (function
+                | Some { Call.method_; params } -> (Some method_, Some params)
+                | None -> (None, None))
+          in
+          three id result call)
+         to_ from
 end
 
 module Decl = struct

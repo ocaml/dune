@@ -6,7 +6,6 @@
   dyn
   dune_util
   csexp
-  dune_engine
   fiber
   (re_export unix))
  (foreign_stubs

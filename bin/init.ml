@@ -80,12 +80,13 @@ let common : Component.Options.Common.t Term.t =
   in
   { Component.Options.Common.name; libraries; pps }
 
-let context : Init_context.t Term.t =
+let path =
+  let docv = "PATH" in
+  Arg.(value & pos 1 (some string) None & info [] ~docv)
+
+let context_cwd : Init_context.t Term.t =
   let+ common_term = Common.term_with_default_root_is_cwd
-  and+ path =
-    let docv = "PATH" in
-    Arg.(value & pos 1 (some string) None & info [] ~docv)
-  in
+  and+ path = path in
   let config = Common.init common_term in
   Scheduler.go ~common:common_term ~config (fun () ->
       Memo.run (Init_context.make path))
@@ -116,7 +117,7 @@ let executable =
   let man = [] in
   let kind = "executable" in
   Cmd.v (Cmd.info kind ~doc ~man)
-  @@ let+ context = context
+  @@ let+ context = context_cwd
      and+ common = common
      and+ public = public in
      Component.init (Executable { context; common; options = { public } });
@@ -127,7 +128,7 @@ let library =
   let man = [] in
   let kind = "library" in
   Cmd.v (Cmd.info kind ~doc ~man)
-  @@ let+ context = context
+  @@ let+ context = context_cwd
      and+ common = common
      and+ public = public
      and+ inline_tests = inline_tests in
@@ -143,13 +144,13 @@ let test =
   let man = [] in
   let kind = "test" in
   Cmd.v (Cmd.info kind ~doc ~man)
-  @@ let+ context = context
+  @@ let+ context = context_cwd
      and+ common = common in
      Component.init (Test { context; common; options = () });
      print_completion kind common.name
 
 let project =
-  let open Component.Options in
+  let module Builder = Common.Builder in
   let doc =
     "A project is a predefined composition of components arranged in a \
      standard directory structure. The kind of project initialized is \
@@ -159,7 +160,8 @@ let project =
   in
   let man = [] in
   Cmd.v (Cmd.info "project" ~doc ~man)
-  @@ let+ context = context
+  @@ let+ common_builder = Builder.term
+     and+ path = path
      and+ common = common
      and+ inline_tests = inline_tests
      and+ template =
@@ -169,10 +171,10 @@ let project =
           $(b,e[xecutable]) or $(b,l[ibrary]). Defaults to $(b,executable). \
           Only applicable for $(b,project) components."
        in
-       opt_default ~default:Project.Template.Exec
+       opt_default ~default:Component.Options.Project.Template.Exec
          Arg.(
            value
-           & opt (some (enum Project.Template.commands)) None
+           & opt (some (enum Component.Options.Project.Template.commands)) None
            & info [ "kind" ] ~docv ~doc)
      and+ pkg =
        let docv = "PACKAGE_MANAGER" in
@@ -181,11 +183,24 @@ let project =
           $(b,e[sy]). Defaults to $(b,opam). Only applicable for $(b,project) \
           components."
        in
-       opt_default ~default:Project.Pkg.Opam
+       opt_default ~default:Component.Options.Project.Pkg.Opam
          Arg.(
            value
-           & opt (some (enum Project.Pkg.commands)) None
+           & opt (some (enum Component.Options.Project.Pkg.commands)) None
            & info [ "pkg" ] ~docv ~doc)
+     in
+     let context =
+       let init_context = Init_context.make path in
+       let name = Dune_lang.Atom.to_string common.name in
+       let root =
+         match path with
+         | None -> name
+         | Some path -> Filename.concat path name
+       in
+       let common = Builder.set_root common_builder root |> Common.build in
+       let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p root in
+       let config = Common.init common in
+       Scheduler.go ~common ~config (fun () -> Memo.run init_context)
      in
      Component.init
        (Project { context; common; options = { template; inline_tests; pkg } });

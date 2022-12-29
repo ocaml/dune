@@ -400,7 +400,14 @@ File "foo.ml", line 8, characters 9-12:
 Alert deprecated: A.f
 foo
   |};
-  [%expect {||}];
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "foo.ml"; line = Single 8; chars = Some (9, 12) }
+    ; message = "foo"
+    ; related = []
+    ; severity = Alert { name = "deprecated"; source = "A.f" }
+    } |}];
   test_error
     {|
 File "foo.ml", line 8, characters 9-12:
@@ -409,4 +416,70 @@ File "foo.ml", line 8, characters 9-12:
 Alert foobar: A.f
 blah
 |};
-  [%expect {||}]
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "foo.ml"; line = Single 8; chars = Some (9, 12) }
+    ; message = "blah"
+    ; related = []
+    ; severity = Alert { name = "foobar"; source = "A.f" }
+    } |}]
+
+let%expect_test "multiple errors in one file" =
+  test_error
+    {|
+File "foo.ml", line 8, characters 8-11:
+8 | let f = A.f
+            ^^^
+Alert deprecated: A.f
+foo
+File "foo.ml", line 9, characters 8-11:
+9 | let g = A.f
+            ^^^
+Alert deprecated: A.f
+foo
+File "foo.ml", line 10, characters 8-11:
+10 | let h = A.f
+             ^^^
+Alert deprecated: A.f
+foo
+|};
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "foo.ml"; line = Single 8; chars = Some (8, 11) }
+    ; message = "foo"
+    ; related = []
+    ; severity = Alert { name = "deprecated"; source = "A.f" }
+    }
+    >> error 1
+    { loc = { path = "foo.ml"; line = Single 9; chars = Some (8, 11) }
+    ; message = "foo"
+    ; related = []
+    ; severity = Alert { name = "deprecated"; source = "A.f" }
+    }
+    >> error 2
+    { loc = { path = "foo.ml"; line = Single 10; chars = Some (8, 11) }
+    ; message = "foo"
+    ; related = []
+    ; severity = Alert { name = "deprecated"; source = "A.f" }
+    } |}]
+
+let%expect_test "fatal alert" =
+  test_error
+    {|
+File "foo.ml", line 8, characters 8-11:
+8 | let f = A.f
+            ^^^
+Error (alert foobar): A.f
+testing
+|};
+  [%expect
+    {|
+    >> error 0
+    { loc = { path = "foo.ml"; line = Single 8; chars = Some (8, 11) }
+    ; message = "A.f\n\
+                 testing"
+    ; related = []
+    ; severity = Error Some "foobar"
+    } |}]

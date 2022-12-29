@@ -277,18 +277,9 @@ module Client = struct
              not because we have a bug *)
           Code_error.raise message info)
 
-    let send conn (packet : Packet.Query.t list option) =
+    let send conn (packet : Packet.t list option) =
       let sexps =
-        Option.map packet
-          ~f:
-            (List.map ~f:(function
-              | Packet.Query.Notification p ->
-                Conv.to_sexp (Conv.record Call.fields) p
-              | Request (id, request) ->
-                let conv =
-                  Conv.record (Conv.both Id.required_field Call.fields)
-                in
-                Conv.to_sexp conv (id, request)))
+        Option.map packet ~f:(List.map ~f:(Conv.to_sexp Packet.sexp))
       in
       Chan.write conn.chan sexps
 
@@ -498,7 +489,7 @@ module Client = struct
     module Batch = struct
       type nonrec t =
         { client : t
-        ; mutable pending : Packet.Query.t list
+        ; mutable pending : Packet.t list
         }
 
       let create client = { client; pending = [] }
@@ -517,7 +508,7 @@ module Client = struct
         match ivar with
         | Error e -> Fiber.return (Error e)
         | Ok ivar ->
-          t.pending <- Packet.Query.Request (id, call) :: t.pending;
+          t.pending <- Packet.Request (id, call) :: t.pending;
           let* res = Fiber.Ivar.read ivar in
           (* currently impossible because there's no batching for polling and
              cancellation is only available for polled requests *)
@@ -534,7 +525,7 @@ module Client = struct
     let read_packets t packets =
       let* () =
         Fiber.parallel_iter packets ~f:(function
-          | Packet.Reply.Notification n -> (
+          | Packet.Notification n -> (
             if
               String.equal n.method_ Procedures.Server_side.abort.decl.method_
               && not t.handler_initialized
@@ -560,6 +551,8 @@ module Client = struct
                   ; ("notification", Call.to_dyn n)
                   ]
               | Ok () -> Fiber.return ())
+          | Request _ ->
+            terminate_with_error t "client does not support requests yet" []
           | Response (id, response) -> (
             match Table.find t.requests id with
             | Some status -> (
@@ -648,8 +641,7 @@ module Client = struct
         let+ read = Chan.read chan in
         Option.map read ~f:(fun sexp ->
             match
-              Conv.of_sexp Packet.Reply.sexp ~version:initialize.dune_version
-                sexp
+              Conv.of_sexp Packet.sexp ~version:initialize.dune_version sexp
             with
             | Error e -> raise (Abort (Invalid_session e))
             | Ok message -> message)

@@ -205,7 +205,7 @@ module Module = struct
   let term =
     let+ common = Common.term
     and+ module_path =
-      Arg.(value & pos 0 string "" & Arg.info [] ~docv:"MODULE")
+      Arg.(required & pos 0 (some string) None & Arg.info [] ~docv:"MODULE")
     and+ ctx_name =
       Common.context_arg ~doc:{|Select context where to build/run utop.|}
     in

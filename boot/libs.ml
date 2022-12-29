@@ -40,6 +40,7 @@ let local_libraries =
   ; ("src/section", Some "Dune_section", false, None)
   ; ("otherlibs/site/src/private", Some "Dune_site_private", false, None)
   ; ("src/meta_parser", Some "Dune_meta_parser", false, None)
+  ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/thread_worker", Some "Thread_worker", false, None)
   ; ("otherlibs/ocamlc_loc/src", Some "Ocamlc_loc", false, None)
@@ -55,7 +56,6 @@ let local_libraries =
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
-  ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ]
 

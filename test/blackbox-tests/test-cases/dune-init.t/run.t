@@ -293,13 +293,18 @@ Initializing executable projects
 We can init a new executable project:
 
   $ dune init proj test_exec_proj
+  Entering directory 'test_exec_proj'
   Success: initialized project component named test_exec_proj
+  Leaving directory 'test_exec_proj'
 
 The generated project contains all expected sub-components:
 
   $ ls test_exec_proj/**
   test_exec_proj/dune-project
   test_exec_proj/test_exec_proj.opam
+  
+  test_exec_proj/_build:
+  log
   
   test_exec_proj/bin:
   dune
@@ -402,13 +407,18 @@ Initializing library projects
 We can init a new library project:
 
   $ dune init proj test_lib_proj --kind lib
+  Entering directory 'test_lib_proj'
   Success: initialized project component named test_lib_proj
+  Leaving directory 'test_lib_proj'
 
 The generated project contains all expected sub-components:
 
   $ ls test_lib_proj/**
   test_lib_proj/dune-project
   test_lib_proj/test_lib_proj.opam
+  
+  test_lib_proj/_build:
+  log
   
   test_lib_proj/lib:
   dune
@@ -504,13 +514,18 @@ Initializing projects using Esy
 We can init a project using Esy:
 
   $ dune init proj test_esy_proj --pkg esy
+  Entering directory 'test_esy_proj'
   Success: initialized project component named test_esy_proj
+  Leaving directory 'test_esy_proj'
 
 The esy project contains all expected sub-components:
 
   $ ls test_esy_proj/**
   test_esy_proj/dune-project
   test_esy_proj/package.json
+  
+  test_esy_proj/_build:
+  log
   
   test_esy_proj/bin:
   dune

@@ -343,7 +343,7 @@ let%expect_test _ =
 let%expect_test _ =
   drop_build_context (Path.relative Path.build_dir "foo/bar");
   [%expect {|
-Some "bar"
+Some In_source_tree "bar"
 |}]
 
 let%expect_test _ =

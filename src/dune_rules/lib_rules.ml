@@ -420,19 +420,16 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
   and* () =
     (* Build *.cma.js *)
     Memo.when_ modes.ocaml.byte (fun () ->
-        let action_with_targets =
-          let src =
-            Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
-          in
-          let target =
-            Path.Build.relative (Obj_dir.obj_dir obj_dir)
-              (Path.Build.basename src)
-            |> Path.Build.extend_basename ~suffix:".js"
-          in
-          Jsoo_rules.build_cm cctx ~in_context:js_of_ocaml ~src ~target
+        let src =
+          Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
         in
-        action_with_targets
-        >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
+        let action_with_targets =
+          List.map Jsoo_rules.Config.all ~f:(fun config ->
+              Jsoo_rules.build_cm sctx ~dir ~in_context:js_of_ocaml
+                ~config:(Some config) ~src:(Path.build src) ~obj_dir)
+        in
+        Memo.parallel_iter action_with_targets ~f:(fun rule ->
+            rule >>= Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc))
   in
   Memo.when_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.ocaml.native)
@@ -488,14 +485,16 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     Memo.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir
   and* lib_info =
     let lib_config = (Super_context.context sctx).lib_config in
-    Library.to_lib_info lib ~dir ~lib_config
+    let* info = Library.to_lib_info lib ~dir ~lib_config in
+    let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
+    let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
+    info
   in
   let+ () =
     Memo.when_

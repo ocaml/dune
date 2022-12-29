@@ -452,3 +452,5 @@ let required x = Required x
 let optional x = Optional x
 
 let fdecl x = Fdecl x
+
+let error e = raise (Of_sexp e)

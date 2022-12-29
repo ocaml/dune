@@ -71,42 +71,38 @@ let%expect_test "reproduce #2664" =
                                         Seq
                                           Seq
                                             Seq
-                                              Seq Nop,Tag [ "34" ],Verbatim "1",
+                                              Seq Nop,Tag [ 34 ],Verbatim "1",
                                               Tag
-                                                [ "34" ],Verbatim "2",Tag
-                                                                        [ "34" ],
-                                                                        Verbatim
+                                                [ 34 ],Verbatim "2",Tag
+                                                                      [ 34 ],
+                                                                      Verbatim
                                                                         "3",
                                           Tag
-                                            [ "34" ],Verbatim "4",Tag
-                                                                    [ "34" ],
-                                                                    Verbatim
-                                                                      "5",
-                                      Tag
-                                        [ "34" ],Verbatim "6",Tag
-                                                                [ "34" ],
-                                                                Verbatim
-                                                                  "7",Tag
-                                                                        [ "34" ],
+                                            [ 34 ],Verbatim "4",Tag
+                                                                  [ 34 ],
+                                                                  Verbatim
+                                                                    "5",Tag
+                                                                        [ 34 ],
                                                                         Verbatim
-                                                                        "8",
+                                                                        "6",
+                                    Tag
+                                      [ 34 ],Verbatim "7",Tag [ 34 ],Verbatim "8",
                                 Tag
-                                  [ "34" ],Verbatim "9",Tag
-                                                          [ "34" ],Verbatim "10",
+                                  [ 34 ],Verbatim "9",Tag [ 34 ],Verbatim "10",
                             Tag
-                              [ "34" ],Verbatim "11",Tag [ "34" ],Verbatim "12",
+                              [ 34 ],Verbatim "11",Tag [ 34 ],Verbatim "12",
                         Tag
-                          [ "34" ],Verbatim "13",Tag [ "34" ],Verbatim "14",
-                    Tag
-                      [ "34" ],Verbatim "15",Tag [ "34" ],Verbatim "16",Tag
-                                                                        [ "34" ],
+                          [ 34 ],Verbatim "13",Tag [ 34 ],Verbatim "14",Tag
+                                                                        [ 34 ],
                                                                         Verbatim
-                                                                        "17",
-              Tag
-                [ "34" ],Verbatim "18",Tag [ "34" ],Verbatim "19",Tag
-                                                                    [ "34" ],
+                                                                        "15",
+                  Tag
+                    [ 34 ],Verbatim "16",Tag [ 34 ],Verbatim "17",Tag
+                                                                    [ 34 ],
                                                                     Verbatim
-                                                                      "20" |}]
+                                                                      "18",
+            Tag
+              [ 34 ],Verbatim "19",Tag [ 34 ],Verbatim "20" |}]
 
 let%expect_test "Ansi_color.strip" =
   print_string

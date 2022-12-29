@@ -29,6 +29,8 @@ type t =
   ; package : Package.t option
   }
 
+type Stanza.t += T of t
+
 let decode =
   fields
     (let+ loc = loc

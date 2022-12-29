@@ -1,3 +1,4 @@
+module Display = Display
 module Vcs = Vcs
 module Context_name = Context_name
 module Action_builder = Action_builder

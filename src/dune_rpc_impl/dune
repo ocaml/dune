@@ -8,6 +8,7 @@
   dune_stats
   xdg
   memo
+  dune_console
   dune_util
   dune_rpc_private
   dune_rpc_server

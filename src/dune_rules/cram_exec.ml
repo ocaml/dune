@@ -94,7 +94,7 @@ let translate_path_for_sh =
   if not Sys.win32 then fun fn -> Fiber.return (Path.to_absolute_filename fn)
   else fun fn ->
     let cygpath =
-      let path = Env.path Env.initial in
+      let path = Env_path.path Env.initial in
       Bin.which ~path "cygpath"
     in
     match cygpath with
@@ -411,7 +411,7 @@ let run ~env ~script lexbuf : string Fiber.t =
   let open Fiber.O in
   let+ () =
     let sh =
-      let path = Env.path Env.initial in
+      let path = Env_path.path Env.initial in
       Option.value_exn (Bin.which ~path "sh")
     in
     let metadata =

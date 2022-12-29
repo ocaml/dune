@@ -16,36 +16,37 @@ let ocaml_flags sctx ~dir melange =
     let ocaml_version = (Super_context.context sctx).version in
     Super_context.with_vendored_flags ~ocaml_version flags
 
-let lib_output_dir ~sctx ~target_dir lib =
+let output_of_lib ~target_dir lib =
   let info = Lib.info lib in
-  let lib_dir =
-    match Lib_info.status info with
-    | Private _ ->
-      let lib = Lib.Local.of_lib_exn lib in
-      let info = Lib.Local.info lib in
-      Lib_info.src_dir info
-    | Public _ ->
-      let package_name = Option.value_exn (Lib_info.package info) in
-      let bctx = (Super_context.context sctx).build_dir in
-      let info = Lib.info lib in
-      let src_dir = Lib_info.src_dir info in
-      Path.Build.L.relative bctx
-        [ "node_modules"
-        ; Package.Name.to_string package_name
-        ; Path.Source.to_string (Path.drop_build_context_exn src_dir)
-        ]
-    | Installed | Installed_private ->
-      let package_name = Option.value_exn (Lib_info.package info) in
-      let bctx = (Super_context.context sctx).build_dir in
-      Path.Build.L.relative bctx
-        [ "node_modules"; Package.Name.to_string package_name ]
-  in
-  Path.Build.append_source target_dir
-    (Path.Build.drop_build_context_exn lib_dir)
+  match Lib_info.status info with
+  | Private _ -> `Private_library_or_emit target_dir
+  | Installed | Installed_private ->
+    let package_name = Option.value_exn (Lib_info.package info) in
+    `Public_library
+      (Path.Build.L.relative target_dir
+         [ "node_modules"; Package.Name.to_string package_name ])
+  | Public _ ->
+    let package_name = Option.value_exn (Lib_info.package info) in
+    let src_dir = Lib_info.src_dir info in
+    `Public_library
+      (Path.Build.L.relative target_dir
+         [ "node_modules"
+         ; Package.Name.to_string package_name
+         ; Path.Source.to_string (Path.drop_build_context_exn src_dir)
+         ])
 
-let make_js_name ~js_ext ~dst_dir m =
+let make_js_name ~js_ext ~output m =
   let name = Melange.js_basename m ^ js_ext in
-  Path.Build.relative dst_dir name
+  match output with
+  | `Public_library output_dir -> Path.Build.relative output_dir name
+  | `Private_library_or_emit target_dir ->
+    let dst_dir =
+      Path.Build.append_source target_dir
+        (Module.file m ~ml_kind:Impl
+        |> Option.value_exn |> Path.as_in_build_dir_exn |> Path.Build.parent_exn
+        |> Path.Build.drop_build_context_exn)
+    in
+    Path.Build.relative dst_dir name
 
 let impl_only_modules_defined_in_this_lib sctx lib =
   let open Memo.O in
@@ -88,10 +89,10 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
     ~allow_overlaps:mel.allow_overlapping_dependencies ~forbidden_libraries:[]
     mel.libraries ~pps ~dune_version ~merlin_ident
 
-let js_targets_of_modules modules ~js_ext ~dst_dir =
+let js_targets_of_modules modules ~js_ext ~output =
   Modules.fold_no_vlib modules ~init:Path.Set.empty ~f:(fun m acc ->
       if Module.has m ~ml_kind:Impl then
-        let target = Path.build @@ make_js_name ~js_ext ~dst_dir m in
+        let target = Path.build @@ make_js_name ~js_ext ~output m in
         Path.Set.add acc target
       else acc)
 
@@ -99,9 +100,9 @@ let js_targets_of_libs sctx libs ~js_ext ~target_dir =
   let of_lib lib =
     let open Memo.O in
     let+ modules = impl_only_modules_defined_in_this_lib sctx lib in
-    let dst_dir = lib_output_dir ~sctx ~target_dir lib in
+    let output = output_of_lib ~target_dir lib in
     List.rev_map modules ~f:(fun m ->
-        Path.build @@ make_js_name ~js_ext ~dst_dir m)
+        Path.build @@ make_js_name ~output ~js_ext m)
   in
   Resolve.Memo.List.concat_map libs ~f:(fun lib ->
       let open Memo.O in
@@ -114,12 +115,12 @@ let js_targets_of_libs sctx libs ~js_ext ~target_dir =
         let+ for_vlib = Resolve.Memo.lift_memo (of_lib vlib) in
         List.rev_append for_vlib base)
 
-let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~dst_dir ~obj_dir ~sctx
+let build_js ~loc ~dir ~pkg_name ~mode ~module_system ~output ~obj_dir ~sctx
     ~includes ~js_ext m =
   let open Memo.O in
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Melange Cmj) in
-  let output = make_js_name ~js_ext ~dst_dir m in
+  let output = make_js_name ~output ~js_ext m in
   let obj_dir = [ Command.Args.A "-I"; Path (Obj_dir.melange_dir obj_dir) ] in
   let melange_package_args =
     let pkg_name_args =
@@ -197,11 +198,8 @@ let setup_emit_cmj_rules ~sctx ~dir ~scope ~expander ~dir_contents
       | Some alias_name ->
         let js_ext = mel.javascript_extension in
         let deps =
-          let dst_dir =
-            Path.Build.append_source target_dir
-              (Path.Build.drop_build_context_exn dir)
-          in
-          js_targets_of_modules ~js_ext ~dst_dir modules
+          js_targets_of_modules ~output:(`Private_library_or_emit target_dir)
+            ~js_ext modules
           |> Action_builder.path_set
         in
         let alias = Alias.make alias_name ~dir in
@@ -258,14 +256,11 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
     Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
         if Module.has x ~ml_kind:Impl then x :: acc else acc)
   in
-  let dst_dir =
-    Path.Build.append_source target_dir
-      (Path.Build.drop_build_context_exn (Dir_contents.dir dir_contents))
-  in
+  let output = `Private_library_or_emit target_dir in
+  let obj_dir = Obj_dir.of_local obj_dir in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
-      let obj_dir = Obj_dir.of_local obj_dir in
       build_js ~dir ~loc ~pkg_name ~mode ~module_system:mel.module_system
-        ~dst_dir ~obj_dir ~sctx ~includes ~js_ext m)
+        ~output ~obj_dir ~sctx ~includes ~js_ext m)
 
 let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
     (mel : Melange_stanzas.Emit.t) =
@@ -295,7 +290,6 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
         | None -> Memo.return ()
         | Some vlib ->
           let* vlib = Resolve.Memo.read_memo vlib in
-          let dst_dir = lib_output_dir ~sctx ~target_dir vlib in
           let* includes =
             let+ requires_link =
               Lib.Compile.for_lib
@@ -305,12 +299,13 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
             in
             cmj_includes ~requires_link ~scope
           in
+          let output = output_of_lib ~target_dir lib in
           impl_only_modules_defined_in_this_lib sctx vlib
-          >>= Memo.parallel_iter ~f:(build_js ~dir ~dst_dir ~includes)
+          >>= Memo.parallel_iter ~f:(build_js ~dir ~output ~includes)
       in
+      let output = output_of_lib ~target_dir lib in
       let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
-      let dst_dir = lib_output_dir ~sctx ~target_dir lib in
-      Memo.parallel_iter source_modules ~f:(build_js ~dir ~dst_dir ~includes))
+      Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
 
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
   let open Memo.O in

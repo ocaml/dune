@@ -1,6 +1,5 @@
 open Stdune
 open Core
-open Core.O
 
 type mvar =
   | Done
@@ -61,13 +60,6 @@ let task t ~f k =
     Code_error.raise "pool is closed. new tasks may not be submitted" []
   | Open -> Mvar.write t.mvar (Task f) k
 
-let stream t =
-  Stream.In.create (fun () ->
-      let+ next = Mvar.read t.mvar in
-      match next with
-      | Done -> None
-      | Task task -> Some task)
-
 let stop t k =
   match t.status with
   | Closed -> k ()
@@ -75,4 +67,17 @@ let stop t k =
     t.status <- Closed;
     Mvar.write t.mvar Done k
 
-let run t = stream t |> Stream.In.parallel_iter ~f:(fun task -> task ())
+let run t k =
+  let n = ref 1 in
+  let k () =
+    decr n;
+    if !n = 0 then k () else end_of_fiber
+  in
+  let rec loop t =
+    Mvar.read t.mvar (function
+      | Done -> k ()
+      | Task x ->
+        incr n;
+        fork (fun () -> x () k) (fun () -> loop t))
+  in
+  loop t

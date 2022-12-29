@@ -63,13 +63,6 @@ module Session : sig
     val request_close : 'a t -> unit Fiber.t
 
     val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
-
-    (** Register a callback to be called once version negotiation has concluded.
-        At most one callback can be set at once; calling this function multiple
-        times for the same session will override previous invocations.
-
-        The registered callback is guaranteed to be called at most once. *)
-    val register_upgrade_callback : _ t -> (Menu.t -> unit) -> unit
   end
 end
 
@@ -89,6 +82,8 @@ module Handler : sig
          (** Initiation hook. It's guaranteed to be called before any
              requests/notifications. It's job is to initialize the session
              state. *)
+    -> ?on_upgrade:('a Session.t -> Menu.t -> unit Fiber.t)
+         (** called immediately after the client has finished negotitation *)
     -> version:int * int
          (** version of the rpc. it's expected to support all earlier versions *)
     -> unit

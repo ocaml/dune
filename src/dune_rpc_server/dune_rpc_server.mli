@@ -54,10 +54,6 @@ module Session : sig
 
     val initialize : _ t -> Initialize.Request.t
 
-    val get : 'a t -> 'a
-
-    val set : 'a t -> 'a -> unit
-
     val compare : 'a t -> 'a t -> Ordering.t
 
     val request_close : 'a t -> unit Fiber.t

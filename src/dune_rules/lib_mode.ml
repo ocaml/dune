@@ -89,5 +89,10 @@ module Map = struct
         [ ("ocaml", Ocaml.Mode.Dict.Set.to_dyn ocaml)
         ; ("melange", bool melange)
         ]
+
+    let for_merlin { ocaml = { byte; native = _ }; melange } =
+      match (byte, melange) with
+      | false, true -> `Melange
+      | _, _ -> `Ocaml
   end
 end

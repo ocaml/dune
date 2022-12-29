@@ -4,7 +4,7 @@ name: Melange demo app build time benchmark
 on:
   push:
     branches:
-      - melange-build-benchmark # TODO: replace with main before merging
+      - main
 
 permissions:
   # deployments permission to deploy GitHub pages website

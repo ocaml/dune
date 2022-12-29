@@ -1,55 +1,18 @@
 open Stdune
 open Core
 
-type mvar =
+type task =
   | Done
   | Task of (unit -> unit t)
-
-module Mvar = struct
-  type t =
-    { writers : (mvar * unit k) Queue.t
-    ; mutable reader : mvar k option
-    ; mutable value : mvar option
-    }
-
-  let create () = { value = None; writers = Queue.create (); reader = None }
-
-  let read t k =
-    match t.value with
-    | None ->
-      suspend
-        (fun k ->
-          assert (t.reader = None);
-          t.reader <- Some k)
-        k
-    | Some v -> (
-      match Queue.pop t.writers with
-      | None ->
-        t.value <- None;
-        k v
-      | Some (v', w) ->
-        t.value <- Some v';
-        resume w () (fun () -> k v))
-
-  let write t x k =
-    match t.value with
-    | Some _ -> suspend (fun k -> Queue.push t.writers (x, k)) k
-    | None -> (
-      match t.reader with
-      | None ->
-        t.value <- Some x;
-        k ()
-      | Some r ->
-        t.reader <- None;
-        resume r x (fun () -> k ()))
-end
 
 type status =
   | Open
   | Closed
 
 type t =
-  { mvar : Mvar.t
+  { writers : (task * unit k) Queue.t
+  ; mutable reader : task k option
+  ; mutable value : task option
   ; mutable status : status
   }
 
@@ -58,20 +21,50 @@ let running t k =
   | Open -> k true
   | Closed -> k false
 
-let create () = { mvar = Mvar.create (); status = Open }
+let create () =
+  { value = None; writers = Queue.create (); reader = None; status = Open }
+
+let write t x k =
+  match t.value with
+  | Some _ -> suspend (fun k -> Queue.push t.writers (x, k)) k
+  | None -> (
+    match t.reader with
+    | None ->
+      t.value <- Some x;
+      k ()
+    | Some r ->
+      t.reader <- None;
+      resume r x (fun () -> k ()))
 
 let task t ~f k =
   match t.status with
   | Closed ->
     Code_error.raise "pool is closed. new tasks may not be submitted" []
-  | Open -> Mvar.write t.mvar (Task f) k
+  | Open -> write t (Task f) k
 
 let stop t k =
   match t.status with
   | Closed -> k ()
   | Open ->
     t.status <- Closed;
-    Mvar.write t.mvar Done k
+    write t Done k
+
+let read t k =
+  match t.value with
+  | None ->
+    suspend
+      (fun k ->
+        assert (t.reader = None);
+        t.reader <- Some k)
+      k
+  | Some v -> (
+    match Queue.pop t.writers with
+    | None ->
+      t.value <- None;
+      k v
+    | Some (v', w) ->
+      t.value <- Some v';
+      resume w () (fun () -> k v))
 
 let run t k =
   let n = ref 1 in
@@ -80,7 +73,7 @@ let run t k =
     if !n = 0 then k () else end_of_fiber
   in
   let rec loop t =
-    Mvar.read t.mvar (function
+    read t (function
       | Done -> k ()
       | Task x ->
         incr n;

@@ -1,0 +1,91 @@
+name: Melange demo app build time benchmark
+
+# Do not run this workflow on pull request since this workflow has permission to modify contents.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+        ocaml-compiler:
+          - 4.14.x
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          opam-depext: false
+
+      # dune doesn't have any additional dependencies so we can build it right
+      # away this makes it possible to see build errors as soon as possible
+      - run: opam exec -- make _boot/dune.exe
+
+      - name: Install deps on Unix
+        run: |
+          opam install . --deps-only --with-test
+          opam exec -- make dev-deps
+          # Install hyperfine
+          wget https://github.com/sharkdp/hyperfine/releases/download/v1.14.0/hyperfine_1.14.0_amd64.deb
+          sudo dpkg -i hyperfine_1.14.0_amd64.deb
+
+      - name: Clone pupilfirst repo
+        run: git clone https://github.com/jchavarri/pupilfirst.git
+
+      - name: Checkout dune-melange branch
+        working-directory: pupilfirst
+        run: git checkout dune-melange
+
+      - name: Install all deps
+        working-directory: pupilfirst
+        run: |
+          yarn install
+          opam install -y reason
+          opam pin add -y graphql_ppx https://github.com/jchavarri/graphql-ppx.git\#2598910886f1d2d3869406ae7eb787341d8dce6b
+          opam pin add -y melange https://github.com/melange-re/melange.git\#2dec6b553c36027b6550ee323f264f7d4662d966
+          rm -rf node_modules/melange && ln -sfn $(opam var melange:lib)/runtime node_modules/melange
+
+      - name: Run pupilfirst benchmark
+        working-directory: pupilfirst
+        run: ../bench/gen-melange-benchmark.sh 'opam exec -- ../_boot/dune.exe build --root=. @main' 'opam exec -- ../_boot/dune.exe clean --root=.' 'pupilfirst build time (${{ runner.os }})' > melange-benchmark-result.json
+
+      - name: Print pupilfirst benchmark results
+        working-directory: pupilfirst
+        run: |
+          cat bench.json
+          cat melange-benchmark-result.json
+
+      - name: Store melange benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Melange Benchmark
+          tool: "customSmallerIsBetter"
+          output-file-path: pupilfirst/melange-benchmark-result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Ratio indicating how worse the current benchmark result is.
+          # 150% means if last build took 40s and current takes 50s, it will trigger an alert
+          alert-threshold: "150%"
+          fail-on-alert: true
+          # Enable alert commit comment
+          comment-on-alert: true
+          # Mention @jchavarri in the commit comment
+          alert-comment-cc-users: '@jchavarri'

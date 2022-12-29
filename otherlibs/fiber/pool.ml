@@ -8,16 +8,20 @@ type mvar =
 module Mvar = struct
   type t =
     { writers : (mvar * unit k) Queue.t
-    ; readers : mvar k Queue.t
+    ; mutable reader : mvar k option
     ; mutable value : mvar option
     }
 
-  let create () =
-    { value = None; writers = Queue.create (); readers = Queue.create () }
+  let create () = { value = None; writers = Queue.create (); reader = None }
 
   let read t k =
     match t.value with
-    | None -> suspend (fun k -> Queue.push t.readers k) k
+    | None ->
+      suspend
+        (fun k ->
+          assert (t.reader = None);
+          t.reader <- Some k)
+        k
     | Some v -> (
       match Queue.pop t.writers with
       | None ->
@@ -31,11 +35,13 @@ module Mvar = struct
     match t.value with
     | Some _ -> suspend (fun k -> Queue.push t.writers (x, k)) k
     | None -> (
-      match Queue.pop t.readers with
+      match t.reader with
       | None ->
         t.value <- Some x;
         k ()
-      | Some r -> resume r x (fun () -> k ()))
+      | Some r ->
+        t.reader <- None;
+        resume r x (fun () -> k ()))
 end
 
 type status =

@@ -847,6 +847,62 @@ let%expect_test "raise exception" =
        (fun () -> Pool.stop pool));
   [%expect {| Caught Exit |}]
 
+let%expect_test "double run a pool" =
+  (* Calling [Pool.run] twice on the same pool shouldn't be allowed
+
+     We can't allow competing [Pool.run] calls to get tasks. We want to make
+     sure only a single [run] will get the exceptions from all tasks in the
+     pool *)
+  (Scheduler.run
+  @@
+  let pool = Pool.create () in
+  Fiber.fork_and_join_unit (fun () -> Pool.run pool) (fun () -> Pool.run pool));
+  [%expect.unreachable]
+  [@@expect.uncaught_exn {| (Test_scheduler.Never) |}]
+
+let%expect_test "run -> stop -> run a pool" =
+  (* We shouldn't be able to call [Pool.run] again after we already called
+     [Pool.run] and [Pool.stop]. In other words, we can't reuse pools *)
+  (Scheduler.run
+  @@
+  let pool = Pool.create () in
+  let* () =
+    Fiber.fork_and_join_unit
+      (fun () -> Pool.run pool)
+      (fun () -> Fiber.Pool.task pool ~f:(fun () -> Pool.stop pool))
+  in
+  Pool.run pool);
+  [%expect.unreachable]
+  [@@expect.uncaught_exn {| (Test_scheduler.Never) |}]
+
+let%expect_test "stop a pool and then run it" =
+  (Scheduler.run
+  @@
+  let pool = Pool.create () in
+  let* () = Pool.stop pool in
+  Pool.run pool);
+  [%expect {||}]
+
+let%expect_test "pool - weird deadlock" =
+  (* this doesn't dead lock *)
+  (Scheduler.run
+  @@
+  let pool = Pool.create () in
+  let* () = Pool.task pool ~f:Fiber.return in
+  Fiber.fork_and_join_unit (fun () -> Pool.stop pool) (fun () -> Pool.run pool)
+  );
+  [%expect {||}];
+  (* but this does *)
+  (Scheduler.run
+  @@
+  let pool = Pool.create () in
+  let* () = Pool.task pool ~f:Fiber.return in
+  let* () = Pool.task pool ~f:Fiber.return in
+  Fiber.fork_and_join_unit (fun () -> Pool.stop pool) (fun () -> Pool.run pool)
+  );
+  [%expect.unreachable]
+  [@@expect.uncaught_exn {| (Test_scheduler.Never) |}]
+
 let%expect_test "stack usage with consecutive Ivar.fill" =
   let stack_size () = (Gc.stat ()).stack_size in
   let rec loop acc prev n =

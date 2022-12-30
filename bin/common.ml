@@ -604,7 +604,7 @@ module Builder = struct
         (let+ auto =
            Arg.(
              value & flag
-             & info [ "auto-promote" ] ~docs
+             & info [ "auto-promote"; "a" ] ~docs
                  ~doc:
                    "Automatically promote files. This is similar to running\n\
                    \                   $(b,dune promote) after the build.")

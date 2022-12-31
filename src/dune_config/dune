@@ -11,6 +11,7 @@
   dune_engine
   dune_rpc_private
   dune_stats
+  dune_tui
   dune_util
   spawn)
  (synopsis "Internal Dune library, do not use!")

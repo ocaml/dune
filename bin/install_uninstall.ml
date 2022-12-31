@@ -668,7 +668,11 @@ let install_uninstall ~what =
                 [ Pp.text "Option --prefix is needed with --relocation" ]
           else None
         in
-        let verbosity = config.display.verbosity in
+        let verbosity =
+          match config.display with
+          | Simple display -> display.verbosity
+          | Tui -> Quiet
+        in
         let open Fiber.O in
         let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in

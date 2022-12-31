@@ -249,8 +249,11 @@ let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
       spurious_modules_virtual [])
 
 let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
-    ~modules_field ~modules_without_implementation ~root_module ~private_modules
-    ~kind ~src_dir =
+    ~private_modules ~kind ~src_dir
+    { Stanza_common.Modules_settings.modules = modules_field
+    ; root_module
+    ; modules_without_implementation
+    } =
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let fake_modules = ref Module_name.Map.empty in

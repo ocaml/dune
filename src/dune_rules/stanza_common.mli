@@ -27,3 +27,13 @@ val instrumentation :
   (Loc.t
   * (((Loc.t * Lib_name.t) * String_with_vars.t list) * Dep_conf.t list) list)
   fields_parser
+
+module Modules_settings : sig
+  type t =
+    { root_module : (Loc.t * Module_name.t) option
+    ; modules_without_implementation : Ordered_set_lang.t
+    ; modules : Ordered_set_lang.t
+    }
+
+  val decode : modules_field_name:string -> t Dune_lang.Decoder.fields_parser
+end

@@ -51,7 +51,7 @@ let programs ~modules ~(exes : Executables.t) =
             ]
       | None ->
         let msg =
-          match Ordered_set_lang.loc exes.buildable.modules with
+          match Ordered_set_lang.loc exes.buildable.modules.modules with
           | None ->
             Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
           | Some _ ->

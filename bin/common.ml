@@ -525,6 +525,7 @@ module Builder = struct
     ; workspace_config : Dune_rules.Workspace.Clflags.t
     ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
     ; report_errors_config : Dune_engine.Report_errors_config.t
+    ; separate_error_messages : bool
     ; require_dune_project_file : bool
     ; insignificant_changes : [ `React | `Ignore ]
     ; build_dir : string
@@ -804,6 +805,12 @@ module Builder = struct
             ~doc:
               "react to insignificant file system changes; this is only useful \
                for benchmarking dune")
+    and+ separate_error_messages =
+      Arg.(
+        value & flag
+        & info
+            [ "display-separate-messages" ]
+            ~doc:"Separate error messages with a blank line.")
     in
     { debug_dep_path
     ; debug_backtraces
@@ -840,6 +847,7 @@ module Builder = struct
         }
     ; cache_debug_flags
     ; report_errors_config
+    ; separate_error_messages
     ; require_dune_project_file
     ; insignificant_changes =
         (if react_to_insignificant_changes then `React else `Ignore)
@@ -1034,6 +1042,7 @@ let init ?log_file c =
     [ Pp.textf "Workspace root: %s"
         (Path.to_absolute_filename Path.root |> String.maybe_quoted)
     ];
+  Dune_console.separate_messages c.builder.separate_error_messages;
   config
 
 let footer =

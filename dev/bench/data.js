@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1672861361613,
+  "lastUpdate": 1672861491176,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -202,6 +202,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.50016077142667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "2609315+esope@users.noreply.github.com",
+            "name": "Benoit Montagu",
+            "username": "esope"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f6da11209cbb2e47cebf09e1002a35a2cd2be9d",
+          "message": "Use alphabetical ordering of stanzas in manual (#6824)\n\nSigned-off-by: Benoît Montagu <benoit.montagu@inria.fr>",
+          "timestamp": "2023-01-04T13:22:35-06:00",
+          "tree_id": "df945556fc1edc9ab1ba2ce61a547c8fa979717a",
+          "url": "https://github.com/ocaml/dune/commit/9f6da11209cbb2e47cebf09e1002a35a2cd2be9d"
+        },
+        "date": 1672861489801,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.87944795932",
             "unit": "seconds"
           }
         ]

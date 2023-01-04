@@ -23,7 +23,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
     (* additional link flags keyed by the platform *)
     [ ( "macosx"
       , [ "-cclib"
-        ; "-framework Foundation"
+        ; "-framework CoreFoundation"
         ; "-cclib"
         ; "-framework CoreServices"
         ] )

@@ -8,6 +8,9 @@ Unreleased
   PPX-rewriters can be taken into account by providing the
   `--with-pps` flag. (#6727, fixes #6486, @esope)
 
+- Print missing newline after `$ dune exec`. (#6821, fixes #6700, @rgrinberg,
+  @Alizter)
+
 - Fix binary corruption when installing or promoting in parallel (#6669, fixes
   #6668, @edwintorok)
 

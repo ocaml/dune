@@ -88,6 +88,9 @@ Unreleased
 - Validate the command line arguments for `$ dune ocaml top-module`. This
   command requires one positional argument (#6796, fixes #6793, @rgrinberg)
 
+- Add a `dune cache size` command for displaying the size of the cache (#6638,
+  @Alizter)
+
 3.6.1 (2022-11-24)
 ------------------
 

@@ -52,17 +52,43 @@ let trim =
          (User_message.make
             [ Pp.textf "Freed %s" (Bytes_unit.pp trimmed_bytes) ])
 
+let size =
+  let info =
+    let doc = "Query the size of the Dune cache" in
+    let man =
+      [ `P
+          "Compute the total size of files in the Dune cache which are not \
+           hardlinked from any build directory and output it in a \
+           human-readable form."
+      ]
+    in
+    Cmd.info "size" ~doc ~man
+  in
+  Cmd.v info
+  @@ let+ machine_readble =
+       Arg.(
+         value & flag
+         & info [ "machine-readable" ]
+             ~doc:"Outputs size as a plain number of bytes.")
+     in
+     let size = Dune_cache.Trimmer.overhead_size () in
+     if machine_readble then
+       User_message.print (User_message.make [ Pp.textf "%Ld" size ])
+     else
+       User_message.print
+         (User_message.make [ Pp.textf "%s" (Bytes_unit.pp size) ])
+
 let command =
   let info =
     let doc = "Manage the shared cache of build artifacts" in
     let man =
       [ `S "DESCRIPTION"
       ; `P
-          "Dune can share build artifacts between workspaces. Currently, the \
-           only action supported by this command is `trim`, but we plan to \
-           provide more functionality soon."
+          "Dune can share build artifacts between workspaces. We currently \
+           only support a few subcommands; however, we plan to provide more \
+           functionality soon."
       ]
     in
     Cmd.info "cache" ~doc ~man
   in
-  Cmd.group info [ trim ]
+  Cmd.group info [ trim; size ]

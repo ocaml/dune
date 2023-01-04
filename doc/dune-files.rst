@@ -18,44 +18,24 @@ contents of all configuration files read by Dune and looks like:
 
 Additionally, they can contains the following stanzas.
 
-.. _using:
+accept_alternative_dune_file_name
+---------------------------------
 
-using
------
+Since Dune 3.0, it's possible to use the alternative filename ``dune-file``
+instead of ``dune`` to specify the build. This may be useful to avoid problems
+with ``dune`` files that have the executable permission in a directory in the
+``PATH``, which can unwittingly happen in Windows.
 
-The language of configuration files read by Dune can be extended to support
-additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``). This is done by
-adding a line in the ``dune-project`` file, such as:
-
-.. code:: scheme
-
-    (using <plugin> <version>)
-
-Here, ``<plugin>`` is the name of the plugin that defines this stanza and
-``<version>`` describes the configuration language's version. Note that this
-version has nothing to do with the version of the associated tool or library. In
-particular, adding a ``using`` stanza will not result in a build dependency in
-the generated ``.opam`` file. See :ref:`generate_opam_files
-<generate_opam_files>`.
-
-name
-----
-
-Sets the name of the project. It's used by :ref:`dune subst <dune-subst>` and
-error messages.
+The feature must be enabled explicitly by adding the following field to
+``dune-project``:
 
 .. code:: scheme
 
-    (name <name>)
+   (accept_alternative_dune_file_name)
 
-version
--------
-
-Sets the version of the project:
-
-.. code:: scheme
-
-    (version <version>)
+Note that ``dune`` continues to be accepted even after enabling this option, but
+if a file named ``dune-file`` is found in a directory, it will take precedence
+over ``dune``.
 
 cram
 ----
@@ -68,123 +48,6 @@ details.
    (cram <status>)
 
 Where status is either ``enable`` or ``disable``.
-
-.. _implicit_transitive_deps:
-
-implicit_transitive_deps
-------------------------
-
-By default, Dune allows transitive dependencies of dependencies used when
-compiling OCaml; however, this setting can be controlled per project:
-
-.. code:: scheme
-
-    (implicit_transitive_deps <bool>)
-
-When set to ``false``, all dependencies directly used by a library or an
-executable must be added in the ``libraries`` field. We recommend users
-experiment with this mode and report any problems.
-
-Note that you must use ``threads.posix`` instead of ``threads`` when using this
-mode. This isn't an important limitation, as ``threads.vm`` is deprecated
-anyway.
-
-In some situations, it can be desirable to selectively preserve the behavior of
-transitive dependencies' availability a library's users. For example, if we
-define a library ``foo_more`` that extends ``foo``, we might want ``foo_more``
-users to immediately have ``foo`` available as well. To do this, we must define
-the dependency on ``foo`` as re-exported:
-
-.. code:: scheme
-
-   (library
-    (name foo_more)
-    (libraries (re_export foo)))
-
-.. _wrapped-executables:
-
-wrapped_executables
--------------------
-
-Executables are made of compilation units whose names may collide with
-libraries' compilation units. To avoid this possibility, Dune prefixes these
-compilation unit names with ``Dune__exe__``. This is entirely transparent to
-users except when such executables are debugged. In which case, the mangled
-names will be visible in the debugger.
-
-Starting from Dune 1.11, an option is available to turn on/off name mangling for
-executables on a per-project basis:
-
-.. code:: scheme
-
-    (wrapped_executables <bool>)
-
-Starting with Dune 2.0, Dune mangles compilation units of executables by
-default. However, this can still be turned off using ``(wrapped_executables
-false)``
-
-.. _executables_implicit_empty_intf:
-
-executables_implicit_empty_intf
--------------------------------
-
-By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
-...)`` stanzas are compiled with the interface file provided (e.g., ``.mli`` or
-``rei``). Since these modules cannot be used as library dependencies, it's
-common to give them empty interface files to strengthen the compiler's ability
-to detect unused values in these modules.
-
-Starting from Dune 2.9, an option is available to automatically generate empty
-interface files for executables and tests that don't already have them:
-
-.. code:: scheme
-
-    (executables_implicit_empty_intf true)
-
-This option is enabled by default starting with Dune lang 3.0, so empty
-interface files are no longer needed.
-
-.. _explicit-js-mode:
-
-explicit_js_mode
-----------------
-
-Traditionally, JavaScript targets were defined for every bytecode executable.
-This wasn't very precise and didn't interact well with the ``@all`` alias.
-
-You can opt out of this behavior by using:
-
-.. code:: scheme
-
-    (explicit_js_mode)
-
-When this mode is enabled, an explicit ``js`` mode needs to be added to the
-``(modes ...)`` field of executables in order to trigger the JavaScript
-compilation. Explicit JS targets declared like this will be attached to the
-``@all`` alias.
-
-Starting with Dune 2.0, this behavior is the default, and there is no way to
-disable it.
-
-expand_aliases_in_sandbox
--------------------------
-
-When a sandboxed action depends on an alias, copy the expansion of the alias
-inside the sandbox. For instance, in the following example:
-
-.. code:: scheme
-
-    (alias
-     (name foo)
-     (deps ../x))
-
-    (cram
-     (deps (alias foo)))
-
-File `x` will be visible inside the Cram test if and only if this option is
-enabled. This option is a better default in general; however, it currently
-causes Cram tests to run noticeably slower. So it is disabled by default until
-the performance issue with Cram test is fixed.
 
 .. _dialect:
 
@@ -244,6 +107,69 @@ to a corresponding dialect).
   dialect will be formatted as any other OCaml code by default. Otherwise no
   special formatting will be done.
 
+.. _executables_implicit_empty_intf:
+
+executables_implicit_empty_intf
+-------------------------------
+
+By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
+...)`` stanzas are compiled with the interface file provided (e.g., ``.mli`` or
+``rei``). Since these modules cannot be used as library dependencies, it's
+common to give them empty interface files to strengthen the compiler's ability
+to detect unused values in these modules.
+
+Starting from Dune 2.9, an option is available to automatically generate empty
+interface files for executables and tests that don't already have them:
+
+.. code:: scheme
+
+    (executables_implicit_empty_intf true)
+
+This option is enabled by default starting with Dune lang 3.0, so empty
+interface files are no longer needed.
+
+expand_aliases_in_sandbox
+-------------------------
+
+When a sandboxed action depends on an alias, copy the expansion of the alias
+inside the sandbox. For instance, in the following example:
+
+.. code:: scheme
+
+    (alias
+     (name foo)
+     (deps ../x))
+
+    (cram
+     (deps (alias foo)))
+
+File `x` will be visible inside the Cram test if and only if this option is
+enabled. This option is a better default in general; however, it currently
+causes Cram tests to run noticeably slower. So it is disabled by default until
+the performance issue with Cram test is fixed.
+
+.. _explicit-js-mode:
+
+explicit_js_mode
+----------------
+
+Traditionally, JavaScript targets were defined for every bytecode executable.
+This wasn't very precise and didn't interact well with the ``@all`` alias.
+
+You can opt out of this behavior by using:
+
+.. code:: scheme
+
+    (explicit_js_mode)
+
+When this mode is enabled, an explicit ``js`` mode needs to be added to the
+``(modes ...)`` field of executables in order to trigger the JavaScript
+compilation. Explicit JS targets declared like this will be attached to the
+``@all`` alias.
+
+Starting with Dune 2.0, this behavior is the default, and there is no way to
+disable it.
+
 .. _formatting:
 
 formatting
@@ -262,26 +188,6 @@ where ``<setting>`` is one of:
 
 - ``(enabled_for <languages>)`` can be used to restrict the languages that are
   considered for formatting.
-
-.. _subst:
-
-subst
------
-
-Starting in Dune 3.0, :ref:`dune-subst` can be explicitly disabled or enabled.
-By default it is enabled and controlled by using:
-
-.. code:: scheme
-
-    (subst <setting>)
-
-where ``<setting>`` is one of:
-
-- ``disabled``, meaning that any call of `dune subst` in this project is
-  forbidden and will result in an error.
-
-- ``enabled``, allowing substitutions explicitly. This is the default.
-
 
 .. _generate_opam_files:
 
@@ -338,6 +244,48 @@ generated.
 
 Some or all of these fields may be overridden for each package of the project,
 see :ref:`package`.
+
+.. _implicit_transitive_deps:
+
+implicit_transitive_deps
+------------------------
+
+By default, Dune allows transitive dependencies of dependencies used when
+compiling OCaml; however, this setting can be controlled per project:
+
+.. code:: scheme
+
+    (implicit_transitive_deps <bool>)
+
+When set to ``false``, all dependencies directly used by a library or an
+executable must be added in the ``libraries`` field. We recommend users
+experiment with this mode and report any problems.
+
+Note that you must use ``threads.posix`` instead of ``threads`` when using this
+mode. This isn't an important limitation, as ``threads.vm`` is deprecated
+anyway.
+
+In some situations, it can be desirable to selectively preserve the behavior of
+transitive dependencies' availability a library's users. For example, if we
+define a library ``foo_more`` that extends ``foo``, we might want ``foo_more``
+users to immediately have ``foo`` available as well. To do this, we must define
+the dependency on ``foo`` as re-exported:
+
+.. code:: scheme
+
+   (library
+    (name foo_more)
+    (libraries (re_export foo)))
+
+name
+----
+
+Sets the name of the project. It's used by :ref:`dune subst <dune-subst>` and
+error messages.
+
+.. code:: scheme
+
+    (name <name>)
 
 .. _package:
 
@@ -407,6 +355,25 @@ Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to
 be added explicitly.
 
+.. _subst:
+
+subst
+-----
+
+Starting in Dune 3.0, :ref:`dune-subst` can be explicitly disabled or enabled.
+By default it is enabled and controlled by using:
+
+.. code:: scheme
+
+    (subst <setting>)
+
+where ``<setting>`` is one of:
+
+- ``disabled``, meaning that any call of `dune subst` in this project is
+  forbidden and will result in an error.
+
+- ``enabled``, allowing substitutions explicitly. This is the default.
+
 .. _always-add-cflags:
 
 use_standard_c_and_cxx_flags
@@ -425,24 +392,56 @@ content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
 completed or overridden using the :ref:`ordered-set-language`. The value
 ``true`` is the default for Dune 3.0.
 
-accept_alternative_dune_file_name
----------------------------------
+.. _using:
 
-Since Dune 3.0, it's possible to use the alternative filename ``dune-file``
-instead of ``dune`` to specify the build. This may be useful to avoid problems
-with ``dune`` files that have the executable permission in a directory in the
-``PATH``, which can unwittingly happen in Windows.
+using
+-----
 
-The feature must be enabled explicitly by adding the following field to
-``dune-project``:
+The language of configuration files read by Dune can be extended to support
+additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``). This is done by
+adding a line in the ``dune-project`` file, such as:
 
 .. code:: scheme
 
-   (accept_alternative_dune_file_name)
+    (using <plugin> <version>)
 
-Note that ``dune`` continues to be accepted even after enabling this option, but
-if a file named ``dune-file`` is found in a directory, it will take precedence
-over ``dune``.
+Here, ``<plugin>`` is the name of the plugin that defines this stanza and
+``<version>`` describes the configuration language's version. Note that this
+version has nothing to do with the version of the associated tool or library. In
+particular, adding a ``using`` stanza will not result in a build dependency in
+the generated ``.opam`` file. See :ref:`generate_opam_files
+<generate_opam_files>`.
+
+version
+-------
+
+Sets the version of the project:
+
+.. code:: scheme
+
+    (version <version>)
+
+.. _wrapped-executables:
+
+wrapped_executables
+-------------------
+
+Executables are made of compilation units whose names may collide with
+libraries' compilation units. To avoid this possibility, Dune prefixes these
+compilation unit names with ``Dune__exe__``. This is entirely transparent to
+users except when such executables are debugged. In which case, the mangled
+names will be visible in the debugger.
+
+Starting from Dune 1.11, an option is available to turn on/off name mangling for
+executables on a per-project basis:
+
+.. code:: scheme
+
+    (wrapped_executables <bool>)
+
+Starting with Dune 2.0, Dune mangles compilation units of executables by
+default. However, this can still be turned off using ``(wrapped_executables
+false)``
 
 .. _dune-files:
 

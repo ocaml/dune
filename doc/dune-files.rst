@@ -2177,89 +2177,33 @@ file.  If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
 
 The ``config`` file can contain the following stanzas:
 
-.. _display:
+.. _action_stderr_on_success:
 
-display
--------
+action_stderr_on_success
+------------------------
 
-Specify the amount of Dune’s verbosity.
+Same as :ref:`action_stdout_on_success`, but applies to standard error instead
+of standard output.
+
+.. _action_stdout_on_success:
+
+action_stdout_on_success
+------------------------
+
+Specifies how Dune should handle the standard output of actions when they succeed.
+This can be used to reduce the noise of large builds.
 
 .. code:: scheme
 
-    (display <setting>)
+    (action_stdout_on_success <setting>)
 
 where ``<setting>`` is one of:
 
-- ``progress``, Dune shows and updates a status line as build goals are being
-  completed. This is the default value.
+- ``print`` prints the output on the terminal. This is the default.
 
-- ``verbose`` prints the full command lines of programs being executed by Dune,
-  with some colors to help differentiate programs.
+- ``swallow`` ignores the output and does not print it on the terminal.
 
-- ``short`` prints a line for each program executed with the binary name on the
-  left and the targets of the action on the right.
-
-- ``quiet`` only display errors.
-
-.. _concurrency:
-
-concurrency
------------
-
-Maximum number of concurrent jobs Dune is allowed to have.
-
-.. code:: scheme
-
-    (concurrency <setting>)
-
-where ``<setting>`` is one of:
-
-- ``auto``, auto-detect maximum number of cores. This is the default value.
-
-- ``<number>``, a positive integer specifying the maximum number of jobs Dune
-  may use simultaneously.
-
-.. _terminal-persistence:
-
-terminal-persistence
---------------------
-
-Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
-
-.. code:: scheme
-
-    (terminal-persistence <setting>)
-
-where ``<setting>`` is one of:
-
-- ``preserve`` does not clear the terminal screen beteween rebuilds.
-
-- ``clear-on-rebuild`` clears the terminal screen between rebuilds.
-
-- ``clear-on-rebuild-and-flush-history`` clears the terminal between rebuilds, and
-  it also deletes everything in the scrollback buffer.
-
-.. _sandboxing_preference:
-
-sandboxing_preference
----------------------
-
-The preferred sandboxing setting. Individual rules may specify different
-preferences. Dune will try to utilize a setting satisfying both conditions.
-
-.. code:: scheme
-
-    (sandboxing_preference <setting> <setting> ...)
-
-where each ``<setting>`` can be one of:
-
-- ``none`` disables sandboxing.
-
-- ``hardlink`` uses hard links for sandboxing. This is the default under Linux.
-
-- ``copy`` copies files for sandboxing. This is the default under Windows.
-
-- ``symlink`` uses symbolic links for sandboxing.
+- ``must-be-empty`` enforces that the output should be empty. If it is not, Dune will fail.
 
 .. _cache:
 
@@ -2320,30 +2264,86 @@ where ``<setting>`` is one of:
 - ``copy`` copies entries to the cache. This is less efficient than using hard
   links.
 
-.. _action_stdout_on_success:
+.. _concurrency:
 
-action_stdout_on_success
-------------------------
+concurrency
+-----------
 
-Specifies how Dune should handle the standard output of actions when they succeed.
-This can be used to reduce the noise of large builds.
+Maximum number of concurrent jobs Dune is allowed to have.
 
 .. code:: scheme
 
-    (action_stdout_on_success <setting>)
+    (concurrency <setting>)
 
 where ``<setting>`` is one of:
 
-- ``print`` prints the output on the terminal. This is the default.
+- ``auto``, auto-detect maximum number of cores. This is the default value.
 
-- ``swallow`` ignores the output and does not print it on the terminal.
+- ``<number>``, a positive integer specifying the maximum number of jobs Dune
+  may use simultaneously.
 
-- ``must-be-empty`` enforces that the output should be empty. If it is not, Dune will fail.
+.. _display:
 
-.. _action_stderr_on_success:
+display
+-------
 
-action_stderr_on_success
-------------------------
+Specify the amount of Dune’s verbosity.
 
-Same as :ref:`action_stdout_on_success`, but applies to standard error instead
-of standard output.
+.. code:: scheme
+
+    (display <setting>)
+
+where ``<setting>`` is one of:
+
+- ``progress``, Dune shows and updates a status line as build goals are being
+  completed. This is the default value.
+
+- ``verbose`` prints the full command lines of programs being executed by Dune,
+  with some colors to help differentiate programs.
+
+- ``short`` prints a line for each program executed with the binary name on the
+  left and the targets of the action on the right.
+
+- ``quiet`` only display errors.
+
+.. _sandboxing_preference:
+
+sandboxing_preference
+---------------------
+
+The preferred sandboxing setting. Individual rules may specify different
+preferences. Dune will try to utilize a setting satisfying both conditions.
+
+.. code:: scheme
+
+    (sandboxing_preference <setting> <setting> ...)
+
+where each ``<setting>`` can be one of:
+
+- ``none`` disables sandboxing.
+
+- ``hardlink`` uses hard links for sandboxing. This is the default under Linux.
+
+- ``copy`` copies files for sandboxing. This is the default under Windows.
+
+- ``symlink`` uses symbolic links for sandboxing.
+
+.. _terminal-persistence:
+
+terminal-persistence
+--------------------
+
+Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
+
+.. code:: scheme
+
+    (terminal-persistence <setting>)
+
+where ``<setting>`` is one of:
+
+- ``preserve`` does not clear the terminal screen beteween rebuilds.
+
+- ``clear-on-rebuild`` clears the terminal screen between rebuilds.
+
+- ``clear-on-rebuild-and-flush-history`` clears the terminal between rebuilds, and
+  it also deletes everything in the scrollback buffer.

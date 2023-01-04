@@ -2059,18 +2059,6 @@ containing exactly:
 This allows you to use an empty ``dune-workspace`` file to mark the root of your
 project.
 
-profile
--------
-
-The build profile can be selected in the ``dune-workspace`` file by write a
-``(profile ...)`` stanza. For instance:
-
-.. code:: scheme
-
-    (profile release)
-
-Note that the command line option ``--profile`` has precedence over this stanza.
-
 env
 ---
 
@@ -2078,6 +2066,13 @@ The ``env`` stanza can be used to set the base environment for all contexts in
 this workspace. This environment has the lowest precedence of all other ``env``
 stanzas. The syntax for this stanza is the same as Dune's :ref:`dune-env`
 stanza.
+
+``config`` stanzas
+------------------
+
+Starting in Dune 3.0, any of the stanzas from the :ref:`config` file can be used
+in the ``dune-workspace`` file. In this case, the configuration stanza will only
+affect the current workspace.
 
 context
 -------
@@ -2154,12 +2149,17 @@ For rare cases where this is not what you want, you can force Dune to use a
 different build contexts for Merlin by adding the field ``(merlin)`` to this
 context.
 
-``config`` stanzas
-------------------
+profile
+-------
 
-Starting in Dune 3.0, any of the stanzas from the :ref:`config` file can be used
-in the ``dune-workspace`` file. In this case, the configuration stanza will only
-affect the current workspace.
+The build profile can be selected in the ``dune-workspace`` file by write a
+``(profile ...)`` stanza. For instance:
+
+.. code:: scheme
+
+    (profile release)
+
+Note that the command line option ``--profile`` has precedence over this stanza.
 
 .. _config:
 

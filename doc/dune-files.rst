@@ -18,44 +18,24 @@ contents of all configuration files read by Dune and looks like:
 
 Additionally, they can contains the following stanzas.
 
-.. _using:
+accept_alternative_dune_file_name
+---------------------------------
 
-using
------
+Since Dune 3.0, it's possible to use the alternative filename ``dune-file``
+instead of ``dune`` to specify the build. This may be useful to avoid problems
+with ``dune`` files that have the executable permission in a directory in the
+``PATH``, which can unwittingly happen in Windows.
 
-The language of configuration files read by Dune can be extended to support
-additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``). This is done by
-adding a line in the ``dune-project`` file, such as:
-
-.. code:: scheme
-
-    (using <plugin> <version>)
-
-Here, ``<plugin>`` is the name of the plugin that defines this stanza and
-``<version>`` describes the configuration language's version. Note that this
-version has nothing to do with the version of the associated tool or library. In
-particular, adding a ``using`` stanza will not result in a build dependency in
-the generated ``.opam`` file. See :ref:`generate_opam_files
-<generate_opam_files>`.
-
-name
-----
-
-Sets the name of the project. It's used by :ref:`dune subst <dune-subst>` and
-error messages.
+The feature must be enabled explicitly by adding the following field to
+``dune-project``:
 
 .. code:: scheme
 
-    (name <name>)
+   (accept_alternative_dune_file_name)
 
-version
--------
-
-Sets the version of the project:
-
-.. code:: scheme
-
-    (version <version>)
+Note that ``dune`` continues to be accepted even after enabling this option, but
+if a file named ``dune-file`` is found in a directory, it will take precedence
+over ``dune``.
 
 cram
 ----
@@ -68,123 +48,6 @@ details.
    (cram <status>)
 
 Where status is either ``enable`` or ``disable``.
-
-.. _implicit_transitive_deps:
-
-implicit_transitive_deps
-------------------------
-
-By default, Dune allows transitive dependencies of dependencies used when
-compiling OCaml; however, this setting can be controlled per project:
-
-.. code:: scheme
-
-    (implicit_transitive_deps <bool>)
-
-When set to ``false``, all dependencies directly used by a library or an
-executable must be added in the ``libraries`` field. We recommend users
-experiment with this mode and report any problems.
-
-Note that you must use ``threads.posix`` instead of ``threads`` when using this
-mode. This isn't an important limitation, as ``threads.vm`` is deprecated
-anyway.
-
-In some situations, it can be desirable to selectively preserve the behavior of
-transitive dependencies' availability a library's users. For example, if we
-define a library ``foo_more`` that extends ``foo``, we might want ``foo_more``
-users to immediately have ``foo`` available as well. To do this, we must define
-the dependency on ``foo`` as re-exported:
-
-.. code:: scheme
-
-   (library
-    (name foo_more)
-    (libraries (re_export foo)))
-
-.. _wrapped-executables:
-
-wrapped_executables
--------------------
-
-Executables are made of compilation units whose names may collide with
-libraries' compilation units. To avoid this possibility, Dune prefixes these
-compilation unit names with ``Dune__exe__``. This is entirely transparent to
-users except when such executables are debugged. In which case, the mangled
-names will be visible in the debugger.
-
-Starting from Dune 1.11, an option is available to turn on/off name mangling for
-executables on a per-project basis:
-
-.. code:: scheme
-
-    (wrapped_executables <bool>)
-
-Starting with Dune 2.0, Dune mangles compilation units of executables by
-default. However, this can still be turned off using ``(wrapped_executables
-false)``
-
-.. _executables_implicit_empty_intf:
-
-executables_implicit_empty_intf
--------------------------------
-
-By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
-...)`` stanzas are compiled with the interface file provided (e.g., ``.mli`` or
-``rei``). Since these modules cannot be used as library dependencies, it's
-common to give them empty interface files to strengthen the compiler's ability
-to detect unused values in these modules.
-
-Starting from Dune 2.9, an option is available to automatically generate empty
-interface files for executables and tests that don't already have them:
-
-.. code:: scheme
-
-    (executables_implicit_empty_intf true)
-
-This option is enabled by default starting with Dune lang 3.0, so empty
-interface files are no longer needed.
-
-.. _explicit-js-mode:
-
-explicit_js_mode
-----------------
-
-Traditionally, JavaScript targets were defined for every bytecode executable.
-This wasn't very precise and didn't interact well with the ``@all`` alias.
-
-You can opt out of this behavior by using:
-
-.. code:: scheme
-
-    (explicit_js_mode)
-
-When this mode is enabled, an explicit ``js`` mode needs to be added to the
-``(modes ...)`` field of executables in order to trigger the JavaScript
-compilation. Explicit JS targets declared like this will be attached to the
-``@all`` alias.
-
-Starting with Dune 2.0, this behavior is the default, and there is no way to
-disable it.
-
-expand_aliases_in_sandbox
--------------------------
-
-When a sandboxed action depends on an alias, copy the expansion of the alias
-inside the sandbox. For instance, in the following example:
-
-.. code:: scheme
-
-    (alias
-     (name foo)
-     (deps ../x))
-
-    (cram
-     (deps (alias foo)))
-
-File `x` will be visible inside the Cram test if and only if this option is
-enabled. This option is a better default in general; however, it currently
-causes Cram tests to run noticeably slower. So it is disabled by default until
-the performance issue with Cram test is fixed.
 
 .. _dialect:
 
@@ -244,6 +107,69 @@ to a corresponding dialect).
   dialect will be formatted as any other OCaml code by default. Otherwise no
   special formatting will be done.
 
+.. _executables_implicit_empty_intf:
+
+executables_implicit_empty_intf
+-------------------------------
+
+By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
+...)`` stanzas are compiled with the interface file provided (e.g., ``.mli`` or
+``rei``). Since these modules cannot be used as library dependencies, it's
+common to give them empty interface files to strengthen the compiler's ability
+to detect unused values in these modules.
+
+Starting from Dune 2.9, an option is available to automatically generate empty
+interface files for executables and tests that don't already have them:
+
+.. code:: scheme
+
+    (executables_implicit_empty_intf true)
+
+This option is enabled by default starting with Dune lang 3.0, so empty
+interface files are no longer needed.
+
+expand_aliases_in_sandbox
+-------------------------
+
+When a sandboxed action depends on an alias, copy the expansion of the alias
+inside the sandbox. For instance, in the following example:
+
+.. code:: scheme
+
+    (alias
+     (name foo)
+     (deps ../x))
+
+    (cram
+     (deps (alias foo)))
+
+File `x` will be visible inside the Cram test if and only if this option is
+enabled. This option is a better default in general; however, it currently
+causes Cram tests to run noticeably slower. So it is disabled by default until
+the performance issue with Cram test is fixed.
+
+.. _explicit-js-mode:
+
+explicit_js_mode
+----------------
+
+Traditionally, JavaScript targets were defined for every bytecode executable.
+This wasn't very precise and didn't interact well with the ``@all`` alias.
+
+You can opt out of this behavior by using:
+
+.. code:: scheme
+
+    (explicit_js_mode)
+
+When this mode is enabled, an explicit ``js`` mode needs to be added to the
+``(modes ...)`` field of executables in order to trigger the JavaScript
+compilation. Explicit JS targets declared like this will be attached to the
+``@all`` alias.
+
+Starting with Dune 2.0, this behavior is the default, and there is no way to
+disable it.
+
 .. _formatting:
 
 formatting
@@ -262,26 +188,6 @@ where ``<setting>`` is one of:
 
 - ``(enabled_for <languages>)`` can be used to restrict the languages that are
   considered for formatting.
-
-.. _subst:
-
-subst
------
-
-Starting in Dune 3.0, :ref:`dune-subst` can be explicitly disabled or enabled.
-By default it is enabled and controlled by using:
-
-.. code:: scheme
-
-    (subst <setting>)
-
-where ``<setting>`` is one of:
-
-- ``disabled``, meaning that any call of `dune subst` in this project is
-  forbidden and will result in an error.
-
-- ``enabled``, allowing substitutions explicitly. This is the default.
-
 
 .. _generate_opam_files:
 
@@ -338,6 +244,48 @@ generated.
 
 Some or all of these fields may be overridden for each package of the project,
 see :ref:`package`.
+
+.. _implicit_transitive_deps:
+
+implicit_transitive_deps
+------------------------
+
+By default, Dune allows transitive dependencies of dependencies used when
+compiling OCaml; however, this setting can be controlled per project:
+
+.. code:: scheme
+
+    (implicit_transitive_deps <bool>)
+
+When set to ``false``, all dependencies directly used by a library or an
+executable must be added in the ``libraries`` field. We recommend users
+experiment with this mode and report any problems.
+
+Note that you must use ``threads.posix`` instead of ``threads`` when using this
+mode. This isn't an important limitation, as ``threads.vm`` is deprecated
+anyway.
+
+In some situations, it can be desirable to selectively preserve the behavior of
+transitive dependencies' availability a library's users. For example, if we
+define a library ``foo_more`` that extends ``foo``, we might want ``foo_more``
+users to immediately have ``foo`` available as well. To do this, we must define
+the dependency on ``foo`` as re-exported:
+
+.. code:: scheme
+
+   (library
+    (name foo_more)
+    (libraries (re_export foo)))
+
+name
+----
+
+Sets the name of the project. It's used by :ref:`dune subst <dune-subst>` and
+error messages.
+
+.. code:: scheme
+
+    (name <name>)
 
 .. _package:
 
@@ -407,6 +355,25 @@ Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to
 be added explicitly.
 
+.. _subst:
+
+subst
+-----
+
+Starting in Dune 3.0, :ref:`dune-subst` can be explicitly disabled or enabled.
+By default it is enabled and controlled by using:
+
+.. code:: scheme
+
+    (subst <setting>)
+
+where ``<setting>`` is one of:
+
+- ``disabled``, meaning that any call of `dune subst` in this project is
+  forbidden and will result in an error.
+
+- ``enabled``, allowing substitutions explicitly. This is the default.
+
 .. _always-add-cflags:
 
 use_standard_c_and_cxx_flags
@@ -425,24 +392,56 @@ content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
 completed or overridden using the :ref:`ordered-set-language`. The value
 ``true`` is the default for Dune 3.0.
 
-accept_alternative_dune_file_name
----------------------------------
+.. _using:
 
-Since Dune 3.0, it's possible to use the alternative filename ``dune-file``
-instead of ``dune`` to specify the build. This may be useful to avoid problems
-with ``dune`` files that have the executable permission in a directory in the
-``PATH``, which can unwittingly happen in Windows.
+using
+-----
 
-The feature must be enabled explicitly by adding the following field to
-``dune-project``:
+The language of configuration files read by Dune can be extended to support
+additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``). This is done by
+adding a line in the ``dune-project`` file, such as:
 
 .. code:: scheme
 
-   (accept_alternative_dune_file_name)
+    (using <plugin> <version>)
 
-Note that ``dune`` continues to be accepted even after enabling this option, but
-if a file named ``dune-file`` is found in a directory, it will take precedence
-over ``dune``.
+Here, ``<plugin>`` is the name of the plugin that defines this stanza and
+``<version>`` describes the configuration language's version. Note that this
+version has nothing to do with the version of the associated tool or library. In
+particular, adding a ``using`` stanza will not result in a build dependency in
+the generated ``.opam`` file. See :ref:`generate_opam_files
+<generate_opam_files>`.
+
+version
+-------
+
+Sets the version of the project:
+
+.. code:: scheme
+
+    (version <version>)
+
+.. _wrapped-executables:
+
+wrapped_executables
+-------------------
+
+Executables are made of compilation units whose names may collide with
+libraries' compilation units. To avoid this possibility, Dune prefixes these
+compilation unit names with ``Dune__exe__``. This is entirely transparent to
+users except when such executables are debugged. In which case, the mangled
+names will be visible in the debugger.
+
+Starting from Dune 1.11, an option is available to turn on/off name mangling for
+executables on a per-project basis:
+
+.. code:: scheme
+
+    (wrapped_executables <bool>)
+
+Starting with Dune 2.0, Dune mangles compilation units of executables by
+default. However, this can still be turned off using ``(wrapped_executables
+false)``
 
 .. _dune-files:
 
@@ -469,255 +468,137 @@ The syntax of ``dune`` files is described in :ref:`metadata-format` section.
 
 The following sections describe the available stanzas and their meanings.
 
-jbuild_version
---------------
+.. _alias-stanza:
 
-Deprecated. This `jbuild_version` stanza is no longer used and will be removed
-in the future.
+alias
+-----
 
-.. _library:
+The ``alias`` stanza adds dependencies to an alias or specifies an action to run
+to construct the alias.
 
-library
--------
-
-The ``library`` stanza must be used to describe OCaml libraries. The format of
-library stanzas is as follows:
+The syntax is as follows:
 
 .. code:: scheme
 
-    (library
-     (name <library-name>)
+    (alias
+     (name    <alias-name>)
+     (deps    <deps-conf list>)
      <optional-fields>)
 
-``<library-name>`` is the real name of the library. It determines the names of
-the archive files generated for the library as well as the module name under
-which the library will be available, unless ``(wrapped false)`` is used (see
-below). It must be a valid OCaml module name, but it doesn't need to start with
-an uppercase letter.
+``<name>`` is an alias name such as ``runtest``.
 
-For instance, the modules of a library named ``foo`` will be available as
-``Foo.XXX``, outside of ``foo`` itself; however, it is allowed to write an
-explicit ``Foo`` module, which will be the library interface. You are free to
-expose only the modules you want.
+.. _alias-fields:
 
-Please note: by default, libraries and other things that consume OCaml/Reason
-modules only consume modules from the directory where the stanza appear. In
-order to declare a multi-directory library, you need to use the
-:ref:`include_subdirs` stanza.
+``<deps-conf list>`` specifies the dependencies of the alias. See the
+:ref:`deps-field` section for more details.
 
 ``<optional-fields>`` are:
 
-- ``(public_name <name>)`` - the name under which the library can be referred as
-  a dependency when it's not part of the current workspace, i.e., when it's
-  installed. Without a ``(public_name ...)`` field, the library won't be
-  installed by Dune. The public name must start with the package name it's part
-  of and optionally followed by a dot, then anything else you want. The package
-  name must also be one of the packages that Dune knows about, as determined by
-  the :ref:`opam-files`
+- ``<action>``, an action for constructing the alias. See the
+  :ref:`user-actions` section for more details. Note that this is removed in
+  Dune 2.0, so users must port their code to use the ``rule`` stanza with the
+  ``alias`` field instead.
 
-- ``(package <package>)`` installs a private library under the specified
-  package. Such a library is now usable by public libraries defined in the same
-  project. The Findlib name for this library will be
-  ``<package>.__private__.<name>``; however, the library's interface will be
-  hidden from consumers outside the project.
+- ``(package <name>)`` indicates that this alias stanza is part of package
+  ``<name>`` and should be filtered out if ``<name>`` is filtered out from the
+  command line, either with ``--only-packages <pkgs>`` or ``-p <pkgs>``.
 
-- ``(synopsis <string>)`` should give a one-line description of the library.
-  This is used by tools that list installed libraries
+- ``(locks (<lock-names>))`` specifies that the action must be run while holding
+  the following locks. See the :ref:`locks` section for more details.
 
-- ``(modules <modules>)`` specifies what modules are part of the library. By
-  default, Dune will use all the ``.ml/.re`` files in the same directory as the
-  ``dune`` file. This includes ones present in the file system as well as ones
-  generated by user rules. You can restrict this list by using a ``(modules
-  <modules>)`` field. ``<modules>`` uses the :ref:`ordered-set-language`, where
-  elements are module names and don't need to start with an uppercase letter.
-  For instance, to exclude module ``Foo``, use ``(modules (:standard \ foo))``
+- ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
+  be true for the tests to run. The condition is specified using the
+  :ref:`blang`, and the field allows for :ref:`variables` to appear in the
+  expressions.
 
-- ``(libraries <library-dependencies>)`` specifies the library's dependencies.
-  See the section about :ref:`library-deps` for more details.
+The typical use of the ``alias`` stanza is to define tests:
 
-- ``(wrapped <boolean>)`` specifies whether the library modules should be
-  available only through the top-level library module, or if they should all be
-  exposed at the top level. The default is ``true``, and it's highly recommended
-  to keep it this way. Because OCaml top-level modules must all be unique when
-  linking an executables, polluting the top-level namespace will make your
-  library unusable with other libraries if there is a module name clash. This
-  option is only intended for libraries that manually prefix all their modules
-  by the library name and to ease porting of existing projects to Dune.
+.. code:: lisp
 
-- ``(wrapped (transition <message>))`` is the same as ``(wrapped true)``, except
-  it will also generate unwrapped (not prefixed by the library name) modules to
-  preserve compatibility. This is useful for libraries that would like to
-  transition from ``(wrapped false)`` to ``(wrapped true)`` without breaking
-  compatibility for users. The deprecation notices for the unwrapped modules
-  will include ``<message>``.
+    (rule
+     (alias   runtest)
+     (action (run %{exe:my-test-program.exe} blah)))
 
-- ``(preprocess <preprocess-spec>)`` specifies how to preprocess files when
-  needed. The default is ``no_preprocessing``, and other options are described
-  in the :ref:`preprocessing-spec` section.
+See the section about :ref:`running-tests` for details.
 
-- ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor
-  dependencies preprocessor, i.e., if the preprocessor reads a generated file.
-  The specification of dependencies is described in the :ref:`deps-field`
-  section.
+Please note: if your project contains several packages, and you run the tests
+from the opam file using a ``build-test`` field, all your ``runtest`` alias
+stanzas should have a ``(package ...)`` field in order to partition the set of
+tests.
 
-- ``(optional)`` - if present, it indicates that the library should only be
-  built and installed if all the dependencies are available, either in the
-  workspace or in the installed world. Use this to provide extra features
-  without adding hard dependencies to your project
+cinaps
+------
 
-- ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
-  C or C++ stubs, to be compiled and packaged together with the library. See the
-  section :ref:`foreign-sources-and-archives` for more details. This field
-  replaces the now-deleted fields ``c_names``, ``c_flags``, ``cxx_names``, and
-  ``cxx_flags``.
+A ``cinaps`` stanza is available to support the ``cinaps`` tool.  See the
+`cinaps website <https://github.com/janestreet/cinaps>`_ for more details.
 
-- ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
-  object files to be packaged with the library. See the section
-  :ref:`foreign-archives` for more details. This field replaces the now-deleted
-  field ``self_build_stubs_archive``.
+copy_files
+----------
 
-- ``(install_c_headers (<names>))`` - if your library has public C header files
-  that must be installed, you must list them in this field, without the ``.h``
-  extension.
+The ``copy_files`` and ``copy_files#`` stanzas specify that files from another
+directory could be copied to the current directory, if needed.
 
-- ``(modes <modes>)`` is for modes which should be built by default. The most
-  common use for this feature is to disable native compilation when writing
-  libraries for the OCaml toplevel. The following modes are available: ``byte``,
-  ``native`` and ``best``. ``best`` is ``native`` or ``byte`` when native
-  compilation isn't available.
+The syntax is as follows:
 
-- ``(no_dynlink)`` disables dynamic linking of the library. This is for advanced
-  use only. By default, you shouldn't set this option.
+.. code:: scheme
 
-- ``(kind <kind>)`` sets the type of library. The default is ``normal``, but
-  other available choices are ``ppx_rewriter`` and ``ppx_deriver``. They must be
-  set when the library is intended to be used as a PPX rewriter or a
-  ``[@@deriving ...]`` plugin. The reason ``ppx_rewriter`` and ``ppx_deriver``
-  are split is historical, and hopefully we won't need two options soon. Both
-  PPX kinds support an optional field: ``(cookies <cookies>)``, where
-  ``<cookies>`` is a list of pairs ``(<name> <value>)`` with ``<name>`` being
-  the cookie name and ``<value>`` a string that supports :ref:`variables`
-  evaluated by each preprocessor invocation (note: libraries that share cookies
-  with the same name should agree on their expanded value).
+    (copy_files
+     <optional-fields>
+     (files <glob>))
 
-- ``(ppx_runtime_libraries (<library-names>))`` is for when the library is a
-  ``ppx rewriter`` or a ``[@@deriving ...]`` plugin, and has runtime
-  dependencies. You need to specify these runtime dependencies here.
+``<glob>`` represents the set of files to copy. See the :ref:`glob <glob>` for
+details.
 
-- ``(virtual_deps (<opam-packages>)``. Sometimes opam packages enable a specific
-  feature only if another package is installed. For instance, the case of
-  ``ctypes`` will only install ``ctypes.foreign`` if the dummy
-  ``ctypes-foreign`` package is installed. You can specify such virtual
-  dependencies here, but you don't need to do so unless you use Dune to
-  synthesize the ``depends`` and ``depopts`` sections of your opam file.
+``<optional-fields>`` are:
 
-- ``js_of_ocaml`` sets options for JavaScript compilation, see :ref:`jsoo-field`.
+- ``(alias <alias-name>)`` specifies an alias to which to attach the targets.
 
-- For ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``, see the section about
-  :ref:`ocaml-flags`
+- ``(mode <mode>)`` specifies how to handle the targets. See `modes`_ for
+  details.
 
-- ``(library_flags (<flags>))`` is a list of flags passed to ``ocamlc`` and
-  ``ocamlopt`` when building the library archive files. You can use this to
-  specify ``-linkall``, for instance. ``<flags>`` is a list of strings
-  supporting :ref:`variables`.
+- ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
+  condition is specified using the :ref:`blang`.
 
-- ``(c_library_flags <flags>)`` specifies the flags passed to the C compiler
-  when constructing the library archive file for the C stubs. ``<flags>`` uses
-  the :ref:`ordered-set-language` and supports ``(:include ...)`` forms. When
-  you write bindings for a C library named ``bar``, you should typically write
-  ``-lbar`` here, or whatever flags are necessary to link against this library.
+The short form:
 
-- ``(modules_without_implementation <modules>)`` specifies a list of modules
-  that have only a ``.mli`` or ``.rei`` but no ``.ml`` or ``.re`` file. Such
-  modules are usually referred as *mli only modules*. They are not officially
-  supported by the OCaml compiler; however, they are commonly used. Such modules
-  must only define types. Since it isn't reasonably possible for Dune to check
-  this is the case, Dune requires the user to explicitly list such modules to
-  avoid surprises.  Note that the ``modules_without_implementation`` field isn't
-  merged in ``modules``, which represents the total set of modules in a library.
-  If a directory has more than one stanza, and thus a ``modules`` field must be
-  specified, ``<modules>`` still needs to be added in ``modules``.
+.. code:: scheme
 
-- ``(private_modules <modules>)`` specifies a list of modules that will be
-  marked as private. Private modules are inaccessible from outside the libraries
-  they are defined in. Note that the ``private_modules`` field is not merged in
-  ``modules``, which represents the total set of modules in a library. If a
-  directory has more than one stanza and thus a ``modules`` field must be
-  specified, ``<modules>`` still need to be added in ``modules``.
+    (copy_files <glob>)
 
-- ``(allow_overlapping_dependencies)`` allows external dependencies to overlap
-  with libraries that are present in the workspace.
+is equivalent to:
 
-- ``(enabled_if <blang expression>)`` conditionally disables a library. A
-  disabled library cannot be built and will not be installed. The condition is
-  specified using the :ref:`blang`, and the field allows for the ``%{os_type}``
-  variable, which is expanded to the type of OS being targeted by the current
-  build. Its value is the same as the value of the ``os_type`` parameter in the
-  output of ``ocamlc -config``.
+.. code:: scheme
 
-- ``(inline_tests)`` enables inline tests for this library. They can be
-  configured through options using ``(inline_tests <options>)``. See
-  :ref:`inline_tests` for a reference of corresponding options.
+    (copy_files (files <glob>))
 
-- ``(root_module <module>)`` this field instructs Dune to generate a module that
-  will contain module aliases for every library specified in dependencies. This
-  is useful whenever a library is shadowed by a local module. The library may
-  then still be accessible via this root module
+The difference between ``copy_files`` and ``copy_files#`` is the same as the
+difference between the ``copy`` and ``copy#`` actions. See the
+:ref:`user-actions` section for more details.
 
-- ``(ctypes <ctypes stanza>)`` instructs Dune to use ctypes stubgen to process
-  your type and function descriptions for binding system libraries, vendored
-  libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
-  reference. This field is available since the 3.0 version of the Dune language.
+coq.theory
+----------
 
-- ``(empty_module_interface_if_absent)`` causes the generation of empty
-  interfaces for every module that does not have an interface file already.
-  Useful when modules are used solely for their side-effects. This field is
-  available since the 3.0 version of the Dune language.
+See the documentation on the :ref:`coq-theory`, :ref:`coq-extraction`,
+:ref:`coq-pp`, and related stanzas.
 
-Note that when binding C libraries, Dune doesn't provide special support for
-tools such as ``pkg-config``; however, it integrates easily with
-:ref:`configurator` by using ``(c_flags (:include ...))`` and ``(c_library_flags
-(:include ...))``.
+.. _dune-data_only_dirs:
 
-.. _foreign_library:
+data_only_dirs (Since 1.6)
+--------------------------
 
-foreign_library
----------------
+Dune allows the user to treat directories as *data only*. ``dune`` files in
+these directories won't be evaluated for their rules, but the contents of these
+directories will still be usable as dependencies for other rules.
 
-The ``foreign_library`` stanza describes archives of separately compiled foreign
-object files that can be packaged with an OCaml library or linked into an OCaml
-executable. See :ref:`foreign-sources-and-archives` for further details and
-examples.
+The syntax is the same as for the ``dirs`` stanza except that ``:standard`` is
+empty by default.
 
-.. _jsoo-field:
+Example:
 
-js_of_ocaml
-~~~~~~~~~~~
+.. code:: scheme
 
-In ``library`` and ``executables`` stanzas, you can specify ``js_of_ocaml``
-options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
-
-``<js_of_ocaml-options>`` are all optional:
-
-- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml compile``. This
-  field supports ``(:include ...)`` forms
-
-- ``(build_runtime_flags <flags>)`` to specify flags passed to ``js_of_ocaml
-  build-runtime``. This field supports ``(:include ...)`` forms
-
-- ``(link_flags <flags>)`` to specify flags passed to ``js_of_ocaml link``. This
-  field supports ``(:include ...)`` forms
-
-- ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
-  runtime files.
-
-``<flags>`` is specified in the :ref:`ordered-set-language`.
-
-The default value for ``(flags ...)`` depends on the selected build profile. The
-build profile ``dev`` (the default) will enable sourcemap and the pretty
-JavaScript output.
-
-See :ref:`jsoo` for more information.
+   ;; dune files in fixtures_* dirs are ignored
+   (data_only_dirs fixtures_*)
 
 .. _deprecated-library-name:
 
@@ -744,6 +625,132 @@ The ``old_public_name`` can also be one of the names declared in the
 library whose name is not prefixed by the package name. Such a library cannot be
 defined in Dune, but other build systems allow it. This feature is meant to help
 migration from those systems.
+
+.. _dune-subdirs:
+
+dirs (Since 1.6)
+----------------
+
+The ``dirs`` stanza allows specifying the subdirectories Dune will include in a
+build. The syntax is based on Dune's :ref:`predicate-lang` and allows the user
+the following operations:
+
+- The special value ``:standard`` which refers to the default set of used
+  directories. These are the directories that don't start with ``.`` or ``_``.
+
+- Set operations. Differences are expressed with backslash: ``* \ bar``; unions
+  are done by listing multiple items.
+
+- Sets can be defined using globs.
+
+Examples:
+
+.. code:: lisp
+
+   (dirs *) ;; include all directories
+   (dirs :standard \ ocaml) ;; include all dirs except ocaml
+   (dirs :standard \ test* foo*) ;; exclude all dirs that start with test or foo
+
+Dune will not scan a directory that isn't included in this stanza. Any contained
+``dune`` (or other special) files won't be interpreted either and will be
+treated as raw data. It is however possible to depend on files inside ignored
+subdirectories.
+
+.. _documentation-stanza:
+
+documentation
+-------------
+
+Additional manual pages may be attached to packages using the ``documentation``
+stanza. These ``.mld`` files must contain text in the same syntax as OCamldoc
+comments.
+
+.. code-block:: scheme
+
+  (documentation (<optional-fields>))
+
+Where ``<optional-fields>`` are:
+
+- ``(package <name>)`` defines the package this documentation should be attached
+  to. If this is absent, Dune will try to infer it based on the location of the
+  stanza.
+
+- ``(mld_files <arg>)``: the ``<arg>`` field follows the
+  :ref:`ordered-set-language`. This is a set of extensionless MLD file basenames
+  attached to the package, where ``:standard`` refers to all the ``.mld`` files
+  in the stanza's directory.
+
+For more information, see :ref:`documentation`.
+
+.. _dune-env:
+
+env
+---
+
+The ``env`` stanza allows one to modify the environment. The syntax is as
+follows:
+
+.. code:: scheme
+
+     (env
+      (<profile1> <settings1>)
+      (<profile2> <settings2>)
+      ...
+      (<profilen> <settingsn>))
+
+The first form ``(<profile> <settings>)`` that corresponds to the selected build
+profile will be used to modify the environment in this directory. You can use
+``_`` to match any build profile.
+
+Fields supported in ``<settings>`` are:
+
+- any OCaml flags field. See :ref:`ocaml-flags` for more details.
+
+- ``(link_flags <flags>)`` specifies flags to OCaml when linking an executable.
+  See :ref:`executables stanza <shared-exe-fields>`.
+
+- ``(c_flags <flags>)`` and ``(cxx_flags <flags>)`` specify compilation flags
+  for C and C++ stubs, respectively. See `library`_ for more details.
+
+- ``(env-vars (<var1> <val1>) .. (<varN> <valN>))`` will add the corresponding
+  variables to the environment where the build commands are executed and are
+  used by ``dune exec``.
+
+- ``(menhir_flags <flags>))`` specifies flags for Menhir stanzas.
+
+- ``(js_of_ocaml (flags <flags>)(build_runtime <flags>)(link_flags <flags>))``
+  specifies ``js_of_ocaml`` flags. See `jsoo-field`_ for more details.
+
+- ``(js_of_ocaml (compilation_mode <mode>))`` controls whether to use separate
+  compilation or not where ``<mode>`` is either ``whole_program`` or
+  ``separate``.
+
+- ``(js_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
+  :ref:`inline_tests` and tests (`tests-stanza`_) run for the `js` mode.
+
+- ``(binaries <binaries>)``, where ``<binaries>`` is a list of entries of the
+  form ``(<filepath> as <name>)``. ``(<filepath> as <name>)`` makes the binary
+  ``<filepath>`` available in the command search as just ``<name>``. For
+  instance, in a ``(run <name> ...)`` action, ``<name>`` will resolve to this
+  file path. You can also write just the file path, in which case the name will
+  be inferred from the basename of ``<filepath>`` by dropping the ``.exe``
+  suffix, if it exists. For example, ``(binaries bin/foo.exe (bin/main.exe as
+  bar))`` would add the commands ``foo`` and ``bar`` to the search path.
+
+- ``(inline_tests <state>)``, where ``<state>`` is either ``enabled``,
+  ``disabled``, or ``ignored``. This field has been available since Dune 1.11.
+  It controls the variable's value ``%{inline_tests}``, which is read by the
+  inline test framework. The default value is ``disabled`` for the ``release``
+  profile and ``enabled`` otherwise.
+
+- ``(odoc <fields>)`` allows passing options to ``odoc``. See
+  :ref:`odoc-options` for more details.
+
+- ``(coq (flags <flags>))`` allows passing options to Coq. See :ref:`coq-theory`
+  for more details.
+
+- ``(formatting <settings>)`` allows the user to set auto-formatting in the
+  current directory subtree (see :ref:`formatting`).
 
 .. _executable:
 
@@ -982,6 +989,36 @@ the ``.bc.exe`` or ``.exe`` ones instead, as these are self-contained.
 Lastly, note that ``.bc`` executables cannot contain C stubs. If your executable
 contains C stubs you may want to use ``(modes exe)``.
 
+.. _jsoo-field:
+
+js_of_ocaml
+~~~~~~~~~~~
+
+In ``library`` and ``executables`` stanzas, you can specify ``js_of_ocaml``
+options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
+
+``<js_of_ocaml-options>`` are all optional:
+
+- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml compile``. This
+  field supports ``(:include ...)`` forms
+
+- ``(build_runtime_flags <flags>)`` to specify flags passed to ``js_of_ocaml
+  build-runtime``. This field supports ``(:include ...)`` forms
+
+- ``(link_flags <flags>)`` to specify flags passed to ``js_of_ocaml link``. This
+  field supports ``(:include ...)`` forms
+
+- ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
+  runtime files.
+
+``<flags>`` is specified in the :ref:`ordered-set-language`.
+
+The default value for ``(flags ...)`` depends on the selected build profile. The
+build profile ``dev`` (the default) will enable sourcemap and the pretty
+JavaScript output.
+
+See :ref:`jsoo` for more information.
+
 executables
 -----------
 
@@ -1004,331 +1041,172 @@ well:
   ``(names ...)`` field. Moreover, you can use ``-`` for executables that
   shouldn't be installed.
 
-rule
-----
-
-The ``rule`` stanza is used to create custom user rules. It tells Dune how to
-generate a specific set of files from a specific set of dependencies.
-
-The syntax is as follows:
-
-.. code:: scheme
-
-    (rule
-     (action <action>)
-     <optional-fields>)
-
-``<action>`` is what you run to produce the targets from the dependencies. See
-the :ref:`user-actions` section for more details.
-
-``<optional-fields>`` are:
-
-- ``(target <filename>)`` or ``(targets <filenames>) ``<filenames>`` is a list
-  of filenames (if defined with ``targets``) or exactly one filename (if defined
-  with ``target``). Dune needs to statically know targets of each rule.
-  ``(targets)`` can be omitted if it can be inferred from the action. See
-  `inferred rules`_.
-
-- ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See the
-  :ref:`deps-field` section for more details.
-
-- ``(mode <mode>)`` specifies how to handle the targets. See `modes`_ for
-  details.
-
-- ``(fallback)`` is deprecated and is the same as ``(mode fallback)``.
-
-- ``(locks (<lock-names>))`` specifies that the action must be run while holding
-  the following locks. See the :ref:`locks` section for more details.
-
-- ``(alias <alias-name>)`` specifies this rule's alias. Building this alias
-  means building the targets of this rule.
-
-- ``(aliases <alias-name list>)`` specifies many aliases for this rule.
-
-- ``(package <package>)`` specifies this rule's package. This rule will be
-  unavailable when installing other packages in release mode.
-
-- ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
-  be true for the rule to be considered. The condition is specified using the
-  :ref:`blang`, and the field allows for :ref:`variables` to appear in the
-  expressions.
-
-Please note: contrary to makefiles or other build systems, user rules currently
-don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
-given ``%``. This might be supported in the future.
-
-modes
-~~~~~
-
-By default, a rule's target must not exist in the source tree because Dune will
-error out when this is the case; however, it's possible to change this behavior
-using the ``mode`` field. The following modes are available:
-
-- ``standard`` - the standard mode.
-
-- ``fallback`` - in this mode, when the targets are already present in the
-  source tree, Dune will ignore the rule. It's an error if only a subset of the
-  targets are present in the tree. Fallback rules are commonly used to generate
-  default configuration files that may be generated by a configure script.
-
-.. _promote:
-
-- ``promote`` or ``(promote <options>)`` - in this mode, the files in the source
-  tree will be ignored. Once the rule has been executed, the targets will be
-  copied back to the source tree. The following options are available:
-
-  - ``(until-clean)`` means that ``dune clean`` will remove the promoted files
-    from the source tree.
-  - ``(into <dir>)`` means that the files are promoted in ``<dir>`` instead of
-    the current directory. This feature has been available since Dune 1.8.
-  - ``(only <predicate>)`` means that only a subset of the targets should be
-    promoted. The argument is similar to the argument of :ref:`(dirs ...)
-    <dune-subdirs>`, specified using the :ref:`predicate-lang`. This feature has
-    been available since Dune 1.10.
-
-There are two use cases for ``promote`` rules. The first one is when the
-generated code is easier to review than the generator, so it's easier to commit
-the generated code and review it. The second is to cut down dependencies during
-releases. By passing ``--ignore-promoted-rules`` to Dune, rules with ``(mode
-promote)`` will be ignored, and the source files will be used instead. The
-``-p/--for-release-of-packages`` flag implies ``--ignore-promote-rules``.
-However, rules that promote only a subset of their targets via ``(only ...)``
-are never ignored.
-
-Inferred Rules
-~~~~~~~~~~~~~~
-
-When using the action DSL (see :ref:`user-actions`), the dependencies and
-targets are usually obvious.
-
-For instance:
-
-.. code:: lisp
-
-    (rule
-     (target b)
-     (deps   a)
-     (action (copy %{deps} %{target})))
-
-In this example, the dependencies and targets are obvious by inspecting the
-action. When this is the case, you can use the following shorter syntax and have
-Dune infer dependencies and targets for you:
-
-.. code:: scheme
-
-    (rule <action>)
-
-For instance:
-
-.. code:: scheme
-
-    (rule (copy a b))
-
-Note that in Dune, targets must always be known statically. For instance, this
-``(rule ...)`` stanza is rejected by Dune:
-
-.. code:: lisp
-
-    (rule (copy a b.%{read:file}))
-
-Directory targets
+external_variant
 -----------------
 
-Note that at this time, Dune officially only supports user rules with targets in
-the current directory. However, starting from Dune 3.0, we provide an
-experimental support for *directory targets*, where an action can produce a
-whole tree of build artifacts. To specify a directory target, you can use the
-``(dir <dirname>)`` syntax. For example, the following stanza describes a rule
-with a file target ``foo`` and a directory target ``bar``.
+This stanza was experimental and removed in Dune 2.6. See :ref:`dune-variants`.
 
-.. code:: scheme
+.. _foreign_library:
 
-    (rule
-     (targets foo (dir bar))
-     (action  <action>))
+foreign_library
+---------------
 
-To enable this experimental feature, add ``(using directory-targets 0.1)`` to
-your ``dune-project`` file. However note that currently rules with a directory
-target are always rebuilt. We are working on fixing this performance bug.
+The ``foreign_library`` stanza describes archives of separately compiled foreign
+object files that can be packaged with an OCaml library or linked into an OCaml
+executable. See :ref:`foreign-sources-and-archives` for further details and
+examples.
 
-ocamllex
---------
+.. _generate_sites_module:
 
-``(ocamllex <names>)`` is essentially a shorthand for:
+generate_sites_module (Since 2.8)
+---------------------------------
 
-.. code:: lisp
-
-    (rule
-     (target <name>.ml)
-     (deps   <name>.mll)
-     (action (chdir %{workspace_root}
-              (run %{bin:ocamllex} -q -o %{target} %{deps}))))
-
-To use a different rule mode, use the long form:
-
-.. code:: scheme
-
-    (ocamllex
-     (modules <names>)
-     (mode    <mode>))
-
-.. _ocamlyacc:
-
-ocamlyacc
----------
-
-``(ocamlyacc <names>)`` is essentially a shorthand for:
+Dune proposes some facilities for dealing with :ref:`sites<sites>` in a program.
+The ``generate_sites_module`` stanza will generate code for looking up the
+correct locations of the sites' directories and for loading plugins. It works
+after installation with or without the relocation mode, inside Dune rules, and
+when using Dune executables. For promotion, it works only if the generated
+modules are solely in the executable (or library statically linked) promoted;
+generated modules in plugins won't work.
 
 .. code:: lisp
 
-    (rule
-     (targets <name>.ml <name>.mli)
-     (deps    <name>.mly)
-     (action  (chdir %{workspace_root}
-               (run %{bin:ocamlyacc} %{deps}))))
+   (generate_sites_module
+    (module <name>)
+    <facilities>)
 
-To use a different rule mode, use the long form:
-
-.. code:: scheme
-
-    (ocamlyacc
-     (modules <names>)
-     (mode    <mode>))
-
-.. _menhir:
-
-menhir
-------
-
-A ``menhir`` stanza is available to support the Menhir parser generator.
-
-To use Menhir in a Dune project, the language version should be selected in the
-``dune-project`` file. For example:
-
-.. code:: scheme
-
-  (using menhir 2.0)
-
-This will enable support for Menhir stanzas in the current project. If the
-language version is absent, Dune will automatically add this line with the
-latest Menhir version once a Menhir stanza is used anywhere.
-
-The basic form for defining menhir-git_ parsers (analogous to :ref:`ocamlyacc`)
-is:
-
-.. code:: scheme
-
-    (menhir
-     (modules <parser1> <parser2> ...)
-     <optional-fields>)
-
-``<optional-fields>`` are:
-
-- ``(merge_into <base_name>)`` is used to define modular parsers. This
-  correspond to the ``--base`` command line option of ``menhir``. With this
-  option, a single parser named ``base_name`` is generated.
-
-- ``(flags <option1> <option2> ...)`` is used to pass extra flags to Menhir.
-
-- ``(infer <bool>)`` is used to enable Menhir with type inference. This option
-  is enabled by default with Menhir language 2.0.
-
-Menhir supports writing the grammar and automation to the ``.cmly`` file.
-Therefore, if this is flag is passed to Menhir, Dune will know to introduce a
-``.cmly`` target for the module.
-
-.. _menhir-git: https://gitlab.inria.fr/fpottier/menhir
+The module's code is generated in the directory with the given name. The code is
+populated according to the requested facilities.
 
 
-cinaps
-------
+The available ``<facilities>`` are:
 
-A ``cinaps`` stanza is available to support the ``cinaps`` tool.  See the
-`cinaps website <https://github.com/janestreet/cinaps>`_ for more details.
+- ``sourceroot`` adds a value ``val sourceroot: string option`` in the generated
+  module, which contains the value of ``%{workspace_root}``, if the code has
+  been built locally. It could be used to keep the tool's configuration file
+  locally when executed with ``dune exec`` or after promotion. The value is
+  ``None`` once it has been installed.
 
-.. _documentation-stanza:
+- ``relocatable`` adds a value ``val relocatable: bool`` in the generated
+  module, which indicates if the binary has been installed in the relocatable
+  mode.
 
-documentation
--------------
+- ``(sites <package>)`` adds a value ``val <site>: string list`` for each
+  ``<site>`` of ``<package>`` in the submodule `Sites` of the generated module.
+  The identifier <site> isn't capitalized.
 
-Additional manual pages may be attached to packages using the ``documentation``
-stanza. These ``.mld`` files must contain text in the same syntax as OCamldoc
-comments.
+- ``(plugins (<package> <site>) ...)`` adds a submodule ``<site>`` with the
+  following signature ``S`` in the submodule ``Plugins`` of the generated module
+  . The identifier ``<site>`` is capitalized.
 
-.. code-block:: scheme
+.. code:: ocaml
 
-  (documentation (<optional-fields>))
+   module type S = sig
+     val paths: string list
+     (** return the locations of the directory containing the plugins *)
 
-Where ``<optional-fields>`` are:
+     val list: unit -> string list
+     (** return the list of available plugins *)
 
-- ``(package <name>)`` defines the package this documentation should be attached
-  to. If this is absent, Dune will try to infer it based on the location of the
-  stanza.
+     val load_all: unit -> unit
+     (** load all the plugins and their dependencies *)
 
-- ``(mld_files <arg>)``: the ``<arg>`` field follows the
-  :ref:`ordered-set-language`. This is a set of extensionless MLD file basenames
-  attached to the package, where ``:standard`` refers to all the ``.mld`` files
-  in the stanza's directory.
+     val load: string -> unit
+     (** load the specified plugin and its dependencies *)
+   end
 
-For more information, see :ref:`documentation`.
+The generated module is a dependency on the library ``dune-site``, and if the
+facilities ``(plugins ...)`` are used, it is a dependency on the library
+``dune-site.plugins``. Those dependencies are not automatically added to the
+library or executable which use the module (cf. :ref:`plugins`).
 
-.. _alias-stanza:
+.. _dune-ignored_subdirs:
 
-alias
------
+ignored_subdirs (Deprecated in 1.6)
+-----------------------------------
 
-The ``alias`` stanza adds dependencies to an alias or specifies an action to run
-to construct the alias.
+One may also specify *data only* directories using the ``ignored_subdirs``
+stanza, meaning it's the same as ``data_only_dirs``, but the syntax isn't as
+flexible and only accepts a list of directory names. It's advised to switch to
+the new ``data_only_dirs`` stanza.
 
-The syntax is as follows:
+Example:
 
 .. code:: scheme
 
-    (alias
-     (name    <alias-name>)
-     (deps    <deps-conf list>)
-     <optional-fields>)
+     (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
 
-``<name>`` is an alias name such as ``runtest``.
-
-.. _alias-fields:
-
-``<deps-conf list>`` specifies the dependencies of the alias. See the
-:ref:`deps-field` section for more details.
-
-``<optional-fields>`` are:
-
-- ``<action>``, an action for constructing the alias. See the
-  :ref:`user-actions` section for more details. Note that this is removed in
-  Dune 2.0, so users must port their code to use the ``rule`` stanza with the
-  ``alias`` field instead.
-
-- ``(package <name>)`` indicates that this alias stanza is part of package
-  ``<name>`` and should be filtered out if ``<name>`` is filtered out from the
-  command line, either with ``--only-packages <pkgs>`` or ``-p <pkgs>``.
-
-- ``(locks (<lock-names>))`` specifies that the action must be run while holding
-  the following locks. See the :ref:`locks` section for more details.
-
-- ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
-  be true for the tests to run. The condition is specified using the
-  :ref:`blang`, and the field allows for :ref:`variables` to appear in the
-  expressions.
-
-The typical use of the ``alias`` stanza is to define tests:
+All of the specified ``<sub-dirn>`` will be ignored by Dune. Note that users
+should rely on the ``dirs`` stanza along with the appropriate set operations
+instead of this stanza. For example:
 
 .. code:: lisp
 
+  (dirs :standard \ <sub-dir1> <sub-dir2> ...)
+
+include
+-------
+
+The ``include`` stanza allows including the contents of another file in the
+current ``dune`` file. Currently, the included file cannot be generated and must
+be present in the source tree. This feature is intended for use in conjunction
+with promotion, when parts of a ``dune`` file are to be generated.
+
+For instance:
+
+.. code:: scheme
+
+    (include dune.inc)
+
+    (rule (with-stdout-to dune.inc.gen (run ./gen-dune.exe)))
+
     (rule
-     (alias   runtest)
-     (action (run %{exe:my-test-program.exe} blah)))
+     (alias  runtest)
+     (action (diff dune.inc dune.inc.gen)))
 
-See the section about :ref:`running-tests` for details.
+With this ``dune`` file, running Dune as follows will replace the ``dune.inc``
+file in the source tree by the generated one:
 
-Please note: if your project contains several packages, and you run the tests
-from the opam file using a ``build-test`` field, all your ``runtest`` alias
-stanzas should have a ``(package ...)`` field in order to partition the set of
-tests.
+.. code:: shell
+
+    $ dune build @runtest --auto-promote
+
+.. _include_subdirs:
+
+include_subdirs
+---------------
+
+The ``include_subdirs`` stanza is used to control how Dune considers
+subdirectories of the current directory. The syntax is as follows:
+
+.. code:: scheme
+
+     (include_subdirs <mode>)
+
+Where ``<mode>`` maybe be one of:
+
+- ``no``, the default
+- ``unqualified``
+
+When the ``include_subdirs`` stanza isn't present or ``<mode>`` is ``no``, Dune
+considers subdirectories independent. When ``<mode>`` is ``unqualified``, Dune
+will assume that the current directory's subdirectories are part of the same
+group of directories. In particular, Dune will simultaneously scan all these
+directories when looking for OCaml/Reason files. This allows you to split a
+library between several directories. ``unqualified`` means that modules in
+subdirectories are seen as if they were all in the same directory. In
+particular, you cannot have two modules with the same name in two different
+directories. We plan to add a ``qualified`` mode in the future.
+
+Note that subdirectories are included recursively; however, the recursion will
+stop when encountering a subdirectory that contains another ``include_subdirs``
+stanza. Additionally, it's not allowed for a subdirectory of a directory with
+``(include_subdirs <x>)`` where ``<x>`` is not ``no`` to contain one of the
+following stanzas:
+
+- ``library``
+- ``executable(s)``
+- ``test(s)``
 
 .. _install:
 
@@ -1476,386 +1354,215 @@ More precisely, when installing a file via an ``(install ...)`` stanza, Dune
 implicitly adds the ``.exe`` extension to the destination, if the source file
 has extension ``.exe`` or ``.bc`` and if it's not already present
 
-copy_files
-----------
+jbuild_version
+--------------
 
-The ``copy_files`` and ``copy_files#`` stanzas specify that files from another
-directory could be copied to the current directory, if needed.
+Deprecated. This `jbuild_version` stanza is no longer used and will be removed
+in the future.
 
-The syntax is as follows:
+.. _library:
+
+library
+-------
+
+The ``library`` stanza must be used to describe OCaml libraries. The format of
+library stanzas is as follows:
 
 .. code:: scheme
 
-    (copy_files
-     <optional-fields>
-     (files <glob>))
+    (library
+     (name <library-name>)
+     <optional-fields>)
 
-``<glob>`` represents the set of files to copy. See the :ref:`glob <glob>` for
-details.
+``<library-name>`` is the real name of the library. It determines the names of
+the archive files generated for the library as well as the module name under
+which the library will be available, unless ``(wrapped false)`` is used (see
+below). It must be a valid OCaml module name, but it doesn't need to start with
+an uppercase letter.
+
+For instance, the modules of a library named ``foo`` will be available as
+``Foo.XXX``, outside of ``foo`` itself; however, it is allowed to write an
+explicit ``Foo`` module, which will be the library interface. You are free to
+expose only the modules you want.
+
+Please note: by default, libraries and other things that consume OCaml/Reason
+modules only consume modules from the directory where the stanza appear. In
+order to declare a multi-directory library, you need to use the
+:ref:`include_subdirs` stanza.
 
 ``<optional-fields>`` are:
 
-- ``(alias <alias-name>)`` specifies an alias to which to attach the targets.
-
-- ``(mode <mode>)`` specifies how to handle the targets. See `modes`_ for
-  details.
-
-- ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
-  condition is specified using the :ref:`blang`.
-
-The short form:
-
-.. code:: scheme
-
-    (copy_files <glob>)
-
-is equivalent to:
-
-.. code:: scheme
-
-    (copy_files (files <glob>))
-
-The difference between ``copy_files`` and ``copy_files#`` is the same as the
-difference between the ``copy`` and ``copy#`` actions. See the
-:ref:`user-actions` section for more details.
-
-include
--------
-
-The ``include`` stanza allows including the contents of another file in the
-current ``dune`` file. Currently, the included file cannot be generated and must
-be present in the source tree. This feature is intended for use in conjunction
-with promotion, when parts of a ``dune`` file are to be generated.
-
-For instance:
-
-.. code:: scheme
-
-    (include dune.inc)
-
-    (rule (with-stdout-to dune.inc.gen (run ./gen-dune.exe)))
-
-    (rule
-     (alias  runtest)
-     (action (diff dune.inc dune.inc.gen)))
-
-With this ``dune`` file, running Dune as follows will replace the ``dune.inc``
-file in the source tree by the generated one:
-
-.. code:: shell
-
-    $ dune build @runtest --auto-promote
-
-.. _tests-stanza:
-
-tests
------
-
-The ``tests`` stanza allows one to easily define multiple tests. For example, we
-can define two tests at once with:
-
-.. code:: scheme
-
-   (tests
-    (names mytest expect_test)
-    <optional fields>)
-
-This defines an executable named ``mytest.exe`` that will be executed as part of
-the ``runtest`` alias. If the directory also contains an
-``expect_test.expected`` file, then ``expect_test`` will be used to define an
-expect test. That is, the test will be executed and its output will be compared
-to ``expect_test.expected``.
-
-The optional fields supported are a subset of the alias and executables fields.
-In particular, all fields except for ``public_names`` are supported from the
-:ref:`executables stanza <shared-exe-fields>`. Alias fields apart from ``name``
-are allowed.
-
-By default, the test binaries are run without options.  The ``action`` field can
-override the test binary invocation, i.e., if you're using Alcotest and wish to
-see all the test failures on the standard output. When running Dune ``runtest``
-you can use the following stanza:
-
-.. code:: lisp
-
-   (tests
-    (names mytest)
-    (libraries alcotest mylib)
-    (action (run %{test} -e)))
-
-Starting from Dune 2.9, it's possible to automatically generate empty interface
-files for test executables. See `executables_implicit_empty_intf`_.
-
-test
-----
-
-The ``test`` stanza is the singular form of ``tests``. The only difference is
-that it's of the form:
-
-.. code:: scheme
-
-   (test
-    (name foo)
-    <optional fields>)
-
-The ``name`` field is singular, and the same optional fields are supported.
-
-.. _dune-env:
-
-env
----
-
-The ``env`` stanza allows one to modify the environment. The syntax is as
-follows:
-
-.. code:: scheme
-
-     (env
-      (<profile1> <settings1>)
-      (<profile2> <settings2>)
-      ...
-      (<profilen> <settingsn>))
-
-The first form ``(<profile> <settings>)`` that corresponds to the selected build
-profile will be used to modify the environment in this directory. You can use
-``_`` to match any build profile.
-
-Fields supported in ``<settings>`` are:
-
-- any OCaml flags field. See :ref:`ocaml-flags` for more details.
-
-- ``(link_flags <flags>)`` specifies flags to OCaml when linking an executable.
-  See :ref:`executables stanza <shared-exe-fields>`.
-
-- ``(c_flags <flags>)`` and ``(cxx_flags <flags>)`` specify compilation flags
-  for C and C++ stubs, respectively. See `library`_ for more details.
-
-- ``(env-vars (<var1> <val1>) .. (<varN> <valN>))`` will add the corresponding
-  variables to the environment where the build commands are executed and are
-  used by ``dune exec``.
-
-- ``(menhir_flags <flags>))`` specifies flags for Menhir stanzas.
-
-- ``(js_of_ocaml (flags <flags>)(build_runtime <flags>)(link_flags <flags>))``
-  specifies ``js_of_ocaml`` flags. See `jsoo-field`_ for more details.
-
-- ``(js_of_ocaml (compilation_mode <mode>))`` controls whether to use separate
-  compilation or not where ``<mode>`` is either ``whole_program`` or
-  ``separate``.
-
-- ``(js_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
-  :ref:`inline_tests` and tests (`tests-stanza`_) run for the `js` mode.
-
-- ``(binaries <binaries>)``, where ``<binaries>`` is a list of entries of the
-  form ``(<filepath> as <name>)``. ``(<filepath> as <name>)`` makes the binary
-  ``<filepath>`` available in the command search as just ``<name>``. For
-  instance, in a ``(run <name> ...)`` action, ``<name>`` will resolve to this
-  file path. You can also write just the file path, in which case the name will
-  be inferred from the basename of ``<filepath>`` by dropping the ``.exe``
-  suffix, if it exists. For example, ``(binaries bin/foo.exe (bin/main.exe as
-  bar))`` would add the commands ``foo`` and ``bar`` to the search path.
-
-- ``(inline_tests <state>)``, where ``<state>`` is either ``enabled``,
-  ``disabled``, or ``ignored``. This field has been available since Dune 1.11.
-  It controls the variable's value ``%{inline_tests}``, which is read by the
-  inline test framework. The default value is ``disabled`` for the ``release``
-  profile and ``enabled`` otherwise.
-
-- ``(odoc <fields>)`` allows passing options to ``odoc``. See
-  :ref:`odoc-options` for more details.
-
-- ``(coq (flags <flags>))`` allows passing options to Coq. See :ref:`coq-theory`
-  for more details.
-
-- ``(formatting <settings>)`` allows the user to set auto-formatting in the
-  current directory subtree (see :ref:`formatting`).
-
-.. _dune-subdirs:
-
-dirs (Since 1.6)
-----------------
-
-The ``dirs`` stanza allows specifying the subdirectories Dune will include in a
-build. The syntax is based on Dune's :ref:`predicate-lang` and allows the user
-the following operations:
-
-- The special value ``:standard`` which refers to the default set of used
-  directories. These are the directories that don't start with ``.`` or ``_``.
-
-- Set operations. Differences are expressed with backslash: ``* \ bar``; unions
-  are done by listing multiple items.
-
-- Sets can be defined using globs.
-
-Examples:
-
-.. code:: lisp
-
-   (dirs *) ;; include all directories
-   (dirs :standard \ ocaml) ;; include all dirs except ocaml
-   (dirs :standard \ test* foo*) ;; exclude all dirs that start with test or foo
-
-Dune will not scan a directory that isn't included in this stanza. Any contained
-``dune`` (or other special) files won't be interpreted either and will be
-treated as raw data. It is however possible to depend on files inside ignored
-subdirectories.
-
-.. _dune-data_only_dirs:
-
-data_only_dirs (Since 1.6)
---------------------------
-
-Dune allows the user to treat directories as *data only*. ``dune`` files in
-these directories won't be evaluated for their rules, but the contents of these
-directories will still be usable as dependencies for other rules.
-
-The syntax is the same as for the ``dirs`` stanza except that ``:standard`` is
-empty by default.
-
-Example:
-
-.. code:: scheme
-
-   ;; dune files in fixtures_* dirs are ignored
-   (data_only_dirs fixtures_*)
-
-.. _dune-ignored_subdirs:
-
-ignored_subdirs (Deprecated in 1.6)
------------------------------------
-
-One may also specify *data only* directories using the ``ignored_subdirs``
-stanza, meaning it's the same as ``data_only_dirs``, but the syntax isn't as
-flexible and only accepts a list of directory names. It's advised to switch to
-the new ``data_only_dirs`` stanza.
-
-Example:
-
-.. code:: scheme
-
-     (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
-
-All of the specified ``<sub-dirn>`` will be ignored by Dune. Note that users
-should rely on the ``dirs`` stanza along with the appropriate set operations
-instead of this stanza. For example:
-
-.. code:: lisp
-
-  (dirs :standard \ <sub-dir1> <sub-dir2> ...)
-
-.. _dune-vendored_dirs:
-
-vendored_dirs (Since 1.11)
---------------------------
-
-Dune supports vendoring other Dune-based projects natively, since simply copying
-a project into a subdirectory of your own project will work. Simply doing that
-has a few limitations though. You can workaround those by explicitly marking
-such directories as containing vendored code.
-
-Example:
-
-.. code:: scheme
-
-   (vendored_dirs vendor)
-
-
-Dune will not resolve aliases in vendored directories. By default, it won't
-build all installable targets, run the tests, format, or lint the code located
-in such a directory while still building your project's dependencies. Libraries
-and executables in vendored directories will also be built with a ``-w -a`` flag
-to suppress all warnings and prevent pollution of your build output.
-
-
-.. _include_subdirs:
-
-include_subdirs
----------------
-
-The ``include_subdirs`` stanza is used to control how Dune considers
-subdirectories of the current directory. The syntax is as follows:
-
-.. code:: scheme
-
-     (include_subdirs <mode>)
-
-Where ``<mode>`` maybe be one of:
-
-- ``no``, the default
-- ``unqualified``
-
-When the ``include_subdirs`` stanza isn't present or ``<mode>`` is ``no``, Dune
-considers subdirectories independent. When ``<mode>`` is ``unqualified``, Dune
-will assume that the current directory's subdirectories are part of the same
-group of directories. In particular, Dune will simultaneously scan all these
-directories when looking for OCaml/Reason files. This allows you to split a
-library between several directories. ``unqualified`` means that modules in
-subdirectories are seen as if they were all in the same directory. In
-particular, you cannot have two modules with the same name in two different
-directories. We plan to add a ``qualified`` mode in the future.
-
-Note that subdirectories are included recursively; however, the recursion will
-stop when encountering a subdirectory that contains another ``include_subdirs``
-stanza. Additionally, it's not allowed for a subdirectory of a directory with
-``(include_subdirs <x>)`` where ``<x>`` is not ``no`` to contain one of the
-following stanzas:
-
-- ``library``
-- ``executable(s)``
-- ``test(s)``
-
-toplevel
---------
-
-The ``toplevel`` stanza allows one to define custom toplevels. Custom toplevels
-automatically load a set of specified libraries and are runnable like normal
-executables. Example:
-
-.. code:: scheme
-
-   (toplevel
-    (name tt)
-    (libraries str))
-
-This will create a toplevel with the ``str`` library loaded. We may build and
-run this toplevel with:
-
-.. code:: shell
-
-   $ dune exec ./tt.exe
-
-``(preprocess (pps ...))`` is the same as the ``(preprocess (pps ...))`` field
-of `library`_. Currently, ``action`` and ``future_syntax`` are not supported in
-the toplevel.
-
-.. _subdir:
-
-subdir
-------
-
-The ``subdir`` stanza can be used to evaluate stanzas in subdirectories. This is
-useful for generated files or to override stanzas in vendored directories
-without editing vendored ``dune`` files.
-
-In this example, a ``bar`` target is created in the ``foo`` directory, and a bar
-target will be created in ``a/b/bar``:
-
-.. code:: scheme
-
-   (subdir foo (rule (with-stdout-to bar (echo baz))))
-   (subdir a/b (rule (with-stdout-to bar (echo baz))))
-
-coq.theory
-~~~~~~~~~~
-
-See the documentation on the :ref:`coq-theory`, :ref:`coq-extraction`,
-:ref:`coq-pp`, and related stanzas.
-
-
-external_variant
------------------
-
-This stanza was experimental and removed in Dune 2.6. See :ref:`dune-variants`.
+- ``(public_name <name>)`` - the name under which the library can be referred as
+  a dependency when it's not part of the current workspace, i.e., when it's
+  installed. Without a ``(public_name ...)`` field, the library won't be
+  installed by Dune. The public name must start with the package name it's part
+  of and optionally followed by a dot, then anything else you want. The package
+  name must also be one of the packages that Dune knows about, as determined by
+  the :ref:`opam-files`
+
+- ``(package <package>)`` installs a private library under the specified
+  package. Such a library is now usable by public libraries defined in the same
+  project. The Findlib name for this library will be
+  ``<package>.__private__.<name>``; however, the library's interface will be
+  hidden from consumers outside the project.
+
+- ``(synopsis <string>)`` should give a one-line description of the library.
+  This is used by tools that list installed libraries
+
+- ``(modules <modules>)`` specifies what modules are part of the library. By
+  default, Dune will use all the ``.ml/.re`` files in the same directory as the
+  ``dune`` file. This includes ones present in the file system as well as ones
+  generated by user rules. You can restrict this list by using a ``(modules
+  <modules>)`` field. ``<modules>`` uses the :ref:`ordered-set-language`, where
+  elements are module names and don't need to start with an uppercase letter.
+  For instance, to exclude module ``Foo``, use ``(modules (:standard \ foo))``
+
+- ``(libraries <library-dependencies>)`` specifies the library's dependencies.
+  See the section about :ref:`library-deps` for more details.
+
+- ``(wrapped <boolean>)`` specifies whether the library modules should be
+  available only through the top-level library module, or if they should all be
+  exposed at the top level. The default is ``true``, and it's highly recommended
+  to keep it this way. Because OCaml top-level modules must all be unique when
+  linking an executables, polluting the top-level namespace will make your
+  library unusable with other libraries if there is a module name clash. This
+  option is only intended for libraries that manually prefix all their modules
+  by the library name and to ease porting of existing projects to Dune.
+
+- ``(wrapped (transition <message>))`` is the same as ``(wrapped true)``, except
+  it will also generate unwrapped (not prefixed by the library name) modules to
+  preserve compatibility. This is useful for libraries that would like to
+  transition from ``(wrapped false)`` to ``(wrapped true)`` without breaking
+  compatibility for users. The deprecation notices for the unwrapped modules
+  will include ``<message>``.
+
+- ``(preprocess <preprocess-spec>)`` specifies how to preprocess files when
+  needed. The default is ``no_preprocessing``, and other options are described
+  in the :ref:`preprocessing-spec` section.
+
+- ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor
+  dependencies preprocessor, i.e., if the preprocessor reads a generated file.
+  The specification of dependencies is described in the :ref:`deps-field`
+  section.
+
+- ``(optional)`` - if present, it indicates that the library should only be
+  built and installed if all the dependencies are available, either in the
+  workspace or in the installed world. Use this to provide extra features
+  without adding hard dependencies to your project
+
+- ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
+  C or C++ stubs, to be compiled and packaged together with the library. See the
+  section :ref:`foreign-sources-and-archives` for more details. This field
+  replaces the now-deleted fields ``c_names``, ``c_flags``, ``cxx_names``, and
+  ``cxx_flags``.
+
+- ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
+  object files to be packaged with the library. See the section
+  :ref:`foreign-archives` for more details. This field replaces the now-deleted
+  field ``self_build_stubs_archive``.
+
+- ``(install_c_headers (<names>))`` - if your library has public C header files
+  that must be installed, you must list them in this field, without the ``.h``
+  extension.
+
+- ``(modes <modes>)`` is for modes which should be built by default. The most
+  common use for this feature is to disable native compilation when writing
+  libraries for the OCaml toplevel. The following modes are available: ``byte``,
+  ``native`` and ``best``. ``best`` is ``native`` or ``byte`` when native
+  compilation isn't available.
+
+- ``(no_dynlink)`` disables dynamic linking of the library. This is for advanced
+  use only. By default, you shouldn't set this option.
+
+- ``(kind <kind>)`` sets the type of library. The default is ``normal``, but
+  other available choices are ``ppx_rewriter`` and ``ppx_deriver``. They must be
+  set when the library is intended to be used as a PPX rewriter or a
+  ``[@@deriving ...]`` plugin. The reason ``ppx_rewriter`` and ``ppx_deriver``
+  are split is historical, and hopefully we won't need two options soon. Both
+  PPX kinds support an optional field: ``(cookies <cookies>)``, where
+  ``<cookies>`` is a list of pairs ``(<name> <value>)`` with ``<name>`` being
+  the cookie name and ``<value>`` a string that supports :ref:`variables`
+  evaluated by each preprocessor invocation (note: libraries that share cookies
+  with the same name should agree on their expanded value).
+
+- ``(ppx_runtime_libraries (<library-names>))`` is for when the library is a
+  ``ppx rewriter`` or a ``[@@deriving ...]`` plugin, and has runtime
+  dependencies. You need to specify these runtime dependencies here.
+
+- ``(virtual_deps (<opam-packages>)``. Sometimes opam packages enable a specific
+  feature only if another package is installed. For instance, the case of
+  ``ctypes`` will only install ``ctypes.foreign`` if the dummy
+  ``ctypes-foreign`` package is installed. You can specify such virtual
+  dependencies here, but you don't need to do so unless you use Dune to
+  synthesize the ``depends`` and ``depopts`` sections of your opam file.
+
+- ``js_of_ocaml`` sets options for JavaScript compilation, see :ref:`jsoo-field`.
+
+- For ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``, see the section about
+  :ref:`ocaml-flags`
+
+- ``(library_flags (<flags>))`` is a list of flags passed to ``ocamlc`` and
+  ``ocamlopt`` when building the library archive files. You can use this to
+  specify ``-linkall``, for instance. ``<flags>`` is a list of strings
+  supporting :ref:`variables`.
+
+- ``(c_library_flags <flags>)`` specifies the flags passed to the C compiler
+  when constructing the library archive file for the C stubs. ``<flags>`` uses
+  the :ref:`ordered-set-language` and supports ``(:include ...)`` forms. When
+  you write bindings for a C library named ``bar``, you should typically write
+  ``-lbar`` here, or whatever flags are necessary to link against this library.
+
+- ``(modules_without_implementation <modules>)`` specifies a list of modules
+  that have only a ``.mli`` or ``.rei`` but no ``.ml`` or ``.re`` file. Such
+  modules are usually referred as *mli only modules*. They are not officially
+  supported by the OCaml compiler; however, they are commonly used. Such modules
+  must only define types. Since it isn't reasonably possible for Dune to check
+  this is the case, Dune requires the user to explicitly list such modules to
+  avoid surprises.  Note that the ``modules_without_implementation`` field isn't
+  merged in ``modules``, which represents the total set of modules in a library.
+  If a directory has more than one stanza, and thus a ``modules`` field must be
+  specified, ``<modules>`` still needs to be added in ``modules``.
+
+- ``(private_modules <modules>)`` specifies a list of modules that will be
+  marked as private. Private modules are inaccessible from outside the libraries
+  they are defined in. Note that the ``private_modules`` field is not merged in
+  ``modules``, which represents the total set of modules in a library. If a
+  directory has more than one stanza and thus a ``modules`` field must be
+  specified, ``<modules>`` still need to be added in ``modules``.
+
+- ``(allow_overlapping_dependencies)`` allows external dependencies to overlap
+  with libraries that are present in the workspace.
+
+- ``(enabled_if <blang expression>)`` conditionally disables a library. A
+  disabled library cannot be built and will not be installed. The condition is
+  specified using the :ref:`blang`, and the field allows for the ``%{os_type}``
+  variable, which is expanded to the type of OS being targeted by the current
+  build. Its value is the same as the value of the ``os_type`` parameter in the
+  output of ``ocamlc -config``.
+
+- ``(inline_tests)`` enables inline tests for this library. They can be
+  configured through options using ``(inline_tests <options>)``. See
+  :ref:`inline_tests` for a reference of corresponding options.
+
+- ``(root_module <module>)`` this field instructs Dune to generate a module that
+  will contain module aliases for every library specified in dependencies. This
+  is useful whenever a library is shadowed by a local module. The library may
+  then still be accessible via this root module
+
+- ``(ctypes <ctypes stanza>)`` instructs Dune to use ctypes stubgen to process
+  your type and function descriptions for binding system libraries, vendored
+  libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
+  reference. This field is available since the 3.0 version of the Dune language.
+
+- ``(empty_module_interface_if_absent)`` causes the generation of empty
+  interfaces for every module that does not have an interface file already.
+  Useful when modules are used solely for their side-effects. This field is
+  available since the 3.0 version of the Dune language.
+
+Note that when binding C libraries, Dune doesn't provide special support for
+tools such as ``pkg-config``; however, it integrates easily with
+:ref:`configurator` by using ``(c_flags (:include ...))`` and ``(c_library_flags
+(:include ...))``.
 
 MDX (Since 2.4)
 ---------------
@@ -1929,6 +1636,94 @@ Upgrading from Version 0.1
   executable and remove the need for ``#require`` directives in your
   documentation code blocks.
 
+.. _menhir:
+
+menhir
+------
+
+A ``menhir`` stanza is available to support the Menhir parser generator.
+
+To use Menhir in a Dune project, the language version should be selected in the
+``dune-project`` file. For example:
+
+.. code:: scheme
+
+  (using menhir 2.0)
+
+This will enable support for Menhir stanzas in the current project. If the
+language version is absent, Dune will automatically add this line with the
+latest Menhir version once a Menhir stanza is used anywhere.
+
+The basic form for defining menhir-git_ parsers (analogous to :ref:`ocamlyacc`)
+is:
+
+.. code:: scheme
+
+    (menhir
+     (modules <parser1> <parser2> ...)
+     <optional-fields>)
+
+``<optional-fields>`` are:
+
+- ``(merge_into <base_name>)`` is used to define modular parsers. This
+  correspond to the ``--base`` command line option of ``menhir``. With this
+  option, a single parser named ``base_name`` is generated.
+
+- ``(flags <option1> <option2> ...)`` is used to pass extra flags to Menhir.
+
+- ``(infer <bool>)`` is used to enable Menhir with type inference. This option
+  is enabled by default with Menhir language 2.0.
+
+Menhir supports writing the grammar and automation to the ``.cmly`` file.
+Therefore, if this is flag is passed to Menhir, Dune will know to introduce a
+``.cmly`` target for the module.
+
+.. _menhir-git: https://gitlab.inria.fr/fpottier/menhir
+
+ocamllex
+--------
+
+``(ocamllex <names>)`` is essentially a shorthand for:
+
+.. code:: lisp
+
+    (rule
+     (target <name>.ml)
+     (deps   <name>.mll)
+     (action (chdir %{workspace_root}
+              (run %{bin:ocamllex} -q -o %{target} %{deps}))))
+
+To use a different rule mode, use the long form:
+
+.. code:: scheme
+
+    (ocamllex
+     (modules <names>)
+     (mode    <mode>))
+
+.. _ocamlyacc:
+
+ocamlyacc
+---------
+
+``(ocamlyacc <names>)`` is essentially a shorthand for:
+
+.. code:: lisp
+
+    (rule
+     (targets <name>.ml <name>.mli)
+     (deps    <name>.mly)
+     (action  (chdir %{workspace_root}
+               (run %{bin:ocamlyacc} %{deps}))))
+
+To use a different rule mode, use the long form:
+
+.. code:: scheme
+
+    (ocamlyacc
+     (modules <names>)
+     (mode    <mode>))
+
 .. _plugin:
 
 plugin (Since 2.8)
@@ -1957,69 +1752,270 @@ present and which libraries it will load.
 The loading of the plugin is done using the facilities generated by
 :ref:`generate_sites_module`.
 
-.. _generate_sites_module:
+rule
+----
 
-generate_sites_module (Since 2.8)
----------------------------------
+The ``rule`` stanza is used to create custom user rules. It tells Dune how to
+generate a specific set of files from a specific set of dependencies.
 
-Dune proposes some facilities for dealing with :ref:`sites<sites>` in a program.
-The ``generate_sites_module`` stanza will generate code for looking up the
-correct locations of the sites' directories and for loading plugins. It works
-after installation with or without the relocation mode, inside Dune rules, and
-when using Dune executables. For promotion, it works only if the generated
-modules are solely in the executable (or library statically linked) promoted;
-generated modules in plugins won't work.
+The syntax is as follows:
+
+.. code:: scheme
+
+    (rule
+     (action <action>)
+     <optional-fields>)
+
+``<action>`` is what you run to produce the targets from the dependencies. See
+the :ref:`user-actions` section for more details.
+
+``<optional-fields>`` are:
+
+- ``(target <filename>)`` or ``(targets <filenames>) ``<filenames>`` is a list
+  of filenames (if defined with ``targets``) or exactly one filename (if defined
+  with ``target``). Dune needs to statically know targets of each rule.
+  ``(targets)`` can be omitted if it can be inferred from the action. See
+  `inferred rules`_.
+
+- ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See the
+  :ref:`deps-field` section for more details.
+
+- ``(mode <mode>)`` specifies how to handle the targets. See `modes`_ for
+  details.
+
+- ``(fallback)`` is deprecated and is the same as ``(mode fallback)``.
+
+- ``(locks (<lock-names>))`` specifies that the action must be run while holding
+  the following locks. See the :ref:`locks` section for more details.
+
+- ``(alias <alias-name>)`` specifies this rule's alias. Building this alias
+  means building the targets of this rule.
+
+- ``(aliases <alias-name list>)`` specifies many aliases for this rule.
+
+- ``(package <package>)`` specifies this rule's package. This rule will be
+  unavailable when installing other packages in release mode.
+
+- ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
+  be true for the rule to be considered. The condition is specified using the
+  :ref:`blang`, and the field allows for :ref:`variables` to appear in the
+  expressions.
+
+Please note: contrary to makefiles or other build systems, user rules currently
+don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
+given ``%``. This might be supported in the future.
+
+Modes
+~~~~~
+
+By default, a rule's target must not exist in the source tree because Dune will
+error out when this is the case; however, it's possible to change this behavior
+using the ``mode`` field. The following modes are available:
+
+- ``standard`` - the standard mode.
+
+- ``fallback`` - in this mode, when the targets are already present in the
+  source tree, Dune will ignore the rule. It's an error if only a subset of the
+  targets are present in the tree. Fallback rules are commonly used to generate
+  default configuration files that may be generated by a configure script.
+
+.. _promote:
+
+- ``promote`` or ``(promote <options>)`` - in this mode, the files in the source
+  tree will be ignored. Once the rule has been executed, the targets will be
+  copied back to the source tree. The following options are available:
+
+  - ``(until-clean)`` means that ``dune clean`` will remove the promoted files
+    from the source tree.
+  - ``(into <dir>)`` means that the files are promoted in ``<dir>`` instead of
+    the current directory. This feature has been available since Dune 1.8.
+  - ``(only <predicate>)`` means that only a subset of the targets should be
+    promoted. The argument is similar to the argument of :ref:`(dirs ...)
+    <dune-subdirs>`, specified using the :ref:`predicate-lang`. This feature has
+    been available since Dune 1.10.
+
+There are two use cases for ``promote`` rules. The first one is when the
+generated code is easier to review than the generator, so it's easier to commit
+the generated code and review it. The second is to cut down dependencies during
+releases. By passing ``--ignore-promoted-rules`` to Dune, rules with ``(mode
+promote)`` will be ignored, and the source files will be used instead. The
+``-p/--for-release-of-packages`` flag implies ``--ignore-promote-rules``.
+However, rules that promote only a subset of their targets via ``(only ...)``
+are never ignored.
+
+Inferred Rules
+~~~~~~~~~~~~~~
+
+When using the action DSL (see :ref:`user-actions`), the dependencies and
+targets are usually obvious.
+
+For instance:
 
 .. code:: lisp
 
-   (generate_sites_module
-    (module <name>)
-    <facilities>)
+    (rule
+     (target b)
+     (deps   a)
+     (action (copy %{deps} %{target})))
 
-The module's code is generated in the directory with the given name. The code is
-populated according to the requested facilities.
+In this example, the dependencies and targets are obvious by inspecting the
+action. When this is the case, you can use the following shorter syntax and have
+Dune infer dependencies and targets for you:
+
+.. code:: scheme
+
+    (rule <action>)
+
+For instance:
+
+.. code:: scheme
+
+    (rule (copy a b))
+
+Note that in Dune, targets must always be known statically. For instance, this
+``(rule ...)`` stanza is rejected by Dune:
+
+.. code:: lisp
+
+    (rule (copy a b.%{read:file}))
+
+Directory targets
+~~~~~~~~~~~~~~~~~
+
+Note that at this time, Dune officially only supports user rules with targets in
+the current directory. However, starting from Dune 3.0, we provide an
+experimental support for *directory targets*, where an action can produce a
+whole tree of build artifacts. To specify a directory target, you can use the
+``(dir <dirname>)`` syntax. For example, the following stanza describes a rule
+with a file target ``foo`` and a directory target ``bar``.
+
+.. code:: scheme
+
+    (rule
+     (targets foo (dir bar))
+     (action  <action>))
+
+To enable this experimental feature, add ``(using directory-targets 0.1)`` to
+your ``dune-project`` file. However note that currently rules with a directory
+target are always rebuilt. We are working on fixing this performance bug.
+
+.. _subdir:
+
+subdir
+------
+
+The ``subdir`` stanza can be used to evaluate stanzas in subdirectories. This is
+useful for generated files or to override stanzas in vendored directories
+without editing vendored ``dune`` files.
+
+In this example, a ``bar`` target is created in the ``foo`` directory, and a bar
+target will be created in ``a/b/bar``:
+
+.. code:: scheme
+
+   (subdir foo (rule (with-stdout-to bar (echo baz))))
+   (subdir a/b (rule (with-stdout-to bar (echo baz))))
+
+test
+----
+
+The ``test`` stanza is the singular form of ``tests``. The only difference is
+that it's of the form:
+
+.. code:: scheme
+
+   (test
+    (name foo)
+    <optional fields>)
+
+The ``name`` field is singular, and the same optional fields are supported.
+
+.. _tests-stanza:
+
+tests
+-----
+
+The ``tests`` stanza allows one to easily define multiple tests. For example, we
+can define two tests at once with:
+
+.. code:: scheme
+
+   (tests
+    (names mytest expect_test)
+    <optional fields>)
+
+This defines an executable named ``mytest.exe`` that will be executed as part of
+the ``runtest`` alias. If the directory also contains an
+``expect_test.expected`` file, then ``expect_test`` will be used to define an
+expect test. That is, the test will be executed and its output will be compared
+to ``expect_test.expected``.
+
+The optional fields supported are a subset of the alias and executables fields.
+In particular, all fields except for ``public_names`` are supported from the
+:ref:`executables stanza <shared-exe-fields>`. Alias fields apart from ``name``
+are allowed.
+
+By default, the test binaries are run without options.  The ``action`` field can
+override the test binary invocation, i.e., if you're using Alcotest and wish to
+see all the test failures on the standard output. When running Dune ``runtest``
+you can use the following stanza:
+
+.. code:: lisp
+
+   (tests
+    (names mytest)
+    (libraries alcotest mylib)
+    (action (run %{test} -e)))
+
+Starting from Dune 2.9, it's possible to automatically generate empty interface
+files for test executables. See `executables_implicit_empty_intf`_.
+
+toplevel
+--------
+
+The ``toplevel`` stanza allows one to define custom toplevels. Custom toplevels
+automatically load a set of specified libraries and are runnable like normal
+executables. Example:
+
+.. code:: scheme
+
+   (toplevel
+    (name tt)
+    (libraries str))
+
+This will create a toplevel with the ``str`` library loaded. We may build and
+run this toplevel with:
+
+.. code:: shell
+
+   $ dune exec ./tt.exe
+
+``(preprocess (pps ...))`` is the same as the ``(preprocess (pps ...))`` field
+of `library`_. Currently, ``action`` and ``future_syntax`` are not supported in
+the toplevel.
+
+.. _dune-vendored_dirs:
+
+vendored_dirs (Since 1.11)
+--------------------------
+
+Dune supports vendoring other Dune-based projects natively, since simply copying
+a project into a subdirectory of your own project will work. Simply doing that
+has a few limitations though. You can workaround those by explicitly marking
+such directories as containing vendored code.
+
+Example:
+
+.. code:: scheme
+
+   (vendored_dirs vendor)
 
 
-The available ``<facilities>`` are:
-
-- ``sourceroot`` adds a value ``val sourceroot: string option`` in the generated
-  module, which contains the value of ``%{workspace_root}``, if the code has
-  been built locally. It could be used to keep the tool's configuration file
-  locally when executed with ``dune exec`` or after promotion. The value is
-  ``None`` once it has been installed.
-
-- ``relocatable`` adds a value ``val relocatable: bool`` in the generated
-  module, which indicates if the binary has been installed in the relocatable
-  mode.
-
-- ``(sites <package>)`` adds a value ``val <site>: string list`` for each
-  ``<site>`` of ``<package>`` in the submodule `Sites` of the generated module.
-  The identifier <site> isn't capitalized.
-
-- ``(plugins (<package> <site>) ...)`` adds a submodule ``<site>`` with the
-  following signature ``S`` in the submodule ``Plugins`` of the generated module
-  . The identifier ``<site>`` is capitalized.
-
-.. code:: ocaml
-
-   module type S = sig
-     val paths: string list
-     (** return the locations of the directory containing the plugins *)
-
-     val list: unit -> string list
-     (** return the list of available plugins *)
-
-     val load_all: unit -> unit
-     (** load all the plugins and their dependencies *)
-
-     val load: string -> unit
-     (** load the specified plugin and its dependencies *)
-   end
-
-The generated module is a dependency on the library ``dune-site``, and if the
-facilities ``(plugins ...)`` are used, it is a dependency on the library
-``dune-site.plugins``. Those dependencies are not automatically added to the
-library or executable which use the module (cf. :ref:`plugins`).
+Dune will not resolve aliases in vendored directories. By default, it won't
+build all installable targets, run the tests, format, or lint the code located
+in such a directory while still building your project's dependencies. Libraries
+and executables in vendored directories will also be built with a ``-w -a`` flag
+to suppress all warnings and prevent pollution of your build output.
 
 .. _dune-workspace:
 
@@ -2063,18 +2059,6 @@ containing exactly:
 This allows you to use an empty ``dune-workspace`` file to mark the root of your
 project.
 
-profile
--------
-
-The build profile can be selected in the ``dune-workspace`` file by write a
-``(profile ...)`` stanza. For instance:
-
-.. code:: scheme
-
-    (profile release)
-
-Note that the command line option ``--profile`` has precedence over this stanza.
-
 env
 ---
 
@@ -2082,6 +2066,13 @@ The ``env`` stanza can be used to set the base environment for all contexts in
 this workspace. This environment has the lowest precedence of all other ``env``
 stanzas. The syntax for this stanza is the same as Dune's :ref:`dune-env`
 stanza.
+
+``config`` stanzas
+------------------
+
+Starting in Dune 3.0, any of the stanzas from the :ref:`config` file can be used
+in the ``dune-workspace`` file. In this case, the configuration stanza will only
+affect the current workspace.
 
 context
 -------
@@ -2158,12 +2149,17 @@ For rare cases where this is not what you want, you can force Dune to use a
 different build contexts for Merlin by adding the field ``(merlin)`` to this
 context.
 
-``config`` stanzas
-------------------
+profile
+-------
 
-Starting in Dune 3.0, any of the stanzas from the :ref:`config` file can be used
-in the ``dune-workspace`` file. In this case, the configuration stanza will only
-affect the current workspace.
+The build profile can be selected in the ``dune-workspace`` file by write a
+``(profile ...)`` stanza. For instance:
+
+.. code:: scheme
+
+    (profile release)
+
+Note that the command line option ``--profile`` has precedence over this stanza.
 
 .. _config:
 
@@ -2181,89 +2177,33 @@ file.  If ``--no-config`` or ``-p`` is passed, Dune will not read this file.
 
 The ``config`` file can contain the following stanzas:
 
-.. _display:
+.. _action_stderr_on_success:
 
-display
--------
+action_stderr_on_success
+------------------------
 
-Specify the amount of Dune’s verbosity.
+Same as :ref:`action_stdout_on_success`, but applies to standard error instead
+of standard output.
+
+.. _action_stdout_on_success:
+
+action_stdout_on_success
+------------------------
+
+Specifies how Dune should handle the standard output of actions when they succeed.
+This can be used to reduce the noise of large builds.
 
 .. code:: scheme
 
-    (display <setting>)
+    (action_stdout_on_success <setting>)
 
 where ``<setting>`` is one of:
 
-- ``progress``, Dune shows and updates a status line as build goals are being
-  completed. This is the default value.
+- ``print`` prints the output on the terminal. This is the default.
 
-- ``verbose`` prints the full command lines of programs being executed by Dune,
-  with some colors to help differentiate programs.
+- ``swallow`` ignores the output and does not print it on the terminal.
 
-- ``short`` prints a line for each program executed with the binary name on the
-  left and the targets of the action on the right.
-
-- ``quiet`` only display errors.
-
-.. _concurrency:
-
-concurrency
------------
-
-Maximum number of concurrent jobs Dune is allowed to have.
-
-.. code:: scheme
-
-    (concurrency <setting>)
-
-where ``<setting>`` is one of:
-
-- ``auto``, auto-detect maximum number of cores. This is the default value.
-
-- ``<number>``, a positive integer specifying the maximum number of jobs Dune
-  may use simultaneously.
-
-.. _terminal-persistence:
-
-terminal-persistence
---------------------
-
-Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
-
-.. code:: scheme
-
-    (terminal-persistence <setting>)
-
-where ``<setting>`` is one of:
-
-- ``preserve`` does not clear the terminal screen beteween rebuilds.
-
-- ``clear-on-rebuild`` clears the terminal screen between rebuilds.
-
-- ``clear-on-rebuild-and-flush-history`` clears the terminal between rebuilds, and
-  it also deletes everything in the scrollback buffer.
-
-.. _sandboxing_preference:
-
-sandboxing_preference
----------------------
-
-The preferred sandboxing setting. Individual rules may specify different
-preferences. Dune will try to utilize a setting satisfying both conditions.
-
-.. code:: scheme
-
-    (sandboxing_preference <setting> <setting> ...)
-
-where each ``<setting>`` can be one of:
-
-- ``none`` disables sandboxing.
-
-- ``hardlink`` uses hard links for sandboxing. This is the default under Linux.
-
-- ``copy`` copies files for sandboxing. This is the default under Windows.
-
-- ``symlink`` uses symbolic links for sandboxing.
+- ``must-be-empty`` enforces that the output should be empty. If it is not, Dune will fail.
 
 .. _cache:
 
@@ -2324,30 +2264,86 @@ where ``<setting>`` is one of:
 - ``copy`` copies entries to the cache. This is less efficient than using hard
   links.
 
-.. _action_stdout_on_success:
+.. _concurrency:
 
-action_stdout_on_success
-------------------------
+concurrency
+-----------
 
-Specifies how Dune should handle the standard output of actions when they succeed.
-This can be used to reduce the noise of large builds.
+Maximum number of concurrent jobs Dune is allowed to have.
 
 .. code:: scheme
 
-    (action_stdout_on_success <setting>)
+    (concurrency <setting>)
 
 where ``<setting>`` is one of:
 
-- ``print`` prints the output on the terminal. This is the default.
+- ``auto``, auto-detect maximum number of cores. This is the default value.
 
-- ``swallow`` ignores the output and does not print it on the terminal.
+- ``<number>``, a positive integer specifying the maximum number of jobs Dune
+  may use simultaneously.
 
-- ``must-be-empty`` enforces that the output should be empty. If it is not, Dune will fail.
+.. _display:
 
-.. _action_stderr_on_success:
+display
+-------
 
-action_stderr_on_success
-------------------------
+Specify the amount of Dune’s verbosity.
 
-Same as :ref:`action_stdout_on_success`, but applies to standard error instead
-of standard output.
+.. code:: scheme
+
+    (display <setting>)
+
+where ``<setting>`` is one of:
+
+- ``progress``, Dune shows and updates a status line as build goals are being
+  completed. This is the default value.
+
+- ``verbose`` prints the full command lines of programs being executed by Dune,
+  with some colors to help differentiate programs.
+
+- ``short`` prints a line for each program executed with the binary name on the
+  left and the targets of the action on the right.
+
+- ``quiet`` only display errors.
+
+.. _sandboxing_preference:
+
+sandboxing_preference
+---------------------
+
+The preferred sandboxing setting. Individual rules may specify different
+preferences. Dune will try to utilize a setting satisfying both conditions.
+
+.. code:: scheme
+
+    (sandboxing_preference <setting> <setting> ...)
+
+where each ``<setting>`` can be one of:
+
+- ``none`` disables sandboxing.
+
+- ``hardlink`` uses hard links for sandboxing. This is the default under Linux.
+
+- ``copy`` copies files for sandboxing. This is the default under Windows.
+
+- ``symlink`` uses symbolic links for sandboxing.
+
+.. _terminal-persistence:
+
+terminal-persistence
+--------------------
+
+Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
+
+.. code:: scheme
+
+    (terminal-persistence <setting>)
+
+where ``<setting>`` is one of:
+
+- ``preserve`` does not clear the terminal screen beteween rebuilds.
+
+- ``clear-on-rebuild`` clears the terminal screen between rebuilds.
+
+- ``clear-on-rebuild-and-flush-history`` clears the terminal between rebuilds, and
+  it also deletes everything in the scrollback buffer.

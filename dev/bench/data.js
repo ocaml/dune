@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1672899689935,
+  "lastUpdate": 1672934276949,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -347,6 +347,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "47.340776414353336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "david.allsopp@metastack.com",
+            "name": "David Allsopp",
+            "username": "dra27"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "35d9a3c92bd874547f6b9d9cca6cfa4968ac87cd",
+          "message": "Fix boot/libs.ml between 4.x/5.x (#6753)\n\nSigned-off-by: David Allsopp <david.allsopp@metastack.com>",
+          "timestamp": "2023-01-05T09:39:21-06:00",
+          "tree_id": "bed9658eb4715c6a395248f56646f37aea81c6c4",
+          "url": "https://github.com/ocaml/dune/commit/35d9a3c92bd874547f6b9d9cca6cfa4968ac87cd"
+        },
+        "date": 1672934276015,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.273181545713335",
             "unit": "seconds"
           }
         ]

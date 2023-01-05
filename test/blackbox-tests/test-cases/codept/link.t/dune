@@ -1,0 +1,8 @@
+(library
+ (name generator)
+ (modules generator code))
+
+(executable
+ (name gen)
+ (libraries generator)
+ (modules gen))

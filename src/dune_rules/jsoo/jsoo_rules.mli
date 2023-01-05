@@ -25,7 +25,8 @@ val build_exe :
   -> obj_dir:Path.Build.t Obj_dir.t
   -> top_sorted_modules:Module.t list Action_builder.t
   -> promote:Rule.Promote.t option
-  -> link_time_code_gen:Lib_flags.Lib_and_module.L.t Memo.t
+  -> linkall:bool Action_builder.t
+  -> link_time_code_gen:Link_time_code_gen_type.t Resolve.t
   -> unit Memo.t
 
 val setup_separate_compilation_rules :

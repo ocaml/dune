@@ -192,9 +192,8 @@ let jsoo_archives ~sctx config lib =
   | true ->
     let obj_dir = Lib_info.obj_dir info in
     List.map archives.byte ~f:(fun archive ->
-      in_obj_dir' ~obj_dir ~config:(Some config)
-        [ with_js_ext (Path.basename archive) ]
-    )
+        in_obj_dir' ~obj_dir ~config:(Some config)
+          [ with_js_ext (Path.basename archive) ])
   | false ->
     List.map archives.byte ~f:(fun archive ->
         Path.build

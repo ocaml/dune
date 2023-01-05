@@ -72,6 +72,49 @@ end = struct
       | name, false -> [ "--disable"; name ])
 end
 
+module Version = struct
+  type t = int * int
+
+  let of_string s : t option =
+    let s =
+      match
+        String.findi s ~f:(function
+          | '+' | '-' | '~' -> true
+          | _ -> false)
+      with
+      | None -> s
+      | Some i -> String.take s i
+    in
+    try
+      match String.split s ~on:'.' with
+      | [] -> None
+      | [ major ] -> Some (int_of_string major, 0)
+      | major :: minor :: _ -> Some (int_of_string major, int_of_string minor)
+    with _ -> None
+
+  let compare (ma1, mi1) (ma2, mi2) =
+    match Int.compare ma1 ma2 with
+    | Eq -> Int.compare mi1 mi2
+    | n -> n
+
+  let impl_version bin =
+    let open Memo.O in
+    let* _ = Build_system.build_file bin in
+    Memo.of_reproducible_fiber
+    @@ Process.run_capture_line Process.Strict bin [ "--version" ]
+    |> Memo.map ~f:of_string
+
+  let version_memo =
+    Memo.create "jsoo-version" ~input:(module Path) impl_version
+
+  let jsoo_version path =
+    let open Memo.O in
+    let* jsoo = path in
+    match jsoo with
+    | Ok jsoo_path -> Memo.exec version_memo jsoo_path
+    | Error e -> Action.Prog.Not_found.raise e
+end
+
 let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 
 let in_build_dir ~sctx ~config args =
@@ -219,10 +262,13 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall
            (Super_context.js_of_ocaml_flags sctx ~dir flags))
       |> Action_builder.map ~f:Config.of_flags
     and+ cm = cm
+    and+ linkall = linkall
     and+ libs = Resolve.Memo.read (Compilation_context.requires_link cc)
     and+ { Link_time_code_gen_type.to_link; force_linkall } =
       Resolve.read link_time_code_gen
-    and+ force_linkall2 = linkall in
+    and+ jsoo_version =
+      Action_builder.of_memo (Version.jsoo_version (jsoo ~dir sctx))
+    in
     (* Special case for the stdlib because it is not referenced in the
        META *)
     let stdlib =
@@ -247,8 +293,7 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall
         (in_build_dir ~sctx ~config
            [ "stdlib"; "std_exit" ^ Js_of_ocaml.Ext.cmo ])
     in
-    let linkall = force_linkall || force_linkall2 in
-    ignore linkall;
+    let linkall = force_linkall || linkall in
     Command.Args.S
       [ Deps
           (List.concat
@@ -258,6 +303,13 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall
              ; all_other_modules
              ; [ std_exit ]
              ])
+      ; As
+          (match (jsoo_version, linkall) with
+          | Some version, true -> (
+            match Version.compare version (5, 1) with
+            | Lt -> []
+            | Gt | Eq -> [ "--linkall" ])
+          | None, _ | _, false -> [])
       ]
   in
   let spec = Command.Args.S [ Dep (Path.build runtime); Dyn get_all ] in

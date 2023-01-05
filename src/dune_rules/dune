@@ -31,7 +31,7 @@
  (instrumentation
   (backend bisect_ppx)))
 
-(ocamllex ocamlobjinfo cram_lexer)
+(ocamllex ocamlobjinfo)
 
 (rule
  (mode promote)

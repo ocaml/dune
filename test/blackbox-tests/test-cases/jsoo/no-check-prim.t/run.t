@@ -61,13 +61,13 @@ Compilation using jsoo
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
         ocamlc lib/.x.objs/byte/x.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/native/x__Y.{cmx,o}
-        ocamlc bin/.technologic.eobjs/byte/z.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/native/x.{cmx,o}
+        ocamlc bin/.technologic.eobjs/byte/z.{cmi,cmo,cmt}
         ocamlc lib/x.cma
-        ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}
-   js_of_ocaml bin/technologic.bc.js
+        ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
       ocamlopt lib/x.cmxs
+   js_of_ocaml bin/technologic.bc.js
   $ dune build --display short bin/technologic.bc.js @install --profile release
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}

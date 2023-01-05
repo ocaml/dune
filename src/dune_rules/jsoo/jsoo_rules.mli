@@ -8,6 +8,14 @@ module Config : sig
   val all : t list
 end
 
+module Version : sig
+  type t = int * int
+
+  val of_string : string -> t option
+
+  val compare : t -> t -> Ordering.t
+end
+
 val build_cm :
      Super_context.t
   -> dir:Path.Build.t

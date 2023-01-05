@@ -209,8 +209,12 @@ let link_js ~name ~loc ~obj_dir ~top_sorted_modules ~link_args ~promote
   in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte_for_jsoo in
   let linkall =
-    ignore link_args;
-    Action_builder.return false
+    Action_builder.bind link_args ~f:(fun cmd ->
+        let open Action_builder.O in
+        let+ l =
+          Command.expand_no_targets ~dir:(Path.build (CC.dir cctx)) cmd
+        in
+        List.exists l ~f:(String.equal "--linkall"))
   in
   Jsoo_rules.build_exe cctx ~loc ~obj_dir ~in_context ~src ~top_sorted_modules
     ~promote ~link_time_code_gen ~linkall

@@ -947,7 +947,7 @@ let assemble_libraries { local_libraries; target = _, main; _ } =
         String.capitalize_ascii
           (Filename.chop_extension (Filename.basename main))
       in
-      (dir, Some namespace, false, None)
+      (dir, Some namespace, true (* enable (include_subdirs unqualified *), None)
     in
     local_libraries @ [ task_lib ]
   in

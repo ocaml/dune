@@ -187,14 +187,14 @@ let with_js_ext s =
 
 let jsoo_archives ~sctx config lib =
   let info = Lib.info lib in
+  let archives = Lib_info.archives info in
   match Lib.is_local lib with
   | true ->
     let obj_dir = Lib_info.obj_dir info in
-    [ in_obj_dir' ~obj_dir ~config:(Some config)
-        [ Lib_name.to_string (Lib.name lib) ^ Js_of_ocaml.Ext.cma ]
-    ]
+    List.map archives.byte ~f:(fun archive ->
+        in_obj_dir' ~obj_dir ~config:(Some config)
+          [ with_js_ext (Path.basename archive) ])
   | false ->
-    let archives = Lib_info.archives info in
     List.map archives.byte ~f:(fun archive ->
         Path.build
           (in_build_dir ~sctx ~config

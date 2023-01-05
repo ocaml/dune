@@ -202,21 +202,18 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
       | Some p -> Promote p)
     action_with_targets
 
-let link_js ~name ~loc ~obj_dir ~top_sorted_modules ~promote ~link_time_code_gen
-    cctx =
+let link_js ~name ~loc ~obj_dir ~top_sorted_modules ~link_args ~promote
+    ~link_time_code_gen cctx =
   let in_context =
     CC.js_of_ocaml cctx |> Option.value ~default:Js_of_ocaml.In_context.default
   in
-  let link_time_code_gen =
-    let open Memo.O in
-    let+ { Link_time_code_gen.to_link; force_linkall = _ } =
-      Resolve.read_memo link_time_code_gen
-    in
-    to_link
-  in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte_for_jsoo in
+  let linkall =
+    ignore link_args;
+    Action_builder.return false
+  in
   Jsoo_rules.build_exe cctx ~loc ~obj_dir ~in_context ~src ~top_sorted_modules
-    ~promote ~link_time_code_gen
+    ~promote ~link_time_code_gen ~linkall
 
 type dep_graphs = { for_exes : Module.t list Action_builder.t list }
 
@@ -258,8 +255,8 @@ let link_many ?(link_args = Action_builder.return Command.Args.empty) ?o_files
           Memo.parallel_iter linkages ~f:(fun linkage ->
               if Linkage.is_js linkage then
                 let obj_dir = CC.obj_dir cctx in
-                link_js ~loc ~name ~obj_dir ~top_sorted_modules ~promote cctx
-                  ~link_time_code_gen
+                link_js ~loc ~name ~obj_dir ~top_sorted_modules ~promote
+                  ~link_args cctx ~link_time_code_gen
               else
                 let* link_time_code_gen =
                   match Linkage.is_plugin linkage with

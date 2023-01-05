@@ -202,61 +202,63 @@ let jsoo_archives ~sctx config lib =
              ; with_js_ext (Path.basename archive)
              ]))
 
-let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~link_time_code_gen =
+let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall
+    ~link_time_code_gen =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
-  let requires = Compilation_context.requires_link cc in
-  let special_units = Action_builder.of_memo link_time_code_gen in
-  let config =
-    Action_builder.of_memo_join
-      (Memo.map
-         ~f:(fun x -> x.compile)
-         (Super_context.js_of_ocaml_flags sctx ~dir flags))
-    |> Action_builder.map ~f:Config.of_flags
-  in
   let mod_name m =
     Module_name.Unique.artifact_filename (Module.obj_name m)
       ~ext:Js_of_ocaml.Ext.cmo
   in
   let get_all =
-    Action_builder.map
-      (Action_builder.both (Action_builder.both cm special_units) config)
-      ~f:(fun ((cm, special_units), config) ->
-        Resolve.Memo.args
-          (let open Resolve.Memo.O in
-          let+ libs = requires in
-          (* Special case for the stdlib because it is not referenced in the
-             META *)
-          let stdlib =
-            Path.build
-              (in_build_dir ~sctx ~config
-                 [ "stdlib"; "stdlib" ^ Js_of_ocaml.Ext.cma ])
-          in
-          let special_units =
-            List.concat_map special_units ~f:(function
-              | Lib_flags.Lib_and_module.Lib _lib -> []
-              | Module (obj_dir, m) ->
-                [ in_obj_dir' ~obj_dir ~config:None [ mod_name m ] ])
-          in
-          let all_libs = List.concat_map libs ~f:(jsoo_archives ~sctx config) in
+    let open Action_builder.O in
+    let+ config =
+      Action_builder.of_memo_join
+        (Memo.map
+           ~f:(fun x -> x.compile)
+           (Super_context.js_of_ocaml_flags sctx ~dir flags))
+      |> Action_builder.map ~f:Config.of_flags
+    and+ cm = cm
+    and+ libs = Resolve.Memo.read (Compilation_context.requires_link cc)
+    and+ { Link_time_code_gen_type.to_link; force_linkall } =
+      Resolve.read link_time_code_gen
+    and+ force_linkall2 = linkall in
+    (* Special case for the stdlib because it is not referenced in the
+       META *)
+    let stdlib =
+      Path.build
+        (in_build_dir ~sctx ~config
+           [ "stdlib"; "stdlib" ^ Js_of_ocaml.Ext.cma ])
+    in
+    let special_units =
+      List.concat_map to_link ~f:(function
+        | Lib_flags.Lib_and_module.Lib _lib -> []
+        | Module (obj_dir, m) ->
+          [ in_obj_dir' ~obj_dir ~config:None [ mod_name m ] ])
+    in
+    let all_libs = List.concat_map libs ~f:(jsoo_archives ~sctx config) in
 
-          let all_other_modules =
-            List.map cm ~f:(fun m ->
-                Path.build (in_obj_dir ~obj_dir ~config:None [ mod_name m ]))
-          in
-          let std_exit =
-            Path.build
-              (in_build_dir ~sctx ~config
-                 [ "stdlib"; "std_exit" ^ Js_of_ocaml.Ext.cmo ])
-          in
-          Command.Args.Deps
-            (List.concat
-               [ [ stdlib ]
-               ; special_units
-               ; all_libs
-               ; all_other_modules
-               ; [ std_exit ]
-               ])))
+    let all_other_modules =
+      List.map cm ~f:(fun m ->
+          Path.build (in_obj_dir ~obj_dir ~config:None [ mod_name m ]))
+    in
+    let std_exit =
+      Path.build
+        (in_build_dir ~sctx ~config
+           [ "stdlib"; "std_exit" ^ Js_of_ocaml.Ext.cmo ])
+    in
+    let linkall = force_linkall || force_linkall2 in
+    ignore linkall;
+    Command.Args.S
+      [ Deps
+          (List.concat
+             [ [ stdlib ]
+             ; special_units
+             ; all_libs
+             ; all_other_modules
+             ; [ std_exit ]
+             ])
+      ]
   in
   let spec = Command.Args.S [ Dep (Path.build runtime); Dyn get_all ] in
   js_of_ocaml_rule sctx ~sub_command:Link ~dir ~spec ~target ~flags ~config:None
@@ -319,7 +321,7 @@ let setup_separate_compilation_rules sctx components =
           >>= Super_context.add_rule sctx ~dir))
 
 let build_exe cc ~loc ~in_context ~src ~(obj_dir : Path.Build.t Obj_dir.t)
-    ~(top_sorted_modules : Module.t list Action_builder.t) ~promote
+    ~(top_sorted_modules : Module.t list Action_builder.t) ~promote ~linkall
     ~link_time_code_gen =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
@@ -344,7 +346,7 @@ let build_exe cc ~loc ~in_context ~src ~(obj_dir : Path.Build.t Obj_dir.t)
       ~flags
     >>= Super_context.add_rule ~loc sctx ~dir
     >>> link_rule cc ~runtime:standalone_runtime ~target ~obj_dir
-          top_sorted_modules ~flags ~link_time_code_gen
+          top_sorted_modules ~flags ~linkall ~link_time_code_gen
     >>= Super_context.add_rule sctx ~loc ~dir ~mode
   | Whole_program ->
     exe_rule cc ~javascript_files ~src ~target ~flags

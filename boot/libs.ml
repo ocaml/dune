@@ -62,7 +62,7 @@ let local_libraries =
 let link_flags =
   [ ("macosx",
     [ "-cclib"
-    ; "-framework Foundation"
+    ; "-framework CoreFoundation"
     ; "-cclib"
     ; "-framework CoreServices"
     ])

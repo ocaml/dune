@@ -22,6 +22,8 @@
   dune_util
   dune_upgrader
   cmdliner
+  threads
+  ; Kept to keep implicit_transitive_deps false working in 4.x
   threads.posix
   build_info
   dune_config

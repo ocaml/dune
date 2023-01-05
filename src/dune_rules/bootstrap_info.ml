@@ -70,7 +70,12 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           ; Pp.nop
           ; def "external_libraries"
               (List
-                 (List.map externals ~f:(fun x -> Lib.name x |> Lib_name.to_dyn)))
+                 (List.filter_map externals ~f:(fun x ->
+                      let name = Lib.name x in
+                      if
+                        Lib_name.equal name (Lib_name.of_string "threads.posix")
+                      then None
+                      else Some (Lib_name.to_dyn name))))
           ; Pp.nop
           ; def "local_libraries" (List locals)
           ; Pp.nop

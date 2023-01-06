@@ -48,8 +48,8 @@ Test dependency on a private library in the same package as melange.emit
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @dist --display=short
           melc b/dist/a/a.js
-          melc b/dist/a/foo.js
           melc b/.dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
+          melc b/dist/a/foo.js
           melc b/dist/b/bar.js
 
   $ node _build/default/b/dist/b/bar.js

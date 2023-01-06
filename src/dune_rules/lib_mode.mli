@@ -63,5 +63,7 @@ module Map : sig
     val to_dyn : t -> Dyn.t
 
     val equal : t -> t -> bool
+
+    val for_merlin : t -> [ `Ocaml | `Melange ]
   end
 end

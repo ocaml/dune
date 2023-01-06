@@ -96,7 +96,7 @@ let rules ~sctx ~expander ~dir tests =
       | None -> []
       | Some (d : Dune_file.t) ->
         List.filter_map d.stanzas ~f:(function
-          | Dune_file.Cram c -> Option.some_if (f c) (dir, c)
+          | Cram_stanza.T c -> Option.some_if (f c) (dir, c)
           | _ -> None)
     in
     let rec collect_whole_subtree acc dir =

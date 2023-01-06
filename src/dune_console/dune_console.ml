@@ -61,8 +61,6 @@ module Backend = struct
   module Progress_no_flush : S = struct
     let status_line = ref Pp.nop
 
-    let finish () = ()
-
     let status_line_len = ref 0
 
     let hide_status_line () =
@@ -92,6 +90,8 @@ module Backend = struct
       show_status_line ()
 
     let reset () = Dumb.reset ()
+
+    let finish () = set_status_line None
 
     let reset_flush_history () = Dumb.reset_flush_history ()
   end

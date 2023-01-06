@@ -160,7 +160,7 @@ end = struct
               Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
             in
             Path.Set.to_list_map ps ~f:Path.basename
-          | Generate_sites_module def ->
+          | Generate_sites_module_stanza.T def ->
             let+ res = Generate_sites_module_rules.setup_rules sctx ~dir def in
             [ res ]
           | Library { buildable; _ } | Executables { buildable; _ } ->

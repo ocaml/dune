@@ -340,9 +340,7 @@ module Unprocessed = struct
       match modes with
       | `Exe -> `Ocaml
       | `Melange_emit -> `Melange
-      | `Lib (m : Lib_mode.Map.Set.t) ->
-        if m.melange && (not m.ocaml.byte) && not m.ocaml.native then `Melange
-        else `Ocaml
+      | `Lib (m : Lib_mode.Map.Set.t) -> Lib_mode.Map.Set.for_merlin m
     in
     let requires =
       match Resolve.peek requires with

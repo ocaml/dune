@@ -14,4 +14,6 @@ type t =
   ; package : Package.t option
   }
 
+type Stanza.t += T of t
+
 val decode : t Dune_lang.Decoder.t

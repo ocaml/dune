@@ -6,5 +6,5 @@ open! Stdune
 val setup_rules :
      Super_context.t
   -> dir:Path.Build.t
-  -> Dune_file.Generate_sites_module.t
+  -> Generate_sites_module_stanza.t
   -> string Memo.t

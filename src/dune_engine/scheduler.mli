@@ -35,6 +35,7 @@ module Run : sig
     module Reason : sig
       type t =
         | Requested
+        | Timeout
         | Signal of Signal.t
     end
 

@@ -99,8 +99,6 @@ let js_targets_of_libs sctx libs ~js_ext ~target_dir =
   let of_lib lib =
     let open Memo.O in
     let+ modules = impl_only_modules_defined_in_this_lib sctx lib in
-    (* let lib_dir = local_of_lib ~loc lib |> Lib.Local.info |> Lib_info.src_dir in *)
-    (* let dst_dir = lib_output_dir ~target_dir ~lib_dir in *)
     let dst_dir = lib_output_dir ~sctx ~target_dir lib in
     List.rev_map modules ~f:(fun m ->
         Path.build @@ make_js_name ~js_ext ~dst_dir m)

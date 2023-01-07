@@ -49,18 +49,16 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
              (Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 
-let melange_args ~package_output (cm_kind : Lib_mode.Cm_kind.t) package module_
+let melange_args ~package_output (cm_kind : Lib_mode.Cm_kind.t) lib_name module_
     =
   match cm_kind with
   | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
   | Melange Cmj ->
     let pkg_name_args =
-      match package with
+      match lib_name with
       | None -> []
-      | Some pkg ->
-        [ Command.Args.A "--bs-package-name"
-        ; A (Package.Name.to_string (Package.name pkg))
-        ]
+      | Some lib_name ->
+        [ Command.Args.A "--bs-package-name"; A (Lib_name.to_string lib_name) ]
     in
     Command.Args.A "--bs-stop-after-cmj" :: A "--bs-package-output"
     :: Command.Args.Path (Path.build package_output)
@@ -241,7 +239,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
           ; As extra_args
           ; S
               (melange_args cm_kind
-                 (Compilation_context.package cctx)
+                 (Compilation_context.lib_name cctx)
                  ~package_output:dir m)
           ; A "-no-alias-deps"
           ; opaque_arg

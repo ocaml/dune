@@ -457,10 +457,11 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let js_of_ocaml =
     Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
   in
+  let lib_name = Library.best_name lib in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)
-    ?stdlib:lib.stdlib ~package ?vimpl ~modes
+    ?stdlib:lib.stdlib ~package ?vimpl ~lib_name ~modes
 
 let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     ~dir_contents ~compile_info =

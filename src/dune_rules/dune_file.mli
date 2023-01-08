@@ -23,8 +23,7 @@ end
 module Buildable : sig
   type t =
     { loc : Loc.t
-    ; modules : Ordered_set_lang.t
-    ; modules_without_implementation : Ordered_set_lang.t
+    ; modules : Stanza_common.Modules_settings.t
     ; empty_module_interface_if_absent : bool
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
@@ -37,7 +36,6 @@ module Buildable : sig
     ; js_of_ocaml : Js_of_ocaml.In_buildable.t
     ; allow_overlapping_dependencies : bool
     ; ctypes : Ctypes_stanza.t option
-    ; root_module : (Loc.t * Module_name.t) option
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)

@@ -7,15 +7,13 @@ module Emit = struct
     ; target : string
     ; alias : Alias.Name.t option
     ; module_system : Melange.Module_system.t
-    ; entries : Ordered_set_lang.t
+    ; modules : Stanza_common.Modules_settings.t
     ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
-    ; root_module : (Loc.t * Module_name.t) option
-    ; modules_without_implementation : Ordered_set_lang.t
     ; allow_overlapping_dependencies : bool
     ; javascript_extension : string
     }
@@ -86,19 +84,17 @@ module Emit = struct
        and+ module_system =
          field "module_system"
            (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
-       and+ entries = Stanza_common.modules_field "entries"
        and+ libraries = field "libraries" decode_lib ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
-       and+ root_module = field_o "root_module" Module_name.decode_loc
        and+ javascript_extension = extension_field "javascript_extension"
        and+ allow_overlapping_dependencies =
          field_b "allow_overlapping_dependencies"
-       and+ modules_without_implementation =
-         Stanza_common.modules_field "modules_without_implementation"
+       and+ modules =
+         Stanza_common.Modules_settings.decode ~modules_field_name:"entries"
        in
        let preprocess =
          let init =
@@ -114,17 +110,15 @@ module Emit = struct
        ; target
        ; alias
        ; module_system
-       ; entries
+       ; modules
        ; libraries
        ; package
        ; preprocess
        ; preprocessor_deps
        ; promote
        ; compile_flags
-       ; root_module
        ; javascript_extension
        ; allow_overlapping_dependencies
-       ; modules_without_implementation
        })
 end
 

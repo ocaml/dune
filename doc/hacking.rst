@@ -527,3 +527,36 @@ Good:
 .. code:: ocaml
 
    let (foo : _ Command.Args.t) = S []
+
+Benchmarking
+============
+
+Dune Bench
+----------
+
+You can benchmark Dune's performance by running `make bench`. This will run a
+subset of the Duniverse.
+
+Inline Benchmarks
+-----------------
+
+Certain performance-critical parts of Dune are benchmarked using the
+``inline_benchmarks`` library. These benchmarks are run when running the tests.
+Their outputs are currently not recorded and are only used to detect performance
+regressions.
+
+
+Build-Time Benchmarks
+---------------------
+
+We benchmark the build time of Dune in every PR. The times can be found here:
+
+https://autumn.ocamllabs.io/ocaml/dune?worker=autumn&image=bench.Dockerfile
+
+
+Melange Bench
+-------------
+
+We also benchmark a demo Melange project's build time:
+
+https://ocaml.github.io/dune/dev/bench/

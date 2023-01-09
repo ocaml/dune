@@ -65,6 +65,9 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
+- Stop passing `-q` flag in `dune coq top`, which allows for `.coqrc` to be
+  loaded. (#6848, fixes #6847, @Alizter)
+
 - Fix missing dependencies when detecting the kind of C compiler we're using
   (#6610, fixes #6415, @emillon)
 

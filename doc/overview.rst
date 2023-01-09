@@ -129,3 +129,11 @@ directory. You can have several executables in the same directory, as long as
 they share the same build configuration. If you'd like to have multiple
 executables with different configurations in the same directory, you will have
 to make an explicit module list for every executable using ``modules``.
+
+History
+=======
+
+Dune started as ``jbuilder`` in late 2016. When its 1.0.0 version was released
+in 2018, the name has been changed to ``dune``. It used to be configured with
+``jbuild`` and ``jbuild-workspace`` files with a slightly different syntax.
+After a transition period, this syntax is not supported anymore.

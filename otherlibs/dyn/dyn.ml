@@ -52,7 +52,7 @@ let string_in_ocaml_syntax str =
     | None -> Pp.verbatim (Printf.sprintf "%S" first)
     | Some (middle, last) ->
       Pp.vbox
-        (Pp.concat ~sep:Pp.newline
+        (Pp.concat ~sep:Pp.cut
            (List.map ~f:Pp.verbatim
               (("\"" ^ String.escaped first ^ "\\n\\")
                :: List.map middle ~f:(fun s ->

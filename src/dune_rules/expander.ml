@@ -627,9 +627,9 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source
                   [ Pp.textf "Unknown Coq configuration variable %S" s ]
               | Some v -> (
                 match v with
-                | `Int x -> string (string_of_int x)
-                | `String x -> string x
-                | `Path x -> Value.L.paths [ x ])))))
+                | Int x -> string (string_of_int x)
+                | String x -> string x
+                | Path x -> Value.L.paths [ x ])))))
 
 (* Make sure to delay exceptions *)
 let expand_pform_gen ~context ~bindings ~dir ~source pform =

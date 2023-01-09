@@ -44,6 +44,13 @@ end = struct
   let get_path t var = get t var |> Path.of_string
 end
 
+module Value = struct
+  type t =
+    | Int of int
+    | Path of Path.t
+    | String of string
+end
+
 module Version = struct
   module Num = struct
     type t =
@@ -83,9 +90,9 @@ module Version = struct
 
     let by_name { major; minor; suffix } name =
       match name with
-      | "major" -> Some (`Int major)
-      | "minor" -> Some (`Int minor)
-      | "suffix" -> Some (`String suffix)
+      | "major" -> Some (Value.Int major)
+      | "minor" -> Some (Value.Int minor)
+      | "suffix" -> Some (Value.String suffix)
       | _ -> None
   end
 
@@ -132,8 +139,8 @@ module Version = struct
       | "version.minor" -> Num.by_name version_num "minor"
       | "version.revision" -> Num.by_name version_num "revision"
       | "version.suffix" -> Num.by_name version_num "suffix"
-      | "version" -> Some (`String version_string)
-      | "ocaml-version" -> Some (`String ocaml_version_string)
+      | "version" -> Some (Value.String version_string)
+      | "ocaml-version" -> Some (Value.String ocaml_version_string)
       | _ -> None)
 end
 
@@ -205,6 +212,7 @@ let by_name { version_info; coqlib; coq_native_compiler_default } name =
   | "version.suffix"
   | "version"
   | "ocaml-version" -> Version.by_name version_info name
-  | "coqlib" -> Some (`Path coqlib)
-  | "coq_native_compiler_default" -> Some (`String coq_native_compiler_default)
+  | "coqlib" -> Some (Value.Path coqlib)
+  | "coq_native_compiler_default" ->
+    Some (Value.String coq_native_compiler_default)
   | _ -> None

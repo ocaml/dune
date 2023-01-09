@@ -29,7 +29,7 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
       | None -> Coq_mode.VoOnly
       | Some config -> (
         match Coq_config.by_name config "coq_native_compiler_default" with
-        | Some (`String "yes") | Some (`String "ondemand") -> Coq_mode.Native
+        | Some (String "yes") | Some (String "ondemand") -> Coq_mode.Native
         | _ -> Coq_mode.VoOnly))
 
 (* CR alizter: move this to Lib.DB *)

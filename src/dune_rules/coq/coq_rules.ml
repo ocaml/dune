@@ -347,7 +347,23 @@ let generic_coq_args ~sctx ~dir ~wrapper_name ~boot_type ~mode ~coq_prog
     ~stanza_flags ~ml_flags ~theories_deps ~theory_dirs coq_module =
   let+ coq_stanza_flags =
     let+ expander = Super_context.expander sctx ~dir in
-    let coq_flags = coq_flags ~expander ~dir ~stanza_flags ~sctx in
+    let coq_flags =
+      let coq_flags = coq_flags ~expander ~dir ~stanza_flags ~sctx in
+      (* By default we have the -q flag. We don't want to pass this to coqtop to
+         allow users to load their .coqrc files for interactive development.
+         Therefore we manually scrub the -q setting when passing arguments to
+         coqtop. *)
+      match coq_prog with
+      | `Coqtop ->
+        let rec remove_q = function
+          | "-q" :: l -> remove_q l
+          | x :: l -> x :: remove_q l
+          | [] -> []
+        in
+        let open Action_builder.O in
+        coq_flags >>| remove_q
+      | _ -> coq_flags
+    in
     Command.Args.dyn coq_flags (* stanza flags *)
   in
   let coq_native_flags =

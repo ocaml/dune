@@ -486,7 +486,6 @@ The following sections describe the available stanzas and their meanings.
 .. include:: stanzas/include_subdirs.rst
 .. include:: stanzas/install.rst
 .. include:: stanzas/jbuild_version.rst
-.. include:: stanzas/js_of_ocaml.rst
 .. include:: stanzas/library.rst
 .. include:: stanzas/mdx.rst
 .. include:: stanzas/menhir.rst

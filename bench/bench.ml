@@ -76,7 +76,9 @@ module Package = struct
     let stdout_to = Process.Io.make_stdout Swallow in
     let stderr_to = Process.Io.make_stderr Swallow in
     let stdin_from = Process.Io.(null In) in
-    Process.run Strict ~stdout_to ~stderr_to ~stdin_from (Lazy.force git)
+    Process.run Strict
+      ~display:!Dune_engine.Clflags.display
+      ~stdout_to ~stderr_to ~stdin_from (Lazy.force git)
       [ "clone"; uri t ]
 end
 
@@ -96,7 +98,9 @@ let dune_build () =
   let stderr_to = Process.Io.make_stderr Swallow in
   let open Fiber.O in
   let+ times =
-    Process.run_with_times dune ~stdin_from ~stdout_to ~stderr_to
+    Process.run_with_times dune
+      ~display:!Dune_engine.Clflags.display
+      ~stdin_from ~stdout_to ~stderr_to
       [ "build"; "@install"; "--release" ]
   in
   times.elapsed_time
@@ -124,8 +128,8 @@ let () =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build");
   let module Scheduler = Dune_engine.Scheduler in
   let config =
+    Dune_engine.Clflags.display := Dune_engine.Display.quiet;
     { Scheduler.Config.concurrency = 10
-    ; display = { verbosity = Quiet; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No

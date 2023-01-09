@@ -155,7 +155,8 @@ module Script = struct
     let* () =
       let* (_ : Memo.Run.t) = Memo.current_run () in
       Memo.of_reproducible_fiber
-        (Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml args)
+        (Process.run Strict ~display:!Clflags.display ~dir:(Path.source dir)
+           ~env:context.env ocaml args)
     in
     if not (Path.Untracked.exists (Path.build generated_dune_file)) then
       User_error.raise

@@ -599,11 +599,10 @@ let report_process_finished stats ~metadata ~prog ~pid ~args ~started_at
 
 let set_temp_dir_when_running_actions = ref true
 
-let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
-    ?(stdin_from = Io.null In) ?(env = Env.initial)
+let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
+    ?(stderr_to = Io.stderr) ?(stdin_from = Io.null In) ?(env = Env.initial)
     ?(metadata = default_metadata) fail_mode prog args =
   Scheduler.with_job_slot (fun cancel (config : Scheduler.Config.t) ->
-      let display = config.display in
       let dir =
         match dir with
         | None -> dir
@@ -809,27 +808,27 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         in
         (res, times))
 
-let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
-    args =
+let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
+    prog args =
   let+ run =
-    run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
-      prog args
+    run_internal ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata
+      fail_mode prog args
     >>| fst
   in
   map_result fail_mode run ~f:ignore
 
-let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata prog
-    args =
-  run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata Strict prog
-    args
+let run_with_times ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env
+    ?metadata prog args =
+  run_internal ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata
+    Strict prog args
   >>| snd
 
-let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
-    args ~f =
+let run_capture_gen ?dir ~display ?stderr_to ?stdin_from ?env ?metadata
+    fail_mode prog args ~f =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
-    run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
-      ?metadata fail_mode prog args
+    run_internal ?dir ~display ~stdout_to:(Io.file fn Io.Out) ?stderr_to
+      ?stdin_from ?env ?metadata fail_mode prog args
     >>| fst
   in
   map_result fail_mode run ~f:(fun () ->
@@ -844,10 +843,10 @@ let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 let run_capture_zero_separated =
   run_capture_gen ~f:Stdune.Io.zero_strings_of_file
 
-let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
-    args =
-  run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog args
-    ~f:(fun fn ->
+let run_capture_line ?dir ~display ?stderr_to ?stdin_from ?env ?metadata
+    fail_mode prog args =
+  run_capture_gen ?dir ~display ?stderr_to ?stdin_from ?env ?metadata fail_mode
+    prog args ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
       | [ x ] -> x
       | l -> (

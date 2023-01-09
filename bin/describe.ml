@@ -754,7 +754,7 @@ module Preprocess = struct
     in
     let open Fiber.O in
     let+ () =
-      Process.run
+      Process.run ~display:!Clflags.display
         ~env:(Super_context.context_env sctx)
         Process.Strict (Super_context.context sctx).ocamlc
         [ "-stop-after"

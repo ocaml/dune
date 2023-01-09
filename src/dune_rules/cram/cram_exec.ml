@@ -59,7 +59,10 @@ end = struct
       Process.Io.file path Process.Io.In
     in
     let open Fiber.O in
-    let+ () = Process.run ~stdin_from ~stdout_to Strict prog argv in
+    let+ () =
+      Process.run ~display:!Clflags.display ~stdin_from ~stdout_to Strict prog
+        argv
+    in
     Io.with_file_in stdout_path ~f:(fun ic ->
         let rec loop acc =
           match Csexp.input_opt ic with
@@ -100,7 +103,8 @@ let translate_path_for_sh =
     match cygpath with
     | None -> User_error.raise [ Pp.text "Unable to find cygpath in PATH" ]
     | Some cygpath ->
-      Process.run_capture_line Strict cygpath [ Path.to_absolute_filename fn ]
+      Process.run_capture_line ~display:!Clflags.display Strict cygpath
+        [ Path.to_absolute_filename fn ]
 
 (* Quote a filename for sh, independently of whether we are on Windows or Unix.
    On Windows, we still generate a [sh] script so we need to quote using Unix
@@ -426,7 +430,7 @@ let run ~env ~script lexbuf : string Fiber.t =
       in
       Process.create_metadata ~name ~categories:[ "cram" ] ()
     in
-    Process.run ~metadata ~dir:cwd ~env Strict sh
+    Process.run ~display:!Clflags.display ~metadata ~dir:cwd ~env Strict sh
       [ Path.to_string sh_script.script ]
   in
   let raw = read_and_attach_exit_codes sh_script in

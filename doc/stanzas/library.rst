@@ -187,7 +187,7 @@ order to declare a multi-directory library, you need to use the
   is useful whenever a library is shadowed by a local module. The library may
   then still be accessible via this root module
 
-- ``(ctypes <ctypes stanza>)`` instructs Dune to use ctypes stubgen to process
+- ``(ctypes <ctypes field>)`` instructs Dune to use ctypes stubgen to process
   your type and function descriptions for binding system libraries, vendored
   libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
   reference. This field is available since the 3.0 version of the Dune language.

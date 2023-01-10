@@ -130,7 +130,7 @@ files for executables. See `executables_implicit_empty_intf`_.
   flag if some of the libraries listed here are not referenced from any of the
   plugin modules.
 
-- ``(ctypes <ctypes stanza>)`` instructs Dune to use ctypes stubgen to process
+- ``(ctypes <ctypes field>)`` instructs Dune to use ctypes stubgen to process
   your type and function descriptions for binding system libraries, vendored
   libraries, or other foreign code.  See :ref:`ctypes-stubgen` for a full
   reference. This field is available since the 3.0 version of the Dune language.

@@ -1,7 +1,9 @@
 .. _dune-vendored_dirs:
 
-vendored_dirs (Since 1.11)
---------------------------
+vendored_dirs
+-------------
+
+.. versionadded:: 1.11
 
 Dune supports vendoring other Dune-based projects natively, since simply copying
 a project into a subdirectory of your own project will work. Simply doing that

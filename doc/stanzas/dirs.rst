@@ -1,7 +1,9 @@
 .. _dune-subdirs:
 
-dirs (Since 1.6)
-----------------
+dirs
+----
+
+.. versionadded:: 1.6
 
 The ``dirs`` stanza allows specifying the subdirectories Dune will include in a
 build. The syntax is based on Dune's :ref:`predicate-lang` and allows the user

@@ -1,7 +1,9 @@
 .. _generate_sites_module:
 
-generate_sites_module (Since 2.8)
----------------------------------
+generate_sites_module
+---------------------
+
+.. versionadded:: 2.8
 
 Dune proposes some facilities for dealing with :ref:`sites<sites>` in a program.
 The ``generate_sites_module`` stanza will generate code for looking up the

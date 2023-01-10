@@ -1,5 +1,7 @@
-MDX (Since 2.4)
----------------
+mdx
+---
+
+.. versionadded:: 2.4
 
 MDX is a tool that helps you keep your markdown documentation up-to-date by
 checking that its code examples are correct. When setting an MDX stanza, the MDX

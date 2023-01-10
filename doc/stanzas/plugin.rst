@@ -1,7 +1,9 @@
 .. _plugin:
 
-plugin (Since 2.8)
-------------------
+plugin
+------
+
+.. versionadded:: 2.8
 
 Plugins are a way to load OCaml libraries at runtime. The ``plugin`` stanza
 allows you to declare the plugin's name, which :ref:`sites<sites>` should be

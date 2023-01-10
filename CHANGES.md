@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Fix preprocessing with `staged_pps` (#6748, fixes #6644, @rgrinberg)
+
 - Make `dune describe workspace` return consistent dependencies for
   executables and for libraries. By default, compile-time dependencies
   towards PPX-rewriters are from now not taken into account (but

@@ -35,7 +35,7 @@ module Buildable : sig
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.In_buildable.t
     ; allow_overlapping_dependencies : bool
-    ; ctypes : Ctypes_stanza.t option
+    ; ctypes : Ctypes_field.t option
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)

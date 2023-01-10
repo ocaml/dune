@@ -104,7 +104,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.In_buildable.t
     ; allow_overlapping_dependencies : bool
-    ; ctypes : Ctypes_stanza.t option
+    ; ctypes : Ctypes_field.t option
     }
 
   let decode (for_ : for_) =
@@ -175,8 +175,8 @@ module Buildable = struct
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ ctypes =
       field_o "ctypes"
-        (Dune_lang.Syntax.since Ctypes_stanza.syntax (0, 1)
-        >>> Ctypes_stanza.decode)
+        (Dune_lang.Syntax.since Ctypes_field.syntax (0, 1)
+        >>> Ctypes_field.decode)
     and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
     and+ empty_module_interface_if_absent =
       field_b "empty_module_interface_if_absent"

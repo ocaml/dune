@@ -407,7 +407,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
       (* ctypes type_gen and function_gen scripts should not be included in the
          library. Otherwise they will spew stuff to stdout on library load. *)
       match lib.buildable.ctypes with
-      | Some ctypes -> Ctypes_stanza.non_installable_modules ctypes
+      | Some ctypes -> Ctypes_field.non_installable_modules ctypes
       | None -> []
     in
     Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules

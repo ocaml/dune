@@ -1,7 +1,9 @@
 .. _dune-ignored_subdirs:
 
-ignored_subdirs (Deprecated in 1.6)
------------------------------------
+ignored_subdirs
+---------------
+
+.. deprecated:: 1.6
 
 One may also specify *data only* directories using the ``ignored_subdirs``
 stanza, meaning it's the same as ``data_only_dirs``, but the syntax isn't as

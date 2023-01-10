@@ -1,7 +1,9 @@
 .. _dune-data_only_dirs:
 
-data_only_dirs (Since 1.6)
---------------------------
+data_only_dirs
+--------------
+
+.. versionadded:: 1.6
 
 Dune allows the user to treat directories as *data only*. ``dune`` files in
 these directories won't be evaluated for their rules, but the contents of these

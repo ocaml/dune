@@ -1,4 +1,4 @@
-We create a buildable with a ctypes stanza that declares a duplicate
+We create a buildable with a ctypes field that declares a duplicate
 (function_description). This should display a nice error message instead of a
 crash.
 

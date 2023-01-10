@@ -27,7 +27,7 @@ open Import
    module Functions (F : Ctypes.FOREIGN) = struct (* put calls to F.foreign here
    to wrap C functions *) end
 
-   Once the above modules are provided, the ctypes stanza will:
+   Once the above modules are provided, the ctypes field will:
 
    * generate a types generator
 
@@ -78,7 +78,7 @@ let write_entry_point_module ~ctypes ~type_description_instance
           (Module_name.to_string c_types_includer_module)
       ; Pp.concat_map function_description ~f:(fun fd ->
             let c_generated_functions_module =
-              Ctypes_stanza.c_generated_functions_module ctypes fd
+              Ctypes_field.c_generated_functions_module ctypes fd
             in
             verbatimf "module %s = %s.Functions (%s)"
               (fd.instance |> Module_name.to_string)
@@ -88,7 +88,7 @@ let write_entry_point_module ~ctypes ~type_description_instance
   in
   Format.asprintf "%a@." Pp.to_fmt contents
 
-let gen_headers ~expander (headers : Ctypes_stanza.Headers.t) =
+let gen_headers ~expander (headers : Ctypes_field.Headers.t) =
   let open Action_builder.O in
   match headers with
   | Include lst ->
@@ -115,8 +115,8 @@ let type_gen_gen ~expander ~headers ~type_description_functor =
        ])
 
 let function_gen_gen ~expander
-    ~(concurrency : Ctypes_stanza.Concurrency_policy.t)
-    ~(errno_policy : Ctypes_stanza.Errno_policy.t) ~headers
+    ~(concurrency : Ctypes_field.Concurrency_policy.t)
+    ~(errno_policy : Ctypes_field.Errno_policy.t) ~headers
     ~function_description_functor =
   let open Action_builder.O in
   let module_name = Module_name.to_string function_description_functor in
@@ -266,9 +266,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let external_library_name = ctypes.external_library_name in
   let type_description_functor = ctypes.type_description.functor_ in
   let c_types_includer_module = ctypes.generated_types in
-  let c_generated_types_module =
-    Ctypes_stanza.c_generated_types_module ctypes
-  in
+  let c_generated_types_module = Ctypes_field.c_generated_types_module ctypes in
   let open Memo.O in
   let foreign_archives_deps =
     let ctx = Super_context.context sctx in
@@ -287,7 +285,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     @@
     let target =
       Path.Build.relative dir
-        (Ctypes_stanza.ml_of_module_name c_types_includer_module)
+        (Ctypes_field.ml_of_module_name c_types_includer_module)
     in
     Action_builder.write_file target
       (write_c_types_includer_module ~c_generated_types_module
@@ -340,7 +338,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
       sprintf "%s__c_cout_generated_types.exe"
         (External_lib_name.to_string external_library_name)
     in
-    let type_gen_script = Ctypes_stanza.type_gen_script ctypes in
+    let type_gen_script = Ctypes_field.type_gen_script ctypes in
     let* () =
       Super_context.add_rule ~loc:Loc.none sctx ~dir
       @@
@@ -366,7 +364,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     Super_context.add_rule sctx ~loc:Loc.none ~dir
       (let stdout_to =
          Path.Build.relative dir
-           (c_generated_types_module |> Ctypes_stanza.ml_of_module_name)
+           (c_generated_types_module |> Ctypes_field.ml_of_module_name)
        in
        let exe =
          Ok (Path.build (Path.Build.relative dir c_generated_types_cout_exe))
@@ -388,9 +386,9 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
           ^ "_stubs"
         in
         let c_generated_functions_cout_c =
-          Ctypes_stanza.c_generated_functions_cout_c ctypes fd
+          Ctypes_field.c_generated_functions_cout_c ctypes fd
         in
-        let function_gen_script = Ctypes_stanza.function_gen_script ctypes fd in
+        let function_gen_script = Ctypes_field.function_gen_script ctypes fd in
         let* () =
           Super_context.add_rule ~loc:Loc.none sctx ~dir
           @@
@@ -422,8 +420,8 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         Super_context.add_rule sctx ~dir ~loc:Loc.none
           (let stdout_to =
              Path.Build.relative dir
-               (Ctypes_stanza.c_generated_functions_module ctypes fd
-               |> Ctypes_stanza.ml_of_module_name)
+               (Ctypes_field.c_generated_functions_module ctypes fd
+               |> Ctypes_field.ml_of_module_name)
            in
            command ~stdout_to [ A "ml"; A stubs_prefix ]))
   in
@@ -432,7 +430,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   Super_context.add_rule sctx ~loc:Loc.none ~dir
     (let target =
        Path.Build.relative dir
-         (generated_entry_module |> Ctypes_stanza.ml_of_module_name)
+         (generated_entry_module |> Ctypes_field.ml_of_module_name)
      in
      Action_builder.write_file target
        (write_entry_point_module ~ctypes

@@ -250,7 +250,7 @@ end
 module Source = struct
   type kind =
     | Stubs of Stubs.t
-    | Ctypes of Ctypes_stanza.t
+    | Ctypes of Ctypes_field.t
 
   (* we store the entire [stubs] record even though [t] only describes an
      individual source file *)

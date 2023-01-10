@@ -63,7 +63,7 @@ include search path.
 Stub Generation with Dune Ctypes
 ================================
 
-Beginning in Dune 3.0, it's possible to use the ctypes_ stanza to generate
+Beginning in Dune 3.0, it's possible to use the ctypes_ field to generate
 bindings for C libraries without writing any C code.
 
 Note that Dune support for this feature is experimental and is not subject to
@@ -121,7 +121,7 @@ location.
      (generated_types Types_generated)
      (generated_entry_point C)))
 
-This stanza will introduce a module named ``C`` into your project, with the
+This field will introduce a module named ``C`` into your project, with the
 sub-modules ``Types`` and ``Functions`` that will have your fully-bound C
 types, constants, and functions.
 
@@ -193,10 +193,10 @@ and build and link the example ``foo.exe`` program.
 Complete information about the ``ctypes`` combinators used above is available
 at the ctypes_ project.
 
-Ctypes Stanza Reference
+Ctypes Field Reference
 ------------------------
 
-The ``ctypes`` stanza can be used in any ``executable(s)`` or ``library``
+The ``ctypes`` field can be used in any ``executable(s)`` or ``library``
 stanza.
 
 .. code:: scheme
@@ -226,7 +226,7 @@ stanza.
   library functions written in the ``ctypes`` domain-specific language you wish
   to bind. The ``instance`` module is the name of the instantiated functor,
   inserted into the top-level of the ``generated_entry_point`` module. The
-  ``function_description`` stanza can be repeated. This is useful if you need
+  ``function_description`` field can be repeated. This is useful if you need
   to specify sets of functions with different concurrency policies (see below).
 
 The instantiated types described above can be accessed from the function
@@ -235,11 +235,11 @@ descriptions by referencing them as the module specified in optional
 
 ``<optional-ctypes-fields>`` are:
 
-- ``(build_flags_resolver <pkg_config|vendored-stanza>)`` tells Dune how to
+- ``(build_flags_resolver <pkg_config|vendored-field>)`` tells Dune how to
   compile and link your foreign library. Specifying ``pkg_config`` will use
   the pkg-config_ tool to query the compilation and link flags for
   ``external_library_name``. For vendored libraries, provide the build and link
-  flags using ``vendored`` stanza. If ``build_flags_resolver`` is not
+  flags using ``vendored`` field. If ``build_flags_resolver`` is not
   specified, the default of ``pkg_config`` will be used.
 
 - ``(generated_types <module-name>)`` is the name of an intermediate module. By
@@ -276,7 +276,7 @@ descriptions by referencing them as the module specified in optional
   not accessed or returned by function calls. With ``return_errno``, all
   functions will return the tuple ``(retval, errno)``.
 
-``<vendored-stanza>`` is:
+``<vendored-field>`` is:
 
 - ``(vendored (c_flags <flags>) (c_library_flags <flags>))`` provide the build
   and link flags for binding your vendored code. You must also provide

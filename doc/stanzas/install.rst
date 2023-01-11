@@ -26,31 +26,65 @@ in ``<prefix>/share/mypackage``.
 
 The following sections are available:
 
-- ``lib`` installs by default to ``<prefix>/lib/<pkgname>/``.
-- ``lib_root`` installs by default to ``<prefix>/lib/``.
-- ``libexec`` installs by default to ``<prefix>/lib/<pkgname>/`` with the
-  executable bit set.
-- ``libexec_root`` installs by default to ``<prefix>/lib/`` with the executable
-  bit set.
-- ``bin`` installs by default to ``<prefix>/bin/`` with the executable bit set.
-- ``sbin`` installs by default to ``<prefix>/sbin/`` with the executable bit
-  set.
-- ``toplevel`` installs by default to ``<prefix>/lib/toplevel/``.
-- ``share`` installs by default to ``<prefix>/share/<pkgname>/``.
-- ``share_root`` installs by default to ``<prefix>/share/``.
-- ``etc`` installs by default to ``<prefix>/etc/<pkgname>/``.
-- ``stublibs`` installs by default to ``<prefix>/lib/stublibs/`` with the
-  executable bit set.
-- ``doc`` installs by default to ``<prefix>/doc/<pkgname>/``.
-- ``man`` installs by default, relative to ``<prefix>/man`` with the destination
-  directory extracted from the source file extension. For example, installing
-  ``foo.1`` is equivalent to a destination of ``man1/foo.1``.
-- ``misc`` requires files to specify an absolute destination. It will only work
-  when used with opam and the user will be prompted before the installation when
-  it's done via opam. It is deprecated.
-- ``(site (<package> <site>))`` installs in the ``<site>`` directory of
-  ``<package>``. If the prefix isn't the same as the one used when installing
-  ``<package>``, ``<package>`` won't find the files.
+.. list-table::
+   :header-rows: 1
+
+   * - Section
+     - Target
+     - Remarks
+   * - ``lib``
+     - ``<prefix>/lib/<pkgname>/``
+     -
+   * - ``lib_root``
+     - ``<prefix>/lib/``
+     -
+   * - ``libexec``
+     - ``<prefix>/lib/<pkgname>/``
+     - executable bit is set
+   * - ``libexec_root``
+     - ``<prefix>/lib/``
+     - executable bit is set
+   * - ``bin``
+     - ``<prefix>/bin/``
+     - executable bit is set
+   * - ``sbin``
+     - ``<prefix>/sbin/``
+     - executable bit is set
+   * - ``toplevel``
+     - ``<prefix>/lib/toplevel/``
+     -
+   * - ``share``
+     - ``<prefix>/share/<pkgname>/``
+     -
+   * - ``share_root``
+     - ``<prefix>/share/``
+     -
+   * - ``etc``
+     - ``<prefix>/etc/<pkgname>/``
+     -
+   * - ``stublibs``
+     - ``<prefix>/lib/stublibs/``
+     - executable bit is set
+   * - ``doc``
+     - ``<prefix>/doc/<pkgname>/``
+     -
+   * - ``man``
+     - ``<prefix>/man/manX/``
+     - (see below)
+   * - ``misc``
+     - absolute destination
+     - (see below)
+   * - ``(site (<package> <site>))``
+     - ``<site>`` directory of ``<package>``
+     - (see below)
+
+Additional remarks:
+
+- For ``man``, the exact destination is inferred from the file extension. For
+  example, ``foo.1`` is installed as ``<prefix>/man/man1/foo.1``.
+- ``misc`` only works when using opam. In that case, the user will be prompted
+  before installation. This mechanism is deprecated.
+- In the case of ``(site)``, if the prefix isn't the same as the one used when installing ``<package>``, ``<package>`` won't find the files.
 
 Normally, Dune uses the file's basename to determine the file's name once
 installed; however, you can change that by using the form ``(<filename> as
@@ -65,8 +99,8 @@ following:
      (files   (mylib.el as emacs/site-lisp/mylib.el)))
 
 The mode of installed files is fully determined by the section they are
-installed in. If the section above is documented as "with the executable bit
-set", they are installed with mode ``0o755`` (``rwxr-xr-x``); otherwise they are
+installed in. If the section above is documented as with the executable bit
+set, they are installed with mode ``0o755`` (``rwxr-xr-x``); otherwise they are
 installed with mode ``0o644`` (``rw-r--r--``).
 
 Note that all files in the install stanza must be specified by relative paths

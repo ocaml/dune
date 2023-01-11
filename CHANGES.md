@@ -93,8 +93,6 @@ Unreleased
 - Add a `dune cache size` command for displaying the size of the cache (#6638,
   @Alizter)
 
-- Implement eager watch mode for `dune exec` (#6507, fixes #2934, @gridbugs)
-
 3.6.1 (2022-11-24)
 ------------------
 

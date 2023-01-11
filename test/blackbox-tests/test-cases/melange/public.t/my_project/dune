@@ -1,5 +1,4 @@
 (melange.emit
- (package pkg)
  (target output)
  (entries c)
  (alias melange)

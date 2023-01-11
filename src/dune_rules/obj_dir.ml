@@ -45,8 +45,9 @@ module External = struct
       if private_lib then Some (Path.relative dir ".public_cmi") else None
     in
     let public_cmi_melange_dir =
-      if private_lib then Some (Path.relative dir ".public_cmi_melange")
-      else None
+      let melange_dir = Path.relative dir Melange.Install.dir in
+      if private_lib then Some (Path.relative melange_dir ".public_cmi_melange")
+      else Some melange_dir
     in
     { public_dir = dir
     ; private_dir
@@ -78,7 +79,8 @@ module External = struct
       Code_error.raise "External.cm_dir" [ ("t", to_dyn t) ]
     | Ocaml Cmi, Public, _ -> public_cmi_ocaml_dir t
     | Melange Cmi, Public, _ -> public_cmi_melange_dir t
-    | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _ -> t.public_dir
+    | Melange Cmj, _, _ -> public_cmi_melange_dir t
+    | Ocaml (Cmo | Cmx), _, _ -> t.public_dir
 
   let encode
       { public_dir

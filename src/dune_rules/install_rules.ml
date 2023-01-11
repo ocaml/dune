@@ -134,8 +134,8 @@ end = struct
               make_entry Lib source ?dst))
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
-    let modes = Dune_file.Mode_conf.Set.eval lib.modes.ocaml ~has_native in
-    let { Mode.Dict.byte; native } = modes in
+    let modes = Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native in
+    let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native }; melange } = modes in
     let module_files =
       let inside_subdir f =
         match lib_subdir with
@@ -147,30 +147,30 @@ end = struct
       in
       let cm_dir m cm_kind =
         let visibility = Module.visibility m in
-        let dir' = Obj_dir.cm_dir external_obj_dir (Ocaml cm_kind) visibility in
+        let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
         if Path.equal (Path.build dir) dir' then None
         else Path.basename dir' |> inside_subdir |> Option.some
       in
       let virtual_library = Library.is_virtual lib in
+      let if_ b (cm_kind, f) =
+        if b then
+          match f with
+          | None -> []
+          | Some f -> [ (cm_kind, f) ]
+        else []
+      in
       let modules =
         let common m =
-          let cm_file kind =
-            Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml kind)
-          in
-          let if_ b (cm_kind, f) =
-            if b then
-              match f with
-              | None -> []
-              | Some f -> [ (cm_kind, f) ]
-            else []
-          in
-          let open Cm_kind in
-          [ if_ true (Cmi, cm_file Cmi)
-          ; if_ native (Cmx, cm_file Cmx)
-          ; if_ (byte && virtual_library) (Cmo, cm_file Cmo)
+          let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
+          let open Lib_mode.Cm_kind in
+          [ if_ (native || byte) (Ocaml Cmi, cm_file (Ocaml Cmi))
+          ; if_ native (Ocaml Cmx, cm_file (Ocaml Cmx))
+          ; if_ (byte && virtual_library) (Ocaml Cmo, cm_file (Ocaml Cmo))
           ; if_
               (native && virtual_library)
-              (Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
+              (Ocaml Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
+          ; if_ melange (Melange Cmi, cm_file (Melange Cmi))
+          ; if_ melange (Melange Cmj, cm_file (Melange Cmj))
           ]
           |> List.concat
         in
@@ -179,15 +179,19 @@ end = struct
         in
         let modules_impl =
           List.concat_map installable_modules.impl ~f:(fun m ->
-              common m
-              @ List.filter_map Ml_kind.all ~f:(fun ml_kind ->
-                    let open Option.O in
-                    let+ cmt =
-                      Obj_dir.Module.cmt_file obj_dir m ~ml_kind
-                        ~cm_kind:(Ocaml Cmi)
-                    in
-                    (Cm_kind.Cmi, cmt))
-              |> set_dir m)
+              let cmt_files =
+                List.concat_map Ml_kind.all ~f:(fun ml_kind ->
+                    let open Lib_mode.Cm_kind in
+                    List.concat_map
+                      [ (native || byte, Ocaml Cmi); (melange, Melange Cmi) ]
+                      ~f:(fun (condition, kind) ->
+                        if_ condition
+                          ( kind
+                          , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
+                              ~cm_kind:kind )))
+              in
+
+              common m @ cmt_files |> set_dir m)
         in
         let modules_vlib =
           List.concat_map installable_modules.vlib ~f:(fun m ->
@@ -199,7 +203,10 @@ end = struct
     in
     let* lib_files, dll_files =
       let+ lib_files = lib_files ~dir ~dir_contents ~lib_config info in
-      let dll_files = dll_files ~modes ~dynlink:lib.dynlink ~ctx info in
+      let dll_files =
+        let modes = modes.ocaml in
+        dll_files ~modes ~dynlink:lib.dynlink ~ctx info
+      in
       (lib_files, dll_files)
     in
     let+ execs = lib_ppxs ctx ~scope ~lib in

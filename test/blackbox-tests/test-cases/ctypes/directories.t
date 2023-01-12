@@ -74,3 +74,13 @@ We ensure that just `-I lib` or `-I .` are not enough on their own.
   $ echo "(-I .)" > lib/extra_flags.sexp
   $ dune build > /dev/null 2>&1
   [1]
+
+With 0.3, everything is relative to the directory.
+
+  $ cat > dune-project << EOF
+  > (lang dune 3.7)
+  > (using ctypes 0.3)
+  > EOF
+
+  $ echo "(-I .)" > lib/extra_flags.sexp
+  $ dune build

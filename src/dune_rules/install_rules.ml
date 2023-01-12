@@ -252,6 +252,9 @@ end = struct
                 Scope.project scope |> Dune_project.dune_version
               in
               let+ pps =
+                (* This is wrong. If the preprocessors fail to resolve,
+                   we shouldn't install the binary rather than failing outright
+                *)
                 Preprocess.Per_module.with_instrumentation
                   exes.buildable.preprocess
                   ~instrumentation_backend:
@@ -461,6 +464,8 @@ end = struct
     Section.Set.to_map sections ~f:(fun section ->
         Install.Section.Paths.get_local_location ctx_name section pkg_name)
 
+  (* TODO delay the library resolution errors here. We should still be load
+     the [dune-package] file rule even if some libraries are missing *)
   let make_dune_package sctx lib_entries (pkg : Package.t) =
     let pkg_name = Package.name pkg in
     let ctx = Super_context.context sctx in

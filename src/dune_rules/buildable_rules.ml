@@ -45,11 +45,13 @@ let modules_rules ~preprocess ~preprocessor_deps ~lint
       Lib.DB.instrumentation_backend (Scope.libs scope)
     in
     let* preprocess_with_instrumentation =
+      (* TODO wrong and blocks loading all the rules in this directory *)
       Resolve.Memo.read_memo
         (Preprocess.Per_module.with_instrumentation preprocess
            ~instrumentation_backend)
     in
     let+ instrumentation_deps =
+      (* TODO wrong and blocks loading all the rules in this directory *)
       Resolve.Memo.read_memo
         (Preprocess.Per_module.instrumentation_deps preprocess
            ~instrumentation_backend)

@@ -34,8 +34,7 @@
   csexp
   csexp_rpc
   dune_rpc_impl
-  dune_rpc_private
-  spawn)
+  dune_rpc_private)
  (bootstrap_info bootstrap-info))
 
 ; Installing the dune binary depends on the kind of build:

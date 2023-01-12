@@ -220,6 +220,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
+    (* TODO resolution should be delayed *)
     Resolve.Memo.read_memo
       (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
          ~instrumentation_backend:

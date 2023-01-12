@@ -520,6 +520,9 @@ module Sub_system = struct
 
   let public_info =
     let open Memo.O in
+    (* TODO this should continue using [Resolve]. Not doing so
+       will prevent generating the [dune-package] rule if the sub system is
+       missing *)
     let module M = Memo.Make_map_traversals (Sub_system_name.Map) in
     fun lib ->
       M.parallel_map lib.sub_systems ~f:(fun _name inst ->

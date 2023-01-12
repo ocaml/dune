@@ -444,10 +444,8 @@ module Unprocessed = struct
         (Modules.source_dirs modules)
 
   let pp_config t sctx ~expander =
-    Action_builder.of_memo_join
-    @@
-    let open Memo.O in
-    let+ preprocess = Resolve.Memo.read_memo t.config.preprocess in
+    let open Action_builder.O in
+    let* preprocess = Resolve.Memo.read t.config.preprocess in
     Module_name.Per_item.map_action_builder preprocess
       ~f:(pp_flags sctx ~expander t.config.libname)
 

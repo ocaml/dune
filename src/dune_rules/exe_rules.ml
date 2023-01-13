@@ -51,7 +51,7 @@ let programs ~modules ~(exes : Executables.t) =
             ]
       | None ->
         let msg =
-          match Ordered_set_lang.loc exes.buildable.modules with
+          match Ordered_set_lang.loc exes.buildable.modules.modules with
           | None ->
             Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
           | Some _ ->
@@ -102,7 +102,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir `Ocaml in
   let ctx = Super_context.context sctx in
   let project = Scope.project scope in
   let programs = programs ~modules ~exes in
@@ -220,6 +220,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
+    (* TODO resolution should be delayed *)
     Resolve.Memo.read_memo
       (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
          ~instrumentation_backend:

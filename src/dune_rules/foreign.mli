@@ -176,7 +176,7 @@ end
 module Source : sig
   type kind =
     | Stubs of Stubs.t
-    | Ctypes of Ctypes_stanza.t
+    | Ctypes of Ctypes_field.t
 
   type t = private
     { kind : kind

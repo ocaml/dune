@@ -1,12 +1,17 @@
 Unreleased
 ----------
 
+- Fix preprocessing with `staged_pps` (#6748, fixes #6644, @rgrinberg)
+
 - Make `dune describe workspace` return consistent dependencies for
   executables and for libraries. By default, compile-time dependencies
   towards PPX-rewriters are from now not taken into account (but
   runtime dependencies always are). Compile-time dependencies towards
   PPX-rewriters can be taken into account by providing the
   `--with-pps` flag. (#6727, fixes #6486, @esope)
+
+- Print missing newline after `$ dune exec`. (#6821, fixes #6700, @rgrinberg,
+  @Alizter)
 
 - Fix binary corruption when installing or promoting in parallel (#6669, fixes
   #6668, @edwintorok)
@@ -74,13 +79,19 @@ Unreleased
   enabled (#6645, @hhugo)
 
 - Fix *js_of_ocaml* separate compilation rules when `--enable=effects`
-  or `--enable=use-js-string` is used. (#6714, @hhugo)
+  or `--enable=use-js-string` is used. (#6714, #6828, @hhugo)
 
 - Remove spurious build dir created when running `dune init proj ...` (#6707,
   fixes #5429, @gridbugs)
 
 - Allow `--sandbox` to affect `ocamldep` invocations. Previously, they were
   wrongly marked as incompatible (#6749, @rgrinberg)
+
+- Validate the command line arguments for `$ dune ocaml top-module`. This
+  command requires one positional argument (#6796, fixes #6793, @rgrinberg)
+
+- Add a `dune cache size` command for displaying the size of the cache (#6638,
+  @Alizter)
 
 3.6.1 (2022-11-24)
 ------------------
@@ -106,7 +117,7 @@ Unreleased
 - Introduce a `$ dune ocaml top-module` subcommand to load modules directly
   without sealing them behind the signature. (#5940, @rgrinberg)
 
-- [ctypes] do not mangle user written names in the ctypes stanza (#6374, fixes
+- [ctypes] do not mangle user written names in the ctypes field (#6374, fixes
   #5561, @rgrinberg)
 
 - Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI

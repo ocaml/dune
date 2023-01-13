@@ -108,7 +108,6 @@
           nativeBuildInputs = with pkgs; [ pkg-config nodejs-slim ];
           inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
           buildInputs = with pkgs.ocamlPackages; [
-            dune_3
             merlin
             ocamlformat
             ppx_expect

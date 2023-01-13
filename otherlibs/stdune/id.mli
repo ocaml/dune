@@ -1,5 +1,5 @@
 module type S = sig
-  type t
+  type t [@@immediate]
 
   include Comparable_intf.S with type key := t
 

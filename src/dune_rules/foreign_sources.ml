@@ -38,7 +38,7 @@ let valid_name language ~loc s =
       ]
   | _ -> s
 
-let eval_foreign_stubs foreign_stubs (ctypes : Ctypes_stanza.t option)
+let eval_foreign_stubs foreign_stubs (ctypes : Ctypes_field.t option)
     ~dune_version ~(sources : Foreign.Sources.Unresolved.t) : Foreign.Sources.t
     =
   let multiple_sources_error ~name ~mode ~loc ~paths =
@@ -130,15 +130,15 @@ let eval_foreign_stubs foreign_stubs (ctypes : Ctypes_stanza.t option)
     | Some ctypes ->
       let ctypes =
         List.fold_left ~init:String.Map.empty ctypes.function_description
-          ~f:(fun acc (fd : Ctypes_stanza.Function_description.t) ->
+          ~f:(fun acc (fd : Ctypes_field.Function_description.t) ->
             let loc = Loc.none (* TODO *) in
-            let fname = Ctypes_stanza.c_generated_functions_cout_c ctypes fd in
+            let fname = Ctypes_field.c_generated_functions_cout_c ctypes fd in
             let name = Filename.chop_extension fname in
             let path =
               match find_source C (loc, name) with
               | Some p -> p
               | None ->
-                (* impossible b/c ctypes stanza generates this *)
+                (* impossible b/c ctypes fields generates this *)
                 assert false
             in
             let source = Foreign.Source.make (Ctypes ctypes) ~path in

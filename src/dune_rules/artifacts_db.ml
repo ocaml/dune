@@ -51,6 +51,9 @@ let get_installed_binaries ~(context : Context.t) stanzas =
                   let project = Scope.project scope in
                   let dune_version = Dune_project.dune_version project in
                   let+ pps =
+                    (* Instead of making the binary unavailable, this will just
+                       fail when loading artifacts. This is clearly bad but
+                       "optional" executables shouldn't be used. *)
                     Resolve.Memo.read_memo
                       (Preprocess.Per_module.with_instrumentation
                          exes.buildable.preprocess

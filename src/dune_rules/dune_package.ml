@@ -90,7 +90,7 @@ module Lib = struct
        ; field_o "default_implementation" (no_loc Lib_name.encode)
            default_implementation
        ; field_o "main_module_name" Module_name.encode main_module_name
-       ; field_l "modes" sexp (Mode.Dict.Set.encode modes.ocaml)
+       ; field_l "modes" sexp (Lib_mode.Map.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
        ; field_o "modules" Modules.encode modules
        ; field_o "special_builtin_support"
@@ -131,7 +131,7 @@ module Lib = struct
        in
        let+ synopsis = field_o "synopsis" string
        and+ loc = loc
-       and+ modes = field_l "modes" Mode.decode
+       and+ modes = field_l "modes" Lib_mode.decode
        and+ kind = field "kind" Lib_kind.decode
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"
@@ -165,7 +165,7 @@ module Lib = struct
        and+ instrumentation_backend =
          field_o "instrumentation.backend" (located Lib_name.decode)
        in
-       let modes = Mode.Dict.Set.of_list modes in
+       let modes = Lib_mode.Map.Set.of_list modes in
        let entry_modules =
          Modules.entry_modules modules |> List.map ~f:Module.name
        in
@@ -190,7 +190,6 @@ module Lib = struct
            Some (Lib_info.Inherited.This (Modules.wrapped modules))
          in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
-         let modes = { Lib_mode.Map.ocaml = modes; melange = false } in
          let modules = Lib_info.Source.External (Some modules) in
          Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
            ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name

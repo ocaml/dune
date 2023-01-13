@@ -25,7 +25,7 @@ you type in the toplevel will be rewritten with these PPX rewriters.
 
 This command became available with Dune 2.5.0.
 
-It's also possible to load individual modules (since dune 3.4.0) for
+It's also possible to load individual modules (since dune 3.6.0) for
 interactive development. Use the following dune command:
 
 .. code:: ocaml

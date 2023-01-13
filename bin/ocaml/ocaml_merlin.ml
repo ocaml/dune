@@ -11,7 +11,6 @@ module Server : sig
       will halt when receiving EOF of a bad csexp. *)
   val start : unit -> unit Fiber.t
 end = struct
-  open! Stdune
   open Fiber.O
 
   module Merlin_conf = struct
@@ -82,6 +81,8 @@ end = struct
       match
         get_merlin_files_paths path
         |> List.find_map ~f:(fun file_path ->
+               (* FIXME we are racing against the build system writing these
+                  files here *)
                match Merlin.Processed.load_file file_path with
                | Error msg -> Some (Merlin_conf.make_error msg)
                | Ok config -> Merlin.Processed.get config ~file)

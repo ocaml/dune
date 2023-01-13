@@ -757,8 +757,7 @@ end = struct
     else Resolve.Memo.return closure
 end
 
-let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
-    libname =
+let instrumentation_backend instrument_with resolve libname =
   let open Resolve.Memo.O in
   if not (List.mem ~equal:Lib_name.equal instrument_with (snd libname)) then
     Resolve.Memo.return None
@@ -767,15 +766,12 @@ let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
     match lib |> info |> Lib_info.instrumentation_backend with
     | Some _ as ppx -> Resolve.Memo.return ppx
     | None ->
-      if do_not_fail then Resolve.Memo.return (Some libname)
-      else
-        Resolve.Memo.fail
-          (User_error.make ~loc:(fst libname)
-             [ Pp.textf
-                 "Library %S is not declared to have an instrumentation \
-                  backend."
-                 (Lib_name.to_string (snd libname))
-             ])
+      Resolve.Memo.fail
+        (User_error.make ~loc:(fst libname)
+           [ Pp.textf
+               "Library %S is not declared to have an instrumentation backend."
+               (Lib_name.to_string (snd libname))
+           ])
 
 module rec Resolve_names : sig
   val find_internal : db -> Lib_name.t -> Status.t Memo.t

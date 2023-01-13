@@ -5,12 +5,9 @@ let def name dyn =
   let open Pp.O in
   Pp.box ~indent:2 (Pp.textf "let %s = " name ++ Dyn.pp dyn)
 
-let rule sctx compile (exes : Dune_file.Executables.t) () =
+let rule sctx ~requires_link (exes : Dune_file.Executables.t) () =
   let* locals, externals =
-    let+ libs =
-      Resolve.Memo.read_memo
-        (Memo.Lazy.force (Lib.Compile.requires_link compile))
-    in
+    let+ libs = Resolve.Memo.read_memo (Memo.Lazy.force requires_link) in
     List.partition_map libs ~f:(fun lib ->
         match Lib.Local.of_lib lib with
         | Some x -> Left x
@@ -84,9 +81,10 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
               list (pair string (list string)) link_flags)
           ]))
 
-let gen_rules sctx (exes : Dune_file.Executables.t) ~dir compile =
+let gen_rules sctx (exes : Dune_file.Executables.t) ~dir ~requires_link =
   Memo.Option.iter exes.bootstrap_info ~f:(fun fname ->
       Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir
         (Action_builder.write_file_dyn
            (Path.Build.relative dir fname)
-           (Action_builder.of_memo (Memo.return () >>= rule sctx compile exes))))
+           (Action_builder.of_memo
+              (Memo.return () >>= rule sctx ~requires_link exes))))

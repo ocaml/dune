@@ -10,5 +10,5 @@ val gen_rules :
      Super_context.t
   -> Dune_file.Executables.t
   -> dir:Path.Build.t
-  -> Lib.Compile.t
+  -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
   -> unit Memo.t

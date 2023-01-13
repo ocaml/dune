@@ -6,7 +6,7 @@ Showcase issue with melange.emit inside folder and copy_files
   > EOF
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (using melange 0.1)
   > EOF
 

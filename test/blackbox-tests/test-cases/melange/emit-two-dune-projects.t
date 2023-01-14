@@ -3,7 +3,7 @@ Test dependency on installed package
   $ mkdir xyz
 
   $ cat > xyz/dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (package (name aa_fe))
   > (using melange 0.1)
   > EOF
@@ -19,12 +19,12 @@ Test dependency on installed package
   > EOF
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (using melange 0.1)
   > EOF
 
   $ cat >dune-workspace <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > EOF
 
   $ cat > dune <<EOF

@@ -3,7 +3,7 @@ Test dependency on installed package
   $ mkdir a b c prefix
 
   $ cat > a/dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (package (name a))
   > (using melange 0.1)
   > EOF
@@ -39,7 +39,7 @@ Test dependency on installed package
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmt
 
   $ cat >b/dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (using melange 0.1)
   > EOF
 
@@ -67,7 +67,7 @@ Test dependency on installed package
   foo
 
   $ cat >c/dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (using melange 0.1)
   > EOF
 

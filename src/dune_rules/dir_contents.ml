@@ -266,14 +266,14 @@ end = struct
                   let dir_target =
                     Path.Build.relative ~error_loc:loc dir target
                   in
-                  if not (Path.Build.is_descendant dir_target ~of_:dir) then
-                    (* This will be checked when we interpret the stanza
-                       completely, so just ignore this rule for now. *)
-                    acc
-                  else
+                  if Path.Build.is_descendant dir_target ~of_:dir then
                     (* We ignore duplicates here as duplicates are detected and
                        reported by [Load_rules]. *)
-                    Path.Build.Map.set acc dir_target rule_loc))
+                    Path.Build.Map.set acc dir_target rule_loc
+                  else
+                    (* This will be checked when we interpret the stanza
+                       completely, so just ignore this rule for now. *)
+                    acc))
         | _ -> acc)
 
   let get0_impl (sctx, dir) : result0 Memo.t =

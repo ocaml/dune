@@ -106,7 +106,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
       | [] -> Result.Ok acc
       | x :: l ->
         let k, v = f x in
-        if not (mem acc k) then loop f (set acc k v) l else Error k
+        if mem acc k then Error k else loop f (set acc k v) l
     in
     fun l ~f ->
       match loop f empty l with

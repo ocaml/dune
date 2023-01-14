@@ -15,9 +15,8 @@ let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
              Exe.Linkage.of_user_config ctx ~loc mode)
     in
     let modes =
-      if not has_native then
-        List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
-      else modes
+      if has_native then modes
+      else List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
     in
     let modes =
       if L.Map.mem exes.modes L.js then Exe.Linkage.byte_for_jsoo :: modes

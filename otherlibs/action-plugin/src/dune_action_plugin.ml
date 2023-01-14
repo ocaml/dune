@@ -103,6 +103,20 @@ module V1 = struct
       ; targets = String.Set.empty
       }
 
+  let track_file ~path =
+    let action () =
+      match Path.exists path with
+      | true -> ()
+      | false ->
+        Execution_error.raise
+          (Printf.sprintf "File %s does not exist." (Path.to_string path))
+    in
+    lift_stage
+      { action
+      ; dependencies = Dependency.Set.singleton (File (Path.to_string path))
+      ; targets = String.Set.empty
+      }
+
   let write_file ~path ~data =
     let path = Path.to_string path in
     let action () =

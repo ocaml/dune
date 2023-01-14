@@ -18,3 +18,5 @@ val to_string : t -> string
 (** Convert path to string. Throws an Invalid_argument exception if passed
     string is not a relative path. *)
 val of_string : string -> t
+
+val exists : t -> bool

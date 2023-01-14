@@ -83,6 +83,10 @@ module V1 : sig
       run and resulting in a file content. *)
   val read_file : path:Path.t -> string t
 
+  (** [track_file ~path:file] returns a computation depending on a [file] to be
+      run. *)
+  val track_file : path:Path.t -> unit t
+
   (** [write_file ~path:file ~data] returns a computation that writes [data] to
       a [file].
 

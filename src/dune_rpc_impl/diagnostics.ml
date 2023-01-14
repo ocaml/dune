@@ -25,7 +25,9 @@ let absolutize_paths ~dir (loc : Loc.t) =
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
-  let message, related, dir = Build_system.Error.info m in
+  let { Build_system.Error.main = message; related; dir } =
+    Build_system.Error.info m
+  in
   let dir =
     Option.map dir ~f:Path.drop_optional_build_context_maybe_sandboxed
   in

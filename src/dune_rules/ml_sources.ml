@@ -80,6 +80,10 @@ module Modules = struct
     let rev_map =
       let modules =
         let by_path (origin : Origin.t) =
+          (* TODO We should be building this reverse map without first
+             computing [Modules.t]. The collisions we are detecting are only
+             relevant to module sources present in the directory, rather than
+             generated module that may still be user available *)
           Modules.fold_user_available ~init:[] ~f:(fun m acc ->
               (Module.path m, origin) :: acc)
         in

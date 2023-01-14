@@ -264,10 +264,9 @@ module Per_module = struct
       | With_instrumentation.Ordinary libname ->
         Resolve.Memo.return (Some (libname, []))
       | Instrumentation_backend { libname; flags; _ } ->
-        Resolve.Memo.map (instrumentation_backend libname) ~f:(fun backend ->
-            match backend with
-            | None -> None
-            | Some backend -> Some (backend, flags))
+        Resolve.Memo.map
+          (instrumentation_backend libname)
+          ~f:(Option.map ~f:(fun backend -> (backend, flags)))
     in
     Per_module.map_resolve t ~f:(filter_map_resolve ~f)
 

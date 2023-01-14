@@ -239,7 +239,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
           ; As extra_args
           ; S
               (melange_args cm_kind
-                 (Compilation_context.lib_name cctx)
+                 (Compilation_context.public_lib_name cctx)
                  ~package_output:dir m)
           ; A "-no-alias-deps"
           ; opaque_arg

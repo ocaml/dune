@@ -26,9 +26,8 @@ let lib_output_dir ~sctx ~target_dir lib =
       Lib_info.src_dir info
     | Public _ ->
       let bctx = (Super_context.context sctx).build_dir in
-      let info = Lib.info lib in
-      let src_dir = Lib_info.src_dir info in
       let lib_name = Lib_info.name info in
+      let src_dir = Lib_info.src_dir info in
       Path.Build.L.relative bctx
         [ "node_modules"
         ; Lib_name.to_string lib_name

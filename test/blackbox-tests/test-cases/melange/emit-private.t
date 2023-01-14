@@ -1,7 +1,7 @@
 Test dependency on a private library in the same package as melange.emit
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (package  (name a))
   > (using melange 0.1)
   > EOF

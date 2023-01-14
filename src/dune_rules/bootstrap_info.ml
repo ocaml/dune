@@ -1,13 +1,14 @@
 open Import
-open Memo.O
 
 let def name dyn =
   let open Pp.O in
   Pp.box ~indent:2 (Pp.textf "let %s = " name ++ Dyn.pp dyn)
 
-let rule sctx ~requires_link (exes : Dune_file.Executables.t) () =
+let rule sctx ~requires_link (exes : Dune_file.Executables.t) =
+  let open Action_builder.O in
+  let* () = Action_builder.return () in
   let* locals, externals =
-    let+ libs = Resolve.Memo.read_memo (Memo.Lazy.force requires_link) in
+    let+ libs = Resolve.Memo.read (Memo.Lazy.force requires_link) in
     List.partition_map libs ~f:(fun lib ->
         match Lib.Local.of_lib lib with
         | Some x -> Left x
@@ -39,6 +40,7 @@ let rule sctx ~requires_link (exes : Dune_file.Executables.t) () =
           | Some (Build_info { data_module; _ }) -> Some data_module
           | _ -> None
         in
+        let open Memo.O in
         let+ is_multi_dir =
           let+ dc = Dir_contents.get sctx ~dir in
           match Dir_contents.dirs dc with
@@ -55,6 +57,7 @@ let rule sctx ~requires_link (exes : Dune_file.Executables.t) () =
           ; Dyn.Bool is_multi_dir
           ; Dyn.option Module_name.to_dyn special_builtin_support
           ])
+    |> Action_builder.of_memo
   in
   Format.asprintf "%a@." Pp.to_fmt
     (Pp.vbox
@@ -86,5 +89,4 @@ let gen_rules sctx (exes : Dune_file.Executables.t) ~dir ~requires_link =
       Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir
         (Action_builder.write_file_dyn
            (Path.Build.relative dir fname)
-           (Action_builder.of_memo
-              (Memo.return () >>= rule sctx ~requires_link exes))))
+           (rule sctx ~requires_link exes)))

@@ -242,7 +242,10 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir
-  and* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info in
+  and* () =
+    let requires_link = Lib.Compile.requires_link compile_info in
+    Bootstrap_info.gen_rules sctx exes ~dir ~requires_link
+  in
   Buildable_rules.with_lib_deps
     (Super_context.context sctx)
     compile_info ~dir ~f

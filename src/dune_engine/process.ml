@@ -577,14 +577,15 @@ end = struct
       fail ~loc ~annots paragraphs
 end
 
-let report_process_start stats ~metadata ~id ~pid ~prog ~args ~now =
+let report_process_finished stats ~metadata ~prog ~pid ~args ~started_at
+    (times : Proc.Times.t) =
   let common =
     let name =
       match metadata.name with
       | Some n -> n
       | None -> Filename.basename prog
     in
-    let ts = Timestamp.of_float_seconds now in
+    let ts = Timestamp.of_float_seconds started_at in
     Event.common_fields ~cat:("process" :: metadata.categories) ~name ~ts ()
   in
   let args =
@@ -592,14 +593,6 @@ let report_process_start stats ~metadata ~id ~pid ~prog ~args ~now =
     ; ("pid", `Int (Pid.to_int pid))
     ]
   in
-  let event =
-    Event.async (Chrome_trace.Id.create (`Int id)) ~args Start common
-  in
-  Dune_stats.emit stats event;
-  (common, args)
-
-let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
-  let common = Event.set_ts common (Timestamp.of_float_seconds now) in
   let dur = Event.Timestamp.of_float_seconds times.elapsed_time in
   let event = Event.complete ~args ~dur common in
   Dune_stats.emit stats event
@@ -692,7 +685,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           (stdout, stderr)
         | _ -> ((`No_capture, stdout_to), (`No_capture, stderr_to))
       in
-      let event_common, started_at, pid =
+      let started_at, pid =
         (* Output.fd might create the file with Unix.openfile. We need to make
            sure to call it before doing the chdir as the path might be
            relative. *)
@@ -705,26 +698,21 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           | false -> env
         in
         let env = Env.to_unix env |> Spawn.Env.of_list in
-        let started_at, pid =
+        let started_at =
           (* jeremiedimino: I think we should do this just before the [execve]
              in the stub for [Spawn.spawn] to be as precise as possible *)
-          let now = Unix.gettimeofday () in
-          ( now
-          , Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
-              ~setpgid:Spawn.Pgid.new_process_group
-              ~cwd:
-                (match dir with
-                | None -> Inherit
-                | Some dir -> Path (Path.to_string dir))
-            |> Pid.of_int )
+          Unix.gettimeofday ()
         in
-        let event_common =
-          Option.map config.stats ~f:(fun stats ->
-              ( stats
-              , report_process_start stats ~metadata ~id ~pid ~prog:prog_str
-                  ~args ~now:started_at ))
+        let pid =
+          Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+            ~setpgid:Spawn.Pgid.new_process_group
+            ~cwd:
+              (match dir with
+              | None -> Inherit
+              | Some dir -> Path (Path.to_string dir))
+          |> Pid.of_int
         in
-        (event_common, started_at, pid)
+        (started_at, pid)
       in
       Io.release stdout_to;
       Io.release stderr_to;
@@ -736,8 +724,9 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         ; resource_usage = process_info.resource_usage
         }
       in
-      Option.iter event_common ~f:(fun (stats, common) ->
-          report_process_end stats common ~now:process_info.end_time times);
+      Option.iter config.stats ~f:(fun stats ->
+          report_process_finished stats ~metadata ~prog:prog_str ~pid ~args
+            ~started_at times);
       Option.iter response_file ~f:Path.unlink;
       let actual_stdout =
         match stdout_capture with

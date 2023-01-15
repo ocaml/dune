@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Fix `--trace-file` output. Dune now emits a single *complete* event for every
+  executed process. Unterminated *async* events are no longer written. (#6892,
+  @rgrinberg)
+
 - Fix preprocessing with `staged_pps` (#6748, fixes #6644, @rgrinberg)
 
 - Make `dune describe workspace` return consistent dependencies for

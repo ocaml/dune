@@ -112,9 +112,22 @@ module DB = struct
               match res with
               | Ok x -> x
               | Error (loc1, loc2) ->
-                User_error.raise
-                  [ Pp.textf "Library %s is defined twice:"
-                      (Lib_name.to_string name)
+                let main_message =
+                  Pp.textf "Library %s is defined twice:"
+                    (Lib_name.to_string name)
+                in
+                let annots =
+                  let main = User_message.make ~loc:loc2 [ main_message ] in
+                  let related =
+                    [ User_message.make ~loc:loc1
+                        [ Pp.text "Already defined here" ]
+                    ]
+                  in
+                  User_message.Annots.singleton Compound_user_error.annot
+                    (Compound_user_error.make ~main ~related)
+                in
+                User_error.raise ~annots
+                  [ main_message
                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
                   ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
                   ])
@@ -177,7 +190,19 @@ module DB = struct
         with
         | [] | [ _ ] -> assert false
         | loc1 :: loc2 :: _ ->
-          User_error.raise
+          let main_message =
+            Pp.textf "Public library %s is defined twice:"
+              (Lib_name.to_string name)
+          in
+          let annots =
+            let main = User_message.make ~loc:loc2 [ main_message ] in
+            let related =
+              [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
+            in
+            User_message.Annots.singleton Compound_user_error.annot
+              (Compound_user_error.make ~main ~related)
+          in
+          User_error.raise ~annots ~loc:loc2
             [ Pp.textf "Public library %s is defined twice:"
                 (Lib_name.to_string name)
             ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)

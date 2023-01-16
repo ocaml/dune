@@ -54,6 +54,12 @@ module Error = struct
       User_message.Annots.find msg.annots Diff_promotion.Annot.annot
     | _ -> None
 
+  type info =
+    { dir : Path.t option
+    ; related : User_message.t list
+    ; main : User_message.t
+    }
+
   let info (t : t) =
     let e =
       match t.exn.exn with
@@ -61,16 +67,19 @@ module Error = struct
       | e -> e
     in
     match e with
-    | User_error.E msg -> (
+    | User_error.E main -> (
       let dir =
-        User_message.Annots.find msg.annots Process.with_directory_annot
+        User_message.Annots.find main.annots Process.with_directory_annot
       in
-      match User_message.Annots.find msg.annots Compound_user_error.annot with
-      | None -> (msg, [], dir)
-      | Some { main; related } -> (main, related, dir))
+      match User_message.Annots.find main.annots Compound_user_error.annot with
+      | None -> { main; related = []; dir }
+      | Some { main; related } -> { main; related; dir })
     | e ->
       (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
-      (User_message.make [ Pp.text (Printexc.to_string e) ], [], None)
+      { main = User_message.make [ Pp.text (Printexc.to_string e) ]
+      ; related = []
+      ; dir = None
+      }
 
   module Set : sig
     type error := t

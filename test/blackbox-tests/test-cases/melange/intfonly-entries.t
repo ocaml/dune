@@ -17,4 +17,3 @@ Entry points should not allow mli only modules as entry points.
   $ dune build @melange
   $ ls _build/default/output/*.js | sort
   _build/default/output/bar.js
-  _build/default/output/melange.js

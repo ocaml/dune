@@ -18,4 +18,3 @@ Create the dist folder
 
   $ dune build @melange-dist
   $ ls _build/default/dist
-  melange.js

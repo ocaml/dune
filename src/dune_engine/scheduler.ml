@@ -1177,10 +1177,19 @@ module Run = struct
         };
     t
 
+  (* Work we're allowed to do between successive polling iterations. this work
+     should be fast and never fail (within reason) *)
+  let run_when_idle stats : unit =
+    (* Technically, flushing can fail with some IO error and disrupt the build.
+       But we don't care because the user enabled this manually with
+       [--trace-file] *)
+    Option.iter stats ~f:Dune_stats.flush
+
   let poll step =
     let* t = poll_init () in
     let rec loop () =
       let* _res = poll_iter t step in
+      run_when_idle t.config.stats;
       let* () = wait_for_build_input_change t in
       loop ()
     in

@@ -64,11 +64,13 @@ type dst =
   | Custom of
       { write : string -> unit
       ; close : unit -> unit
+      ; flush : unit -> unit
       }
 
 type t =
   { print : string -> unit
   ; close : unit -> unit
+  ; flush : unit -> unit
   ; mutable after_first_event : bool
   }
 
@@ -89,7 +91,14 @@ let create dst =
     | Out out -> fun () -> Stdlib.close_out out
     | Custom c -> c.close
   in
-  { print; close; after_first_event = false }
+  let flush =
+    match dst with
+    | Out out -> fun () -> flush out
+    | Custom c -> c.flush
+  in
+  { print; close; after_first_event = false; flush }
+
+let flush t = t.flush ()
 
 let next_leading_char t =
   match t.after_first_event with

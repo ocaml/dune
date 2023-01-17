@@ -8,7 +8,8 @@ let buf = Buffer.create 0
 let c =
   let write s = Buffer.add_string buf s in
   let close () = () in
-  Dune_stats.create (Custom { write; close })
+  let flush () = () in
+  Dune_stats.create (Custom { write; close; flush })
 
 let () =
   let module Event = Chrome_trace.Event in

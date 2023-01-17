@@ -52,6 +52,8 @@ module Session : sig
 
     val id : _ t -> Id.t
 
+    val menu : _ t -> Menu.t option
+
     val initialize : _ t -> Initialize.Request.t
 
     val compare : 'a t -> 'a t -> Ordering.t

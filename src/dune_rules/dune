@@ -66,3 +66,5 @@
     DUNE_CONFIGURE_OUTPUT
     "src/dune_rules/setup.defaults.ml"
     (run %{ocaml} %{configure})))))
+
+(ocamllex cram_lexer)

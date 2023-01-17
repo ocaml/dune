@@ -49,17 +49,15 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
              (Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 
-let melange_args (cm_kind : Lib_mode.Cm_kind.t) package module_ =
+let melange_args (cm_kind : Lib_mode.Cm_kind.t) lib_name module_ =
   match cm_kind with
   | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
   | Melange Cmj ->
-    let pkg_name_args =
-      match package with
+    let bs_package_name =
+      match lib_name with
       | None -> []
-      | Some pkg ->
-        [ Command.Args.A "--bs-package-name"
-        ; A (Package.Name.to_string (Package.name pkg))
-        ]
+      | Some lib_name ->
+        [ Command.Args.A "--bs-package-name"; A (Lib_name.to_string lib_name) ]
     in
     let package_output =
       Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.parent_exn
@@ -67,7 +65,7 @@ let melange_args (cm_kind : Lib_mode.Cm_kind.t) package module_ =
     Command.Args.A "--bs-stop-after-cmj" :: A "--bs-package-output"
     :: Command.Args.Path package_output :: A "--bs-module-name"
     :: A (Melange.js_basename module_)
-    :: pkg_name_args
+    :: bs_package_name
 
 let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
     ~(phase : Fdo.phase option) =
@@ -240,7 +238,10 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t)
           ; Command.Args.as_any
               (Lib_mode.Cm_kind.Map.get (CC.includes cctx) cm_kind)
           ; As extra_args
-          ; S (melange_args cm_kind (Compilation_context.package cctx) m)
+          ; S
+              (melange_args cm_kind
+                 (Compilation_context.public_lib_name cctx)
+                 m)
           ; A "-no-alias-deps"
           ; opaque_arg
           ; As (Fdo.phase_flags phase)

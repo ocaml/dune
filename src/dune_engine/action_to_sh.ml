@@ -21,14 +21,15 @@ open Simplified
 
 let echo s =
   let lines = String.split_lines s in
-  if not (String.is_suffix s ~suffix:"\n") then
+  if String.is_suffix s ~suffix:"\n" then
+    List.map lines ~f:(fun s -> Run ("echo", [ s ]))
+  else
     match List.rev lines with
     | [] -> [ Run ("echo", [ "-n" ]) ]
     | last :: rest ->
       List.fold_left rest
         ~init:[ Run ("echo", [ "-n"; last ]) ]
         ~f:(fun acc s -> Run ("echo", [ s ]) :: acc)
-  else List.map lines ~f:(fun s -> Run ("echo", [ s ]))
 
 let cat ps = Run ("cat", ps)
 

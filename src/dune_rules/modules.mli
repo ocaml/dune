@@ -52,7 +52,7 @@ val fold_no_vlib_with_aliases :
   -> alias:(Module.t -> Module.t Module_name.Map.t -> 'acc -> 'acc)
   -> 'acc
 
-val exe_unwrapped : Module.Name_map.t -> t
+val exe_unwrapped : Module.t Module_trie.t -> src_dir:Path.Build.t -> t
 
 val make_wrapped :
      src_dir:Path.Build.t

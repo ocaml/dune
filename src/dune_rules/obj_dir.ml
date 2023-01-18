@@ -522,15 +522,17 @@ module Module = struct
 
   module Dep = struct
     type t =
-      | Immediate of Module.File.t
+      | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
 
+    let make_name m kind ext =
+      let ext = sprintf ".%s.%s" (Ml_kind.to_string kind) ext in
+      let obj = Module.obj_name m in
+      Module_name.Unique.artifact_filename obj ~ext
+
     let basename = function
-      | Immediate f -> Path.basename (Module.File.path f) ^ ".d"
-      | Transitive (m, ml_kind) ->
-        let ext = sprintf ".%s.all-deps" (Ml_kind.to_string ml_kind) in
-        let obj = Module.obj_name m in
-        Module_name.Unique.artifact_filename obj ~ext
+      | Immediate (m, kind) -> make_name m kind "d"
+      | Transitive (m, kind) -> make_name m kind "all-deps"
   end
 
   let dep t dep =

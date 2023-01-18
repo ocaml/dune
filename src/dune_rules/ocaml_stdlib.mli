@@ -15,6 +15,7 @@ type t = private
   ; internal_modules : Glob.t
         (** Module names that are hardcoded in the compiler and so cannot be
             wrapped *)
+  ; loc : Loc.t
   }
 
 val syntax : Dune_lang.Syntax.t

@@ -260,7 +260,9 @@ let virtual_modules ~lookup_vlib vlib =
   ; allow_new_public_modules
   }
 
-let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
+let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
+    ~include_subdirs:
+      (loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t)) =
   let open Resolve.Memo.O in
   let+ kind, main_module_name, wrapped =
     match lib.implements with
@@ -315,13 +317,34 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
       ~src_dir:dir modules_settings
   in
-  let stdlib = lib.stdlib in
+  let () =
+    match (lib.stdlib, include_subdirs) with
+    | Some stdlib, Include Qualified ->
+      let main_message =
+        Pp.text
+          "a library with (stdlib ...) may not use (include_subdirs qualified)"
+      in
+      let annots =
+        let main =
+          User_message.make ~loc:loc_include_subdirs [ main_message ]
+        in
+        let related =
+          [ User_message.make ~loc:stdlib.loc [ Pp.text "Already defined here" ]
+          ]
+        in
+        User_message.Annots.singleton Compound_user_error.annot
+          (Compound_user_error.make ~main ~related)
+      in
+      User_error.raise ~annots ~loc:loc_include_subdirs [ main_message ]
+    | _, _ -> ()
+  in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
-  Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir:dir ~modules
-    ~main_module_name ~wrapped
+  Modules_group.lib ~stdlib:lib.stdlib ~implements ~lib_name ~src_dir:dir
+    ~modules ~main_module_name ~wrapped
 
-let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
+let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
+    ~include_subdirs =
   let rev_filter_partition =
     let rec loop l (acc : Modules.groups) =
       match l with
@@ -356,7 +379,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
         let+ modules =
           let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
           make_lib_modules ~dir ~libs:(Scope.libs scope) ~lookup_vlib ~modules
-            ~lib
+            ~lib ~include_subdirs
           >>= Resolve.read_memo
         in
         let obj_dir = Library.obj_dir lib ~dir in
@@ -413,7 +436,8 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
   >>| filter_partition_map
 
 let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
-    ~include_subdirs:(_loc, (include_subdirs : Dune_file.Include_subdirs.t))
+    ~include_subdirs:
+      (loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t))
     ~dirs =
   let+ modules_of_stanzas =
     let modules =
@@ -442,6 +466,7 @@ let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
         |> Module_trie.of_map
     in
     modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
+      ~include_subdirs:(loc_include_subdirs, include_subdirs)
   in
   let modules = Modules.make modules_of_stanzas in
   let artifacts =

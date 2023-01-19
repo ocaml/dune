@@ -131,6 +131,13 @@ module Source = struct
 
   let src_dir t = Path.parent_exn (choose_file t).path
 
+  let files t =
+    let { Ml_kind.Dict.impl; intf } = t.files in
+    let base = Option.to_list impl in
+    match intf with
+    | None -> base
+    | Some i -> i :: base
+
   let map_files t ~f =
     let files = Ml_kind.Dict.mapi ~f t.files in
     { t with files }

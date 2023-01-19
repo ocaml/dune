@@ -1,0 +1,17 @@
+(melange.emit
+ (target output)
+ (alias melange)
+ (libraries lib)
+ (module_system commonjs))
+
+(subdir
+ output
+ (subdir
+  lib
+  (subdir
+   assets
+   (copy_files
+    (files ../../../../lib/assets/file.txt))
+   (alias
+    (name melange)
+    (deps ../../../../lib/assets/file.txt)))))

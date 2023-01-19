@@ -93,6 +93,7 @@ module Session = struct
     type 'a t =
       { queries : Packet.t Fiber.Stream.In.t
       ; id : Id.t
+      ; mutable menu : Menu.t option
       ; send : Packet.t list option -> unit Fiber.t
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
@@ -117,10 +118,13 @@ module Session = struct
     let create ~queries ~send =
       { queries
       ; send
+      ; menu = None
       ; state = Uninitialized (Close.create ())
       ; id = Id.gen ()
       ; pool = Fiber.Pool.create ()
       }
+
+    let menu t = t.menu
 
     let request_close t = t.send None
 
@@ -148,9 +152,13 @@ module Session = struct
         in
         variant "Initialized" [ record ]
 
-    let to_dyn f { id; state; queries = _; send = _; pool = _ } =
+    let to_dyn f { id; state; queries = _; send = _; pool = _; menu } =
       let open Dyn in
-      record [ ("id", Id.to_dyn id); ("state", dyn_of_state f state) ]
+      record
+        [ ("id", Id.to_dyn id)
+        ; ("state", dyn_of_state f state)
+        ; ("menu", Dyn.option Menu.to_dyn menu)
+        ]
   end
 
   type 'a t =
@@ -415,6 +423,7 @@ module H = struct
             in
             let* () = session.send (Some [ Response (id, Ok response) ]) in
             let handler = t.to_handler menu in
+            session.menu <- Some menu;
             let session = Session.of_stage1 session handler in
             let* () = t.base.on_upgrade session menu in
             run_session { base = t.base; handler } stats session)))

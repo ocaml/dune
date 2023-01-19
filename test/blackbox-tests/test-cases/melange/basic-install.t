@@ -1,7 +1,7 @@
 Test that we can install melange mode libraries
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (package (name foo))
   > (using melange 0.1)
   > EOF

@@ -2,6 +2,7 @@ open Import
 open Memo.O
 module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
+module Public_lib = Dune_file.Public_lib
 module Mode_conf = Dune_file.Mode_conf
 
 let msvc_hack_cclibs =
@@ -457,10 +458,19 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let js_of_ocaml =
     Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
   in
+  (* XXX(anmonteiro): `public_lib_name` is used to derive Melange's
+     `--bs-package-name` argument. We only use the library name for public
+     libraries because we need melange to preserve relative paths for private
+     libs (i.e. not pass the `--bs-package-name` arg). *)
+  let public_lib_name =
+    match lib.visibility with
+    | Public p -> Some (Public_lib.name p)
+    | Private _ -> None
+  in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)
-    ?stdlib:lib.stdlib ~package ?vimpl ~modes
+    ?stdlib:lib.stdlib ~package ?vimpl ?public_lib_name ~modes
 
 let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     ~dir_contents ~compile_info =

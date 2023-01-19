@@ -205,11 +205,21 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
     match String.Map.of_list objects with
     | Ok _ -> ()
     | Error (path, loc, another_loc) ->
-      User_error.raise ~loc
-        [ Pp.textf
-            "Multiple definitions for the same object file %S. See another \
-             definition at %s."
-            path
+      let main_message =
+        sprintf "Multiple definitions for the same object file %S" path
+      in
+      let annots =
+        let main = User_message.make ~loc [ Pp.text main_message ] in
+        let related =
+          [ User_message.make ~loc:another_loc
+              [ Pp.text "Object already defined here" ]
+          ]
+        in
+        User_message.Annots.singleton Compound_user_error.annot
+          (Compound_user_error.make ~main ~related)
+      in
+      User_error.raise ~loc ~annots
+        [ Pp.textf "%s. See another definition at %s." main_message
             (Loc.to_file_colon_line another_loc)
         ]
         ~hints:

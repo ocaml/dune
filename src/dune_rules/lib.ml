@@ -375,7 +375,6 @@ type db =
   ; resolve : Lib_name.t -> resolve_result Memo.t
   ; all : Lib_name.t list Memo.Lazy.t
   ; lib_config : Lib_config.t
-  ; instrument_with : Lib_name.t list
   }
 
 and resolve_result =
@@ -758,8 +757,7 @@ end = struct
     else Resolve.Memo.return closure
 end
 
-let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
-    libname =
+let instrumentation_backend instrument_with resolve libname =
   let open Resolve.Memo.O in
   if not (List.mem ~equal:Lib_name.equal instrument_with (snd libname)) then
     Resolve.Memo.return None
@@ -768,15 +766,12 @@ let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
     match lib |> info |> Lib_info.instrumentation_backend with
     | Some _ as ppx -> Resolve.Memo.return ppx
     | None ->
-      if do_not_fail then Resolve.Memo.return (Some libname)
-      else
-        Resolve.Memo.fail
-          (User_error.make ~loc:(fst libname)
-             [ Pp.textf
-                 "Library %S is not declared to have an instrumentation \
-                  backend."
-                 (Lib_name.to_string (snd libname))
-             ])
+      Resolve.Memo.fail
+        (User_error.make ~loc:(fst libname)
+           [ Pp.textf
+               "Library %S is not declared to have an instrumentation backend."
+               (Lib_name.to_string (snd libname))
+           ])
 
 module rec Resolve_names : sig
   val find_internal : db -> Lib_name.t -> Status.t Memo.t
@@ -853,7 +848,7 @@ end = struct
       let open Resolve.Memo.O in
       let* pps =
         let instrumentation_backend =
-          instrumentation_backend db.instrument_with resolve
+          instrumentation_backend db.lib_config.instrument_with resolve
         in
         Lib_info.preprocess info
         |> Preprocess.Per_module.with_instrumentation ~instrumentation_backend
@@ -1735,12 +1730,7 @@ module DB = struct
   type t = db
 
   let create ~parent ~resolve ~all ~lib_config () =
-    { parent
-    ; resolve
-    ; all = Memo.lazy_ all
-    ; lib_config
-    ; instrument_with = lib_config.Lib_config.instrument_with
-    }
+    { parent; resolve; all = Memo.lazy_ all; lib_config }
 
   let create_from_findlib findlib =
     let lib_config = Findlib.lib_config findlib in
@@ -1892,7 +1882,7 @@ module DB = struct
     | _ -> Memo.return l
 
   let instrumentation_backend t libname =
-    instrumentation_backend t.instrument_with (resolve t) libname
+    instrumentation_backend t.lib_config.instrument_with (resolve t) libname
 end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir :

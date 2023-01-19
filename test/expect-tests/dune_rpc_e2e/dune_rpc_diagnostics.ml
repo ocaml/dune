@@ -134,77 +134,136 @@ let%expect_test "related error" =
     "foo.cma";
   [%expect
     {|
-    Building foo.cma
-    Build foo.cma failed
+  Building foo.cma
+  Build foo.cma failed
+  [ "Add"
+  ; [ [ "directory"; "$CWD" ]
+    ; [ "id"; "0" ]
+    ; [ "loc"
+      ; [ [ "start"
+          ; [ [ "pos_bol"; "0" ]
+            ; [ "pos_cnum"; "0" ]
+            ; [ "pos_fname"; "$CWD/foo.ml" ]
+            ; [ "pos_lnum"; "1" ]
+            ]
+          ]
+        ; [ "stop"
+          ; [ [ "pos_bol"; "0" ]
+            ; [ "pos_cnum"; "0" ]
+            ; [ "pos_fname"; "$CWD/foo.ml" ]
+            ; [ "pos_lnum"; "1" ]
+            ]
+          ]
+        ]
+      ]
+    ; [ "message"
+      ; [ "Verbatim"
+        ; "The implementation foo.ml\n\
+           does not match the interface .foo.objs/byte/foo.cmi: \n\
+           Values do not match: val x : bool is not included in val x : int\n\
+           The type bool is not compatible with the type int\n\
+           "
+        ]
+      ]
+    ; [ "promotion"; [] ]
+    ; [ "related"
+      ; [ [ [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "0" ]
+                  ; [ "pos_fname"; "$CWD/foo.mli" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "11" ]
+                  ; [ "pos_fname"; "$CWD/foo.mli" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ]
+            ]
+          ; [ "message"; [ "Verbatim"; "Expected declaration\n\
+                                        " ] ]
+          ]
+        ; [ [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "4" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "5" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "1" ]
+                  ]
+                ]
+              ]
+            ]
+          ; [ "message"; [ "Verbatim"; "Actual declaration\n\
+                                        " ] ]
+          ]
+        ]
+      ]
+    ; [ "targets"; [] ]
+    ]
+  ] |}];
+  diagnostic_with_build
+    [ ("dune", "(library (name foo)) (executable (name foo))"); ("foo.ml", "") ]
+    "@check";
+  [%expect
+    {|
+    Building @check
+    Build @check failed
     [ "Add"
-    ; [ [ "directory"; "$CWD" ]
-      ; [ "id"; "0" ]
+    ; [ [ "id"; "0" ]
       ; [ "loc"
         ; [ [ "start"
             ; [ [ "pos_bol"; "0" ]
               ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/foo.ml" ]
+              ; [ "pos_fname"; "$CWD/dune" ]
               ; [ "pos_lnum"; "1" ]
               ]
             ]
           ; [ "stop"
             ; [ [ "pos_bol"; "0" ]
-              ; [ "pos_cnum"; "0" ]
-              ; [ "pos_fname"; "$CWD/foo.ml" ]
+              ; [ "pos_cnum"; "20" ]
+              ; [ "pos_fname"; "$CWD/dune" ]
               ; [ "pos_lnum"; "1" ]
               ]
             ]
           ]
         ]
       ; [ "message"
-        ; [ "Verbatim"
-          ; "The implementation foo.ml\n\
-             does not match the interface .foo.objs/byte/foo.cmi: \n\
-             Values do not match: val x : bool is not included in val x : int\n\
-             The type bool is not compatible with the type int\n\
-             "
-          ]
+        ; [ "Verbatim"; "Module \"Foo\" is used in several\n\
+                         stanzas:\n\
+                         " ]
         ]
       ; [ "promotion"; [] ]
       ; [ "related"
         ; [ [ [ "loc"
               ; [ [ "start"
                   ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "0" ]
-                    ; [ "pos_fname"; "$CWD/foo.mli" ]
+                    ; [ "pos_cnum"; "21" ]
+                    ; [ "pos_fname"; "$CWD/dune" ]
                     ; [ "pos_lnum"; "1" ]
                     ]
                   ]
                 ; [ "stop"
                   ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "11" ]
-                    ; [ "pos_fname"; "$CWD/foo.mli" ]
+                    ; [ "pos_cnum"; "44" ]
+                    ; [ "pos_fname"; "$CWD/dune" ]
                     ; [ "pos_lnum"; "1" ]
                     ]
                   ]
                 ]
               ]
-            ; [ "message"; [ "Verbatim"; "Expected declaration\n\
-                                          " ] ]
-            ]
-          ; [ [ "loc"
-              ; [ [ "start"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "4" ]
-                    ; [ "pos_fname"; "$CWD/foo.ml" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ; [ "stop"
-                  ; [ [ "pos_bol"; "0" ]
-                    ; [ "pos_cnum"; "5" ]
-                    ; [ "pos_fname"; "$CWD/foo.ml" ]
-                    ; [ "pos_lnum"; "1" ]
-                    ]
-                  ]
-                ]
-              ]
-            ; [ "message"; [ "Verbatim"; "Actual declaration\n\
+            ; [ "message"; [ "Verbatim"; "Used in this\n\
+                                          stanza\n\
                                           " ] ]
             ]
           ]

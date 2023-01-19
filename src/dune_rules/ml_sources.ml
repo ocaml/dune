@@ -80,6 +80,10 @@ module Modules = struct
     let rev_map =
       let modules =
         let by_path (origin : Origin.t) =
+          (* TODO We should be building this reverse map without first
+             computing [Modules.t]. The collisions we are detecting are only
+             relevant to module sources present in the directory, rather than
+             generated module that may still be user available *)
           Modules.fold_user_available ~init:[] ~f:(fun m acc ->
               (Module.path m, origin) :: acc)
         in
@@ -99,10 +103,28 @@ module Modules = struct
                 (Origin.loc origin))
           |> List.sort ~compare:Loc.compare
         in
-        User_error.raise
-          ~loc:(Loc.drop_position (List.hd locs))
-          [ Pp.textf "Module %S is used in several stanzas:"
-              (Module_name.Path.to_string path)
+        let main_message =
+          Pp.textf "Module %S is used in several stanzas:"
+            (Module_name.Path.to_string path)
+        in
+        let loc, related_locs =
+          match locs with
+          | [] ->
+            (* duplicates imply at least at one module with this location *)
+            assert false
+          | loc :: related_locs -> (loc, related_locs)
+        in
+        let annots =
+          let main = User_message.make ~loc [ main_message ] in
+          let related =
+            List.map related_locs ~f:(fun loc ->
+                User_message.make ~loc [ Pp.text "Used in this stanza" ])
+          in
+          User_message.Annots.singleton Compound_user_error.annot
+            (Compound_user_error.make ~main ~related)
+        in
+        User_error.raise ~annots ~loc:(Loc.drop_position loc)
+          [ main_message
           ; Pp.enumerate locs ~f:(fun loc ->
                 Pp.verbatim (Loc.to_file_colon_line loc))
           ; Pp.text

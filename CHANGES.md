@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+- Fix `--trace-file` output. Dune now emits a single *complete* event for every
+  executed process. Unterminated *async* events are no longer written. (#6892,
+  @rgrinberg)
+
 - Fix preprocessing with `staged_pps` (#6748, fixes #6644, @rgrinberg)
 
 - Make `dune describe workspace` return consistent dependencies for
@@ -15,8 +19,6 @@ Unreleased
 
 - Fix binary corruption when installing or promoting in parallel (#6669, fixes
   #6668, @edwintorok)
-
-- Fix running the RPC server on windows (#6721 fixes #6720, @rgrinberg)
 
 - Use colored output with GCC and Clang when compiling C stubs. The
   flag `-fdiagnostics-color=always` is added to the `:standard` set of
@@ -63,8 +65,6 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
-- Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
-
 - Fix missing dependencies when detecting the kind of C compiler we're using
   (#6610, fixes #6415, @emillon)
 
@@ -92,6 +92,13 @@ Unreleased
 
 - Add a `dune cache size` command for displaying the size of the cache (#6638,
   @Alizter)
+
+3.6.2 (2022-12-21)
+------------------
+
+- Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
+
+- Fix running the RPC server on windows (#6721 fixes #6720, @rgrinberg)
 
 3.6.1 (2022-11-24)
 ------------------

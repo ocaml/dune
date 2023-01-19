@@ -7,7 +7,7 @@ Check that .bc.js rule is generated only if js mode is used.
 
   $ dune build --display short b.bc.js
    js_of_ocaml .b.eobjs/jsoo/b.bc.runtime.js
-      ocamldep .b.eobjs/b.ml.d
+      ocamldep .b.eobjs/b.impl.d
         ocamlc .b.eobjs/byte/b.{cmi,cmo,cmt}
    js_of_ocaml .js/default/stdlib/std_exit.cmo.js
    js_of_ocaml .js/default/stdlib/stdlib.cma.js
@@ -25,7 +25,7 @@ every dependency of an executable.
 
   $ dune build --display short _build/default/.foo.objs/jsoo/default/foo.cma.js
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-      ocamldep .foo.objs/c.ml.d
+      ocamldep .foo.objs/foo__C.impl.d
         ocamlc .foo.objs/byte/foo__C.{cmi,cmo,cmt}
         ocamlc foo.cma
    js_of_ocaml .foo.objs/jsoo/default/foo.cma.js
@@ -50,9 +50,9 @@ Check that building a JS-enabled executable that depends on a library works.
   $ dune clean
   $ dune build --display short e.bc.js
    js_of_ocaml .e.eobjs/jsoo/e.bc.runtime.js
-      ocamldep .e.eobjs/e.ml.d
+      ocamldep .e.eobjs/e.impl.d
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-      ocamldep .foo.objs/c.ml.d
+      ocamldep .foo.objs/foo__C.impl.d
    js_of_ocaml .js/default/stdlib/std_exit.cmo.js
    js_of_ocaml .js/default/stdlib/stdlib.cma.js
         ocamlc .foo.objs/byte/foo__C.{cmi,cmo,cmt}

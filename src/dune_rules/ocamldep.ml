@@ -75,7 +75,7 @@ let deps_of
   let dep = Obj_dir.Module.dep obj_dir in
   let context = Super_context.context sctx in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
-  let ocamldep_output = dep (Immediate source) in
+  let ocamldep_output = dep (Immediate (unit, ml_kind)) in
   let open Memo.O in
   let* () =
     Super_context.add_rule sctx ~dir
@@ -151,7 +151,9 @@ let read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit =
   match Module.source ~ml_kind unit with
   | None -> Action_builder.return []
   | Some source ->
-    let ocamldep_output = Obj_dir.Module.dep obj_dir (Immediate source) in
+    let ocamldep_output =
+      Obj_dir.Module.dep obj_dir (Immediate (unit, ml_kind))
+    in
     Action_builder.memoize
       (Path.Build.to_string ocamldep_output)
       (Action_builder.map

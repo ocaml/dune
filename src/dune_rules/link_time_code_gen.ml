@@ -1,6 +1,6 @@
 open Import
 
-type t =
+type t = Link_time_code_gen_type.t =
   { to_link : Lib_flags.Lib_and_module.L.t
   ; force_linkall : bool
   }

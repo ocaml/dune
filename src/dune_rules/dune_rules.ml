@@ -17,6 +17,7 @@ module Modules = Modules
 module Module_compilation = Module_compilation
 module Exe_rules = Exe_rules
 module Lib_rules = Lib_rules
+module Jsoo_rules = Jsoo_rules
 module Obj_dir = Obj_dir
 module Merlin_ident = Merlin_ident
 module Merlin = Merlin

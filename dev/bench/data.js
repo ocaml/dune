@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1674156524550,
+  "lastUpdate": 1674174450451,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -1855,6 +1855,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.98529872535334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "hugo.heuzard@gmail.com",
+            "name": "Hugo Heuzard",
+            "username": "hhugo"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "c357cee46f06e2c3c1f3dbbc396c96c12d23e2b3",
+          "message": "fix(jsoo): don't ignore linkall\n\nSigned-off-by: Hugo Heuzard <hugo.heuzard@gmail.com>",
+          "timestamp": "2023-01-19T18:02:29-06:00",
+          "tree_id": "8a05b9fa951495f5a63c41729b5cf7ac9f3e2cd9",
+          "url": "https://github.com/ocaml/dune/commit/c357cee46f06e2c3c1f3dbbc396c96c12d23e2b3"
+        },
+        "date": 1674174449379,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.408674639286666",
             "unit": "seconds"
           }
         ]

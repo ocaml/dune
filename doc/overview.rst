@@ -52,8 +52,8 @@ Terminology
 .. glossary::
    root
      The top-most directory in a GitHub repo, workspace, and project,
-     differentiated by variables such as `%{workspace_root}` and
-     `%{project_root}`. Dune builds things from this directory. It knows how to
+     differentiated by variables such as ``%{workspace_root}`` and
+     ``%{project_root}``. Dune builds things from this directory. It knows how to
      build targets that are descendants of the root. Anything outside of the tree
      starting from the root is considered part of the :term:`installed world`.
      Refer to :ref:`finding-root` to learn how the workspace root is determined.
@@ -61,13 +61,13 @@ Terminology
    workspace
      The subtree starting from each root. It can contain any number of projects
      that will be built simultaneously by Dune, and it must contain a
-     `dune-workspace` file.
+     ``dune-workspace`` file.
 
    project
-     A collection of source files that must include a `dune-project` file. It
+     A collection of source files that must include a ``dune-project`` file. It
      may also contain one or more packages. A project consists in a hierarchy
      of directories. Every directory (at the root, or a subdirectory) can
-     contain a `dune` file that contains instructions to build files in that
+     contain a ``dune`` file that contains instructions to build files in that
      directory. Projects can be shared between different applications.
 
    package
@@ -100,16 +100,16 @@ Terminology
      The root of a build context named ``foo`` is ``<root>/_build/<foo>``.
 
    build target
-     Specified on the command line, e.g., `dune build <target_path.exe>`. All
-     targets that Dune knows how to build live in the `_build` directory.
+     Specified on the command line, e.g., ``dune build <target_path.exe>``. All
+     targets that Dune knows how to build live in the ``_build`` directory.
 
    alias
      A build target that doesn't produce any file and has configurable
-     dependencies. Targets starting with `@` on the command line are
-     interpreted as aliases (e.g., `dune build @src/runtest`). Aliases are
+     dependencies. Targets starting with ``@`` on the command line are
+     interpreted as aliases (e.g., ``dune build @src/runtest``). Aliases are
      per-directory. However, asking to build an alias in a given directory will
      also trigger alias construction in all children directories recursively.
-     If no target is specified, Dune builds the `default` alias.  Dune defines
+     If no target is specified, Dune builds the ``default`` alias. Dune defines
      several :ref:`builtin-aliases`.
 
    environment

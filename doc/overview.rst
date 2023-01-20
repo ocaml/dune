@@ -55,8 +55,8 @@ Terminology
      differentiated by variables such as `%{workspace_root}` and
      `%{project_root}`. Dune builds things from this directory. It knows how to
      build targets that are descendants of the root. Anything outside of the tree
-     starting from the root is considered part of the **installed world**. Refer
-     to :ref:`finding-root` to learn how the workspace root is determined.
+     starting from the root is considered part of the :term:`installed world`.
+     Refer to :ref:`finding-root` to learn how the workspace root is determined.
 
    workspace
      The subtree starting from each root. It can contain any number of projects
@@ -79,7 +79,7 @@ Terminology
 
    installation
      The action of copying build artifacts or other files from the
-     ``<root>/_build`` directory to the installed world.
+     ``<root>/_build`` directory to the :term:`installed world`.
 
    scope
      Defined by any directory that contains at least one `<package>.opam` file.

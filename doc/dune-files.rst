@@ -572,7 +572,7 @@ the description of an opam switch, as follows:
 
 - ``(merlin)`` instructs Dune to use this build context for Merlin.
 
-- ``(profile <profile>)`` sets a different profile for a build context. This has
+- ``(profile <profile>)`` sets a different profile for a :term:`build context`. This has
   precedence over the command-line option ``--profile``.
 
 - ``(env <env>)`` sets the environment for a particular context. This is of

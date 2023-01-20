@@ -298,12 +298,16 @@ let display_term =
      in
      Option.some_if verbose { Display.verbosity = Verbose; status_line = true })
     Arg.(
+      let doc =
+        let all = Display.all |> List.map ~f:fst |> String.enumerate_one_of in
+        sprintf
+          "Control the display mode of Dune. See $(b,dune-config\\(5\\)) for \
+           more details. Valid values for this option are %s"
+          all
+      in
       value
       & opt (some (enum Display.all)) None
-      & info [ "display" ] ~docs:copts_sect ~docv:"MODE"
-          ~doc:
-            {|Control the display mode of Dune.
-         See $(b,dune-config\(5\)) for more details.|})
+      & info [ "display" ] ~docs:copts_sect ~docv:"MODE" ~doc)
 
 let shared_with_config_file =
   let docs = copts_sect in

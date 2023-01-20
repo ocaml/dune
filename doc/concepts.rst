@@ -70,7 +70,7 @@ Dune can evaluate. Here's a semi-formal specification of the language:
    op : '=' | '<' | '>' | '<>' | '>=' | '<='
    expr : (and `expr`+)
         : (or `expr`+)
-        : (<op> `template` `template`)
+        : (`op` `template` `template`)
         : (not `expr`)
         : `template`
 

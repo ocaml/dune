@@ -147,7 +147,7 @@ module Module : sig
       | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
       | M2l of Module.t * Ml_kind.t
-      | Immediate_approx of Module.File.t
+      | Immediate_approx of Module.t * Ml_kind.t
       | Sig of Module.t
   end
 

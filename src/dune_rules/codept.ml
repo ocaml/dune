@@ -41,7 +41,7 @@ let deps_of
   let context = Super_context.context sctx in
   let immediate_file = dep (Immediate (unit, ml_kind)) in
   let m2l_file = dep (M2l (unit, ml_kind)) in
-  let approx_dep_file = dep (Immediate_approx source) in
+  let approx_dep_file = dep (Immediate_approx (unit, ml_kind)) in
   let sig_file m = dep (Sig m) in
   let gen_sig =
     match ml_kind with

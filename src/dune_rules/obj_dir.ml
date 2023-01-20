@@ -525,7 +525,7 @@ module Module = struct
       | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
       | M2l of Module.t * Ml_kind.t
-      | Immediate_approx of Module.File.t
+      | Immediate_approx of Module.t * Ml_kind.t
       | Sig of Module.t
 
     let make_name m kind ext =
@@ -540,7 +540,7 @@ module Module = struct
         let ext = Ml_kind.choose ~impl:".m2l" ~intf:".m2li" ml_kind in
         let obj = Module.obj_name m in
         Module_name.Unique.artifact_filename obj ~ext
-      | Immediate_approx f -> Path.basename (Module.File.path f) ^ ".d-approx"
+      | Immediate_approx (m, kind) -> make_name m kind "d-approx"
       | Sig m ->
         let obj = Module.obj_name m in
         Module_name.Unique.artifact_filename obj ~ext:".sig"

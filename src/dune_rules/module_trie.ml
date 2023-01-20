@@ -33,7 +33,7 @@ let rec find t = function
     | Some (Leaf a) -> Option.some_if (List.is_empty ps) a
     | Some (Map t) -> find t ps)
 
-let rec gen_set t ps v =
+let rec gen_set_k t ps v ~on_exists =
   match ps with
   | [] -> (
     match v with
@@ -41,14 +41,23 @@ let rec gen_set t ps v =
     | Map m -> m)
   | p :: ps ->
     Map.update t p ~f:(fun x ->
-        if List.is_empty ps then Some v
+        if List.is_empty ps then
+          match x with
+          | None -> Some v
+          | Some c -> on_exists c
         else
           match x with
           | None -> None
           | Some (Leaf _ as leaf) -> Some leaf
-          | Some (Map m) -> Some (Map (gen_set m ps v)))
+          | Some (Map m) -> Some (Map (gen_set_k m ps v ~on_exists)))
 
-let set t k v = gen_set t k (Leaf v)
+let gen_set (type a) (t : a t) ps v =
+  let exception Duplicate of a node in
+  match gen_set_k t ps v ~on_exists:(fun v -> raise_notrace (Duplicate v)) with
+  | s -> Ok s
+  | exception Duplicate d -> Error d
+
+let set t path v = gen_set_k t path (Leaf v) ~on_exists:(fun _ -> Some (Leaf v))
 
 let set_map t k v = gen_set t k (Map (of_map v))
 

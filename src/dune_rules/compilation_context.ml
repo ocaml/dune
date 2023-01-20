@@ -83,6 +83,7 @@ type t =
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; vimpl : Vimpl.t option
+  ; public_lib_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
   ; dep_modules_data : Dep_gen.Modules_data.t
@@ -125,6 +126,8 @@ let set_sandbox t sandbox = { t with sandbox }
 
 let package t = t.package
 
+let public_lib_name t = t.public_lib_name
+
 let vimpl t = t.vimpl
 
 let modes t = t.modes
@@ -139,7 +142,8 @@ let dep_graphs t = t.modules.dep_graphs
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque
-    ?stdlib ~js_of_ocaml ~package ?vimpl ?modes ?(bin_annot = true) ?loc () =
+    ?stdlib ~js_of_ocaml ~package ?public_lib_name ?vimpl ?modes
+    ?(bin_annot = true) ?loc () =
   let open Memo.O in
   let project = Scope.project scope in
   let requires_compile =
@@ -167,7 +171,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   let opaque = eval_opaque (Super_context.context super_context) opaque in
   let dep_modules_data : Dep_gen.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
-    ; sandbox
+    ; sandbox = Sandbox_config.no_special_requirements
     ; obj_dir
     ; sctx = super_context
     ; vimpl
@@ -193,6 +197,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; sandbox
   ; package
   ; vimpl
+  ; public_lib_name
   ; modes
   ; bin_annot
   ; dep_modules_data

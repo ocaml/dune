@@ -1,0 +1,4 @@
+(library
+ (modes melange)
+ (name npm)
+ (public_name pkg2.npm))

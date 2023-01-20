@@ -182,3 +182,18 @@ let instrumentation =
                   >>> repeat Dep_conf.decode)
               in
               (backend, deps))))
+
+module Modules_settings = struct
+  type t =
+    { root_module : (Loc.t * Module_name.t) option
+    ; modules_without_implementation : Ordered_set_lang.t
+    ; modules : Ordered_set_lang.t
+    }
+
+  let decode ~modules_field_name =
+    let+ root_module = field_o "root_module" Module_name.decode_loc
+    and+ modules_without_implementation =
+      modules_field "modules_without_implementation"
+    and+ modules = modules_field modules_field_name in
+    { root_module; modules; modules_without_implementation }
+end

@@ -80,6 +80,10 @@ module Modules = struct
     let rev_map =
       let modules =
         let by_path (origin : Origin.t) =
+          (* TODO We should be building this reverse map without first
+             computing [Modules.t]. The collisions we are detecting are only
+             relevant to module sources present in the directory, rather than
+             generated module that may still be user available *)
           Modules.fold_user_available ~init:[] ~f:(fun m acc ->
               (Module.path m, origin) :: acc)
         in
@@ -99,10 +103,28 @@ module Modules = struct
                 (Origin.loc origin))
           |> List.sort ~compare:Loc.compare
         in
-        User_error.raise
-          ~loc:(Loc.drop_position (List.hd locs))
-          [ Pp.textf "Module %S is used in several stanzas:"
-              (Module_name.Path.to_string path)
+        let main_message =
+          Pp.textf "Module %S is used in several stanzas:"
+            (Module_name.Path.to_string path)
+        in
+        let loc, related_locs =
+          match locs with
+          | [] ->
+            (* duplicates imply at least at one module with this location *)
+            assert false
+          | loc :: related_locs -> (loc, related_locs)
+        in
+        let annots =
+          let main = User_message.make ~loc [ main_message ] in
+          let related =
+            List.map related_locs ~f:(fun loc ->
+                User_message.make ~loc [ Pp.text "Used in this stanza" ])
+          in
+          User_message.Annots.singleton Compound_user_error.annot
+            (Compound_user_error.make ~main ~related)
+        in
+        User_error.raise ~annots ~loc:(Loc.drop_position loc)
+          [ main_message
           ; Pp.enumerate locs ~f:(fun loc ->
                 Pp.verbatim (Loc.to_file_colon_line loc))
           ; Pp.text
@@ -238,7 +260,9 @@ let virtual_modules ~lookup_vlib vlib =
   ; allow_new_public_modules
   }
 
-let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
+let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
+    ~include_subdirs:
+      (loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t)) =
   let open Resolve.Memo.O in
   let+ kind, main_module_name, wrapped =
     match lib.implements with
@@ -285,27 +309,42 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules =
       (kind, main_module_name, wrapped)
   in
   let modules =
-    let { Buildable.loc = stanza_loc
-        ; modules = modules_field
-        ; modules_without_implementation
-        ; root_module
-        ; _
-        } =
+    let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
       lib.buildable
     in
-    Modules_field_evaluator.eval ~modules ~stanza_loc ~modules_field
-      ~modules_without_implementation ~root_module ~kind
+    Modules_field_evaluator.eval ~modules ~stanza_loc ~kind
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
-      ~src_dir:dir
+      ~src_dir:dir modules_settings
   in
-  let stdlib = lib.stdlib in
+  let () =
+    match (lib.stdlib, include_subdirs) with
+    | Some stdlib, Include Qualified ->
+      let main_message =
+        Pp.text
+          "a library with (stdlib ...) may not use (include_subdirs qualified)"
+      in
+      let annots =
+        let main =
+          User_message.make ~loc:loc_include_subdirs [ main_message ]
+        in
+        let related =
+          [ User_message.make ~loc:stdlib.loc [ Pp.text "Already defined here" ]
+          ]
+        in
+        User_message.Annots.singleton Compound_user_error.annot
+          (Compound_user_error.make ~main ~related)
+      in
+      User_error.raise ~annots ~loc:loc_include_subdirs [ main_message ]
+    | _, _ -> ()
+  in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
-  Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir:dir ~modules
-    ~main_module_name ~wrapped
+  Modules_group.lib ~stdlib:lib.stdlib ~implements ~lib_name ~src_dir:dir
+    ~modules ~main_module_name ~wrapped
 
-let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
+let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
+    ~include_subdirs =
   let rev_filter_partition =
     let rec loop l (acc : Modules.groups) =
       match l with
@@ -340,26 +379,21 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
         let+ modules =
           let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
           make_lib_modules ~dir ~libs:(Scope.libs scope) ~lookup_vlib ~modules
-            ~lib
+            ~lib ~include_subdirs
           >>= Resolve.read_memo
         in
         let obj_dir = Library.obj_dir lib ~dir in
         `Library (lib, modules, obj_dir)
       | Executables exes | Tests { exes; _ } ->
         let modules =
-          let { Buildable.loc = stanza_loc
-              ; modules = modules_field
-              ; modules_without_implementation
-              ; root_module
-              ; _
-              } =
+          let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable
           in
           let modules =
-            Modules_field_evaluator.eval ~modules ~stanza_loc ~modules_field
-              ~modules_without_implementation ~root_module
+            Modules_field_evaluator.eval ~modules ~stanza_loc
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
+              modules_settings
           in
           let project = Scope.project scope in
           if Dune_project.wrapped_executables project then
@@ -378,15 +412,13 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
           Modules_group.relocate_alias_module modules ~src_dir
         in
         Memo.return (`Executables (exes, modules, obj_dir))
-      | Melange_emit mel ->
+      | Melange_stanzas.Emit.T mel ->
         let modules =
           let modules =
             Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
-              ~modules_field:mel.entries
-              ~modules_without_implementation:mel.modules_without_implementation
-              ~root_module:mel.root_module
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
+              mel.modules
           in
           Modules_group.make_wrapped ~src_dir:dir ~modules `Melange
         in
@@ -404,7 +436,8 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules =
   >>| filter_partition_map
 
 let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
-    ~include_subdirs:(_loc, (include_subdirs : Dune_file.Include_subdirs.t))
+    ~include_subdirs:
+      (loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t))
     ~dirs =
   let+ modules_of_stanzas =
     let modules =
@@ -415,7 +448,33 @@ let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
           ~f:(fun acc ((dir : Path.Build.t), local, files) ->
             let modules = modules_of_files ~dialects ~dir ~files in
             let path = List.map local ~f:Module_name.of_string in
-            Module_trie.set_map acc path modules)
+            match Module_trie.set_map acc path modules with
+            | Ok s -> s
+            | Error module_ ->
+              let module_ =
+                match module_ with
+                | Leaf m ->
+                  Module.Source.files m |> List.hd |> Module.File.path
+                  |> Path.drop_optional_build_context
+                  |> Path.to_string_maybe_quoted
+                | Map _ ->
+                  (* it's not possible to define the same group twice because
+                     there can be at most one directory *)
+                  assert false
+              in
+              let group =
+                (dir |> Path.Build.drop_build_context_exn
+               |> Path.Source.to_string_maybe_quoted)
+                ^ "/"
+              in
+              User_error.raise ~loc
+                [ Pp.text
+                    "The following module and module group cannot co-exist in \
+                     the same executable or library because they correspond to \
+                     the same module path"
+                ; Pp.textf "- module %s" module_
+                ; Pp.textf "- module group %s" group
+                ])
       | No | Include Unqualified ->
         List.fold_left dirs ~init:Module_name.Map.empty
           ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
@@ -433,6 +492,7 @@ let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
         |> Module_trie.of_map
     in
     modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
+      ~include_subdirs:(loc_include_subdirs, include_subdirs)
   in
   let modules = Modules.make modules_of_stanzas in
   let artifacts =

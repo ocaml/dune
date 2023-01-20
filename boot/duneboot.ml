@@ -947,7 +947,7 @@ let assemble_libraries { local_libraries; target = _, main; _ } =
         String.capitalize_ascii
           (Filename.chop_extension (Filename.basename main))
       in
-      (dir, Some namespace, false, None)
+      (dir, Some namespace, true (* enable (include_subdirs unqualified *), None)
     in
     local_libraries @ [ task_lib ]
   in
@@ -961,8 +961,7 @@ type status =
 let resolve_externals external_libraries =
   let external_libraries, external_includes =
     let convert = function
-      | "threads.posix" ->
-        ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
+      | "threads" -> ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
       | "unix" -> ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
       | s -> fatal "unhandled external library %s" s
     in

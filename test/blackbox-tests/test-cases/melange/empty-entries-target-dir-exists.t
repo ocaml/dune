@@ -1,7 +1,7 @@
 Test (entries) field can be left empty
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.7)
   > (using melange 0.1)
   > EOF
 
@@ -18,4 +18,3 @@ Create the dist folder
 
   $ dune build @melange-dist
   $ ls _build/default/dist
-  melange.js

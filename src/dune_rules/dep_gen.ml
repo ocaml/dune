@@ -81,9 +81,9 @@ let read_deps_of ~obj_dir ~modules ~ml_kind unit =
        ~f:(Staged.unstage @@ parse_compilation_units ~modules)
        (Action_builder.lines_of (Path.build all_deps_file)))
 
-let read_immediate_deps_of_source ~obj_dir ~modules ~source ~file unit =
+let read_immediate_deps_of_source ~obj_dir ~modules ~file ~ml_kind unit =
   let dep = Obj_dir.Module.dep obj_dir in
-  let immediate_file = dep (Immediate source) in
+  let immediate_file = dep (Immediate (unit, ml_kind)) in
   Action_builder.memoize
     (Path.Build.to_string immediate_file)
     (Action_builder.map
@@ -101,9 +101,9 @@ let transitive_of_immediate_rule
      ; vimpl = _
      ; stdlib = _
      ; project = _
-     } as md) ~ml_kind ~source ~file unit =
+     } as md) ~ml_kind ~file unit =
   let dep = Obj_dir.Module.dep obj_dir in
-  let immediate_file = dep (Immediate source) in
+  let immediate_file = dep (Immediate (unit, ml_kind)) in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let build_paths dependencies =
     let dependency_file_path m =

@@ -1,7 +1,7 @@
   $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf dune build --display short -x foo file @install --promote-install-files
-      ocamldep bin/.blah.eobjs/blah.ml.d
+      ocamldep bin/.blah.eobjs/blah.impl.d
         ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt}
-      ocamldep bin/.blah.eobjs/blah.ml.d [default.foo]
+      ocamldep bin/.blah.eobjs/blah.impl.d [default.foo]
         ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt} [default.foo]
       ocamlopt lib/.p.objs/native/p.{cmx,o}
         ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt}

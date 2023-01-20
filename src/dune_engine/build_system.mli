@@ -122,7 +122,21 @@ module Error : sig
 
   val create : exn:Exn_with_backtrace.t -> t
 
-  val info : t -> User_message.t * User_message.t list * Path.t option
+  (** [info] stores additional information about errors *)
+  type info =
+    { dir : Path.t option
+          (** the directory where the rule the error is originating from *)
+    ; related : User_message.t list
+          (** related errors with additional descriptions and locations. only
+              useful for rpc clients *)
+    ; main : User_message.t
+          (** the main message of the error. this is what is displayed in the
+              console *)
+    }
+
+  (** [info t] returns additional information regarding errors. useful for rich
+      clients that consume errors through rpc *)
+  val info : t -> info
 
   val promotion : t -> Diff_promotion.Annot.t option
 

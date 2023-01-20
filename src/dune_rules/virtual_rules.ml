@@ -89,6 +89,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
           in
           let* modules =
             let* preprocess =
+              (* TODO wrong, this should be delayed *)
               Resolve.Memo.read_memo
                 (Preprocess.Per_module.with_instrumentation
                    lib.buildable.preprocess

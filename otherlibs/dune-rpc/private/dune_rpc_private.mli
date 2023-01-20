@@ -50,6 +50,8 @@ module Call : sig
     ; params : Csexp.t
     }
 
+  val to_dyn : t -> Dyn.t
+
   val create : ?params:Csexp.t -> method_:Method.Name.t -> unit -> t
 end
 
@@ -59,6 +61,8 @@ module Version_error : sig
   val payload : t -> Csexp.t option
 
   val message : t -> string
+
+  val to_dyn : t -> Dyn.t
 
   exception E of t
 end

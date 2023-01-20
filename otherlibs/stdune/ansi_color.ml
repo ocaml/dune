@@ -215,7 +215,7 @@ let supports_color isatty =
     | _ -> true
   and clicolor_force =
     match Env.(get initial) "CLICOLOR_FORCE" with
-    | Some "0" -> false
+    | None | Some "0" -> false
     | _ -> true
   in
   clicolor_force || (is_smart && clicolor && Lazy.force isatty)

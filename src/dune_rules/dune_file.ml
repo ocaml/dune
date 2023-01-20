@@ -92,8 +92,7 @@ end
 module Buildable = struct
   type t =
     { loc : Loc.t
-    ; modules : Ordered_set_lang.t
-    ; modules_without_implementation : Ordered_set_lang.t
+    ; modules : Stanza_common.Modules_settings.t
     ; empty_module_interface_if_absent : bool
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
@@ -105,8 +104,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.In_buildable.t
     ; allow_overlapping_dependencies : bool
-    ; ctypes : Ctypes_stanza.t option
-    ; root_module : (Loc.t * Module_name.t) option
+    ; ctypes : Ctypes_field.t option
     }
 
   let decode (for_ : for_) =
@@ -158,7 +156,8 @@ module Buildable = struct
       located
         (only_in_library
            (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
-    and+ modules = Stanza_common.modules_field "modules"
+    and+ modules =
+      Stanza_common.Modules_settings.decode ~modules_field_name:"modules"
     and+ self_build_stubs_archive_loc, self_build_stubs_archive =
       located
         (only_in_library
@@ -166,8 +165,6 @@ module Buildable = struct
               (Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
                  ~extra_info:"Use the (foreign_archives ...) field instead."
               >>> enter (maybe string))))
-    and+ modules_without_implementation =
-      Stanza_common.modules_field "modules_without_implementation"
     and+ libraries = field "libraries" (Lib_deps.decode for_) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
@@ -178,12 +175,9 @@ module Buildable = struct
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ ctypes =
       field_o "ctypes"
-        (Dune_lang.Syntax.since Ctypes_stanza.syntax (0, 1)
-        >>> Ctypes_stanza.decode)
+        (Dune_lang.Syntax.since Ctypes_field.syntax (0, 1)
+        >>> Ctypes_field.decode)
     and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
-    and+ root_module =
-      field_o "root_module"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> Module_name.decode_loc)
     and+ empty_module_interface_if_absent =
       field_b "empty_module_interface_if_absent"
         ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
@@ -244,7 +238,6 @@ module Buildable = struct
     ; preprocessor_deps
     ; lint
     ; modules
-    ; modules_without_implementation
     ; empty_module_interface_if_absent
     ; foreign_stubs
     ; foreign_archives
@@ -254,7 +247,6 @@ module Buildable = struct
     ; js_of_ocaml
     ; allow_overlapping_dependencies
     ; ctypes
-    ; root_module
     }
 
   let has_foreign t =
@@ -455,7 +447,7 @@ module Mode_conf = struct
         ; ("native", return @@ Ocaml Native)
         ; ("best", return @@ Ocaml Best)
         ; ( "melange"
-          , Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
+          , Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1)
             >>> return Melange )
         ]
 
@@ -857,7 +849,7 @@ module Library = struct
             [Modules.t] and deciding. Unfortunately, [Obj_dir.t] is currently
             used in some places where [Modules.t] is not yet constructed. *)
          t.private_modules <> None
-        || t.buildable.root_module <> None)
+        || t.buildable.modules.root_module <> None)
       ~private_lib (snd t.name)
 
   let main_module_name t : Lib_info.Main_module_name.t =
@@ -2231,32 +2223,6 @@ module Deprecated_library_name = struct
        { Library_redirect.loc; project; old_name; new_public_name })
 end
 
-module Generate_sites_module = struct
-  type t =
-    { loc : Loc.t
-    ; module_ : Module_name.t
-    ; sourceroot : bool
-    ; relocatable : bool
-    ; sites : (Loc.t * Package.Name.t) list
-    ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
-    }
-
-  let decode =
-    fields
-      (let+ loc = loc
-       and+ module_ = field "module" Module_name.decode
-       and+ sourceroot = field_b "sourceroot"
-       and+ relocatable = field_b "relocatable"
-       and+ sites =
-         field "sites" ~default:[] (repeat (located Package.Name.decode))
-       and+ plugins =
-         field "plugins" ~default:[]
-           (repeat
-              (located (pair Package.Name.decode (located Section.Site.decode))))
-       in
-       { loc; module_; sourceroot; relocatable; sites; plugins })
-end
-
 type Stanza.t +=
   | Library of Library.t
   | Foreign_library of Foreign.Library.t
@@ -2271,10 +2237,7 @@ type Stanza.t +=
   | Toplevel of Toplevel.t
   | Library_redirect of Library_redirect.Local.t
   | Deprecated_library_name of Deprecated_library_name.t
-  | Cram of Cram_stanza.t
-  | Generate_sites_module of Generate_sites_module.t
   | Plugin of Plugin.t
-  | Melange_emit of Melange_stanzas.Emit.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2382,19 +2345,15 @@ module Stanzas = struct
                   "You can enable cram tests by adding (cram enable) to your \
                    dune-project file."
               ];
-        [ Cram t ] )
+        [ Cram_stanza.T t ] )
     ; ( "generate_sites_module"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
-        and+ t = Generate_sites_module.decode in
-        [ Generate_sites_module t ] )
+        and+ t = Generate_sites_module_stanza.decode in
+        [ Generate_sites_module_stanza.T t ] )
     ; ( "plugin"
       , let+ () = Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
         and+ t = Plugin.decode in
         [ Plugin t ] )
-    ; ( "melange.emit"
-      , let+ () = Dune_lang.Syntax.since Dune_project.Melange_syntax.t (0, 1)
-        and+ t = Melange_stanzas.Emit.decode in
-        [ Melange_emit t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas

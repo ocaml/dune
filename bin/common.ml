@@ -288,6 +288,7 @@ module Options_implied_by_dash_p = struct
 end
 
 let display_term =
+  let module Display = Dune_engine.Display in
   one_of
     (let+ verbose =
        Arg.(
@@ -295,11 +296,10 @@ let display_term =
          & info [ "verbose" ] ~docs:copts_sect
              ~doc:"Same as $(b,--display verbose)")
      in
-     Option.some_if verbose
-       (Dune_engine.Display.Simple { verbosity = Verbose; status_line = true }))
+     Option.some_if verbose { Display.verbosity = Verbose; status_line = true })
     Arg.(
       value
-      & opt (some (enum Dune_engine.Display.all)) None
+      & opt (some (enum Display.all)) None
       & info [ "display" ] ~docs:copts_sect ~docv:"MODE"
           ~doc:
             {|Control the display mode of Dune.

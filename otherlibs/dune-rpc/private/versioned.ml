@@ -11,6 +11,12 @@ module Version_error = struct
 
   let message t = t.message
 
+  let to_dyn { payload; message } =
+    Dyn.record
+      [ ("message", Dyn.string message)
+      ; ("payload", Dyn.(option Sexp.to_dyn) payload)
+      ]
+
   let create ?payload ~message () = { payload; message }
 
   exception E of t

@@ -144,7 +144,7 @@ end = struct
       | true ->
         let+ () = Mdx.gen_rules ~sctx ~dir ~scope ~expander mdx in
         empty_none)
-    | Melange_emit mel ->
+    | Melange_stanzas.Emit.T mel ->
       let+ cctx, merlin =
         Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx
           ~expander mel
@@ -283,7 +283,8 @@ let gen_rules sctx dir_contents cctxs expander
         | Coq_stanza.Theory.T m -> (
           Expander.eval_blang expander m.enabled_if >>= function
           | false -> Memo.return ()
-          | true -> Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m)
+          | true ->
+            Coq_rules.setup_theory_rules ~sctx ~dir:ctx_dir ~dir_contents m)
         | Coq_stanza.Extraction.T m ->
           Coq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
         | Coq_stanza.Coqpp.T m ->
@@ -379,7 +380,7 @@ let under_melange_emit_target ~dir =
   | None -> None
   | Some stanzas ->
     List.find_map stanzas.stanzas ~f:(function
-      | Melange_emit mel ->
+      | Melange_stanzas.Emit.T mel ->
         let target_dir = Path.Build.relative parent mel.target in
         Option.some_if (Path.Build.equal target_dir dir) mel
       | _ -> None)
@@ -505,7 +506,7 @@ let gen_rules ~sctx ~dir components : Build_config.gen_rules_result Memo.t =
             | None -> subdirs
             | Some stanzas ->
               List.filter_map stanzas.stanzas ~f:(function
-                | Melange_emit mel -> Some mel.target
+                | Melange_stanzas.Emit.T mel -> Some mel.target
                 | _ -> None)
               |> String.Set.of_list |> String.Set.union subdirs
           in

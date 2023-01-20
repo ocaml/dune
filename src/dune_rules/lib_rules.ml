@@ -2,6 +2,7 @@ open Import
 open Memo.O
 module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
+module Public_lib = Dune_file.Public_lib
 module Mode_conf = Dune_file.Mode_conf
 
 let msvc_hack_cclibs =
@@ -407,7 +408,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~top_sorted_modules ~cctx
       (* ctypes type_gen and function_gen scripts should not be included in the
          library. Otherwise they will spew stuff to stdout on library load. *)
       match lib.buildable.ctypes with
-      | Some ctypes -> Ctypes_stanza.non_installable_modules ctypes
+      | Some ctypes -> Ctypes_field.non_installable_modules ctypes
       | None -> []
     in
     Cm_files.make ~excluded_modules ~obj_dir ~ext_obj ~modules
@@ -457,10 +458,19 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let js_of_ocaml =
     Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
   in
+  (* XXX(anmonteiro): `public_lib_name` is used to derive Melange's
+     `--bs-package-name` argument. We only use the library name for public
+     libraries because we need melange to preserve relative paths for private
+     libs (i.e. not pass the `--bs-package-name` arg). *)
+  let public_lib_name =
+    match lib.visibility with
+    | Public p -> Some (Public_lib.name p)
+    | Private _ -> None
+  in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some js_of_ocaml)
-    ?stdlib:lib.stdlib ~package ?vimpl ~modes
+    ?stdlib:lib.stdlib ~package ?vimpl ?public_lib_name ~modes
 
 let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     ~dir_contents ~compile_info =
@@ -485,14 +495,16 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
     Memo.Option.iter vimpl
       ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
   and* expander = Super_context.expander sctx ~dir
   and* lib_info =
     let lib_config = (Super_context.context sctx).lib_config in
-    Library.to_lib_info lib ~dir ~lib_config
+    let* info = Library.to_lib_info lib ~dir ~lib_config in
+    let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
+    let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
+    info
   in
   let+ () =
     Memo.when_

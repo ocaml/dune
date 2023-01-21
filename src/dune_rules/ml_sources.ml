@@ -398,9 +398,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
           let project = Scope.project scope in
           if Dune_project.wrapped_executables project then
             Modules_group.make_wrapped ~src_dir:dir ~modules `Exe
-          else
-            let modules = Module_trie.to_map modules in
-            Modules_group.exe_unwrapped modules
+          else Modules_group.exe_unwrapped modules ~src_dir:dir
         in
         let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
         let modules =

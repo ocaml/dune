@@ -111,9 +111,7 @@ module Paths = struct
 
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
 
-  let css_file ctx = html_root ctx ++ "odoc.css"
-
-  let highlight_pack_js ctx = html_root ctx ++ "highlight.pack.js"
+  let odoc_support ctx = html_root ctx ++ "_odoc_support"
 
   let toplevel_index ctx = html_root ctx ++ "index.html"
 end
@@ -353,6 +351,10 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       "html-generate" ~flags_for:None
       [ A "-o"
       ; Path (Path.build (Paths.html_root ctx))
+      ; A "--support-uri"
+      ; A "_odoc_support"
+      ; A "--theme-uri"
+      ; A "_odoc_support"
       ; Dep (Path.build odoc_file.odocl_file)
       ; Hidden_targets [ odoc_file.html_file ]
       ]
@@ -371,15 +373,17 @@ let setup_html sctx (odoc_file : odoc_artefact) =
 let setup_css_rule sctx =
   let open Memo.O in
   let ctx = Super_context.context sctx in
+  let dir = Paths.html_root ctx ++ "_odoc_support" in
   let* run_odoc =
     run_odoc sctx ~dir:(Path.build ctx.build_dir) "support-files"
-      ~flags_for:None
-      [ A "-o"
-      ; Path (Path.build (Paths.html_root ctx))
-      ; Hidden_targets [ Paths.css_file ctx; Paths.highlight_pack_js ctx ]
-      ]
+      ~flags_for:None [ A "-o"; Target dir ]
   in
-  add_rule sctx run_odoc
+  add_rule sctx
+    (Action_builder.progn
+       [ Action_builder.with_no_targets
+           (Action_builder.return (Action.Full.make (Action.Remove_tree dir)))
+       ; run_odoc
+       ])
 
 let sp = Printf.sprintf
 
@@ -404,7 +408,7 @@ let setup_toplevel_index_rule sctx =
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <title>index</title>
-    <link rel="stylesheet" href="./odoc.css"/>
+    <link rel="stylesheet" href="./_odoc_support/odoc.css"/>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   </head>
@@ -495,7 +499,7 @@ let create_odoc ctx ~target odoc_file =
 
 let static_html ctx =
   let open Paths in
-  [ css_file ctx; highlight_pack_js ctx; toplevel_index ctx ]
+  [ odoc_support ctx; toplevel_index ctx ]
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match

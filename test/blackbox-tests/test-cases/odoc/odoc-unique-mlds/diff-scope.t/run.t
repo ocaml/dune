@@ -1,6 +1,6 @@
 Duplicate mld's in different scope
   $ dune build @doc --display short
-          odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css
+          odoc _doc/_html/_odoc_support
           odoc _doc/_odoc/pkg/scope1/page-index.odoc
         ocamlc scope1/.scope1.objs/byte/scope1.{cmi,cmo,cmt}
           odoc _doc/_odoc/pkg/scope2/page-index.odoc

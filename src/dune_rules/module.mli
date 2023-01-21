@@ -35,6 +35,8 @@ module Source : sig
 
   val has : t -> ml_kind:Ml_kind.t -> bool
 
+  val files : t -> File.t list
+
   val to_dyn : t -> Dyn.t
 
   val src_dir : t -> Path.t

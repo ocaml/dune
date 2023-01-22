@@ -458,7 +458,7 @@ phase. As a result, they must be applied in stages as follows:
 - dependency analysis
 - second step of code generation in parallel with compilation
 
-This is the case for PPX rewriters using the OCaml type, for
+This is the case for PPX rewriters using the OCaml typer, for
 instance. When using such PPX rewriters, you must use ``staged_pps``
 instead of ``pps`` in order to force Dune to use the second pipeline,
 which is slower but necessary in this case.

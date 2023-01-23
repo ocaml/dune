@@ -81,7 +81,7 @@ Unreleased
 - Fix *js_of_ocaml* separate compilation rules when `--enable=effects`
   or `--enable=use-js-string` is used. (#6714, #6828, @hhugo)
 
-- Fix *js_of_ocaml* separate compilation in presence of linkall (#6832, @hhugo)
+- Fix *js_of_ocaml* separate compilation in presence of linkall (#6832, #6916, @hhugo)
 
 - Remove spurious build dir created when running `dune init proj ...` (#6707,
   fixes #5429, @gridbugs)

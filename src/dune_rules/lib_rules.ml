@@ -5,13 +5,14 @@ module Library = Dune_file.Library
 module Public_lib = Dune_file.Public_lib
 module Mode_conf = Dune_file.Mode_conf
 
+let msvc_hack_lib ~prefix ~ext lib =
+  match String.drop_prefix lib ~prefix:"-l" with
+  | None -> lib
+  | Some l -> prefix ^ l ^ ext
+
 let msvc_hack_cclibs =
   List.map ~f:(fun lib ->
-      let lib =
-        match String.drop_prefix lib ~prefix:"-l" with
-        | None -> lib
-        | Some l -> l ^ ".lib"
-      in
+      let lib = msvc_hack_lib ~prefix:"" ~ext:".lib" lib in
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
 (* Build an OCaml library. *)
@@ -21,6 +22,12 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
   Memo.Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
+        let msvcize ~prefix ~ext =
+          (* https://github.com/ocaml/dune/issues/119 *)
+          match ctx.lib_config.ccomp_type with
+          | Msvc -> msvc_hack_lib ~prefix ~ext
+          | Other _ -> Fun.id
+        in
         let lib_archive = Library.stubs_archive lib in
         let foreign_archives = Library.foreign_archives lib in
         let make_args ~stub_mode archive =
@@ -28,8 +35,8 @@ let build_lib (lib : Library.t) ~native_archives ~sctx ~expander ~flags ~dir
             "-l"
             ^ Foreign.Archive.(name ~mode:stub_mode archive |> Name.to_string)
           in
-          let cclib = [ "-cclib"; lname ] in
-          let dllib = [ "-dllib"; lname ] in
+          let cclib = [ "-cclib"; msvcize ~prefix:"lib" ~ext:".lib" lname ] in
+          let dllib = [ "-dllib"; msvcize ~prefix:"dll" ~ext:".dll" lname ] in
           match mode with
           | Native -> cclib
           | Byte -> dllib @ cclib

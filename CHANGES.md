@@ -95,6 +95,9 @@ Unreleased
 - Add a `dune cache size` command for displaying the size of the cache (#6638,
   @Alizter)
 
+- Add MSVC `libNAME.lib` and `dllNAME.dll` to stub libraries (#6919,
+  @jonahbeckford)
+
 3.6.2 (2022-12-21)
 ------------------
 

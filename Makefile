@@ -31,7 +31,7 @@ ctypes \
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
-"dkml-workflows>=1.1.0" \
+"dkml-workflows>=1.2.0" \
 patdiff
 
 TEST_OCAMLVERSION := 4.14.0

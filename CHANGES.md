@@ -85,7 +85,7 @@ Unreleased
   enabled (#6645, @hhugo)
 
 - Fix *js_of_ocaml* separate compilation rules when `--enable=effects`
-  or `--enable=use-js-string` is used. (#6714, #6828, @hhugo)
+  ,`--enable=use-js-string` or `--toplevel` is used. (#6714, #6828, #6920, @hhugo)
 
 - Fix *js_of_ocaml* separate compilation in presence of linkall (#6832, #6916, @hhugo)
 

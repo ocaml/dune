@@ -16,19 +16,25 @@ end = struct
   type t =
     { js_string : bool option
     ; effects : bool option
+    ; toplevel : bool option
     }
 
-  let default = { js_string = None; effects = None }
+  let default = { js_string = None; effects = None; toplevel = None }
 
   let bool_opt = [ None; Some true; Some false ]
 
   let all =
     List.concat_map bool_opt ~f:(fun js_string ->
-        List.concat_map bool_opt ~f:(fun effects -> [ { js_string; effects } ]))
+        List.concat_map bool_opt ~f:(fun effects ->
+            List.concat_map bool_opt ~f:(fun toplevel ->
+                [ { js_string; effects; toplevel } ])))
 
   let get t =
     List.filter_map
-      [ ("use-js-string", t.js_string); ("effects", t.effects) ]
+      [ ("use-js-string", t.js_string)
+      ; ("effects", t.effects)
+      ; ("toplevel", t.toplevel)
+      ]
       ~f:(fun (n, v) ->
         match v with
         | None -> None
@@ -38,6 +44,7 @@ end = struct
     match name with
     | "use-js-string" -> { acc with js_string = Some v }
     | "effects" -> { acc with effects = Some v }
+    | "toplevel" -> { acc with toplevel = Some v }
     | _ -> acc
 
   let path t =
@@ -72,12 +79,15 @@ end = struct
         match String.drop_prefix maybe_disable ~prefix:"--disable=" with
         | Some name -> loop (set acc name false) rest
         | _ -> assert false)
+      | "--toplevel" :: rest -> loop (set acc "toplevel" true) rest
       | _ :: rest -> loop acc rest
     in
     loop default l
 
   let to_flags t =
     List.concat_map (get t) ~f:(function
+      | "toplevel", true -> [ "--toplevel" ]
+      | "toplevel", false -> []
       | name, true -> [ "--enable"; name ]
       | name, false -> [ "--disable"; name ])
 end

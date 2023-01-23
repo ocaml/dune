@@ -110,7 +110,7 @@ jobs:
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}
 
-  dkml:
+  dkml-4_12_1:
     strategy:
       fail-fast: false
       matrix:
@@ -122,14 +122,14 @@ jobs:
             abi_pattern: win32-windows_x86_64
             dkml_host_abi: windows_x86_64
     runs-on: ${{ matrix.gh_os }}
-    name: MSVC / ${{ matrix.dkml_host_abi }}
+    name: MSVC 4.12.1 / ${{ matrix.dkml_host_abi }}
 
     steps:
       - uses: actions/checkout@v3
 
       - name: Setup DKML on a Windows host
         if: startsWith(matrix.dkml_host_abi, 'windows_')
-        uses: ./ci/setup-dkml/gh-windows/pre
+        uses: ./ci/setup-dkml/gh-windows-4.12.1/pre
 
       - name: Build and test the package on Windows host
         if: startsWith(matrix.dkml_host_abi, 'windows_')
@@ -138,7 +138,7 @@ jobs:
 
       - name: Teardown DKML on a Windows host
         if: startsWith(matrix.dkml_host_abi, 'windows_')
-        uses: ./ci/setup-dkml/gh-windows/post
+        uses: ./ci/setup-dkml/gh-windows-4.12.1/post
 
   nix:
     name: Nix

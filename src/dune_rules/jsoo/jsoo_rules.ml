@@ -61,7 +61,17 @@ end = struct
     let rec loop acc = function
       | [] -> acc
       | "--enable" :: name :: rest -> loop (set acc name true) rest
+      | maybe_enable :: rest
+        when String.is_prefix maybe_enable ~prefix:"--enable=" -> (
+        match String.drop_prefix maybe_enable ~prefix:"--enable=" with
+        | Some name -> loop (set acc name true) rest
+        | _ -> assert false)
       | "--disable" :: name :: rest -> loop (set acc name false) rest
+      | maybe_disable :: rest
+        when String.is_prefix maybe_disable ~prefix:"--disable=" -> (
+        match String.drop_prefix maybe_disable ~prefix:"--disable=" with
+        | Some name -> loop (set acc name false) rest
+        | _ -> assert false)
       | _ :: rest -> loop acc rest
     in
     loop default l

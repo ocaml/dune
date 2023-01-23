@@ -329,16 +329,16 @@ See :ref:`library` section for details.
 The list of dependencies :token:`dep_specification` is modelled after opam's own
 language. The syntax is a list of the following elements:
 
-.. productionlist::
+.. productionlist:: pkg-dep
    op : '=' | '<' | '>' | '<>' | '>=' | '<='
    filter : :dev | :build | :with-test | :with-doc | :post
-   constr : (`op` `version`)
+   constr : (<op> <version>)
    logop : or | and
-   dep : `name`
-       : (`name` `filter`)
-       : (`name` `constr`)
-       : (`name` (`logop` (`filter` | `constr`))*)
-   dep_specification : `dep`+
+   dep : <name>
+       : (<name> <filter>)
+       : (<name> <constr>)
+       : (<name> (<logop> (<filter> | <constr>))*)
+   dep_specification : <dep>+
 
 Filters will expand to any opam variable name if prefixed by ``:``, not just the
 ones listed in :token:`filter`. This also applies to version numbers. For example, to

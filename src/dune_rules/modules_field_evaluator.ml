@@ -288,7 +288,7 @@ let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
     ~intf_only ~modules ~virtual_modules ~private_modules
     ~existing_virtual_modules ~allow_new_public_modules;
   let all_modules =
-    Module_trie.mapi modules ~f:(fun path (_, m) ->
+    Module_trie.mapi modules ~f:(fun _path (_, m) ->
         let name = [ Module.Source.name m ] in
         let visibility =
           if Module_trie.mem private_modules name then Visibility.Private
@@ -303,10 +303,11 @@ let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
             else Impl
           else Intf_only
         in
-        Module.of_source m ~path ~kind ~visibility)
+        Module.of_source m ~kind ~visibility)
   in
   match root_module with
   | None -> all_modules
   | Some (_, name) ->
-    let module_ = Module.generated ~kind:Root ~src_dir name in
-    Module_trie.set all_modules [ name ] module_
+    let path = [ name ] in
+    let module_ = Module.generated ~kind:Root ~src_dir path in
+    Module_trie.set all_modules path module_

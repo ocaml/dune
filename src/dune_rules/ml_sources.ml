@@ -184,7 +184,7 @@ let empty =
 
 let artifacts t = Memo.Lazy.force t.artifacts
 
-let modules_of_files ~dialects ~dir ~files =
+let modules_of_files ~path ~dialects ~dir ~files =
   let dir = Path.build dir in
   let impl_files, intf_files =
     let make_module dialect name fn =
@@ -223,7 +223,7 @@ let modules_of_files ~dialects ~dir ~files =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
-      Some (Module.Source.make name ?impl ?intf))
+      Some (Module.Source.make (path @ [ name ]) ?impl ?intf))
 
 type for_ =
   | Library of Lib_name.t
@@ -467,8 +467,8 @@ let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
       | Include Qualified ->
         List.fold_left dirs ~init:Module_trie.empty
           ~f:(fun acc ((dir : Path.Build.t), local, files) ->
-            let modules = modules_of_files ~dialects ~dir ~files in
             let path = List.map local ~f:Module_name.of_string in
+            let modules = modules_of_files ~dialects ~dir ~files ~path in
             match Module_trie.set_map acc path modules with
             | Ok s -> s
             | Error module_ ->
@@ -499,7 +499,7 @@ let make dune_file ~dir ~scope ~lib_config ~loc ~lookup_vlib
       | No | Include Unqualified ->
         List.fold_left dirs ~init:Module_name.Map.empty
           ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-            let modules = modules_of_files ~dialects ~dir ~files in
+            let modules = modules_of_files ~dialects ~dir ~files ~path:[] in
             Module_name.Map.union acc modules ~f:(fun name x y ->
                 User_error.raise ~loc
                   [ Pp.textf "Module %S appears in several directories:"

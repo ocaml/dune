@@ -90,7 +90,7 @@ include Sub_system.Register_end_point (struct
     in
     let main_module =
       let name = Module_name.of_string name in
-      Module.generated ~kind:Impl ~src_dir:inline_test_dir name
+      Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
     in
     let open Memo.O in
     let modules = Modules.singleton_exe main_module in

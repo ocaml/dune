@@ -43,17 +43,10 @@ Check that default implementation data is installed in the dune package file.
    (modules
     (wrapped
      (group
-      (alias
-       (name A)
-       (obj_name a)
-       (path A)
-       (visibility public)
-       (kind alias)
-       (impl))
+      (alias (obj_name a) (path A) (visibility public) (kind alias) (impl))
       (name A)
       (modules
        (module
-        (name X)
         (obj_name a__X)
         (path X)
         (visibility public)
@@ -78,7 +71,6 @@ Check that default implementation data is installed in the dune package file.
     (wrapped
      (group
       (alias
-       (name A__a_default__)
        (obj_name a__a_default__)
        (path A__a_default__)
        (visibility public)
@@ -87,7 +79,6 @@ Check that default implementation data is installed in the dune package file.
       (name A)
       (modules
        (module
-        (name X)
         (obj_name a__X)
         (path X)
         (visibility public)

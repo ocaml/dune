@@ -214,7 +214,7 @@ let link_js ~name ~loc ~obj_dir ~top_sorted_modules ~link_args ~promote
         let+ l =
           Command.expand_no_targets ~dir:(Path.build (CC.dir cctx)) cmd
         in
-        List.exists l ~f:(String.equal "--linkall"))
+        List.exists l ~f:(String.equal "-linkall"))
   in
   Jsoo_rules.build_exe cctx ~loc ~obj_dir ~in_context ~src ~top_sorted_modules
     ~promote ~link_time_code_gen ~linkall

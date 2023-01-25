@@ -1,0 +1,3 @@
+(library
+ (name vendored_lib)
+ (public_name vendored_lib))

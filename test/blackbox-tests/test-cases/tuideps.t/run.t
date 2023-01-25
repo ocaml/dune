@@ -1,6 +1,6 @@
 
   $ dune exec ./main.exe
-  156
+  15642
 
   $ dune build @uideps
 
@@ -17,6 +17,9 @@
   ./_build/default/lib/.otherlib.objs/.uideps/otherlib.cmt.uideps
   ./_build/default/lib/.otherlib.objs/cctx.uideps
   ./_build/default/project.uideps
+  ./_build/default/vendor/otherproject/.vendored_lib.objs/.uideps
+  ./_build/default/vendor/otherproject/.vendored_lib.objs/.uideps/vendored_lib.cmt.uideps
+  ./_build/default/vendor/otherproject/.vendored_lib.objs/cctx.uideps
 
   $ ocaml-uideps dump ./_build/default/project.uideps
   {uid: Dune__exe__Othermod.0; locs:
@@ -35,7 +38,11 @@
      "fromotherlib": File "$TESTCASE_ROOT/lib/otherlib.ml", line 2, characters 29-41;
      "Otherlib.fromotherlib": File "$TESTCASE_ROOT/main.ml", line 1, characters 28-49
    uid: Stdlib.313; locs:
-     "print_int": File "$TESTCASE_ROOT/main.ml", line 1, characters 0-9
+     "print_int": File "$TESTCASE_ROOT/main.ml", line 1, characters 0-9;
+     "print_int": File "$TESTCASE_ROOT/main.ml", line 2, characters 0-9
+   uid: Vendored_lib.0; locs:
+     "Vendored_lib.value": File "$TESTCASE_ROOT/main.ml", line 2, characters 10-28;
+     "value": File "$TESTCASE_ROOT/vendor/otherproject/vendored_lib.ml", line 1, characters 4-9
    uid: Stdlib.55; locs:
      "+": File "$TESTCASE_ROOT/main.ml", line 1, characters 26-27;
      "+": File "$TESTCASE_ROOT/main.ml", line 1, characters 50-51;

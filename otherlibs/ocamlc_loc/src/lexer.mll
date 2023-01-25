@@ -74,7 +74,7 @@ and severity = parse
     (blank any as rest)
     { Some (Error (Some (Code { code = int_of_string code ; name })), rest)
     }
-    | "Alert " blank (alert_name as name) ":" blank (any as source)
+  | "Alert " blank (alert_name as name) ":" blank (any as source)
     {  Some (Alert { name ; source }, "")
     }
   | (("Error" | "Warning") as kind) " (alert " ([^ ')']+ as alert) "):"

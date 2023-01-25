@@ -77,6 +77,7 @@ type t =
   | Redirect_out of Outputs.t * String_with_vars.t * File_perm.t * t
   | Redirect_in of Inputs.t * String_with_vars.t * t
   | Ignore of Outputs.t * t
+  | Chmod of Unix.file_perm * String_with_vars.t
   | Progn of t list
   | Echo of String_with_vars.t list
   | Cat of String_with_vars.t list
@@ -106,5 +107,7 @@ val remove_locs : t -> t
 val equal : t -> t -> bool
 
 val chdir : String_with_vars.t -> t -> t
+
+val chmod : Unix.file_perm -> String_with_vars.t -> t
 
 val run : String_with_vars.t -> String_with_vars.t list -> t

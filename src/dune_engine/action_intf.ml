@@ -40,6 +40,7 @@ module type Ast = sig
     | Redirect_out of Outputs.t * target * File_perm.t * t
     | Redirect_in of Inputs.t * path * t
     | Ignore of Outputs.t * t
+    | Chmod of Unix.file_perm * path
     | Progn of t list
     | Echo of string list
     | Cat of path list
@@ -88,6 +89,8 @@ module type Helpers = sig
   val ignore_stderr : t -> t
 
   val ignore_outputs : t -> t
+
+  val chmod : Unix.file_perm -> path -> t
 
   val progn : t list -> t
 

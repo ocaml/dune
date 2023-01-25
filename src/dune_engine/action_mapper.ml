@@ -29,6 +29,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Redirect_in (inputs, fn, t) ->
       Redirect_in (inputs, f_path ~dir fn, f t ~dir)
     | Ignore (outputs, t) -> Ignore (outputs, f t ~dir)
+    | Chmod (perm, fn) -> Chmod (perm, f_path ~dir fn)
     | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))
     | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
     | Cat xs -> Cat (List.map xs ~f:(f_path ~dir))

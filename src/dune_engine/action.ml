@@ -60,6 +60,7 @@ struct
         ]
     | Ignore (outputs, r) ->
       List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
+    | Chmod (p, x) -> List [ atom "chmod"; Dune_lang.Encoder.int p; path x ]
     | Progn l -> List (atom "progn" :: List.map l ~f:encode)
     | Echo xs -> List (atom "echo" :: List.map xs ~f:string)
     | Cat xs -> List (atom "cat" :: List.map xs ~f:path)
@@ -115,6 +116,8 @@ struct
   let ignore_stderr t = Ignore (Stderr, t)
 
   let ignore_outputs t = Ignore (Outputs, t)
+
+  let chmod p x = Chmod (p, x)
 
   let progn ts = Progn ts
 
@@ -295,6 +298,7 @@ let fold_one_step t ~init:acc ~f =
   | Echo _
   | Cat _
   | Copy _
+  | Chmod _
   | Symlink _
   | Hardlink _
   | System _
@@ -344,6 +348,7 @@ let rec is_dynamic = function
   | Echo _
   | Cat _
   | Copy _
+  | Chmod _
   | Symlink _
   | Hardlink _
   | Write_file _
@@ -392,6 +397,7 @@ let is_useful_to distribute memoize =
     | Copy _ -> memoize
     | Symlink _ -> false
     | Hardlink _ -> false
+    | Chmod _ -> false
     | Write_file _ -> distribute
     | Rename _ -> memoize
     | Remove_tree _ -> false

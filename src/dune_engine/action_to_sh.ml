@@ -35,6 +35,8 @@ let cat ps = Run ("cat", ps)
 
 let mkdir p = Run ("mkdir", [ "-p"; p ])
 
+let chmod perm fn = Run ("chmod", [ string_of_int perm; fn ])
+
 let interpret_perm (perm : Action.File_perm.t) fn acc =
   match perm with
   | Normal -> acc
@@ -54,6 +56,7 @@ let simplify act =
       Redirect_in (block act, inputs, fn) :: acc
     | Ignore (outputs, act) ->
       Redirect_out (block act, outputs, Dev_null) :: acc
+    | Chmod (perm, fn) -> chmod perm fn :: acc
     | Progn l -> List.fold_left l ~init:acc ~f:(fun acc act -> loop act acc)
     | Echo xs -> echo (String.concat xs ~sep:"")
     | Cat x -> cat x :: acc

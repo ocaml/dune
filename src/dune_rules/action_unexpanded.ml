@@ -414,6 +414,9 @@ let rec expand (t : Dune_lang.Action.t) ~context : Action.t Action_expander.t =
   | Ignore (outputs, t) ->
     let+ t = expand t in
     O.Ignore (outputs, t)
+  | Chmod (perm, fn) ->
+    let+ fn = E.dep fn in
+    O.Chmod (perm, fn)
   | Progn l ->
     let+ l = A.all (List.map l ~f:expand) in
     O.Progn l

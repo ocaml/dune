@@ -28,6 +28,9 @@ Unreleased
 - Bytecode executables built for JSOO are linked with `-noautolink` and no
   longer depend on the shared stubs of their dependent libraries (#7156, @nojb)
 
+- Added a new user action `(concurrent )` which is like `(progn )` but runs the
+  actions concurrently. (#6933, @Alizter)
+
 3.7.0 (2023-02-17)
 ------------------
 

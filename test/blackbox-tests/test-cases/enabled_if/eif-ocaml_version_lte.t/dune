@@ -1,0 +1,20 @@
+(library
+ (name lte414caml)
+ (modules lte414caml)
+ (enabled_if
+  (<= %{ocaml_version} %{ocaml_version})))
+
+(rule
+ (with-stdout-to
+  lte414caml.ml
+  (echo "")))
+
+(rule
+ (with-stdout-to
+  main.ml
+  (echo "")))
+
+(executable
+ (name main)
+ (modules main)
+ (libraries lte414caml))

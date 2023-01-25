@@ -483,3 +483,65 @@ testing
     ; related = []
     ; severity = Error Some "foobar"
     } |}]
+
+let%expect_test "nultiple errors from multiple files at once" =
+  test_error
+    {|
+  File "src/dune_engine/action.ml", lines 34-96, characters 4-64:
+  34 | ....function
+  35 |     | Run (a, xs) -> List (atom "run" :: program a :: List.map xs ~f:string)
+  36 |     | With_accepted_exit_codes (pred, t) ->
+  37 |       List
+  38 |         [ atom "with-accepted-exit-codes"
+  ...
+  93 |       List
+  94 |         (atom (sprintf "pipe-%s" (Outputs.to_string outputs))
+  95 |         :: List.map l ~f:encode)
+  96 |     | Extension ext -> List [ atom "ext"; Extension.encode ext ]
+  Error (warning 8 [partial-match]): this pattern-matching is not exhaustive.
+  Here is an example of a case that is not matched:
+  Case
+  File "src/dune_engine/action.ml", lines 291-315, characters 2-22:
+  291 | ..match t with
+  292 |   | Chdir (_, t)
+  293 |   | Setenv (_, _, t)
+  294 |   | Redirect_out (_, _, _, t)
+  295 |   | Redirect_in (_, _, t)
+  ...
+  312 |   | Mkdir _
+  313 |   | Diff _
+  314 |   | Merge_files_into _
+  315 |   | Extension _ -> acc
+  Error (warning 8 [partial-match]): this pattern-matching is not exhaustive.
+  Here is an example of a case that is not matched:
+  Case
+  File "src/dune_engine/action.ml", lines 339-363, characters 21-24:
+  339 | .....................function
+  340 |   | Dynamic_run _ -> true
+  341 |   | Chdir (_, t)
+  342 |   | Setenv (_, _, t)
+  343 |   | Redirect_out (_, _, _, t)
+  ...
+  360 |   | Diff _
+  361 |   | Mkdir _
+  362 |   | Merge_files_into _
+  363 |   | Extension _ -> false
+  Error (warning 8 [partial-match]): this pattern-matching is not exhaustive.
+  Here is an example of a case that is not matched:
+  Case
+  File "src/dune_engine/action.ml", lines 391-414, characters 4-70:
+  391 | ....match t with
+  392 |     | Chdir (_, t) -> loop t
+  393 |     | Setenv (_, _, t) -> loop t
+  394 |     | Redirect_out (_, _, _, t) -> memoize || loop t
+  395 |     | Redirect_in (_, _, t) -> loop t
+  ...
+  411 |     | Dynamic_run _ -> true
+  412 |     | System _ -> true
+  413 |     | Bash _ -> true
+  414 |     | Extension (module A) -> A.Spec.is_useful_to ~distribute ~memoize
+  Error (warning 8 [partial-match]): this pattern-matching is not exhaustive.
+  Here is an example of a case that is not matched:
+  Case
+  |};
+  [%expect {| |}]

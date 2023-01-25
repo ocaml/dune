@@ -102,3 +102,34 @@ Adding env stanza with both warnings silenced allows the build to pass successfu
   $ dune build @melange
   $ node _build/default/output/main.js
   hello
+
+Warning 102 (Melange only) is available if explicitly set
+
+  $ cat > main.ml <<EOF
+  > let compare a b = compare a b
+  > EOF
+
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (target output)
+  >  (entries main)
+  >  (compile_flags -w +a-70)
+  >  (module_system commonjs))
+  > EOF
+
+  $ dune build output/main.js
+  File "main.ml", line 1, characters 18-29:
+  1 | let compare a b = compare a b
+                        ^^^^^^^^^^^
+  Warning 102 [polymorphic-comparison-introduced]: Polymorphic comparison introduced (maybe unsafe)
+
+But it is disabled by default
+
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (target output)
+  >  (entries main)
+  >  (module_system commonjs))
+  > EOF
+
+  $ dune build output/main.js

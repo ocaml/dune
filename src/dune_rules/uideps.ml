@@ -103,8 +103,9 @@ let project_rule sctx project =
   if not activated then Memo.return ()
   else
     let ctx = Super_context.context sctx in
-    let bd = ctx.build_dir in
-    let dir = Path.Build.append_source bd @@ Dune_project.root project in
+    let dir =
+      Path.Build.append_source ctx.build_dir @@ Dune_project.root project
+    in
     let* stanzas = Only_packages.filtered_stanzas ctx in
     let* expander =
       let+ expander = Super_context.expander sctx ~dir in
@@ -112,24 +113,35 @@ let project_rule sctx project =
     in
     let scope = Expander.scope expander in
     let* uideps =
+      (* We only index public stanzas of vendored libs *)
       Dune_file.fold_stanzas stanzas ~init:(Memo.return [])
         ~f:(fun dune_file stanza acc ->
           let dir = Path.Build.append_source ctx.build_dir dune_file.dir in
-          let open Dune_file in
+          let* vendored = Super_context.build_dir_is_vendored dir in
           let* obj =
+            let open Dune_file in
             match stanza with
             | Executables exes ->
-              Memo.return
-              @@ Some (Executables.obj_dir ~dir exes, exes.enabled_if)
+              if vendored then Memo.return None
+              else
+                Memo.return
+                @@ Some (Executables.obj_dir ~dir exes, exes.enabled_if)
             | Library lib ->
-              let+ available =
-                if lib.optional then
-                  Lib.DB.available (Scope.libs scope)
-                    (Dune_file.Library.best_name lib)
-                else Memo.return true
+              let public =
+                match lib.visibility with
+                | Public _ -> true
+                | Private _ -> false
               in
-              if available then Some (Library.obj_dir ~dir lib, lib.enabled_if)
-              else None
+              if vendored && not public then Memo.return None
+              else
+                let+ available =
+                  if lib.optional then
+                    Lib.DB.available (Scope.libs scope)
+                      (Dune_file.Library.best_name lib)
+                  else Memo.return true
+                in
+                if available then Some (Library.obj_dir ~dir lib, lib.enabled_if)
+                else None
             | _ -> Memo.return None
           in
           match obj with

@@ -121,7 +121,7 @@ module Modules = struct
                 User_message.make ~loc [ Pp.text "Used in this stanza" ])
           in
           User_message.Annots.singleton Compound_user_error.annot
-            (Compound_user_error.make ~main ~related)
+            [ Compound_user_error.make ~main ~related ]
         in
         User_error.raise ~annots ~loc:(Loc.drop_position loc)
           [ main_message
@@ -356,7 +356,7 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
           ]
         in
         User_message.Annots.singleton Compound_user_error.annot
-          (Compound_user_error.make ~main ~related)
+          [ Compound_user_error.make ~main ~related ]
       in
       User_error.raise ~annots ~loc:loc_include_subdirs [ main_message ]
     | _, _ -> ()

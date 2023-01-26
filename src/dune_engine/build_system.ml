@@ -29,9 +29,16 @@ module Error = struct
   module Id = Id.Make ()
 
   type t =
-    { exn : Exn_with_backtrace.t
-    ; id : Id.t
-    }
+    | Exn of
+        { id : Id.t
+        ; exn : Exn_with_backtrace.t
+        }
+    | Diagnostic of
+        { id : Id.t
+        ; diagnostic : Compound_user_error.t
+        ; dir : Path.t option
+        ; promotion : Diff_promotion.Annot.t option
+        }
 
   module Event = struct
     type nonrec t =
@@ -39,47 +46,49 @@ module Error = struct
       | Remove of t
   end
 
-  let create ~exn = { exn; id = Id.gen () }
-
-  let id t = t.id
-
-  let promotion t =
-    let e =
-      match t.exn.exn with
-      | Memo.Error.E e -> Memo.Error.get e
-      | e -> e
+  let of_exn (exn : Exn_with_backtrace.t) =
+    let exn =
+      match exn.exn with
+      | Memo.Error.E e -> { exn with exn = Memo.Error.get e }
+      | _ -> exn
     in
-    match e with
-    | User_error.E msg ->
-      User_message.Annots.find msg.annots Diff_promotion.Annot.annot
-    | _ -> None
-
-  type info =
-    { dir : Path.t option
-    ; related : User_message.t list
-    ; main : User_message.t
-    }
-
-  let info (t : t) =
-    let e =
-      match t.exn.exn with
-      | Memo.Error.E e -> Memo.Error.get e
-      | e -> e
-    in
-    match e with
+    match exn.exn with
     | User_error.E main -> (
       let dir =
         User_message.Annots.find main.annots Process.with_directory_annot
       in
+      let promotion =
+        User_message.Annots.find main.annots Diff_promotion.Annot.annot
+      in
       match User_message.Annots.find main.annots Compound_user_error.annot with
-      | None -> { main; related = []; dir }
-      | Some { main; related } -> { main; related; dir })
-    | e ->
-      (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
-      { main = User_message.make [ Pp.text (Printexc.to_string e) ]
-      ; related = []
-      ; dir = None
-      }
+      | None ->
+        [ Diagnostic
+            { dir
+            ; id = Id.gen ()
+            ; diagnostic = Compound_user_error.make ~main ~related:[]
+            ; promotion
+            }
+        ]
+      | Some diagnostics ->
+        List.map diagnostics ~f:(fun diagnostic ->
+            Diagnostic { id = Id.gen (); diagnostic; dir; promotion }))
+    | _ -> [ Exn { id = Id.gen (); exn } ]
+
+  let promotion = function
+    | Exn _ -> None
+    | Diagnostic d -> d.promotion
+
+  let id = function
+    | Exn d -> d.id
+    | Diagnostic d -> d.id
+
+  let dir = function
+    | Exn _ -> None
+    | Diagnostic d -> d.dir
+
+  let description = function
+    | Exn e -> `Exn e.exn
+    | Diagnostic d -> `Diagnostic d.diagnostic
 
   module Set : sig
     type error := t
@@ -119,9 +128,9 @@ module Error = struct
         true (* only possible when both sets are empty *)
       | Some x, Some y -> (
         match (x, y) with
-        | Add x, Add y -> Id.equal x.id y.id
+        | Add x, Add y -> Id.equal (id x) (id y)
         | Add _, _ -> false
-        | Remove x, Remove y -> Id.equal x.id y.id
+        | Remove x, Remove y -> Id.equal (id x) (id y)
         | Remove _, _ -> false)
       | Some _, None | None, Some _ -> false
 
@@ -189,13 +198,14 @@ module State = struct
 
   let reset_errors () = Svar.write errors Error.Set.empty
 
-  let add_error error =
+  let add_errors error_list =
     let open Fiber.O in
     let* () =
       update_build_progress_exn ~f:(fun p ->
           { p with number_of_rules_failed = p.number_of_rules_failed + 1 })
     in
-    Svar.write errors @@ Error.Set.add (Svar.read errors) error
+    List.fold_left error_list ~init:(Svar.read errors) ~f:Error.Set.add
+    |> Svar.write errors
 end
 
 let rec with_locks ~f = function
@@ -1135,8 +1145,8 @@ let report_early_exn exn =
   | true -> Fiber.return ()
   | false -> (
     let open Fiber.O in
-    let error = Error.create ~exn in
-    let+ () = State.add_error error in
+    let errors = Error.of_exn exn in
+    let+ () = State.add_errors errors in
     match !Clflags.report_errors_config with
     | Early | Twice -> Dune_util.Report_error.report exn
     | Deterministic -> ())

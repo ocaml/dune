@@ -48,7 +48,6 @@ Now add include_subdirs unqualified to show issue
 
   $ dune build @melange
   $ dune build $asset
-  Error: Don't know how to build _build/default/src/app/file.txt
-  [1]
-  $ node $src 2>&1 | grep "no such file or directory"
-  Error: ENOENT: no such file or directory, open '$TESTCASE_ROOT/_build/default/src/app/src/../file.txt'
+  $ node $src
+  hello from file
+  

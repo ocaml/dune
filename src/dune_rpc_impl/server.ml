@@ -104,7 +104,7 @@ module Run = struct
             at_exit run_cleanup_registry
           in
           let* () = Server.serve sessions t.stats t.handler in
-          Fiber.Pool.stop t.pool)
+          Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
     Fiber.finalize (with_print_errors run) ~finally:(fun () ->

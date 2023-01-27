@@ -1,8 +1,3 @@
-[@@@alert
-unstable "The API of this library is not stable and may change without notice."]
-
-[@@@alert "-unstable"]
-
 (** Concurrency library
 
     This module implements

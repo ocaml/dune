@@ -858,7 +858,8 @@ let%expect_test "double run a pool" =
   let pool = Pool.create () in
   Fiber.fork_and_join_unit (fun () -> Pool.run pool) (fun () -> Pool.run pool));
   [%expect.unreachable]
-  [@@expect.uncaught_exn {| (Test_scheduler.Never) |}]
+  [@@expect.uncaught_exn
+    {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
 
 let%expect_test "run -> stop -> run a pool" =
   (* We shouldn't be able to call [Pool.run] again after we already called
@@ -873,7 +874,8 @@ let%expect_test "run -> stop -> run a pool" =
   in
   Pool.run pool);
   [%expect.unreachable]
-  [@@expect.uncaught_exn {| (Test_scheduler.Never) |}]
+  [@@expect.uncaught_exn
+    {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
 
 let%expect_test "stop a pool and then run it" =
   (Scheduler.run
@@ -900,8 +902,45 @@ let%expect_test "pool - weird deadlock" =
   let* () = Pool.task pool ~f:Fiber.return in
   Fiber.fork_and_join_unit (fun () -> Pool.stop pool) (fun () -> Pool.run pool)
   );
+  [%expect {||}]
+
+let%expect_test "nested run in task" =
+  (Scheduler.run
+  @@
+  let pool = Pool.create () in
+  let* () = Pool.task pool ~f:(fun () -> Pool.run pool) in
+  Fiber.fork_and_join_unit (fun () -> Pool.stop pool) (fun () -> Pool.run pool)
+  );
   [%expect.unreachable]
-  [@@expect.uncaught_exn {| (Test_scheduler.Never) |}]
+  [@@expect.uncaught_exn
+    {| ("(\"Fiber.Pool.run: concurent calls to run aren't allowed\", {})") |}]
+
+let%expect_test "nested tasks" =
+  (Scheduler.run
+  @@
+  let pool = Pool.create () in
+  let* () =
+    Pool.task pool ~f:(fun () ->
+        print_endline "outer";
+        let* () =
+          Pool.task pool ~f:(fun () ->
+              let+ () = Fiber.return () in
+              print_endline "inner")
+        in
+        Pool.stop pool)
+  in
+  Pool.run pool);
+  [%expect {|
+    outer
+    inner |}]
+
+let%expect_test "stopping inside a task" =
+  (Scheduler.run
+  @@
+  let pool = Pool.create () in
+  let* () = Pool.task pool ~f:(fun () -> Pool.stop pool) in
+  Pool.run pool);
+  [%expect {||}]
 
 let%expect_test "stack usage with consecutive Ivar.fill" =
   let stack_size () = (Gc.stat ()).stack_size in

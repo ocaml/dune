@@ -97,6 +97,9 @@ module Session = struct
       ; send : Packet.t list option -> unit Fiber.t
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
+      ; pending : (Dune_rpc_private.Id.t, Response.t Fiber.Ivar.t) Table.t
+            (** Pending requests sent to the client. When a response is
+                received, the ivar for the response will be filled. *)
       }
 
     let set t state =
@@ -122,6 +125,7 @@ module Session = struct
       ; state = Uninitialized (Close.create ())
       ; id = Id.gen ()
       ; pool = Fiber.Pool.create ()
+      ; pending = Table.create (module Dune_rpc_private.Id) 16
       }
 
     let menu t = t.menu
@@ -135,6 +139,28 @@ module Session = struct
     let id t = t.id
 
     let send t packets = t.send packets
+
+    let request t ((id, call) as req) =
+      match Table.find t.pending id with
+      | Some _ ->
+        Code_error.raise "request with this id is already pending"
+          [ ("id", Dune_rpc_private.Id.to_dyn id)
+          ; ("call", Dune_rpc_private.Call.to_dyn call)
+          ]
+      | None ->
+        let ivar = Fiber.Ivar.create () in
+        Table.add_exn t.pending id ivar;
+        let+ () =
+          Fiber.Pool.task t.pool ~f:(fun () -> send t (Some [ Request req ]))
+        in
+        ivar
+
+    let response t (id, response) =
+      match Table.find t.pending id with
+      | None -> raise_invalid_session "unexpected response" []
+      | Some ivar ->
+        Table.remove t.pending id;
+        Fiber.Ivar.fill ivar response
 
     let compare x y = Id.compare x.id y.id
 
@@ -152,7 +178,8 @@ module Session = struct
         in
         variant "Initialized" [ record ]
 
-    let to_dyn f { id; state; queries = _; send = _; pool = _; menu } =
+    let to_dyn f
+        { id; state; queries = _; send = _; pool = _; pending = _; menu } =
       let open Dyn in
       record
         [ ("id", Id.to_dyn id)
@@ -201,6 +228,29 @@ module Session = struct
       Fiber.return ()
     | Ok { Versioned.Staged.encode } ->
       send t (Some [ Notification (encode n) ])
+
+  let request t decl id req =
+    let* () = Fiber.return () in
+    match V.Handler.prepare_request t.handler decl with
+    | Error error ->
+      Code_error.raise "client doesn't support request"
+        [ ("id", Dune_rpc_private.Id.to_dyn id)
+        ; ("error", Dune_rpc_private.Version_error.to_dyn error)
+        ]
+    | Ok { Versioned.Staged.encode_req; decode_resp } -> (
+      let req = encode_req req in
+      let* ivar = Stage1.request t.base (id, req) in
+      let+ resp = Fiber.Ivar.read ivar in
+      match resp with
+      | Error error ->
+        Code_error.raise "client and server do not agree on version"
+          [ ("error", Response.Error.to_dyn error) ]
+      | Ok resp -> (
+        match decode_resp resp with
+        | Ok s -> s
+        | Error error ->
+          Code_error.raise "unexpected response"
+            [ ("error", Response.Error.to_dyn error) ]))
 
   let to_dyn f t =
     Dyn.Record
@@ -374,8 +424,7 @@ module H = struct
       Fiber.Stream.In.parallel_iter (Session.queries session)
         ~f:(fun (message : Packet.t) ->
           match message with
-          | Response _ ->
-            Code_error.raise "the server is unable to make requests yet" []
+          | Response resp -> Session.Stage1.response session.base resp
           | Notification n ->
             Fiber.Pool.task session.base.pool
               ~f:(dispatch_notification t stats session n.method_ n)
@@ -509,6 +558,8 @@ module H = struct
 
     let declare_notification (t : _ t) =
       V.Builder.declare_notification t.builder
+
+    let declare_request (t : _ t) = V.Builder.declare_request t.builder
 
     module Long_poll = struct
       let implement_poll (t : _ t) (sub : _ Procedures.Poll.t) ~on_poll

@@ -24,7 +24,7 @@ let local_libraries =
   ; ("vendor/re/src", Some "Dune_re", false, None)
   ; ("otherlibs/dune-glob/src", Some "Dune_glob", false, None)
   ; ("otherlibs/xdg", Some "Xdg", false, None)
-  ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
+  ; ("otherlibs/dune-rpc/src/private", Some "Dune_rpc_private", false, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
   ; ("src/dune_util", Some "Dune_util", false, None)

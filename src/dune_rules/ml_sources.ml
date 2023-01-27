@@ -230,11 +230,34 @@ type for_ =
   | Exe of { first_exe : string }
   | Melange of { target : string }
 
+let dyn_of_for_ =
+  let open Dyn in
+  function
+  | Library n -> variant "Library" [ Lib_name.to_dyn n ]
+  | Exe { first_exe } ->
+    variant "Exe" [ record [ ("first_exe", string first_exe) ] ]
+  | Melange { target } ->
+    variant "Melange" [ record [ ("target", string target) ] ]
+
 let modules_and_obj_dir t ~for_ =
-  match for_ with
-  | Library name -> Lib_name.Map.find_exn t.modules.libraries name
-  | Exe { first_exe } -> String.Map.find_exn t.modules.executables first_exe
-  | Melange { target } -> String.Map.find_exn t.modules.melange_emits target
+  match
+    match for_ with
+    | Library name -> Lib_name.Map.find t.modules.libraries name
+    | Exe { first_exe } -> String.Map.find t.modules.executables first_exe
+    | Melange { target } -> String.Map.find t.modules.melange_emits target
+  with
+  | Some s -> s
+  | None ->
+    let map =
+      match for_ with
+      | Library _ ->
+        Lib_name.Map.keys t.modules.libraries |> Dyn.list Lib_name.to_dyn
+      | Exe _ -> String.Map.keys t.modules.executables |> Dyn.(list string)
+      | Melange _ ->
+        String.Map.keys t.modules.melange_emits |> Dyn.(list string)
+    in
+    Code_error.raise "modules_and_obj_dir: failed lookup"
+      [ ("keys", map); ("for_", dyn_of_for_ for_) ]
 
 let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 

@@ -21,7 +21,7 @@ Showcase issue with melange.emit inside folder and copy_files
   > (subdir
   >  app
   >  (copy_files
-  >   (files ../../assets/file.txt))
+  >   (files %{project_root}/assets/file.txt))
   >  (alias
   >   (name melange)
   >   (deps file.txt)))
@@ -51,7 +51,7 @@ Now add include_subdirs unqualified to show issue
   > (subdir
   >  app
   >  (copy_files
-  >   (files ../../assets/file.txt))
+  >   (files %{project_root}/assets/file.txt))
   >  (alias
   >   (name melange)
   >   (deps file.txt)))

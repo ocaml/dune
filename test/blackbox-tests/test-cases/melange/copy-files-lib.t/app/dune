@@ -11,7 +11,7 @@
   (subdir
    assets
    (copy_files
-    (files ../../../../lib/assets/file.txt))
+    (files %{project_root}/lib/assets/file.txt))
    (alias
     (name melange)
-    (deps ../../../../lib/assets/file.txt)))))
+    (deps file.txt)))))

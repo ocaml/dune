@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix cross compilation configuration when a context with targets is itself a
+  host of another context (#6958, fixes #6843, @rgrinberg)
+
 - Fix parsing of the `<=` operator in *blang* expressions of `dune` files.
   Previously, the operator would be interpreted as `,`. (#6928, @tatchi)
 

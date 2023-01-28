@@ -1,4 +1,5 @@
-Demonstrates some issue while trying to copy files into melange target folder
+Example showing melange.emit and copy_files, where the files are copied
+into the melange.emit target folder
 
   $ cat > dune-project <<EOF
   > (lang dune 3.7)

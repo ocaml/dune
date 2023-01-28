@@ -1,4 +1,4 @@
-Test the interaction between melange.emit and copy_files
+Test simple interactions between melange.emit and copy_files
 
   $ cat > dune-project <<EOF
   > (lang dune 3.7)

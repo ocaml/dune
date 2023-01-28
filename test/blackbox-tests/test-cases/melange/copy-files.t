@@ -42,7 +42,7 @@ Copy the file into the output folder, so we can use same path as in-source
   > 
   > (subdir output
   >  (subdir assets
-  >   (copy_files (alias mel) (files ../../assets/file.txt))))
+  >   (copy_files (alias mel) (files %{project_root}/assets/file.txt))))
   > EOF
 
   $ cat > main.ml <<EOF

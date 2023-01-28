@@ -33,7 +33,7 @@ Now try copying a file
   >  (subdir
   >   src
   >   (copy_files
-  >    (files ../../../public/img.png))))
+  >    (files %{project_root}/public/img.png))))
   > EOF
 
 Build fails

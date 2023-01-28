@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1674879960139,
+  "lastUpdate": 1674880578759,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -2609,6 +2609,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.83711165709333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "hugo.heuzard@gmail.com",
+            "name": "Hugo Heuzard",
+            "username": "hhugo"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "86bc1bf844591e41e84b98baca387c523628512b",
+          "message": "feature(jsoo): recognize toplevel variant\n\nSigned-off-by: Hugo Heuzard <hugo.heuzard@gmail.com>",
+          "timestamp": "2023-01-27T22:17:59-06:00",
+          "tree_id": "0d27129d8ce2acff4218972523941bafff3d9ba5",
+          "url": "https://github.com/ocaml/dune/commit/86bc1bf844591e41e84b98baca387c523628512b"
+        },
+        "date": 1674880578085,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.13476247242",
             "unit": "seconds"
           }
         ]

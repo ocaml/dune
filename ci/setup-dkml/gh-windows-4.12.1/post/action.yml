@@ -35,7 +35,7 @@ runs:
           msys2_system='MINGW32';
           msys2_packages='mingw-w64-i686-pkg-config';
           exe_ext='.exe';
-          bootstrap_opam_version='2.2.0-alpha-20221104';
+          bootstrap_opam_version='2.2.0-dkml20220801T155940Z';
           opam_abi='windows_x86';
           dkml_host_abi='windows_x86';
           opam_root='D:/.opam';
@@ -52,7 +52,7 @@ runs:
           msys2_system='CLANG64';
           msys2_packages='mingw-w64-clang-x86_64-pkg-config';
           exe_ext='.exe';
-          bootstrap_opam_version='2.2.0-alpha-20221104';
+          bootstrap_opam_version='2.2.0-dkml20220801T155940Z';
           opam_abi='windows_x86_64';
           dkml_host_abi='windows_x86_64';
           opam_root='D:/.opam';
@@ -80,28 +80,23 @@ runs:
         _STUB_FOR_AUTOGEN: "ON" # 
 
         # autogen from global_env_vars.
-        DEFAULT_DKML_COMPILER: '4.14.0-v1.1.0-prerel15'
-        PIN_ALCOTEST: '1.6.0'
-        PIN_ALCOTEST_ASYNC: '1.6.0'
-        PIN_ALCOTEST_JS: '1.6.0'
-        PIN_ALCOTEST_LWT: '1.6.0'
-        PIN_ALCOTEST_MIRAGE: '1.6.0'
-        PIN_BASE: 'v0.15.1'
-        PIN_BASE_BIGSTRING: 'v0.15.0'
-        PIN_BIGSTRINGAF: '0.9.0+msvc'
-        PIN_CORE: 'v0.15.1'
-        PIN_CORE_KERNEL: 'v0.15.0'
-        PIN_CTYPES_FOREIGN: '0.19.2-windowssupport-r5'
-        PIN_CTYPES: '0.19.2-windowssupport-r5'
+        DEFAULT_DKML_COMPILER: '4.12.1-v1.0.2'
+        PIN_BASE: 'v0.14.3'
+        PIN_BIGSTRINGAF: '0.8.0'
+        PIN_CORE_KERNEL: 'v0.14.2'
+        PIN_CTYPES_FOREIGN: '0.19.2-windowssupport-r4'
+        PIN_CTYPES: '0.19.2-windowssupport-r4'
         PIN_CURLY: '0.2.1-windows-env_r2'
-        PIN_DKML_APPS: '1.2.0~prerel8'
-        PIN_DKML_EXE: '1.2.0~prerel8'
-        PIN_DUNE: '3.6.2'
-        PIN_FEATHER: '0.3.0'
+        PIN_DIGESTIF: '1.0.1'
+        PIN_DUNE: '2.9.3+shim.1.0.2~r0'
+        PIN_DUNE_CONFIGURATOR: '2.9.3'
+        PIN_DKML_APPS: '1.0.1'
         PIN_OCAMLBUILD: '0.14.0'
         PIN_OCAMLFIND: '1.9.1'
         PIN_OCP_INDENT: '1.8.2-windowssupport'
-        PIN_PPX_EXPECT: 'v0.15.1'
-        PIN_WITH_DKML: '1.2.0~prerel8'
+        PIN_PPX_EXPECT: 'v0.14.1'
+        PIN_PTIME: '0.8.6-msvcsupport'
+        PIN_TIME_NOW: 'v0.14.0'
+        PIN_WITH_DKML: '1.0.1'
       run: |
         sh .ci/sd4/run-teardown-dkml.sh GITHUB_WORKSPACE "$GITHUB_WORKSPACE"

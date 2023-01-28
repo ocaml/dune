@@ -101,6 +101,8 @@ Unreleased
 - Add a `dune cache size` command for displaying the size of the cache (#6638,
   @Alizter)
 
+- Add 4.14.0 MSVC to CI (#6917, @jonahbeckford)
+
 3.6.2 (2022-12-21)
 ------------------
 

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix parsing of the `<=` operator in *blang* expressions of `dune` files.
+  Previously, the operator would be interpreted as `,`. (#6928, @tatchi)
+
 - Fix `--trace-file` output. Dune now emits a single *complete* event for every
   executed process. Unterminated *async* events are no longer written. (#6892,
   @rgrinberg)
@@ -65,6 +68,9 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
+- Stop passing `-q` flag in `dune coq top`, which allows for `.coqrc` to be
+  loaded. (#6848, fixes #6847, @Alizter)
+
 - Fix missing dependencies when detecting the kind of C compiler we're using
   (#6610, fixes #6415, @emillon)
 
@@ -79,9 +85,9 @@ Unreleased
   enabled (#6645, @hhugo)
 
 - Fix *js_of_ocaml* separate compilation rules when `--enable=effects`
-  or `--enable=use-js-string` is used. (#6714, #6828, @hhugo)
+  ,`--enable=use-js-string` or `--toplevel` is used. (#6714, #6828, #6920, @hhugo)
 
-- Fix *js_of_ocaml* separate compilation in presence of linkall (#6832, @hhugo)
+- Fix *js_of_ocaml* separate compilation in presence of linkall (#6832, #6916, @hhugo)
 
 - Remove spurious build dir created when running `dune init proj ...` (#6707,
   fixes #5429, @gridbugs)

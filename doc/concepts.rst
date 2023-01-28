@@ -66,15 +66,13 @@ Boolean Language
 The Boolean language allows the user to define simple Boolean expressions that
 Dune can evaluate. Here's a semi-formal specification of the language:
 
-.. code::
-
-   op := '=' | '<' | '>' | '<>' | '>=' | '<='
-
-   expr := (and <expr>+)
-         | (or <expr>+)
-         | (<op> <template> <template>)
-         | (not <expr>)
-         | <template>
+.. productionlist:: blang
+   op : '=' | '<' | '>' | '<>' | '>=' | '<='
+   expr : (and <expr>+)
+        : (or <expr>+)
+        : (<op> <template> <template>)
+        : (not <expr>)
+        : <template>
 
 After an expression is evaluated, it must be exactly the string ``true`` or
 ``false`` to be considered as a Boolean. Any other value will be treated as an
@@ -97,19 +95,18 @@ The predicate language allows the user to define simple predicates
 (Boolean-valued functions) that Dune can evaluate. Here is a semi-formal
 specification of the predicate language:
 
-.. code::
+.. productionlist::
+   pred : (and `pred` `pred`)
+        : (or `pred` `pred`)
+        : (not `pred`)
+        : :standard
+        : `element`
 
-   pred := (and <pred> <pred>)
-         | (or <pred> <pred>)
-         | (not <pred>)
-         | :standard
-         | <element>
-
-The exact meaning of ``:standard`` and the nature of ``<element>`` depends on
-the context. For example, in the case of the :ref:`dune-subdirs`, an
-``<element>`` corresponds to file glob patterns. Another example is the user
-action :ref:`(with-accepted-exit-codes ...) <user-actions>`, where an ``<element>``
-corresponds to a literal integer.
+The exact meaning of ``:standard`` and the nature of :token:`element` depends
+on the context. For example, in the case of the :ref:`dune-subdirs`, an
+:token:`element` corresponds to file glob patterns. Another example is the user
+action :ref:`(with-accepted-exit-codes ...) <user-actions>`, where an
+:token:`element` corresponds to a literal integer.
 
 .. _variables:
 

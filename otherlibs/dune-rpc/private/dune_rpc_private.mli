@@ -501,8 +501,13 @@ module Client : sig
 
     type proc =
       | Request : ('a, 'b) Decl.request -> proc
+          (** The client may send the declared request *)
       | Notification : 'a Decl.notification -> proc
+          (** The client may send the declared notification *)
       | Poll : 'a Procedures.Poll.t -> proc
+          (** The client may start the declared polling loop *)
+      | Handle_request : ('a, 'b) Decl.request * ('a -> 'b fiber) -> proc
+          (** The client can handle the declared request *)
 
     val connect_with_menu :
          ?handler:Handler.t

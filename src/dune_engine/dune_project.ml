@@ -184,8 +184,6 @@ let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 
 let dialects t = t.dialects
 
-let set_dialects dialects t = { t with dialects }
-
 let explicit_js_mode t = t.explicit_js_mode
 
 let dune_version t = t.dune_version
@@ -670,7 +668,9 @@ let encode : t -> Dune_lang.t list =
       ]
   in
   let dialects =
-    Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
+    if Dialect.DB.is_default dialects then []
+    else
+      Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
   in
   let formatting =
     Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list

@@ -128,6 +128,7 @@ module Client = struct
       | Request : ('a, 'b) Decl.request -> proc
       | Notification : 'a Decl.notification -> proc
       | Poll : 'a Procedures.Poll.t -> proc
+      | Handle_request : ('a, 'b) Decl.request * ('a -> 'b fiber) -> proc
 
     val connect_with_menu :
          ?handler:Handler.t
@@ -551,8 +552,10 @@ module Client = struct
                   ; ("notification", Call.to_dyn n)
                   ]
               | Ok () -> Fiber.return ())
-          | Request _ ->
-            terminate_with_error t "client does not support requests yet" []
+          | Request (id, req) ->
+            let* handler = t.handler in
+            let* result = V.Handler.handle_request handler () (id, req) in
+            send t (Some [ Response (id, result) ])
           | Response (id, response) -> (
             match Table.find t.requests id with
             | Some status -> (
@@ -603,6 +606,7 @@ module Client = struct
       | Request : ('a, 'b) Decl.request -> proc
       | Notification : 'a Decl.notification -> proc
       | Poll : 'a Procedures.Poll.t -> proc
+      | Handle_request : ('a, 'b) Decl.request * ('a -> 'b Fiber.t) -> proc
 
     let setup_versioning ~private_menu ~(handler : Handler.t) =
       let module Builder = V.Builder in
@@ -628,6 +632,7 @@ module Client = struct
       Builder.declare_notification t Procedures.Poll.(cancel diagnostic);
       Builder.declare_notification t Procedures.Poll.(cancel progress);
       List.iter private_menu ~f:(function
+        | Handle_request (r, h) -> Builder.implement_request t r (fun () -> h)
         | Request r -> Builder.declare_request t r
         | Notification n -> Builder.declare_notification t n
         | Poll p ->

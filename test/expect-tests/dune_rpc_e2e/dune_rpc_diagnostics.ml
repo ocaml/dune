@@ -655,3 +655,61 @@ let%expect_test "promoting dune files" =
   in
   run (fun () -> with_dune_watch exec);
   [%expect {| |}]
+
+let%expect_test "multiple errors in one file" =
+  let source =
+    {|
+module A : sig
+
+  val f : unit
+  [@@alert foo "foobar"]
+
+end = struct
+  let f = ()
+end
+
+let f = A.f
+let g = A.f
+|}
+  in
+  setup_diagnostics (fun client ->
+      files [ ("dune", "(executable (name foo))"); ("foo.ml", source) ];
+      let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+      let* () = print_diagnostics poll in
+      [%expect {|
+        <no diagnostics> |}];
+      let* () = dune_build client "./foo.exe" in
+      [%expect {|
+        Building ./foo.exe
+        Build ./foo.exe failed |}];
+      let+ () = print_diagnostics poll in
+      [%expect
+        {|
+        [ "Add"
+        ; [ [ "directory"; "$CWD" ]
+          ; [ "id"; "0" ]
+          ; [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "8" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "11" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "11" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "11" ]
+                  ]
+                ]
+              ]
+            ]
+          ; [ "message"; [ "Verbatim"; "foobar\n\
+                                        " ] ]
+          ; [ "promotion"; [] ]
+          ; [ "related"; [] ]
+          ; [ "targets"; [] ]
+          ]
+        ] |}]);
+  [%expect {||}]

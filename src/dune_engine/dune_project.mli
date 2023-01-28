@@ -68,8 +68,6 @@ val use_standard_c_and_cxx_flags : t -> bool option
 
 val dialects : t -> Dialect.DB.t
 
-val set_dialects : Dialect.DB.t -> t -> t
-
 val explicit_js_mode : t -> bool
 
 val format_config : t -> Format_config.t

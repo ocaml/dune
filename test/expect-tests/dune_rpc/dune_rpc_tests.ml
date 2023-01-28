@@ -529,3 +529,53 @@ let%test_module "long polling" =
     client: subscription terminated
     server: finished. |}]
   end)
+
+let%expect_test "server to client request" =
+  let decl = simple_request ~method_:"double" Conv.int Conv.int in
+  let client_finish = Fiber.Ivar.create () in
+  let pool = Fiber.Pool.create () in
+  let on_upgrade session _menu =
+    let witness = Decl.Request.witness decl in
+    let* () =
+      Fiber.Pool.task pool ~f:(fun () ->
+          let* () = Fiber.Pool.stop pool in
+          print_endline "server: sending request to client";
+          let+ res =
+            Session.request session witness
+              (Dune_rpc.Id.make (Csexp.Atom "test"))
+              10
+          in
+          Printf.printf "client: received response %d\n" res)
+    in
+    Fiber.Ivar.fill client_finish ()
+  in
+  let handler = Handler.create ~on_init ~on_upgrade ~version:(2, 0) () in
+  Handler.declare_request handler decl;
+  let client _ =
+    Fiber.fork_and_join_unit
+      (fun () -> Fiber.Ivar.read client_finish)
+      (fun () -> Fiber.Pool.run pool)
+  in
+  let init =
+    { Initialize.Request.dune_version = (1, 1)
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
+  in
+  test ~init ~client ~handler
+    ~private_menu:
+      [ Handle_request
+          ( decl
+          , let doubler x =
+              print_endline "client: received request from server";
+              Fiber.return (x * 2)
+            in
+            doubler )
+      ]
+    ();
+  [%expect
+    {|
+    server: sending request to client
+    client: received request from server
+    client: received response 20
+    server: finished. |}]

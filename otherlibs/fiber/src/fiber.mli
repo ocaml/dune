@@ -1,8 +1,3 @@
-[@@@alert
-unstable "The API of this library is not stable and may change without notice."]
-
-[@@@alert "-unstable"]
-
 (** Concurrency library
 
     This module implements
@@ -388,7 +383,10 @@ module Pool : sig
       is called, [task pool ~f] will fail to submit new tasks.
 
       Note that stopping the pool does not prevent already queued tasks from
-      running. *)
+      running.
+
+      [stop pool] subsequent calls to [stop] ignored. In other words, this
+      function is idempotent *)
   val stop : t -> unit fiber
 
   (** [run pool] Runs all tasks submitted to [pool] in parallel. Errors raised

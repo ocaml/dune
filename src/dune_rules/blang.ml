@@ -68,7 +68,7 @@ let rec to_dyn =
       [ Op.to_dyn o; String_with_vars.to_dyn s1; String_with_vars.to_dyn s2 ]
 
 let ops =
-  [ ("=", Op.Eq); (">=", Gte); ("<=", Lt); (">", Gt); ("<", Lt); ("<>", Neq) ]
+  [ ("=", Op.Eq); (">=", Gte); ("<=", Lte); (">", Gt); ("<", Lt); ("<>", Neq) ]
 
 let decode_gen decode_string =
   let open Dune_lang.Decoder in

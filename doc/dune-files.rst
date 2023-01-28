@@ -326,28 +326,22 @@ stanza. It contains the following fields:
 Adding libraries to different packages is done via the ``public_name`` field.
 See :ref:`library` section for details.
 
-The list of dependencies ``<dep-specification>`` is modelled after opam's own
+The list of dependencies :token:`dep_specification` is modelled after opam's own
 language. The syntax is a list of the following elements:
 
-.. code::
-
-   op := '=' | '<' | '>' | '<>' | '>=' | '<='
-
-   filter := :dev | :build | :with-test | :with-doc | :post
-
-   constr := (<op> <version>)
-
-   logop := or | and
-
-   dep := name
-        | (name <filter>)
-        | (name <constr>)
-        | (name (<logop> (<filter> | <constr>))*)
-
-   dep-specification = dep+
+.. productionlist:: pkg-dep
+   op : '=' | '<' | '>' | '<>' | '>=' | '<='
+   filter : :dev | :build | :with-test | :with-doc | :post
+   constr : (<op> <version>)
+   logop : or | and
+   dep : <name>
+       : (<name> <filter>)
+       : (<name> <constr>)
+       : (<name> (<logop> (<filter> | <constr>))*)
+   dep_specification : <dep>+
 
 Filters will expand to any opam variable name if prefixed by ``:``, not just the
-ones listed above. This also applies to version numbers. For example, to
+ones listed in :token:`filter`. This also applies to version numbers. For example, to
 generate ``depends: [ pkg { = version } ]``, use ``(depends (pkg (=
 :version)))``.
 

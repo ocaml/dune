@@ -1,4 +1,4 @@
-Showcase issue with melange.emit inside folder and copy_files
+Example using melange.emit, copy_files and include_subdirs
 
   $ mkdir assets
   $ cat > assets/file.txt <<EOF

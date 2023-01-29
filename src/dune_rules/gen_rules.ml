@@ -300,6 +300,8 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
          attached to [write_dot_dune_dir] in context.ml *)
       Super_context.add_rule sctx ~dir
         (Build.write_file (Path.Build.relative dir "configurator") "");
+      Super_context.add_rule sctx ~dir
+        (Build.write_file (Path.Build.relative dir "configurator.v2") "");
       (* Add rules for C compiler detection *)
       Cxx_rules.rules ~sctx ~dir;
       These String.Set.empty

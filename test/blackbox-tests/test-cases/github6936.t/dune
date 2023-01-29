@@ -1,0 +1,15 @@
+(library
+ (public_name taglib)
+ (foreign_stubs
+  (language cxx)
+  (names taglib_stubs)
+  (extra_deps config.h)
+  (flags
+   :standard (:include c_flags.sexp))))
+
+(rule
+ (targets
+   config.h
+   c_flags.sexp)
+ (action
+  (run ./config/discover.exe)))

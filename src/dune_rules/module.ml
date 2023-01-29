@@ -370,8 +370,10 @@ let generated ?obj_name ?path ~(kind : Kind.t) ~src_dir name =
   in
   let source =
     let impl =
-      let basename = String.uncapitalize (Module_name.to_string name) in
-      Path.Build.relative src_dir (basename ^ ml_gen)
+      let basename =
+        Module_name.Unique.artifact_filename obj_name ~ext:".ml-gen"
+      in
+      Path.Build.relative src_dir basename
       |> Path.build |> File.make Dialect.ocaml
     in
     Source.make ~impl name

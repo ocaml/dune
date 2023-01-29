@@ -34,29 +34,21 @@ Example using melange.emit, copy_files and include_subdirs
   > let () = Js.log file_content
   > EOF
 
+  $ output_dir=_build/default/src/app
+  $ src=$output_dir/src/main.js
+  $ asset=$output_dir/file.txt
   $ dune build @melange
-  $ node _build/default/src/app/src/main.js
+  $ dune build $asset
+  $ node $src
   hello from file
   
 Now add include_subdirs unqualified to show issue
 
-  $ cat > src/dune <<EOF
-  > (include_subdirs unqualified)
-  > 
-  > (melange.emit
-  >  (target app)
-  >  (alias melange)
-  >  (module_system commonjs))
-  > 
-  > (subdir
-  >  app
-  >  (copy_files
-  >   (files %{project_root}/assets/file.txt))
-  >  (alias
-  >   (name melange)
-  >   (deps file.txt)))
-  > EOF
+  $ echo "(include_subdirs unqualified)" >> src/dune
 
   $ dune build @melange
-  $ node _build/default/src/app/src/main.js 2>&1 | grep "no such file or directory"
+  $ dune build $asset
+  Error: Don't know how to build _build/default/src/app/file.txt
+  [1]
+  $ node $src 2>&1 | grep "no such file or directory"
   Error: ENOENT: no such file or directory, open '$TESTCASE_ROOT/_build/default/src/app/src/../file.txt'

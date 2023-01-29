@@ -28,7 +28,7 @@ module Dir_rules = struct
 
   type t = data Id.Map.t
 
-  let data_to_dyn = function
+  let dyn_of_data = function
     | Rule rule ->
       Dyn.Variant
         ( "Rule"
@@ -37,7 +37,7 @@ module Dir_rules = struct
       Dyn.Variant
         ("Alias", [ Record [ ("name", Alias.Name.to_dyn alias.name) ] ])
 
-  let to_dyn t = Dyn.(list data_to_dyn) (Id.Map.values t)
+  let to_dyn t = Dyn.(list dyn_of_data) (Id.Map.values t)
 
   type ready =
     { rules : Rule.t list
@@ -89,6 +89,8 @@ module Dir_rules = struct
 
     val create : maybe_empty -> t option
 
+    val to_dyn : t -> Dyn.t
+
     val union : t -> t -> t
 
     val singleton : data -> t
@@ -98,6 +100,8 @@ module Dir_rules = struct
     type maybe_empty = t
 
     type nonrec t = t
+
+    let to_dyn = to_dyn
 
     let create t = if is_empty t then None else Some t
 
@@ -123,6 +127,8 @@ module T = struct
 end
 
 include T
+
+let to_dyn = Path.Build.Map.to_dyn Dir_rules.Nonempty.to_dyn
 
 let singleton_rule (rule : Rule.t) =
   let dir = rule.dir in

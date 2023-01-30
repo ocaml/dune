@@ -94,6 +94,8 @@ val implicit_output : t Memo.Implicit_output.t
 
 val empty : t
 
+val to_dyn : t -> Dyn.t
+
 val union : t -> t -> t
 
 val of_dir_rules : dir:Path.Build.t -> Dir_rules.t -> t

@@ -36,7 +36,7 @@ let run (vcs : Vcs.t) args =
   printf "$ %s\n"
     (List.map (prog_str :: args) ~f:String.quote_for_shell
     |> String.concat ~sep:" ");
-  Process.run Strict (Lazy.force prog) real_args
+  Process.run Strict (Lazy.force prog) real_args ~display:!Clflags.display
     ~env:
       ((* One of the reasons to set GIT_DIR is to override any GIT_DIR set by
           the environment, which helps for example during [git rebase
@@ -110,9 +110,9 @@ let run kind script =
   Path.rm_rf temp_dir;
   Path.mkdir_p temp_dir;
   let vcs = { Vcs.kind; root = temp_dir } in
+  Dune_engine.Clflags.display := Display.short_no_status;
   let config =
     { Scheduler.Config.concurrency = 1
-    ; display = { verbosity = Short; status_line = false }
     ; stats = None
     ; insignificant_changes = `React
     ; signal_watcher = `No

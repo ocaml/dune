@@ -5,8 +5,8 @@ open Dune_engine
 module Caml = Stdlib
 
 let config =
+  Dune_engine.Clflags.display := Dune_engine.Display.short_no_status;
   { Scheduler.Config.concurrency = 1
-  ; display = { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
@@ -19,7 +19,8 @@ let setup =
 
 let prog = Option.value_exn (Bin.which ~path:(Env_path.path Env.initial) "true")
 
-let run () = Process.run ~env:Env.initial Strict prog []
+let run () =
+  Process.run ~display:!Clflags.display ~env:Env.initial Strict prog []
 
 let go ~jobs fiber =
   Scheduler.Run.go

@@ -61,9 +61,10 @@ Terminology
    `dune-workspace` file.
 
 -  **project**: a collection of source files that must include a `dune-project`
-   file. It may also contain one or more packages. Instructions to build files
-   in a directory are contained in a `dune` file in this directory. Projects can
-   be shared between different applications.
+   file. It may also contain one or more packages. A project consists in a
+   hierarchy of directories. Every directory (at the root, or a subdirectory)
+   can contain a `dune` file that contains instructions to build files in that
+   directory. Projects can be shared between different applications.
 
 -  **package**: a set of libraries and executables that opam builds and installs
    as one.

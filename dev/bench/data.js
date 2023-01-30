@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675095408030,
+  "lastUpdate": 1675096644009,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -2986,6 +2986,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.165515788",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a7a4daa45d5b855276dba2dfab114923f7d4e37c",
+          "message": "fix: add display options in --help (#6912)\n\nWe now enumerate all the values in --display in dune --help.\r\n\r\nFixes #526\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-01-30T10:18:15-06:00",
+          "tree_id": "e063a30b2bada5aee007475ab3a82ec05230df5d",
+          "url": "https://github.com/ocaml/dune/commit/a7a4daa45d5b855276dba2dfab114923f7d4e37c"
+        },
+        "date": 1675096642952,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.98595699554",
             "unit": "seconds"
           }
         ]

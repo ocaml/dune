@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675096788164,
+  "lastUpdate": 1675097387391,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3044,6 +3044,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.467968252573336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3f60761cb5201755a511a4adc4b2b406066125ff",
+          "message": "feature(scheduler): events for watch mode (#6895)\n\nIntroduce an instant event for every watch mode iteration. This event\r\nallows us to separate build commmands from different iterations of the\r\npolling loop.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-01-30T10:29:29-06:00",
+          "tree_id": "98bf140bf8d337e85f917c8c49262a53953e07fa",
+          "url": "https://github.com/ocaml/dune/commit/3f60761cb5201755a511a4adc4b2b406066125ff"
+        },
+        "date": 1675097386740,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.29021889984667",
             "unit": "seconds"
           }
         ]

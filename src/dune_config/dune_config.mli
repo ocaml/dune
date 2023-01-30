@@ -2,6 +2,8 @@
 
 open Stdune
 
+module Display : module type of Display
+
 module Concurrency : sig
   type t =
     | Fixed of int
@@ -59,7 +61,7 @@ module type S = sig
   type 'a field
 
   type t =
-    { display : Dune_engine.Display.t field
+    { display : Display.t field
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field

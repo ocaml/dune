@@ -79,7 +79,7 @@ let%expect_test "csexp server life cycle" =
         in
         log "sessions finished")
   in
-  Dune_engine.Clflags.display := Dune_engine.Display.quiet;
+  Dune_engine.Clflags.display := Quiet;
   let config =
     { Scheduler.Config.concurrency = 1
     ; stats = None

@@ -346,6 +346,11 @@ let check_fdo_support has_native ocfg ~name =
             version_string
         ]
 
+type instance =
+  { native : t
+  ; targets : t list
+  }
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
@@ -680,7 +685,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           ~findlib_toolchain:(Some findlib_toolchain)
         >>| Option.some)
   in
-  native :: List.filter_opt others
+  { native; targets = List.filter_opt others }
 
 let which t fname = Program.which ~path:t.path fname
 
@@ -735,9 +740,9 @@ let create_for_opam ~loc ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~instrument_with
 
 module rec Instantiate : sig
-  val instantiate : Context_name.t -> t list Memo.t
+  val instantiate : Context_name.t -> instance Memo.t
 end = struct
-  let instantiate_impl name : t list Memo.t =
+  let instantiate_impl name : instance Memo.t =
     let env = Global.env () in
     let* workspace = Workspace.workspace () in
     let context =
@@ -747,13 +752,9 @@ end = struct
     let* host_context =
       match Workspace.Context.host_context context with
       | None -> Memo.return None
-      | Some context_name -> (
-        let+ contexts = Instantiate.instantiate context_name in
-        match contexts with
-        | [ x ] -> Some x
-        | [] -> assert false (* checked by workspace *)
-        | _ :: _ -> assert false)
-      (* target cannot be host *)
+      | Some context_name ->
+        let+ { native; targets = _ } = Instantiate.instantiate context_name in
+        Some native
     in
     let env_nodes =
       let context = Workspace.Context.env context in
@@ -826,7 +827,10 @@ module DB = struct
       let* workspace = Workspace.workspace () in
       let+ contexts =
         Memo.parallel_map workspace.contexts ~f:(fun c ->
-            Instantiate.instantiate (Workspace.Context.name c))
+            let+ { native; targets } =
+              Instantiate.instantiate (Workspace.Context.name c)
+            in
+            native :: targets)
       in
       let all = List.concat contexts in
       List.iter all ~f:(fun t ->

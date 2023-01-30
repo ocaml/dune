@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675101270986,
+  "lastUpdate": 1675103483734,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3131,6 +3131,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.96113858136667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "antonin@tarides.com",
+            "name": "Antonin Décimo",
+            "username": "MisterDA"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "efe8fd7d1bf3e488784c95f7ea2417d6854ae0bb",
+          "message": "feature(mdx): add colors to console logs (#6462)\n\nIf Dune should ouput ANSI colors to stderr, so can mdx.\r\n\r\nSigned-off-by: Antonin Décimo <antonin@tarides.com>",
+          "timestamp": "2023-01-30T11:53:21-06:00",
+          "tree_id": "32b5cf62f88f0a08a2e491b24e4a83618fc10bf2",
+          "url": "https://github.com/ocaml/dune/commit/efe8fd7d1bf3e488784c95f7ea2417d6854ae0bb"
+        },
+        "date": 1675103483099,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "32.820345155506665",
             "unit": "seconds"
           }
         ]

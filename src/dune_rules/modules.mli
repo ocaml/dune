@@ -45,11 +45,23 @@ val singleton_exe : Module.t -> t
 
 val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
 
+module Group : sig
+  type t
+
+  val alias : t -> Module.t
+
+  val lib_interface : t -> Module.t
+
+  val for_alias : t -> (Module_name.t * Module.t) list
+end
+
+val canonical_path : t -> Group.t -> Module.t -> Module_name.Path.t
+
 val fold_no_vlib_with_aliases :
      t
   -> init:'acc
   -> normal:(Module.t -> 'acc -> 'acc)
-  -> alias:(Module.t -> Module.t Module_name.Map.t -> 'acc -> 'acc)
+  -> alias:(Group.t -> 'acc -> 'acc)
   -> 'acc
 
 val exe_unwrapped : Module.t Module_trie.t -> src_dir:Path.Build.t -> t

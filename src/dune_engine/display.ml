@@ -34,4 +34,4 @@ let to_dyn { status_line; verbosity } : Dyn.t =
 let console_backend t =
   match t.status_line with
   | false -> Console.Backend.dumb
-  | true -> Console.Backend.progress ()
+  | true -> Console.Backend.progress_threaded ()

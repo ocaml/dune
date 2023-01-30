@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675097387391,
+  "lastUpdate": 1675097592735,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3073,6 +3073,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.29021889984667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a5012e63c6aa382fa015bd845dd1d3b4965697f",
+          "message": "scheduler: move display from scheduler to global clflag (#6854)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-01-30T10:34:28-06:00",
+          "tree_id": "2b3a5daae14193951a2c531d78f6f6d61051c9ed",
+          "url": "https://github.com/ocaml/dune/commit/3a5012e63c6aa382fa015bd845dd1d3b4965697f"
+        },
+        "date": 1675097591725,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.07204805699333",
             "unit": "seconds"
           }
         ]

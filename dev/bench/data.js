@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675096644009,
+  "lastUpdate": 1675096788164,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3015,6 +3015,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.98595699554",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "297b41e1dcb1489e3285e229a56dc4350205b9de",
+          "message": "refactor: reorganize threading logic (#6783)\n\nWe reorganize the threading logic for threaded dune_console\r\nbackends. We also add stages for things like handling user events\r\nwhich will be useful later for the NoTTY TUI implementation.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-01-30T10:19:51-06:00",
+          "tree_id": "586f4b7504971f4033a30d2e8e7771da71e8608a",
+          "url": "https://github.com/ocaml/dune/commit/297b41e1dcb1489e3285e229a56dc4350205b9de"
+        },
+        "date": 1675096787471,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.467968252573336",
             "unit": "seconds"
           }
         ]

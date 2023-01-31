@@ -44,11 +44,6 @@ module Status = struct
     | Vendored -> Variant ("Vendored", [])
     | Normal -> Variant ("Normal", [])
 
-  let to_string = function
-    | Data_only -> "data_only"
-    | Vendored -> "vendored"
-    | Normal -> "normal"
-
   module Or_ignored = struct
     type nonrec t =
       | Ignored
@@ -109,19 +104,9 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
 
 type status_map = Status.t String.Map.t
 
-let is_normal statuses =
-  statuses
-  |> List.filter ~f:(function
-       | Status.Normal -> true
-       | _ -> false)
-  |> List.is_empty |> not
+let is_normal statuses = List.mem ~equal:( = ) statuses Status.Normal
 
-let is_data_only statuses =
-  statuses
-  |> List.filter ~f:(function
-       | Status.Data_only -> true
-       | _ -> false)
-  |> List.is_empty |> not
+let is_data_only statuses = List.mem ~equal:( = ) statuses Status.Data_only
 
 let eval (t : _ Status.Map.t) ~dirs =
   (* This function defines the unexpected behavior of: (dirs foo)
@@ -146,20 +131,9 @@ let eval (t : _ Status.Map.t) ~dirs =
                | _ -> true)
            with
            | [] -> Some Normal
-           | [ status ] -> Some status
            | statuses ->
              if is_data_only statuses then Some Status.Data_only
-             else
-               User_error.raise
-                 [ Pp.textf
-                     "Directory %s was marked as %s, it can't be marked as %s."
-                     dir
-                     (String.enumerate_and
-                        (List.map statuses ~f:Status.to_string))
-                     (match List.length statuses with
-                     | 2 -> "both"
-                     | _ -> "all these")
-                 ]
+             else Some Status.Vendored
          else None)
 
 type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t

@@ -1,0 +1,7 @@
+(executable
+  (name main)
+  (public_name main)
+  (libraries a))
+
+(dirs :standard \ a) ; skip directory a which is vendored
+(vendored_dirs a)

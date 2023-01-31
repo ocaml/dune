@@ -58,14 +58,18 @@ end = struct
   let rec exec = function
     | { commands = []; error } -> raise (User_error.E error)
     | { commands = { dir; metadata; prog; args } :: commands; error } ->
-      let* () = Process.run ~dir ~env:Env.initial Strict prog args ~metadata in
+      let* () =
+        Process.run ~display:!Clflags.display ~dir ~env:Env.initial Strict prog
+          args ~metadata
+      in
       exec { commands; error }
 
   let rec capture = function
     | { commands = []; error } -> Fiber.return (Error error)
     | { commands = { dir; metadata; prog; args } :: commands; error } -> (
       let* output, code =
-        Process.run_capture ~dir ~env:Env.initial Return prog args ~metadata
+        Process.run_capture ~display:!Clflags.display ~dir ~env:Env.initial
+          Return prog args ~metadata
       in
       match code with
       | 1 -> Fiber.return (Ok { Diff.output; loc = metadata.loc })

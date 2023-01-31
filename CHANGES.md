@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Fix cross compilation configuration when a context with targets is itself a
+  host of another context (#6958, fixes #6843, @rgrinberg)
+
 - Fix parsing of the `<=` operator in *blang* expressions of `dune` files.
   Previously, the operator would be interpreted as `,`. (#6928, @tatchi)
 
@@ -9,6 +12,9 @@ Unreleased
   @rgrinberg)
 
 - Fix preprocessing with `staged_pps` (#6748, fixes #6644, @rgrinberg)
+
+- Use colored output with MDX when Dune colors are enabled.
+  (#6462, @MisterDA)
 
 - Make `dune describe workspace` return consistent dependencies for
   executables and for libraries. By default, compile-time dependencies

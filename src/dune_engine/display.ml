@@ -10,14 +10,24 @@ type t =
   ; verbosity : verbosity
   }
 
+let progress = { status_line = true; verbosity = Quiet }
+
+let verbose = { status_line = true; verbosity = Verbose }
+
+let short = { status_line = true; verbosity = Short }
+
+let quiet = { status_line = false; verbosity = Quiet }
+
+let short_no_status = { status_line = false; verbosity = Short }
+
 (* Even though [status_line] is true by default in most of these, the status
     line is actually not shown if the output is redirected to a file or a
     pipe. *)
 let all =
-  [ ("progress", { verbosity = Quiet; status_line = true })
-  ; ("verbose", { verbosity = Verbose; status_line = true })
-  ; ("short", { verbosity = Short; status_line = true })
-  ; ("quiet", { verbosity = Quiet; status_line = false })
+  [ ("progress", progress)
+  ; ("verbose", verbose)
+  ; ("short", short)
+  ; ("quiet", quiet)
   ]
 
 let verbosity_to_dyn : verbosity -> Dyn.t = function
@@ -34,4 +44,4 @@ let to_dyn { status_line; verbosity } : Dyn.t =
 let console_backend t =
   match t.status_line with
   | false -> Console.Backend.dumb
-  | true -> Console.Backend.progress ()
+  | true -> Console.Backend.progress_threaded ()

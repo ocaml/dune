@@ -64,3 +64,6 @@ type on_missing_dune_project_file =
 
 (** Desired behavior when dune project file is absent *)
 val on_missing_dune_project_file : on_missing_dune_project_file ref
+
+(** The display mode *)
+val display : Display.t ref

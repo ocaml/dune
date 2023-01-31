@@ -4,8 +4,8 @@ open Dune_engine
 open Fiber.O
 
 let default =
+  Clflags.display := Display.short_no_status;
   { Scheduler.Config.concurrency = 1
-  ; display = { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No

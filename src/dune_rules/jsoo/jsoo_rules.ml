@@ -121,7 +121,8 @@ module Version = struct
     let open Memo.O in
     let* _ = Build_system.build_file bin in
     Memo.of_reproducible_fiber
-    @@ Process.run_capture_line Process.Strict bin [ "--version" ]
+    @@ Process.run_capture_line ~display:!Clflags.display Process.Strict bin
+         [ "--version" ]
     |> Memo.map ~f:of_string
 
   let version_memo =

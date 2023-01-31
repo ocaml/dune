@@ -87,6 +87,16 @@ module Event : sig
     ?tdur:Timestamp.t -> ?args:args -> dur:Timestamp.t -> common_fields -> t
 
   val to_json : t -> Json.t
+
+  (** The scope of an instant event. The scopes below come from the standard
+      reference for this format *)
+  type scope =
+    | Global
+    | Process
+    | Thread
+
+  (** Create an instant event. *)
+  val instant : ?args:args -> ?scope:scope -> common_fields -> t
 end
 
 module Output_object : sig

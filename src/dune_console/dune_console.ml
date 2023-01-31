@@ -2,6 +2,8 @@ open Stdune
 
 module Backend = struct
   module type S = sig
+    val start : unit -> unit
+
     val print_user_message : User_message.t -> unit
 
     val set_status_line : User_message.Style.t Pp.t option -> unit
@@ -18,6 +20,8 @@ module Backend = struct
   type t = (module S)
 
   module Dumb_no_flush : S = struct
+    let start () = ()
+
     let finish () = ()
 
     let print_user_message msg =
@@ -61,6 +65,8 @@ module Backend = struct
   module Progress_no_flush : S = struct
     let status_line = ref Pp.nop
 
+    let start () = ()
+
     let status_line_len = ref 0
 
     let hide_status_line () =
@@ -98,12 +104,18 @@ module Backend = struct
 
   let dumb = (module Dumb : S)
 
+  let progress = (module Progress_no_flush : S)
+
   let main = ref dumb
 
   let set t = main := t
 
   let compose (module A : S) (module B : S) : (module S) =
     (module struct
+      let start () =
+        A.start ();
+        B.start ()
+
       let print_user_message msg =
         A.print_user_message msg;
         B.print_user_message msg
@@ -131,18 +143,67 @@ module Backend = struct
 
   let spawn_thread = Fdecl.create Dyn.opaque
 
-  let threaded (module Base : S) : (module S) =
+  (** Backends may have access to an internal state. This type is used by the
+      [Threaded] backends. *)
+  type state =
+    { messages : User_message.t Queue.t
+    ; mutable finish_requested : bool
+    ; mutable finished : bool
+    ; mutable status_line : User_message.Style.t Pp.t option
+    }
+
+  (** [Threaded] is the interface for user interfaces that are rendered in a
+      separate thread. It can be used to directly construct a threaded backend.
+
+      This module interface will be used by both the current console UI and the
+      upcoming terminal UI (TUI).
+
+      Notice that the TUI can also react to keyboard input, so it has the
+      additional [handle_user_events] call. *)
+  module type Threaded = sig
+    (** [start] is called by the main thread to start broadcasting the user
+        interface. Any initial setup should be performed here. *)
+    val start : unit -> unit
+
+    (** [render state] is called by the main thread to render the current state
+        of the user interface. *)
+    val render : state -> unit
+
+    (** [handle_user_events ~now ~time_budget mutex] is called by the main
+        thread to handle user events such as keypresses. The function should
+        return the time at which the next event should be handled. A [mutex] is
+        provided in order to lock the state of the UI. [time_budget] indicates
+        an approximate amount of time that should be spent in this function.
+        This is useful for things like waiting for user input.
+
+        [time_budget] should be as accurate as possible, but if it's not, the
+        only consequence would be modifying the rendering rate. That is, if
+        [time_budget] is an underestimate the actual amount of time spent, we
+        will render faster than the desired frame rate. If it is an
+        overestimate, we will render slower. *)
+    val handle_user_events : now:float -> time_budget:float -> Mutex.t -> float
+
+    (** [reset] is called by the main thread to reset the user interface. *)
+    val reset : unit -> unit
+
+    (** [reset_flush_history] is called by the main thread to reset and flush
+        the user interface. *)
+    val reset_flush_history : unit -> unit
+
+    (** [finish] is called finally by the main thread to finish broadcasting the
+        user interface. Any locks on the terminal should be released here. *)
+    val finish : unit -> unit
+  end
+
+  (** [threaded (module T)] is a backend that renders the user interface in a
+      separate thread. The module [T] must implement the [Threaded] interface.
+      There are special functions included to handle various functions of a user
+      interface. *)
+  let threaded (module Base : Threaded) : (module S) =
     let module T = struct
       let mutex = Mutex.create ()
 
       let finish_cv = Condition.create ()
-
-      type state =
-        { messages : User_message.t Queue.t
-        ; mutable finish_requested : bool
-        ; mutable finished : bool
-        ; mutable status_line : User_message.Style.t Pp.t option
-        }
 
       let state =
         { messages = Queue.create ()
@@ -150,6 +211,11 @@ module Backend = struct
         ; finished = false
         ; finish_requested = false
         }
+
+      let start () =
+        Mutex.lock mutex;
+        Base.start ();
+        Mutex.unlock mutex
 
       let finish () =
         Mutex.lock mutex;
@@ -189,33 +255,79 @@ module Backend = struct
       let open T in
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. 60. in
+      let cleanup () =
+        state.finished <- true;
+        Base.finish ();
+        Condition.broadcast finish_cv;
+        Mutex.unlock mutex
+      in
       try
+        Base.start ();
+        (* This is the main event loop for a threaded backend.
+
+           Firstly we lock our mutex, to prevent other threads from mutating our
+           state. Next we ask our implementation to render the given state,
+           afterwards checking if a finish was requested.
+
+           If a finish was requested we exit the loop cleanly.
+
+           We unlock our mutex and go into a time calculation. This calculation
+           gets the current time and compares it with the last recorded time.
+           This lets us compute the elapsed time.
+
+           Next we check that the elapsed time is larger than our specifed
+           [frame_rate]. If this is the case then we can handle any pending user
+           events and continue the loop as soon as possible.
+
+           If we have not yet reached the [frame_rate] then we can handle user
+           events and sleep for the remaining time. *)
         while true do
           Mutex.lock mutex;
-          while not (Queue.is_empty state.messages) do
-            Base.print_user_message (Queue.pop_exn state.messages)
-          done;
-          Base.set_status_line state.status_line;
-          flush stderr;
+          Base.render state;
           let finish_requested = state.finish_requested in
           if finish_requested then raise_notrace Exit;
           Mutex.unlock mutex;
           let now = Unix.gettimeofday () in
           let elapsed = now -. !last in
-          if elapsed >= frame_rate then last := now
-          else
-            let delta = frame_rate -. elapsed in
-            Unix.sleepf delta;
-            last := delta +. now
+          let new_time =
+            if elapsed >= frame_rate then
+              Base.handle_user_events ~now ~time_budget:0.0 mutex
+            else
+              let delta = frame_rate -. elapsed in
+              Base.handle_user_events ~now ~time_budget:delta mutex
+          in
+          last := new_time
         done
-      with Exit ->
-        state.finished <- true;
-        Condition.broadcast finish_cv;
-        Mutex.unlock mutex );
+      with
+      | Exit -> cleanup ()
+      | exn ->
+        (* If any unexpected exceptions are encountered, we catch them, make
+           sure we [cleanup] and then re-raise them. *)
+        let exn = Exn_with_backtrace.capture exn in
+        cleanup ();
+        Exn_with_backtrace.reraise exn );
     (module T)
 
-  let progress =
-    let t = lazy (threaded (module Progress_no_flush)) in
+  module Progress_no_flush_threaded : Threaded = struct
+    include Progress_no_flush
+
+    let render state =
+      while not (Queue.is_empty state.messages) do
+        print_user_message (Queue.pop_exn state.messages)
+      done;
+      set_status_line state.status_line;
+      flush stderr
+
+    (* The current console doesn't react to user events so we just sleep until
+       the next loop iteration. Because it doesn't react to user input, it cannot
+       modify the UI state, and as a consequence doesn't need the mutex. *)
+    let handle_user_events ~now ~time_budget _ =
+      Unix.sleepf time_budget;
+      now +. time_budget
+  end
+
+  let progress_threaded =
+    let t = lazy (threaded (module Progress_no_flush_threaded)) in
     fun () -> Lazy.force t
 end
 

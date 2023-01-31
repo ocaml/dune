@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675103483734,
+  "lastUpdate": 1675171122111,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3160,6 +3160,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.820345155506665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bbd15e00f2278a0715825fb76225cea1a10c31b3",
+          "message": "doc: clarify purpose of dune files under \"project\" (#6852)\n\n* doc: clarify purpose of dune files under \"project\"\r\n\r\nThis sentence means that stanzas go in `dune` - not that `dune`\r\nfiles are mandatory.\r\n\r\nFixes #6845\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n* Explain that every directory can have a dune file\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>\r\n\r\n---------\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-01-31T13:55:40+01:00",
+          "tree_id": "7ae695e7e99defee12e895a6b3098bce28638415",
+          "url": "https://github.com/ocaml/dune/commit/bbd15e00f2278a0715825fb76225cea1a10c31b3"
+        },
+        "date": 1675171121123,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.46305108446666",
             "unit": "seconds"
           }
         ]

@@ -66,7 +66,7 @@ let mac_codesign_hook ~codesign path =
       |> Io.with_file_in ~f:Io.input_lines
       |> List.filter ~f:(fun line ->
              not
-               (String.ends_with line ~suffix:": replacing existing signature"))
+               (String.is_suffix line ~suffix:": replacing existing signature"))
       |> List.iter ~f:prerr_endline)
 
 let sign_hook_of_context (context : Context.t) =

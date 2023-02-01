@@ -52,8 +52,22 @@ type conf =
   }
 
 let mac_codesign_hook ~codesign path =
-  Process.run ~display:!Clflags.display Strict codesign
-    [ "-s"; "-"; Path.to_string path ]
+  Temp.with_temp_file ~dir:Path.root ~prefix:"codesign" ~suffix:"stderr"
+    ~f:(function
+    | Error exn -> raise exn
+    | Ok temp_file ->
+      let open Fiber.O in
+      let+ () =
+        Process.run ~display:!Clflags.display Strict codesign
+          ~stderr_to:(Process.Io.file temp_file Out)
+          [ "-f"; "-s"; "-"; Path.to_string path ]
+      in
+      temp_file
+      |> Io.with_file_in ~f:Io.input_lines
+      |> List.filter ~f:(fun line ->
+             not
+               (String.ends_with line ~suffix:": replacing existing signature"))
+      |> List.iter ~f:prerr_endline)
 
 let sign_hook_of_context (context : Context.t) =
   let config = context.ocaml_config in

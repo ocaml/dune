@@ -109,6 +109,9 @@ Unreleased
 
 - Add 4.14.0 MSVC to CI (#6917, @jonahbeckford)
 
+- On macos, pass `-f` to `codesign` when signing binaries (#6975, fixes #6265,
+  @emillon, @voodoos)
+
 3.6.2 (2022-12-21)
 ------------------
 

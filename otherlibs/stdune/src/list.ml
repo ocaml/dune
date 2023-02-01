@@ -118,6 +118,11 @@ let destruct_last =
   in
   fun xs -> loop [] xs
 
+let remove_last_exn t =
+  match destruct_last t with
+  | Some (t, _) -> t
+  | None -> Code_error.raise "remove_last_exn: empty list" []
+
 let sort t ~compare = sort t ~cmp:(fun a b -> Ordering.to_int (compare a b))
 
 let stable_sort t ~compare =

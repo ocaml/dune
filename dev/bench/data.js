@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675220921109,
+  "lastUpdate": 1675222834846,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3218,6 +3218,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.73483926191333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ff2863f8f4316b78f8c835750deca63c6e6d095",
+          "message": "refactor(engine): remove status line from display (#6968)\n\nWhether the display mode contains the status line isn't something that\r\nis ever inspect in the engine. We can safely move it to the\r\n[Dune_config] and leave the [Display] in [Dune_engine] to be the subset\r\nthat concerns the process display.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-01-31T21:20:42-06:00",
+          "tree_id": "1c51923ef741a93191056afa9b5b612bbba8fb2f",
+          "url": "https://github.com/ocaml/dune/commit/5ff2863f8f4316b78f8c835750deca63c6e6d095"
+        },
+        "date": 1675222833633,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.361718546586665",
             "unit": "seconds"
           }
         ]

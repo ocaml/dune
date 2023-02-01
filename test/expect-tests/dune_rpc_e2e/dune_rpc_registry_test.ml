@@ -44,7 +44,7 @@ let try_ ~times ~delay ~f =
 
 let run =
   let cwd = Sys.getcwd () in
-  Dune_engine.Clflags.display := Dune_engine.Display.quiet;
+  Dune_engine.Clflags.display := Quiet;
   let config =
     { Scheduler.Config.concurrency = 1
     ; stats = None

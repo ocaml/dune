@@ -37,20 +37,14 @@ Now try copying a file
   >    (files %{project_root}/public/img.png))))
   > EOF
 
-Build fails
+It works:
 
   $ dune build @melange
-  Error: No rule found for src/output/src/.output.mobjs/melange.js
-  -> required by alias src/melange
-  [1]
 
-Adding a module doesn't help
+We add a module and it stays working:
 
   $ cat > src/a.ml <<EOF
   > let () = Js.log "foo"
   > EOF
 
   $ dune build @melange
-  Error: No rule found for src/output/src/a.js
-  -> required by alias src/melange
-  [1]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675267039509,
+  "lastUpdate": 1675268249758,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3305,6 +3305,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.218640078906674",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d90ec87ed6221878a0d6055575fe89f371aee046",
+          "message": "Defer computation of local_bins (#6764)\n\nThis fixes a memo dependency cycle between evaluating globs in install\r\nstanzas and populating the artifacts database. Populating the artifacts\r\ndatabase involves enumerating all files installed in the \"bin\" section\r\nwhich involves expanding globs as these files can be specified as globs\r\nrather than literal files. Expanding globs in the install stanza\r\nrequires loading the rules for the directory containing the glob, and\r\ndoing so depends on the artifacts database.\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-02-01T09:54:07-06:00",
+          "tree_id": "9836fdc2886decd6d736a326225694d575c26d11",
+          "url": "https://github.com/ocaml/dune/commit/d90ec87ed6221878a0d6055575fe89f371aee046"
+        },
+        "date": 1675268249033,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.69017942142667",
             "unit": "seconds"
           }
         ]

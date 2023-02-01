@@ -429,7 +429,7 @@ module Handle_exit_status : sig
 
   val non_verbose :
        ('a, error) result
-    -> verbosity:Display.verbosity
+    -> verbosity:Display.t
     -> metadata:metadata
     -> output:string
     -> prog:string
@@ -521,7 +521,7 @@ end = struct
            ++ Pp.char ' ' ++ command_line
         :: pp_output output)
 
-  let non_verbose t ~(verbosity : Display.verbosity) ~metadata ~output ~prog
+  let non_verbose t ~(verbosity : Display.t) ~metadata ~output ~prog
       ~command_line ~dir ~has_unexpected_stdout ~has_unexpected_stderr =
     let output = parse_output output in
     let show_command =
@@ -615,7 +615,7 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
         command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
       in
       let fancy_command_line =
-        match display.verbosity with
+        match display with
         | Verbose ->
           let open Pp.O in
           let cmdline =
@@ -796,14 +796,14 @@ let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
         let output = stdout ^ stderr in
         Log.command ~command_line ~output ~exit_status:process_info.status;
         let res =
-          match (display.verbosity, exit_status', output) with
+          match (display, exit_status', output) with
           | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
           | Verbose, _, _ ->
             Handle_exit_status.verbose exit_status' ~id ~metadata ~dir
               ~command_line:fancy_command_line ~output
           | _ ->
             Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
-              ~command_line ~output ~metadata ~verbosity:display.verbosity
+              ~command_line ~output ~metadata ~verbosity:display
               ~has_unexpected_stdout ~has_unexpected_stderr
         in
         (res, times))

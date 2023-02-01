@@ -128,7 +128,7 @@ let () =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build");
   let module Scheduler = Dune_engine.Scheduler in
   let config =
-    Dune_engine.Clflags.display := Dune_engine.Display.quiet;
+    Dune_engine.Clflags.display := Dune_engine.Display.Quiet;
     { Scheduler.Config.concurrency = 10
     ; stats = None
     ; insignificant_changes = `React

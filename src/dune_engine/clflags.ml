@@ -47,4 +47,4 @@ type on_missing_dune_project_file =
 
 let on_missing_dune_project_file = ref Warn
 
-let display = ref Display.quiet
+let display = ref Display.Quiet

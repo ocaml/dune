@@ -1,6 +1,6 @@
 open Stdune
 open Dune_lang.Decoder
-module Display = Dune_engine.Display
+module Display = Display
 module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
 module Console = Dune_console
@@ -442,5 +442,5 @@ let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n
   in
-  Dune_engine.Clflags.display := t.display;
+  Dune_engine.Clflags.display := t.display.verbosity;
   { Scheduler.Config.concurrency; stats; insignificant_changes; signal_watcher }

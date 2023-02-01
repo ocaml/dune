@@ -134,8 +134,9 @@ end = struct
               make_entry Lib source ?dst))
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
-    let modes = Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native in
-    let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native }; melange } = modes in
+    let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
+      Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native
+    in
     let module_files =
       let inside_subdir f =
         match lib_subdir with
@@ -203,10 +204,7 @@ end = struct
     in
     let* lib_files, dll_files =
       let+ lib_files = lib_files ~dir ~dir_contents ~lib_config info in
-      let dll_files =
-        let modes = modes.ocaml in
-        dll_files ~modes ~dynlink:lib.dynlink ~ctx info
-      in
+      let dll_files = dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info in
       (lib_files, dll_files)
     in
     let+ execs = lib_ppxs ctx ~scope ~lib in

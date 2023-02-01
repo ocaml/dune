@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675171122111,
+  "lastUpdate": 1675220921109,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3189,6 +3189,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.46305108446666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32379afe36f2e9d511dd21d5ac17712bba9a1e9d",
+          "message": "fix(melange): emit rule loading (#6953)\n\nCorrectly load emit rules. Given an emit stanza in $dir with $output:\r\n\r\n* We generate the .js rules in $dir/$output\r\n* Anything under $dir/$output, we will load the rules and also redirect\r\n  upwards until we encounter $dir/output\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-01-31T20:39:52-06:00",
+          "tree_id": "c4193b71ce1cb7b87fa74007b45108025eacd9fe",
+          "url": "https://github.com/ocaml/dune/commit/32379afe36f2e9d511dd21d5ac17712bba9a1e9d"
+        },
+        "date": 1675220919869,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.73483926191333",
             "unit": "seconds"
           }
         ]

@@ -153,13 +153,6 @@ let eval_foreign_stubs foreign_stubs (ctypes : Ctypes_field.t option)
           multiple_sources_error ~name ~loc ~mode
             ~paths:Foreign.Source.[ path src1; path src2 ]))
 
-let check_no_qualified (loc, include_subdirs) =
-  if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
-    User_error.raise ~loc
-      [ Pp.text
-          "(include_subdirs qualified) is only meant for OCaml and Coq sources"
-      ]
-
 let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
     ~(lib_config : Lib_config.t) =
   let libs, foreign_libs, exes =
@@ -268,9 +261,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
   in
   { libraries; archives; executables }
 
-let make stanzas ~dune_version ~include_subdirs ~(lib_config : Lib_config.t)
-    ~dirs =
-  check_no_qualified include_subdirs;
+let make stanzas ~dune_version ~(lib_config : Lib_config.t) ~dirs =
   let init = String.Map.empty in
   let sources =
     List.fold_left dirs ~init ~f:(fun acc (dir, _local, files) ->

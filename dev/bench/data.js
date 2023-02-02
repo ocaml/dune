@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675268249758,
+  "lastUpdate": 1675302643659,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3334,6 +3334,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.69017942142667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "570ae9b7200719996e4209bd66a97c4bc58a6a2b",
+          "message": "refactor(rules): add module paths to module sources (#6974)\n\nThe module paths are based on the source path of the module itself.\r\nTherefore, we should compute them as early as possible.\r\n\r\nThis will allow for doing various error checks that depend on the module\r\npath without constructing complete [Modules.t] values\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-01T19:27:20-06:00",
+          "tree_id": "da2ab4bf917777487c47055fa21e94e71bfa2685",
+          "url": "https://github.com/ocaml/dune/commit/570ae9b7200719996e4209bd66a97c4bc58a6a2b"
+        },
+        "date": 1675302642309,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.51417992059333",
             "unit": "seconds"
           }
         ]

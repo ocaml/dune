@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675303779809,
+  "lastUpdate": 1675358909659,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3392,6 +3392,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.26555374730667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fba9ac9fd05bd9e04982749f304390668eb2d8c4",
+          "message": "Doc: use a glossary (#6909)\n\n* Use a RST glossary\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-02T18:08:34+01:00",
+          "tree_id": "afeaf6c165868a727b6e166e361e1efb8cfd54b5",
+          "url": "https://github.com/ocaml/dune/commit/fba9ac9fd05bd9e04982749f304390668eb2d8c4"
+        },
+        "date": 1675358908582,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.10262835242666",
             "unit": "seconds"
           }
         ]

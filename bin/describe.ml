@@ -627,22 +627,15 @@ module External_lib_deps = struct
 
     let to_dyn t =
       let open Dyn in
-      let names =
-        if t.kind = Kind.Library then ("name", String (List.hd t.names))
-        else ("names", (list string) t.names)
-      in
-      let package =
-        match t.package with
-        | Some p ->
-          [ ("package", String (p |> Package.name |> Package.Name.to_string)) ]
-        | None -> []
-      in
       let record =
         record
-          ([ names ] @ package
-          @ [ ("source_dir", String (Path.Source.to_string t.dir))
-            ; ("external_deps", list external_lib_dep_to_dyn t.external_deps)
-            ])
+          [ ("names", (list string) t.names)
+          ; ( "package"
+            , option Package.Name.to_dyn (Option.map ~f:Package.name t.package)
+            )
+          ; ("source_dir", String (Path.Source.to_string t.dir))
+          ; ("external_deps", list external_lib_dep_to_dyn t.external_deps)
+          ]
       in
       Variant (Kind.to_string t.kind, [ record ])
   end

@@ -4,5 +4,13 @@ print only the external libraries by dir.
 
   $ dune describe external-lib-deps
   (default
-   ((. ((a required)))
-    (lib ((a required)))))
+   ((library
+     ((names (foo))
+      (package ())
+      (source_dir .)
+      (external_deps ((a required)))))
+    (library
+     ((names (inter_lib))
+      (package ())
+      (source_dir lib)
+      (external_deps ((a required)))))))

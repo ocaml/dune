@@ -3,7 +3,7 @@ open Fiber.O
 module Scheduler = Dune_engine.Scheduler
 
 let config =
-  Dune_engine.Clflags.display := Dune_engine.Display.short_no_status;
+  Dune_engine.Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
   ; stats = None
   ; insignificant_changes = `React

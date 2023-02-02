@@ -4,7 +4,7 @@ open Dune_engine
 
 let go =
   let config =
-    Clflags.display := Display.short_no_status;
+    Clflags.display := Short;
     { Scheduler.Config.concurrency = 1
     ; stats = None
     ; insignificant_changes = `React

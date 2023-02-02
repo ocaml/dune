@@ -207,13 +207,12 @@ module Mangle = struct
       | None -> base
       | Some prefix -> prefix :: base
     in
-    let name =
+    let path =
       if has_lib_interface then
-        Module_name.Unique.to_name ~loc:Loc.none obj_name
-      else interface
+        [ Module_name.Unique.to_name ~loc:Loc.none obj_name ]
+      else path @ [ interface ]
     in
-    let path = if has_lib_interface then [ name ] else path @ [ interface ] in
-    Module.generated ~path ~obj_name ~kind ~src_dir name
+    Module.generated path ~obj_name ~kind ~src_dir
 
   let wrap_module t m ~interface =
     let is_lib_interface =

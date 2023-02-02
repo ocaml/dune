@@ -45,7 +45,6 @@ Include variants and implementation information in dune-package
     (wrapped
      (group
       (alias
-       (name Vlib__impl__)
        (obj_name vlib__impl__)
        (path Vlib__impl__)
        (visibility public)
@@ -54,7 +53,6 @@ Include variants and implementation information in dune-package
       (name Vlib)
       (modules
        (module
-        (name Vmod)
         (obj_name vlib__Vmod)
         (path Vmod)
         (visibility public)
@@ -71,7 +69,6 @@ Include variants and implementation information in dune-package
     (wrapped
      (group
       (alias
-       (name Vlib)
        (obj_name vlib)
        (path Vlib)
        (visibility public)
@@ -80,7 +77,6 @@ Include variants and implementation information in dune-package
       (name Vlib)
       (modules
        (module
-        (name Vmod)
         (obj_name vlib__Vmod)
         (path Vmod)
         (visibility public)

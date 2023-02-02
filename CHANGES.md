@@ -109,6 +109,9 @@ Unreleased
 
 - Add 4.14.0 MSVC to CI (#6917, @jonahbeckford)
 
+- Fix dependency cycle when installing files to the bin section with
+  `glob_files` (#6764, fixes #6708, @gridbugs)
+
 3.6.2 (2022-12-21)
 ------------------
 

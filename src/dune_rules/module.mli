@@ -31,7 +31,7 @@ module Source : sig
 
   val name : t -> Module_name.t
 
-  val make : ?impl:File.t -> ?intf:File.t -> Module_name.t -> t
+  val make : ?impl:File.t -> ?intf:File.t -> Module_name.Path.t -> t
 
   val has : t -> ml_kind:Ml_kind.t -> bool
 
@@ -51,12 +51,7 @@ val to_dyn : t -> Dyn.t
 (** When you initially construct a [t] using [of_source], it assumes no wrapping
     (so reports an incorrect [obj_name] if wrapping is used) and you might need
     to fix it later with [with_wrapper]. *)
-val of_source :
-     ?path:Module_name.Path.t
-  -> visibility:Visibility.t
-  -> kind:Kind.t
-  -> Source.t
-  -> t
+val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 
 val name : t -> Module_name.t
 
@@ -144,8 +139,7 @@ val set_src_dir : t -> src_dir:Path.t -> t
     be used to create the rule to generate this file *)
 val generated :
      ?obj_name:Module_name.Unique.t
-  -> ?path:Module_name.Path.t
   -> kind:Kind.t
   -> src_dir:Path.Build.t
-  -> Module_name.t
+  -> Module_name.Path.t
   -> t

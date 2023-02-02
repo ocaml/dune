@@ -163,7 +163,7 @@ let with_dune_watch ?env f =
   res
 
 let config =
-  Dune_engine.Clflags.display := Dune_engine.Display.quiet;
+  Dune_engine.Clflags.display := Quiet;
   { Scheduler.Config.concurrency = 1
   ; stats = None
   ; insignificant_changes = `React

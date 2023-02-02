@@ -87,31 +87,32 @@ end
 (* Only the source of a module, not yet associated to a library *)
 module Source = struct
   type t =
-    { name : Module_name.t
+    { path : Module_name.Path.t
     ; files : File.t option Ml_kind.Dict.t
     }
 
-  let to_dyn { name; files } =
+  let to_dyn { path; files } =
     let open Dyn in
     record
-      [ ("name", Module_name.to_dyn name)
+      [ ("path", Module_name.Path.to_dyn path)
       ; ("files", Ml_kind.Dict.to_dyn (option File.to_dyn) files)
       ]
 
-  let make ?impl ?intf name =
+  let make ?impl ?intf path =
+    if path = [] then Code_error.raise "path cannot be empty" [];
     (match (impl, intf) with
     | None, None ->
       Code_error.raise "Module.Source.make called with no files"
-        [ ("name", Module_name.to_dyn name) ]
+        [ ("path", Module_name.Path.to_dyn path) ]
     | Some _, _ | _, Some _ -> ());
     let files = Ml_kind.Dict.make ~impl ~intf in
-    { name; files }
+    { path; files }
 
   let has t ~ml_kind = Ml_kind.Dict.get t.files ml_kind |> Option.is_some
 
-  let name t = t.name
+  let name t = List.last t.path |> Option.value_exn
 
-  let choose_file { files = { impl; intf }; name = _ } =
+  let choose_file { files = { impl; intf }; path = _ } =
     match (intf, impl) with
     | None, None -> assert false
     | Some x, Some _ | Some x, None | None, Some x -> x
@@ -149,25 +150,24 @@ type t =
   ; pp : (string list Action_builder.t * Sandbox_config.t) option
   ; visibility : Visibility.t
   ; kind : Kind.t
-  ; path : Module_name.Path.t
   }
 
-let name t = t.source.name
+let name t = Source.name t.source
 
-let path t = t.path
+let path t = t.source.path
 
 let kind t = t.kind
 
 let pp_flags t = t.pp
 
-let of_source ~path ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
+let of_source ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   (match (kind, visibility) with
   | (Alias _ | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
   | Root, Private
   | (Impl | Intf_only), _ -> ()
   | _, _ ->
     Code_error.raise "Module.of_source: invalid kind, visibility combination"
-      [ ("name", Module_name.to_dyn source.name)
+      [ ("path", Module_name.Path.to_dyn source.path)
       ; ("kind", Kind.to_dyn kind)
       ; ("visibility", Visibility.to_dyn visibility)
       ]);
@@ -178,7 +178,7 @@ let of_source ~path ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   | (Intf_only | Virtual), _, None ->
     let open Dyn in
     Code_error.raise "Module.make: invalid kind, impl, intf combination"
-      [ ("name", Module_name.to_dyn source.name)
+      [ ("path", Module_name.Path.to_dyn source.path)
       ; ("kind", Kind.to_dyn kind)
       ; ("intf", (option File.to_dyn) source.files.intf)
       ; ("impl", (option File.to_dyn) source.files.impl)
@@ -194,8 +194,7 @@ let of_source ~path ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
       Module_name.Unique.of_path_assuming_needs_no_mangling_allow_invalid
         file.path
   in
-  let path = Option.value ~default:[ source.name ] path in
-  { source; obj_name; pp = None; visibility; kind; path }
+  { source; obj_name; pp = None; visibility; kind }
 
 let has t ~ml_kind =
   match (ml_kind : Ml_kind.t) with
@@ -214,7 +213,9 @@ let iter t ~f =
 
 let set_obj_name t obj_name = { t with obj_name }
 
-let set_path t path = { t with path }
+let set_path t path =
+  let source = { t.source with Source.path } in
+  { t with source }
 
 let add_file t kind file =
   let source = Source.add_file t.source kind file in
@@ -234,14 +235,13 @@ let src_dir t = Source.src_dir t.source
 
 let set_pp t pp = { t with pp }
 
-let to_dyn { source; obj_name; pp; visibility; kind; path } =
+let to_dyn { source; obj_name; pp; visibility; kind } =
   Dyn.record
     [ ("source", Source.to_dyn source)
     ; ("obj_name", Module_name.Unique.to_dyn obj_name)
     ; ("pp", Dyn.(option string) (Option.map ~f:(fun _ -> "has pp") pp))
     ; ("visibility", Visibility.to_dyn visibility)
     ; ("kind", Kind.to_dyn kind)
-    ; ("path", Module_name.Path.to_dyn path)
     ]
 
 let ml_gen = ".ml-gen"
@@ -259,7 +259,7 @@ let wrapped_compat t =
                a source dir *)
             Path.L.relative (src_dir t)
               [ ".wrapped_compat"
-              ; Module_name.to_string t.source.name ^ ml_gen
+              ; Module_name.Path.to_string t.source.path ^ ml_gen
               ]
         }
     in
@@ -287,8 +287,8 @@ end
 module Obj_map_traversals = Memo.Make_map_traversals (Obj_map)
 
 let encode
-    ({ path; source = { name; files = _ }; obj_name; pp = _; visibility; kind }
-    as t) =
+    ({ source = { files = _; path; _ }; obj_name; pp = _; visibility; kind } as
+    t) =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -304,8 +304,7 @@ let encode
     | Intf_only -> Some kind
   in
   record_fields
-    [ field "name" Module_name.encode name
-    ; field "obj_name" Module_name.Unique.encode obj_name
+    [ field "obj_name" Module_name.Unique.encode obj_name
     ; field_l "path" (fun x -> x) (Module_name.Path.encode path)
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
@@ -320,13 +319,27 @@ let module_basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
 let decode ~src_dir =
   let open Dune_lang.Decoder in
   fields
-    (let+ name = field "name" Module_name.decode
-     and+ obj_name = field "obj_name" Module_name.Unique.decode
-     and+ path = field ~default:[] "path" Module_name.Path.decode
+    (let+ obj_name = field "obj_name" Module_name.Unique.decode
+     and+ path = field_o "path" Module_name.Path.decode
+     and+ name = field_o "name" Module_name.decode
      and+ visibility = field "visibility" Visibility.decode
      and+ kind = field_o "kind" Kind.decode
      and+ impl = field_b "impl"
      and+ intf = field_b "intf" in
+     let path, name =
+       match (path, name) with
+       | None, None -> Code_error.raise "both name and path cannot be absent" []
+       | Some p, None -> (p, List.last p |> Option.value_exn)
+       | None, Some n -> ([ n ], n)
+       | Some path, Some name ->
+         (* XXX temp hacks until the old format is dropped *)
+         if Module_name.Path.equal path [ name ] then (path, name)
+         else
+           Code_error.raise "both name and path cannot be present"
+             [ ("name", Module_name.to_dyn name)
+             ; ("path", Module_name.Path.to_dyn path)
+             ]
+     in
      let file exists ml_kind =
        if exists then
          let basename = module_basename name ~ml_kind ~dialect:Dialect.ocaml in
@@ -341,9 +354,8 @@ let decode ~src_dir =
      in
      let intf = file intf Intf in
      let impl = file impl Impl in
-     let source = Source.make ?impl ?intf name in
-     of_source ~path:(Some path) ~obj_name:(Some obj_name) ~visibility ~kind
-       source)
+     let source = Source.make ?impl ?intf path in
+     of_source ~obj_name:(Some obj_name) ~visibility ~kind source)
 
 let pped =
   map_files ~f:(fun _kind (file : File.t) ->
@@ -362,11 +374,11 @@ let ml_source =
 
 let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
-let generated ?obj_name ?path ~(kind : Kind.t) ~src_dir name =
+let generated ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_name.Path.t) =
   let obj_name =
     match obj_name with
     | Some obj_name -> obj_name
-    | None -> Module_name.Unique.of_name_assuming_needs_no_mangling name
+    | None -> Module_name.Path.wrap path
   in
   let source =
     let impl =
@@ -376,17 +388,17 @@ let generated ?obj_name ?path ~(kind : Kind.t) ~src_dir name =
       Path.Build.relative src_dir basename
       |> Path.build |> File.make Dialect.ocaml
     in
-    Source.make ~impl name
+    Source.make ~impl path
   in
   let visibility : Visibility.t =
     match kind with
     | Root -> Private
     | _ -> Public
   in
-  of_source ~path ~visibility ~kind ~obj_name:(Some obj_name) source
+  of_source ~visibility ~kind ~obj_name:(Some obj_name) source
 
-let of_source ?path ~visibility ~kind source =
-  of_source ~obj_name:None ~path ~visibility ~kind source
+let of_source ~visibility ~kind source =
+  of_source ~obj_name:None ~visibility ~kind source
 
 module Name_map = struct
   type nonrec t = t Module_name.Map.t

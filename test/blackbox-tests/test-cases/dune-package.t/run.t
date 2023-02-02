@@ -57,16 +57,9 @@
    (modules
     (wrapped
      (group
-      (alias
-       (name A)
-       (obj_name a)
-       (path A)
-       (visibility public)
-       (kind alias)
-       (impl))
+      (alias (obj_name a) (path A) (visibility public) (kind alias) (impl))
       (name A)
-      (modules
-       (module (name X) (obj_name a__X) (path X) (visibility public) (impl))))
+      (modules (module (obj_name a__X) (path X) (visibility public) (impl))))
      (wrapped true))))
   (library
    (name a.b.c)
@@ -80,22 +73,10 @@
    (modules
     (wrapped
      (group
-      (alias
-       (name C)
-       (obj_name c)
-       (path C)
-       (visibility public)
-       (kind alias)
-       (impl))
+      (alias (obj_name c) (path C) (visibility public) (kind alias) (impl))
       (name C)
       (modules
-       (module
-        (name Y)
-        (obj_name c__Y)
-        (path Y)
-        (visibility private)
-        (impl)
-        (intf))))
+       (module (obj_name c__Y) (path Y) (visibility private) (impl) (intf))))
      (wrapped true))))
   (library
    (name a.byte_only)
@@ -107,16 +88,9 @@
    (modules
     (wrapped
      (group
-      (alias
-       (name D)
-       (obj_name d)
-       (path D)
-       (visibility public)
-       (kind alias)
-       (impl))
+      (alias (obj_name d) (path D) (visibility public) (kind alias) (impl))
       (name D)
-      (modules
-       (module (name Z) (obj_name d__Z) (path Z) (visibility public) (impl))))
+      (modules (module (obj_name d__Z) (path Z) (visibility public) (impl))))
      (wrapped true))))
 
 Build with "--store-orig-source-dir" profile

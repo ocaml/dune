@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675362075255,
+  "lastUpdate": 1675365946092,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3450,6 +3450,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.59517013021334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e6104d89d79013d49fa4c2e906b30bb795204c9",
+          "message": "fix(rule): include_subdirs and foreign sources (#6981)\n\nPreviously, we were not allowing `(include_subdirs qualified)` for\r\nforeign sources. Now that (include_subdirs qualified) is supported, this\r\ncheck doesn't make sense.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-02T13:04:16-06:00",
+          "tree_id": "337fd1e19a12ba797e315a51c857273a29c36836",
+          "url": "https://github.com/ocaml/dune/commit/0e6104d89d79013d49fa4c2e906b30bb795204c9"
+        },
+        "date": 1675365944501,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.1105617358",
             "unit": "seconds"
           }
         ]

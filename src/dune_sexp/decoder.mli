@@ -187,7 +187,7 @@ val junk_everything : (unit, _) parser
 val plain_string : (loc:Loc.t -> string -> 'a) -> 'a t
 
 (** A valid filename, i.e. a string other than "." or ".." *)
-val filename : string t
+val filename : Filename.t t
 
 (** A relative filename *)
 val relative_file : string t

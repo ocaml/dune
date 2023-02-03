@@ -153,7 +153,7 @@ val anonymous :
   -> t
 
 (** "dune-project" *)
-val filename : string
+val filename : Filename.t
 
 (** Default language version to use for projects that don't have a
     [dune-project] file. The default value is the latest version of the dune

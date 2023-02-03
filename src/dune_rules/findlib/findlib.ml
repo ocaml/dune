@@ -222,7 +222,7 @@ end = struct
     val to_dune_library :
       t -> lib_config:Lib_config.t -> Dune_package.Lib.t Memo.t
 
-    val exists : t -> is_builtin:bool -> bool Memo.t
+    val exists : t -> is_builtin:bool -> stdlib_dir:Path.t -> bool Memo.t
   end = struct
     type t =
       { meta_file : Path.t
@@ -233,12 +233,19 @@ end = struct
 
     let preds = findlib_predicates_set_by_dune
 
-    let get_paths t var preds =
-      List.map (Vars.get_words t.vars var preds) ~f:(Path.relative t.dir)
+    let get_paths ?stdlib_dir t var preds =
+      let base_paths =
+        List.map (Vars.get_words t.vars var preds) ~f:(Path.relative t.dir)
+      in
+      match stdlib_dir with
+      | None -> base_paths
+      | Some stdlib_dir ->
+        List.map (Vars.get_words t.vars var preds) ~f:(Path.relative stdlib_dir)
+        @ base_paths
 
-    let make_archives t var preds =
+    let make_archives ?stdlib_dir t var preds =
       Mode.Dict.of_func (fun ~mode ->
-          get_paths t var (Ps.add preds (Mode.variant mode)))
+          get_paths ?stdlib_dir t var (Ps.add preds (Mode.variant mode)))
 
     let version t = Vars.get t.vars "version" Ps.empty
 
@@ -261,7 +268,7 @@ end = struct
       | Some "ppx_deriver" -> Ppx_deriver Lib_kind.Ppx_args.empty
       | Some _other_string -> Lib_kind.Normal
 
-    let archives t = make_archives t "archive" preds
+    let archives ?stdlib_dir t = make_archives ?stdlib_dir t "archive" preds
 
     let plugins t =
       Mode.Dict.map2 ~f:( @ )
@@ -273,7 +280,7 @@ end = struct
         (let open Re in
         [ rep any; str "__"; rep any ] |> seq |> compile)
 
-    let exists t ~is_builtin =
+    let exists t ~is_builtin ~stdlib_dir =
       let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
       match exists_if with
       | _ :: _ ->
@@ -291,7 +298,7 @@ end = struct
 
              To workaround this problem, for builtin packages we check that at
              least one of the archive is present. *)
-          match archives t with
+          match archives ~stdlib_dir t with
           | { byte = []; native = [] } -> Memo.return true
           | { byte; native } ->
             Memo.List.exists (byte @ native) ~f:(fun p ->
@@ -478,6 +485,7 @@ end = struct
             ~is_builtin:
               (Package.Name.Map.mem db.builtins
                  (Lib_name.package_name pkg.name))
+            ~stdlib_dir:db.stdlib_dir
         in
         if exists then Dune_package.Entry.Library lib else Hidden_library lib
       in

@@ -52,6 +52,8 @@ val set_action_stderr_on_success : Action_output_on_success.t -> t -> t
 
 val set_expand_aliases_in_sandbox : bool -> t -> t
 
+val set_add_workspace_root_to_build_path_prefix_map : bool -> t -> t
+
 val add_workspace_root_to_build_path_prefix_map : t -> bool
 
 (** As configured by [init] *)

@@ -101,7 +101,7 @@ module Clflags : sig
 end
 
 (** Default name of workspace files *)
-val filename : string
+val filename : Filename.t
 
 val workspace : unit -> t Memo.t
 

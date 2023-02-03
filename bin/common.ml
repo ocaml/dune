@@ -986,7 +986,11 @@ let init ?log_file c =
     Dune_config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
   in
-  Dune_config.init config;
+  Dune_config.init config
+    ~watch:
+      (match c.builder.watch with
+      | No -> false
+      | Yes _ -> true);
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
     let+ w = Dune_rules.Workspace.workspace () in

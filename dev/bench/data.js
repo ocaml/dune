@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675365946092,
+  "lastUpdate": 1675388311640,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3479,6 +3479,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.1105617358",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b3595bd2e9e23a78c79eadcf191e1deadc0b82e8",
+          "message": "refactor(rules): remove [as_in_build_dir_exn] (#6983)\n\nit's used in a useless way\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-02T19:20:06-06:00",
+          "tree_id": "4dcb54fb3b340ace2cdc5d35eca616cfd4bc2411",
+          "url": "https://github.com/ocaml/dune/commit/b3595bd2e9e23a78c79eadcf191e1deadc0b82e8"
+        },
+        "date": 1675388310969,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.35471249695333",
             "unit": "seconds"
           }
         ]

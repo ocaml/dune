@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675438977297,
+  "lastUpdate": 1675438983167,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3595,6 +3595,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.76949028542666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eb5379322c2326f9cd4c364a6a57c9dbcc2ed4c8",
+          "message": "refactor: use and improve [Dune_project.is_extension_set] (#6985)\n\n* Implement it with Univ_map.mem\r\n* Use is consistently everywhere\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-03T09:24:38-06:00",
+          "tree_id": "e0e02bb8a8bede345b2c28407f17f1e8b3924e28",
+          "url": "https://github.com/ocaml/dune/commit/eb5379322c2326f9cd4c364a6a57c9dbcc2ed4c8"
+        },
+        "date": 1675438982446,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.46949026118",
             "unit": "seconds"
           }
         ]

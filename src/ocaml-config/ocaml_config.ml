@@ -672,10 +672,9 @@ let make vars =
     let windows_unicode = get_bool vars "windows_unicode" in
     let natdynlink_supported =
       let lib = "dynlink.cmxa" in
-      let lib =
-        if version >= (5, 0, 0) then Filename.concat "dynlink" lib else lib
-      in
+      let lib_prefixed = Filename.concat "dynlink" lib in
       Sys.file_exists (Filename.concat standard_library lib)
+      || Sys.file_exists (Filename.concat standard_library lib_prefixed)
     in
     let file =
       let stdlib = Path.external_ (Path.External.of_string standard_library) in

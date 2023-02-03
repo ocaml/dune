@@ -56,7 +56,7 @@ module type Source_tree = sig
   module Dir : sig
     type t
 
-    val sub_dir_names : t -> String.Set.t
+    val sub_dir_names : t -> Filename.Set.t
 
     val file_paths : t -> Path.Source.Set.t
   end

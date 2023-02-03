@@ -363,7 +363,7 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
   in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
-  Modules_group.lib ~stdlib:lib.stdlib ~implements ~lib_name ~src_dir:dir
+  Modules_group.lib ~stdlib:lib.stdlib ~implements ~lib_name ~obj_dir:dir
     ~modules ~main_module_name ~wrapped
 
 let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
@@ -408,6 +408,7 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
         let obj_dir = Library.obj_dir lib ~dir in
         `Library (lib, modules, obj_dir)
       | Executables exes | Tests { exes; _ } ->
+        let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
         let modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable
@@ -419,21 +420,14 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
               modules_settings
           in
           let project = Scope.project scope in
+          let obj_dir = Obj_dir.obj_dir obj_dir in
           if Dune_project.wrapped_executables project then
-            Modules_group.make_wrapped ~src_dir:dir ~modules `Exe
-          else Modules_group.exe_unwrapped modules ~src_dir:dir
-        in
-        let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
-        let modules =
-          let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
-          (* We need to relocate the source of the alias module to its own
-             directory for executables. This module always has the same name for
-             executables, therefore it might collide with ether alias modules if
-             there are multiple executable stanzas in the same directory *)
-          Modules_group.relocate_alias_module modules ~src_dir
+            Modules_group.make_wrapped ~obj_dir ~modules `Exe
+          else Modules_group.exe_unwrapped modules ~obj_dir
         in
         Memo.return (`Executables (exes, modules, obj_dir))
       | Melange_stanzas.Emit.T mel ->
+        let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
         let modules =
           let modules =
             Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
@@ -441,16 +435,8 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
               ~private_modules:Ordered_set_lang.standard ~src_dir:dir
               mel.modules
           in
-          Modules_group.make_wrapped ~src_dir:dir ~modules `Melange
-        in
-        let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
-        let modules =
-          let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
-          (* We need to relocate the source of the alias module to its own
-             directory for executables. This module always has the same name for
-             executables, therefore it might collide with ether alias modules if
-             there are multiple executable stanzas in the same directory *)
-          Modules_group.relocate_alias_module modules ~src_dir
+          Modules_group.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules
+            `Melange
         in
         Memo.return (`Melange_emit (mel, modules, obj_dir))
       | _ -> Memo.return `Skip)

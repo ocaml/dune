@@ -187,7 +187,7 @@ module Mangle = struct
       |> Option.some
     | Unwrapped -> None
 
-  let make_alias_module (t : t) ~has_lib_interface ~src_dir ~interface path =
+  let make_alias_module (t : t) ~has_lib_interface ~obj_dir ~interface path =
     let kind : Module.Kind.t = Alias path in
     let prefix, has_lib_interface =
       let prefix = prefix t in
@@ -212,7 +212,7 @@ module Mangle = struct
         [ Module_name.Unique.to_name ~loc:Loc.none obj_name ]
       else path @ [ interface ]
     in
-    Module.generated path ~obj_name ~kind ~src_dir
+    Module.generated path ~obj_name ~kind ~src_dir:obj_dir
 
   let wrap_module t m ~interface =
     let is_lib_interface =
@@ -252,7 +252,7 @@ module Group = struct
   let alias t = t.alias
 
   module Of_trie = struct
-    let of_trie ~src_dir ~mangle ~interface ~rev_path trie =
+    let of_trie ~obj_dir ~mangle ~interface ~rev_path trie =
       let rec loop interface rev_path trie =
         let has_lib_interface =
           match Module_name.Map.find trie interface with
@@ -260,7 +260,7 @@ module Group = struct
           | Some (Leaf _) -> true
         in
         { alias =
-            Mangle.make_alias_module mangle ~has_lib_interface ~src_dir
+            Mangle.make_alias_module mangle ~has_lib_interface ~obj_dir
               ~interface (List.rev rev_path)
         ; name = interface
         ; modules =
@@ -277,22 +277,13 @@ module Group = struct
       loop interface rev_path trie
   end
 
-  let of_trie (trie : Module.t Module_trie.t) ~mangle ~src_dir : t =
+  let of_trie (trie : Module.t Module_trie.t) ~mangle ~obj_dir : t =
     let prefix =
       Mangle.prefix mangle
       |> Option.map ~f:(fun (p : _ Visibility.Map.t) -> p.public)
     in
-    Of_trie.of_trie ~src_dir ~mangle ~interface:(Option.value_exn prefix)
+    Of_trie.of_trie ~obj_dir ~mangle ~interface:(Option.value_exn prefix)
       ~rev_path:[] trie
-
-  let rec relocate_alias_module t ~src_dir =
-    { t with
-      alias = Module.set_src_dir ~src_dir t.alias
-    ; modules =
-        Module_name.Map.map t.modules ~f:(function
-          | Module m -> Module m
-          | Group g -> Group (relocate_alias_module g ~src_dir))
-    }
 
   let rec fold { alias; modules; name = _ } ~f ~init =
     let init = f alias init in
@@ -533,12 +524,12 @@ module Unwrapped = struct
 
   let to_dyn t = Module_name.Map.to_dyn Group.dyn_of_node t
 
-  let of_trie trie ~mangle ~src_dir =
+  let of_trie trie ~mangle ~obj_dir =
     Module_name.Map.mapi trie ~f:(fun name (m : 'a Module_trie.node) ->
         match m with
         | Map trie ->
           let group =
-            Group.Of_trie.of_trie trie ~mangle ~src_dir ~interface:name
+            Group.Of_trie.of_trie trie ~mangle ~obj_dir ~interface:name
               ~rev_path:[ name ]
           in
           Group.Group group
@@ -673,7 +664,7 @@ module Wrapped = struct
     ; wrapped_compat = Module_name.Map.map wrapped_compat ~f
     }
 
-  let make ~src_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped =
+  let make ~obj_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped =
     let mangle =
       Mangle.of_lib ~main_module_name ~lib_name ~implements ~modules
     in
@@ -689,11 +680,11 @@ module Wrapped = struct
                | Private -> None
                | Public -> Some (Module.wrapped_compat m))
     in
-    let group = Group.of_trie modules ~mangle ~src_dir in
+    let group = Group.of_trie modules ~mangle ~obj_dir in
     { group; wrapped_compat; wrapped; toplevel_module = `Exported }
 
-  let make_exe_or_melange ~src_dir ~modules mangle =
-    let group = Group.of_trie modules ~mangle ~src_dir in
+  let make_exe_or_melange ~obj_dir ~modules mangle =
+    let group = Group.of_trie modules ~mangle ~obj_dir in
     { group
     ; wrapped_compat = Module_name.Map.empty
     ; wrapped = Simple true
@@ -725,10 +716,6 @@ module Wrapped = struct
   let group_interfaces (t : t) m = Group.group_interfaces t.group m
 
   let alias_for t m = Group.alias_for t.group m
-
-  let relocate_alias_module t ~src_dir =
-    let group = Group.relocate_alias_module t.group ~src_dir in
-    { t with group }
 end
 
 type t =
@@ -800,11 +787,11 @@ let rec main_module_name = function
   | Stdlib w -> Some w.main_module_name
   | Impl { vlib; impl = _ } -> main_module_name vlib
 
-let lib ~src_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
+let lib ~obj_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
     ~modules =
   let make_wrapped main_module_name =
     Wrapped
-      (Wrapped.make ~src_dir ~lib_name ~implements ~modules ~main_module_name
+      (Wrapped.make ~obj_dir ~lib_name ~implements ~modules ~main_module_name
          ~wrapped)
   in
   match stdlib with
@@ -817,7 +804,7 @@ let lib ~src_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
     | Simple false, _, Some m -> Singleton m
     | Simple false, _, None ->
       let mangle = Mangle.Unwrapped in
-      Unwrapped (Unwrapped.of_trie modules ~mangle ~src_dir)
+      Unwrapped (Unwrapped.of_trie modules ~mangle ~obj_dir)
     | (Yes_with_transition _ | Simple true), Some main_module_name, Some m ->
       if Module.name m = main_module_name && not implements then Singleton m
       else make_wrapped main_module_name
@@ -890,11 +877,11 @@ let make_singleton m mangle =
 
 let singleton_exe m = make_singleton m Exe
 
-let exe_unwrapped modules ~src_dir =
+let exe_unwrapped modules ~obj_dir =
   let mangle = Mangle.Unwrapped in
-  Unwrapped (Unwrapped.of_trie modules ~mangle ~src_dir)
+  Unwrapped (Unwrapped.of_trie modules ~mangle ~obj_dir)
 
-let make_wrapped ~src_dir ~modules kind =
+let make_wrapped ~obj_dir ~modules kind =
   let mangle : Mangle.t =
     match kind with
     | `Exe -> Exe
@@ -902,7 +889,7 @@ let make_wrapped ~src_dir ~modules kind =
   in
   match Module_trie.as_singleton modules with
   | Some m -> make_singleton m mangle
-  | None -> Wrapped (Wrapped.make_exe_or_melange ~src_dir ~modules mangle)
+  | None -> Wrapped (Wrapped.make_exe_or_melange ~obj_dir ~modules mangle)
 
 let rec impl_only = function
   | Stdlib w -> Stdlib.impl_only w
@@ -1150,11 +1137,6 @@ let is_stdlib_alias t m =
 let exit_module = function
   | Stdlib w -> Stdlib.exit_module w
   | _ -> None
-
-let relocate_alias_module t ~src_dir =
-  match t with
-  | Wrapped t -> Wrapped (Wrapped.relocate_alias_module t ~src_dir)
-  | s -> s
 
 let as_singleton = function
   | Singleton m -> Some m

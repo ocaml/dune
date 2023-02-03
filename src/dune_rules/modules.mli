@@ -9,7 +9,7 @@ val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 
 val lib :
-     src_dir:Path.Build.t
+     obj_dir:Path.Build.t
   -> main_module_name:Module_name.t option
   -> wrapped:Wrapped.t
   -> stdlib:Ocaml_stdlib.t option
@@ -64,10 +64,10 @@ val fold_no_vlib_with_aliases :
   -> alias:(Group.t -> 'acc -> 'acc)
   -> 'acc
 
-val exe_unwrapped : Module.t Module_trie.t -> src_dir:Path.Build.t -> t
+val exe_unwrapped : Module.t Module_trie.t -> obj_dir:Path.Build.t -> t
 
 val make_wrapped :
-     src_dir:Path.Build.t
+     obj_dir:Path.Build.t
   -> modules:Module.t Module_trie.t
   -> [ `Exe | `Melange ]
   -> t
@@ -122,10 +122,6 @@ val local_open : t -> Module.t -> Module_name.t list
 val is_stdlib_alias : t -> Module.t -> bool
 
 val exit_module : t -> Module.t option
-
-(** [relocate_alias_module t ~src_dir] sets the source directory of the alias
-    module to [src_dir]. Only works if [t] is wrapped. *)
-val relocate_alias_module : t -> src_dir:Path.t -> t
 
 val as_singleton : t -> Module.t option
 

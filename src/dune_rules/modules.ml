@@ -226,11 +226,10 @@ module Mangle = struct
       match t with
       | Exe | Melange -> (Option.value_exn prefix).public :: path
       | Unwrapped ->
-        if is_lib_interface then List.rev path |> List.tl |> List.rev else path
+        if is_lib_interface then List.remove_last_exn path else path
       | Lib _ ->
         let path =
-          if is_lib_interface then List.rev path |> List.tl |> List.rev
-          else path
+          if is_lib_interface then List.remove_last_exn path else path
         in
         Visibility.Map.find (Option.value_exn prefix) (Module.visibility m)
         :: path
@@ -1158,7 +1157,7 @@ let canonical_path t (group : Group.t) m =
          the last component.
 
          For example: foo/foo.ml would has the path [ "Foo"; "Foo" ] *)
-      path |> List.rev |> List.tl |> List.rev
+      List.remove_last_exn path
   in
   match t with
   | Impl { impl = Wrapped w; _ } | Wrapped w -> w.group.name :: path

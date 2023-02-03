@@ -759,8 +759,7 @@ let symlink_installed_artifacts_to_build_install sctx
           Install.Entry.relative_installed_path entry ~paths:install_paths
           |> Path.as_in_source_tree_exn
         in
-        Path.append_source (Path.build install_dir) relative
-        |> Path.as_in_build_dir_exn
+        Path.Build.append_source install_dir relative
       in
       let loc =
         match s.source with

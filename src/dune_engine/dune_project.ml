@@ -244,7 +244,7 @@ let to_dyn
 
 let find_extension_args t key = Univ_map.find t.extension_args key
 
-let is_extension_set t key = Option.is_some (find_extension_args t key)
+let is_extension_set t key = Univ_map.mem t.extension_args key
 
 include Dune_lang.Versioned_file.Make (struct
   type t = Stanza.Parser.t list

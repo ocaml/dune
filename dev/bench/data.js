@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675388489928,
+  "lastUpdate": 1675388515607,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3537,6 +3537,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.68161466124667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "577f286ed45171123fae2e68e018560af72fcbb6",
+          "message": "refactor(rules): remove relocate_alias_module (#6977)\n\nRather than creating the alias module in the source directory, and then\r\nmoving it to the object directory, we just create it directly in the\r\nobject directory.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-02T19:20:31-06:00",
+          "tree_id": "63636579d50197ae98387fe90f8a3b0c74081557",
+          "url": "https://github.com/ocaml/dune/commit/577f286ed45171123fae2e68e018560af72fcbb6"
+        },
+        "date": 1675388514974,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.89780935126",
             "unit": "seconds"
           }
         ]

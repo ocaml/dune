@@ -10,6 +10,16 @@ module Context_name = Dune_engine.Context_name
 let package_name = conv Package.Name.conv
 
 module Path = struct
+  module External = struct
+    type t = string
+
+    let path p = Path.External.of_filename_relative_to_initial_cwd p
+
+    let arg s = s
+
+    let conv = conv ((fun p -> Ok p), Format.pp_print_string)
+  end
+
   type t = string
 
   let path p = Path.of_filename_relative_to_initial_cwd p
@@ -20,6 +30,8 @@ module Path = struct
 end
 
 let path = Path.conv
+
+let external_path = Path.External.conv
 
 let profile = conv Dune_rules.Profile.conv
 

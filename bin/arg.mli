@@ -7,6 +7,14 @@ include module type of struct
 end
 
 module Path : sig
+  module External : sig
+    type t
+
+    val path : t -> Path.External.t
+
+    val arg : t -> string
+  end
+
   type t
 
   val path : t -> Path.t
@@ -35,6 +43,8 @@ val dep : Dep.t conv
 val graph_format : Dune_graph.Graph.File_format.t conv
 
 val path : Path.t conv
+
+val external_path : Path.External.t conv
 
 val package_name : Package.Name.t conv
 

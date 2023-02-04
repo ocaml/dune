@@ -600,7 +600,7 @@ module Builder = struct
       let doc = "Use this specific workspace file instead of looking it up." in
       Arg.(
         value
-        & opt (some path) None
+        & opt (some external_path) None
         & info [ "workspace" ] ~docs ~docv:"FILE" ~doc
             ~env:(Cmd.Env.info ~doc "DUNE_WORKSPACE"))
     and+ promote =
@@ -838,7 +838,9 @@ module Builder = struct
         { x
         ; profile
         ; instrument_with
-        ; workspace_file = Option.map workspace_file ~f:Arg.Path.path
+        ; workspace_file =
+            Option.map workspace_file ~f:(fun p ->
+                Path.Outside_build_dir.External (Arg.Path.External.path p))
         ; config_from_command_line
         ; config_from_config_file
         }

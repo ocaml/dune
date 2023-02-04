@@ -57,7 +57,16 @@ module Shutdown = struct
       | _ -> None)
 end
 
-let blocked_signals : Signal.t list = [ Int; Quit; Term ]
+(* We block SIGPIPE because it can delivered when RPC clients disconnect in the
+   middle of our write.
+
+   This is not the cleanest way to solve this problem. It would be more direct
+   to configure the sockets to stop delivering this signal. Unfortunately,
+   there's no portable way to achieve this so we would need to write bindings
+   to Linux/BSD api's. Eventually, we'll get around to it.
+
+   When the UI detects stderr/stdout is closed, it will signal Usr1. *)
+let blocked_signals : Signal.t list = [ Int; Quit; Term; Usr1; Pipe ]
 
 module Thread : sig
   val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> 'a) -> unit
@@ -609,9 +618,10 @@ end = struct
     let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
       let signal = wait_signal () in
-      Event.Queue.send_shutdown q (Signal signal);
       match signal with
-      | Int | Quit | Term ->
+      | Pipe -> ()
+      | Int | Quit | Term | Usr1 ->
+        Event.Queue.send_shutdown q (Signal signal);
         let now = Unix.gettimeofday () in
         Queue.push last_exit_signals now;
         (* Discard old signals *)
@@ -622,8 +632,10 @@ end = struct
           ignore (Queue.pop_exn last_exit_signals : float)
         done;
         let n = Queue.length last_exit_signals in
-        if n = 2 then prerr_endline warning;
-        if n = 3 then sys_exit 1
+        (* if we got [Usr1], that means the stderr is closed, so there's no
+           need to print anything *)
+        if n = 2 && signal <> Usr1 then prerr_endline warning
+        else if n = 3 then sys_exit 1
       | _ -> (* we only blocked the signals above *) assert false
     done
 

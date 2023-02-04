@@ -5,9 +5,9 @@ module type Backend = Backend_intf.S
 module Backend = struct
   type t = Backend_intf.t
 
-  let dumb = (module Dumb : Backend_intf.S)
+  let dumb = Combinators.signal_usr1_on_pipe (module Dumb : Backend_intf.S)
 
-  let progress = Progress.flush
+  let progress = Combinators.signal_usr1_on_pipe Progress.flush
 
   let compose = Combinators.compose
 

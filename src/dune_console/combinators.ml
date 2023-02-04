@@ -50,3 +50,30 @@ let compose (module A : Backend_intf.S) (module B : Backend_intf.S) :
       A.reset_flush_history ();
       B.reset_flush_history ()
   end : Backend_intf.S)
+
+let signal_usr1_on_pipe (module A : Backend_intf.S) =
+  let sent = ref false in
+  let wrap f =
+    match f () with
+    | s -> s
+    | exception Unix.Unix_error (Unix.EPIPE, _, _) ->
+      if !sent then (
+        sent := true;
+        Unix.kill (Unix.getpid ()) Sys.sigusr1)
+  in
+  (module struct
+    let print_user_message msg = wrap (fun () -> A.print_user_message msg)
+
+    let set_status_line x = wrap (fun () -> A.set_status_line x)
+
+    let start () = wrap A.start
+
+    let finish () = wrap A.finish
+
+    let print_if_no_status_line msg =
+      wrap (fun () -> A.print_if_no_status_line msg)
+
+    let reset () = wrap A.reset
+
+    let reset_flush_history () = wrap A.reset_flush_history
+  end : Backend_intf.S)

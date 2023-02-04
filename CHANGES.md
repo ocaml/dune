@@ -1,6 +1,12 @@
 Unreleased
 ----------
 
+- Ignore `SIGPIPE` raised when we write to suddenly disonnected RPC clients
+  (#7221, fixes #6870, @rgrinberg)
+
+- Speed up file copying on macos by using `clonefile` when available
+  (@rgrinberg, #7210)
+
 - Support commands that output 8-bit and 24-bit colors in the terminal (#7188,
   @Alizter)
 

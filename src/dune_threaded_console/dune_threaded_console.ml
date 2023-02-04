@@ -111,6 +111,8 @@ let make (module Base : S) : (module Dune_console.Backend) =
         done
       with
       | Exit -> cleanup ()
+      | Unix.Unix_error (Unix.EPIPE, _, _) ->
+        Unix.kill (Unix.getpid ()) Sys.sigusr1
       | exn ->
         (* If any unexpected exceptions are encountered, we catch them, make
            sure we [cleanup] and then re-raise them. *)

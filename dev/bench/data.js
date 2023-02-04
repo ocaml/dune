@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675484537728,
+  "lastUpdate": 1675488996843,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3682,6 +3682,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.77953160348667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f7cf8d45c850fc86584ce8fc38b4b249cadd485a",
+          "message": "fix: pre-emptively clear screen (#6987)\n\nWhen running with fancy terminals in watch mode, we pre-emptively clear\r\nthe screen. This is to prevent subsequent clears in watch mode making\r\nthe user's screen jump.\r\n\r\nFixes #6884\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-03T23:17:48-06:00",
+          "tree_id": "aabad920f45702980d3885c314fc89e5f02bb0bc",
+          "url": "https://github.com/ocaml/dune/commit/f7cf8d45c850fc86584ce8fc38b4b249cadd485a"
+        },
+        "date": 1675488995551,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.62773831094667",
             "unit": "seconds"
           }
         ]

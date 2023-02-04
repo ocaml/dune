@@ -87,7 +87,7 @@ end = struct
       Thread.create f x
 
   let () =
-    Fdecl.set Console.Backend.spawn_thread (fun f ->
+    Fdecl.set Console.Threaded.spawn_thread (fun f ->
         let (_ : Thread.t) = create ~signal_watcher:`Yes f () in
         ())
 

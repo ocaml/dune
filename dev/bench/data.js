@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675474584935,
+  "lastUpdate": 1675484537728,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3653,6 +3653,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.626043975660004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3022e87b2844e7f64c7bc6ab3d8ff882f592ef8f",
+          "message": "refactor(console): split interface (#6989)\n\nSplit the interface to multiple files and allow threaded backends to be\r\ndefined outside the [dune_console]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-03T22:02:26-06:00",
+          "tree_id": "c1a1ef4d5e6e933a3cda4c7925189fb30aee008b",
+          "url": "https://github.com/ocaml/dune/commit/3022e87b2844e7f64c7bc6ab3d8ff882f592ef8f"
+        },
+        "date": 1675484537062,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.77953160348667",
             "unit": "seconds"
           }
         ]

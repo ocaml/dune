@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- Pre-emptively clear screen in watch mode (#6987, fixes #6884, @rgrinberg)
+
 - Fix cross compilation configuration when a context with targets is itself a
   host of another context (#6958, fixes #6843, @rgrinberg)
 

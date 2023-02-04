@@ -111,7 +111,7 @@ val load_config_file : Path.t -> Partial.t
 val adapt_display : t -> output_is_a_tty:bool -> t
 
 (** Initialises the configuration for the process *)
-val init : t -> unit
+val init : t -> watch:bool -> unit
 
 val to_dyn : t -> Dyn.t
 

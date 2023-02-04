@@ -19,11 +19,6 @@ let make (module Base : Threaded_intf.S) : (module Backend_intf.S) =
       ; finish_requested = false
       }
 
-    let start () =
-      Mutex.lock mutex;
-      Base.start ();
-      Mutex.unlock mutex
-
     let finish () =
       Mutex.lock mutex;
       state.finish_requested <- true;
@@ -57,60 +52,61 @@ let make (module Base : Threaded_intf.S) : (module Backend_intf.S) =
       state.status_line <- None;
       Base.reset_flush_history ();
       Mutex.unlock mutex
-  end in
-  ( Fdecl.get spawn_thread @@ fun () ->
-    let open T in
-    let last = ref (Unix.gettimeofday ()) in
-    let frame_rate = 1. /. 60. in
-    let cleanup () =
-      state.finished <- true;
-      Base.finish ();
-      Condition.broadcast finish_cv;
-      Mutex.unlock mutex
-    in
-    try
+
+    let start () =
       Base.start ();
-      (* This is the main event loop for a threaded backend.
+      Fdecl.get spawn_thread @@ fun () ->
+      let last = ref (Unix.gettimeofday ()) in
+      let frame_rate = 1. /. 60. in
+      let cleanup () =
+        state.finished <- true;
+        Base.finish ();
+        Condition.broadcast finish_cv;
+        Mutex.unlock mutex
+      in
+      try
+        (* This is the main event loop for a threaded backend.
 
-         Firstly we lock our mutex, to prevent other threads from mutating our
-         state. Next we ask our implementation to render the given state,
-         afterwards checking if a finish was requested.
+           Firstly we lock our mutex, to prevent other threads from mutating our
+           state. Next we ask our implementation to render the given state,
+           afterwards checking if a finish was requested.
 
-         If a finish was requested we exit the loop cleanly.
+           If a finish was requested we exit the loop cleanly.
 
-         We unlock our mutex and go into a time calculation. This calculation
-         gets the current time and compares it with the last recorded time.
-         This lets us compute the elapsed time.
+           We unlock our mutex and go into a time calculation. This calculation
+           gets the current time and compares it with the last recorded time.
+           This lets us compute the elapsed time.
 
-         Next we check that the elapsed time is larger than our specifed
-         [frame_rate]. If this is the case then we can handle any pending user
-         events and continue the loop as soon as possible.
+           Next we check that the elapsed time is larger than our specifed
+           [frame_rate]. If this is the case then we can handle any pending user
+           events and continue the loop as soon as possible.
 
-         If we have not yet reached the [frame_rate] then we can handle user
-         events and sleep for the remaining time. *)
-      while true do
-        Mutex.lock mutex;
-        Base.render state;
-        let finish_requested = state.finish_requested in
-        if finish_requested then raise_notrace Exit;
-        Mutex.unlock mutex;
-        let now = Unix.gettimeofday () in
-        let elapsed = now -. !last in
-        let new_time =
-          if elapsed >= frame_rate then
-            Base.handle_user_events ~now ~time_budget:0.0 mutex
-          else
-            let delta = frame_rate -. elapsed in
-            Base.handle_user_events ~now ~time_budget:delta mutex
-        in
-        last := new_time
-      done
-    with
-    | Exit -> cleanup ()
-    | exn ->
-      (* If any unexpected exceptions are encountered, we catch them, make
-         sure we [cleanup] and then re-raise them. *)
-      let exn = Exn_with_backtrace.capture exn in
-      cleanup ();
-      Exn_with_backtrace.reraise exn );
+           If we have not yet reached the [frame_rate] then we can handle user
+           events and sleep for the remaining time. *)
+        while true do
+          Mutex.lock mutex;
+          Base.render state;
+          let finish_requested = state.finish_requested in
+          if finish_requested then raise_notrace Exit;
+          Mutex.unlock mutex;
+          let now = Unix.gettimeofday () in
+          let elapsed = now -. !last in
+          let new_time =
+            if elapsed >= frame_rate then
+              Base.handle_user_events ~now ~time_budget:0.0 mutex
+            else
+              let delta = frame_rate -. elapsed in
+              Base.handle_user_events ~now ~time_budget:delta mutex
+          in
+          last := new_time
+        done
+      with
+      | Exit -> cleanup ()
+      | exn ->
+        (* If any unexpected exceptions are encountered, we catch them, make
+           sure we [cleanup] and then re-raise them. *)
+        let exn = Exn_with_backtrace.capture exn in
+        cleanup ();
+        Exn_with_backtrace.reraise exn
+  end in
   (module T)

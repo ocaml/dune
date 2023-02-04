@@ -425,7 +425,7 @@ let term =
   and+ debug_backtraces = Common.debug_backtraces in
   let config : Dune_config.t =
     { Dune_config.default with
-      display = { verbosity = Quiet; status_line = false }
+      display = Dune_config.Display.quiet
     ; concurrency = Fixed 1
     }
   in

@@ -263,7 +263,7 @@ module Server = struct
       let buf = Bytes.make 1 '0' in
       { fd; sockaddr; r_interrupt_accept; w_interrupt_accept; buf }
 
-    let rec accept t =
+    let accept t =
       match Unix.select [ t.r_interrupt_accept; t.fd ] [] [] (-1.0) with
       | r, [], [] ->
         let inter, accept =

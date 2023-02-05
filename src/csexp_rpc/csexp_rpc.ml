@@ -279,7 +279,6 @@ module Server = struct
           Some fd)
         else assert false
       | _, _, _ -> assert false
-      | exception Unix.Unix_error (Unix.EAGAIN, _, _) -> accept t
       | exception Unix.Unix_error (Unix.EBADF, _, _) -> None
 
     let stop t =

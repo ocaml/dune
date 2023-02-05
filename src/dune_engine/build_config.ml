@@ -65,12 +65,14 @@ type t =
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
+  ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   }
 
 let t = Fdecl.create Dyn.opaque
 
 let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
-    ~sandboxing_preference ~rule_generator ~implicit_default_alias =
+    ~sandboxing_preference ~rule_generator ~implicit_default_alias
+    ~execution_parameters =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
         let open Memo.O in
@@ -93,6 +95,7 @@ let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ; cache_config
     ; cache_debug_flags
     ; implicit_default_alias
+    ; execution_parameters
     }
 
 let get () = Fdecl.get t

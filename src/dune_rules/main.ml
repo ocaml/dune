@@ -28,6 +28,20 @@ let implicit_default_alias dir =
               (Context_name.of_string ctx_name)
               dir)))
 
+let execution_parameters =
+  let f path =
+    let open Memo.O in
+    let+ dir = Source_tree.nearest_dir path
+    and+ ep = Execution_parameters.default in
+    Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep
+  in
+  let memo =
+    Memo.create "execution-parameters-of-dir"
+      ~input:(module Path.Source)
+      ~cutoff:Execution_parameters.equal f
+  in
+  fun ~dir -> Memo.exec memo dir
+
 let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags : unit =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst ctx =
     let open Fiber.O in
@@ -49,7 +63,7 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags : unit =
            Workspace.workspace () >>| Workspace.build_contexts))
     ~cache_config ~cache_debug_flags
     ~rule_generator:(module Gen_rules)
-    ~implicit_default_alias
+    ~implicit_default_alias ~execution_parameters
 
 let get () =
   let open Memo.O in

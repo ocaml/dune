@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675523705438,
+  "lastUpdate": 1675628202701,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3740,6 +3740,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.083287552486674",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "165f735f775387dd80294327555f23a3e77ecd57",
+          "message": "test: Demonstrate leaking of display for cram test (#7003)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-02-05T13:54:01-06:00",
+          "tree_id": "d1f649de7560a6aa4d249e070bd0af875992c0ca",
+          "url": "https://github.com/ocaml/dune/commit/165f735f775387dd80294327555f23a3e77ecd57"
+        },
+        "date": 1675628201447,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.842280371899996",
             "unit": "seconds"
           }
         ]

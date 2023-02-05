@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675628202701,
+  "lastUpdate": 1675637986218,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3769,6 +3769,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.842280371899996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e26d337a96b8abb4ead126d847b8e6427f6613d",
+          "message": "csexp_rpc.ml: small simplification (#7006)\n\n* No need to set fd to non-blocking\r\n* Unix.select should not raise EAGAIN\r\n\r\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-02-05T23:41:15+01:00",
+          "tree_id": "d2e9decf2b8e5a3b5538cbd26b0fd84923fb437e",
+          "url": "https://github.com/ocaml/dune/commit/7e26d337a96b8abb4ead126d847b8e6427f6613d"
+        },
+        "date": 1675637985598,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.42048447388",
             "unit": "seconds"
           }
         ]

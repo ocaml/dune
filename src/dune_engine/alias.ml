@@ -27,6 +27,8 @@ module Name : sig
 
   val fmt : t
 
+  val empty : t
+
   val all : t
 
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
@@ -73,6 +75,8 @@ end = struct
   let to_string s = s
 
   let default = "default"
+
+  let empty = "empty"
 
   let runtest = "runtest"
 
@@ -157,6 +161,8 @@ let make_standard name =
 let register_as_standard name =
   let (_ : (unit, _) result) = Table.add standard_aliases name () in
   ()
+
+let empty = make_standard Name.empty
 
 let default = make_standard Name.default
 

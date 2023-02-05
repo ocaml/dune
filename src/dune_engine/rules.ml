@@ -150,6 +150,10 @@ module Produce = struct
       produce
         (let dir = Alias.dir t in
          let name = Alias.name t in
+         if Alias.Name.equal name Alias.Name.empty then
+           Code_error.raise
+             "it is forbidden to add dependency to the empty alias"
+             [ ("dir", Path.Build.to_dyn dir) ];
          Path.Build.Map.singleton dir
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
 

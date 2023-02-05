@@ -25,6 +25,8 @@ module Name : sig
 
   val all : t
 
+  val empty : t
+
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
 
   include Comparable_intf.S with type key := t
@@ -54,6 +56,8 @@ val encode : t Dune_lang.Encoder.t
 val of_user_written_path : loc:Loc.t -> Path.t -> t
 
 val fully_qualified_name : t -> Path.Build.t
+
+val empty : dir:Path.Build.t -> t
 
 val default : dir:Path.Build.t -> t
 

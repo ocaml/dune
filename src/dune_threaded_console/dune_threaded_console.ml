@@ -1,19 +1,18 @@
+include Dune_threaded_console_intf
 open Stdune
-
-let spawn_thread = Fdecl.create Dyn.opaque
 
 (** [threaded (module T)] is a backend that renders the user interface in a
     separate thread. The module [T] must implement the [Threaded] interface.
     There are special functions included to handle various functions of a user
     interface. *)
-let make (module Base : Threaded_intf.S) : (module Backend_intf.S) =
+let make (module Base : S) : (module Dune_console.Backend) =
   let module T = struct
     let mutex = Mutex.create ()
 
     let finish_cv = Condition.create ()
 
     let state =
-      { Threaded_intf.messages = Queue.create ()
+      { messages = Queue.create ()
       ; status_line = None
       ; finished = false
       ; finish_requested = false
@@ -55,7 +54,7 @@ let make (module Base : Threaded_intf.S) : (module Backend_intf.S) =
 
     let start () =
       Base.start ();
-      Fdecl.get spawn_thread @@ fun () ->
+      Dune_engine.Scheduler.spawn_thread @@ fun () ->
       let last = ref (Unix.gettimeofday ()) in
       let frame_rate = 1. /. 60. in
       let cleanup () =
@@ -110,3 +109,23 @@ let make (module Base : Threaded_intf.S) : (module Backend_intf.S) =
         Exn_with_backtrace.reraise exn
   end in
   (module T)
+
+let progress () =
+  make
+    (module struct
+      include (val Dune_console.Backend.progress_no_flush)
+
+      let render (state : state) =
+        while not (Queue.is_empty state.messages) do
+          print_user_message (Queue.pop_exn state.messages)
+        done;
+        set_status_line state.status_line;
+        flush stderr
+
+      (* The current console doesn't react to user events so we just sleep until
+          the next loop iteration. Because it doesn't react to user input, it cannot
+          modify the UI state, and as a consequence doesn't need the mutex. *)
+      let handle_user_events ~now ~time_budget _ =
+        Unix.sleepf time_budget;
+        now +. time_budget
+    end)

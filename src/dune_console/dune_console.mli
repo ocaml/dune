@@ -7,8 +7,35 @@ open Stdune
     be something else. This module allow to set a global backend for the
     application as well as composing backends. *)
 
+module type Backend = sig
+  (** The interface of a custom console backend. *)
+
+  (** Start the backend. This is guaranteed to be called before all other
+      functions. *)
+  val start : unit -> unit
+
+  (** Output a basic user message to the screen. *)
+  val print_user_message : User_message.t -> unit
+
+  (** Set the status line. *)
+  val set_status_line : User_message.Style.t Pp.t option -> unit
+
+  (** Print a message if the backend doesn't support a persistent status line. *)
+  val print_if_no_status_line : User_message.Style.t Pp.t -> unit
+
+  (** Reset the display. *)
+  val reset : unit -> unit
+
+  (** Reset the display and flush history. *)
+  val reset_flush_history : unit -> unit
+
+  (** Finalize the backend. After this function is called, it is guaranteed that
+      no other functions will be called. *)
+  val finish : unit -> unit
+end
+
 module Backend : sig
-  type t
+  type t = (module Backend)
 
   val set : t -> unit
 
@@ -23,21 +50,12 @@ module Backend : sig
   (** A backend that displays the status line in the terminal. *)
   val progress : t
 
-  (** A backend that displays the status line in the terminal, with the
-      processing logic happening in a separate thread. *)
-  val progress_threaded : unit -> t
-end
+  (** [flush t] returns a backend that will flush [stderr] after every write *)
+  val flush : t -> t
 
-module Threaded : sig
-  include module type of Threaded_intf
-
-  (** [spawn_thread f] is called by the main thread to spawn a new thread. The
-      thread should call [f] to start the user interface. This forward
-      declaration allows the function to be set much later in the scheduler when
-      the operation is defined. This is only useful for threaded backends. *)
-  val spawn_thread : ((unit -> unit) -> unit) Fdecl.t
-
-  val make : (module S) -> Backend.t
+  (** A base progress backend that doesn't flush. Any backend implemented on top
+      if is expected to flush manually *)
+  val progress_no_flush : t
 end
 
 (** Format and print a user message to the console. *)

@@ -157,3 +157,5 @@ val stats : unit -> Dune_stats.t option Fiber.t
     clients may observe that Dune reacted to a file change. This is needed for
     benchmarking the watch mode of Dune. *)
 val wait_for_build_input_change : unit -> unit Fiber.t
+
+val spawn_thread : (unit -> 'a) -> unit

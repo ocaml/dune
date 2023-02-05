@@ -86,15 +86,12 @@ end = struct
       in
       Thread.create f x
 
-  let () =
-    Fdecl.set Console.Threaded.spawn_thread (fun f ->
-        let (_ : Thread.t) = create ~signal_watcher:`Yes f () in
-        ())
-
   let spawn ~signal_watcher f =
     let (_ : Thread.t) = create ~signal_watcher f () in
     ()
 end
+
+let spawn_thread f = Thread.spawn ~signal_watcher:`Yes f
 
 (** The event queue *)
 module Event : sig

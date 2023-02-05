@@ -84,7 +84,7 @@ let dep_on_alias_multi_contexts ~dir ~name ~contexts =
 let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   let open Action_builder.O in
   let* dir = Action_builder.of_memo (find_dir_specified_on_command_line ~dir:src_dir) in
-  let+ alias_statuses =
+  let* alias_statuses =
     Action_builder.all
       (List.map contexts ~f:(fun ctx ->
          let dir =
@@ -94,15 +94,37 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
          in
          Dune_rules.Alias_rec.dep_on_alias_rec name dir))
   in
-  let is_nonempty =
-    List.exists alias_statuses ~f:(fun (x : Action_builder.Alias_status.t) ->
+  match
+    Alias.is_standard name
+    || List.exists alias_statuses ~f:(fun (x : Action_builder.Alias_status.t) ->
       match x with
       | Defined -> true
       | Not_defined -> false)
-  in
-  if (not is_nonempty) && not (Alias.is_standard name)
-  then
+  with
+  | true -> Action_builder.return ()
+  | false ->
+    let* load_dir =
+      Action_builder.all
+      @@ List.map contexts ~f:(fun ctx ->
+        let dir =
+          Source_tree.Dir.path dir
+          |> Path.Build.append_source (Context_name.build_dir ctx)
+          |> Path.build
+        in
+        Action_builder.of_memo @@ Load_rules.load_dir ~dir)
+    in
+    let hints =
+      let candidates =
+        Alias.Name.Set.union_map load_dir ~f:(function
+          | Load_rules.Loaded.Build build -> Alias.Name.Set.of_keys build.aliases
+          | _ -> Alias.Name.Set.empty)
+      in
+      User_message.did_you_mean
+        (Alias.Name.to_string name)
+        ~candidates:(Alias.Name.Set.to_list_map ~f:Alias.Name.to_string candidates)
+    in
     User_error.raise
+      ~hints
       [ Pp.textf
           "Alias %S specified on the command line is empty."
           (Alias.Name.to_string name)

@@ -296,7 +296,7 @@ let display_term =
          & info [ "verbose" ] ~docs:copts_sect
              ~doc:"Same as $(b,--display verbose)")
      in
-     Option.some_if verbose { Display.verbosity = Verbose; status_line = true })
+     Option.some_if verbose Dune_config.Display.verbose)
     Arg.(
       let doc =
         let all = Display.all |> List.map ~f:fst |> String.enumerate_one_of in

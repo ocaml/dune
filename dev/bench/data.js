@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675640412487,
+  "lastUpdate": 1675641150317,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3827,6 +3827,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.65358238688666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55a26e2c3e89b1d148906f910f788e4f32e8c40f",
+          "message": "chore: cleanup uses for display (#6997)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-02-05T17:34:13-06:00",
+          "tree_id": "ad551365e6bd503b12a369be73236f417b143474",
+          "url": "https://github.com/ocaml/dune/commit/55a26e2c3e89b1d148906f910f788e4f32e8c40f"
+        },
+        "date": 1675641149339,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "32.032020218746666",
             "unit": "seconds"
           }
         ]

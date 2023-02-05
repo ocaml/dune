@@ -37,3 +37,27 @@ executed:
   File "run.t", line 1, characters 0-0:
   Error: Files _build/default/run.t and _build/default/run.t.corrected differ.
   [1]
+
+With Dune 3.0 and later, we don't get an error since cram tests are enabled by
+default:
+
+  $ cat >dune-project<<EOF
+  > (lang dune 3.0)
+  > EOF
+
+  $ dune runtest
+  File "run.t", line 1, characters 0-0:
+  Error: Files _build/default/run.t and _build/default/run.t.corrected differ.
+  [1]
+
+And if we disable them on purpose, we get an error message:
+
+  $ echo "(cram disable)" >> dune-project
+  $ dune runtest
+  File "dune", line 1, characters 0-6:
+  1 | (cram)
+      ^^^^^^
+  Error: Cram tests are not enabled in this project.
+  Hint: You can enable cram tests by adding (cram enable) to your dune-project
+  file.
+  [1]

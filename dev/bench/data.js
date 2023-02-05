@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675637986218,
+  "lastUpdate": 1675640412487,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3798,6 +3798,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.42048447388",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "63cb1900a451f585b20b01e7e39e36947d712c4d",
+          "message": "fix(ocamlc_loc): extended excerpts (#7008)\n\n[ocamlc_loc] would fail to parse excerpts that would contains dots in\r\nthem\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-05T17:21:08-06:00",
+          "tree_id": "cd4a2788d304eab247ab7e179c48aa69271078d6",
+          "url": "https://github.com/ocaml/dune/commit/63cb1900a451f585b20b01e7e39e36947d712c4d"
+        },
+        "date": 1675640411818,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.65358238688666",
             "unit": "seconds"
           }
         ]

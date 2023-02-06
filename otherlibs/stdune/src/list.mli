@@ -45,6 +45,9 @@ val last : 'a t -> 'a option
 
 val destruct_last : 'a t -> ('a list * 'a) option
 
+(** remove the last element in the list. The list must be non empty *)
+val remove_last_exn : 'a t -> 'a t
+
 val sort : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t
 
 val stable_sort : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t

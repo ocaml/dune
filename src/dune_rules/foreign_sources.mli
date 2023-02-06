@@ -15,7 +15,6 @@ val for_exes : t -> first_exe:string -> Foreign.Sources.t
 val make :
      Stanza.t list
   -> dune_version:Syntax.Version.t
-  -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
   -> lib_config:Lib_config.t
   -> dirs:(Path.Build.t * 'a * String.Set.t) list
   -> t

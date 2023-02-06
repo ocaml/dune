@@ -26,12 +26,18 @@ module Backend : sig
   (** A backend that displays the status line in the terminal, with the
       processing logic happening in a separate thread. *)
   val progress_threaded : unit -> t
+end
+
+module Threaded : sig
+  include module type of Threaded_intf
 
   (** [spawn_thread f] is called by the main thread to spawn a new thread. The
       thread should call [f] to start the user interface. This forward
       declaration allows the function to be set much later in the scheduler when
       the operation is defined. This is only useful for threaded backends. *)
   val spawn_thread : ((unit -> unit) -> unit) Fdecl.t
+
+  val make : (module S) -> Backend.t
 end
 
 (** Format and print a user message to the console. *)

@@ -425,7 +425,7 @@ let term =
   and+ debug_backtraces = Common.debug_backtraces in
   let config : Dune_config.t =
     { Dune_config.default with
-      display = { verbosity = Quiet; status_line = false }
+      display = Dune_config.Display.quiet
     ; concurrency = Fixed 1
     }
   in
@@ -433,7 +433,7 @@ let term =
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir
     (Path.Outside_build_dir.of_string Common.default_build_dir);
-  Dune_config.init config;
+  Dune_config.init config ~watch:false;
   Log.init_disabled ();
   Dune_engine.Scheduler.Run.go
     ~on_event:(fun _ _ -> ())

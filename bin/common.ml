@@ -296,7 +296,7 @@ let display_term =
          & info [ "verbose" ] ~docs:copts_sect
              ~doc:"Same as $(b,--display verbose)")
      in
-     Option.some_if verbose { Display.verbosity = Verbose; status_line = true })
+     Option.some_if verbose Dune_config.Display.verbose)
     Arg.(
       let doc =
         let all = Display.all |> List.map ~f:fst |> String.enumerate_one_of in
@@ -986,7 +986,11 @@ let init ?log_file c =
     Dune_config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
   in
-  Dune_config.init config;
+  Dune_config.init config
+    ~watch:
+      (match c.builder.watch with
+      | No -> false
+      | Yes _ -> true);
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
     let+ w = Dune_rules.Workspace.workspace () in

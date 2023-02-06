@@ -108,15 +108,20 @@ let severity tokens =
       severity)
   | _ -> raise Unknown_format
 
-let rec skip_excerpt tokens =
-  match Tokens.peek tokens with
-  | Line { contents; indent = _ } -> (
-    match Lexer.skip_excerpt (Lexing.from_string contents) with
-    | `Continue ->
-      Tokens.junk tokens;
-      skip_excerpt tokens
-    | `Stop -> ())
-  | _ -> ()
+let skip_excerpt =
+  let make_skip_excerpt tokens self lex =
+    match Tokens.peek tokens with
+    | Line { contents; indent = _ } -> (
+      match lex (Lexing.from_string contents) with
+      | `Continue ->
+        Tokens.junk tokens;
+        self tokens
+      | `Stop -> ())
+    | _ -> ()
+  in
+  let rec tail tokens = make_skip_excerpt tokens tail Lexer.skip_excerpt_tail in
+  let head tokens = make_skip_excerpt tokens tail Lexer.skip_excerpt_head in
+  head
 
 let rec acc_message tokens min_indent acc =
   match Tokens.peek tokens with

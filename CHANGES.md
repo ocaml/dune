@@ -1,6 +1,11 @@
 Unreleased
 ----------
 
+- Fix parsing of OCaml errors that contain code excerpts with `...` in them.
+  (#7008, @rgrinberg)
+
+- Pre-emptively clear screen in watch mode (#6987, fixes #6884, @rgrinberg)
+
 - Fix cross compilation configuration when a context with targets is itself a
   host of another context (#6958, fixes #6843, @rgrinberg)
 
@@ -111,6 +116,8 @@ Unreleased
 
 - Fix dependency cycle when installing files to the bin section with
   `glob_files` (#6764, fixes #6708, @gridbugs)
+
+- Handle "Too many links" errors when using Dune cache on Windows (#6993, @nojb)
 
 3.6.2 (2022-12-21)
 ------------------

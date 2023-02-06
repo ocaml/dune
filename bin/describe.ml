@@ -593,11 +593,6 @@ module External_lib_deps = struct
     let to_dyn : t -> Dyn.t = function
       | Required -> String "required"
       | Optional -> String "optional"
-
-    let merge x y =
-      match (x, y) with
-      | Optional, Optional -> Optional
-      | _ -> Required
   end
 
   type external_lib_dep =
@@ -605,11 +600,45 @@ module External_lib_deps = struct
     ; kind : Kind.t
     }
 
-  type lib_deps =
-    { dir : Path.Source.t
-    ; deps : Lib_dep.t list
-    ; pps : Preprocess.With_instrumentation.t Preprocess.Per_module.t
-    }
+  let external_lib_dep_to_dyn t =
+    let open Dyn in
+    List [ String (Lib_name.to_string t.name); Kind.to_dyn t.kind ]
+
+  module Item = struct
+    module Kind = struct
+      type t =
+        | Executables
+        | Library
+        | Tests
+
+      let to_string = function
+        | Executables -> "executables"
+        | Library -> "library"
+        | Tests -> "tests"
+    end
+
+    type t =
+      { kind : Kind.t
+      ; dir : Path.Source.t
+      ; external_deps : external_lib_dep list
+      ; names : string list
+      ; package : Package.t option
+      }
+
+    let to_dyn t =
+      let open Dyn in
+      let record =
+        record
+          [ ("names", (list string) t.names)
+          ; ( "package"
+            , option Package.Name.to_dyn (Option.map ~f:Package.name t.package)
+            )
+          ; ("source_dir", String (Path.Source.to_string t.dir))
+          ; ("external_deps", list external_lib_dep_to_dyn t.external_deps)
+          ]
+      in
+      Variant (Kind.to_string t.kind, [ record ])
+  end
 
   let is_external db name =
     let open Memo.O in
@@ -620,30 +649,6 @@ module External_lib_deps = struct
       match Lib_info.status (Lib.info t) with
       | Installed_private | Public _ | Private _ -> false
       | Installed -> true)
-
-  let libs (context : Context.t) (build_system : Dune_rules.Main.build_system) =
-    let { Dune_rules.Main.conf; contexts = _; _ } = build_system in
-    let open Memo.O in
-    let+ dune_files =
-      Dune_rules.Dune_load.Dune_files.eval conf.dune_files ~context
-    in
-    List.concat_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
-        List.concat_map dune_file.stanzas ~f:(fun stanza ->
-            let dir = dune_file.dir in
-            match stanza with
-            | Dune_file.Executables exes ->
-              [ { deps = exes.buildable.libraries
-                ; dir
-                ; pps = exes.buildable.preprocess
-                }
-              ]
-            | Dune_file.Library lib ->
-              [ { deps = lib.buildable.libraries
-                ; dir
-                ; pps = lib.buildable.preprocess
-                }
-              ]
-            | _ -> []))
 
   let external_lib_pps db preprocess =
     let open Memo.O in
@@ -666,66 +671,76 @@ module External_lib_deps = struct
     if is_external then Some { name; kind } else None
 
   let external_lib_deps db lib_deps =
-    Memo.parallel_map lib_deps ~f:(fun { deps; dir; pps } ->
-        let open Memo.O in
-        let* libs =
-          deps
-          |> Memo.parallel_map ~f:(fun lib ->
-                 match lib with
-                 | Lib_dep.Direct (_, name) | Lib_dep.Re_export (_, name) -> (
-                   let+ v = external_resolve db name Kind.Required in
-                   match v with
-                   | Some x -> [ x ]
-                   | None -> [])
-                 | Lib_dep.Select select ->
-                   select.choices
-                   |> Memo.parallel_map
-                        ~f:(fun (choice : Lib_dep.Select.Choice.t) ->
-                          Lib_name.Set.to_string_list choice.required
-                          @ Lib_name.Set.to_string_list choice.forbidden
-                          |> Memo.parallel_map ~f:(fun name ->
-                                 let name = Lib_name.of_string name in
-                                 external_resolve db name Kind.Optional)
-                          >>| List.filter_map ~f:(fun x -> x))
-                   >>| List.concat)
-          >>| List.concat
-        in
-        let+ pps = external_lib_pps db pps in
-        (dir, libs @ pps))
+    let open Memo.O in
+    lib_deps
+    |> Memo.parallel_map ~f:(fun lib ->
+           match lib with
+           | Lib_dep.Direct (_, name) | Lib_dep.Re_export (_, name) -> (
+             let+ v = external_resolve db name Kind.Required in
+             match v with
+             | Some x -> [ x ]
+             | None -> [])
+           | Lib_dep.Select select ->
+             select.choices
+             |> Memo.parallel_map ~f:(fun (choice : Lib_dep.Select.Choice.t) ->
+                    Lib_name.Set.to_string_list choice.required
+                    @ Lib_name.Set.to_string_list choice.forbidden
+                    |> Memo.parallel_map ~f:(fun name ->
+                           let name = Lib_name.of_string name in
+                           external_resolve db name Kind.Optional)
+                    >>| List.filter_map ~f:(fun x -> x))
+             >>| List.concat)
+    >>| List.concat
 
-  let libs_to_lib_map libs =
-    List.fold_left ~init:Lib_name.Map.empty libs ~f:(fun acc_map lib ->
-        Lib_name.Map.update acc_map lib.name ~f:(fun n ->
-            match n with
-            | Some k -> Some (Kind.merge k lib.kind)
-            | None -> Some lib.kind))
+  let external_libs db dir libraries preprocess names package kind =
+    let open Memo.O in
+    let open Item in
+    let* lib_deps = external_lib_deps db libraries in
+    let+ lib_pps = external_lib_pps db preprocess in
+    Some { kind; dir; names; package; external_deps = lib_deps @ lib_pps }
 
-  let libs_dir_to_map libs_dir =
-    List.fold_left ~init:Path.Source.Map.empty libs_dir
-      ~f:(fun acc_map (dir, libs) ->
-        match Path.Source.Map.find acc_map dir with
-        | None -> Path.Source.Map.add_exn acc_map dir (libs_to_lib_map libs)
-        | Some libs_map ->
-          Path.Source.Map.set acc_map dir
-            (Lib_name.Map.union libs_map (libs_to_lib_map libs)
-               ~f:(fun _ k1 k2 -> Some (Kind.merge k1 k2))))
+  let libs db (context : Context.t)
+      (build_system : Dune_rules.Main.build_system) =
+    let { Dune_rules.Main.conf; contexts = _; _ } = build_system in
+    let open Memo.O in
+    let* dune_files =
+      Dune_rules.Dune_load.Dune_files.eval conf.dune_files ~context
+    in
+    Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
+        Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
+            let dir = dune_file.dir in
+            match stanza with
+            | Dune_file.Executables exes ->
+              external_libs db dir exes.buildable.libraries
+                exes.buildable.preprocess
+                (List.map exes.names ~f:snd)
+                exes.package Item.Kind.Executables
+            | Dune_file.Library lib ->
+              external_libs db dir lib.buildable.libraries
+                lib.buildable.preprocess
+                [ Dune_file.Library.best_name lib |> Lib_name.to_string ]
+                (Dune_file.Library.package lib)
+                Item.Kind.Library
+            | Dune_file.Tests tests ->
+              external_libs db dir tests.exes.buildable.libraries
+                tests.exes.buildable.preprocess
+                (List.map tests.exes.names ~f:snd)
+                tests.exes.package Item.Kind.Tests
+            | _ -> Memo.return None)
+        >>| List.filter_opt)
+    >>| List.concat
 
   let external_resolved_libs setup super_context =
     let open Memo.O in
     let context = Super_context.context super_context in
     let* scope = Scope.DB.find_by_dir context.build_dir in
     let db = Scope.libs scope in
-    let* libs = libs context setup in
-    external_lib_deps db libs
+    libs db context setup
+    >>| List.filter ~f:(fun (x : Item.t) -> not (x.external_deps = []))
 
   let to_dyn context_name external_resolved_libs =
-    Dyn.Tuple
-      [ Dyn.String context_name
-      ; external_resolved_libs |> libs_dir_to_map
-        |> Path.Source.Map.filter ~f:(fun m -> not (Lib_name.Map.is_empty m))
-        |> Path.Source.Map.to_dyn (fun libs ->
-               Lib_name.Map.to_dyn Kind.to_dyn libs)
-      ]
+    let open Dyn in
+    Tuple [ String context_name; list Item.to_dyn external_resolved_libs ]
 
   let get setup super_context =
     let open Memo.O in

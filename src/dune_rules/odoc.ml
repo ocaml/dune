@@ -370,10 +370,15 @@ let setup_html sctx (odoc_file : odoc_artefact) =
                    ])))
        :: run_odoc :: dummy))
 
-let setup_css_rule sctx =
-  let open Memo.O in
+let css_directory sctx =
   let ctx = Super_context.context sctx in
   let dir = Paths.html_root ctx ++ "_odoc_support" in
+  dir
+
+let setup_css_rule sctx =
+  let open Memo.O in
+  let dir = css_directory sctx in
+  let ctx = Super_context.context sctx in
   let* run_odoc =
     run_odoc sctx ~dir:(Path.build ctx.build_dir) "support-files"
       ~flags_for:None [ A "-o"; Target dir ]
@@ -790,14 +795,11 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
     Rules.Produce.Alias.add_deps (Alias.private_doc ~dir)
       (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 
-let has_rules m =
+let has_rules ?(directory_targets = Path.Build.Map.empty) m =
   let rules = Rules.collect_unit (fun () -> m) in
   Memo.return
     (Build_config.Rules
-       { rules
-       ; build_dir_only_sub_dirs = Subdir_set.empty
-       ; directory_targets = Path.Build.Map.empty
-       })
+       { rules; build_dir_only_sub_dirs = Subdir_set.empty; directory_targets })
 
 let with_package pkg ~f =
   let pkg = Package.Name.of_string pkg in
@@ -822,7 +824,11 @@ let gen_rules sctx ~dir:_ rest =
          ; directory_targets = Path.Build.Map.empty
          })
   | [ "_html" ] ->
-    has_rules (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
+    let directory_targets =
+      Path.Build.Map.singleton (css_directory sctx) Loc.none
+    in
+    has_rules ~directory_targets
+      (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
   | [ "_mlds"; pkg ] ->
     with_package pkg ~f:(fun pkg ->
         let* _mlds, rules = package_mlds sctx ~pkg in

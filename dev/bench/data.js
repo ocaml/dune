@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675681154609,
+  "lastUpdate": 1675697156151,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3914,6 +3914,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.343671219120004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc010606803128f40382e73da53238003229e9b4",
+          "message": "Upgrade ocamlformat to 0.24.1 (#7011)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-06T16:07:19+01:00",
+          "tree_id": "6371125f980acfa8a5dc39b7d70db34bd19e1c7b",
+          "url": "https://github.com/ocaml/dune/commit/bc010606803128f40382e73da53238003229e9b4"
+        },
+        "date": 1675697155437,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.10655592483334",
             "unit": "seconds"
           }
         ]

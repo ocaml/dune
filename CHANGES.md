@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.7.0~alpha1 (2023-02-06)
+-------------------------
 
 - Fix parsing of OCaml errors that contain code excerpts with `...` in them.
   (#7008, @rgrinberg)

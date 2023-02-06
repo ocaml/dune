@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675697156151,
+  "lastUpdate": 1675705824016,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3943,6 +3943,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.10655592483334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3076e6770c11ce8917f6736abaeff237cee2a136",
+          "message": "feature(rules): custom alias for cinaps (#6991)\n\nAllow setting the alias used to run cinaps actions.\r\n\r\nThis is done to override the behavior of attaching the cinaps action to\r\nboth the `cinaps` and `runtest` aliases.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-06T10:57:59-06:00",
+          "tree_id": "fe6a017da3e2c242419092d6b8bcceac8bc08eed",
+          "url": "https://github.com/ocaml/dune/commit/3076e6770c11ce8917f6736abaeff237cee2a136"
+        },
+        "date": 1675705823301,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.140991822240004",
             "unit": "seconds"
           }
         ]

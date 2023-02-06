@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675676724208,
+  "lastUpdate": 1675681154609,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3885,6 +3885,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.44550600602667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "moyodiallo@gmail.com",
+            "name": "Alpha Issiaga DIALLO",
+            "username": "moyodiallo"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14daaf6f0f9b12769c7b07cae7309d4cce5ebc54",
+          "message": "dune describe external-lib-deps: printing out more information (#6839)\n\n* Print out more information\r\n\r\nThe command print out more information, the package in which an external\r\nlibrary belongs to, the libraries, executables and tests at this point\r\nwith their respective external_lib_deps.\r\n\r\nIt was possible with the command `dune external-lib-deps` which was\r\nremoved, to use `@install` `@runtest` aliasis. And we ended up with the\r\nnew command to not be able to use those, this is why knowing the package\r\nof an external library could help.\r\n\r\nThe goal is to have much information for `opam-dune-lint`.\r\n\r\nSigned-off-by: Alpha DIALLO <moyodiallo@gmail.com>\r\n\r\n* Clean the code and fix the tests output\r\n\r\nSigned-off-by: Alpha DIALLO <moyodiallo@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Alpha DIALLO <moyodiallo@gmail.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-06T11:31:52+01:00",
+          "tree_id": "755b68b4660f939d9a90ef37c5d541dcff479608",
+          "url": "https://github.com/ocaml/dune/commit/14daaf6f0f9b12769c7b07cae7309d4cce5ebc54"
+        },
+        "date": 1675681153933,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.343671219120004",
             "unit": "seconds"
           }
         ]

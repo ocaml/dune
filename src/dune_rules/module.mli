@@ -61,6 +61,8 @@ val source : t -> ml_kind:Ml_kind.t -> File.t option
 
 val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option
 
+val install_as : t -> Path.Local.t option
+
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
 
 val obj_name : t -> Module_name.Unique.t
@@ -138,7 +140,8 @@ val set_src_dir : t -> src_dir:Path.t -> t
     XXX should this return the path of the source as well? it will almost always
     be used to create the rule to generate this file *)
 val generated :
-     ?obj_name:Module_name.Unique.t
+     ?install_as:Path.Local.t
+  -> ?obj_name:Module_name.Unique.t
   -> kind:Kind.t
   -> src_dir:Path.Build.t
   -> Module_name.Path.t

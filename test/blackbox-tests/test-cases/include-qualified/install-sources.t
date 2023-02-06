@@ -23,7 +23,7 @@ Now we add some source with duplicate base names and test again:
   $ touch baz.ml bar/baz.ml
   $ dune build foo.install
   $ cat _build/default/foo.install | grep .ml
+    "_build/install/default/lib/foo/bar/bar.ml" {"bar/bar.ml"}
     "_build/install/default/lib/foo/bar/baz.ml" {"bar/baz.ml"}
     "_build/install/default/lib/foo/baz.ml"
     "_build/install/default/lib/foo/foo.ml"
-    "_build/install/default/lib/foo/foo__Bar.ml"

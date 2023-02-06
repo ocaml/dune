@@ -380,9 +380,13 @@ let setup_css_rule sctx =
   let dir = css_directory sctx in
   let ctx = Super_context.context sctx in
   let* run_odoc =
-    let+ cmd = run_odoc sctx ~dir:(Path.build ctx.build_dir) "support-files"
-      ~flags_for:None [ A "-o"; Path (Path.build dir) ] in
-    cmd |> Action_builder.With_targets.add_directories ~directory_targets:[ dir ]
+    let+ cmd =
+      run_odoc sctx ~dir:(Path.build ctx.build_dir) "support-files"
+        ~flags_for:None
+        [ A "-o"; Path (Path.build dir) ]
+    in
+    cmd
+    |> Action_builder.With_targets.add_directories ~directory_targets:[ dir ]
   in
   add_rule sctx run_odoc
 

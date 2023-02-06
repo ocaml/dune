@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675641150317,
+  "lastUpdate": 1675676724208,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -3856,6 +3856,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.032020218746666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a808932529dc260a92e876a3a187f61300c5e171",
+          "message": "doc: fix cram test in doc (#6995)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\r\n\r\n<!-- ps-id: 58b82cf3-71f5-4864-9360-d1db10644e2c -->",
+          "timestamp": "2023-02-06T10:16:39+01:00",
+          "tree_id": "8ca3b01cb5edf3d8b3c40a974ff7379698a538db",
+          "url": "https://github.com/ocaml/dune/commit/a808932529dc260a92e876a3a187f61300c5e171"
+        },
+        "date": 1675676723119,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.44550600602667",
             "unit": "seconds"
           }
         ]

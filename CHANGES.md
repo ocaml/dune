@@ -119,6 +119,10 @@ Unreleased
 
 - Handle "Too many links" errors when using Dune cache on Windows (#6993, @nojb)
 
+- Allow the `cinaps` stanza to set a custom alias. By default, if the alias is
+  not set then the cinaps actions will be attached to both `@cinaps` and
+  `@runtest` (#6988, @rgrinberg)
+
 3.6.2 (2022-12-21)
 ------------------
 

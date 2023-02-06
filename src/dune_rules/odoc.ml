@@ -85,6 +85,8 @@ let add_rule sctx =
   Super_context.add_rule sctx ~dir
 
 module Paths = struct
+  let odoc_support_dirname = "_odoc_support"
+
   let root (context : Context.t) =
     Path.Build.relative context.Context.build_dir "_doc"
 
@@ -111,7 +113,7 @@ module Paths = struct
 
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
 
-  let odoc_support ctx = html_root ctx ++ "_odoc_support"
+  let odoc_support ctx = html_root ctx ++ odoc_support_dirname
 
   let toplevel_index ctx = html_root ctx ++ "index.html"
 end
@@ -345,6 +347,11 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       (odoc_file.html_dir, [ dummy ])
   in
   let open Memo.O in
+  let odoc_support_path = Paths.odoc_support ctx in
+  let html_output = Paths.html_root ctx in
+  let support_relative =
+    Path.reach (Path.build odoc_support_path) ~from:(Path.build html_output)
+  in
   let* run_odoc =
     run_odoc sctx
       ~dir:(Path.build (Paths.html_root ctx))
@@ -352,9 +359,9 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       [ A "-o"
       ; Path (Path.build (Paths.html_root ctx))
       ; A "--support-uri"
-      ; A "_odoc_support"
+      ; A support_relative
       ; A "--theme-uri"
-      ; A "_odoc_support"
+      ; A support_relative
       ; Dep (Path.build odoc_file.odocl_file)
       ; Hidden_targets [ odoc_file.html_file ]
       ]
@@ -370,15 +377,10 @@ let setup_html sctx (odoc_file : odoc_artefact) =
                    ])))
        :: run_odoc :: dummy))
 
-let css_directory sctx =
-  let ctx = Super_context.context sctx in
-  let dir = Paths.html_root ctx ++ "_odoc_support" in
-  dir
-
 let setup_css_rule sctx =
   let open Memo.O in
-  let dir = css_directory sctx in
   let ctx = Super_context.context sctx in
+  let dir = Paths.odoc_support ctx in
   let* run_odoc =
     let+ cmd =
       run_odoc sctx ~dir:(Path.build ctx.build_dir) "support-files"
@@ -413,7 +415,7 @@ let setup_toplevel_index_rule sctx =
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <title>index</title>
-    <link rel="stylesheet" href="./_odoc_support/odoc.css"/>
+    <link rel="stylesheet" href="./%s/odoc.css"/>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   </head>
@@ -428,7 +430,7 @@ let setup_toplevel_index_rule sctx =
     </main>
   </body>
 </html>|}
-      list_items
+      Paths.odoc_support_dirname list_items
   in
   let ctx = Super_context.context sctx in
   add_rule sctx (Action_builder.write_file (Paths.toplevel_index ctx) html)
@@ -824,8 +826,9 @@ let gen_rules sctx ~dir:_ rest =
          ; directory_targets = Path.Build.Map.empty
          })
   | [ "_html" ] ->
+    let ctx = Super_context.context sctx in
     let directory_targets =
-      Path.Build.Map.singleton (css_directory sctx) Loc.none
+      Path.Build.Map.singleton (Paths.odoc_support ctx) Loc.none
     in
     has_rules ~directory_targets
       (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)

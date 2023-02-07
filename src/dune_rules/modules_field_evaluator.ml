@@ -249,8 +249,11 @@ let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
       spurious_modules_virtual [])
 
 let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
-    ~modules_field ~modules_without_implementation ~root_module ~private_modules
-    ~kind ~src_dir =
+    ~private_modules ~kind ~src_dir
+    { Stanza_common.Modules_settings.modules = modules_field
+    ; root_module
+    ; modules_without_implementation
+    } =
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let fake_modules = ref Module_name.Map.empty in
@@ -285,7 +288,7 @@ let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
     ~intf_only ~modules ~virtual_modules ~private_modules
     ~existing_virtual_modules ~allow_new_public_modules;
   let all_modules =
-    Module_trie.mapi modules ~f:(fun path (_, m) ->
+    Module_trie.mapi modules ~f:(fun _path (_, m) ->
         let name = [ Module.Source.name m ] in
         let visibility =
           if Module_trie.mem private_modules name then Visibility.Private
@@ -300,10 +303,11 @@ let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
             else Impl
           else Intf_only
         in
-        Module.of_source m ~path ~kind ~visibility)
+        Module.of_source m ~kind ~visibility)
   in
   match root_module with
   | None -> all_modules
   | Some (_, name) ->
-    let module_ = Module.generated ~kind:Root ~src_dir name in
-    Module_trie.set all_modules [ name ] module_
+    let path = [ name ] in
+    let module_ = Module.generated ~kind:Root ~src_dir path in
+    Module_trie.set all_modules path module_

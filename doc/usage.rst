@@ -179,10 +179,10 @@ targets upon starting:
 Aliases
 -------
 
-Targets starting with a ``@`` are interpreted as aliases. For instance
-``@src/runtest`` means the alias ``runtest`` in all descendants of
-``src`` in all build contexts where it is defined. If you want to
-refer to a target starting with a ``@``, simply write: ``./@foo``.
+Targets starting with a ``@`` are interpreted as :term:`aliases <alias>`. For
+instance ``@src/runtest`` means the alias ``runtest`` in all descendants of
+``src`` in all build contexts where it is defined. If you want to refer to a
+target starting with a ``@``, simply write: ``./@foo``.
 
 To build and run the tests for a particular build context, use
 ``@_build/default/runtest`` instead.
@@ -222,8 +222,8 @@ where you need to do that, you can declare an alias like so:
 Default Alias
 -------------
 
-When no targets are given to ``dune build``, it builds the special
-``default`` alias. Effectively ``dune build`` is equivalent to:
+When no targets are given to ``dune build``, it builds the special ``default``
+:term:`alias`. Effectively ``dune build`` is equivalent to:
 
 .. code::
 
@@ -260,7 +260,8 @@ Is equivalent to:
 Built-in Aliases
 ----------------
 
-There are a few aliases that Dune automatically creates for the user:
+There are a few :term:`aliases <alias>` that Dune automatically creates for the
+user:
 
 * ``default`` includes all the targets that Dune will build if a
   target isn't specified, i.e., ``$ dune build``. By default, this is set to the

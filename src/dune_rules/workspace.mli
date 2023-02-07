@@ -59,6 +59,8 @@ module Context : sig
   val env : t -> Dune_env.Stanza.t
 
   val host_context : t -> Context_name.t option
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** Representation of a workspace. The list of context is topologically sorted,
@@ -99,7 +101,7 @@ module Clflags : sig
 end
 
 (** Default name of workspace files *)
-val filename : string
+val filename : Filename.t
 
 val workspace : unit -> t Memo.t
 

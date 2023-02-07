@@ -3,11 +3,11 @@ Compilation using jsoo
   $ dune build --display short bin/technologic.bc.js @install  2>&1 | \
   > sed s,^\ *$(ocamlc -config-var c_compiler),\ \ C_COMPILER,g
    js_of_ocaml bin/.technologic.eobjs/jsoo/technologic.bc.runtime.js
-      ocamldep bin/.technologic.eobjs/technologic.ml.d
-      ocamldep lib/.x.objs/x.ml.d
+      ocamldep bin/.technologic.eobjs/technologic.impl.d
+      ocamldep lib/.x.objs/x.impl.d
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
-      ocamldep lib/.x.objs/y.ml.d
-      ocamldep bin/.technologic.eobjs/z.ml.d
+      ocamldep lib/.x.objs/x__Y.impl.d
+      ocamldep bin/.technologic.eobjs/z.impl.d
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}
    js_of_ocaml .js/default/js_of_ocaml-compiler.runtime/jsoo_runtime.cma.js
@@ -61,13 +61,13 @@ Compilation using jsoo
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
         ocamlc lib/.x.objs/byte/x.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/native/x__Y.{cmx,o}
-        ocamlc bin/.technologic.eobjs/byte/z.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/native/x.{cmx,o}
+        ocamlc bin/.technologic.eobjs/byte/z.{cmi,cmo,cmt}
         ocamlc lib/x.cma
-        ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}
-   js_of_ocaml bin/technologic.bc.js
+        ocamlc bin/.technologic.eobjs/byte/technologic.{cmi,cmo,cmt}
       ocamlopt lib/x.cmxs
+   js_of_ocaml bin/technologic.bc.js
   $ dune build --display short bin/technologic.bc.js @install --profile release
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}

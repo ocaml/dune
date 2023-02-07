@@ -4,7 +4,7 @@ Quickstart
 
 This document gives simple usage examples of Dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
-examples of projects using Dune with [CRAM stanzas](https://ocaml.org/p/craml/1.0.0).
+examples of projects using Dune with `CRAM stanzas <https://ocaml.org/p/craml/1.0.0>`__.
 
 
 Install Dune
@@ -168,7 +168,7 @@ Building a Hello World Program From Scratch
 
 Create a new directory within a Dune project (:ref:`initializing-an-executable`).
 Since OCaml is a compiled language, first create a ``dune`` file in Nano, Vim, 
-or your preferred text editor. Declare the ``hello_world`` executable by including following stanza 
+or your preferred text editor. Declare the ``hello_world`` executable by including the following stanza 
 (shown below). Name this initial file ``dune`` and save it. 
 
 .. code:: scheme
@@ -189,7 +189,7 @@ Next, build your new program in a shell using this command:
 
     dune build hello_world.exe
 
-The will create a directory called``_build`` and build the 
+This will create a directory called ``_build`` and build the 
 program: ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
 (including non-Windows systems). 
@@ -207,15 +207,17 @@ Voila! This should print "Hello, world!" in the command line.
 Please note: if you have Dune, opam, and OCaml installed, but you 
 get an error that the ``dune`` command isn't recognized, it will be necessary 
 to run ``eval $(opam env)`` to enable Dune in your directory. Find more 
-information in the `Dune ReadMe  <https://github.com/ocaml/dune>`.
+information in the `Dune ReadMe  <https://github.com/ocaml/dune>`__.
 
-Verify OCaml installation with ``ocaml -version``
-Verify opam installation with ``opam --version``
+If that didn't work, you should verify that OCaml and opam are installed correctly by
+running ``ocaml -version`` and ``opam --version``.
 
 If you still get an error that the ``dune`` command isn't recognized, try running 
 the following in this order:
-``opam switch create . ocaml-base-compiler``
-``opam install merlin ocp-indent dune utop``
+
+#. ``opam switch create . ocaml-base-compiler``
+#. ``opam install merlin ocp-indent dune utop``
+
 Then run ``eval $(opam env)`` again before trying to build and run 
 your new hello_world.exe program. 
 
@@ -365,6 +367,7 @@ declare the dependency to this file via:
     (preprocessor_deps config.h)
 
 Using the ``.cppo.ml`` Style Like the ``ocamlbuild`` Plugin
+-----------------------------------------------------------
 
 Write this in your ``dune`` file:
 
@@ -507,7 +510,7 @@ As a result, write this in your ``dune`` file:
      (link_flags (-linkall))
      (modes      byte))
 
-And write this in ``mytoplevel.ml``
+And write this in ``mytoplevel.ml``:
 
 .. code:: ocaml
 

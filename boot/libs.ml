@@ -1,6 +1,6 @@
 let executables = [ "main" ]
 
-let external_libraries = [ "unix"; "threads.posix" ]
+let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
   [ ("otherlibs/ordering", Some "Ordering", false, None)
@@ -9,11 +9,11 @@ let local_libraries =
   ; ("otherlibs/stdune/dune_filesystem_stubs", Some "Dune_filesystem_stubs",
     false, None)
   ; ("vendor/csexp/src", Some "Csexp", false, None)
-  ; ("otherlibs/stdune", Some "Stdune", false, None)
+  ; ("otherlibs/stdune/src", Some "Stdune", false, None)
   ; ("src/dune_graph", Some "Dune_graph", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)
-  ; ("otherlibs/fiber", Some "Fiber", false, None)
+  ; ("otherlibs/fiber/src", Some "Fiber", false, None)
   ; ("src/dune_console", Some "Dune_console", false, None)
   ; ("src/memo", Some "Memo", false, None)
   ; ("src/dune_metrics", Some "Dune_metrics", false, None)
@@ -62,7 +62,7 @@ let local_libraries =
 let link_flags =
   [ ("macosx",
     [ "-cclib"
-    ; "-framework Foundation"
+    ; "-framework CoreFoundation"
     ; "-cclib"
     ; "-framework CoreServices"
     ])

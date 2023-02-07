@@ -612,10 +612,11 @@ access their contents in the test script ``run.t``:
 
 .. code:: bash
 
-   $ wc -l foo | awk '{ print $1 }'
-   4
-   $ wc -l $(ls bar) | awk '{ print $1 }'
-   1231
+   Testing wc:
+     $ wc -l foo | awk '{ print $1 }'
+     4
+     $ wc -l $(ls bar) | awk '{ print $1 }'
+     1231
 
 
 Test Options

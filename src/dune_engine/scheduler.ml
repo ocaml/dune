@@ -6,7 +6,6 @@ module Config = struct
 
   type t =
     { concurrency : int
-    ; display : Display.t
     ; stats : Dune_stats.t option
     ; insignificant_changes : [ `Ignore | `React ]
     ; signal_watcher : [ `Yes | `No ]
@@ -23,11 +22,13 @@ module Shutdown = struct
     module T = struct
       type t =
         | Requested
+        | Timeout
         | Signal of Signal.t
 
       let to_dyn t =
         match t with
         | Requested -> Dyn.Variant ("Requested", [])
+        | Timeout -> Dyn.Variant ("Timeout", [])
         | Signal signal -> Dyn.Variant ("Signal", [ Signal.to_dyn signal ])
 
       let compare a b =
@@ -35,6 +36,9 @@ module Shutdown = struct
         | Requested, Requested -> Eq
         | Requested, _ -> Lt
         | _, Requested -> Gt
+        | Timeout, Timeout -> Eq
+        | Timeout, _ -> Lt
+        | _, Timeout -> Gt
         | Signal a, Signal b -> Signal.compare a b
     end
 
@@ -47,6 +51,7 @@ module Shutdown = struct
   let () =
     Printexc.register_printer (function
       | E Requested -> Some "shutdown: requested"
+      | E Timeout -> Some "shutdown: timeout"
       | E (Signal s) ->
         Some (sprintf "shutdown: signal %s received" (Signal.name s))
       | _ -> None)
@@ -82,7 +87,7 @@ end = struct
       Thread.create f x
 
   let () =
-    Fdecl.set Console.Backend.spawn_thread (fun f ->
+    Fdecl.set Console.Threaded.spawn_thread (fun f ->
         let (_ : Thread.t) = create ~signal_watcher:`Yes f () in
         ())
 
@@ -857,7 +862,8 @@ let wait_for_process t pid =
 let got_shutdown reason =
   if !Log.verbose then
     match (reason : Shutdown.Reason.t) with
-    | Requested -> Log.info [ Pp.textf "Shutting down." ]
+    | Timeout -> Log.info [ Pp.text "Timeout." ]
+    | Requested -> Log.info [ Pp.text "Shutting down." ]
     | Signal signal ->
       Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
 
@@ -1170,10 +1176,33 @@ module Run = struct
         };
     t
 
+  (* Work we're allowed to do between successive polling iterations. this work
+     should be fast and never fail (within reason) *)
+  let run_when_idle stats : unit =
+    (* Technically, flushing can fail with some IO error and disrupt the build.
+       But we don't care because the user enabled this manually with
+       [--trace-file] *)
+    Option.iter stats ~f:(fun stats ->
+        let event =
+          let fields =
+            let ts =
+              Chrome_trace.Event.Timestamp.of_float_seconds
+                (Unix.gettimeofday ())
+            in
+            Chrome_trace.Event.common_fields ~name:"watch mode iteration" ~ts ()
+          in
+          (* the instant event allows us to separate build commands from
+             different iterations of the watch mode in the event viewer *)
+          Chrome_trace.Event.instant ~scope:Global fields
+        in
+        Dune_stats.emit stats event;
+        Dune_stats.flush stats)
+
   let poll step =
     let* t = poll_init () in
     let rec loop () =
       let* _res = poll_iter t step in
+      run_when_idle t.config.stats;
       let* () = wait_for_build_input_change t in
       loop ()
     in
@@ -1239,7 +1268,7 @@ module Run = struct
               (fun () ->
                 let+ res = Alarm_clock.await sleep in
                 match res with
-                | `Finished -> Event_queue.send_shutdown t.events Requested
+                | `Finished -> Event_queue.send_shutdown t.events Timeout
                 | `Cancelled -> ())
               (fun () ->
                 Fiber.finalize run ~finally:(fun () ->

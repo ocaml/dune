@@ -1,18 +1,13 @@
-open Import
+(** Controls the verbosity of process display *)
 
-type verbosity =
-  | Quiet  (** Only display errors *)
-  | Short  (** One line per command *)
-  | Verbose  (** Display all commands fully *)
+(* Not defined in [process.ml] to avoid dependency cycles *)
+
+(* TODO eventually separate displaying processes from running them so that
+   these UI concerns live outside the engine *)
 
 type t =
-  { status_line : bool
-  ; verbosity : verbosity
-  }
-
-val all : (string * t) list
+  | Quiet
+  | Short
+  | Verbose
 
 val to_dyn : t -> Dyn.t
-
-(** The console backend corresponding to the selected display mode *)
-val console_backend : t -> Console.Backend.t

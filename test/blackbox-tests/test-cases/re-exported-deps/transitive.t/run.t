@@ -43,8 +43,7 @@ transitive deps expressed in the dune-package
    (requires pkg.ccc (re_export pkg.bbb))
    (main_module_name Aaa)
    (modes byte native)
-   (modules
-    (singleton (name Aaa) (obj_name aaa) (path Aaa) (visibility public) (impl))))
+   (modules (singleton (obj_name aaa) (path Aaa) (visibility public) (impl))))
   (library
    (name pkg.bbb)
    (kind normal)
@@ -54,8 +53,7 @@ transitive deps expressed in the dune-package
    (requires (re_export pkg.ccc))
    (main_module_name Bbb)
    (modes byte native)
-   (modules
-    (singleton (name Bbb) (obj_name bbb) (path Bbb) (visibility public) (impl))))
+   (modules (singleton (obj_name bbb) (path Bbb) (visibility public) (impl))))
   (library
    (name pkg.ccc)
    (kind normal)
@@ -64,5 +62,4 @@ transitive deps expressed in the dune-package
    (native_archives ccc/ccc$ext_lib)
    (main_module_name Ccc)
    (modes byte native)
-   (modules
-    (singleton (name Ccc) (obj_name ccc) (path Ccc) (visibility public) (impl))))
+   (modules (singleton (obj_name ccc) (path Ccc) (visibility public) (impl))))

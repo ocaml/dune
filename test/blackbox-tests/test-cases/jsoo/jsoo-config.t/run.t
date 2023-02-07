@@ -2,13 +2,13 @@ tests js_of_ocaml conigs
 
   $ dune build bin/bin1.bc.js bin/bin2.bc.js bin/bin3.bc.js --display short
    js_of_ocaml bin/.bin1.eobjs/jsoo/bin1.bc.runtime.js
+   js_of_ocaml bin/.bin2.eobjs/jsoo/bin2.bc.runtime.js
+   js_of_ocaml bin/.bin3.eobjs/jsoo/bin3.bc.runtime.js
    js_of_ocaml .js/use-js-string/stdlib/std_exit.cmo.js
    js_of_ocaml .js/use-js-string/stdlib/stdlib.cma.js
         ocamlc lib/.library1.objs/byte/library1.{cmi,cmo,cmt}
-   js_of_ocaml bin/.bin2.eobjs/jsoo/bin2.bc.runtime.js
    js_of_ocaml .js/!use-js-string/stdlib/std_exit.cmo.js
    js_of_ocaml .js/!use-js-string/stdlib/stdlib.cma.js
-   js_of_ocaml bin/.bin3.eobjs/jsoo/bin3.bc.runtime.js
    js_of_ocaml .js/default/stdlib/std_exit.cmo.js
    js_of_ocaml .js/default/stdlib/stdlib.cma.js
         ocamlc bin/.bin1.eobjs/byte/dune__exe__Bin1.{cmi,cmti}

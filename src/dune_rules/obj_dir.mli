@@ -144,7 +144,7 @@ module Module : sig
 
   module Dep : sig
     type t =
-      | Immediate of Module.File.t
+      | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
   end
 

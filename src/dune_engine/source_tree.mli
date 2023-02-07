@@ -3,7 +3,7 @@
 open Import
 
 module Dune_file : sig
-  val fname : string
+  val fname : Filename.t
 
   val alternative_fname : string
 

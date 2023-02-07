@@ -4,8 +4,8 @@ open Dune_engine
 open Fiber.O
 
 let default =
+  Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
-  ; display = { verbosity = Short; status_line = false }
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
@@ -98,8 +98,13 @@ let%expect_test "empty invalidation wakes up waiter" =
     awaiting invalidation
     awaited invalidation |}];
   test `Ignore;
-  [%expect {|
-    awaiting invalidation |}]
+  [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+  ("shutdown: timeout")
+  Trailing output
+  ---------------
+  awaiting invalidation |}]
 
 let%expect_test "raise inside Scheduler.Run.go" =
   (try

@@ -17,8 +17,9 @@ this scope only.
 
 Because scopes are exclusive, if you wish to include your current project's
 dependencies in your workspace, you can copy them in a ``vendor`` directory,
-or any name of your choice. Dune will look for them there rather than in the installed
-world, and there will be no overlap between the various scopes.
+or any name of your choice. Dune will look for them there rather than in the
+:term:`installed world`, and there will be no overlap between the various
+scopes.
 
 .. _ordered-set-language:
 
@@ -66,15 +67,13 @@ Boolean Language
 The Boolean language allows the user to define simple Boolean expressions that
 Dune can evaluate. Here's a semi-formal specification of the language:
 
-.. code::
-
-   op := '=' | '<' | '>' | '<>' | '>=' | '<='
-
-   expr := (and <expr>+)
-         | (or <expr>+)
-         | (<op> <template> <template>)
-         | (not <expr>)
-         | <template>
+.. productionlist:: blang
+   op : '=' | '<' | '>' | '<>' | '>=' | '<='
+   expr : (and <expr>+)
+        : (or <expr>+)
+        : (<op> <template> <template>)
+        : (not <expr>)
+        : <template>
 
 After an expression is evaluated, it must be exactly the string ``true`` or
 ``false`` to be considered as a Boolean. Any other value will be treated as an
@@ -97,19 +96,18 @@ The predicate language allows the user to define simple predicates
 (Boolean-valued functions) that Dune can evaluate. Here is a semi-formal
 specification of the predicate language:
 
-.. code::
+.. productionlist::
+   pred : (and `pred` `pred`)
+        : (or `pred` `pred`)
+        : (not `pred`)
+        : :standard
+        : `element`
 
-   pred := (and <pred> <pred>)
-         | (or <pred> <pred>)
-         | (not <pred>)
-         | :standard
-         | <element>
-
-The exact meaning of ``:standard`` and the nature of ``<element>`` depends on
-the context. For example, in the case of the :ref:`dune-subdirs`, an
-``<element>`` corresponds to file glob patterns. Another example is the user
-action :ref:`(with-accepted-exit-codes ...) <user-actions>`, where an ``<element>``
-corresponds to a literal integer.
+The exact meaning of ``:standard`` and the nature of :token:`element` depends
+on the context. For example, in the case of the :ref:`dune-subdirs`, an
+:token:`element` corresponds to file glob patterns. Another example is the user
+action :ref:`(with-accepted-exit-codes ...) <user-actions>`, where an
+:token:`element` corresponds to a literal integer.
 
 .. _variables:
 
@@ -210,7 +208,8 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``lib:<public-library-name>:<file>`` expands to the file's installation path
   ``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local
-  file will be used, otherwise the one from the installed world will be used.
+  file will be used, otherwise the one from the :term:`installed world` will be
+  used.
 - ``lib-private:<library-name>:<file>`` expands to the file's build path
   ``<file>`` in the library ``<library-name>``. Both public and private library
   names are allowed as long as they refer to libraries within the same project.
@@ -224,7 +223,7 @@ In addition, ``(action ...)`` fields support the following special variables:
   whether the library is available or not. A library is available if at least
   one of the following conditions holds:
 
-  -  It's part the installed worlds.
+  -  It's part the :term:`installed world`.
   -  It's available locally and is not optional.
   -  It's available locally, and all its library dependencies are
      available.
@@ -357,12 +356,12 @@ Library dependencies are specified using ``(libraries ...)`` fields in
 ``library`` and ``executables`` stanzas.
 
 For libraries defined in the current scope, you can either use the real name or
-the public name. For libraries that are part of the installed world, or for
-libraries that are part of the current workspace but in another scope, you need
-to use the public name. For instance: ``(libraries base re)``.
+the public name. For libraries that are part of the :term:`installed world`, or
+for libraries that are part of the current workspace but in another scope, you
+need to use the public name. For instance: ``(libraries base re)``.
 
 When resolving libraries, ones that are part of the workspace are always
-preferred to ones that are part of the installed world.
+preferred to ones that are part of the :term:`installed world`.
 
 Alternative Dependencies
 ------------------------
@@ -386,9 +385,9 @@ Select forms are specified as follows:
 ``<literals>`` are lists of literals, where each literal is one of:
 
 - ``<library-name>``, which will evaluate to true if ``<library-name>`` is
-  available, either in the workspace or in the installed world
+  available, either in the workspace or in the :term:`installed world`
 - ``!<library-name>``, which will evaluate to true if ``<library-name>`` is not
-  available in the workspace or in the installed world
+  available in the workspace or in the :term:`installed world`
 
 When evaluating a select form, Dune will create ``<target-filename>`` by
 copying the file given by the first ``(<literals> -> <filename>)`` case where
@@ -458,7 +457,7 @@ phase. As a result, they must be applied in stages as follows:
 - dependency analysis
 - second step of code generation in parallel with compilation
 
-This is the case for PPX rewriters using the OCaml type, for
+This is the case for PPX rewriters using the OCaml typer, for
 instance. When using such PPX rewriters, you must use ``staged_pps``
 instead of ``pps`` in order to force Dune to use the second pipeline,
 which is slower but necessary in this case.
@@ -596,7 +595,7 @@ Dependencies in ``dune`` files can be specified using one of the following:
   cases where dependencies are too hard to specify. Note that Dune
   will not be able to cache the result of actions that depend on the
   universe. In any case, this is only for dependencies in the
-  installed world. You must still specify all dependencies that come
+  :term:`installed world`. You must still specify all dependencies that come
   from the workspace.
 - ``(package <pkg>)`` depends on all files installed by ``<package>``, as well
   as on the transitive package dependencies of ``<package>``. This can be used

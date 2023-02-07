@@ -310,6 +310,8 @@ module Event = struct
 
   let async ?scope ?args id async common =
     Async { common; args; scope; id; async }
+
+  let instant ?args ?scope common = Instant (common, scope, args)
 end
 
 module Output_object = struct

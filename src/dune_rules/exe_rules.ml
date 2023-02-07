@@ -15,9 +15,8 @@ let linkages (ctx : Context.t) ~(exes : Executables.t) ~explicit_js_mode =
              Exe.Linkage.of_user_config ctx ~loc mode)
     in
     let modes =
-      if not has_native then
-        List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
-      else modes
+      if has_native then modes
+      else List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
     in
     let modes =
       if L.Map.mem exes.modes L.js then Exe.Linkage.byte_for_jsoo :: modes
@@ -51,7 +50,7 @@ let programs ~modules ~(exes : Executables.t) =
             ]
       | None ->
         let msg =
-          match Ordered_set_lang.loc exes.buildable.modules with
+          match Ordered_set_lang.loc exes.buildable.modules.modules with
           | None ->
             Pp.textf "Module %S doesn't exist." (Module_name.to_string mod_name)
           | Some _ ->
@@ -220,6 +219,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
 let compile_info ~scope (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
+    (* TODO resolution should be delayed *)
     Resolve.Memo.read_memo
       (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
          ~instrumentation_backend:
@@ -242,7 +242,10 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir
-  and* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info in
+  and* () =
+    let requires_link = Lib.Compile.requires_link compile_info in
+    Bootstrap_info.gen_rules sctx exes ~dir ~requires_link
+  in
   Buildable_rules.with_lib_deps
     (Super_context.context sctx)
     compile_info ~dir ~f

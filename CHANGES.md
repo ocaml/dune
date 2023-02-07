@@ -1,6 +1,26 @@
 Unreleased
 ----------
 
+- Fix parsing of OCaml errors that contain code excerpts with `...` in them.
+  (#7008, @rgrinberg)
+
+- Pre-emptively clear screen in watch mode (#6987, fixes #6884, @rgrinberg)
+
+- Fix cross compilation configuration when a context with targets is itself a
+  host of another context (#6958, fixes #6843, @rgrinberg)
+
+- Fix parsing of the `<=` operator in *blang* expressions of `dune` files.
+  Previously, the operator would be interpreted as `,`. (#6928, @tatchi)
+
+- Fix `--trace-file` output. Dune now emits a single *complete* event for every
+  executed process. Unterminated *async* events are no longer written. (#6892,
+  @rgrinberg)
+
+- Fix preprocessing with `staged_pps` (#6748, fixes #6644, @rgrinberg)
+
+- Use colored output with MDX when Dune colors are enabled.
+  (#6462, @MisterDA)
+
 - Make `dune describe workspace` return consistent dependencies for
   executables and for libraries. By default, compile-time dependencies
   towards PPX-rewriters are from now not taken into account (but
@@ -8,10 +28,11 @@ Unreleased
   PPX-rewriters can be taken into account by providing the
   `--with-pps` flag. (#6727, fixes #6486, @esope)
 
+- Print missing newline after `$ dune exec`. (#6821, fixes #6700, @rgrinberg,
+  @Alizter)
+
 - Fix binary corruption when installing or promoting in parallel (#6669, fixes
   #6668, @edwintorok)
-
-- Fix running the RPC server on windows (#6721 fixes #6720, @rgrinberg)
 
 - Use colored output with GCC and Clang when compiling C stubs. The
   flag `-fdiagnostics-color=always` is added to the `:standard` set of
@@ -58,7 +79,8 @@ Unreleased
 - Remove "Entering Directory" messages for `$ dune install`. (#6513,
   @rgrinberg)
 
-- Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
+- Stop passing `-q` flag in `dune coq top`, which allows for `.coqrc` to be
+  loaded. (#6848, fixes #6847, @Alizter)
 
 - Fix missing dependencies when detecting the kind of C compiler we're using
   (#6610, fixes #6415, @emillon)
@@ -74,7 +96,9 @@ Unreleased
   enabled (#6645, @hhugo)
 
 - Fix *js_of_ocaml* separate compilation rules when `--enable=effects`
-  or `--enable=use-js-string` is used. (#6714, @hhugo)
+  ,`--enable=use-js-string` or `--toplevel` is used. (#6714, #6828, #6920, @hhugo)
+
+- Fix *js_of_ocaml* separate compilation in presence of linkall (#6832, #6916, @hhugo)
 
 - Remove spurious build dir created when running `dune init proj ...` (#6707,
   fixes #5429, @gridbugs)
@@ -84,6 +108,27 @@ Unreleased
 
 - Validate the command line arguments for `$ dune ocaml top-module`. This
   command requires one positional argument (#6796, fixes #6793, @rgrinberg)
+
+- Add a `dune cache size` command for displaying the size of the cache (#6638,
+  @Alizter)
+
+- Add 4.14.0 MSVC to CI (#6917, @jonahbeckford)
+
+- Fix dependency cycle when installing files to the bin section with
+  `glob_files` (#6764, fixes #6708, @gridbugs)
+
+- Handle "Too many links" errors when using Dune cache on Windows (#6993, @nojb)
+
+- Allow the `cinaps` stanza to set a custom alias. By default, if the alias is
+  not set then the cinaps actions will be attached to both `@cinaps` and
+  `@runtest` (#6988, @rgrinberg)
+
+3.6.2 (2022-12-21)
+------------------
+
+- Fix configurator when using the MSVC compiler (#6538, fixes #6537, @nojb)
+
+- Fix running the RPC server on windows (#6721 fixes #6720, @rgrinberg)
 
 3.6.1 (2022-11-24)
 ------------------
@@ -109,7 +154,7 @@ Unreleased
 - Introduce a `$ dune ocaml top-module` subcommand to load modules directly
   without sealing them behind the signature. (#5940, @rgrinberg)
 
-- [ctypes] do not mangle user written names in the ctypes stanza (#6374, fixes
+- [ctypes] do not mangle user written names in the ctypes field (#6374, fixes
   #5561, @rgrinberg)
 
 - Support `CLICOLOR` and `CLICOLOR_FORCE` to enable/disable/force ANSI

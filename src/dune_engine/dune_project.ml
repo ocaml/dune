@@ -184,8 +184,6 @@ let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 
 let dialects t = t.dialects
 
-let set_dialects dialects t = { t with dialects }
-
 let explicit_js_mode t = t.explicit_js_mode
 
 let dune_version t = t.dune_version
@@ -246,7 +244,7 @@ let to_dyn
 
 let find_extension_args t key = Univ_map.find t.extension_args key
 
-let is_extension_set t key = Option.is_some (find_extension_args t key)
+let is_extension_set t key = Univ_map.mem t.extension_args key
 
 include Dune_lang.Versioned_file.Make (struct
   type t = Stanza.Parser.t list
@@ -670,7 +668,9 @@ let encode : t -> Dune_lang.t list =
       ]
   in
   let dialects =
-    Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
+    if Dialect.DB.is_default dialects then []
+    else
+      Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
   in
   let formatting =
     Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list

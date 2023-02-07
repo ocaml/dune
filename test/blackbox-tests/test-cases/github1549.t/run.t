@@ -33,7 +33,6 @@ Reproduction case for #1549: too many parentheses in installed .dune files
     (wrapped
      (group
       (alias
-       (name Simple_tests)
        (obj_name simple_tests)
        (path Simple_tests)
        (visibility public)

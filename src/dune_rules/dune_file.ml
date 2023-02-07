@@ -92,8 +92,7 @@ end
 module Buildable = struct
   type t =
     { loc : Loc.t
-    ; modules : Ordered_set_lang.t
-    ; modules_without_implementation : Ordered_set_lang.t
+    ; modules : Stanza_common.Modules_settings.t
     ; empty_module_interface_if_absent : bool
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
@@ -105,8 +104,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.In_buildable.t
     ; allow_overlapping_dependencies : bool
-    ; ctypes : Ctypes_stanza.t option
-    ; root_module : (Loc.t * Module_name.t) option
+    ; ctypes : Ctypes_field.t option
     }
 
   let decode (for_ : for_) =
@@ -158,7 +156,8 @@ module Buildable = struct
       located
         (only_in_library
            (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
-    and+ modules = Stanza_common.modules_field "modules"
+    and+ modules =
+      Stanza_common.Modules_settings.decode ~modules_field_name:"modules"
     and+ self_build_stubs_archive_loc, self_build_stubs_archive =
       located
         (only_in_library
@@ -166,8 +165,6 @@ module Buildable = struct
               (Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
                  ~extra_info:"Use the (foreign_archives ...) field instead."
               >>> enter (maybe string))))
-    and+ modules_without_implementation =
-      Stanza_common.modules_field "modules_without_implementation"
     and+ libraries = field "libraries" (Lib_deps.decode for_) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
@@ -178,12 +175,9 @@ module Buildable = struct
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ ctypes =
       field_o "ctypes"
-        (Dune_lang.Syntax.since Ctypes_stanza.syntax (0, 1)
-        >>> Ctypes_stanza.decode)
+        (Dune_lang.Syntax.since Ctypes_field.syntax (0, 1)
+        >>> Ctypes_field.decode)
     and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
-    and+ root_module =
-      field_o "root_module"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 8) >>> Module_name.decode_loc)
     and+ empty_module_interface_if_absent =
       field_b "empty_module_interface_if_absent"
         ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
@@ -244,7 +238,6 @@ module Buildable = struct
     ; preprocessor_deps
     ; lint
     ; modules
-    ; modules_without_implementation
     ; empty_module_interface_if_absent
     ; foreign_stubs
     ; foreign_archives
@@ -254,7 +247,6 @@ module Buildable = struct
     ; js_of_ocaml
     ; allow_overlapping_dependencies
     ; ctypes
-    ; root_module
     }
 
   let has_foreign t =
@@ -881,7 +873,7 @@ module Library = struct
             [Modules.t] and deciding. Unfortunately, [Obj_dir.t] is currently
             used in some places where [Modules.t] is not yet constructed. *)
          t.private_modules <> None
-        || t.buildable.root_module <> None)
+        || t.buildable.modules.root_module <> None)
       ~private_lib (snd t.name)
 
   let main_module_name t : Lib_info.Main_module_name.t =
@@ -1609,9 +1601,7 @@ module Executables = struct
         (let+ loc = loc
          and+ fname = filename
          and+ project = Dune_project.get_exn () in
-         if
-           Option.is_none
-             (Dune_project.find_extension_args project bootstrap_info_extension)
+         if not (Dune_project.is_extension_set project bootstrap_info_extension)
          then
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];
@@ -1782,8 +1772,7 @@ module Rule = struct
     in
     let* project = Dune_project.get_exn () in
     let allow_directory_targets =
-      Option.is_some
-        (Dune_project.find_extension_args project directory_targets_extension)
+      Dune_project.is_extension_set project directory_targets_extension
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
@@ -2349,8 +2338,7 @@ module Stanzas = struct
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
         and+ t =
           let enable_qualified =
-            Option.is_some
-              (Dune_project.find_extension_args project Coq_stanza.key)
+            Dune_project.is_extension_set project Coq_stanza.key
           in
           Include_subdirs.decode ~enable_qualified
         and+ loc = loc in

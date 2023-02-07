@@ -1,23 +1,11 @@
 open Stdune
 
 module Backend = struct
-  module type S = sig
-    val print_user_message : User_message.t -> unit
+  type t = Backend_intf.t
 
-    val set_status_line : User_message.Style.t Pp.t option -> unit
+  module Dumb_no_flush : Backend_intf.S = struct
+    let start () = ()
 
-    val print_if_no_status_line : User_message.Style.t Pp.t -> unit
-
-    val reset : unit -> unit
-
-    val reset_flush_history : unit -> unit
-
-    val finish : unit -> unit
-  end
-
-  type t = (module S)
-
-  module Dumb_no_flush : S = struct
     let finish () = ()
 
     let print_user_message msg =
@@ -38,7 +26,7 @@ module Backend = struct
     let reset_flush_history () = prerr_string "\x1b[1;1H\x1b[2J\x1b[3J"
   end
 
-  module Dumb : S = struct
+  module Dumb : Backend_intf.S = struct
     include Dumb_no_flush
 
     let print_if_no_status_line msg =
@@ -58,10 +46,10 @@ module Backend = struct
       flush stderr
   end
 
-  module Progress_no_flush : S = struct
+  module Progress_no_flush : Backend_intf.S = struct
     let status_line = ref Pp.nop
 
-    let finish () = ()
+    let start () = ()
 
     let status_line_len = ref 0
 
@@ -93,17 +81,26 @@ module Backend = struct
 
     let reset () = Dumb.reset ()
 
+    let finish () = set_status_line None
+
     let reset_flush_history () = Dumb.reset_flush_history ()
   end
 
-  let dumb = (module Dumb : S)
+  let dumb = (module Dumb : Backend_intf.S)
+
+  let progress = (module Progress_no_flush : Backend_intf.S)
 
   let main = ref dumb
 
   let set t = main := t
 
-  let compose (module A : S) (module B : S) : (module S) =
+  let compose (module A : Backend_intf.S) (module B : Backend_intf.S) :
+      (module Backend_intf.S) =
     (module struct
+      let start () =
+        A.start ();
+        B.start ()
+
       let print_user_message msg =
         A.print_user_message msg;
         B.print_user_message msg
@@ -127,100 +124,38 @@ module Backend = struct
       let reset_flush_history () =
         A.reset_flush_history ();
         B.reset_flush_history ()
-    end : S)
+    end : Backend_intf.S)
 
-  let spawn_thread = Fdecl.create Dyn.opaque
+  module Progress_no_flush_threaded : Threaded_intf.S = struct
+    include Progress_no_flush
 
-  let threaded (module Base : S) : (module S) =
-    let module T = struct
-      let mutex = Mutex.create ()
+    let render (state : Threaded_intf.state) =
+      while not (Queue.is_empty state.messages) do
+        print_user_message (Queue.pop_exn state.messages)
+      done;
+      set_status_line state.status_line;
+      flush stderr
 
-      let finish_cv = Condition.create ()
+    (* The current console doesn't react to user events so we just sleep until
+       the next loop iteration. Because it doesn't react to user input, it cannot
+       modify the UI state, and as a consequence doesn't need the mutex. *)
+    let handle_user_events ~now ~time_budget _ =
+      Unix.sleepf time_budget;
+      now +. time_budget
+  end
 
-      type state =
-        { messages : User_message.t Queue.t
-        ; mutable finish_requested : bool
-        ; mutable finished : bool
-        ; mutable status_line : User_message.Style.t Pp.t option
-        }
-
-      let state =
-        { messages = Queue.create ()
-        ; status_line = None
-        ; finished = false
-        ; finish_requested = false
-        }
-
-      let finish () =
-        Mutex.lock mutex;
-        state.finish_requested <- true;
-        while not state.finished do
-          Condition.wait finish_cv mutex
-        done;
-        Mutex.unlock mutex
-
-      let print_user_message m =
-        Mutex.lock mutex;
-        Queue.push state.messages m;
-        Mutex.unlock mutex
-
-      let set_status_line sl =
-        Mutex.lock mutex;
-        state.status_line <- sl;
-        Mutex.unlock mutex
-
-      let print_if_no_status_line _msg = ()
-
-      let reset () =
-        Mutex.lock mutex;
-        Queue.clear state.messages;
-        state.status_line <- None;
-        Base.reset ();
-        Mutex.unlock mutex
-
-      let reset_flush_history () =
-        Mutex.lock mutex;
-        Queue.clear state.messages;
-        state.status_line <- None;
-        Base.reset_flush_history ();
-        Mutex.unlock mutex
-    end in
-    ( Fdecl.get spawn_thread @@ fun () ->
-      let open T in
-      let last = ref (Unix.gettimeofday ()) in
-      let frame_rate = 1. /. 60. in
-      try
-        while true do
-          Mutex.lock mutex;
-          while not (Queue.is_empty state.messages) do
-            Base.print_user_message (Queue.pop_exn state.messages)
-          done;
-          Base.set_status_line state.status_line;
-          flush stderr;
-          let finish_requested = state.finish_requested in
-          if finish_requested then raise_notrace Exit;
-          Mutex.unlock mutex;
-          let now = Unix.gettimeofday () in
-          let elapsed = now -. !last in
-          if elapsed >= frame_rate then last := now
-          else
-            let delta = frame_rate -. elapsed in
-            Unix.sleepf delta;
-            last := delta +. now
-        done
-      with Exit ->
-        state.finished <- true;
-        Condition.broadcast finish_cv;
-        Mutex.unlock mutex );
-    (module T)
-
-  let progress =
-    let t = lazy (threaded (module Progress_no_flush)) in
+  let progress_threaded =
+    let t = lazy (Threaded.make (module Progress_no_flush_threaded)) in
     fun () -> Lazy.force t
 end
 
+module Threaded = struct
+  include Threaded_intf
+  include Threaded
+end
+
 let print_user_message msg =
-  let (module M : Backend.S) = !Backend.main in
+  let (module M : Backend_intf.S) = !Backend.main in
   M.print_user_message msg
 
 let print paragraphs = print_user_message (User_message.make paragraphs)
@@ -228,23 +163,23 @@ let print paragraphs = print_user_message (User_message.make paragraphs)
 let printf fmt = Printf.ksprintf (fun msg -> print [ Pp.verbatim msg ]) fmt
 
 let set_status_line line =
-  let (module M : Backend.S) = !Backend.main in
+  let (module M : Backend_intf.S) = !Backend.main in
   M.set_status_line line
 
 let print_if_no_status_line line =
-  let (module M : Backend.S) = !Backend.main in
+  let (module M : Backend_intf.S) = !Backend.main in
   M.print_if_no_status_line line
 
 let reset () =
-  let (module M : Backend.S) = !Backend.main in
+  let (module M : Backend_intf.S) = !Backend.main in
   M.reset ()
 
 let reset_flush_history () =
-  let (module M : Backend.S) = !Backend.main in
+  let (module M : Backend_intf.S) = !Backend.main in
   M.reset_flush_history ()
 
 let finish () =
-  let (module M : Backend.S) = !Backend.main in
+  let (module M : Backend_intf.S) = !Backend.main in
   M.finish ()
 
 module Status_line = struct

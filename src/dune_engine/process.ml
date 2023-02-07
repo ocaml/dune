@@ -429,7 +429,7 @@ module Handle_exit_status : sig
 
   val non_verbose :
        ('a, error) result
-    -> verbosity:Display.verbosity
+    -> verbosity:Display.t
     -> metadata:metadata
     -> output:string
     -> prog:string
@@ -521,7 +521,7 @@ end = struct
            ++ Pp.char ' ' ++ command_line
         :: pp_output output)
 
-  let non_verbose t ~(verbosity : Display.verbosity) ~metadata ~output ~prog
+  let non_verbose t ~(verbosity : Display.t) ~metadata ~output ~prog
       ~command_line ~dir ~has_unexpected_stdout ~has_unexpected_stderr =
     let output = parse_output output in
     let show_command =
@@ -577,14 +577,15 @@ end = struct
       fail ~loc ~annots paragraphs
 end
 
-let report_process_start stats ~metadata ~id ~pid ~prog ~args ~now =
+let report_process_finished stats ~metadata ~prog ~pid ~args ~started_at
+    (times : Proc.Times.t) =
   let common =
     let name =
       match metadata.name with
       | Some n -> n
       | None -> Filename.basename prog
     in
-    let ts = Timestamp.of_float_seconds now in
+    let ts = Timestamp.of_float_seconds started_at in
     Event.common_fields ~cat:("process" :: metadata.categories) ~name ~ts ()
   in
   let args =
@@ -592,25 +593,16 @@ let report_process_start stats ~metadata ~id ~pid ~prog ~args ~now =
     ; ("pid", `Int (Pid.to_int pid))
     ]
   in
-  let event =
-    Event.async (Chrome_trace.Id.create (`Int id)) ~args Start common
-  in
-  Dune_stats.emit stats event;
-  (common, args)
-
-let report_process_end stats (common, args) ~now (times : Proc.Times.t) =
-  let common = Event.set_ts common (Timestamp.of_float_seconds now) in
   let dur = Event.Timestamp.of_float_seconds times.elapsed_time in
   let event = Event.complete ~args ~dur common in
   Dune_stats.emit stats event
 
 let set_temp_dir_when_running_actions = ref true
 
-let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
-    ?(stdin_from = Io.null In) ?(env = Env.initial)
+let run_internal ?dir ~(display : Display.t) ?(stdout_to = Io.stdout)
+    ?(stderr_to = Io.stderr) ?(stdin_from = Io.null In) ?(env = Env.initial)
     ?(metadata = default_metadata) fail_mode prog args =
   Scheduler.with_job_slot (fun cancel (config : Scheduler.Config.t) ->
-      let display = config.display in
       let dir =
         match dir with
         | None -> dir
@@ -623,7 +615,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
       in
       let fancy_command_line =
-        match display.verbosity with
+        match display with
         | Verbose ->
           let open Pp.O in
           let cmdline =
@@ -692,7 +684,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           (stdout, stderr)
         | _ -> ((`No_capture, stdout_to), (`No_capture, stderr_to))
       in
-      let event_common, started_at, pid =
+      let started_at, pid =
         (* Output.fd might create the file with Unix.openfile. We need to make
            sure to call it before doing the chdir as the path might be
            relative. *)
@@ -705,26 +697,21 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           | false -> env
         in
         let env = Env.to_unix env |> Spawn.Env.of_list in
-        let started_at, pid =
+        let started_at =
           (* jeremiedimino: I think we should do this just before the [execve]
              in the stub for [Spawn.spawn] to be as precise as possible *)
-          let now = Unix.gettimeofday () in
-          ( now
-          , Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
-              ~setpgid:Spawn.Pgid.new_process_group
-              ~cwd:
-                (match dir with
-                | None -> Inherit
-                | Some dir -> Path (Path.to_string dir))
-            |> Pid.of_int )
+          Unix.gettimeofday ()
         in
-        let event_common =
-          Option.map config.stats ~f:(fun stats ->
-              ( stats
-              , report_process_start stats ~metadata ~id ~pid ~prog:prog_str
-                  ~args ~now:started_at ))
+        let pid =
+          Spawn.spawn () ~prog:prog_str ~argv ~env ~stdout ~stderr ~stdin
+            ~setpgid:Spawn.Pgid.new_process_group
+            ~cwd:
+              (match dir with
+              | None -> Inherit
+              | Some dir -> Path (Path.to_string dir))
+          |> Pid.of_int
         in
-        (event_common, started_at, pid)
+        (started_at, pid)
       in
       Io.release stdout_to;
       Io.release stderr_to;
@@ -736,8 +723,9 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         ; resource_usage = process_info.resource_usage
         }
       in
-      Option.iter event_common ~f:(fun (stats, common) ->
-          report_process_end stats common ~now:process_info.end_time times);
+      Option.iter config.stats ~f:(fun stats ->
+          report_process_finished stats ~metadata ~prog:prog_str ~pid ~args
+            ~started_at times);
       Option.iter response_file ~f:Path.unlink;
       let actual_stdout =
         match stdout_capture with
@@ -808,39 +796,39 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         let output = stdout ^ stderr in
         Log.command ~command_line ~output ~exit_status:process_info.status;
         let res =
-          match (display.verbosity, exit_status', output) with
+          match (display, exit_status', output) with
           | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
           | Verbose, _, _ ->
             Handle_exit_status.verbose exit_status' ~id ~metadata ~dir
               ~command_line:fancy_command_line ~output
           | _ ->
             Handle_exit_status.non_verbose exit_status' ~prog:prog_str ~dir
-              ~command_line ~output ~metadata ~verbosity:display.verbosity
+              ~command_line ~output ~metadata ~verbosity:display
               ~has_unexpected_stdout ~has_unexpected_stderr
         in
         (res, times))
 
-let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
-    args =
+let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
+    prog args =
   let+ run =
-    run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
-      prog args
+    run_internal ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata
+      fail_mode prog args
     >>| fst
   in
   map_result fail_mode run ~f:ignore
 
-let run_with_times ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata prog
-    args =
-  run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?metadata Strict prog
-    args
+let run_with_times ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env
+    ?metadata prog args =
+  run_internal ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata
+    Strict prog args
   >>| snd
 
-let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
-    args ~f =
+let run_capture_gen ?dir ~display ?stderr_to ?stdin_from ?env ?metadata
+    fail_mode prog args ~f =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
-    run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ?env
-      ?metadata fail_mode prog args
+    run_internal ?dir ~display ~stdout_to:(Io.file fn Io.Out) ?stderr_to
+      ?stdin_from ?env ?metadata fail_mode prog args
     >>| fst
   in
   map_result fail_mode run ~f:(fun () ->
@@ -855,10 +843,10 @@ let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 let run_capture_zero_separated =
   run_capture_gen ~f:Stdune.Io.zero_strings_of_file
 
-let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog
-    args =
-  run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?metadata fail_mode prog args
-    ~f:(fun fn ->
+let run_capture_line ?dir ~display ?stderr_to ?stdin_from ?env ?metadata
+    fail_mode prog args =
+  run_capture_gen ?dir ~display ?stderr_to ?stdin_from ?env ?metadata fail_mode
+    prog args ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
       | [ x ] -> x
       | l -> (

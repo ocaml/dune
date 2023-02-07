@@ -1,6 +1,6 @@
 open Stdune
 open Dune_lang.Decoder
-module Display = Dune_engine.Display
+module Display = Display
 module Scheduler = Dune_engine.Scheduler
 module Sandbox_mode = Dune_engine.Sandbox_mode
 module Console = Dune_console
@@ -382,8 +382,13 @@ let adapt_display config ~output_is_a_tty =
     { config with terminal_persistence = Terminal_persistence.Preserve }
   else config
 
-let init t =
+let init t ~watch =
   Console.Backend.set (Display.console_backend t.display);
+  (if watch then
+   match t.terminal_persistence with
+   | Preserve -> ()
+   | Clear_on_rebuild -> Console.reset ()
+   | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ());
   Log.verbose := t.display.verbosity = Verbose
 
 let auto_concurrency =
@@ -442,9 +447,5 @@ let for_scheduler (t : t) stats ~insignificant_changes ~signal_watcher =
       Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       n
   in
-  { Scheduler.Config.concurrency
-  ; display = t.display
-  ; stats
-  ; insignificant_changes
-  ; signal_watcher
-  }
+  Dune_engine.Clflags.display := t.display.verbosity;
+  { Scheduler.Config.concurrency; stats; insignificant_changes; signal_watcher }

@@ -136,17 +136,17 @@ let build_c ~(kind : Foreign_language.t) ~sctx ~dir ~expander ~include_flags
   let open Memo.O in
   let* with_user_and_std_flags =
     match src.kind with
-    | Ctypes stanza ->
+    | Ctypes field ->
       Memo.return
       @@ Action_builder.map ~f:(List.append base_flags)
-           (match stanza.build_flags_resolver with
+           (match field.build_flags_resolver with
            | Vendored { c_flags; c_library_flags = _ } ->
              Super_context.foreign_flags sctx ~dir ~expander ~flags:c_flags
                ~language:C
            | Pkg_config ->
              let dir = Path.Build.parent_exn dst in
              let lib =
-               External_lib_name.to_string stanza.external_library_name
+               External_lib_name.to_string field.external_library_name
              in
              let open Action_builder.O in
              let* default_flags =

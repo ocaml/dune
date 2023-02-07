@@ -21,8 +21,9 @@ with_timeout () {
 }
 
 stop_dune () {
-    with_timeout dune shutdown
-    cat .#dune-output
+    with_timeout dune shutdown;
+    wait $DUNE_PID;
+    cat .#dune-output;
 }
 
 build () {

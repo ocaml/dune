@@ -18,10 +18,10 @@ prefixed and unprefixed modules are built.
 
   $ ./sdune clean
   $ ./sdune build --display short @t1
-      ocamldep .a1.objs/a.ml.d
+      ocamldep .a1.objs/a1__A.impl.d
         ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
         ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
-      ocamldep .c2.objs/d.ml.d
+      ocamldep .c2.objs/c2__D.impl.d
         ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
         ocamlc .c2.objs/byte/c2.{cmi,cmo,cmt}
         ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
@@ -39,7 +39,7 @@ The next test tries to build a .cmi file (of a module in a wrapped library).
 
   $ ./sdune clean
   $ ./sdune build --display short @t2
-      ocamldep .a1.objs/a.ml.d
+      ocamldep .a1.objs/a1__A.impl.d
         ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
         ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
 
@@ -79,7 +79,7 @@ The next test builds a native .cmxa.
   $ ./sdune clean
   $ ./sdune build --display short @t4
         ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
-      ocamldep .a1.objs/a.ml.d
+      ocamldep .a1.objs/a1__A.impl.d
       ocamlopt .a1.objs/native/a1.{cmx,o}
         ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
       ocamlopt .a1.objs/native/a1__A.{cmx,o}
@@ -122,7 +122,7 @@ defined. The library is public in this case, but we use the local name.
   $ ./sdune clean
   $ ./sdune build --display short @t6
         ocamlc sub2/.bar2.objs/byte/bar2.{cmi,cmo,cmt}
-      ocamldep sub2/.bar2.objs/y2.ml.d
+      ocamldep sub2/.bar2.objs/bar2__Y2.impl.d
         ocamlc sub2/.bar2.objs/byte/bar2__Y2.{cmi,cmo,cmt}
         ocamlc sub2/bar2.cma
 
@@ -136,7 +136,7 @@ This test builds a .cmo in a subdirectory (same project).
 
   $ ./sdune clean
   $ ./sdune build --display short @t7
-      ocamldep sub/.bar.objs/x.ml.d
+      ocamldep sub/.bar.objs/bar__X.impl.d
         ocamlc sub/.bar.objs/byte/bar.{cmi,cmo,cmt}
         ocamlc sub/.bar.objs/byte/bar__X.{cmi,cmo,cmt}
 
@@ -151,7 +151,7 @@ private library.
 
   $ ./sdune clean
   $ ./sdune build --display short @t8
-      ocamldep sub3/.c1.objs/x.ml.d
+      ocamldep sub3/.c1.objs/c1__X.impl.d
         ocamlc sub3/.c1.objs/byte/c1.{cmi,cmo,cmt}
         ocamlc sub3/.c1.objs/byte/c1__X.{cmi,cmo,cmt}
 
@@ -167,7 +167,7 @@ project.
   $ ./sdune clean
   $ ./sdune build --display short @t9
         ocamlc sub3/.c1.objs/byte/c1.{cmi,cmo,cmt}
-      ocamldep sub3/.c1.objs/x.ml.d
+      ocamldep sub3/.c1.objs/c1__X.impl.d
         ocamlc sub3/.c1.objs/byte/c1__X.{cmi,cmo,cmt}
         ocamlc sub3/c1.cma
 
@@ -202,7 +202,7 @@ This test checks that everything still works if we invoke dune from a
 subdirectory.
 
   $ (cd sub && dune build --display short %{cmx:x})
-      ocamldep .bar.objs/x.ml.d
+      ocamldep .bar.objs/bar__X.impl.d
         ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
         ocamlc .bar.objs/byte/bar__X.{cmi,cmo,cmt}
       ocamlopt .bar.objs/native/bar__X.{cmx,o}
@@ -212,9 +212,9 @@ of a (rule).
 
   $ ./sdune build --display short _build/default/my.cmxs
         ocamlc .plugin.objs/byte/plugin.{cmi,cmo,cmt}
-      ocamldep .plugin.objs/x1.ml.d
-      ocamldep .plugin.objs/x2.ml.d
-      ocamldep .dummy.objs/x3.ml.d
+      ocamldep .plugin.objs/plugin__X1.impl.d
+      ocamldep .plugin.objs/plugin__X2.impl.d
+      ocamldep .dummy.objs/dummy__X3.impl.d
       ocamlopt .plugin.objs/native/plugin.{cmx,o}
         ocamlc .plugin.objs/byte/plugin__X1.{cmi,cmo,cmt}
         ocamlc .plugin.objs/byte/plugin__X2.{cmi,cmo,cmt}

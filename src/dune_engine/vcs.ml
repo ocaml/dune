@@ -62,7 +62,8 @@ let prog t =
 let run t args =
   let open Fiber.O in
   let+ s =
-    Process.run_capture Strict (prog t) args ~dir:t.root ~env:Env.initial
+    Process.run_capture ~display:!Clflags.display Strict (prog t) args
+      ~dir:t.root ~env:Env.initial
   in
   String.trim s
 
@@ -71,8 +72,8 @@ let git_accept () =
 
 let run_git t args =
   let res =
-    Process.run_capture (git_accept ()) (prog t) args ~dir:t.root
-      ~env:Env.initial
+    Process.run_capture (git_accept ()) ~display:!Clflags.display (prog t) args
+      ~dir:t.root ~env:Env.initial
       ~stderr_to:(Process.Io.file Config.dev_null Out)
   in
   let open Fiber.O in
@@ -130,14 +131,14 @@ let commit_id =
 
 let files =
   let run_zero_separated_hg t args =
-    Process.run_capture_zero_separated Strict (prog t) args ~dir:t.root
-      ~env:Env.initial
+    Process.run_capture_zero_separated Strict (prog t) args
+      ~display:!Clflags.display ~dir:t.root ~env:Env.initial
   in
   let run_zero_separated_git t args =
     let open Fiber.O in
     let+ res =
       Process.run_capture_zero_separated (git_accept ()) (prog t) args
-        ~dir:t.root ~env:Env.initial
+        ~display:!Clflags.display ~dir:t.root ~env:Env.initial
     in
     match res with
     | Ok s -> s

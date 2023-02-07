@@ -186,7 +186,7 @@ end = struct
         | Some opam -> (
           let+ version =
             Memo.of_reproducible_fiber
-              (Process.run_capture_line Strict opam
+              (Process.run_capture_line ~display:!Clflags.display Strict opam
                  [ "--version"; "--color=never" ])
           in
           match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
@@ -222,7 +222,8 @@ end = struct
           ]
       in
       let+ s =
-        Memo.of_reproducible_fiber (Process.run_capture ~env Strict opam args)
+        Memo.of_reproducible_fiber
+          (Process.run_capture ~display:!Clflags.display ~env Strict opam args)
       in
       Dune_lang.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
       |> Dune_lang.Decoder.(
@@ -312,7 +313,8 @@ let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
   in
   let+ l =
     Memo.of_reproducible_fiber
-      (Process.run_capture_lines ~env Strict ocamlfind args)
+      (Process.run_capture_lines ~display:!Clflags.display ~env Strict ocamlfind
+         args)
   in
   List.map l ~f:Path.of_filename_relative_to_initial_cwd
 
@@ -346,6 +348,11 @@ let check_fdo_support has_native ocfg ~name =
             version_string
         ]
 
+type instance =
+  { native : t
+  ; targets : t list
+  }
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~dynamically_linked_foreign_archives ~instrument_with =
@@ -369,7 +376,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         | Some s -> Memo.return s
         | None ->
           Memo.of_reproducible_fiber
-            (Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]))
+            (Process.run_capture_line ~display:!Clflags.display ~env Strict fn
+               [ "printconf"; "conf" ]))
         >>| Path.External.of_filename_relative_to_initial_cwd)
   in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
@@ -476,7 +484,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       Memo.fork_and_join default_library_search_path (fun () ->
           let+ lines =
             Memo.of_reproducible_fiber
-              (Process.run_capture_lines ~env Strict ocamlc [ "-config" ])
+              (Process.run_capture_lines ~display:!Clflags.display ~env Strict
+                 ocamlc [ "-config" ])
           in
           ocaml_config_ok_exn
             (match Ocaml_config.Vars.of_lines lines with
@@ -680,7 +689,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           ~findlib_toolchain:(Some findlib_toolchain)
         >>| Option.some)
   in
-  native :: List.filter_opt others
+  { native; targets = List.filter_opt others }
 
 let which t fname = Program.which ~path:t.path fname
 
@@ -735,9 +744,9 @@ let create_for_opam ~loc ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~instrument_with
 
 module rec Instantiate : sig
-  val instantiate : Context_name.t -> t list Memo.t
+  val instantiate : Context_name.t -> instance Memo.t
 end = struct
-  let instantiate_impl name : t list Memo.t =
+  let instantiate_impl name : instance Memo.t =
     let env = Global.env () in
     let* workspace = Workspace.workspace () in
     let context =
@@ -747,13 +756,9 @@ end = struct
     let* host_context =
       match Workspace.Context.host_context context with
       | None -> Memo.return None
-      | Some context_name -> (
-        let+ contexts = Instantiate.instantiate context_name in
-        match contexts with
-        | [ x ] -> Some x
-        | [] -> assert false (* checked by workspace *)
-        | _ :: _ -> assert false)
-      (* target cannot be host *)
+      | Some context_name ->
+        let+ { native; targets = _ } = Instantiate.instantiate context_name in
+        Some native
     in
     let env_nodes =
       let context = Workspace.Context.env context in
@@ -826,7 +831,10 @@ module DB = struct
       let* workspace = Workspace.workspace () in
       let+ contexts =
         Memo.parallel_map workspace.contexts ~f:(fun c ->
-            Instantiate.instantiate (Workspace.Context.name c))
+            let+ { native; targets } =
+              Instantiate.instantiate (Workspace.Context.name c)
+            in
+            native :: targets)
       in
       let all = List.concat contexts in
       List.iter all ~f:(fun t ->

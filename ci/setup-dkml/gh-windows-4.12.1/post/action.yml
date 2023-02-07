@@ -1,0 +1,102 @@
+# setup-dkml
+#   Short form: sd4
+
+# Any GitHub Job that includes this action must be in a strategy matrix.
+# The matrix variables must include:
+# - gh_os: windows-2019
+#   abi_pattern: win32-windows_x86
+#   dkml_host_abi: windows_x86
+
+name: post-dkml
+author: Diskuv, Inc.
+description: Teardown after building OCaml native executables for Windows
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Full matrix variables
+      shell: bash # bash on Windows is Git Bash (an non-upgradable MSYS2 system)
+      # Every matrix variable lookup in this Action should use the output of this step. Even
+      # the matrix variables that the user must specify (ex. dkml_host_abi) should be
+      # referenced using [steps.full_matrix_vars.outputs.dkml_host_abi] rather than
+      # [matrix.dkml_host_abi] so that there is a single place to edit for variable changes.
+      id: full_matrix_vars
+      run: |
+        # Select correct Windows matrix variables
+        case "${{ matrix.dkml_host_abi }}" in
+        
+        windows_x86)
+          dkml_host_os='windows';
+          opam_root_cacheable='D:/.opam';
+          abi_pattern='win32-windows_x86';
+          gh_os='windows-2019';
+          gh_unix_shell='msys2 {0}';
+          msys2_system='MINGW32';
+          msys2_packages='mingw-w64-i686-pkg-config';
+          exe_ext='.exe';
+          bootstrap_opam_version='2.2.0-dkml20220801T155940Z';
+          opam_abi='windows_x86';
+          dkml_host_abi='windows_x86';
+          opam_root='D:/.opam';
+          vsstudio_hostarch='x64';
+          vsstudio_arch='x86';
+          ocaml_options='ocaml-option-32bit' ;;
+          
+        windows_x86_64)
+          dkml_host_os='windows';
+          opam_root_cacheable='D:/.opam';
+          abi_pattern='win32-windows_x86_64';
+          gh_os='windows-2019';
+          gh_unix_shell='msys2 {0}';
+          msys2_system='CLANG64';
+          msys2_packages='mingw-w64-clang-x86_64-pkg-config';
+          exe_ext='.exe';
+          bootstrap_opam_version='2.2.0-dkml20220801T155940Z';
+          opam_abi='windows_x86_64';
+          dkml_host_abi='windows_x86_64';
+          opam_root='D:/.opam';
+          vsstudio_hostarch='x64';
+          vsstudio_arch='x64' ;;
+          
+        *)  echo "FATAL: Unsupported dkml_host_abi=$dkml_host_abi in Windows action.yml"; exit 107 ;;
+        esac
+
+        add() {
+          echo "$1=$2" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_ENV
+        }
+
+        add dkml_host_abi "$dkml_host_abi"
+        add abi_pattern "$abi_pattern"
+        add opam_root "$opam_root"
+        add opam_root_cacheable "$opam_root_cacheable"
+        add exe_ext "${exe_ext:-}"
+        add bootstrap_opam_version "${bootstrap_opam_version:-}"
+        add ocaml_options "${ocaml_options:-}"
+
+    - name: Teardown DKML build apparatus
+      shell: msys2 {0}
+      env:
+        _STUB_FOR_AUTOGEN: "ON" # 
+
+        # autogen from global_env_vars.
+        DEFAULT_DKML_COMPILER: '4.12.1-v1.0.2'
+        PIN_BASE: 'v0.14.3'
+        PIN_BIGSTRINGAF: '0.8.0'
+        PIN_CORE_KERNEL: 'v0.14.2'
+        PIN_CTYPES_FOREIGN: '0.19.2-windowssupport-r4'
+        PIN_CTYPES: '0.19.2-windowssupport-r4'
+        PIN_CURLY: '0.2.1-windows-env_r2'
+        PIN_DIGESTIF: '1.0.1'
+        PIN_DUNE: '2.9.3+shim.1.0.2~r0'
+        PIN_DUNE_CONFIGURATOR: '2.9.3'
+        PIN_DKML_APPS: '1.0.1'
+        PIN_OCAMLBUILD: '0.14.0'
+        PIN_OCAMLFIND: '1.9.1'
+        PIN_OCP_INDENT: '1.8.2-windowssupport'
+        PIN_PPX_EXPECT: 'v0.14.1'
+        PIN_PTIME: '0.8.6-msvcsupport'
+        PIN_TIME_NOW: 'v0.14.0'
+        PIN_WITH_DKML: '1.0.1'
+      run: |
+        sh .ci/sd4/run-teardown-dkml.sh GITHUB_WORKSPACE "$GITHUB_WORKSPACE"

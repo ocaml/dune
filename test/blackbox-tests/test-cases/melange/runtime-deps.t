@@ -8,6 +8,7 @@ Test runtime_deps field
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (alias melange)
   >  (entries main)
   >  (libraries lib)
   >  (module_system commonjs))
@@ -35,17 +36,18 @@ Test runtime_deps field
   > let () = Lib.print_file ()
   > EOF
 
-  $ dune rules output/main.js
+  $ dune build @melange
   Error: Dependency cycle between:
      Computing directory contents of _build/default
   -> Evaluating predicate in directory _build/default/output/assets
   -> Computing directory contents of _build/default
   [1]
 
-$ node _build/default/output/main.js
-hello from file
+  $ tree -a _build/default
+  $ node _build/default/output/main.js
+  hello from file
 
-Can use more glob functionality to copy assets
+Errors when multiple files are used
 
   $ touch assets/foo.png
   $ touch assets/bar.png
@@ -61,13 +63,13 @@ Can use more glob functionality to copy assets
   >  (name lib)
   >  (modules lib)
   >  (modes melange)
-  >  (melange.runtime_deps assets/*.png assets/file.txt))
+  >  (melange.runtime_deps assets/foo.png assets/file.txt))
   > EOF
 
   $ dune build output/main.js
-  File "dune", line 11, characters 36-51:
-  11 |  (melange.runtime_deps assets/*.png assets/file.txt))
-                                           ^^^^^^^^^^^^^^^
+  File "dune", line 11, characters 38-53:
+  11 |  (melange.runtime_deps assets/foo.png assets/file.txt))
+                                             ^^^^^^^^^^^^^^^
   Error: Too many argument for melange.runtime_deps
   [1]
 

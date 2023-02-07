@@ -242,7 +242,15 @@ let melange_runtime_deps sctx ~dir ~expander ~src_dir files =
       Path.relative (Path.source src_dir) src_glob ~error_loc:loc
     else Path.external_ (Path.External.of_string src_glob)
   in
-  let files = Path.Set.of_list [in_src] in
+  let src_in_build =
+    match Path.as_in_source_tree in_src with
+    | None -> in_src
+    | Some src_in_src ->
+      (* HACK / TODO: pick target from melange.emit *)
+      Path.Build.append_source (Path.Build.relative dir "output") src_in_src
+      |> Path.build
+  in
+  let files = Path.Set.of_list [ src_in_build ] in
   let+ () =
     Memo.parallel_iter_set
       (module Path.Set)

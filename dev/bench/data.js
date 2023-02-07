@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675750545966,
+  "lastUpdate": 1675789925910,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4030,6 +4030,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.07965119526667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "javier.chavarri@gmail.com",
+            "name": "Javier Chávarri",
+            "username": "jchavarri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8f392fe9f9a2374a15979220e2f15c0ba32cfbf",
+          "message": "docs: add rule production docs (#7019)\n\nSigned-off-by: Javier Chávarri <javier.chavarri@gmail.com>",
+          "timestamp": "2023-02-07T10:53:16-06:00",
+          "tree_id": "c81dd67d2c9f9e095bea647a43f94e90bb6455a1",
+          "url": "https://github.com/ocaml/dune/commit/c8f392fe9f9a2374a15979220e2f15c0ba32cfbf"
+        },
+        "date": 1675789925201,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.13129607949333",
             "unit": "seconds"
           }
         ]

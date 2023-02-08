@@ -16,7 +16,7 @@ This test if `.odocl` files are generated
   <html xmlns="http://www.w3.org/1999/xhtml">
     <head>
       <title>index</title>
-      <link rel="stylesheet" href="./odoc.css"/>
+      <link rel="stylesheet" href="./_odoc_support/odoc.css"/>
       <meta charset="utf-8"/>
       <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
     </head>

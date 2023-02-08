@@ -85,6 +85,8 @@ let add_rule sctx =
   Super_context.add_rule sctx ~dir
 
 module Paths = struct
+  let odoc_support_dirname = "_odoc_support"
+
   let root (context : Context.t) =
     Path.Build.relative context.Context.build_dir "_doc"
 
@@ -111,9 +113,7 @@ module Paths = struct
 
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
 
-  let css_file ctx = html_root ctx ++ "odoc.css"
-
-  let highlight_pack_js ctx = html_root ctx ++ "highlight.pack.js"
+  let odoc_support ctx = html_root ctx ++ odoc_support_dirname
 
   let toplevel_index ctx = html_root ctx ++ "index.html"
 end
@@ -347,12 +347,21 @@ let setup_html sctx (odoc_file : odoc_artefact) =
       (odoc_file.html_dir, [ dummy ])
   in
   let open Memo.O in
+  let odoc_support_path = Paths.odoc_support ctx in
+  let html_output = Paths.html_root ctx in
+  let support_relative =
+    Path.reach (Path.build odoc_support_path) ~from:(Path.build html_output)
+  in
   let* run_odoc =
     run_odoc sctx
       ~dir:(Path.build (Paths.html_root ctx))
       "html-generate" ~flags_for:None
       [ A "-o"
       ; Path (Path.build (Paths.html_root ctx))
+      ; A "--support-uri"
+      ; A support_relative
+      ; A "--theme-uri"
+      ; A support_relative
       ; Dep (Path.build odoc_file.odocl_file)
       ; Hidden_targets [ odoc_file.html_file ]
       ]
@@ -371,13 +380,15 @@ let setup_html sctx (odoc_file : odoc_artefact) =
 let setup_css_rule sctx =
   let open Memo.O in
   let ctx = Super_context.context sctx in
+  let dir = Paths.odoc_support ctx in
   let* run_odoc =
-    run_odoc sctx ~dir:(Path.build ctx.build_dir) "support-files"
-      ~flags_for:None
-      [ A "-o"
-      ; Path (Path.build (Paths.html_root ctx))
-      ; Hidden_targets [ Paths.css_file ctx; Paths.highlight_pack_js ctx ]
-      ]
+    let+ cmd =
+      run_odoc sctx ~dir:(Path.build ctx.build_dir) "support-files"
+        ~flags_for:None
+        [ A "-o"; Path (Path.build dir) ]
+    in
+    cmd
+    |> Action_builder.With_targets.add_directories ~directory_targets:[ dir ]
   in
   add_rule sctx run_odoc
 
@@ -404,7 +415,7 @@ let setup_toplevel_index_rule sctx =
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <title>index</title>
-    <link rel="stylesheet" href="./odoc.css"/>
+    <link rel="stylesheet" href="./%s/odoc.css"/>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   </head>
@@ -419,7 +430,7 @@ let setup_toplevel_index_rule sctx =
     </main>
   </body>
 </html>|}
-      list_items
+      Paths.odoc_support_dirname list_items
   in
   let ctx = Super_context.context sctx in
   add_rule sctx (Action_builder.write_file (Paths.toplevel_index ctx) html)
@@ -495,7 +506,7 @@ let create_odoc ctx ~target odoc_file =
 
 let static_html ctx =
   let open Paths in
-  [ css_file ctx; highlight_pack_js ctx; toplevel_index ctx ]
+  [ odoc_support ctx; toplevel_index ctx ]
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
@@ -786,14 +797,11 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
     Rules.Produce.Alias.add_deps (Alias.private_doc ~dir)
       (lib |> Dep.html_alias ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
 
-let has_rules m =
+let has_rules ?(directory_targets = Path.Build.Map.empty) m =
   let rules = Rules.collect_unit (fun () -> m) in
   Memo.return
     (Build_config.Rules
-       { rules
-       ; build_dir_only_sub_dirs = Subdir_set.empty
-       ; directory_targets = Path.Build.Map.empty
-       })
+       { rules; build_dir_only_sub_dirs = Subdir_set.empty; directory_targets })
 
 let with_package pkg ~f =
   let pkg = Package.Name.of_string pkg in
@@ -818,7 +826,12 @@ let gen_rules sctx ~dir:_ rest =
          ; directory_targets = Path.Build.Map.empty
          })
   | [ "_html" ] ->
-    has_rules (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
+    let ctx = Super_context.context sctx in
+    let directory_targets =
+      Path.Build.Map.singleton (Paths.odoc_support ctx) Loc.none
+    in
+    has_rules ~directory_targets
+      (setup_css_rule sctx >>> setup_toplevel_index_rule sctx)
   | [ "_mlds"; pkg ] ->
     with_package pkg ~f:(fun pkg ->
         let* _mlds, rules = package_mlds sctx ~pkg in

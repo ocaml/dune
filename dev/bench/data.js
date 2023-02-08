@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675818174239,
+  "lastUpdate": 1675867496964,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4088,6 +4088,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.62815600000666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jon@recoil.org",
+            "name": "Jon Ludlam",
+            "username": "jonludlam"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d5ce4a33b4f6b369c4fd2435aceb18cabd2c03b",
+          "message": "odoc: Put support files in their own directory (#6913)\n\n* odoc: Put support files in their own directory\r\n\r\nodoc 2.2 added math support, which comes with extra javascript, css and\r\nfont files. Rather than add these as explicit targets, this commit\r\nchanges the invocation of `odoc support-files` to output into the dir\r\n`_build/default/_doc/_html/_odoc_support` as a directory target.\r\n\r\nSigned-off-by: Jon Ludlam <jon@recoil.org>\r\n\r\n* Set directory targets for the _odoc_support dir\r\n\r\nSigned-off-by: Jon Ludlam <jon@recoil.org>\r\n\r\n* More directory rules fixes for odoc\r\n\r\nSigned-off-by: Jon Ludlam <jon@recoil.org>\r\n\r\n* Formatting\r\n\r\nSigned-off-by: Jon Ludlam <jon@recoil.org>\r\n\r\n* Factor out constant\r\n\r\nSigned-off-by: Jon Ludlam <jon@recoil.org>\r\n\r\n* Update CHANGES\r\n\r\nSigned-off-by: Jon Ludlam <jon@recoil.org>\r\n\r\n---------\r\n\r\nSigned-off-by: Jon Ludlam <jon@recoil.org>",
+          "timestamp": "2023-02-08T15:24:09+01:00",
+          "tree_id": "b3569d7250ee44e306b02300fc3f49c3b3895c4f",
+          "url": "https://github.com/ocaml/dune/commit/1d5ce4a33b4f6b369c4fd2435aceb18cabd2c03b"
+        },
+        "date": 1675867496280,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.60190044360667",
             "unit": "seconds"
           }
         ]

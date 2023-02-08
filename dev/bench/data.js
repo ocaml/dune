@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675867496964,
+  "lastUpdate": 1675871683120,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4117,6 +4117,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.60190044360667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c1bbed64e1bcb522f91b1d378d1be44453d367e",
+          "message": "test: virtual_modules and modules (#7024)\n\ndemonstrate what happens when we set a module to be virtual but not\r\ninclude it in (modules ..)\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-08T09:35:49-06:00",
+          "tree_id": "b9f4bdb273aa2b7647254c1b9d9c1c45ed8af346",
+          "url": "https://github.com/ocaml/dune/commit/0c1bbed64e1bcb522f91b1d378d1be44453d367e"
+        },
+        "date": 1675871681699,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.03638294725334",
             "unit": "seconds"
           }
         ]

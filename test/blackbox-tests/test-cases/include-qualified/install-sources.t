@@ -22,10 +22,6 @@ Now we add some source with duplicate base names and test again:
   $ mkdir bar
   $ touch baz.ml bar/baz.ml
   $ dune build foo.install
-  Error: Multiple rules generated for _build/install/default/lib/foo/baz.ml:
-  - dune:2
-  - dune:2
-  -> required by _build/default/foo.install
-  [1]
   $ cat _build/default/foo.install | grep baz.ml
-  [1]
+    "_build/install/default/lib/foo/bar/baz.ml" {"bar/baz.ml"}
+    "_build/install/default/lib/foo/baz.ml"

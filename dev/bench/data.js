@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675789925910,
+  "lastUpdate": 1675818174239,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4059,6 +4059,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.13129607949333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06dde72a18766eed8d3b6fc61eb6d990b14089e0",
+          "message": "refactor(rules): remove pointless qualification (#7021)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-07T18:38:17-06:00",
+          "tree_id": "7b51da44cb4accaa42d80641a6b194a40c2c4d70",
+          "url": "https://github.com/ocaml/dune/commit/06dde72a18766eed8d3b6fc61eb6d990b14089e0"
+        },
+        "date": 1675818172867,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.62815600000666",
             "unit": "seconds"
           }
         ]

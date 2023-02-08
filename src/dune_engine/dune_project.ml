@@ -805,9 +805,10 @@ let parse ~dir ~lang ~file ~dir_status =
                    in
                    let related = [ message loc1; message loc2 ] in
                    User_message.Annots.singleton Compound_user_error.annot
-                     (Compound_user_error.make
-                        ~main:(User_message.make main_message)
-                        ~related)
+                     [ Compound_user_error.make
+                         ~main:(User_message.make main_message)
+                         ~related
+                     ]
                  in
                  User_error.raise ~annots
                    (main_message

@@ -711,5 +711,86 @@ let g = A.f
           ; [ "related"; [] ]
           ; [ "targets"; [] ]
           ]
+        ]
+        [ "Add"
+        ; [ [ "directory"; "$CWD" ]
+          ; [ "id"; "1" ]
+          ; [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "8" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "12" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "11" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "12" ]
+                  ]
+                ]
+              ]
+            ]
+          ; [ "message"; [ "Verbatim"; "foobar\n\
+                                        " ] ]
+          ; [ "promotion"; [] ]
+          ; [ "related"; [] ]
+          ; [ "targets"; [] ]
+          ]
+        ]
+        [ "Add"
+        ; [ [ "directory"; "$CWD" ]
+          ; [ "id"; "2" ]
+          ; [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "4" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "11" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "5" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "11" ]
+                  ]
+                ]
+              ]
+            ]
+          ; [ "message"; [ "Verbatim"; "unused value f.\n\
+                                        " ] ]
+          ; [ "promotion"; [] ]
+          ; [ "related"; [] ]
+          ; [ "targets"; [] ]
+          ]
+        ]
+        [ "Add"
+        ; [ [ "directory"; "$CWD" ]
+          ; [ "id"; "3" ]
+          ; [ "loc"
+            ; [ [ "start"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "4" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "12" ]
+                  ]
+                ]
+              ; [ "stop"
+                ; [ [ "pos_bol"; "0" ]
+                  ; [ "pos_cnum"; "5" ]
+                  ; [ "pos_fname"; "$CWD/foo.ml" ]
+                  ; [ "pos_lnum"; "12" ]
+                  ]
+                ]
+              ]
+            ]
+          ; [ "message"; [ "Verbatim"; "unused value g.\n\
+                                        " ] ]
+          ; [ "promotion"; [] ]
+          ; [ "related"; [] ]
+          ; [ "targets"; [] ]
+          ]
         ] |}]);
   [%expect {||}]

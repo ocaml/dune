@@ -209,7 +209,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
           ]
         in
         User_message.Annots.singleton Compound_user_error.annot
-          (Compound_user_error.make ~main ~related)
+          [ Compound_user_error.make ~main ~related ]
       in
       User_error.raise ~loc ~annots
         [ Pp.textf "%s. See another definition at %s." main_message
@@ -251,7 +251,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
             [ User_message.make ~loc:loc1 [ Pp.text "Name already used here" ] ]
           in
           User_message.Annots.singleton Compound_user_error.annot
-            (Compound_user_error.make ~main ~related)
+            [ Compound_user_error.make ~main ~related ]
         in
         User_error.raise ~annots ~loc:loc2
           [ Pp.textf "%s; the name has already been taken in %s." main_message

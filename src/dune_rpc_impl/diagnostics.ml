@@ -10,6 +10,7 @@ module Conv = Dune_rpc.Conv
 module Dep_conf = Dune_rules.Dep_conf
 module Source_tree = Dune_engine.Source_tree
 module Dune_project = Dune_engine.Dune_project
+module Compound_user_error = Dune_engine.Compound_user_error
 
 let absolutize_paths ~dir (loc : Loc.t) =
   let make_path name =
@@ -25,15 +26,21 @@ let absolutize_paths ~dir (loc : Loc.t) =
 let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     =
  fun m ->
-  let { Build_system.Error.main = message; related; dir } =
-    Build_system.Error.info m
-  in
   let dir =
+    let dir = Build_system.Error.dir m in
     Option.map dir ~f:Path.drop_optional_build_context_maybe_sandboxed
   in
   let make_loc loc =
     let dir = Option.value ~default:Path.root dir in
     absolutize_paths ~dir loc
+  in
+  let message, related =
+    match Build_system.Error.description m with
+    | `Exn e ->
+      (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
+      (User_message.make [ Pp.text (Printexc.to_string e.exn) ], [])
+    | `Diagnostic { Compound_user_error.main = message; related } ->
+      (message, related)
   in
   let loc = Option.map message.loc ~f:make_loc in
   let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
@@ -58,7 +65,7 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
         ; loc = make_loc (Option.value_exn related.loc)
         })
   in
-  { severity = None
+  { Dune_rpc_private.Diagnostic.severity = None
   ; id
   ; targets = []
   ; message = make_message message.paragraphs

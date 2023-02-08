@@ -480,8 +480,9 @@ end = struct
               User_message.Annots.has_embedded_location ()
           in
           match Compound_user_error.parse_output ~dir output.without_color with
-          | None -> annots
-          | Some e -> User_message.Annots.set annots Compound_user_error.annot e
+          | [] -> annots
+          | errors ->
+            User_message.Annots.set annots Compound_user_error.annot errors
         else annots
     in
     (loc, annots)

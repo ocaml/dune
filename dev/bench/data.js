@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675895241352,
+  "lastUpdate": 1675897759279,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4291,6 +4291,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.947884893313336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "787c85d31460aadea12b6e1ef353256a2abfb867",
+          "message": "fix(rules): custom install paths for modules (#7031)\n\nAllow setting custom installation paths for generated modules. This\r\nallows us use the group interface name when installing alias modules.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-08T16:50:37-06:00",
+          "tree_id": "8bafbc9b74784dd7def004106a26710aba01aa19",
+          "url": "https://github.com/ocaml/dune/commit/787c85d31460aadea12b6e1ef353256a2abfb867"
+        },
+        "date": 1675897758613,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.712778212686665",
             "unit": "seconds"
           }
         ]

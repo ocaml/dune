@@ -112,6 +112,8 @@ module Source = struct
 
   let name t = List.last t.path |> Option.value_exn
 
+  let path t = t.path
+
   let choose_file { files = { impl; intf }; path = _ } =
     match (intf, impl) with
     | None, None -> assert false

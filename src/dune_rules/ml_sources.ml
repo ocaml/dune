@@ -16,10 +16,12 @@ module Origin = struct
 end
 
 module Modules = struct
+  type component = Modules.t * Path.Build.t Obj_dir.t
+
   type t =
-    { libraries : (Modules.t * Path.Build.t Obj_dir.t) Lib_name.Map.t
-    ; executables : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
-    ; melange_emits : (Modules.t * Path.Build.t Obj_dir.t) String.Map.t
+    { libraries : component Lib_name.Map.t
+    ; executables : component String.Map.t
+    ; melange_emits : component String.Map.t
     ; (* Map from modules to the origin they are part of *)
       rev_map : Origin.t Module_name.Path.Map.t
     }
@@ -31,22 +33,26 @@ module Modules = struct
     ; rev_map = Module_name.Path.Map.empty
     }
 
+  type 'stanza group_part =
+    'stanza
+    * (Loc.t * Module.Source.t) Module_trie.t
+    * Modules_group.t
+    * Path.Build.t Obj_dir.t
+
   type groups =
-    { libraries : (Library.t * Modules_group.t * Path.Build.t Obj_dir.t) list
-    ; executables :
-        (Executables.t * Modules_group.t * Path.Build.t Obj_dir.t) list
-    ; melange_emits :
-        (Melange_stanzas.Emit.t * Modules_group.t * Path.Build.t Obj_dir.t) list
+    { libraries : Library.t group_part list
+    ; executables : Executables.t group_part list
+    ; melange_emits : Melange_stanzas.Emit.t group_part list
     }
 
   let make { libraries = libs; executables = exes; melange_emits = emits } =
     let libraries =
       match
-        Lib_name.Map.of_list_map libs ~f:(fun (lib, m, obj_dir) ->
+        Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir) ->
             (Library.best_name lib, (m, obj_dir)))
       with
       | Ok x -> x
-      | Error (name, _, (lib2, _, _)) ->
+      | Error (name, _, (lib2, _, _, _)) ->
         User_error.raise ~loc:lib2.buildable.loc
           [ Pp.textf "Library %S appears for the second time in this directory"
               (Lib_name.to_string name)
@@ -55,11 +61,11 @@ module Modules = struct
     let executables =
       match
         String.Map.of_list_map exes
-          ~f:(fun ((exes : Executables.t), m, obj_dir) ->
+          ~f:(fun ((exes : Executables.t), _, m, obj_dir) ->
             (snd (List.hd exes.names), (m, obj_dir)))
       with
       | Ok x -> x
-      | Error (name, _, (exes2, _, _)) ->
+      | Error (name, _, (exes2, _, _, _)) ->
         User_error.raise ~loc:exes2.buildable.loc
           [ Pp.textf
               "Executable %S appears for the second time in this directory" name
@@ -67,11 +73,11 @@ module Modules = struct
     in
     let melange_emits =
       match
-        String.Map.of_list_map emits ~f:(fun (mel, m, obj_dir) ->
+        String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir) ->
             (mel.target, (m, obj_dir)))
       with
       | Ok x -> x
-      | Error (name, _, (mel, _, _)) ->
+      | Error (name, _, (mel, _, _, _)) ->
         User_error.raise ~loc:mel.loc
           [ Pp.textf "Target %S appears for the second time in this directory"
               name
@@ -79,18 +85,15 @@ module Modules = struct
     in
     let rev_map =
       let modules =
-        let by_path (origin : Origin.t) =
-          (* TODO We should be building this reverse map without first
-             computing [Modules.t]. The collisions we are detecting are only
-             relevant to module sources present in the directory, rather than
-             generated module that may still be user available *)
-          Modules.fold_user_available ~init:[] ~f:(fun m acc ->
-              (Module.path m, origin) :: acc)
+        let by_path (origin : Origin.t) trie =
+          Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
+              (Module.Source.path m, origin) :: acc)
         in
         List.concat
-          [ List.concat_map libs ~f:(fun (l, m, _) -> by_path (Library l) m)
-          ; List.concat_map exes ~f:(fun (e, m, _) -> by_path (Executables e) m)
-          ; List.concat_map emits ~f:(fun (l, m, _) -> by_path (Melange l) m)
+          [ List.concat_map libs ~f:(fun (l, m, _, _) -> by_path (Library l) m)
+          ; List.concat_map exes ~f:(fun (e, m, _, _) ->
+                by_path (Executables e) m)
+          ; List.concat_map emits ~f:(fun (l, m, _, _) -> by_path (Melange l) m)
           ]
       in
       match Module_name.Path.Map.of_list modules with
@@ -153,7 +156,7 @@ module Artifacts = struct
 
   let make ~dir ~lib_config ~libs ~exes =
     let+ libraries =
-      Memo.List.map libs ~f:(fun (lib, _, _) ->
+      Memo.List.map libs ~f:(fun (lib, _, _, _) ->
           let name = Lib_name.of_local lib.Library.name in
           let+ info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
           (name, info))
@@ -166,9 +169,9 @@ module Artifacts = struct
       in
       let init =
         List.fold_left exes ~init:Module_name.Map.empty
-          ~f:(fun modules (_, m, obj_dir) -> by_name modules obj_dir m)
+          ~f:(fun modules (_, _, m, obj_dir) -> by_name modules obj_dir m)
       in
-      List.fold_left libs ~init ~f:(fun modules (_, m, obj_dir) ->
+      List.fold_left libs ~init ~f:(fun modules (_, _, m, obj_dir) ->
           by_name modules obj_dir m)
     in
     { libraries; modules }
@@ -331,7 +334,7 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
       let kind : Modules_field_evaluator.kind = Implementation impl in
       (kind, main_module_name, wrapped)
   in
-  let modules =
+  let sources, modules =
     let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
       lib.buildable
     in
@@ -363,8 +366,9 @@ let make_lib_modules ~dir ~libs ~lookup_vlib ~(lib : Library.t) ~modules
   in
   let implements = Option.is_some lib.implements in
   let _loc, lib_name = lib.name in
-  Modules_group.lib ~stdlib:lib.stdlib ~implements ~lib_name ~obj_dir:dir
-    ~modules ~main_module_name ~wrapped
+  ( sources
+  , Modules_group.lib ~stdlib:lib.stdlib ~implements ~lib_name ~obj_dir:dir
+      ~modules ~main_module_name ~wrapped )
 
 let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
     ~include_subdirs =
@@ -399,46 +403,45 @@ let modules_of_stanzas dune_file ~dir ~scope ~lookup_vlib ~modules
            invalid [implements] field, we will get an error immediately even if
            the library is not built. We should change this to carry the
            [Or_exn.t] a bit longer. *)
-        let+ modules =
+        let+ sources, modules =
           let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
           make_lib_modules ~dir ~libs:(Scope.libs scope) ~lookup_vlib ~modules
             ~lib ~include_subdirs
           >>= Resolve.read_memo
         in
         let obj_dir = Library.obj_dir lib ~dir in
-        `Library (lib, modules, obj_dir)
+        `Library (lib, sources, modules, obj_dir)
       | Executables exes | Tests { exes; _ } ->
         let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
-        let modules =
+        let sources, modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable
           in
-          let modules =
-            Modules_field_evaluator.eval ~modules ~stanza_loc
-              ~kind:Modules_field_evaluator.Exe_or_normal_lib
-              ~private_modules:Ordered_set_lang.standard ~src_dir:dir
-              modules_settings
-          in
+          Modules_field_evaluator.eval ~modules ~stanza_loc
+            ~kind:Modules_field_evaluator.Exe_or_normal_lib
+            ~private_modules:Ordered_set_lang.standard ~src_dir:dir
+            modules_settings
+        in
+        let modules =
           let project = Scope.project scope in
           let obj_dir = Obj_dir.obj_dir obj_dir in
           if Dune_project.wrapped_executables project then
             Modules_group.make_wrapped ~obj_dir ~modules `Exe
           else Modules_group.exe_unwrapped modules ~obj_dir
         in
-        Memo.return (`Executables (exes, modules, obj_dir))
+        Memo.return (`Executables (exes, sources, modules, obj_dir))
       | Melange_stanzas.Emit.T mel ->
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
+        let sources, modules =
+          Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
+            ~kind:Modules_field_evaluator.Exe_or_normal_lib
+            ~private_modules:Ordered_set_lang.standard ~src_dir:dir mel.modules
+        in
         let modules =
-          let modules =
-            Modules_field_evaluator.eval ~modules ~stanza_loc:mel.loc
-              ~kind:Modules_field_evaluator.Exe_or_normal_lib
-              ~private_modules:Ordered_set_lang.standard ~src_dir:dir
-              mel.modules
-          in
           Modules_group.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules
             `Melange
         in
-        Memo.return (`Melange_emit (mel, modules, obj_dir))
+        Memo.return (`Melange_emit (mel, sources, modules, obj_dir))
       | _ -> Memo.return `Skip)
   >>| filter_partition_map
 

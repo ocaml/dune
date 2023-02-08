@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675871683120,
+  "lastUpdate": 1675871775621,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4146,6 +4146,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.03638294725334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "808a0e05308b1137902ba0f82dd6c1ec544497dd",
+          "message": "test: modules_without_implementation and modules (#7022)\n\ndemonstrate the behavior when a module is excluded by (modules ..) but\r\nis written inside (modules_without_implementation ..)\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n<!-- ps-id: 8075951a-3306-48db-ba8e-423bac14a4c9 -->",
+          "timestamp": "2023-02-08T09:37:09-06:00",
+          "tree_id": "ea5121e537fb943f6c070033c63b416a11981113",
+          "url": "https://github.com/ocaml/dune/commit/808a0e05308b1137902ba0f82dd6c1ec544497dd"
+        },
+        "date": 1675871774917,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.851500095093336",
             "unit": "seconds"
           }
         ]

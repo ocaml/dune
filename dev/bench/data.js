@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675871775621,
+  "lastUpdate": 1675871789289,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4175,6 +4175,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.851500095093336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "425895afb1e9246fcd8c7e6aee1fbc077c0c4b3a",
+          "message": "test: modules and private_modules (#7023)\n\ndemonstrate the behavior when a module is listed by (private_modules ..)\r\nbut is exlucded by (modules ..)\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-08T09:37:27-06:00",
+          "tree_id": "cafdcadd7a2afc57336a688050be92ba226d33a4",
+          "url": "https://github.com/ocaml/dune/commit/425895afb1e9246fcd8c7e6aee1fbc077c0c4b3a"
+        },
+        "date": 1675871787338,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.053125297079994",
             "unit": "seconds"
           }
         ]

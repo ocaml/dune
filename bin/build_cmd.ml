@@ -234,3 +234,39 @@ let fmt =
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;
+
+let doc =
+  let doc = "Build the documentation of an OCaml project" in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P
+        {|$(b,dune ocaml doc) build and open the documention of an ocaml project.|}
+    ; `Blocks Common.help_secs
+    ]
+  in
+  let info = Cmd.info "doc" ~doc ~man in
+  let term =
+    let+ common = Common.term in
+    let config = Common.init common in
+    let request (setup : Import.Main.build_system) =
+      let dir = Path.(relative root) (Common.prefix_target common ".") in
+      let open Action_builder.O in
+      let+ () =
+        Alias.in_dir
+          ~name:(Dune_engine.Alias.Name.of_string "doc")
+          ~recursive:true ~contexts:setup.contexts dir
+        |> Alias.request
+      in
+      let is_default ctx =
+        ctx |> Context.name |> Dune_engine.Context_name.is_default
+      in
+      let doc_ctx = List.find_exn setup.contexts ~f:is_default in
+      let toplevel_index_path = Dune_rules.Odoc.Paths.toplevel_index doc_ctx in
+      let absolute_toplevel_index_path =
+        Path.(toplevel_index_path |> build |> to_absolute_filename)
+      in
+      Printf.printf "\nDocumentation in : %s\n" absolute_toplevel_index_path
+    in
+    run_build_command ~common ~config ~request
+  in
+  Cmd.v info term

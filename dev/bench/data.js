@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675872497108,
+  "lastUpdate": 1675891971351,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4233,6 +4233,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.39977095604667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89115fef7cb2c89b66b233ad2569c54b637c142c",
+          "message": "fix(rules): installing sources (#7005)\n\nPreserve module sources relative to the directory where the library is\r\ndefined when installing sources.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-08T15:14:11-06:00",
+          "tree_id": "8dc36b63535e6e782114e24b5eb437f9e61c50ef",
+          "url": "https://github.com/ocaml/dune/commit/89115fef7cb2c89b66b233ad2569c54b637c142c"
+        },
+        "date": 1675891970303,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.13300844956667",
             "unit": "seconds"
           }
         ]

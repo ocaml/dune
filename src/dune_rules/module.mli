@@ -37,6 +37,8 @@ module Source : sig
 
   val files : t -> File.t list
 
+  val path : t -> Module_name.Path.t
+
   val to_dyn : t -> Dyn.t
 
   val src_dir : t -> Path.t

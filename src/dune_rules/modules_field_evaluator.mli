@@ -26,4 +26,4 @@ val eval :
   -> kind:kind
   -> src_dir:Path.Build.t
   -> Stanza_common.Modules_settings.t
-  -> Module.t Module_trie.t
+  -> (Loc.t * Module.Source.t) Module_trie.t * Module.t Module_trie.t

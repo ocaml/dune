@@ -248,17 +248,30 @@ let check_invalid_module_listing ~stanza_loc ~modules_without_implementation
       ]
       spurious_modules_virtual [])
 
-let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
-    ~private_modules ~kind ~src_dir
-    { Stanza_common.Modules_settings.modules = modules_field
-    ; root_module
-    ; modules_without_implementation
-    } =
+type eval0 =
+  { modules : (Loc.t * Module.Source.t) Module_trie.t
+  ; fake_modules : Loc.t Module_name.Map.t
+  }
+
+let eval0 ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
+    modules_field =
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let fake_modules = ref Module_name.Map.empty in
   let eval = eval ~loc:stanza_loc ~fake_modules ~all_modules in
   let modules = eval ~standard:all_modules modules_field in
+  { modules; fake_modules = !fake_modules }
+
+let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
+    ~private_modules ~kind ~src_dir
+    { Stanza_common.Modules_settings.modules = _
+    ; root_module
+    ; modules_without_implementation
+    } { modules; fake_modules } =
+  (* Fake modules are modules that do not exist but it doesn't matter because
+     they are only removed from a set (for jbuild file compatibility) *)
+  let fake_modules = ref fake_modules in
+  let eval = eval ~loc:stanza_loc ~fake_modules ~all_modules in
   let intf_only =
     eval ~standard:Module_trie.empty modules_without_implementation
   in
@@ -311,3 +324,17 @@ let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
     let path = [ name ] in
     let module_ = Module.generated ~kind:Root ~src_dir path in
     Module_trie.set all_modules path module_
+
+let eval ~modules:(all_modules : Module.Source.t Module_trie.t) ~stanza_loc
+    ~private_modules ~kind ~src_dir
+    (settings : Stanza_common.Modules_settings.t) =
+  let eval0 =
+    eval0
+      ~modules:(all_modules : Module.Source.t Module_trie.t)
+      ~stanza_loc settings.modules
+  in
+  let modules =
+    eval ~modules:all_modules ~stanza_loc ~private_modules ~kind ~src_dir
+      settings eval0
+  in
+  (eval0.modules, modules)

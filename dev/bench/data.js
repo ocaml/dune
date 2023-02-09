@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675939436172,
+  "lastUpdate": 1675955564955,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4378,6 +4378,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.3659258704",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "emile.trotignon@laposte.net",
+            "name": "Emile Trotignon",
+            "username": "EmileTrotignon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "50eda639151a9a2eec402d8da916adcf3b51e136",
+          "message": "Formatting stanza works with no arguments again (#7035)\n\nSigned-off-by: Emile Trotignon <emile@tarides.com>",
+          "timestamp": "2023-02-09T15:50:15+01:00",
+          "tree_id": "c1e4b40791d8bbc21e92e65b03a8b87b818c4dff",
+          "url": "https://github.com/ocaml/dune/commit/50eda639151a9a2eec402d8da916adcf3b51e136"
+        },
+        "date": 1675955563552,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.19636600314001",
             "unit": "seconds"
           }
         ]

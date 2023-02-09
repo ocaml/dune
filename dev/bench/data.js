@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675955564955,
+  "lastUpdate": 1675960915436,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4407,6 +4407,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.19636600314001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "efcafc0c01c8e2a277186d97e6bd28006d8d9cb7",
+          "message": "fix: module stanza mapping (#7029)\n\nDo not use [Modules.t] to detect if a module is present in more than one\r\nstanza.\r\n\r\nThis is a source based check so we should just use the sources directly\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-09T10:19:39-06:00",
+          "tree_id": "ad8af8bcde755f37cee58467f6321f5d9173c592",
+          "url": "https://github.com/ocaml/dune/commit/efcafc0c01c8e2a277186d97e6bd28006d8d9cb7"
+        },
+        "date": 1675960914116,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.77806863774",
             "unit": "seconds"
           }
         ]

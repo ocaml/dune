@@ -180,6 +180,8 @@ val dune_version : t -> Dune_lang.Syntax.Version.t
 
 val wrapped_executables : t -> bool
 
+val map_workspace_root : t -> bool
+
 val executables_implicit_empty_intf : t -> bool
 
 val accept_alternative_dune_file_name : t -> bool

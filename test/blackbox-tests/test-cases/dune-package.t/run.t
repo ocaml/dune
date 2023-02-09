@@ -57,9 +57,17 @@
    (modules
     (wrapped
      (group
-      (alias (obj_name a) (path A) (visibility public) (kind alias) (impl))
+      (alias
+       (obj_name a)
+       (visibility public)
+       (kind alias)
+       (source (path A) (impl (path a.ml-gen))))
       (name A)
-      (modules (module (obj_name a__X) (path X) (visibility public) (impl))))
+      (modules
+       (module
+        (obj_name a__X)
+        (visibility public)
+        (source (path X) (impl (path x.ml))))))
      (wrapped true))))
   (library
    (name a.b.c)
@@ -73,10 +81,17 @@
    (modules
     (wrapped
      (group
-      (alias (obj_name c) (path C) (visibility public) (kind alias) (impl))
+      (alias
+       (obj_name c)
+       (visibility public)
+       (kind alias)
+       (source (path C) (impl (path b/c/c.ml-gen))))
       (name C)
       (modules
-       (module (obj_name c__Y) (path Y) (visibility private) (impl) (intf))))
+       (module
+        (obj_name c__Y)
+        (visibility private)
+        (source (path Y) (intf (path b/c/y.mli)) (impl (path b/c/y.ml))))))
      (wrapped true))))
   (library
    (name a.byte_only)
@@ -88,9 +103,17 @@
    (modules
     (wrapped
      (group
-      (alias (obj_name d) (path D) (visibility public) (kind alias) (impl))
+      (alias
+       (obj_name d)
+       (visibility public)
+       (kind alias)
+       (source (path D) (impl (path byte_only/d.ml-gen))))
       (name D)
-      (modules (module (obj_name d__Z) (path Z) (visibility public) (impl))))
+      (modules
+       (module
+        (obj_name d__Z)
+        (visibility public)
+        (source (path Z) (impl (path byte_only/z.ml))))))
      (wrapped true))))
 
 Build with "--store-orig-source-dir" profile

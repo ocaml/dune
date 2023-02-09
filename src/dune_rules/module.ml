@@ -6,6 +6,17 @@ module File = struct
     ; dialect : Dialect.t
     }
 
+  let decode ~dir =
+    let open Dune_lang.Decoder in
+    fields
+    @@ let+ path = field "path" (Dpath.Local.decode ~dir) in
+       (* TODO do not just assume the dialect is OCaml *)
+       { path; dialect = Dialect.ocaml }
+
+  let encode { path; dialect = _ } ~dir =
+    let open Dune_lang.Encoder in
+    record_fields [ field "path" (Dpath.Local.encode ~dir) path ]
+
   let dialect t = t.dialect
 
   let path t = t.path
@@ -90,6 +101,26 @@ module Source = struct
     { path : Module_name.Path.t
     ; files : File.t option Ml_kind.Dict.t
     }
+
+  let decode ~dir =
+    let open Dune_lang.Decoder in
+    fields
+    @@ let+ path = field "path" Module_name.Path.decode
+       and+ intf = field_o "intf" (File.decode ~dir)
+       and+ impl = field_o "impl" (File.decode ~dir) in
+       { path; files = { Ml_kind.Dict.intf; impl } }
+
+  let encode ~dir { path; files = { Ml_kind.Dict.intf; impl } } =
+    let open Dune_lang.Encoder in
+    let file = function
+      | None -> []
+      | Some x -> File.encode ~dir x
+    in
+    record_fields
+      [ field_l "path" Fun.id (Module_name.Path.encode path)
+      ; field_l "intf" Fun.id (file intf)
+      ; field_l "impl" Fun.id (file impl)
+      ]
 
   let to_dyn { path; files } =
     let open Dyn in
@@ -293,14 +324,8 @@ end
 
 module Obj_map_traversals = Memo.Make_map_traversals (Obj_map)
 
-let encode
-    ({ source = { files = _; path; _ }
-     ; obj_name
-     ; pp = _
-     ; visibility
-     ; kind
-     ; install_as = _
-     } as t) =
+let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
+    ~src_dir =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -317,18 +342,12 @@ let encode
   in
   record_fields
     [ field "obj_name" Module_name.Unique.encode obj_name
-    ; field_l "path" (fun x -> x) (Module_name.Path.encode path)
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
-    ; field_b "impl" has_impl
-    ; field_b "intf" (has t ~ml_kind:Intf)
+    ; field_l "source" Fun.id (Source.encode ~dir:src_dir source)
     ]
 
-let module_basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
-  let n = Module_name.to_string n in
-  String.lowercase n ^ Dialect.extension dialect ml_kind
-
-let decode ~src_dir =
+let decode_old ~src_dir =
   let open Dune_lang.Decoder in
   fields
     (let+ obj_name = field "obj_name" Module_name.Unique.decode
@@ -354,6 +373,10 @@ let decode ~src_dir =
      in
      let file exists ml_kind =
        if exists then
+         let module_basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
+           let n = Module_name.to_string n in
+           String.lowercase n ^ Dialect.extension dialect ml_kind
+         in
          let basename = module_basename name ~ml_kind ~dialect:Dialect.ocaml in
          Some (File.make Dialect.ocaml (Path.relative src_dir basename))
        else None
@@ -368,6 +391,22 @@ let decode ~src_dir =
      let impl = file impl Impl in
      let source = Source.make ?impl ?intf path in
      of_source ~obj_name:(Some obj_name) ~visibility ~kind source)
+
+let decode ~src_dir =
+  let open Dune_lang.Decoder in
+  fields
+    (let+ obj_name = field "obj_name" Module_name.Unique.decode
+     and+ visibility = field "visibility" Visibility.decode
+     and+ kind = field_o "kind" Kind.decode
+     and+ source = field "source" (Source.decode ~dir:src_dir) in
+     let kind =
+       match kind with
+       | Some k -> k
+       | None when Option.is_some source.files.impl -> Impl
+       | None -> Intf_only
+     in
+     { install_as = None; source; obj_name; pp = None; kind; visibility })
+  <|> decode_old ~src_dir
 
 let pped =
   map_files ~f:(fun _kind (file : File.t) ->
@@ -423,8 +462,9 @@ module Name_map = struct
     let+ modules = repeat (enter (decode ~src_dir)) in
     Module_name.Map.of_list_map_exn ~f:(fun m -> (name m, m)) modules
 
-  let encode t =
-    Module_name.Map.to_list_map t ~f:(fun _ x -> Dune_lang.List (encode x))
+  let encode t ~src_dir =
+    Module_name.Map.to_list_map t ~f:(fun _ x ->
+        Dune_lang.List (encode ~src_dir x))
 
   let of_list_exn modules =
     List.rev_map modules ~f:(fun m -> (name m, m))

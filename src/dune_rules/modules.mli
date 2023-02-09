@@ -18,7 +18,7 @@ val lib :
   -> modules:Module.t Module_trie.t
   -> t
 
-val encode : t -> Dune_lang.t
+val encode : t -> src_dir:Path.t -> Dune_lang.t
 
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 

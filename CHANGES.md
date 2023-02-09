@@ -124,6 +124,9 @@ Unreleased
   not set then the cinaps actions will be attached to both `@cinaps` and
   `@runtest` (#6988, @rgrinberg)
 
+- Add `(using ctypes 0.3)`. When used, paths in `(ctypes)` are interpreted
+  relative to where the stanza is defined. (#6883, fixes #5325, @emillon)
+
 3.6.2 (2022-12-21)
 ------------------
 

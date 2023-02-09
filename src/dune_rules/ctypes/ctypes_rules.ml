@@ -155,7 +155,7 @@ let function_gen_gen ~expander
        ])
 
 let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
-    ~cflags ~output ~deps =
+    ~cflags ~output ~deps ~version =
   let ctx = Super_context.context sctx in
   let open Memo.O in
   let* exe =
@@ -169,36 +169,39 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
         Dune_project.use_standard_c_and_cxx_flags project
       in
       let cfg = ctx.ocaml_config in
+      let fdo_flags = Command.Args.As (Fdo.c_flags ctx) in
       match use_standard_flags with
-      | Some true -> Fdo.c_flags ctx
+      | Some true -> fdo_flags
       | None | Some false ->
         (* In dune < 2.8 flags from ocamlc_config are always added *)
-        List.concat
-          [ Ocaml_config.ocamlc_cflags cfg
-          ; Ocaml_config.ocamlc_cppflags cfg
-          ; Fdo.c_flags ctx
+        S
+          [ As (Ocaml_config.ocamlc_cflags cfg)
+          ; As (Ocaml_config.ocamlc_cppflags cfg)
+          ; fdo_flags
           ]
     in
     let open Action_builder.O in
     let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
-    Super_context.foreign_flags sctx ~dir ~expander
-      ~flags:Ordered_set_lang.Unexpanded.standard ~language:C
-    |> Action_builder.map ~f:(List.append base_flags)
+    let+ foreign_flags =
+      Super_context.foreign_flags sctx ~dir ~expander
+        ~flags:Ordered_set_lang.Unexpanded.standard ~language:C
+    in
+    Command.Args.S [ base_flags; As foreign_flags ]
   in
   let include_args =
-    let ocaml_where = Path.to_string ctx.stdlib_dir in
+    let ocaml_where = ctx.stdlib_dir in
     (* XXX: need glob dependency *)
-    let open Resolve.Memo.O in
-    let+ ctypes_include_dirs =
-      let+ lib =
-        let ctypes = Lib_name.of_string "ctypes" in
-        Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes)
-      in
-      Lib_flags.L.include_paths [ lib ] (Ocaml Native)
-      |> Path.Set.to_list_map ~f:Path.to_string
+    let open Action_builder.O in
+    let ctypes = Lib_name.of_string "ctypes" in
+    let+ lib =
+      Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) |> Resolve.Memo.read
+    in
+    let ctypes_include_dirs =
+      Lib_flags.L.include_paths [ lib ] (Ocaml Native) |> Path.Set.to_list
     in
     let include_dirs = ocaml_where :: ctypes_include_dirs in
-    List.concat_map include_dirs ~f:(fun dir -> [ "-I"; dir ])
+    Command.Args.S
+      (List.map include_dirs ~f:(fun dir -> Command.Args.S [ A "-I"; Path dir ]))
   in
   let deps =
     let source_file_deps =
@@ -216,33 +219,57 @@ let build_c_program ~foreign_archives_deps ~sctx ~dir ~source_files ~scope
     in
     deps
   in
-  let build =
-    let absolute_path_hack p =
-      (* These normal path builder things construct relative paths like
-         _build/default/your/project/file.c but before dune runs gcc it actually
-         cds into _build/default, which fails, so we turn them into absolutes to
-         hack around it. *)
-      Path.relative (Path.build dir) p |> Path.to_absolute_filename
-    in
-    let action =
-      let open Action_builder.O in
-      let* include_args = Resolve.Memo.read include_args in
-      let* base_args = with_user_and_std_flags in
-      deps
-      >>> Action_builder.map cflags ~f:(fun cflags_args ->
-              let source_files = List.map source_files ~f:absolute_path_hack in
-              let output = absolute_path_hack output in
-              let args =
-                base_args @ cflags_args @ include_args @ source_files
-                @ [ "-o"; output ]
-              in
-              Action.run exe args)
-    in
-    Action_builder.with_file_targets action
-      ~file_targets:[ Path.Build.relative dir output ]
+  let all_flags =
+    Command.Args.S
+      [ Dyn with_user_and_std_flags
+      ; Dyn (Action_builder.map cflags ~f:(fun l -> Command.Args.As l))
+      ; Dyn include_args
+      ]
   in
-  Super_context.add_rule sctx ~dir
-    (Action_builder.With_targets.map ~f:Action.Full.make build)
+  let action =
+    if version >= (0, 3) then
+      let args =
+        [ Command.Args.as_any all_flags
+        ; Deps
+            (List.map
+               ~f:(fun s -> Path.relative (Path.build dir) s)
+               source_files)
+        ; A "-o"
+        ; Target (Path.Build.relative dir output)
+        ]
+      in
+      let open Action_builder.With_targets.O in
+      Action_builder.with_no_targets deps
+      >>> Command.run ~dir:(Path.build dir) exe args
+    else
+      let build =
+        let absolute_path_hack p =
+          (* These normal path builder things construct relative paths like
+             _build/default/your/project/file.c but before dune runs gcc it actually
+             cds into _build/default, which fails, so we turn them into absolutes to
+             hack around it. *)
+          Path.relative (Path.build dir) p |> Path.to_absolute_filename
+        in
+        let action =
+          let open Action_builder.O in
+          let* flag_args =
+            Command.expand_no_targets ~dir:(Path.build dir) all_flags
+          in
+          let+ () = deps in
+          let source_files = List.map source_files ~f:absolute_path_hack in
+          let output = absolute_path_hack output in
+          let args = flag_args @ source_files @ [ "-o"; output ] in
+          (* TODO: it might be possible to convert this to Command.run and
+             consolidate both branches but it is also possible that we drop
+             support for < 0.3 instead *)
+          Action.run exe args
+        in
+        Action_builder.with_file_targets action
+          ~file_targets:[ Path.Build.relative dir output ]
+      in
+      Action_builder.With_targets.map ~f:Action.Full.make build
+  in
+  Super_context.add_rule sctx ~dir action
 
 let program_of_module_and_dir ~dir program =
   let build_dir = Path.build dir in
@@ -261,7 +288,7 @@ let exe_link_only ~dir ~shared_cctx ~sandbox program ~deps =
   Exe.link_many ~link_args ~programs:[ program ]
     ~linkages:[ Exe.Linkage.native ] ~promote:None shared_cctx ~sandbox
 
-let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
+let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx ~version =
   let ctypes = Option.value_exn buildable.ctypes in
   let external_library_name = ctypes.external_library_name in
   let type_description_functor = ctypes.type_description.functor_ in
@@ -359,7 +386,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     let* () =
       build_c_program ~foreign_archives_deps ~sctx ~dir ~scope
         ~source_files:[ c_generated_types_cout_c ]
-        ~output:c_generated_types_cout_exe ~deps ~cflags
+        ~output:c_generated_types_cout_exe ~deps ~cflags ~version
     in
     Super_context.add_rule sctx ~loc:Loc.none ~dir
       (let stdout_to =

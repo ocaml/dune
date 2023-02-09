@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675897759279,
+  "lastUpdate": 1675901361628,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4320,6 +4320,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.712778212686665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "873c6ba90327b347524c39b2b09942c09dfd62ca",
+          "message": "fix: include all diagnostics (#6940)\n\nSome compilation commands emit more than one diagnostics. For example,\r\nocamlc can emit more than one deprecation or unused error warning.\r\n\r\nThe previous behavior would be to just take the first error and drop the\r\nothers. This PR fixes the behavior to include all errors extracted out\r\nof a command.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-08T17:50:53-06:00",
+          "tree_id": "49dde810846ac5c4e25f7b6d9526f832d76643fa",
+          "url": "https://github.com/ocaml/dune/commit/873c6ba90327b347524c39b2b09942c09dfd62ca"
+        },
+        "date": 1675901360202,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "32.55434217541333",
             "unit": "seconds"
           }
         ]

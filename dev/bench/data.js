@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675961329024,
+  "lastUpdate": 1675971621318,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4465,6 +4465,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.03419351379333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "richardlford@users.noreply.github.com",
+            "name": "Richard L Ford",
+            "username": "richardlford"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7bdc8d6ecb97630b96b406d0e71b12bb833cbe41",
+          "message": "Add dune-project stanza, map_workspace_root, to control workspace mapping. (#6988)\n\nAdd a \"map_workspace_root\" stanza to the dune-project file.\r\nIf true, references to the workspace root directory in output\r\nfiles are mapped to \"/workspace_root\". If false, such references\r\nare not modified.\r\nIf missing, it defaults to true.\r\n\r\nNote that in the added tests, for some configurations quotes\r\nare needed around the \"EOF\" delimeter to get expansion.\r\n\r\nNote also that when enabled, the debug search directories in the\r\ndebug information produced by ocamlc are also mapped, with\r\nthe result that ocamldebug cannot find the files.\r\n\r\nFixes #6929, provided user disables mapping.\r\n\r\nSigned-off-by: Richard L Ford <richardlford@gmail.com>\r\nCo-authored-by: Christine Rose <christinerose@users.noreply.github.com>\r\nCo-authored-by: Ali Caglayan <alizter@gmail.com>\r\nCo-authored-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-09T20:20:07+01:00",
+          "tree_id": "128f2c89d3417434b439ed4098d005a62382ebf9",
+          "url": "https://github.com/ocaml/dune/commit/7bdc8d6ecb97630b96b406d0e71b12bb833cbe41"
+        },
+        "date": 1675971620632,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.01397091365333",
             "unit": "seconds"
           }
         ]

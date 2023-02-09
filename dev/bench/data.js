@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675960915436,
+  "lastUpdate": 1675961329024,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4436,6 +4436,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.77806863774",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "111161d3c36c495cb5c5a68510a9533a316a0ad8",
+          "message": "fix(melange): incompatible libraries (#7033)\n\nLibraries that are incompatible with the melange rules are:\r\n\r\n* Non dune libraries\r\n* Libraries defined with dune but installed with META templates\r\n\r\nWe emit a proper erorr message when we encounter such libraries\r\n\r\nIdeally, we should discover such incompatibilities where they first\r\nintroduced, but this is better than the current hideous error.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-09T10:28:32-06:00",
+          "tree_id": "27d673e2ef47afef1bf6c727c2d7d16f43d29923",
+          "url": "https://github.com/ocaml/dune/commit/111161d3c36c495cb5c5a68510a9533a316a0ad8"
+        },
+        "date": 1675961327625,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.03419351379333",
             "unit": "seconds"
           }
         ]

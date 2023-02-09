@@ -66,6 +66,8 @@ module Local : sig
   val split_first_component : t -> (string * t) option
 
   val explode : t -> string list
+
+  val descendant : t -> of_:t -> t option
 end
 
 module External : sig

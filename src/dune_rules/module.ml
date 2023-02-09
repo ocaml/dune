@@ -150,6 +150,7 @@ type t =
   ; pp : (string list Action_builder.t * Sandbox_config.t) option
   ; visibility : Visibility.t
   ; kind : Kind.t
+  ; install_as : Path.Local.t option
   }
 
 let name t = Source.name t.source
@@ -160,7 +161,10 @@ let kind t = t.kind
 
 let pp_flags t = t.pp
 
-let of_source ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
+let install_as t = t.install_as
+
+let of_source ?install_as ~obj_name ~visibility ~(kind : Kind.t)
+    (source : Source.t) =
   (match (kind, visibility) with
   | (Alias _ | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
   | Root, Private
@@ -194,7 +198,7 @@ let of_source ~obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
       Module_name.Unique.of_path_assuming_needs_no_mangling_allow_invalid
         file.path
   in
-  { source; obj_name; pp = None; visibility; kind }
+  { install_as; source; obj_name; pp = None; visibility; kind }
 
 let has t ~ml_kind =
   match (ml_kind : Ml_kind.t) with
@@ -235,13 +239,14 @@ let src_dir t = Source.src_dir t.source
 
 let set_pp t pp = { t with pp }
 
-let to_dyn { source; obj_name; pp; visibility; kind } =
+let to_dyn { source; obj_name; pp; visibility; kind; install_as } =
   Dyn.record
     [ ("source", Source.to_dyn source)
     ; ("obj_name", Module_name.Unique.to_dyn obj_name)
     ; ("pp", Dyn.(option string) (Option.map ~f:(fun _ -> "has pp") pp))
     ; ("visibility", Visibility.to_dyn visibility)
     ; ("kind", Kind.to_dyn kind)
+    ; ("install_as", Dyn.option Path.Local.to_dyn install_as)
     ]
 
 let ml_gen = ".ml-gen"
@@ -287,8 +292,13 @@ end
 module Obj_map_traversals = Memo.Make_map_traversals (Obj_map)
 
 let encode
-    ({ source = { files = _; path; _ }; obj_name; pp = _; visibility; kind } as
-    t) =
+    ({ source = { files = _; path; _ }
+     ; obj_name
+     ; pp = _
+     ; visibility
+     ; kind
+     ; install_as = _
+     } as t) =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -374,7 +384,8 @@ let ml_source =
 
 let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
-let generated ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_name.Path.t) =
+let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir
+    (path : Module_name.Path.t) =
   let obj_name =
     match obj_name with
     | Some obj_name -> obj_name
@@ -383,7 +394,7 @@ let generated ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_name.Path.t) =
   let source =
     let impl =
       let basename =
-        Module_name.Unique.artifact_filename obj_name ~ext:".ml-gen"
+        Module_name.Unique.artifact_filename obj_name ~ext:ml_gen
       in
       Path.Build.relative src_dir basename
       |> Path.build |> File.make Dialect.ocaml
@@ -395,7 +406,7 @@ let generated ?obj_name ~(kind : Kind.t) ~src_dir (path : Module_name.Path.t) =
     | Root -> Private
     | _ -> Public
   in
-  of_source ~visibility ~kind ~obj_name:(Some obj_name) source
+  of_source ?install_as ~visibility ~kind ~obj_name:(Some obj_name) source
 
 let of_source ~visibility ~kind source =
   of_source ~obj_name:None ~visibility ~kind source

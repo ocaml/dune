@@ -225,7 +225,7 @@ module Objects = struct
         let main = User_message.make ~loc [ Pp.text main_message ] in
         let related = [ User_message.make ~loc:loc' [ Pp.text "" ] ] in
         User_message.Annots.singleton Compound_user_error.annot
-          (Compound_user_error.make ~main ~related)
+          [ Compound_user_error.make ~main ~related ]
       in
       User_error.raise ~loc ~annots
         [ Pp.textf "%s Already appears at:" main_message

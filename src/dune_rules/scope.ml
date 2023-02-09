@@ -124,7 +124,7 @@ module DB = struct
                     ]
                   in
                   User_message.Annots.singleton Compound_user_error.annot
-                    (Compound_user_error.make ~main ~related)
+                    [ Compound_user_error.make ~main ~related ]
                 in
                 User_error.raise ~annots
                   [ main_message
@@ -200,7 +200,7 @@ module DB = struct
               [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
             in
             User_message.Annots.singleton Compound_user_error.annot
-              (Compound_user_error.make ~main ~related)
+              [ Compound_user_error.make ~main ~related ]
           in
           User_error.raise ~annots ~loc:loc2
             [ Pp.textf "Public library %s is defined twice:"

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675901361628,
+  "lastUpdate": 1675939436172,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4349,6 +4349,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.55434217541333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "584d94cd7a8df7154b234f9eceedcdab59484939",
+          "message": "ctypes 0.3: run commands in stanza directory (#6883)\n\nThis creates version 0.3 of the ctypes field.\r\n\r\nWhen used, commands are run in the directory where the corresponding\r\nstanza is defined. This makes it possible to use relative directories.\r\n\r\nFixes #5325\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-09T11:25:22+01:00",
+          "tree_id": "6311915bf0ab12a45e0a046d8382137a1311d21d",
+          "url": "https://github.com/ocaml/dune/commit/584d94cd7a8df7154b234f9eceedcdab59484939"
+        },
+        "date": 1675939435484,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.3659258704",
             "unit": "seconds"
           }
         ]

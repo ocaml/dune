@@ -47,8 +47,9 @@ Reproduce github #7020
   >  (module_system es6))
   > EOF
 
-  $ dune build @melange 2>&1 | awk '/Internal error/,/Raised/'
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Option.value_exn", {})
-  Raised at Stdune__Code_error.raise in file
+  $ dune build @melange
+  Error: The library dummyfoo was not compiled with Dune or it waas compiled
+  with Dune but published with a META template. Such libraries are not
+  compatible with melange support
+  -> required by alias melange
+  [1]

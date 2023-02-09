@@ -50,10 +50,20 @@ let make_js_name ~js_ext ~output m =
 
 let impl_only_modules_defined_in_this_lib sctx lib =
   let open Memo.O in
-  let+ modules = Dir_contents.modules_of_lib sctx lib >>| Option.value_exn in
-  (* for a virtual library,this will return all modules *)
-  (Modules.split_by_lib modules).impl
-  |> List.filter ~f:(Module.has ~ml_kind:Impl)
+  let+ modules = Dir_contents.modules_of_lib sctx lib in
+  match modules with
+  | None ->
+    User_error.raise
+      [ Pp.textf
+          "The library %s was not compiled with Dune or it waas compiled with \
+           Dune but published with a META template. Such libraries are not \
+           compatible with melange support"
+          (Lib.name lib |> Lib_name.to_string)
+      ]
+  | Some modules ->
+    (* for a virtual library,this will return all modules *)
+    (Modules.split_by_lib modules).impl
+    |> List.filter ~f:(Module.has ~ml_kind:Impl)
 
 let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
 

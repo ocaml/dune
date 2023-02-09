@@ -251,7 +251,7 @@ let doc =
     let request (setup : Import.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       let open Action_builder.O in
-      let+ () =
+      let* () =
         Alias.in_dir
           ~name:(Dune_engine.Alias.Name.of_string "doc")
           ~recursive:true ~contexts:setup.contexts dir
@@ -265,7 +265,25 @@ let doc =
       let absolute_toplevel_index_path =
         Path.(toplevel_index_path |> build |> to_absolute_filename)
       in
-      Printf.printf "\nDocumentation in : %s\n" absolute_toplevel_index_path
+      (* let action =
+           let open Dune_lang in
+           let module S = String_with_vars in
+           Action.run
+             (S.make_text Loc.none "xdg-open")
+             [ S.make_text Loc.none
+                 (Printf.sprintf "file://%s" absolute_toplevel_index_path)
+             ]
+         in *)
+      let uri = Printf.sprintf "file://%s" absolute_toplevel_index_path in
+      
+      Dune_engine.Process.run
+      let+ _f =
+        Dune_rules.(
+          Command.run' ~dir
+            (Ok Path.(external_ (External.of_string "/usr/bin/xdg-open")))
+            [ Command.Args.A uri ])
+      in
+      ()
     in
     run_build_command ~common ~config ~request
   in

@@ -19,6 +19,3 @@ same directory.
   $ touch foo.ml foo.mli
 
   $ dune build ./bar.exe
-  File "foo.ml-gen", line 1:
-  Error: Could not find the .cmi file for interface foo.mli.
-  [1]

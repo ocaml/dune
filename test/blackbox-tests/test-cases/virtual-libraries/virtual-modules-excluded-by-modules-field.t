@@ -36,5 +36,5 @@ Specifying a virtual module that isn't inside the (modules ..) field:
   1 | (library
   2 |  (name impl)
   3 |  (implements foo))
-  Error: No rule found for .foo.objs/y.impl.all-deps
+  Error: No rule found for .foo.objs/y.impl.d
   [1]

@@ -141,7 +141,7 @@ module Module = struct
               in
               let cmos () =
                 let obj_dir = Compilation_context.obj_dir cctx in
-                let dep_graph = (Compilation_context.dep_graphs cctx).impl in
+                let dep_graph = Compilation_context.linking_dep_graph cctx in
                 let* modules =
                   let graph =
                     Dune_rules.Dep_graph.top_closed_implementations dep_graph

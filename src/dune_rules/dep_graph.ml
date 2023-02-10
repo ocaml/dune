@@ -22,27 +22,36 @@ let deps_of t (m : Module.t) =
 
 module Top_closure = Top_closure.Make (Module_name.Unique.Set) (Action_builder)
 
-let top_closed t modules =
+let top_closed_implementations (t : _ Ml_kind.Dict.t) modules =
   let+ res =
-    Top_closure.top_closure modules ~key:Module.obj_name
-      ~deps:(Module.Obj_map.find_exn t.per_module)
+    Top_closure.top_closure modules ~key:Module.obj_name ~deps:(fun m ->
+        let impl = Module.Obj_map.find_exn t.impl.per_module m in
+        let intf = Module.Obj_map.find_exn t.intf.per_module m in
+        Action_builder.both impl intf
+        |> Action_builder.map ~f:(fun (impl, intf) ->
+               impl @ intf
+               |> List.sort_uniq ~compare:(fun x y ->
+                      let x = Module.obj_name x in
+                      let y = Module.obj_name y in
+                      Module_name.Unique.compare x y)))
   in
   match res with
   | Ok modules -> modules
   | Error cycle ->
     User_error.raise
       [ Pp.textf "dependency cycle between modules in %s:"
-          (Path.Build.to_string t.dir)
+          (Path.Build.to_string t.impl.dir)
       ; Pp.chain cycle ~f:(fun m ->
             Pp.verbatim (Module_name.to_string (Module.name m)))
       ]
 
-let top_closed_implementations t modules =
-  Action_builder.memoize "top sorted implementations"
-    (let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl) in
-     Action_builder.map
-       (top_closed t (filter_out_intf_only modules))
-       ~f:filter_out_intf_only)
+let top_closed_implementations =
+  let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl) in
+  fun t modules ->
+    filter_out_intf_only modules
+    |> top_closed_implementations t
+    |> Action_builder.map ~f:filter_out_intf_only
+    |> Action_builder.memoize "top sorted implementations"
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root

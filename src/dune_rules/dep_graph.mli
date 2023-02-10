@@ -12,7 +12,7 @@ val make :
 val deps_of : t -> Module.t -> Module.t list Action_builder.t
 
 val top_closed_implementations :
-  t -> Module.t list -> Module.t list Action_builder.t
+  t Ml_kind.Dict.t -> Module.t list -> Module.t list Action_builder.t
 
 module Ml_kind : sig
   type nonrec t = t Ml_kind.Dict.t

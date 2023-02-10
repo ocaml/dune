@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675971621318,
+  "lastUpdate": 1675992034463,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4494,6 +4494,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.01397091365333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5b386539f308f397238fda7bc9851e71e8b8caf5",
+          "message": "test: reproduce #7018 (#7037)\n\nDemonstrate various types of module cycles that aren't cycles if we\r\nseparate the module interface and module implementation graphs\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-09T18:58:23-06:00",
+          "tree_id": "8be61892ba1894b813b2bba5f8df3af26ee102b1",
+          "url": "https://github.com/ocaml/dune/commit/5b386539f308f397238fda7bc9851e71e8b8caf5"
+        },
+        "date": 1675992033312,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.37642743406667",
             "unit": "seconds"
           }
         ]

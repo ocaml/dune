@@ -489,7 +489,8 @@ let library_rules (lib : Library.t) ~local_lib ~cctx ~source_modules
   let top_sorted_modules =
     let impl_only = Modules.impl_only modules in
     Dep_graph.top_closed_implementations
-      (Compilation_context.dep_graphs cctx).impl impl_only
+      (Compilation_context.linking_dep_graph cctx)
+      impl_only
   in
   let* () =
     Memo.Option.iter vimpl

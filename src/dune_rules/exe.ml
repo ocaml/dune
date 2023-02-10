@@ -245,7 +245,8 @@ let link_many ?(link_args = Action_builder.return Command.Args.empty) ?o_files
                 ; ("modules", Modules.to_dyn modules)
                 ]
           in
-          Dep_graph.top_closed_implementations (CC.dep_graphs cctx).impl
+          Dep_graph.top_closed_implementations
+            (CC.linking_dep_graph cctx)
             [ main ]
         in
         let cm_files =

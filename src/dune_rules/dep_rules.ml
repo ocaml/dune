@@ -51,15 +51,19 @@ let deps_of_module ({ modules; _ } as md) ~ml_kind m =
       | Some m -> m
       | None -> Modules.compat_for_exn modules m
     in
-    List.singleton interface_module |> Action_builder.return |> Memo.return
-  | _ -> (
+    let graph = List.singleton interface_module |> Action_builder.return in
+    Memo.return (`Immediate graph, `Transitive graph)
+  | _ ->
     let+ deps = Ocamldep.deps_of md ~ml_kind m in
-    match Modules.alias_for modules m with
-    | [] -> deps
-    | aliases ->
-      let open Action_builder.O in
-      let+ deps = deps in
-      aliases @ deps)
+    let transitive =
+      match Modules.alias_for modules m with
+      | [] -> deps.transitive
+      | aliases ->
+        let open Action_builder.O in
+        let+ deps = deps.transitive in
+        aliases @ deps
+    in
+    (`Immediate deps.immediate, `Transitive transitive)
 
 let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
   let vimpl = Option.value_exn vimpl in
@@ -71,19 +75,25 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
       let impl = Vimpl.impl vimpl in
       Dune_project.dune_version impl.project
     in
-    ooi_deps md ~dune_version ~vlib_obj_map ~ml_kind m
+    let+ graph = ooi_deps md ~dune_version ~vlib_obj_map ~ml_kind m in
+    (`Immediate graph, `Transitive graph)
   | Some lib ->
     let modules = Vimpl.vlib_modules vimpl in
     let info = Lib.Local.info lib in
     let vlib_obj_dir = Lib_info.obj_dir info in
-    let src =
-      Obj_dir.Module.dep vlib_obj_dir (Transitive (m, ml_kind)) |> Path.build
+    let make what read =
+      let+ () =
+        let src = Obj_dir.Module.dep vlib_obj_dir what |> Path.build in
+        let dst = Obj_dir.Module.dep obj_dir what in
+        Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
+      in
+      read ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
     in
-    let dst = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
-    let+ () =
-      Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
+    let* immediate =
+      make (Immediate (m, ml_kind)) Ocamldep.read_immediate_deps_of
     in
-    Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
+    let+ transitive = make (Transitive (m, ml_kind)) Ocamldep.read_deps_of in
+    (`Immediate immediate, `Transitive transitive)
 
 let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =
@@ -94,11 +104,14 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
       | Alias _ -> true
       | _ -> false)
   in
-  if is_alias then Memo.return (Action_builder.return [])
+  let empty =
+    let empty = Action_builder.return [] in
+    Memo.return (`Immediate empty, `Transitive empty)
+  in
+  if is_alias then empty
   else
     let skip_if_source_absent f m =
-      if Module.has m ~ml_kind then f m
-      else Memo.return (Action_builder.return [])
+      if Module.has m ~ml_kind then f m else empty
     in
     match m with
     | Imported_from_vlib m ->
@@ -112,21 +125,62 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
       | Intf -> Imported_from_vlib m
       | Impl -> Normal m)
 
+(** Tests whether a set of modules is a singleton *)
+let has_single_file modules = Option.is_some @@ Modules.as_singleton modules
+
+let immediate_deps_of unit modules obj_dir ml_kind =
+  match Module.kind unit with
+  | Alias _ -> Action_builder.return []
+  | Wrapped_compat ->
+    let interface_module =
+      match Modules.lib_interface modules with
+      | Some m -> m
+      | None -> Modules.compat_for_exn modules unit
+    in
+    List.singleton interface_module |> Action_builder.return
+  | _ ->
+    if has_single_file modules then Action_builder.return []
+    else Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+
 let dict_of_func_concurrently f =
   let+ impl = f ~ml_kind:Ml_kind.Impl
   and+ intf = f ~ml_kind:Ml_kind.Intf in
   Ml_kind.Dict.make ~impl ~intf
 
 let for_module md module_ =
-  dict_of_func_concurrently (deps_of md (Normal module_))
+  dict_of_func_concurrently (fun ~ml_kind ->
+      let+ `Immediate _, `Transitive m = deps_of md (Normal module_) ~ml_kind in
+      m)
+
+type graph =
+  { compile : Dep_graph.t Ml_kind.Dict.t
+  ; link : Dep_graph.t
+  }
+
+let dummy_graph m : graph =
+  let (dummy : _ Ml_kind.Dict.t) = Dep_graph.Ml_kind.dummy m in
+  { compile = dummy; link = dummy.impl }
 
 let rules md =
   let modules = md.modules in
   match Modules.as_singleton modules with
-  | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)
+  | Some m -> Memo.return @@ dummy_graph m
   | None ->
-    dict_of_func_concurrently (fun ~ml_kind ->
-        let+ per_module =
-          Modules.obj_map_build modules ~f:(deps_of md ~ml_kind)
-        in
-        Dep_graph.make ~dir:md.dir ~per_module)
+    let+ graphs =
+      dict_of_func_concurrently (fun ~ml_kind ->
+          Modules.obj_map_build modules ~f:(deps_of md ~ml_kind))
+    in
+    let compile =
+      Ml_kind.Dict.map graphs ~f:(fun graph ->
+          let per_module =
+            Module.Obj_map.map graph ~f:(fun (_, `Transitive t) -> t)
+          in
+          Dep_graph.make ~dir:md.dir ~per_module)
+    in
+    let link =
+      let per_module =
+        Module.Obj_map.map graphs.impl ~f:(fun (`Immediate m, _) -> m)
+      in
+      Dep_graph.make ~dir:md.dir ~per_module
+    in
+    { compile; link }

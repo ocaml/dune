@@ -60,11 +60,11 @@ let eval_opaque (context : Context.t) = function
 
 type modules =
   { modules : Modules.t
-  ; dep_graphs : Dep_graph.t Ml_kind.Dict.t
+  ; dep_graphs : Dep_rules.graph
   }
 
 let singleton_modules m =
-  { modules = Modules.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
+  { modules = Modules.singleton m; dep_graphs = Dep_rules.dummy_graph m }
 
 type t =
   { super_context : Super_context.t
@@ -138,7 +138,9 @@ let context t = Super_context.context t.super_context
 
 let ocamldep_modules_data t = t.ocamldep_modules_data
 
-let dep_graphs t = t.modules.dep_graphs
+let dep_graphs t = t.modules.dep_graphs.compile
+
+let linking_dep_graph t = t.modules.dep_graphs.link
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Pp_spec.dummy) ~opaque

@@ -22,10 +22,13 @@ let deps_of t (m : Module.t) =
 
 module Top_closure = Top_closure.Make (Module_name.Unique.Set) (Action_builder)
 
-let top_closed t modules =
+let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl)
+
+let top_closed_implementations t modules =
   let+ res =
-    Top_closure.top_closure modules ~key:Module.obj_name
-      ~deps:(Module.Obj_map.find_exn t.per_module)
+    Top_closure.top_closure modules ~key:Module.obj_name ~deps:(fun m ->
+        Module.Obj_map.find_exn t.per_module m
+        |> Action_builder.map ~f:filter_out_intf_only)
   in
   match res with
   | Ok modules -> modules
@@ -39,9 +42,8 @@ let top_closed t modules =
 
 let top_closed_implementations t modules =
   Action_builder.memoize "top sorted implementations"
-    (let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl) in
-     Action_builder.map
-       (top_closed t (filter_out_intf_only modules))
+    (Action_builder.map
+       (top_closed_implementations t (filter_out_intf_only modules))
        ~f:filter_out_intf_only)
 
 let dummy (m : Module.t) =

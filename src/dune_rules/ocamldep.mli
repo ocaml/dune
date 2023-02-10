@@ -19,11 +19,12 @@ module Modules_data : sig
     }
 end
 
-val deps_of :
-     Modules_data.t
-  -> ml_kind:Ml_kind.t
-  -> Module.t
-  -> Module.t list Action_builder.t Memo.t
+type deps =
+  { immediate : Module.t list Action_builder.t
+  ; transitive : Module.t list Action_builder.t
+  }
+
+val deps_of : Modules_data.t -> ml_kind:Ml_kind.t -> Module.t -> deps Memo.t
 
 val read_deps_of :
      obj_dir:Path.Build.t Obj_dir.t

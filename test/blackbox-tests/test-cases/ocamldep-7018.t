@@ -35,12 +35,6 @@ Reproduces #7018
 First we try to construct X.t directly
 
   $ runtest "()"
-  Error: dependency cycle between modules in _build/default:
-     X
-  -> X
-  -> required by _build/default/foobar.a
-  -> required by alias all
-  -> required by alias default
   File "x.ml", line 2, characters 15-17:
   2 | let () = Y.foo ()
                      ^^
@@ -51,13 +45,6 @@ First we try to construct X.t directly
 Now we use a polymorphic type:
 
   $ runtest "(assert false)" 
-  Error: dependency cycle between modules in _build/default:
-     X
-  -> X
-  -> required by _build/default/foobar.a
-  -> required by alias all
-  -> required by alias default
-  [1]
 
 Or, we can use another module:
 
@@ -69,10 +56,3 @@ Or, we can use another module:
   > EOF
 
   $ runtest "Unit.x"
-  Error: dependency cycle between modules in _build/default:
-     X
-  -> X
-  -> required by _build/default/foobar.a
-  -> required by alias all
-  -> required by alias default
-  [1]

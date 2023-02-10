@@ -112,6 +112,23 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
       | Intf -> Imported_from_vlib m
       | Impl -> Normal m)
 
+(** Tests whether a set of modules is a singleton *)
+let has_single_file modules = Option.is_some @@ Modules.as_singleton modules
+
+let immediate_deps_of unit modules obj_dir ml_kind =
+  match Module.kind unit with
+  | Alias _ -> Action_builder.return []
+  | Wrapped_compat ->
+    let interface_module =
+      match Modules.lib_interface modules with
+      | Some m -> m
+      | None -> Modules.compat_for_exn modules unit
+    in
+    List.singleton interface_module |> Action_builder.return
+  | _ ->
+    if has_single_file modules then Action_builder.return []
+    else Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit
+
 let dict_of_func_concurrently f =
   let+ impl = f ~ml_kind:Ml_kind.Impl
   and+ intf = f ~ml_kind:Ml_kind.Intf in

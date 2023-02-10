@@ -40,3 +40,34 @@ Errors out if extension starts with dot
                              ^^^^^^
   Error: extension must not start with '.'
   [1]
+
+Should apply the settig to libraries as well
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name lib)
+  >  (modules lib)
+  >  (modes melange))
+  > (melange.emit
+  >  (target output)
+  >  (alias melange)
+  >  (libraries lib)
+  >  (entries foo)
+  >  (module_system commonjs)
+  >  (javascript_extension bs.js))
+  > EOF
+
+  $ cat >lib.ml <<EOF
+  > let greeting = "Hello World"
+  > EOF
+
+  $ cat >foo.ml <<EOF
+  > print_endline Lib.greeting
+  > EOF
+
+  $ dune build @melange
+  $ ls _build/default/output/ | sort
+  _build/default/output/foo.bs.js
+  _build/default/output/lib.bs.js
+  $ grep '.js' _build/default/output/foo.bs.js
+  var Lib = require("./lib.js");

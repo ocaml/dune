@@ -22,23 +22,40 @@ let output_of_lib ~target_dir lib =
   | Private _ -> `Private_library_or_emit target_dir
   | Installed | Installed_private ->
     let lib_name = Lib_info.name info in
+    let src_dir = Lib_info.src_dir info in
     `Public_library
-      (Path.Build.L.relative target_dir
-         [ "node_modules"; Lib_name.to_string lib_name ])
+      ( src_dir
+      , Path.Build.L.relative target_dir
+          [ "node_modules"; Lib_name.to_string lib_name ] )
   | Public _ ->
     let lib_name = Lib_info.name info in
     let src_dir = Lib_info.src_dir info in
     `Public_library
-      (Path.Build.L.relative target_dir
-         [ "node_modules"
-         ; Lib_name.to_string lib_name
-         ; Path.Source.to_string (Path.drop_build_context_exn src_dir)
-         ])
+      ( src_dir
+      , Path.Build.L.relative target_dir
+          [ "node_modules"
+          ; Lib_name.to_string lib_name
+          ; Path.Source.to_string (Path.drop_build_context_exn src_dir)
+          ] )
 
 let make_js_name ~js_ext ~output m =
-  let name = Melange.js_basename m ^ js_ext in
+  let basename = Melange.js_basename m ^ js_ext in
   match output with
-  | `Public_library output_dir -> Path.Build.relative output_dir name
+  | `Public_library (lib_dir, output_dir) ->
+    let src_dir =
+      Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn
+    in
+    let dir =
+      let src_dir = Path.to_string src_dir in
+      let lib_dir = Path.to_string lib_dir in
+      String.drop_prefix src_dir ~prefix:lib_dir
+      |> Option.value_exn
+      |> String.drop_prefix_if_exists ~prefix:"/"
+    in
+    let output_dir =
+      if dir = "" then output_dir else Path.Build.relative output_dir dir
+    in
+    Path.Build.relative output_dir basename
   | `Private_library_or_emit target_dir ->
     let dst_dir =
       Path.Build.append_source target_dir
@@ -46,7 +63,7 @@ let make_js_name ~js_ext ~output m =
         |> Option.value_exn |> Path.as_in_build_dir_exn |> Path.Build.parent_exn
         |> Path.Build.drop_build_context_exn)
     in
-    Path.Build.relative dst_dir name
+    Path.Build.relative dst_dir basename
 
 let impl_only_modules_defined_in_this_lib sctx lib =
   let open Memo.O in

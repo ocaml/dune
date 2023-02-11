@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1675992034463,
+  "lastUpdate": 1676092624592,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4523,6 +4523,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.37642743406667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b85f98655adf71731309232fd968c9fa14a4353",
+          "message": "fix(rules): maintain modules sources when installing (#7041)\n\nWhen installing module sources, we would do the following:\r\n\r\n* Flatten them all into a single directory\r\n* Forget the original filenames (in particular, their case)\r\n\r\nThis PR saves this information when installing modules.\r\n\r\nThe information will be useful in two ways:\r\n\r\n* Recreating the directory structure when emitting .js for melange\r\n* Browsing installed sources will be less awkward\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-10T22:52:24-06:00",
+          "tree_id": "158f4d39db3d6d01059b84181918d6730de69692",
+          "url": "https://github.com/ocaml/dune/commit/0b85f98655adf71731309232fd968c9fa14a4353"
+        },
+        "date": 1676092623555,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.14857015765333",
             "unit": "seconds"
           }
         ]

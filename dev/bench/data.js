@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676141158323,
+  "lastUpdate": 1676144875542,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4639,6 +4639,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.24336486029333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d6977f2e67d29b30d04fd4866c81596cbecd653e",
+          "message": "test: test action_to_sh outputs (#7039)\n\nWe test the outputs of Action_to_sh. The list follows the actions\r\ndeclared in the user manual.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-02-11T13:29:00-06:00",
+          "tree_id": "70479896175a0c26a62d4a09d1c00e338c422b13",
+          "url": "https://github.com/ocaml/dune/commit/d6977f2e67d29b30d04fd4866c81596cbecd653e"
+        },
+        "date": 1676144874887,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.87096662458",
             "unit": "seconds"
           }
         ]

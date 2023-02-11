@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676092624592,
+  "lastUpdate": 1676135935258,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4552,6 +4552,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.14857015765333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6ccd648267d672fc7bfde0042a77c6720b96567a",
+          "message": "refactor(console): call start/finish (#6999)\n\nWhen setting the console backend to a value, call:\r\n\r\n* [finish] on the currently set backend\r\n* [start] on the incoming backend\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-11T11:00:24-06:00",
+          "tree_id": "a7c590ef27cd127db2e7d58a73272b8229f1e8b0",
+          "url": "https://github.com/ocaml/dune/commit/6ccd648267d672fc7bfde0042a77c6720b96567a"
+        },
+        "date": 1676135934620,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.782181382193336",
             "unit": "seconds"
           }
         ]

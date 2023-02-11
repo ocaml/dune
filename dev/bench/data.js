@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676136516672,
+  "lastUpdate": 1676141158323,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4610,6 +4610,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.433761064753334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "60a36f07c790402beb5f2e42db25b390f9ff0aba",
+          "message": "refactor: avoid Path.as_outside_build_dir_exn (#6998)\n\nUse Path.Outside_build_dir.t to represent workspace paths\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-11T12:26:49-06:00",
+          "tree_id": "b8ef9a59e3d3be546626776c6b57cfc323b9e1b5",
+          "url": "https://github.com/ocaml/dune/commit/60a36f07c790402beb5f2e42db25b390f9ff0aba"
+        },
+        "date": 1676141157071,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.24336486029333",
             "unit": "seconds"
           }
         ]

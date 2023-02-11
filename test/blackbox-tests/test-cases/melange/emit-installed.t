@@ -1,27 +1,32 @@
 Test dependency on installed package
 
-  $ mkdir a b prefix
+  $ mkdir -p lib-a lib-a/sub b prefix
 
-  $ cat > a/dune-project <<EOF
+  $ cat > lib-a/dune-project <<EOF
   > (lang dune 3.7)
   > (package (name a))
   > (using melange 0.1)
   > EOF
-  $ cat > a/dune <<EOF
+  $ cat > lib-a/dune <<EOF
+  > (include_subdirs unqualified)
   > (library
   >  (modes melange)
   >  (public_name a))
   > EOF
 
-  $ cat > a/foo.ml <<EOF
+  $ cat > lib-a/foo.ml <<EOF
   > let x = "foo"
   > EOF
 
-  $ dune build --root a
-  Entering directory 'a'
-  Leaving directory 'a'
+  $ cat > lib-a/sub/sub.ml <<EOF
+  > let y = "bar"
+  > EOF
 
-  $ dune install --root a --prefix $PWD/prefix
+  $ dune build --root lib-a
+  Entering directory 'lib-a'
+  Leaving directory 'lib-a'
+
+  $ dune install --root lib-a --prefix $PWD/prefix
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
@@ -32,6 +37,10 @@ Test dependency on installed package
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Foo.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Sub.cmi
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Sub.cmj
+  Installing $TESTCASE_ROOT/prefix/lib/a/melange/a__Sub.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/a/sub/sub.ml
 
   $ cat >b/dune-project <<EOF
   > (lang dune 3.7)
@@ -54,9 +63,18 @@ Test dependency on installed package
   Entering directory 'b'
           melc dist/node_modules/a/a.js
           melc dist/node_modules/a/foo.js
+          melc dist/node_modules/a/sub.js
           melc .dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
           melc dist/bar.js
   Leaving directory 'b'
 
+  $ find b/_build/default/dist | sort
+  b/_build/default/dist
+  b/_build/default/dist/bar.js
+  b/_build/default/dist/node_modules
+  b/_build/default/dist/node_modules/a
+  b/_build/default/dist/node_modules/a/a.js
+  b/_build/default/dist/node_modules/a/foo.js
+  b/_build/default/dist/node_modules/a/sub.js
   $ node b/_build/default/dist/bar.js
   foo

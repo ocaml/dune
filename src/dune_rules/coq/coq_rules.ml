@@ -307,6 +307,73 @@ let boot_type ~dir ~use_stdlib ~wrapper_name coq_module =
       if init then `Bootstrap_prelude else `Bootstrap lib
   else `Bootstrap_prelude
 
+let setup_coqdep_for_theory_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
+    ~use_stdlib ~source_rule ~ml_flags ~mlpack_rule ~theory_name coq_modules =
+  let* boot_type =
+    (* TODO find the boot type a better way *)
+    boot_type ~dir ~use_stdlib ~wrapper_name (List.hd coq_modules)
+  in
+  (* coqdep needs the full source + plugin's mlpack to be present :( *)
+  let sources =
+    List.rev_map
+      ~f:(fun module_ -> Coq_module.source module_ |> Path.build)
+      coq_modules
+  in
+  let file_flags =
+    [ Command.Args.S
+        (coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags)
+    ; As [ "-dyndep"; "opt" ]
+    ; Deps sources
+    ]
+  in
+  let stdout_to =
+    Path.Build.relative dir (Coq_lib_name.to_string theory_name)
+    |> Path.Build.set_extension ~ext:".theory.d"
+  in
+  let* coqdep =
+    Super_context.resolve_program sctx "coqdep" ~dir ~loc:(Some loc)
+      ~hint:"opam install coq"
+  in
+  (* Coqdep has to be called in the stanza's directory *)
+  Super_context.add_rule ~loc sctx ~dir
+    (let open Action_builder.With_targets.O in
+    Action_builder.with_no_targets mlpack_rule
+    >>> Action_builder.(with_no_targets (goal source_rule))
+    >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep file_flags)
+
+let setup_coqdep_for_mod_rule ~loc ~sctx ~dir ~wrapper_name coq_module =
+  let theory_deps_file =
+    Path.Build.relative dir wrapper_name
+    |> Path.Build.set_extension ~ext:".theory.d"
+    |> Path.build
+  in
+  let deps_file = Coq_module.dep_file ~obj_dir:dir coq_module in
+  let vo_file =
+    String.concat ~sep:"/"
+      (Coq_module.prefix coq_module
+      @ [ Coq_module.Name.to_string (Coq_module.name coq_module) ])
+    ^ ".vo"
+  in
+  let action =
+    let line =
+      let open Action_builder.O in
+      let+ lines = Action_builder.lines_of theory_deps_file in
+      List.find ~f:(String.is_prefix ~prefix:vo_file) lines |> function
+      | None ->
+        Code_error.raise "coqdep output doesn't match theory modules"
+          [ ("theory_deps_file", Path.to_dyn theory_deps_file)
+          ; ("vo_file", Dyn.string vo_file)
+          ; ("lines", Dyn.list Dyn.string lines)
+          ; ("coq_module", Coq_module.to_dyn coq_module)
+          ; ("dir", Path.to_dyn (Path.build dir))
+          ; ("wrapper_name", Dyn.string wrapper_name)
+          ]
+      | Some line -> line
+    in
+    Action_builder.write_file_dyn deps_file line
+  in
+  Super_context.add_rule ~loc sctx ~dir action
+
 let setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name ~use_stdlib
     ~source_rule ~ml_flags ~mlpack_rule coq_module =
   let* boot_type = boot_type ~dir ~use_stdlib ~wrapper_name coq_module in
@@ -558,17 +625,21 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
     source_rule ~sctx theories
   in
   let coqc_dir = (Super_context.context sctx).build_dir in
-
   let* mode = select_native_mode ~sctx ~dir s.buildable in
-  Memo.parallel_iter coq_modules
-    ~f:
-      (setup_coqdep_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
-         ~use_stdlib ~source_rule ~ml_flags ~mlpack_rule)
+  let theory_name = snd s.name in
+  (* First we setup the rule calling coqdep *)
+  setup_coqdep_for_theory_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
+    ~use_stdlib ~source_rule ~ml_flags ~mlpack_rule ~theory_name coq_modules
+  (* Next the rules filtering that file per module *)
+  >>> Memo.parallel_iter coq_modules
+        ~f:(setup_coqdep_for_mod_rule ~sctx ~dir ~loc ~wrapper_name)
+  (* Then we setup the coqc rules *)
   >>> Memo.parallel_iter coq_modules
         ~f:
           (setup_coqc_rule ~loc ~dir ~sctx ~file_targets:[] ~stanza_flags
              ~coqc_dir ~theories_deps ~mode ~wrapper_name ~use_stdlib ~ml_flags
              ~theory_dirs)
+  (* And finally the coqdoc rules *)
   >>> setup_coqdoc_rules ~sctx ~dir ~theories_deps s coq_modules
 
 let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t)

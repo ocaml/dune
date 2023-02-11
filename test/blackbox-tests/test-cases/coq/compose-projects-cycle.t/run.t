@@ -7,6 +7,7 @@ dependencies.
   -> theory B in B
   -> theory C in C
   -> theory A in A
+  -> required by _build/default/A/A.theory.d
   -> required by _build/default/A/a.v.d
   -> required by _build/default/A/a.vo
   -> required by _build/install/default/lib/coq/user-contrib/A/a.vo
@@ -21,6 +22,7 @@ dependencies.
   -> theory C in C
   -> theory A in A
   -> theory B in B
+  -> required by _build/default/B/B.theory.d
   -> required by _build/default/B/b.v.d
   -> required by _build/default/B/b.vo
   -> required by _build/install/default/lib/coq/user-contrib/B/b.vo
@@ -35,6 +37,7 @@ dependencies.
   -> theory A in A
   -> theory B in B
   -> theory C in C
+  -> required by _build/default/C/C.theory.d
   -> required by _build/default/C/c.v.d
   -> required by _build/default/C/c.vo
   -> required by _build/install/default/lib/coq/user-contrib/C/c.vo

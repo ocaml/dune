@@ -38,7 +38,11 @@ Test that we can install melange mode libraries
    (kind normal)
    (main_module_name Foo)
    (modes melange)
-   (modules (singleton (obj_name foo) (path Foo) (visibility public) (impl))))
+   (modules
+    (singleton
+     (obj_name foo)
+     (visibility public)
+     (source (path Foo) (impl (path foo.ml))))))
 
   $ dune install --prefix prefix
   Installing prefix/lib/foo/META

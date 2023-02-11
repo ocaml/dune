@@ -1,6 +1,5 @@
   $ dune build --profile=release --display short --debug-dependency-path @all
-        coqdep bar.v.d
-        coqdep foo.v.d
+        coqdep basic.theory.d
           coqc Nbasic_foo.{cmi,cmxs},foo.{glob,vo}
           coqc Nbasic_bar.{cmi,cmxs},bar.{glob,vo}
 

@@ -1,5 +1,5 @@
   $ dune build --display short --debug-dependency-path @all
-        coqdep theories/a.v.d
+        coqdep theories/Plugin.theory.d
         ocamlc src_b/.ml_plugin_b.objs/byte/ml_plugin_b.{cmi,cmo,cmt}
       ocamldep src_b/.ml_plugin_b.objs/ml_plugin_b__Simple_b.impl.d
         ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a.{cmi,cmo,cmt}

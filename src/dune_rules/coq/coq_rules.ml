@@ -372,10 +372,16 @@ let generic_coq_args ~sctx ~dir ~wrapper_name ~boot_type ~mode ~coq_prog
   let file_flags =
     coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags
   in
+  let color_flags =
+    if Lazy.force Ansi_color.stderr_supports_color then
+      Command.Args.As [ "-color"; "on" ]
+    else Command.Args.empty
+  in
   match coq_prog with
   | `Coqc ->
     [ coq_stanza_flags
     ; coq_native_flags
+    ; color_flags
     ; S file_flags
     ; Dep (Path.build (Coq_module.source coq_module))
     ]

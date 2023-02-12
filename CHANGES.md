@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Dune now passes `-color on`to coqc allowing for output to be colored when
+  supported. (#7052, @Alizter)
+
 - Add map_workspace_root dune-project stanza to allow disabling of
   mapping of workspace root to /workspace_root. (#6988, fixes #6929,
   @richardlford)

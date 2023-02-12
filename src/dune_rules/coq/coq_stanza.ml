@@ -10,6 +10,7 @@ let coq_syntax =
     ; ((0, 5), `Since (3, 4))
     ; ((0, 6), `Since (3, 5))
     ; ((0, 7), `Since (3, 7))
+    ; ((0, 8), `Since (3, 8))
     ]
 
 module Coqpp = struct

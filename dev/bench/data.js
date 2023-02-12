@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676144875542,
+  "lastUpdate": 1676179692228,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4668,6 +4668,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.87096662458",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "11337d8c5e1cd1baed7aa0b90176d13c8dfc0752",
+          "message": "refactor(cache): replace fold with iter (#7044)\n\nThe [fold] is done with a unit accumulate, so it's exactly equivalent to\r\n[iter]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-11T22:59:39-06:00",
+          "tree_id": "71bbb5640a8c702263a2b729b835092115e90be0",
+          "url": "https://github.com/ocaml/dune/commit/11337d8c5e1cd1baed7aa0b90176d13c8dfc0752"
+        },
+        "date": 1676179691165,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.856256833859995",
             "unit": "seconds"
           }
         ]

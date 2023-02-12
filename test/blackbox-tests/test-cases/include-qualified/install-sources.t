@@ -27,3 +27,13 @@ Now we add some source with duplicate base names and test again:
     "_build/install/default/lib/foo/bar/baz.ml" {"bar/baz.ml"}
     "_build/install/default/lib/foo/baz.ml"
     "_build/install/default/lib/foo/foo.ml"
+
+  $ cat _build/install/default/lib/foo/dune-package | grep ".ml"
+     bar/bar.ml
+     bar/baz.ml
+     baz.ml
+     foo.ml
+       (source (path Foo) (impl (path foo.ml-gen))))
+         (source (path Bar Bar) (impl (path foo__Bar.ml-gen))))
+          (source (path Bar Baz) (impl (path baz.ml))))))
+        (source (path Baz) (impl (path baz.ml))))))

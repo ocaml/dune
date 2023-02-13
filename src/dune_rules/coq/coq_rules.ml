@@ -340,12 +340,11 @@ let get_dep_map ~dir ~boot_type ~wrapper_name :
   List.map ~f lines |> Dep_map.of_list |> function
   | Ok map -> map
   | Error (k, r1, r2) ->
-    User_error.raise
-      [ Pp.textf "problem with dup keys"
-      ; Pp.text (String.concat ~sep:"\n>> " lines)
-      ; Dyn.pp (Path.to_dyn k)
-      ; Dyn.pp (Dyn.list Path.to_dyn r1)
-      ; Dyn.pp (Dyn.list Path.to_dyn r2)
+    Code_error.raise "get_dep_map: duplicate keys"
+      [ ("lines", Dyn.list Dyn.string lines)
+      ; ("key", Path.to_dyn k)
+      ; ("entry 1", Dyn.list Path.to_dyn r1)
+      ; ("entry 2", Dyn.list Path.to_dyn r2)
       ]
 
 let generic_coq_args ~sctx ~dir ~wrapper_name ~boot_type ~mode ~coq_prog

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676326065075,
+  "lastUpdate": 1676327380152,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4813,6 +4813,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.35181666634001",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "076cfe8220e01e926618bcbf229ddc515e516b43",
+          "message": "test(coq): add test for empty modules field\n\nCurrently raises an internal error.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 321899da-3c3c-4be4-9b2f-3c5afe19b4ca -->",
+          "timestamp": "2023-02-13T23:10:42+01:00",
+          "tree_id": "4d3b3eec3711ff87dbebee69d9cc83fca21c2839",
+          "url": "https://github.com/ocaml/dune/commit/076cfe8220e01e926618bcbf229ddc515e516b43"
+        },
+        "date": 1676327378731,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.81510958373334",
             "unit": "seconds"
           }
         ]

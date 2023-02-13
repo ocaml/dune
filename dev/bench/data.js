@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676327615664,
+  "lastUpdate": 1676330625038,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4871,6 +4871,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.007634663013334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesus Gallego Arias",
+            "username": "ejgallego"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "f5d7b12d8084b7203d7ef5e5cd0c7c2376506b88",
+          "message": "[coq] [coqdep] Better error handling, inject prelude dep in post-process\n\nSome further tweaks, in particular we handle errors better, and inject\nthe prelude dependency at module dep time, instead of when building\nthe dep map, which is the wrong phase.\n\nThis will allow us to not to need boot_type to call coqdep when\n`-boot` becomes the default in the installed_theories PR.\n\nSigned-off-by: Emilio Jesus Gallego Arias <e+git@x80.org>",
+          "timestamp": "2023-02-14T00:02:18+01:00",
+          "tree_id": "cead4c1a8dd61f7678aa14e578769e2515139797",
+          "url": "https://github.com/ocaml/dune/commit/f5d7b12d8084b7203d7ef5e5cd0c7c2376506b88"
+        },
+        "date": 1676330623538,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.283156469106665",
             "unit": "seconds"
           }
         ]

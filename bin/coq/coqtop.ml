@@ -126,8 +126,18 @@ let term =
               run
                 (bind dep_map ~f:(fun dep_map ->
                      let vo_deps =
-                       Dune_rules.Coq_rules.Dep_map.find_exn dep_map
+                       Dune_rules.Coq_rules.Dep_map.find dep_map
                          (Path.build vo_target)
+                       |> function
+                       | Some vo_deps -> vo_deps
+                       | None ->
+                         Code_error.raise
+                           "dune coq top: vo deps could not be found"
+                           [ ("vo_target", Path.Build.to_dyn vo_target)
+                           ; ( "dep_map"
+                             , Dune_rules.Coq_rules.Dep_map.to_dyn
+                                 (Dyn.list Path.to_dyn) dep_map )
+                           ]
                      in
                      paths vo_deps)))
               Eager

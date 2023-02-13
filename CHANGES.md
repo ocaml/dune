@@ -132,6 +132,9 @@ Unreleased
 - Add `(using ctypes 0.3)`. When used, paths in `(ctypes)` are interpreted
   relative to where the stanza is defined. (#6883, fixes #5325, @emillon)
 
+- Auto-detect `dune-workspace` files as `dune` files in Emacs (#7061,
+  @ilankri)
+
 3.6.2 (2022-12-21)
 ------------------
 

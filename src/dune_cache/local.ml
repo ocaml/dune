@@ -93,7 +93,7 @@ module Artifacts = struct
      the result is [Error] with the corresponding exception. Otherwise, the
      result is [Ok ()]. *)
   let store_targets_to ~temp_dir ~targets ~mode : unit Or_exn.t =
-    Result.List.fold_left targets ~init:() ~f:(fun () { Target.path; _ } ->
+    Result.List.iter targets ~f:(fun { Target.path; _ } ->
         let path_in_build_dir = Path.build path in
         let path_in_temp_dir =
           Path.relative temp_dir (Path.basename path_in_build_dir)

@@ -1,6 +1,8 @@
 Unreleased
 ----------
 
+- coqdep is now called once per theory (#7048, @Alizter)
+
 - Add map_workspace_root dune-project stanza to allow disabling of
   mapping of workspace root to /workspace_root. (#6988, fixes #6929,
   @richardlford)

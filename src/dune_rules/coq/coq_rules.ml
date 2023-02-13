@@ -276,7 +276,9 @@ let setup_coqdep_for_theory_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
     ~use_stdlib ~source_rule ~ml_flags ~mlpack_rule coq_modules =
   let* boot_type =
     (* TODO find the boot type a better way *)
-    boot_type ~dir ~use_stdlib ~wrapper_name (List.hd coq_modules)
+    match List.hd_opt coq_modules with
+    | Some coq_module -> boot_type ~dir ~use_stdlib ~wrapper_name coq_module
+    | None -> Memo.return `No_boot
   in
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let sources =

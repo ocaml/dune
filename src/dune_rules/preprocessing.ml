@@ -705,8 +705,11 @@ let pp_one_module sctx ~lib_name ~scope ~preprocessor_deps
                     (let open Action_builder.O in
                     preprocessor_deps
                     >>> let* exe, flags, args = driver_and_flags in
+                        let project = Scope.project scope in
+                        let dune_version = Dune_project.dune_version project in
                         let dir =
-                          Path.build (Super_context.context sctx).build_dir
+                          if dune_version >= (3, 8) then Path.build dir
+                          else Path.build (Super_context.context sctx).build_dir
                         in
                         Command.run' ~dir
                           (Ok (Path.build exe))

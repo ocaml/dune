@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676323208434,
+  "lastUpdate": 1676326065075,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4784,6 +4784,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.74426305168",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "0023fe0603a8e4d556500024d68c9bfc8dc79a0b",
+          "message": "chore(coq): cleanup internal error about duplicate keys for dep map\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>\n\n<!-- ps-id: 8edcef02-9f8e-4bf9-bd79-9bad40b9c503 -->",
+          "timestamp": "2023-02-13T22:49:24+01:00",
+          "tree_id": "84a3669356c1cf1d035a3b6ab74c22975992dbc0",
+          "url": "https://github.com/ocaml/dune/commit/0023fe0603a8e4d556500024d68c9bfc8dc79a0b"
+        },
+        "date": 1676326064424,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.35181666634001",
             "unit": "seconds"
           }
         ]

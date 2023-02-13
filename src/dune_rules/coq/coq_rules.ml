@@ -347,6 +347,20 @@ let get_dep_map ~dir ~boot_type ~wrapper_name :
       ; ("entry 2", Dyn.list Path.to_dyn r2)
       ]
 
+let deps_of ~dir ~boot_type ~wrapper_name coq_module =
+  let open Action_builder.O in
+  let vo_target =
+    Path.Build.set_extension ~ext:".vo" (Coq_module.source coq_module)
+  in
+  get_dep_map ~dir ~boot_type ~wrapper_name >>= fun dep_map ->
+  match Dep_map.find dep_map (Path.build vo_target) with
+  | None ->
+    Code_error.raise "Dep_map.find failed for"
+      [ ("coq_module", Coq_module.to_dyn coq_module)
+      ; ("dep_map", Dep_map.to_dyn (Dyn.list Path.to_dyn) dep_map)
+      ]
+  | Some deps -> Action_builder.paths deps
+
 let generic_coq_args ~sctx ~dir ~wrapper_name ~boot_type ~mode ~coq_prog
     ~stanza_flags ~ml_flags ~theories_deps ~theory_dirs coq_module =
   let+ coq_stanza_flags =
@@ -402,25 +416,10 @@ let setup_coqc_rule ~loc ~dir ~sctx ~coqc_dir ~file_targets ~stanza_flags
     generic_coq_args ~sctx ~dir ~wrapper_name ~boot_type ~stanza_flags ~ml_flags
       ~theories_deps ~theory_dirs ~mode ~coq_prog:`Coqc coq_module
   in
-  let open Action_builder.O in
-  let vo_target =
-    Path.Build.set_extension ~ext:".vo" (Coq_module.source coq_module)
-  in
-  let deps_of =
-    get_dep_map ~dir ~boot_type ~wrapper_name >>| fun dep_map ->
-    match Dep_map.find dep_map (Path.build vo_target) with
-    | None ->
-      User_error.raise
-        [ Pp.textf "Dep_map.find failed for"
-        ; Dyn.pp (Coq_module.to_dyn coq_module)
-        ; Dyn.pp (Dep_map.to_dyn (Dyn.list Path.to_dyn) dep_map)
-        ]
-    | Some deps -> deps
-  in
-
+  let deps_of = deps_of ~dir ~boot_type ~wrapper_name coq_module in
   let open Action_builder.With_targets.O in
   Super_context.add_rule ~loc ~dir sctx
-    (Action_builder.(with_no_targets (Action_builder.bind ~f:paths deps_of))
+    (Action_builder.with_no_targets deps_of
     >>> Action_builder.With_targets.add ~file_targets
         @@ Command.run ~dir:(Path.build coqc_dir) coqc (target_obj_files :: args)
     (* The way we handle the transitive dependencies of .vo files is not safe for
@@ -776,9 +775,9 @@ let coqtop_args_extraction ~sctx ~dir (s : Coq_stanza.Extraction.t) coq_module =
     ~theory_dirs:Path.Build.Set.empty coq_module
 
 (* Version for export *)
-let get_dep_map ~dir ~use_stdlib ~wrapper_name coq_module =
+let deps_of ~dir ~use_stdlib ~wrapper_name coq_module =
   let open Action_builder.O in
   let* boot_type =
     Action_builder.of_memo (boot_type ~dir ~use_stdlib ~wrapper_name coq_module)
   in
-  get_dep_map ~dir ~boot_type ~wrapper_name
+  deps_of ~dir ~boot_type ~wrapper_name coq_module

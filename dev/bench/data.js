@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676217472429,
+  "lastUpdate": 1676305065524,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4726,6 +4726,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.46148003369333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ilankri@protonmail.com",
+            "name": "Idir Lankri",
+            "username": "ilankri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b9c27038fbf0d69e173e5f045b688d00eb47796b",
+          "message": "feature(emacs): auto-detect `dune-workspace` files as `dune` files (#7061)\n\nSigned-off-by: Idir Lankri <ilankri@protonmail.com>",
+          "timestamp": "2023-02-13T09:56:43-06:00",
+          "tree_id": "df4fdaaae483cb19d27543a4d76af10df30c1ba3",
+          "url": "https://github.com/ocaml/dune/commit/b9c27038fbf0d69e173e5f045b688d00eb47796b"
+        },
+        "date": 1676305064168,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.8039667948",
             "unit": "seconds"
           }
         ]

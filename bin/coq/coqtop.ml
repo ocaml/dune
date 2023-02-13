@@ -114,23 +114,11 @@ let term =
               , "DuneExtraction" )
           in
           let* (_ : unit * Dep.Fact.t Dep.Map.t) =
-            let dep_map =
-              Dune_rules.Coq_rules.get_dep_map ~dir ~use_stdlib ~wrapper_name
+            let deps_of =
+              Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name
                 coq_module
             in
-            let vo_target =
-              Path.Build.set_extension ~ext:".vo"
-                (Dune_rules.Coq_module.source coq_module)
-            in
-            Action_builder.(
-              run
-                (bind dep_map ~f:(fun dep_map ->
-                     let vo_deps =
-                       Dune_rules.Coq_rules.Dep_map.find_exn dep_map
-                         (Path.build vo_target)
-                     in
-                     paths vo_deps)))
-              Eager
+            Action_builder.(run deps_of) Eager
           in
           let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
             let* args =

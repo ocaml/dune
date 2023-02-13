@@ -1,4 +1,4 @@
-3.7.0~alpha3 (unreleased)
+3.7.0~alpha3 (2023-02-13)
 -------------------------
 
 - Add map_workspace_root dune-project stanza to allow disabling of

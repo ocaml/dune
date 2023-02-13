@@ -404,7 +404,6 @@ let setup_coqc_rule ~loc ~dir ~sctx ~coqc_dir ~file_targets ~stanza_flags
     coq_module =
   (* Process coqdep and generate rules *)
   let* boot_type = boot_type ~dir ~use_stdlib ~wrapper_name coq_module in
-  (* let deps_of = deps_of ~dir ~use_stdlib ~wrapper_name coq_module in *)
   let* coqc = coqc ~loc ~dir ~sctx in
   let obj_files =
     Coq_module.obj_files ~wrapper_name ~mode ~obj_files_mode:Coq_module.Build

@@ -57,6 +57,7 @@ stanza:
      (plugins <ocaml_plugins>)
      (flags <coq_flags>)
      (stdlib <stdlib_included>)
+     (load_only_modules <load_only_module_names>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
 
@@ -107,6 +108,11 @@ The semantics of the fields are:
   ``yes``. When set to ``no``, Coq's standard library won't be visible from this
   theory, which means the ``Coq`` prefix won't be bound, and
   ``Coq.Init.Prelude`` won't be imported by default.
+
+- ``<load_only_module_names>`` is a list of module names that are not compiled
+  but only loaded. This is useful for theories that only contain ``.v`` files
+  that are meant to be loaded using the ``Load`` command of Coq. Installation of
+  the theory will also include these ``.v`` files.
 
 - If the ``plugins`` field is present, Dune will pass the corresponding flags to
   Coq so that ``coqdep`` and ``coqc`` can find the corresponding OCaml libraries

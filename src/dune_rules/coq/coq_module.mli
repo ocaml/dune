@@ -60,4 +60,14 @@ val obj_files :
 
 val to_dyn : t -> Dyn.t
 
-val eval : dir:Path.Build.t -> standard:t list -> Ordered_set_lang.t -> t list
+val compare : t -> t -> Ordering.t
+
+val equal : t -> t -> bool
+
+val parse : dir:Path.Build.t -> loc:Loc.t -> string -> t
+
+val eval :
+     dir:Path.Build.t (** Directory where the stanza is *)
+  -> standard:t list (** Standard library modules *)
+  -> Ordered_set_lang.t
+  -> t list

@@ -113,6 +113,7 @@ module Theory = struct
     ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
+    ; load_only_modules : Ordered_set_lang.t
     ; boot : bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
@@ -172,6 +173,9 @@ module Theory = struct
        and+ boot =
          field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
        and+ modules = Stanza_common.modules_field "modules"
+       and+ load_only_modules =
+         Ordered_set_lang.field "load_only_modules"
+           ~check:(Dune_lang.Syntax.since coq_syntax (0, 8))
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode in
        (* boot libraries cannot depend on other theories *)
@@ -182,6 +186,7 @@ module Theory = struct
        ; project
        ; synopsis
        ; modules
+       ; load_only_modules
        ; boot
        ; buildable
        ; enabled_if

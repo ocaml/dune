@@ -5,6 +5,9 @@
   `$ dune exec` the executed binary whenever it is recompiled. (#6966,
   @gridbugs)
 
+- Added load_only_modules field to coq.theory to support Load commands in .v
+  files. (#7056, fixes #3286, @Alizter)
+
 - `coqdep` is now called once per theory, instead of one time per Coq
   file. This should significantly speed up some builds, as `coqdep`
   startup time is often heavy (#7048, @Alizter, @ejgallego)

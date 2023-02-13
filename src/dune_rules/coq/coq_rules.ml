@@ -572,7 +572,16 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let theory_dirs =
     Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
   in
-  let coq_modules = Coq_sources.library coq_dir_contents ~name in
+  let coq_modules =
+    (* filter out all the load only modules form the module sources list *)
+    Coq_sources.library coq_dir_contents ~name
+    (* We don't generate rules for modules that are only loaded *)
+    |> List.filter ~f:(fun coq_module ->
+           not
+           @@ List.mem ~equal:Coq_module.equal
+                (Coq_sources.load_only_modules coq_dir_contents ~dir s)
+                coq_module)
+  in
   let source_rule =
     let theories =
       let open Resolve.Memo.O in
@@ -702,11 +711,20 @@ let install_rules ~sctx ~dir s =
     coq_sources |> Coq_sources.library ~name
     |> List.concat_map ~f:(fun (vfile : Coq_module.t) ->
            let obj_files =
-             Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:dir
-               ~obj_files_mode:Coq_module.Install vfile
-             |> List.map
-                  ~f:(fun ((vo_file : Path.Build.t), (install_vo_file : string))
-                     -> make_entry vo_file install_vo_file)
+             (* If our vfile is a load only module then no object files are
+                installed *)
+             if
+               List.mem ~equal:Coq_module.equal
+                 (Coq_sources.load_only_modules coq_sources ~dir s)
+                 vfile
+             then []
+             else
+               Coq_module.obj_files ~wrapper_name ~mode ~obj_dir:dir
+                 ~obj_files_mode:Coq_module.Install vfile
+               |> List.map
+                    ~f:(fun
+                         ((vo_file : Path.Build.t), (install_vo_file : string))
+                       -> make_entry vo_file install_vo_file)
            in
            let vfile = Coq_module.source vfile in
            let vfile_dst = to_path vfile in

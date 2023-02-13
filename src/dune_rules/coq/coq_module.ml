@@ -44,6 +44,8 @@ end
 include Module
 module Map = Map.Make (Module)
 
+let equal x y = Ordering.is_eq (compare x y)
+
 let make ~source ~prefix ~name = { source; prefix; name }
 
 let source x = x.source

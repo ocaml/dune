@@ -99,6 +99,21 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
 
 let lookup_module t m = Coq_module.Map.find t.rev_map m
 
+let load_only_modules t ~dir (stanza : Theory.t) =
+  let load_only_modules =
+    Coq_module.eval ~dir stanza.load_only_modules ~standard:[]
+  in
+  if
+    List.for_all load_only_modules ~f:(fun m ->
+        lookup_module t m |> Option.is_some)
+  then load_only_modules
+  else
+    User_error.raise ~loc:stanza.buildable.loc
+      [ Pp.text
+          "Field (load_only_modules) contains Coq modules that the coq.theory \
+           stanza doesn't know about."
+      ]
+
 let mlg_files ~sctx ~dir ~modules =
   let open Memo.O in
   let+ standard =

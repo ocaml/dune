@@ -26,6 +26,8 @@ val of_dir :
 val find_module :
   source:Path.Build.t -> t -> (Coq_lib_name.t * Coq_module.t) option
 
+val load_only_modules : t -> dir:Path.Build.t -> Theory.t -> Coq_module.t list
+
 val lookup_module :
      t
   -> Coq_module.t

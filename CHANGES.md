@@ -1,7 +1,9 @@
 Unreleased
 ----------
 
-- coqdep is now called once per theory (#7048, @Alizter)
+- `coqdep` is now called once per theory, instead of one time per Coq
+  file. This should significantly speed up some builds, as `coqdep`
+  startup time is often heavy (#7048, @Alizter, @ejgallego)
 
 - Add map_workspace_root dune-project stanza to allow disabling of
   mapping of workspace root to /workspace_root. (#6988, fixes #6929,

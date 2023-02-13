@@ -275,8 +275,12 @@ let dep_theory_file ~dir ~wrapper_name =
 let setup_coqdep_for_theory_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
     ~use_stdlib ~source_rule ~ml_flags ~mlpack_rule coq_modules =
   let* boot_type =
-    (* TODO find the boot type a better way *)
-    boot_type ~dir ~use_stdlib ~wrapper_name (List.hd coq_modules)
+    (* If coq_modules are empty it doesn't really matter, so we take
+       the more conservative path and pass -boot, we don't care here
+       about -noinit as coqdep ignores it *)
+    match coq_modules with
+    | [] -> Memo.return `Bootstrap_prelude
+    | m :: _ -> boot_type ~dir ~use_stdlib ~wrapper_name m
   in
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let sources =
@@ -306,36 +310,32 @@ let setup_coqdep_for_theory_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name
 module Dep_map = Stdune.Map.Make (Path)
 
 let coqdep_invalid phase line =
-  User_error.raise
-    [ Pp.textf "coqdep returned invalid output [phase: %s]" phase
-    ; Pp.verbatim line
-    ]
+  Code_error.raise "coqdep returned invalid output"
+    [ ("phase", Dyn.string phase); ("line", Dyn.string line) ]
 
-let parse_line ~dir ~boot_type line =
+let parse_line ~dir line =
   match String.lsplit2 line ~on:':' with
   | None -> coqdep_invalid "split" line
   | Some (basename, deps) ->
-    let target = List.hd @@ String.extract_blank_separated_words basename in
+    (* This should always have a file, but let's handle the error
+       properly *)
+    let target =
+      match String.extract_blank_separated_words basename with
+      | [] -> coqdep_invalid "target" line
+      | vo :: _ -> vo
+    in
     (* let depname, ext = Filename.split_extension ff in *)
     let target = Path.relative (Path.build dir) target in
     let deps = String.extract_blank_separated_words deps in
     (* Add prelude deps for when stdlib is in scope and we are not actually
        compiling the prelude *)
     let deps = List.map ~f:(Path.relative (Path.build dir)) deps in
-    let deps =
-      match boot_type with
-      | `No_boot | `Bootstrap_prelude -> deps
-      | `Bootstrap lib ->
-        Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo"
-        :: deps
-    in
     (target, deps)
 
-let get_dep_map ~dir ~boot_type ~wrapper_name :
-    Path.t list Dep_map.t Action_builder.t =
+let get_dep_map ~dir ~wrapper_name : Path.t list Dep_map.t Action_builder.t =
   let file = dep_theory_file ~dir ~wrapper_name in
   let open Action_builder.O in
-  let f = parse_line ~dir ~boot_type in
+  let f = parse_line ~dir in
   Action_builder.lines_of (Path.build file) >>| fun lines ->
   List.map ~f lines |> Dep_map.of_list |> function
   | Ok map -> map
@@ -352,14 +352,23 @@ let deps_of ~dir ~boot_type ~wrapper_name coq_module =
   let vo_target =
     Path.Build.set_extension ~ext:".vo" (Coq_module.source coq_module)
   in
-  get_dep_map ~dir ~boot_type ~wrapper_name >>= fun dep_map ->
+  get_dep_map ~dir ~wrapper_name >>= fun dep_map ->
   match Dep_map.find dep_map (Path.build vo_target) with
   | None ->
     Code_error.raise "Dep_map.find failed for"
       [ ("coq_module", Coq_module.to_dyn coq_module)
       ; ("dep_map", Dep_map.to_dyn (Dyn.list Path.to_dyn) dep_map)
       ]
-  | Some deps -> Action_builder.paths deps
+  | Some deps ->
+    (* Inject prelude deps *)
+    let deps =
+      match boot_type with
+      | `No_boot | `Bootstrap_prelude -> deps
+      | `Bootstrap lib ->
+        Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo"
+        :: deps
+    in
+    Action_builder.paths deps
 
 let generic_coq_args ~sctx ~dir ~wrapper_name ~boot_type ~mode ~coq_prog
     ~stanza_flags ~ml_flags ~theories_deps ~theory_dirs coq_module =
@@ -404,7 +413,6 @@ let setup_coqc_rule ~loc ~dir ~sctx ~coqc_dir ~file_targets ~stanza_flags
     coq_module =
   (* Process coqdep and generate rules *)
   let* boot_type = boot_type ~dir ~use_stdlib ~wrapper_name coq_module in
-  (* let deps_of = deps_of ~dir ~use_stdlib ~wrapper_name coq_module in *)
   let* coqc = coqc ~loc ~dir ~sctx in
   let obj_files =
     Coq_module.obj_files ~wrapper_name ~mode ~obj_files_mode:Coq_module.Build

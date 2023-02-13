@@ -7,6 +7,5 @@ correctly.
   >  (modules))
   > EOF
 
-Currently raises an internal excpetion.
-  $ dune build 2>&1 | head -n 1
-  Error: exception Failure("hd")
+Builds fine as expected.
+  $ dune build 2>&1

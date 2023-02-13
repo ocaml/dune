@@ -92,7 +92,11 @@ module Backend = struct
 
   let main = ref dumb
 
-  let set t = main := t
+  let set (module T : Backend_intf.S) =
+    let module Old = (val !main) in
+    Old.finish ();
+    main := (module T);
+    T.start ()
 
   let compose (module A : Backend_intf.S) (module B : Backend_intf.S) :
       (module Backend_intf.S) =

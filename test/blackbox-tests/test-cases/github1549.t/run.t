@@ -34,10 +34,9 @@ Reproduction case for #1549: too many parentheses in installed .dune files
      (group
       (alias
        (obj_name simple_tests)
-       (path Simple_tests)
        (visibility public)
        (kind alias)
-       (impl))
+       (source (path Simple_tests) (impl (path simple_tests.ml-gen))))
       (name Simple_tests))
      (wrapped true)))
    (inline_tests.backend

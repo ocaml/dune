@@ -1,3 +1,10 @@
+3.7.0~alpha3 (unreleased)
+-------------------------
+
+- Add map_workspace_root dune-project stanza to allow disabling of
+  mapping of workspace root to /workspace_root. (#6988, fixes #6929,
+  @richardlford)
+
 3.7.0~alpha2 (2023-02-09)
 -------------------------
 

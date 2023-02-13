@@ -7,8 +7,8 @@ module Common = struct
 
     let main_module_name = field "main_module_name" Module_name.encode
 
-    let modules ?(name = "modules") modules =
-      field_l name Fun.id (Module.Name_map.encode modules)
+    let modules ?(name = "modules") ~src_dir modules =
+      field_l name Fun.id (Module.Name_map.encode modules ~src_dir)
   end
 
   module Decode = struct
@@ -30,12 +30,12 @@ module Stdlib = struct
     ; main_module_name : Module_name.t
     }
 
-  let encode { modules; unwrapped; exit_module; main_module_name } =
+  let encode ~src_dir { modules; unwrapped; exit_module; main_module_name } =
     let open Dune_lang.Encoder in
     let module E = Common.Encode in
     record_fields
       [ E.main_module_name main_module_name
-      ; E.modules modules
+      ; E.modules modules ~src_dir
       ; field_o "exit_module" Module_name.encode exit_module
       ; field_l "unwrapped" Module_name.encode
           (Module_name.Set.to_list unwrapped)
@@ -365,20 +365,20 @@ module Group = struct
     let+ modules = repeat node in
     Module_name.Map.of_list_exn modules
 
-  let rec encode { alias; modules; name } =
+  let rec encode { alias; modules; name } ~src_dir =
     let open Dune_lang.Encoder in
     record_fields
-      [ field_l "alias" sexp (Module.encode alias)
+      [ field_l "alias" sexp (Module.encode ~src_dir alias)
       ; field "name" Module_name.encode name
-      ; field_l "modules" Fun.id (encode_modules modules)
+      ; field_l "modules" Fun.id (encode_modules ~src_dir modules)
       ]
 
-  and encode_modules modules =
+  and encode_modules modules ~src_dir =
     Module_name.Map.to_list_map modules ~f:(fun _ t ->
         Dune_lang.List
           (match t with
-          | Group g -> Dune_lang.atom "group" :: encode g
-          | Module m -> Dune_lang.atom "module" :: Module.encode m))
+          | Group g -> Dune_lang.atom "group" :: encode ~src_dir g
+          | Module m -> Dune_lang.atom "module" :: Module.encode ~src_dir m))
 
   let parents_modules acc modules m =
     let rec loop acc modules = function
@@ -624,12 +624,12 @@ module Wrapped = struct
 
   let group_of_alias t m = Group.group_of_alias t.group m
 
-  let encode { group; wrapped_compat; wrapped; toplevel_module = _ } =
+  let encode { group; wrapped_compat; wrapped; toplevel_module = _ } ~src_dir =
     let open Dune_lang.Encoder in
     let module E = Common.Encode in
     record_fields
-      [ field_l "group" Fun.id (Group.encode group)
-      ; E.modules ~name:"wrapped_compat" wrapped_compat
+      [ field_l "group" Fun.id (Group.encode ~src_dir group)
+      ; E.modules ~name:"wrapped_compat" ~src_dir wrapped_compat
       ; field "wrapped" Wrapped.encode wrapped
       ]
 
@@ -739,14 +739,14 @@ and impl =
 
 let equal (x : t) (y : t) = Poly.equal x y
 
-let rec encode t =
+let rec encode t ~src_dir =
   let open Dune_lang in
   match t with
-  | Singleton m -> List (atom "singleton" :: Module.encode m)
-  | Unwrapped m -> List (atom "unwrapped" :: Unwrapped.encode m)
-  | Wrapped m -> List (atom "wrapped" :: Wrapped.encode m)
-  | Stdlib m -> List (atom "stdlib" :: Stdlib.encode m)
-  | Impl { impl; _ } -> encode impl
+  | Singleton m -> List (atom "singleton" :: Module.encode m ~src_dir)
+  | Unwrapped m -> List (atom "unwrapped" :: Unwrapped.encode m ~src_dir)
+  | Wrapped m -> List (atom "wrapped" :: Wrapped.encode m ~src_dir)
+  | Stdlib m -> List (atom "stdlib" :: Stdlib.encode m ~src_dir)
+  | Impl { impl; _ } -> encode impl ~src_dir
 
 let singleton m = Singleton m
 

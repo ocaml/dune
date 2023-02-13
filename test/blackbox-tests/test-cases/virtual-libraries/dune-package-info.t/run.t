@@ -46,18 +46,16 @@ Include variants and implementation information in dune-package
      (group
       (alias
        (obj_name vlib__impl__)
-       (path Vlib__impl__)
        (visibility public)
        (kind alias)
-       (impl))
+       (source (path Vlib__impl__) (impl (path impl/vlib__impl__.ml-gen))))
       (name Vlib)
       (modules
        (module
         (obj_name vlib__Vmod)
-        (path Vmod)
         (visibility public)
         (kind impl_vmodule)
-        (impl))))
+        (source (path Vmod) (impl (path impl/vmod.ml))))))
      (wrapped true))))
   (library
    (name foo.vlib)
@@ -70,16 +68,14 @@ Include variants and implementation information in dune-package
      (group
       (alias
        (obj_name vlib)
-       (path Vlib)
        (visibility public)
        (kind alias)
-       (impl))
+       (source (path Vlib) (impl (path vlib/vlib.ml-gen))))
       (name Vlib)
       (modules
        (module
         (obj_name vlib__Vmod)
-        (path Vmod)
         (visibility public)
         (kind virtual)
-        (intf))))
+        (source (path Vmod) (intf (path vlib/vmod.mli))))))
      (wrapped true))))

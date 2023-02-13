@@ -95,7 +95,7 @@ module Name_map : sig
 
   val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 
-  val encode : t -> Dune_lang.t list
+  val encode : t -> src_dir:Path.t -> Dune_lang.t list
 
   val to_dyn : t -> Dyn.t
 
@@ -123,7 +123,7 @@ val sources : t -> Path.t list
 
 val visibility : t -> Visibility.t
 
-val encode : t -> Dune_lang.t list
+val encode : t -> src_dir:Path.t -> Dune_lang.t list
 
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 

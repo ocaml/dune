@@ -437,6 +437,30 @@ Starting with Dune 2.0, Dune mangles compilation units of executables by
 default. However, this can still be turned off using ``(wrapped_executables
 false)``
 
+.. _map-workspace-root:
+
+map_workspace_root
+-------------------
+
+.. versionadded:: 3.7
+
+The desirable output of tools will not contain references to the
+file system location from which they were built. Starting from Dune 3.0,
+Dune has mapped references to the workspace directory to "/workspace_root".
+
+An option is available to turn on/off mapping
+of the workspace on a per-project basis:
+
+.. code:: scheme
+
+    (map_workspace_root <bool>)
+
+This can be turned off using 
+``(map_workspace_root false)``
+Note that when this mapping is enabled, the debug information produced
+by the bytecode compiler is incorrect, as the location information
+is lost.
+
 .. _dune-files:
 
 dune

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676327380152,
+  "lastUpdate": 1676327615664,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4842,6 +4842,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.81510958373334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesus Gallego Arias",
+            "username": "ejgallego"
+          },
+          "committer": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "distinct": true,
+          "id": "4438f445a2060a5f3715c18d1e16bb2b804bf437",
+          "message": "[coq] Hide implementation of dependency maps\n\nThis allow us to share the error codepath, plus provides a much\ncleaner setup IMO.\n\nSigned-off-by: Emilio Jesus Gallego Arias <e+git@x80.org>",
+          "timestamp": "2023-02-13T23:14:34+01:00",
+          "tree_id": "92e44d7e0a425a13633ddae162b3fe910adb6831",
+          "url": "https://github.com/ocaml/dune/commit/4438f445a2060a5f3715c18d1e16bb2b804bf437"
+        },
+        "date": 1676327614943,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.007634663013334",
             "unit": "seconds"
           }
         ]

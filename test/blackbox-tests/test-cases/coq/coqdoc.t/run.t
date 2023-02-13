@@ -26,7 +26,6 @@ Note that this currently works due to a bug in @all detecting directory targets.
   META.base
   bar.glob
   bar.v
-  bar.v.d
   bar.vo
   bar.vok
   bar.vos
@@ -35,7 +34,6 @@ Note that this currently works due to a bug in @all detecting directory targets.
   basic.theory.d
   foo.glob
   foo.v
-  foo.v.d
   foo.vo
   foo.vok
   foo.vos

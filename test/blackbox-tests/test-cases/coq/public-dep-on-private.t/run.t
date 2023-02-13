@@ -6,7 +6,6 @@
   You need to associate "private" to a package.
   -> required by theory public in public
   -> required by _build/default/public/public.theory.d
-  -> required by _build/default/public/b.v.d
   -> required by _build/default/public/b.vo
   -> required by _build/install/default/lib/coq/user-contrib/public/b.vo
   -> required by _build/default/public.install

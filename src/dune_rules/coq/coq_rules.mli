@@ -5,14 +5,15 @@ open Import
 (* (c) INRIA 2020                              *)
 (* Written by: Emilio Jesús Gallego Arias *)
 
-(** [deps_of ~dir ~use_stdlib ~wrapper_name m] produces an action builder that
-    can be run to build all dependencies of the Coq module [m]. *)
-val deps_of :
+module Dep_map : Map.S with type key := Path.t
+
+(** [get_dep_map] produces a dep map for a theory *)
+val get_dep_map :
      dir:Path.Build.t
   -> use_stdlib:bool
   -> wrapper_name:string
   -> Coq_module.t
-  -> unit Dune_engine.Action_builder.t
+  -> Path.t list Dep_map.t Dune_engine.Action_builder.t
 
 val coqdoc_directory_targets :
   dir:Path.Build.t -> Coq_stanza.Theory.t -> Loc.t Path.Build.Map.t

@@ -7,7 +7,6 @@ Testing coqdoc when composed with a boot library
   A.theory.d
   a.glob
   a.v
-  a.v.d
   a.vo
   a.vok
   a.vos

@@ -38,11 +38,11 @@
   $ ls _build/default
   Datatypes.ml
   Datatypes.mli
+  DuneExtraction.theory.d
   extract.glob
   extract.ml
   extract.mli
   extract.v
-  extract.v.d
   extract.vo
   extract.vok
   extract.vos

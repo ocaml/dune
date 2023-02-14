@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676336311421,
+  "lastUpdate": 1676388970408,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4929,6 +4929,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.38793588716667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "31816d06dcfdb71fbb63a048c3c6fbf98cbb714a",
+          "message": "refactor(rules): explicit import list (#7074)\n\nUse explicit import list from engine.\r\n\r\nThere's some modules we don't use in the rules so there's no need to\r\nbring them in scope.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-14T09:16:45-06:00",
+          "tree_id": "18d170ef362ffe5b1d315ba9f078797282ec3939",
+          "url": "https://github.com/ocaml/dune/commit/31816d06dcfdb71fbb63a048c3c6fbf98cbb714a"
+        },
+        "date": 1676388969677,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.07538513058",
             "unit": "seconds"
           }
         ]

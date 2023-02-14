@@ -79,7 +79,7 @@ end = struct
 
   let check_no_requires path str =
     List.iteri (String.split str ~on:'\n') ~f:(fun n line ->
-        match Scanf.sscanf line "#require %S" (fun x -> x) with
+        match Scanf.sscanf line "#require %S" Fun.id with
         | Error () -> ()
         | Ok (_ : string) ->
           let loc : Loc.t =

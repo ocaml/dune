@@ -111,7 +111,7 @@ val virtual_module_names : t -> Module_name.Path.Set.t
 
 val wrapped : t -> Wrapped.t
 
-val version_installed : t -> install_dir:Path.t -> t
+val version_installed : t -> src_root:Path.t -> install_dir:Path.t -> t
 
 val alias_for : t -> Module.t -> Module.t list
 

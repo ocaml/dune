@@ -35,5 +35,5 @@ Now we add some source with duplicate base names and test again:
      foo.ml
        (source (path Foo) (impl (path foo.ml-gen))))
          (source (path Bar Bar) (impl (path foo__Bar.ml-gen))))
-          (source (path Bar Baz) (impl (path baz.ml))))))
+          (source (path Bar Baz) (impl (path bar/baz.ml))))))
         (source (path Baz) (impl (path baz.ml))))))

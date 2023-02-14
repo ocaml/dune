@@ -1042,8 +1042,8 @@ let rec map_user_written t ~f =
     let+ vlib = map_user_written t.vlib ~f in
     Impl { t with vlib }
 
-let version_installed t ~install_dir =
-  let f = Module.set_src_dir ~src_dir:install_dir in
+let version_installed t ~src_root ~install_dir =
+  let f = Module.version_installed ~src_root ~install_dir in
   let rec loop = function
     | Singleton m -> Singleton (f m)
     | Unwrapped m -> Unwrapped (Unwrapped.map ~f m)

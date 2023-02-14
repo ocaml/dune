@@ -21,8 +21,12 @@ module File = struct
 
   let path t = t.path
 
-  let set_src_dir t ~src_dir =
-    let path = Path.relative src_dir (Path.basename t.path) in
+  let version_installed t ~src_root ~install_dir =
+    let path =
+      Path.descendant ~of_:src_root t.path
+      |> Option.value_exn |> Path.as_in_source_tree_exn
+      |> Path.append_source install_dir
+    in
     { t with path }
 
   let make dialect path = { dialect; path }
@@ -423,7 +427,8 @@ let ml_source =
         let path = Path.extend_basename f.path ~suffix in
         File.make Dialect.ocaml path)
 
-let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
+let version_installed t ~src_root ~install_dir =
+  map_files t ~f:(fun _ -> File.version_installed ~src_root ~install_dir)
 
 let generated ?install_as ?obj_name ~(kind : Kind.t) ~src_dir
     (path : Module_name.Path.t) =

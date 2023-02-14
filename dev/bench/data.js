@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676398101639,
+  "lastUpdate": 1676418781773,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5045,6 +5045,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.950342651486665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5fdaa96753ceb5eb9e00064ae38a22cc61c4d405",
+          "message": "refactor: replace (fun x -> x) (#7083)\n\nReplace it with [Fun.id] from the [Stdlib]\r\n\r\nAlso replace [List.filter_map] and [List.filter_opt] when [~f] is\r\n[Fun.id]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-14T17:34:26-06:00",
+          "tree_id": "b85ae9a765b7a9c6a06819060d584f8d7b9bdfd1",
+          "url": "https://github.com/ocaml/dune/commit/5fdaa96753ceb5eb9e00064ae38a22cc61c4d405"
+        },
+        "date": 1676418781034,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.52180888878",
             "unit": "seconds"
           }
         ]

@@ -6,8 +6,6 @@ end
 
 let report_errors_config = ref Report_errors_config.default
 
-let debug_findlib = ref false
-
 let debug_artifact_substitution = ref false
 
 let debug_digests = ref false

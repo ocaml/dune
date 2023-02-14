@@ -1023,7 +1023,6 @@ let init ?log_file c =
   Clflags.diff_command := c.builder.diff_command;
   Clflags.promote := c.builder.promote;
   Clflags.force := c.builder.force;
-  Clflags.no_print_directory := c.builder.no_print_directory;
   Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
   Clflags.promote_install_files := c.builder.promote_install_files;
   Clflags.always_show_command_line := c.builder.always_show_command_line;

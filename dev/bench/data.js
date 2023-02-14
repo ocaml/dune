@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676392826310,
+  "lastUpdate": 1676398101639,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5016,6 +5016,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.49752110791332",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d07478a0247426f6d0cc3cbf0220126ec2b5da5",
+          "message": "chore: remove notty (#7082)\n\nThere was a leftover dune file from notty\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-14T11:45:00-06:00",
+          "tree_id": "b629fa370eb2d8d3f3a21521cc1d80fd9d509ce4",
+          "url": "https://github.com/ocaml/dune/commit/1d07478a0247426f6d0cc3cbf0220126ec2b5da5"
+        },
+        "date": 1676398100219,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "41.950342651486665",
             "unit": "seconds"
           }
         ]

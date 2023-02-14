@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676388970408,
+  "lastUpdate": 1676389045205,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4958,6 +4958,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.07538513058",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9328d9d7d07e6f007a416513829c7b1736f0f364",
+          "message": "refactor(rules): remove debug_findlib flag (#7076)\n\nIt doesn't do anything anymore\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-14T09:16:03-06:00",
+          "tree_id": "cb940d83a1f0e4c0242c16d400e02ad102686ac0",
+          "url": "https://github.com/ocaml/dune/commit/9328d9d7d07e6f007a416513829c7b1736f0f364"
+        },
+        "date": 1676389043791,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.79860549442666",
             "unit": "seconds"
           }
         ]

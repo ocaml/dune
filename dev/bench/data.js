@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676330625038,
+  "lastUpdate": 1676336311421,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4900,6 +4900,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.283156469106665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec583d27d2904b7d837cde30c9497f1d6a7ff3d6",
+          "message": "fix(rules): installed paths (#7063)\n\nWhen relocating modules from regular paths (relative to where they are\r\ndefined) to installed paths (relative to _build/install), correctly take\r\ninto account (include_subdirs ..). Previously, we would flatten the\r\nentire directory structure in the installed directory. Now we preserve\r\nit upto the the library root.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-13T18:39:34-06:00",
+          "tree_id": "813f48a801bb5bda72dfd55d804128b5d5d24043",
+          "url": "https://github.com/ocaml/dune/commit/ec583d27d2904b7d837cde30c9497f1d6a7ff3d6"
+        },
+        "date": 1676336310175,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.38793588716667",
             "unit": "seconds"
           }
         ]

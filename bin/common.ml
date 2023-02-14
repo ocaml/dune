@@ -500,7 +500,6 @@ All available cache layers: %s.|}
 module Builder = struct
   type t =
     { debug_dep_path : bool
-    ; debug_findlib : bool
     ; debug_backtraces : bool
     ; debug_artifact_substitution : bool
     ; debug_load_dir : bool
@@ -549,10 +548,6 @@ module Builder = struct
               {|In case of error, print the dependency path from
                     the targets on the command line to the rule that failed.
                   |})
-    and+ debug_findlib =
-      Arg.(
-        value & flag
-        & info [ "debug-findlib" ] ~docs ~doc:{|Debug the findlib sub-system.|})
     and+ debug_backtraces = debug_backtraces
     and+ debug_artifact_substitution =
       Arg.(
@@ -811,7 +806,6 @@ module Builder = struct
                for benchmarking dune")
     in
     { debug_dep_path
-    ; debug_findlib
     ; debug_backtraces
     ; debug_artifact_substitution
     ; debug_load_dir
@@ -1019,7 +1013,6 @@ let init ?log_file c =
   Only_packages.Clflags.set c.builder.only_packages;
   Dune_util.Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Clflags.report_errors_config := c.builder.report_errors_config;
-  Clflags.debug_findlib := c.builder.debug_findlib;
   Clflags.debug_backtraces c.builder.debug_backtraces;
   Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
   Clflags.debug_load_dir := c.builder.debug_load_dir;

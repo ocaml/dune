@@ -2,9 +2,6 @@
 
 val report_errors_config : Report_errors_config.t ref
 
-(** Debug the findlib implementation *)
-val debug_findlib : bool ref
-
 (** Capture the output of sub-commands *)
 val capture_outputs : bool ref
 

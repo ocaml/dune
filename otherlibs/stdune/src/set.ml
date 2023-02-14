@@ -52,7 +52,7 @@ module Make (Key : Map_intf.Key) (M : Map_intf.S with type key = Key.t) = struct
         let s = f x in
         union acc s)
 
-  let union_all l = union_map l ~f:(fun x -> x)
+  let union_all l = union_map l ~f:Fun.id
 
   exception Found of elt
 
@@ -165,7 +165,7 @@ struct
         let s = f x in
         union acc s)
 
-  let union_all l = union_map l ~f:(fun x -> x)
+  let union_all l = union_map l ~f:Fun.id
 
   exception Found of elt
 

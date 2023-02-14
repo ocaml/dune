@@ -688,7 +688,7 @@ module External_lib_deps = struct
                     |> Memo.parallel_map ~f:(fun name ->
                            let name = Lib_name.of_string name in
                            external_resolve db name Kind.Optional)
-                    >>| List.filter_map ~f:(fun x -> x))
+                    >>| List.filter_opt)
              >>| List.concat)
     >>| List.concat
 

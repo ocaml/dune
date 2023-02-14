@@ -22,7 +22,7 @@ let filter_map l ~f =
   in
   loop [] l
 
-let filter_opt l = filter_map ~f:(fun x -> x) l
+let filter_opt l = filter_map ~f:Fun.id l
 
 let filteri l ~f =
   let rec filteri l i =

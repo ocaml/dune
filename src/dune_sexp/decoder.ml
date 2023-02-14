@@ -682,7 +682,7 @@ let traverse l ~f ctx state =
     (List.fold_map ~init:state l ~f:(fun state x ->
          Tuple.T2.swap (f x ctx state)))
 
-let all = traverse ~f:(fun x -> x)
+let all = traverse ~f:Fun.id
 
 let fields_missing_need_exactly_one loc names =
   User_error.raise ~loc

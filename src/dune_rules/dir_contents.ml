@@ -105,8 +105,7 @@ let build_mlds_map stanzas ~dir ~files =
       let+ mlds =
         let+ mlds = Memo.Lazy.force mlds in
         Ordered_set_lang.Unordered_string.eval doc.mld_files ~standard:mlds
-          ~key:(fun x -> x)
-          ~parse:(fun ~loc s ->
+          ~key:Fun.id ~parse:(fun ~loc s ->
             match String.Map.find mlds s with
             | Some s -> s
             | None ->

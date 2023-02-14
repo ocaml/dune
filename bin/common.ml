@@ -456,7 +456,7 @@ let cache_debug_flags_term : Cache_debug_flags.t Term.t =
     ; ("fs", fun r -> { r with Cache_debug_flags.fs_cache = true })
     ]
   in
-  let no_layers = ([], fun x -> x) in
+  let no_layers = ([], Fun.id) in
   let combine_layers =
     List.fold_right ~init:no_layers
       ~f:(fun (names, value) (acc_names, acc_value) ->

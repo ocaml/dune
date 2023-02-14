@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676389045205,
+  "lastUpdate": 1676392826310,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -4987,6 +4987,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.79860549442666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4bc0b8e35e19cd81db8d732d313623c8cdc865ca",
+          "message": "refactor: remove no_print_directory from global flags (#7078)\n\nit's only used in one place so it doesn't need to be global\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-14T10:20:54-06:00",
+          "tree_id": "523bc913edd8191fa6b59736f9e0847590dc8cf3",
+          "url": "https://github.com/ocaml/dune/commit/4bc0b8e35e19cd81db8d732d313623c8cdc865ca"
+        },
+        "date": 1676392825102,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.49752110791332",
             "unit": "seconds"
           }
         ]

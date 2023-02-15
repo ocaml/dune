@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676461102244,
+  "lastUpdate": 1676476533137,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5132,6 +5132,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.642917211240004",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a1f900d08108ab2644ae239e184bce08880cbb0",
+          "message": "Fix build (#7089)\n\nSigned-off-by: nojebar <nicolas.ojeda.bar@lexifi.com>",
+          "timestamp": "2023-02-15T16:36:14+01:00",
+          "tree_id": "d4d03b8bb0f4388f04c7c7041e3b05ea6567f204",
+          "url": "https://github.com/ocaml/dune/commit/2a1f900d08108ab2644ae239e184bce08880cbb0"
+        },
+        "date": 1676476532422,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.239364818826665",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676476533137,
+  "lastUpdate": 1676483978952,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5161,6 +5161,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.239364818826665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab207b017bd1d54733d9c34564fd3e12782051ae",
+          "message": "test: virtual libraries bug (#7085)\n\nreproduce a bug where an implementation of a virtual library sometimes\r\ndoesn't include the virtual module's implementation\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-15T11:40:57-06:00",
+          "tree_id": "66c0291548eb10078c260a322fd71281426b2eb6",
+          "url": "https://github.com/ocaml/dune/commit/ab207b017bd1d54733d9c34564fd3e12782051ae"
+        },
+        "date": 1676483978274,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.987308447273335",
             "unit": "seconds"
           }
         ]

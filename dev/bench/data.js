@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676484456584,
+  "lastUpdate": 1676502450442,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5219,6 +5219,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.909920567953336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "marek@tarides.com",
+            "name": "Marek Kubica",
+            "username": "Leonidas-from-XIV"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7ddf2cd85c9f0e6f515954069c0c1edb50f55409",
+          "message": "Fix minor typos, add clarifications to OPAM generation (#7090)\n\nSigned-off-by: Marek Kubica <marek@tarides.com>",
+          "timestamp": "2023-02-15T16:44:05-06:00",
+          "tree_id": "838ce25fa1f9f3c2690226708e7d94d6a3be98c0",
+          "url": "https://github.com/ocaml/dune/commit/7ddf2cd85c9f0e6f515954069c0c1edb50f55409"
+        },
+        "date": 1676502449210,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.322798538853334",
             "unit": "seconds"
           }
         ]

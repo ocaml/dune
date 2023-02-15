@@ -139,6 +139,8 @@ Unreleased
 - Auto-detect `dune-workspace` files as `dune` files in Emacs (#7061,
   @ilankri)
 
+- Add native support for polling mode on Windows (#7010, @yams-yams, @nojb)
+
 3.6.2 (2022-12-21)
 ------------------
 

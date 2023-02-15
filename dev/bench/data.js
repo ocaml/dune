@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676426940517,
+  "lastUpdate": 1676461102244,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5103,6 +5103,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.72426433770667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "73506c2ed639d361ec406b31a917202160b6518c",
+          "message": "Add native polling mode support on Windows (#7010)\n\nCo-authored-by: Uma Kothuri <uma@kothuri.net>\r\nSigned-off-by: Uma Kothuri <uma@kothuri.net>\r\nSigned-off-by: nojebar <nicolas.ojeda.bar@lexifi.com>",
+          "timestamp": "2023-02-15T12:19:32+01:00",
+          "tree_id": "2ef27bfcd4bc2434cebc96a7d288d8bc2c95432b",
+          "url": "https://github.com/ocaml/dune/commit/73506c2ed639d361ec406b31a917202160b6518c"
+        },
+        "date": 1676461100986,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.642917211240004",
             "unit": "seconds"
           }
         ]

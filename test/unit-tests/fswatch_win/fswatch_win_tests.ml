@@ -43,12 +43,12 @@ let watch, collect_events =
   let end_of_test_file = Filename.concat markdir end_of_test in
   create_file beginning_of_test_file;
   create_file end_of_test_file;
-  let fswatch = Fswatch_win.create ~debounce_interval:0 in
+  let fswatch = Fswatch_win.create () in
   let watch dir = Fswatch_win.add fswatch dir in
   watch markdir;
   let rec collect_events acc = function
     | [] ->
-      let events = Fswatch_win.wait fswatch in
+      let events = Fswatch_win.wait fswatch ~sleep:0 in
       collect_events acc events
     | e :: events when Fswatch_win.Event.path e = end_of_test ->
       if not (List.is_empty events) then (
@@ -62,7 +62,7 @@ let watch, collect_events =
     (* Mark the beginning of the current test *)
     create_file end_of_test_file;
     let events =
-      let events = Fswatch_win.wait fswatch in
+      let events = Fswatch_win.wait fswatch ~sleep:0 in
       (* List.iter ~f:(fun ev -> print_endline (Dyn.to_string (Fswatch_win.Event.to_dyn ev))) events; *)
       match events with
       | [] -> assert false

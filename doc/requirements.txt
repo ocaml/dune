@@ -1,3 +1,4 @@
 sphinx >= 4.5.0
-sphinx-rtd-theme >= 1.0.0
+sphinx_rtd_theme >= 1.0.0
 sphinx-copybutton >= 0.5.0
+docutils < 0.17

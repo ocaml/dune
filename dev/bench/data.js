@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676418781773,
+  "lastUpdate": 1676426940517,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5074,6 +5074,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.52180888878",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e4c5974e38a24c72c48e78d20803b8e9e4b6c215",
+          "message": "test: top closure with mli only (#7081)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-14T19:49:45-06:00",
+          "tree_id": "475c66806e77016df78192f9b30e73ce75824666",
+          "url": "https://github.com/ocaml/dune/commit/e4c5974e38a24c72c48e78d20803b8e9e4b6c215"
+        },
+        "date": 1676426939800,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.72426433770667",
             "unit": "seconds"
           }
         ]

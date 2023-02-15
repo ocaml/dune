@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676483978952,
+  "lastUpdate": 1676484456584,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5190,6 +5190,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.987308447273335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f1ff192613b0cdfcdb09043b28b0fed4885da38c",
+          "message": "refactor(rules): move dep logic to dep rules (#7084)\n\nDetails such as singleton modules are implementation details of the\r\nrules. So we move them there from the dune cli.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-15T11:48:44-06:00",
+          "tree_id": "ca14384de7f18e8c1f420e664d75dbd811302716",
+          "url": "https://github.com/ocaml/dune/commit/f1ff192613b0cdfcdb09043b28b0fed4885da38c"
+        },
+        "date": 1676484455497,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.909920567953336",
             "unit": "seconds"
           }
         ]

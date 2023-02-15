@@ -149,11 +149,7 @@ type t =
   }
 
 let exclude_patterns =
-  [ {|^_opam|}
-  ; {|/_opam|}
-  ; {|^_esy|}
-  ; {|/_esy|}
-  ; {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
+  [ {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
   ; {|/\.#.*|}
   ; {|~$|}
   ; {|^#[^#]*#$|}
@@ -308,9 +304,7 @@ let command ~root ~backend =
   let exclude_paths =
     (* These paths should already exist on the filesystem when the watches are
        initially set up, otherwise the @<path> has no effect for inotifywait. If
-       the file is deleted and re-created then "exclusion" is lost. This is why
-       we're not including "_opam" and "_esy" in this list, in case they are
-       created when dune is already running. *)
+       the file is deleted and re-created then "exclusion" is lost. *)
     (* these paths are used as patterns for fswatch, so they better not contain
        any regex-special characters *)
     [ "_build" ]

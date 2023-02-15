@@ -38,11 +38,23 @@ let top_closed t modules =
       ]
 
 let top_closed_implementations t modules =
-  Action_builder.memoize "top sorted implementations"
-    (let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl) in
-     Action_builder.map
-       (top_closed t (filter_out_intf_only modules))
-       ~f:filter_out_intf_only)
+  List.filter modules ~f:(Module.has ~ml_kind:Impl)
+  |> top_closed t
+  |> Action_builder.map
+       ~f:
+         (let obj_map =
+            List.map modules ~f:(fun x -> (x, x))
+            |> Module.Obj_map.of_list_reduce ~f:(fun x y ->
+                   match Module.kind x with
+                   | Impl_vmodule -> x
+                   | _ -> y)
+          in
+          List.filter_map ~f:(fun m ->
+              match Module.kind m with
+              | Virtual -> Some (Module.Obj_map.find_exn obj_map m)
+              | Intf_only -> None
+              | _ -> Some m))
+  |> Action_builder.memoize "top sorted implementations"
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root

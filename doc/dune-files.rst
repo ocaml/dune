@@ -293,7 +293,7 @@ package
 -------
 
 Package specific information is specified in the ``(package <package-fields>)``
-stanza. It contains the following fields:
+stanza. It can contain the following fields:
 
 - ``(name <string>)`` is the name of the package. This must be specified.
 
@@ -303,9 +303,9 @@ stanza. It contains the following fields:
 
 - ``(depends <dep-specification>)`` are package dependencies.
 
-- ``(conflicts <dep-specification)`` are package conflicts.
+- ``(conflicts <dep-specification>)`` are package conflicts.
 
-- ``(depopts <dep-specification)`` are optional package dependencies.
+- ``(depopts <dep-specification>)`` are optional package dependencies.
 
 - ``(tags <tags>)`` are the list of tags for the package.
 
@@ -323,8 +323,8 @@ stanza. It contains the following fields:
 - ``(sites (<section> <name>) ...)`` define a site named ``<name>`` in the
   section ``<section>``.
 
-Adding libraries to different packages is done via the ``public_name`` field.
-See :ref:`library` section for details.
+Adding libraries to different packages is done via the ``public_name`` and
+``package`` fields. See :ref:`library` section for details.
 
 The list of dependencies :token:`dep_specification` is modelled after opam's own
 language. The syntax is a list of the following elements:

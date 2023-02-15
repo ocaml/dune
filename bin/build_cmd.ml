@@ -265,11 +265,30 @@ let doc =
       let absolute_toplevel_index_path =
         Path.(toplevel_index_path |> build |> to_absolute_filename)
       in
+      let url = Printf.sprintf {|file://%s|} absolute_toplevel_index_path in
       let cmd =
-        Printf.sprintf "xdg-open file://%s" absolute_toplevel_index_path
+        let open Option.O in
+        let path = Env_path.path Env.initial in
+        let* cmd_name, args =
+          match Ocaml_config.system doc_ctx.ocaml_config with
+          | "macosx" -> Some ("open", [ "-u" ])
+          | "linux" -> Some ("xdg-open", [])
+          | "windows" -> Some ("start", [])
+          | _ -> None
+        in
+        let+ p = Bin.which ~path cmd_name in
+        ( p
+        , (* First element of argv is the name of the command. *)
+          (cmd_name :: args) @ [ url ] )
       in
-      let _i = Sys.command cmd in
-      ()
+      match cmd with
+      | Some (cmd, args) ->
+        Proc.restore_cwd_and_execve
+          (Path.to_absolute_filename cmd)
+          args ~env:Env.initial
+      | None ->
+        Printf.printf "Docs built. Index can be found here: %s\n"
+          absolute_toplevel_index_path
     in
 
     run_build_command ~common ~config ~request

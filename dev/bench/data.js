@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676502450442,
+  "lastUpdate": 1676509267207,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5248,6 +5248,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.322798538853334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1f463af9bc20dc9c04741d08ddb297cca3859094",
+          "message": "refactor: dep handling (#7094)\n\nsimplify ocamldep rules with better names and |>\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-15T18:38:52-06:00",
+          "tree_id": "f82053ae22302e4e13646d67779071486e186b25",
+          "url": "https://github.com/ocaml/dune/commit/1f463af9bc20dc9c04741d08ddb297cca3859094"
+        },
+        "date": 1676509266156,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.723080276813334",
             "unit": "seconds"
           }
         ]

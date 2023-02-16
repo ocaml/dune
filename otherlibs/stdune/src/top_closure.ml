@@ -9,10 +9,10 @@ module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) = struct
         let visited = Keys.add visited key in
         let temporarily_marked = Keys.add temporarily_marked key in
         deps elt >>= iter_elts res visited ~temporarily_marked >>| function
-        | Error l -> (Error (elt :: l))
+        | Error l -> Error (elt :: l)
         | Ok (res, visited) ->
           let res = elt :: res in
-          (Ok (res, visited))
+          Ok (res, visited)
       else Monad.return (Ok (res, visited))
     and iter_elts res visited elts ~temporarily_marked =
       match elts with

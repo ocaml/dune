@@ -1,8 +1,8 @@
 Unreleased
 ----------
 
-- Allow running `$ dune exec` in watch mode (with the `-w` flag). In wach mode,
-  `$ dune exec` the executed binary whenever it is recompiled. (#6966,
+- Allow running `$ dune exec` in watch mode (with the `-w` flag). In watch
+  mode, `$ dune exec` the executed binary whenever it is recompiled. (#6966,
   @gridbugs)
 
 - `coqdep` is now called once per theory, instead of one time per Coq

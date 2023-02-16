@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676523437369,
+  "lastUpdate": 1676525203213,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5364,6 +5364,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.60853389201333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05797cd3f505beca4d6d62c576506d7608a6d29d",
+          "message": "test(stdune): add top closure tests (#7095)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-15T23:08:10-06:00",
+          "tree_id": "8c945aefd28796bf87a0e0312dd8c900056db514",
+          "url": "https://github.com/ocaml/dune/commit/05797cd3f505beca4d6d62c576506d7608a6d29d"
+        },
+        "date": 1676525202298,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.409556729200006",
             "unit": "seconds"
           }
         ]

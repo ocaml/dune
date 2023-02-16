@@ -7,6 +7,7 @@ val gen_rules :
   -> scope:Scope.t
   -> dir:Path.Build.t
   -> sctx:Super_context.t
+  -> version:Syntax.Version.t
   -> unit Memo.t
 
 val ctypes_cclib_flags :

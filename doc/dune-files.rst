@@ -293,7 +293,7 @@ package
 -------
 
 Package specific information is specified in the ``(package <package-fields>)``
-stanza. It contains the following fields:
+stanza. It can contain the following fields:
 
 - ``(name <string>)`` is the name of the package. This must be specified.
 
@@ -303,9 +303,9 @@ stanza. It contains the following fields:
 
 - ``(depends <dep-specification>)`` are package dependencies.
 
-- ``(conflicts <dep-specification)`` are package conflicts.
+- ``(conflicts <dep-specification>)`` are package conflicts.
 
-- ``(depopts <dep-specification)`` are optional package dependencies.
+- ``(depopts <dep-specification>)`` are optional package dependencies.
 
 - ``(tags <tags>)`` are the list of tags for the package.
 
@@ -323,31 +323,25 @@ stanza. It contains the following fields:
 - ``(sites (<section> <name>) ...)`` define a site named ``<name>`` in the
   section ``<section>``.
 
-Adding libraries to different packages is done via the ``public_name`` field.
-See :ref:`library` section for details.
+Adding libraries to different packages is done via the ``public_name`` and
+``package`` fields. See :ref:`library` section for details.
 
-The list of dependencies ``<dep-specification>`` is modelled after opam's own
+The list of dependencies :token:`dep_specification` is modelled after opam's own
 language. The syntax is a list of the following elements:
 
-.. code::
-
-   op := '=' | '<' | '>' | '<>' | '>=' | '<='
-
-   filter := :dev | :build | :with-test | :with-doc | :post
-
-   constr := (<op> <version>)
-
-   logop := or | and
-
-   dep := name
-        | (name <filter>)
-        | (name <constr>)
-        | (name (<logop> (<filter> | <constr>))*)
-
-   dep-specification = dep+
+.. productionlist:: pkg-dep
+   op : '=' | '<' | '>' | '<>' | '>=' | '<='
+   filter : :dev | :build | :with-test | :with-doc | :post
+   constr : (<op> <version>)
+   logop : or | and
+   dep : <name>
+       : (<name> <filter>)
+       : (<name> <constr>)
+       : (<name> (<logop> (<filter> | <constr>))*)
+   dep_specification : <dep>+
 
 Filters will expand to any opam variable name if prefixed by ``:``, not just the
-ones listed above. This also applies to version numbers. For example, to
+ones listed in :token:`filter`. This also applies to version numbers. For example, to
 generate ``depends: [ pkg { = version } ]``, use ``(depends (pkg (=
 :version)))``.
 
@@ -442,6 +436,30 @@ executables on a per-project basis:
 Starting with Dune 2.0, Dune mangles compilation units of executables by
 default. However, this can still be turned off using ``(wrapped_executables
 false)``
+
+.. _map-workspace-root:
+
+map_workspace_root
+-------------------
+
+.. versionadded:: 3.7
+
+The desirable output of tools will not contain references to the
+file system location from which they were built. Starting from Dune 3.0,
+Dune has mapped references to the workspace directory to "/workspace_root".
+
+An option is available to turn on/off mapping
+of the workspace on a per-project basis:
+
+.. code:: scheme
+
+    (map_workspace_root <bool>)
+
+This can be turned off using 
+``(map_workspace_root false)``
+Note that when this mapping is enabled, the debug information produced
+by the bytecode compiler is incorrect, as the location information
+is lost.
 
 .. _dune-files:
 
@@ -578,7 +596,7 @@ the description of an opam switch, as follows:
 
 - ``(merlin)`` instructs Dune to use this build context for Merlin.
 
-- ``(profile <profile>)`` sets a different profile for a build context. This has
+- ``(profile <profile>)`` sets a different profile for a :term:`build context`. This has
   precedence over the command-line option ``--profile``.
 
 - ``(env <env>)`` sets the environment for a particular context. This is of

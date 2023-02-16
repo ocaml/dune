@@ -84,7 +84,7 @@ Once installed, we have the version information:
 
 Check what the generated build info module looks like:
 
-  $ cat _build/default/c/.c.eobjs/build_info_data.ml-gen \
+  $ cat _build/default/c/.c.eobjs/build_info__Build_info_data.ml-gen \
   >   | sed 's/"dune-build-info".*/"dune-build-info", Some "XXX"/'
   let eval s =
     let s = Bytes.unsafe_to_string (Bytes.unsafe_of_string s) in

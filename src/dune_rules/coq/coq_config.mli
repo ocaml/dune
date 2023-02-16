@@ -9,5 +9,20 @@ val make : coqc:Action.Prog.t -> t Memo.t
 
 val make_opt : coqc:Action.Prog.t -> t Option.t Memo.t
 
-val by_name :
-  t -> string -> [> `Int of int | `Path of Path.t | `String of string ] Option.t
+module Value : sig
+  type t =
+    | Int of int
+    | Path of Path.t
+    | String of string
+end
+
+(** [by_name t name] returns the value of the option [name] in the Coq
+    configuration [t]. Currently supported names are:
+
+    - version.major
+    - version.minor
+    - version.revision
+    - version.suffix
+    - version
+    - ocaml-version *)
+val by_name : t -> string -> Value.t Option.t

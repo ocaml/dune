@@ -5,8 +5,8 @@ open Import
 (* (c) INRIA 2020                              *)
 (* Written by: Emilio Jesús Gallego Arias *)
 
-(** [deps_of ~dir ~use_stdlib ~wrapper_name m] produces an action builder that
-    can be run to build all dependencies of the Coq module [m]. *)
+(** [deps_of ~dir ~use_stdlib ~wrapper_name coq_module] action that builds the
+    deps of [coq_module] *)
 val deps_of :
      dir:Path.Build.t
   -> use_stdlib:bool

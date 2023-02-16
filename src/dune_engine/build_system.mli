@@ -84,8 +84,6 @@ val state : State.t Fiber.Svar.t
 
 (** Errors found when building targets. *)
 module Error : sig
-  type t
-
   module Id : sig
     type t
 
@@ -97,6 +95,20 @@ module Error : sig
 
     val to_dyn : t -> Dyn.t
   end
+
+  type t
+
+  val id : t -> Id.t
+
+  (** the directory where the rule the error is originating from *)
+  val dir : t -> Path.t option
+
+  (** The description of the error. Errors from build rules contain useful
+      metadata that are extracted into [`Diagnostic] *)
+  val description :
+    t -> [ `Exn of Exn_with_backtrace.t | `Diagnostic of Compound_user_error.t ]
+
+  val promotion : t -> Diff_promotion.Annot.t option
 
   module Event : sig
     type nonrec t =
@@ -119,28 +131,6 @@ module Error : sig
 
     val empty : t
   end
-
-  val create : exn:Exn_with_backtrace.t -> t
-
-  (** [info] stores additional information about errors *)
-  type info =
-    { dir : Path.t option
-          (** the directory where the rule the error is originating from *)
-    ; related : User_message.t list
-          (** related errors with additional descriptions and locations. only
-              useful for rpc clients *)
-    ; main : User_message.t
-          (** the main message of the error. this is what is displayed in the
-              console *)
-    }
-
-  (** [info t] returns additional information regarding errors. useful for rich
-      clients that consume errors through rpc *)
-  val info : t -> info
-
-  val promotion : t -> Diff_promotion.Annot.t option
-
-  val id : t -> Id.t
 end
 
 (** The current set of active errors. *)

@@ -63,6 +63,12 @@ module Context = struct
       | "native" -> Native
       | _ -> Named context_name
 
+    let to_dyn =
+      let open Dyn in
+      function
+      | Native -> variant "Native" []
+      | Named name -> variant "Named" [ Context_name.to_dyn name ]
+
     let add ts x =
       match x with
       | None -> ts
@@ -85,7 +91,12 @@ module Context = struct
       ; merlin : bool
       }
 
-    let to_dyn = Dyn.opaque
+    let to_dyn { name; targets; host_context; _ } =
+      Dyn.record
+        [ ("name", Context_name.to_dyn name)
+        ; ("targets", Dyn.list Target.to_dyn targets)
+        ; ("host_context", Dyn.option Context_name.to_dyn host_context)
+        ]
 
     let equal
         { loc = _
@@ -123,7 +134,7 @@ module Context = struct
         let name, _ = Path.split_extension file in
         "-fdo-" ^ Path.basename name
 
-    let t =
+    let decode =
       let+ env = env_field
       and+ targets =
         field "targets" (repeat Target.t) ~default:[ Target.Native ]
@@ -224,11 +235,11 @@ module Context = struct
       && String.equal switch t.switch
       && Option.equal String.equal root t.root
 
-    let t =
+    let decode =
       let+ loc_switch, switch = field "switch" (located string)
       and+ name = field_o "name" Context_name.decode
       and+ root = field_o "root" string
-      and+ base = Common.t in
+      and+ base = Common.decode in
       fun ~profile_default ~instrument_with_default ~x ->
         let base = base ~profile_default ~instrument_with_default in
         let name =
@@ -255,8 +266,8 @@ module Context = struct
 
     let to_dyn = Common.to_dyn
 
-    let t =
-      let+ common = Common.t
+    let decode =
+      let+ common = Common.decode
       and+ name =
         field_o "name"
           ( Dune_lang.Syntax.since syntax (1, 10) >>= fun () ->
@@ -303,14 +314,14 @@ module Context = struct
     | Default { host_context; _ } | Opam { base = { host_context; _ }; _ } ->
       host_context
 
-  let t =
+  let decode =
     sum
       [ ( "default"
-        , let+ f = fields Default.t in
+        , let+ f = fields Default.decode in
           fun ~profile_default ~instrument_with_default ~x ->
             Default (f ~profile_default ~instrument_with_default ~x) )
       ; ( "opam"
-        , let+ f = fields Opam.t in
+        , let+ f = fields Opam.decode in
           fun ~profile_default ~instrument_with_default ~x ->
             Opam (f ~profile_default ~instrument_with_default ~x) )
       ]
@@ -401,7 +412,7 @@ module Clflags = struct
     { x : Context_name.t option
     ; profile : Profile.t option
     ; instrument_with : Lib_name.t list option
-    ; workspace_file : Path.t option
+    ; workspace_file : Path.Outside_build_dir.t option
     ; config_from_command_line : Dune_config.Partial.t
     ; config_from_config_file : Dune_config.Partial.t
     }
@@ -419,7 +430,7 @@ module Clflags = struct
       [ ("x", option Context_name.to_dyn x)
       ; ("profile", option Profile.to_dyn profile)
       ; ("instrument_with", option (list Lib_name.to_dyn) instrument_with)
-      ; ("workspace_file", option Path.to_dyn workspace_file)
+      ; ("workspace_file", option Path.Outside_build_dir.to_dyn workspace_file)
       ; ( "config_from_command_line"
         , Dune_config.Partial.to_dyn config_from_command_line )
       ; ( "config_from_config_file"
@@ -531,7 +542,7 @@ let step1 clflags =
   and+ config_from_workspace_file =
     Dune_config.decode_fields_of_workspace_file
   in
-  let+ contexts = multi_field "context" (lazy_ Context.t) in
+  let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =
     create_final_config ~config_from_workspace_file ~config_from_config_file
       ~config_from_command_line
@@ -635,24 +646,22 @@ let workspace_step1 =
     let* workspace_file =
       match clflags.workspace_file with
       | None ->
-        let p = Path.of_string filename in
-        let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn p) in
+        let p = Path.Outside_build_dir.of_string filename in
+        let+ exists = Fs_memo.file_exists p in
         Option.some_if exists p
       | Some p -> (
-        Fs_memo.file_exists (Path.as_outside_build_dir_exn p) >>| function
+        Fs_memo.file_exists p >>| function
         | true -> Some p
         | false ->
           User_error.raise
             [ Pp.textf "Workspace file %s does not exist"
-                (Path.to_string_maybe_quoted p)
+                (Path.Outside_build_dir.to_string_maybe_quoted p)
             ])
     in
     let clflags = { clflags with workspace_file } in
     match workspace_file with
     | None -> Memo.return (default_step1 clflags)
-    | Some p ->
-      let p = Path.as_outside_build_dir_exn p in
-      load_step1 clflags p
+    | Some p -> load_step1 clflags p
   in
   let memo = Memo.lazy_ ~name:"workspaces-internal" f in
   fun () -> Memo.Lazy.force memo

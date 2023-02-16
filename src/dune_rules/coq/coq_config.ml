@@ -44,6 +44,13 @@ end = struct
   let get_path t var = get t var |> Path.of_string
 end
 
+module Value = struct
+  type t =
+    | Int of int
+    | Path of Path.t
+    | String of string
+end
+
 module Version = struct
   module Num = struct
     type t =
@@ -83,9 +90,9 @@ module Version = struct
 
     let by_name { major; minor; suffix } name =
       match name with
-      | "major" -> Some (`Int major)
-      | "minor" -> Some (`Int minor)
-      | "suffix" -> Some (`String suffix)
+      | "major" -> Some (Value.Int major)
+      | "minor" -> Some (Value.Int minor)
+      | "suffix" -> Some (Value.String suffix)
       | _ -> None
   end
 
@@ -98,7 +105,8 @@ module Version = struct
   let impl_version bin =
     let* _ = Build_system.build_file bin in
     Memo.of_reproducible_fiber
-    @@ Process.run_capture_line Process.Strict bin [ "--print-version" ]
+    @@ Process.run_capture_line ~display:!Clflags.display Process.Strict bin
+         [ "--print-version" ]
 
   let version_memo =
     Memo.create "coq-and-ocaml-version" ~input:(module Path) impl_version
@@ -132,8 +140,8 @@ module Version = struct
       | "version.minor" -> Num.by_name version_num "minor"
       | "version.revision" -> Num.by_name version_num "revision"
       | "version.suffix" -> Num.by_name version_num "suffix"
-      | "version" -> Some (`String version_string)
-      | "ocaml-version" -> Some (`String ocaml_version_string)
+      | "version" -> Some (Value.String version_string)
+      | "ocaml-version" -> Some (Value.String ocaml_version_string)
       | _ -> None)
 end
 
@@ -146,7 +154,8 @@ type t =
 let impl_config bin =
   let* _ = Build_system.build_file bin in
   Memo.of_reproducible_fiber
-  @@ Process.run_capture_lines Process.Return bin [ "--config" ]
+  @@ Process.run_capture_lines ~display:!Clflags.display Process.Return bin
+       [ "--config" ]
 
 let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
 
@@ -205,6 +214,7 @@ let by_name { version_info; coqlib; coq_native_compiler_default } name =
   | "version.suffix"
   | "version"
   | "ocaml-version" -> Version.by_name version_info name
-  | "coqlib" -> Some (`Path coqlib)
-  | "coq_native_compiler_default" -> Some (`String coq_native_compiler_default)
+  | "coqlib" -> Some (Value.Path coqlib)
+  | "coq_native_compiler_default" ->
+    Some (Value.String coq_native_compiler_default)
   | _ -> None

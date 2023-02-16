@@ -288,7 +288,7 @@ module Options_implied_by_dash_p = struct
 end
 
 let display_term =
-  let module Display = Dune_engine.Display in
+  let module Display = Dune_config.Display in
   one_of
     (let+ verbose =
        Arg.(
@@ -296,14 +296,18 @@ let display_term =
          & info [ "verbose" ] ~docs:copts_sect
              ~doc:"Same as $(b,--display verbose)")
      in
-     Option.some_if verbose { Display.verbosity = Verbose; status_line = true })
+     Option.some_if verbose Dune_config.Display.verbose)
     Arg.(
+      let doc =
+        let all = Display.all |> List.map ~f:fst |> String.enumerate_one_of in
+        sprintf
+          "Control the display mode of Dune. See $(b,dune-config\\(5\\)) for \
+           more details. Valid values for this option are %s"
+          all
+      in
       value
       & opt (some (enum Display.all)) None
-      & info [ "display" ] ~docs:copts_sect ~docv:"MODE"
-          ~doc:
-            {|Control the display mode of Dune.
-         See $(b,dune-config\(5\)) for more details.|})
+      & info [ "display" ] ~docs:copts_sect ~docv:"MODE" ~doc)
 
 let shared_with_config_file =
   let docs = copts_sect in
@@ -452,7 +456,7 @@ let cache_debug_flags_term : Cache_debug_flags.t Term.t =
     ; ("fs", fun r -> { r with Cache_debug_flags.fs_cache = true })
     ]
   in
-  let no_layers = ([], fun x -> x) in
+  let no_layers = ([], Fun.id) in
   let combine_layers =
     List.fold_right ~init:no_layers
       ~f:(fun (names, value) (acc_names, acc_value) ->
@@ -496,7 +500,6 @@ All available cache layers: %s.|}
 module Builder = struct
   type t =
     { debug_dep_path : bool
-    ; debug_findlib : bool
     ; debug_backtraces : bool
     ; debug_artifact_substitution : bool
     ; debug_load_dir : bool
@@ -545,10 +548,6 @@ module Builder = struct
               {|In case of error, print the dependency path from
                     the targets on the command line to the rule that failed.
                   |})
-    and+ debug_findlib =
-      Arg.(
-        value & flag
-        & info [ "debug-findlib" ] ~docs ~doc:{|Debug the findlib sub-system.|})
     and+ debug_backtraces = debug_backtraces
     and+ debug_artifact_substitution =
       Arg.(
@@ -596,7 +595,7 @@ module Builder = struct
       let doc = "Use this specific workspace file instead of looking it up." in
       Arg.(
         value
-        & opt (some path) None
+        & opt (some external_path) None
         & info [ "workspace" ] ~docs ~docv:"FILE" ~doc
             ~env:(Cmd.Env.info ~doc "DUNE_WORKSPACE"))
     and+ promote =
@@ -807,7 +806,6 @@ module Builder = struct
                for benchmarking dune")
     in
     { debug_dep_path
-    ; debug_findlib
     ; debug_backtraces
     ; debug_artifact_substitution
     ; debug_load_dir
@@ -834,7 +832,9 @@ module Builder = struct
         { x
         ; profile
         ; instrument_with
-        ; workspace_file = Option.map workspace_file ~f:Arg.Path.path
+        ; workspace_file =
+            Option.map workspace_file ~f:(fun p ->
+                Path.Outside_build_dir.External (Arg.Path.External.path p))
         ; config_from_command_line
         ; config_from_config_file
         }
@@ -982,7 +982,11 @@ let init ?log_file c =
     Dune_config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.output_is_a_tty)
   in
-  Dune_config.init config;
+  Dune_config.init config
+    ~watch:
+      (match c.builder.watch with
+      | No -> false
+      | Yes _ -> true);
   Dune_engine.Execution_parameters.init
     (let open Memo.O in
     let+ w = Dune_rules.Workspace.workspace () in
@@ -1009,7 +1013,6 @@ let init ?log_file c =
   Only_packages.Clflags.set c.builder.only_packages;
   Dune_util.Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Clflags.report_errors_config := c.builder.report_errors_config;
-  Clflags.debug_findlib := c.builder.debug_findlib;
   Clflags.debug_backtraces c.builder.debug_backtraces;
   Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
   Clflags.debug_load_dir := c.builder.debug_load_dir;
@@ -1020,7 +1023,6 @@ let init ?log_file c =
   Clflags.diff_command := c.builder.diff_command;
   Clflags.promote := c.builder.promote;
   Clflags.force := c.builder.force;
-  Clflags.no_print_directory := c.builder.no_print_directory;
   Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
   Clflags.promote_install_files := c.builder.promote_install_files;
   Clflags.always_show_command_line := c.builder.always_show_command_line;

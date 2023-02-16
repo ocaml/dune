@@ -4,9 +4,9 @@ Testing coqdoc when composed with a boot library
 
   $ ls _build/default/A
   A.html
+  A.theory.d
   a.glob
   a.v
-  a.v.d
   a.vo
   a.vok
   a.vos

@@ -5,7 +5,10 @@ let name = "ctypes"
 
 let syntax =
   Dune_lang.Syntax.create ~name ~desc:"the ctypes extension"
-    [ ((0, 1), `Since (3, 0)); ((0, 2), `Since (3, 4)) ]
+    [ ((0, 1), `Since (3, 0))
+    ; ((0, 2), `Since (3, 4))
+    ; ((0, 3), `Since (3, 7))
+    ]
 
 module Build_flags_resolver = struct
   module Vendored = struct
@@ -140,6 +143,7 @@ type t =
   ; generated_types : Module_name.t
   ; generated_entry_point : Module_name.t
   ; deps : Dep_conf.t list
+  ; version : Syntax.Version.t
   }
 
 type Stanza.t += T of t
@@ -157,7 +161,8 @@ let decode =
      and+ generated_types = field_o "generated_types" Module_name.decode
      and+ generated_entry_point =
        field "generated_entry_point" Module_name.decode
-     and+ deps = field_o "deps" (repeat Dep_conf.decode) in
+     and+ deps = field_o "deps" (repeat Dep_conf.decode)
+     and+ version = Syntax.get_exn syntax in
      let external_library_name =
        External_lib_name.of_string external_library_name
      in
@@ -187,6 +192,7 @@ let decode =
            ~default:(Module_name.of_string "Types_generated")
      ; generated_entry_point
      ; deps = Option.value ~default:[] deps
+     ; version
      })
 
 let () =

@@ -43,6 +43,8 @@ type token =
 
 val severity : Lexing.lexbuf -> (severity * string) option
 
-val skip_excerpt : Lexing.lexbuf -> [ `Stop | `Continue ]
+val skip_excerpt_head : Lexing.lexbuf -> [ `Stop | `Continue ]
+
+val skip_excerpt_tail : Lexing.lexbuf -> [ `Stop | `Continue ]
 
 val token : Lexing.lexbuf -> token

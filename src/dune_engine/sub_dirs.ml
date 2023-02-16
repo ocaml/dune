@@ -210,7 +210,7 @@ module Dir_map = struct
                     ]
                   in
                   User_message.Annots.singleton Compound_user_error.annot
-                    (Compound_user_error.make ~main ~related)
+                    [ Compound_user_error.make ~main ~related ]
                 in
                 User_error.raise ~loc ~annots
                   [ main_message; Pp.verbatim (Loc.to_file_colon_line loc2) ]))

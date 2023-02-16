@@ -50,10 +50,20 @@ let make_js_name ~js_ext ~output m =
 
 let impl_only_modules_defined_in_this_lib sctx lib =
   let open Memo.O in
-  let+ modules = Dir_contents.modules_of_lib sctx lib >>| Option.value_exn in
-  (* for a virtual library,this will return all modules *)
-  (Modules.split_by_lib modules).impl
-  |> List.filter ~f:(Module.has ~ml_kind:Impl)
+  let+ modules = Dir_contents.modules_of_lib sctx lib in
+  match modules with
+  | None ->
+    User_error.raise
+      [ Pp.textf
+          "The library %s was not compiled with Dune or it waas compiled with \
+           Dune but published with a META template. Such libraries are not \
+           compatible with melange support"
+          (Lib.name lib |> Lib_name.to_string)
+      ]
+  | Some modules ->
+    (* for a virtual library,this will return all modules *)
+    (Modules.split_by_lib modules).impl
+    |> List.filter ~f:(Module.has ~ml_kind:Impl)
 
 let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
 
@@ -307,12 +317,13 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
       let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
       Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
 
+let emit_target_dir (emit : Melange_stanzas.Emit.t) ~dir =
+  Path.Build.relative dir emit.target
+
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
   let open Memo.O in
   let* compile_info = compile_info ~scope mel in
-  let target_dir =
-    Path.Build.relative (Dir_contents.dir dir_contents) mel.target
-  in
+  let target_dir = emit_target_dir ~dir:(Dir_contents.dir dir_contents) mel in
   let mode =
     match mel.promote with
     | None -> Rule.Mode.Standard

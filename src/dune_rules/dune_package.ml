@@ -92,7 +92,7 @@ module Lib = struct
        ; field_o "main_module_name" Module_name.encode main_module_name
        ; field_l "modes" sexp (Lib_mode.Map.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
-       ; field_o "modules" Modules.encode modules
+       ; field_o "modules" (Modules.encode ~src_dir:package_root) modules
        ; field_o "special_builtin_support"
            Lib_info.Special_builtin_support.encode special_builtin_support
        ; field_o "instrumentation.backend" (no_loc Lib_name.encode)

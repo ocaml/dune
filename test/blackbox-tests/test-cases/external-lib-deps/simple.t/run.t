@@ -8,4 +8,9 @@ external library dependencies of a simple project
   >  (libraries base doesnotexist.foo))
   > EOF
   $ dune describe external-lib-deps
-  (default ((. ((base required) (doesnotexist.foo required)))))
+  (default
+   ((library
+     ((names (dummypkg))
+      (package (dummypkg))
+      (source_dir .)
+      (external_deps ((base required) (doesnotexist.foo required)))))))

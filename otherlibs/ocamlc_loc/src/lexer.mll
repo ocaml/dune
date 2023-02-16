@@ -53,7 +53,14 @@ let any = _ *
 
 let alert_name = ['a' - 'z'] ['A' - 'Z' 'a' - 'z' '0' - '9' '_']*
 
-rule skip_excerpt = parse
+rule skip_excerpt_head = parse
+  | blank digits " | " [^ '\n']* [ '.' ]* "\n"?
+    { `Continue }
+  | eof { `Stop }
+  | "" { `Stop }
+
+and skip_excerpt_tail = parse 
+  | "..." '\r'? '\n'? { `Continue }
   | blank digits " | " [^ '\n']* "\n"?
     { `Continue }
   | blank '^'+ blank "\n"?
@@ -74,7 +81,7 @@ and severity = parse
     (blank any as rest)
     { Some (Error (Some (Code { code = int_of_string code ; name })), rest)
     }
-    | "Alert " blank (alert_name as name) ":" blank (any as source)
+  | "Alert " blank (alert_name as name) ":" blank (any as source)
     {  Some (Alert { name ; source }, "")
     }
   | (("Error" | "Warning") as kind) " (alert " ([^ ')']+ as alert) "):"

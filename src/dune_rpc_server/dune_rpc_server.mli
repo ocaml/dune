@@ -34,6 +34,18 @@ module Session : sig
       [session] *)
   val notification : _ t -> 'a Decl.Notification.witness -> 'a -> unit Fiber.t
 
+  (** [request t r id payload] sends a request [r] to [t] with [id] and
+      [payload].
+
+      Note that any request must be declared with [declare_request] before
+      sending it *)
+  val request :
+       _ t
+    -> ('a, 'b) Decl.Request.witness
+    -> Dune_rpc_private.Id.t
+    -> 'a
+    -> 'b Fiber.t
+
   val compare : 'a t -> 'a t -> Ordering.t
 
   val request_close : 'a t -> unit Fiber.t
@@ -101,6 +113,10 @@ module Handler : sig
   (** [declare_notification handler decl] Declares that this server may send
       notifications according to metadata [decl]. *)
   val declare_notification : 's t -> 'a Decl.notification -> unit
+
+  (** [declare_request handle decl] declares that this server may send requests
+      according to the metadata [decl]. *)
+  val declare_request : 's t -> ('a, 'b) Decl.request -> unit
 
   val implement_long_poll :
        _ t

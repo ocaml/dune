@@ -59,7 +59,10 @@ end
    hard links on [$file] will be allowed, triggering the [EMLINK] code path. *)
 let link_even_if_there_are_too_many_links_already ~src ~dst =
   try Path.link src dst
-  with Unix.Unix_error (Unix.EMLINK, _, _) ->
+  with
+  | Unix.Unix_error (Unix.EMLINK, _, _)
+  | Unix.Unix_error (Unix.EUNKNOWNERR -1442, _, _) (* Needed for OCaml < 5.1 *)
+  ->
     Temp.with_temp_file ~dir:temp_dir ~prefix:"dune" ~suffix:"copy" ~f:(function
       | Error e -> raise e
       | Ok temp_file ->
@@ -90,7 +93,7 @@ module Artifacts = struct
      the result is [Error] with the corresponding exception. Otherwise, the
      result is [Ok ()]. *)
   let store_targets_to ~temp_dir ~targets ~mode : unit Or_exn.t =
-    Result.List.fold_left targets ~init:() ~f:(fun () { Target.path; _ } ->
+    Result.List.iter targets ~f:(fun { Target.path; _ } ->
         let path_in_build_dir = Path.build path in
         let path_in_temp_dir =
           Path.relative temp_dir (Path.basename path_in_build_dir)

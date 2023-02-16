@@ -56,6 +56,7 @@ let get () =
   let* conf = Dune_load.load () in
   let* contexts = Context.DB.all () in
   let* scontexts = Memo.Lazy.force Super_context.all in
+  let* () = Super_context.all_init_deferred () in
   Memo.return { conf; contexts; scontexts }
 
 let find_context_exn t ~name =

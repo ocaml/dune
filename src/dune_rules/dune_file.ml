@@ -1577,9 +1577,7 @@ module Executables = struct
         (let+ loc = loc
          and+ fname = filename
          and+ project = Dune_project.get_exn () in
-         if
-           Option.is_none
-             (Dune_project.find_extension_args project bootstrap_info_extension)
+         if not (Dune_project.is_extension_set project bootstrap_info_extension)
          then
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];
@@ -1750,8 +1748,7 @@ module Rule = struct
     in
     let* project = Dune_project.get_exn () in
     let allow_directory_targets =
-      Option.is_some
-        (Dune_project.find_extension_args project directory_targets_extension)
+      Dune_project.is_extension_set project directory_targets_extension
     in
     String_with_vars.add_user_vars_to_decoding_env (Bindings.var_names deps)
       (let+ loc = loc
@@ -2317,8 +2314,7 @@ module Stanzas = struct
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
         and+ t =
           let enable_qualified =
-            Option.is_some
-              (Dune_project.find_extension_args project Coq_stanza.key)
+            Dune_project.is_extension_set project Coq_stanza.key
           in
           Include_subdirs.decode ~enable_qualified
         and+ loc = loc in

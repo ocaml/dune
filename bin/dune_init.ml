@@ -338,7 +338,6 @@ module Component = struct
       in
       let info = Package.Info.example in
       Dune_project.anonymous ~dir ~packages ~info ()
-      |> Dune_project.set_dialects Dialect.DB.empty
       |> Dune_project.set_generate_opam_files opam_file_gen
       |> Dune_project.encode
       |> List.map ~f:(fun exp ->

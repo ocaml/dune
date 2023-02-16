@@ -68,8 +68,6 @@ val use_standard_c_and_cxx_flags : t -> bool option
 
 val dialects : t -> Dialect.DB.t
 
-val set_dialects : Dialect.DB.t -> t -> t
-
 val explicit_js_mode : t -> bool
 
 val format_config : t -> Format_config.t
@@ -155,7 +153,7 @@ val anonymous :
   -> t
 
 (** "dune-project" *)
-val filename : string
+val filename : Filename.t
 
 (** Default language version to use for projects that don't have a
     [dune-project] file. The default value is the latest version of the dune
@@ -181,6 +179,8 @@ val implicit_transitive_deps : t -> bool
 val dune_version : t -> Dune_lang.Syntax.Version.t
 
 val wrapped_executables : t -> bool
+
+val map_workspace_root : t -> bool
 
 val executables_implicit_empty_intf : t -> bool
 

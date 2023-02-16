@@ -75,22 +75,18 @@ let parse_deps_exn ~file lines =
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
   let dep = Obj_dir.Module.dep obj_dir in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
-  Action_builder.memoize
-    (Path.Build.to_string all_deps_file)
-    (Action_builder.map
-       ~f:(Staged.unstage @@ parse_compilation_units ~modules)
-       (Action_builder.lines_of (Path.build all_deps_file)))
+  Action_builder.lines_of (Path.build all_deps_file)
+  |> Action_builder.map ~f:(Staged.unstage @@ parse_compilation_units ~modules)
+  |> Action_builder.memoize (Path.Build.to_string all_deps_file)
 
 let read_immediate_deps_of_source ~obj_dir ~modules ~file ~ml_kind unit =
   let dep = Obj_dir.Module.dep obj_dir in
   let immediate_file = dep (Immediate (unit, ml_kind)) in
-  Action_builder.memoize
-    (Path.Build.to_string immediate_file)
-    (Action_builder.map
-       ~f:(fun lines ->
+  Action_builder.lines_of (Path.build immediate_file)
+  |> Action_builder.map ~f:(fun lines ->
          parse_deps_exn ~file lines
          |> parse_module_names ~dir:(Obj_dir.dir obj_dir) ~unit ~modules)
-       (Action_builder.lines_of (Path.build immediate_file)))
+  |> Action_builder.memoize (Path.Build.to_string immediate_file)
 
 let transitive_of_immediate_rule
     ({ sctx
@@ -105,30 +101,30 @@ let transitive_of_immediate_rule
   let dep = Obj_dir.Module.dep obj_dir in
   let immediate_file = dep (Immediate (unit, ml_kind)) in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
-  let build_paths dependencies =
-    let dependency_file_path m =
-      let ml_kind m =
-        match Module.kind m with
-        | Alias _ -> None
-        | _ ->
-          if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf else Some Impl
+  let produce_all_deps =
+    let transitive_deps modules =
+      let transitive_dep m =
+        let ml_kind m =
+          match Module.kind m with
+          | Alias _ -> None
+          | _ ->
+            if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf else Some Impl
+        in
+        ml_kind m
+        |> Option.map ~f:(fun ml_kind ->
+               Path.build (dep (Transitive (m, ml_kind))))
       in
-      ml_kind m
-      |> Option.map ~f:(fun ml_kind ->
-             Path.build (dep (Transitive (m, ml_kind))))
+      List.filter_map modules ~f:transitive_dep
     in
-    List.filter_map dependencies ~f:dependency_file_path
-  in
-  let action =
     let open Action_builder.O in
     let paths =
       let+ lines = Action_builder.lines_of (Path.build immediate_file) in
-      let modules =
+      let immediate_deps =
         parse_deps_exn ~file lines
         |> parse_module_names ~dir:md.dir ~unit ~modules
       in
-      ( build_paths modules
-      , List.map modules ~f:(fun m ->
+      ( transitive_deps immediate_deps
+      , List.map immediate_deps ~f:(fun m ->
             Module.obj_name m |> Module_name.Unique.to_string) )
     in
     Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
@@ -139,8 +135,8 @@ let transitive_of_immediate_rule
        in
        Action.Merge_files_into (sources, extras, all_deps_file))
   in
-  Super_context.add_rule sctx ~dir
-    (Action_builder.With_targets.map ~f:Action.Full.make action)
+  Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
+  |> Super_context.add_rule sctx ~dir
 
 module type S = sig
   val deps_of :

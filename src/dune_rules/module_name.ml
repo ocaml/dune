@@ -132,6 +132,8 @@ module Path = struct
 
   include T
 
+  let equal x y = compare x y |> Ordering.is_eq
+
   let uncapitalize s = to_string s |> String.uncapitalize
 
   module C = Comparable.Make (T)

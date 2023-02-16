@@ -6,7 +6,6 @@ module Config = struct
 
   type t =
     { concurrency : int
-    ; display : Display.t
     ; stats : Dune_stats.t option
     ; insignificant_changes : [ `Ignore | `React ]
     ; signal_watcher : [ `Yes | `No ]
@@ -88,7 +87,7 @@ end = struct
       Thread.create f x
 
   let () =
-    Fdecl.set Console.Backend.spawn_thread (fun f ->
+    Fdecl.set Console.Threaded.spawn_thread (fun f ->
         let (_ : Thread.t) = create ~signal_watcher:`Yes f () in
         ())
 
@@ -1183,7 +1182,21 @@ module Run = struct
     (* Technically, flushing can fail with some IO error and disrupt the build.
        But we don't care because the user enabled this manually with
        [--trace-file] *)
-    Option.iter stats ~f:Dune_stats.flush
+    Option.iter stats ~f:(fun stats ->
+        let event =
+          let fields =
+            let ts =
+              Chrome_trace.Event.Timestamp.of_float_seconds
+                (Unix.gettimeofday ())
+            in
+            Chrome_trace.Event.common_fields ~name:"watch mode iteration" ~ts ()
+          in
+          (* the instant event allows us to separate build commands from
+             different iterations of the watch mode in the event viewer *)
+          Chrome_trace.Event.instant ~scope:Global fields
+        in
+        Dune_stats.emit stats event;
+        Dune_stats.flush stats)
 
   let poll step =
     let* t = poll_init () in

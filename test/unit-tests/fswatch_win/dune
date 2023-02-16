@@ -1,0 +1,10 @@
+(executable
+ (name fswatch_win_tests)
+ (libraries fswatch_win stdune))
+
+(rule
+ (alias fswatch_win_tests)
+ (deps
+  (sandbox always))
+ (action
+  (run ./fswatch_win_tests.exe)))

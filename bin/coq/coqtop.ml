@@ -114,11 +114,11 @@ let term =
               , "DuneExtraction" )
           in
           let* (_ : unit * Dep.Fact.t Dep.Map.t) =
-            let deps =
+            let deps_of =
               Dune_rules.Coq_rules.deps_of ~dir ~use_stdlib ~wrapper_name
                 coq_module
             in
-            Action_builder.run deps Eager
+            Action_builder.(run deps_of) Eager
           in
           let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
             let* args =

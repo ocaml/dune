@@ -153,13 +153,6 @@ let eval_foreign_stubs foreign_stubs (ctypes : Ctypes_field.t option)
           multiple_sources_error ~name ~loc ~mode
             ~paths:Foreign.Source.[ path src1; path src2 ]))
 
-let check_no_qualified (loc, include_subdirs) =
-  if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
-    User_error.raise ~loc
-      [ Pp.text
-          "(include_subdirs qualified) is only meant for OCaml and Coq sources"
-      ]
-
 let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
     ~(lib_config : Lib_config.t) =
   let libs, foreign_libs, exes =
@@ -216,7 +209,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
           ]
         in
         User_message.Annots.singleton Compound_user_error.annot
-          (Compound_user_error.make ~main ~related)
+          [ Compound_user_error.make ~main ~related ]
       in
       User_error.raise ~loc ~annots
         [ Pp.textf "%s. See another definition at %s." main_message
@@ -258,7 +251,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
             [ User_message.make ~loc:loc1 [ Pp.text "Name already used here" ] ]
           in
           User_message.Annots.singleton Compound_user_error.annot
-            (Compound_user_error.make ~main ~related)
+            [ Compound_user_error.make ~main ~related ]
         in
         User_error.raise ~annots ~loc:loc2
           [ Pp.textf "%s; the name has already been taken in %s." main_message
@@ -268,9 +261,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version
   in
   { libraries; archives; executables }
 
-let make stanzas ~dune_version ~include_subdirs ~(lib_config : Lib_config.t)
-    ~dirs =
-  check_no_qualified include_subdirs;
+let make stanzas ~dune_version ~(lib_config : Lib_config.t) ~dirs =
   let init = String.Map.empty in
   let sources =
     List.fold_left dirs ~init ~f:(fun acc (dir, _local, files) ->

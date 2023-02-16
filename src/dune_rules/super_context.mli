@@ -84,6 +84,8 @@ val coq : t -> dir:Path.Build.t -> Env_node.Coq.t Action_builder.t Memo.t
 (** Formatting settings in the corresponding [(env)] stanza. *)
 val format_config : t -> dir:Path.Build.t -> Format_config.t Memo.t
 
+val bin_annot : t -> dir:Path.Build.t -> bool Memo.t
+
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Action_builder.t
 

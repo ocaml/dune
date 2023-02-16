@@ -161,6 +161,7 @@ end = struct
       ~profile:t.context.profile ~expander ~expander_for_artifacts
       ~default_context_flags ~default_env:t.context_env
       ~default_bin_artifacts:t.bin_artifacts ~default_cxx_link_flags
+      ~default_bin_annot:true
 
   (* Here we jump through some hoops to construct [t] as well as create a
      memoization table that has access to [t] and is used in [t.get_node].
@@ -345,6 +346,8 @@ let coq t ~dir = Env_tree.get_node t ~dir >>= Env_node.coq
 
 let format_config t ~dir = Env_tree.get_node t ~dir >>= Env_node.format_config
 
+let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
+
 let dump_env t ~dir =
   let ocaml_flags = Env_tree.get_node t ~dir >>= Env_node.ocaml_flags in
   let foreign_flags = Env_tree.get_node t ~dir >>| Env_node.foreign_flags in
@@ -494,7 +497,7 @@ let create ~(context : Context.t) ~host ~packages ~stanzas =
           Env_node.make ~dir ~scope ~inherit_from ~config_stanza ~profile
             ~expander ~expander_for_artifacts ~default_context_flags
             ~default_env:context_env ~default_bin_artifacts:artifacts.bin
-            ~default_cxx_link_flags
+            ~default_cxx_link_flags ~default_bin_annot:true
         in
         make ~config_stanza:context.env_nodes.context
           ~inherit_from:

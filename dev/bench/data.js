@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676509494023,
+  "lastUpdate": 1676523190298,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5306,6 +5306,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.37725012683333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec504c6f452681c7ce4e197def73c1d72e1a18a6",
+          "message": "Add support for eager watch mode for `dune exec` (#6966)\n\nThis is the second attempt at adding this feature. The problem with the\r\nfirst attempt was that replacing the call to `Scheduler.go` with\r\n`Scheduler.go_with_rpc_server_and_console_status_reporting` caused\r\noccasional non-deterministic seg faults on macos. There's some info\r\nabout the problem on the PR which reverts the previous attempt at adding\r\nthis feature: https://github.com/ocaml/dune/pull/6867. At the time of\r\nwriting we don't know the cause of this problem.\r\n\r\nThe difference this time around is that we maintain the call to\r\n`Scheduler.go` when running `dune exec` not in watch mode, and only\r\ninvoke `Scheduler.go_with_rpc_server_and_console_status_reporting` when\r\nrunning in watch mode. There is some additional refactoring done to make\r\nthis split more ergonomic. We may see seg faults on macos when running\r\nexec in watch mode but at least we won't introduce the potential for seg\r\nfaults into the existing use case of running exec not in watch mode\r\n(assuming of course that there is a causal link between\r\n`go_with_rpc_server_and_console_status_reporting` and the seg fault on\r\nmacos, which is not necessarily the case).\r\n\r\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-02-15T22:30:35-06:00",
+          "tree_id": "5dd85f8969653db48be51c4df44ed782b7fe8574",
+          "url": "https://github.com/ocaml/dune/commit/ec504c6f452681c7ce4e197def73c1d72e1a18a6"
+        },
+        "date": 1676523189131,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.296149648286665",
             "unit": "seconds"
           }
         ]

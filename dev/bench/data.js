@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676509267207,
+  "lastUpdate": 1676509494023,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5277,6 +5277,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.723080276813334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a23bfc40f5643bd9970e9c2a407e6cf802be7bc5",
+          "message": "refactor: simplify Top_closure (#7093)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-15T18:46:33-06:00",
+          "tree_id": "6e0718f2984226ffd89aed5438b3be59cb33261f",
+          "url": "https://github.com/ocaml/dune/commit/a23bfc40f5643bd9970e9c2a407e6cf802be7bc5"
+        },
+        "date": 1676509493122,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.37725012683333",
             "unit": "seconds"
           }
         ]

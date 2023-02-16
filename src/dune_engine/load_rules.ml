@@ -932,49 +932,6 @@ let get_rule_or_source path =
       let* loc = Current_rule_loc.get () in
       no_rule_found ~loc path)
 
-type target_type =
-  | File
-  | Directory
-
-module All_targets = struct
-  type t = target_type Path.Build.Map.t
-
-  include Monoid.Make (struct
-    type nonrec t = t
-
-    let empty = Path.Build.Map.empty
-
-    let combine = Path.Build.Map.union_exn
-  end)
-end
-
-module Source_tree_map_reduce =
-  Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
-
-let all_direct_targets dir =
-  let* root =
-    match dir with
-    | None -> Source_tree.root ()
-    | Some dir -> Source_tree.nearest_dir dir
-  and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-  Memo.parallel_map (Context_name.Map.values contexts) ~f:(fun ctx ->
-      Source_tree_map_reduce.map_reduce root ~traverse:Sub_dirs.Status.Set.all
-        ~f:(fun dir ->
-          load_dir
-            ~dir:
-              (Path.build
-                 (Path.Build.append_source ctx.build_dir
-                    (Source_tree.Dir.path dir)))
-          >>| function
-          | External _ | Source _ -> All_targets.empty
-          | Build { rules_here; _ } ->
-            All_targets.combine
-              (Path.Build.Map.map rules_here.by_file_targets ~f:(fun _ -> File))
-              (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
-                   Directory))
-          | Build_under_directory_target _ -> All_targets.empty))
-  >>| All_targets.reduce
-
 let get_alias_definition alias =
   lookup_alias alias >>= function
   | None ->
@@ -983,6 +940,10 @@ let get_alias_definition alias =
     User_error.raise ?loc
       [ Pp.text "No rule found for " ++ Alias.describe alias ]
   | Some x -> Memo.return x
+
+type target_type =
+  | File
+  | Directory
 
 type is_target =
   | No

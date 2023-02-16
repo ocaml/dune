@@ -1,5 +1,17 @@
 open! Stdune
 
+type target_type =
+  | File
+  | Directory
+
+(** List of all buildable direct targets. This does not include files and
+    directories produced under a directory target.
+
+    If argument is [None], load the root, otherwise only load targets from the
+    nearest subdirectory. *)
+val all_direct_targets :
+  Path.Source.t option -> target_type Path.Build.Map.t Memo.t
+
 val interpret_targets :
      Workspace_root.t
   -> Dune_config.t

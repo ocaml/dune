@@ -64,6 +64,7 @@ let init ~stats ~sandboxing_preference ~cache_config ~cache_debug_flags : unit =
     ~cache_config ~cache_debug_flags
     ~rule_generator:(module Gen_rules)
     ~implicit_default_alias ~execution_parameters
+    ~source_tree:(module Source_tree)
 
 let get () =
   let open Memo.O in

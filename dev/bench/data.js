@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676642664254,
+  "lastUpdate": 1676644799719,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5422,6 +5422,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.491347689499996",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c58486fa0c56e5f633413a08892bbb3df4412ac9",
+          "message": "fix: multiple virtual modules per lib (#7092)\n\nFix an incorrectly computed module closure for virtual libraries with\r\nmore than one module.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n<!-- ps-id: a700deba-e52f-4402-8430-8b21dfcfc2aa -->",
+          "timestamp": "2023-02-17T15:20:43+01:00",
+          "tree_id": "d471e5298f32b272e3a77ece1905ac41095e65b4",
+          "url": "https://github.com/ocaml/dune/commit/c58486fa0c56e5f633413a08892bbb3df4412ac9"
+        },
+        "date": 1676644798348,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.77588982742667",
             "unit": "seconds"
           }
         ]

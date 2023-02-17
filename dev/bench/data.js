@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676644799719,
+  "lastUpdate": 1676645855471,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5451,6 +5451,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.77588982742667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e4a1083ebae61c47283333010d3e475ddc2e6eac",
+          "message": "fix(melange): installed libraries path (#7072)\n\nPreserve .js paths of melange artifacts upto the source directory of the\r\nlibrary\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\r\n\r\n<!-- ps-id: 8f5ad532-672d-440d-9730-0a0fff09767f -->",
+          "timestamp": "2023-02-17T15:39:01+01:00",
+          "tree_id": "2c0334a1c7ab02e5a041da0945d30ab8096dc0ca",
+          "url": "https://github.com/ocaml/dune/commit/e4a1083ebae61c47283333010d3e475ddc2e6eac"
+        },
+        "date": 1676645853937,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "32.89944172942666",
             "unit": "seconds"
           }
         ]

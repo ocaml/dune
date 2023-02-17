@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676525203213,
+  "lastUpdate": 1676642664254,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5393,6 +5393,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.409556729200006",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e6a8490a4745bd6405056adecf2bb2639e230c77",
+          "message": "Fix typos in 3.7 changelog (#7099)\n\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-17T14:45:49+01:00",
+          "tree_id": "e6a7d0471666c8652d2bb04b39d950a697678f91",
+          "url": "https://github.com/ocaml/dune/commit/e6a8490a4745bd6405056adecf2bb2639e230c77"
+        },
+        "date": 1676642663605,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.491347689499996",
             "unit": "seconds"
           }
         ]

@@ -48,6 +48,3 @@ https://github.com/ocaml/dune/issues/7027
   > EOF
 
   $ dune exec ./foo.exe
-  File "_none_", line 1:
-  Error: Module `X' is unavailable (required by `Dune__exe__Foo')
-  [1]

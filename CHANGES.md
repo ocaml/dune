@@ -1,5 +1,5 @@
-Unreleased
-----------
+3.7.0 (2023-02-17)
+------------------
 
 - Allow running `$ dune exec` in watch mode (with the `-w` flag). In watch mode,
   `$ dune exec` the executed binary whenever it is recompiled. (#6966,

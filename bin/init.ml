@@ -38,9 +38,23 @@ let component_name_conv = Arg.conv (component_name_parser, atom_printer)
 
 let public_name_conv =
   let open Component.Options in
-  let parser = function
-    | "" -> Ok Use_name
-    | s -> component_name_parser s |> Result.map ~f:(fun a -> Public_name a)
+  let parser s =
+    let err_msg () =
+      User_error.make
+        [ Pp.textf "invalid public library name `%s'" s
+        ; Lib_name.Local.valid_format_doc
+        ]
+      |> User_message.to_string
+      |> fun m -> `Msg m
+    in
+    let open Result.O in
+    let* atom = atom_parser s in
+    let* _ =
+      match Lib_name.of_string_opt s with
+      | None -> Error (err_msg ())
+      | Some s -> Ok s
+    in
+    Ok (Public_name atom)
   in
   let printer ppf public_name =
     Format.pp_print_string ppf (public_name_to_string public_name)

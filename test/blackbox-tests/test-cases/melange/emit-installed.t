@@ -63,7 +63,7 @@ Test dependency on installed package
   Entering directory 'b'
           melc dist/node_modules/a/a.js
           melc dist/node_modules/a/foo.js
-          melc dist/node_modules/a/sub.js
+          melc dist/node_modules/a/sub/sub.js
           melc .dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
           melc dist/bar.js
   Leaving directory 'b'
@@ -75,6 +75,7 @@ Test dependency on installed package
   b/_build/default/dist/node_modules/a
   b/_build/default/dist/node_modules/a/a.js
   b/_build/default/dist/node_modules/a/foo.js
-  b/_build/default/dist/node_modules/a/sub.js
+  b/_build/default/dist/node_modules/a/sub
+  b/_build/default/dist/node_modules/a/sub/sub.js
   $ node b/_build/default/dist/bar.js
   foo

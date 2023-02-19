@@ -536,6 +536,7 @@ module External_lib_deps = struct
     module Lib_info = Lib_info
     module Scope = Scope
     module Dune_file = Dune_file
+    module Dune_load = Dune_load
   end
 
   module Kind = struct
@@ -743,16 +744,16 @@ module Preprocess = struct
     let open Memo.O in
     let context = Super_context.context super_context in
     let in_build_dir file =
-      file |> Path.to_string
-      |> Path.Build.relative context.build_dir
-      |> Path.build
+      file |> Path.to_string |> Path.Build.relative context.build_dir
     in
-    let file =
+    let file_in_build_dir =
       if String.is_empty file then
         User_error.raise [ Pp.textf "no file is given" ]
-      else Path.of_string file |> in_build_dir
+      else Path.of_string file |> in_build_dir |> Path.build
     in
-    let pp_file = file |> Path.map_extension ~f:(fun ext -> ".pp" ^ ext) in
+    let pp_file =
+      file_in_build_dir |> Path.map_extension ~f:(fun ext -> ".pp" ^ ext)
+    in
     Build_system.file_exists pp_file >>= function
     | true ->
       let* () = Build_system.build_file pp_file in
@@ -761,12 +762,41 @@ module Preprocess = struct
       in
       Ok (project, pp_file)
     | false -> (
-      Build_system.file_exists file >>= function
-      | true ->
-        let+ () = Build_system.build_file file in
-        Error file
+      Build_system.file_exists file_in_build_dir >>= function
+      | true -> (
+        let* dir =
+          Dune_engine.Source_tree.nearest_dir (Path.Source.of_string file)
+          >>| Dune_engine.Source_tree.Dir.path >>| Path.source
+        in
+        let* dune_file =
+          External_lib_deps.Dune_load.Dune_files.in_dir (dir |> in_build_dir)
+        in
+        let staged_pps =
+          Option.bind dune_file ~f:(fun dune_file ->
+              dune_file.stanzas
+              |> List.fold_left ~init:None ~f:(fun acc stanza ->
+                     match stanza with
+                     | Dune_rules.Dune_file.Library lib -> (
+                       let preprocess =
+                         Dune_rules.Preprocess.Per_module.(
+                           lib.buildable.preprocess |> single_preprocess)
+                       in
+                       match preprocess with
+                       | External_lib_deps.Preprocess.Pps
+                           ({ staged = true; _ } as pps) -> Some pps
+                       | _ -> acc)
+                     | _ -> acc))
+        in
+        match staged_pps with
+        | None ->
+          let+ () = Build_system.build_file file_in_build_dir in
+          Error file_in_build_dir
+        | Some { loc; _ } ->
+          User_error.raise ~loc
+            [ Pp.text "describe pp command doesn\'t work with staged_pps" ])
       | false ->
-        User_error.raise [ Pp.textf "%s does not exist" (Path.to_string file) ])
+        User_error.raise
+          [ Pp.textf "%s does not exist" (Path.to_string file_in_build_dir) ])
 
   let run super_context file =
     let open Memo.O in

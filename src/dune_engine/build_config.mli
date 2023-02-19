@@ -80,6 +80,7 @@ type t = private
   ; cache_config : Dune_cache.Config.t
   ; cache_debug_flags : Cache_debug_flags.t
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
+  ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
   }
 
 (** Initialise the build system. This must be called before running the build
@@ -100,6 +101,7 @@ val set :
   -> rule_generator:(module Rule_generator)
   -> implicit_default_alias:
        (Path.Build.t -> unit Action_builder.t option Memo.t)
+  -> execution_parameters:(dir:Path.Source.t -> Execution_parameters.t Memo.t)
   -> unit
 
 val get : unit -> t

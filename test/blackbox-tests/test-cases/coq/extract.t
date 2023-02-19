@@ -38,7 +38,6 @@
   $ ls _build/default
   Datatypes.ml
   Datatypes.mli
-  DuneExtraction.theory.d
   extract.glob
   extract.ml
   extract.mli

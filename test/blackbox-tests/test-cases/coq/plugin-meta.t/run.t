@@ -9,7 +9,7 @@ The META file for plugins is built before calling coqdep
   >  (plugins bar.foo))
   > EOF
 
-  $ dune build bar.theory.d
+  $ dune build .bar.theory.d
   $ ls _build/install/default/lib/bar
   META
 

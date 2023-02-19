@@ -97,7 +97,7 @@ shared buffer):
   $ rm -f gen_lifecycle.bc gen_lifecycle.exe && dune clean && dune build && ./gen_lifecycle.exe >/dev/null
   $ cp _build/default/gen_lifecycle.exe gen_lifecycle.old
 
-  $ dune install -j16 --prefix=./_install 2>/dev/null
+  $ dune install -j16 --prefix=./_install
   $ ./compare.sh _build/default/gen1.exe _install/bin/gen1
   100
 

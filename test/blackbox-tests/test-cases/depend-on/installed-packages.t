@@ -19,7 +19,7 @@
   Entering directory 'a'
   Leaving directory 'a'
 
-  $ dune install --root a --prefix $PWD/prefix
+  $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
   Installing $TESTCASE_ROOT/prefix/share/a/CATME
@@ -51,7 +51,7 @@
   Entering directory 'a'
   Leaving directory 'a'
 
-  $ dune install --root a --prefix $PWD/prefix
+  $ dune install --root a --prefix $PWD/prefix --display short
   Deleting $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Deleting $TESTCASE_ROOT/prefix/lib/a/dune-package

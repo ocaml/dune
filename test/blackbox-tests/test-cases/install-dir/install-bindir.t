@@ -13,7 +13,7 @@
   > EOF
   $ dune build @install
   $ mkdir install bindir sbindir
-  $ dune install --dry-run --prefix ./install --bindir $PWD/bindir --sbindir $PWD/sbindir 2>&1 | grep bindir
+  $ dune install --dry-run --prefix ./install --bindir $PWD/bindir --sbindir $PWD/sbindir --display short 2>&1 | grep bindir
   Removing (if it exists) $TESTCASE_ROOT/bindir/user
   Installing $TESTCASE_ROOT/bindir/user
   Creating directory $TESTCASE_ROOT/bindir

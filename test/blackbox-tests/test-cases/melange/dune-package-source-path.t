@@ -22,7 +22,7 @@ form `foo.bar.baz`
   Entering directory 'a'
   Leaving directory 'a'
 
-  $ dune install --root a --prefix $PWD/prefix
+  $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.ml
@@ -55,7 +55,7 @@ form `foo.bar.baz`
   > let x = Js.log A.Foo.x
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @dist --display=short
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @dist --display short
   Entering directory 'app'
           melc dist/node_modules/a.sub/a.js
           melc dist/node_modules/a.sub/foo.js

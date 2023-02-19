@@ -23,7 +23,7 @@ Reproduce github #7020
   Entering directory '_to-install'
   Leaving directory '_to-install'
   $ cd $dir
-  $ dune install --root . --prefix _install
+  $ dune install --root . --prefix _install --display short
   Installing _install/lib/dummyfoo/META
   Installing _install/lib/dummyfoo/dummyfoo.ml
   Installing _install/lib/dummyfoo/dune-package

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676787851032,
+  "lastUpdate": 1676788798981,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5538,6 +5538,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.270896756073334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "20a1f1023b04284ad12b0a83fdf57a6ae4faa354",
+          "message": "chore: bump Dune version to 3.8 (#7051)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-02-19T00:13:37-06:00",
+          "tree_id": "564c54b333446d028cda29053164d5029a0c2c1b",
+          "url": "https://github.com/ocaml/dune/commit/20a1f1023b04284ad12b0a83fdf57a6ae4faa354"
+        },
+        "date": 1676788797633,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.454153597006666",
             "unit": "seconds"
           }
         ]

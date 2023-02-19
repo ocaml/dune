@@ -92,7 +92,7 @@ file:
 
 .. code:: scheme
 
-  (lang dune 3.7)
+  (lang dune 3.8)
   (using ctypes 0.1)
 
 

@@ -269,7 +269,7 @@ let boot_type ~dir ~use_stdlib ~wrapper_name coq_module =
   else `Bootstrap_prelude
 
 let dep_theory_file ~dir ~wrapper_name =
-  Path.Build.relative dir wrapper_name
+  Path.Build.relative dir ("." ^ wrapper_name)
   |> Path.Build.set_extension ~ext:".theory.d"
 
 let setup_coqdep_for_theory_rule ~sctx ~dir ~loc ~theories_deps ~wrapper_name

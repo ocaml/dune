@@ -20,7 +20,6 @@ Next we build the doc for the second theory
   $ dune build @B/doc
 Check that the first theory doc is not built
   $ ls _build/default/A/
-  A.theory.d
   AA
   AB
 Check that the second theory doc is built
@@ -53,7 +52,6 @@ Next we build the doc for the second theory
   $ dune build @B/doc-latex
 Check that the first theory doc is not built
   $ ls _build/default/A
-  A.theory.d
   AA
   AB
 Check that the second theory doc is built

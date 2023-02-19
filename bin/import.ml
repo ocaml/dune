@@ -1,5 +1,6 @@
 open Stdune
 include Dune_config_file
+include Dune_vcs
 
 include struct
   open Dune_engine

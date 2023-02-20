@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676861501161,
+  "lastUpdate": 1676863670537,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5625,6 +5625,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.92864760807333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5994e2be7e2048fc65ea0101d9b89709fff775f",
+          "message": "refactor: move OCaml modules to Dialect (#7118)\n\nThey shouldn't be visible to the entire engine\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-19T21:08:51-06:00",
+          "tree_id": "0379d0f33ec51902a46a9b0dd26518cff8dd6a04",
+          "url": "https://github.com/ocaml/dune/commit/c5994e2be7e2048fc65ea0101d9b89709fff775f"
+        },
+        "date": 1676863669453,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.890543331180005",
             "unit": "seconds"
           }
         ]

@@ -1,3 +1,9 @@
+Unreleased
+----------
+
+- Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
+  fixes #7077, @emillon).
+
 3.7.0 (2023-02-17)
 ------------------
 

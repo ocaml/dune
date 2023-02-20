@@ -3,6 +3,7 @@ Unreleased
 
 - Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
   fixes #7077, @emillon).
+- Make coq_db creation in scope lazy (@ejgallego, #7133)
 
 - Invoke preprocessor commands from directory of dune file containing the
   commands rather than from the workspace root (#7057, fixes #7043, @gridbugs)

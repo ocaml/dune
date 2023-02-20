@@ -3,6 +3,7 @@ Unreleased
 
 - Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
   fixes #7077, @emillon).
+- Make coq_db creation in scope lazy (@ejgallego, #7133)
 
 - Non-user proccesses such as version control or config checking are now run
   silently. (#6994, fixes #4066, @Alizter)

@@ -4,7 +4,7 @@ open Memo.O
 type t =
   { project : Dune_project.t
   ; db : Lib.DB.t
-  ; coq_db : Coq_lib.DB.t
+  ; coq_db : Coq_lib.DB.t Lazy.t
   ; root : Path.Build.t
   }
 
@@ -14,7 +14,7 @@ let project t = t.project
 
 let libs t = t.db
 
-let coq_libs t = t.coq_db
+let coq_libs t = Lazy.force t.coq_db
 
 module DB = struct
   type scope = t
@@ -155,11 +155,13 @@ module DB = struct
     | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
   let public_theories ~find_db coq_stanzas =
-    List.filter_map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
-        if Option.is_some stanza.package then
-          Some (stanza, Coq_lib.DB.Theory dir)
-        else None)
-    |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db ~parent:None
+    lazy
+      (List.filter_map coq_stanzas
+         ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
+           if Option.is_some stanza.package then
+             Some (stanza, Coq_lib.DB.Theory dir)
+           else None)
+      |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db ~parent:None)
 
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
@@ -265,14 +267,16 @@ module DB = struct
                 let entry =
                   match stanza.package with
                   | None -> Coq_lib.DB.Theory dir
-                  | Some _ -> Redirect public_theories
+                  | Some _ -> Redirect (Lazy.force public_theories)
                 in
                 (stanza, entry))
           in
           Some entries)
       |> Path.Source.Map.map ~f:(fun stanzas ->
-             Coq_lib.DB.create_from_coqlib_stanzas
-               ~parent:(Some public_theories) ~find_db stanzas)
+             lazy
+               (Coq_lib.DB.create_from_coqlib_stanzas
+                  ~parent:(Some (Lazy.force public_theories))
+                  ~find_db stanzas))
     in
     Path.Source.Map.merge db_by_project_dir coq_db_by_project_dir
       ~f:(fun _dir project_and_db coq_db ->

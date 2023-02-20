@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676819707097,
+  "lastUpdate": 1676861501161,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5596,6 +5596,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "39.62903697279333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesús Gallego Arias",
+            "username": "ejgallego"
+          },
+          "distinct": true,
+          "id": "f8a648c7f5a2e89bb56f0808fd5c4ed6e5f0feb7",
+          "message": "coq: hide .theory.d files with dot prefix\n\n<!-- ps-id: fe701320-95ab-49e5-ad1c-64cd876d1a39 -->\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-02-20T03:30:59+01:00",
+          "tree_id": "a61c96c9c2812351f71cfb552c58f0be4ae4cf5d",
+          "url": "https://github.com/ocaml/dune/commit/f8a648c7f5a2e89bb56f0808fd5c4ed6e5f0feb7"
+        },
+        "date": 1676861499809,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.92864760807333",
             "unit": "seconds"
           }
         ]

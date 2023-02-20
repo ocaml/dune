@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676863724503,
+  "lastUpdate": 1676908838856,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5683,6 +5683,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.72842637937333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f30803b7fcb902eb313eef6e2ccdd5e62da61e50",
+          "message": "fix(mdx): record runtime dependency to prelude (#7109)\n\nWhen mdx is used in program-generation mode (version >= 0.2), the paths\r\nused as preludes are recorded in the executable, but the contents of\r\nfiles are only read when the program is executed. This adds the missing\r\ndependencies.\r\n\r\nFixes #7077\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-20T16:38:46+01:00",
+          "tree_id": "34ef4cde87acb3a644160cca4b964195ca48a84a",
+          "url": "https://github.com/ocaml/dune/commit/f30803b7fcb902eb313eef6e2ccdd5e62da61e50"
+        },
+        "date": 1676908837637,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.37613453791334",
             "unit": "seconds"
           }
         ]

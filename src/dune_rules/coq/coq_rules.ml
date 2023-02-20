@@ -669,6 +669,11 @@ let install_rules ~sctx ~dir s =
     let loc = s.buildable.loc in
     let* mode = select_native_mode ~sctx ~dir buildable in
     let* scope = Scope.DB.find_by_dir dir in
+    (* We force the coq scope for this DB as to fail early in case of
+       some library conflicts that would also generate conflicting
+       install rules. This is needed as now install rules less lazy
+       than the theory rules. *)
+    let _ = Scope.coq_libs scope in
     let* dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)

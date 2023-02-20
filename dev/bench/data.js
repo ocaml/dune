@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676863670537,
+  "lastUpdate": 1676863724503,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5654,6 +5654,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.890543331180005",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e34fa414986b9a08d6a13e8ae8604e718db5b644",
+          "message": "refactor(engine): remove unneeded deps (#7117)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-19T21:09:47-06:00",
+          "tree_id": "766c5b5e671d7211a19c3d3c86f8fb85c3bd133e",
+          "url": "https://github.com/ocaml/dune/commit/e34fa414986b9a08d6a13e8ae8604e718db5b644"
+        },
+        "date": 1676863723816,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.72842637937333",
             "unit": "seconds"
           }
         ]

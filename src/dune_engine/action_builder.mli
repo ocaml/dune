@@ -112,9 +112,9 @@ val dep_on_alias_if_exists : Alias.t -> bool t
 val dep_on_alias_rec :
   Alias.Name.t -> Context_name.t -> Source_tree.Dir.t -> bool t
 
-(** Compute the set of source of all files present in the sub-tree starting at
-    [dir] and record them as dependencies. *)
-val source_tree : dir:Path.t -> Path.Set.t t
+(** [dyn_memo_deps m] adds the dependencies computed by [m] while returning the
+    extra value. *)
+val dyn_memo_deps : (Dep.Set.t * 'a) Memo.t -> 'a t
 
 (** Record dynamic dependencies *)
 val dyn_paths : ('a * Path.t list) t -> 'a t

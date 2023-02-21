@@ -79,8 +79,9 @@ let test_rule ~sctx ~expander ~dir (spec : effective)
           match test with
           | File _ -> Action_builder.return Path.Set.empty
           | Dir { dir; file = _ } ->
-            let dir = Path.build (Path.Build.append_source prefix_with dir) in
-            Action_builder.source_tree ~dir
+            Path.Build.append_source prefix_with dir
+            |> Path.build |> Dep.Set.source_tree_with_file_set
+            |> Action_builder.dyn_memo_deps
         in
         Action.Full.make action ~locks ~sandbox:spec.sandbox
       in

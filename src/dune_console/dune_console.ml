@@ -7,7 +7,7 @@ module Backend = struct
 
   let dumb = (module Dumb : Backend_intf.S)
 
-  let progress = Progress.no_flush
+  let progress = Progress.flush
 
   let compose = Combinators.compose
 

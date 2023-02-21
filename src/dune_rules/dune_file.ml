@@ -503,6 +503,22 @@ module Mode_conf = struct
                 (* this doesn't happen as inherited can't be manually specified *)
                 assert false))
 
+      let decode_osl ~stanza_loc project =
+        let+ modes = Ordered_set_lang.decode in
+        let modes =
+          Ordered_set_lang.eval modes
+            ~parse:(fun ~loc s ->
+              let mode =
+                Dune_lang.Decoder.parse decode
+                  (Dune_project.parsing_context project)
+                  (Atom (loc, Dune_lang.Atom.of_string s))
+              in
+              (mode, Kind.Requested loc))
+            ~eq:(fun (a, _) (b, _) -> equal a b)
+            ~standard:[ (Ocaml Best, Kind.Requested stanza_loc) ]
+        in
+        of_list modes
+
       let decode =
         let decode =
           let+ loc, t = located decode in
@@ -558,45 +574,27 @@ module Library = struct
   end
 
   module Modes = struct
-    let osl_mode_field ~stanza_loc project =
-      let+ modes = Ordered_set_lang.decode in
-      let modes =
-        Ordered_set_lang.eval modes
-          ~parse:(fun ~loc s ->
-            let mode =
-              Dune_lang.Decoder.parse Mode_conf.Lib.decode
-                (Dune_project.parsing_context project)
-                (Atom (loc, Dune_lang.Atom.of_string s))
-            in
-            (mode, Mode_conf.Kind.Requested loc))
-          ~eq:(fun (a, _) (b, _) -> Mode_conf.Lib.equal a b)
-          ~standard:[ (Ocaml Best, Mode_conf.Kind.Requested stanza_loc) ]
-      in
-      Mode_conf.Lib.Set.of_list modes
-
-    let field ~stanza_loc ~dune_version project =
+    let parser ~stanza_loc ~dune_version project =
       let expected_version = (3, 8) in
-      field "modes"
-        ~default:(Mode_conf.Lib.Set.default stanza_loc)
-        (if dune_version >= expected_version then
-         osl_mode_field ~stanza_loc project
-        else
-          (* Old behavior: if old parser succeeds, return that. Otherwise, if
-             parsing the ordered set language succeeds, ask the user to upgrade to
-             a supported version. Otherwise, fail with the first error. *)
-          try_
-            (Mode_conf.Lib.Set.decode >>| fun modes -> `Modes modes)
-            (fun exn ->
-              try_
-                ( osl_mode_field ~stanza_loc project >>| fun modes ->
-                  if dune_version >= expected_version then `Modes modes
-                  else `Upgrade )
-                (fun _ -> raise exn))
-          >>| function
-          | `Modes modes -> modes
-          | `Upgrade ->
-            Syntax.Error.since stanza_loc Stanza.syntax expected_version
-              ~what:"Ordered set language for modes")
+      if dune_version >= expected_version then
+        Mode_conf.Lib.Set.decode_osl ~stanza_loc project
+      else
+        (* Old behavior: if old parser succeeds, return that. Otherwise, if
+           parsing the ordered set language succeeds, ask the user to upgrade to
+           a supported version. Otherwise, fail with the first error. *)
+        try_
+          (Mode_conf.Lib.Set.decode >>| fun modes -> `Modes modes)
+          (fun exn ->
+            try_
+              ( Mode_conf.Lib.Set.decode_osl ~stanza_loc project >>| fun modes ->
+                if dune_version >= expected_version then `Modes modes
+                else `Upgrade )
+              (fun _ -> raise exn))
+        >>| function
+        | `Modes modes -> modes
+        | `Upgrade ->
+          Syntax.Error.since stanza_loc Stanza.syntax expected_version
+            ~what:"Ordered set language for modes"
   end
 
   type visibility =
@@ -653,7 +651,10 @@ module Library = struct
          Ordered_set_lang.Unexpanded.field "c_library_flags"
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
-       and+ modes = Modes.field ~stanza_loc ~dune_version project
+       and+ modes =
+         field "modes"
+           (Modes.parser ~stanza_loc ~dune_version project)
+           ~default:(Mode_conf.Lib.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ optional = field_b "optional"
        and+ no_dynlink = field_b "no_dynlink"

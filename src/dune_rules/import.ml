@@ -42,7 +42,6 @@ include struct
   module Utils = Utils
   module Sub_dirs = Sub_dirs
   module Subst_config = Subst_config
-  module Clflags = Clflags
   module Load_rules = Load_rules
   module Subdir_set = Subdir_set
   module Include_stanza = Include_stanza

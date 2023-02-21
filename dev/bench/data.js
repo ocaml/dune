@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676948928327,
+  "lastUpdate": 1676950060050,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5915,6 +5915,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.645030828033335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesus Gallego Arias",
+            "username": "ejgallego"
+          },
+          "committer": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesús Gallego Arias",
+            "username": "ejgallego"
+          },
+          "distinct": true,
+          "id": "43ef3dcd55cf0497b9f4b2c916bc5c27aba6c609",
+          "message": "[coq] Refactor Coq_lib creation\n\nThere's some strange stuff going on here with boot, which we want to\nhandle better; so we do some cleanup and logical splitting of components.\n\nSigned-off-by: Emilio Jesus Gallego Arias <e+git@x80.org>",
+          "timestamp": "2023-02-21T04:08:27+01:00",
+          "tree_id": "ecbc7eda9fe51f8459faa3623c0d686b21027861",
+          "url": "https://github.com/ocaml/dune/commit/43ef3dcd55cf0497b9f4b2c916bc5c27aba6c609"
+        },
+        "date": 1676950059347,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.73901771858666",
             "unit": "seconds"
           }
         ]

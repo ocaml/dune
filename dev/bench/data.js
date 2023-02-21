@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676948201565,
+  "lastUpdate": 1676948483689,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5857,6 +5857,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.486056002119994",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6e36414758d24c600fefc627e389426a399004a",
+          "message": "refactor: move rule printing (#7101\n\nRule printing is only needed for a single sub command (dune rules).\r\nTherefore, traversing the rules can done directly in the cli instead of\r\nthe engine.\r\n\r\nThis removes a source tree traversal from the engine and reduces the\r\ndependency between the engine and the source tree.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-20T18:39:04-08:00",
+          "tree_id": "1ff2269eac56f16678c344cd686d0672639a9335",
+          "url": "https://github.com/ocaml/dune/commit/a6e36414758d24c600fefc627e389426a399004a"
+        },
+        "date": 1676948482259,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.67768286754",
             "unit": "seconds"
           }
         ]

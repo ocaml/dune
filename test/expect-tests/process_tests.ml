@@ -18,9 +18,7 @@ let true_ =
 
 let%expect_test "null input" =
   let stdin_from = Process.(Io.null In) in
-  let run () =
-    Process.run ~display:!Clflags.display ~stdin_from Strict true_ []
-  in
+  let run () = Process.run ~display:Quiet ~stdin_from Strict true_ [] in
   let _res = go run in
   [%expect {||}]
 
@@ -28,7 +26,7 @@ let%expect_test "null output" =
   let stdout_to = Process.(Io.null Out) in
   let stderr_to = Process.(Io.null Out) in
   let run () =
-    Process.run ~display:!Clflags.display ~stdout_to ~stderr_to Strict true_ []
+    Process.run ~display:Quiet ~stdout_to ~stderr_to Strict true_ []
   in
   let _res = go run in
   [%expect {||}]

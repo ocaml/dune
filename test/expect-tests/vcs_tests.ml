@@ -36,7 +36,7 @@ let run (vcs : Vcs.t) args =
   printf "$ %s\n"
     (List.map (prog_str :: args) ~f:String.quote_for_shell
     |> String.concat ~sep:" ");
-  Process.run Strict (Lazy.force prog) real_args ~display:!Clflags.display
+  Process.run Strict (Lazy.force prog) real_args ~display:Quiet
     ~env:
       ((* One of the reasons to set GIT_DIR is to override any GIT_DIR set by
           the environment, which helps for example during [git rebase

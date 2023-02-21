@@ -12,7 +12,7 @@ from the project root:
   foo (from the rewrite.sh script in the project root directory)
 
 Change the versiono of the dune language to 3.8:
-  $ sed -i.bak 's/(lang dune 3.7)/(lang dune 3.8)/' dune-project
+  $ sed -i.bak 's/(lang dune 3.7)/(lang dune 3.8)/' $(readlink dune-project)
 
 Now the preprocessor should be invoked from the src directory because the dune
 file which specifies the preprocessor is located there:

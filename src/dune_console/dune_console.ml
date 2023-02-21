@@ -1,94 +1,15 @@
 open Stdune
 
+module type Backend = Backend_intf.S
+
 module Backend = struct
   type t = Backend_intf.t
 
-  module Dumb_no_flush : Backend_intf.S = struct
-    let start () = ()
-
-    let finish () = ()
-
-    let print_user_message msg =
-      Option.iter msg.User_message.loc ~f:(fun loc ->
-          Loc.render Format.err_formatter (Loc.pp loc));
-      User_message.prerr { msg with loc = None }
-
-    let set_status_line _ = ()
-
-    let print_if_no_status_line msg =
-      (* [Pp.cut] seems to be enough to force the terminating newline to
-         appear. *)
-      Ansi_color.prerr
-        (Pp.seq (Pp.map_tags msg ~f:User_message.Print_config.default) Pp.cut)
-
-    let reset () = prerr_string "\x1b[H\x1b[2J"
-
-    let reset_flush_history () = prerr_string "\x1b[1;1H\x1b[2J\x1b[3J"
-  end
-
-  module Dumb : Backend_intf.S = struct
-    include Dumb_no_flush
-
-    let print_if_no_status_line msg =
-      print_if_no_status_line msg;
-      flush stderr
-
-    let print_user_message msg =
-      print_user_message msg;
-      flush stderr
-
-    let reset () =
-      reset ();
-      flush stderr
-
-    let reset_flush_history () =
-      reset_flush_history ();
-      flush stderr
-  end
-
-  module Progress_no_flush : Backend_intf.S = struct
-    let status_line = ref Pp.nop
-
-    let start () = ()
-
-    let status_line_len = ref 0
-
-    let hide_status_line () =
-      if !status_line_len > 0 then Printf.eprintf "\r%*s\r" !status_line_len ""
-
-    let show_status_line () =
-      if !status_line_len > 0 then Ansi_color.prerr !status_line
-
-    let set_status_line = function
-      | None ->
-        hide_status_line ();
-        status_line := Pp.nop;
-        status_line_len := 0
-      | Some line ->
-        let line = Pp.map_tags line ~f:User_message.Print_config.default in
-        let line_len = String.length (Format.asprintf "%a" Pp.to_fmt line) in
-        hide_status_line ();
-        status_line := line;
-        status_line_len := line_len;
-        show_status_line ()
-
-    let print_if_no_status_line _msg = ()
-
-    let print_user_message msg =
-      hide_status_line ();
-      Dumb_no_flush.print_user_message msg;
-      show_status_line ()
-
-    let reset () = Dumb.reset ()
-
-    let finish () = set_status_line None
-
-    let reset_flush_history () = Dumb.reset_flush_history ()
-  end
-
   let dumb = (module Dumb : Backend_intf.S)
 
-  let progress = (module Progress_no_flush : Backend_intf.S)
+  let progress = Progress.no_flush
+
+  let compose = Combinators.compose
 
   let main = ref dumb
 
@@ -98,64 +19,9 @@ module Backend = struct
     main := (module T);
     T.start ()
 
-  let compose (module A : Backend_intf.S) (module B : Backend_intf.S) :
-      (module Backend_intf.S) =
-    (module struct
-      let start () =
-        A.start ();
-        B.start ()
+  let flush t = Combinators.flush t
 
-      let print_user_message msg =
-        A.print_user_message msg;
-        B.print_user_message msg
-
-      let set_status_line x =
-        A.set_status_line x;
-        B.set_status_line x
-
-      let finish () =
-        A.finish ();
-        B.finish ()
-
-      let print_if_no_status_line msg =
-        A.print_if_no_status_line msg;
-        B.print_if_no_status_line msg
-
-      let reset () =
-        A.reset ();
-        B.reset ()
-
-      let reset_flush_history () =
-        A.reset_flush_history ();
-        B.reset_flush_history ()
-    end : Backend_intf.S)
-
-  module Progress_no_flush_threaded : Threaded_intf.S = struct
-    include Progress_no_flush
-
-    let render (state : Threaded_intf.state) =
-      while not (Queue.is_empty state.messages) do
-        print_user_message (Queue.pop_exn state.messages)
-      done;
-      set_status_line state.status_line;
-      flush stderr
-
-    (* The current console doesn't react to user events so we just sleep until
-       the next loop iteration. Because it doesn't react to user input, it cannot
-       modify the UI state, and as a consequence doesn't need the mutex. *)
-    let handle_user_events ~now ~time_budget _ =
-      Unix.sleepf time_budget;
-      now +. time_budget
-  end
-
-  let progress_threaded =
-    let t = lazy (Threaded.make (module Progress_no_flush_threaded)) in
-    fun () -> Lazy.force t
-end
-
-module Threaded = struct
-  include Threaded_intf
-  include Threaded
+  let progress_no_flush = Progress.no_flush
 end
 
 let print_user_message msg =

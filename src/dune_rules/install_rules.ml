@@ -382,40 +382,37 @@ end = struct
       Package.Name.Map_traversals.parallel_map packages
         ~f:(fun _name (pkg : Package.t) ->
           let init =
+            let file section local_file dst =
+              Install.Entry.make section local_file ~kind:`File ~dst
+              |> Install.Entry.Sourced.create
+            in
             let deprecated_meta_and_dune_files =
-              List.concat_map
-                (Package.Name.Map.to_list pkg.deprecated_package_names)
-                ~f:(fun (name, _) ->
-                  let meta_file =
-                    Package_paths.deprecated_meta_file ctx pkg name
-                  in
-                  let dune_package_file =
-                    Package_paths.deprecated_dune_package_file ctx pkg name
-                  in
-                  [ Install.Entry.Sourced.create
-                      (Install.Entry.make Lib_root meta_file ~kind:`File
-                         ~dst:
-                           (Package.Name.to_string name ^ "/" ^ Findlib.meta_fn))
-                  ; Install.Entry.Sourced.create
-                      (Install.Entry.make Lib_root dune_package_file ~kind:`File
-                         ~dst:
-                           (Package.Name.to_string name ^ "/" ^ Dune_package.fn))
-                  ])
+              Package.Name.Map.to_list pkg.deprecated_package_names
+              |> List.concat_map ~f:(fun (name, _) ->
+                     let meta_file =
+                       Package_paths.deprecated_meta_file ctx pkg name
+                     in
+                     let dune_package_file =
+                       Package_paths.deprecated_dune_package_file ctx pkg name
+                     in
+                     let file local_file install_fn =
+                       file Lib_root local_file
+                         (Package.Name.to_string name ^ "/" ^ install_fn)
+                     in
+                     [ file meta_file Findlib.meta_fn
+                     ; file dune_package_file Dune_package.fn
+                     ])
             in
             let meta_file = Package_paths.meta_file ctx pkg in
             let dune_package_file = Package_paths.dune_package_file ctx pkg in
-            Install.Entry.Sourced.create
-              (Install.Entry.make Lib meta_file ~kind:`File ~dst:Findlib.meta_fn)
-            :: Install.Entry.Sourced.create
-                 (Install.Entry.make Lib dune_package_file ~kind:`File
-                    ~dst:Dune_package.fn)
+            file Lib meta_file Findlib.meta_fn
+            :: file Lib dune_package_file Dune_package.fn
             ::
-            (if not pkg.has_opam_file then deprecated_meta_and_dune_files
-            else
+            (match pkg.has_opam_file with
+            | false -> deprecated_meta_and_dune_files
+            | true ->
               let opam_file = Package_paths.opam_file ctx pkg in
-              Install.Entry.Sourced.create
-                (Install.Entry.make Lib opam_file ~kind:`File ~dst:"opam")
-              :: deprecated_meta_and_dune_files)
+              file Lib opam_file "opam" :: deprecated_meta_and_dune_files)
           in
           let pkg_dir = Package.dir pkg in
           Source_tree.find_dir pkg_dir >>| function

@@ -50,6 +50,20 @@ module type Rule_generator = sig
     -> gen_rules_result Memo.t
 end
 
+module type Source_tree = sig
+  val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
+
+  module Dir : sig
+    type t
+
+    val sub_dir_names : t -> String.Set.t
+
+    val file_paths : t -> Path.Source.Set.t
+  end
+
+  val find_dir : Path.Source.t -> Dir.t option Memo.t
+end
+
 type t =
   { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
   ; rule_generator : (module Rule_generator)
@@ -66,13 +80,14 @@ type t =
   ; cache_debug_flags : Cache_debug_flags.t
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
+  ; source_tree : (module Source_tree)
   }
 
 let t = Fdecl.create Dyn.opaque
 
 let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ~sandboxing_preference ~rule_generator ~implicit_default_alias
-    ~execution_parameters =
+    ~execution_parameters ~source_tree =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
         let open Memo.O in
@@ -96,6 +111,7 @@ let set ~stats ~contexts ~promote_source ~cache_config ~cache_debug_flags
     ; cache_debug_flags
     ; implicit_default_alias
     ; execution_parameters
+    ; source_tree
     }
 
 let get () = Fdecl.get t

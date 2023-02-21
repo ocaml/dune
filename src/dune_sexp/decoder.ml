@@ -230,7 +230,7 @@ let result : type a k. k context -> a * k -> a =
         User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "This value is unused" ]
       | Some s ->
         User_error.raise ~loc:(Ast.loc sexp)
-          [ Pp.textf "Too many argument for %s" s ]))
+          [ Pp.textf "Too many arguments for %s" s ]))
   | Fields _ -> (
     match Name.Map.choose state.unparsed with
     | None -> v

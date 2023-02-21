@@ -38,7 +38,7 @@ We now update the dune file to use multiple aliases
   File "dune", line 2, characters 10-11:
   2 |  (alias a b)
                 ^
-  Error: Too many argument for alias
+  Error: Too many arguments for alias
   [1]
 
 That doesn't work so we use the aliases field

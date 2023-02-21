@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676945064804,
+  "lastUpdate": 1676945373714,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5799,6 +5799,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.89702668886667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d552d3064644da62347d4afc8db88ab27452fa5",
+          "message": "refactor(console): split Dune_console.Backend (#7000\n\nMove the dumb and progress backends to their own files.\r\n\r\nMove flushing/composition to a [Combinators] module\r\n\r\nFinally, [Console.Backend.progress] is now flushing. Previously, it\r\nwouldn't flush and was therefore buggy. This didn't affect dune, as we\r\nonly used [progress_threaded].\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-20T17:49:45-08:00",
+          "tree_id": "33096efed9fa269e301165ab5ce9d3642ed303f1",
+          "url": "https://github.com/ocaml/dune/commit/8d552d3064644da62347d4afc8db88ab27452fa5"
+        },
+        "date": 1676945372573,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.45189395579334",
             "unit": "seconds"
           }
         ]

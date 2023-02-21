@@ -152,6 +152,9 @@ Unreleased
 
 - Add native support for polling mode on Windows (#7010, @yams-yams, @nojb)
 
+- Add `(bin_annot <bool>)` to `(env ...)` to specify whether to generate
+  `*.cmt*` files. (#7102, @nojb)
+
 3.6.2 (2022-12-21)
 ------------------
 

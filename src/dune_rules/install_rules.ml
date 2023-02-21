@@ -161,7 +161,7 @@ end = struct
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
       Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
-    let module_files =
+    let* module_files =
       let inside_subdir f =
         match lib_subdir with
         | None -> f
@@ -202,18 +202,21 @@ end = struct
         let set_dir m =
           List.map ~f:(fun (cm_kind, p) -> (cm_dir m cm_kind, p))
         in
-        let modules_impl =
+        let+ modules_impl =
+          let+ bin_annot = Super_context.bin_annot sctx ~dir in
           List.concat_map installable_modules.impl ~f:(fun m ->
               let cmt_files =
-                List.concat_map Ml_kind.all ~f:(fun ml_kind ->
-                    let open Lib_mode.Cm_kind in
-                    List.concat_map
-                      [ (native || byte, Ocaml Cmi); (melange, Melange Cmi) ]
-                      ~f:(fun (condition, kind) ->
-                        if_ condition
-                          ( kind
-                          , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
-                              ~cm_kind:kind )))
+                if bin_annot then
+                  List.concat_map Ml_kind.all ~f:(fun ml_kind ->
+                      let open Lib_mode.Cm_kind in
+                      List.concat_map
+                        [ (native || byte, Ocaml Cmi); (melange, Melange Cmi) ]
+                        ~f:(fun (condition, kind) ->
+                          if_ condition
+                            ( kind
+                            , Obj_dir.Module.cmt_file obj_dir m ~ml_kind
+                                ~cm_kind:kind )))
+                else []
               in
 
               common m @ cmt_files |> set_dir m)

@@ -34,6 +34,10 @@ module type Backend = sig
   val finish : unit -> unit
 end
 
+(** [separate_messages b] changes the behavior of [print_user_message], so that
+    it separates messages with a blank line when [b = true]. *)
+val separate_messages : bool -> unit
+
 module Backend : sig
   type t = (module Backend)
 

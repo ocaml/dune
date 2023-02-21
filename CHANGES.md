@@ -7,6 +7,9 @@ Unreleased
 - Invoke preprocessor commands from directory of dune file containing the
   commands rather than from the workspace root (#7057, fixes #7043, @gridbugs)
 
+- Add the `--display-separate-messages` flag to separate the error messages
+  produced by commands with a blank line. (#6823, fixes #6158, @esope)
+
 3.7.0 (2023-02-17)
 ------------------
 

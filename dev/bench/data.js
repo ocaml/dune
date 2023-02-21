@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676942059776,
+  "lastUpdate": 1676942123107,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5741,6 +5741,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.068237062646666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c287fa555d1ded452a3bde5de65f69257ea8056",
+          "message": "fix: error message for \"too many arguments\" (#7134\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-20T16:46:19-08:00",
+          "tree_id": "6b43c5a6c202a7d4ee10b10b0ce499cef223a87a",
+          "url": "https://github.com/ocaml/dune/commit/0c287fa555d1ded452a3bde5de65f69257ea8056"
+        },
+        "date": 1676942122000,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.6133205117",
             "unit": "seconds"
           }
         ]

@@ -78,7 +78,8 @@ expect to see the list of commands that start with 'bui' (ie, just "build")
   $ ./test 'dune ocaml bad '
   
   $ ./test 'dune build '
-  
+  complete.sh
+  test
 
   $ ./test 'dune build --debug'
   --debug-artifact-substitution
@@ -306,3 +307,29 @@ List completion:
   $ ./test 'dune complete test list aa,bb,'
   aa,bb,aa
   aa,bb,bb
+
+Completion of targets:
+
+  $ dune complete target
+  complete.sh
+  test
+
+  $ cat > dune-project << EOF
+  > (lang dune 3.0)
+  > EOF
+
+  $ cat > dune << EOF
+  > (executable
+  >  (name e))
+  > 
+  > (rule
+  >  (write-file target contents))
+  > EOF
+
+  $ touch e.ml
+
+  $ ./test 'dune build e.e'
+  e.exe
+
+  $ ./test 'dune build tar'
+  target

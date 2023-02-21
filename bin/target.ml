@@ -72,7 +72,7 @@ let all_direct_targets dir =
           | Build_under_directory_target _ -> All_targets.empty))
   >>| All_targets.reduce
 
-let target_hint (_setup : Dune_rules.Main.build_system) path =
+let target_candidates path =
   let open Memo.O in
   let sub_dir = Option.value ~default:path (Path.parent path) in
   (* CR-someday amokhov:
@@ -104,7 +104,11 @@ let target_hint (_setup : Dune_rules.Main.build_system) path =
           Some (Path.to_string path)
         else None)
   in
-  let candidates = String.Set.of_list candidates |> String.Set.to_list in
+  String.Set.of_list candidates |> String.Set.to_list
+
+let target_hint path =
+  let open Memo.O in
+  let+ candidates = target_candidates path in
   User_message.did_you_mean (Path.to_string path) ~candidates
 
 let resolve_path path ~(setup : Dune_rules.Main.build_system) :
@@ -112,7 +116,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system) :
   let open Memo.O in
   let checked = Util.check_path setup.contexts path in
   let can't_build path =
-    let+ hint = target_hint setup path in
+    let+ hint = target_hint path in
     Error hint
   in
   let as_source_dir src =

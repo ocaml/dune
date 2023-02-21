@@ -1141,3 +1141,10 @@ let context_arg ~doc =
     value
     & opt Arg.context_name Dune_engine.Context_name.default
     & info [ "context" ] ~docv:"CONTEXT" ~doc)
+
+let default () =
+  let info = Cmd.info "term-default" in
+  let cmd = Cmd.v info term in
+  match Cmd.eval_value ~argv:[| Sys.argv.(0) |] cmd with
+  | Ok (`Ok x) -> x
+  | Ok `Version | Ok `Help | Error _ -> (* XXX *) assert false

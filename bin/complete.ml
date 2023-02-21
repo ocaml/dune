@@ -170,6 +170,23 @@ module Test = struct
   let group = Cmd.group info [ Several_pos.command; List.command ]
 end
 
+module Target = struct
+  let info = Cmd.info "target"
+
+  let term =
+    let+ () = Term.const () in
+    let common = Common.default () in
+    let config = Common.init common in
+    Scheduler.go ~common ~config (fun () ->
+        Build_system.run_exn (fun () ->
+            let open Memo.O in
+            let+ targets = Target.target_candidates Path.root in
+            List.iter ~f:print_endline targets))
+
+  let command = Cmd.v info term
+end
+
 let info = Cmd.info "complete"
 
-let command = Cmd.group info [ Script.command; Command.command; Test.group ]
+let command =
+  Cmd.group info [ Script.command; Command.command; Test.group; Target.command ]

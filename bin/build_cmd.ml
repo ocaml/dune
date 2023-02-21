@@ -1,6 +1,20 @@
 open Stdune
 open Import
 
+let complete _ =
+  let common = Common.default () in
+  let config = Common.init common in
+  Scheduler.go ~common ~config (fun () ->
+      Build_system.run_exn (fun () -> Target.target_candidates Path.root))
+
+(* TODO: move to Arg, but this requires solving a dependency cycle between Arg
+   and Common *)
+let dep_with_complete =
+  let open Arg in
+  let parser = conv_parser dep in
+  let printer = conv_printer dep in
+  conv ~complete (parser, printer)
+
 let with_metrics ~common f =
   let start_time = Unix.gettimeofday () in
   Fiber.finalize f ~finally:(fun () ->
@@ -177,7 +191,7 @@ let build =
   let name_ = Arg.info [] ~docv:"TARGET" in
   let term =
     let+ common = Common.term
-    and+ targets = Arg.(value & pos_all dep [] name_) in
+    and+ targets = Arg.(value & pos_all dep_with_complete [] name_) in
     let targets =
       match targets with
       | [] -> [ Common.default_target common ]

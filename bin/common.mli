@@ -60,6 +60,8 @@ val footer : Cmdliner.Manpage.block
 
 val term : t Cmdliner.Term.t
 
+val default : unit -> t
+
 val term_with_default_root_is_cwd : t Cmdliner.Term.t
 
 val envs : Cmdliner.Cmd.Env.info list

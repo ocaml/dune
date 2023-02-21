@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677010376536,
+  "lastUpdate": 1677015776866,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6321,6 +6321,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.15041306598",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f5a5a9c17be60b1cf2ec22fee35d35ccc3bb5e5e",
+          "message": "refactor: remove [Action_builder.source_tree] (#7131)",
+          "timestamp": "2023-02-21T13:23:16-08:00",
+          "tree_id": "1ae6d9f474bb72d0af81f4e5393d347e628a5e85",
+          "url": "https://github.com/ocaml/dune/commit/f5a5a9c17be60b1cf2ec22fee35d35ccc3bb5e5e"
+        },
+        "date": 1677015775719,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.076240548293335",
             "unit": "seconds"
           }
         ]

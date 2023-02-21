@@ -136,10 +136,6 @@ module type File_operations = sig
   val remove_dir_if_exists : if_non_empty:rmdir_mode -> Path.t -> unit
 end
 
-module type Workspace = sig
-  val workspace : Workspace.t
-end
-
 module File_ops_dry_run : File_operations = struct
   let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ ~conf:_ =
     print_line "Copying %s to %s (executable: %b)"
@@ -162,7 +158,9 @@ module File_ops_dry_run : File_operations = struct
       (Path.to_string_maybe_quoted path)
 end
 
-module File_ops_real (W : Workspace) : File_operations = struct
+module File_ops_real (W : sig
+  val workspace : Workspace.t
+end) : File_operations = struct
   open W
 
   let get_vcs p = Dune_engine.Source_tree.nearest_vcs p
@@ -571,21 +569,19 @@ let install_uninstall ~what =
         let* pkgs =
           match pkgs with
           | [] ->
-            Fiber.parallel_map (Package.Name.Map.values workspace.packages)
-              ~f:(fun pkg ->
-                package_is_vendored pkg >>| function
-                | true -> None
-                | false -> Some (Package.name pkg))
+            Package.Name.Map.values workspace.packages
+            |> Fiber.parallel_map ~f:(fun pkg ->
+                   package_is_vendored pkg >>| function
+                   | true -> None
+                   | false -> Some (Package.name pkg))
             >>| List.filter_opt
           | l -> Fiber.return l
         in
         let install_files, missing_install_files =
           List.concat_map pkgs ~f:(fun pkg ->
               let fn = resolve_package_install workspace pkg in
-              List.map contexts ~f:(fun ctx ->
-                  let fn =
-                    Path.append_source (Path.build ctx.Context.build_dir) fn
-                  in
+              List.map contexts ~f:(fun (ctx : Context.t) ->
+                  let fn = Path.append_source (Path.build ctx.build_dir) fn in
                   if Path.exists fn then Left (ctx, (pkg, fn)) else Right fn))
           |> List.partition_map ~f:Fun.id
         in

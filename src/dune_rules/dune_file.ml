@@ -574,7 +574,7 @@ module Library = struct
   end
 
   module Modes = struct
-    let parser ~stanza_loc ~dune_version project =
+    let decode ~stanza_loc ~dune_version project =
       let expected_version = (3, 8) in
       if dune_version >= expected_version then
         Mode_conf.Lib.Set.decode_osl ~stanza_loc project
@@ -653,7 +653,7 @@ module Library = struct
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
          field "modes"
-           (Modes.parser ~stanza_loc ~dune_version project)
+           (Modes.decode ~stanza_loc ~dune_version project)
            ~default:(Mode_conf.Lib.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ optional = field_b "optional"

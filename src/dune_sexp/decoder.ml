@@ -456,6 +456,10 @@ let basic desc f = basic_loc desc (fun ~loc:_ -> f)
 
 let string = plain_string (fun ~loc:_ x -> x)
 
+let ident =
+  plain_string (fun ~loc:_ s ->
+      if String.is_prefix s ~prefix:":" then String.drop s 1 else s)
+
 let int = basic "Integer" Int.of_string
 
 let float = basic "Float" Float.of_string

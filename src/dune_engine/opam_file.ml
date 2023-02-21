@@ -63,6 +63,8 @@ let existing_variables t =
       | Variable (_, var, _) -> String.Set.add acc var)
 
 module Create = struct
+  let ident s = Ident (nopos, s)
+
   let string s = String (nopos, s)
 
   let list f xs = List (nopos, List.map ~f xs)

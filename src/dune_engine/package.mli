@@ -152,6 +152,7 @@ type t =
   ; version : string option
   ; has_opam_file : bool
   ; tags : string list
+  ; flags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Section.Site.Map.t
   ; allow_empty : bool

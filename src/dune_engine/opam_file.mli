@@ -24,6 +24,8 @@ val nopos : OpamParserTypes.pos
 val existing_variables : t -> String.Set.t
 
 module Create : sig
+  val ident : string -> value
+
   val string : string -> value
 
   val list : ('a -> value) -> 'a list -> value

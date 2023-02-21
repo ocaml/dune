@@ -556,6 +556,7 @@ type t =
   ; version : string option
   ; has_opam_file : bool
   ; tags : string list
+  ; flags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Section.Site.Map.t
   ; allow_empty : bool
@@ -582,6 +583,7 @@ let encode (name : Name.t)
     ; info
     ; version
     ; tags
+    ; flags
     ; deprecated_package_names
     ; sites
     ; allow_empty
@@ -598,6 +600,7 @@ let encode (name : Name.t)
         ; field_l "depopts" Dependency.encode depopts
         ; field_o "version" string version
         ; field "tags" (list string) ~default:[] tags
+        ; field_l "flags" string flags
         ; field_l "deprecated_package_names" Name.encode
             (Name.Map.keys deprecated_package_names)
         ; field_l "sits"
@@ -633,6 +636,9 @@ let decode ~dir =
      and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
      and+ info = Info.decode ~since:(2, 0) ()
      and+ tags = field "tags" (enter (repeat string)) ~default:[]
+     and+ flags =
+       field ~default:[] "flags"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> repeat ident)
      and+ deprecated_package_names =
        name_map
          (Dune_lang.Syntax.since Stanza.syntax (2, 0))
@@ -661,6 +667,7 @@ let decode ~dir =
      ; version
      ; has_opam_file = false
      ; tags
+     ; flags
      ; deprecated_package_names
      ; sites
      ; allow_empty
@@ -677,6 +684,7 @@ let to_dyn
     ; info
     ; has_opam_file
     ; tags
+    ; flags
     ; loc = _
     ; deprecated_package_names
     ; sites
@@ -693,6 +701,7 @@ let to_dyn
     ; ("info", Info.to_dyn info)
     ; ("has_opam_file", Bool has_opam_file)
     ; ("tags", list string tags)
+    ; ("flags", list string flags)
     ; ("version", option string version)
     ; ( "deprecated_package_names"
       , Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names )
@@ -727,6 +736,7 @@ let default name dir =
   ; depopts = []
   ; has_opam_file = false
   ; tags = [ "topics"; "to describe"; "your"; "project" ]
+  ; flags = []
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
   ; allow_empty = false
@@ -798,6 +808,7 @@ let load_opam_file file name =
   ; description = get_one "description"
   ; has_opam_file = true
   ; tags = Option.value (get_many "tags") ~default:[]
+  ; flags = Option.value (get_many "flags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Section.Site.Map.empty
   ; allow_empty = true

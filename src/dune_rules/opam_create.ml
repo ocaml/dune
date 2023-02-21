@@ -108,6 +108,7 @@ let package_fields
     ; version = _
     ; has_opam_file = _
     ; tags
+    ; flags
     ; loc = _
     ; deprecated_package_names = _
     ; sites = _
@@ -122,6 +123,14 @@ let package_fields
            | None -> None
            | Some v -> Some (k, string v))
   in
+  let optionals =
+    [ ("flags", flags) ]
+    |> List.filter_map ~f:(fun (k, v) ->
+           match v with
+           | [] -> None
+           | [ v ] -> Some (k, ident v)
+           | vs -> Some (k, (list ident) vs))
+  in
   let dep_fields =
     [ ("depends", depends); ("conflicts", conflicts); ("depopts", depopts) ]
     |> List.filter_map ~f:(fun (k, v) ->
@@ -129,7 +138,7 @@ let package_fields
            | [] -> None
            | _ :: _ -> Some (k, list Package.Dependency.opam_depend v))
   in
-  let fields = [ optional; dep_fields ] in
+  let fields = [ optional; optionals; dep_fields ] in
   let fields =
     let dune_version = Dune_project.dune_version project in
     if dune_version >= (2, 0) && tags <> [] then tags :: fields else fields

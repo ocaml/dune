@@ -141,6 +141,8 @@ val fields : 'a fields_parser -> 'a t
 (** Consume the next element of the input as a string, int, bool, ... *)
 val string : string t
 
+val ident : string t
+
 val int : int t
 
 val float : float t

@@ -557,6 +557,50 @@ module Library = struct
     let field = field_o "wrapped" (located decode)
   end
 
+  let library_mode_field ~stanza_loc ~dune_version project =
+    let default = Mode_conf.Lib.Set.default stanza_loc in
+    let ordered_mode_field ~stanza_loc project =
+      let+ modes = field_o "modes" Ordered_set_lang.decode in
+      match modes with
+      | None -> default
+      | Some modes ->
+        let modes =
+          Ordered_set_lang.eval modes
+            ~parse:(fun ~loc s ->
+              let mode =
+                Dune_lang.Decoder.parse Mode_conf.Lib.decode
+                  (Dune_project.parsing_context project)
+                  (Atom (loc, Dune_lang.Atom.of_string s))
+              in
+              (mode, Mode_conf.Kind.Requested loc))
+            ~eq:(fun (a, _) (b, _) -> Mode_conf.Lib.equal a b)
+            ~standard:[ (Ocaml Best, Mode_conf.Kind.Requested stanza_loc) ]
+        in
+        Mode_conf.Lib.Set.of_list modes
+    in
+    let expected_version = (3, 8) in
+    if dune_version >= expected_version then
+      ordered_mode_field ~stanza_loc project
+    else
+      (* Old behavior: if old parser succeeds, return that. Otherwise, if
+         parsing the ordered set language succeeds, ask the user to upgrade to
+         a supported version. Otherwise, fail with the first error. *)
+      try_
+        (field "modes"
+           (Mode_conf.Lib.Set.decode >>| fun modes -> `Old modes)
+           ~default:(`Old default))
+        (fun exn ->
+          try_
+            ( ordered_mode_field ~stanza_loc project >>| fun modes ->
+              if dune_version >= expected_version then `New modes else `Upgrade
+            )
+            (fun _ -> raise exn))
+      >>| function
+      | `Old modes | `New modes -> modes
+      | `Upgrade ->
+        Syntax.Error.since stanza_loc Stanza.syntax expected_version
+          ~what:"Ordered set language for modes"
+
   type visibility =
     | Public of Public_lib.t
     | Private of Package.t option
@@ -594,6 +638,7 @@ module Library = struct
       (let* stanza_loc = loc in
        let* wrapped = Wrapped.field in
        let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+       let* project = Dune_project.get_exn () in
        let+ buildable = Buildable.decode (Library (Option.map ~f:snd wrapped))
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public =
@@ -610,7 +655,7 @@ module Library = struct
          Ordered_set_lang.Unexpanded.field "c_library_flags"
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
-       and+ modes = field_o "modes" Ordered_set_lang.decode
+       and+ modes = library_mode_field ~stanza_loc ~dune_version project
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ optional = field_b "optional"
        and+ no_dynlink = field_b "no_dynlink"
@@ -626,7 +671,6 @@ module Library = struct
        and+ sub_systems =
          let* () = return () in
          Sub_system_info.record_parser ()
-       and+ project = Dune_project.get_exn ()
        and+ virtual_modules =
          field_o "virtual_modules"
            (Dune_lang.Syntax.since Stanza.syntax (1, 7)
@@ -710,25 +754,6 @@ module Library = struct
                   package %s"
                  (Package.Name.to_string (Package.name public.package))
              ]
-       in
-       let modes =
-         match modes with
-         | None -> Mode_conf.Lib.Set.default stanza_loc
-         | Some modes ->
-           let modes =
-             Ordered_set_lang.eval modes
-               ~parse:(fun ~loc s ->
-                 let mode =
-                   Dune_lang.Decoder.parse Mode_conf.Lib.decode
-                     (Dune_project.parsing_context project)
-                     (Atom (loc, Dune_lang.Atom.of_string s))
-                 in
-                 (mode, Mode_conf.Kind.Requested loc))
-               ~eq:(fun (a, _) (b, _) -> Mode_conf.Lib.equal a b)
-               ~standard:[ (Ocaml Best, Mode_conf.Kind.Requested stanza_loc) ]
-           in
-           let modes = Mode_conf.Lib.Set.of_list modes in
-           modes
        in
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676960000794,
+  "lastUpdate": 1676970620224,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6060,6 +6060,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.773403644586665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "042e48aa56ed9cb47a559dc985424ec31346d72b",
+          "message": "fix(doc): use sphinx < 6 (#7126)\n\nFixes #7107\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-21T09:50:59+01:00",
+          "tree_id": "cf493f2c322a4cb5e7bcc8fe827e0903e65716b0",
+          "url": "https://github.com/ocaml/dune/commit/042e48aa56ed9cb47a559dc985424ec31346d72b"
+        },
+        "date": 1676970619096,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.44287951205333",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676945373714,
+  "lastUpdate": 1676948201565,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5828,6 +5828,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.45189395579334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "65802a9783e5d8e46db0388560bf2fef50a773aa",
+          "message": "refactor: remove [Rule.find_source_dir] (#7103\n\nIt's not used anywhere and it depends on [Source_tree.nearest_dir]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-20T18:37:54-08:00",
+          "tree_id": "02053e005342314a05cfd16c39da833fd07cdd31",
+          "url": "https://github.com/ocaml/dune/commit/65802a9783e5d8e46db0388560bf2fef50a773aa"
+        },
+        "date": 1676948200870,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.486056002119994",
             "unit": "seconds"
           }
         ]

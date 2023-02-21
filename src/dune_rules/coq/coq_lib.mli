@@ -43,7 +43,10 @@ module DB : sig
     -> coq_lang_version:Dune_sexp.Syntax.Version.t
     -> lib list Resolve.Memo.t
 
-  val boot_library : t -> (Loc.t * lib) option Resolve.Memo.t
+  val resolve_boot :
+       t
+    -> coq_lang_version:Dune_sexp.Syntax.Version.t
+    -> (Loc.t * lib) option Resolve.Memo.t
 
   val resolve :
        t

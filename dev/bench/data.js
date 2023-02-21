@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676992639508,
+  "lastUpdate": 1676992785898,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6147,6 +6147,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.939666100859995",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c0b3219779766c65dc0e17a8881a1fc5da0091f1",
+          "message": "test: fix sed'ing a symlink (#7140\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-21T06:50:22-08:00",
+          "tree_id": "524c62ff40d4d59d9c787b86e42b1992d586baa1",
+          "url": "https://github.com/ocaml/dune/commit/c0b3219779766c65dc0e17a8881a1fc5da0091f1"
+        },
+        "date": 1676992783439,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.37781489655334",
             "unit": "seconds"
           }
         ]

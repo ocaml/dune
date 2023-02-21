@@ -65,6 +65,20 @@ module type Rule_generator = sig
     -> gen_rules_result Memo.t
 end
 
+module type Source_tree = sig
+  val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
+
+  module Dir : sig
+    type t
+
+    val sub_dir_names : t -> String.Set.t
+
+    val file_paths : t -> Path.Source.Set.t
+  end
+
+  val find_dir : Path.Source.t -> Dir.t option Memo.t
+end
+
 type t = private
   { contexts : Build_context.t Context_name.Map.t Memo.Lazy.t
   ; rule_generator : (module Rule_generator)
@@ -81,6 +95,7 @@ type t = private
   ; cache_debug_flags : Cache_debug_flags.t
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters : dir:Path.Source.t -> Execution_parameters.t Memo.t
+  ; source_tree : (module Source_tree)
   }
 
 (** Initialise the build system. This must be called before running the build
@@ -102,6 +117,7 @@ val set :
   -> implicit_default_alias:
        (Path.Build.t -> unit Action_builder.t option Memo.t)
   -> execution_parameters:(dir:Path.Source.t -> Execution_parameters.t Memo.t)
+  -> source_tree:(module Source_tree)
   -> unit
 
 val get : unit -> t

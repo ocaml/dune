@@ -1,4 +1,4 @@
-  $ dune complete script > complete.sh
+  $ dune complete setup > complete.sh
 
 `test` calls `_dune` defined in `complete.sh`. Usually, bash itself would fill
 `COMP_*` but we have to do that by hand.

@@ -3,11 +3,13 @@ open Stdune
 
 let all = Fdecl.create Dyn.opaque
 
-module Script = struct
-  let script =
+module Setup = struct
+  let info = Cmd.info ~doc:"Output a bash completion script for dune." "setup"
+
+  let setup =
     {|
 _dune () {
-    COMPREPLY=( $(dune complete command --position $COMP_CWORD -- ${COMP_WORDS[*]}) )
+    eval $(dune complete script)
 }
 
 complete -F _dune dune
@@ -15,9 +17,23 @@ complete -F _dune dune
 
   let term =
     let+ () = Term.const () in
+    print_endline setup
+
+  let command = Cmd.v info term
+end
+
+module Script = struct
+  let script =
+    {|COMPREPLY=( $(dune complete command --position $COMP_CWORD -- ${COMP_WORDS[*]}) )|}
+
+  let term =
+    let+ () = Term.const () in
     print_endline script
 
-  let info = Cmd.info ~doc:"Output a bash completion script for dune." "script"
+  let info =
+    Cmd.info
+      ~doc:"Output the (potentially unstable) completion invokation for dune."
+      "script"
 
   let command = Cmd.v info term
 end
@@ -202,4 +218,5 @@ end
 
 let info = Cmd.info "complete"
 
-let command = Cmd.group info [ Script.command; Command.command; Test.group ]
+let command =
+  Cmd.group info [ Setup.command; Script.command; Command.command; Test.group ]

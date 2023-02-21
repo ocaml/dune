@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676950060050,
+  "lastUpdate": 1676952623018,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5944,6 +5944,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.73901771858666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4edb5ff19aa3efcabdc8194ef7f837e49866517b",
+          "message": "refactor: move some flags to rules (#7080\n\nSome flags are only used in the rules, so they should live there instead\r\nof the engine.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-20T19:51:20-08:00",
+          "tree_id": "1111c9b68de3fe7771a19ef4503e29798b40b511",
+          "url": "https://github.com/ocaml/dune/commit/4edb5ff19aa3efcabdc8194ef7f837e49866517b"
+        },
+        "date": 1676952622280,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.07658814395333",
             "unit": "seconds"
           }
         ]

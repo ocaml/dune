@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676958869244,
+  "lastUpdate": 1676960000794,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6031,6 +6031,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.125293628053335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c41993f7c03878017c5fe390117a013d79795f3d",
+          "message": "test: disable test failing in CI (#7138\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-20T21:53:50-08:00",
+          "tree_id": "56c156da555721b59789c8ececc511528937ac0c",
+          "url": "https://github.com/ocaml/dune/commit/c41993f7c03878017c5fe390117a013d79795f3d"
+        },
+        "date": 1676960000067,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "37.773403644586665",
             "unit": "seconds"
           }
         ]

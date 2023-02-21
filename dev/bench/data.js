@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676952623018,
+  "lastUpdate": 1676953521625,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5973,6 +5973,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.07658814395333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8c627ef7cb8c14d3f5eb1b50484de81678fd5106",
+          "message": "refactor(engine): fetching execution parameters (#7127\n\nMove the fetching of execution parameters to the rules.\r\n\r\nCurrently, the execution parameters are obtained from the dune-project\r\nfile. Therefore, this is part of the frontend and not the engine.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-20T20:06:20-08:00",
+          "tree_id": "339f1a734a5350202d1fcb02571cef6c8bb1c7c0",
+          "url": "https://github.com/ocaml/dune/commit/8c627ef7cb8c14d3f5eb1b50484de81678fd5106"
+        },
+        "date": 1676953520919,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.09643306269333",
             "unit": "seconds"
           }
         ]

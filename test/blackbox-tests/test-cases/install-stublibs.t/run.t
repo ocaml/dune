@@ -58,6 +58,7 @@ Begin by installing a library with C stubs.
    (plugins (byte libA.cma) (native libA.cmxs))
    (foreign_objects stubs.o)
    (foreign_archives (archives (for all) (files liblibA_stubs.a)))
+   (foreign_dll_files ../stublibs/dlllibA_stubs.so)
    (native_archives libA.a)
    (main_module_name LibA)
    (modes byte native)
@@ -85,6 +86,3 @@ Now let us define an executable using that installed library.
   > EOF
   $ touch exeA.ml
   $ OCAMLPATH=./install/lib dune build
-  File "_none_", line 1:
-  Error: I/O error: dlllibA_stubs.so: No such file or directory
-  [1]

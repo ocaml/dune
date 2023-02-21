@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676977319876,
+  "lastUpdate": 1676992639508,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6118,6 +6118,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.19685672097334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bf609bafc8198b8f54ff95082ed9c452d2054542",
+          "message": "fix(console): Make [Backend.progress] flush (#7141\n\nSome time ago, it was accidentally changed not to flush. The change was\r\nnever noticed because dune used the threaded version of this backend\r\nthat did flush.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-21T06:48:38-08:00",
+          "tree_id": "3a788bf915d8b69f97833409d6ff68c03d2a99b7",
+          "url": "https://github.com/ocaml/dune/commit/bf609bafc8198b8f54ff95082ed9c452d2054542"
+        },
+        "date": 1676992638333,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.939666100859995",
             "unit": "seconds"
           }
         ]

@@ -1,3 +1,9 @@
+3.7.0.post1 (2023-02-21)
+------------------------
+
+- Doc: prevent the use of sphinx 6. On readthedocs, this prevents the necessary
+  JS from being loaded.
+
 3.7.0 (2023-02-17)
 ------------------
 

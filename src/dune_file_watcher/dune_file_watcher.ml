@@ -168,8 +168,7 @@ let exclude_patterns =
 module Re = Dune_re
 
 let exclude_regex =
-  Re.compile
-    (Re.alt (List.map exclude_patterns ~f:(fun pattern -> Re.Posix.re pattern)))
+  Re.compile (Re.alt (List.map exclude_patterns ~f:Re.Posix.re))
 
 let should_exclude path = Re.execp exclude_regex path
 
@@ -557,9 +556,7 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
     let exclusion_paths =
       Path.(build Build.root)
       :: ([ "_esy"; "_opam"; ".git"; ".hg" ]
-         |> List.rev_map ~f:(fun base ->
-                let path = Path.relative (Path.source Path.Source.root) base in
-                path))
+         |> List.rev_map ~f:(Path.relative (Path.source Path.Source.root)))
     in
     fsevents ~latency scheduler ~exclusion_paths ~paths fsevents_standard_event
   in

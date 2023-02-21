@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677008238616,
+  "lastUpdate": 1677010376536,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6292,6 +6292,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.10321208702666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesus Gallego Arias",
+            "username": "ejgallego"
+          },
+          "committer": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesús Gallego Arias",
+            "username": "ejgallego"
+          },
+          "distinct": true,
+          "id": "b06584df02043e81a084f97a42504a76bf925a1f",
+          "message": "[scope] [coq] Refactoring towards a Coq scope\n\nSigned-off-by: Emilio Jesus Gallego Arias <e+git@x80.org>",
+          "timestamp": "2023-02-21T20:50:34+01:00",
+          "tree_id": "5e455160bcfeafb6a62f528517e7968d51452bd1",
+          "url": "https://github.com/ocaml/dune/commit/b06584df02043e81a084f97a42504a76bf925a1f"
+        },
+        "date": 1677010375080,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.15041306598",
             "unit": "seconds"
           }
         ]

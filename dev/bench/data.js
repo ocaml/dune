@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676998583012,
+  "lastUpdate": 1677005175674,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6234,6 +6234,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "41.83355893240667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bfc0047645972bcbba3a45b4b76a5fb3c3e0eec1",
+          "message": "refactor(engine): watcher style fixes (#7145)\n\nremove some unnecessary variables and closure allocations\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-21T10:27:46-08:00",
+          "tree_id": "dc8b4527303fa89a8e95090acfa2171af7ab94fb",
+          "url": "https://github.com/ocaml/dune/commit/bfc0047645972bcbba3a45b4b76a5fb3c3e0eec1"
+        },
+        "date": 1677005174829,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.52484709463334",
             "unit": "seconds"
           }
         ]

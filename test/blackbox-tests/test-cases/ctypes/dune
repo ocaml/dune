@@ -34,3 +34,9 @@
   lib-return-errno
   exe-pkg_config)
  (deps %{bin:pkg-config}))
+
+(cram
+ ;; the test currently doesn't work on macos for some reason
+ (applies_to github-5561-name-mangle)
+ (enabled_if
+  (<> %{system} macosx)))

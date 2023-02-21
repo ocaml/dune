@@ -177,123 +177,140 @@ module DB = struct
         | None -> Resolve.Memo.return None
         | Some parent -> boot parent)
 
-    let create_from_stanza =
-      let create_from_stanza_impl (coq_db, db, dir, (s : Coq_stanza.Theory.t)) =
-        let name = snd s.name in
-        let id = Id.create ~path:dir ~name in
-        let coq_lang_version = s.buildable.coq_lang_version in
-        let open Memo.O in
-        let* boot = if s.boot then Resolve.Memo.return None else boot coq_db in
-        let allow_private_deps = Option.is_none s.package in
-        let use_stdlib = s.buildable.use_stdlib in
-        let+ libraries =
-          Resolve.Memo.List.map s.buildable.plugins ~f:(fun (loc, lib) ->
-              let open Resolve.Memo.O in
-              let* lib = Lib.DB.resolve db (loc, lib) in
-              let+ () =
-                Resolve.Memo.lift
-                @@
-                if allow_private_deps then Resolve.return ()
-                else
-                  match
-                    let info = Lib.info lib in
-                    let status = Lib_info.status info in
-                    Lib_info.Status.is_private status
-                  with
-                  | false -> Resolve.return ()
-                  | true ->
-                    Resolve.fail
-                    @@ User_message.make ~loc
-                         [ Pp.textf
-                             "private theory %s may not depend on a public \
-                              library"
-                             (Coq_lib_name.to_string name)
-                         ]
-              in
-              (loc, lib))
-        and+ theories =
-          let check_boot (lib : lib) =
-            let open Resolve.O in
-            let* boot = boot in
-            match boot with
-            | None -> Resolve.return ()
-            | Some boot -> (
-              let* boot' = lib.boot in
-              match boot' with
-              | None -> Resolve.return ()
-              | Some boot' -> (
-                match Id.compare boot.id boot'.id with
-                | Eq -> Resolve.return ()
-                | _ -> Error.incompatible_boot lib.id id))
-          in
-          Resolve.Memo.List.map s.buildable.theories
-            ~f:(fun (loc, theory_name) ->
-              let open Resolve.Memo.O in
-              let* theory =
-                resolve ~coq_lang_version coq_db (loc, theory_name)
-              in
-              let* () = Resolve.Memo.lift @@ check_boot theory in
-              let+ () =
-                if allow_private_deps then Resolve.Memo.return ()
-                else
-                  match theory.package with
-                  | Some _ -> Resolve.Memo.return ()
-                  | None -> Error.private_deps_not_allowed ~loc theory_name
-              in
-              (loc, theory))
-        in
-        let theories =
-          let open Resolve.O in
-          let* boot = boot in
-          match boot with
-          | Some boot when use_stdlib && not s.boot ->
-            let+ theories = theories in
-            (boot.loc, boot) :: theories
-          | Some _ | None -> theories
-        in
-        let map_error x =
-          let human_readable_description () = Id.pp id in
-          Resolve.push_stack_frame ~human_readable_description x
-        in
-        let theories = map_error theories in
-        let libraries = map_error libraries in
-        { loc = s.buildable.loc
-        ; boot
-        ; id
-        ; use_stdlib
-        ; implicit = s.boot
-        ; obj_root = dir
-        ; src_root = dir
-        ; theories
-        ; libraries
-        ; theories_closure =
-            lazy
-              (Resolve.bind theories ~f:(fun theories ->
-                   List.map theories ~f:snd |> top_closure))
-        ; package = s.package
-        }
+    let resolve_plugin ~db ~allow_private_deps ~name (loc, lib) =
+      let open Resolve.Memo.O in
+      let* lib = Lib.DB.resolve db (loc, lib) in
+      let+ () =
+        Resolve.Memo.lift
+        @@
+        if allow_private_deps then Resolve.return ()
+        else
+          match
+            let info = Lib.info lib in
+            let status = Lib_info.status info in
+            Lib_info.Status.is_private status
+          with
+          | false -> Resolve.return ()
+          | true ->
+            Resolve.fail
+            @@ User_message.make ~loc
+                 [ Pp.textf
+                     "private theory %s may not depend on a public library"
+                     (Coq_lib_name.to_string name)
+                 ]
       in
-      let module Input = struct
-        type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
+      (loc, lib)
 
-        let equal (coq_db, ml_db, path, stanza) (coq_db', ml_db', path', stanza')
-            =
-          coq_db == coq_db' && ml_db == ml_db'
-          && Path.Build.equal path path'
-          && stanza == stanza'
+    let resolve_plugins ~db ~allow_private_deps ~name plugins =
+      let f = resolve_plugin ~db ~allow_private_deps ~name in
+      Resolve.Memo.List.map plugins ~f
 
-        let hash = Poly.hash
+    let check_boot ~boot ~id (lib : lib) =
+      let open Resolve.O in
+      let* boot = boot in
+      match boot with
+      | None -> Resolve.return ()
+      | Some boot -> (
+        let* boot' = lib.boot in
+        match boot' with
+        | None -> Resolve.return ()
+        | Some boot' -> (
+          match Id.compare boot.id boot'.id with
+          | Eq -> Resolve.return ()
+          | _ -> Error.incompatible_boot lib.id id))
 
-        let to_dyn = Dyn.opaque
-      end in
-      let memo =
-        Memo.create "create-from-stanza"
-          ~human_readable_description:(fun (_, _, path, theory) ->
-            Id.pp (Id.create ~path ~name:(snd theory.name)))
-          ~input:(module Input)
-          create_from_stanza_impl
+    let maybe_add_boot ~boot ~use_stdlib ~is_boot theories =
+      let open Resolve.O in
+      let* boot = boot in
+      match boot with
+      | Some boot when use_stdlib && not is_boot ->
+        let+ theories = theories in
+        (boot.loc, boot) :: theories
+      | Some _ | None -> theories
+
+    let resolve_theory ~coq_lang_version ~allow_private_deps ~coq_db ~boot ~id
+        (loc, theory_name) =
+      let open Resolve.Memo.O in
+      let* theory = resolve ~coq_lang_version coq_db (loc, theory_name) in
+      let* () = Resolve.Memo.lift @@ check_boot ~boot ~id theory in
+      let+ () =
+        if allow_private_deps then Resolve.Memo.return ()
+        else
+          match theory.package with
+          | Some _ -> Resolve.Memo.return ()
+          | None -> Error.private_deps_not_allowed ~loc theory_name
       in
-      fun coq_db db dir stanza -> Memo.exec memo (coq_db, db, dir, stanza)
+      (loc, theory)
+
+    let resolve_theories ~coq_lang_version ~allow_private_deps ~coq_db ~boot ~id
+        theories =
+      let f =
+        resolve_theory ~coq_lang_version ~allow_private_deps ~coq_db ~boot ~id
+      in
+      Resolve.Memo.List.map theories ~f
+
+    let create_from_stanza_impl (coq_db, db, dir, (s : Coq_stanza.Theory.t)) =
+      let name = snd s.name in
+      let id = Id.create ~path:dir ~name in
+      let coq_lang_version = s.buildable.coq_lang_version in
+      let open Memo.O in
+      let* boot = if s.boot then Resolve.Memo.return None else boot coq_db in
+      let allow_private_deps = Option.is_none s.package in
+      let use_stdlib = s.buildable.use_stdlib in
+      let+ libraries =
+        resolve_plugins ~db ~allow_private_deps ~name s.buildable.plugins
+      and+ theories =
+        resolve_theories ~coq_lang_version ~allow_private_deps ~coq_db ~boot ~id
+          s.buildable.theories
+      in
+      let theories =
+        maybe_add_boot ~boot ~use_stdlib ~is_boot:s.boot theories
+      in
+      let map_error x =
+        let human_readable_description () = Id.pp id in
+        Resolve.push_stack_frame ~human_readable_description x
+      in
+      let theories = map_error theories in
+      let libraries = map_error libraries in
+      { loc = s.buildable.loc
+      ; boot
+      ; id
+      ; use_stdlib
+      ; implicit = s.boot
+      ; obj_root = dir
+      ; src_root = dir
+      ; theories
+      ; libraries
+      ; theories_closure =
+          lazy
+            (Resolve.bind theories ~f:(fun theories ->
+                 List.map theories ~f:snd |> top_closure))
+      ; package = s.package
+      }
+
+    module Input = struct
+      type nonrec t = t * Lib.DB.t * Path.Build.t * Coq_stanza.Theory.t
+
+      let equal (coq_db, ml_db, path, stanza) (coq_db', ml_db', path', stanza')
+          =
+        coq_db == coq_db' && ml_db == ml_db'
+        && Path.Build.equal path path'
+        && stanza == stanza'
+
+      let hash = Poly.hash
+
+      let to_dyn = Dyn.opaque
+    end
+
+    let memo =
+      Memo.create "create-from-stanza"
+        ~human_readable_description:(fun (_, _, path, theory) ->
+          Id.pp (Id.create ~path ~name:(snd theory.name)))
+        ~input:(module Input)
+        create_from_stanza_impl
+
+    let create_from_stanza coq_db db dir stanza =
+      Memo.exec memo (coq_db, db, dir, stanza)
 
     let rec find coq_db name =
       match coq_db.resolve name with
@@ -376,24 +393,23 @@ module DB = struct
         in
         Some (loc, lib)
     in
-    let resolve =
-      let map =
-        match
-          Coq_lib_name.Map.of_list_map entries
-            ~f:(fun ((theory : Coq_stanza.Theory.t), entry) ->
-              (snd theory.name, (theory, entry)))
-        with
-        | Ok m -> m
-        | Error (_name, (theory1, _entry1), (theory2, _entry2)) ->
-          Error.duplicate_theory_name theory1.name theory2.name
-      in
-      fun name ->
-        match Coq_lib_name.Map.find map name with
-        | None -> `Not_found
-        | Some (theory, entry) -> (
-          match entry with
-          | Theory dir -> `Theory (find_db dir, dir, theory)
-          | Redirect db -> `Redirect db)
+    let map =
+      match
+        Coq_lib_name.Map.of_list_map entries
+          ~f:(fun ((theory : Coq_stanza.Theory.t), entry) ->
+            (snd theory.name, (theory, entry)))
+      with
+      | Ok m -> m
+      | Error (_name, (theory1, _entry1), (theory2, _entry2)) ->
+        Error.duplicate_theory_name theory1.name theory2.name
+    in
+    let resolve name =
+      match Coq_lib_name.Map.find map name with
+      | None -> `Not_found
+      | Some (theory, entry) -> (
+        match entry with
+        | Theory dir -> `Theory (find_db dir, dir, theory)
+        | Redirect db -> `Redirect db)
     in
     Fdecl.set t { boot; resolve; parent };
     Fdecl.get t

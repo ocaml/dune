@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676992785898,
+  "lastUpdate": 1676992897869,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6176,6 +6176,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.37781489655334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "2609315+esope@users.noreply.github.com",
+            "name": "Benoit Montagu",
+            "username": "esope"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2f9cd7390939d1dddd5ef64761c0bc81d54ea402",
+          "message": "Add a new line at the end of error reports (#6823\n\nWhenever --display-separate-messages is passed, dune will separate error\r\nmessages by blank lines\r\n\r\nSigned-off-by: Benoît Montagu <benoit.montagu@inria.fr>",
+          "timestamp": "2023-02-21T06:48:06-08:00",
+          "tree_id": "1b8d024d8708336209cdc3cedd3590d8a4ae8493",
+          "url": "https://github.com/ocaml/dune/commit/2f9cd7390939d1dddd5ef64761c0bc81d54ea402"
+        },
+        "date": 1676992897077,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.400245702313335",
             "unit": "seconds"
           }
         ]

@@ -10,6 +10,9 @@ Unreleased
 - Add the `--display-separate-messages` flag to separate the error messages
   produced by commands with a blank line. (#6823, fixes #6158, @esope)
 
+- Accept the Ordered Set Language for the `modes` field in `library` stanzas
+  (#6611, @anmonteiro).
+
 3.7.0 (2023-02-17)
 ------------------
 

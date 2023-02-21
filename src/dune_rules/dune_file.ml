@@ -459,6 +459,15 @@ module Mode_conf = struct
 
     let to_dyn t = Dyn.variant (to_string t) []
 
+    let equal x y =
+      match (x, y) with
+      | Ocaml o1, Ocaml o2 -> (
+        match compare o1 o2 with
+        | Eq -> true
+        | _ -> false)
+      | Ocaml _, _ | _, Ocaml _ -> false
+      | Melange, Melange -> true
+
     module Map = struct
       type nonrec 'a t =
         { ocaml : 'a Map.t
@@ -493,6 +502,22 @@ module Mode_conf = struct
               | Some Inherited ->
                 (* this doesn't happen as inherited can't be manually specified *)
                 assert false))
+
+      let decode_osl ~stanza_loc project =
+        let+ modes = Ordered_set_lang.decode in
+        let modes =
+          Ordered_set_lang.eval modes
+            ~parse:(fun ~loc s ->
+              let mode =
+                Dune_lang.Decoder.parse decode
+                  (Dune_project.parsing_context project)
+                  (Atom (loc, Dune_lang.Atom.of_string s))
+              in
+              (mode, Kind.Requested loc))
+            ~eq:(fun (a, _) (b, _) -> equal a b)
+            ~standard:[ (Ocaml Best, Kind.Requested stanza_loc) ]
+        in
+        of_list modes
 
       let decode =
         let decode =
@@ -548,6 +573,30 @@ module Library = struct
     let field = field_o "wrapped" (located decode)
   end
 
+  module Modes = struct
+    let decode ~stanza_loc ~dune_version project =
+      let expected_version = (3, 8) in
+      if dune_version >= expected_version then
+        Mode_conf.Lib.Set.decode_osl ~stanza_loc project
+      else
+        (* Old behavior: if old parser succeeds, return that. Otherwise, if
+           parsing the ordered set language succeeds, ask the user to upgrade to
+           a supported version. Otherwise, fail with the first error. *)
+        try_
+          (Mode_conf.Lib.Set.decode >>| fun modes -> `Modes modes)
+          (fun exn ->
+            try_
+              ( Mode_conf.Lib.Set.decode_osl ~stanza_loc project >>| fun modes ->
+                if dune_version >= expected_version then `Modes modes
+                else `Upgrade )
+              (fun _ -> raise exn))
+        >>| function
+        | `Modes modes -> modes
+        | `Upgrade ->
+          Syntax.Error.since stanza_loc Stanza.syntax expected_version
+            ~what:"Ordered set language for modes"
+  end
+
   type visibility =
     | Public of Public_lib.t
     | Private of Package.t option
@@ -585,6 +634,7 @@ module Library = struct
       (let* stanza_loc = loc in
        let* wrapped = Wrapped.field in
        let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+       let* project = Dune_project.get_exn () in
        let+ buildable = Buildable.decode (Library (Option.map ~f:snd wrapped))
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public =
@@ -602,7 +652,8 @@ module Library = struct
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
-         field "modes" Mode_conf.Lib.Set.decode
+         field "modes"
+           (Modes.decode ~stanza_loc ~dune_version project)
            ~default:(Mode_conf.Lib.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ optional = field_b "optional"
@@ -619,7 +670,6 @@ module Library = struct
        and+ sub_systems =
          let* () = return () in
          Sub_system_info.record_parser ()
-       and+ project = Dune_project.get_exn ()
        and+ virtual_modules =
          field_o "virtual_modules"
            (Dune_lang.Syntax.since Stanza.syntax (1, 7)

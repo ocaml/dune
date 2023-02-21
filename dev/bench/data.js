@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677005175674,
+  "lastUpdate": 1677008238616,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6263,6 +6263,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.52484709463334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5463cd87c573c28c71d513fbecd8cb17dbdb27b7",
+          "message": "feature: Silence display in non-user processes (#6994)\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-02-21T11:13:08-08:00",
+          "tree_id": "740d502ca74896b5105137c7f3aff5a8df0fc4a7",
+          "url": "https://github.com/ocaml/dune/commit/5463cd87c573c28c71d513fbecd8cb17dbdb27b7"
+        },
+        "date": 1677008237163,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.10321208702666",
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1676908838856,
+  "lastUpdate": 1676942059776,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -5712,6 +5712,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.37613453791334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "b6d28723c8edbc8a5829e8502bb6b45956933151",
+          "message": "test: preprocessor directory\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-02-20T16:45:20-08:00",
+          "tree_id": "b4703350652dfd13e9414c5a0a6d1682898e40d4",
+          "url": "https://github.com/ocaml/dune/commit/b6d28723c8edbc8a5829e8502bb6b45956933151"
+        },
+        "date": 1676942058695,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.068237062646666",
             "unit": "seconds"
           }
         ]

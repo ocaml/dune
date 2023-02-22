@@ -1,6 +1,6 @@
 Test dependency on installed package
 
-  $ mkdir a b prefix
+  $ mkdir a b prefix app
 
   $ cat > a/dune-project <<EOF
   > (lang dune 3.7)
@@ -50,10 +50,59 @@ Test dependency on installed package
   > let x = A.Foo.x
   > EOF
 
+  $ cat > b/foo.ml <<EOF
+  > let x = Bar.x
+  > EOF
+
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @install --display=short
   Entering directory 'b'
       ocamldep .b.objs/b__Bar.impl.d
+      ocamldep .b.objs/b__Foo.impl.d
           melc .b.objs/melange/b.{cmi,cmj,cmt}
           melc .b.objs/melange/b__Bar.{cmi,cmj,cmt}
+          melc .b.objs/melange/b__Foo.{cmi,cmj,cmt}
   Leaving directory 'b'
 
+  $ dune install --root b --prefix $PWD/prefix
+  Installing $TESTCASE_ROOT/prefix/lib/b/META
+  Installing $TESTCASE_ROOT/prefix/lib/b/b.ml
+  Installing $TESTCASE_ROOT/prefix/lib/b/bar.ml
+  Installing $TESTCASE_ROOT/prefix/lib/b/dune-package
+  Installing $TESTCASE_ROOT/prefix/lib/b/foo.ml
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b.cmi
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b.cmj
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Bar.cmi
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Bar.cmj
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Bar.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Foo.cmi
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Foo.cmj
+  Installing $TESTCASE_ROOT/prefix/lib/b/melange/b__Foo.cmt
+
+  $ cat >app/dune-project <<EOF
+  > (lang dune 3.7)
+  > (package (name app))
+  > (using melange 0.1)
+  > EOF
+
+  $ cat > app/dune <<EOF
+  > (melange.emit
+  >  (target dist)
+  >  (module_system commonjs)
+  >  (alias melange-dist)
+  >  (libraries b))
+  > EOF
+
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @melange-dist --display=short
+  Entering directory 'app'
+          melc dist/node_modules/a/a.js
+          melc dist/node_modules/a/foo.js
+          melc dist/node_modules/b/b.js
+          melc dist/node_modules/b/bar.js
+          melc .dist.mobjs/melange/melange.{cmi,cmj,cmt}
+          melc dist/.dist.mobjs/melange.js
+          melc dist/node_modules/b/foo.js (exit 2)
+  File "_none_", line 1:
+  Error: B__Bar not found, it means either the module does not exist or it is a namespace
+  Leaving directory 'app'
+  [1]

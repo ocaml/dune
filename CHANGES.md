@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Adds support for loading plugins in toplevels (#6082, fixes #6081, 
+  @ivg, @richardlford)
+
 - Support commands that output 8-bit and 24-bit colors in the terminal (#7188,
   @Alizter)
 

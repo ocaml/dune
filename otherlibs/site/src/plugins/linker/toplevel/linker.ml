@@ -1,7 +1,10 @@
+open Topdirs [@@ocaml.warning "-33"]
+open Toploop [@@ocaml.warning "-33"]
+
 let load filename =
   let buf = Buffer.create 16 in
   let ppf = Format.formatter_of_buffer buf in
-  match Toploop.load_file ppf filename with
+  match load_file ppf filename with
   | true -> ()
   | false ->
     Format.pp_print_flush ppf ();

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677034513814,
+  "lastUpdate": 1677071463265,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6379,6 +6379,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.25137180936667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5524321b0b5da606521bde063d9909eea31e3fab",
+          "message": "Enable use of stublibs of Dune-installed libraries from within workspace (#7151)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-02-22T13:52:21+01:00",
+          "tree_id": "50a319c3279d7338a2155b1bb506c8f6e43af78d",
+          "url": "https://github.com/ocaml/dune/commit/5524321b0b5da606521bde063d9909eea31e3fab"
+        },
+        "date": 1677071462486,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.42559987176667",
             "unit": "seconds"
           }
         ]

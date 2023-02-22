@@ -11,6 +11,7 @@ val deps_of :
      dir:Path.Build.t
   -> use_stdlib:bool
   -> wrapper_name:string
+  -> coq_lang_version:Dune_sexp.Syntax.Version.t
   -> Coq_module.t
   -> unit Dune_engine.Action_builder.t
 

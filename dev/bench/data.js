@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677015776866,
+  "lastUpdate": 1677034513814,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6350,6 +6350,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.076240548293335",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesus Gallego Arias",
+            "username": "ejgallego"
+          },
+          "committer": {
+            "email": "e+git@x80.org",
+            "name": "Emilio Jesús Gallego Arias",
+            "username": "ejgallego"
+          },
+          "distinct": true,
+          "id": "d6faeac7e9c35cf9e1f53660b12d90631465bbda",
+          "message": "[coq lib] Resolve boot as a regular theory\n\nThis simplifies the code quite a bit, and should help further\nrefactoring for installed_theories.\n\nIn particular we bring a simpliciation in terms of the boot lib, we\njust store its name and use the regular resolve path for it.\n\nThat avoids the hack we had with a forward ref for having it resolve\n\"early\".\n\nSigned-off-by: Emilio Jesus Gallego Arias <e+git@x80.org>",
+          "timestamp": "2023-02-22T03:36:17+01:00",
+          "tree_id": "b63c36b2ef0a123803580611fc882f7cf0b3f4ae",
+          "url": "https://github.com/ocaml/dune/commit/d6faeac7e9c35cf9e1f53660b12d90631465bbda"
+        },
+        "date": 1677034512565,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.25137180936667",
             "unit": "seconds"
           }
         ]

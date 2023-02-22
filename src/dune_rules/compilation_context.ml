@@ -224,21 +224,21 @@ let for_alias_module t alias_module =
       Sandbox_config.needs_sandboxing
     else Sandbox_config.no_special_requirements
   in
-  let modules : modules =
+  let (modules, includes) : modules * Includes.t =
     match Modules.is_stdlib_alias t.modules.modules alias_module with
-    | false -> singleton_modules alias_module
+    | false -> (singleton_modules alias_module, Includes.empty)
     | true ->
       (* The stdlib alias module is different from the alias modules usually
          produced by Dune: it contains code and depends on a few other
          [CamlinnternalXXX] modules from the stdlib, so we need the full set of
          modules to compile it. *)
-      t.modules
+      (t.modules, t.includes)
   in
   { t with
     flags =
       Ocaml_flags.append_common flags
         [ "-w"; "-49"; "-nopervasives"; "-nostdlib" ]
-  ; includes = Includes.empty
+  ; includes
   ; stdlib = None
   ; sandbox
   ; modules

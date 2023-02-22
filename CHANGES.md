@@ -21,6 +21,9 @@ Unreleased
   be used as dependencies of libraries in the workspace (eg when compiling to
   bytecode and/or Javascript).  This is now fixed. (#7151, @nojb)
 
+- Allow the main module of a library with `(stdlib ...)` to depend on other
+  libraries (#7154, @anmonteiro).
+
 3.7.0 (2023-02-17)
 ------------------
 

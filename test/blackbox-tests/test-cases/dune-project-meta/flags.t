@@ -69,9 +69,9 @@ Reject empty flags
 
   $ dune build --root=empty-flags
   Entering directory 'empty-flags'
-  Leaving directory 'empty-flags'
-  File "dune-project", line 4, characters 0-9:
-  4 | (flags)
-      ^^^^^^^^^
+  File "dune-project", line 4, characters 20-27:
+  4 | (package (name foo) (flags) (allow_empty))
+                          ^^^^^^^
   Error: Not enough arguments for flags
+  Leaving directory 'empty-flags'
   [1]

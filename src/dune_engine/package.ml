@@ -638,7 +638,7 @@ let decode ~dir =
      and+ tags = field "tags" (enter (repeat string)) ~default:[]
      and+ flags =
        field ~default:[] "flags"
-         (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> repeat ident)
+         (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> repeat1 ident)
      and+ deprecated_package_names =
        name_map
          (Dune_lang.Syntax.since Stanza.syntax (2, 0))

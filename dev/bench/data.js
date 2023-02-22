@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677071463265,
+  "lastUpdate": 1677076868745,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6408,6 +6408,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.42559987176667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stephen@sherra.tt",
+            "name": "Stephen Sherratt",
+            "username": "gridbugs"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a991faf36219d92f434543b5d1fff080a89c4311",
+          "message": "Repro for #7146: Linker is invoked from unexpected directory (#7147)\n\nSigned-off-by: Stephen Sherratt <stephen@sherra.tt>",
+          "timestamp": "2023-02-22T06:21:24-08:00",
+          "tree_id": "daffff2fb10b545de73fa444123c5f6da2fba2de",
+          "url": "https://github.com/ocaml/dune/commit/a991faf36219d92f434543b5d1fff080a89c4311"
+        },
+        "date": 1677076867893,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.94181495206",
             "unit": "seconds"
           }
         ]

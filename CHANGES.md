@@ -21,6 +21,9 @@ Unreleased
   be used as dependencies of libraries in the workspace (eg when compiling to
   bytecode and/or Javascript).  This is now fixed. (#7151, @nojb)
 
+- Bytecode executables built for JSOO are linked with `-noautolink` and no
+  longer depend on the shared stubs of their dependent libraries (#7156, @nojb)
+
 3.7.0 (2023-02-17)
 ------------------
 

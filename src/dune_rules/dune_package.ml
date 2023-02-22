@@ -29,7 +29,7 @@ module Lib = struct
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
-  let encode ~package_root { info; main_module_name } =
+  let encode ~package_root ~stublibs { info; main_module_name } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -71,6 +71,14 @@ module Lib = struct
       | Needs_module_info _ ->
         Code_error.raise "caller must set native archives to known value" []
     in
+    let foreign_dll_files =
+      match stublibs with
+      | None -> []
+      | Some stublibs ->
+        List.map
+          ~f:(fun file -> Path.relative stublibs (Path.basename file))
+          (Lib_info.foreign_dll_files info)
+    in
     record_fields
     @@ [ field "name" Lib_name.encode name
        ; field "kind" Lib_kind.encode kind
@@ -82,6 +90,7 @@ module Lib = struct
        ; paths "foreign_objects" foreign_objects
        ; field_i "foreign_archives" (Mode.Map.encode path)
            (Lib_info.foreign_archives info)
+       ; paths "foreign_dll_files" foreign_dll_files
        ; paths "native_archives" native_archives
        ; paths "jsoo_runtime" jsoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
@@ -148,6 +157,7 @@ module Lib = struct
          else
            let+ m = mode_paths "foreign_archives" in
            Mode.Map.Multi.create_for_all_modes m.byte
+       and+ foreign_dll_files = paths "foreign_dll_files"
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
@@ -195,7 +205,7 @@ module Lib = struct
            ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
            ~sub_systems ~requires ~foreign_objects ~plugins ~archives
            ~ppx_runtime_deps ~foreign_archives
-           ~native_archives:(Files native_archives) ~foreign_dll_files:[]
+           ~native_archives:(Files native_archives) ~foreign_dll_files
            ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
            ~virtual_ ~entry_modules ~implements ~default_implementation ~modes
            ~modules ~wrapped ~special_builtin_support ~exit_module:None
@@ -376,10 +386,13 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
   in
   let list s = Dune_lang.List s in
   let entries =
+    let stublibs = Section.Map.find sections Stublibs in
     Lib_name.Map.to_list_map entries ~f:(fun _name e ->
         match e with
         | Entry.Library lib ->
-          list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
+          list
+            (Dune_lang.atom "library"
+            :: Lib.encode lib ~package_root:dir ~stublibs)
         | Deprecated_library_name d ->
           list
             (Dune_lang.atom "deprecated_library_name"

@@ -17,6 +17,10 @@ Unreleased
 - Accept the Ordered Set Language for the `modes` field in `library` stanzas
   (#6611, @anmonteiro).
 
+- Stub shared libraries (dllXXX_stubs.so) in Dune-installed libraries could not
+  be used as dependencies of libraries in the workspace (eg when compiling to
+  bytecode and/or Javascript).  This is now fixed. (#7151, @nojb)
+
 3.7.0 (2023-02-17)
 ------------------
 

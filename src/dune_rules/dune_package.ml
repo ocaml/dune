@@ -165,9 +165,7 @@ module Lib = struct
        and+ virtual_ = field_b "virtual"
        and+ sub_systems = Sub_system_info.record_parser ()
        and+ orig_src_dir = field_o "orig_src_dir" path
-       and+ modules =
-         let src_dir = Obj_dir.dir obj_dir in
-         field "modules" (Modules.decode ~src_dir)
+       and+ modules = field "modules" (Modules.decode ~src_dir:base)
        and+ special_builtin_support =
          field_o "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)

@@ -16,26 +16,30 @@ Test paths on public libraries with `.` are correct
   > let x = "foo"
   > EOF
 
-  $ dune build --root a
+  $ dune build a.install --root a
   Entering directory 'a'
   Leaving directory 'a'
 
-  $ dune install --root a --prefix $PWD/prefix
-  Installing $TESTCASE_ROOT/prefix/lib/a/META
-  Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.a
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.cma
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.cmi
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.cmt
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.cmx
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.cmxa
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.ml
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a__Foo.cmi
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a__Foo.cmt
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a__Foo.cmx
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/foo.ml
-  Installing $TESTCASE_ROOT/prefix/lib/a/sub/a.cmxs
+  $ cat a/_build/default/a.install
+  lib: [
+    "_build/install/default/lib/a/META"
+    "_build/install/default/lib/a/dune-package"
+    "_build/install/default/lib/a/sub/a.a" {"sub/a.a"}
+    "_build/install/default/lib/a/sub/a.cma" {"sub/a.cma"}
+    "_build/install/default/lib/a/sub/a.cmi" {"sub/a.cmi"}
+    "_build/install/default/lib/a/sub/a.cmt" {"sub/a.cmt"}
+    "_build/install/default/lib/a/sub/a.cmx" {"sub/a.cmx"}
+    "_build/install/default/lib/a/sub/a.cmxa" {"sub/a.cmxa"}
+    "_build/install/default/lib/a/sub/a.ml" {"sub/a.ml"}
+    "_build/install/default/lib/a/sub/a__Foo.cmi" {"sub/a__Foo.cmi"}
+    "_build/install/default/lib/a/sub/a__Foo.cmt" {"sub/a__Foo.cmt"}
+    "_build/install/default/lib/a/sub/a__Foo.cmx" {"sub/a__Foo.cmx"}
+    "_build/install/default/lib/a/sub/foo.ml" {"sub/foo.ml"}
+  ]
+  libexec: [
+    "_build/install/default/lib/a/sub/a.cmxs" {"sub/a.cmxs"}
+  ]
 
-  $ cat prefix/lib/a/dune-package | grep path
+  $ cat a/_build/install/default/lib/a/dune-package | grep path
        (source (path A) (impl (path sub/a.ml-gen))))
         (source (path Foo) (impl (path sub/foo.ml))))))

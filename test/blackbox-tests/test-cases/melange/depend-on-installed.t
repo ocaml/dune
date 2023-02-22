@@ -99,10 +99,7 @@ Test dependency on installed package
           melc dist/node_modules/a/foo.js
           melc dist/node_modules/b/b.js
           melc dist/node_modules/b/bar.js
+          melc dist/node_modules/b/foo.js
           melc .dist.mobjs/melange/melange.{cmi,cmj,cmt}
           melc dist/.dist.mobjs/melange.js
-          melc dist/node_modules/b/foo.js (exit 2)
-  File "_none_", line 1:
-  Error: B__Bar not found, it means either the module does not exist or it is a namespace
   Leaving directory 'app'
-  [1]

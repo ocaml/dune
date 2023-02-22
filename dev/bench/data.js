@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677077548100,
+  "lastUpdate": 1677091938843,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6466,6 +6466,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.17791138534667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "3c3382dce1a4bd6f27c13ca0313dfc3613b6267a",
+          "message": "fix: point to the correct melange artifact location in external libs\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-22T10:28:47-08:00",
+          "tree_id": "eecf5eabd0487be7b00e60979b840a22f826f859",
+          "url": "https://github.com/ocaml/dune/commit/3c3382dce1a4bd6f27c13ca0313dfc3613b6267a"
+        },
+        "date": 1677091937406,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "42.820528003453326",
             "unit": "seconds"
           }
         ]

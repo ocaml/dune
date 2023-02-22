@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677094449087,
+  "lastUpdate": 1677095085004,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6524,6 +6524,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.66283434735333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7c0a10839f7d9fc5e634158f969679a66966d29",
+          "message": "stdlib: include dependencies for stdlib alias, decode correctly (#7154)\n\ninclude dependencies for stdlib alias, decode correctly\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-22T11:25:46-08:00",
+          "tree_id": "6699cea67ad879bf9c0f986d9a1969921051e2b6",
+          "url": "https://github.com/ocaml/dune/commit/e7c0a10839f7d9fc5e634158f969679a66966d29"
+        },
+        "date": 1677095084342,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.63396717928",
             "unit": "seconds"
           }
         ]

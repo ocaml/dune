@@ -25,7 +25,8 @@ module Link_params = struct
     let select_lib_files = Mode.Map.Multi.for_only ~and_all:true lib_files in
     let+ hidden_deps =
       match mode with
-      | Byte | Byte_for_jsoo -> Memo.return dll_files
+      | Byte -> Memo.return dll_files
+      | Byte_for_jsoo -> Memo.return []
       | Byte_with_stubs_statically_linked_in ->
         Memo.return @@ select_lib_files Mode.Byte
       | Native ->
@@ -39,7 +40,8 @@ module Link_params = struct
     let include_dirs =
       let files =
         match mode with
-        | Byte | Byte_for_jsoo -> dll_files
+        | Byte -> dll_files
+        | Byte_for_jsoo -> []
         | Byte_with_stubs_statically_linked_in | Native ->
           select_lib_files Mode.Native
       in

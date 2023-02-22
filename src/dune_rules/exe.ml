@@ -21,7 +21,7 @@ module Linkage = struct
   let byte_for_jsoo =
     { mode = Byte_for_jsoo
     ; ext = ".bc-for-jsoo"
-    ; flags = [ "-no-check-prims" ]
+    ; flags = [ "-no-check-prims"; "-noautolink" ]
     }
 
   let native = { mode = Native; ext = ".exe"; flags = [] }

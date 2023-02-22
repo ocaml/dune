@@ -64,15 +64,10 @@ Test dependency on installed package
         ocamlc .b.objs/byte/b.{cmi,cmo,cmt}
       ocamldep .b.objs/b__Bar.impl.d
       ocamlopt .b.objs/native/b.{cmx,o}
-  File "$TESTCASE_ROOT/prefix/lib/a/dune-package", line 40, characters 14-38:
-  40 |    (unwrapped CamlinternalFormatBasics))))
-                     ^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: List expected
-  -> required by library "b" in _build/default
-  -> required by _build/default/META.b
-  -> required by _build/install/default/lib/b/META
-  -> required by _build/default/b.install
-  -> required by alias install
+        ocamlc .b.objs/byte/b__Bar.{cmi,cmo,cmt}
+      ocamlopt .b.objs/native/b__Bar.{cmx,o}
+        ocamlc b.cma
+      ocamlopt b.{a,cmxa}
+      ocamlopt b.cmxs
   Leaving directory 'b'
-  [1]
 

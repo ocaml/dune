@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677091938843,
+  "lastUpdate": 1677094449087,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6495,6 +6495,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.820528003453326",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9936f1b6cd436b7b1bfbf2a51ff6754baf6168c",
+          "message": "test: demonstrate bug in stdlib decoding in dune-package (#7159)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-22T11:15:15-08:00",
+          "tree_id": "a6f6b1232ec4f80155a6d357d26344f826446d07",
+          "url": "https://github.com/ocaml/dune/commit/d9936f1b6cd436b7b1bfbf2a51ff6754baf6168c"
+        },
+        "date": 1677094448155,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.66283434735333",
             "unit": "seconds"
           }
         ]

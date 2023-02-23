@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677172220169,
+  "lastUpdate": 1677175246971,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6727,6 +6727,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "44.28683251148667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "676f6c7645f09a61562c0800c88ccfe3f57549f7",
+          "message": "fix(melange): unify public libraries (in-workspace vs external) (#7163)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-23T09:41:36-08:00",
+          "tree_id": "c11ad3670d43b1756bbc223e461270b2e23cd05a",
+          "url": "https://github.com/ocaml/dune/commit/676f6c7645f09a61562c0800c88ccfe3f57549f7"
+        },
+        "date": 1677175245848,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.685160802393334",
             "unit": "seconds"
           }
         ]

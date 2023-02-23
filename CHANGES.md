@@ -24,6 +24,9 @@ Unreleased
 - Allow the main module of a library with `(stdlib ...)` to depend on other
   libraries (#7154, @anmonteiro).
 
+- Bytecode executables built for JSOO are linked with `-noautolink` and no
+  longer depend on the shared stubs of their dependent libraries (#7156, @nojb)
+
 3.7.0 (2023-02-17)
 ------------------
 

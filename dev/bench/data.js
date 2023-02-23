@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677165820056,
+  "lastUpdate": 1677171511250,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6669,6 +6669,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.896837353040006",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "96d4560b0ff362ee4eefbbd3e84d2518afdfe466",
+          "message": "chore(ci): update macos deps (#7165)\n\nAdd pkg-config and file as deps\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-23T08:37:12-08:00",
+          "tree_id": "1484f5a7eb35ce0f6b196f53c396bafa974d92f8",
+          "url": "https://github.com/ocaml/dune/commit/96d4560b0ff362ee4eefbbd3e84d2518afdfe466"
+        },
+        "date": 1677171510272,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "40.74990790788667",
             "unit": "seconds"
           }
         ]

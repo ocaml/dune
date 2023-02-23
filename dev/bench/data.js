@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677119089072,
+  "lastUpdate": 1677125376873,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6611,6 +6611,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.04277709404",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "20180d12149343d073cdea5860d01dc181702e6a",
+          "message": "refactor: move rpc client to own library (#7120)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-22T19:50:30-08:00",
+          "tree_id": "a2705f2ea4b83c44aa52d0e7830080d567de216c",
+          "url": "https://github.com/ocaml/dune/commit/20180d12149343d073cdea5860d01dc181702e6a"
+        },
+        "date": 1677125376106,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.02356362868",
             "unit": "seconds"
           }
         ]

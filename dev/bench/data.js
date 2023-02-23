@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677125376873,
+  "lastUpdate": 1677165820056,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6640,6 +6640,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.02356362868",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "n.oje.bar@gmail.com",
+            "name": "Nicolás Ojeda Bär",
+            "username": "nojb"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6b998ea289d42437d28267bac20a0abb3ca8907d",
+          "message": "bc-for-jsoo: use -noautolink, do not depend on stublibs (#7156)\n\nSigned-off-by: Nicolás Ojeda Bär <n.oje.bar@gmail.com>",
+          "timestamp": "2023-02-23T16:05:07+01:00",
+          "tree_id": "22efd74050bbef274e6ab89afe22725d71fa0064",
+          "url": "https://github.com/ocaml/dune/commit/6b998ea289d42437d28267bac20a0abb3ca8907d"
+        },
+        "date": 1677165819286,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "32.896837353040006",
             "unit": "seconds"
           }
         ]

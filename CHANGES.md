@@ -9,9 +9,6 @@ Unreleased
 - Non-user proccesses such as version control or config checking are now run
   silently. (#6994, fixes #4066, @Alizter)
 
-- Invoke preprocessor commands from directory of dune file containing the
-  commands rather than from the workspace root (#7057, fixes #7043, @gridbugs)
-
 - Add the `--display-separate-messages` flag to separate the error messages
   produced by commands with a blank line. (#6823, fixes #6158, @esope)
 

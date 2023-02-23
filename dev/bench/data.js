@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677175246971,
+  "lastUpdate": 1677175977637,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6756,6 +6756,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.685160802393334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f3bdf371f88acae4d752bc3decc83f43039eab29",
+          "message": "chore: missing space in CHANGES (#7168)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-23T09:45:15-08:00",
+          "tree_id": "4396348a4905c450b930eaac9b9050853f050569",
+          "url": "https://github.com/ocaml/dune/commit/f3bdf371f88acae4d752bc3decc83f43039eab29"
+        },
+        "date": 1677175976023,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "51.97186776184666",
             "unit": "seconds"
           }
         ]

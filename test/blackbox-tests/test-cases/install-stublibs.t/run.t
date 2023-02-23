@@ -12,7 +12,11 @@ Begin by installing a library with C stubs.
   >   (language c)
   >   (names stubs)))
   > EOF
-  $ touch stubs.c
+  $ cat >stubs.c <<EOF
+  > int dummy() {
+  >   return 0;
+  > }
+  > EOF
   $ dune build
   $ dune install --prefix ./install
   Installing install/lib/libA/META

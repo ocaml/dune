@@ -49,7 +49,7 @@ module Stdlib = struct
        and+ modules = modules ~src_dir ()
        and+ exit_module = field_o "exit_module" Module_name.decode
        and+ unwrapped =
-         field ~default:[] "unwrapped" (repeat (enter Module_name.decode))
+         field ~default:[] "unwrapped" (repeat Module_name.decode)
        in
        let unwrapped = Module_name.Set.of_list unwrapped in
        { modules; main_module_name; exit_module; unwrapped })

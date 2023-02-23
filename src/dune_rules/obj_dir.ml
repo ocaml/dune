@@ -33,6 +33,7 @@ module External = struct
     ; private_dir : Path.t option
     ; public_cmi_ocaml_dir : Path.t option
     ; public_cmi_melange_dir : Path.t option
+    ; melange_dir : Path.t
     }
 
   let equal : t -> t -> bool = Poly.equal
@@ -44,31 +45,37 @@ module External = struct
     let public_cmi_ocaml_dir =
       if private_lib then Some (Path.relative dir ".public_cmi") else None
     in
+    let melange_dir = Path.relative dir Melange.Install.dir in
     let public_cmi_melange_dir =
-      let melange_dir = Path.relative dir Melange.Install.dir in
       if private_lib then Some (Path.relative melange_dir ".public_cmi_melange")
-      else Some melange_dir
+      else None
     in
     { public_dir = dir
     ; private_dir
     ; public_cmi_ocaml_dir
     ; public_cmi_melange_dir
+    ; melange_dir
     }
 
   let public_cmi_ocaml_dir t =
     Option.value ~default:t.public_dir t.public_cmi_ocaml_dir
 
   let public_cmi_melange_dir t =
-    Option.value ~default:t.public_dir t.public_cmi_melange_dir
+    Option.value ~default:t.melange_dir t.public_cmi_melange_dir
 
   let to_dyn
-      { public_dir; private_dir; public_cmi_ocaml_dir; public_cmi_melange_dir }
-      =
+      { public_dir
+      ; private_dir
+      ; public_cmi_ocaml_dir
+      ; melange_dir
+      ; public_cmi_melange_dir
+      } =
     let open Dyn in
     record
       [ ("public_dir", Path.to_dyn public_dir)
       ; ("private_dir", option Path.to_dyn private_dir)
       ; ("public_cmi_ocaml_dir", option Path.to_dyn public_cmi_ocaml_dir)
+      ; ("melange_dir", Path.to_dyn melange_dir)
       ; ("public_cmi_melange_dir", option Path.to_dyn public_cmi_melange_dir)
       ]
 
@@ -79,14 +86,15 @@ module External = struct
       Code_error.raise "External.cm_dir" [ ("t", to_dyn t) ]
     | Ocaml Cmi, Public, _ -> public_cmi_ocaml_dir t
     | Melange Cmi, Public, _ -> public_cmi_melange_dir t
-    | Melange Cmj, _, _ -> public_cmi_melange_dir t
+    | Melange Cmj, _, _ -> t.melange_dir
     | Ocaml (Cmo | Cmx), _, _ -> t.public_dir
 
   let encode
       { public_dir
       ; private_dir
       ; public_cmi_ocaml_dir
-      ; public_cmi_melange_dir = _
+      ; public_cmi_melange_dir
+      ; melange_dir = _
       } =
     let open Dune_lang.Encoder in
     let extract d =
@@ -94,9 +102,11 @@ module External = struct
     in
     let private_dir = Option.map ~f:extract private_dir in
     let public_cmi_ocaml_dir = Option.map ~f:extract public_cmi_ocaml_dir in
+    let public_cmi_melange_dir = Option.map ~f:extract public_cmi_melange_dir in
     record_fields
       [ field_o "private_dir" string private_dir
-      ; field_o "public_cmi_dir" string public_cmi_ocaml_dir
+      ; field_o "public_cmi_ocaml_dir" string public_cmi_ocaml_dir
+      ; field_o "public_cmi_melange_dir" string public_cmi_melange_dir
       ]
 
   let decode ~dir =
@@ -104,15 +114,20 @@ module External = struct
     let open Dune_lang.Decoder in
     fields
       (let+ private_dir = field_o "private_dir" string
-       and+ public_cmi_ocaml_dir = field_o "public_cmi_dir" string in
+       and+ public_cmi_ocaml_dir = field_o "public_cmi_ocaml_dir" string
+       and+ public_cmi_melange_dir = field_o "public_cmi_melange_dir" string in
        let private_dir = Option.map ~f:(Path.relative dir) private_dir in
        let public_cmi_ocaml_dir =
          Option.map ~f:(Path.relative dir) public_cmi_ocaml_dir
        in
+       let public_cmi_melange_dir =
+         Option.map ~f:(Path.relative dir) public_cmi_melange_dir
+       in
        { public_dir
        ; private_dir
+       ; melange_dir = Path.relative dir Melange.Install.dir
        ; public_cmi_ocaml_dir
-       ; public_cmi_melange_dir = None
+       ; public_cmi_melange_dir
        })
 
   let byte_dir t = t.public_dir
@@ -121,7 +136,7 @@ module External = struct
 
   let native_dir t = t.public_dir
 
-  let melange_dir t = t.public_dir
+  let melange_dir t = t.melange_dir
 
   let dir t = t.public_dir
 
@@ -133,6 +148,7 @@ module External = struct
 
   let all_cmis
       { public_dir
+      ; melange_dir = _
       ; private_dir
       ; public_cmi_ocaml_dir
       ; public_cmi_melange_dir = _

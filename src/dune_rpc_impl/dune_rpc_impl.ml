@@ -1,5 +1,5 @@
 module Decl = Decl
-module Where = Where
 module Client = Client
 module Server = Server
-module Private = Private
+module Private = Dune_rpc_client.Private
+module Where = Dune_rpc_client.Where

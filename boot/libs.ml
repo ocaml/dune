@@ -58,6 +58,7 @@ let local_libraries =
   ; ("vendor/cmdliner/src", None, false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "Build_info_data")
+  ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ]
 

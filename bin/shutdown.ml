@@ -1,6 +1,6 @@
 open! Stdune
 open Import
-module Client = Dune_rpc_impl.Client
+module Client = Dune_rpc_client.Client
 
 let send_shutdown cli =
   let open Fiber.O in
@@ -9,13 +9,13 @@ let send_shutdown cli =
       Dune_rpc_private.Public.Notification.shutdown
   in
   match decl with
-  | Ok decl -> Dune_rpc_impl.Client.notification cli decl ()
+  | Ok decl -> Client.notification cli decl ()
   | Error e -> raise (Dune_rpc_private.Version_error.E e)
 
 let exec common =
   let open Fiber.O in
   let where = Rpc.active_server common in
-  let* conn = Dune_rpc_impl.Client.Connection.connect_exn where in
+  let* conn = Client.Connection.connect_exn where in
   Dune_rpc_impl.Client.client conn ~f:send_shutdown
     (Dune_rpc_private.Initialize.Request.create
        ~id:(Dune_rpc_private.Id.make (Sexp.Atom "shutdown_cmd")))

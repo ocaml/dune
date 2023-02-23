@@ -5,5 +5,5 @@
  (deps helpers.sh))
 
 (cram
- (applies_to what-dune-watches)
+ (applies_to github7170 what-dune-watches)
  (deps %{bin:strace}))

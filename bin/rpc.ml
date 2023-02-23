@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+module Client = Dune_rpc_client.Client
 
 let active_server () =
   match Dune_rpc_impl.Where.get () with
@@ -25,10 +26,10 @@ let raise_rpc_error (e : Dune_rpc_private.Response.Error.t) =
 
 let request_exn client witness n =
   let open Fiber.O in
-  let* decl = Dune_rpc_impl.Client.Versioned.prepare_request client witness in
+  let* decl = Client.Versioned.prepare_request client witness in
   match decl with
   | Error e -> raise (Dune_rpc_private.Version_error.E e)
-  | Ok decl -> Dune_rpc_impl.Client.request client decl n
+  | Ok decl -> Client.request client decl n
 
 let retry_loop once =
   let open Fiber.O in
@@ -70,7 +71,7 @@ let establish_client_session ~wait =
     match where with
     | None -> Fiber.return None
     | Some where -> (
-      let+ connection = Dune_rpc_impl.Client.Connection.connect where in
+      let+ connection = Client.Connection.connect where in
       match connection with
       | Ok conn -> Some conn
       | Error message ->
@@ -93,7 +94,7 @@ module Status = struct
     printfn "Server is listening on %s" (Dune_rpc.Where.to_string where);
     printfn "Connected clients (including this one):\n";
     let open Fiber.O in
-    let* conn = Dune_rpc_impl.Client.Connection.connect_exn where in
+    let* conn = Client.Connection.connect_exn where in
     Dune_rpc_impl.Client.client conn
       (Dune_rpc.Initialize.Request.create
          ~id:(Dune_rpc.Id.make (Sexp.Atom "status")))
@@ -182,7 +183,7 @@ module Ping = struct
   let exec common =
     let open Fiber.O in
     let where = active_server common in
-    let* conn = Dune_rpc_impl.Client.Connection.connect_exn where in
+    let* conn = Client.Connection.connect_exn where in
     Dune_rpc_impl.Client.client conn ~f:send_ping
       (Dune_rpc_private.Initialize.Request.create
          ~id:(Dune_rpc_private.Id.make (Sexp.Atom "ping_cmd")))

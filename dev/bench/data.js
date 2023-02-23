@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677171511250,
+  "lastUpdate": 1677172220169,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6698,6 +6698,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "40.74990790788667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "8fff50edc333e279429acda5d5ef0ed99537a75b",
+          "message": "fix: decode dune-package source paths from the dune-package dir\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-23T08:46:07-08:00",
+          "tree_id": "ad87c4da7025ed31d2c1a3a8bc7b6d9dfcb27b5d",
+          "url": "https://github.com/ocaml/dune/commit/8fff50edc333e279429acda5d5ef0ed99537a75b"
+        },
+        "date": 1677172218900,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "44.28683251148667",
             "unit": "seconds"
           }
         ]

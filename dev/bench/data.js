@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677117539966,
+  "lastUpdate": 1677119089072,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6582,6 +6582,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "42.90220344156668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cec21681eb0e6b10ddb3bf59b81b04779744f3f1",
+          "message": "test: installed stublibs (#7162)\n\nadd some dummy code to the test stub to avoid warnings on macos\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-22T18:06:26-08:00",
+          "tree_id": "5d7299e4e75fa163485afac6cbb79fcc2282ace2",
+          "url": "https://github.com/ocaml/dune/commit/cec21681eb0e6b10ddb3bf59b81b04779744f3f1"
+        },
+        "date": 1677119088363,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.04277709404",
             "unit": "seconds"
           }
         ]

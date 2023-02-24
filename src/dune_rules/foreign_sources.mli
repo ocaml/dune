@@ -16,5 +16,5 @@ val make :
      Stanza.t list
   -> dune_version:Syntax.Version.t
   -> lib_config:Lib_config.t
-  -> dirs:(Path.Build.t * 'a * String.Set.t) list
+  -> dirs:(Path.Build.t * 'a * Filename.Set.t) list
   -> t

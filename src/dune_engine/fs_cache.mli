@@ -55,9 +55,9 @@ module Dir_contents : sig
   type t
 
   (** The sorted list of file names with kinds. *)
-  val to_list : t -> (string * File_kind.t) list
+  val to_list : t -> (Filename.t * File_kind.t) list
 
-  val iter : t -> f:(string * File_kind.t -> unit) -> unit
+  val iter : t -> f:(Filename.t * File_kind.t -> unit) -> unit
 
   val equal : t -> t -> bool
 end

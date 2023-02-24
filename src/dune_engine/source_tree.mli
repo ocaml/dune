@@ -5,7 +5,7 @@ open Import
 module Dune_file : sig
   val fname : Filename.t
 
-  val alternative_fname : string
+  val alternative_fname : Filename.t
 
   type kind = private
     | Plain
@@ -31,13 +31,13 @@ module Dir : sig
 
   val path : t -> Path.Source.t
 
-  val files : t -> String.Set.t
+  val files : t -> Filename.Set.t
 
   val file_paths : t -> Path.Source.Set.t
 
   type sub_dir
 
-  val sub_dirs : t -> sub_dir String.Map.t
+  val sub_dirs : t -> sub_dir Filename.Map.t
 
   val sub_dir_as_t : sub_dir -> t Memo.t
 
@@ -53,7 +53,7 @@ module Dir : sig
 
   val sub_dir_paths : t -> Path.Source.Set.t
 
-  val sub_dir_names : t -> String.Set.t
+  val sub_dir_names : t -> Filename.Set.t
 
   val status : t -> Sub_dirs.Status.t
 
@@ -104,4 +104,4 @@ val file_exists : Path.Source.t -> bool Memo.t
 
    This is currently used inside Jane Street. *)
 val filter_source_files :
-  (Dune_project.t -> (Path.Source.t -> string -> bool) Memo.t) ref
+  (Dune_project.t -> (Path.Source.t -> Filename.t -> bool) Memo.t) ref

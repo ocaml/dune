@@ -352,8 +352,6 @@ val is_strict_descendant_of_build_dir : t -> bool
 (** Split after the first component if [t] is local *)
 val split_first_component : t -> (Filename.t * t) option
 
-val insert_after_build_dir_exn : t -> string -> t
-
 val exists : t -> bool
 
 val readdir_unsorted :

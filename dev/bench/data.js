@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677258052242,
+  "lastUpdate": 1677259751863,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6901,6 +6901,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "37.874068813633336",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "927b672beb3cc1c39aa54701b51cccf88ab3bc8c",
+          "message": "refactor: use Filename.t more consistently (#7172)\n\nUse it in the signatures of [Source_tree] and [Path]\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-24T09:04:52-08:00",
+          "tree_id": "e5dbc707f615c0df99136426ef2d1e7cc110195d",
+          "url": "https://github.com/ocaml/dune/commit/927b672beb3cc1c39aa54701b51cccf88ab3bc8c"
+        },
+        "date": 1677259750419,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "45.056681189513334",
             "unit": "seconds"
           }
         ]

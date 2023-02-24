@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677259751863,
+  "lastUpdate": 1677273636311,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6930,6 +6930,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "45.056681189513334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6fa1a17bebc0114ee0b1febf3d215be3c028351c",
+          "message": "fix: Revert \"fix: Invoke preprocessor commands from local dir\" (#7169)\n\nRunning the preprocessor from cwd breaks the error messages outputted by\r\nthe preprocessor.\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-24T13:02:09-08:00",
+          "tree_id": "db56da9f0a9bf2bb38516707f38ca29f95811644",
+          "url": "https://github.com/ocaml/dune/commit/6fa1a17bebc0114ee0b1febf3d215be3c028351c"
+        },
+        "date": 1677273635204,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "33.29539175910667",
             "unit": "seconds"
           }
         ]

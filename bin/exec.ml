@@ -72,9 +72,7 @@ module Watch = struct
 
   let kill_process pid =
     let pid_int = Pid.to_int pid in
-    (* TODO This logic should exist in one place. Currently it's here and in
-       the scheduler *)
-    let signal = if Sys.win32 then Sys.sigkill else Sys.sigterm in
+    let signal = Signal.to_int Scheduler.kill_signal in
     (* FIXME Since we're reaping in a different thread, this can technically
        cause pid reuse *)
     Unix.kill pid_int signal;

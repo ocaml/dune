@@ -159,3 +159,5 @@ val stats : unit -> Dune_stats.t option Fiber.t
 val wait_for_build_input_change : unit -> unit Fiber.t
 
 val spawn_thread : (unit -> 'a) -> unit
+
+val kill_signal : Signal.t

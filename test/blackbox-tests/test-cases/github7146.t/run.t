@@ -19,20 +19,15 @@ doesn't work:
 
 The error message will include the path to the linker which varies across
 systems. Filter the linker path out of the error message.
-  $ dune build problem 2>&1 | sed '/\(cannot find -lnative\|library not found for -lnative\)/ s/^[^:]*:.*/ld: cannot find -lnative/'
+  $ dune build problem 2> stderr
+  [1]
+
+The error should point to our dune file
+  $ head -1 stderr
   File "problem/dune", line 1, characters 0-234:
-   1 | (library
-   2 |  (name foo_problem)
-   3 |  (foreign_stubs
-   4 |   (language c)
-   5 |   (names native_wrapper))
-   6 |  (no_dynlink)
-   7 |  (foreign_archives native)
-   8 |  (c_library_flags :standard -lnative -L.)
-   9 | ;(c_library_flags :standard -lnative -L%{project_root}/problem)
-  10 | )
-  ld: cannot find -lnative
-  collect2: error: ld returned 1 exit status
+
+We make sure the error contains a message from the linker:
+  $ grep -q "ld: \(library not found for -lnative\|cannot find -lnative\)" stderr
 
 The workaround is to use a rule to capture the path to the working directory
 into a file, and then read the file inside the (c_library_flags ...) field:

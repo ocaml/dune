@@ -6,7 +6,7 @@ env
 The ``env`` stanza allows one to modify the environment. The syntax is as
 follows:
 
-.. code:: scheme
+.. code:: dune
 
      (env
       (<profile1> <settings1>)

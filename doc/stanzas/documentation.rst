@@ -7,7 +7,7 @@ Additional manual pages may be attached to packages using the ``documentation``
 stanza. These ``.mld`` files must contain text in the same syntax as OCamldoc
 comments.
 
-.. code-block:: scheme
+.. code-block:: dune
 
   (documentation (<optional-fields>))
 

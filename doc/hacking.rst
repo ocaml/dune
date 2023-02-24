@@ -235,7 +235,7 @@ Dune introduced them.
 
 Such languages must be enabled in the ``dune`` project file separately:
 
-.. code:: scheme
+.. code:: dune
 
    (lang dune 3.8)
    (using coq 0.7)

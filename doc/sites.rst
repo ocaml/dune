@@ -24,7 +24,7 @@ A site is defined in a package :ref:`package` in the ``dune-project`` file. It
 consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
 ``etc``) where the site will be installed as a sub-directory.
 
-.. code:: scheme
+.. code:: dune
 
    (lang dune 3.8)
    (using dune_site 0.1)
@@ -41,7 +41,7 @@ Here the package ``mygui`` defines a site named ``themes`` that will be located
 in the section ``share``. This package can add files to this ``site`` using the
 :ref:`install stanza<install>`:
 
-.. code:: scheme
+.. code:: dune
 
    (install
     (section (site (mygui themes)))
@@ -54,7 +54,7 @@ Another package ``mygui_material_theme`` can install files inside ``mygui``
 directory for adding a new theme. Inside the scope of ``mygui_material_theme``
 the ``dune`` file contains:
 
-.. code:: scheme
+.. code:: dune
 
    (install
     (section (site mygui themes))
@@ -75,7 +75,7 @@ Getting the Locations of a Site at Runtime
 The executable ``mygui`` will be able to get the locations of the ``themes``
 site using the :ref:`generate sites module stanza<generate_sites_module>`
 
-.. code:: scheme
+.. code:: dune
 
    (executable
     (name mygui)
@@ -223,7 +223,7 @@ Main Executable (C)
 
 - The ``dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (lang dune 3.8)
   (using dune_site 0.1)
@@ -236,7 +236,7 @@ Main Executable (C)
 
 - The ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (executable
     (public_name app)
@@ -277,7 +277,7 @@ The Plugin "plugin1"
 
 - The ``plugin/dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (lang dune 3.8)
   (using dune_site 0.1)
@@ -290,7 +290,7 @@ The Plugin "plugin1"
 
 - The ``plugin/dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (library
     (public_name plugin1.plugin1_impl)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677206562312,
+  "lastUpdate": 1677246945500,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6843,6 +6843,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "38.11308922849333",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@emillon.org",
+            "name": "Etienne Millon",
+            "username": "emillon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc9510a30d2b47a31d25af2047bc3ec51089cabc",
+          "message": "doc: add a lexer for dune files (#7079)\n\nThis replaces the uses of \"scheme\" and \"lisp\" lexers.\r\n\r\nThe lexer is fairly non-opinionated and tries to stick to just the\r\nlexing of dune-lang (atoms, strings, things like pforms, etc), and does\r\nnot have a list of known stanzas and field names for example.\r\n\r\nIt does two special things:\r\n\r\n- it recognizes metasyntax like `<arg>` and highlights it accordingly to\r\n  show that these parts are not meant to be put verbatim in dune files\r\n- it highlights the first atom in lists in a different way. This\r\n  corresponds to how most of dune-lang works, but is not totally\r\n  correct.\r\n\r\nSigned-off-by: Etienne Millon <me@emillon.org>",
+          "timestamp": "2023-02-24T14:36:57+01:00",
+          "tree_id": "48d5ebbc560b5f046ddcd03c5607bd0a8b8d3444",
+          "url": "https://github.com/ocaml/dune/commit/dc9510a30d2b47a31d25af2047bc3ec51089cabc"
+        },
+        "date": 1677246944767,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.025471917653334",
             "unit": "seconds"
           }
         ]

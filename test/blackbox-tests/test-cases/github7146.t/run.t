@@ -17,9 +17,9 @@ The linker is unable to find the library in this case. The following also
 doesn't work:
 (c_library_flags :standard -lnative -L%{project_root}/problem)
 
-The error message will include the path to the linker which varies across
-systems. Filter the linker path out of the error message.
-  $ dune build problem 2>&1 | sed '/\(cannot find -lnative\|library not found for -lnative\)/ s/^[^:]*:.*/ld: cannot find -lnative/'
+The error message from the linker error is system dependent so it's not
+included in the test.
+  $ dune build problem 2>&1 | head -n11
   File "problem/dune", line 1, characters 0-234:
    1 | (library
    2 |  (name foo_problem)
@@ -31,8 +31,6 @@ systems. Filter the linker path out of the error message.
    8 |  (c_library_flags :standard -lnative -L.)
    9 | ;(c_library_flags :standard -lnative -L%{project_root}/problem)
   10 | )
-  ld: cannot find -lnative
-  collect2: error: ld returned 1 exit status
 
 The workaround is to use a rule to capture the path to the working directory
 into a file, and then read the file inside the (c_library_flags ...) field:

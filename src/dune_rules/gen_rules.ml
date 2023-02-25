@@ -388,20 +388,23 @@ type for_melange =
 
 (* Detect if [dir] is under the target directory of a melange.emit stanza. *)
 let rec under_melange_emit_target ~dir =
-  match Path.Build.parent dir with
-  | None -> Memo.return None
-  | Some parent -> (
-    let* stanzas = Only_packages.stanzas_in_dir parent in
-    match stanzas with
-    | None -> under_melange_emit_target ~dir:parent
-    | Some stanzas -> (
-      match
-        List.find_map stanzas.stanzas ~f:(function
-          | Melange_stanzas.Emit.T mel -> Some mel
-          | _ -> None)
-      with
-      | None -> under_melange_emit_target ~dir:parent
-      | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza }))
+  let* stanzas = Only_packages.stanzas_in_dir dir in
+  match stanzas with
+  | None -> (
+    match Path.Build.parent dir with
+    | Some parent -> under_melange_emit_target ~dir:parent
+    | None -> Memo.return None)
+  | Some stanzas -> (
+    match
+      List.find_map stanzas.stanzas ~f:(function
+        | Melange_stanzas.Emit.T mel -> Some mel
+        | _ -> None)
+    with
+    | None -> (
+      match Path.Build.parent dir with
+      | Some parent -> under_melange_emit_target ~dir:parent
+      | None -> Memo.return None)
+    | Some stanza -> Memo.return @@ Some { stanza_dir = dir; stanza })
 
 let melange_emit_rules sctx { stanza_dir; stanza } =
   let rules =

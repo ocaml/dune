@@ -14,9 +14,8 @@ Test (entries) field can be left empty
 
   $ dune build @melange-dist --display=short
           melc dist/.dist.mobjs/melange/melange.{cmi,cmj,cmt}
-          melc dist/dist/melange.js
+          melc dist/dist/.dist.mobjs/melange.js
 
-  $ output=dist/dist
   $ dune build @melange-dist
-  $ ls -lah _build/default/dist
+  $ ls _build/default/dist/dist/.dist.mobjs
   melange.js

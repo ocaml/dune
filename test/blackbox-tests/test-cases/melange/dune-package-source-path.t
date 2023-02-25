@@ -45,7 +45,6 @@ form `foo.bar.baz`
 
   $ cat > app/dune <<EOF
   > (melange.emit
-  >  (target dist)
   >  (alias dist)
   >  (libraries a.sub)
   >  (module_system commonjs))
@@ -57,13 +56,13 @@ form `foo.bar.baz`
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @dist --display short
   Entering directory 'app'
-          melc dist/node_modules/a.sub/a.js
-          melc dist/node_modules/a.sub/foo.js
-          melc .dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
-          melc dist/bar.js
+          melc node_modules/a.sub/a.js
+          melc node_modules/a.sub/foo.js
+          melc ...mobjs/melange/melange__Bar.{cmi,cmj,cmt}
+          melc bar.js
   Leaving directory 'app'
 
 
-  $ ls app/_build/default/dist/node_modules/a.sub
+  $ ls app/_build/default/node_modules/a.sub
   a.js
   foo.js

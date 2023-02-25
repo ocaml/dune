@@ -21,7 +21,7 @@ Can use extension with dots
   > EOF
 
   $ dune build @melange
-  $ node _build/default/output/hello.bs.js
+  $ node _build/default/output/output/hello.bs.js
   hello
 
 Errors out if extension starts with dot
@@ -34,8 +34,8 @@ Errors out if extension starts with dot
   > EOF
 
   $ dune build @melange
-  File "dune", line 5, characters 23-29:
-  5 |  (javascript_extension .bs.js))
+  File "output/dune", line 4, characters 23-29:
+  4 |  (javascript_extension .bs.js))
                              ^^^^^^
   Error: extension must not start with '.'
   [1]

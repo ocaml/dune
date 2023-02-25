@@ -45,7 +45,6 @@ Test dependency on installed package
 
   $ cat > b/dune <<EOF
   > (melange.emit
-  >  (target dist)
   >  (alias dist)
   >  (libraries a)
   >  (module_system commonjs))
@@ -57,13 +56,13 @@ Test dependency on installed package
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @dist --display=short
   Entering directory 'b'
-          melc dist/node_modules/a/a.js
-          melc dist/node_modules/a/foo.js
-          melc .dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
-          melc dist/bar.js
+          melc node_modules/a/a.js
+          melc node_modules/a/foo.js
+          melc ...mobjs/melange/melange__Bar.{cmi,cmj,cmt}
+          melc bar.js
   Leaving directory 'b'
 
-  $ node b/_build/default/dist/bar.js
+  $ node b/_build/default/bar.js
   foo
 
   $ cat >c/dune-project <<EOF
@@ -73,7 +72,6 @@ Test dependency on installed package
 
   $ cat > c/dune <<EOF
   > (melange.emit
-  >  (target dist)
   >  (alias dist)
   >  (libraries a)
   >  (module_system commonjs))

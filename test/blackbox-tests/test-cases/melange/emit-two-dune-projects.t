@@ -29,7 +29,6 @@ Test dependency on installed package
 
   $ cat > dune <<EOF
   > (melange.emit
-  >  (target dist)
   >  (alias dist)
   >  (libraries aa_fe.melange)
   >  (module_system commonjs))
@@ -41,7 +40,7 @@ Test dependency on installed package
 
   $ dune build @dist
 
-  $ node _build/default/dist/bar.js
+  $ node _build/default/bar.js
   foo
 
 Move inner lib to a subfolder inside its dune-project
@@ -56,7 +55,7 @@ Move inner lib to a subfolder inside its dune-project
 
   $ dune build @dist
 
-  $ node _build/default/dist/bar.js
+  $ node _build/default/bar.js
   foo
 
 Move everything except the workspace to a subfolder
@@ -68,7 +67,7 @@ Move everything except the workspace to a subfolder
 
   $ dune build @dist
 
-  $ node _build/default/abc/dist/abc/bar.js
+  $ node _build/default/abc/abc/bar.js
   foo
 
 Move back inner lib to main folder
@@ -82,5 +81,5 @@ Move back inner lib to main folder
 
   $ dune build @dist
 
-  $ node _build/default/abc/dist/abc/bar.js
+  $ node _build/default/abc/abc/bar.js
   foo

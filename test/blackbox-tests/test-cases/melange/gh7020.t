@@ -41,7 +41,6 @@ Reproduce github #7020
 
   $ cat >dune <<EOF
   > (melange.emit
-  >  (target es6)
   >  (alias melange)
   >  (libraries dummyfoo)
   >  (module_system es6))
@@ -51,5 +50,4 @@ Reproduce github #7020
   Error: The library dummyfoo was not compiled with Dune or it waas compiled
   with Dune but published with a META template. Such libraries are not
   compatible with melange support
-  -> required by alias melange
   [1]

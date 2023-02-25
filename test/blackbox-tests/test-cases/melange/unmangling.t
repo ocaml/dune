@@ -30,5 +30,5 @@ Using lowercase produces uppercase artifacts
   > EOF
 
   $ dune build @melange
-  $ node _build/default/output/lower.js
+  $ node _build/default/$output/lower.js
   hello

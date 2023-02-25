@@ -22,5 +22,5 @@ Test (preprocess) field on melange.emit stanza
   > EOF
 
   $ dune build @melange
-  $ node _build/default/output/main.js
+  $ node _build/default/output/output/main.js
   hello

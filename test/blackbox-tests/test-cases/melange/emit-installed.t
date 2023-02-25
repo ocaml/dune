@@ -49,7 +49,6 @@ Test dependency on installed package
 
   $ cat > b/dune <<EOF
   > (melange.emit
-  >  (target dist)
   >  (alias dist)
   >  (libraries a)
   >  (module_system commonjs))
@@ -61,21 +60,17 @@ Test dependency on installed package
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @dist --display=short
   Entering directory 'b'
-          melc dist/node_modules/a/a.js
-          melc dist/node_modules/a/foo.js
-          melc dist/node_modules/a/sub/sub.js
-          melc .dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
-          melc dist/bar.js
+          melc node_modules/a/a.js
+          melc node_modules/a/foo.js
+          melc node_modules/a/sub/sub.js
+          melc ...mobjs/melange/melange__Bar.{cmi,cmj,cmt}
+          melc bar.js
   Leaving directory 'b'
 
-  $ find b/_build/default/dist | sort
-  b/_build/default/dist
-  b/_build/default/dist/bar.js
-  b/_build/default/dist/node_modules
-  b/_build/default/dist/node_modules/a
-  b/_build/default/dist/node_modules/a/a.js
-  b/_build/default/dist/node_modules/a/foo.js
-  b/_build/default/dist/node_modules/a/sub
-  b/_build/default/dist/node_modules/a/sub/sub.js
-  $ node b/_build/default/dist/bar.js
+  $ find b/_build/default | sort | grep '\.js'
+  b/_build/default/bar.js
+  b/_build/default/node_modules/a/a.js
+  b/_build/default/node_modules/a/foo.js
+  b/_build/default/node_modules/a/sub/sub.js
+  $ node b/_build/default/bar.js
   foo

@@ -2,7 +2,8 @@ Test melange libs flow when using `modules_without_implementation` stanza
 
 Build js files
   $ dune build @melange
-  $ node _build/default/output/b.js
+  $ node _build/default/b.js
+  buy it
 
 writing a `melange.emit` stanza in the root `dune` file overlays JS files with
 the source files (sort added because GNU find and BSD find have different

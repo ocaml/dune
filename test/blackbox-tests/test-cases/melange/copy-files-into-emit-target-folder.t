@@ -10,7 +10,6 @@ into the melange.emit target folder
 
   $ cat > src/dune <<EOF
   > (melange.emit
-  >  (target output)
   >  (alias melange)
   >  (module_system commonjs))
   > EOF
@@ -25,16 +24,13 @@ Now try copying a file
 
   $ cat > src/dune <<EOF
   > (melange.emit
-  >  (target output)
   >  (alias melange)
   >  (module_system commonjs))
   > 
   > (subdir
-  >  output
-  >  (subdir
-  >   src
-  >   (copy_files
-  >    (files %{project_root}/public/img.png))))
+  >  src
+  >  (copy_files
+  >   (files %{project_root}/public/img.png)))
   > EOF
 
 It works:

@@ -14,17 +14,14 @@ Example using melange.emit, copy_files and include_subdirs
 
   $ cat > src/dune <<EOF
   > (melange.emit
-  >  (target app)
   >  (alias melange)
   >  (module_system commonjs))
   > 
-  > (subdir
-  >  app
-  >  (copy_files
-  >   (files %{project_root}/assets/file.txt))
+  >  (copy_files (files %{project_root}/assets/file.txt))
+  > 
   >  (alias
   >   (name melange)
-  >   (deps file.txt)))
+  >   (deps file.txt))
   > EOF
 
   $ cat > src/main.ml <<EOF
@@ -34,7 +31,7 @@ Example using melange.emit, copy_files and include_subdirs
   > let () = Js.log file_content
   > EOF
 
-  $ output_dir=_build/default/src/app
+  $ output_dir=_build/default/src
   $ src=$output_dir/src/main.js
   $ asset=$output_dir/file.txt
   $ dune build @melange
@@ -42,6 +39,7 @@ Example using melange.emit, copy_files and include_subdirs
   $ node $src
   hello from file
   
+
 Now add include_subdirs unqualified to show issue
 
   $ echo "(include_subdirs unqualified)" >> src/dune
@@ -51,3 +49,4 @@ Now add include_subdirs unqualified to show issue
   $ node $src
   hello from file
   
+

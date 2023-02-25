@@ -8,8 +8,8 @@ Test simple interactions between melange.emit and copy_files
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias mel)
-  >  (module_system commonjs)
-  >  (runtime_deps assets/file.txt))
+  >  (runtime_deps assets/file.txt)
+  >  (module_system commonjs))
   > EOF
 
   $ mkdir assets
@@ -24,8 +24,11 @@ Test simple interactions between melange.emit and copy_files
   > let () = Js.log file_content
   > EOF
 
-  $ dune build @mel
+  $ dune build @mel --display=short
+          melc ...mobjs/melange/melange__Main.{cmi,cmj,cmt}
+          melc main.js
   $ node _build/default/main.js
   hello from file
   
+
 

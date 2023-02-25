@@ -87,7 +87,6 @@ Test dependency on installed package
 
   $ cat > app/dune <<EOF
   > (melange.emit
-  >  (target dist)
   >  (module_system commonjs)
   >  (alias melange-dist)
   >  (libraries b))
@@ -95,11 +94,11 @@ Test dependency on installed package
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @melange-dist --display=short
   Entering directory 'app'
-          melc dist/node_modules/a/a.js
-          melc dist/node_modules/a/foo.js
-          melc dist/node_modules/b/b.js
-          melc dist/node_modules/b/bar.js
-          melc dist/node_modules/b/foo.js
-          melc .dist.mobjs/melange/melange.{cmi,cmj,cmt}
-          melc dist/.dist.mobjs/melange.js
+          melc node_modules/a/a.js
+          melc node_modules/a/foo.js
+          melc node_modules/b/b.js
+          melc node_modules/b/bar.js
+          melc node_modules/b/foo.js
+          melc ...mobjs/melange/melange.{cmi,cmj,cmt}
+          melc ...mobjs/melange.js
   Leaving directory 'app'

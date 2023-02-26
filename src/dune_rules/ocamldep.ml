@@ -70,7 +70,7 @@ let parse_deps_exn ~file lines =
 
 let deps_of
     ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
-    ~ml_kind unit =
+    ~ml_kind ~parse_compilation_units unit =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in
   let context = Super_context.context sctx in
@@ -135,7 +135,7 @@ let deps_of
   in
   let all_deps_file = Path.build all_deps_file in
   Action_builder.lines_of all_deps_file
-  |> Action_builder.map ~f:(Staged.unstage @@ parse_compilation_units ~modules)
+  |> Action_builder.map ~f:(Staged.unstage @@ parse_compilation_units)
   |> Action_builder.memoize (Path.to_string all_deps_file)
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =

@@ -22,8 +22,9 @@ end
 val deps_of :
      Modules_data.t
   -> ml_kind:Ml_kind.t
+  -> parse_compilation_units:(string list -> 'a) Import.Staged.t
   -> Module.t
-  -> Module.t list Action_builder.t Memo.t
+  -> 'a Action_builder.t Memo.t
 
 val read_deps_of :
      obj_dir:Path.Build.t Obj_dir.t
@@ -31,6 +32,9 @@ val read_deps_of :
   -> ml_kind:Ml_kind.t
   -> Module.t
   -> Module.t list Action_builder.t
+
+val parse_compilation_units :
+  modules:Modules.t -> (string list -> Module.t list) Staged.t
 
 (** [read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit] returns the
     immediate dependencies found in the modules of [modules] for the file with

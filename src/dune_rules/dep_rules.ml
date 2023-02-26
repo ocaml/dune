@@ -43,7 +43,7 @@ let ooi_deps { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
   in
   read
 
-let deps_of_module ({ modules; _ } as md) ~ml_kind m =
+let deps_of_module ({ modules; _ } as md) ~ml_kind ~parse_compilation_units m =
   match Module.kind m with
   | Wrapped_compat ->
     let interface_module =
@@ -53,7 +53,7 @@ let deps_of_module ({ modules; _ } as md) ~ml_kind m =
     in
     List.singleton interface_module |> Action_builder.return |> Memo.return
   | _ -> (
-    let+ deps = Ocamldep.deps_of md ~ml_kind m in
+    let+ deps = Ocamldep.deps_of md ~ml_kind ~parse_compilation_units m in
     match Modules.alias_for modules m with
     | [] -> deps
     | aliases ->
@@ -85,7 +85,8 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind m =
     in
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 
-let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
+let rec deps_of md ~ml_kind ~parse_compilation_units
+    (m : Modules.Sourced_module.t) =
   let is_alias =
     match m with
     | Impl_of_virtual_module _ -> false
@@ -103,9 +104,12 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
     match m with
     | Imported_from_vlib m ->
       skip_if_source_absent (deps_of_vlib_module md ~ml_kind) m
-    | Normal m -> skip_if_source_absent (deps_of_module md ~ml_kind) m
+    | Normal m ->
+      skip_if_source_absent
+        (deps_of_module md ~ml_kind ~parse_compilation_units)
+        m
     | Impl_of_virtual_module impl_or_vlib -> (
-      deps_of md ~ml_kind
+      deps_of md ~ml_kind ~parse_compilation_units
       @@
       let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
       match ml_kind with
@@ -135,7 +139,11 @@ let dict_of_func_concurrently f =
   Ml_kind.Dict.make ~impl ~intf
 
 let for_module md module_ =
-  dict_of_func_concurrently (deps_of md (Normal module_))
+  let parse_compilation_units =
+    Ocamldep.parse_compilation_units ~modules:md.modules
+  in
+  dict_of_func_concurrently
+    (deps_of md ~parse_compilation_units (Normal module_))
 
 let rules md =
   let modules = md.modules in
@@ -144,6 +152,10 @@ let rules md =
   | None ->
     dict_of_func_concurrently (fun ~ml_kind ->
         let+ per_module =
-          Modules.obj_map_build modules ~f:(deps_of md ~ml_kind)
+          let parse_compilation_units =
+            Ocamldep.parse_compilation_units ~modules:md.modules
+          in
+          Modules.obj_map_build modules
+            ~f:(deps_of md ~ml_kind ~parse_compilation_units)
         in
         Dep_graph.make ~dir:md.dir ~per_module)

@@ -53,12 +53,15 @@ let write_directory basedir dir_row dir_col =
     done
   done;
   let f = open_out (sprintf "%s/main.ml" basedir) in
-  let modname = sprintf "Test.M_%d_%d_%d_%d" dir_row dir_col !mod_rows !mod_cols in
+  let modname =
+    sprintf "Test.M_%d_%d_%d_%d" dir_row dir_col !mod_rows !mod_cols
+  in
   let main = sprintf "let () = %s.f()" modname in
   output_string f main;
   close_out f
 
-let dune = {|
+let dune =
+  {|
 (include_subdirs unqualified)
 
 (library

@@ -35,9 +35,6 @@ let reach_for_running p ~from =
 
 let relative p s = Path.to_dyn (Path.relative p s) |> print_dyn
 
-let insert_after_build_dir_exn p s =
-  Path.insert_after_build_dir_exn p s |> Path.to_dyn |> print_dyn
-
 let append_source x y = Path.append_source x y |> Path.to_dyn |> print_dyn
 
 let drop_build_context p =
@@ -293,26 +290,6 @@ false
 |}]
 
 let%expect_test _ =
-  insert_after_build_dir_exn Path.root "foobar";
-  [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
-  ( "(\"Path.insert_after_build_dir_exn\",\
-   \n{ path = In_source_tree \".\"; insert = \"foobar\" })") |}]
-
-let%expect_test _ =
-  insert_after_build_dir_exn Path.build_dir "foobar";
-  [%expect {|
-In_build_dir "foobar"
-|}]
-
-let%expect_test _ =
-  insert_after_build_dir_exn (Path.relative Path.build_dir "qux") "foobar";
-  [%expect {|
-In_build_dir "foobar/qux"
-|}]
-
-let%expect_test _ =
   append_source Path.build_dir (Path.Source.relative Path.Source.root "foo");
   [%expect {|
 In_build_dir "foo"
@@ -419,12 +396,6 @@ In_build_dir "."
 
 let%expect_test _ =
   local_part (Path.of_string "/c/d");
-  [%expect {|
-"c/d"
-|}]
-
-let%expect_test _ =
-  local_part (Path.insert_after_build_dir_exn Path.build_dir "c/d");
   [%expect {|
 "c/d"
 |}]

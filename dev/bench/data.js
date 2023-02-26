@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677434341350,
+  "lastUpdate": 1677452505271,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6988,6 +6988,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "43.961991473926666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c4504db4df28895737ab5093c63ffad6fd2e3d4",
+          "message": "fix: do not re-render unless needed (#7186)\n\nPreviously, dune would re-render on every frame even when it wasn't\r\nnecessary.\r\n\r\nNow, dune will make sure we have at least one modification before\r\nre-rendering\r\n\r\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-26T14:42:26-08:00",
+          "tree_id": "625ed44ff5bce6a069c9d709d59f36a272838429",
+          "url": "https://github.com/ocaml/dune/commit/0c4504db4df28895737ab5093c63ffad6fd2e3d4"
+        },
+        "date": 1677452504183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.11455215426",
             "unit": "seconds"
           }
         ]

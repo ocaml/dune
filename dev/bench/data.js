@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677273636311,
+  "lastUpdate": 1677434341350,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -6959,6 +6959,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "33.29539175910667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89d73f2918269925fc548f3e36a0de23f0636e49",
+          "message": "refactor(path): remove dead code (#7180)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-26T09:35:13-08:00",
+          "tree_id": "9cd9208b6419a55a3049bdb46f90a24da2383e3f",
+          "url": "https://github.com/ocaml/dune/commit/89d73f2918269925fc548f3e36a0de23f0636e49"
+        },
+        "date": 1677434339910,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "43.961991473926666",
             "unit": "seconds"
           }
         ]

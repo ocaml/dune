@@ -1,10 +1,11 @@
-name: Melange demo app build time benchmark
+name: Build time benchmarks
 
 # Do not run this workflow on pull request since this workflow has permission to modify contents.
 on:
   push:
     branches:
       - main
+      - bench/add-synthetic-benchmark # TODO: replace with main before merging
 
 permissions:
   # deployments permission to deploy GitHub pages website

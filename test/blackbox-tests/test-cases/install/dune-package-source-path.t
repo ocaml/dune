@@ -70,8 +70,6 @@ Test paths on public libraries with `.` are correct
   $ cat b/_build/default/b.install
   lib: [
     "_build/install/default/lib/b/META"
-    "_build/install/default/lib/b/child/bar.ml" {"child/bar.ml"}
-    "_build/install/default/lib/b/child/child.ml" {"child/child.ml"}
     "_build/install/default/lib/b/dune-package"
     "_build/install/default/lib/b/sub/b.a" {"sub/b.a"}
     "_build/install/default/lib/b/sub/b.cma" {"sub/b.cma"}
@@ -89,6 +87,8 @@ Test paths on public libraries with `.` are correct
     "_build/install/default/lib/b/sub/b__Foo.cmi" {"sub/b__Foo.cmi"}
     "_build/install/default/lib/b/sub/b__Foo.cmt" {"sub/b__Foo.cmt"}
     "_build/install/default/lib/b/sub/b__Foo.cmx" {"sub/b__Foo.cmx"}
+    "_build/install/default/lib/b/sub/child/bar.ml" {"sub/child/bar.ml"}
+    "_build/install/default/lib/b/sub/child/child.ml" {"sub/child/child.ml"}
     "_build/install/default/lib/b/sub/foo.ml" {"sub/foo.ml"}
   ]
   libexec: [

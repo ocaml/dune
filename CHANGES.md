@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Support commands that output 8-bit and 24-bit colors in the terminal (#7188,
+  @Alizter)
+
 - Speed up rule generation for libraries and executables with many modules
   (#7187, @jchavarri)
 

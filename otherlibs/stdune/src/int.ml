@@ -25,3 +25,7 @@ let to_string i = string_of_int i
 module Infix = Comparator.Operators (T)
 
 let of_string s = int_of_string_opt s
+
+let shift_left = Stdlib.Int.shift_left
+
+let shift_right = Stdlib.Int.shift_right

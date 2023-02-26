@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677452505271,
+  "lastUpdate": 1677453202035,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7017,6 +7017,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.11455215426",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "43c27fb6accccf1589d0d04ea964bc87cdd70c9d",
+          "message": "test: add pkg config to ctypes test (#7121)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-26T14:54:31-08:00",
+          "tree_id": "10ed4bf350da816bc5dca0507e81a0dc3d1b28d6",
+          "url": "https://github.com/ocaml/dune/commit/43c27fb6accccf1589d0d04ea964bc87cdd70c9d"
+        },
+        "date": 1677453200280,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "32.9659399369",
             "unit": "seconds"
           }
         ]

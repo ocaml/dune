@@ -34,6 +34,7 @@ let where =
     in
     Option.map
       ~f:(fun dirs ->
-        String.split ~on:Bin.path_sep dirs |> List.map ~f:Path.of_string)
+        String.split ~on:Bin.path_sep dirs
+        |> List.map ~f:Path.External.of_string)
       melange_dirs
     |> Option.value ~default:[]

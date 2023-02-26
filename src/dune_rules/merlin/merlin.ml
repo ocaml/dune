@@ -476,8 +476,10 @@ module Unprocessed = struct
           let+ dirs = Melange_binary.where sctx ~loc:None ~dir in
           match dirs with
           | [] -> (None, [])
-          | [ stdlib_dir ] -> (Some stdlib_dir, [])
-          | stdlib_dir :: extra_obj_dirs -> (Some stdlib_dir, extra_obj_dirs))
+          | [ stdlib_dir ] -> (Some (Path.external_ stdlib_dir), [])
+          | stdlib_dir :: extra_obj_dirs ->
+            ( Some (Path.external_ stdlib_dir)
+            , List.map ~f:Path.external_ extra_obj_dirs ))
       in
       let* flags = flags
       and* src_dirs, obj_dirs =

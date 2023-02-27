@@ -1,4 +1,4 @@
-Compile a library with `(stdlib ..)` and `(wrapped false)`
+Compile a library with `(stdlib ..)` and `(wrapped true)`
 
   $ cat > dune-project <<EOF
   > (lang dune 3.7)
@@ -9,7 +9,6 @@ Compile a library with `(stdlib ..)` and `(wrapped false)`
   $ cat > stdlib/dune <<EOF
   > (library
   >  (name mystdlib)
-  >  (wrapped false)
   >  (stdlib
   >   (internal_modules Camlinternal*)))
   > EOF
@@ -27,24 +26,14 @@ Compile a library with `(stdlib ..)` and `(wrapped false)`
 
   $ dune build --display=short
       ocamldep stdlib/.mystdlib.objs/mystdlib.impl.d
-      ocamldep stdlib/.mystdlib.objs/one_module.impl.d
-      ocamldep stdlib/.mystdlib.objs/other.impl.d
+      ocamldep stdlib/.mystdlib.objs/mystdlib__One_module.impl.d
+      ocamldep stdlib/.mystdlib.objs/mystdlib__Other.impl.d
         ocamlc stdlib/.mystdlib.objs/byte/mystdlib.{cmi,cmo,cmt}
       ocamlopt stdlib/.mystdlib.objs/native/mystdlib.{cmx,o}
-        ocamlc stdlib/.mystdlib.objs/byte/one_module.{cmi,cmo,cmt}
-        ocamlc stdlib/.mystdlib.objs/byte/other.{cmi,cmo,cmt}
-      ocamlopt stdlib/.mystdlib.objs/native/one_module.{cmx,o}
-      ocamlopt stdlib/.mystdlib.objs/native/other.{cmx,o}
+        ocamlc stdlib/.mystdlib.objs/byte/mystdlib__One_module.{cmi,cmo,cmt}
+        ocamlc stdlib/.mystdlib.objs/byte/mystdlib__Other.{cmi,cmo,cmt}
+      ocamlopt stdlib/.mystdlib.objs/native/mystdlib__One_module.{cmx,o}
+      ocamlopt stdlib/.mystdlib.objs/native/mystdlib__Other.{cmx,o}
         ocamlc stdlib/mystdlib.cma
       ocamlopt stdlib/mystdlib.{a,cmxa}
       ocamlopt stdlib/mystdlib.cmxs
-
-modules are unwrapped
-
-  $ ls _build/default/stdlib/.mystdlib.objs/native
-  mystdlib.cmx
-  mystdlib.o
-  one_module.cmx
-  one_module.o
-  other.cmx
-  other.o

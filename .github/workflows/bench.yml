@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - bench/add-synthetic-benchmark # TODO: replace with main before merging
 
 permissions:
   # deployments permission to deploy GitHub pages website

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677529404391,
+  "lastUpdate": 1677535173163,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7075,6 +7075,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "36.285840466926665",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea424da26ffbbf255a6f64998bd798d0ebaa3e2a",
+          "message": "feature: concurrency action (#6933)\n\n* feature: concurrency action\r\n\r\nWe add a (concurrent ) action which acts like (progn ) the difference\r\nbeing the actions contained within can be executed concurrently by Dune.\r\n\r\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2023-02-27T13:40:43-08:00",
+          "tree_id": "2af52312315dbb8441b7338e11787dd83cb2f991",
+          "url": "https://github.com/ocaml/dune/commit/ea424da26ffbbf255a6f64998bd798d0ebaa3e2a"
+        },
+        "date": 1677535171977,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "34.92991475566",
             "unit": "seconds"
           }
         ]

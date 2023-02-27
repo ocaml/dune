@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677453202035,
+  "lastUpdate": 1677529404391,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7046,6 +7046,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "32.9659399369",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "5c967b158fe7b43e4386a9bc1c54a450dcfd7417",
+          "message": "fix: always start from lib_subdir when installing module sources\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-27T12:04:02-08:00",
+          "tree_id": "38875b9ee117b500601fe0a889fbd21d20b50ac2",
+          "url": "https://github.com/ocaml/dune/commit/5c967b158fe7b43e4386a9bc1c54a450dcfd7417"
+        },
+        "date": 1677529403633,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.285840466926665",
             "unit": "seconds"
           }
         ]

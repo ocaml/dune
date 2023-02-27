@@ -94,16 +94,20 @@ module Stdlib = struct
     | None -> false
     | Some n -> n = name
 
-  let make ~(stdlib : Ocaml_stdlib.t) ~modules ~main_module_name =
+  let make ~(stdlib : Ocaml_stdlib.t) ~modules ~wrapped ~main_module_name =
     let modules =
-      Module_name.Map.map modules ~f:(fun m ->
-          if
-            Module.name m = main_module_name || special_compiler_module stdlib m
-          then m
-          else
-            let path = [ main_module_name; Module.name m ] in
-            let m = Module.set_path m path in
-            Module.set_obj_name m (Module_name.Path.wrap path))
+      match wrapped with
+      | Wrapped.Simple true | Yes_with_transition _ ->
+        Module_name.Map.map modules ~f:(fun m ->
+            if
+              Module.name m = main_module_name
+              || special_compiler_module stdlib m
+            then m
+            else
+              let path = [ main_module_name; Module.name m ] in
+              let m = Module.set_path m path in
+              Module.set_obj_name m (Module_name.Path.wrap path))
+      | Simple false -> modules
     in
     let unwrapped = stdlib.modules_before_stdlib in
     let exit_module = stdlib.exit_module in
@@ -805,7 +809,7 @@ let lib ~obj_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
   | Some stdlib ->
     let main_module_name = Option.value_exn main_module_name in
     let modules = Module_trie.to_map modules in
-    Stdlib (Stdlib.make ~stdlib ~modules ~main_module_name)
+    Stdlib (Stdlib.make ~stdlib ~modules ~wrapped ~main_module_name)
   | None -> (
     match (wrapped, main_module_name, Module_trie.as_singleton modules) with
     | Simple false, _, Some m -> Singleton m

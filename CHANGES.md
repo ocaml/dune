@@ -34,6 +34,9 @@ Unreleased
 - Added a new user action `(concurrent )` which is like `(progn )` but runs the
   actions concurrently. (#6933, @Alizter)
 
+- Allow `(stdlib ...)` to be used with `(wrapped false)` in library stanzas
+  (#7139, @anmonteiro).
+
 3.7.0 (2023-02-17)
 ------------------
 

@@ -93,7 +93,7 @@ jobs:
 
       - name: Create synthetic benchmark
         working-directory: bench
-        run: dune exec .gen_synthetic.exe -- -n 6 synthetic
+        run: opam exec -- ../_boot/dune.exe exec ./gen_synthetic.exe -- -n 6 synthetic
 
       - name: Run synthetic benchmark
         working-directory: bench/synthetic

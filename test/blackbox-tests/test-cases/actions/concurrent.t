@@ -37,9 +37,6 @@ same time.
   > echo foo>\$1 & read line<\$2
   > EOF
   $ chmod +x run.sh
-  $ cat run.sh
-  #!/bin/bash
-  echo foo>$1 & read line<$2
 
 We create an action that will create named pipes a and b and then run our script
 on both of them, but importantly inside the concurrent action. This will

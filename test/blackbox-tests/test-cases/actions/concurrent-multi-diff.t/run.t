@@ -22,9 +22,9 @@ We set up a (progn ) rule to diff all of them against their generated versions.
   >  (action
   >   (progn
   >    (with-outputs-to some-target (echo a))
-  >    (diff %{dep:A} %{dep:A.diff})
-  >    (diff %{dep:B} %{dep:B.diff})
-  >    (diff %{dep:C} %{dep:C.diff}))))
+  >    (diff A A.diff)
+  >    (diff B B.diff)
+  >    (diff C C.diff))))
   > EOF
 
 We can now run the rule and see that we fail before diffing C.
@@ -62,9 +62,9 @@ If we implement the rule using (concurrent ) instead.
   >  (action
   >   (concurrent
   >    (with-outputs-to some-target (echo a))
-  >    (diff %{dep:A} %{dep:A.diff})
-  >    (diff %{dep:B} %{dep:B.diff})
-  >    (diff %{dep:C} %{dep:C.diff}))))
+  >    (diff A A.diff)
+  >    (diff B B.diff)
+  >    (diff C C.diff))))
   > EOF
 
 We see that all the files get diffed.

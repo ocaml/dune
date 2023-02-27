@@ -7,6 +7,7 @@ type state =
   ; mutable finish_requested : bool
   ; mutable finished : bool
   ; mutable status_line : User_message.Style.t Pp.t option
+  ; mutable dirty : bool
   }
 
 (** [Threaded] is the interface for user interfaces that are rendered in a

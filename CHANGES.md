@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+- Do not re-render UI on every frame if the UI doesn't change (#7186, fix
+  #7184, @rgrinberg)
+
 - Fix preludes not being recorded as dependencies in the `(mdx)` stanza (#7109,
   fixes #7077, @emillon).
 
@@ -24,6 +27,9 @@ Unreleased
 
 - Bytecode executables built for JSOO are linked with `-noautolink` and no
   longer depend on the shared stubs of their dependent libraries (#7156, @nojb)
+
+- Added a new user action `(concurrent )` which is like `(progn )` but runs the
+  actions concurrently. (#6933, @Alizter)
 
 3.7.0 (2023-02-17)
 ------------------

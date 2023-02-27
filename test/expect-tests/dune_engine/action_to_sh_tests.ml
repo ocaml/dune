@@ -127,6 +127,13 @@ let%expect_test "progn" =
     bash -e -u -o pipefail -c 'echo Hello';
     bash -e -u -o pipefail -c 'echo world' |}]
 
+let%expect_test "concurrent" =
+  Concurrent [ Bash "echo Hello"; Bash "echo world" ] |> print;
+  [%expect
+    {|
+    ( bash -e -u -o pipefail -c 'echo Hello' &
+      bash -e -u -o pipefail -c 'echo world' & wait ) |}]
+
 let%expect_test "echo" =
   Echo [ "Hello"; "world" ] |> print;
   [%expect {|

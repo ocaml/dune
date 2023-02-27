@@ -97,7 +97,7 @@ jobs:
 
       - name: Run synthetic benchmark
         working-directory: bench/synthetic
-        run: ../gen-benchmark.sh 'opam exec -- ../../_boot/dune.exe build ./main.exe' 'opam exec -- ../../_boot/dune.exe clean --root=.' 'synthetic build time (${{ runner.os }})' > synthetic-benchmark-result.json
+        run: ../gen-benchmark.sh 'opam exec -- ../../_boot/dune.exe build ./main.exe' 'opam exec -- ../../_boot/dune.exe clean' 'synthetic build time (${{ runner.os }})' > synthetic-benchmark-result.json
 
       - name: Print synthetic benchmark results
         working-directory: bench/synthetic

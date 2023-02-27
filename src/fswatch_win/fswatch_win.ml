@@ -41,12 +41,16 @@ external wait : t -> sleep:int -> Event.t list = "fswatch_win_wait"
 
 external add : t -> string -> unit = "fswatch_win_add"
 
+let add t p =
+  if Filename.is_relative p then invalid_arg "Fswatch_win.add";
+  add t p
+
 let wait t ~sleep =
   List.filter
     (function
       | { Event.action = Modified; path; directory } -> (
         try not (Sys.is_directory (Filename.concat directory path))
-        with Sys_error _ -> true)
+        with Sys_error _ -> (* should not happen *) true)
       | _ -> true)
     (wait t ~sleep)
 

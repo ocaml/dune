@@ -17,11 +17,11 @@ let synopsis =
        present"
   ]
 
-let print_line ~verbosity fmt =
+let print_line ~(verbosity : Dune_engine.Display.t) fmt =
   Printf.ksprintf
     (fun s ->
       match verbosity with
-      | Dune_engine.Display.Quiet -> ()
+      | Quiet -> ()
       | _ -> Console.print [ Pp.verbatim s ])
     fmt
 

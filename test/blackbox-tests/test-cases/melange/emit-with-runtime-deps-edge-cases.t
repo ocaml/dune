@@ -55,8 +55,6 @@ The runtime_dep index.txt was copied to the build folder
 
 
 
-
-
 Test depending on non-existing paths
 
   $ mkdir another

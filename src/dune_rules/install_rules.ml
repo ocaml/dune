@@ -122,6 +122,15 @@ end = struct
       let modules = Vimpl.impl_modules impl modules in
       Modules.split_by_lib modules
     in
+    let lib_src_dir = Lib_info.src_dir info in
+    let in_sub_dir = function
+      | None -> lib_subdir
+      | Some subdir ->
+        Some
+          (match lib_subdir with
+          | None -> subdir
+          | Some lib_subdir -> Filename.concat lib_subdir subdir)
+    in
     let sources =
       let lib_src_dir = Lib_info.src_dir info in
       List.concat_map installable_modules.impl ~f:(fun m ->
@@ -130,41 +139,56 @@ end = struct
                  as the alias module. *)
               let source = Path.as_in_build_dir_exn source in
               let sub_dir, dst =
-                match Module.install_as m with
-                | Some p ->
-                  let subdir =
-                    let parent = Path.Local.parent_exn p in
-                    if Path.Local.is_root parent then None
-                    else
-                      Some (Path.Local.explode parent |> String.concat ~sep:"/")
-                  in
-                  (subdir, Some (Path.Local.basename p))
-                | None ->
-                  let dst =
-                    Path.Build.basename source
-                    |> String.drop_suffix ~suffix:"-gen"
-                  in
-                  let sub_dir =
-                    let src_dir = Path.Build.parent_exn source in
-                    if Path.Build.equal src_dir lib_src_dir then None
-                    else
-                      Path.Build.local src_dir
-                      |> Path.Local.descendant
-                           ~of_:(Path.Build.local lib_src_dir)
-                      |> Option.map ~f:Path.Local.to_string
-                  in
-                  (sub_dir, dst)
-              in
-              let sub_dir =
-                match sub_dir with
-                | None -> lib_subdir
-                | Some subdir ->
-                  Some
-                    (match lib_subdir with
-                    | None -> subdir
-                    | Some lib_subdir -> Filename.concat lib_subdir subdir)
+                let sub_dir, dst =
+                  match Module.install_as m with
+                  | Some p ->
+                    let subdir =
+                      let parent = Path.Local.parent_exn p in
+                      if Path.Local.is_root parent then None
+                      else
+                        Some
+                          (Path.Local.explode parent |> String.concat ~sep:"/")
+                    in
+                    (subdir, Some (Path.Local.basename p))
+                  | None ->
+                    let dst =
+                      Path.Build.basename source
+                      |> String.drop_suffix ~suffix:"-gen"
+                    in
+                    let sub_dir =
+                      let src_dir = Path.Build.parent_exn source in
+                      if Path.Build.equal src_dir lib_src_dir then None
+                      else
+                        Path.Build.local src_dir
+                        |> Path.Local.descendant
+                             ~of_:(Path.Build.local lib_src_dir)
+                        |> Option.map ~f:Path.Local.to_string
+                    in
+                    (sub_dir, dst)
+                in
+                (in_sub_dir sub_dir, dst)
               in
               make_entry ?sub_dir Lib source ?dst))
+    in
+    let* melange_runtime_deps =
+      let* expander = Super_context.expander sctx ~dir:lib_src_dir in
+      Melange_rules.Runtime_deps.eval ~expander (snd lib.melange_runtime_deps)
+    in
+    let melange_runtime_entries =
+      Path.Set.to_list_map
+        ~f:(fun path ->
+          let path = Path.as_in_build_dir_exn path in
+          let sub_dir =
+            let src_dir = Path.Build.parent_exn path in
+            (if Path.Build.equal src_dir lib_src_dir then None
+            else
+              Path.Build.local src_dir
+              |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
+              |> Option.map ~f:Path.Local.to_string)
+            |> in_sub_dir
+          in
+          make_entry ?sub_dir Lib path)
+        melange_runtime_deps
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
@@ -250,6 +274,7 @@ end = struct
     in
     List.concat
       [ sources
+      ; melange_runtime_entries
       ; List.map module_files ~f:(fun (sub_dir, file) ->
             make_entry ?sub_dir Lib file)
       ; List.map lib_files ~f:(fun (section, file) -> make_entry section file)
@@ -542,6 +567,10 @@ end = struct
               Dir_contents.get sctx ~dir
             in
             let obj_dir = Lib.Local.obj_dir lib in
+            let lib_src_dir =
+              let info = Lib.Local.info lib in
+              Lib_info.src_dir info
+            in
             let lib = Lib.Local.to_lib lib in
             let name = Lib.name lib in
             let* foreign_objects =
@@ -560,11 +589,23 @@ end = struct
             and* modules =
               Dir_contents.ocaml dir_contents
               >>| Ml_sources.modules ~for_:(Library name)
+            and* melange_runtime_deps =
+              let info = Lib.info lib in
+              match Lib_info.melange_runtime_deps info with
+              | Local dep_conf ->
+                let+ melange_runtime_deps =
+                  let* expander =
+                    Super_context.expander sctx ~dir:lib_src_dir
+                  in
+                  Melange_rules.Runtime_deps.eval ~expander dep_conf
+                in
+                Path.Set.to_list melange_runtime_deps
+              | External _paths -> assert false
             in
             let+ sub_systems =
               Lib.to_dune_lib lib
                 ~dir:(Path.build (lib_root lib))
-                ~modules ~foreign_objects
+                ~modules ~foreign_objects ~melange_runtime_deps
               >>= Resolve.read_memo
             in
             Some (name, Dune_package.Entry.Library sub_systems))

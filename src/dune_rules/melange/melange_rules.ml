@@ -36,7 +36,7 @@ let lib_output_path ~output_dir ~lib_dir src =
     |> Option.value_exn
     |> String.drop_prefix_if_exists ~prefix:"/"
   in
-  if dir = "" then output_dir else Path.Build.relative output_dir dir
+  if dir = "" then output_dir else Path.relative output_dir dir
 
 let make_js_name ~js_ext ~output m =
   let basename = Melange.js_basename m ^ js_ext in
@@ -45,7 +45,10 @@ let make_js_name ~js_ext ~output m =
     let src_dir =
       Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn
     in
-    let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
+    let output_dir =
+      let output_dir = Path.build output_dir in
+      lib_output_path ~output_dir ~lib_dir src_dir |> Path.as_in_build_dir_exn
+    in
     Path.Build.relative output_dir basename
   | `Private_library_or_emit target_dir ->
     let dst_dir =
@@ -272,15 +275,32 @@ module Runtime_deps = struct
             ((src, Path.Build.append_source output_dir target) :: copy, non_copy)
           )
         | `Public_library (lib_dir, output_dir) ->
-          ((src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy))
+          let output_dir = Path.build output_dir in
+          ( ( src
+            , lib_output_path ~output_dir ~lib_dir src
+              |> Path.as_in_build_dir_exn )
+            :: copy
+          , non_copy ))
 end
 
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode
-    ~(mel : Melange_stanzas.Emit.t) ~output =
+    ~(mel : Melange_stanzas.Emit.t) ~output ~for_ =
   let open Memo.O in
   let* runtime_dep_paths =
-    let* expander = Super_context.expander sctx ~dir in
-    Runtime_deps.eval ~expander mel.runtime_deps
+    match for_ with
+    | `Emit ->
+      let* expander = Super_context.expander sctx ~dir in
+      Runtime_deps.eval ~expander mel.runtime_deps
+    | `Library lib_info -> (
+      match Lib_info.melange_runtime_deps lib_info with
+      | Local dep_conf ->
+        let dir =
+          let info = Lib_info.as_local_exn lib_info in
+          Lib_info.src_dir info
+        in
+        let* expander = Super_context.expander sctx ~dir in
+        Runtime_deps.eval ~expander dep_conf
+      | External paths -> Memo.return (Path.Set.of_list paths))
   in
   let copy, non_copy = Runtime_deps.targets ~output runtime_dep_paths in
   let+ () =
@@ -338,6 +358,7 @@ let setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir
   let obj_dir = Obj_dir.of_local obj_dir in
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~mel ~output
+      ~for_:`Emit
   in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
       build_js ~dir ~loc ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx
@@ -366,6 +387,11 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
         in
         cmj_includes ~requires_link ~scope
       in
+      let output = output_of_lib ~target_dir lib in
+      let* () =
+        setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~mel ~output
+          ~for_:(`Library info)
+      in
       let* () =
         match Lib.implements lib with
         | None -> Memo.return ()
@@ -380,11 +406,9 @@ let setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode
             in
             cmj_includes ~requires_link ~scope
           in
-          let output = output_of_lib ~target_dir lib in
           impl_only_modules_defined_in_this_lib sctx vlib
           >>= Memo.parallel_iter ~f:(build_js ~dir ~output ~includes)
       in
-      let output = output_of_lib ~target_dir lib in
       let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
       Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
 

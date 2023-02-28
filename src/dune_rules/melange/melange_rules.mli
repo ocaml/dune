@@ -18,3 +18,7 @@ val setup_emit_js_rules :
   -> sctx:Super_context.t
   -> Melange_stanzas.Emit.t
   -> unit Memo.t
+
+module Runtime_deps : sig
+  val eval : expander:Expander.t -> Dep_conf.t list -> Path.Set.t Memo.t
+end

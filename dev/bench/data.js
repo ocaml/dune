@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677561755332,
+  "lastUpdate": 1677604143235,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7191,6 +7191,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.922827373893334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "fc0397efc5f0b9208b2d6d93b287d5cb3ddcb554",
+          "message": "fix: revert accidental push\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-28T10:49:33-06:00",
+          "tree_id": "b56cb321714760a40764579b6815fe54ae701619",
+          "url": "https://github.com/ocaml/dune/commit/fc0397efc5f0b9208b2d6d93b287d5cb3ddcb554"
+        },
+        "date": 1677604142030,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "36.33735649658001",
             "unit": "seconds"
           }
         ]

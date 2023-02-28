@@ -16,8 +16,7 @@ Can use extension with dots
   > (melange.emit
   >  (target output)
   >  (alias melange)
-  >  (module_system commonjs)
-  >  (javascript_extension bs.js))
+  >  (module_systems (commonjs bs.js)))
   > EOF
 
   $ dune build @melange
@@ -30,13 +29,12 @@ Errors out if extension starts with dot
   > (melange.emit
   >  (target output)
   >  (alias melange)
-  >  (module_system commonjs)
-  >  (javascript_extension .bs.js))
+  >  (module_systems (commonjs .bs.js)))
   > EOF
 
   $ dune build @melange
-  File "dune", line 5, characters 23-29:
-  5 |  (javascript_extension .bs.js))
-                             ^^^^^^
+  File "dune", line 4, characters 27-33:
+  4 |  (module_systems (commonjs .bs.js)))
+                                 ^^^^^^
   Error: extension must not start with '.'
   [1]

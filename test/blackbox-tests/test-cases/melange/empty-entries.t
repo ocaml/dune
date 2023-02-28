@@ -8,8 +8,7 @@ Test (entries) field can be left empty
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (alias melange))
   > EOF
 
   $ cat > hello.ml <<EOF

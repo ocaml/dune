@@ -8,7 +8,6 @@ Entry points should not allow mli only modules as entry points.
   $ cat >dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (module_system commonjs)
   >  (modules_without_implementation foo)
   >  (alias melange))
   > EOF

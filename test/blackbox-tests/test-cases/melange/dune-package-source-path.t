@@ -47,8 +47,7 @@ form `foo.bar.baz`
   > (melange.emit
   >  (target dist)
   >  (alias dist)
-  >  (libraries a.sub)
-  >  (module_system commonjs))
+  >  (libraries a.sub))
   > EOF
 
   $ cat > app/bar.ml <<EOF

@@ -38,8 +38,7 @@ Test dependency on a private library in the same package as melange.emit
   >  (target dist)
   >  (alias dist)
   >  (libraries a)
-  >  (package a)
-  >  (module_system commonjs))
+  >  (package a))
   > EOF
 
   $ cat > b/bar.ml <<EOF

@@ -23,17 +23,15 @@ For melange.emit stanzas, an error is shown
   > (melange.emit
   >  (target output)
   >  (entries main_melange)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (alias melange))
   > EOF
 
   $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @melange)
-  File "dune", line 1, characters 0-98:
+  File "dune", line 1, characters 0-72:
   1 | (melange.emit
   2 |  (target output)
   3 |  (entries main_melange)
-  4 |  (alias melange)
-  5 |  (module_system commonjs))
+  4 |  (alias melange))
   Error: Program melc not found in the tree or in PATH
    (context: default)
   Hint: opam install melange
@@ -81,8 +79,7 @@ If melange.emit stanza is found, but no rules are executed, build does not fail
   > (melange.emit
   >  (target output)
   >  (entries main_melange)
-  >  (libraries lib1)
-  >  (module_system commonjs))
+  >  (libraries lib1))
   > EOF
 
   $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main_native.bc)

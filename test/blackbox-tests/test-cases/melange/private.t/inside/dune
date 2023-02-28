@@ -3,5 +3,5 @@
  (entries c)
  (libraries app)
  (alias melange)
- (module_system es6)
- (javascript_extension mjs))
+ (module_systems
+  (es6 mjs)))

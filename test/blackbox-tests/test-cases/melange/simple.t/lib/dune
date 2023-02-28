@@ -7,5 +7,4 @@
  (target simple)
  (alias melange)
  (entries x)
- (libraries lib)
- (module_system commonjs))
+ (libraries lib))

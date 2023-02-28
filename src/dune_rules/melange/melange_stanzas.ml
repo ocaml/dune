@@ -6,7 +6,7 @@ module Emit = struct
     { loc : Loc.t
     ; target : string
     ; alias : Alias.Name.t option
-    ; module_system : Melange.Module_system.t
+    ; module_systems : (Melange.Module_system.t * string) list
     ; modules : Stanza_common.Modules_settings.t
     ; libraries : Lib_dep.t list
     ; package : Package.t option
@@ -15,7 +15,6 @@ module Emit = struct
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; allow_overlapping_dependencies : bool
-    ; javascript_extension : string
     }
 
   type Stanza.t += T of t
@@ -51,13 +50,35 @@ module Emit = struct
     t
 
   let decode =
-    let extension_field name =
-      let+ loc, extension =
-        field name ~default:(Loc.none, "js") (located string)
-      in
+    let extension_field =
+      let+ loc, extension = located string in
       if String.is_prefix ~prefix:"." extension then
         User_error.raise ~loc [ Pp.textf "extension must not start with '.'" ];
       "." ^ extension
+    in
+    let module_systems =
+      let module_system =
+        enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ]
+      in
+      let+ module_systems =
+        repeat
+          (pair module_system (located extension_field)
+          <|> let+ loc, module_system = located module_system in
+              let _, ext = Melange.Module_system.default in
+              (module_system, (loc, ext)))
+      in
+      let (_ : String.Set.t), module_systems =
+        List.fold_map module_systems ~init:String.Set.empty
+          ~f:(fun seen (ms, (loc, ext)) ->
+            match String.Set.mem seen ext with
+            | true ->
+              User_error.raise ~loc
+                [ Pp.textf "JavaScript extension %s appears more than once" ext
+                ; Pp.textf "Extensions must be unique per melange.emit stanza"
+                ]
+            | false -> (String.Set.add seen ext, (ms, ext)))
+      in
+      module_systems
     in
     fields
       (let+ loc = loc
@@ -81,16 +102,15 @@ module Emit = struct
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
        and+ alias = field_o "alias" Alias.Name.decode
-       and+ module_system =
-         field "module_system"
-           (enum [ ("es6", Melange.Module_system.Es6); ("commonjs", CommonJs) ])
+       and+ module_systems =
+         field "module_systems" module_systems
+           ~default:[ Melange.Module_system.default ]
        and+ libraries = field "libraries" decode_lib ~default:[]
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
        and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
-       and+ javascript_extension = extension_field "javascript_extension"
        and+ allow_overlapping_dependencies =
          field_b "allow_overlapping_dependencies"
        and+ modules =
@@ -109,7 +129,7 @@ module Emit = struct
        { loc
        ; target
        ; alias
-       ; module_system
+       ; module_systems
        ; modules
        ; libraries
        ; package
@@ -117,7 +137,6 @@ module Emit = struct
        ; preprocessor_deps
        ; promote
        ; compile_flags
-       ; javascript_extension
        ; allow_overlapping_dependencies
        })
 end

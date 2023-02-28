@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677617708598,
+  "lastUpdate": 1677617847028,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7483,6 +7483,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (Linux)",
             "value": "77.18277223948667",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4e83d1b80bd9a37de7e0d39d6f22873850314557",
+          "message": "test: duplicate packages in vendor dir (#7194)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-28T12:31:15-08:00",
+          "tree_id": "2f033d89248006aaab12e19ac5ed99ee1ca95cfc",
+          "url": "https://github.com/ocaml/dune/commit/4e83d1b80bd9a37de7e0d39d6f22873850314557"
+        },
+        "date": 1677617845954,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (Linux)",
+            "value": "75.68696638700668",
             "unit": "seconds"
           }
         ]

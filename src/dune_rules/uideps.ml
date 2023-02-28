@@ -59,7 +59,6 @@ let cctx_rules cctx =
       CC.context cctx |> Context.name |> Context_name.build_dir |> Path.build
     in
     let* build_path = build_path cctx in
-    (* let all_cmts = List.map ~f:snd modules_with_cmts in *)
     let intermediate_targets, intermediates =
       List.fold_map modules_with_cmts ~init:[]
         ~f:(fun targets (_module_, for_cmt) ->
@@ -73,9 +72,6 @@ let cctx_rules cctx =
               ; Target fn
               ; Dep for_cmt
               ; As (List.map ~f:Path.to_absolute_filename build_path)
-                (* TODO ulysse: these deps are incorrect. Fixing it might improve
-                   performance by increasing parallelism. *)
-                (* ; Hidden_deps (Dep.Set.of_files all_cmts) *)
               ]
           in
           (Path.build fn :: targets, action))

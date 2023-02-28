@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677550328179,
+  "lastUpdate": 1677561755332,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7162,6 +7162,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "34.878910772926666",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "distinct": true,
+          "id": "e58ff4dea9073ad331cf172fcc16f3d4710af0f7",
+          "message": "test: install libraries in the same source\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2023-02-27T19:53:49-06:00",
+          "tree_id": "ddf68609a00107f6511e376500632fbb45c0ac82",
+          "url": "https://github.com/ocaml/dune/commit/e58ff4dea9073ad331cf172fcc16f3d4710af0f7"
+        },
+        "date": 1677561754104,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "35.922827373893334",
             "unit": "seconds"
           }
         ]

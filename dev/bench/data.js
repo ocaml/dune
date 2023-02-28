@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677625705247,
+  "lastUpdate": 1677626083660,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7541,6 +7541,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (Linux)",
             "value": "75.68696638700668",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5de6e9f0946727f3cab329f9442273c0bfcca3cf",
+          "message": "test(melange): add a test that introduces rules in the target dir (#7196)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-28T14:48:51-08:00",
+          "tree_id": "14f8003f16339e644cede9e74c31d6e51564d12d",
+          "url": "https://github.com/ocaml/dune/commit/5de6e9f0946727f3cab329f9442273c0bfcca3cf"
+        },
+        "date": 1677626082986,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (Linux)",
+            "value": "75.21734505147333",
             "unit": "seconds"
           }
         ]

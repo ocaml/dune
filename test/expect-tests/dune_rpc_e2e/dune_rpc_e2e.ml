@@ -70,14 +70,12 @@ let run_client ?handler f =
           notification_exn client Dune_rpc.Public.Notification.shutdown ()))
 
 let read_lines in_ =
-  let* reader = Scheduler.Worker.create () in
   let in_ = Unix.in_channel_of_descr in_ in
   let rec loop acc =
-    let* res = Scheduler.Worker.task reader ~f:(fun () -> input_line in_) in
+    let* res = Scheduler.async (fun () -> input_line in_) in
     match res with
     | Ok a -> loop (a :: acc)
-    | Error `Stopped -> assert false
-    | Error (`Exn e) ->
+    | Error e ->
       (match e.exn with
       | End_of_file -> ()
       | _ ->
@@ -86,7 +84,6 @@ let read_lines in_ =
       Fiber.return (String.concat (List.rev acc) ~sep:"\n")
   in
   let+ res = loop [] in
-  Scheduler.Worker.stop reader;
   close_in_noerr in_;
   res
 

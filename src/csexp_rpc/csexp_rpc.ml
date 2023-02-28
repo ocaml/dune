@@ -2,47 +2,21 @@ open Stdune
 open Fiber.O
 module Log = Dune_util.Log
 
-module type Worker = sig
-  type t
-
-  val create : unit -> t Fiber.t
-
-  val stop : t -> unit
-
-  val task :
-       t
-    -> f:(unit -> 'a)
-    -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
+module type Scheduler = sig
+  val async : (unit -> 'a) -> ('a, Exn_with_backtrace.t) result Fiber.t
 end
 
-let worker = Fdecl.create Dyn.opaque
+let scheduler = Fdecl.create Dyn.opaque
 
-module Worker = struct
-  type t =
-    { stop : unit -> unit
-    ; task :
-        'a.
-           (unit -> 'a)
-        -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
-    }
+let async f =
+  let module Scheduler = (val Fdecl.get scheduler : Scheduler) in
+  Scheduler.async f
 
-  let create () =
-    let open Fiber.O in
-    let (module Worker : Worker) = Fdecl.get worker in
-    let+ w = Worker.create () in
-    { stop = (fun () -> Worker.stop w); task = (fun f -> Worker.task w ~f) }
-
-  let stop t = t.stop ()
-
-  let task t ~f = t.task f
-
-  let task_exn t ~f =
-    let+ res = task t ~f in
-    match res with
-    | Error `Stopped -> assert false
-    | Error (`Exn e) -> Exn_with_backtrace.reraise e
-    | Ok s -> s
-end
+let async_exn f =
+  let+ res = async f in
+  match res with
+  | Ok s -> s
+  | Error e -> Exn_with_backtrace.reraise e
 
 module Session_id = Id.Make ()
 
@@ -136,8 +110,6 @@ module Session = struct
              event based IO, we won't need this mutex anymore *)
           write_mutex : Mutex.t
         ; in_channel : in_channel
-        ; writer : Worker.t
-        ; reader : Worker.t
         }
 
   type t =
@@ -149,16 +121,12 @@ module Session = struct
     let id = Id.gen () in
     if debug then
       Log.info [ Pp.textf "RPC created new session %d" (Id.to_int id) ];
-    let* reader = Worker.create () in
-    let+ writer = Worker.create () in
     let state =
       Open
         { fd
         ; in_channel
         ; out_buf = Io_buffer.create ~size:8192
         ; write_mutex = Mutex.create ()
-        ; writer
-        ; reader
         }
     in
     { id; state }
@@ -174,10 +142,10 @@ module Session = struct
   let close t =
     match t.state with
     | Closed -> ()
-    | Open { write_mutex = _; fd = _; in_channel; out_buf = _; reader; writer }
-      ->
-      Worker.stop reader;
-      Worker.stop writer;
+    | Open { write_mutex = _; fd = _; in_channel; out_buf = _ } ->
+      (* with a socket, there's only one fd. We make sure to close it only once.
+         with dune rpc init, we have two separate fd's (stdin/stdout) so we must
+         close both. *)
       close_in_noerr in_channel;
       t.state <- Closed
 
@@ -194,7 +162,7 @@ module Session = struct
     | Closed ->
       debug None;
       Fiber.return None
-    | Open { reader; in_channel; _ } ->
+    | Open { in_channel; _ } ->
       let rec read () =
         match Csexp.input_opt in_channel with
         | exception Unix.Unix_error (_, _, _) -> None
@@ -204,13 +172,12 @@ module Session = struct
         | Ok (Some csexp) -> Some csexp
         | Error _ -> None
       in
-      let+ res = Worker.task reader ~f:read in
+      let+ res = async read in
       let res =
         match res with
-        | Error (`Exn _) ->
+        | Error _ ->
           close t;
           None
-        | Error `Stopped -> None
         | Ok None ->
           close t;
           None
@@ -258,7 +225,7 @@ module Session = struct
       | Some sexps ->
         Code_error.raise "attempting to write to a closed channel"
           [ ("sexp", Dyn.(list Sexp.to_dyn) sexps) ])
-    | Open { writer; fd; out_buf; write_mutex; _ } -> (
+    | Open { fd; out_buf; write_mutex; _ } -> (
       match sexps with
       | None ->
         (try
@@ -273,13 +240,11 @@ module Session = struct
           Io_buffer.write_csexps out_buf sexps;
           let flush_token = Io_buffer.flush_token out_buf in
           Mutex.unlock write_mutex;
-          Worker.task writer ~f:(fun () ->
-              csexp_write_loop fd out_buf flush_token write_mutex)
+          async (fun () -> csexp_write_loop fd out_buf flush_token write_mutex)
         in
         match res with
         | Ok () -> ()
-        | Error `Stopped -> assert false
-        | Error (`Exn e) ->
+        | Error e ->
           close t;
           Exn_with_backtrace.reraise e))
 end
@@ -353,45 +318,40 @@ module Server = struct
   let ready t = Fiber.Ivar.read t.ready
 
   let serve (t : t) =
-    let* async = Worker.create () in
     match t.state with
     | `Closed -> Code_error.raise "already closed" []
     | `Running _ -> Code_error.raise "already running" []
     | `Init fd ->
       let* transport =
-        Worker.task_exn async ~f:(fun () ->
-            Transport.create fd t.sockaddr ~backlog:t.backlog)
+        async_exn (fun () -> Transport.create fd t.sockaddr ~backlog:t.backlog)
       in
       t.state <- `Running transport;
       let+ () = Fiber.Ivar.fill t.ready () in
       let accept () =
-        Worker.task async ~f:(fun () ->
+        async (fun () ->
             Transport.accept transport
             |> Option.map ~f:(fun client ->
                    let in_ = Unix.in_channel_of_descr client in
                    (client, in_)))
       in
       let loop () =
-        let* accept = accept () in
+        let+ accept = accept () in
         match accept with
-        | Error `Stopped ->
-          Log.info [ Pp.text "RPC stopped accepting." ];
-          Fiber.return None
-        | Error (`Exn exn) ->
+        | Error exn ->
           Log.info
             [ Pp.text "RPC accept failed. Server will not accept new clients"
             ; Exn_with_backtrace.pp exn
             ];
-          Fiber.return None
+          None
         | Ok None ->
           Log.info
             [ Pp.text
                 "RPC accepted the last client. No more clients will be \
                  accepted."
             ];
-          Fiber.return None
+          None
         | Ok (Some (fd, in_)) ->
-          let+ session = Session.create fd in_ in
+          let session = Session.create fd in_ in
           Some session
       in
       Fiber.Stream.In.create loop
@@ -435,35 +395,23 @@ module Client = struct
 
   type t =
     { mutable transport : Transport.t option
-    ; mutable async : Worker.t option
     ; sockaddr : Unix.sockaddr
     }
 
-  let create sockaddr =
-    let+ async = Worker.create () in
-    { sockaddr; async = Some async; transport = None }
+  let create sockaddr = { sockaddr; transport = None }
 
   let connect t =
-    match t.async with
-    | None ->
-      Code_error.raise "connection already established with the client" []
-    | Some async -> (
-      t.async <- None;
-      let* task =
-        Worker.task async ~f:(fun () ->
-            let transport = Transport.create t.sockaddr in
-            t.transport <- Some transport;
-            let client = Transport.connect transport in
-            let in_ = Unix.in_channel_of_descr client in
-            (client, in_))
-      in
-      Worker.stop async;
-      match task with
-      | Error `Stopped -> assert false
-      | Error (`Exn exn) -> Fiber.return (Error exn)
-      | Ok (in_, out) ->
-        let+ res = Session.create in_ out in
-        Ok res)
+    let+ task =
+      async (fun () ->
+          let transport = Transport.create t.sockaddr in
+          t.transport <- Some transport;
+          let client = Transport.connect transport in
+          let in_ = Unix.in_channel_of_descr client in
+          (client, in_))
+    in
+    match task with
+    | Error exn -> Error exn
+    | Ok (fd, in_) -> Ok (Session.create fd in_)
 
   let connect_exn t =
     let+ res = connect t in

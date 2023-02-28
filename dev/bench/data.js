@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1677615425050,
+  "lastUpdate": 1677617318881,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -7365,6 +7365,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "pupilfirst build time (Linux)",
             "value": "35.326087940693334",
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "497c0e33271dafa8a1440d24faed7b99872dc548",
+          "message": "melange: interpret `melc --where` as a list of `:`-separated paths (#7176)\n\n* melange: interpret `melc --where` as a list of `:`-separated paths\r\n\r\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2023-02-28T12:28:43-08:00",
+          "tree_id": "c8dc3fd4b2a98ae41ba6f8d8cd6d5c3dd2d719cf",
+          "url": "https://github.com/ocaml/dune/commit/497c0e33271dafa8a1440d24faed7b99872dc548"
+        },
+        "date": 1677617317650,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "pupilfirst build time (Linux)",
+            "value": "38.7594802454",
             "unit": "seconds"
           }
         ]

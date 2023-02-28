@@ -126,8 +126,7 @@ type rmdir_mode =
 (** Operations that act on real files or just pretend to (for --dry-run) *)
 module type File_operations = sig
   val copy_file :
-       verbosity:Dune_engine.Display.t
-    -> src:Path.t
+       src:Path.t
     -> dst:Path.t
     -> executable:bool
     -> special_file:Special_file.t option
@@ -135,33 +134,35 @@ module type File_operations = sig
     -> conf:Dune_rules.Artifact_substitution.conf
     -> unit Fiber.t
 
-  val mkdir_p : verbosity:Dune_engine.Display.t -> Path.t -> unit
+  val mkdir_p : Path.t -> unit
 
-  val remove_file_if_exists : verbosity:Dune_engine.Display.t -> Path.t -> unit
+  val remove_file_if_exists : Path.t -> unit
 
-  val remove_dir_if_exists :
-    verbosity:Dune_engine.Display.t -> if_non_empty:rmdir_mode -> Path.t -> unit
+  val remove_dir_if_exists : if_non_empty:rmdir_mode -> Path.t -> unit
 end
 
-module File_ops_dry_run : File_operations = struct
-  let copy_file ~verbosity ~src ~dst ~executable ~special_file:_ ~package:_
-      ~conf:_ =
-    print_line ~verbosity "Copying %s to %s (executable: %b)"
+module File_ops_dry_run (Verbosity : sig
+  val verbosity : Dune_engine.Display.t
+end) : File_operations = struct
+  open Verbosity
+
+  let print_line fmt = print_line ~verbosity fmt
+
+  let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ ~conf:_ =
+    print_line "Copying %s to %s (executable: %b)"
       (Path.to_string_maybe_quoted src)
       (Path.to_string_maybe_quoted dst)
       executable;
     Fiber.return ()
 
-  let mkdir_p ~verbosity path =
-    print_line ~verbosity "Creating directory %s"
-      (Path.to_string_maybe_quoted path)
+  let mkdir_p path =
+    print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
 
-  let remove_file_if_exists ~verbosity path =
-    print_line ~verbosity "Removing (if it exists) %s"
-      (Path.to_string_maybe_quoted path)
+  let remove_file_if_exists path =
+    print_line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
 
-  let remove_dir_if_exists ~verbosity ~if_non_empty path =
-    print_line ~verbosity "Removing directory (%s if not empty) %s"
+  let remove_dir_if_exists ~if_non_empty path =
+    print_line "Removing directory (%s if not empty) %s"
       (match if_non_empty with
       | Fail -> "fail"
       | Warn -> "warn")
@@ -169,9 +170,13 @@ module File_ops_dry_run : File_operations = struct
 end
 
 module File_ops_real (W : sig
+  val verbosity : Dune_engine.Display.t
+
   val workspace : Workspace.t
 end) : File_operations = struct
   open W
+
+  let print_line = print_line ~verbosity
 
   let get_vcs p = Dune_engine.Source_tree.nearest_vcs p
 
@@ -308,7 +313,7 @@ end) : File_operations = struct
     in
     Some { need_version; callback }
 
-  let copy_file ~verbosity:_ ~src ~dst ~executable ~special_file ~package
+  let copy_file ~src ~dst ~executable ~special_file ~package
       ~(conf : Dune_rules.Artifact_substitution.conf) =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
     match (special_file : Special_file.t option) with
@@ -329,16 +334,16 @@ end) : File_operations = struct
     | None ->
       Dune_rules.Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
 
-  let remove_file_if_exists ~verbosity dst =
+  let remove_file_if_exists dst =
     if Path.exists dst then (
-      print_line ~verbosity "Deleting %s" (Path.to_string_maybe_quoted dst);
+      print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
       print_unix_error (fun () -> Path.unlink dst))
 
-  let remove_dir_if_exists ~verbosity ~if_non_empty dir =
+  let remove_dir_if_exists ~if_non_empty dir =
     if Path.exists dir then
       match Path.readdir_unsorted dir with
       | Ok [] ->
-        print_line ~verbosity "Deleting empty directory %s"
+        print_line "Deleting empty directory %s"
           (Path.to_string_maybe_quoted dir);
         print_unix_error (fun () -> Path.rmdir dir)
       | Error (e, _, _) ->
@@ -356,7 +361,7 @@ end) : File_operations = struct
           User_error.raise
             [ Pp.textf "Please delete non-empty directory %s manually." dir ])
 
-  let mkdir_p ~verbosity:_ p =
+  let mkdir_p p =
     (* CR-someday amokhov: We should really change [Path.mkdir_p dir] to fail if
        it turns out that [dir] exists and is not a directory. Even better, make
        [Path.mkdir_p] return an explicit variant to deal with. *)
@@ -400,11 +405,16 @@ module Sections = struct
     | Only set -> Section.Set.mem set section
 end
 
-let file_operations ~dry_run ~workspace : (module File_operations) =
-  if dry_run then (module File_ops_dry_run)
+let file_operations ~verbosity ~dry_run ~workspace : (module File_operations) =
+  if dry_run then
+    (module File_ops_dry_run (struct
+      let verbosity = verbosity
+    end))
   else
     (module File_ops_real (struct
       let workspace = workspace
+
+      let verbosity = verbosity
     end))
 
 let package_is_vendored (pkg : Dune_engine.Package.t) =
@@ -658,9 +668,9 @@ let install_uninstall ~what =
                 [ Pp.text "Option --prefix is needed with --relocation" ]
           else None
         in
-
+        let verbosity = config.display.verbosity in
         let open Fiber.O in
-        let (module Ops) = file_operations ~dry_run ~workspace in
+        let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in
         let from_command_line =
           let open Install.Section.Paths.Roots in
@@ -676,7 +686,6 @@ let install_uninstall ~what =
           |> map ~f:(Option.map ~f:Path.of_string)
           |> complete
         in
-        let verbosity = config.display.verbosity in
         let+ () =
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
@@ -723,23 +732,21 @@ let install_uninstall ~what =
                             let* () =
                               (match Path.is_directory dst with
                               | true ->
-                                Ops.remove_dir_if_exists ~verbosity
-                                  ~if_non_empty:Fail dst
-                              | false ->
-                                Ops.remove_file_if_exists ~verbosity dst);
+                                Ops.remove_dir_if_exists ~if_non_empty:Fail dst
+                              | false -> Ops.remove_file_if_exists dst);
                               print_line ~verbosity "%s %s" msg
                                 (Path.to_string_maybe_quoted dst);
-                              Ops.mkdir_p ~verbosity dir;
+                              Ops.mkdir_p dir;
                               let executable =
                                 Section.should_set_executable_bit entry.section
                               in
-                              Ops.copy_file ~verbosity ~src:entry.src ~dst
-                                ~executable ~special_file ~package ~conf
+                              Ops.copy_file ~src:entry.src ~dst ~executable
+                                ~special_file ~package ~conf
                             in
                             Fiber.return (Install.Entry.set_src entry dst)
                           else Fiber.return entry
                         | Uninstall ->
-                          Ops.remove_file_if_exists ~verbosity dst;
+                          Ops.remove_file_if_exists dst;
                           files_deleted_in := Path.Set.add !files_deleted_in dir;
                           Fiber.return entry)
                   in
@@ -752,7 +759,7 @@ let install_uninstall ~what =
         (* This [List.rev] is to ensure we process children directories before
            their parents *)
         |> List.rev
-        |> List.iter ~f:(Ops.remove_dir_if_exists ~verbosity ~if_non_empty:Warn))
+        |> List.iter ~f:(Ops.remove_dir_if_exists ~if_non_empty:Warn))
   in
   Cmd.v
     (Cmd.info (cmd_what what) ~doc
